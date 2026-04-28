@@ -2990,7 +2990,11 @@
       color = 'green';
     }
 
-    return { score, color, acwr, loadRatioScore, matchFatigueScore, loadSpikeScore, rpeTrendScore };
+    // Check if there's enough real data (need at least 2 weeks with RPE entries)
+    var sessionsWithRPE = sessions.filter(function(s) { return s.rpe != null && s.minutes != null; });
+    var hasData = allWeeks.length >= 2 && sessionsWithRPE.length >= 3;
+
+    return { score, color, acwr, loadRatioScore, matchFatigueScore, loadSpikeScore, rpeTrendScore, hasData: hasData };
   }
 
   // Catmull-Rom to cubic bezier SVG path (tension 0 = Catmull-Rom)
@@ -3388,13 +3392,19 @@
   }
 
   function buildReadinessCard(rd) {
+    if (!rd.hasData) {
+      return `<div class="card" style="margin-top:1.5rem;">
+        <div class="card-title">Readiness</div>
+        <p style="color:var(--text-secondary);text-align:center;padding:1.5rem 0;">Encara no hi ha prou dades</p>
+      </div>`;
+    }
     const colorLabel = rd.color === 'green' ? 'Good' : rd.color === 'orange' ? 'Moderate' : 'Low';
     const colorHex = rd.color === 'green' ? '#4caf50' : rd.color === 'orange' ? '#ff9800' : '#e53935';
     function bar(val) {
       const bg = val >= 75 ? '#4caf50' : val >= 55 ? '#ff9800' : '#e53935';
       return `<div class="rd-bar-track"><div class="rd-bar-fill" style="width:${val}%;background:${bg}"></div></div>`;
     }
-    return `<div class="card" style="margin-top:1rem;">
+    return `<div class="card" style="margin-top:1.5rem;">
       <div class="card-title">Readiness</div>
       <div class="rd-header">
         <span class="readiness-dot readiness-${rd.color}"></span>
@@ -3850,7 +3860,7 @@
             </div>
           </div>
         </div>
-        <div class="card" style="margin-top:1rem;">
+        <div class="card" style="margin-top:1.5rem;">
           <div class="tb-saved-title">Saved Boards</div>
           <div class="tb-saved-list" id="tb-saved-list">${savedListHtml}</div>
         </div>`;
@@ -7915,15 +7925,17 @@
       else if (fStatus === 'doubt') statusIcon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injNote)}">?</span>`;
       else statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injNote)}">✕</span>`;
       const rd = computeReadiness(p.id);
-      const acwrVal = rd.acwr || 0;
-      const acwrColor = (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
+      const rdColor = rd.hasData ? rd.color : 'green';
+      const rdScore = rd.hasData ? rd.score : '—';
+      const acwrVal = rd.hasData ? (rd.acwr || 0) : 0;
+      const acwrColor = !rd.hasData ? '#4caf50' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
 
       return `<tr>
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
         <td><span class="roster-name-wrap">${sanitize(p.name)}${teamCircle}</span></td>
         <td class="center-cell">${statusIcon}</td>
-        <td class="center-cell"><span class="readiness-dot readiness-${rd.color}" data-tooltip="${rd.score}"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${acwrVal.toFixed(2)}</td>
+        <td class="center-cell"><span class="readiness-dot readiness-${rdColor}" data-tooltip="${rdScore}"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
         <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
         <td class="center-cell">
           <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-date="${t.date}">
@@ -8208,7 +8220,8 @@
       const matches = u.matchesPlayed || 0;
       const minutes = u.minutesPlayed || (matches * 90);
       const rd = computeReadiness(u.id);
-      const readiness = rd.color;
+      const readiness = rd.hasData ? rd.color : 'green';
+      const rdTooltip = rd.hasData ? rd.score : '—';
 
       let statusIcon = '';
       if (status === 'fit') {
@@ -8226,7 +8239,7 @@
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(u)}</span></td>
         <td><a href="#" class="roster-player-link" data-player-id="${u.id}"><span class="roster-name-wrap">${sanitize(u.name)}${teamCircle}</span></a></td>
         <td class="center-cell">${statusIcon}</td>
-        <td class="center-cell"><span class="readiness-dot readiness-${readiness}" data-tooltip="${rd.score}"></span></td>
+        <td class="center-cell"><span class="readiness-dot readiness-${readiness}" data-tooltip="${rdTooltip}"></span></td>
         <td class="center-cell roster-num">${matches}</td>
         <td class="center-cell roster-num">${minutes}</td>
       </tr>`;
@@ -8408,7 +8421,7 @@
       <td><input class="reg-input md-opponent" value="${sanitize(g.opponent || '')}" placeholder="Opponent name" style="width:140px;"></td>
       <td><input class="reg-input md-location" value="${sanitize(g.location || '')}" placeholder="Location" style="width:150px;"></td>
       <td><input class="reg-input md-maplink" value="${sanitize(g.mapLink || '')}" placeholder="Google Maps link" style="width:150px;"></td>
-      <td><select class="reg-input md-kickoff">${buildTimeOptions(g.kickoff || '')}</select></td>
+      <td><input type="time" class="reg-input md-kickoff" value="${sanitize(g.kickoff || '')}" style="width:110px;"></td>
       <td><button class="md-remove-btn md-remove" data-idx="${i}" title="Remove">&times;</button></td>
     </tr>`;
   }
@@ -8431,12 +8444,13 @@
       const status = derived.fitnessStatus;
       const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
       const rd = computeReadiness(p.id);
-      const readiness = rd.color;
+      const readiness = rd.hasData ? rd.color : 'green';
+      const rdTooltip = rd.hasData ? rd.score : '—';
       let icon = '';
       if (status === 'fit') icon = '<span class="roster-status-icon roster-status-fit">✓</span>';
       else if (status === 'doubt') icon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
       else icon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
-      return `${icon}<span class="readiness-dot readiness-${readiness}" data-tooltip="${rd.score}"></span>`;
+      return `${icon}<span class="readiness-dot readiness-${readiness}" data-tooltip="${rdTooltip}"></span>`;
     }
 
     const POS_ORDER = ['GK','CB','LB','RB','DM','OM','LW','RW','ST'];
@@ -8825,7 +8839,7 @@
       <div class="card">
         <div class="card-title">Configuració de Categories</div>
         ${hasCfg
-          ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enllaços FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
+          ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enllaços classificació FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
           : '<p style="color:var(--text-secondary);font-size:.9rem;">No estàs vinculat a cap club. Contacta l\'administrador.</p>'
         }
       </div>`;
@@ -9210,18 +9224,30 @@
       localStorage.setItem('fa_matchday', JSON.stringify(readGames()));
     }
 
-    // Auto-fill location & map link when home is selected
+    // Auto-fill location, map link, and kick-off time when home is selected
     body.addEventListener('change', e => {
       if (e.target.classList.contains('md-ha')) {
         const tr = e.target.closest('tr');
         const locInput = tr.querySelector('.md-location');
         const mapInput = tr.querySelector('.md-maplink');
+        const kickoffInput = tr.querySelector('.md-kickoff');
         if (e.target.value === 'home') {
-          locInput.value = 'Escola Industrial';
-          mapInput.value = 'https://share.google/pfbMOc661aRSNlynk';
+          // Try to get defaults from club schedule config
+          var cat = tr.dataset.category || getCurrentCategory() || '';
+          var schedKey = cat;
+          var letters = getTeamLetters(cat);
+          var activeCircle = tr.querySelector('.md-team-circle.active');
+          if (activeCircle && activeCircle.dataset.team) schedKey = cat + '_' + activeCircle.dataset.team;
+          else if (letters.length === 1) schedKey = cat + '_' + letters[0];
+          var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
+          var homeGame = sched ? sched.homeGame : null;
+          locInput.value = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
+          mapInput.value = (locInput.value === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
+          if (kickoffInput && homeGame && homeGame.time) kickoffInput.value = homeGame.time;
         } else {
           locInput.value = '';
           mapInput.value = '';
+          if (kickoffInput) kickoffInput.value = '';
         }
         saveGames();
       }
@@ -9261,7 +9287,15 @@
     if (addBtn) {
       addBtn.addEventListener('click', () => {
         const games = readGames();
-        games.push({ homeAway: 'home', team: '', date: '', opponent: '', location: 'Escola Industrial', mapLink: 'https://share.google/pfbMOc661aRSNlynk', kickoff: '', category: getCurrentCategory() || '' });
+        var cat = getCurrentCategory() || '';
+        var letters = getTeamLetters(cat);
+        var schedKey = (letters.length === 1) ? cat + '_' + letters[0] : cat;
+        var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
+        var homeGame = sched ? sched.homeGame : null;
+        var defLoc = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
+        var defMap = (defLoc === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
+        var defKickoff = (homeGame && homeGame.time) ? homeGame.time : '';
+        games.push({ homeAway: 'home', team: '', date: '', opponent: '', location: defLoc, mapLink: defMap, kickoff: defKickoff, category: cat });
         localStorage.setItem('fa_matchday', JSON.stringify(games));
         renderPage(getSession());
       });

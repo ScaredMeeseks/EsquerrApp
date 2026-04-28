@@ -1692,6 +1692,7 @@ line.tb-selected, rect.tb-selected { outline:none; filter:drop-shadow(0 0 3px #f
   display: block; font-size: .82rem; font-weight: 600; color: var(--text);
   margin-top: 3px;
 }
+.st-locked td:first-child { min-width: 135px; }
 .st-locked td { color: var(--text-secondary); }
 .input-error {
   border-color: var(--danger) !important;
@@ -2035,6 +2036,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-weight: 700; font-size: .85rem;
 }
 .reg-status-select,
+.reg-cat-select,
 .reg-input {
   padding: .35rem .5rem;
   border: 2px solid var(--border); border-radius: var(--radius);
@@ -2043,6 +2045,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   transition: border-color .2s;
 }
 .reg-status-select:focus,
+.reg-cat-select:focus,
 .reg-input:focus {
   outline: none; border-color: var(--primary-light);
 }
