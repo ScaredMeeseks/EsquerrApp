@@ -1456,6 +1456,7 @@ line.tb-selected, rect.tb-selected { outline:none; filter:drop-shadow(0 0 3px #f
 
 .conv-layout {
   display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 .conv-panel {
   background: var(--card); border-radius: var(--radius);

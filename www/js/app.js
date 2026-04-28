@@ -10063,22 +10063,6 @@
     if (list.length > 200) list.length = 200;
     saveStaffNotifications(list);
     updateStaffNotifBadge();
-
-    // Also queue a push notification for staff members
-    const teamId = _currentSession && _currentSession.teamId && _currentSession.teamId !== 'none' ? _currentSession.teamId : null;
-    const typeLabels = {
-      training_rpe: 'RPE enviat',
-      match_rpe: 'RPE enviat',
-      extra_training: 'Entrenament extra',
-      training_avail: 'Disponibilitat entrenament',
-      match_avail: 'Disponibilitat partit'
-    };
-    Push.sendToTeam(teamId, {
-      type: notif.type,
-      title: '\uD83D\uDCCB ' + (typeLabels[notif.type] || 'Notificació'),
-      body: (notif.playerName || '') + ' — ' + (notif.detail || ''),
-      targetRole: 'staff'
-    });
   }
   function getUnreadStaffNotifCount() {
     return getStaffNotifications().filter(n => !n.read).length;
