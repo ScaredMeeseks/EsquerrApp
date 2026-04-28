@@ -7867,7 +7867,23 @@
     var curCat = getCurrentCategory();
     var catPlayers = getUsers().filter(u => (u.roles || []).includes('player'));
     if (curCat) catPlayers = catPlayers.filter(p => !p.category || p.category === curCat);
-    const players = stdTeamFilter === 'all' ? catPlayers : catPlayers.filter(p => (p.team || '') === stdTeamFilter);
+    const players = !stdTeamFilter ? catPlayers : catPlayers.filter(p => stdTeamFilter.has(p.team || ''));
+
+    // Determine which team letters share this training slot
+    const _dayMap = {0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
+    const _tDate = t.date ? new Date(t.date + 'T12:00:00') : null;
+    const _tDayVal = _tDate ? _dayMap[_tDate.getDay()] : '';
+    const _tStartTime = (t.time || '').split(' - ')[0].trim();
+    const _allLetters = getTeamLetters(curCat);
+    const _schedules = (_clubConfig && _clubConfig.schedules) ? _clubConfig.schedules : {};
+    const _trainingLetters = _allLetters.filter(letter => {
+      const key = (curCat || '') + '-' + letter;
+      const sched = _schedules[key];
+      if (!sched || !sched.training) return false;
+      return sched.training.some(tr => tr.day === _tDayVal && tr.time === _tStartTime);
+    });
+    // Fallback: if no schedule match, show all letters
+    const stdLettersForSlot = _trainingLetters.length ? _trainingLetters : _allLetters;
     const locked = isTrainingLocked(t);
     // Seed mock data only for demo/seeded environments
     if (localStorage.getItem('fa_seeded')) seedMockAvailability(t.date, players);
@@ -7952,11 +7968,10 @@
       <div class="card" style="flex:1;min-width:0;">
         <div class="card-title">Player Attendance</div>
         ${(() => {
-          const _stdLetters = getTeamLetters(curCat);
-          if (_stdLetters.length <= 1) return '';
-          const btnAll = stdTeamFilter === 'all' ? ' roster-team-btn-active' : '';
-          const letterBtns = _stdLetters.map(l => {
-            const ac = stdTeamFilter === l ? ' roster-team-btn-active' : '';
+          if (stdLettersForSlot.length <= 1) return '';
+          const btnAll = !stdTeamFilter ? ' roster-team-btn-active' : '';
+          const letterBtns = stdLettersForSlot.map(l => {
+            const ac = stdTeamFilter && stdTeamFilter.has(l) ? ' roster-team-btn-active' : '';
             return '<button class="roster-team-btn std-team-btn' + ac + '" data-std-team="' + l + '">' + l + '</button>';
           }).join('');
           return '<div class="roster-team-filter"><button class="roster-team-btn std-team-btn' + btnAll + '" data-std-team="all">All</button>' + letterBtns + '</div>';
@@ -8187,7 +8202,7 @@
   }
 
   let rosterTeamFilter = 'all';
-  let stdTeamFilter = 'all';
+  let stdTeamFilter = null; // null = all, Set of letters = multi-select
   let staffViewPlayerId = null;
   let medicalDetailPlayerId = null;
   let medicalFilter = 'all';
@@ -11530,12 +11545,22 @@
       });
     });
 
-    // Training detail team filter
+    // Training detail team filter (multi-select)
     $$('[data-std-team]').forEach(btn => {
       btn.addEventListener('click', () => {
-        stdTeamFilter = btn.dataset.stdTeam;
-        $$('.std-team-btn').forEach(b => b.classList.remove('roster-team-btn-active'));
-        btn.classList.add('roster-team-btn-active');
+        const val = btn.dataset.stdTeam;
+        if (val === 'all') {
+          stdTeamFilter = null;
+        } else {
+          if (!stdTeamFilter) {
+            stdTeamFilter = new Set([val]);
+          } else if (stdTeamFilter.has(val)) {
+            stdTeamFilter.delete(val);
+            if (stdTeamFilter.size === 0) stdTeamFilter = null;
+          } else {
+            stdTeamFilter.add(val);
+          }
+        }
         renderPage(getSession());
       });
     });
