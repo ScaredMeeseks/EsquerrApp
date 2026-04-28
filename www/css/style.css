@@ -1312,7 +1312,7 @@ line.tb-selected, rect.tb-selected { outline:none; filter:drop-shadow(0 0 3px #f
 
 /* ===== League table snippet ===== */
 .league-tables-row { display:flex; gap:1rem; margin-bottom:1.5rem; }
-.league-snippet { flex:1; min-width:0; padding:.8rem; }
+.league-snippet { flex:1 1 0; min-width:0; padding:.8rem; }
 .league-scroll { max-height:160px; overflow-y:auto; scrollbar-width:thin; }
 .league-tbl { width:100%; border-collapse:collapse; font-size:.75rem; }
 .league-tbl thead { position:sticky; top:0; z-index:2; }
