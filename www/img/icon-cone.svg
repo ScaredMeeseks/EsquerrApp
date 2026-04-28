@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Base -->
+  <rect x="8" y="52" width="48" height="8" rx="2" fill="#f57c00"/>
+  <!-- Cone body -->
+  <polygon points="32,4 48,52 16,52" fill="#f57c00"/>
+  <!-- White stripes -->
+  <polygon points="27,20 37,20 39,28 25,28" fill="#fff"/>
+  <polygon points="23,36 41,36 43,44 21,44" fill="#fff"/>
+</svg>

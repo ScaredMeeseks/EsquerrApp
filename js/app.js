@@ -1253,6 +1253,8 @@
   // #region Dashboard & Page Router
   // ---------- Dashboard ----------
   let currentPage = '';
+  let _pctAnimatedPage = '';
+  let _donutAnimatedPage = '';
   let convSelectedMatchId = null;
   let detailMatchId = null;
   let detailMatchFrom = null;
@@ -1265,8 +1267,8 @@
     if (roles.includes('player')) {
       items.push({ section: 'Player' });
       items.push({ id: 'player-home', icon: '🏠', label: 'Overview' });
-      items.push({ id: 'training', icon: '🏋️', label: 'Training Schedule' });
-      items.push({ id: 'my-stats', icon: '📊', label: 'My Stats' });
+      items.push({ id: 'training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: 'Training Sessions' });
+      items.push({ id: 'my-stats', icon: '<img src="img/icon-stats.svg" class="sidebar-img-icon">', label: 'My Stats' });
       items.push({ id: 'player-matchday', icon: '⚽', label: 'Matchday' });
       items.push({ id: 'player-actions', icon: '🔔', label: 'Actions' });
     }
@@ -1274,12 +1276,12 @@
     if (roles.includes('staff')) {
       items.push({ section: 'Staff' });
       items.push({ id: 'registrations', icon: '📝', label: 'Registrations' });
-      items.push({ id: 'manage-roster', icon: '👥', label: 'Player Roster' });
-      items.push({ id: 'staff-training', icon: '🏋️', label: 'Training Sessions' });
+      items.push({ id: 'manage-roster', icon: '<img src="img/icon-boot.png" class="sidebar-img-icon">', label: 'Player Roster' });
+      items.push({ id: 'staff-training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: 'Training Sessions' });
       items.push({ id: 'matchday', icon: '📅', label: 'Set Calendar' });
       items.push({ id: 'convocatoria', icon: '📋', label: 'Convocatòria' });
       items.push({ id: 'staff-matchday', icon: '⚽', label: 'Matchday' });
-      items.push({ id: 'medical', icon: '🏥', label: 'Medical' });
+      items.push({ id: 'medical', icon: '<img src="img/icon-medical.svg" class="sidebar-img-icon">', label: 'Medical' });
       items.push({ id: 'tactics', icon: '📐', label: 'Tactical Board' });
       items.push({ id: 'staff-notifications', icon: '🔔', label: 'Notifications' });
     }
@@ -1800,16 +1802,14 @@
     var eyeTitle = isHidden ? 'Mostrar classificació' : 'Amagar classificació';
     var html = '<div class="league-snippet card' + (isHidden ? ' league-hidden' : '') + '">';
     html += '<div class="card-title" style="font-size:.82rem;' + (isHidden ? 'margin-bottom:0;' : 'margin-bottom:.5rem;') + 'display:flex;align-items:center;justify-content:space-between;">⚽ ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
-    if (!isHidden) {
-      html += '<div class="league-scroll" id="' + snippetId + '"><table class="league-tbl"><thead><tr><th>P</th><th></th><th>Club</th><th>Pts</th><th>J</th><th>F</th><th>C</th></tr></thead><tbody>';
-      useRows.forEach(function(r) {
-        var cls = r.ours ? ' class="league-ours"' : '';
-        var badge = r.badge ? '<img src="' + r.badge + '" class="league-badge" onerror="this.style.display=\'none\'">' : '';
-        var zoneBar = r.zone ? '<span class="league-zone" style="background:' + r.zone + '"></span>' : '';
-        html += '<tr' + cls + '><td class="league-pos-cell">' + zoneBar + r.pos + '</td><td class="league-badge-cell">' + badge + '</td><td class="league-club">' + sanitize(r.club) + '</td><td><strong>' + r.pts + '</strong></td><td>' + r.j + '</td><td>' + r.f + '</td><td>' + r.c + '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-    }
+    html += '<div class="league-scroll" id="' + snippetId + '"' + (isHidden ? ' style="display:none"' : '') + '><table class="league-tbl"><thead><tr><th>P</th><th></th><th>Club</th><th>Pts</th><th>J</th><th>F</th><th>C</th></tr></thead><tbody>';
+    useRows.forEach(function(r) {
+      var cls = r.ours ? ' class="league-ours"' : '';
+      var badge = r.badge ? '<img src="' + r.badge + '" class="league-badge" onerror="this.style.display=\'none\'">' : '';
+      var zoneBar = r.zone ? '<span class="league-zone" style="background:' + r.zone + '"></span>' : '';
+      html += '<tr' + cls + '><td class="league-pos-cell">' + zoneBar + r.pos + '</td><td class="league-badge-cell">' + badge + '</td><td class="league-club">' + sanitize(r.club) + '</td><td><strong>' + r.pts + '</strong></td><td>' + r.j + '</td><td>' + r.f + '</td><td>' + r.c + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
     html += '</div>';
     return html;
   }
@@ -7468,7 +7468,7 @@
       </tr>`;
     }).join('');
     return `
-      <h2 class="page-title">Training Schedule</h2>
+      <h2 class="page-title">Training Sessions</h2>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Day</th><th>Date</th><th>Time</th><th>Focus</th><th>Location</th><th class="center-cell">Assistance</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -8955,7 +8955,7 @@
           uniformIcons = `<span class="activity-uniform">${jerseySvg(a.sentJersey || 'white')}${sockSvg(a.sentSocks || 'striped')}</span>`;
         }
         convTag = a.convIncluded
-          ? '<a href="#" class="conv-available-tag" data-conv-link><span class="conv-blink-dot"></span> Convocatòria disponible</a>'
+          ? '<span class="conv-available-tag" data-conv-link data-conv-match="' + a.id + '" style="cursor:pointer"><span class="conv-blink-dot"></span> Convocatòria disponible</span>'
           : '<span class="conv-not-called-tag"><span class="conv-grey-dot"></span> No convocat</span>';
       }
       // Match availability buttons (only when conv NOT sent)
@@ -11403,9 +11403,13 @@
       });
     });
 
-    // Animate percentage counters
+    // Animate percentage counters (only the first time per page navigation)
     $$('.po-pct-counter').forEach(el => {
       const target = parseInt(el.dataset.target, 10) || 0;
+      if (_pctAnimatedPage === currentPage) {
+        el.textContent = target + '%';
+        return;
+      }
       const duration = 1000;
       const start = performance.now();
       function tick(now) {
@@ -11416,11 +11420,17 @@
       }
       requestAnimationFrame(tick);
     });
+    _pctAnimatedPage = currentPage;
 
     // Mark donut circles as animated so CSS animation only plays once
     $$('.std-donut svg circle[stroke-dasharray], .assistance-circle svg circle[stroke-dasharray]').forEach(c => {
-      c.addEventListener('animationend', () => c.classList.add('donut-animated'));
+      if (_donutAnimatedPage === currentPage) {
+        c.classList.add('donut-animated');
+      } else {
+        c.addEventListener('animationend', () => c.classList.add('donut-animated'));
+      }
     });
+    _donutAnimatedPage = currentPage;
 
     // Profile pic click → change photo
     const poPicWrap = document.getElementById('po-pic-change');
@@ -11780,6 +11790,20 @@
         detailMatchFrom = currentPage || 'player-matchday';
         currentPage = 'match-detail';
         renderPage(getSession());
+      });
+    });
+    // Convocatòria disponible link → navigate to match detail
+    $$('[data-conv-link]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const matchId = el.dataset.convMatch;
+        if (matchId) {
+          detailMatchId = Number(matchId);
+          detailMatchFrom = currentPage || 'player-matchday';
+          currentPage = 'match-detail';
+          renderPage(getSession());
+        }
       });
     });
     // Match availability buttons
@@ -12169,7 +12193,7 @@
           });
           return;
         }
-        // Player: toggle league table visibility
+        // Player: toggle league table visibility (in-place, no full re-render)
         const toggleBtn = e.target.closest('.league-toggle-btn');
         if (toggleBtn) {
           const lid = toggleBtn.dataset.leagueId;
@@ -12178,7 +12202,16 @@
           if (idx !== -1) hidden.splice(idx, 1);
           else hidden.push(lid);
           _setHiddenLeagues(hidden);
-          renderPage(getSession());
+          const card = toggleBtn.closest('.league-snippet');
+          if (!card) return;
+          const nowHidden = idx === -1; // was not hidden, now it is
+          card.classList.toggle('league-hidden', nowHidden);
+          const titleEl = card.querySelector('.card-title');
+          if (titleEl) titleEl.style.marginBottom = nowHidden ? '0' : '.5rem';
+          toggleBtn.textContent = nowHidden ? '👁️\u200D🗨️' : '👁️';
+          toggleBtn.title = nowHidden ? 'Mostrar classificació' : 'Amagar classificació';
+          const scroll = card.querySelector('.league-scroll');
+          if (scroll) scroll.style.display = nowHidden ? 'none' : '';
         }
       });
     }

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4fc3f7"/>
+      <stop offset="100%" stop-color="#26c6da"/>
+    </linearGradient>
+    <linearGradient id="heel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3f51b5"/>
+      <stop offset="100%" stop-color="#5c6bc0"/>
+    </linearGradient>
+  </defs>
+  <!-- Boot body -->
+  <path d="M48,54 L14,58 Q8,58 10,52 L12,46 L18,30 Q20,24 26,20 L34,16 Q38,14 40,16 L42,20 Q44,18 46,14 Q48,10 46,8 Q50,6 52,10 L50,18 L48,26 L50,36 Q52,44 50,50 Z" fill="url(#bg)"/>
+  <!-- Heel/collar -->
+  <path d="M46,8 Q50,6 52,10 L50,18 L48,26 L46,20 L42,20 Q44,18 46,14 Z" fill="url(#heel)"/>
+  <!-- Sole -->
+  <path d="M10,52 L14,58 L48,54 L50,50 Q50,54 46,56 L16,60 Q10,60 10,54 Z" fill="#1a9e8f"/>
+  <!-- Studs -->
+  <circle cx="14" cy="60" r="2" fill="#3f51b5"/>
+  <circle cx="22" cy="60" r="2" fill="#3f51b5"/>
+  <circle cx="30" cy="59" r="2" fill="#3f51b5"/>
+  <circle cx="38" cy="58" r="2" fill="#3f51b5"/>
+  <circle cx="46" cy="56" r="2" fill="#3f51b5"/>
+  <!-- Laces -->
+  <path d="M30,22 L34,20 M28,26 L33,24 M26,30 L32,28 M24,34 L30,32 M22,38 L28,36" fill="none" stroke="#1a237e" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

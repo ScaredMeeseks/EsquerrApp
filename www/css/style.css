@@ -177,6 +177,8 @@ a:hover { text-decoration: underline; }
   transition: all .15s; border-left: 3px solid transparent;
 }
 .sidebar-item span { color: inherit !important; }
+.sidebar-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.3em; flex-shrink: 0; }
+.sidebar-img-icon { width: 1.15em; height: 1.15em; display: block; object-fit: contain; }
 .sidebar-item:hover { background: rgba(255,255,255,.08); color: #fff !important; }
 .sidebar-item.active {
   background: rgba(255,214,98,.12); color: #FFD662 !important;
