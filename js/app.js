@@ -1310,7 +1310,7 @@
     if (logoEl) {
       var badgeUrl = _clubConfig && _clubConfig.badgeUrl ? _clubConfig.badgeUrl : 'img/logo.png';
       var clubName = _clubConfig && _clubConfig.name ? _clubConfig.name : 'EsquerrApp';
-      logoEl.innerHTML = '<img src="' + sanitize(badgeUrl) + '" alt="Logo" class="topnav-logo-img"> ' + sanitize(clubName);
+      logoEl.innerHTML = '<img src="' + sanitize(badgeUrl) + '" alt="Logo" class="topnav-logo-img"> <span class="topnav-logo-text">' + sanitize(clubName) + '</span>';
     }
 
     const badges = [];
@@ -1907,7 +1907,7 @@
       <h2 class="page-title">${sanitize(session.name)} <span style="color:var(--text-secondary);font-weight:600;">#${sanitize(String(number))}</span>${ageLabel}</h2>
       <div class="player-overview-card">
         <div class="player-overview-left">
-          <div class="po-pic-wrap">
+          <div class="po-pic-wrap" id="po-pic-change" style="cursor:pointer" title="Change photo">
             ${picHtml}
             ${teamBadge}
           </div>
@@ -11416,6 +11416,47 @@
       }
       requestAnimationFrame(tick);
     });
+
+    // Mark donut circles as animated so CSS animation only plays once
+    $$('.std-donut svg circle[stroke-dasharray], .assistance-circle svg circle[stroke-dasharray]').forEach(c => {
+      c.addEventListener('animationend', () => c.classList.add('donut-animated'));
+    });
+
+    // Profile pic click → change photo
+    const poPicWrap = document.getElementById('po-pic-change');
+    if (poPicWrap) {
+      poPicWrap.addEventListener('click', () => {
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'image/*';
+        inp.onchange = async () => {
+          const file = inp.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2 MB.'); return; }
+          const session = getSession();
+          if (!session || !auth.currentUser) return;
+          try {
+            const ext = file.name.split('.').pop() || 'jpg';
+            const ref = storage.ref('profilePics/' + auth.currentUser.uid + '.' + ext);
+            await ref.put(file);
+            session.profilePic = await ref.getDownloadURL();
+            setSession(session);
+            renderPage(session);
+          } catch (err) {
+            console.error('Profile pic upload failed:', err);
+            // Fallback to dataURL
+            const reader = new FileReader();
+            reader.onload = ev => {
+              session.profilePic = ev.target.result;
+              setSession(session);
+              renderPage(session);
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+        inp.click();
+      });
+    }
 
     // Convocatòria drag-and-drop
     bindConvocatoria();

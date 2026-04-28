@@ -1292,7 +1292,7 @@ line.tb-selected, rect.tb-selected { outline:none; filter:drop-shadow(0 0 3px #f
 
 /* ===== League table snippet ===== */
 .league-tables-row { display:flex; gap:1rem; margin-bottom:1.5rem; }
-.league-snippet { flex:1 1 0; min-width:0; padding:.8rem; display:flex; flex-direction:column; }
+.league-snippet { flex:1 1 0; min-width:0; padding:.8rem; display:flex; flex-direction:column; min-height:200px; }
 .league-snippet.card { margin-bottom:0; }
 .league-scroll { flex:1; overflow-y:auto; scrollbar-width:thin; }
 .league-tbl { width:100%; border-collapse:collapse; font-size:.75rem; }
@@ -2085,8 +2085,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 @keyframes donut-grow {
   from { stroke-dashoffset: var(--circ); }
 }
-.std-donut svg circle[stroke-dasharray],
-.assistance-circle svg circle[stroke-dasharray] {
+.std-donut svg circle[stroke-dasharray]:not(.donut-animated),
+.assistance-circle svg circle[stroke-dasharray]:not(.donut-animated) {
   animation: donut-grow 1.2s ease-out forwards;
 }
 
@@ -2241,6 +2241,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* ── Topnav above sidebar so badge is always tappable ── */
   .topnav { z-index: 300; }
   .topnav-logo { cursor: pointer; }
+  .topnav-logo-text { display: none; }
 
   /* ── Sidebar → off-screen drawer ── */
   .sidebar {
