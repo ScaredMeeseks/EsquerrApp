@@ -1,6 +1,6 @@
-﻿/* =========================================================
-   EsquerrApp — Pure client-side SPA
-   Auth via localStorage · Role-based dashboards
+/* =========================================================
+   EsquerrApp � Pure client-side SPA
+   Auth via localStorage � Role-based dashboards
    First registered user = admin
    ========================================================= */
 
@@ -19,9 +19,9 @@
   }
 
   /* Derive fitnessStatus from the chronological sequence of training answers.
-     - Last answer is 'injured' → injured
-     - Last answer is NOT injured but the previous one was → doubt ("Recovering from …")
-     - Otherwise → fit
+     - Last answer is 'injured' ? injured
+     - Last answer is NOT injured but the previous one was ? doubt ("Recovering from �")
+     - Otherwise ? fit
      Can be called without saving (for read-only queries). */
   function deriveFitnessStatus(playerId, saveResult) {
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -57,7 +57,7 @@
     const recoveringInj = playerInj.find(inj => inj.status === 'recovering');
     if (activeInj) {
       status = 'injured';
-      note = activeInj.muscleGroup + (activeInj.muscleSub ? ' (' + activeInj.muscleSub + ')' : '') + (activeInj.description ? ' – ' + activeInj.description : '');
+      note = activeInj.muscleGroup + (activeInj.muscleSub ? ' (' + activeInj.muscleSub + ')' : '') + (activeInj.description ? ' � ' + activeInj.description : '');
     } else if (recoveringInj) {
       status = 'doubt';
       note = 'Recovering from ' + (recoveringInj.muscleGroup || 'injury');
@@ -126,12 +126,12 @@
       const noteRaw = injNotes[p.id] || '';
       const zIdx = zoneMap[p.id] != null ? zoneMap[p.id] : null;
       const zLabel = zIdx != null && BODY_ZONES[zIdx] ? BODY_ZONES[zIdx].label : '';
-      // Parse note like "Hamstrings – pulled" or "Biceps Femoris (Hamstrings) – pulled"
+      // Parse note like "Hamstrings � pulled" or "Biceps Femoris (Hamstrings) � pulled"
       let muscleGroup = '', muscleSub = '', description = '';
       if (noteRaw) {
-        const dashParts = noteRaw.split(' – ');
+        const dashParts = noteRaw.split(' � ');
         const pathPart = dashParts[0].trim();
-        description = dashParts.length > 1 ? dashParts.slice(1).join(' – ').trim() : '';
+        description = dashParts.length > 1 ? dashParts.slice(1).join(' � ').trim() : '';
         const parenMatch = pathPart.match(/^(.+?)\s*\((.+?)\)$/);
         if (parenMatch) { muscleSub = parenMatch[1].trim(); muscleGroup = parenMatch[2].trim(); }
         else { muscleGroup = pathPart; }
@@ -290,8 +290,8 @@
     }
 
     // --- Generate matches (~every 2 weeks on Saturday) ---
-    const oppList = ['CF Gavà', 'UE Cornellà', 'CE Manresa', 'CF Igualada', 'CE Europa', 'FC Santboià', 'UE Sant Andreu', 'CF Damm', 'CE Júpiter', 'CE Hospitalet', 'FC Martinenc', 'UE Sants', 'FC Prat', 'AE Prat', 'CF Vilafranca', 'UE Figueres'];
-    const awayLocs = ['Camp Municipal', 'Camp Igualada', 'Camp Santboià', 'Camp Europa', 'Camp Sant Andreu', 'Camp Damm', 'Camp Júpiter', 'Camp Hospitalet', 'Camp Martinenc', 'Camp Sants', 'Camp Prat', 'Camp AE Prat', 'Camp Vilafranca', 'Camp Figueres'];
+    const oppList = ['CF Gav�', 'UE Cornell�', 'CE Manresa', 'CF Igualada', 'CE Europa', 'FC Santboi�', 'UE Sant Andreu', 'CF Damm', 'CE J�piter', 'CE Hospitalet', 'FC Martinenc', 'UE Sants', 'FC Prat', 'AE Prat', 'CF Vilafranca', 'UE Figueres'];
+    const awayLocs = ['Camp Municipal', 'Camp Igualada', 'Camp Santboi�', 'Camp Europa', 'Camp Sant Andreu', 'Camp Damm', 'Camp J�piter', 'Camp Hospitalet', 'Camp Martinenc', 'Camp Sants', 'Camp Prat', 'Camp AE Prat', 'Camp Vilafranca', 'Camp Figueres'];
     const scorePool = ['3-1', '1-2', '2-2', '0-1', '2-0', '1-1', '3-0', '0-0', '4-2', '1-3', '2-1', '0-2'];
     const matches = [];
     {
@@ -311,7 +311,7 @@
     const standings = [
       { pos: 1, team: 'FC Barcelona', played: 30, won: 22, drawn: 5, lost: 3, gf: 68, ga: 21, pts: 71 },
       { pos: 2, team: 'Real Madrid', played: 30, won: 21, drawn: 4, lost: 5, gf: 65, ga: 28, pts: 67 },
-      { pos: 3, team: 'Atlético Madrid', played: 30, won: 18, drawn: 7, lost: 5, gf: 52, ga: 25, pts: 61 },
+      { pos: 3, team: 'Atl�tico Madrid', played: 30, won: 18, drawn: 7, lost: 5, gf: 52, ga: 25, pts: 61 },
       { pos: 4, team: 'Athletic Club', played: 30, won: 16, drawn: 6, lost: 8, gf: 45, ga: 30, pts: 54 },
       { pos: 5, team: 'Villarreal CF', played: 30, won: 14, drawn: 9, lost: 7, gf: 48, ga: 35, pts: 51 },
       { pos: 6, team: 'Real Betis', played: 30, won: 13, drawn: 8, lost: 9, gf: 40, ga: 34, pts: 47 },
@@ -325,12 +325,12 @@
     ];
     // training array was already generated programmatically above
     const playerStats = [
-      { name: 'Carlos Pérez', pos: 'FW', goals: 14, assists: 8, matches: 28, rating: 7.8 },
+      { name: 'Carlos P�rez', pos: 'FW', goals: 14, assists: 8, matches: 28, rating: 7.8 },
       { name: 'Alejandro Torres', pos: 'MF', goals: 6, assists: 12, matches: 30, rating: 7.5 },
-      { name: 'Diego Martín', pos: 'DF', goals: 2, assists: 3, matches: 29, rating: 7.2 },
+      { name: 'Diego Mart�n', pos: 'DF', goals: 2, assists: 3, matches: 29, rating: 7.2 },
       { name: 'Pablo Ruiz', pos: 'GK', goals: 0, assists: 0, matches: 30, rating: 7.4 },
       { name: 'Iker Navarro', pos: 'FW', goals: 10, assists: 5, matches: 26, rating: 7.3 },
-      { name: 'Sergio López', pos: 'MF', goals: 4, assists: 9, matches: 27, rating: 7.1 },
+      { name: 'Sergio L�pez', pos: 'MF', goals: 4, assists: 9, matches: 27, rating: 7.1 },
     ];
 
     localStorage.setItem('fa_matches', JSON.stringify(matches));
@@ -351,12 +351,12 @@
     if (localStorage.getItem('fa_demo_seeded')) return;
     const existingUsers = getUsers();
     const demoPlayers = [
-      { id: 100001, name: 'Carlos Pérez', email: 'carlos@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'FW', playerNumber: '9', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 28, minutesPlayed: 2340, team: 'A' },
+      { id: 100001, name: 'Carlos P�rez', email: 'carlos@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'FW', playerNumber: '9', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 28, minutesPlayed: 2340, team: 'A' },
       { id: 100002, name: 'Alejandro Torres', email: 'alejandro@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'MF', playerNumber: '8', profilePic: '', profileSetupDone: true, fitnessStatus: 'doubt', injuryNote: 'Minor hamstring tightness', matchesPlayed: 30, minutesPlayed: 2580, team: 'A' },
-      { id: 100003, name: 'Diego Martín', email: 'diego@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'DF', playerNumber: '4', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 29, minutesPlayed: 2610, team: 'A' },
-      { id: 100004, name: 'Pablo Ruiz', email: 'pablo@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'GK', playerNumber: '1', profilePic: '', profileSetupDone: true, fitnessStatus: 'injured', injuryNote: 'Knee ligament sprain – 4 weeks', matchesPlayed: 30, minutesPlayed: 2700, team: 'A' },
+      { id: 100003, name: 'Diego Mart�n', email: 'diego@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'DF', playerNumber: '4', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 29, minutesPlayed: 2610, team: 'A' },
+      { id: 100004, name: 'Pablo Ruiz', email: 'pablo@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'GK', playerNumber: '1', profilePic: '', profileSetupDone: true, fitnessStatus: 'injured', injuryNote: 'Knee ligament sprain � 4 weeks', matchesPlayed: 30, minutesPlayed: 2700, team: 'A' },
       { id: 100005, name: 'Iker Navarro', email: 'iker@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'FW', playerNumber: '11', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 26, minutesPlayed: 1950, team: 'B' },
-      { id: 100006, name: 'Sergio López', email: 'sergio@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'MF', playerNumber: '6', profilePic: '', profileSetupDone: true, fitnessStatus: 'doubt', injuryNote: 'Ankle discomfort – assessment pending', matchesPlayed: 27, minutesPlayed: 2160, team: 'B' },
+      { id: 100006, name: 'Sergio L�pez', email: 'sergio@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'MF', playerNumber: '6', profilePic: '', profileSetupDone: true, fitnessStatus: 'doubt', injuryNote: 'Ankle discomfort � assessment pending', matchesPlayed: 27, minutesPlayed: 2160, team: 'B' },
     ];
     demoPlayers.forEach(dp => {
       if (!existingUsers.find(u => u.email === dp.email)) {
@@ -617,24 +617,24 @@
       // Determine club: superuser skips, team leads auto-match by email, players use code
       let club = null;
       if (email === ADMIN_EMAIL) {
-        // Superuser — no club needed at registration
+        // Superuser � no club needed at registration
       } else if (teamCode) {
-        // Player provided a code — validate it
+        // Player provided a code � validate it
         club = await getClubByCode(teamCode);
         if (!club) {
           await cred.user.delete();
-          errEl.textContent = 'Codi d\'equip no vàlid.';
+          errEl.textContent = 'Codi d\'equip no v�lid.';
           errEl.hidden = false;
           return;
         }
       } else {
-        // No code — check if this email is a team lead for any club
+        // No code � check if this email is a team lead for any club
         var leadSnap = await db.collection('clubs').where('leadEmail', '==', email).limit(1).get();
         if (!leadSnap.empty) {
           var leadDoc = leadSnap.docs[0];
           club = Object.assign({ id: leadDoc.id }, leadDoc.data());
         } else {
-          // Not a superuser, not a team lead, and no code — require code
+          // Not a superuser, not a team lead, and no code � require code
           await cred.user.delete();
           errEl.textContent = 'Has d\'introduir el codi d\'equip.';
           errEl.hidden = false;
@@ -733,7 +733,7 @@
         await loadClubConfig(user.teamId);
         await DB.init(user.teamId);
       } else {
-        // No team — flush stale localStorage so old data doesn't leak
+        // No team � flush stale localStorage so old data doesn't leak
         DB.flush();
       }
       e.target.reset();
@@ -752,7 +752,7 @@
   function navigate() {
     const session = getSession();
     if (!session) { showView('#view-login'); return; }
-    // Users without a club must join one first (superuser skips — manages clubs from admin settings)
+    // Users without a club must join one first (superuser skips � manages clubs from admin settings)
     if (!session.isAdmin && (!session.teamId || session.teamId === 'none' || session.teamId === 'default')) {
       showView('#view-join-club');
       return;
@@ -792,7 +792,7 @@
     }
     const club = await getClubByCode(code);
     if (!club) {
-      errEl.textContent = 'Codi no vàlid.';
+      errEl.textContent = 'Codi no v�lid.';
       errEl.hidden = false;
       return;
     }
@@ -821,7 +821,7 @@
   // ---------- Team Setup (Team Lead config) ----------
   var CATEGORY_LABELS = {
     amateur: 'Amateur', juvenil: 'Juvenil', cadet: 'Cadet',
-    infantil: 'Infantil', alevi: 'Aleví', benjami: 'Benjamí'
+    infantil: 'Infantil', alevi: 'Alev�', benjami: 'Benjam�'
   };
   var CATEGORY_ORDER = ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'];
 
@@ -922,7 +922,7 @@
         html += '<div class="ts-sched-row">';
         html += '<select data-home-day="' + schedKey + '">' + _selectedDayOptions(dayOptions, homeGame.day) + '</select>';
         html += '<input type="time" data-home-time="' + schedKey + '" value="' + (homeGame.time || '') + '" placeholder="Hora">';
-        html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="Ubicació">';
+        html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="Ubicaci�">';
         html += '</div>';
 
         html += '</div>';
@@ -935,14 +935,14 @@
     return '<div class="ts-sched-row" data-train-idx="' + idx + '">' +
       '<select data-train-day="' + schedKey + '-' + idx + '">' + _selectedDayOptions(dayOptions, t.day) + '</select>' +
       '<input type="time" data-train-time="' + schedKey + '-' + idx + '" value="' + (t.time || '') + '" placeholder="Hora">' +
-      '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicació">' +
-      '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;">✕</button>' +
+      '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicaci�">' +
+      '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;">?</button>' +
       '</div>';
   }
 
   function _selectedDayOptions(baseOptions, selected) {
-    if (!selected) return '<option value="" selected>Dia…</option>' + baseOptions;
-    return '<option value="">Dia…</option>' + baseOptions.replace(
+    if (!selected) return '<option value="" selected>Dia�</option>' + baseOptions;
+    return '<option value="">Dia�</option>' + baseOptions.replace(
       'value="' + selected + '"',
       'value="' + selected + '" selected'
     );
@@ -1093,7 +1093,7 @@
       schedules[schedKey] = { training: training, homeGame: homeGame };
     });
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Desant…';
+    saveBtn.textContent = 'Desant�';
     try {
       await updateClub(session.teamId, { categories: categories, fcfLinks: fcfLinks, schedules: schedules });
       _clubConfig = await getClub(session.teamId);
@@ -1125,7 +1125,7 @@
     if (session.profilePic) {
       preview.innerHTML = `<img src="${session.profilePic}" alt="Profile">`;
     } else {
-      preview.innerHTML = '<span class="profile-pic-placeholder">📷</span>';
+      preview.innerHTML = '<span class="profile-pic-placeholder">??</span>';
     }
   }
 
@@ -1244,33 +1244,33 @@
 
     if (roles.includes('player')) {
       items.push({ section: 'Player' });
-      items.push({ id: 'player-home', icon: '🏠', label: 'Overview' });
-      items.push({ id: 'training', icon: '🏋️', label: 'Training Schedule' });
-      items.push({ id: 'my-stats', icon: '📊', label: 'My Stats' });
-      items.push({ id: 'player-matchday', icon: '⚽', label: 'Matchday' });
-      items.push({ id: 'player-actions', icon: '🔔', label: 'Actions' });
+      items.push({ id: 'player-home', icon: '??', label: 'Overview' });
+      items.push({ id: 'training', icon: '???', label: 'Training Schedule' });
+      items.push({ id: 'my-stats', icon: '??', label: 'My Stats' });
+      items.push({ id: 'player-matchday', icon: '?', label: 'Matchday' });
+      items.push({ id: 'player-actions', icon: '??', label: 'Actions' });
     }
 
     if (roles.includes('staff')) {
       items.push({ section: 'Staff' });
-      items.push({ id: 'registrations', icon: '📝', label: 'Registrations' });
-      items.push({ id: 'manage-roster', icon: '👥', label: 'Player Roster' });
-      items.push({ id: 'staff-training', icon: '🏋️', label: 'Training Sessions' });
-      items.push({ id: 'matchday', icon: '📅', label: 'Set Calendar' });
-      items.push({ id: 'convocatoria', icon: '📋', label: 'Convocatòria' });
-      items.push({ id: 'staff-matchday', icon: '⚽', label: 'Matchday' });
-      items.push({ id: 'medical', icon: '🏥', label: 'Medical' });
-      items.push({ id: 'tactics', icon: '📐', label: 'Tactical Board' });
-      items.push({ id: 'staff-notifications', icon: '🔔', label: 'Notifications' });
+      items.push({ id: 'registrations', icon: '??', label: 'Registrations' });
+      items.push({ id: 'manage-roster', icon: '??', label: 'Player Roster' });
+      items.push({ id: 'staff-training', icon: '???', label: 'Training Sessions' });
+      items.push({ id: 'matchday', icon: '??', label: 'Set Calendar' });
+      items.push({ id: 'convocatoria', icon: '??', label: 'Convocat�ria' });
+      items.push({ id: 'staff-matchday', icon: '?', label: 'Matchday' });
+      items.push({ id: 'medical', icon: '??', label: 'Medical' });
+      items.push({ id: 'tactics', icon: '??', label: 'Tactical Board' });
+      items.push({ id: 'staff-notifications', icon: '??', label: 'Notifications' });
     }
 
     if (session.isAdmin) {
       items.push({ section: 'Admin' });
-      items.push({ id: 'users', icon: '⚙️', label: 'Manage Users' });
-      items.push({ id: 'settings', icon: '🔧', label: 'Settings' });
+      items.push({ id: 'users', icon: '??', label: 'Manage Users' });
+      items.push({ id: 'settings', icon: '??', label: 'Settings' });
     } else if (session.isTeamLead) {
       items.push({ section: 'Team Lead' });
-      items.push({ id: 'settings', icon: '🔧', label: 'Settings' });
+      items.push({ id: 'settings', icon: '??', label: 'Settings' });
     }
 
     return items;
@@ -1414,7 +1414,7 @@
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = catBar + fn(session);
     } else {
-      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>Page not found</p></div>';
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">??</div><p>Page not found</p></div>';
     }
 
     bindDynamicActions();
@@ -1428,7 +1428,7 @@
       refreshLeagueTables();
     }
 
-    // Injury description hover → body map popup + medical tab bindings
+    // Injury description hover ? body map popup + medical tab bindings
     if (currentPage === 'medical') bindMedical();
     if (currentPage === 'medical-detail') bindMedicalDetail();
     if (currentPage === 'my-stats') bindMyStatsInjuryPopup();
@@ -1453,7 +1453,7 @@
   }
   function posCirclesHtmlGlobal(p) {
     const positions = (p.position || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (!positions.length) return '<span class="conv-pos-circle" style="background:#9e9e9e">—</span>';
+    if (!positions.length) return '<span class="conv-pos-circle" style="background:#9e9e9e">�</span>';
     return positions.map(pos => {
       const bg = POS_COLORS[pos] || '#9e9e9e';
       return `<span class="conv-pos-circle" style="background:${bg}">${sanitize(pos)}</span>`;
@@ -1570,10 +1570,10 @@
     let pendingHtml = '';
     pendingTraining.forEach(t => {
       pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${session.id}_training_${t.date}">
-        <div class="action-header"><span class="badge badge-green">Training</span><span class="action-date">${fmtDate(t.date)} · ${t.time}</span></div>
+        <div class="action-header"><span class="badge badge-green">Training</span><span class="action-date">${fmtDate(t.date)} � ${t.time}</span></div>
         <div class="action-label">${sanitize(t.focus || 'Training')}</div>
         <div class="action-form">
-          <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0–10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
+          <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0�10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
           <div class="action-field"><label>Minutes</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
           <button class="btn btn-primary btn-small action-submit">Submit</button>
         </div>
@@ -1581,10 +1581,10 @@
     });
     pendingMatches.forEach(m => {
       pendingHtml += `<div class="action-card" data-action-type="match" data-action-key="${session.id}_match_${m.id}">
-        <div class="action-header"><span class="badge badge-yellow">Match</span><span class="action-date">${fmtDate(m.date)} · ${m.time}</span></div>
+        <div class="action-header"><span class="badge badge-yellow">Match</span><span class="action-date">${fmtDate(m.date)} � ${m.time}</span></div>
         <div class="action-label">${matchLabel(m)}</div>
         <div class="action-form">
-          <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0–10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
+          <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0�10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
           <div class="action-field"><label>Minutes</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
           <button class="btn btn-primary btn-small action-submit">Submit</button>
         </div>
@@ -1594,7 +1594,7 @@
     // Availability cards for training
     pendingTrainingAvail.forEach(t => {
       pendingHtml += `<div class="action-card action-avail-card" data-avail-type="training" data-avail-date="${t.date}">
-        <div class="action-header"><span class="badge badge-green">Training</span><span class="action-date">${fmtDate(t.date)} · ${t.time}</span></div>
+        <div class="action-header"><span class="badge badge-green">Training</span><span class="action-date">${fmtDate(t.date)} � ${t.time}</span></div>
         <div class="action-label">${sanitize(t.focus || 'Training')}</div>
         <div class="action-avail-prompt">Attendance?</div>
         <div class="avail-btns" data-avail-date="${t.date}">
@@ -1609,7 +1609,7 @@
     // Availability cards for matches
     pendingMatchAvail.forEach(m => {
       pendingHtml += `<div class="action-card action-avail-card" data-avail-type="match" data-mavail-match="${m.id}">
-        <div class="action-header"><span class="badge badge-yellow">Match</span><span class="action-date">${fmtDate(m.date)} · ${m.time || ''}</span></div>
+        <div class="action-header"><span class="badge badge-yellow">Match</span><span class="action-date">${fmtDate(m.date)} � ${m.time || ''}</span></div>
         <div class="action-label">${matchLabel(m)}</div>
         <div class="action-avail-prompt">Availability?</div>
         <div class="mavail-btns" data-mavail-match="${m.id}">
@@ -1628,7 +1628,7 @@
         <div class="card-title">Pending${pendingCount ? ' (' + pendingCount + ')' : ''}</div>
         ${pendingHtml}
       </div>
-      <div class="card" style="margin-top:1.5rem;">
+      <div class="card">
         <div class="card-title">Extra Training</div>
         <div id="extra-training-list"></div>
         <button class="btn btn-outline btn-small" id="btn-add-extra" style="margin-top:.75rem;">+ Add Extra Training</button>
@@ -1637,8 +1637,8 @@
 
   /* ---------- Live FCF league scraper ---------- */
   var FCF_LEAGUES_DEFAULT = [
-    { id: 'league-a', title: 'A Team — Tercera Catalana', url: 'https://www.fcf.cat/classificacio/2526/futbol-11/tercera-catalana/grup-10' },
-    { id: 'league-b', title: 'B Team — Quarta Catalana',  url: 'https://www.fcf.cat/classificacio/2526/futbol-11/quarta-catalana/grup-22' }
+    { id: 'league-a', title: 'A Team � Tercera Catalana', url: 'https://www.fcf.cat/classificacio/2526/futbol-11/tercera-catalana/grup-10' },
+    { id: 'league-b', title: 'B Team � Quarta Catalana',  url: 'https://www.fcf.cat/classificacio/2526/futbol-11/quarta-catalana/grup-22' }
   ];
   var ESQUERRA_NEEDLE_DEFAULT = "esquerra";
 
@@ -1718,7 +1718,7 @@
       var club = anchor ? anchor.textContent.trim() : clubTd.textContent.trim();
       // pts
       var pts = parseInt(vis[3].textContent.trim(), 10) || 0;
-      // F and C are always 4th and 3rd from end of visible cells (before Últims + Sanció)
+      // F and C are always 4th and 3rd from end of visible cells (before �ltims + Sanci�)
       var gf = parseInt(vis[vis.length - 4].textContent.trim(), 10) || 0;
       var gc = parseInt(vis[vis.length - 3].textContent.trim(), 10) || 0;
       // J: first resumida numeric cell after pts (skip Coef/Provisional if present)
@@ -1789,10 +1789,10 @@
     var useRows = _leagueCache[snippetId] || rows;
     var hidden = _getHiddenLeagues();
     var isHidden = hidden.indexOf(snippetId) !== -1;
-    var eyeIcon = isHidden ? '👁️‍🗨️' : '👁️';
-    var eyeTitle = isHidden ? 'Mostrar classificació' : 'Amagar classificació';
+    var eyeIcon = isHidden ? '???????' : '???';
+    var eyeTitle = isHidden ? 'Mostrar classificaci�' : 'Amagar classificaci�';
     var html = '<div class="league-snippet card' + (isHidden ? ' league-hidden' : '') + '">';
-    html += '<div class="card-title" style="font-size:.82rem;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between;">⚽ ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
+    html += '<div class="card-title" style="font-size:.82rem;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between;">? ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
     if (!isHidden) {
       html += '<div class="league-scroll" id="' + snippetId + '"><table class="league-tbl"><thead><tr><th>P</th><th></th><th>Club</th><th>Pts</th><th>J</th><th>F</th><th>C</th></tr></thead><tbody>';
       useRows.forEach(function(r) {
@@ -1836,7 +1836,7 @@
       return `<span class="po-pos-circle" style="background:${bg}">${sanitize(p)}</span>`;
     }).join('');
 
-    const number = session.playerNumber || '—';
+    const number = session.playerNumber || '�';
     const dob = (userRecord && userRecord.dob) || session.dob || '';
     let ageLabel = '';
     if (dob) {
@@ -1924,7 +1924,7 @@
       </div>`;
   }
 
-  // ---- Arrowhead helper — computes polygon arrowheads in pixel space for correct perpendicularity ----
+  // ---- Arrowhead helper � computes polygon arrowheads in pixel space for correct perpendicularity ----
   function refreshArrowheads(svg) {
     if (!svg) return;
     svg.querySelectorAll('.tb-arrowhead').forEach(p => p.remove());
@@ -1943,7 +1943,7 @@
       const x2 = parseFloat(line.dataset.origX2);
       const y2 = parseFloat(line.dataset.origY2);
       if (isRo) {
-        // Pixel-space arrowhead for RO boards — same approach as editor but scaled
+        // Pixel-space arrowhead for RO boards � same approach as editor but scaled
         const px1 = x1 * w / 100, py1 = y1 * h / 100;
         const px2 = x2 * w / 100, py2 = y2 * h / 100;
         const dx = px2 - px1, dy = py2 - py1;
@@ -1996,7 +1996,7 @@
     });
   }
 
-  // ---- Read-only board helper (shared by match-detail & convocatòria) ----
+  // ---- Read-only board helper (shared by match-detail & convocat�ria) ----
   let _roBoardIdx = 0;
   function renderReadOnlyBoard(b, prefix) {
     const bid = 'ro-board-' + (++_roBoardIdx);
@@ -2041,7 +2041,7 @@
     const textsHtml = staticTexts.map(t => { const c=t[3]||'#000000'; const o=t[4]!=null?t[4]:0.8; const w=t[5]?'width:'+t[5]+'px;':''; const h=t[6]?'height:'+t[6]+'px;':''; const fs=t[7]?'font-size:'+t[7]+'px;':''; return '<div class="tb-text-label" style="left:'+t[0]+'%;top:'+t[1]+'%;pointer-events:none;background:rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+parseInt(c.slice(5,7),16)+','+o+');color:'+textColorFor(c)+';'+w+h+fs+'">'+sanitize(t[2])+'</div>'; }).join('');
     const playBtnH = hasFrames ? '<button class="tb-ro-play" data-ro-board="' + bid + '" title="Play animation"></button>' : '';
     // Merge base board rects/arrows/numbers into frames that lack them so shapes & numbers persist during animation
-    // Numbers are shared across all frames — always prefer base board numbers (b.numbers)
+    // Numbers are shared across all frames � always prefer base board numbers (b.numbers)
     const baseNums = hasRealNums(b.numbers) ? b.numbers : null;
     const baseOppNums = hasRealNums(b.oppNumbers) ? b.oppNumbers : null;
     const framesForAnim = hasFrames ? b.frames.map(f => ({
@@ -2342,7 +2342,7 @@
               ball.style.top = tB[1] + '%';
             }
           }
-          // Arrows — snap to target frame at t=0
+          // Arrows � snap to target frame at t=0
           const tArr = to.arrows || [];
           let svg = innerEl.querySelector('.tb-arrows-svg');
           if (!svg && tArr.length) {
@@ -2372,7 +2372,7 @@
               });
               refreshArrowheads(svg);
             }
-            // Rects — snap to target frame at t=0
+            // Rects � snap to target frame at t=0
             const tR = to.rects || [];
             const curRects = svg.querySelectorAll('.tb-rect');
             const recKey = tR.map(r => r.join(',')).join('|');
@@ -2393,7 +2393,7 @@
               });
             }
           }
-          // Text labels — snap content to target at t=0, interpolate position
+          // Text labels � snap content to target at t=0, interpolate position
           const tT = to.texts || [];
           const fT = from.texts || [];
           const maxT = Math.max(fT.length, tT.length);
@@ -2416,7 +2416,7 @@
             lbl.style.background = hexToRgba(ic, ia);
             lbl.style.color = textColorFor(ic);
           }
-          // Pen lines — snap to target frame at t=0
+          // Pen lines � snap to target frame at t=0
           if (svg) {
             const tPen = to.penLines || [];
             const curPen = svg.querySelectorAll('.tb-pen-line');
@@ -2434,7 +2434,7 @@
               });
             }
           }
-          // Cones — snap to target frame at t=0
+          // Cones � snap to target frame at t=0
           const tCones = to.cones || [];
           const curCones = innerEl.querySelectorAll('.tb-cone');
           const coneKey = tCones.map(c => c[0] + ',' + c[1]).join('|');
@@ -2566,7 +2566,7 @@
       play.style.setProperty('--play-tri-l', playTriL + 'px');
       play.style.setProperty('--play-tri-ml', playTriML + 'px');
     }
-    // Pitch markings — set individual sides to preserve 'none' sides from CSS
+    // Pitch markings � set individual sides to preserve 'none' sides from CSS
     const pw = pitchBdr + 'px';
     inner.querySelectorAll('.tb-halfway').forEach(e => { e.style.borderLeftWidth = pw; });
     inner.querySelectorAll('.tb-center-circle').forEach(e => { e.style.borderWidth = pw; });
@@ -2578,7 +2578,7 @@
     inner.querySelectorAll('.tb-center-spot, .tb-penalty-spot-left, .tb-penalty-spot-right').forEach(s => {
       s.style.width = spotSz + 'px'; s.style.height = spotSz + 'px';
     });
-    // SVG stroke scaling — use non-scaling-stroke with pixel values scaled to board
+    // SVG stroke scaling � use non-scaling-stroke with pixel values scaled to board
     const svgStroke = Math.max(1.5, 2.5 * s);
     const svgStrokeThin = Math.max(1, 1.5 * s);
     inner.querySelectorAll('.tb-arrow').forEach(a => { a.style.strokeWidth = svgStroke + 'px'; a.style.vectorEffect = 'non-scaling-stroke'; });
@@ -2592,7 +2592,7 @@
   function renderMatchDetail() {
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const m = matches.find(x => x.id === detailMatchId);
-    if (!m) return '<div class="empty-state"><div class="empty-icon">⚽</div><p>Match not found</p></div>';
+    if (!m) return '<div class="empty-state"><div class="empty-icon">?</div><p>Match not found</p></div>';
     const session = getSession();
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const sentEntry = sentData[m.id];
@@ -2605,13 +2605,13 @@
     if (convSent) {
       const uniformIcons = (sentJersey || sentSocks) ? `<span class="detail-uniform-inline">${jerseySvg(sentJersey || 'white')}${sockSvg(sentSocks || 'striped')}</span>` : '';
       convHtml = convIncluded
-        ? `<div class="detail-conv detail-conv-yes"><span class="conv-blink-dot"></span> Convocatòria disponible ${uniformIcons}</div>`
+        ? `<div class="detail-conv detail-conv-yes"><span class="conv-blink-dot"></span> Convocat�ria disponible ${uniformIcons}</div>`
         : '<div class="detail-conv detail-conv-no"><span class="conv-grey-dot"></span> No convocat</div>';
     }
-    const dateFormatted = m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const dateFormatted = m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '�';
     const locationHtml = m.mapLink
-      ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="detail-map-link">📍 ${sanitize(m.location || '—')}</a>`
-      : `📍 ${sanitize(m.location || '—')}`;
+      ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="detail-map-link">?? ${sanitize(m.location || '�')}</a>`
+      : `?? ${sanitize(m.location || '�')}`;
 
     // Build called-up player list
     let calledHtml = '';
@@ -2621,14 +2621,14 @@
         .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
       if (calledPlayers.length) {
         const rows = calledPlayers.map(p =>
-          `<div class="detail-player"><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '—')}</span></div>`
+          `<div class="detail-player"><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '�')}</span></div>`
         ).join('');
         calledHtml = `<div class="detail-callup-panel"><div class="detail-callup-header">Called Up <span class="conv-count">${calledPlayers.length}</span></div>${rows}</div>`;
       }
     }
 
     const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
-    const callupTime = convCallupData[m.id] || m.callupTime || '—';
+    const callupTime = convCallupData[m.id] || m.callupTime || '�';
 
     const backPage = detailMatchFrom || 'player-matchday';
 
@@ -2642,12 +2642,12 @@
       const homeScore = scoreParts[0] || '';
       const awayScore = scoreParts[1] || '';
       if (isStaff) {
-        scoreHtml = `<div class="card" style="margin-top:1.5rem;">
+        scoreHtml = `<div class="card">
           <div class="card-title">Resultat</div>
           <div class="match-score-edit">
             <span class="match-score-team">${sanitize(m.home)}</span>
             <input type="text" inputmode="numeric" class="reg-input match-score-input" id="score-home" value="${sanitize(homeScore)}" maxlength="2" style="width:45px;text-align:center;">
-            <span style="font-weight:700;font-size:1.1rem;"> – </span>
+            <span style="font-weight:700;font-size:1.1rem;"> � </span>
             <input type="text" inputmode="numeric" class="reg-input match-score-input" id="score-away" value="${sanitize(awayScore)}" maxlength="2" style="width:45px;text-align:center;">
             <span class="match-score-team">${sanitize(m.away)}</span>
             <button class="btn btn-primary btn-small" id="btn-save-score" style="margin-left:.8rem;">Desar</button>
@@ -2661,19 +2661,19 @@
         const calledIds = convSent ? sentPlayers : [];
         const calledUsers = calledIds.map(id => users.find(u => u.id === id)).filter(Boolean)
           .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
-        const opts = calledUsers.map(p => `<option value="${p.id}">${sanitize(p.name)} #${sanitize(p.playerNumber || '—')}</option>`).join('');
+        const opts = calledUsers.map(p => `<option value="${p.id}">${sanitize(p.name)} #${sanitize(p.playerNumber || '�')}</option>`).join('');
         const goalRows = matchGoals.map((g, i) => {
-          const player = g.playerId === 'og' ? 'Gol en pròpia' : (() => { const p = users.find(u => String(u.id) === String(g.playerId)); return p ? sanitize(p.name) : 'Desconegut'; })();
-          return `<div class="goal-row"><span class="goal-player">⚽ ${player}${g.minute ? " (" + sanitize(String(g.minute)) + "')" : ''}</span><button class="btn btn-outline btn-small goal-remove" data-goal-idx="${i}" style="padding:.15rem .4rem;font-size:.7rem;">✕</button></div>`;
+          const player = g.playerId === 'og' ? 'Gol en pr�pia' : (() => { const p = users.find(u => String(u.id) === String(g.playerId)); return p ? sanitize(p.name) : 'Desconegut'; })();
+          return `<div class="goal-row"><span class="goal-player">? ${player}${g.minute ? " (" + sanitize(String(g.minute)) + "')" : ''}</span><button class="btn btn-outline btn-small goal-remove" data-goal-idx="${i}" style="padding:.15rem .4rem;font-size:.7rem;">?</button></div>`;
         }).join('');
-        goalsHtml = `<div class="card" style="margin-top:1.5rem;">
+        goalsHtml = `<div class="card">
           <div class="card-title">Gols</div>
           <div id="goals-list">${goalRows || '<p style="color:var(--text-secondary)">Cap gol afegit.</p>'}</div>
           <div class="goal-add-form" style="margin-top:.75rem;">
             <select class="reg-input" id="goal-player-select" style="width:auto;">
-              <option value="">Selecciona jugador…</option>
+              <option value="">Selecciona jugador�</option>
               ${opts}
-              <option value="og">Gol en pròpia</option>
+              <option value="og">Gol en pr�pia</option>
             </select>
             <input type="text" inputmode="numeric" class="reg-input" id="goal-minute" placeholder="Min" maxlength="3" style="width:55px;text-align:center;">
             <button class="btn btn-primary btn-small" id="btn-add-goal">Afegir</button>
@@ -2682,7 +2682,7 @@
       } else {
         // Players see read-only score
         if (m.score) {
-          scoreHtml = `<div class="card" style="margin-top:1.5rem;">
+          scoreHtml = `<div class="card">
             <div class="card-title">Resultat</div>
             <div class="match-score-display">${sanitize(m.home)} <strong>${sanitize(m.score)}</strong> ${sanitize(m.away)}</div>
           </div>`;
@@ -2692,10 +2692,10 @@
         if (matchGoals.length) {
           const usrs = getUsers();
           const goalRows = matchGoals.map(g => {
-            const player = g.playerId === 'og' ? 'Gol en pròpia' : (() => { const p = usrs.find(u => String(u.id) === String(g.playerId)); return p ? sanitize(p.name) : 'Desconegut'; })();
-            return `<div class="goal-row"><span class="goal-player">⚽ ${player}${g.minute ? " (" + sanitize(String(g.minute)) + "')" : ''}</span></div>`;
+            const player = g.playerId === 'og' ? 'Gol en pr�pia' : (() => { const p = usrs.find(u => String(u.id) === String(g.playerId)); return p ? sanitize(p.name) : 'Desconegut'; })();
+            return `<div class="goal-row"><span class="goal-player">? ${player}${g.minute ? " (" + sanitize(String(g.minute)) + "')" : ''}</span></div>`;
           }).join('');
-          goalsHtml = `<div class="card" style="margin-top:1.5rem;">
+          goalsHtml = `<div class="card">
             <div class="card-title">Gols</div>
             ${goalRows}
           </div>`;
@@ -2704,14 +2704,14 @@
     }
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">? Back</button>
       <div class="detail-hero detail-hero-match">
         <div class="detail-hero-badge"><span class="badge badge-yellow" style="font-size:.9rem;padding:.3rem .8rem;">Match</span></div>
         <h2 class="detail-title">${matchLabel(m)}</h2>
         <div class="detail-subtitle">${dateFormatted}</div>
         <div class="detail-meta">
-          ${convSent ? `<span>🕐 Call-up ${callupTime}</span>` : ''}
-          <span><img src="img/whistle.png" class="kickoff-icon" alt=""> Kick-off ${m.time || '—'}</span>
+          ${convSent ? `<span>?? Call-up ${callupTime}</span>` : ''}
+          <span><img src="img/whistle.png" class="kickoff-icon" alt=""> Kick-off ${m.time || '�'}</span>
           <span>${locationHtml}</span>
         </div>
         ${convHtml}
@@ -2723,7 +2723,7 @@
         const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
         const boards = matchBoards[m.id] || [];
         // Group boards by tag
-        const tagOrder = ['Presión', 'Salida', 'Estrategia'];
+        const tagOrder = ['Presi�n', 'Salida', 'Estrategia'];
         const grouped = {};
         boards.forEach(b => {
           const t = b.tag || '';
@@ -2743,7 +2743,7 @@
             const commentHtml = v.comment ? '<div class="detail-comments">' + sanitize(v.comment).replace(/\n/g, '<br>') + '</div>' : '';
             return '<div class="detail-video-item"><a href="#" class="detail-video-link" data-video-url="' + sanitize(v.url) + '">' + sanitize(v.title || 'Video') + '</a>' + commentHtml + '</div>';
           }).join('');
-          videosGroupHtml = '<div class="detail-board-group"><div class="detail-board-group-title">🎬 Videos</div>' + vidItems + '</div>';
+          videosGroupHtml = '<div class="detail-board-group"><div class="detail-board-group-title">?? Videos</div>' + vidItems + '</div>';
         }
 
         let boardsHtml = '';
@@ -2764,33 +2764,33 @@
   function renderTrainingDetail() {
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
     const t = training.find(x => x.date === detailTrainingDate);
-    if (!t) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
-    const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    if (!t) return '<div class="empty-state"><div class="empty-icon">???</div><p>Training not found</p></div>';
+    const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '�';
     const assistHtml = t.assistance != null ? buildAssistanceCircle(t.assistance) : '';
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="player-home">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="player-home">? Back</button>
       <div class="detail-hero detail-hero-training">
         <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">Training</span></div>
         <h2 class="detail-title">${sanitize(t.focus)}</h2>
         <div class="detail-subtitle">${dateFormatted}</div>
       </div>
       <div class="detail-grid">
-        <div class="detail-card"><div class="detail-card-label">Time</div><div class="detail-card-value">${sanitize(t.time || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">Day</div><div class="detail-card-value">${sanitize(t.day || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">Location</div><div class="detail-card-value">${sanitize(t.location || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">Attendance</div><div class="detail-card-value">${assistHtml || '—'}</div></div>
+        <div class="detail-card"><div class="detail-card-label">Time</div><div class="detail-card-value">${sanitize(t.time || '�')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">Day</div><div class="detail-card-value">${sanitize(t.day || '�')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">Location</div><div class="detail-card-value">${sanitize(t.location || '�')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">Attendance</div><div class="detail-card-value">${assistHtml || '�'}</div></div>
       </div>
       ${(() => {
         const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
         const boards = trainingBoards[t.date] || [];
         if (!boards.length) return '';
-        const tagOrder = ['Presión', 'Salida', 'Estrategia'];
+        const tagOrder = ['Presi�n', 'Salida', 'Estrategia'];
         const grouped = {};
         boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
         const orderedTags = [];
         tagOrder.forEach(tg => { if (grouped[tg]) orderedTags.push(tg); });
         Object.keys(grouped).forEach(tg => { if (!orderedTags.includes(tg)) orderedTags.push(tg); });
-        return '<div class="card" style="margin-top:1.5rem;"><div class="card-title">Tactical Boards</div><div class="detail-boards-panel">' +
+        return '<div class="card"><div class="card-title">Tactical Boards</div><div class="detail-boards-panel">' +
           orderedTags.map(tag => {
             const tagTitle = tag || 'General';
             return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
@@ -3110,7 +3110,7 @@
           const isMulti = withRpe.length > 1;
           cls = isMulti ? 'rpe-dot-multi' : (withRpe[0].type === 'match' ? 'rpe-dot-match' : 'rpe-dot-training');
         }
-        const tipLines = withRpe.map(s => sanitize(s.label) + ' — RPE ' + s.rpe + ' · ' + (s.minutes || '?') + ' min').join('<br>');
+        const tipLines = withRpe.map(s => sanitize(s.label) + ' � RPE ' + s.rpe + ' � ' + (s.minutes || '?') + ' min').join('<br>');
         dotsSvg += '<circle cx="' + cx + '" cy="' + cy + '" r="5" class="rpe-dot ' + cls + '" data-ua-tip="' + tipLines.replace(/"/g, '&quot;') + '"/>';
       });
 
@@ -3156,7 +3156,7 @@
           + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#90a4ae"></span>Skipped</span>'
           + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#e53935"></span>Injured</span>';
       }
-      chartHtml = '<div class="card" style="margin-top:1.5rem;">'
+      chartHtml = '<div class="card">'
         + '<div class="card-title">RPE per Session</div>'
         + '<div class="rpe-legend">' + legendItems + '</div>'
         + '<div class="rpe-chart-wrap">'
@@ -3166,7 +3166,7 @@
         + colsSvg + lineSvg + dotsSvg + xLabelsSvg + weekBadgesSvg
         + '</svg></div></div></div>';
     } else {
-      chartHtml = '<div class="card" style="margin-top:1.5rem;"><div class="card-title">RPE per Session</div>'
+      chartHtml = '<div class="card"><div class="card-title">RPE per Session</div>'
         + '<p style="color:var(--text-secondary);">No sessions recorded yet.</p></div>';
     }
 
@@ -3229,7 +3229,7 @@
         const wData = weekUA[w];
         let tip = 'UA ' + uaValues[i];
         if (wData && wData.details.length) {
-          tip = wData.details.map(s => sanitize(s.label) + ' — RPE ' + s.rpe + ' × ' + (s.minutes || '?') + 'min').join('<br>');
+          tip = wData.details.map(s => sanitize(s.label) + ' � RPE ' + s.rpe + ' � ' + (s.minutes || '?') + 'min').join('<br>');
           tip += '<br><b>Total UA: ' + uaValues[i] + '</b>';
         }
         const dotCls = uaValues[i] === 0 ? 'rpe-dot' : 'rpe-dot rpe-dot-ua';
@@ -3243,7 +3243,7 @@
       });
 
       const wSvgH = wChartH + 22;
-      uaWeekHtml = '<div class="card" style="margin-top:1.5rem;">'
+      uaWeekHtml = '<div class="card">'
         + '<div class="card-title">UA per Week</div>'
         + '<div class="rpe-chart-wrap">'
         + '<svg class="rpe-y-axis-svg" width="' + wYAxisW + '" height="' + wSvgH + '" viewBox="0 0 ' + wYAxisW + ' ' + wSvgH + '">' + wYAxisSvg + '</svg>'
@@ -3358,7 +3358,7 @@
       let ratioDotsSvg = '';
       allWeeks.forEach((w, i) => {
         const cx = acwrSx(i), cy = ratioSy(ratioArr[i]);
-        const tip = 'Acute: ' + Math.round(acuteArr[i]) + ' · Chronic: ' + Math.round(chronicArr[i]) + ' · Ratio: ' + ratioArr[i].toFixed(2);
+        const tip = 'Acute: ' + Math.round(acuteArr[i]) + ' � Chronic: ' + Math.round(chronicArr[i]) + ' � Ratio: ' + ratioArr[i].toFixed(2);
         ratioDotsSvg += '<circle cx="' + cx + '" cy="' + cy + '" r="5" class="rpe-dot rpe-dot-ua" data-ua-tip="' + sanitize(tip).replace(/"/g, '&quot;') + '"/>';
       });
 
@@ -3368,14 +3368,14 @@
       });
 
       const acwrSvgH = acwrChartH + 22;
-      acwrHtml = '<div class="card" style="margin-top:1.5rem;">'
+      acwrHtml = '<div class="card">'
         + '<div class="card-title">Acute/Chronic Workload Ratio</div>'
         + '<div class="rpe-legend">'
         + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#ef9a9a"></span>Acute</span>'
         + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#90caf9"></span>Chronic</span>'
         + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#fb8c00;border-radius:50%"></span>Ratio</span>'
-        + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#c8e6c9"></span>Optimal<span class="legend-range"> (0.8–1.3)</span></span>'
-        + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#ffe0b2"></span>Caution<span class="legend-range"> (0.7–0.8 / 1.3–1.5)</span></span>'
+        + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#c8e6c9"></span>Optimal<span class="legend-range"> (0.8�1.3)</span></span>'
+        + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#ffe0b2"></span>Caution<span class="legend-range"> (0.7�0.8 / 1.3�1.5)</span></span>'
         + '<span class="ua-legend-item"><span class="ua-legend-dot" style="background:#ffcdd2"></span>Danger<span class="legend-range"> (&lt;0.7 / &gt;1.5)</span></span>'
         + '</div>'
         + '<div class="rpe-chart-wrap">'
@@ -3393,7 +3393,7 @@
 
   function buildReadinessCard(rd) {
     if (!rd.hasData) {
-      return `<div class="card" style="margin-top:1.5rem;">
+      return `<div class="card">
         <div class="card-title">Readiness</div>
         <p style="color:var(--text-secondary);text-align:center;padding:1.5rem 0;">Encara no hi ha prou dades</p>
       </div>`;
@@ -3404,7 +3404,7 @@
       const bg = val >= 75 ? '#4caf50' : val >= 55 ? '#ff9800' : '#e53935';
       return `<div class="rd-bar-track"><div class="rd-bar-fill" style="width:${val}%;background:${bg}"></div></div>`;
     }
-    return `<div class="card" style="margin-top:1.5rem;">
+    return `<div class="card">
       <div class="card-title">Readiness</div>
       <div class="rd-header">
         <span class="readiness-dot readiness-${rd.color}"></span>
@@ -3413,9 +3413,9 @@
         <span class="rd-acwr">ACWR ${rd.acwr.toFixed(2)}</span>
       </div>
       <div class="rd-metrics">
-        <div class="rd-metric"><span class="rd-metric-label" data-tooltip="Based on ACWR: 0.8–1.3 = 100, &lt;0.8 = 60, 1.3–1.5 = 70, &gt;1.5 = 30">Load Ratio</span><span class="rd-metric-val">${rd.loadRatioScore}</span>${bar(rd.loadRatioScore)}</div>
-        <div class="rd-metric"><span class="rd-metric-label" data-tooltip="Minutes in last match + recency penalty. &gt;80 min = 40, 60–80 = 60, 30–60 = 80, &lt;30 = 100">Match Fatigue</span><span class="rd-metric-val">${rd.matchFatigueScore}</span>${bar(rd.matchFatigueScore)}</div>
-        <div class="rd-metric"><span class="rd-metric-label" data-tooltip="Week-over-week load change. &gt;+30% = 30, +10–30% = 60, ±10% = 100, &lt;-10% = 80">Load Spike</span><span class="rd-metric-val">${rd.loadSpikeScore}</span>${bar(rd.loadSpikeScore)}</div>
+        <div class="rd-metric"><span class="rd-metric-label" data-tooltip="Based on ACWR: 0.8�1.3 = 100, &lt;0.8 = 60, 1.3�1.5 = 70, &gt;1.5 = 30">Load Ratio</span><span class="rd-metric-val">${rd.loadRatioScore}</span>${bar(rd.loadRatioScore)}</div>
+        <div class="rd-metric"><span class="rd-metric-label" data-tooltip="Minutes in last match + recency penalty. &gt;80 min = 40, 60�80 = 60, 30�60 = 80, &lt;30 = 100">Match Fatigue</span><span class="rd-metric-val">${rd.matchFatigueScore}</span>${bar(rd.matchFatigueScore)}</div>
+        <div class="rd-metric"><span class="rd-metric-label" data-tooltip="Week-over-week load change. &gt;+30% = 30, +10�30% = 60, �10% = 100, &lt;-10% = 80">Load Spike</span><span class="rd-metric-val">${rd.loadSpikeScore}</span>${bar(rd.loadSpikeScore)}</div>
         <div class="rd-metric"><span class="rd-metric-label" data-tooltip="RPE trend over last 28 days. Sharp increase = 40, mild = 60, stable = 80, decreasing = 100">RPE Trend</span><span class="rd-metric-val">${rd.rpeTrendScore}</span>${bar(rd.rpeTrendScore)}</div>
       </div>
     </div>`;
@@ -3560,7 +3560,7 @@
 
     let injuryListHtml = '';
     if (playerInjuries.length === 0) {
-      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">No injuries this season 💪</div>';
+      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">No injuries this season ??</div>';
     } else {
       injuryListHtml = playerInjuries.map(inj => {
         const startD = new Date(inj.startDate + 'T12:00:00');
@@ -3576,7 +3576,7 @@
         const sevDot = '<span class="med-severity-badge med-severity-sm" style="background:' + (sevColors[inj.severity] || '#999') + ';margin-left:6px;">' + (inj.severity || '') + '</span>';
         return `<div class="mystats-inj-row" data-zone-idx="${inj.bodyZone != null ? inj.bodyZone : ''}" style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.82rem;cursor:help;">
           <div style="display:flex;align-items:center;">${statusDot}<span>${sanitize(note)}</span>${sevDot}</div>
-          <div style="text-align:right;color:var(--text-secondary);font-size:.75rem;">${startStr} – ${endStr}<br><strong>${durationStr}</strong></div>
+          <div style="text-align:right;color:var(--text-secondary);font-size:.75rem;">${startStr} � ${endStr}<br><strong>${durationStr}</strong></div>
         </div>`;
       }).join('');
     }
@@ -3619,7 +3619,7 @@
       </div>
       <div class="mystats-injury-row" style="margin-top:1rem;">
         <div class="card mystats-injury-card">
-          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">🏥 Injury History</div>
+          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">?? Injury History</div>
           ${injuryListHtml}
         </div>
         ${bodyMapHtml}
@@ -3706,7 +3706,7 @@
       const bg = POS_COLORS[p] || '#9e9e9e';
       return `<span class="po-pos-circle" style="background:${bg}">${sanitize(p)}</span>`;
     }).join('');
-    const number = u.playerNumber || '—';
+    const number = u.playerNumber || '�';
     const dob = u.dob || '';
     let ageLabel = '';
     if (dob) {
@@ -3718,7 +3718,7 @@
     }
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="manage-roster">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="manage-roster">? Back</button>
       <h2 class="page-title">${sanitize(u.name)} <span style="color:var(--text-secondary);font-weight:600;">#${sanitize(String(number))}</span>${ageLabel}</h2>
       <div class="player-overview-card">
         <div class="player-overview-left">
@@ -3825,7 +3825,7 @@
       const savedListHtml = savedBoards.map((b, i) =>
         `<div class="tb-saved-item${loadedIdx == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
         `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-        `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
+        `<button class="tb-delete-board" data-del-idx="${i}">?</button>` +
         `</div>`
       ).join('');
       return `
@@ -3860,7 +3860,7 @@
             </div>
           </div>
         </div>
-        <div class="card" style="margin-top:1.5rem;">
+        <div class="card">
           <div class="tb-saved-title">Saved Boards</div>
           <div class="tb-saved-list" id="tb-saved-list">${savedListHtml}</div>
         </div>`;
@@ -3962,7 +3962,7 @@
     const savedListHtml = savedBoards.map((b, i) =>
       `<div class="tb-saved-item${loadedIdx == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
       `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-      `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
+      `<button class="tb-delete-board" data-del-idx="${i}">?</button>` +
       `</div>`
     ).join('');
 
@@ -3977,9 +3977,9 @@
         <div class="tb-controls">
           <label class="tb-label">Formation</label>
           <div class="tb-formation-wrap" id="tb-formation-wrap">
-            <div class="tb-formation-toggle" id="tb-formation-toggle">${savedFormation || '— Select —'}</div>
+            <div class="tb-formation-toggle" id="tb-formation-toggle">${savedFormation || '� Select �'}</div>
             <div class="tb-formation-list" id="tb-formation-list">
-              <div class="tb-formation-option" data-val="">— Select —</div>
+              <div class="tb-formation-option" data-val="">� Select �</div>
               ${Object.keys(formations).map(f => `<div class="tb-formation-option${f === savedFormation ? ' active' : ''}" data-val="${f}">${f}</div>`).join('')}
             </div>
           </div>
@@ -4019,12 +4019,12 @@
           </div>
           <span class="tb-sep"></span>
           <button class="tb-cone-tool" id="tb-cone-tool" data-tooltip="Place cone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polygon points="12,2 4,22 20,22" fill="#ff8c00" stroke="#cc7000" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
-          <button class="tb-ball-tool" id="tb-ball-tool" data-tooltip="Add ball"><span class="tb-ball-icon">⚽</span></button>
+          <button class="tb-ball-tool" id="tb-ball-tool" data-tooltip="Add ball"><span class="tb-ball-icon">?</span></button>
         </div>
         <div class="tb-btn-row">
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
         </div>
-        <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
+        <input class="tb-board-name" id="tb-board-name" placeholder="Board name�" value="${sanitize(savedName)}">
         <div class="${fieldCls}" id="tb-field">
           <div class="tb-field-inner">
             <div class="tb-halfway"></div>
@@ -4089,7 +4089,7 @@
         <div class="tb-tag-section">
           <div class="tb-tag-label">Tag</div>
           <div class="tb-tag-select-wrap" id="tb-tag-select-wrap">
-            <div class="tb-tag-toggle${localStorage.getItem('fa_tactic_tag') ? ' has-tag' : ''}" id="tb-tag-toggle">${sanitize(localStorage.getItem('fa_tactic_tag') || '') || '— None —'}</div>
+            <div class="tb-tag-toggle${localStorage.getItem('fa_tactic_tag') ? ' has-tag' : ''}" id="tb-tag-toggle">${sanitize(localStorage.getItem('fa_tactic_tag') || '') || '� None �'}</div>
             <div class="tb-tag-list" id="tb-tag-list"></div>
           </div>
           <div class="tb-tag-add-row">
@@ -4115,7 +4115,7 @@
                     const home = isOurTeam(m.home) ? getClubName() + teamLetter : sanitize(m.home);
                     const away = isOurTeam(m.away) ? getClubName() + teamLetter : sanitize(m.away);
                     const d = m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '';
-                    return '<div class="tb-match-option" data-val="' + m.id + '">' + home + ' vs ' + away + (d ? '<span style="font-weight:400;"> — ' + d + '</span>' : '') + '</div>';
+                    return '<div class="tb-match-option" data-val="' + m.id + '">' + home + ' vs ' + away + (d ? '<span style="font-weight:400;"> � ' + d + '</span>' : '') + '</div>';
                   }).join('');
                 })()}
               </div>
@@ -4136,7 +4136,7 @@
                   const todayStr = new Date().toISOString().slice(0, 10);
                   return allTraining.filter(t => t.date && t.date >= todayStr).map(t => {
                     const d = new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
-                    return '<div class="tb-match-option" data-val="' + sanitize(t.date) + '">' + sanitize(t.focus || 'Training') + '<span style="font-weight:400;"> — ' + d + '</span></div>';
+                    return '<div class="tb-match-option" data-val="' + sanitize(t.date) + '">' + sanitize(t.focus || 'Training') + '<span style="font-weight:400;"> � ' + d + '</span></div>';
                   }).join('');
                 })()}
               </div>
@@ -4195,16 +4195,16 @@
 
     // Remap default formation positions for half/area board types
     // Formations are authored for horizontal full field: [left%, top%]
-    // Half field: goal at top, halfway at bottom. Remap left→top (attacking direction), top→left (sideline)
+    // Half field: goal at top, halfway at bottom. Remap left?top (attacking direction), top?left (sideline)
     // Area: same as half but more zoomed in
     function adaptFormation(posArr) {
       const bt = curBoardType();
       if (bt === 'full') return posArr;
-      // For half/area: swap axes — horizontal left% becomes top%, horizontal top% becomes left%
+      // For half/area: swap axes � horizontal left% becomes top%, horizontal top% becomes left%
       // Then scale top to fill the visible area
       return posArr.map(([hLeft, hTop]) => {
-        // hLeft: 0=GK side, 100=attack → map to top: 100=bottom(halfway), 0=top(goal)
-        // hTop: 0=top sideline, 100=bottom sideline → map to left: 0=left, 100=right
+        // hLeft: 0=GK side, 100=attack ? map to top: 100=bottom(halfway), 0=top(goal)
+        // hTop: 0=top sideline, 100=bottom sideline ? map to left: 0=left, 100=right
         let newLeft = hTop;
         let newTop = hLeft;
         // Scale to use more of the visible field
@@ -4598,7 +4598,7 @@
       const tc = isOpp
         ? (document.getElementById('tb-opp-color')?.value || '#e53935')
         : (document.getElementById('tb-team-color')?.value || '#ffffff');
-      // Compute next stable idx — must exceed both DOM indices and stored array length
+      // Compute next stable idx � must exceed both DOM indices and stored array length
       // so we never reuse a deleted slot's index
       const selector = isOpp ? '.tb-circle-opp' : '.tb-circle:not(.tb-circle-opp)';
       const storageKey = isOpp ? 'fa_tactic_opp_positions' : 'fa_tactic_positions';
@@ -4887,7 +4887,7 @@
         pushUndo();
         const OFFSET = 3; // % offset so pasted items are visually distinct
 
-        // Paste team circles — each gets a fresh stable index
+        // Paste team circles � each gets a fresh stable index
         tbClipboard.circles.forEach(c => {
           const tc = document.getElementById('tb-team-color')?.value || '#ffffff';
           const selector = '.tb-circle:not(.tb-circle-opp)';
@@ -4989,7 +4989,7 @@
         });
         if (tbClipboard.arrows.length) { reindexArrows(); saveArrows(); refreshArrowheads(arrowsSvg); }
 
-        // Paste pen lines — offset each point
+        // Paste pen lines � offset each point
         tbClipboard.penLines.forEach(p => {
           const offsetPts = p.points.split(' ').map(pair => {
             const [x, y] = pair.split(',').map(Number);
@@ -5915,7 +5915,7 @@
       inp.className = 'tb-text-inline-input';
       inp.style.left = pctX + '%';
       inp.style.top = pctY + '%';
-      inp.placeholder = 'Type text…';
+      inp.placeholder = 'Type text�';
       inner.appendChild(inp);
       inp.focus();
       function commit() {
@@ -6057,7 +6057,7 @@
 
     inner.querySelectorAll('.tb-ball').forEach(b => makeBallDraggable(b));
 
-    // Ball tool — add ball on click
+    // Ball tool � add ball on click
     const ballToolBtn = document.getElementById('tb-ball-tool');
     if (ballToolBtn) {
       ballToolBtn.addEventListener('click', () => {
@@ -6231,7 +6231,7 @@
       list.querySelectorAll('.tb-formation-option').forEach(opt => {
         opt.addEventListener('click', () => {
           const f = opt.dataset.val;
-          toggle.textContent = f || '— Select —';
+          toggle.textContent = f || '� Select �';
           list.querySelectorAll('.tb-formation-option').forEach(o => o.classList.remove('active'));
           opt.classList.add('active');
           list.classList.remove('open');
@@ -6322,7 +6322,7 @@
       listEl.innerHTML = boards.map((b, i) =>
         `<div class="tb-saved-item${li == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
         `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-        `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
+        `<button class="tb-delete-board" data-del-idx="${i}">?</button>` +
         `</div>`
       ).join('');
       bindTacticsSavedList();
@@ -6385,12 +6385,12 @@
       };
 
       if (loadedIdx !== null && boards[loadedIdx]) {
-        // Overwrite — check duplicate name (excluding self)
+        // Overwrite � check duplicate name (excluding self)
         const dup = boards.some((b, i) => i !== Number(loadedIdx) && b.name.toLowerCase() === name.toLowerCase());
         if (dup) { alert('A board with this name already exists.'); return; }
         boards[loadedIdx] = entry;
       } else {
-        // New save — check duplicate name
+        // New save � check duplicate name
         const dup = boards.some(b => b.name.toLowerCase() === name.toLowerCase());
         if (dup) { alert('A board with this name already exists.'); return; }
         boards.push(entry);
@@ -6427,7 +6427,7 @@
       // Visual feedback
       if (saveBtn) {
         const orig = saveBtn.textContent;
-        saveBtn.textContent = 'Saved ✓';
+        saveBtn.textContent = 'Saved ?';
         saveBtn.style.background = '#2e7d32';
         setTimeout(() => { saveBtn.textContent = orig; saveBtn.style.background = ''; }, 1200);
       }
@@ -6508,7 +6508,7 @@
     const tagList = document.getElementById('tb-tag-list');
     const tagAddInput = document.getElementById('tb-tag-add-input');
     const tagAddBtn = document.getElementById('tb-tag-add-btn');
-    const DEFAULT_TAGS = ['Presión', 'Salida', 'Estrategia'];
+    const DEFAULT_TAGS = ['Presi�n', 'Salida', 'Estrategia'];
     function getTagList() {
       const custom = JSON.parse(localStorage.getItem('fa_tactic_tags') || '[]');
       // Merge defaults + custom, preserving order: defaults first, then custom
@@ -6524,12 +6524,12 @@
       if (!tagList) return;
       const tags = getTagList();
       const current = localStorage.getItem('fa_tactic_tag') || '';
-      let html = '<div class="tb-tag-option' + (!current ? ' active' : '') + '" data-tag=""><span>— None —</span></div>';
+      let html = '<div class="tb-tag-option' + (!current ? ' active' : '') + '" data-tag=""><span>� None �</span></div>';
       html += tags.map(t => {
         const isDefault = DEFAULT_TAGS.includes(t);
         return '<div class="tb-tag-option' + (t === current ? ' active' : '') + '" data-tag="' + sanitize(t) + '">' +
           '<span>' + sanitize(t) + '</span>' +
-          (isDefault ? '' : '<button class="tb-tag-option-del" data-del-tag="' + sanitize(t) + '" title="Remove tag">✕</button>') +
+          (isDefault ? '' : '<button class="tb-tag-option-del" data-del-tag="' + sanitize(t) + '" title="Remove tag">?</button>') +
         '</div>';
       }).join('');
       tagList.innerHTML = html;
@@ -6538,7 +6538,7 @@
           if (e.target.closest('.tb-tag-option-del')) return;
           const val = opt.dataset.tag;
           localStorage.setItem('fa_tactic_tag', val);
-          tagToggle.textContent = val || '— None —';
+          tagToggle.textContent = val || '� None �';
           tagToggle.classList.toggle('has-tag', !!val);
           tagList.classList.remove('open');
           renderTagList();
@@ -6552,7 +6552,7 @@
           saveTagList(list);
           if ((localStorage.getItem('fa_tactic_tag') || '') === del) {
             localStorage.setItem('fa_tactic_tag', '');
-            tagToggle.textContent = '— None —';
+            tagToggle.textContent = '� None �';
             tagToggle.classList.remove('has-tag');
           }
           renderTagList();
@@ -6608,7 +6608,7 @@
       }
       if (!linked.length) { el.innerHTML = ''; return; }
       el.innerHTML = '<div class="tb-match-linked-title">Linked to:</div>' +
-        linked.map(l => `<div class="tb-match-linked-item"><span>${l.label}</span><button class="tb-match-unlink" data-mid="${l.mid}" title="Remove">✕</button></div>`).join('');
+        linked.map(l => `<div class="tb-match-linked-item"><span>${l.label}</span><button class="tb-match-unlink" data-mid="${l.mid}" title="Remove">?</button></div>`).join('');
       el.querySelectorAll('.tb-match-unlink').forEach(btn => {
         btn.addEventListener('click', () => {
           const mid = btn.dataset.mid;
@@ -6635,13 +6635,13 @@
       for (const [tdate, boards] of Object.entries(trainingBoards)) {
         if (boards.some(b => b.name === curName)) {
           const t = allTraining.find(x => x.date === tdate);
-          const label = t ? (sanitize(t.focus || 'Training') + ' — ' + new Date(tdate + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short' })) : tdate;
+          const label = t ? (sanitize(t.focus || 'Training') + ' � ' + new Date(tdate + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short' })) : tdate;
           linked.push({ tdate, label });
         }
       }
       if (!linked.length) { el.innerHTML = ''; return; }
       el.innerHTML = '<div class="tb-match-linked-title">Linked to:</div>' +
-        linked.map(l => `<div class="tb-match-linked-item"><span>${l.label}</span><button class="tb-match-unlink" data-tdate="${l.tdate}" title="Remove">✕</button></div>`).join('');
+        linked.map(l => `<div class="tb-match-linked-item"><span>${l.label}</span><button class="tb-match-unlink" data-tdate="${l.tdate}" title="Remove">?</button></div>`).join('');
       el.querySelectorAll('.tb-match-unlink').forEach(btn => {
         btn.addEventListener('click', () => {
           const tdate = btn.dataset.tdate;
@@ -6713,7 +6713,7 @@
       else trainingBoards[tdate].push(entry);
       localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
       const orig = addToTrainingBtn.textContent;
-      addToTrainingBtn.textContent = 'Added ✓';
+      addToTrainingBtn.textContent = 'Added ?';
       addToTrainingBtn.style.background = '#2e7d32';
       setTimeout(() => { addToTrainingBtn.textContent = orig; addToTrainingBtn.style.background = ''; }, 1200);
       refreshTrainingLinked();
@@ -6777,7 +6777,7 @@
       localStorage.setItem('fa_tactic_match_boards', JSON.stringify(matchBoards));
       // Visual feedback
       const orig = addToMatchBtn.textContent;
-      addToMatchBtn.textContent = 'Added ✓';
+      addToMatchBtn.textContent = 'Added ?';
       addToMatchBtn.style.background = '#2e7d32';
       setTimeout(() => { addToMatchBtn.textContent = orig; addToMatchBtn.style.background = ''; }, 1200);
       refreshMatchLinked();
@@ -7014,7 +7014,7 @@
             `</div>`;
         }
         html += `<div class="tb-frame-item${i === activeFrameIdx ? ' tb-frame-active' : ''}" data-frame-idx="${i}">` +
-          `<button class="tb-frame-del" data-del-idx="${i}" title="Delete frame">✕</button>` +
+          `<button class="tb-frame-del" data-del-idx="${i}" title="Delete frame">?</button>` +
           `<div class="tb-frame-thumb" data-frame-idx="${i}">${i + 1}</div>` +
           `</div>`;
       });
@@ -7163,13 +7163,13 @@
         const circle = circleMap[i];
 
         if (!tP) {
-          // Circle deleted in target frame — remove from DOM
+          // Circle deleted in target frame � remove from DOM
           if (circle) { circle.remove(); delete circleMap[i]; }
           continue;
         }
 
         if (!circle) {
-          // Circle new in target frame — create at target position
+          // Circle new in target frame � create at target position
           const num = currentNumbers[i] || '';
           const isGk = String(num) === '1';
           const bg = isGk ? GK_COLOR : (clrs[i] || teamColor);
@@ -7190,7 +7190,7 @@
           continue;
         }
 
-        // Circle exists in both frames — interpolate position
+        // Circle exists in both frames � interpolate position
         if (fP && tP) {
           const hL = lerp(fP[0], tP[0], t);
           const hT = lerp(fP[1], tP[1], t);
@@ -7283,7 +7283,7 @@
           ball.style.left = d[0] + '%'; ball.style.top = d[1] + '%';
         }
       }
-      // Arrows — snap to target frame at t=0
+      // Arrows � snap to target frame at t=0
       const tArr = to.arrows || [];
       const curArrows = arrowsSvg.querySelectorAll('.tb-arrow');
       const arrKey = tArr.map(a => a.join(',')).join('|');
@@ -7306,7 +7306,7 @@
         });
         refreshArrowheads(arrowsSvg);
       }
-      // Rects — snap to target frame at t=0
+      // Rects � snap to target frame at t=0
       const tRects = to.rects || [];
       const curRects = arrowsSvg.querySelectorAll('.tb-rect');
       const recKey = tRects.map(r => r.join(',')).join('|');
@@ -7332,7 +7332,7 @@
           else arrowsSvg.appendChild(rect);
         });
       }
-      // Pen lines — snap to target frame at t=0
+      // Pen lines � snap to target frame at t=0
       const tPen = to.penLines || [];
       const curPen = arrowsSvg.querySelectorAll('.tb-pen-line');
       const penKey = tPen.map(p => p[0]).join('|');
@@ -7348,7 +7348,7 @@
           arrowsSvg.appendChild(pl);
         });
       }
-      // Cones — snap to target frame at t=0
+      // Cones � snap to target frame at t=0
       const tCones = to.cones || [];
       const curCones = inner.querySelectorAll('.tb-cone');
       const coneKey = tCones.map(c => c[0] + ',' + c[1]).join('|');
@@ -7505,7 +7505,7 @@
             listEl.innerHTML = updatedBoards.map((b, i) =>
               `<div class="tb-saved-item${updLi == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
               `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-              `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
+              `<button class="tb-delete-board" data-del-idx="${i}">?</button>` +
               `</div>`
             ).join('');
             bindTacticsSavedList();
@@ -7542,10 +7542,10 @@
     var curCat = getCurrentCategory();
     var training = curCat ? allTraining.filter(function(t) { return !t.category || t.category === curCat; }) : allTraining;
     let rows = training.map(t => {
-      const dateStr = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      const dateStr = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '�';
       const assistanceCell = (t.status === 'past' && t.assistance != null)
         ? buildAssistanceCircle(t.assistance)
-        : '<span style="color:var(--text-secondary)">—</span>';
+        : '<span style="color:var(--text-secondary)">�</span>';
       return `<tr>
         <td><strong>${sanitize(t.day)}</strong></td><td>${dateStr}</td><td>${sanitize(t.time)}</td><td>${sanitize(t.focus)}</td><td>${sanitize(t.location)}</td><td class="center-cell">${assistanceCell}</td>
       </tr>`;
@@ -7731,15 +7731,15 @@
           </div>
           <div class="std-top-lists">
             <div class="std-top-card">
-              <div class="std-top-title">🏆 Top Attendance</div>
+              <div class="std-top-title">?? Top Attendance</div>
               ${top3AttendHtml}
             </div>
             <div class="std-top-card">
-              <div class="std-top-title">⚠️ Most Absent</div>
+              <div class="std-top-title">?? Most Absent</div>
               ${top3AbsentHtml}
             </div>
             <div class="std-top-card">
-              <div class="std-top-title">❌ Currently Injured</div>
+              <div class="std-top-title">? Currently Injured</div>
               <div class="std-top-scroll">${injuredHtml}</div>
             </div>
           </div>
@@ -7844,23 +7844,23 @@
     </div>`;
   }
 
-  // ── Auto-generate teams state (ephemeral, not persisted) ──
+  // -- Auto-generate teams state (ephemeral, not persisted) --
   let _generatedTeams = null;
   let _generatedTeamsDate = null;
 
-  // ── Render tactical boards section for staff training detail ──
+  // -- Render tactical boards section for staff training detail --
   function renderStdBoardsSection(tdate) {
     const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
     const boards = trainingBoards[tdate] || [];
     if (!boards.length) return '';
     const hasTeams = _generatedTeams && _generatedTeamsDate === tdate;
-    const tagOrder = ['Presión', 'Salida', 'Estrategia'];
+    const tagOrder = ['Presi�n', 'Salida', 'Estrategia'];
     const grouped = {};
     boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
     const orderedTags = [];
     tagOrder.forEach(tg => { if (grouped[tg]) orderedTags.push(tg); });
     Object.keys(grouped).forEach(tg => { if (!orderedTags.includes(tg)) orderedTags.push(tg); });
-    return '<div class="card" style="margin-top:1.5rem;"><div class="card-title">Tactical Boards</div><div class="detail-boards-panel">' +
+    return '<div class="card"><div class="card-title">Tactical Boards</div><div class="detail-boards-panel">' +
       orderedTags.map(tag => {
         const tagTitle = tag || 'General';
         return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
@@ -7880,7 +7880,7 @@
                 }).join('') +
                 '<button class="tb-unlink-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button></div>';
             } else if (hasTeams) {
-              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '">📋 Afegir equips</button></div>';
+              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '">?? Afegir equips</button></div>';
             }
             return boardHtml + teamsBlock;
           }).join('') + '</div>';
@@ -7890,12 +7890,12 @@
   function renderStaffTrainingDetail() {
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
     const t = training.find(x => x.date === detailTrainingDate);
-    if (!t) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
+    if (!t) return '<div class="empty-state"><div class="empty-icon">???</div><p>Training not found</p></div>';
     const players = getUsers().filter(u => (u.roles || []).includes('player'));
     const locked = isTrainingLocked(t);
     // Seed mock data for historical trainings
     seedMockAvailability(t.date, players);
-    const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '�';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
 
@@ -7908,9 +7908,9 @@
       const playerAnswer = availData[key] || (locked ? 'na' : null);
       const staffAnswer = overrides[key] || null;
       const effective = staffAnswer || playerAnswer;
-      const playerLabel = playerAnswer ? labels[playerAnswer] : '—';
+      const playerLabel = playerAnswer ? labels[playerAnswer] : '�';
       const playerCls = playerAnswer ? cls[playerAnswer] : '';
-      const effectiveLabel = effective ? labels[effective] : '—';
+      const effectiveLabel = effective ? labels[effective] : '�';
       const effectiveCls = effective ? cls[effective] : '';
       const dropdown = allOptions.map(o =>
         `<option value="${o}" ${effective === o ? 'selected' : ''}>${labels[o]}</option>`
@@ -7921,12 +7921,12 @@
       const fStatus = derived.fitnessStatus;
       const injNote = derived.injuryNote || (fStatus === 'doubt' ? 'Doubt' : fStatus === 'injured' ? 'Injury' : '');
       let statusIcon = '';
-      if (fStatus === 'fit') statusIcon = '<span class="roster-status-icon roster-status-fit">✓</span>';
+      if (fStatus === 'fit') statusIcon = '<span class="roster-status-icon roster-status-fit">?</span>';
       else if (fStatus === 'doubt') statusIcon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injNote)}">?</span>`;
-      else statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injNote)}">✕</span>`;
+      else statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injNote)}">?</span>`;
       const rd = computeReadiness(p.id);
       const rdColor = rd.hasData ? rd.color : 'green';
-      const rdScore = rd.hasData ? rd.score : '—';
+      const rdScore = rd.hasData ? rd.score : '�';
       const acwrVal = rd.hasData ? (rd.acwr || 0) : 0;
       const acwrColor = !rd.hasData ? '#4caf50' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
 
@@ -7935,7 +7935,7 @@
         <td><span class="roster-name-wrap">${sanitize(p.name)}${teamCircle}</span></td>
         <td class="center-cell">${statusIcon}</td>
         <td class="center-cell"><span class="readiness-dot readiness-${rdColor}" data-tooltip="${rdScore}"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '�'}</td>
         <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
         <td class="center-cell">
           <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-date="${t.date}">
@@ -7962,11 +7962,11 @@
     }
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="staff-training">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="staff-training">? Back</button>
       <div class="detail-hero detail-hero-training">
         <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">Training</span></div>
         <h2 class="detail-title">${sanitize(t.focus)}</h2>
-        <div class="detail-subtitle">${dateFormatted} · ${sanitize(t.time || '—')} · ${sanitize(t.location || '—')}</div>
+        <div class="detail-subtitle">${dateFormatted} � ${sanitize(t.time || '�')} � ${sanitize(t.location || '�')}</div>
       </div>
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-title">Attendance Overview</div>
@@ -7984,7 +7984,7 @@
         const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
         const boards = trainingBoards[t.date] || [];
         if (!boards.length) return '';
-        const tagOrder = ['Presión', 'Salida', 'Estrategia'];
+        const tagOrder = ['Presi�n', 'Salida', 'Estrategia'];
         const grouped = {};
         boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
         const orderedTags = [];
@@ -7998,10 +7998,10 @@
           }).join('') + '</div>';
       })()}
       </div>
-      <div class="card" style="margin-top:1.5rem;">
+      <div class="card">
         <div class="tg-header">
           <div class="card-title" style="margin-bottom:0;">Auto Generate Teams</div>
-          <button class="btn btn-outline btn-small" id="btn-tg-toggle">⚙️ Configure</button>
+          <button class="btn btn-outline btn-small" id="btn-tg-toggle">?? Configure</button>
         </div>
         <div class="tg-config-panel" id="tg-config" hidden>
           <div class="tg-config-row">
@@ -8045,7 +8045,7 @@
       })()}`;
   }
 
-  // ── Team generation algorithm ──
+  // -- Team generation algorithm --
   function generateTrainingTeams(allPlayers, trainingDate, locked, numTeams, perTeam, includeGK, teamFilter, mode) {
     // 1. Filter to present players
     let pool = allPlayers.filter(p => {
@@ -8136,7 +8136,7 @@
     return teams;
   }
 
-  // ── Render generated teams ──
+  // -- Render generated teams --
   function renderGeneratedTeams(teams, allPlayers, trainingDate, locked) {
     // Build set of all assigned player IDs
     const assignedIds = new Set();
@@ -8153,7 +8153,7 @@
         return `<div class="tg-player-row" draggable="true" data-player-id="${p.id}">
           <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
           <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${teamCircle}</span>
-          <span class="tg-player-num">#${sanitize(p.playerNumber || '—')}</span>
+          <span class="tg-player-num">#${sanitize(p.playerNumber || '�')}</span>
           <button class="tg-remove-player" data-team-idx="${ti}" data-player-id="${p.id}" title="Remove">&times;</button>
         </div>`;
       }).join('');
@@ -8163,7 +8163,7 @@
         return `<div class="tg-dd-option" data-pid="${p.id}">
           <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
           <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${tc}</span>
-          <span class="tg-player-num">${sanitize(p.position || '—')}</span>
+          <span class="tg-player-num">${sanitize(p.position || '�')}</span>
         </div>`;
       }).join('');
 
@@ -8221,15 +8221,15 @@
       const minutes = u.minutesPlayed || (matches * 90);
       const rd = computeReadiness(u.id);
       const readiness = rd.hasData ? rd.color : 'green';
-      const rdTooltip = rd.hasData ? rd.score : '—';
+      const rdTooltip = rd.hasData ? rd.score : '�';
 
       let statusIcon = '';
       if (status === 'fit') {
-        statusIcon = '<span class="roster-status-icon roster-status-fit">✓</span>';
+        statusIcon = '<span class="roster-status-icon roster-status-fit">?</span>';
       } else if (status === 'doubt') {
         statusIcon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
       } else {
-        statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
+        statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">?</span>`;
       }
 
       const pTeam = u.team || '';
@@ -8421,7 +8421,7 @@
       <td><input class="reg-input md-opponent" value="${sanitize(g.opponent || '')}" placeholder="Opponent name" style="width:140px;"></td>
       <td><input class="reg-input md-location" value="${sanitize(g.location || '')}" placeholder="Location" style="width:150px;"></td>
       <td><input class="reg-input md-maplink" value="${sanitize(g.mapLink || '')}" placeholder="Google Maps link" style="width:150px;"></td>
-      <td><input type="time" class="reg-input md-kickoff" value="${sanitize(g.kickoff || '')}" style="width:110px;"></td>
+      <td><input type="text" class="reg-input md-kickoff" value="${sanitize(g.kickoff || '')}" placeholder="HH:MM" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" style="width:80px;text-align:center;"></td>
       <td><button class="md-remove-btn md-remove" data-idx="${i}" title="Remove">&times;</button></td>
     </tr>`;
   }
@@ -8445,11 +8445,11 @@
       const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
       const rd = computeReadiness(p.id);
       const readiness = rd.hasData ? rd.color : 'green';
-      const rdTooltip = rd.hasData ? rd.score : '—';
+      const rdTooltip = rd.hasData ? rd.score : '�';
       let icon = '';
-      if (status === 'fit') icon = '<span class="roster-status-icon roster-status-fit">✓</span>';
+      if (status === 'fit') icon = '<span class="roster-status-icon roster-status-fit">?</span>';
       else if (status === 'doubt') icon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
-      else icon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
+      else icon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">?</span>`;
       return `${icon}<span class="readiness-dot readiness-${readiness}" data-tooltip="${rdTooltip}"></span>`;
     }
 
@@ -8493,14 +8493,14 @@
           const greyClass = isNoDisp ? ' conv-player-unavailable' : '';
           const maTag = maStatus === 'disponible' ? '<span class="conv-ma-tag conv-ma-disp">Disponible</span>'
             : maStatus === 'no_disponible' ? '<span class="conv-ma-tag conv-ma-nodisp">No Disponible</span>'
-            : '<span class="conv-ma-tag conv-ma-pending">—</span>';
+            : '<span class="conv-ma-tag conv-ma-pending">�</span>';
           const pTeam = p.team || '';
-          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>${maTag}<span class="conv-status">${playerStatusHtml(p)}</span></div>`;
+          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '�')}</span>${maTag}<span class="conv-status">${playerStatusHtml(p)}</span></div>`;
         }).join('')
       : '<p class="conv-empty-hint">No players available</p>';
 
     const calledHtml = called.length
-      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${playerStatusHtml(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
+      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '�')}</span><span class="conv-status">${playerStatusHtml(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
       : '<p class="conv-drop-hint">Drag players here</p>';
 
     // Uniform: auto-default for home games
@@ -8542,14 +8542,14 @@
     }
 
     return `
-      <h2 class="page-title">Convocatòria</h2>
+      <h2 class="page-title">Convocat�ria</h2>
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="conv-top-row">
           <div class="conv-top-group">
             <div class="card-title" style="margin-bottom:.5rem;">Choose Match</div>
             <div class="conv-match-selector" id="conv-match-selector">
               <div class="conv-match-toggle" id="conv-match-toggle">
-                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? new Date(selected.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">Select a match…</span>'}
+                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? new Date(selected.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">Select a match�</span>'}
                 <span class="conv-match-chevron"></span>
               </div>
               <div class="conv-match-dropdown" id="conv-match-dropdown" hidden>${matchOptions}</div>
@@ -8600,7 +8600,7 @@
         const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
         const boards = matchBoards[convSelectedMatchId] || [];
         if (!boards.length) return '';
-        return '<div class="card" style="margin-top:1.5rem;"><div class="card-title">Tactical Board</div>' +
+        return '<div class="card"><div class="card-title">Tactical Board</div>' +
           boards.map(b => renderReadOnlyBoard(b, 'ro2-')).join('') + '</div>';
       })()}
       ${(() => {
@@ -8610,9 +8610,9 @@
         const rows = videos.map((v, i) => '<div class="conv-video-row" data-video-idx="' + i + '">' +
           '<input type="text" class="reg-input conv-video-title" value="' + sanitize(v.title) + '" placeholder="Title" style="flex:1;min-width:80px;">' +
           '<input type="text" class="reg-input conv-video-url" value="' + sanitize(v.url) + '" placeholder="Paste URL" style="flex:2;min-width:140px;">' +
-          '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">✕</button></div>' +
+          '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">?</button></div>' +
           (v.title ? '<textarea class="reg-input conv-video-comment" data-video-idx="' + i + '" rows="2" placeholder="Comments for this video..." style="width:100%;resize:vertical;min-height:40px;margin-bottom:.6rem;">' + sanitize(v.comment || '') + '</textarea>' : '')).join('');
-        return '<div class="card" style="margin-top:1.5rem;">' +
+        return '<div class="card">' +
           '<div class="card-title">Video Links</div>' +
           '<div id="conv-video-list">' + rows + '</div>' +
           '<button class="btn btn-outline btn-small" id="btn-conv-add-video" style="margin-top:.5rem;">+ Add Video Link</button>' +
@@ -8639,7 +8639,7 @@
       const teamLetter = m.team || '';
       const homeName = isOurTeam(m.home) && teamLetter ? getClubName() + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.home);
       const awayName = isOurTeam(m.away) && teamLetter ? getClubName() + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.away);
-      let dateFmt = '—';
+      let dateFmt = '�';
       if (m.date) {
         const d = new Date(m.date + 'T12:00:00');
         const dayName = DAYS_CA[d.getDay()];
@@ -8649,18 +8649,18 @@
         dateFmt = dayName + ' ' + dd + '/' + mm + '/' + yyyy;
       }
       const locationHtml = m.mapLink
-        ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="md-card-map" onclick="event.stopPropagation()">📍 ${sanitize(m.location || '—')}</a>`
-        : `<span>📍 ${sanitize(m.location || '—')}</span>`;
+        ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="md-card-map" onclick="event.stopPropagation()">?? ${sanitize(m.location || '�')}</a>`
+        : `<span>?? ${sanitize(m.location || '�')}</span>`;
       const sentEntry = sentData[m.id];
       const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
       const convHtml = sentPlayers.length
-        ? `<span class="md-conv-sent"><span class="conv-blink-dot"></span> Convocatòria enviada<span class="md-conv-count">${sentPlayers.length} players</span></span>`
+        ? `<span class="md-conv-sent"><span class="conv-blink-dot"></span> Convocat�ria enviada<span class="md-conv-count">${sentPlayers.length} players</span></span>`
         : '';
       const clickAttr = clickable ? ` data-go-staff-match="${m.id}"` : '';
       return `<div class="md-match-card${clickable ? '' : ' md-match-card-past'}"${clickAttr}>
         <div class="md-match-left">
           <div class="md-match-teams">${homeName} vs ${awayName}</div>
-          <div class="md-match-info"><span>🗓 ${dateFmt}</span><span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${m.time || '—'}</span>${locationHtml}</div>
+          <div class="md-match-info"><span>?? ${dateFmt}</span><span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${m.time || '�'}</span>${locationHtml}</div>
         </div>
         ${convHtml}
       </div>`;
@@ -8678,7 +8678,7 @@
         <div class="card-title">Upcoming Matches</div>
         <div class="md-match-list">${upcomingCards}</div>
       </div>
-      <div class="card" style="margin-top:1.5rem;">
+      <div class="card">
         <div class="card-title">Previous Matches</div>
         <div class="md-match-list">${pastCards}</div>
       </div>`;
@@ -8686,7 +8686,7 @@
 
   function matchCardHtml(m) {
     return `<div class="match-card">
-      <div><div class="match-teams">${matchLabel(m)}</div><div class="match-meta">${m.date} · ${m.time}</div></div>
+      <div><div class="match-teams">${matchLabel(m)}</div><div class="match-meta">${m.date} � ${m.time}</div></div>
       <div class="match-score">${m.score || 'TBD'}</div>
     </div>`;
   }
@@ -8740,10 +8740,10 @@
         <td>${rolesDisplay}</td>
         <td class="user-actions">
           <button class="btn btn-small ${hasPlayer ? 'btn-primary' : 'btn-outline'} btn-toggle-role" data-uid="${u.id}" data-role="player">
-            ${hasPlayer ? '✓ Player' : '+ Player'}
+            ${hasPlayer ? '? Player' : '+ Player'}
           </button>
           <button class="btn btn-small ${hasStaff ? 'btn-primary' : 'btn-outline'} btn-toggle-role" data-uid="${u.id}" data-role="staff">
-            ${hasStaff ? '✓ Staff' : '+ Staff'}
+            ${hasStaff ? '? Staff' : '+ Staff'}
           </button>
           ${u.id !== session.id ? `<button class="btn btn-small btn-danger btn-delete-user" data-uid="${u.id}">Delete</button>` : ''}
         </td>
@@ -8787,7 +8787,7 @@
         ? enabledCats.map(function (k) { return '<option value="' + k + '"' + (uCat === k ? ' selected' : '') + '>' + CATEGORY_LABELS[k] + '</option>'; }).join('')
         : '';
       const catSelect = enabledCats.length
-        ? '<select class="reg-cat-select" data-uid="' + u.id + '"><option value=""' + (!uCat ? ' selected' : '') + '>—</option>' + catOptions + '</select>'
+        ? '<select class="reg-cat-select" data-uid="' + u.id + '"><option value=""' + (!uCat ? ' selected' : '') + '>�</option>' + catOptions + '</select>'
         : '';
 
       return `<tr data-uid="${u.id}">
@@ -8837,10 +8837,10 @@
       var hasCfg = !!_clubConfig;
       html += `
       <div class="card">
-        <div class="card-title">Configuració de Categories</div>
+        <div class="card-title">Configuraci� de Categories</div>
         ${hasCfg
-          ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enllaços classificació FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
-          : '<p style="color:var(--text-secondary);font-size:.9rem;">No estàs vinculat a cap club. Contacta l\'administrador.</p>'
+          ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enlla�os classificaci� FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
+          : '<p style="color:var(--text-secondary);font-size:.9rem;">No est�s vinculat a cap club. Contacta l\'administrador.</p>'
         }
       </div>`;
     }
@@ -8849,9 +8849,9 @@
     if (session && session.isAdmin) {
       html += `
       <div class="card">
-        <div class="card-title">Gestió de Clubs</div>
+        <div class="card-title">Gesti� de Clubs</div>
         <div id="club-list" style="margin-bottom:1.2rem;">
-          <p style="color:var(--text-secondary);font-size:.9rem;">Carregant clubs…</p>
+          <p style="color:var(--text-secondary);font-size:.9rem;">Carregant clubs�</p>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:1rem;">
           <div class="card-title" style="font-size:.95rem;">Crear nou club</div>
@@ -8901,7 +8901,7 @@
           <td>${badgeImg}${sanitize(c.name)}</td>
           <td style="font-family:monospace;letter-spacing:.1em;font-weight:600;">${c.code}</td>
           <td>${sanitize(c.leadEmail)}</td>
-          <td><button class="btn btn-small btn-outline btn-copy-code" data-code="${c.code}" title="Copiar codi">📋</button></td>
+          <td><button class="btn btn-small btn-outline btn-copy-code" data-code="${c.code}" title="Copiar codi">??</button></td>
         </tr>`;
       });
       listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
@@ -8951,7 +8951,7 @@
     const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
     const selVal = dpInput ? (dpInput.dataset.dateIso || dpInput.value) : '';
     const days = ['Dl','Dt','Dc','Dj','Dv','Ds','Dg'];
-    const months = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre'];
+    const months = ['Gener','Febrer','Mar�','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre'];
     const first = new Date(dpYear, dpMonth, 1);
     let startDay = first.getDay() - 1; if (startDay < 0) startDay = 6; // Mon=0
     const daysInMonth = new Date(dpYear, dpMonth + 1, 0).getDate();
@@ -9014,14 +9014,14 @@
       const sentJersey = sentEntry && !Array.isArray(sentEntry) ? sentEntry.jersey : null;
       const sentSocks = sentEntry && !Array.isArray(sentEntry) ? sentEntry.socks : null;
       const dayName = m.date ? DAYS[new Date(m.date + 'T12:00:00').getDay()] : '';
-      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} · ${m.time} · ${sanitize(m.location || '')}`, convSent, convIncluded, sentJersey, sentSocks });
+      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} � ${m.time} � ${sanitize(m.location || '')}`, convSent, convIncluded, sentJersey, sentSocks });
     });
     training.filter(t => t.date >= start && t.date <= end).filter(t => {
       if (!t.date || !t.time) return true;
       return new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00').getTime() + 60 * 60 * 1000 > now.getTime();
     }).forEach(t => {
       const dayName = t.date ? DAYS[new Date(t.date + 'T12:00:00').getDay()] : '';
-      activities.push({ type: 'training', tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
+      activities.push({ type: 'training', tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} � ${t.time} � ${sanitize(t.location)}` });
     });
     // Birthdays this week (skip self)
     const users = getUsers();
@@ -9036,7 +9036,7 @@
       if (bdStr >= start && bdStr <= end) {
         const age = thisYear - Number(parts[0]);
         const dayName = DAYS[bd.getDay()];
-        activities.push({ type: 'birthday', date: bdStr, time: '00:00', label: '🎂 ' + sanitize(p.name), detail: dayName + ' · ' + age + ' anys', pic: p.profilePic || '', initial: sanitize(p.name).charAt(0).toUpperCase() });
+        activities.push({ type: 'birthday', date: bdStr, time: '00:00', label: '?? ' + sanitize(p.name), detail: dayName + ' � ' + age + ' anys', pic: p.profilePic || '', initial: sanitize(p.name).charAt(0).toUpperCase() });
       }
     });
     activities.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || '').localeCompare(b.time || ''));
@@ -9053,7 +9053,7 @@
           uniformIcons = `<span class="activity-uniform">${jerseySvg(a.sentJersey || 'white')}${sockSvg(a.sentSocks || 'striped')}</span>`;
         }
         convTag = a.convIncluded
-          ? '<a href="#" class="conv-available-tag" data-conv-link><span class="conv-blink-dot"></span> Convocatòria disponible</a>'
+          ? '<a href="#" class="conv-available-tag" data-conv-link><span class="conv-blink-dot"></span> Convocat�ria disponible</a>'
           : '<span class="conv-not-called-tag"><span class="conv-grey-dot"></span> No convocat</span>';
       }
       // Match availability buttons (only when conv NOT sent)
@@ -9113,7 +9113,7 @@
   function getNextMatchLabel() {
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const next = matches.find(m => m.status === 'upcoming');
-    return next ? matchLabel(next) : '—';
+    return next ? matchLabel(next) : '�';
   }
 
   function sanitize(str) {
@@ -9257,6 +9257,15 @@
     body.addEventListener('input', saveGames);
     body.addEventListener('change', saveGames);
 
+    // Auto-format HH:MM on kickoff inputs
+    body.addEventListener('input', function(e) {
+      if (!e.target.classList.contains('md-kickoff')) return;
+      var v = e.target.value.replace(/[^0-9]/g, '');
+      if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2, 4);
+      if (v.length > 5) v = v.slice(0, 5);
+      e.target.value = v;
+    });
+
     // Custom Mon-Sun date picker
     body.querySelectorAll('.md-datepicker').forEach(inp => {
       inp.addEventListener('click', () => openDatePicker(inp));
@@ -9301,7 +9310,7 @@
       });
     }
 
-    // Save button — sync matchday games into fa_matches
+    // Save button � sync matchday games into fa_matches
     const saveMdBtn = document.getElementById('btn-matchday-save');
     if (saveMdBtn) {
       saveMdBtn.addEventListener('click', () => {
@@ -9323,7 +9332,7 @@
           category: g.category || getCurrentCategory() || ''
         }));
         localStorage.setItem('fa_matches', JSON.stringify(newMatches));
-        saveMdBtn.textContent = '✓ Saved';
+        saveMdBtn.textContent = '? Saved';
         saveMdBtn.classList.remove('btn-primary');
         saveMdBtn.classList.add('btn-accent');
         setTimeout(() => {
@@ -9471,7 +9480,7 @@
     const addBtnTop = document.getElementById('btn-training-add-top');
     if (addBtnTop) addBtnTop.addEventListener('click', addTraining);
 
-    // Click any training row → open staff training detail
+    // Click any training row ? open staff training detail
     body.querySelectorAll('tr[data-tidx]').forEach(tr => {
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', (e) => {
@@ -9501,13 +9510,13 @@
       });
     });
 
-    // ── Auto Generate Teams ──
+    // -- Auto Generate Teams --
     const toggleBtn = document.getElementById('btn-tg-toggle');
     const configPanel = document.getElementById('tg-config');
     if (toggleBtn && configPanel) {
       toggleBtn.addEventListener('click', () => {
         configPanel.hidden = !configPanel.hidden;
-        toggleBtn.textContent = configPanel.hidden ? '⚙️ Configure' : '⚙️ Hide';
+        toggleBtn.textContent = configPanel.hidden ? '?? Configure' : '?? Hide';
       });
     }
 
@@ -9598,7 +9607,7 @@
     }
   }
 
-  // ── Refresh the Tactical Boards section in staff training detail ──
+  // -- Refresh the Tactical Boards section in staff training detail --
   function _refreshStdBoards(tdate) {
     const section = document.getElementById('std-boards-section');
     if (!section) return;
@@ -9608,7 +9617,7 @@
     bindRoBoardAnimations();
   }
 
-  // ── Drag-and-drop + add/remove for generated teams ──
+  // -- Drag-and-drop + add/remove for generated teams --
   function bindGeneratedTeamsDnD(allPlayers, trainingDate, locked) {
     let dragPlayerId = null;
     let dragSourceTeamIdx = null;
@@ -9634,7 +9643,7 @@
       row.addEventListener('dragend', () => {
         row.classList.remove('tg-dragging');
         document.querySelectorAll('.tg-drop-active').forEach(el => el.classList.remove('tg-drop-active'));
-        // If not dropped on any team zone, remove player from source team (→ goes to "No inclosos")
+        // If not dropped on any team zone, remove player from source team (? goes to "No inclosos")
         if (!_droppedOnTeam && dragPlayerId != null && dragSourceTeamIdx != null) {
           _generatedTeams[dragSourceTeamIdx] = _generatedTeams[dragSourceTeamIdx].filter(
             p => String(p.id) !== String(dragPlayerId)
@@ -9691,7 +9700,7 @@
       });
     });
 
-    // Add player — custom searchable dropdown
+    // Add player � custom searchable dropdown
     document.querySelectorAll('.tg-dd').forEach(dd => {
       const input = dd.querySelector('.tg-dd-input');
       const list = dd.querySelector('.tg-dd-list');
@@ -9780,7 +9789,7 @@
     });
   }
 
-  // ---------- Convocatòria drag-and-drop ----------
+  // ---------- Convocat�ria drag-and-drop ----------
   function bindConvocatoria() {
     const availEl = document.getElementById('conv-available');
     const calledEl = document.getElementById('conv-called');
@@ -9858,7 +9867,7 @@
       });
       calledEl.querySelectorAll('.conv-player').forEach(el => {
         el.addEventListener('click', (e) => {
-          if (e.target.closest('.conv-remove')) return; // let × button handle it
+          if (e.target.closest('.conv-remove')) return; // let � button handle it
           const id = el.dataset.id;
           let saved = getSaved();
           saved = saved.filter(sid => String(sid) !== String(id));
@@ -9868,7 +9877,7 @@
       });
     }
 
-    // Drop on called list → add player
+    // Drop on called list ? add player
     calledEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; calledEl.classList.add('conv-drop-active'); });
     calledEl.addEventListener('dragleave', () => calledEl.classList.remove('conv-drop-active'));
     calledEl.addEventListener('drop', e => {
@@ -9881,7 +9890,7 @@
       renderPage(getSession());
     });
 
-    // Drop on available list → remove player
+    // Drop on available list ? remove player
     availEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; availEl.classList.add('conv-drop-active'); });
     availEl.addEventListener('dragleave', () => availEl.classList.remove('conv-drop-active'));
     availEl.addEventListener('drop', e => {
@@ -9895,7 +9904,7 @@
       renderPage(getSession());
     });
 
-    // Remove button (×)
+    // Remove button (�)
     calledEl.querySelectorAll('.conv-remove').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
@@ -9933,7 +9942,7 @@
             localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
           }
         }
-        saveBtn.textContent = '✓ Saved';
+        saveBtn.textContent = '? Saved';
         saveBtn.classList.remove('btn-outline');
         saveBtn.classList.add('btn-accent');
         setTimeout(() => {
@@ -9985,8 +9994,8 @@
           }).filter(Boolean);
           Push.sendToPlayers(teamId, targetUids, {
             type: 'convocatoria',
-            title: '\u26BD Convocatòria publicada!',
-            body: matchLabel + (matchObj && matchObj.date ? ' · ' + matchObj.date : ''),
+            title: '\u26BD Convocat�ria publicada!',
+            body: matchLabel + (matchObj && matchObj.date ? ' � ' + matchObj.date : ''),
             page: 'convocatoria',
             matchId: String(convSelectedMatchId)
           });
@@ -10024,7 +10033,7 @@
     if (callupSel) {
       callupSel.addEventListener('change', () => {
         if (!convSelectedMatchId) return;
-        // Save to dedicated convocatòria callup storage
+        // Save to dedicated convocat�ria callup storage
         const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
         convCallupData[convSelectedMatchId] = callupSel.value;
         localStorage.setItem('fa_convocatoria_callup', JSON.stringify(convCallupData));
@@ -10067,7 +10076,7 @@
         row.dataset.videoIdx = idx;
         row.innerHTML = '<input type="text" class="reg-input conv-video-title" value="" placeholder="Title" style="flex:1;min-width:80px;">' +
           '<input type="text" class="reg-input conv-video-url" value="" placeholder="Paste URL" style="flex:2;min-width:140px;">' +
-          '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">✕</button>';
+          '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">?</button>';
         list.appendChild(row);
         row.querySelector('.conv-video-title').addEventListener('blur', saveConvVideos);
         row.querySelector('.conv-video-url').addEventListener('blur', saveConvVideos);
@@ -10146,8 +10155,8 @@
     };
     Push.sendToTeam(teamId, {
       type: notif.type,
-      title: '\uD83D\uDCCB ' + (typeLabels[notif.type] || 'Notificació'),
-      body: (notif.playerName || '') + ' — ' + (notif.detail || ''),
+      title: '\uD83D\uDCCB ' + (typeLabels[notif.type] || 'Notificaci�'),
+      body: (notif.playerName || '') + ' � ' + (notif.detail || ''),
       targetRole: 'staff'
     });
   }
@@ -10268,7 +10277,7 @@
       'Forearm': ['Wrist Flexors','Wrist Extensors','Brachioradialis']
     }
   };
-  // Flat lookup: group name → sub-muscles
+  // Flat lookup: group name ? sub-muscles
   const GROUP_SUBS = {};
   for (const r in BODY_REGIONS) for (const g in BODY_REGIONS[r]) GROUP_SUBS[g] = BODY_REGIONS[r][g];
 
@@ -10276,7 +10285,7 @@
   function commitInjuryNote(date, musclePath, desc, zoneIdx) {
     const session = getSession();
     const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
-    const note = musclePath + (desc ? ' – ' + desc : '');
+    const note = musclePath + (desc ? ' � ' + desc : '');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const key = session.id + '_' + date;
     availData[key] = 'injured';
@@ -10322,7 +10331,7 @@
     addStaffNotification({
       type: 'training_avail',
       playerName: session.name || '?',
-      detail: 'Injured – ' + note,
+      detail: 'Injured � ' + note,
       activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
     });
     renderPage(session);
@@ -10380,7 +10389,7 @@
     overlay.className = 'body-map-overlay';
     var modal = document.createElement('div');
     modal.className = 'body-map-modal';
-    modal.innerHTML = '<div class="body-map-header"><span>🏥 Select injured area</span>' +
+    modal.innerHTML = '<div class="body-map-header"><span>?? Select injured area</span>' +
       '<button class="body-map-close">&times;</button></div>';
 
     // Image container with SVG polygon overlay
@@ -10470,13 +10479,13 @@
         html += '<span class="body-map-group-label">' + sanitize(groups[0]) + '</span>';
       }
       // Sub-muscle dropdown
-      html += '<select class="body-map-sub-sel"><option value="">— General —</option>';
+      html += '<select class="body-map-sub-sel"><option value="">� General �</option>';
       (GROUP_SUBS[groups[0]] || []).forEach(function (s) {
         html += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>';
       });
       html += '</select>';
       // Description + OK
-      html += '<input type="text" class="body-map-desc" placeholder="Describe injury…" maxlength="120">';
+      html += '<input type="text" class="body-map-desc" placeholder="Describe injury�" maxlength="120">';
       html += '<button class="body-map-ok">OK</button>';
       html += '</div>';
       choicePanel.innerHTML = html;
@@ -10487,7 +10496,7 @@
       if (groupSel) {
         groupSel.addEventListener('change', function () {
           var g = groupSel.value;
-          var opts = '<option value="">— General —</option>';
+          var opts = '<option value="">� General �</option>';
           (GROUP_SUBS[g] || []).forEach(function (s) {
             opts += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>';
           });
@@ -10569,7 +10578,7 @@
         const pInj = activeInj.find(i => i.playerId === p.id);
         if (pInj) {
           const days = Math.max(0, Math.floor((now - new Date(pInj.startDate + 'T12:00:00')) / 86400000));
-          injExcerpt = '<div class="med-card-injury">' + sanitize(pInj.muscleGroup || 'Injury') + ' · ' + days + 'd</div>';
+          injExcerpt = '<div class="med-card-injury">' + sanitize(pInj.muscleGroup || 'Injury') + ' � ' + days + 'd</div>';
         }
       } else if (st === 'doubt') {
         borderColor = '#f9a825'; statusLabel = 'Recovering'; statusClass = 'recovering';
@@ -10589,7 +10598,7 @@
     // Active injuries cards
     let activeHtml = '';
     if (!activeInj.length && !recoveringInj.length) {
-      activeHtml = '<div class="empty-state" style="padding:1.5rem;"><div class="empty-icon">💪</div><p>No active injuries</p></div>';
+      activeHtml = '<div class="empty-state" style="padding:1.5rem;"><div class="empty-icon">??</div><p>No active injuries</p></div>';
     } else {
       const combined = [...activeInj, ...recoveringInj].sort((a, b) => {
         const da = Math.floor((now - new Date(a.startDate + 'T12:00:00')) / 86400000);
@@ -10646,7 +10655,7 @@
     const pastSorted = resolvedInj.sort((a, b) => (b.endDate || b.startDate).localeCompare(a.endDate || a.startDate));
     let pastHtml = '';
     if (!pastSorted.length) {
-      pastHtml = '<div class="empty-state" style="padding:1rem;"><div class="empty-icon">✅</div><p>No past injuries this season</p></div>';
+      pastHtml = '<div class="empty-state" style="padding:1rem;"><div class="empty-icon">?</div><p>No past injuries this season</p></div>';
     } else {
       pastHtml = pastSorted.map(inj => {
         const p = players.find(x => x.id === inj.playerId);
@@ -10667,7 +10676,7 @@
           '</div>' +
           '<div class="medical-injury"><span class="med-severity-dot" style="background:' + (sevColors[inj.severity] || '#999') + ';"></span>' + sanitize(inj.muscleGroup || 'Injury') + '</div>' +
           '<div class="medical-duration">' +
-            '<span class="medical-since">' + startStr + ' – ' + endStr + '</span>' +
+            '<span class="medical-since">' + startStr + ' � ' + endStr + '</span>' +
             '<span class="medical-days">' + durationStr + '</span>' +
           '</div>' +
         '</div>';
@@ -10700,12 +10709,12 @@
         '<div class="med-player-grid">' + gridHtml + '</div>' +
       '</div>' +
       '<div class="card">' +
-        '<div class="card-title" style="margin-bottom:.8rem;">🏥 Active Injuries</div>' +
+        '<div class="card-title" style="margin-bottom:.8rem;">?? Active Injuries</div>' +
         activeHtml +
       '</div>' +
       '<div class="card med-past-card">' +
         '<div class="card-title med-past-title" id="med-past-toggle" style="cursor:pointer;margin-bottom:0;">' +
-          '📋 Past Injuries (' + resolvedInj.length + ') <span class="med-past-arrow">' + (medicalPastExpanded ? '▲' : '▼') + '</span>' +
+          '?? Past Injuries (' + resolvedInj.length + ') <span class="med-past-arrow">' + (medicalPastExpanded ? '?' : '?') + '</span>' +
         '</div>' +
         '<div class="med-past-body" style="' + (medicalPastExpanded ? '' : 'display:none;') + '">' + pastHtml + '</div>' +
       '</div>' +
@@ -10749,7 +10758,7 @@
       '</div>' +
     '</div>';
 
-    // Monthly bar chart (SVG) — match body image height (220px)
+    // Monthly bar chart (SVG) � match body image height (220px)
     const monthCounts = new Array(12).fill(0);
     injuries.forEach(inj => {
       const m = parseInt(inj.startDate.slice(5, 7), 10) - 1;
@@ -10810,7 +10819,7 @@
         const days = playerDaysOut[pid] || 0;
         const zones = playerTopZone[pid] || {};
         const topZone = Object.entries(zones).sort((a, b) => b[1] - a[1])[0];
-        return '<tr><td>' + name + '</td><td>' + count + '</td><td>' + days + 'd</td><td>' + (topZone ? sanitize(topZone[0]) : '—') + '</td></tr>';
+        return '<tr><td>' + name + '</td><td>' + count + '</td><td>' + days + 'd</td><td>' + (topZone ? sanitize(topZone[0]) : '�') + '</td></tr>';
       }).join('');
 
     // Most common zone & severity
@@ -10824,7 +10833,7 @@
     const topZoneEntry = Object.entries(zoneFreq).sort((a, b) => b[1] - a[1])[0];
     const topSev = Object.entries(sevFreq).sort((a, b) => b[1] - a[1])[0];
 
-    return '<div class="card"><div class="card-title" style="margin-bottom:.8rem;">📊 Injury Analytics</div>' +
+    return '<div class="card"><div class="card-title" style="margin-bottom:.8rem;">?? Injury Analytics</div>' +
       '<div class="med-analytics-grid">' +
         '<div class="med-analytics-section">' +
           '<div class="med-analytics-subtitle">Body Zone Heatmap</div>' +
@@ -10840,8 +10849,8 @@
         '<table class="med-prone-table"><thead><tr><th>Player</th><th>Injuries</th><th>Days Out</th><th>Most Affected</th></tr></thead><tbody>' + proneList + '</tbody></table>' +
       '</div>' : '') +
       '<div class="med-season-summary">' +
-        '<div class="med-summary-item"><span class="med-summary-label">Most Common Area</span><span class="med-summary-val">' + (topZoneEntry ? sanitize(topZoneEntry[0]) + ' (' + topZoneEntry[1] + ')' : '—') + '</span></div>' +
-        '<div class="med-summary-item"><span class="med-summary-label">Most Common Severity</span><span class="med-summary-val">' + (topSev ? topSev[0].charAt(0).toUpperCase() + topSev[0].slice(1) + ' (' + topSev[1] + ')' : '—') + '</span></div>' +
+        '<div class="med-summary-item"><span class="med-summary-label">Most Common Area</span><span class="med-summary-val">' + (topZoneEntry ? sanitize(topZoneEntry[0]) + ' (' + topZoneEntry[1] + ')' : '�') + '</span></div>' +
+        '<div class="med-summary-item"><span class="med-summary-label">Most Common Severity</span><span class="med-summary-val">' + (topSev ? topSev[0].charAt(0).toUpperCase() + topSev[0].slice(1) + ' (' + topSev[1] + ')' : '�') + '</span></div>' +
       '</div>' +
     '</div>';
   }
@@ -10887,7 +10896,7 @@
           '<span class="med-detail-zone">' + sanitize(currentInj.muscleGroup || 'Unknown') + (currentInj.muscleSub ? ' (' + sanitize(currentInj.muscleSub) + ')' : '') + '</span>' +
         '</div>' +
         (currentInj.description ? '<div class="med-detail-desc">' + sanitize(currentInj.description) + '</div>' : '') +
-        '<div class="med-detail-timing">Since ' + sinceStr + ' · ' + (days === 0 ? 'Today' : days + ' days') + '</div>' +
+        '<div class="med-detail-timing">Since ' + sinceStr + ' � ' + (days === 0 ? 'Today' : days + ' days') + '</div>' +
         returnHtml +
         (currentInj.notes ? '<div class="med-detail-notes">' + sanitize(currentInj.notes) + '</div>' : '') +
         '<div class="med-inj-actions" style="margin-top:.6rem;">' +
@@ -10941,7 +10950,7 @@
     const recurring = Object.entries(zoneInjCounts).filter(([, c]) => c >= 2);
     if (recurring.length) {
       recurringHtml = '<div class="med-recurring-alert">' +
-        recurring.map(([zone, c]) => '⚠️ Recurring: ' + sanitize(zone) + ' (' + c + ' injuries)').join('<br>') +
+        recurring.map(([zone, c]) => '?? Recurring: ' + sanitize(zone) + ' (' + c + ' injuries)').join('<br>') +
       '</div>';
     }
 
@@ -10964,12 +10973,12 @@
             '<span class="med-timeline-zone">' + sanitize(inj.muscleGroup || 'Injury') + (inj.muscleSub ? ' (' + sanitize(inj.muscleSub) + ')' : '') + '</span>' +
             '<span class="med-severity-badge med-severity-sm" style="background:' + (sevColors[inj.severity] || '#999') + ';">' + (inj.severity || 'unknown') + '</span>' +
           '</div>' +
-          '<div class="med-timeline-dates">' + startStr + ' – ' + endStr + ' · ' + days + 'd</div>' +
+          '<div class="med-timeline-dates">' + startStr + ' � ' + endStr + ' � ' + days + 'd</div>' +
         '</div>';
       }).join('');
     }
 
-    return '<div class="med-detail-back" id="med-back">← Medical</div>' +
+    return '<div class="med-detail-back" id="med-back">? Medical</div>' +
       '<div class="med-detail-header">' +
         '<div class="med-detail-player">' +
           '<span class="conv-pos-circles">' + posHtml + '</span>' +
@@ -11002,7 +11011,7 @@
     overlay.className = 'body-map-overlay';
     const modal = document.createElement('div');
     modal.className = 'body-map-modal med-logger-modal';
-    modal.innerHTML = '<div class="body-map-header"><span>🏥 Log Injury</span><button class="body-map-close">&times;</button></div>';
+    modal.innerHTML = '<div class="body-map-header"><span>?? Log Injury</span><button class="body-map-close">&times;</button></div>';
 
     // Scrollable content
     const content = document.createElement('div');
@@ -11012,7 +11021,7 @@
     const playerSection = document.createElement('div');
     playerSection.className = 'med-logger-field';
     playerSection.innerHTML = '<label>Player</label><select class="med-logger-select" id="med-log-player">' +
-      '<option value="">Select player…</option>' +
+      '<option value="">Select player�</option>' +
       players.map(p => '<option value="' + p.id + '"' + (p.id === preselectedPlayerId ? ' selected' : '') + '>' + sanitize(p.name) + '</option>').join('') +
     '</select>';
     content.appendChild(playerSection);
@@ -11082,7 +11091,7 @@
     // Notes
     const notesSection = document.createElement('div');
     notesSection.className = 'med-logger-field';
-    notesSection.innerHTML = '<label>Notes</label><textarea class="med-logger-textarea" id="med-log-notes" rows="2" placeholder="Additional notes…" maxlength="300"></textarea>';
+    notesSection.innerHTML = '<label>Notes</label><textarea class="med-logger-textarea" id="med-log-notes" rows="2" placeholder="Additional notes�" maxlength="300"></textarea>';
     content.appendChild(notesSection);
 
     // Save button
@@ -11138,10 +11147,10 @@
       } else {
         html += '<span class="body-map-group-label">' + sanitize(groups[0]) + '</span>';
       }
-      html += '<select class="body-map-sub-sel"><option value="">— General —</option>';
+      html += '<select class="body-map-sub-sel"><option value="">� General �</option>';
       (GROUP_SUBS[groups[0]] || []).forEach(s => { html += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>'; });
       html += '</select>';
-      html += '<input type="text" class="body-map-desc" placeholder="Describe injury…" maxlength="120">';
+      html += '<input type="text" class="body-map-desc" placeholder="Describe injury�" maxlength="120">';
       html += '</div>';
       choicePanel.innerHTML = html;
       selectedGroup = groups[0];
@@ -11151,7 +11160,7 @@
       if (groupSel) {
         groupSel.addEventListener('change', () => {
           selectedGroup = groupSel.value;
-          let opts = '<option value="">— General —</option>';
+          let opts = '<option value="">� General �</option>';
           (GROUP_SUBS[selectedGroup] || []).forEach(s => { opts += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>'; });
           subSel.innerHTML = opts;
         });
@@ -11205,10 +11214,10 @@
       // Update user fitness status
       const usrs = getUsers();
       const u = usrs.find(x => x.id === playerId);
-      if (u) { u.fitnessStatus = 'injured'; u.injuryNote = mGroup + (mSub ? ' (' + mSub + ')' : '') + (desc ? ' – ' + desc : ''); saveUsers(usrs); }
+      if (u) { u.fitnessStatus = 'injured'; u.injuryNote = mGroup + (mSub ? ' (' + mSub + ')' : '') + (desc ? ' � ' + desc : ''); saveUsers(usrs); }
       // Also update fa_injury_notes & zone for backwards compat
       const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
-      injNotes[playerId] = mGroup + (mSub ? ' (' + mSub + ')' : '') + (desc ? ' – ' + desc : '');
+      injNotes[playerId] = mGroup + (mSub ? ' (' + mSub + ')' : '') + (desc ? ' � ' + desc : '');
       localStorage.setItem('fa_injury_notes', JSON.stringify(injNotes));
       if (zoneIdx != null) {
         const zm = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
@@ -11219,7 +11228,7 @@
       addStaffNotification({
         type: 'training_avail',
         playerName: u ? u.name : '?',
-        detail: 'Injured – ' + (mGroup || 'Injury'),
+        detail: 'Injured � ' + (mGroup || 'Injury'),
         activity: 'Staff logged injury'
       });
 
@@ -11240,7 +11249,7 @@
     overlay.className = 'body-map-overlay';
     const modal = document.createElement('div');
     modal.className = 'body-map-modal med-edit-modal';
-    modal.innerHTML = '<div class="body-map-header"><span>✏️ Edit Injury' + (player ? ' — ' + sanitize(player.name) : '') + '</span><button class="body-map-close">&times;</button></div>';
+    modal.innerHTML = '<div class="body-map-header"><span>?? Edit Injury' + (player ? ' � ' + sanitize(player.name) : '') + '</span><button class="body-map-close">&times;</button></div>';
 
     const content = document.createElement('div');
     content.className = 'med-logger-content';
@@ -11331,7 +11340,7 @@
       });
     });
 
-    // Player card clicks → medical detail
+    // Player card clicks ? medical detail
     document.querySelectorAll('.med-player-card').forEach(card => {
       card.addEventListener('click', () => {
         medicalDetailPlayerId = card.dataset.playerId;
@@ -11340,7 +11349,7 @@
       });
     });
 
-    // Injury card player clicks → medical detail
+    // Injury card player clicks ? medical detail
     document.querySelectorAll('.med-injury-card').forEach(card => {
       card.addEventListener('click', e => {
         if (e.target.closest('button')) return; // don't navigate when clicking action buttons
@@ -11389,7 +11398,7 @@
         const body = pastToggle.closest('.med-past-card').querySelector('.med-past-body');
         const arrow = pastToggle.querySelector('.med-past-arrow');
         if (body) body.style.display = medicalPastExpanded ? '' : 'none';
-        if (arrow) arrow.textContent = medicalPastExpanded ? '▲' : '▼';
+        if (arrow) arrow.textContent = medicalPastExpanded ? '?' : '?';
       });
     }
   }
@@ -11543,7 +11552,7 @@
             <span class="notif-player">${sanitize(n.playerName || '?')}</span>
             <span class="notif-time">${fmtTs(n.timestamp)}</span>
           </div>
-          <div class="notif-row-detail">${sanitize(n.activity || '')}${n.detail ? ' — ' + sanitize(n.detail) : ''}</div>
+          <div class="notif-row-detail">${sanitize(n.activity || '')}${n.detail ? ' � ' + sanitize(n.detail) : ''}</div>
         </div>`;
       });
     }
@@ -11591,10 +11600,10 @@
       requestAnimationFrame(tick);
     });
 
-    // Convocatòria drag-and-drop
+    // Convocat�ria drag-and-drop
     bindConvocatoria();
 
-    // Roster player name click → staff player stats
+    // Roster player name click ? staff player stats
     $$('.roster-player-link').forEach(a => {
       a.addEventListener('click', e => {
         e.preventDefault();
@@ -11636,7 +11645,7 @@
         $$('.roster-right .rpe-chart-svg').forEach((svg, si) => {
           const old = snapCharts[si];
           if (!old) return;
-          // Dots – match by cx (same x = same date/week)
+          // Dots � match by cx (same x = same date/week)
           svg.querySelectorAll('.rpe-dot').forEach(c => {
             const cx = +c.getAttribute('cx');
             const prev = old.dotMap[cx];
@@ -11650,7 +11659,7 @@
               c.addEventListener('transitionend', () => { c.style.transition = ''; c.style.transform = ''; }, { once: true });
             }));
           });
-          // Lines – rebuild path each frame from interpolated dot positions
+          // Lines � rebuild path each frame from interpolated dot positions
           svg.querySelectorAll('.rpe-line').forEach(p => {
             const newD = p.getAttribute('d');
             // Extract data points: M start + C endpoints
@@ -11685,7 +11694,7 @@
               if (t < 1) requestAnimationFrame(frame);
             })();
           });
-          // ACWR bars – match by x-position
+          // ACWR bars � match by x-position
           svg.querySelectorAll('.acwr-bar-acute, .acwr-bar-chronic').forEach(r => {
             const x = +r.getAttribute('x');
             const prev = old.barMap[x];
@@ -11782,11 +11791,11 @@
         const session = getSession();
         const actLabel = card.querySelector('.action-label');
         const actDate = card.querySelector('.action-date');
-        const actText = (actLabel ? actLabel.textContent : '') + (actDate ? ' · ' + actDate.textContent : '');
+        const actText = (actLabel ? actLabel.textContent : '') + (actDate ? ' � ' + actDate.textContent : '');
         addStaffNotification({
           type: tag === 'match' ? 'match_rpe' : 'training_rpe',
           playerName: session ? session.name : '?',
-          detail: 'RPE ' + rpe + ' · ' + minutes + ' min',
+          detail: 'RPE ' + rpe + ' � ' + minutes + ' min',
           activity: actText
         });
         renderPage(getSession());
@@ -11812,7 +11821,7 @@
           </div>
           <div class="action-form">
             <div class="action-field"><label>Date</label><input type="text" class="reg-input action-extra-date md-datepicker" data-display-dmy data-allow-past placeholder="dd/mm/yyyy" readonly style="width:120px;cursor:pointer;"></div>
-            <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0–10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
+            <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0�10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
             <div class="action-field"><label>Minutes</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
             <button class="btn btn-primary btn-small action-extra-submit">Submit</button>
           </div>
@@ -11876,7 +11885,7 @@
           addStaffNotification({
             type: 'extra_training',
             playerName: session ? session.name : '?',
-            detail: 'RPE ' + rpe + ' · ' + minutes + ' min',
+            detail: 'RPE ' + rpe + ' � ' + minutes + ' min',
             activity: tag + ' (' + dateVal + ')'
           });
           renderPage(session);
@@ -11905,7 +11914,7 @@
         const maData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
         maData[key] = btn.dataset.mavail;
         localStorage.setItem('fa_match_availability', JSON.stringify(maData));
-        // Derive fitness status (injury this week + disponible → doubt)
+        // Derive fitness status (injury this week + disponible ? doubt)
         deriveFitnessStatus(session.id);
         // Staff notification
         const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
@@ -11914,7 +11923,7 @@
           type: 'match_avail',
           playerName: session ? session.name : '?',
           detail: btn.dataset.mavail === 'disponible' ? 'Disponible' : 'No Disponible',
-          activity: matchObj ? (matchObj.home + ' vs ' + matchObj.away + (matchObj.date ? ' · ' + matchObj.date : '')) : 'Match'
+          activity: matchObj ? (matchObj.home + ' vs ' + matchObj.away + (matchObj.date ? ' � ' + matchObj.date : '')) : 'Match'
         });
         renderPage(session);
         updateActionsBadge();
@@ -12050,7 +12059,7 @@
       });
     });
 
-    // Video link — open in browser popup window
+    // Video link � open in browser popup window
     $$('.detail-video-link').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
@@ -12230,7 +12239,7 @@
         const email = emailEl.value.trim().toLowerCase();
         if (!name || !email) { resultEl.textContent = 'Nom i email obligatoris.'; resultEl.hidden = false; return; }
         createClubBtn.disabled = true;
-        createClubBtn.textContent = 'Creant…';
+        createClubBtn.textContent = 'Creant�';
         try {
           const badgeFile = badgeEl.files && badgeEl.files[0] ? badgeEl.files[0] : null;
           const club = await createClub(name, email, badgeFile);
@@ -12275,8 +12284,8 @@
         if (btn) {
           const code = btn.dataset.code;
           navigator.clipboard.writeText(code).then(() => {
-            btn.textContent = '✓';
-            setTimeout(() => { btn.textContent = '📋'; }, 1500);
+            btn.textContent = '?';
+            setTimeout(() => { btn.textContent = '??'; }, 1500);
           }).catch(() => {
             prompt('Copia el codi:', code);
           });
@@ -12391,7 +12400,7 @@
     });
     sidebarOverlay.addEventListener('click', closeSidebar);
 
-    // ── Registrations: delegated auto-save (survives DOM re-renders) ──
+    // -- Registrations: delegated auto-save (survives DOM re-renders) --
     (function () {
       const content = document.getElementById('dashboard-content');
       if (!content) return;
@@ -12505,7 +12514,7 @@
       });
     })();
 
-    // ── Tactical board ↔ teams linking (delegated) ──
+    // -- Tactical board ? teams linking (delegated) --
     (function () {
       const content = document.getElementById('dashboard-content');
       if (!content) return;
@@ -12617,7 +12626,7 @@
       }
     });
 
-    // Handle foreground push notifications — show in-app toast
+    // Handle foreground push notifications � show in-app toast
     window.addEventListener('push-notification', (e) => {
       const { title, body } = e.detail;
       _showPushToast(title, body);

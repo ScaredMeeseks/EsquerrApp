@@ -289,6 +289,7 @@ a:hover { text-decoration: underline; }
   padding: 1.5rem; box-shadow: var(--shadow);
   margin-bottom: 1.5rem;
 }
+.card:last-child { margin-bottom: 0; }
 .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--primary-dark); }
 
 /* ===== Tables ===== */
@@ -1693,6 +1694,8 @@ line.tb-selected, rect.tb-selected { outline:none; filter:drop-shadow(0 0 3px #f
   margin-top: 3px;
 }
 .st-locked td:first-child { min-width: 135px; }
+/* Align all staff-training cells to top so date+day label doesn't push other columns down */
+#staff-training-body td { vertical-align: top; padding-top: .6rem; }
 .st-locked td { color: var(--text-secondary); }
 .input-error {
   border-color: var(--danger) !important;
