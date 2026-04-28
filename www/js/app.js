@@ -2076,7 +2076,7 @@
       cones: ('cones' in f) ? f.cones : []
     })) : [];
     const framesAttr = hasFrames ? " data-frames='" + sanitize(JSON.stringify(framesForAnim)).replace(/'/g, '&#39;') + "'" : '';
-    return '<div style="margin-bottom:1rem;"><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span></div>' +
+    return '<div style="margin-bottom:1rem;"><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + (b.formation ? ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span>' : '') + '</div>' +
       '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner">' +
       '<div class="tb-halfway"></div><div class="tb-center-circle"></div><div class="tb-center-spot"></div>' +
       '<div class="tb-penalty-left"></div><div class="tb-penalty-right"></div>' +
@@ -6333,8 +6333,7 @@
     // Save button (overwrites loaded board, or creates new if nothing loaded)
     const saveBtn = document.getElementById('tb-save');
     saveBtn?.addEventListener('click', () => {
-      const f = localStorage.getItem('fa_tactic_formation');
-      if (!f) { alert('Please select a formation first.'); return; }
+      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
@@ -6412,8 +6411,7 @@
 
     // Save As button
     document.getElementById('tb-save-as')?.addEventListener('click', () => {
-      const f = localStorage.getItem('fa_tactic_formation');
-      if (!f) { alert('Please select a formation first.'); return; }
+      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
@@ -6657,8 +6655,7 @@
     const addToTrainingBtn = document.getElementById('tb-add-to-training');
     addToTrainingBtn?.addEventListener('click', () => {
       if (!selectedTrainingVal) { alert('Please select a training.'); return; }
-      const f = localStorage.getItem('fa_tactic_formation');
-      if (!f) { alert('Please select a formation first.'); return; }
+      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
@@ -6719,8 +6716,7 @@
     const addToMatchBtn = document.getElementById('tb-add-to-match');
     addToMatchBtn?.addEventListener('click', () => {
       if (!selectedMatchVal) { alert('Please select a match.'); return; }
-      const f = localStorage.getItem('fa_tactic_formation');
-      if (!f) { alert('Please select a formation first.'); return; }
+      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');

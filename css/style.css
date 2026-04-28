@@ -289,7 +289,6 @@ a:hover { text-decoration: underline; }
   padding: 1.5rem; box-shadow: var(--shadow);
   margin-bottom: 1.5rem;
 }
-.card:last-child { margin-bottom: 0; }
 .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--primary-dark); }
 
 /* ===== Tables ===== */
