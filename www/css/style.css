@@ -325,17 +325,6 @@ tr:hover td { background: #f7f8fa; }
 }
 .empty-state .empty-icon { font-size: 3rem; margin-bottom: .8rem; }
 
-/* ===== Match Card ===== */
-.match-list { display: flex; flex-direction: column; gap: 1rem; }
-.match-card {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--card); border-radius: var(--radius);
-  padding: 1rem 1.5rem; box-shadow: var(--shadow);
-}
-.match-teams { font-weight: 700; font-size: 1rem; }
-.match-meta { font-size: .82rem; color: var(--text-secondary); }
-.match-score { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
-
 /* Score edit & goals */
 .match-score-edit { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .match-score-team { font-weight: 600; font-size: .95rem; }
@@ -396,14 +385,6 @@ tr:hover td { background: #f7f8fa; }
 .notif-time { font-size:.78rem; color:var(--text-secondary); margin-left:auto; white-space:nowrap; }
 .notif-row-detail { font-size:.82rem; color:var(--text-secondary); margin-top:.25rem; }
 .notif-new { background:rgba(251,140,0,.18); border-radius:8px; margin-left:-.5rem; margin-right:-.5rem; padding-left:.5rem; padding-right:.5rem; }
-
-/* ===== News ===== */
-.news-list { display: flex; flex-direction: column; gap: 1rem; }
-.news-item { border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-.news-item:last-child { border-bottom: none; }
-.news-item h3 { font-size: 1rem; margin-bottom: .3rem; }
-.news-item .news-date { font-size: .78rem; color: var(--text-secondary); margin-bottom: .4rem; }
-.news-item p { font-size: .88rem; color: var(--text-secondary); line-height: 1.5; }
 
 /* ===== Tactical Board (Coach) ===== */
 .tb-controls { display:flex; align-items:center; gap:.8rem; margin-bottom:1rem; flex-wrap:wrap; }
@@ -2446,8 +2427,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
     max-width: 100%; overflow-wrap: break-word; word-break: break-word;
   }
 
-  /* ── Match cards ── */
-  .match-card { padding: .7rem .8rem; flex-wrap: wrap; gap: .4rem; }
 }
 /* (Mobile rules moved to unified block at end of file) */
 

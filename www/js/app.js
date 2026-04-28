@@ -11,12 +11,23 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
+  let _usersCache = null, _usersCacheFrame = -1;
   function getUsers() {
-    return JSON.parse(localStorage.getItem('fa_users') || '[]');
+    const f = _usersCacheFrame;
+    if (_usersCache && f === _usersCacheFrame && f === (window._renderFrame || 0)) return _usersCache;
+    _usersCache = JSON.parse(localStorage.getItem('fa_users') || '[]');
+    _usersCacheFrame = window._renderFrame || 0;
+    return _usersCache;
   }
+  function invalidateUsersCache() { _usersCache = null; }
   function saveUsers(users) {
     localStorage.setItem('fa_users', JSON.stringify(users));
+    invalidateUsersCache();
   }
+  function localDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  const DAYS_CA = ['Dg','Dl','Dt','Dc','Dj','Dv','Ds'];
 
   /* Derive fitnessStatus from the chronological sequence of training answers.
      - Last answer is 'injured' → injured
@@ -97,7 +108,11 @@
 
   // ---------- Injury data migration ----------
   function migrateInjuryData() {
-    if (localStorage.getItem('fa_injuries')) return; // already migrated
+    if (localStorage.getItem('fa_injury_migration_done')) return;
+    if (localStorage.getItem('fa_injuries')) {
+      localStorage.setItem('fa_injury_migration_done', '1');
+      return;
+    }
     const users = getUsers();
     const players = users.filter(u => (u.roles || []).includes('player'));
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -162,6 +177,7 @@
       });
     });
     localStorage.setItem('fa_injuries', JSON.stringify(injuries));
+    localStorage.setItem('fa_injury_migration_done', '1');
   }
 
   // ---------- Session (backed by Firebase Auth + Firestore) ----------
@@ -750,6 +766,8 @@
 
   // ---------- Navigation ----------
   function navigate() {
+    window._renderFrame = (window._renderFrame || 0) + 1;
+    invalidateUsersCache();
     const session = getSession();
     if (!session) { showView('#view-login'); return; }
     // Users without a club must join one first (superuser skips — manages clubs from admin settings)
@@ -1560,7 +1578,6 @@
       .filter(k => k.startsWith(session.id + '_extra_'))
       .map(k => rpeData[k]);
 
-    const DAYS_CA = ['Dg','Dl','Dt','Dc','Dj','Dv','Ds'];
     function fmtDate(dateStr) {
       if (!dateStr) return '';
       const d = new Date(dateStr + 'T12:00:00');
@@ -2815,7 +2832,6 @@
       })()}`;
   }
 
-  const DAYS_CA = ['Dg','Dl','Dt','Dc','Dj','Dv','Ds'];
   function getSeasonWeek(dateStr) {
     const d = new Date(dateStr + 'T12:00:00');
     const year = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
@@ -2827,18 +2843,26 @@
   }
 
   // ===== Readiness Score Engine =====
+  let _readinessDataCache = null, _readinessDataFrame = -1;
+  function getReadinessData() {
+    const f = window._renderFrame || 0;
+    if (_readinessDataCache && _readinessDataFrame === f) return _readinessDataCache;
+    _readinessDataCache = {
+      rpeData: JSON.parse(localStorage.getItem('fa_player_rpe') || '{}'),
+      trainingList: JSON.parse(localStorage.getItem('fa_training') || '[]'),
+      matchesList: JSON.parse(localStorage.getItem('fa_matches') || '[]'),
+      availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
+      staffOverrides: JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}'),
+      matchAvailData: JSON.parse(localStorage.getItem('fa_match_availability') || '{}')
+    };
+    _readinessDataFrame = f;
+    return _readinessDataCache;
+  }
+
   function computeReadiness(playerId) {
-    const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-    const trainingList = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-    const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
+    const { rpeData, trainingList, matchesList, availData, staffOverrides, matchAvailData } = getReadinessData();
     const uid = playerId;
     const now = new Date();
-    function localDateStr(d) {
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
     const todayStr = localDateStr(now);
     const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
     const seasonStart = seasonYear + '-08-15';
@@ -3436,9 +3460,6 @@
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
 
-    function localDateStr(d) {
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
     const todayStr = localDateStr(now);
 
     // Season start: Aug 15 of current season year
@@ -3644,9 +3665,6 @@
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
 
-    function localDateStr(d) {
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
     const todayStr = localDateStr(now);
     const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
     const seasonStart = seasonYear + '-08-15';
@@ -3735,20 +3753,6 @@
       ${charts.uaWeek}`;
   }
 
-  // ----- Staff pages -----
-  function renderCoachStats() {
-    const stats = JSON.parse(localStorage.getItem('fa_player_stats') || '[]');
-    let rows = stats.map(p => `<tr>
-      <td>${sanitize(p.name)}</td><td>${p.pos}</td><td>${p.goals}</td><td>${p.assists}</td><td>${p.matches}</td><td>${p.rating}</td>
-    </tr>`).join('');
-    return `
-      <h2 class="page-title">Player Stats</h2>
-      <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Player</th><th>Pos</th><th>Goals</th><th>Assists</th><th>GP</th><th>Rating</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div></div>`;
-  }
-
   function lightenHex(hex, amt) {
     hex = hex.replace('#','');
     let r = Math.min(255, parseInt(hex.substr(0,2),16) + amt);
@@ -3800,20 +3804,7 @@
   }
 
   function renderTactics() {
-    const formations = {
-      '4-3-3':   [[50,50],[15,20],[15,40],[15,60],[15,80],[38,25],[38,50],[38,75],[62,15],[62,50],[62,85]],
-      '4-4-2':   [[50,50],[15,20],[15,40],[15,60],[15,80],[40,20],[40,40],[40,60],[40,80],[65,35],[65,65]],
-      '4-2-3-1': [[50,50],[15,20],[15,40],[15,60],[15,80],[32,35],[32,65],[55,20],[55,50],[55,80],[72,50]],
-      '3-5-2':   [[50,50],[15,30],[15,50],[15,70],[35,15],[35,38],[35,62],[35,85],[50,50],[65,35],[65,65]],
-      '3-4-3':   [[50,50],[15,30],[15,50],[15,70],[38,20],[38,40],[38,60],[38,80],[62,20],[62,50],[62,80]],
-      '4-1-4-1': [[50,50],[15,20],[15,40],[15,60],[15,80],[30,50],[50,20],[50,40],[50,60],[50,80],[72,50]],
-      '4-4-1-1': [[50,50],[15,20],[15,40],[15,60],[15,80],[38,20],[38,40],[38,60],[38,80],[58,50],[72,50]],
-      '5-3-2':   [[50,50],[15,15],[15,35],[15,55],[15,75],[15,95],[40,30],[40,50],[40,70],[65,35],[65,65]],
-      '4-5-1':   [[50,50],[15,20],[15,40],[15,60],[15,80],[38,10],[38,30],[38,50],[38,70],[38,90],[70,50]],
-      '3-4-1-2': [[50,50],[15,30],[15,50],[15,70],[35,20],[35,40],[35,60],[35,80],[55,50],[68,35],[68,65]]
-    };
-    // Goalkeeper always at the back
-    Object.values(formations).forEach(f => { f[0] = [5, 50]; });
+    const formations = TACTIC_FORMATIONS;
 
     const boardType = localStorage.getItem('fa_tactic_board_type') || '';
 
@@ -4176,18 +4167,7 @@
     const inner = field.querySelector('.tb-field-inner');
     const nameInput = document.getElementById('tb-board-name');
 
-    const formations = {
-      '4-3-3':   [[5,50],[15,20],[15,40],[15,60],[15,80],[38,25],[38,50],[38,75],[62,15],[62,50],[62,85]],
-      '4-4-2':   [[5,50],[15,20],[15,40],[15,60],[15,80],[40,20],[40,40],[40,60],[40,80],[65,35],[65,65]],
-      '4-2-3-1': [[5,50],[15,20],[15,40],[15,60],[15,80],[32,35],[32,65],[55,20],[55,50],[55,80],[72,50]],
-      '3-5-2':   [[5,50],[15,30],[15,50],[15,70],[35,15],[35,38],[35,62],[35,85],[50,50],[65,35],[65,65]],
-      '3-4-3':   [[5,50],[15,30],[15,50],[15,70],[38,20],[38,40],[38,60],[38,80],[62,20],[62,50],[62,80]],
-      '4-1-4-1': [[5,50],[15,20],[15,40],[15,60],[15,80],[30,50],[50,20],[50,40],[50,60],[50,80],[72,50]],
-      '4-4-1-1': [[5,50],[15,20],[15,40],[15,60],[15,80],[38,20],[38,40],[38,60],[38,80],[58,50],[72,50]],
-      '5-3-2':   [[5,50],[15,15],[15,35],[15,55],[15,75],[15,95],[40,30],[40,50],[40,70],[65,35],[65,65]],
-      '4-5-1':   [[5,50],[15,20],[15,40],[15,60],[15,80],[38,10],[38,30],[38,50],[38,70],[38,90],[70,50]],
-      '3-4-1-2': [[5,50],[15,30],[15,50],[15,70],[35,20],[35,40],[35,60],[35,80],[55,50],[68,35],[68,65]]
-    };
+    const formations = TACTIC_FORMATIONS;
 
     const isVertical = () => localStorage.getItem('fa_tactic_orient') === 'vertical';
     const useJsSwap = () => isVertical() && (localStorage.getItem('fa_tactic_board_type') || 'full') === 'full';
@@ -5185,9 +5165,6 @@
       if (coneToolBtn) coneToolBtn.classList.remove('tb-cone-tool-active');
       inner.style.cursor = '';
     }
-
-    // Arrowheads are now drawn as polygons via refreshArrowheads(). Markers removed.
-    function ensureMarker(color) { return ''; }
 
     if (arrowToolBtn) {
       arrowToolBtn.addEventListener('click', () => {
@@ -7893,8 +7870,8 @@
     if (!t) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
     const players = getUsers().filter(u => (u.roles || []).includes('player'));
     const locked = isTrainingLocked(t);
-    // Seed mock data for historical trainings
-    seedMockAvailability(t.date, players);
+    // Seed mock data only for demo/seeded environments
+    if (localStorage.getItem('fa_seeded')) seedMockAvailability(t.date, players);
     const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -8684,45 +8661,6 @@
       </div>`;
   }
 
-  function matchCardHtml(m) {
-    return `<div class="match-card">
-      <div><div class="match-teams">${matchLabel(m)}</div><div class="match-meta">${m.date} · ${m.time}</div></div>
-      <div class="match-score">${m.score || 'TBD'}</div>
-    </div>`;
-  }
-
-  function renderStandings() {
-    const standings = JSON.parse(localStorage.getItem('fa_standings') || '[]');
-    let rows = standings.map(s => `<tr>
-      <td>${s.pos}</td><td><strong>${sanitize(s.team)}</strong></td><td>${s.played}</td><td>${s.won}</td><td>${s.drawn}</td><td>${s.lost}</td><td>${s.gf}:${s.ga}</td><td><strong>${s.pts}</strong></td>
-    </tr>`).join('');
-    return `
-      <h2 class="page-title">League Standings</h2>
-      <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF:GA</th><th>Pts</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div></div>`;
-  }
-
-  // ----- Admin pages -----
-  function renderAdminHome() {
-    const users = getUsers();
-    const counts = { player: 0, staff: 0, none: 0 };
-    users.forEach(u => {
-      const r = u.roles || [];
-      if (r.includes('player')) counts.player++;
-      if (r.includes('staff')) counts.staff++;
-      if (r.length === 0) counts.none++;
-    });
-    return `
-      <h2 class="page-title">Admin Dashboard</h2>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value">${users.length}</div></div>
-        <div class="stat-card"><div class="stat-label">Players</div><div class="stat-value">${counts.player}</div></div>
-        <div class="stat-card"><div class="stat-label">Staff</div><div class="stat-value">${counts.staff}</div></div>
-        <div class="stat-card"><div class="stat-label">No Role Yet</div><div class="stat-value">${counts.none}</div></div>
-      </div>`;
-  }
 
   function renderAdminUsers() {
     const users = getUsers();
@@ -8914,14 +8852,6 @@
     }
   }
 
-  // ----- Shared helpers -----
-  function renderNextMatch() {
-    const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const next = matches.find(m => m.status === 'upcoming');
-    if (!next) return '<p style="color:var(--text-secondary)">No upcoming matches.</p>';
-    return matchCardHtml(next);
-  }
-
   // ---- Custom Mon-Sun date picker ----
   let dpEl = null, dpInput = null, dpYear = 0, dpMonth = 0;
   function openDatePicker(inp) {
@@ -9108,12 +9038,6 @@
         : `data-go-training="${a.tDate}"`;
       return `<div class="activity-item activity-item-link" ${dataAttr}>${badge}<div class="activity-info"><div class="activity-label">${a.label}</div><div class="activity-detail">${a.detail}</div></div>${convTag}${uniformIcons}${availHtml}${matchAvailHtml}</div>`;
     }).join('');
-  }
-
-  function getNextMatchLabel() {
-    const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const next = matches.find(m => m.status === 'upcoming');
-    return next ? matchLabel(next) : '—';
   }
 
   function sanitize(str) {
@@ -11520,7 +11444,6 @@
     // Track which are unread before marking
     const unreadIds = new Set(notifs.filter(n => !n.read).map(n => n.id));
 
-    const DAYS_CA = ['Dg','Dl','Dt','Dc','Dj','Dv','Ds'];
     function fmtTs(iso) {
       if (!iso) return '';
       const d = new Date(iso);
