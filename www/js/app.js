@@ -7864,7 +7864,10 @@
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
     const t = training.find(x => x.date === detailTrainingDate);
     if (!t) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
-    const players = getUsers().filter(u => (u.roles || []).includes('player'));
+    var curCat = getCurrentCategory();
+    var catPlayers = getUsers().filter(u => (u.roles || []).includes('player'));
+    if (curCat) catPlayers = catPlayers.filter(p => !p.category || p.category === curCat);
+    const players = stdTeamFilter === 'all' ? catPlayers : catPlayers.filter(p => (p.team || '') === stdTeamFilter);
     const locked = isTrainingLocked(t);
     // Seed mock data only for demo/seeded environments
     if (localStorage.getItem('fa_seeded')) seedMockAvailability(t.date, players);
@@ -7948,6 +7951,16 @@
       <div class="std-attendance-row">
       <div class="card" style="flex:1;min-width:0;">
         <div class="card-title">Player Attendance</div>
+        ${(() => {
+          const _stdLetters = getTeamLetters(curCat);
+          if (_stdLetters.length <= 1) return '';
+          const btnAll = stdTeamFilter === 'all' ? ' roster-team-btn-active' : '';
+          const letterBtns = _stdLetters.map(l => {
+            const ac = stdTeamFilter === l ? ' roster-team-btn-active' : '';
+            return '<button class="roster-team-btn std-team-btn' + ac + '" data-std-team="' + l + '">' + l + '</button>';
+          }).join('');
+          return '<div class="roster-team-filter"><button class="roster-team-btn std-team-btn' + btnAll + '" data-std-team="all">All</button>' + letterBtns + '</div>';
+        })()}
         <div class="table-wrap"><table class="matchday-table std-attendance-table">
           <thead><tr><th>Pos</th><th>Player</th><th class="center-cell">Status</th><th class="center-cell">Ready</th><th class="center-cell">A/C Ratio</th><th class="center-cell">Player Answer</th><th class="center-cell">Staff (editable)</th></tr></thead>
           <tbody>${playerRows}</tbody>
@@ -8174,6 +8187,7 @@
   }
 
   let rosterTeamFilter = 'all';
+  let stdTeamFilter = 'all';
   let staffViewPlayerId = null;
   let medicalDetailPlayerId = null;
   let medicalFilter = 'all';
@@ -11512,6 +11526,16 @@
         e.preventDefault();
         staffViewPlayerId = a.dataset.playerId;
         currentPage = 'staff-player-stats';
+        renderPage(getSession());
+      });
+    });
+
+    // Training detail team filter
+    $$('[data-std-team]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        stdTeamFilter = btn.dataset.stdTeam;
+        $$('.std-team-btn').forEach(b => b.classList.remove('roster-team-btn-active'));
+        btn.classList.add('roster-team-btn-active');
         renderPage(getSession());
       });
     });
