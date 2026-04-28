@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RPE Line Color Preview</title>
+<style>
+  body { font-family: 'Inter', sans-serif; background: #f5f5f5; padding: 2rem; }
+  .card { background: #fff; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h3 { margin: 0 0 .8rem; font-size: .95rem; color: #333; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<script>
+const colors = [
+  { name: '1. Dark slate', hex: '#455a64' },
+  { name: '2. Warm charcoal', hex: '#5d4037' },
+  { name: '3. Soft indigo', hex: '#5c6bc0' },
+  { name: '4. Muted teal', hex: '#00897b' },
+  { name: '5. Dark neutral', hex: '#616161' },
+];
+const pts = [
+  {x:30,y:120},{x:80,y:60},{x:130,y:90},{x:180,y:40},{x:230,y:70},
+  {x:280,y:30},{x:330,y:80},{x:380,y:50},{x:430,y:100},{x:480,y:45}
+];
+const dots = [
+  {i:0,type:'t'},{i:1,type:'t'},{i:2,type:'m'},{i:3,type:'t'},{i:4,type:'t'},
+  {i:5,type:'m'},{i:6,type:'t'},{i:7,type:'t'},{i:8,type:'t'},{i:9,type:'m'}
+];
+function spline(p) {
+  const t = 0.6;
+  let d = 'M'+p[0].x+','+p[0].y;
+  for (let i = 0; i < p.length-1; i++) {
+    const p0=p[i===0?0:i-1], p1=p[i], p2=p[i+1], p3=p[i+2<p.length?i+2:p.length-1];
+    const c1x=p1.x+(p2.x-p0.x)*t/3, c1y=p1.y+(p2.y-p0.y)*t/3;
+    const c2x=p2.x-(p3.x-p1.x)*t/3, c2y=p2.y-(p3.y-p1.y)*t/3;
+    d+=' C'+c1x.toFixed(1)+','+c1y.toFixed(1)+' '+c2x.toFixed(1)+','+c2y.toFixed(1)+' '+p2.x+','+p2.y;
+  }
+  return d;
+}
+colors.forEach(c => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = '<h3>'+c.name+' <code style="color:'+c.hex+'">'+c.hex+'</code></h3>'
+    + '<svg width="510" height="150" viewBox="0 0 510 150">'
+    + '<path d="'+spline(pts)+'" fill="none" stroke="'+c.hex+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    + dots.map(d => {
+        const p = pts[d.i];
+        return d.type === 'm'
+          ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="5" fill="#f57f17"/>'
+          : '<circle cx="'+p.x+'" cy="'+p.y+'" r="5" fill="#81c784"/>';
+      }).join('')
+    + '</svg>';
+  document.body.appendChild(card);
+});
+</script>
+</body>
+</html>

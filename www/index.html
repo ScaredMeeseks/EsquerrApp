@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Language" content="ca">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EsquerrApp</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#BD162C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EsquerrApp">
+  <link rel="apple-touch-icon" href="img/logo-192.png">
+
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Firebase 10.x Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+</head>
+<body>
+
+  <!-- ========== LOGIN VIEW ========== -->
+  <div id="view-login" class="view" hidden>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <h1>EsquerrApp</h1>
+          <p class="subtitle">Benvingut al millor club del barri</p>
+        </div>
+        <form id="form-login" autocomplete="off">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Contrasenya</label>
+            <div class="password-wrap">
+              <input type="password" id="login-password" placeholder="••••••••" required>
+              <button type="button" class="pw-eye" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div id="login-error" class="error-msg" hidden></div>
+          <button type="submit" class="btn btn-primary btn-full">A jugar!</button>
+        </form>
+        <p class="auth-switch">No tens un perfil? <a href="#" id="go-register">Fes-te'l!</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== REGISTER VIEW ========== -->
+  <div id="view-register" class="view" hidden>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <h1>EsquerrApp</h1>
+          <p class="subtitle">Ets a punt de fer història</p>
+        </div>
+        <form id="form-register" autocomplete="off">
+          <div class="form-group">
+            <label for="reg-name">Nom</label>
+            <input type="text" id="reg-name" placeholder="Marc García" required>
+          </div>
+          <div class="form-group">
+            <label for="reg-email">Email</label>
+            <input type="email" id="reg-email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Contrasenya</label>
+            <div class="password-wrap">
+              <input type="password" id="reg-password" placeholder="Min. 6 characters" minlength="6" required>
+              <button type="button" class="pw-eye" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="reg-password2">Confirma Contrasenya</label>
+            <div class="password-wrap">
+              <input type="password" id="reg-password2" placeholder="••••••••" minlength="6" required>
+              <button type="button" class="pw-eye" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="reg-team-code">Codi d'equip</label>
+            <input type="text" id="reg-team-code" placeholder="Ex: ESQ2026" maxlength="6" style="text-transform:uppercase;letter-spacing:.15em;font-weight:600;">
+          </div>
+          <div id="register-error" class="error-msg" hidden></div>
+          <button type="submit" class="btn btn-primary btn-full">Crea perfil</button>
+        </form>
+        <p class="auth-switch">Ja tens un perfil? <a href="#" id="go-login">Entra</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== JOIN CLUB VIEW (for existing users without a club) ========== -->
+  <div id="view-join-club" class="view" hidden>
+    <div class="auth-container">
+      <div class="auth-card" style="max-width:420px;">
+        <div class="auth-header">
+          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <h1>Uneix-te a un equip</h1>
+          <p class="subtitle">Introdueix el codi que t'ha donat el teu club</p>
+        </div>
+        <form id="form-join-club" autocomplete="off">
+          <div class="form-group">
+            <label for="join-team-code">Codi d'equip</label>
+            <input type="text" id="join-team-code" placeholder="Ex: ESQ2026" maxlength="6" required style="text-transform:uppercase;letter-spacing:.15em;font-weight:600;font-size:1.3rem;text-align:center;">
+          </div>
+          <div id="join-club-error" class="error-msg" hidden></div>
+          <button type="submit" class="btn btn-primary btn-full">Unir-me</button>
+        </form>
+        <button id="btn-join-logout" class="btn btn-small btn-outline" style="margin-top:1rem;width:100%;">Tancar sessió</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TEAM SETUP VIEW (Team Lead first-time config) ========== -->
+  <div id="view-team-setup" class="view" hidden>
+    <div class="auth-container">
+      <div class="auth-card" style="max-width:560px;">
+        <div class="auth-header">
+          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <h1>Configura el teu club</h1>
+          <p class="subtitle">Activa les categories i equips del teu club</p>
+        </div>
+        <div id="team-setup-categories"></div>
+        <div id="team-setup-fcf" hidden>
+          <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);">Enllaços FCF <span style="font-weight:400;font-size:.8rem;">(opcional)</span></h3>
+          <div id="team-setup-fcf-inputs"></div>
+        </div>
+        <div id="team-setup-schedules" hidden>
+          <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);">Horaris per defecte</h3>
+          <div id="team-setup-schedule-inputs"></div>
+        </div>
+        <div id="team-setup-error" class="error-msg" hidden></div>
+        <button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;">Desar i continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PROFILE SETUP VIEW ========== -->
+  <div id="view-profile-setup" class="view" hidden>
+    <div class="auth-container">
+      <div class="auth-card" style="max-width:480px;">
+        <div class="auth-header">
+          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <h1>Welcome!</h1>
+          <p class="subtitle">Set up your profile to get started</p>
+        </div>
+        <form id="form-profile-setup" autocomplete="off">
+          <div class="profile-pic-upload">
+            <div class="profile-pic-preview" id="profile-pic-preview">
+              <span class="profile-pic-placeholder">📷</span>
+            </div>
+            <label class="btn btn-outline btn-small" style="margin-top:.6rem;">
+              Upload Photo
+              <input type="file" id="profile-pic-input" accept="image/*" hidden>
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="setup-name">Display Name</label>
+            <input type="text" id="setup-name" placeholder="Your name" required>
+          </div>
+          <div class="form-group">
+            <label for="setup-dob">Date of Birth</label>
+            <input type="text" id="setup-dob" class="md-datepicker" data-display-dmy data-allow-past data-typeable placeholder="dd/mm/yyyy" style="cursor:pointer;" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Continue</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== ROLE SELECTION VIEW ========== -->
+  <div id="view-roles" class="view" hidden>
+    <div class="roles-container">
+      <div class="roles-header">
+        <h1>Choose Your Role</h1>
+        <p id="roles-subtitle">Select how you want to use EsquerrApp</p>
+      </div>
+      <!-- Regular user: pick one -->
+      <div id="roles-pick-one" class="roles-grid">
+        <div class="role-card" data-role="player">
+          <div class="role-icon">🏃</div>
+          <h2>Player</h2>
+          <p>View your training schedule, track personal stats, and see the team roster.</p>
+          <button class="btn btn-primary btn-full btn-select-role" data-role="player">Select</button>
+        </div>
+        <div class="role-card" data-role="staff">
+          <div class="role-icon">📋</div>
+          <h2>Staff</h2>
+          <p>Manage training sessions, review player stats, and plan match tactics.</p>
+          <button class="btn btn-primary btn-full btn-select-role" data-role="staff">Select</button>
+        </div>
+      </div>
+      <!-- Admin: pick one or both -->
+      <div id="roles-admin-pick" class="roles-grid" hidden>
+        <div class="role-card role-toggle-card" data-role="player" id="admin-toggle-player">
+          <div class="role-icon">🏃</div>
+          <h2>Player</h2>
+          <p>View your training schedule, track personal stats, and see the team roster.</p>
+          <label class="toggle-label"><input type="checkbox" id="chk-player" value="player"> Enable</label>
+        </div>
+        <div class="role-card role-toggle-card" data-role="staff" id="admin-toggle-staff">
+          <div class="role-icon">📋</div>
+          <h2>Staff</h2>
+          <p>Manage training sessions, review player stats, and plan match tactics.</p>
+          <label class="toggle-label"><input type="checkbox" id="chk-staff" value="staff"> Enable</label>
+        </div>
+        <div class="roles-confirm" style="grid-column:1/-1;text-align:center;margin-top:.5rem;">
+          <button class="btn btn-primary" id="btn-confirm-admin-roles">Continue to Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DASHBOARD VIEW ========== -->
+  <div id="view-dashboard" class="view" hidden>
+    <!-- Top Nav -->
+    <nav class="topnav">
+      <div class="topnav-left">
+        <span class="topnav-logo"><img src="img/logo.png" alt="Logo" class="topnav-logo-img"> EsquerrApp</span>
+      </div>
+      <div class="topnav-right">
+        <span id="nav-user-name" class="nav-user"></span>
+        <span id="nav-user-badges" class="nav-badges"></span>
+        <button id="btn-logout" class="btn btn-small btn-danger">Logout</button>
+      </div>
+    </nav>
+
+    <!-- Sidebar + Content -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="dashboard-layout">
+      <aside id="sidebar" class="sidebar">
+        <!-- Filled by JS based on role -->
+      </aside>
+      <main id="dashboard-content" class="dashboard-content">
+        <!-- Filled by JS based on role + page -->
+      </main>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/push.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed:', err));
+    }
+  </script>
+</body>
+</html>

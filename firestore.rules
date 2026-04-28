@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if the current user is the SuperUser
+    function isSuperUser() {
+      return request.auth != null && request.auth.token.email == 'marna96@gmail.com';
+    }
+
+    // Helper: get current user's profile doc
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Helper: check if user belongs to a specific team
+    function belongsToTeam(teamId) {
+      return request.auth != null && userDoc().teamId == teamId;
+    }
+
+    // Helper: check if user is team lead for a club
+    function isTeamLeadOf(clubId) {
+      return request.auth != null && userDoc().teamId == clubId && userDoc().isTeamLead == true;
+    }
+
+    // ── Users ──
+    match /users/{uid} {
+      allow read:  if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      // Owner, superuser, or a team-mate (staff updating category/roles via registrations)
+      allow update: if request.auth != null && (
+        request.auth.uid == uid
+        || isSuperUser()
+        || (userDoc().teamId != null && userDoc().teamId == get(/databases/$(database)/documents/users/$(uid)).data.teamId)
+      );
+
+      match /tokens/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // ── Teams ──
+    match /teams/{teamId} {
+      allow read: if request.auth != null && (belongsToTeam(teamId) || isSuperUser());
+      allow create: if request.auth != null && belongsToTeam(teamId);
+      allow update: if request.auth != null && (belongsToTeam(teamId) || isSuperUser());
+
+      match /data/{key} {
+        allow read:  if request.auth != null && (belongsToTeam(teamId) || isSuperUser());
+        allow write: if request.auth != null && (belongsToTeam(teamId) || isSuperUser());
+      }
+
+      match /pushQueue/{docId} {
+        allow create: if request.auth != null && belongsToTeam(teamId);
+        allow read:   if false;
+        allow update, delete: if false;
+      }
+    }
+
+    // ── Clubs ──
+    match /clubs/{clubId} {
+      // Any authenticated user can read (needed for code lookup at registration)
+      allow read:  if request.auth != null;
+      // Only SuperUser can create clubs
+      allow create: if isSuperUser();
+      // SuperUser or the club's Team Lead can update
+      allow update: if isSuperUser() || isTeamLeadOf(clubId);
+      // Only SuperUser can delete
+      allow delete: if isSuperUser();
+    }
+  }
+}

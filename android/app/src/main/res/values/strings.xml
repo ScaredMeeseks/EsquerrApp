@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EsquerrApp</string>
+    <string name="title_activity_main">EsquerrApp</string>
+    <string name="package_name">com.esquerrapp.app</string>
+    <string name="custom_url_scheme">com.esquerrapp.app</string>
+</resources>

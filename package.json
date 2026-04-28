@@ -1,0 +1,20 @@
+{
+  "name": "football-app",
+  "version": "1.0.0",
+  "main": "sw.js",
+  "scripts": {
+    "build:www": "powershell -Command \"Remove-Item www -Recurse -Force -ErrorAction SilentlyContinue; New-Item www -ItemType Directory -Force | Out-Null; $exclude=@('android','node_modules','www','.git','package.json','package-lock.json','capacitor.config.json'); Get-ChildItem . -Exclude $exclude | ForEach-Object { Copy-Item $_.FullName www\\$($_.Name) -Recurse -Force }\"",
+    "cap:sync": "npm run build:www && npx cap copy android && npx cap update android",
+    "cap:open": "npx cap open android",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^7.6.1",
+    "@capacitor/core": "^8.3.0"
+  }
+}

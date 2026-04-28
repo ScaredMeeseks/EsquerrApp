@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Font Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800&family=Oswald:wght@700&display=swap" rel="stylesheet">
+<style>
+body { font-family: sans-serif; background: #2e7d32; padding: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; }
+.option { background: #fff; border-radius: 12px; padding: 1.5rem; text-align: center; width: 220px; }
+.option h3 { margin: 0 0 1rem; font-size: .9rem; color: #333; }
+.circles { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.circle {
+  width: 34px; height: 34px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  border: 2px solid rgba(0,0,0,.3); color: #222; font-weight: 800; font-size: .9rem;
+}
+.white { background: #fff; }
+.red { background: #e53935; color: #fff; }
+.blue { background: #1e88e5; color: #fff; }
+.f1 { font-family: -apple-system, 'Segoe UI', sans-serif; }
+.f2 { font-family: 'Courier New', monospace; }
+.f3 { font-family: 'Oswald', 'Arial Narrow', Impact, sans-serif; }
+.f4 { font-family: 'Nunito', 'Rounded Mplus 1c', sans-serif; }
+</style></head><body>
+<div class="option">
+  <h3>1. Default (System)</h3>
+  <div class="circles">
+    <div class="circle white f1">1</div><div class="circle white f1">7</div>
+    <div class="circle white f1">10</div><div class="circle red f1">3</div>
+    <div class="circle blue f1">22</div><div class="circle red f1">9</div>
+  </div>
+</div>
+<div class="option">
+  <h3>2. Monospace</h3>
+  <div class="circles">
+    <div class="circle white f2">1</div><div class="circle white f2">7</div>
+    <div class="circle white f2">10</div><div class="circle red f2">3</div>
+    <div class="circle blue f2">22</div><div class="circle red f2">9</div>
+  </div>
+</div>
+<div class="option">
+  <h3>3. Sporty (Oswald)</h3>
+  <div class="circles">
+    <div class="circle white f3">1</div><div class="circle white f3">7</div>
+    <div class="circle white f3">10</div><div class="circle red f3">3</div>
+    <div class="circle blue f3">22</div><div class="circle red f3">9</div>
+  </div>
+</div>
+<div class="option">
+  <h3>4. Rounded (Nunito)</h3>
+  <div class="circles">
+    <div class="circle white f4">1</div><div class="circle white f4">7</div>
+    <div class="circle white f4">10</div><div class="circle red f4">3</div>
+    <div class="circle blue f4">22</div><div class="circle red f4">9</div>
+  </div>
+</div>
+</body></html>
