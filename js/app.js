@@ -1799,7 +1799,7 @@
     var eyeIcon = isHidden ? '👁️‍🗨️' : '👁️';
     var eyeTitle = isHidden ? 'Mostrar classificació' : 'Amagar classificació';
     var html = '<div class="league-snippet card' + (isHidden ? ' league-hidden' : '') + '">';
-    html += '<div class="card-title" style="font-size:.82rem;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between;">⚽ ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
+    html += '<div class="card-title" style="font-size:.82rem;' + (isHidden ? 'margin-bottom:0;' : 'margin-bottom:.5rem;') + 'display:flex;align-items:center;justify-content:space-between;">⚽ ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
     if (!isHidden) {
       html += '<div class="league-scroll" id="' + snippetId + '"><table class="league-tbl"><thead><tr><th>P</th><th></th><th>Club</th><th>Pts</th><th>J</th><th>F</th><th>C</th></tr></thead><tbody>';
       useRows.forEach(function(r) {
