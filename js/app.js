@@ -769,19 +769,27 @@
 
   // #region Navigation, Team Setup & Profile
   // ---------- Navigation ----------
+  function _hideSplash() {
+    if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.SplashScreen) {
+      Capacitor.Plugins.SplashScreen.hide();
+    }
+  }
+
   function navigate() {
     window._renderFrame = (window._renderFrame || 0) + 1;
     invalidateUsersCache();
     const session = getSession();
-    if (!session) { showView('#view-login'); return; }
+    if (!session) { showView('#view-login'); _hideSplash(); return; }
     // Users without a club must join one first (superuser skips — manages clubs from admin settings)
     if (!session.isAdmin && (!session.teamId || session.teamId === 'none' || session.teamId === 'default')) {
       showView('#view-join-club');
+      _hideSplash();
       return;
     }
     // Profile setup for new users
     if (!session.profileSetupDone) {
       showProfileSetup(session);
+      _hideSplash();
       return;
     }
     // Team lead first-time setup (categories not yet configured)
@@ -790,15 +798,18 @@
       const anyEnabled = Object.values(cats).some(c => c && c.enabled);
       if (!anyEnabled) {
         showTeamSetup();
+        _hideSplash();
         return;
       }
     }
     if (!session.roles || session.roles.length === 0) {
       showRoleSelection(session);
+      _hideSplash();
       return;
     }
     showView('#view-dashboard');
     renderDashboard(session);
+    _hideSplash();
   }
 
   // ---------- Join Club ----------

@@ -17,6 +17,7 @@
     "@capacitor/cli": "^7.6.1",
     "@capacitor/core": "^8.3.0",
     "@capacitor/local-notifications": "^8.0.0",
-    "@capacitor/push-notifications": "^8.0.0"
+    "@capacitor/push-notifications": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0"
   }
 }
