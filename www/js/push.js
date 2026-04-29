@@ -54,7 +54,7 @@ const Push = (() => {
       }
     });
 
-    // Foreground notification received
+    // Foreground notification received → show system notification via LocalNotifications
     PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('Push: foreground notification', JSON.stringify(notification));
       const data = notification.data || {};
@@ -62,6 +62,23 @@ const Push = (() => {
       const body = data.body || notification.body || '';
       const type = data.type || 'general';
 
+      // Show a real system notification (status bar) even while app is open
+      const LocalNotifications = Capacitor.Plugins.LocalNotifications;
+      if (LocalNotifications) {
+        LocalNotifications.schedule({
+          notifications: [{
+            id: Date.now() % 2147483647,
+            title: title,
+            body: body,
+            smallIcon: 'ic_notification',
+            largeIcon: 'ic_launcher',
+            channelId: 'esquerrapp_default',
+            extra: data
+          }]
+        }).catch(e => console.warn('Push: local notification error:', e));
+      }
+
+      // Also dispatch in-app event for toast
       window.dispatchEvent(new CustomEvent('push-notification', {
         detail: { title, body, type, data }
       }));
