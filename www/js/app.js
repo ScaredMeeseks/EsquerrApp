@@ -1754,7 +1754,9 @@
           if (rows.length === 0) return;
           _leagueCache[league.id] = rows;
           try { localStorage.setItem('fa_league_cache', JSON.stringify(_leagueCache)); } catch(e) {}
-          applyLeagueRows(container, rows);
+          // Re-query DOM in case page was re-rendered while fetch was in flight
+          var freshContainer = document.getElementById(league.id);
+          if (freshContainer) applyLeagueRows(freshContainer, rows);
         })
         .catch(function() { /* keep current data on error */ });
     });

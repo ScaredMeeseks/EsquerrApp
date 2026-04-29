@@ -110,11 +110,6 @@ async function sendToTokens(tokenEntries, payload) {
     data: payload,
     android: {
       priority: "high",
-      notification: {
-        icon: "ic_notification",
-        color: "#1a1a2e",
-        channelId: "esquerrapp_default",
-      },
     },
     webpush: {
       headers: {"Urgency": "high"},

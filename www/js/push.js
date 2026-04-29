@@ -33,6 +33,16 @@ const Push = (() => {
     }
     console.log('Push: native plugin found, setting up listeners');
 
+    // Create notification channel (required on Android 8+)
+    PushNotifications.createChannel({
+      id: 'esquerrapp_default',
+      name: 'EsquerrApp',
+      description: 'Notificacions de EsquerrApp',
+      importance: 5,
+      visibility: 1,
+      vibration: true
+    }).catch(e => console.warn('Push: channel creation error:', e));
+
     // Listen for registration success → save token
     PushNotifications.addListener('registration', async (tokenData) => {
       console.log('Push: native token received', tokenData.value?.slice(0, 20) + '...');
@@ -70,8 +80,6 @@ const Push = (() => {
             id: Date.now() % 2147483647,
             title: title,
             body: body,
-            smallIcon: 'ic_notification',
-            largeIcon: 'ic_launcher',
             channelId: 'esquerrapp_default',
             extra: data
           }]
