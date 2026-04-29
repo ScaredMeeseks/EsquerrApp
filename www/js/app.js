@@ -769,6 +769,8 @@
 
   // #region Navigation, Team Setup & Profile
   // ---------- Navigation ----------
+  var _openAvailDates = new Set();
+
   function _hideSplash() {
     var el = document.getElementById('app-splash');
     if (el) {
@@ -8968,8 +8970,10 @@
         const tObj = training.find(tr => tr.date === a.tDate);
         const tLocked = tObj ? isTrainingLocked(tObj) : false;
         const key = session.id + '_' + a.tDate;
-        const chosen = availData[key] || (tLocked ? 'na' : 'yes');
-        if (chosen) {
+        const stored = availData[key];
+        const chosen = stored || (tLocked ? 'na' : 'yes');
+        const forceOpen = _openAvailDates.has(a.tDate);
+        if (chosen && !forceOpen) {
           const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
           if (tLocked) {
@@ -11857,6 +11861,7 @@
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         availData[key] = val;
         localStorage.setItem('fa_training_availability', JSON.stringify(availData));
+        DB.save('fa_training_availability');
         // If answering non-injured, clear any injury data and re-derive fitness
         const injNotes2 = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
         if (injNotes2[session.id]) {
@@ -11867,6 +11872,7 @@
           if (u2) { u2.injuryNote = ''; saveUsers(users2); }
         }
         deriveFitnessStatus(session.id);
+        _openAvailDates.delete(date);
         // Staff notification
         const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
         const tObj = training.find(t => t.date === date);
@@ -11886,13 +11892,13 @@
       badge.addEventListener('click', (e) => {
         e.stopPropagation();
         const date = badge.dataset.availDate;
+        if (!date) return;
         const session = getSession();
         const key = session.id + '_' + date;
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         const wasInjured = availData[key] === 'injured';
         delete availData[key];
         localStorage.setItem('fa_training_availability', JSON.stringify(availData));
-        // If was injured, clear injury note and re-derive fitness
         if (wasInjured) {
           const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
           delete injNotes[session.id];
@@ -11902,36 +11908,8 @@
           if (u) { u.fitnessStatus = 'fit'; u.injuryNote = ''; saveUsers(users); }
           deriveFitnessStatus(session.id);
         }
-        // Replace badge with buttons inline (avoids re-render showing default again)
-        const btnsDiv = document.createElement('div');
-        btnsDiv.className = 'avail-btns';
-        btnsDiv.dataset.availDate = date;
-        btnsDiv.innerHTML = '<button class="avail-btn avail-yes" data-avail="yes">Yes</button><button class="avail-btn avail-late" data-avail="late">Late</button><button class="avail-btn avail-no" data-avail="no">No</button><button class="avail-btn avail-injured" data-avail="injured">Injured</button>';
-        badge.replaceWith(btnsDiv);
-        // Bind click handlers on new buttons (use capture to fire before parent)
-        btnsDiv.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          ev.stopImmediatePropagation();
-          const btn = ev.target.closest('.avail-btn');
-          if (!btn) return;
-          const val = btn.dataset.avail;
-          const ad = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-          ad[key] = val;
-          localStorage.setItem('fa_training_availability', JSON.stringify(ad));
-          DB.save('fa_training_availability');
-          if (val === 'injured') deriveFitnessStatus(session.id);
-          const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-          const tObj = training.find(t => t.date === date);
-          const answerMap = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured' };
-          addStaffNotification({
-            type: 'training_avail',
-            playerName: session ? session.name : '?',
-            detail: answerMap[val] || val,
-            activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
-          });
-          renderPage(session);
-          updateActionsBadge();
-        }, true);
+        _openAvailDates.add(date);
+        renderPage(session);
       });
     });
 
