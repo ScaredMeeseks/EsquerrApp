@@ -1495,19 +1495,13 @@
       return !rpeData[session.id + '_match_' + m.id];
     }).length;
     const todayStr = now.toISOString().slice(0, 10);
-    const ta = training.filter(t => {
-      if (!t.date || !t.time) return false;
-      if (t.date < todayStr) return false;
-      if (isTrainingLocked(t)) return false;
-      return !availData[session.id + '_' + t.date];
-    }).length;
     const ma = matches.filter(m => {
       if (!m.date) return false;
       if (m.date < todayStr) return false;
       if (sentData[m.id]) return false;
       return !matchAvailData[session.id + '_' + m.id];
     }).length;
-    return pt + pm + ta + ma;
+    return pt + pm + ma;
   }
 
   function renderPlayerActions() {
@@ -1545,14 +1539,6 @@
       const key = session.id + '_match_' + m.id;
       return !rpeData[key];
     });
-
-    // Pending training availability: future, not locked, no answer yet
-    const pendingTrainingAvail = training.filter(t => {
-      if (!t.date || !t.time) return false;
-      if (t.date < todayStr) return false;
-      if (isTrainingLocked(t)) return false;
-      return !availData[session.id + '_' + t.date];
-    }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     // Pending match availability: future, conv not sent, no answer yet
     const pendingMatchAvail = matches.filter(m => {
@@ -1597,21 +1583,6 @@
       </div>`;
     });
 
-    // Availability cards for training
-    pendingTrainingAvail.forEach(t => {
-      pendingHtml += `<div class="action-card action-avail-card" data-avail-type="training" data-avail-date="${t.date}">
-        <div class="action-header"><span class="badge badge-green">Training</span><span class="action-date">${fmtDate(t.date)} · ${t.time}</span></div>
-        <div class="action-label">${sanitize(t.focus || 'Training')}</div>
-        <div class="action-avail-prompt">Attendance?</div>
-        <div class="avail-btns" data-avail-date="${t.date}">
-          <button class="avail-btn avail-yes" data-avail="yes">Yes</button>
-          <button class="avail-btn avail-late" data-avail="late">Late</button>
-          <button class="avail-btn avail-no" data-avail="no">No</button>
-          <button class="avail-btn avail-injured" data-avail="injured">Injured</button>
-        </div>
-      </div>`;
-    });
-
     // Availability cards for matches
     pendingMatchAvail.forEach(m => {
       pendingHtml += `<div class="action-card action-avail-card" data-avail-type="match" data-mavail-match="${m.id}">
@@ -1626,7 +1597,7 @@
     });
 
     if (!pendingHtml) pendingHtml = '<p style="color:var(--text-secondary)">No pending actions.</p>';
-    const pendingCount = pendingTraining.length + pendingMatches.length + pendingTrainingAvail.length + pendingMatchAvail.length;
+    const pendingCount = pendingTraining.length + pendingMatches.length + pendingMatchAvail.length;
 
     return `
       <h2 class="page-title">Actions</h2>
@@ -7706,7 +7677,7 @@
     if (staffVal) return staffVal;
     const playerVal = availData[key];
     if (playerVal) return playerVal;
-    return locked ? 'na' : null;
+    return locked ? 'na' : 'yes';
   }
 
   function buildDetailDonut(trainingDate, players, locked) {
@@ -8981,7 +8952,7 @@
         const tObj = training.find(tr => tr.date === a.tDate);
         const tLocked = tObj ? isTrainingLocked(tObj) : false;
         const key = session.id + '_' + a.tDate;
-        const chosen = availData[key] || (tLocked ? 'na' : null);
+        const chosen = availData[key] || (tLocked ? 'na' : 'yes');
         if (chosen) {
           const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };

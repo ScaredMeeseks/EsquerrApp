@@ -46,16 +46,23 @@ function parseMadridDate(dateStr, timeStr) {
 
 // ── Helper: get FCM tokens for users ──
 async function getTokensForUsers(userIds) {
-  const tokens = [];
+  const entries = []; // {token, uid}
   for (const uid of userIds) {
     const snap = await db.collection("users").doc(uid)
         .collection("tokens").get();
     snap.forEach((doc) => {
-      if (doc.data().token) tokens.push(doc.data().token);
+      if (doc.data().token) entries.push({token: doc.data().token, uid});
     });
   }
-  const unique = [...new Set(tokens)];
-  logger.info("getTokensForUsers", {userIds, tokenCount: unique.length});
+  // Deduplicate by token
+  const seen = new Set();
+  const unique = entries.filter((e) => {
+    if (seen.has(e.token)) return false;
+    seen.add(e.token);
+    return true;
+  });
+  logger.info("getTokensForUsers", {userIds,
+    tokenCount: unique.length});
   return unique;
 }
 
@@ -90,7 +97,8 @@ async function getAllTeamMembers(teamId) {
 }
 
 // ── Helper: send FCM to tokens, clean up stale ones ──
-async function sendToTokens(tokens, payload) {
+async function sendToTokens(tokenEntries, payload) {
+  const tokens = tokenEntries.map((e) => e.token);
   logger.info("sendToTokens", {tokenCount: tokens.length, payload});
   if (!tokens.length) return;
   const response = await fcm.sendEachForMulticast({
@@ -102,22 +110,36 @@ async function sendToTokens(tokens, payload) {
       fcmOptions: {link: "/"},
     },
   });
-  // Remove invalid tokens
+  logger.info("sendToTokens result", {
+    successCount: response.successCount,
+    failureCount: response.failureCount,
+  });
+  // Remove invalid tokens (look up by uid, no collectionGroup needed)
   if (response.failureCount > 0) {
-    const stale = [];
+    const batch = db.batch();
+    let staleCount = 0;
     response.responses.forEach((resp, i) => {
       if (!resp.success &&
         (resp.error?.code === "messaging/invalid-registration-token" ||
          resp.error?.code === "messaging/registration-token-not-registered")) {
-        stale.push(tokens[i]);
+        const entry = tokenEntries[i];
+        if (entry) {
+          batch.delete(
+              db.collection("users").doc(entry.uid)
+                  .collection("tokens").doc(entry.token));
+          staleCount++;
+        }
+      } else if (!resp.success) {
+        logger.warn("FCM send failed for token", {
+          token: tokens[i]?.slice(0, 20) + "...",
+          error: resp.error?.code,
+          message: resp.error?.message,
+        });
       }
     });
-    if (stale.length) {
-      const batch = db.batch();
-      const allUsers = await db.collectionGroup("tokens")
-          .where("token", "in", stale.slice(0, 10)).get();
-      allUsers.forEach((doc) => batch.delete(doc.ref));
+    if (staleCount > 0) {
       await batch.commit();
+      logger.info("Cleaned up stale tokens", {staleCount});
     }
   }
 }
@@ -135,19 +157,19 @@ exports.onPushQueueCreate = onDocumentCreated({
   const teamId = event.params.teamId;
   logger.info("onPushQueueCreate fired", {teamId, data});
 
-  let tokens = [];
+  let tokenEntries = [];
 
   if (data.targetPlayers && data.targetPlayers.length) {
-    tokens = await getTokensForUsers(data.targetPlayers);
+    tokenEntries = await getTokensForUsers(data.targetPlayers);
   } else if (data.targetRole) {
     const uids = await getTeamMembersByRole(teamId, data.targetRole);
-    tokens = await getTokensForUsers(uids);
+    tokenEntries = await getTokensForUsers(uids);
   } else {
     const uids = await getAllTeamMembers(teamId);
-    tokens = await getTokensForUsers(uids);
+    tokenEntries = await getTokensForUsers(uids);
   }
 
-  if (tokens.length) {
+  if (tokenEntries.length) {
     const payload = {
       title: data.title || "EsquerrApp",
       body: data.body || "",
@@ -157,18 +179,25 @@ exports.onPushQueueCreate = onDocumentCreated({
     if (data.matchId) payload.matchId = String(data.matchId);
     if (data.url) payload.url = data.url;
 
-    await sendToTokens(tokens, payload);
+    await sendToTokens(tokenEntries, payload);
+  } else {
+    logger.warn("No tokens found, skipping send");
   }
 
-  await snap.ref.update({
-    status: "sent",
-    sentAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  try {
+    await snap.ref.update({
+      status: "sent",
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (err) {
+    logger.error("Failed to update pushQueue status", {error: err.message});
+  }
 });
 
 // ════════════════════════════════════════════════════════════
 // 2. Training Reminder — runs every hour, checks for training
-//    starting in ~4 hours. Notifies players who haven't answered.
+//    starting in ~4 hours. Default attendance is "Yes", so this
+//    only notifies as a general heads-up, not for unanswered players.
 // ════════════════════════════════════════════════════════════
 exports.scheduledTrainingReminder = onSchedule({
   schedule: "every 60 minutes",

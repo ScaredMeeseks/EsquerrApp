@@ -2,7 +2,7 @@
   "name": "esquerrapp-functions",
   "description": "Cloud Functions for EsquerrApp push notifications",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
