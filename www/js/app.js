@@ -9365,9 +9365,9 @@
       if (!slots.length) slots = [{ jsDay: 2, time: '21:00', location: '' }, { jsDay: 4, time: '22:00', location: '' }];
       // Sort slots by JS day (Mon first)
       slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
-      // Find last training date to start from
-      var upcoming = training.filter(t => t.date >= new Date().toISOString().slice(0, 10));
-      var lastDate = upcoming.length ? upcoming.reduce((a, b) => a.date > b.date ? a : b).date : null;
+      // Find latest training date in the list to cycle from
+      var allDates = training.filter(t => t.date).map(t => t.date);
+      var lastDate = allDates.length ? allDates.sort().pop() : null;
       var d = lastDate ? new Date(lastDate + 'T12:00:00') : new Date();
       d.setDate(d.getDate() + 1);
       // Find next scheduled day
