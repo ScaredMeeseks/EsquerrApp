@@ -11883,8 +11883,8 @@
           detail: answerMap[val] || val,
           activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
         });
-        renderPage(session);
         updateActionsBadge();
+        setTimeout(function() { renderPage(getSession()); }, 0);
       });
     });
     // Click chosen badge to re-open options
