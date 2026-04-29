@@ -11902,7 +11902,35 @@
           if (u) { u.fitnessStatus = 'fit'; u.injuryNote = ''; saveUsers(users); }
           deriveFitnessStatus(session.id);
         }
-        renderPage(session);
+        // Replace badge with buttons inline (avoids re-render showing default again)
+        const btnsDiv = document.createElement('div');
+        btnsDiv.className = 'avail-btns';
+        btnsDiv.dataset.availDate = date;
+        btnsDiv.innerHTML = '<button class="avail-btn avail-yes" data-avail="yes">Yes</button><button class="avail-btn avail-late" data-avail="late">Late</button><button class="avail-btn avail-no" data-avail="no">No</button><button class="avail-btn avail-injured" data-avail="injured">Injured</button>';
+        badge.replaceWith(btnsDiv);
+        // Bind click handlers on new buttons
+        btnsDiv.querySelectorAll('.avail-btn').forEach(btn => {
+          btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const val = btn.dataset.avail;
+            const ad = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
+            ad[key] = val;
+            localStorage.setItem('fa_training_availability', JSON.stringify(ad));
+            DB.save('fa_training_availability');
+            if (val === 'injured') deriveFitnessStatus(session.id);
+            const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+            const tObj = training.find(t => t.date === date);
+            const answerMap = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured' };
+            addStaffNotification({
+              type: 'training_avail',
+              playerName: session ? session.name : '?',
+              detail: answerMap[val] || val,
+              activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
+            });
+            renderPage(session);
+            updateActionsBadge();
+          });
+        });
       });
     });
 
