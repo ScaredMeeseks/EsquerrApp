@@ -8979,12 +8979,8 @@
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
           availHtml = `<span class="avail-chosen ${cls[stored]}" data-avail-date="${a.tDate}">${labels[stored]}</span>`;
         } else {
-          availHtml = `<div class="avail-btns" data-avail-date="${a.tDate}">
-            <button class="avail-btn avail-yes" data-avail="yes">Yes</button>
-            <button class="avail-btn avail-late" data-avail="late">Late</button>
-            <button class="avail-btn avail-no" data-avail="no">No</button>
-            <button class="avail-btn avail-injured" data-avail="injured">Injured</button>
-          </div>`;
+          // Default to Yes badge (clickable to expand buttons)
+          availHtml = `<span class="avail-chosen avail-yes avail-default" data-avail-date="${a.tDate}">Yes</span>`;
         }
       }
       if (a.type === 'birthday') {
@@ -9346,13 +9342,50 @@
     // Add training
     function addTraining() {
       const training = readTraining();
-      const d = new Date();
+      const curCat = getCurrentCategory() || '';
+      // Gather configured training slots from club schedule
+      const dayValToJs = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+      var slots = []; // [{ jsDay, time, location }]
+      if (_clubConfig && _clubConfig.schedules) {
+        var letters = getTeamLetters(curCat);
+        letters.forEach(function (letter) {
+          var sched = _clubConfig.schedules[curCat + '-' + letter];
+          if (sched && sched.training) {
+            sched.training.forEach(function (tr) {
+              if (tr.day && dayValToJs[tr.day] !== undefined) {
+                // Avoid duplicate day+time combos
+                var exists = slots.some(s => s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || ''));
+                if (!exists) slots.push({ jsDay: dayValToJs[tr.day], time: tr.time || '', location: tr.location || '' });
+              }
+            });
+          }
+        });
+      }
+      // Fallback to Tue/Thu if no schedule configured
+      if (!slots.length) slots = [{ jsDay: 2, time: '21:00', location: '' }, { jsDay: 4, time: '22:00', location: '' }];
+      // Sort slots by JS day (Mon first)
+      slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
+      // Find last training date to start from
+      var upcoming = training.filter(t => t.date >= new Date().toISOString().slice(0, 10));
+      var lastDate = upcoming.length ? upcoming.reduce((a, b) => a.date > b.date ? a : b).date : null;
+      var d = lastDate ? new Date(lastDate + 'T12:00:00') : new Date();
       d.setDate(d.getDate() + 1);
-      while (d.getDay() !== 2 && d.getDay() !== 4) d.setDate(d.getDate() + 1);
+      // Find next scheduled day
+      var found = false;
+      for (var tries = 0; tries < 8; tries++) {
+        for (var si = 0; si < slots.length; si++) {
+          if (d.getDay() === slots[si].jsDay) { found = true; break; }
+        }
+        if (found) break;
+        d.setDate(d.getDate() + 1);
+      }
+      var matchedSlot = slots.find(s => s.jsDay === d.getDay()) || slots[0];
       const dateStr = d.toISOString().slice(0, 10);
       const day = DAYS[d.getDay()];
-      const time = d.getDay() === 2 ? '21:00' : '22:00';
-      training.push({ day, date: dateStr, time, focus: '', location: DEFAULT_LOC, mapLink: DEFAULT_MAP, status: 'upcoming', category: getCurrentCategory() || '' });
+      const time = matchedSlot.time;
+      const loc = matchedSlot.location || DEFAULT_LOC;
+      const map = loc === DEFAULT_LOC ? DEFAULT_MAP : '';
+      training.push({ day, date: dateStr, time, focus: '', location: loc, mapLink: map, status: 'upcoming', category: curCat });
       training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       localStorage.setItem('fa_training', JSON.stringify(training));
       renderPage(getSession());
@@ -11888,6 +11921,41 @@
         e.stopPropagation();
         const date = badge.dataset.availDate;
         if (!date) return;
+        // Default badge: expand to buttons inline
+        if (badge.classList.contains('avail-default')) {
+          const parent = badge.parentElement;
+          const btnsHtml = `<div class="avail-btns" data-avail-date="${date}">
+            <button class="avail-btn avail-yes" data-avail="yes">Yes</button>
+            <button class="avail-btn avail-late" data-avail="late">Late</button>
+            <button class="avail-btn avail-no" data-avail="no">No</button>
+            <button class="avail-btn avail-injured" data-avail="injured">Injured</button>
+          </div>`;
+          badge.insertAdjacentHTML('afterend', btnsHtml);
+          badge.remove();
+          // Bind click handlers on newly inserted buttons
+          const newBtns = parent.querySelectorAll('.avail-btns[data-avail-date="' + date + '"] .avail-btn');
+          newBtns.forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const val = btn.dataset.avail;
+              const btnsWrap = btn.closest('.avail-btns');
+              if (val === 'injured') { showBodyMapPicker(btnsWrap, date); return; }
+              const session = getSession();
+              const key = session.id + '_' + date;
+              const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
+              availData[key] = val;
+              localStorage.setItem('fa_training_availability', JSON.stringify(availData));
+              deriveFitnessStatus(session.id);
+              const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+              const tObj = training.find(t => t.date === date);
+              const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
+              addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')' });
+              renderPage(getSession());
+              updateActionsBadge();
+            });
+          });
+          return;
+        }
         const session = getSession();
         const key = session.id + '_' + date;
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
