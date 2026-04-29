@@ -769,8 +769,6 @@
 
   // #region Navigation, Team Setup & Profile
   // ---------- Navigation ----------
-  var _openAvailDates = new Set();
-
   function _hideSplash() {
     var el = document.getElementById('app-splash');
     if (el) {
@@ -8971,16 +8969,15 @@
         const tLocked = tObj ? isTrainingLocked(tObj) : false;
         const key = session.id + '_' + a.tDate;
         const stored = availData[key];
-        const chosen = stored || (tLocked ? 'na' : 'yes');
-        const forceOpen = _openAvailDates.has(a.tDate);
-        if (chosen && !forceOpen) {
+        if (tLocked) {
+          const chosen = stored || 'na';
           const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
-          if (tLocked) {
-            availHtml = `<span class="avail-chosen ${cls[chosen]}">${labels[chosen]}</span>`;
-          } else {
-            availHtml = `<span class="avail-chosen ${cls[chosen]}" data-avail-date="${a.tDate}">${labels[chosen]}</span>`;
-          }
+          availHtml = `<span class="avail-chosen ${cls[chosen]}">${labels[chosen]}</span>`;
+        } else if (stored) {
+          const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
+          const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
+          availHtml = `<span class="avail-chosen ${cls[stored]}" data-avail-date="${a.tDate}">${labels[stored]}</span>`;
         } else {
           availHtml = `<div class="avail-btns" data-avail-date="${a.tDate}">
             <button class="avail-btn avail-yes" data-avail="yes">Yes</button>
@@ -11872,7 +11869,6 @@
           if (u2) { u2.injuryNote = ''; saveUsers(users2); }
         }
         deriveFitnessStatus(session.id);
-        _openAvailDates.delete(date);
         // Staff notification
         const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
         const tObj = training.find(t => t.date === date);
@@ -11883,8 +11879,8 @@
           detail: answerMap[val] || val,
           activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
         });
+        renderPage(getSession());
         updateActionsBadge();
-        setTimeout(function() { renderPage(getSession()); }, 0);
       });
     });
     // Click chosen badge to re-open options
@@ -11908,7 +11904,6 @@
           if (u) { u.fitnessStatus = 'fit'; u.injuryNote = ''; saveUsers(users); }
           deriveFitnessStatus(session.id);
         }
-        _openAvailDates.add(date);
         renderPage(session);
       });
     });
