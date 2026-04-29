@@ -11858,7 +11858,6 @@
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         availData[key] = val;
         localStorage.setItem('fa_training_availability', JSON.stringify(availData));
-        DB.save('fa_training_availability');
         // If answering non-injured, clear any injury data and re-derive fitness
         const injNotes2 = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
         if (injNotes2[session.id]) {
