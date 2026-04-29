@@ -29,6 +29,25 @@
 </head>
 <body>
 
+  <!-- ========== LOADING SPLASH ========== -->
+  <div id="app-splash" style="position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;transition:opacity .4s;">
+    <img src="img/logo.png" alt="Logo" style="width:120px;height:120px;object-fit:contain;margin-bottom:1.5rem;">
+    <div id="splash-text" style="color:#555;font-size:1rem;font-weight:400;letter-spacing:.02em;min-height:1.5em;"></div>
+  </div>
+  <script>
+  (function(){
+    var msgs=['Preparant la tàctica','Estirant','Escalfant','Sortint al camp','Revisant la convocatòria','Inflant pilotes'];
+    var el=document.getElementById('splash-text');
+    var idx=Math.floor(Math.random()*msgs.length);
+    var dots=0;
+    function tick(){dots=(dots%3)+1;el.textContent=msgs[idx]+'.'.repeat(dots);}
+    tick();
+    var iv=setInterval(function(){tick();},500);
+    setInterval(function(){idx=(idx+1)%msgs.length;dots=0;},2500);
+    window._splashInterval=iv;
+  })();
+  </script>
+
   <!-- ========== LOGIN VIEW ========== -->
   <div id="view-login" class="view" hidden>
     <div class="auth-container">

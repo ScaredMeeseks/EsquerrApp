@@ -770,8 +770,11 @@
   // #region Navigation, Team Setup & Profile
   // ---------- Navigation ----------
   function _hideSplash() {
-    if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.SplashScreen) {
-      Capacitor.Plugins.SplashScreen.hide();
+    var el = document.getElementById('app-splash');
+    if (el) {
+      el.style.opacity = '0';
+      setTimeout(function() { el.remove(); }, 400);
+      if (window._splashInterval) clearInterval(window._splashInterval);
     }
   }
 

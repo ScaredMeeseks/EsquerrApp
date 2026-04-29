@@ -1,12 +1,5 @@
 {
   "appId": "com.esquerrapp.app",
   "appName": "EsquerrApp",
-  "webDir": "www",
-  "plugins": {
-    "SplashScreen": {
-      "launchAutoHide": false,
-      "androidScaleType": "CENTER_INSIDE",
-      "backgroundColor": "#FFFFFF"
-    }
-  }
+  "webDir": "www"
 }
