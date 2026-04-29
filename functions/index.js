@@ -103,8 +103,19 @@ async function sendToTokens(tokenEntries, payload) {
   if (!tokens.length) return;
   const response = await fcm.sendEachForMulticast({
     tokens,
+    notification: {
+      title: payload.title || "EsquerrApp",
+      body: payload.body || "",
+    },
     data: payload,
-    android: {priority: "high"},
+    android: {
+      priority: "high",
+      notification: {
+        icon: "ic_notification",
+        color: "#1a1a2e",
+        channelId: "esquerrapp_default",
+      },
+    },
     webpush: {
       headers: {"Urgency": "high"},
       fcmOptions: {link: "/"},
@@ -181,12 +192,13 @@ exports.onPushQueueCreate = onDocumentCreated({
 
     await sendToTokens(tokenEntries, payload);
   } else {
-    logger.warn("No tokens found, skipping send");
+    logger.warn("No tokens found for any target users, skipping send");
   }
 
   try {
     await snap.ref.update({
-      status: "sent",
+      status: tokenEntries.length ? "sent" : "no_tokens",
+      tokenCount: tokenEntries.length,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   } catch (err) {

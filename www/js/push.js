@@ -31,22 +31,32 @@ const Push = (() => {
       console.warn('Push: PushNotifications plugin not available');
       return;
     }
+    console.log('Push: native plugin found, setting up listeners');
 
     // Listen for registration success → save token
     PushNotifications.addListener('registration', async (tokenData) => {
       console.log('Push: native token received', tokenData.value?.slice(0, 20) + '...');
       _currentToken = tokenData.value;
       await _saveToken(tokenData.value);
+      // Resolve the pending registration promise if any
+      if (_registrationResolve) {
+        _registrationResolve(tokenData.value);
+        _registrationResolve = null;
+      }
     });
 
     // Listen for registration errors
     PushNotifications.addListener('registrationError', (error) => {
-      console.error('Push: native registration error', error);
+      console.error('Push: native registration error', JSON.stringify(error));
+      if (_registrationResolve) {
+        _registrationResolve(null);
+        _registrationResolve = null;
+      }
     });
 
     // Foreground notification received
     PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('Push: foreground notification', notification);
+      console.log('Push: foreground notification', JSON.stringify(notification));
       const data = notification.data || {};
       const title = data.title || notification.title || 'EsquerrApp';
       const body = data.body || notification.body || '';
@@ -59,29 +69,51 @@ const Push = (() => {
 
     // Notification tapped (app opened from notification)
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('Push: notification tapped', action);
+      console.log('Push: notification tapped', JSON.stringify(action));
       const data = action.notification?.data || {};
       const type = data.type || 'general';
       _handleNavigation(type, data);
     });
   }
 
+  let _registrationResolve = null;
+
   async function _requestNativePermission() {
     const PushNotifications = Capacitor.Plugins.PushNotifications;
-    if (!PushNotifications) return null;
+    if (!PushNotifications) {
+      console.warn('Push: PushNotifications plugin not available for permission');
+      return null;
+    }
 
     try {
       const result = await PushNotifications.checkPermissions();
+      console.log('Push: current permission status:', result.receive);
       if (result.receive !== 'granted') {
         const req = await PushNotifications.requestPermissions();
+        console.log('Push: permission request result:', req.receive);
         if (req.receive !== 'granted') {
           console.warn('Push: native permission denied');
           return null;
         }
       }
-      // This triggers the 'registration' event which saves the token
+      // Create a promise that resolves when the registration event fires
+      const tokenPromise = new Promise((resolve) => {
+        _registrationResolve = resolve;
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          if (_registrationResolve) {
+            console.warn('Push: registration event timed out after 10s');
+            _registrationResolve = null;
+            resolve(null);
+          }
+        }, 10000);
+      });
+      // This triggers the 'registration' event
       await PushNotifications.register();
-      return _currentToken;
+      console.log('Push: register() called, waiting for token...');
+      const token = await tokenPromise;
+      console.log('Push: registration complete, token:', token ? 'received' : 'none');
+      return token;
     } catch (err) {
       console.error('Push: native permission error:', err);
       return null;
