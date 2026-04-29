@@ -21,7 +21,7 @@ jobs:
           node-version: '22'
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install
 
       - name: Copy web assets to www/
         run: |
@@ -31,8 +31,11 @@ jobs:
             --exclude='capacitor.config.json' --exclude='.github' --exclude='functions' \
             ./ www/
 
-      - name: Sync Capacitor
-        run: npx cap copy android
+      - name: Sync Capacitor (copy assets + install native plugins)
+        run: npx cap sync android
+
+      - name: Decode google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > android/app/google-services.json
 
       - name: Set up Java 21
         uses: actions/setup-java@v5
