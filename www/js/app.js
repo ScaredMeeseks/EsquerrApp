@@ -7,6 +7,684 @@
 (function () {
   'use strict';
 
+  // #region i18n
+  // ---------- Internationalization ----------
+  var _lang = localStorage.getItem('fa_lang') || 'ca';
+  var _i18n = {
+    // ── Sidebar ──
+    'sidebar.section_player':  { ca:'Jugador', es:'Jugador', en:'Player' },
+    'sidebar.player_home':     { ca:'Resum', es:'Resumen', en:'Overview' },
+    'sidebar.training':        { ca:'Sessions d\'entrenament', es:'Sesiones de entrenamiento', en:'Training Sessions' },
+    'sidebar.my_stats':        { ca:'Les meves estadístiques', es:'Mis estadísticas', en:'My Stats' },
+    'sidebar.player_matchday': { ca:'Jornada', es:'Jornada', en:'Matchday' },
+    'sidebar.player_actions':  { ca:'Accions', es:'Acciones', en:'Actions' },
+    'sidebar.section_staff':   { ca:'Staff', es:'Staff', en:'Staff' },
+    'sidebar.registrations':   { ca:'Registres', es:'Registros', en:'Registrations' },
+    'sidebar.manage_roster':   { ca:'Plantilla', es:'Plantilla', en:'Player Roster' },
+    'sidebar.staff_training':  { ca:'Sessions d\'entrenament', es:'Sesiones de entrenamiento', en:'Training Sessions' },
+    'sidebar.matchday':        { ca:'Calendari', es:'Calendario', en:'Set Calendar' },
+    'sidebar.convocatoria':    { ca:'Convocatòria', es:'Convocatoria', en:'Call-up' },
+    'sidebar.staff_matchday':  { ca:'Jornada', es:'Jornada', en:'Matchday' },
+    'sidebar.medical':         { ca:'Mèdic', es:'Médico', en:'Medical' },
+    'sidebar.tactics':         { ca:'Pissarra tàctica', es:'Pizarra táctica', en:'Tactical Board' },
+    'sidebar.notifications':   { ca:'Notificacions', es:'Notificaciones', en:'Notifications' },
+    'sidebar.section_admin':   { ca:'Admin', es:'Admin', en:'Admin' },
+    'sidebar.users':           { ca:'Gestió d\'usuaris', es:'Gestión de usuarios', en:'Manage Users' },
+    'sidebar.settings':        { ca:'Configuració', es:'Configuración', en:'Settings' },
+    'sidebar.section_teamlead':{ ca:'Team Lead', es:'Team Lead', en:'Team Lead' },
+    'sidebar.staff_player_stats':{ ca:'Estadístiques', es:'Estadísticas', en:'Player Stats' },
+
+    // ── Page Titles ──
+    'page.actions':         { ca:'Accions', es:'Acciones', en:'Actions' },
+    'page.my_stats':        { ca:'Les meves estadístiques', es:'Mis estadísticas', en:'My Stats' },
+    'page.tactical_board':  { ca:'Pissarra tàctica', es:'Pizarra táctica', en:'Tactical Board' },
+    'page.training':        { ca:'Sessions d\'entrenament', es:'Sesiones de entrenamiento', en:'Training Sessions' },
+    'page.player_roster':   { ca:'Plantilla', es:'Plantilla', en:'Player Roster' },
+    'page.set_calendar':    { ca:'Calendari', es:'Calendario', en:'Set Calendar' },
+    'page.convocatoria':    { ca:'Convocatòria', es:'Convocatoria', en:'Call-up' },
+    'page.matchday':        { ca:'Jornada', es:'Jornada', en:'Matchday' },
+    'page.manage_users':    { ca:'Gestió d\'usuaris', es:'Gestión de usuarios', en:'Manage Users' },
+    'users.all_users':      { ca:'Tots els usuaris', es:'Todos los usuarios', en:'All Users' },
+    'users.toggle_desc':    { ca:'Activa o desactiva els rols de cada usuari.', es:'Activa o desactiva los roles de cada usuario.', en:'Toggle each user\'s roles on or off.' },
+    'users.th_name':        { ca:'Nom', es:'Nombre', en:'Name' },
+    'users.th_email':       { ca:'Correu', es:'Correo', en:'Email' },
+    'users.th_roles':       { ca:'Rols', es:'Roles', en:'Roles' },
+    'users.th_actions':     { ca:'Accions', es:'Acciones', en:'Actions' },
+    'page.registrations':   { ca:'Registres', es:'Registros', en:'Registrations' },
+    'page.settings':        { ca:'Configuració', es:'Configuración', en:'Settings' },
+    'page.medical':         { ca:'Mèdic', es:'Médico', en:'Medical' },
+    'page.notifications':   { ca:'Notificacions', es:'Notificaciones', en:'Notifications' },
+
+    // ── Common Buttons ──
+    'btn.save':        { ca:'Desar', es:'Guardar', en:'Save' },
+    'btn.cancel':      { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
+    'btn.edit':        { ca:'Editar', es:'Editar', en:'Edit' },
+    'btn.delete':      { ca:'Eliminar', es:'Eliminar', en:'Delete' },
+    'btn.back':        { ca:'← Enrere', es:'← Atrás', en:'← Back' },
+    'btn.submit':      { ca:'Enviar', es:'Enviar', en:'Submit' },
+    'btn.send':        { ca:'Enviar', es:'Enviar', en:'Send' },
+    'btn.unsend':      { ca:'Retirar', es:'Retirar', en:'Unsend' },
+    'btn.clear_all':   { ca:'Esborrar tot', es:'Borrar todo', en:'Clear All' },
+    'btn.add':         { ca:'Afegir', es:'Añadir', en:'Add' },
+    'btn.remove':      { ca:'Treure', es:'Quitar', en:'Remove' },
+    'btn.yes_continue':{ ca:'Sí, continuar', es:'Sí, continuar', en:'Yes, continue' },
+    'btn.yes_remove':  { ca:'Sí, eliminar', es:'Sí, eliminar', en:'Yes, remove' },
+    'btn.no':          { ca:'No', es:'No', en:'No' },
+    'btn.logout':      { ca:'Tancar sessió', es:'Cerrar sesión', en:'Logout' },
+    'btn.save_changes':{ ca:'Desar canvis', es:'Guardar cambios', en:'Save Changes' },
+
+    // ── Common ──
+    'common.all':        { ca:'Tots', es:'Todos', en:'All' },
+    'common.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
+
+    // ── Player Home ──
+    'home.attendance':    { ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'home.this_week':     { ca:'Aquesta setmana', es:'Esta semana', en:'This Week' },
+    'home.next_week':     { ca:'Setmana vinent', es:'Próxima semana', en:'Next Week' },
+    'home.change_photo':  { ca:'Canviar foto', es:'Cambiar foto', en:'Change photo' },
+    'home.age_suffix':    { ca:'anys', es:'años', en:'years' },
+
+    // ── Week Activities ──
+    'activity.badge_match':    { ca:'Partit', es:'Partido', en:'Match' },
+    'activity.badge_training': { ca:'Entrenament', es:'Entrenamiento', en:'Training' },
+    'activity.badge_birthday': { ca:'Aniversari', es:'Cumpleaños', en:'Birthday' },
+    'activity.badge_extra':    { ca:'Extra', es:'Extra', en:'Extra' },
+    'activity.conv_available': { ca:'Convocatòria disponible', es:'Convocatoria disponible', en:'Call-up available' },
+    'activity.conv_not_called':{ ca:'No convocat', es:'No convocado', en:'Not called up' },
+    'activity.no_activities':  { ca:'Cap activitat aquesta setmana.', es:'Sin actividades esta semana.', en:'No activities this week.' },
+
+    // ── Availability ──
+    'avail.disponible':    { ca:'Disponible', es:'Disponible', en:'Available' },
+    'avail.no_disponible': { ca:'No Disponible', es:'No Disponible', en:'Not Available' },
+    'avail.yes':     { ca:'Sí', es:'Sí', en:'Yes' },
+    'avail.late':    { ca:'Tard', es:'Tarde', en:'Late' },
+    'avail.no':      { ca:'No', es:'No', en:'No' },
+    'avail.injured': { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'avail.na':      { ca:'N/A', es:'N/A', en:'N/A' },
+
+    // ── Actions ──
+    'actions.pending':       { ca:'Pendents', es:'Pendientes', en:'Pending' },
+    'actions.no_pending':    { ca:'Cap acció pendent.', es:'Sin acciones pendientes.', en:'No pending actions.' },
+    'actions.extra_training':{ ca:'Entrenament extra', es:'Entrenamiento extra', en:'Extra Training' },
+    'actions.add_extra':     { ca:'+ Entrenament extra', es:'+ Entrenamiento extra', en:'+ Add Extra Training' },
+    'actions.rpe':           { ca:'RPE', es:'RPE', en:'RPE' },
+    'actions.rpe_tooltip':   { ca:'Esforç percebut (0–10)', es:'Esfuerzo percibido (0–10)', en:'Rate of Perceived Exertion (0–10)' },
+    'actions.minutes':       { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'actions.availability':  { ca:'Disponibilitat?', es:'¿Disponibilidad?', en:'Availability?' },
+
+    // ── Matches / Matchday ──
+    'matches.upcoming':     { ca:'Propers partits', es:'Próximos partidos', en:'Upcoming Matches' },
+    'matches.previous':     { ca:'Partits anteriors', es:'Partidos anteriores', en:'Previous Matches' },
+    'matches.no_upcoming':  { ca:'Cap proper partit.', es:'Sin próximos partidos.', en:'No upcoming matches.' },
+    'matches.no_previous':  { ca:'Cap partit anterior.', es:'Sin partidos anteriores.', en:'No previous matches.' },
+    'matches.conv_sent':    { ca:'Convocatòria enviada', es:'Convocatoria enviada', en:'Call-up sent' },
+    'matches.players':      { ca:'jugadors', es:'jugadores', en:'players' },
+
+    // ── Match Detail ──
+    'match_detail.badge':        { ca:'Partit', es:'Partido', en:'Match' },
+    'match_detail.callup':       { ca:'Citació', es:'Citación', en:'Call-up' },
+    'match_detail.kickoff':      { ca:'Inici', es:'Inicio', en:'Kick-off' },
+    'match_detail.called_up':    { ca:'Convocats', es:'Convocados', en:'Called Up' },
+    'match_detail.events':       { ca:'Esdeveniments', es:'Eventos', en:'Events' },
+    'match_detail.titulars':     { ca:'Titulars:', es:'Titulares:', en:'Starters:' },
+    'match_detail.conv_available':  { ca:'Convocatòria disponible', es:'Convocatoria disponible', en:'Call-up available' },
+    'match_detail.conv_not_called': { ca:'No convocat', es:'No convocado', en:'Not called up' },
+    'match_detail.starter_add':     { ca:'Afegir a titulars', es:'Añadir a titulares', en:'Add to starters' },
+    'match_detail.starter_remove':  { ca:'Treure de titulars', es:'Quitar de titulares', en:'Remove from starters' },
+    'match_detail.not_found':       { ca:'Partit no trobat', es:'Partido no encontrado', en:'Match not found' },
+    'match_detail.event_add':       { ca:'+ Esdeveniment', es:'+ Evento', en:'+ Event' },
+    'match_detail.event_delete':    { ca:'Eliminar', es:'Eliminar', en:'Delete' },
+    'match_detail.videos':          { ca:'🎬 Vídeos', es:'🎬 Vídeos', en:'🎬 Videos' },
+    'match_detail.tactical_boards': { ca:'Pissarres tàctiques', es:'Pizarras tácticas', en:'Tactical Boards' },
+
+    // ── Match Events ──
+    'ev.goal':           { ca:'Gol', es:'Gol', en:'Goal' },
+    'ev.own_goal':       { ca:'Gol en pròpia', es:'Gol en propia', en:'Own goal' },
+    'ev.yellow':         { ca:'Targeta groga', es:'Tarjeta amarilla', en:'Yellow card' },
+    'ev.red':            { ca:'Targeta vermella', es:'Tarjeta roja', en:'Red card' },
+    'ev.change':         { ca:'Canvi', es:'Cambio', en:'Substitution' },
+    'ev.penal_miss':     { ca:'Penal fallat', es:'Penal fallado', en:'Missed penalty' },
+    'ev.post':           { ca:'Pal', es:'Palo', en:'Post' },
+    'ev.type_ph':        { ca:'Tipus…', es:'Tipo…', en:'Type…' },
+    'ev.player_ph':      { ca:'Jugador…', es:'Jugador…', en:'Player…' },
+    'ev.goal_type_ph':   { ca:'Tipus de gol…', es:'Tipo de gol…', en:'Goal type…' },
+    'ev.goal_penal':     { ca:'Penal', es:'Penal', en:'Penalty' },
+    'ev.goal_falta':     { ca:'Falta directa', es:'Falta directa', en:'Direct free kick' },
+    'ev.goal_jugada':    { ca:'Jugada oberta', es:'Jugada abierta', en:'Open play' },
+    'ev.detail_ph':      { ca:'Detall…', es:'Detalle…', en:'Detail…' },
+    'ev.assist':         { ca:'Assistència', es:'Asistencia', en:'Assist' },
+    'ev.individual':     { ca:'Individual', es:'Individual', en:'Individual' },
+    'ev.assist_ph':      { ca:'Assistent…', es:'Asistente…', en:'Assister…' },
+    'ev.sub_out_ph':     { ca:'Surt…', es:'Sale…', en:'Out…' },
+    'ev.sub_in_ph':      { ca:'Entra…', es:'Entra…', en:'In…' },
+    'ev.minute_ph':      { ca:'Minut', es:'Minuto', en:'Minute' },
+    'ev.add':            { ca:'Afegir', es:'Añadir', en:'Add' },
+    'ev.opp_out':        { ca:'# Surt', es:'# Sale', en:'# Out' },
+    'ev.opp_in':         { ca:'# Entra', es:'# Entra', en:'# In' },
+
+    // ── Convocatòria ──
+    'conv.choose_match':    { ca:'Tria el partit', es:'Elige el partido', en:'Choose Match' },
+    'conv.select_match':    { ca:'Selecciona un partit…', es:'Selecciona un partido…', en:'Select a match…' },
+    'conv.callup_time':     { ca:'Hora de citació', es:'Hora de citación', en:'Call-up Time' },
+    'conv.uniform':         { ca:'Equipació', es:'Equipación', en:'Uniform' },
+    'conv.jersey':          { ca:'Samarreta', es:'Camiseta', en:'Jersey' },
+    'conv.socks':           { ca:'Mitges', es:'Medias', en:'Socks' },
+    'conv.white':           { ca:'Blanca', es:'Blanca', en:'White' },
+    'conv.yellow':          { ca:'Groga', es:'Amarilla', en:'Yellow' },
+    'conv.striped':         { ca:'Ratlles', es:'Rayas', en:'Black & White' },
+    'conv.available':       { ca:'Jugadors disponibles', es:'Jugadores disponibles', en:'Available Players' },
+    'conv.called_up':       { ca:'Convocats', es:'Convocados', en:'Called Up' },
+    'conv.no_players':      { ca:'Cap jugador disponible', es:'Sin jugadores disponibles', en:'No players available' },
+    'conv.drag_desktop':    { ca:'Arrossega jugadors aquí', es:'Arrastra jugadores aquí', en:'Drag players here' },
+    'conv.drag_mobile':     { ca:'Prem els jugadors per afegir-los', es:'Pulsa los jugadores para añadirlos', en:'Press players to add them' },
+    'conv.tactical_board':  { ca:'Pissarra tàctica', es:'Pizarra táctica', en:'Tactical Board' },
+    'conv.video_links':     { ca:'Enllaços de vídeo', es:'Enlaces de vídeo', en:'Video Links' },
+    'conv.video_title_ph':  { ca:'Títol', es:'Título', en:'Title' },
+    'conv.video_url_ph':    { ca:'Enganxa URL', es:'Pega URL', en:'Paste URL' },
+    'conv.video_comment_ph':{ ca:'Comentaris per aquest vídeo...', es:'Comentarios para este vídeo...', en:'Comments for this video...' },
+    'conv.add_video':       { ca:'+ Afegir vídeo', es:'+ Añadir vídeo', en:'+ Add Video Link' },
+
+    // ── Set Calendar ──
+    'cal.new_game':       { ca:'Nou partit', es:'Nuevo partido', en:'New Game' },
+    'matches.add_game':   { ca:'Afegir partit', es:'Añadir partido', en:'Add Game' },
+    'matches.past':       { ca:'Partits anteriors', es:'Partidos anteriores', en:'Past Matches' },
+    'cal.th_home_away':   { ca:'Local / Visitant', es:'Local / Visitante', en:'Home / Away' },
+    'cal.th_team':        { ca:'Equip', es:'Equipo', en:'Team' },
+    'cal.th_date':        { ca:'Data', es:'Fecha', en:'Date' },
+    'cal.th_opponent':    { ca:'Rival', es:'Rival', en:'Opponent' },
+    'cal.th_location':    { ca:'Ubicació', es:'Ubicación', en:'Location' },
+    'cal.th_map':         { ca:'Mapa', es:'Mapa', en:'Map' },
+    'cal.th_kickoff':     { ca:'Inici', es:'Inicio', en:'Kick-off' },
+    'cal.th_match':       { ca:'Partit', es:'Partido', en:'Match' },
+
+    // ── Training ──
+    'training.th_day':       { ca:'Dia', es:'Día', en:'Day' },
+    'training.th_date':      { ca:'Data', es:'Fecha', en:'Date' },
+    'training.th_time':      { ca:'Hora', es:'Hora', en:'Time' },
+    'training.th_focus':     { ca:'Enfocament', es:'Enfoque', en:'Focus' },
+    'training.th_location':  { ca:'Ubicació', es:'Ubicación', en:'Location' },
+    'training.th_assistance':{ ca:'Assistència', es:'Asistencia', en:'Assistance' },
+    'training.add':          { ca:'+ Entrenament', es:'+ Entrenamiento', en:'+ Add Training' },
+    'training.focus_ph':     { ca:'Enfocament *', es:'Enfoque *', en:'Focus *' },
+    'training.location_ph':  { ca:'Ubicació', es:'Ubicación', en:'Location' },
+    'training.maplink_ph':   { ca:'Enllaç mapa', es:'Enlace mapa', en:'Map link' },
+    'training.th_status':    { ca:'Estat', es:'Estado', en:'Status' },
+    'training.th_attendance':{ ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'training.th_link':      { ca:'Enllaç', es:'Enlace', en:'Link' },
+    'training.upcoming':     { ca:'Proper', es:'Próximo', en:'Upcoming' },
+    'training.completed':    { ca:'Completat', es:'Completado', en:'Completed' },
+    'training.in_progress':  { ca:'En curs', es:'En curso', en:'In progress' },
+    'training.badge':        { ca:'Entrenament', es:'Entrenamiento', en:'Training' },
+    'training.not_found':    { ca:'Entrenament no trobat', es:'Entrenamiento no encontrado', en:'Training not found' },
+    'training.tactical_boards':{ ca:'Pissarres tàctiques', es:'Pizarras tácticas', en:'Tactical Boards' },
+
+    // ── Staff Training Detail ──
+    'std.attendance_overview':{ ca:'Resum d\'assistència', es:'Resumen de asistencia', en:'Attendance Overview' },
+    'std.player_attendance':  { ca:'Assistència de jugadors', es:'Asistencia de jugadores', en:'Player Attendance' },
+    'std.th_pos':        { ca:'Pos', es:'Pos', en:'Pos' },
+    'std.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'std.th_status':     { ca:'Estat', es:'Estado', en:'Status' },
+    'std.th_ready':      { ca:'Punt', es:'Listo', en:'Ready' },
+    'std.th_ac_ratio':   { ca:'A/C', es:'A/C', en:'A/C Ratio' },
+    'std.th_player_answer':  { ca:'Resposta jugador', es:'Respuesta jugador', en:'Player Answer' },
+    'std.th_staff_editable': { ca:'Staff (editable)', es:'Staff (editable)', en:'Staff (editable)' },
+    'std.planning':          { ca:'Planificació entrenament', es:'Planificación entrenamiento', en:'Training Plan' },
+    'std.general_tag':       { ca:'General', es:'General', en:'General' },
+    'std.all':               { ca:'Tots', es:'Todos', en:'All' },
+    'std.auto_gen':          { ca:'Generador automàtic d\'equips', es:'Generador automático de equipos', en:'Auto Generate Teams' },
+    'std.configure':         { ca:'⚙️ Configurar', es:'⚙️ Configurar', en:'⚙️ Configure' },
+    'std.num_teams':         { ca:'Nombre d\'equips', es:'Número de equipos', en:'Number of Teams' },
+    'std.players_per_team':  { ca:'Jugadors per equip', es:'Jugadores por equipo', en:'Players per Team' },
+    'std.include_gk':        { ca:'Incloure porter', es:'Incluir portero', en:'Include GK' },
+    'std.team_filter':       { ca:'Filtre per equip', es:'Filtro por equipo', en:'Team Filter' },
+    'std.distribution':      { ca:'Distribució', es:'Distribución', en:'Distribution' },
+    'std.mix':               { ca:'Barreja', es:'Mezcla', en:'Mix' },
+    'std.equal':             { ca:'Igualat', es:'Igualado', en:'Equal' },
+    'std.generate':          { ca:'Generar equips', es:'Generar equipos', en:'Generate Teams' },
+    'std.team_prefix':       { ca:'Equip', es:'Equipo', en:'Team' },
+    'std.no_players':        { ca:'Cap jugador', es:'Sin jugadores', en:'No players' },
+    'std.season_attendance': { ca:'Assistència de temporada', es:'Asistencia de temporada', en:'Season Attendance' },
+    'std.total_sessions':    { ca:'Total sessions:', es:'Total sesiones:', en:'Total Sessions:' },
+    'std.top_attendance':    { ca:'🏆 Millor assistència', es:'🏆 Mejor asistencia', en:'🏆 Top Attendance' },
+    'std.most_absent':       { ca:'⚠️ Més absent', es:'⚠️ Más ausente', en:'⚠️ Most Absent' },
+    'std.currently_injured': { ca:'❌ Lesionats', es:'❌ Lesionados', en:'❌ Currently Injured' },
+    'std.none':              { ca:'Cap', es:'Ninguno', en:'None' },
+    'std.week_1':            { ca:'1 setmana', es:'1 semana', en:'1 week' },
+    'std.weeks':             { ca:'setmanes', es:'semanas', en:'weeks' },
+
+    // ── Staff Roster ──
+    'roster.th_pos':    { ca:'Pos', es:'Pos', en:'Pos' },
+    'roster.th_name':   { ca:'Nom', es:'Nombre', en:'Name' },
+    'roster.th_status': { ca:'Estat', es:'Estado', en:'Status' },
+    'roster.th_ready':  { ca:'Punt', es:'Listo', en:'Ready' },
+    'roster.th_star':   { ca:'T / S / NC', es:'T / S / NC', en:'T / S / NC' },
+    'roster.th_gcm':    { ca:'GC/P', es:'GC/P', en:'GC/M' },
+    'roster.gcm_title': { ca:'Contribucions de gol per partit', es:'Contribuciones de gol por partido', en:'Goal Contributions per Match' },
+    'roster.all':       { ca:'Tots', es:'Todos', en:'All' },
+    'roster.no_players':{ ca:'Cap jugador registrat.', es:'Sin jugadores registrados.', en:'No players registered yet.' },
+
+    // ── Registrations ──
+    'reg.card_title':   { ca:'Tots els membres registrats', es:'Todos los miembros registrados', en:'All Registered Members' },
+    'reg.edit_desc':     { ca:'Edita l\'estat, posició i dorsal de cada membre. Els canvis es desen automàticament.', es:'Edita el estado, posición y dorsal de cada miembro. Los cambios se guardan automáticamente.', en:'Edit each member\'s status, position, and player number. Changes are saved automatically.' },
+    'reg.th_name':      { ca:'Nom', es:'Nombre', en:'Name' },
+    'reg.th_status':    { ca:'Estat', es:'Estado', en:'Status' },
+    'reg.th_category':  { ca:'Categoria', es:'Categoría', en:'Category' },
+    'reg.th_team':      { ca:'Equip', es:'Equipo', en:'Team' },
+    'reg.th_position':  { ca:'Posició', es:'Posición', en:'Position' },
+    'reg.th_number':    { ca:'Dorsal', es:'Dorsal', en:'Number' },
+    'reg.status_none':  { ca:'Cap', es:'Ninguno', en:'None' },
+    'reg.status_player':{ ca:'Jugador', es:'Jugador', en:'Player' },
+    'reg.status_staff': { ca:'Staff', es:'Staff', en:'Staff' },
+    'reg.status_both':  { ca:'Ambdós', es:'Ambos', en:'Both' },
+    'reg.all_members':  { ca:'Tots els membres', es:'Todos los miembros', en:'All Members' },
+
+    // ── Player Stats ──
+    'stats.goals':     { ca:'Gols', es:'Goles', en:'Goals' },
+    'stats.assists':   { ca:'Assistències', es:'Asistencias', en:'Assists' },
+    'stats.matches':   { ca:'Partits', es:'Partidos', en:'Matches' },
+    'stats.titular':   { ca:'Titular', es:'Titular', en:'Starter' },
+    'stats.minutes':   { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'stats.attendance':{ ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'stats.injury_history':{ ca:'🏥 Historial de lesions', es:'🏥 Historial de lesiones', en:'🏥 Injury History' },
+    'stats.no_injuries':   { ca:'Cap lesió aquesta temporada 💪', es:'Sin lesiones esta temporada 💪', en:'No injuries this season 💪' },
+    'stats.present':       { ca:'Present', es:'Presente', en:'Present' },
+    'stats.days_so_far':   { ca:'dies fins ara', es:'días hasta ahora', en:'days so far' },
+    'stats.day_1':         { ca:'1 dia', es:'1 día', en:'1 day' },
+    'stats.days_n':        { ca:'dies', es:'días', en:'days' },
+
+    // ── Match History ──
+    'mh.title':      { ca:'Historial de partits', es:'Historial de partidos', en:'Match History' },
+    'mh.th_date':    { ca:'Data', es:'Fecha', en:'Date' },
+    'mh.th_match':   { ca:'Partit', es:'Partido', en:'Match' },
+    'mh.th_result':  { ca:'Res.', es:'Res.', en:'Res.' },
+    'mh.no_matches': { ca:'Cap partit registrat', es:'Sin partidos registrados', en:'No matches recorded' },
+    'mh.status_t':   { ca:'T', es:'T', en:'T' },
+    'mh.status_s':   { ca:'S', es:'S', en:'S' },
+    'mh.status_nc':  { ca:'NC', es:'NC', en:'NC' },
+    'mh.result_v':   { ca:'V', es:'V', en:'W' },
+    'mh.result_d':   { ca:'D', es:'D', en:'L' },
+    'mh.result_e':   { ca:'E', es:'E', en:'D' },
+
+    // ── Readiness ──
+    'readiness.title':    { ca:'Preparació', es:'Preparación', en:'Readiness' },
+    'readiness.no_data':  { ca:'Encara no hi ha prou dades', es:'Aún no hay suficientes datos', en:'Not enough data yet' },
+    'readiness.good':     { ca:'Bé', es:'Bien', en:'Good' },
+    'readiness.moderate': { ca:'Moderat', es:'Moderado', en:'Moderate' },
+    'readiness.low':      { ca:'Baix', es:'Bajo', en:'Low' },
+    'readiness.acwr':     { ca:'ACWR', es:'ACWR', en:'ACWR' },
+    'readiness.load_ratio':   { ca:'Ràtio de càrrega', es:'Ratio de carga', en:'Load Ratio' },
+    'readiness.match_fatigue':{ ca:'Fatiga de partit', es:'Fatiga de partido', en:'Match Fatigue' },
+    'readiness.load_spike':   { ca:'Pic de càrrega', es:'Pico de carga', en:'Load Spike' },
+    'readiness.rpe_trend':    { ca:'Tendència RPE', es:'Tendencia RPE', en:'RPE Trend' },
+
+    // ── Tactical Board ──
+    'tactics.formation':     { ca:'Formació', es:'Formación', en:'Formation' },
+    'tactics.select_formation':{ ca:'— Selecciona —', es:'— Seleccionar —', en:'— Select —' },
+    'tactics.opp':           { ca:'Riv', es:'Riv', en:'Opp' },
+    'tactics.dash':          { ca:'Disc.', es:'Disc.', en:'Dash' },
+    'tactics.new_board':     { ca:'Nova pissarra', es:'Nueva pizarra', en:'New Board' },
+    'tactics.board_name_ph': { ca:'Nom de la pissarra…', es:'Nombre de la pizarra…', en:'Board name…' },
+    'tactics.saved_boards':  { ca:'Pissarres desades', es:'Pizarras guardadas', en:'Saved Boards' },
+    'tactics.frames':        { ca:'Fotogrames', es:'Fotogramas', en:'Frames' },
+    'tactics.tag':           { ca:'Etiqueta', es:'Etiqueta', en:'Tag' },
+    'tactics.tag_none':      { ca:'— Cap —', es:'— Ninguna —', en:'— None —' },
+    'tactics.tag_new_ph':    { ca:'Nova etiqueta...', es:'Nueva etiqueta...', en:'New tag...' },
+    'tactics.add_to_match':  { ca:'Afegir a partit', es:'Añadir a partido', en:'Add to Match' },
+    'tactics.add_to_training':{ ca:'Afegir a entrenament', es:'Añadir a entrenamiento', en:'Add to Training' },
+    'tactics.match_none':    { ca:'Cap', es:'Ninguno', en:'None' },
+
+    // ── Context Menu ──
+    'ctx.add_player':    { ca:'Afegir jugador', es:'Añadir jugador', en:'Add player' },
+    'ctx.add_opponent':  { ca:'Afegir rival', es:'Añadir rival', en:'Add opponent' },
+    'ctx.add_ball':      { ca:'Afegir pilota', es:'Añadir balón', en:'Add ball' },
+    'ctx.copy':          { ca:'Copiar', es:'Copiar', en:'Copy' },
+    'ctx.duplicate':     { ca:'Duplicar', es:'Duplicar', en:'Duplicate' },
+    'ctx.paste':         { ca:'Enganxar', es:'Pegar', en:'Paste' },
+    'ctx.delete':        { ca:'Eliminar', es:'Eliminar', en:'Delete' },
+    'ctx.delete_arrow':  { ca:'Eliminar fletxa', es:'Eliminar flecha', en:'Delete arrow' },
+    'ctx.delete_pen':    { ca:'Eliminar línia', es:'Eliminar línea', en:'Delete pen line' },
+    'ctx.delete_rect':   { ca:'Eliminar rectangle', es:'Eliminar rectángulo', en:'Delete rectangle' },
+    'ctx.delete_ball':   { ca:'Eliminar pilota', es:'Eliminar balón', en:'Delete ball' },
+    'ctx.delete_cone':   { ca:'Eliminar con', es:'Eliminar cono', en:'Delete cone' },
+    'ctx.edit_text':     { ca:'Editar text', es:'Editar texto', en:'Edit text' },
+    'ctx.size':          { ca:'Mida', es:'Tamaño', en:'Size' },
+
+    // ── TB Confirm Modals ──
+    'tb.new_title':   { ca:'Nova pissarra', es:'Nueva pizarra', en:'New Board' },
+    'tb.new_msg':     { ca:'Tens canvis sense desar. Crear una pissarra nova?', es:'Tienes cambios sin guardar. ¿Crear una pizarra nueva?', en:'You have unsaved changes. Start a new board?' },
+    'tb.load_title':  { ca:'Carregar pissarra', es:'Cargar pizarra', en:'Load Board' },
+    'tb.load_msg':    { ca:'Tens canvis sense desar. Descartar-los i carregar?', es:'Tienes cambios sin guardar. ¿Descartarlos y cargar?', en:'You have unsaved changes. Discard them and load this board?' },
+    'tb.delete_title':{ ca:'Eliminar pissarra', es:'Eliminar pizarra', en:'Delete Board' },
+    'tb.delete_msg':  { ca:'Eliminar aquesta pissarra desada?', es:'¿Eliminar esta pizarra guardada?', en:'Remove this saved board?' },
+    'tb.saved':       { ca:'Desat ✓', es:'Guardado ✓', en:'Saved ✓' },
+    'tb.added':       { ca:'Afegit ✓', es:'Añadido ✓', en:'Added ✓' },
+
+    // ── Medical ──
+    'medical.log_injury':    { ca:'+ Registrar lesió', es:'+ Registrar lesión', en:'+ Log Injury' },
+    'medical.injured':       { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'medical.recovering':    { ca:'Recuperant-se', es:'Recuperándose', en:'Recovering' },
+    'medical.total_season':  { ca:'Total aquesta temporada', es:'Total esta temporada', en:'Total This Season' },
+    'medical.avg_recovery':  { ca:'Recuperació mitjana', es:'Recuperación media', en:'Avg Recovery' },
+    'medical.squad_fitness': { ca:'Estat físic de l\'equip', es:'Estado físico del equipo', en:'Squad Fitness' },
+    'medical.filter_all':    { ca:'Tots', es:'Todos', en:'All' },
+    'medical.filter_injured':{ ca:'Lesionats', es:'Lesionados', en:'Injured' },
+    'medical.filter_recovering':{ ca:'Recuperant-se', es:'Recuperándose', en:'Recovering' },
+    'medical.filter_fit':    { ca:'Apte', es:'Apto', en:'Fit' },
+    'medical.active':        { ca:'🏥 Lesions actives', es:'🏥 Lesiones activas', en:'🏥 Active Injuries' },
+    'medical.past':          { ca:'📋 Lesions passades', es:'📋 Lesiones pasadas', en:'📋 Past Injuries' },
+    'medical.no_active':     { ca:'Cap lesió activa', es:'Sin lesiones activas', en:'No active injuries' },
+    'medical.no_past':       { ca:'Cap lesió passada aquesta temporada', es:'Sin lesiones pasadas esta temporada', en:'No past injuries this season' },
+    'medical.severity_minor':   { ca:'Lleu', es:'Leve', en:'Minor' },
+    'medical.severity_moderate':{ ca:'Moderada', es:'Moderada', en:'Moderate' },
+    'medical.severity_severe':  { ca:'Greu', es:'Grave', en:'Severe' },
+    'medical.status_fit':       { ca:'Apte', es:'Apto', en:'Fit' },
+    'medical.status_injured':   { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'medical.status_recovering':{ ca:'Recuperant-se', es:'Recuperándose', en:'Recovering' },
+    'medical.status_active':    { ca:'Actiu', es:'Activo', en:'Active' },
+    'medical.status_resolved':  { ca:'Resolt', es:'Resuelto', en:'Resolved' },
+    'medical.mark_recovering':  { ca:'Marcar recuperant-se', es:'Marcar recuperándose', en:'Mark Recovering' },
+    'medical.mark_resolved':    { ca:'Marcar resolt', es:'Marcar resuelto', en:'Mark Resolved' },
+    'medical.since':            { ca:'Des de', es:'Desde', en:'Since' },
+    'medical.today':            { ca:'Avui', es:'Hoy', en:'Today' },
+    'medical.due_back':         { ca:'Tornada prevista', es:'Vuelta prevista', en:'Due back' },
+    'medical.days_to_return':   { ca:'d per tornar', es:'d para volver', en:'d to return' },
+
+    // ── Medical Detail ──
+    'med_detail.back':          { ca:'← Mèdic', es:'← Médico', en:'← Medical' },
+    'med_detail.current':       { ca:'Lesió actual', es:'Lesión actual', en:'Current Injury' },
+    'med_detail.expected':      { ca:'Tornada prevista:', es:'Vuelta prevista:', en:'Expected return:' },
+    'med_detail.injury_map':    { ca:'Mapa de lesions', es:'Mapa de lesiones', en:'Injury Map' },
+    'med_detail.timeline':      { ca:'Historial de lesions', es:'Historial de lesiones', en:'Injury Timeline' },
+    'med_detail.no_history':    { ca:'Cap historial de lesions', es:'Sin historial de lesiones', en:'No injury history' },
+    'med_detail.recurring':     { ca:'⚠️ Recurrent:', es:'⚠️ Recurrente:', en:'⚠️ Recurring:' },
+    'med_detail.injuries_count':{ ca:'lesions', es:'lesiones', en:'injuries' },
+
+    // ── Injury Logger ──
+    'injury_log.title':      { ca:'🏥 Registrar lesió', es:'🏥 Registrar lesión', en:'🏥 Log Injury' },
+    'injury_log.edit_title': { ca:'✏️ Editar lesió', es:'✏️ Editar lesión', en:'✏️ Edit Injury' },
+    'injury_log.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'injury_log.select_ph':  { ca:'Selecciona jugador…', es:'Selecciona jugador…', en:'Select player…' },
+    'injury_log.area':       { ca:'Zona lesionada (toca el mapa)', es:'Zona lesionada (toca el mapa)', en:'Injured Area (tap body map)' },
+    'injury_log.general':    { ca:'— General —', es:'— General —', en:'— General —' },
+    'injury_log.describe_ph':{ ca:'Descriu la lesió…', es:'Describe la lesión…', en:'Describe injury…' },
+    'injury_log.severity':   { ca:'Gravetat', es:'Gravedad', en:'Severity' },
+    'injury_log.start_date': { ca:'Data d\'inici', es:'Fecha de inicio', en:'Start Date' },
+    'injury_log.expected':   { ca:'Tornada prevista', es:'Vuelta prevista', en:'Expected Return' },
+    'injury_log.notes':      { ca:'Notes', es:'Notas', en:'Notes' },
+    'injury_log.notes_ph':   { ca:'Notes addicionals…', es:'Notas adicionales…', en:'Additional notes…' },
+    'injury_log.save':       { ca:'Desar lesió', es:'Guardar lesión', en:'Save Injury' },
+    'injury_log.status':     { ca:'Estat', es:'Estado', en:'Status' },
+    'injury_log.end_date':   { ca:'Data de fi', es:'Fecha de fin', en:'End Date' },
+
+    // ── Notifications ──
+    'notif.all':         { ca:'Totes les notificacions', es:'Todas las notificaciones', en:'All Notifications' },
+    'notif.no_notif':    { ca:'Cap notificació.', es:'Sin notificaciones.', en:'No notifications yet.' },
+    'notif.training_rpe':{ ca:'RPE Entrenament', es:'RPE Entrenamiento', en:'Training RPE' },
+    'notif.match_rpe':   { ca:'RPE Partit', es:'RPE Partido', en:'Match RPE' },
+    'notif.extra':       { ca:'Entrenament extra', es:'Entrenamiento extra', en:'Extra Training' },
+    'notif.train_avail': { ca:'Disp. Entrenament', es:'Disp. Entrenamiento', en:'Training Avail' },
+    'notif.match_avail': { ca:'Disp. Partit', es:'Disp. Partido', en:'Match Avail' },
+
+
+
+    // ── Settings ──
+    'settings.cat_config':   { ca:'Configuració de categories', es:'Configuración de categorías', en:'Category Configuration' },
+    'settings.cat_edit_desc':{ ca:'Modifica les categories, equips i enllaços classificació FCF del club.', es:'Modifica las categorías, equipos y enlaces clasificación FCF del club.', en:'Edit your club\'s categories, teams and FCF league links.' },
+    'settings.cat_no_club':  { ca:'No estàs vinculat a cap club. Contacta l\'administrador.', es:'No estás vinculado a ningún club. Contacta al administrador.', en:'You are not linked to any club. Contact the administrator.' },
+    'settings.cat_edit_btn': { ca:'Editar categories', es:'Editar categorías', en:'Edit categories' },
+    'settings.club_mgmt':   { ca:'Gestió de clubs', es:'Gestión de clubes', en:'Club Management' },
+    'settings.loading':      { ca:'Carregant clubs…', es:'Cargando clubes…', en:'Loading clubs…' },
+    'settings.no_clubs':     { ca:'Cap club creat encara.', es:'Ningún club creado todavía.', en:'No clubs created yet.' },
+    'settings.error_loading':{ ca:'Error carregant clubs.', es:'Error cargando clubes.', en:'Error loading clubs.' },
+    'settings.create_club':  { ca:'Crear nou club', es:'Crear nuevo club', en:'Create New Club' },
+    'settings.club_name':    { ca:'Nom del club', es:'Nombre del club', en:'Club Name' },
+    'settings.club_name_ph': { ca:'CF Exemple', es:'CF Ejemplo', en:'FC Example' },
+    'settings.club_email':   { ca:'Email del Team Lead', es:'Email del Team Lead', en:'Team Lead Email' },
+    'settings.club_badge':   { ca:'Escut del club (PNG)', es:'Escudo del club (PNG)', en:'Club Badge (PNG)' },
+    'settings.create_btn':   { ca:'Crear club', es:'Crear club', en:'Create Club' },
+    'settings.th_club':      { ca:'Club', es:'Club', en:'Club' },
+    'settings.th_code':      { ca:'Codi', es:'Código', en:'Code' },
+    'settings.th_teamlead':  { ca:'Team Lead', es:'Team Lead', en:'Team Lead' },
+    'settings.copy_code':    { ca:'Copiar codi', es:'Copiar código', en:'Copy code' },
+    'settings.data_mgmt':    { ca:'Gestió de dades', es:'Gestión de datos', en:'Data Management' },
+    'settings.reset_desc':   { ca:'Reseteja totes les dades per començar de nou. Això eliminarà tots els usuaris i restaurarà les dades d\'exemple.', es:'Reinicia todos los datos para empezar de nuevo. Esto eliminará todos los usuarios y restaurará los datos de ejemplo.', en:'Reset all app data to start fresh. This will remove all users and restore sample data.' },
+    'settings.reset_btn':    { ca:'Resetejar totes les dades', es:'Reiniciar todos los datos', en:'Reset All Data' },
+
+    // ── Confirm / Alert Messages ──
+    'alert.image_too_large':  { ca:'La imatge ha de ser inferior a 2 MB.', es:'La imagen debe ser inferior a 2 MB.', en:'Image must be under 2 MB.' },
+    'alert.select_role':      { ca:'Selecciona almenys un rol.', es:'Selecciona al menos un rol.', en:'Please select at least one role.' },
+    'alert.board_name_exists':{ ca:'Ja existeix una pissarra amb aquest nom.', es:'Ya existe una pizarra con ese nombre.', en:'A board with this name already exists.' },
+    'alert.select_training':  { ca:'Selecciona un entrenament.', es:'Selecciona un entrenamiento.', en:'Please select a training.' },
+    'alert.select_match':     { ca:'Selecciona un partit.', es:'Selecciona un partido.', en:'Please select a match.' },
+    'alert.select_player':    { ca:'Selecciona un jugador.', es:'Selecciona un jugador.', en:'Please select a player.' },
+    'confirm.existing_injury':{ ca:'Aquest jugador ja té una lesió activa. Crear-ne una de nova?', es:'Este jugador ya tiene una lesión activa. ¿Crear una nueva?', en:'This player already has an active injury. Create a new one?' },
+    'confirm.delete_user':    { ca:'Eliminar aquest usuari?', es:'¿Eliminar este usuario?', en:'Delete this user?' },
+    'confirm.erase_all':      { ca:'Això esborrarà TOTES les dades. Estàs segur?', es:'Esto borrará TODOS los datos. ¿Estás seguro?', en:'This will erase ALL data. Are you sure?' },
+    'confirm.delete_match':   { ca:'Eliminar aquest partit?', es:'¿Eliminar este partido?', en:'Delete this match?' },
+    'error.passwords_mismatch':{ ca:'Les contrasenyes no coincideixen.', es:'Las contraseñas no coinciden.', en:'Passwords do not match.' },
+    'error.invalid_team_code': { ca:'Codi d\'equip no vàlid.', es:'Código de equipo no válido.', en:'Invalid team code.' },
+    'error.need_team_code':    { ca:'Has d\'introduir el codi d\'equip.', es:'Debes introducir el código de equipo.', en:'You must enter a team code.' },
+    'error.enter_code':        { ca:'Introdueix un codi.', es:'Introduce un código.', en:'Enter a code.' },
+    'error.invalid_code':      { ca:'Codi no vàlid.', es:'Código no válido.', en:'Invalid code.' },
+    'error.need_category':     { ca:'Has d\'activar almenys una categoria.', es:'Debes activar al menos una categoría.', en:'You must enable at least one category.' },
+
+    // ── Empty States ──
+    'empty.page_not_found':  { ca:'Pàgina no trobada', es:'Página no encontrada', en:'Page not found' },
+
+    // ── Fitness ──
+    'fitness.fit':           { ca:'Apte', es:'Apto', en:'Fit' },
+    'fitness.doubt':         { ca:'Dubte', es:'Duda', en:'Doubt' },
+    'fitness.injured':       { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'fitness.recovering':    { ca:'Recuperant-se de', es:'Recuperándose de', en:'Recovering from' },
+    'fitness.injury':        { ca:'Lesió', es:'Lesión', en:'Injury' },
+
+    // ── Auth (login/register/join) ──
+    'auth.subtitle':         { ca:'Benvingut al millor club del barri', es:'Bienvenido al mejor club del barrio', en:'Welcome to the best club in town' },
+    'auth.email':            { ca:'Email', es:'Email', en:'Email' },
+    'auth.password':         { ca:'Contrasenya', es:'Contraseña', en:'Password' },
+    'auth.password_ph':      { ca:'Mínim 6 caràcters', es:'Mínimo 6 caracteres', en:'Min. 6 characters' },
+    'auth.login_btn':        { ca:'A jugar!', es:'¡A jugar!', en:'Let\'s play!' },
+    'auth.no_account':       { ca:'No tens un perfil?', es:'¿No tienes perfil?', en:'Don\'t have an account?' },
+    'auth.register_link':    { ca:'Fes-te\'l!', es:'¡Créalo!', en:'Sign up!' },
+    'auth.register_subtitle':{ ca:'Ets a punt de fer història', es:'Estás a punto de hacer historia', en:'You\'re about to make history' },
+    'auth.name':             { ca:'Nom', es:'Nombre', en:'Name' },
+    'auth.confirm_password': { ca:'Confirma contrasenya', es:'Confirma contraseña', en:'Confirm Password' },
+    'auth.team_code':        { ca:'Codi d\'equip', es:'Código de equipo', en:'Team Code' },
+    'auth.register_btn':     { ca:'Crea perfil', es:'Crear perfil', en:'Create Account' },
+    'auth.has_account':      { ca:'Ja tens un perfil?', es:'¿Ya tienes perfil?', en:'Already have an account?' },
+    'auth.login_link':       { ca:'Entra', es:'Entrar', en:'Sign in' },
+    'auth.join_title':       { ca:'Uneix-te a un equip', es:'Únete a un equipo', en:'Join a Team' },
+    'auth.join_subtitle':    { ca:'Introdueix el codi que t\'ha donat el teu club', es:'Introduce el código que te ha dado tu club', en:'Enter the code your club gave you' },
+    'auth.join_btn':         { ca:'Unir-me', es:'Unirme', en:'Join' },
+    'auth.logout':           { ca:'Tancar sessió', es:'Cerrar sesión', en:'Logout' },
+    'auth.setup_title':      { ca:'Configura el teu club', es:'Configura tu club', en:'Set up your club' },
+    'auth.setup_subtitle':   { ca:'Activa les categories i equips del teu club', es:'Activa las categorías y equipos de tu club', en:'Enable your club\'s categories and teams' },
+    'auth.fcf_title':        { ca:'Enllaços classificació FCF', es:'Enlaces clasificación FCF', en:'FCF League Links' },
+    'auth.fcf_optional':     { ca:'(opcional)', es:'(opcional)', en:'(optional)' },
+    'auth.schedules_title':  { ca:'Horaris per defecte', es:'Horarios por defecto', en:'Default Schedules' },
+    'auth.save_continue':    { ca:'Desar i continuar', es:'Guardar y continuar', en:'Save & Continue' },
+    'auth.profile_title':    { ca:'Benvingut!', es:'¡Bienvenido!', en:'Welcome!' },
+    'auth.profile_subtitle': { ca:'Configura el teu perfil per començar', es:'Configura tu perfil para empezar', en:'Set up your profile to get started' },
+    'auth.upload_photo':     { ca:'Pujar foto', es:'Subir foto', en:'Upload Photo' },
+    'auth.display_name':     { ca:'Nom', es:'Nombre', en:'Display Name' },
+    'auth.display_name_ph':  { ca:'El teu nom', es:'Tu nombre', en:'Your name' },
+    'auth.dob':              { ca:'Data de naixement', es:'Fecha de nacimiento', en:'Date of Birth' },
+    'auth.continue':         { ca:'Continuar', es:'Continuar', en:'Continue' },
+    'auth.roles_title':      { ca:'Tria el teu rol', es:'Elige tu rol', en:'Choose Your Role' },
+    'auth.roles_subtitle':   { ca:'Selecciona com vols fer servir EsquerrApp', es:'Selecciona cómo quieres usar EsquerrApp', en:'Select how you want to use EsquerrApp' },
+    'auth.role_player':      { ca:'Jugador', es:'Jugador', en:'Player' },
+    'auth.role_player_desc': { ca:'Consulta el teu calendari d\'entrenaments, segueix les teves estadístiques i mira la plantilla.', es:'Consulta tu calendario de entrenamientos, sigue tus estadísticas y mira la plantilla.', en:'View your training schedule, track personal stats, and see the team roster.' },
+    'auth.role_staff':       { ca:'Staff', es:'Staff', en:'Staff' },
+    'auth.role_staff_desc':  { ca:'Gestiona entrenaments, revisa estadístiques i planifica la tàctica dels partits.', es:'Gestiona entrenamientos, revisa estadísticas y planifica la táctica de los partidos.', en:'Manage training sessions, review player stats, and plan match tactics.' },
+    'auth.select':           { ca:'Seleccionar', es:'Seleccionar', en:'Select' },
+    'auth.enable':           { ca:'Activar', es:'Activar', en:'Enable' },
+    'auth.continue_dashboard':{ ca:'Continuar al panell', es:'Continuar al panel', en:'Continue to Dashboard' },
+    'auth.roles_admin_subtitle':{ ca:'Com a admin, pots activar un o ambdós rols', es:'Como admin, puedes activar uno o ambos roles', en:'As admin, you can enable one or both roles for yourself' },
+    'auth.saving':           { ca:'Desant…', es:'Guardando…', en:'Saving…' },
+
+    // ── Category bar ──
+    'cat.all':  { ca:'Totes', es:'Todas', en:'All' },
+
+    // ── Date Picker months ──
+    'month.0':  { ca:'Gener', es:'Enero', en:'January' },
+    'month.1':  { ca:'Febrer', es:'Febrero', en:'February' },
+    'month.2':  { ca:'Març', es:'Marzo', en:'March' },
+    'month.3':  { ca:'Abril', es:'Abril', en:'April' },
+    'month.4':  { ca:'Maig', es:'Mayo', en:'May' },
+    'month.5':  { ca:'Juny', es:'Junio', en:'June' },
+    'month.6':  { ca:'Juliol', es:'Julio', en:'July' },
+    'month.7':  { ca:'Agost', es:'Agosto', en:'August' },
+    'month.8':  { ca:'Setembre', es:'Septiembre', en:'September' },
+    'month.9':  { ca:'Octubre', es:'Octubre', en:'October' },
+    'month.10': { ca:'Novembre', es:'Noviembre', en:'November' },
+    'month.11': { ca:'Desembre', es:'Diciembre', en:'December' },
+
+    // ── Date Picker short days (Mon-first) ──
+    'dpday.0':  { ca:'Dl', es:'Lu', en:'Mo' },
+    'dpday.1':  { ca:'Dt', es:'Ma', en:'Tu' },
+    'dpday.2':  { ca:'Dc', es:'Mi', en:'We' },
+    'dpday.3':  { ca:'Dj', es:'Ju', en:'Th' },
+    'dpday.4':  { ca:'Dv', es:'Vi', en:'Fr' },
+    'dpday.5':  { ca:'Ds', es:'Sá', en:'Sa' },
+    'dpday.6':  { ca:'Dg', es:'Do', en:'Su' },
+
+    // ── Day labels (Monday-first for schedules) ──
+    'day.monday':    { ca:'Dilluns', es:'Lunes', en:'Monday' },
+    'day.tuesday':   { ca:'Dimarts', es:'Martes', en:'Tuesday' },
+    'day.wednesday': { ca:'Dimecres', es:'Miércoles', en:'Wednesday' },
+    'day.thursday':  { ca:'Dijous', es:'Jueves', en:'Thursday' },
+    'day.friday':    { ca:'Divendres', es:'Viernes', en:'Friday' },
+    'day.saturday':  { ca:'Dissabte', es:'Sábado', en:'Saturday' },
+    'day.sunday':    { ca:'Diumenge', es:'Domingo', en:'Sunday' },
+
+    // ── Full day names (Sunday=0 index) ──
+    'dayFull.0':  { ca:'Diumenge', es:'Domingo', en:'Sunday' },
+    'dayFull.1':  { ca:'Dilluns', es:'Lunes', en:'Monday' },
+    'dayFull.2':  { ca:'Dimarts', es:'Martes', en:'Tuesday' },
+    'dayFull.3':  { ca:'Dimecres', es:'Miércoles', en:'Wednesday' },
+    'dayFull.4':  { ca:'Dijous', es:'Jueves', en:'Thursday' },
+    'dayFull.5':  { ca:'Divendres', es:'Viernes', en:'Friday' },
+    'dayFull.6':  { ca:'Dissabte', es:'Sábado', en:'Saturday' },
+
+    // ── Short day names (Sunday=0) ──
+    'dayShort.0': { ca:'Dg', es:'Do', en:'Sun' },
+    'dayShort.1': { ca:'Dl', es:'Lu', en:'Mon' },
+    'dayShort.2': { ca:'Dt', es:'Ma', en:'Tue' },
+    'dayShort.3': { ca:'Dc', es:'Mi', en:'Wed' },
+    'dayShort.4': { ca:'Dj', es:'Ju', en:'Thu' },
+    'dayShort.5': { ca:'Dv', es:'Vi', en:'Fri' },
+    'dayShort.6': { ca:'Ds', es:'Sá', en:'Sat' },
+
+    // ── Injury Analytics ──
+    'analytics.title':       { ca:'📊 Anàlisi de lesions', es:'📊 Análisis de lesiones', en:'📊 Injury Analytics' },
+    'analytics.heatmap':     { ca:'Mapa de calor corporal', es:'Mapa de calor corporal', en:'Body Zone Heatmap' },
+    'analytics.by_month':    { ca:'Lesions per mes', es:'Lesiones por mes', en:'Injuries by Month' },
+    'analytics.injury_prone':{ ca:'Jugadors propensos a lesions', es:'Jugadores propensos a lesiones', en:'Injury-Prone Players' },
+    'analytics.th_player':   { ca:'Jugador', es:'Jugador', en:'Player' },
+    'analytics.th_injuries': { ca:'Lesions', es:'Lesiones', en:'Injuries' },
+    'analytics.th_days_out': { ca:'Dies fora', es:'Días fuera', en:'Days Out' },
+    'analytics.th_most_affected':{ ca:'Més afectat', es:'Más afectado', en:'Most Affected' },
+    'analytics.most_common_area':    { ca:'Zona més comuna', es:'Zona más común', en:'Most Common Area' },
+    'analytics.most_common_severity':{ ca:'Gravetat més comuna', es:'Gravedad más común', en:'Most Common Severity' },
+
+    // ── Short months (charts) ──
+    'monthShort.0':  { ca:'Gen', es:'Ene', en:'Jan' },
+    'monthShort.1':  { ca:'Feb', es:'Feb', en:'Feb' },
+    'monthShort.2':  { ca:'Mar', es:'Mar', en:'Mar' },
+    'monthShort.3':  { ca:'Abr', es:'Abr', en:'Apr' },
+    'monthShort.4':  { ca:'Mai', es:'May', en:'May' },
+    'monthShort.5':  { ca:'Jun', es:'Jun', en:'Jun' },
+    'monthShort.6':  { ca:'Jul', es:'Jul', en:'Jul' },
+    'monthShort.7':  { ca:'Ago', es:'Ago', en:'Aug' },
+    'monthShort.8':  { ca:'Set', es:'Sep', en:'Sep' },
+    'monthShort.9':  { ca:'Oct', es:'Oct', en:'Oct' },
+    'monthShort.10': { ca:'Nov', es:'Nov', en:'Nov' },
+    'monthShort.11': { ca:'Des', es:'Dic', en:'Dec' },
+
+    // ── Misc ──
+    'misc.vs':       { ca:'vs', es:'vs', en:'vs' },
+    'misc.saving':   { ca:'Desant…', es:'Guardando…', en:'Saving…' },
+    'misc.saved':    { ca:'Desat ✓', es:'Guardado ✓', en:'Saved ✓' },
+    'misc.click_change': { ca:'Clica per canviar la resposta', es:'Haz clic para cambiar la respuesta', en:'Click to change answer' }
+  };
+
+  function t(key) {
+    var entry = _i18n[key];
+    if (!entry) return key;
+    return entry[_lang] || entry.ca || key;
+  }
+
+  function setLang(lang) {
+    _lang = lang;
+    localStorage.setItem('fa_lang', lang);
+    document.documentElement.setAttribute('data-lang', lang);
+    // Re-render if dashboard is visible
+    var session = typeof getSession === 'function' ? getSession() : null;
+    if (session) {
+      renderDashboard(session);
+    }
+    // Update auth screens if visible
+    applyI18nHtml();
+    // Update language switcher active states
+    document.querySelectorAll('.lang-link').forEach(function(el) {
+      el.classList.toggle('active', el.dataset.lang === _lang);
+    });
+  }
+
+  function applyI18nHtml() {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n');
+      var val = t(key);
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = val;
+      } else {
+        el.textContent = val;
+      }
+    });
+  }
+  // ---------- i18n Date Helpers ----------
+  // Translated day name (Sunday=0 index)
+  function tDay(dayIdx) { return t('dayFull.' + dayIdx); }
+  // Translated short day name (Sunday=0 index)
+  function tDayShort(dayIdx) { return t('dayShort.' + dayIdx); }
+  // Translated month name (0-based)
+  function tMonth(monthIdx) { return t('month.' + monthIdx); }
+  // Translated short month name (0-based)
+  function tMonthShort(monthIdx) { return t('monthShort.' + monthIdx); }
+
+  // Format date like "Thursday 25 May 2026" in current language
+  function tDateLong(dateStr) {
+    if (!dateStr) return '—';
+    var d = new Date(dateStr + 'T12:00:00');
+    return tDay(d.getDay()) + ' ' + d.getDate() + ' ' + tMonth(d.getMonth()) + ' ' + d.getFullYear();
+  }
+  // Format date like "Thu 25 May" in current language
+  function tDateShort(dateStr) {
+    if (!dateStr) return '—';
+    var d = new Date(dateStr + 'T12:00:00');
+    return tDayShort(d.getDay()) + ' ' + d.getDate() + ' ' + tMonthShort(d.getMonth());
+  }
+  // Format date like "25 May" (no day name)
+  function tDateDayMonth(dateStr) {
+    if (!dateStr) return '—';
+    var d = new Date(dateStr + 'T12:00:00');
+    return d.getDate() + ' ' + tMonthShort(d.getMonth());
+  }
+  // Format date like "25 May 2026" (no day name)
+  function tDateDMY(dateStr) {
+    if (!dateStr) return '—';
+    var d = new Date(dateStr + 'T12:00:00');
+    return d.getDate() + ' ' + tMonthShort(d.getMonth()) + ' ' + d.getFullYear();
+  }
+  // Format like "Dl 25/05" (short day + dd/mm)
+  function tDayDDMM(dateStr) {
+    if (!dateStr) return '';
+    var d = new Date(dateStr + 'T12:00:00');
+    return tDayShort(d.getDay()) + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  // #endregion i18n
+
   // #region Helpers, Cache & Fitness
   // ---------- Helpers ----------
   const $ = (sel) => document.querySelector(sel);
@@ -25,7 +703,7 @@
     localStorage.setItem('fa_users', JSON.stringify(users));
     invalidateUsersCache();
   }
-  // localDateStr, DAYS_CA → utils.js
+  // localDateStr → utils.js
 
   /* Derive fitnessStatus from the chronological sequence of training answers.
      - Last answer is 'injured' → injured
@@ -579,6 +1257,27 @@
   async function loadClubConfig(clubId) {
     if (!clubId || clubId === 'default' || clubId === 'none') { _clubConfig = null; return null; }
     _clubConfig = await getClub(clubId);
+    // Update splash badge and cache image as base64 for instant next load
+    var splashImg = document.getElementById('splash-badge');
+    if (_clubConfig && _clubConfig.badgeUrl) {
+      if (splashImg) splashImg.src = _clubConfig.badgeUrl;
+      // Cache base64 version if URL changed
+      if (localStorage.getItem('_splash_badge_url') !== _clubConfig.badgeUrl) {
+        try {
+          var resp = await fetch(_clubConfig.badgeUrl);
+          var blob = await resp.blob();
+          var reader = new FileReader();
+          reader.onloadend = function () {
+            localStorage.setItem('_splash_badge', reader.result);
+            localStorage.setItem('_splash_badge_url', _clubConfig.badgeUrl);
+          };
+          reader.readAsDataURL(blob);
+        } catch (e) {
+          localStorage.setItem('_splash_badge', _clubConfig.badgeUrl);
+          localStorage.setItem('_splash_badge_url', _clubConfig.badgeUrl);
+        }
+      }
+    }
     return _clubConfig;
   }
 
@@ -590,6 +1289,309 @@
   // Check if a team name in a match is "ours"
   function isOurTeam(name) {
     return name === getClubName();
+  }
+
+  // ── Match Events helpers ──
+  function getMatchEvents(matchId) {
+    var all = JSON.parse(localStorage.getItem('fa_match_events') || '{}');
+    return all[matchId] || [];
+  }
+  function saveMatchEvents(matchId, events) {
+    var all = JSON.parse(localStorage.getItem('fa_match_events') || '{}');
+    all[matchId] = events;
+    localStorage.setItem('fa_match_events', JSON.stringify(all));
+    // Sync computed score into fa_matches for backward compat
+    var sc = calcMatchScore(events);
+    var matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+    var idx = matches.findIndex(function(x) { return x.id === matchId; });
+    if (idx !== -1) {
+      matches[idx].score = sc.home + '-' + sc.away;
+      localStorage.setItem('fa_matches', JSON.stringify(matches));
+    }
+  }
+  function calcMatchScore(events) {
+    var home = 0, away = 0;
+    events.forEach(function(e) {
+      if (e.type === 'goal') { if (e.side === 'home') home++; else away++; }
+      if (e.type === 'own_goal') { if (e.side === 'home') away++; else home++; }
+    });
+    return { home: home, away: away };
+  }
+  function parseEventMinute(min) {
+    // Supports "45", "45+2", "90+1" — returns a numeric value for sorting
+    if (!min) return 999;
+    var parts = String(min).split('+');
+    return (Number(parts[0]) || 0) + (Number(parts[1]) || 0) * 0.01;
+  }
+  function formatEventMinute(min) {
+    if (!min) return '';
+    return String(min) + "'";
+  }
+  function countYellowCards(events, side, playerId, playerNumber) {
+    return events.filter(function(e) {
+      if (e.type !== 'yellow' || e.side !== side) return false;
+      if (playerId) return e.playerId === playerId;
+      if (playerNumber) return e.playerNumber === playerNumber;
+      return false;
+    }).length;
+  }
+  function getEventPlayerName(ev, users) {
+    if (ev.playerId) {
+      var p = users.find(function(u) { return String(u.id) === String(ev.playerId); });
+      return p ? sanitize(p.name) : 'Desconegut';
+    }
+    return ev.playerNumber ? ('#' + sanitize(ev.playerNumber)) : '?';
+  }
+  function getEventIcon(ev, yellowCount) {
+    switch (ev.type) {
+      case 'goal': return '<span class="ev-icon ev-icon-goal"><img src="img/gol.png" class="ev-sub-img" alt="gol"></span>';
+      case 'own_goal': return '<span class="ev-icon ev-icon-og"><img src="img/gol-propia.png" class="ev-sub-img" alt="gol en pròpia"></span>';
+      case 'yellow':
+        if (yellowCount >= 2) return '<span class="ev-icon ev-icon-yellow ev-yellow-second"><span class="ev-yellow-badge">2</span><img src="img/groga.jpg" class="ev-sub-img" alt="groga"></span>';
+        return '<span class="ev-icon ev-icon-yellow"><img src="img/groga.jpg" class="ev-sub-img" alt="groga"></span>';
+      case 'red': return '<span class="ev-icon ev-icon-red"><img src="img/vermella.jpg" class="ev-sub-img" alt="vermella"></span>';
+      case 'change': return '<span class="ev-icon ev-icon-change"><img src="img/sub-' + ev.side + '.jpg" class="ev-sub-img" alt="sub"></span>';
+      case 'penal_fallat': return '<span class="ev-icon ev-icon-penal-miss"><img src="img/penal%20fallat.png" class="ev-sub-img" alt="penal fallat"></span>';
+      case 'pal': return '<span class="ev-icon ev-icon-post"><img src="img/pal.png" class="ev-sub-img" alt="pal"></span>';
+      default: return '';
+    }
+  }
+
+  // ── Starting XI helpers ──
+  function getStartingXI(matchId) {
+    var sent = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    var entry = sent[matchId];
+    return (entry && Array.isArray(entry.startingXI)) ? entry.startingXI : [];
+  }
+  function saveStartingXI(matchId, playerIds) {
+    var sent = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    if (!sent[matchId]) return;
+    sent[matchId].startingXI = playerIds.slice(0, 11);
+    localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sent));
+  }
+
+  // ── Player match stats aggregation ──
+  function computePlayerMatchStats(playerId) {
+    var matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+    var allEvents = JSON.parse(localStorage.getItem('fa_match_events') || '{}');
+    var sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    var users = getUsers();
+    var player = users.find(function(u) { return String(u.id) === String(playerId); });
+    var playerTeam = player ? (player.team || '') : '';
+
+    var totals = { goals: 0, assists: 0, matches: 0, minutes: 0, titulars: 0 };
+    var matchRows = [];
+    var now = new Date();
+
+    matches.forEach(function(m) {
+      // Only past matches
+      if (!m.date || !m.time) return;
+      var matchDate = new Date(m.date + 'T' + m.time + ':00');
+      if (matchDate > now) return;
+
+      var sent = sentData[m.id];
+      var sentPlayers = (sent && Array.isArray(sent.players)) ? sent.players : [];
+      var inConvocatoria = sentPlayers.indexOf(String(playerId)) !== -1 || sentPlayers.indexOf(Number(playerId)) !== -1;
+      var matchTeam = m.team || '';
+      var isOwnTeam = playerTeam && matchTeam === playerTeam;
+
+      // Include match if player's team OR player was called up
+      if (!isOwnTeam && !inConvocatoria) return;
+
+      var events = allEvents[m.id] || [];
+      var startingXI = getStartingXI(m.id);
+      var hasStartingXI = startingXI.length > 0;
+      var isStarter = startingXI.some(function(id) { return String(id) === String(playerId); });
+
+      // Determine which side is ours
+      var ourSide = isOurTeam(m.home) ? 'home' : 'away';
+      var oppSide = ourSide === 'home' ? 'away' : 'home';
+
+      // Score
+      var score = calcMatchScore(events);
+      var homeScore = score.home;
+      var awayScore = score.away;
+      // Fallback to stored score if no events
+      if (events.length === 0 && m.score) {
+        var parts = m.score.split('-');
+        homeScore = parseInt(parts[0]) || 0;
+        awayScore = parseInt(parts[1]) || 0;
+      }
+
+      // Result letter (from our team's perspective)
+      var ourGoals = ourSide === 'home' ? homeScore : awayScore;
+      var theirGoals = ourSide === 'home' ? awayScore : homeScore;
+      var resultLetter = ourGoals > theirGoals ? 'V' : (ourGoals < theirGoals ? 'D' : 'E');
+
+      // --- Per-player stats from events ---
+      var yellows = 0, reds = 0, goals = 0, assists = 0;
+      var goalBreakdown = { jugada: 0, penal: 0, falta: 0 };
+
+      events.forEach(function(ev) {
+        var isPlayer = ev.playerId && String(ev.playerId) === String(playerId);
+        // Check assists (can be on any goal event, even if same player scored)
+        if (ev.type === 'goal' && ev.assistPlayerId && String(ev.assistPlayerId) === String(playerId)) {
+          assists++;
+        }
+        if (!isPlayer) return;
+        if (ev.type === 'yellow') yellows++;
+        if (ev.type === 'red') reds++;
+        if (ev.type === 'goal') {
+          goals++;
+          if (ev.goalType === 'jugada_oberta') goalBreakdown.jugada++;
+          else if (ev.goalType === 'penal') goalBreakdown.penal++;
+          else if (ev.goalType === 'falta_directa') goalBreakdown.falta++;
+          else goalBreakdown.jugada++; // default to open play
+        }
+      });
+
+      // --- Minutes calculation ---
+      var minutes = '—';
+      if (!inConvocatoria) {
+        minutes = 'NC';
+      } else if (hasStartingXI) {
+        if (isStarter) {
+          minutes = 90;
+          // Check if subbed out or red carded
+          events.forEach(function(ev) {
+            if (ev.side === ourSide && ev.type === 'change' && ev.playerOutId && String(ev.playerOutId) === String(playerId)) {
+              var m2 = parseEventMinute(ev.minute);
+              if (m2 < 999 && m2 < minutes) minutes = Math.floor(m2);
+            }
+            if (ev.type === 'red' && ev.playerId && String(ev.playerId) === String(playerId)) {
+              var m3 = parseEventMinute(ev.minute);
+              if (m3 < 999 && m3 < minutes) minutes = Math.floor(m3);
+            }
+          });
+        } else {
+          // On bench — check if subbed in
+          minutes = 0;
+          events.forEach(function(ev) {
+            if (ev.side === ourSide && ev.type === 'change' && ev.playerInId && String(ev.playerInId) === String(playerId)) {
+              var subMin = parseEventMinute(ev.minute);
+              if (subMin < 999) minutes = 90 - Math.floor(subMin);
+            }
+          });
+          // Check if sent off after sub in
+          if (minutes > 0) {
+            events.forEach(function(ev) {
+              if (ev.type === 'red' && ev.playerId && String(ev.playerId) === String(playerId)) {
+                var redMin = parseEventMinute(ev.minute);
+                var subInMin = 0;
+                events.forEach(function(ev2) {
+                  if (ev2.side === ourSide && ev2.type === 'change' && ev2.playerInId && String(ev2.playerInId) === String(playerId)) {
+                    subInMin = parseEventMinute(ev2.minute);
+                  }
+                });
+                if (redMin < 999 && subInMin < 999) minutes = Math.floor(redMin) - Math.floor(subInMin);
+              }
+            });
+          }
+        }
+      }
+
+      // Status: Titular / Suplent / NC
+      var status = 'NC';
+      if (inConvocatoria) {
+        if (hasStartingXI) {
+          status = isStarter ? 'Titular' : 'Suplent';
+        } else {
+          status = '—';
+        }
+      }
+
+      // Update totals
+      totals.matches++;
+      totals.goals += goals;
+      totals.assists += assists;
+      if (typeof minutes === 'number') totals.minutes += minutes;
+      if (status === 'Titular') totals.titulars++;
+
+      matchRows.push({
+        date: m.date,
+        home: m.home || '',
+        away: m.away || '',
+        homeScore: homeScore,
+        awayScore: awayScore,
+        resultLetter: resultLetter,
+        isOwnTeam: isOwnTeam,
+        minutes: minutes,
+        status: status,
+        teamLetter: m.team || '',
+        yellows: yellows,
+        reds: reds,
+        assists: assists,
+        goals: goals,
+        goalBreakdown: goalBreakdown
+      });
+    });
+
+    // Sort by date descending
+    matchRows.sort(function(a, b) { return b.date.localeCompare(a.date); });
+
+    return { totals: totals, matchRows: matchRows };
+  }
+
+  // ── Match history table builder ──
+  function buildMatchHistoryTable(matchRows) {
+    if (!matchRows.length) return '<div class="card"><p style="text-align:center;color:var(--text-secondary);">' + t('mh.no_matches') + '</p></div>';
+
+    var headerRow = '<tr>' +
+      '<th>' + t('mh.th_date') + '</th>' +
+      '<th class="pmt-col-match">' + t('mh.th_match') + '</th>' +
+      '<th>' + t('mh.th_result') + '</th>' +
+      '<th></th>' +
+      '<th style="font-size:1.1rem;color:#f9a825;line-height:1;vertical-align:middle;">★</th>' +
+      '<th><img src="img/chrono.jpg" class="pmt-icon-header" alt="min"></th>' +
+      '<th><img src="img/groga.jpg" class="pmt-icon-header" alt="groga"></th>' +
+      '<th><img src="img/vermella.jpg" class="pmt-icon-header" alt="vermella"></th>' +
+      '<th><img src="img/assist.png" class="pmt-icon-header" alt="assist"></th>' +
+      '<th><img src="img/gol.png" class="pmt-icon-header" alt="gol"></th>' +
+      '<th class="pmt-bd-header">P</th>' +
+      '<th class="pmt-bd-header">FL</th>' +
+    '</tr>';
+
+    var bodyRows = matchRows.map(function(r) {
+      // Format date dd/mm/yy
+      var dp = r.date.split('-');
+      var dateStr = dp[2] + '/' + dp[1] + '/' + dp[0].slice(2);
+
+      var otherCls = r.isOwnTeam ? '' : ' pmt-other-team';
+
+      // Result circle
+      var circleColor = r.resultLetter === 'V' ? 'pmt-win' : (r.resultLetter === 'D' ? 'pmt-loss' : 'pmt-draw');
+
+      // Minutes display
+      var minDisplay = r.minutes === 'NC' ? 'NC' : ((typeof r.minutes === 'number') ? r.minutes + "'" : r.minutes);
+
+      // Own club name bold + own score bold (always, regardless of team letter)
+      var homeIsOurs = isOurTeam(r.home);
+      var awayIsOurs = isOurTeam(r.away);
+      var homeNameCls = homeIsOurs ? ' pmt-own' : ' pmt-opp';
+      var awayNameCls = awayIsOurs ? ' pmt-own' : ' pmt-opp';
+      var homeScoreCls = homeIsOurs ? ' pmt-own' : ' pmt-opp';
+      var awayScoreCls = awayIsOurs ? ' pmt-own' : ' pmt-opp';
+
+      var teamBadge = r.teamLetter ? '<span class="pmt-team-letter">' + sanitize(r.teamLetter) + '</span>' : '';
+
+      return '<tr class="' + otherCls + '">' +
+        '<td class="pmt-date"><span class="pmt-date-tap">' + dateStr + '</span>' + teamBadge + '</td>' +
+        '<td class="pmt-match pmt-col-match"><div class="pmt-stacked"><span class="' + homeNameCls + '">' + sanitize(r.home) + '</span><span class="' + awayNameCls + '">' + sanitize(r.away) + '</span></div></td>' +
+        '<td class="pmt-score"><div class="pmt-stacked"><span class="' + homeScoreCls + '">' + r.homeScore + '</span><span class="' + awayScoreCls + '">' + r.awayScore + '</span></div></td>' +
+        '<td><span class="pmt-result-circle ' + circleColor + '">' + r.resultLetter + '</span></td>' +
+        '<td class="pmt-status' + (r.status === 'Titular' ? ' pmt-status-tit' : (r.status === 'Suplent' ? ' pmt-status-sup' : ' pmt-status-nc')) + '">' + (r.status === 'Titular' ? 'T' : (r.status === 'Suplent' ? 'S' : 'NC')) + '</td>' +
+        '<td class="pmt-min">' + minDisplay + '</td>' +
+        '<td class="pmt-stat">' + (r.yellows || '') + '</td>' +
+        '<td class="pmt-stat">' + (r.reds || '') + '</td>' +
+        '<td class="pmt-stat">' + (r.assists || '') + '</td>' +
+        '<td class="pmt-stat">' + (r.goals || '') + '</td>' +
+        '<td class="pmt-bd-cell">' + (r.goalBreakdown.penal || '') + '</td>' +
+        '<td class="pmt-bd-cell">' + (r.goalBreakdown.falta || '') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="card pmt-card"><div class="card-title">' + t('mh.title') + '</div>' +
+      '<div class="pmt-scroll"><table class="player-match-table"><thead>' + headerRow + '</thead><tbody>' + bodyRows + '</tbody></table></div></div>';
   }
 
   // Return letters for a given category from the club config (fallback: ['A','B'])
@@ -621,7 +1623,7 @@
     const errEl = $('#register-error');
 
     if (pw !== pw2) {
-      errEl.textContent = 'Passwords do not match.';
+      errEl.textContent = t('error.passwords_mismatch');
       errEl.hidden = false;
       return;
     }
@@ -640,7 +1642,7 @@
         club = await getClubByCode(teamCode);
         if (!club) {
           await cred.user.delete();
-          errEl.textContent = 'Codi d\'equip no vàlid.';
+          errEl.textContent = t('error.invalid_team_code');
           errEl.hidden = false;
           return;
         }
@@ -653,7 +1655,7 @@
         } else {
           // Not a superuser, not a team lead, and no code — require code
           await cred.user.delete();
-          errEl.textContent = 'Has d\'introduir el codi d\'equip.';
+          errEl.textContent = t('error.need_team_code');
           errEl.hidden = false;
           return;
         }
@@ -822,13 +1824,13 @@
     const code = codeInput.value.trim().toUpperCase();
     const errEl = $('#join-club-error');
     if (!code) {
-      errEl.textContent = 'Introdueix un codi.';
+      errEl.textContent = t('error.enter_code');
       errEl.hidden = false;
       return;
     }
     const club = await getClubByCode(code);
     if (!club) {
-      errEl.textContent = 'Codi no vàlid.';
+      errEl.textContent = t('error.invalid_code');
       errEl.hidden = false;
       return;
     }
@@ -910,7 +1912,7 @@
     fcfInputs.innerHTML = html;
   }
 
-  // DAY_LABELS, DAY_VALUES → utils.js
+  // DAY_VALUES → utils.js
 
   function _refreshTeamSetupSchedules() {
     var section = document.getElementById('team-setup-schedules');
@@ -922,8 +1924,9 @@
     if (!rows.length) { section.hidden = true; return; }
     section.hidden = false;
     var existingSchedules = (_clubConfig && _clubConfig.schedules) ? _clubConfig.schedules : {};
+    var dayLabelsI18n = ['day.monday','day.tuesday','day.wednesday','day.thursday','day.friday','day.saturday','day.sunday'];
     var dayOptions = DAY_VALUES.map(function (d, i) {
-      return '<option value="' + d + '">' + DAY_LABELS[i] + '</option>';
+      return '<option value="' + d + '">' + t(dayLabelsI18n[i]) + '</option>';
     }).join('');
 
     var html = '';
@@ -952,8 +1955,9 @@
         html += '<div class="ts-sched-sub">Partit a casa</div>';
         html += '<div class="ts-sched-row">';
         html += '<select data-home-day="' + schedKey + '">' + _selectedDayOptions(dayOptions, homeGame.day) + '</select>';
-        html += '<input type="time" data-home-time="' + schedKey + '" value="' + (homeGame.time || '') + '" placeholder="Hora">';
+        html += '<input type="text" inputmode="numeric" data-home-time="' + schedKey + '" value="' + (homeGame.time || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">';
         html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="Ubicació">';
+        html += '<input type="text" data-home-link="' + schedKey + '" value="' + sanitize(homeGame.link || '') + '" placeholder="Link">';
         html += '</div>';
 
         html += '</div>';
@@ -965,9 +1969,10 @@
   function _buildTrainingRow(schedKey, idx, t, dayOptions) {
     return '<div class="ts-sched-row" data-train-idx="' + idx + '">' +
       '<select data-train-day="' + schedKey + '-' + idx + '">' + _selectedDayOptions(dayOptions, t.day) + '</select>' +
-      '<input type="time" data-train-time="' + schedKey + '-' + idx + '" value="' + (t.time || '') + '" placeholder="Hora">' +
+      '<input type="text" inputmode="numeric" data-train-time="' + schedKey + '-' + idx + '" value="' + (t.time || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">' +
       '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicació">' +
-      '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;">✕</button>' +
+      '<input type="text" data-train-link="' + schedKey + '-' + idx + '" value="' + sanitize(t.link || '') + '" placeholder="Link">' +
+      '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
       '</div>';
   }
 
@@ -1031,8 +2036,9 @@
           var list = schedSection.querySelector('.ts-training-list[data-sched-key="' + schedKey + '"]');
           if (!list) return;
           var nextIdx = list.querySelectorAll('.ts-sched-row').length;
+          var dayLabelsI18n = ['day.monday','day.tuesday','day.wednesday','day.thursday','day.friday','day.saturday','day.sunday'];
           var dayOptions = DAY_VALUES.map(function (d, i) {
-            return '<option value="' + d + '">' + DAY_LABELS[i] + '</option>';
+            return '<option value="' + d + '">' + t(dayLabelsI18n[i]) + '</option>';
           }).join('');
           var rowHtml = _buildTrainingRow(schedKey, nextIdx, { day: '', time: '', location: '' }, dayOptions);
           list.insertAdjacentHTML('beforeend', rowHtml);
@@ -1045,6 +2051,14 @@
           if (list2 && list2.querySelectorAll('.ts-sched-row').length <= 1) return; // keep at least 1
           if (row) row.remove();
         }
+      });
+      // Auto-format HH:MM on time inputs (24h)
+      schedSection.addEventListener('input', function (e) {
+        if (!e.target.matches('[data-train-time], [data-home-time]')) return;
+        var v = e.target.value.replace(/[^0-9]/g, '');
+        if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2, 4);
+        if (v.length > 5) v = v.slice(0, 5);
+        e.target.value = v;
       });
     }
     // Save button (remove previous listener to avoid duplicates when re-entering wizard)
@@ -1083,7 +2097,7 @@
       if (enabled) anyEnabled = true;
     });
     if (!anyEnabled) {
-      errEl.textContent = 'Has d\'activar almenys una categoria.';
+      errEl.textContent = t('error.need_category');
       errEl.hidden = false;
       return;
     }
@@ -1102,13 +2116,15 @@
       var list = block.querySelector('.ts-training-list');
       if (list) {
         list.querySelectorAll('.ts-sched-row').forEach(function (row) {
-          var daySel = row.querySelector('select');
-          var timeInp = row.querySelector('input[type="time"]');
-          var locInp = row.querySelector('input[type="text"]');
+          var daySel = row.querySelector('select[data-train-day]');
+          var timeInp = row.querySelector('input[data-train-time]');
+          var locInp = row.querySelector('input[data-train-location]');
+          var linkInp = row.querySelector('input[data-train-link]');
           var day = daySel ? daySel.value : '';
-          var time = timeInp ? timeInp.value : '';
+          var time = timeInp ? timeInp.value.trim() : '';
           var location = locInp ? locInp.value.trim() : '';
-          if (day || time || location) training.push({ day: day, time: time, location: location });
+          var link = linkInp ? linkInp.value.trim() : '';
+          if (day || time || location) training.push({ day: day, time: time, location: location, link: link });
         });
       }
       if (!training.length) training.push({ day: '', time: '', location: '' });
@@ -1116,15 +2132,17 @@
       var homeDaySel = block.querySelector('[data-home-day="' + schedKey + '"]');
       var homeTimeInp = block.querySelector('[data-home-time="' + schedKey + '"]');
       var homeLocInp = block.querySelector('[data-home-location="' + schedKey + '"]');
+      var homeLinkInp = block.querySelector('[data-home-link="' + schedKey + '"]');
       var homeGame = {
         day: homeDaySel ? homeDaySel.value : '',
         time: homeTimeInp ? homeTimeInp.value : '',
-        location: homeLocInp ? homeLocInp.value.trim() : ''
+        location: homeLocInp ? homeLocInp.value.trim() : '',
+        link: homeLinkInp ? homeLinkInp.value.trim() : ''
       };
       schedules[schedKey] = { training: training, homeGame: homeGame };
     });
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Desant…';
+    saveBtn.textContent = t('auth.saving');
     try {
       await updateClub(session.teamId, { categories: categories, fcfLinks: fcfLinks, schedules: schedules });
       _clubConfig = await getClub(session.teamId);
@@ -1136,7 +2154,7 @@
       console.error(err);
     }
     saveBtn.disabled = false;
-    saveBtn.textContent = 'Desar i continuar';
+    saveBtn.textContent = t('auth.save_continue');
   }
 
   // ---------- Profile Setup ----------
@@ -1164,7 +2182,7 @@
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be under 2 MB.');
+      alert(t('alert.image_too_large'));
       return;
     }
     // Keep the raw File for upload in handleProfileSetup
@@ -1221,13 +2239,13 @@
     if (session.isAdmin) {
       $('#roles-pick-one').hidden = true;
       $('#roles-admin-pick').hidden = false;
-      $('#roles-subtitle').textContent = 'As admin, you can enable one or both roles for yourself';
+      $('#roles-subtitle').textContent = t('auth.roles_admin_subtitle');
       $('#chk-player').checked = (session.roles || []).includes('player');
       $('#chk-staff').checked = (session.roles || []).includes('staff');
     } else {
       $('#roles-pick-one').hidden = false;
       $('#roles-admin-pick').hidden = true;
-      $('#roles-subtitle').textContent = 'Select how you want to use EsquerrApp';
+      $('#roles-subtitle').textContent = t('auth.roles_subtitle');
     }
   }
 
@@ -1248,7 +2266,7 @@
     if ($('#chk-player').checked) roles.push('player');
     if ($('#chk-staff').checked) roles.push('staff');
     if (roles.length === 0) {
-      alert('Please select at least one role.');
+      alert(t('alert.select_role'));
       return;
     }
     session.roles = roles;
@@ -1270,6 +2288,7 @@
   let _pctAnimatedPage = '';
   let _donutAnimatedPage = '';
   let convSelectedMatchId = null;
+  let _mdEditingId = null; // tracks which saved match is being edited inline
   let detailMatchId = null;
   let detailMatchFrom = null;
   let detailTrainingDate = null;
@@ -1279,34 +2298,34 @@
     const roles = session.roles || [];
 
     if (roles.includes('player')) {
-      items.push({ section: 'Player' });
-      items.push({ id: 'player-home', icon: '🏠', label: 'Overview' });
-      items.push({ id: 'training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: 'Training Sessions' });
-      items.push({ id: 'my-stats', icon: '<img src="img/icon-stats.svg" class="sidebar-img-icon">', label: 'My Stats' });
-      items.push({ id: 'player-matchday', icon: '⚽', label: 'Matchday' });
-      items.push({ id: 'player-actions', icon: '🔔', label: 'Actions' });
+      items.push({ section: t('sidebar.section_player') });
+      items.push({ id: 'player-home', icon: '🏠', label: t('sidebar.player_home') });
+      items.push({ id: 'training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: t('sidebar.training') });
+      items.push({ id: 'my-stats', icon: '<img src="img/icon-stats.svg" class="sidebar-img-icon">', label: t('sidebar.my_stats') });
+      items.push({ id: 'player-matchday', icon: '⚽', label: t('sidebar.player_matchday') });
+      items.push({ id: 'player-actions', icon: '🔔', label: t('sidebar.player_actions') });
     }
 
     if (roles.includes('staff')) {
-      items.push({ section: 'Staff' });
-      items.push({ id: 'registrations', icon: '📝', label: 'Registrations' });
-      items.push({ id: 'manage-roster', icon: '<img src="img/icon-boot.png" class="sidebar-img-icon">', label: 'Player Roster' });
-      items.push({ id: 'staff-training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: 'Training Sessions' });
-      items.push({ id: 'matchday', icon: '📅', label: 'Set Calendar' });
-      items.push({ id: 'convocatoria', icon: '📋', label: 'Convocatòria' });
-      items.push({ id: 'staff-matchday', icon: '⚽', label: 'Matchday' });
-      items.push({ id: 'medical', icon: '<img src="img/icon-medical.svg" class="sidebar-img-icon">', label: 'Medical' });
-      items.push({ id: 'tactics', icon: '📐', label: 'Tactical Board' });
-      items.push({ id: 'staff-notifications', icon: '🔔', label: 'Notifications' });
+      items.push({ section: t('sidebar.section_staff') });
+      items.push({ id: 'registrations', icon: '📝', label: t('sidebar.registrations') });
+      items.push({ id: 'manage-roster', icon: '<img src="img/icon-boot.png" class="sidebar-img-icon">', label: t('sidebar.manage_roster') });
+      items.push({ id: 'staff-training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: t('sidebar.staff_training') });
+      items.push({ id: 'matchday', icon: '📅', label: t('sidebar.matchday') });
+      items.push({ id: 'convocatoria', icon: '📋', label: t('sidebar.convocatoria') });
+      items.push({ id: 'staff-matchday', icon: '⚽', label: t('sidebar.staff_matchday') });
+      items.push({ id: 'medical', icon: '<img src="img/icon-medical.svg" class="sidebar-img-icon">', label: t('sidebar.medical') });
+      items.push({ id: 'tactics', icon: '📐', label: t('sidebar.tactics') });
+      items.push({ id: 'staff-notifications', icon: '🔔', label: t('sidebar.notifications') });
     }
 
     if (session.isAdmin) {
-      items.push({ section: 'Admin' });
-      items.push({ id: 'users', icon: '⚙️', label: 'Manage Users' });
-      items.push({ id: 'settings', icon: '🔧', label: 'Settings' });
+      items.push({ section: t('sidebar.section_admin') });
+      items.push({ id: 'users', icon: '⚙️', label: t('sidebar.users') });
+      items.push({ id: 'settings', icon: '🔧', label: t('sidebar.settings') });
     } else if (session.isTeamLead) {
-      items.push({ section: 'Team Lead' });
-      items.push({ id: 'settings', icon: '🔧', label: 'Settings' });
+      items.push({ section: t('sidebar.section_teamlead') });
+      items.push({ id: 'settings', icon: '🔧', label: t('sidebar.settings') });
     }
 
     return items;
@@ -1376,7 +2395,9 @@
         if (sb) sb.classList.remove('open');
         const ov = document.getElementById('sidebar-overlay');
         if (ov) ov.classList.remove('open');
-        renderDashboard(getSession());
+        // Update active class without rebuilding sidebar
+        $$('.sidebar-item').forEach(s => s.classList.toggle('active', s.dataset.page === currentPage));
+        renderPage(getSession());
       });
     });
   }
@@ -1450,7 +2471,7 @@
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = catBar + fn(session);
     } else {
-      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>Page not found</p></div>';
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
     }
 
     bindDynamicActions();
@@ -1567,32 +2588,26 @@
       .filter(k => k.startsWith(session.id + '_extra_'))
       .map(k => rpeData[k]);
 
-    function fmtDate(dateStr) {
-      if (!dateStr) return '';
-      const d = new Date(dateStr + 'T12:00:00');
-      return DAYS_CA[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
-    }
-
     let pendingHtml = '';
-    pendingTraining.forEach(t => {
-      pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${session.id}_training_${t.date}">
-        <div class="action-header"><span class="badge badge-green">Training</span><span class="action-date">${fmtDate(t.date)} · ${t.time}</span></div>
-        <div class="action-label">${sanitize(t.focus || 'Training')}</div>
+    pendingTraining.forEach(tr => {
+      pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${session.id}_training_${tr.date}">
+        <div class="action-header"><span class="badge badge-green">${t('activity.badge_training')}</span><span class="action-date">${tDayDDMM(tr.date)} · ${tr.time}</span></div>
+        <div class="action-label">${sanitize(tr.focus || t('activity.badge_training'))}</div>
         <div class="action-form">
-          <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0–10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-          <div class="action-field"><label>Minutes</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
-          <button class="btn btn-primary btn-small action-submit">Submit</button>
+          <div class="action-field"><label data-tooltip="${t('actions.rpe_tooltip')}">${t('actions.rpe')}</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
+          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
+          <button class="btn btn-primary btn-small action-submit">${t('btn.submit')}</button>
         </div>
       </div>`;
     });
     pendingMatches.forEach(m => {
       pendingHtml += `<div class="action-card" data-action-type="match" data-action-key="${session.id}_match_${m.id}">
-        <div class="action-header"><span class="badge badge-yellow">Match</span><span class="action-date">${fmtDate(m.date)} · ${m.time}</span></div>
+        <div class="action-header"><span class="badge badge-yellow">${t('activity.badge_match')}</span><span class="action-date">${tDayDDMM(m.date)} · ${m.time}</span></div>
         <div class="action-label">${matchLabel(m)}</div>
         <div class="action-form">
-          <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0–10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-          <div class="action-field"><label>Minutes</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
-          <button class="btn btn-primary btn-small action-submit">Submit</button>
+          <div class="action-field"><label data-tooltip="${t('actions.rpe_tooltip')}">${t('actions.rpe')}</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
+          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
+          <button class="btn btn-primary btn-small action-submit">${t('btn.submit')}</button>
         </div>
       </div>`;
     });
@@ -1600,29 +2615,29 @@
     // Availability cards for matches
     pendingMatchAvail.forEach(m => {
       pendingHtml += `<div class="action-card action-avail-card" data-avail-type="match" data-mavail-match="${m.id}">
-        <div class="action-header"><span class="badge badge-yellow">Match</span><span class="action-date">${fmtDate(m.date)} · ${m.time || ''}</span></div>
+        <div class="action-header"><span class="badge badge-yellow">${t('activity.badge_match')}</span><span class="action-date">${tDayDDMM(m.date)} · ${m.time || ''}</span></div>
         <div class="action-label">${matchLabel(m)}</div>
-        <div class="action-avail-prompt">Availability?</div>
+        <div class="action-avail-prompt">${t('actions.availability')}</div>
         <div class="mavail-btns" data-mavail-match="${m.id}">
-          <button class="mavail-btn mavail-disp" data-mavail="disponible">Disponible</button>
-          <button class="mavail-btn mavail-nodisp" data-mavail="no_disponible">No Disponible</button>
+          <button class="mavail-btn mavail-disp" data-mavail="disponible">${t('avail.disponible')}</button>
+          <button class="mavail-btn mavail-nodisp" data-mavail="no_disponible">${t('avail.no_disponible')}</button>
         </div>
       </div>`;
     });
 
-    if (!pendingHtml) pendingHtml = '<p style="color:var(--text-secondary)">No pending actions.</p>';
+    if (!pendingHtml) pendingHtml = '<p style="color:var(--text-secondary)">' + t('actions.no_pending') + '</p>';
     const pendingCount = pendingTraining.length + pendingMatches.length + pendingMatchAvail.length;
 
     return `
-      <h2 class="page-title">Actions</h2>
+      <h2 class="page-title">${t('page.actions')}</h2>
       <div class="card">
-        <div class="card-title">Pending${pendingCount ? ' (' + pendingCount + ')' : ''}</div>
+        <div class="card-title">${t('actions.pending')}${pendingCount ? ' (' + pendingCount + ')' : ''}</div>
         ${pendingHtml}
       </div>
       <div class="card">
-        <div class="card-title">Extra Training</div>
+        <div class="card-title">${t('actions.extra_training')}</div>
         <div id="extra-training-list"></div>
-        <button class="btn btn-outline btn-small" id="btn-add-extra" style="margin-top:.75rem;">+ Add Extra Training</button>
+        <button class="btn btn-outline btn-small" id="btn-add-extra" style="margin-top:.75rem;">${t('actions.add_extra')}</button>
       </div>`;
   }
 
@@ -1886,7 +2901,7 @@
           </svg>
           <span class="assistance-pct po-pct-counter" data-target="${attendPct}" style="font-size:1.3rem;font-weight:800;">0%</span>
         </div>
-        <span class="po-attendance-label">Attendance</span>
+        <span class="po-attendance-label">${t('home.attendance')}</span>
       </div>`;
     }
 
@@ -1894,7 +2909,7 @@
       <h2 class="page-title">${sanitize(session.name)} <span style="color:var(--text-secondary);font-weight:600;">#${sanitize(String(number))}</span>${ageLabel}</h2>
       <div class="player-overview-card">
         <div class="player-overview-left">
-          <div class="po-pic-wrap" id="po-pic-change" style="cursor:pointer" title="Change photo">
+          <div class="po-pic-wrap" id="po-pic-change" style="cursor:pointer" title="${t('home.change_photo')}">
             ${picHtml}
             ${teamBadge}
           </div>
@@ -1909,11 +2924,11 @@
         }).join('')}
       </div>
       <div class="card">
-        <div class="card-title">This Week</div>
+        <div class="card-title">${t('home.this_week')}</div>
         ${renderWeekActivities(0)}
       </div>
       <div class="card">
-        <div class="card-title">Next Week</div>
+        <div class="card-title">${t('home.next_week')}</div>
         ${renderWeekActivities(1)}
       </div>`;
   }
@@ -2602,25 +3617,42 @@
     if (convSent) {
       const uniformIcons = (sentJersey || sentSocks) ? `<span class="detail-uniform-inline">${jerseySvg(sentJersey || 'white')}${sockSvg(sentSocks || 'striped')}</span>` : '';
       convHtml = convIncluded
-        ? `<div class="detail-conv detail-conv-yes"><span class="conv-blink-dot"></span> Convocatòria disponible ${uniformIcons}</div>`
-        : '<div class="detail-conv detail-conv-no"><span class="conv-grey-dot"></span> No convocat</div>';
+        ? `<div class="detail-conv detail-conv-yes"><span class="conv-blink-dot"></span> ${t('match_detail.conv_available')} ${uniformIcons}</div>`
+        : `<div class="detail-conv detail-conv-no"><span class="conv-grey-dot"></span> ${t('match_detail.conv_not_called')}</div>`;
     }
-    const dateFormatted = m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const dateFormatted = m.date ? tDateLong(m.date) : '—';
     const locationHtml = m.mapLink
       ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="detail-map-link">📍 ${sanitize(m.location || '—')}</a>`
       : `📍 ${sanitize(m.location || '—')}`;
 
     // Build called-up player list
+    const isStaff = detailMatchFrom === 'staff-matchday' && (session.roles || []).includes('staff');
+    const isPast = m.date && m.time && new Date(m.date + 'T' + m.time + ':00') <= new Date();
     let calledHtml = '';
     if (convSent) {
       const users = getUsers();
       const calledPlayers = sentPlayers.map(id => users.find(u => String(u.id) === String(id))).filter(Boolean)
         .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
       if (calledPlayers.length) {
-        const rows = calledPlayers.map(p =>
-          `<div class="detail-player"><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '—')}</span></div>`
-        ).join('');
-        calledHtml = `<div class="detail-callup-panel"><div class="detail-callup-header">Called Up <span class="conv-count">${calledPlayers.length}</span></div>${rows}</div>`;
+        const startingXI = getStartingXI(m.id);
+        const starterCount = startingXI.length;
+        const showStarterInfo = isStaff || isPast; // staff always, players only after kickoff
+        const rows = calledPlayers.map(p => {
+          const pid = String(p.id);
+          const isStarter = startingXI.some(function(id) { return String(id) === pid; });
+          const starterCls = (showStarterInfo && isStarter) ? ' detail-player-starter' : '';
+          const toggleBtn = isStaff
+            ? `<button class="starter-toggle${isStarter ? ' starter-active' : ''}" data-player-id="${pid}" data-match-id="${m.id}" title="${isStarter ? 'Treure de titulars' : 'Afegir a titulars'}"></button>`
+            : (showStarterInfo && isStarter ? '<span class="starter-badge">★</span>' : '');
+          return `<div class="detail-player${starterCls}">${toggleBtn}<span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '—')}</span></div>`;
+        }).join('');
+        let starterHeader = '';
+        if (isStaff) {
+          const warnCls = starterCount === 11 ? 'starter-count-ok' : (starterCount > 11 ? 'starter-count-over' : 'starter-count-under');
+          const warnIcon = starterCount !== 11 ? ' <span class="starter-emoji">⚠️</span>' : ' <span class="starter-emoji">✅</span>';
+          starterHeader = `<div class="starter-counter ${warnCls}">Titulars: <strong>${starterCount}/11</strong>${warnIcon}</div>`;
+        }
+        calledHtml = `<div class="detail-callup-panel"><div class="detail-callup-header">Called Up <span class="conv-count">${calledPlayers.length}</span></div>${starterHeader}${rows}</div>`;
       }
     }
 
@@ -2629,92 +3661,236 @@
 
     const backPage = detailMatchFrom || 'player-matchday';
 
-    // Past match: score & goals (staff context only)
-    const isStaff = detailMatchFrom === 'staff-matchday' && (session.roles || []).includes('staff');
-    const isPast = m.date && m.time && new Date(m.date + 'T' + m.time + ':00') <= new Date();
-    let scoreHtml = '';
-    let goalsHtml = '';
+    // Past match: events system (replaces old Resultat + Gols)
+    let eventsHtml = '';
     if (isPast) {
-      const scoreParts = (m.score || '').split('-').map(s => s.trim());
-      const homeScore = scoreParts[0] || '';
-      const awayScore = scoreParts[1] || '';
-      if (isStaff) {
-        scoreHtml = `<div class="card">
-          <div class="card-title">Resultat</div>
-          <div class="match-score-edit">
-            <span class="match-score-team">${sanitize(m.home)}</span>
-            <input type="text" inputmode="numeric" class="reg-input match-score-input" id="score-home" value="${sanitize(homeScore)}" maxlength="2" style="width:45px;text-align:center;">
-            <span style="font-weight:700;font-size:1.1rem;"> – </span>
-            <input type="text" inputmode="numeric" class="reg-input match-score-input" id="score-away" value="${sanitize(awayScore)}" maxlength="2" style="width:45px;text-align:center;">
-            <span class="match-score-team">${sanitize(m.away)}</span>
-            <button class="btn btn-primary btn-small" id="btn-save-score" style="margin-left:.8rem;">Desar</button>
-          </div>
-        </div>`;
+      const events = getMatchEvents(m.id);
+      const users = getUsers();
+      const sc = calcMatchScore(events);
+      const ourSide = isOurTeam(m.home) ? 'home' : 'away';
+      const oppSide = ourSide === 'home' ? 'away' : 'home';
 
-        // Goal scorers
-        const goalsData = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
-        const matchGoals = goalsData[m.id] || [];
-        const users = getUsers();
+      // ── Scoreboard ──
+      const scoreboardHtml = '<div class="ev-scoreboard"><span class="ev-sb-team">' + sanitize(m.home) +
+        '</span><span class="ev-sb-score">' + sc.home + ' - ' + sc.away +
+        '</span><span class="ev-sb-team">' + sanitize(m.away) + '</span></div>';
+
+      // ── + Event buttons (staff only) ──
+      let addEventHtml = '';
+      if (isStaff) {
         const calledIds = convSent ? sentPlayers : [];
-        const calledUsers = calledIds.map(id => users.find(u => u.id === id)).filter(Boolean)
-          .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
-        const opts = calledUsers.map(p => `<option value="${p.id}">${sanitize(p.name)} #${sanitize(p.playerNumber || '—')}</option>`).join('');
-        const goalRows = matchGoals.map((g, i) => {
-          const player = g.playerId === 'og' ? 'Gol en pròpia' : (() => { const p = users.find(u => String(u.id) === String(g.playerId)); return p ? sanitize(p.name) : 'Desconegut'; })();
-          return `<div class="goal-row"><span class="goal-player">⚽ ${player}${g.minute ? " (" + sanitize(String(g.minute)) + "')" : ''}</span><button class="btn btn-outline btn-small goal-remove" data-goal-idx="${i}" style="padding:.15rem .4rem;font-size:.7rem;">✕</button></div>`;
-        }).join('');
-        goalsHtml = `<div class="card">
-          <div class="card-title">Gols</div>
-          <div id="goals-list">${goalRows || '<p style="color:var(--text-secondary)">Cap gol afegit.</p>'}</div>
-          <div class="goal-add-form" style="margin-top:.75rem;">
-            <select class="reg-input" id="goal-player-select" style="width:auto;">
-              <option value="">Selecciona jugador…</option>
-              ${opts}
-              <option value="og">Gol en pròpia</option>
-            </select>
-            <input type="text" inputmode="numeric" class="reg-input" id="goal-minute" placeholder="Min" maxlength="3" style="width:55px;text-align:center;">
-            <button class="btn btn-primary btn-small" id="btn-add-goal">Afegir</button>
-          </div>
-        </div>`;
-      } else {
-        // Players see read-only score
-        if (m.score) {
-          scoreHtml = `<div class="card">
-            <div class="card-title">Resultat</div>
-            <div class="match-score-display">${sanitize(m.home)} <strong>${sanitize(m.score)}</strong> ${sanitize(m.away)}</div>
-          </div>`;
-        }
-        const goalsData = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
-        const matchGoals = goalsData[m.id] || [];
-        if (matchGoals.length) {
-          const usrs = getUsers();
-          const goalRows = matchGoals.map(g => {
-            const player = g.playerId === 'og' ? 'Gol en pròpia' : (() => { const p = usrs.find(u => String(u.id) === String(g.playerId)); return p ? sanitize(p.name) : 'Desconegut'; })();
-            return `<div class="goal-row"><span class="goal-player">⚽ ${player}${g.minute ? " (" + sanitize(String(g.minute)) + "')" : ''}</span></div>`;
-          }).join('');
-          goalsHtml = `<div class="card">
-            <div class="card-title">Gols</div>
-            ${goalRows}
-          </div>`;
+        const calledUsers = calledIds.map(function(id) { return users.find(function(u) { return String(u.id) === String(id); }); }).filter(Boolean)
+          .sort(function(a, b) { return posRankGlobal(a) - posRankGlobal(b); });
+        const playerOptsData = calledUsers.map(function(p) {
+          return { value: String(p.id), label: sanitize(p.name) + ' #' + sanitize(p.playerNumber || '—') };
+        });
+
+        addEventHtml = '<div class="ev-add-row">' +
+          '<div class="ev-add-col">' +
+            '<button class="btn btn-primary btn-small ev-add-btn" data-ev-side="home">+ Event</button>' +
+            '<div class="ev-form" id="ev-form-home" hidden>' +
+              (ourSide === 'home' ? buildOurEventForm('home', playerOptsData) : buildOppEventForm('home')) +
+            '</div>' +
+          '</div>' +
+          '<div class="ev-add-col">' +
+            '<button class="btn btn-primary btn-small ev-add-btn" data-ev-side="away">+ Event</button>' +
+            '<div class="ev-form" id="ev-form-away" hidden>' +
+              (ourSide === 'away' ? buildOurEventForm('away', playerOptsData) : buildOppEventForm('away')) +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      // ── Event timeline ──
+      const sorted = events.slice().sort(function(a, b) { return parseEventMinute(b.minute) - parseEventMinute(a.minute); });
+      let timelineHtml = '';
+      if (sorted.length) {
+        // Track yellow counts per player to detect 2nd yellow
+        const yellowCounts = {};
+        // First pass: count all yellows per player
+        events.forEach(function(e) {
+          if (e.type !== 'yellow') return;
+          var key = e.side + '_' + (e.playerId || e.playerNumber);
+          yellowCounts[key] = (yellowCounts[key] || 0) + 1;
+        });
+        // Second pass: track running count for rendering
+        const yellowSeen = {};
+
+        timelineHtml = '<div class="ev-timeline">' + sorted.map(function(ev) {
+          var key = ev.side + '_' + (ev.playerId || ev.playerNumber);
+          var ycForIcon = 0;
+          if (ev.type === 'yellow') {
+            yellowSeen[key] = (yellowSeen[key] || 0) + 1;
+            // Reverse order since sorted desc — 2nd yellow is the one with higher minute
+            // Actually we need ordinal among this player's yellows. Use total count.
+            ycForIcon = yellowCounts[key] >= 2 && yellowSeen[key] === yellowCounts[key] ? 2 : 1;
+          }
+
+          var icon = getEventIcon(ev, ycForIcon);
+          var name = getEventPlayerName(ev, users);
+          var min = formatEventMinute(ev.minute);
+
+          // Build detail line
+          var detail = '';
+          if (ev.type === 'goal') {
+            if (ev.goalDetail === 'assistencia' && ev.assistPlayerId) {
+              var ap = users.find(function(u) { return String(u.id) === String(ev.assistPlayerId); });
+              var assistName = ap ? sanitize(ap.name) : '?';
+              // Format like a substitution: scorer bold + assister grey
+              if (ev.side === 'home') {
+                name = '<span class="ev-scorer-name">' + name + '</span><span class="ev-assist-name">' + assistName + '</span>';
+              } else {
+                name = '<span class="ev-assist-name">' + assistName + '</span><span class="ev-scorer-name">' + name + '</span>';
+              }
+              detail = ''; // name already includes assist
+            }
+          }
+          if (ev.type === 'change') {
+            var outName = '', inName = '';
+            if (ev.playerOutId) {
+              var po = users.find(function(u) { return String(u.id) === String(ev.playerOutId); });
+              outName = po ? sanitize(po.name) : '?';
+            } else { outName = ev.playerOutNumber ? '#' + sanitize(ev.playerOutNumber) : '?'; }
+            if (ev.playerInId) {
+              var pi = users.find(function(u) { return String(u.id) === String(ev.playerInId); });
+              inName = pi ? sanitize(pi.name) : '?';
+            } else { inName = ev.playerInNumber ? '#' + sanitize(ev.playerInNumber) : '?'; }
+            // Home: IN (bold) then OUT (grey) | Away: OUT (grey) then IN (bold)
+            if (ev.side === 'home') {
+              name = '<span class="ev-sub-in">' + inName + '</span><span class="ev-sub-out">' + outName + '</span>';
+            } else {
+              name = '<span class="ev-sub-out">' + outName + '</span><span class="ev-sub-in">' + inName + '</span>';
+            }
+          }
+
+          var deleteBtn = isStaff ? '<button class="ev-delete" data-ev-id="' + ev.id + '" title="Eliminar">✕</button>' : '';
+
+          if (ev.side === 'home') {
+            return '<div class="ev-row ev-row-home">' +
+              (isStaff ? '<div class="ev-cell ev-cell-del">' + deleteBtn + '</div>' : '') +
+              '<div class="ev-cell ev-cell-min">' + min + '</div>' +
+              '<div class="ev-cell ev-cell-icon">' + icon + '</div>' +
+              '<div class="ev-cell ev-cell-home"><span class="ev-name">' + name + '</span>' + detail + '</div>' +
+              '<div class="ev-cell ev-cell-away"></div>' +
+            '</div>';
+          } else {
+            return '<div class="ev-row ev-row-away">' +
+              '<div class="ev-cell ev-cell-home"></div>' +
+              '<div class="ev-cell ev-cell-away"><span class="ev-name">' + name + '</span>' + detail + '</div>' +
+              '<div class="ev-cell ev-cell-icon">' + icon + '</div>' +
+              '<div class="ev-cell ev-cell-min">' + min + '</div>' +
+              (isStaff ? '<div class="ev-cell ev-cell-del">' + deleteBtn + '</div>' : '') +
+            '</div>';
+          }
+        }).join('') + '</div>';
+      } else if (!isStaff) {
+        // Fallback: old fa_match_goals for player view on old matches
+        var oldGoals = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
+        var mg = oldGoals[m.id] || [];
+        if (mg.length) {
+          timelineHtml = '<div class="ev-timeline">' + mg.map(function(g) {
+            var pName = g.playerId === 'og' ? 'Gol en pròpia' : (function() { var p = users.find(function(u) { return String(u.id) === String(g.playerId); }); return p ? sanitize(p.name) : 'Desconegut'; })();
+            return '<div class="ev-row"><div class="ev-cell ev-cell-home"><span class="ev-name">' + pName + '</span></div><div class="ev-cell ev-cell-icon"><span class="ev-icon ev-icon-goal">⚽</span></div><div class="ev-cell ev-cell-min">' + (g.minute ? g.minute + "'" : '') + '</div><div class="ev-cell ev-cell-away"></div></div>';
+          }).join('') + '</div>';
         }
       }
+
+      eventsHtml = '<div class="card ev-card"><div class="card-title">' + t('match_detail.events') + '</div>' +
+        scoreboardHtml + addEventHtml + timelineHtml + '</div>';
+    }
+
+    // Generic custom dropdown builder (text-only options)
+    function buildCustomSelect(cls, side, placeholder, optsArr) {
+      var optHtml = optsArr.map(function(o) {
+        return '<div class="ev-cs-option" data-value="' + o.value + '">' + o.label + '</div>';
+      }).join('');
+      return '<div class="ev-custom-select" data-ev-side="' + side + '">' +
+        '<div class="ev-cs-trigger"><span class="ev-cs-label">' + placeholder + '</span><span class="ev-cs-arrow"></span></div>' +
+        '<div class="ev-cs-options">' + optHtml + '</div>' +
+        '<input type="hidden" class="ev-cs-value ' + cls + '" data-ev-side="' + side + '" data-placeholder="' + placeholder + '" value="">' +
+      '</div>';
+    }
+
+    function buildEvTypeDropdown(side) {
+      var opts = [
+        { value: 'goal', label: t('ev.goal'), icon: 'img/gol.png' },
+        { value: 'own_goal', label: t('ev.own_goal'), icon: 'img/gol-propia.png' },
+        { value: 'yellow', label: t('ev.yellow'), icon: 'img/groga.jpg' },
+        { value: 'red', label: t('ev.red'), icon: 'img/vermella.jpg' },
+        { value: 'change', label: t('ev.change'), icon: 'img/sub-' + side + '.jpg' },
+        { value: 'penal_fallat', label: t('ev.penal_miss'), icon: 'img/penal%20fallat.png' },
+        { value: 'pal', label: t('ev.post'), icon: 'img/pal.png' }
+      ];
+      var optHtml = opts.map(function(o) {
+        return '<div class="ev-cs-option" data-value="' + o.value + '"><img src="' + o.icon + '" class="ev-cs-icon" alt="">' + o.label + '</div>';
+      }).join('');
+      return '<div class="ev-custom-select" data-ev-side="' + side + '">' +
+        '<div class="ev-cs-trigger"><span class="ev-cs-label">' + t('ev.type_ph') + '</span><span class="ev-cs-arrow"></span></div>' +
+        '<div class="ev-cs-options">' + optHtml + '</div>' +
+        '<input type="hidden" class="ev-cs-value ev-type-select" data-ev-side="' + side + '" data-placeholder="' + t('ev.type_ph') + '" value="">' +
+      '</div>';
+    }
+
+    function buildOurEventForm(side, playerData) {
+      var goalTypeOpts = [
+        { value: 'penal', label: t('ev.goal_penal') },
+        { value: 'falta_directa', label: t('ev.goal_falta') },
+        { value: 'jugada_oberta', label: t('ev.goal_jugada') }
+      ];
+      var goalDetailOpts = [
+        { value: 'assistencia', label: t('ev.assist') },
+        { value: 'individual', label: t('ev.individual') }
+      ];
+      return '<div class="ev-form-inner">' +
+        buildEvTypeDropdown(side) +
+        buildCustomSelect('ev-player-select', side, t('ev.player_ph'), playerData) +
+        '<div class="ev-goal-fields" data-ev-side="' + side + '" hidden>' +
+          buildCustomSelect('ev-goal-type', side, t('ev.goal_type_ph'), goalTypeOpts) +
+          '<div class="ev-jugada-fields" data-ev-side="' + side + '" hidden>' +
+            buildCustomSelect('ev-goal-detail', side, t('ev.detail_ph'), goalDetailOpts) +
+            buildCustomSelect('ev-assist-select', side, t('ev.assist_ph'), playerData) +
+          '</div>' +
+        '</div>' +
+        '<div class="ev-change-fields" data-ev-side="' + side + '" hidden>' +
+          buildCustomSelect('ev-player-out', side, t('ev.sub_out_ph'), playerData) +
+          buildCustomSelect('ev-player-in', side, t('ev.sub_in_ph'), playerData) +
+        '</div>' +
+        '<div class="ev-confirm-row" data-ev-side="' + side + '" hidden>' +
+          '<input type="text" class="reg-input ev-minute" data-ev-side="' + side + '" placeholder="' + t('ev.minute_ph') + '" maxlength="5" style="width:65px;text-align:center;">' +
+          '<button class="btn btn-primary btn-small ev-submit" data-ev-side="' + side + '">' + t('ev.add') + '</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function buildOppEventForm(side) {
+      return '<div class="ev-form-inner">' +
+        buildEvTypeDropdown(side) +
+        '<input type="text" class="reg-input ev-opp-number" data-ev-side="' + side + '" placeholder="#" maxlength="3" style="width:50px;text-align:center;">' +
+        '<div class="ev-change-fields" data-ev-side="' + side + '" hidden>' +
+          '<input type="text" class="reg-input ev-opp-out" data-ev-side="' + side + '" placeholder="' + t('ev.opp_out') + '" maxlength="3" style="width:55px;text-align:center;">' +
+          '<input type="text" class="reg-input ev-opp-in" data-ev-side="' + side + '" placeholder="' + t('ev.opp_in') + '" maxlength="3" style="width:55px;text-align:center;">' +
+        '</div>' +
+        '<div class="ev-confirm-row" data-ev-side="' + side + '" hidden>' +
+          '<input type="text" class="reg-input ev-minute" data-ev-side="' + side + '" placeholder="' + t('ev.minute_ph') + '" maxlength="5" style="width:65px;text-align:center;">' +
+          '<button class="btn btn-primary btn-small ev-submit" data-ev-side="' + side + '">Afegir</button>' +
+        '</div>' +
+      '</div>';
     }
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">${t('btn.back')}</button>
       <div class="detail-hero detail-hero-match">
-        <div class="detail-hero-badge"><span class="badge badge-yellow" style="font-size:.9rem;padding:.3rem .8rem;">Match</span></div>
+        <div class="detail-hero-badge"><span class="badge badge-yellow" style="font-size:.9rem;padding:.3rem .8rem;">${t('match_detail.badge')}</span></div>
         <h2 class="detail-title">${matchLabel(m)}</h2>
         <div class="detail-subtitle">${dateFormatted}</div>
         <div class="detail-meta">
-          ${convSent ? `<span>🕐 Call-up ${callupTime}</span>` : ''}
-          <span><img src="img/whistle.png" class="kickoff-icon" alt=""> Kick-off ${m.time || '—'}</span>
+          ${convSent ? `<span>🕐 ${t('match_detail.callup')} ${callupTime}</span>` : ''}
+          <span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${t('match_detail.kickoff')} ${m.time || '—'}</span>
           <span>${locationHtml}</span>
         </div>
         ${convHtml}
       </div>
-      ${scoreHtml}
-      ${goalsHtml}
+      ${eventsHtml}
       ${(() => {
         if (!convSent) return calledHtml;
         const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
@@ -2760,26 +3936,26 @@
 
   function renderTrainingDetail() {
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const t = training.find(x => x.date === detailTrainingDate);
-    if (!t) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
-    const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-    const assistHtml = t.assistance != null ? buildAssistanceCircle(t.assistance) : '';
+    const tr = training.find(x => x.date === detailTrainingDate);
+    if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
+    const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
+    const assistHtml = tr.assistance != null ? buildAssistanceCircle(tr.assistance) : '';
     return `
       <button class="btn btn-outline btn-small detail-back" data-back="player-home">← Back</button>
       <div class="detail-hero detail-hero-training">
-        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">Training</span></div>
-        <h2 class="detail-title">${sanitize(t.focus)}</h2>
+        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">${t('training.badge')}</span></div>
+        <h2 class="detail-title">${sanitize(tr.focus)}</h2>
         <div class="detail-subtitle">${dateFormatted}</div>
       </div>
       <div class="detail-grid">
-        <div class="detail-card"><div class="detail-card-label">Time</div><div class="detail-card-value">${sanitize(t.time || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">Day</div><div class="detail-card-value">${sanitize(t.day || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">Location</div><div class="detail-card-value">${sanitize(t.location || '—')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">Time</div><div class="detail-card-value">${sanitize(tr.time || '—')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">${t('training.th_day')}</div><div class="detail-card-value">${tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : sanitize(tr.day || '—')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">${t('training.th_location')}</div><div class="detail-card-value">${sanitize(tr.location || '—')}</div></div>
         <div class="detail-card"><div class="detail-card-label">Attendance</div><div class="detail-card-value">${assistHtml || '—'}</div></div>
       </div>
       ${(() => {
         const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-        const boards = trainingBoards[t.date] || [];
+        const boards = trainingBoards[tr.date] || [];
         if (!boards.length) return '';
         const tagOrder = ['Presión', 'Salida', 'Estrategia'];
         const grouped = {};
@@ -3100,7 +4276,7 @@
       uniqueDates.forEach((date, i) => {
         const x = sx(i);
         const dt = new Date(date + 'T12:00:00');
-        const dayName = DAYS_CA[dt.getDay()];
+        const dayName = tDayShort(dt.getDay());
         const yLabel = chartH + 12;
         xLabelsSvg += '<text x="' + x + '" y="' + yLabel + '" text-anchor="middle" class="rpe-x-text">' + dayName + '</text>';
       });
@@ -3408,6 +4584,11 @@
     const stats = JSON.parse(localStorage.getItem('fa_player_stats') || '[]');
     const me = stats[0] || {};
 
+    // Compute live stats from match events
+    const computed = session ? computePlayerMatchStats(session.id) : { totals: { goals: 0, assists: 0, matches: 0, minutes: 0 }, matchRows: [] };
+    const ct = computed.totals;
+    const matchTableHtml = buildMatchHistoryTable(computed.matchRows);
+
     // --- RPE line chart (since season start) ---
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const uid = session ? session.id : '';
@@ -3504,11 +4685,11 @@
       const dSize = 100, dStroke = 16, dRadius = (dSize - dStroke) / 2;
       const dCirc = 2 * Math.PI * dRadius;
       const dSegs = [
-        { count: pYes, color: '#66bb6a', label: 'Yes' },
-        { count: pLate, color: '#ffa726', label: 'Late' },
-        { count: pNo, color: '#78909c', label: 'No' },
-        { count: pInj, color: '#ef5350', label: 'Injured' },
-        { count: pNa, color: '#d0d0d0', label: 'N/A' }
+        { count: pYes, color: '#66bb6a', label: t('avail.yes') },
+        { count: pLate, color: '#ffa726', label: t('avail.late') },
+        { count: pNo, color: '#78909c', label: t('avail.no') },
+        { count: pInj, color: '#ef5350', label: t('avail.injured') },
+        { count: pNa, color: '#d0d0d0', label: t('avail.na') }
       ];
       let dArcs = '', dOff = 0;
       dSegs.forEach(s => {
@@ -3539,14 +4720,14 @@
 
     let injuryListHtml = '';
     if (playerInjuries.length === 0) {
-      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">No injuries this season 💪</div>';
+      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">' + t('stats.no_injuries') + '</div>';
     } else {
       injuryListHtml = playerInjuries.map(inj => {
         const startD = new Date(inj.startDate + 'T12:00:00');
         const endD = inj.endDate ? new Date(inj.endDate + 'T12:00:00') : now;
         const days = Math.max(1, Math.floor((endD - startD) / 86400000) + 1);
-        const startStr = startD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        const endStr = inj.status === 'resolved' ? (inj.endDate ? new Date(inj.endDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '?') : 'Present';
+        const startStr = tDateDayMonth(inj.startDate);
+        const endStr = inj.status === 'resolved' ? (inj.endDate ? tDateDayMonth(inj.endDate) : '?') : t('stats.present');
         const durationStr = inj.status !== 'resolved' ? (days + ' days so far') : (days === 1 ? '1 day' : days + ' days');
         const note = inj.muscleGroup ? (inj.muscleGroup + (inj.muscleSub ? ' (' + inj.muscleSub + ')' : '')) : 'Injury';
         const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
@@ -3584,21 +4765,24 @@
     }
 
     return `
-      <h2 class="page-title">My Stats</h2>
+      <h2 class="page-title">${t('page.my_stats')}</h2>
       <div class="card mystats-summary">
         <div class="mystats-summary-left">
           <div class="mystats-pos-row"><span class="conv-pos-circles">${posHtml}</span></div>
           <div class="mystats-nums">
-            <div class="mystats-num"><span class="mystats-num-val">${me.goals ?? 0}</span><span class="mystats-num-lbl">Goals</span></div>
-            <div class="mystats-num"><span class="mystats-num-val">${me.assists ?? 0}</span><span class="mystats-num-lbl">Assists</span></div>
-            <div class="mystats-num"><span class="mystats-num-val">${me.matches ?? 0}</span><span class="mystats-num-lbl">Matches</span></div>
+            <div class="mystats-num"><span class="mystats-num-val">${ct.goals}</span><span class="mystats-num-lbl">${t('stats.goals')}</span></div>
+            <div class="mystats-num"><span class="mystats-num-val">${ct.assists}</span><span class="mystats-num-lbl">${t('stats.assists')}</span></div>
+            <div class="mystats-num"><span class="mystats-num-val">${ct.matches}</span><span class="mystats-num-lbl">${t('stats.matches')}</span></div>
+            <div class="mystats-num"><span class="mystats-num-val">${ct.titulars}</span><span class="mystats-num-lbl">${t('stats.titular')}</span></div>
+            <div class="mystats-num"><span class="mystats-num-val">${ct.minutes}</span><span class="mystats-num-lbl">${t('stats.minutes')}</span></div>
           </div>
         </div>
         ${attendDonutHtml}
       </div>
+      ${matchTableHtml}
       <div class="mystats-injury-row" style="margin-top:1rem;">
         <div class="card mystats-injury-card">
-          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">🏥 Injury History</div>
+          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">${t('stats.injury_history')}</div>
           ${injuryListHtml}
         </div>
         ${bodyMapHtml}
@@ -3614,6 +4798,11 @@
     const u = users.find(x => String(x.id) === String(staffViewPlayerId));
     if (!u) return '<div class="empty-state"><p>Player not found</p></div>';
     const uid = u.id;
+
+    // Compute live stats from match events
+    const computed = computePlayerMatchStats(uid);
+    const ct = computed.totals;
+    const matchTableHtml = buildMatchHistoryTable(computed.matchRows);
 
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const now = new Date();
@@ -3705,6 +4894,16 @@
           <div class="po-pos-wrap ${layoutCls}">${posCircles}</div>
         </div>
       </div>
+      <div class="card mystats-summary" style="margin-top:.75rem;">
+        <div class="mystats-nums">
+          <div class="mystats-num"><span class="mystats-num-val">${ct.goals}</span><span class="mystats-num-lbl">Goals</span></div>
+          <div class="mystats-num"><span class="mystats-num-val">${ct.assists}</span><span class="mystats-num-lbl">Assists</span></div>
+          <div class="mystats-num"><span class="mystats-num-val">${ct.matches}</span><span class="mystats-num-lbl">Matches</span></div>
+          <div class="mystats-num"><span class="mystats-num-val">${ct.titulars}</span><span class="mystats-num-lbl">Titular</span></div>
+          <div class="mystats-num"><span class="mystats-num-val">${ct.minutes}</span><span class="mystats-num-lbl">Minutes</span></div>
+        </div>
+      </div>
+      ${matchTableHtml}
       ${readinessHtml}
       ${charts.acwr}
       ${charts.rpe}
@@ -3756,7 +4955,7 @@
         `</div>`
       ).join('');
       return `
-        <h2 class="page-title">Tactical Board</h2>
+        <h2 class="page-title">${t('page.tactical_board')}</h2>
         <div class="card">
           <div class="tb-type-picker" id="tb-type-picker">
             <div class="tb-type-card" data-board-type="full">
@@ -3788,7 +4987,7 @@
           </div>
         </div>
         <div class="card">
-          <div class="tb-saved-title">Saved Boards</div>
+          <div class="tb-saved-title">${t('tactics.saved_boards')}</div>
           <div class="tb-saved-list" id="tb-saved-list">${savedListHtml}</div>
         </div>`;
     }
@@ -3899,10 +5098,10 @@
     else if (boardType === 'area') fieldCls += ' tb-area';
 
     return `
-      <h2 class="page-title">Tactical Board</h2>
+      <h2 class="page-title">${t('page.tactical_board')}</h2>
       <div class="card">
         <div class="tb-controls">
-          <label class="tb-label">Formation</label>
+          <label class="tb-label">${t('tactics.formation')}</label>
           <div class="tb-formation-wrap" id="tb-formation-wrap">
             <div class="tb-formation-toggle" id="tb-formation-toggle">${savedFormation || '— Select —'}</div>
             <div class="tb-formation-list" id="tb-formation-list">
@@ -3947,6 +5146,8 @@
           <span class="tb-sep"></span>
           <button class="tb-cone-tool" id="tb-cone-tool" data-tooltip="Place cone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polygon points="12,2 4,22 20,22" fill="#ff8c00" stroke="#cc7000" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
           <button class="tb-ball-tool" id="tb-ball-tool" data-tooltip="Add ball"><span class="tb-ball-icon">⚽</span></button>
+          <span class="tb-sep"></span>
+          <button class="tb-select-tool" id="tb-select-tool" data-tooltip="Select mode (tap to select)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-7 2-4 7-3-18z"/></svg></button>
         </div>
         <div class="tb-btn-row">
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
@@ -4041,7 +5242,7 @@
                     const teamLetter = m.team ? ' (' + sanitize(m.team) + ')' : '';
                     const home = isOurTeam(m.home) ? getClubName() + teamLetter : sanitize(m.home);
                     const away = isOurTeam(m.away) ? getClubName() + teamLetter : sanitize(m.away);
-                    const d = m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '';
+                    const d = m.date ? tDateDayMonth(m.date) : '';
                     return '<div class="tb-match-option" data-val="' + m.id + '">' + home + ' vs ' + away + (d ? '<span style="font-weight:400;"> — ' + d + '</span>' : '') + '</div>';
                   }).join('');
                 })()}
@@ -4062,7 +5263,7 @@
                   const allTraining = JSON.parse(localStorage.getItem('fa_training') || '[]');
                   const todayStr = new Date().toISOString().slice(0, 10);
                   return allTraining.filter(t => t.date && t.date >= todayStr).map(t => {
-                    const d = new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+                    const d = tDateShort(t.date);
                     return '<div class="tb-match-option" data-val="' + sanitize(t.date) + '">' + sanitize(t.focus || 'Training') + '<span style="font-weight:400;"> — ' + d + '</span></div>';
                   }).join('');
                 })()}
@@ -4076,7 +5277,7 @@
           <button class="btn btn-small btn-primary" id="tb-save">Save</button>
           <button class="btn btn-small btn-tb-saveas" id="tb-save-as">Save As</button>
         </div>
-        <div class="tb-saved-title">Saved Boards</div>
+        <div class="tb-saved-title">${t('tactics.saved_boards')}</div>
         <div class="tb-saved-list" id="tb-saved-list">${savedListHtml}</div>
       </div>`;
   }
@@ -4575,6 +5776,164 @@
       saveFrames();
     }
 
+    // --- Serialize / Duplicate / Copy-Paste helpers ---
+    let selectMode = false;
+    const PASTE_OFFSET = 3; // % offset for duplicate/paste
+
+    function serializeElement(el) {
+      if (el.classList.contains('tb-ball')) {
+        return { type: 'ball', left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+      } else if (el.classList.contains('tb-cone')) {
+        return { type: 'cone', left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+      } else if (el.classList.contains('tb-circle') && !el.classList.contains('tb-circle-opp')) {
+        return { type: 'circle', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
+          num: el.querySelector('.tb-num')?.value || '', color: el.dataset.color || '' };
+      } else if (el.classList.contains('tb-circle-opp')) {
+        return { type: 'oppCircle', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
+          num: el.querySelector('.tb-num')?.value || '', color: '' };
+      } else if (el.classList.contains('tb-arrow')) {
+        return { type: 'arrow',
+          x1: parseFloat(el.dataset.origX1 || el.getAttribute('x1')),
+          y1: parseFloat(el.dataset.origY1 || el.getAttribute('y1')),
+          x2: parseFloat(el.dataset.origX2 || el.getAttribute('x2')),
+          y2: parseFloat(el.dataset.origY2 || el.getAttribute('y2')),
+          color: el.dataset.color || '#ffffff', dash: el.dataset.dash === '1' };
+      } else if (el.classList.contains('tb-pen-line')) {
+        return { type: 'penLine', points: el.getAttribute('points') || '',
+          color: el.dataset.color || '#ffffff', dash: el.dataset.dash === '1' };
+      } else if (el.classList.contains('tb-rect')) {
+        return { type: 'rect', x: parseFloat(el.getAttribute('x')), y: parseFloat(el.getAttribute('y')),
+          w: parseFloat(el.getAttribute('width')), h: parseFloat(el.getAttribute('height')),
+          color: el.dataset.color || '#ffffff', opacity: parseFloat(el.dataset.opacity) || 0.3 };
+      } else if (el.classList.contains('tb-text-label')) {
+        return { type: 'text', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
+          text: el.textContent, color: el.dataset.color || '#000000',
+          opacity: parseFloat(el.dataset.opacity) || 0.8,
+          w: el.style.width ? parseFloat(el.style.width) : null,
+          h: el.style.height ? parseFloat(el.style.height) : null,
+          fontSize: el.style.fontSize ? parseFloat(el.style.fontSize) : null };
+      }
+      return null;
+    }
+
+    function pasteSerializedItem(item, offX, offY) {
+      // offX/offY are % offsets to apply
+      if (item.type === 'circle') {
+        addCircleAt(Math.min(98, item.left + offX), Math.min(98, item.top + offY), false);
+        // Set number & color on the newly added circle
+        const allC = inner.querySelectorAll('.tb-circle:not(.tb-circle-opp)');
+        const last = allC[allC.length - 1];
+        if (last) {
+          const inp = last.querySelector('.tb-num');
+          if (inp) { inp.value = item.num; }
+          if (item.color) applyColorToCircle(last, item.color);
+        }
+      } else if (item.type === 'oppCircle') {
+        addCircleAt(Math.min(98, item.left + offX), Math.min(98, item.top + offY), true);
+        const allC = inner.querySelectorAll('.tb-circle-opp');
+        const last = allC[allC.length - 1];
+        if (last) {
+          const inp = last.querySelector('.tb-num');
+          if (inp) { inp.value = item.num; }
+        }
+      } else if (item.type === 'arrow') {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('tb-arrow');
+        line.setAttribute('x1', Math.min(98, item.x1 + offX) + '%');
+        line.setAttribute('y1', Math.min(98, item.y1 + offY) + '%');
+        line.setAttribute('x2', Math.min(98, item.x2 + offX) + '%');
+        line.setAttribute('y2', Math.min(98, item.y2 + offY) + '%');
+        line.dataset.color = item.color;
+        line.style.stroke = item.color;
+        line.setAttribute('stroke', item.color);
+        if (item.dash) { line.dataset.dash = '1'; line.setAttribute('stroke-dasharray', '6 4'); }
+        arrowsSvg.appendChild(line);
+        reindexArrows(); saveArrows(); refreshArrowheads(arrowsSvg);
+      } else if (item.type === 'penLine') {
+        const offsetPts = item.points.split(/\s+/).map(pair => {
+          const [x, y] = pair.split(',').map(Number);
+          return Math.min(98, x + offX) + ',' + Math.min(98, y + offY);
+        }).join(' ');
+        spawnPenLine(offsetPts, item.color, item.dash);
+        savePenLines();
+      } else if (item.type === 'rect') {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.classList.add('tb-rect');
+        rect.setAttribute('x', Math.min(98, item.x + offX) + '%');
+        rect.setAttribute('y', Math.min(98, item.y + offY) + '%');
+        rect.setAttribute('width', item.w + '%');
+        rect.setAttribute('height', item.h + '%');
+        rect.dataset.color = item.color;
+        rect.dataset.opacity = item.opacity;
+        rect.style.fill = item.color;
+        rect.style.fillOpacity = item.opacity;
+        rect.style.stroke = item.color;
+        arrowsSvg.appendChild(rect);
+        reindexRects(); saveRects();
+      } else if (item.type === 'text') {
+        createTextLabel(Math.min(98, item.left + offX), Math.min(98, item.top + offY),
+          item.text, item.color, item.opacity, item.w, item.h, item.fontSize);
+        saveTexts();
+      } else if (item.type === 'ball') {
+        spawnBall(Math.min(98, item.left + offX), Math.min(98, item.top + offY));
+        saveBalls();
+      } else if (item.type === 'cone') {
+        spawnCone(Math.min(98, item.left + offX), Math.min(98, item.top + offY));
+        saveCones();
+      }
+    }
+
+    function duplicateElement(el) {
+      const item = serializeElement(el);
+      if (!item) return;
+      pushUndo();
+      pasteSerializedItem(item, PASTE_OFFSET, PASTE_OFFSET);
+      autoSaveFrame();
+    }
+
+    function copyElementToClipboard(el) {
+      const item = serializeElement(el);
+      if (!item) return;
+      tbClipboard = { items: [item] };
+      // Visual feedback — brief flash
+      el.classList.add('tb-copied-flash');
+      setTimeout(() => el.classList.remove('tb-copied-flash'), 400);
+    }
+
+    function copySelectionToClipboard() {
+      const items = [];
+      selected.forEach(el => {
+        const s = serializeElement(el);
+        if (s) items.push(s);
+      });
+      if (!items.length) return;
+      tbClipboard = { items };
+      // Visual feedback
+      selected.forEach(el => {
+        el.classList.add('tb-copied-flash');
+        setTimeout(() => el.classList.remove('tb-copied-flash'), 400);
+      });
+    }
+
+    function pasteClipboardAtOffset(offX, offY) {
+      if (!tbClipboard || !tbClipboard.items || !tbClipboard.items.length) return;
+      pushUndo();
+      tbClipboard.items.forEach(item => pasteSerializedItem(item, offX, offY));
+      autoSaveFrame();
+    }
+
+    function duplicateSelection() {
+      const items = [];
+      selected.forEach(el => {
+        const s = serializeElement(el);
+        if (s) items.push(s);
+      });
+      if (!items.length) return;
+      pushUndo();
+      items.forEach(item => pasteSerializedItem(item, PASTE_OFFSET, PASTE_OFFSET));
+      autoSaveFrame();
+    }
+
     function makeDraggable(circle) {
       let dragging = false, startX, startY, startLeft, startTop;
       let groupStarts = [];
@@ -4583,6 +5942,12 @@
       function onPointerDown(e) {
         if (e.button === 2) return; // right-click handled separately
         e.preventDefault();
+
+        // Select mode: toggle selection instead of dragging
+        if (selectMode) {
+          toggleSelect(circle);
+          return;
+        }
 
         // Ctrl+Click: toggle selection
         if (e.ctrlKey || e.metaKey) {
@@ -4634,8 +5999,10 @@
         const hexColor = currentColor.startsWith('#') ? currentColor : rgbToHex(currentColor);
         const items = [];
 
-        // If multi-selected, offer group color + delete
+        // If multi-selected, offer group actions
         if (selected.has(circle) && selected.size > 1) {
+          items.push({ label: 'Copy selected (' + selected.size + ')', action: () => copySelectionToClipboard() });
+          items.push({ label: 'Duplicate selected (' + selected.size + ')', action: () => duplicateSelection() });
           items.push({
             type: 'color', value: hexColor,
             action: (col) => { pushUndo(); selected.forEach(c => applyColorToCircle(c, col)); }
@@ -4645,6 +6012,8 @@
             action: () => { pushUndo(); const toDelete = [...selected]; toDelete.forEach(c => deleteCircle(c)); }
           });
         } else {
+          items.push({ label: 'Copy', action: () => copyElementToClipboard(circle) });
+          items.push({ label: 'Duplicate', action: () => duplicateElement(circle) });
           items.push({
             type: 'color', value: hexColor,
             action: (col) => { pushUndo(); applyColorToCircle(circle, col); }
@@ -4703,11 +6072,48 @@
           saveFrames();
         }
       } });
+      // Multi-select actions when items are selected
+      if (selected.size > 1) {
+        items.push({ label: 'Copy selected (' + selected.size + ')', action: () => copySelectionToClipboard() });
+        items.push({ label: 'Duplicate selected (' + selected.size + ')', action: () => duplicateSelection() });
+        items.push({ label: 'Delete selected (' + selected.size + ')', danger: true,
+          action: () => { pushUndo(); const toDelete = [...selected]; toDelete.forEach(el => {
+            if (el.classList.contains('tb-circle')) deleteCircle(el);
+            else if (el.classList.contains('tb-ball')) deleteBall(el);
+            else if (el.classList.contains('tb-arrow')) deleteArrow(el);
+            else if (el.classList.contains('tb-rect')) deleteRect(el);
+            else if (el.classList.contains('tb-text-label')) { deleteTextLabel(el); autoSaveFrame(); }
+            else if (el.classList.contains('tb-pen-line')) { el.remove(); savePenLines(); autoSaveFrame(); }
+            else if (el.classList.contains('tb-cone')) { el.remove(); saveCones(); autoSaveFrame(); }
+          }); }
+        });
+      }
+      // Paste option — centered on tap position
+      if (tbClipboard && tbClipboard.items && tbClipboard.items.length) {
+        const n = tbClipboard.items.length;
+        items.push({ label: 'Paste' + (n > 1 ? ' (' + n + ' items)' : ''), action: () => {
+          // Compute center of clipboard items to offset relative to tap position
+          let sumX = 0, sumY = 0, count = 0;
+          tbClipboard.items.forEach(it => {
+            if ('left' in it) { sumX += it.left; sumY += it.top; count++; }
+            else if ('x1' in it) { sumX += (it.x1 + it.x2) / 2; sumY += (it.y1 + it.y2) / 2; count++; }
+            else if ('x' in it) { sumX += it.x + it.w / 2; sumY += it.y + it.h / 2; count++; }
+            else if ('points' in it) {
+              const pts = it.points.split(/\s+/);
+              if (pts.length) { const [px, py] = pts[0].split(',').map(Number); sumX += px; sumY += py; count++; }
+            }
+          });
+          const cx = count ? sumX / count : 50;
+          const cy = count ? sumY / count : 50;
+          pasteClipboardAtOffset(pctLeft - cx, pctTop - cy);
+        }});
+      }
       showCtxMenu(e.clientX, e.clientY, items);
     });
 
-    // Click on field background clears selection
+    // Click on field background clears selection (skip in select mode so long-press context menu keeps selection)
     inner.addEventListener('pointerdown', e => {
+      if (selectMode) return;
       if (!e.ctrlKey && !e.metaKey && !e.target.closest('.tb-circle') && !e.target.closest('.tb-ball') && !e.target.closest('.tb-arrow') && !e.target.closest('.tb-rect') && !e.target.closest('.tb-text-label') && !e.target.closest('.tb-cone')) {
         clearSelection();
         deselectAll();
@@ -4724,294 +6130,30 @@
       }
     });
 
-    // --- Ctrl+C / Ctrl+V copy-paste (selected elements only) ---
+    // --- Ctrl+C / Ctrl+V copy-paste ---
     let tbClipboard = null;
     document.addEventListener('keydown', e => {
       if (!(e.ctrlKey || e.metaKey) || !document.querySelector('.tb-field')) return;
 
       if (e.key === 'c' && !e.shiftKey) {
-        if (selected.size === 0) return; // nothing selected
-        e.preventDefault();
-        const circles = [];
-        const oppCircles = [];
-        const arrows = [];
-        const penLines = [];
-        const rects = [];
-        const texts = [];
-        const cones = [];
-        const balls = [];
-
-        selected.forEach(el => {
-          if (el.classList.contains('tb-ball')) {
-            balls.push({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) });
-          } else if (el.classList.contains('tb-circle') && !el.classList.contains('tb-circle-opp')) {
-            circles.push({
-              left: parseFloat(el.style.left),
-              top: parseFloat(el.style.top),
-              num: el.querySelector('.tb-num')?.value || '',
-              color: el.dataset.color || ''
-            });
-          } else if (el.classList.contains('tb-circle-opp')) {
-            oppCircles.push({
-              left: parseFloat(el.style.left),
-              top: parseFloat(el.style.top),
-              num: el.querySelector('.tb-num')?.value || '',
-              color: ''
-            });
-          } else if (el.classList.contains('tb-arrow')) {
-            arrows.push({
-              x1: parseFloat(el.getAttribute('x1')),
-              y1: parseFloat(el.getAttribute('y1')),
-              x2: parseFloat(el.getAttribute('x2')),
-              y2: parseFloat(el.getAttribute('y2')),
-              color: el.dataset.color || '#ffffff',
-              dash: el.dataset.dash === '1'
-            });
-          } else if (el.classList.contains('tb-pen-line')) {
-            penLines.push({
-              points: el.getAttribute('points') || '',
-              color: el.dataset.color || '#ffffff',
-              dash: el.dataset.dash === '1'
-            });
-          } else if (el.classList.contains('tb-rect')) {
-            rects.push({
-              x: parseFloat(el.getAttribute('x')),
-              y: parseFloat(el.getAttribute('y')),
-              w: parseFloat(el.getAttribute('width')),
-              h: parseFloat(el.getAttribute('height')),
-              color: el.dataset.color || '#ffffff',
-              opacity: parseFloat(el.dataset.opacity) || 0.3
-            });
-          } else if (el.classList.contains('tb-text-label')) {
-            texts.push({
-              left: parseFloat(el.style.left),
-              top: parseFloat(el.style.top),
-              text: el.textContent,
-              color: el.dataset.color || '#000000',
-              opacity: parseFloat(el.dataset.opacity) || 0.8,
-              w: el.style.width ? parseFloat(el.style.width) : null,
-              h: el.style.height ? parseFloat(el.style.height) : null,
-              fontSize: el.style.fontSize ? parseFloat(el.style.fontSize) : null
-            });
-          } else if (el.classList.contains('tb-cone')) {
-            cones.push({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) });
-          }
-        });
-
-        tbClipboard = { circles, oppCircles, arrows, penLines, rects, texts, cones, balls };
+        // Multi-select copy
+        if (selected.size > 0) {
+          e.preventDefault();
+          copySelectionToClipboard();
+          return;
+        }
+        // Single-select fallback: check individually selected element
+        const singleEl = selectedArrow || selectedRect || selectedTextLabel || selectedPenLine;
+        if (singleEl) {
+          e.preventDefault();
+          copyElementToClipboard(singleEl);
+          return;
+        }
       }
 
-      if (e.key === 'v' && !e.shiftKey && tbClipboard) {
+      if (e.key === 'v' && !e.shiftKey && tbClipboard && tbClipboard.items && tbClipboard.items.length) {
         e.preventDefault();
-        pushUndo();
-        const OFFSET = 3; // % offset so pasted items are visually distinct
-
-        // Paste team circles — each gets a fresh stable index
-        tbClipboard.circles.forEach(c => {
-          const tc = document.getElementById('tb-team-color')?.value || '#ffffff';
-          const selector = '.tb-circle:not(.tb-circle-opp)';
-          const storageKey = 'fa_tactic_positions';
-          const storedArr = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          let maxIdx = storedArr.length - 1;
-          inner.querySelectorAll(selector).forEach(el => {
-            const idx = Number(el.dataset.idx);
-            if (idx > maxIdx) maxIdx = idx;
-          });
-          const newIdx = maxIdx + 1;
-          const pasteLeft = Math.min(98, c.left + OFFSET);
-          const pasteTop = Math.min(98, c.top + OFFSET);
-          const bg = c.color || tc;
-          const isGk = c.num === '1';
-          const finalBg = isGk ? GK_COLOR : bg;
-          const div = document.createElement('div');
-          div.className = 'tb-circle';
-          div.dataset.idx = newIdx;
-          if (c.color) div.dataset.color = c.color;
-          div.style.left = pasteLeft + '%';
-          div.style.top = pasteTop + '%';
-          div.style.background = finalBg;
-          div.style.borderColor = darkenHex(finalBg, 50);
-          const inp = document.createElement('input');
-          inp.className = 'tb-num'; inp.maxLength = 2;
-          inp.value = c.num;
-          inp.style.color = textColorFor(finalBg);
-          inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); });
-          div.appendChild(inp);
-          makeDraggable(div);
-          inner.appendChild(div);
-          saveState();
-          // Propagate to future frames
-          const h = toHorizontal(pasteLeft, pasteTop);
-          const hPos = [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
-          for (let fi = activeFrameIdx + 1; fi < frames.length; fi++) {
-            if (!frames[fi].positions) frames[fi].positions = [];
-            while (frames[fi].positions.length <= newIdx) frames[fi].positions.push(null);
-            frames[fi].positions[newIdx] = hPos;
-          }
-        });
-
-        // Paste opp circles
-        tbClipboard.oppCircles.forEach(c => {
-          const oc = document.getElementById('tb-opp-color')?.value || '#e53935';
-          const selector = '.tb-circle-opp';
-          const storageKey = 'fa_tactic_opp_positions';
-          const storedArr = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          let maxIdx = storedArr.length - 1;
-          inner.querySelectorAll(selector).forEach(el => {
-            const idx = Number(el.dataset.idx);
-            if (idx > maxIdx) maxIdx = idx;
-          });
-          const newIdx = maxIdx + 1;
-          const pasteLeft = Math.min(98, c.left + OFFSET);
-          const pasteTop = Math.min(98, c.top + OFFSET);
-          const isGk = c.num === '1';
-          const finalBg = isGk ? GK_COLOR : oc;
-          const div = document.createElement('div');
-          div.className = 'tb-circle tb-circle-opp';
-          div.dataset.idx = newIdx;
-          div.style.left = pasteLeft + '%';
-          div.style.top = pasteTop + '%';
-          div.style.background = finalBg;
-          div.style.borderColor = darkenHex(finalBg, 50);
-          const inp = document.createElement('input');
-          inp.className = 'tb-num'; inp.maxLength = 2;
-          inp.value = c.num;
-          inp.style.color = textColorFor(finalBg);
-          inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); });
-          div.appendChild(inp);
-          makeDraggable(div);
-          inner.appendChild(div);
-          saveState();
-          // Propagate to future frames
-          const h = toHorizontal(pasteLeft, pasteTop);
-          const hPos = [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
-          for (let fi = activeFrameIdx + 1; fi < frames.length; fi++) {
-            if (!frames[fi].oppPositions) frames[fi].oppPositions = [];
-            while (frames[fi].oppPositions.length <= newIdx) frames[fi].oppPositions.push(null);
-            frames[fi].oppPositions[newIdx] = hPos;
-          }
-        });
-
-        // Paste arrows
-        tbClipboard.arrows.forEach(a => {
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.classList.add('tb-arrow');
-          line.setAttribute('x1', Math.min(98, a.x1 + OFFSET) + '%');
-          line.setAttribute('y1', Math.min(98, a.y1 + OFFSET) + '%');
-          line.setAttribute('x2', Math.min(98, a.x2 + OFFSET) + '%');
-          line.setAttribute('y2', Math.min(98, a.y2 + OFFSET) + '%');
-          line.dataset.color = a.color;
-          line.style.stroke = a.color;
-          line.setAttribute('stroke', a.color);
-          if (a.dash) { line.dataset.dash = '1'; line.setAttribute('stroke-dasharray', '6 4'); }
-          arrowsSvg.appendChild(line);
-        });
-        if (tbClipboard.arrows.length) { reindexArrows(); saveArrows(); refreshArrowheads(arrowsSvg); }
-
-        // Paste pen lines — offset each point
-        tbClipboard.penLines.forEach(p => {
-          const offsetPts = p.points.split(' ').map(pair => {
-            const [x, y] = pair.split(',').map(Number);
-            return Math.min(98, x + OFFSET) + ',' + Math.min(98, y + OFFSET);
-          }).join(' ');
-          spawnPenLine(offsetPts, p.color, p.dash);
-        });
-        if (tbClipboard.penLines.length) savePenLines();
-
-        // Paste rects
-        tbClipboard.rects.forEach(r => {
-          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          rect.classList.add('tb-rect');
-          rect.setAttribute('x', Math.min(98, r.x + OFFSET) + '%');
-          rect.setAttribute('y', Math.min(98, r.y + OFFSET) + '%');
-          rect.setAttribute('width', r.w + '%');
-          rect.setAttribute('height', r.h + '%');
-          rect.dataset.color = r.color;
-          rect.dataset.opacity = r.opacity;
-          rect.style.fill = r.color;
-          rect.style.fillOpacity = r.opacity;
-          rect.style.stroke = r.color;
-          arrowsSvg.appendChild(rect);
-        });
-        if (tbClipboard.rects.length) { reindexRects(); saveRects(); }
-
-        // Paste texts
-        tbClipboard.texts.forEach(t => {
-          createTextLabel(
-            Math.min(98, t.left + OFFSET),
-            Math.min(98, t.top + OFFSET),
-            t.text, t.color, t.opacity, t.w, t.h, t.fontSize
-          );
-        });
-        if (tbClipboard.texts.length) saveTexts();
-
-        // Paste cones
-        tbClipboard.cones.forEach(c => {
-          spawnCone(Math.min(98, c.left + OFFSET), Math.min(98, c.top + OFFSET));
-        });
-        if (tbClipboard.cones.length) saveCones();
-
-        // Paste balls
-        tbClipboard.balls.forEach(b => {
-          spawnBall(Math.min(98, b.left + OFFSET), Math.min(98, b.top + OFFSET));
-        });
-        if (tbClipboard.balls.length) saveBalls();
-
-        if (tbClipboard.circles.length || tbClipboard.oppCircles.length) {
-          syncNumbersAcrossFrames();
-          syncColorsAcrossFrames();
-        }
-
-        // Save current frame first so all pasted elements are captured
-        autoSaveFrame();
-
-        // Propagate pasted non-circle elements to future frames
-        // Build horizontal-coord versions of newly pasted items
-        const pastedArrowsH = tbClipboard.arrows.map(a => {
-          const h1 = toHorizontal(Math.min(98, a.x1 + OFFSET), Math.min(98, a.y1 + OFFSET));
-          const h2 = toHorizontal(Math.min(98, a.x2 + OFFSET), Math.min(98, a.y2 + OFFSET));
-          return [Math.round(h1[0]*100)/100, Math.round(h1[1]*100)/100,
-                  Math.round(h2[0]*100)/100, Math.round(h2[1]*100)/100, a.color, a.dash];
-        });
-        const pastedRectsH = tbClipboard.rects.map(r => {
-          const ox = Math.min(98, r.x + OFFSET), oy = Math.min(98, r.y + OFFSET);
-          const tl = toHorizontal(ox, oy);
-          const br = toHorizontal(ox + r.w, oy + r.h);
-          const hx = Math.min(tl[0], br[0]), hy = Math.min(tl[1], br[1]);
-          const hw = Math.abs(br[0] - tl[0]), hh = Math.abs(br[1] - tl[1]);
-          return [Math.round(hx*100)/100, Math.round(hy*100)/100,
-                  Math.round(hw*100)/100, Math.round(hh*100)/100, r.color, r.opacity];
-        });
-        const pastedTextsH = tbClipboard.texts.map(t => {
-          const h = toHorizontal(Math.min(98, t.left + OFFSET), Math.min(98, t.top + OFFSET));
-          return [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100,
-                  t.text, t.color, t.opacity, t.w, t.h, t.fontSize];
-        });
-        const pastedPenLinesH = tbClipboard.penLines.map(p => {
-          const offsetPts = p.points.split(' ').map(pair => {
-            const [x, y] = pair.split(',').map(Number);
-            return Math.min(98, x + OFFSET) + ',' + Math.min(98, y + OFFSET);
-          }).join(' ');
-          return [offsetPts, p.color, p.dash];
-        });
-        const pastedConesH = tbClipboard.cones.map(c => {
-          const h = toHorizontal(Math.min(98, c.left + OFFSET), Math.min(98, c.top + OFFSET));
-          return [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
-        });
-        const pastedBallsH = tbClipboard.balls.map(b => {
-          const h = toHorizontal(Math.min(98, b.left + OFFSET), Math.min(98, b.top + OFFSET));
-          return [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
-        });
-
-        for (let fi = activeFrameIdx + 1; fi < frames.length; fi++) {
-          if (pastedArrowsH.length) frames[fi].arrows = (frames[fi].arrows || []).concat(pastedArrowsH);
-          if (pastedRectsH.length) frames[fi].rects = (frames[fi].rects || []).concat(pastedRectsH);
-          if (pastedTextsH.length) frames[fi].texts = (frames[fi].texts || []).concat(pastedTextsH);
-          if (pastedPenLinesH.length) frames[fi].penLines = (frames[fi].penLines || []).concat(pastedPenLinesH);
-          if (pastedConesH.length) frames[fi].cones = (frames[fi].cones || []).concat(pastedConesH);
-          if (pastedBallsH.length) frames[fi].balls = (frames[fi].balls || []).concat(pastedBallsH);
-        }
-        saveFrames();
+        pasteClipboardAtOffset(PASTE_OFFSET, PASTE_OFFSET);
       }
     });
 
@@ -5097,11 +6239,14 @@
       textMode = false;
       penMode = false;
       coneMode = false;
+      selectMode = false;
       if (arrowToolBtn) arrowToolBtn.classList.remove('tb-arrow-tool-active');
       if (rectToolBtn) rectToolBtn.classList.remove('tb-rect-tool-active');
       if (textToolBtn) textToolBtn.classList.remove('tb-text-tool-active');
       if (penToolBtn) penToolBtn.classList.remove('tb-pen-tool-active');
       if (coneToolBtn) coneToolBtn.classList.remove('tb-cone-tool-active');
+      const selectToolBtn = document.getElementById('tb-select-tool');
+      if (selectToolBtn) selectToolBtn.classList.remove('tb-select-tool-active');
       inner.style.cursor = '';
     }
 
@@ -5229,10 +6374,11 @@
       const lines = arrowsSvg.querySelectorAll('.tb-arrow');
       const arrows = [];
       lines.forEach(l => {
-        const x1 = parseFloat(l.getAttribute('x1'));
-        const y1 = parseFloat(l.getAttribute('y1'));
-        const x2 = parseFloat(l.getAttribute('x2'));
-        const y2 = parseFloat(l.getAttribute('y2'));
+        // Use original endpoints (before refreshArrowheads shortened them for display)
+        const x1 = parseFloat(l.dataset.origX1 || l.getAttribute('x1'));
+        const y1 = parseFloat(l.dataset.origY1 || l.getAttribute('y1'));
+        const x2 = parseFloat(l.dataset.origX2 || l.getAttribute('x2'));
+        const y2 = parseFloat(l.dataset.origY2 || l.getAttribute('y2'));
         const h1 = toHorizontal(x1, y1);
         const h2 = toHorizontal(x2, y2);
         arrows.push([Math.round(h1[0]*100)/100, Math.round(h1[1]*100)/100,
@@ -5263,12 +6409,16 @@
         e.preventDefault();
         e.stopPropagation();
         showCtxMenu(e.clientX, e.clientY, [
+          { label: 'Copy', action: () => copyElementToClipboard(line) },
+          { label: 'Duplicate', action: () => duplicateElement(line) },
           { label: 'Delete arrow', danger: true, action: () => { pushUndo(); deleteArrow(line); } }
         ]);
       } else if (pen) {
         e.preventDefault();
         e.stopPropagation();
         showCtxMenu(e.clientX, e.clientY, [
+          { label: 'Copy', action: () => copyElementToClipboard(pen) },
+          { label: 'Duplicate', action: () => duplicateElement(pen) },
           { label: 'Delete pen line', danger: true, action: () => { pushUndo(); pen.remove(); savePenLines(); autoSaveFrame(); } }
         ]);
       }
@@ -5411,6 +6561,12 @@
       if (e.button === 2) return; // right-click
       e.preventDefault();
       e.stopPropagation();
+
+      // Select mode: toggle selection instead of dragging
+      if (selectMode) {
+        toggleSelect(target);
+        return;
+      }
 
       // Select the element for toolbar editing
       if (target.classList.contains('tb-arrow')) {
@@ -5572,6 +6728,8 @@
       e.preventDefault();
       e.stopPropagation();
       showCtxMenu(e.clientX, e.clientY, [
+        { label: 'Copy', action: () => copyElementToClipboard(rectEl) },
+        { label: 'Duplicate', action: () => duplicateElement(rectEl) },
         { label: 'Delete rectangle', danger: true, action: () => { pushUndo(); deleteRect(rectEl); } }
       ]);
     });
@@ -5712,6 +6870,8 @@
         if (e.clientX > r.right - 18 && e.clientY > r.bottom - 18) return;
         e.preventDefault();
         e.stopPropagation();
+        // Select mode: toggle selection instead of dragging
+        if (selectMode) { toggleSelect(el); return; }
         // Ctrl+Click: toggle selection
         if (e.ctrlKey || e.metaKey) {
           toggleSelect(el);
@@ -5767,6 +6927,8 @@
         e.stopPropagation();
         const curColor = el.dataset.color || '#000000';
         const items = [
+          { label: 'Copy', action: () => copyElementToClipboard(el) },
+          { label: 'Duplicate', action: () => duplicateElement(el) },
           { type: 'color', value: curColor, action: (col) => {
             pushUndo();
             el.dataset.color = col;
@@ -5905,6 +7067,8 @@
       ball.addEventListener('pointerdown', e => {
         e.preventDefault();
         e.stopPropagation();
+        // Select mode: toggle selection instead of dragging
+        if (selectMode) { toggleSelect(ball); return; }
         // Ctrl+Click: toggle selection
         if (e.ctrlKey || e.metaKey) {
           toggleSelect(ball);
@@ -5949,6 +7113,8 @@
       ball.addEventListener('contextmenu', e => {
         e.preventDefault(); e.stopPropagation();
         showCtxMenu(e.clientX, e.clientY, [
+          { label: 'Copy', action: () => copyElementToClipboard(ball) },
+          { label: 'Duplicate', action: () => duplicateElement(ball) },
           { label: 'Delete ball', danger: true, action: () => { pushUndo(); deleteBall(ball); } }
         ]);
       });
@@ -6023,6 +7189,8 @@
       cone.addEventListener('pointerdown', e => {
         if (coneMode) return;
         e.preventDefault(); e.stopPropagation();
+        // Select mode: toggle selection instead of dragging
+        if (selectMode) { toggleSelect(cone); return; }
         // Ctrl+Click: toggle selection
         if (e.ctrlKey || e.metaKey) {
           toggleSelect(cone);
@@ -6067,6 +7235,8 @@
       cone.addEventListener('contextmenu', e => {
         e.preventDefault(); e.stopPropagation();
         showCtxMenu(e.clientX, e.clientY, [
+          { label: 'Copy', action: () => copyElementToClipboard(cone) },
+          { label: 'Duplicate', action: () => duplicateElement(cone) },
           { label: 'Delete cone', danger: true, action: () => { pushUndo(); cone.remove(); saveCones(); autoSaveFrame(); } }
         ]);
       });
@@ -6107,6 +7277,22 @@
       spawnCone(pctX, pctY);
       saveCones(); autoSaveFrame();
     });
+
+    // --- Select mode toggle ---
+    const selectToolBtn = document.getElementById('tb-select-tool');
+    if (selectToolBtn) {
+      selectToolBtn.addEventListener('click', () => {
+        const wasActive = selectMode;
+        deactivateDrawTools();
+        if (!wasActive) {
+          selectMode = true;
+          selectToolBtn.classList.add('tb-select-tool-active');
+          inner.style.cursor = 'default';
+        } else {
+          clearSelection();
+        }
+      });
+    }
 
     // Attach drag to existing circles
     inner.querySelectorAll('.tb-circle').forEach(c => {
@@ -6302,12 +7488,12 @@
       if (loadedIdx !== null && boards[loadedIdx]) {
         // Overwrite — check duplicate name (excluding self)
         const dup = boards.some((b, i) => i !== Number(loadedIdx) && b.name.toLowerCase() === name.toLowerCase());
-        if (dup) { alert('A board with this name already exists.'); return; }
+        if (dup) { alert(t('alert.board_name_exists')); return; }
         boards[loadedIdx] = entry;
       } else {
         // New save — check duplicate name
         const dup = boards.some(b => b.name.toLowerCase() === name.toLowerCase());
-        if (dup) { alert('A board with this name already exists.'); return; }
+        if (dup) { alert(t('alert.board_name_exists')); return; }
         boards.push(entry);
         localStorage.setItem('fa_tactic_loaded_idx', boards.length - 1);
       }
@@ -6342,7 +7528,7 @@
       // Visual feedback
       if (saveBtn) {
         const orig = saveBtn.textContent;
-        saveBtn.textContent = 'Saved ✓';
+        saveBtn.textContent = t('tb.saved');
         saveBtn.style.background = '#2e7d32';
         setTimeout(() => { saveBtn.textContent = orig; saveBtn.style.background = ''; }, 1200);
       }
@@ -6361,7 +7547,7 @@
       const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
       const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const dup = boards.some(b => b.name.toLowerCase() === name.trim().toLowerCase());
-      if (dup) { alert('A board with this name already exists.'); return; }
+      if (dup) { alert(t('alert.board_name_exists')); return; }
       boards.push({ name: name.trim(), formation: f, positions: pos, numbers: nums, boardType: bt,
         teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
         oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
@@ -6411,7 +7597,7 @@
         navigate('tactics');
       };
       if (hasUnsavedChanges()) {
-        showTbConfirm('New Board', 'You have unsaved changes. Start a new board?', doNew);
+        showTbConfirm(t('tb.new_title'), t('tb.new_msg'), doNew);
       } else {
         doNew();
       }
@@ -6549,7 +7735,7 @@
       for (const [tdate, boards] of Object.entries(trainingBoards)) {
         if (boards.some(b => b.name === curName)) {
           const t = allTraining.find(x => x.date === tdate);
-          const label = t ? (sanitize(t.focus || 'Training') + ' — ' + new Date(tdate + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short' })) : tdate;
+          const label = t ? (sanitize(t.focus || 'Training') + ' — ' + tDateDayMonth(tdate)) : tdate;
           linked.push({ tdate, label });
         }
       }
@@ -6593,7 +7779,7 @@
 
     const addToTrainingBtn = document.getElementById('tb-add-to-training');
     addToTrainingBtn?.addEventListener('click', () => {
-      if (!selectedTrainingVal) { alert('Please select a training.'); return; }
+      if (!selectedTrainingVal) { alert(t('alert.select_training')); return; }
       const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
@@ -6626,7 +7812,7 @@
       else trainingBoards[tdate].push(entry);
       localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
       const orig = addToTrainingBtn.textContent;
-      addToTrainingBtn.textContent = 'Added ✓';
+      addToTrainingBtn.textContent = t('tb.added');
       addToTrainingBtn.style.background = '#2e7d32';
       setTimeout(() => { addToTrainingBtn.textContent = orig; addToTrainingBtn.style.background = ''; }, 1200);
       refreshTrainingLinked();
@@ -6654,7 +7840,7 @@
 
     const addToMatchBtn = document.getElementById('tb-add-to-match');
     addToMatchBtn?.addEventListener('click', () => {
-      if (!selectedMatchVal) { alert('Please select a match.'); return; }
+      if (!selectedMatchVal) { alert(t('alert.select_match')); return; }
       const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
@@ -6689,7 +7875,7 @@
       localStorage.setItem('fa_tactic_match_boards', JSON.stringify(matchBoards));
       // Visual feedback
       const orig = addToMatchBtn.textContent;
-      addToMatchBtn.textContent = 'Added ✓';
+      addToMatchBtn.textContent = t('tb.added');
       addToMatchBtn.style.background = '#2e7d32';
       setTimeout(() => { addToMatchBtn.textContent = orig; addToMatchBtn.style.background = ''; }, 1200);
       refreshMatchLinked();
@@ -7367,7 +8553,7 @@
           navigate('tactics');
         };
         if (hasTacticUnsavedChanges()) {
-          showTbConfirm('Load Board', 'You have unsaved changes. Discard them and load this board?', doLoad);
+          showTbConfirm(t('tb.load_title'), t('tb.load_msg'), doLoad);
         } else {
           doLoad();
         }
@@ -7377,7 +8563,7 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const idx = Number(btn.dataset.delIdx);
-        showTbConfirm('Delete Board', 'Remove this saved board?', () => {
+        showTbConfirm(t('tb.delete_title'), t('tb.delete_msg'), () => {
           const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
           const deletedName = boards[idx] ? boards[idx].name : null;
           boards.splice(idx, 1);
@@ -7446,18 +8632,18 @@
     var curCat = getCurrentCategory();
     var training = curCat ? allTraining.filter(function(t) { return !t.category || t.category === curCat; }) : allTraining;
     let rows = training.map(t => {
-      const dateStr = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      const dateStr = t.date ? tDateDMY(t.date) : '—';
       const assistanceCell = (t.status === 'past' && t.assistance != null)
         ? buildAssistanceCircle(t.assistance)
         : '<span style="color:var(--text-secondary)">—</span>';
       return `<tr>
-        <td><strong>${sanitize(t.day)}</strong></td><td>${dateStr}</td><td>${sanitize(t.time)}</td><td>${sanitize(t.focus)}</td><td>${sanitize(t.location)}</td><td class="center-cell">${assistanceCell}</td>
+        <td><strong>${t.date ? tDay(new Date(t.date + 'T12:00:00').getDay()) : sanitize(t.day)}</strong></td><td>${dateStr}</td><td>${sanitize(t.time)}</td><td>${sanitize(t.focus)}</td><td>${sanitize(t.location)}</td><td class="center-cell">${assistanceCell}</td>
       </tr>`;
     }).join('');
     return `
-      <h2 class="page-title">Training Sessions</h2>
+      <h2 class="page-title">${t('page.training')}</h2>
       <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Day</th><th>Date</th><th>Time</th><th>Focus</th><th>Location</th><th class="center-cell">Assistance</th></tr></thead>
+        <thead><tr><th>${t('training.th_day')}</th><th>${t('training.th_date')}</th><th>${t('training.th_time')}</th><th>${t('training.th_focus')}</th><th>${t('training.th_location')}</th><th class="center-cell">${t('training.th_assistance')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div></div>`;
   }
@@ -7471,16 +8657,15 @@
     var training = curCat ? allTraining.filter(function(t) { return !t.category || t.category === curCat; }) : allTraining;
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
-    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-    function computeStatus(t) {
-      if (!t.date || !t.time) return { label: 'Upcoming', cls: 'badge-green', key: 'upcoming' };
-      const start = new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00');
+    function computeStatus(tr) {
+      if (!tr.date || !tr.time) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
+      const start = new Date(tr.date + 'T' + tr.time.split(' - ')[0] + ':00');
       const now = new Date();
       const endWindow = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-      if (now >= endWindow) return { label: 'Completed', cls: 'badge-grey', key: 'completed' };
-      if (now >= start) return { label: 'In progress', cls: 'badge-yellow', key: 'inprogress' };
-      return { label: 'Upcoming', cls: 'badge-green', key: 'upcoming' };
+      if (now >= endWindow) return { label: t('training.completed'), cls: 'badge-grey', key: 'completed' };
+      if (now >= start) return { label: t('training.in_progress'), cls: 'badge-yellow', key: 'inprogress' };
+      return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
     }
 
     function fmtDate(dateStr) {
@@ -7489,24 +8674,24 @@
       return d + '/' + m + '/' + y;
     }
 
-    let rows = training.map((t, i) => {
-      const dayName = t.date ? DAYS[new Date(t.date + 'T12:00:00').getDay()] : (t.day || '\u2014');
-      const locVal = t.location || DEFAULT_LOC;
-      const linkVal = t.mapLink || (locVal === DEFAULT_LOC ? DEFAULT_MAP : '');
-      const st = computeStatus(t);
+    let rows = training.map((tr, i) => {
+      const dayName = tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : (tr.day || '\u2014');
+      const locVal = tr.location || DEFAULT_LOC;
+      const linkVal = tr.mapLink || (locVal === DEFAULT_LOC ? DEFAULT_MAP : '');
+      const st = computeStatus(tr);
       const locked = st.key !== 'upcoming';
       const dis = locked ? ' disabled' : '';
-      const assistanceCell = t.date
-        ? buildAvailDonut(t.date)
+      const assistanceCell = tr.date
+        ? buildAvailDonut(tr.date)
         : '<span style="color:var(--text-secondary)">\u2014</span>';
       if (locked) {
         return `<tr data-tidx="${i}" class="st-locked">
       <td style="white-space:nowrap">
-        <span>${fmtDate(t.date)}</span>
+        <span>${fmtDate(tr.date)}</span>
         <span class="st-day-label">${sanitize(dayName)}</span>
       </td>
-      <td>${sanitize(t.time || '\u2014')}</td>
-      <td>${sanitize(t.focus || '\u2014')}</td>
+      <td>${sanitize(tr.time || '\u2014')}</td>
+      <td>${sanitize(tr.focus || '\u2014')}</td>
       <td>${sanitize(locVal)}</td>
       <td>${linkVal ? '<a href="' + sanitize(linkVal) + '" target="_blank" rel="noopener" class="detail-map-link">\ud83d\udccd</a>' : '\u2014'}</td>
       <td class="center-cell"><span class="badge ${st.cls}">${st.label}</span></td>
@@ -7514,16 +8699,16 @@
       <td></td>
     </tr>`;
       }
-      const dmyVal = t.date ? fmtDate(t.date) : '';
+      const dmyVal = tr.date ? fmtDate(tr.date) : '';
       return `<tr data-tidx="${i}">
       <td style="white-space:nowrap">
-        <input type="text" class="reg-input st-date md-datepicker" data-display-dmy data-idx="${i}" data-date-iso="${sanitize(t.date || '')}" value="${sanitize(dmyVal)}" placeholder="dd/mm/yyyy" readonly style="width:135px;cursor:pointer;">
+        <input type="text" class="reg-input st-date md-datepicker" data-display-dmy data-idx="${i}" data-date-iso="${sanitize(tr.date || '')}" value="${sanitize(dmyVal)}" placeholder="dd/mm/yyyy" readonly style="width:135px;cursor:pointer;">
         <span class="st-day-label">${sanitize(dayName)}</span>
       </td>
-      <td><select class="reg-input st-time" data-idx="${i}" style="width:95px;">${buildTimeOptions((t.time || '').split(' - ')[0])}</select></td>
-      <td><input class="reg-input st-focus" data-idx="${i}" value="${sanitize(t.focus || '')}" placeholder="Focus *" style="width:130px;"></td>
-      <td><input class="reg-input st-location" data-idx="${i}" value="${sanitize(locVal)}" placeholder="Location" style="width:130px;"></td>
-      <td><input class="reg-input st-link" data-idx="${i}" value="${sanitize(linkVal)}" placeholder="Map link" style="width:160px;"></td>
+      <td><select class="reg-input st-time" data-idx="${i}" style="width:95px;">${buildTimeOptions((tr.time || '').split(' - ')[0])}</select></td>
+      <td><input class="reg-input st-focus" data-idx="${i}" value="${sanitize(tr.focus || '')}" placeholder="${t('training.focus_ph')}" style="width:130px;"></td>
+      <td><input class="reg-input st-location" data-idx="${i}" value="${sanitize(locVal)}" placeholder="${t('training.location_ph')}" style="width:130px;"></td>
+      <td><input class="reg-input st-link" data-idx="${i}" value="${sanitize(linkVal)}" placeholder="${t('training.maplink_ph')}" style="width:160px;"></td>
       <td class="center-cell"><span class="badge ${st.cls}">${st.label}</span></td>
       <td class="center-cell">${assistanceCell}</td>
       <td><button class="md-remove-btn st-remove" data-idx="${i}" title="Remove">&times;</button></td>
@@ -7609,12 +8794,12 @@
           else if (v) break;
         }
         if (weeks === 0) weeks = 1;
-        const weekLabel = weeks === 1 ? '1 week' : weeks + ' weeks';
+        const weekLabel = weeks === 1 ? t('std.week_1') : weeks + ' ' + t('std.weeks');
         return `<div class="std-top-row"><span class="std-top-name" title="${sanitize(injury)}">${sanitize(p.name)}</span><span class="std-top-count" style="color:#ef5350">${weekLabel}</span></div>`;
-      }).join('') || '<div class="std-top-row" style="color:var(--text-secondary)">None</div>';
+      }).join('') || '<div class="std-top-row" style="color:var(--text-secondary)">' + t('std.none') + '</div>';
 
       seasonDonutHtml = `<div class="card" style="margin-bottom:1.5rem;">
-        <div class="card-title">Season Attendance</div>
+        <div class="card-title">${t('std.season_attendance')}</div>
         <div class="std-donut-wrap">
           <div class="std-donut">
             <svg viewBox="0 0 ${size} ${size}">
@@ -7625,25 +8810,25 @@
           </div>
           <div>
             <div class="std-donut-legend">
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#66bb6a"></span>Yes (${avgYes})</span>
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#ffa726"></span>Late (${avgLate})</span>
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#78909c"></span>No (${avgNo})</span>
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#ef5350"></span>Injured (${avgInj})</span>
-              ${avgNa ? `<span class="std-legend-item"><span class="std-legend-dot" style="background:#d0d0d0"></span>N/A (${avgNa})</span>` : ''}
+              <span class="std-legend-item"><span class="std-legend-dot" style="background:#66bb6a"></span>${t('avail.yes')} (${avgYes})</span>
+              <span class="std-legend-item"><span class="std-legend-dot" style="background:#ffa726"></span>${t('avail.late')} (${avgLate})</span>
+              <span class="std-legend-item"><span class="std-legend-dot" style="background:#78909c"></span>${t('avail.no')} (${avgNo})</span>
+              <span class="std-legend-item"><span class="std-legend-dot" style="background:#ef5350"></span>${t('avail.injured')} (${avgInj})</span>
+              ${avgNa ? `<span class="std-legend-item"><span class="std-legend-dot" style="background:#d0d0d0"></span>${t('avail.na')} (${avgNa})</span>` : ''}
             </div>
-            <div class="std-season-stat">Total Sessions: <strong>${sessionCount}</strong></div>
+            <div class="std-season-stat">${t('std.total_sessions')} <strong>${sessionCount}</strong></div>
           </div>
           <div class="std-top-lists">
             <div class="std-top-card">
-              <div class="std-top-title">🏆 Top Attendance</div>
+              <div class="std-top-title">${t('std.top_attendance')}</div>
               ${top3AttendHtml}
             </div>
             <div class="std-top-card">
-              <div class="std-top-title">⚠️ Most Absent</div>
+              <div class="std-top-title">${t('std.most_absent')}</div>
               ${top3AbsentHtml}
             </div>
             <div class="std-top-card">
-              <div class="std-top-title">❌ Currently Injured</div>
+              <div class="std-top-title">${t('std.currently_injured')}</div>
               <div class="std-top-scroll">${injuredHtml}</div>
             </div>
           </div>
@@ -7652,14 +8837,14 @@
     }
 
     return `
-      <h2 class="page-title">Training Sessions</h2>
+      <h2 class="page-title">${t('page.training')}</h2>
       ${seasonDonutHtml}
       <div class="card">
         <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem;">
-          <button class="btn btn-outline btn-small matchday-add" id="btn-training-add-top">+ Add Training</button>
+          <button class="btn btn-outline btn-small matchday-add" id="btn-training-add-top">${t('training.add')}</button>
         </div>
         <div class="table-wrap"><table class="matchday-table">
-        <thead><tr><th>Date</th><th>Time</th><th>Focus</th><th>Location</th><th>Link</th><th class="center-cell">Status</th><th class="center-cell">Attendance</th><th></th></tr></thead>
+        <thead><tr><th>${t('training.th_date')}</th><th>${t('training.th_time')}</th><th>${t('training.th_focus')}</th><th>${t('training.th_location')}</th><th>${t('training.th_link')}</th><th class="center-cell">${t('training.th_status')}</th><th class="center-cell">${t('training.th_attendance')}</th><th></th></tr></thead>
         <tbody id="staff-training-body">${rows}</tbody>
       </table></div>
       </div>`;
@@ -7793,8 +8978,8 @@
 
   function renderStaffTrainingDetail() {
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const t = training.find(x => x.date === detailTrainingDate);
-    if (!t) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
+    const tr = training.find(x => x.date === detailTrainingDate);
+    if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>' + t('training.not_found') + '</p></div>';
     var curCat = getCurrentCategory();
     var catPlayers = getUsers().filter(u => (u.roles || []).includes('player'));
     if (curCat) catPlayers = catPlayers.filter(p => !p.category || p.category === curCat);
@@ -7802,9 +8987,9 @@
 
     // Determine which team letters share this training slot
     const _dayMap = {0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
-    const _tDate = t.date ? new Date(t.date + 'T12:00:00') : null;
+    const _tDate = tr.date ? new Date(tr.date + 'T12:00:00') : null;
     const _tDayVal = _tDate ? _dayMap[_tDate.getDay()] : '';
-    const _tStartTime = (t.time || '').split(' - ')[0].trim();
+    const _tStartTime = (tr.time || '').split(' - ')[0].trim();
     const _allLetters = getTeamLetters(curCat);
     const _schedules = (_clubConfig && _clubConfig.schedules) ? _clubConfig.schedules : {};
     const _trainingLetters = _allLetters.filter(letter => {
@@ -7815,19 +9000,19 @@
     });
     // Fallback: if no schedule match, show all letters
     const stdLettersForSlot = _trainingLetters.length ? _trainingLetters : _allLetters;
-    const locked = isTrainingLocked(t);
+    const locked = isTrainingLocked(tr);
     // Seed mock data only for demo/seeded environments
-    if (localStorage.getItem('fa_seeded')) seedMockAvailability(t.date, players);
-    const dateFormatted = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    if (localStorage.getItem('fa_seeded')) seedMockAvailability(tr.date, players);
+    const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
 
-    const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
+    const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
     const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
     const allOptions = ['yes', 'late', 'no', 'injured', 'na'];
 
     const playerRows = players.map(p => {
-      const key = p.id + '_' + t.date;
+      const key = p.id + '_' + tr.date;
       const playerAnswer = availData[key] || (locked ? 'na' : null);
       const staffAnswer = overrides[key] || null;
       const effective = staffAnswer || playerAnswer;
@@ -7861,18 +9046,18 @@
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
         <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
         <td class="center-cell">
-          <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-date="${t.date}">
+          <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-date="${tr.date}">
             ${dropdown}
           </select>
         </td>
       </tr>`;
     }).join('');
 
-    const donutHtml = buildDetailDonut(t.date, players, locked);
+    const donutHtml = buildDetailDonut(tr.date, players, locked);
 
     // Count present players for default config
     const presentPlayers = players.filter(p => {
-      const eff = getEffectiveAnswer(p.id, t.date, locked);
+      const eff = getEffectiveAnswer(p.id, tr.date, locked);
       return eff === 'yes' || eff === 'late';
     });
     const presentCount = presentPlayers.length;
@@ -7880,24 +9065,24 @@
 
     // Render previously generated teams if they exist for this date
     let teamsHtml = '';
-    if (_generatedTeams && _generatedTeamsDate === t.date) {
-      teamsHtml = renderGeneratedTeams(_generatedTeams, players, t.date, locked);
+    if (_generatedTeams && _generatedTeamsDate === tr.date) {
+      teamsHtml = renderGeneratedTeams(_generatedTeams, players, tr.date, locked);
     }
 
     return `
       <button class="btn btn-outline btn-small detail-back" data-back="staff-training">← Back</button>
       <div class="detail-hero detail-hero-training">
-        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">Training</span></div>
-        <h2 class="detail-title">${sanitize(t.focus)}</h2>
-        <div class="detail-subtitle">${dateFormatted} · ${sanitize(t.time || '—')} · ${sanitize(t.location || '—')}</div>
+        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">${t('training.badge')}</span></div>
+        <h2 class="detail-title">${sanitize(tr.focus)}</h2>
+        <div class="detail-subtitle">${dateFormatted} · ${sanitize(tr.time || '—')} · ${sanitize(tr.location || '—')}</div>
       </div>
       <div class="card" style="margin-bottom:1.5rem;">
-        <div class="card-title">Attendance Overview</div>
+        <div class="card-title">${t('std.attendance_overview')}</div>
         <div class="std-donut-wrap">${donutHtml}</div>
       </div>
       <div class="std-attendance-row">
       <div class="card" style="flex:1;min-width:0;">
-        <div class="card-title">Player Attendance</div>
+        <div class="card-title">${t('std.player_attendance')}</div>
         ${(() => {
           if (stdLettersForSlot.length <= 1) return '';
           const btnAll = !stdTeamFilter ? ' roster-team-btn-active' : '';
@@ -7908,13 +9093,13 @@
           return '<div class="roster-team-filter"><button class="roster-team-btn std-team-btn' + btnAll + '" data-std-team="all">All</button>' + letterBtns + '</div>';
         })()}
         <div class="table-wrap"><table class="matchday-table std-attendance-table">
-          <thead><tr><th>Pos</th><th>Player</th><th class="center-cell">Status</th><th class="center-cell">Ready</th><th class="center-cell">A/C Ratio</th><th class="center-cell">Player Answer</th><th class="center-cell">Staff (editable)</th></tr></thead>
+          <thead><tr><th>${t('std.th_pos')}</th><th>${t('std.th_player')}</th><th class="center-cell">${t('std.th_status')}</th><th class="center-cell">${t('std.th_ready')}</th><th class="center-cell">${t('std.th_ac_ratio')}</th><th class="center-cell">${t('std.th_player_answer')}</th><th class="center-cell">${t('std.th_staff_editable')}</th></tr></thead>
           <tbody>${playerRows}</tbody>
         </table></div>
       </div>
       ${(() => {
         const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-        const boards = trainingBoards[t.date] || [];
+        const boards = trainingBoards[tr.date] || [];
         if (!boards.length) return '';
         const tagOrder = ['Presión', 'Salida', 'Estrategia'];
         const grouped = {};
@@ -7922,7 +9107,7 @@
         const orderedTags = [];
         tagOrder.forEach(tg => { if (grouped[tg]) orderedTags.push(tg); });
         Object.keys(grouped).forEach(tg => { if (!orderedTags.includes(tg)) orderedTags.push(tg); });
-        return '<div class="card std-boards-summary"><div class="card-title">Planning Entrenament</div>' +
+        return '<div class="card std-boards-summary"><div class="card-title">' + t('std.planning') + '</div>' +
           orderedTags.map(tag => {
             const tagTitle = tag || 'General';
             return '<div class="std-bs-tag">' + sanitize(tagTitle) + '</div>' +
@@ -7973,7 +9158,7 @@
         <div id="tg-teams-container">${teamsHtml}</div>
       </div>
       ${(() => {
-        return '<div id="std-boards-section">' + renderStdBoardsSection(t.date) + '</div>';
+        return '<div id="std-boards-section">' + renderStdBoardsSection(tr.date) + '</div>';
       })()}`;
   }
 
@@ -8150,8 +9335,20 @@
       const derived = deriveFitnessStatus(u.id, false);
       const status = derived.fitnessStatus;
       const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
-      const matches = u.matchesPlayed || 0;
-      const minutes = u.minutesPlayed || (matches * 90);
+      const pStats = computePlayerMatchStats(u.id);
+      const matches = pStats.totals.matches;
+      const minutes = pStats.totals.minutes;
+      const titulars = pStats.totals.titulars;
+      const goals = pStats.totals.goals;
+      const assists = pStats.totals.assists;
+      // Count suplents, NC, yellows, reds from matchRows
+      var suplents = 0, noConvocats = 0, totalYellows = 0, totalReds = 0;
+      pStats.matchRows.forEach(function(mr) {
+        if (mr.status === 'Suplent') suplents++;
+        else if (mr.status === 'NC') noConvocats++;
+        totalYellows += (mr.yellows || 0); totalReds += (mr.reds || 0);
+      });
+      var gcMatch = (matches > 0 && (goals + assists) > 0) ? ((goals + assists) / matches).toFixed(1) : '';
       const rd = computeReadiness(u.id);
       const readiness = rd.hasData ? rd.color : 'green';
       const rdTooltip = rd.hasData ? rd.score : '—';
@@ -8169,17 +9366,22 @@
       const teamCircle = pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : '';
 
       return `<tr>
-        <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(u)}</span></td>
+        <td class="roster-pos-col"><span class="conv-pos-circles">${posCirclesHtmlGlobal(u)}</span></td>
         <td><a href="#" class="roster-player-link" data-player-id="${u.id}"><span class="roster-name-wrap">${sanitize(u.name)}${teamCircle}</span></a></td>
         <td class="center-cell">${statusIcon}</td>
         <td class="center-cell"><span class="readiness-dot readiness-${readiness}" data-tooltip="${rdTooltip}"></span></td>
-        <td class="center-cell roster-num">${matches}</td>
-        <td class="center-cell roster-num">${minutes}</td>
+        <td class="center-cell roster-tsnc"><span class="roster-t">${titulars}</span>/<span class="roster-s">${suplents}</span>/<span class="roster-nc">${noConvocats}</span></td>
+        <td class="center-cell roster-num">${minutes}'</td>
+        <td class="center-cell roster-num">${goals || ''}</td>
+        <td class="center-cell roster-num">${assists || ''}</td>
+        <td class="center-cell roster-num">${totalYellows || ''}</td>
+        <td class="center-cell roster-num">${totalReds || ''}</td>
+        <td class="center-cell roster-num roster-gc">${gcMatch}</td>
       </tr>`;
     }).join('');
 
     if (players.length === 0) {
-      rows = '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:2rem;">No players registered yet.</td></tr>';
+      rows = '<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);padding:2rem;">' + t('roster.no_players') + '</td></tr>';
     }
 
     const btnAll = rosterTeamFilter === 'all' ? ' roster-team-btn-active' : '';
@@ -8252,49 +9454,134 @@
     const teamCharts = buildChartsHtml(teamSessions, { teamView: true });
 
     return `
-      <h2 class="page-title">Player Roster</h2>
+      <h2 class="page-title">${t('page.player_roster')}</h2>
       <div class="roster-team-filter">
-        <button class="roster-team-btn${btnAll}" data-roster-filter="all">All</button>
+        <button class="roster-team-btn${btnAll}" data-roster-filter="all">${t('common.all')}</button>
         ${rosterLetterBtns}
       </div>
-      <div class="roster-layout">
-        <div class="roster-left">
-          <div class="card">
-            <div class="table-wrap"><table class="roster-table">
-              <thead><tr><th>Position</th><th>Name</th><th class="center-cell">Status</th><th class="center-cell">Readiness</th><th class="center-cell">Matches</th><th class="center-cell">Minutes</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table></div>
-          </div>
-        </div>
-        <div class="roster-right">
-          ${teamCharts.acwr}
-          ${teamCharts.rpe}
-          ${teamCharts.uaWeek}
-        </div>
+      <div class="card">
+        <div class="table-wrap"><table class="roster-table">
+          <thead><tr>
+            <th class="roster-pos-col">${t('roster.th_pos')}</th><th>${t('roster.th_name')}</th>
+            <th class="center-cell">${t('roster.th_status')}</th><th class="center-cell">${t('roster.th_ready')}</th>
+            <th class="center-cell" title="Titular / Suplent / NC" style="font-size:1rem;color:#f9a825;line-height:1;">★</th>
+            <th class="center-cell roster-icon-th"><img src="img/chrono.jpg" class="roster-icon-header" alt="min" title="Minutes"></th>
+            <th class="center-cell roster-icon-th"><img src="img/gol.png" class="roster-icon-header" alt="gol" title="Goals"></th>
+            <th class="center-cell roster-icon-th"><img src="img/assist.png" class="roster-icon-header" alt="assist" title="Assists"></th>
+            <th class="center-cell roster-icon-th"><img src="img/groga.jpg" class="roster-icon-header" alt="groga" title="Yellow cards"></th>
+            <th class="center-cell roster-icon-th"><img src="img/vermella.jpg" class="roster-icon-header" alt="vermella" title="Red cards"></th>
+            <th class="center-cell roster-gc-header" title="Goal Contributions per Match">GC/P</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </div>
+      <div class="roster-charts-row">
+        ${teamCharts.acwr}
+        ${teamCharts.rpe}
+      </div>
+      <div class="card">
+        ${teamCharts.uaWeek}
       </div>`;
   }
 
   function renderMatchday() {
     const now = new Date();
-    const games = JSON.parse(localStorage.getItem('fa_matchday') || '[]').filter(g => {
-      if (!g.date || !g.time) return true;
-      return new Date(g.date + 'T' + g.time + ':00') > now;
+    const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+    // New (unsaved) games from fa_matchday
+    const newGames = JSON.parse(localStorage.getItem('fa_matchday') || '[]');
+    const newRows = newGames.map((g, i) => matchdayRowHtml(g, i)).join('');
+    const hasNew = newGames.length > 0;
+
+    // Saved matches from fa_matches (future only)
+    var curCat = getCurrentCategory();
+    var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+    var savedMatches = allMatches.filter(function(m) {
+      if (curCat && m.category && m.category !== curCat) return false;
+      return true;
+    }).sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+
+    // Split into upcoming and past
+    var upcomingMatches = savedMatches.filter(function(m) {
+      if (!m.date) return true;
+      var d = m.time ? new Date(m.date + 'T' + m.time + ':00') : new Date(m.date + 'T23:59:59');
+      return d > now;
     });
-    const rows = games.map((g, i) => matchdayRowHtml(g, i)).join('');
-    return `
-      <h2 class="page-title">Set Calendar</h2>
-      <div class="card">
-        <div class="table-wrap"><table class="matchday-table">
-          <thead><tr>
-            <th>Home / Away</th><th>Team</th><th>Date</th><th>Opponent</th><th>Location</th><th>Map</th><th>Kick-off</th><th></th>
-          </tr></thead>
-          <tbody id="matchday-body">${rows}</tbody>
-        </table></div>
-        <div class="matchday-bottom-actions">
-          <button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="Add game">+ Add Game</button>
-          <button class="btn btn-primary btn-small" id="btn-matchday-save">Save</button>
-        </div>
-      </div>`;
+    var pastMatches = savedMatches.filter(function(m) {
+      if (!m.date) return false;
+      var d = m.time ? new Date(m.date + 'T' + m.time + ':00') : new Date(m.date + 'T23:59:59');
+      return d <= now;
+    }).reverse(); // most recent first
+
+    function buildSavedRow(m) {
+      var isEditing = _mdEditingId === m.id;
+      if (isEditing) {
+        var isHome = isOurTeam(m.home);
+        var opponent = isHome ? m.away : m.home;
+        var homeChecked = isHome ? 'checked' : '';
+        var awayChecked = !isHome ? 'checked' : '';
+        return '<tr data-match-id="' + m.id + '" data-category="' + sanitize(m.category || '') + '">' +
+          '<td><label class="md-radio"><input type="radio" name="ha-edit" value="home" ' + homeChecked + ' class="md-ha"> Home</label>' +
+          '<label class="md-radio"><input type="radio" name="ha-edit" value="away" ' + awayChecked + ' class="md-ha"> Away</label></td>' +
+          '<td class="md-team-cell">' + getTeamLetters(m.category || '').map(function(l) {
+            return '<span class="md-team-circle' + ((m.team || '') === l ? ' active' : '') + '" data-team="' + l + '">' + l + '</span>';
+          }).join('') + '</td>' +
+          '<td><input type="text" class="reg-input md-date md-datepicker" value="' + sanitize(m.date || '') + '" placeholder="YYYY-MM-DD" readonly style="width:140px;cursor:pointer;"></td>' +
+          '<td><input class="reg-input md-opponent" value="' + sanitize(opponent) + '" placeholder="Opponent" style="width:140px;"></td>' +
+          '<td><input class="reg-input md-location" value="' + sanitize(m.location || '') + '" placeholder="Location" style="width:150px;"></td>' +
+          '<td><input class="reg-input md-maplink" value="' + sanitize(m.mapLink || '') + '" placeholder="Google Maps link" style="width:150px;"></td>' +
+          '<td><input type="text" class="reg-input md-kickoff" value="' + sanitize(m.time || '') + '" placeholder="HH:MM" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" style="width:80px;text-align:center;"></td>' +
+          '<td><button class="btn btn-primary btn-small md-save-edit" data-match-id="' + m.id + '">' + t('btn.save') + '</button> <button class="btn btn-outline btn-small md-cancel-edit" data-match-id="' + m.id + '">' + t('btn.cancel') + '</button></td>' +
+        '</tr>';
+      }
+      var teamLetter = m.team || '';
+      var homeName = isOurTeam(m.home) && teamLetter ? sanitize(m.home) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.home);
+      var awayName = isOurTeam(m.away) && teamLetter ? sanitize(m.away) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.away);
+      var dateObj = m.date ? new Date(m.date + 'T12:00:00') : null;
+      var dateFmt = dateObj ? tDateShort(m.date) : '—';
+      var timeFmt = m.time || '—';
+      return '<tr class="md-saved-row">' +
+        '<td>' + homeName + ' vs ' + awayName + '</td>' +
+        '<td>' + dateFmt + '</td>' +
+        '<td>' + timeFmt + '</td>' +
+        '<td>' + sanitize(m.location || '') + '</td>' +
+        '<td class="md-saved-actions"><button class="btn btn-outline btn-small md-edit-match" data-match-id="' + m.id + '">' + t('btn.edit') + '</button>' +
+        ' <button class="md-remove-btn md-delete-match" data-match-id="' + m.id + '" title="Delete">&times;</button></td>' +
+      '</tr>';
+    }
+
+    var upcomingRows = upcomingMatches.map(buildSavedRow).join('');
+    var pastRows = pastMatches.map(buildSavedRow).join('');
+
+    // New games section (add form)
+    var newSection = '';
+    if (hasNew) {
+      newSection = '<div class="card" style="margin-bottom:1rem;">' +
+        '<div class="card-title">' + t('cal.new_game') + '</div>' +
+        '<div class="table-wrap"><table class="matchday-table">' +
+        '<thead><tr><th>' + t('cal.th_home_away') + '</th><th>' + t('cal.th_team') + '</th><th>' + t('cal.th_date') + '</th><th>' + t('cal.th_opponent') + '</th><th>' + t('cal.th_location') + '</th><th>' + t('cal.th_map') + '</th><th>' + t('cal.th_kickoff') + '</th><th></th></tr></thead>' +
+        '<tbody id="matchday-body">' + newRows + '</tbody></table></div>' +
+        '<div class="matchday-bottom-actions">' +
+        '<button class="btn btn-primary btn-small" id="btn-matchday-save">' + t('btn.save') + '</button>' +
+        '</div></div>';
+    }
+
+    var theadHtml = '<thead><tr><th>' + t('cal.th_match') + '</th><th>' + t('cal.th_date') + '</th><th>' + t('cal.th_kickoff') + '</th><th>' + t('cal.th_location') + '</th><th></th></tr></thead>';
+
+    var upcomingCard = '<div class="card" style="margin-bottom:1rem;"><div class="card-title">' + t('matches.upcoming') + '</div>' +
+      (upcomingMatches.length ? '<div class="table-wrap"><table class="matchday-table md-saved-table">' + theadHtml + '<tbody>' + upcomingRows + '</tbody></table></div>'
+        : '<p style="text-align:center;color:var(--text-secondary);padding:1rem;">' + t('matches.no_upcoming') + '</p>') +
+      '</div>';
+
+    var pastCard = '<div class="card"><div class="card-title">' + t('matches.past') + '</div>' +
+      (pastMatches.length ? '<div class="table-wrap"><table class="matchday-table md-saved-table">' + theadHtml + '<tbody>' + pastRows + '</tbody></table></div>'
+        : '<p style="text-align:center;color:var(--text-secondary);padding:1rem;">' + t('matches.no_past') + '</p>') +
+      '</div>';
+
+    return '<h2 class="page-title">' + t('page.set_calendar') + '</h2>' +
+      '<div style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button></div>' +
+      newSection +
+      upcomingCard +
+      pastCard;
   }
 
   function buildTimeOptions(selected) {
@@ -8363,8 +9650,17 @@
     var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     var curCat = getCurrentCategory();
     var matches = curCat ? allMatches.filter(function(m) { return !m.category || m.category === curCat; }) : allMatches;
-    const upcoming = matches.filter(m => m.status === 'upcoming');
+    var now = new Date();
+    const upcoming = matches.filter(function(m) {
+      if (!m.date || !m.time) return m.status === 'upcoming';
+      var kickoff = new Date(m.date + 'T' + m.time + ':00');
+      return kickoff > now;
+    });
     if (convSelectedMatchId === null && upcoming.length) convSelectedMatchId = upcoming[0].id;
+    // If the selected match has already started, deselect it
+    if (convSelectedMatchId && !upcoming.some(function(m) { return m.id === convSelectedMatchId; })) {
+      convSelectedMatchId = upcoming.length ? upcoming[0].id : null;
+    }
     const selected = matches.find(m => m.id === convSelectedMatchId) || null;
     const users = getUsers();
     var playersAll = users.filter(u => (u.roles || []).includes('player'));
@@ -8401,7 +9697,7 @@
           const homeName = isOurTeam(m.home) ? getClubName() + teamLetter : sanitize(m.home);
           const awayName = isOurTeam(m.away) ? getClubName() + teamLetter : sanitize(m.away);
           const dateObj = m.date ? new Date(m.date + 'T12:00:00') : null;
-          const dateFmt = dateObj ? dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+          const dateFmt = dateObj ? tDateShort(m.date) : '';
           return `<div class="conv-match-option${active}" data-mid="${m.id}"><div class="conv-match-teams">${homeName} vs ${awayName}</div><div class="conv-match-date">${dateFmt}<span class="conv-match-time">${m.time || ''}</span></div></div>`;
         }).join('')
       : '<div class="conv-match-empty">No upcoming matches</div>';
@@ -8434,7 +9730,7 @@
 
     const calledHtml = called.length
       ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${playerStatusHtml(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
-      : '<p class="conv-drop-hint">Drag players here</p>';
+      : '<p class="conv-drop-hint"><span class="conv-hint-desktop">' + t('conv.drag_desktop') + '</span><span class="conv-hint-mobile">' + t('conv.drag_mobile') + '</span></p>';
 
     // Uniform: auto-default for home games
     const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
@@ -8475,35 +9771,35 @@
     }
 
     return `
-      <h2 class="page-title">Convocatòria</h2>
+      <h2 class="page-title">${t('page.convocatoria')}</h2>
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="conv-top-row">
           <div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;">Choose Match</div>
+            <div class="card-title" style="margin-bottom:.5rem;">${t('conv.choose_match')}</div>
             <div class="conv-match-selector" id="conv-match-selector">
               <div class="conv-match-toggle" id="conv-match-toggle">
-                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? new Date(selected.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">Select a match…</span>'}
+                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? tDateShort(selected.date) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">' + t('conv.select_match') + '</span>'}
                 <span class="conv-match-chevron"></span>
               </div>
               <div class="conv-match-dropdown" id="conv-match-dropdown" hidden>${matchOptions}</div>
             </div>
           </div>
           ${selected ? `<div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;">Call-up Time</div>
+            <div class="card-title" style="margin-bottom:.5rem;">${t('conv.callup_time')}</div>
             <select class="conv-callup-select" id="conv-callup-time">${buildTimeOptions(callupDefault)}</select>
           </div>
           <div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;text-align:center;">Uniform</div>
+            <div class="card-title" style="margin-bottom:.5rem;text-align:center;">${t('conv.uniform')}</div>
             <div class="conv-uniform-row">
               <div class="conv-uniform-group">
-                <span class="conv-uniform-label">Jersey</span>
+                <span class="conv-uniform-label">${t('conv.jersey')}</span>
                 <div class="uniform-toggle" id="conv-jersey-toggle">
                   <button type="button" class="uniform-opt conv-jersey-opt${jWhite}" data-val="white" title="White">${jerseySvg('white')}</button>
                   <button type="button" class="uniform-opt conv-jersey-opt${jYellow}" data-val="yellow" title="Yellow">${jerseySvg('yellow')}</button>
                 </div>
               </div>
               <div class="conv-uniform-group">
-                <span class="conv-uniform-label">Socks</span>
+                <span class="conv-uniform-label">${t('conv.socks')}</span>
                 <div class="uniform-toggle" id="conv-socks-toggle">
                   <button type="button" class="uniform-opt conv-socks-opt${sStriped}" data-val="striped" title="Black & White">${sockSvg('striped')}</button>
                   <button type="button" class="uniform-opt conv-socks-opt${sYellow}" data-val="yellow" title="Yellow">${sockSvg('yellow')}</button>
@@ -8515,16 +9811,16 @@
       </div>
       <div class="conv-layout">
         <div class="conv-panel">
-          <div class="conv-panel-header">Available Players <span class="conv-count" id="conv-avail-count">${available.length}</span></div>
+          <div class="conv-panel-header">${t('conv.available')} <span class="conv-count" id="conv-avail-count">${available.length}</span></div>
           <div class="conv-list" id="conv-available">${availableHtml}</div>
         </div>
         <div class="conv-panel conv-panel-called">
-          <div class="conv-panel-header">Called Up <span class="conv-count" id="conv-called-count">${called.length}</span></div>
+          <div class="conv-panel-header">${t('conv.called_up')} <span class="conv-count" id="conv-called-count">${called.length}</span></div>
           <div class="conv-list conv-drop-zone" id="conv-called">${calledHtml}</div>
           <div class="conv-actions">
-            <button class="btn btn-small" id="btn-conv-clear" style="background:#9e9e9e;color:#fff;border:none;">Clear All</button>
-            <button class="btn btn-outline btn-small" id="btn-conv-save">Save</button>
-            <button class="btn ${isSent && !hasChanges ? 'btn-danger' : 'btn-primary'} btn-small" id="btn-conv-send">${isSent && !hasChanges ? 'Unsend' : 'Send'}</button>
+            <button class="btn btn-small" id="btn-conv-clear" style="background:#9e9e9e;color:#fff;border:none;">${t('btn.clear_all')}</button>
+            <button class="btn btn-outline btn-small" id="btn-conv-save">${t('btn.save')}</button>
+            <button class="btn ${isSent && !hasChanges ? 'btn-danger' : 'btn-primary'} btn-small" id="btn-conv-send">${isSent && !hasChanges ? t('btn.unsend') : t('btn.send')}</button>
           </div>
         </div>
       </div>
@@ -8533,7 +9829,7 @@
         const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
         const boards = matchBoards[convSelectedMatchId] || [];
         if (!boards.length) return '';
-        return '<div class="card"><div class="card-title">Tactical Board</div>' +
+        return '<div class="card"><div class="card-title">' + t('conv.tactical_board') + '</div>' +
           boards.map(b => renderReadOnlyBoard(b, 'ro2-')).join('') + '</div>';
       })()}
       ${(() => {
@@ -8541,14 +9837,14 @@
         const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
         const videos = vData[convSelectedMatchId] || [];
         const rows = videos.map((v, i) => '<div class="conv-video-row" data-video-idx="' + i + '">' +
-          '<input type="text" class="reg-input conv-video-title" value="' + sanitize(v.title) + '" placeholder="Title" style="flex:1;min-width:80px;">' +
-          '<input type="text" class="reg-input conv-video-url" value="' + sanitize(v.url) + '" placeholder="Paste URL" style="flex:2;min-width:140px;">' +
+          '<input type="text" class="reg-input conv-video-title" value="' + sanitize(v.title) + '" placeholder="' + t('conv.video_title_ph') + '" style="flex:1;min-width:80px;">' +
+          '<input type="text" class="reg-input conv-video-url" value="' + sanitize(v.url) + '" placeholder="' + t('conv.video_url_ph') + '" style="flex:2;min-width:140px;">' +
           '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">✕</button></div>' +
-          (v.title ? '<textarea class="reg-input conv-video-comment" data-video-idx="' + i + '" rows="2" placeholder="Comments for this video..." style="width:100%;resize:vertical;min-height:40px;margin-bottom:.6rem;">' + sanitize(v.comment || '') + '</textarea>' : '')).join('');
+          (v.title ? '<textarea class="reg-input conv-video-comment" data-video-idx="' + i + '" rows="2" placeholder="' + t('conv.video_comment_ph') + '" style="width:100%;resize:vertical;min-height:40px;margin-bottom:.6rem;">' + sanitize(v.comment || '') + '</textarea>' : '')).join('');
         return '<div class="card">' +
-          '<div class="card-title">Video Links</div>' +
+          '<div class="card-title">' + t('conv.video_links') + '</div>' +
           '<div id="conv-video-list">' + rows + '</div>' +
-          '<button class="btn btn-outline btn-small" id="btn-conv-add-video" style="margin-top:.5rem;">+ Add Video Link</button>' +
+          '<button class="btn btn-outline btn-small" id="btn-conv-add-video" style="margin-top:.5rem;">' + t('conv.add_video') + '</button>' +
           '</div>';
       })()}`;
   }
@@ -8567,7 +9863,6 @@
       if (!m.date || !m.time) return false;
       return new Date(m.date + 'T' + m.time + ':00') <= now;
     }).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-    const DAYS_CA = ['Diumenge','Dilluns','Dimarts','Dimecres','Dijous','Divendres','Dissabte'];
     function buildCard(m, clickable) {
       const teamLetter = m.team || '';
       const homeName = isOurTeam(m.home) && teamLetter ? getClubName() + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.home);
@@ -8575,7 +9870,7 @@
       let dateFmt = '—';
       if (m.date) {
         const d = new Date(m.date + 'T12:00:00');
-        const dayName = DAYS_CA[d.getDay()];
+        const dayName = tDay(d.getDay());
         const dd = String(d.getDate()).padStart(2, '0');
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const yyyy = d.getFullYear();
@@ -8587,7 +9882,7 @@
       const sentEntry = sentData[m.id];
       const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
       const convHtml = sentPlayers.length
-        ? `<span class="md-conv-sent"><span class="conv-blink-dot"></span> Convocatòria enviada<span class="md-conv-count">${sentPlayers.length} players</span></span>`
+        ? `<span class="md-conv-sent"><span class="conv-blink-dot"></span> ${t('matches.conv_sent')}<span class="md-conv-count">${sentPlayers.length} ${t('matches.players')}</span></span>`
         : '';
       const clickAttr = clickable ? ` data-go-staff-match="${m.id}"` : '';
       return `<div class="md-match-card${clickable ? '' : ' md-match-card-past'}"${clickAttr}>
@@ -8600,19 +9895,19 @@
     }
     const upcomingCards = upcoming.length
       ? upcoming.map(m => buildCard(m, true)).join('')
-      : '<p style="color:var(--text-secondary)">No upcoming matches.</p>';
+      : '<p style="color:var(--text-secondary)">' + t('matches.no_upcoming') + '</p>';
     const pastCards = past.length
       ? past.map(m => buildCard(m, true)).join('')
-      : '<p style="color:var(--text-secondary)">No previous matches.</p>';
+      : '<p style="color:var(--text-secondary)">' + t('matches.no_previous') + '</p>';
 
     return `
-      <h2 class="page-title">Matchday</h2>
+      <h2 class="page-title">${t('page.matchday')}</h2>
       <div class="card">
-        <div class="card-title">Upcoming Matches</div>
+        <div class="card-title">${t('matches.upcoming')}</div>
         <div class="md-match-list">${upcomingCards}</div>
       </div>
       <div class="card">
-        <div class="card-title">Previous Matches</div>
+        <div class="card-title">${t('matches.previous')}</div>
         <div class="md-match-list">${pastCards}</div>
       </div>`;
   }
@@ -8624,9 +9919,10 @@
     let rows = users.map(u => {
       const hasPlayer = (u.roles || []).includes('player');
       const hasStaff = (u.roles || []).includes('staff');
+      const roleLabels = { player: t('common.player'), staff: t('common.staff') };
       const rolesDisplay = (u.roles || []).length
-        ? (u.roles || []).map(r => `<span class="badge badge-green">${r}</span>`).join(' ')
-        : '<span class="badge badge-yellow">none</span>';
+        ? (u.roles || []).map(r => `<span class="badge badge-green">${roleLabels[r] || r}</span>`).join(' ')
+        : '<span class="badge badge-yellow">' + t('reg.status_none') + '</span>';
 
       return `<tr>
         <td>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</td>
@@ -8634,22 +9930,22 @@
         <td>${rolesDisplay}</td>
         <td class="user-actions">
           <button class="btn btn-small ${hasPlayer ? 'btn-primary' : 'btn-outline'} btn-toggle-role" data-uid="${u.id}" data-role="player">
-            ${hasPlayer ? '✓ Player' : '+ Player'}
+            ${hasPlayer ? '✓ ' + t('common.player') : '+ ' + t('common.player')}
           </button>
           <button class="btn btn-small ${hasStaff ? 'btn-primary' : 'btn-outline'} btn-toggle-role" data-uid="${u.id}" data-role="staff">
-            ${hasStaff ? '✓ Staff' : '+ Staff'}
+            ${hasStaff ? '✓ ' + t('common.staff') : '+ ' + t('common.staff')}
           </button>
-          ${u.id !== session.id ? `<button class="btn btn-small btn-danger btn-delete-user" data-uid="${u.id}">Delete</button>` : ''}
+          ${u.id !== session.id ? `<button class="btn btn-small btn-danger btn-delete-user" data-uid="${u.id}">${t('btn.delete')}</button>` : ''}
         </td>
       </tr>`;
     }).join('');
     return `
-      <h2 class="page-title">Manage Users</h2>
+      <h2 class="page-title">${t('page.manage_users')}</h2>
       <div class="card">
-        <div class="card-title">All Users</div>
-        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">Click the role buttons to toggle Player / Staff for any user.</p>
+        <div class="card-title">${t('users.all_users')}</div>
+        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('users.toggle_desc')}</p>
         <div class="table-wrap"><table>
-          <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Actions</th></tr></thead>
+          <thead><tr><th>${t('users.th_name')}</th><th>${t('users.th_email')}</th><th>${t('users.th_roles')}</th><th>${t('users.th_actions')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
       </div>`;
@@ -8659,7 +9955,7 @@
     const users = getUsers();
     const curCat = getCurrentCategory();
     const enabledCats = getEnabledCategories();
-    const filtered = curCat ? users.filter(u => (u.category || '') === curCat) : users;
+    const filtered = curCat ? users.filter(u => (u.category || '') === curCat || (u.category || '') === '') : users;
     let rows = filtered.map(u => {
       const roles = u.roles || [];
       let status = 'none';
@@ -8688,10 +9984,10 @@
         <td class="reg-name-cell">${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
         <td>
           <select class="reg-status-select" data-uid="${u.id}">
-            <option value="none" ${status === 'none' ? 'selected' : ''}>None</option>
-            <option value="player" ${status === 'player' ? 'selected' : ''}>Player</option>
-            <option value="staff" ${status === 'staff' ? 'selected' : ''}>Staff</option>
-            <option value="both" ${status === 'both' ? 'selected' : ''}>Both</option>
+            <option value="none" ${status === 'none' ? 'selected' : ''}>${t('reg.status_none')}</option>
+            <option value="player" ${status === 'player' ? 'selected' : ''}>${t('reg.status_player')}</option>
+            <option value="staff" ${status === 'staff' ? 'selected' : ''}>${t('reg.status_staff')}</option>
+            <option value="both" ${status === 'both' ? 'selected' : ''}>${t('reg.status_both')}</option>
           </select>
         </td>
         <td>${catSelect}</td>
@@ -8703,20 +9999,20 @@
         <td class="reg-pos-cell">${posChips}</td>
         <td><input type="text" inputmode="numeric" class="reg-input reg-number" data-uid="${u.id}" value="${u.playerNumber || ''}" placeholder="#" maxlength="2"></td>
         <td class="reg-actions">
-          <button class="btn btn-small btn-danger btn-remove-reg" data-uid="${u.id}">Remove</button>
+          <button class="btn btn-small btn-danger btn-remove-reg" data-uid="${u.id}">${t('btn.remove')}</button>
         </td>
       </tr>`;
     }).join('');
 
     return `
-      <h2 class="page-title">Registrations</h2>
+      <h2 class="page-title">${t('page.registrations')}</h2>
       <div class="card">
-        <div class="card-title">All Registered Members</div>
+        <div class="card-title">${t('reg.all_members')}</div>
         <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
-          Edit each member's status, position, and player number. Changes are saved automatically.
+          ${t('reg.edit_desc')}
         </p>
         <div class="table-wrap"><table>
-          <thead><tr><th>Name</th><th>Status</th><th>Category</th><th style="text-align:center">Team</th><th>Position</th><th>Number</th><th></th></tr></thead>
+          <thead><tr><th>${t('reg.th_name')}</th><th>${t('reg.th_status')}</th><th>${t('reg.th_category')}</th><th style="text-align:center">${t('reg.th_team')}</th><th>${t('reg.th_position')}</th><th>${t('reg.th_number')}</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
       </div>`;
@@ -8724,7 +10020,7 @@
 
   function renderAdminSettings() {
     const session = getSession();
-    let html = '<h2 class="page-title">Settings</h2>';
+    let html = '<h2 class="page-title">' + t('page.settings') + '</h2>';
 
     // ---------- Team Lead: Category Config ----------
     if (session && (session.isTeamLead || session.isAdmin)) {
@@ -8839,8 +10135,8 @@
     const today = new Date(); today.setHours(0,0,0,0);
     const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
     const selVal = dpInput ? (dpInput.dataset.dateIso || dpInput.value) : '';
-    const days = ['Dl','Dt','Dc','Dj','Dv','Ds','Dg'];
-    const months = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre'];
+    const days = [t('dpday.0'),t('dpday.1'),t('dpday.2'),t('dpday.3'),t('dpday.4'),t('dpday.5'),t('dpday.6')];
+    const months = [0,1,2,3,4,5,6,7,8,9,10,11].map(i => tMonth(i));
     const first = new Date(dpYear, dpMonth, 1);
     let startDay = first.getDay() - 1; if (startDay < 0) startDay = 6; // Mon=0
     const daysInMonth = new Date(dpYear, dpMonth + 1, 0).getDate();
@@ -8885,7 +10181,6 @@
 
   function renderWeekActivities(weekOffset) {
     const { start, end } = getWeekBounds(weekOffset);
-    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
     const session = getSession();
@@ -8902,14 +10197,14 @@
       const convIncluded = convSent && sentPlayers.some(id => String(id) === String(session.id));
       const sentJersey = sentEntry && !Array.isArray(sentEntry) ? sentEntry.jersey : null;
       const sentSocks = sentEntry && !Array.isArray(sentEntry) ? sentEntry.socks : null;
-      const dayName = m.date ? DAYS[new Date(m.date + 'T12:00:00').getDay()] : '';
+      const dayName = m.date ? tDay(new Date(m.date + 'T12:00:00').getDay()) : '';
       activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} · ${m.time} · ${sanitize(m.location || '')}`, convSent, convIncluded, sentJersey, sentSocks });
     });
     training.filter(t => t.date >= start && t.date <= end).filter(t => {
       if (!t.date || !t.time) return true;
       return new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00').getTime() + 60 * 60 * 1000 > now.getTime();
     }).forEach(t => {
-      const dayName = t.date ? DAYS[new Date(t.date + 'T12:00:00').getDay()] : '';
+      const dayName = t.date ? tDay(new Date(t.date + 'T12:00:00').getDay()) : '';
       activities.push({ type: 'training', tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
     });
     // Birthdays this week (skip self)
@@ -8924,17 +10219,17 @@
       const bdStr = bd.getFullYear() + '-' + String(bd.getMonth()+1).padStart(2,'0') + '-' + String(bd.getDate()).padStart(2,'0');
       if (bdStr >= start && bdStr <= end) {
         const age = thisYear - Number(parts[0]);
-        const dayName = DAYS[bd.getDay()];
-        activities.push({ type: 'birthday', date: bdStr, time: '00:00', label: '🎂 ' + sanitize(p.name), detail: dayName + ' · ' + age + ' anys', pic: p.profilePic || '', initial: sanitize(p.name).charAt(0).toUpperCase() });
+        const dayName = tDay(bd.getDay());
+        activities.push({ type: 'birthday', date: bdStr, time: '00:00', label: '🎂 ' + sanitize(p.name), detail: dayName + ' · ' + age + ' ' + t('home.age_suffix'), pic: p.profilePic || '', initial: sanitize(p.name).charAt(0).toUpperCase() });
       }
     });
     activities.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || '').localeCompare(b.time || ''));
-    if (!activities.length) return '<p style="color:var(--text-secondary)">No activities this week.</p>';
+    if (!activities.length) return '<p style="color:var(--text-secondary)">' + t('activity.no_activities') + '</p>';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     return activities.map(a => {
       const badge = a.type === 'match'
-        ? '<span class="badge badge-yellow">Match</span>'
-        : '<span class="badge badge-green">Training</span>';
+        ? '<span class="badge badge-yellow">' + t('activity.badge_match') + '</span>'
+        : '<span class="badge badge-green">' + t('activity.badge_training') + '</span>';
       let convTag = '';
       let uniformIcons = '';
       if (a.convSent) {
@@ -8942,8 +10237,8 @@
           uniformIcons = `<span class="activity-uniform">${jerseySvg(a.sentJersey || 'white')}${sockSvg(a.sentSocks || 'striped')}</span>`;
         }
         convTag = a.convIncluded
-          ? '<span class="conv-available-tag" data-conv-link data-conv-match="' + a.id + '" style="cursor:pointer"><span class="conv-blink-dot"></span> Convocatòria disponible</span>'
-          : '<span class="conv-not-called-tag"><span class="conv-grey-dot"></span> No convocat</span>';
+          ? '<span class="conv-available-tag" data-conv-link data-conv-match="' + a.id + '" style="cursor:pointer"><span class="conv-blink-dot"></span> ' + t('activity.conv_available') + '</span>'
+          : '<span class="conv-not-called-tag"><span class="conv-grey-dot"></span> ' + t('activity.conv_not_called') + '</span>';
       }
       // Match availability buttons (only when conv NOT sent)
       let matchAvailHtml = '';
@@ -8952,13 +10247,13 @@
         const maKey = session.id + '_' + a.id;
         const maChosen = maData[maKey] || null;
         if (maChosen) {
-          const maLabels = { disponible: 'Disponible', no_disponible: 'No Disponible' };
+          const maLabels = { disponible: t('avail.disponible'), no_disponible: t('avail.no_disponible') };
           const maCls = { disponible: 'mavail-disp', no_disponible: 'mavail-nodisp' };
           matchAvailHtml = `<span class="mavail-chosen ${maCls[maChosen]}" data-mavail-match="${a.id}">${maLabels[maChosen]}</span>`;
         } else {
           matchAvailHtml = `<div class="mavail-btns" data-mavail-match="${a.id}">
-            <button class="mavail-btn mavail-disp" data-mavail="disponible">Disponible</button>
-            <button class="mavail-btn mavail-nodisp" data-mavail="no_disponible">No Disponible</button>
+            <button class="mavail-btn mavail-disp" data-mavail="disponible">${t('avail.disponible')}</button>
+            <button class="mavail-btn mavail-nodisp" data-mavail="no_disponible">${t('avail.no_disponible')}</button>
           </div>`;
         }
       }
@@ -8971,23 +10266,23 @@
         const stored = availData[key];
         if (tLocked) {
           const chosen = stored || 'na';
-          const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
+          const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
           availHtml = `<span class="avail-chosen ${cls[chosen]}">${labels[chosen]}</span>`;
         } else if (stored) {
-          const labels = { yes: 'Yes', late: 'Late', no: 'No', injured: 'Injured', na: 'N/A' };
+          const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
           availHtml = `<span class="avail-chosen ${cls[stored]}" data-avail-date="${a.tDate}">${labels[stored]}</span>`;
         } else {
           // Default to Yes badge (clickable to expand buttons)
-          availHtml = `<span class="avail-chosen avail-yes avail-default" data-avail-date="${a.tDate}">Yes</span>`;
+          availHtml = `<span class="avail-chosen avail-yes avail-default" data-avail-date="${a.tDate}">${t('avail.yes')}</span>`;
         }
       }
       if (a.type === 'birthday') {
         const picHtml = a.pic
           ? `<img src="${a.pic}" alt="" class="birthday-avatar">`
           : `<span class="birthday-avatar birthday-avatar-placeholder">${a.initial}</span>`;
-        return `<div class="activity-item"><span class="badge badge-birthday">Birthday</span><div class="activity-info"><div class="activity-label">${a.label}</div><div class="activity-detail">${a.detail}</div></div>${picHtml}</div>`;
+        return `<div class="activity-item"><span class="badge badge-birthday">${t('activity.badge_birthday')}</span><div class="activity-info"><div class="activity-label">${a.label}</div><div class="activity-detail">${a.detail}</div></div>${picHtml}</div>`;
       }
       const dataAttr = a.type === 'match'
         ? `data-go-match="${a.id}"`
@@ -9076,7 +10371,31 @@
   // ---------- Matchday bindings ----------
   function bindMatchday() {
     const body = document.getElementById('matchday-body');
-    if (!body) return;
+
+    // Add game button (always present)
+    const addBtn = document.getElementById('btn-matchday-add');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const games = body ? readGames() : [];
+        var cat = getCurrentCategory() || '';
+        var letters = getTeamLetters(cat);
+        var schedKey = (letters.length === 1) ? cat + '_' + letters[0] : cat;
+        var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
+        var homeGame = sched ? sched.homeGame : null;
+        var defLoc = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
+        var defMap = (defLoc === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
+        var defKickoff = (homeGame && homeGame.time) ? homeGame.time : '';
+        games.push({ homeAway: 'home', team: '', date: '', opponent: '', location: defLoc, mapLink: defMap, kickoff: defKickoff, category: cat });
+        localStorage.setItem('fa_matchday', JSON.stringify(games));
+        renderPage(getSession());
+      });
+    }
+
+    if (!body) {
+      // No new games form — still bind saved match handlers below
+      bindSavedMatchHandlers();
+      return;
+    }
 
     function readGames() {
       const games = [];
@@ -9113,12 +10432,12 @@
           var schedKey = cat;
           var letters = getTeamLetters(cat);
           var activeCircle = tr.querySelector('.md-team-circle.active');
-          if (activeCircle && activeCircle.dataset.team) schedKey = cat + '_' + activeCircle.dataset.team;
-          else if (letters.length === 1) schedKey = cat + '_' + letters[0];
+          if (activeCircle && activeCircle.dataset.team) schedKey = cat + '-' + activeCircle.dataset.team;
+          else if (letters.length === 1) schedKey = cat + '-' + letters[0];
           var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
           var homeGame = sched ? sched.homeGame : null;
           locInput.value = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
-          mapInput.value = (locInput.value === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
+          mapInput.value = (homeGame && homeGame.link) ? homeGame.link : (locInput.value === 'Escola Industrial' ? 'https://share.google/pfbMOc661aRSNlynk' : '');
           if (kickoffInput && homeGame && homeGame.time) kickoffInput.value = homeGame.time;
         } else {
           locInput.value = '';
@@ -9167,31 +10486,11 @@
       });
     });
 
-    // Add game
-    const addBtn = document.getElementById('btn-matchday-add');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const games = readGames();
-        var cat = getCurrentCategory() || '';
-        var letters = getTeamLetters(cat);
-        var schedKey = (letters.length === 1) ? cat + '_' + letters[0] : cat;
-        var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
-        var homeGame = sched ? sched.homeGame : null;
-        var defLoc = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
-        var defMap = (defLoc === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
-        var defKickoff = (homeGame && homeGame.time) ? homeGame.time : '';
-        games.push({ homeAway: 'home', team: '', date: '', opponent: '', location: defLoc, mapLink: defMap, kickoff: defKickoff, category: cat });
-        localStorage.setItem('fa_matchday', JSON.stringify(games));
-        renderPage(getSession());
-      });
-    }
-
-    // Save button — sync matchday games into fa_matches
+    // Save button — add new games to fa_matches
     const saveMdBtn = document.getElementById('btn-matchday-save');
     if (saveMdBtn) {
       saveMdBtn.addEventListener('click', () => {
         const games = readGames();
-        localStorage.setItem('fa_matchday', JSON.stringify(games));
         const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
         const today = new Date().toISOString().slice(0, 10);
         const newMatches = games.filter(g => g.opponent && g.date).map((g, i) => ({
@@ -9207,17 +10506,93 @@
           team: g.team || '',
           category: g.category || getCurrentCategory() || ''
         }));
-        localStorage.setItem('fa_matches', JSON.stringify(newMatches));
-        saveMdBtn.textContent = '✓ Saved';
-        saveMdBtn.classList.remove('btn-primary');
-        saveMdBtn.classList.add('btn-accent');
-        setTimeout(() => {
-          saveMdBtn.textContent = 'Save';
-          saveMdBtn.classList.add('btn-primary');
-          saveMdBtn.classList.remove('btn-accent');
-        }, 1200);
+        // Append to existing matches instead of replacing
+        var existing = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+        existing = existing.concat(newMatches);
+        localStorage.setItem('fa_matches', JSON.stringify(existing));
+        // Clear the new games form
+        localStorage.setItem('fa_matchday', '[]');
+        renderPage(getSession());
       });
     }
+
+    bindSavedMatchHandlers();
+  }
+
+  function bindSavedMatchHandlers() {
+    // Edit button on saved match
+    $$('.md-edit-match').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        _mdEditingId = Number(btn.dataset.matchId) || btn.dataset.matchId;
+        renderPage(getSession());
+      });
+    });
+
+    // Cancel edit
+    $$('.md-cancel-edit').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        _mdEditingId = null;
+        renderPage(getSession());
+      });
+    });
+
+    // Save edit on existing match
+    $$('.md-save-edit').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var matchId = Number(btn.dataset.matchId) || btn.dataset.matchId;
+        var tr = btn.closest('tr');
+        if (!tr) return;
+        var haRadio = tr.querySelector('.md-ha:checked');
+        var homeAway = haRadio ? haRadio.value : 'home';
+        var activeTeam = tr.querySelector('.md-team-circle.active');
+        var team = activeTeam ? activeTeam.dataset.team : '';
+        var date = tr.querySelector('.md-date').value;
+        var opponent = tr.querySelector('.md-opponent').value.trim();
+        var location = tr.querySelector('.md-location').value.trim();
+        var mapLink = tr.querySelector('.md-maplink').value.trim();
+        var kickoff = tr.querySelector('.md-kickoff').value;
+        var TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+        var matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+        var idx = matches.findIndex(function(m) { return m.id === matchId; });
+        if (idx !== -1) {
+          matches[idx].home = homeAway === 'home' ? TEAM : opponent;
+          matches[idx].away = homeAway === 'home' ? opponent : TEAM;
+          matches[idx].date = date;
+          matches[idx].time = kickoff || '00:00';
+          matches[idx].location = location;
+          matches[idx].mapLink = mapLink;
+          matches[idx].team = team;
+          localStorage.setItem('fa_matches', JSON.stringify(matches));
+        }
+        _mdEditingId = null;
+        renderPage(getSession());
+      });
+    });
+
+    // Delete saved match
+    $$('.md-delete-match').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var matchId = Number(btn.dataset.matchId) || btn.dataset.matchId;
+        showModal('Delete Match', 'Are you sure you want to delete this match?', function() {
+          var matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+          matches = matches.filter(function(m) { return m.id !== matchId; });
+          localStorage.setItem('fa_matches', JSON.stringify(matches));
+          renderPage(getSession());
+        });
+      });
+    });
+
+    // Date picker and team circle toggle for edit rows
+    $$('.md-saved-table .md-datepicker').forEach(function(inp) {
+      inp.addEventListener('click', function() { openDatePicker(inp); });
+    });
+    $$('.md-saved-table .md-team-circle').forEach(function(circle) {
+      circle.addEventListener('click', function() {
+        var td = circle.closest('td');
+        td.querySelectorAll('.md-team-circle').forEach(function(c) { c.classList.remove('active'); });
+        circle.classList.add('active');
+      });
+    });
   }
 
   // ---------- Custom Modal ----------
@@ -9255,7 +10630,6 @@
     if (!body) return;
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
-    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
     function readTraining() {
       const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
@@ -9270,7 +10644,7 @@
         if (!dateInput) return;
         const dateIso = dateInput.dataset.dateIso || dateInput.value;
         training[i].date = dateIso;
-        training[i].day = dateIso ? DAYS[new Date(dateIso + 'T12:00:00').getDay()] : training[i].day;
+        training[i].day = dateIso ? tDay(new Date(dateIso + 'T12:00:00').getDay()) : training[i].day;
         if (timeInput.value) training[i].time = timeInput.value;
         training[i].focus = focusInput.value.trim();
         training[i].location = locInput.value.trim();
@@ -9286,7 +10660,7 @@
         const iso = input.dataset.dateIso || input.value;
         const dayLabel = input.closest('td').querySelector('.st-day-label');
         if (dayLabel && iso) {
-          dayLabel.textContent = DAYS[new Date(iso + 'T12:00:00').getDay()];
+          dayLabel.textContent = tDay(new Date(iso + 'T12:00:00').getDay());
         }
       });
     });
@@ -9355,36 +10729,44 @@
               if (tr.day && dayValToJs[tr.day] !== undefined) {
                 // Avoid duplicate day+time combos
                 var exists = slots.some(s => s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || ''));
-                if (!exists) slots.push({ jsDay: dayValToJs[tr.day], time: tr.time || '', location: tr.location || '' });
+                if (!exists) slots.push({ jsDay: dayValToJs[tr.day], time: tr.time || '', location: tr.location || '', link: tr.link || '' });
               }
             });
           }
         });
       }
       // Fallback to Tue/Thu if no schedule configured
-      if (!slots.length) slots = [{ jsDay: 2, time: '21:00', location: '' }, { jsDay: 4, time: '22:00', location: '' }];
-      // Sort slots by JS day (Mon first)
+      if (!slots.length) slots = [{ jsDay: 2, time: '21:00', location: '', link: '' }, { jsDay: 4, time: '22:00', location: '', link: '' }];
+      // Sort slots by JS day
       slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
-      // Find latest training date in the list to cycle from
+      var slotDays = slots.map(function (s) { return s.jsDay; }); // e.g. [2, 4] for Tue/Thu
+      // Find latest training date to cycle from
       var allDates = training.filter(t => t.date).map(t => t.date);
       var lastDate = allDates.length ? allDates.sort().pop() : null;
-      var d = lastDate ? new Date(lastDate + 'T12:00:00') : new Date();
-      d.setDate(d.getDate() + 1);
-      // Find next scheduled day
-      var found = false;
-      for (var tries = 0; tries < 8; tries++) {
-        for (var si = 0; si < slots.length; si++) {
-          if (d.getDay() === slots[si].jsDay) { found = true; break; }
-        }
-        if (found) break;
-        d.setDate(d.getDate() + 1);
+      var d;
+      if (lastDate) {
+        d = new Date(lastDate + 'T12:00:00');
+      } else {
+        d = new Date();
+        d.setDate(d.getDate() - 1); // include today in search
       }
-      var matchedSlot = slots.find(s => s.jsDay === d.getDay()) || slots[0];
+      // Determine next slot day AFTER the latest training's weekday
+      var latestDow = d.getDay(); // 0=Sun … 6=Sat
+      console.log('[addTraining] slots:', JSON.stringify(slots), 'slotDays:', slotDays, 'lastDate:', lastDate, 'latestDow:', latestDow, 'curCat:', curCat, 'letters:', getTeamLetters(curCat), 'schedules:', _clubConfig && _clubConfig.schedules ? JSON.stringify(_clubConfig.schedules) : 'none');
+      var nextSlotDay = null;
+      for (var i = 0; i < slotDays.length; i++) {
+        if (slotDays[i] > latestDow) { nextSlotDay = slotDays[i]; break; }
+      }
+      if (nextSlotDay === null) nextSlotDay = slotDays[0]; // wrap to next week
+      var diff = nextSlotDay - latestDow;
+      if (diff <= 0) diff += 7;
+      d.setDate(d.getDate() + diff);
+      var matchedSlot = slots.find(function (s) { return s.jsDay === nextSlotDay; }) || slots[0];
       const dateStr = d.toISOString().slice(0, 10);
-      const day = DAYS[d.getDay()];
+      const day = tDay(d.getDay());
       const time = matchedSlot.time;
       const loc = matchedSlot.location || DEFAULT_LOC;
-      const map = loc === DEFAULT_LOC ? DEFAULT_MAP : '';
+      const map = matchedSlot.link || (loc === DEFAULT_LOC ? DEFAULT_MAP : '');
       training.push({ day, date: dateStr, time, focus: '', location: loc, mapLink: map, status: 'upcoming', category: curCat });
       training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       localStorage.setItem('fa_training', JSON.stringify(training));
@@ -9855,11 +11237,11 @@
             localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
           }
         }
-        saveBtn.textContent = '✓ Saved';
+        saveBtn.textContent = t('misc.saved');
         saveBtn.classList.remove('btn-outline');
         saveBtn.classList.add('btn-accent');
         setTimeout(() => {
-          saveBtn.textContent = 'Save';
+          saveBtn.textContent = t('btn.save');
           saveBtn.classList.add('btn-outline');
           saveBtn.classList.remove('btn-accent');
         }, 1200);
@@ -10406,20 +11788,20 @@
       const posHtml = posCirclesHtmlGlobal(p);
       const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
       let borderColor = '#43a047'; // fit green
-      let statusLabel = 'Fit';
+      let statusLabel = t('medical.status_fit');
       let statusClass = 'fit';
       let injExcerpt = '';
       if (st === 'injured') {
-        borderColor = '#e53935'; statusLabel = 'Injured'; statusClass = 'injured';
+        borderColor = '#e53935'; statusLabel = t('medical.status_injured'); statusClass = 'injured';
         const pInj = activeInj.find(i => i.playerId === p.id);
         if (pInj) {
           const days = Math.max(0, Math.floor((now - new Date(pInj.startDate + 'T12:00:00')) / 86400000));
-          injExcerpt = '<div class="med-card-injury">' + sanitize(pInj.muscleGroup || 'Injury') + ' · ' + days + 'd</div>';
+          injExcerpt = '<div class="med-card-injury">' + sanitize(pInj.muscleGroup || t('fitness.injury')) + ' · ' + days + 'd</div>';
         }
       } else if (st === 'doubt') {
-        borderColor = '#f9a825'; statusLabel = 'Recovering'; statusClass = 'recovering';
+        borderColor = '#f9a825'; statusLabel = t('medical.status_recovering'); statusClass = 'recovering';
         const pInj = recoveringInj.find(i => i.playerId === p.id);
-        if (pInj) injExcerpt = '<div class="med-card-injury" style="color:#f9a825;">' + sanitize(pInj.muscleGroup || 'Recovery') + '</div>';
+        if (pInj) injExcerpt = '<div class="med-card-injury" style="color:#f9a825;">' + sanitize(pInj.muscleGroup || t('medical.recovering')) + '</div>';
       }
       return '<div class="med-player-card" data-player-id="' + p.id + '" style="border-left:4px solid ' + borderColor + ';">' +
         '<div class="med-card-top">' +
@@ -10434,7 +11816,7 @@
     // Active injuries cards
     let activeHtml = '';
     if (!activeInj.length && !recoveringInj.length) {
-      activeHtml = '<div class="empty-state" style="padding:1.5rem;"><div class="empty-icon">💪</div><p>No active injuries</p></div>';
+      activeHtml = '<div class="empty-state" style="padding:1.5rem;"><div class="empty-icon">💪</div><p>' + t('medical.no_active') + '</p></div>';
     } else {
       const combined = [...activeInj, ...recoveringInj].sort((a, b) => {
         const da = Math.floor((now - new Date(a.startDate + 'T12:00:00')) / 86400000);
@@ -10447,8 +11829,8 @@
         const posHtml = posCirclesHtmlGlobal(p);
         const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
         const days = Math.max(0, Math.floor((now - new Date(inj.startDate + 'T12:00:00')) / 86400000));
-        const durationStr = days === 0 ? 'Today' : days === 1 ? '1 day' : days + ' days';
-        const sinceStr = new Date(inj.startDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const durationStr = days === 0 ? t('medical.today') : days === 1 ? '1 day' : days + ' days';
+        const sinceStr = tDateDayMonth(inj.startDate);
         const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
         const sevColor = sevColors[inj.severity] || '#999';
         const sevLabel = inj.severity ? inj.severity.charAt(0).toUpperCase() + inj.severity.slice(1) : 'Unknown';
@@ -10456,10 +11838,10 @@
         if (inj.expectedReturn) {
           const retD = new Date(inj.expectedReturn + 'T12:00:00');
           const retDays = Math.max(0, Math.ceil((retD - now) / 86400000));
-          returnHtml = '<span class="med-return-badge">' + (retDays <= 0 ? 'Due back' : '~' + retDays + 'd to return') + '</span>';
+          returnHtml = '<span class="med-return-badge">' + (retDays <= 0 ? t('medical.due_back') : '~' + retDays + t('medical.days_to_return')) + '</span>';
         }
         const statusBadge = inj.status === 'recovering'
-          ? '<span class="med-severity-badge" style="background:#f9a825;color:#333;">Recovering</span>'
+          ? '<span class="med-severity-badge" style="background:#f9a825;color:#333;">' + t('medical.recovering') + '</span>'
           : '<span class="med-severity-badge" style="background:' + sevColor + ';">' + sanitize(sevLabel) + '</span>';
         const zoneLabel = inj.muscleGroup ? sanitize(inj.muscleGroup) + (inj.muscleSub ? ' (' + sanitize(inj.muscleSub) + ')' : '') : 'Unknown area';
         return '<div class="med-injury-card" data-player-id="' + p.id + '" data-injury-id="' + inj.id + '">' +
@@ -10475,12 +11857,12 @@
             (inj.description ? '<div class="med-inj-desc">' + sanitize(inj.description) + '</div>' : '') +
           '</div>' +
           '<div class="med-inj-footer">' +
-            '<div class="med-inj-duration"><span class="medical-since">Since ' + sinceStr + '</span><span class="medical-days">' + durationStr + '</span></div>' +
+            '<div class="med-inj-duration"><span class="medical-since">' + t('medical.since') + ' ' + sinceStr + '</span><span class="medical-days">' + durationStr + '</span></div>' +
             returnHtml +
             '<div class="med-inj-actions">' +
-              (inj.status === 'active' ? '<button class="btn btn-small med-btn-recover" data-inj-id="' + inj.id + '">Mark Recovering</button>' : '') +
-              '<button class="btn btn-small med-btn-resolve" data-inj-id="' + inj.id + '">Mark Resolved</button>' +
-              '<button class="btn btn-small btn-ghost med-btn-edit" data-inj-id="' + inj.id + '">Edit</button>' +
+              (inj.status === 'active' ? '<button class="btn btn-small med-btn-recover" data-inj-id="' + inj.id + '">' + t('medical.mark_recovering') + '</button>' : '') +
+              '<button class="btn btn-small med-btn-resolve" data-inj-id="' + inj.id + '">' + t('medical.mark_resolved') + '</button>' +
+              '<button class="btn btn-small btn-ghost med-btn-edit" data-inj-id="' + inj.id + '">' + t('common.edit') + '</button>' +
             '</div>' +
           '</div>' +
         '</div>';
@@ -10491,15 +11873,15 @@
     const pastSorted = resolvedInj.sort((a, b) => (b.endDate || b.startDate).localeCompare(a.endDate || a.startDate));
     let pastHtml = '';
     if (!pastSorted.length) {
-      pastHtml = '<div class="empty-state" style="padding:1rem;"><div class="empty-icon">✅</div><p>No past injuries this season</p></div>';
+      pastHtml = '<div class="empty-state" style="padding:1rem;"><div class="empty-icon">✅</div><p>' + t('medical.no_past') + '</p></div>';
     } else {
       pastHtml = pastSorted.map(inj => {
         const p = players.find(x => x.id === inj.playerId);
         if (!p) return '';
         const posHtml = posCirclesHtmlGlobal(p);
         const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-        const startStr = new Date(inj.startDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        const endStr = inj.endDate ? new Date(inj.endDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '?';
+        const startStr = tDateDayMonth(inj.startDate);
+        const endStr = inj.endDate ? tDateDayMonth(inj.endDate) : '?';
         const s = new Date(inj.startDate + 'T12:00:00');
         const e = new Date((inj.endDate || todayStr) + 'T12:00:00');
         const days = Math.max(1, Math.floor((e - s) / 86400000) + 1);
@@ -10526,31 +11908,31 @@
     const injCount = players.filter(p => playerStatusMap[p.id] === 'injured').length;
     const recCount = players.filter(p => playerStatusMap[p.id] === 'doubt').length;
 
-    return '<div class="med-header"><h2 class="page-title">Medical</h2>' +
-      '<button class="btn btn-orange med-log-btn" id="med-log-injury">+ Log Injury</button></div>' +
+    return '<div class="med-header"><h2 class="page-title">' + t('page.medical') + '</h2>' +
+      '<button class="btn btn-orange med-log-btn" id="med-log-injury">' + t('medical.log_injury') + '</button></div>' +
       '<div class="medical-stats-row">' +
-        '<div class="card medical-stat-card med-stat-red"><div class="medical-stat-value">' + injCount + '</div><div class="medical-stat-label">Injured</div></div>' +
-        '<div class="card medical-stat-card med-stat-amber"><div class="medical-stat-value">' + recCount + '</div><div class="medical-stat-label">Recovering</div></div>' +
-        '<div class="card medical-stat-card"><div class="medical-stat-value">' + seasonInjuries.length + '</div><div class="medical-stat-label">Total This Season</div></div>' +
-        '<div class="card medical-stat-card"><div class="medical-stat-value">' + avgRecovery + '<span style="font-size:.9rem;font-weight:400;">d</span></div><div class="medical-stat-label">Avg Recovery</div></div>' +
+        '<div class="card medical-stat-card med-stat-red"><div class="medical-stat-value">' + injCount + '</div><div class="medical-stat-label">' + t('medical.injured') + '</div></div>' +
+        '<div class="card medical-stat-card med-stat-amber"><div class="medical-stat-value">' + recCount + '</div><div class="medical-stat-label">' + t('medical.recovering') + '</div></div>' +
+        '<div class="card medical-stat-card"><div class="medical-stat-value">' + seasonInjuries.length + '</div><div class="medical-stat-label">' + t('medical.total_season') + '</div></div>' +
+        '<div class="card medical-stat-card"><div class="medical-stat-value">' + avgRecovery + '<span style="font-size:.9rem;font-weight:400;">d</span></div><div class="medical-stat-label">' + t('medical.avg_recovery') + '</div></div>' +
       '</div>' +
       '<div class="card">' +
-        '<div class="card-title" style="margin-bottom:.8rem;">Squad Fitness</div>' +
+        '<div class="card-title" style="margin-bottom:.8rem;">' + t('medical.squad_fitness') + '</div>' +
         '<div class="med-filter-row">' +
-          '<button class="med-filter-btn' + (filter === 'all' ? ' med-filter-active' : '') + '" data-med-filter="all">All (' + players.length + ')</button>' +
-          '<button class="med-filter-btn' + (filter === 'injured' ? ' med-filter-active' : '') + '" data-med-filter="injured">Injured (' + injCount + ')</button>' +
-          '<button class="med-filter-btn' + (filter === 'recovering' ? ' med-filter-active' : '') + '" data-med-filter="recovering">Recovering (' + recCount + ')</button>' +
-          '<button class="med-filter-btn' + (filter === 'fit' ? ' med-filter-active' : '') + '" data-med-filter="fit">Fit (' + fitCount + ')</button>' +
+          '<button class="med-filter-btn' + (filter === 'all' ? ' med-filter-active' : '') + '" data-med-filter="all">' + t('medical.filter_all') + ' (' + players.length + ')</button>' +
+          '<button class="med-filter-btn' + (filter === 'injured' ? ' med-filter-active' : '') + '" data-med-filter="injured">' + t('medical.filter_injured') + ' (' + injCount + ')</button>' +
+          '<button class="med-filter-btn' + (filter === 'recovering' ? ' med-filter-active' : '') + '" data-med-filter="recovering">' + t('medical.filter_recovering') + ' (' + recCount + ')</button>' +
+          '<button class="med-filter-btn' + (filter === 'fit' ? ' med-filter-active' : '') + '" data-med-filter="fit">' + t('medical.filter_fit') + ' (' + fitCount + ')</button>' +
         '</div>' +
         '<div class="med-player-grid">' + gridHtml + '</div>' +
       '</div>' +
       '<div class="card">' +
-        '<div class="card-title" style="margin-bottom:.8rem;">🏥 Active Injuries</div>' +
+        '<div class="card-title" style="margin-bottom:.8rem;">' + t('medical.active') + '</div>' +
         activeHtml +
       '</div>' +
       '<div class="card med-past-card">' +
         '<div class="card-title med-past-title" id="med-past-toggle" style="cursor:pointer;margin-bottom:0;">' +
-          '📋 Past Injuries (' + resolvedInj.length + ') <span class="med-past-arrow">' + (medicalPastExpanded ? '▲' : '▼') + '</span>' +
+          t('medical.past') + ' (' + resolvedInj.length + ') <span class="med-past-arrow">' + (medicalPastExpanded ? '▲' : '▼') + '</span>' +
         '</div>' +
         '<div class="med-past-body" style="' + (medicalPastExpanded ? '' : 'display:none;') + '">' + pastHtml + '</div>' +
       '</div>' +
@@ -10695,7 +12077,7 @@
   function renderMedicalDetail() {
     const users = getUsers();
     const p = users.find(x => String(x.id) === String(medicalDetailPlayerId));
-    if (!p) return '<div class="empty-state"><p>Player not found</p></div>';
+    if (!p) return '<div class="empty-state"><p>' + t('common.player_not_found') + '</p></div>';
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     const derived = deriveFitnessStatus(p.id, false);
@@ -10708,25 +12090,25 @@
 
     // Status badge
     let statusHtml = '';
-    if (derived.fitnessStatus === 'injured') statusHtml = '<span class="med-detail-status" style="background:#e53935;">Injured</span>';
-    else if (derived.fitnessStatus === 'doubt') statusHtml = '<span class="med-detail-status" style="background:#f9a825;color:#333;">Recovering</span>';
-    else statusHtml = '<span class="med-detail-status" style="background:#43a047;">Fit</span>';
+    if (derived.fitnessStatus === 'injured') statusHtml = '<span class="med-detail-status" style="background:#e53935;">' + t('medical.status_injured') + '</span>';
+    else if (derived.fitnessStatus === 'doubt') statusHtml = '<span class="med-detail-status" style="background:#f9a825;color:#333;">' + t('medical.status_recovering') + '</span>';
+    else statusHtml = '<span class="med-detail-status" style="background:#43a047;">' + t('medical.status_fit') + '</span>';
 
     // Current injury card
     let currentInjHtml = '';
     if (currentInj) {
       const days = Math.max(0, Math.floor((now - new Date(currentInj.startDate + 'T12:00:00')) / 86400000));
-      const sinceStr = new Date(currentInj.startDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const sinceStr = tDateDMY(currentInj.startDate);
       const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
       const sevColor = sevColors[currentInj.severity] || '#999';
       let returnHtml = '';
       if (currentInj.expectedReturn) {
         const retD = new Date(currentInj.expectedReturn + 'T12:00:00');
         const retDays = Math.max(0, Math.ceil((retD - now) / 86400000));
-        returnHtml = '<div class="med-detail-return">Expected return: ' + new Date(currentInj.expectedReturn + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + (retDays > 0 ? ' (~' + retDays + ' days)' : ' (due)') + '</div>';
+        returnHtml = '<div class="med-detail-return">' + t('med_detail.expected') + ' ' + tDateDayMonth(currentInj.expectedReturn) + (retDays > 0 ? ' (~' + retDays + ' days)' : ' (due)') + '</div>';
       }
       currentInjHtml = '<div class="card med-current-card">' +
-        '<div class="card-title" style="margin-bottom:.6rem;">Current Injury</div>' +
+        '<div class="card-title" style="margin-bottom:.6rem;">' + t('med_detail.current') + '</div>' +
         '<div class="med-detail-inj-info">' +
           '<span class="med-severity-badge" style="background:' + sevColor + ';">' + (currentInj.severity || 'Unknown').charAt(0).toUpperCase() + (currentInj.severity || 'unknown').slice(1) + '</span>' +
           '<span class="med-detail-zone">' + sanitize(currentInj.muscleGroup || 'Unknown') + (currentInj.muscleSub ? ' (' + sanitize(currentInj.muscleSub) + ')' : '') + '</span>' +
@@ -10736,9 +12118,9 @@
         returnHtml +
         (currentInj.notes ? '<div class="med-detail-notes">' + sanitize(currentInj.notes) + '</div>' : '') +
         '<div class="med-inj-actions" style="margin-top:.6rem;">' +
-          (currentInj.status === 'active' ? '<button class="btn btn-small med-btn-recover" data-inj-id="' + currentInj.id + '">Mark Recovering</button>' : '') +
-          '<button class="btn btn-small med-btn-resolve" data-inj-id="' + currentInj.id + '">Mark Resolved</button>' +
-          '<button class="btn btn-small btn-ghost med-btn-edit" data-inj-id="' + currentInj.id + '">Edit</button>' +
+          (currentInj.status === 'active' ? '<button class="btn btn-small med-btn-recover" data-inj-id="' + currentInj.id + '">' + t('medical.mark_recovering') + '</button>' : '') +
+          '<button class="btn btn-small med-btn-resolve" data-inj-id="' + currentInj.id + '">' + t('medical.mark_resolved') + '</button>' +
+          '<button class="btn btn-small btn-ghost med-btn-edit" data-inj-id="' + currentInj.id + '">' + t('common.edit') + '</button>' +
         '</div>' +
       '</div>';
     }
@@ -10786,20 +12168,20 @@
     const recurring = Object.entries(zoneInjCounts).filter(([, c]) => c >= 2);
     if (recurring.length) {
       recurringHtml = '<div class="med-recurring-alert">' +
-        recurring.map(([zone, c]) => '⚠️ Recurring: ' + sanitize(zone) + ' (' + c + ' injuries)').join('<br>') +
+        recurring.map(([zone, c]) => t('med_detail.recurring') + ' ' + sanitize(zone) + ' (' + c + ' ' + t('med_detail.injuries_count') + ')').join('<br>') +
       '</div>';
     }
 
     // Full timeline
     let timelineHtml = '';
     if (!allInj.length) {
-      timelineHtml = '<div class="empty-state" style="padding:1rem;"><p>No injury history</p></div>';
+      timelineHtml = '<div class="empty-state" style="padding:1rem;"><p>' + t('med_detail.no_history') + '</p></div>';
     } else {
       timelineHtml = allInj.map(inj => {
         const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
         const statusColors = { active: '#e53935', recovering: '#f9a825', resolved: '#43a047' };
-        const startStr = new Date(inj.startDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        const endStr = inj.endDate ? new Date(inj.endDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Present';
+        const startStr = tDateDayMonth(inj.startDate);
+        const endStr = inj.endDate ? tDateDayMonth(inj.endDate) : t('stats.present');
         const s = new Date(inj.startDate + 'T12:00:00');
         const e = inj.endDate ? new Date(inj.endDate + 'T12:00:00') : now;
         const days = Math.max(1, Math.floor((e - s) / 86400000) + 1);
@@ -10814,7 +12196,7 @@
       }).join('');
     }
 
-    return '<div class="med-detail-back" id="med-back">← Medical</div>' +
+    return '<div class="med-detail-back" id="med-back">' + t('med_detail.back') + '</div>' +
       '<div class="med-detail-header">' +
         '<div class="med-detail-player">' +
           '<span class="conv-pos-circles">' + posHtml + '</span>' +
@@ -10826,11 +12208,11 @@
       recurringHtml +
       '<div class="med-detail-columns">' +
         '<div class="card med-detail-map-card">' +
-          '<div class="card-title" style="margin-bottom:.6rem;">Injury Map</div>' +
+          '<div class="card-title" style="margin-bottom:.6rem;">' + t('med_detail.injury_map') + '</div>' +
           bodyMapHtml +
         '</div>' +
         '<div class="card med-detail-timeline-card">' +
-          '<div class="card-title" style="margin-bottom:.6rem;">Injury Timeline (' + allInj.length + ')</div>' +
+          '<div class="card-title" style="margin-bottom:.6rem;">' + t('med_detail.timeline') + ' (' + allInj.length + ')</div>' +
           timelineHtml +
         '</div>' +
       '</div>';
@@ -11017,7 +12399,7 @@
     // Save
     document.getElementById('med-log-save').addEventListener('click', () => {
       const playerId = document.getElementById('med-log-player').value;
-      if (!playerId) { alert('Please select a player.'); return; }
+      if (!playerId) { alert(t('alert.select_player')); return; }
       const startDate = document.getElementById('med-log-start').dataset.dateIso || todayStr;
       const expectedReturn = document.getElementById('med-log-return').dataset.dateIso || null;
       const notes = document.getElementById('med-log-notes').value.trim();
@@ -11035,7 +12417,7 @@
       const injuries = getInjuries();
       const existing = injuries.find(inj => inj.playerId === playerId && inj.status === 'active');
       if (existing) {
-        if (!confirm('This player already has an active injury. Create a new one?')) return;
+        if (!confirm(t('confirm.existing_injury'))) return;
       }
 
       const inj = addInjury({
@@ -11359,7 +12741,7 @@
     function fmtTs(iso) {
       if (!iso) return '';
       const d = new Date(iso);
-      const day = DAYS_CA[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+      const day = tDayShort(d.getDay()) + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
       const time = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
       return day + ' ' + time;
     }
@@ -11377,7 +12759,7 @@
 
     let rows = '';
     if (!notifs.length) {
-      rows = '<p style="color:var(--text-secondary);padding:1rem 0;">No notifications yet.</p>';
+      rows = '<p style="color:var(--text-secondary);padding:1rem 0;">' + t('notif.no_notif') + '</p>';
     } else {
       notifs.forEach(n => {
         const isNew = unreadIds.has(n.id);
@@ -11392,10 +12774,10 @@
       });
     }
 
-    const html = `<h2 class="page-title">Notifications</h2>
+    const html = `<h2 class="page-title">${t('page.notifications')}</h2>
       <div class="card">
         <div class="notif-header">
-          <span class="card-title" style="margin-bottom:0;">All Notifications</span>
+          <span class="card-title" style="margin-bottom:0;">${t('notif.all')}</span>
           ${notifs.length ? '<button class="btn btn-small btn-outline" id="btn-clear-notifs">Clear All</button>' : ''}
         </div>
         ${rows}
@@ -11463,7 +12845,7 @@
         inp.onchange = async () => {
           const file = inp.files[0];
           if (!file) return;
-          if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2 MB.'); return; }
+          if (file.size > 2 * 1024 * 1024) { alert(t('alert.image_too_large')); return; }
           const session = getSession();
           if (!session || !auth.currentUser) return;
           try {
@@ -12030,68 +13412,283 @@
       });
     });
 
-    // Match score save (staff only)
-    const saveScoreBtn = document.getElementById('btn-save-score');
-    if (saveScoreBtn) {
-      const _sess = getSession();
-      const _isStaff = _sess && (_sess.roles || []).includes('staff');
-      // Digit-only clamping for score inputs
-      ['score-home', 'score-away'].forEach(id => {
-        const inp = document.getElementById(id);
-        if (inp) inp.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
+    // ── Match Events bindings ──
+    // Toggle "+ Event" inline form
+    $$('.ev-add-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var side = btn.dataset.evSide;
+        var form = document.getElementById('ev-form-' + side);
+        if (form) form.hidden = !form.hidden;
       });
-      if (_isStaff) {
-        saveScoreBtn.addEventListener('click', () => {
-          const h = (document.getElementById('score-home').value || '').trim();
-          const a = (document.getElementById('score-away').value || '').trim();
-          if (h === '' || a === '') return;
-          const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-          const idx = matches.findIndex(x => x.id === detailMatchId);
-          if (idx !== -1) {
-            matches[idx].score = h + '-' + a;
-            localStorage.setItem('fa_matches', JSON.stringify(matches));
+    });
+
+    // Event type custom dropdown interactions
+    $$('.ev-cs-trigger').forEach(function(trigger) {
+      trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wrap = trigger.closest('.ev-custom-select');
+        var wasOpen = wrap.classList.contains('open');
+        // Close all other custom selects
+        $$('.ev-custom-select.open').forEach(function(w) { w.classList.remove('open'); });
+        if (!wasOpen) {
+          wrap.classList.add('open');
+          // Position the options panel with fixed positioning
+          var opts = wrap.querySelector('.ev-cs-options');
+          var rect = trigger.getBoundingClientRect();
+          opts.style.left = rect.left + 'px';
+          opts.style.width = rect.width + 'px';
+          // Check if dropdown fits below, otherwise show above
+          var spaceBelow = window.innerHeight - rect.bottom;
+          if (spaceBelow < 200 && rect.top > spaceBelow) {
+            opts.style.top = 'auto';
+            opts.style.bottom = (window.innerHeight - rect.top) + 'px';
+          } else {
+            opts.style.top = rect.bottom + 'px';
+            opts.style.bottom = 'auto';
           }
-          renderPage(getSession());
-        });
-      }
-    }
-
-    // Match goals: add / remove (staff only)
-    const addGoalBtn = document.getElementById('btn-add-goal');
-    if (addGoalBtn) {
-      const _sess2 = getSession();
-      const _isStaff2 = _sess2 && (_sess2.roles || []).includes('staff');
-      const minInp = document.getElementById('goal-minute');
-      if (minInp) minInp.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
-      if (_isStaff2) {
-        addGoalBtn.addEventListener('click', () => {
-          const sel = document.getElementById('goal-player-select');
-          const minEl = document.getElementById('goal-minute');
-          const playerId = sel.value;
-          if (!playerId) return;
-          const minute = minEl.value.trim() || '';
-          const goalsData = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
-          if (!goalsData[detailMatchId]) goalsData[detailMatchId] = [];
-          goalsData[detailMatchId].push({ playerId: playerId === 'og' ? 'og' : playerId, minute });
-          goalsData[detailMatchId].sort((a, b) => (Number(a.minute) || 999) - (Number(b.minute) || 999));
-          localStorage.setItem('fa_match_goals', JSON.stringify(goalsData));
-          renderPage(getSession());
-        });
-      }
-    }
-
-    // Match goals: remove (staff only)
-    $$('.goal-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const _sess3 = getSession();
-        if (!_sess3 || !(_sess3.roles || []).includes('staff')) return;
-        const idx = Number(btn.dataset.goalIdx);
-        const goalsData = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
-        if (goalsData[detailMatchId]) {
-          goalsData[detailMatchId].splice(idx, 1);
-          localStorage.setItem('fa_match_goals', JSON.stringify(goalsData));
         }
+      });
+    });
+    $$('.ev-cs-option').forEach(function(opt) {
+      opt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wrap = opt.closest('.ev-custom-select');
+        var value = opt.dataset.value;
+        var label = opt.textContent.trim();
+        var icon = opt.querySelector('.ev-cs-icon');
+        var iconSrc = icon ? icon.src : '';
+        // Update trigger label
+        var triggerLabel = wrap.querySelector('.ev-cs-label');
+        if (iconSrc) {
+          triggerLabel.innerHTML = '<img src="' + iconSrc + '" class="ev-cs-icon" alt="">' + sanitize(label);
+        } else {
+          triggerLabel.textContent = label;
+        }
+        // Mark selected
+        wrap.querySelectorAll('.ev-cs-option').forEach(function(o) { o.classList.remove('selected'); });
+        opt.classList.add('selected');
+        // Set hidden input & dispatch change
+        var hidden = wrap.querySelector('.ev-cs-value');
+        hidden.value = value;
+        wrap.classList.remove('open');
+        hidden.dispatchEvent(new Event('change'));
+      });
+    });
+    // Close custom dropdown on outside click
+    document.addEventListener('click', function() {
+      $$('.ev-custom-select.open').forEach(function(w) { w.classList.remove('open'); });
+    });
+
+    // Helper: reset a custom select back to placeholder
+    function resetCustomSelect(hiddenInput) {
+      if (!hiddenInput) return;
+      hiddenInput.value = '';
+      var wrap = hiddenInput.closest('.ev-custom-select');
+      if (!wrap) return;
+      var triggerLabel = wrap.querySelector('.ev-cs-label');
+      if (triggerLabel) triggerLabel.textContent = hiddenInput.dataset.placeholder || '…';
+      wrap.querySelectorAll('.ev-cs-option').forEach(function(o) { o.classList.remove('selected'); });
+    }
+
+    // Event type dropdown → show/hide conditional fields progressively
+    $$('input.ev-type-select').forEach(function(sel) {
+      sel.addEventListener('change', function() {
+        var side = sel.dataset.evSide;
+        var goalFields = document.querySelector('.ev-goal-fields[data-ev-side="' + side + '"]');
+        var changeFields = document.querySelector('.ev-change-fields[data-ev-side="' + side + '"]');
+        var confirmRow = document.querySelector('.ev-confirm-row[data-ev-side="' + side + '"]');
+        var playerInput = document.querySelector('input.ev-player-select[data-ev-side="' + side + '"]');
+        var oppNum = document.querySelector('.ev-opp-number[data-ev-side="' + side + '"]');
+        if (goalFields) goalFields.hidden = (sel.value !== 'goal');
+        if (changeFields) changeFields.hidden = (sel.value !== 'change');
+        if (confirmRow) confirmRow.hidden = !sel.value;
+        // Hide player dropdown wrapper for 'change'
+        if (playerInput) {
+          var pw = playerInput.closest('.ev-custom-select');
+          if (pw) pw.hidden = (sel.value === 'change');
+        }
+        if (oppNum) oppNum.hidden = (sel.value === 'change');
+        // Reset sub-fields
+        if (goalFields) {
+          var gt = goalFields.querySelector('input.ev-goal-type');
+          if (gt) { resetCustomSelect(gt); gt.dispatchEvent(new Event('change')); }
+        }
+      });
+    });
+
+    // Goal type dropdown → show jugada oberta fields
+    $$('input.ev-goal-type').forEach(function(sel) {
+      sel.addEventListener('change', function() {
+        var side = sel.dataset.evSide;
+        var jugada = document.querySelector('.ev-jugada-fields[data-ev-side="' + side + '"]');
+        if (jugada) jugada.hidden = (sel.value !== 'jugada_oberta');
+        // Reset detail
+        var det = jugada && jugada.querySelector('input.ev-goal-detail');
+        if (det) { resetCustomSelect(det); det.dispatchEvent(new Event('change')); }
+      });
+    });
+
+    // Goal detail dropdown → show assist picker
+    $$('input.ev-goal-detail').forEach(function(sel) {
+      sel.addEventListener('change', function() {
+        var side = sel.dataset.evSide;
+        var assistInput = document.querySelector('input.ev-assist-select[data-ev-side="' + side + '"]');
+        if (assistInput) {
+          var aw = assistInput.closest('.ev-custom-select');
+          if (aw) aw.hidden = (sel.value !== 'assistencia');
+        }
+      });
+    });
+
+    // Submit event
+    $$('.ev-submit').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var side = btn.dataset.evSide;
+        var form = document.getElementById('ev-form-' + side);
+        if (!form) return;
+        var typeSel = form.querySelector('input.ev-type-select[data-ev-side="' + side + '"]');
+        var type = typeSel ? typeSel.value : '';
+        if (!type) return;
+        var minInput = form.querySelector('.ev-minute[data-ev-side="' + side + '"]');
+        var minute = minInput ? minInput.value.trim() : '';
+
+        var ev = {
+          id: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          side: side,
+          type: type,
+          minute: minute
+        };
+
+        // Our team form
+        var playerSel = form.querySelector('input.ev-player-select[data-ev-side="' + side + '"]');
+        if (playerSel) {
+          if (type !== 'change') {
+            ev.playerId = playerSel.value;
+            if (!ev.playerId) return;
+          }
+          if (type === 'goal') {
+            var gtSel = form.querySelector('input.ev-goal-type[data-ev-side="' + side + '"]');
+            ev.goalType = gtSel ? gtSel.value : '';
+            if (ev.goalType === 'jugada_oberta') {
+              var detSel = form.querySelector('input.ev-goal-detail[data-ev-side="' + side + '"]');
+              ev.goalDetail = detSel ? detSel.value : '';
+              if (ev.goalDetail === 'assistencia') {
+                var astSel = form.querySelector('input.ev-assist-select[data-ev-side="' + side + '"]');
+                ev.assistPlayerId = astSel ? astSel.value : '';
+              }
+            }
+          }
+          if (type === 'change') {
+            var outSel = form.querySelector('input.ev-player-out[data-ev-side="' + side + '"]');
+            var inSel = form.querySelector('input.ev-player-in[data-ev-side="' + side + '"]');
+            ev.playerOutId = outSel ? outSel.value : '';
+            ev.playerInId = inSel ? inSel.value : '';
+            if (!ev.playerOutId || !ev.playerInId) return;
+          }
+        }
+
+        // Opponent form
+        var oppNum = form.querySelector('.ev-opp-number[data-ev-side="' + side + '"]');
+        if (oppNum) {
+          if (type !== 'change') {
+            ev.playerNumber = oppNum.value.trim();
+          }
+          // Change sub-fields (opponent)
+          if (type === 'change') {
+            var oppOut = form.querySelector('.ev-opp-out[data-ev-side="' + side + '"]');
+            var oppIn = form.querySelector('.ev-opp-in[data-ev-side="' + side + '"]');
+            ev.playerOutNumber = oppOut ? oppOut.value.trim() : '';
+            ev.playerInNumber = oppIn ? oppIn.value.trim() : '';
+          }
+        }
+
+        var events = getMatchEvents(detailMatchId);
+        events.push(ev);
+        saveMatchEvents(detailMatchId, events);
         renderPage(getSession());
+      });
+    });
+
+    // Delete event
+    $$('.ev-delete').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var evId = btn.dataset.evId;
+        var events = getMatchEvents(detailMatchId);
+        events = events.filter(function(ev) { return ev.id !== evId; });
+        saveMatchEvents(detailMatchId, events);
+        renderPage(getSession());
+      });
+    });
+
+    // Date tap popup (mobile) — show match teams
+    $$('.pmt-date-tap').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        // Remove any existing tooltip
+        var old = document.querySelector('.pmt-tooltip');
+        if (old) old.remove();
+        var td = el.closest('td');
+        if (!td) return;
+        // Read team names from the sibling Partit column (works even when hidden on mobile)
+        var tr = td.closest('tr');
+        if (!tr) return;
+        var matchCell = tr.querySelector('.pmt-match');
+        if (!matchCell) return;
+        var spans = matchCell.querySelectorAll('.pmt-stacked span');
+        var home = spans[0] ? spans[0].textContent : '';
+        var away = spans[1] ? spans[1].textContent : '';
+        if (!home && !away) return;
+        var tip = document.createElement('div');
+        tip.className = 'pmt-tooltip';
+        var s1 = document.createElement('span');
+        s1.textContent = home;
+        var s2 = document.createElement('span');
+        s2.textContent = away;
+        tip.appendChild(s1);
+        tip.appendChild(s2);
+        // Append to body with fixed positioning so it's never clipped
+        document.body.appendChild(tip);
+        var rect = el.getBoundingClientRect();
+        tip.style.left = rect.left + 'px';
+        tip.style.top = (rect.top - tip.offsetHeight - 4) + 'px';
+        var autoHide = setTimeout(function() { if (tip.parentNode) tip.remove(); }, 3000);
+        // Dismiss on any tap outside
+        function dismiss() { clearTimeout(autoHide); if (tip.parentNode) tip.remove(); document.removeEventListener('click', dismiss, true); }
+        setTimeout(function() { document.addEventListener('click', dismiss, true); }, 0);
+        e.stopPropagation();
+      });
+    });
+
+    // Starting XI toggle (DOM-only update, no full re-render)
+    $$('.starter-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var pid = btn.dataset.playerId;
+        var mid = btn.dataset.matchId;
+        var xi = getStartingXI(mid);
+        var idx = xi.findIndex(function(id) { return String(id) === pid; });
+        if (idx !== -1) {
+          xi.splice(idx, 1);
+        } else {
+          if (xi.length >= 11) return;
+          xi.push(pid);
+        }
+        saveStartingXI(mid, xi);
+        // Update DOM directly instead of re-rendering
+        var isNowStarter = idx === -1;
+        btn.classList.toggle('starter-active', isNowStarter);
+        btn.title = isNowStarter ? 'Treure de titulars' : 'Afegir a titulars';
+        var row = btn.closest('.detail-player');
+        if (row) row.classList.toggle('detail-player-starter', isNowStarter);
+        // Update counter
+        var counter = document.querySelector('.starter-counter');
+        if (counter) {
+          var newCount = xi.length;
+          var warnCls = newCount === 11 ? 'starter-count-ok' : (newCount > 11 ? 'starter-count-over' : 'starter-count-under');
+          var warnIcon = newCount !== 11 ? ' <span class="starter-emoji">⚠️</span>' : ' <span class="starter-emoji">✅</span>';
+          counter.className = 'starter-counter ' + warnCls;
+          counter.innerHTML = 'Titulars: <strong>' + newCount + '/11</strong>' + warnIcon;
+        }
       });
     });
 
@@ -12164,7 +13761,7 @@
     $$('.btn-delete-user').forEach(btn => {
       btn.addEventListener('click', () => {
         const uid = btn.dataset.uid;
-        if (!confirm('Delete this user?')) return;
+        if (!confirm(t('confirm.delete_user'))) return;
         let users = getUsers();
         users = users.filter(u => u.id !== uid);
         saveUsers(users);
@@ -12176,7 +13773,7 @@
     const resetBtn = $('#btn-reset-data');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
-        if (!confirm('This will erase ALL data. Are you sure?')) return;
+        if (!confirm(t('confirm.erase_all'))) return;
         localStorage.clear();
         sessionStorage.clear();
         seedData();
@@ -12280,6 +13877,10 @@
   function init() {
     seedData();
 
+    // Apply saved language to HTML data-i18n elements
+    document.documentElement.setAttribute('data-lang', _lang);
+    applyI18nHtml();
+
     $('#form-login').addEventListener('submit', handleLogin);
     $('#form-register').addEventListener('submit', handleRegister);
     $('#form-profile-setup').addEventListener('submit', handleProfileSetup);
@@ -12338,6 +13939,14 @@
     $('#go-register').addEventListener('click', (e) => { e.preventDefault(); showView('#view-register'); });
     $('#go-login').addEventListener('click', (e) => { e.preventDefault(); showView('#view-login'); });
 
+    // Auth screen language switchers (+ nav switcher handled below)
+    $$('.auth-lang .lang-link').forEach(el => {
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        setLang(el.dataset.lang);
+      });
+    });
+
     // Regular user: pick one role
     $$('.btn-select-role').forEach(btn => {
       btn.addEventListener('click', () => selectRole(btn.dataset.role));
@@ -12351,6 +13960,18 @@
       currentPage = '';
       try { await Push.removeToken(); } catch (e) { console.warn(e); }
       auth.signOut(); // onAuthStateChanged handles cleanup + navigate
+    });
+
+    // Language switcher
+    $$('.lang-link').forEach(el => {
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        setLang(el.dataset.lang);
+      });
+    });
+    // Initialise active state
+    $$('.lang-link').forEach(el => {
+      el.classList.toggle('active', el.dataset.lang === _lang);
     });
 
     // Logo toggles sidebar on mobile

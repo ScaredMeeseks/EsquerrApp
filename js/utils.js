@@ -7,8 +7,6 @@
 function localDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-const DAYS_CA = ['Dg','Dl','Dt','Dc','Dj','Dv','Ds'];
-const DAY_LABELS = ['Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres', 'Dissabte', 'Diumenge'];
 const DAY_VALUES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 function getSeasonWeek(dateStr) {

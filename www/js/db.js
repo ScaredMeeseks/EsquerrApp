@@ -41,6 +41,7 @@ const DB = (function () {
     'fa_tactic_match_boards',
     'fa_tactic_training_boards',
     'fa_injuries',
+    'fa_match_events',
   ]);
 
   let _teamId = null;

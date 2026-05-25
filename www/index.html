@@ -31,11 +31,13 @@
 
   <!-- ========== LOADING SPLASH ========== -->
   <div id="app-splash" style="position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;transition:opacity .4s;">
-    <img src="img/logo.png" alt="Logo" style="width:120px;height:120px;object-fit:contain;margin-bottom:1.5rem;">
+    <img id="splash-badge" alt="Logo" style="width:120px;height:120px;object-fit:contain;margin-bottom:1.5rem;">
     <div id="splash-text" style="color:#555;font-size:1rem;font-weight:400;letter-spacing:.02em;min-height:1.5em;"></div>
   </div>
   <script>
   (function(){
+    var cached=localStorage.getItem('_splash_badge');
+    document.getElementById('splash-badge').src=cached||'img/logo.png';
     var msgs=['Preparant la tàctica','Estirant els isquios','Escalfant el porter','Sortint al camp','Revisant la convocatòria','Inflant pilotes','Netejant les botes','Col·locant els cons','Repartint petos','Fent un rondo','Protestant a l\'àrbitre','Pintant les línies','Posant a lloc la barrera','Triant on xutar el penal'];
     var el=document.getElementById('splash-text');
     var idx=Math.floor(Math.random()*msgs.length);
@@ -52,27 +54,32 @@
   <div id="view-login" class="view" hidden>
     <div class="auth-container">
       <div class="auth-card">
+        <span class="lang-switcher auth-lang">
+          <a href="#" class="lang-link active" data-lang="ca">CA</a>
+          <a href="#" class="lang-link" data-lang="es">ES</a>
+          <a href="#" class="lang-link" data-lang="en">EN</a>
+        </span>
         <div class="auth-header">
           <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
           <h1>EsquerrApp</h1>
-          <p class="subtitle">Benvingut al millor club del barri</p>
+          <p class="subtitle" data-i18n="auth.subtitle">Benvingut al millor club del barri</p>
         </div>
         <form id="form-login" autocomplete="off">
           <div class="form-group">
-            <label for="login-email">Email</label>
+            <label for="login-email" data-i18n="auth.email">Email</label>
             <input type="email" id="login-email" placeholder="you@example.com" required>
           </div>
           <div class="form-group">
-            <label for="login-password">Contrasenya</label>
+            <label for="login-password" data-i18n="auth.password">Contrasenya</label>
             <div class="password-wrap">
               <input type="password" id="login-password" placeholder="••••••••" required>
               <button type="button" class="pw-eye" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </div>
           </div>
           <div id="login-error" class="error-msg" hidden></div>
-          <button type="submit" class="btn btn-primary btn-full">A jugar!</button>
+          <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.login_btn">A jugar!</button>
         </form>
-        <p class="auth-switch">No tens un perfil? <a href="#" id="go-register">Fes-te'l!</a></p>
+        <p class="auth-switch"><span data-i18n="auth.no_account">No tens un perfil?</span> <a href="#" id="go-register" data-i18n="auth.register_link">Fes-te'l!</a></p>
       </div>
     </div>
   </div>
@@ -81,42 +88,47 @@
   <div id="view-register" class="view" hidden>
     <div class="auth-container">
       <div class="auth-card">
+        <span class="lang-switcher auth-lang">
+          <a href="#" class="lang-link active" data-lang="ca">CA</a>
+          <a href="#" class="lang-link" data-lang="es">ES</a>
+          <a href="#" class="lang-link" data-lang="en">EN</a>
+        </span>
         <div class="auth-header">
           <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
           <h1>EsquerrApp</h1>
-          <p class="subtitle">Ets a punt de fer història</p>
+          <p class="subtitle" data-i18n="auth.register_subtitle">Ets a punt de fer història</p>
         </div>
         <form id="form-register" autocomplete="off">
           <div class="form-group">
-            <label for="reg-name">Nom</label>
+            <label for="reg-name" data-i18n="auth.name">Nom</label>
             <input type="text" id="reg-name" placeholder="Marc García" required>
           </div>
           <div class="form-group">
-            <label for="reg-email">Email</label>
+            <label for="reg-email" data-i18n="auth.email">Email</label>
             <input type="email" id="reg-email" placeholder="you@example.com" required>
           </div>
           <div class="form-group">
-            <label for="reg-password">Contrasenya</label>
+            <label for="reg-password" data-i18n="auth.password">Contrasenya</label>
             <div class="password-wrap">
               <input type="password" id="reg-password" placeholder="Min. 6 characters" minlength="6" required>
               <button type="button" class="pw-eye" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </div>
           </div>
           <div class="form-group">
-            <label for="reg-password2">Confirma Contrasenya</label>
+            <label for="reg-password2" data-i18n="auth.confirm_password">Confirma Contrasenya</label>
             <div class="password-wrap">
               <input type="password" id="reg-password2" placeholder="••••••••" minlength="6" required>
               <button type="button" class="pw-eye" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </div>
           </div>
           <div class="form-group">
-            <label for="reg-team-code">Codi d'equip</label>
+            <label for="reg-team-code" data-i18n="auth.team_code">Codi d'equip</label>
             <input type="text" id="reg-team-code" placeholder="Ex: ESQ2026" maxlength="6" style="text-transform:uppercase;letter-spacing:.15em;font-weight:600;">
           </div>
           <div id="register-error" class="error-msg" hidden></div>
-          <button type="submit" class="btn btn-primary btn-full">Crea perfil</button>
+          <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.register_btn">Crea perfil</button>
         </form>
-        <p class="auth-switch">Ja tens un perfil? <a href="#" id="go-login">Entra</a></p>
+        <p class="auth-switch"><span data-i18n="auth.has_account">Ja tens un perfil?</span> <a href="#" id="go-login" data-i18n="auth.login_link">Entra</a></p>
       </div>
     </div>
   </div>
@@ -127,18 +139,18 @@
       <div class="auth-card" style="max-width:420px;">
         <div class="auth-header">
           <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
-          <h1>Uneix-te a un equip</h1>
-          <p class="subtitle">Introdueix el codi que t'ha donat el teu club</p>
+          <h1 data-i18n="auth.join_title">Uneix-te a un equip</h1>
+          <p class="subtitle" data-i18n="auth.join_subtitle">Introdueix el codi que t'ha donat el teu club</p>
         </div>
         <form id="form-join-club" autocomplete="off">
           <div class="form-group">
-            <label for="join-team-code">Codi d'equip</label>
+            <label for="join-team-code" data-i18n="auth.team_code">Codi d'equip</label>
             <input type="text" id="join-team-code" placeholder="Ex: ESQ2026" maxlength="6" required style="text-transform:uppercase;letter-spacing:.15em;font-weight:600;font-size:1.3rem;text-align:center;">
           </div>
           <div id="join-club-error" class="error-msg" hidden></div>
-          <button type="submit" class="btn btn-primary btn-full">Unir-me</button>
+          <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.join_btn">Unir-me</button>
         </form>
-        <button id="btn-join-logout" class="btn btn-small btn-outline" style="margin-top:1rem;width:100%;">Tancar sessió</button>
+        <button id="btn-join-logout" class="btn btn-small btn-outline" style="margin-top:1rem;width:100%;" data-i18n="auth.logout">Tancar sessió</button>
       </div>
     </div>
   </div>
@@ -149,20 +161,20 @@
       <div class="auth-card" style="max-width:560px;">
         <div class="auth-header">
           <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
-          <h1>Configura el teu club</h1>
-          <p class="subtitle">Activa les categories i equips del teu club</p>
+          <h1 data-i18n="auth.setup_title">Configura el teu club</h1>
+          <p class="subtitle" data-i18n="auth.setup_subtitle">Activa les categories i equips del teu club</p>
         </div>
         <div id="team-setup-categories"></div>
         <div id="team-setup-fcf" hidden>
-          <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);">Enllaços classificació FCF <span style="font-weight:400;font-size:.8rem;">(opcional)</span></h3>
+          <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);"><span data-i18n="auth.fcf_title">Enllaços classificació FCF</span> <span style="font-weight:400;font-size:.8rem;" data-i18n="auth.fcf_optional">(opcional)</span></h3>
           <div id="team-setup-fcf-inputs"></div>
         </div>
         <div id="team-setup-schedules" hidden>
-          <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);">Horaris per defecte</h3>
+          <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);" data-i18n="auth.schedules_title">Horaris per defecte</h3>
           <div id="team-setup-schedule-inputs"></div>
         </div>
         <div id="team-setup-error" class="error-msg" hidden></div>
-        <button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;">Desar i continuar</button>
+        <button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;" data-i18n="auth.save_continue">Desar i continuar</button>
       </div>
     </div>
   </div>
@@ -173,8 +185,8 @@
       <div class="auth-card" style="max-width:480px;">
         <div class="auth-header">
           <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
-          <h1>Welcome!</h1>
-          <p class="subtitle">Set up your profile to get started</p>
+          <h1 data-i18n="auth.profile_title">Welcome!</h1>
+          <p class="subtitle" data-i18n="auth.profile_subtitle">Set up your profile to get started</p>
         </div>
         <form id="form-profile-setup" autocomplete="off">
           <div class="profile-pic-upload">
@@ -182,19 +194,19 @@
               <span class="profile-pic-placeholder">📷</span>
             </div>
             <label class="btn btn-outline btn-small" style="margin-top:.6rem;">
-              Upload Photo
+              <span data-i18n="auth.upload_photo">Upload Photo</span>
               <input type="file" id="profile-pic-input" accept="image/*" hidden>
             </label>
           </div>
           <div class="form-group">
-            <label for="setup-name">Display Name</label>
-            <input type="text" id="setup-name" placeholder="Your name" required>
+            <label for="setup-name" data-i18n="auth.display_name">Display Name</label>
+            <input type="text" id="setup-name" data-i18n="auth.display_name_ph" placeholder="Your name" required>
           </div>
           <div class="form-group">
-            <label for="setup-dob">Date of Birth</label>
+            <label for="setup-dob" data-i18n="auth.dob">Date of Birth</label>
             <input type="text" id="setup-dob" class="md-datepicker" data-display-dmy data-allow-past data-typeable placeholder="dd/mm/yyyy" style="cursor:pointer;" required>
           </div>
-          <button type="submit" class="btn btn-primary btn-full">Continue</button>
+          <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.continue">Continue</button>
         </form>
       </div>
     </div>
@@ -204,40 +216,40 @@
   <div id="view-roles" class="view" hidden>
     <div class="roles-container">
       <div class="roles-header">
-        <h1>Choose Your Role</h1>
-        <p id="roles-subtitle">Select how you want to use EsquerrApp</p>
+        <h1 data-i18n="auth.roles_title">Choose Your Role</h1>
+        <p id="roles-subtitle" data-i18n="auth.roles_subtitle">Select how you want to use EsquerrApp</p>
       </div>
       <!-- Regular user: pick one -->
       <div id="roles-pick-one" class="roles-grid">
         <div class="role-card" data-role="player">
           <div class="role-icon">🏃</div>
-          <h2>Player</h2>
-          <p>View your training schedule, track personal stats, and see the team roster.</p>
-          <button class="btn btn-primary btn-full btn-select-role" data-role="player">Select</button>
+          <h2 data-i18n="auth.role_player">Player</h2>
+          <p data-i18n="auth.role_player_desc">View your training schedule, track personal stats, and see the team roster.</p>
+          <button class="btn btn-primary btn-full btn-select-role" data-role="player" data-i18n="auth.select">Select</button>
         </div>
         <div class="role-card" data-role="staff">
           <div class="role-icon">📋</div>
-          <h2>Staff</h2>
-          <p>Manage training sessions, review player stats, and plan match tactics.</p>
-          <button class="btn btn-primary btn-full btn-select-role" data-role="staff">Select</button>
+          <h2 data-i18n="auth.role_staff">Staff</h2>
+          <p data-i18n="auth.role_staff_desc">Manage training sessions, review player stats, and plan match tactics.</p>
+          <button class="btn btn-primary btn-full btn-select-role" data-role="staff" data-i18n="auth.select">Select</button>
         </div>
       </div>
       <!-- Admin: pick one or both -->
       <div id="roles-admin-pick" class="roles-grid" hidden>
         <div class="role-card role-toggle-card" data-role="player" id="admin-toggle-player">
           <div class="role-icon">🏃</div>
-          <h2>Player</h2>
-          <p>View your training schedule, track personal stats, and see the team roster.</p>
-          <label class="toggle-label"><input type="checkbox" id="chk-player" value="player"> Enable</label>
+          <h2 data-i18n="auth.role_player">Player</h2>
+          <p data-i18n="auth.role_player_desc">View your training schedule, track personal stats, and see the team roster.</p>
+          <label class="toggle-label"><input type="checkbox" id="chk-player" value="player"> <span data-i18n="auth.enable">Enable</span></label>
         </div>
         <div class="role-card role-toggle-card" data-role="staff" id="admin-toggle-staff">
           <div class="role-icon">📋</div>
-          <h2>Staff</h2>
-          <p>Manage training sessions, review player stats, and plan match tactics.</p>
-          <label class="toggle-label"><input type="checkbox" id="chk-staff" value="staff"> Enable</label>
+          <h2 data-i18n="auth.role_staff">Staff</h2>
+          <p data-i18n="auth.role_staff_desc">Manage training sessions, review player stats, and plan match tactics.</p>
+          <label class="toggle-label"><input type="checkbox" id="chk-staff" value="staff"> <span data-i18n="auth.enable">Enable</span></label>
         </div>
         <div class="roles-confirm" style="grid-column:1/-1;text-align:center;margin-top:.5rem;">
-          <button class="btn btn-primary" id="btn-confirm-admin-roles">Continue to Dashboard</button>
+          <button class="btn btn-primary" id="btn-confirm-admin-roles" data-i18n="auth.continue_dashboard">Continue to Dashboard</button>
         </div>
       </div>
     </div>
@@ -251,9 +263,14 @@
         <span class="topnav-logo"><img src="img/logo.png" alt="Logo" class="topnav-logo-img"> EsquerrApp</span>
       </div>
       <div class="topnav-right">
+        <span class="lang-switcher">
+          <a href="#" class="lang-link active" data-lang="ca">CA</a>
+          <a href="#" class="lang-link" data-lang="es">ES</a>
+          <a href="#" class="lang-link" data-lang="en">EN</a>
+        </span>
         <span id="nav-user-name" class="nav-user"></span>
         <span id="nav-user-badges" class="nav-badges"></span>
-        <button id="btn-logout" class="btn btn-small btn-danger">Logout</button>
+        <button id="btn-logout" class="btn btn-small btn-danger" data-i18n="auth.logout">Logout</button>
       </div>
     </nav>
 
