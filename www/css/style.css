@@ -2591,7 +2591,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .dashboard-content { padding: .75rem 1rem; min-width: 0; }
 
   /* ── Cards ── */
-  .card { padding: 1rem .75rem; margin-bottom: .75rem; }
+  .card { padding: 1rem 1.25rem; margin-bottom: .75rem; }
 
   /* ── Auth pages ── */
   .auth-container { padding: .75rem; }
