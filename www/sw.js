@@ -74,16 +74,16 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-const CACHE_NAME = 'esquerrapp-v15';
+const CACHE_NAME = 'esquerrapp-v16';
 
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './css/style.css?v=11',
+  './css/style.css',
   './js/firebase-config.js',
   './js/db.js',
   './js/push.js',
-  './js/app.js?v=11',
+  './js/app.js',
   './manifest.json',
   './img/logo.png',
   './img/logo-192.png',
@@ -94,20 +94,6 @@ const STATIC_ASSETS = [
   './img/sil-one-arm-up.png',
   './img/sil-arms-crossed.png',
   './img/sil-arms-side.png',
-  './img/gol.png',
-  './img/gol-propia.png',
-  './img/groga.jpg',
-  './img/vermella.jpg',
-  './img/sub-home.jpg',
-  './img/sub-away.jpg',
-  './img/assist.png',
-  './img/pal.png',
-  './img/penal%20fallat.png',
-  './img/chrono.jpg',
-  './img/icon-cone.svg',
-  './img/icon-stats.svg',
-  './img/icon-boot.png',
-  './img/icon-medical.svg',
 ];
 
 // Install: pre-cache static assets
