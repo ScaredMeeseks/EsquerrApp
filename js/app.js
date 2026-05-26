@@ -10120,7 +10120,7 @@
     const session = getSession();
     let html = '<h2 class="page-title">' + t('page.settings') + '</h2>';
 
-    // ---------- Team Lead: Category Config ----------
+    // ---------- Team Lead / Admin: Category Config ----------
     if (session && (session.isTeamLead || session.isAdmin)) {
       var hasCfg = !!_clubConfig;
       html += `
@@ -10130,6 +10130,17 @@
           ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enllaços classificació FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
           : '<p style="color:var(--text-secondary);font-size:.9rem;">No estàs vinculat a cap club. Contacta l\'administrador.</p>'
         }
+      </div>`;
+    }
+
+    // ---------- Team Lead / Admin: New Season ----------
+    if (session && (session.isTeamLead || session.isAdmin)) {
+      html += `
+      <div class="card">
+        <div class="card-title">${t('settings.new_season')}</div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.new_season_desc')}</p>
+        <button class="btn btn-danger" id="btn-new-season">${t('settings.new_season_btn')}</button>
+        <div id="new-season-result" style="margin-top:.6rem;" hidden></div>
       </div>`;
     }
 
@@ -10158,15 +10169,6 @@
           <button class="btn btn-primary" id="btn-create-club">Crear Club</button>
           <div id="create-club-result" style="margin-top:.6rem;" hidden></div>
         </div>
-      </div>`;
-
-      // ---------- Admin: New Season ----------
-      html += `
-      <div class="card">
-        <div class="card-title">${t('settings.new_season')}</div>
-        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.new_season_desc')}</p>
-        <button class="btn btn-danger" id="btn-new-season">${t('settings.new_season_btn')}</button>
-        <div id="new-season-result" style="margin-top:.6rem;" hidden></div>
       </div>`;
 
       html += `

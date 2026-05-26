@@ -531,16 +531,26 @@ exports.archiveSeason = onRequest(
         return;
       }
 
-      // ── Auth: verify admin ──
+      // ── Auth: verify admin or team lead of the requested team ──
       const callerDoc = await db.collection("users").doc(decoded.uid).get();
-      if (!callerDoc.exists || !callerDoc.data().isAdmin) {
-        res.status(403).json({error: "Admin access required"});
+      if (!callerDoc.exists) {
+        res.status(403).json({error: "User not found"});
         return;
       }
+      const callerData = callerDoc.data();
 
       const {teamId, label} = req.body || {};
       if (!teamId || !label) {
         res.status(400).json({error: "teamId and label required"});
+        return;
+      }
+
+      // Admin can archive any team; Team Lead only their own
+      const isAdmin = callerData.isAdmin === true;
+      const isTeamLeadOfTeam = callerData.isTeamLead === true &&
+          callerData.teamId === teamId;
+      if (!isAdmin && !isTeamLeadOfTeam) {
+        res.status(403).json({error: "Admin or Team Lead access required"});
         return;
       }
 
