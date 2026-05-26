@@ -124,6 +124,12 @@ const DB = (function () {
     cleanup();
     _teamId = teamId;
 
+    // Wait for Firestore persistence so pending writes from previous
+    // sessions are visible to the .get() call below.
+    if (typeof _persistenceReady !== 'undefined') {
+      await _persistenceReady;
+    }
+
     // Flush all synced keys to prevent stale data from a previous team
     SYNCED_KEYS.forEach(function (key) {
       _origRemoveItem(key);
@@ -151,16 +157,16 @@ const DB = (function () {
         if (!SYNCED_KEYS.has(d.id)) return;
         var data = d.data();
         if (MERGE_KEYS.has(d.id)) {
-          // Per-field format: check if already migrated
-          if (data._migrated) {
-            _origSetItem(d.id, _docToBlob(data));
-          } else if (data.v !== undefined) {
+          if (data.v !== undefined && !data._migrated) {
             // Legacy blob format — populate localStorage, then migrate doc
             _origSetItem(d.id, data.v);
             var obj;
             try { obj = JSON.parse(data.v); } catch (e) { obj = {}; }
             obj._migrated = true;
             dataRef(d.id).set(obj).catch(console.error);
+          } else {
+            // Per-field format — always load regardless of _migrated flag
+            _origSetItem(d.id, _docToBlob(data));
           }
         } else if (data.v !== undefined) {
           _origSetItem(d.id, data.v);
