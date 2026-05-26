@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova Temporada — Preview</title>
+<style>
+  :root {
+    --primary: #BD162C; --primary-dark: #8e1020; --primary-light: #d4384d;
+    --bg: #F2F0EB; --card: #ffffff; --text: #2D2926; --text-secondary: #5c5652;
+    --border: #ddd8d2; --danger: #BD162C; --danger-light: #fce4e7;
+    --success: #2e7d32; --accent: #F5D328; --radius: 10px;
+    --shadow: 0 2px 8px rgba(45,41,38,.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 2rem; }
+  h2 { margin-bottom: 1.5rem; font-size: 1.3rem; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.2rem; }
+  .card-title { font-size: 1.05rem; font-weight: 700; margin-bottom: .8rem; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; padding: .65rem 1.4rem; border: none; border-radius: var(--radius); font-size: .95rem; font-weight: 400; cursor: pointer; transition: all .2s; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-small { padding: .45rem 1rem; font-size: .85rem; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .form-group { margin-bottom: .6rem; }
+  .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; color: var(--text-secondary); }
+  .form-group input { width: 100%; padding: .55rem .8rem; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 1rem; background: var(--bg); }
+  .modal-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(45,41,38,.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .2s ease; backdrop-filter: blur(2px); pointer-events: none; }
+  .modal-overlay.visible { opacity: 1; pointer-events: all; }
+  .modal-card { background: var(--card); border-radius: var(--radius); padding: 2rem 2.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.2); max-width: 380px; width: 90%; text-align: center; }
+  .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--danger); margin-bottom: .8rem; }
+  .modal-message { font-size: .88rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1.5rem; white-space: pre-line; }
+  .modal-actions { display: flex; gap: 1rem; justify-content: center; }
+  .modal-actions .btn { min-width: 110px; }
+  .preview-label { display: inline-block; background: var(--accent); color: #2D2926; padding: .2rem .7rem; border-radius: 6px; font-size: .75rem; font-weight: 700; margin-bottom: 1rem; }
+  .step-nav { margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; }
+  .step-nav button { padding: .5rem 1.2rem; border-radius: 8px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h2>🔍 Preview: Nova Temporada Flow</h2>
+
+<!-- Settings card preview -->
+<div class="card">
+  <div class="card-title">Nova Temporada</div>
+  <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">Arxiva totes les dades de la temporada actual i comença de zero. Els jugadors, staff i pissarres tàctiques es mantenen.</p>
+  <button class="btn btn-danger" id="btn-start">Iniciar Nova Temporada</button>
+</div>
+
+<div class="step-nav">
+  <span class="preview-label">PREVIEW MODE — no data will be touched</span>
+</div>
+
+<!-- Modal overlay -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-card" id="modal-card"></div>
+</div>
+
+<script>
+var step = 0;
+
+document.getElementById('btn-start').addEventListener('click', function() { showStep1(); });
+
+function showStep1() {
+  step = 1;
+  var now = new Date();
+  var sy = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  var label = sy + '-' + (sy + 1);
+  document.getElementById('modal-card').innerHTML =
+    '<div class="modal-title">Nova Temporada</div>' +
+    '<p class="modal-message">Això arxivarà TOTES les dades de la temporada actual (partits, entrenaments, RPE, estadístiques…) i començarà de zero.\n\nEls jugadors, staff i pissarres tàctiques es mantindran.\n\nAquesta acció NO es pot desfer.</p>' +
+    '<div class="form-group" style="margin:1rem 0 .6rem;">' +
+      '<label for="season-label">Etiqueta de la temporada (p.ex. 2025-2026):</label>' +
+      '<input type="text" id="season-label" value="' + label + '" style="text-align:center;letter-spacing:.1em;font-weight:600;" maxlength="20">' +
+    '</div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-small btn-outline" id="m-cancel">Cancel·lar</button>' +
+      '<button class="btn btn-small btn-primary" id="m-next">Continuar</button>' +
+    '</div>';
+  document.getElementById('modal').classList.add('visible');
+  document.getElementById('m-cancel').onclick = closeModal;
+  document.getElementById('m-next').onclick = showStep2;
+}
+
+function showStep2() {
+  step = 2;
+  var phrase = 'NOVA TEMPORADA';
+  document.getElementById('modal-card').innerHTML =
+    '<div class="modal-title">Nova Temporada</div>' +
+    '<p class="modal-message" style="margin-bottom:.6rem;">Escriu NOVA TEMPORADA per confirmar:</p>' +
+    '<p style="text-align:center;font-weight:700;font-size:1.05rem;letter-spacing:.08em;color:var(--danger);margin-bottom:.8rem;">' + phrase + '</p>' +
+    '<div class="form-group" style="margin-bottom:1rem;">' +
+      '<input type="text" id="confirm-input" placeholder="" style="text-align:center;letter-spacing:.08em;" autocomplete="off">' +
+    '</div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-small btn-outline" id="m-cancel">Cancel·lar</button>' +
+      '<button class="btn btn-small btn-danger" id="m-archive" disabled>Iniciar Nova Temporada</button>' +
+    '</div>';
+  document.getElementById('m-cancel').onclick = closeModal;
+  var inp = document.getElementById('confirm-input');
+  var archBtn = document.getElementById('m-archive');
+  inp.addEventListener('input', function() {
+    archBtn.disabled = inp.value.trim().toUpperCase() !== phrase;
+  });
+  archBtn.addEventListener('click', showSuccess);
+  inp.focus();
+}
+
+function showSuccess() {
+  document.getElementById('modal-card').innerHTML =
+    '<div style="font-size:2.5rem;margin-bottom:.8rem;">✅</div>' +
+    '<div class="modal-title" style="color:var(--success);">Temporada arxivada!</div>' +
+    '<p class="modal-message">Temporada arxivada correctament. S\'ha iniciat una nova temporada!</p>' +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-small btn-primary" id="m-ok">D\'acord</button>' +
+    '</div>';
+  document.getElementById('m-ok').onclick = closeModal;
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('visible');
+  step = 0;
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>

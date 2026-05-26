@@ -1393,9 +1393,9 @@
       case 'goal': return '<span class="ev-icon ev-icon-goal"><img src="img/gol.png" class="ev-sub-img" alt="gol"></span>';
       case 'own_goal': return '<span class="ev-icon ev-icon-og"><img src="img/gol-propia.png" class="ev-sub-img" alt="gol en pròpia"></span>';
       case 'yellow':
-        if (yellowCount >= 2) return '<span class="ev-icon ev-icon-yellow ev-yellow-second"><span class="ev-yellow-badge">2</span><img src="img/groga.jpg" class="ev-sub-img" alt="groga"></span>';
-        return '<span class="ev-icon ev-icon-yellow"><img src="img/groga.jpg" class="ev-sub-img" alt="groga"></span>';
-      case 'red': return '<span class="ev-icon ev-icon-red"><img src="img/vermella.jpg" class="ev-sub-img" alt="vermella"></span>';
+        if (yellowCount >= 2) return '<span class="ev-icon ev-icon-yellow ev-yellow-second"><span class="ev-yellow-badge">2</span><img src="img/groga.png" class="ev-sub-img" alt="groga"></span>';
+        return '<span class="ev-icon ev-icon-yellow"><img src="img/groga.png" class="ev-sub-img" alt="groga"></span>';
+      case 'red': return '<span class="ev-icon ev-icon-red"><img src="img/vermella.png" class="ev-sub-img" alt="vermella"></span>';
       case 'change': return '<span class="ev-icon ev-icon-change"><img src="img/sub-' + ev.side + '.jpg" class="ev-sub-img" alt="sub"></span>';
       case 'penal_fallat': return '<span class="ev-icon ev-icon-penal-miss"><img src="img/penal%20fallat.png" class="ev-sub-img" alt="penal fallat"></span>';
       case 'pal': return '<span class="ev-icon ev-icon-post"><img src="img/pal.png" class="ev-sub-img" alt="pal"></span>';
@@ -1641,8 +1641,8 @@
       '<th></th>' +
       '<th style="font-size:1.1rem;color:#f9a825;line-height:1;vertical-align:middle;">★</th>' +
       '<th><img src="img/chrono.jpg" class="pmt-icon-header" alt="min"></th>' +
-      '<th><img src="img/groga.jpg" class="pmt-icon-header" alt="groga"></th>' +
-      '<th><img src="img/vermella.jpg" class="pmt-icon-header" alt="vermella"></th>' +
+      '<th><img src="img/groga.png" class="pmt-icon-header" alt="groga"></th>' +
+      '<th><img src="img/vermella.png" class="pmt-icon-header" alt="vermella"></th>' +
       '<th><img src="img/assist.png" class="pmt-icon-header" alt="assist"></th>' +
       '<th><img src="img/gol.png" class="pmt-icon-header" alt="gol"></th>' +
       '<th class="pmt-bd-header">P</th>' +
@@ -3913,8 +3913,8 @@
       var opts = [
         { value: 'goal', label: t('ev.goal'), icon: 'img/gol.png' },
         { value: 'own_goal', label: t('ev.own_goal'), icon: 'img/gol-propia.png' },
-        { value: 'yellow', label: t('ev.yellow'), icon: 'img/groga.jpg' },
-        { value: 'red', label: t('ev.red'), icon: 'img/vermella.jpg' },
+        { value: 'yellow', label: t('ev.yellow'), icon: 'img/groga.png' },
+        { value: 'red', label: t('ev.red'), icon: 'img/vermella.png' },
         { value: 'change', label: t('ev.change'), icon: 'img/sub-' + side + '.jpg' },
         { value: 'penal_fallat', label: t('ev.penal_miss'), icon: 'img/penal%20fallat.png' },
         { value: 'pal', label: t('ev.post'), icon: 'img/pal.png' }
@@ -9566,8 +9566,8 @@
             <th class="center-cell roster-icon-th"><img src="img/chrono.jpg" class="roster-icon-header" alt="min" title="Minutes"></th>
             <th class="center-cell roster-icon-th"><img src="img/gol.png" class="roster-icon-header" alt="gol" title="Goals"></th>
             <th class="center-cell roster-icon-th"><img src="img/assist.png" class="roster-icon-header" alt="assist" title="Assists"></th>
-            <th class="center-cell roster-icon-th"><img src="img/groga.jpg" class="roster-icon-header" alt="groga" title="Yellow cards"></th>
-            <th class="center-cell roster-icon-th"><img src="img/vermella.jpg" class="roster-icon-header" alt="vermella" title="Red cards"></th>
+            <th class="center-cell roster-icon-th"><img src="img/groga.png" class="roster-icon-header" alt="groga" title="Yellow cards"></th>
+            <th class="center-cell roster-icon-th"><img src="img/vermella.png" class="roster-icon-header" alt="vermella" title="Red cards"></th>
             <th class="center-cell roster-gc-header" title="Goal Contributions per Match">GC/P</th>
           </tr></thead>
           <tbody>${rows}</tbody>
