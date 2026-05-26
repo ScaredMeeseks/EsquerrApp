@@ -2844,7 +2844,7 @@
   var LEAGUE_CACHE_MS = 5 * 60 * 1000; // 5 minutes
   var _leagueCache = JSON.parse(localStorage.getItem('fa_league_cache') || '{}');
   var _leagueCacheTime = parseInt(localStorage.getItem('fa_league_cache_t') || '0', 10);
-  var FCF_PROXY_BASE = 'https://fcfclassificacio-674dkdzfja-uc.a.run.app?url=';
+  var FCF_PROXY_BASE = 'https://us-central1-esquerrapp.cloudfunctions.net/fcfClassificacio?url=';
 
   function fetchFcfPage(url) {
     return fetch(FCF_PROXY_BASE + encodeURIComponent(url))
@@ -10815,7 +10815,7 @@
       if (!session || !session.teamId) throw new Error('No team');
 
       var token = await auth.currentUser.getIdToken();
-      var resp = await fetch('https://archiveseason-674dkdzfja-uc.a.run.app', {
+      var resp = await fetch('https://us-central1-esquerrapp.cloudfunctions.net/archiveSeason', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ teamId: session.teamId, label: label })
