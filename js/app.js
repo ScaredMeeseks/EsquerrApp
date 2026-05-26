@@ -13382,10 +13382,10 @@
         if (badge.classList.contains('avail-default')) {
           const parent = badge.parentElement;
           const btnsHtml = `<div class="avail-btns" data-avail-date="${date}">
-            <button class="avail-btn avail-yes" data-avail="yes">Yes</button>
-            <button class="avail-btn avail-late" data-avail="late">Late</button>
-            <button class="avail-btn avail-no" data-avail="no">No</button>
-            <button class="avail-btn avail-injured" data-avail="injured">Injured</button>
+            <button class="avail-btn avail-yes" data-avail="yes">${t('avail.yes')}</button>
+            <button class="avail-btn avail-late" data-avail="late">${t('avail.late')}</button>
+            <button class="avail-btn avail-no" data-avail="no">${t('avail.no')}</button>
+            <button class="avail-btn avail-injured" data-avail="injured">${t('avail.injured')}</button>
           </div>`;
           badge.insertAdjacentHTML('afterend', btnsHtml);
           badge.remove();
