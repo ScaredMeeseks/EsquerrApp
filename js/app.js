@@ -58,6 +58,7 @@
     // ── Common Buttons ──
     'btn.save':        { ca:'Desar', es:'Guardar', en:'Save' },
     'btn.cancel':      { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
+    'btn.continue':    { ca:'Continuar', es:'Continuar', en:'Continue' },
     'btn.edit':        { ca:'Editar', es:'Editar', en:'Edit' },
     'btn.delete':      { ca:'Eliminar', es:'Eliminar', en:'Delete' },
     'btn.back':        { ca:'← Enrere', es:'← Atrás', en:'← Back' },
@@ -450,6 +451,9 @@
     'settings.data_mgmt':    { ca:'Gestió de dades', es:'Gestión de datos', en:'Data Management' },
     'settings.reset_desc':   { ca:'Reseteja totes les dades per començar de nou. Això eliminarà tots els usuaris i restaurarà les dades d\'exemple.', es:'Reinicia todos los datos para empezar de nuevo. Esto eliminará todos los usuarios y restaurará los datos de ejemplo.', en:'Reset all app data to start fresh. This will remove all users and restore sample data.' },
     'settings.reset_btn':    { ca:'Resetejar totes les dades', es:'Reiniciar todos los datos', en:'Reset All Data' },
+    'settings.new_season':   { ca:'Nova Temporada', es:'Nueva Temporada', en:'New Season' },
+    'settings.new_season_desc': { ca:'Arxiva totes les dades de la temporada actual i comença de zero. Els jugadors, staff i pissarres tàctiques es mantenen.', es:'Archiva todos los datos de la temporada actual y empieza de cero. Los jugadores, staff y pizarras tácticas se mantienen.', en:'Archive all current season data and start fresh. Players, staff and tactical boards are preserved.' },
+    'settings.new_season_btn':  { ca:'Iniciar Nova Temporada', es:'Iniciar Nueva Temporada', en:'Start New Season' },
 
     // ── Confirm / Alert Messages ──
     'alert.image_too_large':  { ca:'La imatge ha de ser inferior a 2 MB.', es:'La imagen debe ser inferior a 2 MB.', en:'Image must be under 2 MB.' },
@@ -462,6 +466,14 @@
     'confirm.delete_user':    { ca:'Eliminar aquest usuari?', es:'¿Eliminar este usuario?', en:'Delete this user?' },
     'confirm.erase_all':      { ca:'Això esborrarà TOTES les dades. Estàs segur?', es:'Esto borrará TODOS los datos. ¿Estás seguro?', en:'This will erase ALL data. Are you sure?' },
     'confirm.delete_match':   { ca:'Eliminar aquest partit?', es:'¿Eliminar este partido?', en:'Delete this match?' },
+    'confirm.new_season_title': { ca:'Nova Temporada', es:'Nueva Temporada', en:'New Season' },
+    'confirm.new_season_msg':   { ca:'Això arxivarà TOTES les dades de la temporada actual (partits, entrenaments, RPE, estadístiques…) i començarà de zero.\n\nEls jugadors, staff i pissarres tàctiques es mantindran.\n\nAquesta acció NO es pot desfer.', es:'Esto archivará TODOS los datos de la temporada actual (partidos, entrenamientos, RPE, estadísticas…) y empezará de cero.\n\nLos jugadores, staff y pizarras tácticas se mantendrán.\n\nEsta acción NO se puede deshacer.', en:'This will archive ALL current season data (matches, training, RPE, stats…) and start fresh.\n\nPlayers, staff and tactical boards will be preserved.\n\nThis action CANNOT be undone.' },
+    'confirm.new_season_label': { ca:'Etiqueta de la temporada (p.ex. 2025-2026):', es:'Etiqueta de la temporada (ej. 2025-2026):', en:'Season label (e.g. 2025-2026):' },
+    'confirm.new_season_step2': { ca:'Escriu NOVA TEMPORADA per confirmar:', es:'Escribe NUEVA TEMPORADA para confirmar:', en:'Type NEW SEASON to confirm:' },
+    'confirm.new_season_phrase':{ ca:'NOVA TEMPORADA', es:'NUEVA TEMPORADA', en:'NEW SEASON' },
+    'alert.new_season_ok':      { ca:'Temporada arxivada correctament. S\'ha iniciat una nova temporada!', es:'Temporada archivada correctamente. ¡Se ha iniciado una nueva temporada!', en:'Season archived successfully. A new season has started!' },
+    'alert.new_season_fail':    { ca:'Error arxivant la temporada. Torna-ho a provar.', es:'Error archivando la temporada. Inténtalo de nuevo.', en:'Error archiving the season. Please try again.' },
+    'alert.new_season_archiving': { ca:'Arxivant temporada…', es:'Archivando temporada…', en:'Archiving season…' },
     'error.passwords_mismatch':{ ca:'Les contrasenyes no coincideixen.', es:'Las contraseñas no coinciden.', en:'Passwords do not match.' },
     'error.invalid_team_code': { ca:'Codi d\'equip no vàlid.', es:'Código de equipo no válido.', en:'Invalid team code.' },
     'error.need_team_code':    { ca:'Has d\'introduir el codi d\'equip.', es:'Debes introducir el código de equipo.', en:'You must enter a team code.' },
@@ -1184,6 +1196,17 @@
 
   // ---------- Auth (Firebase) ----------
   const ADMIN_EMAIL = 'marna96@gmail.com';
+
+  // ---------- Season Reset: keys to archive & clear ----------
+  var SEASON_KEYS = [
+    'fa_matches', 'fa_match_events', 'fa_match_goals',
+    'fa_training',
+    'fa_training_availability', 'fa_match_availability', 'fa_training_staff_override',
+    'fa_player_rpe', 'fa_player_stats',
+    'fa_injuries', 'fa_injury_notes', 'fa_injury_zone',
+    'fa_convocatoria_sent', 'fa_convocatoria_callup',
+    'fa_standings', 'fa_matchday', 'fa_news'
+  ];
 
   // ---------- Category view filter ----------
   var _viewCategory = ''; // currently active category filter ('' = all)
@@ -10137,11 +10160,20 @@
         </div>
       </div>`;
 
+      // ---------- Admin: New Season ----------
       html += `
       <div class="card">
-        <div class="card-title">Data Management</div>
-        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">Reset all app data to start fresh. This will remove all users and restore sample data.</p>
-        <button class="btn btn-danger" id="btn-reset-data">Reset All Data</button>
+        <div class="card-title">${t('settings.new_season')}</div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.new_season_desc')}</p>
+        <button class="btn btn-danger" id="btn-new-season">${t('settings.new_season_btn')}</button>
+        <div id="new-season-result" style="margin-top:.6rem;" hidden></div>
+      </div>`;
+
+      html += `
+      <div class="card">
+        <div class="card-title">${t('settings.data_mgmt')}</div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.reset_desc')}</p>
+        <button class="btn btn-danger" id="btn-reset-data">${t('settings.reset_btn')}</button>
       </div>`;
     }
 
@@ -10697,6 +10729,118 @@
     overlay.querySelector('#modal-btn-no').addEventListener('click', close);
     overlay.querySelector('#modal-btn-yes').addEventListener('click', () => { close(); onConfirm(); });
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
+  // ---------- New Season Modal (two-step confirmation) ----------
+  function showNewSeasonModal() {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+
+    // Auto-suggest season label
+    var now = new Date();
+    var sy = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+    var suggestedLabel = sy + '-' + (sy + 1);
+
+    var overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+
+    // Step 1: season label
+    overlay.innerHTML = `
+      <div class="modal-card" style="max-width:380px;">
+        <div class="modal-title">${sanitize(t('confirm.new_season_title'))}</div>
+        <p class="modal-message" style="white-space:pre-line;font-size:.88rem;">${sanitize(t('confirm.new_season_msg'))}</p>
+        <div class="form-group" style="margin:1rem 0 .6rem;">
+          <label for="season-label-input" style="font-size:.85rem;font-weight:600;">${sanitize(t('confirm.new_season_label'))}</label>
+          <input type="text" id="season-label-input" value="${suggestedLabel}" style="font-size:1rem;text-align:center;letter-spacing:.1em;font-weight:600;" maxlength="20">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-small btn-outline" id="modal-btn-no">${t('btn.cancel')}</button>
+          <button class="btn btn-small btn-primary" id="modal-btn-next">${t('btn.continue') || 'Continuar'}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    var close = function() { overlay.classList.remove('visible'); setTimeout(() => overlay.remove(), 200); };
+    overlay.querySelector('#modal-btn-no').addEventListener('click', close);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+
+    overlay.querySelector('#modal-btn-next').addEventListener('click', function() {
+      var label = (document.getElementById('season-label-input').value || '').trim();
+      if (!label) return;
+      showNewSeasonStep2(overlay, label);
+    });
+  }
+
+  function showNewSeasonStep2(overlay, label) {
+    var confirmPhrase = t('confirm.new_season_phrase');
+    var card = overlay.querySelector('.modal-card');
+    card.innerHTML = `
+      <div class="modal-title">${sanitize(t('confirm.new_season_title'))}</div>
+      <p class="modal-message" style="font-size:.88rem;margin-bottom:.6rem;">${sanitize(t('confirm.new_season_step2'))}</p>
+      <p style="text-align:center;font-weight:700;font-size:1.05rem;letter-spacing:.08em;color:var(--danger);margin-bottom:.8rem;">${sanitize(confirmPhrase)}</p>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <input type="text" id="season-confirm-input" placeholder="" style="font-size:1rem;text-align:center;letter-spacing:.08em;" autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-small btn-outline" id="modal-btn-no">${t('btn.cancel')}</button>
+        <button class="btn btn-small btn-danger" id="modal-btn-archive" disabled>${t('settings.new_season_btn')}</button>
+      </div>
+    `;
+
+    var close = function() { overlay.classList.remove('visible'); setTimeout(() => overlay.remove(), 200); };
+    overlay.querySelector('#modal-btn-no').addEventListener('click', close);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+
+    var inp = document.getElementById('season-confirm-input');
+    var archiveBtn = overlay.querySelector('#modal-btn-archive');
+    inp.addEventListener('input', function() {
+      archiveBtn.disabled = inp.value.trim().toUpperCase() !== confirmPhrase.toUpperCase();
+    });
+
+    archiveBtn.addEventListener('click', function() {
+      archiveBtn.disabled = true;
+      archiveBtn.textContent = t('alert.new_season_archiving');
+      executeSeasonArchive(label, overlay);
+    });
+  }
+
+  async function executeSeasonArchive(label, overlay) {
+    var close = function() { overlay.classList.remove('visible'); setTimeout(() => overlay.remove(), 200); };
+    var resultEl = document.getElementById('new-season-result');
+    try {
+      var session = getSession();
+      if (!session || !session.teamId) throw new Error('No team');
+
+      var token = await auth.currentUser.getIdToken();
+      var resp = await fetch('https://archiveseason-674dkdzfja-uc.a.run.app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ teamId: session.teamId, label: label })
+      });
+      if (!resp.ok) {
+        var err = await resp.json().catch(function() { return {}; });
+        throw new Error(err.error || resp.status);
+      }
+
+      close();
+      // Refresh local data — onSnapshot will propagate, but also force re-read
+      invalidateUsersCache();
+      alert(t('alert.new_season_ok'));
+      renderPage(getSession());
+    } catch (e) {
+      close();
+      console.error('Season archive failed:', e);
+      if (resultEl) {
+        resultEl.textContent = t('alert.new_season_fail') + ' (' + e.message + ')';
+        resultEl.style.color = 'var(--danger)';
+        resultEl.hidden = false;
+      } else {
+        alert(t('alert.new_season_fail'));
+      }
+    }
   }
 
   // ---------- Staff Training bindings ----------
@@ -13853,6 +13997,14 @@
         sessionStorage.clear();
         seedData();
         navigate();
+      });
+    }
+
+    // Admin: new season
+    const newSeasonBtn = $('#btn-new-season');
+    if (newSeasonBtn) {
+      newSeasonBtn.addEventListener('click', () => {
+        showNewSeasonModal();
       });
     }
 

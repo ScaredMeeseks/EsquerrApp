@@ -477,3 +477,218 @@ exports.fcfClassificacio = onRequest(
       }
     },
 );
+
+// ── 6. archiveSeason — archive & reset season data (admin only) ──
+const SEASON_KEYS = [
+  "fa_matches", "fa_match_events", "fa_match_goals",
+  "fa_training",
+  "fa_training_availability", "fa_match_availability",
+  "fa_training_staff_override",
+  "fa_player_rpe", "fa_player_stats",
+  "fa_injuries", "fa_injury_notes", "fa_injury_zone",
+  "fa_convocatoria_sent", "fa_convocatoria_callup",
+  "fa_standings", "fa_matchday", "fa_news",
+];
+
+// Keys stored as per-field merge (not blob {v: "..."})
+const MERGE_KEYS = new Set([
+  "fa_training_availability",
+  "fa_match_availability",
+  "fa_training_staff_override",
+]);
+
+// Keys whose value is an object (not array)
+const OBJECT_KEYS = new Set([
+  "fa_match_events", "fa_match_goals",
+  "fa_training_availability", "fa_match_availability",
+  "fa_training_staff_override",
+  "fa_player_rpe",
+  "fa_convocatoria_sent", "fa_convocatoria_callup",
+  "fa_injury_notes", "fa_injury_zone",
+]);
+
+exports.archiveSeason = onRequest(
+    {cors: true, region: "us-central1", memory: "512MiB", timeoutSeconds: 120},
+    async (req, res) => {
+      // Only POST allowed
+      if (req.method !== "POST") {
+        res.status(405).json({error: "Method not allowed"});
+        return;
+      }
+
+      // ── Auth: verify Firebase ID token ──
+      const authHeader = req.headers.authorization || "";
+      if (!authHeader.startsWith("Bearer ")) {
+        res.status(401).json({error: "Missing auth token"});
+        return;
+      }
+      let decoded;
+      try {
+        decoded = await admin.auth().verifyIdToken(authHeader.split("Bearer ")[1]);
+      } catch (e) {
+        logger.error("archiveSeason: invalid token", e);
+        res.status(401).json({error: "Invalid auth token"});
+        return;
+      }
+
+      // ── Auth: verify admin ──
+      const callerDoc = await db.collection("users").doc(decoded.uid).get();
+      if (!callerDoc.exists || !callerDoc.data().isAdmin) {
+        res.status(403).json({error: "Admin access required"});
+        return;
+      }
+
+      const {teamId, label} = req.body || {};
+      if (!teamId || !label) {
+        res.status(400).json({error: "teamId and label required"});
+        return;
+      }
+
+      // Sanitize label (only allow alphanumeric, hyphens, underscores)
+      const safeLabel = String(label).replace(/[^a-zA-Z0-9_-]/g, "");
+      if (!safeLabel) {
+        res.status(400).json({error: "Invalid label"});
+        return;
+      }
+
+      logger.info("archiveSeason START", {teamId, label: safeLabel, uid: decoded.uid});
+
+      try {
+        const dataRef = db.collection("teams").doc(teamId).collection("data");
+        const archiveRef = db.collection("teams").doc(teamId)
+            .collection("seasons").doc(safeLabel).collection("data");
+
+        // ── Read all season data docs ──
+        const docs = {};
+        for (const key of SEASON_KEYS) {
+          const snap = await dataRef.doc(key).get();
+          if (snap.exists) docs[key] = snap.data();
+        }
+
+        // ── Also read fa_users to zero stats ──
+        const usersSnap = await dataRef.doc("fa_users").get();
+        const usersData = usersSnap.exists ? usersSnap.data() : null;
+
+        // ── Special injury handling: keep active/recovering ──
+        let keptInjuries = [];
+        let archivedInjuryData = docs["fa_injuries"] || null;
+        if (archivedInjuryData) {
+          try {
+            const allInjuries = JSON.parse(archivedInjuryData.v || "[]");
+            const resolved = allInjuries.filter(
+                (inj) => inj.status === "resolved");
+            const kept = allInjuries.filter(
+                (inj) => inj.status !== "resolved");
+            keptInjuries = kept;
+            // Archive only resolved injuries
+            archivedInjuryData = {v: JSON.stringify(resolved)};
+          } catch (e) {
+            logger.warn("Failed to parse injuries, archiving as-is", e);
+          }
+        }
+
+        // ── Batch 1: Write archive docs ──
+        let batch = db.batch();
+        let opCount = 0;
+        for (const key of SEASON_KEYS) {
+          const data = key === "fa_injuries" ?
+            archivedInjuryData : docs[key];
+          if (!data) continue;
+          batch.set(archiveRef.doc(key), data);
+          opCount++;
+          // Firestore batch limit is 500 ops
+          if (opCount >= 450) {
+            await batch.commit();
+            batch = db.batch();
+            opCount = 0;
+          }
+        }
+        // Write archive metadata
+        batch.set(
+            db.collection("teams").doc(teamId)
+                .collection("seasons").doc(safeLabel),
+            {
+              label: safeLabel,
+              archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+              archivedBy: decoded.uid,
+            },
+        );
+        opCount++;
+        if (opCount > 0) await batch.commit();
+
+        // ── Batch 2: Reset source docs ──
+        batch = db.batch();
+        opCount = 0;
+        for (const key of SEASON_KEYS) {
+          if (!docs[key]) continue;
+
+          if (key === "fa_injuries") {
+            // Keep active/recovering injuries
+            batch.set(dataRef.doc(key), {v: JSON.stringify(keptInjuries)});
+          } else if (MERGE_KEYS.has(key)) {
+            // For merge keys: delete all fields, keep _migrated flag
+            const fields = {};
+            for (const f of Object.keys(docs[key])) {
+              if (f === "_migrated") continue;
+              fields[f] = admin.firestore.FieldValue.delete();
+            }
+            if (Object.keys(fields).length > 0) {
+              batch.update(dataRef.doc(key), fields);
+            }
+          } else if (OBJECT_KEYS.has(key)) {
+            batch.set(dataRef.doc(key), {v: "{}"});
+          } else {
+            batch.set(dataRef.doc(key), {v: "[]"});
+          }
+          opCount++;
+          if (opCount >= 450) {
+            await batch.commit();
+            batch = db.batch();
+            opCount = 0;
+          }
+        }
+
+        // ── Zero player stats (matchesPlayed, minutesPlayed) ──
+        if (usersData && usersData.v) {
+          try {
+            const users = JSON.parse(usersData.v);
+            for (const u of users) {
+              u.matchesPlayed = 0;
+              u.minutesPlayed = 0;
+            }
+            batch.set(dataRef.doc("fa_users"), {v: JSON.stringify(users)});
+            opCount++;
+          } catch (e) {
+            logger.warn("Failed to zero player stats", e);
+          }
+        }
+
+        if (opCount > 0) await batch.commit();
+
+        // ── Send push notification to team ──
+        try {
+          const allUids = await getAllTeamMembers(teamId);
+          const tokens = await getTokensForUsers(allUids);
+          if (tokens.length > 0) {
+            await sendToTokens(tokens, {
+              title: "⚽ Nova temporada!",
+              body: "S'ha arxivat la temporada " + safeLabel +
+                " i s'ha iniciat una nova temporada.",
+              type: "new_season",
+              page: "player-home",
+              tag: "new-season-" + safeLabel,
+            });
+          }
+        } catch (e) {
+          // Don't fail the whole operation if push fails
+          logger.warn("Failed to send season push", e);
+        }
+
+        logger.info("archiveSeason SUCCESS", {teamId, label: safeLabel});
+        res.json({success: true, archived: safeLabel});
+      } catch (err) {
+        logger.error("archiveSeason FAILED", err);
+        res.status(500).json({error: "Archive failed: " + err.message});
+      }
+    },
+);
