@@ -1062,6 +1062,29 @@
     localStorage.setItem('fa_demo_seeded', '1');
   }
 
+  // Remove RPE entries older than 1 year to keep the blob lean
+  function pruneOldRpe() {
+    var raw = localStorage.getItem('fa_player_rpe');
+    if (!raw) return;
+    var rpeData;
+    try { rpeData = JSON.parse(raw); } catch (e) { return; }
+    var cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 1);
+    var cutoffStr = cutoff.toISOString().slice(0, 10);
+    var pruned = false;
+    for (var k in rpeData) {
+      var entry = rpeData[k];
+      var date = (entry && entry.date) ? entry.date : '';
+      if (date && date < cutoffStr) {
+        delete rpeData[k];
+        pruned = true;
+      }
+    }
+    if (pruned) {
+      localStorage.setItem('fa_player_rpe', JSON.stringify(rpeData));
+    }
+  }
+
   function seedPlayerResponses() {
     if (localStorage.getItem('fa_responses_seeded')) return;
     const users = getUsers().filter(u => (u.roles || []).includes('player'));
@@ -14245,6 +14268,7 @@
             try {
               await loadClubConfig(tid);
               await DB.init(tid);
+              pruneOldRpe();
             } catch (e) { console.error(e); }
           }
           // Initialize push notifications
@@ -14261,12 +14285,18 @@
 
     // Re-render current page when Firestore pushes remote changes
     // Skip re-render on registrations to avoid losing in-progress edits
+    // Re-render current page when Firestore pushes remote changes
+    // Debounced to avoid flicker; skips pages with active editing
+    var _syncDebounce = null;
     window.addEventListener('firestore-sync', () => {
-      if (currentPage === 'registrations') return;
-      const s = getSession();
-      if (s && s.profileSetupDone && s.roles && s.roles.length) {
-        renderPage(s);
-      }
+      if (['registrations', 'training-detail', 'staff-training-detail', 'match-detail'].includes(currentPage)) return;
+      clearTimeout(_syncDebounce);
+      _syncDebounce = setTimeout(() => {
+        const s = getSession();
+        if (s && s.profileSetupDone && s.roles && s.roles.length) {
+          renderPage(s);
+        }
+      }, 500);
     });
 
     // Handle foreground push notifications — show in-app toast

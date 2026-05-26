@@ -6,6 +6,10 @@
 // into localStorage so the app always has a local cache for
 // instant synchronous reads.
 //
+// MERGE_KEYS (availability data) use per-field Firestore merges
+// so two players saving at the same time never overwrite each
+// other.  All other SYNCED_KEYS use the original blob strategy.
+//
 // Usage:
 //   await DB.init('teamId');  — download Firestore → localStorage
 //   DB.cleanup();             — unsubscribe listeners on logout
@@ -44,17 +48,68 @@ const DB = (function () {
     'fa_match_events',
   ]);
 
+  /* Keys that use per-field Firestore merges instead of blob replacement.
+     Each player writes only their own field — concurrent saves never conflict. */
+  const MERGE_KEYS = new Set([
+    'fa_training_availability',
+    'fa_match_availability',
+    'fa_training_staff_override',
+  ]);
+
   let _teamId = null;
   let _unsubscribers = [];
 
   /* Save the originals BEFORE patching */
   const _origSetItem    = localStorage.setItem.bind(localStorage);
+  const _origGetItem    = localStorage.getItem.bind(localStorage);
   const _origRemoveItem = localStorage.removeItem.bind(localStorage);
 
   // ── Helpers ──────────────────────────────────────────────────
 
   function dataRef(key) {
     return db.collection('teams').doc(_teamId).collection('data').doc(key);
+  }
+
+  /**
+   * For MERGE_KEYS: compute the diff between old and new JSON blobs
+   * and write only the changed/deleted fields to Firestore with merge.
+   */
+  function _writeMerge(key, oldJson, newJson) {
+    var oldObj, newObj;
+    try { oldObj = JSON.parse(oldJson || '{}'); } catch (e) { oldObj = {}; }
+    try { newObj = JSON.parse(newJson || '{}'); } catch (e) { newObj = {}; }
+    var updates = {};
+    var hasUpdates = false;
+    // Fields added or changed
+    for (var k in newObj) {
+      if (JSON.stringify(newObj[k]) !== JSON.stringify(oldObj[k])) {
+        updates[k] = newObj[k];
+        hasUpdates = true;
+      }
+    }
+    // Fields deleted
+    for (var k in oldObj) {
+      if (!(k in newObj)) {
+        updates[k] = firebase.firestore.FieldValue.delete();
+        hasUpdates = true;
+      }
+    }
+    if (hasUpdates) {
+      dataRef(key).set(updates, { merge: true }).catch(console.error);
+    }
+  }
+
+  /**
+   * For MERGE_KEYS: convert Firestore doc fields back into a JSON blob
+   * for localStorage. Strips internal fields (_migrated, v).
+   */
+  function _docToBlob(docData) {
+    var obj = {};
+    for (var k in docData) {
+      if (k === '_migrated' || k === 'v') continue;
+      obj[k] = docData[k];
+    }
+    return JSON.stringify(obj);
   }
 
   // ── Public API ───────────────────────────────────────────────
@@ -93,24 +148,32 @@ const DB = (function () {
     } else {
       // Firestore is source of truth — overwrite localStorage
       snap.forEach(function (d) {
-        if (SYNCED_KEYS.has(d.id) && d.data().v !== undefined) {
-          _origSetItem(d.id, d.data().v);
+        if (!SYNCED_KEYS.has(d.id)) return;
+        var data = d.data();
+        if (MERGE_KEYS.has(d.id)) {
+          // Per-field format: check if already migrated
+          if (data._migrated) {
+            _origSetItem(d.id, _docToBlob(data));
+          } else if (data.v !== undefined) {
+            // Legacy blob format — populate localStorage, then migrate doc
+            _origSetItem(d.id, data.v);
+            var obj;
+            try { obj = JSON.parse(data.v); } catch (e) { obj = {}; }
+            obj._migrated = true;
+            dataRef(d.id).set(obj).catch(console.error);
+          }
+        } else if (data.v !== undefined) {
+          _origSetItem(d.id, data.v);
         }
       });
     }
 
     // ── Reconcile users/ collection → fa_users blob ──────────────
-    // Individual user docs in users/{uid} are always created at
-    // registration. Merge any that are missing from the fa_users
-    // team-data blob so they appear in Registrations / Roster.
     try {
-      // Fetch ALL user docs and filter client-side. This handles users
-      // whose teamId is 'default', '', or missing entirely (undefined).
       var allSnap = await db.collection('users').get();
       var allUserDocs = allSnap.docs.filter(function (d) {
         var t = d.data().teamId;
         if (t === teamId) return true;
-        // Users with no teamId belong to the default team
         if (teamId === 'default' && (!t || t === '')) return true;
         return false;
       });
@@ -144,11 +207,19 @@ const DB = (function () {
         if (!doc.exists) return;
         // Skip echoes of our own local writes
         if (doc.metadata.hasPendingWrites) return;
-        var val = doc.data().v;
-        if (val !== undefined && localStorage.getItem(key) !== val) {
-          _origSetItem(key, val);
-          // Notify the app so it can re-render if needed
-          window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: key } }));
+
+        if (MERGE_KEYS.has(key)) {
+          var val = _docToBlob(doc.data());
+          if (_origGetItem(key) !== val) {
+            _origSetItem(key, val);
+            window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: key } }));
+          }
+        } else {
+          var val = doc.data().v;
+          if (val !== undefined && _origGetItem(key) !== val) {
+            _origSetItem(key, val);
+            window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: key } }));
+          }
         }
       });
       _unsubscribers.push(unsub);
@@ -161,7 +232,17 @@ const DB = (function () {
     var n = 0;
     SYNCED_KEYS.forEach(function (key) {
       var val = localStorage.getItem(key);
-      if (val !== null) { batch.set(dataRef(key), { v: val }); n++; }
+      if (val !== null) {
+        if (MERGE_KEYS.has(key)) {
+          var obj;
+          try { obj = JSON.parse(val); } catch (e) { obj = {}; }
+          obj._migrated = true;
+          batch.set(dataRef(key), obj);
+        } else {
+          batch.set(dataRef(key), { v: val });
+        }
+        n++;
+      }
     });
     if (n) await batch.commit();
   }
@@ -178,9 +259,14 @@ const DB = (function () {
   // to Firestore. Reads stay instant from localStorage.
 
   localStorage.setItem = function (key, value) {
+    var oldValue = MERGE_KEYS.has(key) ? _origGetItem(key) : null;
     _origSetItem(key, value);
     if (_teamId && SYNCED_KEYS.has(key)) {
-      dataRef(key).set({ v: value }).catch(console.error);
+      if (MERGE_KEYS.has(key)) {
+        _writeMerge(key, oldValue, value);
+      } else {
+        dataRef(key).set({ v: value }).catch(console.error);
+      }
     }
   };
 
