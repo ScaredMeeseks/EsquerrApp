@@ -454,6 +454,34 @@
     'settings.new_season':   { ca:'Nova Temporada', es:'Nueva Temporada', en:'New Season' },
     'settings.new_season_desc': { ca:'Arxiva totes les dades de la temporada actual i comença de zero. Els jugadors, staff i pissarres tàctiques es mantenen.', es:'Archiva todos los datos de la temporada actual y empieza de cero. Los jugadores, staff y pizarras tácticas se mantienen.', en:'Archive all current season data and start fresh. Players, staff and tactical boards are preserved.' },
     'settings.new_season_btn':  { ca:'Iniciar Nova Temporada', es:'Iniciar Nueva Temporada', en:'Start New Season' },
+    'settings.archived_seasons': { ca:'Temporades Arxivades', es:'Temporadas Archivadas', en:'Archived Seasons' },
+    'settings.archived_seasons_desc': { ca:'Consulta les dades de temporades anteriors.', es:'Consulta los datos de temporadas anteriores.', en:'View data from previous seasons.' },
+
+    // ── Archive Viewer ──
+    'archive.title':          { ca:'Temporades Arxivades', es:'Temporadas Archivadas', en:'Archived Seasons' },
+    'archive.no_seasons':     { ca:'No hi ha temporades arxivades.', es:'No hay temporadas archivadas.', en:'No archived seasons.' },
+    'archive.archived_on':    { ca:'Arxivada el', es:'Archivada el', en:'Archived on' },
+    'archive.view':           { ca:'Veure', es:'Ver', en:'View' },
+    'archive.matches':        { ca:'Partits', es:'Partidos', en:'Matches' },
+    'archive.stats':          { ca:'Estadístiques', es:'Estadísticas', en:'Stats' },
+    'archive.attendance':     { ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'archive.injuries':       { ca:'Lesions', es:'Lesiones', en:'Injuries' },
+    'archive.season_summary': { ca:'Resum de la Temporada', es:'Resumen de la Temporada', en:'Season Summary' },
+    'archive.goals_for':      { ca:'Gols a favor', es:'Goles a favor', en:'Goals for' },
+    'archive.goals_against':  { ca:'Gols en contra', es:'Goles en contra', en:'Goals against' },
+    'archive.wins':           { ca:'Victòries', es:'Victorias', en:'Wins' },
+    'archive.draws':          { ca:'Empats', es:'Empates', en:'Draws' },
+    'archive.losses':         { ca:'Derrotes', es:'Derrotas', en:'Losses' },
+    'archive.trainings':      { ca:'Entrenaments', es:'Entrenamientos', en:'Trainings' },
+    'archive.players':        { ca:'Jugadors', es:'Jugadores', en:'Players' },
+    'archive.avg_attendance': { ca:'Assistència mitjana', es:'Asistencia media', en:'Avg. attendance' },
+    'archive.days_out':       { ca:'Dies fora', es:'Días fuera', en:'Days out' },
+    'archive.total_injuries': { ca:'Total lesions', es:'Total lesiones', en:'Total injuries' },
+    'archive.total_days_lost':{ ca:'Dies totals perduts', es:'Días totales perdidos', en:'Total days lost' },
+    'archive.present':        { ca:'Present', es:'Presente', en:'Present' },
+    'archive.late':           { ca:'Tard', es:'Tarde', en:'Late' },
+    'archive.absent':         { ca:'Absent', es:'Ausente', en:'Absent' },
+    'archive.loading':        { ca:'Carregant…', es:'Cargando…', en:'Loading…' },
 
     // ── Confirm / Alert Messages ──
     'alert.image_too_large':  { ca:'La imatge ha de ser inferior a 2 MB.', es:'La imagen debe ser inferior a 2 MB.', en:'Image must be under 2 MB.' },
@@ -2560,6 +2588,8 @@
       'medical-detail': renderMedicalDetail,
       'users': renderAdminUsers,
       'settings': renderAdminSettings,
+      'archived-seasons': renderArchivedSeasons,
+      'archived-season-detail': renderArchivedSeasonDetail,
     };
 
     const fn = renderers[currentPage];
@@ -10116,6 +10146,399 @@
       </div>`;
   }
 
+  // #region Archived Seasons Viewer
+  // ---------- Archived Seasons ----------
+  var _archivedSeasonLabel = '';
+  var _archiveData = null;
+  var _archiveTab = 'matches';
+
+  // Load list of archived seasons from Firestore
+  async function loadArchivedSeasons(teamId) {
+    try {
+      var snap = await db.collection('teams').doc(teamId).collection('seasons').get();
+      var seasons = [];
+      snap.forEach(function(d) { seasons.push({ id: d.id, label: d.data().label || d.id, archivedAt: d.data().archivedAt, archivedBy: d.data().archivedBy }); });
+      // Sort by label descending
+      seasons.sort(function(a, b) { return b.label.localeCompare(a.label); });
+      return seasons;
+    } catch (e) { console.error('loadArchivedSeasons error:', e); return []; }
+  }
+
+  // Load all data docs for a specific archived season
+  async function loadSeasonData(teamId, label) {
+    try {
+      var snap = await db.collection('teams').doc(teamId).collection('seasons').doc(label).collection('data').get();
+      var data = {};
+      snap.forEach(function(d) {
+        var raw = d.data();
+        // Parse blob format {v: "..."} or per-field merge format
+        if (raw.v !== undefined) {
+          try { data[d.id] = JSON.parse(raw.v); } catch (e) { data[d.id] = raw.v; }
+        } else {
+          // Per-field merge format — reconstruct object, skip _migrated
+          var obj = {};
+          for (var k in raw) { if (k !== '_migrated') obj[k] = raw[k]; }
+          data[d.id] = obj;
+        }
+      });
+      return data;
+    } catch (e) { console.error('loadSeasonData error:', e); return null; }
+  }
+
+  // Aggregate player stats from archived match events
+  function aggregateArchivedStats(data) {
+    var matches = data.fa_matches || [];
+    var allEvents = data.fa_match_events || {};
+    var users = data.fa_users || getUsers();
+    var players = {};
+
+    // Init players
+    (Array.isArray(users) ? users : []).forEach(function(u) {
+      if (!u.roles || !u.roles.includes('player')) return;
+      players[u.id] = { name: u.name || u.id, goals: 0, assists: 0, yellows: 0, reds: 0, minutes: 0, matches: 0 };
+    });
+
+    var totalGoalsFor = 0, totalGoalsAgainst = 0, wins = 0, draws = 0, losses = 0;
+
+    matches.forEach(function(m) {
+      if (m.status !== 'played') return;
+      var events = allEvents[m.id] || [];
+      var sc = { home: 0, away: 0 };
+      events.forEach(function(e) {
+        if (e.type === 'goal') { if (e.side === 'home') sc.home++; else sc.away++; }
+        if (e.type === 'own_goal') { if (e.side === 'home') sc.away++; else sc.home++; }
+      });
+
+      // Determine if home or away
+      var weAreHome = isOurTeam(m.home);
+      var ourGoals = weAreHome ? sc.home : sc.away;
+      var theirGoals = weAreHome ? sc.away : sc.home;
+      totalGoalsFor += ourGoals;
+      totalGoalsAgainst += theirGoals;
+      if (ourGoals > theirGoals) wins++;
+      else if (ourGoals < theirGoals) losses++;
+      else draws++;
+
+      // Per-player stats
+      events.forEach(function(e) {
+        var pid = e.playerId || e.playerNumber;
+        if (!pid) return;
+        if (!players[pid]) players[pid] = { name: pid, goals: 0, assists: 0, yellows: 0, reds: 0, minutes: 0, matches: 0 };
+        if (e.type === 'goal') players[pid].goals++;
+        if (e.type === 'yellow') players[pid].yellows++;
+        if (e.type === 'red') players[pid].reds++;
+        // Assists
+        var assistId = e.assistPlayerId || e.assister;
+        if (e.type === 'goal' && assistId) {
+          if (!players[assistId]) players[assistId] = { name: assistId, goals: 0, assists: 0, yellows: 0, reds: 0, minutes: 0, matches: 0 };
+          players[assistId].assists++;
+        }
+      });
+    });
+
+    // Convert to sorted array
+    var arr = Object.keys(players).map(function(id) { return players[id]; });
+    arr.sort(function(a, b) { return b.goals - a.goals || b.assists - a.assists || a.name.localeCompare(b.name); });
+
+    return {
+      players: arr,
+      matchesPlayed: matches.filter(function(m) { return m.status === 'played'; }).length,
+      totalGoalsFor: totalGoalsFor, totalGoalsAgainst: totalGoalsAgainst,
+      wins: wins, draws: draws, losses: losses
+    };
+  }
+
+  // Aggregate attendance from archived training data
+  function aggregateArchivedAttendance(data) {
+    var training = data.fa_training || [];
+    var avail = data.fa_training_availability || {};
+    var users = data.fa_users || getUsers();
+    var playerList = (Array.isArray(users) ? users : []).filter(function(u) { return u.roles && u.roles.includes('player'); });
+    var pastTrainings = training.filter(function(t) { return t.status === 'past' || t.date < new Date().toISOString().slice(0, 10); });
+
+    var result = [];
+    playerList.forEach(function(u) {
+      var yes = 0, late = 0, no = 0, injured = 0;
+      pastTrainings.forEach(function(tr) {
+        var key = u.id + '_' + tr.date;
+        var answer = avail[key] || '';
+        if (answer === 'yes') yes++;
+        else if (answer === 'late') late++;
+        else if (answer === 'injured') injured++;
+        else no++;
+      });
+      var total = yes + late + no + injured;
+      var pct = total > 0 ? Math.round(((yes + late) / total) * 100) : 0;
+      result.push({ name: u.name, yes: yes, late: late, no: no, injured: injured, pct: pct });
+    });
+
+    result.sort(function(a, b) { return b.pct - a.pct; });
+    return { players: result, totalTrainings: pastTrainings.length };
+  }
+
+  // Render archived seasons list page
+  function renderArchivedSeasons() {
+    var html = '<a class="detail-back" onclick="window._navTo(\'settings\')">' + t('btn.back') + '</a>';
+    html += '<h2 class="page-title">' + t('archive.title') + '</h2>';
+    html += '<div id="archived-seasons-list"><p style="color:var(--text-secondary);font-size:.9rem;">' + t('archive.loading') + '</p></div>';
+    // Load async
+    var session = getSession();
+    if (session && session.teamId) {
+      loadArchivedSeasons(session.teamId).then(function(seasons) {
+        var el = document.getElementById('archived-seasons-list');
+        if (!el) return;
+        if (!seasons.length) {
+          el.innerHTML = '<div class="card"><p style="color:var(--text-secondary);text-align:center;padding:2rem 0;">' + t('archive.no_seasons') + '</p></div>';
+          return;
+        }
+        var cards = '';
+        seasons.forEach(function(s) {
+          var dateStr = '';
+          if (s.archivedAt && s.archivedAt.toDate) {
+            var d = s.archivedAt.toDate();
+            dateStr = t('archive.archived_on') + ' ' + d.toLocaleDateString(_lang === 'en' ? 'en-GB' : _lang === 'es' ? 'es-ES' : 'ca-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+          }
+          cards += '<div class="card" style="display:flex;align-items:center;justify-content:space-between;">' +
+            '<div><div style="font-weight:700;font-size:1.1rem;letter-spacing:.05em;">' + sanitize(s.label) + '</div>' +
+            (dateStr ? '<div style="font-size:.8rem;color:var(--text-secondary);margin-top:.2rem;">' + dateStr + '</div>' : '') +
+            '</div>' +
+            '<button class="btn btn-small btn-primary btn-view-season" data-label="' + sanitize(s.id) + '">' + t('archive.view') + '</button>' +
+            '</div>';
+        });
+        el.innerHTML = cards;
+        // Bind click
+        el.querySelectorAll('.btn-view-season').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            _archivedSeasonLabel = btn.dataset.label;
+            _archiveData = null;
+            _archiveTab = 'matches';
+            currentPage = 'archived-season-detail';
+            renderPage(getSession());
+          });
+        });
+      });
+    }
+    return html;
+  }
+
+  // Render archived season detail with 4 tabs
+  function renderArchivedSeasonDetail() {
+    var label = _archivedSeasonLabel || '?';
+    var html = '<a class="detail-back" onclick="_archivedSeasonLabel=\'\';currentPage=\'archived-seasons\';renderPage(getSession())">' + t('btn.back') + '</a>';
+    html += '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;">' +
+      '<span style="background:var(--text-secondary);color:#fff;padding:.2rem .6rem;border-radius:6px;font-size:.7rem;font-weight:700;letter-spacing:.05em;">' + t('archive.archived_on').replace(/ .*/, '').toUpperCase() + '</span>' +
+      '<span style="font-size:1.3rem;font-weight:800;letter-spacing:.05em;">' + sanitize(label) + '</span></div>';
+    html += '<div id="archive-content"><p style="color:var(--text-secondary);font-size:.9rem;">' + t('archive.loading') + '</p></div>';
+
+    // Load data async
+    var session = getSession();
+    if (session && session.teamId) {
+      var loadFn = _archiveData ? Promise.resolve(_archiveData) : loadSeasonData(session.teamId, label);
+      loadFn.then(function(data) {
+        if (!data) return;
+        _archiveData = data;
+        var el = document.getElementById('archive-content');
+        if (!el) return;
+        el.innerHTML = renderArchiveTabs(data);
+        bindArchiveTabs();
+      });
+    }
+    return html;
+  }
+
+  function renderArchiveTabs(data) {
+    var stats = aggregateArchivedStats(data);
+    var attendance = aggregateArchivedAttendance(data);
+    var injuries = data.fa_injuries || [];
+    var training = data.fa_training || [];
+    var matches = data.fa_matches || [];
+    var playedCount = matches.filter(function(m) { return m.status === 'played'; }).length;
+    var playerCount = stats.players.length;
+    var trainingCount = attendance.totalTrainings;
+
+    // Summary grid
+    var html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1rem;">';
+    html += '<div class="card" style="text-align:center;padding:.8rem .4rem;margin-bottom:0;"><div style="font-size:1.4rem;font-weight:800;color:var(--primary);">' + playedCount + '</div><div style="font-size:.68rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">' + t('archive.matches') + '</div></div>';
+    html += '<div class="card" style="text-align:center;padding:.8rem .4rem;margin-bottom:0;"><div style="font-size:1.4rem;font-weight:800;color:var(--success);">' + stats.totalGoalsFor + '</div><div style="font-size:.68rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">' + t('ev.goal') + '</div></div>';
+    html += '<div class="card" style="text-align:center;padding:.8rem .4rem;margin-bottom:0;"><div style="font-size:1.4rem;font-weight:800;color:var(--primary);">' + trainingCount + '</div><div style="font-size:.68rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">' + t('archive.trainings') + '</div></div>';
+    html += '<div class="card" style="text-align:center;padding:.8rem .4rem;margin-bottom:0;"><div style="font-size:1.4rem;font-weight:800;color:var(--primary);">' + playerCount + '</div><div style="font-size:.68rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">' + t('archive.players') + '</div></div>';
+    html += '</div>';
+
+    // Tabs
+    var tabs = ['matches', 'stats', 'attendance', 'injuries'];
+    var tabLabels = { matches: t('archive.matches'), stats: t('archive.stats'), attendance: t('archive.attendance'), injuries: t('archive.injuries') };
+    html += '<div style="display:flex;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:1rem;overflow:hidden;">';
+    tabs.forEach(function(tab) {
+      var active = tab === _archiveTab;
+      html += '<div class="archive-tab" data-tab="' + tab + '" style="flex:1;padding:.65rem .4rem;text-align:center;font-size:.8rem;font-weight:600;cursor:pointer;border-bottom:3px solid ' + (active ? 'var(--primary)' : 'transparent') + ';color:' + (active ? 'var(--primary)' : 'var(--text-secondary)') + ';' + (active ? 'background:var(--danger-light);' : '') + '">' + tabLabels[tab] + '</div>';
+    });
+    html += '</div>';
+
+    // Tab content
+    if (_archiveTab === 'matches') html += renderArchiveMatches(data, stats);
+    else if (_archiveTab === 'stats') html += renderArchiveStats(stats);
+    else if (_archiveTab === 'attendance') html += renderArchiveAttendance(attendance);
+    else if (_archiveTab === 'injuries') html += renderArchiveInjuries(injuries);
+
+    return html;
+  }
+
+  function renderArchiveMatches(data, stats) {
+    var matches = (data.fa_matches || []).filter(function(m) { return m.status === 'played'; });
+    var allEvents = data.fa_match_events || {};
+    if (!matches.length) return '<div class="card"><p style="color:var(--text-secondary);text-align:center;">' + t('archive.no_seasons') + '</p></div>';
+
+    var html = '<div class="card" style="padding:.4rem .8rem;">';
+    matches.forEach(function(m) {
+      var events = allEvents[m.id] || [];
+      var sc = { home: 0, away: 0 };
+      events.forEach(function(e) {
+        if (e.type === 'goal') { if (e.side === 'home') sc.home++; else sc.away++; }
+        if (e.type === 'own_goal') { if (e.side === 'home') sc.away++; else sc.home++; }
+      });
+      // Fallback to stored score
+      if (!events.length && m.score) {
+        var parts = String(m.score).split('-');
+        sc.home = Number(parts[0]) || 0;
+        sc.away = Number(parts[1]) || 0;
+      }
+      var weAreHome = isOurTeam(m.home);
+      var ourGoals = weAreHome ? sc.home : sc.away;
+      var theirGoals = weAreHome ? sc.away : sc.home;
+      var cls = ourGoals > theirGoals ? 'color:var(--success)' : ourGoals < theirGoals ? 'color:var(--danger)' : 'color:var(--warning)';
+      var dateStr = m.date ? m.date.split('-').reverse().join('/') : '';
+      html += '<div style="display:flex;align-items:center;padding:.65rem 0;border-bottom:1px solid var(--border);">' +
+        '<div style="font-size:.72rem;color:var(--text-secondary);width:62px;flex-shrink:0;">' + dateStr + '</div>' +
+        '<div style="flex:1;font-weight:600;font-size:.85rem;">' + sanitize(m.home) + ' vs ' + sanitize(m.away) + '</div>' +
+        '<div style="font-weight:800;font-size:1rem;min-width:50px;text-align:center;' + cls + '">' + sc.home + ' - ' + sc.away + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderArchiveStats(stats) {
+    var html = '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.stats') + '</div>';
+    html += '<div class="table-wrap"><table style="font-size:.83rem;"><thead><tr><th>' + t('reg.th_name') + '</th>' +
+      '<th style="text-align:center;"><img src="img/gol.png" style="width:16px;height:16px;" alt="gol"></th>' +
+      '<th style="text-align:center;"><img src="img/assist.png" style="width:16px;height:16px;" alt="assist"></th>' +
+      '<th style="text-align:center;"><img src="img/groga.png" style="width:16px;height:16px;" alt="groga"></th>' +
+      '<th style="text-align:center;"><img src="img/vermella.png" style="width:16px;height:16px;" alt="vermella"></th>' +
+      '</tr></thead><tbody>';
+    stats.players.forEach(function(p) {
+      html += '<tr><td style="font-weight:600;">' + sanitize(p.name) + '</td>' +
+        '<td style="text-align:center;">' + p.goals + '</td>' +
+        '<td style="text-align:center;">' + p.assists + '</td>' +
+        '<td style="text-align:center;">' + p.yellows + '</td>' +
+        '<td style="text-align:center;">' + p.reds + '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // Season summary
+    html += '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.season_summary') + '</div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('archive.wins') + '</span><span style="font-weight:700;color:var(--success);">' + stats.wins + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('archive.draws') + '</span><span style="font-weight:700;color:var(--warning);">' + stats.draws + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('archive.losses') + '</span><span style="font-weight:700;color:var(--danger);">' + stats.losses + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('archive.goals_for') + '</span><span style="font-weight:700;color:var(--success);">' + stats.totalGoalsFor + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;"><span style="font-weight:600;">' + t('archive.goals_against') + '</span><span style="font-weight:700;color:var(--danger);">' + stats.totalGoalsAgainst + '</span></div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderArchiveAttendance(att) {
+    var html = '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.attendance') + '</div>';
+    html += '<div class="table-wrap"><table style="font-size:.83rem;"><thead><tr><th>' + t('reg.th_name') + '</th>' +
+      '<th style="text-align:center;">' + t('archive.present') + '</th>' +
+      '<th style="text-align:center;">' + t('archive.late') + '</th>' +
+      '<th style="text-align:center;">' + t('archive.absent') + '</th>' +
+      '<th style="width:100px;">%</th></tr></thead><tbody>';
+    att.players.forEach(function(p) {
+      var barColor = p.pct >= 80 ? 'var(--success)' : p.pct >= 60 ? 'var(--warning)' : 'var(--danger)';
+      var pctColor = p.pct >= 80 ? 'var(--success)' : p.pct >= 60 ? 'var(--warning)' : 'var(--danger)';
+      html += '<tr><td style="font-weight:600;">' + sanitize(p.name) + '</td>' +
+        '<td style="text-align:center;">' + p.yes + '</td>' +
+        '<td style="text-align:center;">' + p.late + '</td>' +
+        '<td style="text-align:center;">' + p.no + '</td>' +
+        '<td><div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + barColor + ';width:' + p.pct + '%;"></div></div>' +
+        '<span style="font-size:.7rem;color:' + pctColor + ';font-weight:700;">' + p.pct + '%</span></td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // Summary
+    if (att.totalTrainings > 0) {
+      var avgPct = att.players.length > 0 ? Math.round(att.players.reduce(function(s, p) { return s + p.pct; }, 0) / att.players.length) : 0;
+      html += '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.season_summary') + '</div>';
+      html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('archive.trainings') + '</span><span style="font-weight:700;color:var(--primary);">' + att.totalTrainings + '</span></div>';
+      html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;"><span style="font-weight:600;">' + t('archive.avg_attendance') + '</span><span style="font-weight:700;color:var(--success);">' + avgPct + '%</span></div>';
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function renderArchiveInjuries(injuries) {
+    if (!injuries.length) return '<div class="card"><p style="color:var(--text-secondary);text-align:center;padding:1.5rem 0;">' + t('archive.no_seasons') + '</p></div>';
+
+    var html = '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.injuries') + '</div>';
+    html += '<div class="table-wrap"><table style="font-size:.83rem;"><thead><tr><th>' + t('reg.th_name') + '</th><th>' + t('injury_log.area') + '</th><th>' + t('injury_log.severity') + '</th><th>' + t('injury_log.start_date') + '</th><th style="text-align:center;">' + t('archive.days_out') + '</th></tr></thead><tbody>';
+
+    var totalDays = 0, minor = 0, moderate = 0, severe = 0;
+    // Get player names from users
+    var users = {};
+    (getUsers() || []).forEach(function(u) { users[u.id] = u.name; });
+
+    injuries.forEach(function(inj) {
+      var playerName = users[inj.playerId] || inj.playerId || '?';
+      var zone = inj.muscleGroup || inj.bodyZoneLabel || '';
+      var sevClass = inj.severity === 'minor' ? 'background:var(--success-light);color:var(--success)' : inj.severity === 'moderate' ? 'background:#fff3e0;color:var(--warning)' : 'background:var(--danger-light);color:var(--danger)';
+      var sevLabel = inj.severity === 'minor' ? t('medical.severity_minor') : inj.severity === 'moderate' ? t('medical.severity_moderate') : t('medical.severity_severe');
+      var days = 0;
+      if (inj.startDate && inj.endDate) {
+        days = Math.max(0, Math.round((new Date(inj.endDate) - new Date(inj.startDate)) / 86400000));
+      } else if (inj.startDate) {
+        days = Math.max(0, Math.round((new Date() - new Date(inj.startDate)) / 86400000));
+      }
+      totalDays += days;
+      if (inj.severity === 'minor') minor++;
+      else if (inj.severity === 'moderate') moderate++;
+      else severe++;
+
+      var dateStr = inj.startDate ? inj.startDate.split('-').reverse().join('/') : '';
+      html += '<tr><td style="font-weight:600;">' + sanitize(playerName) + '</td>' +
+        '<td>' + sanitize(zone) + '</td>' +
+        '<td><span style="' + sevClass + ';padding:.15rem .5rem;border-radius:4px;font-size:.72rem;font-weight:600;">' + sevLabel + '</span></td>' +
+        '<td>' + dateStr + '</td>' +
+        '<td style="text-align:center;">' + days + '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // Summary
+    html += '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.season_summary') + '</div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('archive.total_injuries') + '</span><span style="font-weight:700;color:var(--primary);">' + injuries.length + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('medical.severity_minor') + '</span><span style="font-weight:700;color:var(--success);">' + minor + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('medical.severity_moderate') + '</span><span style="font-weight:700;color:var(--warning);">' + moderate + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);"><span style="font-weight:600;">' + t('medical.severity_severe') + '</span><span style="font-weight:700;color:var(--danger);">' + severe + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;"><span style="font-weight:600;">' + t('archive.total_days_lost') + '</span><span style="font-weight:700;color:var(--danger);">' + totalDays + '</span></div>';
+    html += '</div>';
+    return html;
+  }
+
+  function bindArchiveTabs() {
+    document.querySelectorAll('.archive-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        _archiveTab = tab.dataset.tab;
+        var el = document.getElementById('archive-content');
+        if (el && _archiveData) {
+          el.innerHTML = renderArchiveTabs(_archiveData);
+          bindArchiveTabs();
+        }
+      });
+    });
+  }
+
+  // Expose navigation helper for back buttons
+  window._navTo = function(page) { currentPage = page; renderPage(getSession()); };
+  // #endregion Archived Seasons Viewer
+
   function renderAdminSettings() {
     const session = getSession();
     let html = '<h2 class="page-title">' + t('page.settings') + '</h2>';
@@ -10141,6 +10564,16 @@
         <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.new_season_desc')}</p>
         <button class="btn btn-danger" id="btn-new-season">${t('settings.new_season_btn')}</button>
         <div id="new-season-result" style="margin-top:.6rem;" hidden></div>
+      </div>`;
+    }
+
+    // ---------- Team Lead / Admin: Archived Seasons ----------
+    if (session && (session.isTeamLead || session.isAdmin)) {
+      html += `
+      <div class="card">
+        <div class="card-title">${t('settings.archived_seasons')}</div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.archived_seasons_desc')}</p>
+        <button class="btn btn-primary" id="btn-archived-seasons">${t('archive.view')}</button>
       </div>`;
     }
 
@@ -14007,6 +14440,14 @@
     if (newSeasonBtn) {
       newSeasonBtn.addEventListener('click', () => {
         showNewSeasonModal();
+      });
+    }
+
+    const archivedSeasonsBtn = $('#btn-archived-seasons');
+    if (archivedSeasonsBtn) {
+      archivedSeasonsBtn.addEventListener('click', function() {
+        currentPage = 'archived-seasons';
+        renderPage(getSession());
       });
     }
 
