@@ -1445,49 +1445,101 @@
         }
       });
 
-      // --- Minutes calculation ---
+      // --- Minutes calculation (supports multiple in/out subs) ---
       var minutes = '—';
       if (!inConvocatoria) {
         minutes = 'NC';
       } else if (hasStartingXI) {
-        if (isStarter) {
-          minutes = 90;
-          // Check if subbed out or red carded
-          events.forEach(function(ev) {
-            if (ev.side === ourSide && ev.type === 'change' && ev.playerOutId && String(ev.playerOutId) === String(playerId)) {
+        // Collect all sub-in and sub-out minutes for this player, sorted
+        var subIns = [], subOuts = [];
+        var redMinute = null;
+        events.forEach(function(ev) {
+          if (ev.side === ourSide && ev.type === 'change') {
+            if (ev.playerOutId && String(ev.playerOutId) === String(playerId)) {
               var m2 = parseEventMinute(ev.minute);
-              if (m2 < 999 && m2 < minutes) minutes = Math.floor(m2);
+              if (m2 < 999) subOuts.push(Math.floor(m2));
             }
-            if (ev.type === 'red' && ev.playerId && String(ev.playerId) === String(playerId)) {
-              var m3 = parseEventMinute(ev.minute);
-              if (m3 < 999 && m3 < minutes) minutes = Math.floor(m3);
+            if (ev.playerInId && String(ev.playerInId) === String(playerId)) {
+              var m2 = parseEventMinute(ev.minute);
+              if (m2 < 999) subIns.push(Math.floor(m2));
             }
-          });
-        } else {
-          // On bench — check if subbed in
-          minutes = 0;
-          events.forEach(function(ev) {
-            if (ev.side === ourSide && ev.type === 'change' && ev.playerInId && String(ev.playerInId) === String(playerId)) {
-              var subMin = parseEventMinute(ev.minute);
-              if (subMin < 999) minutes = 90 - Math.floor(subMin);
-            }
-          });
-          // Check if sent off after sub in
-          if (minutes > 0) {
-            events.forEach(function(ev) {
-              if (ev.type === 'red' && ev.playerId && String(ev.playerId) === String(playerId)) {
-                var redMin = parseEventMinute(ev.minute);
-                var subInMin = 0;
-                events.forEach(function(ev2) {
-                  if (ev2.side === ourSide && ev2.type === 'change' && ev2.playerInId && String(ev2.playerInId) === String(playerId)) {
-                    subInMin = parseEventMinute(ev2.minute);
-                  }
-                });
-                if (redMin < 999 && subInMin < 999) minutes = Math.floor(redMin) - Math.floor(subInMin);
+          }
+          if (ev.type === 'red' && ev.playerId && String(ev.playerId) === String(playerId)) {
+            var m3 = parseEventMinute(ev.minute);
+            if (m3 < 999) redMinute = Math.floor(m3);
+          }
+        });
+        subIns.sort(function(a, b) { return a - b; });
+        subOuts.sort(function(a, b) { return a - b; });
+
+        // Build on-pitch intervals: [start, end] pairs
+        var intervals = [];
+        if (isStarter) {
+          // Starter is on from minute 0
+          // Pair: start=0, then each subOut ends an interval, each subIn starts a new one
+          var onAt = 0;
+          var oi = 0, ii = 0;
+          // Merge subOuts and subIns chronologically
+          while (oi < subOuts.length || ii < subIns.length) {
+            // Next expected: if on pitch → look for subOut; if off pitch → look for subIn
+            if (onAt !== null) {
+              // Player is on pitch, look for next subOut
+              if (oi < subOuts.length) {
+                intervals.push([onAt, subOuts[oi]]);
+                onAt = null;
+                oi++;
+              } else {
+                break; // no more sub-outs, player stays on
               }
-            });
+            } else {
+              // Player is off pitch, look for next subIn
+              if (ii < subIns.length) {
+                onAt = subIns[ii];
+                ii++;
+              } else {
+                break; // stays off
+              }
+            }
+          }
+          // If still on pitch at the end
+          if (onAt !== null) {
+            var endMin = (redMinute !== null) ? redMinute : 90;
+            intervals.push([onAt, endMin]);
+          }
+        } else {
+          // Bench player — first subIn puts them on
+          var onAt = null;
+          var ii = 0, oi = 0;
+          while (ii < subIns.length || oi < subOuts.length) {
+            if (onAt === null) {
+              // Off pitch, look for subIn
+              if (ii < subIns.length) {
+                onAt = subIns[ii];
+                ii++;
+              } else {
+                break;
+              }
+            } else {
+              // On pitch, look for subOut
+              if (oi < subOuts.length) {
+                intervals.push([onAt, subOuts[oi]]);
+                onAt = null;
+                oi++;
+              } else {
+                break;
+              }
+            }
+          }
+          // If still on pitch at the end
+          if (onAt !== null) {
+            var endMin = (redMinute !== null) ? redMinute : 90;
+            intervals.push([onAt, endMin]);
           }
         }
+
+        // Sum intervals
+        minutes = 0;
+        intervals.forEach(function(iv) { minutes += iv[1] - iv[0]; });
       }
 
       // Status: Titular / Suplent / NC
