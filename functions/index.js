@@ -13,7 +13,7 @@
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {onRequest} = require("firebase-functions/v2/https");
+const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
@@ -42,6 +42,28 @@ function parseMadridDate(dateStr, timeStr) {
   const offsetMs = madridForUtc.getTime() - asUtc.getTime();
   // "21:00 Madrid" → UTC = asUtc - offset
   return new Date(asUtc.getTime() - offsetMs);
+}
+
+// ── Helper: parse a teams/{id}/data/{key} doc in EITHER format ──
+// Legacy blob format: {v: "<json string>"}.
+// Per-field merge format (MERGE_KEYS in js/db.js): the entries ARE the
+// doc fields, plus a _migrated marker. Reading only `.v` on a merge-format
+// doc silently yields {} — that bug made every player look unanswered.
+function parseDataDoc(snap, fallback) {
+  if (!snap.exists) return fallback;
+  const data = snap.data();
+  if (typeof data.v === "string") {
+    try {
+      return JSON.parse(data.v);
+    } catch (e) {
+      return fallback;
+    }
+  }
+  const out = {};
+  for (const k of Object.keys(data)) {
+    if (k !== "_migrated" && k !== "v") out[k] = data[k];
+  }
+  return out;
 }
 
 // ── Helper: get FCM tokens for users ──
@@ -234,8 +256,7 @@ exports.scheduledTrainingReminder = onSchedule({
 
     const availDoc = await db.collection("teams").doc(teamId)
         .collection("data").doc("fa_training_availability").get();
-    const avail = availDoc.exists ?
-      JSON.parse(availDoc.data().v || "{}") : {};
+    const avail = parseDataDoc(availDoc, {});
 
     const now = new Date();
     logger.info("Current time (server)", {iso: now.toISOString()});
@@ -328,13 +349,11 @@ exports.scheduledRpeReminder = onSchedule({
 
     const rpeDoc = await db.collection("teams").doc(teamId)
         .collection("data").doc("fa_player_rpe").get();
-    const rpeData = rpeDoc.exists ?
-      JSON.parse(rpeDoc.data().v || "{}") : {};
+    const rpeData = parseDataDoc(rpeDoc, {});
 
     const availDoc = await db.collection("teams").doc(teamId)
         .collection("data").doc("fa_training_availability").get();
-    const avail = availDoc.exists ?
-      JSON.parse(availDoc.data().v || "{}") : {};
+    const avail = parseDataDoc(availDoc, {});
 
     const playerUids = await getTeamMembersByRole(teamId, "player");
     const missingRpe = [];
@@ -417,8 +436,7 @@ exports.scheduledMatchAvailReminder = onSchedule({
     const matches = JSON.parse(matchDoc.data().v || "[]");
     const availDoc = await db.collection("teams").doc(teamId)
         .collection("data").doc("fa_match_availability").get();
-    const avail = availDoc.exists ?
-      JSON.parse(availDoc.data().v || "{}") : {};
+    const avail = parseDataDoc(availDoc, {});
 
     // Filter to weekend matches only
     const weekendMatches = matches.filter((m) => {
@@ -478,7 +496,64 @@ exports.fcfClassificacio = onRequest(
     },
 );
 
-// ── 6. archiveSeason — archive & reset season data (admin only) ──
+// ── 6. joinClub — validate a club code and assign membership ──
+// Club membership is ONLY assigned server-side: clients can no longer
+// write their own teamId (security rules reject it). Codes live in
+// clubCodes/{CODE} → {clubId}, unreadable by clients.
+exports.joinClub = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const uid = request.auth.uid;
+  const email = (request.auth.token.email || "").toLowerCase();
+  const code = String((request.data && request.data.code) || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,12}$/.test(code)) {
+    throw new HttpsError("invalid-argument", "Codi no vàlid.");
+  }
+
+  // Brute-force guard: max 10 attempts per hour per user
+  const attemptRef = db.collection("joinAttempts").doc(uid);
+  const attemptSnap = await attemptRef.get();
+  const now = Date.now();
+  const a = attemptSnap.exists ? attemptSnap.data() : {count: 0, windowStart: now};
+  if (now - a.windowStart > 3600e3) {
+    a.count = 0;
+    a.windowStart = now;
+  }
+  if (a.count >= 10) {
+    throw new HttpsError("resource-exhausted", "Massa intents. Prova-ho més tard.");
+  }
+  await attemptRef.set({count: a.count + 1, windowStart: a.windowStart});
+
+  const codeSnap = await db.collection("clubCodes").doc(code).get();
+  if (!codeSnap.exists) {
+    throw new HttpsError("not-found", "Codi de club incorrecte.");
+  }
+  const clubId = codeSnap.data().clubId;
+  const clubSnap = await db.collection("clubs").doc(clubId).get();
+  if (!clubSnap.exists) {
+    throw new HttpsError("not-found", "Club no trobat.");
+  }
+  const club = clubSnap.data();
+
+  const isLead = (club.leadEmail || "").toLowerCase() === email;
+  await db.collection("users").doc(uid).set(
+      {teamId: clubId, isTeamLead: isLead},
+      {merge: true},
+  );
+  logger.info("joinClub", {uid, clubId, isLead});
+
+  return {
+    clubId,
+    name: club.name || "",
+    badgeUrl: club.badgeUrl || "",
+    categories: club.categories || [],
+    fcfLinks: club.fcfLinks || [],
+    isTeamLead: isLead,
+  };
+});
+
+// ── 7. archiveSeason — archive & reset season data (admin only) ──
 const SEASON_KEYS = [
   "fa_matches", "fa_match_events", "fa_match_goals",
   "fa_training",
@@ -490,11 +565,15 @@ const SEASON_KEYS = [
   "fa_standings", "fa_matchday", "fa_news",
 ];
 
-// Keys stored as per-field merge (not blob {v: "..."})
+// Keys stored as per-field merge (not blob {v: "..."}) —
+// MUST stay in sync with MERGE_KEYS in js/db.js
 const MERGE_KEYS = new Set([
   "fa_training_availability",
   "fa_match_availability",
   "fa_training_staff_override",
+  "fa_player_rpe",
+  "fa_injury_notes",
+  "fa_injury_zone",
 ]);
 
 // Keys whose value is an object (not array)

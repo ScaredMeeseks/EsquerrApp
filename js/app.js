@@ -493,6 +493,10 @@
     'confirm.existing_injury':{ ca:'Aquest jugador ja té una lesió activa. Crear-ne una de nova?', es:'Este jugador ya tiene una lesión activa. ¿Crear una nueva?', en:'This player already has an active injury. Create a new one?' },
     'confirm.delete_user':    { ca:'Eliminar aquest usuari?', es:'¿Eliminar este usuario?', en:'Delete this user?' },
     'confirm.erase_all':      { ca:'Això esborrarà TOTES les dades. Estàs segur?', es:'Esto borrará TODOS los datos. ¿Estás seguro?', en:'This will erase ALL data. Are you sure?' },
+    'save.sync_title':        { ca:'Sincronització', es:'Sincronización', en:'Sync' },
+    'save.queued':            { ca:'Guardat al dispositiu — pendent de sincronitzar. No tanquis l\'app fins que tinguis connexió.', es:'Guardado en el dispositivo — pendiente de sincronizar. No cierres la app hasta tener conexión.', en:'Saved on device — pending sync. Keep the app open until you are back online.' },
+    'save.error':             { ca:'Error desant les dades. Revisa la connexió i torna-ho a provar.', es:'Error guardando los datos. Revisa la conexión y vuelve a intentarlo.', en:'Error saving data. Check your connection and try again.' },
+    'save.error_perms':       { ca:'No s\'ha pogut desar (permisos). Torna a iniciar sessió.', es:'No se ha podido guardar (permisos). Vuelve a iniciar sesión.', en:'Could not save (permissions). Please sign in again.' },
     'confirm.delete_match':   { ca:'Eliminar aquest partit?', es:'¿Eliminar este partido?', en:'Delete this match?' },
     'confirm.new_season_title': { ca:'Nova Temporada', es:'Nueva Temporada', en:'New Season' },
     'confirm.new_season_msg':   { ca:'Això arxivarà TOTES les dades de la temporada actual (partits, entrenaments, RPE, estadístiques…) i començarà de zero.\n\nEls jugadors, staff i pissarres tàctiques es mantindran.\n\nAquesta acció NO es pot desfer.', es:'Esto archivará TODOS los datos de la temporada actual (partidos, entrenamientos, RPE, estadísticas…) y empezará de cero.\n\nLos jugadores, staff y pizarras tácticas se mantendrán.\n\nEsta acción NO se puede deshacer.', en:'This will archive ALL current season data (matches, training, RPE, stats…) and start fresh.\n\nPlayers, staff and tactical boards will be preserved.\n\nThis action CANNOT be undone.' },
@@ -793,7 +797,13 @@
     if (saveResult !== false) {
       const users = getUsers();
       const u = users.find(x => x.id === playerId);
-      if (u) { u.fitnessStatus = status; u.injuryNote = note; saveUsers(users); }
+      // Only rewrite the roster blob when something actually changed —
+      // fa_users is a whole-blob write and concurrent writers clobber each other.
+      if (u && (u.fitnessStatus !== status || (u.injuryNote || '') !== note)) {
+        u.fitnessStatus = status;
+        u.injuryNote = note;
+        saveUsers(users);
+      }
     }
     return { fitnessStatus: status, injuryNote: note };
   }
@@ -909,8 +919,10 @@
   function setSession(user) {
     _currentSession = user;
     if (user && auth.currentUser) {
-      // Persist profile to Firestore (strip password if present)
-      const { password, ...profile } = user;
+      // Persist profile to Firestore. Strip password AND the server-owned
+      // fields (teamId/isTeamLead via joinClub, isAdmin derived from email) —
+      // security rules reject client writes that change them.
+      const { password, isAdmin, isTeamLead, teamId, ...profile } = user;
       db.collection('users').doc(auth.currentUser.uid).set(profile, { merge: true }).catch(console.error);
       // Also update localStorage for compat with roster/availability code
       let users = getUsers();
@@ -937,170 +949,6 @@
     $(id).hidden = false;
   }
 
-  // ---------- Seed data ----------
-  function seedData() {
-    // One-time migration: wipe corrupted data from earlier versions
-    if (!localStorage.getItem('fa_v9_reset')) {
-      localStorage.removeItem('fa_seeded');
-      localStorage.removeItem('fa_demo_seeded');
-      localStorage.removeItem('fa_responses_seeded');
-      localStorage.removeItem('fa_v3_reset');
-      localStorage.removeItem('fa_v4_reset');
-      localStorage.removeItem('fa_v5_reset');
-      localStorage.removeItem('fa_v6_reset');
-      localStorage.removeItem('fa_v7_reset');
-      localStorage.removeItem('fa_v8_reset');
-      localStorage.removeItem('fa_users');
-      localStorage.removeItem('fa_training');
-      localStorage.removeItem('fa_matches');
-      localStorage.removeItem('fa_matchday');
-      localStorage.removeItem('fa_standings');
-      localStorage.removeItem('fa_news');
-      localStorage.removeItem('fa_player_stats');
-      localStorage.removeItem('fa_player_rpe');
-      localStorage.removeItem('fa_training_availability');
-      localStorage.removeItem('fa_match_availability');
-      localStorage.removeItem('fa_staff_notifications');
-      sessionStorage.clear();
-      localStorage.setItem('fa_v9_reset', '1');
-    }
-
-    // Re-seed responses (v3): realistic data with injuries, extras, etc.
-    if (!localStorage.getItem('fa_responses_v3')) {
-      localStorage.removeItem('fa_responses_seeded');
-      localStorage.setItem('fa_responses_v3', '1');
-    }
-
-    // One-time fix: correct RPE dates that were stored as submission date instead of activity date
-    if (!localStorage.getItem('fa_rpe_date_fix')) {
-      const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-      const trn = JSON.parse(localStorage.getItem('fa_training') || '[]');
-      const mtch = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-      let changed = false;
-      Object.keys(rpeData).forEach(key => {
-        const entry = rpeData[key];
-        if (!entry) return;
-        const tMatch = key.match(/^(\d+)_training_(\d{4}-\d{2}-\d{2})$/);
-        if (tMatch) {
-          const correctDate = tMatch[2];
-          if (entry.date !== correctDate) { entry.date = correctDate; changed = true; }
-          return;
-        }
-        const mMatch = key.match(/^(\d+)_match_(\d+)$/);
-        if (mMatch) {
-          const mObj = mtch.find(m => String(m.id) === mMatch[2]);
-          if (mObj && mObj.date && entry.date !== mObj.date) { entry.date = mObj.date; changed = true; }
-        }
-      });
-      if (changed) localStorage.setItem('fa_player_rpe', JSON.stringify(rpeData));
-      localStorage.setItem('fa_rpe_date_fix', '1');
-    }
-
-    // Always seed demo players if missing
-    seedDemoPlayers();
-
-    if (localStorage.getItem('fa_seeded')) {
-      // Seed responses after training/matches exist
-      seedPlayerResponses();
-      return;
-    }
-
-    // --- Generate training sessions (Tue/Thu) for ~7 months back + 2 weeks ahead ---
-    const _ld = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const _now = new Date();
-    const _todayStr = _ld(_now);
-    const focusList = ['Tactical Drills', 'Fitness & Conditioning', 'Set Pieces', 'Match Simulation', 'Possession & Pressing', 'Finishing & Crossing'];
-    const training = [];
-    {
-      const s = new Date(_now); s.setMonth(s.getMonth() - 7);
-      const e = new Date(_now); e.setDate(e.getDate() + 14);
-      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-        const dow = d.getDay();
-        if (dow === 2 || dow === 4) {
-          const ds = _ld(d);
-          const past = ds < _todayStr;
-          training.push({ day: dow === 2 ? 'Tuesday' : 'Thursday', date: ds, time: dow === 2 ? '21:00 - 23:00' : '22:00 - 23:30', focus: focusList[Math.floor(Math.random() * focusList.length)], location: 'Escola Industrial', status: past ? 'past' : 'upcoming', ...(past ? { assistance: Math.floor(Math.random() * 40) + 55 } : {}) });
-        }
-      }
-    }
-
-    // --- Generate matches (~every 2 weeks on Saturday) ---
-    const oppList = ['CF Gavà', 'UE Cornellà', 'CE Manresa', 'CF Igualada', 'CE Europa', 'FC Santboià', 'UE Sant Andreu', 'CF Damm', 'CE Júpiter', 'CE Hospitalet', 'FC Martinenc', 'UE Sants', 'FC Prat', 'AE Prat', 'CF Vilafranca', 'UE Figueres'];
-    const awayLocs = ['Camp Municipal', 'Camp Igualada', 'Camp Santboià', 'Camp Europa', 'Camp Sant Andreu', 'Camp Damm', 'Camp Júpiter', 'Camp Hospitalet', 'Camp Martinenc', 'Camp Sants', 'Camp Prat', 'Camp AE Prat', 'Camp Vilafranca', 'Camp Figueres'];
-    const scorePool = ['3-1', '1-2', '2-2', '0-1', '2-0', '1-1', '3-0', '0-0', '4-2', '1-3', '2-1', '0-2'];
-    const matches = [];
-    {
-      let mId = 900001;
-      const s = new Date(_now); s.setMonth(s.getMonth() - 7);
-      while (s.getDay() !== 6) s.setDate(s.getDate() + 1);
-      const e = new Date(_now); e.setDate(e.getDate() + 14);
-      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 14)) {
-        const ds = _ld(d);
-        const isHome = matches.length % 2 === 0;
-        const opp = oppList[matches.length % oppList.length];
-        const past = ds < _todayStr;
-        matches.push({ id: mId++, home: isHome ? 'Esquerra' : opp, away: isHome ? opp : 'Esquerra', date: ds, time: isHome ? '16:00' : '11:00', ...(past ? { score: scorePool[matches.length % scorePool.length] } : {}), status: past ? 'played' : 'upcoming', location: isHome ? 'Escola Industrial' : awayLocs[matches.length % awayLocs.length], team: 'A' });
-      }
-    }
-
-    const standings = [
-      { pos: 1, team: 'FC Barcelona', played: 30, won: 22, drawn: 5, lost: 3, gf: 68, ga: 21, pts: 71 },
-      { pos: 2, team: 'Real Madrid', played: 30, won: 21, drawn: 4, lost: 5, gf: 65, ga: 28, pts: 67 },
-      { pos: 3, team: 'Atlético Madrid', played: 30, won: 18, drawn: 7, lost: 5, gf: 52, ga: 25, pts: 61 },
-      { pos: 4, team: 'Athletic Club', played: 30, won: 16, drawn: 6, lost: 8, gf: 45, ga: 30, pts: 54 },
-      { pos: 5, team: 'Villarreal CF', played: 30, won: 14, drawn: 9, lost: 7, gf: 48, ga: 35, pts: 51 },
-      { pos: 6, team: 'Real Betis', played: 30, won: 13, drawn: 8, lost: 9, gf: 40, ga: 34, pts: 47 },
-      { pos: 7, team: 'Sevilla FC', played: 30, won: 12, drawn: 7, lost: 11, gf: 38, ga: 38, pts: 43 },
-      { pos: 8, team: 'Valencia CF', played: 30, won: 11, drawn: 8, lost: 11, gf: 35, ga: 36, pts: 41 },
-    ];
-    const news = [
-      { title: 'Transfer window opens next month', date: '2026-03-25', body: 'Clubs are preparing bids as the summer transfer window approaches. Several high-profile signings are expected.' },
-      { title: 'New VAR rules announced for next season', date: '2026-03-23', body: 'The league has confirmed updated VAR protocols aimed at reducing delays and improving accuracy during matches.' },
-      { title: 'Youth academy produces three new call-ups', date: '2026-03-20', body: 'Three young talents from the academy have been called up to the first team squad ahead of the crucial April fixtures.' },
-    ];
-    // training array was already generated programmatically above
-    const playerStats = [
-      { name: 'Carlos Pérez', pos: 'FW', goals: 14, assists: 8, matches: 28, rating: 7.8 },
-      { name: 'Alejandro Torres', pos: 'MF', goals: 6, assists: 12, matches: 30, rating: 7.5 },
-      { name: 'Diego Martín', pos: 'DF', goals: 2, assists: 3, matches: 29, rating: 7.2 },
-      { name: 'Pablo Ruiz', pos: 'GK', goals: 0, assists: 0, matches: 30, rating: 7.4 },
-      { name: 'Iker Navarro', pos: 'FW', goals: 10, assists: 5, matches: 26, rating: 7.3 },
-      { name: 'Sergio López', pos: 'MF', goals: 4, assists: 9, matches: 27, rating: 7.1 },
-    ];
-
-    localStorage.setItem('fa_matches', JSON.stringify(matches));
-    localStorage.setItem('fa_matchday', JSON.stringify(matches.map(m => ({ homeAway: m.home === 'Esquerra' ? 'home' : 'away', team: 'A', date: m.date, opponent: m.home === 'Esquerra' ? m.away : m.home, location: m.location, kickoff: m.time }))));
-    localStorage.setItem('fa_standings', JSON.stringify(standings));
-    localStorage.setItem('fa_news', JSON.stringify(news));
-    localStorage.setItem('fa_training', JSON.stringify(training));
-    localStorage.setItem('fa_player_stats', JSON.stringify(playerStats));
-
-    // Seed demo player-users for roster display (merge with existing users)
-    localStorage.setItem('fa_seeded', '1');
-
-    // Seed player responses AFTER training/matches exist
-    seedPlayerResponses();
-  }
-
-  function seedDemoPlayers() {
-    if (localStorage.getItem('fa_demo_seeded')) return;
-    const existingUsers = getUsers();
-    const demoPlayers = [
-      { id: 100001, name: 'Carlos Pérez', email: 'carlos@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'FW', playerNumber: '9', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 28, minutesPlayed: 2340, team: 'A' },
-      { id: 100002, name: 'Alejandro Torres', email: 'alejandro@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'MF', playerNumber: '8', profilePic: '', profileSetupDone: true, fitnessStatus: 'doubt', injuryNote: 'Minor hamstring tightness', matchesPlayed: 30, minutesPlayed: 2580, team: 'A' },
-      { id: 100003, name: 'Diego Martín', email: 'diego@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'DF', playerNumber: '4', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 29, minutesPlayed: 2610, team: 'A' },
-      { id: 100004, name: 'Pablo Ruiz', email: 'pablo@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'GK', playerNumber: '1', profilePic: '', profileSetupDone: true, fitnessStatus: 'injured', injuryNote: 'Knee ligament sprain – 4 weeks', matchesPlayed: 30, minutesPlayed: 2700, team: 'A' },
-      { id: 100005, name: 'Iker Navarro', email: 'iker@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'FW', playerNumber: '11', profilePic: '', profileSetupDone: true, fitnessStatus: 'fit', injuryNote: '', matchesPlayed: 26, minutesPlayed: 1950, team: 'B' },
-      { id: 100006, name: 'Sergio López', email: 'sergio@demo.local', password: '', roles: ['player'], isAdmin: false, position: 'MF', playerNumber: '6', profilePic: '', profileSetupDone: true, fitnessStatus: 'doubt', injuryNote: 'Ankle discomfort – assessment pending', matchesPlayed: 27, minutesPlayed: 2160, team: 'B' },
-    ];
-    demoPlayers.forEach(dp => {
-      if (!existingUsers.find(u => u.email === dp.email)) {
-        existingUsers.push(dp);
-      }
-    });
-    saveUsers(existingUsers);
-    localStorage.setItem('fa_demo_seeded', '1');
-  }
 
   // Remove RPE entries older than 1 year to keep the blob lean
   function pruneOldRpe() {
@@ -1125,102 +973,6 @@
     }
   }
 
-  function seedPlayerResponses() {
-    if (localStorage.getItem('fa_responses_seeded')) return;
-    const users = getUsers().filter(u => (u.roles || []).includes('player'));
-    if (!users.length) return;
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const matches  = JSON.parse(localStorage.getItem('fa_matches')  || '[]');
-    const _ld2 = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const todayStr = _ld2(new Date());
-
-    const rpeData        = JSON.parse(localStorage.getItem('fa_player_rpe')            || '{}');
-    const availData      = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability')    || '{}');
-
-    function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-    const pastTrainings = training.filter(t => t.date && t.date < todayStr);
-    const pastMatches   = matches.filter(m  => m.date && m.date < todayStr);
-    const extraTypes    = ['Running', 'Cycling', 'Gym', 'Swimming'];
-
-    users.forEach(u => {
-      // Already has data? skip
-      if (Object.keys(rpeData).some(k => k.startsWith(u.id + '_'))) return;
-
-      // Generate 1-2 injury windows (each 5-18 days) spread across the season
-      const injuryWindows = [];
-      const numInj = rand(1, 2);
-      for (let i = 0; i < numInj; i++) {
-        if (pastTrainings.length < 6) break;
-        const idx = rand(3, pastTrainings.length - 3);
-        const startD = pastTrainings[idx].date;
-        const dur = rand(5, 18);
-        const endD = new Date(startD); endD.setDate(endD.getDate() + dur);
-        injuryWindows.push({ s: startD, e: _ld2(endD) });
-      }
-      function isInjured(ds) { return injuryWindows.some(w => ds >= w.s && ds <= w.e); }
-
-      const attendedDates = [];
-
-      // Skip RPE for the last 3 past trainings so they appear as pending actions
-      const recentSkipDates = new Set(pastTrainings.slice(-3).map(t => t.date));
-
-      // --- Training RPE + availability ---
-      pastTrainings.forEach(t => {
-        const availKey = u.id + '_' + t.date;
-        const rpeKey   = u.id + '_training_' + t.date;
-        if (isInjured(t.date)) {
-          availData[availKey] = 'injured';
-          // NO RPE when injured
-        } else if (rand(1, 100) <= 10) {
-          availData[availKey] = 'no';
-          // NO RPE when skipped
-        } else {
-          availData[availKey] = rand(1, 100) <= 12 ? 'late' : 'yes';
-          // Leave recent trainings without RPE so they show as pending actions
-          if (!recentSkipDates.has(t.date)) {
-            const rpe = rand(4, 9);
-            const minutes = rand(60, 120);
-            rpeData[rpeKey] = { rpe, minutes, ua: rpe * minutes, tag: 'training', date: t.date };
-          }
-          attendedDates.push(t.date);
-        }
-      });
-
-      // --- Match RPE + availability ---
-      pastMatches.forEach(m => {
-        const maKey  = u.id + '_' + m.id;
-        const rpeKey = u.id + '_match_' + m.id;
-        if (isInjured(m.date)) {
-          matchAvailData[maKey] = 'no_disponible';
-        } else if (rand(1, 100) <= 5) {
-          matchAvailData[maKey] = 'no_disponible';
-        } else {
-          matchAvailData[maKey] = 'disponible';
-          const rpe = rand(5, 10);
-          const minutes = rand(45, 90);
-          rpeData[rpeKey] = { rpe, minutes, ua: rpe * minutes, tag: 'match', date: m.date };
-        }
-      });
-
-      // --- Extra sessions on ~25% of attended training days (creates blue dots) ---
-      attendedDates.forEach(dateStr => {
-        if (rand(1, 100) <= 25) {
-          const tag = extraTypes[rand(0, extraTypes.length - 1)];
-          const rpe = rand(3, 8);
-          const minutes = rand(20, 60);
-          const eKey = u.id + '_extra_' + dateStr + '_' + rand(1000, 9999);
-          rpeData[eKey] = { rpe, minutes, ua: rpe * minutes, tag, date: dateStr };
-        }
-      });
-    });
-
-    localStorage.setItem('fa_player_rpe', JSON.stringify(rpeData));
-    localStorage.setItem('fa_training_availability', JSON.stringify(availData));
-    localStorage.setItem('fa_match_availability', JSON.stringify(matchAvailData));
-    localStorage.setItem('fa_responses_seeded', '1');
-  }
 
   // ---------- Auth (Firebase) ----------
   const ADMIN_EMAIL = 'marna96@gmail.com';
@@ -1274,12 +1026,12 @@
   }
 
   async function createClub(name, leadEmail, badgeFile) {
-    // Generate unique code
+    // Generate unique code (codes live in clubCodes/{CODE}, superuser-created)
     let code, exists = true;
     while (exists) {
       code = generateClubCode();
-      const snap = await db.collection('clubs').where('code', '==', code).get();
-      exists = !snap.empty;
+      const snap = await db.collection('clubCodes').doc(code).get();
+      exists = snap.exists;
     }
     const clubRef = db.collection('clubs').doc();
     const clubId = clubRef.id;
@@ -1292,7 +1044,6 @@
     }
     const clubData = {
       name: name,
-      code: code,
       badgeUrl: badgeUrl,
       leadEmail: leadEmail.trim().toLowerCase(),
       categories: {
@@ -1307,15 +1058,12 @@
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     await clubRef.set(clubData);
+    // The join code lives in clubCodes/{CODE} (superuser/functions only) —
+    // never on the club doc, which club members can read.
+    await db.collection('clubCodes').doc(code).set({ clubId: clubId });
     clubData.id = clubId;
+    clubData.code = code;
     return clubData;
-  }
-
-  async function getClubByCode(code) {
-    const snap = await db.collection('clubs').where('code', '==', code.toUpperCase().trim()).get();
-    if (snap.empty) return null;
-    const doc = snap.docs[0];
-    return Object.assign({ id: doc.id }, doc.data());
   }
 
   async function getClub(clubId) {
@@ -1759,62 +1507,64 @@
       const cred = await auth.createUserWithEmailAndPassword(email, pw);
       const uid = cred.user.uid;
 
-      // Determine club: superuser skips, team leads auto-match by email, players use code
+      // Everyone except the superuser must join a club with a code.
+      // Membership is assigned server-side by the joinClub Cloud Function
+      // (it validates the code and writes teamId/isTeamLead — clients can't).
+      // Team leads join with the club code too; the function detects them
+      // by matching their email against the club's leadEmail.
       let club = null;
-      if (email === ADMIN_EMAIL) {
-        // Superuser — no club needed at registration
-      } else if (teamCode) {
-        // Player provided a code — validate it
-        club = await getClubByCode(teamCode);
-        if (!club) {
-          await cred.user.delete();
-          errEl.textContent = t('error.invalid_team_code');
-          errEl.hidden = false;
-          return;
-        }
-      } else {
-        // No code — check if this email is a team lead for any club
-        var leadSnap = await db.collection('clubs').where('leadEmail', '==', email).limit(1).get();
-        if (!leadSnap.empty) {
-          var leadDoc = leadSnap.docs[0];
-          club = Object.assign({ id: leadDoc.id }, leadDoc.data());
-        } else {
-          // Not a superuser, not a team lead, and no code — require code
+      if (email !== ADMIN_EMAIL) {
+        if (!teamCode) {
           await cred.user.delete();
           errEl.textContent = t('error.need_team_code');
           errEl.hidden = false;
           return;
         }
+        try {
+          const joinFn = firebase.app().functions('us-central1').httpsCallable('joinClub');
+          const res = await joinFn({ code: teamCode.trim().toUpperCase() });
+          club = res.data;
+        } catch (joinErr) {
+          // No profile doc exists yet, so deleting the auth user leaves nothing behind
+          await cred.user.delete();
+          errEl.textContent = (joinErr && joinErr.message) ? joinErr.message : t('error.invalid_team_code');
+          errEl.hidden = false;
+          return;
+        }
       }
 
-      const isLead = club && club.leadEmail === email;
-      const newUser = {
+      // Profile fields (never write teamId/isTeamLead/isAdmin from the client —
+      // security rules reject it; joinClub already wrote membership server-side)
+      const profileFields = {
         id: uid,
         name,
         email,
         roles: [],
-        isAdmin: email === ADMIN_EMAIL,
-        isTeamLead: isLead || false,
         position: '',
         playerNumber: '',
         profilePic: '',
         dob: '',
         category: '',
         team: '',
-        profileSetupDone: false,
-        teamId: club ? club.id : 'none'
+        profileSetupDone: false
       };
+      await db.collection('users').doc(uid).set(profileFields, { merge: true });
+
+      // Runtime session includes derived flags (not client-writable)
+      const newUser = Object.assign({}, profileFields, {
+        isAdmin: email === ADMIN_EMAIL,
+        isTeamLead: club ? !!club.isTeamLead : false,
+        teamId: club ? club.clubId : 'none'
+      });
       _currentSession = newUser;
-      // Write to Firestore
-      await db.collection('users').doc(uid).set(newUser);
       // Load club config
-      if (club) await loadClubConfig(club.id);
+      if (club) await loadClubConfig(club.clubId);
       // Push to localStorage for compat with roster/availability code
       const users = getUsers();
       users.push(newUser);
       saveUsers(users);
       // Sync team data between localStorage and Firestore
-      if (club) await DB.init(club.id);
+      if (club) await DB.init(club.clubId);
       e.target.reset();
       errEl.hidden = true;
       navigate();
@@ -1842,26 +1592,19 @@
         user = doc.data();
         user.id = uid;
       } else {
-        // Fallback: create profile if missing
-        user = { id: uid, name: '', email, roles: [], isAdmin: email === ADMIN_EMAIL, isTeamLead: false, position: '', playerNumber: '', profilePic: '', dob: '', category: '', team: '', profileSetupDone: false, teamId: 'none' };
+        // Fallback: create profile if missing (no teamId/isTeamLead/isAdmin —
+        // those are server-owned; the user will be routed to the join-club view)
+        user = { id: uid, name: '', email, roles: [], position: '', playerNumber: '', profilePic: '', dob: '', category: '', team: '', profileSetupDone: false };
         await db.collection('users').doc(uid).set(user);
       }
-      // Ensure admin flag & fields
+      // Ensure admin flag & fields (runtime-only; never persisted by clients)
       user.isAdmin = user.email === ADMIN_EMAIL;
       if (user.isTeamLead === undefined) user.isTeamLead = false;
       if (!user.category) user.category = '';
       if (!user.teamId || user.teamId === 'default') {
+        // No club yet — the app routes to the join-club view, where the
+        // joinClub Cloud Function assigns membership (leads included).
         user.teamId = 'none';
-        // Auto-match: check if any club has this email as leadEmail
-        var leadSnap = await db.collection('clubs').where('leadEmail', '==', email).limit(1).get();
-        if (!leadSnap.empty) {
-          var leadDoc = leadSnap.docs[0];
-          user.teamId = leadDoc.id;
-          user.isTeamLead = true;
-          await db.collection('users').doc(uid).set({ teamId: leadDoc.id, isTeamLead: true }, { merge: true });
-        } else if (email !== ADMIN_EMAIL) {
-          db.collection('users').doc(uid).set({ teamId: 'none' }, { merge: true }).catch(console.error);
-        }
       }
       if (user.profileSetupDone === undefined) user.profileSetupDone = false;
       if (!user.position) user.position = '';
@@ -1954,23 +1697,24 @@
       errEl.hidden = false;
       return;
     }
-    const club = await getClubByCode(code);
-    if (!club) {
-      errEl.textContent = t('error.invalid_code');
+    // Membership is assigned server-side: the joinClub Cloud Function
+    // validates the code and writes teamId/isTeamLead (clients can't).
+    let club;
+    try {
+      const joinFn = firebase.app().functions('us-central1').httpsCallable('joinClub');
+      const res = await joinFn({ code: code });
+      club = res.data;
+    } catch (err) {
+      errEl.textContent = (err && err.message) ? err.message : t('error.invalid_code');
       errEl.hidden = false;
       return;
     }
     const session = getSession();
-    const isLead = club.leadEmail === session.email;
-    session.teamId = club.id;
-    if (isLead) session.isTeamLead = true;
+    session.teamId = club.clubId;
+    if (club.isTeamLead) session.isTeamLead = true;
     setSession(session);
-    // Persist to Firestore
-    var updateData = { teamId: club.id };
-    if (isLead) updateData.isTeamLead = true;
-    db.collection('users').doc(session.id).set(updateData, { merge: true }).catch(console.error);
-    await loadClubConfig(club.id);
-    await DB.init(club.id);
+    await loadClubConfig(club.clubId);
+    await DB.init(club.clubId);
     // Add this user to the club's fa_users
     let users = getUsers();
     if (!users.find(u => String(u.id) === String(session.id))) {
@@ -8978,20 +8722,6 @@
       </div>`;
   }
 
-  function seedMockAvailability(trainingDate, players) {
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const choices = ['yes', 'late', 'no', 'injured'];
-    let seeded = false;
-    players.forEach(p => {
-      const key = p.id + '_' + trainingDate;
-      if (!availData[key]) {
-        availData[key] = choices[Math.floor(Math.random() * choices.length)];
-        seeded = true;
-      }
-    });
-    if (seeded) localStorage.setItem('fa_training_availability', JSON.stringify(availData));
-  }
-
   function isTrainingLocked(t) {
     if (!t.date || !t.time) return false;
     const start = new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00');
@@ -9129,8 +8859,6 @@
     // Fallback: if no schedule match, show all letters
     const stdLettersForSlot = _trainingLetters.length ? _trainingLetters : _allLetters;
     const locked = isTrainingLocked(tr);
-    // Seed mock data only for demo/seeded environments
-    if (localStorage.getItem('fa_seeded')) seedMockAvailability(tr.date, players);
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -10603,13 +10331,6 @@
           <div id="create-club-result" style="margin-top:.6rem;" hidden></div>
         </div>
       </div>`;
-
-      html += `
-      <div class="card">
-        <div class="card-title">${t('settings.data_mgmt')}</div>
-        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.reset_desc')}</p>
-        <button class="btn btn-danger" id="btn-reset-data">${t('settings.reset_btn')}</button>
-      </div>`;
     }
 
     return html;
@@ -10625,15 +10346,22 @@
         listEl.innerHTML = '<p style="color:var(--text-secondary);font-size:.9rem;">Cap club creat encara.</p>';
         return;
       }
+      // Join codes live in clubCodes/{CODE} → {clubId} (superuser-readable only)
+      const codeByClub = {};
+      try {
+        const codesSnap = await db.collection('clubCodes').get();
+        codesSnap.forEach(cd => { codeByClub[cd.data().clubId] = cd.id; });
+      } catch (codeErr) { console.warn('Could not load club codes:', codeErr); }
       let rows = '';
       snap.forEach(d => {
         const c = d.data();
+        const code = codeByClub[d.id] || '—';
         const badgeImg = c.badgeUrl ? `<img src="${c.badgeUrl}" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:.4rem;">` : '';
         rows += `<tr>
           <td>${badgeImg}${sanitize(c.name)}</td>
-          <td style="font-family:monospace;letter-spacing:.1em;font-weight:600;">${c.code}</td>
+          <td style="font-family:monospace;letter-spacing:.1em;font-weight:600;">${code}</td>
           <td>${sanitize(c.leadEmail)}</td>
-          <td><button class="btn btn-small btn-outline btn-copy-code" data-code="${c.code}" title="Copiar codi">📋</button></td>
+          <td><button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button></td>
         </tr>`;
       });
       listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
@@ -12074,6 +11802,54 @@
     }, 4000);
   }
 
+  // ---------- Acknowledged saves (player-submitted data) ----------
+  // Writes localStorage synchronously (instant UI), then waits for the
+  // Firestore SERVER ack. Three outcomes on the tapped element:
+  //   save-pending  → spinner while waiting
+  //   save-confirmed → server acknowledged the write
+  //   save-queued   → no ack within 4s (offline/slow): Firestore persistence
+  //                   will deliver it, unless persistence failed (multi-tab),
+  //                   where we warn the player loudly.
+  // Rejected writes surface through the 'db-write-error' listener below.
+  function ackSave(key, value, el) {
+    if (el) { el.classList.add('save-pending'); el.classList.remove('save-confirmed', 'save-queued'); }
+    const p = DB.setItemAcked(key, value);
+    const timeout = new Promise(res => setTimeout(() => res('timeout'), 4000));
+    return Promise.race([p.then(() => 'ok', () => 'error'), timeout]).then(result => {
+      if (el) el.classList.remove('save-pending');
+      if (result === 'ok') {
+        if (el) {
+          el.classList.add('save-confirmed');
+          setTimeout(() => el.classList.remove('save-confirmed'), 1500);
+        }
+      } else if (result === 'timeout') {
+        if (window._persistenceFailed || !navigator.onLine) {
+          _showPushToast(t('save.sync_title'), t('save.queued'));
+        }
+        if (el) el.classList.add('save-queued');
+        // Upgrade the indicator when the ack eventually arrives.
+        p.then(() => {
+          if (el) {
+            el.classList.remove('save-queued');
+            el.classList.add('save-confirmed');
+            setTimeout(() => el.classList.remove('save-confirmed'), 1500);
+          }
+        }).catch(() => { if (el) el.classList.remove('save-queued'); });
+      }
+      // result === 'error' → toast shown by the db-write-error listener
+      return result;
+    });
+  }
+
+  window.addEventListener('db-write-error', (e) => {
+    const code = e.detail && e.detail.code;
+    if (code === 'permission-denied') {
+      _showPushToast(t('save.sync_title'), t('save.error_perms'));
+    } else {
+      _showPushToast(t('save.sync_title'), t('save.error'));
+    }
+  });
+
   function getStaffNotifications() {
     return JSON.parse(localStorage.getItem('fa_staff_notifications') || '[]');
   }
@@ -12199,14 +11975,14 @@
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const key = session.id + '_' + date;
     availData[key] = 'injured';
-    localStorage.setItem('fa_training_availability', JSON.stringify(availData));
+    ackSave('fa_training_availability', JSON.stringify(availData), null);
     injNotes[session.id] = note;
-    localStorage.setItem('fa_injury_notes', JSON.stringify(injNotes));
+    ackSave('fa_injury_notes', JSON.stringify(injNotes), null);
     // Store which body zone polygon was selected
     if (zoneIdx != null) {
       const zoneMap = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
       zoneMap[session.id] = zoneIdx;
-      localStorage.setItem('fa_injury_zone', JSON.stringify(zoneMap));
+      ackSave('fa_injury_zone', JSON.stringify(zoneMap), null);
     }
     const users = getUsers();
     const u = users.find(x => x.id === session.id);
@@ -13731,7 +13507,6 @@
         if (!activityDate) { const n = new Date(); activityDate = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0'); }
         const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
         rpeData[key] = { rpe, minutes, ua, tag, date: activityDate };
-        localStorage.setItem('fa_player_rpe', JSON.stringify(rpeData));
         // Staff notification
         const session = getSession();
         const actLabel = card.querySelector('.action-label');
@@ -13743,8 +13518,11 @@
           detail: 'RPE ' + rpe + ' · ' + minutes + ' min',
           activity: actText
         });
-        renderPage(getSession());
-        updateActionsBadge();
+        // Re-render only once the server has acknowledged (or the write is queued)
+        ackSave('fa_player_rpe', JSON.stringify(rpeData), btn).then(() => {
+          renderPage(getSession());
+          updateActionsBadge();
+        });
       });
     });
 
@@ -13826,14 +13604,16 @@
           const ua = rpe * minutes;
           const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
           rpeData[key] = { rpe, minutes, ua, tag, date: dateVal };
-          localStorage.setItem('fa_player_rpe', JSON.stringify(rpeData));
           addStaffNotification({
             type: 'extra_training',
             playerName: session ? session.name : '?',
             detail: 'RPE ' + rpe + ' · ' + minutes + ' min',
             activity: tag + ' (' + dateVal + ')'
           });
-          renderPage(session);
+          const extraBtn = card.querySelector('.action-extra-submit');
+          ackSave('fa_player_rpe', JSON.stringify(rpeData), extraBtn).then(() => {
+            renderPage(session);
+          });
         });
       });
     }
@@ -13872,7 +13652,6 @@
         const key = session.id + '_' + matchId;
         const maData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
         maData[key] = btn.dataset.mavail;
-        localStorage.setItem('fa_match_availability', JSON.stringify(maData));
         // Derive fitness status (injury this week + disponible → doubt)
         deriveFitnessStatus(session.id);
         // Staff notification
@@ -13884,8 +13663,11 @@
           detail: btn.dataset.mavail === 'disponible' ? 'Disponible' : 'No Disponible',
           activity: matchObj ? (matchObj.home + ' vs ' + matchObj.away + (matchObj.date ? ' · ' + matchObj.date : '')) : 'Match'
         });
-        renderPage(session);
-        updateActionsBadge();
+        // Re-render only once the server has acknowledged (or the write is queued)
+        ackSave('fa_match_availability', JSON.stringify(maData), btn).then(() => {
+          renderPage(session);
+          updateActionsBadge();
+        });
       });
     });
     // Click chosen match availability badge to re-open
@@ -13897,8 +13679,9 @@
         const key = session.id + '_' + matchId;
         const maData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
         delete maData[key];
-        localStorage.setItem('fa_match_availability', JSON.stringify(maData));
-        renderPage(session);
+        ackSave('fa_match_availability', JSON.stringify(maData), badge).then(() => {
+          renderPage(session);
+        });
       });
     });
     $$('[data-go-training]').forEach(el => {
@@ -13926,7 +13709,6 @@
         const key = session.id + '_' + date;
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         availData[key] = val;
-        localStorage.setItem('fa_training_availability', JSON.stringify(availData));
         // If answering non-injured, clear any injury data and re-derive fitness
         const injNotes2 = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
         if (injNotes2[session.id]) {
@@ -13947,8 +13729,11 @@
           detail: answerMap[val] || val,
           activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
         });
-        renderPage(getSession());
-        updateActionsBadge();
+        // Re-render only once the server has acknowledged (or the write is queued)
+        ackSave('fa_training_availability', JSON.stringify(availData), btn).then(() => {
+          renderPage(getSession());
+          updateActionsBadge();
+        });
       });
     });
     // Click chosen badge to re-open options
@@ -13980,14 +13765,16 @@
               const key = session.id + '_' + date;
               const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
               availData[key] = val;
-              localStorage.setItem('fa_training_availability', JSON.stringify(availData));
               deriveFitnessStatus(session.id);
               const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
               const tObj = training.find(t => t.date === date);
               const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
               addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')' });
-              renderPage(getSession());
-              updateActionsBadge();
+              // Re-render only once the server has acknowledged (or the write is queued)
+              ackSave('fa_training_availability', JSON.stringify(availData), btn).then(() => {
+                renderPage(getSession());
+                updateActionsBadge();
+              });
             });
           });
           return;
@@ -13997,7 +13784,6 @@
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         const wasInjured = availData[key] === 'injured';
         delete availData[key];
-        localStorage.setItem('fa_training_availability', JSON.stringify(availData));
         if (wasInjured) {
           const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
           delete injNotes[session.id];
@@ -14007,7 +13793,9 @@
           if (u) { u.fitnessStatus = 'fit'; u.injuryNote = ''; saveUsers(users); }
           deriveFitnessStatus(session.id);
         }
-        renderPage(session);
+        ackSave('fa_training_availability', JSON.stringify(availData), badge).then(() => {
+          renderPage(session);
+        });
       });
     });
 
@@ -14423,18 +14211,6 @@
       });
     });
 
-    // Admin: reset data
-    const resetBtn = $('#btn-reset-data');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', () => {
-        if (!confirm(t('confirm.erase_all'))) return;
-        localStorage.clear();
-        sessionStorage.clear();
-        seedData();
-        navigate();
-      });
-    }
-
     // Admin: new season
     const newSeasonBtn = $('#btn-new-season');
     if (newSeasonBtn) {
@@ -14545,8 +14321,6 @@
   // #region Init & Bootstrap
   // ---------- Init ----------
   function init() {
-    seedData();
-
     // Apply saved language to HTML data-i18n elements
     document.documentElement.setAttribute('data-lang', _lang);
     applyI18nHtml();
@@ -14833,18 +14607,10 @@
               if (user.isTeamLead === undefined) user.isTeamLead = false;
               if (!user.category) user.category = '';
               _currentSession = user;
-              // Auto-match team leads on refresh: if no teamId, check clubs
-              if (!user.teamId || user.teamId === 'none' || user.teamId === 'default') {
-                try {
-                  var leadSnap = await db.collection('clubs').where('leadEmail', '==', (user.email || '').toLowerCase()).limit(1).get();
-                  if (!leadSnap.empty) {
-                    var leadDoc = leadSnap.docs[0];
-                    user.teamId = leadDoc.id;
-                    user.isTeamLead = true;
-                    _currentSession = user;
-                    await db.collection('users').doc(firebaseUser.uid).set({ teamId: leadDoc.id, isTeamLead: true }, { merge: true });
-                  }
-                } catch (e) { console.error('Auto-match failed:', e); }
+              // No club yet → the app routes to the join-club view; membership
+              // is assigned only by the joinClub Cloud Function (leads included).
+              if (!user.teamId || user.teamId === 'default') {
+                user.teamId = 'none';
               }
               // Update localStorage for compat
               let users = getUsers();
@@ -14863,7 +14629,13 @@
             try {
               await loadClubConfig(tid);
               await DB.init(tid);
-              pruneOldRpe();
+              // Prune at most once per day per device (local-only flag) —
+              // avoids rewriting RPE data on every auth refresh.
+              const _today = new Date().toISOString().slice(0, 10);
+              if (localStorage.getItem('fa_last_rpe_prune') !== _today) {
+                pruneOldRpe();
+                localStorage.setItem('fa_last_rpe_prune', _today);
+              }
             } catch (e) { console.error(e); }
           }
           // Initialize push notifications

@@ -1,8 +1,58 @@
+// ============================================================
+// One-time cleanup of fabricated/demo data in team data docs.
+//
+// Removes entries whose uid is not in the real roster, or whose
+// date/matchId doesn't match a real training/match. Covers:
+//   fa_training_availability, fa_match_availability, fa_player_rpe
+//
+// DRY-RUN by default (prints what would be deleted). Run from
+// Cloud Shell (repo root, after `npm install firebase-admin --no-save`):
+//   node functions/cleanup-seed.js            # dry-run report
+//   node functions/cleanup-seed.js --apply    # actually delete
+// ============================================================
+
 const admin = require('firebase-admin');
-admin.initializeApp();
+admin.initializeApp({ projectId: 'esquerrapp' });
 const db = admin.firestore();
 
+const APPLY = process.argv.includes('--apply');
+const DEMO_UIDS = new Set(['100001', '100002', '100003', '100004', '100005', '100006']);
+
+// Parse a data doc in either format: blob {v:"json"} or per-field merge.
+function entriesOf(snap) {
+  if (!snap.exists) return {};
+  const data = snap.data();
+  if (typeof data.v === 'string') {
+    try { return JSON.parse(data.v); } catch (e) { return {}; }
+  }
+  const out = {};
+  for (const k of Object.keys(data)) {
+    if (k !== '_migrated' && k !== 'v') out[k] = data[k];
+  }
+  return out;
+}
+
+async function deleteFields(docRef, keys, label, tid) {
+  if (!keys.length) {
+    console.log(`${tid}: ${label} clean`);
+    return;
+  }
+  console.log(`${tid}: ${label} — ${APPLY ? 'deleting' : 'WOULD delete'} ${keys.length} entries:`);
+  keys.forEach((k) => console.log(`    ${k}`));
+  if (APPLY) {
+    // Per-field deletes in chunks of 400 (update size limits)
+    for (let i = 0; i < keys.length; i += 400) {
+      const deletes = {};
+      keys.slice(i, i + 400).forEach((k) => {
+        deletes[k] = admin.firestore.FieldValue.delete();
+      });
+      await docRef.update(deletes);
+    }
+  }
+}
+
 (async () => {
+  console.log(APPLY ? '=== APPLY MODE ===' : '=== DRY-RUN (pass --apply to delete) ===');
   const teams = await db.collection('teams').get();
   for (const team of teams.docs) {
     const tid = team.id;
@@ -11,65 +61,69 @@ const db = admin.firestore();
     const [tSnap, mSnap, uSnap] = await Promise.all([
       dataCol.doc('fa_training').get(),
       dataCol.doc('fa_matches').get(),
-      dataCol.doc('fa_users').get()
+      dataCol.doc('fa_users').get(),
     ]);
 
     const trainings = tSnap.exists && tSnap.data().v ? JSON.parse(tSnap.data().v) : [];
-    const matches   = mSnap.exists && mSnap.data().v ? JSON.parse(mSnap.data().v) : [];
-    const users     = uSnap.exists && uSnap.data().v ? JSON.parse(uSnap.data().v) : [];
+    const matches = mSnap.exists && mSnap.data().v ? JSON.parse(mSnap.data().v) : [];
+    const users = uSnap.exists && uSnap.data().v ? JSON.parse(uSnap.data().v) : [];
 
-    const realDates = new Set(trainings.map(t => t.date));
-    const realMatchIds = new Set(matches.map(m => m.id));
-    const realUserIds = new Set(users.map(u => String(u.id)));
+    // Normalize everything to strings — match ids are numbers in the data
+    // but always strings inside availability/RPE keys.
+    const realDates = new Set(trainings.map((t) => String(t.date)));
+    const realMatchIds = new Set(matches.map((m) => String(m.id)));
+    const realUserIds = new Set(
+        users.map((u) => String(u.id)).filter((id) => !DEMO_UIDS.has(id)),
+    );
 
-    // Clean fa_training_availability
-    const taSnap = await dataCol.doc('fa_training_availability').get();
-    if (taSnap.exists) {
-      const data = taSnap.data();
-      const deletes = {};
-      let count = 0;
-      for (const key of Object.keys(data)) {
-        if (key === '_migrated' || key === 'v') continue;
-        const parts = key.split('_');
-        const uid = parts[0];
-        const date = parts.slice(1).join('_');
-        if (realUserIds.has(uid) === false || realDates.has(date) === false) {
-          deletes[key] = admin.firestore.FieldValue.delete();
-          count++;
-        }
-      }
-      if (count > 0) {
-        await dataCol.doc('fa_training_availability').update(deletes);
-        console.log(tid + ': deleted ' + count + ' fake training availability entries');
-      } else {
-        console.log(tid + ': training availability clean');
-      }
-    }
+    // ── fa_training_availability: keys are {uid}_{date} ──
+    const taRef = dataCol.doc('fa_training_availability');
+    const ta = entriesOf(await taRef.get());
+    const taBad = Object.keys(ta).filter((key) => {
+      const i = key.indexOf('_');
+      if (i < 0) return true;
+      const uid = key.slice(0, i);
+      const date = key.slice(i + 1);
+      return !realUserIds.has(uid) || !realDates.has(date);
+    });
+    await deleteFields(taRef, taBad, 'training availability', tid);
 
-    // Clean fa_match_availability
-    const maSnap = await dataCol.doc('fa_match_availability').get();
-    if (maSnap.exists) {
-      const data = maSnap.data();
-      const deletes = {};
-      let count = 0;
-      for (const key of Object.keys(data)) {
-        if (key === '_migrated' || key === 'v') continue;
-        const parts = key.split('_');
-        const uid = parts[0];
-        const matchId = parts.slice(1).join('_');
-        if (realUserIds.has(uid) === false || realMatchIds.has(matchId) === false) {
-          deletes[key] = admin.firestore.FieldValue.delete();
-          count++;
-        }
+    // ── fa_match_availability: keys are {uid}_{matchId} ──
+    const maRef = dataCol.doc('fa_match_availability');
+    const ma = entriesOf(await maRef.get());
+    const maBad = Object.keys(ma).filter((key) => {
+      const i = key.indexOf('_');
+      if (i < 0) return true;
+      const uid = key.slice(0, i);
+      const matchId = key.slice(i + 1);
+      return !realUserIds.has(uid) || !realMatchIds.has(matchId);
+    });
+    await deleteFields(maRef, maBad, 'match availability', tid);
+
+    // ── fa_player_rpe: keys are {uid}_training_{date} / {uid}_match_{id} /
+    //    {uid}_extra_{date}_{rand} ──
+    const rpeRef = dataCol.doc('fa_player_rpe');
+    const rpe = entriesOf(await rpeRef.get());
+    const rpeBad = Object.keys(rpe).filter((key) => {
+      const i = key.indexOf('_');
+      if (i < 0) return true;
+      const uid = key.slice(0, i);
+      const rest = key.slice(i + 1);
+      if (!realUserIds.has(uid)) return true;
+      if (rest.startsWith('training_')) {
+        return !realDates.has(rest.slice('training_'.length));
       }
-      if (count > 0) {
-        await dataCol.doc('fa_match_availability').update(deletes);
-        console.log(tid + ': deleted ' + count + ' fake match availability entries');
-      } else {
-        console.log(tid + ': match availability clean');
+      if (rest.startsWith('match_')) {
+        return !realMatchIds.has(rest.slice('match_'.length));
       }
-    }
+      // 'extra_' entries have free-form dates — keep if the uid is real
+      return !rest.startsWith('extra_');
+    });
+    await deleteFields(rpeRef, rpeBad, 'player RPE', tid);
   }
   console.log('Done!');
   process.exit(0);
-})().catch(e => { console.error(e); process.exit(1); });
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

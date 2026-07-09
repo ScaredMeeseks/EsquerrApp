@@ -54,6 +54,9 @@ const DB = (function () {
     'fa_training_availability',
     'fa_match_availability',
     'fa_training_staff_override',
+    'fa_player_rpe',
+    'fa_injury_notes',
+    'fa_injury_zone',
   ]);
 
   let _teamId = null;
@@ -68,6 +71,14 @@ const DB = (function () {
 
   function dataRef(key) {
     return db.collection('teams').doc(_teamId).collection('data').doc(key);
+  }
+
+  /** Surface a failed mirror write to the app (app.js shows a toast). */
+  function _onWriteError(key, err) {
+    console.error('[DB] write failed for', key, err);
+    window.dispatchEvent(new CustomEvent('db-write-error', {
+      detail: { key: key, code: err && err.code }
+    }));
   }
 
   /**
@@ -95,8 +106,12 @@ const DB = (function () {
       }
     }
     if (hasUpdates) {
-      dataRef(key).set(updates, { merge: true }).catch(console.error);
+      return dataRef(key).set(updates, { merge: true }).catch(function (err) {
+        _onWriteError(key, err);
+        throw err;
+      });
     }
+    return Promise.resolve();
   }
 
   /**
@@ -175,14 +190,10 @@ const DB = (function () {
     }
 
     // ── Reconcile users/ collection → fa_users blob ──────────────
+    // Query MUST be team-scoped: security rules reject unscoped user list reads.
     try {
-      var allSnap = await db.collection('users').get();
-      var allUserDocs = allSnap.docs.filter(function (d) {
-        var t = d.data().teamId;
-        if (t === teamId) return true;
-        if (teamId === 'default' && (!t || t === '')) return true;
-        return false;
-      });
+      var allSnap = await db.collection('users').where('teamId', '==', teamId).get();
+      var allUserDocs = allSnap.docs;
       if (allUserDocs.length) {
         var faUsers = JSON.parse(localStorage.getItem('fa_users') || '[]');
         var existingIds = {};
@@ -269,9 +280,9 @@ const DB = (function () {
     _origSetItem(key, value);
     if (_teamId && SYNCED_KEYS.has(key)) {
       if (MERGE_KEYS.has(key)) {
-        _writeMerge(key, oldValue, value);
+        _writeMerge(key, oldValue, value).catch(function () { /* surfaced via db-write-error */ });
       } else {
-        dataRef(key).set({ v: value }).catch(console.error);
+        dataRef(key).set({ v: value }).catch(function (err) { _onWriteError(key, err); });
       }
     }
   };
@@ -279,14 +290,31 @@ const DB = (function () {
   localStorage.removeItem = function (key) {
     _origRemoveItem(key);
     if (_teamId && SYNCED_KEYS.has(key)) {
-      dataRef(key).delete().catch(console.error);
+      dataRef(key).delete().catch(function (err) { _onWriteError(key, err); });
     }
   };
+
+  /**
+   * Like localStorage.setItem but returns a Promise that resolves when the
+   * Firestore mirror write is acknowledged by the SERVER (Firestore promises
+   * do not resolve from the local cache), or rejects on failure.
+   * localStorage is still updated synchronously first, so reads stay instant.
+   */
+  function setItemAcked(key, value) {
+    var oldValue = MERGE_KEYS.has(key) ? _origGetItem(key) : null;
+    _origSetItem(key, value);
+    if (!_teamId || !SYNCED_KEYS.has(key)) return Promise.resolve();
+    if (MERGE_KEYS.has(key)) return _writeMerge(key, oldValue, value);
+    return dataRef(key).set({ v: value }).catch(function (err) {
+      _onWriteError(key, err);
+      throw err;
+    });
+  }
 
   /** Flush all synced localStorage keys without connecting to Firestore. */
   function flush() {
     SYNCED_KEYS.forEach(function (key) { _origRemoveItem(key); });
   }
 
-  return { init: init, cleanup: cleanup, flush: flush, SYNCED_KEYS: SYNCED_KEYS };
+  return { init: init, cleanup: cleanup, flush: flush, SYNCED_KEYS: SYNCED_KEYS, setItemAcked: setItemAcked };
 })();

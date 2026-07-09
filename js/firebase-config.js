@@ -37,6 +37,9 @@ try {
 // Enable Firestore offline persistence so the app works without internet
 // and queued writes sync automatically when connectivity returns.
 const _persistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+  // Without persistence, offline writes are NOT queued across reloads —
+  // the app must warn instead of silently accepting answers (see ackSave in app.js).
+  window._persistenceFailed = true;
   if (err.code === 'failed-precondition') {
     // Multiple tabs open — persistence can only be enabled in one tab at a time
     console.warn('Firestore persistence unavailable: multiple tabs open.');
