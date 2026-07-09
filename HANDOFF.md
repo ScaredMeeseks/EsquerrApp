@@ -25,7 +25,7 @@ _Rolling document, overwritten each session. Last updated: 2026-07-10 (Phase 1 c
    a. Backup: `gcloud firestore export gs://esquerrapp-backups/pre-phase-1-$(date +%F) --project esquerrapp`
    b. Merge `phase1-reliability-security` → `main`, push (this also deploys frontend + builds APK — acceptable: new JS join flow needs the function, so do c. immediately after).
    c. `cd ~/EsquerrApp && git pull && ./deploy.sh functions`
-   d. `npm install firebase-admin --no-save && node scripts/setup-club-codes.js`
+   d. `node functions/setup-club-codes.js` (lives in functions/ to use functions/node_modules — root npm installs are broken on Cloud Shell)
    e. `node functions/cleanup-seed.js` (review dry-run!) → `node functions/cleanup-seed.js --apply`
    f. `./deploy.sh rules`
    g. Install the fresh APK from the Actions run on test devices.

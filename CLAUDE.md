@@ -69,7 +69,7 @@ cd ~/EsquerrApp && ./deploy.sh functions   # cloud functions
 # first time: git clone https://github.com/ScaredMeeseks/EsquerrApp.git ~/EsquerrApp
 ```
 
-One-off data scripts (migrations, backfills) live in `scripts/` and run from Cloud Shell with the Admin SDK: `npm install firebase-admin --no-save && node scripts/<name>.js` (ADC credentials are automatic).
+One-off data scripts (migrations, backfills) live in `functions/` — NOT a separate scripts/ dir — so they resolve `functions/node_modules` (a root `npm install firebase-admin --no-save` on Cloud Shell yields a broken firebase-admin: npm blocks its postinstall scripts). Run from the repo root: `node functions/<name>.js` (ADC credentials are automatic; `cd functions && npm install` first if node_modules is missing).
 
 Backups before risky changes: `gcloud firestore export gs://esquerrapp-backups/<label>-$(date +%F) --project esquerrapp`.
 

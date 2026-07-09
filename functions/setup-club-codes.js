@@ -2,9 +2,11 @@
 // One-time migration: move club join codes out of the readable
 // clubs/{id} docs into the server-only clubCodes/{CODE} collection.
 //
+// Lives in functions/ so it resolves functions/node_modules (a root
+// `npm install --no-save` on Cloud Shell yields a broken firebase-admin
+// because npm blocks its postinstall scripts there).
 // Run from Cloud Shell (repo root):
-//   npm install firebase-admin --no-save
-//   node scripts/setup-club-codes.js
+//   node functions/setup-club-codes.js
 // ============================================================
 
 const admin = require("firebase-admin");
