@@ -11,7 +11,7 @@
 //    who haven't submitted RPE for today's completed training/match
 // ============================================================
 
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onDocumentCreated, onDocumentWritten} = require("firebase-functions/v2/firestore");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
@@ -541,7 +541,19 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
       {teamId: clubId, isTeamLead: isLead},
       {merge: true},
   );
-  logger.info("joinClub", {uid, clubId, isLead});
+
+  // Stamp membership + role as Auth custom claims so security rules can
+  // authorize from the token (no per-request doc reads). claimsUpdatedAt
+  // tells the client to force-refresh its ID token.
+  const userSnap = await db.collection("users").doc(uid).get();
+  const roles = (userSnap.exists && userSnap.data().roles) || [];
+  const role = isLead ? "lead" : (roles.includes("staff") ? "staff" : "player");
+  await admin.auth().setCustomUserClaims(uid, {teamId: clubId, role});
+  await db.collection("users").doc(uid).set(
+      {claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp()},
+      {merge: true},
+  );
+  logger.info("joinClub", {uid, clubId, isLead, role});
 
   return {
     clubId,
@@ -553,7 +565,120 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
   };
 });
 
-// ── 7. archiveSeason — archive & reset season data (admin only) ──
+// ── 7. setRole — update a member's roles + keep claims in sync ──
+// Callers: the member themselves (player/staff self-selection — current
+// onboarding design), the club's team lead, or the superuser. All role
+// changes should go through here so the token claims stay in sync.
+exports.setRole = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const caller = request.auth;
+  const uid = request.data && request.data.uid;
+  const roles = (request.data && request.data.roles) || [];
+  if (!uid || !Array.isArray(roles) ||
+      !roles.every((r) => ["player", "staff"].includes(r))) {
+    throw new HttpsError("invalid-argument", "Paràmetres no vàlids.");
+  }
+
+  const targetSnap = await db.collection("users").doc(uid).get();
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "Usuari no trobat.");
+  }
+  const target = targetSnap.data();
+  const teamId = target.teamId;
+
+  const isSuper = caller.token.email === "marna96@gmail.com";
+  const isSelf = caller.uid === uid;
+  // Lead check: claims first, users-doc fallback (pre-backfill sessions)
+  let isLeadOfTeam = caller.token.teamId === teamId && caller.token.role === "lead";
+  if (!isLeadOfTeam && !isSelf && !isSuper) {
+    const callerSnap = await db.collection("users").doc(caller.uid).get();
+    const c = callerSnap.exists ? callerSnap.data() : {};
+    isLeadOfTeam = c.teamId === teamId && c.isTeamLead === true;
+  }
+  if (!isSuper && !isSelf && !isLeadOfTeam) {
+    throw new HttpsError("permission-denied",
+        "Només el responsable del club pot canviar rols d'altres membres.");
+  }
+
+  const role = target.isTeamLead === true ? "lead" :
+    (roles.includes("staff") ? "staff" : "player");
+  await admin.auth().setCustomUserClaims(uid, {teamId: teamId || null, role});
+  await db.collection("users").doc(uid).set({
+    roles,
+    claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+  logger.info("setRole", {by: caller.uid, uid, roles, role});
+  return {ok: true, role};
+});
+
+// ── 8. bridgeLegacyPlayerData — legacy blob writes → record docs ──
+// Old clients (previous APK/web) still write availability/RPE into the
+// legacy teams/{id}/data/{key} docs. This trigger diffs each write and
+// upserts the per-record docs so new clients see old clients' answers.
+// New clients dual-write both — the bridge write is then value-identical
+// and settles without looping (blob rebuild compares values, not times).
+const BRIDGE_KEYS = {
+  fa_training_availability: {
+    coll: "trainingAvail",
+    parse: (k, v) => {
+      const i = k.indexOf("_");
+      return {uid: k.slice(0, i), date: k.slice(i + 1), value: v};
+    },
+  },
+  fa_match_availability: {
+    coll: "matchAvail",
+    parse: (k, v) => {
+      const i = k.indexOf("_");
+      return {uid: k.slice(0, i), matchId: k.slice(i + 1), value: v};
+    },
+  },
+  fa_player_rpe: {
+    coll: "rpe",
+    parse: (k, v) => {
+      const i = k.indexOf("_");
+      return Object.assign({uid: k.slice(0, i)}, v);
+    },
+  },
+};
+
+exports.bridgeLegacyPlayerData = onDocumentWritten({
+  document: "teams/{teamId}/data/{key}",
+  region: "us-central1",
+}, async (event) => {
+  const cfg = BRIDGE_KEYS[event.params.key];
+  if (!cfg) return;
+  const before = event.data.before.exists ? parseDataDoc(event.data.before, {}) : {};
+  const after = event.data.after.exists ? parseDataDoc(event.data.after, {}) : {};
+
+  const collRef = db.collection("teams").doc(event.params.teamId)
+      .collection(cfg.coll);
+  let batch = db.batch();
+  let n = 0;
+  const flush = async () => {
+    if (n) await batch.commit();
+    batch = db.batch();
+    n = 0;
+  };
+
+  for (const k of Object.keys(after)) {
+    if (JSON.stringify(after[k]) === JSON.stringify(before[k])) continue;
+    batch.set(collRef.doc(k), Object.assign(cfg.parse(k, after[k]), {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      source: "bridge",
+    }), {merge: true});
+    if (++n >= 400) await flush();
+  }
+  for (const k of Object.keys(before)) {
+    if (k in after) continue;
+    batch.delete(collRef.doc(k));
+    if (++n >= 400) await flush();
+  }
+  await flush();
+});
+
+// ── 9. archiveSeason — archive & reset season data (admin only) ──
 const SEASON_KEYS = [
   "fa_matches", "fa_match_events", "fa_match_goals",
   "fa_training",
@@ -610,25 +735,25 @@ exports.archiveSeason = onRequest(
         return;
       }
 
-      // ── Auth: verify admin or team lead of the requested team ──
-      const callerDoc = await db.collection("users").doc(decoded.uid).get();
-      if (!callerDoc.exists) {
-        res.status(403).json({error: "User not found"});
-        return;
-      }
-      const callerData = callerDoc.data();
-
       const {teamId, label} = req.body || {};
       if (!teamId || !label) {
         res.status(400).json({error: "teamId and label required"});
         return;
       }
 
-      // Admin can archive any team; Team Lead only their own
-      const isAdmin = callerData.isAdmin === true;
-      const isTeamLeadOfTeam = callerData.isTeamLead === true &&
-          callerData.teamId === teamId;
-      if (!isAdmin && !isTeamLeadOfTeam) {
+      // ── Auth: superuser, or team lead of the requested team ──
+      // Claims first (set by joinClub/setRole/backfill); users-doc
+      // fallback for sessions whose token predates the claims backfill.
+      const isSuper = decoded.email === "marna96@gmail.com";
+      let isTeamLeadOfTeam =
+          decoded.teamId === teamId && decoded.role === "lead";
+      if (!isSuper && !isTeamLeadOfTeam) {
+        const callerDoc = await db.collection("users").doc(decoded.uid).get();
+        const callerData = callerDoc.exists ? callerDoc.data() : {};
+        isTeamLeadOfTeam = callerData.isTeamLead === true &&
+            callerData.teamId === teamId;
+      }
+      if (!isSuper && !isTeamLeadOfTeam) {
         res.status(403).json({error: "Admin or Team Lead access required"});
         return;
       }
@@ -704,6 +829,32 @@ exports.archiveSeason = onRequest(
         );
         opCount++;
         if (opCount > 0) await batch.commit();
+
+        // ── Archive + clear the per-record player-data collections ──
+        // MUST run BEFORE the blob resets below: resetting the legacy blobs
+        // fires bridgeLegacyPlayerData, which deletes record docs — they
+        // have to be copied to the season archive first.
+        for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+          const collSnap = await db.collection("teams").doc(teamId)
+              .collection(coll).get();
+          if (collSnap.empty) continue;
+          const archColl = db.collection("teams").doc(teamId)
+              .collection("seasons").doc(safeLabel).collection(coll);
+          let rbatch = db.batch();
+          let rops = 0;
+          for (const d of collSnap.docs) {
+            rbatch.set(archColl.doc(d.id), d.data());
+            rbatch.delete(d.ref);
+            rops += 2;
+            if (rops >= 450) {
+              await rbatch.commit();
+              rbatch = db.batch();
+              rops = 0;
+            }
+          }
+          if (rops > 0) await rbatch.commit();
+          logger.info("archiveSeason: archived records", {coll, count: collSnap.size});
+        }
 
         // ── Batch 2: Reset source docs ──
         batch = db.batch();

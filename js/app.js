@@ -911,6 +911,9 @@
   // #region Session, Auth & Seed Data
   // ---------- Session (backed by Firebase Auth + Firestore) ----------
   let _currentSession = null;
+  // Claims watcher state (see onAuthStateChanged)
+  let _claimsUnsub = null;
+  let _lastClaimsMs = 0;
 
   function getSession() {
     return _currentSession;
@@ -1557,6 +1560,11 @@
         teamId: club ? club.clubId : 'none'
       });
       _currentSession = newUser;
+      // joinClub set custom claims — force-refresh the ID token so the
+      // new security rules authorize this session immediately.
+      if (club) {
+        try { await cred.user.getIdToken(true); } catch (tokenErr) { console.warn('Token refresh failed:', tokenErr); }
+      }
       // Load club config
       if (club) await loadClubConfig(club.clubId);
       // Push to localStorage for compat with roster/availability code
@@ -1713,6 +1721,9 @@
     session.teamId = club.clubId;
     if (club.isTeamLead) session.isTeamLead = true;
     setSession(session);
+    // joinClub set custom claims — force-refresh the ID token so the
+    // new security rules authorize this session immediately.
+    try { await auth.currentUser.getIdToken(true); } catch (e) { console.warn('Token refresh failed:', e); }
     await loadClubConfig(club.clubId);
     await DB.init(club.clubId);
     // Add this user to the club's fa_users
@@ -2148,6 +2159,15 @@
   function persistSessionRoles(session) {
     // Persist to Firestore + localStorage (handled by setSession)
     setSession(session);
+    // Keep Auth custom claims in sync (self role selection is allowed by
+    // setRole — current onboarding design), then refresh the token so
+    // security rules see the new role immediately.
+    try {
+      const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
+      fn({ uid: session.id, roles: session.roles || [] })
+        .then(() => auth.currentUser && auth.currentUser.getIdToken(true))
+        .catch(e => console.warn('setRole (self) failed:', e));
+    } catch (e) { console.warn('setRole unavailable:', e); }
   }
 
   // #endregion Navigation, Team Setup & Profile
@@ -11811,9 +11831,8 @@
   //                   will deliver it, unless persistence failed (multi-tab),
   //                   where we warn the player loudly.
   // Rejected writes surface through the 'db-write-error' listener below.
-  function ackSave(key, value, el) {
+  function _ackUi(p, el) {
     if (el) { el.classList.add('save-pending'); el.classList.remove('save-confirmed', 'save-queued'); }
-    const p = DB.setItemAcked(key, value);
     const timeout = new Promise(res => setTimeout(() => res('timeout'), 4000));
     return Promise.race([p.then(() => 'ok', () => 'error'), timeout]).then(result => {
       if (el) el.classList.remove('save-pending');
@@ -11839,6 +11858,27 @@
       // result === 'error' → toast shown by the db-write-error listener
       return result;
     });
+  }
+
+  /** Acked save of a legacy synced localStorage key. */
+  function ackSave(key, value, el) {
+    return _ackUi(DB.setItemAcked(key, value), el);
+  }
+
+  /**
+   * Phase 2 dual-write for player-submitted data: updates the legacy
+   * localStorage blob (mirrored to the legacy doc for old clients) AND
+   * writes the canonical per-record doc — the ack UI tracks the record.
+   */
+  function ackSaveRecord(coll, docId, data, legacyKey, legacyValue, el) {
+    localStorage.setItem(legacyKey, legacyValue);
+    return _ackUi(DB.submit(coll, docId, data), el);
+  }
+
+  /** Phase 2 dual-delete (un-answer flows). */
+  function ackRemoveRecord(coll, docId, legacyKey, legacyValue, el) {
+    localStorage.setItem(legacyKey, legacyValue);
+    return _ackUi(DB.removeRecord(coll, docId), el);
   }
 
   window.addEventListener('db-write-error', (e) => {
@@ -11975,7 +12015,8 @@
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const key = session.id + '_' + date;
     availData[key] = 'injured';
-    ackSave('fa_training_availability', JSON.stringify(availData), null);
+    ackSaveRecord('trainingAvail', key, { uid: session.id, date: date, value: 'injured' },
+      'fa_training_availability', JSON.stringify(availData), null);
     injNotes[session.id] = note;
     ackSave('fa_injury_notes', JSON.stringify(injNotes), null);
     // Store which body zone polygon was selected
@@ -13519,7 +13560,8 @@
           activity: actText
         });
         // Re-render only once the server has acknowledged (or the write is queued)
-        ackSave('fa_player_rpe', JSON.stringify(rpeData), btn).then(() => {
+        ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: activityDate },
+          'fa_player_rpe', JSON.stringify(rpeData), btn).then(() => {
           renderPage(getSession());
           updateActionsBadge();
         });
@@ -13611,7 +13653,8 @@
             activity: tag + ' (' + dateVal + ')'
           });
           const extraBtn = card.querySelector('.action-extra-submit');
-          ackSave('fa_player_rpe', JSON.stringify(rpeData), extraBtn).then(() => {
+          ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: dateVal },
+            'fa_player_rpe', JSON.stringify(rpeData), extraBtn).then(() => {
             renderPage(session);
           });
         });
@@ -13664,7 +13707,8 @@
           activity: matchObj ? (matchObj.home + ' vs ' + matchObj.away + (matchObj.date ? ' · ' + matchObj.date : '')) : 'Match'
         });
         // Re-render only once the server has acknowledged (or the write is queued)
-        ackSave('fa_match_availability', JSON.stringify(maData), btn).then(() => {
+        ackSaveRecord('matchAvail', key, { uid: session.id, matchId: String(matchId), value: btn.dataset.mavail },
+          'fa_match_availability', JSON.stringify(maData), btn).then(() => {
           renderPage(session);
           updateActionsBadge();
         });
@@ -13679,7 +13723,8 @@
         const key = session.id + '_' + matchId;
         const maData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
         delete maData[key];
-        ackSave('fa_match_availability', JSON.stringify(maData), badge).then(() => {
+        ackRemoveRecord('matchAvail', key,
+          'fa_match_availability', JSON.stringify(maData), badge).then(() => {
           renderPage(session);
         });
       });
@@ -13730,7 +13775,8 @@
           activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
         });
         // Re-render only once the server has acknowledged (or the write is queued)
-        ackSave('fa_training_availability', JSON.stringify(availData), btn).then(() => {
+        ackSaveRecord('trainingAvail', key, { uid: session.id, date: date, value: val },
+          'fa_training_availability', JSON.stringify(availData), btn).then(() => {
           renderPage(getSession());
           updateActionsBadge();
         });
@@ -13771,7 +13817,8 @@
               const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
               addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')' });
               // Re-render only once the server has acknowledged (or the write is queued)
-              ackSave('fa_training_availability', JSON.stringify(availData), btn).then(() => {
+              ackSaveRecord('trainingAvail', key, { uid: session.id, date: date, value: val },
+                'fa_training_availability', JSON.stringify(availData), btn).then(() => {
                 renderPage(getSession());
                 updateActionsBadge();
               });
@@ -13793,7 +13840,8 @@
           if (u) { u.fitnessStatus = 'fit'; u.injuryNote = ''; saveUsers(users); }
           deriveFitnessStatus(session.id);
         }
-        ackSave('fa_training_availability', JSON.stringify(availData), badge).then(() => {
+        ackRemoveRecord('trainingAvail', key,
+          'fa_training_availability', JSON.stringify(availData), badge).then(() => {
           renderPage(session);
         });
       });
@@ -14470,12 +14518,17 @@
         user.category = category;
         saveUsers(users);
 
-        // Sync key fields to Firestore user profile
+        // Sync key fields to Firestore user profile. Roles go through the
+        // setRole function so the member's Auth claims stay in sync.
         if (typeof uid === 'string' && isNaN(Number(uid))) {
           db.collection('users').doc(uid).set({
-            roles: user.roles, position: position, playerNumber: playerNumber,
+            position: position, playerNumber: playerNumber,
             team: team, category: category
           }, { merge: true }).catch(console.error);
+          try {
+            const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
+            fn({ uid: uid, roles: user.roles }).catch(e => console.warn('setRole failed:', e));
+          } catch (e) { console.warn('setRole unavailable:', e); }
         }
 
         if (_currentSession && String(_currentSession.id) === String(uid)) {
@@ -14641,10 +14694,40 @@
           // Initialize push notifications
           Push.init();
           Push.requestPermission().catch(e => console.warn('Push permission:', e));
+
+          // Watch own profile for claims changes (joinClub/setRole stamp
+          // claimsUpdatedAt) and force-refresh the ID token so security
+          // rules see the new teamId/role without re-login.
+          if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
+          _claimsUnsub = db.collection('users').doc(firebaseUser.uid).onSnapshot(async (doc) => {
+            if (!doc.exists) return;
+            const cu = doc.data().claimsUpdatedAt;
+            if (!cu || typeof cu.toMillis !== 'function') return;
+            const ms = cu.toMillis();
+            if (_lastClaimsMs && ms <= _lastClaimsMs) return;
+            const first = !_lastClaimsMs;
+            _lastClaimsMs = ms;
+            if (first) return; // initial snapshot — token already current
+            try {
+              await firebaseUser.getIdToken(true);
+              const res = await firebaseUser.getIdTokenResult();
+              const claimTeam = res.claims.teamId;
+              const s = getSession();
+              if (claimTeam && s && s.teamId !== claimTeam) {
+                s.teamId = claimTeam;
+                _currentSession = s;
+                await loadClubConfig(claimTeam);
+                await DB.init(claimTeam);
+                navigate();
+              }
+            } catch (e) { console.warn('Claims refresh failed:', e); }
+          });
         }
       } else {
         _currentSession = null;
         _clubConfig = null;
+        if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
+        _lastClaimsMs = 0;
         DB.cleanup();
       }
       navigate();

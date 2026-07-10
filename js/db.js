@@ -59,6 +59,31 @@ const DB = (function () {
     'fa_injury_zone',
   ]);
 
+  /* Phase 2: player-submitted data is CANONICAL in per-record subcollections
+     (teams/{id}/{coll}/{docId}, docId = the legacy blob key). The legacy
+     merge docs above are kept as a dual-write mirror for old clients until
+     Phase 3. localStorage blobs for these keys are rebuilt from collection
+     snapshots (not from the legacy doc listeners). */
+  const RECORD_COLLECTIONS = {
+    trainingAvail: {
+      lsKey: 'fa_training_availability',
+      toEntry: function (d) { return d.value; }
+    },
+    matchAvail: {
+      lsKey: 'fa_match_availability',
+      toEntry: function (d) { return d.value; }
+    },
+    rpe: {
+      lsKey: 'fa_player_rpe',
+      toEntry: function (d) {
+        return { rpe: d.rpe, minutes: d.minutes, ua: d.ua, tag: d.tag, date: d.date };
+      }
+    }
+  };
+  const RECORD_LS_KEYS = new Set(
+    Object.keys(RECORD_COLLECTIONS).map(function (c) { return RECORD_COLLECTIONS[c].lsKey; })
+  );
+
   let _teamId = null;
   let _unsubscribers = [];
 
@@ -218,8 +243,34 @@ const DB = (function () {
       console.warn('User reconciliation failed:', e);
     }
 
-    // Real-time listeners for remote changes from other devices
+    // Record-collection listeners (Phase 2): the canonical source for
+    // player-submitted data. Each snapshot rebuilds the corresponding
+    // localStorage blob so all existing read paths keep working unchanged.
+    Object.keys(RECORD_COLLECTIONS).forEach(function (coll) {
+      var cfg = RECORD_COLLECTIONS[coll];
+      var unsub = db.collection('teams').doc(_teamId).collection(coll)
+        .onSnapshot(function (snap) {
+          if (snap.metadata.hasPendingWrites) return;
+          // Guard: an empty collection with a populated blob means the
+          // migration hasn't run yet — never wipe history from the cache.
+          var existing = _origGetItem(cfg.lsKey);
+          if (snap.empty && existing && existing !== '{}') return;
+          var obj = {};
+          snap.forEach(function (doc) { obj[doc.id] = cfg.toEntry(doc.data()); });
+          var val = JSON.stringify(obj);
+          if (existing !== val) {
+            _origSetItem(cfg.lsKey, val);
+            window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: cfg.lsKey } }));
+          }
+        });
+      _unsubscribers.push(unsub);
+    });
+
+    // Real-time listeners for remote changes from other devices.
+    // Keys backed by record collections are handled above — their legacy
+    // docs are only a dual-write mirror for old clients now.
     SYNCED_KEYS.forEach(function (key) {
+      if (RECORD_LS_KEYS.has(key)) return;
       var unsub = dataRef(key).onSnapshot(function (doc) {
         if (!doc.exists) return;
         // Skip echoes of our own local writes
@@ -294,6 +345,37 @@ const DB = (function () {
     }
   };
 
+  // ── Per-record canonical writes (Phase 2) ───────────────────
+  function _recRef(coll, docId) {
+    return db.collection('teams').doc(_teamId).collection(coll).doc(docId);
+  }
+
+  /**
+   * Canonical write of a player-submitted record (teams/{id}/{coll}/{docId}).
+   * Resolves on SERVER ack. The caller also updates the legacy localStorage
+   * blob (dual-write) so old clients keep seeing new answers until Phase 3.
+   */
+  function submit(coll, docId, data) {
+    if (!_teamId) return Promise.reject(new Error('DB not initialised'));
+    var payload = Object.assign({}, data, {
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      source: 'client'
+    });
+    return _recRef(coll, docId).set(payload, { merge: true }).catch(function (err) {
+      _onWriteError(coll + '/' + docId, err);
+      throw err;
+    });
+  }
+
+  /** Delete a player-submitted record (un-answer flows). */
+  function removeRecord(coll, docId) {
+    if (!_teamId) return Promise.resolve();
+    return _recRef(coll, docId).delete().catch(function (err) {
+      _onWriteError(coll + '/' + docId, err);
+      throw err;
+    });
+  }
+
   /**
    * Like localStorage.setItem but returns a Promise that resolves when the
    * Firestore mirror write is acknowledged by the SERVER (Firestore promises
@@ -316,5 +398,8 @@ const DB = (function () {
     SYNCED_KEYS.forEach(function (key) { _origRemoveItem(key); });
   }
 
-  return { init: init, cleanup: cleanup, flush: flush, SYNCED_KEYS: SYNCED_KEYS, setItemAcked: setItemAcked };
+  return {
+    init: init, cleanup: cleanup, flush: flush, SYNCED_KEYS: SYNCED_KEYS,
+    setItemAcked: setItemAcked, submit: submit, removeRecord: removeRecord
+  };
 })();

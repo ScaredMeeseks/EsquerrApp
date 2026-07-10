@@ -3,20 +3,40 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Helpers ─────────────────────────────────────────────
+    // HYBRID authorization (Phase 2): Auth custom claims first (fast, no
+    // reads — set by joinClub/setRole/backfill), users-doc fallback for
+    // sessions whose token predates the claims backfill. The fallback is
+    // removed in Phase 3.
     function isSuperUser() {
       return request.auth != null && request.auth.token.email == 'marna96@gmail.com';
     }
-    // Current user's profile doc (one read per evaluation)
     function me() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     function sameTeam(teamId) {
-      return request.auth != null && me().teamId == teamId;
+      return request.auth != null && (
+        request.auth.token.teamId == teamId
+        || me().teamId == teamId
+      );
     }
     function isStaffOf(teamId) {
-      return sameTeam(teamId)
-        && (me().isTeamLead == true
-            || (('roles' in me()) && me().roles.hasAny(['staff'])));
+      return request.auth != null && (
+        (request.auth.token.teamId == teamId
+          && request.auth.token.role in ['staff', 'lead'])
+        || (me().teamId == teamId
+            && (me().isTeamLead == true
+                || (('roles' in me()) && me().roles.hasAny(['staff']))))
+      );
+    }
+    function isLeadOf(teamId) {
+      return request.auth != null && (
+        (request.auth.token.teamId == teamId && request.auth.token.role == 'lead')
+        || (me().teamId == teamId && me().isTeamLead == true)
+      );
+    }
+    // Per-record ownership: doc ids are "{uid}" or "{uid}_..."
+    function owns(docId) {
+      return docId.matches(request.auth.uid + '(_.*)?');
     }
 
     // ── Users (global; teamId assigned ONLY by the joinClub function) ──
@@ -26,7 +46,7 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         request.auth.uid == uid
         || isSuperUser()
-        || (resource.data.teamId != null && resource.data.teamId == me().teamId)
+        || (resource.data.teamId != null && sameTeam(resource.data.teamId))
       );
       // Self-create without club/privilege fields (joinClub writes those).
       allow create: if isSuperUser() || (
@@ -36,10 +56,11 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         isSuperUser()
         // Self: any profile field EXCEPT club membership / privilege flags.
-        // (roles self-selection is the app's onboarding design for now)
+        // (roles self-changes stay allowed transitionally for old clients;
+        // new clients route roles through setRole to keep claims in sync)
         || (request.auth.uid == uid
             && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['teamId', 'isTeamLead', 'isAdmin']))
+                 .hasAny(['teamId', 'isTeamLead', 'isAdmin', 'claimsUpdatedAt']))
         // Staff of the member's club: registration fields only.
         || (resource.data.teamId != null && isStaffOf(resource.data.teamId)
             && request.resource.data.diff(resource.data).affectedKeys()
@@ -59,11 +80,11 @@ service cloud.firestore {
       allow create, update: if isStaffOf(teamId) || isSuperUser();
       allow delete: if isSuperUser();
 
+      // Legacy blob/merge docs. TRANSITIONAL: players may still write the
+      // keys their flows dual-write (old clients depend on them until
+      // Phase 3, when this allowlist shrinks to staff-only).
       match /data/{key} {
         allow read: if sameTeam(teamId) || isSuperUser();
-        // Staff manage everything; players may only write the keys their
-        // own flows touch (availability, RPE, injuries, notifications,
-        // roster fitness sync). Tightened further in Phase 2 (per-record docs).
         allow write: if isSuperUser() || isStaffOf(teamId)
           || (sameTeam(teamId) && key in [
                'fa_training_availability', 'fa_match_availability', 'fa_player_rpe',
@@ -72,11 +93,41 @@ service cloud.firestore {
              ]);
       }
 
+      // Per-record player-submitted data (canonical since Phase 2).
+      // Players write ONLY records whose id starts with their uid and
+      // whose uid field matches; staff/superuser manage everything.
+      match /trainingAvail/{docId} {
+        allow read: if sameTeam(teamId) || isSuperUser();
+        allow create, update: if isSuperUser() || isStaffOf(teamId)
+          || (sameTeam(teamId) && owns(docId)
+              && request.resource.data.uid == request.auth.uid);
+        allow delete: if isSuperUser() || isStaffOf(teamId)
+          || (sameTeam(teamId) && owns(docId));
+      }
+      match /matchAvail/{docId} {
+        allow read: if sameTeam(teamId) || isSuperUser();
+        allow create, update: if isSuperUser() || isStaffOf(teamId)
+          || (sameTeam(teamId) && owns(docId)
+              && request.resource.data.uid == request.auth.uid);
+        allow delete: if isSuperUser() || isStaffOf(teamId)
+          || (sameTeam(teamId) && owns(docId));
+      }
+      match /rpe/{docId} {
+        allow read: if sameTeam(teamId) || isSuperUser();
+        allow create, update: if isSuperUser() || isStaffOf(teamId)
+          || (sameTeam(teamId) && owns(docId)
+              && request.resource.data.uid == request.auth.uid);
+        allow delete: if isSuperUser() || isStaffOf(teamId)
+          || (sameTeam(teamId) && owns(docId));
+      }
+
       match /seasons/{seasonId} {
         allow read: if sameTeam(teamId) || isSuperUser();
         allow write: if isSuperUser();
 
-        match /data/{key} {
+        // Blob archives AND per-record archives (data/, trainingAvail/,
+        // matchAvail/, rpe/) — written only by the archiveSeason function.
+        match /{archiveColl}/{docId} {
           allow read: if sameTeam(teamId) || isSuperUser();
           allow write: if isSuperUser();
         }
@@ -92,7 +143,7 @@ service cloud.firestore {
     match /clubs/{clubId} {
       allow read: if sameTeam(clubId) || isSuperUser();
       allow create, delete: if isSuperUser();
-      allow update: if isSuperUser() || (sameTeam(clubId) && me().isTeamLead == true);
+      allow update: if isSuperUser() || isLeadOf(clubId);
     }
 
     // ── Club join codes: superuser + Cloud Functions only ──
