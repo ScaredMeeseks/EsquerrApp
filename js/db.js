@@ -246,15 +246,21 @@ const DB = (function () {
     // Record-collection listeners (Phase 2): the canonical source for
     // player-submitted data. Each snapshot rebuilds the corresponding
     // localStorage blob so all existing read paths keep working unchanged.
+    var _recordSeen = {};
     Object.keys(RECORD_COLLECTIONS).forEach(function (coll) {
       var cfg = RECORD_COLLECTIONS[coll];
       var unsub = db.collection('teams').doc(_teamId).collection(coll)
         .onSnapshot(function (snap) {
           if (snap.metadata.hasPendingWrites) return;
-          // Guard: an empty collection with a populated blob means the
-          // migration hasn't run yet — never wipe history from the cache.
+          if (!snap.empty) _recordSeen[coll] = true;
+          // Guard the pre-migration first load ONLY: an empty collection we
+          // have never seen populated, with a populated blob, means the
+          // migration hasn't run yet — don't wipe legacy history from cache.
+          // Once we've seen records, an empty snapshot is a real "all deleted"
+          // and MUST clear the blob (e.g. a coach's device when the last
+          // availability answer is withdrawn on another device).
           var existing = _origGetItem(cfg.lsKey);
-          if (snap.empty && existing && existing !== '{}') return;
+          if (snap.empty && !_recordSeen[coll] && existing && existing !== '{}') return;
           var obj = {};
           snap.forEach(function (doc) { obj[doc.id] = cfg.toEntry(doc.data()); });
           var val = JSON.stringify(obj);

@@ -139,7 +139,7 @@ async function checkFrontend() {
     const sw = await (await fetch(`${base}/sw.js`, {cache: "no-store"})).text();
     const m = sw.match(/CACHE_NAME\s*=\s*'([^']+)'/);
     const v = m ? m[1] : "?";
-    const CURRENT = "esquerrapp-v20"; // bump alongside sw.js
+    const CURRENT = "esquerrapp-v21"; // bump alongside sw.js
     if (v === CURRENT) ok(`sw.js CACHE_NAME = ${v} (latest frontend live)`);
     else bad(`sw.js CACHE_NAME = ${v} — expected ${CURRENT}; merge the phase branch to main`);
 

@@ -1,0 +1,13 @@
+{
+  "name": "esquerrapp-rules-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Firestore security-rules unit tests for EsquerrApp. Dev-only, self-contained (does not touch the app's root package.json). Requires the Firebase Emulator Suite (Java) to actually run.",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project=demo-esquerrapp \"mocha rules.test.js --timeout 20000 --exit\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "mocha": "^10.7.3"
+  }
+}
