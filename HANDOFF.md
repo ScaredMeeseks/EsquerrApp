@@ -1,6 +1,6 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-07-10 (Phases 1, 2 and 3a all deployed)._
+_Rolling document, overwritten each session. Last updated: 2026-07-11 (Phases 1–3a deployed; audit + rules tests passed; manual UX pass + Phase 3b pending next session)._
 
 ## Current state
 
@@ -8,12 +8,18 @@ _Rolling document, overwritten each session. Last updated: 2026-07-10 (Phases 1,
 - 3-phase overhaul (full plan at `~/.claude/plans/i-have-another-project-inherited-castle.md`; findings + changelog in CONTEXT.md).
 - **Phases 1, 2 and 3a ALL DEPLOYED to production** (2026-07-10): functions (incl. schedulers v3 + updateTeamDates + bridge), claims backfilled, data migrated to record collections, hybrid rules, team-date arrays backfilled, frontend **v20** live on Pages (`check-deploy.js`'s one ✘ was Pages deploy latency — verified serving v20 minutes later). The real club's teamId is literally `default`.
 - **Phase 3b NOT started** — gated on old-APK extinction (`bridgeLegacyPlayerData` invocations ≈ 0 in Cloud Logging for ~a week) AND the test suite passing.
-- **Automated verification done (2026-07-11)**: adversarial code audit of the whole overhaul (inline) — overhaul is structurally sound; found + fixed ONE real bug (record-listener empty-guard left a stale availability entry on other devices when a collection emptied to zero — e.g. coach's view; fixed in js/db.js, frontend now v21, deployed). A `@firebase/rules-unit-testing` club-isolation suite is committed at `test/` — **run it in Cloud Shell: `cd ~/EsquerrApp/test && npm install && npm test`** (needs the emulator/Java; won't run on the dev Windows box).
-- **STILL NEEDS A HUMAN: the physical/UI test steps below** (two devices, offline toggling, in-app clicks, browser console, Cloud Console function runs). Fresh APK from the latest Actions run should go on the test devices first.
+- **Automated verification done (2026-07-11)**: adversarial code audit of the whole overhaul (inline) — structurally sound; found + fixed ONE real bug (record-listener empty-guard left a stale availability entry on other devices when a collection emptied to zero — e.g. coach's view; fixed in js/db.js, frontend now **v21, deployed**).
+- **Rules test suite PASSED ✅ in Cloud Shell (2026-07-11)** — `test/` `@firebase/rules-unit-testing` suite, all green: cross-club isolation, self-escalation blocked, staff scope, data-key allowlist, per-record ownership, club-code secrecy, superuser overrides. Re-run any time: `cd ~/EsquerrApp/test && npm install && npm test` (Cloud Shell only — needs the emulator/Java).
+- **STILL PENDING (next session): the physical/UI manual pass** (two devices, offline toggling, in-app clicks, browser console, Cloud Console scheduler runs) — the last-mile UX confirmation agents/emulator can't reach. Put a fresh APK from the latest Actions run on the test devices first.
 
 ## Session summary (2026-07-10, Phase 3a)
 
 Listener consolidation (one `data/` collection listener via `docChanges()`; ~5 listeners/client, was 22+), `KEY_PAGES` targeted re-render + always-fresh badges, FCF hardcoded league defaults removed (lead setup hint instead) + full-path proxy regex, schedulers rewritten around denormalized `trainingDates[]`/`matchDates[]` team-doc arrays (new `updateTeamDates` trigger; `array-contains` queries instead of full scans; availability/RPE read from record collections; roster once per team; `Promise.all`; summary-only logs), parallel `getTokensForUsers`, `www/` untracked + gitignored, CI guard failing builds that change js/css/html without an sw.js bump, sw v20.
+
+## Next session (in order)
+
+1. **Manual UX pass** — the §"deferred test suite" checklist below, on two real devices with a fresh APK. Everything above the manual line is already verified (audit + rules emulator).
+2. **Phase 3b** — only once BOTH: the manual pass is clean AND Cloud Logging shows `bridgeLegacyPlayerData` invocations ≈ 0 for ~a week (old APKs gone). Scope in the "Phase 3b" item further down.
 
 ## Pending / next steps (IN THIS ORDER)
 
