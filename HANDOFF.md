@@ -1,14 +1,14 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-07-10 (Phase 3a code complete)._
+_Rolling document, overwritten each session. Last updated: 2026-07-10 (Phases 1, 2 and 3a all deployed)._
 
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
 - 3-phase overhaul (full plan at `~/.claude/plans/i-have-another-project-inherited-castle.md`; findings + changelog in CONTEXT.md).
-- **Phase 1 DEPLOYED + Phase 2 DEPLOYED and verified by `functions/check-deploy.js`** (all server checks ✔; see CONTEXT.md for the two deploy incidents and their fixes). Frontend v19 live. The real club's teamId is literally `default`.
-- **Phase 3a code COMPLETE on branch `phase3-performance`** — NOT yet deployed. Phase 3b (retire dual-write/legacy blobs/bridge/rules fallback, injuries records, notifications collection) stays gated on old-APK extinction (`bridgeLegacyPlayerData` invocations ≈ 0 in Cloud Logging for ~a week).
-- **All end-to-end tests still deferred at user's request — run the suite below after the 3a deploy.**
+- **Phases 1, 2 and 3a ALL DEPLOYED to production** (2026-07-10): functions (incl. schedulers v3 + updateTeamDates + bridge), claims backfilled, data migrated to record collections, hybrid rules, team-date arrays backfilled, frontend **v20** live on Pages (`check-deploy.js`'s one ✘ was Pages deploy latency — verified serving v20 minutes later). The real club's teamId is literally `default`.
+- **Phase 3b NOT started** — gated on old-APK extinction (`bridgeLegacyPlayerData` invocations ≈ 0 in Cloud Logging for ~a week) AND the test suite passing.
+- **NEXT UP: the deferred end-to-end test suite (below) — nothing has been user-tested yet.** Fresh APK from the latest Actions run should go on the test devices first.
 
 ## Session summary (2026-07-10, Phase 3a)
 
