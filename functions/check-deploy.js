@@ -139,9 +139,9 @@ async function checkFrontend() {
     const sw = await (await fetch(`${base}/sw.js`, {cache: "no-store"})).text();
     const m = sw.match(/CACHE_NAME\s*=\s*'([^']+)'/);
     const v = m ? m[1] : "?";
-    if (v === "esquerrapp-v19") ok(`sw.js CACHE_NAME = ${v} (Phase 2 frontend live)`);
-    else if (v === "esquerrapp-v18") bad(`sw.js CACHE_NAME = ${v} — Phase 2 NOT merged to main yet (step 7)`);
-    else bad(`sw.js CACHE_NAME = ${v} — unexpected version`);
+    const CURRENT = "esquerrapp-v20"; // bump alongside sw.js
+    if (v === CURRENT) ok(`sw.js CACHE_NAME = ${v} (latest frontend live)`);
+    else bad(`sw.js CACHE_NAME = ${v} — expected ${CURRENT}; merge the phase branch to main`);
 
     const html = await (await fetch(`${base}/index.html`, {cache: "no-store"})).text();
     if (html.includes("firebase-functions-compat")) {

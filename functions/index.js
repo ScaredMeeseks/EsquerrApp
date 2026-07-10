@@ -66,16 +66,16 @@ function parseDataDoc(snap, fallback) {
   return out;
 }
 
-// ── Helper: get FCM tokens for users ──
+// ── Helper: get FCM tokens for users (parallel reads) ──
 async function getTokensForUsers(userIds) {
+  const snaps = await Promise.all(userIds.map((uid) =>
+    db.collection("users").doc(uid).collection("tokens").get()));
   const entries = []; // {token, uid}
-  for (const uid of userIds) {
-    const snap = await db.collection("users").doc(uid)
-        .collection("tokens").get();
+  snaps.forEach((snap, i) => {
     snap.forEach((doc) => {
-      if (doc.data().token) entries.push({token: doc.data().token, uid});
+      if (doc.data().token) entries.push({token: doc.data().token, uid: userIds[i]});
     });
-  }
+  });
   // Deduplicate by token
   const seen = new Set();
   const unique = entries.filter((e) => {
@@ -83,8 +83,6 @@ async function getTokensForUsers(userIds) {
     seen.add(e.token);
     return true;
   });
-  logger.info("getTokensForUsers", {userIds,
-    tokenCount: unique.length});
   return unique;
 }
 
@@ -94,16 +92,12 @@ async function getTeamMembersByRole(teamId, role) {
       .where("teamId", "==", teamId)
       .get();
   const uids = [];
-  const allFound = [];
   snap.forEach((doc) => {
     const data = doc.data();
-    allFound.push({uid: doc.id, roles: data.roles || []});
     if (data.roles && data.roles.includes(role)) {
       uids.push(doc.id);
     }
   });
-  logger.info("getTeamMembersByRole", {teamId, role, allUsers: allFound,
-    matchingUids: uids});
   return uids;
 }
 
@@ -114,7 +108,6 @@ async function getAllTeamMembers(teamId) {
       .get();
   const uids = [];
   snap.forEach((doc) => uids.push(doc.id));
-  logger.info("getAllTeamMembers", {teamId, uids});
   return uids;
 }
 
@@ -233,76 +226,62 @@ exports.scheduledTrainingReminder = onSchedule({
   timeZone: "Europe/Madrid",
   region: "us-central1",
 }, async () => {
-  logger.info("scheduledTrainingReminder START");
-  const teamsSnap = await db.collection("teams").get();
-  logger.info("Teams found", {count: teamsSnap.size,
-    ids: teamsSnap.docs.map((d) => d.id)});
+  const now = new Date();
+  // A session ~4h away is today or (for a run near midnight) early tomorrow.
+  const fmt = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"});
+  const today = fmt.format(now);
+  const tomorrow = fmt.format(new Date(now.getTime() + 24 * 36e5));
 
-  for (const teamDoc of teamsSnap.docs) {
+  // Only teams that actually train on these dates (denormalized field
+  // maintained by updateTeamDates) — no full collection scan.
+  const teamsSnap = await db.collection("teams")
+      .where("trainingDates", "array-contains-any", [today, tomorrow]).get();
+  if (teamsSnap.empty) {
+    logger.info("trainingReminder: no team trains today/tomorrow");
+    return;
+  }
+
+  await Promise.all(teamsSnap.docs.map(async (teamDoc) => {
     const teamId = teamDoc.id;
     const dataDoc = await db.collection("teams").doc(teamId)
         .collection("data").doc("fa_training").get();
-    if (!dataDoc.exists) {
-      logger.warn("No fa_training doc for team", {teamId});
-      continue;
-    }
+    const training = dataDoc.exists ? JSON.parse(dataDoc.data().v || "[]") : [];
+    const upcoming = training.filter((s) =>
+      s.status !== "past" && s.time &&
+      (s.date === today || s.date === tomorrow));
+    if (!upcoming.length) return;
 
-    const training = JSON.parse(dataDoc.data().v || "[]");
-    logger.info("Training sessions loaded", {teamId,
-      count: training.length,
-      sessions: training.map((s) => ({
-        date: s.date, time: s.time, status: s.status,
-      }))});
+    // Answers come from the canonical record collection
+    const availSnap = await db.collection("teams").doc(teamId)
+        .collection("trainingAvail").where("date", "in", [today, tomorrow]).get();
+    const answered = new Set(availSnap.docs.map((d) => d.data().uid + "_" + d.data().date));
 
-    const availDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_training_availability").get();
-    const avail = parseDataDoc(availDoc, {});
-
-    const now = new Date();
-    logger.info("Current time (server)", {iso: now.toISOString()});
-
-    for (const session of training) {
-      if (session.status === "past") continue;
-      if (!session.date || !session.time) continue;
-
+    let playerUids = null;
+    for (const session of upcoming) {
       const startTime = session.time.split(" - ")[0]?.trim();
       if (!startTime) continue;
-
       const sessionDate = parseMadridDate(session.date, startTime);
       const hoursUntil = (sessionDate - now) / (1000 * 60 * 60);
+      if (hoursUntil < 3.5 || hoursUntil > 4.5) continue;
 
-      logger.info("Checking session", {date: session.date,
-        startTime, sessionDate: sessionDate.toISOString(),
-        hoursUntil: hoursUntil.toFixed(2)});
+      if (!playerUids) playerUids = await getTeamMembersByRole(teamId, "player");
+      const unanswered = playerUids.filter((uid) => !answered.has(uid + "_" + session.date));
+      logger.info("trainingReminder", {teamId, date: session.date,
+        players: playerUids.length, unanswered: unanswered.length});
 
-      if (hoursUntil >= 3.5 && hoursUntil <= 4.5) {
-        const playerUids = await getTeamMembersByRole(teamId, "player");
-        const unanswered = playerUids.filter((uid) => {
-          const key = uid + "_" + session.date;
-          return !avail[key];
-        });
-        logger.info("Unanswered players", {sessionDate: session.date,
-          unanswered});
-
-        if (unanswered.length) {
-          const tokens = await getTokensForUsers(unanswered);
-          if (tokens.length) {
-            await sendToTokens(tokens, {
-              title: "\uD83C\uDFCB\uFE0F Entrenament avui!",
-              body: (session.focus || "Entrenament") + " a les " +
-                startTime + ". Confirma la teva assistència.",
-              type: "training_reminder",              page: "player-home",              tag: "training-" + session.date,
-            });
-          } else {
-            logger.warn("No tokens found for unanswered players");
-          }
-        } else {
-          logger.info("All players already answered for this session");
+      if (unanswered.length) {
+        const tokens = await getTokensForUsers(unanswered);
+        if (tokens.length) {
+          await sendToTokens(tokens, {
+            title: "🏋️ Entrenament avui!",
+            body: (session.focus || "Entrenament") + " a les " +
+              startTime + ". Confirma la teva assistència.",
+            type: "training_reminder", page: "player-home", tag: "training-" + session.date,
+          });
         }
       }
     }
-  }
-  logger.info("scheduledTrainingReminder END");
+  }));
 });
 
 // ════════════════════════════════════════════════════════════
@@ -315,93 +294,69 @@ exports.scheduledRpeReminder = onSchedule({
   timeZone: "Europe/Madrid",
   region: "us-central1",
 }, async () => {
-  const today = new Date().toISOString().slice(0, 10);
-  logger.info("scheduledRpeReminder START", {today});
-  const teamsSnap = await db.collection("teams").get();
-  logger.info("Teams found", {count: teamsSnap.size,
-    ids: teamsSnap.docs.map((d) => d.id)});
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"}).format(now);
 
-  for (const teamDoc of teamsSnap.docs) {
-    const teamId = teamDoc.id;
+  // Only teams with a training or match today (denormalized fields)
+  const [trainTeams, matchTeams] = await Promise.all([
+    db.collection("teams").where("trainingDates", "array-contains", today).get(),
+    db.collection("teams").where("matchDates", "array-contains", today).get(),
+  ]);
+  const teamDocs = new Map();
+  trainTeams.forEach((d) => teamDocs.set(d.id, d));
+  matchTeams.forEach((d) => teamDocs.set(d.id, d));
+  if (!teamDocs.size) {
+    logger.info("rpeReminder: no team had training or a match today");
+    return;
+  }
 
-    const trainingDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_training").get();
-    const training = trainingDoc.exists ?
-      JSON.parse(trainingDoc.data().v || "[]") : [];
+  await Promise.all([...teamDocs.keys()].map(async (teamId) => {
+    const dataCol = db.collection("teams").doc(teamId).collection("data");
+    const [trainingDoc, matchDoc] = await Promise.all([
+      dataCol.doc("fa_training").get(),
+      dataCol.doc("fa_matches").get(),
+    ]);
+    const training = trainingDoc.exists ? JSON.parse(trainingDoc.data().v || "[]") : [];
+    const matches = matchDoc.exists ? JSON.parse(matchDoc.data().v || "[]") : [];
     const todayTraining = training.find((t) => t.date === today);
-    logger.info("Training check", {teamId, totalSessions: training.length,
-      todayTraining: todayTraining || "none",
-      recentDates: training.slice(-5).map((t) => t.date)});
-
-    const matchDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_matches").get();
-    const matches = matchDoc.exists ?
-      JSON.parse(matchDoc.data().v || "[]") : [];
     const todayMatch = matches.find((m) => m.date === today);
-    logger.info("Match check", {teamId, totalMatches: matches.length,
-      todayMatch: todayMatch || "none",
-      recentDates: matches.slice(-5).map((m) => m.date)});
+    if (!todayTraining && !todayMatch) return;
 
-    if (!todayTraining && !todayMatch) {
-      logger.info("No training or match today, skipping team", {teamId});
-      continue;
-    }
-
-    const rpeDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_player_rpe").get();
-    const rpeData = parseDataDoc(rpeDoc, {});
-
-    const availDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_training_availability").get();
-    const avail = parseDataDoc(availDoc, {});
+    // RPE + availability from the canonical record collections
+    const teamRef = db.collection("teams").doc(teamId);
+    const [rpeSnap, availSnap] = await Promise.all([
+      teamRef.collection("rpe").where("date", "==", today).get(),
+      teamRef.collection("trainingAvail").where("date", "==", today).get(),
+    ]);
+    const rpeIds = new Set(rpeSnap.docs.map((d) => d.id));
+    const availByUid = {};
+    availSnap.forEach((d) => { availByUid[d.data().uid] = d.data().value; });
 
     const playerUids = await getTeamMembersByRole(teamId, "player");
-    const missingRpe = [];
-
-    for (const uid of playerUids) {
-      let shouldRemind = false;
-
+    const missingRpe = playerUids.filter((uid) => {
       if (todayTraining) {
-        const availKey = uid + "_" + today;
-        const attended = avail[availKey] === "yes" ||
-          avail[availKey] === "late";
-        const rpeKey = uid + "_training_" + today;
-        logger.info("RPE check (training)", {uid, availKey,
-          availValue: avail[availKey], attended,
-          rpeKey, hasRpe: !!rpeData[rpeKey]});
-        if (attended && !rpeData[rpeKey]) shouldRemind = true;
+        const attended = availByUid[uid] === "yes" || availByUid[uid] === "late";
+        if (attended && !rpeIds.has(uid + "_training_" + today)) return true;
       }
-
-      if (todayMatch) {
-        const rpeKey = uid + "_match_" + todayMatch.id;
-        logger.info("RPE check (match)", {uid, rpeKey,
-          hasRpe: !!rpeData[rpeKey]});
-        if (!rpeData[rpeKey]) shouldRemind = true;
-      }
-
-      if (shouldRemind) missingRpe.push(uid);
-    }
-
-    logger.info("Missing RPE players", {teamId, missingRpe});
+      if (todayMatch && !rpeIds.has(uid + "_match_" + todayMatch.id)) return true;
+      return false;
+    });
+    logger.info("rpeReminder", {teamId, players: playerUids.length,
+      missing: missingRpe.length});
 
     if (missingRpe.length) {
       const tokens = await getTokensForUsers(missingRpe);
       if (tokens.length) {
         await sendToTokens(tokens, {
-          title: "\uD83D\uDCCA No oblidis el RPE!",
+          title: "📊 No oblidis el RPE!",
           body: "Registra el teu RPE d'avui abans de dormir.",
           type: "rpe_reminder",
           page: "player-actions",
           tag: "rpe-" + today,
         });
-      } else {
-        logger.warn("No tokens found for RPE-missing players");
       }
-    } else {
-      logger.info("No players missing RPE (or no players found)");
     }
-  }
-  logger.info("scheduledRpeReminder END");
+  }));
 });
 
 // ════════════════════════════════════════════════════════════
@@ -414,61 +369,57 @@ exports.scheduledMatchAvailReminder = onSchedule({
   timeZone: "Europe/Madrid",
   region: "us-central1",
 }, async () => {
-  logger.info("scheduledMatchAvailReminder START (Friday 20:00)");
-  const teamsSnap = await db.collection("teams").get();
-
-  // Calculate Saturday and Sunday dates
   const now = new Date();
-  const satDate = new Date(now);
-  satDate.setDate(satDate.getDate() + 1);
-  const sunDate = new Date(now);
-  sunDate.setDate(sunDate.getDate() + 2);
-  const satStr = satDate.toISOString().slice(0, 10);
-  const sunStr = sunDate.toISOString().slice(0, 10);
-  logger.info("Weekend dates", {satStr, sunStr});
+  const fmt = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"});
+  const satStr = fmt.format(new Date(now.getTime() + 24 * 36e5));
+  const sunStr = fmt.format(new Date(now.getTime() + 48 * 36e5));
 
-  for (const teamDoc of teamsSnap.docs) {
+  // Only teams with a weekend match (denormalized field)
+  const teamsSnap = await db.collection("teams")
+      .where("matchDates", "array-contains-any", [satStr, sunStr]).get();
+  if (teamsSnap.empty) {
+    logger.info("matchAvailReminder: no weekend matches");
+    return;
+  }
+
+  await Promise.all(teamsSnap.docs.map(async (teamDoc) => {
     const teamId = teamDoc.id;
     const matchDoc = await db.collection("teams").doc(teamId)
         .collection("data").doc("fa_matches").get();
-    if (!matchDoc.exists) continue;
-
+    if (!matchDoc.exists) return;
     const matches = JSON.parse(matchDoc.data().v || "[]");
-    const availDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_match_availability").get();
-    const avail = parseDataDoc(availDoc, {});
+    const weekendMatches = matches.filter((m) =>
+      m.status !== "past" && m.date && (m.date === satStr || m.date === sunStr));
+    if (!weekendMatches.length) return;
 
-    // Filter to weekend matches only
-    const weekendMatches = matches.filter((m) => {
-      if (m.status === "past" || !m.date) return false;
-      return m.date === satStr || m.date === sunStr;
-    });
+    // Answers from the canonical record collection; roster queried ONCE
+    const matchIds = weekendMatches.map((m) => String(m.id));
+    const availSnap = await db.collection("teams").doc(teamId)
+        .collection("matchAvail").where("matchId", "in", matchIds.slice(0, 10)).get();
+    const answered = new Set(availSnap.docs.map((d) => d.data().uid + "_" + d.data().matchId));
+    const playerUids = await getTeamMembersByRole(teamId, "player");
 
     for (const match of weekendMatches) {
-      const playerUids = await getTeamMembersByRole(teamId, "player");
-      const unanswered = playerUids.filter((uid) => {
-        const key = uid + "_" + match.id;
-        return !avail[key];
-      });
-
-      if (unanswered.length) {
-        const tokens = await getTokensForUsers(unanswered);
-        if (tokens.length) {
-          const label = (match.home || "") + " vs " + (match.away || "");
-          await sendToTokens(tokens, {
-            title: "⚽ Confirma la teva disponibilitat!",
-            body: label + " · " + match.date +
-              (match.time ? " a les " + match.time : "") +
-              ". Indica si estàs disponible.",
-            type: "match_avail_reminder",
-            page: "player-home",
-            tag: "match-avail-" + match.id,
-          });
-        }
+      const unanswered = playerUids.filter((uid) =>
+        !answered.has(uid + "_" + String(match.id)));
+      logger.info("matchAvailReminder", {teamId, matchId: match.id,
+        players: playerUids.length, unanswered: unanswered.length});
+      if (!unanswered.length) continue;
+      const tokens = await getTokensForUsers(unanswered);
+      if (tokens.length) {
+        const label = (match.home || "") + " vs " + (match.away || "");
+        await sendToTokens(tokens, {
+          title: "⚽ Confirma la teva disponibilitat!",
+          body: label + " · " + match.date +
+            (match.time ? " a les " + match.time : "") +
+            ". Indica si estàs disponible.",
+          type: "match_avail_reminder",
+          page: "player-home",
+          tag: "match-avail-" + match.id,
+        });
       }
     }
-  }
-  logger.info("scheduledMatchAvailReminder END");
+  }));
 });
 
 // ── 5. fcfClassificacio — proxy FCF league standings ──
@@ -477,7 +428,9 @@ exports.fcfClassificacio = onRequest(
     {cors: true, region: "us-central1", memory: "256MiB"},
     async (req, res) => {
       const url = req.query.url;
-      if (!url || !url.startsWith("https://www.fcf.cat/classificacio/")) {
+      // Full-path allowlist: only FCF classification pages, no query
+      // strings, fragments or path tricks past the prefix.
+      if (!url || !/^https:\/\/www\.fcf\.cat\/classificacio\/[a-zA-Z0-9/_-]+$/.test(url)) {
         res.status(400).json({error: "Invalid URL"});
         return;
       }
@@ -678,7 +631,28 @@ exports.bridgeLegacyPlayerData = onDocumentWritten({
   await flush();
 });
 
-// ── 9. archiveSeason — archive & reset season data (admin only) ──
+// ── 9. updateTeamDates — denormalize schedule dates onto the team doc ──
+// Keeps teams/{id}.trainingDates / .matchDates arrays in sync with the
+// fa_training / fa_matches blobs (staff-only writers). The schedulers
+// query `array-contains` on these instead of scanning every team.
+exports.updateTeamDates = onDocumentWritten({
+  document: "teams/{teamId}/data/{key}",
+  region: "us-central1",
+}, async (event) => {
+  const key = event.params.key;
+  if (key !== "fa_training" && key !== "fa_matches") return;
+  let list = [];
+  if (event.data.after.exists) {
+    const parsed = parseDataDoc(event.data.after, []);
+    if (Array.isArray(parsed)) list = parsed;
+  }
+  const dates = [...new Set(list.map((x) => String(x.date || "")).filter(Boolean))];
+  const field = key === "fa_training" ? "trainingDates" : "matchDates";
+  await db.collection("teams").doc(event.params.teamId)
+      .set({[field]: dates}, {merge: true});
+});
+
+// ── 10. archiveSeason — archive & reset season data (admin only) ──
 const SEASON_KEYS = [
   "fa_matches", "fa_match_events", "fa_match_goals",
   "fa_training",

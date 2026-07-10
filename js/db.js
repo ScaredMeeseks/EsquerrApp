@@ -266,32 +266,35 @@ const DB = (function () {
       _unsubscribers.push(unsub);
     });
 
-    // Real-time listeners for remote changes from other devices.
-    // Keys backed by record collections are handled above — their legacy
-    // docs are only a dual-write mirror for old clients now.
-    SYNCED_KEYS.forEach(function (key) {
-      if (RECORD_LS_KEYS.has(key)) return;
-      var unsub = dataRef(key).onSnapshot(function (doc) {
-        if (!doc.exists) return;
-        // Skip echoes of our own local writes
-        if (doc.metadata.hasPendingWrites) return;
+    // ONE listener on the whole data/ collection for remote changes
+    // (was: one listener per key — 19+ concurrent watches per client).
+    // docChanges() delivers only what actually changed. Keys backed by
+    // record collections are handled above — their legacy docs are only
+    // a dual-write mirror for old clients now.
+    var dataUnsub = db.collection('teams').doc(_teamId).collection('data')
+      .onSnapshot(function (snap) {
+        snap.docChanges().forEach(function (change) {
+          if (change.type === 'removed') return;
+          var doc = change.doc;
+          var key = doc.id;
+          if (!SYNCED_KEYS.has(key) || RECORD_LS_KEYS.has(key)) return;
+          // Skip echoes of our own local writes
+          if (doc.metadata.hasPendingWrites) return;
 
-        if (MERGE_KEYS.has(key)) {
-          var val = _docToBlob(doc.data());
+          var val;
+          if (MERGE_KEYS.has(key)) {
+            val = _docToBlob(doc.data());
+          } else {
+            val = doc.data().v;
+            if (val === undefined) return;
+          }
           if (_origGetItem(key) !== val) {
             _origSetItem(key, val);
             window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: key } }));
           }
-        } else {
-          var val = doc.data().v;
-          if (val !== undefined && _origGetItem(key) !== val) {
-            _origSetItem(key, val);
-            window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: key } }));
-          }
-        }
+        });
       });
-      _unsubscribers.push(unsub);
-    });
+    _unsubscribers.push(dataUnsub);
   }
 
   /** Upload every synced localStorage key to Firestore (batch write). */

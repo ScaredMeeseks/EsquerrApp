@@ -2537,14 +2537,12 @@
 
   // #region FCF League Scraper
   /* ---------- Live FCF league scraper ---------- */
-  var FCF_LEAGUES_DEFAULT = [
-    { id: 'league-a', title: 'A Team — Tercera Catalana', url: 'https://www.fcf.cat/classificacio/2526/futbol-11/tercera-catalana/grup-10' },
-    { id: 'league-b', title: 'B Team — Quarta Catalana',  url: 'https://www.fcf.cat/classificacio/2526/futbol-11/quarta-catalana/grup-22' }
-  ];
   var ESQUERRA_NEEDLE_DEFAULT = "esquerra";
 
   function getActiveFcfLeagues() {
-    if (!_clubConfig) return FCF_LEAGUES_DEFAULT;
+    // No hardcoded fallback: clubs without configured FCF links simply
+    // show no standings (a lead sets them up in Team Setup).
+    if (!_clubConfig) return [];
     if (!_clubConfig.fcfLinks || !Object.keys(_clubConfig.fcfLinks).length) return [];
     var links = _clubConfig.fcfLinks;
     var cats = _clubConfig.categories || {};
@@ -2810,10 +2808,16 @@
         ${attendDonutHtml}
       </div>
       <div class="league-tables-row">
-        ${getActiveFcfLeagues().map(function(league) {
-          var cached = _leagueCache[league.id] || [];
-          return buildLeagueSnippet(league.title, cached, league.id);
-        }).join('')}
+        ${(function() {
+          var leagues = getActiveFcfLeagues();
+          if (!leagues.length && session && (session.isTeamLead || session.isAdmin)) {
+            return '<div class="card" style="color:var(--text-secondary);font-size:.9rem;">Configura els enllaços de classificació FCF a l\'apartat de configuració del club per veure les classificacions aquí.</div>';
+          }
+          return leagues.map(function(league) {
+            var cached = _leagueCache[league.id] || [];
+            return buildLeagueSnippet(league.title, cached, league.id);
+          }).join('');
+        })()}
       </div>
       <div class="card">
         <div class="card-title">${t('home.this_week')}</div>
@@ -14733,13 +14737,43 @@
       navigate();
     });
 
-    // Re-render current page when Firestore pushes remote changes
-    // Skip re-render on registrations to avoid losing in-progress edits
-    // Re-render current page when Firestore pushes remote changes
-    // Debounced to avoid flicker; skips pages with active editing
+    // Re-render current page when Firestore pushes remote changes —
+    // but ONLY when the changed key is actually displayed on the current
+    // page (KEY_PAGES). Unmapped keys (e.g. fa_users, read everywhere)
+    // conservatively re-render every page. Badges refresh either way.
+    // Debounced to avoid flicker; skips pages with active editing.
+    const KEY_PAGES = {
+      fa_training_availability: ['player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical'],
+      fa_match_availability: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
+      fa_player_rpe: ['player-home', 'player-actions', 'my-stats', 'staff-player-stats', 'manage-roster', 'staff-training-detail'],
+      fa_training: ['player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats'],
+      fa_matches: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_matchday: ['player-home', 'player-matchday', 'staff-matchday', 'matchday'],
+      fa_standings: ['player-home'],
+      fa_news: ['player-home'],
+      fa_player_stats: ['player-home', 'my-stats', 'staff-player-stats', 'manage-roster'],
+      fa_staff_notifications: ['staff-notifications'],
+      fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
+      fa_injury_zone: ['my-stats', 'medical', 'medical-detail'],
+      fa_injuries: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
+      fa_training_staff_override: ['player-home', 'training', 'training-detail', 'staff-training', 'staff-training-detail'],
+      fa_convocatoria_sent: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
+      fa_convocatoria_callup: ['player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
+      fa_match_goals: ['player-matchday', 'staff-matchday', 'matchday', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_match_events: ['player-home', 'player-matchday', 'staff-matchday', 'matchday', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_tactic_saved: ['tactics'],
+      fa_tactic_match_boards: ['tactics', 'match-detail', 'convocatoria'],
+      fa_tactic_training_boards: ['tactics', 'training-detail', 'staff-training-detail'],
+    };
     var _syncDebounce = null;
-    window.addEventListener('firestore-sync', () => {
+    window.addEventListener('firestore-sync', (e) => {
+      // Badges are cheap — keep them fresh regardless of the current page
+      updateActionsBadge();
+      updateStaffNotifBadge();
       if (['registrations', 'training-detail', 'staff-training-detail', 'match-detail'].includes(currentPage)) return;
+      const key = e.detail && e.detail.key;
+      const pages = key && KEY_PAGES[key];
+      if (pages && !pages.includes(currentPage)) return;
       clearTimeout(_syncDebounce);
       _syncDebounce = setTimeout(() => {
         const s = getSession();
