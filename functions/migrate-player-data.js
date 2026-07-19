@@ -7,13 +7,19 @@
 //
 // Idempotent and non-destructive: uses create() and ignores
 // ALREADY_EXISTS, so records written by dual-writing clients or the
-// bridge are never overwritten. Legacy docs are left in place (old
-// clients still read/write them until Phase 3).
+// bridge are never overwritten. Legacy docs are left in place until
+// --delete-legacy removes them (Phase 3b final cleanup).
 //
 // Run from Cloud Shell (repo root):
 //   node functions/migrate-player-data.js            # dry-run (counts)
 //   node functions/migrate-player-data.js --apply    # write records
 //   node functions/migrate-player-data.js --verify   # compare counts + samples
+//
+// Final cleanup (ONLY after the reconcile+verify pass is clean):
+//   node functions/migrate-player-data.js --delete-legacy          # dry-run
+//   node functions/migrate-player-data.js --delete-legacy --apply  # delete
+// Deletes the 3 frozen legacy data/ docs per team; refuses any doc
+// whose record collection holds fewer records than the blob has entries.
 // ============================================================
 
 const admin = require("firebase-admin");
@@ -22,6 +28,7 @@ const db = admin.firestore();
 
 const APPLY = process.argv.includes("--apply");
 const VERIFY = process.argv.includes("--verify");
+const DELETE_LEGACY = process.argv.includes("--delete-legacy");
 
 // Parse a data doc in either format: blob {v:"json"} or per-field merge.
 function entriesOf(snap) {
@@ -125,11 +132,47 @@ async function migrateTeam(teamId) {
   }
 }
 
+// Phase 3b final cleanup: remove the frozen legacy blob/merge docs.
+// Per-doc safety: skip if the record collection has fewer records than
+// the blob has entries (means the reconcile hasn't fully landed).
+async function deleteLegacyTeam(teamId) {
+  const dataCol = db.collection("teams").doc(teamId).collection("data");
+  for (const m of MAPPINGS) {
+    const snap = await dataCol.doc(m.legacyKey).get();
+    if (!snap.exists) {
+      console.log(`${teamId}/${m.legacyKey}: already absent`);
+      continue;
+    }
+    const entries = Object.keys(entriesOf(snap)).length;
+    const agg = await db.collection("teams").doc(teamId)
+        .collection(m.coll).count().get();
+    const records = agg.data().count;
+    if (!APPLY) {
+      console.log(`${teamId}/${m.legacyKey}: WOULD delete ` +
+        `(blob entries=${entries}, records=${records})`);
+      continue;
+    }
+    if (records < entries) {
+      console.log(`${teamId}/${m.legacyKey}: SKIPPED — records(${records}) < ` +
+        `blob entries(${entries}); run --apply reconcile + --verify first`);
+      continue;
+    }
+    await dataCol.doc(m.legacyKey).delete();
+    console.log(`${teamId}/${m.legacyKey}: DELETED ` +
+      `(blob entries=${entries}, records=${records})`);
+  }
+}
+
 (async () => {
-  console.log(VERIFY ? "=== VERIFY ===" : APPLY ? "=== APPLY ===" : "=== DRY-RUN ===");
+  if (DELETE_LEGACY) {
+    console.log(APPLY ? "=== DELETE-LEGACY (APPLY) ===" : "=== DELETE-LEGACY (DRY-RUN) ===");
+  } else {
+    console.log(VERIFY ? "=== VERIFY ===" : APPLY ? "=== APPLY ===" : "=== DRY-RUN ===");
+  }
   const teams = await db.collection("teams").get();
   for (const team of teams.docs) {
-    await migrateTeam(team.id);
+    if (DELETE_LEGACY) await deleteLegacyTeam(team.id);
+    else await migrateTeam(team.id);
   }
   console.log("Done!");
   process.exit(0);

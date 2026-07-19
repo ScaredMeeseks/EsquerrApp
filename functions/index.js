@@ -566,70 +566,11 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   return {ok: true, role};
 });
 
-// ── 8. bridgeLegacyPlayerData — legacy blob writes → record docs ──
-// Old clients (previous APK/web) still write availability/RPE into the
-// legacy teams/{id}/data/{key} docs. This trigger diffs each write and
-// upserts the per-record docs so new clients see old clients' answers.
-// New clients dual-write both — the bridge write is then value-identical
-// and settles without looping (blob rebuild compares values, not times).
-const BRIDGE_KEYS = {
-  fa_training_availability: {
-    coll: "trainingAvail",
-    parse: (k, v) => {
-      const i = k.indexOf("_");
-      return {uid: k.slice(0, i), date: k.slice(i + 1), value: v};
-    },
-  },
-  fa_match_availability: {
-    coll: "matchAvail",
-    parse: (k, v) => {
-      const i = k.indexOf("_");
-      return {uid: k.slice(0, i), matchId: k.slice(i + 1), value: v};
-    },
-  },
-  fa_player_rpe: {
-    coll: "rpe",
-    parse: (k, v) => {
-      const i = k.indexOf("_");
-      return Object.assign({uid: k.slice(0, i)}, v);
-    },
-  },
-};
-
-exports.bridgeLegacyPlayerData = onDocumentWritten({
-  document: "teams/{teamId}/data/{key}",
-  region: "us-central1",
-}, async (event) => {
-  const cfg = BRIDGE_KEYS[event.params.key];
-  if (!cfg) return;
-  const before = event.data.before.exists ? parseDataDoc(event.data.before, {}) : {};
-  const after = event.data.after.exists ? parseDataDoc(event.data.after, {}) : {};
-
-  const collRef = db.collection("teams").doc(event.params.teamId)
-      .collection(cfg.coll);
-  let batch = db.batch();
-  let n = 0;
-  const flush = async () => {
-    if (n) await batch.commit();
-    batch = db.batch();
-    n = 0;
-  };
-
-  for (const k of Object.keys(after)) {
-    if (JSON.stringify(after[k]) === JSON.stringify(before[k])) continue;
-    batch.set(collRef.doc(k), Object.assign(cfg.parse(k, after[k]), {
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      source: "bridge",
-    }), {merge: true});
-    if (++n >= 400) await flush();
-  }
-  for (const k of Object.keys(before)) {
-    if (k in after) continue;
-    batch.delete(collRef.doc(k));
-    if (++n >= 400) await flush();
-  }
-  await flush();
-});
+// ── 8. (removed in Phase 3b) bridgeLegacyPlayerData ──
+// The Phase-2 trigger that mirrored old clients' legacy blob writes into
+// the record collections is gone: old APKs are extinct and the record
+// collections are the only write path. The frozen legacy data/ docs stay
+// in place until `migrate-player-data.js --delete-legacy` removes them.
 
 // ── 9. updateTeamDates — denormalize schedule dates onto the team doc ──
 // Keeps teams/{id}.trainingDates / .matchDates arrays in sync with the
@@ -664,8 +605,10 @@ const SEASON_KEYS = [
   "fa_standings", "fa_matchday", "fa_news",
 ];
 
-// Keys stored as per-field merge (not blob {v: "..."}) —
-// MUST stay in sync with MERGE_KEYS in js/db.js
+// Keys stored as per-field merge (not blob {v: "..."}). Describes the
+// FORMAT of existing data/ docs so archiveSeason resets them correctly —
+// includes the frozen legacy availability/RPE docs, which is a superset
+// of the still-synced MERGE_KEYS in js/db.js.
 const MERGE_KEYS = new Set([
   "fa_training_availability",
   "fa_match_availability",
@@ -805,9 +748,8 @@ exports.archiveSeason = onRequest(
         if (opCount > 0) await batch.commit();
 
         // ── Archive + clear the per-record player-data collections ──
-        // MUST run BEFORE the blob resets below: resetting the legacy blobs
-        // fires bridgeLegacyPlayerData, which deletes record docs — they
-        // have to be copied to the season archive first.
+        // (Canonical data; the legacy availability/RPE blobs reset below
+        // are frozen mirrors kept only until --delete-legacy runs.)
         for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
           const collSnap = await db.collection("teams").doc(teamId)
               .collection(coll).get();

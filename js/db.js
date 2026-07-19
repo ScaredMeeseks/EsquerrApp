@@ -6,9 +6,13 @@
 // into localStorage so the app always has a local cache for
 // instant synchronous reads.
 //
-// MERGE_KEYS (availability data) use per-field Firestore merges
-// so two players saving at the same time never overwrite each
-// other.  All other SYNCED_KEYS use the original blob strategy.
+// MERGE_KEYS (injury notes/zone, staff override) use per-field
+// Firestore merges so two writers saving at the same time never
+// overwrite each other.  All other SYNCED_KEYS use the original
+// blob strategy.  Player-submitted availability/RPE lives ONLY in
+// per-record subcollections (Phase 3b) — their localStorage blobs
+// are local read caches rebuilt from record snapshots, never
+// mirrored to data/ docs.
 //
 // Usage:
 //   await DB.init('teamId');  — download Firestore → localStorage
@@ -31,9 +35,6 @@ const DB = (function () {
     'fa_standings',
     'fa_news',
     'fa_player_stats',
-    'fa_training_availability',
-    'fa_match_availability',
-    'fa_player_rpe',
     'fa_staff_notifications',
     'fa_injury_notes',
     'fa_injury_zone',
@@ -49,21 +50,19 @@ const DB = (function () {
   ]);
 
   /* Keys that use per-field Firestore merges instead of blob replacement.
-     Each player writes only their own field — concurrent saves never conflict. */
+     Each writer touches only their own field — concurrent saves never
+     conflict. */
   const MERGE_KEYS = new Set([
-    'fa_training_availability',
-    'fa_match_availability',
     'fa_training_staff_override',
-    'fa_player_rpe',
     'fa_injury_notes',
     'fa_injury_zone',
   ]);
 
-  /* Phase 2: player-submitted data is CANONICAL in per-record subcollections
-     (teams/{id}/{coll}/{docId}, docId = the legacy blob key). The legacy
-     merge docs above are kept as a dual-write mirror for old clients until
-     Phase 3. localStorage blobs for these keys are rebuilt from collection
-     snapshots (not from the legacy doc listeners). */
+  /* Player-submitted data lives ONLY in per-record subcollections
+     (teams/{id}/{coll}/{docId}, docId = the historical blob key — Phase 3b
+     removed the legacy data/ dual-write mirror; those docs are frozen and
+     ignored). localStorage blobs for these keys are local read caches
+     rebuilt from collection snapshots. */
   const RECORD_COLLECTIONS = {
     trainingAvail: {
       lsKey: 'fa_training_availability',
@@ -170,8 +169,12 @@ const DB = (function () {
       await _persistenceReady;
     }
 
-    // Flush all synced keys to prevent stale data from a previous team
+    // Flush all synced + record-cache keys to prevent stale data from a
+    // previous team
     SYNCED_KEYS.forEach(function (key) {
+      _origRemoveItem(key);
+    });
+    RECORD_LS_KEYS.forEach(function (key) {
       _origRemoveItem(key);
     });
 
@@ -243,22 +246,29 @@ const DB = (function () {
       console.warn('User reconciliation failed:', e);
     }
 
-    // Record-collection listeners (Phase 2): the canonical source for
-    // player-submitted data. Each snapshot rebuilds the corresponding
-    // localStorage blob so all existing read paths keep working unchanged.
+    // Record-collection listeners: the ONLY source for player-submitted
+    // data since Phase 3b (legacy data/ docs are frozen and never loaded).
+    // Each snapshot rebuilds the corresponding localStorage blob so all
+    // existing read paths keep working unchanged. init() waits for the
+    // first snapshot of each collection (cache or server) so the first
+    // render already sees availability/RPE.
     var _recordSeen = {};
+    var firstSnaps = [];
     Object.keys(RECORD_COLLECTIONS).forEach(function (coll) {
       var cfg = RECORD_COLLECTIONS[coll];
+      var resolveFirst;
+      firstSnaps.push(new Promise(function (res) { resolveFirst = res; }));
       var unsub = db.collection('teams').doc(_teamId).collection(coll)
         .onSnapshot(function (snap) {
+          resolveFirst();
           if (snap.metadata.hasPendingWrites) return;
           if (!snap.empty) _recordSeen[coll] = true;
-          // Guard the pre-migration first load ONLY: an empty collection we
-          // have never seen populated, with a populated blob, means the
-          // migration hasn't run yet — don't wipe legacy history from cache.
-          // Once we've seen records, an empty snapshot is a real "all deleted"
-          // and MUST clear the blob (e.g. a coach's device when the last
-          // availability answer is withdrawn on another device).
+          // Guard the very first load ONLY: an empty collection we have
+          // never seen populated, with a populated blob, means data hasn't
+          // arrived yet — don't wipe the cache. Once we've seen records, an
+          // empty snapshot is a real "all deleted" and MUST clear the blob
+          // (e.g. a coach's device when the last availability answer is
+          // withdrawn on another device).
           var existing = _origGetItem(cfg.lsKey);
           if (snap.empty && !_recordSeen[coll] && existing && existing !== '{}') return;
           var obj = {};
@@ -268,22 +278,26 @@ const DB = (function () {
             _origSetItem(cfg.lsKey, val);
             window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: cfg.lsKey } }));
           }
+        }, function (err) {
+          console.error('[DB] record listener failed for', coll, err);
+          resolveFirst();
         });
       _unsubscribers.push(unsub);
     });
+    await Promise.all(firstSnaps);
 
     // ONE listener on the whole data/ collection for remote changes
     // (was: one listener per key — 19+ concurrent watches per client).
     // docChanges() delivers only what actually changed. Keys backed by
-    // record collections are handled above — their legacy docs are only
-    // a dual-write mirror for old clients now.
+    // record collections are handled above — their frozen legacy docs
+    // are no longer in SYNCED_KEYS and get skipped here.
     var dataUnsub = db.collection('teams').doc(_teamId).collection('data')
       .onSnapshot(function (snap) {
         snap.docChanges().forEach(function (change) {
           if (change.type === 'removed') return;
           var doc = change.doc;
           var key = doc.id;
-          if (!SYNCED_KEYS.has(key) || RECORD_LS_KEYS.has(key)) return;
+          if (!SYNCED_KEYS.has(key)) return;
           // Skip echoes of our own local writes
           if (doc.metadata.hasPendingWrites) return;
 
@@ -361,8 +375,8 @@ const DB = (function () {
 
   /**
    * Canonical write of a player-submitted record (teams/{id}/{coll}/{docId}).
-   * Resolves on SERVER ack. The caller also updates the legacy localStorage
-   * blob (dual-write) so old clients keep seeing new answers until Phase 3.
+   * Resolves on SERVER ack. The caller also updates the localStorage blob
+   * (local-only read cache) so its own reads stay instant.
    */
   function submit(coll, docId, data) {
     if (!_teamId) return Promise.reject(new Error('DB not initialised'));
@@ -405,6 +419,7 @@ const DB = (function () {
   /** Flush all synced localStorage keys without connecting to Firestore. */
   function flush() {
     SYNCED_KEYS.forEach(function (key) { _origRemoveItem(key); });
+    RECORD_LS_KEYS.forEach(function (key) { _origRemoveItem(key); });
   }
 
   return {

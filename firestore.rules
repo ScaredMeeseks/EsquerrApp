@@ -3,36 +3,25 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Helpers ─────────────────────────────────────────────
-    // HYBRID authorization (Phase 2): Auth custom claims first (fast, no
-    // reads — set by joinClub/setRole/backfill), users-doc fallback for
-    // sessions whose token predates the claims backfill. The fallback is
-    // removed in Phase 3.
+    // Claims-only authorization (Phase 3b): Auth custom claims are set by
+    // joinClub/setRole (backfilled 2026-07-10) and refresh with the ID
+    // token, so every live session has them. The Phase-2 users-doc
+    // fallback (`me()`) is gone — no per-request document reads.
     function isSuperUser() {
       return request.auth != null && request.auth.token.email == 'marna96@gmail.com';
     }
-    function me() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
     function sameTeam(teamId) {
-      return request.auth != null && (
-        request.auth.token.teamId == teamId
-        || me().teamId == teamId
-      );
+      return request.auth != null && request.auth.token.teamId == teamId;
     }
     function isStaffOf(teamId) {
-      return request.auth != null && (
-        (request.auth.token.teamId == teamId
-          && request.auth.token.role in ['staff', 'lead'])
-        || (me().teamId == teamId
-            && (me().isTeamLead == true
-                || (('roles' in me()) && me().roles.hasAny(['staff']))))
-      );
+      return request.auth != null
+        && request.auth.token.teamId == teamId
+        && request.auth.token.role in ['staff', 'lead'];
     }
     function isLeadOf(teamId) {
-      return request.auth != null && (
-        (request.auth.token.teamId == teamId && request.auth.token.role == 'lead')
-        || (me().teamId == teamId && me().isTeamLead == true)
-      );
+      return request.auth != null
+        && request.auth.token.teamId == teamId
+        && request.auth.token.role == 'lead';
     }
     // Per-record ownership: doc ids are "{uid}" or "{uid}_..."
     function owns(docId) {
@@ -80,14 +69,16 @@ service cloud.firestore {
       allow create, update: if isStaffOf(teamId) || isSuperUser();
       allow delete: if isSuperUser();
 
-      // Legacy blob/merge docs. TRANSITIONAL: players may still write the
-      // keys their flows dual-write (old clients depend on them until
-      // Phase 3, when this allowlist shrinks to staff-only).
+      // Blob/merge team-data docs. Availability/RPE moved wholly to the
+      // record collections in Phase 3b — their frozen legacy docs are
+      // staff-only now. Players may still write the keys their active
+      // flows touch (injuries/notes/zone until the injuries record
+      // collection lands; fa_users via the db.js reconcile +
+      // deriveFitnessStatus; fa_staff_notifications via player alerts).
       match /data/{key} {
         allow read: if sameTeam(teamId) || isSuperUser();
         allow write: if isSuperUser() || isStaffOf(teamId)
           || (sameTeam(teamId) && key in [
-               'fa_training_availability', 'fa_match_availability', 'fa_player_rpe',
                'fa_injury_notes', 'fa_injury_zone', 'fa_injuries',
                'fa_users', 'fa_staff_notifications'
              ]);

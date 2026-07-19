@@ -72,6 +72,9 @@ beforeEach(async () => {
     await d.doc("users/" + STAFF_A).set({teamId: "teamA", roles: ["staff"], name: "S"});
     await d.doc("users/" + LEAD_A).set({teamId: "teamA", isTeamLead: true, roles: ["staff"], name: "L"});
     await d.doc("users/" + B).set({teamId: "teamB", roles: ["player"], name: "B"});
+    // Doc-only membership, NO custom claims — the Phase-2 me() fallback
+    // would have honored this; Phase 3b claims-only rules must not.
+    await d.doc("users/uidNoClaims").set({teamId: "teamA", isTeamLead: true, roles: ["staff"], name: "NC"});
     await d.doc("clubs/teamA").set({name: "Club A", leadEmail: "l@x.com"});
     await d.doc("clubs/teamB").set({name: "Club B", leadEmail: "lb@x.com"});
     await d.doc("clubCodes/CODEA").set({clubId: "teamA"});
@@ -141,8 +144,16 @@ describe("Staff updates of members", () => {
 });
 
 describe("Team data-key allowlist", () => {
-  it("player CAN write an allowlisted key (fa_training_availability)", async () => {
-    await assertSucceeds(asA().doc("teams/teamA/data/fa_training_availability")
+  it("player CAN write a still-allowlisted key (fa_injury_notes)", async () => {
+    await assertSucceeds(asA().doc("teams/teamA/data/fa_injury_notes")
+        .set({x: "y"}, {merge: true}));
+  });
+  it("player CANNOT write the frozen legacy availability doc (Phase 3b)", async () => {
+    await assertFails(asA().doc("teams/teamA/data/fa_training_availability")
+        .set({x: "y"}, {merge: true}));
+  });
+  it("player CANNOT write the frozen legacy RPE doc (Phase 3b)", async () => {
+    await assertFails(asA().doc("teams/teamA/data/fa_player_rpe")
         .set({x: "y"}, {merge: true}));
   });
   it("player CANNOT write a non-allowlisted key (fa_matches)", async () => {
@@ -150,6 +161,26 @@ describe("Team data-key allowlist", () => {
   });
   it("staff CAN write fa_matches", async () => {
     await assertSucceeds(asStaffA().doc("teams/teamA/data/fa_matches").set({v: "[]"}));
+  });
+  it("staff CAN still write the frozen legacy docs", async () => {
+    await assertSucceeds(asStaffA().doc("teams/teamA/data/fa_training_availability")
+        .set({x: "y"}, {merge: true}));
+  });
+});
+
+describe("Claims-only auth (Phase 3b: me() fallback removed)", () => {
+  const asNC = () => db("uidNoClaims", {email: "nc@x.com"}); // users doc says teamA lead
+  it("doc-only membership CANNOT read team data", async () => {
+    await assertFails(asNC().doc("teams/teamA/data/fa_matches").get());
+  });
+  it("doc-only membership CANNOT read a teammate's user doc", async () => {
+    await assertFails(asNC().doc("users/" + A).get());
+  });
+  it("doc-only membership CANNOT read a teammate's record", async () => {
+    await assertFails(asNC().doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01").get());
+  });
+  it("doc-only 'lead' CANNOT update the club", async () => {
+    await assertFails(asNC().doc("clubs/teamA").update({name: "X"}));
   });
 });
 

@@ -953,26 +953,29 @@
   }
 
 
-  // Remove RPE entries older than 1 year to keep the blob lean
+  // Remove RPE entries older than 1 year to keep the data lean.
+  // RPE records are canonical (Phase 3b): delete the record docs — the
+  // local blob rebuilds from the next collection snapshot. Rules only let
+  // players delete their own records, so non-staff sessions prune just
+  // their own entries; staff devices clean up everyone's.
   function pruneOldRpe() {
     var raw = localStorage.getItem('fa_player_rpe');
     if (!raw) return;
     var rpeData;
     try { rpeData = JSON.parse(raw); } catch (e) { return; }
+    var session = getSession();
+    if (!session) return;
+    var canPruneAll = session.isAdmin || session.isTeamLead ||
+      (session.roles && session.roles.includes('staff'));
     var cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
     var cutoffStr = cutoff.toISOString().slice(0, 10);
-    var pruned = false;
     for (var k in rpeData) {
       var entry = rpeData[k];
       var date = (entry && entry.date) ? entry.date : '';
-      if (date && date < cutoffStr) {
-        delete rpeData[k];
-        pruned = true;
-      }
-    }
-    if (pruned) {
-      localStorage.setItem('fa_player_rpe', JSON.stringify(rpeData));
+      if (!date || date >= cutoffStr) continue;
+      if (!canPruneAll && String(k).indexOf(String(session.id) + '_') !== 0) continue;
+      DB.removeRecord('rpe', k).catch(function () { /* surfaced via db-write-error */ });
     }
   }
 
@@ -11870,16 +11873,17 @@
   }
 
   /**
-   * Phase 2 dual-write for player-submitted data: updates the legacy
-   * localStorage blob (mirrored to the legacy doc for old clients) AND
-   * writes the canonical per-record doc — the ack UI tracks the record.
+   * Player-submitted record save: updates the localStorage blob (a
+   * local-only read cache since Phase 3b — no longer mirrored to any
+   * legacy doc) AND writes the canonical per-record doc — the ack UI
+   * tracks the record.
    */
   function ackSaveRecord(coll, docId, data, legacyKey, legacyValue, el) {
     localStorage.setItem(legacyKey, legacyValue);
     return _ackUi(DB.submit(coll, docId, data), el);
   }
 
-  /** Phase 2 dual-delete (un-answer flows). */
+  /** Record delete (un-answer flows); same local-cache update. */
   function ackRemoveRecord(coll, docId, legacyKey, legacyValue, el) {
     localStorage.setItem(legacyKey, legacyValue);
     return _ackUi(DB.removeRecord(coll, docId), el);
