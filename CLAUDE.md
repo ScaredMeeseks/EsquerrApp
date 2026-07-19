@@ -71,6 +71,6 @@ cd ~/EsquerrApp && ./deploy.sh functions   # cloud functions
 
 One-off data scripts (migrations, backfills) live in `functions/` — NOT a separate scripts/ dir — so they resolve `functions/node_modules` (a root `npm install firebase-admin --no-save` on Cloud Shell yields a broken firebase-admin: npm blocks its postinstall scripts). Run from the repo root: `node functions/<name>.js` (ADC credentials are automatic; `cd functions && npm install` first if node_modules is missing).
 
-Backups before risky changes: `gcloud firestore export gs://esquerrapp-backups/<label>-$(date +%F) --project esquerrapp`.
+Backups before risky changes: `gcloud firestore export gs://esquerrapp-backup/<label>-$(date +%F) --project esquerrapp` (bucket name is singular — `esquerrapp-backups` does not exist).
 
 **Session handoff**: when the user says the session is finished, update `HANDOFF.md` (rolling doc, overwritten each session — current state, session summary, pending items).

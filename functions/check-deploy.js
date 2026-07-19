@@ -139,7 +139,7 @@ async function checkFrontend() {
 }
 
 (async () => {
-  console.log("=== EsquerrApp Phase 2 deployment check ===");
+  console.log("=== EsquerrApp deployment check ===");
   await checkClaims();
   await checkMigration();
   await checkBridge();
