@@ -299,3 +299,15 @@ Verified against a seven-case label matrix (plain player, empty roles, lead-only
 - **The unstyled strip at the bottom of the page** was `.dashboard-layout { min-height: calc(100vh - 50px) }` — a hard-coded guess at the navbar height. `.topnav` has no fixed height (it is padding around a logo image), so whenever it rendered taller than 50px the layout fell short and bare body background showed underneath, across the full width including below the sidebar. Removed the calc: `.view` is a 100vh flex column and `.dashboard-layout` already has `flex: 1`, which fills the remainder exactly whatever the bar measures.
 
 `sw.js` → `esquerrapp-v36`. Frontend-only — **no deploy needed** (the v34 rules + functions deploy is still outstanding).
+
+### 2026-08-02n — Click a club crest to replace it (v37)
+
+Superadmin, in Gestió de Clubs: the crest in each row is now clickable and opens a file picker. Uploads to `clubBadges/{clubId}.{ext}` (same path `createClub` uses), writes the URL back with `updateClub`, and refreshes the table. Clubs with no crest show a dashed `+` placeholder in its place.
+
+`storage.rules` already restricted `clubBadges` writes to the superuser, under 5 MB, image content-type — **no rules change needed**; the client checks mirror those three so the failure is a readable toast rather than a raw storage error. When the crest belongs to the user's *own* club the cached splash badge (`_splash_badge`, base64) is dropped, or the old one keeps showing on next load.
+
+Known and accepted: uploading a different file extension leaves the previous file orphaned in the bucket. Clients can't list `clubBadges`, so tidying it would need the Admin SDK; not worth a function for a handful of clubs.
+
+**The bottom strip is NOT fixed** — v36's `min-height: calc(100vh - 50px)` removal was the wrong diagnosis (it was a real latent bug, but not this one). Still reproduces on every page. Awaiting a console probe of which element exceeds `documentElement.clientWidth` before guessing again.
+
+`sw.js` → `esquerrapp-v37`. Frontend-only.

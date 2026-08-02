@@ -82,6 +82,10 @@
     'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
     // ── Club lead handover (superadmin) ──
     'club.change_lead':  { ca:'Canviar responsable', es:'Cambiar responsable', en:'Change club manager' },
+    'club.change_badge': { ca:'Canviar escut (clica-hi)', es:'Cambiar escudo (haz clic)', en:'Change crest (click it)' },
+    'club.badge_changed':{ ca:'Escut actualitzat.', es:'Escudo actualizado.', en:'Crest updated.' },
+    'club.badge_not_image':{ ca:'El fitxer ha de ser una imatge.', es:'El archivo debe ser una imagen.', en:'The file must be an image.' },
+    'club.badge_too_big':{ ca:'La imatge no pot superar els 5 MB.', es:'La imagen no puede superar los 5 MB.', en:'The image must be under 5 MB.' },
     'club.lead_found':   { ca:'✓ {name} — ja és membre del club ({roles}). Mantindrà aquests rols i passarà a ser responsable.', es:'✓ {name} — ya es miembro del club ({roles}). Mantendrá esos roles y pasará a ser responsable.', en:'✓ {name} — already a club member ({roles}). They keep those roles and become manager.' },
     'club.lead_not_registered':{ ca:'⚠ Cap membre amb aquest correu. Si és correcte, serà responsable quan es registri amb el codi del club. Comprova que no sigui un error d\'escriptura.', es:'⚠ Ningún miembro con este correo. Si es correcto, será responsable cuando se registre con el código del club. Comprueba que no sea un error de escritura.', en:'⚠ No member with that address. If it is correct they become manager when they register with the club code. Check it is not a typo.' },
     'club.lead_unchanged':{ ca:'Ja és el responsable actual.', es:'Ya es el responsable actual.', en:'Already the current manager.' },
@@ -11110,7 +11114,11 @@
       snap.forEach(d => {
         const c = d.data();
         const code = codeByClub[d.id] || '—';
-        const badgeImg = c.badgeUrl ? `<img src="${c.badgeUrl}" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:.4rem;">` : '';
+        // The crest is click-to-replace: storage.rules already restricts
+        // clubBadges writes to the superuser, and this table is superuser-only.
+        const badgeImg = c.badgeUrl
+          ? `<img src="${c.badgeUrl}" class="club-badge-edit" data-club="${d.id}" title="${t('club.change_badge')}">`
+          : `<span class="club-badge-edit club-badge-empty" data-club="${d.id}" title="${t('club.change_badge')}">+</span>`;
         rows += `<tr>
           <td>${badgeImg}${sanitize(c.name)}</td>
           <td style="font-family:monospace;letter-spacing:.1em;font-weight:600;">${code}</td>
@@ -11192,6 +11200,45 @@
       console.error('lead lookup failed:', err);
       msg.style.color = 'var(--danger)';
       msg.textContent = t('save.error');
+    }
+  }
+
+  /**
+   * Replace a club's crest (superuser only — storage.rules enforces it).
+   * Uploaded under the club id, so a club has one badge whatever its history.
+   * If the extension differs from the previous upload the old file is left
+   * behind; harmless, and clubBadges has no listing permission from a client.
+   */
+  async function changeClubBadge(clubId, file) {
+    if (!clubId || !file) return;
+    if (!/^image\//.test(file.type)) {
+      _showPushToast(t('club.change_badge'), t('club.badge_not_image'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {   // matches the storage rule
+      _showPushToast(t('club.change_badge'), t('club.badge_too_big'));
+      return;
+    }
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const ref = storage.ref('clubBadges/' + clubId + '.' + ext);
+      await ref.put(file);
+      const badgeUrl = await ref.getDownloadURL();
+      await updateClub(clubId, { badgeUrl: badgeUrl });
+      // Our own club's crest is cached for the splash screen; drop it so the
+      // new one is picked up rather than the old base64 copy.
+      const session = getSession();
+      if (session && session.teamId === clubId) {
+        localStorage.removeItem('_splash_badge');
+        localStorage.removeItem('_splash_badge_url');
+        if (_clubConfig) _clubConfig.badgeUrl = badgeUrl;
+      }
+      _showPushToast(t('club.change_badge'), t('club.badge_changed'));
+      _loadClubList();
+    } catch (err) {
+      console.error('changeClubBadge failed:', err);
+      _showPushToast(t('club.change_badge'),
+        err && err.code === 'storage/unauthorized' ? t('save.error_perms') : t('save.error'));
     }
   }
 
@@ -15467,6 +15514,20 @@
         // Team Lead: edit categories
         if (e.target.closest('#btn-edit-categories')) {
           showTeamSetup();
+          return;
+        }
+        // SuperUser: click a club crest to replace it
+        const badgeEl = e.target.closest('.club-badge-edit');
+        if (badgeEl) {
+          const picker = document.createElement('input');
+          picker.type = 'file';
+          picker.accept = 'image/*';
+          picker.addEventListener('change', () => {
+            if (picker.files && picker.files[0]) {
+              changeClubBadge(badgeEl.dataset.club, picker.files[0]);
+            }
+          });
+          picker.click();
           return;
         }
         // SuperUser: hand a club over to a new team lead

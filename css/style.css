@@ -3508,6 +3508,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg-row-pending td{background:rgba(249,168,37,.05);}
 .reg-status-flat{color:var(--text-secondary);font-size:.85rem;white-space:nowrap;}
 .reg-email-cell{font-size:.82rem;color:var(--text-secondary);white-space:nowrap;}
+/* Club crest in Gestió de Clubs — click to replace (superuser only) */
+.club-badge-edit{
+  width:28px;height:28px;object-fit:contain;vertical-align:middle;
+  margin-right:.4rem;cursor:pointer;border-radius:4px;
+  transition:outline-color .15s;outline:2px solid transparent;
+}
+.club-badge-edit:hover{outline-color:var(--primary);}
+.club-badge-empty{
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px dashed var(--border);color:var(--text-secondary);
+  font-weight:700;font-size:1rem;
+}
+
 .reg-assign-cell{white-space:nowrap;}
 .reg-assign-cell .reg-input{font-size:.8rem;padding:.25rem .35rem;margin-right:.35rem;}
 .reg-assign-cell .reg-assign-cat{min-width:110px;}
