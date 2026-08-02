@@ -75,24 +75,42 @@ async function checkRosters() {
     const club = clubDoc.data();
     const leadEmail = String(club.leadEmail || "").toLowerCase();
     const rosters = await clubDoc.ref.collection("rosters").get();
-    if (rosters.empty) {
-      bad(`${clubDoc.id}: NO roster docs — prefill-rosters.js has not been ` +
-          "applied; every new registration will be refused");
-      continue;
-    }
     const listed = new Set();
     rosters.forEach((d) => {
       const v = d.data() || {};
       [].concat(v.staffEmails || [], v.playerEmails || [])
           .forEach((e) => listed.add(String(e || "").trim().toLowerCase()));
     });
-    ok(`${clubDoc.id}: ${rosters.size} roster docs, ${listed.size} addresses listed`);
 
-    const users = await db.collection("users").where("teamId", "==", clubDoc.id).get();
-    for (const uDoc of users.docs) {
+    // Members who actually need to be on a list. The lead and the superuser
+    // bypass the gate, so they are never listed and must not count here.
+    const users = await db.collection("users")
+        .where("teamId", "==", clubDoc.id).get();
+    const members = users.docs.filter((d) => {
+      const e = String((d.data() || {}).email || "").toLowerCase();
+      return e !== leadEmail && e !== "marna96@gmail.com";
+    });
+
+    if (rosters.empty) {
+      // No roster docs is only a fault if there is somebody to list. A club
+      // whose sole member is its lead — a freshly created one, say — has
+      // nothing for prefill to write, and prefill correctly wrote nothing.
+      if (!members.length) {
+        warn(`${clubDoc.id}: no roster docs, but no members besides the lead ` +
+             "— nothing to list. Registration stays closed until the lead " +
+             "adds addresses, which is the intended behaviour.");
+      } else {
+        bad(`${clubDoc.id}: ${members.length} member(s) but NO roster docs — ` +
+            "run prefill-rosters.js --apply");
+      }
+    } else {
+      ok(`${clubDoc.id}: ${rosters.size} roster docs, ` +
+         `${listed.size} addresses listed`);
+    }
+
+    for (const uDoc of members) {
       const u = uDoc.data();
       const email = String(u.email || "").toLowerCase();
-      if (email === leadEmail || email === "marna96@gmail.com") continue;
       if (!listed.has(email)) {
         bad(`${clubDoc.id}/${u.name || uDoc.id} <${email}>: on no roster list`);
         continue;

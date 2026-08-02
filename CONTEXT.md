@@ -143,3 +143,5 @@ Reported straight after the Phase 4 deploy, unrelated to it. `addTraining()` see
 - Removed a leftover `console.log` that dumped the whole club schedule on every click.
 
 `sw.js` → `esquerrapp-v24`, and `check-deploy.js`'s `CURRENT` bumped to match.
+
+**check-deploy fix (same day)**: `[1b/5]` treated "no roster docs" as a hard failure. That is wrong for a club whose only member is its lead — prefill correctly writes nothing there, and the F.C.Barcelona test club tripped it on the first real run. The check now counts non-lead members first: no members and no docs is a `⚠` note (registration stays closed until the lead adds addresses, which is the design), members but no docs is still a `✘`. Unlisted members were already reported individually, so nothing is lost by dropping the early bail.
