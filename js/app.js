@@ -293,6 +293,10 @@
     'reg.status_staff': { ca:'Staff', es:'Staff', en:'Staff' },
     'reg.status_both':  { ca:'Ambdós', es:'Ambos', en:'Both' },
     'reg.all_members':  { ca:'Tots els membres', es:'Todos los miembros', en:'All Members' },
+    'reg.assigned':     { ca:'Membres assignats', es:'Miembros asignados', en:'Assigned registrations' },
+    'reg.unassigned':   { ca:'Sense equip assignat', es:'Sin equipo asignado', en:'Unassigned registrations' },
+    'reg.unassigned_desc':{ ca:'Membres del club que encara no estan en cap equip. Afegeix el seu correu a la llista de jugadors d\'un equip per assignar-los.', es:'Miembros del club que aún no están en ningún equipo. Añade su correo a la lista de jugadores de un equipo para asignarlos.', en:'Club members who are not in a squad yet. Add their address to a team\'s player list to assign them.' },
+    'reg.unassigned_none':{ ca:'Tothom té equip assignat.', es:'Todos tienen equipo asignado.', en:'Everyone has a squad.' },
     'reg.pre_title':    { ca:'Jugadors pre-registrats', es:'Jugadores pre-registrados', en:'Pre-registered Players' },
     'reg.pre_desc':     { ca:'Només els correus d\'aquesta llista es podran registrar com a jugadors d\'aquest equip.', es:'Solo los correos de esta lista podrán registrarse como jugadores de este equipo.', en:'Only addresses on this list can register as players for this team.' },
     'reg.pre_add':      { ca:'+ Jugador', es:'+ Jugador', en:'+ Player' },
@@ -966,6 +970,17 @@
   // Claims watcher state (see onAuthStateChanged)
   let _claimsUnsub = null;
   let _lastClaimsMs = 0;
+
+  /* Set while a login/registration form is mid-flight.
+     Creating the Auth account fires onAuthStateChanged immediately, long
+     before joinClub has run and the profile doc exists — its navigate() then
+     bounced the user to the login screen for a moment before the form's own
+     navigate() took over. On a REJECTED registration it was worse: deleting
+     the rolled-back Auth account fires the listener again, which switched
+     away from the register view and took the error message with it, so the
+     applicant just landed back on login with no explanation. The form
+     handlers own navigation while this is set. */
+  let _authFlowBusy = false;
 
   function getSession() {
     return _currentSession;
@@ -1671,6 +1686,20 @@
       return;
     }
 
+    // From here on we own navigation: creating (and rolling back) the Auth
+    // account fires onAuthStateChanged, whose navigate() would otherwise
+    // flash the login screen mid-signup and wipe any error we show.
+    _authFlowBusy = true;
+    // Keep the applicant on the register form with the reason visible.
+    const failRegister = async (cred, message) => {
+      if (cred) { try { await cred.user.delete(); } catch (e) { /* already gone */ } }
+      errEl.textContent = message;
+      errEl.hidden = false;
+      _authFlowBusy = false;
+      showView('#view-register');
+      _hideSplash();
+    };
+
     try {
       // Create Firebase Auth account first (needed for Firestore access)
       const cred = await auth.createUserWithEmailAndPassword(email, pw);
@@ -1684,9 +1713,7 @@
       let club = null;
       if (email !== ADMIN_EMAIL) {
         if (!teamCode) {
-          await cred.user.delete();
-          errEl.textContent = t('error.need_team_code');
-          errEl.hidden = false;
+          await failRegister(cred, t('error.need_team_code'));
           return;
         }
         try {
@@ -1694,10 +1721,12 @@
           const res = await joinFn({ code: teamCode.trim().toUpperCase() });
           club = res.data;
         } catch (joinErr) {
-          // No profile doc exists yet, so deleting the auth user leaves nothing behind
-          await cred.user.delete();
-          errEl.textContent = (joinErr && joinErr.message) ? joinErr.message : t('error.invalid_team_code');
-          errEl.hidden = false;
+          // No profile doc exists yet, so deleting the auth user leaves
+          // nothing behind. This is also the "your address is on no roster
+          // list" rejection — the function's message says to ask their coach,
+          // and it must survive on screen.
+          await failRegister(cred,
+            (joinErr && joinErr.message) ? joinErr.message : t('error.invalid_team_code'));
           return;
         }
       }
@@ -1745,6 +1774,7 @@
       if (club) await DB.init(club.clubId);
       e.target.reset();
       errEl.hidden = true;
+      _authFlowBusy = false;
       navigate();
     } catch (err) {
       const msg = err.code === 'auth/email-already-in-use' ? 'An account with this email already exists.'
@@ -1752,6 +1782,12 @@
         : err.message;
       errEl.textContent = msg;
       errEl.hidden = false;
+      // Stay on the register form with the reason visible. The rolled-back
+      // Auth account has already signed us out; without this the listener
+      // would have swapped in the login view and hidden the message.
+      _authFlowBusy = false;
+      showView('#view-register');
+      _hideSplash();
     }
   }
 
@@ -1760,6 +1796,10 @@
     const email = $('#login-email').value.trim().toLowerCase();
     const pw = $('#login-password').value;
     const errEl = $('#login-error');
+    // Same reason as handleRegister: signing in fires onAuthStateChanged
+    // before this handler has loaded the profile, and its navigate() would
+    // flash a screen we are about to replace.
+    _authFlowBusy = true;
     try {
       const cred = await auth.signInWithEmailAndPassword(email, pw);
       const uid = cred.user.uid;
@@ -1807,6 +1847,7 @@
       }
       e.target.reset();
       errEl.hidden = true;
+      _authFlowBusy = false;
       navigate();
     } catch (err) {
       const msg = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
@@ -1814,6 +1855,9 @@
         : err.message;
       errEl.textContent = msg;
       errEl.hidden = false;
+      _authFlowBusy = false;
+      showView('#view-login');
+      _hideSplash();
     }
   }
 
@@ -10197,8 +10241,15 @@
     const canEditRoles = !!(session && (session.isAdmin || session.isTeamLead));
     // Uncategorised members stay visible in every view: this is the page where
     // they get assigned one, so hiding them would strand them.
-    const filtered = curCat ? users.filter(u => (u.category || '') === curCat || (u.category || '') === '') : users;
-    let rows = filtered.map(u => {
+    // Two groups. Assigned = in a squad, and category-filtered like the rest
+    // of the app. Unassigned = in the club but in no squad: brand-new members
+    // nobody has placed yet, and anyone just taken off a team with "Treure de
+    // l'equip". They are NOT category-filtered — they have no category, so any
+    // coach can pick them up.
+    const assigned = users.filter(u => (u.category || '') &&
+      (!curCat || (u.category || '') === curCat));
+    const unassigned = users.filter(u => !(u.category || ''));
+    let rows = assigned.map(u => {
       const roles = u.roles || [];
       let status = 'none';
       if (roles.includes('player') && roles.includes('staff')) status = 'both';
@@ -10256,11 +10307,33 @@
       </tr>`;
     }).join('');
 
+    const unassignedRows = unassigned.map(u => {
+      const picHtml = u.profilePic
+        ? `<img src="${u.profilePic}" class="reg-avatar" alt="">`
+        : `<span class="reg-avatar reg-avatar-placeholder">${sanitize(u.name).charAt(0).toUpperCase()}</span>`;
+      return `<tr data-uid="${u.id}">
+        <td class="reg-name-cell">${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
+        <td>${sanitize(u.email || '')}</td>
+      </tr>`;
+    }).join('');
+
+    const unassignedCard = `
+      <div class="card">
+        <div class="card-title">${t('reg.unassigned')} (${unassigned.length})</div>
+        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
+          ${t('reg.unassigned_desc')}
+        </p>
+        ${unassigned.length ? `<div class="table-wrap"><table>
+          <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th></tr></thead>
+          <tbody>${unassignedRows}</tbody>
+        </table></div>` : `<p style="color:var(--text-secondary);font-size:.85rem;">${t('reg.unassigned_none')}</p>`}
+      </div>`;
+
     return `
       <h2 class="page-title">${t('page.registrations')}</h2>
       ${renderPreRegisteredPlayers(users)}
       <div class="card">
-        <div class="card-title">${t('reg.all_members')}</div>
+        <div class="card-title">${t('reg.assigned')}</div>
         <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
           ${t('reg.edit_desc')}
         </p>
@@ -10268,7 +10341,8 @@
           <thead><tr><th>${t('reg.th_name')}</th><th>${t('reg.th_status')}</th><th>${t('reg.th_category')}</th><th style="text-align:center">${t('reg.th_team')}</th><th>${t('reg.th_position')}</th><th>${t('reg.th_number')}</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
-      </div>`;
+      </div>
+      ${unassignedCard}`;
   }
 
   /**
@@ -10323,6 +10397,37 @@
       <button class="btn btn-small roster-remove-player" title="${t('btn.remove')}"
         style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>
     </div>`;
+  }
+
+  /**
+   * Clear the squad assignment of a registered member, locally and in
+   * Firestore. Called whenever their address leaves a team's player list —
+   * from the ✕ on the pre-registered card or from "Treure de l'equip" — so
+   * both routes move the person into the Unassigned block at once instead of
+   * waiting on onRosterWritten to come back.
+   *
+   * Membership itself is untouched: they stay in the club, keep every record,
+   * and re-appear in a squad the moment a coach lists their address again.
+   */
+  async function detachMemberByEmail(email) {
+    const target = normalizeEmail(email);
+    if (!target) return;
+    const users = getUsers();
+    const u = users.find(x => normalizeEmail(x.email) === target);
+    if (!u || (!u.category && !u.team)) return;
+    u.category = '';
+    u.team = '';
+    saveUsers(users);
+    if (typeof u.id === 'string' && isNaN(Number(u.id))) {
+      try {
+        await db.collection('users').doc(u.id).set(
+          { category: '', team: '' }, { merge: true });
+      } catch (err) {
+        console.error('detach failed:', err);
+        _showPushToast(t('save.sync_title'), t('save.error_perms'));
+      }
+    }
+    if (currentPage === 'registrations') renderPage(getSession());
   }
 
   /**
@@ -15089,14 +15194,9 @@
               // 2. Clear the squad assignment. onRosterWritten does this too,
               // but only for a member whose email was actually listed — do it
               // here as well so the UI is right immediately and so members who
-              // were never on a list still detach.
-              if (typeof uid === 'string' && isNaN(Number(uid))) {
-                await db.collection('users').doc(uid).set(
-                  { category: '', team: '' }, { merge: true });
-              }
-              const users = getUsers();
-              const local = users.find(u => String(u.id) === String(uid));
-              if (local) { local.category = ''; local.team = ''; saveUsers(users); }
+              // were never on a list still detach. Shared with the ✕ on the
+              // pre-registered card so both routes behave identically.
+              await detachMemberByEmail(email || user.email);
               renderPage(getSession());
             } catch (err) {
               console.error('leave squad failed:', err);
@@ -15454,6 +15554,13 @@
           const row = removeBtn.closest('.ts-sched-row');
           const list = removeBtn.closest('.roster-player-list');
           if (!list) return;
+          // Capture the address before the row goes: if it belongs to someone
+          // already registered, taking it off the list detaches them, and we
+          // want that reflected here immediately rather than only after
+          // onRosterWritten comes back — otherwise this ✕ and "Treure de
+          // l'equip" would leave the page looking different for a while.
+          const goneInput = row && row.querySelector('input.roster-player-email');
+          const goneEmail = goneInput ? normalizeEmail(goneInput.value) : '';
           // An empty player list is legitimate; keep one blank row to type in.
           if (list.querySelectorAll('.ts-sched-row').length <= 1) {
             const only = list.querySelector('input.roster-player-email');
@@ -15461,7 +15568,7 @@
           } else if (row) {
             row.remove();
           }
-          savePlayerEmailList(list);
+          savePlayerEmailList(list).then(() => detachMemberByEmail(goneEmail));
         }
       });
       content.addEventListener('blur', e => {
@@ -15691,6 +15798,9 @@
         _lastClaimsMs = 0;
         DB.cleanup();
       }
+      // A form handler is driving: it will navigate when it is done, and it
+      // may be showing an error we must not wipe. See _authFlowBusy.
+      if (_authFlowBusy) return;
       navigate();
     });
 
