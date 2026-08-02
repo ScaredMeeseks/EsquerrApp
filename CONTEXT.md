@@ -311,3 +311,15 @@ Known and accepted: uploading a different file extension leaves the previous fil
 **The bottom strip is NOT fixed** — v36's `min-height: calc(100vh - 50px)` removal was the wrong diagnosis (it was a real latent bug, but not this one). Still reproduces on every page. Awaiting a console probe of which element exceeds `documentElement.clientWidth` before guessing again.
 
 `sw.js` → `esquerrapp-v37`. Frontend-only.
+
+### 2026-08-02o — The bottom strip, properly diagnosed (v38)
+
+Two wrong guesses (v36's navbar-height calc, then a suspected horizontal scrollbar) before measuring. The numbers settled it — viewport 824, layout 810, **sidebar 824**: the sidebar was taller than its own parent, and 824 was exactly the viewport.
+
+**Root cause: nothing in the chain had a definite height.** `.view` uses `min-height: 100vh`, which is not definite, so `overflow-y: auto` on both the sidebar and the content pane did nothing at all — a box with an auto height simply grows. The document scrolled instead of the panes, the sidebar overflowed the layout, and its dark background stopped where its box ended, leaving bare page background across the foot of every page. (`documentScroll` 889 vs `body` 859 was the same fact from the other side.)
+
+Fix: `#view-dashboard { height: 100dvh; overflow: hidden; }` — a fixed-height shell with two independently scrolling panes, which is what the existing `flex: 1` / `min-height: 0` / `overflow-y: auto` were always written for. `dvh` so a mobile browser toolbar doesn't cut it off. Scoped to the dashboard view: the auth/setup views must still grow and scroll normally.
+
+Consequence handled: the document no longer scrolls, so `window.scrollY` is permanently 0. The four popups positioned as `rect.top + window.scrollY` are therefore still placed correctly on open (document coords now equal viewport coords) — and `.pmt-tooltip`, which is `position: fixed`, was previously double-counting the offset, so this quietly fixes it. The datepicker now also dismisses on scroll, since a popup at document coordinates no longer travels with an input inside a scrolling pane.
+
+`sw.js` → `esquerrapp-v38`. Frontend-only.

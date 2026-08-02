@@ -11288,10 +11288,15 @@
     dpEl.style.top = (rect.bottom + window.scrollY + 4) + 'px';
     dpEl.style.left = (rect.left + window.scrollX) + 'px';
     setTimeout(() => document.addEventListener('click', dpOutside), 0);
+    // The dashboard content pane scrolls, not the document, so a popup placed
+    // at document coordinates does not travel with its input. Dismiss it the
+    // same way an outside click does rather than leave it stranded.
+    document.addEventListener('scroll', closeDatePicker, true);
   }
   function closeDatePicker() {
     if (dpEl) { dpEl.remove(); dpEl = null; }
     document.removeEventListener('click', dpOutside);
+    document.removeEventListener('scroll', closeDatePicker, true);
   }
   function dpOutside(e) { if (dpEl && !dpEl.contains(e.target) && e.target !== dpInput) closeDatePicker(); }
   function renderDP() {

@@ -180,12 +180,19 @@ a:hover { text-decoration: underline; }
 .sidebar-overlay.open { display: block; }
 
 /* ===== Dashboard Layout ===== */
-/* No hard-coded navbar height. .topnav has no fixed height — it is padding
-   around a logo image — so the old `min-height: calc(100vh - 50px)` was a
-   guess, and whenever the bar rendered taller than 50px the layout came up
-   short and a strip of bare body background showed at the foot of the page.
-   The parent .view is a 100vh flex column and this already has flex:1, which
-   fills the remaining space exactly whatever the bar measures. */
+/* The dashboard is a fixed-height shell with two independently scrolling
+   panes, not a page that scrolls as a whole.
+
+   It used to inherit .view's `min-height: 100vh`, which is not a DEFINITE
+   height — so `overflow-y: auto` on the sidebar and the content pane did
+   nothing at all (a box with an auto height just grows), the document
+   scrolled instead, and the sidebar ended up taller than its own parent.
+   Its dark background stopped where its box ended, leaving a strip of bare
+   page background across the foot of every page.
+
+   `height` (not min-height) here is what makes flex:1 + min-height:0 +
+   overflow-y:auto behave. dvh follows the mobile browser toolbar. */
+#view-dashboard { height: 100vh; height: 100dvh; overflow: hidden; }
 .dashboard-layout { display: flex; flex: 1; min-height: 0; }
 
 .sidebar {
