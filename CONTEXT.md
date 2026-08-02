@@ -214,3 +214,19 @@ Running the club, playing for it and coaching in it are three separate things, s
 Verified by simulating the full lifecycle: picker shown exactly once, all four combinations stick, and no path returns to it — including a detached player and a later roster edit.
 
 `sw.js` → `esquerrapp-v28`, `check-deploy.js` to match. Rules suite: 65 passing. **Needs a functions deploy.**
+
+### 2026-08-02g — Changing a club's team lead (v29)
+
+`leadEmail` was written once, by `createClub`, and `isTeamLead` on a user was written once, by `joinClub`. Nothing read `leadEmail` afterwards, so editing it (which the rules already allow) **half-applied**: the club doc named one person while the app still treated the old one as lead, recoverable only by deleting and re-registering the account.
+
+**`onClubLeadChanged`** — a trigger on `clubs/{clubId}` that returns immediately unless `leadEmail` actually changed (every other club edit lands there too). A trigger rather than a callable, so the club doc and the user records cannot drift apart whatever route the change arrives by.
+
+- **Incoming lead already a member**: keeps whatever they were — a coach who takes over is still a coach — and gains `lead`. No role picker, since their roles are already non-empty. As lead they see all categories regardless of their staff lists.
+- **Incoming lead not registered**: nothing to do. `joinClub` matches on `leadEmail`, and the membership gate already lets a lead through without a roster entry, so they become lead when they sign up with the code. They also **skip "Configura el teu club"** automatically — that screen is gated on *no category being enabled*, so it only ever appears for a genuinely new club.
+- **Outgoing lead**: access is recomputed from the roster lists. On a staff list → stays a coach for those categories; on a player list → stays a player. **On no list → they leave the club entirely** (`teamId` deleted, claims cleared, dropped from the `fa_users` blob) — running it was their only reason to be there. Their records stay keyed by uid, so adding them to a list later restores everything.
+
+**Superadmin UI**: a 👤 button per row in Gestió de Clubs. It looks the address up *before* writing and reports which case you are in — "already a member (staff), keeps those roles" or "no member with that address, check it is not a typo". Guards: malformed address refused, unchanged address refused, unregistered address allowed but warned. **Cross-club is deliberately not blocked** (someone may manage one club while playing for another) — but see the limitation below.
+
+**Known limitation, not addressed here**: `users/{uid}.teamId` is a single value, so one account cannot belong to two clubs. Leaving the cross-club guard open lets you *set* such an address, but that person would still need a separate account per club. Real multi-club membership is a data-model change, adjacent to the Phase 5 work.
+
+`sw.js` → `esquerrapp-v29`, `check-deploy.js` to match. Rules suite: 65 passing. **Needs a functions deploy.**

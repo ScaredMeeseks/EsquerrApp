@@ -80,6 +80,14 @@
     'common.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
     'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
     'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
+    // ── Club lead handover (superadmin) ──
+    'club.change_lead':  { ca:'Canviar responsable', es:'Cambiar responsable', en:'Change club manager' },
+    'club.current_lead': { ca:'Responsable actual', es:'Responsable actual', en:'Current manager' },
+    'club.new_lead_email':{ ca:'Correu del nou responsable', es:'Correo del nuevo responsable', en:'New manager\'s email' },
+    'club.lead_found':   { ca:'✓ {name} — ja és membre del club ({roles}). Mantindrà aquests rols i passarà a ser responsable.', es:'✓ {name} — ya es miembro del club ({roles}). Mantendrá esos roles y pasará a ser responsable.', en:'✓ {name} — already a club member ({roles}). They keep those roles and become manager.' },
+    'club.lead_not_registered':{ ca:'⚠ Cap membre amb aquest correu. Si és correcte, serà responsable quan es registri amb el codi del club. Comprova que no sigui un error d\'escriptura.', es:'⚠ Ningún miembro con este correo. Si es correcto, será responsable cuando se registre con el código del club. Comprueba que no sea un error de escritura.', en:'⚠ No member with that address. If it is correct they become manager when they register with the club code. Check it is not a typo.' },
+    'club.lead_unchanged':{ ca:'Ja és el responsable actual.', es:'Ya es el responsable actual.', en:'Already the current manager.' },
+    'club.lead_changed': { ca:'Responsable actualitzat.', es:'Responsable actualizado.', en:'Club manager updated.' },
     'common.confirm':    { ca:'Confirmar', es:'Confirmar', en:'Confirm' },
     // These three were referenced but never defined, so they rendered as raw
     // key text ("common.edit") on the medical and match pages.
@@ -10834,7 +10842,10 @@
           <td>${badgeImg}${sanitize(c.name)}</td>
           <td style="font-family:monospace;letter-spacing:.1em;font-weight:600;">${code}</td>
           <td>${sanitize(c.leadEmail)}</td>
-          <td><button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button></td>
+          <td>
+            <button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button>
+            <button class="btn btn-small btn-outline btn-change-lead" data-club="${d.id}" data-club-name="${sanitize(c.name)}" data-lead="${sanitize(c.leadEmail || '')}" title="${t('club.change_lead')}">👤</button>
+          </td>
         </tr>`;
       });
       listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
@@ -10845,6 +10856,107 @@
       listEl.innerHTML = '<p style="color:var(--danger);">Error carregant clubs.</p>';
       console.error(e);
     }
+  }
+
+  /* Hand a club over to a new team lead (superadmin only).
+     The heavy lifting is the onClubLeadChanged trigger — this only writes
+     clubs/{id}.leadEmail. What it adds is a look-up first, so you confirm
+     knowing whether the address belongs to an existing member or to nobody
+     yet; a typo here leaves the club with no working lead. */
+  function showChangeLeadModal(clubId, clubName, currentLead) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-card" style="max-width:420px;">
+        <div class="modal-title">${sanitize(t('club.change_lead'))}</div>
+        <p class="modal-message" style="font-size:.88rem;">${sanitize(clubName)}</p>
+        <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:.8rem;">
+          ${sanitize(t('club.current_lead'))}: <strong>${sanitize(currentLead || '—')}</strong></p>
+        <div class="form-group" style="margin-bottom:.4rem;">
+          <label for="new-lead-email" style="font-size:.85rem;font-weight:600;">${sanitize(t('club.new_lead_email'))}</label>
+          <input type="email" id="new-lead-email" autocomplete="off" placeholder="${sanitize(t('auth.email_ph'))}">
+        </div>
+        <div id="lead-lookup" style="font-size:.83rem;min-height:2.4em;margin-bottom:.6rem;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-small btn-outline" id="modal-btn-no">${t('common.cancel')}</button>
+          <button class="btn btn-small btn-danger" id="modal-btn-lead" disabled>${t('club.change_lead')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+    const close = function () {
+      overlay.classList.remove('visible');
+      setTimeout(function () { overlay.remove(); }, 200);
+    };
+    overlay.querySelector('#modal-btn-no').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    const inp = overlay.querySelector('#new-lead-email');
+    const info = overlay.querySelector('#lead-lookup');
+    const goBtn = overlay.querySelector('#modal-btn-lead');
+    let lookupTimer = null;
+
+    async function lookup() {
+      const email = normalizeEmail(inp.value);
+      goBtn.disabled = true;
+      if (!email) { info.textContent = ''; return; }
+      if (!isValidEmail(email)) {           // guard 4: malformed
+        info.style.color = 'var(--danger)';
+        info.textContent = t('error.invalid_email');
+        return;
+      }
+      if (email === normalizeEmail(currentLead)) {  // guard 2: same address
+        info.style.color = 'var(--text-secondary)';
+        info.textContent = t('club.lead_unchanged');
+        return;
+      }
+      try {
+        const snap = await db.collection('users')
+          .where('teamId', '==', clubId).where('email', '==', email).limit(1).get();
+        if (snap.empty) {
+          // guard 1: nobody holds this address in this club — legal (they may
+          // not have signed up yet) but the most likely cause is a typo.
+          info.style.color = 'var(--warning, #f9a825)';
+          info.textContent = t('club.lead_not_registered');
+        } else {
+          const u = snap.docs[0].data();
+          const bits = (u.roles || []).filter(r => r !== 'lead').join(', ') || t('reg.status_none');
+          info.style.color = 'var(--primary)';
+          info.textContent = t('club.lead_found')
+            .replace('{name}', u.name || email).replace('{roles}', bits);
+        }
+        goBtn.disabled = false;
+      } catch (err) {
+        console.error('lead lookup failed:', err);
+        info.style.color = 'var(--danger)';
+        info.textContent = t('save.error');
+      }
+    }
+    inp.addEventListener('input', function () {
+      clearTimeout(lookupTimer);
+      lookupTimer = setTimeout(lookup, 350);
+    });
+
+    goBtn.addEventListener('click', async function () {
+      goBtn.disabled = true;
+      goBtn.textContent = t('auth.saving');
+      try {
+        await updateClub(clubId, { leadEmail: normalizeEmail(inp.value) });
+        close();
+        _showPushToast(t('club.change_lead'), t('club.lead_changed'));
+        _loadClubList();
+      } catch (err) {
+        console.error('change lead failed:', err);
+        info.style.color = 'var(--danger)';
+        info.textContent = (err && err.message) || t('save.error');
+        goBtn.disabled = false;
+        goBtn.textContent = t('club.change_lead');
+      }
+    });
   }
 
   // #endregion Training & Staff Views
@@ -15103,6 +15215,13 @@
         // Team Lead: edit categories
         if (e.target.closest('#btn-edit-categories')) {
           showTeamSetup();
+          return;
+        }
+        // SuperUser: hand a club over to a new team lead
+        const leadBtn = e.target.closest('.btn-change-lead');
+        if (leadBtn) {
+          showChangeLeadModal(leadBtn.dataset.club, leadBtn.dataset.clubName,
+            leadBtn.dataset.lead);
           return;
         }
         // SuperUser: copy club code

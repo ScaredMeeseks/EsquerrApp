@@ -830,6 +830,109 @@ exports.onRosterWritten = onDocumentWritten({
   }
 });
 
+// ── 7d. onClubLeadChanged — hand the club over to a new team lead ──
+// Fires on any club write but returns immediately unless leadEmail actually
+// changed. A trigger rather than a callable so the club doc and the user
+// records can never drift apart, whatever route the change came in by.
+//
+// Only the superuser can edit the club doc's leadEmail in practice (the rules
+// also allow the current lead, but the UI is superadmin-only) — a club that
+// could demote itself to a mistyped address would be unrecoverable.
+exports.onClubLeadChanged = onDocumentWritten({
+  document: "clubs/{clubId}",
+  region: "us-central1",
+}, async (event) => {
+  const clubId = event.params.clubId;
+  const before = event.data && event.data.before;
+  const after = event.data && event.data.after;
+  if (!after || !after.exists) return; // club deleted — nothing to hand over
+  const club = after.data() || {};
+  const norm = (v) => String(v || "").trim().toLowerCase();
+  const prevEmail = norm(before && before.exists ? before.data().leadEmail : "");
+  const nextEmail = norm(club.leadEmail);
+  // Guard: every other club edit (categories, schedules, badge…) lands here
+  // too. Unchanged lead = nothing to do.
+  if (prevEmail === nextEmail) return;
+
+  const rosters = await loadRosters(clubId);
+  const memberByEmail = async (email) => {
+    if (!email) return null;
+    const snap = await db.collection("users")
+        .where("teamId", "==", clubId).where("email", "==", email)
+        .limit(1).get();
+    return snap.empty ? null : snap.docs[0];
+  };
+
+  // ── Outgoing lead ──
+  const outgoing = await memberByEmail(prevEmail);
+  if (outgoing) {
+    const m = membershipFrom(rosters, prevEmail);
+    if (m.roles.length) {
+      // Still a player and/or coach by the roster lists — they stay in the
+      // club with exactly that, just no longer running it.
+      const {role, cats} = claimsFor(club, false, m);
+      await admin.auth().setCustomUserClaims(outgoing.id,
+          {teamId: clubId, role, cats});
+      await outgoing.ref.update({
+        isTeamLead: false,
+        roles: rolesFor(false, m.roles),
+        staffCategories: m.staffCats,
+        category: m.category || outgoing.data().category || "",
+        team: m.team || outgoing.data().team || "",
+        claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Neither player nor staff: leading the club was their only reason to
+      // be in it, so they leave it. Their records stay keyed by uid, so
+      // adding them back to a roster list later restores everything.
+      await admin.auth().setCustomUserClaims(outgoing.id,
+          {teamId: null, role: "player", cats: []});
+      await outgoing.ref.update({
+        teamId: admin.firestore.FieldValue.delete(),
+        isTeamLead: false,
+        roles: [],
+        staffCategories: [],
+        category: "",
+        team: "",
+        claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      // Drop them from the club roster blob, or they linger in every squad
+      // list until something else rewrites it.
+      await scrubDataDoc(
+          db.collection("teams").doc(clubId).collection("data").doc("fa_users"),
+          (arr) => (Array.isArray(arr) ?
+            arr.filter((u) => String(u.id) !== outgoing.id) : null));
+    }
+    logger.info("onClubLeadChanged: demoted",
+        {clubId, uid: outgoing.id, keptRoles: m.roles});
+  }
+
+  // ── Incoming lead ──
+  const incoming = await memberByEmail(nextEmail);
+  if (incoming) {
+    // Already a member: they keep whatever they were — a coach who takes over
+    // the club is still a coach — and simply gain the lead role. No role
+    // picker: their roles are already non-empty.
+    const m = membershipFrom(rosters, nextEmail);
+    const prev = incoming.data().roles || [];
+    const {role, cats} = claimsFor(club, true, m);
+    await admin.auth().setCustomUserClaims(incoming.id,
+        {teamId: clubId, role, cats});
+    await incoming.ref.update({
+      isTeamLead: true,
+      roles: rolesFor(true, [...new Set([...prev, ...m.roles])]),
+      claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.info("onClubLeadChanged: promoted", {clubId, uid: incoming.id});
+  } else {
+    // Not registered in this club yet. Nothing to do: joinClub matches on
+    // leadEmail, so they become lead when they sign up with the club code —
+    // and the membership gate lets a lead through without a roster entry.
+    logger.info("onClubLeadChanged: new lead not registered yet",
+        {clubId, email: nextEmail});
+  }
+});
+
 // ── 7c. deleteMember — erase a person and their data (superuser only) ──
 // The counterpart to "leave the squad" on the Registrations page, which only
 // detaches someone. This is the irreversible one.
