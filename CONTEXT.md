@@ -230,3 +230,5 @@ Verified by simulating the full lifecycle: picker shown exactly once, all four c
 **Known limitation, not addressed here**: `users/{uid}.teamId` is a single value, so one account cannot belong to two clubs. Leaving the cross-club guard open lets you *set* such an address, but that person would still need a separate account per club. Real multi-club membership is a data-model change, adjacent to the Phase 5 work.
 
 `sw.js` → `esquerrapp-v29`, `check-deploy.js` to match. Rules suite: 65 passing. **Needs a functions deploy.**
+
+**v30 (same day)**: the change-lead UI became an inline **textbox per club row** in Gestió de Clubs rather than an icon opening a modal — the modal was too hidden to find. Same guards, now as inline feedback under the field as you type; Enter or 💾 saves. `showChangeLeadModal` and two orphaned i18n keys removed.
