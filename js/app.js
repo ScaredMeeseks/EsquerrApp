@@ -11903,6 +11903,20 @@
         // Drop them locally too, so the table is right before the next sync.
         var users = getUsers().filter(function (u) { return String(u.id) !== String(uid); });
         saveUsers(users);
+        // ...and out of the cached roster lists. deleteMember strips their
+        // address server-side, but this copy is what Registrations renders
+        // from — leave it and the person reappears instantly as a "pending"
+        // row with an orange dot, looking like the delete half-failed.
+        var goneEmail = normalizeEmail(user.email);
+        if (goneEmail && _clubConfig && _clubConfig.rosters) {
+          Object.keys(_clubConfig.rosters).forEach(function (k) {
+            var r = _clubConfig.rosters[k] || {};
+            ['staffEmails', 'playerEmails'].forEach(function (f) {
+              if (!Array.isArray(r[f])) return;
+              r[f] = r[f].filter(function (e) { return normalizeEmail(e) !== goneEmail; });
+            });
+          });
+        }
         close();
         _showPushToast(t('confirm.erase_title'),
           t('alert.erase_done')

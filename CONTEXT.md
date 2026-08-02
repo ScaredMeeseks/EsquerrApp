@@ -292,3 +292,10 @@ Verified against a seven-case label matrix (plain player, empty roles, lead-only
 **The underlying reconcile gap is unchanged and still bites elsewhere**: any server-side change to an existing member's fields is invisible to other devices' `fa_users` blob until something rewrites it. Worth folding into the Phase 5 data split rather than patching per-caller.
 
 `sw.js` → `esquerrapp-v35`. Frontend-only — **no deploy needed**.
+
+### 2026-08-02m — Deleted member reappeared as "pending"; bare strip at page foot (v36)
+
+- **A fully deleted member came straight back in Miembros asignados as a pending row.** `deleteMember` strips their address from the roster docs server-side, but the client renders from the cached `_clubConfig.rosters`, which still held it — so the person vanished from `fa_users` and immediately reappeared with an orange dot, looking like the delete half-failed. The success path now strips the address from the cached lists too. (Same class as the stale-`fa_users` bug in v35: a server-side change with no local mirror.)
+- **The unstyled strip at the bottom of the page** was `.dashboard-layout { min-height: calc(100vh - 50px) }` — a hard-coded guess at the navbar height. `.topnav` has no fixed height (it is padding around a logo image), so whenever it rendered taller than 50px the layout fell short and bare body background showed underneath, across the full width including below the sidebar. Removed the calc: `.view` is a 100vh flex column and `.dashboard-layout` already has `flex: 1`, which fills the remainder exactly whatever the bar measures.
+
+`sw.js` → `esquerrapp-v36`. Frontend-only — **no deploy needed** (the v34 rules + functions deploy is still outstanding).

@@ -180,7 +180,13 @@ a:hover { text-decoration: underline; }
 .sidebar-overlay.open { display: block; }
 
 /* ===== Dashboard Layout ===== */
-.dashboard-layout { display: flex; flex: 1; min-height: calc(100vh - 50px); }
+/* No hard-coded navbar height. .topnav has no fixed height — it is padding
+   around a logo image — so the old `min-height: calc(100vh - 50px)` was a
+   guess, and whenever the bar rendered taller than 50px the layout came up
+   short and a strip of bare body background showed at the foot of the page.
+   The parent .view is a 100vh flex column and this already has flex:1, which
+   fills the remaining space exactly whatever the bar measures. */
+.dashboard-layout { display: flex; flex: 1; min-height: 0; }
 
 .sidebar {
   width: 240px; min-width: 240px; background: var(--sidebar-bg);
