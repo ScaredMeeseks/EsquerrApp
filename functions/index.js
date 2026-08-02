@@ -542,6 +542,13 @@ function rolesFor(isLead, chosen) {
 
 /**
  * Collapse a membership into the single-string `role` claim plus its `cats`.
+ *
+ * `cats` means "the categories you may SEE", not "the categories you coach".
+ * A player therefore carries their own category — it used to be [] , which
+ * would make every per-category security rule fail closed against the entire
+ * player base the moment Phase 5 narrows them. A player with no squad yet
+ * gets [], which is correct: there is nothing for them to see.
+ *
  * @param {Object} club The club document data (for its enabled categories).
  * @param {boolean} isLead Whether this member is the club's team lead.
  * @param {Object} m Result of resolveMembership / membershipFrom.
@@ -550,7 +557,7 @@ function rolesFor(isLead, chosen) {
 function claimsFor(club, isLead, m) {
   if (isLead) return {role: "lead", cats: enabledCategories(club)};
   if (m.roles.includes("staff")) return {role: "staff", cats: m.staffCats};
-  return {role: "player", cats: []};
+  return {role: "player", cats: m.category ? [m.category] : []};
 }
 
 // ── 6. joinClub — validate a club code and assign membership ──
@@ -726,6 +733,11 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   if (teamId) {
     if (role === "lead") cats = enabledCategories(club);
     else if (role === "staff") cats = m.staffCats;
+    // A player sees their own category. Kept in step with claimsFor() — if
+    // these two disagree, a member's claim depends on which path last
+    // touched them, which is exactly the kind of drift that is invisible
+    // until a security rule starts reading it.
+    else if (m.category) cats = [m.category];
   }
 
   await admin.auth().setCustomUserClaims(uid, {teamId: teamId || null, role, cats});
@@ -1240,15 +1252,18 @@ exports.updateTeamDates = onDocumentWritten({
 });
 
 // ── 10. archiveSeason — archive & reset season data (admin only) ──
+// Keep in step with SEASON_KEYS in js/app.js.
+// fa_standings / fa_news / fa_player_stats dropped: no writer exists for any
+// of them, so this was archiving and resetting documents that never existed.
 const SEASON_KEYS = [
   "fa_matches", "fa_match_events", "fa_match_goals",
   "fa_training",
   "fa_training_availability", "fa_match_availability",
   "fa_training_staff_override",
-  "fa_player_rpe", "fa_player_stats",
+  "fa_player_rpe",
   "fa_injuries", "fa_injury_notes", "fa_injury_zone",
   "fa_convocatoria_sent", "fa_convocatoria_callup",
-  "fa_standings", "fa_matchday", "fa_news",
+  "fa_matchday",
 ];
 
 // Keys stored as per-field merge (not blob {v: "..."}). Describes the

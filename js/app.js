@@ -1066,14 +1066,18 @@
   const ADMIN_EMAIL = 'marna96@gmail.com';
 
   // ---------- Season Reset: keys to archive & clear ----------
+  // fa_standings, fa_news and fa_player_stats are gone from this list: none
+  // of them has a writer anywhere in the app, so archiveSeason was archiving
+  // and resetting documents that never existed. Standings come live from the
+  // FCF proxy; player stats are computed from matches and events.
   var SEASON_KEYS = [
     'fa_matches', 'fa_match_events', 'fa_match_goals',
     'fa_training',
     'fa_training_availability', 'fa_match_availability', 'fa_training_staff_override',
-    'fa_player_rpe', 'fa_player_stats',
+    'fa_player_rpe',
     'fa_injuries', 'fa_injury_notes', 'fa_injury_zone',
     'fa_convocatoria_sent', 'fa_convocatoria_callup',
-    'fa_standings', 'fa_matchday', 'fa_news'
+    'fa_matchday'
   ];
 
   // ---------- Category view filter ----------
@@ -3116,8 +3120,6 @@
 
   function renderPlayerHome() {
     const session = getSession();
-    const stats = JSON.parse(localStorage.getItem('fa_player_stats') || '[]');
-    const me = stats[0] || { goals: 0, assists: 0, matches: 0, rating: '-' };
     const picHtml = session.profilePic
       ? `<img src="${session.profilePic}" alt="Profile" class="player-overview-pic">`
       : `<div class="player-overview-pic player-overview-pic-placeholder">${sanitize(session.name).charAt(0).toUpperCase()}</div>`;
@@ -4869,9 +4871,6 @@
 
   function renderPlayerStats() {
     const session = getSession();
-    const stats = JSON.parse(localStorage.getItem('fa_player_stats') || '[]');
-    const me = stats[0] || {};
-
     // Compute live stats from match events
     const computed = session ? computePlayerMatchStats(session.id) : { totals: { goals: 0, assists: 0, matches: 0, minutes: 0 }, matchRows: [] };
     const ct = computed.totals;
@@ -16104,9 +16103,6 @@
       fa_training: ['player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats'],
       fa_matches: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_matchday: ['player-home', 'player-matchday', 'staff-matchday', 'matchday'],
-      fa_standings: ['player-home'],
-      fa_news: ['player-home'],
-      fa_player_stats: ['player-home', 'my-stats', 'staff-player-stats', 'manage-roster'],
       fa_staff_notifications: ['staff-notifications'],
       fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
       fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],

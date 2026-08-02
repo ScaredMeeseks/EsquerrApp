@@ -334,3 +334,19 @@ Both turned out to be the same CSS fact: **when one overflow axis is `auto`, the
 Third and fourth attempts at the strip. The first two were reasoned from the stylesheet and both wrong; the fix only came from measuring the boxes. Worth remembering for the next layout bug here.
 
 `sw.js` → `esquerrapp-v39`. Frontend-only.
+
+## Phase 5 — split club data per category
+
+Full plan: `~/.claude/plans/working-on-the-esquerrapp-ticklish-beaver.md`. Category scoping is cosmetic today — every data type is one club-wide blob and rules cannot read inside a JSON string, so a cadet coach is merely *not shown* juvenil's data, medical records included. Phase 5 shards each key per category.
+
+**Scope decision (2026-08-03)**: current team data is pre-season test content and disposable. Trainings, matches, injuries, availability, RPE, call-ups and tactics get **wiped** at cutover; user accounts, club config and roster email lists are **kept**. That removes dual-writing, the migration script, the legacy-retirement stage and the "uncategorised legacy row" problem outright, and made splitting all 16 keys at once cheaper than a medical-only slice.
+
+Exploration corrected three things: there are **20** keys not 19, only **5** carry a category (not 8), and three are dead.
+
+### 2026-08-03 — Stage A, part 1 (v40)
+
+- **Players now get a `cats` claim** — their own category. It was `[]`, which would make every per-category rule fail closed against the entire player base. `cats` now means "categories you may SEE" rather than "categories you coach"; staff and lead unchanged. Fixed in **both** `claimsFor` and `setRole`, which compute it independently — if those drift, a member's access depends on which path last touched them.
+- **`backfill-claims.js` rewritten.** It still wrote only `{teamId, role}` from before Phase 4 existed, so re-running it would have **silently stripped `cats` from every user** and locked every coach out of their own roster lists. It now derives the same way `membershipFrom` does, reading the club's roster lists, and gained a dry-run/`--apply` gate like the other scripts.
+- **Dropped the three dead keys** (`fa_standings`, `fa_news`, `fa_player_stats`) from `SYNCED_KEYS`, both `SEASON_KEYS` lists and `KEY_PAGES`. None has a writer anywhere, so `archiveSeason` was archiving and resetting documents that never existed. Also removed the two dead `fa_player_stats` reads in `renderPlayerHome`/`renderPlayerStats` — both assigned a `me` variable that is never used; real stats come from `computePlayerMatchStats`.
+
+Rules suite: 67 passing. `sw.js` → v40. **Deploy: functions, then run `backfill-claims.js --apply`.**

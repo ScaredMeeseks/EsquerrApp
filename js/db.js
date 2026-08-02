@@ -32,9 +32,10 @@ const DB = (function () {
     'fa_training',
     'fa_matches',
     'fa_matchday',
-    'fa_standings',
-    'fa_news',
-    'fa_player_stats',
+    // fa_standings / fa_news / fa_player_stats removed: no writer exists for
+    // any of them anywhere in the app, so they only ever synced nothing.
+    // Standings are fetched live through the FCF proxy; player stats are
+    // computed from fa_matches + fa_match_events.
     'fa_staff_notifications',
     'fa_injury_notes',
     'fa_injury_zone',
