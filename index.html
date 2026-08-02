@@ -237,8 +237,17 @@
           <button class="btn btn-primary btn-full btn-select-role" data-role="player" data-i18n="auth.select">Select</button>
         </div>
       </div>
-      <!-- Admin: pick one or both -->
+      <!-- Admin and team lead: pick any combination.
+           The lead card is shown to a lead only and is not a choice — it is
+           granted by the club's leadEmail. Leaving both toggles off is valid
+           and means "I only run the club". -->
       <div id="roles-admin-pick" class="roles-grid" hidden>
+        <div class="role-card role-lead-card" id="lead-role-card" hidden>
+          <div class="role-icon">🎖️</div>
+          <h2 data-i18n="auth.role_lead">Responsable del club</h2>
+          <p data-i18n="auth.role_lead_desc">Configures categories, equips, horaris i el staff del club.</p>
+          <span class="role-granted" data-i18n="auth.role_granted">Assignat</span>
+        </div>
         <div class="role-card role-toggle-card" data-role="player" id="admin-toggle-player">
           <div class="role-icon">🏃</div>
           <h2 data-i18n="auth.role_player">Player</h2>
@@ -252,6 +261,7 @@
           <label class="toggle-label"><input type="checkbox" id="chk-staff" value="staff"> <span data-i18n="auth.enable">Enable</span></label>
         </div>
         <div class="roles-confirm" style="grid-column:1/-1;text-align:center;margin-top:.5rem;">
+          <p id="roles-lead-hint" style="font-size:.85rem;color:var(--text-secondary);margin-bottom:.6rem;" hidden data-i18n="auth.roles_lead_hint">Deixa els dos desactivats si només vols gestionar el club.</p>
           <button class="btn btn-primary" id="btn-confirm-admin-roles" data-i18n="auth.continue_dashboard">Continue to Dashboard</button>
         </div>
       </div>

@@ -519,6 +519,28 @@ async function resolveMembership(clubId, email) {
 }
 
 /**
+ * The roles array to persist on users/{uid}.
+ *
+ * "lead" is a role in its own right, and always server-derived — a client may
+ * send it but never grants it. Two reasons it exists:
+ *  - a lead may be a player, a coach, both, or neither (just running the
+ *    club), so "lead" has to be separable from player/staff;
+ *  - an empty roles array strands a member on the role-selection screen, and
+ *    a lead's own address is normally on no roster list.
+ * @param {boolean} isLead Whether this member is the club's team lead.
+ * @param {Array} chosen player/staff entries to keep.
+ * @return {Array} the roles to store.
+ */
+function rolesFor(isLead, chosen) {
+  const out = [];
+  (chosen || []).forEach((r) => {
+    if ((r === "player" || r === "staff") && !out.includes(r)) out.push(r);
+  });
+  if (isLead) out.push("lead");
+  return out;
+}
+
+/**
  * Collapse a membership into the single-string `role` claim plus its `cats`.
  * @param {Object} club The club document data (for its enabled categories).
  * @param {boolean} isLead Whether this member is the club's team lead.
@@ -589,6 +611,11 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
   await db.collection("users").doc(uid).set({
     teamId: clubId,
     isTeamLead: isLead,
+    // Left as the lists say, deliberately NOT run through rolesFor(): a fresh
+    // lead is normally on no list, so this is [] and navigate() sends them to
+    // the role screen to choose whether they also play or coach. Their "lead"
+    // role is added when they confirm (setRole), and from then on their roles
+    // are never empty again.
     roles: m.roles,
     category: m.category,
     team: m.team,
@@ -613,8 +640,9 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
     categories: club.categories || [],
     fcfLinks: club.fcfLinks || [],
     isTeamLead: isLead,
-    // The client seeds its session from these so navigate() skips the
-    // role-selection screen entirely.
+    // The client seeds its session from these so a listed member skips the
+    // role-selection screen entirely. A fresh lead gets [] here on purpose —
+    // see the users-doc write above.
     roles: m.roles,
     category: m.category,
     team: m.team,
@@ -635,10 +663,14 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   const caller = request.auth;
   const uid = request.data && request.data.uid;
   let roles = (request.data && request.data.roles) || [];
+  // "lead" is accepted in the payload (the role screen sends back whatever it
+  // was given) but is stripped here and re-derived from target.isTeamLead
+  // below — it is never something a caller can grant.
   if (!uid || !Array.isArray(roles) ||
-      !roles.every((r) => ["player", "staff"].includes(r))) {
+      !roles.every((r) => ["player", "staff", "lead"].includes(r))) {
     throw new HttpsError("invalid-argument", "Paràmetres no vàlids.");
   }
+  roles = roles.filter((r) => r !== "lead");
 
   const targetSnap = await db.collection("users").doc(uid).get();
   if (!targetSnap.exists) {
@@ -666,17 +698,24 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
     ((await db.collection("clubs").doc(teamId).get()).data() || {}) : {};
   const m = teamId ? await resolveMembership(teamId, email) : {roles: [], staffCats: []};
 
+  const targetIsLead = target.isTeamLead === true;
+
   // A self-call may not choose its own roles — take whatever the club's
   // roster lists say. Only the lead and the superuser get a manual override.
   // A club member on no list falls back to plain "player": they are
   // unassigned, not expelled. Without this an empty roles array bounced them
   // straight back to the role-selection screen that called us, forever.
+  //
+  // The lead is the exception: they DO pick their own player/staff roles
+  // (isLeadOfTeam is true when a lead calls about themselves, so this branch
+  // is skipped) — running the club, playing for it and coaching in it are
+  // three separate things and any combination is valid.
   if (isSelf && !isSuper && !isLeadOfTeam) {
-    roles = (!m.roles.length && teamId && target.isTeamLead !== true) ?
-      ["player"] : m.roles;
+    roles = (!m.roles.length && teamId && !targetIsLead) ? ["player"] : m.roles;
   }
+  roles = rolesFor(targetIsLead, roles);
 
-  const role = target.isTeamLead === true ? "lead" :
+  const role = targetIsLead ? "lead" :
     (roles.includes("staff") ? "staff" : "player");
 
   // `cats` is never taken from the caller either — always re-derived, so a
@@ -767,9 +806,16 @@ exports.onRosterWritten = onDocumentWritten({
     // between. deleteMember strips roster entries before deleting the person,
     // so that race is real — a zombie users/{uid} would resurrect them in the
     // roster reconcile.
+    // A lead's player/staff roles are their own choice, not something the
+    // roster lists dictate — merge rather than overwrite, or an unrelated
+    // list edit would silently strip whatever they picked.
+    const prev = doc.data().roles || [];
+    const nextRoles = isLead ?
+      rolesFor(true, [...new Set([...prev, ...m.roles])]) :
+      rolesFor(false, detached ? ["player"] : m.roles);
     try {
       await doc.ref.update({
-        roles: detached ? ["player"] : m.roles,
+        roles: nextRoles,
         staffCategories: m.staffCats,
         category: detached ? "" : (m.category || doc.data().category || ""),
         team: detached ? "" : (m.team || doc.data().team || ""),

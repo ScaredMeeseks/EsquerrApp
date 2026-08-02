@@ -197,3 +197,20 @@ The two "delete" buttons ran **byte-for-byte identical code** — filter the per
 Rules suite: **65 passing** (5 new: staff may clear category/team but not delete; neither staff nor lead may delete a member; superuser may).
 
 `sw.js` → `esquerrapp-v27`, `check-deploy.js` to match. **Deploy needs functions + storage rules**, then the frontend.
+
+### 2026-08-02f — The team lead picks their own roles (v28)
+
+Phase 4 removed the "Staff" card from the role screen so nobody could self-promote. That was right for players and wrong for the lead: `joinClub` writes `roles` from the roster lists, a lead's own address is normally on no list, so a **freshly created lead got `roles: []`** → role screen → only "Player" available → `roles: ['player']` → **no staff pages at all**. The person meant to run the club could configure it but not manage anyone in it. Server-side they were fine (the rules already treat `role == 'lead'` as staff); it was purely the client roles array. Only bit a brand-new lead, so the existing club never saw it.
+
+Running the club, playing for it and coaching in it are three separate things, so **"lead" is now a role in its own right** and any combination is valid.
+
+- **`rolesFor(isLead, chosen)`** in functions/index.js: the single place the roles array is built. Always appends `"lead"` when `isTeamLead`, so a lead's roles are never empty — an empty array is what strands someone on the role screen.
+- **`setRole`** now accepts `"lead"` in the payload (the screen sends back what it was given) but **strips and re-derives it** from `target.isTeamLead` — never grantable by a caller, same stance as `cats`. A lead calling about themselves already passed the `isLeadOfTeam` check, so they *do* choose their own player/staff, unlike everyone else.
+- **`joinClub` deliberately does NOT use `rolesFor`** — a fresh lead must get `[]` so `navigate()` sends them to the picker once. Their `lead` role is added when they confirm, and from then on their roles are never empty again.
+- **`onRosterWritten`** merges rather than overwrites for a lead: an unrelated list edit would otherwise silently strip whatever they picked.
+- **Role screen**: the lead gets the multi-select (previously superadmin-only) plus a non-interactive "Responsable del club" card showing the role as granted, and may confirm with **both toggles off** = "I only run the club". Everyone else still must pick something.
+- **Page gating**: new `fallbackPage()` — staff → registrations, player → player-home, lead/admin → settings. The old fallback was a hard-coded `player-home`, which a lead-only does not have. `renderSidebar` already lands them on their first available page.
+
+Verified by simulating the full lifecycle: picker shown exactly once, all four combinations stick, and no path returns to it — including a detached player and a later roster edit.
+
+`sw.js` → `esquerrapp-v28`, `check-deploy.js` to match. Rules suite: 65 passing. **Needs a functions deploy.**

@@ -591,6 +591,11 @@
     'auth.roles_subtitle':   { ca:'Selecciona com vols fer servir EsquerrApp', es:'Selecciona cómo quieres usar EsquerrApp', en:'Select how you want to use EsquerrApp' },
     'auth.role_player':      { ca:'Jugador', es:'Jugador', en:'Player' },
     'auth.role_player_desc': { ca:'Consulta el teu calendari d\'entrenaments, segueix les teves estadístiques i mira la plantilla.', es:'Consulta tu calendario de entrenamientos, sigue tus estadísticas y mira la plantilla.', en:'View your training schedule, track personal stats, and see the team roster.' },
+    'auth.role_lead':        { ca:'Responsable del club', es:'Responsable del club', en:'Club Manager' },
+    'auth.role_lead_desc':   { ca:'Configura categories, equips, horaris i el staff del club.', es:'Configura categorías, equipos, horarios y el staff del club.', en:'Set up the club\'s categories, teams, schedules and staff.' },
+    'auth.role_granted':     { ca:'Assignat', es:'Asignado', en:'Granted' },
+    'auth.roles_lead_subtitle':{ ca:'Ets el responsable del club. Tria també si vols ser jugador, staff, o cap dels dos.', es:'Eres el responsable del club. Elige también si quieres ser jugador, staff, o ninguno de los dos.', en:'You manage the club. Also choose whether you play, coach, or neither.' },
+    'auth.roles_lead_hint':  { ca:'Deixa els dos desactivats si només vols gestionar el club.', es:'Deja los dos desactivados si solo quieres gestionar el club.', en:'Leave both off if you only want to manage the club.' },
     'auth.role_staff':       { ca:'Staff', es:'Staff', en:'Staff' },
     'auth.role_staff_desc':  { ca:'Gestiona entrenaments, revisa estadístiques i planifica la tàctica dels partits.', es:'Gestiona entrenamientos, revisa estadísticas y planifica la táctica de los partidos.', en:'Manage training sessions, review player stats, and plan match tactics.' },
     'auth.select':           { ca:'Seleccionar', es:'Seleccionar', en:'Select' },
@@ -2410,10 +2415,19 @@
 
   function showRoleSelection(session) {
     showView('#view-roles');
-    if (session.isAdmin) {
+    // The lead gets the same multi-select as the superadmin: running the club,
+    // playing for it and coaching in it are three separate things, and any
+    // combination is valid — including neither of the two optional ones.
+    const isLead = !!session.isTeamLead;
+    if (session.isAdmin || isLead) {
       $('#roles-pick-one').hidden = true;
       $('#roles-admin-pick').hidden = false;
-      $('#roles-subtitle').textContent = t('auth.roles_admin_subtitle');
+      $('#roles-subtitle').textContent = isLead && !session.isAdmin
+        ? t('auth.roles_lead_subtitle') : t('auth.roles_admin_subtitle');
+      const leadCard = $('#lead-role-card');
+      if (leadCard) leadCard.hidden = !isLead;
+      const hint = $('#roles-lead-hint');
+      if (hint) hint.hidden = !isLead;
       $('#chk-player').checked = (session.roles || []).includes('player');
       $('#chk-staff').checked = (session.roles || []).includes('staff');
     } else {
@@ -2439,7 +2453,12 @@
     const roles = [];
     if ($('#chk-player').checked) roles.push('player');
     if ($('#chk-staff').checked) roles.push('staff');
-    if (roles.length === 0) {
+    // A lead may pick neither: "I only run the club". Their 'lead' role is
+    // granted server-side, so roles is never actually empty and they don't
+    // land back here. Everyone else must pick something.
+    if (session.isTeamLead) {
+      roles.push('lead');
+    } else if (roles.length === 0) {
       alert(t('alert.select_role'));
       return;
     }
@@ -2614,15 +2633,23 @@
     const content = $('#dashboard-content');
     const roles = session.roles || [];
 
+    // Where to send someone who lands on a page they may not see. A lead who
+    // is neither player nor staff has no player-home and no registrations —
+    // settings is the only page they have, so it is the last resort.
+    const fallbackPage = () =>
+      roles.includes('staff') ? 'registrations' :
+        roles.includes('player') ? 'player-home' :
+          (session.isAdmin || session.isTeamLead) ? 'settings' : 'player-home';
+
     // Enforce role access
     if (STAFF_PAGES.has(currentPage) && !roles.includes('staff')) {
-      currentPage = 'player-home';
+      currentPage = fallbackPage();
     }
     if (ADMIN_PAGES.has(currentPage) && !session.isAdmin) {
-      currentPage = roles.includes('staff') ? 'registrations' : 'player-home';
+      currentPage = fallbackPage();
     }
     if (LEAD_PAGES.has(currentPage) && !session.isAdmin && !session.isTeamLead) {
-      currentPage = roles.includes('staff') ? 'registrations' : 'player-home';
+      currentPage = fallbackPage();
     }
 
     const renderers = {
