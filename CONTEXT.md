@@ -267,3 +267,15 @@ Pre-registering meant editing a list of email rows, one block per team, each wit
 - Deleted `savePlayerEmailList` and `buildPlayerEmailRow`: the old blur handler read a whole team's list back out of the DOM on every keystroke-blur; the two new functions write only the address that changed. Orphaned keys `reg.pre_claimed` and `reg.all_members` removed.
 
 `sw.js` → `esquerrapp-v33`, `check-deploy.js` to match. Rules suite: 65 passing. Frontend-only — **no deploy needed**.
+
+### 2026-08-02k — Re-assigning an unassigned player (v34)
+
+There was no way back: "Treure de l'equip" moved someone to the Unassigned card and left them there, with the only route back being to type their address into a team list by hand.
+
+- **`prevCategory` / `prevTeam`** now record the squad someone was taken out of — detaching used to clear `category`/`team` outright, so the information was simply gone. Written by both detach paths (`detachMemberByEmail` client-side, `onRosterWritten` server-side). Added to the staff allowlist in `firestore.rules` and to the self-write blocklist: staff-owned like the assignment itself, or a player could invent a history.
+- **Unassigned card** gains an *Equip anterior* column and, on the right, a category select + letter select + **Assignar**. The letter dropdown follows the category. It defaults to where they came from when that category is still available — overwhelmingly the likely destination.
+- **`assignMemberToTeam(uid, category, letter)`** adds the address to that team's player list (the gate that actually decides membership) and mirrors `category`/`team` locally so the row moves to the assigned table at once instead of waiting for `onRosterWritten`. Skips the roster write if the address is already listed.
+- **The category dropdown offers only `getVisibleCategories()`** — the rules scope `playerEmails` edits to a coach's own categories, so offering the whole club would just produce a permission error for anyone but the lead. Decided deliberately over widening the rules, which would have undone the Phase 4 category scoping. A coach with no categories sees the `error.no_categories` message instead of dead controls.
+- Works for members who never had a squad too (registered before the lists existed): *Equip anterior* shows a dash and the controls behave the same.
+
+Rules suite: **67 passing** (2 new: staff may record a previous team; a player may not fake their own). `sw.js` → `esquerrapp-v34`. **Needs a rules + functions deploy** — first one since v32.

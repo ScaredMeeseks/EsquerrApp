@@ -183,6 +183,16 @@ describe("Staff updates of members", () => {
     await assertSucceeds(asStaffA().doc("users/" + A)
         .update({category: "", team: ""}));
   });
+  // prevCategory/prevTeam remember the squad someone was taken out of, so the
+  // Unassigned list can offer to put them back.
+  it("staff CAN record where a member was before", async () => {
+    await assertSucceeds(asStaffA().doc("users/" + A)
+        .update({category: "", team: "", prevCategory: "cadet", prevTeam: "A"}));
+  });
+  it("a player CANNOT fake their own previous team", async () => {
+    await assertFails(asA().doc("users/" + A)
+        .update({prevCategory: "amateur", prevTeam: "A"}));
+  });
   it("staff CANNOT delete a member outright", async () => {
     await assertFails(asStaffA().doc("users/" + A).delete());
   });

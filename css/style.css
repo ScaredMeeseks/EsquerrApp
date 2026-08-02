@@ -3502,6 +3502,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg-row-pending td{background:rgba(249,168,37,.05);}
 .reg-status-flat{color:var(--text-secondary);font-size:.85rem;white-space:nowrap;}
 .reg-email-cell{font-size:.82rem;color:var(--text-secondary);white-space:nowrap;}
+.reg-assign-cell{white-space:nowrap;}
+.reg-assign-cell .reg-input{font-size:.8rem;padding:.25rem .35rem;margin-right:.35rem;}
+.reg-assign-cell .reg-assign-cat{min-width:110px;}
+.reg-assign-cell .reg-assign-team{min-width:60px;}
 
 /* (All mobile rules consolidated into the @media max-width:500px block above) */
 

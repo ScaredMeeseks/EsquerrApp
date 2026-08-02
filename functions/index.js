@@ -813,14 +813,23 @@ exports.onRosterWritten = onDocumentWritten({
     const nextRoles = isLead ?
       rolesFor(true, [...new Set([...prev, ...m.roles])]) :
       rolesFor(false, detached ? ["player"] : m.roles);
+    // Remember the squad they came out of, so the Unassigned list can show a
+    // coach where to put them back. Only recorded when there was one.
+    const prevCat = doc.data().category || "";
+    const prevTeam = doc.data().team || "";
+    const patch = {
+      roles: nextRoles,
+      staffCategories: m.staffCats,
+      category: detached ? "" : (m.category || prevCat),
+      team: detached ? "" : (m.team || prevTeam),
+      claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (detached && prevCat) {
+      patch.prevCategory = prevCat;
+      patch.prevTeam = prevTeam;
+    }
     try {
-      await doc.ref.update({
-        roles: nextRoles,
-        staffCategories: m.staffCats,
-        category: detached ? "" : (m.category || doc.data().category || ""),
-        team: detached ? "" : (m.team || doc.data().team || ""),
-        claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      await doc.ref.update(patch);
     } catch (e) {
       logger.info("onRosterWritten: user gone, skipping", {clubId, email});
       continue;

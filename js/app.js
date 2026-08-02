@@ -296,6 +296,9 @@
     'reg.unassigned':   { ca:'Sense equip assignat', es:'Sin equipo asignado', en:'Unassigned registrations' },
     'reg.unassigned_desc':{ ca:'Membres del club que encara no estan en cap equip. Afegeix el seu correu a la llista de jugadors d\'un equip per assignar-los.', es:'Miembros del club que aún no están en ningún equipo. Añade su correo a la lista de jugadores de un equipo para asignarlos.', en:'Club members who are not in a squad yet. Add their address to a team\'s player list to assign them.' },
     'reg.unassigned_none':{ ca:'Tothom té equip assignat.', es:'Todos tienen equipo asignado.', en:'Everyone has a squad.' },
+    'reg.th_prev_team': { ca:'Equip anterior', es:'Equipo anterior', en:'Previous team' },
+    'reg.th_assign':    { ca:'Assignar a', es:'Asignar a', en:'Assign to' },
+    'reg.assign':       { ca:'Assignar', es:'Asignar', en:'Assign' },
     'reg.pre_title':    { ca:'Jugadors pre-registrats', es:'Jugadores pre-registrados', en:'Pre-registered Players' },
     'reg.pre_desc':     { ca:'Afegeix el correu d\'un jugador i el seu equip. Només els correus afegits es podran registrar, i apareixeran a la llista de sota amb un punt taronja fins que ho facin.', es:'Añade el correo de un jugador y su equipo. Solo los correos añadidos podrán registrarse, y aparecerán en la lista de abajo con un punto naranja hasta que lo hagan.', en:'Add a player\'s email and their team. Only added addresses can register, and they appear in the list below with an orange dot until they do.' },
     'reg.pre_add':      { ca:'Afegir', es:'Añadir', en:'Add' },
@@ -10364,13 +10367,37 @@
         </td>
       </tr>`).join('');
 
+    // Assigning is scoped to the categories this user may actually write a
+    // player list for — the rules reject anything else, so offering it would
+    // only produce a permission error. Lead and admin get the whole club.
+    const assignCats = getVisibleCategories();
     const unassignedRows = unassigned.map(u => {
       const picHtml = u.profilePic
         ? `<img src="${u.profilePic}" class="reg-avatar" alt="">`
         : `<span class="reg-avatar reg-avatar-placeholder">${sanitize(u.name).charAt(0).toUpperCase()}</span>`;
+      const prevCat = u.prevCategory || '';
+      const prevLabel = prevCat
+        ? (CATEGORY_LABELS[prevCat] || prevCat) + (u.prevTeam ? ' ' + sanitize(u.prevTeam) : '')
+        : '—';
+      // Default to where they came from when that category is still one of
+      // ours; it is the overwhelmingly likely destination.
+      const preselect = assignCats.indexOf(prevCat) !== -1 ? prevCat : (assignCats[0] || '');
+      const catOpts = assignCats.map(k =>
+        `<option value="${k}"${k === preselect ? ' selected' : ''}>${CATEGORY_LABELS[k] || k}</option>`).join('');
+      const letters = getTeamLetters(preselect);
+      const letterOpts = letters.map(l =>
+        `<option value="${l}"${l === (u.prevTeam || '') ? ' selected' : ''}>${l}</option>`).join('');
       return `<tr data-uid="${u.id}">
-        <td class="reg-name-cell">${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
-        <td>${sanitize(u.email || '')}</td>
+        <td class="reg-name-cell">${regDot(true)}${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
+        <td class="reg-email-cell">${sanitize(u.email || '')}</td>
+        <td><span class="reg-status-flat">${prevLabel}</span></td>
+        <td class="reg-assign-cell">
+          ${assignCats.length ? `
+            <select class="reg-input reg-assign-cat" data-uid="${u.id}">${catOpts}</select>
+            <select class="reg-input reg-assign-team" data-uid="${u.id}">${letterOpts}</select>
+            <button class="btn btn-small btn-primary btn-assign" data-uid="${u.id}">${t('reg.assign')}</button>
+          ` : `<span class="reg-status-flat">${t('error.no_categories')}</span>`}
+        </td>
       </tr>`;
     }).join('');
 
@@ -10381,7 +10408,7 @@
           ${t('reg.unassigned_desc')}
         </p>
         ${unassigned.length ? `<div class="table-wrap"><table>
-          <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th></tr></thead>
+          <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th><th>${t('reg.th_prev_team')}</th><th>${t('reg.th_assign')}</th></tr></thead>
           <tbody>${unassignedRows}</tbody>
         </table></div>` : `<p style="color:var(--text-secondary);font-size:.85rem;">${t('reg.unassigned_none')}</p>`}
       </div>`;
@@ -10519,19 +10546,68 @@
     const users = getUsers();
     const u = users.find(x => normalizeEmail(x.email) === target);
     if (!u || (!u.category && !u.team)) return;
+    // Remember where they were so the Unassigned list can offer to put them
+    // back. onRosterWritten records the same thing server-side.
+    const patch = { category: '', team: '', prevCategory: u.category || '', prevTeam: u.team || '' };
+    u.prevCategory = patch.prevCategory;
+    u.prevTeam = patch.prevTeam;
     u.category = '';
     u.team = '';
     saveUsers(users);
     if (typeof u.id === 'string' && isNaN(Number(u.id))) {
       try {
-        await db.collection('users').doc(u.id).set(
-          { category: '', team: '' }, { merge: true });
+        await db.collection('users').doc(u.id).set(patch, { merge: true });
       } catch (err) {
         console.error('detach failed:', err);
         _showPushToast(t('save.sync_title'), t('save.error_perms'));
       }
     }
     if (currentPage === 'registrations') renderPage(getSession());
+  }
+
+  /**
+   * Put an unassigned member into a squad: add their address to that team's
+   * player list (the gate that actually decides membership) and mirror the
+   * assignment locally so the row moves at once rather than waiting for
+   * onRosterWritten to come back.
+   *
+   * The category dropdown only offers categories this user may write to —
+   * the rules scope playerEmails edits to a coach's own categories, so
+   * anything else would fail on save.
+   */
+  async function assignMemberToTeam(uid, category, letter) {
+    const session = getSession();
+    if (!session || !session.teamId || !category || !letter) return;
+    const users = getUsers();
+    const u = users.find(x => String(x.id) === String(uid));
+    if (!u) return;
+    const email = normalizeEmail(u.email);
+    const key = category + '-' + letter;
+    try {
+      if (email) {
+        const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+        const list = ((rosters[key] || {}).playerEmails) || [];
+        if (!list.some(e => normalizeEmail(e) === email)) {
+          const next = list.concat([email]);
+          await saveRoster(session.teamId, key, 'playerEmails', next);
+          if (!_clubConfig.rosters) _clubConfig.rosters = {};
+          if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
+          _clubConfig.rosters[key].playerEmails = next;
+        }
+      }
+      if (typeof uid === 'string' && isNaN(Number(uid))) {
+        await db.collection('users').doc(uid).set(
+          { category: category, team: letter }, { merge: true });
+      }
+      u.category = category;
+      u.team = letter;
+      saveUsers(users);
+      renderPage(getSession());
+    } catch (err) {
+      console.error('assign failed:', err);
+      _showPushToast(t('save.sync_title'),
+        err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
+    }
   }
 
   // (savePlayerEmailList lived here — it read a whole team's list back out of
@@ -15624,6 +15700,17 @@
         const pendBtn = e.target.closest('.btn-remove-pending');
         if (pendBtn) {
           removePreRegisteredPlayer(pendBtn.dataset.pendingEmail, pendBtn.dataset.pendingKey);
+          return;
+        }
+        // Put an unassigned member back into a squad.
+        const assignBtn = e.target.closest('.btn-assign');
+        if (assignBtn) {
+          const row = assignBtn.closest('tr');
+          if (!row) return;
+          const catSel = row.querySelector('.reg-assign-cat');
+          const teamSel = row.querySelector('.reg-assign-team');
+          assignMemberToTeam(assignBtn.dataset.uid,
+            catSel ? catSel.value : '', teamSel ? teamSel.value : '');
         }
       });
       content.addEventListener('keydown', e => {
@@ -15635,6 +15722,17 @@
 
       // Status select or category select change
       content.addEventListener('change', e => {
+        // Unassigned card: team letters belong to the chosen category, so the
+        // second dropdown has to follow the first.
+        if (e.target.classList.contains('reg-assign-cat')) {
+          const row = e.target.closest('tr');
+          const teamSel = row && row.querySelector('.reg-assign-team');
+          if (teamSel) {
+            teamSel.innerHTML = getTeamLetters(e.target.value)
+              .map(l => '<option value="' + l + '">' + l + '</option>').join('');
+          }
+          return;
+        }
         if (e.target.classList.contains('reg-status-select')) {
           autoSaveFromRow(e.target.closest('tr'));
         }
