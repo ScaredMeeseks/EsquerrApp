@@ -384,6 +384,7 @@
     'medical.no_past':       { ca:'Cap lesió passada aquesta temporada', es:'Sin lesiones pasadas esta temporada', en:'No past injuries this season' },
     'medical.self_reported': { ca:'Reportada pel jugador', es:'Reportada por el jugador', en:'Reported by the player' },
     'medical.not_logged':    { ca:'Sense fitxa de lesió', es:'Sin ficha de lesión', en:'No injury record yet' },
+    'medical.discard':       { ca:'Descartar', es:'Descartar', en:'Discard' },
     'medical.severity_minor':   { ca:'Lleu', es:'Leve', en:'Minor' },
     'medical.severity_moderate':{ ca:'Moderada', es:'Moderada', en:'Moderate' },
     'medical.severity_severe':  { ca:'Greu', es:'Grave', en:'Severe' },
@@ -499,6 +500,7 @@
     'alert.select_match':     { ca:'Selecciona un partit.', es:'Selecciona un partido.', en:'Please select a match.' },
     'alert.select_player':    { ca:'Selecciona un jugador.', es:'Selecciona un jugador.', en:'Please select a player.' },
     'confirm.existing_injury':{ ca:'Aquest jugador ja té una lesió activa. Crear-ne una de nova?', es:'Este jugador ya tiene una lesión activa. ¿Crear una nueva?', en:'This player already has an active injury. Create a new one?' },
+    'confirm.discard_injury':{ ca:'Descartar aquesta lesió? El jugador passarà a estar apte. Si torna a reportar-se lesionat més endavant, hi tornarà a aparèixer.', es:'¿Descartar esta lesión? El jugador pasará a estar apto. Si vuelve a reportarse lesionado más adelante, volverá a aparecer.', en:'Discard this injury? The player goes back to fit. If he reports himself injured again later, it will reappear.' },
     'confirm.delete_user':    { ca:'Eliminar aquest usuari?', es:'¿Eliminar este usuario?', en:'Delete this user?' },
     'confirm.erase_all':      { ca:'Això esborrarà TOTES les dades. Estàs segur?', es:'Esto borrará TODOS los datos. ¿Estás seguro?', en:'This will erase ALL data. Are you sure?' },
     'save.sync_title':        { ca:'Sincronització', es:'Sincronización', en:'Sync' },
@@ -774,12 +776,22 @@
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
     const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
+    // Staff can discard a self-reported injury from the Medical page. We store
+    // the date it was discarded rather than editing the player's own answer:
+    // attendance history stays intact, and if he reports injured again on a
+    // LATER date the flag comes back on its own.
+    const dismissedUpTo = (JSON.parse(localStorage.getItem('fa_injury_dismissed') || '{}'))[playerId] || '';
 
     // Collect all answered trainings for this player, sorted by date
     const answered = training
       .filter(t => t.date && availData[playerId + '_' + t.date])
       .sort((a, b) => a.date.localeCompare(b.date))
-      .map(t => availData[playerId + '_' + t.date]);
+      .map(t => {
+        const v = availData[playerId + '_' + t.date];
+        // A discarded 'injured' counts as a plain absence, so it drives
+        // neither the 'injured' nor the 'doubt' rule below.
+        return (v === 'injured' && dismissedUpTo && t.date <= dismissedUpTo) ? 'no' : v;
+      });
 
     const injNote = injNotes[playerId] || '';
     const last = answered.length ? answered[answered.length - 1] : null;
@@ -12844,6 +12856,7 @@
             '<div class="med-inj-duration"><span class="medical-since">' + t('medical.not_logged') + '</span></div>' +
             '<div class="med-inj-actions">' +
               '<button class="btn btn-small med-btn-log-for" data-player-id="' + p.id + '">' + t('medical.log_injury').replace(/^\+\s*/, '') + '</button>' +
+              '<button class="btn btn-small btn-ghost med-btn-dismiss" data-player-id="' + p.id + '" title="' + t('medical.discard') + '">✕</button>' +
             '</div>' +
           '</div>' +
         '</div>';
@@ -13583,6 +13596,34 @@
       btn.addEventListener('click', e => {
         e.stopPropagation();
         showStaffInjuryLogger(btn.dataset.playerId);
+      });
+    });
+
+    // Discard a self-report that isn't a real injury. Records the date of the
+    // player's latest answer rather than rewriting the answer itself, so his
+    // attendance history is untouched and a later report re-raises the flag.
+    document.querySelectorAll('.med-btn-dismiss').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const uid = btn.dataset.playerId;
+        if (!confirm(t('confirm.discard_injury'))) return;
+        const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
+        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+        const answeredDates = training
+          .filter(tr => tr.date && availData[uid + '_' + tr.date])
+          .map(tr => tr.date).sort();
+        const upTo = answeredDates.length ? answeredDates[answeredDates.length - 1] : localDateStr(new Date());
+        const dismissed = JSON.parse(localStorage.getItem('fa_injury_dismissed') || '{}');
+        dismissed[uid] = upTo;
+        localStorage.setItem('fa_injury_dismissed', JSON.stringify(dismissed));
+        // Drop the free-text note too, or it lingers on other surfaces.
+        const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
+        if (injNotes[uid]) {
+          delete injNotes[uid];
+          localStorage.setItem('fa_injury_notes', JSON.stringify(injNotes));
+        }
+        deriveFitnessStatus(uid, true);
+        renderPage(getSession());
       });
     });
 
@@ -15412,6 +15453,7 @@
       fa_player_stats: ['player-home', 'my-stats', 'staff-player-stats', 'manage-roster'],
       fa_staff_notifications: ['staff-notifications'],
       fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
+      fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
       fa_injury_zone: ['my-stats', 'medical', 'medical-detail'],
       fa_injuries: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
       fa_training_staff_override: ['player-home', 'training', 'training-detail', 'staff-training', 'staff-training-detail'],

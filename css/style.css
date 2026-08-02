@@ -3117,8 +3117,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display:flex; align-items:center; gap:.4rem;
 }
 .med-card-name {
-  font-weight:600; font-size:.88rem; flex:1; display:inline-flex; align-items:center; gap:.3rem;
+  font-weight:600; font-size:.88rem; flex:1; min-width:0;
+  display:inline-flex; align-items:center; gap:.3rem;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* The shared .conv-pos-circles reserves a fixed 68px for up to three
+   position circles and right-aligns them, which keeps columns lined up in
+   list views. In these cards there is no column to align to, so a player
+   with one position wasted ~45px and pushed the name into an ellipsis.
+   Shrink to content and pack left. */
+.med-card-top .conv-pos-circles,
+.med-inj-player .conv-pos-circles {
+  width:auto; justify-content:flex-start;
 }
 .med-card-injury {
   font-size:.78rem; color:#e53935; margin-top:.2rem; font-weight:500;

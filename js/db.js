@@ -38,6 +38,7 @@ const DB = (function () {
     'fa_staff_notifications',
     'fa_injury_notes',
     'fa_injury_zone',
+    'fa_injury_dismissed',
     'fa_training_staff_override',
     'fa_convocatoria_sent',
     'fa_convocatoria_callup',
@@ -56,6 +57,7 @@ const DB = (function () {
     'fa_training_staff_override',
     'fa_injury_notes',
     'fa_injury_zone',
+    'fa_injury_dismissed',
   ]);
 
   /* Player-submitted data lives ONLY in per-record subcollections

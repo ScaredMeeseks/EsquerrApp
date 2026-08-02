@@ -167,3 +167,12 @@ Also scoped `showStaffInjuryLogger`'s player dropdown to the visible squad — i
 `sw.js` → `esquerrapp-v25`, `check-deploy.js` `CURRENT` to match. Frontend-only; no rules or functions change.
 
 **Still inconsistent, deliberately not fixed here**: uncategorised players are excluded by medical and roster but included by training-detail. Belongs with the Phase 5 data split.
+
+### 2026-08-02d — Medical: discard a self-report, and stop reserving 3 position slots (v26)
+
+- **Discard (`✕`) on the self-reported cards.** New `fa_injury_dismissed` key — a flat `{uid: 'YYYY-MM-DD'}` map holding the date of the latest answer that staff discarded. `deriveFitnessStatus` maps an `'injured'` answer dated on or before that to a plain `'no'`, so it drives neither the injured nor the doubt rule. **Deliberately not implemented by rewriting the player's availability answer**: attendance history stays intact, and if he reports himself injured again on a LATER date the flag comes back by itself. The free-text `fa_injury_notes` entry is dropped at the same time so it doesn't linger elsewhere. Added to `SYNCED_KEYS` **and** `MERGE_KEYS` in db.js (flat per-uid map — merge-safe, no clobbering) and to the live-resync page map. No rules change needed: `data/{key}` writes are already staff-only unless the key is on the player allowlist, and only staff ever write this one; players read it, which `sameTeam` already permits.
+- **Position circles no longer reserve three slots in medical cards.** The shared `.conv-pos-circles` is `width:68px; justify-content:flex-end` so columns line up in list views; inside `.med-card-top` / `.med-inj-player` there is no column to align to, so a one-position player wasted ~45px and pushed the name into an ellipsis. Overridden to `width:auto; justify-content:flex-start` for those two containers only — the list views keep their alignment. `.med-card-name` also gained `min-width:0` so the ellipsis works inside the flex row.
+
+`sw.js` → `esquerrapp-v26`, `check-deploy.js` `CURRENT` to match. Frontend-only.
+
+**Old-client note**: `fa_injury_dismissed` is unknown to v25-and-earlier clients (and old APKs), which will not sync it and will keep showing a discarded player as injured until they update. Degrades gracefully — nothing breaks, the flag just persists on stale clients.
