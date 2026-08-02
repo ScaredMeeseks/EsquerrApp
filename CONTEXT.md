@@ -232,3 +232,15 @@ Verified by simulating the full lifecycle: picker shown exactly once, all four c
 `sw.js` → `esquerrapp-v29`, `check-deploy.js` to match. Rules suite: 65 passing. **Needs a functions deploy.**
 
 **v30 (same day)**: the change-lead UI became an inline **textbox per club row** in Gestió de Clubs rather than an icon opening a modal — the modal was too hidden to find. Same guards, now as inline feedback under the field as you type; Enter or 💾 saves. `showChangeLeadModal` and two orphaned i18n keys removed.
+
+### 2026-08-02h — The team lead gets the user-management page (v31)
+
+Permanent deletion was superadmin-only, so every removal in every club queued behind one person. Each lead now manages their own club's members.
+
+- **Sidebar / router**: the users page is added to the Team Lead section and the `ADMIN_PAGES` guard admits `isTeamLead`. No extra scoping needed — the page reads this club's `fa_users`, so it can only ever show the caller's own members.
+- **`deleteMember` authorization**: superuser **or** a lead whose `teamId` claim matches the *target's* club. Taken from the token, never the request. Three refusals: self (already there), the superuser's own account, and anyone outside the caller's club — which also covers a clubless user, deletable by the superuser only. Verified against a nine-case matrix including a staff member attempting it.
+- **Rules unchanged**: direct client deletion of `users/{uid}` stays superuser-only and every lead deletion goes through the function, keeping the destructive path in one audited place. The existing test asserting "the lead CANNOT delete a member either" now documents that deliberately.
+
+**Removed the Player/Staff toggle buttons** from that page. They only ever rewrote the local `fa_users` blob and never called `setRole`, so the badge flipped, the blob synced, and `users/{uid}.roles` — and the person's real permissions — did not. Third instance of that silent-write shape this session. Not repaired but removed: roles are list-driven now (staff in "Configura el teu club", players in Registrations), and a manually-toggled staff member would get no categories and land on the empty-state screen anyway. Roles are read-only on the page now, `lead` included in the badges; `users.toggle_desc` replaced with `users.delete_desc`. Delete is also hidden for the superadmin row.
+
+`sw.js` → `esquerrapp-v31`, `check-deploy.js` to match. Rules suite: 65 passing. **Needs a functions deploy.**

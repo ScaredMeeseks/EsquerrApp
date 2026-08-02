@@ -45,7 +45,7 @@
     'page.matchday':        { ca:'Jornada', es:'Jornada', en:'Matchday' },
     'page.manage_users':    { ca:'Gestió d\'usuaris', es:'Gestión de usuarios', en:'Manage Users' },
     'users.all_users':      { ca:'Tots els usuaris', es:'Todos los usuarios', en:'All Users' },
-    'users.toggle_desc':    { ca:'Activa o desactiva els rols de cada usuari.', es:'Activa o desactiva los roles de cada usuario.', en:'Toggle each user\'s roles on or off.' },
+    'users.delete_desc':    { ca:'Membres registrats en aquest club. Els rols venen de les llistes de correus (staff a «Configura el teu club», jugadors a Registres). Esborrar és permanent.', es:'Miembros registrados en este club. Los roles vienen de las listas de correos (staff en «Configura tu club», jugadores en Registros). Borrar es permanente.', en:'Members registered in this club. Roles come from the email lists (staff in "Set up your club", players in Registrations). Deleting is permanent.' },
     'users.th_name':        { ca:'Nom', es:'Nombre', en:'Name' },
     'users.th_email':       { ca:'Correu', es:'Correo', en:'Email' },
     'users.th_roles':       { ca:'Rols', es:'Roles', en:'Roles' },
@@ -2534,7 +2534,11 @@
       items.push({ id: 'users', icon: '⚙️', label: t('sidebar.users') });
       items.push({ id: 'settings', icon: '🔧', label: t('sidebar.settings') });
     } else if (session.isTeamLead) {
+      // The lead manages their own club's members, including permanent
+      // deletion — the page reads this club's roster, so it can only ever
+      // show and act on their own people.
       items.push({ section: t('sidebar.section_teamlead') });
+      items.push({ id: 'users', icon: '⚙️', label: t('sidebar.users') });
       items.push({ id: 'settings', icon: '🔧', label: t('sidebar.settings') });
     }
 
@@ -2651,7 +2655,10 @@
     if (STAFF_PAGES.has(currentPage) && !roles.includes('staff')) {
       currentPage = fallbackPage();
     }
-    if (ADMIN_PAGES.has(currentPage) && !session.isAdmin) {
+    // The users page is open to the club's lead as well as the superadmin:
+    // a lead must be able to remove someone from their own club without
+    // going through the superuser.
+    if (ADMIN_PAGES.has(currentPage) && !session.isAdmin && !session.isTeamLead) {
       currentPage = fallbackPage();
     }
     if (LEAD_PAGES.has(currentPage) && !session.isAdmin && !session.isTeamLead) {
@@ -10146,10 +10153,15 @@
   function renderAdminUsers() {
     const users = getUsers();
     const session = getSession();
+    // Roles are read-only here. The Player/Staff toggles that used to live in
+    // this column only ever rewrote the local roster blob — they never called
+    // setRole, so the badge changed and the person's real permissions did not.
+    // Roles come from the email lists now: staff in "Configura el teu club",
+    // players in the pre-registered list on Registrations.
     let rows = users.map(u => {
-      const hasPlayer = (u.roles || []).includes('player');
-      const hasStaff = (u.roles || []).includes('staff');
-      const roleLabels = { player: t('common.player'), staff: t('common.staff') };
+      const roleLabels = {
+        player: t('common.player'), staff: t('common.staff'), lead: t('auth.role_lead'),
+      };
       const rolesDisplay = (u.roles || []).length
         ? (u.roles || []).map(r => `<span class="badge badge-green">${roleLabels[r] || r}</span>`).join(' ')
         : '<span class="badge badge-yellow">' + t('reg.status_none') + '</span>';
@@ -10159,13 +10171,7 @@
         <td>${sanitize(u.email)}</td>
         <td>${rolesDisplay}</td>
         <td class="user-actions">
-          <button class="btn btn-small ${hasPlayer ? 'btn-primary' : 'btn-outline'} btn-toggle-role" data-uid="${u.id}" data-role="player">
-            ${hasPlayer ? '✓ ' + t('common.player') : '+ ' + t('common.player')}
-          </button>
-          <button class="btn btn-small ${hasStaff ? 'btn-primary' : 'btn-outline'} btn-toggle-role" data-uid="${u.id}" data-role="staff">
-            ${hasStaff ? '✓ ' + t('common.staff') : '+ ' + t('common.staff')}
-          </button>
-          ${u.id !== session.id ? `<button class="btn btn-small btn-danger btn-delete-user" data-uid="${u.id}">${t('btn.delete')}</button>` : ''}
+          ${u.id !== session.id && !u.isAdmin ? `<button class="btn btn-small btn-danger btn-delete-user" data-uid="${u.id}">${t('btn.delete')}</button>` : ''}
         </td>
       </tr>`;
     }).join('');
@@ -10173,7 +10179,7 @@
       <h2 class="page-title">${t('page.manage_users')}</h2>
       <div class="card">
         <div class="card-title">${t('users.all_users')}</div>
-        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('users.toggle_desc')}</p>
+        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('users.delete_desc')}</p>
         <div class="table-wrap"><table>
           <thead><tr><th>${t('users.th_name')}</th><th>${t('users.th_email')}</th><th>${t('users.th_roles')}</th><th>${t('users.th_actions')}</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -15103,28 +15109,9 @@
     });
 
     // Admin: toggle role
-    $$('.btn-toggle-role').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const uid = btn.dataset.uid;
-        const role = btn.dataset.role;
-        let users = getUsers();
-        const user = users.find(u => u.id === uid);
-        if (!user) return;
-        if (!user.roles) user.roles = [];
-        if (user.roles.includes(role)) {
-          user.roles = user.roles.filter(r => r !== role);
-        } else {
-          user.roles.push(role);
-        }
-        saveUsers(users);
-        const session = getSession();
-        if (session && session.id === uid) {
-          session.roles = user.roles;
-          setSession(session);
-        }
-        renderPage(getSession());
-      });
-    });
+    // (The .btn-toggle-role handler that lived here is gone with the buttons:
+    // it only rewrote the local fa_users blob and never called setRole, so a
+    // role appeared to change while the person's permissions did not.)
 
     // Admin: erase the person entirely. Unlike "leave the squad" on the
     // Registrations page, this destroys the account and all their data —

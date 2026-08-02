@@ -981,10 +981,6 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
       if (!request.auth) {
         throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
       }
-      if ((request.auth.token.email || "").toLowerCase() !== SUPERUSER_EMAIL) {
-        throw new HttpsError("permission-denied",
-            "Només l'administrador pot esborrar un usuari.");
-      }
       const uid = request.data && request.data.uid;
       if (!uid || typeof uid !== "string") {
         throw new HttpsError("invalid-argument", "Falta l'identificador.");
@@ -1001,6 +997,27 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
       const name = String(user.name || "").trim();
       const teamId = user.teamId;
       const done = {uid, email, name, teamId: teamId || null};
+
+      // ── Authorization ──
+      // The superuser, or the lead of the target's OWN club. A lead must be
+      // able to remove someone from their club without going through the
+      // superuser, but never from anyone else's — so the club comparison is
+      // taken from the caller's token claims, never from the request.
+      const callerEmail = (request.auth.token.email || "").toLowerCase();
+      const isSuper = callerEmail === SUPERUSER_EMAIL;
+      const isLeadOfTargetClub = !!teamId &&
+        request.auth.token.role === "lead" &&
+        request.auth.token.teamId === teamId;
+      if (!isSuper && !isLeadOfTargetClub) {
+        throw new HttpsError("permission-denied",
+            "Només l'administrador o el responsable del club pot esborrar " +
+            "un membre.");
+      }
+      // The superuser's own account is never deletable through here.
+      if (email === SUPERUSER_EMAIL) {
+        throw new HttpsError("failed-precondition",
+            "No es pot esborrar el compte d'administrador.");
+      }
 
       // ── 1. Roster email lists — do this FIRST, so that even if a later
       // step fails the person cannot simply register again. ──
