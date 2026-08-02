@@ -375,3 +375,18 @@ Linked match/training board copies are still matched by **name**, unchanged. Tha
 Verified both failure modes: a remote insert makes the old index resolve to the wrong board while the id lookup stays correct, and deleting an earlier board no longer disturbs the selection.
 
 Rules suite: 67 passing. `sw.js` → v42. Frontend-only.
+
+### 2026-08-03 — Stage A complete: in-app update check (v43)
+
+The web app updates on reload; a bundled APK does not, because Capacitor ships a copy of the web assets — so a phone can run months-old code against a current backend and nobody notices. That is the constraint that would otherwise have forced dual-writing through all of Phase 5.
+
+- **`APP_VERSION` constant** in `js/app.js`, bumped alongside `sw.js`. `check-deploy.js` now fetches the live `js/app.js` and **asserts the two agree** — a lagging `APP_VERSION` would make every bundled APK claim to be current and the banner would never fire.
+- **`clubs/{clubId}.minAppVersion`** drives it, set from a per-row input in Gestió de Clubs. No rules change: the club doc is already member-readable and lead/superuser-writable.
+- **Soft nag, not a block** — deliberately. A wrong value here would lock the club out and only the superadmin could undo it. Dismissal is remembered *per required version*, so raising the bar nags again but a single release does not nag on every page.
+- **`updateUrl` is a club field, not a constant**: GitHub Actions artifacts have no stable public URL. Without one the banner still says what is wrong, it just cannot offer the download. When Play/App Store lands, this becomes the store link with no other change.
+
+**Not chosen: pointing the APK at the live site** (`server.url`). It would end APK staleness instantly, but loading an entire app from a remote URL is a reliable App Store rejection (guideline 4.2), and stores are on the roadmap. The store-friendly path is bundled assets plus an OTA bundle swap later; this version check is the stepping stone to either.
+
+**Stage A is done.** Next is Stage B: the `db.js` router. Nothing in Stage A splits anything — it is all groundwork, and all of it is independently useful.
+
+Rules suite: 67 passing. `sw.js` → v43, `APP_VERSION` 43. Frontend-only.

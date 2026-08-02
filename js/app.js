@@ -81,6 +81,9 @@
     'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
     'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
     // ── Club lead handover (superadmin) ──
+    'update.msg':        { ca:'Estàs fent servir una versió antiga de l\'app (v{have}, cal v{need}). Actualitza-la per veure-ho tot correctament.', es:'Estás usando una versión antigua de la app (v{have}, se necesita v{need}). Actualízala para verlo todo correctamente.', en:'You are running an old version of the app (v{have}, v{need} required). Update to see everything correctly.' },
+    'update.download':   { ca:'Descarregar', es:'Descargar', en:'Download' },
+    'club.min_version':  { ca:'Versió mínima', es:'Versión mínima', en:'Min version' },
     'club.change_lead':  { ca:'Canviar responsable', es:'Cambiar responsable', en:'Change club manager' },
     'club.change_badge': { ca:'Canviar escut (clica-hi)', es:'Cambiar escudo (haz clic)', en:'Change crest (click it)' },
     'club.badge_changed':{ ca:'Escut actualitzat.', es:'Escudo actualizado.', en:'Crest updated.' },
@@ -1064,6 +1067,21 @@
 
   // ---------- Auth (Firebase) ----------
   const ADMIN_EMAIL = 'marna96@gmail.com';
+
+  /* Which build this is. Bumped alongside sw.js CACHE_NAME — check-deploy.js
+     asserts the two agree, because a stale APP_VERSION would make every
+     bundled APK claim to be current.
+
+     The web app updates itself on reload; an installed APK does not, because
+     Capacitor bundles a copy of the web assets. So an old phone can run
+     months-old code against a current backend and nobody notices. The club
+     document carries `minAppVersion`, and anything older than it gets a
+     banner. Deliberately a nag, not a block: a wrong value here would lock
+     the club out, and only the superadmin could undo it.
+
+     Later this same comparison drives a Play/App Store link or an OTA bundle
+     swap, so nothing here is throwaway. */
+  const APP_VERSION = 43;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2766,7 +2784,7 @@
       // does nothing.
       var CATEGORY_PAGES = new Set(['registrations', 'staff-training', 'staff-training-detail', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
-      content.innerHTML = catBar + fn(session);
+      content.innerHTML = renderUpdateBanner() + catBar + fn(session);
     } else {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
     }
@@ -10289,6 +10307,32 @@
     if (tt) tt.classList.remove('visible');
   }
 
+  /**
+   * "You are running an old build" banner. Dismissable, and the dismissal is
+   * remembered per required-version so raising minAppVersion nags again but
+   * a single release does not nag on every page.
+   *
+   * `updateUrl` is a club field rather than a constant because GitHub Actions
+   * artifacts have no stable public URL — without one the banner still says
+   * what is wrong, it just cannot offer the download.
+   */
+  function renderUpdateBanner() {
+    var need = _clubConfig && Number(_clubConfig.minAppVersion || 0);
+    if (!need || need <= APP_VERSION) return '';
+    if (localStorage.getItem('fa_update_dismissed') === String(need)) return '';
+    var url = (_clubConfig && _clubConfig.updateUrl) || '';
+    var link = url
+      ? '<a href="' + sanitize(url) + '" target="_blank" rel="noopener" class="upd-link">' +
+        t('update.download') + '</a>'
+      : '';
+    return '<div class="upd-banner" data-need="' + need + '">' +
+      '<span class="upd-text">' + t('update.msg')
+        .replace('{have}', APP_VERSION).replace('{need}', need) + '</span>' +
+      link +
+      '<button class="upd-close" title="' + t('common.cancel') + '">✕</button>' +
+      '</div>';
+  }
+
   /** Green = they have an account; orange = invited, not signed up yet. */
   function regDot(registered) {
     const cls = registered ? 'reg-dot-on' : 'reg-dot-off';
@@ -11179,13 +11223,18 @@
             <div class="club-lead-msg" data-club="${d.id}" style="font-size:.78rem;margin-top:.2rem;"></div>
           </td>
           <td style="white-space:nowrap;">
+            <input type="number" min="0" class="reg-input club-minver-input" data-club="${d.id}"
+                   value="${Number(c.minAppVersion || 0)}" title="${t('club.min_version')}"
+                   style="width:70px;font-size:.82rem;">
+          </td>
+          <td style="white-space:nowrap;">
             <button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button>
             <button class="btn btn-small btn-primary btn-save-lead" data-club="${d.id}" title="${t('club.change_lead')}" disabled>💾</button>
           </td>
         </tr>`;
       });
       listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
-        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th></th></tr></thead>
+        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th>${t('club.min_version')}</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
       // Look the address up as it is typed. Bound here rather than in the
@@ -11198,6 +11247,19 @@
         });
         inp.addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); _saveLeadEmail(inp.dataset.club); }
+        });
+      });
+      // Minimum app version: saved on blur, no confirmation — it only drives
+      // a dismissable banner, so a wrong value costs nothing but noise.
+      listEl.querySelectorAll('.club-minver-input').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          var v = Math.max(0, Number(inp.value) || 0);
+          updateClub(inp.dataset.club, { minAppVersion: v })
+            .then(function () { _showPushToast(t('club.min_version'), 'v' + v); })
+            .catch(function (err) {
+              console.error('minAppVersion save failed:', err);
+              _showPushToast(t('save.sync_title'), t('save.error'));
+            });
         });
       });
     } catch (e) {
@@ -15577,6 +15639,16 @@
         // Team Lead: edit categories
         if (e.target.closest('#btn-edit-categories')) {
           showTeamSetup();
+          return;
+        }
+        // Dismiss the "old build" banner for this required version only.
+        const updClose = e.target.closest('.upd-close');
+        if (updClose) {
+          const bar = updClose.closest('.upd-banner');
+          if (bar) {
+            localStorage.setItem('fa_update_dismissed', bar.dataset.need);
+            bar.remove();
+          }
           return;
         }
         // SuperUser: click a club crest to replace it

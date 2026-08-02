@@ -192,9 +192,19 @@ async function checkFrontend() {
     const sw = await (await fetch(`${base}/sw.js`, {cache: "no-store"})).text();
     const m = sw.match(/CACHE_NAME\s*=\s*'([^']+)'/);
     const v = m ? m[1] : "?";
-    const CURRENT = "esquerrapp-v42"; // bump alongside sw.js
+    const CURRENT = "esquerrapp-v43"; // bump alongside sw.js
     if (v === CURRENT) ok(`sw.js CACHE_NAME = ${v} (latest frontend live)`);
     else bad(`sw.js CACHE_NAME = ${v} — expected ${CURRENT}; merge the phase branch to main`);
+
+    // APP_VERSION drives the "old build" banner. If it lags sw.js, every
+    // bundled APK claims to be current and the banner never fires.
+    const appJs = await (await fetch(`${base}/js/app.js`, {cache: "no-store"})).text();
+    const am = appJs.match(/const APP_VERSION\s*=\s*(\d+)/);
+    const swNum = (v.match(/v(\d+)$/) || [])[1];
+    if (!am) bad("js/app.js has no APP_VERSION constant");
+    else if (swNum && am[1] !== swNum) {
+      bad(`APP_VERSION = ${am[1]} but sw.js is v${swNum} — bump them together`);
+    } else ok(`APP_VERSION = ${am[1]} (matches sw.js)`);
 
     const html = await (await fetch(`${base}/index.html`, {cache: "no-store"})).text();
     if (html.includes("firebase-functions-compat")) {
