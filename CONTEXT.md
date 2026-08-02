@@ -323,3 +323,14 @@ Fix: `#view-dashboard { height: 100dvh; overflow: hidden; }` — a fixed-height 
 Consequence handled: the document no longer scrolls, so `window.scrollY` is permanently 0. The four popups positioned as `rect.top + window.scrollY` are therefore still placed correctly on open (document coords now equal viewport coords) — and `.pmt-tooltip`, which is `position: fixed`, was previously double-counting the offset, so this quietly fixes it. The datepicker now also dismisses on scroll, since a popup at document coordinates no longer travels with an input inside a scrolling pane.
 
 `sw.js` → `esquerrapp-v38`. Frontend-only.
+
+### 2026-08-02p — Page scrollbar and truncated dot tooltip (v39)
+
+Both turned out to be the same CSS fact: **when one overflow axis is `auto`, the other computes to `auto` too, not `visible`.** `.table-wrap { overflow-x: auto }` therefore clips vertically as well.
+
+- **Tooltip truncated** (screenshot: the bubble cut off mid-word). It was a `::after` pseudo-element on `.reg-dot`, trapped inside `.table-wrap`. Now rendered into the shared body-level `.ua-tooltip` — which already existed for exactly this problem elsewhere — via `showHoverTip`/`hideHoverTip` and a delegated `mouseover`/`mouseout` pair (those bubble; `mouseenter`/`mouseleave` do not, and the rows re-render). `.ua-tooltip` switched from `absolute` to `fixed`: it is positioned from a `getBoundingClientRect()`, which is viewport-relative, and it now has to escape clipping ancestors. Hidden on pane scroll, since a viewport-pinned bubble does not follow its dot.
+- **Window scrollbar still present** despite v38's `height: 100dvh; overflow: hidden`. `height` alone was not enough — `.view`'s own `min-height: 100vh` still applied, and any stray descendant could add a few pixels back. `#view-dashboard` is now **`position: fixed; inset: 0`**, so the shell is out of flow and cannot contribute to document height at all. `.view[hidden] { display:none !important }` still wins over it, so hiding on the auth screens is unaffected.
+
+Third and fourth attempts at the strip. The first two were reasoned from the stylesheet and both wrong; the fix only came from measuring the boxes. Worth remembering for the next layout bug here.
+
+`sw.js` → `esquerrapp-v39`. Frontend-only.

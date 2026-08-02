@@ -190,9 +190,17 @@ a:hover { text-decoration: underline; }
    Its dark background stopped where its box ended, leaving a strip of bare
    page background across the foot of every page.
 
-   `height` (not min-height) here is what makes flex:1 + min-height:0 +
-   overflow-y:auto behave. dvh follows the mobile browser toolbar. */
-#view-dashboard { height: 100vh; height: 100dvh; overflow: hidden; }
+   `height` (not min-height) is what makes flex:1 + min-height:0 +
+   overflow-y:auto behave. `position: fixed` takes the shell out of flow
+   entirely so it CANNOT contribute to document height — with height alone,
+   .view's own `min-height: 100vh` and any stray descendant could still push
+   the page a few pixels and bring the window scrollbar back, which is
+   exactly what kept happening. */
+#view-dashboard {
+  position: fixed; inset: 0;
+  height: 100vh; height: 100dvh;
+  overflow: hidden;
+}
 .dashboard-layout { display: flex; flex: 1; min-height: 0; }
 
 .sidebar {
@@ -300,8 +308,12 @@ a:hover { text-decoration: underline; }
 .acwr-bar-chronic:hover { opacity:1; }
 .rpe-col-skipped { fill:#90a4ae; opacity:.38; shape-rendering:crispEdges; }
 .rpe-col-injured { fill:#e53935; opacity:.35; shape-rendering:crispEdges; }
+/* Fixed, not absolute: it is appended to <body> and positioned from a
+   getBoundingClientRect(), which is viewport-relative. It also has to escape
+   containers that clip (any .table-wrap, whose overflow-x:auto makes the
+   vertical axis clip as well). */
 .ua-tooltip {
-  position:absolute; background:#2D2926; color:#fff;
+  position:fixed; background:#2D2926; color:#fff;
   padding:.5rem .85rem; border-radius:8px;
   font-size:.8rem; font-weight:300; line-height:1.5;
   white-space:nowrap; z-index:1000;
@@ -3492,26 +3504,17 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Registered / invited dot next to a member's name, with a hover tooltip.
    Built here rather than with the native title attribute so it appears
    instantly and matches the app's styling. */
+/* The tooltip is NOT a pseudo-element on the dot. .table-wrap sets
+   overflow-x:auto, and when one axis is auto the other computes to auto too
+   rather than visible — so anything escaping the row gets clipped, which
+   truncated the bubble mid-word. It is rendered into the shared body-level
+   .ua-tooltip instead (see the .reg-dot hover handler). */
 .reg-dot{
-  position:relative;display:inline-block;flex:0 0 auto;
+  display:inline-block;flex:0 0 auto;
   width:9px;height:9px;border-radius:50%;margin-right:.45rem;cursor:help;
 }
 .reg-dot-on{background:#43a047;}
 .reg-dot-off{background:#f9a825;}
-.reg-dot::after{
-  content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;
-  transform:translateX(-50%);white-space:nowrap;
-  background:var(--text,#222);color:#fff;font-size:.72rem;font-weight:600;
-  padding:.3rem .55rem;border-radius:6px;pointer-events:none;
-  opacity:0;visibility:hidden;transition:opacity .15s;z-index:20;
-}
-.reg-dot::before{
-  content:'';position:absolute;bottom:calc(100% + 2px);left:50%;
-  transform:translateX(-50%);border:5px solid transparent;
-  border-top-color:var(--text,#222);pointer-events:none;
-  opacity:0;visibility:hidden;transition:opacity .15s;z-index:20;
-}
-.reg-dot:hover::after,.reg-dot:hover::before{opacity:1;visibility:visible;}
 .reg-row-pending td{background:rgba(249,168,37,.05);}
 .reg-status-flat{color:var(--text-secondary);font-size:.85rem;white-space:nowrap;}
 .reg-email-cell{font-size:.82rem;color:var(--text-secondary);white-space:nowrap;}

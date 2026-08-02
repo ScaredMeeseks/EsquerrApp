@@ -10239,6 +10239,33 @@
       </div>`;
   }
 
+  /**
+   * Show the shared body-level tooltip above an element.
+   *
+   * Rendered into <body> rather than as a pseudo-element on the target,
+   * because these dots live inside .table-wrap — whose overflow-x:auto makes
+   * the vertical axis clip too, truncating anything that escapes the row.
+   */
+  function showHoverTip(el, text) {
+    if (!text) return;
+    let tt = document.getElementById('ua-tooltip');
+    if (!tt) {
+      tt = document.createElement('div');
+      tt.id = 'ua-tooltip';
+      tt.className = 'ua-tooltip';
+      document.body.appendChild(tt);
+    }
+    tt.textContent = text;
+    tt.classList.add('visible');
+    const r = el.getBoundingClientRect();
+    tt.style.left = (r.left + r.width / 2) + 'px';
+    tt.style.top = (r.top - 8) + 'px';
+  }
+  function hideHoverTip() {
+    const tt = document.getElementById('ua-tooltip');
+    if (tt) tt.classList.remove('visible');
+  }
+
   /** Green = they have an account; orange = invited, not signed up yet. */
   function regDot(registered) {
     const cls = registered ? 'reg-dot-on' : 'reg-dot-off';
@@ -15813,6 +15840,18 @@
           addPreRegisteredPlayer();
         }
       });
+      // Delegated (mouseover/mouseout bubble, mouseenter/mouseleave do not),
+      // so the dots keep their tooltip across re-renders.
+      content.addEventListener('mouseover', e => {
+        const dot = e.target.closest && e.target.closest('.reg-dot');
+        if (dot) showHoverTip(dot, dot.dataset.tip);
+      });
+      content.addEventListener('mouseout', e => {
+        if (e.target.closest && e.target.closest('.reg-dot')) hideHoverTip();
+      });
+      // A tooltip pinned to viewport coordinates does not follow its dot when
+      // the pane scrolls underneath it.
+      content.addEventListener('scroll', hideHoverTip, true);
 
       // Status select or category select change
       content.addEventListener('change', e => {
