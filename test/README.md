@@ -3,12 +3,26 @@
 Self-contained security-rules tests for `../firestore.rules`. They exercise the
 Firestore emulator against a demo project — **no production data or credentials**.
 
-## Run in Google Cloud Shell (has Java + firebase-tools)
+## Run locally (Windows dev box — Java 21 + firebase-tools are installed)
+
+```bash
+cd test
+npm test          # boots the Firestore emulator and runs the suite
+```
+
+If `java` or `firebase` is missing on a fresh machine:
+
+```powershell
+winget install Microsoft.OpenJDK.21
+npm install -g firebase-tools
+```
+
+## Or in Google Cloud Shell
 
 ```bash
 cd ~/EsquerrApp/test
 npm install
-npm test          # boots the Firestore emulator and runs the suite
+npm test
 ```
 
 `npm test` runs `firebase emulators:exec --only firestore --project=demo-esquerrapp "mocha rules.test.js"`.
@@ -28,4 +42,13 @@ npm test          # boots the Firestore emulator and runs the suite
   updates the club.
 - **Superuser** overrides across teams.
 
-Won't run locally on the dev Windows box (no Java). Requires the emulator.
+- **Roster email lists** (Phase 4): players cannot read them at all; a coach reads and
+  edits only their own categories' player lists; only the lead touches staff lists.
+- **Membership fields are not self-writable**: a player cannot grant themselves
+  `roles`, `category`, `team`, `staffCategories` or a fake `prevCategory`.
+- **Deletion**: neither staff nor the lead may delete a user document directly —
+  every removal goes through the `deleteMember` function, keeping the destructive
+  path in one audited place. Only the superuser may delete.
+
+Requires the Firebase Emulator Suite (Java). Uses the fake project
+`demo-esquerrapp`, so no credentials and no production data are involved.

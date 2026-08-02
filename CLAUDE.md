@@ -4,20 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step, no framework, no test suite**. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
+EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. The only automated tests are the Firestore rules suite in `test/` (see the safety net below); there is no test coverage of `app.js`, so UI changes are verified by hand. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
 
 - Firebase project: `esquerrapp` · Superadmin: `marna96@gmail.com`
 - Frontend hosting: **GitHub Pages from `main`** — pushing to `main` deploys the site AND triggers the Android APK CI build (`.github/workflows/build-android.yml`).
 
 ## Development safety net
 
-There is exactly one: after editing any JS file run
+**1. Syntax check after editing any JS file** — a syntax error breaks the entire app for every user:
 
 ```bash
 node --check js/app.js   # (and any other edited .js file)
 ```
 
-A syntax error breaks the entire app for every user.
+**2. Firestore rules tests — these DO run locally** (Java 21 + firebase-tools are installed on the dev box; older notes saying otherwise are stale):
+
+```bash
+cd test && npm test      # boots the emulator, ~67 tests, fake project demo-esquerrapp
+```
+
+No credentials, no Cloud Shell round-trip. Run them after **any** change to `firestore.rules` or to the custom claims that rules read (`teamId`, `role`, `cats`).
+
+**3. i18n completeness** — `t()` returns the key itself on a miss, so a typo ships as raw `auth.foo` on screen. Every key needs all three of `ca`/`es`/`en`.
 
 ## Architecture
 
@@ -49,9 +57,11 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
 
 ## Key conventions
 
-- **Bump `CACHE_NAME` in `sw.js`** on every change to `js/`, `css/`, or `index.html` (current scheme: `esquerrapp-vNN`).
+- **Bump the version in THREE places together** on every change to `js/`, `css/` or `index.html`: `CACHE_NAME` in `sw.js` (`esquerrapp-vNN`), `APP_VERSION` in `js/app.js`, and `CURRENT` in `functions/check-deploy.js`. `check-deploy` asserts `APP_VERSION` matches `sw.js` — if it lags, every bundled APK claims to be current and the "old build" banner never fires.
 - **Never edit `www/`** — it is a CI-generated mirror (rsync of root) used only by the Capacitor Android build.
-- **Old APKs = old clients**: Android users run old code until they install a new APK. Server-side changes (rules, functions, data model) must stay backward-compatible with the previous frontend until an APK release has circulated.
+- **Old APKs = old clients**: Android users run old code until they install a new APK, because Capacitor bundles a copy of the web assets. Server-side changes must stay backward-compatible until an APK has circulated. The v43 update banner (`clubs/{id}.minAppVersion` vs `APP_VERSION`) makes staleness visible; it does not fix it.
+  **Do not set `server.url` to make the shell load the live site.** It would end staleness instantly but loading a whole app from a remote URL is a reliable App Store rejection (guideline 4.2), and Play + App Store are on the roadmap.
+- **One-off scripts in `functions/` rot.** They are written against the data model of the day and are not exercised by anything. `backfill-claims.js` still wrote pre-Phase-4 claims months later and would have stripped `cats` from every user. **Read one before running it**, and prefer a dry-run/`--apply` gate on anything that writes.
 - New user-facing strings in Catalan.
 - Dates are ISO `YYYY-MM-DD` strings; Cloud Functions use `Europe/Madrid`.
 - Normalize line endings to LF before committing (`.gitattributes` enforces it, but verify diffs aren't CRLF-noisy).
