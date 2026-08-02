@@ -3466,10 +3466,42 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-sched-row input[type="email"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"].invalid{border-color:var(--danger);}
 
-/* Roster email lists (staff in team setup, players in registrations) */
+/* Roster email lists (staff lists in team setup) */
 .roster-status{flex:0 0 auto;font-size:.7rem;font-weight:700;padding:.15rem .4rem;border-radius:999px;white-space:nowrap;}
 .roster-status.claimed{background:var(--primary);color:#fff;}
 .roster-status.pending{background:var(--border);color:var(--text-secondary);}
+
+/* Pre-registration add row on Registrations */
+.reg-add-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
+.reg-add-row #reg-add-email{flex:1;min-width:200px;}
+.reg-add-row #reg-add-team{flex:0 0 auto;min-width:130px;}
+
+/* Registered / invited dot next to a member's name, with a hover tooltip.
+   Built here rather than with the native title attribute so it appears
+   instantly and matches the app's styling. */
+.reg-dot{
+  position:relative;display:inline-block;flex:0 0 auto;
+  width:9px;height:9px;border-radius:50%;margin-right:.45rem;cursor:help;
+}
+.reg-dot-on{background:#43a047;}
+.reg-dot-off{background:#f9a825;}
+.reg-dot::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;
+  transform:translateX(-50%);white-space:nowrap;
+  background:var(--text,#222);color:#fff;font-size:.72rem;font-weight:600;
+  padding:.3rem .55rem;border-radius:6px;pointer-events:none;
+  opacity:0;visibility:hidden;transition:opacity .15s;z-index:20;
+}
+.reg-dot::before{
+  content:'';position:absolute;bottom:calc(100% + 2px);left:50%;
+  transform:translateX(-50%);border:5px solid transparent;
+  border-top-color:var(--text,#222);pointer-events:none;
+  opacity:0;visibility:hidden;transition:opacity .15s;z-index:20;
+}
+.reg-dot:hover::after,.reg-dot:hover::before{opacity:1;visibility:visible;}
+.reg-row-pending td{background:rgba(249,168,37,.05);}
+.reg-status-flat{color:var(--text-secondary);font-size:.85rem;white-space:nowrap;}
+.reg-email-cell{font-size:.82rem;color:var(--text-secondary);white-space:nowrap;}
 
 /* (All mobile rules consolidated into the @media max-width:500px block above) */
 

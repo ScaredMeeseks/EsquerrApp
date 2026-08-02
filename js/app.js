@@ -292,16 +292,17 @@
     'reg.status_player':{ ca:'Jugador', es:'Jugador', en:'Player' },
     'reg.status_staff': { ca:'Staff', es:'Staff', en:'Staff' },
     'reg.status_both':  { ca:'Ambdós', es:'Ambos', en:'Both' },
-    'reg.all_members':  { ca:'Tots els membres', es:'Todos los miembros', en:'All Members' },
     'reg.assigned':     { ca:'Membres assignats', es:'Miembros asignados', en:'Assigned registrations' },
     'reg.unassigned':   { ca:'Sense equip assignat', es:'Sin equipo asignado', en:'Unassigned registrations' },
     'reg.unassigned_desc':{ ca:'Membres del club que encara no estan en cap equip. Afegeix el seu correu a la llista de jugadors d\'un equip per assignar-los.', es:'Miembros del club que aún no están en ningún equipo. Añade su correo a la lista de jugadores de un equipo para asignarlos.', en:'Club members who are not in a squad yet. Add their address to a team\'s player list to assign them.' },
     'reg.unassigned_none':{ ca:'Tothom té equip assignat.', es:'Todos tienen equipo asignado.', en:'Everyone has a squad.' },
     'reg.pre_title':    { ca:'Jugadors pre-registrats', es:'Jugadores pre-registrados', en:'Pre-registered Players' },
-    'reg.pre_desc':     { ca:'Només els correus d\'aquesta llista es podran registrar com a jugadors d\'aquest equip.', es:'Solo los correos de esta lista podrán registrarse como jugadores de este equipo.', en:'Only addresses on this list can register as players for this team.' },
-    'reg.pre_add':      { ca:'+ Jugador', es:'+ Jugador', en:'+ Player' },
-    'reg.pre_claimed':  { ca:'Registrat', es:'Registrado', en:'Registered' },
-    'reg.pre_pending':  { ca:'Pendent', es:'Pendiente', en:'Pending' },
+    'reg.pre_desc':     { ca:'Afegeix el correu d\'un jugador i el seu equip. Només els correus afegits es podran registrar, i apareixeran a la llista de sota amb un punt taronja fins que ho facin.', es:'Añade el correo de un jugador y su equipo. Solo los correos añadidos podrán registrarse, y aparecerán en la lista de abajo con un punto naranja hasta que lo hagan.', en:'Add a player\'s email and their team. Only added addresses can register, and they appear in the list below with an orange dot until they do.' },
+    'reg.pre_add':      { ca:'Afegir', es:'Añadir', en:'Add' },
+    'reg.pre_pending':  { ca:'Pendent de registre', es:'Pendiente de registro', en:'Not registered yet' },
+    'reg.pre_already_member':{ ca:'Aquest correu ja pertany a un membre amb equip assignat.', es:'Este correo ya pertenece a un miembro con equipo asignado.', en:'That address already belongs to a member with a squad.' },
+    'reg.dot_registered':{ ca:'Registrat — ja té compte a l\'app', es:'Registrado — ya tiene cuenta en la app', en:'Registered — has an account' },
+    'reg.dot_pending':  { ca:'Convidat — encara no s\'ha registrat', es:'Invitado — todavía no se ha registrado', en:'Invited — has not signed up yet' },
     'reg.pre_no_cat':   { ca:'Selecciona una categoria per gestionar-ne els jugadors.', es:'Selecciona una categoría para gestionar sus jugadores.', en:'Pick a category to manage its players.' },
 
     // ── Player Stats ──
@@ -10231,6 +10232,13 @@
       </div>`;
   }
 
+  /** Green = they have an account; orange = invited, not signed up yet. */
+  function regDot(registered) {
+    const cls = registered ? 'reg-dot-on' : 'reg-dot-off';
+    const tip = registered ? t('reg.dot_registered') : t('reg.dot_pending');
+    return `<span class="reg-dot ${cls}" data-tip="${sanitize(tip)}"></span>`;
+  }
+
   function renderRegistrations() {
     const users = getUsers();
     const curCat = getCurrentCategory();
@@ -10239,8 +10247,6 @@
     // Only the lead may change roles — setRole rejects everyone else, and
     // staff membership is driven by the club's staff email lists anyway.
     const canEditRoles = !!(session && (session.isAdmin || session.isTeamLead));
-    // Uncategorised members stay visible in every view: this is the page where
-    // they get assigned one, so hiding them would strand them.
     // Two groups. Assigned = in a squad, and category-filtered like the rest
     // of the app. Unassigned = in the club but in no squad: brand-new members
     // nobody has placed yet, and anyone just taken off a team with "Treure de
@@ -10249,6 +10255,29 @@
     const assigned = users.filter(u => (u.category || '') &&
       (!curCat || (u.category || '') === curCat));
     const unassigned = users.filter(u => !(u.category || ''));
+
+    // Pre-registered addresses nobody has claimed yet are shown in the same
+    // table, with an orange dot. Without them an invited player is invisible
+    // until they sign up, and the dot would be meaningless — every row in a
+    // members table is registered by definition.
+    const heldEmails = {};
+    users.forEach(u => {
+      const em = normalizeEmail(u.email);
+      if (em) heldEmails[em] = true;
+    });
+    const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    const pending = [];
+    Object.keys(rosters).forEach(key => {
+      const cat = key.slice(0, key.indexOf('-'));
+      const letter = key.slice(key.indexOf('-') + 1);
+      if (curCat && cat !== curCat) return;
+      ((rosters[key] || {}).playerEmails || []).forEach(raw => {
+        const em = normalizeEmail(raw);
+        if (!em || heldEmails[em]) return;
+        pending.push({ email: em, category: cat, team: letter, key: key });
+      });
+    });
+
     let rows = assigned.map(u => {
       const roles = u.roles || [];
       let status = 'none';
@@ -10273,16 +10302,26 @@
         ? '<select class="reg-cat-select" data-uid="' + u.id + '"><option value=""' + (!uCat ? ' selected' : '') + '>—</option>' + catOptions + '</select>'
         : '';
 
+      // Estat is a choice only for someone who is actually staff, and only the
+      // lead may make it — setRole rejects anyone else. A player's status
+      // follows from being on a player list, and someone whose only role is
+      // running the club has no meaningful option now that "Cap" is gone.
+      const isStaffRow = roles.includes('staff');
+      const isLeadOnly = !roles.includes('player') && !isStaffRow;
+      const statusCell = isLeadOnly
+        ? `<span class="reg-status-flat">${t('auth.role_lead')}</span>`
+        : (isStaffRow && canEditRoles
+          ? `<select class="reg-status-select" data-uid="${u.id}">
+              <option value="player" ${status === 'player' ? 'selected' : ''}>${t('reg.status_player')}</option>
+              <option value="staff" ${status === 'staff' ? 'selected' : ''}>${t('reg.status_staff')}</option>
+              <option value="both" ${status === 'both' ? 'selected' : ''}>${t('reg.status_both')}</option>
+            </select>`
+          : `<span class="reg-status-flat">${t('reg.status_' + status)}</span>`);
+
       return `<tr data-uid="${u.id}">
-        <td class="reg-name-cell">${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
-        <td>
-          ${canEditRoles ? `<select class="reg-status-select" data-uid="${u.id}">
-            <option value="none" ${status === 'none' ? 'selected' : ''}>${t('reg.status_none')}</option>
-            <option value="player" ${status === 'player' ? 'selected' : ''}>${t('reg.status_player')}</option>
-            <option value="staff" ${status === 'staff' ? 'selected' : ''}>${t('reg.status_staff')}</option>
-            <option value="both" ${status === 'both' ? 'selected' : ''}>${t('reg.status_both')}</option>
-          </select>` : `<span style="color:var(--text-secondary);font-size:.85rem;">${t('reg.status_' + status)}</span>`}
-        </td>
+        <td class="reg-name-cell">${regDot(true)}${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
+        <td class="reg-email-cell">${sanitize(u.email || '')}</td>
+        <td>${statusCell}</td>
         <td>${catSelect}</td>
         <td class="reg-team-cell">
           ${getTeamLetters(u.category || '').map(function(l) {
@@ -10306,6 +10345,24 @@
         </td>
       </tr>`;
     }).join('');
+
+    // Invited but not signed up: no user document exists, so there is nothing
+    // to write a role, position or number to. Those cells are static; the only
+    // action is taking the address back off the list.
+    rows += pending.map(p => `<tr class="reg-row-pending" data-pending-email="${sanitize(p.email)}" data-pending-key="${sanitize(p.key)}">
+        <td class="reg-name-cell">${regDot(false)}<span class="reg-avatar reg-avatar-placeholder">?</span>
+          <span style="color:var(--text-secondary);font-style:italic;">${t('reg.pre_pending')}</span></td>
+        <td class="reg-email-cell">${sanitize(p.email)}</td>
+        <td><span class="reg-status-flat">${t('reg.status_player')}</span></td>
+        <td><span class="reg-status-flat">${CATEGORY_LABELS[p.category] || p.category}</span></td>
+        <td class="reg-team-cell"><span class="reg-team-circle active">${sanitize(p.team)}</span></td>
+        <td class="reg-pos-cell"></td>
+        <td></td>
+        <td class="reg-actions">
+          <button class="btn btn-small btn-outline btn-remove-pending"
+            data-pending-email="${sanitize(p.email)}" data-pending-key="${sanitize(p.key)}">${t('btn.leave_squad')}</button>
+        </td>
+      </tr>`).join('');
 
     const unassignedRows = unassigned.map(u => {
       const picHtml = u.profilePic
@@ -10331,14 +10388,14 @@
 
     return `
       <h2 class="page-title">${t('page.registrations')}</h2>
-      ${renderPreRegisteredPlayers(users)}
+      ${renderPreRegisteredPlayers()}
       <div class="card">
-        <div class="card-title">${t('reg.assigned')}</div>
+        <div class="card-title">${t('reg.assigned')} (${assigned.length + pending.length})</div>
         <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
           ${t('reg.edit_desc')}
         </p>
         <div class="table-wrap"><table>
-          <thead><tr><th>${t('reg.th_name')}</th><th>${t('reg.th_status')}</th><th>${t('reg.th_category')}</th><th style="text-align:center">${t('reg.th_team')}</th><th>${t('reg.th_position')}</th><th>${t('reg.th_number')}</th><th></th></tr></thead>
+          <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th><th>${t('reg.th_status')}</th><th>${t('reg.th_category')}</th><th style="text-align:center">${t('reg.th_team')}</th><th>${t('reg.th_position')}</th><th>${t('reg.th_number')}</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
       </div>
@@ -10351,7 +10408,7 @@
    * Registration is refused for any address not listed here, so this is where
    * staff sign a new player up before the family ever opens the app.
    */
-  function renderPreRegisteredPlayers(users) {
+  function renderPreRegisteredPlayers() {
     var cat = getCurrentCategory();
     if (!cat) {
       return `<div class="card">
@@ -10359,44 +10416,91 @@
         <p style="color:var(--text-secondary);font-size:.85rem;">${t('reg.pre_no_cat')}</p>
       </div>`;
     }
-    // Who has already claimed their invitation?
-    var registered = {};
-    (users || []).forEach(function (u) {
-      var em = normalizeEmail(u.email);
-      if (em) registered[em] = true;
-    });
-    var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
-    var blocks = rosterKeys(_clubConfig, cat).map(function (key) {
-      var emails = (rosters[key] && rosters[key].playerEmails) || [];
-      if (!emails.length) emails = [''];
-      var rows = emails.map(function (em, idx) {
-        return buildPlayerEmailRow(key, idx, em, registered[normalizeEmail(em)]);
-      }).join('');
-      return `<div class="ts-sched-block" data-player-key="${key}">
-        <div class="ts-sched-title">${CATEGORY_LABELS[cat]} ${key.slice(cat.length + 1)}</div>
-        <div class="roster-player-list" data-player-key="${key}">${rows}</div>
-        <button class="btn btn-outline btn-small roster-add-player" data-player-key="${key}" style="margin:.4rem 0 0;">${t('reg.pre_add')}</button>
-      </div>`;
+    var letters = getTeamLetters(cat);
+    var opts = letters.map(function (l) {
+      return '<option value="' + l + '">' + CATEGORY_LABELS[cat] + ' ' + l + '</option>';
     }).join('');
-
     return `<div class="card">
       <div class="card-title">${t('reg.pre_title')}</div>
       <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('reg.pre_desc')}</p>
-      ${blocks}
+      <div class="reg-add-row">
+        <input type="email" inputmode="email" autocomplete="off" id="reg-add-email"
+          class="reg-input" placeholder="${t('auth.email_ph')}">
+        <select id="reg-add-team" class="reg-input">${opts}</select>
+        <button class="btn btn-primary btn-small" id="reg-add-btn">${t('reg.pre_add')}</button>
+      </div>
+      <div id="reg-add-msg" style="font-size:.83rem;margin-top:.5rem;"></div>
     </div>`;
   }
 
-  function buildPlayerEmailRow(key, idx, email, claimed) {
-    var badge = normalizeEmail(email)
-      ? `<span class="roster-status ${claimed ? 'claimed' : 'pending'}">${claimed ? t('reg.pre_claimed') : t('reg.pre_pending')}</span>`
-      : '';
-    return `<div class="ts-sched-row" data-player-idx="${idx}">
-      <input type="email" inputmode="email" autocomplete="off" class="roster-player-email"
-        value="${sanitize(email || '')}" placeholder="${t('auth.email_ph')}" style="flex:1;">
-      ${badge}
-      <button class="btn btn-small roster-remove-player" title="${t('btn.remove')}"
-        style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>
-    </div>`;
+  /**
+   * Add one address to a team's player list.
+   *
+   * Refuses an address already on ANY list in the club, or one already held by
+   * an assigned member — a duplicate would show as two rows for one person and,
+   * worse, put them on two teams at once.
+   */
+  async function addPreRegisteredPlayer() {
+    var session = getSession();
+    var msg = document.getElementById('reg-add-msg');
+    var inp = document.getElementById('reg-add-email');
+    var sel = document.getElementById('reg-add-team');
+    if (!session || !session.teamId || !inp || !sel) return;
+    var email = normalizeEmail(inp.value);
+    var cat = getCurrentCategory();
+    var key = cat + '-' + sel.value;
+    var show = function (text, colour) {
+      if (!msg) return;
+      msg.style.color = colour;
+      msg.textContent = text;
+    };
+    if (!isValidEmail(email)) { show(t('error.invalid_email'), 'var(--danger)'); return; }
+
+    var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    var already = Object.keys(rosters).some(function (k) {
+      return ((rosters[k] && rosters[k].playerEmails) || [])
+        .some(function (e) { return normalizeEmail(e) === email; });
+    });
+    if (already) { show(t('error.duplicate_email'), 'var(--danger)'); return; }
+    var taken = getUsers().some(function (u) {
+      return normalizeEmail(u.email) === email && (u.category || '');
+    });
+    if (taken) { show(t('reg.pre_already_member'), 'var(--danger)'); return; }
+
+    var next = (((rosters[key] || {}).playerEmails) || []).concat([email]);
+    try {
+      await saveRoster(session.teamId, key, 'playerEmails', next);
+      if (!_clubConfig.rosters) _clubConfig.rosters = {};
+      if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
+      _clubConfig.rosters[key].playerEmails = next;
+      inp.value = '';
+      renderPage(getSession());
+    } catch (err) {
+      console.error('addPreRegisteredPlayer failed:', err);
+      show(err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'),
+        'var(--danger)');
+    }
+  }
+
+  /** Take one address off whichever team list holds it. */
+  async function removePreRegisteredPlayer(email, key) {
+    var session = getSession();
+    var target = normalizeEmail(email);
+    if (!session || !session.teamId || !target || !key) return;
+    var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    var kept = (((rosters[key] || {}).playerEmails) || [])
+      .filter(function (e) { return normalizeEmail(e) !== target; });
+    try {
+      await saveRoster(session.teamId, key, 'playerEmails', kept);
+      if (_clubConfig.rosters && _clubConfig.rosters[key]) {
+        _clubConfig.rosters[key].playerEmails = kept;
+      }
+      renderPage(getSession());
+    } catch (err) {
+      console.error('removePreRegisteredPlayer failed:', err);
+      _showPushToast(t('save.sync_title'),
+        err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
+    }
   }
 
   /**
@@ -10430,39 +10534,9 @@
     if (currentPage === 'registrations') renderPage(getSession());
   }
 
-  /**
-   * Persist one team's player list from the DOM. Awaited and toasted on
-   * failure — a silently dropped write here locks a real player out.
-   */
-  async function savePlayerEmailList(listEl) {
-    var session = getSession();
-    if (!session || !session.teamId || !listEl) return;
-    var key = listEl.dataset.playerKey;
-    var emails = [];
-    var bad = null;
-    listEl.querySelectorAll('input.roster-player-email').forEach(function (inp) {
-      var v = normalizeEmail(inp.value);
-      inp.classList.remove('invalid');
-      if (!v) return;
-      if (!isValidEmail(v)) { inp.classList.add('invalid'); bad = v; return; }
-      if (emails.indexOf(v) === -1) emails.push(v);
-    });
-    if (bad) {
-      _showPushToast(t('save.sync_title'), t('error.invalid_email'));
-      return;
-    }
-    try {
-      await saveRoster(session.teamId, key, 'playerEmails', emails);
-      if (!_clubConfig) return;
-      if (!_clubConfig.rosters) _clubConfig.rosters = {};
-      if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
-      _clubConfig.rosters[key].playerEmails = emails;
-    } catch (err) {
-      console.error('savePlayerEmailList failed:', err);
-      _showPushToast(t('save.sync_title'),
-        err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
-    }
-  }
+  // (savePlayerEmailList lived here — it read a whole team's list back out of
+  // the DOM on every blur. With the editable rows gone, addPreRegisteredPlayer
+  // and removePreRegisteredPlayer write the one address that changed instead.)
 
   // #region Archived Seasons Viewer
   // ---------- Archived Seasons ----------
@@ -15481,10 +15555,13 @@
         const rolesBefore = (user.roles || []).slice();
         if (statusEl) {
           const statusVal = statusEl.value;
-          if (statusVal === 'both') user.roles = ['player', 'staff'];
-          else if (statusVal === 'player') user.roles = ['player'];
-          else if (statusVal === 'staff') user.roles = ['staff'];
-          else user.roles = [];
+          // Keep "lead": it is server-derived from isTeamLead and dropping it
+          // locally would make the lead's own row flicker out of its role
+          // until the server put it back.
+          const keepLead = rolesBefore.includes('lead') ? ['lead'] : [];
+          if (statusVal === 'both') user.roles = ['player', 'staff'].concat(keepLead);
+          else if (statusVal === 'player') user.roles = ['player'].concat(keepLead);
+          else if (statusVal === 'staff') user.roles = ['staff'].concat(keepLead);
         }
 
         user.position = position;
@@ -15534,47 +15611,27 @@
       }
 
       // ── Pre-registered player email lists ──
-      // Saved on blur (and on add/remove), always awaited — see
-      // savePlayerEmailList, which toasts instead of failing silently.
+      // Pre-registration: one address + one team letter + Add. The write is
+      // awaited and reported — a silently dropped one locks a real player out.
       content.addEventListener('click', e => {
-        const addBtn = e.target.closest('.roster-add-player');
-        if (addBtn) {
-          const list = content.querySelector(
-            '.roster-player-list[data-player-key="' + addBtn.dataset.playerKey + '"]');
-          if (!list) return;
-          const nextIdx = list.querySelectorAll('.ts-sched-row').length;
-          list.insertAdjacentHTML('beforeend',
-            buildPlayerEmailRow(addBtn.dataset.playerKey, nextIdx, '', false));
-          const added = list.lastElementChild.querySelector('input');
-          if (added) added.focus();
+        if (e.target.closest('#reg-add-btn')) {
+          addPreRegisteredPlayer();
           return;
         }
-        const removeBtn = e.target.closest('.roster-remove-player');
-        if (removeBtn) {
-          const row = removeBtn.closest('.ts-sched-row');
-          const list = removeBtn.closest('.roster-player-list');
-          if (!list) return;
-          // Capture the address before the row goes: if it belongs to someone
-          // already registered, taking it off the list detaches them, and we
-          // want that reflected here immediately rather than only after
-          // onRosterWritten comes back — otherwise this ✕ and "Treure de
-          // l'equip" would leave the page looking different for a while.
-          const goneInput = row && row.querySelector('input.roster-player-email');
-          const goneEmail = goneInput ? normalizeEmail(goneInput.value) : '';
-          // An empty player list is legitimate; keep one blank row to type in.
-          if (list.querySelectorAll('.ts-sched-row').length <= 1) {
-            const only = list.querySelector('input.roster-player-email');
-            if (only) only.value = '';
-          } else if (row) {
-            row.remove();
-          }
-          savePlayerEmailList(list).then(() => detachMemberByEmail(goneEmail));
+        // Removing an invited address that nobody has claimed. Registered
+        // members use .btn-remove-reg, which also clears their assignment;
+        // here there is no user document, only the list entry.
+        const pendBtn = e.target.closest('.btn-remove-pending');
+        if (pendBtn) {
+          removePreRegisteredPlayer(pendBtn.dataset.pendingEmail, pendBtn.dataset.pendingKey);
         }
       });
-      content.addEventListener('blur', e => {
-        if (!e.target.classList || !e.target.classList.contains('roster-player-email')) return;
-        savePlayerEmailList(e.target.closest('.roster-player-list'));
-      }, true);
+      content.addEventListener('keydown', e => {
+        if (e.target.id === 'reg-add-email' && e.key === 'Enter') {
+          e.preventDefault();
+          addPreRegisteredPlayer();
+        }
+      });
 
       // Status select or category select change
       content.addEventListener('change', e => {

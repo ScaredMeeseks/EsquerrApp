@@ -253,3 +253,17 @@ Permanent deletion was superadmin-only, so every removal in every club queued be
 - **The ✕ on the pre-registered card and "Treure de l'equip" now do the same thing.** Both took the address off the list, but only the button cleared the assignment locally, so the ✕ left the page showing a stale squad until `onRosterWritten` came back. Extracted `detachMemberByEmail(email)`, used by both.
 
 `sw.js` → `esquerrapp-v32`, `check-deploy.js` to match. Frontend-only — **no deploy needed**.
+
+### 2026-08-02j — Registrations reworked around pre-registration (v33)
+
+Pre-registering meant editing a list of email rows, one block per team, each with a badge and a ✕ — and the person you had just invited was invisible in the members table until they signed up. Two half-views of the same thing.
+
+- **Pre-registration is now one form**: an address, a team-letter select, and Add (Enter works too). No rows, no badges, no ✕. `addPreRegisteredPlayer` refuses a malformed address, one already on **any** list in the club, and one already held by an assigned member — a duplicate would show as two rows for one person and put them on two teams.
+- **The members table is now the single view of the squad**: registered members **plus** unclaimed pre-registered addresses, so an invited player is visible from the moment you add them. That union is what makes the dot meaningful — every row in a members-only table is registered by definition.
+- **Green/orange dot** next to the name (`regDot()`), with a CSS hover tooltip rather than a native `title` so it appears instantly. Pending rows are tinted and have no user document, so Estat/Categoria/Equip are static text and Posició/Dorsal are absent; `autoSaveFromRow` already no-ops on them since it keys off `data-uid`.
+- **Email column** added to both cards.
+- **Estat** lost the "Cap" option and is now a dropdown **only on staff rows** (Jugador/Staff/Ambdós, lead-only as before). A player's status follows from being on a player list; promotion to staff goes through the staff email lists. The lead's own row shows a static "Responsable" label — with "Cap" gone there was no sensible option for someone whose only role is running the club. `autoSaveFromRow` now preserves the server-derived `lead` role instead of dropping it locally until the server restores it.
+- **Removal**: pending rows get the same "Treure de l'equip" button, handled by `removePreRegisteredPlayer` (list entry only — there is no user doc). Registered members keep `.btn-remove-reg` → `detachMemberByEmail`. One control, one meaning.
+- Deleted `savePlayerEmailList` and `buildPlayerEmailRow`: the old blur handler read a whole team's list back out of the DOM on every keystroke-blur; the two new functions write only the address that changed. Orphaned keys `reg.pre_claimed` and `reg.all_members` removed.
+
+`sw.js` → `esquerrapp-v33`, `check-deploy.js` to match. Rules suite: 65 passing. Frontend-only — **no deploy needed**.
