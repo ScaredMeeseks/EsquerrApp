@@ -142,4 +142,4 @@ Reported straight after the Phase 4 deploy, unrelated to it. `addTraining()` see
 - `lastDate` is now scoped to the **current category** (leniently — undated/uncategorised legacy rows still count, matching how the list filters). The slots it pairs with come from that category's schedule, so taking the last date from a different category was inconsistent.
 - Removed a leftover `console.log` that dumped the whole club schedule on every click.
 
-`sw.js` → `esquerrapp-v24`. `check-deploy.js` still expects v23 — update it there if it starts failing the frontend check.
+`sw.js` → `esquerrapp-v24`, and `check-deploy.js`'s `CURRENT` bumped to match.
