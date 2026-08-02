@@ -350,3 +350,13 @@ Exploration corrected three things: there are **20** keys not 19, only **5** car
 - **Dropped the three dead keys** (`fa_standings`, `fa_news`, `fa_player_stats`) from `SYNCED_KEYS`, both `SEASON_KEYS` lists and `KEY_PAGES`. None has a writer anywhere, so `archiveSeason` was archiving and resetting documents that never existed. Also removed the two dead `fa_player_stats` reads in `renderPlayerHome`/`renderPlayerStats` — both assigned a `me` variable that is never used; real stats come from `computePlayerMatchStats`.
 
 Rules suite: 67 passing. `sw.js` → v40. **Deploy: functions, then run `backfill-claims.js --apply`.**
+
+### 2026-08-03 — Stage A, part 2 (v41)
+
+- **Tactic boards carry a `category`.** Stamped, not derived, at all three creation sites (Save, Save As, training board) because a saved board is attached to no player, match or date. Training boards especially: that map is keyed by training **date**, and two categories training the same evening share one bucket — the date cannot say whose board it is. Match boards are deliberately left unstamped; they join live through the match, like the other matchId-keyed data.
+- **Injuries are NOT stamped** — decided against, deliberately. Injury history **follows the player**, so the shard has to come from a live join to the player's *current* category. A frozen stamp would strand a promoted player's medical history with his old coach, which defeats the point of recording it. The cost is a re-shard on reassignment, handled in Stage B. Notifications stay frozen: a notification records a moment, not a person.
+- **`fa_training` rows now carry a stable `id`** and every consumer addresses them by it — the render, `readTraining` (which fires on every keystroke), the remove button and the row click. Positional addressing was fragile even today; once Phase 5 merges several category documents into that list, a remote change to another category reorders it between render and keystroke and silently writes one squad's edits onto another's session. Existing rows get an id lazily on first render.
+
+**Deferred, deliberately: the same fix for `fa_tactic_saved`.** It is a 14-site refactor of the most intricate page in the app, including index-shifting arithmetic and a selected index persisted in a separate local key. Post-Stage-C the exposure is narrower than it looks — a coach's merged blob will contain only their own visible categories, so cross-category reordering cannot reach them; the lead, who sees everything, is the only one at risk. Worth doing as its own focused piece rather than rushed.
+
+Rules suite: 67 passing. `sw.js` → v41. Frontend-only.

@@ -7752,7 +7752,10 @@
       const name = (nameInput ? nameInput.value : '').trim() || 'Board';
       const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
       const loadedIdx = localStorage.getItem('fa_tactic_loaded_idx');
-      const entry = { name, formation: f, positions: pos, numbers: nums, boardType: bt,
+      // Stamped, not derived: a saved board is attached to no player, match
+      // or date, so there is nothing to join on. It belongs to whichever
+      // category the coach authored it under.
+      const entry = { category: getCurrentCategory(), name, formation: f, positions: pos, numbers: nums, boardType: bt,
         teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
         oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
         showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
@@ -7833,7 +7836,8 @@
       const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const dup = boards.some(b => b.name.toLowerCase() === name.trim().toLowerCase());
       if (dup) { alert(t('alert.board_name_exists')); return; }
-      boards.push({ name: name.trim(), formation: f, positions: pos, numbers: nums, boardType: bt,
+      // Same stamp as the Save path above — see the comment there.
+      boards.push({ category: getCurrentCategory(), name: name.trim(), formation: f, positions: pos, numbers: nums, boardType: bt,
         teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
         oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
         showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
@@ -8076,7 +8080,10 @@
       const tdate = selectedTrainingVal;
       if (!trainingBoards[tdate]) trainingBoards[tdate] = [];
       const idx = trainingBoards[tdate].findIndex(b => b.name === bName);
-      const entry = { name: bName, formation: f, positions: pos, numbers: nums, boardType: bt,
+      // Stamped, not derived: this map is keyed by training DATE, and two
+      // categories training the same evening share one bucket — so the date
+      // cannot tell us whose board this is. Phase 5 shards on this field.
+      const entry = { category: getCurrentCategory(), name: bName, formation: f, positions: pos, numbers: nums, boardType: bt,
         teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
         oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
         showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
@@ -8935,19 +8942,20 @@
 
   function renderStaffTraining() {
     var allTraining = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    // Sort the full list (not just filtered) and persist
+    // Sessions are addressed by a stable id, never by array position. Position
+    // was fragile even locally (a filtered row index written into the full
+    // blob), and once Phase 5 merges several category documents into this list
+    // a remote change to ANOTHER category can reorder it between render and
+    // keystroke — silently writing one squad's edits onto another's session.
+    allTraining.forEach(function (t) {
+      if (!t.id) t.id = 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    });
     allTraining.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     localStorage.setItem('fa_training', JSON.stringify(allTraining));
     var curCat = getCurrentCategory();
-    // Keep each row's index into the FULL list. readTraining() and the remove
-    // button both index into fa_training, so emitting the filtered position
-    // in data-tidx made every keystroke overwrite a different category's
-    // session. With staff now always category-scoped, that would be constant.
-    var _scoped = allTraining
-      .map(function (t, idx) { return { t: t, idx: idx }; })
-      .filter(function (e) { return !curCat || !e.t.category || e.t.category === curCat; });
-    var training = _scoped.map(function (e) { return e.t; });
-    var trainingIdx = _scoped.map(function (e) { return e.idx; }); // → fa_training
+    var training = allTraining.filter(function (t) {
+      return !curCat || !t.category || t.category === curCat;
+    });
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
 
@@ -8967,11 +8975,9 @@
       return d + '/' + m + '/' + y;
     }
 
-    let rows = training.map((tr, pos) => {
-      // Every data-idx/data-tidx below is the row's position in fa_training,
-      // NOT its position in this filtered list — the handlers write straight
-      // into the full blob.
-      const i = trainingIdx[pos];
+    let rows = training.map((tr) => {
+      // data-tid is the session's stable id — see the note in the header.
+      const i = tr.id;
       const dayName = tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : (tr.day || '\u2014');
       const locVal = tr.location || DEFAULT_LOC;
       const linkVal = tr.mapLink || (locVal === DEFAULT_LOC ? DEFAULT_MAP : '');
@@ -8982,7 +8988,7 @@
         ? buildAvailDonut(tr.date)
         : '<span style="color:var(--text-secondary)">\u2014</span>';
       if (locked) {
-        return `<tr data-tidx="${i}" class="st-locked">
+        return `<tr data-tid="${i}" class="st-locked">
       <td style="white-space:nowrap">
         <span>${fmtDate(tr.date)}</span>
         <span class="st-day-label">${sanitize(dayName)}</span>
@@ -8997,7 +9003,7 @@
     </tr>`;
       }
       const dmyVal = tr.date ? fmtDate(tr.date) : '';
-      return `<tr data-tidx="${i}">
+      return `<tr data-tid="${i}">
       <td style="white-space:nowrap">
         <input type="text" class="reg-input st-date md-datepicker" data-display-dmy data-idx="${i}" data-date-iso="${sanitize(tr.date || '')}" value="${sanitize(dmyVal)}" placeholder="dd/mm/yyyy" readonly style="width:135px;cursor:pointer;">
         <span class="st-day-label">${sanitize(dayName)}</span>
@@ -12057,8 +12063,10 @@
     function readTraining() {
       const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
       body.querySelectorAll('tr:not(.st-locked)').forEach(tr => {
-        const i = Number(tr.dataset.tidx);
-        if (!training[i]) return;
+        // By id, never by position: this runs on every keystroke, and the
+        // array it writes into can be reordered underneath us.
+        const row = training.find(x => x.id === tr.dataset.tid);
+        if (!row) return;
         const dateInput = tr.querySelector('.st-date');
         const timeInput = tr.querySelector('.st-time');
         const focusInput = tr.querySelector('.st-focus');
@@ -12066,12 +12074,12 @@
         const linkInput = tr.querySelector('.st-link');
         if (!dateInput) return;
         const dateIso = dateInput.dataset.dateIso || dateInput.value;
-        training[i].date = dateIso;
-        training[i].day = dateIso ? tDay(new Date(dateIso + 'T12:00:00').getDay()) : training[i].day;
-        if (timeInput.value) training[i].time = timeInput.value;
-        training[i].focus = focusInput.value.trim();
-        training[i].location = locInput.value.trim();
-        training[i].mapLink = linkInput.value.trim();
+        row.date = dateIso;
+        row.day = dateIso ? tDay(new Date(dateIso + 'T12:00:00').getDay()) : row.day;
+        if (timeInput.value) row.time = timeInput.value;
+        row.focus = focusInput.value.trim();
+        row.location = locInput.value.trim();
+        row.mapLink = linkInput.value.trim();
       });
       return training;
     }
@@ -12130,7 +12138,9 @@
     body.querySelectorAll('.st-remove').forEach(btn => {
       btn.addEventListener('click', () => {
         const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-        training.splice(Number(btn.dataset.idx), 1);
+        const pos = training.findIndex(x => x.id === btn.dataset.idx);
+        if (pos === -1) return;
+        training.splice(pos, 1);
         localStorage.setItem('fa_training', JSON.stringify(training));
         renderPage(getSession());
       });
@@ -12199,7 +12209,11 @@
       const time = matchedSlot.time;
       const loc = matchedSlot.location || DEFAULT_LOC;
       const map = matchedSlot.link || (loc === DEFAULT_LOC ? DEFAULT_MAP : '');
-      training.push({ day, date: dateStr, time, focus: '', location: loc, mapLink: map, status: 'upcoming', category: curCat });
+      training.push({
+        id: 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        day, date: dateStr, time, focus: '', location: loc, mapLink: map,
+        status: 'upcoming', category: curCat
+      });
       training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       localStorage.setItem('fa_training', JSON.stringify(training));
       renderPage(getSession());
@@ -12208,13 +12222,13 @@
     if (addBtnTop) addBtnTop.addEventListener('click', addTraining);
 
     // Click any training row → open staff training detail
-    body.querySelectorAll('tr[data-tidx]').forEach(tr => {
+    body.querySelectorAll('tr[data-tid]').forEach(tr => {
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', (e) => {
         // Don't navigate if clicking inputs, buttons or links
         if (e.target.closest('input, select, button, a, .md-remove-btn, .st-remove')) return;
         const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-        const t = training[Number(tr.dataset.tidx)];
+        const t = training.find(x => x.id === tr.dataset.tid);
         if (!t || !t.date) return;
         detailTrainingDate = t.date;
         currentPage = 'staff-training-detail';
