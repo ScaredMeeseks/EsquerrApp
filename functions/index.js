@@ -668,8 +668,12 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
 
   // A self-call may not choose its own roles — take whatever the club's
   // roster lists say. Only the lead and the superuser get a manual override.
+  // A club member on no list falls back to plain "player": they are
+  // unassigned, not expelled. Without this an empty roles array bounced them
+  // straight back to the role-selection screen that called us, forever.
   if (isSelf && !isSuper && !isLeadOfTeam) {
-    roles = m.roles;
+    roles = (!m.roles.length && teamId && target.isTeamLead !== true) ?
+      ["player"] : m.roles;
   }
 
   const role = target.isTeamLead === true ? "lead" :
@@ -748,19 +752,290 @@ exports.onRosterWritten = onDocumentWritten({
     const isLead = (club.leadEmail || "").toLowerCase() === email;
     const m = membershipFrom(rosters, email);
     const {role, cats} = claimsFor(club, isLead, m);
+    // Taken off every list but still a club member = UNASSIGNED, not locked
+    // out. Keeping roles empty stranded them on the role-selection screen
+    // forever: setRole re-derives a self-call's roles from these same lists,
+    // so picking "player" handed back [] and looped. This is also the path a
+    // coach uses to move a player up a category — the squad assignment is
+    // cleared here and the next coach's list re-fills it. Membership itself
+    // (teamId) is untouched: only joinClub writes it, so clearing it would
+    // make re-adding their email unable to bring them back.
+    const detached = !isLead && !m.roles.length;
     await admin.auth().setCustomUserClaims(doc.id, {teamId: clubId, role, cats});
-    await doc.ref.set({
-      roles: m.roles,
-      staffCategories: m.staffCats,
-      // Don't blank an existing assignment when the lists no longer place
-      // them — a removed member keeps their last category until reassigned.
-      category: m.category || doc.data().category || "",
-      team: m.team || doc.data().team || "",
-      claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, {merge: true});
-    logger.info("onRosterWritten", {clubId, uid: doc.id, email, role, cats});
+    // update(), NOT set({merge:true}): we only ever reach here for a user that
+    // already exists, and a merge-set would RECREATE the doc if it vanished in
+    // between. deleteMember strips roster entries before deleting the person,
+    // so that race is real — a zombie users/{uid} would resurrect them in the
+    // roster reconcile.
+    try {
+      await doc.ref.update({
+        roles: detached ? ["player"] : m.roles,
+        staffCategories: m.staffCats,
+        category: detached ? "" : (m.category || doc.data().category || ""),
+        team: detached ? "" : (m.team || doc.data().team || ""),
+        claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      logger.info("onRosterWritten: user gone, skipping", {clubId, email});
+      continue;
+    }
+    logger.info("onRosterWritten",
+        {clubId, uid: doc.id, email, role, cats, detached});
   }
 });
+
+// ── 7c. deleteMember — erase a person and their data (superuser only) ──
+// The counterpart to "leave the squad" on the Registrations page, which only
+// detaches someone. This is the irreversible one.
+//
+// It has to be a function rather than a client write: the FCM token
+// subcollection is owner-only in the rules (and deleting a user document does
+// NOT delete its subcollections), joinAttempts is unreachable from any client,
+// the Auth account needs the Admin SDK, and storage.rules cannot express a
+// working delete for profile pictures.
+//
+// Archived seasons are deliberately LEFT ALONE so past squads and statistics
+// still add up — an erase covers the live club, not the history books.
+// Match events keep the person's NAME (snapshotted below before the uid goes)
+// so scorelines stay correct and attributed.
+
+/** Rewrite a data/{key} doc, handling blob and per-field-merge formats. */
+async function scrubDataDoc(ref, mutate) {
+  const snap = await ref.get();
+  if (!snap.exists) return false;
+  const raw = snap.data() || {};
+  if (typeof raw.v === "string") {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw.v);
+    } catch (e) {
+      return false;
+    }
+    const next = mutate(parsed);
+    if (next === null) return false;
+    await ref.set({v: JSON.stringify(next)}, {merge: true});
+    return true;
+  }
+  // Per-field merge doc: mutate() returns the field names to remove.
+  const fields = {};
+  const drop = mutate(raw) || [];
+  drop.forEach((f) => {
+    fields[f] = admin.firestore.FieldValue.delete();
+  });
+  if (!Object.keys(fields).length) return false;
+  await ref.update(fields);
+  return true;
+}
+
+exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+      }
+      if ((request.auth.token.email || "").toLowerCase() !== SUPERUSER_EMAIL) {
+        throw new HttpsError("permission-denied",
+            "Només l'administrador pot esborrar un usuari.");
+      }
+      const uid = request.data && request.data.uid;
+      if (!uid || typeof uid !== "string") {
+        throw new HttpsError("invalid-argument", "Falta l'identificador.");
+      }
+      if (uid === request.auth.uid) {
+        throw new HttpsError("failed-precondition",
+            "No et pots esborrar a tu mateix.");
+      }
+
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+      const user = userSnap.exists ? userSnap.data() : {};
+      const email = String(user.email || "").trim().toLowerCase();
+      const name = String(user.name || "").trim();
+      const teamId = user.teamId;
+      const done = {uid, email, name, teamId: teamId || null};
+
+      // ── 1. Roster email lists — do this FIRST, so that even if a later
+      // step fails the person cannot simply register again. ──
+      if (teamId && email) {
+        const rosterSnap = await db.collection("clubs").doc(teamId)
+            .collection("rosters").get();
+        let touched = 0;
+        for (const d of rosterSnap.docs) {
+          const v = d.data() || {};
+          const keep = (arr) => (Array.isArray(arr) ? arr : [])
+              .filter((e) => String(e || "").trim().toLowerCase() !== email);
+          const staffKeep = keep(v.staffEmails);
+          const playerKeep = keep(v.playerEmails);
+          const changed = staffKeep.length !== (v.staffEmails || []).length ||
+            playerKeep.length !== (v.playerEmails || []).length;
+          if (!changed) continue;
+          // NB: this write fires onRosterWritten, which will try to update a
+          // user doc we are about to delete. A merge-set on a missing doc
+          // recreates it, so the user delete in step 6 must come after.
+          await d.ref.set({
+            staffEmails: staffKeep,
+            playerEmails: playerKeep,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true});
+          touched++;
+        }
+        done.rosterDocs = touched;
+      }
+
+      // ── 2. Per-record collections. Every record carries a `uid` field, so
+      // query on it rather than matching the {uid}_… doc-id prefix. ──
+      if (teamId) {
+        done.records = 0;
+        for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+          const snap = await db.collection("teams").doc(teamId)
+              .collection(coll).where("uid", "==", uid).get();
+          let batch = db.batch();
+          let ops = 0;
+          for (const d of snap.docs) {
+            batch.delete(d.ref);
+            if (++ops >= 450) {
+              await batch.commit();
+              batch = db.batch();
+              ops = 0;
+            }
+          }
+          if (ops > 0) await batch.commit();
+          done.records += snap.size;
+        }
+      }
+
+      // ── 3. Shared blobs ── */
+      if (teamId) {
+        const dataRef = db.collection("teams").doc(teamId).collection("data");
+
+        // Roster list.
+        await scrubDataDoc(dataRef.doc("fa_users"), (arr) =>
+          Array.isArray(arr) ? arr.filter((u) => String(u.id) !== uid) : null);
+
+        // Injuries — as the subject, and as the staff member who logged one.
+        await scrubDataDoc(dataRef.doc("fa_injuries"), (arr) => {
+          if (!Array.isArray(arr)) return null;
+          return arr.filter((i) => String(i.playerId) !== uid)
+              .map((i) => (String(i.createdBy) === uid ?
+                Object.assign({}, i, {createdBy: ""}) : i));
+        });
+
+        // Notifications carry uid + playerName.
+        await scrubDataDoc(dataRef.doc("fa_staff_notifications"), (arr) =>
+          Array.isArray(arr) ?
+            arr.filter((n) => String(n.uid || "") !== uid) : null);
+
+        // Call-up lists: {matchId: {players:[uid], startingXI:[uid], …}}.
+        await scrubDataDoc(dataRef.doc("fa_convocatoria_sent"), (obj) => {
+          if (!obj || typeof obj !== "object") return null;
+          Object.keys(obj).forEach((mid) => {
+            const e = obj[mid] || {};
+            if (Array.isArray(e.players)) {
+              e.players = e.players.filter((p) => String(p) !== uid);
+            }
+            if (Array.isArray(e.startingXI)) {
+              e.startingXI = e.startingXI.filter((p) => String(p) !== uid);
+            }
+          });
+          return obj;
+        });
+
+        // Match events: keep the event AND the name, drop the uid. This is
+        // what stops a 3-1 quietly becoming a 2-1.
+        await scrubDataDoc(dataRef.doc("fa_match_events"), (obj) => {
+          if (!obj || typeof obj !== "object") return null;
+          const pairs = [
+            ["playerId", "playerName"],
+            ["assistPlayerId", "assistPlayerName"],
+            ["playerOutId", "playerOutName"],
+            ["playerInId", "playerInName"],
+          ];
+          Object.keys(obj).forEach((mid) => {
+            (obj[mid] || []).forEach((ev) => {
+              pairs.forEach(([idField, nameField]) => {
+                if (String(ev[idField] || "") !== uid) return;
+                if (name && !ev[nameField]) ev[nameField] = name;
+                ev[idField] = "";
+              });
+            });
+          });
+          return obj;
+        });
+
+        // Legacy goals blob, same treatment.
+        await scrubDataDoc(dataRef.doc("fa_match_goals"), (obj) => {
+          if (!obj || typeof obj !== "object") return null;
+          Object.keys(obj).forEach((mid) => {
+            (obj[mid] || []).forEach((g) => {
+              if (String(g.playerId || "") !== uid) return;
+              if (name && !g.playerName) g.playerName = name;
+              g.playerId = "";
+            });
+          });
+          return obj;
+        });
+
+        // Flat {uid: …} maps.
+        for (const key of ["fa_injury_notes", "fa_injury_zone",
+          "fa_injury_dismissed"]) {
+          await scrubDataDoc(dataRef.doc(key), (fields) => {
+            if (fields && typeof fields.v === "string") return null;
+            return Object.keys(fields || {}).filter((f) => f === uid);
+          });
+        }
+
+        // Keys of the form {uid}_{date}: the staff override map and the
+        // frozen legacy availability/RPE docs, which still hold the same
+        // shape until migrate-player-data --delete-legacy runs.
+        for (const key of ["fa_training_staff_override",
+          "fa_training_availability", "fa_match_availability",
+          "fa_player_rpe"]) {
+          await scrubDataDoc(dataRef.doc(key), (fields) =>
+            Object.keys(fields || {})
+                .filter((f) => f === uid || f.indexOf(uid + "_") === 0));
+        }
+      }
+
+      // ── 4. FCM tokens (subcollection — not removed by deleting the parent) ──
+      const tokenSnap = await userRef.collection("tokens").get();
+      if (!tokenSnap.empty) {
+        const batch = db.batch();
+        tokenSnap.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+      done.tokens = tokenSnap.size;
+
+      // ── 5. Profile picture. The extension is whatever they uploaded, so
+      // list the prefix rather than guessing. A base64 fallback lives inside
+      // the user doc and goes with it. ──
+      try {
+        // Name the bucket explicitly: initializeApp() has no config here, so
+        // the default resolves to the legacy <project>.appspot.com, which is
+        // not this project's bucket (see js/firebase-config.js).
+        const [files] = await admin.storage().bucket("esquerrapp.firebasestorage.app")
+            .getFiles({prefix: "profilePics/" + uid + "."});
+        await Promise.all(files.map((f) => f.delete()));
+        done.storageFiles = files.length;
+      } catch (e) {
+        logger.warn("deleteMember: storage cleanup failed", {uid, err: e.message});
+        done.storageFiles = -1;
+      }
+
+      // ── 6. The person. joinAttempts is keyed by uid and unreachable from
+      // any client, so it would orphan otherwise. ──
+      await db.collection("joinAttempts").doc(uid).delete();
+      await userRef.delete();
+      try {
+        await admin.auth().deleteUser(uid);
+        done.authDeleted = true;
+      } catch (e) {
+        // Already gone, or never existed — not a failure worth aborting on.
+        logger.warn("deleteMember: auth delete", {uid, err: e.message});
+        done.authDeleted = false;
+      }
+
+      logger.info("deleteMember", done);
+      return {ok: true, ...done};
+    });
 
 // ── 8. (removed in Phase 3b) bridgeLegacyPlayerData ──
 // The Phase-2 trigger that mirrored old clients' legacy blob writes into

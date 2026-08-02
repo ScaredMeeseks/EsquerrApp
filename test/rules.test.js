@@ -177,6 +177,24 @@ describe("Staff updates of members", () => {
   it("staff CANNOT set a member's staffCategories", async () => {
     await assertFails(asStaffA().doc("users/" + A).update({staffCategories: ["cadet"]}));
   });
+  // "Leave the squad" on the Registrations page: a coach clears the squad
+  // assignment but must not be able to remove the person from the club.
+  it("staff CAN clear a member's category and team (leave the squad)", async () => {
+    await assertSucceeds(asStaffA().doc("users/" + A)
+        .update({category: "", team: ""}));
+  });
+  it("staff CANNOT delete a member outright", async () => {
+    await assertFails(asStaffA().doc("users/" + A).delete());
+  });
+  it("the lead CANNOT delete a member either — only the superuser", async () => {
+    await assertFails(asLeadA().doc("users/" + A).delete());
+  });
+  it("a player CANNOT delete themselves", async () => {
+    await assertFails(asA().doc("users/" + A).delete());
+  });
+  it("superuser CAN delete a member", async () => {
+    await assertSucceeds(asSuper().doc("users/" + A2).delete());
+  });
 });
 
 describe("Roster email lists (clubs/{club}/rosters/{cat}-{letter})", () => {

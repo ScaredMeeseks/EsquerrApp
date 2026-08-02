@@ -4,12 +4,23 @@ service firebase.storage {
 
     // Profile pictures: readable by any signed-in user; writable ONLY by the
     // owner — filenames are {uid}.{ext}, enforced against the auth uid.
+    //
+    // create/update and delete are split deliberately. `request.resource` is
+    // null on a delete, so the size/contentType checks below error out and
+    // deny it — which previously meant NOBODY could delete a profile picture,
+    // not even its owner. Changing a photo to a different file extension used
+    // to strand the old file forever.
     match /profilePics/{fileName} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
+      allow create, update: if request.auth != null
                    && fileName.matches(request.auth.uid + '\\.[A-Za-z0-9]+')
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+      // Owner tidying up after themselves, or the superuser erasing a member.
+      // The deleteMember function uses the Admin SDK and bypasses this.
+      allow delete: if request.auth != null
+                   && (fileName.matches(request.auth.uid + '\\.[A-Za-z0-9]+')
+                       || request.auth.token.email == 'marna96@gmail.com');
     }
 
     // Club badges: superuser can write, anyone authenticated can read

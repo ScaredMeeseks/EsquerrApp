@@ -176,3 +176,24 @@ Also scoped `showStaffInjuryLogger`'s player dropdown to the visible squad — i
 `sw.js` → `esquerrapp-v26`, `check-deploy.js` `CURRENT` to match. Frontend-only.
 
 **Old-client note**: `fa_injury_dismissed` is unknown to v25-and-earlier clients (and old APKs), which will not sync it and will keep showing a discarded player as injured until they update. Degrades gracefully — nothing breaks, the flag just persists on stale clients.
+
+### 2026-08-02e — Two different deletes: leave the squad vs. erase the person (v27)
+
+The two "delete" buttons ran **byte-for-byte identical code** — filter the person out of the local `fa_users` blob and save. Neither touched Firestore, Auth, records or roster lists, so both were no-ops that `DB.init()`'s reconcile undid at the next login. The Registrations modal claimed to remove "this player and all his data"; both halves were false.
+
+**Registrations → "Treure de l'equip" (detach, keep everything).** The case is a player moving up a category. The button now takes their address off that team's `playerEmails` and clears `category`/`team`; club membership, availability, RPE, injuries and stats are untouched. When the next coach adds the same address, `onRosterWritten` re-assigns them and everything is simply there. Shown only for someone actually in a squad, and — because the rules put `staffEmails` out of a coach's reach — only the lead sees it for a staff member.
+
+- **`onRosterWritten` / `setRole`**: a member on no list but still holding a `teamId` now keeps `roles: ['player']` and has `category`/`team` cleared. Previously they got `roles: []`, which dropped them on the role-selection screen — and `setRole` re-derives a self-call's roles from the same lists, so picking "player" handed back `[]` and looped **forever**. Unlisted means unassigned, not expelled. `teamId` is deliberately never touched: only `joinClub` writes it, so clearing it would leave re-adding their email unable to bring them back.
+- `onRosterWritten` also switched from `set({merge:true})` to `update()`: a merge-set **recreates** a deleted doc, and `deleteMember` strips roster entries before deleting the person, so the trigger could resurrect a zombie `users/{uid}`.
+
+**Gestió d'usuaris → erase (superadmin only).** New **`deleteMember`** callable. It has to be server-side: the FCM token subcollection is owner-only in the rules (and deleting a user doc does not delete subcollections), `joinAttempts` is unreachable from any client, the Auth account needs the Admin SDK, and `storage.rules` could not express a working delete. Erases the Auth account, `users/{uid}`, tokens, `joinAttempts`, every `trainingAvail`/`matchAvail`/`rpe` record (queried on the `uid` field, not the doc-id prefix), the person's entries in every shared blob and per-uid map (including the frozen legacy availability/RPE docs), their addresses on every roster list, and `profilePics/{uid}.*` — listed by prefix, since the extension is whatever they uploaded. Roster removal runs **first** so a partial failure cannot leave them able to re-register; the user doc goes **last** so the reconcile cannot resurrect them.
+
+- **Archived seasons are deliberately left intact** so past squads and statistics still add up. An erase covers the live club, not the history books.
+- **Match events keep the name.** Before the uid is blanked, the person's name is snapshotted onto every event they appear in (scorer, assister, sub in/out). New shared `resolveEventName(id, snapName, number, users)` resolves live member → snapshot → shirt number; `getEventPlayerName` and the inline assist/substitution lookups all route through it. Without this a 3-1 would quietly become a 2-1. Trade-off recorded: their **name survives on the scoresheet**.
+- Typed confirmation (name must be typed), modelled on the new-season dialog, with a result toast reporting how many records went.
+
+**Also**: `storage.rules` split `write` into `create, update` + `delete`. The old single rule inspected `request.resource.size`, which is null on a delete, so **nobody could ever delete a profile picture** — not even its owner; changing your photo to a different extension stranded the old file forever. `showModal` gained optional `{confirmLabel, danger}` (its buttons were hard-coded "No" / "Yes, remove") and now uses translated labels. Defined `common.edit`, `common.player_not_found` and `matches.no_past`, which were referenced but never defined and rendered as raw key text.
+
+Rules suite: **65 passing** (5 new: staff may clear category/team but not delete; neither staff nor lead may delete a member; superuser may).
+
+`sw.js` → `esquerrapp-v27`, `check-deploy.js` to match. **Deploy needs functions + storage rules**, then the frontend.

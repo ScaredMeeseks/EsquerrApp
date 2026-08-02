@@ -68,6 +68,7 @@
     'btn.clear_all':   { ca:'Esborrar tot', es:'Borrar todo', en:'Clear All' },
     'btn.add':         { ca:'Afegir', es:'Añadir', en:'Add' },
     'btn.remove':      { ca:'Treure', es:'Quitar', en:'Remove' },
+    'btn.leave_squad': { ca:'Treure de l\'equip', es:'Quitar del equipo', en:'Remove from squad' },
     'btn.yes_continue':{ ca:'Sí, continuar', es:'Sí, continuar', en:'Yes, continue' },
     'btn.yes_remove':  { ca:'Sí, eliminar', es:'Sí, eliminar', en:'Yes, remove' },
     'btn.no':          { ca:'No', es:'No', en:'No' },
@@ -78,6 +79,12 @@
     'common.all':        { ca:'Tots', es:'Todos', en:'All' },
     'common.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
     'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
+    'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
+    'common.confirm':    { ca:'Confirmar', es:'Confirmar', en:'Confirm' },
+    // These three were referenced but never defined, so they rendered as raw
+    // key text ("common.edit") on the medical and match pages.
+    'common.edit':       { ca:'Editar', es:'Editar', en:'Edit' },
+    'common.player_not_found': { ca:'Jugador no trobat', es:'Jugador no encontrado', en:'Player not found' },
 
     // ── Player Home ──
     'home.attendance':    { ca:'Assistència', es:'Asistencia', en:'Attendance' },
@@ -119,6 +126,7 @@
     'matches.previous':     { ca:'Partits anteriors', es:'Partidos anteriores', en:'Previous Matches' },
     'matches.no_upcoming':  { ca:'Cap proper partit.', es:'Sin próximos partidos.', en:'No upcoming matches.' },
     'matches.no_previous':  { ca:'Cap partit anterior.', es:'Sin partidos anteriores.', en:'No previous matches.' },
+    'matches.no_past':      { ca:'Cap partit jugat.', es:'Sin partidos jugados.', en:'No matches played.' },
     'matches.conv_sent':    { ca:'Convocatòria enviada', es:'Convocatoria enviada', en:'Call-up sent' },
     'matches.players':      { ca:'jugadors', es:'jugadores', en:'players' },
 
@@ -501,6 +509,11 @@
     'alert.select_player':    { ca:'Selecciona un jugador.', es:'Selecciona un jugador.', en:'Please select a player.' },
     'confirm.existing_injury':{ ca:'Aquest jugador ja té una lesió activa. Crear-ne una de nova?', es:'Este jugador ya tiene una lesión activa. ¿Crear una nueva?', en:'This player already has an active injury. Create a new one?' },
     'confirm.discard_injury':{ ca:'Descartar aquesta lesió? El jugador passarà a estar apte. Si torna a reportar-se lesionat més endavant, hi tornarà a aparèixer.', es:'¿Descartar esta lesión? El jugador pasará a estar apto. Si vuelve a reportarse lesionado más adelante, volverá a aparecer.', en:'Discard this injury? The player goes back to fit. If he reports himself injured again later, it will reappear.' },
+    'confirm.erase_title':   { ca:'Esborrar definitivament', es:'Borrar definitivamente', en:'Delete permanently' },
+    'confirm.erase_msg':     { ca:'S\'esborrarà el compte de {name} i TOTES les seves dades: assistències, RPE, lesions, convocatòries, notificacions i la foto de perfil. No es pot desfer.\n\nEscriu el seu nom per confirmar:', es:'Se borrará la cuenta de {name} y TODOS sus datos: asistencias, RPE, lesiones, convocatorias, notificaciones y la foto de perfil. No se puede deshacer.\n\nEscribe su nombre para confirmar:', en:'This deletes {name}\'s account and ALL their data: attendance, RPE, injuries, call-ups, notifications and profile photo. It cannot be undone.\n\nType their name to confirm:' },
+    'confirm.erase_kept':    { ca:'Es conserven: les temporades arxivades i el seu nom als esdeveniments dels partits, perquè els resultats segueixin quadrant.', es:'Se conservan: las temporadas archivadas y su nombre en los eventos de los partidos, para que los resultados sigan cuadrando.', en:'Kept: archived seasons, and their name on match events so scorelines still add up.' },
+    'confirm.leave_squad_title':{ ca:'Treure de l\'equip', es:'Quitar del equipo', en:'Remove from squad' },
+    'confirm.leave_squad_msg':{ ca:'{name} sortirà d\'aquest equip però continuarà al club, amb tot el seu històric intacte (assistències, RPE, lesions). Quan un altre entrenador afegeixi el seu correu, hi tornarà amb totes les dades.', es:'{name} saldrá de este equipo pero seguirá en el club, con todo su histórico intacto (asistencias, RPE, lesiones). Cuando otro entrenador añada su correo, volverá con todos sus datos.', en:'{name} leaves this squad but stays in the club, with all their history intact (attendance, RPE, injuries). When another coach adds their email, they come back with everything.' },
     'confirm.delete_user':    { ca:'Eliminar aquest usuari?', es:'¿Eliminar este usuario?', en:'Delete this user?' },
     'confirm.erase_all':      { ca:'Això esborrarà TOTES les dades. Estàs segur?', es:'Esto borrará TODOS los datos. ¿Estás seguro?', en:'This will erase ALL data. Are you sure?' },
     'save.sync_title':        { ca:'Sincronització', es:'Sincronización', en:'Sync' },
@@ -516,6 +529,7 @@
     'alert.new_season_ok':      { ca:'Temporada arxivada correctament. S\'ha iniciat una nova temporada!', es:'Temporada archivada correctamente. ¡Se ha iniciado una nueva temporada!', en:'Season archived successfully. A new season has started!' },
     'alert.new_season_fail':    { ca:'Error arxivant la temporada. Torna-ho a provar.', es:'Error archivando la temporada. Inténtalo de nuevo.', en:'Error archiving the season. Please try again.' },
     'alert.new_season_archiving': { ca:'Arxivant temporada…', es:'Archivando temporada…', en:'Archiving season…' },
+    'alert.erase_done':      { ca:'{name} esborrat. {records} registres eliminats.', es:'{name} borrado. {records} registros eliminados.', en:'{name} deleted. {records} records removed.' },
     'error.passwords_mismatch':{ ca:'Les contrasenyes no coincideixen.', es:'Las contraseñas no coinciden.', en:'Passwords do not match.' },
     'error.invalid_team_code': { ca:'Codi d\'equip no vàlid.', es:'Código de equipo no válido.', en:'Invalid team code.' },
     'error.need_team_code':    { ca:'Has d\'introduir el codi d\'equip.', es:'Debes introducir el código de equipo.', en:'You must enter a team code.' },
@@ -1289,12 +1303,24 @@
       return false;
     }).length;
   }
-  function getEventPlayerName(ev, users) {
-    if (ev.playerId) {
-      var p = users.find(function(u) { return String(u.id) === String(ev.playerId); });
-      return p ? sanitize(p.name) : 'Desconegut';
+  /* Resolve the display name for one slot of a match event (scorer, assister,
+     player in/out). Order: live squad member → name snapshot → shirt number.
+
+     The snapshot is what lets an erased member keep their name on the
+     scoresheet: deleteMember copies the name onto the event before blanking
+     the uid, so a goal stays a goal and stays attributed. Opponent events
+     never had a uid and use the number, as before. */
+  function resolveEventName(id, snapName, number, users) {
+    if (id) {
+      var p = users.find(function (u) { return String(u.id) === String(id); });
+      if (p) return sanitize(p.name);
     }
-    return ev.playerNumber ? ('#' + sanitize(ev.playerNumber)) : '?';
+    if (snapName) return sanitize(snapName);
+    if (number) return '#' + sanitize(number);
+    return id ? 'Desconegut' : '?';
+  }
+  function getEventPlayerName(ev, users) {
+    return resolveEventName(ev.playerId, ev.playerName, ev.playerNumber, users);
   }
   function getEventIcon(ev, yellowCount) {
     switch (ev.type) {
@@ -3913,8 +3939,7 @@
           var detail = '';
           if (ev.type === 'goal') {
             if (ev.goalDetail === 'assistencia' && ev.assistPlayerId) {
-              var ap = users.find(function(u) { return String(u.id) === String(ev.assistPlayerId); });
-              var assistName = ap ? sanitize(ap.name) : '?';
+              var assistName = resolveEventName(ev.assistPlayerId, ev.assistPlayerName, null, users);
               // Format like a substitution: scorer bold + assister grey
               if (ev.side === 'home') {
                 name = '<span class="ev-scorer-name">' + name + '</span><span class="ev-assist-name">' + assistName + '</span>';
@@ -3925,15 +3950,8 @@
             }
           }
           if (ev.type === 'change') {
-            var outName = '', inName = '';
-            if (ev.playerOutId) {
-              var po = users.find(function(u) { return String(u.id) === String(ev.playerOutId); });
-              outName = po ? sanitize(po.name) : '?';
-            } else { outName = ev.playerOutNumber ? '#' + sanitize(ev.playerOutNumber) : '?'; }
-            if (ev.playerInId) {
-              var pi = users.find(function(u) { return String(u.id) === String(ev.playerInId); });
-              inName = pi ? sanitize(pi.name) : '?';
-            } else { inName = ev.playerInNumber ? '#' + sanitize(ev.playerInNumber) : '?'; }
+            var outName = resolveEventName(ev.playerOutId, ev.playerOutName, ev.playerOutNumber, users);
+            var inName = resolveEventName(ev.playerInId, ev.playerInName, ev.playerInNumber, users);
             // Home: IN (bold) then OUT (grey) | Away: OUT (grey) then IN (bold)
             if (ev.side === 'home') {
               name = '<span class="ev-sub-in">' + inName + '</span><span class="ev-sub-out">' + outName + '</span>';
@@ -10184,7 +10202,17 @@
         <td class="reg-pos-cell">${posChips}</td>
         <td><input type="text" inputmode="numeric" class="reg-input reg-number" data-uid="${u.id}" value="${u.playerNumber || ''}" placeholder="#" maxlength="2"></td>
         <td class="reg-actions">
-          <button class="btn btn-small btn-danger btn-remove-reg" data-uid="${u.id}">${t('btn.remove')}</button>
+          ${(() => {
+            // "Leave the squad", not a delete: it detaches the member and
+            // keeps every record. Only offered when they are actually in a
+            // squad. Staff are appointed through the lead's staff email
+            // lists, which the rules put out of a coach's reach — so for a
+            // staff member only the lead sees the button.
+            const isStaffMember = roles.includes('staff');
+            if (!uCat && !team) return '';
+            if (isStaffMember && !canEditRoles) return '';
+            return `<button class="btn btn-small btn-outline btn-remove-reg" data-uid="${u.id}">${t('btn.leave_squad')}</button>`;
+          })()}
         </td>
       </tr>`;
     }).join('');
@@ -11308,7 +11336,13 @@
   }
 
   // ---------- Custom Modal ----------
-  function showModal(title, message, onConfirm) {
+  // `opts` is optional: { confirmLabel, danger } — the labels used to be
+  // hard-coded English ("No" / "Yes, remove"), which reads wrong for anything
+  // that isn't a removal.
+  function showModal(title, message, onConfirm, opts) {
+    const o = opts || {};
+    const confirmLabel = o.confirmLabel || t('common.confirm');
+    const confirmClass = o.danger === false ? 'btn-primary' : 'btn-danger';
     // Remove existing modal if any
     const existing = document.getElementById('custom-modal-overlay');
     if (existing) existing.remove();
@@ -11321,8 +11355,8 @@
         <div class="modal-title">${sanitize(title)}</div>
         <p class="modal-message">${sanitize(message)}</p>
         <div class="modal-actions">
-          <button class="btn btn-small btn-outline" id="modal-btn-no">No</button>
-          <button class="btn btn-small btn-danger" id="modal-btn-yes">Yes, remove</button>
+          <button class="btn btn-small btn-outline" id="modal-btn-no">${t('common.cancel')}</button>
+          <button class="btn btn-small ${confirmClass}" id="modal-btn-yes">${sanitize(confirmLabel)}</button>
         </div>
       </div>
     `;
@@ -11409,6 +11443,78 @@
       archiveBtn.disabled = true;
       archiveBtn.textContent = t('alert.new_season_archiving');
       executeSeasonArchive(label, overlay);
+    });
+  }
+
+  /* Irreversible, superadmin-only erase. Typed confirmation rather than a
+     one-tap dialog: this destroys the account and every record, and unlike
+     "leave the squad" on the Registrations page there is no way back. */
+  function showDeleteMemberModal(uid) {
+    var user = getUsers().find(function (u) { return String(u.id) === String(uid); });
+    if (!user) return;
+    var confirmPhrase = (user.name || '').trim();
+    var existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-card" style="max-width:400px;">
+        <div class="modal-title">${sanitize(t('confirm.erase_title'))}</div>
+        <p class="modal-message" style="white-space:pre-line;font-size:.88rem;text-align:left;">${sanitize(t('confirm.erase_msg').replace('{name}', confirmPhrase))}</p>
+        <p style="font-size:.82rem;color:var(--text-secondary);text-align:left;margin:.4rem 0 .8rem;">${sanitize(t('confirm.erase_kept'))}</p>
+        <p style="text-align:center;font-weight:700;font-size:1rem;color:var(--danger);margin-bottom:.6rem;">${sanitize(confirmPhrase)}</p>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <input type="text" id="erase-confirm-input" style="font-size:1rem;text-align:center;" autocomplete="off">
+        </div>
+        <div id="erase-result" style="font-size:.85rem;text-align:center;margin-bottom:.6rem;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-small btn-outline" id="modal-btn-no">${t('common.cancel')}</button>
+          <button class="btn btn-small btn-danger" id="modal-btn-erase" disabled>${t('btn.delete')}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+    var close = function () {
+      overlay.classList.remove('visible');
+      setTimeout(function () { overlay.remove(); }, 200);
+    };
+    overlay.querySelector('#modal-btn-no').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    var inp = overlay.querySelector('#erase-confirm-input');
+    var eraseBtn = overlay.querySelector('#modal-btn-erase');
+    inp.addEventListener('input', function () {
+      eraseBtn.disabled = inp.value.trim().toLowerCase() !== confirmPhrase.toLowerCase();
+    });
+
+    eraseBtn.addEventListener('click', async function () {
+      eraseBtn.disabled = true;
+      eraseBtn.textContent = t('auth.saving');
+      var resultEl = overlay.querySelector('#erase-result');
+      try {
+        var fn = firebase.app().functions('us-central1').httpsCallable('deleteMember');
+        var res = await fn({ uid: uid });
+        var d = (res && res.data) || {};
+        // Drop them locally too, so the table is right before the next sync.
+        var users = getUsers().filter(function (u) { return String(u.id) !== String(uid); });
+        saveUsers(users);
+        close();
+        _showPushToast(t('confirm.erase_title'),
+          t('alert.erase_done')
+            .replace('{name}', confirmPhrase)
+            .replace('{records}', d.records != null ? d.records : '?'));
+        renderPage(getSession());
+      } catch (err) {
+        console.error('deleteMember failed:', err);
+        resultEl.style.color = 'var(--danger)';
+        resultEl.textContent = (err && err.message) || t('save.error');
+        eraseBtn.disabled = false;
+        eraseBtn.textContent = t('btn.delete');
+      }
     });
   }
 
@@ -14818,18 +14924,54 @@
     });
 
     // Staff: remove player from registrations
+    // Staff: take a member out of the squad. NOT a delete — this is the
+    // path for a player moving up a category. Their email comes off this
+    // team's list and their squad assignment is cleared; club membership,
+    // availability, RPE, injuries and stats are all untouched, so when the
+    // next coach adds the same address everything is simply there again.
     $$('.btn-remove-reg').forEach(btn => {
       btn.addEventListener('click', () => {
         const uid = btn.dataset.uid;
+        const user = getUsers().find(u => String(u.id) === String(uid));
+        if (!user) return;
         showModal(
-          'Remove Player',
-          'Are you sure you want to remove this player and all his data?',
-          () => {
-            let users = getUsers();
-            users = users.filter(u => u.id !== uid);
-            saveUsers(users);
-            renderPage(getSession());
-          }
+          t('confirm.leave_squad_title'),
+          t('confirm.leave_squad_msg').replace('{name}', user.name || ''),
+          async () => {
+            const session = getSession();
+            const email = normalizeEmail(user.email);
+            const key = (user.category || '') + '-' + (user.team || '');
+            try {
+              // 1. Off the roster list. This is the gate, so it goes first.
+              if (session && session.teamId && email && user.category && user.team) {
+                const roster = (_clubConfig && _clubConfig.rosters &&
+                  _clubConfig.rosters[key]) || { staffEmails: [], playerEmails: [] };
+                const kept = (roster.playerEmails || [])
+                  .filter(e => normalizeEmail(e) !== email);
+                if (kept.length !== (roster.playerEmails || []).length) {
+                  await saveRoster(session.teamId, key, 'playerEmails', kept);
+                  roster.playerEmails = kept;
+                  if (_clubConfig && _clubConfig.rosters) _clubConfig.rosters[key] = roster;
+                }
+              }
+              // 2. Clear the squad assignment. onRosterWritten does this too,
+              // but only for a member whose email was actually listed — do it
+              // here as well so the UI is right immediately and so members who
+              // were never on a list still detach.
+              if (typeof uid === 'string' && isNaN(Number(uid))) {
+                await db.collection('users').doc(uid).set(
+                  { category: '', team: '' }, { merge: true });
+              }
+              const users = getUsers();
+              const local = users.find(u => String(u.id) === String(uid));
+              if (local) { local.category = ''; local.team = ''; saveUsers(users); }
+              renderPage(getSession());
+            } catch (err) {
+              console.error('leave squad failed:', err);
+              _showPushToast(t('save.sync_title'), t('save.error_perms'));
+            }
+          },
+          { confirmLabel: t('btn.leave_squad'), danger: false }
         );
       });
     });
@@ -14858,15 +15000,12 @@
       });
     });
 
-    // Admin: delete user
+    // Admin: erase the person entirely. Unlike "leave the squad" on the
+    // Registrations page, this destroys the account and all their data —
+    // hence the typed confirmation and the server-side function.
     $$('.btn-delete-user').forEach(btn => {
       btn.addEventListener('click', () => {
-        const uid = btn.dataset.uid;
-        if (!confirm(t('confirm.delete_user'))) return;
-        let users = getUsers();
-        users = users.filter(u => u.id !== uid);
-        saveUsers(users);
-        renderPage(getSession());
+        showDeleteMemberModal(btn.dataset.uid);
       });
     });
 
