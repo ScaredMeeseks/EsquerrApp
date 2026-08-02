@@ -10309,9 +10309,15 @@
       // lead may make it — setRole rejects anyone else. A player's status
       // follows from being on a player list, and someone whose only role is
       // running the club has no meaningful option now that "Cap" is gone.
+      //
+      // Test for the lead ROLE, not for "has neither player nor staff": the
+      // second is also true of anyone whose roles are empty, and it labelled
+      // them Responsable del club. Empty roles fall through to the plain
+      // status label below, which reads "Cap" and is at least honest.
       const isStaffRow = roles.includes('staff');
-      const isLeadOnly = !roles.includes('player') && !isStaffRow;
-      const statusCell = isLeadOnly
+      const isLeadRow = !roles.includes('player') && !isStaffRow &&
+        (roles.includes('lead') || u.isTeamLead === true);
+      const statusCell = isLeadRow
         ? `<span class="reg-status-flat">${t('auth.role_lead')}</span>`
         : (isStaffRow && canEditRoles
           ? `<select class="reg-status-select" data-uid="${u.id}">
@@ -10601,6 +10607,14 @@
       }
       u.category = category;
       u.team = letter;
+      // Being on a player list IS what makes someone a player, and
+      // onRosterWritten has just set that server-side. Mirror it locally or
+      // the row keeps whatever stale roles the blob held — db.js's reconcile
+      // only ever ADDS missing members, it never refreshes an existing one,
+      // so a stale empty array would otherwise persist indefinitely.
+      if (!(u.roles || []).includes('player')) {
+        u.roles = (u.roles || []).concat(['player']);
+      }
       saveUsers(users);
       renderPage(getSession());
     } catch (err) {

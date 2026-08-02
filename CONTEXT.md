@@ -279,3 +279,16 @@ There was no way back: "Treure de l'equip" moved someone to the Unassigned card 
 - Works for members who never had a squad too (registered before the lists existed): *Equip anterior* shows a dash and the controls behave the same.
 
 Rules suite: **67 passing** (2 new: staff may record a previous team; a player may not fake their own). `sw.js` → `esquerrapp-v34`. **Needs a rules + functions deploy** — first one since v32.
+
+### 2026-08-02l — Fix: an assigned player displayed as "Responsable del club" (v35)
+
+Reported straight after v34: a re-assigned test player showed up with the lead's label. Two faults, both mine, compounding.
+
+1. **The label test was a superset.** `isLeadOnly = !roles.includes('player') && !isStaffRow` is also true of anyone whose roles array is **empty**, so a role-less member rendered as *Responsable del club*. Now tests the lead role explicitly (`roles.includes('lead') || u.isTeamLead`); empty roles fall through to the plain status label, which reads "Cap" — wrong-looking, but honestly wrong rather than misleading.
+2. **Stale local roles.** `onRosterWritten` correctly gave him `player` server-side when his address went onto the list, but `db.js`'s reconcile only ever **adds** missing members to the `fa_users` blob and never refreshes an existing one, so the stale empty array kept rendering. `assignMemberToTeam` now mirrors the `player` role locally, matching what the server just did.
+
+Verified against a seven-case label matrix (plain player, empty roles, lead-only, lead who plays, lead who coaches, plain staff, both).
+
+**The underlying reconcile gap is unchanged and still bites elsewhere**: any server-side change to an existing member's fields is invisible to other devices' `fa_users` blob until something rewrites it. Worth folding into the Phase 5 data split rather than patching per-caller.
+
+`sw.js` → `esquerrapp-v35`. Frontend-only — **no deploy needed**.
