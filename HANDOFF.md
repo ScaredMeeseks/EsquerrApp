@@ -5,8 +5,12 @@ _Rolling document, overwritten each session. Last updated: 2026-08-02 (Phase 4 w
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
-- **Production is still on v22** (Phases 1, 2, 3a, 3b). The real club's teamId is literally `default`.
-- **Phase 4 is written but UNDEPLOYED** — working tree only, no branch, no commit. Full change list in CONTEXT.md §2026-08-02.
+- **Production is still on v22** (Phases 1, 2, 3a, 3b).
+- **Clubs in production** (verified 2026-08-02, superseding the old "teamId is literally `default`" note — the real club was migrated to a generated id at some point):
+  - `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`, only `amateur` enabled (A: 2 players, B: 11). 14 users, of whom the single "staff" is the lead himself.
+  - `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona, lead `test@test.com`, `juvenil` enabled. Test club, 1 user.
+  - **3 users still carry `teamId: 'default'` with no matching `clubs/default` doc.** They are already stranded (`navigate()` sends `default` to the join-club screen) — but from Phase 4 on they cannot rejoin either, because the gate will refuse an address that is on no roster list. Identify them before anyone reports being locked out; if any is a real person, add their address to a roster list first.
+- **Phase 4 is written and committed but UNDEPLOYED** — branch `phase4-roster-membership` (commit `6434427`), pushed to GitHub. `main` is untouched, so nothing has published: Pages and the APK workflow both only fire on `main`. Full change list in CONTEXT.md §2026-08-02.
 - **Legacy availability/RPE `data/` docs remain FROZEN but not deleted** — still the 3b rollback net. `migrate-player-data.js --delete-legacy` still deliberately unrun.
 
 ## Phase 4 — what it does
@@ -17,14 +21,13 @@ Both choices were made deliberately and are strict: unlisted people cannot regis
 
 ## Pending / next steps (IN THIS ORDER)
 
-1. **`node functions/prefill-rosters.js`** (dry-run — read the whole output). It seeds the lists from current members and prints an `UNPLACEABLE` report.
-2. **Drive UNPLACEABLE to zero.** Assign a category (and, for players, a team letter) in Registrations for everyone listed, then re-run the dry-run. **Do not proceed until it reads 0** — with "unlisted staff see nothing", anyone the script cannot place goes blind the moment claims recompute.
-3. `node functions/prefill-rosters.js --apply`
-4. **`./deploy.sh`** in Cloud Shell — rules + functions. Confirm the "Deploying to" header says `esquerrapp`. The new `onRosterWritten` trigger is a fresh function; nothing gets deleted this time.
-5. **Rules tests** (cannot run on this Windows box — no Java): `cd ~/EsquerrApp/test && npm install`, then `npx firebase emulators:exec --only firestore --project=demo-esquerrapp "npx mocha rules.test.js --timeout 15000"`. **These have never been executed** for the Phase 4 additions — run them before or immediately after the rules deploy.
-6. **Frontend**: `sw.js` CACHE_NAME is already bumped to `esquerrapp-v23`. Commit + push `main` (Pages + APK build).
-7. **Fresh APK on the phones** — old APKs still show the self-select Staff role screen and have no gate.
-8. **`node functions/check-deploy.js`** — now `[1b/5]` also asserts every member is on a list, every staff member has categories, and the `cats` claim matches the doc.
+1. ~~Rules tests~~ **DONE 2026-08-02: 60 passing** (22 new). They now run on the Windows box — `winget install Microsoft.OpenJDK.21` + `npm i -g firebase-tools` were installed, so `cd test && npm test` works locally against the fake project `demo-esquerrapp`. No Cloud Shell round-trip needed for rules changes any more.
+2. ~~`prefill-rosters.js` dry-run~~ **DONE 2026-08-02: all members placed, UNPLACEABLE 0.** Verified the counts are real (13 players across amateur-A/B; 0 staff is correct — the club's only staff user is the lead, who is skipped). Re-run the dry-run if anyone joins before the deploy.
+3. `node functions/prefill-rosters.js --apply` ← **NEXT**
+4. **`./deploy.sh all`** in Cloud Shell — rules + functions. Confirm the "Deploying to" header says `esquerrapp`. `onRosterWritten` is a brand-new function; nothing gets deleted this time.
+5. **Frontend**: `sw.js` CACHE_NAME is already bumped to `esquerrapp-v23`. Merge `phase4-roster-membership` into `main` and push (Pages + APK build). **Must come after step 4** or the new UI writes into a ruleset that rejects it.
+6. **Fresh APK on the phones** — old APKs still show the self-select Staff role screen and have no gate.
+7. **`node functions/check-deploy.js`** — now `[1b/5]` also asserts every member is on a list, every staff member has categories, and the `cats` claim matches the doc.
 
 ## Smoke test (owed, and larger than usual this time)
 
