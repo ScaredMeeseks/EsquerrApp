@@ -11554,19 +11554,28 @@
       // Sort slots by JS day
       slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
       var slotDays = slots.map(function (s) { return s.jsDay; }); // e.g. [2, 4] for Tue/Thu
-      // Find latest training date to cycle from
-      var allDates = training.filter(t => t.date).map(t => t.date);
+      // Find the latest training date to cycle from — within this category,
+      // since the slots above are this category's. Undated/uncategorised
+      // legacy rows count, matching how the list itself filters.
+      var allDates = training
+        .filter(function (t) { return t.date && (!curCat || !t.category || t.category === curCat); })
+        .map(function (t) { return t.date; });
       var lastDate = allDates.length ? allDates.sort().pop() : null;
-      var d;
+      // Seed at yesterday-noon so the search below can land on today at the
+      // earliest. Noon avoids DST/UTC shifting the ISO date.
+      var seed = new Date();
+      seed.setHours(12, 0, 0, 0);
+      seed.setDate(seed.getDate() - 1);
+      var d = seed;
       if (lastDate) {
-        d = new Date(lastDate + 'T12:00:00');
-      } else {
-        d = new Date();
-        d.setDate(d.getDate() - 1); // include today in search
+        var fromLast = new Date(lastDate + 'T12:00:00');
+        // Cycle on from the last session, but never backwards: an old last
+        // training (say the season stopped in May) must not produce a new
+        // session in the past — fall back to the from-today search instead.
+        if (fromLast > seed) d = fromLast;
       }
-      // Determine next slot day AFTER the latest training's weekday
+      // Determine next slot day AFTER the seed's weekday
       var latestDow = d.getDay(); // 0=Sun … 6=Sat
-      console.log('[addTraining] slots:', JSON.stringify(slots), 'slotDays:', slotDays, 'lastDate:', lastDate, 'latestDow:', latestDow, 'curCat:', curCat, 'letters:', getTeamLetters(curCat), 'schedules:', _clubConfig && _clubConfig.schedules ? JSON.stringify(_clubConfig.schedules) : 'none');
       var nextSlotDay = null;
       for (var i = 0; i < slotDays.length; i++) {
         if (slotDays[i] > latestDow) { nextSlotDay = slotDays[i]; break; }
