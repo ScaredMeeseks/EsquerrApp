@@ -360,3 +360,18 @@ Rules suite: 67 passing. `sw.js` → v40. **Deploy: functions, then run `backfil
 **Deferred, deliberately: the same fix for `fa_tactic_saved`.** It is a 14-site refactor of the most intricate page in the app, including index-shifting arithmetic and a selected index persisted in a separate local key. Post-Stage-C the exposure is narrower than it looks — a coach's merged blob will contain only their own visible categories, so cross-category reordering cannot reach them; the lead, who sees everything, is the only one at risk. Worth doing as its own focused piece rather than rushed.
 
 Rules suite: 67 passing. `sw.js` → v41. Frontend-only.
+
+### 2026-08-03 — Stage A, part 3: tactic boards by id (v42)
+
+The deferred half of A4, done properly. Saved boards were addressed by array position in two places at once — `data-board-idx` in the DOM **and** a selected index persisted in `fa_tactic_loaded_idx` across renders — so deleting a board had to renumber the selection by hand (`if (li > idx) li - 1`). Once Phase 5 merges several category documents into that array, a remote change reorders it and the persisted index quietly points at somebody else's board.
+
+- Boards carry a stable `id`, backfilled lazily by the new `getSavedBoards()`.
+- New `tbSavedListHtml()` renders the list — the same markup was duplicated in **four** places (the picker screen, the board screen, `refreshSavedList` and the delete handler's inline re-render), each with its own copy of the index logic.
+- Save, Save As, load, delete and `hasTacticUnsavedChanges` all address by id. The delete renumbering is gone entirely: with ids, removing one board cannot invalidate the selection of another.
+- `fa_tactic_frames` deliberately still uses indices — animation keyframes inside a single board, local-only, never synced, so sharding cannot reorder them.
+
+Linked match/training board copies are still matched by **name**, unchanged. That is a pre-existing weakness (renaming propagates by name, and once sharded the same name can exist in two categories) but it is a separate contract from the positional bug fixed here.
+
+Verified both failure modes: a remote insert makes the old index resolve to the wrong board while the id lookup stays correct, and deleting an earlier board no longer disturbs the selection.
+
+Rules suite: 67 passing. `sw.js` → v42. Frontend-only.

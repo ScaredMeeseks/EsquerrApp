@@ -5231,14 +5231,8 @@
     // If no board type chosen, show picker
     if (!boardType) {
       // Saved boards list (show even on picker screen)
-      const savedBoards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-      const loadedIdx = localStorage.getItem('fa_tactic_loaded_idx');
-      const savedListHtml = savedBoards.map((b, i) =>
-        `<div class="tb-saved-item${loadedIdx == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
-        `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-        `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
-        `</div>`
-      ).join('');
+      const savedListHtml = tbSavedListHtml(getSavedBoards(),
+        localStorage.getItem('fa_tactic_loaded_id'));
       return `
         <h2 class="page-title">${t('page.tactical_board')}</h2>
         <div class="card">
@@ -5368,14 +5362,8 @@
     }
 
     // Saved boards list
-    const savedBoards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-    const loadedIdx = localStorage.getItem('fa_tactic_loaded_idx');
-    const savedListHtml = savedBoards.map((b, i) =>
-      `<div class="tb-saved-item${loadedIdx == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
-      `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-      `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
-      `</div>`
-    ).join('');
+    const savedListHtml = tbSavedListHtml(getSavedBoards(),
+      localStorage.getItem('fa_tactic_loaded_id'));
 
     let fieldCls = 'tb-field';
     if (isVertical) fieldCls += ' tb-vertical';
@@ -7704,14 +7692,9 @@
     function refreshSavedList() {
       const listEl = document.getElementById('tb-saved-list');
       if (!listEl) return;
-      const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-      const li = localStorage.getItem('fa_tactic_loaded_idx');
-      listEl.innerHTML = boards.map((b, i) =>
-        `<div class="tb-saved-item${li == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
-        `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-        `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
-        `</div>`
-      ).join('');
+      const boards = getSavedBoards();
+      listEl.innerHTML = tbSavedListHtml(boards,
+        localStorage.getItem('fa_tactic_loaded_id'));
       bindTacticsSavedList();
     }
 
@@ -7750,12 +7733,14 @@
       const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
       const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const name = (nameInput ? nameInput.value : '').trim() || 'Board';
-      const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-      const loadedIdx = localStorage.getItem('fa_tactic_loaded_idx');
+      const boards = getSavedBoards();
+      const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+      const loadedPos = loadedId ? boards.findIndex(b => b.id === loadedId) : -1;
       // Stamped, not derived: a saved board is attached to no player, match
       // or date, so there is nothing to join on. It belongs to whichever
       // category the coach authored it under.
-      const entry = { category: getCurrentCategory(), name, formation: f, positions: pos, numbers: nums, boardType: bt,
+      const entry = { id: loadedPos !== -1 ? loadedId : ('tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+        category: getCurrentCategory(), name, formation: f, positions: pos, numbers: nums, boardType: bt,
         teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
         oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
         showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
@@ -7773,17 +7758,17 @@
         cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]')
       };
 
-      if (loadedIdx !== null && boards[loadedIdx]) {
+      if (loadedPos !== -1) {
         // Overwrite — check duplicate name (excluding self)
-        const dup = boards.some((b, i) => i !== Number(loadedIdx) && b.name.toLowerCase() === name.toLowerCase());
+        const dup = boards.some(b => b.id !== loadedId && b.name.toLowerCase() === name.toLowerCase());
         if (dup) { alert(t('alert.board_name_exists')); return; }
-        boards[loadedIdx] = entry;
+        boards[loadedPos] = entry;
       } else {
         // New save — check duplicate name
         const dup = boards.some(b => b.name.toLowerCase() === name.toLowerCase());
         if (dup) { alert(t('alert.board_name_exists')); return; }
         boards.push(entry);
-        localStorage.setItem('fa_tactic_loaded_idx', boards.length - 1);
+        localStorage.setItem('fa_tactic_loaded_id', entry.id);
       }
       localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
       // Also update any linked match boards with the same name
@@ -7832,12 +7817,13 @@
       const suggested = (nameInput ? nameInput.value : '').trim() || 'Board';
       const name = prompt('Board name:', suggested);
       if (!name) return;
-      const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
+      const boards = getSavedBoards();
       const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const dup = boards.some(b => b.name.toLowerCase() === name.trim().toLowerCase());
       if (dup) { alert(t('alert.board_name_exists')); return; }
+      const newId = 'tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       // Same stamp as the Save path above — see the comment there.
-      boards.push({ category: getCurrentCategory(), name: name.trim(), formation: f, positions: pos, numbers: nums, boardType: bt,
+      boards.push({ id: newId, category: getCurrentCategory(), name: name.trim(), formation: f, positions: pos, numbers: nums, boardType: bt,
         teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
         oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
         showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
@@ -7855,7 +7841,7 @@
         cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]')
       });
       localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
-      localStorage.setItem('fa_tactic_loaded_idx', boards.length - 1);
+      localStorage.setItem('fa_tactic_loaded_id', newId);
       if (nameInput) { nameInput.value = name.trim(); localStorage.setItem('fa_tactic_name', name.trim()); }
       refreshSavedList();
     });
@@ -7868,7 +7854,7 @@
         localStorage.removeItem('fa_tactic_numbers');
         localStorage.removeItem('fa_tactic_colors');
         localStorage.removeItem('fa_tactic_name');
-        localStorage.removeItem('fa_tactic_loaded_idx');
+        localStorage.removeItem('fa_tactic_loaded_id');
         localStorage.removeItem('fa_tactic_board_type');
         localStorage.removeItem('fa_tactic_opp_positions');
         localStorage.removeItem('fa_tactic_opp_numbers');
@@ -8776,8 +8762,8 @@
     const curNumbers = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
     const curName = localStorage.getItem('fa_tactic_name') || '';
     if (!curFormation) return false;
-    const loadedIdx = localStorage.getItem('fa_tactic_loaded_idx');
-    if (loadedIdx === null) {
+    const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+    if (loadedId === null) {
       if (curName) return true;
       if (curNumbers && curNumbers.some(n => n && n !== '')) return true;
       if (curPositions && TACTIC_FORMATIONS[curFormation]) {
@@ -8790,7 +8776,7 @@
       return false;
     }
     const saved = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-    const board = saved[loadedIdx];
+    const board = saved.find(b => b.id === loadedId);
     if (!board) return true;
     if (curFormation !== board.formation) return true;
     if (curName !== (board.name || '')) return true;
@@ -8799,13 +8785,49 @@
     return false;
   }
 
+  /* Saved boards are addressed by a stable id, never by array position.
+     Position was doubly fragile: the index lived in the DOM *and* was
+     persisted in fa_tactic_loaded_id across renders, and deleting a board
+     had to renumber it by hand. Once Phase 5 merges several category
+     documents into this array, a remote change reorders it and a persisted
+     index silently points at somebody else's board. */
+  function ensureBoardIds(boards) {
+    let changed = false;
+    boards.forEach(function (b) {
+      if (!b.id) {
+        b.id = 'tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  /** The saved-boards list markup — rendered from four different places. */
+  function tbSavedListHtml(boards, loadedId) {
+    return boards.map(function (b, i) {
+      return '<div class="tb-saved-item' + (loadedId && loadedId === b.id ? ' tb-saved-active' : '') +
+        '" data-board-id="' + sanitize(b.id) + '">' +
+        '<span>' + sanitize(b.name || 'Board ' + (i + 1)) + '</span>' +
+        '<button class="tb-delete-board" data-del-id="' + sanitize(b.id) + '">✕</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  /** Read the saved boards, backfilling ids for anything saved before them. */
+  function getSavedBoards() {
+    const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
+    if (ensureBoardIds(boards)) {
+      localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
+    }
+    return boards;
+  }
+
   function bindTacticsSavedList() {
     document.querySelectorAll('.tb-saved-item').forEach(item => {
       item.addEventListener('click', (e) => {
         if (e.target.closest('.tb-delete-board')) return;
-        const idx = item.dataset.boardIdx;
-        const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-        const board = boards[idx];
+        const boards = getSavedBoards();
+        const board = boards.find(b => b.id === item.dataset.boardId);
         if (!board) return;
         const doLoad = () => {
           localStorage.setItem('fa_tactic_formation', board.formation || '');
@@ -8813,7 +8835,7 @@
           localStorage.setItem('fa_tactic_numbers', JSON.stringify(board.numbers));
           localStorage.setItem('fa_tactic_name', board.name || '');
           localStorage.setItem('fa_tactic_board_type', board.boardType || 'full');
-          localStorage.setItem('fa_tactic_loaded_idx', idx);
+          localStorage.setItem('fa_tactic_loaded_id', board.id);
           localStorage.setItem('fa_tactic_team_color', board.teamColor || '#ffffff');
           localStorage.setItem('fa_tactic_opp_color', board.oppColor || '#e53935');
           localStorage.setItem('fa_tactic_show_opp', board.showOpp ? 'true' : 'false');
@@ -8854,11 +8876,13 @@
     document.querySelectorAll('.tb-delete-board').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const idx = Number(btn.dataset.delIdx);
+        const delId = btn.dataset.delId;
         showTbConfirm(t('tb.delete_title'), t('tb.delete_msg'), () => {
-          const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-          const deletedName = boards[idx] ? boards[idx].name : null;
-          boards.splice(idx, 1);
+          const boards = getSavedBoards();
+          const pos = boards.findIndex(b => b.id === delId);
+          if (pos === -1) return;
+          const deletedName = boards[pos].name;
+          boards.splice(pos, 1);
           localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
           // Also remove from match-linked boards
           if (deletedName) {
@@ -8872,21 +8896,15 @@
             }
             if (mbChanged) localStorage.setItem('fa_tactic_match_boards', JSON.stringify(mb));
           }
-          const li = localStorage.getItem('fa_tactic_loaded_idx');
-          if (li !== null) {
-            if (Number(li) === idx) localStorage.removeItem('fa_tactic_loaded_idx');
-            else if (Number(li) > idx) localStorage.setItem('fa_tactic_loaded_idx', Number(li) - 1);
+          // No renumbering: with ids, deleting a board cannot invalidate the
+          // selection of a different one.
+          if (localStorage.getItem('fa_tactic_loaded_id') === delId) {
+            localStorage.removeItem('fa_tactic_loaded_id');
           }
           const listEl = document.getElementById('tb-saved-list');
           if (listEl) {
-            const updatedBoards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
-            const updLi = localStorage.getItem('fa_tactic_loaded_idx');
-            listEl.innerHTML = updatedBoards.map((b, i) =>
-              `<div class="tb-saved-item${updLi == i ? ' tb-saved-active' : ''}" data-board-idx="${i}">` +
-              `<span>${sanitize(b.name || 'Board ' + (i+1))}</span>` +
-              `<button class="tb-delete-board" data-del-idx="${i}">✕</button>` +
-              `</div>`
-            ).join('');
+            listEl.innerHTML = tbSavedListHtml(boards,
+              localStorage.getItem('fa_tactic_loaded_id'));
             bindTacticsSavedList();
           }
         });
