@@ -279,6 +279,12 @@
     'reg.status_staff': { ca:'Staff', es:'Staff', en:'Staff' },
     'reg.status_both':  { ca:'Ambdós', es:'Ambos', en:'Both' },
     'reg.all_members':  { ca:'Tots els membres', es:'Todos los miembros', en:'All Members' },
+    'reg.pre_title':    { ca:'Jugadors pre-registrats', es:'Jugadores pre-registrados', en:'Pre-registered Players' },
+    'reg.pre_desc':     { ca:'Només els correus d\'aquesta llista es podran registrar com a jugadors d\'aquest equip.', es:'Solo los correos de esta lista podrán registrarse como jugadores de este equipo.', en:'Only addresses on this list can register as players for this team.' },
+    'reg.pre_add':      { ca:'+ Jugador', es:'+ Jugador', en:'+ Player' },
+    'reg.pre_claimed':  { ca:'Registrat', es:'Registrado', en:'Registered' },
+    'reg.pre_pending':  { ca:'Pendent', es:'Pendiente', en:'Pending' },
+    'reg.pre_no_cat':   { ca:'Selecciona una categoria per gestionar-ne els jugadors.', es:'Selecciona una categoría para gestionar sus jugadores.', en:'Pick a category to manage its players.' },
 
     // ── Player Stats ──
     'stats.goals':     { ca:'Gols', es:'Goles', en:'Goals' },
@@ -512,6 +518,10 @@
     'error.enter_code':        { ca:'Introdueix un codi.', es:'Introduce un código.', en:'Enter a code.' },
     'error.invalid_code':      { ca:'Codi no vàlid.', es:'Código no válido.', en:'Invalid code.' },
     'error.need_category':     { ca:'Has d\'activar almenys una categoria.', es:'Debes activar al menos una categoría.', en:'You must enable at least one category.' },
+    'error.no_categories':     { ca:'Encara no tens cap categoria assignada. Contacta el responsable del club.', es:'Todavía no tienes ninguna categoría asignada. Contacta con el responsable del club.', en:'You have no category assigned yet. Contact your club lead.' },
+    'error.invalid_email':     { ca:'Adreça de correu no vàlida.', es:'Dirección de correo no válida.', en:'Invalid email address.' },
+    'error.duplicate_email':   { ca:'Aquest correu ja és a la llista.', es:'Este correo ya está en la lista.', en:'That email is already on the list.' },
+    'error.role_change_denied':{ ca:'Només el responsable del club pot canviar rols.', es:'Solo el responsable del club puede cambiar roles.', en:'Only the club lead can change roles.' },
 
     // ── Empty States ──
     'empty.page_not_found':  { ca:'Pàgina no trobada', es:'Página no encontrada', en:'Page not found' },
@@ -547,6 +557,10 @@
     'auth.fcf_title':        { ca:'Enllaços classificació FCF', es:'Enlaces clasificación FCF', en:'FCF League Links' },
     'auth.fcf_optional':     { ca:'(opcional)', es:'(opcional)', en:'(optional)' },
     'auth.schedules_title':  { ca:'Horaris per defecte', es:'Horarios por defecto', en:'Default Schedules' },
+    'auth.staff_title':      { ca:'Staff per equip', es:'Staff por equipo', en:'Staff per Team' },
+    'auth.staff_desc':       { ca:'Els correus que afegeixis aquí podran registrar-se com a staff d\'aquesta categoria.', es:'Los correos que añadas aquí podrán registrarse como staff de esta categoría.', en:'Addresses added here may register as staff for this category.' },
+    'auth.staff_add':        { ca:'+ Staff', es:'+ Staff', en:'+ Staff' },
+    'auth.email_ph':         { ca:'correu@exemple.com', es:'correo@ejemplo.com', en:'email@example.com' },
     'auth.save_continue':    { ca:'Desar i continuar', es:'Guardar y continuar', en:'Save & Continue' },
     'auth.profile_title':    { ca:'Benvingut!', es:'¡Bienvenido!', en:'Welcome!' },
     'auth.profile_subtitle': { ca:'Configura el teu perfil per començar', es:'Configura tu perfil para empezar', en:'Set up your profile to get started' },
@@ -922,10 +936,17 @@
   function setSession(user) {
     _currentSession = user;
     if (user && auth.currentUser) {
-      // Persist profile to Firestore. Strip password AND the server-owned
-      // fields (teamId/isTeamLead via joinClub, isAdmin derived from email) —
-      // security rules reject client writes that change them.
-      const { password, isAdmin, isTeamLead, teamId, ...profile } = user;
+      // Persist profile to Firestore. Strip password AND every server-owned
+      // field — security rules reject client writes that change them.
+      // roles/category/team/staffCategories are decided by the club's roster
+      // email lists and applied by joinClub / onRosterWritten / setRole;
+      // writing them from here would silently undo a server decision (and
+      // used to be a way round the registration gate entirely).
+      const {
+        password, isAdmin, isTeamLead, teamId,
+        roles, category, team, staffCategories,
+        ...profile
+      } = user;
       db.collection('users').doc(auth.currentUser.uid).set(profile, { merge: true }).catch(console.error);
       // Also update localStorage for compat with roster/availability code
       let users = getUsers();
@@ -997,23 +1018,42 @@
   // ---------- Category view filter ----------
   var _viewCategory = ''; // currently active category filter ('' = all)
 
-  function getCurrentCategory() {
-    if (_viewCategory) return _viewCategory;
+  /**
+   * The categories this user is allowed to look at.
+   *
+   * Staff are scoped to the categories whose staff email list carries their
+   * address (`staffCategories`, written server-side from the club rosters).
+   * A staff member on no list gets [] and sees the "no category assigned"
+   * empty state — deliberately, so an unassigned coach is obvious rather
+   * than quietly seeing the whole club.
+   */
+  function getVisibleCategories() {
     var s = getSession();
-    return (s && s.category) ? s.category : '';
+    if (!s) return [];
+    var enabled = getEnabledCategories();
+    if (s.isAdmin || s.isTeamLead) return enabled;
+    if (s.roles && s.roles.includes('staff')) {
+      var mine = s.staffCategories || [];
+      return enabled.filter(function (k) { return mine.indexOf(k) !== -1; });
+    }
+    return (s.category && enabled.indexOf(s.category) !== -1) ? [s.category] : [];
   }
 
-  function canSeeAllCategories() {
+  function getCurrentCategory() {
+    var visible = getVisibleCategories();
+    // A stale filter must never widen the view past what's allowed.
+    if (_viewCategory && visible.indexOf(_viewCategory) !== -1) return _viewCategory;
+    if (visible.length === 1) return visible[0];
     var s = getSession();
-    return s && (s.isAdmin || s.isTeamLead || (s.roles && s.roles.includes('staff')));
+    if (s && s.category && visible.indexOf(s.category) !== -1) return s.category;
+    return '';
   }
 
   function renderCategoryBar() {
-    if (!canSeeAllCategories()) return '';
-    var cats = getEnabledCategories();
+    var cats = getVisibleCategories();
     if (cats.length <= 1) return '';
     var cur = getCurrentCategory();
-    var btns = '<button class="cat-bar-btn' + (!cur ? ' active' : '') + '" data-cat="">Totes</button>';
+    var btns = '<button class="cat-bar-btn' + (!cur ? ' active' : '') + '" data-cat="">' + t('cat.all') + '</button>';
     cats.forEach(function (k) {
       btns += '<button class="cat-bar-btn' + (cur === k ? ' active' : '') + '" data-cat="' + k + '">' + CATEGORY_LABELS[k] + '</button>';
     });
@@ -1082,9 +1122,82 @@
     await db.collection('clubs').doc(clubId).set(data, { merge: true });
   }
 
+  // ---------- Team rosters (staff / player email lists) ----------
+  // clubs/{clubId}/rosters/{category}-{letter}. Kept off the club doc because
+  // every member can read that; these are email addresses, often of minors.
+  // Rules only let you read the docs for YOUR categories, so we fetch them one
+  // by one from the known keys — a collection query would be denied outright.
+
+  function rosterRef(clubId, key) {
+    return db.collection('clubs').doc(clubId).collection('rosters').doc(key);
+  }
+
+  /** All "{category}-{letter}" keys of a club config, optionally one category. */
+  function rosterKeys(cfg, onlyCategory) {
+    var cats = (cfg && cfg.categories) ? cfg.categories : {};
+    var keys = [];
+    CATEGORY_ORDER.forEach(function (cat) {
+      if (!cats[cat] || !cats[cat].enabled) return;
+      if (onlyCategory && cat !== onlyCategory) return;
+      var letters = (cats[cat].letters && cats[cat].letters.length) ? cats[cat].letters : ['A'];
+      letters.forEach(function (l) { keys.push(cat + '-' + l); });
+    });
+    return keys;
+  }
+
+  /**
+   * Load the roster docs this user is allowed to see.
+   *
+   * Fetched one id at a time on purpose: rules restrict reads to the lead and
+   * to staff of that category, and a collection query is rejected outright if
+   * any document in it could be denied. Players get nothing.
+   */
+  async function loadRosters(clubId, cfg) {
+    var out = {};
+    var s = getSession();
+    if (!clubId || !s) return out;
+    var canReadAll = s.isAdmin || s.isTeamLead;
+    var mine = s.staffCategories || [];
+    var isStaff = !!(s.roles && s.roles.includes('staff'));
+    if (!canReadAll && !isStaff) return out;
+    var keys = rosterKeys(cfg).filter(function (k) {
+      return canReadAll || mine.indexOf(k.split('-')[0]) !== -1;
+    });
+    if (!keys.length) return out;
+    await Promise.all(keys.map(function (key) {
+      return rosterRef(clubId, key).get().then(function (doc) {
+        var d = doc.exists ? doc.data() : {};
+        out[key] = {
+          staffEmails: Array.isArray(d.staffEmails) ? d.staffEmails : [],
+          playerEmails: Array.isArray(d.playerEmails) ? d.playerEmails : []
+        };
+      }).catch(function () {
+        // permission-denied for another category — expected, not an error.
+      });
+    }));
+    return out;
+  }
+
+  /** Write one field of one roster doc. Rejects loudly; callers must await. */
+  function saveRoster(clubId, key, field, emails) {
+    var payload = {};
+    payload[field] = emails;
+    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    return rosterRef(clubId, key).set(payload, { merge: true });
+  }
+
+  function normalizeEmail(v) {
+    return String(v || '').trim().toLowerCase();
+  }
+
+  function isValidEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizeEmail(v));
+  }
+
   async function loadClubConfig(clubId) {
     if (!clubId || clubId === 'default' || clubId === 'none') { _clubConfig = null; return null; }
     _clubConfig = await getClub(clubId);
+    if (_clubConfig) _clubConfig.rosters = await loadRosters(clubId, _clubConfig);
     // Update splash badge and cache image as base64 for instant next load
     var splashImg = document.getElementById('splash-badge');
     if (_clubConfig && _clubConfig.badgeUrl) {
@@ -1539,25 +1652,29 @@
         }
       }
 
-      // Profile fields (never write teamId/isTeamLead/isAdmin from the client —
-      // security rules reject it; joinClub already wrote membership server-side)
+      // Profile fields the client owns. roles/category/team are NOT among
+      // them: joinClub has just derived those from the club's roster email
+      // lists, and merging blanks over the top would wipe the assignment
+      // (and drop the member back on the role-picker screen).
       const profileFields = {
         id: uid,
         name,
         email,
-        roles: [],
         position: '',
         playerNumber: '',
         profilePic: '',
         dob: '',
-        category: '',
-        team: '',
         profileSetupDone: false
       };
       await db.collection('users').doc(uid).set(profileFields, { merge: true });
 
-      // Runtime session includes derived flags (not client-writable)
+      // Runtime session includes the server-assigned membership and the
+      // derived flags (neither of which is client-writable).
       const newUser = Object.assign({}, profileFields, {
+        roles: (club && club.roles) || [],
+        category: (club && club.category) || '',
+        team: (club && club.team) || '',
+        staffCategories: (club && club.staffCategories) || [],
         isAdmin: email === ADMIN_EMAIL,
         isTeamLead: club ? !!club.isTeamLead : false,
         teamId: club ? club.clubId : 'none'
@@ -1603,15 +1720,18 @@
         user = doc.data();
         user.id = uid;
       } else {
-        // Fallback: create profile if missing (no teamId/isTeamLead/isAdmin —
-        // those are server-owned; the user will be routed to the join-club view)
-        user = { id: uid, name: '', email, roles: [], position: '', playerNumber: '', profilePic: '', dob: '', category: '', team: '', profileSetupDone: false };
-        await db.collection('users').doc(uid).set(user);
+        // Fallback: create profile if missing. roles/category/team are
+        // server-owned (joinClub derives them from the club roster lists) and
+        // rules reject them on create — the user is routed to join-club next.
+        const seed = { id: uid, name: '', email, position: '', playerNumber: '', profilePic: '', dob: '', profileSetupDone: false };
+        await db.collection('users').doc(uid).set(seed);
+        user = Object.assign({ roles: [], category: '', team: '' }, seed);
       }
       // Ensure admin flag & fields (runtime-only; never persisted by clients)
       user.isAdmin = user.email === ADMIN_EMAIL;
       if (user.isTeamLead === undefined) user.isTeamLead = false;
       if (!user.category) user.category = '';
+      if (!Array.isArray(user.staffCategories)) user.staffCategories = [];
       if (!user.teamId || user.teamId === 'default') {
         // No club yet — the app routes to the join-club view, where the
         // joinClub Cloud Function assigns membership (leads included).
@@ -1723,6 +1843,12 @@
     const session = getSession();
     session.teamId = club.clubId;
     if (club.isTeamLead) session.isTeamLead = true;
+    // joinClub derived these from the club's roster email lists. Copying them
+    // into the session is what lets navigate() skip the role-selection screen.
+    session.roles = club.roles || [];
+    session.category = club.category || '';
+    session.team = club.team || '';
+    session.staffCategories = club.staffCategories || [];
     setSession(session);
     // joinClub set custom claims — force-refresh the ID token so the
     // new security rules authorize this session immediately.
@@ -1767,7 +1893,72 @@
     container.innerHTML = html;
     _refreshTeamSetupFcf();
     _refreshTeamSetupSchedules();
+    _refreshTeamSetupStaff();
     _bindTeamSetupEvents(container);
+  }
+
+  /**
+   * Staff email lists, one block per {category}-{letter}.
+   *
+   * Unlike the FCF/schedule sections this does NOT re-render purely from
+   * _clubConfig: toggling a letter would then wipe a half-typed list of
+   * addresses. Current DOM values win over the stored ones.
+   */
+  function _refreshTeamSetupStaff() {
+    var section = document.getElementById('team-setup-staff');
+    var inputsEl = document.getElementById('team-setup-staff-inputs');
+    if (!section || !inputsEl) return;
+    var container = document.getElementById('team-setup-categories');
+    if (!container) return;
+    var rows = container.querySelectorAll('.ts-cat-row.active');
+    if (!rows.length) { section.hidden = true; return; }
+    section.hidden = false;
+
+    // Snapshot what is on screen right now, then layer it over what's stored.
+    var typed = _collectStaffEmailsFromDom();
+    var stored = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+
+    var html = '';
+    rows.forEach(function (row) {
+      var catKey = row.dataset.cat;
+      row.querySelectorAll('.ts-letter-chip').forEach(function (chip) {
+        var key = catKey + '-' + chip.dataset.letter;
+        var emails = typed[key] || (stored[key] && stored[key].staffEmails) || [];
+        if (!emails.length) emails = [''];
+        html += '<div class="ts-sched-block" data-staff-key="' + key + '">' +
+          '<div class="ts-sched-title">' + CATEGORY_LABELS[catKey] + ' ' + chip.dataset.letter + '</div>' +
+          '<div class="ts-staff-list" data-staff-key="' + key + '">' +
+          emails.map(function (em, idx) { return _buildStaffEmailRow(key, idx, em); }).join('') +
+          '</div>' +
+          '<button class="btn btn-outline btn-small ts-add-staff" data-staff-key="' + key +
+          '" style="margin:.4rem 0 .8rem;">' + t('auth.staff_add') + '</button>' +
+          '</div>';
+      });
+    });
+    inputsEl.innerHTML = html;
+  }
+
+  function _buildStaffEmailRow(key, idx, email) {
+    return '<div class="ts-sched-row" data-staff-idx="' + idx + '">' +
+      '<input type="email" inputmode="email" autocomplete="off" data-staff-email="' + key + '-' + idx +
+      '" value="' + sanitize(email || '') + '" placeholder="' + t('auth.email_ph') + '" style="flex:1;">' +
+      '<button class="btn btn-small ts-remove-staff" title="' + t('btn.remove') +
+      '" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
+      '</div>';
+  }
+
+  /** Read the staff-email section back out of the DOM, keyed by team. */
+  function _collectStaffEmailsFromDom() {
+    var out = {};
+    document.querySelectorAll('#team-setup-staff-inputs .ts-staff-list').forEach(function (list) {
+      var emails = [];
+      list.querySelectorAll('input[data-staff-email]').forEach(function (inp) {
+        var v = normalizeEmail(inp.value);
+        if (v && emails.indexOf(v) === -1) emails.push(v);
+      });
+      out[list.dataset.staffKey] = emails;
+    });
+    return out;
   }
 
   function _refreshTeamSetupFcf() {
@@ -1877,6 +2068,7 @@
         else row.classList.remove('active');
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
+        _refreshTeamSetupStaff();
       }
     });
     // Add letter
@@ -1896,6 +2088,7 @@
         lettersEl.insertBefore(chip, addBtn);
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
+        _refreshTeamSetupStaff();
         return;
       }
       // Remove letter by clicking on chip
@@ -1908,8 +2101,38 @@
         clickedChip.remove();
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
+        _refreshTeamSetupStaff();
       }
     });
+    // Staff section: add/remove email rows
+    var staffSection = document.getElementById('team-setup-staff-inputs');
+    if (staffSection) {
+      staffSection.addEventListener('click', function (e) {
+        var addBtn = e.target.closest('.ts-add-staff');
+        if (addBtn) {
+          var list = staffSection.querySelector('.ts-staff-list[data-staff-key="' + addBtn.dataset.staffKey + '"]');
+          if (!list) return;
+          var nextIdx = list.querySelectorAll('.ts-sched-row').length;
+          list.insertAdjacentHTML('beforeend', _buildStaffEmailRow(addBtn.dataset.staffKey, nextIdx, ''));
+          var added = list.lastElementChild.querySelector('input');
+          if (added) added.focus();
+          return;
+        }
+        var removeBtn = e.target.closest('.ts-remove-staff');
+        if (removeBtn) {
+          var row = removeBtn.closest('.ts-sched-row');
+          var list2 = removeBtn.closest('.ts-staff-list');
+          // Unlike training rows, an empty staff list is legitimate — a team
+          // may simply have no staff yet. Keep one blank row to type into.
+          if (list2 && list2.querySelectorAll('.ts-sched-row').length <= 1) {
+            var only = list2.querySelector('input[data-staff-email]');
+            if (only) only.value = '';
+            return;
+          }
+          if (row) row.remove();
+        }
+      });
+    }
     // Schedule section: add/remove training rows
     var schedSection = document.getElementById('team-setup-schedule-inputs');
     if (schedSection) {
@@ -1991,9 +2214,10 @@
       var val = inp.value.trim();
       if (val) fcfLinks[inp.dataset.fcfKey] = val;
     });
-    // Collect schedules
+    // Collect schedules. Scoped to the schedules section — the staff section
+    // reuses .ts-sched-block for its styling and must not be picked up here.
     var schedules = {};
-    document.querySelectorAll('.ts-sched-block').forEach(function (block) {
+    document.querySelectorAll('#team-setup-schedule-inputs .ts-sched-block').forEach(function (block) {
       var schedKey = block.dataset.schedKey;
       // Training rows
       var training = [];
@@ -2025,11 +2249,38 @@
       };
       schedules[schedKey] = { training: training, homeGame: homeGame };
     });
+    // Collect staff emails. Validate before touching the network — a typo
+    // here means somebody cannot register at all.
+    var staffEmails = _collectStaffEmailsFromDom();
+    var badEmail = null;
+    document.querySelectorAll('#team-setup-staff-inputs input[data-staff-email]').forEach(function (inp) {
+      var v = normalizeEmail(inp.value);
+      if (v && !isValidEmail(v) && !badEmail) badEmail = v;
+    });
+    if (badEmail) {
+      errEl.textContent = t('error.invalid_email') + ' (' + badEmail + ')';
+      errEl.hidden = false;
+      return;
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = t('auth.saving');
     try {
       await updateClub(session.teamId, { categories: categories, fcfLinks: fcfLinks, schedules: schedules });
+      // Roster docs live in their own subcollection, so they are separate
+      // writes. Only push the ones that actually changed — every write fires
+      // the onRosterWritten trigger, which re-derives members' permissions.
+      var storedRosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+      await Promise.all(Object.keys(staffEmails).map(function (key) {
+        var before = (storedRosters[key] && storedRosters[key].staffEmails) || [];
+        var after = staffEmails[key];
+        if (before.length === after.length && before.every(function (e, i) { return e === after[i]; })) {
+          return Promise.resolve();
+        }
+        return saveRoster(session.teamId, key, 'staffEmails', after);
+      }));
       _clubConfig = await getClub(session.teamId);
+      _clubConfig.rosters = await loadRosters(session.teamId, _clubConfig);
       errEl.hidden = true;
       navigate();
     } catch (err) {
@@ -2160,11 +2411,13 @@
   }
 
   function persistSessionRoles(session) {
-    // Persist to Firestore + localStorage (handled by setSession)
+    // Persist to Firestore + localStorage (handled by setSession, which no
+    // longer writes roles — they are server-owned).
     setSession(session);
-    // Keep Auth custom claims in sync (self role selection is allowed by
-    // setRole — current onboarding design), then refresh the token so
-    // security rules see the new role immediately.
+    // Keep Auth custom claims in sync, then refresh the token so security
+    // rules see the new role immediately. NOTE: for a self-call setRole
+    // ignores the roles passed here and re-derives them from the club's
+    // roster email lists, so this cannot grant staff.
     try {
       const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
       fn({ uid: session.id, roles: session.roles || [] })
@@ -2359,10 +2612,24 @@
       'archived-season-detail': renderArchivedSeasonDetail,
     };
 
+    // A staff member whose address is on no team's staff list has no
+    // categories, so every staff page would render empty. Say why instead.
+    if (STAFF_PAGES.has(currentPage) && roles.includes('staff') &&
+        !session.isAdmin && !session.isTeamLead &&
+        !getVisibleCategories().length) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>' +
+        t('error.no_categories') + '</p></div>';
+      bindDynamicActions();
+      return;
+    }
+
     const fn = renderers[currentPage];
     if (fn) {
-      // Pages that benefit from category scoping
-      var CATEGORY_PAGES = new Set(['registrations', 'staff-training', 'staff-training-detail', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'player-matchday', 'training', 'player-home', 'player-actions', 'tactics']);
+      // Pages that scope their content to the selected category.
+      // 'tactics' is deliberately absent: its boards are club-wide drawings
+      // with no category dimension, so a bar there would imply a filter that
+      // does nothing.
+      var CATEGORY_PAGES = new Set(['registrations', 'staff-training', 'staff-training-detail', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = catBar + fn(session);
     } else {
@@ -8553,7 +8820,15 @@
     allTraining.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     localStorage.setItem('fa_training', JSON.stringify(allTraining));
     var curCat = getCurrentCategory();
-    var training = curCat ? allTraining.filter(function(t) { return !t.category || t.category === curCat; }) : allTraining;
+    // Keep each row's index into the FULL list. readTraining() and the remove
+    // button both index into fa_training, so emitting the filtered position
+    // in data-tidx made every keystroke overwrite a different category's
+    // session. With staff now always category-scoped, that would be constant.
+    var _scoped = allTraining
+      .map(function (t, idx) { return { t: t, idx: idx }; })
+      .filter(function (e) { return !curCat || !e.t.category || e.t.category === curCat; });
+    var training = _scoped.map(function (e) { return e.t; });
+    var trainingIdx = _scoped.map(function (e) { return e.idx; }); // → fa_training
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
 
@@ -8573,7 +8848,11 @@
       return d + '/' + m + '/' + y;
     }
 
-    let rows = training.map((tr, i) => {
+    let rows = training.map((tr, pos) => {
+      // Every data-idx/data-tidx below is the row's position in fa_training,
+      // NOT its position in this filtered list — the handlers write straight
+      // into the full blob.
+      const i = trainingIdx[pos];
       const dayName = tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : (tr.day || '\u2014');
       const locVal = tr.location || DEFAULT_LOC;
       const linkVal = tr.mapLink || (locVal === DEFAULT_LOC ? DEFAULT_MAP : '');
@@ -9211,7 +9490,10 @@
     const users = getUsers();
     var curCat = getCurrentCategory();
     const players = users.filter(u => (u.roles || []).includes('player'))
-      .filter(u => !curCat || !u.category || u.category === curCat)
+      // Uncategorised players used to fall through into every category's
+      // roster. Registrations is where they get assigned; they don't belong
+      // in another category's squad list.
+      .filter(u => !curCat || (u.category || '') === curCat)
       .filter(u => rosterTeamFilter === 'all' || (u.team || '') === rosterTeamFilter)
       .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
     let rows = players.map(u => {
@@ -9370,13 +9652,17 @@
   function renderMatchday() {
     const now = new Date();
     const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
-    // New (unsaved) games from fa_matchday
-    const newGames = JSON.parse(localStorage.getItem('fa_matchday') || '[]');
+    var curCat = getCurrentCategory();
+    // New (unsaved) games from fa_matchday. These used to be shown
+    // unfiltered while the saved matches below were scoped, so every coach
+    // saw every category's drafts. saveGames() re-attaches the out-of-scope
+    // drafts, since it rebuilds the list from the rendered rows.
+    const newGames = JSON.parse(localStorage.getItem('fa_matchday') || '[]')
+      .filter(g => !curCat || !g.category || g.category === curCat);
     const newRows = newGames.map((g, i) => matchdayRowHtml(g, i)).join('');
     const hasNew = newGames.length > 0;
 
     // Saved matches from fa_matches (future only)
-    var curCat = getCurrentCategory();
     var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     var savedMatches = allMatches.filter(function(m) {
       if (curCat && m.category && m.category !== curCat) return false;
@@ -9516,7 +9802,7 @@
         <label class="md-radio"><input type="radio" name="ha-${i}" value="away" ${awayChecked} class="md-ha"> Away</label>
       </td>
       <td class="md-team-cell">
-        ${getTeamLetters(_currentSession && _currentSession.category || '').map(function(l) {
+        ${getTeamLetters(g.category || getCurrentCategory() || '').map(function(l) {
           return '<span class="md-team-circle' + (g.team === l ? ' active' : '') + '" data-team="' + l + '">' + l + '</span>';
         }).join('')}
       </td>
@@ -9838,6 +10124,12 @@
     const users = getUsers();
     const curCat = getCurrentCategory();
     const enabledCats = getEnabledCategories();
+    const session = getSession();
+    // Only the lead may change roles — setRole rejects everyone else, and
+    // staff membership is driven by the club's staff email lists anyway.
+    const canEditRoles = !!(session && (session.isAdmin || session.isTeamLead));
+    // Uncategorised members stay visible in every view: this is the page where
+    // they get assigned one, so hiding them would strand them.
     const filtered = curCat ? users.filter(u => (u.category || '') === curCat || (u.category || '') === '') : users;
     let rows = filtered.map(u => {
       const roles = u.roles || [];
@@ -9866,12 +10158,12 @@
       return `<tr data-uid="${u.id}">
         <td class="reg-name-cell">${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
         <td>
-          <select class="reg-status-select" data-uid="${u.id}">
+          ${canEditRoles ? `<select class="reg-status-select" data-uid="${u.id}">
             <option value="none" ${status === 'none' ? 'selected' : ''}>${t('reg.status_none')}</option>
             <option value="player" ${status === 'player' ? 'selected' : ''}>${t('reg.status_player')}</option>
             <option value="staff" ${status === 'staff' ? 'selected' : ''}>${t('reg.status_staff')}</option>
             <option value="both" ${status === 'both' ? 'selected' : ''}>${t('reg.status_both')}</option>
-          </select>
+          </select>` : `<span style="color:var(--text-secondary);font-size:.85rem;">${t('reg.status_' + status)}</span>`}
         </td>
         <td>${catSelect}</td>
         <td class="reg-team-cell">
@@ -9889,6 +10181,7 @@
 
     return `
       <h2 class="page-title">${t('page.registrations')}</h2>
+      ${renderPreRegisteredPlayers(users)}
       <div class="card">
         <div class="card-title">${t('reg.all_members')}</div>
         <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
@@ -9899,6 +10192,94 @@
           <tbody>${rows}</tbody>
         </table></div>
       </div>`;
+  }
+
+  /**
+   * The player email lists for the currently selected category — the gate that
+   * decides who may register onto these teams. One block per team letter.
+   * Registration is refused for any address not listed here, so this is where
+   * staff sign a new player up before the family ever opens the app.
+   */
+  function renderPreRegisteredPlayers(users) {
+    var cat = getCurrentCategory();
+    if (!cat) {
+      return `<div class="card">
+        <div class="card-title">${t('reg.pre_title')}</div>
+        <p style="color:var(--text-secondary);font-size:.85rem;">${t('reg.pre_no_cat')}</p>
+      </div>`;
+    }
+    // Who has already claimed their invitation?
+    var registered = {};
+    (users || []).forEach(function (u) {
+      var em = normalizeEmail(u.email);
+      if (em) registered[em] = true;
+    });
+    var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    var blocks = rosterKeys(_clubConfig, cat).map(function (key) {
+      var emails = (rosters[key] && rosters[key].playerEmails) || [];
+      if (!emails.length) emails = [''];
+      var rows = emails.map(function (em, idx) {
+        return buildPlayerEmailRow(key, idx, em, registered[normalizeEmail(em)]);
+      }).join('');
+      return `<div class="ts-sched-block" data-player-key="${key}">
+        <div class="ts-sched-title">${CATEGORY_LABELS[cat]} ${key.slice(cat.length + 1)}</div>
+        <div class="roster-player-list" data-player-key="${key}">${rows}</div>
+        <button class="btn btn-outline btn-small roster-add-player" data-player-key="${key}" style="margin:.4rem 0 0;">${t('reg.pre_add')}</button>
+      </div>`;
+    }).join('');
+
+    return `<div class="card">
+      <div class="card-title">${t('reg.pre_title')}</div>
+      <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('reg.pre_desc')}</p>
+      ${blocks}
+    </div>`;
+  }
+
+  function buildPlayerEmailRow(key, idx, email, claimed) {
+    var badge = normalizeEmail(email)
+      ? `<span class="roster-status ${claimed ? 'claimed' : 'pending'}">${claimed ? t('reg.pre_claimed') : t('reg.pre_pending')}</span>`
+      : '';
+    return `<div class="ts-sched-row" data-player-idx="${idx}">
+      <input type="email" inputmode="email" autocomplete="off" class="roster-player-email"
+        value="${sanitize(email || '')}" placeholder="${t('auth.email_ph')}" style="flex:1;">
+      ${badge}
+      <button class="btn btn-small roster-remove-player" title="${t('btn.remove')}"
+        style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>
+    </div>`;
+  }
+
+  /**
+   * Persist one team's player list from the DOM. Awaited and toasted on
+   * failure — a silently dropped write here locks a real player out.
+   */
+  async function savePlayerEmailList(listEl) {
+    var session = getSession();
+    if (!session || !session.teamId || !listEl) return;
+    var key = listEl.dataset.playerKey;
+    var emails = [];
+    var bad = null;
+    listEl.querySelectorAll('input.roster-player-email').forEach(function (inp) {
+      var v = normalizeEmail(inp.value);
+      inp.classList.remove('invalid');
+      if (!v) return;
+      if (!isValidEmail(v)) { inp.classList.add('invalid'); bad = v; return; }
+      if (emails.indexOf(v) === -1) emails.push(v);
+    });
+    if (bad) {
+      _showPushToast(t('save.sync_title'), t('error.invalid_email'));
+      return;
+    }
+    try {
+      await saveRoster(session.teamId, key, 'playerEmails', emails);
+      if (!_clubConfig) return;
+      if (!_clubConfig.rosters) _clubConfig.rosters = {};
+      if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
+      _clubConfig.rosters[key].playerEmails = emails;
+    } catch (err) {
+      console.error('savePlayerEmailList failed:', err);
+      _showPushToast(t('save.sync_title'),
+        err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
+    }
   }
 
   // #region Archived Seasons Viewer
@@ -10676,14 +11057,23 @@
         const games = body ? readGames() : [];
         var cat = getCurrentCategory() || '';
         var letters = getTeamLetters(cat);
-        var schedKey = (letters.length === 1) ? cat + '_' + letters[0] : cat;
+        // schedules are keyed "{category}-{letter}" (same as fcfLinks) — this
+        // was building "{category}_{letter}", so the home-game defaults never
+        // resolved and every new row fell back to the hardcoded location.
+        var schedKey = (letters.length === 1) ? cat + '-' + letters[0] : cat;
         var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
         var homeGame = sched ? sched.homeGame : null;
         var defLoc = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
         var defMap = (defLoc === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
         var defKickoff = (homeGame && homeGame.time) ? homeGame.time : '';
         games.push({ homeAway: 'home', team: '', date: '', opponent: '', location: defLoc, mapLink: defMap, kickoff: defKickoff, category: cat });
-        localStorage.setItem('fa_matchday', JSON.stringify(games));
+        // readGames() only sees the rendered (category-scoped) rows, so carry
+        // the hidden categories' drafts through — fa_matchday is written whole.
+        var keptDrafts = cat
+          ? JSON.parse(localStorage.getItem('fa_matchday') || '[]')
+              .filter(function (g) { return g.category && g.category !== cat; })
+          : [];
+        localStorage.setItem('fa_matchday', JSON.stringify(keptDrafts.concat(games)));
         renderPage(getSession());
       });
     }
@@ -10713,7 +11103,15 @@
     }
 
     function saveGames() {
-      localStorage.setItem('fa_matchday', JSON.stringify(readGames()));
+      // The table only renders the current category, but fa_matchday is one
+      // club-wide blob written whole. Carry the drafts we are NOT showing
+      // through untouched, or saving here would delete other categories'.
+      var cat = getCurrentCategory();
+      var kept = cat
+        ? JSON.parse(localStorage.getItem('fa_matchday') || '[]')
+            .filter(function (g) { return g.category && g.category !== cat; })
+        : [];
+      localStorage.setItem('fa_matchday', JSON.stringify(kept.concat(readGames())));
     }
 
     // Auto-fill location, map link, and kick-off time when home is selected
@@ -10773,12 +11171,13 @@
       });
     });
 
-    // Remove row
+    // Remove row. Splices the rendered (category-scoped) list, then goes back
+    // through saveGames so the hidden categories' drafts survive.
     body.querySelectorAll('.md-remove').forEach(btn => {
       btn.addEventListener('click', () => {
-        const games = readGames();
-        games.splice(Number(btn.dataset.idx), 1);
-        localStorage.setItem('fa_matchday', JSON.stringify(games));
+        const row = btn.closest('tr');
+        if (row) row.remove();
+        saveGames();
         renderPage(getSession());
       });
     });
@@ -10807,8 +11206,14 @@
         var existing = JSON.parse(localStorage.getItem('fa_matches') || '[]');
         existing = existing.concat(newMatches);
         localStorage.setItem('fa_matches', JSON.stringify(existing));
-        // Clear the new games form
-        localStorage.setItem('fa_matchday', '[]');
+        // Clear the new games form — but only the rows we just saved. Other
+        // categories' drafts are not ours to throw away.
+        var cat = getCurrentCategory();
+        var keptDrafts = cat
+          ? JSON.parse(localStorage.getItem('fa_matchday') || '[]')
+              .filter(function (g) { return g.category && g.category !== cat; })
+          : [];
+        localStorage.setItem('fa_matchday', JSON.stringify(keptDrafts));
         renderPage(getSession());
       });
     }
@@ -11906,9 +12311,19 @@
   }
   function addStaffNotification(notif) {
     const list = getStaffNotifications();
+    // Stamp who the notification is about so staff pages can scope by
+    // category. Almost every caller is the player submitting their own
+    // answer, so the session is the right default; staff-logged events pass
+    // an explicit uid. Notifications written before this existed have
+    // neither, and stay visible to everyone rather than disappearing.
+    const session = getSession();
+    const uid = notif.uid || (session ? session.id : '');
+    const subject = uid ? getUsers().find(u => String(u.id) === String(uid)) : null;
     list.unshift({
       id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       type: notif.type,
+      uid: uid || '',
+      category: (subject && subject.category) || '',
       playerName: notif.playerName,
       detail: notif.detail,
       activity: notif.activity,
@@ -11920,8 +12335,22 @@
     saveStaffNotifications(list);
     updateStaffNotifBadge();
   }
+  /**
+   * Is this notification one of mine to see? Scoped to the categories the
+   * staff member covers — not the currently selected one, so the sidebar
+   * badge doesn't change every time they flip the category bar.
+   * Entries with no category (written before notifications carried one) stay
+   * visible to everyone; hiding them would silently swallow real history.
+   */
+  function inMyNotifScope(n) {
+    if (!n || !n.category) return true;
+    var visible = getVisibleCategories();
+    if (!visible.length) return false;
+    return visible.indexOf(n.category) !== -1;
+  }
+
   function getUnreadStaffNotifCount() {
-    return getStaffNotifications().filter(n => !n.read).length;
+    return getStaffNotifications().filter(n => !n.read && inMyNotifScope(n)).length;
   }
   function updateStaffNotifBadge() {
     const nc = getUnreadStaffNotifCount();
@@ -12221,8 +12650,16 @@
 
   function renderMedical() {
     const users = getUsers();
-    const players = users.filter(u => (u.roles || []).includes('player'));
-    const injuries = getInjuries();
+    // Scope to the selected category. Medical is the most sensitive page in
+    // the app and used to show every injured player in the club to any staff
+    // member; injuries carry no category of their own, so they are filtered
+    // through the player they belong to.
+    const curCat = getCurrentCategory();
+    const players = users.filter(u => (u.roles || []).includes('player')
+      && (!curCat || (u.category || '') === curCat));
+    const inScope = {};
+    players.forEach(p => { inScope[String(p.id)] = true; });
+    const injuries = getInjuries().filter(i => !curCat || inScope[String(i.playerId)]);
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
@@ -12557,6 +12994,13 @@
     const users = getUsers();
     const p = users.find(x => String(x.id) === String(medicalDetailPlayerId));
     if (!p) return '<div class="empty-state"><p>' + t('common.player_not_found') + '</p></div>';
+    // Reached by drill-down, but a stale id must not expose another
+    // category's medical record.
+    const visible = getVisibleCategories();
+    if (p.category && visible.length && visible.indexOf(p.category) === -1) {
+      return '<div class="empty-state"><div class="empty-icon">🔒</div><p>' +
+        t('error.no_categories') + '</p></div>';
+    }
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     const derived = deriveFitnessStatus(p.id, false);
@@ -12924,6 +13368,7 @@
 
       addStaffNotification({
         type: 'training_avail',
+        uid: u ? u.id : '',
         playerName: u ? u.name : '?',
         detail: 'Injured – ' + (mGroup || 'Injury'),
         activity: 'Staff logged injury'
@@ -13213,7 +13658,8 @@
   }
 
   function renderStaffNotifications() {
-    const notifs = getStaffNotifications();
+    const all = getStaffNotifications();
+    const notifs = all.filter(inMyNotifScope);
     // Track which are unread before marking
     const unreadIds = new Set(notifs.filter(n => !n.read).map(n => n.id));
 
@@ -13262,10 +13708,12 @@
         ${rows}
       </div>`;
 
-    // Mark all as read after building HTML
+    // Mark as read after building HTML — only the ones actually shown, and
+    // written back over the FULL list (this blob is club-wide and saved
+    // whole, so writing the filtered array would delete everyone else's).
     if (unreadIds.size) {
-      notifs.forEach(n => { n.read = true; });
-      saveStaffNotifications(notifs);
+      all.forEach(n => { if (unreadIds.has(n.id)) n.read = true; });
+      saveStaffNotifications(all);
       updateStaffNotifBadge();
     }
 
@@ -13277,10 +13725,13 @@
   // #region Event Bindings
   // ---------- Dynamic actions ----------
   function bindDynamicActions() {
-    // Category bar clicks
+    // Category bar clicks. Clamp to the allowed set — the bar only ever
+    // renders permitted categories, but never trust the DOM for a filter
+    // that now decides what a coach can see.
     $$('.cat-bar-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        _viewCategory = btn.dataset.cat || '';
+        var want = btn.dataset.cat || '';
+        _viewCategory = (want && getVisibleCategories().indexOf(want) === -1) ? '' : want;
         renderPage(getSession());
       });
     });
@@ -13859,7 +14310,9 @@
     const clearNotifsBtn = document.getElementById('btn-clear-notifs');
     if (clearNotifsBtn) {
       clearNotifsBtn.addEventListener('click', () => {
-        saveStaffNotifications([]);
+        // Clear only what this coach can see — the blob is club-wide and
+        // written whole, so an unfiltered [] wipes other categories too.
+        saveStaffNotifications(getStaffNotifications().filter(n => !inMyNotifScope(n)));
         updateStaffNotifBadge();
         renderPage(getSession());
       });
@@ -14499,9 +14952,6 @@
       function autoSaveFromRow(row) {
         if (!row || !row.dataset.uid) return;
         const uid = row.dataset.uid;
-        const statusEl = row.querySelector('.reg-status-select');
-        if (!statusEl) return;
-        const statusVal = statusEl.value;
         const selPos = Array.from(row.querySelectorAll('.reg-pos-chip.active')).map(c => c.dataset.pos);
         const position = selPos.join(',');
         const numEl = row.querySelector('.reg-number');
@@ -14515,10 +14965,19 @@
         const user = users.find(u => String(u.id) === String(uid));
         if (!user) return;
 
-        if (statusVal === 'both') user.roles = ['player', 'staff'];
-        else if (statusVal === 'player') user.roles = ['player'];
-        else if (statusVal === 'staff') user.roles = ['staff'];
-        else user.roles = [];
+        // The status dropdown is lead-only (see renderRegistrations): the
+        // setRole function rejects role changes from anyone else, and for
+        // months that rejection was swallowed into a console.warn while the
+        // screen happily showed the new role. Absent = leave roles alone.
+        const statusEl = row.querySelector('.reg-status-select');
+        const rolesBefore = (user.roles || []).slice();
+        if (statusEl) {
+          const statusVal = statusEl.value;
+          if (statusVal === 'both') user.roles = ['player', 'staff'];
+          else if (statusVal === 'player') user.roles = ['player'];
+          else if (statusVal === 'staff') user.roles = ['staff'];
+          else user.roles = [];
+        }
 
         user.position = position;
         user.playerNumber = playerNumber;
@@ -14533,10 +14992,28 @@
             position: position, playerNumber: playerNumber,
             team: team, category: category
           }, { merge: true }).catch(console.error);
-          try {
-            const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
-            fn({ uid: uid, roles: user.roles }).catch(e => console.warn('setRole failed:', e));
-          } catch (e) { console.warn('setRole unavailable:', e); }
+
+          const rolesChanged = statusEl &&
+            (rolesBefore.length !== user.roles.length ||
+             rolesBefore.some((r, i) => r !== user.roles[i]));
+          if (rolesChanged) {
+            const revert = (err) => {
+              console.error('setRole failed:', err);
+              // Put the roster back the way the server actually has it,
+              // rather than leaving a role on screen that does not exist.
+              const list = getUsers();
+              const u2 = list.find(u => String(u.id) === String(uid));
+              if (u2) { u2.roles = rolesBefore; saveUsers(list); }
+              _showPushToast(t('save.sync_title'),
+                err && err.code === 'permission-denied' ?
+                  t('error.role_change_denied') : t('save.error'));
+              if (currentPage === 'registrations') renderPage(getSession());
+            };
+            try {
+              const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
+              fn({ uid: uid, roles: user.roles }).catch(revert);
+            } catch (e) { revert(e); }
+          }
         }
 
         if (_currentSession && String(_currentSession.id) === String(uid)) {
@@ -14547,6 +15024,42 @@
           _currentSession.category = category;
         }
       }
+
+      // ── Pre-registered player email lists ──
+      // Saved on blur (and on add/remove), always awaited — see
+      // savePlayerEmailList, which toasts instead of failing silently.
+      content.addEventListener('click', e => {
+        const addBtn = e.target.closest('.roster-add-player');
+        if (addBtn) {
+          const list = content.querySelector(
+            '.roster-player-list[data-player-key="' + addBtn.dataset.playerKey + '"]');
+          if (!list) return;
+          const nextIdx = list.querySelectorAll('.ts-sched-row').length;
+          list.insertAdjacentHTML('beforeend',
+            buildPlayerEmailRow(addBtn.dataset.playerKey, nextIdx, '', false));
+          const added = list.lastElementChild.querySelector('input');
+          if (added) added.focus();
+          return;
+        }
+        const removeBtn = e.target.closest('.roster-remove-player');
+        if (removeBtn) {
+          const row = removeBtn.closest('.ts-sched-row');
+          const list = removeBtn.closest('.roster-player-list');
+          if (!list) return;
+          // An empty player list is legitimate; keep one blank row to type in.
+          if (list.querySelectorAll('.ts-sched-row').length <= 1) {
+            const only = list.querySelector('input.roster-player-email');
+            if (only) only.value = '';
+          } else if (row) {
+            row.remove();
+          }
+          savePlayerEmailList(list);
+        }
+      });
+      content.addEventListener('blur', e => {
+        if (!e.target.classList || !e.target.classList.contains('roster-player-email')) return;
+        savePlayerEmailList(e.target.closest('.roster-player-list'));
+      }, true);
 
       // Status select or category select change
       content.addEventListener('change', e => {
@@ -14667,6 +15180,9 @@
               user.isAdmin = user.email === ADMIN_EMAIL;
               if (user.isTeamLead === undefined) user.isTeamLead = false;
               if (!user.category) user.category = '';
+              // Drives getVisibleCategories() — written server-side from the
+              // club's staff email lists.
+              if (!Array.isArray(user.staffCategories)) user.staffCategories = [];
               _currentSession = user;
               // No club yet → the app routes to the join-club view; membership
               // is assigned only by the joinClub Cloud Function (leads included).
@@ -14721,13 +15237,42 @@
               const res = await firebaseUser.getIdTokenResult();
               const claimTeam = res.claims.teamId;
               const s = getSession();
-              if (claimTeam && s && s.teamId !== claimTeam) {
+              if (!s) return;
+              if (claimTeam && s.teamId !== claimTeam) {
                 s.teamId = claimTeam;
                 _currentSession = s;
                 await loadClubConfig(claimTeam);
                 await DB.init(claimTeam);
                 navigate();
+                return;
               }
+              // Same club, but membership may have changed: the lead adding
+              // or removing an address on a roster list re-derives roles and
+              // staffCategories server-side (onRosterWritten). Pull them off
+              // this very snapshot so an open app gains or loses staff pages
+              // without a reload.
+              const d = doc.data();
+              const nextRoles = Array.isArray(d.roles) ? d.roles : [];
+              const nextCats = Array.isArray(d.staffCategories) ? d.staffCategories : [];
+              const changed =
+                nextRoles.join(',') !== (s.roles || []).join(',') ||
+                nextCats.join(',') !== (s.staffCategories || []).join(',') ||
+                (d.category || '') !== (s.category || '') ||
+                (d.team || '') !== (s.team || '');
+              if (!changed) return;
+              s.roles = nextRoles;
+              s.staffCategories = nextCats;
+              s.category = d.category || '';
+              s.team = d.team || '';
+              _currentSession = s;
+              // The category filter may now point somewhere out of bounds.
+              if (_viewCategory && getVisibleCategories().indexOf(_viewCategory) === -1) {
+                _viewCategory = '';
+              }
+              // Roster visibility follows the new categories.
+              if (_clubConfig) _clubConfig.rosters = await loadRosters(s.teamId, _clubConfig);
+              currentPage = '';
+              navigate();
             } catch (e) { console.warn('Claims refresh failed:', e); }
           });
         }

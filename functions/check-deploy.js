@@ -5,6 +5,7 @@
 //
 // Checks:
 //   1. Custom claims present on every club member (backfill worked)
+//   1b. Roster email lists: everyone placeable, staff have categories
 //   2. Migration counts: legacy blob entries vs per-record docs
 //   3. Bridge retirement (3b): a legacy write must NOT create a record
 //   4. Frontend: live sw.js CACHE_NAME + functions-compat script tag
@@ -37,7 +38,7 @@ function entriesOf(snap) {
 }
 
 async function checkClaims() {
-  console.log("\n[1/4] Custom claims (backfill-claims.js)");
+  console.log("\n[1/5] Custom claims (backfill-claims.js)");
   const users = await db.collection("users").get();
   let withClub = 0;
   let claimed = 0;
@@ -64,8 +65,58 @@ async function checkClaims() {
   }
 }
 
+// Every club member must be placeable from the roster email lists, and every
+// staff member must have a non-empty `cats` claim — with the lists as the
+// membership gate, an unlisted staff member sees nothing at all.
+async function checkRosters() {
+  console.log("\n[1b/5] Roster email lists (prefill-rosters.js)");
+  const clubs = await db.collection("clubs").get();
+  for (const clubDoc of clubs.docs) {
+    const club = clubDoc.data();
+    const leadEmail = String(club.leadEmail || "").toLowerCase();
+    const rosters = await clubDoc.ref.collection("rosters").get();
+    if (rosters.empty) {
+      bad(`${clubDoc.id}: NO roster docs — prefill-rosters.js has not been ` +
+          "applied; every new registration will be refused");
+      continue;
+    }
+    const listed = new Set();
+    rosters.forEach((d) => {
+      const v = d.data() || {};
+      [].concat(v.staffEmails || [], v.playerEmails || [])
+          .forEach((e) => listed.add(String(e || "").trim().toLowerCase()));
+    });
+    ok(`${clubDoc.id}: ${rosters.size} roster docs, ${listed.size} addresses listed`);
+
+    const users = await db.collection("users").where("teamId", "==", clubDoc.id).get();
+    for (const uDoc of users.docs) {
+      const u = uDoc.data();
+      const email = String(u.email || "").toLowerCase();
+      if (email === leadEmail || email === "marna96@gmail.com") continue;
+      if (!listed.has(email)) {
+        bad(`${clubDoc.id}/${u.name || uDoc.id} <${email}>: on no roster list`);
+        continue;
+      }
+      if ((u.roles || []).includes("staff")) {
+        const cats = u.staffCategories || [];
+        if (!cats.length) {
+          bad(`${clubDoc.id}/${u.name || uDoc.id}: staff with NO categories — ` +
+              "they will see the empty state on every staff page");
+        }
+        try {
+          const c = (await admin.auth().getUser(uDoc.id)).customClaims || {};
+          if (!Array.isArray(c.cats) || c.cats.length !== cats.length) {
+            bad(`${clubDoc.id}/${u.name || uDoc.id}: cats claim ` +
+                `${JSON.stringify(c.cats)} != doc ${JSON.stringify(cats)}`);
+          }
+        } catch (e) { /* no Auth account — already warned in [1/5] */ }
+      }
+    }
+  }
+}
+
 async function checkMigration() {
-  console.log("\n[2/4] Migration counts (migrate-player-data.js)");
+  console.log("\n[2/5] Migration counts (migrate-player-data.js)");
   const mappings = [
     ["fa_training_availability", "trainingAvail"],
     ["fa_match_availability", "matchAvail"],
@@ -97,7 +148,7 @@ async function checkMigration() {
 }
 
 async function checkBridge() {
-  console.log("\n[3/4] Bridge retirement (Phase 3b) — legacy writes must be inert");
+  console.log("\n[3/5] Bridge retirement (Phase 3b) — legacy writes must be inert");
   const teamRef = db.collection("teams").doc("_deploycheck");
   const blobRef = teamRef.collection("data").doc("fa_training_availability");
   const recRef = teamRef.collection("trainingAvail").doc("checkuid_2000-01-01");
@@ -117,13 +168,13 @@ async function checkBridge() {
 }
 
 async function checkFrontend() {
-  console.log("\n[4/4] Frontend (GitHub Pages)");
+  console.log("\n[4/5] Frontend (GitHub Pages)");
   const base = "https://scaredmeeseks.github.io/EsquerrApp";
   try {
     const sw = await (await fetch(`${base}/sw.js`, {cache: "no-store"})).text();
     const m = sw.match(/CACHE_NAME\s*=\s*'([^']+)'/);
     const v = m ? m[1] : "?";
-    const CURRENT = "esquerrapp-v22"; // bump alongside sw.js
+    const CURRENT = "esquerrapp-v23"; // bump alongside sw.js
     if (v === CURRENT) ok(`sw.js CACHE_NAME = ${v} (latest frontend live)`);
     else bad(`sw.js CACHE_NAME = ${v} — expected ${CURRENT}; merge the phase branch to main`);
 
@@ -141,6 +192,7 @@ async function checkFrontend() {
 (async () => {
   console.log("=== EsquerrApp deployment check ===");
   await checkClaims();
+  await checkRosters();
   await checkMigration();
   await checkBridge();
   await checkFrontend();

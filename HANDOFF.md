@@ -1,31 +1,52 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-07-19 (Phase 3b DEPLOYED to production; all checks green)._
+_Rolling document, overwritten each session. Last updated: 2026-08-02 (Phase 4 written, NOT yet deployed)._
 
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
-- **Phases 1, 2, 3a AND 3b all DEPLOYED to production.** Frontend **v22** live on Pages. The real club's teamId is literally `default`.
-- **Phase 3b deployed 2026-07-19** (branch `phase3b-legacy-retirement`, merged to main): records are the ONLY write path for availability/RPE (dual-writes removed), rules are claims-only (`me()` fallback gone) with the legacy availability/RPE `data/` keys staff-only, `bridgeLegacyPlayerData` deleted, `pruneOldRpe` deletes record docs. Full change list in CONTEXT.md §2026-07-19.
-- **Verification (2026-07-19)**: bridge-extinction logging gate was clean before deploy; rules emulator suite (updated for 3b: legacy writes denied, claims-only section) PASSED in Cloud Shell; `check-deploy.js` ALL GREEN — 18/18 claims, reconcile missing=0 on all teams, legacy write inert (bridge gone), v22 live. Deployed WITHOUT the manual two-device UX pass (user time constraint) — that pass is still owed.
-- **Legacy availability/RPE `data/` docs are FROZEN but NOT deleted** — they are the rollback net. `migrate-player-data.js --delete-legacy` (guarded dry-run/apply) exists but has deliberately not been run.
+- **Production is still on v22** (Phases 1, 2, 3a, 3b). The real club's teamId is literally `default`.
+- **Phase 4 is written but UNDEPLOYED** — working tree only, no branch, no commit. Full change list in CONTEXT.md §2026-08-02.
+- **Legacy availability/RPE `data/` docs remain FROZEN but not deleted** — still the 3b rollback net. `migrate-player-data.js --delete-legacy` still deliberately unrun.
+
+## Phase 4 — what it does
+
+The lead now decides who is staff (per `{category}-{letter}` email list in "Configura el teu club"); staff decide who plays (email list on Registrations). Registration is a **hard gate** against those lists — an unlisted address is refused with a Catalan message telling them to ask their coach. A listed address gets its role, category and team assigned server-side and skips the role-picker. Staff see only their own categories.
+
+Both choices were made deliberately and are strict: unlisted people cannot register, and staff on no list see nothing.
 
 ## Pending / next steps (IN THIS ORDER)
 
-1. **Fresh APK on the phones** — grab the artifact from the latest GitHub Actions run (the merge push built v22). No urgency (old APKs were already extinct per the gate), but new installs should be v22.
-2. **Smoke test / manual UX pass (still owed)** — minimum: player answers a training → green confirmed ring → second device sees it in seconds; un-answer propagates; browser-console probe as player: legacy write to `teams/default/data/fa_training_availability` → permission-denied. Fuller checklist in this file's history (commit `2d25088`, §"deferred test suite"), now against v22.
-3. **`--delete-legacy`** — after v22 has been stable for a while (suggest ≥2–4 weeks of normal club activity): `node functions/migrate-player-data.js --delete-legacy` (dry-run, read it) then `--delete-legacy --apply`. Per-doc guard skips any doc whose record collection undercounts the blob. Backup first (bucket is `gs://esquerrapp-backup`, singular — CLAUDE.md corrected).
-4. **Phase 3b deferred tail (new features — need their own testing session)**: injuries per-record collection (retire `fa_injuries` blob + notes/zone merge docs, then shrink the allowlist further), notifications collection, read-time fitness derivation, lead-controlled staff-role tightening (product decision).
-5. Future: move hosting to Firebase Hosting (cache-control; fixes GitHub Pages stale-JS problem).
+1. **`node functions/prefill-rosters.js`** (dry-run — read the whole output). It seeds the lists from current members and prints an `UNPLACEABLE` report.
+2. **Drive UNPLACEABLE to zero.** Assign a category (and, for players, a team letter) in Registrations for everyone listed, then re-run the dry-run. **Do not proceed until it reads 0** — with "unlisted staff see nothing", anyone the script cannot place goes blind the moment claims recompute.
+3. `node functions/prefill-rosters.js --apply`
+4. **`./deploy.sh`** in Cloud Shell — rules + functions. Confirm the "Deploying to" header says `esquerrapp`. The new `onRosterWritten` trigger is a fresh function; nothing gets deleted this time.
+5. **Rules tests** (cannot run on this Windows box — no Java): `cd ~/EsquerrApp/test && npm install`, then `npx firebase emulators:exec --only firestore --project=demo-esquerrapp "npx mocha rules.test.js --timeout 15000"`. **These have never been executed** for the Phase 4 additions — run them before or immediately after the rules deploy.
+6. **Frontend**: `sw.js` CACHE_NAME is already bumped to `esquerrapp-v23`. Commit + push `main` (Pages + APK build).
+7. **Fresh APK on the phones** — old APKs still show the self-select Staff role screen and have no gate.
+8. **`node functions/check-deploy.js`** — now `[1b/5]` also asserts every member is on a list, every staff member has categories, and the `cats` claim matches the doc.
 
-## Session summary (2026-07-19)
+## Smoke test (owed, and larger than usual this time)
 
-Implemented AND deployed Phase 3b core (legacy retirement) in one session, gated deploy on bridge extinction instead of the manual pass. Code: db.js record-keys out of SYNCED/MERGE sets + init awaits first record snapshots; app.js pruneOldRpe → role-scoped record deletes; rules claims-only + shrunken allowlist; bridge deleted; migrate script gained guarded `--delete-legacy`; check-deploy inverted (asserts bridge GONE, blob divergence → warning, expects v22); rules tests updated. Deploy hiccup: CLAUDE.md had the backup bucket as `esquerrapp-backups` — real bucket is `esquerrapp-backup` (fixed). Session incident: PowerShell `Set-Content` mojibake'd two files during a version bump (same class as the Mundial gotcha) — caught via git diff, restored, redone with the Edit tool.
+Nothing in Phase 4 has been run against a live Firebase — no emulator locally, no deploy yet. Minimum before trusting it:
+
+- unlisted email + valid club code → registration refused, **no orphan** left in `users/`
+- listed player email → lands on the dashboard with the right category/team, never sees the role picker
+- listed staff email → staff pages, correct categories only
+- lead adds an already-registered person to a staff list → their **open** app gains staff pages within seconds (exercises `onRosterWritten` → `claimsUpdatedAt` → the users-doc listener); removing the address takes them away again
+- cadet coach: cat-bar shows Cadet only, no "Totes"; medical / matchday / notifications show cadet only; A/B letter filters still work
+- staff with no list entry: sees `error.no_categories`, not blank pages
+- lead: types staff emails, adds a team letter → **typed emails must survive** the re-render
+- **regression**: with Cadet selected in staff-training, edit a row's focus text, switch to Juvenil → juvenil sessions untouched (this was the index-misalignment bug)
+- browser console as a player: `users/{self}` update with `{roles:['staff']}` → permission-denied; `setRole({uid:self, roles:['staff']})` → returns `role:'player'`
 
 ## Known trade-offs / notes
 
-- Any straggler old APK now gets permission-denied on availability/RPE writes (no bridge, no allowlist). The logging gate showed none active; if one resurfaces, its writes fail with the error toast, not silently.
-- Legacy availability/RPE docs are frozen mirrors: archiveSeason still resets them (harmless), check-deploy compares against them (warnings only, divergence is expected as records get deleted post-freeze). They disappear at step 3.
-- `fa_injury_notes`/`fa_injury_zone`/`fa_injuries`/`fa_users`/`fa_staff_notifications` still player-writable by design until the deferred tail lands.
-- First login on v22: availability/RPE blobs populate from record snapshots awaited inside `DB.init`; offline with cold cache → empty until connectivity (listeners self-heal).
+- **Category scoping is cosmetic, not a permission boundary.** All club data is club-wide blobs that every device downloads in full; rules cannot read inside a JSON string. Only the roster email lists are genuinely restricted. **Phase 5 (agreed, not planned in detail) splits the data per category** so it becomes real — see the plan file `~/.claude/plans/working-on-the-esquerrapp-ticklish-beaver.md` §Phase 2, which also notes it fixes the whole-blob clobber problem (CONTEXT.md "Known problem #1") and cuts every device's download to roughly a sixth.
+- Whole-blob writes touched by the new filtering (matchday drafts, notifications) now carry out-of-scope entries through explicitly. Any FUTURE page that filters and then saves must do the same, or it deletes the categories it isn't showing.
+- The lead and superuser always bypass the registration gate, so a new club can still be bootstrapped with empty lists.
+- A member removed from every list keeps their last category/team on the doc (only roles and claims are revoked) — deliberate, so a mistaken removal doesn't erase their assignment.
+- Deferred 3b tail still outstanding: injuries per-record collection, notifications collection, read-time fitness derivation.
+- Future: move hosting to Firebase Hosting (cache-control; fixes the GitHub Pages stale-JS problem).
 - Cloud Shell gotchas: `.firebaserc` is tracked — never `rm` it (deploy.sh checks it); scripts run from repo root (`node functions/<name>.js`); read every dry-run before `--apply`; backup bucket is `gs://esquerrapp-backup` (singular).
+- This machine mojibakes Catalan accents through PowerShell `Set-Content` — use the editor for all file writes.

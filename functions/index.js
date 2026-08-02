@@ -449,6 +449,88 @@ exports.fcfClassificacio = onRequest(
     },
 );
 
+// ── Membership helpers (roster email lists) ──────────────────
+// clubs/{clubId}/rosters/{category}-{letter} holds the two email lists that
+// decide who may join a club and as what. They live in their own subcollection
+// (not on the club doc, which every member can read) because they are PII.
+
+const SUPERUSER_EMAIL = "marna96@gmail.com";
+
+/** Enabled categories of a club, from its `categories` config map. */
+function enabledCategories(club) {
+  const cats = (club && club.categories) || {};
+  return Object.keys(cats).filter((k) => cats[k] && cats[k].enabled);
+}
+
+/** Lowercase + trim an email list field off a roster doc. */
+function normEmails(arr) {
+  return (Array.isArray(arr) ? arr : [])
+      .map((e) => String(e || "").trim().toLowerCase()).filter(Boolean);
+}
+
+/** Read every roster doc of a club once, as [{key, staff[], players[]}]. */
+async function loadRosters(clubId) {
+  const snap = await db.collection("clubs").doc(clubId)
+      .collection("rosters").get();
+  return snap.docs.map((doc) => ({
+    key: doc.id,
+    staff: normEmails((doc.data() || {}).staffEmails),
+    players: normEmails((doc.data() || {}).playerEmails),
+  }));
+}
+
+/**
+ * Resolve one address against already-loaded rosters.
+ * @param {Array} rosters Result of loadRosters.
+ * @param {string} email Lowercased address to look for.
+ * @return {Object} {roles, staffCats, category, team}. `roles` is empty when
+ *   the address is on no list at all — the caller decides whether that is a
+ *   rejection.
+ */
+function membershipFrom(rosters, email) {
+  const out = {roles: [], staffCats: [], category: "", team: ""};
+  if (!email) return out;
+  const staffCats = new Set();
+  let playerKey = null;
+  rosters.forEach((r) => {
+    if (r.staff.includes(email)) staffCats.add(r.key.split("-")[0]);
+    // First player match wins — a player belongs to exactly one team.
+    if (!playerKey && r.players.includes(email)) playerKey = r.key;
+  });
+  if (playerKey) {
+    const dash = playerKey.indexOf("-");
+    out.roles.push("player");
+    out.category = dash === -1 ? playerKey : playerKey.slice(0, dash);
+    out.team = dash === -1 ? "" : playerKey.slice(dash + 1);
+  }
+  if (staffCats.size) {
+    out.roles.push("staff");
+    out.staffCats = [...staffCats];
+    // A staff-only member still needs a category for the UI's default view.
+    if (!out.category) out.category = out.staffCats[0];
+  }
+  return out;
+}
+
+/** Convenience for the one-address callers. */
+async function resolveMembership(clubId, email) {
+  if (!email) return membershipFrom([], email);
+  return membershipFrom(await loadRosters(clubId), email);
+}
+
+/**
+ * Collapse a membership into the single-string `role` claim plus its `cats`.
+ * @param {Object} club The club document data (for its enabled categories).
+ * @param {boolean} isLead Whether this member is the club's team lead.
+ * @param {Object} m Result of resolveMembership / membershipFrom.
+ * @return {Object} {role, cats} to write as custom claims.
+ */
+function claimsFor(club, isLead, m) {
+  if (isLead) return {role: "lead", cats: enabledCategories(club)};
+  if (m.roles.includes("staff")) return {role: "staff", cats: m.staffCats};
+  return {role: "player", cats: []};
+}
+
 // ── 6. joinClub — validate a club code and assign membership ──
 // Club membership is ONLY assigned server-side: clients can no longer
 // write their own teamId (security rules reject it). Codes live in
@@ -490,23 +572,39 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
   const club = clubSnap.data();
 
   const isLead = (club.leadEmail || "").toLowerCase() === email;
-  await db.collection("users").doc(uid).set(
-      {teamId: clubId, isTeamLead: isLead},
-      {merge: true},
-  );
+  const isSuper = email === SUPERUSER_EMAIL;
+
+  // Membership gate: the address must appear on one of the club's roster
+  // lists. The lead and the superuser always bypass it — otherwise nobody
+  // could ever bootstrap a brand-new club, whose rosters are empty.
+  const m = await resolveMembership(clubId, email);
+  if (!isLead && !isSuper && !m.roles.length) {
+    throw new HttpsError("permission-denied",
+        "El teu correu no està registrat en cap equip d'aquest club. " +
+        "Demana al teu entrenador que t'hi afegeixi.");
+  }
+
+  // Role, category and team all come from the lists — the member never picks
+  // them. Written here (server-side) because the client may not touch them.
+  await db.collection("users").doc(uid).set({
+    teamId: clubId,
+    isTeamLead: isLead,
+    roles: m.roles,
+    category: m.category,
+    team: m.team,
+    staffCategories: m.staffCats,
+  }, {merge: true});
 
   // Stamp membership + role as Auth custom claims so security rules can
   // authorize from the token (no per-request doc reads). claimsUpdatedAt
   // tells the client to force-refresh its ID token.
-  const userSnap = await db.collection("users").doc(uid).get();
-  const roles = (userSnap.exists && userSnap.data().roles) || [];
-  const role = isLead ? "lead" : (roles.includes("staff") ? "staff" : "player");
-  await admin.auth().setCustomUserClaims(uid, {teamId: clubId, role});
+  const {role, cats} = claimsFor(club, isLead, m);
+  await admin.auth().setCustomUserClaims(uid, {teamId: clubId, role, cats});
   await db.collection("users").doc(uid).set(
       {claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp()},
       {merge: true},
   );
-  logger.info("joinClub", {uid, clubId, isLead, role});
+  logger.info("joinClub", {uid, clubId, isLead, role, cats});
 
   return {
     clubId,
@@ -515,20 +613,28 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
     categories: club.categories || [],
     fcfLinks: club.fcfLinks || [],
     isTeamLead: isLead,
+    // The client seeds its session from these so navigate() skips the
+    // role-selection screen entirely.
+    roles: m.roles,
+    category: m.category,
+    team: m.team,
+    staffCategories: m.staffCats,
   };
 });
 
 // ── 7. setRole — update a member's roles + keep claims in sync ──
-// Callers: the member themselves (player/staff self-selection — current
-// onboarding design), the club's team lead, or the superuser. All role
-// changes should go through here so the token claims stay in sync.
+// Callers: the club's team lead, the superuser, or the member themselves.
+// A SELF call can no longer choose its own roles: they are re-derived from
+// the club's roster email lists and the requested value is ignored. Without
+// that, any player could call this with roles:['staff'] from the console and
+// walk straight past the membership gate.
 exports.setRole = onCall({region: "us-central1"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
   }
   const caller = request.auth;
   const uid = request.data && request.data.uid;
-  const roles = (request.data && request.data.roles) || [];
+  let roles = (request.data && request.data.roles) || [];
   if (!uid || !Array.isArray(roles) ||
       !roles.every((r) => ["player", "staff"].includes(r))) {
     throw new HttpsError("invalid-argument", "Paràmetres no vàlids.");
@@ -555,15 +661,105 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
         "Només el responsable del club pot canviar rols d'altres membres.");
   }
 
+  const email = (target.email || "").toLowerCase();
+  const club = teamId ?
+    ((await db.collection("clubs").doc(teamId).get()).data() || {}) : {};
+  const m = teamId ? await resolveMembership(teamId, email) : {roles: [], staffCats: []};
+
+  // A self-call may not choose its own roles — take whatever the club's
+  // roster lists say. Only the lead and the superuser get a manual override.
+  if (isSelf && !isSuper && !isLeadOfTeam) {
+    roles = m.roles;
+  }
+
   const role = target.isTeamLead === true ? "lead" :
     (roles.includes("staff") ? "staff" : "player");
-  await admin.auth().setCustomUserClaims(uid, {teamId: teamId || null, role});
+
+  // `cats` is never taken from the caller either — always re-derived, so a
+  // manual role change can't hand someone categories the lead hasn't
+  // assigned. A staff member on no list gets [] and sees the "no category
+  // assigned" empty state.
+  let cats = [];
+  if (teamId) {
+    if (role === "lead") cats = enabledCategories(club);
+    else if (role === "staff") cats = m.staffCats;
+  }
+
+  await admin.auth().setCustomUserClaims(uid, {teamId: teamId || null, role, cats});
   await db.collection("users").doc(uid).set({
     roles,
+    staffCategories: cats,
     claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, {merge: true});
-  logger.info("setRole", {by: caller.uid, uid, roles, role});
-  return {ok: true, role};
+  logger.info("setRole", {by: caller.uid, uid, roles, role, cats});
+  return {ok: true, role, cats};
+});
+
+// ── 7b. onRosterWritten — roster list edits re-apply to existing members ──
+// When the lead adds a staff email (or staff add a player email) belonging to
+// somebody who has ALREADY registered, joinClub has long since run for them.
+// This trigger re-derives their membership so the change lands without a
+// reinstall — and, just as importantly, revokes access when an address is
+// removed. The client's users/{uid} listener watches claimsUpdatedAt, force-
+// refreshes the ID token and re-navigates, so an open app updates live.
+exports.onRosterWritten = onDocumentWritten({
+  document: "clubs/{clubId}/rosters/{teamKey}",
+  region: "us-central1",
+}, async (event) => {
+  const clubId = event.params.clubId;
+  // Membership signature per address: "s" if on staffEmails, "p" if on
+  // playerEmails. Comparing signatures (rather than a flat email list) also
+  // catches an address MOVED between the two lists in a single edit.
+  const sigOf = (snap) => {
+    const out = {};
+    if (!snap || !snap.exists) return out;
+    const d = snap.data() || {};
+    normEmails(d.staffEmails).forEach((e) => {
+      out[e] = (out[e] || "") + "s";
+    });
+    normEmails(d.playerEmails).forEach((e) => {
+      out[e] = (out[e] || "") + "p";
+    });
+    return out;
+  };
+
+  // Everyone touched by this edit: added, removed AND moved addresses all
+  // need recomputing (removal is what revokes access).
+  const before = sigOf(event.data && event.data.before);
+  const after = sigOf(event.data && event.data.after);
+  const touched = [...new Set(Object.keys(before).concat(Object.keys(after)))]
+      .filter((e) => (before[e] || "") !== (after[e] || ""));
+  if (!touched.length) return;
+
+  const clubSnap = await db.collection("clubs").doc(clubId).get();
+  if (!clubSnap.exists) return;
+  const club = clubSnap.data();
+  // Read the club's rosters ONCE — a bulk paste can touch a whole squad, and
+  // resolving each address separately would re-read every doc per person.
+  const rosters = await loadRosters(clubId);
+
+  for (const email of touched) {
+    // Only members of THIS club — an address may exist in another club too.
+    const userSnap = await db.collection("users")
+        .where("teamId", "==", clubId).where("email", "==", email)
+        .limit(1).get();
+    if (userSnap.empty) continue; // not registered yet; joinClub will apply it
+    const doc = userSnap.docs[0];
+    const isLead = (club.leadEmail || "").toLowerCase() === email;
+    const m = membershipFrom(rosters, email);
+    const {role, cats} = claimsFor(club, isLead, m);
+    await admin.auth().setCustomUserClaims(doc.id, {teamId: clubId, role, cats});
+    await doc.ref.set({
+      roles: m.roles,
+      staffCategories: m.staffCats,
+      // Don't blank an existing assignment when the lists no longer place
+      // them — a removed member keeps their last category until reassigned.
+      category: m.category || doc.data().category || "",
+      team: m.team || doc.data().team || "",
+      claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    logger.info("onRosterWritten", {clubId, uid: doc.id, email, role, cats});
+  }
 });
 
 // ── 8. (removed in Phase 3b) bridgeLegacyPlayerData ──

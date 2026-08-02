@@ -37,23 +37,31 @@ service cloud.firestore {
         || isSuperUser()
         || (resource.data.teamId != null && sameTeam(resource.data.teamId))
       );
-      // Self-create without club/privilege fields (joinClub writes those).
+      // Self-create without club/privilege/membership fields — joinClub writes
+      // all of those server-side before the client ever gets here.
       allow create: if isSuperUser() || (
         request.auth != null && request.auth.uid == uid
-        && !request.resource.data.keys().hasAny(['teamId', 'isTeamLead', 'isAdmin'])
+        && !request.resource.data.keys().hasAny(['teamId', 'isTeamLead', 'isAdmin',
+                                                 'roles', 'category', 'team',
+                                                 'staffCategories'])
       );
       allow update: if request.auth != null && (
         isSuperUser()
         // Self: any profile field EXCEPT club membership / privilege flags.
-        // (roles self-changes stay allowed transitionally for old clients;
-        // new clients route roles through setRole to keep claims in sync)
+        // roles/category/team/staffCategories are NO LONGER self-writable:
+        // membership is decided by the club's roster email lists and applied
+        // server-side (joinClub / onRosterWritten / setRole). Leaving them
+        // open made the registration gate bypassable from the console.
         || (request.auth.uid == uid
             && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['teamId', 'isTeamLead', 'isAdmin', 'claimsUpdatedAt']))
-        // Staff of the member's club: registration fields only.
+                 .hasAny(['teamId', 'isTeamLead', 'isAdmin', 'claimsUpdatedAt',
+                          'roles', 'category', 'team', 'staffCategories']))
+        // Staff of the member's club: registration fields only. `roles` is not
+        // here either — it only moves through the setRole callable, which keeps
+        // the Auth claims in sync.
         || (resource.data.teamId != null && isStaffOf(resource.data.teamId)
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['roles', 'position', 'playerNumber', 'team', 'category',
+                 .hasOnly(['position', 'playerNumber', 'team', 'category',
                            'fitnessStatus', 'injuryNote']))
       );
       allow delete: if isSuperUser();
@@ -135,6 +143,33 @@ service cloud.firestore {
       allow read: if sameTeam(clubId) || isSuperUser();
       allow create, delete: if isSuperUser();
       allow update: if isSuperUser() || isLeadOf(clubId);
+
+      // ── Team rosters: the staff/player email lists (PII — minors' addresses).
+      // Deliberately NOT on the club doc, which every member can read.
+      // Doc id is "{category}-{letter}", the same key as fcfLinks/schedules.
+      // Subcollections do NOT inherit the parent's rules — this match is what
+      // makes them reachable at all.
+      match /rosters/{teamKey} {
+        function catOf() { return teamKey.split('-')[0]; }
+        // Staff scoped to the category this doc belongs to. The `cats` claim is
+        // always written by joinClub/setRole/onRosterWritten, but check it
+        // exists so a pre-backfill token denies instead of erroring.
+        function scopedStaff() {
+          return isStaffOf(clubId)
+            && 'cats' in request.auth.token
+            && catOf() in request.auth.token.cats;
+        }
+        allow read: if isSuperUser() || isLeadOf(clubId) || scopedStaff();
+        allow create, update, delete: if isSuperUser() || isLeadOf(clubId);
+        // Staff may only ever touch playerEmails, and only in their own
+        // categories. create and update are separate because `resource` is
+        // null on create, so diff() would error there.
+        allow create: if scopedStaff()
+          && request.resource.data.keys().hasOnly(['playerEmails', 'updatedAt']);
+        allow update: if scopedStaff()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['playerEmails', 'updatedAt']);
+      }
     }
 
     // ── Club join codes: superuser + Cloud Functions only ──

@@ -174,6 +174,11 @@
           <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);" data-i18n="auth.schedules_title">Horaris per defecte</h3>
           <div id="team-setup-schedule-inputs"></div>
         </div>
+        <div id="team-setup-staff" hidden>
+          <h3 style="margin:1.2rem 0 .3rem;font-size:1rem;color:var(--text-secondary);" data-i18n="auth.staff_title">Staff per equip</h3>
+          <p style="margin:0 0 .6rem;font-size:.8rem;color:var(--text-secondary);" data-i18n="auth.staff_desc">Els correus que afegeixis aquí podran registrar-se com a staff d'aquesta categoria.</p>
+          <div id="team-setup-staff-inputs"></div>
+        </div>
         <div id="team-setup-error" class="error-msg" hidden></div>
         <button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;" data-i18n="auth.save_continue">Desar i continuar</button>
       </div>
@@ -220,19 +225,16 @@
         <h1 data-i18n="auth.roles_title">Choose Your Role</h1>
         <p id="roles-subtitle" data-i18n="auth.roles_subtitle">Select how you want to use EsquerrApp</p>
       </div>
-      <!-- Regular user: pick one -->
+      <!-- Regular user: player only. Staff is NOT self-selectable — the team
+           lead grants it by adding an address to a team's staff email list,
+           and joinClub applies it at registration. This screen is only
+           reached by accounts that predate the roster lists. -->
       <div id="roles-pick-one" class="roles-grid">
         <div class="role-card" data-role="player">
           <div class="role-icon">🏃</div>
           <h2 data-i18n="auth.role_player">Player</h2>
           <p data-i18n="auth.role_player_desc">View your training schedule, track personal stats, and see the team roster.</p>
           <button class="btn btn-primary btn-full btn-select-role" data-role="player" data-i18n="auth.select">Select</button>
-        </div>
-        <div class="role-card" data-role="staff">
-          <div class="role-icon">📋</div>
-          <h2 data-i18n="auth.role_staff">Staff</h2>
-          <p data-i18n="auth.role_staff_desc">Manage training sessions, review player stats, and plan match tactics.</p>
-          <button class="btn btn-primary btn-full btn-select-role" data-role="staff" data-i18n="auth.select">Select</button>
         </div>
       </div>
       <!-- Admin: pick one or both -->

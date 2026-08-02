@@ -43,12 +43,15 @@ function ctx(uid, claims) {
 function db(uid, claims) {
   return ctx(uid, claims).firestore();
 }
-const asA = () => db(A, {teamId: "teamA", role: "player", email: "a@x.com"});
-const asA2 = () => db(A2, {teamId: "teamA", role: "player", email: "a2@x.com"});
-const asStaffA = () => db(STAFF_A, {teamId: "teamA", role: "staff", email: "s@x.com"});
-const asLeadA = () => db(LEAD_A, {teamId: "teamA", role: "lead", email: "l@x.com"});
-const asB = () => db(B, {teamId: "teamB", role: "player", email: "b@x.com"});
-const asSuper = () => db(SU, {teamId: "teamA", role: "lead", email: SUPER});
+const asA = () => db(A, {teamId: "teamA", role: "player", email: "a@x.com", cats: []});
+const asA2 = () => db(A2, {teamId: "teamA", role: "player", email: "a2@x.com", cats: []});
+// Staff A covers cadet only — the roster tests below lean on that.
+const asStaffA = () => db(STAFF_A, {teamId: "teamA", role: "staff", email: "s@x.com", cats: ["cadet"]});
+const asLeadA = () => db(LEAD_A, {teamId: "teamA", role: "lead", email: "l@x.com", cats: ["cadet", "juvenil"]});
+const asB = () => db(B, {teamId: "teamB", role: "player", email: "b@x.com", cats: []});
+const asSuper = () => db(SU, {teamId: "teamA", role: "lead", email: SUPER, cats: []});
+// A staff member from before the cats claim existed (no `cats` on the token).
+const asStaffNoCats = () => db("uidStaffOld", {teamId: "teamA", role: "staff", email: "old@x.com"});
 
 before(async () => {
   env = await initializeTestEnvironment({
@@ -77,6 +80,12 @@ beforeEach(async () => {
     await d.doc("users/uidNoClaims").set({teamId: "teamA", isTeamLead: true, roles: ["staff"], name: "NC"});
     await d.doc("clubs/teamA").set({name: "Club A", leadEmail: "l@x.com"});
     await d.doc("clubs/teamB").set({name: "Club B", leadEmail: "lb@x.com"});
+    // Roster email lists — the membership gate. PII, so read is restricted
+    // to the lead and to staff of that specific category.
+    await d.doc("clubs/teamA/rosters/cadet-A")
+        .set({staffEmails: ["s@x.com"], playerEmails: ["kid@x.com"]});
+    await d.doc("clubs/teamA/rosters/juvenil-A")
+        .set({staffEmails: ["other@x.com"], playerEmails: ["teen@x.com"]});
     await d.doc("clubCodes/CODEA").set({clubId: "teamA"});
     await d.doc("teams/teamA/data/fa_matches").set({v: "[]"});
     await d.doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01")
@@ -122,11 +131,30 @@ describe("Self-escalation is blocked", () => {
   });
   it("self-create WITHOUT privileged fields is allowed", async () => {
     await assertSucceeds(
-        db("newUid", {email: "n@x.com"}).doc("users/newUid").set({name: "N", roles: []}));
+        db("newUid", {email: "n@x.com"}).doc("users/newUid").set({name: "N"}));
   });
   it("self-create WITH teamId is denied", async () => {
     await assertFails(
         db("newUid", {email: "n@x.com"}).doc("users/newUid").set({teamId: "teamA"}));
+  });
+  // Membership is decided by the club's roster email lists and applied
+  // server-side. If a client could write these, the registration gate would
+  // be bypassable from the browser console.
+  it("player CANNOT change own roles", async () => {
+    await assertFails(asA().doc("users/" + A).update({roles: ["staff"]}));
+  });
+  it("player CANNOT change own category", async () => {
+    await assertFails(asA().doc("users/" + A).update({category: "juvenil"}));
+  });
+  it("player CANNOT change own team letter", async () => {
+    await assertFails(asA().doc("users/" + A).update({team: "B"}));
+  });
+  it("player CANNOT set own staffCategories", async () => {
+    await assertFails(asA().doc("users/" + A).update({staffCategories: ["cadet"]}));
+  });
+  it("self-create WITH roles is denied", async () => {
+    await assertFails(
+        db("newUid", {email: "n@x.com"}).doc("users/newUid").set({name: "N", roles: ["staff"]}));
   });
 });
 
@@ -140,6 +168,66 @@ describe("Staff updates of members", () => {
   });
   it("a non-staff teammate CANNOT edit another member", async () => {
     await assertFails(asA().doc("users/" + A2).update({position: "FW"}));
+  });
+  // Roles move only through the setRole callable, so the Auth claims stay in
+  // step with the doc. Direct writes used to be allowed here.
+  it("staff CANNOT change a member's roles directly", async () => {
+    await assertFails(asStaffA().doc("users/" + A).update({roles: ["staff"]}));
+  });
+  it("staff CANNOT set a member's staffCategories", async () => {
+    await assertFails(asStaffA().doc("users/" + A).update({staffCategories: ["cadet"]}));
+  });
+});
+
+describe("Roster email lists (clubs/{club}/rosters/{cat}-{letter})", () => {
+  const cadet = (d) => d.doc("clubs/teamA/rosters/cadet-A");
+  const juvenil = (d) => d.doc("clubs/teamA/rosters/juvenil-A");
+
+  it("player CANNOT read a roster (they are PII)", async () => {
+    await assertFails(cadet(asA()).get());
+  });
+  it("player CANNOT write a roster", async () => {
+    await assertFails(cadet(asA()).set({playerEmails: ["me@x.com"]}, {merge: true}));
+  });
+  it("lead CAN read any roster of own club", async () => {
+    await assertSucceeds(cadet(asLeadA()).get());
+    await assertSucceeds(juvenil(asLeadA()).get());
+  });
+  it("lead CAN write staffEmails", async () => {
+    await assertSucceeds(cadet(asLeadA()).set({staffEmails: ["new@x.com"]}, {merge: true}));
+  });
+  it("staff CAN read the roster of their own category", async () => {
+    await assertSucceeds(cadet(asStaffA()).get());
+  });
+  it("staff CANNOT read another category's roster", async () => {
+    await assertFails(juvenil(asStaffA()).get());
+  });
+  it("staff CAN edit playerEmails in their own category", async () => {
+    await assertSucceeds(cadet(asStaffA()).set({playerEmails: ["kid2@x.com"]}, {merge: true}));
+  });
+  it("staff CANNOT edit staffEmails (only the lead appoints staff)", async () => {
+    await assertFails(cadet(asStaffA()).set({staffEmails: ["me@x.com"]}, {merge: true}));
+  });
+  it("staff CANNOT edit playerEmails in another category", async () => {
+    await assertFails(juvenil(asStaffA()).set({playerEmails: ["x@x.com"]}, {merge: true}));
+  });
+  it("staff CANNOT create a roster doc carrying staffEmails", async () => {
+    await assertFails(asStaffA().doc("clubs/teamA/rosters/cadet-B")
+        .set({staffEmails: ["me@x.com"]}));
+  });
+  it("staff CAN create a missing roster doc with playerEmails only", async () => {
+    await assertSucceeds(asStaffA().doc("clubs/teamA/rosters/cadet-B")
+        .set({playerEmails: ["kid3@x.com"]}));
+  });
+  it("staff of another club CANNOT read these rosters", async () => {
+    await assertFails(db("uidStaffB", {teamId: "teamB", role: "staff", email: "sb@x.com", cats: ["cadet"]})
+        .doc("clubs/teamA/rosters/cadet-A").get());
+  });
+  it("a token with no cats claim is denied, not errored", async () => {
+    await assertFails(cadet(asStaffNoCats()).get());
+  });
+  it("superuser reads any roster", async () => {
+    await assertSucceeds(juvenil(asSuper()).get());
   });
 });
 
