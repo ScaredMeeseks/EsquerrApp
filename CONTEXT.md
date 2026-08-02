@@ -145,3 +145,25 @@ Reported straight after the Phase 4 deploy, unrelated to it. `addTraining()` see
 `sw.js` → `esquerrapp-v24`, and `check-deploy.js`'s `CURRENT` bumped to match.
 
 **check-deploy fix (same day)**: `[1b/5]` treated "no roster docs" as a hard failure. That is wrong for a club whose only member is its lead — prefill correctly writes nothing there, and the F.C.Barcelona test club tripped it on the first real run. The check now counts non-lead members first: no members and no docs is a `⚠` note (registration stays closed until the lead adds addresses, which is the design), members but no docs is still a `✘`. Unlisted members were already reported individually, so nothing is lost by dropping the early bail.
+
+### 2026-08-02c — Medical: season window, counter reconciliation, team filter (v25)
+
+Reported symptom: Medical showed **0 Lesions actives** while "Estat físic de l'equip" on the same screen showed Lesionats (1) and Recuperant-se (2).
+
+**Root cause — the season window was in the future.** `getMonth() >= 7` rolled the season over on **1 August** but `seasonStart` was **15 August**, so for the first fortnight of every August every season-scoped view filtered out everything. This was copy-pasted in **seven** places, so it was not only Medical: player stats (×3), the staff roster, the injury migration and `getSeasonWeek()` were all silently empty or, in the case of `getSeasonWeek('2026-08-02')`, returning **week −1**.
+
+- **`js/utils.js`**: new `seasonStartStr(when)` — the most recent 15 August on or before the date. `getSeasonWeek()` now uses it. All six inline copies in `js/app.js` replaced with a call.
+
+**Two further reasons the counters could disagree, both fixed:**
+1. The active/recovering lists were season-filtered, so an unresolved injury that started before 15 August was hidden forever while still marking its player injured. The window now applies to **history only** (season total, average recovery, past injuries, analytics); `activeInj`/`recoveringInj` come from all in-scope injuries.
+2. A player whose availability answers make him injured/doubt with **no record in `fa_injuries`** counted in the tiles but could never appear in the list. Those now render as dashed "Reportada pel jugador" cards after the real records, with a button that opens the existing logger preselected on that player (`.med-btn-log-for` → `showStaffInjuryLogger(uid)`). Verified the two always reconcile now, including under the team filter.
+
+Also: the squad-grid card fell back to the derived note when there is no logged record, so a red border never appears with no explanation.
+
+**Team-letter filter on Medical** (asked for): `medicalTeamFilter`, single-select All/A/B/C reusing the roster page's `.roster-team-filter` markup and styles, in the squad-fitness card header because it scopes the whole page. Hidden when the category has one team. Injuries are filtered through the in-scope player map, since a record carries no team of its own. **The injury filter's `!curCat ||` short-circuit had to go** — it let the whole club's injuries through whenever "Totes" was selected, which would have made the new filter a no-op for the lead. All three letter filters (medical, roster, training-detail) now reset when the category changes.
+
+Also scoped `showStaffInjuryLogger`'s player dropdown to the visible squad — it listed every player in the club regardless of category or team.
+
+`sw.js` → `esquerrapp-v25`, `check-deploy.js` `CURRENT` to match. Frontend-only; no rules or functions change.
+
+**Still inconsistent, deliberately not fixed here**: uncategorised players are excluded by medical and roster but included by training-detail. Belongs with the Phase 5 data split.

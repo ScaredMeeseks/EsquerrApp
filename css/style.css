@@ -3142,6 +3142,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   transition:box-shadow .15s;
 }
 .med-injury-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+/* Player self-reported an injury through availability but staff have not
+   logged a record yet — lighter, dashed, so it reads as "needs following up"
+   rather than as a real injury file. */
+.med-injury-card.med-injury-unlogged {
+  border-style:dashed; background:transparent; opacity:.85;
+}
+.med-injury-card.med-injury-unlogged .med-inj-zone {
+  font-style:italic; color:var(--text-secondary);
+}
 .med-inj-card-top {
   display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:.4rem;
 }

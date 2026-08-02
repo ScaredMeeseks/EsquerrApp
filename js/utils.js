@@ -9,10 +9,23 @@ function localDateStr(d) {
 }
 const DAY_VALUES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
+/* The season runs 15 August → 14 August. Returns the most recent 15 August
+   on or before `when` as 'YYYY-08-15'.
+
+   This used to be inlined in seven places as `getMonth() >= 7 ? year : year-1`
+   followed by `year + '-08-15'`, which rolled the season over on 1 August but
+   dated it 15 August — so for the first fortnight of every August the window
+   started in the FUTURE and silently emptied every season-scoped view
+   (medical injuries, player stats, roster stats, season week). */
+function seasonStartStr(when) {
+  const d = when || new Date();
+  const aug15 = d.getFullYear() + '-08-15';
+  return localDateStr(d) >= aug15 ? aug15 : (d.getFullYear() - 1) + '-08-15';
+}
+
 function getSeasonWeek(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
-  const year = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
-  const aug15 = new Date(year, 7, 15, 12, 0, 0);
+  const aug15 = new Date(seasonStartStr(d) + 'T12:00:00');
   const aug15Day = aug15.getDay();
   const mondayOfW1 = new Date(aug15.getTime() - ((aug15Day === 0 ? 6 : aug15Day - 1)) * 86400000);
   const diff = d.getTime() - mondayOfW1.getTime();

@@ -382,6 +382,8 @@
     'medical.past':          { ca:'📋 Lesions passades', es:'📋 Lesiones pasadas', en:'📋 Past Injuries' },
     'medical.no_active':     { ca:'Cap lesió activa', es:'Sin lesiones activas', en:'No active injuries' },
     'medical.no_past':       { ca:'Cap lesió passada aquesta temporada', es:'Sin lesiones pasadas esta temporada', en:'No past injuries this season' },
+    'medical.self_reported': { ca:'Reportada pel jugador', es:'Reportada por el jugador', en:'Reported by the player' },
+    'medical.not_logged':    { ca:'Sense fitxa de lesió', es:'Sin ficha de lesión', en:'No injury record yet' },
     'medical.severity_minor':   { ca:'Lleu', es:'Leve', en:'Minor' },
     'medical.severity_moderate':{ ca:'Moderada', es:'Moderada', en:'Moderate' },
     'medical.severity_severe':  { ca:'Greu', es:'Grave', en:'Severe' },
@@ -861,8 +863,7 @@
     const zoneMap = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    const seasonStart = seasonYear + '-08-15';
+    const seasonStart = seasonStartStr(now);
     const injuries = [];
     players.forEach(p => {
       let inWindow = false, windowStart = null, lastInjDate = null;
@@ -4181,8 +4182,7 @@
     const uid = playerId;
     const now = new Date();
     const todayStr = localDateStr(now);
-    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    const seasonStart = seasonYear + '-08-15';
+    const seasonStart = seasonStartStr(now);
 
     // Build sessions
     const sessions = [];
@@ -4768,8 +4768,7 @@
     const todayStr = localDateStr(now);
 
     // Season start: Aug 15 of current season year
-    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    const seasonStart = seasonYear + '-08-15';
+    const seasonStart = seasonStartStr(now);
 
     // Collect all sessions (training + matches) since season start, sorted by date
     const sessions = [];
@@ -4979,8 +4978,7 @@
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
 
     const todayStr = localDateStr(now);
-    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    const seasonStart = seasonYear + '-08-15';
+    const seasonStart = seasonStartStr(now);
 
     const sessions = [];
     trainingList.forEach(t => {
@@ -9484,6 +9482,7 @@
   let staffViewPlayerId = null;
   let medicalDetailPlayerId = null;
   let medicalFilter = 'all';
+  let medicalTeamFilter = 'all'; // 'all' | 'A' | 'B' | … — reset on category change
   let medicalPastExpanded = false;
 
   function renderStaffRoster() {
@@ -9565,8 +9564,7 @@
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    const seasonStart = seasonYear + '-08-15';
+    const seasonStart = seasonStartStr(now);
     const playerUids = players.map(u => u.id);
 
     const dateAgg = {};
@@ -12665,18 +12663,27 @@
     // through the player they belong to.
     const curCat = getCurrentCategory();
     const players = users.filter(u => (u.roles || []).includes('player')
-      && (!curCat || (u.category || '') === curCat));
+      && (!curCat || (u.category || '') === curCat)
+      && (medicalTeamFilter === 'all' || (u.team || '') === medicalTeamFilter));
     const inScope = {};
     players.forEach(p => { inScope[String(p.id)] = true; });
-    const injuries = getInjuries().filter(i => !curCat || inScope[String(i.playerId)]);
+    // Always filter through the in-scope players — an injury has no category
+    // or team of its own. (This used to short-circuit on `!curCat`, which let
+    // the whole club's injuries through whenever "Totes" was selected and
+    // made the team filter below a no-op for the lead.)
+    const injuries = getInjuries().filter(i => inScope[String(i.playerId)]);
     const now = new Date();
-    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-    const seasonStart = seasonYear + '-08-15';
+    const todayStr = localDateStr(now);
+    const seasonStart = seasonStartStr(now);
+    // The season window is for HISTORY only — season totals, average recovery,
+    // past injuries, analytics. "Currently active" is a statement about now,
+    // so an unresolved injury that started before 15 August still belongs in
+    // the list; excluding it was one reason these counters disagreed with
+    // "Estat físic de l'equip", which never applied the window.
     const seasonInjuries = injuries.filter(i => i.startDate >= seasonStart);
 
-    const activeInj = seasonInjuries.filter(i => i.status === 'active');
-    const recoveringInj = seasonInjuries.filter(i => i.status === 'recovering');
+    const activeInj = injuries.filter(i => i.status === 'active');
+    const recoveringInj = injuries.filter(i => i.status === 'recovering');
     const resolvedInj = seasonInjuries.filter(i => i.status === 'resolved');
 
     // Avg recovery time (resolved injuries only)
@@ -12692,10 +12699,23 @@
 
     // Build player status map
     const playerStatusMap = {};
+    const playerNoteMap = {};
     players.forEach(p => {
       const d = deriveFitnessStatus(p.id, false);
       playerStatusMap[p.id] = d.fitnessStatus;
+      playerNoteMap[p.id] = d.injuryNote || '';
     });
+
+    // Players whose training-availability answers mark them injured/doubt but
+    // who have no unresolved record in fa_injuries. They counted in the tiles
+    // above yet appeared nowhere in the list below — the other half of why the
+    // numbers disagreed. Surfaced so staff can see who still needs logging.
+    const loggedPlayerIds = {};
+    [].concat(activeInj, recoveringInj)
+      .forEach(i => { loggedPlayerIds[String(i.playerId)] = true; });
+    const selfReported = players.filter(p =>
+      (playerStatusMap[p.id] === 'injured' || playerStatusMap[p.id] === 'doubt') &&
+      !loggedPlayerIds[String(p.id)]);
 
     // Squad grid
     const filter = medicalFilter;
@@ -12728,6 +12748,12 @@
         const pInj = recoveringInj.find(i => i.playerId === p.id);
         if (pInj) injExcerpt = '<div class="med-card-injury" style="color:#f9a825;">' + sanitize(pInj.muscleGroup || t('medical.recovering')) + '</div>';
       }
+      // No logged record (self-reported through availability): fall back to
+      // the derived note so the card never shows a status with no explanation.
+      if (!injExcerpt && st !== 'fit' && playerNoteMap[p.id]) {
+        injExcerpt = '<div class="med-card-injury" style="opacity:.75;font-style:italic;">' +
+          sanitize(playerNoteMap[p.id]) + '</div>';
+      }
       return '<div class="med-player-card" data-player-id="' + p.id + '" style="border-left:4px solid ' + borderColor + ';">' +
         '<div class="med-card-top">' +
           '<span class="conv-pos-circles">' + posHtml + '</span>' +
@@ -12740,7 +12766,7 @@
 
     // Active injuries cards
     let activeHtml = '';
-    if (!activeInj.length && !recoveringInj.length) {
+    if (!activeInj.length && !recoveringInj.length && !selfReported.length) {
       activeHtml = '<div class="empty-state" style="padding:1.5rem;"><div class="empty-icon">💪</div><p>' + t('medical.no_active') + '</p></div>';
     } else {
       const combined = [...activeInj, ...recoveringInj].sort((a, b) => {
@@ -12792,6 +12818,36 @@
           '</div>' +
         '</div>';
       }).join('');
+
+      // Self-reported, not yet logged. Lighter cards, listed after the real
+      // records, each offering to open the logger with the player preselected.
+      activeHtml += selfReported.map(p => {
+        const st = playerStatusMap[p.id];
+        const posHtml = posCirclesHtmlGlobal(p);
+        const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
+        const badgeColor = st === 'injured' ? '#e53935' : '#f9a825';
+        const badgeText = st === 'injured' ? t('medical.injured') : t('medical.recovering');
+        const note = playerNoteMap[p.id];
+        return '<div class="med-injury-card med-injury-unlogged" data-player-id="' + p.id + '">' +
+          '<div class="med-inj-card-top">' +
+            '<div class="med-inj-player">' +
+              '<span class="conv-pos-circles">' + posHtml + '</span>' +
+              '<span class="med-card-name">' + sanitize(p.name) + teamCircle + '</span>' +
+            '</div>' +
+            '<span class="med-severity-badge" style="background:' + badgeColor + (st === 'doubt' ? ';color:#333' : '') + ';">' + badgeText + '</span>' +
+          '</div>' +
+          '<div class="med-inj-body">' +
+            '<div class="med-inj-zone">' + t('medical.self_reported') + '</div>' +
+            (note ? '<div class="med-inj-desc">' + sanitize(note) + '</div>' : '') +
+          '</div>' +
+          '<div class="med-inj-footer">' +
+            '<div class="med-inj-duration"><span class="medical-since">' + t('medical.not_logged') + '</span></div>' +
+            '<div class="med-inj-actions">' +
+              '<button class="btn btn-small med-btn-log-for" data-player-id="' + p.id + '">' + t('medical.log_injury').replace(/^\+\s*/, '') + '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
 
     // Past injuries
@@ -12833,6 +12889,21 @@
     const injCount = players.filter(p => playerStatusMap[p.id] === 'injured').length;
     const recCount = players.filter(p => playerStatusMap[p.id] === 'doubt').length;
 
+    // Team-letter filter, same single-select idiom and styles as the roster
+    // page. Scopes the whole page (counters, grid, injuries, analytics), not
+    // just the grid, so it sits above the status filter row. Hidden when the
+    // category has only one team, exactly like the training-detail variant.
+    const _medLetters = getTeamLetters(curCat);
+    const medTeamBar = _medLetters.length <= 1 ? '' :
+      '<div class="roster-team-filter" style="margin-bottom:.6rem;">' +
+        '<button class="roster-team-btn' + (medicalTeamFilter === 'all' ? ' roster-team-btn-active' : '') +
+          '" data-med-team="all">' + t('common.all') + '</button>' +
+        _medLetters.map(function (l) {
+          return '<button class="roster-team-btn' + (medicalTeamFilter === l ? ' roster-team-btn-active' : '') +
+            '" data-med-team="' + l + '">' + l + '</button>';
+        }).join('') +
+      '</div>';
+
     return '<div class="med-header"><h2 class="page-title">' + t('page.medical') + '</h2>' +
       '<button class="btn btn-orange med-log-btn" id="med-log-injury">' + t('medical.log_injury') + '</button></div>' +
       '<div class="medical-stats-row">' +
@@ -12843,6 +12914,7 @@
       '</div>' +
       '<div class="card">' +
         '<div class="card-title" style="margin-bottom:.8rem;">' + t('medical.squad_fitness') + '</div>' +
+        medTeamBar +
         '<div class="med-filter-row">' +
           '<button class="med-filter-btn' + (filter === 'all' ? ' med-filter-active' : '') + '" data-med-filter="all">' + t('medical.filter_all') + ' (' + players.length + ')</button>' +
           '<button class="med-filter-btn' + (filter === 'injured' ? ' med-filter-active' : '') + '" data-med-filter="injured">' + t('medical.filter_injured') + ' (' + injCount + ')</button>' +
@@ -13153,7 +13225,14 @@
   // ---------- Staff Injury Logger ----------
   function showStaffInjuryLogger(preselectedPlayerId) {
     const users = getUsers();
-    const players = users.filter(u => (u.roles || []).includes('player')).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    // Scope to the same squad the medical page is showing. This dropdown used
+    // to list every player in the club regardless of category or team, which
+    // let a coach log an injury against someone they cannot otherwise see.
+    const _logCat = getCurrentCategory();
+    const players = users.filter(u => (u.roles || []).includes('player')
+      && (!_logCat || (u.category || '') === _logCat)
+      && (medicalTeamFilter === 'all' || (u.team || '') === medicalTeamFilter))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 
@@ -13491,6 +13570,22 @@
       });
     });
 
+    // Team-letter filter
+    document.querySelectorAll('[data-med-team]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        medicalTeamFilter = btn.dataset.medTeam;
+        renderPage(getSession());
+      });
+    });
+
+    // "Log injury" on a self-reported player who has no record yet
+    document.querySelectorAll('.med-btn-log-for').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        showStaffInjuryLogger(btn.dataset.playerId);
+      });
+    });
+
     // Player card clicks → medical detail
     document.querySelectorAll('.med-player-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -13741,6 +13836,11 @@
       btn.addEventListener('click', function () {
         var want = btn.dataset.cat || '';
         _viewCategory = (want && getVisibleCategories().indexOf(want) === -1) ? '' : want;
+        // Team letters are per-category, so a letter selected under the old
+        // category must not silently persist into one that may not have it.
+        medicalTeamFilter = 'all';
+        rosterTeamFilter = 'all';
+        stdTeamFilter = null;
         renderPage(getSession());
       });
     });
