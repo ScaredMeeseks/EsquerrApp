@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. Automated tests live in `test/`: the Firestore rules suite, plus unit tests for `js/shard.js` and `js/db.js` (see the safety net below). There is no coverage of `app.js` or `functions/index.js`, so changes there are verified by hand. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
+EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. Automated tests live in `test/`: the Firestore rules suite, unit tests for `js/shard.js` and `js/db.js`, and an emulator suite that drives the real Cloud Functions triggers (see the safety net below). There is no coverage of `app.js`, so changes there are verified by hand. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
 
 - Firebase project: `esquerrapp` · Superadmin: `marna96@gmail.com`
 - Frontend hosting: **GitHub Pages from `main`** — pushing to `main` deploys the site AND triggers the Android APK CI build (`.github/workflows/build-android.yml`).
@@ -20,13 +20,16 @@ node --check js/app.js   # (and any other edited .js file)
 **2. Automated tests — these DO run locally** (Java 21 + firebase-tools are installed on the dev box; older notes saying otherwise are stale):
 
 ```bash
-cd test && npm run test:unit   # ~1s, pure Node — no emulator, no Java
-cd test && npm test            # the above plus the rules suite on the emulator
+cd test && npm run test:unit      # ~1s, pure Node — no emulator, no Java
+cd test && npm run test:functions # Firestore + Functions emulators, real triggers
+cd test && npm test               # the above plus the rules suite
 ```
 
-129 tests today. `test:unit` covers `js/shard.js` (which category each row of each key belongs to) and `js/db.js` (the router, run for real against an in-memory Firestore fake). The rules suite uses the fake project `demo-esquerrapp` — no credentials, no Cloud Shell round-trip.
+143 tests today (42 unit + 87 rules + 14 functions). `test:unit` covers `js/shard.js` (which category each row of each key belongs to) and `js/db.js` (the router, run for real against an in-memory Firestore fake). `test:functions` runs `functions/index.js` itself in the Functions emulator — `reshardMember`/`onMemberCategoryChanged`, `updateTeamDates`, and the `wipe-team-data.js` cutover script. Everything uses the fake project `demo-esquerrapp` — no credentials, no Cloud Shell round-trip.
 
-Run `test:unit` after **any** change to `js/db.js` or `js/shard.js`, and the full suite after **any** change to `firestore.rules` or to the custom claims that rules read (`teamId`, `role`, `cats`).
+Run `test:unit` after **any** change to `js/db.js` or `js/shard.js`, `test:functions` after **any** change to `functions/`, and the full suite after **any** change to `firestore.rules` or to the custom claims that rules read (`teamId`, `role`, `cats`).
+
+**Inside the Functions emulator `admin.firestore.FieldValue` is undefined** — firebase-tools stubs firebase-admin and returns `firestore` bound to the module, and a bound function loses its statics. `functions/index.js` imports `FieldValue` from `firebase-admin/firestore` instead; keep new code doing the same, or it will work in production and throw in every test.
 
 If the rules suite says `Could not spawn java -version`, Java is installed but off that shell's PATH:
 `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspotin;$env:PATH"`

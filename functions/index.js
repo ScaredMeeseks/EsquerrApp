@@ -16,6 +16,13 @@ const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const admin = require("firebase-admin");
+// FieldValue comes from the modular subpath, NOT `admin.firestore.FieldValue`.
+// The Functions emulator stubs firebase-admin and hands back `firestore`
+// bound to the module (functionsEmulatorRuntime `Proxied.getOriginal`), and a
+// bound function loses its static properties — so `admin.firestore.FieldValue`
+// is undefined under the emulator and every delete()/serverTimestamp() throws
+// there while working in production. Same sentinels, testable in both.
+const {FieldValue} = require("firebase-admin/firestore");
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -208,7 +215,7 @@ async function reshardMember(teamId, uid, toCat) {
         const removal = {};
         fields.forEach((f) => {
           taken[f] = parsed[f];
-          removal[f] = admin.firestore.FieldValue.delete();
+          removal[f] = FieldValue.delete();
         });
         if (srcIsBlob) {
           const rest = Object.assign({}, parsed);
@@ -405,7 +412,7 @@ exports.onPushQueueCreate = onDocumentCreated({
     await snap.ref.update({
       status: tokenEntries.length ? "sent" : "no_tokens",
       tokenCount: tokenEntries.length,
-      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      sentAt: FieldValue.serverTimestamp(),
     });
   } catch (err) {
     logger.error("Failed to update pushQueue status", {error: err.message});
@@ -827,7 +834,7 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
   const {role, cats} = claimsFor(club, isLead, m);
   await admin.auth().setCustomUserClaims(uid, {teamId: clubId, role, cats});
   await db.collection("users").doc(uid).set(
-      {claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp()},
+      {claimsUpdatedAt: FieldValue.serverTimestamp()},
       {merge: true},
   );
   logger.info("joinClub", {uid, clubId, isLead, role, cats});
@@ -936,7 +943,7 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   await db.collection("users").doc(uid).set({
     roles,
     staffCategories: cats,
-    claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    claimsUpdatedAt: FieldValue.serverTimestamp(),
   }, {merge: true});
   logger.info("setRole", {by: caller.uid, uid, roles, role, cats});
   return {ok: true, role, cats};
@@ -1026,7 +1033,7 @@ exports.onRosterWritten = onDocumentWritten({
       staffCategories: m.staffCats,
       category: detached ? "" : (m.category || prevCat),
       team: detached ? "" : (m.team || prevTeam),
-      claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      claimsUpdatedAt: FieldValue.serverTimestamp(),
     };
     if (detached && prevCat) {
       patch.prevCategory = prevCat;
@@ -1096,7 +1103,7 @@ exports.onClubLeadChanged = onDocumentWritten({
         staffCategories: m.staffCats,
         category: m.category || outgoing.data().category || "",
         team: m.team || outgoing.data().team || "",
-        claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        claimsUpdatedAt: FieldValue.serverTimestamp(),
       });
     } else {
       // Neither player nor staff: leading the club was their only reason to
@@ -1105,13 +1112,13 @@ exports.onClubLeadChanged = onDocumentWritten({
       await admin.auth().setCustomUserClaims(outgoing.id,
           {teamId: null, role: "player", cats: []});
       await outgoing.ref.update({
-        teamId: admin.firestore.FieldValue.delete(),
+        teamId: FieldValue.delete(),
         isTeamLead: false,
         roles: [],
         staffCategories: [],
         category: "",
         team: "",
-        claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        claimsUpdatedAt: FieldValue.serverTimestamp(),
       });
       // Drop them from the club roster blob, or they linger in every squad
       // list until something else rewrites it. Every shard: a lead has no
@@ -1139,7 +1146,7 @@ exports.onClubLeadChanged = onDocumentWritten({
     await incoming.ref.update({
       isTeamLead: true,
       roles: rolesFor(true, [...new Set([...prev, ...m.roles])]),
-      claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      claimsUpdatedAt: FieldValue.serverTimestamp(),
     });
     logger.info("onClubLeadChanged: promoted", {clubId, uid: incoming.id});
   } else {
@@ -1204,7 +1211,7 @@ async function scrubDataDoc(ref, mutate) {
   const fields = {};
   const drop = mutate(raw) || [];
   drop.forEach((f) => {
-    fields[f] = admin.firestore.FieldValue.delete();
+    fields[f] = FieldValue.delete();
   });
   if (!Object.keys(fields).length) return false;
   await ref.update(fields);
@@ -1275,7 +1282,7 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
           await d.ref.set({
             staffEmails: staffKeep,
             playerEmails: playerKeep,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           }, {merge: true});
           touched++;
         }
@@ -1654,7 +1661,7 @@ exports.archiveSeason = onRequest(
                 .collection("seasons").doc(safeLabel),
             {
               label: safeLabel,
-              archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+              archivedAt: FieldValue.serverTimestamp(),
               archivedBy: decoded.uid,
             },
         );
@@ -1705,7 +1712,7 @@ exports.archiveSeason = onRequest(
               const fields = {};
               for (const f of Object.keys(s.snap.data() || {})) {
                 if (f === "_migrated" || f === "category") continue;
-                fields[f] = admin.firestore.FieldValue.delete();
+                fields[f] = FieldValue.delete();
               }
               fields.category = s.cat;
               batch.update(s.ref, fields);

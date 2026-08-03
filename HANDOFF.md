@@ -7,7 +7,7 @@ _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 S
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
 - **Production is on v43.** Stages B, C and D (v44) plus the Stage E wipe script are committed on branch **`phase5-sharding`** — **not pushed, not merged, not deployed.** Working tree clean.
 - **Start tomorrow by reading "Stage E — the cutover" below.** It is a runbook; follow it in order. Every artifact it needs now exists — step 0 is done.
-- **Tests run on this Windows box.** `cd test && npm test` runs everything; `npm run test:unit` is the fast path (shard + router, pure Node, ~1s, no emulator and no Java) and `npm run test:rules` needs the Firestore emulator against the fake project `demo-esquerrapp`. **129 passing: 42 unit (shard + router, no Java) + 87 rules.** If the rules suite says `Could not spawn java -version`, Java is installed but off this shell's PATH:
+- **Tests run on this Windows box.** `cd test && npm test` runs everything; `npm run test:unit` is the fast path (shard + router, pure Node, ~1s, no emulator and no Java), `npm run test:rules` needs the Firestore emulator and `npm run test:functions` needs Firestore + Functions, both against the fake project `demo-esquerrapp`. **143 passing: 42 unit + 87 rules + 14 functions.** If a suite says `Could not spawn java -version`, Java is installed but off this shell's PATH:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
 
 ### ⚠️ Nothing is deployable until the wipe runs
@@ -57,7 +57,9 @@ Two helpers carry it: `readDataShards()` (one collection read, grouped by base k
 
 **New trigger `onMemberCategoryChanged`** moves a member's roster-joined rows when their category changes. It watches `users/{uid}` rather than hooking each writer, so `onRosterWritten`, `setRole` and the client's re-assign flow are all covered.
 
-⚠️ **Stage D is the only untested code left.** There is no functions harness in this repo; `db.js` gained one (`test/router.test.js`, an in-memory Firestore fake) but `functions/index.js` has none. Before cutover, exercise `reshardMember` against the Admin SDK: move a player between categories and confirm the rows left one shard and arrived in the other exactly once. Extracting the shard helpers into their own module so they can be unit-tested is the obvious next improvement.
+✅ **Stage D is tested now.** `npm run test:functions` boots the Firestore **and Functions** emulators and drives the real triggers by writing documents: `reshardMember` (rows collected from every shard including `__none`, landing exactly once; `category` preserved; merge- and blob-format sources both emptied; `uid_date` keys moved without touching neighbours; same-category write a no-op; move back; unassign → `__none`) and `updateTeamDates` (unions across shards). `test/wipe.test.js` covers the cutover script the same way.
+
+⚠️ **One production change came out of writing those tests**: `functions/index.js` now imports `FieldValue` from `firebase-admin/firestore` instead of using `admin.firestore.FieldValue`. Inside the Functions emulator that property is undefined — firebase-tools stubs firebase-admin and returns `firestore` *bound*, which drops its statics — so every `delete()`/`serverTimestamp()` threw there while working in production. Same sentinels, 13 call sites, no behaviour change; **but it is a functions change, so step 2 of the runbook is not optional.**
 
 ### ⬜ Stage E — the cutover (RUNBOOK — follow in order)
 
@@ -127,7 +129,7 @@ cd ~/EsquerrApp && git pull && ./deploy.sh rules
 ### Verification (step 6) — first item is not optional
 
 - **The safety rule.** As a coach scoped to one category, edit a training. Then confirm with the Admin SDK that another category's shard is **byte-unchanged**. This is the property the entire phase exists for; `test/router.test.js` proves it against a fake, this proves it against production.
-- **`reshardMember`** — move a player between categories and confirm the rows left one shard and arrived in the other **exactly once**. `functions/index.js` has no automated test and this is its riskiest path.
+- **`reshardMember`** — move a player between categories and confirm the rows left one shard and arrived in the other **exactly once**. Covered by `npm run test:functions` against the emulator, so this is confirmation rather than the only evidence — but it is still the riskiest path in the functions and production is where it matters.
 - **Per key** — create one record of each type, confirm it lands in the right shard with a `category` field, and confirm a coach in another category cannot read it.
 - **Schedulers** — confirm a training reminder still finds its team, i.e. that `updateTeamDates` unioned across shards rather than replacing.
 - **Two devices, two categories, editing at once** — the clobber case that motivated the phase.

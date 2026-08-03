@@ -468,7 +468,7 @@ Every hardcoded `data/fa_x` is gone. Two helpers carry the whole change: `readDa
 
 One subtlety worth keeping: the read/write format is taken from **the document**, not from the key. A merge key can still have a legacy `{v:"…"}` document, and deleting fields that live inside a blob would remove nothing while the copy still landed — the rows would exist twice.
 
-**Stage D has no automated test** — there is no functions harness in this repo. `reshardMember` in particular must be exercised against the Admin SDK before cutover: move a player between categories and confirm the rows left one shard and arrived in the other exactly once.
+**Stage D had no automated test when it was written** — there was no functions harness in this repo. There is one now (`npm run test:functions`, added later the same day); `reshardMember` and `updateTeamDates` are covered against the real triggers in the Functions emulator. Confirming the same move in production during the cutover is still worth doing, but it is no longer the only evidence.
 
 ### 2026-08-03 — Test harness for the router
 
@@ -483,9 +483,7 @@ The two tests that matter most are the ones that were bugs:
 
 Plus: the per-document diff (a re-render that changes nothing writes nothing), refusal of unparseable and wrong-shaped blobs while a genuinely empty blob still clears, a row moving between shards in one batch, one `firestore-sync` per key not per document, removed and unrecognised shards, and per-field merge keys keeping `category`.
 
-**129 passing**: 42 unit (`npm run test:unit`, no Java) + 87 rules.
-
-Still untested: `functions/index.js`. There is no harness for it, and `reshardMember` is the piece that most deserves one.
+**129 passing at the time**: 42 unit (`npm run test:unit`, no Java) + 87 rules. The functions harness that closed the remaining gap came later the same day — see below.
 
 **Committed as `02fe60e` on branch `phase5-sharding`** — not pushed, not merged, not deployed. `HANDOFF.md` carries the Stage E runbook; `CLAUDE.md` was updated for the new script load order, the sharded data model and the `npm run test:unit` safety net.
 
@@ -504,4 +502,12 @@ Two decisions worth the ink:
 
 `seasons/**` is reported in the inventory but kept unless asked for: an archive is a season that already happened, not the disposable pre-season content the wipe scope covers.
 
-**Tested against the Firestore emulator** (driver in the scratchpad, not in the repo — it needs `firebase-admin`, which `test/` deliberately does not depend on). Six cases: the dry run changes nothing and flags legacy/unparseable/merge-format docs; `--team` leaves the other club byte-identical; the full run empties data + records + queue while keeping the team doc, its name, the archives and every keeper; a second run is a no-op; `--include-seasons` takes the archive subtree; an unknown `--team` exits non-zero.
+### 2026-08-03 — A test harness for the Cloud Functions
+
+Stage D was the last untested code, and `reshardMember` the piece that most deserved a test. `test/functions.test.js` and `test/wipe.test.js` now run under the **Functions** emulator (`npm run test:functions`), driving the real `functions/index.js` the way production does — write a document, wait for the trigger. **143 passing**: 42 unit + 87 rules + 14 functions.
+
+`reshardMember` is covered on every axis that can lose or duplicate a row: rows collected from *every* shard including `__none` and landing exactly once; `category` surviving on each shard it touches; merge-format **and** legacy blob-format sources emptied (the format is read off the document, not the key); `uid_date` keys moved while a `{uid}_legacy` neighbour stays put; a same-category write being a no-op; the move back; and an unassigned member's rows parking in `__none`. `updateTeamDates` gets the union-across-shards test that its silent-failure mode deserves. `wipe.test.js` runs the wipe script as a child process and asserts both halves of its contract.
+
+**One production change came out of this.** `admin.firestore.FieldValue` is **undefined inside the Functions emulator**: firebase-tools stubs firebase-admin and returns `firestore` bound to the module (`Proxied.getOriginal` → `value.bind(target)`), and a bound function loses its statics. The first run of the reshard test died on `FieldValue.delete()` — code that works in production, since the deployed `deleteMember` uses the same expression. `functions/index.js` now takes `FieldValue` from the modular `firebase-admin/firestore` subpath: identical sentinels, and testable in both places. Thirteen call sites, no behaviour change. The one-off scripts in `functions/` still use `admin.firestore.FieldValue` — they run under plain Node, never the emulator.
+
+The suites share one emulator but not one project: `wipe.test.js` talks to it under the script's own hardcoded `esquerrapp` id while the emulator's project is `demo-esquerrapp`, so a `--apply` with no `--team` cannot reach the other suite's teams and the production script needs no test hook.

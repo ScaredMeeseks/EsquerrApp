@@ -1,17 +1,20 @@
-# Firestore rules tests (club isolation)
+# EsquerrApp tests
 
-Self-contained security-rules tests for `../firestore.rules`. They exercise the
-Firestore emulator against a demo project — **no production data or credentials**.
+Dev-only suite covering the shard router (`js/`), the security rules
+(`../firestore.rules`) and the Cloud Functions (`../functions/`). Everything
+runs against emulators on a demo project — **no production data or
+credentials**. **143 passing**: 42 unit + 87 rules + 14 functions.
 
 ## Run locally (Windows dev box — Java 21 + firebase-tools are installed)
 
 ```bash
 cd test
-npm test            # everything
-npm run test:unit   # shard + router — pure Node, no emulator, no Java, ~1s
-npm run test:shard  # js/shard.js routing rules only
-npm run test:router # js/db.js against an in-memory Firestore
-npm run test:rules  # boots the Firestore emulator and runs the rules suite
+npm test               # everything
+npm run test:unit      # shard + router — pure Node, no emulator, no Java, ~1s
+npm run test:shard     # js/shard.js routing rules only
+npm run test:router    # js/db.js against an in-memory Firestore
+npm run test:rules     # boots the Firestore emulator and runs the rules suite
+npm run test:functions # boots Firestore + Functions and drives the real triggers
 ```
 
 If `npm run test:rules` says `Could not spawn java -version`, Java is installed
@@ -98,6 +101,40 @@ found after the router was first written.
   category ignored rather than merged and duplicated forever.
 - **Per-field merge keys**: only the changed field is written and `category`
   survives, without which the shard falls out of the scoped query.
+
+## `functions.test.js` + `wipe.test.js` — the Cloud Functions (`npm run test:functions`)
+
+The only tests that run `functions/index.js` itself. They boot the **Functions**
+emulator alongside Firestore and drive the triggers the way production does — by
+writing a document and waiting — so the trigger wiring is covered too, not just
+the helpers.
+
+`reshardMember` is why the file exists. It is the riskiest path in the
+functions: it moves a member's medical history between category shards, it is
+the only writer that can (the old coach's client cannot resolve the uid any
+more, the new coach never downloaded the old shard), and a mistake either
+duplicates a row or loses one. Covered: rows collected from *every* shard
+including `__none` and landing exactly once; the `category` field surviving on
+each shard it touches (without it the shard drops out of the client's scoped
+query and goes invisible); merge-format **and** legacy blob-format sources
+emptied, because the format is read off the document, not the key; `uid_date`
+keys moved while `{uid}_legacy`-style neighbours stay put; a same-category write
+being a no-op; the move back; and an unassigned member's rows parking in
+`__none`. Plus `updateTeamDates` unioning across shards rather than replacing.
+
+`wipe.test.js` runs the real `functions/wipe-team-data.js` as a child process
+and asserts both halves of its contract — what it deletes and what it keeps.
+It is irreversible and runs once against production, which is reason enough.
+It talks to the emulator under the script's own hardcoded project id
+(`esquerrapp`, not `demo-esquerrapp`), so the two suites cannot see each
+other's teams and the script needs no test hook.
+
+Note for anyone reading a stack trace: inside the Functions emulator
+`admin.firestore.FieldValue` is **undefined** — firebase-tools stubs
+firebase-admin and hands back `firestore` bound to the module, and a bound
+function loses its statics. `functions/index.js` therefore imports `FieldValue`
+from `firebase-admin/firestore`, which behaves the same in production and
+actually works under the emulator.
 
 ## `shard.test.js` — the routing rules (`npm run test:shard`)
 
