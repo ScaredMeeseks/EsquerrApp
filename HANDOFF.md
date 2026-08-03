@@ -2,7 +2,16 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
-## v47 — ready to push (2026-08-03)
+## v48 — staff home page (2026-08-03)
+
+The coach now lands on **`staff-home`** instead of Registrations: this week and next week's sessions and matches with availability counts and call-up status, players out of action with expected return, and a load-to-watch list. Frontend only — push to `main`, no `./deploy.sh`. Tests green at 161.
+
+Two judgement calls worth knowing:
+
+- **The load-to-watch list is capped at 6 rows.** The readiness classifier flagged **16 of 25** demo players; the card badge shows the true count and "+N more" links to the roster. That ratio is itself an argument for the parked readiness work below — a classifier that flags two thirds of a squad is not discriminating.
+- **A coach who is also a player still lands on `player-home`**, because the player section comes first in the sidebar and `renderSidebar()` picks the first item. Say if you would rather staff always win.
+
+## v47 — shipped (2026-08-03)
 
 Three demo-walkthrough fixes. Frontend + seeder only — **no rules or functions changed, so no `./deploy.sh`**. `APP_VERSION` and `sw.js` `CACHE_NAME` are at **47**. Tests green at 161.
 

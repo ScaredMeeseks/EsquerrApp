@@ -608,3 +608,22 @@ The alphabetical pass fills **players before staff**: a folder of squad faces ty
 The download token is minted **before** upload, not after: a Firebase download URL is just the object path plus a token *we* supply as metadata, so it can be known in advance — which is what lets `profilePic` be set on the person object before `fa_users` is assembled, and lets the offline dry run print the exact URLs it will produce. `profilePic` is written to **both** `users/{uid}` and the `fa_users` shard, because the roster reads the shard while the profile screen reads the doc; setting one alone half-applies the picture, and `--verify` now checks the two agree and that every URL is backed by a real object. `--purge` deletes the blobs too — Storage objects are not reachable from Firestore, so a document-only purge stranded every image in the bucket.
 
 **Schedule dates are written directly, not waited for.** The first re-seed with faces ended on `trainingDates 68, matchDates 0`, which looks exactly like a broken `updateTeamDates` and is not one: the trigger writes only its own field with `{merge: true}`, but it fires once per shard and finishes when it finishes, so a `--verify` seconds later caught one invocation done and the other still queued. `apply()` no longer resets the two arrays when it touches the team doc, and writes both from the generated calendar as its final step. The trigger's own write then lands the same values and is a no-op. `backfill-team-dates.js` remains the repair tool for clubs seeded before this.
+
+### 2026-08-03 — Staff home: the coach gets a landing page (v48)
+
+Coaches landed on Registrations — a queue that is empty most of the time, and a poor first screen both for daily use and for a demo. `staff-home` is now the first staff sidebar item, so `renderSidebar()`'s "first page in the list" rule makes it the landing page; `fallbackPage()` sends staff there too.
+
+**Deliberately not `renderWeekActivities()`.** That function answers "what have I got on, and have I replied?" for the logged-in *player* — it renders their own availability buttons, their call-up status, their RPE prompts. A coach's question is the inverse, so `renderStaffWeek()` is a separate function showing counts rather than personal answers. It does reuse `getWeekBounds()`, `matchLabel()`, `tDayDDMM()` and `computeReadiness()`.
+
+The page has four cards: this week, next week, out of action, load to watch.
+
+- **Availability counts read RAW**, not through `getEffectiveAnswer()`. That helper assumes `'yes'` for an unlocked session — correct for showing a player their default, but it would report the entire squad as having replied. The staff override still wins, matching the helper's own precedence.
+- **"0 available" is suppressed before anyone has answered.** Technically true, reads as alarming; only the "no answer" count shows until somebody replies.
+- **Out of action** lists active and recovering injuries sorted by expected return, tagging a return inside 7 days, a date already passed, and no date at all as three different things.
+- **Load to watch caps at 6 rows.** The readiness classifier flags orange generously — on the demo squad it lights up **16 of 25** — and a list that long is a wall, not a warning. The card badge still carries the true count and a "+N more" link goes to the roster. Anyone already listed as injured is skipped rather than reported twice, since readiness is load-only and knows nothing about injuries.
+- Rows are whole-row links that set the same page-state variables the existing links do (`detailTrainingDate`, `detailMatchId`, `medicalDetailPlayerId`, `staffViewPlayerId`) — navigating without setting them lands on a detail page showing whatever was selected last.
+- `staff-home` was added to `STAFF_PAGES`, `CATEGORY_PAGES` and to all eight `KEY_PAGES` entries whose data it reads, so a remote change re-renders it.
+
+That 16-of-25 figure is itself evidence for the parked readiness work: a classifier that flags two thirds of a squad is not discriminating. The cap is a presentation fix, not a fix for that.
+
+Verified headlessly against a seeder dump — the render path was driven with the real demo blobs to check counts, sorting and the injury tags before it ever reached a browser.

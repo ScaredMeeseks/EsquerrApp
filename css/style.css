@@ -3558,3 +3558,45 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 @keyframes savespin{to{transform:rotate(360deg);}}
 .save-confirmed{box-shadow:0 0 0 2px #2e9e5b inset;}
 .save-queued{box-shadow:0 0 0 2px #d99a2b inset;}
+
+/* ===== Staff Home ===== */
+/* The coach's landing page. Rows are whole-row links to the page that owns
+   the thing they describe, so they need the affordance of one. */
+.shome-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+.shome-row {
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: .7rem .9rem; margin-bottom: .6rem; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.shome-row:last-child { margin-bottom: 0; }
+.shome-row:hover { border-color: var(--primary); background: rgba(0,0,0,.02); }
+.shome-row-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .25rem; }
+.shome-row-label { font-weight: 600; font-size: .92rem; }
+.shome-row-meta { font-size: .8rem; color: var(--text-secondary); display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.shome-when { font-size: .82rem; color: var(--text-secondary); }
+.shome-score { margin-left: auto; font-weight: 800; font-size: .95rem; }
+.shome-badge {
+  display: inline-block; min-width: 1.4em; padding: .05rem .4rem; margin-left: .3rem;
+  border-radius: 999px; background: var(--primary); color: #fff;
+  font-size: .75rem; font-weight: 700; text-align: center;
+}
+.shome-count { font-weight: 600; }
+.shome-count + .shome-count { margin-left: .5rem; }
+.shome-count-ok { color: var(--success); }
+.shome-count-wait { color: var(--text-secondary); }
+.shome-tag {
+  font-size: .72rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px;
+  background: var(--border); color: var(--text-secondary); white-space: nowrap;
+}
+.shome-tag-done { background: #e8f5e9; color: var(--success); }
+.shome-tag-todo { background: var(--danger-light); color: var(--danger); }
+.shome-tag-soon { background: #ffe0b2; color: #e65100; }
+
+@media (max-width: 820px) {
+  .shome-split { grid-template-columns: 1fr; }
+}
+.shome-more {
+  margin: .5rem 0 0; font-size: .82rem; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer; text-align: center;
+}
+.shome-more:hover { color: var(--primary); }

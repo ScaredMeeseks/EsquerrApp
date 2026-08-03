@@ -14,6 +14,7 @@
     // ── Sidebar ──
     'sidebar.section_player':  { ca:'Jugador', es:'Jugador', en:'Player' },
     'sidebar.player_home':     { ca:'Resum', es:'Resumen', en:'Overview' },
+    'sidebar.staff_home':      { ca:'Inici', es:'Inicio', en:'Home' },
     'sidebar.training':        { ca:'Sessions d\'entrenament', es:'Sesiones de entrenamiento', en:'Training Sessions' },
     'sidebar.my_stats':        { ca:'Les meves estadístiques', es:'Mis estadísticas', en:'My Stats' },
     'sidebar.player_matchday': { ca:'Jornada', es:'Jornada', en:'Matchday' },
@@ -108,6 +109,24 @@
     'home.next_week':     { ca:'Setmana vinent', es:'Próxima semana', en:'Next Week' },
     'home.change_photo':  { ca:'Canviar foto', es:'Cambiar foto', en:'Change photo' },
     'home.age_suffix':    { ca:'anys', es:'años', en:'years' },
+
+    // ── Staff Home ──
+    'shome.title':           { ca:'Resum del cos tècnic', es:'Resumen del cuerpo técnico', en:'Staff overview' },
+    'shome.answered':        { ca:'han respost', es:'han respondido', en:'answered' },
+    'shome.available':       { ca:'disponibles', es:'disponibles', en:'available' },
+    'shome.awaiting':        { ca:'sense resposta', es:'sin respuesta', en:'no answer' },
+    'shome.conv_sent':       { ca:'Convocatòria enviada', es:'Convocatoria enviada', en:'Call-up sent' },
+    'shome.conv_pending':    { ca:'Convocatòria pendent', es:'Convocatoria pendiente', en:'Call-up pending' },
+    'shome.out_of_action':   { ca:'Baixes', es:'Bajas', en:'Out of action' },
+    'shome.none_out':        { ca:'Cap jugador lesionat. 💪', es:'Ningún jugador lesionado. 💪', en:'Nobody out injured. 💪' },
+    'shome.expected_return': { ca:'Tornada prevista', es:'Vuelta prevista', en:'Expected return' },
+    'shome.returning_soon':  { ca:'Torna aquesta setmana', es:'Vuelve esta semana', en:'Back this week' },
+    'shome.overdue':         { ca:'Data superada', es:'Fecha superada', en:'Past due' },
+    'shome.no_return_date':  { ca:'Sense data', es:'Sin fecha', en:'No date set' },
+    'shome.watch_list':      { ca:'Càrrega a vigilar', es:'Carga a vigilar', en:'Load to watch' },
+    'shome.none_watch':      { ca:'Cap jugador amb càrrega elevada.', es:'Ningún jugador con carga elevada.', en:'No players flagged for load.' },
+    'shome.squad_size':      { ca:'jugadors', es:'jugadores', en:'players' },
+    'shome.more':            { ca:'més a la plantilla', es:'más en la plantilla', en:'more in the squad' },
 
     // ── Week Activities ──
     'activity.badge_match':    { ca:'Partit', es:'Partido', en:'Match' },
@@ -1089,7 +1108,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 47;
+  const APP_VERSION = 48;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2628,6 +2647,7 @@
 
     if (roles.includes('staff')) {
       items.push({ section: t('sidebar.section_staff') });
+      items.push({ id: 'staff-home', icon: '🏠', label: t('sidebar.staff_home') });
       items.push({ id: 'registrations', icon: '📝', label: t('sidebar.registrations') });
       items.push({ id: 'manage-roster', icon: '<img src="img/icon-boot.png" class="sidebar-img-icon">', label: t('sidebar.manage_roster') });
       items.push({ id: 'staff-training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: t('sidebar.staff_training') });
@@ -2741,6 +2761,7 @@
 
   // Pages that require a specific role
   const STAFF_PAGES = new Set([
+    'staff-home',
     'staff-training', 'staff-training-detail', 'matchday',
     'convocatoria', 'staff-matchday', 'tactics',
     'manage-roster', 'registrations', 'staff-notifications',
@@ -2757,7 +2778,7 @@
     // is neither player nor staff has no player-home and no registrations —
     // settings is the only page they have, so it is the last resort.
     const fallbackPage = () =>
-      roles.includes('staff') ? 'registrations' :
+      roles.includes('staff') ? 'staff-home' :
         roles.includes('player') ? 'player-home' :
           (session.isAdmin || session.isTeamLead) ? 'settings' : 'player-home';
 
@@ -2776,6 +2797,7 @@
     }
 
     const renderers = {
+      'staff-home': renderStaffHome,
       'player-home': renderPlayerHome,
       'match-detail': renderMatchDetail,
       'training-detail': renderTrainingDetail,
@@ -2818,7 +2840,7 @@
       // 'tactics' is deliberately absent: its boards are club-wide drawings
       // with no category dimension, so a bar there would imply a filter that
       // does nothing.
-      var CATEGORY_PAGES = new Set(['registrations', 'staff-training', 'staff-training-detail', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'staff-training-detail', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + catBar + fn(session);
     } else {
@@ -9752,6 +9774,188 @@
   let rosterTeamFilter = 'all';
   let stdTeamFilter = null; // null = all, Set of letters = multi-select
   let staffViewPlayerId = null;
+  /* ── Staff home ─────────────────────────────────────────────
+     The coach's landing page. Deliberately NOT renderWeekActivities():
+     that one answers "what do I have on, and have I replied?" for the
+     logged-in player — it renders their own availability buttons and
+     call-up status, which a coach has no use for. The coach's question is
+     the inverse: who has answered, who is fit, who is carrying load.
+
+     Everything here is read-only and links elsewhere; nothing on this page
+     writes, so it can be rebuilt on any sync without losing input. */
+
+  /** Fit-for-purpose week list for staff: counts, not personal answers. */
+  function renderStaffWeek(weekOffset, players) {
+    const { start, end } = getWeekBounds(weekOffset);
+    const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
+    const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
+    const matchAvail = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
+    const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    const curCat = getCurrentCategory();
+    const rows = [];
+
+    training.filter(tr => tr.date >= start && tr.date <= end)
+        .filter(tr => !curCat || (tr.category || '') === curCat)
+        .forEach(tr => {
+          let available = 0; let answered = 0;
+          players.forEach(p => {
+            const k = p.id + '_' + tr.date;
+            // The staff override wins, exactly as getEffectiveAnswer() has it —
+            // but read RAW here: getEffectiveAnswer() assumes 'yes' for an
+            // unlocked session, which would report everyone as having replied.
+            const v = overrides[k] || availData[k] || '';
+            if (!v) return;
+            answered++;
+            if (v === 'yes' || v === 'late') available++;
+          });
+          rows.push({
+            kind: 'training', date: tr.date, time: tr.time || '',
+            label: sanitize(tr.focus || t('activity.badge_training')),
+            place: sanitize(tr.location || ''),
+            answered, available, total: players.length,
+            link: 'staff-training-detail', linkId: tr.date,
+          });
+        });
+
+    matches.filter(m => m.date >= start && m.date <= end)
+        .filter(m => !curCat || (m.category || '') === curCat)
+        .forEach(m => {
+          const sent = sentData[m.id];
+          const called = sent && Array.isArray(sent.players) ? sent.players.length : 0;
+          let available = 0; let answered = 0;
+          players.forEach(p => {
+            const v = matchAvail[p.id + '_' + m.id];
+            if (!v) return;
+            answered++;
+            if (v === 'disponible') available++;
+          });
+          rows.push({
+            kind: 'match', date: m.date, time: m.time || '',
+            label: matchLabel(m), place: sanitize(m.location || ''),
+            answered, available, total: players.length, called,
+            convSent: !!sent, link: 'match-detail', linkId: m.id,
+          });
+        });
+
+    if (!rows.length) {
+      return '<p style="color:var(--text-secondary)">' + t('activity.no_activities') + '</p>';
+    }
+    rows.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+    return rows.map(r => {
+      const badge = r.kind === 'match'
+        ? '<span class="badge badge-yellow">' + t('activity.badge_match') + '</span>'
+        : '<span class="badge badge-green">' + t('activity.badge_training') + '</span>';
+      const waiting = r.total - r.answered;
+      // Before anyone has replied, "0 available" is technically true and
+      // reads as alarming. Show only what is actually known.
+      const counts = (r.answered
+        ? `<span class="shome-count shome-count-ok">${r.available} ${t('shome.available')}</span>`
+        : '') +
+        (waiting > 0 ? `<span class="shome-count shome-count-wait">${waiting} ${t('shome.awaiting')}</span>` : '');
+      const conv = r.kind === 'match'
+        ? (r.convSent
+          ? `<span class="shome-tag shome-tag-done">${t('shome.conv_sent')} · ${r.called}</span>`
+          : `<span class="shome-tag shome-tag-todo">${t('shome.conv_pending')}</span>`)
+        : '';
+      return `<div class="shome-row" data-shome-link="${r.link}" data-shome-id="${sanitize(String(r.linkId))}">
+        <div class="shome-row-head">${badge}<span class="shome-when">${tDayDDMM(r.date)} · ${sanitize(r.time)}</span>${conv}</div>
+        <div class="shome-row-label">${r.label}</div>
+        <div class="shome-row-meta">${r.place ? r.place + ' · ' : ''}${counts}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderStaffHome(session) {
+    const users = getUsers();
+    const curCat = getCurrentCategory();
+    const players = users.filter(u => (u.roles || []).includes('player'))
+        // Same rule the roster uses: an uncategorised player belongs to
+        // Registrations, not to somebody else's squad.
+        .filter(u => !curCat || (u.category || '') === curCat);
+
+    // ── Out of action ──
+    const injuries = JSON.parse(localStorage.getItem('fa_injuries') || '[]');
+    const byId = new Map(players.map(p => [String(p.id), p]));
+    const today = localDateStr(new Date());
+    const inAWeek = localDateStr(new Date(Date.now() + 7 * 86400000));
+    const out = injuries
+        .filter(i => i.status === 'active' || i.status === 'recovering')
+        .filter(i => byId.has(String(i.playerId)))
+        .sort((a, b) => (a.expectedReturn || '9999').localeCompare(b.expectedReturn || '9999'));
+
+    const outHtml = out.length ? out.map(i => {
+      const p = byId.get(String(i.playerId));
+      const ret = i.expectedReturn || '';
+      let tag;
+      if (!ret) tag = `<span class="shome-tag">${t('shome.no_return_date')}</span>`;
+      else if (ret < today) tag = `<span class="shome-tag shome-tag-todo">${t('shome.overdue')} · ${tDayDDMM(ret)}</span>`;
+      else if (ret <= inAWeek) tag = `<span class="shome-tag shome-tag-soon">${t('shome.returning_soon')} · ${tDayDDMM(ret)}</span>`;
+      else tag = `<span class="shome-tag">${t('shome.expected_return')} · ${tDayDDMM(ret)}</span>`;
+      const what = sanitize(i.muscleGroup || '') + (i.muscleSub ? ' (' + sanitize(i.muscleSub) + ')' : '');
+      const dot = i.status === 'active' ? 'roster-status-injured' : 'roster-status-doubt';
+      return `<div class="shome-row" data-shome-link="medical-detail" data-shome-id="${sanitize(String(i.playerId))}">
+        <div class="shome-row-head"><span class="roster-status-icon ${dot}">${i.status === 'active' ? '✕' : '?'}</span>
+          <span class="shome-row-label">${sanitize(p.name)}</span>${tag}</div>
+        <div class="shome-row-meta">${what}${i.description ? ' – ' + sanitize(i.description) : ''}</div>
+      </div>`;
+    }).join('') : `<p style="color:var(--text-secondary)">${t('shome.none_out')}</p>`;
+
+    // ── Load watch ──
+    // Readiness is load-only and says nothing about injuries, so anyone
+    // already listed above is skipped rather than reported twice.
+    const outIds = new Set(out.map(i => String(i.playerId)));
+    const watch = players
+        .filter(p => !outIds.has(String(p.id)))
+        .map(p => ({ p, rd: computeReadiness(p.id) }))
+        .filter(x => x.rd.hasData && (x.rd.color === 'red' || x.rd.color === 'orange'))
+        .sort((a, b) => (a.rd.color === b.rd.color ? a.rd.score - b.rd.score : (a.rd.color === 'red' ? -1 : 1)));
+
+    /* Show only the worst few. The classifier flags orange generously — on
+       the demo squad it lights up 16 of 25 — and a list that long is a wall,
+       not a warning. The card's badge still carries the true total. */
+    const WATCH_LIMIT = 6;
+    const watchShown = watch.slice(0, WATCH_LIMIT);
+    const watchMore = watch.length - watchShown.length;
+
+    const watchHtml = watch.length ? watchShown.map(({ p, rd }) => `
+      <div class="shome-row" data-shome-link="staff-player-stats" data-shome-id="${sanitize(String(p.id))}">
+        <div class="shome-row-head">
+          <span class="readiness-dot readiness-${rd.color}"></span>
+          <span class="shome-row-label">${sanitize(p.name)}</span>
+          <span class="shome-score">${rd.score}</span>
+        </div>
+        <div class="shome-row-meta">${posCirclesHtmlGlobal(p)}</div>
+      </div>`).join('') + (watchMore > 0
+      ? `<p class="shome-more" data-shome-link="manage-roster" data-shome-id="">+${watchMore} ${t('shome.more')}</p>`
+      : '') : `<p style="color:var(--text-secondary)">${t('shome.none_watch')}</p>`;
+
+    return `
+      <h2 class="page-title">${t('shome.title')}
+        <span style="color:var(--text-secondary);font-weight:600;font-size:.7em;">${players.length} ${t('shome.squad_size')}</span>
+      </h2>
+      <div class="card">
+        <div class="card-title">${t('home.this_week')}</div>
+        ${renderStaffWeek(0, players)}
+      </div>
+      <div class="card">
+        <div class="card-title">${t('home.next_week')}</div>
+        ${renderStaffWeek(1, players)}
+      </div>
+      <div class="shome-split">
+        <div class="card">
+          <div class="card-title">${t('shome.out_of_action')} ${out.length ? '<span class="shome-badge">' + out.length + '</span>' : ''}</div>
+          ${outHtml}
+        </div>
+        <div class="card">
+          <div class="card-title">${t('shome.watch_list')} ${watch.length ? '<span class="shome-badge">' + watch.length + '</span>' : ''}</div>
+          ${watchHtml}
+        </div>
+      </div>`;
+  }
+
   let medicalDetailPlayerId = null;
   let medicalFilter = 'all';
   let medicalTeamFilter = 'all'; // 'all' | 'A' | 'B' | … — reset on category change
@@ -14756,6 +14960,24 @@
     // Convocatòria drag-and-drop
     bindConvocatoria();
 
+    /* Staff home rows → the page that owns the thing clicked.
+       Each target keeps its own page-state variable, so route through the
+       same ones the existing links set rather than inventing a parallel
+       path — a row that navigates without setting them lands on a detail
+       page rendering whatever was selected last. */
+    $$('[data-shome-link]').forEach(row => {
+      row.addEventListener('click', () => {
+        const to = row.dataset.shomeLink;
+        const id = row.dataset.shomeId;
+        if (to === 'staff-training-detail') detailTrainingDate = id;
+        else if (to === 'match-detail') detailMatchId = Number(id);
+        else if (to === 'medical-detail') medicalDetailPlayerId = id;
+        else if (to === 'staff-player-stats') staffViewPlayerId = id;
+        currentPage = to;
+        renderPage(getSession());
+      });
+    });
+
     // Roster player name click → staff player stats
     $$('.roster-player-link').forEach(a => {
       a.addEventListener('click', e => {
@@ -16316,19 +16538,19 @@
     // conservatively re-render every page. Badges refresh either way.
     // Debounced to avoid flicker; skips pages with active editing.
     const KEY_PAGES = {
-      fa_training_availability: ['player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical'],
-      fa_match_availability: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
-      fa_player_rpe: ['player-home', 'player-actions', 'my-stats', 'staff-player-stats', 'manage-roster', 'staff-training-detail'],
-      fa_training: ['player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats'],
-      fa_matches: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_training_availability: ['staff-home', 'player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical'],
+      fa_match_availability: ['staff-home', 'player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
+      fa_player_rpe: ['staff-home', 'player-home', 'player-actions', 'my-stats', 'staff-player-stats', 'manage-roster', 'staff-training-detail'],
+      fa_training: ['staff-home', 'player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats'],
+      fa_matches: ['staff-home', 'player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_matchday: ['player-home', 'player-matchday', 'staff-matchday', 'matchday'],
       fa_staff_notifications: ['staff-notifications'],
       fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
       fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
       fa_injury_zone: ['my-stats', 'medical', 'medical-detail'],
-      fa_injuries: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
-      fa_training_staff_override: ['player-home', 'training', 'training-detail', 'staff-training', 'staff-training-detail'],
-      fa_convocatoria_sent: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
+      fa_injuries: ['staff-home', 'player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
+      fa_training_staff_override: ['staff-home', 'player-home', 'training', 'training-detail', 'staff-training', 'staff-training-detail'],
+      fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
       fa_convocatoria_callup: ['player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
       fa_match_goals: ['player-matchday', 'staff-matchday', 'matchday', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_match_events: ['player-home', 'player-matchday', 'staff-matchday', 'matchday', 'match-detail', 'my-stats', 'staff-player-stats'],
