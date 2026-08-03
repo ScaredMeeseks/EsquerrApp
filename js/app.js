@@ -1084,7 +1084,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 44;
+  const APP_VERSION = 45;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2819,7 +2819,7 @@
     // Injury description hover → body map popup + medical tab bindings
     if (currentPage === 'medical') bindMedical();
     if (currentPage === 'medical-detail') bindMedicalDetail();
-    if (currentPage === 'my-stats') bindMyStatsInjuryPopup();
+    if (currentPage === 'my-stats' || currentPage === 'staff-player-stats') bindMyStatsInjuryPopup();
 
     // Scroll RPE and UA charts to the right (most recent) by default
     content.querySelectorAll('.rpe-chart-scroll').forEach(el => { el.scrollLeft = el.scrollWidth; });
@@ -4873,6 +4873,71 @@
     return { rpe: chartHtml, uaWeek: uaWeekHtml, acwr: acwrHtml };
   }
 
+  /* Injury history card + the body map beside it, for ONE player.
+     Shared by "My stats" (the player's own) and the staff view of a player
+     reached from Manage roster — same markup, so bindMyStatsInjuryPopup()
+     wires the hover popup on either page. */
+  function buildInjuryHistoryHtml(uid) {
+    const now = new Date();
+    const playerInjuries = getPlayerInjuries(uid)
+      .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+
+    let injuryListHtml = '';
+    if (playerInjuries.length === 0) {
+      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">' + t('stats.no_injuries') + '</div>';
+    } else {
+      injuryListHtml = playerInjuries.map(inj => {
+        const startD = new Date(inj.startDate + 'T12:00:00');
+        const endD = inj.endDate ? new Date(inj.endDate + 'T12:00:00') : now;
+        const days = Math.max(1, Math.floor((endD - startD) / 86400000) + 1);
+        const startStr = tDateDayMonth(inj.startDate);
+        const endStr = inj.status === 'resolved' ? (inj.endDate ? tDateDayMonth(inj.endDate) : '?') : t('stats.present');
+        const durationStr = inj.status !== 'resolved' ? (days + ' days so far') : (days === 1 ? '1 day' : days + ' days');
+        const note = inj.muscleGroup ? (inj.muscleGroup + (inj.muscleSub ? ' (' + inj.muscleSub + ')' : '')) : 'Injury';
+        const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
+        const statusColors = { active: '#ef5350', recovering: '#f9a825', resolved: '#66bb6a' };
+        const statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (statusColors[inj.status] || '#999') + ';margin-right:6px;"></span>';
+        const sevDot = '<span class="med-severity-badge med-severity-sm" style="background:' + (sevColors[inj.severity] || '#999') + ';margin-left:6px;">' + (inj.severity || '') + '</span>';
+        return `<div class="mystats-inj-row" data-zone-idx="${inj.bodyZone != null ? inj.bodyZone : ''}" style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.82rem;cursor:help;">
+          <div style="display:flex;align-items:center;">${statusDot}<span>${sanitize(note)}</span>${sevDot}</div>
+          <div style="text-align:right;color:var(--text-secondary);font-size:.75rem;">${startStr} – ${endStr}<br><strong>${durationStr}</strong></div>
+        </div>`;
+      }).join('');
+    }
+
+    // Body map SVG with a blinking dot on the current injury zone
+    const activePlayerInj = playerInjuries.find(inj => inj.status === 'active');
+    const currentZoneIdx = activePlayerInj ? activePlayerInj.bodyZone : null;
+    let bodyMapHtml = '';
+    if (activePlayerInj && currentZoneIdx != null && BODY_ZONES[currentZoneIdx]) {
+      const zone = BODY_ZONES[currentZoneIdx];
+      // Compute centroid of the polygon
+      const pairs = zone.pts.split(/\s+/).map(p => p.split(',').map(Number));
+      let cx = 0, cy = 0;
+      pairs.forEach(([x, y]) => { cx += x; cy += y; });
+      cx = (cx / pairs.length).toFixed(1);
+      cy = (cy / pairs.length).toFixed(1);
+      bodyMapHtml = `<div class="mystats-body-map">
+        <div style="position:relative;display:inline-block;line-height:0;">
+          <img src="img/cuerpos.png" style="display:block;height:180px;pointer-events:none;" />
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;">
+            <polygon points="${zone.pts}" fill="rgba(239,83,80,.25)" stroke="#ef5350" stroke-width=".5"/>
+            <circle cx="${cx}" cy="${cy}" r="1.8" class="mystats-injury-dot"/>
+          </svg>
+        </div>
+      </div>`;
+    }
+
+    return `
+      <div class="mystats-injury-row" style="margin-top:1rem;">
+        <div class="card mystats-injury-card">
+          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">${t('stats.injury_history')}</div>
+          ${injuryListHtml}
+        </div>
+        ${bodyMapHtml}
+      </div>`;
+  }
+
   function buildReadinessCard(rd) {
     if (!rd.hasData) {
       return `<div class="card">
@@ -5035,54 +5100,8 @@
       </div>`;
     }
 
-    // Injury history (from fa_injuries)
-    const playerInjuries = getPlayerInjuries(uid).sort((a, b) => b.startDate.localeCompare(a.startDate));
-
-    let injuryListHtml = '';
-    if (playerInjuries.length === 0) {
-      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">' + t('stats.no_injuries') + '</div>';
-    } else {
-      injuryListHtml = playerInjuries.map(inj => {
-        const startD = new Date(inj.startDate + 'T12:00:00');
-        const endD = inj.endDate ? new Date(inj.endDate + 'T12:00:00') : now;
-        const days = Math.max(1, Math.floor((endD - startD) / 86400000) + 1);
-        const startStr = tDateDayMonth(inj.startDate);
-        const endStr = inj.status === 'resolved' ? (inj.endDate ? tDateDayMonth(inj.endDate) : '?') : t('stats.present');
-        const durationStr = inj.status !== 'resolved' ? (days + ' days so far') : (days === 1 ? '1 day' : days + ' days');
-        const note = inj.muscleGroup ? (inj.muscleGroup + (inj.muscleSub ? ' (' + inj.muscleSub + ')' : '')) : 'Injury';
-        const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
-        const statusColors = { active: '#ef5350', recovering: '#f9a825', resolved: '#66bb6a' };
-        const statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (statusColors[inj.status] || '#999') + ';margin-right:6px;"></span>';
-        const sevDot = '<span class="med-severity-badge med-severity-sm" style="background:' + (sevColors[inj.severity] || '#999') + ';margin-left:6px;">' + (inj.severity || '') + '</span>';
-        return `<div class="mystats-inj-row" data-zone-idx="${inj.bodyZone != null ? inj.bodyZone : ''}" style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.82rem;cursor:help;">
-          <div style="display:flex;align-items:center;">${statusDot}<span>${sanitize(note)}</span>${sevDot}</div>
-          <div style="text-align:right;color:var(--text-secondary);font-size:.75rem;">${startStr} – ${endStr}<br><strong>${durationStr}</strong></div>
-        </div>`;
-      }).join('');
-    }
-
-    // Build body map SVG with blinking dot on current injury zone
-    const activePlayerInj = playerInjuries.find(inj => inj.status === 'active');
-    const currentZoneIdx = activePlayerInj ? activePlayerInj.bodyZone : null;
-    let bodyMapHtml = '';
-    if (activePlayerInj && currentZoneIdx != null && BODY_ZONES[currentZoneIdx]) {
-      const zone = BODY_ZONES[currentZoneIdx];
-      // Compute centroid of the polygon
-      const pairs = zone.pts.split(/\s+/).map(p => p.split(',').map(Number));
-      let cx = 0, cy = 0;
-      pairs.forEach(([x, y]) => { cx += x; cy += y; });
-      cx = (cx / pairs.length).toFixed(1);
-      cy = (cy / pairs.length).toFixed(1);
-      bodyMapHtml = `<div class="mystats-body-map">
-        <div style="position:relative;display:inline-block;line-height:0;">
-          <img src="img/cuerpos.png" style="display:block;height:180px;pointer-events:none;" />
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;">
-            <polygon points="${zone.pts}" fill="rgba(239,83,80,.25)" stroke="#ef5350" stroke-width=".5"/>
-            <circle cx="${cx}" cy="${cy}" r="1.8" class="mystats-injury-dot"/>
-          </svg>
-        </div>
-      </div>`;
-    }
+    // Injury history + body map → buildInjuryHistoryHtml, shared with the
+    // staff view of the same player.
 
     return `
       <h2 class="page-title">${t('page.my_stats')}</h2>
@@ -5100,13 +5119,7 @@
         ${attendDonutHtml}
       </div>
       ${matchTableHtml}
-      <div class="mystats-injury-row" style="margin-top:1rem;">
-        <div class="card mystats-injury-card">
-          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">${t('stats.injury_history')}</div>
-          ${injuryListHtml}
-        </div>
-        ${bodyMapHtml}
-      </div>
+      ${buildInjuryHistoryHtml(uid)}
       ${readinessHtml}
       ${acwrHtml}
       ${chartHtml}
@@ -5223,6 +5236,7 @@
         </div>
       </div>
       ${matchTableHtml}
+      ${buildInjuryHistoryHtml(uid)}
       ${readinessHtml}
       ${charts.acwr}
       ${charts.rpe}
@@ -16233,7 +16247,7 @@
       fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
       fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
       fa_injury_zone: ['my-stats', 'medical', 'medical-detail'],
-      fa_injuries: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
+      fa_injuries: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
       fa_training_staff_override: ['player-home', 'training', 'training-detail', 'staff-training', 'staff-training-detail'],
       fa_convocatoria_sent: ['player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
       fa_convocatoria_callup: ['player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],

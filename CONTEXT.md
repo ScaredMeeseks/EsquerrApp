@@ -528,4 +528,13 @@ Phase 5 is in production. The order held: rules with the write allowlist and the
 
 **What actually cost time: Application Default Credentials, not the cutover.** The wipe script died on its first read with `Cannot create property 'refresh_token' on string ''` — the error the old handoff attributed to a lapsed `gcloud auth login`. That diagnosis was wrong, and so was a second guess about a corrupt credentials file (there was none). Cloud Shell keeps ADC in a **temp directory**, and the Admin SDK only finds it when `GOOGLE_APPLICATION_CREDENTIALS` points there; `gcloud auth application-default set-quota-project` prints the path it wrote, and exporting that fixed it instantly. The export survives only in the tab it was run in. `firebase` and `gcloud` hold their own separate credentials, which is why `./deploy.sh` kept working throughout — a useful signal that the problem was ADC specifically, not authentication in general.
 
-**A bug found during the cutover that the cutover did not cause**: an injury created from the Medical page did not appear under roster → player detail. It looked like a routing fault. It was not — `renderStaffPlayerStats()` (app.js:5116) has no injury section at all, the block exists only in the player's own "My stats" (app.js:5103), and the Phase 5 diff touches no injury code. A pre-existing feature gap; mirroring the ~20-line block into the staff view with `uid = staffViewPlayerId` is the fix.
+**A bug found during the cutover that the cutover did not cause**: an injury created from the Medical page did not appear under roster → player detail. It looked like a routing fault. It was not — `renderStaffPlayerStats()` had no injury section at all, the block existed only in the player's own "My stats", and the Phase 5 diff touches no injury code. A pre-existing feature gap, fixed below.
+
+### 2026-08-03 — Injury history on the staff's player detail (v45)
+
+Roster → player detail now shows the same injury history card and body map the player sees on "My stats". Extracted rather than copied: `buildInjuryHistoryHtml(uid)` holds the list, the duration arithmetic, the status/severity dots and the centroid-dotted body map, and both `renderPlayerStats()` and `renderStaffPlayerStats()` call it. One template, so the two views cannot drift.
+
+Two bindings the card needs, easy to miss because neither is in the render function:
+
+- **`bindMyStatsInjuryPopup()`** is called from the page router by page name, and only `my-stats` was listed. Without `staff-player-stats` the rows render with `cursor:help` and no popup ever appears — the markup is identical, so nothing looks broken.
+- **`KEY_PAGES.fa_injuries`** decides which pages re-render on a `firestore-sync`, and `staff-player-stats` was absent. A coach sitting on a player's detail page would not have seen an injury logged from another device.

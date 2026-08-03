@@ -5,15 +5,15 @@ _Rolling document, overwritten each session. Last updated: 2026-08-03 (**Phase 5
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push to `main`; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
-- **Production is on v44, fully sharded.** `phase5-sharding` is merged into `main` and everything is deployed: frontend, functions, and the narrowed read rule. Working tree clean, nothing unpushed.
+- **Production is on v45 (web), fully sharded.** `phase5-sharding` is merged into `main` and everything is deployed: frontend, functions, and the narrowed read rule. Working tree clean, nothing unpushed.
 - **Category separation is now enforced by the database**, not by what the UI chooses to show. A coach scoped to one category cannot read another's data documents — medical records included.
 - **Tests run on this Windows box.** `cd test && npm test` runs everything; `npm run test:unit` is the fast path (shard + router, pure Node, ~1s, no emulator and no Java), `npm run test:rules` needs the Firestore emulator and `npm run test:functions` needs Firestore + Functions, both against the fake project `demo-esquerrapp`. **143 passing: 42 unit + 87 rules + 14 functions.** If a suite says `Could not spawn java -version`, Java is installed but off this shell's PATH:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
 
 ### Open items (none are blocking)
 
-1. **The APK has not been installed on the phones yet.** CI built it when `main` was pushed. Old v43 builds address documents nobody writes and will show an **empty app** — that is what the v43 version check exists to warn about. **Set `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` to 44 once the new APK is on the phones**, not before.
-2. **Roster → player detail shows no injury history.** `renderStaffPlayerStats()` (js/app.js:5116) has no injury section at all; the block exists only in `renderPlayerStats()` (the player's own "My stats", js/app.js:5103). Found during the cutover and confirmed **pre-existing** — the Phase 5 diff touches no injury code. Mirroring the ~20-line block into the staff view with `uid = staffViewPlayerId` is the fix.
+1. **The APK has not been installed on the phones yet — deliberately parked.** CI has built it (v44, and again at v45). Old v43 builds address documents nobody writes and will show an **empty app** — that is what the v43 version check exists to warn about. **Set `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` to the shipped version only once that APK is actually on the phones**, not before. Until then the web app is the working client.
+2. ~~Roster → player detail shows no injury history.~~ **Fixed in v45** — `buildInjuryHistoryHtml(uid)` is now shared by "My stats" and the staff view, with the hover popup and the `KEY_PAGES.fa_injuries` re-render wired for `staff-player-stats` too. Deployed to the web; the APK is a version behind by choice.
 3. **Three stranded accounts** (`mariogbaena@`, `oriol.garciaizq@`, `argi@esquerra.com`) still carry `teamId: 'default'` with `cats: []`. `teams/default`'s data was wiped; the accounts remain. The owner has said losing them is fine — delete or re-invite whenever.
 
 ### Clubs in production (verified 2026-08-03, post-cutover)
