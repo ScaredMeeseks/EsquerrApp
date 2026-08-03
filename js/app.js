@@ -999,6 +999,9 @@
 
   function setSession(user) {
     _currentSession = user;
+    // Before saveUsers() below writes fa_users through the router: the scope
+    // is derived from the session, so it has to follow the session's changes.
+    syncDbScope();
     if (user && auth.currentUser) {
       // Persist profile to Firestore. Strip password AND every server-owned
       // field — security rules reject client writes that change them.
@@ -1081,7 +1084,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 43;
+  const APP_VERSION = 44;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1120,6 +1123,16 @@
       return enabled.filter(function (k) { return mine.indexOf(k) !== -1; });
     }
     return (s.category && enabled.indexOf(s.category) !== -1) ? [s.category] : [];
+  }
+
+  /* Tell db.js which categories this session may see. From Stage C on, that
+     one list drives BOTH the data/ query and the router's write assert, and
+     it only takes effect on the next DB.init() — so call this after anything
+     that can change roles, category or the club's enabled categories, and
+     re-init if the set actually moved. */
+  function syncDbScope() {
+    try { DB.setScope(getVisibleCategories()); }
+    catch (e) { console.warn('DB scope update failed:', e); }
   }
 
   function getCurrentCategory() {
@@ -1278,7 +1291,7 @@
   }
 
   async function loadClubConfig(clubId) {
-    if (!clubId || clubId === 'default' || clubId === 'none') { _clubConfig = null; return null; }
+    if (!clubId || clubId === 'default' || clubId === 'none') { _clubConfig = null; syncDbScope(); return null; }
     _clubConfig = await getClub(clubId);
     if (_clubConfig) _clubConfig.rosters = await loadRosters(clubId, _clubConfig);
     // Update splash badge and cache image as base64 for instant next load
@@ -1302,6 +1315,9 @@
         }
       }
     }
+    // Enabled categories are part of the visible set, so the scope moves
+    // with the config as well as with the session.
+    syncDbScope();
     return _clubConfig;
   }
 
@@ -1801,7 +1817,7 @@
       users.push(newUser);
       saveUsers(users);
       // Sync team data between localStorage and Firestore
-      if (club) await DB.init(club.clubId);
+      if (club) await DB.init(club.clubId, getVisibleCategories());
       e.target.reset();
       errEl.hidden = true;
       _authFlowBusy = false;
@@ -1870,7 +1886,7 @@
       // Load club config + sync team data
       if (user.teamId && user.teamId !== 'none') {
         await loadClubConfig(user.teamId);
-        await DB.init(user.teamId);
+        await DB.init(user.teamId, getVisibleCategories());
       } else {
         // No team — flush stale localStorage so old data doesn't leak
         DB.flush();
@@ -1978,7 +1994,7 @@
     // new security rules authorize this session immediately.
     try { await auth.currentUser.getIdToken(true); } catch (e) { console.warn('Token refresh failed:', e); }
     await loadClubConfig(club.clubId);
-    await DB.init(club.clubId);
+    await DB.init(club.clubId, getVisibleCategories());
     // Add this user to the club's fa_users
     let users = getUsers();
     if (!users.find(u => String(u.id) === String(session.id))) {
@@ -15616,7 +15632,7 @@
             _currentSession = sess;  // update in-memory immediately
             await db.collection('users').doc(sess.id).set({ teamId: club.id, isTeamLead: true }, { merge: true });
             await loadClubConfig(club.id);
-            await DB.init(club.id);
+            await DB.init(club.id, getVisibleCategories());
           }
           _loadClubList();
           // Re-render settings so "Editar categories" appears
@@ -16111,7 +16127,7 @@
           if (tid && tid !== 'none' && tid !== 'default') {
             try {
               await loadClubConfig(tid);
-              await DB.init(tid);
+              await DB.init(tid, getVisibleCategories());
               // Prune at most once per day per device (local-only flag) —
               // avoids rewriting RPE data on every auth refresh.
               const _today = new Date().toISOString().slice(0, 10);
@@ -16148,7 +16164,7 @@
                 s.teamId = claimTeam;
                 _currentSession = s;
                 await loadClubConfig(claimTeam);
-                await DB.init(claimTeam);
+                await DB.init(claimTeam, getVisibleCategories());
                 navigate();
                 return;
               }
@@ -16177,6 +16193,12 @@
               }
               // Roster visibility follows the new categories.
               if (_clubConfig) _clubConfig.rosters = await loadRosters(s.teamId, _clubConfig);
+              // So does the sharded data subscription: from Stage C the
+              // data/ listener is filtered by category, and a promoted coach
+              // who keeps the old subscription never sees his new squad.
+              // A no-op while the scope is unchanged — init() early-returns.
+              syncDbScope();
+              await DB.init(s.teamId, getVisibleCategories());
               currentPage = '';
               navigate();
             } catch (e) { console.warn('Claims refresh failed:', e); }

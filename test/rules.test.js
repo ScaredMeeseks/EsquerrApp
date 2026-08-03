@@ -43,8 +43,12 @@ function ctx(uid, claims) {
 function db(uid, claims) {
   return ctx(uid, claims).firestore();
 }
-const asA = () => db(A, {teamId: "teamA", role: "player", email: "a@x.com", cats: []});
-const asA2 = () => db(A2, {teamId: "teamA", role: "player", email: "a2@x.com", cats: []});
+// Players carry their OWN category in `cats` (Stage A) — it means
+// "categories you may SEE", so a player sees exactly one.
+const asA = () => db(A, {teamId: "teamA", role: "player", email: "a@x.com", cats: ["cadet"]});
+const asA2 = () => db(A2, {teamId: "teamA", role: "player", email: "a2@x.com", cats: ["cadet"]});
+// A player with no squad yet: sees only the __none shards.
+const asUnassigned = () => db("uidNoCat", {teamId: "teamA", role: "player", email: "u@x.com", cats: []});
 // Staff A covers cadet only — the roster tests below lean on that.
 const asStaffA = () => db(STAFF_A, {teamId: "teamA", role: "staff", email: "s@x.com", cats: ["cadet"]});
 const asLeadA = () => db(LEAD_A, {teamId: "teamA", role: "lead", email: "l@x.com", cats: ["cadet", "juvenil"]});
@@ -87,7 +91,16 @@ beforeEach(async () => {
     await d.doc("clubs/teamA/rosters/juvenil-A")
         .set({staffEmails: ["other@x.com"], playerEmails: ["teen@x.com"]});
     await d.doc("clubCodes/CODEA").set({clubId: "teamA"});
+    // A pre-Phase-5 un-sharded document: no `category`, so nothing can
+    // read it any more. Kept deliberately — it is what a Cloud Function
+    // that forgets to stamp the field would produce.
     await d.doc("teams/teamA/data/fa_matches").set({v: "[]"});
+    // Sharded team data (Phase 5). fa_injuries is the one that matters:
+    // it is the medical record the whole phase exists to compartmentalise.
+    await d.doc("teams/teamA/data/fa_injuries__cadet").set({v: "[]", category: "cadet"});
+    await d.doc("teams/teamA/data/fa_injuries__juvenil").set({v: "[]", category: "juvenil"});
+    await d.doc("teams/teamA/data/fa_users__none").set({v: "[]", category: "none"});
+    await d.doc("teams/teamB/data/fa_injuries__cadet").set({v: "[]", category: "cadet"});
     await d.doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01")
         .set({uid: A2, date: "2026-01-01", value: "yes"});
     await d.doc("teams/teamB/trainingAvail/" + B + "_2026-01-01")
@@ -281,6 +294,107 @@ describe("Team data-key allowlist", () => {
   it("staff CAN still write the frozen legacy docs", async () => {
     await assertSucceeds(asStaffA().doc("teams/teamA/data/fa_training_availability")
         .set({x: "y"}, {merge: true}));
+  });
+});
+
+describe("Sharded data documents (Phase 5 Stage B)", () => {
+  // Ids are now "{key}__{category}". The allowlist has to test the BASE
+  // key — matching the whole id would deny every player write at cutover
+  // and let a player write anything simply by suffixing it.
+  it("player CAN write an allowlisted key's shard", async () => {
+    await assertSucceeds(asA().doc("teams/teamA/data/fa_injury_notes__cadet")
+        .set({x: "y", category: "cadet"}, {merge: true}));
+  });
+  it("player CAN write the __none shard of an allowlisted key", async () => {
+    await assertSucceeds(asA().doc("teams/teamA/data/fa_users__none")
+        .set({v: "[]", category: "none"}));
+  });
+  it("player CANNOT write a non-allowlisted key's shard", async () => {
+    await assertFails(asA().doc("teams/teamA/data/fa_matches__cadet")
+        .set({v: "[]", category: "cadet"}));
+  });
+  it("suffixing a denied key does not smuggle it past the allowlist", async () => {
+    await assertFails(asA().doc("teams/teamA/data/fa_matches__fa_injury_notes")
+        .set({v: "[]"}));
+  });
+  it("staff CAN write any shard of their club", async () => {
+    await assertSucceeds(asStaffA().doc("teams/teamA/data/fa_matches__juvenil")
+        .set({v: "[]", category: "juvenil"}));
+  });
+  it("shards are still walled off between clubs", async () => {
+    await assertFails(asA().doc("teams/teamB/data/fa_injury_notes__cadet").get());
+    await assertFails(asStaffA().doc("teams/teamB/data/fa_matches__cadet")
+        .set({v: "[]", category: "cadet"}));
+  });
+});
+
+describe("Category-scoped reads (Phase 5 Stage C)", () => {
+  const inj = (d, cat) => d.doc("teams/teamA/data/fa_injuries__" + cat);
+
+  // THE test this whole phase exists for. Before Stage C a cadet coach was
+  // merely not SHOWN juvenil's medical records — the rules could not read
+  // inside a JSON blob to stop him fetching them.
+  it("a cadet coach CANNOT read juvenil's injuries", async () => {
+    await assertFails(inj(asStaffA(), "juvenil").get());
+  });
+  it("a cadet coach CAN read cadet's injuries", async () => {
+    await assertSucceeds(inj(asStaffA(), "cadet").get());
+  });
+  it("a player reads their own category only", async () => {
+    await assertSucceeds(inj(asA(), "cadet").get());
+    await assertFails(inj(asA(), "juvenil").get());
+  });
+  it("the lead reads every category of their club", async () => {
+    await assertSucceeds(inj(asLeadA(), "cadet").get());
+    await assertSucceeds(inj(asLeadA(), "juvenil").get());
+  });
+  it("__none is readable by every member, including the unassigned", async () => {
+    await assertSucceeds(asA().doc("teams/teamA/data/fa_users__none").get());
+    await assertSucceeds(asUnassigned().doc("teams/teamA/data/fa_users__none").get());
+  });
+  it("an unassigned player reads nothing else", async () => {
+    await assertFails(inj(asUnassigned(), "cadet").get());
+  });
+  it("a document with NO category is unreadable", async () => {
+    // The failure mode of a Cloud Function that forgets to stamp the field:
+    // it goes dark rather than leaking. Loud, and the safe direction.
+    await assertFails(asStaffA().doc("teams/teamA/data/fa_matches").get());
+    await assertFails(asLeadA().doc("teams/teamA/data/fa_matches").get());
+  });
+  it("a token with no cats claim is denied, not errored", async () => {
+    await assertFails(inj(asStaffNoCats(), "cadet").get());
+  });
+  it("superuser still reads across categories and clubs", async () => {
+    await assertSucceeds(inj(asSuper(), "juvenil").get());
+    await assertSucceeds(asSuper().doc("teams/teamB/data/fa_injuries__cadet").get());
+  });
+});
+
+describe("Category-scoped QUERIES (the db.js listener)", () => {
+  // The rule above is only usable if the collection query db.js issues is
+  // accepted. Firestore rejects a query outright if ANY document it could
+  // return might be denied — so if these fail, sync is dead for every
+  // scoped user at once and the rule has to be redesigned, not patched.
+  const data = (d) => d.collection("teams/teamA/data");
+
+  it("the scoped query db.js issues is accepted", async () => {
+    await assertSucceeds(data(asStaffA()).where("category", "in", ["none", "cadet"]).get());
+  });
+  it("the scoped query returns ONLY the permitted shards", async () => {
+    const snap = await data(asStaffA()).where("category", "in", ["none", "cadet"]).get();
+    const ids = snap.docs.map((d) => d.id).sort();
+    assert.deepStrictEqual(ids, ["fa_injuries__cadet", "fa_users__none"]);
+  });
+  it("an UNFILTERED collection read is rejected", async () => {
+    await assertFails(data(asStaffA()).get());
+  });
+  it("querying a category outside the claim is rejected", async () => {
+    await assertFails(data(asStaffA()).where("category", "in", ["none", "juvenil"]).get());
+    await assertFails(data(asStaffA()).where("category", "==", "juvenil").get());
+  });
+  it("the lead's wider query is accepted", async () => {
+    await assertSucceeds(
+        data(asLeadA()).where("category", "in", ["none", "cadet", "juvenil"]).get());
   });
 });
 

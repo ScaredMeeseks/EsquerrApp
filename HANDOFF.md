@@ -1,12 +1,17 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 4 + follow-ups DEPLOYED; Phase 5 Stage A done, Stage B next)._
+_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 Stages B, C and D done, uncommitted; Stage E — the cutover — is all that is left)._
 
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
-- **Production is on v43**, everything merged to `main`. Rules and functions deployed through Phase 5 Stage A part 1; **v41–v43 are frontend-only and need no deploy.**
-- **Rules tests now run on this Windows box** — Java 21 and firebase-tools are installed. `cd test && npm test` → 67 passing, against the fake project `demo-esquerrapp`. No Cloud Shell round-trip for rules work any more.
+- **Production is on v43.** Stages B, C and D (v44) are **written and tested but NOT committed and NOT deployed** — see the warning below.
+- **Tests run on this Windows box.** `cd test && npm test` runs everything; `npm run test:unit` is the fast path (shard + router, pure Node, ~1s, no emulator and no Java) and `npm run test:rules` needs the Firestore emulator against the fake project `demo-esquerrapp`. **129 passing: 42 unit (shard + router, no Java) + 87 rules.** If the rules suite says `Could not spawn java -version`, Java is installed but off this shell's PATH:
+  `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
+
+### ⚠️ Nothing here is deployable until the wipe runs
+
+Client and functions now both address `data/{key}__{category}`, and **no shard documents exist yet** — Stage E's wipe creates the clean slate. Deploying now would leave the app reading documents nobody writes and writing documents nobody reads. Stage E is the whole remaining job, and its first step is the wipe script.
 
 ### Clubs in production (verified 2026-08-02)
 
@@ -14,55 +19,73 @@ _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 4 +
 - `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona, lead `test@test.com`, `juvenil` enabled. Test club.
 - **3 users still carry `teamId: 'default'`** with no matching `clubs/default` doc. Already stranded (`navigate()` sends `default` to the join-club screen) and, since Phase 4, unable to rejoin — the gate refuses an address on no roster list. Identify them before someone reports being locked out.
 
-## What shipped this session (v23 → v43)
-
-**Phase 4 — roster-driven membership.** The lead decides who is staff (email lists per `{category}-{letter}` in "Configura el teu club"); staff decide who plays (Registrations). Registration is a **hard gate** against those lists; a listed address gets its role, category and team server-side and skips the role picker. Staff see only their own categories.
-
-Then, in order: the two deletes (leave-the-squad vs. erase-the-person), lead handover, the lead getting user management, the Registrations rework around pre-registration, re-assigning unassigned players, and Phase 5 Stage A. Full detail per version in CONTEXT.md.
-
-**Bugs found and fixed along the way that were not in any plan** — worth knowing the pattern:
-
-- **Silent-write failures, three times.** A control appears to work, the local blob updates, the server write is rejected or never made. Hit on the Registrations role dropdown, the availability writes, and the user-management role toggles (which never called `setRole` at all). If a control seems to work but nothing downstream changes, suspect this first.
-- **The stale-roster gap.** `db.js`'s reconcile only ever **adds** missing members to `fa_users`; it never refreshes an existing one. Any server-side change to a member is invisible on other devices until something rewrites the blob. Patched at two call sites; the real fix belongs in Phase 5.
-- **`backfill-claims.js` would have wiped every `cats` claim.** It predated Phase 4 and still wrote only `{teamId, role}`. Rewritten. **Read one-off scripts before running them** — they rot silently.
-- The season window (`getMonth() >= 7` but a 15 August start date) emptied every season-scoped view for the first fortnight of August, in seven places.
-- The bottom-of-page strip took four attempts: two were reasoned from the stylesheet and both wrong. It was fixed only after measuring the actual boxes. **Measure layout bugs; do not reason about them.**
-
 ## Phase 5 — split club data per category
 
-Full plan: `~/.claude/plans/working-on-the-esquerrapp-ticklish-beaver.md`. Category scoping is **cosmetic** today: every data type is one club-wide blob, rules cannot read inside a JSON string, so a cadet coach is merely *not shown* juvenil's data — medical records included.
+Full plan: `~/.claude/plans/working-on-the-esquerrapp-ticklish-beaver.md`. Category scoping used to be **cosmetic**: every data type was one club-wide blob, and rules cannot read inside a JSON string, so a cadet coach was merely *not shown* juvenil's data — medical records included. Stage C made it real.
 
-**Authorised scope decision:** current team data is pre-season test content and **disposable**. At cutover, trainings, matches, injuries, availability, RPE, call-ups and tactics get **wiped**; user accounts, club config and roster email lists are **kept**. That removed dual-writing, the migration script and the legacy-retirement stage outright, and made splitting all 16 keys at once cheaper than a medical-only slice.
+**Authorised scope decision:** current team data is pre-season test content and **disposable**. At cutover, trainings, matches, injuries, availability, RPE, call-ups and tactics get **wiped**; user accounts, club config and roster email lists are **kept**. That removed dual-writing, the migration script and the legacy-retirement stage outright.
 
-Exploration corrected the earlier sketch: there are **20** keys not 19, only **5** carry a category (not 8), and three are dead.
+### ✅ Stage A — done (v40–v43, deployed)
 
-### ✅ Stage A — done (v40–v43)
+Players carry a `cats` claim; tactic boards stamped with a category (injuries deliberately not — history must follow the player); three dead keys dropped; `fa_training` and `fa_tactic_saved` addressed by stable id; in-app update check (`APP_VERSION` vs `clubs/{id}.minAppVersion`).
 
-Groundwork only; nothing is split yet, and every piece is independently useful.
+### ✅ Stage B — done (v44, uncommitted)
 
-1. **Players carry a `cats` claim** (their own category). It was `[]`, which would make every per-category rule fail closed against the whole player base. Fixed in `claimsFor` **and** `setRole` — they compute it independently.
-2. **Tactic boards stamped with a category.** Saved boards and training boards only: a saved board is attached to nothing, and the training-board map is keyed by **date**, which two categories can share. Match boards join live through the match.
-   **Injuries are deliberately NOT stamped** — injury history follows the player, so the shard must come from a live join to their *current* category. A frozen stamp would strand a promoted player's history with his old coach.
-3. **Three dead keys dropped** (`fa_standings`, `fa_news`, `fa_player_stats`).
-4. **`fa_training` and `fa_tactic_saved` addressed by stable id**, not array position. Both would become silent corruption once a remote change can reorder a merged array.
-5. **In-app update check** — `APP_VERSION` vs `clubs/{id}.minAppVersion`, soft dismissable banner. `check-deploy.js` asserts `APP_VERSION` matches `sw.js`.
+The router. Full detail in CONTEXT.md; the shape of it:
 
-### ⬜ Stage B — next: the `db.js` router
+- **New `js/shard.js`** — the routing table and pure partition/merge, no browser globals, `module.exports`ed for Node tests. 17 keys, 3 shapes, 5 ways of finding a category: on the row (6 keys), a uid joined through `fa_users` (4), a matchId joined through `fa_matches` (5), plus the date-keyed training boards whose entries carry their own stamp.
+- **`js/db.js` rewritten** around a shadow cache (key → category → JSON string), a per-document diff, a deterministic merge order, and **one `db.batch()` per blob** so a row moving between categories cannot be deleted from its old shard while the add to the new one fails.
+- **A review pass found seven write-path defects, all fixed** (detail in CONTEXT.md): rollback is now compare-and-swap (overlapping keystroke writes were rewinding the cache); an unparseable or wrong-shaped blob is refused instead of clearing every shard of the key; shards with an unrecognised category are ignored rather than merged-then-duplicated; the `hasPendingWrites` skip was losing other coaches' merged fields; `flush()` now detaches the listeners; the dead `_uploadAll` is gone.
+- **Joins resolve live, never stamped** — a promoted player's injury history re-shards to follow him. When a join stops resolving (player deleted, match erased) the row stays in the shard it came from rather than falling into `__none`.
+- **Load order changed**: `utils.js` → `shard.js` → `db.js` → `push.js` → `app.js`. `utils.js` was also missing from the service worker's `STATIC_ASSETS`; added with `shard.js`.
+- **Rules**: the player-write allowlist now tests `baseKey(key)` (`key.split('__')[0]`). Reads deliberately unchanged.
 
-The `setItem` patch maps one key to one document. It needs: a **router** partitioning a blob by category on write, writing only shards whose content changed; a **shadow cache** of parsed shards (a merged blob cannot be rebuilt from one `docChange`); a **deterministic merge order**; and per-key routing (5 direct, uid-keyed maps join through the roster, matchId-keyed join through `fa_matches`).
+**`_scope` is the READ scope, not the UI's category filter** — the assert means "never write a shard you did not download", and a coach browsing one category still holds every category the listener fetched. `SCOPED_READS` names the switch that ties the query and the assert to one list; Stage C turned it on.
 
-**The safety rule is the whole risk of this phase:** never write a shard whose input the client could not see. Every writer parses the whole blob and writes it back, so a coach who can only *see* cadet would otherwise silently delete every other category's rows. The router holds the visible-category set and asserts before every write.
+### ✅ Stage C — done (v44, uncommitted)
 
-### ⬜ Stages C–E
+`SCOPED_READS` is on: the `data/` `.get()` and `onSnapshot` run `where('category','in', scope)`, and the same list is the router's write assert. The read rule gains `resource.data.category in request.auth.token.cats`, with `none` readable club-wide. All six `DB.init` sites pass `getVisibleCategories()` explicitly and `init()` throws if the scope is unknown.
 
-- **C — reads then rules, in that order.** The two whole-collection reads (`collection('data').get()` at init and the collection `onSnapshot`) must become `where('category','in', visible)` **before** the rules narrow. Firestore rejects a collection query outright if any document could be denied, so the wrong order kills sync for every scoped user at once.
-- **D — functions.** Every hardcoded `data/fa_x` becomes a loop over shards: three schedulers, `archiveSeason`, `deleteMember`'s eleven scrub sites, `onClubLeadChanged`. **`updateTeamDates` is the dangerous one** — it replaces `trainingDates` wholesale and the push schedulers query it, so with shards racing, reminders die silently for every category but the last writer. It must union.
-- **E — cutover.** Guarded wipe script (dry-run first) → deploy functions + frontend → verify → narrow the rules → fresh APK.
+**Settled empirically, and worth knowing**: Firestore *does* accept a collection query whose `in` filter is a dynamic list from a custom claim. Five tests pin it down — the scoped query is accepted, an unfiltered read is rejected, and a query naming a category outside the claim is rejected. Had it gone the other way the rule would have needed redesigning, not patching.
+
+A document with **no** `category` field is now unreadable by everyone but the superuser — deliberate and tested. It is what a function that forgets to stamp the field produces, and going dark is the safe direction.
+
+### ✅ Stage D — done (v44, uncommitted)
+
+Two helpers carry it: `readDataShards()` (one collection read, grouped by base key) and `mergeArrayShards()`. The three schedulers merge across shards; `deleteMember` scrubs every shard via `scrubShards`; `onClubLeadChanged` and `archiveSeason` likewise, with the injury carry-over done per shard so an open injury stays in its own category. `updateTeamDates` **unions** across shards, and `backfill-team-dates.js` — the repair tool for that exact failure — is sharded too.
+
+**New trigger `onMemberCategoryChanged`** moves a member's roster-joined rows when their category changes. It watches `users/{uid}` rather than hooking each writer, so `onRosterWritten`, `setRole` and the client's re-assign flow are all covered.
+
+⚠️ **Stage D is the only untested code left.** There is no functions harness in this repo; `db.js` gained one (`test/router.test.js`, an in-memory Firestore fake) but `functions/index.js` has none. Before cutover, exercise `reshardMember` against the Admin SDK: move a player between categories and confirm the rows left one shard and arrived in the other exactly once. Extracting the shard helpers into their own module so they can be unit-tested is the obvious next improvement.
+
+### ⬜ Stage E — all that is left: the cutover
+
+One maintenance window, no transition period.
+
+1. **Wipe** the team data documents — a guarded script, dry-run first. Accounts, club config and roster email lists are untouched; trainings, matches, injuries, availability, RPE, call-ups and tactics go. **Still to write**, modelled on `migrate-player-data.js`'s dry-run/`--apply` shape.
+2. **Deploy functions + frontend together**, then `backfill-team-dates.js` (until it runs the schedulers see no teams).
+3. **Verify** (below), then deploy the narrowed rules.
+4. **Fresh APK.** Old builds write documents nobody reads and show an empty app — which is what the v43 version check exists to warn about.
+
+### Verification before the rules go out
+
+- **The single most important check**: as a cadet-scoped coach, edit a training and confirm with the Admin SDK that the juvenil shard is **byte-unchanged**. That is the property the whole phase is for.
+- **`reshardMember`** — move a player between categories, confirm the rows left one shard and arrived in the other exactly once. Stage D has no automated test; this one is manual and load-bearing.
+- **Per key**, after the wipe: create one record of each type, confirm it lands in the right shard, and confirm a coach in another category cannot read it.
+- **Schedulers** — confirm a training reminder still finds its team after `updateTeamDates` unions across shards.
+- **Two devices, two categories, editing simultaneously** — the clobber case that motivated the phase.
+- A shard-consistency check in `check-deploy.js`, once shards exist.
+
+### Deliberately not done in this phase
+
+- **The three per-record collections (`trainingAvail`, `matchAvail`, `rpe`) are still club-wide readable.** The plan has them gaining a `category` field, but no stage owned it and the sensitive data — medical — lives in `data/fa_injuries`, which is scoped. Doing it means stamping six `ackSaveRecord` sites, narrowing three listeners and three rules, and it strands a moved player's records the same way the joined `data/` routes did (so it needs `reshardMember` extending too). An incremental privacy improvement, not a blocker.
+- Linked match/training tactic board copies are still matched by **name**; once sharded the same name can exist in two categories. Pre-existing, untouched.
 
 ## Known trade-offs / notes
 
-- **Category scoping is still cosmetic until Stage C lands.** Only the roster email lists are genuinely restricted today.
+- A shard document written without a `category` field would be invisible to the Stage C query. Everything the router writes sets it; the Cloud Functions must too (Stage D).
 - Whole-blob writers that filter must carry out-of-scope entries through explicitly (matchday drafts and notifications already do). Any new page that filters and then saves must do the same, or it deletes what it isn't showing.
+- Linked match/training tactic board copies are still matched by **name**. Once sharded, the same name can exist in two categories — a pre-existing weakness, untouched.
 - The lead and superuser always bypass the registration gate, so a new club can be bootstrapped with empty lists.
 - **Distribution: keep APK assets bundled.** Pointing the shell at a live URL (`server.url`) would end staleness instantly but is a reliable App Store rejection (guideline 4.2), and Play + App Store are on the roadmap. The store-friendly path is bundled assets plus an OTA bundle swap; the v43 version check is the stepping stone to either.
 - Legacy availability/RPE `data/` docs remain **frozen but not deleted** — the 3b rollback net. `migrate-player-data.js --delete-legacy` still deliberately unrun.
@@ -70,3 +93,9 @@ The `setItem` patch maps one key to one document. It needs: a **router** partiti
 - Uncategorised players are excluded by medical and roster but included by training-detail — three staff pages, two semantics. Belongs with Phase 5.
 - Cloud Shell gotchas: `.firebaserc` is tracked — never `rm` it; scripts run from the **repo root** (`cd ~/EsquerrApp` first — a script run from `~` fails with MODULE_NOT_FOUND); read every dry-run before `--apply`; backup bucket is `gs://esquerrapp-backup` (singular). If the Admin SDK throws `Cannot create property 'refresh_token' on string ''`, the gcloud session has lapsed — `gcloud auth login`.
 - This machine mojibakes Catalan accents through PowerShell `Set-Content` — use the editor for all file writes.
+
+## Lessons that keep repeating
+
+- **Silent-write failures.** A control appears to work, the local blob updates, the server write is rejected or never made. Hit three times in Phase 4. The Stage B shadow-cache rollback exists for exactly this shape: a cache claiming content the server does not have would make the next write diff against it and skip.
+- **Read one-off scripts before running them.** `backfill-claims.js` predated Phase 4 and would have stripped every user's `cats` claim.
+- **Measure layout bugs; do not reason about them.** The bottom-of-page strip took four attempts, two reasoned from the stylesheet and both wrong.

@@ -27,6 +27,11 @@ service cloud.firestore {
     function owns(docId) {
       return docId.matches(request.auth.uid + '(_.*)?');
     }
+    // Phase 5: team data documents are sharded per category, so the id is
+    // "{key}__{category}". The allowlists below name the KEY, not the shard.
+    function baseKey(docId) {
+      return docId.split('__')[0];
+    }
 
     // ── Users (global; teamId assigned ONLY by the joinClub function) ──
     match /users/{uid} {
@@ -89,10 +94,26 @@ service cloud.firestore {
       // flows touch (injuries/notes/zone until the injuries record
       // collection lands; fa_users via the db.js reconcile +
       // deriveFitnessStatus; fa_staff_notifications via player alerts).
+      // STAGE C: reads are scoped to the categories in the `cats` claim.
+      // This is the line that finally makes category separation real —
+      // before it, a cadet coach was merely not SHOWN juvenil's medical
+      // records; the rules could not see inside a JSON blob to stop him
+      // reading them. db.js queries where('category','in', scope), which
+      // is what keeps this satisfiable: a collection query is rejected
+      // outright if ANY document in it could be denied, so the query had
+      // to narrow first (it did, in the same release).
+      //
+      // `none` holds staff accounts, unassigned players and pre-category
+      // rows — every member needs it, so it is readable club-wide.
+      // The `'cats' in token` guard keeps a session with an old token
+      // denying rather than erroring, the same idiom the rosters rule uses.
       match /data/{key} {
-        allow read: if sameTeam(teamId) || isSuperUser();
+        allow read: if isSuperUser()
+          || (sameTeam(teamId) && 'cats' in request.auth.token
+              && (resource.data.category == 'none'
+                  || resource.data.category in request.auth.token.cats));
         allow write: if isSuperUser() || isStaffOf(teamId)
-          || (sameTeam(teamId) && key in [
+          || (sameTeam(teamId) && baseKey(key) in [
                'fa_injury_notes', 'fa_injury_zone', 'fa_injuries',
                'fa_users', 'fa_staff_notifications'
              ]);

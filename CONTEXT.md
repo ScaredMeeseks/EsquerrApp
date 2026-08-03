@@ -390,3 +390,99 @@ The web app updates on reload; a bundled APK does not, because Capacitor ships a
 **Stage A is done.** Next is Stage B: the `db.js` router. Nothing in Stage A splits anything — it is all groundwork, and all of it is independently useful.
 
 Rules suite: 67 passing. `sw.js` → v43, `APP_VERSION` 43. Frontend-only.
+
+### 2026-08-03 — Stage B: the sharding router (v44)
+
+Every synced key is now written as one document **per category** instead of one per club:
+
+```
+teams/{teamId}/data/{key}__{category}   { v: "<json>", category: "cadet" }
+```
+
+`localStorage` is untouched — still one merged blob per key — so none of the ~128 read sites in `app.js` know this happened. Only the Firestore mapping changed.
+
+- **New `js/shard.js`** holds the routing table and the pure partition/merge functions: no Firestore, no localStorage, no DOM, and `module.exports`ed so it can be unit-tested in Node. Seventeen keys, three shapes (`array`, `map`, `mapOfArrays`) and five ways of finding the category: read it off the row (6 keys), join a uid through `fa_users` (4), join a matchId through `fa_matches` (5), and the date-keyed training boards, whose entries carry their own stamp.
+- **Joins are resolved live, never stamped** — that is the whole reason injuries were deliberately left unstamped in Stage A. A promoted player's medical history re-shards to follow him. Tested both ways round.
+- **Provenance fallback for joined routes only.** When a join stops resolving — the player was deleted, the match erased — the row stays in the shard it came from instead of falling into `__none`, which would move a squad's history out from under its coach. Field-routed keys get no fallback: for them a missing category is a real answer.
+- **Per-document diff.** `readTraining` fires on every keystroke and `renderStaffTraining` writes on every render; without the diff each would become N writes per render. Only shards whose serialised content actually changed are written.
+- **Shadow cache** (`_shards`: key → category → JSON string). A merged blob cannot be rebuilt from one `docChange`, so the parsed shards are kept. It is updated optimistically before the write resolves — and **rolled back to the server's value if the write is rejected**, because a cache claiming content the server does not have would make the *next* write diff against it and skip. That is the silent-loss shape this project has already been bitten by three times.
+- **Deterministic merge order** — `CATEGORY_ORDER`, then `__none`, then anything unrecognised (merged last rather than dropped). `fa_training` re-sorts by date descending and `fa_staff_notifications` by timestamp descending; the latter matters because `addStaffNotification` caps the list at 200, and concatenating shards would make the cap drop one whole category instead of the oldest entries.
+- **`fa_tactic_training_boards` gets a real fix, not just a shard.** The map is keyed by training date, and two categories training the same evening shared one bucket. Each entry now routes on its own Stage-A stamp, so the bucket is split across shards and rebuilt on merge.
+
+**The safety rule** — never write a shard whose input the client could not see — is implemented as `_scope`, and `_scope` is deliberately the **read** scope (what the listener downloaded), not the UI's category filter. A coach browsing cadet still holds every category the listener fetched and must write all of them back. `_routeWrite` refuses any shard outside it, surfaces `shard-out-of-scope` through the existing `db-write-error` event, and **rejects the returned promise** so an acked save can never report success on a refused write.
+
+**`SCOPED_READS` is the Stage C switch**, currently `false`. While false the listener fetches the whole collection, so the read scope is every category and the assert has nothing to refuse. Flipping it makes the same list drive both the `where('category','in', …)` query and the assert — they must never be different lists. `init()` re-subscribes when the scope changes; `DB.setScope()` only records the wanted set, because narrowing the write scope without re-subscribing would refuse writes for data we still hold, and widening it without re-subscribing would authorise writes for data we never downloaded. `app.js` calls it from `setSession` and `loadClubConfig` (`syncDbScope`).
+
+**Rules**: doc ids are now composite, so the player-write allowlist tests `baseKey(key)` — `key.split('__')[0]` — instead of the whole id. Matching the whole id would have denied every player write at cutover; matching a prefix would have let `fa_matches__fa_injury_notes` through. Both cases are tested. **Reads are deliberately NOT narrowed yet**: a collection query is rejected outright if any document in it could be denied, so the query must narrow before the rule does.
+
+**Load order changed**: `utils.js` (owns `CATEGORY_ORDER`) and the new `shard.js` now load *before* `db.js`, which asserts at load time that every synced key has a route. `utils.js` was also missing from the service worker's `STATIC_ASSETS` — added along with `shard.js`.
+
+**Not deployable on its own.** Cloud Functions still address `data/fa_x` directly (Stage D), and the shards only exist after the Stage E wipe. Stage B, C, D and E ship together.
+
+Tests: 20 new `shard.test.js` unit tests (`npm run test:shard`, no emulator needed) plus 6 new rules cases — 73 rules passing. `sw.js` → v44, `APP_VERSION` 44, `check-deploy.js` expectation bumped.
+
+Also in v44: the claims-change handler re-inits `DB` on a same-club membership change (it only did so on a team change). A no-op today, because `init()` early-returns while the scope is unchanged — but from Stage C a promoted coach who keeps the old category-filtered subscription never sees his new squad.
+
+**Review pass on the router, same day.** An independent read of `db.js` found seven real defects, all in the write path, all of the same family — the shadow cache and the server disagreeing:
+
+1. **`_rollback` was not compare-and-swap.** `readTraining` writes on every keystroke, so two writes to one key overlap constantly. If W1 failed *after* W2 succeeded, restoring W1's `prevJson` rewound the cache past W2's content and the next rebuild dropped everything typed in between. It now rolls back only if the cache still holds exactly what that write put there — which also covers Firestore's own revert snapshot, which absorbs the server's value before the rejection handler runs.
+2. **The shard fan-out was not atomic.** A row moving between categories is "delete from the old shard" plus "add to the new one"; as independent `set()` calls the delete could land while the add failed, leaving the row on the server nowhere while localStorage still showed it. All shards of one blob now go in **one `db.batch()`** — at most seven documents, far inside the 500-op limit. `removeItem` batches its deletes too, and only clears the shadow cache once the server has agreed.
+3. **A malformed blob wiped every shard of the key.** `JSON.parse` failure was treated as "legitimately empty", so one `JSON.stringify(undefined)` at a call site would have partitioned to nothing and cleared all seven shards — a club-wide delete. A blob that cannot be read, or whose shape disagrees with the route, is now **refused** and the server left untouched.
+4. **A shard with an unrecognised category duplicated rows forever.** `mergeOrder` merges unknown shards rather than dropping them, but `_norm` rejects the same category on the way back out — so its rows were merged into localStorage, re-routed to `__none` on the next write, and written there while the original shard stayed put (out of scope), duplicating every row and refusing every later save on that key. `_absorbDoc` now ignores such shards and warns once.
+5. **The `hasPendingWrites` skip lost other coaches' merged fields.** A document carrying our pending write can also carry another coach's fields; skipping it lost them for the session, because once our write acked the value already matched our prediction and the ack was a metadata-only change this listener never saw. It now absorbs unconditionally — our own echo diffs to nothing, and a rejected write reverts the document and returns as a real change.
+6. **`flush()` left `_teamId` and the listeners live**, so one remote docChange on the no-club path could repopulate the cache with a single shard and render a fraction of a club the user is not a member of. It calls `cleanup()` first.
+7. **`_uploadAll` was dead code** — it read the synced keys back after `init()` had just flushed them — and had it worked it would have uploaded the *previous* club's data into the new one, which is precisely what the flush prevents. Removed; a club with no data documents starts empty.
+
+Also hardened for Stage C: `_readScope()` returns null instead of silently narrowing to `['none']` when the visible set is unknown, and `init()` throws rather than downloading almost nothing and then refusing every write.
+
+**Known gap for Stage C, not fixable here:** once reads are scoped, a player moved cadet→juvenil strands his joined rows (injuries, notes). His old coach no longer resolves him through the roster, so provenance pins the rows to `__cadet`; his new coach never downloads `__cadet`. The provenance fallback is right for a *deleted* player and wrong for a *moved* one, and the client cannot tell them apart. The fix belongs server-side in Stage D — `setRole`/`onRosterWritten` already run when a player changes category and should re-shard his joined rows there.
+
+### 2026-08-03 — Stage C: scoped reads and the narrowed rule (v44)
+
+Category separation is **real** from here. Before this, a cadet coach was merely not *shown* juvenil's medical records; the rules could not see inside a JSON blob to stop him fetching them.
+
+- **`SCOPED_READS` flipped on.** The `data/` `.get()` and `onSnapshot` both run `where('category','in', scope)`, and the same list is the router's write assert — the query and the assert are one list by construction, which is the only reason the safety rule means anything.
+- **The read rule** gains `resource.data.category in request.auth.token.cats`, with `none` readable club-wide (staff accounts, unassigned players, pre-category rows) and the `'cats' in token` guard so an old token denies rather than errors.
+- **Query-before-rule, in that order** — a collection query is rejected outright if any document it could return might be denied, so narrowing the rule first would have killed sync for every scoped user at once.
+- **All six `DB.init` call sites now pass `getVisibleCategories()` explicitly.** Each was already preceded by `loadClubConfig` → `syncDbScope`, but the ordering was an invariant nobody would notice breaking; `init()` throws if the scope is unknown rather than silently narrowing to `['none']`.
+
+**The open question this settled empirically**: whether Firestore accepts a collection query whose filter is `in` against a *dynamic* list from a custom claim. It does — `where('category','in',[...])` against `resource.data.category in request.auth.token.cats` is allowed, an unfiltered read is rejected, and a query naming a category outside the claim is rejected. Five tests pin that down, because if it had gone the other way the rule would have needed redesigning rather than patching.
+
+A document with **no** `category` field is now unreadable by everyone but the superuser. That is deliberate and tested: it is what a Cloud Function that forgets to stamp the field would produce, and going dark is the safe direction.
+
+Rules suite: 87 passing (+14). Shard suite: 22.
+
+**Still club-wide, and deliberately not done here:** the three per-record collections (`trainingAvail`, `matchAvail`, `rpe`). The plan has them gaining a `category` field, but no stage owns it and the sensitive data — medical — lives in `data/fa_injuries`, which is now scoped. Doing it means stamping six `ackSaveRecord` sites, narrowing three listeners and three rules, and it strands a moved player's records exactly like the joined `data/` routes do. Sized and listed in HANDOFF; it is an incremental privacy improvement, not a blocker.
+
+### 2026-08-03 — Stage D: the Cloud Functions (v44)
+
+Every hardcoded `data/fa_x` is gone. Two helpers carry the whole change: `readDataShards(teamId, keys?)` reads a team's data collection **once** and groups it by base key in category order, and `mergeArrayShards()` reassembles the single list the old code expected. Pre-Phase-5 un-sharded documents are skipped — merging one would double every row it holds.
+
+- **The three schedulers** merge across shards. Reading one shard would have reminded one squad and silently skipped the rest.
+- **`updateTeamDates` unions.** The trigger fires per *shard* but the field it maintains is per *team*, and the schedulers query `array-contains` on it — so deriving the dates from the shard that just changed would have replaced the array with one category's dates and stopped every other category's reminders, with nothing in the logs. It now re-reads all shards of the key and unions. **`backfill-team-dates.js`, the repair tool for exactly that failure, is sharded too** — unsharded it would have found nothing and written empty arrays, becoming the thing that silenced the club.
+- **`deleteMember`** scrubs every shard of each key via the new `scrubShards`; the mutate callbacks are untouched, because a shard has the same shape as the old whole-club blob. A member can appear in any category's shard plus `__none`, so scrubbing only their current category would leave the person half-erased. The three **frozen legacy** availability/RPE docs are deliberately still addressed directly — they are not sharded, and an erase must still reach them.
+- **`onClubLeadChanged`** scrubs `fa_users` across shards.
+- **`archiveSeason`** archives and resets shard by shard, keeping the `{key}__{category}` id in the archive so a restored season lands back in the right categories. The injury carry-over is **per shard**: an unresolved injury has to stay inside its own category, or a player's open injury would surface in another squad's medical page after the rollover. Every reset write carries `category` — a shard that lost the field would drop out of the client's query and the new season would start invisible. The three frozen record keys were dropped from `SEASON_KEYS`: they are not sharded and hold nothing a season needs, and the canonical records are archived from their own collections a few lines below.
+
+**New trigger `onMemberCategoryChanged`** closes the gap the router review found. Injuries and injury notes are sharded by the player's *current* category through a live join — deliberately, so medical history follows the player — and the cost is that a category change has to move the documents. Only the server can: the old coach can no longer resolve the uid so his client pins the rows where they are, and the new coach never downloads the old shard. It watches `users/{uid}` rather than hooking each writer, because `onRosterWritten`, `setRole` and the client's "re-assign to a squad" flow all change the field. `reshardMember` scans every shard rather than trusting a "from" category, which also makes it idempotent against repeat deliveries.
+
+One subtlety worth keeping: the read/write format is taken from **the document**, not from the key. A merge key can still have a legacy `{v:"…"}` document, and deleting fields that live inside a blob would remove nothing while the copy still landed — the rows would exist twice.
+
+**Stage D has no automated test** — there is no functions harness in this repo. `reshardMember` in particular must be exercised against the Admin SDK before cutover: move a player between categories and confirm the rows left one shard and arrived in the other exactly once.
+
+### 2026-08-03 — Test harness for the router
+
+`db.js` had no test coverage, which is why a review had to find seven write-path defects by reading. `test/router.test.js` now runs the **real** `db.js` in a `vm` context against `test/fake-firestore.js`, an in-memory stand-in for the compat Firestore API. No emulator and no Java — about a second.
+
+A fake rather than the emulator, deliberately: the router's failure modes are about *which* documents get written and what the shadow cache believes, not about rules or networking, and a fake can be told "this commit fails" and "these two writes overlap". The emulator cannot. The rules suite covers the emulator side separately.
+
+The two tests that matter most are the ones that were bugs:
+
+- **The keystroke race** — two overlapping writes, the second succeeds, the *first* then fails. The rollback must not rewind past the one that landed. Asserted by checking that a subsequent identical save writes nothing, which is only true if the cache and the server agree.
+- **The safety rule** — a cadet-scoped coach edits a training and the juvenil document is byte-unchanged; a juvenil row appearing in a cadet-scoped client refuses the *whole* write rather than half a re-partition.
+
+Plus: the per-document diff (a re-render that changes nothing writes nothing), refusal of unparseable and wrong-shaped blobs while a genuinely empty blob still clears, a row moving between shards in one batch, one `firestore-sync` per key not per document, removed and unrecognised shards, and per-field merge keys keeping `category`.
+
+**129 passing**: 42 unit (`npm run test:unit`, no Java) + 87 rules.
+
+Still untested: `functions/index.js`. There is no harness for it, and `reshardMember` is the piece that most deserves one.

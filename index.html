@@ -299,10 +299,13 @@
     </div>
   </div>
 
+  <!-- Order matters: utils.js owns CATEGORY_ORDER, which shard.js reads,
+       and db.js asserts every synced key has a shard route at load time. -->
   <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/shard.js"></script>
   <script src="js/db.js"></script>
   <script src="js/push.js"></script>
-  <script src="js/utils.js"></script>
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

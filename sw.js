@@ -74,13 +74,15 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-const CACHE_NAME = 'esquerrapp-v43';
+const CACHE_NAME = 'esquerrapp-v44';
 
 const STATIC_ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/firebase-config.js',
+  './js/utils.js',
+  './js/shard.js',
   './js/db.js',
   './js/push.js',
   './js/app.js',

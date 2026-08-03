@@ -66,6 +66,202 @@ function parseDataDoc(snap, fallback) {
   return out;
 }
 
+// ── Phase 5: team data is sharded per category ──────────────────
+// Documents are teams/{id}/data/{key}__{category} with a `category`
+// field. Nothing addresses a bare `data/fa_x` any more — a read merges
+// every shard of the key, a write targets one shard.
+//
+// Every shard a function writes MUST carry `category`. The client
+// queries where('category','in', …) and the rules test the same field,
+// so a shard written without it is invisible to the entire app.
+const SHARD_SEP = "__";
+const SHARD_NONE = "none";
+// Mirrors CATEGORY_ORDER in js/utils.js and js/shard.js.
+const CATEGORY_ORDER = [
+  "amateur", "juvenil", "cadet", "infantil", "alevi", "benjami",
+];
+
+function splitShardId(id) {
+  const i = String(id).indexOf(SHARD_SEP);
+  if (i === -1) return null;
+  return {key: String(id).slice(0, i), cat: String(id).slice(i + SHARD_SEP.length)};
+}
+
+function shardDocId(key, cat) {
+  return key + SHARD_SEP + cat;
+}
+
+/** Same order the client merges in, so both sides agree on the result. */
+function shardRank(cat) {
+  const i = CATEGORY_ORDER.indexOf(cat);
+  if (i !== -1) return i;
+  return cat === SHARD_NONE ? 90 : 99;
+}
+
+/**
+ * Every shard document of a team, grouped by base key — ONE collection
+ * read rather than a get per key per category. Pre-Phase-5 un-sharded
+ * documents are skipped: the cutover wipe removes them, and merging one
+ * would double every row it holds.
+ *
+ * → Map<baseKey, [{cat, ref, snap}]>, each list in category order.
+ */
+async function readDataShards(teamId, keys) {
+  const snap = await db.collection("teams").doc(teamId).collection("data").get();
+  const out = new Map();
+  snap.forEach((d) => {
+    const p = splitShardId(d.id);
+    if (!p) return;
+    if (keys && !keys.includes(p.key)) return;
+    if (!out.has(p.key)) out.set(p.key, []);
+    out.get(p.key).push({cat: p.cat, ref: d.ref, snap: d});
+  });
+  for (const list of out.values()) {
+    list.sort((a, b) => shardRank(a.cat) - shardRank(b.cat));
+  }
+  return out;
+}
+
+/** Merge one key's array shards into the single list the old code read. */
+function mergeArrayShards(shards) {
+  const out = [];
+  (shards || []).forEach((s) => {
+    const v = parseDataDoc(s.snap, []);
+    if (Array.isArray(v)) out.push(...v);
+  });
+  return out;
+}
+
+// Keys whose category comes from a live join to the roster rather than a
+// stamp on the row. Injuries are deliberately NOT stamped — medical history
+// follows the player — which is exactly why a category change has to MOVE
+// the rows: the old coach can no longer resolve the uid, so the client pins
+// them where they are, and the new coach never downloads that shard. The
+// history would go dark for everyone. Only the server sees both sides.
+//   'array'     rows with playerId === uid
+//   'uid'       {uid: …}
+//   'uidPrefix' {uid_date: …}
+const ROSTER_JOINED_KEYS = {
+  fa_injuries: "array",
+  fa_injury_notes: "uid",
+  fa_injury_zone: "uid",
+  fa_injury_dismissed: "uid",
+  fa_training_staff_override: "uidPrefix",
+};
+// Written per FIELD by js/db.js, not as a {v: "<json>"} blob.
+const CLIENT_MERGE_KEYS = new Set([
+  "fa_injury_notes", "fa_injury_zone", "fa_injury_dismissed",
+  "fa_training_staff_override",
+]);
+
+function ownsEntryKey(kind, field, uid) {
+  if (kind === "uid") return field === uid;
+  return field === uid || field.indexOf(uid + "_") === 0;
+}
+
+/**
+ * Move one member's roster-joined rows into `toCat`'s shards.
+ *
+ * Scans every shard rather than trusting a "from" category: rows can have
+ * been left anywhere by an earlier move, and the point is to end with all
+ * of them in one place. A no-op when the member has no such rows.
+ */
+async function reshardMember(teamId, uid, toCat) {
+  if (!teamId || !uid) return;
+  const dest = toCat || SHARD_NONE;
+  const keys = Object.keys(ROSTER_JOINED_KEYS);
+  const shards = await readDataShards(teamId, keys);
+  const batch = db.batch();
+  let ops = 0;
+  let moved = 0;
+
+  for (const key of keys) {
+    const kind = ROSTER_JOINED_KEYS[key];
+    const list = shards.get(key) || [];
+    if (!list.length) continue;
+    const isMerge = CLIENT_MERGE_KEYS.has(key);
+    const destShard = list.find((s) => s.cat === dest);
+    const taken = kind === "array" ? [] : {};
+
+    for (const s of list) {
+      if (s.cat === dest) continue;           // already where it belongs
+      const parsed = parseDataDoc(s.snap, kind === "array" ? [] : {});
+      if (kind === "array") {
+        if (!Array.isArray(parsed)) continue;
+        const mine = parsed.filter((r) => String(r.playerId || "") === uid);
+        if (!mine.length) continue;
+        taken.push(...mine);
+        batch.set(s.ref, {
+          v: JSON.stringify(parsed.filter((r) => String(r.playerId || "") !== uid)),
+          category: s.cat,
+        }, {merge: true});
+        ops++;
+      } else {
+        const fields = Object.keys(parsed)
+            .filter((f) => ownsEntryKey(kind, f, uid));
+        if (!fields.length) continue;
+        // The format comes from THIS document, not from the key: a merge
+        // key can still have a legacy {v:"…"} document, and deleting
+        // fields that live inside the blob would remove nothing while the
+        // copy below still landed — the rows would exist twice.
+        const srcIsBlob = typeof (s.snap.data() || {}).v === "string";
+        const removal = {};
+        fields.forEach((f) => {
+          taken[f] = parsed[f];
+          removal[f] = admin.firestore.FieldValue.delete();
+        });
+        if (srcIsBlob) {
+          const rest = Object.assign({}, parsed);
+          fields.forEach((f) => delete rest[f]);
+          batch.set(s.ref, {v: JSON.stringify(rest), category: s.cat}, {merge: true});
+        } else {
+          batch.update(s.ref, removal);
+        }
+        ops++;
+      }
+    }
+
+    const took = kind === "array" ? taken.length : Object.keys(taken).length;
+    if (!took) continue;
+    moved += took;
+
+    // Land them in the destination, merged with whatever is already there.
+    const destRef = destShard ? destShard.ref :
+      db.collection("teams").doc(teamId).collection("data")
+          .doc(shardDocId(key, dest));
+    const existing = destShard ?
+      parseDataDoc(destShard.snap, kind === "array" ? [] : {}) :
+      (kind === "array" ? [] : {});
+    if (kind === "array") {
+      const seen = new Set((Array.isArray(existing) ? existing : [])
+          .map((r) => String(r.id || "")));
+      const add = taken.filter((r) => !seen.has(String(r.id || "")));
+      batch.set(destRef, {
+        v: JSON.stringify((Array.isArray(existing) ? existing : []).concat(add)),
+        category: dest,
+      }, {merge: true});
+    } else {
+      // Same rule for the destination: match the document that is there,
+      // and fall back to the key's own format when creating a new shard.
+      const destIsBlob = destShard ?
+        typeof (destShard.snap.data() || {}).v === "string" : !isMerge;
+      if (destIsBlob) {
+        batch.set(destRef, {
+          v: JSON.stringify(Object.assign({}, existing, taken)),
+          category: dest,
+        }, {merge: true});
+      } else {
+        batch.set(destRef, Object.assign({}, taken, {category: dest}), {merge: true});
+      }
+    }
+    ops++;
+  }
+
+  if (!ops) return;
+  await batch.commit();
+  logger.info("reshardMember", {teamId, uid, toCat: dest, rows: moved, ops});
+}
+
 // ── Helper: get FCM tokens for users (parallel reads) ──
 async function getTokensForUsers(userIds) {
   const snaps = await Promise.all(userIds.map((uid) =>
@@ -243,9 +439,10 @@ exports.scheduledTrainingReminder = onSchedule({
 
   await Promise.all(teamsSnap.docs.map(async (teamDoc) => {
     const teamId = teamDoc.id;
-    const dataDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_training").get();
-    const training = dataDoc.exists ? JSON.parse(dataDoc.data().v || "[]") : [];
+    // Every category's sessions, merged: the reminder is per team, and a
+    // shard-at-a-time read would remind one squad and silently skip the rest.
+    const shards = await readDataShards(teamId, ["fa_training"]);
+    const training = mergeArrayShards(shards.get("fa_training"));
     const upcoming = training.filter((s) =>
       s.status !== "past" && s.time &&
       (s.date === today || s.date === tomorrow));
@@ -311,13 +508,9 @@ exports.scheduledRpeReminder = onSchedule({
   }
 
   await Promise.all([...teamDocs.keys()].map(async (teamId) => {
-    const dataCol = db.collection("teams").doc(teamId).collection("data");
-    const [trainingDoc, matchDoc] = await Promise.all([
-      dataCol.doc("fa_training").get(),
-      dataCol.doc("fa_matches").get(),
-    ]);
-    const training = trainingDoc.exists ? JSON.parse(trainingDoc.data().v || "[]") : [];
-    const matches = matchDoc.exists ? JSON.parse(matchDoc.data().v || "[]") : [];
+    const shards = await readDataShards(teamId, ["fa_training", "fa_matches"]);
+    const training = mergeArrayShards(shards.get("fa_training"));
+    const matches = mergeArrayShards(shards.get("fa_matches"));
     const todayTraining = training.find((t) => t.date === today);
     const todayMatch = matches.find((m) => m.date === today);
     if (!todayTraining && !todayMatch) return;
@@ -384,10 +577,9 @@ exports.scheduledMatchAvailReminder = onSchedule({
 
   await Promise.all(teamsSnap.docs.map(async (teamDoc) => {
     const teamId = teamDoc.id;
-    const matchDoc = await db.collection("teams").doc(teamId)
-        .collection("data").doc("fa_matches").get();
-    if (!matchDoc.exists) return;
-    const matches = JSON.parse(matchDoc.data().v || "[]");
+    const shards = await readDataShards(teamId, ["fa_matches"]);
+    const matches = mergeArrayShards(shards.get("fa_matches"));
+    if (!matches.length) return;
     const weekendMatches = matches.filter((m) =>
       m.status !== "past" && m.date && (m.date === satStr || m.date === sunStr));
     if (!weekendMatches.length) return;
@@ -846,6 +1038,10 @@ exports.onRosterWritten = onDocumentWritten({
       logger.info("onRosterWritten: user gone, skipping", {clubId, email});
       continue;
     }
+    // The category change re-shards their injury history — see
+    // onMemberCategoryChanged, which watches the user doc so EVERY writer
+    // is covered, not just this one (staff re-assign an unassigned player
+    // straight from the client).
     logger.info("onRosterWritten",
         {clubId, uid: doc.id, email, role, cats, detached});
   }
@@ -918,11 +1114,12 @@ exports.onClubLeadChanged = onDocumentWritten({
         claimsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       // Drop them from the club roster blob, or they linger in every squad
-      // list until something else rewrites it.
-      await scrubDataDoc(
-          db.collection("teams").doc(clubId).collection("data").doc("fa_users"),
-          (arr) => (Array.isArray(arr) ?
-            arr.filter((u) => String(u.id) !== outgoing.id) : null));
+      // list until something else rewrites it. Every shard: a lead has no
+      // category of their own, but which shard holds them depends on what
+      // they were before, so all of them have to be checked.
+      const leadShards = await readDataShards(clubId, ["fa_users"]);
+      await scrubShards(leadShards, "fa_users", (arr) => (Array.isArray(arr) ?
+        arr.filter((u) => String(u.id) !== outgoing.id) : null));
     }
     logger.info("onClubLeadChanged: demoted",
         {clubId, uid: outgoing.id, keptRoles: m.roles});
@@ -968,6 +1165,23 @@ exports.onClubLeadChanged = onDocumentWritten({
 // still add up — an erase covers the live club, not the history books.
 // Match events keep the person's NAME (snapshotted below before the uid goes)
 // so scorelines stay correct and attributed.
+
+/**
+ * Apply a scrub to EVERY shard of a base key.
+ *
+ * The mutate contract is unchanged: a shard's content has the same shape
+ * as the old whole-club blob, so each callback below works per shard
+ * without knowing sharding exists. Both write paths in scrubDataDoc
+ * preserve the document's `category` field — the blob branch merges and
+ * the per-field branch updates — so a scrubbed shard stays visible.
+ */
+async function scrubShards(shardsByKey, key, mutate) {
+  let changed = false;
+  for (const s of shardsByKey.get(key) || []) {
+    if (await scrubDataDoc(s.ref, mutate)) changed = true;
+  }
+  return changed;
+}
 
 /** Rewrite a data/{key} doc, handling blob and per-field-merge formats. */
 async function scrubDataDoc(ref, mutate) {
@@ -1093,13 +1307,19 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
       // ── 3. Shared blobs ── */
       if (teamId) {
         const dataRef = db.collection("teams").doc(teamId).collection("data");
+        // Read the whole sharded collection ONCE, then scrub every shard of
+        // each key. A member can appear in any category's shard — the one
+        // they play in, plus __none for anything logged before they were
+        // assigned — so scrubbing only their current category would leave
+        // the person half-erased.
+        const shards = await readDataShards(teamId);
 
         // Roster list.
-        await scrubDataDoc(dataRef.doc("fa_users"), (arr) =>
+        await scrubShards(shards, "fa_users", (arr) =>
           Array.isArray(arr) ? arr.filter((u) => String(u.id) !== uid) : null);
 
         // Injuries — as the subject, and as the staff member who logged one.
-        await scrubDataDoc(dataRef.doc("fa_injuries"), (arr) => {
+        await scrubShards(shards, "fa_injuries", (arr) => {
           if (!Array.isArray(arr)) return null;
           return arr.filter((i) => String(i.playerId) !== uid)
               .map((i) => (String(i.createdBy) === uid ?
@@ -1107,12 +1327,12 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
         });
 
         // Notifications carry uid + playerName.
-        await scrubDataDoc(dataRef.doc("fa_staff_notifications"), (arr) =>
+        await scrubShards(shards, "fa_staff_notifications", (arr) =>
           Array.isArray(arr) ?
             arr.filter((n) => String(n.uid || "") !== uid) : null);
 
         // Call-up lists: {matchId: {players:[uid], startingXI:[uid], …}}.
-        await scrubDataDoc(dataRef.doc("fa_convocatoria_sent"), (obj) => {
+        await scrubShards(shards, "fa_convocatoria_sent", (obj) => {
           if (!obj || typeof obj !== "object") return null;
           Object.keys(obj).forEach((mid) => {
             const e = obj[mid] || {};
@@ -1128,7 +1348,7 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
 
         // Match events: keep the event AND the name, drop the uid. This is
         // what stops a 3-1 quietly becoming a 2-1.
-        await scrubDataDoc(dataRef.doc("fa_match_events"), (obj) => {
+        await scrubShards(shards, "fa_match_events", (obj) => {
           if (!obj || typeof obj !== "object") return null;
           const pairs = [
             ["playerId", "playerName"],
@@ -1149,7 +1369,7 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
         });
 
         // Legacy goals blob, same treatment.
-        await scrubDataDoc(dataRef.doc("fa_match_goals"), (obj) => {
+        await scrubShards(shards, "fa_match_goals", (obj) => {
           if (!obj || typeof obj !== "object") return null;
           Object.keys(obj).forEach((mid) => {
             (obj[mid] || []).forEach((g) => {
@@ -1164,17 +1384,24 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
         // Flat {uid: …} maps.
         for (const key of ["fa_injury_notes", "fa_injury_zone",
           "fa_injury_dismissed"]) {
-          await scrubDataDoc(dataRef.doc(key), (fields) => {
+          await scrubShards(shards, key, (fields) => {
             if (fields && typeof fields.v === "string") return null;
             return Object.keys(fields || {}).filter((f) => f === uid);
           });
         }
 
-        // Keys of the form {uid}_{date}: the staff override map and the
-        // frozen legacy availability/RPE docs, which still hold the same
-        // shape until migrate-player-data --delete-legacy runs.
-        for (const key of ["fa_training_staff_override",
-          "fa_training_availability", "fa_match_availability",
+        // Keys of the form {uid}_{date}. `category` is a field on the shard
+        // document, not an entry, and matches neither filter below.
+        await scrubShards(shards, "fa_training_staff_override", (fields) =>
+          Object.keys(fields || {})
+              .filter((f) => f === uid || f.indexOf(uid + "_") === 0));
+
+        // The frozen legacy availability/RPE docs are NOT sharded — Phase 3b
+        // stopped writing them and the record collections took over, but
+        // they still hold this person's answers until
+        // migrate-player-data --delete-legacy runs, so an erase must still
+        // reach them.
+        for (const key of ["fa_training_availability", "fa_match_availability",
           "fa_player_rpe"]) {
           await scrubDataDoc(dataRef.doc(key), (fields) =>
             Object.keys(fields || {})
@@ -1230,6 +1457,35 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
 // collections are the only write path. The frozen legacy data/ docs stay
 // in place until `migrate-player-data.js --delete-legacy` removes them.
 
+// ── 8b. onMemberCategoryChanged — move joined rows between shards ──
+// Injuries and injury notes are sharded by the player's CURRENT category,
+// resolved through a live join rather than a stamp, because medical history
+// has to follow the player. The cost is that a category change has to move
+// the documents, and only the server can: the old coach can no longer
+// resolve the uid so his client pins the rows where they are, and the new
+// coach never downloads the old shard. Without this the history goes dark
+// for everyone.
+//
+// Watches the user doc rather than hooking each writer — onRosterWritten,
+// setRole and the client's "re-assign to a squad" flow all end up here, and
+// so will anything added later.
+exports.onMemberCategoryChanged = onDocumentWritten({
+  document: "users/{uid}",
+  region: "us-central1",
+}, async (event) => {
+  const after = event.data.after.exists ? event.data.after.data() : null;
+  if (!after) return;             // deletion — deleteMember does the scrub
+  const before = event.data.before.exists ? event.data.before.data() : null;
+  const prev = before ? (before.category || "") : "";
+  const next = after.category || "";
+  if (prev === next) return;
+  const teamId = after.teamId;
+  if (!teamId || teamId === "none" || teamId === "default") return;
+  // Idempotent: it scans every shard and lands the rows in one, so a repeat
+  // delivery (or a double write) is a no-op rather than a duplication.
+  await reshardMember(teamId, event.params.uid, next);
+});
+
 // ── 9. updateTeamDates — denormalize schedule dates onto the team doc ──
 // Keeps teams/{id}.trainingDates / .matchDates arrays in sync with the
 // fa_training / fa_matches blobs (staff-only writers). The schedulers
@@ -1238,29 +1494,35 @@ exports.updateTeamDates = onDocumentWritten({
   document: "teams/{teamId}/data/{key}",
   region: "us-central1",
 }, async (event) => {
-  const key = event.params.key;
-  if (key !== "fa_training" && key !== "fa_matches") return;
-  let list = [];
-  if (event.data.after.exists) {
-    const parsed = parseDataDoc(event.data.after, []);
-    if (Array.isArray(parsed)) list = parsed;
-  }
+  // Phase 5: the trigger fires per SHARD, but the field it maintains is
+  // per TEAM. Deriving the dates from the shard that just changed would
+  // replace the whole array with one category's dates — and since the
+  // schedulers query `array-contains` on it, every other category's
+  // reminders would stop, silently, with nothing in the logs. So re-read
+  // every shard of the key and UNION.
+  const parts = splitShardId(event.params.key);
+  if (!parts) return;                 // pre-Phase-5 doc; nothing writes those
+  if (parts.key !== "fa_training" && parts.key !== "fa_matches") return;
+  const teamId = event.params.teamId;
+  const shards = await readDataShards(teamId, [parts.key]);
+  const list = mergeArrayShards(shards.get(parts.key));
   const dates = [...new Set(list.map((x) => String(x.date || "")).filter(Boolean))];
-  const field = key === "fa_training" ? "trainingDates" : "matchDates";
-  await db.collection("teams").doc(event.params.teamId)
-      .set({[field]: dates}, {merge: true});
+  const field = parts.key === "fa_training" ? "trainingDates" : "matchDates";
+  await db.collection("teams").doc(teamId).set({[field]: dates}, {merge: true});
 });
 
 // ── 10. archiveSeason — archive & reset season data (admin only) ──
 // Keep in step with SEASON_KEYS in js/app.js.
 // fa_standings / fa_news / fa_player_stats dropped: no writer exists for any
 // of them, so this was archiving and resetting documents that never existed.
+// fa_training_availability / fa_match_availability / fa_player_rpe dropped
+// too: those data/ docs were frozen in Phase 3b and are not sharded, so
+// they hold nothing a season needs archiving. The canonical records are
+// archived from their own collections further down.
 const SEASON_KEYS = [
   "fa_matches", "fa_match_events", "fa_match_goals",
   "fa_training",
-  "fa_training_availability", "fa_match_availability",
   "fa_training_staff_override",
-  "fa_player_rpe",
   "fa_injuries", "fa_injury_notes", "fa_injury_zone",
   "fa_convocatoria_sent", "fa_convocatoria_callup",
   "fa_matchday",
@@ -1346,53 +1608,44 @@ exports.archiveSeason = onRequest(
       logger.info("archiveSeason START", {teamId, label: safeLabel, uid: decoded.uid});
 
       try {
-        const dataRef = db.collection("teams").doc(teamId).collection("data");
         const archiveRef = db.collection("teams").doc(teamId)
             .collection("seasons").doc(safeLabel).collection("data");
 
-        // ── Read all season data docs ──
-        const docs = {};
-        for (const key of SEASON_KEYS) {
-          const snap = await dataRef.doc(key).get();
-          if (snap.exists) docs[key] = snap.data();
-        }
+        // ── Read every shard of every season key (ONE collection read) ──
+        // Archived shards keep their {key}__{category} id, so a restored
+        // season lands back in the right categories and an archive can be
+        // read by the same scoped queries as live data.
+        const allShards = await readDataShards(teamId);
 
-        // ── Also read fa_users to zero stats ──
-        const usersSnap = await dataRef.doc("fa_users").get();
-        const usersData = usersSnap.exists ? usersSnap.data() : null;
-
-        // ── Special injury handling: keep active/recovering ──
-        let keptInjuries = [];
-        let archivedInjuryData = docs["fa_injuries"] || null;
-        if (archivedInjuryData) {
-          try {
-            const allInjuries = JSON.parse(archivedInjuryData.v || "[]");
-            const resolved = allInjuries.filter(
-                (inj) => inj.status === "resolved");
-            const kept = allInjuries.filter(
-                (inj) => inj.status !== "resolved");
-            keptInjuries = kept;
-            // Archive only resolved injuries
-            archivedInjuryData = {v: JSON.stringify(resolved)};
-          } catch (e) {
-            logger.warn("Failed to parse injuries, archiving as-is", e);
-          }
+        // ── Special injury handling: keep active/recovering, PER SHARD ──
+        // Carrying an unresolved injury forward has to happen inside its own
+        // category, or a player's open injury would surface in another
+        // squad's medical page after the rollover.
+        const keptInjuries = new Map();   // cat → still-open injuries
+        const archivedInjuries = new Map(); // cat → resolved injuries
+        for (const s of allShards.get("fa_injuries") || []) {
+          const all = parseDataDoc(s.snap, []);
+          if (!Array.isArray(all)) continue;
+          keptInjuries.set(s.cat, all.filter((i) => i.status !== "resolved"));
+          archivedInjuries.set(s.cat, all.filter((i) => i.status === "resolved"));
         }
 
         // ── Batch 1: Write archive docs ──
         let batch = db.batch();
         let opCount = 0;
         for (const key of SEASON_KEYS) {
-          const data = key === "fa_injuries" ?
-            archivedInjuryData : docs[key];
-          if (!data) continue;
-          batch.set(archiveRef.doc(key), data);
-          opCount++;
-          // Firestore batch limit is 500 ops
-          if (opCount >= 450) {
-            await batch.commit();
-            batch = db.batch();
-            opCount = 0;
+          for (const s of allShards.get(key) || []) {
+            const data = key === "fa_injuries" ?
+              {v: JSON.stringify(archivedInjuries.get(s.cat) || []), category: s.cat} :
+              s.snap.data();
+            batch.set(archiveRef.doc(shardDocId(key, s.cat)), data);
+            opCount++;
+            // Firestore batch limit is 500 ops
+            if (opCount >= 450) {
+              await batch.commit();
+              batch = db.batch();
+              opCount = 0;
+            }
           }
         }
         // Write archive metadata
@@ -1433,50 +1686,56 @@ exports.archiveSeason = onRequest(
           logger.info("archiveSeason: archived records", {coll, count: collSnap.size});
         }
 
-        // ── Batch 2: Reset source docs ──
+        // ── Batch 2: Reset source docs, shard by shard ──
+        // Every write carries `category`. A reset shard that lost the field
+        // would drop out of the client's where('category','in', …) query and
+        // the new season would start invisible.
         batch = db.batch();
         opCount = 0;
         for (const key of SEASON_KEYS) {
-          if (!docs[key]) continue;
-
-          if (key === "fa_injuries") {
-            // Keep active/recovering injuries
-            batch.set(dataRef.doc(key), {v: JSON.stringify(keptInjuries)});
-          } else if (MERGE_KEYS.has(key)) {
-            // For merge keys: delete all fields, keep _migrated flag
-            const fields = {};
-            for (const f of Object.keys(docs[key])) {
-              if (f === "_migrated") continue;
-              fields[f] = admin.firestore.FieldValue.delete();
+          for (const s of allShards.get(key) || []) {
+            if (key === "fa_injuries") {
+              // Keep this category's active/recovering injuries
+              batch.set(s.ref, {
+                v: JSON.stringify(keptInjuries.get(s.cat) || []),
+                category: s.cat,
+              });
+            } else if (MERGE_KEYS.has(key)) {
+              // For merge keys: delete all fields, keep _migrated + category
+              const fields = {};
+              for (const f of Object.keys(s.snap.data() || {})) {
+                if (f === "_migrated" || f === "category") continue;
+                fields[f] = admin.firestore.FieldValue.delete();
+              }
+              fields.category = s.cat;
+              batch.update(s.ref, fields);
+            } else if (OBJECT_KEYS.has(key)) {
+              batch.set(s.ref, {v: "{}", category: s.cat});
+            } else {
+              batch.set(s.ref, {v: "[]", category: s.cat});
             }
-            if (Object.keys(fields).length > 0) {
-              batch.update(dataRef.doc(key), fields);
+            opCount++;
+            if (opCount >= 450) {
+              await batch.commit();
+              batch = db.batch();
+              opCount = 0;
             }
-          } else if (OBJECT_KEYS.has(key)) {
-            batch.set(dataRef.doc(key), {v: "{}"});
-          } else {
-            batch.set(dataRef.doc(key), {v: "[]"});
-          }
-          opCount++;
-          if (opCount >= 450) {
-            await batch.commit();
-            batch = db.batch();
-            opCount = 0;
           }
         }
 
         // ── Zero player stats (matchesPlayed, minutesPlayed) ──
-        if (usersData && usersData.v) {
+        for (const s of allShards.get("fa_users") || []) {
           try {
-            const users = JSON.parse(usersData.v);
+            const users = parseDataDoc(s.snap, null);
+            if (!Array.isArray(users)) continue;
             for (const u of users) {
               u.matchesPlayed = 0;
               u.minutesPlayed = 0;
             }
-            batch.set(dataRef.doc("fa_users"), {v: JSON.stringify(users)});
+            batch.set(s.ref, {v: JSON.stringify(users), category: s.cat});
             opCount++;
           } catch (e) {
-            logger.warn("Failed to zero player stats", e);
+            logger.warn("Failed to zero player stats", {cat: s.cat, e});
           }
         }
 
