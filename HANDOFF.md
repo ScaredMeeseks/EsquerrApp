@@ -10,11 +10,11 @@ The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo cl
 
 ### Superadmin sets how many teams a lead may create
 
-The superadmin needs a per-club limit on how many teams a lead can add, **minimum always 1**.
+**Decided 2026-08-04:** `maxTeams` defaults to **1**, 1 is also the minimum, and a **missing field means 1** — a club that exists has at least one team. The lead may then create up to whatever the superadmin has allowed. **This is a commercial constraint**, which is what decides the implementation.
 
-A "team" here is a `{category}-{letter}` pair — the lead creates them through *Editar categories* (`showTeamSetup()`), which enables a category and adds letters. So the limit is on the count of enabled category/letter combinations, i.e. what `rosterKeys()` returns.
+A "team" is a `{category}-{letter}` pair, created by the lead through *Editar categories* (`showTeamSetup()`). The quota is on the count of enabled combinations — what `rosterKeys()` returns.
 
-**The design point that decides the whole shape of this:** `firestore.rules` currently has
+**Because it is commercial, the UI cannot be the enforcement point.** `firestore.rules` currently allows the lead to update *any* field on their own club doc:
 
 ```
 match /clubs/{clubId} {
@@ -22,16 +22,16 @@ match /clubs/{clubId} {
 }
 ```
 
-— **no field allowlist**. A lead can already write *any* field on their own club document, so storing the quota as `clubs/{id}.maxTeams` and enforcing it in the UI would be trivially bypassable by the lead it is meant to constrain. If this is a licensing/commercial limit rather than a courtesy, the rule has to narrow so the lead cannot write the quota field itself — the same shape as the `users/{uid}` rules, which already split client-writable fields from server-owned ones with `hasOnly()`.
+So a lead could raise their own `maxTeams`, or write `categories` past it, straight from the console. Two things have to change together:
 
-Sketch, to be confirmed:
+1. **`maxTeams` must be superadmin-only.** Narrow the lead's update with a `hasOnly()` allowlist that excludes it — the same split `users/{uid}` already uses for server-owned fields (`firestore.rules`, the `hasOnly(['position','playerNumber',…])` clause).
+2. **The quota check has to run server-side.** Recommended: a `setClubCategories` callable that validates the count before writing, which is exactly why `joinClub`, `setRole` and `deleteMember` are callables. Expressing "count enabled categories × their letters ≤ maxTeams" in rules alone means unrolling all six categories by hand — possible, unpleasant, and easy to get subtly wrong.
 
-- `clubs/{id}.maxTeams` (integer, default 1), written by the superadmin only.
-- Superadmin UI: a field on the club row in the admin club list (`_loadClubList()`), alongside the existing crest and code.
-- Enforcement: `showTeamSetup()` refuses to enable a category or add a letter past the limit and says why; **plus** a rules change so it holds server-side.
-- Existing clubs need a sensible default — the live club has one team, the demo club one; a missing field should probably mean "unlimited" rather than "1", or every existing club silently becomes capped on deploy. **Worth deciding explicitly.**
+**The trap to avoid: never enforce on the absolute count.** A club that is already over quota when this ships must stay editable — if the rule or callable rejects any write where `teams > maxTeams`, the lead of an over-quota club is locked out of editing *anything*, including removing a team to get back under. Enforce on **increase**: a write that does not add a team is always allowed. Existing teams are grandfathered, never removed retroactively.
 
-This is the first genuinely commercial constraint in the app, so it is also the first place where "the lead is trusted" stops being true. Worth designing once, properly.
+**Pre-flight before deploying:** count the enabled `{category}-{letter}` pairs on every production club and check which would be over a default of 1. The live club and the demo club each have one (`amateur-A`), but the F.C.Barcelona test club (`lly4GkUxIpBkSgZvzldT`) has juvenil accounts, so it may have more. Read-only, one Admin SDK script.
+
+Open sub-question: does the superadmin set a number of *teams* (letters, across all categories), or a number of *categories*? "3 teams" could mean amateur-A/B/C or amateur-A + juvenil-A + cadet-A. The wording above assumes the former — worth confirming, because it changes the UI.
 
 ## v53/v54 — readiness score colour + column headers (2026-08-04)
 
