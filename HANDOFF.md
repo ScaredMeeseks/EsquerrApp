@@ -2,9 +2,41 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v52.** v46–v52 all shipped: per-club season boundary + demo-club seeder, three demo-walkthrough fixes, the staff home page, two navigation fixes and two rounds of performance work, then readiness presentation. Frontend-only throughout — **no rules or functions have changed since Phase 5**, so `./deploy.sh` has not been needed. Tests **202 passing** (101 unit + 87 rules + 14 functions), up from 143.
+**Production is on v54.** v46–v52 all shipped: per-club season boundary + demo-club seeder, three demo-walkthrough fixes, the staff home page, two navigation fixes and two rounds of performance work, then readiness presentation. Frontend-only throughout — **no rules or functions have changed since Phase 5**, so `./deploy.sh` has not been needed. Tests **202 passing** (101 unit + 87 rules + 14 functions), up from 143.
 
 The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo club below).
+
+## Backlog — requested 2026-08-04
+
+### Superadmin sets how many teams a lead may create
+
+The superadmin needs a per-club limit on how many teams a lead can add, **minimum always 1**.
+
+A "team" here is a `{category}-{letter}` pair — the lead creates them through *Editar categories* (`showTeamSetup()`), which enables a category and adds letters. So the limit is on the count of enabled category/letter combinations, i.e. what `rosterKeys()` returns.
+
+**The design point that decides the whole shape of this:** `firestore.rules` currently has
+
+```
+match /clubs/{clubId} {
+  allow update: if isSuperUser() || isLeadOf(clubId);
+}
+```
+
+— **no field allowlist**. A lead can already write *any* field on their own club document, so storing the quota as `clubs/{id}.maxTeams` and enforcing it in the UI would be trivially bypassable by the lead it is meant to constrain. If this is a licensing/commercial limit rather than a courtesy, the rule has to narrow so the lead cannot write the quota field itself — the same shape as the `users/{uid}` rules, which already split client-writable fields from server-owned ones with `hasOnly()`.
+
+Sketch, to be confirmed:
+
+- `clubs/{id}.maxTeams` (integer, default 1), written by the superadmin only.
+- Superadmin UI: a field on the club row in the admin club list (`_loadClubList()`), alongside the existing crest and code.
+- Enforcement: `showTeamSetup()` refuses to enable a category or add a letter past the limit and says why; **plus** a rules change so it holds server-side.
+- Existing clubs need a sensible default — the live club has one team, the demo club one; a missing field should probably mean "unlimited" rather than "1", or every existing club silently becomes capped on deploy. **Worth deciding explicitly.**
+
+This is the first genuinely commercial constraint in the app, so it is also the first place where "the lead is trusted" stops being true. Worth designing once, properly.
+
+## v53/v54 — readiness score colour + column headers (2026-08-04)
+
+- **v53**: the readiness number now uses the dot's *exact* colour. It had been set a shade darker for text contrast, which made the pair read as two signals rather than one. Note: `#4caf50` and `#ff9800` as small bold text sit below the WCAG 4.5:1 ratio on white — reverting to the darker text is a three-line CSS change if it proves hard to read outdoors.
+- **v54**: roster and training-detail column headers renamed — **Estat → Estat Mèdic**, **Punt → Forma Física** (`Estado Médico` / `Forma Física`, `Medical Status` / `Fitness`). Both tables show the same two columns, so both key pairs changed; `training.th_status` and `reg.th_status` mean different things and were left alone. The new labels are ~3× wider and `.roster-table th` is `nowrap`, so those two headers now wrap over two lines rather than pushing an 11-column table into horizontal scroll on a phone. **Worth eyeballing on mobile.**
 
 ## v52 — readiness presentation (2026-08-04)
 

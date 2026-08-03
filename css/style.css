@@ -1844,6 +1844,10 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 /* Compact roster table */
 .roster-table { font-size: .82rem; }
 .roster-table th { padding: .4rem .25rem; font-size: .68rem; white-space: nowrap; }
+/* "Estat Mèdic" / "Forma Física" are ~3x the width of the labels they
+   replaced. With nowrap they widen an already 11-column table and push it
+   into horizontal scroll on a phone; two short lines keep it compact. */
+.roster-th-wrap { white-space: normal !important; line-height: 1.15; max-width: 4.5rem; }
 .roster-table td { padding: .4rem .25rem; }
 .roster-num { font-weight: 600; font-variant-numeric: tabular-nums; font-size: .8rem; }
 .roster-icon-header { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; }

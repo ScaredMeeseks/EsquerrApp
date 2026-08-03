@@ -268,8 +268,8 @@
     'std.player_attendance':  { ca:'Assistència de jugadors', es:'Asistencia de jugadores', en:'Player Attendance' },
     'std.th_pos':        { ca:'Pos', es:'Pos', en:'Pos' },
     'std.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
-    'std.th_status':     { ca:'Estat', es:'Estado', en:'Status' },
-    'std.th_ready':      { ca:'Punt', es:'Listo', en:'Ready' },
+    'std.th_status':     { ca:'Estat Mèdic', es:'Estado Médico', en:'Medical Status' },
+    'std.th_ready':      { ca:'Forma Física', es:'Forma Física', en:'Fitness' },
     'std.th_ac_ratio':   { ca:'A/C', es:'A/C', en:'A/C Ratio' },
     'std.th_player_answer':  { ca:'Resposta jugador', es:'Respuesta jugador', en:'Player Answer' },
     'std.th_staff_editable': { ca:'Staff (editable)', es:'Staff (editable)', en:'Staff (editable)' },
@@ -302,8 +302,10 @@
     // ── Staff Roster ──
     'roster.th_pos':    { ca:'Pos', es:'Pos', en:'Pos' },
     'roster.th_name':   { ca:'Nom', es:'Nombre', en:'Name' },
-    'roster.th_status': { ca:'Estat', es:'Estado', en:'Status' },
-    'roster.th_ready':  { ca:'Punt', es:'Listo', en:'Ready' },
+    // The same two columns appear on the training-detail table as
+    // std.th_status / std.th_ready — keep the wording in step.
+    'roster.th_status': { ca:'Estat Mèdic', es:'Estado Médico', en:'Medical Status' },
+    'roster.th_ready':  { ca:'Forma Física', es:'Forma Física', en:'Fitness' },
     'roster.th_star':   { ca:'T / S / NC', es:'T / S / NC', en:'T / S / NC' },
     'roster.th_gcm':    { ca:'GC/P', es:'GC/P', en:'GC/M' },
     'roster.gcm_title': { ca:'Contribucions de gol per partit', es:'Contribuciones de gol por partido', en:'Goal Contributions per Match' },
@@ -1128,7 +1130,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 53;
+  const APP_VERSION = 54;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -9629,7 +9631,7 @@
           return '<div class="roster-team-filter"><button class="roster-team-btn std-team-btn' + btnAll + '" data-std-team="all">All</button>' + letterBtns + '</div>';
         })()}
         <div class="table-wrap"><table class="matchday-table std-attendance-table">
-          <thead><tr><th>${t('std.th_pos')}</th><th>${t('std.th_player')}</th><th class="center-cell">${t('std.th_status')}</th><th class="center-cell">${t('std.th_ready')}</th><th class="center-cell">${t('std.th_ac_ratio')}</th><th class="center-cell">${t('std.th_player_answer')}</th><th class="center-cell">${t('std.th_staff_editable')}</th></tr></thead>
+          <thead><tr><th>${t('std.th_pos')}</th><th>${t('std.th_player')}</th><th class="center-cell roster-th-wrap">${t('std.th_status')}</th><th class="center-cell roster-th-wrap">${t('std.th_ready')}</th><th class="center-cell">${t('std.th_ac_ratio')}</th><th class="center-cell">${t('std.th_player_answer')}</th><th class="center-cell">${t('std.th_staff_editable')}</th></tr></thead>
           <tbody>${playerRows}</tbody>
         </table></div>
       </div>
@@ -10243,7 +10245,7 @@
         <div class="table-wrap"><table class="roster-table">
           <thead><tr>
             <th class="roster-pos-col">${t('roster.th_pos')}</th><th>${t('roster.th_name')}</th>
-            <th class="center-cell">${t('roster.th_status')}</th><th class="center-cell">${t('roster.th_ready')}</th>
+            <th class="center-cell roster-th-wrap">${t('roster.th_status')}</th><th class="center-cell roster-th-wrap">${t('roster.th_ready')}</th>
             <th class="center-cell" title="Titular / Suplent / NC" style="font-size:1rem;color:#f9a825;line-height:1;">★</th>
             <th class="center-cell roster-icon-th"><img src="img/chrono.jpg" class="roster-icon-header" alt="min" title="Minutes"></th>
             <th class="center-cell roster-icon-th"><img src="img/gol.png" class="roster-icon-header" alt="gol" title="Goals"></th>
