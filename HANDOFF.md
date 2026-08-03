@@ -13,7 +13,7 @@ _Rolling document, overwritten each session. Last updated: 2026-08-03 (**Phase 5
 ### Open items (none are blocking)
 
 1. **The APK has not been installed on the phones yet — deliberately parked.** CI has built it (v44, and again at v45). Old v43 builds address documents nobody writes and will show an **empty app** — that is what the v43 version check exists to warn about. **Set `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` to the shipped version only once that APK is actually on the phones**, not before. Until then the web app is the working client.
-2. ~~Roster → player detail shows no injury history.~~ **Fixed in v45** — `buildInjuryHistoryHtml(uid)` is now shared by "My stats" and the staff view, with the hover popup and the `KEY_PAGES.fa_injuries` re-render wired for `staff-player-stats` too. Deployed to the web; the APK is a version behind by choice.
+2. ~~Roster → player detail shows no injury history.~~ **Fixed and deployed in v45** — `buildInjuryHistoryHtml(uid)` is now shared by "My stats" and the staff view, with the hover popup and the `KEY_PAGES.fa_injuries` re-render wired for `staff-player-stats` too. Confirmed working in production; the APK is a version behind by choice.
 3. **Three stranded accounts** (`mariogbaena@`, `oriol.garciaizq@`, `argi@esquerra.com`) still carry `teamId: 'default'` with `cats: []`. `teams/default`'s data was wiped; the accounts remain. The owner has said losing them is fine — delete or re-invite whenever.
 
 ### Clubs in production (verified 2026-08-03, post-cutover)

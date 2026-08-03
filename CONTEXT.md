@@ -485,7 +485,7 @@ Plus: the per-document diff (a re-render that changes nothing writes nothing), r
 
 **129 passing at the time**: 42 unit (`npm run test:unit`, no Java) + 87 rules. The functions harness that closed the remaining gap came later the same day — see below.
 
-**Committed as `02fe60e` on branch `phase5-sharding`** — not pushed, not merged, not deployed. `HANDOFF.md` carries the Stage E runbook; `CLAUDE.md` was updated for the new script load order, the sharded data model and the `npm run test:unit` safety net.
+**Committed as `02fe60e` on branch `phase5-sharding`** — not pushed, not merged, not deployed *at the time*; merged and shipped at the cutover below. `HANDOFF.md` carried the Stage E runbook; `CLAUDE.md` was updated for the new script load order, the sharded data model and the `npm run test:unit` safety net.
 
 The one non-obvious thing about the cutover, spelled out in the runbook: **the two rule changes cannot ship together.** The `baseKey` write allowlist must land BEFORE the new frontend (composite ids fail the old exact-match allowlist, so every player write would be denied), and the read narrowing must land AFTER it (Firestore rejects a collection query outright if any document it could return might be denied). So the rules deploy twice, with the read narrowing temporarily backed out the first time.
 
@@ -538,3 +538,5 @@ Two bindings the card needs, easy to miss because neither is in the render funct
 
 - **`bindMyStatsInjuryPopup()`** is called from the page router by page name, and only `my-stats` was listed. Without `staff-player-stats` the rows render with `cursor:help` and no popup ever appears — the markup is identical, so nothing looks broken.
 - **`KEY_PAGES.fa_injuries`** decides which pages re-render on a `firestore-sync`, and `staff-player-stats` was absent. A coach sitting on a player's detail page would not have seen an injury logged from another device.
+
+Deployed and confirmed working in production the same day. `PROJECT_SUMMARY.md` was rewritten alongside it: it still described the pre-Phase-1 app (one club-wide blob per key, `teamId: "default"`, three roles, demo seed data, four Cloud Functions), which made it actively misleading rather than merely thin.
