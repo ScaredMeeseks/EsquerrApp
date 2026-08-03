@@ -1218,10 +1218,10 @@ async function apply(S, docs) {
   await db.collection("clubCodes").doc(code).set({ clubId: S.clubId });
   ok(`clubCodes/${code}`);
 
+  // trainingDates/matchDates are deliberately NOT reset here. They are
+  // written at the end from the calendar we just generated — see below.
   await db.collection("teams").doc(S.clubId).set({
     name: OPTS.name,
-    trainingDates: [],
-    matchDates: [],
     createdAt: FieldValue.serverTimestamp(),
   }, { merge: true });
   ok(`teams/${S.clubId}`);
@@ -1325,6 +1325,21 @@ async function apply(S, docs) {
       date: r.date, updatedAt: stamp, source: "seed" },
   })), "rpe");
 
+  /* Schedule dates, written directly rather than waited for.
+     The updateTeamDates trigger maintains these, but it fires once per
+     shard and finishes whenever it finishes — a --verify run seconds later
+     caught trainingDates populated and matchDates still empty, which looks
+     exactly like a broken trigger and is not one. We generated the calendar,
+     so we know the answer: write it. The trigger's own write lands the same
+     values afterwards and is a no-op. */
+  step("Schedule dates");
+  const uniqDates = (list) => [...new Set(list.map((x) => x.date).filter(Boolean))];
+  await teamRef.set({
+    trainingDates: uniqDates(S.trainings),
+    matchDates: uniqDates(S.matches),
+  }, { merge: true });
+  ok(`trainingDates ${uniqDates(S.trainings).length}, matchDates ${uniqDates(S.matches).length}`);
+
   step("Done");
   log(`${SEP}club id     ${S.clubId}`);
   log(`${SEP}join code   ${code}`);
@@ -1391,12 +1406,18 @@ async function verify(clubId) {
   scoreBad ? bad(`${scoreBad} stored scores disagree with their events`) :
     ok("every stored score equals calcMatchScore() of its events");
 
+  // The schedulers query these with array-contains, so an empty one means
+  // that kind of reminder goes quiet for the whole club.
   const team = await db.collection("teams").doc(clubId).get();
   const td = (team.data() || {}).trainingDates || [];
   const md = (team.data() || {}).matchDates || [];
-  (td.length && md.length) ?
-    ok(`trainingDates ${td.length}, matchDates ${md.length} (updateTeamDates fired)`) :
-    bad(`trainingDates ${td.length}, matchDates ${md.length} — run backfill-team-dates.js`);
+  if (td.length && md.length) {
+    ok(`trainingDates ${td.length}, matchDates ${md.length}`);
+  } else {
+    bad(`trainingDates ${td.length}, matchDates ${md.length} — one is empty. ` +
+      "--apply writes these directly; if you are verifying a club seeded " +
+      "before that, re-run --apply, or node functions/backfill-team-dates.js");
+  }
 
   for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
     const snap = await db.collection("teams").doc(clubId).collection(coll).get();
