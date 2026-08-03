@@ -108,19 +108,10 @@ service cloud.firestore {
       // The `'cats' in token` guard keeps a session with an old token
       // denying rather than erroring, the same idiom the rosters rule uses.
       match /data/{key} {
-        // ⚠️ TEMPORARY — Phase 5 Stage E, step 1 only. The narrowed read
-        // (the commented-out line below) is backed out until the sharded
-        // frontend is live: Firestore rejects a collection query outright if
-        // any document it could return might be denied, so the QUERY has to
-        // narrow before the RULE does. Step 7 reverts this commit and puts
-        // the real rule back. While this is deployed, category isolation on
-        // reads is not enforced — do not leave it in place.
-        //
-        //   allow read: if isSuperUser()
-        //     || (sameTeam(teamId) && 'cats' in request.auth.token
-        //         && (resource.data.category == 'none'
-        //             || resource.data.category in request.auth.token.cats));
-        allow read: if sameTeam(teamId) || isSuperUser();
+        allow read: if isSuperUser()
+          || (sameTeam(teamId) && 'cats' in request.auth.token
+              && (resource.data.category == 'none'
+                  || resource.data.category in request.auth.token.cats));
         allow write: if isSuperUser() || isStaffOf(teamId)
           || (sameTeam(teamId) && baseKey(key) in [
                'fa_injury_notes', 'fa_injury_zone', 'fa_injuries',
