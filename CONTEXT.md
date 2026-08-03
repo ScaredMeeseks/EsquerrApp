@@ -646,3 +646,18 @@ Reported from the new staff home: open a training from Home, press Back, and you
 A detail page is not a sidebar item, so it highlights the section it was opened from — the convention, and now also exactly where Back goes. The two agreeing is the point: the original behaviour was confusing rather than merely wrong *because* they disagreed.
 
 New `test/navigation.test.js`, 9 tests in the fast unit path — **170 passing** (69 unit + 87 rules + 14 functions). It slices the logic block out of app.js by marker and evaluates it, one step beyond what `shard.test.js` already does with utils.js; a stale marker throws by name rather than silently skipping. Covered: the reported path, the pre-existing paths that must not regress, the no-origin fallback, re-render immunity, and that the highlight and the back target never disagree.
+
+### 2026-08-03 — Sessions list was re-parsing a 49 KB blob 3,400 times per render (v50)
+
+Reported as "Sessions d'entrenament seem to take a little longer to react and load". Measured, not guessed: **547 ms of pure `JSON.parse` per render**, now **1.5 ms**.
+
+`getEffectiveAnswer()` parsed *both* availability blobs on **every call**, and it is called once per player per session. The Sessions list renders one attendance donut per row, so a 68-session season with 25 players ran 68 × 25 × 2 = **~3,400 parses** of a 49 KB blob, plus 68 more parses of the training list because `buildAvailDonut()` re-read it to find a session its caller was already holding. The cost is O(sessions × players), which is why it only became noticeable once the demo season filled up — and why the live club will hit it as its own season grows.
+
+Two changes:
+
+- **`availContext()` memoises the parsed blobs, keyed on the raw string.** Deliberately *not* on `window._renderFrame`, which is how `getUsers()` and `getReadinessData()` cache: `_renderFrame` only increments in `navigate()`, never in `renderPage()`, so a frame-keyed cache would keep serving the old answers after a player taps one. A stale read here is worse than a slow one, and this repo has been bitten by silent-staleness three times already. Any write changes the string, so the memo cannot outlive it.
+- **`getEffectiveAnswer(…, ctx)` takes an optional context**, hoisted once per loop at the five hottest call sites (season attendance, both attendance donuts, the player-home and player-stats donuts). Callers that pass nothing behave exactly as before. `buildAvailDonut()` also takes the session object when the caller has it.
+
+New `test/availability.test.js`, 8 tests — **178 passing** (77 unit + 87 rules + 14 functions). They pin the precedence rules (override beats answer, unanswered is `yes` until locked, then `na`), that passing a context changes no answer, that an unchanged blob is not re-parsed, and — the important one — that a write is visible to the very next read. One test documents that a held context is a *snapshot*, so nobody caches one across renders and reintroduces the staleness this avoided.
+
+Worth noting for later: `renderStaffTraining()` also rewrites `fa_training` to localStorage on every render (to backfill missing ids), which puts the whole blob through the shard router each time. The router's per-document diff means nothing reaches Firestore, so it is wasted work rather than a bug — left alone.

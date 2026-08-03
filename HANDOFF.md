@@ -2,6 +2,16 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
+## v50 — Sessions list performance (2026-08-03)
+
+"Sessions d'entrenament seem to take a little longer to react and load" — measured at **547 ms of `JSON.parse` per render, now 1.5 ms**.
+
+`getEffectiveAnswer()` re-parsed both availability blobs on *every call*, and it runs once per player per session: 68 sessions × 25 players × 2 = ~3,400 parses of a 49 KB blob, per render. `availContext()` now memoises them, **keyed on the raw string rather than a render-frame counter** — `_renderFrame` only increments in `navigate()`, so a frame-keyed cache would keep showing the old answer after a player taps one.
+
+The cost is O(sessions × players), so **the live club will hit this too** as its season fills up; it is not a demo-only problem.
+
+New `test/availability.test.js` (8 tests). **178 passing.** Frontend only — push to `main`, no `./deploy.sh`.
+
 ## v49 — navigation fixes (2026-08-03)
 
 Found by using the new staff home: open a training from Home → Back → you land on the Training Sessions list while the sidebar still highlights Home. **Two separate bugs, both pre-dating the staff home.**
