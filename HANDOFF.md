@@ -2,6 +2,24 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
+## v47 — ready to push (2026-08-03)
+
+Three demo-walkthrough fixes. Frontend + seeder only — **no rules or functions changed, so no `./deploy.sh`**. `APP_VERSION` and `sw.js` `CACHE_NAME` are at **47**. Tests green at 161.
+
+1. **Team filter offered a team B that does not exist.** "Auto Generate Teams" passed `_currentSession.category`, which is `''` for staff, hitting `getTeamLetters()`'s fallback. Now uses `getCurrentCategory()`; the fallback is `['A']`; and both this filter and the roster's hide when there is only one team.
+2. **"Equal" distribution now groups similar players together** — contiguous blocks of the position-sorted pool, so two groups give defenders + holding midfielders vs attacking midfielders + forwards. It previously dealt round-robin, i.e. did the opposite of its own comment, and behaved like a second Mix button. Also fixed: the trim used to cut **the forwards every time**, `perTeam` could be exceeded, and group numbering was unstable.
+3. **`--faces <dir>` on the seeder** uploads profile pictures. See Demo club below.
+
+**Still to do**: push, then re-seed the demo club with faces.
+
+### Deferred, agreed 2026-08-03 — readiness colouring
+
+Found while explaining the roster's Status and Ready columns. **Deliberately parked** for a proper look at readiness as a whole, and worth stressing: `computeReadiness()` runs for **every club**, so this is a real-users change, not a demo tweak.
+
+- **No data renders green.** `rd.hasData` false paints the dot green with a `—` tooltip (`renderStaffRoster`, and the same at the training-detail and convocatòria call sites). A player with almost no RPE history therefore reads as maximally ready. Grey would be honest.
+- **Readiness never reads the injury log**, so an injured player can show a green readiness dot — the Status and Ready columns contradict each other on the same row. Status comes from `deriveFitnessStatus()`, readiness purely from training load; the two pipelines never cross-check.
+- Related, if it is being opened up anyway: the readiness **number only exists in a hover tooltip**, and the tooltip is mouse-only — on a phone the score is invisible. And the colour is not a function of the score (a separate ACWR + risk-flag + override classifier), which is why two players can both show 72 in different colours with nothing on screen explaining it.
+
 ## v46 — shipped and verified (2026-08-03)
 
 1. ✅ **Pushed to `main`** (`337b6f5`, `f579ecf`) — frontend live on GitHub Pages, APK built by CI. `APP_VERSION` and `sw.js` `CACHE_NAME` both at **v46**. No rules or functions changed, so **no `./deploy.sh` was needed** and none should be run: it would redeploy identical rules for no reason.
@@ -84,7 +102,15 @@ node functions/seed-demo-club.js                       # dry run — OFFLINE, no
 node functions/seed-demo-club.js --apply               # create; prints id + join code
 node functions/seed-demo-club.js --verify --club Tm96gel58VSQvxgynf45
 node functions/seed-demo-club.js --apply --purge Tm96gel58VSQvxgynf45   # delete it all
+
+# Profile pictures (v47). Upload the folder to Cloud Shell ONCE — its home
+# directory persists — then re-seed in place. Name files after the slug
+# (player01.jpg … player25.jpg, coach.jpg, fisio.jpg) or drop in any images
+# and they are handed out alphabetically. Fewer than 27 is fine.
+node functions/seed-demo-club.js --apply --club Tm96gel58VSQvxgynf45 --faces ~/demo-faces
 ```
+
+Pictures go to `profilePics/{uid}.{ext}`, the same path real uploads use, and are written to **both** `users/{uid}` and the `fa_users` shard — the roster reads the shard, the profile screen reads the doc. `--verify` checks the two agree and that every URL resolves to a real object; `--purge` deletes the blobs. Use AI-generated faces: these are shown to prospective clients, and photos of identifiable real people carry likeness questions that synthetic ones do not.
 
 ### ADC on Cloud Shell — the guidance that was wrong twice
 

@@ -29,10 +29,20 @@
 //   node functions/seed-demo-club.js --verify --club <id> # read-back checks
 //   node functions/seed-demo-club.js --apply --purge <id> # tear it all down
 //
+// Profile pictures: --faces <dir> uploads images to profilePics/{uid}.{ext},
+// the same path real uploads use. A file named after a slug (player01.jpg,
+// coach.png) goes to that person; anything else is handed out alphabetically
+// to whoever is still bare. Fewer images than people is fine — the rest keep
+// the app's initials fallback. Cloud Shell's home directory persists, so the
+// folder only has to be uploaded once:
+//   node functions/seed-demo-club.js --apply --club <id> --faces ~/demo-faces
+//
 // The dry run is deliberately offline and needs no credentials: the whole
 // season is generated and self-checked in memory, so the data can be
-// reviewed before any of it exists. --apply needs ADC (see HANDOFF.md;
-// the fix is GOOGLE_APPLICATION_CREDENTIALS, not `gcloud auth login`).
+// reviewed before any of it exists. --apply needs ADC — on Cloud Shell that
+// is automatic (it is a GCE VM whose metadata server supplies it). If it
+// fails, the usual cause is a STALE GOOGLE_APPLICATION_CREDENTIALS being
+// read in preference to the working metadata credentials: unset it.
 //
 // Re-running is safe and idempotent: uids are derived from the club id,
 // so --apply --club <id> overwrites the same accounts and shards rather
@@ -60,6 +70,7 @@ const VERIFY = has("--verify");
 const PURGE = val("--purge", null);
 const CLUB_ID = val("--club", null);
 const DUMP_DIR = val("--dump", null);
+const FACES_DIR = val("--faces", null);
 
 const OPTS = {
   name: val("--name", "C.E. Sant Andreu del Palomar"),
@@ -710,6 +721,76 @@ function buildSeason(uidPrefix) {
   };
 }
 
+/**
+ * Match image files to people and decide each one's Storage path and URL.
+ *
+ * Runs OFFLINE and before the shards are built, because `profilePic` has to
+ * be on the person object by the time fa_users is assembled. The download
+ * token is minted here rather than after upload: Firebase's download URL is
+ * just the object path plus a token WE supply as metadata, so it can be
+ * known in advance and the dry run can show exactly what it will produce.
+ *
+ * Filenames are matched by slug (`player01.jpg`, `coach.png`); anything else
+ * is handed out alphabetically to whoever is still without a picture. Fewer
+ * images than people is fine — the rest keep the app's initials fallback.
+ */
+const FACE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const MAX_FACE_BYTES = 5 * 1024 * 1024;   // storage.rules' own ceiling
+
+function assignFaces(S, dir) {
+  const fs = require("fs");
+  const crypto = require("crypto");
+  const out = { dir, files: 0, matched: 0, skipped: [], uploads: [] };
+  if (!dir) return out;
+
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+    throw userError(`--faces is not a directory: ${dir}`);
+  }
+
+  const entries = fs.readdirSync(dir)
+      .filter((f) => FACE_EXT.has(path.extname(f).toLowerCase()))
+      .sort();
+  out.files = entries.length;
+
+  const people = S.staff.concat(S.players);
+  const bySlug = new Map(people.map((p) => [p.slug, p]));
+  const taken = new Set();
+  const leftovers = [];
+
+  // Pass 1 — exact slug match.
+  entries.forEach((file) => {
+    const slug = path.basename(file, path.extname(file)).toLowerCase();
+    const person = bySlug.get(slug);
+    if (person && !taken.has(person)) { taken.add(person); pair(person, file); }
+    else leftovers.push(file);
+  });
+  // Pass 2 — whatever is left, alphabetically, to whoever is still bare.
+  // Players before staff: a folder of squad faces usually holds exactly as
+  // many images as there are players, and filling staff first would leave
+  // two of them on initials while the coach and physio got portraits.
+  const bare = S.players.filter((p) => !taken.has(p))
+      .concat(S.staff.filter((p) => !taken.has(p)));
+  leftovers.forEach((file, i) => { if (bare[i]) pair(bare[i], file); });
+
+  function pair(person, file) {
+    const full = path.join(dir, file);
+    const size = fs.statSync(full).size;
+    if (size === 0 || size > MAX_FACE_BYTES) {
+      out.skipped.push(`${file} (${(size / 1048576).toFixed(1)} MB)`);
+      return;
+    }
+    const ext = path.extname(file).toLowerCase();
+    const objectPath = `profilePics/${person.uid}${ext}`;
+    const token = crypto.randomUUID();
+    person.profilePic = "https://firebasestorage.googleapis.com/v0/b/" +
+      `${STORAGE_BUCKET}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+    out.uploads.push({ file: full, objectPath, token, ext, size, uid: person.uid });
+    out.matched++;
+  }
+
+  return out;
+}
+
 /** Verbatim copy of calcMatchScore() in js/app.js — own goals count for
  *  the OTHER side, and that asymmetry is the whole reason to copy rather
  *  than re-derive. */
@@ -855,6 +936,17 @@ function selfCheck(S) {
   const dups = dupDates(S.trainings, "training") + dupDates(S.matches, "match");
   if (!dups) ok("no repeated fixture dates — date arithmetic survives DST");
 
+  if (S.faces && S.faces.dir) {
+    const people = S.staff.concat(S.players);
+    const withPic = people.filter((p) => p.profilePic);
+    const paths = new Set(S.faces.uploads.map((u) => u.objectPath));
+    // One object per person: two people sharing a path would silently
+    // overwrite each other on upload and leave one showing the other's face.
+    (paths.size === S.faces.uploads.length && withPic.length === S.faces.matched) ?
+      ok(`${S.faces.matched} profile pictures, one distinct object each`) :
+      bad("profile picture assignment is not one-to-one");
+  }
+
   const inSeason = S.matches.every((m) => m.date >= S.seasonStart) &&
     S.trainings.every((t) => t.date >= S.seasonStart);
   inSeason ? ok(`every fixture falls inside the season window (from ${S.seasonStart})`) :
@@ -888,13 +980,13 @@ function buildShards(S) {
 
   const faUsers = S.staff.map((s) => ({
     id: s.uid, name: s.name, email: s.email, position: "", playerNumber: "",
-    profilePic: "", dob: "", profileSetupDone: true,
+    profilePic: s.profilePic || "", dob: "", profileSetupDone: true,
     roles: s.roles, category: "", team: "",
     staffCategories: [S.cat], isAdmin: false, isTeamLead: !!s.isLead,
     teamId: S.clubId, fitnessStatus: "fit", injuryNote: "",
   })).concat(S.players.map((p) => ({
     id: p.uid, name: p.name, email: p.email, position: p.position,
-    playerNumber: p.playerNumber, profilePic: "", dob: p.dob,
+    playerNumber: p.playerNumber, profilePic: p.profilePic || "", dob: p.dob,
     profileSetupDone: true, roles: ["player"], category: S.cat,
     team: OPTS.letter, staffCategories: [], isAdmin: false,
     isTeamLead: false, teamId: S.clubId,
@@ -980,6 +1072,13 @@ function report(S, docs) {
   log(`${SEP}matchAvail      ${S.matchAvail.length}`);
   log(`${SEP}rpe             ${S.rpe.length}`);
   log(`${SEP}accounts        ${S.players.length + S.staff.length}  (Auth + users/ + claims)`);
+  if (S.faces && S.faces.dir) {
+    log(`${SEP}profile pics    ${S.faces.matched}/${S.players.length + S.staff.length}` +
+      ` matched from ${S.faces.files} files in ${S.faces.dir}`);
+    S.faces.skipped.forEach((s) => log(`${SEP}${SEP}skipped ${s}`));
+  } else {
+    log(`${SEP}profile pics    none (pass --faces <dir> to add them)`);
+  }
   const total = docs.length + S.trainingAvail.length + S.matchAvail.length +
     S.rpe.length + S.players.length + S.staff.length + 4;
   log(`${SEP}${"".padEnd(16)}${"─".repeat(20)}`);
@@ -989,10 +1088,16 @@ function report(S, docs) {
 // ============================================================
 // Firebase — only reached with --apply / --verify / --purge
 // ============================================================
+const STORAGE_BUCKET = "esquerrapp.firebasestorage.app";   // js/firebase-config.js
+
 let admin; let db; let auth; let FieldValue;
 function initFirebase() {
   admin = require("firebase-admin");
-  if (!admin.apps.length) admin.initializeApp({ projectId: "esquerrapp" });
+  if (!admin.apps.length) {
+    // storageBucket is required for admin.storage().bucket() to resolve —
+    // without it profile-picture uploads throw rather than defaulting.
+    admin.initializeApp({ projectId: "esquerrapp", storageBucket: STORAGE_BUCKET });
+  }
   db = admin.firestore();
   auth = admin.auth();
   ({ FieldValue } = require("firebase-admin/firestore"));
@@ -1147,6 +1252,25 @@ async function apply(S, docs) {
   }
   ok(`Auth: ${created} created, ${updated} updated (password: ${OPTS.password})`);
 
+  // Profile pictures BEFORE the user docs: the docs carry the download URLs,
+  // so uploading after would publish links to objects that do not exist yet.
+  if (S.faces && S.faces.uploads.length) {
+    step("Profile pictures");
+    const fs = require("fs");
+    const bucket = admin.storage().bucket();
+    const TYPES = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+      ".png": "image/png", ".webp": "image/webp" };
+    for (const u of S.faces.uploads) {
+      await bucket.file(u.objectPath).save(fs.readFileSync(u.file), {
+        contentType: TYPES[u.ext] || "image/jpeg",
+        // The token IS the download URL's credential — the same one already
+        // written into profilePic, so the two must agree exactly.
+        metadata: { metadata: { firebaseStorageDownloadTokens: u.token } },
+      });
+    }
+    ok(`uploaded ${S.faces.uploads.length} images to profilePics/`);
+  }
+
   const userOps = everyone.map((person) => {
     const isPlayer = S.players.includes(person);
     return {
@@ -1157,7 +1281,9 @@ async function apply(S, docs) {
         email: person.email.toLowerCase(),
         position: isPlayer ? person.position : "",
         playerNumber: isPlayer ? person.playerNumber : "",
-        profilePic: "",
+        // Must match the fa_users entry: the roster reads the shard while the
+        // profile screen reads this doc, so setting one alone half-applies it.
+        profilePic: person.profilePic || "",
         dob: isPlayer ? person.dob : "",
         profileSetupDone: true,
         teamId: S.clubId,
@@ -1281,6 +1407,29 @@ async function verify(clubId) {
   const unstamped = users.docs.filter((d) => !d.data().demoSeed).length;
   unstamped ? bad(`${unstamped} of ${users.size} users are NOT stamped demoSeed`) :
     ok(`${users.size} users, all stamped demoSeed`);
+
+  // A profilePic URL pointing at a missing object renders as a broken image,
+  // which no amount of Firestore checking would catch.
+  const withPic = users.docs.filter((d) => (d.data().profilePic || "").startsWith("http"));
+  if (!withPic.length) {
+    ok("no profile pictures set (run with --faces to add them)");
+  } else {
+    const bucket = admin.storage().bucket();
+    let missing = 0;
+    for (const d of withPic) {
+      const [found] = await bucket.getFiles({ prefix: `profilePics/${d.id}.` });
+      if (!found.length) missing++;
+    }
+    missing ? bad(`${missing} of ${withPic.length} profilePic URLs point at a missing object`) :
+      ok(`${withPic.length} profile pictures, every URL backed by a real object`);
+
+    // The roster reads fa_users, the profile screen reads users/ — a mismatch
+    // shows a face on one screen and initials on the other.
+    const byId = new Map(faUsers.map((u) => [String(u.id), u.profilePic || ""]));
+    const drift = withPic.filter((d) => byId.get(d.id) !== d.data().profilePic).length;
+    drift ? bad(`${drift} users' profilePic disagrees between users/ and fa_users`) :
+      ok("profilePic agrees between users/ and fa_users");
+  }
 }
 
 // ============================================================
@@ -1319,6 +1468,16 @@ async function purge(clubId) {
     log(`${SEP}${c}: ${counts[c]}`);
   }
 
+  // Storage objects are NOT reachable from Firestore, so a purge that only
+  // clears documents strands every uploaded picture in the bucket forever.
+  const bucket = admin.storage().bucket();
+  const blobs = [];
+  for (const d of demoUsers) {
+    const [found] = await bucket.getFiles({ prefix: `profilePics/${d.id}.` });
+    found.forEach((f) => blobs.push(f));
+  }
+  log(`${SEP}profilePics: ${blobs.length}`);
+
   if (!APPLY) {
     log(`\n${SEP}DRY RUN — nothing deleted. Re-run with --apply to act.`);
     return;
@@ -1333,6 +1492,11 @@ async function purge(clubId) {
     }
     ok(`deleted ${snap.size} from ${c}`);
   }
+
+  for (const b of blobs) {
+    try { await b.delete(); } catch (e) { /* already gone */ }
+  }
+  if (blobs.length) ok(`deleted ${blobs.length} profile pictures`);
 
   for (const d of demoUsers) {
     const toks = await d.ref.collection("tokens").get();
@@ -1383,6 +1547,8 @@ function makeJoinCode() {
   const S = buildSeason(`dm_${clubId.slice(0, 10)}_`);
   S.clubId = clubId;
   S.joinCode = makeJoinCode();
+  // Before buildShards: fa_users copies profilePic off these objects.
+  S.faces = assignFaces(S, FACES_DIR);
 
   const docs = buildShards(S);
   report(S, docs);

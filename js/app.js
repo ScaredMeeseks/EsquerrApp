@@ -77,6 +77,9 @@
 
     // ── Common ──
     'common.all':        { ca:'Tots', es:'Todos', en:'All' },
+    // Plain affirmative for toggles. Deliberately not avail.yes, which is an
+    // ANSWER to "are you coming?" and may well be reworded on its own.
+    'common.yes':        { ca:'Sí', es:'Sí', en:'Yes' },
     'common.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
     'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
     'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
@@ -261,8 +264,10 @@
     'std.include_gk':        { ca:'Incloure porter', es:'Incluir portero', en:'Include GK' },
     'std.team_filter':       { ca:'Filtre per equip', es:'Filtro por equipo', en:'Team Filter' },
     'std.distribution':      { ca:'Distribució', es:'Distribución', en:'Distribution' },
-    'std.mix':               { ca:'Barreja', es:'Mezcla', en:'Mix' },
-    'std.equal':             { ca:'Igualat', es:'Igualado', en:'Equal' },
+    // These name what the split DOES. "Igualat"/"Igualado" described the old
+    // behaviour, where both buttons produced a positionally balanced split.
+    'std.mix':               { ca:'Equips Mixtes', es:'Equipos Mixtos', en:'Mixed Teams' },
+    'std.equal':             { ca:'Per Posicions', es:'Por Posiciones', en:'By Position' },
     'std.generate':          { ca:'Generar equips', es:'Generar equipos', en:'Generate Teams' },
     'std.team_prefix':       { ca:'Equip', es:'Equipo', en:'Team' },
     'std.no_players':        { ca:'Cap jugador', es:'Sin jugadores', en:'No players' },
@@ -1084,7 +1089,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 46;
+  const APP_VERSION = 47;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1707,13 +1712,19 @@
       '<div class="pmt-scroll"><table class="player-match-table"><thead>' + headerRow + '</thead><tbody>' + bodyRows + '</tbody></table></div></div>';
   }
 
-  // Return letters for a given category from the club config (fallback: ['A','B'])
+  /* Letters for a category, from the club config.
+     Falls back to ['A'] — a single team — for the same reasons rosterKeys()
+     and prefill-rosters.js do. This used to fall back to ['A','B'], which
+     invented a team B that did not exist: the config is loaded async, so
+     every render before it resolves, and every caller passing a blank
+     category, offered a filter for a squad nobody is in. Omitting a real
+     team is recoverable; offering a fake one is not. */
   function getTeamLetters(category) {
     if (_clubConfig && _clubConfig.categories && category) {
       var cat = _clubConfig.categories[category];
       if (cat && cat.enabled && cat.letters && cat.letters.length) return cat.letters;
     }
-    return ['A', 'B'];
+    return ['A'];
   }
 
   // Return all enabled categories from club config
@@ -9485,36 +9496,43 @@
         <div class="tg-config-panel" id="tg-config" hidden>
           <div class="tg-config-row">
             <div class="tg-config-field">
-              <label>Number of Teams</label>
+              <label>${t('std.num_teams')}</label>
               <input type="number" class="reg-input" id="tg-num-teams" value="2" min="2" max="10" style="width:70px;text-align:center;">
             </div>
             <div class="tg-config-field">
-              <label>Players per Team</label>
+              <label>${t('std.players_per_team')}</label>
               <input type="number" class="reg-input" id="tg-per-team" value="${defaultPerTeam}" min="1" max="20" style="width:70px;text-align:center;">
             </div>
             <div class="tg-config-field">
-              <label>Include GK</label>
-              <label class="tg-toggle-label"><input type="checkbox" id="tg-include-gk" checked> <span class="tg-toggle-text">Yes</span></label>
+              <label>${t('std.include_gk')}</label>
+              <label class="tg-toggle-label"><input type="checkbox" id="tg-include-gk" checked> <span class="tg-toggle-text">${t('common.yes')}</span></label>
             </div>
-            <div class="tg-config-field">
-              <label>Team Filter</label>
+            ${(() => {
+              // getCurrentCategory(), NOT _currentSession.category: `category`
+              // is a player's own squad field and is '' for staff, so a coach
+              // resolved to no category and got the fallback letters.
+              const tgLetters = getTeamLetters(getCurrentCategory());
+              if (tgLetters.length <= 1) return '';   // nothing to filter
+              return `<div class="tg-config-field">
+              <label>${t('std.team_filter')}</label>
               <div class="tg-btn-group">
-                <button class="tg-btn tg-btn-active" data-tg-team="all">All</button>
-                ${getTeamLetters(_currentSession && _currentSession.category || '').map(function(l) {
+                <button class="tg-btn tg-btn-active" data-tg-team="all">${t('common.all')}</button>
+                ${tgLetters.map(function(l) {
                   return '<button class="tg-btn" data-tg-team="' + l + '">' + l + '</button>';
                 }).join('')}
               </div>
-            </div>
+            </div>`;
+            })()}
             <div class="tg-config-field">
-              <label>Distribution</label>
+              <label>${t('std.distribution')}</label>
               <div class="tg-btn-group">
-                <button class="tg-btn tg-btn-active" data-tg-mode="mix">Mix</button>
-                <button class="tg-btn" data-tg-mode="equal">Equal</button>
+                <button class="tg-btn tg-btn-active" data-tg-mode="mix">${t('std.mix')}</button>
+                <button class="tg-btn" data-tg-mode="equal">${t('std.equal')}</button>
               </div>
             </div>
           </div>
           <div style="margin-top:.8rem;text-align:right;">
-            <button class="btn btn-primary btn-small" id="btn-tg-generate">Generar Equips</button>
+            <button class="btn btn-primary btn-small" id="btn-tg-generate">${t('std.generate')}</button>
           </div>
         </div>
         <div id="tg-teams-container">${teamsHtml}</div>
@@ -9539,17 +9557,21 @@
       return !positions.every(pos => pos === 'GK');
     });
 
-    // 4. Categorize by position group
+    // 4. Categorize by position group.
+    //    Keyed off posRankGlobal(), the same ranking the roster and the
+    //    convocatòria sort by, rather than positions[0] — a player listed
+    //    "ST,CB" used to group as a forward here while sorting as a defender
+    //    everywhere else. One player, one position.
+    //    POS_ORDER = GK,CB,LB,RB,DM,OM,LW,RW,ST (js/utils.js).
     function posGroup(player) {
-      const positions = (player.position || '').split(',').map(s => s.trim()).filter(Boolean);
-      const first = positions[0] || '';
-      if (first === 'GK') return 'GK';
-      if (first === 'CB') return 'DEF_CB';
-      if (['LB', 'RB'].includes(first)) return 'DEF_WB';
-      if (first === 'DM') return 'MID_DM';
-      if (first === 'OM') return 'MID_OM';
-      if (['LW', 'RW', 'ST'].includes(first)) return 'FWD';
-      return 'MID_OM'; // fallback
+      const rank = posRankGlobal(player);
+      if (rank === 0) return 'GK';
+      if (rank === 1) return 'DEF_CB';
+      if (rank <= 3) return 'DEF_WB';
+      if (rank === 4) return 'MID_DM';
+      if (rank === 5) return 'MID_OM';
+      if (rank <= 8) return 'FWD';
+      return 'MID_OM'; // no recognised position
     }
     function posCategory(pg) {
       if (pg === 'GK') return 'GK';
@@ -9569,48 +9591,96 @@
 
     const teams = Array.from({ length: numTeams }, () => []);
 
-    if (mode === 'mix') {
-      // Separate GKs and distribute one per team first
-      const gks = shuffle(pool.filter(p => posCategory(posGroup(p)) === 'GK'));
-      const nonGks = shuffle(pool.filter(p => posCategory(posGroup(p)) !== 'GK'));
-      gks.forEach((gk, i) => { if (i < numTeams) teams[i].push(gk); });
-      // Remaining GKs go to smallest teams
-      for (let i = numTeams; i < gks.length; i++) {
-        teams.sort((a, b) => a.length - b.length);
-        teams[0].push(gks[i]);
+    /* Index of the currently smallest team.
+       The old code called teams.sort() to find it, which REORDERS the array
+       in place — so "Equip 1…N" in renderGeneratedTeams reflected the last
+       size-sort rather than a stable identity, and groups appeared to
+       shuffle themselves between renders. */
+    function smallestTeam() {
+      let best = -1;
+      for (let i = 0; i < teams.length; i++) {
+        // perTeam is a hard cap, so a full group is not a candidate however
+        // small it is relative to the others.
+        if (teams[i].length >= perTeam) continue;
+        if (best === -1 || teams[i].length < teams[best].length) best = i;
       }
-      // Group non-GKs by position category and round-robin
-      const groups = { DEF: [], MID: [], FWD: [] };
-      nonGks.forEach(p => {
-        const cat = posCategory(posGroup(p));
-        if (groups[cat]) groups[cat].push(p);
-        else groups['MID'].push(p); // fallback
-      });
-      shuffle(groups.DEF); shuffle(groups.MID); shuffle(groups.FWD);
-      // Round-robin each group across teams
-      ['DEF', 'MID', 'FWD'].forEach(g => {
-        groups[g].forEach((p, i) => {
-          // Find team with fewest players, preferring round-robin order
-          teams.sort((a, b) => a.length - b.length);
-          teams[0].push(p);
-        });
-      });
-    } else {
-      // Equal mode: sort by detailed position rank, then chunk sequentially
-      const posOrder = { GK: 0, DEF_CB: 1, DEF_WB: 2, MID_DM: 3, MID_OM: 4, FWD: 5 };
-      const sorted = pool.slice().sort((a, b) => {
-        const ga = posGroup(a), gb = posGroup(b);
-        return (posOrder[ga] ?? 3) - (posOrder[gb] ?? 3);
-      });
-      sorted.forEach((p, i) => {
-        teams[i % numTeams].push(p);
-      });
+      return best;   // -1 when every group is full
     }
 
-    // Trim to perTeam if specified and smaller than what we distributed
-    teams.forEach(team => {
-      while (team.length > perTeam) team.pop();
-    });
+    /** Put a player in the emptiest group that still has room. */
+    function place(p) {
+      const i = smallestTeam();
+      if (i !== -1) teams[i].push(p);
+    }
+
+    /* Cap the pool BEFORE distributing.
+       Trimming afterwards with `while (team.length > perTeam) team.pop()`
+       popped the end of a position-ordered list, so the players dropped into
+       "No inclosos" were chosen by position rather than fairly — in both
+       modes it was reliably the forwards. Cutting a shuffled pool up front
+       makes exclusion positionally neutral. */
+    const capacity = numTeams * perTeam;
+    if (pool.length > capacity) {
+      // One keeper per group is reserved before the cut. Capping a plain
+      // shuffle can drop every keeper, which trades a positional bias for
+      // groups that have nobody in goal.
+      const isGK = p => posCategory(posGroup(p)) === 'GK';
+      const keepers = shuffle(pool.filter(isGK)).slice(0, numTeams);
+      const rest = shuffle(pool.filter(p => keepers.indexOf(p) === -1));
+      pool = keepers.concat(rest).slice(0, capacity);
+    }
+
+    const gks = shuffle(pool.filter(p => posCategory(posGroup(p)) === 'GK'));
+    const outfield = pool.filter(p => posCategory(posGroup(p)) !== 'GK');
+
+    // One keeper per group first, in both modes — however the outfielders are
+    // grouped, every group still needs somebody in goal.
+    gks.forEach((gk, i) => { if (i < numTeams) teams[i].push(gk); });
+    for (let i = numTeams; i < gks.length; i++) place(gks[i]);
+
+    if (mode === 'mix') {
+      // MIX — spread each positional bucket across every group, so each group
+      // gets a proportional slice of defenders, midfielders and forwards.
+      const groups = { DEF: [], MID: [], FWD: [] };
+      shuffle(outfield.slice()).forEach(p => {
+        const cat = posCategory(posGroup(p));
+        (groups[cat] || groups.MID).push(p);
+      });
+      ['DEF', 'MID', 'FWD'].forEach(g => { groups[g].forEach(place); });
+    } else {
+      /* EQUAL — group SIMILAR players together: sort by position rank and cut
+         into contiguous blocks. With two groups that puts defenders and
+         holding midfielders in one, attacking midfielders and forwards in the
+         other.
+
+         The old code sorted and then dealt `teams[i % numTeams]`, which
+         scatters adjacent (i.e. similar) players into DIFFERENT groups — the
+         exact opposite of both its own comment and the intent, and why Equal
+         behaved like a second Mix button. */
+      const posOrder = { GK: 0, DEF_CB: 1, DEF_WB: 2, MID_DM: 3, MID_OM: 4, FWD: 5 };
+      const sorted = outfield.slice().sort((a, b) =>
+        (posOrder[posGroup(a)] ?? 3) - (posOrder[posGroup(b)] ?? 3));
+
+      /* Each group takes a CONTIGUOUS slice, sized by what is left to place
+         and how many groups are still to fill, and never past `perTeam` —
+         the keepers are already seated, so a group holding a spare keeper has
+         one slot less for outfielders. Sizing off `sorted.length` alone
+         overfilled exactly those groups. */
+      let cut = 0;
+      for (let i = 0; i < numTeams && cut < sorted.length; i++) {
+        const room = Math.max(0, perTeam - teams[i].length);
+        const share = Math.ceil((sorted.length - cut) / (numTeams - i));
+        const size = Math.min(room, share);
+        sorted.slice(cut, cut + size).forEach(p => teams[i].push(p));
+        cut += size;
+      }
+      // Rounding can leave a straggler; give them to any group with room
+      // rather than silently dropping a player who was in the pool.
+      for (; cut < sorted.length; cut++) {
+        if (smallestTeam() === -1) break;
+        place(sorted[cut]);
+      }
+    }
 
     return teams;
   }
@@ -9820,10 +9890,10 @@
 
     return `
       <h2 class="page-title">${t('page.player_roster')}</h2>
-      <div class="roster-team-filter">
+      ${_rosterLetters.length <= 1 ? '' : `<div class="roster-team-filter">
         <button class="roster-team-btn${btnAll}" data-roster-filter="all">${t('common.all')}</button>
         ${rosterLetterBtns}
-      </div>
+      </div>`}
       <div class="card">
         <div class="table-wrap"><table class="roster-table">
           <thead><tr>
