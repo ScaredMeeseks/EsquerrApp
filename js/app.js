@@ -1084,7 +1084,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 45;
+  const APP_VERSION = 46;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1291,8 +1291,17 @@
   }
 
   async function loadClubConfig(clubId) {
-    if (!clubId || clubId === 'default' || clubId === 'none') { _clubConfig = null; syncDbScope(); return null; }
+    // The season window is per-club. Reset it on the no-club branch too, or
+    // logging out of a club with a custom boundary leaves the next session
+    // slicing its dates by the wrong year.
+    if (!clubId || clubId === 'default' || clubId === 'none') {
+      _clubConfig = null;
+      setSeasonBoundary(null);
+      syncDbScope();
+      return null;
+    }
     _clubConfig = await getClub(clubId);
+    setSeasonBoundary(_clubConfig && _clubConfig.seasonBoundary);
     if (_clubConfig) _clubConfig.rosters = await loadRosters(clubId, _clubConfig);
     // Update splash badge and cache image as base64 for instant next load
     var splashImg = document.getElementById('splash-badge');

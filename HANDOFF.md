@@ -1,6 +1,12 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-03 (**Phase 5 is complete and live in production** — the cutover ran today)._
+_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
+
+## Next actions (v46 is ready but not shipped)
+
+1. **Push to `main`** — deploys the frontend to GitHub Pages and triggers the APK build. `APP_VERSION` and `sw.js` `CACHE_NAME` are both at **v46**. No rules or functions changed, so no `./deploy.sh` needed.
+2. **Confirm the live club is unchanged** — log in as `marna96@gmail.com` and check roster stats, medical and the load charts look exactly as they did. `nDLJCpJfDvFHs8MnwtzW` has no `seasonBoundary` field, so `seasonStartStr()` must still return 15 August. This is the entire safety claim of the change; verify it rather than assuming it.
+3. **Then seed the demo club** — see "Demo club" below. Read the dry run before `--apply`.
 
 ## Current state
 
@@ -60,6 +66,28 @@ The export lives in **one tab only** — a new tab or a dropped session needs it
 
 - **The three per-record collections (`trainingAvail`, `matchAvail`, `rpe`) are still club-wide readable.** The plan has them gaining a `category` field, but no stage owned it and the sensitive data — medical — lives in `data/fa_injuries`, which is scoped. Doing it means stamping six `ackSaveRecord` sites, narrowing three listeners and three rules, and it strands a moved player's records the same way the joined `data/` routes did (so it needs `reshardMember` extending too). An incremental privacy improvement, not a blocker.
 - Linked match/training tactic board copies are still matched by **name**; now that data is sharded the same name can exist in two categories. Pre-existing, untouched.
+
+## Demo club (v46, `functions/seed-demo-club.js`)
+
+A full season for showing the app to prospects: 25 players, 34 matchdays, 68 trainings, ~3,000 documents, in a **club of its own**. Not yet run — no demo club exists in production.
+
+```bash
+cd ~/EsquerrApp
+gcloud auth application-default set-quota-project esquerrapp   # prints /tmp/tmp.XXXX/...
+export GOOGLE_APPLICATION_CREDENTIALS=/tmp/tmp.XXXX/application_default_credentials.json
+
+node functions/seed-demo-club.js                       # dry run — OFFLINE, no credentials
+node functions/seed-demo-club.js --apply               # create it; prints club id + join code
+node functions/seed-demo-club.js --verify --club <id>  # read-back checks
+node functions/seed-demo-club.js --apply --purge <id>  # delete it entirely
+```
+
+- **The dry run needs no credentials and writes nothing** — the season is generated and self-checked in memory. Fourteen consistency checks run before any write and refuse it on failure. Read it in full first.
+- **Safety**: everything created is stamped `demoSeed: true`. `--purge` refuses any club without the stamp, refuses the live club and the Barcelona test club outright, and skips unstamped accounts. The live club cannot be reached by this script.
+- **Re-running is idempotent** — uids derive from the club id, so `--apply --club <id>` overwrites the same accounts and the demo credentials keep working.
+- **Credentials it creates**: `coach@demo.esquerrapp.app` (lead), `fisio@demo.esquerrapp.app`, `player01@…`–`player25@…`, all with the password printed at the end (`--password` to change it). The lead login is the one to demo from; a player login shows the player side.
+- **The season boundary is derived from the run date**, five months back, and written to `clubs/{id}.seasonBoundary`. That is what keeps "today" mid-season whenever it is run, so the demo has both history and upcoming fixtures. Verified across five run dates from 2026-08 to 2027-06. **Just re-run it** whenever the demo starts looking thin — there is no fixed expiry date to diary.
+- `teams/{id}.trainingDates` / `.matchDates` are filled by the `updateTeamDates` trigger. If reminders look wrong afterwards: `node functions/backfill-team-dates.js`.
 
 ## Known trade-offs / notes
 

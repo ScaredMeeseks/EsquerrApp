@@ -9,8 +9,27 @@ function localDateStr(d) {
 }
 const DAY_VALUES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
-/* The season runs 15 August → 14 August. Returns the most recent 15 August
-   on or before `when` as 'YYYY-08-15'.
+/* The season boundary as 'MM-DD'. Defaults to 15 August, the Catalan
+   amateur calendar; a club may override it with clubs/{id}.seasonBoundary
+   for leagues that run on a different year (calendar-year and
+   spring–winter competitions both exist).
+
+   Deliberately a module-level variable rather than a parameter: the six
+   call sites all pass only a date, and `teamId` is single-valued, so a
+   session never has two clubs loaded at once. loadClubConfig() owns it. */
+let _seasonBoundary = '08-15';
+
+function setSeasonBoundary(mmdd) {
+  // Anything malformed falls back to the default rather than producing a
+  // window nobody asked for — a club with no field must behave exactly as
+  // it did before this existed.
+  _seasonBoundary = /^\d{2}-\d{2}$/.test(mmdd) ? mmdd : '08-15';
+}
+
+function getSeasonBoundary() { return _seasonBoundary; }
+
+/* Returns the most recent season boundary on or before `when`, as
+   'YYYY-MM-DD'.
 
    This used to be inlined in seven places as `getMonth() >= 7 ? year : year-1`
    followed by `year + '-08-15'`, which rolled the season over on 1 August but
@@ -19,8 +38,8 @@ const DAY_VALUES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
    (medical injuries, player stats, roster stats, season week). */
 function seasonStartStr(when) {
   const d = when || new Date();
-  const aug15 = d.getFullYear() + '-08-15';
-  return localDateStr(d) >= aug15 ? aug15 : (d.getFullYear() - 1) + '-08-15';
+  const cut = d.getFullYear() + '-' + _seasonBoundary;
+  return localDateStr(d) >= cut ? cut : (d.getFullYear() - 1) + '-' + _seasonBoundary;
 }
 
 function getSeasonWeek(dateStr) {
@@ -193,3 +212,32 @@ const BODY_ZONES = [
   {pts:'64.2,88.2 63.6,89 63.9,90.2 63.2,91.1 62.1,92 61.1,92.4 60.2,92.8 60.9,93.2 61.9,93.8 63.9,93.7 65,94.1 65.9,94.4 66.8,94.5 67.7,94.1 67.9,93.2 67.9,92.2 67.7,91.2 67.4,90.3 67.6,89.4 67.3,88.5 66.4,88.9 65.7,89.1 64.7,88.7', label:'Ankle', groups:['Ankle']},
   {pts:'78.7,87.8 79.3,88.2 80,88.7 80.8,88.6 81.4,88 81.9,87.5 82.1,88.4 82.3,89.1 82.3,89.8 82.2,90.6 82.8,90.9 83.4,91.5 84.4,92.2 85.3,92.5 85.8,92.9 85.2,93.3 84.5,93.4 84,93.8 83.2,93.8 82,93.6 81.2,94.1 80.4,94.4 79.6,94.4 78.4,94.2 78.1,93.1 78.2,91.9 78.4,90.9 78.3,89.5 78.4,88.6', label:'Ankle', groups:['Ankle']}
 ];
+
+/* ---------- Node export (tests only) ----------
+   This file stays a plain classic script: app.js reads every one of the
+   above as a global, so wrapping it in a UMD closure the way shard.js is
+   wrapped would take them all out of scope. `module` is undefined in the
+   browser, so the block below is skipped there and the file is unchanged;
+   under `require()` the declarations are module-scoped and this exports
+   the pure helpers worth testing. Nothing above touches the DOM at load
+   time (`sanitize` uses `document`, but only when called). */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    localDateStr,
+    seasonStartStr,
+    setSeasonBoundary,
+    getSeasonBoundary,
+    getSeasonWeek,
+    CATEGORY_ORDER,
+    CATEGORY_LABELS,
+    POS_ORDER,
+    DAY_VALUES,
+    // Exported so seed-demo-club.js can build injuries against the real
+    // zone indices: fa_injuries stores `bodyZone` as an index INTO this
+    // array plus a matching `bodyZoneLabel`, and hard-coding either would
+    // drift the moment a zone is added.
+    BODY_ZONES,
+    BODY_REGIONS,
+    GROUP_SUBS
+  };
+}

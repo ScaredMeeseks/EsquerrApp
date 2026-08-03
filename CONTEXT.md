@@ -540,3 +540,41 @@ Two bindings the card needs, easy to miss because neither is in the render funct
 - **`KEY_PAGES.fa_injuries`** decides which pages re-render on a `firestore-sync`, and `staff-player-stats` was absent. A coach sitting on a player's detail page would not have seen an injury logged from another device.
 
 Deployed and confirmed working in production the same day. `PROJECT_SUMMARY.md` was rewritten alongside it: it still described the pre-Phase-1 app (one club-wide blob per key, `teamId: "default"`, three roles, demo seed data, four Cloud Functions), which made it actively misleading rather than merely thin.
+
+### 2026-08-03 — The season boundary is per-club (v46)
+
+`seasonStartStr()` hard-coded 15 August. Six places in `app.js` filter on it (`date < seasonStart || date > todayStr`), so it alone decides whether a club's stats, medical, attendance and load views have any content — and a club whose league does not run August–June had no way to say so.
+
+Written for the demo club (below), which needs "today" to sit mid-season rather than 12 days from a rollover, but it stands on its own: calendar-year and spring–winter competitions both exist.
+
+- **`js/utils.js`**: module-level `_seasonBoundary` (`'MM-DD'`, default `'08-15'`) with `setSeasonBoundary()` / `getSeasonBoundary()`. `seasonStartStr()` reads it. **No call site changed** — the six filters still pass only a date. A module-level variable is sufficient because `teamId` is single-valued, so a session never holds two clubs.
+- **`js/app.js`** `loadClubConfig()`: `setSeasonBoundary(_clubConfig && _clubConfig.seasonBoundary)`, **and** a reset on the no-club early return — otherwise logging out of a club with a custom boundary leaves the next session slicing dates by the wrong year.
+- **`clubs/{id}.seasonBoundary`** is optional. Anything missing or malformed falls back to `'08-15'`, so a club without the field is byte-identical to the old behaviour. No rules change (`clubs/{id}` update was already lead-or-superuser with no field allowlist) and no backend involvement — `functions/` never calls `seasonStartStr`, and archive/reset are manual, not date-triggered.
+
+Nothing stored is season-stamped; the boundary only slices plain `YYYY-MM-DD` dates at read time, so setting or deleting the field is fully reversible with no migration. `getSeasonWeek()` follows it too — week numbering is derived, never stored.
+
+**`js/utils.js` is now requireable from Node**, via a `typeof module !== 'undefined'` guard at the end of the file exporting the pure helpers. Deliberately *not* the UMD wrapper `shard.js` uses: `app.js` reads every constant and function in utils.js as a global, so a closure would take them all out of scope. Nothing above the guard touches the DOM at load time (`sanitize` uses `document`, but only when called).
+
+**Cold start was checked, not assumed**: `init()` has no eager render, and the only boot-time `navigate()` is at the end of the `onAuthStateChanged` handler, after `await loadClubConfig(tid)`. The boundary is always set before the first season-scoped render, so no localStorage cache was needed.
+
+New `test/utils.test.js` (18 tests) in the fast `npm run test:unit` path — **161 passing** now (60 unit + 87 rules + 14 functions). The suite leans on the negative case: nine malformed values must all fall back to `'08-15'`, and the boundary must reset cleanly. `check-deploy.js`'s `CURRENT` constant was bumped to `esquerrapp-v46` (it had been left at v44 while production ran v45).
+
+### 2026-08-03 — `functions/seed-demo-club.js`: a demo season for sales
+
+A complete season — 25 players, 34 matchdays, 68 trainings, ~3,000 documents — in a **separate club**, so prospects can be shown a full app instead of an empty one. Nothing production is touched.
+
+- **Everything it creates is stamped `demoSeed: true`** (club doc and every `users/` doc). `--purge` refuses a club without the stamp, refuses the three ids in `PROTECTED_CLUBS`, and leaves any unstamped account in the club alone. That stamp is the whole safety model.
+- **Uids are derived from the club id** (`dm_{clubId10}_{slug}`), so `--apply --club <id>` re-seeds the same accounts rather than duplicating them and the demo credentials keep working.
+- **Routing goes through `js/shard.js`**, never by hand: `Shard.partition()` then `Shard.docId()`. Hand-written shard ids are how a document ends up without a `category` and goes dark, and this way the seeder's output is identical to the app's by construction.
+- **Order matters**: accounts are written before shards, because `onMemberCategoryChanged` → `reshardMember` fires on every `users/` write whose category changed. Writing people first means it finds nothing to move.
+- `calcMatchScore()` is copied verbatim from app.js and the score is **derived** from the events, never assigned — the app recomputes it on render, so an invented score would contradict itself on screen.
+
+**The dry run is offline and needs no credentials.** The season is generated and self-checked in memory; only `--apply` initialises firebase-admin. Fourteen consistency checks run before any write and refuse it on failure — scores against events, events against call-ups, subs XI→bench, one keeper per XI and never substituted, `ua = rpe × minutes`, `fitnessStatus` against the injury log, and an injured player never marked available.
+
+Three bugs the checks and the multi-date runs caught, all worth recording:
+
+- **`addDays()` did millisecond arithmetic.** On the autumn DST transition Spain has a 25-hour day, so `t + 86400000` from local midnight lands at 23:00 the *same* day and `for (d = start; d <= end; d = addDays(d, 1))` **spins forever**. Dates are now `setDate()`-based and anchored at noon. The first test date only escaped because its calendar stopped the day before 2026-10-25.
+- **Substitute goalkeepers.** The bench was "squad minus XI", so the reserve keepers were the first three subs — two came on in one match. Selection is now by line (4-3-3), the bench is outfield-only, and the keeper is never subbed.
+- **An injury extended after its unavailable days were blocked out** left a gap where the player showed as available in the middle of his own injury. The end date is now decided before the days are blocked, not patched afterwards.
+
+**The season boundary is derived from the run date** (five months back, snapped to the 1st) unless `--boundary` is passed. That is what makes the script re-runnable: "today" always lands ~40% into the season, so there is both a played history for the stats views and a fixture list for the live flows. Verified across five run dates spanning 2026-08 → 2027-06; all pass every check. Pinning a fixed boundary works until the season rolls over and then produces an empty demo.
