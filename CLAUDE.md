@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. The only automated tests are the Firestore rules suite in `test/` (see the safety net below); there is no test coverage of `app.js`, so UI changes are verified by hand. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
+EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. Automated tests live in `test/`: the Firestore rules suite, plus unit tests for `js/shard.js` and `js/db.js` (see the safety net below). There is no coverage of `app.js` or `functions/index.js`, so changes there are verified by hand. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
 
 - Firebase project: `esquerrapp` · Superadmin: `marna96@gmail.com`
 - Frontend hosting: **GitHub Pages from `main`** — pushing to `main` deploys the site AND triggers the Android APK CI build (`.github/workflows/build-android.yml`).
@@ -17,13 +17,19 @@ EsquerrApp — football club management PWA (players, staff, club admins/team le
 node --check js/app.js   # (and any other edited .js file)
 ```
 
-**2. Firestore rules tests — these DO run locally** (Java 21 + firebase-tools are installed on the dev box; older notes saying otherwise are stale):
+**2. Automated tests — these DO run locally** (Java 21 + firebase-tools are installed on the dev box; older notes saying otherwise are stale):
 
 ```bash
-cd test && npm test      # boots the emulator, ~67 tests, fake project demo-esquerrapp
+cd test && npm run test:unit   # ~1s, pure Node — no emulator, no Java
+cd test && npm test            # the above plus the rules suite on the emulator
 ```
 
-No credentials, no Cloud Shell round-trip. Run them after **any** change to `firestore.rules` or to the custom claims that rules read (`teamId`, `role`, `cats`).
+129 tests today. `test:unit` covers `js/shard.js` (which category each row of each key belongs to) and `js/db.js` (the router, run for real against an in-memory Firestore fake). The rules suite uses the fake project `demo-esquerrapp` — no credentials, no Cloud Shell round-trip.
+
+Run `test:unit` after **any** change to `js/db.js` or `js/shard.js`, and the full suite after **any** change to `firestore.rules` or to the custom claims that rules read (`teamId`, `role`, `cats`).
+
+If the rules suite says `Could not spawn java -version`, Java is installed but off that shell's PATH:
+`$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspotin;$env:PATH"`
 
 **3. i18n completeness** — `t()` returns the key itself on a miss, so a typo ships as raw `auth.foo` on screen. Every key needs all three of `ca`/`es`/`en`.
 
@@ -31,19 +37,25 @@ No credentials, no Cloud Shell round-trip. Run them after **any** change to `fir
 
 ### Script load order (index.html — order matters, all share global scope)
 
-`js/firebase-config.js` → `js/db.js` → `js/push.js` → `js/utils.js` → `js/app.js`
+`js/firebase-config.js` → `js/utils.js` → `js/shard.js` → `js/db.js` → `js/push.js` → `js/app.js`
+
+`utils.js` owns `CATEGORY_ORDER`, which `shard.js` reads; `db.js` asserts at load that every synced key has a shard route. Anything added to `STATIC_ASSETS` in `sw.js` must match.
 
 Firebase compat SDK 10.12.0 loaded from CDN `<script>` tags. `js/app.js` (~15k lines) holds all views: each page has a `render*()` function returning an HTML string set via `innerHTML`; `renderPage()` dispatches on `currentPage`; `bindDynamicActions()` re-binds listeners after every render. All user text must go through `sanitize()` before injection.
 
 ### Data model
 
 - `users/{uid}` — global user profiles; `teamId` field points at the club. `users/{uid}/tokens/{id}` — FCM tokens.
-- `teams/{teamId}/data/{key}` — team data, one doc per localStorage key, either blob format `{v: "<json>"}` or per-field merge format (MERGE_KEYS). `teams/{teamId}/pushQueue`, `teams/{teamId}/seasons/{label}`.
+- `teams/{teamId}/data/{key}__{category}` — team data, **one doc per localStorage key PER CATEGORY** (Phase 5), fields `{v: "<json>", category}` or per-field merge format (MERGE_KEYS) plus `category`. Rows belonging to no squad go to `__none`. Every writer must set `category`: the client queries `where('category','in', …)` and the rules test the same field, so a shard without it is invisible to the whole app. `teams/{teamId}/pushQueue`, `teams/{teamId}/seasons/{label}`.
 - `clubs/{clubId}` — club config (name, badge, categories, FCF links). `clubCodes/{CODE}` → `{clubId}` (server-only join codes).
 
 ### localStorage-primary sync layer (`js/db.js`)
 
-The app reads/writes everything synchronously via localStorage. `db.js` monkey-patches `localStorage.setItem/removeItem` to mirror `SYNCED_KEYS` into `teams/{teamId}/data/{key}`. `MERGE_KEYS` (availability, RPE, injuries…) use per-field merges so concurrent writers don't clobber each other; the rest are blob replaces. `DB.setItemAcked(key, value)` returns a Promise that resolves on **server** ack — use it (via app.js `ackSave()`) for anything a player submits. `DB.init(teamId)` downloads Firestore → localStorage and starts onSnapshot listeners that dispatch `firestore-sync` events.
+The app reads/writes everything synchronously via localStorage. `db.js` monkey-patches `localStorage.setItem/removeItem` to mirror `SYNCED_KEYS` into `teams/{teamId}/data/{key}__{category}`. `MERGE_KEYS` (injury notes/zone/dismissed, staff override) use per-field merges so concurrent writers don't clobber each other; the rest are blob replaces.
+
+**localStorage stays one merged blob per key** — the ~128 read sites in `app.js` know nothing about sharding. `js/shard.js` decides which category each row belongs to (some keys carry it, others join live through `fa_users` or `fa_matches`); `db.js` keeps a shadow cache of the parsed shards, diffs per document, and writes all shards of one blob in a single `db.batch()`.
+
+**The safety rule, non-negotiable:** never write a shard the client did not download. Every writer parses the whole blob and writes it back, so a coach scoped to one category would otherwise hand back a blob missing every other one. `_scope` in `db.js` is the READ scope — what the listener fetched, not the UI's category filter — and `_routeWrite` refuses anything outside it. If you touch this file, run `cd test && npm run test:unit`. `DB.setItemAcked(key, value)` returns a Promise that resolves on **server** ack — use it (via app.js `ackSave()`) for anything a player submits. `DB.init(teamId)` downloads Firestore → localStorage and starts onSnapshot listeners that dispatch `firestore-sync` events.
 
 **Never call raw `db.collection('users')` without `.where('teamId','==',…)`** — security rules reject unscoped list queries.
 

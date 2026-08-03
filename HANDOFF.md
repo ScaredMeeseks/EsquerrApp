@@ -1,17 +1,18 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 Stages B, C and D done, uncommitted; Stage E — the cutover — is all that is left)._
+_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 Stages B, C and D committed on `phase5-sharding`; Stage E — the cutover — is all that is left)._
 
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
-- **Production is on v43.** Stages B, C and D (v44) are **written and tested but NOT committed and NOT deployed** — see the warning below.
+- **Production is on v43.** Stages B, C and D (v44) are committed as **`02fe60e` on branch `phase5-sharding`** — **not pushed, not merged, not deployed.** Working tree clean.
+- **Start tomorrow by reading "Stage E — the cutover" below.** It is a runbook; follow it in order.
 - **Tests run on this Windows box.** `cd test && npm test` runs everything; `npm run test:unit` is the fast path (shard + router, pure Node, ~1s, no emulator and no Java) and `npm run test:rules` needs the Firestore emulator against the fake project `demo-esquerrapp`. **129 passing: 42 unit (shard + router, no Java) + 87 rules.** If the rules suite says `Could not spawn java -version`, Java is installed but off this shell's PATH:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
 
-### ⚠️ Nothing here is deployable until the wipe runs
+### ⚠️ Nothing is deployable until the wipe runs
 
-Client and functions now both address `data/{key}__{category}`, and **no shard documents exist yet** — Stage E's wipe creates the clean slate. Deploying now would leave the app reading documents nobody writes and writing documents nobody reads. Stage E is the whole remaining job, and its first step is the wipe script.
+Client and functions now both address `data/{key}__{category}`, and **no shard documents exist yet** — Stage E's wipe creates the clean slate. Merging this branch to `main` on its own would put a frontend live that reads documents nobody writes. The branch is deliberately unpushed for that reason; pushing it is step 1 of the runbook, not a separate decision.
 
 ### Clubs in production (verified 2026-08-02)
 
@@ -29,7 +30,7 @@ Full plan: `~/.claude/plans/working-on-the-esquerrapp-ticklish-beaver.md`. Categ
 
 Players carry a `cats` claim; tactic boards stamped with a category (injuries deliberately not — history must follow the player); three dead keys dropped; `fa_training` and `fa_tactic_saved` addressed by stable id; in-app update check (`APP_VERSION` vs `clubs/{id}.minAppVersion`).
 
-### ✅ Stage B — done (v44, uncommitted)
+### ✅ Stage B — done (v44, committed on `phase5-sharding`)
 
 The router. Full detail in CONTEXT.md; the shape of it:
 
@@ -42,7 +43,7 @@ The router. Full detail in CONTEXT.md; the shape of it:
 
 **`_scope` is the READ scope, not the UI's category filter** — the assert means "never write a shard you did not download", and a coach browsing one category still holds every category the listener fetched. `SCOPED_READS` names the switch that ties the query and the assert to one list; Stage C turned it on.
 
-### ✅ Stage C — done (v44, uncommitted)
+### ✅ Stage C — done (v44, committed on `phase5-sharding`)
 
 `SCOPED_READS` is on: the `data/` `.get()` and `onSnapshot` run `where('category','in', scope)`, and the same list is the router's write assert. The read rule gains `resource.data.category in request.auth.token.cats`, with `none` readable club-wide. All six `DB.init` sites pass `getVisibleCategories()` explicitly and `init()` throws if the scope is unknown.
 
@@ -50,7 +51,7 @@ The router. Full detail in CONTEXT.md; the shape of it:
 
 A document with **no** `category` field is now unreadable by everyone but the superuser — deliberate and tested. It is what a function that forgets to stamp the field produces, and going dark is the safe direction.
 
-### ✅ Stage D — done (v44, uncommitted)
+### ✅ Stage D — done (v44, committed on `phase5-sharding`)
 
 Two helpers carry it: `readDataShards()` (one collection read, grouped by base key) and `mergeArrayShards()`. The three schedulers merge across shards; `deleteMember` scrubs every shard via `scrubShards`; `onClubLeadChanged` and `archiveSeason` likewise, with the injury carry-over done per shard so an open injury stays in its own category. `updateTeamDates` **unions** across shards, and `backfill-team-dates.js` — the repair tool for that exact failure — is sharded too.
 
@@ -58,23 +59,83 @@ Two helpers carry it: `readDataShards()` (one collection read, grouped by base k
 
 ⚠️ **Stage D is the only untested code left.** There is no functions harness in this repo; `db.js` gained one (`test/router.test.js`, an in-memory Firestore fake) but `functions/index.js` has none. Before cutover, exercise `reshardMember` against the Admin SDK: move a player between categories and confirm the rows left one shard and arrived in the other exactly once. Extracting the shard helpers into their own module so they can be unit-tested is the obvious next improvement.
 
-### ⬜ Stage E — all that is left: the cutover
+### ⬜ Stage E — the cutover (RUNBOOK — follow in order)
 
-One maintenance window, no transition period.
+Everything else is done. This is one maintenance window: announce a short outage, work through the steps, and do not stop half way.
 
-1. **Wipe** the team data documents — a guarded script, dry-run first. Accounts, club config and roster email lists are untouched; trainings, matches, injuries, availability, RPE, call-ups and tactics go. **Still to write**, modelled on `migrate-player-data.js`'s dry-run/`--apply` shape.
-2. **Deploy functions + frontend together**, then `backfill-team-dates.js` (until it runs the schedulers see no teams).
-3. **Verify** (below), then deploy the narrowed rules.
-4. **Fresh APK.** Old builds write documents nobody reads and show an empty app — which is what the v43 version check exists to warn about.
+**Why the order matters.** Two rule changes are in flight and they have opposite constraints:
 
-### Verification before the rules go out
+- The **write** change (`baseKey(key)` in the player allowlist) must go out **BEFORE** the new frontend. Composite ids like `fa_injury_notes__cadet` fail the old exact-match allowlist, so until it lands every *player* write is denied. It is backward compatible — `baseKey('fa_injury_notes')` is `'fa_injury_notes'` — so old clients keep working.
+- The **read** narrowing must go out **AFTER** the new frontend. Firestore rejects a collection query outright if any document it could return might be denied, so narrowing the rule before the query narrows kills sync for every scoped user at once.
 
-- **The single most important check**: as a cadet-scoped coach, edit a training and confirm with the Admin SDK that the juvenil shard is **byte-unchanged**. That is the property the whole phase is for.
-- **`reshardMember`** — move a player between categories, confirm the rows left one shard and arrived in the other exactly once. Stage D has no automated test; this one is manual and load-bearing.
-- **Per key**, after the wipe: create one record of each type, confirm it lands in the right shard, and confirm a coach in another category cannot read it.
-- **Schedulers** — confirm a training reminder still finds its team after `updateTeamDates` unions across shards.
-- **Two devices, two categories, editing simultaneously** — the clobber case that motivated the phase.
-- A shard-consistency check in `check-deploy.js`, once shards exist.
+They cannot ship together. Step 1 deploys the file with the read narrowing temporarily backed out; step 7 puts it back.
+
+---
+
+**Step 0 — still to write: the wipe script.**
+`functions/wipe-team-data.js`, modelled on `migrate-player-data.js`'s dry-run/`--apply` shape. It must:
+- delete every `teams/{id}/data/*` document, plus the `trainingAvail`, `matchAvail` and `rpe` record collections;
+- **keep** `users/*`, `clubs/*` (including `rosters/*` and `clubCodes`), and the `teams/{id}` documents themselves (`trainingDates`/`matchDates` are rebuilt in step 5);
+- print a full inventory and require `--apply`; default to a dry run.
+
+**Step 1 — rules, write change only.** Temporarily replace the `match /data/{key}` read line in `firestore.rules` with the permissive one, commit on the branch, push, then in Cloud Shell:
+
+```
+# firestore.rules — TEMPORARY for this step only:
+#   allow read: if sameTeam(teamId) || isSuperUser();
+# (leave the baseKey write allowlist exactly as committed)
+cd ~/EsquerrApp && git fetch && git checkout phase5-sharding && ./deploy.sh rules
+```
+
+**Step 2 — deploy the functions**, still from the branch:
+
+```
+cd ~/EsquerrApp && ./deploy.sh functions
+```
+
+**Step 3 — wipe.** Read the dry run in full before applying.
+
+```
+cd ~/EsquerrApp && node functions/wipe-team-data.js          # dry run
+cd ~/EsquerrApp && node functions/wipe-team-data.js --apply
+```
+
+**Step 4 — frontend.** Merge to `main` and push; GitHub Pages deploys and CI builds the APK.
+
+```
+git checkout main && git merge phase5-sharding && git push
+```
+
+**Step 5 — rebuild the denormalized dates.** Until this runs the schedulers see no teams and send nothing.
+
+```
+cd ~/EsquerrApp && node functions/backfill-team-dates.js
+```
+
+**Step 6 — verify.** See the checklist below. Do not skip the first item.
+
+**Step 7 — rules, read narrowing.** Restore the committed read rule (undo step 1's temporary edit), push, and deploy:
+
+```
+cd ~/EsquerrApp && git pull && ./deploy.sh rules
+```
+
+**Step 8 — APK.** Install the new build on the test phones. Old builds address documents nobody writes and will show an empty app; that is what the v43 version check exists to warn about. Set `clubs/{id}.minAppVersion` to 44 once the APK is out.
+
+### Verification (step 6) — first item is not optional
+
+- **The safety rule.** As a coach scoped to one category, edit a training. Then confirm with the Admin SDK that another category's shard is **byte-unchanged**. This is the property the entire phase exists for; `test/router.test.js` proves it against a fake, this proves it against production.
+- **`reshardMember`** — move a player between categories and confirm the rows left one shard and arrived in the other **exactly once**. `functions/index.js` has no automated test and this is its riskiest path.
+- **Per key** — create one record of each type, confirm it lands in the right shard with a `category` field, and confirm a coach in another category cannot read it.
+- **Schedulers** — confirm a training reminder still finds its team, i.e. that `updateTeamDates` unioned across shards rather than replacing.
+- **Two devices, two categories, editing at once** — the clobber case that motivated the phase.
+
+### If it goes wrong
+
+- **Reminders go quiet** → `node functions/backfill-team-dates.js` rebuilds `trainingDates`/`matchDates` from all shards. That is its whole purpose.
+- **Everyone's app is empty after step 7** → the read narrowing is the suspect; redeploy the permissive read line from step 1 and investigate before retrying.
+- **Players see save errors** → the write allowlist did not land; check step 1 actually deployed (read the `=== Deploying to '...'` header).
+- **Rolling back the frontend** is `git revert` on `main` and a push. The wipe is **not** reversible — the pre-wipe data is disposable test content by prior decision, but take a Firestore export to `gs://esquerrapp-backup` first if you want the option.
 
 ### Deliberately not done in this phase
 

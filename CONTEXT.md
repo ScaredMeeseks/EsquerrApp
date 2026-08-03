@@ -486,3 +486,7 @@ Plus: the per-document diff (a re-render that changes nothing writes nothing), r
 **129 passing**: 42 unit (`npm run test:unit`, no Java) + 87 rules.
 
 Still untested: `functions/index.js`. There is no harness for it, and `reshardMember` is the piece that most deserves one.
+
+**Committed as `02fe60e` on branch `phase5-sharding`** — not pushed, not merged, not deployed. `HANDOFF.md` carries the Stage E runbook; `CLAUDE.md` was updated for the new script load order, the sharded data model and the `npm run test:unit` safety net.
+
+The one non-obvious thing about the cutover, spelled out in the runbook: **the two rule changes cannot ship together.** The `baseKey` write allowlist must land BEFORE the new frontend (composite ids fail the old exact-match allowlist, so every player write would be denied), and the read narrowing must land AFTER it (Firestore rejects a collection query outright if any document it could return might be denied). So the rules deploy twice, with the read narrowing temporarily backed out the first time.
