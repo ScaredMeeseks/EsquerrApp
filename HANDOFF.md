@@ -73,14 +73,22 @@ A full season for showing the app to prospects: 25 players, 34 matchdays, 68 tra
 
 ```bash
 cd ~/EsquerrApp
-gcloud auth application-default set-quota-project esquerrapp   # prints /tmp/tmp.XXXX/...
-export GOOGLE_APPLICATION_CREDENTIALS=/tmp/tmp.XXXX/application_default_credentials.json
+
+# ADC, the copy-pasteable version. `set-quota-project` can only re-point
+# credentials that already exist — on a fresh Cloud Shell it fails with
+# "Application default credentials have not been set up", so log in first.
+# Deriving the path from `gcloud info` avoids transcribing it by hand.
+gcloud auth application-default login
+export GOOGLE_APPLICATION_CREDENTIALS="$(gcloud info --format='value(config.paths.global_config_dir)')/application_default_credentials.json"
+ls -l "$GOOGLE_APPLICATION_CREDENTIALS"     # must exist before going on
 
 node functions/seed-demo-club.js                       # dry run — OFFLINE, no credentials
 node functions/seed-demo-club.js --apply               # create it; prints club id + join code
-node functions/seed-demo-club.js --verify --club <id>  # read-back checks
-node functions/seed-demo-club.js --apply --purge <id>  # delete it entirely
+node functions/seed-demo-club.js --verify --club CLUBID   # substitute the real id
+node functions/seed-demo-club.js --apply --purge CLUBID   # delete it entirely
 ```
+
+The export lives in **one tab only** — a new tab or a dropped session needs it again. `--apply` runs a credentials preflight before its first write, so a bad setup is refused outright rather than leaving a half-created club.
 
 - **The dry run needs no credentials and writes nothing** — the season is generated and self-checked in memory. Fourteen consistency checks run before any write and refuse it on failure. Read it in full first.
 - **Safety**: everything created is stamped `demoSeed: true`. `--purge` refuses any club without the stamp, refuses the live club and the Barcelona test club outright, and skips unstamped accounts. The live club cannot be reached by this script.

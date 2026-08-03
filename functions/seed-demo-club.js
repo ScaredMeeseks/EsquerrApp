@@ -998,6 +998,46 @@ function initFirebase() {
   ({ FieldValue } = require("firebase-admin/firestore"));
 }
 
+/**
+ * Prove the credentials work BEFORE the first write.
+ *
+ * Without this the script announces "Writing", creates the club document,
+ * and only then discovers it cannot authenticate — leaving a half-built
+ * club behind. One cheap read up front turns that into a clean refusal.
+ */
+/** A problem the operator can fix — printed as advice, not as a stack. */
+function userError(msg) {
+  const e = new Error(msg);
+  e.userError = true;
+  return e;
+}
+
+async function preflight() {
+  const fs = require("fs");
+  const p = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (p && !fs.existsSync(p)) {
+    throw userError(
+        "GOOGLE_APPLICATION_CREDENTIALS points at a file that does not exist:\n" +
+      `      ${p}\n` +
+      "    If that looks like /tmp/tmp.XXXX, it is a placeholder, not a path.\n" +
+      "    Set it up with:\n" +
+      "      gcloud auth application-default login\n" +
+      "      export GOOGLE_APPLICATION_CREDENTIALS=\"$(gcloud info " +
+      "--format='value(config.paths.global_config_dir)')/application_default_credentials.json\"");
+  }
+  try {
+    await db.collection("clubs").limit(1).get();
+  } catch (e) {
+    throw userError(
+        `cannot reach Firestore as an authenticated client: ${e.message}\n` +
+      "    Application Default Credentials are missing or stale. Run:\n" +
+      "      gcloud auth application-default login\n" +
+      "      export GOOGLE_APPLICATION_CREDENTIALS=\"$(gcloud info " +
+      "--format='value(config.paths.global_config_dir)')/application_default_credentials.json\"\n" +
+      "    The export lives in ONE tab only — a new tab needs it again.");
+  }
+}
+
 /** Commit in chunks well inside the 500-op batch limit. */
 async function commitAll(ops, label) {
   const CHUNK = 400;
@@ -1029,6 +1069,10 @@ async function ensureAccount(uid, email, displayName) {
 }
 
 async function apply(S, docs) {
+  step("Checking credentials");
+  await preflight();
+  ok("authenticated — Firestore is reachable");
+
   step("Writing");
 
   // 1. Club scaffolding.
@@ -1171,6 +1215,7 @@ async function apply(S, docs) {
 // ============================================================
 async function verify(clubId) {
   initFirebase();
+  await preflight();
   step(`Verifying clubs/${clubId}`);
 
   const club = await db.collection("clubs").doc(clubId).get();
@@ -1243,6 +1288,7 @@ async function verify(clubId) {
 // ============================================================
 async function purge(clubId) {
   initFirebase();
+  await preflight();
   if (PROTECTED_CLUBS.has(clubId)) {
     log(`\nREFUSED: ${clubId} is a protected club. This script will not touch it.`);
     process.exit(1);
@@ -1363,6 +1409,8 @@ function makeJoinCode() {
 
   await apply(S, docs);
 })().catch((e) => {
-  console.error("\nFAILED:", e && e.stack || e);
+  // A misconfigured shell is not a bug report — print the fix, not a stack.
+  console.error(e && e.userError ? `\nFAILED: ${e.message}` :
+    `\nFAILED: ${e && e.stack || e}`);
   process.exit(1);
 });
