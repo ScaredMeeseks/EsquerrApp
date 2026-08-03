@@ -369,6 +369,9 @@
     // ── Readiness ──
     'readiness.title':    { ca:'Preparació', es:'Preparación', en:'Readiness' },
     'readiness.no_data':  { ca:'Encara no hi ha prou dades', es:'Aún no hay suficientes datos', en:'Not enough data yet' },
+    // Readiness is a training-LOAD score and never reads the injury log, so
+    // an injured player can legitimately show a good one. This says so.
+    'readiness.injured_warning': { ca:'Compte: jugador lesionat actualment', es:'Cuidado: jugador lesionado actualmente', en:'Careful — player currently injured' },
     'readiness.good':     { ca:'Bé', es:'Bien', en:'Good' },
     'readiness.moderate': { ca:'Moderat', es:'Moderado', en:'Moderate' },
     'readiness.low':      { ca:'Baix', es:'Bajo', en:'Low' },
@@ -1125,7 +1128,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 51;
+  const APP_VERSION = 52;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -5057,14 +5060,48 @@
       </div>`;
   }
 
+  /**
+   * The Ready cell: one dot, one score, one tooltip — shared by the roster,
+   * the training-detail attendance table and the convocatòria.
+   *
+   * Extracted because those three rendered it near-identically and had
+   * drifted: all of them painted a player with NO data green, which on a
+   * freshly wiped club meant a whole squad reading as fully ready when the
+   * app knew nothing about any of them. One template, so they cannot drift
+   * again.
+   *
+   * Readiness stays a pure training-LOAD metric and deliberately does not
+   * read the injury log — an injured player keeps whatever colour their load
+   * earns. But the two columns sitting side by side, one red and one green,
+   * is what made this confusing, so an injured player's cell carries an
+   * explicit warning.
+   *
+   * @param {Object} rd Result of computeReadiness().
+   * @param {boolean} [injured] True when deriveFitnessStatus() says injured.
+   */
+  function readinessCellHtml(rd, injured) {
+    const tips = [];
+    if (injured) tips.push(t('readiness.injured_warning'));
+    if (!rd.hasData) tips.push(t('readiness.no_data'));
+    const tip = tips.length ? ` data-tooltip="${sanitize(tips.join(' · '))}"` : '';
+    // No data is grey and carries no number: a dash still occupies the
+    // column as though it were a reading, and green actively misinforms.
+    if (!rd.hasData) {
+      return `<span class="readiness-cell"><span class="readiness-dot readiness-nodata"${tip}></span></span>`;
+    }
+    return `<span class="readiness-cell"><span class="readiness-dot readiness-${rd.color}"${tip}></span>` +
+      `<span class="readiness-score readiness-score-${rd.color}">${rd.score}</span></span>`;
+  }
+
   function buildReadinessCard(rd) {
     if (!rd.hasData) {
       return `<div class="card">
-        <div class="card-title">Readiness</div>
-        <p style="color:var(--text-secondary);text-align:center;padding:1.5rem 0;">Encara no hi ha prou dades</p>
+        <div class="card-title">${t('readiness.title')}</div>
+        <p style="color:var(--text-secondary);text-align:center;padding:1.5rem 0;">${t('readiness.no_data')}</p>
       </div>`;
     }
-    const colorLabel = rd.color === 'green' ? 'Good' : rd.color === 'orange' ? 'Moderate' : 'Low';
+    const colorLabel = rd.color === 'green' ? t('readiness.good')
+      : rd.color === 'orange' ? t('readiness.moderate') : t('readiness.low');
     const colorHex = rd.color === 'green' ? '#4caf50' : rd.color === 'orange' ? '#ff9800' : '#e53935';
     function bar(val) {
       const bg = val >= 75 ? '#4caf50' : val >= 55 ? '#ff9800' : '#e53935';
@@ -9532,16 +9569,16 @@
       else if (fStatus === 'doubt') statusIcon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injNote)}">?</span>`;
       else statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injNote)}">✕</span>`;
       const rd = computeReadiness(p.id);
-      const rdColor = rd.hasData ? rd.color : 'green';
-      const rdScore = rd.hasData ? rd.score : '—';
       const acwrVal = rd.hasData ? (rd.acwr || 0) : 0;
-      const acwrColor = !rd.hasData ? '#4caf50' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
+      // Grey, not green, when there is nothing to judge — the same reason
+      // the readiness dot changed.
+      const acwrColor = !rd.hasData ? 'var(--text-secondary)' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
 
       return `<tr>
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
         <td><span class="roster-name-wrap">${sanitize(p.name)}${teamCircle}</span></td>
         <td class="center-cell">${statusIcon}</td>
-        <td class="center-cell"><span class="readiness-dot readiness-${rdColor}" data-tooltip="${rdScore}"></span></td>
+        <td class="center-cell">${readinessCellHtml(rd, fStatus === 'injured')}</td>
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
         <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
         <td class="center-cell">
@@ -10096,8 +10133,6 @@
       });
       var gcMatch = (matches > 0 && (goals + assists) > 0) ? ((goals + assists) / matches).toFixed(1) : '';
       const rd = computeReadiness(u.id);
-      const readiness = rd.hasData ? rd.color : 'green';
-      const rdTooltip = rd.hasData ? rd.score : '—';
 
       let statusIcon = '';
       if (status === 'fit') {
@@ -10115,7 +10150,7 @@
         <td class="roster-pos-col"><span class="conv-pos-circles">${posCirclesHtmlGlobal(u)}</span></td>
         <td><a href="#" class="roster-player-link" data-player-id="${u.id}"><span class="roster-name-wrap">${sanitize(u.name)}${teamCircle}</span></a></td>
         <td class="center-cell">${statusIcon}</td>
-        <td class="center-cell"><span class="readiness-dot readiness-${readiness}" data-tooltip="${rdTooltip}"></span></td>
+        <td class="center-cell">${readinessCellHtml(rd, status === 'injured')}</td>
         <td class="center-cell roster-tsnc"><span class="roster-t">${titulars}</span>/<span class="roster-s">${suplents}</span>/<span class="roster-nc">${noConvocats}</span></td>
         <td class="center-cell roster-num">${minutes}'</td>
         <td class="center-cell roster-num">${goals || ''}</td>
@@ -10423,13 +10458,11 @@
       const status = derived.fitnessStatus;
       const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
       const rd = computeReadiness(p.id);
-      const readiness = rd.hasData ? rd.color : 'green';
-      const rdTooltip = rd.hasData ? rd.score : '—';
       let icon = '';
       if (status === 'fit') icon = '<span class="roster-status-icon roster-status-fit">✓</span>';
       else if (status === 'doubt') icon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
       else icon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
-      return `${icon}<span class="readiness-dot readiness-${readiness}" data-tooltip="${rdTooltip}"></span>`;
+      return icon + readinessCellHtml(rd, status === 'injured');
     }
 
     const POS_ORDER = ['GK','CB','LB','RB','DM','OM','LW','RW','ST'];

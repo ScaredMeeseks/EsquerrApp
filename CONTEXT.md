@@ -678,3 +678,21 @@ Same shape as v50: `fitnessContext()` and `matchStatsContext()` build the parsed
 Verified before changing anything: every mutation inside both helpers is on a locally-created array (`subOuts`, `intervals`, `matchRows`), and `deriveFitnessStatus`'s `.sort()` runs on a `.filter()` result, so a shared context cannot be reordered under a later player.
 
 New `test/context.test.js`, 11 tests — **189 passing** (88 unit + 87 rules + 14 functions). The optimisation rests on one property and the tests pin it: passing a context must never change the answer. Seven fitness cases (fit, injured-by-answer, doubt, active injury, recovering, resolved-ignored, no data), the staff-discarded self-report, and an explicit check that a shared context is not mutated by deriving for several players in turn.
+
+### 2026-08-04 — Readiness stops claiming a squad it knows nothing about is ready (v52)
+
+The parked readiness item, presentation only. **Thresholds deliberately untouched** — the ACWR bands, the four risk flags and the three force-red overrides encode a clinical judgement, and quietly retuning them would change what coaches are told about real players. Calibration is a separate question, to be answered against real data rather than one 16-of-25 anecdote.
+
+**The bug that made this urgent.** `rd.hasData` false rendered **green** at every call site. The live club's data was wiped at the Phase 5 cutover the day before, so almost nobody had the two weeks of RPE history `hasData` requires — meaning the roster was telling coaches that a squad the app knew nothing about was fully ready. Not a demo-only cosmetic issue.
+
+**One template, three tables.** The roster, the training-detail attendance table and the convocatòria each rendered the cell independently and had drifted into the same fallback. `readinessCellHtml(rd, injured)` now owns it, the way `buildInjuryHistoryHtml()` was extracted in v45 for the same reason. A test asserts all three call it and that no site still falls back to green.
+
+- **No data → grey dot, no number, tooltip "not enough data yet"** (`readiness.no_data`, a key that already existed in all three languages and was never used). No dash: a dash occupies the column as though it were a reading.
+- **The score is now in the cell**, colour-matched beside the dot. It used to exist only in a mouse-driven tooltip, so on a phone the number was simply unavailable.
+- **Injured players keep their load colour**, by decision. Readiness is a training-LOAD metric and does not read the injury log; an injured player can legitimately show a good one. What the columns lacked was an explanation, so the cell carries `readiness.injured_warning` — new key, all three languages. The Status column still owns the injury itself.
+- **The A/C ratio cell had the same fallback** (`!rd.hasData ? '#4caf50'`) and is now grey too.
+- `buildReadinessCard()` hardcoded `'Readiness'`, `'Encara no hi ha prou dades'` and `Good/Moderate/Low` while `readiness.title`, `readiness.no_data`, `readiness.good|moderate|low` sat unused. Wired up.
+
+New `test/readiness.test.js`, 13 tests — **202 passing** (101 unit + 87 rules + 14 functions). The load-bearing one is *"is never green"*; the rest pin no-dash, the injured warning surviving alongside the no-data tip, the score being present for all three colours, no pointless tooltip on a fit player with data, all three tables sharing the helper, CSS existing for every state it can emit, and the new key being translated.
+
+Still open on readiness, unchanged by this: the colour is not a function of the score (a separate ACWR + risk-flag + override classifier), so two players can both show 72 in different colours with nothing on screen explaining it — and the classifier flags roughly two thirds of a squad, which is a calibration question, not a presentation one.

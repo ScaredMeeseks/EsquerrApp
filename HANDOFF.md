@@ -2,6 +2,24 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
+## v52 — readiness presentation (2026-08-04)
+
+The parked readiness item, **presentation only** — the sports-science thresholds are untouched.
+
+**The bug worth knowing about:** a player with not enough data rendered **green** everywhere. The live club's data was wiped at the Phase 5 cutover, so almost nobody had the 2 weeks of RPE history required — the roster was telling coaches a squad the app knew nothing about was fully ready.
+
+- **No data → grey dot, no number**, tooltip "not enough data yet". The A/C ratio cell had the same fallback and is grey now too.
+- **The score shows in the cell**, not only in a mouse tooltip — it was invisible on phones.
+- **Injured players keep their load colour** (readiness is a load metric and does not read the injury log) but the cell now warns "Careful — player currently injured", so the Ready and Status columns stop appearing to contradict each other.
+- Roster, training detail and convocatòria now share `readinessCellHtml()` instead of three drifted copies.
+
+New `test/readiness.test.js` (13 tests). **202 passing.** Frontend only — push to `main`, no `./deploy.sh`.
+
+### Still open on readiness (calibration, not presentation)
+
+- The classifier flags roughly **two thirds of a squad** orange or red. Worth calibrating against real data — I offered to report the distribution per rule whenever you want it.
+- **Colour is not a function of the score**: it comes from a separate ACWR + risk-flag + force-override classifier, so two players can both show 72 in different colours with nothing on screen explaining why.
+
 ## v51 — performance sweep (2026-08-03)
 
 The same parse-per-call pattern v50 fixed, found in the two other helpers that run once per player. The roster was doing **~1,050 parses per render** (25 players × 42): `deriveFitnessStatus()` parsed 5 blobs per call, `computePlayerMatchStats()` 3 more plus `getStartingXI()` once per match. **69 ms → 0.4 ms.**
@@ -52,7 +70,7 @@ Three demo-walkthrough fixes. Frontend + seeder only — **no rules or functions
 
 **Still to do**: push, then re-seed the demo club with faces.
 
-### Deferred, agreed 2026-08-03 — readiness colouring
+### Deferred, agreed 2026-08-03 — readiness colouring (PRESENTATION DONE in v52; calibration still open)
 
 Found while explaining the roster's Status and Ready columns. **Deliberately parked** for a proper look at readiness as a whole, and worth stressing: `computeReadiness()` runs for **every club**, so this is a real-users change, not a demo tweak.
 

@@ -2344,6 +2344,16 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .readiness-green { background: #4caf50; }
 .readiness-orange { background: #ff9800; }
 .readiness-red { background: #f44336; }
+/* Not enough data to judge. Grey rather than green: a squad the app knows
+   nothing about was reading as fully ready. */
+.readiness-nodata { background: #c4c4c4; cursor: help; }
+.readiness-cell { display: inline-flex; align-items: center; gap: .35rem; justify-content: center; }
+/* The score used to live only in a hover tooltip, so it was invisible on a
+   phone. The dot keeps the at-a-glance read; the number makes it checkable. */
+.readiness-score { font-size: .78rem; font-weight: 700; }
+.readiness-score-green { color: #2e7d32; }
+.readiness-score-orange { color: #e65100; }
+.readiness-score-red { color: var(--danger); }
 
 /* Readiness card */
 .rd-header {
