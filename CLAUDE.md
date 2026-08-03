@@ -94,7 +94,17 @@ cd ~/EsquerrApp && ./deploy.sh functions   # cloud functions
 # first time: git clone https://github.com/ScaredMeeseks/EsquerrApp.git ~/EsquerrApp
 ```
 
-One-off data scripts (migrations, backfills) live in `functions/` — NOT a separate scripts/ dir — so they resolve `functions/node_modules` (a root `npm install firebase-admin --no-save` on Cloud Shell yields a broken firebase-admin: npm blocks its postinstall scripts). Run from the repo root: `node functions/<name>.js` (ADC credentials are automatic; `cd functions && npm install` first if node_modules is missing).
+One-off data scripts (migrations, backfills) live in `functions/` — NOT a separate scripts/ dir — so they resolve `functions/node_modules` (a root `npm install firebase-admin --no-save` on Cloud Shell yields a broken firebase-admin: npm blocks its postinstall scripts). Run from the repo root: `node functions/<name>.js` (`cd functions && npm install` first if node_modules is missing). An **Admin SDK one-liner** (`node -e '…'`) resolves modules from the *current directory*, so it must be run from `~/EsquerrApp/functions`, not the repo root.
+
+**ADC credentials are NOT automatic.** If a script dies on its first read with `Cannot create property 'refresh_token' on string ''`, that is not a lapsed login and `gcloud auth login` will not fix it — Cloud Shell keeps Application Default Credentials in a **temp directory** and the Admin SDK only finds them when `GOOGLE_APPLICATION_CREDENTIALS` points there:
+
+```bash
+gcloud auth application-default set-quota-project esquerrapp   # prints "Credentials saved to file: [/tmp/tmp.XXXX/...]"
+export GOOGLE_APPLICATION_CREDENTIALS=/tmp/tmp.XXXX/application_default_credentials.json
+head -c 120 "$GOOGLE_APPLICATION_CREDENTIALS"                   # healthy = starts {"account": "", "client_id": ...
+```
+
+The export lives in that **one tab**. `firebase` and `gcloud` hold separate credentials, so `./deploy.sh` working proves nothing about the Admin SDK.
 
 Backups before risky changes: `gcloud firestore export gs://esquerrapp-backup/<label>-$(date +%F) --project esquerrapp` (bucket name is singular — `esquerrapp-backups` does not exist).
 
