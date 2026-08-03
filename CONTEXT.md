@@ -661,3 +661,20 @@ Two changes:
 New `test/availability.test.js`, 8 tests — **178 passing** (77 unit + 87 rules + 14 functions). They pin the precedence rules (override beats answer, unanswered is `yes` until locked, then `na`), that passing a context changes no answer, that an unchanged blob is not re-parsed, and — the important one — that a write is visible to the very next read. One test documents that a held context is a *snapshot*, so nobody caches one across renders and reintroduces the staleness this avoided.
 
 Worth noting for later: `renderStaffTraining()` also rewrites `fa_training` to localStorage on every render (to backfill missing ids), which puts the whole blob through the shard router each time. The router's per-document diff means nothing reaches Firestore, so it is wasted work rather than a bug — left alone.
+
+### 2026-08-03 — Performance sweep: the same parse-per-call pattern, everywhere else (v51)
+
+v50 fixed availability. An audit found the identical shape in the two other helpers that run once per player, so the roster page was doing **~1,050 parses per render** — 25 players × 42 each:
+
+- `deriveFitnessStatus()` parsed **five** blobs per call
+- `computePlayerMatchStats()` parsed **three**, then called `getStartingXI()` once per match, each of which parsed `fa_convocatoria_sent` again — 34 more per player
+
+Measured on demo-sized data: **1,050 parses / 69 ms → 8 parses / 0.4 ms.** Smaller blobs than availability's 49 KB, so nowhere near v50's 547 ms, but it grows with **matches × players** — the live club reaches it as its own season fills.
+
+Same shape as v50: `fitnessContext()` and `matchStatsContext()` build the parsed blobs once, and both helpers take an **optional** third/second argument. Callers that pass nothing behave exactly as before, which is what kept this to five call sites (roster, medical, staff training detail, convocatòria) rather than all twenty.
+
+**Why context passing rather than a shared memo.** A global `readBlob(key)` cache keyed on the raw string would have fixed every call site at once with no signature changes. Rejected: several read paths feed read-modify-write cycles (`getInjuries()` → mutate → `saveInjuries()`), and handing those a shared object means a caller's mutation lands in the cache while the key still matches the *old* string. That is a phantom-data bug of exactly the kind that has bitten this codebase before, traded for a speed-up worth 0.4 ms. Per-loop contexts are provably safe because nothing outlives the render pass.
+
+Verified before changing anything: every mutation inside both helpers is on a locally-created array (`subOuts`, `intervals`, `matchRows`), and `deriveFitnessStatus`'s `.sort()` runs on a `.filter()` result, so a shared context cannot be reordered under a later player.
+
+New `test/context.test.js`, 11 tests — **189 passing** (88 unit + 87 rules + 14 functions). The optimisation rests on one property and the tests pin it: passing a context must never change the answer. Seven fitness cases (fit, injured-by-answer, doubt, active injury, recovering, resolved-ignored, no data), the staff-discarded self-report, and an explicit check that a shared context is not mutated by deriving for several players in turn.

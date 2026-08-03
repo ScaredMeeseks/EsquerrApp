@@ -836,15 +836,32 @@
      - Last answer is NOT injured but the previous one was → doubt ("Recovering from …")
      - Otherwise → fit
      Can be called without saving (for read-only queries). */
-  function deriveFitnessStatus(playerId, saveResult) {
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
+  /* The five blobs deriveFitnessStatus() reads. Build once and pass it in
+     when deriving for a whole squad — the roster derives per player, so
+     without this the page re-parses all five 25 times over.
+     Read-only: the function's only .sort() runs on a .filter() result, and
+     the fa_users write goes through getUsers(), which caches separately. */
+  function fitnessContext() {
+    return {
+      availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
+      training: JSON.parse(localStorage.getItem('fa_training') || '[]'),
+      injNotes: JSON.parse(localStorage.getItem('fa_injury_notes') || '{}'),
+      dismissed: JSON.parse(localStorage.getItem('fa_injury_dismissed') || '{}'),
+      injuries: JSON.parse(localStorage.getItem('fa_injuries') || '[]')
+    };
+  }
+
+  /** `ctx` is optional — pass fitnessContext() when deriving in a loop. */
+  function deriveFitnessStatus(playerId, saveResult, ctx) {
+    const c = ctx || fitnessContext();
+    const availData = c.availData;
+    const training = c.training;
+    const injNotes = c.injNotes;
     // Staff can discard a self-reported injury from the Medical page. We store
     // the date it was discarded rather than editing the player's own answer:
     // attendance history stays intact, and if he reports injured again on a
     // LATER date the flag comes back on its own.
-    const dismissedUpTo = (JSON.parse(localStorage.getItem('fa_injury_dismissed') || '{}'))[playerId] || '';
+    const dismissedUpTo = c.dismissed[playerId] || '';
 
     // Collect all answered trainings for this player, sorted by date
     const answered = training
@@ -874,7 +891,7 @@
     }
 
     // Also check fa_injuries for staff-logged injuries
-    const injuries = JSON.parse(localStorage.getItem('fa_injuries') || '[]');
+    const injuries = c.injuries;
     const playerInj = injuries.filter(inj => inj.playerId === playerId);
     const activeInj = playerInj.find(inj => inj.status === 'active');
     const recoveringInj = playerInj.find(inj => inj.status === 'recovering');
@@ -1108,7 +1125,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 50;
+  const APP_VERSION = 51;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1443,8 +1460,9 @@
   }
 
   // ── Starting XI helpers ──
-  function getStartingXI(matchId) {
-    var sent = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+  /** `sentData` is optional — pass it when calling this per match. */
+  function getStartingXI(matchId, sentData) {
+    var sent = sentData || JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     var entry = sent[matchId];
     return (entry && Array.isArray(entry.startingXI)) ? entry.startingXI : [];
   }
@@ -1456,10 +1474,22 @@
   }
 
   // ── Player match stats aggregation ──
-  function computePlayerMatchStats(playerId) {
-    var matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    var allEvents = JSON.parse(localStorage.getItem('fa_match_events') || '{}');
-    var sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+  /* The three blobs computePlayerMatchStats() reads. Same story as
+     fitnessContext(): the roster computes stats per player. */
+  function matchStatsContext() {
+    return {
+      matches: JSON.parse(localStorage.getItem('fa_matches') || '[]'),
+      allEvents: JSON.parse(localStorage.getItem('fa_match_events') || '{}'),
+      sentData: JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}')
+    };
+  }
+
+  /** `ctx` is optional — pass matchStatsContext() when looping players. */
+  function computePlayerMatchStats(playerId, ctx) {
+    var c = ctx || matchStatsContext();
+    var matches = c.matches;
+    var allEvents = c.allEvents;
+    var sentData = c.sentData;
     var users = getUsers();
     var player = users.find(function(u) { return String(u.id) === String(playerId); });
     var playerTeam = player ? (player.team || '') : '';
@@ -1484,7 +1514,7 @@
       if (!isOwnTeam && !inConvocatoria) return;
 
       var events = allEvents[m.id] || [];
-      var startingXI = getStartingXI(m.id);
+      var startingXI = getStartingXI(m.id, sentData);
       var hasStartingXI = startingXI.length > 0;
       var isStarter = startingXI.some(function(id) { return String(id) === String(playerId); });
 
@@ -9479,6 +9509,7 @@
     const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
     const allOptions = ['yes', 'late', 'no', 'injured', 'na'];
 
+    const _stdFitCtx = fitnessContext();
     const playerRows = players.map(p => {
       const key = p.id + '_' + tr.date;
       const playerAnswer = availData[key] || (locked ? 'na' : null);
@@ -9493,7 +9524,7 @@
       ).join('');
       const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
 
-      const derived = deriveFitnessStatus(p.id, false);
+      const derived = deriveFitnessStatus(p.id, false, _stdFitCtx);
       const fStatus = derived.fitnessStatus;
       const injNote = derived.injuryNote || (fStatus === 'doubt' ? 'Doubt' : fStatus === 'injured' ? 'Injury' : '');
       let statusIcon = '';
@@ -10044,11 +10075,13 @@
       .filter(u => !curCat || (u.category || '') === curCat)
       .filter(u => rosterTeamFilter === 'all' || (u.team || '') === rosterTeamFilter)
       .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
+    const _fitCtx = fitnessContext();
+    const _msCtx = matchStatsContext();
     let rows = players.map(u => {
-      const derived = deriveFitnessStatus(u.id, false);
+      const derived = deriveFitnessStatus(u.id, false, _fitCtx);
       const status = derived.fitnessStatus;
       const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
-      const pStats = computePlayerMatchStats(u.id);
+      const pStats = computePlayerMatchStats(u.id, _msCtx);
       const matches = pStats.totals.matches;
       const minutes = pStats.totals.minutes;
       const titulars = pStats.totals.titulars;
@@ -10384,8 +10417,9 @@
     const allConvRaw = JSON.parse(localStorage.getItem('fa_convocatoria') || '{}');
     const allConv = Array.isArray(allConvRaw) ? {} : allConvRaw;
     const saved = convSelectedMatchId ? (allConv[convSelectedMatchId] || []) : [];
+    const _convFitCtx = fitnessContext();
     function playerStatusHtml(p) {
-      const derived = deriveFitnessStatus(p.id, false);
+      const derived = deriveFitnessStatus(p.id, false, _convFitCtx);
       const status = derived.fitnessStatus;
       const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
       const rd = computeReadiness(p.id);
@@ -13799,8 +13833,9 @@
     // Build player status map
     const playerStatusMap = {};
     const playerNoteMap = {};
+    const _medFitCtx = fitnessContext();
     players.forEach(p => {
-      const d = deriveFitnessStatus(p.id, false);
+      const d = deriveFitnessStatus(p.id, false, _medFitCtx);
       playerStatusMap[p.id] = d.fitnessStatus;
       playerNoteMap[p.id] = d.injuryNote || '';
     });

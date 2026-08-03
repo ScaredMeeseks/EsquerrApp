@@ -2,6 +2,16 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
+## v51 — performance sweep (2026-08-03)
+
+The same parse-per-call pattern v50 fixed, found in the two other helpers that run once per player. The roster was doing **~1,050 parses per render** (25 players × 42): `deriveFitnessStatus()` parsed 5 blobs per call, `computePlayerMatchStats()` 3 more plus `getStartingXI()` once per match. **69 ms → 0.4 ms.**
+
+`fitnessContext()` / `matchStatsContext()` build the blobs once; both helpers take an **optional** context, so the 15 call sites that pass nothing are untouched. Hoisted at the five that loop players: roster, medical, staff training detail, convocatòria.
+
+**Deliberately not a global blob cache.** A shared `readBlob(key)` memo would have fixed everything at once with no signature changes, but several read paths feed read-modify-write cycles (`getInjuries()` → mutate → `saveInjuries()`), and a caller mutating a shared object leaves phantom data in the cache. Not worth 0.4 ms.
+
+New `test/context.test.js` (11 tests) pinning the one property it all rests on: **passing a context must never change the answer.** **189 passing.** Frontend only — push to `main`, no `./deploy.sh`.
+
 ## v50 — Sessions list performance (2026-08-03)
 
 "Sessions d'entrenament seem to take a little longer to react and load" — measured at **547 ms of `JSON.parse` per render, now 1.5 ms**.
