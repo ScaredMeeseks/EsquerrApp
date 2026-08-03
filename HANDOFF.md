@@ -2,11 +2,13 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
-## Next actions (v46 is ready but not shipped)
+## v46 — shipped and verified (2026-08-03)
 
-1. **Push to `main`** — deploys the frontend to GitHub Pages and triggers the APK build. `APP_VERSION` and `sw.js` `CACHE_NAME` are both at **v46**. No rules or functions changed, so no `./deploy.sh` needed.
-2. **Confirm the live club is unchanged** — log in as `marna96@gmail.com` and check roster stats, medical and the load charts look exactly as they did. `nDLJCpJfDvFHs8MnwtzW` has no `seasonBoundary` field, so `seasonStartStr()` must still return 15 August. This is the entire safety claim of the change; verify it rather than assuming it.
-3. **Then seed the demo club** — see "Demo club" below. Read the dry run before `--apply`.
+1. ✅ **Pushed to `main`** (`337b6f5`, `f579ecf`) — frontend live on GitHub Pages, APK built by CI. `APP_VERSION` and `sw.js` `CACHE_NAME` both at **v46**. No rules or functions changed, so **no `./deploy.sh` was needed** and none should be run: it would redeploy identical rules for no reason.
+2. ✅ **Live club confirmed unchanged** — roster, players and injuries all render as before. `nDLJCpJfDvFHs8MnwtzW` has no `seasonBoundary` field, so `seasonStartStr()` still returns 15 August. That was the entire safety claim of the change.
+3. ✅ **Demo club seeded** — `Tm96gel58VSQvxgynf45`, see below.
+
+Remaining: the APK on the phones is still the v43-era build (deliberate, see Open items). **Use the web app for demos.**
 
 ## Current state
 
@@ -52,15 +54,9 @@ Order mattered and held: rules (write allowlist, read temporarily permissive) �
 
 The wipe script died on its first read with `Cannot create property 'refresh_token' on string ''` — **twenty minutes lost**, and the diagnosis in the old handoff (`gcloud auth login`) was wrong.
 
-What it actually is: Cloud Shell keeps ADC in a **temp directory** and the Admin SDK only finds it when `GOOGLE_APPLICATION_CREDENTIALS` points there. `gcloud auth application-default set-quota-project` prints the path it wrote — export that and it works:
+**Superseded 2026-08-03 — see "ADC on Cloud Shell" under Demo club.** The `GOOGLE_APPLICATION_CREDENTIALS` export described here is not the fix and is itself a trap: Cloud Shell's metadata server supplies ADC with no setup, and a *stale* value of that variable is the thing that actually breaks the Admin SDK. If a script cannot authenticate, `unset GOOGLE_APPLICATION_CREDENTIALS` before anything else.
 
-```bash
-gcloud auth application-default set-quota-project esquerrapp    # prints "Credentials saved to file: [/tmp/tmp.XXXX/...]"
-export GOOGLE_APPLICATION_CREDENTIALS=/tmp/tmp.XXXX/application_default_credentials.json
-head -c 120 "$GOOGLE_APPLICATION_CREDENTIALS"                    # healthy = starts {"account": "", "client_id": ...
-```
-
-The export lives in **one tab only** — a new tab or a dropped session needs it again. `firebase` and `gcloud` keep their own separate credentials, which is why `./deploy.sh` kept working the whole time the Admin SDK was broken. And `node -e` resolves modules from the **current directory**, so Admin SDK one-liners must run from `~/EsquerrApp/functions`, not the repo root.
+Still true regardless: `firebase` and `gcloud` keep their own separate credentials, which is why `./deploy.sh` kept working the whole time the Admin SDK was broken. And `node -e` resolves modules from the **current directory**, so Admin SDK one-liners must run from `~/EsquerrApp/functions`, not the repo root.
 
 ### Deliberately not done in this phase
 
@@ -71,24 +67,37 @@ The export lives in **one tab only** — a new tab or a dropped session needs it
 
 A full season for showing the app to prospects: 25 players, 34 matchdays, 68 trainings, ~3,000 documents, in a **club of its own**. Not yet run — no demo club exists in production.
 
+**Live since 2026-08-03.** Substitute the id into every command below:
+
+| | |
+|---|---|
+| club id | `Tm96gel58VSQvxgynf45` |
+| join code | `9CA4RR` |
+| coach (lead) | `coach@demo.esquerrapp.app` / `DemoEsquerra2026!` |
+| physio | `fisio@demo.esquerrapp.app` / `DemoEsquerra2026!` |
+| players | `player01@…` – `player25@demo.esquerrapp.app`, same password |
+| season | 2026-03-01 → 2027-02-28 (`seasonBoundary: '03-01'`) |
+
 ```bash
 cd ~/EsquerrApp
-
-# ADC, the copy-pasteable version. `set-quota-project` can only re-point
-# credentials that already exist — on a fresh Cloud Shell it fails with
-# "Application default credentials have not been set up", so log in first.
-# Deriving the path from `gcloud info` avoids transcribing it by hand.
-gcloud auth application-default login
-export GOOGLE_APPLICATION_CREDENTIALS="$(gcloud info --format='value(config.paths.global_config_dir)')/application_default_credentials.json"
-ls -l "$GOOGLE_APPLICATION_CREDENTIALS"     # must exist before going on
-
 node functions/seed-demo-club.js                       # dry run — OFFLINE, no credentials
-node functions/seed-demo-club.js --apply               # create it; prints club id + join code
-node functions/seed-demo-club.js --verify --club CLUBID   # substitute the real id
-node functions/seed-demo-club.js --apply --purge CLUBID   # delete it entirely
+node functions/seed-demo-club.js --apply               # create; prints id + join code
+node functions/seed-demo-club.js --verify --club Tm96gel58VSQvxgynf45
+node functions/seed-demo-club.js --apply --purge Tm96gel58VSQvxgynf45   # delete it all
 ```
 
-The export lives in **one tab only** — a new tab or a dropped session needs it again. `--apply` runs a credentials preflight before its first write, so a bad setup is refused outright rather than leaving a half-created club.
+### ADC on Cloud Shell — the guidance that was wrong twice
+
+**Do nothing. Cloud Shell is a GCE VM and its metadata server already supplies Application Default Credentials.** The Admin SDK picks them up with no setup at all.
+
+The two failures this note used to cause, both fixed:
+
+- `gcloud auth application-default set-quota-project` only *re-points* credentials that already exist. On a session that has none it fails with "Application default credentials have not been set up" — and prints no path.
+- `gcloud auth application-default login` then warns that it is **unnecessary on a GCE VM** and that personal credentials on a shared VM disk are a downgrade. Answer **N**.
+
+The one thing that genuinely breaks it: **a stale `GOOGLE_APPLICATION_CREDENTIALS`**. If it is set, the SDK reads that file *instead of* the metadata credentials, and a wrong path kills every call. If anything looks unauthenticated, `unset GOOGLE_APPLICATION_CREDENTIALS` first. `gcloud config set project esquerrapp` if a quota project is wanted.
+
+`--apply` runs a credentials preflight before its first write, so a bad setup is refused outright instead of leaving a half-created club — which is exactly what happened on the first attempt.
 
 - **The dry run needs no credentials and writes nothing** — the season is generated and self-checked in memory. Fourteen consistency checks run before any write and refuse it on failure. Read it in full first.
 - **Safety**: everything created is stamped `demoSeed: true`. `--purge` refuses any club without the stamp, refuses the live club and the Barcelona test club outright, and skips unstamped accounts. The live club cannot be reached by this script.
