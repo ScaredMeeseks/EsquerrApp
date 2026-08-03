@@ -1,6 +1,10 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
+_Rolling document, overwritten each session. Last updated: 2026-08-04._
+
+**Production is on v52.** v46–v52 all shipped: per-club season boundary + demo-club seeder, three demo-walkthrough fixes, the staff home page, two navigation fixes and two rounds of performance work, then readiness presentation. Frontend-only throughout — **no rules or functions have changed since Phase 5**, so `./deploy.sh` has not been needed. Tests **202 passing** (101 unit + 87 rules + 14 functions), up from 143.
+
+The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo club below).
 
 ## v52 — readiness presentation (2026-08-04)
 
@@ -67,8 +71,6 @@ Three demo-walkthrough fixes. Frontend + seeder only — **no rules or functions
 1. **Team filter offered a team B that does not exist.** "Auto Generate Teams" passed `_currentSession.category`, which is `''` for staff, hitting `getTeamLetters()`'s fallback. Now uses `getCurrentCategory()`; the fallback is `['A']`; and both this filter and the roster's hide when there is only one team.
 2. **"Equal" distribution now groups similar players together** — contiguous blocks of the position-sorted pool, so two groups give defenders + holding midfielders vs attacking midfielders + forwards. It previously dealt round-robin, i.e. did the opposite of its own comment, and behaved like a second Mix button. Also fixed: the trim used to cut **the forwards every time**, `perTeam` could be exceeded, and group numbering was unstable.
 3. **`--faces <dir>` on the seeder** uploads profile pictures. See Demo club below.
-
-**Still to do**: push, then re-seed the demo club with faces.
 
 ### Deferred, agreed 2026-08-03 — readiness colouring (PRESENTATION DONE in v52; calibration still open)
 
