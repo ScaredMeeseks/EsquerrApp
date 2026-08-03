@@ -490,3 +490,18 @@ Still untested: `functions/index.js`. There is no harness for it, and `reshardMe
 **Committed as `02fe60e` on branch `phase5-sharding`** — not pushed, not merged, not deployed. `HANDOFF.md` carries the Stage E runbook; `CLAUDE.md` was updated for the new script load order, the sharded data model and the `npm run test:unit` safety net.
 
 The one non-obvious thing about the cutover, spelled out in the runbook: **the two rule changes cannot ship together.** The `baseKey` write allowlist must land BEFORE the new frontend (composite ids fail the old exact-match allowlist, so every player write would be denied), and the read narrowing must land AFTER it (Firestore rejects a collection query outright if any document it could return might be denied). So the rules deploy twice, with the read narrowing temporarily backed out the first time.
+
+### 2026-08-03 — Stage E, step 0: the wipe script
+
+`functions/wipe-team-data.js` is the last artifact the cutover was missing. Dry run by default, `--apply` to act, `--team <id>` to rehearse on one club, `--include-seasons` to take the archives too.
+
+It deletes `teams/{id}/data/*` (sharded **and** pre-Phase-5 un-sharded docs), the three record collections, and the spent `pushQueue`. It keeps `users/*` (+ `tokens/*`), `clubs/*` with `rosters/*`, `clubCodes/*`, `joinAttempts/*`, the `teams/{id}` documents themselves and, by default, `seasons/**`.
+
+Two decisions worth the ink:
+
+- **`fa_users` is wiped with everything else, and that is safe** because `DB.init()` reconciles the kept `users/` collection back into the blob on the next login — the member list rebuilds itself from the accounts, per category as each coach signs in. Nothing else in `data/` has a source to rebuild from; that is what makes it a wipe.
+- **`trainingDates`/`matchDates` are cleared, not left.** They are the schedulers' index. Left pointing at wiped trainings they would fire reminders for sessions nobody can open, in the window between step 3 and `backfill-team-dates.js` in step 5.
+
+`seasons/**` is reported in the inventory but kept unless asked for: an archive is a season that already happened, not the disposable pre-season content the wipe scope covers.
+
+**Tested against the Firestore emulator** (driver in the scratchpad, not in the repo — it needs `firebase-admin`, which `test/` deliberately does not depend on). Six cases: the dry run changes nothing and flags legacy/unparseable/merge-format docs; `--team` leaves the other club byte-identical; the full run empties data + records + queue while keeping the team doc, its name, the archives and every keeper; a second run is a no-op; `--include-seasons` takes the archive subtree; an unknown `--team` exits non-zero.

@@ -1,12 +1,12 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 Stages B, C and D committed on `phase5-sharding`; Stage E — the cutover — is all that is left)._
+_Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 Stages B–D committed on `phase5-sharding`, and Stage E's wipe script written and emulator-tested; the cutover itself is all that is left)._
 
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI build on push; rules/functions = `./deploy.sh` in Cloud Shell. One-off scripts live in `functions/` (root npm installs are broken on Cloud Shell).
-- **Production is on v43.** Stages B, C and D (v44) are committed as **`02fe60e` on branch `phase5-sharding`** — **not pushed, not merged, not deployed.** Working tree clean.
-- **Start tomorrow by reading "Stage E — the cutover" below.** It is a runbook; follow it in order.
+- **Production is on v43.** Stages B, C and D (v44) plus the Stage E wipe script are committed on branch **`phase5-sharding`** — **not pushed, not merged, not deployed.** Working tree clean.
+- **Start tomorrow by reading "Stage E — the cutover" below.** It is a runbook; follow it in order. Every artifact it needs now exists — step 0 is done.
 - **Tests run on this Windows box.** `cd test && npm test` runs everything; `npm run test:unit` is the fast path (shard + router, pure Node, ~1s, no emulator and no Java) and `npm run test:rules` needs the Firestore emulator against the fake project `demo-esquerrapp`. **129 passing: 42 unit (shard + router, no Java) + 87 rules.** If the rules suite says `Could not spawn java -version`, Java is installed but off this shell's PATH:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
 
@@ -72,11 +72,12 @@ They cannot ship together. Step 1 deploys the file with the read narrowing tempo
 
 ---
 
-**Step 0 — still to write: the wipe script.**
-`functions/wipe-team-data.js`, modelled on `migrate-player-data.js`'s dry-run/`--apply` shape. It must:
-- delete every `teams/{id}/data/*` document, plus the `trainingAvail`, `matchAvail` and `rpe` record collections;
-- **keep** `users/*`, `clubs/*` (including `rosters/*` and `clubCodes`), and the `teams/{id}` documents themselves (`trainingDates`/`matchDates` are rebuilt in step 5);
-- print a full inventory and require `--apply`; default to a dry run.
+**Step 0 — ✅ done: `functions/wipe-team-data.js`** (written and emulator-tested, 2026-08-03).
+
+- Deletes `teams/{id}/data/*` (sharded **and** pre-Phase-5 un-sharded docs), `trainingAvail`, `matchAvail`, `rpe`, and the spent `pushQueue`; clears `trainingDates`/`matchDates` so no reminder fires for a wiped session before step 5 rebuilds them.
+- Keeps `users/*` (+ `tokens/*`), `clubs/*` with `rosters/*`, `clubCodes/*`, `joinAttempts/*`, the `teams/{id}` documents, and `seasons/**` unless `--include-seasons` is passed.
+- Dry run by default with a full per-document inventory; `--apply` to act; `--team <id>` to rehearse on the F.C.Barcelona test club first.
+- **`fa_users` goes with the rest, deliberately** — `DB.init()` reconciles the kept `users/` collection back into the blob on the next login, so the member list rebuilds itself from the accounts.
 
 **Step 1 — rules, write change only.** Temporarily replace the `match /data/{key}` read line in `firestore.rules` with the permissive one, commit on the branch, push, then in Cloud Shell:
 
@@ -93,11 +94,12 @@ cd ~/EsquerrApp && git fetch && git checkout phase5-sharding && ./deploy.sh rule
 cd ~/EsquerrApp && ./deploy.sh functions
 ```
 
-**Step 3 — wipe.** Read the dry run in full before applying.
+**Step 3 — wipe.** Read the dry run in full before applying. Rehearsing on the test club first is free.
 
 ```
-cd ~/EsquerrApp && node functions/wipe-team-data.js          # dry run
-cd ~/EsquerrApp && node functions/wipe-team-data.js --apply
+cd ~/EsquerrApp && node functions/wipe-team-data.js                            # dry run, all clubs
+cd ~/EsquerrApp && node functions/wipe-team-data.js --apply --team lly4GkUxIpBkSgZvzldT   # test club only
+cd ~/EsquerrApp && node functions/wipe-team-data.js --apply                    # everything
 ```
 
 **Step 4 — frontend.** Merge to `main` and push; GitHub Pages deploys and CI builds the APK.
