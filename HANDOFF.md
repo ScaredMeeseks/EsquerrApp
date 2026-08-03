@@ -2,6 +2,17 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-03 (Phase 5 complete and live; **v46 adds the per-club season boundary and the demo-club seeder — written and tested, NOT yet pushed or run**)._
 
+## v49 — navigation fixes (2026-08-03)
+
+Found by using the new staff home: open a training from Home → Back → you land on the Training Sessions list while the sidebar still highlights Home. **Two separate bugs, both pre-dating the staff home.**
+
+- **Back was hardcoded per page.** Detail pages each had one fixed destination, so arriving from anywhere else dropped you somewhere you had never been. `renderPage()` now tracks `_prevPage` — one place, since every navigation funnels through it — and `backTarget(fallback)` uses it.
+- **The sidebar highlight only tracked sidebar clicks.** `active` was set on rebuild and in the sidebar's own click handler, nowhere else, so *any* row link or Back button left it stale. This was always true; the staff home just made it easy to hit. `syncSidebarActive()` now runs on every render.
+
+Detail pages highlight the section they were opened from, which is also where Back now goes — the two agreeing is the fix, since it was their disagreement that made it confusing.
+
+New `test/navigation.test.js` (9 tests, fast unit path). **170 passing.** Frontend only — push to `main`, no `./deploy.sh`.
+
 ## v48 — staff home page (2026-08-03)
 
 The coach now lands on **`staff-home`** instead of Registrations: this week and next week's sessions and matches with availability counts and call-up status, players out of action with expected return, and a load-to-watch list. Frontend only — push to `main`, no `./deploy.sh`. Tests green at 161.

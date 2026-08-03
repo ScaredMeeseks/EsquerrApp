@@ -1108,7 +1108,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 48;
+  const APP_VERSION = 49;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2770,6 +2770,43 @@
   const ADMIN_PAGES = new Set(['users']);
   const LEAD_PAGES  = new Set(['settings']);
 
+  /* The page we were on before this one, and the page last rendered.
+     Every navigation funnels through renderPage(), so tracking it here
+     costs one place instead of the dozen call sites that set currentPage. */
+  let _prevPage = null;
+  let _lastRendered = null;
+
+  /**
+   * Where a detail page's Back button should go.
+   *
+   * Detail pages used to hardcode a single destination — training detail
+   * always returned to the training LIST — so arriving from anywhere else
+   * dumped you on a page you had never visited, with the sidebar still
+   * highlighting where you actually came from. Returning to the origin is
+   * what the highlight was already claiming.
+   */
+  function backTarget(fallback) {
+    return (_prevPage && _prevPage !== currentPage) ? _prevPage : fallback;
+  }
+
+  /**
+   * Keep the sidebar highlight honest.
+   *
+   * `active` was only ever set when the sidebar was rebuilt or when a
+   * sidebar item itself was clicked, so ANY in-page navigation — a row
+   * link, a Back button — left it pointing at the previous page. Detail
+   * pages are not sidebar items, so they highlight the section they were
+   * opened from, which is the convention and is now also where Back goes.
+   */
+  function syncSidebarActive() {
+    const items = $$('.sidebar-item');
+    if (!items.length) return;
+    const ids = new Set([...items].map(el => el.dataset.page));
+    const want = ids.has(currentPage) ? currentPage
+      : (ids.has(_prevPage) ? _prevPage : null);
+    items.forEach(el => el.classList.toggle('active', el.dataset.page === want));
+  }
+
   function renderPage(session) {
     const content = $('#dashboard-content');
     const roles = session.roles || [];
@@ -2795,6 +2832,13 @@
     if (LEAD_PAGES.has(currentPage) && !session.isAdmin && !session.isTeamLead) {
       currentPage = fallbackPage();
     }
+
+    // Recorded AFTER the role checks above, which can redirect: the page we
+    // came from is the one that actually rendered, not the one requested.
+    // A re-render of the same page (a firestore sync, a category switch) is
+    // not a navigation and must not overwrite the origin.
+    if (_lastRendered && _lastRendered !== currentPage) _prevPage = _lastRendered;
+    _lastRendered = currentPage;
 
     const renderers = {
       'staff-home': renderStaffHome,
@@ -2830,6 +2874,7 @@
         !getVisibleCategories().length) {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>' +
         t('error.no_categories') + '</p></div>';
+      syncSidebarActive();
       bindDynamicActions();
       return;
     }
@@ -2847,6 +2892,7 @@
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
     }
 
+    syncSidebarActive();
     bindDynamicActions();
 
     // Auto-scroll league tables so Esquerra is vertically centered
@@ -4034,7 +4080,7 @@
     const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
     const callupTime = convCallupData[m.id] || m.callupTime || '—';
 
-    const backPage = detailMatchFrom || 'player-matchday';
+    const backPage = detailMatchFrom || backTarget('player-matchday');
 
     // Past match: events system (replaces old Resultat + Gols)
     let eventsHtml = '';
@@ -4308,7 +4354,7 @@
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const assistHtml = tr.assistance != null ? buildAssistanceCircle(tr.assistance) : '';
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="player-home">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('player-home')}">${t('btn.back')}</button>
       <div class="detail-hero detail-hero-training">
         <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">${t('training.badge')}</span></div>
         <h2 class="detail-title">${sanitize(tr.focus)}</h2>
@@ -5257,7 +5303,7 @@
     }
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="manage-roster">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('manage-roster')}">${t('btn.back')}</button>
       <h2 class="page-title">${sanitize(u.name)} <span style="color:var(--text-secondary);font-weight:600;">#${sanitize(String(number))}</span>${ageLabel}</h2>
       <div class="player-overview-card">
         <div class="player-overview-left">
@@ -9465,7 +9511,7 @@
     }
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="staff-training">← Back</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('staff-training')}">${t('btn.back')}</button>
       <div class="detail-hero detail-hero-training">
         <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">${t('training.badge')}</span></div>
         <h2 class="detail-title">${sanitize(tr.focus)}</h2>
@@ -14701,8 +14747,11 @@
     // Back button
     const backBtn = document.getElementById('med-back');
     if (backBtn) {
+      // Captured at bind time, while _prevPage still holds the page that
+      // opened this record — by click time another render may have moved on.
+      const to = backTarget('medical');
       backBtn.addEventListener('click', () => {
-        currentPage = 'medical';
+        currentPage = to;
         renderPage(getSession());
       });
     }

@@ -627,3 +627,22 @@ The page has four cards: this week, next week, out of action, load to watch.
 That 16-of-25 figure is itself evidence for the parked readiness work: a classifier that flags two thirds of a squad is not discriminating. The cap is a presentation fix, not a fix for that.
 
 Verified headlessly against a seeder dump — the render path was driven with the real demo blobs to check counts, sorting and the injury tags before it ever reached a browser.
+
+### 2026-08-03 — Back returns where you came from; the sidebar highlight stops lying (v49)
+
+Reported from the new staff home: open a training from Home, press Back, and you land on the **Training Sessions list** while the sidebar still highlights **Home**. Two independent bugs with the same symptom, both older than the staff home — which merely made them easy to hit, because Home is now a sidebar page people land on.
+
+**1. Back was hardcoded.** Every detail page shipped a fixed destination: training detail always returned to the training list, player stats to the roster, medical records to Medical. Arriving from anywhere else dropped you on a page you had never visited. Only `match-detail` had ever solved this, with its own `detailMatchFrom`.
+
+`_prevPage` is now tracked inside `renderPage()` — the single funnel every navigation passes through, so one place instead of the dozen call sites that assign `currentPage`. `backTarget(fallback)` returns it, falling back to the old fixed page when there is no origin. Two details that matter:
+
+- It is recorded **after** the role-enforcement redirects, so the origin is the page that actually rendered rather than the one requested.
+- A re-render of the *same* page — a firestore sync, a category switch — is explicitly not a navigation. Treating it as one would make Back return to the page you are already on.
+
+`bindMedicalDetail()` captures the target at bind time rather than reading it in the click handler, because by click time another render may have moved `_prevPage` on.
+
+**2. The sidebar highlight only tracked sidebar clicks.** `active` was set when the sidebar was rebuilt (`renderDashboard`) and in the sidebar's own click handler — nowhere else. Every in-page navigation therefore left it pointing at the previous page. This had always been true of row links and Back buttons; nothing had made it obvious before. `syncSidebarActive()` now runs on both of `renderPage()`'s exit paths, including the no-categories early return.
+
+A detail page is not a sidebar item, so it highlights the section it was opened from — the convention, and now also exactly where Back goes. The two agreeing is the point: the original behaviour was confusing rather than merely wrong *because* they disagreed.
+
+New `test/navigation.test.js`, 9 tests in the fast unit path — **170 passing** (69 unit + 87 rules + 14 functions). It slices the logic block out of app.js by marker and evaluates it, one step beyond what `shard.test.js` already does with utils.js; a stale marker throws by name rather than silently skipping. Covered: the reported path, the pre-existing paths that must not regress, the no-origin fallback, re-render immunity, and that the highlight and the back target never disagree.
