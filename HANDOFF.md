@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v63.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **339 passing** (213 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v64.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **339 passing** (213 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -42,6 +42,14 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
 
+## v64 — the band at the foot of the auth pages (2026-08-04)
+
+Measured, not guessed. Login page, nothing to scroll: `scrollWidth` 400 = `innerWidth` 400 (so not a horizontal scrollbar), but `scrollHeight` **854** vs `innerHeight` **824**.
+
+Those 30px are the gap between the two mobile viewports: `100vh` is the **large** viewport (toolbars retracted), `innerHeight` is what is visible now. `body` and `.view` both used `min-height: 100vh`, so the page was 30px taller than the window and those 30px were bare `--bg` below the gradient.
+
+`100dvh` added after `100vh` on `body`, `.view` and `.auth-container`. `#view-dashboard` already did this; the auth views were missed. `.auth-container` also stops relying on `flex: 1` to stretch — the element that paints the background now guarantees its own coverage.
+
 ## v63 — the toggle counted the row it was about to enable (2026-08-04)
 
 The "2 de 3 and adding still errors" report was **two** bugs, and v62 fixed only one of them.
@@ -53,8 +61,6 @@ The "2 de 3 and adding still errors" report was **two** bugs, and v62 fixed only
 **A second defect, this one introduced by v62:** enabling a category only added `.active` and never repainted the chips, so the row stayed drawn as disabled — greyed `A`, no `+` — and no team could be added to the category just enabled. Chip markup now has one builder, `_letterChipsHtml`, shared by the first render and the toggle, with a test pinning it as the only one.
 
 **339 passing** (213 unit). Frontend-only.
-
-**Open, needs a browser:** a light band across the foot of the login and team-setup pages. `#view-dashboard` was given `position: fixed; inset: 0` for the same symptom (see the comment above `#view-dashboard` in style.css); the `.auth-container` views never got an equivalent and cannot simply be made non-scrolling, since team setup is genuinely long. Unresolved whether it is a horizontal scrollbar or bare `--bg` below `.view` — measure `documentElement.scrollWidth` vs `innerWidth` on the login page first.
 
 ## v62 — team setup: a listener leak, and four UX fixes (2026-08-04)
 

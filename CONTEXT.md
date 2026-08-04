@@ -867,3 +867,13 @@ Enabling a category adds **exactly one** team: a disabled row's stored letters a
 
 `_domTeamCount` is now unit-tested against a hand-built stub (the two methods it calls), including the reported case and the v55 arithmetic kept as a regression guard. **213 unit tests** (up from 203); 339 total.
 
+## v64 — the band at the foot of the auth pages (2026-08-04)
+
+Measured rather than guessed. On the login page, which has nothing to scroll: `documentElement.scrollWidth` **400** = `innerWidth` 400 (so not a horizontal scrollbar, the other candidate), but `scrollHeight` **854** against `innerHeight` **824**.
+
+Those 30px are the gap between the two mobile viewports. `100vh` is the **large** viewport — the height the page would have with the browser toolbars retracted — while `innerHeight` is what is visible right now. `body` and `.view` both carried `min-height: 100vh`, so a page with no content to scroll was 30px taller than the window, and those 30px were bare `--bg` below the gradient.
+
+`100dvh` is the visible height and follows the toolbars. Added after `100vh`, which stays as the fallback, on `body`, `.view` and `.auth-container` — `#view-dashboard` already did exactly this and the auth views were simply missed.
+
+`.auth-container` also gets its own `min-height` rather than relying on `flex: 1` to stretch it. `.view`'s min-height is not a *definite* height, and the comment above `#view-dashboard` records what that already cost once: the child's background stopped where its box ended, leaving a strip of bare page background across the foot of the page. The element that paints the background now guarantees its own coverage.
+

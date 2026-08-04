@@ -23,17 +23,28 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 html { font-size: 16px; }
+/* `100dvh` after `100vh`, everywhere, and the pair is deliberate.
+   On a phone `100vh` is the LARGE viewport — the height the page would have
+   if the browser's toolbars were retracted — while `innerHeight` is what is
+   actually visible right now. Measured on the login page: document 854px,
+   window 824px. So a page with nothing to scroll scrolled 30px, and those
+   30px were bare `--bg` below the gradient: the light band across the foot
+   of the login and team-setup screens.
+
+   `100dvh` is the visible height and tracks the toolbars as they move.
+   `100vh` stays first as the fallback for anything that predates it.
+   #view-dashboard already did this; the auth views were missed. */
 body {
   font-family: 'Oswald', 'Arial Narrow', sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
 }
 
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.view { display: flex; flex-direction: column; min-height: 100vh; }
+.view { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
 .view[hidden] { display: none !important; }
 
 /* ===== Buttons ===== */
@@ -58,9 +69,16 @@ a:hover { text-decoration: underline; }
 .btn-small { padding: .35rem .8rem; font-size: .82rem; white-space: nowrap; }
 
 /* ===== Auth Pages ===== */
+/* The gradient carries its own full-viewport minimum rather than relying on
+   `flex: 1` to stretch it. .view's min-height is not a DEFINITE height, and
+   the comment above #view-dashboard records what that already cost once:
+   the child's background stopped where its box ended, leaving a strip of
+   bare page background across the foot of the page. Belt and braces — the
+   element that paints the background guarantees its own coverage. */
 .auth-container {
   display: flex; align-items: center; justify-content: center;
   flex: 1; padding: 2rem;
+  min-height: 100vh; min-height: 100dvh;
   background: linear-gradient(135deg, #2D2926 0%, #BD162C 100%);
 }
 .auth-card {
