@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v66.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **350 passing** (224 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v67.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **357 passing** (231 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -41,6 +41,16 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v67 — "Totes" never did anything (2026-08-04)
+
+Not disabled, not a permissions problem. `_viewCategory` held three states in two values: `''` meant both "never chosen" and "pressed Totes", and `getCurrentCategory()` tested it with `if (_viewCategory && …)` — so the explicit branch was falsy and the session's default category won.
+
+That default is stamped on every staff member by `membershipFrom()` *"for the UI's default view"*, so the button was a guaranteed no-op for **every lead and every multi-category coach**, and never lit up either (`renderCategoryBar` marks it active on `!cur`). Xavier Bonet, the demo club's lead, sees all categories while his own stays `amateur`.
+
+`null` = unset, `''` = Totes. Branch order is the fix: scoping first (one visible category outranks any stored choice), then the explicit press, then the default. Both reset sites go to `null`, never `''`. `clearSession()` clears it so a filter cannot cross a logout.
+
+7 new tests in `test/context.test.js`. **Relevant to the demo seeding below** — the bar only renders with 2+ visible categories, so this bug was invisible until the demo club got a second one.
 
 ## v66 — an invisible div was hanging off the bottom of every page (2026-08-04)
 

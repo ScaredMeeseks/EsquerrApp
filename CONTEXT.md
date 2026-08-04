@@ -902,3 +902,27 @@ Fixed positioning is against the viewport, so the three sites placing it now use
 ### Why this took three passes
 Each of the three causes produces a light strip at the foot of the page, and a screenshot cannot tell them apart. What settled it every time was a number: `scrollWidth` vs `innerWidth` ruled out a horizontal scrollbar, `scrollHeight` vs `innerHeight` sized the gap, `getBoundingClientRect()` on the gradient element localised it, and finally enumerating elements below that bottom edge named the culprit outright.
 
+## v67 — "Totes" never did anything (2026-08-04)
+
+Reported as *"the new Todas button might not be working, or maybe it's disabled for Xavier Bonet"*. It is not disabled and it is not a permissions problem. `_viewCategory` carried **three** states in a variable with only two values:
+
+```js
+var _viewCategory = '';   // '' = all
+```
+
+`''` meant both *"never chosen"* and *"pressed Totes"*. `getCurrentCategory()` tested it with `if (_viewCategory && …)`, so the explicit-Totes branch was falsy, execution fell through, and the session's default category won:
+
+```js
+if (s && s.category && visible.indexOf(s.category) !== -1) return s.category;
+```
+
+That default is not incidental — `membershipFrom()` stamps one on every staff member *"for the UI's default view"* and `joinClub` persists it. So the button was a guaranteed no-op for **every lead and every multi-category coach**, and it never even lit up, because `renderCategoryBar` marks it active on `!cur`. Xavier Bonet is the demo club's lead: he sees every enabled category while his own `category` stays `amateur`.
+
+`null` now means unset, `''` means Totes. The branch order is the fix and is documented at the function: **scoping first** (one visible category outranks any stored choice, because "all" and "that one" are the same answer), then the user's explicit press, then the session default. Both reset sites — `clearSession()` and the claims-changed listener — go back to `null`, never `''`, so a filter nobody selected cannot be inherited by the next account on the tab.
+
+`clearSession()` also clears it now: `getCurrentCategory()` clamps to `getVisibleCategories()` so a leftover value was never a leak, but "Totes" would have carried across a logout.
+
+**Server unchanged.** `membershipFrom()` keeps stamping the default — it is what gives a coach a sensible landing view, and the server is the wrong place to fix a client display bug.
+
+**7 new tests** in `test/context.test.js` pinning the branch order, the stale-filter clamp, and both reset sites. **231 unit**, 357 total.
+

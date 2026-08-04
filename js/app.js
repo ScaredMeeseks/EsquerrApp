@@ -1127,6 +1127,11 @@
 
   function clearSession() {
     _currentSession = null;
+    /* The next account to sign in on this tab must land on its OWN default
+       category, not inherit the last one's choice. getCurrentCategory()
+       clamps to getVisibleCategories() so a stale value was never a leak,
+       but "Totes" would have carried over as a filter nobody selected. */
+    _viewCategory = null;
   }
 
   // ---------- View switching ----------
@@ -1179,7 +1184,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 66;
+  const APP_VERSION = 67;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1197,7 +1202,15 @@
   ];
 
   // ---------- Category view filter ----------
-  var _viewCategory = ''; // currently active category filter ('' = all)
+  /* THREE states, and the third one is why this is not a boolean:
+       null  the user has not chosen — fall back to their default category
+       ''    the user pressed "Totes" — show every visible category
+       'x'   the user pressed a category
+
+     null and '' used to be the same value, so pressing "Totes" was
+     indistinguishable from never having pressed anything and the default
+     category won every time. See getCurrentCategory(). */
+  var _viewCategory = null;
 
   /**
    * The categories this user is allowed to look at.
@@ -1257,11 +1270,26 @@
     catch (e) { console.warn('DB scope update failed:', e); }
   }
 
+  /**
+   * The category every page filters by. '' means "all visible categories",
+   * which each render function reads as `!curCat || ...`.
+   *
+   * Order matters. Scoping comes first: with one visible category there is
+   * nothing to choose and "all" and "that one" are the same answer, so the
+   * stored default can never widen it. Then the user's explicit choice.
+   * Only then the session default, which membershipFrom() stamps on every
+   * staff member "for the UI's default view" — it is a landing view, and it
+   * must not outrank a button the user just pressed.
+   */
   function getCurrentCategory() {
     var visible = getVisibleCategories();
+    if (visible.length === 1) return visible[0];
+    // Explicitly "Totes". Checked with === because '' is falsy and used to
+    // fall through to the session default, which made the button a no-op
+    // for every lead and every multi-category coach.
+    if (_viewCategory === '') return '';
     // A stale filter must never widen the view past what's allowed.
     if (_viewCategory && visible.indexOf(_viewCategory) !== -1) return _viewCategory;
-    if (visible.length === 1) return visible[0];
     var s = getSession();
     if (s && s.category && visible.indexOf(s.category) !== -1) return s.category;
     return '';
@@ -15749,6 +15777,9 @@
     // that now decides what a coach can see.
     $$('.cat-bar-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        // The "Totes" button carries data-cat="", which lands here as '' —
+        // the deliberate "show everything" value, NOT the unset null. Do
+        // not "tidy" this into a falsy check; see _viewCategory.
         var want = btn.dataset.cat || '';
         _viewCategory = (want && getVisibleCategories().indexOf(want) === -1) ? '' : want;
         // Team letters are per-category, so a letter selected under the old
@@ -17374,9 +17405,12 @@
               s.category = d.category || '';
               s.team = d.team || '';
               _currentSession = s;
-              // The category filter may now point somewhere out of bounds.
+              /* The category filter may now point somewhere out of bounds.
+                 Back to null, not '': this is "forget the choice and use
+                 the default again", whereas '' would silently pin them to
+                 Totes — a filter they never asked for. */
               if (_viewCategory && getVisibleCategories().indexOf(_viewCategory) === -1) {
-                _viewCategory = '';
+                _viewCategory = null;
               }
               // Roster visibility follows the new categories.
               if (_clubConfig) _clubConfig.rosters = await loadRosters(s.teamId, _clubConfig);

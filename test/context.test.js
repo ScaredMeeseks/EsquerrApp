@@ -121,3 +121,84 @@ describe('app.js — context builders', () => {
     assert.deepStrictEqual(ctx.sentData, {});
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * The category filter — "Totes" has to mean something.
+ *
+ * `_viewCategory` carries three states in one variable and two of them
+ * used to share a value:
+ *
+ *     null   never chosen   → fall back to the session's default category
+ *     ''     pressed Totes  → every visible category
+ *     'x'    pressed x      → just x
+ *
+ * When null and '' were both '', the "explicit Totes" branch was falsy and
+ * execution fell through to the session default. membershipFrom() stamps
+ * that default on every staff member "for the UI's default view", so for a
+ * lead — or any coach on two categories — the button could never do
+ * anything. It did not even light up, because renderCategoryBar marks it
+ * active on `!cur`.
+ *
+ * These tests pin the ORDER of the branches, which is the whole fix.
+ * ------------------------------------------------------------------ */
+describe('category filter — getCurrentCategory', () => {
+  const code = grab('  function getCurrentCategory()', '\n  function renderCategoryBar');
+
+  /** @param view the _viewCategory sentinel  @param visible allowed cats */
+  const current = (view, visible, session) =>
+    // eslint-disable-next-line no-new-func
+    new Function('_viewCategory', 'getVisibleCategories', 'getSession',
+        `${code}\nreturn getCurrentCategory();`)(
+        view, () => visible, () => session);
+
+  const lead = { category: 'amateur', isTeamLead: true };
+
+  it('Totes beats the session default — the reported bug', () => {
+    assert.strictEqual(current(null, ['amateur', 'juvenil'], lead), 'amateur',
+        'unset still lands on the default category');
+    assert.strictEqual(current('', ['amateur', 'juvenil'], lead), '',
+        'pressing Totes must widen the view, not snap back to amateur');
+  });
+
+  it('an explicit category still wins', () => {
+    assert.strictEqual(current('juvenil', ['amateur', 'juvenil'], lead), 'juvenil');
+  });
+
+  it('one visible category outranks everything', () => {
+    // Nothing to choose: "all" and "that one" are the same answer, and the
+    // bar is not even rendered. Scoping must not be widened by a stale ''.
+    assert.strictEqual(current('', ['amateur'], lead), 'amateur');
+    assert.strictEqual(current(null, ['amateur'], lead), 'amateur');
+    assert.strictEqual(current('juvenil', ['amateur'], lead), 'amateur');
+  });
+
+  it('a stale filter never widens the view past what is allowed', () => {
+    // The coach picked cadet, then lost it. He must not keep seeing it.
+    const staff = { category: 'juvenil', roles: ['staff'] };
+    assert.strictEqual(current('cadet', ['amateur', 'juvenil'], staff), 'juvenil',
+        'falls back to his default, not to the category he lost');
+    assert.strictEqual(current('cadet', ['amateur', 'juvenil'], {}), '',
+        'with no default either, "all his categories" is the safe answer');
+  });
+
+  it('no session and no categories is empty, not a crash', () => {
+    assert.strictEqual(current(null, [], null), '');
+    assert.strictEqual(current('', [], null), '');
+  });
+
+  it('the sentinel is initialised to null, not the empty string', () => {
+    assert.ok(/var _viewCategory = null;/.test(src),
+        "'' would make the unset state indistinguishable from Totes again");
+  });
+
+  it('nothing resets the filter to the Totes value', () => {
+    // Two sites reset it — clearSession and the claims listener. Both mean
+    // "forget the choice", which is null. '' would pin the next user to a
+    // filter they never selected.
+    const resets = src.split('\n').filter((l) => /_viewCategory = /.test(l));
+    resets.forEach((l) => {
+      assert.ok(!/_viewCategory = '';/.test(l),
+          'reset must be null, not the explicit-Totes value: ' + l.trim());
+    });
+  });
+});
