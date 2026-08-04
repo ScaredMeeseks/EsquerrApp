@@ -12,14 +12,12 @@ The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo cl
 
 Ordered by what I would pick up next. Nothing here is blocking.
 
-### 1. Readiness — DONE for now; revisit with real data (v52, v59, v60)
-v52 fixed the presentation and v59 the engine; flagging is down from 76% to **56%** with the thresholds untouched. What remains is genuinely clinical, and the `reasons` array says exactly where to look:
+### 1. Readiness — done for now; revisit with REAL data (v52, v59, v60, v61)
+Flagging is down from **76% → 40%**, green **24% → 48%**. Presentation (v52), three engine defects (v59), two thresholds (v60) and the consecutive-sessions rule (v61) are all shipped.
 
-- **`acwr_low` flags 6 of the 14** — amber for training *less* than usual. Under-loading is a real concern but it is not injury risk, and putting both behind one amber dot is much of why the list is unactionable. Splitting them, or dropping `acwr_low` from the flag entirely, is the single biggest lever left.
-- **`hard_sessions` (last two RPE ≥ 9) forces RED** on players scoring 79 and 72 — an override beating a perfectly decent score.
-- The **colour is still not a function of the score**, so two 72s can differ. The tooltip now explains why, which was the original complaint; whether the *design* should change is a separate question.
+What is left is not a code question: **every measurement so far is against synthetic demo data**, so it describes the model's structure rather than real footballers. The live club has had real RPE only since the Phase 5 wipe. Re-run the distribution script against real data before touching another threshold.
 
-Caveat worth keeping in view: every measurement so far is against **synthetic** demo data, so it describes the model's structure rather than real footballers. The live club has had real RPE only since the Phase 5 wipe. Re-measure against real data before committing to numbers.
+The one open *design* question, no longer a defect: the colour is not a function of the score, so two players can show 72 in different colours. The tooltip now names the rule that fired, which answered the original complaint.
 
 ### 2. Per-team training visibility — the big one, and now bigger than it looked
 Trainings carry only a `category`, never a team letter, so `amateur-A` and `amateur-B` literally share sessions. Giving them a letter means **re-keying the training subsystem from date to session id**: `detailTrainingDate`, eight `find(x => x.date === …)` sites, and the `{uid}_{date}` record ids. Two teams in one category will routinely train the same evening, and `find` by date returns whichever comes first. Deserves its own plan and its own deploy. The one-off guest-list idea rides on top of it.
