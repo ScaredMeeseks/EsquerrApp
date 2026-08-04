@@ -2,9 +2,9 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v59.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification and v58 an onboarding fix. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **291 passing** (165 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v59.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **309 passing** (183 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
-v46–v54 were frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation). v55–v58 are the team quota and are the first change since Phase 5 to touch rules and functions.
+v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
 The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo club below).
 
@@ -12,8 +12,14 @@ The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo cl
 
 Ordered by what I would pick up next. Nothing here is blocking.
 
-### 1. Readiness calibration — the only *misleading* item left
-The classifier flags roughly **two thirds of a squad** orange or red, and the **colour is not a function of the score** (a separate ACWR + risk-flag + force-override classifier), so two players can both show 72 in different colours with nothing on screen explaining it. v52 fixed the presentation; this is the clinical half. Cheapest first step: have the tooltip name *which* rule fired — no clinical judgement needed, and it makes the calibration conversation evidence-based. I can also report the per-rule distribution over the demo season whenever you want numbers.
+### 1. Readiness THRESHOLDS — the last piece, and now an evidence-based decision
+v52 fixed the presentation and v59 the engine; flagging is down from 76% to **56%** with the thresholds untouched. What remains is genuinely clinical, and the `reasons` array says exactly where to look:
+
+- **`acwr_low` flags 6 of the 14** — amber for training *less* than usual. Under-loading is a real concern but it is not injury risk, and putting both behind one amber dot is much of why the list is unactionable. Splitting them, or dropping `acwr_low` from the flag entirely, is the single biggest lever left.
+- **`hard_sessions` (last two RPE ≥ 9) forces RED** on players scoring 79 and 72 — an override beating a perfectly decent score.
+- The **colour is still not a function of the score**, so two 72s can differ. The tooltip now explains why, which was the original complaint; whether the *design* should change is a separate question.
+
+Caveat worth keeping in view: every measurement so far is against **synthetic** demo data, so it describes the model's structure rather than real footballers. The live club has had real RPE only since the Phase 5 wipe. Re-measure against real data before committing to numbers.
 
 ### 2. Per-team training visibility — the big one, and now bigger than it looked
 Trainings carry only a `category`, never a team letter, so `amateur-A` and `amateur-B` literally share sessions. Giving them a letter means **re-keying the training subsystem from date to session id**: `detailTrainingDate`, eight `find(x => x.date === …)` sites, and the `{uid}_{date}` record ids. Two teams in one category will routinely train the same evening, and `find` by date returns whichever comes first. Deserves its own plan and its own deploy. The one-off guest-list idea rides on top of it.
