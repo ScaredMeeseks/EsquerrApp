@@ -2,40 +2,50 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v54; v55 is built and tested but NOT deployed** (see the runbook below). v46–v52 all shipped: per-club season boundary + demo-club seeder, three demo-walkthrough fixes, the staff home page, two navigation fixes and two rounds of performance work, then readiness presentation. Frontend-only throughout — **no rules or functions have changed since Phase 5**, so `./deploy.sh` has not been needed. Tests **202 passing** (101 unit + 87 rules + 14 functions), up from 143.
+**Production is on v58.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification and v58 an onboarding fix. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **291 passing** (165 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+
+v46–v54 were frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation). v55–v58 are the team quota and are the first change since Phase 5 to touch rules and functions.
 
 The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo club below).
 
-## Backlog — requested 2026-08-04
+## Backlog — what's left (2026-08-04)
 
-### Superadmin sets how many teams a lead may create
+Ordered by what I would pick up next. Nothing here is blocking.
 
-**Decided 2026-08-04:** `maxTeams` defaults to **1**, 1 is also the minimum, and a **missing field means 1** — a club that exists has at least one team. The lead may then create up to whatever the superadmin has allowed. **This is a commercial constraint**, which is what decides the implementation.
+### 1. Readiness calibration — the only *misleading* item left
+The classifier flags roughly **two thirds of a squad** orange or red, and the **colour is not a function of the score** (a separate ACWR + risk-flag + force-override classifier), so two players can both show 72 in different colours with nothing on screen explaining it. v52 fixed the presentation; this is the clinical half. Cheapest first step: have the tooltip name *which* rule fired — no clinical judgement needed, and it makes the calibration conversation evidence-based. I can also report the per-rule distribution over the demo season whenever you want numbers.
 
-A "team" is a `{category}-{letter}` pair, created by the lead through *Editar categories* (`showTeamSetup()`). The quota is on the count of enabled combinations — what `rosterKeys()` returns.
+### 2. Per-team training visibility — the big one, and now bigger than it looked
+Trainings carry only a `category`, never a team letter, so `amateur-A` and `amateur-B` literally share sessions. Giving them a letter means **re-keying the training subsystem from date to session id**: `detailTrainingDate`, eight `find(x => x.date === …)` sites, and the `{uid}_{date}` record ids. Two teams in one category will routinely train the same evening, and `find` by date returns whichever comes first. Deserves its own plan and its own deploy. The one-off guest-list idea rides on top of it.
 
-**Because it is commercial, the UI cannot be the enforcement point.** `firestore.rules` currently allows the lead to update *any* field on their own club doc:
+### 3. Archived seasons are broken post-Phase-5
+`loadSeasonData` indexes archived docs by raw id, but sharded ids are `fa_matches__amateur`, so "seasons anteriors" fails. Small, self-contained, and it fails **in front of a prospect** if clicked during a demo. Avoid that menu meanwhile.
 
-```
-match /clubs/{clubId} {
-  allow update: if isSuperUser() || isLeadOf(clubId);
-}
-```
+### 4. Drop the old-APK rules shim
+`clubs/{clubId}` currently allows a lead to write `fcfLinks`/`schedules` directly, purely so pre-v55 APKs keep working. Once a v55+ APK is actually on the phones, delete that clause so the club document is superadmin-only in full. Guarded by a rules test that pins the `diff()` behaviour.
 
-So a lead could raise their own `maxTeams`, or write `categories` past it, straight from the console. Two things have to change together:
+### 5. The APK itself
+CI has built through v58; the phones are still on a v43-era build. Set `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` **only once a current APK is installed**, not before. The web app is the working client meanwhile.
 
-1. **`maxTeams` must be superadmin-only.** Narrow the lead's update with a `hasOnly()` allowlist that excludes it — the same split `users/{uid}` already uses for server-owned fields (`firestore.rules`, the `hasOnly(['position','playerNumber',…])` clause).
-2. **The quota check has to run server-side.** Recommended: a `setClubCategories` callable that validates the count before writing, which is exactly why `joinClub`, `setRole` and `deleteMember` are callables. Expressing "count enabled categories × their letters ≤ maxTeams" in rules alone means unrolling all six categories by hand — possible, unpleasant, and easy to get subtly wrong.
+### 6. Smaller / older
+- **Three stranded accounts** on `teamId: 'default'` with `cats: []` — you've said losing them is fine.
+- **`trainingAvail` / `matchAvail` / `rpe` are still club-wide readable.** Phase 5 stopped short deliberately; the sensitive data (medical) *is* scoped, so this is an incremental privacy improvement, not a hole.
+- **Orphaned shards when a category is emptied.** `deleteTeam` removes the category's trainings, but `fa_tactic_saved__{cat}` and `fa_tactic_training_boards__{cat}` are left unreadable. A `--gc` sweep script would clear them.
+- **Uncategorised players**: excluded by medical and roster, included by training-detail — three staff pages, two semantics.
+- **Tactic board copies are matched by name**, and since sharding the same name can exist in two categories.
+- Firebase Hosting migration (real cache-control); multi-club membership (`teamId` is single-valued); delete `fa_users` in favour of the `users` collection; read-time fitness derivation.
 
-**The trap to avoid: never enforce on the absolute count.** A club that is already over quota when this ships must stay editable — if the rule or callable rejects any write where `teams > maxTeams`, the lead of an over-quota club is locked out of editing *anything*, including removing a team to get back under. Enforce on **increase**: a write that does not add a team is always allowed. Existing teams are grandfathered, never removed retroactively.
+### Known residual risk (accepted, not a bug)
+A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
 
-**Pre-flight before deploying:** count the enabled `{category}-{letter}` pairs on every production club and check which would be over a default of 1. The live club and the demo club each have one (`amateur-A`), but the F.C.Barcelona test club (`lly4GkUxIpBkSgZvzldT`) has juvenil accounts, so it may have more. Read-only, one Admin SDK script.
+## v57/v58 — self-verification and an onboarding fix (2026-08-04)
 
-Open sub-question: does the superadmin set a number of *teams* (letters, across all categories), or a number of *categories*? "3 teams" could mean amateur-A/B/C or amateur-A + juvenil-A + cadet-A. The wording above assumes the former — worth confirming, because it changes the UI.
+- **v57**: `deleteTeam` re-reads the shards after its data phase and runs it once more if any of the team's rows came back — a client that saves mid-delete republishes the whole blob. It does not *guarantee* anything (a write landing after the final read still wins) but it can no longer happen **silently**: `resurrected` is returned and written to the marker doc, whose status becomes `done-with-conflict`. Re-running is safe and cheap. A rules-level lock was rejected on cost: it would add a document read to every `data/` write — including every staff notification a player's availability answer generates — to guard a once-a-year operation.
+- **v58**: **`createClub` seeded every category with `letters: ['A','B']`.** On a new club with `maxTeams: 1`, ticking any category tried to add two teams, the quota gate refused it, and the lead was **stuck on the mandatory first-run setup screen unable to enable anything**. Fixed at both ends — new clubs seed one letter, and the setup screen renders a single letter for any *disabled* category, since clubs created earlier still carry the old seed in Firestore. Regression test added; this would have blocked onboarding every new client.
 
 ## v56 — team quota, DEPLOY 2 of 2: deletion + the gate (2026-08-04)
 
-The destructive half. **Not yet deployed.** `deleteTeam` erases one `{category}-{letter}` and everything belonging to it **except the Auth accounts** — its players are detached (profile kept, `category`/`team` cleared) and show as unassigned.
+The destructive half. **Deployed and verified 2026-08-04.** `deleteTeam` erases one `{category}-{letter}` and everything belonging to it **except the Auth accounts** — its players are detached (profile kept, `category`/`team` cleared) and show as unassigned.
 
 - **Shards are per category, not per letter**, so this filters rows inside documents the surviving team co-owns. A whole-document delete would take both teams.
 - **Three ordering constraints**, each a different silent failure: capture match ids before filtering matches; delete the roster doc **last** (or `reshardMember` moves the medical data out from under the delete); refresh claims **early**.
@@ -64,7 +74,7 @@ Rules and functions both changed this time, so **both** are needed — unlike v4
 
 ## v55 — team quota, DEPLOY 1 of 2 (2026-08-04)
 
-The first commercial constraint: `clubs/{id}.maxTeams` caps how many `{category}-{letter}` teams a lead may create. **Not yet deployed — see the runbook below, the order matters.**
+The first commercial constraint: `clubs/{id}.maxTeams` caps how many `{category}-{letter}` teams a lead may create. **Deployed and verified 2026-08-04.**
 
 - **`setClubCategories` is now the only writer of a club's team layout.** The rules no longer let a lead write `categories` or `maxTeams` at all; a lead could previously have raised their own quota from a console.
 - **The quota is an INCREASE test** (`next > max && next > prev`), which is what makes grandfathering safe: a club above its allowance can still save and still remove a team, and is only stopped from growing.
@@ -95,7 +105,7 @@ node functions/migrate-max-teams.js --apply
 
 **Step 3 before step 4.** The reverse leaves a window where every lead on a cached frontend gets `permission-denied` saving team setup.
 
-**Do not lower any club's `maxTeams` below its current count until deploy 2 is live** — until `deleteTeam` exists, an over-quota lead has no way to resolve it.
+~~Do not lower a club's `maxTeams` below its current count until deploy 2 is live.~~ **Lifted** — `deleteTeam` is live, so an over-quota lead can now resolve it themselves.
 
 ### Deploy 2 — still to build
 

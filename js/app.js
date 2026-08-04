@@ -1160,7 +1160,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 57;
+  const APP_VERSION = 58;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1291,13 +1291,17 @@
       name: name,
       badgeUrl: badgeUrl,
       leadEmail: leadEmail.trim().toLowerCase(),
+      // One letter each, not two. A disabled category's letters are noise —
+      // but they become real the moment it is enabled, and seeding two would
+      // put a new club with maxTeams:1 instantly over quota, leaving its lead
+      // unable to enable ANY category on the mandatory first-run screen.
       categories: {
-        amateur:  { enabled: false, letters: ['A', 'B'] },
-        juvenil:  { enabled: false, letters: ['A', 'B'] },
-        cadet:    { enabled: false, letters: ['A', 'B'] },
-        infantil: { enabled: false, letters: ['A', 'B'] },
-        alevi:    { enabled: false, letters: ['A', 'B'] },
-        benjami:  { enabled: false, letters: ['A', 'B'] }
+        amateur:  { enabled: false, letters: ['A'] },
+        juvenil:  { enabled: false, letters: ['A'] },
+        cadet:    { enabled: false, letters: ['A'] },
+        infantil: { enabled: false, letters: ['A'] },
+        alevi:    { enabled: false, letters: ['A'] },
+        benjami:  { enabled: false, letters: ['A'] }
       },
       fcfLinks: {},
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2163,7 +2167,13 @@
       // on created TWO teams silently. Under a quota that is immediately a
       // limit breach, and it was never intended even without one.
       var cat = cats[key] || { enabled: false, letters: ['A'] };
-      var letters = cat.letters && cat.letters.length ? cat.letters : ['A'];
+      /* A DISABLED category's stored letters mean nothing — nobody is in it,
+         and disabling one that still has teams is now blocked, so they can
+         only be left over from the old ['A','B'] seed. Showing them would
+         hand a new club two teams the moment a category is ticked, which
+         under maxTeams:1 blocks the lead from enabling anything at all. */
+      var letters = (cat.enabled && cat.letters && cat.letters.length) ?
+        cat.letters : ['A'];
       var active = cat.enabled ? ' active' : '';
       var chips = letters.map(function (l) {
         return '<span class="ts-letter-chip" data-letter="' + l + '" data-cat="' + key + '">' + l + '</span>';

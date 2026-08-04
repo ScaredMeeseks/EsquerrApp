@@ -161,6 +161,37 @@ describe('quota — client and server agree', () => {
   });
 });
 
+describe('quota — a new club can still be set up', () => {
+  /* Regression. createClub seeded every category with letters ['A','B'],
+     so on a club with maxTeams:1 ticking any category tried to add TWO
+     teams, the toggle gate refused it, and the lead was stuck forever on
+     the mandatory first-run setup screen unable to enable anything. */
+  it('createClub seeds one letter per category, not two', () => {
+    const i = appSrc.indexOf('async function createClub');
+    const body = appSrc.slice(i, appSrc.indexOf('await clubRef.set(clubData)', i));
+    const seeded = body.match(/enabled: false, letters: \[([^\]]*)\]/g) || [];
+    assert.strictEqual(seeded.length, 6, 'expected all six categories seeded');
+    seeded.forEach((line) => {
+      assert.ok(!line.includes("'B'"),
+          'a second letter here blocks setup under maxTeams:1: ' + line);
+    });
+  });
+
+  it('the setup screen shows one letter for a DISABLED category', () => {
+    // Clubs created before the fix still carry ['A','B'] in Firestore, so
+    // the render has to defend too — not just new clubs.
+    assert.ok(appSrc.includes("var letters = (cat.enabled && cat.letters && cat.letters.length) ?"),
+        'a disabled category must render a single letter whatever is stored');
+  });
+
+  it('one team fits in the default allowance', () => {
+    // The arithmetic the whole onboarding path depends on.
+    assert.strictEqual(
+        server.exceedsQuota(0, server.rosterKeysOf({amateur: cat(true, ['A'])}).length, 1),
+        false);
+  });
+});
+
 describe('quota — the over-quota gate', () => {
   /** The client predicate the whole gate hangs off. */
   const overQuota = (() => {
