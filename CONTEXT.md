@@ -696,3 +696,34 @@ The parked readiness item, presentation only. **Thresholds deliberately untouche
 New `test/readiness.test.js`, 13 tests — **202 passing** (101 unit + 87 rules + 14 functions). The load-bearing one is *"is never green"*; the rest pin no-dash, the injured warning surviving alongside the no-data tip, the score being present for all three colours, no pointless tooltip on a fit player with data, all three tables sharing the helper, CSS existing for every state it can emit, and the new key being translated.
 
 Still open on readiness, unchanged by this: the colour is not a function of the score (a separate ACWR + risk-flag + override classifier), so two players can both show 72 in different colours with nothing on screen explaining it — and the classifier flags roughly two thirds of a squad, which is a calibration question, not a presentation one.
+
+### 2026-08-04 — Team quota, deploy 1 of 2: the limit (v55)
+
+The app's **first commercial constraint**: the superadmin sells a club a number of teams, where a team is one `{category}-{letter}` pair counted across every category. `clubs/{id}.maxTeams`, minimum 1, **missing means 1**.
+
+That "commercial" word is what shaped the whole design. `firestore.rules` had `allow update: if isSuperUser() || isLeadOf(clubId)` with **no field allowlist**, so a lead could have raised their own quota from a browser console in seconds. The UI could never have been the enforcement point.
+
+**`setClubCategories` is now the only writer of a club's team layout.** All three fields the team-setup screen saves (`categories`, `fcfLinks`, `schedules`) go through it — they are written together, and splitting them across two transports would double the failure modes. It takes the club id from the **claim**, never the payload, and validates shape before quota: unknown category keys are rejected outright, because `rosterKeys` would ignore them while they sat forever in a document every member downloads.
+
+**The quota test is an INCREASE test, not an absolute one:**
+
+```
+reject iff  next > max  AND  next > prev
+```
+
+This is the entire grandfathering guarantee. A club sitting above its allowance can still save unchanged and can still remove a team; it is only stopped from growing. An absolute test would have locked such a lead out of the one screen that could fix it. `test/quota.test.js` pins it, including a loop asserting that no club is ever blocked while not growing, however far over it is.
+
+**The rules narrowing keeps old APKs working.** The lead may now write only `fcfLinks` and `schedules`, via `request.resource.data.diff(resource.data).affectedKeys().hasOnly([...])`. Pre-v55 APKs still save team setup with a direct write, and `affectedKeys()` lists only keys whose value actually *changed* — so an old client sending an **unchanged** `categories` map passes, and one adding a letter does not. That behaviour is an assumption the whole back-compat story rests on, so it is asserted against the real emulator; if that test goes red, every old APK has silently lost the ability to edit schedules and nothing else would say so.
+
+**Two pre-existing bugs fixed on the way:**
+
+1. **`showTeamSetup()` defaulted an unconfigured category to `['A','B']`** while `rosterKeys()` and `getTeamLetters()` both fall back to `['A']`. Ticking a category therefore created **two** teams silently — under a quota of 1 that is an instant breach, and it was never intended even without one.
+2. **A lead's `cats` claim was never recomputed when categories changed.** `onClubLeadChanged` returns early unless `leadEmail` moved, so enabling a *new* category left the client querying a category its own token did not authorise — a `permission-denied` on the whole `data/` listener. The callable now refreshes claims for every member whose visible set moved.
+
+Client side: `clubMaxTeams()` / `clubTeamCount()` / `isClubOverQuota()` beside `getVisibleCategories()`; a cap check on **both** the `+` button and the category toggle (enabling a category brings all its letters at once); an `{n} de {max} equips` counter; and `showModal` gains `hideCancel`, since an informational modal has nothing to cancel. The `+` buttons are **muted, not disabled** — a disabled button fires no click, so the modal explaining the limit would never open. None of this is enforcement; it exists to explain the limit before the server refuses.
+
+`functions/migrate-max-teams.js` grandfathers existing clubs, writing `maxTeams = max(1, currentCount)` **only where the field is missing** so a re-run can never silently undo a deliberate downgrade. Dry-run default; its inventory doubles as the pre-flight for which clubs already exceed one team.
+
+**Deploy 1 deliberately refuses removals** through the callable. Removing a letter today strands its players, orphans the roster doc and leaves `joinClub` still registering people onto the dead team — deploy 2 owns that, via `deleteTeam`.
+
+Tests **248 passing** (141 unit + 93 rules + 14 functions), up from 202. The client/server agreement test matters most: `rosterKeys` exists twice — `js/app.js` for the UI, `functions/index.js` for enforcement, because functions deploys alone and cannot `require('../js')` — and if the copies drift, the app blocks a save the server would allow or offers one it will refuse.

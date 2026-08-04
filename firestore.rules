@@ -169,7 +169,25 @@ service cloud.firestore {
     match /clubs/{clubId} {
       allow read: if sameTeam(clubId) || isSuperUser();
       allow create, delete: if isSuperUser();
-      allow update: if isSuperUser() || isLeadOf(clubId);
+
+      // The superadmin owns this document. `maxTeams` is a COMMERCIAL limit
+      // on how many teams a lead may create, and `categories` is the thing it
+      // limits — so neither is client-writable at all. Both go through the
+      // setClubCategories callable, which is the only writer that can count
+      // the teams before it commits. This rule used to be
+      // `isSuperUser() || isLeadOf(clubId)` with no field allowlist, which
+      // let a lead raise their own quota from a console in seconds.
+      //
+      // The fcfLinks/schedules clause is a BACK-COMPAT SHIM for APKs built
+      // before v55, which still save team setup with a direct write. It is
+      // safe because diff().affectedKeys() lists only the keys whose value
+      // actually CHANGED: an old client sending an unchanged `categories`
+      // map passes, and one adding or removing a letter does not. Drop this
+      // clause once a v55+ APK has circulated.
+      allow update: if isSuperUser()
+                    || (isLeadOf(clubId)
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['fcfLinks', 'schedules']));
 
       // ── Team rosters: the staff/player email lists (PII — minors' addresses).
       // Deliberately NOT on the club doc, which every member can read.

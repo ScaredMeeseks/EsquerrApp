@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v54.** v46–v52 all shipped: per-club season boundary + demo-club seeder, three demo-walkthrough fixes, the staff home page, two navigation fixes and two rounds of performance work, then readiness presentation. Frontend-only throughout — **no rules or functions have changed since Phase 5**, so `./deploy.sh` has not been needed. Tests **202 passing** (101 unit + 87 rules + 14 functions), up from 143.
+**Production is on v54; v55 is built and tested but NOT deployed** (see the runbook below). v46–v52 all shipped: per-club season boundary + demo-club seeder, three demo-walkthrough fixes, the staff home page, two navigation fixes and two rounds of performance work, then readiness presentation. Frontend-only throughout — **no rules or functions have changed since Phase 5**, so `./deploy.sh` has not been needed. Tests **202 passing** (101 unit + 87 rules + 14 functions), up from 143.
 
 The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo club below).
 
@@ -32,6 +32,45 @@ So a lead could raise their own `maxTeams`, or write `categories` past it, strai
 **Pre-flight before deploying:** count the enabled `{category}-{letter}` pairs on every production club and check which would be over a default of 1. The live club and the demo club each have one (`amateur-A`), but the F.C.Barcelona test club (`lly4GkUxIpBkSgZvzldT`) has juvenil accounts, so it may have more. Read-only, one Admin SDK script.
 
 Open sub-question: does the superadmin set a number of *teams* (letters, across all categories), or a number of *categories*? "3 teams" could mean amateur-A/B/C or amateur-A + juvenil-A + cadet-A. The wording above assumes the former — worth confirming, because it changes the UI.
+
+## v55 — team quota, DEPLOY 1 of 2 (2026-08-04)
+
+The first commercial constraint: `clubs/{id}.maxTeams` caps how many `{category}-{letter}` teams a lead may create. **Not yet deployed — see the runbook below, the order matters.**
+
+- **`setClubCategories` is now the only writer of a club's team layout.** The rules no longer let a lead write `categories` or `maxTeams` at all; a lead could previously have raised their own quota from a console.
+- **The quota is an INCREASE test** (`next > max && next > prev`), which is what makes grandfathering safe: a club above its allowance can still save and still remove a team, and is only stopped from growing.
+- **Old APKs keep working** via a `diff().affectedKeys().hasOnly(['fcfLinks','schedules'])` shim — an unchanged `categories` map is not in the diff. Verified against the emulator; drop the clause once a v55+ APK circulates.
+- **Two pre-existing bugs fixed**: ticking a category created *two* teams (`['A','B']` default), and a lead's `cats` claim was never refreshed when categories changed — which meant enabling a new category caused `permission-denied` on the whole data listener.
+- **Removals are refused in deploy 1.** Deploy 2 adds `deleteTeam`.
+
+**248 tests passing** (141 unit + 93 rules + 14 functions).
+
+### Runbook — this order has no broken window
+
+```bash
+cd ~/EsquerrApp && git pull
+
+# 1. Grandfather existing clubs. Dry run first; read it.
+node functions/migrate-max-teams.js
+node functions/migrate-max-teams.js --apply
+
+# 2. Functions: the callable exists, nothing calls it yet.
+./deploy.sh functions
+
+# 3. Push main: the frontend starts using the callable. Old rules still
+#    allow the direct write, so old and new clients both work.
+
+# 4. Rules LAST: narrows clubs/{clubId}.
+./deploy.sh rules
+```
+
+**Step 3 before step 4.** The reverse leaves a window where every lead on a cached frontend gets `permission-denied` saving team setup.
+
+**Do not lower any club's `maxTeams` below its current count until deploy 2 is live** — until `deleteTeam` exists, an over-quota lead has no way to resolve it.
+
+### Deploy 2 — still to build
+
+`deleteTeam` callable + the over-quota gate (staff see "Contact your lead…", the lead is routed to the category screen). Full design in `~/.claude/plans/continuing-on-the-esquerrapp-streamed-waffle.md`, including the three load-bearing ordering constraints: capture match ids before filtering matches, delete the roster doc **last** (or `reshardMember` moves the data out from under the delete), and refresh claims **early**.
 
 ## v53/v54 — readiness score colour + column headers (2026-08-04)
 

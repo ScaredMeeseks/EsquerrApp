@@ -3615,3 +3615,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   color: var(--text-secondary); cursor: pointer; text-align: center;
 }
 .shome-more:hover { color: var(--primary); }
+
+/* ===== Team quota (team-setup screen) ===== */
+.ts-quota-counter {
+  font-size: .8rem; font-weight: 600; color: var(--text-secondary);
+  text-align: right; margin-bottom: .4rem;
+}
+.ts-quota-counter.ts-quota-full { color: var(--danger); }
+/* Muted, not disabled: a disabled button fires no click, so the modal
+   explaining why the limit was hit would never open. */
+.ts-letter-add-muted { opacity: .4; }
+.ts-quota-banner {
+  background: var(--danger-light); color: var(--danger);
+  border-radius: 8px; padding: .7rem .9rem; margin-bottom: .8rem;
+  font-size: .85rem; font-weight: 600;
+}

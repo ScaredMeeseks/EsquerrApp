@@ -82,7 +82,16 @@ beforeEach(async () => {
     // Doc-only membership, NO custom claims — the Phase-2 me() fallback
     // would have honored this; Phase 3b claims-only rules must not.
     await d.doc("users/uidNoClaims").set({teamId: "teamA", isTeamLead: true, roles: ["staff"], name: "NC"});
-    await d.doc("clubs/teamA").set({name: "Club A", leadEmail: "l@x.com"});
+    // `categories` and `maxTeams` are seeded so the team-quota rules can be
+    // exercised: the shim below turns on whether a submitted `categories`
+    // map is deep-equal to the stored one.
+    await d.doc("clubs/teamA").set({
+      name: "Club A", leadEmail: "l@x.com", maxTeams: 2,
+      categories: {
+        cadet: {enabled: true, letters: ["A"]},
+        juvenil: {enabled: true, letters: ["A"]},
+      },
+    });
     await d.doc("clubs/teamB").set({name: "Club B", leadEmail: "lb@x.com"});
     // Roster email lists — the membership gate. PII, so read is restricted
     // to the lead and to staff of that specific category.
@@ -448,8 +457,54 @@ describe("Per-record ownership", () => {
 });
 
 describe("Clubs, codes, join-attempts", () => {
-  it("lead CAN update own club", async () => {
-    await assertSucceeds(asLeadA().doc("clubs/teamA").update({name: "Renamed"}));
+  /* The club document is the superadmin's. `maxTeams` is a commercial limit
+     and `categories` is what it limits, so a lead can write neither — both
+     go through the setClubCategories callable, the only writer that can
+     count teams before committing. This rule used to be a bare
+     `isLeadOf(clubId)`, which let a lead raise their own quota. */
+  it("lead CANNOT rename own club", async () => {
+    await assertFails(asLeadA().doc("clubs/teamA").update({name: "Renamed"}));
+  });
+  it("lead CANNOT write categories", async () => {
+    await assertFails(asLeadA().doc("clubs/teamA")
+        .update({categories: {amateur: {enabled: true, letters: ["A", "B"]}}}));
+  });
+  it("lead CANNOT raise their own maxTeams", async () => {
+    // The whole point of the feature.
+    await assertFails(asLeadA().doc("clubs/teamA").update({maxTeams: 99}));
+  });
+  it("lead CAN still edit fcfLinks and schedules", async () => {
+    await assertSucceeds(asLeadA().doc("clubs/teamA")
+        .update({fcfLinks: {"amateur-A": "https://example.test/x"}}));
+  });
+  it("superuser CAN set maxTeams", async () => {
+    await assertSucceeds(asSuper().doc("clubs/teamA").update({maxTeams: 3}));
+  });
+
+  /* The back-compat shim for pre-v55 APKs, which still save team setup with
+     a direct write. It works only because affectedKeys() lists the keys
+     whose value actually CHANGED — an unchanged `categories` map is not in
+     the diff, so the write passes the hasOnly() check.
+     If this test ever goes red, every old APK has silently lost the ability
+     to edit schedules, and nothing else in the suite would say so. */
+  it("lead CAN send an UNCHANGED categories map alongside a real edit", async () => {
+    await assertSucceeds(asLeadA().doc("clubs/teamA").update({
+      categories: {
+        cadet: {enabled: true, letters: ["A"]},
+        juvenil: {enabled: true, letters: ["A"]},
+      },
+      fcfLinks: {"cadet-A": "https://example.test/y"},
+    }));
+  });
+
+  it("lead CANNOT sneak a changed categories map past the shim", async () => {
+    await assertFails(asLeadA().doc("clubs/teamA").update({
+      categories: {
+        cadet: {enabled: true, letters: ["A", "B"]},   // added a team
+        juvenil: {enabled: true, letters: ["A"]},
+      },
+      fcfLinks: {"cadet-A": "https://example.test/z"},
+    }));
   });
   it("player CANNOT update the club", async () => {
     await assertFails(asA().doc("clubs/teamA").update({name: "Hacked"}));

@@ -81,6 +81,18 @@
     // Plain affirmative for toggles. Deliberately not avail.yes, which is an
     // ANSWER to "are you coming?" and may well be reworded on its own.
     'common.yes':        { ca:'Sí', es:'Sí', en:'Yes' },
+    'common.ok':         { ca:"D'acord", es:'De acuerdo', en:'OK' },
+
+    // ── Team quota (commercial limit set by the superadmin) ──
+    'quota.title':       { ca:"Límit d'equips assolit", es:'Límite de equipos alcanzado', en:'Team limit reached' },
+    'quota.add_blocked': { ca:"Per afegir un equip extra contacta amb l'administrador o elimina un dels equips actuals. Eliminar un equip comportarà la pèrdua de les dades.",
+                           es:'Para añadir un equipo extra contacta con el administrador o elimina uno de los equipos actuales. Eliminar un equipo conllevará la pérdida de los datos.',
+                           en:'To add an extra team contact the admin or remove one of your current teams. Removing a team will result in the loss of the data.' },
+    'quota.counter':     { ca:'{n} de {max} equips', es:'{n} de {max} equipos', en:'{n} of {max} teams' },
+    'quota.max_teams':   { ca:'Equips màx.', es:'Equipos máx.', en:'Max teams' },
+    'quota.saved':       { ca:"Límit d'equips actualitzat.", es:'Límite de equipos actualizado.', en:'Team limit updated.' },
+    'error.quota_exceeded': { ca:'Aquest club no pot tenir més de {max} equips.', es:'Este club no puede tener más de {max} equipos.', en:'This club cannot have more than {max} teams.' },
+    'error.remove_team_unavailable': { ca:"Encara no es poden eliminar equips des d'aquí. Contacta amb l'administrador.", es:'Todavía no se pueden eliminar equipos desde aquí. Contacta con el administrador.', en:'Removing teams from here is not available yet. Contact the admin.' },
     'common.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
     'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
     'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
@@ -1130,7 +1142,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 54;
+  const APP_VERSION = 55;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1169,6 +1181,33 @@
       return enabled.filter(function (k) { return mine.indexOf(k) !== -1; });
     }
     return (s.category && enabled.indexOf(s.category) !== -1) ? [s.category] : [];
+  }
+
+  /* ── Team quota ─────────────────────────────────────────────
+     How many teams a club's lead may create, sold by the superadmin. A
+     "team" is one {category}-{letter} pair counted across every category,
+     so rosterKeys().length IS the metric.
+
+     None of this is enforcement — a lead can reach Firestore directly, so
+     the real check lives in the setClubCategories callable. These exist to
+     explain the limit before the server refuses, and to drive the gate. */
+
+  /** The club's allowance. Missing, malformed or < 1 all mean 1. */
+  function clubMaxTeams() {
+    var n = Math.floor(Number(_clubConfig && _clubConfig.maxTeams));
+    return (isFinite(n) && n >= 1) ? n : 1;
+  }
+
+  /** Teams the club actually has right now. */
+  function clubTeamCount() {
+    return rosterKeys(_clubConfig).length;
+  }
+
+  /* True when the superadmin has lowered the allowance below what the club
+     already has. Existing teams are never removed automatically — the lead
+     is asked to choose which one goes. */
+  function isClubOverQuota() {
+    return !!_clubConfig && clubTeamCount() > clubMaxTeams();
   }
 
   /* Tell db.js which categories this session may see. From Stage C on, that
@@ -2090,8 +2129,12 @@
     if (!container) return;
     var html = '';
     CATEGORY_ORDER.forEach(function (key) {
-      var cat = cats[key] || { enabled: false, letters: ['A', 'B'] };
-      var letters = cat.letters && cat.letters.length ? cat.letters : ['A', 'B'];
+      // ['A'], not ['A','B'] — rosterKeys() and getTeamLetters() both fall
+      // back to one letter, so this was the odd one out: ticking a category
+      // on created TWO teams silently. Under a quota that is immediately a
+      // limit breach, and it was never intended even without one.
+      var cat = cats[key] || { enabled: false, letters: ['A'] };
+      var letters = cat.letters && cat.letters.length ? cat.letters : ['A'];
       var active = cat.enabled ? ' active' : '';
       var chips = letters.map(function (l) {
         return '<span class="ts-letter-chip" data-letter="' + l + '" data-cat="' + key + '">' + l + '</span>';
@@ -2108,6 +2151,7 @@
     _refreshTeamSetupFcf();
     _refreshTeamSetupSchedules();
     _refreshTeamSetupStaff();
+    _refreshTeamSetupQuota();
     _bindTeamSetupEvents(container);
   }
 
@@ -2273,16 +2317,65 @@
     );
   }
 
+  /* Teams the editor would save right now. Counted from the DOM, not from
+     _clubConfig: on this screen the DOM is the source of truth until save,
+     so a chip added a second ago has to count. */
+  function _domTeamCount(container) {
+    var n = 0;
+    container.querySelectorAll('.ts-cat-row').forEach(function (row) {
+      var box = row.querySelector('input[type="checkbox"]');
+      if (!box || !box.checked) return;
+      n += row.querySelectorAll('.ts-letter-chip').length;
+    });
+    return n;
+  }
+
+  /* Show the allowance and mute the + buttons at the cap.
+     Muted, deliberately NOT disabled: a disabled button fires no click, so
+     the modal explaining WHY would never appear. */
+  function _refreshTeamSetupQuota() {
+    var container = document.getElementById('team-setup-categories');
+    if (!container) return;
+    var used = _domTeamCount(container);
+    var max = clubMaxTeams();
+    var el = document.getElementById('ts-quota-counter');
+    if (el) {
+      el.textContent = t('quota.counter').replace('{n}', used).replace('{max}', max);
+      el.classList.toggle('ts-quota-full', used >= max);
+    }
+    container.querySelectorAll('.ts-letter-add').forEach(function (b) {
+      b.classList.toggle('ts-letter-add-muted', used >= max);
+    });
+  }
+
+  /** The owner's message when the club is at its allowance. */
+  function _showQuotaBlockedModal() {
+    showModal(t('quota.title'), t('quota.add_blocked'), function () {},
+      { hideCancel: true, danger: false, confirmLabel: t('common.ok') });
+  }
+
   function _bindTeamSetupEvents(container) {
     // Toggle enable/disable
     container.addEventListener('change', function (e) {
       if (e.target.type === 'checkbox' && e.target.dataset.cat) {
         var row = e.target.closest('.ts-cat-row');
-        if (e.target.checked) row.classList.add('active');
-        else row.classList.remove('active');
+        if (e.target.checked) {
+          // Enabling a category adds every one of its letters at once, so
+          // the cap has to be checked here too, not only on the + button.
+          var adding = row.querySelectorAll('.ts-letter-chip').length;
+          if (_domTeamCount(container) + adding > clubMaxTeams()) {
+            e.target.checked = false;
+            _showQuotaBlockedModal();
+            return;
+          }
+          row.classList.add('active');
+        } else {
+          row.classList.remove('active');
+        }
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
         _refreshTeamSetupStaff();
+        _refreshTeamSetupQuota();
       }
     });
     // Add letter
@@ -2291,6 +2384,10 @@
       if (addBtn) {
         var catKey = addBtn.dataset.cat;
         var lettersEl = container.querySelector('.ts-letters[data-cat="' + catKey + '"]');
+        if (_domTeamCount(container) >= clubMaxTeams()) {
+          _showQuotaBlockedModal();
+          return;
+        }
         var existing = Array.from(lettersEl.querySelectorAll('.ts-letter-chip')).map(function (c) { return c.dataset.letter; });
         var next = _nextLetter(existing);
         if (!next) return;
@@ -2303,6 +2400,7 @@
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
         _refreshTeamSetupStaff();
+        _refreshTeamSetupQuota();
         return;
       }
       // Remove letter by clicking on chip
@@ -2316,6 +2414,7 @@
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
         _refreshTeamSetupStaff();
+        _refreshTeamSetupQuota();
       }
     });
     // Staff section: add/remove email rows
@@ -2480,7 +2579,14 @@
     saveBtn.disabled = true;
     saveBtn.textContent = t('auth.saving');
     try {
-      await updateClub(session.teamId, { categories: categories, fcfLinks: fcfLinks, schedules: schedules });
+      /* Through the callable, not updateClub: `maxTeams` is a commercial
+         limit, so the count has to be checked somewhere the lead cannot
+         reach. firestore.rules refuses `categories` from a client entirely.
+         The callable also refreshes everyone's `cats` claim when the enabled
+         set changes — without that, enabling a new category leaves the client
+         querying a category its own token does not authorise. */
+      var setCats = firebase.app().functions('us-central1').httpsCallable('setClubCategories');
+      await setCats({ categories: categories, fcfLinks: fcfLinks, schedules: schedules });
       // Roster docs live in their own subcollection, so they are separate
       // writes. Only push the ones that actually changed — every write fires
       // the onRosterWritten trigger, which re-derives members' permissions.
@@ -11683,13 +11789,19 @@
                    style="width:70px;font-size:.82rem;">
           </td>
           <td style="white-space:nowrap;">
+            <input type="number" min="1" class="reg-input club-maxteams-input" data-club="${d.id}"
+                   data-teams="${rosterKeys(c).length}"
+                   value="${Math.max(1, Number(c.maxTeams || 1))}" title="${t('quota.max_teams')}"
+                   style="width:70px;font-size:.82rem;">
+          </td>
+          <td style="white-space:nowrap;">
             <button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button>
             <button class="btn btn-small btn-primary btn-save-lead" data-club="${d.id}" title="${t('club.change_lead')}" disabled>💾</button>
           </td>
         </tr>`;
       });
       listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
-        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th>${t('club.min_version')}</th><th></th></tr></thead>
+        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th>${t('club.min_version')}</th><th>${t('quota.max_teams')}</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
       // Look the address up as it is typed. Bound here rather than in the
@@ -11706,6 +11818,28 @@
       });
       // Minimum app version: saved on blur, no confirmation — it only drives
       // a dismissable banner, so a wrong value costs nothing but noise.
+      /* Team allowance. Superadmin-only by rule: this is the commercial
+         limit, and it is the one field a lead must not be able to move.
+         Lowering it below a club's current count is allowed and warns —
+         until deploy 2 ships the delete flow, an over-quota lead has no way
+         to resolve it, so the warning is not decorative. */
+      listEl.querySelectorAll('.club-maxteams-input').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          var v = Math.max(1, Math.floor(Number(inp.value) || 1));
+          inp.value = v;
+          var have = Number(inp.dataset.teams || 0);
+          updateClub(inp.dataset.club, { maxTeams: v })
+            .then(function () {
+              _showPushToast(t('quota.max_teams'),
+                v < have ? t('quota.counter').replace('{n}', have).replace('{max}', v)
+                         : t('quota.saved'));
+            })
+            .catch(function (err) {
+              console.error('maxTeams save failed:', err);
+              _showPushToast(t('save.sync_title'), t('save.error'));
+            });
+        });
+      });
       listEl.querySelectorAll('.club-minver-input').forEach(function (inp) {
         inp.addEventListener('change', function () {
           var v = Math.max(0, Number(inp.value) || 0);
@@ -12383,7 +12517,7 @@
         <div class="modal-title">${sanitize(title)}</div>
         <p class="modal-message">${sanitize(message)}</p>
         <div class="modal-actions">
-          <button class="btn btn-small btn-outline" id="modal-btn-no">${t('common.cancel')}</button>
+          ${o.hideCancel ? '' : `<button class="btn btn-small btn-outline" id="modal-btn-no">${t('common.cancel')}</button>`}
           <button class="btn btn-small ${confirmClass}" id="modal-btn-yes">${sanitize(confirmLabel)}</button>
         </div>
       </div>
@@ -12393,7 +12527,8 @@
     requestAnimationFrame(() => overlay.classList.add('visible'));
 
     const close = () => { overlay.classList.remove('visible'); setTimeout(() => overlay.remove(), 200); };
-    overlay.querySelector('#modal-btn-no').addEventListener('click', close);
+    const noBtn = overlay.querySelector('#modal-btn-no');   // absent when hideCancel
+    if (noBtn) noBtn.addEventListener('click', close);
     overlay.querySelector('#modal-btn-yes').addEventListener('click', () => { close(); onConfirm(); });
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }

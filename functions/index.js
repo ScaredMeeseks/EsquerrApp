@@ -949,6 +949,185 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   return {ok: true, role, cats};
 });
 
+// ── 7a. setClubCategories — the ONLY writer of a club's team layout ──
+//
+// `maxTeams` is a COMMERCIAL limit on how many teams a lead may create, so
+// the UI cannot be the enforcement point: firestore.rules used to let a lead
+// write any field on their own club document, including the very quota meant
+// to bind them. The rules now refuse `categories` and `maxTeams` outright and
+// this callable is the only path, because it is the only place that can count
+// the teams before it commits.
+//
+// It also fixes a pre-existing bug: nothing recomputed a lead's `cats` claim
+// when the enabled categories changed, so enabling a NEW category left the
+// client querying a category its own token did not authorise — a
+// permission-denied on the whole data/ listener. Claims are refreshed here.
+
+/**
+ * The live teams of a club, as `{category}-{letter}` keys.
+ *
+ * A verbatim port of rosterKeys() in js/app.js. It cannot be imported —
+ * functions/ deploys on its own and cannot reach ../js at runtime — so
+ * test/quota.test.js pins the two copies against each other instead.
+ */
+function rosterKeysOf(categories) {
+  const cats = categories || {};
+  const keys = [];
+  CATEGORY_ORDER.forEach((cat) => {
+    if (!cats[cat] || !cats[cat].enabled) return;
+    const letters = (cats[cat].letters && cats[cat].letters.length) ?
+      cats[cat].letters : ["A"];
+    letters.forEach((l) => keys.push(cat + "-" + l));
+  });
+  return keys;
+}
+
+/** A club's allowance. Missing, malformed or below 1 all mean 1. */
+function maxTeamsOf(club) {
+  const n = Math.floor(Number(club && club.maxTeams));
+  return (isFinite(n) && n >= 1) ? Math.min(n, 156) : 1;
+}
+
+/**
+ * Would this save break the quota?
+ *
+ * An INCREASE test, deliberately not an absolute one. A club grandfathered
+ * above its allowance must stay editable: it can still save unchanged, and
+ * can still remove a team, and is only stopped from growing. An absolute
+ * test would lock such a lead out of the very screen they need to fix it.
+ */
+function exceedsQuota(prevCount, nextCount, max) {
+  return nextCount > max && nextCount > prevCount;
+}
+
+exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const caller = request.auth;
+  const isSuper = caller.token.email === SUPERUSER_EMAIL;
+  // Club identity from the CLAIM, never the payload — otherwise any lead
+  // could reconfigure any other club by passing its id.
+  const clubId = (isSuper && request.data && request.data.clubId) ?
+    String(request.data.clubId) : caller.token.teamId;
+  if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
+  if (!isSuper && caller.token.role !== "lead") {
+    throw new HttpsError("permission-denied",
+        "Només el responsable del club pot configurar les categories.");
+  }
+
+  const clubRef = db.collection("clubs").doc(clubId);
+  const clubSnap = await clubRef.get();
+  if (!clubSnap.exists) throw new HttpsError("not-found", "Club no trobat.");
+  const club = clubSnap.data() || {};
+
+  // Shape. Rejecting unknown keys matters: rosterKeys ignores them, but they
+  // would sit forever in a document every member of the club downloads.
+  const data = request.data || {};
+  const categories = data.categories;
+  if (!categories || typeof categories !== "object" || Array.isArray(categories)) {
+    throw new HttpsError("invalid-argument", "categories no vàlid.");
+  }
+  for (const key of Object.keys(categories)) {
+    if (!CATEGORY_ORDER.includes(key)) {
+      throw new HttpsError("invalid-argument", "Categoria desconeguda: " + key);
+    }
+    const c = categories[key];
+    if (!c || typeof c !== "object" || typeof c.enabled !== "boolean" ||
+        !Array.isArray(c.letters) || !c.letters.length || c.letters.length > 26) {
+      throw new HttpsError("invalid-argument", "Categoria mal formada: " + key);
+    }
+    const seen = new Set();
+    for (const l of c.letters) {
+      if (typeof l !== "string" || !/^[A-Z]$/.test(l) || seen.has(l)) {
+        throw new HttpsError("invalid-argument", "Lletra no vàlida a " + key);
+      }
+      seen.add(l);
+    }
+  }
+
+  const prevKeys = rosterKeysOf(club.categories);
+  const nextKeys = rosterKeysOf(categories);
+  if (!nextKeys.length) {
+    throw new HttpsError("invalid-argument", "Cal activar almenys una categoria.");
+  }
+
+  // fcfLinks / schedules may only address teams that exist in this save.
+  const allowed = new Set(nextKeys);
+  for (const field of ["fcfLinks", "schedules"]) {
+    const map = data[field];
+    if (map === undefined) continue;
+    if (!map || typeof map !== "object" || Array.isArray(map)) {
+      throw new HttpsError("invalid-argument", field + " no vàlid.");
+    }
+    for (const k of Object.keys(map)) {
+      if (!allowed.has(k)) {
+        throw new HttpsError("invalid-argument",
+            field + " conté un equip inexistent: " + k);
+      }
+    }
+  }
+
+  const max = maxTeamsOf(club);
+  if (exceedsQuota(prevKeys.length, nextKeys.length, max)) {
+    throw new HttpsError("failed-precondition",
+        "Aquest club no pot tenir més de " + max + " equips.");
+  }
+
+  // Deploy 1 does not delete team data, and removing a letter here would
+  // strand its players, orphan its roster doc and leave registration still
+  // pointing at the dead team. Removals go through deleteTeam in deploy 2.
+  const removed = prevKeys.filter((k) => !nextKeys.includes(k));
+  if (removed.length) {
+    throw new HttpsError("failed-precondition",
+        "Encara no es poden eliminar equips (" + removed.join(", ") + ").");
+  }
+
+  const payload = {categories};
+  if (data.fcfLinks !== undefined) payload.fcfLinks = data.fcfLinks;
+  if (data.schedules !== undefined) payload.schedules = data.schedules;
+  await clubRef.set(payload, {merge: true});
+
+  // Claims: the enabled set drives every member's `cats`, and nothing else
+  // recomputes it when this map changes.
+  const prevEnabled = enabledCategories(club).sort().join(",");
+  const nextEnabled = enabledCategories({categories}).sort().join(",");
+  let refreshed = 0;
+  if (prevEnabled !== nextEnabled) {
+    const updated = {categories};
+    const rosters = await loadRosters(clubId);
+    const members = await db.collection("users").where("teamId", "==", clubId).get();
+    const leadEmail = String(club.leadEmail || "").toLowerCase();
+    for (const doc of members.docs) {
+      const u = doc.data() || {};
+      const email = String(u.email || "").toLowerCase();
+      const isLead = email === leadEmail || u.isTeamLead === true;
+      const m = membershipFrom(rosters, email);
+      const next = claimsFor(updated, isLead, m);
+      const before = (u.staffCategories || []).slice().sort().join(",");
+      if (before === next.cats.slice().sort().join(",")) continue;
+      try {
+        await admin.auth().setCustomUserClaims(doc.id,
+            {teamId: clubId, role: next.role, cats: next.cats});
+        await doc.ref.set({
+          staffCategories: next.cats,
+          claimsUpdatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+        refreshed++;
+      } catch (e) {
+        // No Auth account yet (a pre-registered invitee) — nothing to claim.
+        logger.warn("setClubCategories: claim refresh skipped",
+            {uid: doc.id, err: e.message});
+      }
+    }
+  }
+
+  logger.info("setClubCategories", {
+    clubId, by: caller.uid, teams: nextKeys.length, max, refreshed,
+  });
+  return {ok: true, teams: nextKeys.length, max, refreshed};
+});
+
 // ── 7b. onRosterWritten — roster list edits re-apply to existing members ──
 // When the lead adds a staff email (or staff add a player email) belonging to
 // somebody who has ALREADY registered, joinClub has long since run for them.
