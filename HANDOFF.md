@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v64.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **339 passing** (213 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v65.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **339 passing** (213 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -41,6 +41,16 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v65 — the same band, on the one auth page taller than the screen (2026-08-04)
+
+v64 fixed login and left team setup, the only auth page whose content exceeds the viewport. Second measurement: `scrollWidth` 1275 vs `innerWidth` 1290 (15px smaller — the vertical scrollbar, so still no sideways overflow), `scrollHeight` **2513** vs `innerHeight` 911.
+
+**v64's own `min-height` on `.auth-container` caused it.** `flex: 1` means `1 1 0%` — base size **zero** — and it survived a tall card only because a flex item's `min-height: auto` resolves to the content height. An explicit `min-height` replaces that and removes the floor, so the box collapsed to one viewport while the card overflowed past it.
+
+`flex: 1 0 auto` restores a content-based base size. The min-height then does only what it was added for: the viewport floor when content is short.
+
+**Rule worth remembering:** an explicit `min-height` on a flex item silently disables its automatic content-based minimum.
 
 ## v64 — the band at the foot of the auth pages (2026-08-04)
 

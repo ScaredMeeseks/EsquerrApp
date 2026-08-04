@@ -877,3 +877,13 @@ Those 30px are the gap between the two mobile viewports. `100vh` is the **large*
 
 `.auth-container` also gets its own `min-height` rather than relying on `flex: 1` to stretch it. `.view`'s min-height is not a *definite* height, and the comment above `#view-dashboard` records what that already cost once: the child's background stopped where its box ended, leaving a strip of bare page background across the foot of the page. The element that paints the background now guarantees its own coverage.
 
+## v65 — the same band, on the one auth page taller than the screen (2026-08-04)
+
+v64 fixed login and left team setup, which is the only auth page whose content exceeds the viewport. The second measurement: `scrollWidth` 1275 vs `innerWidth` 1290 — 15px *smaller*, which is just the vertical scrollbar, so still nothing overflowing sideways — and `scrollHeight` **2513** against `innerHeight` 911. A legitimately long page whose gradient stopped early.
+
+**v64's `min-height` on `.auth-container` caused this.** `flex: 1` is shorthand for `1 1 0%` — a base size of **zero**, grown into the parent's free space. It survived a tall card only because a flex item's `min-height: auto` resolves to the content height and stops it shrinking below it. An explicit `min-height` **replaces** `min-height: auto` and removes that floor, so the box collapsed to one viewport while the card overflowed past it.
+
+`flex: 1 0 auto` makes the base size the content height again: the box grows with the card, `flex-shrink: 0` keeps it there, and the `min-height` goes back to doing only what it was added for — the viewport floor when the content is short.
+
+Worth keeping in mind generally: **an explicit `min-height` on a flex item silently disables its automatic content-based minimum.** The two look unrelated and are not.
+
