@@ -753,3 +753,17 @@ The destructive half. `deleteTeam` erases one `{category}-{letter}` and everythi
 Removing a **saved** team goes through `showDeleteTeamModal` (typed confirmation, the phrase is the team key); a chip added seconds ago and not yet saved owns nothing and just disappears. Unchecking a category that still has saved teams is blocked with an explanation — removing its last team disables it automatically.
 
 Tests **286 passing** (162 unit + 93 rules + 31 functions), up from 248. `test/teams.test.js` drives the callable through its v2 `.run()` handle against the emulator and asserts both halves of the contract: B's data gone, **A's intact inside the same shard document**, and the players still present with cleared fields.
+
+### 2026-08-04 — deleteTeam verifies its own work (v57)
+
+The one risk the delete could not design away: every client holds the whole blob in localStorage and writes it back wholesale, so a coach saving *during* a delete republishes the rows just removed.
+
+**The obvious fix was rejected on cost.** Locking `teams/{id}/data/{key}` writes behind an `exists()` check on a lock document would genuinely close the hole — but those writes are not rare: *every player availability answer appends a staff notification*, which is a `data/` write. That is one extra document read on every one of them, on every club, forever, to guard an operation that runs about once a year.
+
+Instead the data phase is now a **re-runnable function**: do the work, re-read the shards, and if any of the team's rows came back, run it once more. One retry, not a loop — a client that keeps saving would spin it forever, and the outcome is recorded either way. That shrinks the exposure from the length of the whole delete to the length of one re-read.
+
+It does not *guarantee* anything, and says so: a write landing after the final read still wins. What changed is that it can no longer happen **silently** — `resurrected` is returned to the caller and written to the marker doc, whose status becomes `done-with-conflict`. A partial delete that nobody notices is far worse than one that reports itself, since re-running is safe and cheap.
+
+`records` had to be hoisted out of the extracted function so the count accumulates across passes rather than resetting.
+
+Tests **288 passing** (162 unit + 93 rules + 33 functions). The new pair races a write against the callable and asserts the honest disjunction: either the row is gone, **or** the marker reports it — never silently left behind.

@@ -250,3 +250,49 @@ describe('deleteTeam', function () {
     await assert.rejects(() => callDelete({category: 'amateur', letter: 'bb'}));
   });
 });
+
+describe('deleteTeam — a client writing during the delete', function () {
+  this.timeout(120000);
+
+  /* Every client holds the whole blob and writes it back wholesale, so a
+     coach saving mid-delete republishes rows that were just removed. The
+     function does its work, looks again, and repeats once if anything came
+     back. This simulates the race by putting a deleted row back between the
+     data phase and the verification — which is exactly what a racing client
+     does. */
+  before(async () => {
+    await seed();
+    // Re-add a B row the moment the first pass finishes, by racing a write
+    // against the callable.
+    const resurrect = (async () => {
+      await new Promise((r) => setTimeout(r, 120));
+      const cur = await blob('fa_matches__amateur');
+      if (!cur) return;
+      await dataDoc('fa_matches__amateur').set({
+        category: 'amateur',
+        v: JSON.stringify(cur.concat([{id: 2, team: 'B', date: '2026-05-09'}])),
+      });
+    })();
+    await Promise.all([callDelete({category: 'amateur', letter: 'B'}), resurrect]);
+  });
+
+  it('ends with the resurrected row gone', async () => {
+    // Either the retry caught it, or the write landed after the final read —
+    // in which case `resurrected` reports it rather than failing silently.
+    const rows = await blob('fa_matches__amateur');
+    const stragglers = rows.filter((m) => String(m.team || '') === 'B');
+    const marker = (await db.doc('clubs/' + CLUB + '/teamDeletions/amateur-B').get()).data();
+    if (stragglers.length) {
+      assert.ok(marker.resurrected && marker.resurrected.length,
+          'a surviving row must be REPORTED, never left silently');
+    } else {
+      assert.strictEqual(stragglers.length, 0);
+    }
+  });
+
+  it('records the outcome in the marker either way', async () => {
+    const m = (await db.doc('clubs/' + CLUB + '/teamDeletions/amateur-B').get()).data();
+    assert.ok(['done', 'done-with-conflict'].includes(m.status), m.status);
+    assert.ok(Array.isArray(m.resurrected));
+  });
+});

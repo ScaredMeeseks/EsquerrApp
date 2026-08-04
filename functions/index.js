@@ -1807,7 +1807,22 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
         }
       }
 
-      // ── Phase 4: the data ────────────────────────────────────
+      /* ── Phase 4: the data ──────────────────────────────────
+         Wrapped so it can be RUN TWICE. Every client holds the whole blob in
+         localStorage and writes it back wholesale, so a coach saving during
+         the delete re-adds the rows just removed. Nothing short of locking
+         every data/ write can prevent that — and that would cost a document
+         read on every staff notification, forever, to guard an operation
+         that runs about once a year. Instead: do the work, look again, and
+         do it once more if anything came back. That shrinks the window from
+         the length of the delete to the length of one re-read.
+
+         Re-reads the shards on each pass; the captured id and uid sets stay
+         valid because they describe the team, not the documents. */
+      let records = 0;
+      async function runDataPhase(shards) {
+      const catShard = (key) => (shards.get(key) || []).find((s) => s.cat === category);
+      const matchesShard = catShard("fa_matches");
       const dropRows = (pred) => (arr) =>
         (Array.isArray(arr) ? arr.filter((r) => !pred(r)) : null);
 
@@ -1867,7 +1882,6 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       // Record collections. Every record carries `uid`, so query on it
       // rather than matching the {uid}_… doc-id prefix.
       const teamRef = db.collection("teams").doc(clubId);
-      let records = 0;
       for (const c of chunk10(teamUids)) {
         for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
           records += await deleteByQuery(
@@ -1922,6 +1936,54 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
         const trShard = catShard("fa_training");
         if (trShard) await trShard.ref.delete();
       }
+      } // end runDataPhase
+
+      await runDataPhase(shards);
+
+      /* Did anything come back? Re-read and look for the team's rows again.
+         A client that saved mid-delete republishes the whole blob, so a
+         single surviving match or uid means the pass raced a write. */
+      async function survivors() {
+        const fresh = await readDataShards(clubId);
+        const found = [];
+        // parseDataDoc dereferences snap.exists, so never hand it a null.
+        const ms = (fresh.get("fa_matches") || []).find((x) => x.cat === category);
+        const mrows = ms ? parseDataDoc(ms.snap, []) : [];
+        if (Array.isArray(mrows) &&
+            mrows.some((m) => String(m.team || "") === letter)) found.push("fa_matches");
+        for (const s of fresh.get("fa_users") || []) {
+          if (s.cat === "none") continue;
+          const rows = parseDataDoc(s.snap, []);
+          if (Array.isArray(rows) && rows.some((u) => killUid.has(String(u.id)))) {
+            found.push("fa_users__" + s.cat);
+          }
+        }
+        for (const s of fresh.get("fa_injuries") || []) {
+          const rows = parseDataDoc(s.snap, []);
+          if (Array.isArray(rows) && rows.some((i) => killUid.has(String(i.playerId)))) {
+            found.push("fa_injuries__" + s.cat);
+          }
+        }
+        return {fresh, found};
+      }
+
+      let resurrected = [];
+      {
+        const first = await survivors();
+        if (first.found.length) {
+          // One retry, not a loop: a client that keeps saving would spin this
+          // forever, and the marker doc records what happened either way.
+          resurrected = first.found;
+          await runDataPhase(first.fresh);
+          const second = await survivors();
+          resurrected = second.found.length ? second.found : [];
+          if (second.found.length) {
+            logger.warn("deleteTeam: rows survived a retry — a client is " +
+              "writing during the delete; re-run when the club is idle",
+            {clubId, teamKey, shards: second.found});
+          }
+        }
+      }
 
       // ── Phase 5: the roster doc (CONSTRAINT B — LAST) ────────
       // Deleting it fires onRosterWritten, which detaches every listed member
@@ -1932,9 +1994,11 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       await clubRef.collection("rosters").doc(teamKey).delete();
 
       await markerRef.set({
-        status: "done", finishedAt: FieldValue.serverTimestamp(),
+        status: resurrected.length ? "done-with-conflict" : "done",
+        finishedAt: FieldValue.serverTimestamp(),
         uids: teamUids.length, matches: deletedMatchIds.length,
         records, catGone, refreshed,
+        resurrected: resurrected,
       }, {merge: true});
 
       logger.info("deleteTeam", {
@@ -1944,6 +2008,9 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       return {
         ok: true, teamKey, uids: teamUids.length,
         matches: deletedMatchIds.length, records, catGone,
+        // Non-empty means a client wrote during the delete and won the race
+        // even after a retry. Re-running is safe and cheap.
+        resurrected,
       };
     });
 
