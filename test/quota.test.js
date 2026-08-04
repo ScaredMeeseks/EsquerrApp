@@ -400,3 +400,113 @@ describe('quota — i18n', () => {
     assert.strictEqual((line.match(/\{max\}/g) || []).length, 3);
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Enabling a category: counted once, and repainted.
+ *
+ * `_domTeamCount` reads the DOM because on this screen the DOM is the
+ * source of truth until save. The toggle handler runs on `change`, which
+ * fires AFTER the browser has ticked the box — so the row being enabled is
+ * already inside the total. v55 added its letters on top, and a club with
+ * 2 of 3 teams used was told it was at the limit when it ticked a second
+ * category. `exceptRow` is what makes "everyone else, plus the one I am
+ * about to add" expressible.
+ * ------------------------------------------------------------------ */
+describe('team setup — counting the row being toggled', () => {
+  const domTeamCount = (() => {
+    const code = grab(appSrc, '  function _domTeamCount(container, exceptRow)',
+        '\n  /* Show the allowance', 'js/app.js');
+    // eslint-disable-next-line no-new-func
+    return new Function(`${code}\nreturn _domTeamCount;`)();
+  })();
+
+  /* Just enough DOM for _domTeamCount: rows that answer for their checkbox
+     and their chips. A real jsdom would test the browser, not this logic. */
+  const row = (checked, letters) => ({
+    querySelector: (sel) =>
+      (sel === 'input[type="checkbox"]' ? { checked } : null),
+    querySelectorAll: (sel) => (sel === '.ts-letter-chip' ? letters : []),
+  });
+  const container = (rows) => ({
+    querySelectorAll: (sel) => (sel === '.ts-cat-row' ? rows : []),
+  });
+
+  it('counts letters in enabled rows only', () => {
+    const c = container([row(true, ['A', 'B']), row(false, ['A'])]);
+    assert.strictEqual(domTeamCount(c), 2);
+  });
+
+  it('skips the excepted row', () => {
+    const juvenil = row(true, ['A']);
+    const c = container([row(true, ['A', 'B']), juvenil]);
+    assert.strictEqual(domTeamCount(c), 3, 'without the exception');
+    assert.strictEqual(domTeamCount(c, juvenil), 2, 'with it');
+  });
+
+  it('lets a third team onto a 2-of-3 club — the reported bug', () => {
+    // amateur A+B saved, lead ticks juvenil, whose box is ALREADY checked.
+    const juvenil = row(true, ['A']);
+    const c = container([row(true, ['A', 'B']), juvenil]);
+    const max = 3;
+    assert.ok(domTeamCount(c, juvenil) + 1 <= max, 'must be allowed');
+    // The v55 arithmetic, kept here so the regression cannot come back.
+    assert.ok(domTeamCount(c) + 1 > max, 'double-counted, which blocked it');
+  });
+
+  it('still refuses the one that genuinely does not fit', () => {
+    const cadet = row(true, ['A']);
+    const c = container([row(true, ['A', 'B']), row(true, ['A']), cadet]);
+    assert.ok(domTeamCount(c, cadet) + 1 > 3);
+  });
+
+  it('the toggle handler excepts its own row', () => {
+    const handler = grab(appSrc, 'if (e.target.checked) {',
+        'row.classList.add', 'js/app.js');
+    assert.ok(handler.includes('_domTeamCount(container, row) + 1'),
+        'the enable branch must count everyone ELSE, then add its one team');
+  });
+});
+
+/* Chip markup has ONE builder. It had two — the render and the toggle —
+   and they disagreed: enabling a category left the row painted as
+   disabled, greyed and with no "+", so no team could be added to it. */
+describe('team setup — letter chip markup', () => {
+  const chipsHtml = (() => {
+    const code = grab(appSrc, '  function _letterChipsHtml(catKey, letters, enabled)',
+        '\n  /* Repaint one row', 'js/app.js');
+    // eslint-disable-next-line no-new-func
+    return new Function('t', `${code}\nreturn _letterChipsHtml;`)((k) => k);
+  })();
+
+  it('a disabled row is one greyed A with no "+"', () => {
+    const html = chipsHtml('juvenil', ['A'], false);
+    assert.ok(html.includes('ts-letter-chip-off'));
+    assert.ok(!html.includes('ts-letter-add'), 'nothing to add a team to yet');
+    assert.strictEqual((html.match(/ts-letter-chip/g) || []).length, 2,
+        'one chip (the class appears twice on it)');
+  });
+
+  it('an enabled row marks only the last chip removable', () => {
+    const html = chipsHtml('amateur', ['A', 'B', 'C'], true);
+    assert.strictEqual((html.match(/ts-letter-chip-last/g) || []).length, 1);
+    assert.strictEqual((html.match(/ts-letter-chip-fixed/g) || []).length, 2);
+    assert.ok(html.indexOf('ts-letter-chip-last') > html.indexOf('>B<'),
+        'the removable one is C, not A or B');
+  });
+
+  it('an enabled row offers exactly one "+"', () => {
+    const html = chipsHtml('amateur', ['A', 'B'], true);
+    assert.strictEqual((html.match(/ts-letter-add/g) || []).length, 1);
+  });
+
+  it('carries the category on every chip, never an index', () => {
+    const html = chipsHtml('cadet', ['A', 'C'], true);
+    assert.strictEqual((html.match(/data-cat="cadet"/g) || []).length, 3);
+    assert.ok(html.includes('data-letter="C"'), 'gaps are preserved, not renumbered');
+  });
+
+  it('is the only place that builds a chip', () => {
+    const uses = (appSrc.match(/ts-letter-chip-off/g) || []).length;
+    assert.strictEqual(uses, 1, 'a second builder is how the two drifted apart');
+  });
+});

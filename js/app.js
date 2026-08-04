@@ -1179,7 +1179,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 62;
+  const APP_VERSION = 63;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2175,6 +2175,37 @@
   // ---------- Team Setup (Team Lead config) ----------
   // CATEGORY_LABELS, CATEGORY_ORDER → utils.js
 
+  /* The ONE place that decides what a category's letter chips look like.
+     It is called from the first render and again whenever a category is
+     toggled — two copies is exactly how enabling a category ended up
+     leaving the row painted as disabled: a greyed A and no "+", so the
+     lead could tick Juvenil and then had no way to add a team to it.
+
+     Teams are removed from the END, so only the last chip is clickable.
+     Every chip used to look identical and clickable while doing two very
+     different things — destroying a saved team, or silently vanishing if
+     unsaved. An inert chip says "not this one" before the click.
+     A DISABLED row shows one greyed A that turns the category ON. */
+  function _letterChipsHtml(catKey, letters, enabled) {
+    var chips = letters.map(function (l, idx) {
+      var cls = 'ts-letter-chip';
+      if (!enabled) cls += ' ts-letter-chip-off';
+      else if (idx === letters.length - 1) cls += ' ts-letter-chip-last';
+      else cls += ' ts-letter-chip-fixed';
+      return '<span class="' + cls + '" data-letter="' + l + '" data-cat="' + catKey + '">' + l + '</span>';
+    }).join('');
+    // No "+" until the category is on — there is nothing to add a team to.
+    return chips + (enabled ?
+      '<button class="ts-letter-add" data-cat="' + catKey + '" title="' + t('ts.add_team') + '">+</button>' : '');
+  }
+
+  /* Repaint one row's chips in place. Repainting the whole container would
+     throw away chips added in OTHER categories since the last save. */
+  function _paintLetters(row, letters, enabled) {
+    var el = row.querySelector('.ts-letters');
+    if (el) el.innerHTML = _letterChipsHtml(row.dataset.cat, letters, enabled);
+  }
+
   /**
    * @param {Object} [opts] `{cancellable:true}` from the Settings entry only.
    *   The two forced entries — over quota, and a lead with no enabled
@@ -2206,26 +2237,12 @@
       var letters = (cat.enabled && cat.letters && cat.letters.length) ?
         cat.letters : ['A'];
       var active = cat.enabled ? ' active' : '';
-      /* Teams are removed from the END, so only the last chip is clickable.
-         Every chip used to look identical and clickable while doing two very
-         different things — destroying a saved team, or silently vanishing if
-         unsaved. An inert chip says "not this one" before the click.
-         A DISABLED row shows one greyed A that turns the category ON. */
-      var chips = letters.map(function (l, idx) {
-        var cls = 'ts-letter-chip';
-        if (!cat.enabled) cls += ' ts-letter-chip-off';
-        else if (idx === letters.length - 1) cls += ' ts-letter-chip-last';
-        else cls += ' ts-letter-chip-fixed';
-        return '<span class="' + cls + '" data-letter="' + l + '" data-cat="' + key + '">' + l + '</span>';
-      }).join('');
-      // No "+" until the category is on — there is nothing to add a team to.
-      var addBtn = cat.enabled ?
-        '<button class="ts-letter-add" data-cat="' + key + '" title="' + t('ts.add_team') + '">+</button>' : '';
       html += '<div class="ts-cat-row' + active + '" data-cat="' + key + '">' +
         '<label class="ts-cat-toggle"><input type="checkbox"' + (cat.enabled ? ' checked' : '') +
         ' data-cat="' + key + '"><span class="slider"></span></label>' +
         '<span class="ts-cat-name">' + CATEGORY_LABELS[key] + '</span>' +
-        '<span class="ts-letters" data-cat="' + key + '">' + chips + addBtn +
+        '<span class="ts-letters" data-cat="' + key + '">' +
+        _letterChipsHtml(key, letters, cat.enabled) +
         '</span></div>';
     });
     container.innerHTML = html;
@@ -2461,10 +2478,17 @@
 
   /* Teams the editor would save right now. Counted from the DOM, not from
      _clubConfig: on this screen the DOM is the source of truth until save,
-     so a chip added a second ago has to count. */
-  function _domTeamCount(container) {
+     so a chip added a second ago has to count.
+
+     `exceptRow` skips one row, and the toggle handler needs it: `change`
+     fires AFTER the checkbox is checked, so the row being enabled is
+     already inside this total. Adding its letters on top counted it twice
+     and refused a toggle that fitted — 2 of 3 used, ticking a category
+     computed 4 and showed the limit modal (v55…v62). */
+  function _domTeamCount(container, exceptRow) {
     var n = 0;
     container.querySelectorAll('.ts-cat-row').forEach(function (row) {
+      if (row === exceptRow) return;
       var box = row.querySelector('input[type="checkbox"]');
       if (!box || !box.checked) return;
       n += row.querySelectorAll('.ts-letter-chip').length;
@@ -2542,15 +2566,19 @@
         e.target._tsChange = e.timeStamp;
         var row = e.target.closest('.ts-cat-row');
         if (e.target.checked) {
-          // Enabling a category adds every one of its letters at once, so
-          // the cap has to be checked here too, not only on the + button.
-          var adding = row.querySelectorAll('.ts-letter-chip').length;
-          if (_domTeamCount(container) + adding > clubMaxTeams()) {
+          /* Enabling a category adds exactly ONE team. A disabled row's
+             stored letters mean nothing (nobody is in it), so it comes
+             back as a single A — the same rule the first render applies.
+             Count everyone ELSE and add that one; counting this row too is
+             what made 2-of-3 refuse a third team. */
+          if (_domTeamCount(container, row) + 1 > clubMaxTeams()) {
             e.target.checked = false;
             _showQuotaBlockedModal();
             return;
           }
           row.classList.add('active');
+          // Repaint: the row is still drawn as disabled — greyed A, no "+".
+          _paintLetters(row, ['A'], true);
         } else {
           var savedHere = rosterKeys(_clubConfig).filter(function (k) {
             return k.indexOf(e.target.dataset.cat + '-') === 0;
@@ -2566,6 +2594,11 @@
             return;
           }
           row.classList.remove('active');
+          /* Back to the greyed A with no "+". Only UNSAVED letters can be
+             lost here — disabling a category that still has saved teams is
+             blocked above — and a disabled category's letters are declared
+             meaningless anyway, so re-enabling deliberately gives A. */
+          _paintLetters(row, ['A'], false);
         }
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();

@@ -845,3 +845,25 @@ It is also an efficiency fix — every entry was adding handlers that then ran o
 **Typed FCF links and schedules survive a re-render.** Both sections rebuilt straight from `_clubConfig` on any chip or toggle change, discarding half-typed input; `_refreshTeamSetupStaff` had always layered the DOM over stored values for exactly that reason. `_collectSchedulesFromDom()` was extracted from the save handler so the save path and the re-render share **one** reader rather than two copies of the same shape.
 
 **329 passing** (203 unit + 93 rules + 33 functions).
+
+## v63 — the toggle counted the row it was about to enable (2026-08-04)
+
+The 2-of-3 report was real after all, and the listener leak fixed in v62 was only half of it. The `+` button counts correctly; **the category toggle did not.**
+
+`_domTeamCount` counts letters in rows whose checkbox is **checked**, and the `change` event fires *after* the browser has ticked the box — so the row being enabled was already inside the total. v55 then added its letters on top:
+
+```js
+var adding = row.querySelectorAll('.ts-letter-chip').length;
+if (_domTeamCount(container) + adding > clubMaxTeams())   // 3 + 1 > 3
+```
+
+With amateur A+B saved and `maxTeams: 3`, ticking Juvenil computed **4** and showed the limit modal. Adding a `C` to amateur worked, because that path counts before mutating — which is exactly the asymmetry that was reported.
+
+`_domTeamCount(container, exceptRow)` now takes a row to skip, and the enable branch asks for *everyone else, plus the one team it is about to add*. That phrasing does not depend on when the browser applies `checked`, which is the subtlety that caused this.
+
+Enabling a category adds **exactly one** team: a disabled row's stored letters are declared meaningless, so it comes back as a single `A` — the same rule the first render already applied.
+
+**Second defect, introduced by v62 itself:** enabling a category only added `.active`. The chips were never repainted, so the row stayed drawn as *disabled* — greyed `A`, no `+` — and no team could be added to the category just enabled. Chip markup now has one builder, `_letterChipsHtml(catKey, letters, enabled)`, used by the first render and by the toggle. A test asserts `ts-letter-chip-off` appears exactly once in the source, because a second builder is precisely how the two drifted apart.
+
+`_domTeamCount` is now unit-tested against a hand-built stub (the two methods it calls), including the reported case and the v55 arithmetic kept as a regression guard. **213 unit tests** (up from 203); 339 total.
+
