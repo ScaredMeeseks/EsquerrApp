@@ -183,6 +183,10 @@
         </div>
         <div id="team-setup-error" class="error-msg" hidden></div>
         <button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;" data-i18n="auth.save_continue">Desar i continuar</button>
+        <!-- Only shown when the screen was opened voluntarily from Settings.
+             The two forced entries (over quota, no category enabled) must
+             stay inescapable — see showTeamSetup(). -->
+        <button class="btn btn-outline btn-full" id="btn-back-team-setup" style="margin-top:.6rem;" hidden data-i18n="ts.back">Tornar sense desar</button>
       </div>
     </div>
   </div>

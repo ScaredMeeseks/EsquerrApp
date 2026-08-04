@@ -824,3 +824,24 @@ The slice now comes from every session in the window. `recentRPE` is left alone 
 On the demo squad `hard_sessions` fell **3 → 1** and reds **4 → 2**. Total flagged is unchanged at 40% — those two moved to amber — but the severity distribution is now honest, which for a force-override is the whole point.
 
 **Two test fixtures were also wrong, and passing for the wrong reason.** They appended their sessions onto a shared base history that already had a session on one of the same days, so two entries mapped to one RPE key and "the last two sessions" was a single session counted twice. Rewritten to build collision-free histories from an explicit `[daysAgo, rpe|null]` spec — the `null` being what lets a rest day be expressed at all. **317 passing.**
+
+### 2026-08-04 — Team setup: a listener leak, and four UX fixes (v62)
+
+Reported as a quota bug — "I gave the club a third slot, it shows 2 of 3, and adding still errors". **It was not the quota.**
+
+`_bindTeamSetupEvents(container)` runs on **every** `showTeamSetup()`, but the four containers are static elements in `index.html` — `innerHTML` replaces their children, not the node — so five `addEventListener` calls **accumulated on every entry**. On a second visit one "+" click ran the handler twice: the first added the chip (2 → 3), the second saw the new count and fired the limit modal. **The team was added; the error was spurious.** The same duplication let a category tick un-tick itself, and made "add staff" / "+ Entrenament" insert two rows.
+
+The save button was already de-duplicated with a comment naming exactly this hazard, and the dashboard guards itself with `content._settingsBound` — the containers were simply missed. Now `container._tsBound`. On top of that, the three quota-gated handlers ignore a re-dispatch of the same event: **one physical click delivered to two listeners carries the same `timeStamp`**, so that distinguishes a stray dispatch from a genuine second click. The guard is the fix; this is what stops the class of bug being user-visible again.
+
+It is also an efficiency fix — every entry was adding handlers that then ran on every click, for the life of the page.
+
+**Four UX changes, all client-side. Enforcement stays in `setClubCategories`, which the rules make the sole writer of `categories`; nothing here may become the enforcement point.**
+
+- **A back button**, but only for the *voluntary* entry. `showTeamSetup({cancellable:true})` is passed from the Settings button alone; the over-quota redirect and the no-category wizard stay inescapable — escaping the first defeats the gate, and behind the second there is no configured club to return to. The flag is reset on **every** call, because `deleteTeam` re-enters through `navigate()` and a stale flag there would let an over-quota lead walk away. A successful save now also returns to Settings when entered from there; previously it always dumped the user on the dashboard home, so the screen behaved inconsistently between saving and cancelling.
+- **A disabled category shows one greyed `A` and no `+`** — there is nothing to add a team to until it is on. Clicking that chip enables the category by setting the checkbox and dispatching `change`, so the *existing* handler runs: it carries the quota gate and its revert, and a second copy is how the two drift apart.
+- **Only the last chip is removable.** Every chip previously had `cursor:pointer` and a red hover while doing two very different things — destroying a saved team, or silently vanishing if unsaved. Earlier chips are now inert, and the "last" affordance moves as chips are added and removed.
+- **`_nextLetter` appends after the highest letter** instead of backfilling the lowest gap. It returned the lowest unused letter while the chip was appended at the end, so removing `B` from `A,B,C` and pressing `+` produced `A, C, B` — persisted that way. **Existing gaps are left alone**: `deleteTeam` legitimately leaves `['A','C']`, and renaming a saved team would break `{category}-{letter}` everywhere it is used as a key — roster docs, `users/{uid}.team`, `fa_matches[].team`, every shard join. We only stop making new ones.
+
+**Typed FCF links and schedules survive a re-render.** Both sections rebuilt straight from `_clubConfig` on any chip or toggle change, discarding half-typed input; `_refreshTeamSetupStaff` had always layered the DOM over stored values for exactly that reason. `_collectSchedulesFromDom()` was extracted from the save handler so the save path and the re-render share **one** reader rather than two copies of the same shape.
+
+**329 passing** (203 unit + 93 rules + 33 functions).

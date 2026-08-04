@@ -3488,7 +3488,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-letters{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;}
 .ts-letter-chip{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;font-weight:700;font-size:.85rem;background:var(--bg);border:2px solid var(--border);color:var(--text);cursor:pointer;transition:.2s;user-select:none;}
 .ts-cat-row.active .ts-letter-chip{border-color:var(--primary);background:var(--primary);color:#fff;}
-.ts-cat-row.active .ts-letter-chip:hover{background:var(--danger);border-color:var(--danger);}
+/* Only the LAST chip is removable, so only it gets the destructive hover.
+   Every chip used to look identical and clickable while doing two very
+   different things: destroying a saved team, or silently vanishing. */
+.ts-cat-row.active .ts-letter-chip-last:hover{background:var(--danger);border-color:var(--danger);}
+.ts-letter-chip-fixed{cursor:default;}
+/* A disabled category shows one greyed A. It is clickable, but to turn the
+   category ON rather than to remove anything. */
+.ts-letter-chip-off{cursor:pointer;opacity:.45;border-style:dashed;}
+.ts-letter-chip-off:hover{opacity:.8;border-color:var(--primary);color:var(--primary);}
 .ts-letter-add{width:30px;height:30px;border-radius:50%;border:2px dashed var(--border);background:none;font-size:1rem;cursor:pointer;color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;transition:.2s;}
 .ts-letter-add:hover{border-color:var(--primary);color:var(--primary);}
 .ts-fcf-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;}

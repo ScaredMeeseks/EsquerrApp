@@ -85,6 +85,8 @@
 
     // ── Team quota (commercial limit set by the superadmin) ──
     'quota.title':       { ca:"Límit d'equips assolit", es:'Límite de equipos alcanzado', en:'Team limit reached' },
+    'ts.back':           { ca:'Tornar sense desar', es:'Volver sin guardar', en:'Back without saving' },
+    'ts.add_team':       { ca:'Afegir equip', es:'Añadir equipo', en:'Add team' },
     'quota.add_blocked': { ca:"Per afegir un equip extra contacta amb l'administrador o elimina un dels equips actuals. Eliminar un equip comportarà la pèrdua de les dades.",
                            es:'Para añadir un equipo extra contacta con el administrador o elimina uno de los equipos actuales. Eliminar un equipo conllevará la pérdida de los datos.',
                            en:'To add an extra team contact the admin or remove one of your current teams. Removing a team will result in the loss of the data.' },
@@ -1177,7 +1179,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 61;
+  const APP_VERSION = 62;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2173,7 +2175,18 @@
   // ---------- Team Setup (Team Lead config) ----------
   // CATEGORY_LABELS, CATEGORY_ORDER → utils.js
 
-  function showTeamSetup() {
+  /**
+   * @param {Object} [opts] `{cancellable:true}` from the Settings entry only.
+   *   The two forced entries — over quota, and a lead with no enabled
+   *   category — must stay inescapable: escaping the first defeats the gate,
+   *   and behind the second there is no configured club to go back to.
+   *   Reset on EVERY call: deleteTeam re-enters through navigate(), and a
+   *   stale flag there would let an over-quota lead walk away.
+   */
+  function showTeamSetup(opts) {
+    _tsCancellable = !!(opts && opts.cancellable);
+    var backBtn = document.getElementById('btn-back-team-setup');
+    if (backBtn) backBtn.hidden = !_tsCancellable;
     showView('#view-team-setup');
     var cats = (_clubConfig && _clubConfig.categories) ? _clubConfig.categories : {};
     var container = document.getElementById('team-setup-categories');
@@ -2193,15 +2206,26 @@
       var letters = (cat.enabled && cat.letters && cat.letters.length) ?
         cat.letters : ['A'];
       var active = cat.enabled ? ' active' : '';
-      var chips = letters.map(function (l) {
-        return '<span class="ts-letter-chip" data-letter="' + l + '" data-cat="' + key + '">' + l + '</span>';
+      /* Teams are removed from the END, so only the last chip is clickable.
+         Every chip used to look identical and clickable while doing two very
+         different things — destroying a saved team, or silently vanishing if
+         unsaved. An inert chip says "not this one" before the click.
+         A DISABLED row shows one greyed A that turns the category ON. */
+      var chips = letters.map(function (l, idx) {
+        var cls = 'ts-letter-chip';
+        if (!cat.enabled) cls += ' ts-letter-chip-off';
+        else if (idx === letters.length - 1) cls += ' ts-letter-chip-last';
+        else cls += ' ts-letter-chip-fixed';
+        return '<span class="' + cls + '" data-letter="' + l + '" data-cat="' + key + '">' + l + '</span>';
       }).join('');
+      // No "+" until the category is on — there is nothing to add a team to.
+      var addBtn = cat.enabled ?
+        '<button class="ts-letter-add" data-cat="' + key + '" title="' + t('ts.add_team') + '">+</button>' : '';
       html += '<div class="ts-cat-row' + active + '" data-cat="' + key + '">' +
         '<label class="ts-cat-toggle"><input type="checkbox"' + (cat.enabled ? ' checked' : '') +
         ' data-cat="' + key + '"><span class="slider"></span></label>' +
         '<span class="ts-cat-name">' + CATEGORY_LABELS[key] + '</span>' +
-        '<span class="ts-letters" data-cat="' + key + '">' + chips +
-        '<button class="ts-letter-add" data-cat="' + key + '" title="Afegir equip">+</button>' +
+        '<span class="ts-letters" data-cat="' + key + '">' + chips + addBtn +
         '</span></div>';
     });
     container.innerHTML = html;
@@ -2276,6 +2300,17 @@
     return out;
   }
 
+  /** What is typed into the FCF inputs right now, keyed {cat}-{letter}. */
+  function _collectFcfFromDom() {
+    var out = {};
+    document.querySelectorAll('#team-setup-fcf-inputs input[data-fcf-key]')
+      .forEach(function (inp) { out[inp.dataset.fcfKey] = inp.value; });
+    return out;
+  }
+
+  /* Typed values win over stored ones, the way _refreshTeamSetupStaff has
+     always done it. Without this a chip click or a category toggle re-rendered
+     straight from _clubConfig and silently threw away a half-typed link. */
   function _refreshTeamSetupFcf() {
     var fcfSection = document.getElementById('team-setup-fcf');
     var fcfInputs = document.getElementById('team-setup-fcf-inputs');
@@ -2286,13 +2321,14 @@
     if (!rows.length) { fcfSection.hidden = true; return; }
     fcfSection.hidden = false;
     var existingLinks = (_clubConfig && _clubConfig.fcfLinks) ? _clubConfig.fcfLinks : {};
+    var typedLinks = _collectFcfFromDom();
     var html = '';
     rows.forEach(function (row) {
       var catKey = row.dataset.cat;
       row.querySelectorAll('.ts-letter-chip').forEach(function (chip) {
         var letter = chip.dataset.letter;
         var linkKey = catKey + '-' + letter;
-        var val = existingLinks[linkKey] || '';
+        var val = (linkKey in typedLinks) ? typedLinks[linkKey] : (existingLinks[linkKey] || '');
         html += '<div class="ts-fcf-row">' +
           '<span class="ts-fcf-label">' + CATEGORY_LABELS[catKey] + ' ' + letter + '</span>' +
           '<input type="url" placeholder="https://fcf.cat/classificacio/..." data-fcf-key="' + linkKey + '" value="' + sanitize(val) + '">' +
@@ -2304,6 +2340,53 @@
 
   // DAY_VALUES → utils.js
 
+  /**
+   * The schedules currently on screen, keyed {cat}-{letter}.
+   *
+   * Extracted so the save path and the re-render share one reader: the
+   * refresher needs it so a chip click cannot discard a half-typed schedule,
+   * and two copies of this shape would drift.
+   *
+   * Scoped to the schedules section — the staff section reuses
+   * .ts-sched-block for its styling and must not be picked up here.
+   */
+  function _collectSchedulesFromDom() {
+    var schedules = {};
+    document.querySelectorAll('#team-setup-schedule-inputs .ts-sched-block').forEach(function (block) {
+      var schedKey = block.dataset.schedKey;
+      var training = [];
+      var list = block.querySelector('.ts-training-list');
+      if (list) {
+        list.querySelectorAll('.ts-sched-row').forEach(function (row) {
+          var daySel = row.querySelector('select[data-train-day]');
+          var timeInp = row.querySelector('input[data-train-time]');
+          var locInp = row.querySelector('input[data-train-location]');
+          var linkInp = row.querySelector('input[data-train-link]');
+          var day = daySel ? daySel.value : '';
+          var time = timeInp ? timeInp.value.trim() : '';
+          var location = locInp ? locInp.value.trim() : '';
+          var link = linkInp ? linkInp.value.trim() : '';
+          if (day || time || location) training.push({ day: day, time: time, location: location, link: link });
+        });
+      }
+      if (!training.length) training.push({ day: '', time: '', location: '' });
+      var homeDaySel = block.querySelector('[data-home-day="' + schedKey + '"]');
+      var homeTimeInp = block.querySelector('[data-home-time="' + schedKey + '"]');
+      var homeLocInp = block.querySelector('[data-home-location="' + schedKey + '"]');
+      var homeLinkInp = block.querySelector('[data-home-link="' + schedKey + '"]');
+      schedules[schedKey] = {
+        training: training,
+        homeGame: {
+          day: homeDaySel ? homeDaySel.value : '',
+          time: homeTimeInp ? homeTimeInp.value : '',
+          location: homeLocInp ? homeLocInp.value.trim() : '',
+          link: homeLinkInp ? homeLinkInp.value.trim() : ''
+        }
+      };
+    });
+    return schedules;
+  }
+
   function _refreshTeamSetupSchedules() {
     var section = document.getElementById('team-setup-schedules');
     var inputsEl = document.getElementById('team-setup-schedule-inputs');
@@ -2314,6 +2397,8 @@
     if (!rows.length) { section.hidden = true; return; }
     section.hidden = false;
     var existingSchedules = (_clubConfig && _clubConfig.schedules) ? _clubConfig.schedules : {};
+    // Typed values win over stored ones, as the staff list has always done.
+    var typedSchedules = _collectSchedulesFromDom();
     var dayLabelsI18n = ['day.monday','day.tuesday','day.wednesday','day.thursday','day.friday','day.saturday','day.sunday'];
     var dayOptions = DAY_VALUES.map(function (d, i) {
       return '<option value="' + d + '">' + t(dayLabelsI18n[i]) + '</option>';
@@ -2325,7 +2410,7 @@
       row.querySelectorAll('.ts-letter-chip').forEach(function (chip) {
         var letter = chip.dataset.letter;
         var schedKey = catKey + '-' + letter;
-        var sched = existingSchedules[schedKey] || {};
+        var sched = typedSchedules[schedKey] || existingSchedules[schedKey] || {};
         var trainings = sched.training || [{ day: '', time: '', location: '' }];
         var homeGame = sched.homeGame || { day: 'sat', time: '', location: '' };
 
@@ -2415,15 +2500,46 @@
   }
 
   /** The owner's message when the club is at its allowance. */
+  /* Set by showTeamSetup(); see there for why only one entry point may. */
+  var _tsCancellable = false;
+
+  /** Leave the setup screen for Settings, where the lead came from. */
+  function _leaveTeamSetup() {
+    currentPage = 'settings';
+    const session = getSession();
+    if (!session) return;
+    showView('#view-dashboard');
+    renderDashboard(session);
+  }
+
   function _showQuotaBlockedModal() {
     showModal(t('quota.title'), t('quota.add_blocked'), function () {},
       { hideCancel: true, danger: false, confirmLabel: t('common.ok') });
   }
 
+  /**
+   * Bind the team-setup handlers ONCE per node.
+   *
+   * showTeamSetup() calls this on every entry, but the four containers are
+   * static elements in index.html — `innerHTML` replaces their children, not
+   * the node — so `addEventListener` used to ACCUMULATE. On a second visit
+   * one "+" click ran the handler twice: the first added the chip, the
+   * second saw the new count and fired the "limit reached" modal. The team
+   * WAS added; the error was spurious. Ticking a category could un-tick
+   * itself the same way, and "add staff" / "+ Entrenament" added two rows.
+   *
+   * The save button was already de-duplicated with a comment naming exactly
+   * this hazard; the container handlers were missed. Same idea as
+   * `content._settingsBound` on the dashboard.
+   */
   function _bindTeamSetupEvents(container) {
+    if (container._tsBound) return;
+    container._tsBound = true;
     // Toggle enable/disable
     container.addEventListener('change', function (e) {
       if (e.target.type === 'checkbox' && e.target.dataset.cat) {
+        if (e.target._tsChange === e.timeStamp) return;   // stray re-dispatch
+        e.target._tsChange = e.timeStamp;
         var row = e.target.closest('.ts-cat-row');
         if (e.target.checked) {
           // Enabling a category adds every one of its letters at once, so
@@ -2461,6 +2577,13 @@
     container.addEventListener('click', function (e) {
       var addBtn = e.target.closest('.ts-letter-add');
       if (addBtn) {
+        /* One physical click dispatched to two listeners carries the SAME
+           timeStamp, so this neutralises a stray re-dispatch whatever its
+           cause while leaving a genuine second click alone. The bind guard
+           is the fix; this is what stops the class of bug being visible
+           again if anything else ever double-binds. */
+        if (addBtn._tsClick === e.timeStamp) return;
+        addBtn._tsClick = e.timeStamp;
         var catKey = addBtn.dataset.cat;
         var lettersEl = container.querySelector('.ts-letters[data-cat="' + catKey + '"]');
         if (_domTeamCount(container) >= clubMaxTeams()) {
@@ -2476,16 +2599,40 @@
         chip.dataset.cat = catKey;
         chip.textContent = next;
         lettersEl.insertBefore(chip, addBtn);
+        var afterAdd = lettersEl.querySelectorAll('.ts-letter-chip');
+        afterAdd.forEach(function (c, i) {
+          c.classList.toggle('ts-letter-chip-last', i === afterAdd.length - 1);
+          c.classList.toggle('ts-letter-chip-fixed', i !== afterAdd.length - 1);
+        });
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
         _refreshTeamSetupStaff();
         _refreshTeamSetupQuota();
         return;
       }
-      // Remove letter by clicking on chip
       var clickedChip = e.target.closest('.ts-letter-chip');
       if (clickedChip) {
+        if (clickedChip._tsClick === e.timeStamp) return;   // stray re-dispatch
+        clickedChip._tsClick = e.timeStamp;
         var catKey2 = clickedChip.dataset.cat;
+        var row2 = clickedChip.closest('.ts-cat-row');
+
+        /* A disabled row shows one greyed A. Clicking it turns the category
+           ON, routed through the checkbox's own change handler rather than
+           re-implemented here — that handler carries the quota gate and its
+           revert, and a second copy is how the two drift apart. */
+        if (!row2.classList.contains('active')) {
+          var box = row2.querySelector('input[type="checkbox"]');
+          if (box && !box.checked) {
+            box.checked = true;
+            box.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          return;
+        }
+
+        // Teams are removed from the END, so earlier chips are inert.
+        if (!clickedChip.classList.contains('ts-letter-chip-last')) return;
+
         var lettersEl2 = container.querySelector('.ts-letters[data-cat="' + catKey2 + '"]');
         var chips = lettersEl2.querySelectorAll('.ts-letter-chip');
         var teamKey2 = catKey2 + '-' + clickedChip.dataset.letter;
@@ -2500,6 +2647,12 @@
         }
         if (chips.length <= 1) return; // keep at least 1
         clickedChip.remove();
+        // The chip before it is now the last, so the affordance has to move.
+        var remaining = lettersEl2.querySelectorAll('.ts-letter-chip');
+        remaining.forEach(function (c, i) {
+          c.classList.toggle('ts-letter-chip-last', i === remaining.length - 1);
+          c.classList.toggle('ts-letter-chip-fixed', i !== remaining.length - 1);
+        });
         _refreshTeamSetupFcf();
         _refreshTeamSetupSchedules();
         _refreshTeamSetupStaff();
@@ -2576,14 +2729,31 @@
       saveBtn.removeEventListener('click', _handleSaveTeamSetup);
       saveBtn.addEventListener('click', _handleSaveTeamSetup);
     }
+    var backBtn2 = document.getElementById('btn-back-team-setup');
+    if (backBtn2) backBtn2.addEventListener('click', _leaveTeamSetup);
   }
 
+  /**
+   * The next team letter: one past the HIGHEST in use, never backfilling.
+   *
+   * It used to return the lowest unused letter while the chip was appended
+   * at the end, so removing B from A,B,C and pressing + gave `A, C, B` —
+   * out of order, and persisted that way.
+   *
+   * Existing gaps are left alone. deleteTeam can legitimately leave ['A','C'],
+   * and renaming a letter would break `{category}-{letter}` everywhere it is
+   * used as a key — roster docs, users/{uid}.team, fa_matches[].team, every
+   * shard join. A saved team is never renumbered; we only stop making NEW
+   * gaps.
+   */
   function _nextLetter(existing) {
     var alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    for (var i = 0; i < alpha.length; i++) {
-      if (existing.indexOf(alpha[i]) === -1) return alpha[i];
-    }
-    return null;
+    var highest = -1;
+    (existing || []).forEach(function (l) {
+      var i = alpha.indexOf(l);
+      if (i > highest) highest = i;
+    });
+    return (highest + 1 < alpha.length) ? alpha[highest + 1] : null;
   }
 
   async function _handleSaveTeamSetup() {
@@ -2616,41 +2786,7 @@
       var val = inp.value.trim();
       if (val) fcfLinks[inp.dataset.fcfKey] = val;
     });
-    // Collect schedules. Scoped to the schedules section — the staff section
-    // reuses .ts-sched-block for its styling and must not be picked up here.
-    var schedules = {};
-    document.querySelectorAll('#team-setup-schedule-inputs .ts-sched-block').forEach(function (block) {
-      var schedKey = block.dataset.schedKey;
-      // Training rows
-      var training = [];
-      var list = block.querySelector('.ts-training-list');
-      if (list) {
-        list.querySelectorAll('.ts-sched-row').forEach(function (row) {
-          var daySel = row.querySelector('select[data-train-day]');
-          var timeInp = row.querySelector('input[data-train-time]');
-          var locInp = row.querySelector('input[data-train-location]');
-          var linkInp = row.querySelector('input[data-train-link]');
-          var day = daySel ? daySel.value : '';
-          var time = timeInp ? timeInp.value.trim() : '';
-          var location = locInp ? locInp.value.trim() : '';
-          var link = linkInp ? linkInp.value.trim() : '';
-          if (day || time || location) training.push({ day: day, time: time, location: location, link: link });
-        });
-      }
-      if (!training.length) training.push({ day: '', time: '', location: '' });
-      // Home game
-      var homeDaySel = block.querySelector('[data-home-day="' + schedKey + '"]');
-      var homeTimeInp = block.querySelector('[data-home-time="' + schedKey + '"]');
-      var homeLocInp = block.querySelector('[data-home-location="' + schedKey + '"]');
-      var homeLinkInp = block.querySelector('[data-home-link="' + schedKey + '"]');
-      var homeGame = {
-        day: homeDaySel ? homeDaySel.value : '',
-        time: homeTimeInp ? homeTimeInp.value : '',
-        location: homeLocInp ? homeLocInp.value.trim() : '',
-        link: homeLinkInp ? homeLinkInp.value.trim() : ''
-      };
-      schedules[schedKey] = { training: training, homeGame: homeGame };
-    });
+    var schedules = _collectSchedulesFromDom();
     // Collect staff emails. Validate before touching the network — a typo
     // here means somebody cannot register at all.
     var staffEmails = _collectStaffEmailsFromDom();
@@ -2691,7 +2827,12 @@
       _clubConfig = await getClub(session.teamId);
       _clubConfig.rosters = await loadRosters(session.teamId, _clubConfig);
       errEl.hidden = true;
-      navigate();
+      /* Entered from Settings, go back to Settings — the screen behaved
+         inconsistently otherwise, dumping the user on the dashboard home on
+         save but returning them to Settings on cancel. The forced entries
+         still go through navigate(), which re-evaluates their gates. */
+      if (_tsCancellable) _leaveTeamSetup();
+      else navigate();
     } catch (err) {
       errEl.textContent = 'Error: ' + err.message;
       errEl.hidden = false;
@@ -16660,7 +16801,8 @@
       content.addEventListener('click', e => {
         // Team Lead: edit categories
         if (e.target.closest('#btn-edit-categories')) {
-          showTeamSetup();
+          // The only voluntary entry, so the only one that may be left.
+          showTeamSetup({ cancellable: true });
           return;
         }
         // Dismiss the "old build" banner for this required version only.

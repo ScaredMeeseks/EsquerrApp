@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v61.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **317 passing** (191 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v62.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **329 passing** (203 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -43,6 +43,24 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v62 — team setup: a listener leak, and four UX fixes (2026-08-04)
+
+Reported as a quota bug — *"I gave the club a third slot, it shows 2 de 3, and adding still errors"*. **It was not the quota.**
+
+`_bindTeamSetupEvents` runs on every `showTeamSetup()`, but the four containers are static nodes whose `innerHTML` is replaced rather than the node — so listeners **accumulated on every entry**. On a second visit one "+" click ran twice: the first added the chip, the second saw the new count and fired the limit modal. **The team was added; the error was spurious.** Same cause let a category tick un-tick itself and made "add staff" / "+ Entrenament" double.
+
+Fixed with a `container._tsBound` guard (the same idiom the dashboard already uses), plus re-dispatch guards on the three quota-gated handlers — one physical click delivered to two listeners shares a `timeStamp`, which distinguishes a stray dispatch from a real second click.
+
+- **Back button**, shown only for the voluntary entry from Settings. The over-quota redirect and the no-category wizard stay inescapable. A successful save now also returns to Settings when entered from there.
+- **A disabled category shows one greyed `A` and no `+`**; clicking it enables the category through the existing toggle handler (which carries the quota gate).
+- **Only the last chip is removable**, so letters stay contiguous and the destructive affordance is on the one chip that is actually destructive.
+- **`_nextLetter` appends after the highest letter** instead of backfilling a gap. **Existing gaps are left alone** — `deleteTeam` legitimately leaves `['A','C']`, and renaming a saved team would break `{category}-{letter}` everywhere it is used as a key.
+- **Typed FCF links and schedules survive a re-render**, as the staff list already did. `_collectSchedulesFromDom()` extracted so the save path and the re-render share one reader.
+
+**329 passing.** Frontend-only — push to `main`, no `./deploy.sh`.
+
+**Reminder for the training rework:** letters are an arbitrary subset of A–Z in arbitrary order. Key everything by `{category}-{letter}`, never by index.
 
 ## v61 — "two hard sessions" now means consecutive (2026-08-04)
 

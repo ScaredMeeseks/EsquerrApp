@@ -192,6 +192,113 @@ describe('quota — a new club can still be set up', () => {
   });
 });
 
+describe('team setup — letters never gain a new gap', () => {
+  /* _nextLetter used to return the LOWEST unused letter while the chip was
+     appended at the END, so removing B from A,B,C and pressing + produced
+     `A, C, B` — out of order, and persisted that way. */
+  const nextLetter = (() => {
+    const code = grab(appSrc, '  function _nextLetter(existing)',
+        '\n  function ', 'js/app.js');
+    // eslint-disable-next-line no-new-func
+    return new Function(`${code}\nreturn _nextLetter;`)();
+  })();
+
+  it('appends after the highest letter in use', () => {
+    assert.strictEqual(nextLetter(['A']), 'B');
+    assert.strictEqual(nextLetter(['A', 'B']), 'C');
+  });
+
+  it('does NOT backfill a gap left by deleteTeam', () => {
+    // deleteTeam legitimately leaves ['A','C']; renaming a saved team would
+    // break {category}-{letter} everywhere it is used as a key.
+    assert.strictEqual(nextLetter(['A', 'C']), 'D');
+    assert.strictEqual(nextLetter(['B']), 'C');
+  });
+
+  it('starts at A for a category with nothing yet', () => {
+    assert.strictEqual(nextLetter([]), 'A');
+    assert.strictEqual(nextLetter(undefined), 'A');
+  });
+
+  it('runs out after Z rather than wrapping', () => {
+    assert.strictEqual(nextLetter(['Z']), null);
+  });
+});
+
+describe('team setup — the duplicate-listener bug', () => {
+  /* showTeamSetup() rebinds on every entry, but the containers are static
+     nodes whose innerHTML is replaced rather than the node — so listeners
+     accumulated. On a second visit one "+" click ran twice: the first added
+     the chip, the second saw the new count and fired the limit modal. The
+     team WAS added; the error was spurious. */
+  it('binds the team-setup handlers once per node', () => {
+    assert.ok(appSrc.includes('if (container._tsBound) return;'),
+        'the bind-once guard is missing — listeners will accumulate again');
+  });
+
+  it('ignores a re-dispatch of the same click on the quota-gated handlers', () => {
+    // One physical event delivered to two listeners shares a timeStamp.
+    ['addBtn._tsClick === e.timeStamp',
+      'e.target._tsChange === e.timeStamp',
+      'clickedChip._tsClick === e.timeStamp'].forEach((guard) => {
+      assert.ok(appSrc.includes(guard), 'missing re-dispatch guard: ' + guard);
+    });
+  });
+});
+
+describe('team setup — leaving the screen', () => {
+  it('is cancellable ONLY from the Settings entry', () => {
+    // The over-quota redirect and the no-category wizard must stay
+    // inescapable: escaping the first defeats the gate, and behind the
+    // second there is no configured club to go back to.
+    const calls = appSrc.match(/showTeamSetup\((\{[^)]*\})?\)/g) || [];
+    const cancellable = calls.filter((c) => c.includes('cancellable'));
+    assert.strictEqual(cancellable.length, 1,
+        'exactly one call site may pass cancellable, got: ' + calls.join(' | '));
+  });
+
+  it('resets cancellability on every entry', () => {
+    // deleteTeam re-enters via navigate(); a stale flag would let an
+    // over-quota lead walk away.
+    assert.ok(appSrc.includes('_tsCancellable = !!(opts && opts.cancellable);'),
+        'the flag must be assigned unconditionally at the top of showTeamSetup');
+  });
+
+  it('has the back button translated in all three languages', () => {
+    ['ts.back', 'ts.add_team'].forEach((key) => {
+      const i = appSrc.indexOf("'" + key + "':");
+      assert.ok(i !== -1, 'missing key ' + key);
+      const line = appSrc.slice(i, appSrc.indexOf('},', i));
+      ['ca:', 'es:', 'en:'].forEach((l) =>
+        assert.ok(line.includes(l), key + ' missing ' + l));
+    });
+  });
+});
+
+describe('team setup — typed input survives a re-render', () => {
+  /* A chip click or a category toggle re-renders the FCF and schedule
+     sections. They used to rebuild straight from _clubConfig, throwing away
+     anything half-typed; the staff list had always layered the DOM over the
+     stored values, and now all three do. */
+  it('reads the FCF inputs before rebuilding them', () => {
+    assert.ok(appSrc.includes('var typedLinks = _collectFcfFromDom();'));
+    assert.ok(appSrc.includes("(linkKey in typedLinks) ? typedLinks[linkKey]"));
+  });
+
+  it('reads the schedule inputs before rebuilding them', () => {
+    assert.ok(appSrc.includes('var typedSchedules = _collectSchedulesFromDom();'));
+    assert.ok(appSrc.includes('typedSchedules[schedKey] || existingSchedules[schedKey]'));
+  });
+
+  it('uses ONE schedule reader for both the save and the re-render', () => {
+    // Two copies of that shape would drift.
+    // Calls only — the `function _collectSchedulesFromDom()` declaration
+    // matches the same shape.
+    const uses = (appSrc.match(/(?<!function )_collectSchedulesFromDom\(\)/g) || []).length;
+    assert.strictEqual(uses, 2, 'expected the refresher and the save path');
+  });
+});
+
 describe('quota — the over-quota gate', () => {
   /** The client predicate the whole gate hangs off. */
   const overQuota = (() => {
