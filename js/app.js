@@ -1179,7 +1179,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 65;
+  const APP_VERSION = 66;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -8504,9 +8504,12 @@
         el.addEventListener('mouseenter', () => {
           tooltipEl.textContent = el.getAttribute('data-tooltip');
           tooltipEl.classList.add('visible');
+          // Both axes are viewport coordinates — .roster-tooltip is
+          // position:fixed, so no window.scrollY. They used to disagree:
+          // left came from the viewport, top was pushed into document space.
           const r = el.getBoundingClientRect();
           tooltipEl.style.left = r.left + r.width / 2 - tooltipEl.offsetWidth / 2 + 'px';
-          tooltipEl.style.top = r.top - tooltipEl.offsetHeight - 10 + window.scrollY + 'px';
+          tooltipEl.style.top = r.top - tooltipEl.offsetHeight - 10 + 'px';
         });
         el.addEventListener('mouseleave', () => {
           tooltipEl.classList.remove('visible');
@@ -16100,9 +16103,10 @@
             if (!tip) return;
             tip.textContent = el.getAttribute('data-tooltip');
             tip.classList.add('visible');
+            // Viewport coordinates: .roster-tooltip is position:fixed.
             const rect = el.getBoundingClientRect();
             tip.style.left = rect.left + rect.width / 2 - tip.offsetWidth / 2 + 'px';
-            tip.style.top = rect.top - tip.offsetHeight - 10 + window.scrollY + 'px';
+            tip.style.top = rect.top - tip.offsetHeight - 10 + 'px';
           });
           el.addEventListener('mouseleave', () => {
             const tip = document.getElementById('roster-tooltip');
@@ -16691,15 +16695,17 @@
       document.body.appendChild(tooltipEl);
     }
     $$('[data-tooltip]').forEach(icon => {
+      // client*, not page*: .roster-tooltip is position:fixed, so it is
+      // placed against the viewport. See the rule in style.css.
       icon.addEventListener('mouseenter', (e) => {
         tooltipEl.textContent = icon.getAttribute('data-tooltip');
         tooltipEl.classList.add('visible');
-        tooltipEl.style.left = e.pageX - tooltipEl.offsetWidth / 2 + 'px';
-        tooltipEl.style.top = e.pageY - tooltipEl.offsetHeight - 12 + 'px';
+        tooltipEl.style.left = e.clientX - tooltipEl.offsetWidth / 2 + 'px';
+        tooltipEl.style.top = e.clientY - tooltipEl.offsetHeight - 12 + 'px';
       });
       icon.addEventListener('mousemove', (e) => {
-        tooltipEl.style.left = e.pageX - tooltipEl.offsetWidth / 2 + 'px';
-        tooltipEl.style.top = e.pageY - tooltipEl.offsetHeight - 12 + 'px';
+        tooltipEl.style.left = e.clientX - tooltipEl.offsetWidth / 2 + 'px';
+        tooltipEl.style.top = e.clientY - tooltipEl.offsetHeight - 12 + 'px';
       });
       icon.addEventListener('mouseleave', () => {
         tooltipEl.classList.remove('visible');

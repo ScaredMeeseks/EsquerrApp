@@ -2348,9 +2348,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   cursor: help;
 }
 
-/* JS-powered tooltip */
+/* JS-powered tooltip. FIXED, not absolute, and that is load-bearing.
+
+   It is appended to <body> once and never removed — hidden only by
+   `opacity: 0`, which still occupies layout. As an absolutely positioned
+   element with no `top` yet set, it sat at its static position: the end of
+   the body's content, i.e. just past the foot of the page. It contributed
+   ~29px of scrollable overflow to EVERY page, which is the light band that
+   showed under the gradient on the auth screens.
+
+   `position: fixed` takes it out of the document's scrollable overflow
+   entirely, so it cannot come back whatever the page height. .ua-tooltip
+   already did this. The cost is that the three sites positioning it must
+   use VIEWPORT coordinates — clientX/clientY, and a getBoundingClientRect
+   top WITHOUT window.scrollY added. */
 .roster-tooltip {
-  position: absolute;
+  position: fixed;
   background: #2D2926; color: #fff;
   padding: .55rem 1rem; border-radius: 8px;
   font-size: .82rem; font-weight: 300;

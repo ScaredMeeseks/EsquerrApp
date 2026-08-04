@@ -887,3 +887,18 @@ v64 fixed login and left team setup, which is the only auth page whose content e
 
 Worth keeping in mind generally: **an explicit `min-height` on a flex item silently disables its automatic content-based minimum.** The two look unrelated and are not.
 
+## v66 — an invisible div was hanging off the bottom of every page (2026-08-04)
+
+The last 29px. With every box measuring 2484 — `.auth-container`, `.view`, `body`, `html` — and `documentElement.scrollHeight` reading 2513, the difference could only be **scrollable overflow**: something painted below the html box without contributing to it. Enumerating elements past the gradient named it in one shot: `DIV#roster-tooltip.roster-tooltip | bottom 2501 | absolute`.
+
+`#roster-tooltip` is appended to `<body>` once and never removed, hidden by **`opacity: 0` alone** — which still occupies layout. As an absolutely positioned element with no `top` yet assigned it sat at its *static position*: the end of the body's content, just past the foot of the page. Roughly 29px of scrollable overflow, on **every page**, since whenever the roster or a tactic board had been rendered.
+
+`position: fixed` removes it from the document's scrollable overflow entirely, so it cannot come back at any page height. `.ua-tooltip` was already fixed for its own reasons; this one was the odd one out.
+
+Fixed positioning is against the viewport, so the three sites placing it now use client coordinates: `e.pageX/pageY` → `e.clientX/clientY`, and two `getBoundingClientRect().top … + window.scrollY` lose the `scrollY` term. Those two were internally inconsistent anyway — `left` came from the viewport while `top` was pushed into document space, which happened to cancel out only because the pages concerned rarely scrolled.
+
+**New `test/layout.test.js`** (11 tests, wired into `test:unit`) pins all three causes from this run: every `100vh` is paired with a `100dvh` and in that order, `.auth-container` keeps `flex: 1 0 auto`, the tooltip stays `fixed`, and no positioning site reintroduces `window.scrollY` or `pageX/pageY`. **224 unit tests**, 350 total.
+
+### Why this took three passes
+Each of the three causes produces a light strip at the foot of the page, and a screenshot cannot tell them apart. What settled it every time was a number: `scrollWidth` vs `innerWidth` ruled out a horizontal scrollbar, `scrollHeight` vs `innerHeight` sized the gap, `getBoundingClientRect()` on the gradient element localised it, and finally enumerating elements below that bottom edge named the culprit outright.
+

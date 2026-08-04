@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v65.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **339 passing** (213 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v66.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **350 passing** (224 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -41,6 +41,18 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v66 — an invisible div was hanging off the bottom of every page (2026-08-04)
+
+The last 29px of the band. Every box measured 2484 — `.auth-container`, `.view`, `body`, `html` — while `scrollHeight` read 2513, so the gap could only be **scrollable overflow**. Enumerating elements below the gradient named it outright: `DIV#roster-tooltip | bottom 2501 | absolute`.
+
+It is appended to `<body>` once and never removed, hidden by **`opacity: 0` alone**, which still occupies layout. Absolutely positioned with no `top` yet set, it sat at its static position — the end of the body's content, just past the foot of the page — adding ~29px of overflow to **every** page since whenever the roster was last rendered.
+
+`position: fixed` takes it out of the document's scrollable overflow for good. The three sites placing it now use client coordinates (`clientX/clientY`, and no `window.scrollY`); two of them were internally inconsistent before, taking `left` from the viewport and `top` from document space.
+
+**New `test/layout.test.js`** — 11 tests pinning all three causes from this run, wired into `test:unit`.
+
+**Three passes for one band, and the lesson is the method:** all three causes look identical in a screenshot. Numbers separated them — `scrollWidth` vs `innerWidth` (not a scrollbar), `scrollHeight` vs `innerHeight` (how big), `getBoundingClientRect()` on the gradient (where), then enumerating what sat below it (what).
 
 ## v65 — the same band, on the one auth page taller than the screen (2026-08-04)
 
