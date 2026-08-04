@@ -793,3 +793,17 @@ The classifier flagged **76% of the demo squad** (19 of 25), which makes it usel
 That array immediately earned itself: the measuring script had its own copy of the rules and reported six flagged players with *no* reason, because it was missing the force-overrides. Reading `reasons` instead gave the real picture — and with it the two questions for the threshold conversation: **`acwr_low` flags 6 players for training LESS than usual** (arguably not risk at all), and **`hard_sessions` forces red on players scoring 79 and 72**.
 
 New `test/readiness-engine.test.js` (18 tests) — **309 passing** (183 unit + 93 rules + 33 functions). The load-bearing one asserts a 90-minute match **30 days ago** scores exactly 100.
+
+### 2026-08-04 — Readiness thresholds: the two the evidence pointed at (v60)
+
+With the defects gone, the `reasons` array made the remaining two problems specific rather than anecdotal. Flagging **56% → 40%**, green **32% → 48%**.
+
+**`acwr >= 0.8` was in the green gate**, so a player training below their four-week average could *never* be green — whatever their score, and up to a score of **84**. Four demo players sat at 77–80 showing amber purely for this. It conflated two opposite states: a high-ACWR player needs protecting **today**, a low-ACWR one needs building up **over weeks**. Same colour, opposite response, which is much of why the list was unactionable.
+
+The dot now means **risk from load**. Low load is still detected — it still lowers `loadRatioScore`, so it can still pull someone under 75, and it stays in `reasons` when it does — but it no longer blocks green on its own. It surfaces as `underloaded` in a **separate list on the staff home**, under the load watch list and visually divided from it, sorted by ACWR ascending and showing the ratio rather than a score.
+
+**`hard_sessions` no longer fires on borrowed numbers.** The force-override to red requires `s.real === true` on both sessions. Imputed load still feeds the ACWR and the score — a borrowed 9 means the squad found the session brutal and the player was there — but jumping straight to red is the strongest statement the app makes about someone, and it should not rest on two numbers they never gave. On the demo squad it still fires three times, so those are genuine.
+
+Six more tests (24 in the engine file) — **315 passing**. The two that matter pin exactly these: the green gate must not reject on ACWR being *low*, and the force-red must not fire on imputed sessions while still counting them toward the score.
+
+**Still open, and now genuinely a judgement call rather than a defect:** the colour is not a function of the score, so two players can show 72 in different colours. The tooltip explains why, which answers the original complaint; whether the *design* should change is separate. And every measurement remains against **synthetic** demo data — it describes the model's structure, not real footballers. Re-measure once the live club has accumulated real RPE.

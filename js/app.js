@@ -155,6 +155,11 @@
     'shome.no_return_date':  { ca:'Sense data', es:'Sin fecha', en:'No date set' },
     'shome.watch_list':      { ca:'Càrrega a vigilar', es:'Carga a vigilar', en:'Load to watch' },
     'shome.none_watch':      { ca:'Cap jugador amb càrrega elevada.', es:'Ningún jugador con carga elevada.', en:'No players flagged for load.' },
+    // Low load is a different problem with a different answer — build them
+    // up over weeks, rather than protect them today — so it gets its own
+    // list instead of the amber dot.
+    'shome.underloaded':     { ca:'Càrrega baixa', es:'Carga baja', en:'Training below usual' },
+    'shome.underloaded_hint':{ ca:'Entrenen per sota de la seva mitjana', es:'Entrenan por debajo de su media', en:'Training below their own average' },
     'shome.squad_size':      { ca:'jugadors', es:'jugadores', en:'players' },
     'shome.more':            { ca:'més a la plantilla', es:'más en la plantilla', en:'more in the squad' },
 
@@ -1172,7 +1177,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 59;
+  const APP_VERSION = 60;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -4918,7 +4923,15 @@
     if (rpeTrendScore <= 40) riskFlags++;
     if (matchFatigueScore <= 25) riskFlags++;
 
-    if (score >= 75 && acwr >= 0.8 && acwr <= 1.3 && riskFlags === 0) {
+    /* `acwr >= 0.8` used to sit in this gate, which made green IMPOSSIBLE
+       for a player training below their four-week average — whatever their
+       score, and up to a score of 84. That conflated two opposite states:
+       a high-ACWR player needs protecting today, a low-ACWR one needs
+       building up over weeks. The dot now means risk-from-load, and low
+       load is surfaced separately (see `underloaded`). It still lowers
+       loadRatioScore, so it can still pull someone under 75 — and it stays
+       in `reasons` when it does. */
+    if (score >= 75 && acwr <= 1.3 && riskFlags === 0) {
       color = 'green';
     } else if (score < 55 || acwr > 1.5 || riskFlags >= 2) {
       color = 'red';
@@ -4929,8 +4942,14 @@
     // --- Force overrides ---
     const fourDaysAgo = localDateStr(new Date(now.getTime() - 4 * 86400000));
     const recentHeavyMatches = matchSessions.filter(s => s.date >= fourDaysAgo && s.minutes >= 70);
+    /* Jumping straight to red is the strongest statement the app makes
+       about a player, so it requires HIS OWN numbers. Imputed load still
+       counts toward the ACWR and the score — a borrowed 9 means the squad
+       found the session brutal and he was there — but two numbers he never
+       gave should not force red on their own. */
     const last2Sessions = recentRPE.slice(-2);
-    const last2HighRPE = last2Sessions.length === 2 && last2Sessions.every(s => s.rpe >= 9);
+    const last2HighRPE = last2Sessions.length === 2 &&
+      last2Sessions.every(s => s.rpe >= 9 && s.real === true);
 
     if (acwr > 1.7 || (recentHeavyMatches.length >= 2) || last2HighRPE) {
       color = 'red';
@@ -4989,6 +5008,10 @@
       // the cell can say so rather than presenting an estimate as a reading.
       estimated: sessions.some(function (x) { return x.estimated; }),
       matchDaysSince: matchDaysSince,
+      // Training below their own four-week average. Not a risk flag — the
+      // response is to build them up, not to protect them — so it gets its
+      // own list rather than the amber dot.
+      underloaded: hasData && acwr > 0 && acwr < 0.8,
     };
   }
 
@@ -10452,6 +10475,30 @@
       ? `<p class="shome-more" data-shome-link="manage-roster" data-shome-id="">+${watchMore} ${t('shome.more')}</p>`
       : '') : `<p style="color:var(--text-secondary)">${t('shome.none_watch')}</p>`;
 
+    /* Low load, listed apart from the risk dot. A high-ACWR player needs
+       protecting today; these need building up over weeks. Same card,
+       because it is still a load question — but never the same list. */
+    const under = players
+        .filter(p => !outIds.has(String(p.id)))
+        .map(p => ({ p, rd: computeReadiness(p.id) }))
+        .filter(x => x.rd.underloaded)
+        .sort((a, b) => a.rd.acwr - b.rd.acwr)
+        .slice(0, WATCH_LIMIT);
+
+    const underHtml = under.length ? `
+      <div class="shome-subhead">${t('shome.underloaded')}
+        <span class="shome-badge">${under.length}</span>
+        <span class="shome-subhint">${t('shome.underloaded_hint')}</span>
+      </div>` + under.map(({ p, rd }) => `
+      <div class="shome-row" data-shome-link="staff-player-stats" data-shome-id="${sanitize(String(p.id))}">
+        <div class="shome-row-head">
+          <span class="readiness-dot readiness-nodata"></span>
+          <span class="shome-row-label">${sanitize(p.name)}</span>
+          <span class="shome-score">${rd.acwr.toFixed(2)}</span>
+        </div>
+        <div class="shome-row-meta">${posCirclesHtmlGlobal(p)}</div>
+      </div>`).join('') : '';
+
     return `
       <h2 class="page-title">${t('shome.title')}
         <span style="color:var(--text-secondary);font-weight:600;font-size:.7em;">${players.length} ${t('shome.squad_size')}</span>
@@ -10472,6 +10519,7 @@
         <div class="card">
           <div class="card-title">${t('shome.watch_list')} ${watch.length ? '<span class="shome-badge">' + watch.length + '</span>' : ''}</div>
           ${watchHtml}
+          ${underHtml}
         </div>
       </div>`;
   }

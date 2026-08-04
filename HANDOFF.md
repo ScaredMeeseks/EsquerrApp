@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v59.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **309 passing** (183 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v60.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **315 passing** (189 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -12,7 +12,7 @@ The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo cl
 
 Ordered by what I would pick up next. Nothing here is blocking.
 
-### 1. Readiness THRESHOLDS — the last piece, and now an evidence-based decision
+### 1. Readiness — DONE for now; revisit with real data (v52, v59, v60)
 v52 fixed the presentation and v59 the engine; flagging is down from 76% to **56%** with the thresholds untouched. What remains is genuinely clinical, and the `reasons` array says exactly where to look:
 
 - **`acwr_low` flags 6 of the 14** — amber for training *less* than usual. Under-loading is a real concern but it is not injury risk, and putting both behind one amber dot is much of why the list is unactionable. Splitting them, or dropping `acwr_low` from the flag entirely, is the single biggest lever left.
@@ -43,6 +43,20 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v60 — readiness thresholds (2026-08-04)
+
+The two the evidence pointed at, now that the defects are gone. Flagging **56% → 40%**, green **32% → 48%**. Cumulatively from where this started: **76% → 40%**.
+
+- **Low load no longer blocks green.** `acwr >= 0.8` sat in the green gate, so a player training below their four-week average could never be green — whatever their score, up to a score of 84. It conflated opposite states: high ACWR means protect them today, low means build them up over weeks. The dot now means **risk from load**; low load appears as its own list on the staff home, under the watch list, sorted by ACWR and showing the ratio.
+- **A force-red needs the player's own numbers.** `hard_sessions` (last two sessions both RPE ≥ 9) no longer fires on imputed values. Borrowed load still feeds the ACWR and the score — but jumping straight to red is the strongest statement the app makes about someone. It still fires three times on the demo squad, so those are genuine.
+
+**315 passing.** Frontend-only — push to `main`, no `./deploy.sh`.
+
+### What is genuinely left on readiness
+
+- **The colour is still not a function of the score** — two players can show 72 in different colours. The tooltip explains why, which answers the original complaint; whether the *design* should change is a separate judgement, not a defect.
+- **Every measurement so far is against synthetic demo data.** It describes the model's structure, not real footballers. The live club has had real RPE only since the Phase 5 wipe — **re-measure before tuning anything further.**
 
 ## v59 — readiness engine (2026-08-04)
 

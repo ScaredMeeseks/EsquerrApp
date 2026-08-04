@@ -254,6 +254,83 @@ describe('readiness — match RPE is banded by minutes', () => {
   });
 });
 
+describe('readiness — low load is not a risk flag', () => {
+  /* `acwr >= 0.8` used to sit in the green gate, so a player training below
+     their four-week average could NEVER be green — whatever their score, and
+     up to a score of 84. Four demo players sat at 77–80 showing amber purely
+     for this. The dot means risk-from-load; low load has its own list. */
+  function tapering() {
+    // Four normal weeks, then a very light one — a taper, or exams.
+    const trainings = [];
+    const rpe = {};
+    const avail = {};
+    let i = 0;
+    for (let w = 5; w >= 2; w--) {
+      for (let k = 0; k < 3; k++, i++) {
+        const d = day(-(w * 7 + k * 2));
+        trainings.push({id: 'tr' + i, date: d, time: '20:00'});
+        rpe['p1_training_' + d] = {rpe: 7, minutes: 90, date: d};
+        avail['p1_' + d] = 'yes';
+      }
+    }
+    const light = day(-2);
+    trainings.push({id: 'light', date: light, time: '20:00'});
+    rpe['p1_training_' + light] = {rpe: 3, minutes: 30, date: light};
+    avail['p1_' + light] = 'yes';
+    return engine({trainings, rpe, avail})('p1');
+  }
+
+  it('reports the player as underloaded', () => {
+    const rd = tapering();
+    assert.ok(rd.acwr < 0.8, 'fixture should produce a low ACWR, got ' + rd.acwr);
+    assert.strictEqual(rd.underloaded, true);
+  });
+
+  it('no longer forces the dot off green', () => {
+    // The gate must not reject on ACWR being LOW. High is still rejected.
+    assert.ok(!src.includes('acwr >= 0.8 && acwr <= 1.3'),
+        'the green gate still blocks low load');
+  });
+
+  it('never marks a player with no data as underloaded', () => {
+    assert.strictEqual(engine({})('nobody').underloaded, false);
+  });
+});
+
+describe('readiness — a force-red needs the player\'s own numbers', () => {
+  /** Two brutal sessions; `real` decides whether they are his. */
+  function twoHard(real) {
+    const b = baseTrainings('p1');
+    [1, 3].forEach((ago, i) => {
+      const d = day(-ago);
+      b.trainings.push({id: 'hard' + i, date: d, time: '20:00'});
+      b.avail['p1_' + d] = 'yes';
+      // A team-mate always reports, so p1 can borrow when he does not.
+      b.rpe['mate_training_' + d] = {rpe: 10, minutes: 90, date: d};
+      b.avail['mate_' + d] = 'yes';
+      if (real) b.rpe['p1_training_' + d] = {rpe: 10, minutes: 90, date: d};
+    });
+    return engine(b)('p1');
+  }
+
+  it('fires when the player reported both sessions himself', () => {
+    assert.ok(twoHard(true).reasons.includes('hard_sessions'));
+  });
+
+  it('does NOT fire on borrowed numbers', () => {
+    // Jumping straight to red is the strongest statement the app makes; it
+    // should not rest on two numbers he never gave.
+    const rd = twoHard(false);
+    assert.ok(rd.estimated, 'fixture should be imputing');
+    assert.ok(!rd.reasons.includes('hard_sessions'));
+  });
+
+  it('still counts the borrowed load toward the score', () => {
+    // Imputation feeds the ACWR either way — only the override is gated.
+    assert.ok(twoHard(false).acwr > 0);
+  });
+});
+
 describe('readiness — the tooltip can say why', () => {
   it('gives no reasons for a green dot', () => {
     const rd = engine(baseTrainings('p1'))('p1');
