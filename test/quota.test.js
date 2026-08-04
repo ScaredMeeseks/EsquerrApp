@@ -161,12 +161,91 @@ describe('quota — client and server agree', () => {
   });
 });
 
+describe('quota — the over-quota gate', () => {
+  /** The client predicate the whole gate hangs off. */
+  const overQuota = (() => {
+    const code = grab(appSrc, '  function clubMaxTeams()',
+        '\n  /* Tell db.js which categories', 'js/app.js');
+    // eslint-disable-next-line no-new-func
+    return (cfg) => new Function('_clubConfig', 'rosterKeys',
+        `${code}\nreturn isClubOverQuota();`)(cfg,
+        (c) => ({ length: server.rosterKeysOf(c && c.categories).length }));
+  })();
+
+  it('is false at or under the allowance', () => {
+    assert.strictEqual(overQuota({
+      maxTeams: 2, categories: { amateur: cat(true, ['A', 'B']) },
+    }), false);
+  });
+
+  it('is true once the allowance is lowered below the count', () => {
+    assert.strictEqual(overQuota({
+      maxTeams: 1, categories: { amateur: cat(true, ['A', 'B']) },
+    }), true);
+  });
+
+  it('is true for a multi-team club with no maxTeams at all', () => {
+    // Missing means 1 — which is exactly why the grandfathering migration
+    // has to run before this gate ships.
+    assert.strictEqual(overQuota({
+      categories: { amateur: cat(true, ['A', 'B']) },
+    }), true);
+  });
+
+  it('is false when there is no club loaded', () => {
+    assert.strictEqual(overQuota(null), false);
+  });
+
+  /* The gate differentiates lead / staff / player, and gets it wrong in a
+     different way at each site if the condition drifts. Pinned by source so
+     a future edit cannot quietly drop one. */
+  it('exempts the superadmin and the lead from the staff sidebar gate', () => {
+    // Blocking the lead here would leave nobody able to fix the club.
+    assert.ok(appSrc.includes(
+        "!(isClubOverQuota() && !session.isAdmin && !session.isTeamLead)"),
+    'the sidebar gate must exempt admin and lead');
+  });
+
+  it('exempts the superadmin and the lead from the page gate', () => {
+    assert.ok(appSrc.includes(
+        "if (isClubOverQuota() && !session.isAdmin && !session.isTeamLead &&"),
+    'the page gate must exempt admin and lead');
+  });
+
+  it('leaves players alone — the gate only covers staff pages', () => {
+    // A staff+player member keeps the player section and player-home; a
+    // plain player never meets the gate at all.
+    const i = appSrc.indexOf('if (isClubOverQuota() && !session.isAdmin');
+    const gate = appSrc.slice(i, i + 220);
+    assert.ok(gate.includes('STAFF_PAGES.has(currentPage)'),
+        'the gate must be scoped to staff pages');
+    assert.ok(!/player-home|player-actions/.test(gate),
+        'the gate must not name any player page');
+  });
+
+  it('routes the lead to the setup screen rather than blocking them', () => {
+    assert.ok(/session\.isTeamLead && isClubOverQuota\(\)[\s\S]{0,120}showTeamSetup\(\)/.test(appSrc),
+        'the lead must be sent to the category screen, not shown the message');
+  });
+
+  it('handles the empty currentPage a staff-only member lands on', () => {
+    // Their sidebar is now empty, so renderSidebar sets currentPage to ''.
+    // Without this arm they get "page not found" instead of the explanation.
+    assert.ok(appSrc.includes("currentPage === '' || STAFF_PAGES.has(currentPage)"),
+        'the empty-currentPage arm is missing');
+  });
+});
+
 describe('quota — i18n', () => {
   // t() returns the raw key on a miss, so a missing translation ships as
   // `quota.add_blocked` on screen rather than failing loudly.
   ['quota.title', 'quota.add_blocked', 'quota.counter', 'quota.max_teams',
     'quota.saved', 'common.ok', 'error.quota_exceeded',
-    'error.remove_team_unavailable'].forEach((key) => {
+    'error.remove_team_unavailable',
+    'quota.over_staff', 'quota.over_lead', 'team_del.title', 'team_del.msg',
+    'team_del.kept', 'team_del.confirm_hint', 'team_del.deleting',
+    'team_del.done', 'team_del.failed', 'team_del.last_team',
+    'team_del.button', 'team_del.disable_blocked'].forEach((key) => {
     it(`${key} is translated into ca, es and en`, () => {
       const i = appSrc.indexOf("'" + key + "':");
       assert.ok(i !== -1, 'key missing: ' + key);

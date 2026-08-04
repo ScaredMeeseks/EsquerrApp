@@ -33,6 +33,35 @@ So a lead could raise their own `maxTeams`, or write `categories` past it, strai
 
 Open sub-question: does the superadmin set a number of *teams* (letters, across all categories), or a number of *categories*? "3 teams" could mean amateur-A/B/C or amateur-A + juvenil-A + cadet-A. The wording above assumes the former — worth confirming, because it changes the UI.
 
+## v56 — team quota, DEPLOY 2 of 2: deletion + the gate (2026-08-04)
+
+The destructive half. **Not yet deployed.** `deleteTeam` erases one `{category}-{letter}` and everything belonging to it **except the Auth accounts** — its players are detached (profile kept, `category`/`team` cleared) and show as unassigned.
+
+- **Shards are per category, not per letter**, so this filters rows inside documents the surviving team co-owns. A whole-document delete would take both teams.
+- **Three ordering constraints**, each a different silent failure: capture match ids before filtering matches; delete the roster doc **last** (or `reshardMember` moves the medical data out from under the delete); refresh claims **early**.
+- **Re-running is safe.** A letter already gone from the config means *resume*, not error — that plus the marker doc is the whole partial-failure story.
+- **Kept on purpose:** matches with no team letter, and the category's trainings unless this was its last team.
+- **The gate**: lead → straight to the category screen; staff → "Contact your lead…" and nothing clickable; **players unaffected**.
+
+**286 tests passing** (162 unit + 93 rules + 31 functions).
+
+### Runbook
+
+```bash
+cd ~/EsquerrApp && git pull
+./deploy.sh functions     # deleteTeam + the setClubCategories change
+./deploy.sh rules         # the teamDeletions marker rule
+# then push main (frontend), or confirm Pages already redeployed
+```
+
+Rules and functions both changed this time, so **both** are needed — unlike v47–v55, which were frontend-only.
+
+### Try it on the demo club first
+
+`Tm96gel58VSQvxgynf45` has one team, so give it a second before testing deletion: raise `maxTeams` to 2 in the superadmin club list, add `amateur-B`, then delete it. Check afterwards that the players still exist in Auth and appear as unassigned in Registrations.
+
+**Known residual risk:** every client holds the whole blob and writes it back wholesale, so a coach saving *during* a delete can resurrect rows. The early claim refresh closes this when the category is emptied; when the category survives, nothing in the current architecture closes it. Delete when the club is idle — and a second run is safe and cheap.
+
 ## v55 — team quota, DEPLOY 1 of 2 (2026-08-04)
 
 The first commercial constraint: `clubs/{id}.maxTeams` caps how many `{category}-{letter}` teams a lead may create. **Not yet deployed — see the runbook below, the order matters.**

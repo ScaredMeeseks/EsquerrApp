@@ -1074,13 +1074,14 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
         "Aquest club no pot tenir més de " + max + " equips.");
   }
 
-  // Deploy 1 does not delete team data, and removing a letter here would
-  // strand its players, orphan its roster doc and leave registration still
-  // pointing at the dead team. Removals go through deleteTeam in deploy 2.
+  // Removals never come through here, even now that deleteTeam exists.
+  // Dropping a letter from this map alone would leave the team's matches,
+  // medical history and availability behind, its roster doc orphaned — and
+  // joinClub still registering new people onto the dead team.
   const removed = prevKeys.filter((k) => !nextKeys.includes(k));
   if (removed.length) {
     throw new HttpsError("failed-precondition",
-        "Encara no es poden eliminar equips (" + removed.join(", ") + ").");
+        "Per eliminar un equip utilitza deleteTeam (" + removed.join(", ") + ").");
   }
 
   const payload = {categories};
@@ -1635,6 +1636,315 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
 
       logger.info("deleteMember", done);
       return {ok: true, ...done};
+    });
+
+// ── 7f. deleteTeam — erase one {category}-{letter} and its data ──
+//
+// The destructive half of the team quota: "to add a team, remove one".
+// Everything belonging to the team goes EXCEPT the Firebase Auth accounts —
+// its players are DETACHED (profile kept, category/team cleared) so they
+// appear as unassigned and can be put on another team.
+//
+// Three ordering constraints, each of which causes a different SILENT
+// failure if broken. They are called out at their step below:
+//   A. capture the match ids BEFORE filtering fa_matches
+//   B. delete the roster document LAST
+//   C. refresh claims EARLY
+//
+// Shards are per CATEGORY, never per letter, so when the category has
+// another team this filters rows inside documents that team co-owns. Whole
+// documents are only ever deleted when the category itself is going.
+
+/** Chunk a list for Firestore's `in` queries, which cap at 10 values. */
+function chunk10(arr) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += 10) out.push(arr.slice(i, i + 10));
+  return out;
+}
+
+/** Delete every doc a query matches, paged so collection size cannot time us out. */
+async function deleteByQuery(query) {
+  let removed = 0;
+  for (;;) {
+    const snap = await query.limit(400).get();
+    if (snap.empty) return removed;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    removed += snap.size;
+    if (snap.size < 400) return removed;
+  }
+}
+
+exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+      }
+      const caller = request.auth;
+      const isSuper = caller.token.email === SUPERUSER_EMAIL;
+      const clubId = (isSuper && request.data && request.data.clubId) ?
+        String(request.data.clubId) : caller.token.teamId;
+      const category = String((request.data || {}).category || "");
+      const letter = String((request.data || {}).letter || "");
+      if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
+      if (!isSuper && caller.token.role !== "lead") {
+        throw new HttpsError("permission-denied",
+            "Només el responsable del club pot eliminar un equip.");
+      }
+      if (!CATEGORY_ORDER.includes(category) || !/^[A-Z]$/.test(letter)) {
+        throw new HttpsError("invalid-argument", "Equip no vàlid.");
+      }
+      const teamKey = category + "-" + letter;
+
+      const clubRef = db.collection("clubs").doc(clubId);
+      const clubSnap = await clubRef.get();
+      if (!clubSnap.exists) throw new HttpsError("not-found", "Club no trobat.");
+      const club = clubSnap.data() || {};
+      const liveKeys = rosterKeysOf(club.categories);
+
+      // TOLERANT validation. A letter already missing from the config means a
+      // previous run got past the club-doc write and stopped — resume rather
+      // than refuse, or a partial failure bricks the team permanently.
+      const resuming = !liveKeys.includes(teamKey);
+      if (!resuming && liveKeys.length <= 1) {
+        throw new HttpsError("failed-precondition",
+            "Un club ha de tenir com a mínim un equip.");
+      }
+
+      const markerRef = clubRef.collection("teamDeletions").doc(teamKey);
+      await markerRef.set({
+        status: "running", by: caller.uid, resuming,
+        startedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      // ── Phase 1: capture (reads only) ────────────────────────
+      const rosters = await loadRosters(clubId);
+      const mine = rosters.find((r) => r.key === teamKey);
+      const otherPlayers = new Set();
+      rosters.forEach((r) => {
+        if (r.key === teamKey) return;
+        r.players.forEach((e) => otherPlayers.add(e));
+      });
+
+      const members = await db.collection("users")
+          .where("teamId", "==", clubId).get();
+      const teamUids = [];
+      members.forEach((doc) => {
+        const u = doc.data() || {};
+        const email = String(u.email || "").toLowerCase();
+        // On this team's list, or assigned to it directly from the roster
+        // screen without ever being listed. Anyone ALSO on another team's
+        // list is left alone — a duplicated address must not cost somebody
+        // all of their data.
+        const listed = !!mine && mine.players.includes(email) && !otherPlayers.has(email);
+        const assigned = (u.category || "") === category && (u.team || "") === letter;
+        if (listed || assigned) teamUids.push(doc.id);
+      });
+
+      const shards = await readDataShards(clubId);
+      const catShard = (key) => (shards.get(key) || []).find((s) => s.cat === category);
+
+      // CONSTRAINT A: the five match-joined keys resolve only through the
+      // match id. Filter fa_matches first and the join is destroyed, leaving
+      // their events and call-ups orphaned in the shard forever.
+      const matchesShard = catShard("fa_matches");
+      const deletedMatchIds = [];
+      if (matchesShard) {
+        const rows = parseDataDoc(matchesShard.snap, []);
+        (Array.isArray(rows) ? rows : []).forEach((m) => {
+          // Only rows explicitly stamped with this letter. A match with no
+          // team cannot be attributed here, and deleting it would destroy
+          // the surviving team's history.
+          if (String(m.team || "") === letter) deletedMatchIds.push(String(m.id));
+        });
+      }
+      const killMatch = new Set(deletedMatchIds);
+      const killUid = new Set(teamUids);
+      const remaining = (club.categories && club.categories[category] &&
+        Array.isArray(club.categories[category].letters)) ?
+        club.categories[category].letters.filter((l) => l !== letter) : [];
+      const catGone = remaining.length === 0;
+
+      // ── Phase 2: the club document ───────────────────────────
+      const clubPatch = {};
+      if (!resuming) {
+        clubPatch["categories." + category + ".letters"] =
+          catGone ? ["A"] : remaining;
+        // Leaving letters: [] would be read back as ['A'] by rosterKeys and
+        // getTeamLetters, silently resurrecting a team on re-enable.
+        if (catGone) clubPatch["categories." + category + ".enabled"] = false;
+      }
+      // Dotted paths, not set(merge): merge preserves nested map keys, which
+      // is exactly why the old team's config would otherwise survive.
+      clubPatch["fcfLinks." + teamKey] = FieldValue.delete();
+      clubPatch["schedules." + teamKey] = FieldValue.delete();
+      await clubRef.update(clubPatch);
+
+      // ── Phase 3: claims (CONSTRAINT C — early, not at the end) ──
+      // When the category is going, this strips it from every open client's
+      // token immediately, so a stale client can no longer write back the
+      // rows we are about to delete.
+      let refreshed = 0;
+      if (catGone) {
+        const after = (await clubRef.get()).data() || {};
+        const leadEmail = String(club.leadEmail || "").toLowerCase();
+        for (const doc of members.docs) {
+          const u = doc.data() || {};
+          const email = String(u.email || "").toLowerCase();
+          const isLead = email === leadEmail || u.isTeamLead === true;
+          const m = membershipFrom(rosters, email);
+          const next = claimsFor(after, isLead, m);
+          try {
+            await admin.auth().setCustomUserClaims(doc.id,
+                {teamId: clubId, role: next.role, cats: next.cats});
+            await doc.ref.set({
+              staffCategories: next.cats,
+              claimsUpdatedAt: FieldValue.serverTimestamp(),
+            }, {merge: true});
+            refreshed++;
+          } catch (e) { /* no Auth account — nothing to claim */ }
+        }
+      }
+
+      // ── Phase 4: the data ────────────────────────────────────
+      const dropRows = (pred) => (arr) =>
+        (Array.isArray(arr) ? arr.filter((r) => !pred(r)) : null);
+
+      /* Remove map entries by key, in EITHER storage format.
+         scrubDataDoc has a dual contract that is easy to get subtly wrong: a
+         blob doc gets the PARSED value and wants the new value back, while a
+         per-field doc gets the RAW document and wants an ARRAY of field names
+         to delete. Both arrive as plain objects, so the mutate cannot tell
+         them apart — decide from the snapshot instead, which can. */
+      const INTERNAL = new Set(["v", "category", "_migrated"]);
+      async function dropEntriesByKey(key, pred) {
+        for (const s of shards.get(key) || []) {
+          const isBlob = typeof (s.snap.data() || {}).v === "string";
+          await scrubDataDoc(s.ref, isBlob ?
+            (parsed) => {
+              if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+              const out = {};
+              Object.keys(parsed).forEach((k) => {
+                if (!pred(k)) out[k] = parsed[k];
+              });
+              return out;
+            } :
+            (raw) => Object.keys(raw).filter((k) => !INTERNAL.has(k) && pred(k)));
+        }
+      }
+
+      // Matches first (safe now that the ids are captured). This write fires
+      // updateTeamDates, which re-derives teams/{id}.matchDates from every
+      // shard — so the reminder schedulers stop firing for dead fixtures.
+      if (matchesShard) {
+        await scrubDataDoc(matchesShard.ref,
+            dropRows((m) => String(m.team || "") === letter));
+      }
+      await scrubShards(shards, "fa_matchday",
+          dropRows((g) => String(g.team || "") === letter));
+
+      // Match-joined maps, across ALL shards: a row can sit anywhere.
+      for (const key of ["fa_match_events", "fa_match_goals",
+        "fa_convocatoria_sent", "fa_convocatoria_callup",
+        "fa_tactic_match_boards"]) {
+        await dropEntriesByKey(key, (k) => killMatch.has(String(k)));
+      }
+
+      // Roster-joined keys by uid — the medical and availability history.
+      if (teamUids.length) {
+        await scrubShards(shards, "fa_injuries",
+            dropRows((i) => killUid.has(String(i.playerId))));
+        for (const key of ["fa_injury_notes", "fa_injury_zone", "fa_injury_dismissed"]) {
+          await dropEntriesByKey(key, (k) => killUid.has(k));
+        }
+        await dropEntriesByKey("fa_training_staff_override",
+            (k) => teamUids.some((u) => ownsEntryKey("uidPrefix", k, u)));
+        await scrubShards(shards, "fa_staff_notifications",
+            dropRows((n) => killUid.has(String(n.uid))));
+      }
+
+      // Record collections. Every record carries `uid`, so query on it
+      // rather than matching the {uid}_… doc-id prefix.
+      const teamRef = db.collection("teams").doc(clubId);
+      let records = 0;
+      for (const c of chunk10(teamUids)) {
+        for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+          records += await deleteByQuery(
+              teamRef.collection(coll).where("uid", "in", c));
+        }
+      }
+      // A player from ANOTHER team who answered availability for one of this
+      // team's matches: the record belongs to a fixture that no longer exists.
+      for (const c of chunk10(deletedMatchIds)) {
+        records += await deleteByQuery(
+            teamRef.collection("matchAvail").where("matchId", "in", c));
+      }
+
+      // fa_users is a MOVE, not an edit. Clearing the fields in place would
+      // leave the shard document's `category` disagreeing with the row, and
+      // the client's next whole-blob write would re-route and duplicate the
+      // person; removing the row outright means db.js's users→fa_users
+      // reconcile re-adds them with stale fields on the next login.
+      let moved = [];
+      if (teamUids.length) {
+        for (const s of shards.get("fa_users") || []) {
+          const rows = parseDataDoc(s.snap, []);
+          if (!Array.isArray(rows)) continue;
+          const taken = rows.filter((u) => killUid.has(String(u.id)));
+          if (!taken.length) continue;
+          moved = moved.concat(taken.map((u) =>
+            Object.assign({}, u, {category: "", team: ""})));
+          await scrubDataDoc(s.ref, dropRows((u) => killUid.has(String(u.id))));
+        }
+      }
+      if (moved.length) {
+        const noneRef = teamRef.collection("data").doc("fa_users__none");
+        const noneSnap = await noneRef.get();
+        const existing = noneSnap.exists ? parseDataDoc(noneSnap, []) : [];
+        const list = Array.isArray(existing) ? existing.slice() : [];
+        const seen = new Set(list.map((u) => String(u.id)));
+        moved.forEach((u) => {
+          if (seen.has(String(u.id))) return;
+          seen.add(String(u.id));
+          list.push(u);
+        });
+        // `category` is not decoration: a shard without it is invisible to
+        // the client's where('category','in',…) query — dark, not misfiled.
+        await noneRef.set({v: JSON.stringify(list), category: "none"}, {merge: true});
+      }
+
+      // The category itself is going, so its sessions belong to nobody and
+      // would otherwise sit unreadable forever — no one's claims include the
+      // category any more. Only on catGone: while another team survives, the
+      // sessions are still theirs.
+      if (catGone) {
+        const trShard = catShard("fa_training");
+        if (trShard) await trShard.ref.delete();
+      }
+
+      // ── Phase 5: the roster doc (CONSTRAINT B — LAST) ────────
+      // Deleting it fires onRosterWritten, which detaches every listed member
+      // (roles/category/team cleared, prevCategory/prevTeam stamped, claims
+      // re-set, Auth untouched). That in turn fires reshardMember, which
+      // MOVES roster-joined rows into __none — so doing this first would let
+      // the medical data escape to a shard already processed and survive.
+      await clubRef.collection("rosters").doc(teamKey).delete();
+
+      await markerRef.set({
+        status: "done", finishedAt: FieldValue.serverTimestamp(),
+        uids: teamUids.length, matches: deletedMatchIds.length,
+        records, catGone, refreshed,
+      }, {merge: true});
+
+      logger.info("deleteTeam", {
+        clubId, teamKey, by: caller.uid, uids: teamUids.length,
+        matches: deletedMatchIds.length, records, catGone, resuming,
+      });
+      return {
+        ok: true, teamKey, uids: teamUids.length,
+        matches: deletedMatchIds.length, records, catGone,
+      };
     });
 
 // ── 8. (removed in Phase 3b) bridgeLegacyPlayerData ──

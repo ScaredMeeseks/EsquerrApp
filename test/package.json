@@ -10,12 +10,13 @@
     "test:router": "mocha router.test.js --exit",
     "test:utils": "mocha utils.test.js --exit",
     "test:rules": "firebase emulators:exec --only firestore --project=demo-esquerrapp \"mocha rules.test.js --timeout 20000 --exit\"",
-    "test:functions": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha functions.test.js wipe.test.js --timeout 120000 --exit\"",
+    "test:functions": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha functions.test.js wipe.test.js teams.test.js --timeout 120000 --exit\"",
     "test:nav": "mocha navigation.test.js --exit",
     "test:avail": "mocha availability.test.js --exit",
     "test:context": "mocha context.test.js --exit",
     "test:readiness": "mocha readiness.test.js --exit",
-    "test:quota": "mocha quota.test.js --exit"
+    "test:quota": "mocha quota.test.js --exit",
+    "test:teams": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha teams.test.js --timeout 120000 --exit\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

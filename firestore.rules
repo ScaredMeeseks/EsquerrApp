@@ -189,6 +189,15 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['fcfLinks', 'schedules']));
 
+      /* Audit trail + resume point for deleteTeam. Written only by the
+         Admin SDK, which bypasses rules entirely — `write: if false` is the
+         point, not an oversight. The lead can read it to see that a delete
+         ran, and when. */
+      match /teamDeletions/{teamKey} {
+        allow read: if isLeadOf(clubId) || isSuperUser();
+        allow write: if false;
+      }
+
       // ── Team rosters: the staff/player email lists (PII — minors' addresses).
       // Deliberately NOT on the club doc, which every member can read.
       // Doc id is "{category}-{letter}", the same key as fcfLinks/schedules.

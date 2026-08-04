@@ -93,6 +93,24 @@
     'quota.saved':       { ca:"Límit d'equips actualitzat.", es:'Límite de equipos actualizado.', en:'Team limit updated.' },
     'error.quota_exceeded': { ca:'Aquest club no pot tenir més de {max} equips.', es:'Este club no puede tener más de {max} equipos.', en:'This club cannot have more than {max} teams.' },
     'error.remove_team_unavailable': { ca:"Encara no es poden eliminar equips des d'aquí. Contacta amb l'administrador.", es:'Todavía no se pueden eliminar equipos desde aquí. Contacta con el administrador.', en:'Removing teams from here is not available yet. Contact the admin.' },
+
+    // ── Over-quota gate + team deletion (deploy 2) ──
+    'quota.over_staff':  { ca:'Contacta amb el responsable per gestionar els equips del club.', es:'Contacta con el responsable para gestionar los equipos del club.', en:'Contact your lead to manage the teams in the club.' },
+    'quota.over_lead':   { ca:"El club té més equips dels permesos. Elimina un equip per continuar.", es:'El club tiene más equipos de los permitidos. Elimina un equipo para continuar.', en:'The club has more teams than allowed. Remove a team to continue.' },
+    'team_del.title':    { ca:"Eliminar l'equip {team}", es:'Eliminar el equipo {team}', en:'Delete team {team}' },
+    'team_del.msg':      { ca:"S'esborraran TOTES les dades de l'equip {team}: partits, convocatòries, disponibilitats, RPE, lesions i historial mèdic. No es pot desfer.",
+                           es:'Se borrarán TODOS los datos del equipo {team}: partidos, convocatorias, disponibilidades, RPE, lesiones e historial médico. No se puede deshacer.',
+                           en:'ALL data for team {team} will be erased: matches, call-ups, availability, RPE, injuries and medical history. This cannot be undone.' },
+    'team_del.kept':     { ca:'Es conserven els comptes dels jugadors, que passaran a "sense equip".', es:'Se conservan las cuentas de los jugadores, que pasarán a "sin equipo".', en:'Player accounts are kept and become unassigned.' },
+    'team_del.confirm_hint': { ca:'Escriu {team} per confirmar:', es:'Escribe {team} para confirmar:', en:'Type {team} to confirm:' },
+    'team_del.deleting': { ca:"Eliminant l'equip…", es:'Eliminando el equipo…', en:'Deleting the team…' },
+    'team_del.done':     { ca:'Equip eliminat.', es:'Equipo eliminado.', en:'Team deleted.' },
+    'team_del.failed':   { ca:"No s'ha pogut eliminar l'equip. Torna-ho a provar.", es:'No se ha podido eliminar el equipo. Inténtalo de nuevo.', en:'The team could not be deleted. Try again.' },
+    'team_del.last_team': { ca:'Un club ha de tenir com a mínim un equip.', es:'Un club debe tener como mínimo un equipo.', en:'A club must have at least one team.' },
+    'team_del.button':   { ca:'Eliminar equip', es:'Eliminar equipo', en:'Delete team' },
+    'team_del.disable_blocked': { ca:"Aquesta categoria encara té equips ({teams}). Elimina'ls un per un: en treure l'últim, la categoria es desactiva sola.",
+                           es:'Esta categoría todavía tiene equipos ({teams}). Elimínalos uno a uno: al quitar el último, la categoría se desactiva sola.',
+                           en:'This category still has teams ({teams}). Remove them one by one — taking the last one out disables the category by itself.' },
     'common.player':     { ca:'Jugador', es:'Jugador', en:'Player' },
     'common.staff':      { ca:'Staff', es:'Staff', en:'Staff' },
     'common.cancel':     { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
@@ -1142,7 +1160,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 55;
+  const APP_VERSION = 56;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -2050,6 +2068,17 @@
       _hideSplash();
       return;
     }
+    /* Over quota: the superadmin lowered the club's allowance below what it
+       already has. The LEAD is taken straight to the category screen and
+       asked to remove a team — sitting here in navigate() rather than in
+       renderPage means they never reach the dashboard at all. Staff and
+       players are handled at the page layer, because a staff+player member
+       is both and this branch could only pick one. */
+    if (session.isTeamLead && isClubOverQuota()) {
+      showTeamSetup();
+      _hideSplash();
+      return;
+    }
     // Team lead first-time setup (categories not yet configured)
     if (session.isTeamLead && _clubConfig && !_clubConfig._setupDone) {
       const cats = _clubConfig.categories || {};
@@ -2338,6 +2367,15 @@
     if (!container) return;
     var used = _domTeamCount(container);
     var max = clubMaxTeams();
+    var banner = document.getElementById('ts-quota-banner');
+    if (banner) {
+      // Uses the SAVED count, not the DOM one: the lead is over quota
+      // because of what the club currently has, and the message must not
+      // vanish the moment they tick a box.
+      var over = isClubOverQuota();
+      banner.hidden = !over;
+      if (over) banner.textContent = t('quota.over_lead');
+    }
     var el = document.getElementById('ts-quota-counter');
     if (el) {
       el.textContent = t('quota.counter').replace('{n}', used).replace('{max}', max);
@@ -2370,6 +2408,19 @@
           }
           row.classList.add('active');
         } else {
+          var savedHere = rosterKeys(_clubConfig).filter(function (k) {
+            return k.indexOf(e.target.dataset.cat + '-') === 0;
+          });
+          if (savedHere.length) {
+            // Disabling would silently remove every one of them. Removing the
+            // last team of a category disables it on its own.
+            e.target.checked = true;
+            showModal(t('quota.title'),
+              t('team_del.disable_blocked').replace('{teams}', savedHere.join(', ')),
+              function () {},
+              { hideCancel: true, danger: false, confirmLabel: t('common.ok') });
+            return;
+          }
           row.classList.remove('active');
         }
         _refreshTeamSetupFcf();
@@ -2409,6 +2460,16 @@
         var catKey2 = clickedChip.dataset.cat;
         var lettersEl2 = container.querySelector('.ts-letters[data-cat="' + catKey2 + '"]');
         var chips = lettersEl2.querySelectorAll('.ts-letter-chip');
+        var teamKey2 = catKey2 + '-' + clickedChip.dataset.letter;
+        /* A team that has been SAVED owns matches, medical records and
+           availability, so it can only go through deleteTeam — dropping the
+           letter from the config alone would strand all of it and leave
+           joinClub still registering people onto a dead team. A chip added a
+           moment ago and not yet saved owns nothing, so it just disappears. */
+        if (rosterKeys(_clubConfig).indexOf(teamKey2) !== -1) {
+          showDeleteTeamModal(catKey2, clickedChip.dataset.letter);
+          return;
+        }
         if (chips.length <= 1) return; // keep at least 1
         clickedChip.remove();
         _refreshTeamSetupFcf();
@@ -2786,7 +2847,11 @@
       items.push({ id: 'player-actions', icon: '🔔', label: t('sidebar.player_actions') });
     }
 
-    if (roles.includes('staff')) {
+    // Over quota, a plain staff member gets no staff pages at all — the club
+    // needs its lead to resolve it, and there is nothing useful they can do
+    // meanwhile. A staff+player keeps the player section below.
+    if (roles.includes('staff') &&
+        !(isClubOverQuota() && !session.isAdmin && !session.isTeamLead)) {
       items.push({ section: t('sidebar.section_staff') });
       items.push({ id: 'staff-home', icon: '🏠', label: t('sidebar.staff_home') });
       items.push({ id: 'registrations', icon: '📝', label: t('sidebar.registrations') });
@@ -3007,6 +3072,19 @@
       'archived-seasons': renderArchivedSeasons,
       'archived-season-detail': renderArchivedSeasonDetail,
     };
+
+    /* Over quota. `currentPage === ''` is load-bearing: a staff-ONLY member
+       now has an empty sidebar, so renderSidebar sets currentPage to '' and
+       without this arm they would land on "page not found" instead of the
+       explanation. */
+    if (isClubOverQuota() && !session.isAdmin && !session.isTeamLead &&
+        (currentPage === '' || STAFF_PAGES.has(currentPage))) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>' +
+        t('quota.over_staff') + '</p></div>';
+      syncSidebarActive();
+      bindDynamicActions();
+      return;
+    }
 
     // A staff member whose address is on no team's staff list has no
     // categories, so every staff page would render empty. Say why instead.
@@ -12612,6 +12690,79 @@
   /* Irreversible, superadmin-only erase. Typed confirmation rather than a
      one-tap dialog: this destroys the account and every record, and unlike
      "leave the squad" on the Registrations page there is no way back. */
+  /**
+   * Delete a team and everything belonging to it.
+   *
+   * Typed confirmation rather than a one-tap dialog, for the same reason
+   * showDeleteMemberModal uses one: this erases a squad's matches, medical
+   * history and availability, and there is no way back. The phrase is the
+   * team key itself, so the lead has to name the team they are destroying.
+   */
+  function showDeleteTeamModal(category, letter) {
+    var teamKey = category + '-' + letter;
+    var existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-card" style="max-width:420px;">
+        <div class="modal-title">${sanitize(t('team_del.title').replace('{team}', teamKey))}</div>
+        <p class="modal-message" style="white-space:pre-line;font-size:.88rem;text-align:left;">${sanitize(t('team_del.msg').replace('{team}', teamKey))}</p>
+        <p style="font-size:.82rem;color:var(--text-secondary);text-align:left;margin:.4rem 0 .8rem;">${sanitize(t('team_del.kept'))}</p>
+        <p style="font-size:.82rem;text-align:left;margin-bottom:.4rem;">${sanitize(t('team_del.confirm_hint').replace('{team}', teamKey))}</p>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <input type="text" id="team-del-input" style="font-size:1rem;text-align:center;" autocomplete="off">
+        </div>
+        <div id="team-del-result" style="font-size:.85rem;text-align:center;margin-bottom:.6rem;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-small btn-outline" id="modal-btn-no">${t('common.cancel')}</button>
+          <button class="btn btn-small btn-danger" id="modal-btn-delteam" disabled>${t('team_del.button')}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+    var close = function () {
+      overlay.classList.remove('visible');
+      setTimeout(function () { overlay.remove(); }, 200);
+    };
+    overlay.querySelector('#modal-btn-no').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    var inp = overlay.querySelector('#team-del-input');
+    var delBtn = overlay.querySelector('#modal-btn-delteam');
+    inp.addEventListener('input', function () {
+      delBtn.disabled = inp.value.trim().toLowerCase() !== teamKey.toLowerCase();
+    });
+
+    delBtn.addEventListener('click', async function () {
+      delBtn.disabled = true;
+      delBtn.textContent = t('team_del.deleting');
+      var resultEl = overlay.querySelector('#team-del-result');
+      resultEl.style.color = 'var(--text-secondary)';
+      resultEl.textContent = t('team_del.deleting');
+      try {
+        var fn = firebase.app().functions('us-central1').httpsCallable('deleteTeam');
+        await fn({ category: category, letter: letter });
+        // Re-read rather than patch: the callable may also have disabled the
+        // category, and the screen is rebuilt from _clubConfig.
+        await loadClubConfig(getSession().teamId);
+        close();
+        _showPushToast(t('team_del.button'), t('team_del.done'));
+        navigate();
+      } catch (err) {
+        console.error('deleteTeam failed:', err);
+        resultEl.style.color = 'var(--danger)';
+        resultEl.textContent = (err && err.message) || t('team_del.failed');
+        delBtn.disabled = false;
+        delBtn.textContent = t('team_del.button');
+      }
+    });
+  }
+
   function showDeleteMemberModal(uid) {
     var user = getUsers().find(function (u) { return String(u.id) === String(uid); });
     if (!user) return;

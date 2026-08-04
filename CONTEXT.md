@@ -727,3 +727,29 @@ Client side: `clubMaxTeams()` / `clubTeamCount()` / `isClubOverQuota()` beside `
 **Deploy 1 deliberately refuses removals** through the callable. Removing a letter today strands its players, orphans the roster doc and leaves `joinClub` still registering people onto the dead team — deploy 2 owns that, via `deleteTeam`.
 
 Tests **248 passing** (141 unit + 93 rules + 14 functions), up from 202. The client/server agreement test matters most: `rosterKeys` exists twice — `js/app.js` for the UI, `functions/index.js` for enforcement, because functions deploys alone and cannot `require('../js')` — and if the copies drift, the app blocks a save the server would allow or offers one it will refuse.
+
+### 2026-08-04 — Team quota, deploy 2 of 2: deletion and the gate (v56)
+
+The destructive half. `deleteTeam` erases one `{category}-{letter}` and everything belonging to it **except the Firebase Auth accounts** — its players are *detached* (profile kept, `category`/`team` cleared) so they appear as unassigned and can be moved to another team.
+
+**The hard part is that shards are per category, never per letter.** `amateur-A` and `amateur-B` live in the *same* document per key, so this filters rows inside documents the surviving team co-owns. Whole documents are only ever deleted when the category itself is going.
+
+**Three ordering constraints, each causing a different silent failure:**
+
+1. **Capture the match ids before filtering `fa_matches`.** The five match-joined keys resolve only through the match id; filter first and their events and call-ups are orphaned in the shard forever.
+2. **Delete the roster document LAST.** Deleting it fires `onRosterWritten` → detaches members → fires `onMemberCategoryChanged` → `reshardMember`, which *moves* roster-joined rows into `__none`. Roster-first would let the medical data escape to a shard this function had already passed. `test/teams.test.js` asserts `fa_injuries__none` is empty afterwards — that assertion exists purely to catch a reordering.
+3. **Refresh claims early**, right after the club-doc write. When the category is being emptied this strips it from every open client's token immediately, so a stale client can no longer write back the rows being deleted.
+
+**Partial failure is survivable by design.** Validation is *tolerant*: a letter already missing from the config means **resume**, not error. Combined with the marker doc (`clubs/{id}/teamDeletions/{teamKey}`, Admin-SDK-only, `write: if false`) and every step being remove-if-present, a re-run is a no-op. Without the tolerant branch the function would brick the team the moment the club-doc write succeeded and the data phase didn't.
+
+**A subtlety worth recording: `scrubDataDoc` has a dual contract.** A blob doc gets the *parsed value* and wants the new value back; a per-field doc gets the *raw document* and wants an array of field names to delete. Both arrive as plain objects, so a mutate cannot tell them apart — the first draft got this wrong for the merge-format branch and would have silently failed to delete medical notes. `dropEntriesByKey` decides from the snapshot, which can tell.
+
+`fa_users` is a **MOVE, not an edit**: removed from `__{cat}`, re-added to `__none` with cleared fields. Clearing in place would leave the document's `category` disagreeing with the row and the next whole-blob client write would duplicate the person; deleting the row outright means `db.js`'s users→fa_users reconcile re-adds them stale on the next login.
+
+**Kept deliberately:** matches with `team: ''` (they cannot be attributed to the deleted team, and guessing would destroy the survivor's history), and the category's training sessions — *unless* this was the last team, in which case they are deleted, because nobody is left to own them and no one's claims would include the category to read them again.
+
+**The over-quota gate** differentiates three audiences, and had to be split across two layers to do it: the **lead** is intercepted in `navigate()` and sent straight to the category screen (so they never reach the dashboard at all), while **staff** are handled in `buildSidebarItems` + `renderPage` — because a staff+player member is both, and gating in `navigate()` could only have picked one. **Players are unaffected.** The `currentPage === ''` arm is load-bearing: a staff-only member's sidebar is now empty, so `renderSidebar` sets `currentPage` to `''` and without it they would land on "page not found" instead of the explanation.
+
+Removing a **saved** team goes through `showDeleteTeamModal` (typed confirmation, the phrase is the team key); a chip added seconds ago and not yet saved owns nothing and just disappears. Unchecking a category that still has saved teams is blocked with an explanation — removing its last team disables it automatically.
+
+Tests **286 passing** (162 unit + 93 rules + 31 functions), up from 248. `test/teams.test.js` drives the callable through its v2 `.run()` handle against the emulator and asserts both halves of the contract: B's data gone, **A's intact inside the same shard document**, and the players still present with cleared fields.
