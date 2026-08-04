@@ -298,19 +298,37 @@ describe('readiness — low load is not a risk flag', () => {
 });
 
 describe('readiness — a force-red needs the player\'s own numbers', () => {
+  /* Self-contained history, so no date collides with another fixture's
+     sessions — a duplicate date puts two entries on the same RPE key and
+     silently makes "the last two sessions" the same session twice.
+     `spec` is [daysAgo, rpe|null] oldest-last; null means he sat it out. */
+  function history(spec, opts) {
+    const o = opts || {};
+    const trainings = [];
+    const rpe = {};
+    const avail = {};
+    spec.forEach(([ago, val], i) => {
+      const d = day(-ago);
+      trainings.push({id: 's' + i, date: d, time: '20:00'});
+      if (val == null) { avail['p1_' + d] = 'no'; return; }
+      avail['p1_' + d] = 'yes';
+      if (o.imputed) {
+        // A team-mate reports so p1 can borrow; p1 himself reports nothing.
+        avail['mate_' + d] = 'yes';
+        rpe['mate_training_' + d] = {rpe: val, minutes: 90, date: d};
+      } else {
+        rpe['p1_training_' + d] = {rpe: val, minutes: 90, date: d};
+      }
+    });
+    return engine({trainings, rpe, avail})('p1');
+  }
+
+  /** Enough weeks of ordinary load for hasData, then two brutal sessions. */
+  const BASE = [[22, 6], [19, 6], [16, 6], [13, 6], [10, 6], [8, 6]];
+
   /** Two brutal sessions; `real` decides whether they are his. */
   function twoHard(real) {
-    const b = baseTrainings('p1');
-    [1, 3].forEach((ago, i) => {
-      const d = day(-ago);
-      b.trainings.push({id: 'hard' + i, date: d, time: '20:00'});
-      b.avail['p1_' + d] = 'yes';
-      // A team-mate always reports, so p1 can borrow when he does not.
-      b.rpe['mate_training_' + d] = {rpe: 10, minutes: 90, date: d};
-      b.avail['mate_' + d] = 'yes';
-      if (real) b.rpe['p1_training_' + d] = {rpe: 10, minutes: 90, date: d};
-    });
-    return engine(b)('p1');
+    return history(BASE.concat([[5, 10], [2, 10]]), {imputed: !real});
   }
 
   it('fires when the player reported both sessions himself', () => {
@@ -328,6 +346,26 @@ describe('readiness — a force-red needs the player\'s own numbers', () => {
   it('still counts the borrowed load toward the score', () => {
     // Imputation feeds the ACWR either way — only the override is gated.
     assert.ok(twoHard(false).acwr > 0);
+  });
+
+  /* The pair has to be BACK TO BACK. The rule used to slice the last two
+     sessions carrying an RPE, which skips over sessions the player sat out —
+     so hard Monday → rest Wednesday → hard Friday read as consecutive, when
+     the rest day is exactly the recovery that makes it fine. */
+  function hardRestHard(restBetween) {
+    const tail = restBetween ?
+      [[5, 10], [3, null], [1, 10]] :   // hard · rested · hard
+      [[5, 10], [1, 10]];               // hard · hard
+    return history(BASE.concat(tail));
+  }
+
+  it('fires when the two hard sessions really are consecutive', () => {
+    assert.ok(hardRestHard(false).reasons.includes('hard_sessions'));
+  });
+
+  it('does NOT fire when the player rested in between', () => {
+    assert.ok(!hardRestHard(true).reasons.includes('hard_sessions'),
+        'a rest day between them is the recovery that makes the pair fine');
   });
 });
 

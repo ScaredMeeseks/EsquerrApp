@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v60.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **315 passing** (189 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v61.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **317 passing** (191 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -43,6 +43,18 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v61 — "two hard sessions" now means consecutive (2026-08-04)
+
+Spotted in use: players were force-red for two brutal sessions that had **a rest day between them**. The rule sliced the last two sessions *carrying an RPE*, and a session the player sat out has none — so hard Monday → rest Wednesday → hard Friday read as back-to-back. The rest day was invisible to the rule, which is exactly the recovery that makes the pair fine.
+
+It now slices from every session in the window. A session with no data at all also breaks the chain, deliberately: we cannot tell whether he trained, and this is a force-override to **red**.
+
+On the demo squad `hard_sessions` went **3 → 1** and reds **4 → 2**. Total flagged is unchanged at 40% — the two moved to amber — but the severity is honest.
+
+**Two fixtures were also wrong** and passing for the wrong reason: they reused a base history that already had a session on the same day, so "the last two sessions" was one session counted twice. Rewritten to be collision-free.
+
+**317 passing.** Frontend-only — push to `main`, no `./deploy.sh`.
 
 ## v60 — readiness thresholds (2026-08-04)
 

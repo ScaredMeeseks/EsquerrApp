@@ -807,3 +807,20 @@ The dot now means **risk from load**. Low load is still detected — it still lo
 Six more tests (24 in the engine file) — **315 passing**. The two that matter pin exactly these: the green gate must not reject on ACWR being *low*, and the force-red must not fire on imputed sessions while still counting them toward the score.
 
 **Still open, and now genuinely a judgement call rather than a defect:** the colour is not a function of the score, so two players can show 72 in different colours. The tooltip explains why, which answers the original complaint; whether the *design* should change is separate. And every measurement remains against **synthetic** demo data — it describes the model's structure, not real footballers. Re-measure once the live club has accumulated real RPE.
+
+### 2026-08-04 — "two hard sessions" now means consecutive (v61)
+
+Spotted in use, and a real bug: players were force-red for two brutal sessions with **a rest day between them**.
+
+```js
+const recentRPE = sessions.filter(s => s.date >= d28ago && s.rpe != null);
+const last2Sessions = recentRPE.slice(-2);
+```
+
+It sliced the last two sessions *carrying an RPE*. A session the player sat out has none, so it was skipped over entirely — hard Monday → rest Wednesday → hard Friday read as back-to-back, when the rest day is precisely the recovery that makes the pair fine.
+
+The slice now comes from every session in the window. `recentRPE` is left alone because the RPE **trend** legitimately wants only sessions carrying a value — averaging nulls would be meaningless. A session with no data at all also breaks the chain, deliberately: we cannot tell whether he trained, and this is a force-override to red.
+
+On the demo squad `hard_sessions` fell **3 → 1** and reds **4 → 2**. Total flagged is unchanged at 40% — those two moved to amber — but the severity distribution is now honest, which for a force-override is the whole point.
+
+**Two test fixtures were also wrong, and passing for the wrong reason.** They appended their sessions onto a shared base history that already had a session on one of the same days, so two entries mapped to one RPE key and "the last two sessions" was a single session counted twice. Rewritten to build collision-free histories from an explicit `[daysAgo, rpe|null]` spec — the `null` being what lets a rest day be expressed at all. **317 passing.**

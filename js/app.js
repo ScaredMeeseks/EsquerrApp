@@ -1177,7 +1177,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 60;
+  const APP_VERSION = 61;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -4942,12 +4942,22 @@
     // --- Force overrides ---
     const fourDaysAgo = localDateStr(new Date(now.getTime() - 4 * 86400000));
     const recentHeavyMatches = matchSessions.filter(s => s.date >= fourDaysAgo && s.minutes >= 70);
-    /* Jumping straight to red is the strongest statement the app makes
-       about a player, so it requires HIS OWN numbers. Imputed load still
-       counts toward the ACWR and the score — a borrowed 9 means the squad
-       found the session brutal and he was there — but two numbers he never
-       gave should not force red on their own. */
-    const last2Sessions = recentRPE.slice(-2);
+    /* Two brutal sessions BACK TO BACK, with no recovery between them.
+       Sliced from every session in the window, not just the ones carrying an
+       RPE: `recentRPE` skips sessions the player sat out, so hard Monday →
+       rest Wednesday → hard Friday used to read as consecutive. The rest day
+       was invisible to the rule, which is precisely the recovery that makes
+       the pair fine.
+
+       A session with no data at all also breaks the chain, deliberately: we
+       cannot tell whether he trained, and this is a force-override to red.
+
+       And it requires HIS OWN numbers. Imputed load still counts toward the
+       ACWR and the score — a borrowed 9 means the squad found the session
+       brutal and he was there — but two numbers he never gave should not
+       force red on their own. */
+    const recentSessions = sessions.filter(s => s.date >= d28ago);
+    const last2Sessions = recentSessions.slice(-2);
     const last2HighRPE = last2Sessions.length === 2 &&
       last2Sessions.every(s => s.rpe >= 9 && s.real === true);
 
