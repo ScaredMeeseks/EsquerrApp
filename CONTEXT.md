@@ -767,3 +767,29 @@ It does not *guarantee* anything, and says so: a write landing after the final r
 `records` had to be hoisted out of the extracted function so the count accumulates across passes rather than resetting.
 
 Tests **288 passing** (162 unit + 93 rules + 33 functions). The new pair races a write against the callable and asserts the honest disjunction: either the row is gone, **or** the marker reports it — never silently left behind.
+
+### 2026-08-04 — Readiness: the engine, not the thresholds (v59)
+
+The classifier flagged **76% of the demo squad** (19 of 25), which makes it useless as a watch list. v52 fixed the presentation; this is the engine. It turned out **not to be a threshold problem** — three defects were doing most of the work. Measured before and after on the demo season, thresholds untouched:
+
+| | before | after |
+|---|---|---|
+| flagged | **76%** | **56%** |
+| `matchFatigue` firing | **13 of 19** | **0** |
+| stale scores shown as current | undetected | 3 now grey |
+
+**1. Match fatigue never recovered.** `lastMatch` is the most recent match *anywhere in the season*, so a player who went 90 minutes in March still scored 40 in August — permanently 15 points below the 75 green requires, for **every regular starter**. The `daysSince < 3` check only ever subtracted. The minutes bands are now the day-zero penalty and fade linearly to none by **day 5** — the same window the code already used for its "two matches in five days" rule, so no new constant appears.
+
+**2. The score could be silently stale.** The acute week is `allWeeks[last]` — the last week *with data*, not this week — and `hasData` had no recency test, so someone who stopped submitting in May kept a May score displayed as today's for ever. Past **10 days** it falls back to the v52 grey dot.
+
+**3. Not reporting looked like not training.** A week with no RPE contributed `0` to the chronic mean, *raising* the next ACWR and flagging the player — a reporting gap read as physiological risk, compounding on a squad that reports patchily. Missing load is now borrowed from the squad: the mean of everyone who reported that training, and for matches the mean of players who played **within ±10 minutes**, because averaging 20 minutes off the bench with a full 90 describes neither.
+
+**Imputation is read-time only and never written.** A stored estimate would be indistinguishable from a real submission and would appear in the player's own RPE views as a number they never gave. It also does **not** count toward `hasData` — a score built entirely from team-mates is a confident number about nobody, so a player who has never reported still shows grey.
+
+`playerMatchMinutes()` reuses `computePlayerMatchStats` (minutes live in the events, not the RPE), memoised per player per render since the roster already calls it once per row. `matchId` was added to `matchRows`, which carried only `date` — and two teams can play the same day.
+
+**`computeReadiness` now returns `reasons`**, rendered by `readinessCellHtml()`. The colour is not a function of the score, so two players could both show 72 in different colours with nothing explaining it; naming the rule turns a contradiction into information. It also flags when a score **includes estimated load**.
+
+That array immediately earned itself: the measuring script had its own copy of the rules and reported six flagged players with *no* reason, because it was missing the force-overrides. Reading `reasons` instead gave the real picture — and with it the two questions for the threshold conversation: **`acwr_low` flags 6 players for training LESS than usual** (arguably not risk at all), and **`hard_sessions` forces red on players scoring 79 and 72**.
+
+New `test/readiness-engine.test.js` (18 tests) — **309 passing** (183 unit + 93 rules + 33 functions). The load-bearing one asserts a 90-minute match **30 days ago** scores exactly 100.

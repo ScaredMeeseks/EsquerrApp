@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v58.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification and v58 an onboarding fix. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **291 passing** (165 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v59.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification and v58 an onboarding fix. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **291 passing** (165 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 were frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation). v55–v58 are the team quota and are the first change since Phase 5 to touch rules and functions.
 
@@ -37,6 +37,27 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v59 — readiness engine (2026-08-04)
+
+The classifier flagged **76% of the demo squad**. Not a threshold problem — three defects, all now fixed, **thresholds untouched**. Flagged **76% → 56%**, and `matchFatigue` went from firing on 13 of the 19 flagged players to **none**.
+
+1. **Match fatigue never recovered** — a 90-minute match in March still scored 40 in August, keeping every regular starter 15 points below green. Now fades to nothing by day 5.
+2. **Stale scores were shown as current** — no recency test, so a May score displayed as today's for ever. Past 10 days it falls back to the grey dot.
+3. **A missing RPE counted as zero load**, inflating the next ACWR. Now borrowed from the squad (matches banded by ±10 minutes played). Read-time only, never written, and it does **not** count toward `hasData`.
+
+`computeReadiness` returns `reasons`, so the tooltip names what fired.
+
+**309 passing.** Frontend-only — push to `main`, no `./deploy.sh`.
+
+### The threshold conversation — now with evidence
+
+The remaining 56% is no longer defect noise. Two things stand out, and they are worth deciding together:
+
+- **`acwr_low` flags 6 of the 14** — amber for training *less* than usual. Under-loading is a real concern but it is not injury risk, and lumping both into one amber dot is much of what makes the list unactionable.
+- **`hard_sessions` (last two RPE ≥ 9) forces RED** on players scoring 79 and 72 — an override overriding a perfectly decent score.
+
+Re-run the measurement any time from a seeder dump; the script reads the engine's own `reasons` array rather than keeping a second copy of the rules.
 
 ## v57/v58 — self-verification and an onboarding fix (2026-08-04)
 

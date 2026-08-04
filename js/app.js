@@ -404,6 +404,18 @@
     // Readiness is a training-LOAD score and never reads the injury log, so
     // an injured player can legitimately show a good one. This says so.
     'readiness.injured_warning': { ca:'Compte: jugador lesionat actualment', es:'Cuidado: jugador lesionado actualmente', en:'Careful — player currently injured' },
+    // Why the dot is the colour it is. The colour comes from ACWR, risk
+    // flags and overrides — not from the score — so it has to be said.
+    'rd.acwr_high':     { ca:"Càrrega molt per sobre de l'habitual", es:'Carga muy por encima de lo habitual', en:'Load far above usual' },
+    'rd.acwr_over':     { ca:"Càrrega per sobre de l'habitual", es:'Carga por encima de lo habitual', en:'Load above usual' },
+    'rd.acwr_low':      { ca:"Càrrega per sota de l'habitual", es:'Carga por debajo de lo habitual', en:'Load below usual' },
+    'rd.spike':         { ca:'Pujada brusca de càrrega aquesta setmana', es:'Subida brusca de carga esta semana', en:'Sharp load increase this week' },
+    'rd.trend':         { ca:'RPE en augment les últimes setmanes', es:'RPE en aumento las últimas semanas', en:'RPE rising over recent weeks' },
+    'rd.fatigue':       { ca:'Fatiga del darrer partit', es:'Fatiga del último partido', en:'Fatigue from the last match' },
+    'rd.two_matches':   { ca:'Dos partits llargs en quatre dies', es:'Dos partidos largos en cuatro días', en:'Two long matches in four days' },
+    'rd.hard_sessions': { ca:'Les dues últimes sessions molt exigents', es:'Las dos últimas sesiones muy exigentes', en:'Last two sessions very hard' },
+    'rd.low_score':     { ca:'Puntuació global baixa', es:'Puntuación global baja', en:'Low overall score' },
+    'rd.estimated':     { ca:'Inclou càrrega estimada (no ha reportat RPE)', es:'Incluye carga estimada (no ha reportado RPE)', en:'Includes estimated load (no RPE reported)' },
     'readiness.good':     { ca:'Bé', es:'Bien', en:'Good' },
     'readiness.moderate': { ca:'Moderat', es:'Moderado', en:'Moderate' },
     'readiness.low':      { ca:'Baix', es:'Bajo', en:'Low' },
@@ -1160,7 +1172,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 58;
+  const APP_VERSION = 59;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -1741,6 +1753,7 @@
       if (status === 'Titular') totals.titulars++;
 
       matchRows.push({
+        matchId: m.id,
         date: m.date,
         home: m.home || '',
         away: m.away || '',
@@ -4649,12 +4662,97 @@
       staffOverrides: JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}'),
       matchAvailData: JSON.parse(localStorage.getItem('fa_match_availability') || '{}')
     };
+    _readinessDataCache.squad = buildSquadLoadIndex(_readinessDataCache.rpeData);
     _readinessDataFrame = f;
     return _readinessDataCache;
   }
 
+  /**
+   * What the squad reported for each session, so a player who trained but
+   * never submitted can borrow their team-mates' answer.
+   *
+   * Counting a missing RPE as ZERO load is the third readiness defect: it
+   * drags the chronic mean down, which inflates the next ACWR and flags the
+   * player. That is a reporting gap being read as physiological risk — and
+   * it compounds on a squad that reports patchily.
+   *
+   * One pass over fa_player_rpe, built with the rest of the readiness data.
+   *   trainings → { date: {rpe, minutes} }   the mean of everyone who reported
+   *   matches   → { matchId: [{rpe, minutes}] }  kept per player, because
+   *              match RPE tracks minutes played and a squad-wide mean would
+   *              be meaningless — the band is picked at the call site.
+   */
+  function buildSquadLoadIndex(rpeData) {
+    const tr = {};
+    const mt = {};
+    Object.keys(rpeData || {}).forEach((key) => {
+      const e = rpeData[key];
+      if (!e || e.rpe == null || e.minutes == null) return;
+      const t = key.indexOf('_training_');
+      if (t !== -1) {
+        const d = key.slice(t + 10);
+        if (!tr[d]) tr[d] = { rpe: 0, minutes: 0, n: 0 };
+        tr[d].rpe += e.rpe; tr[d].minutes += e.minutes; tr[d].n++;
+        return;
+      }
+      const m = key.indexOf('_match_');
+      if (m !== -1) {
+        const id = key.slice(m + 7);
+        if (!mt[id]) mt[id] = [];
+        mt[id].push({ rpe: e.rpe, minutes: e.minutes });
+      }
+    });
+    Object.keys(tr).forEach((d) => {
+      tr[d].rpe = tr[d].rpe / tr[d].n;
+      tr[d].minutes = tr[d].minutes / tr[d].n;
+    });
+    return { training: tr, match: mt };
+  }
+
+  /**
+   * Estimated RPE for a match the player played but did not report.
+   *
+   * Banded by minutes, not a squad mean: 20 minutes off the bench and a full
+   * 90 are different sessions, and averaging them describes neither. Falls
+   * back to every reporter for that match when nobody played a similar
+   * amount.
+   */
+  /**
+   * Minutes a player was actually on the pitch for one match.
+   *
+   * Derived from the starting XI and the substitution events, which is the
+   * only place it exists when the player never submitted an RPE. Reuses
+   * computePlayerMatchStats rather than re-deriving the interval arithmetic,
+   * and memoises per player because the roster already calls it once per row
+   * — without the memo this would double that work.
+   */
+  let _pmMinutesCache = null;
+  let _pmMinutesFrame = -1;
+  function playerMatchMinutes(uid, matchId) {
+    const f = window._renderFrame || 0;
+    if (_pmMinutesFrame !== f) { _pmMinutesCache = {}; _pmMinutesFrame = f; }
+    if (!_pmMinutesCache[uid]) {
+      const byId = {};
+      try {
+        computePlayerMatchStats(uid).matchRows.forEach((r) => {
+          if (typeof r.minutes === 'number') byId[String(r.matchId)] = r.minutes;
+        });
+      } catch (e) { /* stats unavailable — fall through to 0 */ }
+      _pmMinutesCache[uid] = byId;
+    }
+    return _pmMinutesCache[uid][String(matchId)] || 0;
+  }
+
+  function imputeMatchRpe(squad, matchId, minutes) {
+    const reported = (squad.match || {})[String(matchId)] || [];
+    if (!reported.length) return null;
+    const band = reported.filter((r) => Math.abs(r.minutes - minutes) <= 10);
+    const use = band.length ? band : reported;
+    return use.reduce((sum, r) => sum + r.rpe, 0) / use.length;
+  }
+
   function computeReadiness(playerId) {
-    const { rpeData, trainingList, matchesList, availData, staffOverrides, matchAvailData } = getReadinessData();
+    const { rpeData, trainingList, matchesList, availData, staffOverrides, matchAvailData, squad } = getReadinessData();
     const uid = playerId;
     const now = new Date();
     const todayStr = localDateStr(now);
@@ -4669,13 +4767,34 @@
       const avail = staffOverrides[availKey] || availData[availKey] || '';
       const excluded = avail === 'no' || avail === 'injured';
       const entry = excluded ? null : rpeData[rpeKey];
-      sessions.push({ date: t.date, type: 'training', rpe: entry ? entry.rpe : null, minutes: entry ? entry.minutes : null });
+      if (entry) {
+        sessions.push({ date: t.date, type: 'training', rpe: entry.rpe, minutes: entry.minutes, real: true });
+      } else if (!excluded && squad.training[t.date]) {
+        /* Present but never reported: borrow what the squad reported for
+           this same session, rather than counting it as no load at all.
+           `real: false` keeps it out of hasData — an estimate fills a gap,
+           it does not prove the player is being monitored. */
+        const est = squad.training[t.date];
+        sessions.push({ date: t.date, type: 'training', rpe: est.rpe, minutes: est.minutes, real: false, estimated: true });
+      } else {
+        sessions.push({ date: t.date, type: 'training', rpe: null, minutes: null });
+      }
     });
     matchesList.forEach(m => {
       if (!m.date || m.date < seasonStart || m.date > todayStr) return;
       const rpeKey = uid + '_match_' + m.id;
       const entry = rpeData[rpeKey];
-      sessions.push({ date: m.date, type: 'match', rpe: entry ? entry.rpe : null, minutes: entry ? entry.minutes : null, matchId: m.id });
+      if (entry) {
+        sessions.push({ date: m.date, type: 'match', rpe: entry.rpe, minutes: entry.minutes, matchId: m.id, real: true });
+      } else {
+        // Minutes come from the events, not the RPE, so a match can be
+        // estimated even when the player submitted nothing at all.
+        const mins = playerMatchMinutes(uid, m.id);
+        const est = mins > 0 ? imputeMatchRpe(squad, m.id, mins) : null;
+        sessions.push(est == null ?
+          { date: m.date, type: 'match', rpe: null, minutes: null, matchId: m.id } :
+          { date: m.date, type: 'match', rpe: est, minutes: mins, matchId: m.id, real: false, estimated: true });
+      }
     });
     Object.keys(rpeData).forEach(key => {
       if (!key.startsWith(uid + '_extra_')) return;
@@ -4722,16 +4841,32 @@
     // --- 2. Match Fatigue Score ---
     const matchSessions = sessions.filter(s => s.type === 'match' && s.minutes != null && s.minutes > 0);
     const lastMatch = matchSessions.length ? matchSessions[matchSessions.length - 1] : null;
+    /* Fatigue RECOVERS. `lastMatch` is the most recent match anywhere in the
+       season, so before this a player who went 90 minutes in March still
+       scored 40 in August — permanently 15 points below the 75 green needs,
+       for every regular starter. On the demo squad this single rule fired on
+       13 of the 19 flagged players.
+
+       The minutes bands stay as the day-zero penalty and fade linearly to no
+       penalty by day 5 — the same window the code already uses for its "two
+       matches in five days" rule, so no new arbitrary constant appears. */
+    const MATCH_RECOVERY_DAYS = 5;
     let matchFatigueScore = 100;
+    let matchDaysSince = null;
     if (lastMatch) {
       const mins = lastMatch.minutes;
-      if (mins > 80) matchFatigueScore = 40;
-      else if (mins >= 60) matchFatigueScore = 60;
-      else if (mins >= 30) matchFatigueScore = 80;
-      else matchFatigueScore = 100;
+      let base;
+      if (mins > 80) base = 40;
+      else if (mins >= 60) base = 60;
+      else if (mins >= 30) base = 80;
+      else base = 100;
 
       const matchDate = new Date(lastMatch.date + 'T12:00:00');
       const daysSince = Math.round((now - matchDate) / 86400000);
+      matchDaysSince = daysSince;
+      const recovered = Math.min(1, Math.max(0, daysSince / MATCH_RECOVERY_DAYS));
+      matchFatigueScore = base + (100 - base) * recovered;
+
       if (daysSince < 3) matchFatigueScore -= 10;
 
       // 2 matches in last 5 days
@@ -4739,7 +4874,7 @@
       const recentMatches = matchSessions.filter(s => s.date >= fiveDaysAgo);
       if (recentMatches.length >= 2) matchFatigueScore -= 15;
 
-      matchFatigueScore = Math.max(0, matchFatigueScore);
+      matchFatigueScore = Math.max(0, Math.min(100, Math.round(matchFatigueScore)));
     }
 
     // --- 3. Recent Load Spike ---
@@ -4807,11 +4942,54 @@
       color = 'green';
     }
 
-    // Check if there's enough real data (need at least 2 weeks with RPE entries)
-    var sessionsWithRPE = sessions.filter(function(s) { return s.rpe != null && s.minutes != null; });
-    var hasData = allWeeks.length >= 2 && sessionsWithRPE.length >= 3;
+    /* WHY the dot is the colour it is.
+       The colour is not a function of the score — it comes from ACWR, four
+       risk flags and three force-overrides — so two players can both show 72
+       in different colours with nothing on screen explaining it. Naming the
+       rule that fired turns that from a contradiction into information, and
+       it is what lets the threshold question be settled with evidence rather
+       than instinct: you can see which rule actually fires. */
+    const reasons = [];
+    if (color !== 'green') {
+      if (acwr > 1.7) reasons.push('acwr_high');
+      else if (acwr > 1.5) reasons.push('acwr_over');
+      else if (acwr < 0.8) reasons.push('acwr_low');
+      if (loadSpikeScore <= 30) reasons.push('spike');
+      if (rpeTrendScore <= 40) reasons.push('trend');
+      if (matchFatigueScore <= 40) reasons.push('fatigue');
+      if (recentHeavyMatches.length >= 2) reasons.push('two_matches');
+      if (last2HighRPE) reasons.push('hard_sessions');
+      if (score < 55) reasons.push('low_score');
+    }
 
-    return { score, color, acwr, loadRatioScore, matchFatigueScore, loadSpikeScore, rpeTrendScore, hasData: hasData };
+    /* Enough of the player's OWN recent data to say anything.
+       Two changes here, both about not bluffing:
+         · only `real` sessions count. An estimate borrowed from team-mates
+           fills a gap in the load curve; it is not evidence that THIS player
+           is being monitored, and a score built entirely from other people
+           would be a confident number about nobody.
+         · it now expires. The acute week is the last week WITH DATA, not
+           this week, so without a recency test someone who stopped
+           submitting in May keeps a May score displayed as today's, for
+           ever. Past 10 days it falls back to the grey "no data" dot. */
+    var STALE_AFTER_DAYS = 10;
+    var realSessions = sessions.filter(function(s) {
+      return s.real && s.rpe != null && s.minutes != null;
+    });
+    var lastReal = realSessions.length ? realSessions[realSessions.length - 1].date : null;
+    var daysSinceReal = lastReal ?
+      Math.round((now - new Date(lastReal + 'T12:00:00')) / 86400000) : Infinity;
+    var isStale = daysSinceReal > STALE_AFTER_DAYS;
+    var hasData = allWeeks.length >= 2 && realSessions.length >= 3 && !isStale;
+
+    return {
+      score, color, acwr, loadRatioScore, matchFatigueScore, loadSpikeScore,
+      rpeTrendScore, hasData: hasData, reasons: reasons,
+      // True when some of the load above was borrowed from team-mates, so
+      // the cell can say so rather than presenting an estimate as a reading.
+      estimated: sessions.some(function (x) { return x.estimated; }),
+      matchDaysSince: matchDaysSince,
+    };
   }
 
   // crSplinePath → utils.js
@@ -5279,6 +5457,11 @@
     const tips = [];
     if (injured) tips.push(t('readiness.injured_warning'));
     if (!rd.hasData) tips.push(t('readiness.no_data'));
+    // Name the rule that fired. The colour is not a function of the score,
+    // so without this two players can both show 72 in different colours and
+    // it reads as a bug rather than as information.
+    (rd.reasons || []).forEach((r) => tips.push(t('rd.' + r)));
+    if (rd.hasData && rd.estimated) tips.push(t('rd.estimated'));
     const tip = tips.length ? ` data-tooltip="${sanitize(tips.join(' · '))}"` : '';
     // No data is grey and carries no number: a dash still occupies the
     // column as though it were a reading, and green actively misinforms.
