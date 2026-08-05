@@ -109,6 +109,11 @@ async function backfillTeam(teamId, club) {
 
   let sessions = 0; let changed = 0; let skipped = 0; let unattended = 0;
   const writes = [];
+  /* Tallied INSIDE the loop, from the rows actually stamped. It used to be
+     computed afterwards by re-parsing doc.data -- the untouched original --
+     so every row still had no `teams` and the whole breakdown printed
+     nothing. The counts looked fine, which is what made it easy to miss. */
+  const byLetters = {};
 
   for (const doc of trainingDocs) {
     const rows = parseBlob(doc.data);
@@ -130,6 +135,8 @@ async function backfillTeam(teamId, club) {
       t.teams = teams;
       if (!Array.isArray(t.guests)) t.guests = [];
       if (!Array.isArray(t.excluded)) t.excluded = [];
+      const k = cat + " -> [" + teams.join(",") + "]";
+      byLetters[k] = (byLetters[k] || 0) + 1;
       changed++;
       touched = true;
     });
@@ -142,15 +149,8 @@ async function backfillTeam(teamId, club) {
   }
 
   const summary = {sessions, changed, skipped, unattended};
-  const byLetters = {};
-  trainingDocs.forEach((doc) => {
-    parseBlob(doc.data).forEach((t) => {
-      if (!t || !Array.isArray(t.teams)) return;
-      const k = doc.cat + " → [" + t.teams.join(",") + "]";
-      byLetters[k] = (byLetters[k] || 0) + 1;
-    });
-  });
-  Object.keys(byLetters).sort().forEach((k) => log(`${SEP}${SEP}${k.padEnd(30)} ${byLetters[k]}`));
+  Object.keys(byLetters).sort().forEach((k) =>
+    log(`${SEP}${SEP}${k.padEnd(30)} ${byLetters[k]}`));
 
   if (APPLY && writes.length) {
     const batch = db.batch();
