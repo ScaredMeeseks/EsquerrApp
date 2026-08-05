@@ -47,6 +47,37 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
 
+## Cloud Shell: a deploy can strip gcloud's identity (2026-08-05)
+
+Cost most of a session. Symptom: every Admin SDK script fails with
+
+    Getting metadata from plugin failed with error:
+    Cannot create property 'refresh_token' on string ''
+
+while `firebase deploy` keeps working perfectly — because the Firebase CLI
+uses its own stored login, **not** ADC. That mismatch is what disguises it.
+
+**The one diagnostic that identifies it:** `gcloud auth list`. If it says
+*No credentialed accounts*, stop reading stack traces — gcloud has no
+identity and nothing config-level will fix it.
+
+Root cause seen here: something (Cloud Shell tooling or the Firebase CLI —
+**not** our `deploy.sh`, which never touches it) pointed `CLOUDSDK_CONFIG`
+at a temp dir; the leftover `__TMP_CLOUDSDK_CONFIG=/tmp/tmp.XXXX` in the
+environment is the fingerprint. `~/.config/gcloud` was left without
+credentials, and Cloud Shell's metadata endpoint returned nothing either.
+
+**Fix: restart the VM** — three-dots menu -> Restart, not a new tab, not
+`unset`. Credentials come back on boot. Then `cd ~/EsquerrApp` (a restart
+drops you in `~`) and note nvm resets to the default Node.
+
+Do NOT run `gcloud auth application-default login` first: it warns it is
+unnecessary on a GCE VM and puts personal credentials on a shared disk.
+
+**Still to do:** `functions/backfill-training-teams.js` has no `preflight()`.
+`seed-demo-club.js` does, and it turns exactly this failure into one
+actionable line instead of a 30-line gRPC stack. Copy it across.
+
 ## v70 - per-team training, stage 1 of 3 (2026-08-05)
 
 The model. Sessions now carry `teams`, `guests`, `excluded`, `endTime`; an **empty `teams` still means every letter of the category**, so nothing breaks before the backfill. The squad is derived on every read, never stored.
@@ -58,7 +89,11 @@ The model. Sessions now carry `teams`, `guests`, `excluded`, `endTime`; an **emp
 - **The generator stopped dropping a team's slot** - it deduped by day+time and discarded the letter.
 - The staff detail page stopped reverse-matching schedules to guess which letters shared a slot.
 
-31 new tests. **Backfill written, not yet run:** `functions/backfill-training-teams.js`, dry-run by default, derives each session's letters from who actually attended.
+31 new tests.
+
+**Backfill APPLIED to the demo club (2026-08-05).** 136 sessions stamped; a re-run reports `0 to stamp - 136 already set`, so it is idempotent. Result: `amateur -> [A,B]` x67, `juvenil -> [A]` x68, and one `amateur -> [B]`. That last one is a seeding artefact, not a fault: amateur-A was seeded on the 4th and amateur-B on the 5th, so the session that fell between the two runs was "upcoming" for A and "past" for B, and only B players ever answered it. Harmless - A has no records for it either.
+
+**The real club has NOT been backfilled.** Run the dry run first and read the breakdown before applying.
 
 ## v69 - archived seasons, broken since Phase 5 (2026-08-05)
 
