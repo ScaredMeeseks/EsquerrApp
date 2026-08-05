@@ -1209,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 76;
+  const APP_VERSION = 77;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -10591,6 +10591,10 @@
 
   /** Rebuild the drafts from the chosen team's schedule. */
   function _ntSeed() {
+    const letters = getTeamLetters(_ntCat || '');
+    /* One letter means there is no choice to make, so preselect it — and do
+       it HERE, before the drafts are built, not in the render afterwards. */
+    if (!_ntTeam && letters.length === 1) _ntTeam = letters[0];
     _ntDrafts = (_ntCat && _ntTeam) ?
       buildTrainingDrafts(_ntCat, getTrainings(), _ntTeam) : [];
   }
@@ -10628,9 +10632,7 @@
     if (!_ntCat) _ntCat = getCurrentCategory() || cats[0] || '';
     const cat = _ntCat;
     const letters = getTeamLetters(cat);
-    /* One letter means there is no choice to make, so it is preselected —
-       forcing a click there would be friction for nothing. */
-    if (!_ntTeam && letters.length === 1) _ntTeam = letters[0];
+    // _ntSeed() preselects a lone letter; the render must not second-guess it.
     if (!_ntDrafts) _ntSeed();
     const users = getUsers();
     const fitCtx = fitnessContext();

@@ -1136,3 +1136,22 @@ That removed two pieces of page state (`_ntPickerOpen`, `_ntPicked`): the popup 
 
 **515 total** (374 unit + 103 rules + 38 functions).
 
+## v77 - a one-team category loaded no players and would not save (2026-08-05)
+
+Reported straight after v76: choosing Juvenil, which has a single team, showed no squad and left Save disabled.
+
+An ordering bug, not a UI one. The "one letter means no choice, preselect it" step lived in the **render**, while the category-change handler seeded **first**:
+
+```js
+_ntCat = catSel.value;
+_ntTeam = null;
+_ntSeed();      // _ntTeam is still null -> _ntDrafts = []
+rerender();     // NOW the letter gets picked, too late
+```
+
+And it never recovered, because the render's guard is `if (!_ntDrafts)` and **`[]` is truthy** - so the seed that would have used the newly-picked letter never ran.
+
+The preselect moved into `_ntSeed()`, ahead of building the drafts. One place decides the team, and it decides before anything depends on it.
+
+4 new tests covering the switch: a one-team category preselects and builds in the same pass, a multi-team one builds nothing until a letter is chosen, and neither overrules a choice the coach already made. **519 total** (378 unit + 103 rules + 38 functions).
+

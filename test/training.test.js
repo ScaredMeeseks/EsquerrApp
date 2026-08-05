@@ -531,3 +531,57 @@ describe('training — when a session stops showing', () => {
     assert.ok(!body.includes('60 * 60 * 1000'), 'not an hour after the start');
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Choosing a category with only one team.
+ *
+ * The auto-select lived in the render while the category-change handler
+ * seeded first — so switching to Juvenil seeded with no team, produced an
+ * empty draft list, and the render set the letter too late. It never
+ * re-seeded either, because the guard is `if (!_ntDrafts)` and `[]` is
+ * truthy. The page showed no players and Save stayed dead.
+ * ------------------------------------------------------------------ */
+describe('training — a category with one team needs no click', () => {
+  function seeder(lettersByCat) {
+    const code = grab('  function _ntSeed()', '  /** One row of the called squad');
+    // eslint-disable-next-line no-new-func
+    const api = new Function('getTeamLetters', 'getTrainings', 'buildTrainingDrafts', `
+      let _ntCat = null, _ntTeam = null, _ntDrafts = null;
+      ${code}
+      return {
+        seed: (cat, team) => { _ntCat = cat; _ntTeam = team || null; _ntSeed(); },
+        drafts: () => _ntDrafts,
+        team: () => _ntTeam,
+      };`)((c) => lettersByCat[c] || ['A'], () => [],
+        (cat, tr, letter) => [{ id: 'd1', category: cat, teams: [letter] }]);
+    return api;
+  }
+
+  const CATS = { amateur: ['A', 'B'], juvenil: ['A'] };
+
+  it('preselects the only letter and builds the drafts in one pass', () => {
+    const s = seeder(CATS);
+    s.seed('juvenil', null);
+    assert.strictEqual(s.team(), 'A', 'picked without a click');
+    assert.strictEqual(s.drafts().length, 1, 'and the session was built');
+  });
+
+  it('builds nothing for a multi-team category until one is chosen', () => {
+    const s = seeder(CATS);
+    s.seed('amateur', null);
+    assert.strictEqual(s.team(), null, 'the coach must choose');
+    assert.deepStrictEqual(s.drafts(), []);
+  });
+
+  it('builds once that choice is made', () => {
+    const s = seeder(CATS);
+    s.seed('amateur', 'B');
+    assert.strictEqual(s.drafts()[0].teams[0], 'B');
+  });
+
+  it('does not overrule a letter the coach already picked', () => {
+    const s = seeder({ amateur: ['A', 'B'] });
+    s.seed('amateur', 'B');
+    assert.strictEqual(s.team(), 'B');
+  });
+});
