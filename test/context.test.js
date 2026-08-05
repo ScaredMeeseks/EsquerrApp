@@ -34,7 +34,12 @@ function grab(from, to) {
 function loadFitness(store) {
   const localStorage = { getItem: (k) => (k in store ? store[k] : null) };
   const getTrainings = () => JSON.parse(store.fa_training || '[]');
-  const code = grab('  function fitnessContext()', '  function getInjuries()');
+  /* The record resolver is sliced in: deriveFitnessStatus() reads a
+     player's answers through readRecord() now, so that the fitness badge
+     agrees with every other surface about which record belongs to which
+     session. A stub here would be free to drift from it. */
+  const code = grab('  function recordKey(playerId, sess, kind)', '  async function handleRegister') +
+    grab('  function fitnessContext()', '  function getInjuries()');
   // eslint-disable-next-line no-new-func
   return new Function('localStorage', 'getTrainings', `
     ${code}

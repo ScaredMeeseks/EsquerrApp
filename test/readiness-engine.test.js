@@ -73,7 +73,11 @@ function engine(o) {
       static now() { return new Date(TODAY + 'T12:00:00').getTime(); }
     },
   };
-  const code = grab('  function getReadinessData()', '\n  function buildReadinessCard');
+  /* The record resolver is sliced in alongside: getReadinessData() asks
+     readRecord() instead of building a key, and a stub here would be free
+     to drift from the real precedence. */
+  const code = grab('  function recordKey(playerId, sess, kind)', '  async function handleRegister') +
+    grab('  function getReadinessData()', '\n  function buildReadinessCard');
   // eslint-disable-next-line no-new-func
   return new Function(...Object.keys(sandbox), `
     let _readinessDataCache = null, _readinessDataFrame = -1;

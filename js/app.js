@@ -919,10 +919,10 @@
 
     // Collect all answered trainings for this player, sorted by date
     const answered = training
-      .filter(t => t.date && availData[playerId + '_' + t.date])
+      .filter(t => t.date && readRecord(availData, playerId, t, 'avail'))
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(t => {
-        const v = availData[playerId + '_' + t.date];
+        const v = readRecord(availData, playerId, t, 'avail');
         // A discarded 'injured' counts as a plain absence, so it drives
         // neither the 'injured' nor the 'doubt' rule below.
         return (v === 'injured' && dismissedUpTo && t.date <= dismissedUpTo) ? 'no' : v;
@@ -1017,7 +1017,7 @@
       const windows = [];
       training.forEach(t => {
         if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-        const val = availData[p.id + '_' + t.date];
+        const val = readRecord(availData, p.id, t, 'avail');
         if (val === 'injured') {
           if (!inWindow) { windowStart = t.date; inWindow = true; }
           lastInjDate = t.date;
@@ -1190,7 +1190,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 70;
+  const APP_VERSION = 71;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2013,6 +2013,52 @@
     var wb = sessionWindow(b);
     if (!wa || !wb) return false;
     return wa.start < wb.end && wb.start < wa.end;
+  }
+
+  /* ── Player-submitted records: keyed by SESSION, not by date ────
+     Availability, session RPE and the staff override were all keyed
+     `{uid}_{date}`. That was fine while a player could only ever have one
+     session a day. Guest call-ups break it: borrowed for another squad's
+     evening session, a player's two answers collide and the second
+     silently overwrites the first.
+
+     New records are keyed by the session id. Legacy ones stay where they
+     are and are still READ, because the v43-era APK on the phones knows
+     only the date form and will keep writing it. Both live in the same
+     collection and cannot collide — a session id is `tr_…`, never a date.
+
+     All three keys move TOGETHER. Every read site does
+     `overrides[k] || avail[k]` with the same string; moving one without
+     the other decouples a staff override from the answer it overrides. */
+  function recordKey(playerId, sess, kind) {
+    var mid = (kind === 'rpe') ? '_training_' : '_';
+    return String(playerId) + mid + String((sess && sess.id) || '');
+  }
+
+  function legacyRecordKey(playerId, sess, kind) {
+    var mid = (kind === 'rpe') ? '_training_' : '_';
+    return String(playerId) + mid + String((sess && sess.date) || '');
+  }
+
+  /* A legacy record can only ever have meant the player's OWN session: the
+     client that wrote it had no concept of a call-up. Honouring it for a
+     guest appearance would make a pre-feature answer also answer a session
+     the player was never part of. */
+  function mayReadLegacyRecord(sess, playerId) {
+    if (!sess || !sess.date) return false;
+    return !(Array.isArray(sess.guests) &&
+      sess.guests.map(String).indexOf(String(playerId)) !== -1);
+  }
+
+  /** Look a record up for one player and one session. New format wins. */
+  function readRecord(map, playerId, sess, kind) {
+    if (!map) return undefined;
+    var v = map[recordKey(playerId, sess, kind)];
+    if (v !== undefined) return v;
+    if (mayReadLegacyRecord(sess, playerId)) {
+      return map[legacyRecordKey(playerId, sess, kind)];
+    }
+    return undefined;
   }
 
   async function handleRegister(e) {
@@ -3555,9 +3601,10 @@
       return now >= new Date(start.getTime() + 90 * 60 * 1000);
     }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
     const pt = completedTraining.filter(t => {
-      const eff = staffOverrides[session.id + '_' + t.date] || availData[session.id + '_' + t.date] || '';
+      const eff = readRecord(staffOverrides, session.id, t, 'avail') ||
+        readRecord(availData, session.id, t, 'avail') || '';
       if (eff === 'no' || eff === 'injured') return false;
-      return !rpeData[session.id + '_training_' + t.date];
+      return !readRecord(rpeData, session.id, t, 'rpe');
     }).length;
     const pm = matches.filter(m => {
       if (!m.date || !m.time) return false;
@@ -3600,10 +3647,10 @@
     }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
 
     const pendingTraining = completedTraining.filter(t => {
-      const eff = staffOverrides[session.id + '_' + t.date] || availData[session.id + '_' + t.date] || '';
+      const eff = readRecord(staffOverrides, session.id, t, 'avail') ||
+        readRecord(availData, session.id, t, 'avail') || '';
       if (eff === 'no' || eff === 'injured') return false;
-      const key = session.id + '_training_' + t.date;
-      return !rpeData[key];
+      return !readRecord(rpeData, session.id, t, 'rpe');
     });
 
     // Pending matches: 1h45 (105min) after kickoff
@@ -3631,7 +3678,7 @@
 
     let pendingHtml = '';
     pendingTraining.forEach(tr => {
-      pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${session.id}_training_${tr.date}">
+      pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${sanitize(recordKey(session.id, tr, 'rpe'))}">
         <div class="action-header"><span class="badge badge-green">${t('activity.badge_training')}</span><span class="action-date">${tDayDDMM(tr.date)} · ${tr.time}</span></div>
         <div class="action-label">${sanitize(tr.focus || t('activity.badge_training'))}</div>
         <div class="action-form">
@@ -3905,7 +3952,7 @@
     training.forEach(t => {
       if (!t.date) return;
       const locked = isTrainingLocked(t);
-      const v = getEffectiveAnswer(session.id, t.date, locked, _ctxHome);
+      const v = getEffectiveAnswer(session.id, t, locked, _ctxHome);
       if (v === 'yes') pYes++;
       else if (v === 'late') pLate++;
       else if (v === 'no') pNo++;
@@ -5075,9 +5122,18 @@
       if (!e || e.rpe == null || e.minutes == null) return;
       const t = key.indexOf('_training_');
       if (t !== -1) {
-        const d = key.slice(t + 10);
-        if (!tr[d]) tr[d] = { rpe: 0, minutes: 0, n: 0 };
-        tr[d].rpe += e.rpe; tr[d].minutes += e.minutes; tr[d].n++;
+        /* Bucketed under the session id AND the date. The date bucket is
+           what a legacy record can offer; the session bucket is exact, and
+           is what the consumer prefers. `e.date` is read from the record
+           rather than sliced out of the key, because the key's suffix is a
+           session id now, not a date. */
+        const add = (b) => {
+          if (!b) return;
+          if (!tr[b]) tr[b] = { rpe: 0, minutes: 0, n: 0 };
+          tr[b].rpe += e.rpe; tr[b].minutes += e.minutes; tr[b].n++;
+        };
+        add(e.sessionId || key.slice(t + 10));
+        if (e.date && e.date !== e.sessionId) add(e.date);
         return;
       }
       const m = key.indexOf('_match_');
@@ -5147,19 +5203,18 @@
     const sessions = [];
     trainingList.forEach(t => {
       if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-      const rpeKey = uid + '_training_' + t.date;
-      const availKey = uid + '_' + t.date;
-      const avail = staffOverrides[availKey] || availData[availKey] || '';
+      const avail = readRecord(staffOverrides, uid, t, 'avail') ||
+        readRecord(availData, uid, t, 'avail') || '';
       const excluded = avail === 'no' || avail === 'injured';
-      const entry = excluded ? null : rpeData[rpeKey];
+      const entry = excluded ? null : readRecord(rpeData, uid, t, 'rpe');
       if (entry) {
         sessions.push({ date: t.date, type: 'training', rpe: entry.rpe, minutes: entry.minutes, real: true });
-      } else if (!excluded && squad.training[t.date]) {
+      } else if (!excluded && (squad.training[t.id] || squad.training[t.date])) {
         /* Present but never reported: borrow what the squad reported for
            this same session, rather than counting it as no load at all.
            `real: false` keeps it out of hasData — an estimate fills a gap,
            it does not prove the player is being monitored. */
-        const est = squad.training[t.date];
+        const est = squad.training[t.id] || squad.training[t.date];
         sessions.push({ date: t.date, type: 'training', rpe: est.rpe, minutes: est.minutes, real: false, estimated: true });
       } else {
         sessions.push({ date: t.date, type: 'training', rpe: null, minutes: null });
@@ -5942,11 +5997,10 @@
     const sessions = [];
     trainingList.forEach(t => {
       if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-      const rpeKey = uid + '_training_' + t.date;
-      const availKey = uid + '_' + t.date;
-      const avail = staffOverrides[availKey] || availData[availKey] || '';
+      const avail = readRecord(staffOverrides, uid, t, 'avail') ||
+        readRecord(availData, uid, t, 'avail') || '';
       const excluded = avail === 'no' || avail === 'injured';
-      const entry = excluded ? null : rpeData[rpeKey];
+      const entry = excluded ? null : readRecord(rpeData, uid, t, 'rpe');
       sessions.push({
         date: t.date,
         type: 'training',
@@ -6006,7 +6060,7 @@
     trainingList.forEach(t => {
       if (!t.date) return;
       const locked = isTrainingLocked(t);
-      const v = getEffectiveAnswer(uid, t.date, locked, _ctxStats);
+      const v = getEffectiveAnswer(uid, t, locked, _ctxStats);
       if (v === 'yes') pYes++;
       else if (v === 'late') pLate++;
       else if (v === 'no') pNo++;
@@ -6100,11 +6154,10 @@
     const sessions = [];
     trainingList.forEach(t => {
       if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-      const rpeKey = uid + '_training_' + t.date;
-      const availKey = uid + '_' + t.date;
-      const avail = staffOverrides[availKey] || availData[availKey] || '';
+      const avail = readRecord(staffOverrides, uid, t, 'avail') ||
+        readRecord(availData, uid, t, 'avail') || '';
       const excluded = avail === 'no' || avail === 'injured';
-      const entry = excluded ? null : rpeData[rpeKey];
+      const entry = excluded ? null : readRecord(rpeData, uid, t, 'rpe');
       sessions.push({
         date: t.date, type: 'training', label: t.focus || 'Training',
         rpe: entry ? entry.rpe : null, minutes: entry ? entry.minutes : null,
@@ -10051,7 +10104,7 @@
         if (!t.date) return;
         const tLocked = isTrainingLocked(t);
         allPlayers.forEach(p => {
-          const v = getEffectiveAnswer(p.id, t.date, tLocked, _ctxSeason);
+          const v = getEffectiveAnswer(p.id, t, tLocked, _ctxSeason);
           if (v === 'yes') { seasonYes++; playerAttend[p.id]++; }
           else if (v === 'late') { seasonLate++; playerAttend[p.id]++; }
           else if (v === 'no') { seasonNo++; playerAbsent[p.id]++; }
@@ -10213,24 +10266,25 @@
     return { availData: _availParsed, overrides: _ovrParsed };
   }
 
-  /** `ctx` is optional — pass availContext() in a loop to skip the lookup. */
-  function getEffectiveAnswer(playerId, trainingDate, locked, ctx) {
+  /** Takes the SESSION, not its date — see recordKey().
+   *  `ctx` is optional — pass availContext() in a loop to skip the lookup.
+   *  The staff override still wins outright, new format or legacy. */
+  function getEffectiveAnswer(playerId, sess, locked, ctx) {
     const c = ctx || availContext();
-    const key = playerId + '_' + trainingDate;
-    const staffVal = c.overrides[key];
+    const staffVal = readRecord(c.overrides, playerId, sess, 'avail');
     if (staffVal) return staffVal;
-    const playerVal = c.availData[key];
+    const playerVal = readRecord(c.availData, playerId, sess, 'avail');
     if (playerVal) return playerVal;
     return locked ? 'na' : 'yes';
   }
 
-  function buildDetailDonut(trainingDate, players, locked) {
+  function buildDetailDonut(sess, players, locked) {
     const total = players.length;
     if (!total) return '';
     const _ctxDetail = availContext();
     let yes = 0, late = 0, no = 0, injured = 0, na = 0;
     players.forEach(p => {
-      const v = getEffectiveAnswer(p.id, trainingDate, locked, _ctxDetail);
+      const v = getEffectiveAnswer(p.id, sess, locked, _ctxDetail);
       if (v === 'yes') yes++;
       else if (v === 'late') late++;
       else if (v === 'no') no++;
@@ -10351,7 +10405,7 @@
 
     const _stdFitCtx = fitnessContext();
     const playerRows = players.map(p => {
-      const key = p.id + '_' + tr.date;
+      const key = recordKey(p.id, tr, 'avail');
       const playerAnswer = availData[key] || (locked ? 'na' : null);
       const staffAnswer = overrides[key] || null;
       const effective = staffAnswer || playerAnswer;
@@ -10385,18 +10439,18 @@
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
         <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
         <td class="center-cell">
-          <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-date="${tr.date}">
+          <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-sid="${sanitize(String(tr.id || ''))}">
             ${dropdown}
           </select>
         </td>
       </tr>`;
     }).join('');
 
-    const donutHtml = buildDetailDonut(tr.date, players, locked);
+    const donutHtml = buildDetailDonut(tr, players, locked);
 
     // Count present players for default config
     const presentPlayers = players.filter(p => {
-      const eff = getEffectiveAnswer(p.id, tr.date, locked);
+      const eff = getEffectiveAnswer(p.id, tr, locked);
       return eff === 'yes' || eff === 'late';
     });
     const presentCount = presentPlayers.length;
@@ -10509,10 +10563,10 @@
   }
 
   // ── Team generation algorithm ──
-  function generateTrainingTeams(allPlayers, trainingDate, locked, numTeams, perTeam, includeGK, teamFilter, mode) {
+  function generateTrainingTeams(allPlayers, sess, locked, numTeams, perTeam, includeGK, teamFilter, mode) {
     // 1. Filter to present players
     let pool = allPlayers.filter(p => {
-      const eff = getEffectiveAnswer(p.id, trainingDate, locked);
+      const eff = getEffectiveAnswer(p.id, sess, locked);
       return eff === 'yes' || eff === 'late';
     });
     // 2. Apply club team filter
@@ -10652,13 +10706,13 @@
   }
 
   // ── Render generated teams ──
-  function renderGeneratedTeams(teams, allPlayers, trainingDate, locked) {
+  function renderGeneratedTeams(teams, allPlayers, sess, locked) {
     // Build set of all assigned player IDs
     const assignedIds = new Set();
     teams.forEach(team => team.forEach(p => assignedIds.add(String(p.id))));
     // Get present but unassigned players for the "+ Jugador" dropdown
     const presentPool = allPlayers.filter(p => {
-      const eff = getEffectiveAnswer(p.id, trainingDate, locked);
+      const eff = getEffectiveAnswer(p.id, sess, locked);
       return (eff === 'yes' || eff === 'late') && !assignedIds.has(String(p.id));
     });
 
@@ -10747,7 +10801,7 @@
         .forEach(tr => {
           let available = 0; let answered = 0;
           players.forEach(p => {
-            const k = p.id + '_' + tr.date;
+            const k = recordKey(p.id, tr, 'avail');
             // The staff override wins, exactly as getEffectiveAnswer() has it —
             // but read RAW here: getEffectiveAnswer() assumes 'yes' for an
             // unlocked session, which would report everyone as having replied.
@@ -11018,9 +11072,9 @@
     playerUids.forEach(uid => {
       trainingList.forEach(t => {
         if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-        const entry = rpeData[uid + '_training_' + t.date];
-        const oKey = uid + '_' + t.date;
-        const avail = staffOverrides[oKey] || availData[oKey] || '';
+        const entry = readRecord(rpeData, uid, t, 'rpe');
+        const avail = readRecord(staffOverrides, uid, t, 'avail') ||
+          readRecord(availData, uid, t, 'avail') || '';
         const key = t.date + '|training|' + (t.focus || 'Training');
         if (!dateAgg[key]) dateAgg[key] = { date: t.date, type: 'training', label: t.focus || 'Training', rpes: [], mins: [], skips: 0, injuries: 0, total: 0 };
         dateAgg[key].total++;
@@ -12194,7 +12248,7 @@
     playerList.forEach(function(u) {
       var yes = 0, late = 0, no = 0, injured = 0;
       pastTrainings.forEach(function(tr) {
-        var key = u.id + '_' + tr.date;
+        var key = recordKey(u.id, tr, 'avail');
         var answer = avail[key] || '';
         if (answer === 'yes') yes++;
         else if (answer === 'late') late++;
@@ -12963,10 +13017,9 @@
       // Training availability buttons
       let availHtml = '';
       if (a.type === 'training') {
-        const tObj = training.find(tr => tr.date === a.tDate);
+        const tObj = training.find(tr => String(tr.id) === String(a.tId));
         const tLocked = tObj ? isTrainingLocked(tObj) : false;
-        const key = session.id + '_' + a.tDate;
-        const stored = availData[key];
+        const stored = readRecord(availData, session.id, tObj, 'avail');
         if (tLocked) {
           const chosen = stored || 'na';
           const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
@@ -12975,10 +13028,10 @@
         } else if (stored) {
           const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
-          availHtml = `<span class="avail-chosen ${cls[stored]}" data-avail-date="${a.tDate}">${labels[stored]}</span>`;
+          availHtml = `<span class="avail-chosen ${cls[stored]}" data-avail-sid="${sanitize(String(a.tId || ''))}">${labels[stored]}</span>`;
         } else {
           // Default to Yes badge (clickable to expand buttons)
-          availHtml = `<span class="avail-chosen avail-yes avail-default" data-avail-date="${a.tDate}">${t('avail.yes')}</span>`;
+          availHtml = `<span class="avail-chosen avail-yes avail-default" data-avail-sid="${sanitize(String(a.tId || ''))}">${t('avail.yes')}</span>`;
         }
       }
       if (a.type === 'birthday') {
@@ -13032,13 +13085,15 @@
     const players = getUsers().filter(u => (u.roles || []).includes('player'));
     const total = players.length;
     if (!total) return '<span style="color:var(--text-secondary)">\u2014</span>';
+    // The date is only a fallback lookup: two squads can share one, so a
+    // caller holding the session should always pass it.
     const session = tObj ||
       getTrainings().find(x => x.date === trainingDate);
     const locked = session ? isTrainingLocked(session) : false;
     const ctx = availContext();
     let yes = 0, late = 0, no = 0, injured = 0, na = 0;
     players.forEach(p => {
-      const v = getEffectiveAnswer(p.id, trainingDate, locked, ctx);
+      const v = getEffectiveAnswer(p.id, session, locked, ctx);
       if (v === 'yes') yes++;
       else if (v === 'late') late++;
       else if (v === 'no') no++;
@@ -13853,8 +13908,9 @@
     document.querySelectorAll('.std-staff-select').forEach(sel => {
       sel.addEventListener('change', () => {
         const playerId = sel.dataset.player;
-        const date = sel.dataset.date;
-        const key = playerId + '_' + date;
+        const sess = getTrainings().find(x => String(x.id) === String(sel.dataset.sid));
+        if (!sess) return;
+        const key = recordKey(playerId, sess, 'avail');
         const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
         overrides[key] = sel.value;
         localStorage.setItem('fa_training_staff_override', JSON.stringify(overrides));
@@ -13909,7 +13965,7 @@
         const teamFilterBtn = document.querySelector('[data-tg-team].tg-btn-active');
         const teamFilter = teamFilterBtn ? teamFilterBtn.dataset.tgTeam : 'all';
         let pool = players.filter(p => {
-          const eff = getEffectiveAnswer(p.id, t.date, locked);
+          const eff = getEffectiveAnswer(p.id, t, locked);
           return eff === 'yes' || eff === 'late';
         });
         if (teamFilter && teamFilter !== 'all') pool = pool.filter(p => p.team === teamFilter);
@@ -13970,7 +14026,7 @@
   }
 
   // ── Drag-and-drop + add/remove for generated teams ──
-  function bindGeneratedTeamsDnD(allPlayers, trainingDate, locked) {
+  function bindGeneratedTeamsDnD(allPlayers, sess, locked) {
     let dragPlayerId = null;
     let dragSourceTeamIdx = null;
     let _droppedOnTeam = false;
@@ -13978,10 +14034,10 @@
     function _rerender() {
       const container = document.getElementById('tg-teams-container');
       if (container) {
-        container.innerHTML = renderGeneratedTeams(_generatedTeams, allPlayers, trainingDate, locked);
-        bindGeneratedTeamsDnD(allPlayers, trainingDate, locked);
+        container.innerHTML = renderGeneratedTeams(_generatedTeams, allPlayers, sess, locked);
+        bindGeneratedTeamsDnD(allPlayers, sess, locked);
       }
-      _refreshStdBoards(trainingDate);
+      _refreshStdBoards(sess && sess.date);
     }
 
     document.querySelectorAll('.tg-player-row').forEach(row => {
@@ -14688,14 +14744,18 @@
   // BODY_REGIONS, GROUP_SUBS → utils.js
 
   // Shared commit helper for injury pickers
-  function commitInjuryNote(date, musclePath, desc, zoneIdx) {
+  function commitInjuryNote(sid, musclePath, desc, zoneIdx) {
     const session = getSession();
+    const sess = getTrainings().find(x => String(x.id) === String(sid));
+    if (!sess) return;
+    const date = sess.date;
     const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
     const note = musclePath + (desc ? ' – ' + desc : '');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const key = session.id + '_' + date;
+    const key = recordKey(session.id, sess, 'avail');
     availData[key] = 'injured';
-    ackSaveRecord('trainingAvail', key, { uid: session.id, date: date, value: 'injured' },
+    ackSaveRecord('trainingAvail', key,
+      { uid: session.id, sessionId: sess.id, date: date, value: 'injured' },
       'fa_training_availability', JSON.stringify(availData), null);
     injNotes[session.id] = note;
     ackSave('fa_injury_notes', JSON.stringify(injNotes), null);
@@ -14749,7 +14809,7 @@
   // BODY_ZONES → utils.js
 
   // ---------- Interactive body map picker ----------
-  function showBodyMapPicker(btnsWrap, date) {
+  function showBodyMapPicker(btnsWrap, sid) {
     // Build overlay
     var overlay = document.createElement('div');
     overlay.className = 'body-map-overlay';
@@ -14877,7 +14937,7 @@
         var musclePath = sub ? (sub + ' (' + group + ')') : group;
         var zoneIdx = activePoly ? parseInt(activePoly.dataset.idx) : null;
         overlay.remove();
-        commitInjuryNote(date, musclePath, desc, zoneIdx);
+        commitInjuryNote(sid, musclePath, desc, zoneIdx);
       }
       choicePanel.querySelector('.body-map-ok').addEventListener('click', doCommit);
       choicePanel.querySelector('.body-map-desc').addEventListener('keydown', function (e) { if (e.key === 'Enter') doCommit(); });
@@ -15835,7 +15895,7 @@
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         const training = getTrainings();
         const answeredDates = training
-          .filter(tr => tr.date && availData[uid + '_' + tr.date])
+          .filter(tr => tr.date && readRecord(availData, uid, tr, 'avail'))
           .map(tr => tr.date).sort();
         const upTo = answeredDates.length ? answeredDates[answeredDates.length - 1] : localDateStr(new Date());
         const dismissed = JSON.parse(localStorage.getItem('fa_injury_dismissed') || '{}');
@@ -16407,8 +16467,16 @@
         const ua = rpe * minutes;
         // Extract the actual activity date from the key or card
         let activityDate;
+        let sessionId = '';
         if (tag === 'training') {
-          activityDate = key.split('_training_')[1] || '';
+          // The suffix is a SESSION ID now, not a date.
+          sessionId = key.split('_training_')[1] || '';
+          const sess = getTrainings().find(x => String(x.id) === String(sessionId));
+          activityDate = sess ? sess.date : '';
+          if (!activityDate && /^\d{4}-\d{2}-\d{2}$/.test(sessionId)) {
+            activityDate = sessionId;   // a legacy card still keyed by date
+            sessionId = '';
+          }
         } else {
           const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
           const mId = key.split('_match_')[1];
@@ -16417,7 +16485,7 @@
         }
         if (!activityDate) { const n = new Date(); activityDate = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0'); }
         const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-        rpeData[key] = { rpe, minutes, ua, tag, date: activityDate };
+        rpeData[key] = { rpe, minutes, ua, tag, date: activityDate, sessionId };
         // Staff notification
         const session = getSession();
         const actLabel = card.querySelector('.action-label');
@@ -16430,7 +16498,8 @@
           activity: actText
         });
         // Re-render only once the server has acknowledged (or the write is queued)
-        ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: activityDate },
+        ackSaveRecord('rpe', key,
+          { uid: session.id, rpe, minutes, ua, tag, date: activityDate, sessionId },
           'fa_player_rpe', JSON.stringify(rpeData), btn).then(() => {
           renderPage(getSession());
           updateActionsBadge();
@@ -16616,13 +16685,19 @@
         e.stopPropagation();
         const val = btn.dataset.avail;
         const btnsWrap = btn.closest('.avail-btns');
-        const date = btnsWrap.dataset.availDate;
+        const sid = btnsWrap.dataset.availSid;
+        const sess = getTrainings().find(x => String(x.id) === String(sid));
+        if (!sess) return;
+        const date = sess.date;
         if (val === 'injured') {
-          showBodyMapPicker(btnsWrap, date);
+          showBodyMapPicker(btnsWrap, sid);
           return;
         }
         const session = getSession();
-        const key = session.id + '_' + date;
+        // Written under the SESSION key only. Dual-writing the legacy date
+        // key would bring back the same-day last-write-wins this exists to
+        // remove.
+        const key = recordKey(session.id, sess, 'avail');
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
         availData[key] = val;
         // If answering non-injured, clear any injury data and re-derive fitness
@@ -16636,8 +16711,7 @@
         }
         deriveFitnessStatus(session.id);
         // Staff notification
-        const training = getTrainings();
-        const tObj = training.find(t => t.date === date);
+        const tObj = sess;
         const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
         addStaffNotification({
           type: 'training_avail',
@@ -16646,7 +16720,9 @@
           activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
         });
         // Re-render only once the server has acknowledged (or the write is queued)
-        ackSaveRecord('trainingAvail', key, { uid: session.id, date: date, value: val },
+        // sessionId AND date as fields: the schedulers query on date.
+        ackSaveRecord('trainingAvail', key,
+          { uid: session.id, sessionId: sess.id, date: date, value: val },
           'fa_training_availability', JSON.stringify(availData), btn).then(() => {
           renderPage(getSession());
           updateActionsBadge();
@@ -16657,12 +16733,14 @@
     $$('.avail-chosen').forEach(badge => {
       badge.addEventListener('click', (e) => {
         e.stopPropagation();
-        const date = badge.dataset.availDate;
-        if (!date) return;
+        const sid = badge.dataset.availSid;
+        const sess = getTrainings().find(x => String(x.id) === String(sid));
+        if (!sess) return;
+        const date = sess.date;
         // Default badge: expand to buttons inline
         if (badge.classList.contains('avail-default')) {
           const parent = badge.parentElement;
-          const btnsHtml = `<div class="avail-btns" data-avail-date="${date}">
+          const btnsHtml = `<div class="avail-btns" data-avail-sid="${sanitize(String(sid))}">
             <button class="avail-btn avail-yes" data-avail="yes">${t('avail.yes')}</button>
             <button class="avail-btn avail-late" data-avail="late">${t('avail.late')}</button>
             <button class="avail-btn avail-no" data-avail="no">${t('avail.no')}</button>
@@ -16671,24 +16749,23 @@
           badge.insertAdjacentHTML('afterend', btnsHtml);
           badge.remove();
           // Bind click handlers on newly inserted buttons
-          const newBtns = parent.querySelectorAll('.avail-btns[data-avail-date="' + date + '"] .avail-btn');
+          const newBtns = parent.querySelectorAll('.avail-btns[data-avail-sid="' + sid + '"] .avail-btn');
           newBtns.forEach(btn => {
             btn.addEventListener('click', (ev) => {
               ev.stopPropagation();
               const val = btn.dataset.avail;
               const btnsWrap = btn.closest('.avail-btns');
-              if (val === 'injured') { showBodyMapPicker(btnsWrap, date); return; }
+              if (val === 'injured') { showBodyMapPicker(btnsWrap, sid); return; }
               const session = getSession();
-              const key = session.id + '_' + date;
+              const key = recordKey(session.id, sess, 'avail');
               const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
               availData[key] = val;
               deriveFitnessStatus(session.id);
-              const training = getTrainings();
-              const tObj = training.find(t => t.date === date);
               const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
-              addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')' });
+              addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (sess.focus ? sess.focus : 'Training') + ' (' + date + ')' });
               // Re-render only once the server has acknowledged (or the write is queued)
-              ackSaveRecord('trainingAvail', key, { uid: session.id, date: date, value: val },
+              ackSaveRecord('trainingAvail', key,
+                { uid: session.id, sessionId: sess.id, date: date, value: val },
                 'fa_training_availability', JSON.stringify(availData), btn).then(() => {
                 renderPage(getSession());
                 updateActionsBadge();
@@ -16698,10 +16775,13 @@
           return;
         }
         const session = getSession();
-        const key = session.id + '_' + date;
+        const key = recordKey(session.id, sess, 'avail');
+        const legacyKey = legacyRecordKey(session.id, sess, 'avail');
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-        const wasInjured = availData[key] === 'injured';
+        const wasInjured = availData[key] === 'injured' || availData[legacyKey] === 'injured';
+        const hadLegacy = availData[legacyKey] !== undefined;
         delete availData[key];
+        delete availData[legacyKey];
         if (wasInjured) {
           const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
           delete injNotes[session.id];
@@ -16711,6 +16791,9 @@
           if (u) { u.fitnessStatus = 'fit'; u.injuryNote = ''; saveUsers(users); }
           deriveFitnessStatus(session.id);
         }
+        // The legacy document goes too, best effort: leaving it would let
+        // the resolver's date fallback resurrect the answer on next render.
+        if (hadLegacy) DB.removeRecord('trainingAvail', legacyKey).catch(() => {});
         ackRemoveRecord('trainingAvail', key,
           'fa_training_availability', JSON.stringify(availData), badge).then(() => {
           renderPage(session);

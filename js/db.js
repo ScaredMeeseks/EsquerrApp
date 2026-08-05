@@ -99,7 +99,12 @@ const DB = (function () {
     rpe: {
       lsKey: 'fa_player_rpe',
       toEntry: function (d) {
-        return { rpe: d.rpe, minutes: d.minutes, ua: d.ua, tag: d.tag, date: d.date };
+        /* sessionId is carried through so the squad-load index can bucket
+           by session rather than by date -- two squads can train the same
+           evening. Absent on records written before the re-key, which is
+           what the date fallback is for. */
+        return { rpe: d.rpe, minutes: d.minutes, ua: d.ua, tag: d.tag,
+          date: d.date, sessionId: d.sessionId };
       }
     }
   };
