@@ -1190,7 +1190,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 71;
+  const APP_VERSION = 72;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -3527,7 +3527,15 @@
       // 'tactics' is deliberately absent: its boards are club-wide drawings
       // with no category dimension, so a bar there would imply a filter that
       // does nothing.
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'staff-training-detail', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
+      /* Pages that scope their content to the selected category.
+         'tactics' is deliberately absent: its boards are club-wide drawings
+         with no category dimension, so a bar there would imply a filter that
+         does nothing.
+         'staff-training-detail' is absent for a different reason — a session
+         now belongs to specific teams, so it IS one category by definition.
+         Offering a switcher there invited a coach to change the category out
+         from under a session he was already looking at. */
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + catBar + fn(session);
     } else {
@@ -10384,7 +10392,6 @@
     const training = getTrainings();
     const tr = training.find(x => String(x.id) === String(detailTrainingId));
     if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>' + t('training.not_found') + '</p></div>';
-    var curCat = getCurrentCategory();
     /* The squad is now DERIVED from the session -- its teams, plus guests,
        minus exclusions -- instead of "every player in the category".
        This block used to reverse-match the session's day and start time

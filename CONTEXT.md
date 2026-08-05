@@ -1059,3 +1059,11 @@ Nothing blocks on it: the dual read means the app is correct whether it has run 
 
 **22 new tests** (7 in `availability.test.js`, 15 in the new `reminders.test.js`); four harnesses now slice the resolver rather than stubbing it, so they cannot drift from it. **492 total** (351 unit + 103 rules + 38 functions).
 
+## v72 - no category switcher on a training session (2026-08-05)
+
+A session belongs to specific teams now, so it **is** one category by definition. The switcher at the top of the training detail page invited a coach to change the category out from under the session he was already looking at - and after the scheduling changes there is nothing left to switch to.
+
+`staff-training-detail` comes out of `CATEGORY_PAGES`. The player-side `training-detail` was never in it.
+
+Also removed the `curCat` declaration in `renderStaffTrainingDetail`, which had no readers left: it died with the block that used to reverse-match the club's schedules to guess which letters shared a slot. The squad comes from the session now.
+
