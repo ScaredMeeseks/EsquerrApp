@@ -52,7 +52,7 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
 
-## Cloud Shell: a deploy can strip gcloud's identity (2026-08-05)
+## Cloud Shell: a deploy DOES strip gcloud's identity (confirmed twice, 2026-08-05)
 
 Cost most of a session. Symptom: every Admin SDK script fails with
 
@@ -75,6 +75,16 @@ credentials, and Cloud Shell's metadata endpoint returned nothing either.
 **Fix: restart the VM** — three-dots menu -> Restart, not a new tab, not
 `unset`. Credentials come back on boot. Then `cd ~/EsquerrApp` (a restart
 drops you in `~`) and note nvm resets to the default Node.
+
+**Reproduced twice, both times immediately after `./deploy.sh`.** Treat it
+as causal, not bad luck. Two ways to avoid the round trip:
+
+  * **Run Admin SDK scripts BEFORE deploying**, not after. A backfill and a
+    deploy in the same sitting will otherwise always cost a restart.
+  * Or budget for the restart: deploy, restart, then run the script.
+
+`functions/preflight-adc.js` now catches this in every script, so it costs
+one clear line rather than an afternoon of chasing environment variables.
 
 Do NOT run `gcloud auth application-default login` first: it warns it is
 unnecessary on a GCE VM and puts personal credentials on a shared disk.
