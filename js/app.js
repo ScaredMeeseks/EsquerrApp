@@ -1209,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 77;
+  const APP_VERSION = 78;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -10660,7 +10660,7 @@
       const squad = calledPlayers(d, users);
       const rows = squad.map(p => {
         const clash = _ntClashes(p.id, d);
-        const warn = clash.length ? `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : '';
+        const warn = clash.length ? `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">⚠</span>` : '';
         const drop = `${warn}<button class="conv-remove" data-nt-drop="${sanitize(String(p.id))}" data-nt-i="${i}" title="${t('nt.drop')}">&times;</button>`;
         return `<div class="conv-player">${_ntPlayerRow(p, cat, fitCtx, drop)}</div>`;
       }).join('');
@@ -10727,7 +10727,7 @@
     const rows = pool.map(p => {
       const clash = _ntClashes(p.id, d);
       const warn = clash.length ?
-        `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : '';
+        `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">⚠</span>` : '';
       return `<div class="nt-pick-card" data-nt-pick="${sanitize(String(p.id))}" data-name="${sanitize(p.name.toLowerCase())}">
         <span class="nt-dd-check"></span>
         ${_ntPlayerRow(p, cat, fitCtx, warn)}
@@ -12163,6 +12163,25 @@
     const tt = document.getElementById('ua-tooltip');
     if (tt) tt.classList.remove('visible');
   }
+
+  /* Hover tips, bound ONCE on the document.
+     This delegation used to sit inside a page-specific bind block on
+     #dashboard-content, which gave it two holes: it did not exist until
+     you had visited that page, and it could never see a modal, because an
+     overlay is appended to <body> and is outside the dashboard container
+     entirely. Keyed on [data-tip] rather than a class list so a new badge
+     gets a tooltip by carrying the attribute, and nothing has to be
+     rebound after a render. */
+  document.addEventListener('mouseover', function (e) {
+    const el = e.target.closest && e.target.closest('[data-tip]');
+    if (el) showHoverTip(el, el.dataset.tip);
+  });
+  document.addEventListener('mouseout', function (e) {
+    if (e.target.closest && e.target.closest('[data-tip]')) hideHoverTip();
+  });
+  // Capture: a tip anchored to a row must not hang in mid-air once the
+  // list under it scrolls.
+  document.addEventListener('scroll', hideHoverTip, true);
 
   /**
    * "You are running an old build" banner. Dismissable, and the dismissal is
@@ -18045,15 +18064,6 @@
           e.preventDefault();
           addPreRegisteredPlayer();
         }
-      });
-      // Delegated (mouseover/mouseout bubble, mouseenter/mouseleave do not),
-      // so the dots keep their tooltip across re-renders.
-      content.addEventListener('mouseover', e => {
-        const dot = e.target.closest && e.target.closest('.reg-dot, .nt-warn');
-        if (dot) showHoverTip(dot, dot.dataset.tip);
-      });
-      content.addEventListener('mouseout', e => {
-        if (e.target.closest && e.target.closest('.reg-dot, .nt-warn')) hideHoverTip();
       });
       // A tooltip pinned to viewport coordinates does not follow its dot when
       // the pane scrolls underneath it.

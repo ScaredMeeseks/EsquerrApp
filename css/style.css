@@ -3718,12 +3718,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .nt-cat-tag{flex:0 0 auto;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
   color:var(--text-secondary);background:var(--border);border-radius:999px;padding:.1rem .45rem;margin-left:.35rem;}
 
-/* The clash warning. `cursor:help` and the delegated #ua-tooltip, the same
-   pair .reg-dot uses -- a CSS bubble would be clipped by the scrolling
-   squad list. */
+/* The clash warning: a triangle, which reads as "caution" at a glance in a
+   way a circled ! does not. cursor:help plus the delegated #ua-tooltip --
+   position:fixed, so the scrolling squad list and the modal's own scroll
+   cannot clip it the way a CSS bubble would be clipped. */
 .nt-warn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
-  width:18px;height:18px;border-radius:50%;margin-right:.4rem;cursor:help;
-  background:#fb8c00;color:#fff;font-size:.72rem;font-weight:800;}
+  min-width:18px;margin-right:.4rem;cursor:help;
+  color:#fb8c00;font-size:1.05rem;line-height:1;}
+.nt-warn:hover{color:#e65100;}
 
 .nt-dd{position:relative;margin-top:.6rem;}
 .nt-dd-list{max-height:300px;}

@@ -111,3 +111,38 @@ describe('layout — the body-level tooltip', () => {
         'the mouse-follow site must read clientX');
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Hover tips.
+ *
+ * The delegation used to live inside a page-specific bind block on
+ * #dashboard-content, which gave it two holes that both looked like "the
+ * tooltip is broken":
+ *   1. It did not exist until you had visited that page.
+ *   2. It could never see a modal — an overlay is appended to <body>, so
+ *      it is outside the dashboard container entirely.
+ * ------------------------------------------------------------------ */
+describe('layout — hover tips reach every element that carries one', () => {
+  const appSrcT = fs.readFileSync(
+      path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('is delegated on the document, not on a page container', () => {
+    assert.ok(/document\.addEventListener\('mouseover'/.test(appSrcT),
+        'a container-scoped listener cannot see an overlay');
+    assert.ok(!/content\.addEventListener\('mouseover'/.test(appSrcT),
+        'the page-scoped copy must be gone, not merely supplemented');
+  });
+
+  it('keys on the attribute, so a new badge needs no rebinding', () => {
+    assert.ok(/closest\('\[data-tip\]'\)/.test(appSrcT));
+  });
+
+  it('hides on scroll, in capture, so a tip cannot hang in mid-air', () => {
+    assert.ok(/addEventListener\('scroll', hideHoverTip, true\)/.test(appSrcT));
+  });
+
+  it('the clash warning carries a tip and is a triangle', () => {
+    assert.ok(appSrcT.includes('class="nt-warn" data-tip='));
+    assert.ok(/nt-warn[^>]*>⚠</.test(appSrcT), 'a triangle reads as caution at a glance');
+  });
+});

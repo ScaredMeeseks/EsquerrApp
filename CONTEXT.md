@@ -1155,3 +1155,16 @@ The preselect moved into `_ntSeed()`, ahead of building the drafts. One place de
 
 4 new tests covering the switch: a one-team category preselects and builds in the same pass, a multi-team one builds nothing until a letter is chosen, and neither overrules a choice the coach already made. **519 total** (378 unit + 103 rules + 38 functions).
 
+## v78 - the clash warning is a triangle, and its tooltip works everywhere (2026-08-05)
+
+**The tooltip was bound in the wrong place**, and that explained more than the one symptom. The `mouseover`/`mouseout` delegation sat inside a **page-specific** bind block on `#dashboard-content`, which gave it two holes that both read as "the tooltip is broken":
+
+1. It did not exist until you had visited that particular page, because the block is guarded by `content._settingsBound`.
+2. It could **never** see a modal. An overlay is appended to `<body>`, so it is outside the dashboard container entirely — which is exactly where the new Add-Player popup lives.
+
+It is bound **once, on the document**, keyed on `[data-tip]` rather than a class list, so any badge gets a tooltip by carrying the attribute and nothing needs rebinding after a render. `hideHoverTip` on scroll in capture, so a tip anchored to a row cannot hang in mid-air when the list under it moves. This also fixed `.reg-dot`, which had the same two holes.
+
+**The warning is a triangle** (⚠) rather than a circled `!` — it reads as caution at a glance, which a filled circle does not.
+
+4 new tests in `test/layout.test.js` pinning the delegation: on the document not a container, keyed on the attribute, hiding on scroll, and the old page-scoped copy **gone** rather than merely supplemented. **523 total** (382 unit + 103 rules + 38 functions).
+
