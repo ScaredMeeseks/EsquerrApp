@@ -3547,15 +3547,29 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-sched-block{margin-bottom:1.2rem;padding:.8rem;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border-light);}
 .ts-sched-title{font-weight:700;font-size:.95rem;margin-bottom:.6rem;color:var(--primary);}
 .ts-sched-sub{font-weight:600;font-size:.82rem;color:var(--text-secondary);margin:.5rem 0 .3rem;}
-.ts-sched-row{display:flex;gap:.4rem;align-items:center;margin-bottom:.35rem;flex-wrap:nowrap;}
+/* Seven controls in one row -- day, start, dash, end, place, link,
+   remove. It was flex-wrap:nowrap inside a 560px card, so it spilled.
+   The card is wider now and the row wraps on a phone rather than
+   forcing a horizontal scroll.
+
+   The `input[type="time"]` rule that used to sit here matched NOTHING:
+   no such input exists anywhere in the app, so the time boxes fell
+   through to input[type="text"] and its min-width:100px quietly beat
+   their inline width:70px. They are selects now. */
+.ts-sched-row{display:flex;gap:.4rem;align-items:center;margin-bottom:.35rem;flex-wrap:wrap;}
 .ts-sched-row select{flex:1;min-width:90px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
-.ts-sched-row input[type="time"]{flex:0 0 auto;width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
+.ts-sched-row select.ts-time{flex:0 0 auto;min-width:0;width:82px;text-align:center;}
 .ts-sched-row input[type="text"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"].invalid{border-color:var(--danger);}
 /* Separator between a slot's start and end time. flex:0 so the row's two
    HH:MM boxes keep their fixed width and the dash never stretches. */
 .ts-sched-dash{flex:0 0 auto;color:var(--text-secondary);font-size:.82rem;}
+/* Below this the row genuinely cannot hold six controls; let the place
+   and link fields drop to a second line instead of overflowing. */
+@media (max-width:700px){
+  .ts-sched-row input[type="text"]{flex:1 1 45%;min-width:0;}
+}
 
 /* Roster email lists (staff lists in team setup) */
 .roster-status{flex:0 0 auto;font-size:.7rem;font-weight:700;padding:.15rem .4rem;border-radius:999px;white-space:nowrap;}

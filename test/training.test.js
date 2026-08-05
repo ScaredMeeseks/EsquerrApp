@@ -38,7 +38,8 @@ function load(letters) {
   return new Function('getTeamLetters', `
     ${code}
     return { trainingTeams, playerIsCalled, calledPlayers, playerTrainings,
-             sessionWindow, trainingsOverlap, hhmmToMins };`)(
+             sessionWindow, trainingsOverlap, hhmmToMins, minsToHHMM,
+             defaultEndTime };`)(
       () => letters || ['A']);
 }
 
@@ -249,72 +250,85 @@ describe('training — the one reader repairs missing ids', () => {
 
 /* The slot builder was buried inside addTraining(), reachable only by a
    source assertion. It is buildTrainingDrafts() now, so these RUN it. */
-describe('training — the draft builder keeps every team slot', () => {
+/* buildTrainingDrafts takes ONE letter. A session belongs to exactly one
+   team, so A and B get separate sessions even when they train at the same
+   time in the same place — and the cross-letter merge that used to live
+   here went with that decision, because nothing can ask for it any more. */
+describe('training — the draft builder proposes one team session', () => {
   function build(schedules, opts) {
     const code = grab('  var TRAINING_DEFAULT_LOC', '  async function handleRegister');
     const cfg = { schedules };
     // eslint-disable-next-line no-new-func
-    const fn = new Function('_clubConfig', 'getTeamLetters', 'tDay', `
+    const fn = new Function('_clubConfig', 'getTeamLetters', 'tDay',
+        'hhmmToMins', 'minsToHHMM', 'DEFAULT_SESSION_MINS', 'defaultEndTime', `
       ${code}
-      return buildTrainingDrafts;`)(cfg, () => (opts && opts.letters) || ['A', 'B'],
-        (n) => 'day' + n);
-    return fn('amateur', (opts && opts.training) || [], opts && opts.only);
+      return buildTrainingDrafts;`)(cfg, () => ['A', 'B'], (n) => 'day' + n,
+        (v) => {
+          const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || '').trim());
+          if (!m) return null;
+          return Number(m[1]) * 60 + Number(m[2]);
+        },
+        (m) => (m === null || m > 24 * 60 - 1 ? '' :
+          String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')),
+        90, (start) => {
+          const m = /^(\d{1,2}):(\d{2})$/.exec(String(start || '').trim());
+          if (!m) return '';
+          const mins = Number(m[1]) * 60 + Number(m[2]) + 90;
+          return mins > 24 * 60 - 1 ? '' :
+            String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+        });
+    return fn('amateur', (opts && opts.training) || [], (opts && opts.letter) || 'A');
   }
 
   const slot = (day, time, endTime, location) =>
     ({ day, time, endTime: endTime || '', location: location || '', link: '' });
 
-  it('gives two teams on the same evening at different times TWO sessions', () => {
-    // The bug: a dedup on day+time alone dropped B's slot entirely.
+  it('reads only the chosen team schedule', () => {
     const out = build({
       'amateur-A': { training: [slot('tue', '20:00', '21:30')] },
       'amateur-B': { training: [slot('tue', '21:30', '23:00')] },
-    });
-    assert.strictEqual(out.length, 2);
-    assert.deepStrictEqual(out.map((d) => d.teams).sort(), [['A'], ['B']]);
-    assert.deepStrictEqual(out.map((d) => d.time).sort(), ['20:00', '21:30']);
-  });
-
-  it('collapses an identical slot into ONE session carrying both letters', () => {
-    const out = build({
-      'amateur-A': { training: [slot('tue', '20:00', '21:30', 'Pitch 1')] },
-      'amateur-B': { training: [slot('tue', '20:00', '21:30', 'Pitch 1')] },
-    });
+    }, { letter: 'B' });
     assert.strictEqual(out.length, 1);
-    assert.deepStrictEqual(out[0].teams, ['A', 'B']);
-  });
-
-  it('treats a different place as a different session', () => {
-    const out = build({
-      'amateur-A': { training: [slot('tue', '20:00', '21:30', 'Pitch 1')] },
-      'amateur-B': { training: [slot('tue', '20:00', '21:30', 'Pitch 2')] },
-    });
-    assert.strictEqual(out.length, 2);
-  });
-
-  it('carries the end time through', () => {
-    const out = build({ 'amateur-A': { training: [slot('tue', '20:00', '21:45')] } },
-        { letters: ['A'] });
-    assert.strictEqual(out[0].endTime, '21:45');
-  });
-
-  it('restricts to the letters asked for', () => {
-    const out = build({
-      'amateur-A': { training: [slot('tue', '20:00')] },
-      'amateur-B': { training: [slot('tue', '21:30')] },
-    }, { only: ['B'] });
-    assert.strictEqual(out.length, 1);
+    assert.strictEqual(out[0].time, '21:30');
     assert.deepStrictEqual(out[0].teams, ['B']);
   });
 
-  it('falls back to Tue/Thu when nothing is configured', () => {
-    const out = build({});
+  it('stamps exactly one letter, never two', () => {
+    // Even when both teams train at the same time in the same place.
+    const shared = { training: [slot('tue', '20:00', '21:30', 'Pitch 1')] };
+    const out = build({ 'amateur-A': shared, 'amateur-B': shared }, { letter: 'A' });
+    assert.strictEqual(out.length, 1);
+    assert.deepStrictEqual(out[0].teams, ['A']);
+  });
+
+  it('gives a team with two slots on one day both of them', () => {
+    const out = build({
+      'amateur-A': { training: [slot('tue', '10:00', '11:30'), slot('tue', '20:00', '21:30')] },
+    }, { letter: 'A' });
+    assert.strictEqual(out.length, 2);
+    assert.deepStrictEqual(out.map((d) => d.time).sort(), ['10:00', '20:00']);
+  });
+
+  it('carries a configured end time through', () => {
+    const out = build({ 'amateur-A': { training: [slot('tue', '20:00', '21:45')] } });
+    assert.strictEqual(out[0].endTime, '21:45');
+  });
+
+  it('DERIVES an end time when the schedule has none', () => {
+    // The clash maths already assumed 90 minutes; leaving the field blank
+    // made the UI and the arithmetic disagree about what was happening.
+    const out = build({ 'amateur-A': { training: [slot('tue', '20:00')] } });
+    assert.strictEqual(out[0].endTime, '21:30');
+  });
+
+  it('falls back to Tue/Thu when the team has no schedule', () => {
+    const out = build({}, { letter: 'B' });
     assert.ok(out.length >= 1);
-    assert.deepStrictEqual(out[0].teams, ['A', 'B'], 'for the letters asked for');
+    assert.deepStrictEqual(out[0].teams, ['B']);
   });
 
   it('stamps every draft ready to save', () => {
-    const out = build({ 'amateur-A': { training: [slot('tue', '20:00')] } }, { letters: ['A'] });
+    const out = build({ 'amateur-A': { training: [slot('tue', '20:00')] } });
     const d = out[0];
     assert.ok(/^tr_/.test(d.id));
     assert.strictEqual(d.category, 'amateur');
@@ -325,8 +339,7 @@ describe('training — the draft builder keeps every team slot', () => {
 
   it('gives several drafts from one build distinct ids', () => {
     const out = build({
-      'amateur-A': { training: [slot('tue', '20:00')] },
-      'amateur-B': { training: [slot('tue', '21:30')] },
+      'amateur-A': { training: [slot('tue', '10:00'), slot('tue', '20:00')] },
     });
     assert.strictEqual(new Set(out.map((d) => d.id)).size, out.length);
   });
@@ -334,24 +347,38 @@ describe('training — the draft builder keeps every team slot', () => {
   it('never proposes a session in the past', () => {
     // A season that stopped in 2020 must not cycle on from 2020.
     const out = build({ 'amateur-A': { training: [slot('tue', '20:00')] } },
-        { letters: ['A'], training: [{ date: '2020-05-05', category: 'amateur' }] });
+        { training: [{ date: '2020-05-05', category: 'amateur' }] });
     const today = new Date().toISOString().slice(0, 10);
     assert.ok(out[0].date >= today, out[0].date);
   });
 });
 
-/* ------------------------------------------------------------------ *
- * The New Training page: clashes, and what Save does about them.
- *
- * The owner's rule, verbatim: "this player already has a training
- * scheduled at this time, adding him will remove him from it." So the
- * warning is not advisory — Save acts on it, and the player comes OUT of
- * the session he was already in.
- *
- * Resolved at save rather than at Add, so that editing the times
- * afterwards still resolves correctly: a coach who adds a player and then
- * moves the session an hour later should no longer displace anybody.
- * ------------------------------------------------------------------ */
+describe('training — the default end time', () => {
+  const H = load(['A']);
+
+  it('is 90 minutes after the start', () => {
+    assert.strictEqual(H.defaultEndTime('20:00'), '21:30');
+    assert.strictEqual(H.defaultEndTime('09:15'), '10:45');
+  });
+
+  it('returns nothing for an unparseable start', () => {
+    assert.strictEqual(H.defaultEndTime(''), '');
+    assert.strictEqual(H.defaultEndTime('evening'), '');
+  });
+
+  it('returns nothing rather than wrapping past midnight', () => {
+    /* A session crossing midnight would break the same-day minute
+       arithmetic the overlap check uses, so the coach picks that one. */
+    assert.strictEqual(H.defaultEndTime('23:00'), '');
+  });
+
+  it('agrees with what sessionWindow already assumed', () => {
+    // The number was always 90; this only makes it visible.
+    const w = H.sessionWindow({ time: '20:00' });
+    assert.strictEqual(H.minsToHHMM(w.end), H.defaultEndTime('20:00'));
+  });
+});
+
 describe('training — new session clash handling', () => {
   function load(existing, users) {
     const store = { fa_training: JSON.stringify(existing) };
@@ -374,7 +401,8 @@ describe('training — new session clash handling', () => {
       ${helpers}
       ${head}
       ${save}
-      return { _ntClashes, _ntSave, setDrafts: (d) => { _ntDrafts = d; },
+      return { _ntClashes, _ntSave,
+               setDrafts: (d) => { _ntDrafts = d; _ntTeam = 'A'; },
                page: () => currentPage };`)(
         localStorage, () => users, () => JSON.parse(store.fa_training),
         () => ['A', 'B'], () => 'amateur', () => [], () => {}, () => ({}),

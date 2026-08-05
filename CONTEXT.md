@@ -1104,3 +1104,19 @@ Two fixes, and the second is one the new `endTime` field finally makes possible:
 
 6 new tests. **370 unit**, 511 total.
 
+## v75 - four fixes to the training setup (2026-08-05)
+
+**1. The club-config schedule rows stopped spilling.** Seven controls in a `flex-wrap: nowrap` row inside a 560px card with 2.5rem padding - about 480px of usable width against a row demanding well over 500. The end-time field added in v70 tipped it over. The card is 720px now, the row wraps below 700px instead of scrolling, and the `.ts-sched-row input[type="time"]` rule is gone: **it never matched anything**. No `type="time"` input exists anywhere in the app, so those boxes fell through to `input[type="text"]`, whose `min-width: 100px` quietly beat their inline `width: 70px`. That was a large part of the overflow.
+
+**2. Times are selects, so a bad one is unrepresentable.** The three club-config time fields were free text with a `HH:MM` placeholder and no validation - "8pm", "20.00" and "2000" all persisted happily and then failed to parse in `sessionWindow()`, where the clash maths silently fell back to its default. They use `buildTimeOptions()` now, the app's existing 15-minute-step select, already used by the staff calendar, both New Training fields and the call-up time. The digit-stripping `HH:MM` formatter that used to live in the config bindings is gone with them - a select cannot hold a malformed time.
+
+**3. The end time defaults instead of sitting blank.** `sessionWindow()` has always assumed 90 minutes when no end was set, but the field showed nothing - so the UI and the arithmetic disagreed about what was happening. New `defaultEndTime(start)` makes that number visible: choosing a start in the club config fills an **empty** end 90 minutes later (never overwriting one the coach set), and `buildTrainingDrafts()` derives one when the schedule has none. It returns nothing rather than wrapping past midnight, because a session crossing midnight would break the same-day minute arithmetic the overlap check uses.
+
+**4. A session belongs to exactly one team.** The New Training page defaulted to every letter with "Tots" preselected, so a coach could create sessions for both squads without ever touching the bar. The chips are **single-select**, "Tots" is gone, nothing is preselected, and **Save is disabled until a team is chosen**. A category with one letter preselects it - there is no choice to make there.
+
+This **deleted** code rather than adding it: `buildTrainingDrafts()` takes one letter instead of a list, and its cross-letter merge went with it. That branch existed only to collapse A and B onto one session, which nothing can ask for any more, and a tested-but-unreachable branch is worse than no branch.
+
+**The session model is unchanged.** `teams` is still an array, and the demo club's 67 existing `['A','B']` sessions keep working everywhere - `trainingTeams()`, `calledPlayers()` and the reminders were always written for any number of letters. Only the creation path narrowed.
+
+**4 new tests**, and the draft-builder block rewritten for the single-letter model. **515 total** (374 unit + 103 rules + 38 functions).
+

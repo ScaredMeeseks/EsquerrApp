@@ -288,8 +288,9 @@
     'training.th_assistance':{ ca:'Assistència', es:'Asistencia', en:'Assistance' },
     'training.add':          { ca:'+ Entrenament', es:'+ Entrenamiento', en:'+ Add Training' },
     'nt.title':              { ca:'Nou entrenament', es:'Nuevo entrenamiento', en:'New training' },
-    'nt.which_teams':        { ca:'Quins equips entrenen?', es:'¿Qué equipos entrenan?', en:'Which teams are training?' },
-    'nt.which_teams_hint':   { ca:'Cada equip proposa el seu horari. Si difereixen, es crea una sessió per equip.', es:'Cada equipo propone su horario. Si difieren, se crea una sesión por equipo.', en:'Each team proposes its own schedule. If they differ, you get one session per team.' },
+    'nt.which_team':         { ca:'Quin equip entrena?', es:'¿Qué equipo entrena?', en:'Which team is training?' },
+    'nt.which_team_hint':    { ca:'Cada sessió és per a un equip. Tria el seu horari com a punt de partida.', es:'Cada sesión es para un equipo. Elige su horario como punto de partida.', en:'Each session belongs to one team. Its schedule is the starting point.' },
+    'nt.pick_team_first':    { ca:'Tria un equip per començar.', es:'Elige un equipo para empezar.', en:'Pick a team to start.' },
     'nt.start':              { ca:'Inici', es:'Inicio', en:'Start' },
     'nt.end':                { ca:'Final', es:'Final', en:'End' },
     'nt.called':             { ca:'Convocats', es:'Convocados', en:'Called up' },
@@ -1205,7 +1206,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 74;
+  const APP_VERSION = 75;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2004,6 +2005,24 @@
     return h * 60 + mi;
   }
 
+  function minsToHHMM(m) {
+    if (m === null || m === undefined || m < 0 || m > 24 * 60 - 1) return '';
+    return String(Math.floor(m / 60)).padStart(2, '0') + ':' +
+      String(m % 60).padStart(2, '0');
+  }
+
+  /* A sensible end for a session that starts at `start`.
+     The clash maths has always ASSUMED 90 minutes when no end was set
+     (see sessionWindow); this is the same number, made visible. Returns ''
+     when 90 minutes would run past midnight rather than wrapping — a
+     session crossing midnight would break the same-day minute arithmetic
+     the overlap check uses, so the coach picks that one by hand. */
+  function defaultEndTime(start) {
+    var m = hhmmToMins(start);
+    if (m === null) return '';
+    return minsToHHMM(m + DEFAULT_SESSION_MINS);
+  }
+
   /* [start, end) in minutes past midnight. `time` is normally a plain
      HH:MM but a vestigial "HH:MM - HH:MM" range exists in old rows and is
      defended against everywhere else in this file — so if endTime is blank
@@ -2090,40 +2109,34 @@
    * letter away, so if A trained Tue 20:00 and B Tue 21:30, whichever was
    * iterated first won and B's slot vanished without a word.
    *
+   * ONE letter, always. A session belongs to exactly one team now, so A
+   * and B get separate sessions even when they train at the same time in
+   * the same place. The cross-letter merge this used to do existed only to
+   * collapse them onto one session, which nothing asks for any more.
+   *
    * @param {string} cat      the category to propose for
    * @param {Array}  training the club's existing sessions, to cycle on from
-   * @param {Array} [only]    restrict to these letters; default every letter
+   * @param {string} letter   the team letter
    */
-  function buildTrainingDrafts(cat, training, only) {
+  function buildTrainingDrafts(cat, training, letter) {
     var dayValToJs = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-    var letters = (only && only.length) ? only : getTeamLetters(cat);
     var slots = [];
-    if (_clubConfig && _clubConfig.schedules) {
-      letters.forEach(function (letter) {
-        var sched = _clubConfig.schedules[cat + '-' + letter];
-        if (!sched || !sched.training) return;
-        sched.training.forEach(function (tr) {
-          if (!tr.day || dayValToJs[tr.day] === undefined) return;
-          var same = slots.find(function (s) {
-            return s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || '') &&
-              s.endTime === (tr.endTime || '') && s.location === (tr.location || '');
-          });
-          if (same) {
-            if (same.teams.indexOf(letter) === -1) same.teams.push(letter);
-            return;
-          }
-          slots.push({
-            jsDay: dayValToJs[tr.day], time: tr.time || '', endTime: tr.endTime || '',
-            location: tr.location || '', link: tr.link || '', teams: [letter]
-          });
+    var sched = (_clubConfig && _clubConfig.schedules) ?
+      _clubConfig.schedules[cat + '-' + letter] : null;
+    if (sched && sched.training) {
+      sched.training.forEach(function (tr) {
+        if (!tr.day || dayValToJs[tr.day] === undefined) return;
+        slots.push({
+          jsDay: dayValToJs[tr.day], time: tr.time || '', endTime: tr.endTime || '',
+          location: tr.location || '', link: tr.link || ''
         });
       });
     }
-    // Nothing configured: Tue/Thu, for whichever letters were asked for.
+    // Nothing configured for this team: Tue/Thu.
     if (!slots.length) {
       slots = [
-        { jsDay: 2, time: '21:00', endTime: '', location: '', link: '', teams: letters.slice() },
-        { jsDay: 4, time: '22:00', endTime: '', location: '', link: '', teams: letters.slice() }
+        { jsDay: 2, time: '21:00', endTime: '', location: '', link: '' },
+        { jsDay: 4, time: '22:00', endTime: '', location: '', link: '' }
       ];
     }
     slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
@@ -2155,8 +2168,8 @@
     if (diff <= 0) diff += 7;
     d.setDate(d.getDate() + diff);
 
-    // EVERY slot on that weekday, not just the first: two teams on the same
-    // evening at different times are two sessions.
+    // EVERY slot on that weekday, not just the first: a team with a morning
+    // and an evening slot on one day gets both.
     var matched = slots.filter(function (s) { return s.jsDay === nextSlotDay; });
     if (!matched.length) matched = [slots[0]];
     var dateStr = d.toISOString().slice(0, 10);
@@ -2166,11 +2179,15 @@
         // Provisional until saved; the suffix keeps several unique.
         id: 'tr_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 8),
         day: tDay(d.getDay()), date: dateStr,
-        time: slot.time, endTime: slot.endTime || '',
+        time: slot.time,
+        // Never blank when a start is known: the clash maths already
+        // assumes 90 minutes, so showing nothing made the UI and the
+        // arithmetic disagree about what was happening.
+        endTime: slot.endTime || defaultEndTime(slot.time),
         focus: '', location: loc,
         mapLink: slot.link || (loc === TRAINING_DEFAULT_LOC ? TRAINING_DEFAULT_MAP : ''),
         status: 'upcoming', category: cat,
-        teams: (slot.teams || []).slice(), guests: [], excluded: []
+        teams: [letter], guests: [], excluded: []
       };
     });
   }
@@ -2680,8 +2697,8 @@
       if (list) {
         list.querySelectorAll('.ts-sched-row').forEach(function (row) {
           var daySel = row.querySelector('select[data-train-day]');
-          var timeInp = row.querySelector('input[data-train-time]');
-          var endInp = row.querySelector('input[data-train-end]');
+          var timeInp = row.querySelector('[data-train-time]');
+          var endInp = row.querySelector('[data-train-end]');
           var locInp = row.querySelector('input[data-train-location]');
           var linkInp = row.querySelector('input[data-train-link]');
           var day = daySel ? daySel.value : '';
@@ -2753,7 +2770,7 @@
         html += '<div class="ts-sched-sub">Partit a casa</div>';
         html += '<div class="ts-sched-row">';
         html += '<select data-home-day="' + schedKey + '">' + _selectedDayOptions(dayOptions, homeGame.day) + '</select>';
-        html += '<input type="text" inputmode="numeric" data-home-time="' + schedKey + '" value="' + (homeGame.time || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">';
+        html += '<select class="ts-time" data-home-time="' + schedKey + '">' + buildTimeOptions(homeGame.time || '') + '</select>';
         html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="Ubicació">';
         html += '<input type="text" data-home-link="' + schedKey + '" value="' + sanitize(homeGame.link || '') + '" placeholder="Link">';
         html += '</div>';
@@ -2769,12 +2786,19 @@
      this field existed the app had no duration anywhere -- only three
      different hardcoded windows (2h, 90min, 60min) used for unrelated UI
      status decisions. Left blank it falls back to DEFAULT_SESSION_MINS. */
+  /* Times are SELECTS, not free text. As text boxes "8pm", "20.00" and
+     "2000" all persisted happily and then failed to parse in
+     sessionWindow(), so the clash maths silently fell back to a default.
+     buildTimeOptions() is the app's existing answer -- 15-minute steps with
+     a --:-- empty option -- already used by the staff calendar, both New
+     Training fields and the call-up time. A select makes a bad time
+     unrepresentable rather than merely discouraged. */
   function _buildTrainingRow(schedKey, idx, t, dayOptions) {
     return '<div class="ts-sched-row" data-train-idx="' + idx + '">' +
       '<select data-train-day="' + schedKey + '-' + idx + '">' + _selectedDayOptions(dayOptions, t.day) + '</select>' +
-      '<input type="text" inputmode="numeric" data-train-time="' + schedKey + '-' + idx + '" value="' + (t.time || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">' +
+      '<select class="ts-time" data-train-time="' + schedKey + '-' + idx + '">' + buildTimeOptions(t.time || '') + '</select>' +
       '<span class="ts-sched-dash">-</span>' +
-      '<input type="text" inputmode="numeric" data-train-end="' + schedKey + '-' + idx + '" value="' + (t.endTime || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">' +
+      '<select class="ts-time" data-train-end="' + schedKey + '-' + idx + '">' + buildTimeOptions(t.endTime || '') + '</select>' +
       '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicació">' +
       '<input type="text" data-train-link="' + schedKey + '-' + idx + '" value="' + sanitize(t.link || '') + '" placeholder="Link">' +
       '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
@@ -3060,13 +3084,20 @@
           if (row) row.remove();
         }
       });
-      // Auto-format HH:MM on time inputs (24h)
-      schedSection.addEventListener('input', function (e) {
-        if (!e.target.matches('[data-train-time], [data-home-time]')) return;
-        var v = e.target.value.replace(/[^0-9]/g, '');
-        if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2, 4);
-        if (v.length > 5) v = v.slice(0, 5);
-        e.target.value = v;
+      /* Choosing a start fills an EMPTY end 90 minutes later. Replaces the
+         digit-stripping HH:MM formatter that used to live here, which the
+         selects made obsolete — a select cannot hold a malformed time.
+         Never overwrites an end the coach has already chosen. */
+      schedSection.addEventListener('change', function (e) {
+        if (!e.target.matches('[data-train-time]')) return;
+        var row = e.target.closest('.ts-sched-row');
+        var end = row && row.querySelector('[data-train-end]');
+        if (!end || end.value) return;
+        var proposed = defaultEndTime(e.target.value);
+        // Only if the select actually offers it (15-minute steps, 00:00-23:45).
+        if (proposed && end.querySelector('option[value="' + proposed + '"]')) {
+          end.value = proposed;
+        }
       });
     }
     // Save button (remove previous listener to avoid duplicates when re-entering wizard)
@@ -10515,22 +10546,24 @@
      navigated away from used to be a real row in everybody's calendar. */
 
   let _ntDrafts = null;      // the sessions being composed
-  let _ntTeams = null;       // letters selected, null = every letter
+  /* THE team, or null for "not chosen yet". A session belongs to exactly
+     one team, so this is single-select — and null is genuinely "nothing
+     picked", not "all of them". Save stays disabled until it is set. */
+  let _ntTeam = null;
   let _ntPickerOpen = -1;    // which draft's Add-Player list is showing
   let _ntPicked = null;      // uids ticked in that list, before Add
 
   function _ntReset() {
     _ntDrafts = null;
-    _ntTeams = null;
+    _ntTeam = null;
     _ntPickerOpen = -1;
     _ntPicked = null;
   }
 
-  /** Rebuild the drafts from the schedules, keeping nothing the coach typed. */
+  /** Rebuild the drafts from the chosen team's schedule. */
   function _ntSeed() {
     const cat = getCurrentCategory() || '';
-    const letters = _ntTeams && _ntTeams.size ? [..._ntTeams] : getTeamLetters(cat);
-    _ntDrafts = buildTrainingDrafts(cat, getTrainings(), letters);
+    _ntDrafts = _ntTeam ? buildTrainingDrafts(cat, getTrainings(), _ntTeam) : [];
   }
 
   /**
@@ -10551,21 +10584,24 @@
 
   function renderTrainingNew() {
     const cat = getCurrentCategory() || '';
-    if (!_ntDrafts) { _ntTeams = null; _ntSeed(); }
-    const users = getUsers();
     const letters = getTeamLetters(cat);
+    /* One letter means there is no choice to make, so it is preselected —
+       forcing a click there would be friction for nothing. The bar still
+       renders, so the coach can see which team he is creating for. */
+    if (!_ntTeam && letters.length === 1) _ntTeam = letters[0];
+    if (!_ntDrafts) _ntSeed();
+    const users = getUsers();
 
     const chip = (val, label, on) =>
       `<button class="roster-team-btn nt-team-btn${on ? ' roster-team-btn-active' : ''}" data-nt-team="${val}">${label}</button>`;
-    const teamBar = letters.length > 1 ? `
+    const teamBar = `
       <div class="card">
-        <div class="card-title">${t('nt.which_teams')}</div>
-        <p class="nt-hint">${t('nt.which_teams_hint')}</p>
+        <div class="card-title">${t('nt.which_team')}</div>
+        <p class="nt-hint">${t('nt.which_team_hint')}</p>
         <div class="roster-team-filter" style="margin-bottom:0;">
-          ${chip('all', t('roster.all'), !_ntTeams || !_ntTeams.size)}
-          ${letters.map(l => chip(l, l, !!(_ntTeams && _ntTeams.has(l)))).join('')}
+          ${letters.map(l => chip(l, l, _ntTeam === l)).join('')}
         </div>
-      </div>` : '';
+      </div>`;
 
     const blocks = _ntDrafts.map((d, i) => {
       const squad = calledPlayers(d, users);
@@ -10637,10 +10673,10 @@
       <button class="btn btn-outline btn-small detail-back" data-back="staff-training">${t('btn.back')}</button>
       <h2 class="page-title">${t('nt.title')}</h2>
       ${teamBar}
-      ${blocks}
+      ${_ntTeam ? blocks : `<div class="card"><p class="nt-hint">${t('nt.pick_team_first')}</p></div>`}
       <div class="nt-actions">
         <button class="btn btn-outline" id="nt-cancel">${t('common.cancel')}</button>
-        <button class="btn btn-primary" id="nt-save">${t('nt.save')} (${_ntDrafts.length})</button>
+        <button class="btn btn-primary" id="nt-save"${_ntTeam && _ntDrafts.length ? '' : ' disabled'}>${t('nt.save')}${_ntDrafts.length ? ' (' + _ntDrafts.length + ')' : ''}</button>
       </div>`;
   }
 
@@ -10651,13 +10687,9 @@
     // proposed times ARE the teams' own — changing the teams changes them.
     $$('[data-nt-team]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const v = btn.dataset.ntTeam;
-        if (v === 'all') _ntTeams = null;
-        else {
-          if (!_ntTeams) _ntTeams = new Set();
-          if (_ntTeams.has(v)) _ntTeams.delete(v); else _ntTeams.add(v);
-          if (!_ntTeams.size) _ntTeams = null;
-        }
+        // Single-select. Re-seeds from THAT team's schedule, because the
+        // proposed times are the team's own.
+        _ntTeam = btn.dataset.ntTeam;
         _ntPickerOpen = -1;
         _ntSeed();
         rerender();
@@ -10765,7 +10797,9 @@
 
   function _ntSave() {
     const drafts = _ntDrafts || [];
-    if (!drafts.length) return;
+    // The button is disabled without a team, but the guard is here too: a
+    // save that silently created nothing would look like a broken button.
+    if (!_ntTeam || !drafts.length) return;
     const training = getTrainings();
 
     /* A player called to a session that clashes with one he is already in
