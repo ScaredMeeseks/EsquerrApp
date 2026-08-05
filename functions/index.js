@@ -304,6 +304,55 @@ async function getTeamMembersByRole(teamId, role) {
   return uids;
 }
 
+/**
+ * The players a training session is actually FOR.
+ *
+ * The reminders used to nag every player in the club: getTeamMembersByRole
+ * has no category clause, so a juvenil player was told to confirm his
+ * attendance for an amateur session, and to log RPE for one he never
+ * attended. Team letters make that worse, not better -- more sessions per
+ * date, each for a different squad.
+ *
+ * Mirrors playerIsCalled() in js/app.js. An EMPTY `teams` means every
+ * letter of the category, which is what a session meant before the field
+ * existed; a session with no category at all is legacy and goes to
+ * everyone, exactly as it does client-side.
+ */
+async function squadForSession(teamId, session) {
+  const snap = await db.collection("users").where("teamId", "==", teamId).get();
+  const guests = Array.isArray(session.guests) ? session.guests.map(String) : [];
+  const excluded = Array.isArray(session.excluded) ? session.excluded.map(String) : [];
+  const teams = (Array.isArray(session.teams) ? session.teams.filter(Boolean) : []);
+  const out = [];
+  snap.forEach((doc) => {
+    const d = doc.data() || {};
+    if (!d.roles || !d.roles.includes("player")) return;
+    const uid = String(doc.id);
+    if (excluded.includes(uid)) return;
+    if (guests.includes(uid)) { out.push(uid); return; }
+    if (!session.category) { out.push(uid); return; }
+    if ((d.category || "") !== session.category) return;
+    // No letters listed = every letter of the category.
+    if (teams.length && !teams.includes(d.team || "")) return;
+    out.push(uid);
+  });
+  return out;
+}
+
+/**
+ * Has this player answered for this session?
+ * New records are keyed by session id; legacy ones by date, and those can
+ * only ever have meant the player's OWN session -- the client that wrote
+ * one had no concept of a call-up. Kept in step with readRecord() in
+ * js/app.js, which cannot be shared because functions/ deploys alone.
+ */
+function answeredFor(answers, uid, session) {
+  if (answers.has(uid + "_" + session.id)) return true;
+  const isGuest = Array.isArray(session.guests) &&
+    session.guests.map(String).includes(String(uid));
+  return !isGuest && answers.has(uid + "_" + session.date);
+}
+
 // ── Helper: get all team members ──
 async function getAllTeamMembers(teamId) {
   const snap = await db.collection("users")
@@ -458,9 +507,15 @@ exports.scheduledTrainingReminder = onSchedule({
     // Answers come from the canonical record collection
     const availSnap = await db.collection("teams").doc(teamId)
         .collection("trainingAvail").where("date", "in", [today, tomorrow]).get();
-    const answered = new Set(availSnap.docs.map((d) => d.data().uid + "_" + d.data().date));
+    /* Both key formats, so a record written by an old client still counts
+       as answered. answeredFor() decides which one applies. */
+    const answered = new Set();
+    availSnap.docs.forEach((d) => {
+      const r = d.data() || {};
+      if (r.sessionId) answered.add(r.uid + "_" + r.sessionId);
+      if (r.date) answered.add(r.uid + "_" + r.date);
+    });
 
-    let playerUids = null;
     for (const session of upcoming) {
       const startTime = session.time.split(" - ")[0]?.trim();
       if (!startTime) continue;
@@ -468,10 +523,12 @@ exports.scheduledTrainingReminder = onSchedule({
       const hoursUntil = (sessionDate - now) / (1000 * 60 * 60);
       if (hoursUntil < 3.5 || hoursUntil > 4.5) continue;
 
-      if (!playerUids) playerUids = await getTeamMembersByRole(teamId, "player");
-      const unanswered = playerUids.filter((uid) => !answered.has(uid + "_" + session.date));
+      // The session's own squad, not the whole club.
+      const playerUids = await squadForSession(teamId, session);
+      const unanswered = playerUids.filter((uid) => !answeredFor(answered, uid, session));
       logger.info("trainingReminder", {teamId, date: session.date,
-        players: playerUids.length, unanswered: unanswered.length});
+        sessionId: session.id, players: playerUids.length,
+        unanswered: unanswered.length});
 
       if (unanswered.length) {
         const tokens = await getTokensForUsers(unanswered);
@@ -480,7 +537,10 @@ exports.scheduledTrainingReminder = onSchedule({
             title: "🏋️ Entrenament avui!",
             body: (session.focus || "Entrenament") + " a les " +
               startTime + ". Confirma la teva assistència.",
-            type: "training_reminder", page: "player-home", tag: "training-" + session.date,
+            // Tagged per SESSION: two squads training the same evening are
+            // two notifications, and a date tag would collapse them into one.
+            type: "training_reminder", page: "player-home",
+            tag: "training-" + (session.id || session.date),
           });
         }
       }
@@ -518,9 +578,12 @@ exports.scheduledRpeReminder = onSchedule({
     const shards = await readDataShards(teamId, ["fa_training", "fa_matches"]);
     const training = mergeArrayShards(shards.get("fa_training"));
     const matches = mergeArrayShards(shards.get("fa_matches"));
-    const todayTraining = training.find((t) => t.date === today);
+    /* filter, not find. Two squads can train the same evening, and `find`
+       silently picked one -- so the other squad was never chased, and the
+       first squad's session was used to judge everybody. */
+    const todaysTraining = training.filter((t) => t.date === today);
     const todayMatch = matches.find((m) => m.date === today);
-    if (!todayTraining && !todayMatch) return;
+    if (!todaysTraining.length && !todayMatch) return;
 
     // RPE + availability from the canonical record collections
     const teamRef = db.collection("teams").doc(teamId);
@@ -529,19 +592,37 @@ exports.scheduledRpeReminder = onSchedule({
       teamRef.collection("trainingAvail").where("date", "==", today).get(),
     ]);
     const rpeIds = new Set(rpeSnap.docs.map((d) => d.id));
-    const availByUid = {};
-    availSnap.forEach((d) => { availByUid[d.data().uid] = d.data().value; });
-
-    const playerUids = await getTeamMembersByRole(teamId, "player");
-    const missingRpe = playerUids.filter((uid) => {
-      if (todayTraining) {
-        const attended = availByUid[uid] === "yes" || availByUid[uid] === "late";
-        if (attended && !rpeIds.has(uid + "_training_" + today)) return true;
-      }
-      if (todayMatch && !rpeIds.has(uid + "_match_" + todayMatch.id)) return true;
-      return false;
+    /* Availability keyed per SESSION: with two sessions on one date a
+       single uid->value map answered for whichever record came last. */
+    const availBySession = new Set();
+    availSnap.forEach((d) => {
+      const r = d.data() || {};
+      if (r.value !== "yes" && r.value !== "late") return;
+      if (r.sessionId) availBySession.add(r.uid + "_" + r.sessionId);
+      if (r.date) availBySession.add(r.uid + "_" + r.date);
     });
-    logger.info("rpeReminder", {teamId, players: playerUids.length,
+
+    const missing = new Set();
+    for (const session of todaysTraining) {
+      const squad = await squadForSession(teamId, session);
+      squad.forEach((uid) => {
+        if (!answeredFor(availBySession, uid, session)) return;   // did not attend
+        if (rpeIds.has(uid + "_training_" + session.id)) return;
+        if (!Array.isArray(session.guests) ||
+            !session.guests.map(String).includes(String(uid))) {
+          if (rpeIds.has(uid + "_training_" + session.date)) return;  // legacy
+        }
+        missing.add(uid);
+      });
+    }
+    if (todayMatch) {
+      const all = await getTeamMembersByRole(teamId, "player");
+      all.forEach((uid) => {
+        if (!rpeIds.has(uid + "_match_" + todayMatch.id)) missing.add(uid);
+      });
+    }
+    const missingRpe = [...missing];
+    logger.info("rpeReminder", {teamId, sessions: todaysTraining.length,
       missing: missingRpe.length});
 
     if (missingRpe.length) {

@@ -23,8 +23,10 @@
 //
 // Run from the repo root on Cloud Shell — it requires ../js/shard.js, so
 // running from ~ fails MODULE_NOT_FOUND. Credentials come from ADC, which
-// is automatic on Cloud Shell; a stale GOOGLE_APPLICATION_CREDENTIALS is
-// the usual cause of an auth failure, so unset it.
+// is automatic on Cloud Shell. If it cannot authenticate, preflight-adc.js
+// says what to do; the short version is `gcloud auth list`, and if that
+// reports no accounts, restart the VM. Unsetting environment variables
+// does NOT help — that was a wrong guess that cost an afternoon.
 //
 // Idempotent: a session that already has a non-empty `teams` is left alone,
 // so a coach's manual edit is never overwritten and a re-run is a no-op.
@@ -34,6 +36,7 @@
 const path = require("path");
 const admin = require("firebase-admin");
 const Shard = require(path.join(__dirname, "..", "js", "shard.js"));
+const {preflight} = require(path.join(__dirname, "preflight-adc.js"));
 
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
@@ -164,6 +167,10 @@ async function backfillTeam(teamId, club) {
   log("=== backfill training teams ===");
   log(APPLY ? "MODE: APPLY (writing)" : "MODE: dry run (nothing will be written)");
 
+  // One cheap read first: an auth failure otherwise surfaces as a 30-line
+  // gRPC stack that reads like a bug in this script.
+  await preflight(db);
+
   const clubsSnap = ONLY_CLUB ?
     [await db.collection("clubs").doc(ONLY_CLUB).get()] :
     (await db.collection("clubs").get()).docs;
@@ -184,6 +191,7 @@ async function backfillTeam(teamId, club) {
   log(`${SEP}${totalChanged} session(s) ${APPLY ? "stamped" : "would be stamped"}`);
   if (!APPLY) log(`${SEP}Re-run with --apply to write.`);
 })().catch((e) => {
-  console.error(`\nFAILED: ${e && e.stack || e}`);
+  console.error(e && e.userError ? `\nFAILED: ${e.message}` :
+    `\nFAILED: ${e && e.stack || e}`);
   process.exit(1);
 });

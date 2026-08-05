@@ -1021,3 +1021,41 @@ Backlog item 2. Sessions carried a `category` but no team letter, so `amateur-A`
 
 Deferred to stage 3 with the rest of the call-up work: stamping `team` on tactics-board entries, which still share a date-keyed bucket.
 
+## v71 - training records keyed by session, not by date (stage 2 of 3, 2026-08-05)
+
+Availability, session RPE and the staff override were all keyed `{uid}_{date}`. Fine while a player could only ever have one session a day - guest call-ups break it. Borrowed for another squad's evening session, a player's two answers collide and the second silently overwrites the first, with no error and nothing in the UI to show it.
+
+**New records are keyed by the session id. Legacy ones are still READ**, because the v43-era APK on the phones knows only the date form and keeps writing it. The two cannot collide: a session id is `tr_...`, never a date.
+
+**All three keys moved together, in one commit.** Every read site does `overrides[k] || avail[k]` with the same string, so moving one without the other decouples a staff override from the answer it overrides. Read and write had to land together too: split across two pushes, a player writes an answer under the new key while every read still looks for the old one, and availability silently disappears.
+
+**The resolver** is `recordKey` / `legacyRecordKey` / `readRecord`. It prefers the session-keyed record and falls back to the date-keyed one **only for a session of the player's own team**. A legacy record can only ever have meant his own session, because the client that wrote it had no concept of a call-up; honouring it for a guest appearance would make a pre-feature answer also answer a session he was never part of. That guard is the subtlest part of the change and has its own test.
+
+`getEffectiveAnswer()` takes the **session** now rather than its date, and so do `buildDetailDonut`, `generateTrainingTeams`, `renderGeneratedTeams` and `bindGeneratedTeamsDnD`. The DOM addresses sessions too - `data-avail-date` and the staff-override select's `data-date` became session ids.
+
+**Un-answering clears both formats.** Deleting only the session-keyed record would leave the legacy one behind, and the resolver's fallback would bring the answer straight back on the next render.
+
+**The squad-load index** bucketed by the string after `_training_`, which is a session id now. It reads the record's own `date` field instead and buckets under both the session id and the date - the session bucket is exact and preferred, the date bucket is what a legacy record can offer. `js/db.js` carries `sessionId` into the local blob so that is possible.
+
+### The reminders were nagging the wrong people
+
+Not a consequence of this change - a live bug it exposed. All three schedulers picked a session by date and then notified **every player in the club**: `getTeamMembersByRole` has no category clause, so a juvenil player was told to confirm attendance for an amateur session and to log RPE for one he never attended.
+
+Worse, `scheduledRpeReminder` used `training.find(t => t.date === today)`. With two squads training the same evening only one session was ever considered - the other squad was never chased, and the first session's answers were used to judge everybody. It now filters and loops.
+
+`squadForSession()` and `answeredFor()` mirror `playerIsCalled()` and `readRecord()` in `js/app.js`. They cannot share code, because `functions/` deploys on its own and cannot require `../js` at runtime, so `test/reminders.test.js` pins the two copies to the same rules. Notifications are also tagged per session rather than per date, so two squads' reminders no longer collapse into one on the device.
+
+### The migration
+
+`functions/backfill-training-record-keys.js`, dry-run by default. It **only ever creates**: the legacy document is never modified and never deleted, because the old APK still reads it and because a wrong join is then recoverable by deleting everything carrying `migratedFrom` and re-running, with the source untouched throughout. `create()` rather than `set()`, ALREADY_EXISTS swallowed, so a re-run is a no-op.
+
+**Ambiguity is never guessed.** A record whose date matches two sessions in the player's own category is skipped and logged for a human. A wrong but silent resolution is far worse than a slower migration.
+
+Nothing blocks on it: the dual read means the app is correct whether it has run or not. It removes the collision; it does not enable the feature.
+
+### Tooling
+
+`functions/preflight-adc.js` - one credentials check, now used by both backfills. An auth failure used to surface as a 30-line gRPC stack ending in `Cannot create property 'refresh_token' on string ''`, which reads like a bug in the script. It is not; it means the Admin SDK has no usable ADC. The message now names the actual diagnostic (`gcloud auth list`) and the actual fix (restart the VM), because unsetting environment variables does not help - a wrong guess that cost most of a session.
+
+**22 new tests** (7 in `availability.test.js`, 15 in the new `reminders.test.js`); four harnesses now slice the resolver rather than stubbing it, so they cannot drift from it. **492 total** (351 unit + 103 rules + 38 functions).
+

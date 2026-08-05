@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v70.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **470 passing** (329 unit + 103 rules + 38 functions), up from 143 at the start of this work.
+**Production is on v71.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **492 passing** (351 unit + 103 rules + 38 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -19,8 +19,13 @@ What is left is not a code question: **every measurement so far is against synth
 
 The one open *design* question, no longer a defect: the colour is not a function of the score, so two players can show 72 in different colours. The tooltip now names the rule that fired, which answered the original complaint.
 
-### 2. Per-team training - STAGE 1 SHIPPED (v70), stages 2 and 3 to go
-Stage 1 (the model, end times, session-id keying, player-page scoping, the slot generator) is in v70. **Stage 2** re-keys `trainingAvail`/`rpe`/`fa_training_staff_override` from `{uid}_{date}` to `{uid}_{sessionId}` with a dual-read transition and a migration, and scopes the three reminder schedulers to the session's own squad (needs a functions deploy). **Stage 3** is the New Training page: pick teams, see the called squad with a total, "+ Add Player" across the club, clash warnings. Plan: `~/.claude/plans/continuing-on-the-esquerrapp-streamed-waffle.md`.
+### 2. Per-team training - STAGES 1 AND 2 SHIPPED (v70, v71), stage 3 to go
+Stage 1 (the model, end times, session-id keying, player-page scoping, the slot generator) is v70. Stage 2 (the record re-key, the dual read, the migration, the reminder scoping) is v71. **Stage 3** is the New Training page: pick teams, see the called squad with a total, "+ Add Player" across the club, clash warnings. Plan: `~/.claude/plans/continuing-on-the-esquerrapp-streamed-waffle.md`.
+
+**TWO THINGS OUTSTANDING for v71:**
+1. `./deploy.sh functions` - the reminder scoping is committed but not deployed.
+2. The record migration has not been run:
+   `node functions/backfill-training-record-keys.js --club Tm96gel58VSQvxgynf45` (dry run), then `--apply`, then `--verify`. **Any AMBIGUOUS line must be resolved by hand before applying.** Nothing blocks on it - the dual read means the app is correct either way.
 
 **Run the backfill before stage 3:** `node functions/backfill-training-teams.js --club Tm96gel58VSQvxgynf45` (dry run first).
 
@@ -77,6 +82,18 @@ unnecessary on a GCE VM and puts personal credentials on a shared disk.
 **Still to do:** `functions/backfill-training-teams.js` has no `preflight()`.
 `seed-demo-club.js` does, and it turns exactly this failure into one
 actionable line instead of a 30-line gRPC stack. Copy it across.
+
+## v71 - training records keyed by session (stage 2 of 3, 2026-08-05)
+
+`{uid}_{date}` could only hold one answer per day; guest call-ups break that. Records are keyed by session id now, and legacy ones are still read - the v43-era APK knows only the date form. The fallback applies **only to a session of the player's own team**: a legacy record can only ever have meant his own session, so honouring it for a guest appearance would answer one he was never part of.
+
+All three keys (availability, session RPE, staff override) moved in one commit, along with read and write together - splitting either way loses answers silently.
+
+**The reminders were nagging the whole club.** Not caused by this change, exposed by it: a juvenil player was told to confirm attendance for an amateur session. `scheduledRpeReminder` also used `find` on the date, so with two squads training the same evening only one session was ever considered. Both fixed; `squadForSession()`/`answeredFor()` mirror the client's rules and `test/reminders.test.js` pins the two copies together.
+
+**`functions/preflight-adc.js`** - shared credentials check, used by both backfills. An auth failure now names the diagnostic (`gcloud auth list`) and the fix (restart the VM) instead of printing a gRPC stack.
+
+22 new tests. **Needs `./deploy.sh functions` and the record migration - see backlog item 2.**
 
 ## v70 - per-team training, stage 1 of 3 (2026-08-05)
 
