@@ -22,10 +22,9 @@ The one open *design* question, no longer a defect: the colour is not a function
 ### 2. Per-team training - STAGES 1 AND 2 SHIPPED (v70, v71), stage 3 to go
 Stage 1 (the model, end times, session-id keying, player-page scoping, the slot generator) is v70. Stage 2 (the record re-key, the dual read, the migration, the reminder scoping) is v71. **Stage 3** is the New Training page: pick teams, see the called squad with a total, "+ Add Player" across the club, clash warnings. Plan: `~/.claude/plans/continuing-on-the-esquerrapp-streamed-waffle.md`.
 
-**TWO THINGS OUTSTANDING for v71:**
-1. `./deploy.sh functions` - the reminder scoping is committed but not deployed.
-2. The record migration has not been run:
-   `node functions/backfill-training-record-keys.js --club Tm96gel58VSQvxgynf45` (dry run), then `--apply`, then `--verify`. **Any AMBIGUOUS line must be resolved by hand before applying.** Nothing blocks on it - the dual read means the app is correct either way.
+**v71 is fully deployed and migrated (2026-08-05).** Functions deployed; the record migration applied to the demo club and verified: 3,427 `trainingAvail` and 2,684 `rpe` documents re-keyed to the session id, **zero ambiguous**, with every legacy document still present on purpose (the old APK reads them, and they are the rollback path). Match and extra RPE were correctly skipped - they already carry unambiguous ids.
+
+**The real club has NOT been migrated.** It does not need to be: the dual read means the app is correct either way, and the collision only becomes reachable once guest call-ups exist. Run the dry run and read it before applying there.
 
 **Run the backfill before stage 3:** `node functions/backfill-training-teams.js --club Tm96gel58VSQvxgynf45` (dry run first).
 
