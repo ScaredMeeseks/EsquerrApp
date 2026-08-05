@@ -3737,3 +3737,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .nt-fields{grid-template-columns:1fr 1fr;}
   .nt-actions .btn{flex:1;}
 }
+
+/* Category + team pickers at the top of New Training. */
+.nt-pick-row{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;}
+.nt-pick-cat{display:flex;flex-direction:column;gap:.25rem;font-size:.78rem;font-weight:600;color:var(--text-secondary);min-width:180px;}
+.nt-pick-letters{display:flex;flex-direction:column;gap:.25rem;}
+.nt-pick-label{font-size:.78rem;font-weight:600;color:var(--text-secondary);}
+
+/* Medical + fitness on a squad row. Fixed width so the two columns line up
+   down the list instead of drifting with the length of each name. */
+.nt-status{flex:0 0 auto;display:inline-flex;align-items:center;gap:.3rem;}
+
+/* The Add-Player popup. A modal rather than an inline dropdown because on a
+   desktop there is room to show position, name, team, category and both
+   status columns at once -- which is what a coach needs to decide who to
+   borrow. */
+.nt-pick-modal{max-width:860px;width:calc(100vw - 2rem);}
+.nt-pick-search{width:100%;margin-bottom:.75rem;}
+.nt-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.4rem;
+  max-height:min(60vh,520px);overflow-y:auto;margin-bottom:.75rem;}
+.nt-pick-card{display:flex;align-items:center;gap:.4rem;padding:.45rem .6rem;cursor:pointer;
+  border:1.5px solid var(--border);border-radius:var(--radius);background:var(--card);transition:all .12s;}
+.nt-pick-card:hover{border-color:var(--text-secondary);}
+.nt-pick-card.nt-dd-on{border-color:var(--primary);background:var(--danger-light);}
+.nt-pick-card .conv-name{font-size:.85rem;}
+
+/* One player per row on a phone: the grid's 320px minimum would otherwise
+   force a horizontal scroll inside the modal. */
+@media (max-width:640px){
+  .nt-pick-grid{grid-template-columns:1fr;max-height:60vh;}
+  .nt-pick-modal{width:calc(100vw - 1rem);}
+  .nt-pick-row{gap:.6rem;}
+  .nt-pick-cat{min-width:0;flex:1 1 100%;}
+}

@@ -298,6 +298,9 @@
     'nt.add_player':         { ca:'+ Afegir jugador', es:'+ Añadir jugador', en:'+ Add player' },
     'nt.add_selected':       { ca:'Afegir', es:'Añadir', en:'Add' },
     'nt.search':             { ca:'Cerca un jugador…', es:'Busca un jugador…', en:'Search a player…' },
+    'nt.category':           { ca:'Categoria', es:'Categoría', en:'Category' },
+    'nt.team':               { ca:'Equip', es:'Equipo', en:'Team' },
+    'nt.nobody_left':        { ca:'Tots els jugadors del club ja estan convocats.', es:'Todos los jugadores del club ya están convocados.', en:'Every player in the club is already called up.' },
     'nt.drop':               { ca:'Treure', es:'Quitar', en:'Remove' },
     'nt.clash_tip':          { ca:'Aquest jugador ja té un entrenament a aquesta hora; afegir-lo el traurà de la sessió que se solapa.', es:'Este jugador ya tiene un entrenamiento a esta hora; añadirlo lo quitará de la sesión que se solapa.', en:'This player already has a training scheduled at this time, adding him will remove him from it.' },
     'nt.save':               { ca:'Desar', es:'Guardar', en:'Save' },
@@ -1206,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 75;
+  const APP_VERSION = 76;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -6076,6 +6079,31 @@
    * @param {Object} rd Result of computeReadiness().
    * @param {boolean} [injured] True when deriveFitnessStatus() says injured.
    */
+  /**
+   * Medical status (the tick / question mark / cross) and fitness status
+   * (the readiness dot), the two columns the roster calls Estat Mèdic and
+   * Forma Física.
+   *
+   * Module-level because the call-up screen and the New Training page both
+   * show them; it used to be a local inside renderConvocatoria, and a
+   * second copy is exactly how the two would come to disagree about what
+   * "doubt" looks like.
+   *
+   * `ctx` is optional — pass fitnessContext() once per loop rather than
+   * letting deriveFitnessStatus re-parse its blobs for every player.
+   */
+  function playerStatusHtml(p, ctx) {
+    const derived = deriveFitnessStatus(p.id, false, ctx || fitnessContext());
+    const status = derived.fitnessStatus;
+    const injuryNote = derived.injuryNote ||
+      (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
+    let icon;
+    if (status === 'fit') icon = '<span class="roster-status-icon roster-status-fit">✓</span>';
+    else if (status === 'doubt') icon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
+    else icon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
+    return icon + readinessCellHtml(computeReadiness(p.id), status === 'injured');
+  }
+
   function readinessCellHtml(rd, injured) {
     const tips = [];
     if (injured) tips.push(t('readiness.injured_warning'));
@@ -10546,24 +10574,25 @@
      navigated away from used to be a real row in everybody's calendar. */
 
   let _ntDrafts = null;      // the sessions being composed
+  /* The category this session is for. Chosen on the page rather than
+     inherited from the top bar: creating next week's juvenil session while
+     looking at the amateur calendar is a normal thing to want. */
+  let _ntCat = null;
   /* THE team, or null for "not chosen yet". A session belongs to exactly
      one team, so this is single-select — and null is genuinely "nothing
      picked", not "all of them". Save stays disabled until it is set. */
   let _ntTeam = null;
-  let _ntPickerOpen = -1;    // which draft's Add-Player list is showing
-  let _ntPicked = null;      // uids ticked in that list, before Add
 
   function _ntReset() {
     _ntDrafts = null;
+    _ntCat = null;
     _ntTeam = null;
-    _ntPickerOpen = -1;
-    _ntPicked = null;
   }
 
   /** Rebuild the drafts from the chosen team's schedule. */
   function _ntSeed() {
-    const cat = getCurrentCategory() || '';
-    _ntDrafts = _ntTeam ? buildTrainingDrafts(cat, getTrainings(), _ntTeam) : [];
+    _ntDrafts = (_ntCat && _ntTeam) ?
+      buildTrainingDrafts(_ntCat, getTrainings(), _ntTeam) : [];
   }
 
   /**
@@ -10571,6 +10600,18 @@
    * Saved sessions only: two drafts in one composition are the coach's own
    * doing and warning about them would be noise.
    */
+  /** One row of the called squad, or of the picker. */
+  function _ntPlayerRow(p, cat, ctx, extra) {
+    const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
+    const catTag = (p.category && p.category !== cat)
+      ? `<span class="nt-cat-tag">${sanitize(CATEGORY_LABELS[p.category] || p.category)}</span>` : '';
+    return `<span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
+      <span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${teamCircle}${catTag}</span>
+      <span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>
+      <span class="conv-status nt-status">${playerStatusHtml(p, ctx)}</span>
+      ${extra || ''}`;
+  }
+
   function _ntClashes(playerId, draft, list) {
     const user = getUsers().find(u => String(u.id) === String(playerId));
     if (!user) return [];
@@ -10583,23 +10624,33 @@
   }
 
   function renderTrainingNew() {
-    const cat = getCurrentCategory() || '';
+    const cats = getVisibleCategories();
+    if (!_ntCat) _ntCat = getCurrentCategory() || cats[0] || '';
+    const cat = _ntCat;
     const letters = getTeamLetters(cat);
     /* One letter means there is no choice to make, so it is preselected —
-       forcing a click there would be friction for nothing. The bar still
-       renders, so the coach can see which team he is creating for. */
+       forcing a click there would be friction for nothing. */
     if (!_ntTeam && letters.length === 1) _ntTeam = letters[0];
     if (!_ntDrafts) _ntSeed();
     const users = getUsers();
+    const fitCtx = fitnessContext();
 
     const chip = (val, label, on) =>
       `<button class="roster-team-btn nt-team-btn${on ? ' roster-team-btn-active' : ''}" data-nt-team="${val}">${label}</button>`;
+    const catOptions = cats.map(c =>
+      `<option value="${c}"${c === cat ? ' selected' : ''}>${sanitize(CATEGORY_LABELS[c] || c)}</option>`).join('');
     const teamBar = `
       <div class="card">
         <div class="card-title">${t('nt.which_team')}</div>
         <p class="nt-hint">${t('nt.which_team_hint')}</p>
-        <div class="roster-team-filter" style="margin-bottom:0;">
-          ${letters.map(l => chip(l, l, _ntTeam === l)).join('')}
+        <div class="nt-pick-row">
+          <label class="nt-pick-cat">${t('nt.category')}
+            <select class="reg-input" id="nt-cat">${catOptions}</select></label>
+          ${letters.length > 1 ? `<div class="nt-pick-letters">
+            <span class="nt-pick-label">${t('nt.team')}</span>
+            <div class="roster-team-filter" style="margin-bottom:0;">
+              ${letters.map(l => chip(l, l, _ntTeam === l)).join('')}
+            </div></div>` : ''}
         </div>
       </div>`;
 
@@ -10608,43 +10659,11 @@
       const rows = squad.map(p => {
         const clash = _ntClashes(p.id, d);
         const warn = clash.length ? `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : '';
-        const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
-        const catTag = (p.category && p.category !== cat)
-          ? `<span class="nt-cat-tag">${sanitize(CATEGORY_LABELS[p.category] || p.category)}</span>` : '';
-        return `<div class="conv-player">
-          <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${teamCircle}${catTag}</span>
-          <span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>
-          ${warn}
-          <button class="conv-remove" data-nt-drop="${sanitize(String(p.id))}" data-nt-i="${i}" title="${t('nt.drop')}">&times;</button>
-        </div>`;
+        const drop = `${warn}<button class="conv-remove" data-nt-drop="${sanitize(String(p.id))}" data-nt-i="${i}" title="${t('nt.drop')}">&times;</button>`;
+        return `<div class="conv-player">${_ntPlayerRow(p, cat, fitCtx, drop)}</div>`;
       }).join('');
 
-      // Everyone in the club who is not already called — the point of the
-      // picker is borrowing from another squad, so it is not category-scoped.
-      const pool = users.filter(u =>
-        (u.roles || []).includes('player') && !playerIsCalled(d, u));
-      const picker = _ntPickerOpen === i ? `
-        <div class="tg-dd nt-dd">
-          <input class="tg-dd-input nt-dd-input" data-nt-i="${i}" placeholder="${t('nt.search')}" autocomplete="off">
-          <div class="tg-dd-list nt-dd-list">
-            ${pool.map(p => {
-    const on = _ntPicked && _ntPicked.has(String(p.id));
-    const clash = _ntClashes(p.id, d);
-    return `<div class="tg-dd-option nt-dd-option${on ? ' nt-dd-on' : ''}" data-nt-pick="${sanitize(String(p.id))}" data-name="${sanitize(p.name.toLowerCase())}">
-                <span class="nt-dd-check">${on ? '✓' : ''}</span>
-                <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-                <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : ''}</span>
-                <span class="nt-cat-tag">${sanitize(CATEGORY_LABELS[p.category] || '—')}</span>
-                ${clash.length ? `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : ''}
-              </div>`;
-  }).join('')}
-          </div>
-          <div class="nt-dd-actions">
-            <button class="btn btn-small btn-outline" data-nt-cancel-pick="1">${t('common.cancel')}</button>
-            <button class="btn btn-small btn-primary" data-nt-add="${i}">${t('nt.add_selected')}</button>
-          </div>
-        </div>` : `<button class="btn btn-small btn-outline nt-add-btn" data-nt-open="${i}">${t('nt.add_player')}</button>`;
+      const picker = `<button class="btn btn-small btn-outline nt-add-btn" data-nt-open="${i}">${t('nt.add_player')}</button>`;
 
       const dmy = d.date ? tDateDMY(d.date) : '';
       return `<div class="card nt-draft" data-nt-i="${i}">
@@ -10680,8 +10699,116 @@
       </div>`;
   }
 
+  /**
+   * The Add-Player popup.
+   *
+   * A modal rather than the inline dropdown it replaces: on a desktop there
+   * is room for a multi-column grid showing position, name, team, category
+   * and both status columns, which is what a coach needs to decide who to
+   * borrow. The inline list could show a name and little else. On a phone
+   * the grid collapses to one player per row.
+   */
+  function _ntOpenPicker(i) {
+    const d = _ntDrafts && _ntDrafts[i];
+    if (!d) return;
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+
+    const cat = _ntCat || '';
+    const fitCtx = fitnessContext();
+    const picked = new Set();
+    // Everyone in the club not already called — borrowing from another
+    // squad is the entire point, so this is deliberately not category-scoped.
+    const pool = getUsers().filter(u =>
+      (u.roles || []).includes('player') && !playerIsCalled(d, u));
+
+    const rows = pool.map(p => {
+      const clash = _ntClashes(p.id, d);
+      const warn = clash.length ?
+        `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : '';
+      return `<div class="nt-pick-card" data-nt-pick="${sanitize(String(p.id))}" data-name="${sanitize(p.name.toLowerCase())}">
+        <span class="nt-dd-check"></span>
+        ${_ntPlayerRow(p, cat, fitCtx, warn)}
+      </div>`;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-card nt-pick-modal">
+        <div class="modal-title">${t('nt.add_player')}</div>
+        <input class="reg-input nt-pick-search" placeholder="${t('nt.search')}" autocomplete="off">
+        <div class="nt-pick-grid">${rows || `<p class="nt-hint">${t('nt.nobody_left')}</p>`}</div>
+        <div class="modal-actions">
+          <button class="btn btn-small btn-outline" id="nt-pick-cancel">${t('common.cancel')}</button>
+          <button class="btn btn-small btn-primary" id="nt-pick-add" disabled>${t('nt.add_selected')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    const addBtn = overlay.querySelector('#nt-pick-add');
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    const syncBtn = () => {
+      addBtn.disabled = picked.size === 0;
+      addBtn.textContent = picked.size ?
+        t('nt.add_selected') + ' (' + picked.size + ')' : t('nt.add_selected');
+    };
+
+    overlay.querySelectorAll('[data-nt-pick]').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = String(card.dataset.ntPick);
+        if (picked.has(id)) picked.delete(id); else picked.add(id);
+        card.classList.toggle('nt-dd-on', picked.has(id));
+        card.querySelector('.nt-dd-check').textContent = picked.has(id) ? '✓' : '';
+        syncBtn();
+      });
+    });
+
+    const search = overlay.querySelector('.nt-pick-search');
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      overlay.querySelectorAll('[data-nt-pick]').forEach(c => {
+        c.hidden = !!q && (c.dataset.name || '').indexOf(q) === -1;
+      });
+    });
+    search.focus();
+
+    overlay.querySelector('#nt-pick-cancel').addEventListener('click', close);
+    // Clicking the backdrop cancels, the same as every other overlay here.
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    addBtn.addEventListener('click', () => {
+      if (!d.guests) d.guests = [];
+      picked.forEach(id => {
+        // Re-inviting someone previously dropped clears the exclusion.
+        d.excluded = (d.excluded || []).filter(x => String(x) !== String(id));
+        if (d.guests.map(String).indexOf(String(id)) === -1) d.guests.push(id);
+      });
+      close();
+      renderPage(getSession());
+    });
+  }
+
   function bindTrainingNew() {
     const rerender = () => renderPage(getSession());
+
+    const catSel = $('#nt-cat');
+    if (catSel) {
+      catSel.addEventListener('change', () => {
+        // A different category has different letters; the old choice cannot
+        // survive it, so the coach picks again (or it auto-picks if there
+        // is only one).
+        _ntCat = catSel.value;
+        _ntTeam = null;
+        _ntSeed();
+        rerender();
+      });
+    }
 
     // Which teams get a session. Re-seeds from their schedules, because the
     // proposed times ARE the teams' own — changing the teams changes them.
@@ -10690,7 +10817,6 @@
         // Single-select. Re-seeds from THAT team's schedule, because the
         // proposed times are the team's own.
         _ntTeam = btn.dataset.ntTeam;
-        _ntPickerOpen = -1;
         _ntSeed();
         rerender();
       });
@@ -10725,58 +10851,8 @@
     });
 
     $$('[data-nt-open]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        _ntPickerOpen = Number(btn.dataset.ntOpen);
-        _ntPicked = new Set();
-        rerender();
-      });
+      btn.addEventListener('click', () => _ntOpenPicker(Number(btn.dataset.ntOpen)));
     });
-    const cancelPick = $('[data-nt-cancel-pick]');
-    if (cancelPick) {
-      cancelPick.addEventListener('click', () => {
-        _ntPickerOpen = -1; _ntPicked = null; rerender();
-      });
-    }
-
-    // Multi-select: tick several, then Add once.
-    $$('[data-nt-pick]').forEach(row => {
-      row.addEventListener('click', () => {
-        if (!_ntPicked) _ntPicked = new Set();
-        const id = String(row.dataset.ntPick);
-        if (_ntPicked.has(id)) _ntPicked.delete(id); else _ntPicked.add(id);
-        row.classList.toggle('nt-dd-on');
-        const tick = row.querySelector('.nt-dd-check');
-        if (tick) tick.textContent = _ntPicked.has(id) ? '✓' : '';
-      });
-    });
-
-    const ddInput = $('.nt-dd-input');
-    if (ddInput) {
-      ddInput.addEventListener('input', () => {
-        const q = ddInput.value.trim().toLowerCase();
-        $$('.nt-dd-option').forEach(o => {
-          o.hidden = !!q && (o.dataset.name || '').indexOf(q) === -1;
-        });
-      });
-      ddInput.focus();
-    }
-
-    const addBtn = $('[data-nt-add]');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const d = _ntDrafts[Number(addBtn.dataset.ntAdd)];
-        if (!d || !_ntPicked) { _ntPickerOpen = -1; return rerender(); }
-        if (!d.guests) d.guests = [];
-        _ntPicked.forEach(id => {
-          // Re-inviting someone previously dropped clears the exclusion.
-          d.excluded = (d.excluded || []).filter(x => String(x) !== String(id));
-          if (d.guests.map(String).indexOf(String(id)) === -1) d.guests.push(id);
-        });
-        _ntPickerOpen = -1;
-        _ntPicked = null;
-        rerender();
-      });
-    }
 
     const cancel = $('#nt-cancel');
     if (cancel) {
@@ -11789,17 +11865,7 @@
     const allConv = Array.isArray(allConvRaw) ? {} : allConvRaw;
     const saved = convSelectedMatchId ? (allConv[convSelectedMatchId] || []) : [];
     const _convFitCtx = fitnessContext();
-    function playerStatusHtml(p) {
-      const derived = deriveFitnessStatus(p.id, false, _convFitCtx);
-      const status = derived.fitnessStatus;
-      const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
-      const rd = computeReadiness(p.id);
-      let icon = '';
-      if (status === 'fit') icon = '<span class="roster-status-icon roster-status-fit">✓</span>';
-      else if (status === 'doubt') icon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
-      else icon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
-      return icon + readinessCellHtml(rd, status === 'injured');
-    }
+    const convStatus = (p) => playerStatusHtml(p, _convFitCtx);
 
     const POS_ORDER = ['GK','CB','LB','RB','DM','OM','LW','RW','ST'];
     function posRank(p) {
@@ -11843,12 +11909,12 @@
             : maStatus === 'no_disponible' ? '<span class="conv-ma-tag conv-ma-nodisp">No Disponible</span>'
             : '<span class="conv-ma-tag conv-ma-pending">—</span>';
           const pTeam = p.team || '';
-          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>${maTag}<span class="conv-status">${playerStatusHtml(p)}</span></div>`;
+          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>${maTag}<span class="conv-status">${convStatus(p)}</span></div>`;
         }).join('')
       : '<p class="conv-empty-hint">No players available</p>';
 
     const calledHtml = called.length
-      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${playerStatusHtml(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
+      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
       : '<p class="conv-drop-hint"><span class="conv-hint-desktop">' + t('conv.drag_desktop') + '</span><span class="conv-hint-mobile">' + t('conv.drag_mobile') + '</span></p>';
 
     // Uniform: auto-default for home games

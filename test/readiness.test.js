@@ -100,11 +100,19 @@ describe('app.js — readiness cell, with data', () => {
 });
 
 describe('app.js — readiness cell wiring', () => {
-  it('is used by all three tables, so they cannot drift again', () => {
-    // Calls only — the `function readinessCellHtml(rd, injured)` declaration
-    // matches the same shape.
-    const uses = (src.match(/(?<!function )readinessCellHtml\(rd,/g) || []).length;
-    assert.strictEqual(uses, 3, 'expected roster, training detail and convocatòria');
+  it('is reached from every screen that shows it, and only through shared code', () => {
+    /* Three call sites: the roster table, the training-detail table, and
+       playerStatusHtml() — which is itself the shared path for the match
+       call-up AND the New Training page. playerStatusHtml used to be a
+       local inside renderConvocatoria; lifting it out is what stops those
+       two screens disagreeing about what "doubt" looks like. */
+    const uses = (src.match(/(?<!function )readinessCellHtml\(/g) || []).length;
+    assert.strictEqual(uses, 3, 'roster, training detail, playerStatusHtml');
+
+    const shared = (src.match(/(?<!function )playerStatusHtml\(/g) || []).length;
+    assert.ok(shared >= 2, 'the call-up and New Training both go through it');
+    assert.ok(!/function playerStatusHtml/.test(src.split('renderConvocatoria')[1] || ''),
+        'it must stay module-level, not slide back inside a render function');
   });
 
   it('leaves no call site painting missing data green', () => {

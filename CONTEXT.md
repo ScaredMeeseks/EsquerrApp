@@ -1120,3 +1120,19 @@ This **deleted** code rather than adding it: `buildTrainingDrafts()` takes one l
 
 **4 new tests**, and the draft-builder block rewritten for the single-letter model. **515 total** (374 unit + 103 rules + 38 functions).
 
+## v76 - category picker, status columns, and the Add-Player popup (2026-08-05)
+
+**The category is chosen on the page.** It used to be inherited from `getCurrentCategory()`, so creating next week's juvenil session while looking at the amateur calendar meant switching the top bar first. There is a dropdown of the coach's visible categories now, defaulting to the current one, and the letter chips appear beside it **only when the category has more than one team**. Changing the category clears the team, because the letters it offered no longer exist.
+
+**Medical status and fitness status** on every player row, in the squad list and in the picker - the roster's Estat Mèdic and Forma Física.
+
+Doing that meant `playerStatusHtml()` had to move: it was a **local** inside `renderConvocatoria`, so the New Training page could not reach it. It is module-level now and both screens share one definition, which is what stops them drifting about what "doubt" looks like. The call-up keeps its hoisted `fitnessContext()` by passing it in, so nothing re-parses its blobs per player.
+
+**"+ Add Player" is a popup, not an inline dropdown.** On a desktop there is room for a multi-column grid showing position, name, team, category and both status columns at once - which is what a coach actually needs to decide who to borrow; the inline list could show a name and little else. Multi-select with a live count on the Add button, a search box, backdrop-to-cancel. **On a phone the grid collapses to one player per row**, because a 320px minimum column would otherwise force a horizontal scroll inside the modal.
+
+That removed two pieces of page state (`_ntPickerOpen`, `_ntPicked`): the popup owns its own selection and hands back the result, so the page no longer re-renders on every tick.
+
+`test/readiness.test.js`'s wiring assertion was counting `readinessCellHtml(rd,` call sites literally. It now pins the actual invariant - three call sites, one of them the shared `playerStatusHtml`, and that helper staying out of any render function.
+
+**515 total** (374 unit + 103 rules + 38 functions).
+
