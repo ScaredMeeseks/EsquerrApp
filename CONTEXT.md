@@ -997,3 +997,27 @@ The per-record archive collections are now **enumerated** rather than matched wi
 
 Client-side category filtering was deliberately **not** added: the page is lead/admin-only and a lead's `cats` claim already covers every enabled category, so it would be dead code on the only path that reaches it. The rules are where that belongs.
 
+## v70 - per-team training sessions, stage 1 of 3 (2026-08-05)
+
+Backlog item 2. Sessions carried a `category` but no team letter, so `amateur-A` and `amateur-B` shared one calendar. This stage lays the model; the record re-key (stage 2) and the New Training page with call-ups (stage 3) follow.
+
+**The session row now carries `teams`, `guests`, `excluded` and `endTime`.** An **empty `teams` means every letter of the category** - exactly what a session meant before the field existed, so nothing breaks before the backfill and nothing changes for a club that never uses letters. The squad is **derived on every read** (`calledPlayers`), never stored: a player who changes team is picked up automatically, whereas a frozen list would rot.
+
+**Club config gained a start AND end time per training slot.** Until now the app had no duration anywhere - only three unrelated hardcoded windows (2h for "in progress", 90min before the RPE card, 60min before dropping from the week feed). Clash detection needs a real one. Blank falls back to 90 minutes, and the vestigial `"HH:MM - HH:MM"` range that every read site already defends against is recovered as an end time rather than discarded. The server passes the schedule's inner shape through untouched, so this needed no deploy.
+
+**Detail views are keyed by session id, not date.** `detailTrainingDate` -> `detailTrainingId`, and the same collision was hiding in the generated-teams cache (`_generatedTeamsDate`) and the tactics-board link button, both now keyed by session. A date is not an identity when two squads can share it.
+
+**One reader, `getTrainings()`,** replaces 29 open-coded `JSON.parse(localStorage.getItem('fa_training'))` sites and repairs a missing session id on every surface - the repair used to live in `renderStaffTraining`, which a player never renders, and navigation now depends on the id existing. Its write-back is **guarded by role**: `fa_training` is not in the player allowlist in `firestore.rules`, so persisting from a player's client would be denied and surface an error toast on every render. Players repair in memory only, which is all they need to open a session.
+
+**The player pages were over-sharing, not under-sharing.** `renderWeekActivities`, the player-home donut, `renderPlayerActions` and the sidebar badge all read the *entire* club calendar with **no category filter at all** - a juvenil player saw amateur sessions and could answer availability for them. All four now use `playerTrainings()`, which is the same helper that will make a guest see a session they were borrowed for. Narrowing and the new feature are one change.
+
+**The generator stopped dropping a team's slot.** `addTraining` collected every letter's schedule, deduped by day+time and threw the letter away - so if A trained Tue 20:00 and B Tue 21:30, whichever was iterated first won and B's slot vanished silently. Slots now keep their letters; identical day+time+end+place across letters merges by **unioning** the letters; and a click creates one session per slot on that weekday rather than the first one `find` returned.
+
+**The staff detail page stopped guessing.** It reverse-matched the session's day and start time against the club's schedules to infer which letters shared the slot. The session now says.
+
+**`functions/backfill-training-teams.js`** (dry-run by default) derives each session's `teams` from **who actually attended** - the letters of the players holding an availability record on that date. The real club lands on `['A']`; the demo club's amateur sessions land on `['A','B']`, which is what really happened. A session with no attendance keeps every letter, because an unattended session must not become invisible. Skips sessions that already have letters, so a coach's edit is never overwritten.
+
+**31 new tests** in `test/training.test.js`. **470 total** (329 unit + 103 rules + 38 functions).
+
+Deferred to stage 3 with the rest of the call-up work: stamping `team` on tactics-board entries, which still share a date-keyed bucket.
+

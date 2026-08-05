@@ -26,14 +26,19 @@ function grab(from, to) {
 }
 
 /** deriveFitnessStatus with saveResult=false is self-contained: its only
- *  outside dependency (getUsers/saveUsers) sits in the save branch. */
+ *  outside dependency (getUsers/saveUsers) sits in the save branch.
+ *
+ *  getTrainings() is injected rather than sliced: it is the one reader for
+ *  fa_training, and it self-heals missing session ids, which is behaviour
+ *  this file has no business exercising. The stub just returns the blob. */
 function loadFitness(store) {
   const localStorage = { getItem: (k) => (k in store ? store[k] : null) };
+  const getTrainings = () => JSON.parse(store.fa_training || '[]');
   const code = grab('  function fitnessContext()', '  function getInjuries()');
   // eslint-disable-next-line no-new-func
-  return new Function('localStorage', `
+  return new Function('localStorage', 'getTrainings', `
     ${code}
-    return { fitnessContext, deriveFitnessStatus };`)(localStorage);
+    return { fitnessContext, deriveFitnessStatus };`)(localStorage, getTrainings);
 }
 
 const DATES = ['2026-05-05', '2026-05-07', '2026-05-12', '2026-05-14'];

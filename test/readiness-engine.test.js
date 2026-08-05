@@ -54,6 +54,9 @@ function engine(o) {
   };
   const sandbox = {
     localStorage: {getItem: (k) => (k in store ? store[k] : null)},
+    // The one reader for fa_training. Stubbed rather than sliced: its job
+    // is repairing missing session ids, which is not this file's subject.
+    getTrainings: () => JSON.parse(store.fa_training || '[]'),
     window: {_renderFrame: Math.random()},
     // Minutes live in the match events, not the RPE. Stubbed rather than
     // rebuilt: the interval arithmetic has its own coverage.

@@ -898,7 +898,7 @@
   function fitnessContext() {
     return {
       availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
-      training: JSON.parse(localStorage.getItem('fa_training') || '[]'),
+      training: getTrainings(),
       injNotes: JSON.parse(localStorage.getItem('fa_injury_notes') || '{}'),
       dismissed: JSON.parse(localStorage.getItem('fa_injury_dismissed') || '{}'),
       injuries: JSON.parse(localStorage.getItem('fa_injuries') || '[]')
@@ -1005,7 +1005,7 @@
     const users = getUsers();
     const players = users.filter(u => (u.roles || []).includes('player'));
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const training = getTrainings().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
     const zoneMap = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
     const now = new Date();
@@ -1190,7 +1190,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 69;
+  const APP_VERSION = 70;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -1898,6 +1898,123 @@
     });
   }
 
+  /* ── Training sessions: who is this one for? ────────────────────
+     A session used to carry only a `category`, so amateur-A and amateur-B
+     literally shared one calendar. It now carries:
+
+       teams     letters it is for; EMPTY MEANS EVERY LETTER of the
+                 category, which is exactly what it meant before, so
+                 nothing changes for a club that never uses letters
+       guests    players called in from another team or category
+       excluded  players dropped from this one session
+       endTime   when it finishes; blank falls back to 90 minutes
+
+     The called list is DERIVED from those on every read, never stored as
+     a snapshot: a player who joins team B tomorrow is picked up for B's
+     sessions automatically, whereas a frozen list would quietly rot. Only
+     the two exception lists are persisted, and they hold a handful of ids.
+
+     Matches already work this way (`m.team` plus the convocatòria list),
+     and fa_tactic_training_boards already learned the same lesson — stamp
+     the discriminator on the entry rather than deriving it from a date
+     that two squads can share. */
+  var DEFAULT_SESSION_MINS = 90;
+
+  function trainingTeams(t) {
+    var list = (t && Array.isArray(t.teams)) ? t.teams.filter(Boolean) : [];
+    if (list.length) return list;
+    return getTeamLetters((t && t.category) || '');
+  }
+
+  /** Is this player called to this session? */
+  function playerIsCalled(t, u) {
+    if (!t || !u) return false;
+    var id = String(u.id);
+    if (Array.isArray(t.excluded) && t.excluded.map(String).indexOf(id) !== -1) return false;
+    if (Array.isArray(t.guests) && t.guests.map(String).indexOf(id) !== -1) return true;
+    // A legacy session with no category belongs to everyone, which is what
+    // renderTraining's `!t.category || t.category === curCat` already meant.
+    if (!t.category) return true;
+    if ((u.category || '') !== t.category) return false;
+    return trainingTeams(t).indexOf(u.team || '') !== -1;
+  }
+
+  /** The squad for a session, in roster order. */
+  function calledPlayers(t, users) {
+    return (users || []).filter(function (u) {
+      return u && (u.roles || []).indexOf('player') !== -1 && playerIsCalled(t, u);
+    });
+  }
+
+  /** The sessions a player is called to — the one filter every player page uses. */
+  function playerTrainings(u, allTraining) {
+    return (allTraining || []).filter(function (t) { return playerIsCalled(t, u); });
+  }
+
+  /* THE reader for fa_training.
+     Every navigation now addresses a session by id, so a legacy row without
+     one could be listed and never opened. Healing here rather than in
+     renderStaffTraining -- where it used to live -- means it happens on
+     every surface, including the player pages a coach never visits.
+
+     The write-back is guarded: fa_training is not in the player allowlist
+     in firestore.rules, so persisting from a player's client would be
+     denied and surface an error toast. Players heal in memory only, which
+     is all they need to open a session. */
+  function getTrainings() {
+    var all = [];
+    try { all = JSON.parse(localStorage.getItem('fa_training') || '[]'); } catch (e) { all = []; }
+    if (!Array.isArray(all)) return [];
+    var healed = false;
+    all.forEach(function (t) {
+      if (t && !t.id) {
+        t.id = 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        healed = true;
+      }
+    });
+    if (healed) {
+      var s = getSession();
+      var canWrite = !!(s && (((s.roles || []).indexOf('staff') !== -1) || s.isAdmin || s.isTeamLead));
+      if (canWrite) localStorage.setItem('fa_training', JSON.stringify(all));
+    }
+    return all;
+  }
+
+  function hhmmToMins(v) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(v || '').trim());
+    if (!m) return null;
+    var h = Number(m[1]);
+    var mi = Number(m[2]);
+    if (h > 23 || mi > 59) return null;
+    return h * 60 + mi;
+  }
+
+  /* [start, end) in minutes past midnight. `time` is normally a plain
+     HH:MM but a vestigial "HH:MM - HH:MM" range exists in old rows and is
+     defended against everywhere else in this file — so if endTime is blank
+     the range's own second half is used before falling back to 90 min. */
+  function sessionWindow(t) {
+    if (!t) return null;
+    var parts = String(t.time || '').split(' - ');
+    var start = hhmmToMins(parts[0]);
+    if (start === null) return null;
+    var end = hhmmToMins(t.endTime);
+    if (end === null && parts.length > 1) end = hhmmToMins(parts[1]);
+    if (end === null || end <= start) end = start + DEFAULT_SESSION_MINS;
+    return { start: start, end: end };
+  }
+
+  /** Two sessions clash when they share a date and their windows intersect. */
+  function trainingsOverlap(a, b) {
+    if (!a || !b) return false;
+    if (!a.date || a.date !== b.date) return false;
+    if (a.id && b.id && String(a.id) === String(b.id)) return false;
+    var wa = sessionWindow(a);
+    var wb = sessionWindow(b);
+    if (!wa || !wb) return false;
+    return wa.start < wb.end && wb.start < wa.end;
+  }
+
   async function handleRegister(e) {
     e.preventDefault();
     const name = $('#reg-name').value.trim();
@@ -2404,13 +2521,15 @@
         list.querySelectorAll('.ts-sched-row').forEach(function (row) {
           var daySel = row.querySelector('select[data-train-day]');
           var timeInp = row.querySelector('input[data-train-time]');
+          var endInp = row.querySelector('input[data-train-end]');
           var locInp = row.querySelector('input[data-train-location]');
           var linkInp = row.querySelector('input[data-train-link]');
           var day = daySel ? daySel.value : '';
           var time = timeInp ? timeInp.value.trim() : '';
+          var endTime = endInp ? endInp.value.trim() : '';
           var location = locInp ? locInp.value.trim() : '';
           var link = linkInp ? linkInp.value.trim() : '';
-          if (day || time || location) training.push({ day: day, time: time, location: location, link: link });
+          if (day || time || location) training.push({ day: day, time: time, endTime: endTime, location: location, link: link });
         });
       }
       if (!training.length) training.push({ day: '', time: '', location: '' });
@@ -2485,10 +2604,17 @@
     inputsEl.innerHTML = html;
   }
 
+  /* Start AND end time. The end time is what makes a clash computable: two
+     sessions overlap when their [start, end) intervals intersect, and until
+     this field existed the app had no duration anywhere -- only three
+     different hardcoded windows (2h, 90min, 60min) used for unrelated UI
+     status decisions. Left blank it falls back to DEFAULT_SESSION_MINS. */
   function _buildTrainingRow(schedKey, idx, t, dayOptions) {
     return '<div class="ts-sched-row" data-train-idx="' + idx + '">' +
       '<select data-train-day="' + schedKey + '-' + idx + '">' + _selectedDayOptions(dayOptions, t.day) + '</select>' +
       '<input type="text" inputmode="numeric" data-train-time="' + schedKey + '-' + idx + '" value="' + (t.time || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">' +
+      '<span class="ts-sched-dash">-</span>' +
+      '<input type="text" inputmode="numeric" data-train-end="' + schedKey + '-' + idx + '" value="' + (t.endTime || '') + '" placeholder="HH:MM" maxlength="5" style="width:70px;text-align:center;">' +
       '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicació">' +
       '<input type="text" data-train-link="' + schedKey + '-' + idx + '" value="' + sanitize(t.link || '') + '" placeholder="Link">' +
       '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
@@ -3061,7 +3187,12 @@
   let _mdEditingId = null; // tracks which saved match is being edited inline
   let detailMatchId = null;
   let detailMatchFrom = null;
-  let detailTrainingDate = null;
+  /* Which session a detail view is showing, BY ID.
+     It used to be the date, which two teams in a category can share -- so
+     `find(x => x.date === ...)` returned whichever came first and both
+     squads opened the same session. The id has always existed on the row
+     and is already used for edit and delete; it just never identified. */
+  let detailTrainingId = null;
 
   function buildSidebarItems(session) {
     const items = [];
@@ -3406,7 +3537,12 @@
     const session = getSession();
     if (!session) return 0;
     const now = new Date();
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    /* Only the sessions this player is actually called to. This used to read
+       the WHOLE club's calendar with no filter at all -- a juvenil player's
+       page listed amateur sessions and let him answer availability for them
+       -- and it is the same helper that makes a guest see the session he was
+       borrowed for. Narrowing and the new feature are one change. */
+    const training = playerTrainings(session, getTrainings());
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -3443,7 +3579,12 @@
     const session = getSession();
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    /* Only the sessions this player is actually called to. This used to read
+       the WHOLE club's calendar with no filter at all -- a juvenil player's
+       page listed amateur sessions and let him answer availability for them
+       -- and it is the same helper that makes a guest see the session he was
+       borrowed for. Narrowing and the new feature are one change. */
+    const training = playerTrainings(session, getTrainings());
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -3753,7 +3894,12 @@
     }
 
     // Build per-player attendance donut
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    /* Only the sessions this player is actually called to. This used to read
+       the WHOLE club's calendar with no filter at all -- a juvenil player's
+       page listed amateur sessions and let him answer availability for them
+       -- and it is the same helper that makes a guest see the session he was
+       borrowed for. Narrowing and the new feature are one change. */
+    const training = playerTrainings(session, getTrainings());
     let pYes = 0, pLate = 0, pNo = 0, pInj = 0, pNa = 0;
     const _ctxHome = availContext();
     training.forEach(t => {
@@ -4830,8 +4976,8 @@
   }
 
   function renderTrainingDetail() {
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const tr = training.find(x => x.date === detailTrainingDate);
+    const training = getTrainings();
+    const tr = training.find(x => String(x.id) === String(detailTrainingId));
     if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const assistHtml = tr.assistance != null ? buildAssistanceCircle(tr.assistance) : '';
@@ -4895,7 +5041,7 @@
     if (_readinessDataCache && _readinessDataFrame === f) return _readinessDataCache;
     _readinessDataCache = {
       rpeData: JSON.parse(localStorage.getItem('fa_player_rpe') || '{}'),
-      trainingList: JSON.parse(localStorage.getItem('fa_training') || '[]'),
+      trainingList: getTrainings(),
       matchesList: JSON.parse(localStorage.getItem('fa_matches') || '[]'),
       availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
       staffOverrides: JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}'),
@@ -5781,7 +5927,7 @@
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const uid = session ? session.id : '';
     const now = new Date();
-    const trainingList = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    const trainingList = getTrainings();
     const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -5942,7 +6088,7 @@
 
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const now = new Date();
-    const trainingList = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    const trainingList = getTrainings();
     const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -6384,7 +6530,7 @@
               <div class="tb-match-list" id="tb-training-list">
                 <div class="tb-match-option" data-val="">None</div>
                 ${(() => {
-                  const allTraining = JSON.parse(localStorage.getItem('fa_training') || '[]');
+                  const allTraining = getTrainings();
                   const todayStr = new Date().toISOString().slice(0, 10);
                   return allTraining.filter(t => t.date && t.date >= todayStr).map(t => {
                     const d = tDateShort(t.date);
@@ -8858,7 +9004,7 @@
       const el = document.getElementById('tb-training-linked');
       if (!el) return;
       const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-      const allTraining = JSON.parse(localStorage.getItem('fa_training') || '[]');
+      const allTraining = getTrainings();
       const curName = (nameInput ? nameInput.value : localStorage.getItem('fa_tactic_name') || '').trim();
       const linked = [];
       for (const [tdate, boards] of Object.entries(trainingBoards)) {
@@ -9792,9 +9938,12 @@
   // #region Training & Staff Views
   // ----- Shared pages -----
   function renderTraining() {
-    var allTraining = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    var curCat = getCurrentCategory();
-    var training = curCat ? allTraining.filter(function(t) { return !t.category || t.category === curCat; }) : allTraining;
+    /* Only the sessions this player is actually called to. This used to read
+       the WHOLE club's calendar with no filter at all -- a juvenil player's
+       page listed amateur sessions and let him answer availability for them
+       -- and it is the same helper that makes a guest see the session he was
+       borrowed for. Narrowing and the new feature are one change. */
+    var training = playerTrainings(getSession(), getTrainings());
     let rows = training.map(t => {
       const dateStr = t.date ? tDateDMY(t.date) : '—';
       const assistanceCell = (t.status === 'past' && t.assistance != null)
@@ -9813,20 +9962,19 @@
   }
 
   function renderStaffTraining() {
-    var allTraining = JSON.parse(localStorage.getItem('fa_training') || '[]');
     // Sessions are addressed by a stable id, never by array position. Position
     // was fragile even locally (a filtered row index written into the full
     // blob), and once Phase 5 merges several category documents into this list
     // a remote change to ANOTHER category can reorder it between render and
     // keystroke — silently writing one squad's edits onto another's session.
-    allTraining.forEach(function (t) {
-      if (!t.id) t.id = 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-    });
+    // getTrainings() does the id repair for every surface, not just this one.
+    var allTraining = getTrainings();
     allTraining.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     localStorage.setItem('fa_training', JSON.stringify(allTraining));
     var curCat = getCurrentCategory();
     var training = allTraining.filter(function (t) {
-      return !curCat || !t.category || t.category === curCat;
+      if (curCat && t.category && t.category !== curCat) return false;
+      return !trainingTeamFilter || trainingTeams(t).indexOf(trainingTeamFilter) !== -1;
     });
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
@@ -10016,7 +10164,17 @@
       <h2 class="page-title">${t('page.training')}</h2>
       ${seasonDonutHtml}
       <div class="card">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:.5rem;flex-wrap:wrap;">
+          ${(function () {
+            // Only worth showing when the category actually has two squads.
+            const ls = getTeamLetters(curCat);
+            if (ls.length <= 1) return '<span></span>';
+            const btn = (val, label) => '<button class="roster-team-btn tr-team-btn' +
+              ((trainingTeamFilter === val || (val === 'all' && !trainingTeamFilter)) ? ' roster-team-btn-active' : '') +
+              '" data-tr-team="' + val + '">' + label + '</button>';
+            return '<div class="roster-team-filter" style="margin-bottom:0;">' +
+              btn('all', t('roster.all')) + ls.map(l => btn(l, l)).join('') + '</div>';
+          })()}
           <button class="btn btn-outline btn-small matchday-add" id="btn-training-add-top">${t('training.add')}</button>
         </div>
         <div class="table-wrap"><table class="matchday-table">
@@ -10121,14 +10279,20 @@
 
   // ── Auto-generate teams state (ephemeral, not persisted) ──
   let _generatedTeams = null;
-  let _generatedTeamsDate = null;
+  /* Keyed by session id, not date: two squads training the same evening
+     would otherwise share one generated set of small-sided teams. */
+  let _generatedTeamsId = null;
 
   // ── Render tactical boards section for staff training detail ──
-  function renderStdBoardsSection(tdate) {
+  /* Takes the session, not just its date. The storage bucket is still
+     keyed by date -- two squads share it -- but "have teams been generated"
+     is a question about THIS session. */
+  function renderStdBoardsSection(sess) {
+    const tdate = sess && sess.date;
     const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
     const boards = trainingBoards[tdate] || [];
     if (!boards.length) return '';
-    const hasTeams = _generatedTeams && _generatedTeamsDate === tdate;
+    const hasTeams = _generatedTeams && String(_generatedTeamsId) === String(sess && sess.id);
     const tagOrder = ['Presión', 'Salida', 'Estrategia'];
     const grouped = {};
     boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
@@ -10155,7 +10319,7 @@
                 }).join('') +
                 '<button class="tb-unlink-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button></div>';
             } else if (hasTeams) {
-              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '">📋 Afegir equips</button></div>';
+              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '" data-tsid="' + sanitize(String((sess && sess.id) || '')) + '">📋 Afegir equips</button></div>';
             }
             return boardHtml + teamsBlock;
           }).join('') + '</div>';
@@ -10163,29 +10327,19 @@
   }
 
   function renderStaffTrainingDetail() {
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-    const tr = training.find(x => x.date === detailTrainingDate);
+    const training = getTrainings();
+    const tr = training.find(x => String(x.id) === String(detailTrainingId));
     if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>' + t('training.not_found') + '</p></div>';
     var curCat = getCurrentCategory();
-    var catPlayers = getUsers().filter(u => (u.roles || []).includes('player'));
-    if (curCat) catPlayers = catPlayers.filter(p => !p.category || p.category === curCat);
-    const players = !stdTeamFilter ? catPlayers : catPlayers.filter(p => stdTeamFilter.has(p.team || ''));
-
-    // Determine which team letters share this training slot
-    const _dayMap = {0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
-    const _tDate = tr.date ? new Date(tr.date + 'T12:00:00') : null;
-    const _tDayVal = _tDate ? _dayMap[_tDate.getDay()] : '';
-    const _tStartTime = (tr.time || '').split(' - ')[0].trim();
-    const _allLetters = getTeamLetters(curCat);
-    const _schedules = (_clubConfig && _clubConfig.schedules) ? _clubConfig.schedules : {};
-    const _trainingLetters = _allLetters.filter(letter => {
-      const key = (curCat || '') + '-' + letter;
-      const sched = _schedules[key];
-      if (!sched || !sched.training) return false;
-      return sched.training.some(tr => tr.day === _tDayVal && tr.time === _tStartTime);
-    });
-    // Fallback: if no schedule match, show all letters
-    const stdLettersForSlot = _trainingLetters.length ? _trainingLetters : _allLetters;
+    /* The squad is now DERIVED from the session -- its teams, plus guests,
+       minus exclusions -- instead of "every player in the category".
+       This block used to reverse-match the session's day and start time
+       against the club's schedules to GUESS which letters shared the slot.
+       That guess is gone: the session says who it is for. */
+    const calledSquad = calledPlayers(tr, getUsers());
+    const players = !stdTeamFilter ? calledSquad
+      : calledSquad.filter(p => stdTeamFilter.has(p.team || ''));
+    const stdLettersForSlot = trainingTeams(tr);
     const locked = isTrainingLocked(tr);
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -10250,7 +10404,7 @@
 
     // Render previously generated teams if they exist for this date
     let teamsHtml = '';
-    if (_generatedTeams && _generatedTeamsDate === tr.date) {
+    if (_generatedTeams && String(_generatedTeamsId) === String(tr.id)) {
       teamsHtml = renderGeneratedTeams(_generatedTeams, players, tr.date, locked);
     }
 
@@ -10350,7 +10504,7 @@
         <div id="tg-teams-container">${teamsHtml}</div>
       </div>
       ${(() => {
-        return '<div id="std-boards-section">' + renderStdBoardsSection(tr.date) + '</div>';
+        return '<div id="std-boards-section">' + renderStdBoardsSection(tr) + '</div>';
       })()}`;
   }
 
@@ -10563,6 +10717,8 @@
 
   let rosterTeamFilter = 'all';
   let stdTeamFilter = null; // null = all, Set of letters = multi-select
+  // Which team's sessions the staff training LIST shows. null = all of them.
+  let trainingTeamFilter = null;
   let staffViewPlayerId = null;
   /* ── Staff home ─────────────────────────────────────────────
      The coach's landing page. Deliberately NOT renderWeekActivities():
@@ -10578,7 +10734,7 @@
   function renderStaffWeek(weekOffset, players) {
     const { start, end } = getWeekBounds(weekOffset);
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    const training = getTrainings();
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
     const matchAvail = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
@@ -10605,7 +10761,7 @@
             label: sanitize(tr.focus || t('activity.badge_training')),
             place: sanitize(tr.location || ''),
             answered, available, total: players.length,
-            link: 'staff-training-detail', linkId: tr.date,
+            link: 'staff-training-detail', linkId: tr.id,
           });
         });
 
@@ -10848,7 +11004,7 @@
 
     // --- Team aggregate charts ---
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-    const trainingList = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    const trainingList = getTrainings();
     const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -12722,8 +12878,13 @@
   function renderWeekActivities(weekOffset) {
     const { start, end } = getWeekBounds(weekOffset);
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
     const session = getSession();
+    /* Only the sessions this player is actually called to. This used to read
+       the WHOLE club's calendar with no filter at all -- a juvenil player's
+       page listed amateur sessions and let him answer availability for them
+       -- and it is the same helper that makes a guest see the session he was
+       borrowed for. Narrowing and the new feature are one change. */
+    const training = playerTrainings(session, getTrainings());
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const now = new Date();
     const activities = [];
@@ -12745,7 +12906,9 @@
       return new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00').getTime() + 60 * 60 * 1000 > now.getTime();
     }).forEach(t => {
       const dayName = t.date ? tDay(new Date(t.date + 'T12:00:00').getDay()) : '';
-      activities.push({ type: 'training', tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
+      // tId navigates; tDate still keys the availability record, which is
+      // date-keyed until the record migration. Two different questions.
+      activities.push({ type: 'training', tId: t.id, tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
     });
     // Birthdays this week (skip self)
     const users = getUsers();
@@ -12826,7 +12989,7 @@
       }
       const dataAttr = a.type === 'match'
         ? `data-go-match="${a.id}"`
-        : `data-go-training="${a.tDate}"`;
+        : `data-go-training="${sanitize(String(a.tId || ''))}"`;
       return `<div class="activity-item activity-item-link" ${dataAttr}>${badge}<div class="activity-info"><div class="activity-label">${a.label}</div><div class="activity-detail">${a.detail}</div></div>${convTag}${uniformIcons}${availHtml}${matchAvailHtml}</div>`;
     }).join('');
   }
@@ -12870,7 +13033,7 @@
     const total = players.length;
     if (!total) return '<span style="color:var(--text-secondary)">\u2014</span>';
     const session = tObj ||
-      JSON.parse(localStorage.getItem('fa_training') || '[]').find(x => x.date === trainingDate);
+      getTrainings().find(x => x.date === trainingDate);
     const locked = session ? isTrainingLocked(session) : false;
     const ctx = availContext();
     let yes = 0, late = 0, no = 0, injured = 0, na = 0;
@@ -13482,7 +13645,7 @@
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
 
     function readTraining() {
-      const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+      const training = getTrainings();
       body.querySelectorAll('tr:not(.st-locked)').forEach(tr => {
         // By id, never by position: this runs on every keystroke, and the
         // array it writes into can be reordered underneath us.
@@ -13558,7 +13721,7 @@
     // Remove training
     body.querySelectorAll('.st-remove').forEach(btn => {
       btn.addEventListener('click', () => {
-        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+        const training = getTrainings();
         const pos = training.findIndex(x => x.id === btn.dataset.idx);
         if (pos === -1) return;
         training.splice(pos, 1);
@@ -13573,24 +13736,40 @@
       const curCat = getCurrentCategory() || '';
       // Gather configured training slots from club schedule
       const dayValToJs = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-      var slots = []; // [{ jsDay, time, location }]
+      /* Slots keep the LETTERS they belong to. The old dedup collapsed
+         every letter's slots into one list and discarded the letter, so if
+         A trained Tue 20:00 and B Tue 21:30 whichever was iterated first
+         won and B's slot vanished without a word. Identical day+time+place
+         across letters still collapses -- that is a genuinely shared
+         session -- but only by MERGING their letters, never by dropping
+         one. */
+      var slots = []; // [{ jsDay, time, endTime, location, link, teams: [] }]
       if (_clubConfig && _clubConfig.schedules) {
         var letters = getTeamLetters(curCat);
         letters.forEach(function (letter) {
           var sched = _clubConfig.schedules[curCat + '-' + letter];
           if (sched && sched.training) {
             sched.training.forEach(function (tr) {
-              if (tr.day && dayValToJs[tr.day] !== undefined) {
-                // Avoid duplicate day+time combos
-                var exists = slots.some(s => s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || ''));
-                if (!exists) slots.push({ jsDay: dayValToJs[tr.day], time: tr.time || '', location: tr.location || '', link: tr.link || '' });
+              if (!tr.day || dayValToJs[tr.day] === undefined) return;
+              var same = slots.find(function (s) {
+                return s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || '') &&
+                  s.endTime === (tr.endTime || '') && s.location === (tr.location || '');
+              });
+              if (same) {
+                if (same.teams.indexOf(letter) === -1) same.teams.push(letter);
+                return;
               }
+              slots.push({
+                jsDay: dayValToJs[tr.day], time: tr.time || '', endTime: tr.endTime || '',
+                location: tr.location || '', link: tr.link || '', teams: [letter]
+              });
             });
           }
         });
       }
-      // Fallback to Tue/Thu if no schedule configured
-      if (!slots.length) slots = [{ jsDay: 2, time: '21:00', location: '', link: '' }, { jsDay: 4, time: '22:00', location: '', link: '' }];
+      // Fallback to Tue/Thu if no schedule configured. No teams: an empty
+      // list already means "every letter of the category".
+      if (!slots.length) slots = [{ jsDay: 2, time: '21:00', endTime: '', location: '', link: '', teams: [] }, { jsDay: 4, time: '22:00', endTime: '', location: '', link: '', teams: [] }];
       // Sort slots by JS day
       slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
       var slotDays = slots.map(function (s) { return s.jsDay; }); // e.g. [2, 4] for Tue/Thu
@@ -13624,16 +13803,27 @@
       var diff = nextSlotDay - latestDow;
       if (diff <= 0) diff += 7;
       d.setDate(d.getDate() + diff);
-      var matchedSlot = slots.find(function (s) { return s.jsDay === nextSlotDay; }) || slots[0];
+      /* EVERY slot on that weekday, not just the first. Two teams whose
+         schedules put them on the same evening at different times are two
+         sessions, and `find` returned one of them -- which is how B's
+         entry disappeared. Slots that agree on day, time, end and place
+         were already merged above into one session carrying both letters. */
+      var matched = slots.filter(function (s) { return s.jsDay === nextSlotDay; });
+      if (!matched.length) matched = [slots[0]];
       const dateStr = d.toISOString().slice(0, 10);
       const day = tDay(d.getDay());
-      const time = matchedSlot.time;
-      const loc = matchedSlot.location || DEFAULT_LOC;
-      const map = matchedSlot.link || (loc === DEFAULT_LOC ? DEFAULT_MAP : '');
-      training.push({
-        id: 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        day, date: dateStr, time, focus: '', location: loc, mapLink: map,
-        status: 'upcoming', category: curCat
+      matched.forEach(function (slot, i) {
+        const loc = slot.location || DEFAULT_LOC;
+        const map = slot.link || (loc === DEFAULT_LOC ? DEFAULT_MAP : '');
+        training.push({
+          // The suffix keeps ids unique when one click creates several.
+          id: 'tr_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 8),
+          day, date: dateStr, time: slot.time, endTime: slot.endTime || '',
+          focus: '', location: loc, mapLink: map,
+          status: 'upcoming', category: curCat,
+          // Empty already means "every letter of the category".
+          teams: (slot.teams || []).slice(), guests: [], excluded: []
+        });
       });
       training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       localStorage.setItem('fa_training', JSON.stringify(training));
@@ -13648,10 +13838,10 @@
       tr.addEventListener('click', (e) => {
         // Don't navigate if clicking inputs, buttons or links
         if (e.target.closest('input, select, button, a, .md-remove-btn, .st-remove')) return;
-        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+        const training = getTrainings();
         const t = training.find(x => x.id === tr.dataset.tid);
         if (!t || !t.date) return;
-        detailTrainingDate = t.date;
+        detailTrainingId = t.id;
         currentPage = 'staff-training-detail';
         renderPage(getSession());
       });
@@ -13711,8 +13901,8 @@
     const perTeamInput = document.getElementById('tg-per-team');
     if (numTeamsInput && perTeamInput) {
       numTeamsInput.addEventListener('change', () => {
-        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-        const t = training.find(x => x.date === detailTrainingDate);
+        const training = getTrainings();
+        const t = training.find(x => String(x.id) === String(detailTrainingId));
         if (!t) return;
         const players = getUsers().filter(u => (u.roles || []).includes('player'));
         const locked = isTrainingLocked(t);
@@ -13732,8 +13922,8 @@
     const genBtn = document.getElementById('btn-tg-generate');
     if (genBtn) {
       genBtn.addEventListener('click', () => {
-        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-        const t = training.find(x => x.date === detailTrainingDate);
+        const training = getTrainings();
+        const t = training.find(x => String(x.id) === String(detailTrainingId));
         if (!t) return;
         const players = getUsers().filter(u => (u.roles || []).includes('player'));
         const locked = isTrainingLocked(t);
@@ -13746,7 +13936,7 @@
         const mode = modeBtn ? modeBtn.dataset.tgMode : 'mix';
 
         _generatedTeams = generateTrainingTeams(players, t.date, locked, numTeams, perTeam, includeGK, teamFilter, mode);
-        _generatedTeamsDate = t.date;
+        _generatedTeamsId = t.id;
 
         const container = document.getElementById('tg-teams-container');
         if (container) {
@@ -13758,9 +13948,9 @@
     }
 
     // Bind drag-and-drop if teams already rendered
-    if (_generatedTeams && _generatedTeamsDate === detailTrainingDate) {
-      const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
-      const t = training.find(x => x.date === detailTrainingDate);
+    if (_generatedTeams && String(_generatedTeamsId) === String(detailTrainingId)) {
+      const training = getTrainings();
+      const t = training.find(x => String(x.id) === String(detailTrainingId));
       if (t) {
         const players = getUsers().filter(u => (u.roles || []).includes('player'));
         const locked = isTrainingLocked(t);
@@ -14543,7 +14733,7 @@
         createdBy: session.id, notes: ''
       });
     }
-    const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+    const training = getTrainings();
     const tObj = training.find(t => t.date === date);
     addStaffNotification({
       type: 'training_avail',
@@ -15643,7 +15833,7 @@
         const uid = btn.dataset.playerId;
         if (!confirm(t('confirm.discard_injury'))) return;
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+        const training = getTrainings();
         const answeredDates = training
           .filter(tr => tr.date && availData[uid + '_' + tr.date])
           .map(tr => tr.date).sort();
@@ -15923,6 +16113,7 @@
         medicalTeamFilter = 'all';
         rosterTeamFilter = 'all';
         stdTeamFilter = null;
+        trainingTeamFilter = null;
         renderPage(getSession());
       });
     });
@@ -16004,7 +16195,7 @@
       row.addEventListener('click', () => {
         const to = row.dataset.shomeLink;
         const id = row.dataset.shomeId;
-        if (to === 'staff-training-detail') detailTrainingDate = id;
+        if (to === 'staff-training-detail') detailTrainingId = id;
         else if (to === 'match-detail') detailMatchId = Number(id);
         else if (to === 'medical-detail') medicalDetailPlayerId = id;
         else if (to === 'staff-player-stats') staffViewPlayerId = id;
@@ -16019,6 +16210,17 @@
         e.preventDefault();
         staffViewPlayerId = a.dataset.playerId;
         currentPage = 'staff-player-stats';
+        renderPage(getSession());
+      });
+    });
+
+    /* Training LIST team filter (single-select), same idiom as the roster
+       and medical filters. The detail page's own filter below is a
+       multi-select Set because there it narrows a squad, not a calendar. */
+    $$('[data-tr-team]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.trTeam;
+        trainingTeamFilter = (val === 'all') ? null : val;
         renderPage(getSession());
       });
     });
@@ -16402,7 +16604,7 @@
       el.addEventListener('click', (e) => {
         if (e.target.closest('[data-conv-link]')) return;
         if (e.target.closest('.avail-btns') || e.target.closest('.avail-chosen') || e.target.closest('.injury-note-wrap')) return;
-        detailTrainingDate = el.dataset.goTraining;
+        detailTrainingId = el.dataset.goTraining;
         currentPage = 'training-detail';
         renderPage(getSession());
       });
@@ -16434,7 +16636,7 @@
         }
         deriveFitnessStatus(session.id);
         // Staff notification
-        const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+        const training = getTrainings();
         const tObj = training.find(t => t.date === date);
         const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
         addStaffNotification({
@@ -16481,7 +16683,7 @@
               const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
               availData[key] = val;
               deriveFitnessStatus(session.id);
-              const training = JSON.parse(localStorage.getItem('fa_training') || '[]');
+              const training = getTrainings();
               const tObj = training.find(t => t.date === date);
               const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
               addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')' });
@@ -17410,7 +17612,9 @@
         if (linkBtn) {
           const boardName = linkBtn.dataset.boardName;
           const tdate = linkBtn.dataset.tdate;
-          if (!_generatedTeams || !_generatedTeamsDate || _generatedTeamsDate !== tdate) return;
+          // Compared by SESSION, not date: two squads share a date bucket.
+          if (!_generatedTeams || !_generatedTeamsId ||
+              String(_generatedTeamsId) !== String(linkBtn.dataset.tsid)) return;
           const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
           const boards = trainingBoards[tdate];
           if (!boards) return;

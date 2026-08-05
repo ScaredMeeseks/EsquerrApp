@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v69.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **439 passing** (298 unit + 103 rules + 38 functions), up from 143 at the start of this work.
+**Production is on v70.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **470 passing** (329 unit + 103 rules + 38 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -19,7 +19,12 @@ What is left is not a code question: **every measurement so far is against synth
 
 The one open *design* question, no longer a defect: the colour is not a function of the score, so two players can show 72 in different colours. The tooltip now names the rule that fired, which answered the original complaint.
 
-### 2. Per-team training visibility — the big one, and now bigger than it looked
+### 2. Per-team training - STAGE 1 SHIPPED (v70), stages 2 and 3 to go
+Stage 1 (the model, end times, session-id keying, player-page scoping, the slot generator) is in v70. **Stage 2** re-keys `trainingAvail`/`rpe`/`fa_training_staff_override` from `{uid}_{date}` to `{uid}_{sessionId}` with a dual-read transition and a migration, and scopes the three reminder schedulers to the session's own squad (needs a functions deploy). **Stage 3** is the New Training page: pick teams, see the called squad with a total, "+ Add Player" across the club, clash warnings. Plan: `~/.claude/plans/continuing-on-the-esquerrapp-streamed-waffle.md`.
+
+**Run the backfill before stage 3:** `node functions/backfill-training-teams.js --club Tm96gel58VSQvxgynf45` (dry run first).
+
+#### Original note, for context
 Trainings carry only a `category`, never a team letter, so `amateur-A` and `amateur-B` literally share sessions. Giving them a letter means **re-keying the training subsystem from date to session id**: `detailTrainingDate`, eight `find(x => x.date === …)` sites, and the `{uid}_{date}` record ids. Two teams in one category will routinely train the same evening, and `find` by date returns whichever comes first. Deserves its own plan and its own deploy. The one-off guest-list idea rides on top of it.
 
 ### 3. ~~Archived seasons broken post-Phase-5~~ - DONE (v69)
@@ -41,6 +46,19 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v70 - per-team training, stage 1 of 3 (2026-08-05)
+
+The model. Sessions now carry `teams`, `guests`, `excluded`, `endTime`; an **empty `teams` still means every letter of the category**, so nothing breaks before the backfill. The squad is derived on every read, never stored.
+
+- Club config gained **end times** per training slot - the app had no duration anywhere, and clash detection needs one.
+- Detail views keyed by **session id**, not date. Same collision fixed in the generated-teams cache and the tactics-board link button.
+- **`getTrainings()`** is now the one reader (29 sites) and repairs missing ids everywhere, **guarded by role** - `fa_training` is not player-writable, so a player repairs in memory only.
+- **The player pages were over-sharing:** the week strip, home donut, actions queue and sidebar badge read the whole club calendar with no category filter. A juvenil player saw amateur sessions and could answer for them. All four now use `playerTrainings()`.
+- **The generator stopped dropping a team's slot** - it deduped by day+time and discarded the letter.
+- The staff detail page stopped reverse-matching schedules to guess which letters shared a slot.
+
+31 new tests. **Backfill written, not yet run:** `functions/backfill-training-teams.js`, dry-run by default, derives each session's letters from who actually attended.
 
 ## v69 - archived seasons, broken since Phase 5 (2026-08-05)
 

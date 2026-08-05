@@ -3553,6 +3553,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-sched-row input[type="text"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"].invalid{border-color:var(--danger);}
+/* Separator between a slot's start and end time. flex:0 so the row's two
+   HH:MM boxes keep their fixed width and the dash never stretches. */
+.ts-sched-dash{flex:0 0 auto;color:var(--text-secondary);font-size:.82rem;}
 
 /* Roster email lists (staff lists in team setup) */
 .roster-status{flex:0 0 auto;font-size:.7rem;font-weight:700;padding:.15rem .4rem;border-radius:999px;white-space:nowrap;}
