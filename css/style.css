@@ -3690,3 +3690,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-size: .9rem; font-weight: 700;
 }
 .shome-subhint { font-size: .76rem; font-weight: 500; color: var(--text-secondary); }
+
+/* ===== New Training page ===== */
+/* Reuses .card, .reg-input, .roster-team-btn, .conv-player and .conv-count
+   so the page reads as native. Only the layout and the two new affordances
+   -- the clash warning and the multi-select picker -- are defined here. */
+.nt-hint{color:var(--text-secondary);font-size:.85rem;margin:0 0 .6rem;}
+.nt-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-bottom:1rem;}
+.nt-fields label{display:flex;flex-direction:column;gap:.25rem;font-size:.78rem;font-weight:600;color:var(--text-secondary);}
+.nt-fields .reg-input{width:100%;}
+.nt-squad-header{margin-bottom:.4rem;}
+.nt-squad{max-height:420px;overflow-y:auto;}
+.nt-cat-tag{flex:0 0 auto;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  color:var(--text-secondary);background:var(--border);border-radius:999px;padding:.1rem .45rem;margin-left:.35rem;}
+
+/* The clash warning. `cursor:help` and the delegated #ua-tooltip, the same
+   pair .reg-dot uses -- a CSS bubble would be clipped by the scrolling
+   squad list. */
+.nt-warn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;margin-right:.4rem;cursor:help;
+  background:#fb8c00;color:#fff;font-size:.72rem;font-weight:800;}
+
+.nt-dd{position:relative;margin-top:.6rem;}
+.nt-dd-list{max-height:300px;}
+.nt-dd-option{display:flex;align-items:center;gap:.4rem;}
+.nt-dd-on{background:var(--danger-light);}
+.nt-dd-check{flex:0 0 14px;color:var(--primary);font-weight:800;font-size:.8rem;}
+.nt-dd-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem;}
+.nt-add-btn{margin-top:.6rem;}
+.nt-actions{display:flex;justify-content:flex-end;gap:.6rem;margin:1rem 0 2rem;}
+@media (max-width:600px){
+  .nt-fields{grid-template-columns:1fr 1fr;}
+  .nt-actions .btn{flex:1;}
+}

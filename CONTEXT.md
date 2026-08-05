@@ -1067,3 +1067,27 @@ A session belongs to specific teams now, so it **is** one category by definition
 
 Also removed the `curCat` declaration in `renderStaffTrainingDetail`, which had no readers left: it died with the block that used to reverse-match the club's schedules to guess which letters shared a slot. The squad comes from the session now.
 
+## v73 - the New Training page, stage 3 of 3 (2026-08-05)
+
+"+ Entrenament" used to append a row to the list and leave the coach to edit it in place - so a half-configured session was already a real row in everybody's calendar, and abandoning it left one there. It opens a page now, and **nothing is written until Save**.
+
+**Pick the teams.** Letter chips, the same Set-toggle idiom as the roster and medical filters. Changing the selection re-seeds the proposed sessions from those teams' own schedules, because the times *are* the teams'. Teams whose defaults differ produce **one session each**, shown as separate editable blocks; identical day, time, end and place collapse into one session carrying both letters.
+
+**The called squad, with its total**, using the match call-up's own `.conv-panel-header` / `.conv-count` / `.conv-player` components so the page reads as native. Each row has an `x`: a guest is simply un-invited, a squad member gets an exclusion. A player borrowed from another category carries a category tag as well as his team letter.
+
+**"+ Add Player"** spans the **whole club**, not the current category - borrowing from another squad is the entire point. Built on the team generator's `.tg-dd` searchable dropdown, extended with multi-select and a single Add. Its ad-hoc "invent a player if no name matches" behaviour is deliberately dropped: a call-up may only name real roster players.
+
+**Clash warnings.** A player whose existing session overlaps `[start, end)` on the same date gets an amber `!` with the tooltip *"this player already has a training scheduled at this time, adding him will remove him from it."* It uses the delegated `#ua-tooltip` that `.reg-dot` uses - `position: fixed`, so the scrolling squad list cannot clip it, and it survives a re-render without rebinding.
+
+**Save acts on the warning.** The clashing player is genuinely removed from the session he was already in. Resolved at **save**, not at Add, so that a coach who adds a player and then moves the session an hour later no longer displaces anybody.
+
+`addTraining()` is gone (~5.3 KB). The slot arithmetic it owned is `buildTrainingDrafts()` at module level, where the new page uses it too - and where it can finally be **executed** by a test rather than checked by reading its source.
+
+### A bug the tests caught before it shipped
+
+`_ntSave()` resolved clashes against `getTrainings()`, which re-parses the blob and returns **fresh objects** on every call. Excluding a player from a session fetched that way mutated a throwaway copy, so the exclusion was silently lost on write - the warning would have said the player was being moved, and he would not have been. `_ntClashes()` now takes the array being saved.
+
+**17 new tests** (9 executing the draft builder, 7 on clash handling and save). **505 total** (364 unit + 103 rules + 38 functions).
+
+Not included, deliberately: no push notification on call-up. A guest already discovers the session on his own landing page, which stage 1 fixed. Adding one is a decision, not an assumption.
+

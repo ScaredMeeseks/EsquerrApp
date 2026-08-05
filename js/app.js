@@ -287,6 +287,21 @@
     'training.th_location':  { ca:'Ubicació', es:'Ubicación', en:'Location' },
     'training.th_assistance':{ ca:'Assistència', es:'Asistencia', en:'Assistance' },
     'training.add':          { ca:'+ Entrenament', es:'+ Entrenamiento', en:'+ Add Training' },
+    'nt.title':              { ca:'Nou entrenament', es:'Nuevo entrenamiento', en:'New training' },
+    'nt.which_teams':        { ca:'Quins equips entrenen?', es:'¿Qué equipos entrenan?', en:'Which teams are training?' },
+    'nt.which_teams_hint':   { ca:'Cada equip proposa el seu horari. Si difereixen, es crea una sessió per equip.', es:'Cada equipo propone su horario. Si difieren, se crea una sesión por equipo.', en:'Each team proposes its own schedule. If they differ, you get one session per team.' },
+    'nt.start':              { ca:'Inici', es:'Inicio', en:'Start' },
+    'nt.end':                { ca:'Final', es:'Final', en:'End' },
+    'nt.called':             { ca:'Convocats', es:'Convocados', en:'Called up' },
+    'nt.nobody':             { ca:'Cap jugador convocat.', es:'Ningún jugador convocado.', en:'Nobody called up yet.' },
+    'nt.add_player':         { ca:'+ Afegir jugador', es:'+ Añadir jugador', en:'+ Add player' },
+    'nt.add_selected':       { ca:'Afegir', es:'Añadir', en:'Add' },
+    'nt.search':             { ca:'Cerca un jugador…', es:'Busca un jugador…', en:'Search a player…' },
+    'nt.drop':               { ca:'Treure', es:'Quitar', en:'Remove' },
+    'nt.clash_tip':          { ca:'Aquest jugador ja té un entrenament a aquesta hora; afegir-lo el traurà de la sessió que se solapa.', es:'Este jugador ya tiene un entrenamiento a esta hora; añadirlo lo quitará de la sesión que se solapa.', en:'This player already has a training scheduled at this time, adding him will remove him from it.' },
+    'nt.save':               { ca:'Desar', es:'Guardar', en:'Save' },
+    'nt.saved_title':        { ca:'Entrenament desat', es:'Entrenamiento guardado', en:'Training saved' },
+    'nt.moved':              { ca:'{n} jugador(s) trets de la sessió que se solapava.', es:'{n} jugador(es) quitados de la sesión solapada.', en:'{n} player(s) removed from an overlapping session.' },
     'training.focus_ph':     { ca:'Enfocament *', es:'Enfoque *', en:'Focus *' },
     'training.location_ph':  { ca:'Ubicació', es:'Ubicación', en:'Location' },
     'training.maplink_ph':   { ca:'Enllaç mapa', es:'Enlace mapa', en:'Map link' },
@@ -1190,7 +1205,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 72;
+  const APP_VERSION = 73;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2059,6 +2074,105 @@
       return map[legacyRecordKey(playerId, sess, kind)];
     }
     return undefined;
+  }
+
+  var TRAINING_DEFAULT_LOC = 'Escola Industrial';
+  var TRAINING_DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
+
+  /**
+   * The sessions a "new training" click should propose, one per distinct
+   * slot on the next training day.
+   *
+   * Slots keep the LETTERS they belong to. Identical day+time+end+place
+   * across letters collapses into ONE session carrying both — that is a
+   * genuinely shared session — but only by MERGING the letters, never by
+   * dropping one. The old code deduped on day+time alone and threw the
+   * letter away, so if A trained Tue 20:00 and B Tue 21:30, whichever was
+   * iterated first won and B's slot vanished without a word.
+   *
+   * @param {string} cat      the category to propose for
+   * @param {Array}  training the club's existing sessions, to cycle on from
+   * @param {Array} [only]    restrict to these letters; default every letter
+   */
+  function buildTrainingDrafts(cat, training, only) {
+    var dayValToJs = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+    var letters = (only && only.length) ? only : getTeamLetters(cat);
+    var slots = [];
+    if (_clubConfig && _clubConfig.schedules) {
+      letters.forEach(function (letter) {
+        var sched = _clubConfig.schedules[cat + '-' + letter];
+        if (!sched || !sched.training) return;
+        sched.training.forEach(function (tr) {
+          if (!tr.day || dayValToJs[tr.day] === undefined) return;
+          var same = slots.find(function (s) {
+            return s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || '') &&
+              s.endTime === (tr.endTime || '') && s.location === (tr.location || '');
+          });
+          if (same) {
+            if (same.teams.indexOf(letter) === -1) same.teams.push(letter);
+            return;
+          }
+          slots.push({
+            jsDay: dayValToJs[tr.day], time: tr.time || '', endTime: tr.endTime || '',
+            location: tr.location || '', link: tr.link || '', teams: [letter]
+          });
+        });
+      });
+    }
+    // Nothing configured: Tue/Thu, for whichever letters were asked for.
+    if (!slots.length) {
+      slots = [
+        { jsDay: 2, time: '21:00', endTime: '', location: '', link: '', teams: letters.slice() },
+        { jsDay: 4, time: '22:00', endTime: '', location: '', link: '', teams: letters.slice() }
+      ];
+    }
+    slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
+    var slotDays = slots.map(function (s) { return s.jsDay; });
+
+    /* Cycle on from the latest session in this category, but never
+       backwards: an old last training (a season that stopped in May) must
+       not produce a new session in the past. Noon avoids DST/UTC shifting
+       the ISO date. */
+    var allDates = (training || [])
+      .filter(function (t) { return t.date && (!cat || !t.category || t.category === cat); })
+      .map(function (t) { return t.date; });
+    var lastDate = allDates.length ? allDates.sort().pop() : null;
+    var seed = new Date();
+    seed.setHours(12, 0, 0, 0);
+    seed.setDate(seed.getDate() - 1);
+    var d = seed;
+    if (lastDate) {
+      var fromLast = new Date(lastDate + 'T12:00:00');
+      if (fromLast > seed) d = fromLast;
+    }
+    var latestDow = d.getDay();
+    var nextSlotDay = null;
+    for (var i = 0; i < slotDays.length; i++) {
+      if (slotDays[i] > latestDow) { nextSlotDay = slotDays[i]; break; }
+    }
+    if (nextSlotDay === null) nextSlotDay = slotDays[0];
+    var diff = nextSlotDay - latestDow;
+    if (diff <= 0) diff += 7;
+    d.setDate(d.getDate() + diff);
+
+    // EVERY slot on that weekday, not just the first: two teams on the same
+    // evening at different times are two sessions.
+    var matched = slots.filter(function (s) { return s.jsDay === nextSlotDay; });
+    if (!matched.length) matched = [slots[0]];
+    var dateStr = d.toISOString().slice(0, 10);
+    return matched.map(function (slot, i) {
+      var loc = slot.location || TRAINING_DEFAULT_LOC;
+      return {
+        // Provisional until saved; the suffix keeps several unique.
+        id: 'tr_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 8),
+        day: tDay(d.getDay()), date: dateStr,
+        time: slot.time, endTime: slot.endTime || '',
+        focus: '', location: loc,
+        mapLink: slot.link || (loc === TRAINING_DEFAULT_LOC ? TRAINING_DEFAULT_MAP : ''),
+        status: 'upcoming', category: cat,
+        teams: (slot.teams || []).slice(), guests: [], excluded: []
+      };
+    });
   }
 
   async function handleRegister(e) {
@@ -3374,7 +3488,7 @@
   // Pages that require a specific role
   const STAFF_PAGES = new Set([
     'staff-home',
-    'staff-training', 'staff-training-detail', 'matchday',
+    'staff-training', 'staff-training-detail', 'training-new', 'matchday',
     'convocatoria', 'staff-matchday', 'tactics',
     'manage-roster', 'registrations', 'staff-notifications',
     'staff-player-stats', 'medical', 'medical-detail'
@@ -3479,6 +3593,7 @@
       'player-actions': renderPlayerActions,
       'player-matchday': renderMatches,
       'staff-training': renderStaffTraining,
+      'training-new': renderTrainingNew,
       'staff-training-detail': renderStaffTrainingDetail,
       'matchday': renderMatchday,
       'convocatoria': renderConvocatoria,
@@ -3571,6 +3686,7 @@
     }
 
     // Injury description hover → body map popup + medical tab bindings
+    if (currentPage === 'training-new') bindTrainingNew();
     if (currentPage === 'medical') bindMedical();
     if (currentPage === 'medical-detail') bindMedicalDetail();
     if (currentPage === 'my-stats' || currentPage === 'staff-player-stats') bindMyStatsInjuryPopup();
@@ -10388,6 +10504,301 @@
       }).join('') + '</div></div>';
   }
 
+  // #region New Training
+  /* ── Creating a training session ──────────────────────────────
+     "+ Entrenament" used to append a row to the list and leave the coach
+     to edit it in place. Now it opens a page: pick which teams get a
+     session, adjust the times their own schedules proposed, see exactly who
+     is called, and borrow a player from another squad if you need one.
+
+     Nothing is written until Save. A half-configured session that a coach
+     navigated away from used to be a real row in everybody's calendar. */
+
+  let _ntDrafts = null;      // the sessions being composed
+  let _ntTeams = null;       // letters selected, null = every letter
+  let _ntPickerOpen = -1;    // which draft's Add-Player list is showing
+  let _ntPicked = null;      // uids ticked in that list, before Add
+
+  function _ntReset() {
+    _ntDrafts = null;
+    _ntTeams = null;
+    _ntPickerOpen = -1;
+    _ntPicked = null;
+  }
+
+  /** Rebuild the drafts from the schedules, keeping nothing the coach typed. */
+  function _ntSeed() {
+    const cat = getCurrentCategory() || '';
+    const letters = _ntTeams && _ntTeams.size ? [..._ntTeams] : getTeamLetters(cat);
+    _ntDrafts = buildTrainingDrafts(cat, getTrainings(), letters);
+  }
+
+  /**
+   * Sessions this player is already called to that overlap a draft.
+   * Saved sessions only: two drafts in one composition are the coach's own
+   * doing and warning about them would be noise.
+   */
+  function _ntClashes(playerId, draft, list) {
+    const user = getUsers().find(u => String(u.id) === String(playerId));
+    if (!user) return [];
+    /* `list` matters on save: getTrainings() re-parses the blob and hands
+       back FRESH objects every call, so excluding a player from a session
+       fetched here would mutate a throwaway copy and be lost on write.
+       The saver passes the very array it is about to persist. */
+    return (list || getTrainings()).filter(t =>
+      playerIsCalled(t, user) && trainingsOverlap(t, draft));
+  }
+
+  function renderTrainingNew() {
+    const cat = getCurrentCategory() || '';
+    if (!_ntDrafts) { _ntTeams = null; _ntSeed(); }
+    const users = getUsers();
+    const letters = getTeamLetters(cat);
+
+    const chip = (val, label, on) =>
+      `<button class="roster-team-btn nt-team-btn${on ? ' roster-team-btn-active' : ''}" data-nt-team="${val}">${label}</button>`;
+    const teamBar = letters.length > 1 ? `
+      <div class="card">
+        <div class="card-title">${t('nt.which_teams')}</div>
+        <p class="nt-hint">${t('nt.which_teams_hint')}</p>
+        <div class="roster-team-filter" style="margin-bottom:0;">
+          ${chip('all', t('roster.all'), !_ntTeams || !_ntTeams.size)}
+          ${letters.map(l => chip(l, l, !!(_ntTeams && _ntTeams.has(l)))).join('')}
+        </div>
+      </div>` : '';
+
+    const blocks = _ntDrafts.map((d, i) => {
+      const squad = calledPlayers(d, users);
+      const rows = squad.map(p => {
+        const clash = _ntClashes(p.id, d);
+        const warn = clash.length ? `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : '';
+        const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
+        const catTag = (p.category && p.category !== cat)
+          ? `<span class="nt-cat-tag">${sanitize(CATEGORY_LABELS[p.category] || p.category)}</span>` : '';
+        return `<div class="conv-player">
+          <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
+          <span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${teamCircle}${catTag}</span>
+          <span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>
+          ${warn}
+          <button class="conv-remove" data-nt-drop="${sanitize(String(p.id))}" data-nt-i="${i}" title="${t('nt.drop')}">&times;</button>
+        </div>`;
+      }).join('');
+
+      // Everyone in the club who is not already called — the point of the
+      // picker is borrowing from another squad, so it is not category-scoped.
+      const pool = users.filter(u =>
+        (u.roles || []).includes('player') && !playerIsCalled(d, u));
+      const picker = _ntPickerOpen === i ? `
+        <div class="tg-dd nt-dd">
+          <input class="tg-dd-input nt-dd-input" data-nt-i="${i}" placeholder="${t('nt.search')}" autocomplete="off">
+          <div class="tg-dd-list nt-dd-list">
+            ${pool.map(p => {
+    const on = _ntPicked && _ntPicked.has(String(p.id));
+    const clash = _ntClashes(p.id, d);
+    return `<div class="tg-dd-option nt-dd-option${on ? ' nt-dd-on' : ''}" data-nt-pick="${sanitize(String(p.id))}" data-name="${sanitize(p.name.toLowerCase())}">
+                <span class="nt-dd-check">${on ? '✓' : ''}</span>
+                <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
+                <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : ''}</span>
+                <span class="nt-cat-tag">${sanitize(CATEGORY_LABELS[p.category] || '—')}</span>
+                ${clash.length ? `<span class="nt-warn" data-tip="${sanitize(t('nt.clash_tip'))}">!</span>` : ''}
+              </div>`;
+  }).join('')}
+          </div>
+          <div class="nt-dd-actions">
+            <button class="btn btn-small btn-outline" data-nt-cancel-pick="1">${t('common.cancel')}</button>
+            <button class="btn btn-small btn-primary" data-nt-add="${i}">${t('nt.add_selected')}</button>
+          </div>
+        </div>` : `<button class="btn btn-small btn-outline nt-add-btn" data-nt-open="${i}">${t('nt.add_player')}</button>`;
+
+      const dmy = d.date ? tDateDMY(d.date) : '';
+      return `<div class="card nt-draft" data-nt-i="${i}">
+        <div class="card-title">${sanitize(CATEGORY_LABELS[cat] || cat)} ${trainingTeams(d).join(' + ')}</div>
+        <div class="nt-fields">
+          <label>${t('training.th_date')}
+            <input type="text" class="reg-input nt-f md-datepicker" data-display-dmy data-nt-f="date" data-nt-i="${i}" data-date-iso="${sanitize(d.date)}" value="${sanitize(dmy)}" placeholder="dd/mm/yyyy" readonly></label>
+          <label>${t('nt.start')}
+            <select class="reg-input nt-f" data-nt-f="time" data-nt-i="${i}">${buildTimeOptions(d.time)}</select></label>
+          <label>${t('nt.end')}
+            <select class="reg-input nt-f" data-nt-f="endTime" data-nt-i="${i}">${buildTimeOptions(d.endTime)}</select></label>
+          <label>${t('training.th_focus')}
+            <input class="reg-input nt-f" data-nt-f="focus" data-nt-i="${i}" value="${sanitize(d.focus)}" placeholder="${t('training.focus_ph')}"></label>
+          <label>${t('training.th_location')}
+            <input class="reg-input nt-f" data-nt-f="location" data-nt-i="${i}" value="${sanitize(d.location)}" placeholder="${t('training.location_ph')}"></label>
+          <label>${t('training.th_link')}
+            <input class="reg-input nt-f" data-nt-f="mapLink" data-nt-i="${i}" value="${sanitize(d.mapLink)}" placeholder="${t('training.maplink_ph')}"></label>
+        </div>
+        <div class="conv-panel-header nt-squad-header">${t('nt.called')} <span class="conv-count">${squad.length}</span></div>
+        <div class="conv-list nt-squad">${rows || `<p class="nt-hint">${t('nt.nobody')}</p>`}</div>
+        ${picker}
+      </div>`;
+    }).join('');
+
+    return `
+      <button class="btn btn-outline btn-small detail-back" data-back="staff-training">${t('btn.back')}</button>
+      <h2 class="page-title">${t('nt.title')}</h2>
+      ${teamBar}
+      ${blocks}
+      <div class="nt-actions">
+        <button class="btn btn-outline" id="nt-cancel">${t('common.cancel')}</button>
+        <button class="btn btn-primary" id="nt-save">${t('nt.save')} (${_ntDrafts.length})</button>
+      </div>`;
+  }
+
+  function bindTrainingNew() {
+    const rerender = () => renderPage(getSession());
+
+    // Which teams get a session. Re-seeds from their schedules, because the
+    // proposed times ARE the teams' own — changing the teams changes them.
+    $$('[data-nt-team]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.dataset.ntTeam;
+        if (v === 'all') _ntTeams = null;
+        else {
+          if (!_ntTeams) _ntTeams = new Set();
+          if (_ntTeams.has(v)) _ntTeams.delete(v); else _ntTeams.add(v);
+          if (!_ntTeams.size) _ntTeams = null;
+        }
+        _ntPickerOpen = -1;
+        _ntSeed();
+        rerender();
+      });
+    });
+
+    // Field edits write straight to the draft — nothing is persisted yet.
+    $$('.nt-f').forEach(el => {
+      const commit = () => {
+        const d = _ntDrafts[Number(el.dataset.ntI)];
+        if (!d) return;
+        const f = el.dataset.ntF;
+        d[f] = (f === 'date') ? (el.dataset.dateIso || d.date) : el.value;
+        if (f === 'date') d.day = d.date ? tDay(new Date(d.date + 'T12:00:00').getDay()) : d.day;
+      };
+      el.addEventListener('change', () => { commit(); rerender(); });
+      if (el.tagName === 'INPUT' && el.type === 'text' && !el.classList.contains('md-datepicker')) {
+        el.addEventListener('input', commit);
+      }
+    });
+
+    $$('[data-nt-drop]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = _ntDrafts[Number(btn.dataset.ntI)];
+        if (!d) return;
+        const id = String(btn.dataset.ntDrop);
+        // A guest is simply un-invited; a squad member needs an exclusion.
+        d.guests = (d.guests || []).filter(g => String(g) !== id);
+        if (!d.excluded) d.excluded = [];
+        if (d.excluded.map(String).indexOf(id) === -1) d.excluded.push(id);
+        rerender();
+      });
+    });
+
+    $$('[data-nt-open]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _ntPickerOpen = Number(btn.dataset.ntOpen);
+        _ntPicked = new Set();
+        rerender();
+      });
+    });
+    const cancelPick = $('[data-nt-cancel-pick]');
+    if (cancelPick) {
+      cancelPick.addEventListener('click', () => {
+        _ntPickerOpen = -1; _ntPicked = null; rerender();
+      });
+    }
+
+    // Multi-select: tick several, then Add once.
+    $$('[data-nt-pick]').forEach(row => {
+      row.addEventListener('click', () => {
+        if (!_ntPicked) _ntPicked = new Set();
+        const id = String(row.dataset.ntPick);
+        if (_ntPicked.has(id)) _ntPicked.delete(id); else _ntPicked.add(id);
+        row.classList.toggle('nt-dd-on');
+        const tick = row.querySelector('.nt-dd-check');
+        if (tick) tick.textContent = _ntPicked.has(id) ? '✓' : '';
+      });
+    });
+
+    const ddInput = $('.nt-dd-input');
+    if (ddInput) {
+      ddInput.addEventListener('input', () => {
+        const q = ddInput.value.trim().toLowerCase();
+        $$('.nt-dd-option').forEach(o => {
+          o.hidden = !!q && (o.dataset.name || '').indexOf(q) === -1;
+        });
+      });
+      ddInput.focus();
+    }
+
+    const addBtn = $('[data-nt-add]');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const d = _ntDrafts[Number(addBtn.dataset.ntAdd)];
+        if (!d || !_ntPicked) { _ntPickerOpen = -1; return rerender(); }
+        if (!d.guests) d.guests = [];
+        _ntPicked.forEach(id => {
+          // Re-inviting someone previously dropped clears the exclusion.
+          d.excluded = (d.excluded || []).filter(x => String(x) !== String(id));
+          if (d.guests.map(String).indexOf(String(id)) === -1) d.guests.push(id);
+        });
+        _ntPickerOpen = -1;
+        _ntPicked = null;
+        rerender();
+      });
+    }
+
+    const cancel = $('#nt-cancel');
+    if (cancel) {
+      cancel.addEventListener('click', () => {
+        _ntReset();
+        currentPage = 'staff-training';
+        renderPage(getSession());
+      });
+    }
+
+    $$('.nt-f.md-datepicker').forEach(inp => {
+      inp.addEventListener('click', () => openDatePicker(inp));
+    });
+
+    const save = $('#nt-save');
+    if (save) save.addEventListener('click', _ntSave);
+  }
+
+  function _ntSave() {
+    const drafts = _ntDrafts || [];
+    if (!drafts.length) return;
+    const training = getTrainings();
+
+    /* A player called to a session that clashes with one he is already in
+       is REMOVED from the other one — the warning said so before the coach
+       committed. Done here rather than at Add time so that editing the
+       times afterwards still resolves correctly. */
+    let moved = 0;
+    drafts.forEach(d => {
+      calledPlayers(d, getUsers()).forEach(p => {
+        _ntClashes(p.id, d, training).forEach(other => {
+          if (!other.excluded) other.excluded = [];
+          if (other.excluded.map(String).indexOf(String(p.id)) === -1) {
+            other.excluded.push(String(p.id));
+            moved++;
+          }
+          other.guests = (other.guests || []).filter(g => String(g) !== String(p.id));
+        });
+      });
+    });
+
+    drafts.forEach(d => training.push(d));
+    training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    localStorage.setItem('fa_training', JSON.stringify(training));
+    if (moved) {
+      _showPushToast(t('nt.saved_title'),
+        t('nt.moved').replace('{n}', moved));
+    }
+    _ntReset();
+    currentPage = 'staff-training';
+    renderPage(getSession());
+  }
+  // #endregion New Training
+
   function renderStaffTrainingDetail() {
     const training = getTrainings();
     const tr = training.find(x => String(x.id) === String(detailTrainingId));
@@ -13793,106 +14204,21 @@
     });
 
     // Add training
-    function addTraining() {
-      const training = readTraining();
-      const curCat = getCurrentCategory() || '';
-      // Gather configured training slots from club schedule
-      const dayValToJs = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-      /* Slots keep the LETTERS they belong to. The old dedup collapsed
-         every letter's slots into one list and discarded the letter, so if
-         A trained Tue 20:00 and B Tue 21:30 whichever was iterated first
-         won and B's slot vanished without a word. Identical day+time+place
-         across letters still collapses -- that is a genuinely shared
-         session -- but only by MERGING their letters, never by dropping
-         one. */
-      var slots = []; // [{ jsDay, time, endTime, location, link, teams: [] }]
-      if (_clubConfig && _clubConfig.schedules) {
-        var letters = getTeamLetters(curCat);
-        letters.forEach(function (letter) {
-          var sched = _clubConfig.schedules[curCat + '-' + letter];
-          if (sched && sched.training) {
-            sched.training.forEach(function (tr) {
-              if (!tr.day || dayValToJs[tr.day] === undefined) return;
-              var same = slots.find(function (s) {
-                return s.jsDay === dayValToJs[tr.day] && s.time === (tr.time || '') &&
-                  s.endTime === (tr.endTime || '') && s.location === (tr.location || '');
-              });
-              if (same) {
-                if (same.teams.indexOf(letter) === -1) same.teams.push(letter);
-                return;
-              }
-              slots.push({
-                jsDay: dayValToJs[tr.day], time: tr.time || '', endTime: tr.endTime || '',
-                location: tr.location || '', link: tr.link || '', teams: [letter]
-              });
-            });
-          }
-        });
-      }
-      // Fallback to Tue/Thu if no schedule configured. No teams: an empty
-      // list already means "every letter of the category".
-      if (!slots.length) slots = [{ jsDay: 2, time: '21:00', endTime: '', location: '', link: '', teams: [] }, { jsDay: 4, time: '22:00', endTime: '', location: '', link: '', teams: [] }];
-      // Sort slots by JS day
-      slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
-      var slotDays = slots.map(function (s) { return s.jsDay; }); // e.g. [2, 4] for Tue/Thu
-      // Find the latest training date to cycle from — within this category,
-      // since the slots above are this category's. Undated/uncategorised
-      // legacy rows count, matching how the list itself filters.
-      var allDates = training
-        .filter(function (t) { return t.date && (!curCat || !t.category || t.category === curCat); })
-        .map(function (t) { return t.date; });
-      var lastDate = allDates.length ? allDates.sort().pop() : null;
-      // Seed at yesterday-noon so the search below can land on today at the
-      // earliest. Noon avoids DST/UTC shifting the ISO date.
-      var seed = new Date();
-      seed.setHours(12, 0, 0, 0);
-      seed.setDate(seed.getDate() - 1);
-      var d = seed;
-      if (lastDate) {
-        var fromLast = new Date(lastDate + 'T12:00:00');
-        // Cycle on from the last session, but never backwards: an old last
-        // training (say the season stopped in May) must not produce a new
-        // session in the past — fall back to the from-today search instead.
-        if (fromLast > seed) d = fromLast;
-      }
-      // Determine next slot day AFTER the seed's weekday
-      var latestDow = d.getDay(); // 0=Sun … 6=Sat
-      var nextSlotDay = null;
-      for (var i = 0; i < slotDays.length; i++) {
-        if (slotDays[i] > latestDow) { nextSlotDay = slotDays[i]; break; }
-      }
-      if (nextSlotDay === null) nextSlotDay = slotDays[0]; // wrap to next week
-      var diff = nextSlotDay - latestDow;
-      if (diff <= 0) diff += 7;
-      d.setDate(d.getDate() + diff);
-      /* EVERY slot on that weekday, not just the first. Two teams whose
-         schedules put them on the same evening at different times are two
-         sessions, and `find` returned one of them -- which is how B's
-         entry disappeared. Slots that agree on day, time, end and place
-         were already merged above into one session carrying both letters. */
-      var matched = slots.filter(function (s) { return s.jsDay === nextSlotDay; });
-      if (!matched.length) matched = [slots[0]];
-      const dateStr = d.toISOString().slice(0, 10);
-      const day = tDay(d.getDay());
-      matched.forEach(function (slot, i) {
-        const loc = slot.location || DEFAULT_LOC;
-        const map = slot.link || (loc === DEFAULT_LOC ? DEFAULT_MAP : '');
-        training.push({
-          // The suffix keeps ids unique when one click creates several.
-          id: 'tr_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 8),
-          day, date: dateStr, time: slot.time, endTime: slot.endTime || '',
-          focus: '', location: loc, mapLink: map,
-          status: 'upcoming', category: curCat,
-          // Empty already means "every letter of the category".
-          teams: (slot.teams || []).slice(), guests: [], excluded: []
-        });
-      });
-      training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      localStorage.setItem('fa_training', JSON.stringify(training));
-      renderPage(getSession());
-    }
+    /* addTraining() lived here: it appended a row to the list and left the
+       coach to edit it in place. renderTrainingNew() replaces it, and the
+       slot arithmetic it owned now lives in buildTrainingDrafts() where the
+       new page can use it too. */
     const addBtnTop = document.getElementById('btn-training-add-top');
-    if (addBtnTop) addBtnTop.addEventListener('click', addTraining);
+    if (addBtnTop) {
+      addBtnTop.addEventListener('click', () => {
+        // Compose the session on its own page; nothing is written until
+        // Save. Appending a half-configured row to everybody's calendar and
+        // letting the coach edit it in place is what this replaces.
+        _ntReset();
+        currentPage = 'training-new';
+        renderPage(getSession());
+      });
+    }
 
     // Click any training row → open staff training detail
     body.querySelectorAll('tr[data-tid]').forEach(tr => {
@@ -17608,11 +17934,11 @@
       // Delegated (mouseover/mouseout bubble, mouseenter/mouseleave do not),
       // so the dots keep their tooltip across re-renders.
       content.addEventListener('mouseover', e => {
-        const dot = e.target.closest && e.target.closest('.reg-dot');
+        const dot = e.target.closest && e.target.closest('.reg-dot, .nt-warn');
         if (dot) showHoverTip(dot, dot.dataset.tip);
       });
       content.addEventListener('mouseout', e => {
-        if (e.target.closest && e.target.closest('.reg-dot')) hideHoverTip();
+        if (e.target.closest && e.target.closest('.reg-dot, .nt-warn')) hideHoverTip();
       });
       // A tooltip pinned to viewport coordinates does not follow its dot when
       // the pane scrolls underneath it.

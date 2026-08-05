@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v72.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **492 passing** (351 unit + 103 rules + 38 functions), up from 143 at the start of this work.
+**Production is on v73.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **505 passing** (364 unit + 103 rules + 38 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -19,7 +19,7 @@ What is left is not a code question: **every measurement so far is against synth
 
 The one open *design* question, no longer a defect: the colour is not a function of the score, so two players can show 72 in different colours. The tooltip now names the rule that fired, which answered the original complaint.
 
-### 2. Per-team training - STAGES 1 AND 2 SHIPPED (v70, v71), stage 3 to go
+### 2. ~~Per-team training~~ - DONE (v70, v71, v73)
 Stage 1 (the model, end times, session-id keying, player-page scoping, the slot generator) is v70. Stage 2 (the record re-key, the dual read, the migration, the reminder scoping) is v71. **Stage 3** is the New Training page: pick teams, see the called squad with a total, "+ Add Player" across the club, clash warnings. Plan: `~/.claude/plans/continuing-on-the-esquerrapp-streamed-waffle.md`.
 
 **v71 is fully deployed and migrated (2026-08-05).** Functions deployed; the record migration applied to the demo club and verified: 3,427 `trainingAvail` and 2,684 `rpe` documents re-keyed to the session id, **zero ambiguous**, with every legacy document still present on purpose (the old APK reads them, and they are the rollback path). Match and extra RPE were correctly skipped - they already carry unambiguous ids.
@@ -91,6 +91,25 @@ unnecessary on a GCE VM and puts personal credentials on a shared disk.
 **Still to do:** `functions/backfill-training-teams.js` has no `preflight()`.
 `seed-demo-club.js` does, and it turns exactly this failure into one
 actionable line instead of a 30-line gRPC stack. Copy it across.
+
+## v73 - the New Training page, stage 3 of 3 (2026-08-05)
+
+"+ Entrenament" opens a page instead of appending a row, and nothing is written until Save. A half-configured session used to be a real row in everybody's calendar the moment you clicked.
+
+- **Pick the teams**; each proposes its own schedule. Differing defaults give one session per team, identical ones collapse into a shared session.
+- **The called squad with a running total**, reusing the match call-up's components. `x` per row: a guest is un-invited, a squad member gets an exclusion.
+- **"+ Add Player" spans the whole club** - borrowing from another squad is the point. Multi-select, one Add. The generator's "invent a player if no name matches" behaviour is dropped: only real roster players.
+- **Clash warnings** on overlapping `[start, end)`, and **Save acts on them** - the player really is removed from the session he was in. Resolved at save, not at Add, so moving the times afterwards still resolves correctly.
+
+`addTraining()` deleted; its slot arithmetic is `buildTrainingDrafts()`, now executable by tests rather than source-asserted.
+
+**A bug the tests caught before it shipped:** `_ntSave()` resolved clashes against `getTrainings()`, which re-parses the blob and hands back FRESH objects, so the exclusion was written to a throwaway copy and lost. It takes the array being saved now.
+
+17 new tests. Frontend only.
+
+## v72 - no category switcher on a training session (2026-08-05)
+
+A session belongs to specific teams now, so it IS one category by definition. The bar invited a coach to change the category out from under a session he was already looking at. `staff-training-detail` came out of `CATEGORY_PAGES`.
 
 ## v71 - training records keyed by session (stage 2 of 3, 2026-08-05)
 
