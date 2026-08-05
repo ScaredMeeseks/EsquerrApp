@@ -1091,3 +1091,16 @@ Also removed the `curCat` declaration in `renderStaffTrainingDetail`, which had 
 
 Not included, deliberately: no push notification on call-up. A guest already discovers the session on his own landing page, which stage 1 fixed. Adding one is a decision, not an assumption.
 
+## v74 - yesterday's training stopped leaving the landing page (2026-08-05)
+
+Reported: a session from 04/08 still on the player's home page on 05/08.
+
+The week strip's filter opened with `if (!t.date || !t.time) return true;` - so **a session with no time set never expired at all**. It was kept for ever, because the check that followed could not work out when it had started.
+
+Two fixes, and the second is one the new `endTime` field finally makes possible:
+
+- **A session on a past date is over, whatever its time says.** No time is no longer a reason to keep showing it.
+- **Today's session now runs until its END**, not until an hour after its start. A 20:00-21:30 session used to vanish from the strip at 21:00, half way through it. Without an `endTime`, `sessionWindow()` assumes 90 minutes.
+
+6 new tests. **370 unit**, 511 total.
+

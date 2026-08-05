@@ -439,3 +439,67 @@ describe('training — new session clash handling', () => {
     assert.strictEqual(JSON.parse(store.fa_training).length, 1);
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * When a session leaves the landing page.
+ *
+ * The week strip kept `if (!t.date || !t.time) return true;`, so a session
+ * with no time set never expired — yesterday's training sat on the player's
+ * home page indefinitely. And a timed session was dropped an hour after it
+ * STARTED, so a 20:00-21:30 session vanished at 21:00, half way through.
+ * ------------------------------------------------------------------ */
+describe('training — when a session stops showing', () => {
+  const H = load(['A']);
+
+  /** The predicate the week strip applies, over a fixed "now". */
+  function shows(t, todayStr, nowMins) {
+    if (!t.date) return true;
+    if (t.date < todayStr) return false;
+    if (t.date > todayStr) return true;
+    const w = H.sessionWindow(t);
+    if (!w) return true;
+    return nowMins < w.end;
+  }
+
+  const TODAY = '2026-08-05';
+  const at = (date, time, endTime) => ({ id: 'x', date, time, endTime });
+
+  it('drops a session from a past date even with no time set', () => {
+    // The reported bug: yesterday's training still on the landing page.
+    assert.strictEqual(shows(at('2026-08-04', ''), TODAY, 12 * 60), false);
+    assert.strictEqual(shows(at('2026-08-04', '20:00'), TODAY, 12 * 60), false);
+  });
+
+  it('keeps a future session whatever the time', () => {
+    assert.strictEqual(shows(at('2026-08-06', ''), TODAY, 23 * 60), true);
+  });
+
+  it('keeps today\'s session until it actually ends', () => {
+    const s = at(TODAY, '20:00', '21:30');
+    assert.strictEqual(shows(s, TODAY, 20 * 60 + 30), true, 'mid-session');
+    assert.strictEqual(shows(s, TODAY, 21 * 60), true, 'an hour in, still running');
+    assert.strictEqual(shows(s, TODAY, 21 * 60 + 31), false, 'finished');
+  });
+
+  it('assumes 90 minutes when no end time is set', () => {
+    const s = at(TODAY, '20:00');
+    assert.strictEqual(shows(s, TODAY, 21 * 60 + 29), true);
+    assert.strictEqual(shows(s, TODAY, 21 * 60 + 31), false);
+  });
+
+  it('keeps an untimed session that is TODAY', () => {
+    // We cannot tell when it started, and hiding a session on the day it
+    // happens is worse than leaving it up.
+    assert.strictEqual(shows(at(TODAY, ''), TODAY, 23 * 60), true);
+  });
+
+  it('is the rule the week strip actually uses', () => {
+    // Anchored on the week strip's own filter: `todayStr` alone also
+    // appears in the readiness code, and matched there first.
+    const body = grab('    training.filter(t => t.date >= start && t.date <= end)', '    }).forEach(t => {');
+    assert.ok(body.includes('if (t.date < todayStr) return false;'),
+        'a past date must end a session whatever its time says');
+    assert.ok(body.includes('nowMins < w.end'), 'and it runs until its END');
+    assert.ok(!body.includes('60 * 60 * 1000'), 'not an hour after the start');
+  });
+});

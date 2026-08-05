@@ -1205,7 +1205,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 73;
+  const APP_VERSION = 74;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -13373,13 +13373,26 @@
       const dayName = m.date ? tDay(new Date(m.date + 'T12:00:00').getDay()) : '';
       activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} · ${m.time} · ${sanitize(m.location || '')}`, convSent, convIncluded, sentJersey, sentSocks });
     });
+    const todayStr = localDateStr(now);
+    const nowMins = now.getHours() * 60 + now.getMinutes();
     training.filter(t => t.date >= start && t.date <= end).filter(t => {
-      if (!t.date || !t.time) return true;
-      return new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00').getTime() + 60 * 60 * 1000 > now.getTime();
+      if (!t.date) return true;
+      /* A session on a PAST DATE is over, whatever its time says. This used
+         to fall through to `true` for a session with no time set -- the
+         check below could not tell when it had started -- so an untimed
+         session sat on the landing page for ever. */
+      if (t.date < todayStr) return false;
+      if (t.date > todayStr) return true;
+      const w = sessionWindow(t);
+      if (!w) return true;           // today, but we cannot tell when
+      /* Drops at the session's END, not an hour after its start. A
+         20:00-21:30 session used to vanish from the strip at 21:00, half
+         way through it. endTime makes the real answer available; without
+         one, sessionWindow assumes 90 minutes. */
+      return nowMins < w.end;
     }).forEach(t => {
       const dayName = t.date ? tDay(new Date(t.date + 'T12:00:00').getDay()) : '';
-      // tId navigates; tDate still keys the availability record, which is
-      // date-keyed until the record migration. Two different questions.
+      // tId addresses the session; tDate is only the label's date.
       activities.push({ type: 'training', tId: t.id, tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
     });
     // Birthdays this week (skip self)
