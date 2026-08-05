@@ -778,6 +778,12 @@ function buildSeason(uidPrefix, opts) {
   });
 
   return {
+    /* The letter is STAMPED here, not read from OPTS later. --add-team
+       builds several teams in one process and mutates OPTS between them, so
+       anything reading OPTS after the loops sees the last team's letter —
+       which is exactly how the dry-run report announced "amateur-B" as
+       "team A". The data was right; the label was reading a moving target. */
+    letter: OPTS.letter,
     today, seasonStart, cat, players, staff, matches, trainings,
     playedMatches, pastTrainings, nextTrainings, nextMatches,
     injuries, injuryNotes, injuryZone,
@@ -1053,7 +1059,7 @@ function buildShards(S) {
     id: p.uid, name: p.name, email: p.email, position: p.position,
     playerNumber: p.playerNumber, profilePic: p.profilePic || "", dob: p.dob,
     profileSetupDone: true, roles: ["player"], category: S.cat,
-    team: OPTS.letter, staffCategories: [], isAdmin: false,
+    team: S.letter, staffCategories: [], isAdmin: false,
     isTeamLead: false, teamId: S.clubId,
     fitnessStatus: p.fitnessStatus, injuryNote: p.injuryNote,
   })));
@@ -1105,7 +1111,7 @@ function report(S, docs) {
   const seasonEnd = addDays(localDateStr(new Date(sy + 1, sm - 1, sd)), -1);
   step(`Season ${S.seasonStart} → ${seasonEnd}   (as of ${S.today}, boundary ${OPTS.boundary})`);
   log(`${SEP}club            ${OPTS.name}`);
-  log(`${SEP}category        ${S.cat} / team ${OPTS.letter}`);
+  log(`${SEP}category        ${S.cat} / team ${S.letter}`);
   log(`${SEP}squad           ${S.players.length} players + ${S.staff.length} staff`);
   log(`${SEP}trainings       ${S.trainings.length}  (${S.pastTrainings.length} past, ${S.trainings.length - S.pastTrainings.length} upcoming)`);
   log(`${SEP}matches         ${S.matches.length}  (${S.playedMatches.length} played, ${S.matches.length - S.playedMatches.length} upcoming)`);
@@ -1355,7 +1361,7 @@ async function apply(S, docs) {
         isTeamLead: !!person.isLead,
         roles: isPlayer ? ["player"] : person.roles,
         category: isPlayer ? S.cat : "",
-        team: isPlayer ? OPTS.letter : "",
+        team: isPlayer ? S.letter : "",
         staffCategories: isPlayer ? [] : [S.cat],
         fitnessStatus: isPlayer ? person.fitnessStatus : "fit",
         injuryNote: isPlayer ? person.injuryNote : "",

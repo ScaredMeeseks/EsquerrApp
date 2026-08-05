@@ -953,3 +953,11 @@ The demo club had one team, which undersells an app whose selling point is runni
 
 One incidental finding: `buildSeason()` calls `setSeasonBoundary()`, which is **module state in `utils.js`** shared by the whole test process. The new tests restore the default after each build - without it they silently broke the first assertion in `utils.test.js`.
 
+### v67b follow-up — the letter now travels with the season
+
+The dry run announced `amateur-B` as *"category amateur / team A"*. **The written data was correct**; the label was not. `report()` printed `OPTS.letter`, and `addTeams()` mutates `OPTS` once per team — so anything reading it *after* the build loops sees the **last** team's letter.
+
+Every read that mattered happened to sit inside the loop that had just set it, so this was one reordering away from writing 25 players into the wrong squad. `buildSeason()` now stamps `S.letter`, and `report()`, `buildShards()` and `apply()` read that instead. Two tests pin the two functions that run after the loops.
+
+**Verified in production** (`--verify` after the apply): 19 data docs, `fa_users` merging to **77 members** — 25 amateur-A + 25 amateur-B + 25 juvenil-A + 2 staff, so nothing was overwritten — 77 users all stamped `demoSeed`, and 75 profile pictures each backed by a real Storage object.
+

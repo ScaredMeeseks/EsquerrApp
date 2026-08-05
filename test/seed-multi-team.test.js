@@ -195,3 +195,37 @@ describe('--add-team — a second team in a category reuses its calendar', () =>
     assert.ok(j.S.trainings.every((t) => t.category === 'juvenil'));
   });
 });
+
+/* The letter has to travel WITH the season, not be read back off OPTS.
+   addTeams() builds several teams in one process and mutates OPTS between
+   them, so anything reading it after the loops sees the last team's letter.
+   That is what made the dry run announce amateur-B as "team A" — the data
+   was correct, but only because every read happened to sit inside the loop
+   that had just set it. One reordering away from a real bug. */
+describe('--add-team — the team letter travels with the season', () => {
+  const b = team('amateur', 'B', { usedNames: new Set() });
+  const j = team('juvenil', 'A', { usedNames: new Set() });
+
+  it('is stamped on the season object', () => {
+    assert.strictEqual(b.S.letter, 'B');
+    assert.strictEqual(j.S.letter, 'A');
+  });
+
+  it('survives another team being built afterwards', () => {
+    // The second build mutates OPTS. The first season must not notice.
+    team('cadet', 'C', { usedNames: new Set() });
+    assert.strictEqual(b.S.letter, 'B', 'a later build reached back in time');
+    assert.ok(b.S.matches.every((m) => m.team === 'B'));
+  });
+
+  /* The two functions that run AFTER every team has been built are the ones
+     that must not reach for OPTS. Reads inside buildSeason are fine — OPTS
+     is correct at that moment, and stamping S.letter is the whole point. */
+  ['function buildShards(S)', 'function report(S, docs)'].forEach((marker) => {
+    it(`${marker.slice(9, marker.indexOf('('))} does not read OPTS.letter`, () => {
+      const body = grab(marker, '\n// =====');
+      assert.ok(!body.includes('OPTS.letter'),
+          'runs after the build loops, so OPTS holds the LAST team\'s letter');
+    });
+  });
+});

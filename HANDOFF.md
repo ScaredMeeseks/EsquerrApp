@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v67.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **395 passing** (269 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v67.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **399 passing** (273 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -52,7 +52,11 @@ Dev tooling only, nothing shipped. `apply()` builds a club from nothing and woul
 
 38 new tests. **The team must be configured in the app first** - the quota stays enforced in `setClubCategories`, and the seeder does not hand out teams.
 
-**Next:** run it against the demo club `Tm96gel58VSQvxgynf45`. The 50-face folder still has to be uploaded to Cloud Shell.
+**Done and verified in production (2026-08-05).** `--verify` reports 19 data docs, `fa_users` merging to **77 members** (25 amateur-A + 25 amateur-B + 25 juvenil-A + 2 staff, so nothing was overwritten), 77 users stamped `demoSeed`, 75 profile pictures each backed by a real Storage object.
+
+One cosmetic bug found in the dry run and fixed after: `report()` read `OPTS.letter`, which `addTeams()` mutates per team, so `amateur-B` was announced as "team A". Data was correct. `buildSeason()` now stamps `S.letter` and the post-loop readers use it.
+
+**Demo credentials for the new squads:** `amateurb-player01@demo.esquerrapp.app` and `juvenila-player01@demo.esquerrapp.app`, same password as the rest.
 
 ## v67 — "Totes" never did anything (2026-08-04)
 
