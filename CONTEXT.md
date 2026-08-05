@@ -961,3 +961,19 @@ Every read that mattered happened to sit inside the loop that had just set it, s
 
 **Verified in production** (`--verify` after the apply): 19 data docs, `fa_users` merging to **77 members** — 25 amateur-A + 25 amateur-B + 25 juvenil-A + 2 staff, so nothing was overwritten — 77 users all stamped `demoSeed`, and 75 profile pictures each backed by a real Storage object.
 
+## v68 - every navigation lands at the top (2026-08-05)
+
+Scroll down a page, click through to another, and the new page opened at the **same offset**. Structural rather than per-page: `#view-dashboard` is a fixed shell, so the window never scrolls on a dashboard page - `.dashboard-content` is the scroller, and `renderPage()` replaces its `innerHTML` without replacing the element, so the browser keeps its `scrollTop`. Opening a player from the foot of the roster dropped you half way down his profile.
+
+**The reset is one line; the guard is the load-bearing part.** `renderPage()` has ~70 callers and only about twenty change the page. The rest re-render in place - the debounced `firestore-sync` listener, the category bar, the language switch, and ~50 optimistic redraws after a write. An unguarded reset would jerk a coach back to the top every time a sync redrew the page underneath him: a worse bug than the one being fixed, and one nobody would connect to this change.
+
+`renderPage()` already knew the difference, for the Back button and the sidebar highlight. Those two lines are now `trackNavigation(page)`, sitting beside `backTarget()`, returning whether this was a navigation. Three behaviours key off one function instead of two copies drifting apart.
+
+`showView()` also resets the document scroll: the auth views are **not** the fixed shell, they scroll the document, and team setup is long enough to. It only runs on a view switch, never on a re-render.
+
+**Back lands at the top too** - the owner's call, one rule with no exceptions. Restoring a list position on Back is a deliberate non-goal; nothing in the app saved a scroll offset before this and nothing does now.
+
+Also fixed a gap in the test: `navigation.test.js`'s `go()` helper **re-implemented** the two tracking lines rather than calling them, so its Back and sidebar assertions were pinning a duplicate and could not have failed if `renderPage`'s copy changed. It now calls `trackNavigation` directly. **8 new tests** (281 unit, 407 total), including a source assertion that the reset is guarded - an unguarded `content.scrollTop = 0` looks identical at a glance.
+
+Left alone on purpose: the sidebar's own scroller, and the three nested ones that position themselves deliberately - `.rpe-chart-scroll` ends at the right, `scrollLeagueToCentre()` centres the club's row, `.pmt-scroll` is a bounded box.
+

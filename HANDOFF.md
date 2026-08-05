@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v67.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **399 passing** (273 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v68.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **407 passing** (281 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -41,6 +41,18 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v68 - every navigation lands at the top (2026-08-05)
+
+Pages opened at whatever offset the previous one was scrolled to. `#view-dashboard` is a fixed shell, so `.dashboard-content` is the scroller, and `renderPage()` replaces its `innerHTML` without replacing the element - the browser keeps `scrollTop`.
+
+**The guard is the load-bearing part.** ~70 callers of `renderPage()`, only ~20 change the page; the rest re-render in place (firestore sync, category bar, language, optimistic redraws). An unguarded reset would jerk a coach to the top every time a sync landed.
+
+`renderPage()` already knew the difference for Back and the sidebar highlight; those two lines are now `trackNavigation(page)` and all three behaviours key off it. `showView()` also resets the document scroll, for the auth views, which are not the fixed shell.
+
+Back lands at the top too - one rule, no exceptions. Restoring a list position on Back is a deliberate non-goal.
+
+Incidental: `navigation.test.js`'s `go()` re-implemented the tracking lines instead of calling them, so its assertions were pinning a duplicate. Fixed. 8 new tests.
 
 ## v67b - `--add-team`, for a club that already has data (2026-08-05)
 

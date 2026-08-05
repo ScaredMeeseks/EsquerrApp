@@ -51,17 +51,21 @@ function makeNav() {
       backTarget,
       syncSidebarActive,
       get prev() { return _prevPage; },
+      /* Calls the real trackNavigation() rather than repeating its two
+         lines. It used to repeat them, which meant these tests could not
+         fail if renderPage's copy changed — they pinned a duplicate. */
       go(page) {
         currentPage = page;
-        if (_lastRendered && _lastRendered !== currentPage) _prevPage = _lastRendered;
-        _lastRendered = currentPage;
+        const isNav = trackNavigation(currentPage);
         syncSidebarActive();
-        return currentPage;
+        return isNav;
       }
     };`);
   const api = build(ctx);
   return {
     go: (p) => { active = null; api.go(p); return active; },
+    /** Same move, but reporting "was this a navigation" instead. */
+    navGo: (p) => api.go(p),
     back: (fallback) => api.backTarget(fallback),
     get highlight() { return active; }
   };
@@ -141,5 +145,93 @@ describe('app.js — sidebar highlight', () => {
     nav.go('staff-home');
     const highlight = nav.go('staff-training-detail');
     assert.strictEqual(highlight, nav.back('staff-training'));
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Landing at the top.
+ *
+ * #view-dashboard is a fixed shell, so the window never scrolls on a
+ * dashboard page — .dashboard-content is the scroller, and renderPage()
+ * replaces its innerHTML without replacing the element, so the browser
+ * keeps its scrollTop. Opening a player from the foot of the roster
+ * dropped you half way down his profile.
+ *
+ * The reset itself is one line. The GUARD is the load-bearing part:
+ * renderPage() has ~70 callers and only about twenty change the page. An
+ * unguarded reset would jerk a coach back to the top every time the
+ * debounced firestore sync redrew the page underneath him — a worse bug
+ * than the one being fixed, and one nobody would connect to this change.
+ * ------------------------------------------------------------------ */
+describe('app.js — scroll resets on navigation only', () => {
+  it('reports a real navigation', () => {
+    const nav = makeNav();
+    assert.strictEqual(nav.navGo('staff-home'), true, 'the first page counts');
+    assert.strictEqual(nav.navGo('medical'), true);
+    assert.strictEqual(nav.navGo('medical-detail'), true, 'opening a detail page');
+  });
+
+  it('reports a re-render of the same page as NOT a navigation', () => {
+    // firestore-sync, the category bar, the language switch and every
+    // optimistic redraw after a write all land here.
+    const nav = makeNav();
+    nav.navGo('staff-training');
+    assert.strictEqual(nav.navGo('staff-training'), false);
+    assert.strictEqual(nav.navGo('staff-training'), false, 'still false on the third');
+  });
+
+  it('counts Back as a navigation', () => {
+    // The owner's call: one rule, no exceptions. Back lands at the top too.
+    const nav = makeNav();
+    nav.navGo('manage-roster');
+    nav.navGo('staff-player-stats');
+    assert.strictEqual(nav.navGo('manage-roster'), true);
+  });
+
+  it('counts a return to a page you have already seen', () => {
+    // Not "have I ever rendered this", but "is it different from the last".
+    const nav = makeNav();
+    nav.navGo('medical');
+    nav.navGo('tactics');
+    assert.strictEqual(nav.navGo('medical'), true);
+  });
+
+  it('still tracks the back target exactly as before', () => {
+    // trackNavigation now owns both jobs; neither may drift from the other.
+    const nav = makeNav();
+    nav.navGo('staff-home');
+    nav.navGo('match-detail');
+    nav.navGo('match-detail');
+    assert.strictEqual(nav.back('player-matchday'), 'staff-home');
+  });
+
+  it('the reset in renderPage is guarded by that answer', () => {
+    // A source assertion because the guard is invisible in review: an
+    // unguarded `content.scrollTop = 0` looks identical at a glance.
+    const body = grab('  function renderPage(session)', '\n  // #endregion Dashboard');
+    assert.ok(body.includes('const isNav = trackNavigation(currentPage);'),
+        'renderPage must ask trackNavigation, not re-derive the answer');
+    assert.ok(/if \(isNav\) content\.scrollTop = 0;/.test(body),
+        'the scroll reset must be guarded by isNav');
+    assert.ok(!/^\s*content\.scrollTop = 0;/m.test(body),
+        'an UNGUARDED reset would fire on every firestore sync');
+  });
+
+  it('leaves the nested scrollers to position themselves', () => {
+    // .rpe-chart-scroll ends at the right and scrollLeagueToCentre() centres
+    // the club's row. Both run after the reset and must still be there.
+    const body = grab('  function renderPage(session)', '\n  // #endregion Dashboard');
+    assert.ok(body.includes(".rpe-chart-scroll"), 'chart still scrolled to its end');
+    assert.ok(body.includes('scrollLeagueToCentre()'), 'league still centred');
+  });
+});
+
+describe('app.js — the auth views start at the top too', () => {
+  it('showView resets the document scroll', () => {
+    // Those views are not the fixed shell: they scroll the DOCUMENT, and
+    // team setup is long enough to. showView only runs on a view switch,
+    // never on a re-render, so this cannot fight a page render.
+    const body = grab('  function showView(id)', '\n  //');
+    assert.ok(body.includes('window.scrollTo(0, 0);'));
   });
 });

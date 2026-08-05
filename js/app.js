@@ -1138,6 +1138,12 @@
   function showView(id) {
     $$('.view').forEach(v => v.hidden = true);
     $(id).hidden = false;
+    /* The auth views are NOT the fixed dashboard shell — they scroll the
+       document, and team setup is long enough to. Switching from the foot of
+       one to another would otherwise open it half way down.
+       Safe here because showView only runs on a view switch: login, logout,
+       navigate(), entering or leaving team setup. Never on a re-render. */
+    window.scrollTo(0, 0);
   }
 
 
@@ -1184,7 +1190,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 67;
+  const APP_VERSION = 68;
 
   // ---------- Season Reset: keys to archive & clear ----------
   // fa_standings, fa_news and fa_player_stats are gone from this list: none
@@ -3226,6 +3232,24 @@
   }
 
   /**
+   * Record the move, and answer the one question three things depend on:
+   * was this a NAVIGATION, or a re-render of the page we are already on?
+   *
+   * renderPage() has ~70 callers and only about twenty of them change
+   * `currentPage`. The rest re-render in place — the debounced firestore
+   * sync, the category bar, the language switch, and every optimistic
+   * redraw after a write. Back target, sidebar highlight and the scroll
+   * reset all hang off this distinction, so it lives in ONE function: a
+   * second copy is how two of them end up disagreeing.
+   */
+  function trackNavigation(page) {
+    const isNav = _lastRendered !== page;
+    if (_lastRendered && isNav) _prevPage = _lastRendered;
+    _lastRendered = page;
+    return isNav;
+  }
+
+  /**
    * Keep the sidebar highlight honest.
    *
    * `active` was only ever set when the sidebar was rebuilt or when a
@@ -3273,8 +3297,7 @@
     // came from is the one that actually rendered, not the one requested.
     // A re-render of the same page (a firestore sync, a category switch) is
     // not a navigation and must not overwrite the origin.
-    if (_lastRendered && _lastRendered !== currentPage) _prevPage = _lastRendered;
-    _lastRendered = currentPage;
+    const isNav = trackNavigation(currentPage);
 
     const renderers = {
       'staff-home': renderStaffHome,
@@ -3340,6 +3363,22 @@
     } else {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
     }
+
+    /* A new page starts at the top. #view-dashboard is a fixed shell, so the
+       window never scrolls here — .dashboard-content is the scroller, and
+       replacing its innerHTML leaves its scrollTop exactly where it was.
+       Opening a player from the foot of the roster used to drop you halfway
+       down his profile.
+
+       Guarded by isNav, and that guard is the point: an unconditional reset
+       would jerk a coach back to the top every time a firestore sync
+       redrew the page underneath him. Only 0 is assigned, which is valid at
+       any content height, so this needs no layout pass.
+
+       Nested scrollers are deliberately left alone — .rpe-chart-scroll ends
+       at the right, scrollLeagueToCentre() centres the club's row, and
+       .pmt-scroll is a bounded box. All are different elements. */
+    if (isNav) content.scrollTop = 0;
 
     syncSidebarActive();
     bindDynamicActions();
