@@ -207,3 +207,132 @@ describe('updateTeamDates', function () {
         });
       });
 });
+
+/* ------------------------------------------------------------------ *
+ * archiveSeason — the second run must not eat the first archive.
+ *
+ * There was no existence check at all, and the failure was silent and
+ * total: run one empties the live shards, so run two reads nothing and
+ * batch.set()s that nothing OVER the archive — a full replace, no merge.
+ * The season vanished from both the live data AND its own archive, and the
+ * caller got a 200 and a success toast.
+ *
+ * One click away, too: the label is free text pre-filled from the date, so
+ * re-running a rollover lands on the same one.
+ *
+ * Driven through the exported onRequest handler directly, the same idea as
+ * teams.test.js's `.run()` on the callables. verifyIdToken is stubbed
+ * because the subject here is the guard, not the auth — which has its own
+ * checks immediately above it in the function.
+ * ------------------------------------------------------------------ */
+describe('archiveSeason — a label is archived once', function () {
+  this.timeout(60000);
+
+  const ATEAM = 'archiveGuardTeam';
+  const LABEL = '2024-2025';
+  const seasonDoc = () => db.doc(`teams/${ATEAM}/seasons/${LABEL}`);
+  const archived = (id) => db.doc(`teams/${ATEAM}/seasons/${LABEL}/data/${id}`);
+
+  let fns;
+  before(() => {
+    fns = require('../functions/index.js');
+    /* Patch the admin instance FUNCTIONS loads, not the one this file did.
+       test/ and functions/ each have their own node_modules, so
+       `require('firebase-admin')` here and there are two different modules
+       with two different app registries — stubbing ours does nothing.
+       Requiring by the resolved path hits the same module cache entry the
+       function is using. */
+    const fnAdmin = require('../functions/node_modules/firebase-admin');
+    fnAdmin.auth().verifyIdToken = async () => ({
+      uid: 'leadUid', email: 'marna96@gmail.com',
+    });
+  });
+
+  /* An express-ish double. It has to be an EventEmitter: the v2 onRequest
+     wrapper registers res.on('finish') before handing over, and the CORS
+     middleware reads and writes headers. */
+  function call(opts) {
+    const {EventEmitter} = require('events');
+    const out = {};
+    const headers = {};
+    const res = Object.assign(new EventEmitter(), {
+      statusCode: 200,
+      set: () => res,
+      setHeader(k, v) { headers[k] = v; },
+      getHeader(k) { return headers[k]; },
+      removeHeader(k) { delete headers[k]; },
+      writeHead(code) { out.code = code; return res; },
+      status(code) { out.code = code; res.statusCode = code; return res; },
+      json(body) { out.body = body; res.emit('finish'); return res; },
+      send(body) { out.body = body; res.emit('finish'); return res; },
+      end(body) { if (body !== undefined) out.body = body; res.emit('finish'); return res; },
+    });
+    return Promise.resolve(fns.archiveSeason({
+      method: 'POST',
+      headers: {authorization: 'Bearer stub'},
+      body: {teamId: ATEAM, label: LABEL},
+      query: opts && opts.overwrite ? {overwrite: 'true'} : {},
+      get: (k) => (k && k.toLowerCase() === 'origin' ? undefined : undefined),
+    }, res)).then(() => out);
+  }
+
+  beforeEach(async () => {
+    for (const c of ['data', 'seasons']) {
+      const snap = await db.collection(`teams/${ATEAM}/${c}`).get();
+      await Promise.all(snap.docs.map((d) => d.ref.delete()));
+    }
+    await db.doc(`teams/${ATEAM}/seasons/${LABEL}/data/fa_matches__amateur`).delete();
+    await db.doc(`teams/${ATEAM}/data/fa_matches__amateur`).set({
+      v: JSON.stringify([{id: 1, home: 'us', away: 'them', status: 'played'}]),
+      category: 'amateur',
+    });
+  });
+
+  it('archives the season the first time', async () => {
+    const r = await call();
+    assert.ok(!r.code || r.code === 200, 'expected success, got ' + r.code);
+    const snap = await archived('fa_matches__amateur').get();
+    assert.ok(snap.exists, 'the archive was written');
+    assert.strictEqual(JSON.parse(snap.data().v).length, 1);
+    assert.ok((await seasonDoc().get()).exists);
+  });
+
+  it('REFUSES the same label again, and leaves the archive intact', async () => {
+    await call();
+    const r = await call();
+    assert.strictEqual(r.code, 409);
+    assert.strictEqual(r.body.code, 'season-exists');
+
+    // The assertion that matters: the first archive still holds its match.
+    const snap = await archived('fa_matches__amateur').get();
+    assert.strictEqual(JSON.parse(snap.data().v).length, 1,
+        'the second run overwrote the archive with the emptied live data');
+  });
+
+  it('names the label in the refusal, so the fix is obvious', async () => {
+    await call();
+    const r = await call();
+    assert.ok(String(r.body.error).includes(LABEL));
+    assert.strictEqual(r.body.label, LABEL);
+  });
+
+  it('lets an explicit overwrite through', async () => {
+    await call();
+    const r = await call({overwrite: true});
+    assert.ok(!r.code || r.code === 200, 'expected success, got ' + r.code);
+  });
+
+  it('refuses before touching the live data', async () => {
+    // A refusal that had already wiped the season would be the same bug
+    // wearing a 409.
+    await call();
+    await db.doc(`teams/${ATEAM}/data/fa_matches__amateur`).set({
+      v: JSON.stringify([{id: 2, status: 'played'}]),
+      category: 'amateur',
+    });
+    await call();
+    const live = await db.doc(`teams/${ATEAM}/data/fa_matches__amateur`).get();
+    assert.strictEqual(JSON.parse(live.data().v).length, 1,
+        'the live shard was reset by a run that refused');
+  });
+});

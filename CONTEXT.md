@@ -977,3 +977,23 @@ Also fixed a gap in the test: `navigation.test.js`'s `go()` helper **re-implemen
 
 Left alone on purpose: the sidebar's own scroller, and the three nested ones that position themselves deliberately - `.rpe-chart-scroll` ends at the right, `scrollLeagueToCentre()` centres the club's row, `.pmt-scroll` is a bounded box.
 
+## v69 - archived seasons, broken since Phase 5 (2026-08-05)
+
+Backlog item 3, promoted because the demo club is now shown to prospects and this was the one screen that failed in front of them. It never threw - it rendered **every archived season as empty**, which reads as "the app lost your data".
+
+**1. The reported bug.** `loadSeasonData` keyed its result by the raw document id. Pre-Phase-5 that id *was* the blob key; `archiveSeason` now preserves the live shard id verbatim and deliberately, so the ids are `fa_matches__amateur`. Every consumer reads `data.fa_matches || []` and got the empty fallback. Now grouped by `Shard.parseDocId` and reassembled with `Shard.merge` - the same function the live loader uses, so an archived blob comes out byte-identical to what the app held while that season was current. **Both id formats work permanently**: a season archived before the migration keeps the flat shape for ever, so unlike `db.js`'s live loader (which drops legacy ids because Stage E wiped them) this one cannot.
+
+**2. Attendance was structurally dead.** `aggregateArchivedAttendance` read `data.fa_training_availability`, a key the server dropped from `SEASON_KEYS` when the canonical records moved to per-record collections - so it was `{}` for every archived season and every player showed **0%**. The data was there all along at `seasons/{label}/trainingAvail/{uid}_{date}`, just never read. Now loaded from there, reusing `RECORD_COLLECTIONS.toEntry` exported from `db.js` rather than a second copy. **Lazy**: a season holds thousands of these and three of the four tabs never touch them, so it fetches on first click and caches.
+
+Also dropped the **stale `SEASON_KEYS` duplicate** in `js/app.js`. It had no readers and still listed three keys the server had removed, while `functions/index.js` said "keep in step with js/app.js" - pointing the next reader at a list that lied.
+
+**3. Archiving a label twice destroyed the first archive.** There was no existence check. Run one empties the live shards; run two reads nothing and `batch.set`s that nothing **over** the archive - a full replace, no merge. The season vanished from both places and the caller got a 200 and a success toast. One click away, since the label is free text pre-filled from the date. Now a 409 naming the label, with `?overwrite=true` as the explicit escape hatch.
+
+**4. Archiving was declassification.** The live `data/` rule is category-scoped; the archive rule was `sameTeam` only. A cadet coach who could not read juvenil's medical rows during the season could read them the moment they were archived. The archived `data/` shards keep both their `{key}__{cat}` id and their `category` field, so the live check applies verbatim.
+
+The per-record archive collections are now **enumerated** rather than matched with a `/{archiveColl}/` wildcard, and that is load-bearing: **overlapping match blocks are OR'd, never overridden**, so a wildcard would also match `seasons/{id}/data/*` and hand back the club-wide read the narrower block had just removed. It would have looked correct and done nothing. Enumerating also fails closed if a new archive collection ever appears.
+
+**Nothing here had any test coverage** - not `loadSeasonData`, not `archiveSeason`, not the `seasons` rules. That is why it shipped silently. Now **32 new tests**: `test/archive.test.js` (17, the shard round-trip including both id formats), 10 rules tests, 5 functions tests driving the real `onRequest` handler. **439 total** (298 unit + 103 rules + 38 functions).
+
+Client-side category filtering was deliberately **not** added: the page is lead/admin-only and a lead's `cats` claim already covers every enabled category, so it would be dead code on the only path that reaches it. The rules are where that belongs.
+

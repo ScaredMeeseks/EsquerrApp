@@ -752,6 +752,12 @@ const DB = (function () {
   return {
     init: init, cleanup: cleanup, flush: flush, SYNCED_KEYS: SYNCED_KEYS,
     setScope: setScope, setItemAcked: setItemAcked,
-    submit: submit, removeRecord: removeRecord
+    submit: submit, removeRecord: removeRecord,
+    /* Exported for the archived-season viewer, which reads the SAME
+       collections out of seasons/{label}/ and has to rebuild the same
+       blobs. Sharing the mapping is the point: a second copy is how the
+       archived view and the live view start disagreeing about what an
+       attendance answer looks like. */
+    RECORD_COLLECTIONS: RECORD_COLLECTIONS
   };
 })();

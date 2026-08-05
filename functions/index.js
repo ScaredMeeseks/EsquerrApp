@@ -2075,7 +2075,8 @@ exports.updateTeamDates = onDocumentWritten({
 });
 
 // ── 10. archiveSeason — archive & reset season data (admin only) ──
-// Keep in step with SEASON_KEYS in js/app.js.
+// The only copy. js/app.js used to hold a duplicate that nothing read and
+// that had drifted from this one; it is gone.
 // fa_standings / fa_news / fa_player_stats dropped: no writer exists for any
 // of them, so this was archiving and resetting documents that never existed.
 // fa_training_availability / fa_match_availability / fa_player_rpe dropped
@@ -2168,7 +2169,35 @@ exports.archiveSeason = onRequest(
         return;
       }
 
-      logger.info("archiveSeason START", {teamId, label: safeLabel, uid: decoded.uid});
+      /* Refuse a label that has already been archived.
+         There was no check at all, and the second run is silently
+         destructive: the first run empties the live shards, so the second
+         reads nothing and batch.set()s that nothing OVER the archive — a
+         full replace, no merge. The season was then gone from both the live
+         data and its own archive, with a 200 and a success toast.
+         Reachable in one click: the label is free text pre-filled from the
+         date, so re-running a rollover lands on the same one. */
+      const seasonRef = db.collection("teams").doc(teamId)
+          .collection("seasons").doc(safeLabel);
+      const overwrite = (req.query || {}).overwrite === "true";
+      if (!overwrite) {
+        const existing = await seasonRef.get();
+        if (existing.exists) {
+          const at = (existing.data() || {}).archivedAt;
+          logger.warn("archiveSeason REFUSED — label exists",
+              {teamId, label: safeLabel, uid: decoded.uid});
+          res.status(409).json({
+            error: `La temporada "${safeLabel}" ja està arxivada` +
+              (at && at.toDate ? ` (${at.toDate().toISOString().slice(0, 10)})` : "") +
+              ". Fes servir un nom diferent.",
+            code: "season-exists",
+            label: safeLabel,
+          });
+          return;
+        }
+      }
+
+      logger.info("archiveSeason START", {teamId, label: safeLabel, uid: decoded.uid, overwrite});
 
       try {
         const archiveRef = db.collection("teams").doc(teamId)

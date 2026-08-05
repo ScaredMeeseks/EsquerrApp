@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v68.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **407 passing** (281 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v69.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **439 passing** (298 unit + 103 rules + 38 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -22,8 +22,8 @@ The one open *design* question, no longer a defect: the colour is not a function
 ### 2. Per-team training visibility — the big one, and now bigger than it looked
 Trainings carry only a `category`, never a team letter, so `amateur-A` and `amateur-B` literally share sessions. Giving them a letter means **re-keying the training subsystem from date to session id**: `detailTrainingDate`, eight `find(x => x.date === …)` sites, and the `{uid}_{date}` record ids. Two teams in one category will routinely train the same evening, and `find` by date returns whichever comes first. Deserves its own plan and its own deploy. The one-off guest-list idea rides on top of it.
 
-### 3. Archived seasons are broken post-Phase-5
-`loadSeasonData` indexes archived docs by raw id, but sharded ids are `fa_matches__amateur`, so "seasons anteriors" fails. Small, self-contained, and it fails **in front of a prospect** if clicked during a demo. Avoid that menu meanwhile.
+### 3. ~~Archived seasons broken post-Phase-5~~ - DONE (v69)
+Fixed, plus three more defects found in the same feature: attendance was structurally dead, archiving a label twice destroyed the first archive, and archived reads ignored the category claim. See v69 below. **Needs `./deploy.sh all` - rules and functions both changed.**
 
 ### 4. Drop the old-APK rules shim
 `clubs/{clubId}` currently allows a lead to write `fcfLinks`/`schedules` directly, purely so pre-v55 APKs keep working. Once a v55+ APK is actually on the phones, delete that clause so the club document is superadmin-only in full. Guarded by a rules test that pins the `diff()` behaviour.
@@ -41,6 +41,17 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v69 - archived seasons, broken since Phase 5 (2026-08-05)
+
+Four defects, one feature. It never threw - it rendered every archived season as **empty**.
+
+1. **`loadSeasonData` keyed by raw doc id.** Post-Phase-5 those are `fa_matches__amateur`, so `data.fa_matches` was absent and every `|| []` fallback turned a full season into an empty one. Now grouped by `Shard.parseDocId` and reassembled with `Shard.merge`, the same function the live loader uses. **Both id formats work permanently** - a pre-migration archive keeps flat ids for ever.
+2. **Attendance was structurally dead**, reading a key the server stopped archiving. Now loaded from `seasons/{label}/trainingAvail`, lazily, reusing `RECORD_COLLECTIONS` exported from `db.js`.
+3. **Archiving a label twice destroyed the first archive** - no existence check, and run two wrote the emptied live data over it with a 200. Now 409, `?overwrite=true` to force.
+4. **Archived reads ignored the `cats` claim**, so archiving declassified medical data. Now scoped like live data. The per-record collections are **enumerated, not wildcarded** - overlapping rule matches are OR'd, so a wildcard would have silently re-granted the club-wide read.
+
+32 new tests where there were **zero**. **DEPLOY: `./deploy.sh all`** - rules and functions both changed.
 
 ## v68 - every navigation lands at the top (2026-08-05)
 

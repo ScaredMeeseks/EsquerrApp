@@ -108,6 +108,18 @@ beforeEach(async () => {
     // it is the medical record the whole phase exists to compartmentalise.
     await d.doc("teams/teamA/data/fa_injuries__cadet").set({v: "[]", category: "cadet"});
     await d.doc("teams/teamA/data/fa_injuries__juvenil").set({v: "[]", category: "juvenil"});
+    /* An archived season. Its shards keep both the {key}__{cat} id and the
+       `category` field, which is exactly what lets the archive be scoped
+       the same way live data is. */
+    await d.doc("teams/teamA/seasons/2024-2025").set({label: "2024-2025"});
+    await d.doc("teams/teamA/seasons/2024-2025/data/fa_injuries__cadet")
+        .set({v: "[]", category: "cadet"});
+    await d.doc("teams/teamA/seasons/2024-2025/data/fa_injuries__juvenil")
+        .set({v: "[]", category: "juvenil"});
+    await d.doc("teams/teamA/seasons/2024-2025/data/fa_users__none")
+        .set({v: "[]", category: "none"});
+    await d.doc("teams/teamA/seasons/2024-2025/trainingAvail/" + A + "_2025-01-01")
+        .set({uid: A, date: "2025-01-01", value: "yes"});
     await d.doc("teams/teamA/data/fa_users__none").set({v: "[]", category: "none"});
     await d.doc("teams/teamB/data/fa_injuries__cadet").set({v: "[]", category: "cadet"});
     await d.doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01")
@@ -514,6 +526,73 @@ describe("Clubs, codes, join-attempts", () => {
   });
   it("client CANNOT read joinAttempts", async () => {
     await assertFails(asA().doc("joinAttempts/" + A).get());
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Archived seasons.
+ *
+ * Archiving is not declassification. A coach who cannot read juvenil's
+ * medical records while the season is running must not be able to read the
+ * same rows the moment they are archived — the archive rule was
+ * `sameTeam` only, so he could.
+ *
+ * The wildcard trap is the reason the per-record collections are
+ * enumerated in the rules rather than matched with `/{archiveColl}/`:
+ * overlapping match blocks are OR'd, never overridden, so a wildcard would
+ * ALSO match seasons/{id}/data/* and hand back the club-wide read the
+ * narrower block just removed. It would look correct and do nothing.
+ * ------------------------------------------------------------------ */
+describe("Archived seasons", () => {
+  const arch = (d, cat) =>
+    d.doc("teams/teamA/seasons/2024-2025/data/fa_injuries__" + cat);
+
+  it("a cadet coach CANNOT read juvenil's ARCHIVED injuries", async () => {
+    await assertFails(arch(asStaffA(), "juvenil").get());
+  });
+  it("a cadet coach CAN read cadet's archived injuries", async () => {
+    await assertSucceeds(arch(asStaffA(), "cadet").get());
+  });
+  it("a player reads only their own category's archive", async () => {
+    await assertSucceeds(arch(asA(), "cadet").get());
+    await assertFails(arch(asA(), "juvenil").get());
+  });
+  it("the lead reads every category of their club's archive", async () => {
+    await assertSucceeds(arch(asLeadA(), "cadet").get());
+    await assertSucceeds(arch(asLeadA(), "juvenil").get());
+  });
+  it("__none stays readable by every member", async () => {
+    await assertSucceeds(
+        asUnassigned().doc("teams/teamA/seasons/2024-2025/data/fa_users__none").get());
+  });
+  it("a token with no cats claim is denied", async () => {
+    await assertFails(arch(asStaffNoCats(), "cadet").get());
+  });
+  it("another club cannot read the archive at all", async () => {
+    await assertFails(arch(asB(), "cadet").get());
+  });
+
+  it("the season doc itself is club-wide readable", async () => {
+    // Just a label and a timestamp — the list page needs it.
+    await assertSucceeds(asA().doc("teams/teamA/seasons/2024-2025").get());
+    await assertFails(asB().doc("teams/teamA/seasons/2024-2025").get());
+  });
+
+  it("per-record archives stay club-wide, like their live counterparts", async () => {
+    // Narrowing only the archived copy would be theatre: teams/{id}/rpe
+    // and friends are club-wide readable too.
+    await assertSucceeds(asA()
+        .doc("teams/teamA/seasons/2024-2025/trainingAvail/" + A + "_2025-01-01").get());
+    await assertFails(asB()
+        .doc("teams/teamA/seasons/2024-2025/trainingAvail/" + A + "_2025-01-01").get());
+  });
+
+  it("nobody but the superuser writes an archive", async () => {
+    // archiveSeason runs with the Admin SDK and bypasses rules entirely.
+    await assertFails(arch(asLeadA(), "cadet").set({v: "[]", category: "cadet"}));
+    await assertFails(arch(asStaffA(), "cadet").set({v: "[]", category: "cadet"}));
+    await assertFails(asLeadA().doc("teams/teamA/seasons/2024-2025").set({label: "x"}));
+    await assertSucceeds(arch(asSuper(), "cadet").set({v: "[]", category: "cadet"}));
   });
 });
 

@@ -1190,22 +1190,15 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 68;
+  const APP_VERSION = 69;
 
-  // ---------- Season Reset: keys to archive & clear ----------
-  // fa_standings, fa_news and fa_player_stats are gone from this list: none
-  // of them has a writer anywhere in the app, so archiveSeason was archiving
-  // and resetting documents that never existed. Standings come live from the
-  // FCF proxy; player stats are computed from matches and events.
-  var SEASON_KEYS = [
-    'fa_matches', 'fa_match_events', 'fa_match_goals',
-    'fa_training',
-    'fa_training_availability', 'fa_match_availability', 'fa_training_staff_override',
-    'fa_player_rpe',
-    'fa_injuries', 'fa_injury_notes', 'fa_injury_zone',
-    'fa_convocatoria_sent', 'fa_convocatoria_callup',
-    'fa_matchday'
-  ];
+  /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
+     is entirely server-side — and it had drifted: it still listed
+     fa_training_availability, fa_match_availability and fa_player_rpe,
+     which the server dropped when those moved to per-record collections.
+     A stale copy that nothing reads is worse than no copy, because
+     functions/index.js says "keep in step with js/app.js" and would have
+     sent the next reader here. The list lives in functions/index.js. */
 
   // ---------- Category view filter ----------
   /* THREE states, and the third one is why this is not a boolean:
@@ -11865,6 +11858,12 @@
   var _archivedSeasonLabel = '';
   var _archiveData = null;
   var _archiveTab = 'matches';
+  /* Attendance answers, {uid}_{date} -> value, fetched separately and only
+     when that tab is opened: a season holds one per player per session,
+     a few thousand documents, and three of the four tabs never touch them.
+     null means "not fetched yet", {} means "fetched and empty". */
+  var _archiveAvail = null;
+  var _archiveAvailLoading = false;
 
   // Load list of archived seasons from Firestore
   async function loadArchivedSeasons(teamId) {
@@ -11878,25 +11877,85 @@
     } catch (e) { console.error('loadArchivedSeasons error:', e); return []; }
   }
 
+  /* One archive document → its value. Blob format is {v:"<json>"}; the
+     merge-shape keys store entries as top-level fields instead.
+     `category` is dropped with `_migrated`: it is the router's bookkeeping,
+     and leaving it in put a phantom "category" entry among the player ids
+     of every merge-shape map. */
+  function parseArchiveDoc(raw) {
+    if (!raw) return null;
+    if (raw.v !== undefined) {
+      try { return JSON.parse(raw.v); } catch (e) { return raw.v; }
+    }
+    var obj = {};
+    for (var k in raw) {
+      if (k !== '_migrated' && k !== 'category') obj[k] = raw[k];
+    }
+    return obj;
+  }
+
+  /**
+   * Raw archive documents → the one blob per key every render function reads.
+   *
+   * TWO id formats have to work, permanently:
+   *   fa_matches__amateur   sharded, written since Phase 5
+   *   fa_matches            flat, written BEFORE it
+   *
+   * The flat form is not a transitional artefact here. db.js's live loader
+   * drops legacy ids because Stage E wiped them club-wide — but a season
+   * archived before the migration keeps that shape for ever, so this must
+   * read both or every old season stays unreadable.
+   *
+   * Sharded keys are reassembled with Shard.merge, the same function the
+   * live loader uses, so an archived blob comes out byte-identical to what
+   * the app held while that season was current. Indexing by the raw doc id
+   * — which is what this used to do — meant `data.fa_matches` was simply
+   * absent, and every consumer's `|| []` fallback turned a full season into
+   * an empty one without a single error.
+   */
+  function groupArchivedDocs(docs) {
+    var out = {};
+    var shards = {};
+    (docs || []).forEach(function (d) {
+      var value = parseArchiveDoc(d.data);
+      var parts = Shard.parseDocId(d.id);
+      // Legacy flat id, or a sharded key the router does not know: keep it
+      // under its own id. merge() would throw on an unrouted key, and
+      // guessing a base key for it could silently drop a sibling shard.
+      if (!parts || !Shard.isSharded(parts.key)) { out[d.id] = value; return; }
+      (shards[parts.key] || (shards[parts.key] = {}))[parts.cat] = value;
+    });
+    Object.keys(shards).forEach(function (key) {
+      out[key] = Shard.merge(key, shards[key]);
+    });
+    return out;
+  }
+
   // Load all data docs for a specific archived season
   async function loadSeasonData(teamId, label) {
     try {
       var snap = await db.collection('teams').doc(teamId).collection('seasons').doc(label).collection('data').get();
-      var data = {};
-      snap.forEach(function(d) {
-        var raw = d.data();
-        // Parse blob format {v: "..."} or per-field merge format
-        if (raw.v !== undefined) {
-          try { data[d.id] = JSON.parse(raw.v); } catch (e) { data[d.id] = raw.v; }
-        } else {
-          // Per-field merge format — reconstruct object, skip _migrated
-          var obj = {};
-          for (var k in raw) { if (k !== '_migrated') obj[k] = raw[k]; }
-          data[d.id] = obj;
-        }
-      });
-      return data;
+      var docs = [];
+      snap.forEach(function (d) { docs.push({ id: d.id, data: d.data() }); });
+      return groupArchivedDocs(docs);
     } catch (e) { console.error('loadSeasonData error:', e); return null; }
+  }
+
+  /* Attendance and RPE are NOT in the archive's data/ collection. They were
+     moved to per-record collections in Phase 3b and archived from there, so
+     `fa_training_availability` has not been written for a season since.
+     Same {uid}_{date} doc ids and the same toEntry() mapping the live
+     listener uses — one definition, exported from db.js. */
+  async function loadArchivedRecords(teamId, label, coll) {
+    try {
+      var cfg = (DB.RECORD_COLLECTIONS || {})[coll];
+      if (!cfg) return {};
+      var snap = await db.collection('teams').doc(teamId)
+        .collection('seasons').doc(label).collection(coll).get();
+      var out = {};
+      snap.forEach(function (d) { out[d.id] = cfg.toEntry(d.data()); });
+      return out;
+    } catch (e) { console.error('loadArchivedRecords error:', coll, e); return {}; }
   }
 
   // Aggregate player stats from archived match events
@@ -11963,9 +12022,14 @@
   }
 
   // Aggregate attendance from archived training data
-  function aggregateArchivedAttendance(data) {
+  /* `avail` is passed in rather than read off `data`: it does not live in
+     the archive's data/ collection at all. fa_training_availability was
+     dropped from the server's SEASON_KEYS when the canonical records moved
+     to their own collection, so reading it here returned {} for every
+     archived season and every player showed 0% attendance. */
+  function aggregateArchivedAttendance(data, avail) {
     var training = data.fa_training || [];
-    var avail = data.fa_training_availability || {};
+    avail = avail || {};
     var users = data.fa_users || getUsers();
     var playerList = (Array.isArray(users) ? users : []).filter(function(u) { return u.roles && u.roles.includes('player'); });
     var pastTrainings = training.filter(function(t) { return t.status === 'past' || t.date < new Date().toISOString().slice(0, 10); });
@@ -12025,6 +12089,8 @@
           btn.addEventListener('click', function() {
             _archivedSeasonLabel = btn.dataset.label;
             _archiveData = null;
+            _archiveAvail = null;
+            _archiveAvailLoading = false;
             _archiveTab = 'matches';
             currentPage = 'archived-season-detail';
             renderPage(getSession());
@@ -12062,7 +12128,7 @@
 
   function renderArchiveTabs(data) {
     var stats = aggregateArchivedStats(data);
-    var attendance = aggregateArchivedAttendance(data);
+    var attendance = aggregateArchivedAttendance(data, _archiveAvail);
     var injuries = data.fa_injuries || [];
     var training = data.fa_training || [];
     var matches = data.fa_matches || [];
@@ -12091,7 +12157,7 @@
     // Tab content
     if (_archiveTab === 'matches') html += renderArchiveMatches(data, stats);
     else if (_archiveTab === 'stats') html += renderArchiveStats(stats);
-    else if (_archiveTab === 'attendance') html += renderArchiveAttendance(attendance);
+    else if (_archiveTab === 'attendance') html += renderArchiveAttendance(attendance, _archiveAvail !== null);
     else if (_archiveTab === 'injuries') html += renderArchiveInjuries(injuries);
 
     return html;
@@ -12159,8 +12225,14 @@
     return html;
   }
 
-  function renderArchiveAttendance(att) {
+  function renderArchiveAttendance(att, loaded) {
     var html = '<div class="card"><div class="card-title" style="font-size:.95rem;">' + t('archive.attendance') + '</div>';
+    // Percentages would all read 0% until the records arrive, which looks
+    // like an answer rather than a wait.
+    if (!loaded) {
+      return html + '<p style="color:var(--text-secondary);font-size:.9rem;">' +
+        t('archive.loading') + '</p></div>';
+    }
     html += '<div class="table-wrap"><table style="font-size:.83rem;"><thead><tr><th>' + t('reg.th_name') + '</th>' +
       '<th style="text-align:center;">' + t('archive.present') + '</th>' +
       '<th style="text-align:center;">' + t('archive.late') + '</th>' +
@@ -12240,12 +12312,37 @@
     document.querySelectorAll('.archive-tab').forEach(function(tab) {
       tab.addEventListener('click', function() {
         _archiveTab = tab.dataset.tab;
-        var el = document.getElementById('archive-content');
-        if (el && _archiveData) {
-          el.innerHTML = renderArchiveTabs(_archiveData);
-          bindArchiveTabs();
-        }
+        rerenderArchive();
       });
+    });
+    maybeLoadArchiveAttendance();
+  }
+
+  function rerenderArchive() {
+    var el = document.getElementById('archive-content');
+    if (!el || !_archiveData) return;
+    el.innerHTML = renderArchiveTabs(_archiveData);
+    bindArchiveTabs();
+  }
+
+  /* Runs after every archive render, so it covers both opening straight
+     onto the tab and switching to it. The loading flag matters because
+     bindArchiveTabs re-runs on each render, including the one this fetch
+     triggers itself. */
+  function maybeLoadArchiveAttendance() {
+    if (_archiveTab !== 'attendance') return;
+    if (_archiveAvail !== null || _archiveAvailLoading) return;
+    var session = getSession();
+    if (!session || !session.teamId || !_archivedSeasonLabel) return;
+    _archiveAvailLoading = true;
+    var label = _archivedSeasonLabel;
+    loadArchivedRecords(session.teamId, label, 'trainingAvail').then(function (avail) {
+      _archiveAvailLoading = false;
+      // The user may have gone back and opened a different season while
+      // this was in flight; that season's fetch owns the state now.
+      if (label !== _archivedSeasonLabel) return;
+      _archiveAvail = avail;
+      rerenderArchive();
     });
   }
 

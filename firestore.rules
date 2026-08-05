@@ -148,12 +148,47 @@ service cloud.firestore {
       }
 
       match /seasons/{seasonId} {
+        // The season doc itself is just a label and a timestamp.
         allow read: if sameTeam(teamId) || isSuperUser();
         allow write: if isSuperUser();
 
-        // Blob archives AND per-record archives (data/, trainingAvail/,
-        // matchAvail/, rpe/) — written only by the archiveSeason function.
-        match /{archiveColl}/{docId} {
+        /* Archived blob shards, scoped by category exactly like the LIVE
+           data/ rule above. They were only `sameTeam`, so a coach who could
+           not read a juvenil shard while the season was running could read
+           the same shard — medical rows included — the moment it was
+           archived. Archiving is not declassification.
+
+           Archived shards keep both their {key}__{cat} id and their
+           `category` field, so the live check applies verbatim. */
+        match /data/{docId} {
+          allow read: if isSuperUser()
+            || (sameTeam(teamId) && 'cats' in request.auth.token
+                && (resource.data.category == 'none'
+                    || resource.data.category in request.auth.token.cats));
+          allow write: if isSuperUser();
+        }
+
+        /* Per-record archives, ENUMERATED rather than a `/{archiveColl}/`
+           wildcard, and that is load-bearing: overlapping match blocks are
+           OR'd, never overridden. A wildcard here would also match
+           seasons/{id}/data/* and hand back the club-wide read the block
+           above just removed — the narrower rule would look right and do
+           nothing. Listing them also fails CLOSED if a future archive
+           collection appears.
+
+           These stay club-wide readable: they carry no category field to
+           test, and their live counterparts are club-wide too. Narrowing
+           only the archived copy would be theatre. Tightening both together
+           is the standing backlog item. */
+        match /trainingAvail/{docId} {
+          allow read: if sameTeam(teamId) || isSuperUser();
+          allow write: if isSuperUser();
+        }
+        match /matchAvail/{docId} {
+          allow read: if sameTeam(teamId) || isSuperUser();
+          allow write: if isSuperUser();
+        }
+        match /rpe/{docId} {
           allow read: if sameTeam(teamId) || isSuperUser();
           allow write: if isSuperUser();
         }
