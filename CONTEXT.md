@@ -926,3 +926,30 @@ That default is not incidental — `membershipFrom()` stamps one on every staff 
 
 **7 new tests** in `test/context.test.js` pinning the branch order, the stale-filter clamp, and both reset sites. **231 unit**, 357 total.
 
+## v67b - the seeder learns to add a squad to a club that already has one (2026-08-05)
+
+Dev tooling only; nothing shipped to the app.
+
+The demo club had one team, which undersells an app whose selling point is running several at once. Adding `amateur-B` and `juvenil-A` could not be done with the existing seeder: `apply()` builds a club **from nothing**, and pointed at a populated one it destroys it three ways, all silent.
+
+1. **It rewrites the whole `categories` map** - all six keys, every run. `{merge:true}` merges leaf paths and every leaf is present, so a category configured through the UI is reset.
+2. **It replaces shards instead of merging.** `buildShards()` assembles from only that run's people and `commitAll` writes with a bare `set()`. `fa_users` is routed **by category with no team letter**, so `amateur-A` and `amateur-B` share one `fa_users__amateur` document - seeding B would erase A.
+3. **uids and emails collide.** Both derive from the club id alone, so a second run reuses the first team's exact accounts.
+
+`--add-team {category}-{LETTER}` is a fourth mode alongside `--apply` / `--verify` / `--purge`, repeatable so both squads land in one invocation - one faces folder, one dry run, one verify.
+
+**What makes it safe:**
+- **Reads before it writes.** `mergeShardData()` folds each generated shard over what Firestore holds - arrays by the route's id field, maps by key. A stored `v` that will not parse **throws** rather than falling back to `[]`, because the fallback would discard the existing squad and report success.
+- **Dotted field paths only** on `clubs/{id}` (`schedules.amateur-B`), never the whole map.
+- **Refuses** any club not stamped `demoSeed: true`, any `PROTECTED_CLUB`, and any team that already has players. `--apply` is guarded by *neither* of the first two, which is why it must never be aimed at a real club.
+- **Requires the team to exist in the club config already.** The quota lives in `setClubCategories` and stays the only authority on how many teams a club may have - the seeder does not hand out teams.
+- Its dry run **does** read (it has to know what is there), unlike the offline one.
+
+**Namespacing:** slugs, uids and emails get a `{cat}{letter}` prefix; the RNG seed and the match-id offset come from a hash of the team key, so adding `amateur-C` later cannot reuse `amateur-B`'s offset. Names are deduped **club-wide**, seeded from the players already stored. Staff keep the club-level uid prefix - a per-team coach would mint a second Xavier Bonet and collide on his email.
+
+**The one thing that cannot be per-team:** `fa_training` is routed by category with no letter, the known backlog item. So `juvenil-A` (new category) gets a full calendar and `amateur-B` **reuses amateur's existing sessions**, its players getting their own attendance and RPE against them. Realistic - two teams in a category do train the same evenings - and the only option that neither duplicates nor replaces `amateur-A`'s calendar.
+
+**38 new tests** across `test/seed-add-team.test.js` (the merge, the parse, the offsets) and `test/seed-multi-team.test.js` (the generator's id spaces, the shared calendar). **269 unit**, 395 total.
+
+One incidental finding: `buildSeason()` calls `setSeasonBoundary()`, which is **module state in `utils.js`** shared by the whole test process. The new tests restore the default after each build - without it they silently broke the first assertion in `utils.test.js`.
+

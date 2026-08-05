@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-04._
 
-**Production is on v67.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **357 passing** (231 unit + 93 rules + 33 functions), up from 143 at the start of this work.
+**Production is on v67.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **395 passing** (269 unit + 93 rules + 33 functions), up from 143 at the start of this work.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -41,6 +41,18 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
+
+## v67b - `--add-team`, for a club that already has data (2026-08-05)
+
+Dev tooling only, nothing shipped. `apply()` builds a club from nothing and would destroy a populated one three silent ways: it rewrites the whole `categories` map, it replaces shards with a bare `set()` (and `fa_users` is routed by category with **no team letter**, so `amateur-A` and `amateur-B` share one document), and its uids/emails derive from the club id alone.
+
+`--add-team {category}-{LETTER}`, repeatable, is the additive mode: read-modify-write on every shard, dotted field paths on `clubs/{id}`, and it **refuses** any club not stamped `demoSeed`, any `PROTECTED_CLUB`, and any team that already has players. Its dry run reads, unlike the offline one.
+
+`fa_training` has no team letter, so `amateur-B` reuses amateur's existing sessions with its own attendance and RPE; `juvenil-A` gets a fresh calendar.
+
+38 new tests. **The team must be configured in the app first** - the quota stays enforced in `setClubCategories`, and the seeder does not hand out teams.
+
+**Next:** run it against the demo club `Tm96gel58VSQvxgynf45`. The 50-face folder still has to be uploaded to Cloud Shell.
 
 ## v67 — "Totes" never did anything (2026-08-04)
 

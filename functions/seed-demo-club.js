@@ -29,6 +29,10 @@
 //   node functions/seed-demo-club.js --verify --club <id> # read-back checks
 //   node functions/seed-demo-club.js --apply --purge <id> # tear it all down
 //
+//   # add squads to a club that ALREADY has data (repeatable, one run):
+//   node functions/seed-demo-club.js --club <id> \
+//        --add-team amateur-B --add-team juvenil-A --faces ~/faces
+//
 // Profile pictures: --faces <dir> uploads images to profilePics/{uid}.{ext},
 // the same path real uploads use. A file named after a slug (player01.jpg,
 // coach.png) goes to that person; anything else is handed out alphabetically
@@ -48,6 +52,27 @@
 // so --apply --club <id> overwrites the same accounts and shards rather
 // than duplicating them. It does NOT delete records that fall outside the
 // new season — run --purge and re-seed for a clean slate.
+//
+// --add-team is the one ADDITIVE mode, and the differences matter:
+//
+//   * It reads before it writes. Every data/ shard is merged with what is
+//     already stored, because fa_users is routed by CATEGORY with no team
+//     letter — amateur-A and amateur-B share one document, and --apply's
+//     blind set() would erase the first squad.
+//   * It touches clubs/{id} by DOTTED PATH only. --apply rewrites the whole
+//     `categories` map every run, which would undo the club's own setup.
+//   * It refuses any club not stamped demoSeed:true, and any PROTECTED_CLUB.
+//     --apply is guarded by neither, so it must never be pointed at a real
+//     club; --add-team cannot be.
+//   * Its dry run performs READS (it has to know what is already there), so
+//     unlike the other dry run it does need credentials. It writes nothing.
+//   * It refuses a team that already has players, so a second run cannot
+//     silently double a squad.
+//
+// The team must already exist in the club's config — enable the category and
+// its letter in the app first. That keeps the lead's paid team quota, which
+// is enforced in setClubCategories, the only authority on how many teams a
+// club may have.
 // ============================================================
 
 const path = require("path");
@@ -65,9 +90,16 @@ const val = (f, dflt) => {
     argv[i + 1] : dflt;
 };
 
+/** Every value of a repeatable flag: `--add-team a-A --add-team b-B`. */
+const vals = (f) => argv.reduce((out, a, i) => {
+  if (a === f && argv[i + 1] && !argv[i + 1].startsWith("--")) out.push(argv[i + 1]);
+  return out;
+}, []);
+
 const APPLY = has("--apply");
 const VERIFY = has("--verify");
 const PURGE = val("--purge", null);
+const ADD_TEAMS = vals("--add-team");
 const CLUB_ID = val("--club", null);
 const DUMP_DIR = val("--dump", null);
 const FACES_DIR = val("--faces", null);
@@ -232,9 +264,20 @@ const ASSIST_WEIGHT = { GK: 0, CB: 0.3, LB: 1, RB: 1, DM: 1.5, OM: 3, LW: 2.5, R
  * events, call-ups and every record reference a player BY uid at the
  * moment they are built, so the ids have to be real before generation
  * starts, not stitched in after it.
+ *
+ * `opts` exists for --add-team, where several squads land in ONE club and
+ * every id space they share has to be kept apart:
+ *   seed            different names and traits per team, not 25 clones
+ *   emailPrefix     player01@ is taken by the first team; namespace it
+ *   staffUidPrefix  staff are club-wide — the coach must stay ONE account
+ *   matchIdOffset   two teams in a category share fa_matches__{cat}
+ *   trainings       reuse the category's real calendar (see addTeams)
+ *   usedNames       a Set shared across teams AND seeded with the players
+ *                   already in the club, so nobody is generated twice
  */
-function buildSeason(uidPrefix) {
-  rnd = mulberry32(20260803);
+function buildSeason(uidPrefix, opts) {
+  opts = opts || {};
+  rnd = mulberry32(opts.seed || 20260803);
 
   const today = OPTS.asOf || localDateStr(new Date());
 
@@ -255,7 +298,7 @@ function buildSeason(uidPrefix) {
   const cat = OPTS.category;
 
   // ── Squad ──
-  const usedNames = new Set();
+  const usedNames = opts.usedNames || new Set();
   function uniqueName() {
     for (let i = 0; i < 200; i++) {
       const n = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
@@ -283,7 +326,7 @@ function buildSeason(uidPrefix) {
       slug,
       uid: uidPrefix + slug,
       name: uniqueName(),
-      email: `${slug}@${OPTS.domain}`,
+      email: `${opts.emailPrefix || ""}${slug}@${OPTS.domain}`,
       position: pos,
       playerNumber: String(number),
       dob: `${rint(1995, 2005)}-${String(rint(1, 12)).padStart(2, "0")}-${String(rint(1, 28)).padStart(2, "0")}`,
@@ -295,13 +338,18 @@ function buildSeason(uidPrefix) {
     };
   });
 
+  /* Staff are CLUB-wide, not per-team: adding a second squad must not mint
+     a second Xavier Bonet. --add-team passes the club-level prefix so both
+     runs resolve to the one account, which is also what keeps the handed-out
+     coach credentials working. */
+  const staffPrefix = opts.staffUidPrefix || uidPrefix;
   const staff = [
     {
-      slug: "coach", uid: `${uidPrefix}coach`, name: "Xavier Bonet",
+      slug: "coach", uid: `${staffPrefix}coach`, name: "Xavier Bonet",
       email: OPTS.leadEmail, isLead: true, roles: ["staff"],
     },
     {
-      slug: "fisio", uid: `${uidPrefix}fisio`, name: "Núria Estrada",
+      slug: "fisio", uid: `${staffPrefix}fisio`, name: "Núria Estrada",
       email: OPTS.physioEmail, isLead: false, roles: ["staff"],
     },
   ];
@@ -315,7 +363,10 @@ function buildSeason(uidPrefix) {
   const matchdays = 34;
 
   const matches = [];
-  const baseId = parseDay(firstSaturday).getTime();
+  // Matches DO carry a team letter, so two teams in one category coexist in
+  // fa_matches__{cat} — but only if their ids differ. Ids step by 1000, so
+  // any offset below that keeps every team's fixtures distinct.
+  const baseId = parseDay(firstSaturday).getTime() + (opts.matchIdOffset || 0);
   for (let i = 0; i < matchdays; i++) {
     const date = addDays(firstSaturday, i * 7);
     const home = i % 2 === 0;
@@ -336,21 +387,35 @@ function buildSeason(uidPrefix) {
     });
   }
 
+  /* fa_training is routed by CATEGORY with no team letter, so every team in
+     a category literally shares one calendar. A second squad therefore
+     REUSES the sessions that are already there rather than generating its
+     own — generating would either duplicate the first team's calendar or
+     replace it. Its players still get their own attendance and RPE, which
+     are per-record and per-player. */
   const trainings = [];
   const lastDate = matches[matches.length - 1].date;
-  for (let d = nextDow(seasonStart, 2); d <= lastDate; d = addDays(d, 1)) {
-    if (dow(d) !== 2 && dow(d) !== 4) continue;
-    trainings.push({
-      id: `tr_${parseDay(d).getTime()}_${Math.floor(rnd() * 1e6).toString(36)}`,
-      day: dayLabel(d),
-      date: d,
-      time: "20:00",
-      focus: TRAINING_FOCUS[trainings.length % TRAINING_FOCUS.length],
-      location: LOCATION,
-      mapLink: MAP_LINK,
-      status: "upcoming",
-      category: cat,
-    });
+  if (opts.trainings) {
+    // Ascending: nextTrainings takes the FIRST three upcoming, and the
+    // stored shard is sorted newest-first by its route.
+    opts.trainings.slice()
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .forEach((t) => trainings.push(t));
+  } else {
+    for (let d = nextDow(seasonStart, 2); d <= lastDate; d = addDays(d, 1)) {
+      if (dow(d) !== 2 && dow(d) !== 4) continue;
+      trainings.push({
+        id: `tr_${parseDay(d).getTime()}_${Math.floor(rnd() * 1e6).toString(36)}`,
+        day: dayLabel(d),
+        date: d,
+        time: "20:00",
+        focus: TRAINING_FOCUS[trainings.length % TRAINING_FOCUS.length],
+        location: LOCATION,
+        mapLink: MAP_LINK,
+        status: "upcoming",
+        category: cat,
+      });
+    }
   }
 
   const playedMatches = matches.filter((m) => m.date <= today);
@@ -1537,6 +1602,400 @@ async function purge(clubId) {
 }
 
 // ============================================================
+// --add-team — a second squad in a club that already has data
+// ============================================================
+/*
+  apply() builds a club from NOTHING. Pointed at a club that already has
+  data it would destroy it three ways, and all three are silent:
+
+    1. It rewrites the whole `categories` map — all six keys, every run.
+       {merge:true} merges leaf paths and every leaf is present, so a
+       category configured through the UI is reset.
+    2. buildShards() assembles fa_users/fa_matches/... from only THIS run's
+       people and commitAll writes them with a bare set(). fa_users is
+       routed by category with no team letter (js/shard.js), so amateur-A
+       and amateur-B share ONE document — seeding B would erase A.
+    3. uids and emails are derived from the club id alone, so a second run
+       reuses the first team's exact accounts.
+
+  This mode fixes all three: dotted field paths, read-modify-write on every
+  shard, and per-team namespacing. It is also the only mode that refuses to
+  run against a club not stamped demoSeed.
+*/
+
+/** `amateur-B` → {key, cat, letter}. Anything else is a typo, not a team. */
+function parseTeamSpec(s) {
+  const m = /^([a-z]+)-([A-Z])$/.exec(String(s).trim());
+  if (!m) {
+    throw userError(`--add-team wants {category}-{LETTER}, e.g. amateur-B — got "${s}"`);
+  }
+  const [, cat, letter] = m;
+  if (Shard.ORDER.indexOf(cat) === -1) {
+    throw userError(`unknown category "${cat}". One of: ${Shard.ORDER.join(", ")}`);
+  }
+  return { key: `${cat}-${letter}`, cat, letter };
+}
+
+/* A stable per-team salt. Derived from the KEY, not from the position in
+   this run's argument list: adding amateur-C in a later run must not
+   produce the offset amateur-B already used. */
+function teamSalt(key) {
+  let h = 7;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return (h % 900) + 1;   // 1..900, never 0 — that is the first team's own
+}
+
+/**
+ * Merge a freshly built shard payload INTO what Firestore already holds.
+ *
+ * Arrays merge by the route's id field, maps by key, and the new entries
+ * win a tie. Everything already there is carried over untouched — this is
+ * the whole reason the mode exists rather than reusing apply()'s set().
+ */
+function mergeShardData(key, existing, fresh) {
+  const route = Shard.ROUTES[key];
+  // MERGE-shape docs are plain top-level fields with no `v`. Firestore's own
+  // {merge:true} already does the right thing; there is nothing to parse.
+  if (typeof fresh.v !== "string") return fresh;
+  const empty = () => (route.shape === "array" ? [] : {});
+  /* A `v` that will not parse is NOT treated as an empty shard. Falling back
+     to [] here would quietly drop every row already in the document — the
+     exact data loss this whole mode exists to prevent — and the run would
+     look like it succeeded. Stop instead and let a human look. */
+  const parse = (d, what) => {
+    if (!d || typeof d.v !== "string") return empty();
+    try {
+      return JSON.parse(d.v);
+    } catch (e) {
+      throw userError(
+          `${what} holds unparseable JSON — refusing to merge over it.\n` +
+          "    Merging would discard whatever is in there. Inspect the\n" +
+          "    document by hand before re-running.");
+    }
+  };
+  const was = parse(existing, `the stored ${key} shard`);
+  const now = parse(fresh, `the generated ${key} shard`);
+  let merged;
+  if (route.shape === "array") {
+    const idOf = (e) => String(e && e[route.id || "id"]);
+    const byId = new Map((Array.isArray(was) ? was : []).map((e) => [idOf(e), e]));
+    (Array.isArray(now) ? now : []).forEach((e) => byId.set(idOf(e), e));
+    merged = [...byId.values()];
+  } else {
+    merged = Object.assign({}, was, now);
+  }
+  return { v: JSON.stringify(merged), category: fresh.category };
+}
+
+async function addTeams(clubId, rawSpecs) {
+  const specs = rawSpecs.map(parseTeamSpec);
+  const seen = new Set();
+  specs.forEach((s) => {
+    if (seen.has(s.key)) throw userError(`--add-team ${s.key} given twice`);
+    seen.add(s.key);
+  });
+
+  step("Checking credentials");
+  initFirebase();
+  await preflight();
+  ok("authenticated — Firestore is reachable");
+
+  // ── Guard rails ──
+  step("Club");
+  if (PROTECTED_CLUBS.has(clubId)) {
+    throw userError(`${clubId} is a PROTECTED club. --add-team refuses it.`);
+  }
+  const clubRef = db.collection("clubs").doc(clubId);
+  const clubSnap = await clubRef.get();
+  if (!clubSnap.exists) throw userError(`clubs/${clubId} does not exist.`);
+  const club = clubSnap.data() || {};
+  if (club.demoSeed !== true) {
+    throw userError(
+        `clubs/${clubId} is not stamped demoSeed:true — refusing.\n` +
+        "    --add-team writes fake players and only ever runs on a demo club.");
+  }
+  ok(`${club.name || "(unnamed)"} — demoSeed, not protected`);
+
+  const cats = club.categories || {};
+  specs.forEach((s) => {
+    const c = cats[s.cat];
+    if (!c || c.enabled !== true) {
+      throw userError(
+          `category "${s.cat}" is not enabled on this club.\n` +
+          "    Enable it in the app (Configuració de categories) first — the\n" +
+          "    lead's own team quota governs that, and this script must not\n" +
+          "    hand a club a team it has not paid for.");
+    }
+    if (!(c.letters || []).includes(s.letter)) {
+      throw userError(
+          `team ${s.key} is not configured — ${s.cat} has ` +
+          `[${(c.letters || []).join(", ")}].\n` +
+          "    Add the letter in the app first, for the same reason.");
+    }
+    ok(`${s.key} is configured`);
+  });
+
+  // ── What the club already holds ──
+  step("Reading what is already there");
+  const dataCol = db.collection("teams").doc(clubId).collection("data");
+  const readShard = async (key, cat) => {
+    const snap = await dataCol.doc(Shard.docId(key, cat)).get();
+    return snap.exists ? (snap.data() || null) : null;
+  };
+  const blobOf = (d) => {
+    if (!d || typeof d.v !== "string") return [];
+    try { const p = JSON.parse(d.v); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+  };
+
+  // Every enabled category, not just the ones being added: names are deduped
+  // club-wide so two squads never field the same man.
+  const enabled = Shard.ORDER.filter((k) => cats[k] && cats[k].enabled);
+  const usersByCat = {};
+  for (const cat of enabled) usersByCat[cat] = blobOf(await readShard("fa_users", cat));
+
+  const usedNames = new Set();
+  let known = 0;
+  Object.values(usersByCat).forEach((rows) => rows.forEach((u) => {
+    if (u && u.name) { usedNames.add(u.name); known++; }
+  }));
+  ok(`${known} existing people, ${usedNames.size} names reserved`);
+
+  specs.forEach((s) => {
+    const taken = (usersByCat[s.cat] || [])
+        .filter((u) => u && (u.team || "") === s.letter && (u.roles || []).includes("player"));
+    if (taken.length) {
+      throw userError(
+          `${s.key} already has ${taken.length} players — refusing.\n` +
+          "    Re-running would double the squad. Purge the club and start\n" +
+          "    again if that is really what you want.");
+    }
+  });
+
+  // The category's real calendar, when it has one. See buildSeason(opts).
+  const trainingsByCat = {};
+  for (const cat of new Set(specs.map((s) => s.cat))) {
+    const existing = blobOf(await readShard("fa_training", cat));
+    if (existing.length) {
+      trainingsByCat[cat] = existing;
+      ok(`${cat}: reusing ${existing.length} existing sessions (shared calendar)`);
+    } else {
+      ok(`${cat}: no sessions yet — a full calendar will be generated`);
+    }
+  }
+
+  // ── Generate ──
+  const seasons = specs.map((spec) => {
+    OPTS.category = spec.cat;
+    OPTS.letter = spec.letter;
+    const salt = teamSalt(spec.key);
+    const S = buildSeason(`dm_${clubId.slice(0, 10)}_${spec.cat}${spec.letter}_`, {
+      seed: 20260803 + salt,
+      emailPrefix: `${spec.cat}${spec.letter.toLowerCase()}-`,
+      staffUidPrefix: `dm_${clubId.slice(0, 10)}_`,
+      matchIdOffset: salt,
+      trainings: trainingsByCat[spec.cat],
+      usedNames,
+    });
+    S.clubId = clubId;
+    S.spec = spec;
+    // Whether this team's sessions came from Firestore. If they did, its
+    // fa_training doc must NOT be written back — see below.
+    S.reusedTrainings = !!trainingsByCat[spec.cat];
+    // Staff already exist club-wide and the roster trigger maintains their
+    // categories. Emptying the list here keeps them out of fa_users, out of
+    // the account loop and out of the face assignment.
+    S.staffAccounts = S.staff;
+    S.staff = [];
+    return S;
+  });
+
+  // Faces ONCE, across every new squad: one folder, one alphabetical pass,
+  // no chance of the same file being handed to two teams.
+  const allPlayers = seasons.reduce((a, S) => a.concat(S.players), []);
+  const faces = assignFaces({ staff: [], players: allPlayers }, FACES_DIR);
+
+  const docsByTeam = seasons.map((S) => {
+    OPTS.category = S.spec.cat;
+    OPTS.letter = S.spec.letter;
+    let docs = buildShards(S);
+    if (S.reusedTrainings) {
+      docs = docs.filter((d) => d.key !== "fa_training");
+    }
+    return docs;
+  });
+
+  // ── Report + self-check ──
+  seasons.forEach((S, i) => {
+    step(`Team ${S.spec.key}`);
+    report(S, docsByTeam[i]);
+  });
+  let clean = true;
+  seasons.forEach((S) => { if (!selfCheck(S)) clean = false; });
+
+  step("Faces");
+  log(`${SEP}${faces.files} files, ${faces.matched} matched to ${allPlayers.length} players`);
+  faces.skipped.forEach((f) => log(`${SEP}${SEP}skipped ${f}`));
+
+  if (!clean) {
+    log(`\n${failures} consistency check(s) FAILED — refusing to write.`);
+    process.exit(1);
+  }
+
+  // ── Merge against Firestore ──
+  step("Merging into existing shards");
+  const merged = [];
+  const freshById = new Map();
+  docsByTeam.flat().forEach((d) => {
+    const prev = freshById.get(d.id);
+    // Two teams in one category produce the same doc id; fold them together
+    // before touching Firestore so each document is read and written once.
+    freshById.set(d.id, prev ?
+      { ...d, data: mergeShardData(d.key, prev.data, d.data) } : d);
+  });
+  for (const d of freshById.values()) {
+    const existing = await dataCol.doc(d.id).get();
+    const was = existing.exists ? existing.data() : null;
+    const data = mergeShardData(d.key, was, d.data);
+    const grew = was ? "merged into existing" : "new";
+    merged.push({ id: d.id, key: d.key, data });
+    log(`${SEP}${d.id.padEnd(34)} ${grew}`);
+  }
+
+  if (!APPLY) {
+    step("DRY RUN");
+    log(`${SEP}Nothing was written. Reads only.`);
+    log(`${SEP}Re-run with --apply to add ${specs.map((s) => s.key).join(" and ")}.`);
+    return;
+  }
+
+  await applyTeams(clubId, clubRef, seasons, merged, faces);
+}
+
+async function applyTeams(clubId, clubRef, seasons, merged, faces) {
+  const teamRef = db.collection("teams").doc(clubId);
+
+  /* 1. Schedules, by DOTTED PATH. Never the whole map: writing `schedules`
+        or `categories` wholesale is what would undo the club's own setup. */
+  step("Club");
+  const sched = {};
+  seasons.forEach((S) => {
+    sched[`schedules.${S.spec.key}`] = {
+      training: [
+        { day: "tue", time: "20:00", location: LOCATION, link: MAP_LINK },
+        { day: "thu", time: "20:00", location: LOCATION, link: MAP_LINK },
+      ],
+      homeGame: [{ day: "sat", time: "18:00", location: LOCATION, link: MAP_LINK }],
+    };
+  });
+  await clubRef.update(sched);
+  ok(`schedules for ${seasons.map((S) => S.spec.key).join(", ")}`);
+
+  /* 2. Rosters BEFORE accounts, exactly as apply() does. The new players do
+        not exist yet so onRosterWritten skips them, and the explicit claims
+        below are what grants them access. The COACH does exist, so this is
+        also what gives him the new category — claimsFor() reads the club's
+        enabled categories, which is why the category must already be on. */
+  step("Rosters");
+  for (const S of seasons) {
+    await clubRef.collection("rosters").doc(S.spec.key).set({
+      staffEmails: S.staffAccounts.map((s) => s.email.toLowerCase()),
+      playerEmails: S.players.map((p) => p.email.toLowerCase()),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    ok(`rosters/${S.spec.key} — ${S.players.length} players`);
+  }
+
+  // 3. Accounts. Players only: staff are club-wide and already exist.
+  step("Accounts");
+  let created = 0; let updated = 0;
+  for (const S of seasons) {
+    for (const p of S.players) {
+      const res = await ensureAccount(p.uid, p.email, p.name);
+      res === "created" ? created++ : updated++;
+      await auth.setCustomUserClaims(p.uid, {
+        teamId: clubId, role: "player", cats: [S.cat],
+      });
+    }
+  }
+  ok(`Auth: ${created} created, ${updated} updated (password: ${OPTS.password})`);
+
+  // Pictures before the user docs, which carry the download URLs.
+  if (faces.uploads.length) {
+    step("Profile pictures");
+    const fs = require("fs");
+    const bucket = admin.storage().bucket();
+    const TYPES = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+      ".png": "image/png", ".webp": "image/webp" };
+    for (const u of faces.uploads) {
+      await bucket.file(u.objectPath).save(fs.readFileSync(u.file), {
+        contentType: TYPES[u.ext] || "image/jpeg",
+        metadata: { metadata: { firebaseStorageDownloadTokens: u.token } },
+      });
+    }
+    ok(`uploaded ${faces.uploads.length} images to profilePics/`);
+  }
+
+  const userOps = [];
+  seasons.forEach((S) => S.players.forEach((p) => userOps.push({
+    ref: db.collection("users").doc(p.uid),
+    data: {
+      id: p.uid, name: p.name, email: p.email.toLowerCase(),
+      position: p.position, playerNumber: p.playerNumber,
+      profilePic: p.profilePic || "", dob: p.dob,
+      profileSetupDone: true, teamId: clubId, isTeamLead: false,
+      roles: ["player"], category: S.cat, team: S.spec.letter,
+      staffCategories: [], fitnessStatus: p.fitnessStatus,
+      injuryNote: p.injuryNote, demoSeed: true,
+      claimsUpdatedAt: FieldValue.serverTimestamp(),
+    },
+    opts: { merge: true },
+  })));
+  await commitAll(userOps, "users");
+
+  // 4. The merged shards — every one already folded over what was there.
+  step("Data shards");
+  const dataCol = teamRef.collection("data");
+  await commitAll(merged.map((d) => ({ ref: dataCol.doc(d.id), data: d.data })), "data");
+
+  // 5. Player-submitted records. Keyed per player, so additive by nature.
+  step("Records");
+  const stamp = FieldValue.serverTimestamp();
+  const all = (f) => seasons.reduce((a, S) => a.concat(f(S)), []);
+  await commitAll(all((S) => S.trainingAvail).map((a) => ({
+    ref: teamRef.collection("trainingAvail").doc(`${a.uid}_${a.date}`),
+    data: { uid: a.uid, date: a.date, value: a.value, updatedAt: stamp, source: "seed" },
+  })), "trainingAvail");
+  await commitAll(all((S) => S.matchAvail).map((a) => ({
+    ref: teamRef.collection("matchAvail").doc(`${a.uid}_${a.matchId}`),
+    data: { uid: a.uid, matchId: a.matchId, value: a.value, updatedAt: stamp, source: "seed" },
+  })), "matchAvail");
+  await commitAll(all((S) => S.rpe).map((r) => ({
+    ref: teamRef.collection("rpe").doc(r.key),
+    data: { uid: r.uid, rpe: r.rpe, minutes: r.minutes, ua: r.ua, tag: r.tag,
+      date: r.date, updatedAt: stamp, source: "seed" },
+  })), "rpe");
+
+  /* 6. Schedule dates — a UNION, not a replace. apply() can overwrite
+        because it owns the whole calendar; here the club already has one. */
+  step("Schedule dates");
+  const teamSnap = await teamRef.get();
+  const prev = teamSnap.exists ? (teamSnap.data() || {}) : {};
+  const union = (was, list) => [...new Set(
+      (Array.isArray(was) ? was : []).concat(list.map((x) => x.date).filter(Boolean)))].sort();
+  const trainingDates = union(prev.trainingDates, all((S) => S.trainings));
+  const matchDates = union(prev.matchDates, all((S) => S.matches));
+  await teamRef.set({ trainingDates, matchDates }, { merge: true });
+  ok(`trainingDates ${trainingDates.length}, matchDates ${matchDates.length}`);
+
+  step("Done");
+  seasons.forEach((S) => {
+    log(`${SEP}${S.spec.key.padEnd(12)} ${S.players.length} players — ` +
+        `${S.players[0].email} / ${OPTS.password}`);
+  });
+  log(`\n${SEP}Verify with: node functions/seed-demo-club.js --verify --club ${clubId}`);
+}
+
+// ============================================================
 // Main
 // ============================================================
 function makeJoinCode() {
@@ -1550,6 +2009,14 @@ function makeJoinCode() {
   log("=== EsquerrApp demo club seeder ===");
 
   if (PURGE) return purge(PURGE);
+  if (ADD_TEAMS.length) {
+    if (!CLUB_ID) {
+      log("\n--add-team needs --club <clubId>.");
+      log("It adds squads to an EXISTING demo club; it never creates one.");
+      process.exit(1);
+    }
+    return addTeams(CLUB_ID, ADD_TEAMS);
+  }
   if (VERIFY) {
     if (!CLUB_ID) { log("\n--verify needs --club <clubId>"); process.exit(1); }
     await verify(CLUB_ID);
