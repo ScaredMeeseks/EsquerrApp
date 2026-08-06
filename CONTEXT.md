@@ -1168,3 +1168,21 @@ It is bound **once, on the document**, keyed on `[data-tip]` rather than a class
 
 4 new tests in `test/layout.test.js` pinning the delegation: on the document not a container, keyed on the attribute, hiding on scroll, and the old page-scoped copy **gone** rather than merely supplemented. **523 total** (382 unit + 103 rules + 38 functions).
 
+## v79 - the tooltip painted underneath, and a saved session can be edited (2026-08-06)
+
+**The tooltip was a stacking problem, not a binding one.** v78 fixed where the handler was bound, which was real, but the bubble stayed invisible in the one place the badge most needs it. `.ua-tooltip` is `z-index: 1000`; `.modal-overlay` is `2000`. Both are `position: fixed`, so DOM order does not help - the tooltip rendered, got `.visible`, was positioned correctly, and painted **beneath the modal card**. The `cursor: help` with no bubble was exactly that.
+
+Now `10050`: above `.modal-overlay` (2000), `.body-map-overlay` (10000) and `.dp-popup` (10001), and deliberately below `#push-toast-container` (99999). `.roster-tooltip` had the identical latent bug - unnoticed only because nobody had hovered a `[data-tooltip]` badge inside an overlay yet - and moved with it. **A tooltip belongs above whatever triggered it**; the rule now says so in a comment, because the next overlay will otherwise be added above it.
+
+**A saved session's squad can be edited until it starts.** Deliberately looser than `isTrainingLocked`, which freezes attendance answers an hour before kickoff - a late call-up is exactly when a coach needs this. A player added by hand is **marked as attending**, because a last-minute call has already been agreed in person and making the coach set the answer separately is a step carrying no information.
+
+That uses `fa_training_staff_override`, the mechanism that already means "staff says this player is attending", rather than forging an answer under the player's own key. It shows in the staff-answer column on the same page, so the coach can see and change it, and dropping the player clears it so no stale override outlives him.
+
+**One popup, not two.** `_ntOpenPicker` took an index into `_ntDrafts`; it takes a **session and a persist callback** now, so the create and edit paths share one picker, one clash rule and one row renderer. The clash resolution came out of `_ntSave()` into `_ntResolveClashes()` for the same reason.
+
+**`_ntPersistSession()`** is the one path that writes a saved session back, and it hands the mutation the row **from the array it is about to write**. `getTrainings()` re-parses the blob and returns fresh objects on every call, so a row fetched separately is a throwaway copy - the bug a v73 test caught, which this stops coming back through a second door.
+
+Guests of a **new** session are marked attending at save, never before: a draft the coach abandons must not leave overrides pointing at a session that never existed.
+
+**11 new tests.** **534 total** (393 unit + 103 rules + 38 functions).
+

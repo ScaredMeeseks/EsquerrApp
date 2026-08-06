@@ -339,11 +339,18 @@ a:hover { text-decoration: underline; }
    getBoundingClientRect(), which is viewport-relative. It also has to escape
    containers that clip (any .table-wrap, whose overflow-x:auto makes the
    vertical axis clip as well). */
+/* z-index 10050: a tooltip belongs ABOVE whatever triggered it, always.
+   At 1000 it sat under .modal-overlay (2000), so a badge inside the
+   Add-Player popup showed its cursor:help and no bubble -- the handler ran,
+   the element was positioned, it simply painted underneath. Above
+   .body-map-overlay (10000) and .dp-popup (10001) too, and deliberately
+   BELOW #push-toast-container (99999), which stays on top of everything.
+   Anyone adding a new overlay: stay under 10050 or tooltips vanish. */
 .ua-tooltip {
   position:fixed; background:#2D2926; color:#fff;
   padding:.5rem .85rem; border-radius:8px;
   font-size:.8rem; font-weight:300; line-height:1.5;
-  white-space:nowrap; z-index:1000;
+  white-space:nowrap; z-index:10050;
   box-shadow:0 4px 20px rgba(0,0,0,.28);
   pointer-events:none; opacity:0; transition:opacity .15s ease;
   transform:translateX(-50%) translateY(-100%);
@@ -2367,7 +2374,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   background: #2D2926; color: #fff;
   padding: .55rem 1rem; border-radius: 8px;
   font-size: .82rem; font-weight: 300;
-  white-space: nowrap; z-index: 1000;
+  /* Same 10050 as .ua-tooltip, and for the same reason — it had the
+     identical latent bug, just nobody had hovered a [data-tooltip] badge
+     inside an overlay yet. */
+  white-space: nowrap; z-index: 10050;
   box-shadow: 0 4px 20px rgba(0,0,0,.28);
   pointer-events: none;
   opacity: 0; transition: opacity .15s ease;
@@ -3772,3 +3782,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .nt-pick-row{gap:.6rem;}
   .nt-pick-cat{min-width:0;flex:1 1 100%;}
 }
+
+/* Attendance card header: title left, "add player" right. */
+.std-attendance-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  flex-wrap:wrap;margin-bottom:.5rem;}
+/* The per-row remove sits before the name rather than in its own column:
+   another column would push this already-wide table into a scroll. */
+.std-drop{margin-right:.35rem;vertical-align:middle;}

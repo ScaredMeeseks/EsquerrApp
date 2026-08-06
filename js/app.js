@@ -1209,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 78;
+  const APP_VERSION = 79;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -10710,13 +10710,12 @@
    * borrow. The inline list could show a name and little else. On a phone
    * the grid collapses to one player per row.
    */
-  function _ntOpenPicker(i) {
-    const d = _ntDrafts && _ntDrafts[i];
+  function _ntOpenPicker(d, onAdded) {
     if (!d) return;
     const existing = document.getElementById('custom-modal-overlay');
     if (existing) existing.remove();
 
-    const cat = _ntCat || '';
+    const cat = d.category || _ntCat || '';
     const fitCtx = fitnessContext();
     const picked = new Set();
     // Everyone in the club not already called — borrowing from another
@@ -10785,13 +10784,20 @@
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
     addBtn.addEventListener('click', () => {
+      const added = [];
       if (!d.guests) d.guests = [];
       picked.forEach(id => {
         // Re-inviting someone previously dropped clears the exclusion.
         d.excluded = (d.excluded || []).filter(x => String(x) !== String(id));
-        if (d.guests.map(String).indexOf(String(id)) === -1) d.guests.push(id);
+        if (d.guests.map(String).indexOf(String(id)) === -1) {
+          d.guests.push(id);
+          added.push(String(id));
+        }
       });
       close();
+      // The caller decides what "added" means: a draft only re-renders, a
+      // saved session has to be written back.
+      if (onAdded) onAdded(added);
       renderPage(getSession());
     });
   }
@@ -10853,7 +10859,8 @@
     });
 
     $$('[data-nt-open]').forEach(btn => {
-      btn.addEventListener('click', () => _ntOpenPicker(Number(btn.dataset.ntOpen)));
+      btn.addEventListener('click', () =>
+        _ntOpenPicker(_ntDrafts[Number(btn.dataset.ntOpen)]));
     });
 
     const cancel = $('#nt-cancel');
@@ -10873,6 +10880,71 @@
     if (save) save.addEventListener('click', _ntSave);
   }
 
+  /**
+   * Take everyone called to `sess` out of any SAVED session that overlaps
+   * it. The warning said this would happen before the coach committed.
+   *
+   * `list` is the array the caller is about to persist, and that matters:
+   * getTrainings() re-parses the blob and returns fresh objects, so
+   * excluding a player from a session fetched separately would mutate a
+   * throwaway copy and be lost on write.
+   *
+   * @returns {number} how many players were moved
+   */
+  function _ntResolveClashes(sess, list) {
+    let moved = 0;
+    calledPlayers(sess, getUsers()).forEach(p => {
+      _ntClashes(p.id, sess, list).forEach(other => {
+        if (!other.excluded) other.excluded = [];
+        if (other.excluded.map(String).indexOf(String(p.id)) === -1) {
+          other.excluded.push(String(p.id));
+          moved++;
+        }
+        other.guests = (other.guests || []).filter(g => String(g) !== String(p.id));
+      });
+    });
+    return moved;
+  }
+
+  /**
+   * A player the coach adds by hand is marked as attending.
+   *
+   * Through fa_training_staff_override — the mechanism that already means
+   * "staff says this player is attending" — rather than forging an answer
+   * under the player's own key. It surfaces in the staff-answer column on
+   * the same page, so the coach can see it and change it.
+   *
+   * A late call-up has already been agreed in person; making the coach set
+   * the answer separately is a step with no information in it.
+   */
+  function _ntMarkAttending(sess, ids, attending) {
+    if (!sess || !ids || !ids.length) return;
+    const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
+    ids.forEach(id => {
+      const key = recordKey(id, sess, 'avail');
+      if (attending === false) delete overrides[key];
+      else overrides[key] = 'yes';
+    });
+    localStorage.setItem('fa_training_staff_override', JSON.stringify(overrides));
+  }
+
+  /**
+   * Write one already-saved session back.
+   *
+   * `mutate` is handed the row FROM the array being written, never a copy
+   * fetched separately — getTrainings() re-parses on every call, so a
+   * mutation applied to any other object is silently discarded. A test in
+   * v73 caught exactly that, and it must not come back.
+   */
+  function _ntPersistSession(sessionId, mutate) {
+    const training = getTrainings();
+    const row = training.find(x => String(x.id) === String(sessionId));
+    if (!row) return null;
+    mutate(row, training);
+    localStorage.setItem('fa_training', JSON.stringify(training));
+    return row;
+  }
+
   function _ntSave() {
     const drafts = _ntDrafts || [];
     // The button is disabled without a team, but the guard is here too: a
@@ -10880,27 +10952,15 @@
     if (!_ntTeam || !drafts.length) return;
     const training = getTrainings();
 
-    /* A player called to a session that clashes with one he is already in
-       is REMOVED from the other one — the warning said so before the coach
-       committed. Done here rather than at Add time so that editing the
-       times afterwards still resolves correctly. */
     let moved = 0;
-    drafts.forEach(d => {
-      calledPlayers(d, getUsers()).forEach(p => {
-        _ntClashes(p.id, d, training).forEach(other => {
-          if (!other.excluded) other.excluded = [];
-          if (other.excluded.map(String).indexOf(String(p.id)) === -1) {
-            other.excluded.push(String(p.id));
-            moved++;
-          }
-          other.guests = (other.guests || []).filter(g => String(g) !== String(p.id));
-        });
-      });
-    });
+    drafts.forEach(d => { moved += _ntResolveClashes(d, training); });
 
     drafts.forEach(d => training.push(d));
     training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     localStorage.setItem('fa_training', JSON.stringify(training));
+    // Only now: an abandoned draft must not leave overrides pointing at a
+    // session that never existed.
+    drafts.forEach(d => _ntMarkAttending(d, (d.guests || []).map(String), true));
     if (moved) {
       _showPushToast(t('nt.saved_title'),
         t('nt.moved').replace('{n}', moved));
@@ -10925,6 +10985,12 @@
       : calledSquad.filter(p => stdTeamFilter.has(p.team || ''));
     const stdLettersForSlot = trainingTeams(tr);
     const locked = isTrainingLocked(tr);
+    /* The squad can be changed until the session STARTS -- looser than
+       `locked`, which freezes attendance answers an hour earlier. A late
+       call-up is exactly when a coach needs this, and the player is marked
+       attending on the way in so the frozen answer does not matter. */
+    const squadEditable = !tr.date || !tr.time ||
+      new Date() < new Date(tr.date + 'T' + (tr.time.split(' - ')[0]) + ':00');
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -10961,9 +11027,11 @@
       // the readiness dot changed.
       const acwrColor = !rd.hasData ? 'var(--text-secondary)' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
 
+      const dropBtn = squadEditable ?
+        `<button class="conv-remove std-drop" data-std-drop="${sanitize(String(p.id))}" title="${t('nt.drop')}">&times;</button>` : '';
       return `<tr>
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
-        <td><span class="roster-name-wrap">${sanitize(p.name)}${teamCircle}</span></td>
+        <td><span class="roster-name-wrap">${dropBtn}${sanitize(p.name)}${teamCircle}</span></td>
         <td class="center-cell">${statusIcon}</td>
         <td class="center-cell">${readinessCellHtml(rd, fStatus === 'injured')}</td>
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
@@ -11005,7 +11073,10 @@
       </div>
       <div class="std-attendance-row">
       <div class="card" style="flex:1;min-width:0;">
-        <div class="card-title">${t('std.player_attendance')}</div>
+        <div class="std-attendance-head">
+          <span class="card-title" style="margin-bottom:0;">${t('std.player_attendance')}</span>
+          ${squadEditable ? `<button class="btn btn-small btn-outline" id="std-add-player">${t('nt.add_player')}</button>` : ''}
+        </div>
         ${(() => {
           if (stdLettersForSlot.length <= 1) return '';
           const btnAll = !stdTeamFilter ? ' roster-team-btn-active' : '';
@@ -14372,6 +14443,49 @@
 
   // Staff training detail: staff override selects + team generation
   function bindStaffTrainingDetail() {
+    /* Squad edits on an ALREADY SAVED session. Every write goes through
+       _ntPersistSession, which hands the mutation the row from the array it
+       is about to write -- getTrainings() re-parses on every call, so a row
+       fetched separately is a throwaway copy. */
+    const addBtn = document.getElementById('std-add-player');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const sess = getTrainings().find(x => String(x.id) === String(detailTrainingId));
+        if (!sess) return;
+        _ntOpenPicker(sess, (added) => {
+          if (!added.length) return;
+          let moved = 0;
+          const saved = _ntPersistSession(detailTrainingId, (row, list) => {
+            row.guests = (row.guests || []);
+            added.forEach(id => {
+              row.excluded = (row.excluded || []).filter(x => String(x) !== String(id));
+              if (row.guests.map(String).indexOf(String(id)) === -1) row.guests.push(id);
+            });
+            moved = _ntResolveClashes(row, list);
+          });
+          if (saved) _ntMarkAttending(saved, added, true);
+          if (moved) {
+            _showPushToast(t('nt.saved_title'), t('nt.moved').replace('{n}', moved));
+          }
+        });
+      });
+    }
+
+    document.querySelectorAll('.std-drop').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = String(btn.dataset.stdDrop);
+        const saved = _ntPersistSession(detailTrainingId, (row) => {
+          // A guest is simply un-invited; a squad member needs an exclusion.
+          row.guests = (row.guests || []).filter(g => String(g) !== id);
+          if (!row.excluded) row.excluded = [];
+          if (row.excluded.map(String).indexOf(id) === -1) row.excluded.push(id);
+        });
+        // Clear the attending override too, or a stale one outlives him.
+        if (saved) _ntMarkAttending(saved, [id], false);
+        renderPage(getSession());
+      });
+    });
+
     document.querySelectorAll('.std-staff-select').forEach(sel => {
       sel.addEventListener('change', () => {
         const playerId = sel.dataset.player;

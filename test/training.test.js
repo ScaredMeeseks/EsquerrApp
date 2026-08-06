@@ -390,9 +390,12 @@ describe('training — new session clash handling', () => {
        stub can read the fixture store, and a real copy here would
        shadow it. Everything either side is the genuine article. */
     const helpers = grab('  var DEFAULT_SESSION_MINS = 90;', '  function getTrainings()') +
-      grab('  function hhmmToMins(v)', '  function recordKey(');
+      grab('  function hhmmToMins(v)', '  async function handleRegister');
     const head = grab('  let _ntDrafts = null;', '  function renderTrainingNew()');
-    const save = grab('  function _ntSave()', '  // #endregion New Training');
+    // From the extracted helpers, not just _ntSave: the clash resolution,
+    // the attending override and the persist wrapper all live above it now,
+    // and _ntSave delegates to them.
+    const save = grab('  function _ntResolveClashes(sess, list)', '  // #endregion New Training');
     // eslint-disable-next-line no-new-func
     const api = new Function('localStorage', 'getUsers', 'getTrainings',
         'getTeamLetters', 'getCurrentCategory', 'buildTrainingDrafts',
@@ -583,5 +586,116 @@ describe('training — a category with one team needs no click', () => {
     const s = seeder({ amateur: ['A', 'B'] });
     s.seed('amateur', 'B');
     assert.strictEqual(s.team(), 'B');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Editing a session that has already been saved.
+ *
+ * The coach can change the squad until the session STARTS — looser than
+ * `isTrainingLocked`, which freezes attendance answers an hour earlier. A
+ * late call-up is exactly when this is needed, and the player is marked
+ * attending on the way in so the frozen answer does not matter.
+ *
+ * _ntPersistSession exists because getTrainings() re-parses the blob and
+ * hands back FRESH objects on every call. Mutating a row fetched separately
+ * writes to a throwaway copy — the bug a v73 test caught, which must not
+ * come back through a second door.
+ * ------------------------------------------------------------------ */
+describe('training — editing a saved session', () => {
+  function load(existing, users) {
+    const store = {
+      fa_training: JSON.stringify(existing),
+      fa_training_staff_override: '{}',
+    };
+    const localStorage = {
+      getItem: (k) => (k in store ? store[k] : null),
+      setItem: (k, v) => { store[k] = v; },
+    };
+    const helpers = grab('  var DEFAULT_SESSION_MINS = 90;', '  function getTrainings()') +
+      grab('  function hhmmToMins(v)', '  async function handleRegister');
+    const head = grab('  let _ntDrafts = null;', '  function renderTrainingNew()');
+    const save = grab('  function _ntResolveClashes(sess, list)', '  // #endregion New Training');
+    // eslint-disable-next-line no-new-func
+    const api = new Function('localStorage', 'getUsers', 'getTrainings',
+        'getTeamLetters', 'getCurrentCategory', 'buildTrainingDrafts',
+        'renderPage', 'getSession', '_showPushToast', 't', `
+      let currentPage = '';
+      ${helpers}
+      ${head}
+      ${save}
+      return { _ntPersistSession, _ntMarkAttending, _ntResolveClashes };`)(
+        localStorage, () => users, () => JSON.parse(store.fa_training),
+        () => ['A', 'B'], () => 'amateur', () => [], () => {}, () => ({}),
+        () => {}, (k) => k);
+    return { api, store, overrides: () => JSON.parse(store.fa_training_staff_override) };
+  }
+
+  const P = (id, team) => ({ id, category: 'amateur', team, roles: ['player'] });
+  const users = [P('a1', 'A'), P('b1', 'B')];
+  const S = (over) => Object.assign(
+      { id: 'tr_x', date: '2026-09-01', time: '20:00', endTime: '21:30',
+        category: 'amateur', teams: ['A'], guests: [], excluded: [] }, over);
+
+  it('persists a mutation to the row it actually writes', () => {
+    // The whole point of the helper: a row fetched separately is a copy.
+    const { api, store } = load([S({ id: 'tr_a' })], users);
+    api._ntPersistSession('tr_a', (row) => { row.excluded.push('a1'); });
+    assert.deepStrictEqual(
+        JSON.parse(store.fa_training).find((x) => x.id === 'tr_a').excluded, ['a1']);
+  });
+
+  it('returns the saved row so the caller can key an override off it', () => {
+    const { api } = load([S({ id: 'tr_a' })], users);
+    const row = api._ntPersistSession('tr_a', () => {});
+    assert.strictEqual(row.id, 'tr_a');
+  });
+
+  it('does nothing for a session that is not there', () => {
+    const { api, store } = load([S({ id: 'tr_a' })], users);
+    const before = store.fa_training;
+    assert.strictEqual(api._ntPersistSession('nope', () => {}), null);
+    assert.strictEqual(store.fa_training, before, 'no write at all');
+  });
+
+  it('marks an added player as attending, through the staff override', () => {
+    // Not a forged answer under the player's own key -- the override is the
+    // mechanism that already means "staff says he is attending".
+    const { api, overrides } = load([S({ id: 'tr_a' })], users);
+    api._ntMarkAttending(S({ id: 'tr_a' }), ['b1'], true);
+    assert.strictEqual(overrides()['b1_tr_a'], 'yes');
+  });
+
+  it('clears the override when the player is dropped again', () => {
+    const { api, overrides } = load([S({ id: 'tr_a' })], users);
+    api._ntMarkAttending(S({ id: 'tr_a' }), ['b1'], true);
+    api._ntMarkAttending(S({ id: 'tr_a' }), ['b1'], false);
+    assert.strictEqual(overrides()['b1_tr_a'], undefined, 'no stale override');
+  });
+
+  it('writes nothing for an empty add', () => {
+    const { api, overrides } = load([S({ id: 'tr_a' })], users);
+    api._ntMarkAttending(S({ id: 'tr_a' }), [], true);
+    assert.deepStrictEqual(overrides(), {});
+  });
+
+  it('resolves a clash against the array being written', () => {
+    const { api, store } = load(
+        [S({ id: 'tr_a', teams: ['A'] }), S({ id: 'tr_b', teams: ['B'], guests: ['a1'] })],
+        users);
+    api._ntPersistSession('tr_b', (row, list) => {
+      const moved = api._ntResolveClashes(row, list);
+      assert.strictEqual(moved, 1);
+    });
+    const old = JSON.parse(store.fa_training).find((x) => x.id === 'tr_a');
+    assert.deepStrictEqual(old.excluded, ['a1'], 'removed from the overlapping session');
+  });
+
+  it('the edit controls are gated on the session not having started', () => {
+    const body = grab('    const squadEditable =', '    const dateFormatted');
+    assert.ok(body.includes('new Date() <'), 'editable only before the start');
+    const page = grab('  function renderStaffTrainingDetail()', '  // ── Team generation');
+    assert.ok(page.includes('squadEditable ?'), 'the add button is gated');
+    assert.ok(page.includes('std-drop'), 'and so is the per-row remove');
   });
 });

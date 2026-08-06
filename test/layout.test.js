@@ -146,3 +146,32 @@ describe('layout — hover tips reach every element that carries one', () => {
     assert.ok(/nt-warn[^>]*>⚠</.test(appSrcT), 'a triangle reads as caution at a glance');
   });
 });
+
+describe('layout — a tooltip outranks whatever triggered it', () => {
+  /* At z-index 1000 .ua-tooltip sat UNDER .modal-overlay (2000), so a badge
+     inside the Add-Player popup showed its cursor:help and no bubble. The
+     handler ran and the element was positioned; it simply painted
+     underneath. Fixing the binding in v78 could not have fixed this. */
+  const zOf = (sel) => {
+    const m = /z-index:\s*(\d+)/.exec(rule(sel));
+    assert.ok(m, sel + ' has no z-index');
+    return Number(m[1]);
+  };
+
+  it('sits above every overlay that can contain one', () => {
+    const tip = zOf('.ua-tooltip');
+    ['.modal-overlay', '.body-map-overlay', '.dp-popup'].forEach((sel) => {
+      assert.ok(tip > zOf(sel), `.ua-tooltip must outrank ${sel}`);
+    });
+  });
+
+  it('stays below the toast container, which owns the top', () => {
+    assert.ok(zOf('.ua-tooltip') < zOf('#push-toast-container'));
+  });
+
+  it('applies to the other body-level tooltip too', () => {
+    // .roster-tooltip had the identical latent bug, unnoticed only because
+    // nobody had hovered a [data-tooltip] badge inside an overlay yet.
+    assert.strictEqual(zOf('.roster-tooltip'), zOf('.ua-tooltip'));
+  });
+});
