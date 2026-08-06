@@ -1,8 +1,10 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-04._
+_Rolling document, overwritten each session. Last updated: 2026-08-06._
 
-**Production is on v79.** The team quota shipped in two deploys (v55 limit, v56 deletion + gate), plus v57 self-verification, v58 an onboarding fix and v59 the readiness engine. Rules and functions changed for the first time since Phase 5 — both deployed and verified 2026-08-04. Tests **534 passing** (393 unit + 103 rules + 38 functions), up from 143 at the start of this work.
+**Production is on v80.** Tests **541 passing** (400 unit + 103 rules + 38 functions), up from 143 at the start of this work.
+
+Per-team training landed across v70–v73 (see below) and v74–v80 are its follow-ups, all frontend-only: the New Training page's own UX, then the two bugs in the section that follows. Rules and functions last changed 2026-08-04 (the team quota), deployed and verified.
 
 v46–v54 and v59 are frontend-only (per-club season boundary, the demo-club seeder, demo-walkthrough fixes, the staff home page, navigation fixes, two rounds of performance work, readiness presentation and then its engine). v55–v58 are the team quota, and the first change since Phase 5 to touch rules and functions.
 
@@ -46,7 +48,7 @@ CI has built through v58; the phones are still on a v43-era build. Set `clubs/nD
 - **Orphaned shards when a category is emptied.** `deleteTeam` removes the category's trainings, but `fa_tactic_saved__{cat}` and `fa_tactic_training_boards__{cat}` are left unreadable. A `--gc` sweep script would clear them.
 - **Uncategorised players**: excluded by medical and roster, included by training-detail — three staff pages, two semantics.
 - **Tactic board copies are matched by name**, and since sharding the same name can exist in two categories.
-- Firebase Hosting migration (real cache-control); multi-club membership (`teamId` is single-valued); delete `fa_users` in favour of the `users` collection; read-time fitness derivation.
+- Firebase Hosting migration (real cache-control) — less urgent since v80 made the service worker revalidate, but Pages still has no cache headers of its own; multi-club membership (`teamId` is single-valued); delete `fa_users` in favour of the `users` collection; read-time fitness derivation.
 
 ### Known residual risk (accepted, not a bug)
 A client saving **during** a `deleteTeam` can republish rows, because every client holds the whole blob and writes it back wholesale. v57 retries once and reports `resurrected` in the marker doc rather than failing silently. Re-running is safe. A rules lock would close it properly but costs a document read on every `data/` write, forever.
@@ -91,6 +93,68 @@ unnecessary on a GCE VM and puts personal credentials on a shared disk.
 **Still to do:** `functions/backfill-training-teams.js` has no `preflight()`.
 `seed-demo-club.js` does, and it turns exactly this failure into one
 actionable line instead of a 30-line gRPC stack. Copy it across.
+
+## Read this before debugging "the fix didn't work" (v80, 2026-08-06)
+
+Two v79 changes - a CSS `z-index` and a new JS feature - appeared to fail
+together. Two independent bugs do not behave like that, and they hadn't:
+the browser was still running v78.
+
+`sw.js` is network-first for JS/CSS, but a plain `fetch(event.request)` is
+answered from the **browser's HTTP cache**, and GitHub Pages serves assets
+with a `max-age`. The worker fetched a stale `app.js`, stored it under the
+**new** `CACHE_NAME`, and served it. **Bumping `CACHE_NAME` never helped** -
+the bump clears the old cache, it does not make the refill fresh.
+
+Fixed in v80: same-origin non-navigation requests go through
+`new Request(event.request, { cache: 'no-cache' })`, which revalidates
+rather than bypasses (a 304, no body), and the registration takes
+`updateViaCache: 'none'`.
+
+This had been costing whole rounds of "still not working" for several
+releases - including, it turned out, the juvenil-squad report, which had no
+bug behind it at all. The one-line check, from the page's console:
+
+```js
+[...document.styleSheets].flatMap(s => { try { return [...s.cssRules] } catch(e) { return [] } })
+  .filter(r => r.selectorText === '.ua-tooltip').map(r => r.style.zIndex)
+```
+
+**Run it before diagnosing anything that looks like a fix not landing.** If
+it disagrees with the source, stop and clear the worker (DevTools →
+Application → Service Workers → Unregister); everything downstream of a
+stale build is noise.
+
+## v74-v80 - New Training follow-ups (2026-08-05/06)
+
+Session UX, in the order it was reported: config card widened and the
+schedule rows unspilled; `type="time"` enforced; end time defaulting to
+start + 90; **one team letter compulsory** even when both letters of a
+category share the slot; a category dropdown with the letter chooser only
+when there is more than one; medical and fitness status columns on both the
+setup list and the Add-Player picker; the picker turned from a dropdown
+into a **popup**, one player per row below 640px.
+
+Then two real bugs, both in v80:
+
+- **The Staff (editable) column looked empty and was not.** With no player
+  answer and no override, `effectiveCls` was `''`, so the `<select>` carried
+  no colour class and fell back to the base rule's `color: #fff` on a white
+  card. That hid a worse bug: nothing was marked `selected`, and **a
+  `<select>` with no selected option displays its first one** - so every
+  unanswered player silently read as "Yes". There is now a `—` placeholder,
+  first and selected in that state, and choosing it back **deletes** the
+  override rather than storing `''` (an empty string reads as a staff call
+  and hides the player's own answer).
+- **The tooltip was a stacking problem, not a binding one** (v79). See
+  CONTEXT.md; the short version is that v78 fixed the binding, which was
+  also real, but `.ua-tooltip` at `z-index: 1000` painted under
+  `.modal-overlay` at `2000`.
+
+Also v79: a saved session's squad is editable until it **starts** - looser
+than `locked`, which freezes answers an hour earlier - and a player added by
+hand is marked attending through `fa_training_staff_override`, not a forged
+answer under his own key.
 
 ## v73 - the New Training page, stage 3 of 3 (2026-08-05)
 
