@@ -317,7 +317,10 @@
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed:', err));
+      // updateViaCache:'none' — the worker script itself must never come
+      // from the HTTP cache, or a release can sit behind a stale sw.js.
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+        .catch(err => console.warn('SW registration failed:', err));
     }
   </script>
 </body>

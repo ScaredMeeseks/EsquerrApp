@@ -1209,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 79;
+  const APP_VERSION = 80;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -11008,10 +11008,15 @@
       const playerLabel = playerAnswer ? labels[playerAnswer] : '—';
       const playerCls = playerAnswer ? cls[playerAnswer] : '';
       const effectiveLabel = effective ? labels[effective] : '—';
-      const effectiveCls = effective ? cls[effective] : '';
-      const dropdown = allOptions.map(o =>
-        `<option value="${o}" ${effective === o ? 'selected' : ''}>${labels[o]}</option>`
-      ).join('');
+      const effectiveCls = effective ? cls[effective] : 'avail-unset';
+      /* The placeholder is a real, selectable option and must come first:
+         without it a select with nothing selected displays its first entry,
+         which made an unanswered player read as "Yes". Choosing it again
+         clears the override rather than storing an empty answer. */
+      const dropdown = `<option value="" ${!effective ? 'selected' : ''}>—</option>` +
+        allOptions.map(o =>
+          `<option value="${o}" ${effective === o ? 'selected' : ''}>${labels[o]}</option>`
+        ).join('');
       const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
 
       const derived = deriveFitnessStatus(p.id, false, _stdFitCtx);
@@ -11027,11 +11032,12 @@
       // the readiness dot changed.
       const acwrColor = !rd.hasData ? 'var(--text-secondary)' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
 
-      const dropBtn = squadEditable ?
-        `<button class="conv-remove std-drop" data-std-drop="${sanitize(String(p.id))}" title="${t('nt.drop')}">&times;</button>` : '';
+      const dropCell = squadEditable ?
+        `<td class="std-drop-cell"><button class="conv-remove std-drop" data-std-drop="${sanitize(String(p.id))}" title="${t('nt.drop')}">&times;</button></td>` : '';
       return `<tr>
+        ${dropCell}
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
-        <td><span class="roster-name-wrap">${dropBtn}${sanitize(p.name)}${teamCircle}</span></td>
+        <td><span class="roster-name-wrap">${sanitize(p.name)}${teamCircle}</span></td>
         <td class="center-cell">${statusIcon}</td>
         <td class="center-cell">${readinessCellHtml(rd, fStatus === 'injured')}</td>
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
@@ -11073,10 +11079,7 @@
       </div>
       <div class="std-attendance-row">
       <div class="card" style="flex:1;min-width:0;">
-        <div class="std-attendance-head">
-          <span class="card-title" style="margin-bottom:0;">${t('std.player_attendance')}</span>
-          ${squadEditable ? `<button class="btn btn-small btn-outline" id="std-add-player">${t('nt.add_player')}</button>` : ''}
-        </div>
+        <div class="card-title">${t('std.player_attendance')}</div>
         ${(() => {
           if (stdLettersForSlot.length <= 1) return '';
           const btnAll = !stdTeamFilter ? ' roster-team-btn-active' : '';
@@ -11086,8 +11089,9 @@
           }).join('');
           return '<div class="roster-team-filter"><button class="roster-team-btn std-team-btn' + btnAll + '" data-std-team="all">All</button>' + letterBtns + '</div>';
         })()}
+        ${squadEditable ? `<div class="std-attendance-head"><button class="btn btn-small btn-outline" id="std-add-player">${t('nt.add_player')}</button></div>` : ''}
         <div class="table-wrap"><table class="matchday-table std-attendance-table">
-          <thead><tr><th>${t('std.th_pos')}</th><th>${t('std.th_player')}</th><th class="center-cell roster-th-wrap">${t('std.th_status')}</th><th class="center-cell roster-th-wrap">${t('std.th_ready')}</th><th class="center-cell">${t('std.th_ac_ratio')}</th><th class="center-cell">${t('std.th_player_answer')}</th><th class="center-cell">${t('std.th_staff_editable')}</th></tr></thead>
+          <thead><tr>${squadEditable ? '<th class="std-drop-cell"></th>' : ''}<th>${t('std.th_pos')}</th><th>${t('std.th_player')}</th><th class="center-cell roster-th-wrap">${t('std.th_status')}</th><th class="center-cell roster-th-wrap">${t('std.th_ready')}</th><th class="center-cell">${t('std.th_ac_ratio')}</th><th class="center-cell">${t('std.th_player_answer')}</th><th class="center-cell">${t('std.th_staff_editable')}</th></tr></thead>
           <tbody>${playerRows}</tbody>
         </table></div>
       </div>
@@ -14493,7 +14497,10 @@
         if (!sess) return;
         const key = recordKey(playerId, sess, 'avail');
         const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-        overrides[key] = sel.value;
+        // Back to the placeholder means "no staff call", not an empty answer:
+        // delete, so the player's own answer shows through again.
+        if (sel.value) overrides[key] = sel.value;
+        else delete overrides[key];
         localStorage.setItem('fa_training_staff_override', JSON.stringify(overrides));
         renderPage(getSession());
       });

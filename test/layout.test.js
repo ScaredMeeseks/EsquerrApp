@@ -175,3 +175,67 @@ describe('layout — a tooltip outranks whatever triggered it', () => {
     assert.strictEqual(zOf('.roster-tooltip'), zOf('.ua-tooltip'));
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * The staff-attendance select.
+ *
+ * It looked like an empty cell in a screenshot. It was not: the control
+ * was there and working, but with no answer and no override `effectiveCls`
+ * was '', so the select carried no colour class and fell back to the base
+ * rule's `color: #fff` -- white text on a white card.
+ *
+ * The rendering bug hid a worse one. Nothing was marked `selected`, and a
+ * <select> with no selected option displays its FIRST one: every
+ * unanswered player was silently showing "Yes".
+ * ------------------------------------------------------------------ */
+describe('training detail — the staff attendance select', () => {
+  it('carries a colour class even with no answer', () => {
+    assert.ok(appSrc.includes("effective ? cls[effective] : 'avail-unset'"),
+        "'' means no class, which means the base color:#fff with no background");
+    assert.ok(css.includes('.std-staff-select.avail-unset'),
+        'the class has to actually style something');
+  });
+
+  it('gives that state a real background and a readable colour', () => {
+    const r = rule('.std-staff-select.avail-unset');
+    assert.ok(/background:/.test(r) && /color:/.test(r),
+        'both, or it inherits the white-on-white it is here to prevent');
+    assert.ok(!/#fff/.test(r.split('color:')[1] || ''),
+        'the text colour must not be white again');
+  });
+
+  it('opens with a placeholder, so nothing reads as an answer', () => {
+    assert.ok(/<option value="" \$\{!effective \? 'selected' : ''\}>/.test(appSrc),
+        'an unselected select shows its first option — that must be the placeholder');
+    const i = appSrc.indexOf('<option value="" ${!effective');
+    const j = appSrc.indexOf('allOptions.map(o =>', i);
+    assert.ok(i !== -1 && j !== -1 && i < j,
+        'the placeholder must come FIRST to be the fallback display');
+  });
+
+  it('clears the override instead of storing an empty answer', () => {
+    assert.ok(/if \(sel\.value\) overrides\[key\] = sel\.value;\s+else delete overrides\[key\];/.test(appSrc),
+        "overrides[key] = '' would read as a staff call that hides the player's own answer");
+  });
+});
+
+describe('training detail — the remove button', () => {
+  it('leads the row in its own column', () => {
+    assert.ok(appSrc.includes('<td class="std-drop-cell">'),
+        'the × moved out of the name cell so every row lines up');
+    assert.ok(css.includes('.std-drop-cell'));
+  });
+
+  it('adds a header cell with it, or every column shifts by one', () => {
+    assert.ok(appSrc.includes("${squadEditable ? '<th class=\"std-drop-cell\"></th>' : ''}"),
+        'the extra <td> is conditional, so the <th> must be gated identically');
+  });
+
+  it('the Add button sits above the table it acts on', () => {
+    const add = appSrc.indexOf('id="std-add-player"');
+    const table = appSrc.indexOf('<table class="matchday-table std-attendance-table">');
+    assert.ok(add !== -1 && table !== -1 && add < table,
+        'in a space-between card header it landed at the far right edge, ' +
+        'reading as unrelated to the list below it');
+  });
+});

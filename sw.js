@@ -74,7 +74,7 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-const CACHE_NAME = 'esquerrapp-v79';
+const CACHE_NAME = 'esquerrapp-v80';
 
 const STATIC_ASSETS = [
   './',
@@ -167,9 +167,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Everything else (JS, CSS, HTML): network-first, fall back to cache
+  /* Everything else (JS, CSS, HTML): network-first, fall back to cache.
+
+     `cache: 'no-cache'` is what makes "network-first" actually mean the
+     network. GitHub Pages serves assets with a max-age, so a plain fetch()
+     here is answered from the BROWSER's HTTP cache -- and the worker then
+     stores that stale copy under the new CACHE_NAME and serves it happily.
+     Bumping CACHE_NAME does not help, because the bump only clears the old
+     cache; it does not make the refill fresh. Two releases in a row looked
+     like they had not landed because of this.
+
+     no-cache revalidates rather than bypassing, so an unchanged file still
+     costs a 304 and no body. Navigation requests are left alone: a Request
+     cannot always be reconstructed from one, and the HTML is not what goes
+     stale here. */
+  let req = event.request;
+  if (url.origin === self.location.origin && event.request.mode !== 'navigate') {
+    try { req = new Request(event.request, { cache: 'no-cache' }); } catch (e) { /* keep the original */ }
+  }
   event.respondWith(
-    fetch(event.request).then(response => {
+    fetch(req).then(response => {
       if (response.ok && url.origin === self.location.origin) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));

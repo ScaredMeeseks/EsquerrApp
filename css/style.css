@@ -2326,6 +2326,10 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-staff-select.avail-no { background: #78909c; border-color: #546e7a; }
 .std-staff-select.avail-injured { background: #ef5350; border-color: #c62828; }
 .std-staff-select.avail-na { background: #d0d0d0; border-color: #aaa; color: #666; }
+/* No answer and no staff call. Without this the select inherits the base
+   `color:#fff` with no class-supplied background — white on white, an
+   apparently empty cell holding a working control. */
+.std-staff-select.avail-unset { background: var(--card); border-color: var(--border); color: var(--text-secondary); }
 .std-staff-select option { background: #fff; color: #333; }
 tr[data-tidx] { transition: background .15s; }
 tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
@@ -3786,6 +3790,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Attendance card header: title left, "add player" right. */
 .std-attendance-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
   flex-wrap:wrap;margin-bottom:.5rem;}
-/* The per-row remove sits before the name rather than in its own column:
-   another column would push this already-wide table into a scroll. */
-.std-drop{margin-right:.35rem;vertical-align:middle;}
+/* The remove button leads the row in its own narrow column, so every × on
+   the page lines up regardless of how long the names are. */
+.std-drop-cell{width:1%;padding-right:0;text-align:center;}
+.std-drop{vertical-align:middle;}

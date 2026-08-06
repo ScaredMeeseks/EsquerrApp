@@ -1186,3 +1186,18 @@ Guests of a **new** session are marked attending at save, never before: a draft 
 
 **11 new tests.** **534 total** (393 unit + 103 rules + 38 functions).
 
+## v80 - a blank column that was not blank, and the release that would not land (2026-08-06)
+
+**The service worker's "network-first" never reached the network.** Two unrelated v79 changes - a CSS `z-index` and a new JS feature - appeared to fail together, which is not how two independent bugs behave. `[...document.styleSheets]...filter(r => r.selectorText === '.ua-tooltip').map(r => r.style.zIndex)` returned `['1000']`: the browser was running the previous build.
+
+The cause is in `sw.js`. The fetch handler is network-first for JS/CSS, but a plain `fetch(event.request)` is answered from the **browser's HTTP cache**, and GitHub Pages serves assets with a `max-age`. So the worker fetched a stale `app.js`, stored it under the **new** `CACHE_NAME`, and served it. Bumping `CACHE_NAME` never helped: the bump clears the old cache, it does not make the refill fresh.
+
+Same-origin non-navigation requests now go through `new Request(event.request, { cache: 'no-cache' })`, which revalidates rather than bypasses - an unchanged file still costs a 304 and no body. Navigations are left alone: a `Request` cannot always be reconstructed from one, and the HTML is not what was going stale. The registration gained `updateViaCache: 'none'` so a release cannot sit behind a stale `sw.js` either.
+
+**The empty Staff (editable) column was a working control painted white on white.** With no player answer and no override, `effectiveCls` was `''`, so the `<select>` carried no colour class and fell back to the base rule's `color: #fff` on a white card.
+
+The rendering bug was hiding a worse one. Nothing was marked `selected`, and **a `<select>` with no selected option displays its first one** - so every unanswered player was silently showing "Yes" to anyone who could see the control at all. There is now a real `—` placeholder option, first in the list and selected when there is no effective answer, and choosing it back **deletes** the override instead of storing `''` (an empty string would read as a staff call and hide the player's own answer).
+
+**The remove `×` moved into its own leading column** so every row lines up regardless of name length, with the `<th>` gated on the same `squadEditable` flag as the `<td>` - otherwise every column shifts by one. **Add player moved above the table**; in a `space-between` card header it sat at the far right edge of a wide card, reading as unrelated to the list it acts on.
+
+7 new tests in `test/layout.test.js`. **400 unit tests** (up from 389), 541 total.
