@@ -2284,6 +2284,197 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
 // collections are the only write path. The frozen legacy data/ docs stay
 // in place until `migrate-player-data.js --delete-legacy` removes them.
 
+// ── 8c. Tactical board templates — the platform's starter library ──
+//
+// Both callables are superuser-only AND must run on the Admin SDK, because
+// both write documents the caller does not own: the superuser is not a member
+// of the club being read from or seeded into, so firestore.rules would refuse
+// them. That is the reason these are callables at all — creating an ordinary
+// board is a direct client write, since its rule is fully self-enforcing.
+//
+// Promotion takes an independent COPY with the author and origin club
+// stripped. Three properties follow from copying rather than from any rule:
+// the origin club keeps full control of its own board, deleting that board
+// does not break the template, and editing it does not silently mutate every
+// club that was seeded from it.
+
+/** Reject anyone who is not the superuser. */
+function assertSuperUser(request) {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const email = (request.auth.token.email || "").toLowerCase();
+  if (email !== SUPERUSER_EMAIL) {
+    throw new HttpsError("permission-denied",
+        "Només l'administrador de la plataforma pot fer això.");
+  }
+}
+
+/** The board fields a template carries. Author and club are NOT among them. */
+function templateMetaFrom(board) {
+  return {
+    name: String(board.name || "").slice(0, 120),
+    tag: String(board.tag || ""),
+    category: String(board.category || ""),
+    formation: String(board.formation || ""),
+    boardType: String(board.boardType || "full"),
+    hasFrames: !!board.hasFrames,
+    frameCount: Number(board.frameCount || 0),
+  };
+}
+
+/**
+ * Strip anything personal from a board payload before it leaves its club.
+ *
+ * `linkedTeams` embeds player ids and names. It has no business in a payload
+ * at all (it is per-session data) and absolutely none in a library shown to
+ * other clubs — so the strip is done on the PARSED object and re-stringified,
+ * not by a regex over the JSON, which would be cosmetic.
+ */
+function anonymiseBoardPayload(v) {
+  let parsed;
+  try {
+    parsed = JSON.parse(v || "{}");
+  } catch (e) {
+    throw new HttpsError("failed-precondition",
+        "El contingut de la pissarra no es pot llegir.");
+  }
+  if (parsed && typeof parsed === "object") {
+    delete parsed.linkedTeams;
+    delete parsed.ownerUid;
+    delete parsed.ownerName;
+    delete parsed.clubId;
+  }
+  return JSON.stringify(parsed);
+}
+
+exports.promoteBoardTemplate = onCall({region: "us-central1"},
+    async (request) => {
+      assertSuperUser(request);
+      const boardId = request.data && request.data.boardId;
+      if (!boardId || typeof boardId !== "string") {
+        throw new HttpsError("invalid-argument", "Falta l'identificador.");
+      }
+      const packs = Array.isArray(request.data.packs) ?
+        request.data.packs.map(String).filter(Boolean) : [];
+
+      const [metaSnap, dataSnap] = await Promise.all([
+        db.collection("tacticBoards").doc(boardId).get(),
+        db.collection("tacticBoardData").doc(boardId).get(),
+      ]);
+      if (!metaSnap.exists || !dataSnap.exists) {
+        throw new HttpsError("not-found", "Pissarra no trobada.");
+      }
+
+      const v = anonymiseBoardPayload((dataSnap.data() || {}).v);
+      const templateId = "tt_" + Date.now() + "_" +
+        Math.random().toString(36).slice(2, 8);
+
+      // One batch: a template whose payload is missing is a row in the
+      // superadmin library that cannot be seeded, and nothing would say why.
+      const batch = db.batch();
+      batch.set(db.collection("tacticTemplates").doc(templateId),
+          Object.assign(templateMetaFrom(metaSnap.data() || {}), {
+            packs,
+            bytes: Buffer.byteLength(v, "utf8"),
+            createdAt: FieldValue.serverTimestamp(),
+            schema: 1,
+          }));
+      batch.set(db.collection("tacticTemplateData").doc(templateId),
+          {v, schema: 1});
+      await batch.commit();
+
+      logger.info("promoteBoardTemplate", {boardId, templateId, packs});
+      return {ok: true, templateId};
+    });
+
+/**
+ * Seed a club with copies of chosen templates.
+ *
+ * COPIES, deliberately, rather than granting the club read access to the
+ * platform library: a seeded board has to be editable and deletable by the
+ * club that got it, and neither can be true of a document 200 other clubs
+ * share. The cost is nothing — a few KB per board, once.
+ *
+ * ownerUid is '' — the same "unowned" value the migration uses. Whichever
+ * coach starts working on one adopts it through the rules. Attributing them
+ * to the club lead would be a lie, and worse, would follow that lead to their
+ * next club through the owner read arm.
+ */
+exports.seedClubFromTemplates = onCall({region: "us-central1", timeoutSeconds: 120},
+    async (request) => {
+      assertSuperUser(request);
+      const clubId = request.data && request.data.clubId;
+      if (!clubId || typeof clubId !== "string") {
+        throw new HttpsError("invalid-argument", "Falta el club.");
+      }
+      const clubSnap = await db.collection("clubs").doc(clubId).get();
+      if (!clubSnap.exists) {
+        throw new HttpsError("not-found", "Club no trobat.");
+      }
+
+      let ids = Array.isArray(request.data.templateIds) ?
+        request.data.templateIds.map(String).filter(Boolean) : [];
+      const pack = request.data.pack ? String(request.data.pack) : "";
+      if (!ids.length && pack) {
+        const packSnap = await db.collection("tacticTemplates")
+            .where("packs", "array-contains", pack).get();
+        ids = packSnap.docs.map((d) => d.id);
+      }
+      if (!ids.length) {
+        throw new HttpsError("invalid-argument", "Cap plantilla seleccionada.");
+      }
+
+      // Idempotent: re-seeding must not double the club's starter set, and a
+      // partial failure has to be safe to retry.
+      const already = new Set();
+      const seededSnap = await db.collection("tacticBoards")
+          .where("clubId", "==", clubId).get();
+      seededSnap.forEach((d) => {
+        const t = (d.data() || {}).sourceTemplateId;
+        if (t) already.add(t);
+      });
+
+      let created = 0;
+      let skipped = 0;
+      for (const templateId of ids) {
+        if (already.has(templateId)) {
+          skipped++;
+          continue;
+        }
+        const [tMeta, tData] = await Promise.all([
+          db.collection("tacticTemplates").doc(templateId).get(),
+          db.collection("tacticTemplateData").doc(templateId).get(),
+        ]);
+        if (!tMeta.exists || !tData.exists) {
+          skipped++;
+          continue;
+        }
+        const boardId = "tb_" + Date.now() + "_" +
+          Math.random().toString(36).slice(2, 8);
+        const v = (tData.data() || {}).v || "{}";
+        const batch = db.batch();
+        batch.set(db.collection("tacticBoards").doc(boardId),
+            Object.assign(templateMetaFrom(tMeta.data() || {}), {
+              ownerUid: "",
+              clubId,
+              ownerName: "",
+              sourceTemplateId: templateId,
+              bytes: Buffer.byteLength(v, "utf8"),
+              createdAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+              schema: 1,
+            }));
+        batch.set(db.collection("tacticBoardData").doc(boardId),
+            {ownerUid: "", clubId, v, schema: 1});
+        await batch.commit();
+        created++;
+      }
+
+      logger.info("seedClubFromTemplates", {clubId, created, skipped});
+      return {ok: true, created, skipped};
+    });
+
 // ── 8b. onMemberCategoryChanged — move joined rows between shards ──
 // Injuries and injury notes are sharded by the player's CURRENT category,
 // resolved through a live join rather than a stamp, because medical history

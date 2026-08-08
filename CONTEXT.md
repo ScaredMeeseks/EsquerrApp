@@ -1233,3 +1233,48 @@ Guarded with a per-element `_roBound` flag, the same idiom as the `_tsBound` fix
 **Pre-existing, not from v81** - the refactor touched only the four entry builders and `ensureBoardIds`, and `test/tactic-boards.test.js` pins the built entry as key-for-key identical to the literals it replaced. Worth stating because the two landed in the same session and the temptation is to blame the newer change.
 
 Two source assertions added, deliberately kept next to each other: one that the guard exists, one that the selector is still document-wide. The guard is only load-bearing while the second is true, and separating them would let a future refactor quietly remove the reason for the first. **418 unit tests**, 559 total. Frontend only.
+
+## Tactic boards, stage 1 - ownership, authors and templates (2026-08-08)
+
+Rules and functions. **Additive as far as the app is concerned** - nothing reads the new collections yet - but it does modify four live functions, so it is a real deploy, not a no-op.
+
+### The model
+
+`tacticBoards/{id}` (metadata, listed) and `tacticBoardData/{id}` (payload) as **top-level siblings**, one document per board instead of one blob per category.
+
+Two read arms and only two: the board's **club**, and the **creator wherever they are now**. `users/{uid}.teamId` is single-valued, so without the owner arm a coach who moves club would lose every board they ever drew.
+
+- **`clubId` is a scalar and immutable**, forced to the creator's token at create. That answers *"what stops a coach planting a board in someone else's library"* by construction rather than by policing a list, and it is why a board created in club A stays an A board after its author leaves - which is exactly what the club-library requirement asks for.
+- **`ownerUid` and `clubId` are duplicated onto the payload** precisely so its rule needs no `get()` of the metadata sibling. The file stays claims-only, as it has been since Phase 3b.
+- **Not a subcollection of the metadata doc**: deleting a parent does not delete subcollections, which would leave invisible orphans. Not under `teams/{id}/` either: the owner arm would need a collection-group query, which needs a `match /{path=**}/` block, and wildcard blocks OR with every other block - the footgun `firestore.rules:171-182` already documents.
+- **No category gate**, unlike `teams/{id}/data`. What made `data/` need one is minors' medical records; a board is a drawing of a formation. That holds only while `linkedTeams` - which embeds player ids and names - stays out of the payload, so stage 4 moves it onto the session reference and a test pins it.
+- **`adoptsUnowned()`**: `'' -> me`, my club only. Legacy and seeded boards have no author to invent, so they land with `ownerUid: ''` and would otherwise be permanently read-only, since update requires the owner arm.
+- **Leads may DELETE but not UPDATE.** Pruning the library of a departed coach is governance; editing their board is authorship.
+
+30 new rules tests, **133 total**. Four are *query satisfiability* - a rule can be per-document correct and still leave the client unable to list anything, the trap `db.js:213` documents.
+
+### The author label
+
+`clubs/{clubId}/boardAuthors/{uid}`, Admin-SDK-only (`write: if false`). A coach who leaves club A has `teamId == club B`, so A cannot read their profile, while A's library must still name who drew each board and for which team.
+
+`authorLabelFrom()` picks the **highest category they coach here - the lowest `CATEGORY_ORDER` index** - reusing `shardRank()` rather than adding a fourth copy of the order. It stores `category` + `letters`, **not** a rendered "Cadet A": the app is trilingual and the client already localises category names.
+
+`syncBoardAuthor()` **freezes on leaving by writing only the status fields**, so "their last team in this club" needs no snapshotting logic - it is what is already stored, left alone. A freeze never *creates* a label, so a player leaves no tombstone.
+
+Six call sites across five functions (`onClubLeadChanged` has two). **`joinClub` is the one that is easy to miss**: when a lead adds an unregistered coach's address, `onRosterWritten` fires but finds no `users/{uid}` and skips them, so `joinClub` is where that uid first exists. Every call site is wrapped - a label is cosmetic and must not abort a membership change that has already applied.
+
+`resolveMembership()` **removed**: every caller now needs the roster list for the label too, and the helper hid a `loadRosters()` inside itself, so keeping it meant either reading rosters twice or having two ways to do the same thing.
+
+### Templates
+
+`promoteBoardTemplate` and `seedClubFromTemplates`, both superuser-only. **Both must be callables** because both write documents the caller does not own - the superuser is not a member of the club being read from or seeded into, so the rules would refuse a direct write. Creating an ordinary board stays a direct client write, since its rule is fully self-enforcing.
+
+Promotion takes an **anonymised copy**. Three properties follow from copying rather than from any rule: the origin club keeps control of its own board, deleting that board does not break the template, and editing it does not silently mutate every club seeded from it. Seeding likewise copies into the club, so a club can edit and delete its own starter set without touching anyone else's; boards land `ownerUid: ''` + `sourceTemplateId`, which is also what makes re-seeding idempotent.
+
+**The strip parses and re-stringifies** rather than pattern-matching the JSON, so removing `linkedTeams` is real and not cosmetic. A test asserts no player name survives into a template payload.
+
+### Testing note worth keeping
+
+`test:functions` runs `--only firestore,functions` with **no Auth emulator**, so `setCustomUserClaims` throws before execution reaches `syncBoardAuthor`. Testing the author label through `onRosterWritten` would have asserted nothing **and still looked green** - that is what the `FirebaseAuthError` stack traces in that suite's output are. `test/board-authors.test.js` therefore uses the source-grab technique from `reminders.test.js` and exercises the helpers directly. The two callables touch no Auth, so `test/templates.test.js` drives them end-to-end through `.run()` like `teams.test.js`.
+
+**438 unit + 133 rules + 50 functions = 621** (was 541).
