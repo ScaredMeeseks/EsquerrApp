@@ -1219,3 +1219,17 @@ Three things worth knowing:
 `ensureBoardIds` now mints ids through `TB.newBoardId()` too, so the id format lives in one place.
 
 16 new tests in `test/tactic-boards.test.js`, including three source assertions that fail if a fifth copy appears. **416 unit tests** (up from 400), 557 total. Frontend only - push to `main`, no `./deploy.sh`.
+
+## v82 - the replay that flashed and reverted (2026-08-08)
+
+Reported as *"on replay I briefly got a glimpse of the other created board, like it spilled onto the new one"*, and not reproducible on demand - which is itself the signature of a listener leak rather than a rendering fault.
+
+`bindRoBoardAnimations()` selects **document-wide** (`querySelectorAll('.tb-ro-play')`) and is called from two places: the global bind pass after every page render, and `_refreshStdBoards()`, which replaces only `#std-boards-section`. Every play button *outside* that section keeps its DOM node, so it collected a **second** listener each time the section refreshed.
+
+The handler is a **toggle** on `fieldEl._roPlaying`. Two listeners mean one click runs it twice: the first starts the animation, the second sees `_roPlaying` true and stops it. The first loop has usually already applied a frame by then, so the board flashes into an animated pose and snaps back. Nothing throws, nothing logs, and it only happens on a page where the section has been refreshed at least once - hence "felt like a one-time thing".
+
+Guarded with a per-element `_roBound` flag, the same idiom as the `_tsBound` fix in v62. `refreshArrowheads` above it is idempotent and left alone.
+
+**Pre-existing, not from v81** - the refactor touched only the four entry builders and `ensureBoardIds`, and `test/tactic-boards.test.js` pins the built entry as key-for-key identical to the literals it replaced. Worth stating because the two landed in the same session and the temptation is to blame the newer change.
+
+Two source assertions added, deliberately kept next to each other: one that the guard exists, one that the selector is still document-wide. The guard is only load-bearing while the second is true, and separating them would let a future refactor quietly remove the reason for the first. **418 unit tests**, 559 total. Frontend only.

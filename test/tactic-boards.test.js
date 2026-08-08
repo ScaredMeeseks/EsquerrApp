@@ -215,3 +215,31 @@ describe('app.js has no second copy of the entry literal', () => {
       'board ids must come from TB.newBoardId()');
   });
 });
+
+describe('read-only board playback binds once per button', () => {
+  /* bindRoBoardAnimations() selects DOCUMENT-WIDE, but _refreshStdBoards()
+     calls it again after replacing only #std-boards-section. Every play button
+     outside that section keeps its node and so collected a second listener.
+     Because the handler TOGGLES `_roPlaying`, one click then started the
+     animation and immediately stopped it — a brief flash of animated positions
+     that reverts, throwing nothing and logging nothing.
+
+     Reported as "on replay I briefly got a glimpse of the other board". Same
+     leak, and the same guard, as the team-setup listeners in v62. */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('guards .tb-ro-play against double binding', () => {
+    const i = src.indexOf('function bindRoBoardAnimations');
+    assert.notStrictEqual(i, -1, 'bindRoBoardAnimations not found');
+    const body = src.slice(i, i + 1200);
+    assert.ok(/_roBound/.test(body),
+      'bindRoBoardAnimations must skip buttons it has already bound');
+  });
+
+  it('still binds document-wide, so the guard is what prevents the leak', () => {
+    // If this ever becomes scoped to a container, the guard is redundant but
+    // harmless — this test exists so the two facts stay linked in one place.
+    assert.ok(/querySelectorAll\('\.tb-ro-play'\)/.test(src),
+      'expected a document-wide .tb-ro-play selector');
+  });
+});

@@ -1209,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 81;
+  const APP_VERSION = 82;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -4342,6 +4342,15 @@
     // Compute polygon arrowheads for all read-only boards now that they're in the DOM
     document.querySelectorAll('.tb-field-readonly .tb-arrows-svg').forEach(svg => refreshArrowheads(svg));
     document.querySelectorAll('.tb-ro-play').forEach(btn => {
+      /* This binds DOCUMENT-WIDE, and _refreshStdBoards() calls it again after
+         replacing only #std-boards-section — so every play button OUTSIDE that
+         section, whose node was never replaced, collected a second listener.
+         The handler is a toggle on `_roPlaying`, so one click then started the
+         animation and immediately stopped it again: a brief flash of animated
+         positions that reverts, with no error anywhere. Same leak and same fix
+         as the team-setup listeners in v62. */
+      if (btn._roBound) return;
+      btn._roBound = true;
       btn.addEventListener('click', () => {
         const bid = btn.dataset.roBoard;
         const fieldEl = document.getElementById(bid);
