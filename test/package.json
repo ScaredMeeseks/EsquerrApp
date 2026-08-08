@@ -12,6 +12,7 @@
     "test:rules": "firebase emulators:exec --only firestore --project=demo-esquerrapp \"mocha rules.test.js --timeout 20000 --exit\"",
     "test:functions": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha functions.test.js wipe.test.js teams.test.js templates.test.js --timeout 120000 --exit\"",
     "test:templates": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha templates.test.js --timeout 120000 --exit\"",
+    "test:backfill-boards": "firebase emulators:exec --only firestore --project=esquerrapp \"mocha backfill-boards.test.js --timeout 120000 --exit\"",
     "test:nav": "mocha navigation.test.js --exit",
     "test:avail": "mocha availability.test.js --exit",
     "test:context": "mocha context.test.js --exit",

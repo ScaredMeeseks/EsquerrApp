@@ -1300,3 +1300,20 @@ Two things worth remembering:
 - **This trap is created by deploying locally**, and did not exist while deploys came from Cloud Shell. `deploy.ps1` now refuses to start when the lock is present rather than leaving it to be rediscovered.
 
 Moving the stale lock aside and redeploying updated all 17 functions cleanly, every startup probe succeeding on the first attempt.
+
+## Tactic boards, stage 2 - the backfill (2026-08-08)
+
+`functions/backfill-tactic-boards.js` explodes each club's `fa_tactic_saved__{category}` blob into one `tacticBoards` + `tacticBoardData` pair per board. **Script only - nothing reads the new documents until stage 3**, so this can run whenever and be re-run freely.
+
+- **Nothing is deleted.** The blob shards stay byte-identical, so the app keeps working from them and a mistake costs only some documents to remove. The `--gc` sweep is a separate, later job, gated on the frontend switch.
+- **`ownerUid: ''`.** There is genuinely no author information anywhere in the old model - no `createdBy`, no uid, no timestamps. Attributing these to the club lead would be a lie, would grant them edit rights over drawings they did not make, and - worst - would follow them to their **next** club through the owner read arm, exposing club A's library to club B. `''` matches no `request.auth.uid`, so the club arm is the only way in. Any staff of the club can adopt one.
+- **Idempotent twice over**: a board whose document already exists with `schema >= 1` is skipped, and a board with no `id` of its own gets a **deterministic** id from `sha1(club|category|name)` - a random one would mint a fresh duplicate on every run. Nearly every board has an id already (`ensureBoardIds` has run client-side for a while), but a library untouched since before that shipped does not.
+- **`linkedTeams` is stripped**, and this is the one that matters: it embeds player ids and names, and the new read rule is club-wide with no category gate. It has no business in a board payload at all.
+- **`--authors`** seeds `clubs/{clubId}/boardAuthors/{uid}` for every current staff member of every club. Without it those labels only appear the next time somebody edits a roster, so every existing coach's boards would render authorless. Unregistered addresses are counted and skipped - `joinClub` writes their label when they register.
+- An **unparseable shard throws** rather than being treated as empty: reporting "0 boards" for a club that has a library would let an operator believe there was nothing to migrate.
+
+The script carries its own copy of `authorLabelFrom` - it is not deployed, and `functions/index.js` must not export non-function values or the CLI's export discovery treats them as functions to deploy. `test/board-authors.test.js` runs **both copies over the same fixtures** and fails if they disagree, the same technique `quota.test.js` uses for the client and server copies of `rosterKeys`.
+
+`test/backfill-boards.test.js` drives the real script as a subprocess against the emulator, like `wipe.test.js`. The properties it pins are the ones an operator relies on but cannot see: **a dry run writes nothing** (or the "read the dry run first" workflow is a fiction), it is idempotent, it never touches the source shards, and `linkedTeams` never reaches the payload.
+
+**445 unit + 133 rules + 50 functions + 9 backfill = 637.**

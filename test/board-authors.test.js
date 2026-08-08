@@ -222,6 +222,49 @@ describe('syncBoardAuthor — upsert while here, freeze on leaving', () => {
   });
 });
 
+describe('the backfill script agrees with the deployed helper', () => {
+  /* backfill-tactic-boards.js carries its own copy of authorLabelFrom. The
+     two cannot share code: the script is not deployed, and index.js must not
+     export non-function values or the CLI's export discovery treats them as
+     functions to deploy. So the copies are pinned by BEHAVIOUR here, over the
+     same fixtures — the same technique quota.test.js uses for the client and
+     server copies of rosterKeys. */
+  const scriptSrc = fs.readFileSync(
+      path.join(__dirname, '..', 'functions', 'backfill-tactic-boards.js'), 'utf8');
+
+  function loadScriptCopy() {
+    const i = scriptSrc.indexOf('function authorLabelFrom(rosters, email)');
+    const j = scriptSrc.indexOf('function parseBlob(d)', i);
+    assert.ok(i !== -1 && j !== -1, 'authorLabelFrom not found in the script');
+    const rank = scriptSrc.slice(
+        scriptSrc.indexOf('function rankOf(cat)'), i);
+    // eslint-disable-next-line no-new-func
+    return new Function('ORDER', 'Shard', `${rank}\n${scriptSrc.slice(i, j)}
+      return authorLabelFrom;`)(
+        ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'],
+        {NONE: 'none'});
+  }
+
+  const deployed = load(fakeDb()).authorLabelFrom;
+  const script = loadScriptCopy();
+
+  const CASES = [
+    [[R('cadet-A', [COACH])], COACH],
+    [[R('benjami-A', [COACH]), R('amateur-B', [COACH])], COACH],
+    [[R('juvenil-B', [COACH]), R('juvenil-A', [COACH]), R('cadet-A', [COACH])], COACH],
+    [[R('kadet-A', [COACH]), R('cadet-A', [COACH])], COACH],
+    [[R('cadet-A', ['other@x.com'])], COACH],
+    [[], COACH],
+    [[R('cadet-A', [COACH])], ''],
+  ];
+
+  CASES.forEach((c, i) => {
+    it('case ' + (i + 1) + ' resolves identically in both copies', () => {
+      assert.deepStrictEqual(script(c[0], c[1]), deployed(c[0], c[1]));
+    });
+  });
+});
+
 describe('every syncBoardAuthor call site is wired up', () => {
   /* Six calls across five functions — onClubLeadChanged has two, for the
      outgoing and incoming lead. joinClub is the one that is easy to miss:
