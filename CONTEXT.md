@@ -1201,3 +1201,21 @@ The rendering bug was hiding a worse one. Nothing was marked `selected`, and **a
 **The remove `×` moved into its own leading column** so every row lines up regardless of name length, with the `<th>` gated on the same `squadEditable` flag as the `<td>` - otherwise every column shifts by one. **Add player moved above the table**; in a `space-between` card header it sat at the far right edge of a wide card, reading as unrelated to the list it acts on.
 
 7 new tests in `test/layout.test.js`. **400 unit tests** (up from 389), 541 total.
+
+## v81 - one board entry, not four (2026-08-08)
+
+Stage 0 of the tactical-board governance work (plan: `~/.claude/plans/working-on-esquerrapp-i-nifty-sunset.md`). **No schema change, no rules, no functions** - shipped on its own so a regression is bisectable before anything touches Firestore.
+
+**The saved-board object was four hand-maintained copies of the same twenty fields**, inside `bindTactics()`: Save, Save As, Add to Training and Add to Match. They differed only in whether they carried an `id` and a `category`, and that difference is real - the library is an array routed on its own stamp, the training bucket is keyed by DATE (which two categories training the same evening share, so the entry has to say whose it is), and match boards carry neither because they join live through the matchId. Everything else was duplicated verbatim. A tool added to the editor reached whichever copy the author was looking at, and a board linked to a match quietly lost it.
+
+New **`js/boards.js`** (`TB`) owns `buildBoardEntry(store, opts)` and `newBoardId()`. Pure - no DOM, no Firestore, no browser globals - with the store injected so the Node tests can build an entry without a browser. Same UMD idiom as `shard.js`, loaded after `db.js`.
+
+Three things worth knowing:
+
+- **`id` and `category` are OMITTED, not set to `undefined`.** `{id: undefined}` survives `Object.keys` but vanishes through `JSON.stringify`, so the in-memory object and the stored blob would disagree about the entry's shape.
+- **Key insertion order is pinned by a test**, and that is not cosmetic: `db.js` diffs shards as serialised strings (`prevJson === nextJson`), so reordering keys would mark every board shard in every club as changed and rewrite the lot once for nothing.
+- **`captureFrameState()` is deliberately NOT folded in.** It reads the same drawing layers, but a keyframe is a different object - no `id`/`name`/`boardType`/`tag`, and it carries a `duration`. The source guard in the tests is keyed on `tag: localStorage.getItem` precisely so it does not catch this sibling. (Found by the guard's first version, which was too broad and flagged it.)
+
+`ensureBoardIds` now mints ids through `TB.newBoardId()` too, so the id format lives in one place.
+
+16 new tests in `test/tactic-boards.test.js`, including three source assertions that fail if a fifth copy appears. **416 unit tests** (up from 400), 557 total. Frontend only - push to `main`, no `./deploy.sh`.

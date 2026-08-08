@@ -5,7 +5,7 @@
   "description": "Dev-only test suite for EsquerrApp: the shard router, the security rules and the Cloud Functions. Self-contained (does not touch the app's root package.json). The rules and functions suites need the Firebase Emulator Suite (Java) to actually run.",
   "scripts": {
     "test": "npm run test:unit && npm run test:rules && npm run test:functions",
-    "test:unit": "mocha shard.test.js router.test.js utils.test.js navigation.test.js availability.test.js context.test.js readiness.test.js quota.test.js readiness-engine.test.js layout.test.js seed-add-team.test.js seed-multi-team.test.js archive.test.js training.test.js reminders.test.js --exit",
+    "test:unit": "mocha shard.test.js router.test.js utils.test.js navigation.test.js availability.test.js context.test.js readiness.test.js quota.test.js readiness-engine.test.js layout.test.js seed-add-team.test.js seed-multi-team.test.js archive.test.js training.test.js reminders.test.js tactic-boards.test.js --exit",
     "test:shard": "mocha shard.test.js --exit",
     "test:router": "mocha router.test.js --exit",
     "test:utils": "mocha utils.test.js --exit",
@@ -23,7 +23,8 @@
     "test:multiteam": "mocha seed-multi-team.test.js --exit",
     "test:archive": "mocha archive.test.js --exit",
     "test:training": "mocha training.test.js --exit",
-    "test:reminders": "mocha reminders.test.js --exit"
+    "test:reminders": "mocha reminders.test.js --exit",
+    "test:boards": "mocha tactic-boards.test.js --exit"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

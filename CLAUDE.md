@@ -86,7 +86,25 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
 
 Frontend: push to `main` (GitHub Pages; no cache-control headers — users may need a hard refresh after breaking changes). APK: built by CI on the same push, downloadable from the Actions run artifacts.
 
-Rules/functions: from Google Cloud Shell ONLY via the guard script (never bare `firebase deploy` — the CLI's remembered project once wiped another project's rules):
+Rules/functions: via a guard script, never bare `firebase deploy` — the CLI's remembered project once wiped another project's rules, and there are now **two Firebase projects and two accounts on this machine**. Both scripts pass `--project esquerrapp` explicitly; read the `=== Deploying to 'esquerrapp'...` header before confirming.
+
+**Locally (preferred, since 2026-08-08)** — `firebase-tools` 15.x is installed on Windows and `marna96@gmail.com` is bound to this directory:
+
+```powershell
+cd c:\DATA\CLAUDE\EsquerrApp
+.\deploy.ps1 rules -DryRun    # validate without releasing
+.\deploy.ps1 rules            # firestore + storage rules
+.\deploy.ps1 functions        # cloud functions  (-Install to npm install first)
+.\deploy.ps1 all
+```
+
+`deploy.ps1` pins itself to `$PSScriptRoot`, so it deploys EsquerrApp even when invoked from another project's folder. It does **not** `git pull` (unlike `deploy.sh`, whose Cloud Shell clone is usually stale) — this machine holds the working tree you are editing.
+
+**Accounts are per-directory.** `administracion@mov-ment.com` owns Movment and *cannot see* `esquerrapp`; `firebase login:use <email>` binds an account to the current directory, so the two projects do not fight. `firebase login:list` shows which is active.
+
+**`Cannot determine backend specification. Timeout after 10000`** is not broken code. To decide what to deploy the CLI spawns `functions/index.js` and reads its exports within 10s; the module loads in ~0.5s warm, but a **cold `node_modules`** on Windows (antivirus scanning thousands of files) exceeds it. Retrying works; `deploy.ps1` sets `FUNCTIONS_DISCOVERY_TIMEOUT=120` so it does not arise.
+
+**From Cloud Shell (fallback)** — still valid, and still the only way to run the Admin SDK scripts below:
 
 ```bash
 cd ~/EsquerrApp && ./deploy.sh rules       # firestore + storage rules
@@ -96,15 +114,13 @@ cd ~/EsquerrApp && ./deploy.sh functions   # cloud functions
 
 One-off data scripts (migrations, backfills) live in `functions/` — NOT a separate scripts/ dir — so they resolve `functions/node_modules` (a root `npm install firebase-admin --no-save` on Cloud Shell yields a broken firebase-admin: npm blocks its postinstall scripts). Run from the repo root: `node functions/<name>.js` (`cd functions && npm install` first if node_modules is missing). An **Admin SDK one-liner** (`node -e '…'`) resolves modules from the *current directory*, so it must be run from `~/EsquerrApp/functions`, not the repo root.
 
-**ADC credentials are NOT automatic.** If a script dies on its first read with `Cannot create property 'refresh_token' on string ''`, that is not a lapsed login and `gcloud auth login` will not fix it — Cloud Shell keeps Application Default Credentials in a **temp directory** and the Admin SDK only finds them when `GOOGLE_APPLICATION_CREDENTIALS` points there:
+**ADC on Cloud Shell: do nothing.** Cloud Shell is a GCE VM and its metadata server already supplies Application Default Credentials; the Admin SDK picks them up with no setup. *(An earlier version of this section told you to export `GOOGLE_APPLICATION_CREDENTIALS` at a `/tmp` path. That was wrong twice over — `set-quota-project` only re-points credentials that already exist, and a **stale** `GOOGLE_APPLICATION_CREDENTIALS` is itself the one thing that reliably breaks the SDK. If anything looks unauthenticated, `unset GOOGLE_APPLICATION_CREDENTIALS` first.)*
 
-```bash
-gcloud auth application-default set-quota-project esquerrapp   # prints "Credentials saved to file: [/tmp/tmp.XXXX/...]"
-export GOOGLE_APPLICATION_CREDENTIALS=/tmp/tmp.XXXX/application_default_credentials.json
-head -c 120 "$GOOGLE_APPLICATION_CREDENTIALS"                   # healthy = starts {"account": "", "client_id": ...
-```
+If a script dies with `Cannot create property 'refresh_token' on string ''`, run **`gcloud auth list`**. *No credentialed accounts* means gcloud has no identity and nothing config-level will fix it — **restart the VM** (three-dots menu → Restart, not a new tab), then `cd ~/EsquerrApp`.
 
-The export lives in that **one tab**. `firebase` and `gcloud` hold separate credentials, so `./deploy.sh` working proves nothing about the Admin SDK.
+**A deploy strips gcloud's identity** — reproduced twice, treat it as causal. `firebase` and `gcloud` hold separate credentials, so `./deploy.sh` working proves nothing about the Admin SDK. **Run Admin SDK scripts BEFORE deploying**, or budget for the restart. Deploying locally with `deploy.ps1` sidesteps this entirely, since the two no longer share a session.
+
+Locally there are **no** Admin SDK credentials: `gcloud` is not installed and there is no `esquerrapp` service-account key. Backfills and one-off scripts therefore still run from Cloud Shell.
 
 Backups before risky changes: `gcloud firestore export gs://esquerrapp-backup/<label>-$(date +%F) --project esquerrapp` (bucket name is singular — `esquerrapp-backups` does not exist).
 

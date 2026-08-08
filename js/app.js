@@ -1209,7 +1209,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 80;
+  const APP_VERSION = 81;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -8962,12 +8962,8 @@
     // Save button (overwrites loaded board, or creates new if nothing loaded)
     const saveBtn = document.getElementById('tb-save');
     saveBtn?.addEventListener('click', () => {
-      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
-      const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
-      const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
-      const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const name = (nameInput ? nameInput.value : '').trim() || 'Board';
       const boards = getSavedBoards();
       const loadedId = localStorage.getItem('fa_tactic_loaded_id');
@@ -8975,24 +8971,11 @@
       // Stamped, not derived: a saved board is attached to no player, match
       // or date, so there is nothing to join on. It belongs to whichever
       // category the coach authored it under.
-      const entry = { id: loadedPos !== -1 ? loadedId : ('tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
-        category: getCurrentCategory(), name, formation: f, positions: pos, numbers: nums, boardType: bt,
-        teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
-        oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
-        showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
-        oppPositions: JSON.parse(localStorage.getItem('fa_tactic_opp_positions') || 'null'),
-        oppNumbers: JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || 'null'),
-        balls: JSON.parse(localStorage.getItem('fa_tactic_balls') || '[]'),
-        colors: JSON.parse(localStorage.getItem('fa_tactic_colors') || 'null'),
-        arrows: JSON.parse(localStorage.getItem('fa_tactic_arrows') || '[]'),
-        rects: JSON.parse(localStorage.getItem('fa_tactic_rects') || '[]'),
-        texts: JSON.parse(localStorage.getItem('fa_tactic_texts') || '[]'),
-        penLines: JSON.parse(localStorage.getItem('fa_tactic_pen_lines') || '[]'),
-        frames: JSON.parse(localStorage.getItem('fa_tactic_frames') || '[]'),
-        tag: localStorage.getItem('fa_tactic_tag') || '',
-        silhouette: localStorage.getItem('fa_tactic_silhouette') || '',
-        cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]')
-      };
+      const entry = TB.buildBoardEntry(localStorage, {
+        id: loadedPos !== -1 ? loadedId : TB.newBoardId(),
+        category: getCurrentCategory(),
+        name
+      });
 
       if (loadedPos !== -1) {
         // Overwrite — check duplicate name (excluding self)
@@ -9045,37 +9028,21 @@
 
     // Save As button
     document.getElementById('tb-save-as')?.addEventListener('click', () => {
-      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
-      const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
-      const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
       const suggested = (nameInput ? nameInput.value : '').trim() || 'Board';
       const name = prompt('Board name:', suggested);
       if (!name) return;
       const boards = getSavedBoards();
-      const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const dup = boards.some(b => b.name.toLowerCase() === name.trim().toLowerCase());
       if (dup) { alert(t('alert.board_name_exists')); return; }
-      const newId = 'tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      const newId = TB.newBoardId();
       // Same stamp as the Save path above — see the comment there.
-      boards.push({ id: newId, category: getCurrentCategory(), name: name.trim(), formation: f, positions: pos, numbers: nums, boardType: bt,
-        teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
-        oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
-        showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
-        oppPositions: JSON.parse(localStorage.getItem('fa_tactic_opp_positions') || 'null'),
-        oppNumbers: JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || 'null'),
-        balls: JSON.parse(localStorage.getItem('fa_tactic_balls') || '[]'),
-        colors: JSON.parse(localStorage.getItem('fa_tactic_colors') || 'null'),
-        arrows: JSON.parse(localStorage.getItem('fa_tactic_arrows') || '[]'),
-        rects: JSON.parse(localStorage.getItem('fa_tactic_rects') || '[]'),
-        texts: JSON.parse(localStorage.getItem('fa_tactic_texts') || '[]'),
-        penLines: JSON.parse(localStorage.getItem('fa_tactic_pen_lines') || '[]'),
-        frames: JSON.parse(localStorage.getItem('fa_tactic_frames') || '[]'),
-        tag: localStorage.getItem('fa_tactic_tag') || '',
-        silhouette: localStorage.getItem('fa_tactic_silhouette') || '',
-        cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]')
-      });
+      boards.push(TB.buildBoardEntry(localStorage, {
+        id: newId,
+        category: getCurrentCategory(),
+        name: name.trim()
+      }));
       localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
       localStorage.setItem('fa_tactic_loaded_id', newId);
       if (nameInput) { nameInput.value = name.trim(); localStorage.setItem('fa_tactic_name', name.trim()); }
@@ -9291,12 +9258,8 @@
     const addToTrainingBtn = document.getElementById('tb-add-to-training');
     addToTrainingBtn?.addEventListener('click', () => {
       if (!selectedTrainingVal) { alert(t('alert.select_training')); return; }
-      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
-      const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
-      const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
-      const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const bName = (nameInput ? nameInput.value : '').trim() || 'Board';
       const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
       const tdate = selectedTrainingVal;
@@ -9305,23 +9268,10 @@
       // Stamped, not derived: this map is keyed by training DATE, and two
       // categories training the same evening share one bucket — so the date
       // cannot tell us whose board this is. Phase 5 shards on this field.
-      const entry = { category: getCurrentCategory(), name: bName, formation: f, positions: pos, numbers: nums, boardType: bt,
-        teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
-        oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
-        showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
-        oppPositions: JSON.parse(localStorage.getItem('fa_tactic_opp_positions') || 'null'),
-        oppNumbers: JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || 'null'),
-        balls: JSON.parse(localStorage.getItem('fa_tactic_balls') || '[]'),
-        colors: JSON.parse(localStorage.getItem('fa_tactic_colors') || 'null'),
-        arrows: JSON.parse(localStorage.getItem('fa_tactic_arrows') || '[]'),
-        rects: JSON.parse(localStorage.getItem('fa_tactic_rects') || '[]'),
-        texts: JSON.parse(localStorage.getItem('fa_tactic_texts') || '[]'),
-        penLines: JSON.parse(localStorage.getItem('fa_tactic_pen_lines') || '[]'),
-        frames: JSON.parse(localStorage.getItem('fa_tactic_frames') || '[]'),
-        tag: localStorage.getItem('fa_tactic_tag') || '',
-        silhouette: localStorage.getItem('fa_tactic_silhouette') || '',
-        cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]')
-      };
+      const entry = TB.buildBoardEntry(localStorage, {
+        category: getCurrentCategory(),
+        name: bName
+      });
       if (idx !== -1) trainingBoards[tdate][idx] = entry;
       else trainingBoards[tdate].push(entry);
       localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
@@ -9355,35 +9305,17 @@
     const addToMatchBtn = document.getElementById('tb-add-to-match');
     addToMatchBtn?.addEventListener('click', () => {
       if (!selectedMatchVal) { alert(t('alert.select_match')); return; }
-      const f = localStorage.getItem('fa_tactic_formation') || '';
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
-      const pos = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
-      const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
-      const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
       const bName = (nameInput ? nameInput.value : '').trim() || 'Board';
       const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
       const mid = selectedMatchVal;
       if (!matchBoards[mid]) matchBoards[mid] = [];
       // Replace if same name already linked to this match, otherwise add
       const idx = matchBoards[mid].findIndex(b => b.name === bName);
-      const entry = { name: bName, formation: f, positions: pos, numbers: nums, boardType: bt,
-        teamColor: localStorage.getItem('fa_tactic_team_color') || '#ffffff',
-        oppColor: localStorage.getItem('fa_tactic_opp_color') || '#e53935',
-        showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
-        oppPositions: JSON.parse(localStorage.getItem('fa_tactic_opp_positions') || 'null'),
-        oppNumbers: JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || 'null'),
-        balls: JSON.parse(localStorage.getItem('fa_tactic_balls') || '[]'),
-        colors: JSON.parse(localStorage.getItem('fa_tactic_colors') || 'null'),
-        arrows: JSON.parse(localStorage.getItem('fa_tactic_arrows') || '[]'),
-        rects: JSON.parse(localStorage.getItem('fa_tactic_rects') || '[]'),
-        texts: JSON.parse(localStorage.getItem('fa_tactic_texts') || '[]'),
-        penLines: JSON.parse(localStorage.getItem('fa_tactic_pen_lines') || '[]'),
-        frames: JSON.parse(localStorage.getItem('fa_tactic_frames') || '[]'),
-        tag: localStorage.getItem('fa_tactic_tag') || '',
-        silhouette: localStorage.getItem('fa_tactic_silhouette') || '',
-        cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]')
-      };
+      // No `category` here, unlike the training path above: match boards are
+      // routed by joining the map key (a matchId) through fa_matches.
+      const entry = TB.buildBoardEntry(localStorage, { name: bName });
       if (idx !== -1) matchBoards[mid][idx] = entry;
       else matchBoards[mid].push(entry);
       localStorage.setItem('fa_tactic_match_boards', JSON.stringify(matchBoards));
@@ -10031,7 +9963,7 @@
     let changed = false;
     boards.forEach(function (b) {
       if (!b.id) {
-        b.id = 'tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        b.id = TB.newBoardId();
         changed = true;
       }
     });
