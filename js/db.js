@@ -536,6 +536,20 @@ const DB = (function () {
       if (_shards[key]) _rebuild(key);
     });
 
+    // ── Tactical board registry ──────────────────────────────────
+    // Hooked here rather than at the seven DB.init() call sites, so the
+    // board index can never be out of step with the data it sits beside.
+    // Guarded because boards.js loads AFTER db.js: the reference is
+    // resolved at call time, but a future load-order change should
+    // degrade to "no boards" rather than a blank app.
+    try {
+      if (typeof TB !== 'undefined' && TB.init) {
+        await TB.init(teamId, (auth.currentUser && auth.currentUser.uid) || null);
+      }
+    } catch (e) {
+      console.warn('[DB] tactical board registry unavailable:', e && e.message);
+    }
+
     // ── Reconcile users/ collection → fa_users blob ──────────────
     // Query MUST be team-scoped: security rules reject unscoped user list reads.
     try {
