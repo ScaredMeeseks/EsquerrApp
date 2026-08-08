@@ -96,7 +96,26 @@ Write-Host "OK .firebaserc -> $PROJECT" -ForegroundColor Green
 $who = (firebase login:list | Select-Object -First 1)
 Write-Host "OK $who" -ForegroundColor Green
 
-# ── 4. Optional npm install ──────────────────────────────────
+# ── 4. The stale-lock trap ───────────────────────────────────
+# functions/package-lock.json is GITIGNORED, so Cloud Shell never had one and
+# every deploy before 2026-08-08 resolved dependencies fresh. A local deploy
+# uploads whatever lock is on disk, and Cloud Build then runs `npm ci` against
+# it. A lock older than the installed tree produces a container missing a
+# transitive dependency: every function fails its health check with
+#   Error: Cannot find module '@firebase/app'
+# which reads like broken code and is not. Production survives it (Cloud Run
+# keeps serving the last healthy revision) but the whole deploy is refused.
+if ($Target -ne 'rules' -and (Test-Path 'functions/package-lock.json')) {
+    Write-Host "X  functions/package-lock.json exists and would be uploaded." -ForegroundColor Red
+    Write-Host "   It is gitignored, so Cloud Shell deploys never used one, and a" -ForegroundColor Yellow
+    Write-Host "   stale lock makes EVERY function fail startup with" -ForegroundColor Yellow
+    Write-Host "   'Cannot find module @firebase/app'." -ForegroundColor Yellow
+    Write-Host "   Move it aside and retry:" -ForegroundColor Yellow
+    Write-Host "     Move-Item functions/package-lock.json functions/package-lock.json.bak" -ForegroundColor Cyan
+    exit 1
+}
+
+# ── 5. Optional npm install ──────────────────────────────────
 if ($Install -and $Target -ne 'rules') {
     Write-Host "-> npm install in functions/ ..." -ForegroundColor Cyan
     Push-Location 'functions'
@@ -109,7 +128,7 @@ if ($Install -and $Target -ne 'rules') {
     }
 }
 
-# ── 5. Deploy ────────────────────────────────────────────────
+# ── 6. Deploy ────────────────────────────────────────────────
 $onlyFor = @{
     'rules'     = 'firestore:rules,storage'
     'functions' = 'functions'

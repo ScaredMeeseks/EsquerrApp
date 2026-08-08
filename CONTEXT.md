@@ -1278,3 +1278,25 @@ Promotion takes an **anonymised copy**. Three properties follow from copying rat
 `test:functions` runs `--only firestore,functions` with **no Auth emulator**, so `setCustomUserClaims` throws before execution reaches `syncBoardAuthor`. Testing the author label through `onRosterWritten` would have asserted nothing **and still looked green** - that is what the `FirebaseAuthError` stack traces in that suite's output are. `test/board-authors.test.js` therefore uses the source-grab technique from `reminders.test.js` and exercises the helpers directly. The two callables touch no Auth, so `test/templates.test.js` drives them end-to-end through `.run()` like `teams.test.js`.
 
 **438 unit + 133 rules + 50 functions = 621** (was 541).
+
+### Deployed 2026-08-08, and the trap the first local deploy found
+
+Rules first, then functions - the opposite of the v55 runbook, and deliberately: v55 *narrowed* an existing block, so rules had to go last or a cached frontend would 403. This only *adds* blocks. **Widen before, narrow after.**
+
+The functions deploy failed first time, with **every** function - including untouched ones - reporting `Container Healthcheck failed`. The cause was not the code:
+
+```
+Error: Cannot find module '@firebase/app'
+Require stack:
+ - /workspace/node_modules/@firebase/database-compat/dist/index.standalone.js
+ - /workspace/node_modules/firebase-admin/lib/database/index.js
+```
+
+`functions/package-lock.json` is **gitignored**, so Cloud Shell never had one and every deploy up to now resolved dependencies fresh. A local deploy uploads whatever lock is on disk; Cloud Build runs `npm ci` against it; and the lock here was dated **3 August** while the installed tree was `firebase-functions@6.6.0` / `firebase-admin@13.10.0`. `npm ci` therefore built a container missing a transitive dependency.
+
+Two things worth remembering:
+
+- **Production never went down.** Cloud Run does not route traffic to a revision that fails its health check, so the previous revisions kept serving throughout - visible in the log as `scheduledtrainingreminder` running normally two minutes *after* the failed deploy. The two new callables existed with no serving revision (`---` memory in `functions:list`) until the retry.
+- **This trap is created by deploying locally**, and did not exist while deploys came from Cloud Shell. `deploy.ps1` now refuses to start when the lock is present rather than leaving it to be rediscovered.
+
+Moving the stale lock aside and redeploying updated all 17 functions cleanly, every startup probe succeeding on the first attempt.

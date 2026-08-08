@@ -104,6 +104,8 @@ cd c:\DATA\CLAUDE\EsquerrApp
 
 **`Cannot determine backend specification. Timeout after 10000`** is not broken code. To decide what to deploy the CLI spawns `functions/index.js` and reads its exports within 10s; the module loads in ~0.5s warm, but a **cold `node_modules`** on Windows (antivirus scanning thousands of files) exceeds it. Retrying works; `deploy.ps1` sets `FUNCTIONS_DISCOVERY_TIMEOUT=120` so it does not arise.
 
+**`Cannot find module '@firebase/app'`, every function failing its health check** — also not broken code, and the one trap that is *created* by deploying locally. `functions/package-lock.json` is **gitignored**, so Cloud Shell never had one and always resolved dependencies fresh. A local deploy uploads whatever lock is on disk, Cloud Build runs `npm ci` against it, and a lock older than the installed tree yields a container missing a transitive dependency. Every function then fails to start. **Production survives it** — Cloud Run does not route traffic to a revision that fails its health check, so the previous revisions keep serving — but the whole deploy is refused. `deploy.ps1` now refuses to start if the lock exists; move it aside and redeploy. (Hit once, 2026-08-08, on the first local functions deploy.)
+
 **From Cloud Shell (fallback)** — still valid, and still the only way to run the Admin SDK scripts below:
 
 ```bash
