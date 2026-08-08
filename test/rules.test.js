@@ -605,3 +605,258 @@ describe("Superuser overrides", () => {
     await assertSucceeds(asSuper().doc("clubCodes/CODEA").get());
   });
 });
+
+// ============================================================
+// Tactical boards — one document per board, two ways in
+// ============================================================
+describe("Tactical boards", () => {
+  // Staff of the OTHER club. `asB` is only a player, and the interesting
+  // cross-club cases all need someone who could legitimately create a board.
+  const STAFF_B = "uidStaffB";
+  const asStaffB = () => db(STAFF_B, {teamId: "teamB", role: "staff", email: "sb@x.com", cats: ["cadet"]});
+  const asLeadB = () => db("uidLeadB", {teamId: "teamB", role: "lead", email: "lb@x.com", cats: ["cadet"]});
+  const asAnon = () => env.unauthenticatedContext().firestore();
+
+  /** Seed a board pair past the rules, the way the backfill will. */
+  async function seedBoard(id, ownerUid, clubId, extra) {
+    await env.withSecurityRulesDisabled(async (c) => {
+      const d = c.firestore();
+      await d.doc("tacticBoards/" + id).set(Object.assign({
+        ownerUid, clubId, ownerName: "Someone", category: "cadet",
+        name: "Pressió alta", tag: "Presión", formation: "4-3-3",
+        boardType: "full", hasFrames: false, frameCount: 0, bytes: 900,
+        schema: 1,
+      }, extra || {}));
+      await d.doc("tacticBoardData/" + id).set({ownerUid, clubId, v: "{}", schema: 1});
+    });
+  }
+
+  const meta = (dbc, id) => dbc.doc("tacticBoards/" + id);
+  const data = (dbc, id) => dbc.doc("tacticBoardData/" + id);
+
+  const NEW_META = {
+    ownerUid: STAFF_A, clubId: "teamA", ownerName: "S", category: "cadet",
+    name: "Nova", tag: "", formation: "4-4-2", boardType: "full",
+    hasFrames: false, frameCount: 0, bytes: 100, schema: 1,
+  };
+
+  describe("create", () => {
+    it("staff creates a board in their own club, owned by themselves", async () => {
+      await assertSucceeds(meta(asStaffA(), "b1").set(NEW_META));
+      await assertSucceeds(data(asStaffA(), "b1")
+          .set({ownerUid: STAFF_A, clubId: "teamA", v: "{}", schema: 1}));
+    });
+
+    it("a lead creates boards too — lead is a superset of staff", async () => {
+      await assertSucceeds(meta(asLeadA(), "b2")
+          .set(Object.assign({}, NEW_META, {ownerUid: LEAD_A})));
+    });
+
+    it("cannot plant a board in another club's library", async () => {
+      await assertFails(meta(asStaffA(), "b3")
+          .set(Object.assign({}, NEW_META, {clubId: "teamB"})));
+      await assertFails(data(asStaffA(), "b3")
+          .set({ownerUid: STAFF_A, clubId: "teamB", v: "{}", schema: 1}));
+    });
+
+    it("cannot forge another coach as the author", async () => {
+      await assertFails(meta(asStaffA(), "b4")
+          .set(Object.assign({}, NEW_META, {ownerUid: LEAD_A})));
+    });
+
+    it("a player cannot create a board", async () => {
+      await assertFails(meta(asA(), "b5")
+          .set(Object.assign({}, NEW_META, {ownerUid: A})));
+    });
+  });
+
+  describe("read", () => {
+    it("any member of the board's club can read it — players included", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      await assertSucceeds(meta(asStaffA(), "own").get());
+      await assertSucceeds(meta(asLeadA(), "own").get());
+      // A player sees boards on the match and training detail pages.
+      await assertSucceeds(meta(asA(), "own").get());
+      await assertSucceeds(data(asA(), "own").get());
+    });
+
+    it("NO category gate — a coach scoped to juvenil reads a cadet board", async () => {
+      // Deliberate divergence from teams/{id}/data. Requirement (c) is that
+      // any coach of the club sees any board of the club.
+      await seedBoard("cat", LEAD_A, "teamA", {category: "juvenil"});
+      await assertSucceeds(meta(asStaffA(), "cat").get()); // staffA is cadet-only
+    });
+
+    it("another club cannot read it", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      await assertFails(meta(asStaffB(), "own").get());
+      await assertFails(data(asStaffB(), "own").get());
+      await assertFails(meta(asB(), "own").get());
+    });
+
+    it("THE CREATOR KEEPS ACCESS AFTER MOVING CLUB", async () => {
+      // Requirement b.2, and the case most likely to regress: the board is
+      // club A's, the coach is now in club B. teamId is single-valued, so
+      // without the owner arm they lose every board they ever drew.
+      await seedBoard("moved", STAFF_B, "teamA");
+      await assertSucceeds(meta(asStaffB(), "moved").get());
+      await assertSucceeds(data(asStaffB(), "moved").get());
+      // ...and club A still sees it, because the coach left but the board did not.
+      await assertSucceeds(meta(asStaffA(), "moved").get());
+    });
+
+    it("a departed coach's board stays readable by their old club", async () => {
+      await seedBoard("legacy", "uidGoneForever", "teamA");
+      await assertSucceeds(meta(asStaffA(), "legacy").get());
+      await assertSucceeds(meta(asLeadA(), "legacy").get());
+    });
+  });
+
+  describe("update and delete", () => {
+    it("the owner may edit", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      await assertSucceeds(meta(asStaffA(), "own").update({name: "Renamed"}));
+      await assertSucceeds(data(asStaffA(), "own").update({v: "{\"a\":1}"}));
+    });
+
+    it("a peer coach in the same club may NOT edit or delete", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      await assertFails(meta(asLeadA(), "own").update({name: "Hijacked"}));
+      await assertFails(meta(asA(), "own").update({name: "Hijacked"}));
+      await assertFails(meta(asA(), "own").delete());
+    });
+
+    it("the LEAD may delete but not edit — pruning is governance, editing is authorship", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      await assertFails(meta(asLeadA(), "own").update({name: "Hijacked"}));
+      await assertSucceeds(meta(asLeadA(), "own").delete());
+    });
+
+    it("a lead cannot delete another club's board", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      await assertFails(meta(asLeadB(), "own").delete());
+    });
+
+    it("ownerUid and clubId are immutable", async () => {
+      await seedBoard("own", STAFF_A, "teamA");
+      // Moving a board out of a club would be a covert delete.
+      await assertFails(meta(asStaffA(), "own").update({clubId: "teamB"}));
+      await assertFails(meta(asStaffA(), "own").update({ownerUid: LEAD_A}));
+    });
+  });
+
+  describe("adopting an unowned board", () => {
+    // The migration cannot invent an author, and a seeded template has none,
+    // so both land with ownerUid ''. Without adoption they are permanently
+    // read-only, since update requires the owner arm.
+    it("staff of the club may claim an unowned board", async () => {
+      await seedBoard("orphan", "", "teamA");
+      await assertSucceeds(meta(asStaffA(), "orphan").update({ownerUid: STAFF_A}));
+    });
+
+    it("staff of ANOTHER club may not", async () => {
+      await seedBoard("orphan", "", "teamA");
+      await assertFails(meta(asStaffB(), "orphan").update({ownerUid: STAFF_B}));
+    });
+
+    it("adoption cannot be used to steal an OWNED board", async () => {
+      await seedBoard("own", LEAD_A, "teamA");
+      await assertFails(meta(asStaffA(), "own").update({ownerUid: STAFF_A}));
+    });
+
+    it("adoption cannot smuggle the board into another club", async () => {
+      await seedBoard("orphan", "", "teamA");
+      await assertFails(meta(asStaffA(), "orphan")
+          .update({ownerUid: STAFF_A, clubId: "teamB"}));
+    });
+
+    it("a player cannot adopt", async () => {
+      await seedBoard("orphan", "", "teamA");
+      await assertFails(meta(asA(), "orphan").update({ownerUid: A}));
+    });
+  });
+
+  describe("query satisfiability", () => {
+    // A rule can be per-document correct and still leave the client unable to
+    // list anything: Firestore rejects a query outright if ANY returned
+    // document could be denied. This is the trap db.js:213 documents.
+    beforeEach(async () => {
+      await seedBoard("a1", STAFF_A, "teamA");
+      await seedBoard("a2", LEAD_A, "teamA");
+      await seedBoard("b1", STAFF_B, "teamB");
+    });
+
+    it("the club library query works", async () => {
+      await assertSucceeds(asStaffA().collection("tacticBoards")
+          .where("clubId", "==", "teamA").get());
+    });
+
+    it("the my-boards query works", async () => {
+      await assertSucceeds(asStaffA().collection("tacticBoards")
+          .where("ownerUid", "==", STAFF_A).get());
+    });
+
+    it("an unfiltered list is refused", async () => {
+      await assertFails(asStaffA().collection("tacticBoards").get());
+    });
+
+    it("another club's library is refused", async () => {
+      await assertFails(asStaffA().collection("tacticBoards")
+          .where("clubId", "==", "teamB").get());
+    });
+  });
+
+  describe("boardAuthors", () => {
+    beforeEach(async () => {
+      await env.withSecurityRulesDisabled(async (c) => {
+        await c.firestore().doc("clubs/teamA/boardAuthors/" + STAFF_A).set({
+          name: "S", email: "s@x.com", teamLabel: "Cadet A",
+          category: "cadet", categoryRank: 2, active: true,
+        });
+      });
+    });
+
+    it("club members read the labels", async () => {
+      await assertSucceeds(asStaffA().doc("clubs/teamA/boardAuthors/" + STAFF_A).get());
+      await assertSucceeds(asA().doc("clubs/teamA/boardAuthors/" + STAFF_A).get());
+    });
+
+    it("another club cannot", async () => {
+      await assertFails(asStaffB().doc("clubs/teamA/boardAuthors/" + STAFF_A).get());
+    });
+
+    it("NOBODY writes them from a client — not the lead, not the subject", async () => {
+      // Admin SDK only. Client-writable would let a coach relabel themselves
+      // into a team they never coached.
+      await assertFails(asLeadA().doc("clubs/teamA/boardAuthors/" + STAFF_A).update({teamLabel: "Amateur A"}));
+      await assertFails(asStaffA().doc("clubs/teamA/boardAuthors/" + STAFF_A).update({teamLabel: "Amateur A"}));
+      await assertFails(asSuper().doc("clubs/teamA/boardAuthors/" + STAFF_A).update({teamLabel: "Amateur A"}));
+    });
+  });
+
+  describe("platform templates", () => {
+    beforeEach(async () => {
+      await env.withSecurityRulesDisabled(async (c) => {
+        const d = c.firestore();
+        await d.doc("tacticTemplates/t1").set({name: "Rondo", category: "cadet", schema: 1});
+        await d.doc("tacticTemplateData/t1").set({v: "{}", schema: 1});
+      });
+    });
+
+    it("any signed-in user may browse — they are anonymous by construction", async () => {
+      await assertSucceeds(asStaffA().doc("tacticTemplates/t1").get());
+      await assertSucceeds(asStaffB().doc("tacticTemplates/t1").get());
+      await assertSucceeds(asA().doc("tacticTemplateData/t1").get());
+    });
+
+    it("but not anonymously", async () => {
+      await assertFails(asAnon().doc("tacticTemplates/t1").get());
+    });
+
+    it("only the superuser writes them", async () => {
+      await assertFails(asLeadA().doc("tacticTemplates/t1").update({name: "Mine"}));
+      await assertFails(asStaffA().doc("tacticTemplates/t2").set({name: "New", schema: 1}));
+      await assertSucceeds(asSuper().doc("tacticTemplates/t1").update({name: "Rondo v2"}));
+    });
+  });
+});

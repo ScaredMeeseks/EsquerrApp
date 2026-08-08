@@ -261,6 +261,117 @@ service cloud.firestore {
       }
     }
 
+    // ── Tactical boards ─────────────────────────────────────
+    /* Two access paths, and only two:
+         - the board's CLUB (any member: players see boards on the match and
+           training detail pages, so this is not staff-only)
+         - the CREATOR, wherever they are now. users/{uid}.teamId is
+           single-valued, so a coach who moves club would otherwise lose every
+           board they ever drew.
+
+       There is deliberately NO category gate here, unlike teams/{id}/data.
+       The thing that made data/ need one is minors' medical records; a board
+       is a drawing of a formation and carries no personal data. That holds
+       only while `linkedTeams` — which embeds player ids and names — stays on
+       the SESSION reference in the category-sharded data/ collection and out
+       of the payload. A unit test pins that, because a comment cannot.
+
+       Metadata and payload are separate documents so listing a library does
+       not download megabytes. They are written in ONE batch, and each rule is
+       self-contained: ownerUid and clubId are duplicated onto the payload
+       precisely so this block never needs a get() of its sibling — the same
+       claims-only discipline as the rest of this file.
+
+       clubId is a SCALAR and immutable. A board created in club A by a coach
+       who later moves to B stays an A board; that is what requirement (c)
+       asks for, and it answers "what stops a coach planting a board in
+       someone else's library" by construction rather than by policing a list. */
+    function boardIdentityUnchanged() {
+      return request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.clubId == resource.data.clubId;
+    }
+    /* One-way adoption of an UNOWNED board. The migration cannot invent an
+       author for a board that predates authorship, and a seeded template has
+       none, so both land with ownerUid ''. Any staff of that club may claim
+       one: '' -> me, inside my own club, never me -> anyone else. Without
+       this, legacy boards would be permanently read-only, since update
+       requires the owner arm. */
+    function adoptsUnowned() {
+      return resource.data.ownerUid == ''
+          && isStaffOf(resource.data.clubId)
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.clubId == resource.data.clubId;
+    }
+
+    match /tacticBoards/{boardId} {
+      allow read: if isSuperUser()
+        || sameTeam(resource.data.clubId)
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+      allow create: if isSuperUser()
+        || (isStaffOf(request.resource.data.clubId)
+            && request.resource.data.ownerUid == request.auth.uid
+            && request.resource.data.schema == 1);
+      allow update: if isSuperUser()
+        || (request.auth != null
+            && resource.data.ownerUid == request.auth.uid
+            && boardIdentityUnchanged())
+        || adoptsUnowned();
+      // The owner, or the LEAD of the board's club — a lead must be able to
+      // prune the library of a coach who left. Leads may DELETE but not
+      // UPDATE: pruning is governance, editing is authorship.
+      allow delete: if isSuperUser()
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid)
+        || isLeadOf(resource.data.clubId);
+    }
+
+    match /tacticBoardData/{boardId} {
+      allow read: if isSuperUser()
+        || sameTeam(resource.data.clubId)
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+      allow create: if isSuperUser()
+        || (isStaffOf(request.resource.data.clubId)
+            && request.resource.data.ownerUid == request.auth.uid);
+      allow update: if isSuperUser()
+        || (request.auth != null
+            && resource.data.ownerUid == request.auth.uid
+            && boardIdentityUnchanged())
+        || adoptsUnowned();
+      allow delete: if isSuperUser()
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid)
+        || isLeadOf(resource.data.clubId);
+    }
+
+    /* Denormalised author labels. A coach who left club A now has
+       teamId == club B, so users/{uid} is unreadable by A — but A's library
+       must still show who drew the board and for which team. Frozen on
+       departure by simply not overwriting, rather than stamped onto every
+       board: a coach changing category then costs ONE write, not N, and N is
+       not even reachable (a departed coach's boards are writable by nobody
+       but the owner).
+
+       `write: if false` is the same idiom as clubs/{id}/teamDeletions — the
+       Admin SDK bypasses rules, and client-writable would let a coach
+       relabel themselves into a team they never coached. */
+    match /clubs/{clubId}/boardAuthors/{uid} {
+      allow read: if sameTeam(clubId) || isSuperUser();
+      allow write: if false;
+    }
+
+    // ── Platform template library (superadmin-curated) ──────
+    /* Anonymous by construction: promotion takes an independent COPY with the
+       author and origin club stripped, so there is nothing here to
+       compartmentalise and any signed-in user may browse. Seeding COPIES into
+       a club rather than granting cross-club reads — a club must be able to
+       edit and delete its own starter set without touching anyone else's. */
+    match /tacticTemplates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperUser();
+    }
+    match /tacticTemplateData/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperUser();
+    }
+
     // ── Club join codes: superuser + Cloud Functions only ──
     match /clubCodes/{code} {
       allow read, write: if isSuperUser();

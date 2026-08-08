@@ -792,10 +792,116 @@ function membershipFrom(rosters, email) {
   return out;
 }
 
-/** Convenience for the one-address callers. */
-async function resolveMembership(clubId, email) {
-  if (!email) return membershipFrom([], email);
-  return membershipFrom(await loadRosters(clubId), email);
+/* `resolveMembership(clubId, email)` used to live here as a convenience for
+   the one-address callers. It was removed once every caller also needed the
+   roster list for syncBoardAuthor: it hid a loadRosters() inside itself, so
+   keeping it meant either reading the rosters twice or having two ways to do
+   the same thing. Callers now do `loadRosters` + `membershipFrom` explicitly,
+   which is the same single read. */
+
+/**
+ * The team a club should show against a tactical board's author: the HIGHEST
+ * category they coach here, plus that category's letters.
+ *
+ * "Highest" is the LOWEST CATEGORY_ORDER index — amateur outranks benjami.
+ * Reuses shardRank() rather than adding a fourth copy of the order
+ * (js/utils.js, js/shard.js and this file hold one each, pinned against each
+ * other by test/shard.test.js), and its "unknown -> 99" already sorts last.
+ *
+ * @param {Array} rosters Result of loadRosters.
+ * @param {string} email Lowercased address.
+ * @return {Object|null} {category, rank, letters}, or null when the address is
+ *   on no staff list of this club — which syncBoardAuthor reads as "they left".
+ */
+function authorLabelFrom(rosters, email) {
+  if (!email) return null;
+  const keys = rosters.filter((r) => r.staff.includes(email)).map((r) => r.key);
+  if (!keys.length) return null;
+  const catOf = (k) => {
+    const dash = k.indexOf("-");
+    return dash === -1 ? k : k.slice(0, dash);
+  };
+  let best = null;
+  keys.forEach((k) => {
+    const rank = shardRank(catOf(k));
+    if (!best || rank < best.rank) best = {category: catOf(k), rank};
+  });
+  best.letters = keys
+      .filter((k) => catOf(k) === best.category)
+      .map((k) => {
+        const dash = k.indexOf("-");
+        return dash === -1 ? "" : k.slice(dash + 1);
+      })
+      .filter(Boolean)
+      .sort();
+  return best;
+}
+
+/**
+ * Maintain clubs/{clubId}/boardAuthors/{uid} — the label a club shows for
+ * whoever drew a tactical board.
+ *
+ * This exists because membership is single-valued: a coach who leaves club A
+ * has users/{uid}.teamId == club B, so A can no longer read their profile,
+ * while A's board library must still name who drew each board and for which
+ * team. Denormalised per club rather than stamped onto every board, so a coach
+ * changing category costs ONE write instead of N — and N is not even
+ * reachable, since a departed coach's boards are writable by nobody but them.
+ *
+ * Leaving FREEZES rather than deletes, and does so by writing ONLY the status
+ * fields. "Their last team in this club" therefore needs no snapshotting
+ * logic: it is simply whatever is already stored, left alone.
+ *
+ * Deliberately stores `category` + `letters` and NOT a rendered "Cadet A"
+ * string — the app is trilingual and the client already localises category
+ * names. A server-rendered label would pick one language for everybody.
+ *
+ * @param {string} clubId Club whose library shows this author.
+ * @param {string} uid Author.
+ * @param {Object} profile {email, name} from users/{uid}.
+ * @param {Array} rosters Result of loadRosters(clubId) — passed in so a bulk
+ *   roster edit resolves every address against one read.
+ * @param {Object} [opts] {deleted: true} when the person is being erased.
+ */
+async function syncBoardAuthor(clubId, uid, profile, rosters, opts) {
+  if (!clubId || !uid) return;
+  const email = String((profile && profile.email) || "").trim().toLowerCase();
+  const label = authorLabelFrom(rosters, email);
+  const ref = db.collection("clubs").doc(clubId)
+      .collection("boardAuthors").doc(uid);
+
+  if (!label) {
+    // Gone from every staff list. Only freeze a label that EXISTS: a player,
+    // or a coach removed before they ever drew anything, should not leave a
+    // tombstone behind in a collection that only exists to name authors.
+    const cur = await ref.get();
+    if (!cur.exists) return;
+    const patch = {
+      active: false,
+      leftAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (opts && opts.deleted) patch.deleted = true;
+    await ref.set(patch, {merge: true});
+    return;
+  }
+
+  const patch = {
+    email,
+    category: label.category,
+    categoryRank: label.rank,
+    letters: label.letters,
+    active: true,
+    deleted: false,
+    leftAt: null,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  // Only when we actually have one. joinClub runs BEFORE the client writes
+  // users/{uid}, so it has no name to offer, and a merge carrying name:""
+  // would wipe the good name a later trigger had already stored.
+  const name = (profile && profile.name) || "";
+  if (name) patch.name = name;
+  await ref.set(patch, {merge: true});
 }
 
 /**
@@ -831,7 +937,7 @@ function rolesFor(isLead, chosen) {
  *
  * @param {Object} club The club document data (for its enabled categories).
  * @param {boolean} isLead Whether this member is the club's team lead.
- * @param {Object} m Result of resolveMembership / membershipFrom.
+ * @param {Object} m Result of membershipFrom.
  * @return {Object} {role, cats} to write as custom claims.
  */
 function claimsFor(club, isLead, m) {
@@ -886,7 +992,10 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
   // Membership gate: the address must appear on one of the club's roster
   // lists. The lead and the superuser always bypass it — otherwise nobody
   // could ever bootstrap a brand-new club, whose rosters are empty.
-  const m = await resolveMembership(clubId, email);
+  // Rosters loaded once: membershipFrom and the board-author sync below both
+  // read them, and this is a single collection read either way.
+  const rosters = await loadRosters(clubId);
+  const m = membershipFrom(rosters, email);
   if (!isLead && !isSuper && !m.roles.length) {
     throw new HttpsError("permission-denied",
         "El teu correu no està registrat en cap equip d'aquest club. " +
@@ -918,6 +1027,18 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
       {claimsUpdatedAt: FieldValue.serverTimestamp()},
       {merge: true},
   );
+  // Tactical-board author label. THIS is the call site that is easy to miss:
+  // when a lead adds a coach's address to a roster, onRosterWritten fires but
+  // finds no users/{uid} yet and skips them. joinClub is where that uid first
+  // exists, so without this a new coach's boards would render authorless until
+  // some unrelated roster edit happened to re-trigger the other path.
+  // No name is available here — the client writes users/{uid} AFTER this call
+  // returns — so syncBoardAuthor omits it and setRole fills it moments later.
+  try {
+    await syncBoardAuthor(clubId, uid, {email}, rosters);
+  } catch (e) {
+    logger.warn("joinClub: boardAuthors sync failed", {clubId, uid, err: String(e)});
+  }
   logger.info("joinClub", {uid, clubId, isLead, role, cats});
 
   return {
@@ -983,7 +1104,10 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   const email = (target.email || "").toLowerCase();
   const club = teamId ?
     ((await db.collection("clubs").doc(teamId).get()).data() || {}) : {};
-  const m = teamId ? await resolveMembership(teamId, email) : {roles: [], staffCats: []};
+  // Rosters loaded once — membershipFrom and the board-author sync below both
+  // read them, and this is a single collection read either way.
+  const rosters = teamId ? await loadRosters(teamId) : [];
+  const m = teamId ? membershipFrom(rosters, email) : {roles: [], staffCats: []};
 
   const targetIsLead = target.isTeamLead === true;
 
@@ -1026,6 +1150,16 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
     staffCategories: cats,
     claimsUpdatedAt: FieldValue.serverTimestamp(),
   }, {merge: true});
+  // Board author label — this is usually where a NAME first becomes available
+  // for someone who registered moments ago, since joinClub runs before the
+  // client writes users/{uid}.
+  if (teamId) {
+    try {
+      await syncBoardAuthor(teamId, uid, {email, name: target.name}, rosters);
+    } catch (e) {
+      logger.warn("setRole: boardAuthors sync failed", {teamId, uid, err: String(e)});
+    }
+  }
   logger.info("setRole", {by: caller.uid, uid, roles, role, cats});
   return {ok: true, role, cats};
 });
@@ -1310,6 +1444,17 @@ exports.onRosterWritten = onDocumentWritten({
     // onMemberCategoryChanged, which watches the user doc so EVERY writer
     // is covered, not just this one (staff re-assign an unassigned player
     // straight from the client).
+    //
+    // Tactical-board author label. Deliberately AFTER the user update and
+    // outside its try/catch: a label is cosmetic, and failing to write one
+    // must not abort the membership change that has already been applied.
+    try {
+      await syncBoardAuthor(clubId, doc.id,
+          {email, name: doc.data().name}, rosters);
+    } catch (e) {
+      logger.warn("onRosterWritten: boardAuthors sync failed",
+          {clubId, uid: doc.id, err: String(e)});
+    }
     logger.info("onRosterWritten",
         {clubId, uid: doc.id, email, role, cats, detached});
   }
@@ -1389,6 +1534,18 @@ exports.onClubLeadChanged = onDocumentWritten({
       await scrubShards(leadShards, "fa_users", (arr) => (Array.isArray(arr) ?
         arr.filter((u) => String(u.id) !== outgoing.id) : null));
     }
+    // Board author label. In the first branch they are still staff somewhere,
+    // so this refreshes it; in the second they are on no list at all, so
+    // authorLabelFrom returns null and the label FREEZES at whatever team they
+    // last coached — which is exactly what the club library must keep showing
+    // for the boards they leave behind.
+    try {
+      await syncBoardAuthor(clubId, outgoing.id,
+          {email: prevEmail, name: outgoing.data().name}, rosters);
+    } catch (e) {
+      logger.warn("onClubLeadChanged: boardAuthors sync failed",
+          {clubId, uid: outgoing.id, err: String(e)});
+    }
     logger.info("onClubLeadChanged: demoted",
         {clubId, uid: outgoing.id, keptRoles: m.roles});
   }
@@ -1409,6 +1566,15 @@ exports.onClubLeadChanged = onDocumentWritten({
       roles: rolesFor(true, [...new Set([...prev, ...m.roles])]),
       claimsUpdatedAt: FieldValue.serverTimestamp(),
     });
+    // A lead's claim is role:'lead', which passes isStaffOf in the rules, so
+    // leads author boards too and need a label like anyone else.
+    try {
+      await syncBoardAuthor(clubId, incoming.id,
+          {email: nextEmail, name: incoming.data().name}, rosters);
+    } catch (e) {
+      logger.warn("onClubLeadChanged: boardAuthors sync failed",
+          {clubId, uid: incoming.id, err: String(e)});
+    }
     logger.info("onClubLeadChanged: promoted", {clubId, uid: incoming.id});
   } else {
     // Not registered in this club yet. Nothing to do: joinClub matches on
@@ -1548,6 +1714,23 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
           touched++;
         }
         done.rosterDocs = touched;
+      }
+
+      // ── 1b. Board author label: FREEZE it, never delete it. ──
+      // Their tactical boards SURVIVE this — nothing cascades, because a
+      // club's library is meant to outlive the coach who drew it — so removing
+      // the label would turn every one of those boards into "—" in the club
+      // library. Step 1 already fires onRosterWritten, which freezes it as a
+      // side effect; doing it explicitly makes the intent legible and records
+      // WHY they are gone. Empty rosters: someone being erased is by
+      // definition on no list.
+      if (teamId) {
+        try {
+          await syncBoardAuthor(teamId, uid, {email, name}, [], {deleted: true});
+        } catch (e) {
+          logger.warn("deleteMember: boardAuthors freeze failed",
+              {teamId, uid, err: String(e)});
+        }
       }
 
       // ── 2. Per-record collections. Every record carries a `uid` field, so
