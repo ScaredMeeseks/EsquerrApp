@@ -459,6 +459,34 @@
     'tactics.new_board':     { ca:'Nova pissarra', es:'Nueva pizarra', en:'New Board' },
     'tactics.board_name_ph': { ca:'Nom de la pissarra…', es:'Nombre de la pizarra…', en:'Board name…' },
     'tactics.saved_boards':  { ca:'Pissarres desades', es:'Pizarras guardadas', en:'Saved Boards' },
+    'tactics.club_library':  { ca:'Biblioteca del club', es:'Biblioteca del club', en:'Club Library' },
+    'tactics.my_boards':     { ca:'Les meves pissarres', es:'Mis pizarras', en:'My Boards' },
+    'tactics.my_boards_hint':{ ca:'Pissarres teves d\'altres clubs',
+                               es:'Pizarras tuyas de otros clubes',
+                               en:'Your boards from other clubs' },
+    'tactics.author_unknown':{ ca:'Sense autor', es:'Sin autor', en:'No author' },
+    'tactics.author_left':   { ca:'ja no hi és', es:'ya no está', en:'has left' },
+    'tactics.adopt':         { ca:'Fer-la meva', es:'Hacerla mía', en:'Make it mine' },
+    'tactics.adopt_title':   { ca:'Fer teva aquesta pissarra?',
+                               es:'¿Hacer tuya esta pizarra?',
+                               en:'Make this board yours?' },
+    'tactics.adopt_msg':     { ca:'Aquesta pissarra no té autor. Si te la fas teva, la podràs editar i esborrar. Continuarà sent visible per a tot el club.',
+                               es:'Esta pizarra no tiene autor. Si te la haces tuya, podrás editarla y borrarla. Seguirá siendo visible para todo el club.',
+                               en:'This board has no author. Making it yours lets you edit and delete it. It stays visible to the whole club.' },
+    'tactics.read_only':     { ca:'Només lectura', es:'Solo lectura', en:'Read only' },
+    'tactics.empty_library': { ca:'Encara no hi ha cap pissarra en aquest club.',
+                               es:'Todavía no hay ninguna pizarra en este club.',
+                               en:'No boards in this club yet.' },
+    'tactics.loading':       { ca:'Carregant…', es:'Cargando…', en:'Loading…' },
+    'tactics.save_failed':   { ca:'No s\'ha pogut desar la pissarra. Torna-ho a provar.',
+                               es:'No se ha podido guardar la pizarra. Inténtalo de nuevo.',
+                               en:'Could not save the board. Please try again.' },
+    'tactics.load_failed':   { ca:'No s\'ha pogut carregar la pissarra.',
+                               es:'No se ha podido cargar la pizarra.',
+                               en:'Could not load the board.' },
+    'tactics.too_big':       { ca:'Aquesta pissarra és massa gran per desar-la. Prova de treure fotogrames o traços.',
+                               es:'Esta pizarra es demasiado grande para guardarla. Prueba a quitar fotogramas o trazos.',
+                               en:'This board is too large to save. Try removing frames or pen strokes.' },
     'tactics.frames':        { ca:'Fotogrames', es:'Fotogramas', en:'Frames' },
     'tactics.tag':           { ca:'Etiqueta', es:'Etiqueta', en:'Tag' },
     'tactics.tag_none':      { ca:'— Cap —', es:'— Ninguna —', en:'— None —' },
@@ -1209,7 +1237,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 82;
+  const APP_VERSION = 83;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -3684,7 +3712,12 @@
          now belongs to specific teams, so it IS one category by definition.
          Offering a switcher there invited a coach to change the category out
          from under a session he was already looking at. */
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
+      // 'tactics' joined this in v83. The old comment said boards were
+      // "club-wide drawings with no category dimension, so a bar there would
+      // imply a filter that does nothing" — true before Phase 5 stamped a
+      // category on every board, and false since. The bar now filters a real
+      // field, and the club library is exactly where that matters.
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions', 'tactics']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + catBar + fn(session);
     } else {
@@ -8931,14 +8964,9 @@
       return hasTacticUnsavedChanges();
     }
 
-    function refreshSavedList() {
-      const listEl = document.getElementById('tb-saved-list');
-      if (!listEl) return;
-      const boards = getSavedBoards();
-      listEl.innerHTML = tbSavedListHtml(boards,
-        localStorage.getItem('fa_tactic_loaded_id'));
-      bindTacticsSavedList();
-    }
+    // One repainter, shared with the delete and adopt handlers — three
+    // copies of this had already started to drift once.
+    const refreshSavedList = tbRefreshSavedListEl;
 
     bindTacticsSavedList();
 
@@ -8970,7 +8998,7 @@
 
     // Save button (overwrites loaded board, or creates new if nothing loaded)
     const saveBtn = document.getElementById('tb-save');
-    saveBtn?.addEventListener('click', () => {
+    saveBtn?.addEventListener('click', async () => {
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const name = (nameInput ? nameInput.value : '').trim() || 'Board';
@@ -8986,45 +9014,27 @@
         name
       });
 
-      if (loadedPos !== -1) {
-        // Overwrite — check duplicate name (excluding self)
-        const dup = boards.some(b => b.id !== loadedId && b.name.toLowerCase() === name.toLowerCase());
-        if (dup) { alert(t('alert.board_name_exists')); return; }
-        boards[loadedPos] = entry;
-      } else {
-        // New save — check duplicate name
-        const dup = boards.some(b => b.name.toLowerCase() === name.toLowerCase());
-        if (dup) { alert(t('alert.board_name_exists')); return; }
-        boards.push(entry);
-        localStorage.setItem('fa_tactic_loaded_id', entry.id);
+      // A duplicate name is now only CONFUSING, not dangerous: everything is
+      // linked by id. So it warns rather than refusing outright, which used
+      // to make "save" simply do nothing with no way forward.
+      const dup = boards.some(b => b.id !== entry.id &&
+        String(b.name || '').toLowerCase() === name.toLowerCase());
+      if (dup && !confirm(t('alert.board_name_exists'))) return;
+
+      const s = getSession() || {};
+      try {
+        await TB.save(entry, {ownerName: s.name || ''});
+      } catch (err) {
+        console.error('[TB] save failed', err);
+        alert(t(/exceeds the maximum allowed size|too large/i.test(String(err && err.message)) ?
+          'tactics.too_big' : 'tactics.save_failed'));
+        return;
       }
-      localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
-      // Also update any linked match boards with the same name
-      const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
-      let mbChanged = false;
-      for (const mid of Object.keys(matchBoards)) {
-        const arr = matchBoards[mid];
-        for (let j = 0; j < arr.length; j++) {
-          if (arr[j].name === entry.name) {
-            arr[j] = entry;
-            mbChanged = true;
-          }
-        }
-      }
-      if (mbChanged) localStorage.setItem('fa_tactic_match_boards', JSON.stringify(matchBoards));
-      // Also update any linked training boards with the same name
-      const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-      let tbChanged = false;
-      for (const tdate of Object.keys(trainingBoards)) {
-        const arr = trainingBoards[tdate];
-        for (let j = 0; j < arr.length; j++) {
-          if (arr[j].name === entry.name) {
-            arr[j] = entry;
-            tbChanged = true;
-          }
-        }
-      }
-      if (tbChanged) localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
+      localStorage.setItem('fa_tactic_loaded_id', entry.id);
+      // The old "re-sync every linked copy with the same name" loops are
+      // gone: sessions reference a board by id, so editing the library board
+      // changes every linked view by construction.
+      tbLegacySync();
       refreshSavedList();
       // Visual feedback
       if (saveBtn) {
@@ -9036,25 +9046,36 @@
     });
 
     // Save As button
-    document.getElementById('tb-save-as')?.addEventListener('click', () => {
+    document.getElementById('tb-save-as')?.addEventListener('click', async () => {
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const suggested = (nameInput ? nameInput.value : '').trim() || 'Board';
       const name = prompt('Board name:', suggested);
       if (!name) return;
       const boards = getSavedBoards();
-      const dup = boards.some(b => b.name.toLowerCase() === name.trim().toLowerCase());
-      if (dup) { alert(t('alert.board_name_exists')); return; }
+      const dup = boards.some(b =>
+        String(b.name || '').toLowerCase() === name.trim().toLowerCase());
+      if (dup && !confirm(t('alert.board_name_exists'))) return;
       const newId = TB.newBoardId();
-      // Same stamp as the Save path above — see the comment there.
-      boards.push(TB.buildBoardEntry(localStorage, {
+      // Same stamp as the Save path above — see the comment there. Save As
+      // always creates a NEW board owned by whoever pressed it, which is
+      // also how a coach keeps a copy of a board they may not edit.
+      const entry = TB.buildBoardEntry(localStorage, {
         id: newId,
         category: getCurrentCategory(),
         name: name.trim()
-      }));
-      localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
+      });
+      const s = getSession() || {};
+      try {
+        await TB.save(entry, {ownerName: s.name || ''});
+      } catch (err) {
+        console.error('[TB] save-as failed', err);
+        alert(t('tactics.save_failed'));
+        return;
+      }
       localStorage.setItem('fa_tactic_loaded_id', newId);
       if (nameInput) { nameInput.value = name.trim(); localStorage.setItem('fa_tactic_name', name.trim()); }
+      tbLegacySync();
       refreshSavedList();
     });
 
@@ -9979,19 +10000,82 @@
     return changed;
   }
 
+  /**
+   * The line under a board's name: who drew it, and for which team.
+   *
+   * The team is the author's HIGHEST category in this club, frozen at the
+   * moment they stopped being staff — so a board keeps naming the squad its
+   * author had, even years after they left. That is the whole point of
+   * clubs/{clubId}/boardAuthors; see syncBoardAuthor in functions/index.js.
+   */
+  function tbAuthorLine(b) {
+    const a = TB.author(b);
+    if (!a || (!a.name && !a.category)) {
+      return '<span class="tb-saved-author tb-saved-author-none">' +
+        sanitize(t('tactics.author_unknown')) + '</span>';
+    }
+    let team = '';
+    if (a.category) {
+      team = CATEGORY_LABELS[a.category] || a.category;
+      if (a.letters && a.letters.length) team += ' ' + a.letters.join('/');
+    }
+    const parts = [];
+    if (a.name) parts.push(sanitize(a.name));
+    if (team) parts.push(sanitize(team));
+    let html = '<span class="tb-saved-author">' + parts.join(' · ') + '</span>';
+    if (a.active === false) {
+      html += '<span class="tb-saved-left">' + sanitize(t('tactics.author_left')) + '</span>';
+    }
+    return html;
+  }
+
   /** The saved-boards list markup — rendered from four different places. */
   function tbSavedListHtml(boards, loadedId) {
+    if (!boards.length) {
+      return '<div class="tb-saved-empty">' + sanitize(t('tactics.empty_library')) + '</div>';
+    }
+    const isLead = !!(getSession() || {}).isTeamLead;
     return boards.map(function (b, i) {
+      const unowned = b.ownerUid === '';
+      const mayDelete = TB.canDelete(b, isLead);
       return '<div class="tb-saved-item' + (loadedId && loadedId === b.id ? ' tb-saved-active' : '') +
         '" data-board-id="' + sanitize(b.id) + '">' +
-        '<span>' + sanitize(b.name || 'Board ' + (i + 1)) + '</span>' +
-        '<button class="tb-delete-board" data-del-id="' + sanitize(b.id) + '">✕</button>' +
+        '<div class="tb-saved-main">' +
+          '<span class="tb-saved-name">' + sanitize(b.name || 'Board ' + (i + 1)) + '</span>' +
+          tbAuthorLine(b) +
+        '</div>' +
+        (b.hasFrames ? '<span class="tb-saved-anim" title="Animada">▶</span>' : '') +
+        (unowned ? '<button class="tb-adopt-board" data-adopt-id="' + sanitize(b.id) + '">' +
+          sanitize(t('tactics.adopt')) + '</button>' : '') +
+        (mayDelete ? '<button class="tb-delete-board" data-del-id="' + sanitize(b.id) + '">✕</button>' : '') +
         '</div>';
     }).join('');
   }
 
-  /** Read the saved boards, backfilling ids for anything saved before them. */
+  /**
+   * The board library.
+   *
+   * Reads the REGISTRY, not the localStorage blob. The blob is still written
+   * (see tbLegacySync) so the v43-era APK keeps working, but it is no longer
+   * a source of truth here: it cannot express ownership, cannot hold a board
+   * belonging to a coach who has moved club, and one category of it hits
+   * Firestore's 1 MiB document limit at around 85 boards.
+   *
+   * Falls back to the blob only while the registry has not loaded — a brief
+   * window on a cold start, and the graceful answer if the queries fail.
+   */
   function getSavedBoards() {
+    if (typeof TB !== 'undefined' && TB.ready && TB.ready()) {
+      const all = TB.library();
+      // '' means "Totes" and null means nothing chosen yet — both show
+      // everything. Only an explicit category filters. See v67: conflating
+      // those two states is what made the Totes button a silent no-op.
+      const cur = getCurrentCategory();
+      if (!cur) return all;
+      // A board with no category (migrated from a __none shard) stays
+      // visible under every filter rather than becoming unreachable.
+      return all.filter(b => !b.category || b.category === cur);
+    }
     const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
     if (ensureBoardIds(boards)) {
       localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
@@ -9999,13 +10083,77 @@
     return boards;
   }
 
+  /**
+   * Mirror the library into the localStorage blob for the old APK.
+   *
+   * Frames and pen lines are STRIPPED, always. A blob carrying them is what
+   * put one category on course for the 1 MiB document limit, and the old
+   * client degrades gracefully without them: renderReadOnlyBoard falls back
+   * to the base drawing when `frames` is absent. The cost is that animation
+   * playback disappears on pre-v81 builds — deliberate, and the reason this
+   * is capped unconditionally rather than by size.
+   *
+   * Drop this whole function, and TB_DUAL_WRITE, once a current APK is
+   * actually installed on the phones.
+   */
+  const TB_DUAL_WRITE = true;
+  function tbLegacySync() {
+    if (!TB_DUAL_WRITE) return;
+    try {
+      // Payloads are fetched lazily, so most boards are NOT in the cache on
+      // any given save. Falling back to `{}` would publish a library of
+      // boards with no positions — every drawing blank on the old APK, which
+      // is the one client this mirror exists for. So the previous blob is the
+      // base, and only what we actually hold is refreshed over it.
+      const prev = {};
+      try {
+        JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]')
+          .forEach(function (b) { if (b && b.id) prev[b.id] = b; });
+      } catch (e) { /* a corrupt blob is no reason to skip the mirror */ }
+
+      const slim = TB.library().map(function (b) {
+        const base = TB.peek(b.id) || prev[b.id] || {};
+        const out = Object.assign({}, base, {
+          id: b.id, name: b.name, category: b.category,
+          formation: b.formation, boardType: b.boardType, tag: b.tag
+        });
+        // Unconditional, not size-based: this is what closes the 1 MiB
+        // document limit that one category of this blob was heading for.
+        delete out.frames;
+        delete out.penLines;
+        delete out.linkedTeams;
+        return out;
+      });
+      localStorage.setItem('fa_tactic_saved', JSON.stringify(slim));
+    } catch (e) {
+      console.warn('[TB] legacy mirror failed:', e && e.message);
+    }
+  }
+
   function bindTacticsSavedList() {
     document.querySelectorAll('.tb-saved-item').forEach(item => {
-      item.addEventListener('click', (e) => {
+      item.addEventListener('click', async (e) => {
         if (e.target.closest('.tb-delete-board')) return;
-        const boards = getSavedBoards();
-        const board = boards.find(b => b.id === item.dataset.boardId);
-        if (!board) return;
+        if (e.target.closest('.tb-adopt-board')) return;
+        const id = item.dataset.boardId;
+        const metaB = getSavedBoards().find(b => b.id === id);
+        if (!metaB) return;
+        // The list holds METADATA only — the drawing is a separate document,
+        // fetched on demand. That is what stops opening the library from
+        // downloading every board in the club.
+        item.classList.add('tb-saved-loading');
+        let payload = null;
+        try {
+          payload = TB.peek(id) || await TB.get(id);
+        } catch (err) {
+          payload = null;
+        }
+        item.classList.remove('tb-saved-loading');
+        if (!payload) { alert(t('tactics.load_failed')); return; }
+        // Metadata wins on the fields it owns: a rename lands there first.
+        const board = Object.assign({}, payload, {
+          id: id, name: metaB.name, category: metaB.category
+        });
         const doLoad = () => {
           localStorage.setItem('fa_tactic_formation', board.formation || '');
           localStorage.setItem('fa_tactic_positions', JSON.stringify(board.positions));
@@ -10054,39 +10202,73 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const delId = btn.dataset.delId;
-        showTbConfirm(t('tb.delete_title'), t('tb.delete_msg'), () => {
-          const boards = getSavedBoards();
-          const pos = boards.findIndex(b => b.id === delId);
-          if (pos === -1) return;
-          const deletedName = boards[pos].name;
-          boards.splice(pos, 1);
-          localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
-          // Also remove from match-linked boards
+        showTbConfirm(t('tb.delete_title'), t('tb.delete_msg'), async () => {
+          const board = getSavedBoards().find(b => b.id === delId);
+          if (!board) return;
+          const deletedName = board.name;
+          try {
+            await TB.remove(delId);
+          } catch (err) {
+            alert(t('tactics.save_failed'));
+            return;
+          }
+          // Detach from every session that linked it. Deleting from the
+          // match map but not the training map was a real bug: a deleted
+          // board stayed attached to every training session for ever.
           if (deletedName) {
-            const mb = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
-            let mbChanged = false;
-            for (const mid of Object.keys(mb)) {
-              const before = mb[mid].length;
-              mb[mid] = mb[mid].filter(b => b.name !== deletedName);
-              if (mb[mid].length !== before) mbChanged = true;
-              if (!mb[mid].length) { delete mb[mid]; mbChanged = true; }
-            }
-            if (mbChanged) localStorage.setItem('fa_tactic_match_boards', JSON.stringify(mb));
+            ['fa_tactic_match_boards', 'fa_tactic_training_boards'].forEach(function (key) {
+              const map = JSON.parse(localStorage.getItem(key) || '{}');
+              let changed = false;
+              for (const k of Object.keys(map)) {
+                const before = map[k].length;
+                // Matched by id where there is one, by name only for entries
+                // written before boards had ids.
+                map[k] = map[k].filter(b => (b.boardId || b.id) ?
+                  (b.boardId || b.id) !== delId : b.name !== deletedName);
+                if (map[k].length !== before) changed = true;
+                if (!map[k].length) { delete map[k]; changed = true; }
+              }
+              if (changed) localStorage.setItem(key, JSON.stringify(map));
+            });
           }
           // No renumbering: with ids, deleting a board cannot invalidate the
           // selection of a different one.
           if (localStorage.getItem('fa_tactic_loaded_id') === delId) {
             localStorage.removeItem('fa_tactic_loaded_id');
           }
-          const listEl = document.getElementById('tb-saved-list');
-          if (listEl) {
-            listEl.innerHTML = tbSavedListHtml(boards,
-              localStorage.getItem('fa_tactic_loaded_id'));
-            bindTacticsSavedList();
-          }
+          tbLegacySync();
+          tbRefreshSavedListEl();
         });
       });
     });
+    document.querySelectorAll('.tb-adopt-board').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.adoptId;
+        // Migrated and template-seeded boards have no author to invent, so
+        // they land with ownerUid ''. Update requires the owner arm, so
+        // without adoption they would be permanently read-only.
+        showTbConfirm(t('tactics.adopt_title'), t('tactics.adopt_msg'), async () => {
+          const s = getSession() || {};
+          try {
+            await TB.adopt(id, s.name || '');
+          } catch (err) {
+            alert(t('tactics.save_failed'));
+            return;
+          }
+          tbRefreshSavedListEl();
+        });
+      });
+    });
+  }
+
+  /** Repaint the saved list in place, wherever it happens to be rendered. */
+  function tbRefreshSavedListEl() {
+    const listEl = document.getElementById('tb-saved-list');
+    if (!listEl) return;
+    listEl.innerHTML = tbSavedListHtml(getSavedBoards(),
+      localStorage.getItem('fa_tactic_loaded_id'));
+    bindTacticsSavedList();
   }
 
   function showTbConfirm(title, message, onConfirm) {
@@ -18408,6 +18590,14 @@
       fa_tactic_training_boards: ['tactics', 'training-detail', 'staff-training-detail'],
     };
     var _syncDebounce = null;
+    // A colleague's new board should appear without a reload. Repaints the
+    // list in place rather than re-rendering the page: a full re-render
+    // would throw away an unsaved drawing in the editor above it.
+    window.addEventListener('tactic-boards-sync', () => {
+      if (currentPage !== 'tactics') return;
+      tbRefreshSavedListEl();
+    });
+
     window.addEventListener('firestore-sync', (e) => {
       // Badges are cheap — keep them fresh regardless of the current page
       updateActionsBadge();

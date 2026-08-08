@@ -126,4 +126,18 @@ Locally there are **no** Admin SDK credentials: `gcloud` is not installed and th
 
 Backups before risky changes: `gcloud firestore export gs://esquerrapp-backup/<label>-$(date +%F) --project esquerrapp` (bucket name is singular — `esquerrapp-backups` does not exist).
 
+## Never write files with PowerShell `Set-Content`
+
+This machine mojibakes accents through PowerShell text writes: `Get-Content -Raw` reads a UTF-8 file as CP1252, and `Set-Content -Encoding utf8` writes that back doubly-encoded, so every `—` becomes `â€”` and a BOM appears. It corrupts the WHOLE file, not just the line you meant to change. Use the editor for all file writes, including one-line version bumps.
+
+If it happens anyway, it is reversible — re-encode the mojibake through CP1252 to recover the original bytes:
+
+```powershell
+$cp = [System.Text.Encoding]::GetEncoding(1252)
+$txt = [System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
+[System.IO.File]::WriteAllBytes($p, $cp.GetBytes($txt))
+```
+
+Verify with `git diff` afterwards: it should show only the lines you meant to change.
+
 **Session handoff**: when the user says the session is finished, update `HANDOFF.md` (rolling doc, overwritten each session — current state, session summary, pending items).
