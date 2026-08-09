@@ -198,6 +198,18 @@
     _ready = false;
     if (!_clubId) return;
 
+    _favs = {};
+    try {
+      if (_uid) {
+        var meSnap = await db.collection('users').doc(_uid).get();
+        ((meSnap.data() || {}).tacticFavorites || []).forEach(function (id) {
+          _favs[id] = true;
+        });
+      }
+    } catch (e) {
+      console.warn('[TB] favourites unavailable:', e && e.message);
+    }
+
     try {
       // Author labels: one small collection, read once. M is the coaches
       // who have ever been on a staff list here, realistically under 30.
@@ -435,6 +447,40 @@
     });
   }
 
+  /* ── Favourites ──────────────────────────────────────────────
+     A coach's shortlist: the boards they reach for. Stored on
+     users/{uid}.tacticFavorites so it follows them between phone and
+     web, and across clubs. No rules change was needed — the self-update
+     rule forbids a named list of membership and privilege fields, and
+     this is not one of them.
+
+     Their OWN boards are always favourites implicitly and are never
+     written to this list: it would double the bookkeeping for something
+     derivable, and a coach cannot un-favourite their own work. */
+  var _favs = {};
+
+  function isFavorite(id) { return !!_favs[id]; }
+
+  function favorites() { return Object.keys(_favs); }
+
+  function toggleFavorite(id) {
+    if (!_uid) return Promise.reject(new Error('TB not initialised'));
+    var on = !_favs[id];
+    if (on) _favs[id] = true; else delete _favs[id];
+    // arrayUnion/arrayRemove rather than writing the whole list: two
+    // devices starring different boards at once must not clobber each
+    // other, and this is a field a coach edits from wherever they are.
+    var fv = firebase.firestore.FieldValue;
+    return db.collection('users').doc(_uid).set({
+      tacticFavorites: on ? fv.arrayUnion(id) : fv.arrayRemove(id)
+    }, {merge: true}).catch(function (e) {
+      // Put the local state back: a star that silently lies is worse
+      // than one that refuses.
+      if (on) delete _favs[id]; else _favs[id] = true;
+      throw e;
+    });
+  }
+
   function canEdit(board) {
     if (!board) return false;
     return board.ownerUid === _uid || board.ownerUid === '';
@@ -462,6 +508,10 @@
     remove: remove,
     adopt: adopt,
     canEdit: canEdit,
-    canDelete: canDelete
+    canDelete: canDelete,
+    isFavorite: isFavorite,
+    favorites: favorites,
+    toggleFavorite: toggleFavorite,
+    isMine: function (b) { return !!b && b.ownerUid === _uid; }
   };
 });

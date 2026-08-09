@@ -460,6 +460,19 @@
     'tactics.board_name_ph': { ca:'Nom de la pissarra…', es:'Nombre de la pizarra…', en:'Board name…' },
     'tactics.saved_boards':  { ca:'Pissarres desades', es:'Pizarras guardadas', en:'Saved Boards' },
     'tactics.club_library':  { ca:'Biblioteca del club', es:'Biblioteca del club', en:'Club Library' },
+    'tactics.favorites':     { ca:'Pissarres preferides', es:'Pizarras favoritas', en:'Favourite Boards' },
+    'tactics.fav_own':       { ca:'Les teves pissarres hi són sempre',
+                               es:'Tus pizarras están siempre',
+                               en:'Your own boards are always here' },
+    'tactics.search_ph':     { ca:'Cerca per nom, entrenador o categoria…',
+                               es:'Busca por nombre, entrenador o categoría…',
+                               en:'Search by name, coach or category…' },
+    'tactics.no_matches':    { ca:'Cap pissarra coincideix amb la cerca.',
+                               es:'Ninguna pizarra coincide con la búsqueda.',
+                               en:'No boards match that search.' },
+    'tactics.empty_favs':    { ca:'Encara no tens cap pissarra. Crea\'n una o marca-les amb una estrella des de la biblioteca.',
+                               es:'Todavía no tienes ninguna pizarra. Crea una o márcalas con una estrella desde la biblioteca.',
+                               en:'No boards yet. Create one, or star them from the library.' },
     'tactics.my_boards':     { ca:'Les meves pissarres', es:'Mis pizarras', en:'My Boards' },
     'tactics.my_boards_hint':{ ca:'Pissarres teves d\'altres clubs',
                                es:'Pizarras tuyas de otros clubes',
@@ -3712,12 +3725,13 @@
          now belongs to specific teams, so it IS one category by definition.
          Offering a switcher there invited a coach to change the category out
          from under a session he was already looking at. */
-      // 'tactics' joined this in v83. The old comment said boards were
-      // "club-wide drawings with no category dimension, so a bar there would
-      // imply a filter that does nothing" — true before Phase 5 stamped a
-      // category on every board, and false since. The bar now filters a real
-      // field, and the club library is exactly where that matters.
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions', 'tactics']);
+      // 'tactics' is deliberately NOT here. It was added in v83 and taken
+      // straight back out: a board carries a category, but the club library
+      // is a library — a coach hunting for a pressing drill does not care
+      // which squad it was drawn for, and hiding two thirds of it behind a
+      // filter they did not set is how a library stops being one. Search
+      // narrows it instead, across name, coach and category together.
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + catBar + fn(session);
     } else {
@@ -6503,11 +6517,8 @@
 
     const boardType = localStorage.getItem('fa_tactic_board_type') || '';
 
-    // If no board type chosen, show picker
+    // If no board type chosen, show picker (with the boards below it)
     if (!boardType) {
-      // Saved boards list (show even on picker screen)
-      const savedListHtml = tbSavedListHtml(getSavedBoards(),
-        localStorage.getItem('fa_tactic_loaded_id'));
       return `
         <h2 class="page-title">${t('page.tactical_board')}</h2>
         <div class="card">
@@ -6540,10 +6551,7 @@
             </div>
           </div>
         </div>
-        <div class="card">
-          <div class="tb-saved-title">${t('tactics.saved_boards')}</div>
-          <div class="tb-saved-list" id="tb-saved-list">${savedListHtml}</div>
-        </div>`;
+        <div class="card">${tbBoardsPanelHtml()}</div>`;
     }
 
     const isVertical = localStorage.getItem('fa_tactic_orient') === 'vertical';
@@ -6636,9 +6644,6 @@
       }).join('');
     }
 
-    // Saved boards list
-    const savedListHtml = tbSavedListHtml(getSavedBoards(),
-      localStorage.getItem('fa_tactic_loaded_id'));
 
     let fieldCls = 'tb-field';
     if (isVertical) fieldCls += ' tb-vertical';
@@ -6825,8 +6830,7 @@
           <button class="btn btn-small btn-primary" id="tb-save">Save</button>
           <button class="btn btn-small btn-tb-saveas" id="tb-save-as">Save As</button>
         </div>
-        <div class="tb-saved-title">${t('tactics.saved_boards')}</div>
-        <div class="tb-saved-list" id="tb-saved-list">${savedListHtml}</div>
+        ${tbBoardsPanelHtml()}
       </div>`;
   }
 
@@ -10029,27 +10033,108 @@
     return html;
   }
 
+  /**
+   * One row. `opts.star` adds the favourite toggle (library rows only —
+   * a coach's own boards are favourites implicitly and cannot be unstarred).
+   *
+   * Every trailing control is a fixed-width cell so the play marker on an
+   * animated board and the delete cross line up down the list instead of
+   * shuffling sideways row by row.
+   */
+  function tbBoardRowHtml(b, loadedId, opts) {
+    opts = opts || {};
+    const isLead = !!(getSession() || {}).isTeamLead;
+    const mayDelete = TB.canDelete(b, isLead);
+    const mine = TB.isMine(b);
+    const fav = mine || TB.isFavorite(b.id);
+    return '<div class="tb-saved-item' + (loadedId && loadedId === b.id ? ' tb-saved-active' : '') +
+      '" data-board-id="' + sanitize(b.id) + '">' +
+      '<div class="tb-saved-main">' +
+        '<span class="tb-saved-name">' + sanitize(b.name || 'Board') + '</span>' +
+        tbAuthorLine(b) +
+      '</div>' +
+      '<span class="tb-cell tb-saved-anim">' + (b.hasFrames ? '▶' : '') + '</span>' +
+      (opts.star ?
+        '<button class="tb-cell tb-fav-board' + (fav ? ' tb-fav-on' : '') + '"' +
+          (mine ? ' disabled title="' + sanitize(t('tactics.fav_own')) + '"' : '') +
+          ' data-fav-id="' + sanitize(b.id) + '">' + (fav ? '★' : '☆') + '</button>' : '') +
+      (b.ownerUid === '' ?
+        '<button class="tb-adopt-board" data-adopt-id="' + sanitize(b.id) + '">' +
+          sanitize(t('tactics.adopt')) + '</button>' : '') +
+      '<span class="tb-cell">' +
+        (mayDelete ? '<button class="tb-delete-board" data-del-id="' +
+          sanitize(b.id) + '">✕</button>' : '') +
+      '</span>' +
+      '</div>';
+  }
+
+  /**
+   * The coach's shortlist: everything they made, plus anything they starred.
+   *
+   * Own boards are included implicitly rather than written into the
+   * favourites list — it would double the bookkeeping for something
+   * derivable, and a coach should not be able to lose their own work from
+   * their own list.
+   */
+  function tbFavoriteBoards() {
+    const favs = {};
+    TB.favorites().forEach(function (id) { favs[id] = true; });
+    return TB.library()
+      .concat(TB.mine())
+      .filter(function (b) { return TB.isMine(b) || favs[b.id]; });
+  }
+
   /** The saved-boards list markup — rendered from four different places. */
   function tbSavedListHtml(boards, loadedId) {
     if (!boards.length) {
-      return '<div class="tb-saved-empty">' + sanitize(t('tactics.empty_library')) + '</div>';
+      return '<div class="tb-saved-empty">' + sanitize(t('tactics.empty_favs')) + '</div>';
     }
-    const isLead = !!(getSession() || {}).isTeamLead;
-    return boards.map(function (b, i) {
-      const unowned = b.ownerUid === '';
-      const mayDelete = TB.canDelete(b, isLead);
-      return '<div class="tb-saved-item' + (loadedId && loadedId === b.id ? ' tb-saved-active' : '') +
-        '" data-board-id="' + sanitize(b.id) + '">' +
-        '<div class="tb-saved-main">' +
-          '<span class="tb-saved-name">' + sanitize(b.name || 'Board ' + (i + 1)) + '</span>' +
-          tbAuthorLine(b) +
-        '</div>' +
-        (b.hasFrames ? '<span class="tb-saved-anim" title="Animada">▶</span>' : '') +
-        (unowned ? '<button class="tb-adopt-board" data-adopt-id="' + sanitize(b.id) + '">' +
-          sanitize(t('tactics.adopt')) + '</button>' : '') +
-        (mayDelete ? '<button class="tb-delete-board" data-del-id="' + sanitize(b.id) + '">✕</button>' : '') +
-        '</div>';
+    return boards.map(function (b) {
+      return tbBoardRowHtml(b, loadedId, {star: false});
     }).join('');
+  }
+
+  /**
+   * The club library: EVERY board of the club, deliberately unfiltered by
+   * the category bar. A coach looking for a pressing drill does not care
+   * which squad it was drawn for, and hiding two thirds of the library
+   * behind a filter they did not set is how a library stops being one.
+   * Search is the way to narrow it.
+   */
+  function tbLibraryListHtml(loadedId, query) {
+    const q = String(query || '').trim().toLowerCase();
+    let boards = TB.library();
+    if (q) {
+      boards = boards.filter(function (b) {
+        const a = TB.author(b) || {};
+        const cat = b.category ? (CATEGORY_LABELS[b.category] || b.category) : '';
+        return [b.name, a.name, cat, b.tag].some(function (f) {
+          return String(f || '').toLowerCase().indexOf(q) !== -1;
+        });
+      });
+    }
+    if (!boards.length) {
+      return '<div class="tb-saved-empty">' +
+        sanitize(t(q ? 'tactics.no_matches' : 'tactics.empty_library')) + '</div>';
+    }
+    return boards.map(function (b) {
+      return tbBoardRowHtml(b, loadedId, {star: true});
+    }).join('');
+  }
+
+  /** Both board sections, shared by the picker screen and the editor. */
+  function tbBoardsPanelHtml() {
+    const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+    return '<div class="tb-saved-title">' + sanitize(t('tactics.favorites')) + '</div>' +
+      '<div class="tb-saved-list" id="tb-saved-list">' +
+        tbSavedListHtml(tbFavoriteBoards(), loadedId) +
+      '</div>' +
+      '<div class="tb-saved-title tb-lib-title">' + sanitize(t('tactics.club_library')) + '</div>' +
+      '<input type="search" class="tb-lib-search" id="tb-lib-search" ' +
+        'placeholder="' + sanitize(t('tactics.search_ph')) + '">' +
+      '<div class="tb-saved-list" id="tb-lib-list">' +
+        tbLibraryListHtml(loadedId, '') +
+      '</div>';
   }
 
   /**
@@ -10065,17 +10150,9 @@
    * window on a cold start, and the graceful answer if the queries fail.
    */
   function getSavedBoards() {
-    if (typeof TB !== 'undefined' && TB.ready && TB.ready()) {
-      const all = TB.library();
-      // '' means "Totes" and null means nothing chosen yet — both show
-      // everything. Only an explicit category filters. See v67: conflating
-      // those two states is what made the Totes button a silent no-op.
-      const cur = getCurrentCategory();
-      if (!cur) return all;
-      // A board with no category (migrated from a __none shard) stays
-      // visible under every filter rather than becoming unreachable.
-      return all.filter(b => !b.category || b.category === cur);
-    }
+    // Never category-filtered: see the CATEGORY_PAGES comment. The library
+    // shows every board of the club whatever squad the coach is looking at.
+    if (typeof TB !== 'undefined' && TB.ready && TB.ready()) return TB.library();
     const boards = JSON.parse(localStorage.getItem('fa_tactic_saved') || '[]');
     if (ensureBoardIds(boards)) {
       localStorage.setItem('fa_tactic_saved', JSON.stringify(boards));
@@ -10135,6 +10212,7 @@
       item.addEventListener('click', async (e) => {
         if (e.target.closest('.tb-delete-board')) return;
         if (e.target.closest('.tb-adopt-board')) return;
+        if (e.target.closest('.tb-fav-board')) return;
         const id = item.dataset.boardId;
         const metaB = getSavedBoards().find(b => b.id === id);
         if (!metaB) return;
@@ -10260,14 +10338,47 @@
         });
       });
     });
+    document.querySelectorAll('.tb-fav-board').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        // Optimistic: the star flips now and the list repaints from the
+        // in-memory set. TB.toggleFavorite puts it back if the write fails,
+        // so a star can never end up claiming something that is not stored.
+        btn.disabled = true;
+        try {
+          await TB.toggleFavorite(btn.dataset.favId);
+        } catch (err) {
+          console.warn('[TB] favourite toggle failed', err);
+        }
+        btn.disabled = false;
+        tbRefreshSavedListEl();
+      });
+    });
+    const searchEl = document.getElementById('tb-lib-search');
+    if (searchEl && !searchEl._tbBound) {
+      // Guard + repaint of the LIST only, never the input: re-rendering the
+      // field would drop focus and the caret on every keystroke.
+      searchEl._tbBound = true;
+      searchEl.addEventListener('input', () => {
+        const libEl = document.getElementById('tb-lib-list');
+        if (!libEl) return;
+        libEl.innerHTML = tbLibraryListHtml(
+          localStorage.getItem('fa_tactic_loaded_id'), searchEl.value);
+        bindTacticsSavedList();
+      });
+    }
   }
 
-  /** Repaint the saved list in place, wherever it happens to be rendered. */
+  /** Repaint both board lists in place, keeping the search term. */
   function tbRefreshSavedListEl() {
-    const listEl = document.getElementById('tb-saved-list');
-    if (!listEl) return;
-    listEl.innerHTML = tbSavedListHtml(getSavedBoards(),
-      localStorage.getItem('fa_tactic_loaded_id'));
+    const favEl = document.getElementById('tb-saved-list');
+    const libEl = document.getElementById('tb-lib-list');
+    if (!favEl && !libEl) return;
+    const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+    const searchEl = document.getElementById('tb-lib-search');
+    if (favEl) favEl.innerHTML = tbSavedListHtml(tbFavoriteBoards(), loadedId);
+    if (libEl) libEl.innerHTML = tbLibraryListHtml(loadedId, searchEl ? searchEl.value : '');
     bindTacticsSavedList();
   }
 

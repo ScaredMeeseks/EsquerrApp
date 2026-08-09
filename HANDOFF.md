@@ -14,6 +14,18 @@ The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo cl
 
 Ordered by what I would pick up next. Nothing here is blocking.
 
+### 0. Formation leaks into another board's first frame (reported 2026-08-08) — TO REVIEW AFTER THE TACTIC-BOARD STAGES
+
+Reported in use: *"if I had previously selected a formació, it kind of appears in the first frame of other boards"*. **Deliberately parked** until the tactical-board stages are done, at the owner's request — but it is a real defect, not the v82 replay flash, which was a separate listener leak and is fixed.
+
+Where to look, in order of suspicion:
+
+1. **`fa_tactic_formation` is a LOCAL editor key that survives loading another board.** The load path sets it from `board.formation || ''`, so a board saved without a formation leaves the previous one in place — and the formation dropdown's own handler *spawns circles* (`app.js` ~8846), so a stale value can repopulate positions that were never part of the board being viewed.
+2. **`captureFrameState()` does not record `formation`**, but `applyFrameState` and the frame strip run against whatever the editor currently holds. A frame captured while a formation was selected can therefore be replayed against a different board's circles.
+3. Frames are indexed, not keyed, and `fa_tactic_frame_idx` is cleared on load but not on every path into the editor.
+
+Worth reproducing with two boards where exactly one has a formation set, saving the formationless one *second*, then reopening the first.
+
 ### 1. Readiness — done for now; revisit with REAL data (v52, v59, v60, v61)
 Flagging is down from **76% → 40%**, green **24% → 48%**. Presentation (v52), three engine defects (v59), two thresholds (v60) and the consecutive-sessions rule (v61) are all shipped.
 
