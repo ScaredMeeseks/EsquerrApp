@@ -465,6 +465,9 @@
                                es:'Tus pizarras están siempre',
                                en:'Your own boards are always here' },
     'tactics.fav_add':       { ca:'Afegir a preferides', es:'Añadir a favoritas', en:'Add to favourites' },
+    'tactics.not_yours':     { ca:'Aquesta pissarra no és teva. Fes «Fer-la meva» a la biblioteca, o desa-la amb «Save As» per tenir-ne una còpia.',
+                               es:'Esta pizarra no es tuya. Pulsa «Hacerla mía» en la biblioteca, o guárdala con «Save As» para tener una copia.',
+                               en:'This board is not yours. Use "Make it mine" in the library, or Save As to keep your own copy.' },
     'tactics.fav_remove':    { ca:'Treure de preferides', es:'Quitar de favoritas', en:'Remove from favourites' },
     'tactics.search_ph':     { ca:'Cerca per nom, entrenador o categoria…',
                                es:'Busca por nombre, entrenador o categoría…',
@@ -9110,6 +9113,14 @@
         String(b.name || '').toLowerCase() === name.toLowerCase());
       if (dup && !confirm(t('alert.board_name_exists'))) return;
 
+      // Saving somebody else's board — or one nobody has adopted — is
+      // refused by the rules, and rightly so. Say which it is and what to do
+      // instead of letting it come back as a generic failure.
+      const known = TB.meta(entry.id);
+      if (known && !TB.isMine(known)) {
+        alert(t('tactics.not_yours'));
+        return;
+      }
       const s = getSession() || {};
       try {
         await TB.save(entry, {ownerName: s.name || ''});
@@ -10526,12 +10537,27 @@
    */
   async function tbEnsureSaved(name, category) {
     const loadedId = localStorage.getItem('fa_tactic_loaded_id');
-    const known = loadedId && TB.meta(loadedId);
+    const known = loadedId ? TB.meta(loadedId) : null;
     const entry = TB.buildBoardEntry(localStorage, {
       id: (known ? loadedId : TB.newBoardId()),
       category: category,
       name: name
     });
+
+    /* Linking must not WRITE the board.
+
+       A board that is already in the registry but is not mine — a
+       colleague's, or one of the migrated boards nobody has adopted, which
+       is most of them — cannot be written by me, and the rules are right to
+       refuse: pointing at someone's drill is not permission to edit it.
+       Trying anyway is what made "Add to training" fail outright.
+
+       So an existing board is referenced as it stands. Only a board that is
+       genuinely new, or already mine, is saved. If a coach has changed an
+       unowned board and wants those changes attached, the routes are Save As
+       (their own copy) or the adopt button — both one click, both explicit. */
+    if (known && !TB.isMine(known)) return entry;
+
     const s = getSession() || {};
     await TB.save(entry, {ownerName: s.name || ''});
     localStorage.setItem('fa_tactic_loaded_id', entry.id);
