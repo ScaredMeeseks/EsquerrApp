@@ -195,18 +195,20 @@ describe('app.js has no second copy of the entry literal', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
   it('builds every board entry through TB.buildBoardEntry', () => {
-    /* THREE, not the original four. Add to Training and Add to Match stopped
-       building entries of their own when sessions started storing references:
-       both now go through tbEnsureSaved(), which saves the board to the
-       registry and hands back the entry, because a session cannot reference
-       a board that was never saved. So the remaining builders are Save,
-       Save As and tbEnsureSaved.
+    /* Four, and NOT the original four. Add to Training and Add to Match
+       stopped building entries of their own when sessions started storing
+       references: both go through tbEnsureSaved(), because a session cannot
+       reference a board that was never saved. tbHasUnsavedWork() then added
+       one back — it builds the current editor state in order to COMPARE it
+       with what is stored, which is the same construction and must not drift
+       from it either.
 
-       The number matters less than the property: entry construction lives in
-       one function, and nothing reconstructs that object by hand. */
+       So: Save, Save As, tbEnsureSaved, tbHasUnsavedWork. The number matters
+       less than the property — entry construction lives in one function, and
+       nothing rebuilds that object by hand. */
     const calls = src.match(/TB\.buildBoardEntry\(/g) || [];
-    assert.strictEqual(calls.length, 3,
-      'expected exactly 3 call sites (Save, Save As, tbEnsureSaved), found ' + calls.length);
+    assert.strictEqual(calls.length, 4,
+      'expected 4 call sites (Save, Save As, tbEnsureSaved, tbHasUnsavedWork), found ' + calls.length);
   });
 
   it('both add-to-session paths go through tbEnsureSaved', () => {

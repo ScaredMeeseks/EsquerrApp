@@ -469,6 +469,10 @@
                                es:'Esta pizarra no es tuya. Pulsa «Hacerla mía» en la biblioteca, o guárdala con «Save As» para tener una copia.',
                                en:'This board is not yours. Use "Make it mine" in the library, or Save As to keep your own copy.' },
     'tactics.copy_suffix':   { ca:' (còpia)', es:' (copia)', en:' (copy)' },
+    'tb.leave_title':        { ca:'Tens canvis sense desar', es:'Tienes cambios sin guardar', en:'You have unsaved changes' },
+    'tb.leave_msg':          { ca:'Si surts ara perdràs els canvis d\'aquesta pissarra. Cancel·la per tornar i desar-los.',
+                               es:'Si sales ahora perderás los cambios de esta pizarra. Cancela para volver y guardarlos.',
+                               en:'Leaving now will discard the changes to this board. Cancel to go back and save them.' },
     'tactics.formation_resets_frames':
                              { ca:'Canviar la formació reiniciarà l\'animació ({n} fotogrames). Vols continuar?',
                                es:'Cambiar la formación reiniciará la animación ({n} fotogramas). ¿Quieres continuar?',
@@ -2460,7 +2464,33 @@
     }
   }
 
+  let _tbLeaveConfirmed = false;
+
   function navigate() {
+    /* Leaving the tactical board with unsaved work.
+
+       Hooked here because navigate() is the one place every page change
+       funnels through — sidebar, row links, Back, push notifications. The
+       test is `_lastRendered === 'tactics'` and not `currentPage`, so the
+       many re-renders that do NOT change page (firestore sync, language,
+       category bar) never prompt.
+
+       currentPage is put back before returning: leaving it on the target
+       would show the tactics page while the app believed it was elsewhere,
+       and the next incidental re-render would silently complete the
+       navigation the coach just declined. */
+    if (_lastRendered === 'tactics' && currentPage !== 'tactics' &&
+        !_tbLeaveConfirmed && tbHasUnsavedWork()) {
+      const target = currentPage;
+      currentPage = 'tactics';
+      showTbConfirm(t('tb.leave_title'), t('tb.leave_msg'), () => {
+        _tbLeaveConfirmed = true;
+        currentPage = target;
+        navigate();
+        _tbLeaveConfirmed = false;
+      });
+      return;
+    }
     window._renderFrame = (window._renderFrame || 0) + 1;
     invalidateUsersCache();
     const session = getSession();
@@ -10683,6 +10713,42 @@
    * set. An arrow or a cone is an edit too, and this is the decision that
    * chooses between referencing a colleague's board and forking it.
    */
+  /**
+   * Is there drawing work in the editor that is not in the registry?
+   *
+   * Deliberately NOT hasTacticUnsavedChanges(), which bails out with
+   * `if (!curFormation) return false` — most drills have no formation at
+   * all, so that helper answers "no changes" for exactly the boards a coach
+   * is most likely to lose. It also only compares formation, name, positions
+   * and numbers; an arrow, a cone or a pen stroke is work too.
+   *
+   * Errs towards silence. A false prompt on every navigation would be worse
+   * than an occasional missed one, so an uncached payload counts as "no
+   * changes" rather than guessing.
+   */
+  function tbHasUnsavedWork() {
+    if (typeof TB === 'undefined' || !TB.ready || !TB.ready()) return false;
+    // No board type means the picker is showing: nothing is open to lose.
+    if (!localStorage.getItem('fa_tactic_board_type')) return false;
+    const name = (localStorage.getItem('fa_tactic_name') || '').trim() || 'Board';
+    const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+    if (loadedId) {
+      const meta = TB.meta(loadedId);
+      if (!meta) return false;
+      return tbDiffersFromSaved(TB.buildBoardEntry(localStorage, {
+        id: loadedId, category: meta.category || '', name: name
+      }));
+    }
+    // Nothing loaded: anything drawn at all is unsaved.
+    return ['fa_tactic_positions', 'fa_tactic_arrows', 'fa_tactic_rects',
+      'fa_tactic_texts', 'fa_tactic_pen_lines', 'fa_tactic_cones',
+      'fa_tactic_balls', 'fa_tactic_opp_positions'].some(function (k) {
+      let v;
+      try { v = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return false; }
+      return Array.isArray(v) ? v.some(function (x) { return x != null; }) : !!v;
+    });
+  }
+
   function tbDiffersFromSaved(entry) {
     const payload = TB.peek(entry.id);
     if (!payload) return false; // not loaded: nothing to have changed
