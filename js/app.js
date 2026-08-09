@@ -1252,7 +1252,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 83;
+  const APP_VERSION = 84;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -4387,6 +4387,89 @@
       '</div></div></div>';
   }
 
+  /**
+   * Turn a session's stored entry into something renderReadOnlyBoard can draw.
+   *
+   * Three cases, in order:
+   *   1. the payload is already cached → use it
+   *   2. the entry still carries the drawing itself (the dual-write fat copy,
+   *      and every entry written before references) → use the entry
+   *   3. neither → null, and the caller emits a placeholder for hydration
+   *
+   * Case 2 is why this refactor is safe to ship: while TB_DUAL_WRITE holds,
+   * every entry has its own drawing, so nothing ever renders asynchronously
+   * and the pages look exactly as they did. The placeholder path only comes
+   * alive once the fat copy stops being written.
+   */
+  function tbResolveRef(ref) {
+    if (!ref) return null;
+    const cached = ref.boardId ? TB.peek(ref.boardId) : null;
+    if (cached) {
+      // The session owns name and tag; the payload owns the drawing.
+      return Object.assign({}, cached, {name: ref.name || cached.name});
+    }
+    if (ref.positions || ref.formation) return ref;
+    return null;
+  }
+
+  /**
+   * How a linked board is addressed from the DOM.
+   *
+   * By id, with the name as the fallback for entries written before
+   * references existed. Matching on NAME was a real defect: once boards were
+   * sharded per category the same name could exist twice in one club, and
+   * renaming a board silently orphaned the squads linked to it.
+   */
+  function tbLinkedKey(b) {
+    return b && b.boardId ? 'id:' + b.boardId : 'name:' + String((b && b.name) || '');
+  }
+  function tbFindLinked(list, key) {
+    if (!Array.isArray(list) || !key) return null;
+    if (key.indexOf('id:') === 0) {
+      const id = key.slice(3);
+      return list.find(b => b.boardId === id) || null;
+    }
+    const nm = key.slice(5);
+    return list.find(b => !b.boardId && b.name === nm) ||
+      list.find(b => b.name === nm) || null;
+  }
+
+  /** One read-only board, or a placeholder to be filled in after render. */
+  function tbRoBoardHtml(ref, prefix) {
+    const board = tbResolveRef(ref);
+    if (board) return renderReadOnlyBoard(board, prefix);
+    return '<div class="tb-ro-skeleton" data-ro-id="' + sanitize(ref.boardId || '') +
+      '" data-ro-prefix="' + sanitize(prefix) + '" data-ro-name="' +
+      sanitize(ref.name || '') + '">' + sanitize(t('tactics.loading')) + '</div>';
+  }
+
+  /**
+   * Fill in any placeholders left by tbRoBoardHtml, in ONE query per ten
+   * boards rather than one per board.
+   */
+  async function hydrateRoBoards() {
+    const nodes = Array.from(document.querySelectorAll('.tb-ro-skeleton'));
+    if (!nodes.length) return;
+    const ids = [...new Set(nodes.map(n => n.dataset.roId).filter(Boolean))];
+    if (!ids.length) return;
+    await TB.warm(ids);
+    let filled = 0;
+    nodes.forEach(n => {
+      const board = TB.peek(n.dataset.roId);
+      if (!board) return;
+      const withName = Object.assign({}, board,
+        n.dataset.roName ? {name: n.dataset.roName} : {});
+      n.outerHTML = renderReadOnlyBoard(withName, n.dataset.roPrefix || '');
+      filled++;
+    });
+    // Only the newly inserted nodes need binding, but bindRoBoardAnimations
+    // is guarded per element now, so re-running it is a no-op elsewhere.
+    if (filled) {
+      if (typeof scaleRoBoards === 'function') scaleRoBoards();
+      bindRoBoardAnimations();
+    }
+  }
+
   function bindRoBoardAnimations() {
     // Compute polygon arrowheads for all read-only boards now that they're in the DOM
     document.querySelectorAll('.tb-field-readonly .tb-arrows-svg').forEach(svg => refreshArrowheads(svg));
@@ -5229,7 +5312,7 @@
             orderedTags.map(tag => {
               const tagTitle = tag || 'General';
               return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
-                grouped[tag].map(b => renderReadOnlyBoard(b, 'ro1-')).join('') + '</div>';
+                grouped[tag].map(b => tbRoBoardHtml(b, 'ro1-')).join('') + '</div>';
             }).join('') + '</div>';
         }
 
@@ -5272,7 +5355,7 @@
             const tagTitle = tag || 'General';
             return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
               grouped[tag].map(b => {
-                const boardHtml = renderReadOnlyBoard(b, 'ro-ptd-');
+                const boardHtml = tbRoBoardHtml(b, 'ro-ptd-');
                 let teamsBlock = '';
                 if (b.linkedTeams && b.linkedTeams.length) {
                   teamsBlock = '<div class="tb-linked-teams">' +
@@ -9292,24 +9375,36 @@
     }
 
     const addToTrainingBtn = document.getElementById('tb-add-to-training');
-    addToTrainingBtn?.addEventListener('click', () => {
+    addToTrainingBtn?.addEventListener('click', async () => {
       if (!selectedTrainingVal) { alert(t('alert.select_training')); return; }
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const bName = (nameInput ? nameInput.value : '').trim() || 'Board';
+      const cat = getCurrentCategory();
+      let entry;
+      try {
+        entry = await tbEnsureSaved(bName, cat);
+      } catch (err) {
+        console.error('[TB] add-to-training save failed', err);
+        alert(t('tactics.save_failed'));
+        return;
+      }
       const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
       const tdate = selectedTrainingVal;
       if (!trainingBoards[tdate]) trainingBoards[tdate] = [];
-      const idx = trainingBoards[tdate].findIndex(b => b.name === bName);
+      // By id, falling back to name only for entries written before ids.
+      const idx = trainingBoards[tdate].findIndex(b =>
+        b.boardId ? b.boardId === entry.id : b.name === bName);
       // Stamped, not derived: this map is keyed by training DATE, and two
       // categories training the same evening share one bucket — so the date
       // cannot tell us whose board this is. Phase 5 shards on this field.
-      const entry = TB.buildBoardEntry(localStorage, {
-        category: getCurrentCategory(),
-        name: bName
-      });
-      if (idx !== -1) trainingBoards[tdate][idx] = entry;
-      else trainingBoards[tdate].push(entry);
+      const ref = tbSessionRef(entry, {category: cat});
+      // A re-link must not drop the squads already split for this session.
+      if (idx !== -1 && trainingBoards[tdate][idx].linkedTeams) {
+        ref.linkedTeams = trainingBoards[tdate][idx].linkedTeams;
+      }
+      if (idx !== -1) trainingBoards[tdate][idx] = ref;
+      else trainingBoards[tdate].push(ref);
       localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
       const orig = addToTrainingBtn.textContent;
       addToTrainingBtn.textContent = t('tb.added');
@@ -9339,21 +9434,31 @@
     }
 
     const addToMatchBtn = document.getElementById('tb-add-to-match');
-    addToMatchBtn?.addEventListener('click', () => {
+    addToMatchBtn?.addEventListener('click', async () => {
       if (!selectedMatchVal) { alert(t('alert.select_match')); return; }
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const bName = (nameInput ? nameInput.value : '').trim() || 'Board';
+      let entry;
+      try {
+        entry = await tbEnsureSaved(bName, getCurrentCategory());
+      } catch (err) {
+        console.error('[TB] add-to-match save failed', err);
+        alert(t('tactics.save_failed'));
+        return;
+      }
       const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
       const mid = selectedMatchVal;
       if (!matchBoards[mid]) matchBoards[mid] = [];
-      // Replace if same name already linked to this match, otherwise add
-      const idx = matchBoards[mid].findIndex(b => b.name === bName);
-      // No `category` here, unlike the training path above: match boards are
-      // routed by joining the map key (a matchId) through fa_matches.
-      const entry = TB.buildBoardEntry(localStorage, { name: bName });
-      if (idx !== -1) matchBoards[mid][idx] = entry;
-      else matchBoards[mid].push(entry);
+      // Replace if the same board is already linked, otherwise add.
+      const idx = matchBoards[mid].findIndex(b =>
+        b.boardId ? b.boardId === entry.id : b.name === bName);
+      // No `category` on the ref, unlike the training path above: match
+      // boards are routed by joining the map key (a matchId) through
+      // fa_matches, so a stamp here would be a second source of truth.
+      const ref = tbSessionRef(entry, {});
+      if (idx !== -1) matchBoards[mid][idx] = ref;
+      else matchBoards[mid].push(ref);
       localStorage.setItem('fa_tactic_match_boards', JSON.stringify(matchBoards));
       // Visual feedback
       const orig = addToMatchBtn.textContent;
@@ -10374,6 +10479,66 @@
     }
   }
 
+  /**
+   * The entry a match or training session stores for a linked board.
+   *
+   * A REFERENCE now, not a copy. Previously each linked session held the
+   * whole board and they were re-synced by matching on NAME — so a board on
+   * five matches was stored six times, editing it had to walk every bucket
+   * hoping the names still agreed, and once boards were sharded per category
+   * the same name could legitimately exist twice.
+   *
+   * The fat copy is still spread on top while TB_DUAL_WRITE holds, at the
+   * TOP level rather than nested, because that is the whole back-compat
+   * story: a v43-era APK reads entry.positions where it always did and never
+   * sees boardId. Drop the spread and the entry collapses to five fields.
+   *
+   * `linkedTeams` lives HERE and never in the payload. It is per-session
+   * data — which squads were split for this drill — that was only ever
+   * attached to a board by accident of storage, and it carries player ids
+   * and names, which the club-wide board read rule must never expose.
+   */
+  function tbSessionRef(entry, opts) {
+    opts = opts || {};
+    const ref = {};
+    if (TB_DUAL_WRITE) {
+      const fat = Object.assign({}, entry);
+      delete fat.id;
+      delete fat.frames;
+      delete fat.penLines;
+      delete fat.linkedTeams;
+      Object.assign(ref, fat);
+    }
+    ref.boardId = entry.id;
+    ref.name = entry.name;
+    ref.tag = entry.tag || '';
+    if (opts.category !== undefined) ref.category = opts.category;
+    return ref;
+  }
+
+  /**
+   * Make sure the board in the editor exists in the registry, and return it.
+   *
+   * Linking is by id, so a session cannot reference a board that was never
+   * saved. Adding an unsaved drawing to a match therefore saves it to the
+   * library first — which is also the more honest behaviour: a drill worth
+   * attaching to a session is worth the rest of the club being able to find.
+   */
+  async function tbEnsureSaved(name, category) {
+    const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+    const known = loadedId && TB.meta(loadedId);
+    const entry = TB.buildBoardEntry(localStorage, {
+      id: (known ? loadedId : TB.newBoardId()),
+      category: category,
+      name: name
+    });
+    const s = getSession() || {};
+    await TB.save(entry, {ownerName: s.name || ''});
+    localStorage.setItem('fa_tactic_loaded_id', entry.id);
+    tbLegacySync();
+    return entry;
+  }
+
   /** Repaint both board lists in place, keeping the search term. */
   function tbRefreshSavedListEl() {
     const favEl = document.getElementById('tb-saved-list');
@@ -10779,7 +10944,7 @@
         const tagTitle = tag || 'General';
         return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
           grouped[tag].map(b => {
-            const boardHtml = renderReadOnlyBoard(b, 'ro-std-');
+            const boardHtml = tbRoBoardHtml(b, 'ro-std-');
             let teamsBlock = '';
             if (b.linkedTeams && b.linkedTeams.length) {
               teamsBlock = '<div class="tb-linked-teams">' +
@@ -10792,9 +10957,9 @@
                   }).join('');
                   return '<div class="tb-lt-team"><div class="tb-lt-team-title">Equip ' + (ti + 1) + ' <span class="tg-team-count">' + tm.players.length + '</span></div>' + rows + '</div>';
                 }).join('') +
-                '<button class="tb-unlink-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button></div>';
+                '<button class="tb-unlink-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button></div>';
             } else if (hasTeams) {
-              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-name="' + sanitize(b.name).replace(/"/g, '&quot;') + '" data-tdate="' + tdate + '" data-tsid="' + sanitize(String((sess && sess.id) || '')) + '">📋 Afegir equips</button></div>';
+              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" data-tsid="' + sanitize(String((sess && sess.id) || '')) + '">📋 Afegir equips</button></div>';
             }
             return boardHtml + teamsBlock;
           }).join('') + '</div>';
@@ -12330,7 +12495,7 @@
         const boards = matchBoards[convSelectedMatchId] || [];
         if (!boards.length) return '';
         return '<div class="card"><div class="card-title">' + t('conv.tactical_board') + '</div>' +
-          boards.map(b => renderReadOnlyBoard(b, 'ro2-')).join('') + '</div>';
+          boards.map(b => tbRoBoardHtml(b, 'ro2-')).join('') + '</div>';
       })()}
       ${(() => {
         if (!convSelectedMatchId) return '';
@@ -14849,6 +15014,7 @@
     // Re-init read-only board scaling + animations
     scaleRoBoards();
     bindRoBoardAnimations();
+    hydrateRoBoards();
   }
 
   // ── Drag-and-drop + add/remove for generated teams ──
@@ -17244,6 +17410,10 @@
 
     // Read-only board frame animations
     bindRoBoardAnimations();
+    // ...then fill in any board whose drawing lives in its own document.
+    // A no-op while the dual-write fat copy is still being written, since
+    // nothing leaves a placeholder behind in that case.
+    hydrateRoBoards();
 
     // Staff matchday card navigation
     $$('[data-go-staff-match]').forEach(el => {
@@ -18510,7 +18680,7 @@
         // "Afegir equips" button
         const linkBtn = e.target.closest('.tb-link-teams');
         if (linkBtn) {
-          const boardName = linkBtn.dataset.boardName;
+          const boardKey = linkBtn.dataset.boardKey;
           const tdate = linkBtn.dataset.tdate;
           // Compared by SESSION, not date: two squads share a date bucket.
           if (!_generatedTeams || !_generatedTeamsId ||
@@ -18518,7 +18688,7 @@
           const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
           const boards = trainingBoards[tdate];
           if (!boards) return;
-          const board = boards.find(b => b.name === boardName);
+          const board = tbFindLinked(boards, boardKey);
           if (!board) return;
           board.linkedTeams = _generatedTeams.map((team, ti) => ({
             name: 'Equip ' + (ti + 1),
@@ -18532,12 +18702,12 @@
         // "Remove teams" button
         const unlinkBtn = e.target.closest('.tb-unlink-teams');
         if (unlinkBtn) {
-          const boardName = unlinkBtn.dataset.boardName;
+          const boardKey = unlinkBtn.dataset.boardKey;
           const tdate = unlinkBtn.dataset.tdate;
           const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
           const boards = trainingBoards[tdate];
           if (!boards) return;
-          const board = boards.find(b => b.name === boardName);
+          const board = tbFindLinked(boards, boardKey);
           if (!board) return;
           delete board.linkedTeams;
           localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));

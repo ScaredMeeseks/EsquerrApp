@@ -195,9 +195,31 @@ describe('app.js has no second copy of the entry literal', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
   it('builds every board entry through TB.buildBoardEntry', () => {
+    /* THREE, not the original four. Add to Training and Add to Match stopped
+       building entries of their own when sessions started storing references:
+       both now go through tbEnsureSaved(), which saves the board to the
+       registry and hands back the entry, because a session cannot reference
+       a board that was never saved. So the remaining builders are Save,
+       Save As and tbEnsureSaved.
+
+       The number matters less than the property: entry construction lives in
+       one function, and nothing reconstructs that object by hand. */
     const calls = src.match(/TB\.buildBoardEntry\(/g) || [];
-    assert.strictEqual(calls.length, 4,
-      'expected exactly 4 call sites (Save, Save As, Add to Training, Add to Match), found ' + calls.length);
+    assert.strictEqual(calls.length, 3,
+      'expected exactly 3 call sites (Save, Save As, tbEnsureSaved), found ' + calls.length);
+  });
+
+  it('both add-to-session paths go through tbEnsureSaved', () => {
+    // Linking is by id, so an unsaved drawing has nothing to reference.
+    ['tb-add-to-training', 'tb-add-to-match'].forEach(function (btn) {
+      const i = src.indexOf(btn + "');");
+      assert.notStrictEqual(i, -1, btn + ' handler not found');
+      const body = src.slice(i, i + 1800);
+      assert.ok(/tbEnsureSaved\(/.test(body),
+        btn + ' must save the board before linking it');
+      assert.ok(/tbSessionRef\(/.test(body),
+        btn + ' must store a reference, not a copy');
+    });
   });
 
   it('has no inline board literal left', () => {

@@ -1321,6 +1321,14 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 /* The payload is a separate document, fetched when a board is opened. */
 .tb-saved-loading { opacity:.55; pointer-events:none; }
+/* Placeholder for a linked board whose drawing has not arrived yet. Sized
+   like a board so a session's layout does not jump when it fills in. */
+.tb-ro-skeleton {
+  aspect-ratio:3 / 2; margin-bottom:1rem; border-radius:var(--radius);
+  border:1px dashed var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.8rem; color:var(--text-secondary); opacity:.7;
+}
 .tb-saved-item:hover { background:#fb8c00; color:#fff; transform:scale(1.02); border-color:#fb8c00; }
 .tb-saved-item span { font-size:.88rem; }
 .tb-delete-board {
