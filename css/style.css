@@ -1287,14 +1287,20 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    their content made each row's icons sit at a different offset depending on
    whether that board happened to be animated. */
 .tb-cell {
-  flex:none; width:1.6rem; height:1.6rem;
+  flex:none; width:1.8rem; height:1.8rem;
   display:flex; align-items:center; justify-content:center;
 }
 .tb-saved-anim { font-size:.7rem; opacity:.6; }
+/* Bigger than the other row controls on purpose: it is the only one a coach
+   is invited to press speculatively, so it has to read as a control rather
+   than as decoration. The hover colour is the affordance — an outline star
+   that never changes looks like a status icon. */
 .tb-fav-board {
   border:none; background:transparent; cursor:pointer;
-  font-size:1rem; line-height:1; color:var(--text-secondary); padding:0;
+  font-size:1.35rem; line-height:1; color:var(--text-secondary); padding:0;
+  transition:color .12s, transform .12s;
 }
+.tb-fav-board:hover:not(:disabled) { color:#f5c842; transform:scale(1.15); }
 .tb-fav-board.tb-fav-on { color:#f5c842; }
 .tb-fav-board:disabled { cursor:default; opacity:.45; }
 .tb-lib-title { margin-top:1rem; }

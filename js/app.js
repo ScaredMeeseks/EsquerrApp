@@ -464,6 +464,8 @@
     'tactics.fav_own':       { ca:'Les teves pissarres hi són sempre',
                                es:'Tus pizarras están siempre',
                                en:'Your own boards are always here' },
+    'tactics.fav_add':       { ca:'Afegir a preferides', es:'Añadir a favoritas', en:'Add to favourites' },
+    'tactics.fav_remove':    { ca:'Treure de preferides', es:'Quitar de favoritas', en:'Remove from favourites' },
     'tactics.search_ph':     { ca:'Cerca per nom, entrenador o categoria…',
                                es:'Busca por nombre, entrenador o categoría…',
                                en:'Search by name, coach or category…' },
@@ -10056,7 +10058,9 @@
       '<span class="tb-cell tb-saved-anim">' + (b.hasFrames ? '▶' : '') + '</span>' +
       (opts.star ?
         '<button class="tb-cell tb-fav-board' + (fav ? ' tb-fav-on' : '') + '"' +
-          (mine ? ' disabled title="' + sanitize(t('tactics.fav_own')) + '"' : '') +
+          (mine ? ' disabled' : '') +
+          ' title="' + sanitize(t(mine ? 'tactics.fav_own' :
+            (fav ? 'tactics.fav_remove' : 'tactics.fav_add'))) + '"' +
           ' data-fav-id="' + sanitize(b.id) + '">' + (fav ? '★' : '☆') + '</button>' : '') +
       (b.ownerUid === '' ?
         '<button class="tb-adopt-board" data-adopt-id="' + sanitize(b.id) + '">' +
