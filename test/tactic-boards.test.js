@@ -238,6 +238,51 @@ describe('app.js has no second copy of the entry literal', () => {
   });
 });
 
+describe('changing the formation resets the animation', () => {
+  /* Reported as "if I had previously selected a formacio, it kind of appears
+     in the first frame of other boards".
+
+     Every animation frame carries its OWN positions. Selecting a formation
+     replaced the board's positions but left the frames alone, so the next
+     mutation ran autoSaveFrame(), which folded the new formation into
+     whichever frame was active — frame 0 after a load — and destroyed the
+     animation's first pose. Save As and Add-to-session then copied those
+     frames into the next board, which is the cross-board half of the report.
+
+     An animation cannot survive its players being re-shaped, so the frames
+     are reset — but only after asking. */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  function formationHandler() {
+    const i = src.indexOf("const f = opt.dataset.val;");
+    assert.notStrictEqual(i, -1, 'formation option handler not found');
+    return src.slice(i, i + 2400);
+  }
+
+  it('clears fa_tactic_frames when a formation is chosen', () => {
+    const body = formationHandler();
+    assert.ok(/removeItem\('fa_tactic_frames'\)/.test(body),
+      'the formation handler must clear the frames it invalidates');
+    assert.ok(/removeItem\('fa_tactic_frame_idx'\)/.test(body),
+      'a stale frame index outlives the frames it pointed at');
+  });
+
+  it('resets the in-memory frames too, not just localStorage', () => {
+    // autoSaveFrame() writes from the in-memory array, so clearing only
+    // localStorage would let the very next mutation put them straight back.
+    const body = formationHandler();
+    assert.ok(/frames\s*=\s*\[\]/.test(body), 'in-memory frames not reset');
+    assert.ok(/activeFrameIdx\s*=\s*-1/.test(body), 'active frame index not reset');
+  });
+
+  it('asks before discarding a real animation', () => {
+    const body = formationHandler();
+    assert.ok(/frames\.length > 1/.test(body),
+      'should only prompt when there is an animation to lose');
+    assert.ok(/formation_resets_frames/.test(body), 'no confirmation shown');
+  });
+});
+
 describe('read-only board playback binds once per button', () => {
   /* bindRoBoardAnimations() selects DOCUMENT-WIDE, but _refreshStdBoards()
      calls it again after replacing only #std-boards-section. Every play button

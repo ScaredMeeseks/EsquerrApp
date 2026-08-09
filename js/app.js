@@ -469,6 +469,10 @@
                                es:'Esta pizarra no es tuya. Pulsa «Hacerla mía» en la biblioteca, o guárdala con «Save As» para tener una copia.',
                                en:'This board is not yours. Use "Make it mine" in the library, or Save As to keep your own copy.' },
     'tactics.copy_suffix':   { ca:' (còpia)', es:' (copia)', en:' (copy)' },
+    'tactics.formation_resets_frames':
+                             { ca:'Canviar la formació reiniciarà l\'animació ({n} fotogrames). Vols continuar?',
+                               es:'Cambiar la formación reiniciará la animación ({n} fotogramas). ¿Quieres continuar?',
+                               en:'Changing the formation will reset the animation ({n} frames). Continue?' },
     'tactics.readonly_other':{ ca:'Pissarra de {name} — desa-la amb «Save As» per tenir la teva versió.',
                                es:'Pizarra de {name} — guárdala con «Save As» para tener tu versión.',
                                en:'{name}\'s board — use Save As to keep your own version.' },
@@ -8983,10 +8987,35 @@
       list.querySelectorAll('.tb-formation-option').forEach(opt => {
         opt.addEventListener('click', () => {
           const f = opt.dataset.val;
+          /* A formation redefines the board's STARTING SHAPE, and every
+             animation frame carries its own positions. This used to change
+             the shape and leave the frames alone — so the next mutation ran
+             autoSaveFrame(), which folded the new formation into whichever
+             frame was active (frame 0 after a load) and silently destroyed
+             the animation's first pose. Save As and Add-to-session then
+             copied those frames into the next board, which is how a
+             formation chosen on one board turned up in another one's first
+             frame.
+
+             An animation of eleven players in a 4-3-3 does not survive being
+             re-shaped into a 3-5-2, so the honest answer is to reset it —
+             but never silently. */
+          if (frames.length > 1 &&
+              !confirm(t('tactics.formation_resets_frames').replace('{n}', frames.length))) {
+            list.classList.remove('open');
+            return;
+          }
           toggle.textContent = f || '— Select —';
           list.querySelectorAll('.tb-formation-option').forEach(o => o.classList.remove('active'));
           opt.classList.add('active');
           list.classList.remove('open');
+          if (frames.length) {
+            frames = [];
+            activeFrameIdx = -1;
+            localStorage.removeItem('fa_tactic_frames');
+            localStorage.removeItem('fa_tactic_frame_idx');
+            if (typeof renderFrameStrip === 'function') renderFrameStrip();
+          }
           localStorage.setItem('fa_tactic_formation', f);
           if (f && formations[f]) {
             localStorage.removeItem('fa_tactic_positions');

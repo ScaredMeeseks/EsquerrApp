@@ -14,6 +14,10 @@ The demo club is live and seeded with faces (`Tm96gel58VSQvxgynf45`, see Demo cl
 
 Ordered by what I would pick up next. Nothing here is blocking.
 
+### 0b. Auto-generated teams show too many unused players (reported 2026-08-08) — PARKED
+
+"Auto Generate Teams" lists more non-used players than it should. Not yet diagnosed. Start at the distribution code changed in v47 (the "Equal" mode that deals contiguous blocks of the position-sorted pool) and at `bindGeneratedTeamsDnD` / the leftover pool it renders — v47 also fixed a trim that "cut the forwards every time" and a `perTeam` that could be exceeded, so the pool arithmetic has been wrong here before.
+
 ### 0. Formation leaks into another board's first frame (reported 2026-08-08) — TO REVIEW AFTER THE TACTIC-BOARD STAGES
 
 Reported in use: *"if I had previously selected a formació, it kind of appears in the first frame of other boards"*. **Deliberately parked** until the tactical-board stages are done, at the owner's request — but it is a real defect, not the v82 replay flash, which was a separate listener leak and is fixed.
