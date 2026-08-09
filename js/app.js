@@ -1274,7 +1274,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 84;
+  const APP_VERSION = 85;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -11706,7 +11706,11 @@
     // Render previously generated teams if they exist for this date
     let teamsHtml = '';
     if (_generatedTeams && String(_generatedTeamsId) === String(tr.id)) {
-      teamsHtml = renderGeneratedTeams(_generatedTeams, players, tr.date, locked);
+      // calledSquad, not the filtered `players`: the "+ Jugador" pool should
+      // offer anyone in the SESSION, including a guest from another
+      // category, regardless of which team the table above is filtered to.
+      // And the session object, not its date — see the generate handler.
+      teamsHtml = renderGeneratedTeams(_generatedTeams, calledSquad, tr, locked);
     }
 
     return `
@@ -11954,7 +11958,14 @@
   }
 
   // ── Render generated teams ──
-  function renderGeneratedTeams(teams, allPlayers, sess, locked) {
+  /**
+   * @param {Array} squad the SESSION'S squad — teams + guests - excluded —
+   *   never the whole club. The "+ Jugador" pool was showing every player in
+   *   the club, so a coach picking a substitute was offered squads that were
+   *   not training and, in a multi-category club, players they do not coach.
+   */
+  function renderGeneratedTeams(teams, squad, sess, locked) {
+    const allPlayers = squad;
     // Build set of all assigned player IDs
     const assignedIds = new Set();
     teams.forEach(team => team.forEach(p => assignedIds.add(String(p.id))));
@@ -15191,7 +15202,9 @@
         const training = getTrainings();
         const t = training.find(x => String(x.id) === String(detailTrainingId));
         if (!t) return;
-        const players = getUsers().filter(u => (u.roles || []).includes('player'));
+        // Squad, not club — this drives the suggested players-per-team, and
+        // dividing the whole club by two proposed a number nobody could fill.
+        const players = calledPlayers(t, getUsers());
         const locked = isTrainingLocked(t);
         const teamFilterBtn = document.querySelector('[data-tg-team].tg-btn-active');
         const teamFilter = teamFilterBtn ? teamFilterBtn.dataset.tgTeam : 'all';
@@ -15212,7 +15225,12 @@
         const training = getTrainings();
         const t = training.find(x => String(x.id) === String(detailTrainingId));
         if (!t) return;
-        const players = getUsers().filter(u => (u.roles || []).includes('player'));
+        // The SESSION'S SQUAD, not the whole club. calledPlayers() resolves
+        // teams + guests - excluded, so a player borrowed from another
+        // category is included and a player from a squad that is not
+        // training is not. This list feeds both the generator and the
+        // "+ Jugador" pool, which was offering every player in the club.
+        const players = calledPlayers(t, getUsers());
         const locked = isTrainingLocked(t);
         const numTeams = Math.max(2, parseInt(document.getElementById('tg-num-teams').value) || 2);
         const perTeam = Math.max(1, parseInt(document.getElementById('tg-per-team').value) || 5);
@@ -15227,10 +15245,14 @@
 
         const container = document.getElementById('tg-teams-container');
         if (container) {
-          container.innerHTML = renderGeneratedTeams(_generatedTeams, players, t.date, locked);
-          bindGeneratedTeamsDnD(players, t.date, locked);
+          // The session object, not its date: getEffectiveAnswer keys on the
+          // session id since v71, and a date would send every lookup down
+          // the legacy fallback — which v71 deliberately restricts to a
+          // player's own squad, so a guest's answer would be read wrong.
+          container.innerHTML = renderGeneratedTeams(_generatedTeams, players, t, locked);
+          bindGeneratedTeamsDnD(players, t, locked);
         }
-        _refreshStdBoards(t.date);
+        _refreshStdBoards(t);
       });
     }
 
@@ -15239,18 +15261,32 @@
       const training = getTrainings();
       const t = training.find(x => String(x.id) === String(detailTrainingId));
       if (t) {
-        const players = getUsers().filter(u => (u.roles || []).includes('player'));
+        const players = calledPlayers(t, getUsers());
         const locked = isTrainingLocked(t);
-        bindGeneratedTeamsDnD(players, t.date, locked);
+        bindGeneratedTeamsDnD(players, t, locked);
       }
     }
   }
 
   // ── Refresh the Tactical Boards section in staff training detail ──
-  function _refreshStdBoards(tdate) {
+  /**
+   * Takes the SESSION, like renderStdBoardsSection itself.
+   *
+   * It used to take a date and pass it straight through, so
+   * `sess.date` was undefined, the board bucket lookup missed, and the whole
+   * Tactical Boards section BLANKED on every refresh — after generating
+   * teams, after linking or unlinking them — until a full page render put it
+   * back. `sess.id` was undefined too, so "have teams been generated for
+   * this session" always answered no and the "Afegir equips" button never
+   * appeared there.
+   */
+  function _refreshStdBoards(sess) {
     const section = document.getElementById('std-boards-section');
     if (!section) return;
-    section.innerHTML = renderStdBoardsSection(tdate);
+    // Tolerate a bare date from the older call sites rather than blanking.
+    const resolved = (sess && typeof sess === 'object') ? sess :
+      getTrainings().find(x => x.date === sess) || null;
+    section.innerHTML = renderStdBoardsSection(resolved);
     // Re-init read-only board scaling + animations
     scaleRoBoards();
     bindRoBoardAnimations();
@@ -15269,7 +15305,7 @@
         container.innerHTML = renderGeneratedTeams(_generatedTeams, allPlayers, sess, locked);
         bindGeneratedTeamsDnD(allPlayers, sess, locked);
       }
-      _refreshStdBoards(sess && sess.date);
+      _refreshStdBoards(sess);
     }
 
     document.querySelectorAll('.tg-player-row').forEach(row => {
