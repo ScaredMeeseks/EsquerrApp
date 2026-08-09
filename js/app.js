@@ -469,6 +469,12 @@
                                es:'Esta pizarra no es tuya. Pulsa «Hacerla mía» en la biblioteca, o guárdala con «Save As» para tener una copia.',
                                en:'This board is not yours. Use "Make it mine" in the library, or Save As to keep your own copy.' },
     'tactics.copy_suffix':   { ca:' (còpia)', es:' (copia)', en:' (copy)' },
+    'tactics.readonly_other':{ ca:'Pissarra de {name} — desa-la amb «Save As» per tenir la teva versió.',
+                               es:'Pizarra de {name} — guárdala con «Save As» para tener tu versión.',
+                               en:'{name}\'s board — use Save As to keep your own version.' },
+    'tactics.readonly_unowned':{ ca:'Pissarra sense autor — «Fer-la meva» a la biblioteca per poder desar-hi canvis.',
+                               es:'Pizarra sin autor — «Hacerla mía» en la biblioteca para poder guardar cambios.',
+                               en:'Board with no author — use "Make it mine" in the library to save changes to it.' },
     'tactics.fork_title':    { ca:'Desar una còpia teva?', es:'¿Guardar una copia tuya?', en:'Save your own copy?' },
     'tactics.fork_msg':      { ca:'Has canviat una pissarra que no és teva. S\'enllaçarà una còpia teva, i l\'original no es tocarà.',
                                es:'Has cambiado una pizarra que no es tuya. Se enlazará una copia tuya, y el original no se tocará.',
@@ -6920,8 +6926,7 @@
           <div class="tb-match-linked" id="tb-training-linked"></div>
         </div>
         <div class="tb-btn-row">
-          <button class="btn btn-small btn-primary" id="tb-save">Save</button>
-          <button class="btn btn-small btn-tb-saveas" id="tb-save-as">Save As</button>
+          ${tbSaveButtonsHtml()}
         </div>
         ${tbBoardsPanelHtml()}
       </div>`;
@@ -10253,6 +10258,37 @@
     }).join('');
   }
 
+  /**
+   * Save / Save As, according to what the coach may actually do.
+   *
+   * A board that is not theirs cannot be overwritten — the rules refuse it,
+   * correctly — so offering Save is offering a button that always fails.
+   * Save As is the real action in that case: it keeps their work as their
+   * own copy and leaves the original alone.
+   *
+   * An UNOWNED board (every migrated one, until somebody claims it) counts
+   * as not theirs here. The way to get Save back is the adopt button in the
+   * library, which is one click and says what it does.
+   */
+  function tbSaveButtonsHtml() {
+    const loadedId = localStorage.getItem('fa_tactic_loaded_id');
+    const known = (loadedId && typeof TB !== 'undefined' && TB.meta) ? TB.meta(loadedId) : null;
+    const mayOverwrite = !known || TB.isMine(known);
+    let html = '';
+    if (mayOverwrite) {
+      html += '<button class="btn btn-small btn-primary" id="tb-save">Save</button>';
+    }
+    html += '<button class="btn btn-small btn-tb-saveas" id="tb-save-as">Save As</button>';
+    if (!mayOverwrite) {
+      const a = TB.author(known) || {};
+      html += '<span class="tb-readonly-note">' +
+        sanitize(known.ownerUid === '' ? t('tactics.readonly_unowned') :
+          t('tactics.readonly_other').replace('{name}', a.name || '—')) +
+        '</span>';
+    }
+    return html;
+  }
+
   /** Both board sections, shared by the picker screen and the editor. */
   function tbBoardsPanelHtml() {
     const loadedId = localStorage.getItem('fa_tactic_loaded_id');
@@ -10463,6 +10499,14 @@
             await TB.adopt(id, s.name || '');
           } catch (err) {
             alert(t('tactics.save_failed'));
+            return;
+          }
+          // Adopting the board currently open must bring the Save button
+          // back. A full re-render is lossless here: every scrap of editor
+          // state lives in localStorage, not in the DOM.
+          if (localStorage.getItem('fa_tactic_loaded_id') === id &&
+              currentPage === 'tactics') {
+            navigate('tactics');
             return;
           }
           tbRefreshSavedListEl();

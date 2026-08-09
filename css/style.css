@@ -1303,6 +1303,12 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .tb-fav-board:hover:not(:disabled) { color:#f5c842; transform:scale(1.15); }
 .tb-fav-board.tb-fav-on { color:#f5c842; }
 .tb-fav-board:disabled { cursor:default; opacity:.45; }
+/* Sits beside Save As when the loaded board is not the coach's to overwrite.
+   Wraps rather than pushing the buttons off a phone screen. */
+.tb-readonly-note {
+  flex:1 1 100%; font-size:.74rem; color:var(--text-secondary);
+  font-style:italic; margin-top:.25rem;
+}
 .tb-lib-title { margin-top:1rem; }
 .tb-lib-search {
   width:100%; margin:.35rem 0 .5rem; padding:.4rem .6rem;
