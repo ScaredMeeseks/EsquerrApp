@@ -1317,3 +1317,76 @@ The script carries its own copy of `authorLabelFrom` - it is not deployed, and `
 `test/backfill-boards.test.js` drives the real script as a subprocess against the emulator, like `wipe.test.js`. The properties it pins are the ones an operator relies on but cannot see: **a dry run writes nothing** (or the "read the dry run first" workflow is a fiction), it is idempotent, it never touches the source shards, and `linkedTeams` never reaches the payload.
 
 **445 unit + 133 rules + 50 functions + 9 backfill = 637.**
+
+## Tactic boards, stage 3 (v83) - the club library
+
+`js/boards.js` gained the client half of the model, and the saved-board list became two sections.
+
+**TWO QUERIES, NEVER ONE.** `clubId == my club` for the library, `ownerUid == me` for the boards a coach made before moving club. They cannot be merged and must not be: a collection query is rejected outright if ANY document it returns could be denied, so each has to narrow on the field its own rule arm tests. The same constraint `db.js:213` documents for data shards.
+
+Metadata and payload stay separate collections, so listing a library does not download megabytes. The club query gets an `onSnapshot` (metadata only, so it stays cheap) - a board drawn by a colleague appears without a reload. Payloads never get a listener: fetched lazily, memoised, evicted oldest-first past ~4 MB.
+
+`TB.save()` writes the pair in ONE BATCH - the correctness requirement, not an optimisation, exactly as `db.js:404` argues for shards - and refuses to re-home or re-own an existing board: `clubId` and `ownerUid` come from what is already stored, never from the caller.
+
+Hooked into `DB.init` rather than the seven `DB.init()` call sites, so the board index cannot drift from the data beside it.
+
+### The UI, after two rounds of feedback
+
+The first cut shipped one undifferentiated list still titled "Pissarres desades", so the library was invisible. It is now:
+
+- **Pissarres preferides** - everything the coach made, plus anything they starred. Own boards are included IMPLICITLY and never written to the favourites list: it would double the bookkeeping for something derivable, and a coach should not be able to lose their own work from their own list.
+- **Biblioteca del club** - every board of the club, with a star toggle, an author line and a search box.
+
+Favourites live on `users/{uid}.tacticFavorites`, so they follow a coach between phone and web and across clubs. **No rules change was needed** - the self-update rule forbids a named list of membership and privilege fields and this is not one of them. Written with `arrayUnion`/`arrayRemove` so two devices cannot clobber each other, with the local state put back if the write fails.
+
+**The library is never category-filtered, and `'tactics'` came back OUT of `CATEGORY_PAGES` one commit after joining it.** A board carries a category, but a coach hunting for a pressing drill does not care which squad it was drawn for, and hiding two thirds of a library behind a filter they did not set is how it stops being one. Search narrows it instead - name, coach, category and tag together.
+
+Every trailing control is a fixed-width cell so the play marker and the delete cross line up down the list; sizing them to content put each row's icons at a different offset depending on whether that board happened to be animated.
+
+**Dual-write with an unconditional cap.** The blob is still mirrored for the v43-era APK with `frames` and `penLines` always stripped - what closes the 1 MiB limit one category was heading for, without waiting on an APK nobody has installed. The mirror merges over the PREVIOUS blob, not over `{}`: payloads are lazy, so most boards are not cached on any given save, and defaulting to `{}` would publish a library of boards with no positions - every drawing blank on the one client the mirror exists for.
+
+## Tactic boards, stage 4 (v84) - sessions reference boards
+
+A match or training session stores `{boardId, name, tag, category?}` instead of the whole board. This kills three things at once:
+
+- **the storage amplification** - a board on five matches and three trainings was stored NINE times, and dragging one circle rewrote every copy plus the category shard
+- **the name matching** - linked copies were re-synced by comparing NAMES, so renaming a board orphaned its links, and once boards were sharded per category the same name could legitimately exist twice
+- **the drift** - editing the library board now changes every linked view by construction
+
+`linkedTeams` MOVED onto the session reference, where it always belonged: it records which squads were split for THIS session, and it carries player ids and names, which the club-wide board read rule must never expose.
+
+**Safe to ship the day it landed**: `tbResolveRef` falls back to the entry itself when it still carries a drawing, which every pre-existing entry does and every dual-write fat copy produces. Nothing renders asynchronously; the placeholder path only comes alive once the fat copy stops being written.
+
+### Three fixes the owner's testing produced
+
+1. **Linking must not WRITE the board.** `tbEnsureSaved` wrote the loaded board before referencing it, and a board already in the registry that is not mine cannot be written by me - the rules are right to refuse. Since the migration leaves `ownerUid: ''` on everything until somebody adopts it, the failure was near-universal. **The rules were correct throughout and the client was asking for the wrong permission**; it presented as a rules bug and was not one.
+2. **Link an untouched board; fork an edited one.** The first fix returned the EDITED entry while referencing the ORIGINAL board - during dual-write the old APK would show the edits and the new client would not. Untouched now means a pure reference; edited means a confirm and a `(còpia)` owned by the coach, original untouched.
+3. **Save is hidden when the board is not the coach's to overwrite**, with a line saying whose it is and what to do. A button that always fails should not be there. Adopting the board that is currently open re-renders the editor so Save reappears - lossless, because all editor state lives in localStorage, not the DOM.
+
+`showTbConfirm` gained an `onCancel`. It only ever had `onConfirm`, and Cancel, a backdrop click and being replaced by another dialog all just closed the overlay - so a caller awaiting an answer hung for ever on three of the four ways out.
+
+## The formation leak (v84)
+
+Reported as *"if I had previously selected a formació, it kind of appears in the first frame of other boards"*. A real defect, and **not** the v82 replay flash.
+
+Every animation frame carries its OWN positions. Selecting a formation cleared `fa_tactic_positions` and spawned the new shape but never touched `fa_tactic_frames` - so the next mutation ran `autoSaveFrame()`, which writes the current state into `frames[activeFrameIdx]`. After a load that index is **0**, so choosing a formation silently overwrote the animation's FIRST POSE. Save As and Add-to-session then copied those frames into the next board, which is the cross-board half of the report.
+
+An animation of eleven players in a 4-3-3 does not survive being re-shaped into a 3-5-2, so changing the formation resets the frames - in memory AND in localStorage, because `autoSaveFrame()` writes from the in-memory array and clearing one would let the next mutation put them straight back. Never silently: a board with a real animation asks first.
+
+## Leaving the editor with unsaved changes (v84)
+
+Hooked into `navigate()`, the one place every page change funnels through. The test is on `_lastRendered`, not `currentPage`, so the many re-renders that do NOT change page never prompt, and `currentPage` is restored before returning - leaving it on the target would show the tactics page while the app believed it was elsewhere, and the next incidental re-render would silently complete a navigation the coach had declined.
+
+`tbHasUnsavedWork()` rather than `hasTacticUnsavedChanges()`, which bails out with `if (!curFormation) return false` - most drills have no formation, so that helper answers "no changes" for exactly the boards a coach is most likely to lose. It errs towards SILENCE: an uncached payload counts as unchanged rather than guessing, because a false warning on every navigation trains people to dismiss it.
+
+## v85 - the teams generator works on the session's squad
+
+Reported as "the unused-players pool lists every player in the club". **Three defects**, all in the same few lines, all the same two confusions - club vs squad, and date vs session.
+
+1. **The pool was the whole club.** Four sites pulled `getUsers().filter(roles includes player)` and filtered only by availability, never by whether the player is IN the session. Now `calledPlayers(t, getUsers())` - teams + guests - excluded - which also fixes the suggested players-per-team, which had been dividing the entire club by two. The one site that already had the squad passed the version narrowed by the table's team filter; the pool takes the unfiltered squad, because its job is to offer anyone in the session.
+2. **The session's DATE was passed where the session goes.** `getEffectiveAnswer` has keyed on session id since v71; a date sends every lookup down the legacy fallback, which v71 deliberately restricts to a player's own squad - so **a guest's availability was read wrong**, in the one feature guests exist for.
+3. **`_refreshStdBoards` took a date** and handed it to `renderStdBoardsSection`, which takes a session. `sess.date` was undefined, the bucket lookup missed, and the Tactical Boards section **blanked** after generating or linking teams until a full page render. It takes the session now, and still tolerates a bare date from the two older call sites.
+
+(2) and (3) are pre-existing and would not have been noticed from the reported symptom.
+
+**449 unit + 133 rules + 50 functions + 9 backfill = 641** (was 541 at the start of the session).
