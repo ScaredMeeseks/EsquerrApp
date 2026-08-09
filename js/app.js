@@ -468,6 +468,11 @@
     'tactics.not_yours':     { ca:'Aquesta pissarra no és teva. Fes «Fer-la meva» a la biblioteca, o desa-la amb «Save As» per tenir-ne una còpia.',
                                es:'Esta pizarra no es tuya. Pulsa «Hacerla mía» en la biblioteca, o guárdala con «Save As» para tener una copia.',
                                en:'This board is not yours. Use "Make it mine" in the library, or Save As to keep your own copy.' },
+    'tactics.copy_suffix':   { ca:' (còpia)', es:' (copia)', en:' (copy)' },
+    'tactics.fork_title':    { ca:'Desar una còpia teva?', es:'¿Guardar una copia tuya?', en:'Save your own copy?' },
+    'tactics.fork_msg':      { ca:'Has canviat una pissarra que no és teva. S\'enllaçarà una còpia teva, i l\'original no es tocarà.',
+                               es:'Has cambiado una pizarra que no es tuya. Se enlazará una copia tuya, y el original no se tocará.',
+                               en:'You changed a board that is not yours. Your own copy will be linked, and the original left untouched.' },
     'tactics.fav_remove':    { ca:'Treure de preferides', es:'Quitar de favoritas', en:'Remove from favourites' },
     'tactics.search_ph':     { ca:'Cerca per nom, entrenador o categoria…',
                                es:'Busca por nombre, entrenador o categoría…',
@@ -9400,6 +9405,10 @@
         alert(t('tactics.save_failed'));
         return;
       }
+      if (!entry) return; // fork declined
+      // A fork was saved under a new name — show it, or the editor keeps
+      // claiming to be the board it no longer is.
+      if (nameInput && entry.name !== bName) nameInput.value = entry.name;
       const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
       const tdate = selectedTrainingVal;
       if (!trainingBoards[tdate]) trainingBoards[tdate] = [];
@@ -9458,6 +9467,8 @@
         alert(t('tactics.save_failed'));
         return;
       }
+      if (!entry) return; // fork declined
+      if (nameInput && entry.name !== bName) nameInput.value = entry.name;
       const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
       const mid = selectedMatchVal;
       if (!matchBoards[mid]) matchBoards[mid] = [];
@@ -10556,13 +10567,55 @@
        genuinely new, or already mine, is saved. If a coach has changed an
        unowned board and wants those changes attached, the routes are Save As
        (their own copy) or the adopt button — both one click, both explicit. */
-    if (known && !TB.isMine(known)) return entry;
-
     const s = getSession() || {};
+    if (known && !TB.isMine(known)) {
+      // Untouched: pure reference, and nothing is written anywhere.
+      if (!tbDiffersFromSaved(entry)) return entry;
+      /* Changed: the session must not get a reference to a board that does
+         not look like what the coach is seeing. Fork into their own copy —
+         the "Save As" outcome — and leave the original alone. Asked rather
+         than done silently, because it puts a new board in the library. */
+      const forkName = name + t('tactics.copy_suffix');
+      const okToFork = await new Promise(function (resolve) {
+        showTbConfirm(t('tactics.fork_title'), t('tactics.fork_msg'),
+          function () { resolve(true); }, function () { resolve(false); });
+      });
+      if (!okToFork) return null;
+      // `entry` IS the current editor state, so the fork is that with a new
+      // identity. Rebuilding it from localStorage would be a second chance
+      // to diverge from what the coach is looking at. Object.assign keeps
+      // key order, which the shard diff in db.js cares about.
+      const copy = Object.assign({}, entry, {
+        id: TB.newBoardId(), name: forkName
+      });
+      await TB.save(copy, {ownerName: s.name || ''});
+      localStorage.setItem('fa_tactic_loaded_id', copy.id);
+      localStorage.setItem('fa_tactic_name', forkName);
+      tbLegacySync();
+      return copy;
+    }
+
     await TB.save(entry, {ownerName: s.name || ''});
     localStorage.setItem('fa_tactic_loaded_id', entry.id);
     tbLegacySync();
     return entry;
+  }
+
+  /**
+   * Has the editor changed the board since it was loaded?
+   *
+   * Compares the freshly built entry against the stored payload rather than
+   * using hasTacticUnsavedChanges(), which only looks at formation, name,
+   * positions and numbers — and returns false outright when no formation is
+   * set. An arrow or a cone is an edit too, and this is the decision that
+   * chooses between referencing a colleague's board and forking it.
+   */
+  function tbDiffersFromSaved(entry) {
+    const payload = TB.peek(entry.id);
+    if (!payload) return false; // not loaded: nothing to have changed
+    const mine = Object.assign({}, entry);
+    delete mine.id;
+    return JSON.stringify(mine) !== JSON.stringify(payload);
   }
 
   /** Repaint both board lists in place, keeping the search term. */
@@ -10577,9 +10630,17 @@
     bindTacticsSavedList();
   }
 
-  function showTbConfirm(title, message, onConfirm) {
+  /**
+   * `onCancel` fires on Cancel, on a backdrop click, and on being replaced by
+   * another dialog — every way out. A caller awaiting an answer would
+   * otherwise hang for ever on the paths that just closed the overlay.
+   */
+  function showTbConfirm(title, message, onConfirm, onCancel) {
     const existing = document.querySelector('.tb-confirm-overlay');
-    if (existing) existing.remove();
+    if (existing) {
+      if (existing._tbCancel) existing._tbCancel();
+      existing.remove();
+    }
     const overlay = document.createElement('div');
     overlay.className = 'tb-confirm-overlay';
     overlay.innerHTML = `<div class="tb-confirm-card">
@@ -10592,10 +10653,24 @@
     </div>`;
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
+    let settled = false;
     const close = () => { overlay.classList.remove('visible'); setTimeout(() => overlay.remove(), 200); };
-    overlay.querySelector('#tbc-cancel').addEventListener('click', close);
-    overlay.querySelector('#tbc-yes').addEventListener('click', () => { close(); onConfirm(); });
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    const cancel = () => {
+      if (settled) return;
+      settled = true;
+      overlay._tbCancel = null;
+      if (onCancel) onCancel();
+    };
+    overlay._tbCancel = cancel;
+    overlay.querySelector('#tbc-cancel').addEventListener('click', () => { cancel(); close(); });
+    overlay.querySelector('#tbc-yes').addEventListener('click', () => {
+      if (settled) return;
+      settled = true;
+      overlay._tbCancel = null;
+      close();
+      onConfirm();
+    });
+    overlay.addEventListener('click', e => { if (e.target === overlay) { cancel(); close(); } });
   }
 
   // #endregion Tactical Board Editor
