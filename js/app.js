@@ -6815,7 +6815,7 @@
     return `
       <h2 class="page-title">${t('page.tactical_board')}</h2>
       ${tplId ? `<div class="card tb-tpl-banner">
-        <strong>Editant plantilla de la biblioteca Movment</strong>
+        <strong>Editant plantilla de la biblioteca</strong>
         <span>«${sanitize(savedName || 'sense nom')}»</span>
         <button class="btn btn-small btn-outline" id="tb-tpl-exit">Tornar a la biblioteca</button>
       </div>` : ''}
@@ -14114,7 +14114,7 @@
     const t2 = _abState.tab === 'library' ? ' active' : '';
     return '<div class="ab-tabs">' +
       '<button class="ab-tab' + t1 + '" data-ab-tab="clubs">Pissarres dels clubs</button>' +
-      '<button class="ab-tab' + t2 + '" data-ab-tab="library">Biblioteca Movment ' +
+      '<button class="ab-tab' + t2 + '" data-ab-tab="library">Biblioteca ' +
         '<span class="ab-count">' + _abState.templates.length + '</span></button>' +
       '</div>';
   }
