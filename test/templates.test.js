@@ -97,6 +97,31 @@ async function promotePublished(data) {
   return r.templateId;
 }
 
+/* A deployment property, not a runtime one, so it is asserted on the SOURCE —
+   the same technique board-authors.test.js uses for the call sites it cannot
+   reach through the emulator.
+ *
+ * Worth a test because the failure is invisible everywhere else: without the
+ * binding, Cloud Run rejects the call BEFORE the container runs, the client
+ * gets a bare "internal", the function log is empty, and the deploy reports
+ * success. Both of these functions shipped that way once already. */
+describe('the callables declare their Cloud Run invoker', () => {
+  const src = require('fs').readFileSync(
+      require('path').join(__dirname, '..', 'functions', 'index.js'), 'utf8');
+
+  ['promoteBoardTemplate', 'seedClubFromTemplates'].forEach((name) => {
+    it(name + ' is invoker: "public"', () => {
+      const i = src.indexOf('exports.' + name + ' = onCall(');
+      assert.notStrictEqual(i, -1, name + ' is not declared with onCall');
+      const opts = src.slice(i, src.indexOf(')', src.indexOf('{', i)));
+      assert.ok(/invoker:\s*"public"/.test(opts),
+          name + ' must declare invoker: "public" — firebase-tools sets that ' +
+          'binding only on the CREATE path otherwise, and a callable without ' +
+          'it returns "internal" to every caller while deploying clean');
+    });
+  });
+});
+
 describe('promoteBoardTemplate', function () {
   this.timeout(60000);
 

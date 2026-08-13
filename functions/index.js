@@ -2348,7 +2348,22 @@ function anonymiseBoardPayload(v) {
   return JSON.stringify(parsed);
 }
 
-exports.promoteBoardTemplate = onCall({region: "us-central1"},
+/* `invoker: "public"` is not a security decision — it is the Cloud Run IAM
+   binding every Firebase callable needs, and which firebase-tools otherwise
+   sets ONLY on the create path. A callable authenticates itself, inside the
+   function, against the Firebase ID token: assertSuperUser() below is the
+   real gate, and without the binding Cloud Run rejects the request before
+   the container ever runs.
+
+   Spelled out here because these two functions have already been bitten by
+   it twice. Their original create failed on the container healthcheck (the
+   stale package-lock trap) and the retry went through UpdateFunction, which
+   does not set the invoker unless it is declared — so both deployed clean,
+   for months, and returned a bare "internal" to every caller. Nothing in the
+   deploy output says so; the only trace is a Cloud Run request log reading
+   "Empty Authorization header value". Declared, it is set on every deploy. */
+exports.promoteBoardTemplate = onCall(
+    {region: "us-central1", invoker: "public"},
     async (request) => {
       assertSuperUser(request);
       const boardId = request.data && request.data.boardId;
@@ -2417,7 +2432,9 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
  * to the club lead would be a lie, and worse, would follow that lead to their
  * next club through the owner read arm.
  */
-exports.seedClubFromTemplates = onCall({region: "us-central1", timeoutSeconds: 120},
+// invoker: see the note on promoteBoardTemplate above.
+exports.seedClubFromTemplates = onCall(
+    {region: "us-central1", timeoutSeconds: 120, invoker: "public"},
     async (request) => {
       assertSuperUser(request);
       const clubId = request.data && request.data.clubId;

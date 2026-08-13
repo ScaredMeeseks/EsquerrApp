@@ -1442,3 +1442,27 @@ Every scrap of editor state lives in localStorage, so opening a template is hydr
 Reported as *"the badge that appears I think it's hardcoded"*. It was: `index.html` wrote a literal `img/logo.png` into the team-setup card and `showTeamSetup()` never touched it.
 
 The same line appears in four other auth cards - login, register, join club, profile setup - and is **correct in all four**, because they run before any club is known. Team setup is the odd one out: it only ever runs after `loadClubConfig()` has populated `_clubConfig`. It now reads `_clubConfig.badgeUrl` with the app logo as fallback, the same pattern as the top-nav crest in `renderDashboard`. The fallback is not decorative - `_loadClubList` renders a `+` placeholder for clubs with no `badgeUrl`, so they genuinely exist.
+
+## The invoker binding, and the second bill for the package-lock incident (v86)
+
+Reported as *"Copiar returns Error Internal"*. Not a bug in the new code, and not visible anywhere a normal investigation would look.
+
+`promoteBoardTemplate` was rejected by **Cloud Run's IAM layer, before the container ran**. So: the client got a bare `internal`, the function log was empty, and the deploy had reported success. The only trace anywhere was one line in the Cloud Run request log:
+
+```
+The request was not authenticated. ... Empty Authorization header value.
+```
+
+**A Firebase callable needs `allUsers` to hold `roles/run.invoker`.** That is not a security hole - a callable authenticates *inside* the function against the Firebase ID token, and `assertSuperUser()` is the real gate. But firebase-tools grants that binding **only on the CREATE path**, unless `invoker` is declared.
+
+These two functions never had it. Their create on 2026-08-08 failed at the container healthcheck - the stale `functions/package-lock.json` - and the retry went through `UpdateFunction`. So they were **the only two callables in the project without the binding**, they deployed cleanly for five days, and every deploy afterwards was an update that could never repair it.
+
+Both callables now declare `invoker: "public"`, which applies it on **every** deploy, and `test/templates.test.js` asserts both declarations against the source. There is nothing else that could catch this: the deploy says success, the function log is silent, and the client sees `internal`.
+
+Three things worth remembering:
+
+- **The package-lock incident charged twice.** It did not merely fail one deploy in August; it left two functions permanently broken in a way no later deploy would fix.
+- **Delete-and-recreate is not a reliable repair.** Deleting both and redeploying fixed `seedClubFromTemplates` and failed for `promoteBoardTemplate` with `Failed to set the IAM Policy` - the create raced its own just-deleted service. Declaring the option is deterministic; the dance is not.
+- **The stored firebase-tools credential cannot make IAM writes.** Minting a `cloud-platform` token from the refresh token in `~/.config/configstore/firebase-tools.json` - the technique that works for read-only Google APIs - returns `invalid_grant / invalid_rapt` for `setIamPolicy`. Google wants an interactive reauth. Fix deployment properties through the deploy, not around it.
+
+**449 unit + 134 rules + 55 functions + 9 backfill = 647.**
