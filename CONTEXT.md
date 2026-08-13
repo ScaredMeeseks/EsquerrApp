@@ -1390,3 +1390,55 @@ Reported as "the unused-players pool lists every player in the club". **Three de
 (2) and (3) are pre-existing and would not have been noticed from the reported symptom.
 
 **449 unit + 133 rules + 50 functions + 9 backfill = 641** (was 541 at the start of the session).
+
+## Tactic boards, stage 5 (v86) - the superadmin catalogue and the sellable library
+
+`HANDOFF.md` had carried *"Superadmin template UI is not built"* since stage 1: `promoteBoardTemplate` and `seedClubFromTemplates` were deployed and tested with nothing calling them. This is the caller, plus the draft stage the workflow turned out to need.
+
+### The constraint that shaped it
+
+**Club boards are read-only from the superadmin view.** The rules would allow otherwise - `isSuperUser()` is an arm of every `tacticBoards` write - but a club's library is the club's, and an edit landing there without its author knowing is not something this product should be able to do. So the catalogue offers exactly two actions per row, **Veure** and **Copiar**, and no third.
+
+Everything editable is therefore a copy. That is what promotion already was; what was missing is that a promoted board is not yet a product.
+
+### `published`, and why seeding is the place it is enforced
+
+`promoteBoardTemplate` now writes `published: false`. `seedClubFromTemplates` skips anything that is not `published === true`, **in the per-template loop rather than in the pack query** - so the explicit-ids path is gated as well as the pack path, and no composite index is needed. The UI refuses to publish a template with no pack, because seeding takes a pack name or an explicit list and the panel only offers packs: a published template with no pack is one nobody can be sent.
+
+Nothing called either function before this version, so the narrowing carries no compatibility risk. The existing seeding tests had to publish in `beforeEach` to keep passing, which is the gate being visible rather than a nuisance.
+
+### `tacticTemplateSources` - provenance in its own collection
+
+The catalogue marks boards already taken into the library. The obvious implementation - `sourceBoardId` on the template - is wrong: `tacticTemplates` is readable by **every signed-in user**, and "anonymous by construction" is the property that lets it be. A board id is not personal data, but the template document should not be able to say which club's board it came from.
+
+So `tacticTemplateSources/{boardId}` -> `{templateId, clubId, promotedAt}`, `read, write: if isSuperUser()`, written in the same batch as the promotion. Keyed by **board** rather than by template, so re-promoting the same board overwrites instead of accumulating rows.
+
+### The catalogue query
+
+One unfiltered `db.collection('tacticBoards').get()`. That is satisfiable **only** for the superuser: the read rule's first arm does not depend on the document, so no document the query can return could be denied. Every other caller still has to narrow on the field its own rule arm tests - the two-queries-never-one constraint from stage 3 is unchanged.
+
+Author labels come from `clubs/{id}/boardAuthors`, one read per club. `users/{uid}` would not do: a coach who left club A has `teamId == club B`, and the frozen label is the only place their team at A still exists.
+
+### Template editing is a MODE, not a second editor
+
+Every scrap of editor state lives in localStorage, so opening a template is hydrating those keys - the editor itself needs no knowledge of where the drawing came from.
+
+- **`tbHydrateEditor(board, opts)`** and **`tbClearEditor()`** were extracted from the saved-list click handler and the New Board button. Both lists were about to exist twice, and a list of scratch keys maintained in two places ends up missing whatever layer was added last. `test/tactic-boards.test.js` already guards this shape of duplication for `buildBoardEntry`.
+- **`fa_tactic_loaded_id` and `fa_tactic_template_id` are mutually exclusive**, set and cleared together. Both set at once would let Save write to whichever the next reader happened to check first.
+- **`_tbTemplateEntry()` is ONE call site for three template operations** - Save, Save As, and the template arm of `tbHasUnsavedWork()` - so the comparison and the write cannot disagree. The source assertion moved from four `TB.buildBoardEntry(` call sites to five and fired correctly while this was being written, for the third session running.
+- **`tbHasUnsavedWork()` needed a template branch.** Without one it fell through to "nothing loaded", where any drawing at all counts as unsaved - so every navigation away from an *untouched* template would have prompted, which is how a warning stops being read. The baseline is captured after hydration through the same builder the save path uses, and moved forward after each save.
+- Template mode hides Add-to-Match, Add-to-Training and the club boards panel, and never calls `tbLegacySync()`: a template belongs to no club, so there is no session to link it to and no club blob to mirror into.
+
+`'tactics'` stays in `STAFF_PAGES`, with one exception for `session.isAdmin` - the template editor has to be reachable regardless of which club the superadmin happens to be a member of.
+
+### Routing
+
+`SUPERADMIN_PAGES`, checked against `session.isAdmin` alone. `ADMIN_PAGES` could not be reused: it is deliberately open to club leads as well, because a lead must be able to manage their own members. These pages show every club's data.
+
+### 449 unit + 134 rules + 53 functions + 9 backfill = 645 (was 641).
+
+## The club badge on "Configura el teu club" (v86)
+
+Reported as *"the badge that appears I think it's hardcoded"*. It was: `index.html` wrote a literal `img/logo.png` into the team-setup card and `showTeamSetup()` never touched it.
+
+The same line appears in four other auth cards - login, register, join club, profile setup - and is **correct in all four**, because they run before any club is known. Team setup is the odd one out: it only ever runs after `loadClubConfig()` has populated `_clubConfig`. It now reads `_clubConfig.badgeUrl` with the app logo as fallback, the same pattern as the top-nav crest in `renderDashboard`. The fallback is not decorative - `_loadClubList` renders a `+` placeholder for clubs with no `badgeUrl`, so they genuinely exist.

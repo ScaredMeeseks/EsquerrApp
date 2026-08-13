@@ -3861,3 +3861,50 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    the page lines up regardless of how long the names are. */
 .std-drop-cell{width:1%;padding-right:0;text-align:center;}
 .std-drop{vertical-align:middle;}
+
+/* ── Superadmin board catalogue & platform library ────────────
+   Its own tab strip rather than the sidebar: the two halves are one job
+   (take a club board, publish it as a template), and splitting them into
+   two sidebar entries would put a page change in the middle of it. */
+.ab-tabs{display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+.ab-tab{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:.5rem .9rem;font-size:.88rem;font-weight:600;color:var(--text-secondary);
+  cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;}
+.ab-tab:hover{border-color:var(--text-secondary);}
+.ab-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.ab-count{background:rgba(0,0,0,.12);border-radius:999px;padding:.05rem .45rem;
+  font-size:.75rem;font-weight:700;}
+.ab-tab.active .ab-count{background:rgba(255,255,255,.25);}
+.ab-count-line{color:var(--text-secondary);font-size:.8rem;margin:.2rem 0 .6rem;}
+
+.ab-filters{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem;}
+.ab-filters .reg-input{font-size:.85rem;min-width:150px;}
+.ab-filters #ab-search{flex:1 1 240px;}
+
+/* The catalogue is nine columns wide and will not fit a phone. It scrolls
+   inside its own box so the PAGE never scrolls sideways. */
+.ab-table-wrap{overflow-x:auto;}
+.ab-table{font-size:.83rem;width:100%;}
+.ab-table th{white-space:nowrap;}
+.ab-table td{vertical-align:middle;}
+.ab-table .reg-input{font-size:.8rem;min-width:90px;}
+.ab-muted{color:var(--text-secondary);}
+.ab-left{color:var(--text-secondary);font-size:.75rem;}
+.ab-anim{color:var(--text-secondary);font-size:.72rem;}
+.ab-promoted{color:var(--success);font-weight:600;font-size:.8rem;white-space:nowrap;}
+
+.ab-modal{position:fixed;inset:0;background:rgba(45,41,38,.6);z-index:1000;
+  display:flex;align-items:center;justify-content:center;padding:1rem;}
+.ab-modal-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:1.2rem;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;position:relative;}
+.ab-modal-close{position:absolute;top:.5rem;right:.6rem;background:none;border:none;
+  font-size:1.1rem;cursor:pointer;color:var(--text-secondary);}
+.ab-modal-meta{color:var(--text-secondary);font-size:.82rem;margin-bottom:.6rem;}
+
+/* Editing a platform template in the ordinary board editor. Loud on
+   purpose: the editor looks identical, and saving here writes to the
+   library rather than to any club. */
+.tb-tpl-banner{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
+  border-left:4px solid var(--accent);}
+.tb-tpl-banner span{color:var(--text-secondary);font-size:.88rem;}
+.tb-tpl-banner button{margin-left:auto;}

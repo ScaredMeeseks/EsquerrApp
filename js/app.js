@@ -1274,7 +1274,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 85;
+  const APP_VERSION = 86;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2634,6 +2634,15 @@
     var backBtn = document.getElementById('btn-back-team-setup');
     if (backBtn) backBtn.hidden = !_tsCancellable;
     showView('#view-team-setup');
+    /* The crest of the club being configured. Unlike the four other auth
+       cards, this screen only ever runs after loadClubConfig(), so showing
+       the app logo here was showing the wrong club's badge. The fallback is
+       not decorative — a club created without a PNG has no badgeUrl. */
+    var tsBadge = document.getElementById('ts-club-badge');
+    if (tsBadge) {
+      tsBadge.src = (_clubConfig && _clubConfig.badgeUrl) ? _clubConfig.badgeUrl : 'img/logo.png';
+      tsBadge.alt = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Logo';
+    }
     var cats = (_clubConfig && _clubConfig.categories) ? _clubConfig.categories : {};
     var container = document.getElementById('team-setup-categories');
     if (!container) return;
@@ -3513,6 +3522,7 @@
     if (session.isAdmin) {
       items.push({ section: t('sidebar.section_admin') });
       items.push({ id: 'users', icon: '⚙️', label: t('sidebar.users') });
+      items.push({ id: 'admin-boards', icon: '📐', label: 'Pissarres' });
       items.push({ id: 'settings', icon: '🔧', label: t('sidebar.settings') });
     } else if (session.isTeamLead) {
       // The lead manages their own club's members, including permanent
@@ -3620,6 +3630,11 @@
   ]);
   const ADMIN_PAGES = new Set(['users']);
   const LEAD_PAGES  = new Set(['settings']);
+  /* ADMIN_PAGES is deliberately open to club leads as well (a lead must be
+     able to manage their own members), so the platform-wide pages need a
+     stricter set of their own: these show every club's data and are the
+     superadmin's alone. */
+  const SUPERADMIN_PAGES = new Set(['admin-boards']);
 
   /* The page we were on before this one, and the page last rendered.
      Every navigation funnels through renderPage(), so tracking it here
@@ -3688,8 +3703,15 @@
         roles.includes('player') ? 'player-home' :
           (session.isAdmin || session.isTeamLead) ? 'settings' : 'player-home';
 
-    // Enforce role access
-    if (STAFF_PAGES.has(currentPage) && !roles.includes('staff')) {
+    // Enforce role access.
+    // The board editor is the one staff page the superadmin needs regardless
+    // of which club they happen to be a member of: it is where a template in
+    // the platform library is edited, and a template belongs to no club.
+    if (STAFF_PAGES.has(currentPage) && !roles.includes('staff') &&
+        !(currentPage === 'tactics' && session.isAdmin)) {
+      currentPage = fallbackPage();
+    }
+    if (SUPERADMIN_PAGES.has(currentPage) && !session.isAdmin) {
       currentPage = fallbackPage();
     }
     // The users page is open to the club's lead as well as the superadmin:
@@ -3732,6 +3754,7 @@
       'medical-detail': renderMedicalDetail,
       'users': renderAdminUsers,
       'settings': renderAdminSettings,
+      'admin-boards': renderAdminBoards,
       'archived-seasons': renderArchivedSeasons,
       'archived-season-detail': renderArchivedSeasonDetail,
     };
@@ -6783,8 +6806,19 @@
     if (boardType === 'half') fieldCls += ' tb-half';
     else if (boardType === 'area') fieldCls += ' tb-area';
 
+    /* Template mode — the superadmin editing a board in the platform
+       library. Everything club-shaped comes off the page: a template belongs
+       to no club, so there is no session to link it to and no club library
+       to show beside it. */
+    const tplId = tbEditingTemplateId();
+
     return `
       <h2 class="page-title">${t('page.tactical_board')}</h2>
+      ${tplId ? `<div class="card tb-tpl-banner">
+        <strong>Editant plantilla de la biblioteca Movment</strong>
+        <span>«${sanitize(savedName || 'sense nom')}»</span>
+        <button class="btn btn-small btn-outline" id="tb-tpl-exit">Tornar a la biblioteca</button>
+      </div>` : ''}
       <div class="card">
         <div class="tb-controls">
           <label class="tb-label">${t('tactics.formation')}</label>
@@ -6911,6 +6945,7 @@
             <button class="btn btn-small btn-orange" id="tb-tag-add-btn">Add</button>
           </div>
         </div>
+        ${tplId ? '' : `
         <div class="tb-match-section">
           <div class="tb-match-label">Add to Match</div>
           <div class="tb-match-row">
@@ -6958,11 +6993,11 @@
             <button class="btn btn-small btn-orange" id="tb-add-to-training">Add</button>
           </div>
           <div class="tb-match-linked" id="tb-training-linked"></div>
-        </div>
+        </div>`}
         <div class="tb-btn-row">
           ${tbSaveButtonsHtml()}
         </div>
-        ${tbBoardsPanelHtml()}
+        ${tplId ? '' : tbBoardsPanelHtml()}
       </div>`;
   }
 
@@ -9163,6 +9198,30 @@
       saveState();
       if (typeof autoSaveFrame === 'function') autoSaveFrame();
       const name = (nameInput ? nameInput.value : '').trim() || 'Board';
+      /* Template mode: the editor is working on a platform template, which
+         belongs to no club and to no coach. It must not go anywhere near
+         TB.save() (which would stamp clubId/ownerUid) nor tbLegacySync()
+         (which mirrors into a club's blob). */
+      const editingTpl = tbEditingTemplateId();
+      if (editingTpl) {
+        try {
+          await TB.saveTemplate(editingTpl, _tbTemplateEntry(name));
+        } catch (err) {
+          console.error('[TB] template save failed', err);
+          alert(t('tactics.save_failed'));
+          return;
+        }
+        // Move the baseline forward, or leaving the editor immediately after
+        // saving would still claim there is work to lose.
+        _tplBaseline = _tbEntryJson(name);
+        if (saveBtn) {
+          const o = saveBtn.textContent;
+          saveBtn.textContent = t('tb.saved');
+          saveBtn.style.background = '#2e7d32';
+          setTimeout(() => { saveBtn.textContent = o; saveBtn.style.background = ''; }, 1200);
+        }
+        return;
+      }
       const boards = getSavedBoards();
       const loadedId = localStorage.getItem('fa_tactic_loaded_id');
       const loadedPos = loadedId ? boards.findIndex(b => b.id === loadedId) : -1;
@@ -9221,6 +9280,25 @@
       const suggested = (nameInput ? nameInput.value : '').trim() || 'Board';
       const name = prompt('Board name:', suggested);
       if (!name) return;
+      // In template mode Save As forks the TEMPLATE, as a fresh draft. The
+      // superadmin has no club to save a board into, and a template that
+      // silently became a club board would be an odd thing to explain.
+      const editingTplAs = tbEditingTemplateId();
+      if (editingTplAs) {
+        let saved;
+        try {
+          saved = await TB.saveTemplate(null, _tbTemplateEntry(name), {published: false});
+        } catch (err) {
+          console.error('[TB] template save-as failed', err);
+          alert(t('tactics.save_failed'));
+          return;
+        }
+        localStorage.setItem('fa_tactic_template_id', saved.id);
+        if (nameInput) { nameInput.value = name.trim(); localStorage.setItem('fa_tactic_name', name.trim()); }
+        _tplBaseline = _tbEntryJson(name);
+        navigate('tactics');
+        return;
+      }
       const boards = getSavedBoards();
       const dup = boards.some(b =>
         String(b.name || '').toLowerCase() === name.trim().toLowerCase());
@@ -9250,29 +9328,7 @@
 
     // New Board button
     document.getElementById('tb-new-board')?.addEventListener('click', () => {
-      const doNew = () => {
-        localStorage.removeItem('fa_tactic_formation');
-        localStorage.removeItem('fa_tactic_positions');
-        localStorage.removeItem('fa_tactic_numbers');
-        localStorage.removeItem('fa_tactic_colors');
-        localStorage.removeItem('fa_tactic_name');
-        localStorage.removeItem('fa_tactic_loaded_id');
-        localStorage.removeItem('fa_tactic_board_type');
-        localStorage.removeItem('fa_tactic_opp_positions');
-        localStorage.removeItem('fa_tactic_opp_numbers');
-        localStorage.removeItem('fa_tactic_show_opp');
-        localStorage.removeItem('fa_tactic_balls');
-        localStorage.removeItem('fa_tactic_arrows');
-        localStorage.removeItem('fa_tactic_rects');
-        localStorage.removeItem('fa_tactic_texts');
-        localStorage.removeItem('fa_tactic_pen_lines');
-        localStorage.removeItem('fa_tactic_frames');
-        localStorage.removeItem('fa_tactic_frame_idx');
-        localStorage.removeItem('fa_tactic_tag');
-        localStorage.removeItem('fa_tactic_silhouette');
-        localStorage.removeItem('fa_tactic_cones');
-        navigate('tactics');
-      };
+      const doNew = () => { tbClearEditor(); navigate('tactics'); };
       if (hasUnsavedChanges()) {
         showTbConfirm(t('tb.new_title'), t('tb.new_msg'), doNew);
       } else {
@@ -10433,6 +10489,122 @@
     }
   }
 
+  /**
+   * Load a board (or a platform template) into the editor.
+   *
+   * Every scrap of editor state lives in localStorage rather than in the
+   * DOM, so hydrating it IS opening it — and this block is the inverse of
+   * buildBoardEntry(). It was inline in the saved-list click handler
+   * until the superadmin template editor needed the same thirty-odd writes;
+   * a second copy would have drifted from the first the first time a layer
+   * was added, exactly what the buildBoardEntry source assertions in
+   * test/tactic-boards.test.js exist to prevent.
+   *
+   * The two ids are MUTUALLY EXCLUSIVE. `fa_tactic_loaded_id` means "this
+   * is a club board"; `fa_tactic_template_id` means "this is a platform
+   * template". Leaving both set would let Save write to whichever the next
+   * reader happened to check first.
+   *
+   * @param {Object} board a board/template payload merged with its metadata
+   * @param {Object} [opts] {templateId} to open it as a platform template
+   */
+  function tbHydrateEditor(board, opts) {
+    const tplId = opts && opts.templateId;
+    localStorage.setItem('fa_tactic_formation', board.formation || '');
+    localStorage.setItem('fa_tactic_positions', JSON.stringify(board.positions));
+    localStorage.setItem('fa_tactic_numbers', JSON.stringify(board.numbers));
+    localStorage.setItem('fa_tactic_name', board.name || '');
+    localStorage.setItem('fa_tactic_board_type', board.boardType || 'full');
+    if (tplId) {
+      localStorage.setItem('fa_tactic_template_id', tplId);
+      localStorage.removeItem('fa_tactic_loaded_id');
+    } else {
+      localStorage.setItem('fa_tactic_loaded_id', board.id);
+      localStorage.removeItem('fa_tactic_template_id');
+    }
+    localStorage.setItem('fa_tactic_team_color', board.teamColor || '#ffffff');
+    localStorage.setItem('fa_tactic_opp_color', board.oppColor || '#e53935');
+    localStorage.setItem('fa_tactic_show_opp', board.showOpp ? 'true' : 'false');
+    if (board.oppPositions) localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(board.oppPositions));
+    else localStorage.removeItem('fa_tactic_opp_positions');
+    if (board.oppNumbers) localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(board.oppNumbers));
+    else localStorage.removeItem('fa_tactic_opp_numbers');
+    const _boardBalls = board.balls || (board.ballPos ? [board.ballPos] : []);
+    localStorage.setItem('fa_tactic_balls', JSON.stringify(_boardBalls));
+    if (board.colors) localStorage.setItem('fa_tactic_colors', JSON.stringify(board.colors));
+    else localStorage.removeItem('fa_tactic_colors');
+    if (board.arrows && board.arrows.length) localStorage.setItem('fa_tactic_arrows', JSON.stringify(board.arrows));
+    else localStorage.removeItem('fa_tactic_arrows');
+    if (board.rects && board.rects.length) localStorage.setItem('fa_tactic_rects', JSON.stringify(board.rects));
+    else localStorage.removeItem('fa_tactic_rects');
+    if (board.texts && board.texts.length) localStorage.setItem('fa_tactic_texts', JSON.stringify(board.texts));
+    else localStorage.removeItem('fa_tactic_texts');
+    if (board.penLines && board.penLines.length) localStorage.setItem('fa_tactic_pen_lines', JSON.stringify(board.penLines));
+    else localStorage.removeItem('fa_tactic_pen_lines');
+    if (board.frames && board.frames.length) localStorage.setItem('fa_tactic_frames', JSON.stringify(board.frames));
+    else localStorage.removeItem('fa_tactic_frames');
+    if (board.tag) localStorage.setItem('fa_tactic_tag', board.tag);
+    else localStorage.removeItem('fa_tactic_tag');
+    if (board.silhouette) localStorage.setItem('fa_tactic_silhouette', board.silhouette);
+    else localStorage.removeItem('fa_tactic_silhouette');
+    if (board.cones && board.cones.length) localStorage.setItem('fa_tactic_cones', JSON.stringify(board.cones));
+    else localStorage.removeItem('fa_tactic_cones');
+    localStorage.removeItem('fa_tactic_frame_idx');
+    /* The comparison point for tbHasUnsavedWork() in template mode. Taken
+       from localStorage AFTER hydration and through the SAME builder the
+       save path uses, so "unchanged" means the bytes that would be written
+       match the bytes that were read — comparing against the raw payload
+       instead would differ on key order and on every defaulted field. */
+    _tplBaseline = tplId ? _tbEntryJson(board.name || '') : null;
+  }
+
+  /**
+   * Empty the editor — the inverse of tbHydrateEditor().
+   *
+   * The New Board button and leaving the template editor need the same list,
+   * and a list of scratch keys maintained in two places is a list that ends
+   * up with one of them missing whatever layer was added last.
+   */
+  function tbClearEditor() {
+    ['fa_tactic_formation', 'fa_tactic_positions', 'fa_tactic_numbers',
+      'fa_tactic_colors', 'fa_tactic_name', 'fa_tactic_loaded_id',
+      'fa_tactic_template_id', 'fa_tactic_board_type', 'fa_tactic_opp_positions',
+      'fa_tactic_opp_numbers', 'fa_tactic_show_opp', 'fa_tactic_balls',
+      'fa_tactic_arrows', 'fa_tactic_rects', 'fa_tactic_texts',
+      'fa_tactic_pen_lines', 'fa_tactic_frames', 'fa_tactic_frame_idx',
+      'fa_tactic_tag', 'fa_tactic_silhouette', 'fa_tactic_cones'
+    ].forEach(function (k) { localStorage.removeItem(k); });
+    _tplBaseline = null;
+  }
+
+  /** The template currently open in the editor, or null. */
+  function tbEditingTemplateId() {
+    return localStorage.getItem('fa_tactic_template_id') || null;
+  }
+
+  /* Baseline of the template open in the editor, or null when none is.
+     Deliberately in memory rather than localStorage: it is a comparison
+     point for THIS visit to the editor, and a stale one persisted across a
+     reload would answer the unsaved-work question wrongly in both
+     directions. */
+  var _tplBaseline = null;
+
+  /* The editor's current state as a TEMPLATE entry — no id, no category
+     stamp, no linkedTeams. One builder for the three template paths (Save,
+     Save As, and the unsaved-work comparison) so what is compared is byte
+     for byte what would be written. */
+  function _tbTemplateEntry(name) {
+    const e = TB.buildBoardEntry(localStorage,
+      {name: String(name || '').trim() || 'Board'});
+    delete e.id;
+    delete e.linkedTeams;
+    return e;
+  }
+
+  function _tbEntryJson(name) {
+    return JSON.stringify(_tbTemplateEntry(name));
+  }
+
   function bindTacticsSavedList() {
     document.querySelectorAll('.tb-saved-item').forEach(item => {
       item.addEventListener('click', async (e) => {
@@ -10458,43 +10630,7 @@
         const board = Object.assign({}, payload, {
           id: id, name: metaB.name, category: metaB.category
         });
-        const doLoad = () => {
-          localStorage.setItem('fa_tactic_formation', board.formation || '');
-          localStorage.setItem('fa_tactic_positions', JSON.stringify(board.positions));
-          localStorage.setItem('fa_tactic_numbers', JSON.stringify(board.numbers));
-          localStorage.setItem('fa_tactic_name', board.name || '');
-          localStorage.setItem('fa_tactic_board_type', board.boardType || 'full');
-          localStorage.setItem('fa_tactic_loaded_id', board.id);
-          localStorage.setItem('fa_tactic_team_color', board.teamColor || '#ffffff');
-          localStorage.setItem('fa_tactic_opp_color', board.oppColor || '#e53935');
-          localStorage.setItem('fa_tactic_show_opp', board.showOpp ? 'true' : 'false');
-          if (board.oppPositions) localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(board.oppPositions));
-          else localStorage.removeItem('fa_tactic_opp_positions');
-          if (board.oppNumbers) localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(board.oppNumbers));
-          else localStorage.removeItem('fa_tactic_opp_numbers');
-          const _boardBalls = board.balls || (board.ballPos ? [board.ballPos] : []);
-          localStorage.setItem('fa_tactic_balls', JSON.stringify(_boardBalls));
-          if (board.colors) localStorage.setItem('fa_tactic_colors', JSON.stringify(board.colors));
-          else localStorage.removeItem('fa_tactic_colors');
-          if (board.arrows && board.arrows.length) localStorage.setItem('fa_tactic_arrows', JSON.stringify(board.arrows));
-          else localStorage.removeItem('fa_tactic_arrows');
-          if (board.rects && board.rects.length) localStorage.setItem('fa_tactic_rects', JSON.stringify(board.rects));
-          else localStorage.removeItem('fa_tactic_rects');
-          if (board.texts && board.texts.length) localStorage.setItem('fa_tactic_texts', JSON.stringify(board.texts));
-          else localStorage.removeItem('fa_tactic_texts');
-          if (board.penLines && board.penLines.length) localStorage.setItem('fa_tactic_pen_lines', JSON.stringify(board.penLines));
-          else localStorage.removeItem('fa_tactic_pen_lines');
-          if (board.frames && board.frames.length) localStorage.setItem('fa_tactic_frames', JSON.stringify(board.frames));
-          else localStorage.removeItem('fa_tactic_frames');
-          if (board.tag) localStorage.setItem('fa_tactic_tag', board.tag);
-          else localStorage.removeItem('fa_tactic_tag');
-          if (board.silhouette) localStorage.setItem('fa_tactic_silhouette', board.silhouette);
-          else localStorage.removeItem('fa_tactic_silhouette');
-          if (board.cones && board.cones.length) localStorage.setItem('fa_tactic_cones', JSON.stringify(board.cones));
-          else localStorage.removeItem('fa_tactic_cones');
-          localStorage.removeItem('fa_tactic_frame_idx');
-          navigate('tactics');
-        };
+        const doLoad = () => { tbHydrateEditor(board); navigate('tactics'); };
         if (hasTacticUnsavedChanges()) {
           showTbConfirm(t('tb.load_title'), t('tb.load_msg'), doLoad);
         } else {
@@ -10727,10 +10863,21 @@
    * changes" rather than guessing.
    */
   function tbHasUnsavedWork() {
-    if (typeof TB === 'undefined' || !TB.ready || !TB.ready()) return false;
+    if (typeof TB === 'undefined') return false;
     // No board type means the picker is showing: nothing is open to lose.
     if (!localStorage.getItem('fa_tactic_board_type')) return false;
     const name = (localStorage.getItem('fa_tactic_name') || '').trim() || 'Board';
+    /* Template mode compares against the baseline captured when the template
+       was opened. Without this branch it would fall through to "nothing
+       loaded", where any drawing at all counts as unsaved — so every
+       navigation away from an untouched template would prompt, which is how
+       a warning stops being read. */
+    const tplOpen = tbEditingTemplateId();
+    if (tplOpen) {
+      if (_tplBaseline === null) return false;
+      return _tbEntryJson(name) !== _tplBaseline;
+    }
+    if (!TB.ready || !TB.ready()) return false;
     const loadedId = localStorage.getItem('fa_tactic_loaded_id');
     if (loadedId) {
       const meta = TB.meta(loadedId);
@@ -13827,6 +13974,518 @@
   // Expose navigation helper for back buttons
   window._navTo = function(page) { currentPage = page; renderPage(getSession()); };
   // #endregion Archived Seasons Viewer
+
+  // #region Superadmin: board catalogue & platform template library
+
+  /* Two tabs over three collections.
+     ─────────────────────────────────────────────────────────────
+     TAB 1 is every club's boards, READ-ONLY on purpose. The rules would
+     let the superuser update them — isSuperUser() is an arm of every
+     tacticBoards write — but a club's library is the club's, and an edit
+     landing there without its author knowing is not a thing this product
+     should be able to do. The only way a board leaves its club here is
+     promoteBoardTemplate, which takes an anonymised COPY.
+
+     TAB 2 is that copy's home: the platform library, sold as packs. A
+     promoted board arrives as a DRAFT (`published: false`), is edited in
+     the ordinary board editor, and only then published — seeding refuses
+     anything unpublished, so a half-finished copy cannot reach a paying
+     club by accident.
+
+     The "ja copiada" marker comes from tacticTemplateSources, a
+     superadmin-only collection rather than a field on the template,
+     because tacticTemplates is readable by every signed-in user and stays
+     anonymous by construction. */
+  var _abState = null;
+
+  function renderAdminBoards() {
+    return '<h2 class="page-title">Pissarres</h2>' +
+      '<div id="ab-root"><div class="card">' +
+      '<p style="color:var(--text-secondary);font-size:.9rem;">Carregant…</p>' +
+      '</div></div>';
+  }
+
+  /** Read everything the page needs. Small collections, one pass. */
+  async function _abLoad(force) {
+    const root = document.getElementById('ab-root');
+    if (!root) return;
+    if (_abState && _abState.loaded && !force) { _abRender(); return; }
+    const keep = _abState || {};
+    _abState = {
+      tab: keep.tab || 'clubs', q: keep.q || '', club: keep.club || '',
+      cat: keep.cat || '',
+      boards: [], clubs: {}, authors: {}, promoted: {}, templates: [],
+      loaded: false
+    };
+    try {
+      const [boardSnap, clubSnap, srcSnap, tpls] = await Promise.all([
+        // Unfiltered on purpose, and satisfiable: the superuser read arm
+        // does not depend on the document, so no document this query can
+        // return could be denied. Any OTHER caller must narrow — see the
+        // two-queries-never-one note in boards.js.
+        db.collection('tacticBoards').get(),
+        db.collection('clubs').get(),
+        db.collection('tacticTemplateSources').get(),
+        TB.templates()
+      ]);
+      boardSnap.forEach(function (d) {
+        _abState.boards.push(Object.assign({id: d.id}, d.data()));
+      });
+      clubSnap.forEach(function (d) {
+        _abState.clubs[d.id] = Object.assign({id: d.id}, d.data());
+      });
+      srcSnap.forEach(function (d) { _abState.promoted[d.id] = d.data() || {}; });
+      _abState.templates = tpls;
+
+      /* Author labels are per club, and a coach who left club A is
+         unreadable through users/{uid} from anywhere else — the frozen
+         label in clubs/{id}/boardAuthors is the only place their team
+         still exists. One read per club, and there are a handful. */
+      const clubIds = Object.keys(_abState.clubs);
+      const authorSnaps = await Promise.all(clubIds.map(function (cid) {
+        return db.collection('clubs').doc(cid).collection('boardAuthors').get()
+          .catch(function () { return null; });
+      }));
+      authorSnaps.forEach(function (snap, i) {
+        const m = {};
+        if (snap) snap.forEach(function (d) { m[d.id] = d.data(); });
+        _abState.authors[clubIds[i]] = m;
+      });
+      _abState.loaded = true;
+    } catch (e) {
+      console.error('[admin-boards] load failed', e);
+      root.innerHTML = '<div class="card"><p style="color:var(--danger);">' +
+        'Error carregant les pissarres: ' + sanitize(e && e.message || '') + '</p></div>';
+      return;
+    }
+    _abRender();
+  }
+
+  /** Who drew a board, and for which team — the frozen label, not a join. */
+  function _abAuthor(b) {
+    const a = (_abState.authors[b.clubId] || {})[b.ownerUid];
+    let team = '';
+    if (a && a.category) {
+      team = (CATEGORY_LABELS[a.category] || a.category) +
+        (a.letters && a.letters.length ? ' ' + a.letters.join('/') : '');
+    }
+    return {
+      name: (a && a.name) || b.ownerName || '',
+      team: team,
+      left: !!(a && a.active === false)
+    };
+  }
+
+  function _abDate(ts) {
+    if (!ts || !ts.seconds) return '—';
+    return new Date(ts.seconds * 1000)
+      .toLocaleDateString('ca-ES', {day: '2-digit', month: '2-digit', year: '2-digit'});
+  }
+
+  function _abSize(bytes) {
+    const n = Number(bytes || 0);
+    return n ? (n < 1024 ? n + ' B' : Math.round(n / 1024) + ' KB') : '—';
+  }
+
+  function _abFilteredBoards() {
+    const q = _abState.q.trim().toLowerCase();
+    return _abState.boards.filter(function (b) {
+      if (_abState.club && b.clubId !== _abState.club) return false;
+      if (_abState.cat && (b.category || '') !== _abState.cat) return false;
+      if (!q) return true;
+      const a = _abAuthor(b);
+      const club = (_abState.clubs[b.clubId] || {}).name || '';
+      return [b.name, b.tag, a.name, a.team, club].some(function (f) {
+        return String(f || '').toLowerCase().indexOf(q) !== -1;
+      });
+    }).sort(function (x, y) {
+      const cx = (_abState.clubs[x.clubId] || {}).name || x.clubId || '';
+      const cy = (_abState.clubs[y.clubId] || {}).name || y.clubId || '';
+      if (cx !== cy) return cx.localeCompare(cy);
+      const xv = (x.updatedAt && x.updatedAt.seconds) || 0;
+      const yv = (y.updatedAt && y.updatedAt.seconds) || 0;
+      if (xv !== yv) return yv - xv;
+      return String(x.name || '').localeCompare(String(y.name || ''));
+    });
+  }
+
+  function _abTabsHtml() {
+    const t1 = _abState.tab === 'clubs' ? ' active' : '';
+    const t2 = _abState.tab === 'library' ? ' active' : '';
+    return '<div class="ab-tabs">' +
+      '<button class="ab-tab' + t1 + '" data-ab-tab="clubs">Pissarres dels clubs</button>' +
+      '<button class="ab-tab' + t2 + '" data-ab-tab="library">Biblioteca Movment ' +
+        '<span class="ab-count">' + _abState.templates.length + '</span></button>' +
+      '</div>';
+  }
+
+  function _abClubsTabHtml() {
+    const rows = _abFilteredBoards();
+    const clubOpts = Object.keys(_abState.clubs)
+      .sort(function (a, b) {
+        return String(_abState.clubs[a].name || '')
+          .localeCompare(String(_abState.clubs[b].name || ''));
+      })
+      .map(function (id) {
+        return '<option value="' + id + '"' + (_abState.club === id ? ' selected' : '') +
+          '>' + sanitize(_abState.clubs[id].name || id) + '</option>';
+      }).join('');
+    const catOpts = CATEGORY_ORDER.map(function (c) {
+      return '<option value="' + c + '"' + (_abState.cat === c ? ' selected' : '') +
+        '>' + sanitize(CATEGORY_LABELS[c] || c) + '</option>';
+    }).join('');
+
+    let body;
+    if (!rows.length) {
+      body = '<p style="color:var(--text-secondary);font-size:.9rem;">' +
+        'Cap pissarra coincideix amb el filtre.</p>';
+    } else {
+      body = '<div class="ab-table-wrap"><table class="table ab-table">' +
+        '<thead><tr><th>Club</th><th>Pissarra</th><th>Autor</th><th>Equip</th>' +
+        '<th>Tag</th><th>Categoria</th><th>Data</th><th>Mida</th><th></th></tr></thead><tbody>' +
+        rows.map(function (b) {
+          const a = _abAuthor(b);
+          const club = (_abState.clubs[b.clubId] || {}).name || b.clubId || '—';
+          const promoted = _abState.promoted[b.id];
+          const anim = b.hasFrames ?
+            ' <span class="ab-anim" title="Té animació">▶</span>' : '';
+          return '<tr>' +
+            '<td>' + sanitize(club) + '</td>' +
+            '<td>' + sanitize(b.name || '—') + anim + '</td>' +
+            '<td>' + (a.name ? sanitize(a.name) +
+              (a.left ? ' <span class="ab-left">(ja no hi és)</span>' : '') :
+              '<span class="ab-muted">sense autor</span>') + '</td>' +
+            '<td>' + (a.team ? sanitize(a.team) : '<span class="ab-muted">—</span>') + '</td>' +
+            '<td>' + (b.tag ? sanitize(b.tag) : '—') + '</td>' +
+            '<td>' + sanitize(b.category ? (CATEGORY_LABELS[b.category] || b.category) : '—') + '</td>' +
+            '<td style="white-space:nowrap;">' + _abDate(b.updatedAt) + '</td>' +
+            '<td style="white-space:nowrap;">' + _abSize(b.bytes) + '</td>' +
+            '<td style="white-space:nowrap;">' +
+              '<button class="btn btn-small btn-outline" data-ab-preview="' + b.id + '">Veure</button> ' +
+              (promoted ?
+                '<span class="ab-promoted" title="Ja és a la biblioteca">✓ copiada</span>' :
+                '<button class="btn btn-small btn-primary" data-ab-promote="' + b.id + '">Copiar</button>') +
+            '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>';
+    }
+
+    return '<div class="card">' +
+      '<p style="color:var(--text-secondary);font-size:.88rem;margin-bottom:.8rem;">' +
+        'Totes les pissarres de tots els clubs, en <strong>només lectura</strong>. ' +
+        '«Copiar» en fa una còpia anònima a la teva biblioteca, sense tocar la del club.' +
+      '</p>' +
+      '<div class="ab-filters">' +
+        '<input type="search" id="ab-search" class="reg-input" placeholder="Cercar nom, autor, tag, club…" value="' + sanitize(_abState.q) + '">' +
+        '<select id="ab-club" class="reg-input"><option value="">Tots els clubs</option>' + clubOpts + '</select>' +
+        '<select id="ab-cat" class="reg-input"><option value="">Totes les categories</option>' + catOpts + '</select>' +
+        '<button class="btn btn-small btn-outline" id="ab-reload">↻</button>' +
+      '</div>' +
+      '<p class="ab-count-line">' + rows.length + ' de ' + _abState.boards.length + ' pissarres</p>' +
+      body +
+      '</div>';
+  }
+
+  function _abLibraryTabHtml() {
+    const drafts = _abState.templates.filter(function (x) { return x.published !== true; });
+    const live = _abState.templates.filter(function (x) { return x.published === true; });
+
+    function rowHtml(x) {
+      const catOpts = ['<option value="">— sense —</option>'].concat(
+        CATEGORY_ORDER.map(function (c) {
+          return '<option value="' + c + '"' + (x.category === c ? ' selected' : '') +
+            '>' + sanitize(CATEGORY_LABELS[c] || c) + '</option>';
+        })).join('');
+      const packs = Array.isArray(x.packs) ? x.packs.join(', ') : '';
+      return '<tr>' +
+        '<td><input type="text" class="reg-input ab-tpl-name" data-tpl="' + x.id + '" value="' + sanitize(x.name || '') + '"></td>' +
+        '<td><input type="text" class="reg-input ab-tpl-tag" data-tpl="' + x.id + '" value="' + sanitize(x.tag || '') + '" placeholder="tag"></td>' +
+        '<td><select class="reg-input ab-tpl-cat" data-tpl="' + x.id + '">' + catOpts + '</select></td>' +
+        '<td><input type="text" class="reg-input ab-tpl-packs" data-tpl="' + x.id + '" value="' + sanitize(packs) + '" placeholder="pack1, pack2"></td>' +
+        '<td style="white-space:nowrap;">' + _abSize(x.bytes) + '</td>' +
+        '<td style="white-space:nowrap;">' +
+          '<button class="btn btn-small btn-outline" data-ab-edit-tpl="' + x.id + '">Editar</button> ' +
+          '<button class="btn btn-small ' + (x.published ? 'btn-outline' : 'btn-primary') + '" data-ab-pub="' + x.id + '">' +
+            (x.published ? 'Despublicar' : 'Publicar') + '</button> ' +
+          '<button class="btn btn-small btn-danger" data-ab-del-tpl="' + x.id + '">✕</button>' +
+        '</td></tr>';
+    }
+
+    function tableHtml(list, empty) {
+      if (!list.length) {
+        return '<p style="color:var(--text-secondary);font-size:.9rem;">' + empty + '</p>';
+      }
+      return '<div class="ab-table-wrap"><table class="table ab-table">' +
+        '<thead><tr><th>Nom</th><th>Tag</th><th>Categoria</th><th>Packs</th><th>Mida</th><th></th></tr></thead>' +
+        '<tbody>' + list.map(rowHtml).join('') + '</tbody></table></div>';
+    }
+
+    const clubOpts = Object.keys(_abState.clubs)
+      .sort(function (a, b) {
+        return String(_abState.clubs[a].name || '')
+          .localeCompare(String(_abState.clubs[b].name || ''));
+      })
+      .map(function (id) {
+        return '<option value="' + id + '">' + sanitize(_abState.clubs[id].name || id) + '</option>';
+      }).join('');
+    const packNames = {};
+    live.forEach(function (x) {
+      (Array.isArray(x.packs) ? x.packs : []).forEach(function (p) { packNames[p] = true; });
+    });
+    const packOpts = Object.keys(packNames).sort().map(function (p) {
+      return '<option value="' + sanitize(p) + '">' + sanitize(p) + '</option>';
+    }).join('');
+
+    return '<div class="card">' +
+      '<div class="card-title">Esborranys <span class="ab-count">' + drafts.length + '</span></div>' +
+      '<p style="color:var(--text-secondary);font-size:.88rem;margin-bottom:.8rem;">' +
+        'Còpies teves, encara no a la venda. Edita-les i publica-les quan estiguin llestes — ' +
+        'un esborrany mai s\'envia a un club.</p>' +
+      tableHtml(drafts, 'Cap esborrany. Copia una pissarra des de l\'altra pestanya.') +
+      '</div>' +
+      '<div class="card">' +
+      '<div class="card-title">Publicades <span class="ab-count">' + live.length + '</span></div>' +
+      tableHtml(live, 'Cap plantilla publicada encara.') +
+      '</div>' +
+      '<div class="card">' +
+      '<div class="card-title">Enviar un pack a un club</div>' +
+      '<p style="color:var(--text-secondary);font-size:.88rem;margin-bottom:.8rem;">' +
+        'Es copien al club, que després les pot editar i esborrar com a seves. ' +
+        'Repetir l\'enviament no les duplica.</p>' +
+      '<div class="ab-filters">' +
+        '<select id="ab-seed-club" class="reg-input"><option value="">— Club —</option>' + clubOpts + '</select>' +
+        '<select id="ab-seed-pack" class="reg-input"><option value="">— Pack —</option>' + packOpts + '</select>' +
+        '<button class="btn btn-primary" id="ab-seed-go">Enviar</button>' +
+      '</div>' +
+      '<div id="ab-seed-result" style="margin-top:.6rem;" hidden></div>' +
+      '</div>';
+  }
+
+  function _abRender() {
+    const root = document.getElementById('ab-root');
+    if (!root || !_abState) return;
+    root.innerHTML = _abTabsHtml() +
+      (_abState.tab === 'library' ? _abLibraryTabHtml() : _abClubsTabHtml());
+    _abBind();
+  }
+
+  function _abBind() {
+    const root = document.getElementById('ab-root');
+    if (!root) return;
+
+    root.querySelectorAll('[data-ab-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _abState.tab = btn.dataset.abTab;
+        _abRender();
+      });
+    });
+
+    const search = root.querySelector('#ab-search');
+    if (search) {
+      let timer = null;
+      search.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          _abState.q = search.value;
+          _abRender();
+          const s = document.getElementById('ab-search');
+          if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+        }, 250);
+      });
+    }
+    const clubSel = root.querySelector('#ab-club');
+    if (clubSel) clubSel.addEventListener('change', function () {
+      _abState.club = clubSel.value; _abRender();
+    });
+    const catSel = root.querySelector('#ab-cat');
+    if (catSel) catSel.addEventListener('change', function () {
+      _abState.cat = catSel.value; _abRender();
+    });
+    const reload = root.querySelector('#ab-reload');
+    if (reload) reload.addEventListener('click', function () { _abLoad(true); });
+
+    root.querySelectorAll('[data-ab-preview]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _abPreview(btn.dataset.abPreview); });
+    });
+    root.querySelectorAll('[data-ab-promote]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _abPromote(btn.dataset.abPromote, btn); });
+    });
+
+    // ── Library tab ──
+    root.querySelectorAll('[data-ab-edit-tpl]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _abOpenTemplate(btn.dataset.abEditTpl); });
+    });
+    root.querySelectorAll('[data-ab-pub]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _abTogglePublished(btn.dataset.abPub); });
+    });
+    root.querySelectorAll('[data-ab-del-tpl]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _abDeleteTemplate(btn.dataset.abDelTpl); });
+    });
+    // Metadata edits save on blur — no button, and nothing to forget to press.
+    root.querySelectorAll('.ab-tpl-name, .ab-tpl-tag, .ab-tpl-cat, .ab-tpl-packs')
+      .forEach(function (inp) {
+        inp.addEventListener('change', function () { _abSaveTemplateMeta(inp); });
+      });
+
+    const seedGo = root.querySelector('#ab-seed-go');
+    if (seedGo) seedGo.addEventListener('click', function () { _abSeed(seedGo); });
+  }
+
+  /** Read-only preview, through the same renderer the session pages use. */
+  async function _abPreview(boardId) {
+    const meta = _abState.boards.find(function (b) { return b.id === boardId; });
+    if (!meta) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'ab-modal';
+    overlay.innerHTML = '<div class="ab-modal-card">' +
+      '<button class="ab-modal-close" title="Tancar">✕</button>' +
+      '<div class="ab-modal-body"><p style="color:var(--text-secondary);">Carregant…</p></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    const close = function () { overlay.remove(); };
+    overlay.querySelector('.ab-modal-close').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    let payload = null;
+    try { payload = await TB.get(boardId); } catch (e) { payload = null; }
+    const body = overlay.querySelector('.ab-modal-body');
+    if (!body) return;
+    if (!payload) {
+      body.innerHTML = '<p style="color:var(--danger);">No s\'ha pogut llegir el dibuix.</p>';
+      return;
+    }
+    const club = (_abState.clubs[meta.clubId] || {}).name || meta.clubId || '';
+    const a = _abAuthor(meta);
+    body.innerHTML = '<p class="ab-modal-meta">' + sanitize(club) +
+      (a.name ? ' · ' + sanitize(a.name) : '') +
+      (a.team ? ' · ' + sanitize(a.team) : '') + '</p>' +
+      renderReadOnlyBoard(Object.assign({}, payload, {name: meta.name}), 'ab-');
+    if (typeof scaleRoBoards === 'function') scaleRoBoards();
+    bindRoBoardAnimations();
+  }
+
+  async function _abPromote(boardId, btn) {
+    const meta = _abState.boards.find(function (b) { return b.id === boardId; });
+    if (!meta) return;
+    showTbConfirm('Copiar a la biblioteca',
+      'Es crearà una còpia anònima de «' + (meta.name || '') + '» com a esborrany. ' +
+      'La pissarra del club no es toca.', async function () {
+        if (btn) btn.disabled = true;
+        try {
+          const fn = firebase.app().functions('us-central1')
+            .httpsCallable('promoteBoardTemplate');
+          await fn({boardId: boardId});
+        } catch (err) {
+          console.error('[admin-boards] promote failed', err);
+          _showPushToast('Copiar', 'Error: ' + (err && err.message || ''));
+          if (btn) btn.disabled = false;
+          return;
+        }
+        _showPushToast('Copiar', 'Copiada com a esborrany.');
+        await _abLoad(true);
+      });
+  }
+
+  async function _abOpenTemplate(templateId) {
+    const tpl = _abState.templates.find(function (x) { return x.id === templateId; });
+    let payload = null;
+    try { payload = await TB.getTemplate(templateId); } catch (e) { payload = null; }
+    if (!payload) { alert('No s\'ha pogut llegir la plantilla.'); return; }
+    // Metadata wins on the fields it owns — a rename in the table lands there
+    // first, exactly as it does for a club board.
+    tbHydrateEditor(Object.assign({}, payload, {
+      name: (tpl && tpl.name) || payload.name || '',
+      tag: (tpl && tpl.tag) || payload.tag || ''
+    }), {templateId: templateId});
+    navigate('tactics');
+  }
+
+  async function _abSaveTemplateMeta(inp) {
+    const id = inp.dataset.tpl;
+    const patch = {};
+    if (inp.classList.contains('ab-tpl-name')) patch.name = inp.value.trim();
+    else if (inp.classList.contains('ab-tpl-tag')) patch.tag = inp.value.trim();
+    else if (inp.classList.contains('ab-tpl-cat')) patch.category = inp.value;
+    else if (inp.classList.contains('ab-tpl-packs')) {
+      patch.packs = inp.value.split(',').map(function (s) { return s.trim(); })
+        .filter(Boolean);
+    }
+    try {
+      await TB.patchTemplate(id, patch);
+      const tpl = _abState.templates.find(function (x) { return x.id === id; });
+      if (tpl) Object.assign(tpl, patch);
+      _showPushToast('Biblioteca', 'Desat.');
+    } catch (e) {
+      console.error('[admin-boards] template patch failed', e);
+      _showPushToast('Biblioteca', 'Error desant.');
+    }
+  }
+
+  async function _abTogglePublished(id) {
+    const tpl = _abState.templates.find(function (x) { return x.id === id; });
+    if (!tpl) return;
+    const next = tpl.published !== true;
+    if (next && !(Array.isArray(tpl.packs) && tpl.packs.length)) {
+      // A published template with no pack cannot be sent to anybody: seeding
+      // takes a pack name or an explicit list, and the UI only offers packs.
+      alert('Posa-li almenys un pack abans de publicar-la.');
+      return;
+    }
+    try {
+      await TB.patchTemplate(id, {published: next});
+      tpl.published = next;
+      _abRender();
+    } catch (e) {
+      console.error('[admin-boards] publish toggle failed', e);
+      _showPushToast('Biblioteca', 'Error desant.');
+    }
+  }
+
+  async function _abDeleteTemplate(id) {
+    const tpl = _abState.templates.find(function (x) { return x.id === id; });
+    showTbConfirm('Esborrar plantilla',
+      'S\'esborrarà «' + ((tpl && tpl.name) || '') + '» de la biblioteca. ' +
+      'Els clubs que ja la tenen la conserven.', async function () {
+        try {
+          await TB.removeTemplate(id);
+        } catch (e) {
+          console.error('[admin-boards] template delete failed', e);
+          _showPushToast('Biblioteca', 'Error esborrant.');
+          return;
+        }
+        _abState.templates = _abState.templates.filter(function (x) { return x.id !== id; });
+        _abRender();
+      });
+  }
+
+  async function _abSeed(btn) {
+    const clubId = (document.getElementById('ab-seed-club') || {}).value || '';
+    const pack = (document.getElementById('ab-seed-pack') || {}).value || '';
+    const out = document.getElementById('ab-seed-result');
+    if (!clubId || !pack) {
+      if (out) { out.textContent = 'Tria un club i un pack.'; out.hidden = false; }
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const fn = firebase.app().functions('us-central1')
+        .httpsCallable('seedClubFromTemplates');
+      const r = await fn({clubId: clubId, pack: pack});
+      const d = (r && r.data) || {};
+      if (out) {
+        out.textContent = 'Enviades: ' + (d.created || 0) +
+          ' · ja hi eren o són esborrany: ' + (d.skipped || 0);
+        out.hidden = false;
+      }
+      await _abLoad(true);
+    } catch (err) {
+      console.error('[admin-boards] seed failed', err);
+      if (out) { out.textContent = 'Error: ' + (err && err.message || ''); out.hidden = false; }
+    }
+    btn.disabled = false;
+  }
+
+  // #endregion Superadmin board catalogue
 
   function renderAdminSettings() {
     const session = getSession();
@@ -18511,6 +19170,29 @@
       archivedSeasonsBtn.addEventListener('click', function() {
         currentPage = 'archived-seasons';
         renderPage(getSession());
+      });
+    }
+
+    // SuperUser: the board catalogue. Rendered synchronously as a shell, then
+    // filled in — it reads four collections plus one per club.
+    if (document.getElementById('ab-root')) _abLoad(false);
+
+    // Leaving the template editor. Clears the scratch keys as well as the
+    // template id: leaving the drawing behind would show it as an unsaved
+    // board the next time the editor is opened for a club.
+    const tplExit = document.getElementById('tb-tpl-exit');
+    if (tplExit) {
+      tplExit.addEventListener('click', () => {
+        const leave = () => {
+          tbClearEditor();
+          currentPage = 'admin-boards';
+          renderPage(getSession());
+        };
+        if (tbHasUnsavedWork()) {
+          showTbConfirm(t('tb.leave_title'), t('tb.leave_msg'), leave);
+        } else {
+          leave();
+        }
       });
     }
 

@@ -372,6 +372,18 @@ service cloud.firestore {
       allow write: if isSuperUser();
     }
 
+    /* Provenance: which club board a template was copied from, so the
+       superadmin catalogue can mark a board it has already taken.
+
+       It is a SEPARATE collection rather than a sourceBoardId field on the
+       template because tacticTemplates is readable by every signed-in user,
+       and "anonymous by construction" is the property that lets it be. A
+       board id is not personal data, but a club learning that its board was
+       promoted is not something the template doc should be able to say. */
+    match /tacticTemplateSources/{boardId} {
+      allow read, write: if isSuperUser();
+    }
+
     // ── Club join codes: superuser + Cloud Functions only ──
     match /clubCodes/{code} {
       allow read, write: if isSuperUser();

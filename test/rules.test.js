@@ -858,5 +858,21 @@ describe("Tactical boards", () => {
       await assertFails(asStaffA().doc("tacticTemplates/t2").set({name: "New", schema: 1}));
       await assertSucceeds(asSuper().doc("tacticTemplates/t1").update({name: "Rondo v2"}));
     });
+
+    /* Provenance is the reason this collection exists separately: it says
+       which club board a template was copied from, which is exactly what
+       tacticTemplates must never say. Nobody but the superuser reads it —
+       not even the lead of the club the board came from. */
+    it("provenance is superuser-only, read as well as write", async () => {
+      await env.withSecurityRulesDisabled(async (c) => {
+        await c.firestore().doc("tacticTemplateSources/bA1")
+            .set({templateId: "t1", clubId: "teamA"});
+      });
+      await assertFails(asLeadA().doc("tacticTemplateSources/bA1").get());
+      await assertFails(asStaffA().doc("tacticTemplateSources/bA1").get());
+      await assertFails(asStaffB().doc("tacticTemplateSources/bA1").set({templateId: "x"}));
+      await assertSucceeds(asSuper().doc("tacticTemplateSources/bA1").get());
+      await assertSucceeds(asSuper().doc("tacticTemplateSources/bA2").set({templateId: "t1"}));
+    });
   });
 });

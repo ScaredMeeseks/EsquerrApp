@@ -481,6 +481,122 @@
     });
   }
 
+  /* ── The platform template library (superadmin only) ─────────
+     tacticTemplates/{id} + tacticTemplateData/{id}, the same
+     metadata/payload split and the same one-batch rule as boards, for
+     the same two reasons: listing the library must not download the
+     drawings, and a template whose payload is missing is a row that
+     cannot be seeded with nothing to say why.
+
+     Deliberately NOT part of _meta or the payload cache. Those are
+     scoped to a club and a coach; this collection belongs to neither,
+     and mixing them would let a template id reach TB.save(). Rules
+     allow the writes here to no one but the superuser, so nothing
+     below needs a role check of its own — but the UI still hides
+     them, because a button that always fails should not be there. */
+  var COL_TPL = 'tacticTemplates';
+  var COL_TPL_DATA = 'tacticTemplateData';
+
+  function newTemplateId() {
+    return 'tt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  /** Every template, newest first. Small enough to read whole. */
+  function templates() {
+    return db.collection(COL_TPL).get().then(function (snap) {
+      var out = [];
+      snap.forEach(function (d) {
+        out.push(Object.assign({id: d.id}, d.data()));
+      });
+      out.sort(function (a, b) {
+        var av = (a.updatedAt && a.updatedAt.seconds) ||
+          (a.createdAt && a.createdAt.seconds) || 0;
+        var bv = (b.updatedAt && b.updatedAt.seconds) ||
+          (b.createdAt && b.createdAt.seconds) || 0;
+        if (av !== bv) return bv - av;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
+      return out;
+    });
+  }
+
+  /** One template payload, parsed. Not memoised — the library is small. */
+  function getTemplate(id) {
+    return db.collection(COL_TPL_DATA).doc(id).get().then(function (d) {
+      if (!d.exists) return null;
+      var v = (d.data() || {}).v;
+      if (typeof v !== 'string') return null;
+      try { return JSON.parse(v); } catch (e) { return null; }
+    });
+  }
+
+  /**
+   * Write a template, metadata and payload in ONE batch.
+   *
+   * `id` may be null to mint a new draft. A template carries no ownerUid
+   * and no clubId by design — that is the whole point of promotion, and
+   * writing either here would undo it.
+   *
+   * @param {?string} id existing template id, or null for a new draft
+   * @param {Object} entry a buildBoardEntry() result
+   * @param {Object} opts {packs, published}
+   * @return {Promise<Object>} the metadata that was written, with its id
+   */
+  function saveTemplate(id, entry, opts) {
+    var tplId = id || newTemplateId();
+    var o = opts || {};
+    var payload = Object.assign({}, entry);
+    delete payload.id;
+    // Same strip as save(): linkedTeams carries player ids and names, and
+    // a template is shown to every club there is.
+    delete payload.linkedTeams;
+    var v = JSON.stringify(payload);
+    var frames = Array.isArray(entry.frames) ? entry.frames : [];
+
+    var metaDoc = {
+      name: String(entry.name || 'Plantilla'),
+      tag: String(entry.tag || ''),
+      category: String(entry.category || ''),
+      formation: String(entry.formation || ''),
+      boardType: String(entry.boardType || 'full'),
+      hasFrames: frames.length > 1,
+      frameCount: frames.length,
+      bytes: v.length,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      schema: 1
+    };
+    if (Array.isArray(o.packs)) metaDoc.packs = o.packs;
+    if (typeof o.published === 'boolean') metaDoc.published = o.published;
+    if (!id) {
+      metaDoc.packs = Array.isArray(o.packs) ? o.packs : [];
+      metaDoc.published = o.published === true;
+      metaDoc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    }
+
+    var batch = db.batch();
+    batch.set(db.collection(COL_TPL).doc(tplId), metaDoc, {merge: true});
+    batch.set(db.collection(COL_TPL_DATA).doc(tplId), {v: v, schema: 1});
+    return batch.commit().then(function () {
+      return Object.assign({id: tplId}, metaDoc);
+    });
+  }
+
+  /** Metadata-only patch: rename, retag, publish. Leaves the drawing alone. */
+  function patchTemplate(id, patch) {
+    return db.collection(COL_TPL).doc(id).set(
+      Object.assign({}, patch,
+        {updatedAt: firebase.firestore.FieldValue.serverTimestamp()}),
+      {merge: true});
+  }
+
+  /** Delete both documents, one batch — see remove(). */
+  function removeTemplate(id) {
+    var batch = db.batch();
+    batch.delete(db.collection(COL_TPL).doc(id));
+    batch.delete(db.collection(COL_TPL_DATA).doc(id));
+    return batch.commit();
+  }
+
   function canEdit(board) {
     if (!board) return false;
     return board.ownerUid === _uid || board.ownerUid === '';
@@ -507,6 +623,13 @@
     save: save,
     remove: remove,
     adopt: adopt,
+    // platform template library (superadmin)
+    newTemplateId: newTemplateId,
+    templates: templates,
+    getTemplate: getTemplate,
+    saveTemplate: saveTemplate,
+    patchTemplate: patchTemplate,
+    removeTemplate: removeTemplate,
     canEdit: canEdit,
     canDelete: canDelete,
     isFavorite: isFavorite,

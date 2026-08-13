@@ -83,10 +83,18 @@ async function seedBoard(id) {
 
 async function wipe() {
   for (const c of ['tacticBoards', 'tacticBoardData',
-    'tacticTemplates', 'tacticTemplateData']) {
+    'tacticTemplates', 'tacticTemplateData', 'tacticTemplateSources']) {
     const s = await db.collection(c).get();
     await Promise.all(s.docs.map((d) => d.ref.delete()));
   }
+}
+
+/** Promote, then publish — what the superadmin UI does in two steps. */
+async function promotePublished(data) {
+  const r = await promote(data);
+  await db.doc('tacticTemplates/' + r.templateId).set(
+      {published: true}, {merge: true});
+  return r.templateId;
 }
 
 describe('promoteBoardTemplate', function () {
@@ -120,6 +128,27 @@ describe('promoteBoardTemplate', function () {
     assert.strictEqual(t.ownerName, undefined);
     assert.strictEqual(t.clubId, undefined);
     assert.strictEqual(t.sourceBoardId, undefined);
+  });
+
+  it('lands as a DRAFT — a copy to work on, not a product', async () => {
+    const r = await promote({boardId: 'b1'});
+    const t = (await db.doc('tacticTemplates/' + r.templateId).get()).data();
+    assert.strictEqual(t.published, false);
+  });
+
+  it('records provenance OUTSIDE the world-readable template', async () => {
+    // The catalogue needs to mark a board it has already taken, but
+    // tacticTemplates is readable by every signed-in user and stays anonymous
+    // by construction — so the origin lives in its own superadmin-only doc.
+    const r = await promote({boardId: 'b1'});
+    const src = (await db.doc('tacticTemplateSources/b1').get()).data();
+    assert.strictEqual(src.templateId, r.templateId);
+    assert.strictEqual(src.clubId, CLUB);
+    // Keyed by board, so re-promoting overwrites rather than accumulating.
+    const again = await promote({boardId: 'b1'});
+    const snap = await db.collection('tacticTemplateSources').get();
+    assert.strictEqual(snap.size, 1);
+    assert.strictEqual(snap.docs[0].data().templateId, again.templateId);
   });
 
   it('strips linkedTeams from the PAYLOAD, not just the metadata', async () => {
@@ -165,7 +194,7 @@ describe('seedClubFromTemplates', function () {
     await db.doc('clubs/' + CLUB).set({name: 'Origin Club'});
     await db.doc('clubs/' + NEW_CLUB).set({name: 'New Club'});
     await seedBoard('b1');
-    tplId = (await promote({boardId: 'b1', packs: ['base']})).templateId;
+    tplId = await promotePublished({boardId: 'b1', packs: ['base']});
   });
 
   it('refuses a coach, and an unknown club', async () => {
@@ -211,10 +240,24 @@ describe('seedClubFromTemplates', function () {
   });
 
   it('seeds a whole pack by name', async () => {
-    const second = (await promote({boardId: 'b1', packs: ['base']})).templateId;
+    const second = await promotePublished({boardId: 'b1', packs: ['base']});
     assert.notStrictEqual(second, tplId);
     const r = await seed({clubId: NEW_CLUB, pack: 'base'});
     assert.strictEqual(r.created, 2);
+  });
+
+  it('SKIPS an unpublished draft, by id and inside a pack', async () => {
+    // A draft is a working copy. Seeding one would put a half-edited board
+    // into a paying club's library, and the id path must be gated as well as
+    // the pack path — the UI can pass either.
+    const draft = (await promote({boardId: 'b1', packs: ['base']})).templateId;
+    const byId = await seed({clubId: NEW_CLUB, templateIds: [draft]});
+    assert.strictEqual(byId.created, 0);
+    assert.strictEqual(byId.skipped, 1);
+    // The pack holds one published template and one draft.
+    const byPack = await seed({clubId: NEW_CLUB, pack: 'base'});
+    assert.strictEqual(byPack.created, 1);
+    assert.strictEqual(byPack.skipped, 1);
   });
 
   it('leaves the origin club untouched', async () => {

@@ -2372,16 +2372,32 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
 
       // One batch: a template whose payload is missing is a row in the
       // superadmin library that cannot be seeded, and nothing would say why.
+      //
+      // `published: false` is the draft stage. A promoted board is a COPY to
+      // work on, not a product — it is edited in the platform library and
+      // only then published, and seedClubFromTemplates refuses anything that
+      // has not been.
       const batch = db.batch();
       batch.set(db.collection("tacticTemplates").doc(templateId),
           Object.assign(templateMetaFrom(metaSnap.data() || {}), {
             packs,
+            published: false,
             bytes: Buffer.byteLength(v, "utf8"),
             createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
             schema: 1,
           }));
       batch.set(db.collection("tacticTemplateData").doc(templateId),
           {v, schema: 1});
+      // Provenance, in its OWN superadmin-only collection rather than as a
+      // field on the template: tacticTemplates is world-readable to signed-in
+      // users and stays anonymous by construction. Keyed by boardId so
+      // re-promoting the same board overwrites rather than accumulating.
+      batch.set(db.collection("tacticTemplateSources").doc(boardId), {
+        templateId,
+        clubId: String((metaSnap.data() || {}).clubId || ""),
+        promotedAt: FieldValue.serverTimestamp(),
+      });
       await batch.commit();
 
       logger.info("promoteBoardTemplate", {boardId, templateId, packs});
@@ -2447,6 +2463,13 @@ exports.seedClubFromTemplates = onCall({region: "us-central1", timeoutSeconds: 1
           db.collection("tacticTemplateData").doc(templateId).get(),
         ]);
         if (!tMeta.exists || !tData.exists) {
+          skipped++;
+          continue;
+        }
+        // Drafts are not products. Checked here rather than in the pack
+        // query so the explicit-ids path is gated too — and so it needs no
+        // composite index.
+        if ((tMeta.data() || {}).published !== true) {
           skipped++;
           continue;
         }

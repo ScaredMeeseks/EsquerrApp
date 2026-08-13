@@ -163,7 +163,11 @@
            editor, whose rows carry six controls. -->
       <div class="auth-card" style="max-width:720px;">
         <div class="auth-header">
-          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <!-- The crest of the club being configured, filled in by
+               showTeamSetup(). The other auth cards keep the app logo
+               because they run before any club is known; this one always
+               runs after loadClubConfig(). -->
+          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img" id="ts-club-badge"></div>
           <h1 data-i18n="auth.setup_title">Configura el teu club</h1>
           <p class="subtitle" data-i18n="auth.setup_subtitle">Activa les categories i equips del teu club</p>
         </div>

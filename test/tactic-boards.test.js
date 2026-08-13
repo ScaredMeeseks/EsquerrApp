@@ -195,7 +195,7 @@ describe('app.js has no second copy of the entry literal', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
   it('builds every board entry through TB.buildBoardEntry', () => {
-    /* Four, and NOT the original four. Add to Training and Add to Match
+    /* Five, and NOT the original four. Add to Training and Add to Match
        stopped building entries of their own when sessions started storing
        references: both go through tbEnsureSaved(), because a session cannot
        reference a board that was never saved. tbHasUnsavedWork() then added
@@ -203,12 +203,19 @@ describe('app.js has no second copy of the entry literal', () => {
        with what is stored, which is the same construction and must not drift
        from it either.
 
-       So: Save, Save As, tbEnsureSaved, tbHasUnsavedWork. The number matters
-       less than the property — entry construction lives in one function, and
-       nothing rebuilds that object by hand. */
+       The fifth is _tbTemplateEntry(), the platform-library path. It is ONE
+       call site for three template operations (Save, Save As and the
+       template arm of tbHasUnsavedWork) precisely so the comparison and the
+       write cannot disagree — which is the same argument as the fourth, one
+       collection along.
+
+       So: Save, Save As, tbEnsureSaved, tbHasUnsavedWork, _tbTemplateEntry.
+       The number matters less than the property — entry construction lives
+       in one function, and nothing rebuilds that object by hand. */
     const calls = src.match(/TB\.buildBoardEntry\(/g) || [];
-    assert.strictEqual(calls.length, 4,
-      'expected 4 call sites (Save, Save As, tbEnsureSaved, tbHasUnsavedWork), found ' + calls.length);
+    assert.strictEqual(calls.length, 5,
+      'expected 5 call sites (Save, Save As, tbEnsureSaved, tbHasUnsavedWork, ' +
+      '_tbTemplateEntry), found ' + calls.length);
   });
 
   it('both add-to-session paths go through tbEnsureSaved', () => {
