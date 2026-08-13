@@ -2348,22 +2348,35 @@ function anonymiseBoardPayload(v) {
   return JSON.stringify(parsed);
 }
 
-/* `invoker: "public"` is not a security decision — it is the Cloud Run IAM
-   binding every Firebase callable needs, and which firebase-tools otherwise
-   sets ONLY on the create path. A callable authenticates itself, inside the
-   function, against the Firebase ID token: assertSuperUser() below is the
-   real gate, and without the binding Cloud Run rejects the request before
-   the container ever runs.
+/* ⚠ A callable needs `allUsers` to hold roles/run.invoker on its Cloud Run
+   service, and firebase-tools grants that ONLY on the create path.
 
-   Spelled out here because these two functions have already been bitten by
-   it twice. Their original create failed on the container healthcheck (the
-   stale package-lock trap) and the retry went through UpdateFunction, which
-   does not set the invoker unless it is declared — so both deployed clean,
-   for months, and returned a bare "internal" to every caller. Nothing in the
-   deploy output says so; the only trace is a Cloud Run request log reading
-   "Empty Authorization header value". Declared, it is set on every deploy. */
-exports.promoteBoardTemplate = onCall(
-    {region: "us-central1", invoker: "public"},
+   It is not a security decision: a callable authenticates inside the
+   function against the Firebase ID token, and assertSuperUser() below is
+   the real gate. Without the binding, Google's front end answers 403 before
+   the container runs, so the client sees a bare "internal", the function log
+   is EMPTY, and the deploy reports success.
+
+   Both of these functions shipped that way. Their create on 2026-08-08 died
+   at the container healthcheck (the stale package-lock) and the retry went
+   through UpdateFunction, which does not touch IAM. Five days of clean
+   deploys later, neither had ever been callable.
+
+   `invoker: "public"` in these options does NOT fix it — the type checks,
+   because CallableOptions extends HttpsOptions, but onCall builds
+   `callableTrigger: {}` and never copies the field. Only onRequest does.
+   The repair is to DELETE the function and let a deploy create it again.
+
+   To check, with no credentials and no side effects — an unauthenticated
+   POST must reach the function, not the front end:
+
+     curl -s -o - -w '\nHTTP=%{http_code}' -X POST \
+       https://us-central1-esquerrapp.cloudfunctions.net/promoteBoardTemplate \
+       -H 'Content-Type: application/json' -d '{"data":{}}'
+
+   401 + {"error":{"status":"UNAUTHENTICATED"}} is healthy — that is this
+   file talking. A 403 HTML page is the broken state. */
+exports.promoteBoardTemplate = onCall({region: "us-central1"},
     async (request) => {
       assertSuperUser(request);
       const boardId = request.data && request.data.boardId;
@@ -2432,9 +2445,9 @@ exports.promoteBoardTemplate = onCall(
  * to the club lead would be a lie, and worse, would follow that lead to their
  * next club through the owner read arm.
  */
-// invoker: see the note on promoteBoardTemplate above.
+// Invoker binding: see the warning on promoteBoardTemplate above.
 exports.seedClubFromTemplates = onCall(
-    {region: "us-central1", timeoutSeconds: 120, invoker: "public"},
+    {region: "us-central1", timeoutSeconds: 120},
     async (request) => {
       assertSuperUser(request);
       const clubId = request.data && request.data.clubId;

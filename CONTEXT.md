@@ -1453,16 +1453,36 @@ Reported as *"Copiar returns Error Internal"*. Not a bug in the new code, and no
 The request was not authenticated. ... Empty Authorization header value.
 ```
 
-**A Firebase callable needs `allUsers` to hold `roles/run.invoker`.** That is not a security hole - a callable authenticates *inside* the function against the Firebase ID token, and `assertSuperUser()` is the real gate. But firebase-tools grants that binding **only on the CREATE path**, unless `invoker` is declared.
+**A Firebase callable needs `allUsers` to hold `roles/run.invoker`.** That is not a security hole - a callable authenticates *inside* the function against the Firebase ID token, and `assertSuperUser()` is the real gate. But firebase-tools grants that binding **only on the CREATE path**.
 
 These two functions never had it. Their create on 2026-08-08 failed at the container healthcheck - the stale `functions/package-lock.json` - and the retry went through `UpdateFunction`. So they were **the only two callables in the project without the binding**, they deployed cleanly for five days, and every deploy afterwards was an update that could never repair it.
 
-Both callables now declare `invoker: "public"`, which applies it on **every** deploy, and `test/templates.test.js` asserts both declarations against the source. There is nothing else that could catch this: the deploy says success, the function log is silent, and the client sees `internal`.
+### The one-line check, which is the part to remember
 
-Three things worth remembering:
+An unauthenticated POST must reach the FUNCTION, not the front end. No credentials, no side effects, free:
+
+```bash
+curl -s -o - -w '\nHTTP=%{http_code}' -X POST \
+  https://us-central1-esquerrapp.cloudfunctions.net/promoteBoardTemplate \
+  -H 'Content-Type: application/json' -d '{"data":{}}'
+```
+
+- **401** + `{"error":{"status":"UNAUTHENTICATED"}}` - healthy. That JSON is `functions/index.js` talking, so the request got past IAM.
+- **403** + an HTML error page - broken. That is Google's front end; the container never ran.
+
+Run it after any deploy that **creates** a callable. It is the only honest signal: the deploy output, the function log and the emulator suite all look identical in both states.
+
+### `invoker: "public"` does NOT fix this, and it type-checks
+
+The obvious repair is to declare the option. It is accepted - `CallableOptions extends HttpsOptions` - and then **silently dropped**: `onCall` builds `callableTrigger: {}` and never copies the field, while the two `convertIfPresent(..., "invoker", ...)` calls live in `onRequest` alone (`firebase-functions@6.6.0`, `lib/v2/providers/https.js`). It was shipped here as a fix, verified only against the deploy output, and changed nothing. A source-assertion test went with it and was worse than useless - it would have stayed green for ever while the function stayed broken. Both are backed out.
+
+**The repair is to DELETE the function and let a deploy create it again.** That is what fixed both.
+
+Four things worth remembering:
 
 - **The package-lock incident charged twice.** It did not merely fail one deploy in August; it left two functions permanently broken in a way no later deploy would fix.
-- **Delete-and-recreate is not a reliable repair.** Deleting both and redeploying fixed `seedClubFromTemplates` and failed for `promoteBoardTemplate` with `Failed to set the IAM Policy` - the create raced its own just-deleted service. Declaring the option is deterministic; the dance is not.
-- **The stored firebase-tools credential cannot make IAM writes.** Minting a `cloud-platform` token from the refresh token in `~/.config/configstore/firebase-tools.json` - the technique that works for read-only Google APIs - returns `invalid_grant / invalid_rapt` for `setIamPolicy`. Google wants an interactive reauth. Fix deployment properties through the deploy, not around it.
+- **Verify deployment properties against the DEPLOYED function.** `.run()` invokes the handler directly, so `test/templates.test.js` passed throughout - the emulator never sees the IAM layer that was rejecting every real call.
+- **The stored firebase-tools credential cannot make IAM writes.** Minting a `cloud-platform` token from the refresh token in `~/.config/configstore/firebase-tools.json` - the technique that works for read-only Google APIs - returns `invalid_grant / invalid_rapt` for `setIamPolicy`. Google wants an interactive reauth.
+- **`functions:delete` and the deploy are both flaky on this project, and lie about it.** The delete failed twice with a bare `Error: An unexpected error has occurred.`, then succeeded in six seconds. An earlier attempt "timed out after 1500000ms" client-side having actually completed server-side - `functions:list` said so. Two recreate attempts died on a source-discovery hiccup and a DNS failure to `cloudresourcemanager`. **Re-run, and check the resulting STATE rather than the exit code.**
 
-**449 unit + 134 rules + 55 functions + 9 backfill = 647.**
+**449 unit + 134 rules + 53 functions + 9 backfill = 645.**

@@ -97,30 +97,22 @@ async function promotePublished(data) {
   return r.templateId;
 }
 
-/* A deployment property, not a runtime one, so it is asserted on the SOURCE —
-   the same technique board-authors.test.js uses for the call sites it cannot
-   reach through the emulator.
+/* NOTE — the one property of these two functions this suite CANNOT cover.
  *
- * Worth a test because the failure is invisible everywhere else: without the
- * binding, Cloud Run rejects the call BEFORE the container runs, the client
- * gets a bare "internal", the function log is empty, and the deploy reports
- * success. Both of these functions shipped that way once already. */
-describe('the callables declare their Cloud Run invoker', () => {
-  const src = require('fs').readFileSync(
-      require('path').join(__dirname, '..', 'functions', 'index.js'), 'utf8');
-
-  ['promoteBoardTemplate', 'seedClubFromTemplates'].forEach((name) => {
-    it(name + ' is invoker: "public"', () => {
-      const i = src.indexOf('exports.' + name + ' = onCall(');
-      assert.notStrictEqual(i, -1, name + ' is not declared with onCall');
-      const opts = src.slice(i, src.indexOf(')', src.indexOf('{', i)));
-      assert.ok(/invoker:\s*"public"/.test(opts),
-          name + ' must declare invoker: "public" — firebase-tools sets that ' +
-          'binding only on the CREATE path otherwise, and a callable without ' +
-          'it returns "internal" to every caller while deploying clean');
-    });
-  });
-});
+ * A callable needs allUsers to hold roles/run.invoker on its Cloud Run
+ * service, granted by firebase-tools on the create path only. Both of these
+ * shipped without it after their create failed on 2026-08-08, and every test
+ * here passed throughout: `.run()` invokes the handler directly, so the
+ * emulator never sees the IAM layer that was rejecting every real call.
+ *
+ * There is nothing in the source to assert either — `invoker: "public"` in
+ * the onCall options type-checks and is then silently dropped, because
+ * onCall builds `callableTrigger: {}` and never copies it.
+ *
+ * It is a deployment property, so it is checked against the DEPLOYED
+ * function; the curl one-liner is in the comment above promoteBoardTemplate
+ * in functions/index.js. Run it after any deploy that CREATES a callable.
+ */
 
 describe('promoteBoardTemplate', function () {
   this.timeout(60000);
