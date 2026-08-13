@@ -1486,3 +1486,30 @@ Four things worth remembering:
 - **`functions:delete` and the deploy are both flaky on this project, and lie about it.** The delete failed twice with a bare `Error: An unexpected error has occurred.`, then succeeded in six seconds. An earlier attempt "timed out after 1500000ms" client-side having actually completed server-side - `functions:list` said so. Two recreate attempts died on a source-discovery hiccup and a DNS failure to `cloudresourcemanager`. **Re-run, and check the resulting STATE rather than the exit code.**
 
 **449 unit + 134 rules + 53 functions + 9 backfill = 645.**
+
+## v87 - three defects the owner's testing produced
+
+### 1. Every toast has been unreadable, and for a long time
+
+`.push-toast` set `background: var(--dark)`. **`--dark` has never been defined** - it appears exactly once in `style.css`, in that line. `var()` on an unknown custom property with no fallback is *invalid at computed-value time*, so `background` fell back to `transparent`: white text on whatever happened to be behind it. Now `var(--sidebar-bg, #2D2926)`.
+
+Nothing to do with this feature - it just became obvious, because the superadmin page reports through toasts constantly where the rest of the app rarely does.
+
+### 2. `navigate()` took no arguments, and six call sites passed one
+
+`navigate('tactics')` set nothing. The function rendered whatever `currentPage` already said, and all six existing callers fire **from the tactics page**, where it already said `tactics` - so the argument was ignored and nobody could tell.
+
+`_abOpenTemplate` was the first caller to cross pages. Clicking **Editar** hydrated the template into localStorage and then re-rendered the admin page, so the button looked dead while having already changed the editor's state underneath it.
+
+`navigate(page)` now honours the name. Safe because it is never passed as a listener - as a click handler the first argument would be an Event, and `currentPage = <Event>` would break everything. One call site went the other way: the orientation toggle re-renders after a 300ms timeout, and now that the name is honoured it would drag someone who had navigated away back to the board, so it passes nothing.
+
+### 3. Editor state leaked between sessions on the same device
+
+The `fa_tactic_*` scratch keys are local-only and survived logout, so the next person to sign in on that device opened the editor on the previous one's drawing. That was harmless while it was always a board of your own club. It stopped being harmless the moment the superadmin could hold a **platform template** there: signing in as an FCB coach opened the editor on the template that had just been sent to them.
+
+Two fixes, because one of them is not enough:
+
+- `tbClearEditor()` on sign-out, which is where the leak actually is.
+- In `renderPage`, `if (tbEditingTemplateId() && !session.isAdmin) tbClearEditor()` - at the point where authority is decided, rather than trusting every path in and out of the editor to tidy up after itself.
+
+(2) is what caused (3) to be *noticed*: the dead Editar button left a hydrated template sitting in localStorage.

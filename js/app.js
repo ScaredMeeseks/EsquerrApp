@@ -1274,7 +1274,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 86;
+  const APP_VERSION = 87;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2466,7 +2466,20 @@
 
   let _tbLeaveConfirmed = false;
 
-  function navigate() {
+  /**
+   * Render the current page.
+   *
+   * `page` is optional and was, until v87, not a parameter at all — while
+   * six call sites passed `'tactics'` and got away with it because they all
+   * fire from the tactics page, where currentPage already said so. The first
+   * caller to cross pages (opening a library template from the superadmin
+   * page) silently did nothing but re-render the page it was already on.
+   *
+   * Never passed as a listener anywhere, so accepting an argument cannot
+   * capture an Event by accident.
+   */
+  function navigate(page) {
+    if (page) currentPage = page;
     /* Leaving the tactical board with unsaved work.
 
        Hooked here because navigate() is the one place every page change
@@ -3702,6 +3715,13 @@
       roles.includes('staff') ? 'staff-home' :
         roles.includes('player') ? 'player-home' :
           (session.isAdmin || session.isTeamLead) ? 'settings' : 'player-home';
+
+    /* A platform template held in the editor is superadmin-only state, and it
+       lives in localStorage — so on a shared device any later session would
+       inherit it and open the editor on a drawing belonging to no club of
+       theirs. Cleared here, where authority is decided, rather than trusting
+       every path in and out of the editor to tidy up after itself. */
+    if (tbEditingTemplateId() && !session.isAdmin) tbClearEditor();
 
     // Enforce role access.
     // The board editor is the one staff page the superadmin needs regardless
@@ -9108,7 +9128,10 @@
         orientBtn.classList.add('tb-spinning');
         const cur = isVertical() ? 'horizontal' : 'vertical';
         localStorage.setItem('fa_tactic_orient', cur);
-        setTimeout(() => { navigate('tactics'); }, 300);
+        // No page argument, deliberately: this fires 300ms later, and now
+        // that navigate() honours the name it would drag someone who left
+        // in the meantime back to the board. It is a same-page re-render.
+        setTimeout(() => { navigate(); }, 300);
       });
     }
 
@@ -19799,6 +19822,12 @@
         if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
         _lastClaimsMs = 0;
         DB.cleanup();
+        /* The board editor's scratch keys are local-only and survived logout,
+           so the next person to sign in on this device opened the editor on
+           the previous one's drawing. Harmless while that was always a board
+           of your own club; not harmless once the superadmin can hold a
+           PLATFORM TEMPLATE there, which is nobody's club. */
+        tbClearEditor();
       }
       // A form handler is driving: it will navigate when it is done, and it
       // may be showing an error we must not wipe. See _authFlowBusy.

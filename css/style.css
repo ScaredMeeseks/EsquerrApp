@@ -2722,7 +2722,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   pointer-events: none;
 }
 .push-toast {
-  background: var(--dark);
+  /* --dark has never existed. `var()` with no fallback on an unknown custom
+     property is invalid at computed-value time, so background fell back to
+     `transparent` — white text on whatever was behind it, which is why every
+     toast has been unreadable. --sidebar-bg is the app's dark surface. */
+  background: var(--sidebar-bg, #2D2926);
   color: #fff;
   padding: .75rem 1rem;
   border-radius: 10px;
