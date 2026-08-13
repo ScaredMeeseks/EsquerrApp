@@ -14036,7 +14036,7 @@
     const keep = _abState || {};
     _abState = {
       tab: keep.tab || 'clubs', q: keep.q || '', club: keep.club || '',
-      cat: keep.cat || '',
+      cat: keep.cat || '', seededHidden: 0,
       boards: [], clubs: {}, authors: {}, promoted: {}, templates: [],
       loaded: false
     };
@@ -14051,8 +14051,21 @@
         db.collection('tacticTemplateSources').get(),
         TB.templates()
       ]);
+      /* Boards seeded FROM the library are not club work, so they do not
+         belong in a catalogue of club work — seeing your own pack listed
+         back at you as something to copy is noise at best and a way to
+         promote a template twice at worst.
+
+         `sourceTemplateId` is stamped by seedClubFromTemplates and survives
+         the club editing the board: TB.save() writes its metadata with
+         {merge: true} and never clears the field, so an edited copy stays
+         recognisable. (A club that uses Save As gets a NEW id with no stamp,
+         and that board WILL appear — correctly: it is their own derivative
+         work, not the pack you sent.) */
       boardSnap.forEach(function (d) {
-        _abState.boards.push(Object.assign({id: d.id}, d.data()));
+        const b = Object.assign({id: d.id}, d.data());
+        if (b.sourceTemplateId) { _abState.seededHidden++; return; }
+        _abState.boards.push(b);
       });
       clubSnap.forEach(function (d) {
         _abState.clubs[d.id] = Object.assign({id: d.id}, d.data());
@@ -14204,7 +14217,10 @@
         '<select id="ab-cat" class="reg-input"><option value="">Totes les categories</option>' + catOpts + '</select>' +
         '<button class="btn btn-small btn-outline" id="ab-reload">↻</button>' +
       '</div>' +
-      '<p class="ab-count-line">' + rows.length + ' de ' + _abState.boards.length + ' pissarres</p>' +
+      '<p class="ab-count-line">' + rows.length + ' de ' + _abState.boards.length + ' pissarres' +
+        (_abState.seededHidden ?
+          ' · ' + _abState.seededHidden + ' enviades des de la biblioteca, no es mostren' : '') +
+      '</p>' +
       body +
       '</div>';
   }

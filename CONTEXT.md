@@ -1513,3 +1513,37 @@ Two fixes, because one of them is not enough:
 - In `renderPage`, `if (tbEditingTemplateId() && !session.isAdmin) tbClearEditor()` - at the point where authority is decided, rather than trusting every path in and out of the editor to tidy up after itself.
 
 (2) is what caused (3) to be *noticed*: the dead Editar button left a hydrated template sitting in localStorage.
+
+### 4. Seeded boards are hidden from the club catalogue (v87)
+
+A pack you sent a club came back at you in *Pissarres dels clubs*, as something to copy. It is not club work, and promoting it again would put a copy of your own template back in your own library.
+
+Filtered on `sourceTemplateId`, which `seedClubFromTemplates` stamps and which **survives the club editing the board**: `TB.save()` writes metadata with `{merge: true}` and never clears it. The row count says how many are hidden rather than silently dropping them.
+
+A club that uses **Save As** on a seeded board gets a new id with no stamp, and that board *does* appear - correctly, since it is their own derivative work rather than the pack.
+
+## The v87 Pages deploy failed, and "no changes" was literal
+
+Reported as *"I see no changes"* after a push that had gone through. It had: the commit was on `main`, and the deployment for it existed. What failed was the **deploy step**, seven seconds in:
+
+```
+JOB: build   -> success     (Jekyll was fine)
+JOB: deploy  -> failure     Deploy to GitHub Pages
+```
+
+So the site kept serving the previous commit and every "hard-refresh and check `sw.js`" instruction was beside the point - the old version really was the live one.
+
+**Check the SERVED file before debugging a frontend fix**, exactly as the Cloud Run probe checks the deployed function rather than the deploy output:
+
+```bash
+curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
+```
+
+If that lags the local `sw.js`, nothing shipped and the browser is innocent. The deployment history, which needs no auth on a public repo:
+
+```bash
+curl -s "https://api.github.com/repos/ScaredMeeseks/EsquerrApp/deployments?environment=github-pages&per_page=3"
+# then the statuses_url of the one you care about → state: success | failure
+```
+
+A failed *deploy* step is transient and GitHub-side; the fix is to push again (any commit re-triggers it). A failed *build* step would be Jekyll, and would be ours - there is no `.nojekyll` in this repo, so the site IS Jekyll-processed.
