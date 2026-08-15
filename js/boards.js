@@ -66,6 +66,11 @@
     e.oppNumbers = JSON.parse(store.getItem('fa_tactic_opp_numbers') || 'null');
     e.balls = JSON.parse(store.getItem('fa_tactic_balls') || '[]');
     e.colors = JSON.parse(store.getItem('fa_tactic_colors') || 'null');
+    // Per-opponent colours. Appended at the END of the block rather than
+    // beside oppNumbers: key order is the shard diff (see the note above),
+    // so a new key costs one rewrite wherever it goes, and the tail is the
+    // only position that does not also move every key after it.
+    e.oppColors = JSON.parse(store.getItem('fa_tactic_opp_colors') || 'null');
     e.arrows = JSON.parse(store.getItem('fa_tactic_arrows') || '[]');
     e.rects = JSON.parse(store.getItem('fa_tactic_rects') || '[]');
     e.texts = JSON.parse(store.getItem('fa_tactic_texts') || '[]');

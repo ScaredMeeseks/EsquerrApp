@@ -35,6 +35,7 @@ const DRAWN = {
   fa_tactic_opp_numbers: '["1"]',
   fa_tactic_balls: '[[50,50]]',
   fa_tactic_colors: '["","#ff0000","",""]',
+  fa_tactic_opp_colors: '["#00ff00"]',
   fa_tactic_arrows: '[[10,10,20,20,"#ffffff",false]]',
   fa_tactic_rects: '[[5,5,10,10,"#ffffff",0.3]]',
   fa_tactic_texts: '[[20,20,"Pressió","#000000",0.8,null,null,null]]',
@@ -52,8 +53,8 @@ const DRAWN = {
 const KEY_ORDER = [
   'id', 'category', 'name', 'formation', 'positions', 'numbers', 'boardType',
   'teamColor', 'oppColor', 'showOpp', 'oppPositions', 'oppNumbers', 'balls',
-  'colors', 'arrows', 'rects', 'texts', 'penLines', 'frames', 'tag',
-  'silhouette', 'cones'
+  'colors', 'oppColors', 'arrows', 'rects', 'texts', 'penLines', 'frames',
+  'tag', 'silhouette', 'cones'
 ];
 
 describe('buildBoardEntry — defaults', () => {
@@ -72,6 +73,7 @@ describe('buildBoardEntry — defaults', () => {
       oppNumbers: null,
       balls: [],
       colors: null,
+      oppColors: null,
       arrows: [],
       rects: [],
       texts: [],
@@ -166,6 +168,9 @@ describe('buildBoardEntry — serialisation', () => {
     assert.strictEqual(e.positions.length, 4);
     assert.deepStrictEqual(e.numbers, ['1', '4', '', '9']);
     assert.deepStrictEqual(e.oppPositions, [[90, 50]]);
+    // Per-opponent colours. The opposition had no such layer until v90 — the
+    // editor offered the picker and saveState() painted straight over it.
+    assert.deepStrictEqual(e.oppColors, ['#00ff00']);
     assert.deepStrictEqual(e.balls, [[50, 50]]);
     assert.strictEqual(e.arrows.length, 1);
     assert.strictEqual(e.rects.length, 1);

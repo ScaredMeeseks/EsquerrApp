@@ -1589,3 +1589,36 @@ Packs show it because a board is normally promoted right after its animation has
 A keyframe is a complete snapshot (`captureFrameState`), carrying no name, id, formation, colours or `frames` key, so frame 0 is laid straight over the board on hydrate. The read-only renderer already did the equivalent (`src = frames[0]`); the editor is now consistent with it.
 
 Both fixes this session came from the same root: **the resting state of an animated board is frame 0, and every consumer has to agree on that.** The read-only renderer knew, the editor did not, and the animation had its own opinion about the opposition.
+
+## v90 - the opposition had no per-player colour, and the picker lied about it
+
+Asked as *"is it possible that if I add the opposition team I cannot change the colour of a single player?"*. It is, and it was not a missing feature so much as a broken one: the right-click menu **offered** the colour picker on an opponent, applied it, and then reverted it a moment later.
+
+`applyColorToCircle()` calls `saveState()`, and `saveState()`'s opponent branch repainted **every** non-goalkeeper opponent to the global `oc`:
+
+```js
+} else {                                    // no guard, unlike the home branch
+  c.style.background = oc; ...
+}
+```
+
+The home branch had `else if (!c.dataset.color)` and the opposition never did, so the colour was overwritten by the very call that was supposed to persist it. There was also nowhere to persist it *to* - no `oppColors` anywhere in the model.
+
+`fa_tactic_opp_colors` now exists end to end: `saveState`, `captureFrameState`/`applyFrameState`, `buildBoardEntry`, `pushUndo`, copy/paste, the editor's initial render, the read-only renderer and both animation paths.
+
+### Forward-only, which is NOT what the home team does
+
+Home colours sync to **every** frame (`syncColorsAcrossFrames`). Opponent colours propagate from the active frame **forward** (`syncOppColorsForward`), and `applyFrameState` takes them from the frame outright rather than merging them with the current state the way home colours are merged.
+
+That difference is the feature, and it is worth stating because the two functions sit next to each other and look like an inconsistency:
+
+- a **home** colour is a property of the player - the same shirt all move long;
+- an **opponent** colour is a property of the **moment** - mark the man who has just been picked up, and every later frame inherits it while the earlier ones keep the original kit.
+
+Setting a colour again later overrides it from that frame on, and replaying from frame 0 shows the original, because frame 0 was never written.
+
+**Open question, not a defect:** the home team keeps its all-frames behaviour. Two semantics in one editor is exactly the kind of split that has caused bugs here before, and aligning home to forward-only would be a one-line change - but it is a behaviour change nobody asked for, so it waits.
+
+### Key order
+
+`oppColors` is appended after `colors` in `buildBoardEntry`. Key order IS the shard diff (`prevJson === nextJson`), so any new key costs one rewrite of every board shard; `KEY_ORDER` in `test/tactic-boards.test.js` is updated to match, and the per-layer assertion list gained a line - that test is the one that fails when a tool is added to the editor and not to the entry, which is exactly what happened here.

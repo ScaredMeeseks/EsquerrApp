@@ -1275,7 +1275,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 89;
+  const APP_VERSION = 90;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -4468,7 +4468,8 @@
     }
     const hasRealNums = function(arr) { return arr && arr.some(function(n) { return n; }); };
     const circles = buildCircles(src.positions, (hasRealNums(b.numbers) ? b.numbers : src.numbers), src.colors, tc);
-    const oppCircles = (roShowOpp && srcOpp) ? buildCircles(srcOpp, (hasRealNums(b.oppNumbers) ? b.oppNumbers : src.oppNumbers), null, oc) : '';
+    const srcOppColors = ('oppColors' in src) ? src.oppColors : (b.oppColors || null);
+    const oppCircles = (roShowOpp && srcOpp) ? buildCircles(srcOpp, (hasRealNums(b.oppNumbers) ? b.oppNumbers : src.oppNumbers), srcOppColors, oc) : '';
     const srcBalls = src.balls || (src.ballPos ? [src.ballPos] : []);
     const ballHtml = srcBalls.map((bp,bi) => { if (!bp) return ''; return '<div class="tb-ball" data-idx="' + bi + '" style="left:' + bp[0] + '%;top:' + bp[1] + '%;pointer-events:none;"></div>'; }).join('');
     function buildSvgContent(arrows, rects, penLines, pfx) {
@@ -4494,6 +4495,7 @@
       positions: f.positions || b.positions || [],
       oppPositions: roShowOpp ?
         (('oppPositions' in f) ? f.oppPositions : (b.oppPositions || null)) : null,
+      oppColors: ('oppColors' in f) ? f.oppColors : (b.oppColors || null),
       balls: ('balls' in f) ? f.balls : (f.ballPos ? [f.ballPos] : (b.balls || (b.ballPos ? [b.ballPos] : []))),
       colors: ('colors' in f) ? f.colors : (b.colors || null),
       numbers: baseNums || (hasRealNums(f.numbers) ? f.numbers : []),
@@ -4659,7 +4661,7 @@
             if (!p) return; // null = deleted circle slot
             const num = String((f.oppNumbers && f.oppNumbers[i]) || '');
             const isGk = num === '1';
-            const oppBg = isGk ? GK_C : oc;
+            const oppBg = isGk ? GK_C : ((f.oppColors && f.oppColors[i]) || oc);
             const div = document.createElement('div');
             div.className = 'tb-circle tb-circle-opp';
             div.setAttribute('data-idx', i);
@@ -4828,7 +4830,8 @@
             if (!circle) {
               const num = String(toOppNums[i] || '');
               const isGk = num === '1';
-              const oppBg = isGk ? GK_C : oc;
+              // Mirrors the home branch above, which already honours to.colors.
+              const oppBg = isGk ? GK_C : ((to.oppColors && to.oppColors[i]) || oc);
               const div = document.createElement('div');
               div.className = 'tb-circle tb-circle-opp';
               div.setAttribute('data-idx', i);
@@ -6845,16 +6848,18 @@
         }
       }
       const oppNums = savedOppNums || new Array(11).fill('');
+      const savedOppColors = JSON.parse(localStorage.getItem('fa_tactic_opp_colors') || 'null') || [];
       oppCirclesHtml = oppPos.map((p, i) => {
         if (!p) return ''; // null = deleted circle slot
         let dl = p[0], dt = p[1];
         if (isVertical && boardType === 'full') { dl = p[1]; dt = 100 - p[0]; }
         const num = String(oppNums[i] || '');
         const isGk = num === '1';
-        const bg = isGk ? GK_COLOR : oppColor;
+        const bg = isGk ? GK_COLOR : (savedOppColors[i] || oppColor);
         const fg = textColorFor(bg);
         const bc = darkenHex(bg, 50);
-        return `<div class="tb-circle tb-circle-opp" data-idx="${i}" style="left:${dl}%;top:${dt}%;background:${bg};border-color:${bc};">` +
+        const odc = savedOppColors[i] ? ` data-color="${savedOppColors[i]}"` : '';
+        return `<div class="tb-circle tb-circle-opp" data-idx="${i}"${odc} style="left:${dl}%;top:${dt}%;background:${bg};border-color:${bc};">` +
           `<input class="tb-num" maxlength="2" value="${sanitize(String(oppNums[i] || ''))}" placeholder="" style="color:${fg};">` +
           `</div>`;
       }).join('');
@@ -7137,6 +7142,7 @@
       const existingNums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || '[]');
       const existingOppNums = JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || '[]');
       const existingColors = JSON.parse(localStorage.getItem('fa_tactic_colors') || '[]');
+      const existingOppColors = JSON.parse(localStorage.getItem('fa_tactic_opp_colors') || '[]');
       let maxIdx = -1;
       circles.forEach(c => { const idx = Number(c.dataset.idx); if (idx > maxIdx) maxIdx = idx; });
       maxIdx = Math.max(maxIdx, existingNums.length - 1);
@@ -7180,9 +7186,13 @@
       if (oppCircles.length) {
         const oppPos = new Array(maxOppIdx + 1).fill(null);
         const oppNums = new Array(maxOppIdx + 1).fill('');
+        const oppColors = new Array(maxOppIdx + 1).fill('');
         // Carry forward numbers for deleted opp slots
         for (let i = 0; i < existingOppNums.length; i++) {
           if (existingOppNums[i]) oppNums[i] = existingOppNums[i];
+        }
+        for (let i = 0; i < existingOppColors.length; i++) {
+          if (existingOppColors[i]) oppColors[i] = existingOppColors[i];
         }
         oppCircles.forEach(c => {
           const idx = Number(c.dataset.idx);
@@ -7193,17 +7203,24 @@
           const inp = c.querySelector('.tb-num');
           const num = inp.value;
           oppNums[idx] = num;
-          // GK recolor for opp
+          oppColors[idx] = c.dataset.color || '';
+          /* GK recolor for opp. The `else if (!c.dataset.color)` is the fix:
+             this branch used to repaint EVERY non-GK opponent to the global
+             colour on every save — and applyColorToCircle() calls saveState()
+             itself, so picking a colour for one opponent reverted a frame
+             later. It looked like the picker did nothing. Home circles had
+             the guard already; the opposition never did. */
           if (num.trim() === '1') {
             c.style.background = GK_COLOR; c.style.borderColor = darkenHex(GK_COLOR, 50);
             inp.style.color = textColorFor(GK_COLOR);
-          } else {
+          } else if (!c.dataset.color) {
             c.style.background = oc; c.style.borderColor = darkenHex(oc, 50);
             inp.style.color = textColorFor(oc);
           }
         });
         localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(oppPos));
         localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(oppNums));
+        localStorage.setItem('fa_tactic_opp_colors', JSON.stringify(oppColors));
       }
       if (nameInput) localStorage.setItem('fa_tactic_name', nameInput.value);
       // Save ball positions
@@ -7284,6 +7301,9 @@
       inner.querySelectorAll('.tb-circle-opp').forEach(c => {
         const num = c.querySelector('.tb-num')?.value || '';
         if (num === '1') return;
+        // Same guard the home team already had: the global picker sets the
+        // DEFAULT, and a player given their own colour keeps it.
+        if (c.dataset.color) return;
         c.style.background = oc; c.style.borderColor = darkenHex(oc, 50);
         c.querySelector('.tb-num').style.color = textColorFor(oc);
       });
@@ -7298,6 +7318,7 @@
         colors: localStorage.getItem('fa_tactic_colors'),
         oppPositions: localStorage.getItem('fa_tactic_opp_positions'),
         oppNumbers: localStorage.getItem('fa_tactic_opp_numbers'),
+        oppColors: localStorage.getItem('fa_tactic_opp_colors'),
         balls: localStorage.getItem('fa_tactic_balls'),
         arrows: localStorage.getItem('fa_tactic_arrows'),
         rects: localStorage.getItem('fa_tactic_rects'),
@@ -7312,7 +7333,7 @@
       if (!undoStack.length) return;
       const s = undoStack.pop();
       const keys = ['positions','numbers','colors','oppPositions','oppNumbers','balls','arrows','rects','texts','penLines','silhouette','cones'];
-      const lsKeys = ['fa_tactic_positions','fa_tactic_numbers','fa_tactic_colors',
+      const lsKeys = ['fa_tactic_positions','fa_tactic_numbers','fa_tactic_colors','fa_tactic_opp_colors',
         'fa_tactic_opp_positions','fa_tactic_opp_numbers','fa_tactic_balls',
         'fa_tactic_arrows','fa_tactic_rects','fa_tactic_texts',
         'fa_tactic_pen_lines','fa_tactic_silhouette','fa_tactic_cones'];
@@ -7489,7 +7510,8 @@
       circle.style.borderColor = darkenHex(color, 50);
       circle.querySelector('.tb-num').style.color = textColorFor(color);
       saveState();
-      syncColorsAcrossFrames();
+      if (circle.classList.contains('tb-circle-opp')) syncOppColorsForward();
+      else syncColorsAcrossFrames();
       autoSaveFrame();
     }
 
@@ -7569,7 +7591,7 @@
           num: el.querySelector('.tb-num')?.value || '', color: el.dataset.color || '' };
       } else if (el.classList.contains('tb-circle-opp')) {
         return { type: 'oppCircle', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
-          num: el.querySelector('.tb-num')?.value || '', color: '' };
+          num: el.querySelector('.tb-num')?.value || '', color: el.dataset.color || '' };
       } else if (el.classList.contains('tb-arrow')) {
         return { type: 'arrow',
           x1: parseFloat(el.dataset.origX1 || el.getAttribute('x1')),
@@ -9696,6 +9718,24 @@
       saveFrames();
     }
 
+    /**
+     * Opponent colours propagate FORWARD from the frame you are on.
+     *
+     * Deliberately not the all-frames sweep the home team gets above: a kit
+     * change part-way through a move is the point — mark the player who has
+     * just been picked up, and every later frame inherits it while the
+     * earlier ones keep the original. Setting a colour again later overrides
+     * it from there on, and replaying from frame 0 shows the original,
+     * because frame 0 was never touched.
+     */
+    function syncOppColorsForward() {
+      const clrs = JSON.parse(localStorage.getItem('fa_tactic_opp_colors') || '[]');
+      for (let fi = activeFrameIdx; fi < frames.length; fi++) {
+        frames[fi].oppColors = JSON.parse(JSON.stringify(clrs));
+      }
+      saveFrames();
+    }
+
     function captureFrameState() {
       saveState(); saveArrows(); saveRects(); saveTexts(); savePenLines(); saveCones();
       return {
@@ -9704,6 +9744,7 @@
         colors: JSON.parse(localStorage.getItem('fa_tactic_colors') || 'null'),
         oppPositions: JSON.parse(localStorage.getItem('fa_tactic_opp_positions') || 'null'),
         oppNumbers: JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || 'null'),
+        oppColors: JSON.parse(localStorage.getItem('fa_tactic_opp_colors') || 'null'),
         balls: JSON.parse(localStorage.getItem('fa_tactic_balls') || '[]'),
         arrows: JSON.parse(localStorage.getItem('fa_tactic_arrows') || '[]'),
         rects: JSON.parse(localStorage.getItem('fa_tactic_rects') || '[]'),
@@ -9746,6 +9787,12 @@
       if (f.oppPositions) localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(f.oppPositions));
       else localStorage.removeItem('fa_tactic_opp_positions');
       localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(mergedOppNums));
+      /* Opponent colours are taken from the frame OUTRIGHT, not merged with
+         the current state the way home colours are above. That is the whole
+         difference between the two: a home colour is a property of the
+         player, an opponent colour is a property of the moment — so stepping
+         back to frame 0 has to restore frame 0's kit. */
+      localStorage.setItem('fa_tactic_opp_colors', JSON.stringify(f.oppColors || []));
       localStorage.setItem('fa_tactic_balls', JSON.stringify(f.balls || []));
       localStorage.setItem('fa_tactic_arrows', JSON.stringify(f.arrows || []));
       localStorage.setItem('fa_tactic_rects', JSON.stringify(f.rects || []));
@@ -9785,21 +9832,23 @@
       inner.querySelectorAll('.tb-circle-opp').forEach(c => c.remove());
       const oc = document.getElementById('tb-opp-color')?.value || '#e53935';
       const obc = darkenHex(oc, 50);
+      const oClrs = f.oppColors || [];
       (f.oppPositions || []).forEach((p, i) => {
           if (!p) return; // null = deleted circle slot
           const d = toDisplay(p[0], p[1]);
           const num = (oppNumsToUse && oppNumsToUse[i]) || '';
           const isGk = String(num) === '1';
-          const oppBg = isGk ? GK_COLOR : oc;
+          const oppBg = isGk ? GK_COLOR : (oClrs[i] || oc);
           const div = document.createElement('div');
           div.className = 'tb-circle tb-circle-opp';
           div.dataset.idx = i;
+          if (oClrs[i]) div.dataset.color = oClrs[i];
           div.style.left = d[0] + '%'; div.style.top = d[1] + '%';
           div.style.background = oppBg; div.style.borderColor = darkenHex(oppBg, 50);
           const inp = document.createElement('input');
           inp.className = 'tb-num'; inp.maxLength = 2;
           inp.value = (oppNumsToUse && oppNumsToUse[i]) || '';
-          inp.style.color = textColorFor(oc);
+          inp.style.color = textColorFor(oppBg);
           inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); autoSaveFrame(); });
           div.appendChild(inp);
           makeDraggable(div);
@@ -10619,6 +10668,8 @@
     localStorage.setItem('fa_tactic_balls', JSON.stringify(_boardBalls));
     if (board.colors) localStorage.setItem('fa_tactic_colors', JSON.stringify(board.colors));
     else localStorage.removeItem('fa_tactic_colors');
+    if (board.oppColors) localStorage.setItem('fa_tactic_opp_colors', JSON.stringify(board.oppColors));
+    else localStorage.removeItem('fa_tactic_opp_colors');
     if (board.arrows && board.arrows.length) localStorage.setItem('fa_tactic_arrows', JSON.stringify(board.arrows));
     else localStorage.removeItem('fa_tactic_arrows');
     if (board.rects && board.rects.length) localStorage.setItem('fa_tactic_rects', JSON.stringify(board.rects));
@@ -10653,7 +10704,7 @@
    */
   function tbClearEditor() {
     ['fa_tactic_formation', 'fa_tactic_positions', 'fa_tactic_numbers',
-      'fa_tactic_colors', 'fa_tactic_name', 'fa_tactic_loaded_id',
+      'fa_tactic_colors', 'fa_tactic_opp_colors', 'fa_tactic_name', 'fa_tactic_loaded_id',
       'fa_tactic_template_id', 'fa_tactic_board_type', 'fa_tactic_opp_positions',
       'fa_tactic_opp_numbers', 'fa_tactic_show_opp', 'fa_tactic_balls',
       'fa_tactic_arrows', 'fa_tactic_rects', 'fa_tactic_texts',
