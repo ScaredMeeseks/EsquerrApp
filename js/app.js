@@ -1275,7 +1275,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 88;
+  const APP_VERSION = 89;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -10573,6 +10573,29 @@
    */
   function tbHydrateEditor(board, opts) {
     const tplId = opts && opts.templateId;
+    /* An animated board opens on FRAME 0, not on its top-level pose.
+
+       `positions` is whatever was on screen when Save was pressed, so a board
+       saved while its author was looking at the last frame stores the last
+       frame's pose — and this function then resets fa_tactic_frame_idx to 0.
+       The editor therefore believed it was on frame 0 while showing frame N,
+       which is what "the first frame starts from the end of the last frame"
+       is. Boards sent in a pack show it most, because a board is usually
+       promoted right after its animation was finished and reviewed.
+
+       Worse than cosmetic: the next mutation runs autoSaveFrame(), which
+       writes the current state into frames[activeFrameIdx] — frames[0] —
+       so simply dragging a player after opening such a board OVERWRITES the
+       first pose with the last one. Exactly the v84 formation leak.
+
+       A keyframe is a complete snapshot (see captureFrameState), so frame 0
+       can be laid straight over the board; it carries no name, id, formation
+       or colours, and `frames` itself is not among its keys. */
+    const _f0 = (board.frames && board.frames.length > 1) ? board.frames[0] : null;
+    if (_f0) {
+      board = Object.assign({}, board, _f0);
+      delete board.duration; // frame-local; the board has no such field
+    }
     localStorage.setItem('fa_tactic_formation', board.formation || '');
     localStorage.setItem('fa_tactic_positions', JSON.stringify(board.positions));
     localStorage.setItem('fa_tactic_numbers', JSON.stringify(board.numbers));

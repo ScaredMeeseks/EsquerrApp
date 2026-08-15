@@ -1575,3 +1575,17 @@ Worth noting for the next report of this kind: *"is this legacy?"* was the right
 There was no feedback at all between pressing **A jugar!** and the app appearing - Auth round trip, profile read, club config and the whole data download, several seconds on a cold start. The button now spins and is **disabled**, because a second submit mid-flight starts the entire flow again. Restored on both exits, including success: the login view is reused after sign-out and a button left spinning would greet whoever came back.
 
 `.btn-spinner` is sized in `em` so it tracks the button's font, and honours `prefers-reduced-motion`.
+
+## v89 - an animated board opened on its LAST frame
+
+Reported as *"when I send it inside a pack to a club, the first frame starts from the end of the last frame"*. Real, and not confined to packs - that is just where it is most visible.
+
+`positions` on a board is **whatever was on screen when Save was pressed**, not frame 0. Finish an animation, review it, press Save while looking at the final pose, and that pose is what the board stores. `tbHydrateEditor` then wrote it into `fa_tactic_positions` *while removing* `fa_tactic_frame_idx` - so the editor believed it was on frame 0 and displayed frame N.
+
+Packs show it because a board is normally promoted right after its animation has been finished and reviewed, so the author was almost certainly on the last frame.
+
+**The display was the harmless half.** `autoSaveFrame()` writes the current state into `frames[activeFrameIdx]`, and after a load that index is 0 - so dragging one player after opening such a board **overwrote frame 0 with the last frame's pose**, silently. That is the v84 formation leak again, reached by a different route: same helper, same index-after-load assumption.
+
+A keyframe is a complete snapshot (`captureFrameState`), carrying no name, id, formation, colours or `frames` key, so frame 0 is laid straight over the board on hydrate. The read-only renderer already did the equivalent (`src = frames[0]`); the editor is now consistent with it.
+
+Both fixes this session came from the same root: **the resting state of an animated board is frame 0, and every consumer has to agree on that.** The read-only renderer knew, the editor did not, and the animation had its own opinion about the opposition.
