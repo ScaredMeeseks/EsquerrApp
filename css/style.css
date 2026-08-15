@@ -3912,3 +3912,25 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-left:4px solid var(--accent);}
 .tb-tpl-banner span{color:var(--text-secondary);font-size:.88rem;}
 .tb-tpl-banner button{margin-left:auto;}
+
+/* Inline spinner for a button that is doing work (login). Sized in em so it
+   tracks the button's font, and margin-right only — the label follows it. */
+.btn-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: .5em;
+  vertical-align: -.125em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin .6s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+/* A disabled primary button still has to look like the app, not like a
+   greyed-out control that has failed. */
+.btn:disabled { opacity: .75; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner { animation-duration: 2s; }
+}

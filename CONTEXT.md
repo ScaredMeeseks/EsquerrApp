@@ -1547,3 +1547,31 @@ curl -s "https://api.github.com/repos/ScaredMeeseks/EsquerrApp/deployments?envir
 ```
 
 A failed *deploy* step is transient and GitHub-side; the fix is to push again (any commit re-triggers it). A failed *build* step would be Jekyll, and would be ours - there is no `.nojekyll` in this repo, so the site IS Jekyll-processed.
+
+## v88 - the opposition flash is a REAL bug, and a login spinner
+
+### The opposition flash
+
+Reported as *"we still get some flashes for the opposition team even when it's not really in the first/last frames"*, with the explicit question of whether it was legacy. **It is live, and it is not either of the two flashes already fixed** - not the v82 replay flash (a duplicate listener toggling playback off, fixed with `_roBound`) and not the v84 formation leak.
+
+`renderReadOnlyBoard` decided opposition visibility **twice, differently**:
+
+| | static render | animation (`framesForAnim`) |
+|---|---|---|
+| `showOpp` | `b.showOpp !== false` | **not tested at all** |
+| positions | `frames[0].oppPositions` only | `f.oppPositions`, falling back to `b.oppPositions` |
+
+Two independent ways to disagree, and both produce the reported symptom:
+
+1. **A board with the opposition toggled OFF still animates them in.** Turning the opposition off does not discard `oppPositions` - it is kept so toggling back restores the shape - so a board that statically draws no opposition grows eleven of them the moment you press play, and loses them again when it stops.
+2. **A frame with genuinely no opposition inherits the board's.** The static first-frame render reads only `frames[0].oppPositions`, while the animation falls back to the board's for any frame lacking the key.
+
+Now decided once, above both: `roShowOpp` and `srcOpp`, with the frame's own positions falling back to the board's - which is what every other layer (rects, arrows, texts) already does. The static render and the animation cannot disagree because there is only one answer.
+
+Worth noting for the next report of this kind: *"is this legacy?"* was the right question and the answer was no. Two prior fixes in this area made "already fixed" the tempting reply.
+
+### Login spinner
+
+There was no feedback at all between pressing **A jugar!** and the app appearing - Auth round trip, profile read, club config and the whole data download, several seconds on a cold start. The button now spins and is **disabled**, because a second submit mid-flight starts the entire flow again. Restored on both exits, including success: the login view is reused after sign-out and a button left spinning would greet whoever came back.
+
+`.btn-spinner` is sized in `em` so it tracks the button's font, and honours `prefers-reduced-motion`.

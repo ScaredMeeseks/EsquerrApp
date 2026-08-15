@@ -78,6 +78,7 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
   **Do not set `server.url` to make the shell load the live site.** It would end staleness instantly but loading a whole app from a remote URL is a reliable App Store rejection (guideline 4.2), and Play + App Store are on the roadmap.
 - **One-off scripts in `functions/` rot.** They are written against the data model of the day and are not exercised by anything. `backfill-claims.js` still wrote pre-Phase-4 claims months later and would have stripped `cats` from every user. **Read one before running it**, and prefer a dry-run/`--apply` gate on anything that writes.
 - New user-facing strings in Catalan.
+- **Be concise.** Answer what was asked and stop. The owner steers the big picture and too much detail buries it. Surface a detail only when it changes a decision — a real risk, a choice that needs making, or something that contradicts the request. Findings go in CONTEXT.md/HANDOFF.md, not in the reply.
 - Dates are ISO `YYYY-MM-DD` strings; Cloud Functions use `Europe/Madrid`.
 - Normalize line endings to LF before committing (`.gitattributes` enforces it, but verify diffs aren't CRLF-noisy).
 - **CONTEXT.md must be updated after every code change.**

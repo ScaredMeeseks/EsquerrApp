@@ -740,6 +740,7 @@
     'auth.password':         { ca:'Contrasenya', es:'Contraseña', en:'Password' },
     'auth.password_ph':      { ca:'Mínim 6 caràcters', es:'Mínimo 6 caracteres', en:'Min. 6 characters' },
     'auth.login_btn':        { ca:'A jugar!', es:'¡A jugar!', en:'Let\'s play!' },
+    'auth.logging_in':       { ca:'Entrant…', es:'Entrando…', en:'Signing in…' },
     'auth.no_account':       { ca:'No tens un perfil?', es:'¿No tienes perfil?', en:'Don\'t have an account?' },
     'auth.register_link':    { ca:'Fes-te\'l!', es:'¡Créalo!', en:'Sign up!' },
     'auth.register_subtitle':{ ca:'Ets a punt de fer història', es:'Estás a punto de hacer historia', en:'You\'re about to make history' },
@@ -1274,7 +1275,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 87;
+  const APP_VERSION = 88;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2386,6 +2387,22 @@
     const email = $('#login-email').value.trim().toLowerCase();
     const pw = $('#login-password').value;
     const errEl = $('#login-error');
+    /* Sign-in is a round trip to Auth, then the profile, then the club config
+       and the whole data download — several seconds on a cold start, with no
+       feedback at all until now. The button is disabled as well as spinning:
+       a second submit mid-flight starts the entire flow again. */
+    const btn = $('#btn-login');
+    const btnLabel = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' +
+        sanitize(t('auth.logging_in'));
+    }
+    const restoreBtn = () => {
+      if (!btn) return;
+      btn.disabled = false;
+      btn.innerHTML = btnLabel;
+    };
     // Same reason as handleRegister: signing in fires onAuthStateChanged
     // before this handler has loaded the profile, and its navigate() would
     // flash a screen we are about to replace.
@@ -2438,6 +2455,9 @@
       e.target.reset();
       errEl.hidden = true;
       _authFlowBusy = false;
+      // Restored before navigating away: the login view is reused on the next
+      // sign-out, and a button left spinning would greet whoever comes back.
+      restoreBtn();
       navigate();
     } catch (err) {
       const msg = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
@@ -2446,6 +2466,7 @@
       errEl.textContent = msg;
       errEl.hidden = false;
       _authFlowBusy = false;
+      restoreBtn();
       showView('#view-login');
       _hideSplash();
     }
@@ -4414,6 +4435,24 @@
     const hasFrames = b.frames && b.frames.length > 1;
     // Use first frame's state for positions if available, otherwise base board data
     const src = hasFrames ? b.frames[0] : b;
+    /* Opposition visibility, decided ONCE and used by both the static render
+       and the animation below — they disagreed, which is what made the
+       opposition flash on and off around playback:
+
+         - the static render tested `b.showOpp`, the animation did not, so a
+           board with the opposition toggled OFF (its positions are kept, so
+           toggling back restores them) drew none until you pressed play and
+           eleven of them appeared;
+         - the static render read `frames[0].oppPositions` only, while the
+           animation fell back to `b.oppPositions` for any frame without the
+           key, so a frame with genuinely no opposition got the board's
+           injected mid-animation.
+
+       One rule now: show them iff showOpp, taking the frame's own positions
+       and falling back to the board's — which is what every other layer
+       (rects, arrows, texts) already does. */
+    const roShowOpp = b.showOpp !== false;
+    const srcOpp = ('oppPositions' in src) ? src.oppPositions : (b.oppPositions || null);
 
     function buildCircles(pos, nums, colors, baseColor) {
       const GK_C = '#f5c842';
@@ -4429,7 +4468,7 @@
     }
     const hasRealNums = function(arr) { return arr && arr.some(function(n) { return n; }); };
     const circles = buildCircles(src.positions, (hasRealNums(b.numbers) ? b.numbers : src.numbers), src.colors, tc);
-    const oppCircles = (b.showOpp !== false && src.oppPositions) ? buildCircles(src.oppPositions, (hasRealNums(b.oppNumbers) ? b.oppNumbers : src.oppNumbers), null, oc) : '';
+    const oppCircles = (roShowOpp && srcOpp) ? buildCircles(srcOpp, (hasRealNums(b.oppNumbers) ? b.oppNumbers : src.oppNumbers), null, oc) : '';
     const srcBalls = src.balls || (src.ballPos ? [src.ballPos] : []);
     const ballHtml = srcBalls.map((bp,bi) => { if (!bp) return ''; return '<div class="tb-ball" data-idx="' + bi + '" style="left:' + bp[0] + '%;top:' + bp[1] + '%;pointer-events:none;"></div>'; }).join('');
     function buildSvgContent(arrows, rects, penLines, pfx) {
@@ -4453,7 +4492,8 @@
     const framesForAnim = hasFrames ? b.frames.map(f => ({
       ...f,
       positions: f.positions || b.positions || [],
-      oppPositions: ('oppPositions' in f) ? f.oppPositions : (b.oppPositions || null),
+      oppPositions: roShowOpp ?
+        (('oppPositions' in f) ? f.oppPositions : (b.oppPositions || null)) : null,
       balls: ('balls' in f) ? f.balls : (f.ballPos ? [f.ballPos] : (b.balls || (b.ballPos ? [b.ballPos] : []))),
       colors: ('colors' in f) ? f.colors : (b.colors || null),
       numbers: baseNums || (hasRealNums(f.numbers) ? f.numbers : []),
