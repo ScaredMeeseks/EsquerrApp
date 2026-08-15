@@ -1617,7 +1617,9 @@ That difference is the feature, and it is worth stating because the two function
 
 Setting a colour again later overrides it from that frame on, and replaying from frame 0 shows the original, because frame 0 was never written.
 
-**Open question, not a defect:** the home team keeps its all-frames behaviour. Two semantics in one editor is exactly the kind of split that has caused bugs here before, and aligning home to forward-only would be a one-line change - but it is a behaviour change nobody asked for, so it waits.
+**Resolved in v91:** the home team was aligned to forward-only on the owner's call, so there is now ONE rule and `syncColorsForward(key, lsKey)` serves both. `applyFrameState` takes each team's colours from the frame outright; the home merge (`currentColors[i] || fColors[i]`) is gone, and it was the reason forward propagation could not work - stepping back to frame 0 kept the newer colour, so there was nothing to propagate away from.
+
+A frame whose `colors` is null genuinely had no custom colours when it was captured, so treating absent as empty loses nothing on existing boards.
 
 ### Key order
 

@@ -1275,7 +1275,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 90;
+  const APP_VERSION = 91;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -7510,8 +7510,11 @@
       circle.style.borderColor = darkenHex(color, 50);
       circle.querySelector('.tb-num').style.color = textColorFor(color);
       saveState();
-      if (circle.classList.contains('tb-circle-opp')) syncOppColorsForward();
-      else syncColorsAcrossFrames();
+      if (circle.classList.contains('tb-circle-opp')) {
+        syncColorsForward('oppColors', 'fa_tactic_opp_colors');
+      } else {
+        syncColorsForward('colors', 'fa_tactic_colors');
+      }
       autoSaveFrame();
     }
 
@@ -9710,28 +9713,29 @@
       saveFrames();
     }
 
-    function syncColorsAcrossFrames() {
-      const clrs = JSON.parse(localStorage.getItem('fa_tactic_colors') || '[]');
-      frames.forEach(f => {
-        f.colors = JSON.parse(JSON.stringify(clrs));
-      });
-      saveFrames();
-    }
-
     /**
-     * Opponent colours propagate FORWARD from the frame you are on.
+     * Circle colours propagate FORWARD from the frame you are on — both
+     * teams, one rule.
      *
-     * Deliberately not the all-frames sweep the home team gets above: a kit
-     * change part-way through a move is the point — mark the player who has
-     * just been picked up, and every later frame inherits it while the
-     * earlier ones keep the original. Setting a colour again later overrides
-     * it from there on, and replaying from frame 0 shows the original,
-     * because frame 0 was never touched.
+     * Recolouring used to sweep EVERY frame for the home team, so a colour
+     * was a property of the player and could not change mid-move. Forward
+     * propagation makes it a property of the moment instead: mark the player
+     * who has just been picked up, and every later frame inherits it while
+     * the earlier ones keep the original kit. Setting a colour again later
+     * overrides it from there on, and replaying from frame 0 shows the
+     * original, because frame 0 was never written.
+     *
+     * Paired with applyFrameState, where the frame's colours are taken
+     * OUTRIGHT rather than merged with the current state — forward
+     * propagation is invisible if stepping back keeps the newer colour.
+     *
+     * @param {string} key 'colors' or 'oppColors'
+     * @param {string} lsKey the localStorage key holding the current array
      */
-    function syncOppColorsForward() {
-      const clrs = JSON.parse(localStorage.getItem('fa_tactic_opp_colors') || '[]');
+    function syncColorsForward(key, lsKey) {
+      const clrs = JSON.parse(localStorage.getItem(lsKey) || '[]');
       for (let fi = activeFrameIdx; fi < frames.length; fi++) {
-        frames[fi].oppColors = JSON.parse(JSON.stringify(clrs));
+        frames[fi][key] = JSON.parse(JSON.stringify(clrs));
       }
       saveFrames();
     }
@@ -9775,23 +9779,16 @@
       // Positions + numbers + colors
       if (f.positions) localStorage.setItem('fa_tactic_positions', JSON.stringify(f.positions));
       localStorage.setItem('fa_tactic_numbers', JSON.stringify(mergedNums));
-      // Merge colors: preserve per-circle colors across frames
-      const currentColors = JSON.parse(localStorage.getItem('fa_tactic_colors') || '[]');
-      const fColors = f.colors || [];
-      const mergedColors = [];
-      const maxColorLen = Math.max(currentColors.length, fColors.length);
-      for (let i = 0; i < maxColorLen; i++) {
-        mergedColors[i] = currentColors[i] || fColors[i] || '';
-      }
+      /* The FRAME owns colours, for both teams — it is not merged with the
+         current state. Merging was what made a recolour permanent: stepping
+         back to frame 0 kept the newer colour, so "propagate forward" had
+         nothing to propagate away from. */
+      const mergedColors = f.colors || [];
       localStorage.setItem('fa_tactic_colors', JSON.stringify(mergedColors));
       if (f.oppPositions) localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(f.oppPositions));
       else localStorage.removeItem('fa_tactic_opp_positions');
       localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(mergedOppNums));
-      /* Opponent colours are taken from the frame OUTRIGHT, not merged with
-         the current state the way home colours are above. That is the whole
-         difference between the two: a home colour is a property of the
-         player, an opponent colour is a property of the moment — so stepping
-         back to frame 0 has to restore frame 0's kit. */
+      // Same rule as the home colours above: the frame owns them.
       localStorage.setItem('fa_tactic_opp_colors', JSON.stringify(f.oppColors || []));
       localStorage.setItem('fa_tactic_balls', JSON.stringify(f.balls || []));
       localStorage.setItem('fa_tactic_arrows', JSON.stringify(f.arrows || []));
