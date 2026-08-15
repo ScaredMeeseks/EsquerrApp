@@ -1275,7 +1275,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 91;
+  const APP_VERSION = 92;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -7332,14 +7332,34 @@
     function popUndo() {
       if (!undoStack.length) return;
       const s = undoStack.pop();
-      const keys = ['positions','numbers','colors','oppPositions','oppNumbers','balls','arrows','rects','texts','penLines','silhouette','cones'];
-      const lsKeys = ['fa_tactic_positions','fa_tactic_numbers','fa_tactic_colors','fa_tactic_opp_colors',
-        'fa_tactic_opp_positions','fa_tactic_opp_numbers','fa_tactic_balls',
-        'fa_tactic_arrows','fa_tactic_rects','fa_tactic_texts',
-        'fa_tactic_pen_lines','fa_tactic_silhouette','fa_tactic_cones'];
-      keys.forEach((k, i) => {
-        if (s[k] !== null) localStorage.setItem(lsKeys[i], s[k]);
-        else localStorage.removeItem(lsKeys[i]);
+      /* PAIRS, not two index-aligned arrays.
+
+         v90 added fa_tactic_opp_colors to the localStorage list and not
+         'oppColors' to the state list, so every entry from index 3 down was
+         restored into the WRONG key — oppPositions written into
+         fa_tactic_opp_colors, oppNumbers into fa_tactic_opp_positions, and
+         so on. Undo silently scrambled the board.
+
+         The missing entry was the symptom; two lists that have to stay in
+         lockstep, edited by different changes months apart, was the defect. */
+      const UNDO_KEYS = [
+        ['positions',    'fa_tactic_positions'],
+        ['numbers',      'fa_tactic_numbers'],
+        ['colors',       'fa_tactic_colors'],
+        ['oppPositions', 'fa_tactic_opp_positions'],
+        ['oppNumbers',   'fa_tactic_opp_numbers'],
+        ['oppColors',    'fa_tactic_opp_colors'],
+        ['balls',        'fa_tactic_balls'],
+        ['arrows',       'fa_tactic_arrows'],
+        ['rects',        'fa_tactic_rects'],
+        ['texts',        'fa_tactic_texts'],
+        ['penLines',     'fa_tactic_pen_lines'],
+        ['silhouette',   'fa_tactic_silhouette'],
+        ['cones',        'fa_tactic_cones']
+      ];
+      UNDO_KEYS.forEach(([k, lsKey]) => {
+        if (s[k] !== null && s[k] !== undefined) localStorage.setItem(lsKey, s[k]);
+        else localStorage.removeItem(lsKey);
       });
       // Rebuild DOM from restored state
       const f = {
@@ -7348,6 +7368,9 @@
         colors: JSON.parse(s.colors || 'null'),
         oppPositions: JSON.parse(s.oppPositions || 'null'),
         oppNumbers: JSON.parse(s.oppNumbers || 'null'),
+        // Without this, applyFrameState's `f.oppColors || []` blanks the
+        // opponent colours the restore above just put back.
+        oppColors: JSON.parse(s.oppColors || 'null'),
         balls: JSON.parse(s.balls || '[]'),
         arrows: JSON.parse(s.arrows || '[]'),
         rects: JSON.parse(s.rects || '[]'),

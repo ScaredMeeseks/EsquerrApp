@@ -1624,3 +1624,16 @@ A frame whose `colors` is null genuinely had no custom colours when it was captu
 ### Key order
 
 `oppColors` is appended after `colors` in `buildBoardEntry`. Key order IS the shard diff (`prevJson === nextJson`), so any new key costs one rewrite of every board shard; `KEY_ORDER` in `test/tactic-boards.test.js` is updated to match, and the per-layer assertion list gained a line - that test is the one that fails when a tool is added to the editor and not to the entry, which is exactly what happened here.
+
+## v92 - undo was scrambling the board (a v90 regression)
+
+`popUndo` restored through **two index-aligned arrays**. v90 added `fa_tactic_opp_colors` to the localStorage list and never added `'oppColors'` to the state list, so from index 3 onward every entry was restored into the wrong key: `oppPositions` into `fa_tactic_opp_colors`, `oppNumbers` into `fa_tactic_opp_positions`, and so on down the list. Undo silently scrambled the board, and it was live for two versions.
+
+Found while mapping the colour code for striped kits, not from a report - which is the useful part: **nothing would have surfaced it**. There is no test over `app.js`, undo produces no error, and the damage looks like a board that "went weird" rather than like a bug with a cause.
+
+Two fixes, because the missing entry was only the symptom:
+
+- The arrays are now **one list of pairs**, `[[stateKey, lsKey], …]`. Two lists that must stay in lockstep, edited by different changes months apart, was the actual defect.
+- The DOM rebuild below the restore was missing `oppColors` too, so `applyFrameState`'s `f.oppColors || []` blanked the colours the restore had just put back.
+
+The wider lesson is the one this session keeps producing: **a parallel-array invariant that nothing checks will eventually be broken by an unrelated change.** The same shape - two things that must agree, with no assertion between them - was behind the v90 opposition-colour bug and the read-only/animation disagreement in v88.
