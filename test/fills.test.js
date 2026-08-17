@@ -113,10 +113,38 @@ describe('fillCss', () => {
     assert.ok(fillCss('s|h|2|#a1a1a1|#b2b2b2').background.startsWith('repeating-linear-gradient(180deg'));
   });
 
+  /* The number's legibility. textColorFor answers "black or white on THIS
+     colour"; asking it about both stripes turns legibility into a precise
+     test — if the two answers differ, no single black-or-white number sits
+     on both. */
+  it('agreeing stripes keep a normal black/white number', () => {
+    // Two dark colours: white reads on both, no special case needed.
+    const css = fillCss('s|v|4|#000000|#222222');
+    assert.strictEqual(css.fg, '#fff');
+    assert.strictEqual(css.fgShadow, '');
+  });
+
+  it('a black-and-white kit gets the yellow number', () => {
+    const css = fillCss('s|v|4|#000000|#ffffff');
+    assert.strictEqual(css.fg, '#ffe000');
+    assert.ok(css.fgShadow, 'yellow needs its halo — it is invisible on the white stripe');
+  });
+
+  it('red-and-white gets it too — white on white is the same problem', () => {
+    assert.strictEqual(fillCss('s|v|2|#e53935|#ffffff').fg, '#ffe000');
+  });
+
+  it('a solid fill never gets the halo', () => {
+    // Any single colour has a readable black or white, so the conflict
+    // branch must not fire — and switching back to solid must clear it.
+    assert.strictEqual(fillCss('#000000').fgShadow, '');
+    assert.strictEqual(fillCss('#ffffff').fgShadow, '');
+  });
+
   it('border and number follow the FIRST colour, not the encoded string', () => {
     // darkenHex/textColorFor take a hex and return '#NaNNaNNaN' on 's|…'.
     // That is the whole reason fillCss exists.
-    const css = fillCss('s|v|4|#ffffff|#000000');
+    const css = fillCss('s|v|4|#ffffff|#eeeeee');
     assert.strictEqual(css.borderColor, '#cdcdcd');
     assert.strictEqual(css.fg, '#222');
     assert.ok(css.borderColor.indexOf('NaN') === -1);

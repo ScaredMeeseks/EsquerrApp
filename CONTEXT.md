@@ -1671,3 +1671,17 @@ Team kits are **board-wide** (`fa_tactic_team_stripes` / `fa_tactic_opp_stripes`
 `_stripeCfgOf` is the single reader of the stripe keys, shared by the toolbar builder and the paint path - the controls and the paint cannot disagree about the kit.
 
 **449 → 467 unit tests** (15 for the fills, 3 source assertions).
+
+## v94 - the shirt number on a two-colour kit
+
+Reported as *"generally it will be a white or black number, but in the case of a black-and-white combination that won't work"*. Correct: `fillCss` derived the number from `c1` alone and ignored `c2`, so a black-and-white kit gave a number invisible over half its stripes.
+
+`textColorFor` answers "black or white on THIS colour", so asking it about **both** stripes turns legibility into a precise test rather than a guess: **if the two answers differ, no single black-or-white number can sit on both.** Black-and-white is the obvious case; red-and-white is the one people forget, and it fires there too, correctly.
+
+In that case the number goes yellow **with a dark halo**. The halo is not decoration: no flat colour contrasts with both black and white, so yellow alone would have solved the black stripe and lost the white one - the very case the branch exists for. It is applied nowhere else, so a solid colour and an agreeing kit are untouched.
+
+Automatic only, by choice - no picker. The rule is right wherever it fires, and a control that is correct 95% of the time is worse than no control.
+
+`fgShadow` is **always** assigned, including as `''` for solid fills, so switching a circle back from stripes clears the halo instead of leaving it behind - the same class of bug as the opposition repaint in v90.
+
+**467 → 471 unit tests.**

@@ -1279,7 +1279,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 93;
+  const APP_VERSION = 94;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -4467,7 +4467,7 @@
         // GK gold first, then the player's own fill, then the team's.
         const css = fillCss(isGk ? GK_C : ((colors && colors[i]) || baseColor));
         return '<div class="tb-circle" data-idx="' + i + '" style="left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + css.background + ';border-color:' + css.borderColor + ';">' +
-          '<span class="tb-num" style="pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + css.fg + ';">' + sanitize(num) + '</span></div>';
+          '<span class="tb-num" style="pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + css.fg + ';text-shadow:' + (css.fgShadow || 'none') + ';">' + sanitize(num) + '</span></div>';
       }).join('');
     }
     const hasRealNums = function(arr) { return arr && arr.some(function(n) { return n; }); };
@@ -4654,7 +4654,7 @@
             div.style.cssText = 'left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + cssH.background + ';border-color:' + cssH.borderColor + ';';
             const span = document.createElement('span');
             span.className = 'tb-num';
-            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssH.fg + ';';
+            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssH.fg + ';text-shadow:' + (cssH.fgShadow || 'none') + ';';
             span.textContent = num;
             div.appendChild(span);
             innerEl.appendChild(div);
@@ -4672,7 +4672,7 @@
             div.style.cssText = 'left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + cssO.background + ';border-color:' + cssO.borderColor + ';';
             const span = document.createElement('span');
             span.className = 'tb-num';
-            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssO.fg + ';';
+            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssO.fg + ';text-shadow:' + (cssO.fgShadow || 'none') + ';';
             span.textContent = num;
             div.appendChild(span);
             innerEl.appendChild(div);
@@ -4793,7 +4793,7 @@
               div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cssN.background + ';border-color:' + cssN.borderColor + ';';
               const span = document.createElement('span');
               span.className = 'tb-num';
-              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssN.fg + ';';
+              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssN.fg + ';text-shadow:' + (cssN.fgShadow || 'none') + ';';
               span.textContent = num;
               div.appendChild(span);
               innerEl.appendChild(div);
@@ -4842,7 +4842,7 @@
               div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cssNO.background + ';border-color:' + cssNO.borderColor + ';';
               const span = document.createElement('span');
               span.className = 'tb-num';
-              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssNO.fg + ';';
+              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssNO.fg + ';text-shadow:' + (cssNO.fgShadow || 'none') + ';';
               span.textContent = num;
               div.appendChild(span);
               innerEl.appendChild(div);
@@ -6860,7 +6860,7 @@
         // contains no quotes by construction (see parseFill in utils.js).
         const dc = clrs[i] ? ` data-color="${clrs[i]}"` : '';
         return `<div class="tb-circle" data-idx="${i}"${dc} style="left:${dl}%;top:${dt}%;background:${css.background};border-color:${css.borderColor};">` +
-          `<input class="tb-num" maxlength="2" value="${sanitize(num)}" placeholder="" style="color:${css.fg};">` +
+          `<input class="tb-num" maxlength="2" value="${sanitize(num)}" placeholder="" style="color:${css.fg};text-shadow:${css.fgShadow || 'none'};">` +
           `</div>`;
       }).join('');
     }
@@ -6897,7 +6897,7 @@
         const css = fillCss(isGk ? GK_COLOR : (savedOppColors[i] || oppColor));
         const odc = savedOppColors[i] ? ` data-color="${savedOppColors[i]}"` : '';
         return `<div class="tb-circle tb-circle-opp" data-idx="${i}"${odc} style="left:${dl}%;top:${dt}%;background:${css.background};border-color:${css.borderColor};">` +
-          `<input class="tb-num" maxlength="2" value="${sanitize(String(oppNums[i] || ''))}" placeholder="" style="color:${css.fg};">` +
+          `<input class="tb-num" maxlength="2" value="${sanitize(String(oppNums[i] || ''))}" placeholder="" style="color:${css.fg};text-shadow:${css.fgShadow || 'none'};">` +
           `</div>`;
       }).join('');
     }

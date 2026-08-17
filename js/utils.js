@@ -156,20 +156,39 @@ function encodeFill(on, dir, n, c1, c2) {
  * take a hex and would return '#NaNNaNNaN' on an encoded fill, which is the
  * whole reason this function exists.
  */
+/* The shirt number when the two stripes disagree about black vs white.
+   No FLAT colour contrasts with both black and white, so the yellow carries
+   a dark halo — without it the number vanishes on the white stripe, which is
+   the exact case this branch exists for. Applied nowhere else: a solid
+   colour, and a striped kit whose colours agree, always have a readable
+   black or white. */
+var FILL_CONFLICT_FG = '#ffe000';
+var FILL_CONFLICT_SHADOW = '0 0 2px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.75)';
+
 function fillCss(v) {
   const f = parseFill(v);
   if (!f.striped) {
-    return {background: f.c1, borderColor: darkenHex(f.c1, 50), fg: textColorFor(f.c1)};
+    return {background: f.c1, borderColor: darkenHex(f.c1, 50),
+      fg: textColorFor(f.c1), fgShadow: ''};
   }
   // Rounded: 100/3 is 33.333333333333336 raw, and that lands in a style
   // attribute on every circle of every board.
   const w = Math.round((100 / f.n) * 1e4) / 1e4;
   const angle = f.dir === 'h' ? '180deg' : '90deg';
+  /* textColorFor answers "black or white on THIS colour". Asking it about
+     both stripes turns the legibility question into a precise test: if the
+     two answers differ, no single black-or-white number can sit on both —
+     a black-and-white kit being the obvious case, red-and-white the one
+     people forget. */
+  const fg1 = textColorFor(f.c1);
+  const fg2 = textColorFor(f.c2);
+  const conflict = fg1 !== fg2;
   return {
     background: 'repeating-linear-gradient(' + angle + ',' +
       f.c1 + ' 0 ' + w + '%,' + f.c2 + ' ' + w + '% ' + (w * 2) + '%)',
     borderColor: darkenHex(f.c1, 50),
-    fg: textColorFor(f.c1)
+    fg: conflict ? FILL_CONFLICT_FG : fg1,
+    fgShadow: conflict ? FILL_CONFLICT_SHADOW : ''
   };
 }
 
@@ -188,7 +207,12 @@ function paintCircle(el, v) {
   el.style.background = css.background;
   el.style.borderColor = css.borderColor;
   const num = el.querySelector('.tb-num');
-  if (num) num.style.color = css.fg;
+  if (num) {
+    num.style.color = css.fg;
+    // Always assigned, so switching a circle back to a solid fill clears
+    // the halo rather than leaving it behind.
+    num.style.textShadow = css.fgShadow || '';
+  }
 }
 
 // ---------- SVG Helpers ----------
