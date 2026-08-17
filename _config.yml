@@ -1,0 +1,52 @@
+# GitHub Pages (Jekyll) — what must NOT be published to the web.
+#
+# Pages serves the whole branch, so every one of these was reachable at
+# https://scaredmeeseks.github.io/EsquerrApp/<path> and returning 200:
+#
+#   CONTEXT.md            239 KB of internal engineering notes, including
+#                         the superadmin address and the deploy procedure
+#   firestore.rules       the complete authorization model
+#   test/                 the suite documenting how those rules behave
+#   deploy.ps1 / .sh      deployment scripts
+#   *-preview/-debug.html dev pages, live routes on the site
+#
+# The rules are enforced server-side so publishing them is not a compromise
+# by itself, but there is no reason to hand over the map.
+#
+# This is the WEB half. The APK half is scripts/build-www.js, which keeps the
+# same files out of the Capacitor mirror. Two lists, because they are two
+# different distribution channels — but they should be changed together, and
+# both fail loudly if the app's own files go missing.
+#
+# NOTE: there is no .nojekyll in this repo, so the site IS Jekyll-processed
+# and `exclude` is honoured. Adding .nojekyll would publish everything again.
+
+exclude:
+  - CONTEXT.md
+  - CLAUDE.md
+  - HANDOFF.md
+  - PROJECT_SUMMARY.md
+  - test/
+  - functions/
+  - scripts/
+  - android/
+  - www/
+  - node_modules/
+  - firestore.rules
+  - storage.rules
+  - firebase.json
+  - deploy.ps1
+  - deploy.sh
+  - package.json
+  - package-lock.json
+  - capacitor.config.json
+  - body-map-debug.html
+  - font-preview.html
+  - line-color-preview.html
+  - new-season-preview.html
+  - season-history-preview.html
+
+# Nothing here uses Jekyll's templating — the app is plain static files, and
+# `index.html` has no front matter so it is copied verbatim. Keep it that way:
+# a stray `{{` in an HTML file would otherwise be parsed as Liquid.
+plugins: []

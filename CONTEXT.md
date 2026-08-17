@@ -1760,3 +1760,21 @@ Hardcoded, while the app was at 95. The first Play upload would work and the sec
 ### privacy.html
 
 A **draft**, written from the code rather than from a template: what is actually stored, including that RPE and injuries are health data and that youth categories mean minors' data. Every club-specific fact is a `⚠` placeholder. It blocks both stores and needs qualified review before publishing - it is a legal exposure for the club, not a bug.
+
+## The web half of the same leak (_config.yml)
+
+Trimming the Capacitor mirror fixed what ships in the **APK**. It did nothing about the **website**, and GitHub Pages serves the whole branch — so these were live and returning 200 the entire time:
+
+```
+GET /CONTEXT.md          200   239 KB of internal notes, superadmin address, deploy procedure
+GET /firestore.rules     200   the complete authorization model
+GET /test/fills.test.js  200   the suite documenting how those rules behave
+```
+
+Found by checking the deployed site rather than reasoning about it, which is the third time this session that habit has turned something up.
+
+The site is Jekyll-processed (there is **no `.nojekyll`**), so a `_config.yml` `exclude:` list keeps them out of the published output with no restructuring. Adding a `.nojekyll` at any point would publish all of it again — the note is in the file.
+
+**Two lists now, deliberately**: `_config.yml` for the web, `scripts/build-www.js` for the APK. They are different distribution channels with different mechanics, and merging them would mean one of the two lying. They should be changed together, and both fail loudly if the app's own files go missing.
+
+The rules are enforced server-side so publishing them was not a compromise by itself. `CONTEXT.md` is the one that mattered.

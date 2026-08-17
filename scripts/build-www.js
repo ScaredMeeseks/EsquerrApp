@@ -34,6 +34,7 @@ const DENY_EXACT = new Set([
   'functions', 'test', 'tools',
   'firebase.json', '.firebaserc', '.gitignore', '.gitattributes',
   'deploy.ps1', 'deploy.sh',
+  '_config.yml',   // GitHub Pages config — meaningless inside the APK
 ]);
 
 /** Patterns never copied, tested against the root-level entry name. */
