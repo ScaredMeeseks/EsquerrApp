@@ -119,6 +119,18 @@
     // ── Club lead handover (superadmin) ──
     'update.msg':        { ca:'Estàs fent servir una versió antiga de l\'app (v{have}, cal v{need}). Actualitza-la per veure-ho tot correctament.', es:'Estás usando una versión antigua de la app (v{have}, se necesita v{need}). Actualízala para verlo todo correctamente.', en:'You are running an old version of the app (v{have}, v{need} required). Update to see everything correctly.' },
     'update.download':   { ca:'Descarregar', es:'Descargar', en:'Download' },
+    'push.ask':          { ca:'Vols rebre avisos d\'entrenaments, convocatòries i recordatoris?',
+                           es:'¿Quieres recibir avisos de entrenamientos, convocatorias y recordatorios?',
+                           en:'Want alerts for trainings, call-ups and reminders?' },
+    'push.enable':       { ca:'Activar avisos', es:'Activar avisos', en:'Enable alerts' },
+    'push.ask_title':    { ca:'Avisos', es:'Avisos', en:'Alerts' },
+    'push.granted':      { ca:'Avisos activats', es:'Avisos activados', en:'Alerts enabled' },
+    'push.denied':       { ca:'No s\'han pogut activar. Pots canviar-ho als permisos del navegador.',
+                           es:'No se han podido activar. Puedes cambiarlo en los permisos del navegador.',
+                           en:'Could not enable. You can change this in your browser permissions.' },
+    'push.ios_install':  { ca:'Per rebre avisos a l\'iPhone: Compartir → «Afegir a la pantalla d\'inici».',
+                           es:'Para recibir avisos en el iPhone: Compartir → «Añadir a pantalla de inicio».',
+                           en:'To get alerts on iPhone: Share → "Add to Home Screen".' },
     'club.min_version':  { ca:'Versió mínima', es:'Versión mínima', en:'Min version' },
     'club.change_lead':  { ca:'Canviar responsable', es:'Cambiar responsable', en:'Change club manager' },
     'club.change_badge': { ca:'Canviar escut (clica-hi)', es:'Cambiar escudo (haz clic)', en:'Change crest (click it)' },
@@ -1279,7 +1291,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 94;
+  const APP_VERSION = 95;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -3851,7 +3863,8 @@
       // narrows it instead, across name, coach and category together.
       var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
-      content.innerHTML = renderUpdateBanner() + catBar + fn(session);
+      content.innerHTML = renderUpdateBanner() + renderPushBanner() +
+        renderIosInstallBanner() + catBar + fn(session);
     } else {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
     }
@@ -13381,6 +13394,49 @@
    * artifacts have no stable public URL — without one the banner still says
    * what is wrong, it just cannot offer the download.
    */
+  /* ── Notification soft-ask ──────────────────────────────────
+     The permission prompt is one-shot per browser: a denial is remembered
+     and cannot be re-asked programmatically, so firing it unprompted spends
+     the only chance we get. This asks first, in Catalan, behind a tap.
+
+     Hidden when notifications are already granted or denied (nothing to ask
+     for, or nothing we can do), when the browser has no Notification API,
+     and once dismissed. On iOS Safari the API only exists inside an
+     INSTALLED PWA, so this correctly stays hidden until the user has added
+     the app to their home screen — which is what renderIosInstallBanner
+     below is for. */
+  function renderPushBanner() {
+    if (typeof Notification === 'undefined') return '';
+    if (Notification.permission !== 'default') return '';
+    if (localStorage.getItem('fa_push_ask_dismissed') === '1') return '';
+    return '<div class="upd-banner push-banner">' +
+      '<span class="upd-text">' + sanitize(t('push.ask')) + '</span>' +
+      '<button class="upd-link push-ask-btn" id="push-ask">' +
+        sanitize(t('push.enable')) + '</button>' +
+      '<button class="upd-close" id="push-ask-close" title="' +
+        sanitize(t('common.cancel')) + '">✕</button>' +
+      '</div>';
+  }
+
+  /* iOS gets notifications ONLY from a PWA added to the home screen
+     (Safari 16.4+). There is no beforeinstallprompt on iOS, so the install
+     cannot be triggered — it has to be explained. Shown only on iOS Safari,
+     only when not already installed. */
+  function renderIosInstallBanner() {
+    const ua = navigator.userAgent || '';
+    const isIos = /iphone|ipad|ipod/i.test(ua);
+    if (!isIos) return '';
+    // Chrome/Firefox on iOS are Safari underneath but cannot install.
+    if (/crios|fxios|edgios/i.test(ua)) return '';
+    if (window.navigator.standalone === true) return '';
+    if (localStorage.getItem('fa_ios_install_dismissed') === '1') return '';
+    return '<div class="upd-banner ios-install-banner">' +
+      '<span class="upd-text">' + sanitize(t('push.ios_install')) + '</span>' +
+      '<button class="upd-close" id="ios-install-close" title="' +
+        sanitize(t('common.cancel')) + '">✕</button>' +
+      '</div>';
+  }
+
   function renderUpdateBanner() {
     var need = _clubConfig && Number(_clubConfig.minAppVersion || 0);
     if (!need || need <= APP_VERSION) return '';
@@ -19579,11 +19635,48 @@
           showTeamSetup({ cancellable: true });
           return;
         }
+        /* Notification soft-ask. THE tap that carries the user gesture into
+           Notification.requestPermission() — the whole reason this banner
+           exists rather than asking on login. */
+        if (e.target.closest('#push-ask')) {
+          const bar = e.target.closest('.upd-banner');
+          Push.requestPermission()
+            .then((tok) => {
+              _showPushToast(t('push.ask_title'),
+                tok ? t('push.granted') : t('push.denied'));
+            })
+            .catch((err) => {
+              console.warn('Push permission:', err);
+              _showPushToast(t('push.ask_title'), t('push.denied'));
+            })
+            .finally(() => {
+              // Gone either way: granted needs no banner, and denied cannot
+              // be re-asked programmatically, so leaving it would be a
+              // button that does nothing.
+              localStorage.setItem('fa_push_ask_dismissed', '1');
+              if (bar) bar.remove();
+            });
+          return;
+        }
+        if (e.target.closest('#push-ask-close')) {
+          localStorage.setItem('fa_push_ask_dismissed', '1');
+          const bar = e.target.closest('.upd-banner');
+          if (bar) bar.remove();
+          return;
+        }
+        if (e.target.closest('#ios-install-close')) {
+          localStorage.setItem('fa_ios_install_dismissed', '1');
+          const bar = e.target.closest('.upd-banner');
+          if (bar) bar.remove();
+          return;
+        }
         // Dismiss the "old build" banner for this required version only.
+        // Guarded on data-need: the two banners above share this class, and
+        // without the guard their ✕ wrote `undefined` into the update key.
         const updClose = e.target.closest('.upd-close');
         if (updClose) {
           const bar = updClose.closest('.upd-banner');
-          if (bar) {
+          if (bar && bar.dataset.need) {
             localStorage.setItem('fa_update_dismissed', bar.dataset.need);
             bar.remove();
           }
@@ -20052,9 +20145,13 @@
               }
             } catch (e) { console.error(e); }
           }
-          // Initialize push notifications
+          /* Push: initialise the listeners, but do NOT ask for permission
+             here. This runs from the auth-state handler, so the prompt had
+             no user gesture behind it — browsers increasingly auto-deny that
+             outright, and iOS Safari ignores it entirely, which is also why
+             iPhone users could never get notifications. The ask now lives
+             behind a tap in the soft-ask banner (renderPushBanner). */
           Push.init();
-          Push.requestPermission().catch(e => console.warn('Push permission:', e));
 
           // Watch own profile for claims changes (joinClub/setRole stamp
           // claimsUpdatedAt) and force-refresh the ID token so security

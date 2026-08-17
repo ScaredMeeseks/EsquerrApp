@@ -3950,3 +3950,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   color:var(--text); font-size:.7rem; line-height:1; letter-spacing:-1px;
 }
 .tb-stripe-dir:hover { border-color:var(--text-secondary); }
+
+/* Notification soft-ask and the iOS install hint. They reuse .upd-banner's
+   layout but are informational, not a warning, so they take the accent
+   rather than the danger colour. */
+.push-banner, .ios-install-banner { border-left:4px solid var(--accent); }
+.push-ask-btn {
+  background:var(--primary); color:#fff; border:none; border-radius:6px;
+  padding:.35rem .7rem; font-size:.82rem; font-weight:600; cursor:pointer;
+  white-space:nowrap;
+}
+.push-ask-btn:hover { background:var(--primary-dark); }

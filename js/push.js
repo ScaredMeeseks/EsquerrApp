@@ -224,18 +224,38 @@ const Push = (() => {
     });
   }
 
+  /**
+   * Drop this device's token on logout.
+   *
+   * getToken() MUST be given the same options as the one in
+   * _requestWebPermission. Called bare it falls back to registering
+   * `/firebase-messaging-sw.js`, a file this app does not have — so it threw,
+   * the catch below swallowed it, and the token document was never deleted.
+   * On a shared device the next push for the previous user still arrived.
+   *
+   * `_currentToken` is preferred when we have it: after deleteToken() a
+   * second getToken() would mint a NEW token, which is the opposite of what
+   * logging out should do.
+   */
   async function _removeWebToken() {
     if (!messaging) return;
     try {
-      const token = await messaging.getToken();
-      if (token) {
-        const user = auth.currentUser;
-        if (user) {
-          await db.collection('users').doc(user.uid)
-            .collection('tokens').doc(token).delete();
-        }
-        await messaging.deleteToken();
+      let token = _currentToken;
+      if (!token) {
+        const swReg = await navigator.serviceWorker.ready;
+        token = await messaging.getToken({
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: swReg
+        });
       }
+      if (!token) return;
+      const user = auth.currentUser;
+      if (user) {
+        await db.collection('users').doc(user.uid)
+          .collection('tokens').doc(token).delete();
+      }
+      await messaging.deleteToken();
+      _currentToken = null;
     } catch (e) {
       console.warn('Push: token cleanup error:', e);
     }
@@ -245,6 +265,12 @@ const Push = (() => {
   async function _saveToken(token) {
     const user = auth.currentUser;
     if (!user) return;
+    /* A rotated token used to leave the OLD document behind, so
+       users/{uid}/tokens filled with dead entries that were only ever
+       cleared when a send failed against them. We know the previous one, so
+       delete it here rather than waiting for that. */
+    const prev = _currentToken;
+    _currentToken = token;
     const tokenRef = db.collection('users').doc(user.uid)
       .collection('tokens').doc(token);
     await tokenRef.set({
@@ -252,6 +278,14 @@ const Push = (() => {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       platform: _isNative() ? 'android-native' : _getPlatform()
     });
+    if (prev && prev !== token) {
+      try {
+        await db.collection('users').doc(user.uid)
+          .collection('tokens').doc(prev).delete();
+      } catch (e) {
+        console.warn('Push: stale token cleanup failed:', e && e.message);
+      }
+    }
     console.log('Push: token saved to Firestore');
   }
 

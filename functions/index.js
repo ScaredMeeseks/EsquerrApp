@@ -273,10 +273,16 @@ async function reshardMember(teamId, uid, toCat) {
 async function getTokensForUsers(userIds) {
   const snaps = await Promise.all(userIds.map((uid) =>
     db.collection("users").doc(uid).collection("tokens").get()));
-  const entries = []; // {token, uid}
+  const entries = []; // {token, uid, platform}
   snaps.forEach((snap, i) => {
     snap.forEach((doc) => {
-      if (doc.data().token) entries.push({token: doc.data().token, uid: userIds[i]});
+      const d = doc.data();
+      // `platform` decides which message shape this token gets — see
+      // sendToTokens. Tokens written before it was stored have none, and
+      // are treated as web, which is what they were.
+      if (d.token) {
+        entries.push({token: d.token, uid: userIds[i], platform: d.platform || ""});
+      }
     });
   });
   // Deduplicate by token
@@ -363,12 +369,45 @@ async function getAllTeamMembers(teamId) {
   return uids;
 }
 
-// ── Helper: send FCM to tokens, clean up stale ones ──
-async function sendToTokens(tokenEntries, payload) {
-  const tokens = tokenEntries.map((e) => e.token);
-  logger.info("sendToTokens", {tokenCount: tokens.length, payload});
-  if (!tokens.length) return;
-  const response = await fcm.sendEachForMulticast({
+/* Where a notification click should land. The app is served from a GitHub
+   Pages SUBPATH, and the webpush link used to be a bare "/" — so a click
+   from a cold start opened the domain root, not the app. */
+const APP_BASE_URL = "https://scaredmeeseks.github.io/EsquerrApp/";
+
+/** True for a token registered by the Capacitor app rather than a browser. */
+function isNativeToken(entry) {
+  return String((entry && entry.platform) || "").indexOf("native") !== -1;
+}
+
+/**
+ * Build the FCM message for ONE platform family.
+ *
+ * Web and native need genuinely different shapes, and sending one message to
+ * both is what produced duplicate notifications on the web:
+ *
+ *   - WEB gets `data` ONLY. A `notification` payload is displayed by the SDK
+ *     itself, and sw.js ALSO calls showNotification from onBackgroundMessage
+ *     — two notifications for one event. Data-only makes the service worker
+ *     the single display point, which is also what lets it honour `tag` and
+ *     open the right page.
+ *   - NATIVE needs `notification`, because a data-only message shows nothing
+ *     when the app is killed. It also gets an `android.notification` block:
+ *     `tag` lives there, NOT in data, so the per-session tag the reminders
+ *     compute was being ignored and reminders stacked up on Android.
+ */
+function buildMessage(tokens, payload, native) {
+  const link = payload.url || APP_BASE_URL;
+  if (!native) {
+    return {
+      tokens,
+      data: payload,
+      webpush: {
+        headers: {"Urgency": "high"},
+        fcmOptions: {link},
+      },
+    };
+  }
+  return {
     tokens,
     notification: {
       title: payload.title || "EsquerrApp",
@@ -377,44 +416,72 @@ async function sendToTokens(tokenEntries, payload) {
     data: payload,
     android: {
       priority: "high",
+      collapseKey: payload.tag || undefined,
+      notification: {
+        channelId: "esquerrapp_default",
+        tag: payload.tag || undefined,
+        icon: "ic_notification",
+        color: "#ffa726",
+      },
     },
-    webpush: {
-      headers: {"Urgency": "high"},
-      fcmOptions: {link: "/"},
-    },
-  });
-  logger.info("sendToTokens result", {
-    successCount: response.successCount,
-    failureCount: response.failureCount,
-  });
-  // Remove invalid tokens (look up by uid, no collectionGroup needed)
-  if (response.failureCount > 0) {
-    const batch = db.batch();
-    let staleCount = 0;
-    response.responses.forEach((resp, i) => {
-      if (!resp.success &&
-        (resp.error?.code === "messaging/invalid-registration-token" ||
-         resp.error?.code === "messaging/registration-token-not-registered")) {
-        const entry = tokenEntries[i];
-        if (entry) {
-          batch.delete(
-              db.collection("users").doc(entry.uid)
-                  .collection("tokens").doc(entry.token));
-          staleCount++;
+  };
+}
+
+// ── Helper: send FCM to tokens, clean up stale ones ──
+async function sendToTokens(tokenEntries, payload) {
+  logger.info("sendToTokens", {tokenCount: tokenEntries.length, payload});
+  if (!tokenEntries.length) return;
+
+  /* sendEachForMulticast caps at 500 tokens and throws over it — a club
+     past 500 devices would have lost the whole send, not part of it. */
+  const CHUNK = 500;
+  const groups = [
+    {native: false, entries: tokenEntries.filter((e) => !isNativeToken(e))},
+    {native: true, entries: tokenEntries.filter(isNativeToken)},
+  ];
+
+  const stale = [];
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (const group of groups) {
+    for (let i = 0; i < group.entries.length; i += CHUNK) {
+      const slice = group.entries.slice(i, i + CHUNK);
+      const response = await fcm.sendEachForMulticast(
+          buildMessage(slice.map((e) => e.token), payload, group.native));
+      successCount += response.successCount;
+      failureCount += response.failureCount;
+      response.responses.forEach((resp, j) => {
+        if (resp.success) return;
+        const code = resp.error?.code;
+        if (code === "messaging/invalid-registration-token" ||
+            code === "messaging/registration-token-not-registered" ||
+            code === "messaging/invalid-argument") {
+          if (slice[j]) stale.push(slice[j]);
+        } else {
+          logger.warn("FCM send failed for token", {
+            token: slice[j]?.token?.slice(0, 20) + "...",
+            error: code,
+            message: resp.error?.message,
+          });
         }
-      } else if (!resp.success) {
-        logger.warn("FCM send failed for token", {
-          token: tokens[i]?.slice(0, 20) + "...",
-          error: resp.error?.code,
-          message: resp.error?.message,
-        });
-      }
-    });
-    if (staleCount > 0) {
-      await batch.commit();
-      logger.info("Cleaned up stale tokens", {staleCount});
+      });
     }
   }
+
+  logger.info("sendToTokens result", {successCount, failureCount});
+
+  // Remove invalid tokens (look up by uid, no collectionGroup needed).
+  // Chunked for the same reason as the send: a write batch caps at 500.
+  for (let i = 0; i < stale.length; i += CHUNK) {
+    const batch = db.batch();
+    stale.slice(i, i + CHUNK).forEach((entry) => {
+      batch.delete(db.collection("users").doc(entry.uid)
+          .collection("tokens").doc(entry.token));
+    });
+    await batch.commit();
+  }
+  if (stale.length) logger.info("Cleaned up stale tokens", {staleCount: stale.length});
 }
 
 // ════════════════════════════════════════════════════════════

@@ -1685,3 +1685,48 @@ Automatic only, by choice - no picker. The rule is right wherever it fires, and 
 `fgShadow` is **always** assigned, including as `''` for solid fills, so switching a circle back from stripes clears the halo instead of leaving it behind - the same class of bug as the opposition repaint in v90.
 
 **467 → 471 unit tests.**
+
+## v95 - push, fixed where the club actually is
+
+An audit of store readiness and push turned up four live defects in notifications. The club is on the **web app** - the phones are on a v43-era APK - so these were affecting people daily.
+
+### One message for two platforms was wrong
+
+`sendToTokens` sent a single message to every token. Web and native need different shapes, and sending one to both is what produced **duplicate notifications on the web**: a `notification` payload is displayed by the FCM SDK itself, and `sw.js` displays it AGAIN from `onBackgroundMessage`.
+
+Split by the `platform` field the client already stores on each token doc:
+
+- **web → `data` only**, so the service worker is the single display point - which is also what lets it honour `tag` and open the right page.
+- **native → `notification` plus an `android.notification` block**, because a data-only message shows nothing once the app is killed, which is exactly when a reminder matters.
+
+Tokens written before `platform` existed have none and are treated as **web** - what they were, and the safe default: a web-shaped message on a native device shows nothing, where the reverse shows it twice.
+
+### Three more that fell out of the same function
+
+- **`webpush.fcmOptions.link` was `"/"`.** The app is served from a GitHub Pages **subpath**, so a click from a cold start opened the domain root, not the app. Now `payload.url` falling back to `APP_BASE_URL`, and a test pins that it is never a bare origin again.
+- **The `tag` never reached Android.** It went into `data`, and Android reads `android.notification.tag`. So the per-session tag the reminders carefully compute collapsed duplicates **on web only** while Android stacked them - and `test/reminders.test.js` had been asserting that tag string for versions without it doing anything on the platform it was for.
+- **The 500-token multicast cap was never chunked**, nor was the stale-token delete batch. A club past 500 devices would have lost the whole send rather than part of it.
+
+### Logging out left your token live
+
+`_removeWebToken` called `getToken()` **with no options**, so the SDK fell back to registering `/firebase-messaging-sw.js` - a file this app does not have. It threw, the `catch` swallowed it, and the token document was never deleted. **On a shared device the next push for the previous user still arrived.** It now passes the same `{vapidKey, serviceWorkerRegistration}` as the acquire path, and prefers the token already in memory - after `deleteToken()` a second `getToken()` would mint a NEW one, the opposite of what logging out should do.
+
+`_saveToken` also deletes the previous token document on rotation, instead of leaving dead entries to accumulate until a send failed against them.
+
+### The permission prompt was being spent for nothing
+
+`Push.requestPermission()` ran straight out of the auth-state handler, with **no user gesture**. Browsers increasingly auto-deny that, and **iOS Safari ignores it outright** - which is a large part of why iPhone users never had notifications. The permission prompt is one-shot per browser: a denial is remembered and cannot be re-asked programmatically, so firing it unprompted spends the only chance there is.
+
+It now lives behind a tap in a soft-ask banner, and the banner disappears either way - granted needs no banner, denied cannot be re-asked, so leaving it would be a button that does nothing.
+
+### iOS, for free
+
+Safari 16.4+ supports web push for a PWA **added to the home screen**, and `manifest.json` was already correct for it (`display: standalone`, maskable icons) with the `apple-mobile-web-app-*` meta already in `index.html`. The missing piece was that iOS cannot be prompted to install - there is no `beforeinstallprompt` - so it has to be explained. A banner does that, shown only on iOS Safari, only when not already installed.
+
+That plus the gesture fix is the whole iOS notification story. **No Mac, no Apple Developer account, no review.**
+
+### Testing
+
+The send path had **no coverage at all**, which is how three defects lived in one function. `test/push-send.test.js` lifts `buildMessage` out of the source the way `reminders.test.js` lifts `squadForSession`, and pins the shape for both platforms, the channel id against the one the manifest declares, and the batching.
+
+**471 → 489 unit tests.**
