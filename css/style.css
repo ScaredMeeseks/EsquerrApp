@@ -3934,3 +3934,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 @media (prefers-reduced-motion: reduce) {
   .btn-spinner { animation-duration: 2s; }
 }
+
+/* Stripe controls, inline beside each team swatch. The options collapse when
+   the toggle is off so the toolbar is unchanged for anyone not using them. */
+.tb-stripes { display:inline-flex; align-items:center; gap:.3rem; }
+.tb-stripe-opts { display:inline-flex; align-items:center; gap:.3rem; }
+.tb-stripe-n {
+  width:38px; padding:.15rem .2rem; font-size:.75rem; text-align:center;
+  border:1px solid var(--border); border-radius:6px; background:var(--card);
+  color:var(--text);
+}
+.tb-stripe-dir {
+  min-width:28px; height:24px; padding:0 .3rem; cursor:pointer;
+  border:1px solid var(--border); border-radius:6px; background:var(--card);
+  color:var(--text); font-size:.7rem; line-height:1; letter-spacing:-1px;
+}
+.tb-stripe-dir:hover { border-color:var(--text-secondary); }

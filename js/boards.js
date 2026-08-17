@@ -79,6 +79,11 @@
     e.tag = store.getItem('fa_tactic_tag') || '';
     e.silhouette = store.getItem('fa_tactic_silhouette') || '';
     e.cones = JSON.parse(store.getItem('fa_tactic_cones') || '[]');
+    /* Striped kits, board-wide (teamColor/oppColor are too — a team does not
+       change shirt mid-move, unlike a per-player mark). At the TAIL for the
+       same reason oppColors is: key order is the shard diff. */
+    e.teamStripes = store.getItem('fa_tactic_team_stripes') || '';
+    e.oppStripes = store.getItem('fa_tactic_opp_stripes') || '';
     return e;
   }
 

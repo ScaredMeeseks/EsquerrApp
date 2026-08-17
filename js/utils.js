@@ -102,6 +102,95 @@ function textColorFor(hex) {
   return (r*299 + g*587 + b*114) / 1000 > 150 ? '#222' : '#fff';
 }
 
+/* ── Circle fills: a flat colour, or a striped kit ───────────────
+   A player marker used to be one hex string, held in a dozen places —
+   fa_tactic_colors / fa_tactic_opp_colors (arrays, per animation frame),
+   every frames[i].colors, buildBoardEntry's colors/oppColors, the undo
+   snapshots, copy/paste, and the read-only renderer's buildCircles().
+
+   A striped fill is therefore encoded as a STRING and stored in those same
+   slots, so none of them had to learn a new shape:
+
+       s|<v|h>|<n>|<c1>|<c2>        e.g.  s|v|4|#e53935|#ffffff
+
+   Not JSON, and that is not a style choice: circle colours are interpolated
+   raw into DOUBLE-QUOTED html attributes in three places (data-color= in the
+   editor's markup for both teams, data-tc=/data-oc= on read-only boards). A
+   value containing `"` would break the markup. The pipe form has no quotes.
+
+   Anything not starting with `s|` is a plain hex, exactly as before, and a
+   malformed value degrades to a solid colour rather than throwing — these
+   run on every repaint of every circle, and a board that fails to draw is
+   worse than one drawn in the wrong colour. */
+
+/** @return {{striped:boolean, dir?:string, n?:number, c1:string, c2?:string}} */
+function parseFill(v) {
+  const s = String(v == null ? '' : v);
+  if (s.slice(0, 2) !== 's|') return {striped: false, c1: s || '#ffffff'};
+  const p = s.split('|');
+  const n = parseInt(p[2], 10);
+  const dir = p[1] === 'h' ? 'h' : 'v';
+  const c1 = p[3] || '#ffffff';
+  const c2 = p[4] || '#ffffff';
+  if (!(n >= 2 && n <= 6)) return {striped: false, c1: c1};
+  return {striped: true, dir: dir, n: n, c1: c1, c2: c2};
+}
+
+/** Build the stored string. Solid when `on` is false, so callers stay simple. */
+function encodeFill(on, dir, n, c1, c2) {
+  if (!on) return c1;
+  const clamped = Math.min(6, Math.max(2, parseInt(n, 10) || 2));
+  return 's|' + (dir === 'h' ? 'h' : 'v') + '|' + clamped + '|' + c1 + '|' + c2;
+}
+
+/**
+ * The three CSS values a circle needs, from either kind of fill.
+ *
+ * Stops are PERCENTAGES, deliberately: a circle is 24px, and 16px on a
+ * phone, so px stripe widths would not survive scaleRoField()'s resizing of
+ * read-only boards.
+ *
+ * 90deg gives vertical bands, 180deg horizontal. `w = 100/n` is one stripe;
+ * the gradient repeats every two, so an odd count still renders n bands.
+ * The border and the shirt number follow c1 — darkenHex and textColorFor
+ * take a hex and would return '#NaNNaNNaN' on an encoded fill, which is the
+ * whole reason this function exists.
+ */
+function fillCss(v) {
+  const f = parseFill(v);
+  if (!f.striped) {
+    return {background: f.c1, borderColor: darkenHex(f.c1, 50), fg: textColorFor(f.c1)};
+  }
+  // Rounded: 100/3 is 33.333333333333336 raw, and that lands in a style
+  // attribute on every circle of every board.
+  const w = Math.round((100 / f.n) * 1e4) / 1e4;
+  const angle = f.dir === 'h' ? '180deg' : '90deg';
+  return {
+    background: 'repeating-linear-gradient(' + angle + ',' +
+      f.c1 + ' 0 ' + w + '%,' + f.c2 + ' ' + w + '% ' + (w * 2) + '%)',
+    borderColor: darkenHex(f.c1, 50),
+    fg: textColorFor(f.c1)
+  };
+}
+
+/**
+ * Paint a live circle. The editor mutates DOM nodes; the read-only renderer
+ * builds html strings and uses fillCss directly.
+ *
+ * `style.background` is the SHORTHAND on purpose — it clears any previous
+ * background-image, so switching a striped circle back to solid works. Note
+ * that a gradient makes style.backgroundColor read back as '', which is why
+ * callers must ask dataset.color what a circle's fill is, never the style.
+ */
+function paintCircle(el, v) {
+  if (!el) return;
+  const css = fillCss(v);
+  el.style.background = css.background;
+  el.style.borderColor = css.borderColor;
+  const num = el.querySelector('.tb-num');
+  if (num) num.style.color = css.fg;
+}
+
 // ---------- SVG Helpers ----------
 function crSplinePath(pts, tension) {
   if (pts.length < 2) return '';
@@ -238,6 +327,11 @@ if (typeof module !== 'undefined' && module.exports) {
     // drift the moment a zone is added.
     BODY_ZONES,
     BODY_REGIONS,
-    GROUP_SUBS
+    GROUP_SUBS,
+    // Circle fills. Exported for tests — paintCircle needs a DOM and is not
+    // among them; fillCss is the part worth pinning.
+    parseFill,
+    encodeFill,
+    fillCss
   };
 }

@@ -43,7 +43,8 @@ const DRAWN = {
   fa_tactic_frames: '[{"positions":[[10,50]],"duration":1000},{"positions":[[20,50]],"duration":1000}]',
   fa_tactic_tag: 'Presión',
   fa_tactic_silhouette: 'one-arm-up',
-  fa_tactic_cones: '[[33,33],[66,66]]'
+  fa_tactic_cones: '[[33,33],[66,66]]',
+  fa_tactic_team_stripes: '{"on":true,"n":4,"dir":"v","c2":"#ffffff"}'
 };
 
 /* The key order the four literals used, in order. Pinned because db.js
@@ -54,7 +55,7 @@ const KEY_ORDER = [
   'id', 'category', 'name', 'formation', 'positions', 'numbers', 'boardType',
   'teamColor', 'oppColor', 'showOpp', 'oppPositions', 'oppNumbers', 'balls',
   'colors', 'oppColors', 'arrows', 'rects', 'texts', 'penLines', 'frames',
-  'tag', 'silhouette', 'cones'
+  'tag', 'silhouette', 'cones', 'teamStripes', 'oppStripes'
 ];
 
 describe('buildBoardEntry — defaults', () => {
@@ -81,7 +82,9 @@ describe('buildBoardEntry — defaults', () => {
       frames: [],
       tag: '',
       silhouette: '',
-      cones: []
+      cones: [],
+      teamStripes: '',
+      oppStripes: ''
     });
   });
 
@@ -177,6 +180,10 @@ describe('buildBoardEntry — serialisation', () => {
     assert.strictEqual(e.texts.length, 1);
     assert.strictEqual(e.penLines.length, 1);
     assert.strictEqual(e.cones.length, 2);
+    // Striped kits are board-wide, stored as JSON alongside the base colour
+    // because <input type="color"> can only hold a hex.
+    assert.strictEqual(e.teamStripes, '{"on":true,"n":4,"dir":"v","c2":"#ffffff"}');
+    assert.strictEqual(e.oppStripes, '');
     assert.strictEqual(e.tag, 'Presión');
     assert.strictEqual(e.silhouette, 'one-arm-up');
     assert.strictEqual(e.teamColor, '#3366ff');

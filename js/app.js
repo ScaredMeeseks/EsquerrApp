@@ -456,6 +456,10 @@
     'tactics.select_formation':{ ca:'— Selecciona —', es:'— Seleccionar —', en:'— Select —' },
     'tactics.opp':           { ca:'Riv', es:'Riv', en:'Opp' },
     'tactics.dash':          { ca:'Disc.', es:'Disc.', en:'Dash' },
+    'tactics.stripes':       { ca:'Ratlles', es:'Rayas', en:'Stripes' },
+    'tactics.stripes_count': { ca:'Nombre de ratlles (2-6)', es:'Número de rayas (2-6)', en:'Number of stripes (2-6)' },
+    'tactics.stripes_dir':   { ca:'Verticals o horitzontals', es:'Verticales u horizontales', en:'Vertical or horizontal' },
+    'tactics.stripes_second':{ ca:'Segon color', es:'Segundo color', en:'Second colour' },
     'tactics.new_board':     { ca:'Nova pissarra', es:'Nueva pizarra', en:'New Board' },
     'tactics.board_name_ph': { ca:'Nom de la pissarra…', es:'Nombre de la pizarra…', en:'Board name…' },
     'tactics.saved_boards':  { ca:'Pissarres desades', es:'Pizarras guardadas', en:'Saved Boards' },
@@ -1275,7 +1279,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 92;
+  const APP_VERSION = 93;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -4460,10 +4464,10 @@
         if (!p) return ''; // null = deleted circle slot
         const num = String((nums && nums[i]) || '');
         const isGk = num === '1';
-        const cc = isGk ? GK_C : ((colors && colors[i]) || baseColor);
-        const fg = textColorFor(cc);
-        return '<div class="tb-circle" data-idx="' + i + '" style="left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + cc + ';border-color:' + darkenHex(cc, 50) + ';">' +
-          '<span class="tb-num" style="pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + fg + ';">' + sanitize(num) + '</span></div>';
+        // GK gold first, then the player's own fill, then the team's.
+        const css = fillCss(isGk ? GK_C : ((colors && colors[i]) || baseColor));
+        return '<div class="tb-circle" data-idx="' + i + '" style="left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + css.background + ';border-color:' + css.borderColor + ';">' +
+          '<span class="tb-num" style="pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + css.fg + ';">' + sanitize(num) + '</span></div>';
       }).join('');
     }
     const hasRealNums = function(arr) { return arr && arr.some(function(n) { return n; }); };
@@ -4643,14 +4647,14 @@
             if (!p) return; // null = deleted circle slot
             const num = String((f.numbers && f.numbers[i]) || '');
             const isGk = num === '1';
-            const cc = isGk ? GK_C : ((f.colors && f.colors[i]) || tc);
+            const cssH = fillCss(isGk ? GK_C : ((f.colors && f.colors[i]) || tc));
             const div = document.createElement('div');
             div.className = 'tb-circle';
             div.setAttribute('data-idx', i);
-            div.style.cssText = 'left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + cc + ';border-color:' + darkenHex(cc, 50) + ';';
+            div.style.cssText = 'left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + cssH.background + ';border-color:' + cssH.borderColor + ';';
             const span = document.createElement('span');
             span.className = 'tb-num';
-            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + textColorFor(cc) + ';';
+            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssH.fg + ';';
             span.textContent = num;
             div.appendChild(span);
             innerEl.appendChild(div);
@@ -4661,14 +4665,14 @@
             if (!p) return; // null = deleted circle slot
             const num = String((f.oppNumbers && f.oppNumbers[i]) || '');
             const isGk = num === '1';
-            const oppBg = isGk ? GK_C : ((f.oppColors && f.oppColors[i]) || oc);
+            const cssO = fillCss(isGk ? GK_C : ((f.oppColors && f.oppColors[i]) || oc));
             const div = document.createElement('div');
             div.className = 'tb-circle tb-circle-opp';
             div.setAttribute('data-idx', i);
-            div.style.cssText = 'left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + oppBg + ';border-color:' + darkenHex(oppBg, 50) + ';';
+            div.style.cssText = 'left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + cssO.background + ';border-color:' + cssO.borderColor + ';';
             const span = document.createElement('span');
             span.className = 'tb-num';
-            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + textColorFor(oppBg) + ';';
+            span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssO.fg + ';';
             span.textContent = num;
             div.appendChild(span);
             innerEl.appendChild(div);
@@ -4782,14 +4786,14 @@
             if (!circle) {
               const num = String(toNums[i] || '');
               const isGk = num === '1';
-              const cc = isGk ? GK_C : ((to.colors && to.colors[i]) || tc);
+              const cssN = fillCss(isGk ? GK_C : ((to.colors && to.colors[i]) || tc));
               const div = document.createElement('div');
               div.className = 'tb-circle';
               div.setAttribute('data-idx', i);
-              div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cc + ';border-color:' + darkenHex(cc, 50) + ';';
+              div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cssN.background + ';border-color:' + cssN.borderColor + ';';
               const span = document.createElement('span');
               span.className = 'tb-num';
-              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + textColorFor(cc) + ';';
+              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssN.fg + ';';
               span.textContent = num;
               div.appendChild(span);
               innerEl.appendChild(div);
@@ -4831,14 +4835,14 @@
               const num = String(toOppNums[i] || '');
               const isGk = num === '1';
               // Mirrors the home branch above, which already honours to.colors.
-              const oppBg = isGk ? GK_C : ((to.oppColors && to.oppColors[i]) || oc);
+              const cssNO = fillCss(isGk ? GK_C : ((to.oppColors && to.oppColors[i]) || oc));
               const div = document.createElement('div');
               div.className = 'tb-circle tb-circle-opp';
               div.setAttribute('data-idx', i);
-              div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + oppBg + ';border-color:' + darkenHex(oppBg, 50) + ';';
+              div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cssNO.background + ';border-color:' + cssNO.borderColor + ';';
               const span = document.createElement('span');
               span.className = 'tb-num';
-              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + textColorFor(oppBg) + ';';
+              span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssNO.fg + ';';
               span.textContent = num;
               div.appendChild(span);
               innerEl.appendChild(div);
@@ -6731,6 +6735,41 @@
     localStorage.setItem('fa_cleanup_orphan_match_boards', '1');
   }
 
+  /** The stored stripe settings for a side, or the defaults. */
+  function _stripeCfgOf(which) {
+    try {
+      const raw = localStorage.getItem('fa_tactic_' + which + '_stripes');
+      const o = raw ? JSON.parse(raw) : null;
+      if (o && typeof o === 'object') {
+        return {on: !!o.on, n: o.n || 2, dir: o.dir === 'h' ? 'h' : 'v', c2: o.c2 || '#ffffff'};
+      }
+    } catch (e) { /* corrupt value → defaults, never a broken toolbar */ }
+    return {on: false, n: 2, dir: 'v', c2: '#ffffff'};
+  }
+
+  /* Stripe controls for one side, inline beside its colour swatch. The
+     count/direction/second colour are hidden until the toggle is on, so the
+     toolbar stays as it was for anyone not using stripes. */
+  function _stripeControlsHtml(which) {
+    const c = _stripeCfgOf(which);
+    const hid = c.on ? '' : ' style="display:none"';
+    return '<span class="tb-stripes" data-side="' + which + '">' +
+      '<label class="tb-opp-toggle" data-tooltip="' + sanitize(t('tactics.stripes')) + '">' +
+        '<input type="checkbox" class="tb-stripe-on"' + (c.on ? ' checked' : '') + '> ' +
+        sanitize(t('tactics.stripes')) +
+      '</label>' +
+      '<span class="tb-stripe-opts"' + hid + '>' +
+        '<input type="number" class="tb-stripe-n" min="2" max="6" value="' + c.n + '" ' +
+          'data-tooltip="' + sanitize(t('tactics.stripes_count')) + '">' +
+        '<button type="button" class="tb-stripe-dir" data-dir="' + c.dir + '" ' +
+          'data-tooltip="' + sanitize(t('tactics.stripes_dir')) + '">' +
+          (c.dir === 'h' ? '☰' : '|||') +
+        '</button>' +
+        '<input type="color" class="tb-color-pick tb-stripe-c2" value="' + c.c2 + '" ' +
+          'data-tooltip="' + sanitize(t('tactics.stripes_second')) + '">' +
+      '</span></span>';
+  }
+
   function renderTactics() {
     const formations = TACTIC_FORMATIONS;
 
@@ -6816,12 +6855,12 @@
         if (isVertical && boardType === 'full') { dl = p[1]; dt = 100 - p[0]; }
         const num = String(nums[i] || '');
         const isGk = num === '1';
-        const bg = isGk ? GK_COLOR : (clrs[i] || teamColor);
-        const fg = textColorFor(bg);
-        const bc = darkenHex(bg, 50);
+        const css = fillCss(isGk ? GK_COLOR : (clrs[i] || teamColor));
+        // The encoded fill goes in a double-quoted attribute unescaped; it
+        // contains no quotes by construction (see parseFill in utils.js).
         const dc = clrs[i] ? ` data-color="${clrs[i]}"` : '';
-        return `<div class="tb-circle" data-idx="${i}"${dc} style="left:${dl}%;top:${dt}%;background:${bg};border-color:${bc};">` +
-          `<input class="tb-num" maxlength="2" value="${sanitize(num)}" placeholder="" style="color:${fg};">` +
+        return `<div class="tb-circle" data-idx="${i}"${dc} style="left:${dl}%;top:${dt}%;background:${css.background};border-color:${css.borderColor};">` +
+          `<input class="tb-num" maxlength="2" value="${sanitize(num)}" placeholder="" style="color:${css.fg};">` +
           `</div>`;
       }).join('');
     }
@@ -6855,12 +6894,10 @@
         if (isVertical && boardType === 'full') { dl = p[1]; dt = 100 - p[0]; }
         const num = String(oppNums[i] || '');
         const isGk = num === '1';
-        const bg = isGk ? GK_COLOR : (savedOppColors[i] || oppColor);
-        const fg = textColorFor(bg);
-        const bc = darkenHex(bg, 50);
+        const css = fillCss(isGk ? GK_COLOR : (savedOppColors[i] || oppColor));
         const odc = savedOppColors[i] ? ` data-color="${savedOppColors[i]}"` : '';
-        return `<div class="tb-circle tb-circle-opp" data-idx="${i}"${odc} style="left:${dl}%;top:${dt}%;background:${bg};border-color:${bc};">` +
-          `<input class="tb-num" maxlength="2" value="${sanitize(String(oppNums[i] || ''))}" placeholder="" style="color:${fg};">` +
+        return `<div class="tb-circle tb-circle-opp" data-idx="${i}"${odc} style="left:${dl}%;top:${dt}%;background:${css.background};border-color:${css.borderColor};">` +
+          `<input class="tb-num" maxlength="2" value="${sanitize(String(oppNums[i] || ''))}" placeholder="" style="color:${css.fg};">` +
           `</div>`;
       }).join('');
     }
@@ -6896,8 +6933,10 @@
           </div>
           <button class="tb-orient-btn" id="tb-orient" data-tooltip="Toggle orientation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
           <input type="color" class="tb-color-pick" id="tb-team-color" value="${teamColor}" data-tooltip="Team color">
+          ${_stripeControlsHtml('team')}
           <label class="tb-opp-toggle"><input type="checkbox" id="tb-show-opp" ${showOpp ? 'checked' : ''}> Opp</label>
           <input type="color" class="tb-color-pick" id="tb-opp-color" value="${oppColor}" data-tooltip="Opponent color" ${showOpp ? '' : 'style="display:none"'}>
+          <span id="tb-opp-stripes-wrap" ${showOpp ? '' : 'style="display:none"'}>${_stripeControlsHtml('opp')}</span>
           <span class="tb-sep"></span>
           <button class="tb-arrow-tool" id="tb-arrow-tool" data-tooltip="Draw arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
           <input type="color" class="tb-color-pick tb-arrow-color-pick" id="tb-arrow-color" value="${localStorage.getItem('fa_tactic_arrow_color') || '#ffffff'}" data-tooltip="Arrow color">
@@ -7134,8 +7173,8 @@
     }
 
     function saveState() {
-      const tc = document.getElementById('tb-team-color')?.value || '#ffffff';
-      const oc = document.getElementById('tb-opp-color')?.value || '#e53935';
+      const tc = teamFill();
+      const oc = oppFill();
       const circles = inner.querySelectorAll('.tb-circle:not(.tb-circle-opp)');
       // Use dataset.idx as the stable array index; fill gaps with null
       // Preserve existing numbers for deleted slots so they aren't lost
@@ -7168,13 +7207,8 @@
         colors[idx] = c.dataset.color || '';
         // GK recolor: number "1" gets gold
         const isGk = num.trim() === '1';
-        if (isGk) {
-          c.style.background = GK_COLOR; c.style.borderColor = darkenHex(GK_COLOR, 50);
-          inp.style.color = textColorFor(GK_COLOR);
-        } else if (!c.dataset.color) {
-          c.style.background = tc; c.style.borderColor = darkenHex(tc, 50);
-          inp.style.color = textColorFor(tc);
-        }
+        if (isGk) paintCircle(c, GK_COLOR);
+        else if (!c.dataset.color) paintCircle(c, tc);
       });
       localStorage.setItem('fa_tactic_positions', JSON.stringify(pos));
       localStorage.setItem('fa_tactic_numbers', JSON.stringify(nums));
@@ -7210,13 +7244,8 @@
              itself, so picking a colour for one opponent reverted a frame
              later. It looked like the picker did nothing. Home circles had
              the guard already; the opposition never did. */
-          if (num.trim() === '1') {
-            c.style.background = GK_COLOR; c.style.borderColor = darkenHex(GK_COLOR, 50);
-            inp.style.color = textColorFor(GK_COLOR);
-          } else if (!c.dataset.color) {
-            c.style.background = oc; c.style.borderColor = darkenHex(oc, 50);
-            inp.style.color = textColorFor(oc);
-          }
+          if (num.trim() === '1') paintCircle(c, GK_COLOR);
+          else if (!c.dataset.color) paintCircle(c, oc);
         });
         localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(oppPos));
         localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(oppNums));
@@ -7229,28 +7258,27 @@
 
     function spawnCircles(posArr, nums) {
       inner.querySelectorAll('.tb-circle:not(.tb-circle-opp)').forEach(c => c.remove());
-      const tc = '#ffffff';
+      // Was hardcoded '#ffffff', which saveState() then corrected a tick
+      // later. With a striped kit that flash is a whole wrong-looking team.
+      const tc = teamFill();
       posArr.forEach((p, i) => {
         if (!p) return; // null = deleted circle slot
         const d = toDisplay(p[0], p[1]);
         const num = (nums && nums[i]) || '';
         const isGk = String(num) === '1';
-        const bg = isGk ? GK_COLOR : tc;
-        const bc = darkenHex(bg, 50);
         const div = document.createElement('div');
         div.className = 'tb-circle';
         div.dataset.idx = i;
         div.style.left = d[0] + '%';
         div.style.top = d[1] + '%';
-        div.style.background = bg;
-        div.style.borderColor = bc;
         const inp = document.createElement('input');
         inp.className = 'tb-num';
         inp.maxLength = 2;
         inp.value = num;
-        inp.style.color = textColorFor(bg);
         inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); });
         div.appendChild(inp);
+        // After the input exists — paintCircle colours the number too.
+        paintCircle(div, isGk ? GK_COLOR : tc);
         makeDraggable(div);
         inner.appendChild(div);
       });
@@ -7263,8 +7291,7 @@
       if (!f || !formations[f]) return;
       const mirrored = formations[f].map(([l,t]) => [100 - l, t]);
       const adapted = adaptFormation(mirrored);
-      const oc = document.getElementById('tb-opp-color')?.value || '#e53935';
-      const obc = darkenHex(oc, 50);
+      const oc = oppFill();
       adapted.forEach((p, i) => {
         const d = toDisplay(p[0], p[1]);
         const div = document.createElement('div');
@@ -7272,31 +7299,46 @@
         div.dataset.idx = i;
         div.style.left = d[0] + '%';
         div.style.top = d[1] + '%';
-        div.style.background = oc;
-        div.style.borderColor = obc;
         const inp = document.createElement('input');
         inp.className = 'tb-num';
         inp.maxLength = 2;
-        inp.style.color = textColorFor(oc);
         inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); });
         div.appendChild(inp);
+        paintCircle(div, oc);
         makeDraggable(div);
         inner.appendChild(div);
       });
       saveState();
     }
 
+    /* The EFFECTIVE team fill: the swatch's hex, or the encoded stripes if
+       the kit is striped. <input type="color"> can only hold a hex, so the
+       stripe settings live beside it in their own key and the two are
+       combined here — in ONE place, because the editor reads the global
+       colour from the DOM input at nine sites and they must not diverge. */
+    // _stripeCfgOf is shared with the toolbar builder — one reader of the
+    // key, so the controls and the paint can never disagree about the kit.
+    function teamFill() {
+      const c1 = document.getElementById('tb-team-color')?.value || '#ffffff';
+      const cfg = _stripeCfgOf('team');
+      return cfg.on ? encodeFill(true, cfg.dir, cfg.n, c1, cfg.c2) : c1;
+    }
+    function oppFill() {
+      const c1 = document.getElementById('tb-opp-color')?.value || '#e53935';
+      const cfg = _stripeCfgOf('opp');
+      return cfg.on ? encodeFill(true, cfg.dir, cfg.n, c1, cfg.c2) : c1;
+    }
+
     function updateCircleColors() {
-      const tc = document.getElementById('tb-team-color')?.value || '#ffffff';
-      const oc = document.getElementById('tb-opp-color')?.value || '#e53935';
-      localStorage.setItem('fa_tactic_team_color', tc);
-      localStorage.setItem('fa_tactic_opp_color', oc);
+      const tc = teamFill();
+      const oc = oppFill();
+      localStorage.setItem('fa_tactic_team_color', document.getElementById('tb-team-color')?.value || '#ffffff');
+      localStorage.setItem('fa_tactic_opp_color', document.getElementById('tb-opp-color')?.value || '#e53935');
       inner.querySelectorAll('.tb-circle:not(.tb-circle-opp)').forEach(c => {
         const num = c.querySelector('.tb-num')?.value || '';
         if (num === '1') return;
         if (c.dataset.color) return;
-        c.style.background = tc; c.style.borderColor = darkenHex(tc, 50);
-        c.querySelector('.tb-num').style.color = textColorFor(tc);
+        paintCircle(c, tc);
       });
       inner.querySelectorAll('.tb-circle-opp').forEach(c => {
         const num = c.querySelector('.tb-num')?.value || '';
@@ -7304,8 +7346,7 @@
         // Same guard the home team already had: the global picker sets the
         // DEFAULT, and a player given their own colour keeps it.
         if (c.dataset.color) return;
-        c.style.background = oc; c.style.borderColor = darkenHex(oc, 50);
-        c.querySelector('.tb-num').style.color = textColorFor(oc);
+        paintCircle(c, oc);
       });
     }
 
@@ -7473,7 +7514,16 @@
     function closeCtxMenu() {
       if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; }
     }
-    document.addEventListener('click', closeCtxMenu);
+    /* Both listeners containment-check now. The click one did not, so ANY
+       click inside the menu destroyed it — the colour and range rows only
+       survived because they fire `input` from a drag or a native dialog and
+       never need a click that outlives the menu. A checkbox, a number
+       spinner or a direction button would have been removed from the DOM by
+       the very click that operated it. */
+    document.addEventListener('click', e => {
+      if (ctxMenu && ctxMenu.contains(e.target)) return;
+      closeCtxMenu();
+    });
     document.addEventListener('pointerdown', e => {
       if (ctxMenu && !ctxMenu.contains(e.target)) closeCtxMenu();
     });
@@ -7493,6 +7543,57 @@
           picker.value = it.value || '#ffffff';
           picker.addEventListener('input', () => { it.action(picker.value); });
           row.appendChild(picker);
+          ctxMenu.appendChild(row);
+        } else if (it.type === 'stripes') {
+          /* Toggle + count + direction + second colour, as one row group.
+             Every control commits through the same `it.action`, which is
+             handed the WHOLE settings object — the caller keeps the state so
+             changing the first colour does not lose the stripe settings and
+             vice versa. */
+          const st = it.value;
+          const row = document.createElement('div');
+          row.className = 'tb-ctx-item tb-ctx-color-row tb-ctx-stripes';
+          const lab = document.createElement('label');
+          lab.style.cssText = 'display:flex;align-items:center;gap:.3rem;cursor:pointer;';
+          const on = document.createElement('input');
+          on.type = 'checkbox';
+          on.checked = !!st.on;
+          lab.appendChild(on);
+          lab.appendChild(document.createTextNode(t('tactics.stripes')));
+          row.appendChild(lab);
+
+          const opts = document.createElement('span');
+          opts.className = 'tb-stripe-opts';
+          opts.style.display = st.on ? '' : 'none';
+          const nEl = document.createElement('input');
+          nEl.type = 'number'; nEl.min = 2; nEl.max = 6; nEl.value = st.n || 2;
+          nEl.className = 'tb-stripe-n';
+          const dirEl = document.createElement('button');
+          dirEl.type = 'button';
+          dirEl.className = 'tb-stripe-dir';
+          dirEl.dataset.dir = st.dir === 'h' ? 'h' : 'v';
+          dirEl.textContent = dirEl.dataset.dir === 'h' ? '☰' : '|||';
+          const c2El = document.createElement('input');
+          c2El.type = 'color';
+          c2El.className = 'tb-ctx-color-pick';
+          c2El.value = st.c2 || '#ffffff';
+          opts.appendChild(nEl); opts.appendChild(dirEl); opts.appendChild(c2El);
+          row.appendChild(opts);
+
+          const commit = () => {
+            const n = Math.min(6, Math.max(2, parseInt(nEl.value, 10) || 2));
+            nEl.value = n;
+            opts.style.display = on.checked ? '' : 'none';
+            it.action({on: on.checked, n: n, dir: dirEl.dataset.dir, c2: c2El.value});
+          };
+          on.addEventListener('change', commit);
+          nEl.addEventListener('change', commit);
+          c2El.addEventListener('input', commit);
+          dirEl.addEventListener('click', () => {
+            dirEl.dataset.dir = dirEl.dataset.dir === 'h' ? 'v' : 'h';
+            dirEl.textContent = dirEl.dataset.dir === 'h' ? '☰' : '|||';
+            commit();
+          });
           ctxMenu.appendChild(row);
         } else if (it.type === 'range') {
           const row = document.createElement('label');
@@ -7529,9 +7630,7 @@
 
     function applyColorToCircle(circle, color) {
       circle.dataset.color = color;
-      circle.style.background = color;
-      circle.style.borderColor = darkenHex(color, 50);
-      circle.querySelector('.tb-num').style.color = textColorFor(color);
+      paintCircle(circle, color);
       saveState();
       if (circle.classList.contains('tb-circle-opp')) {
         syncColorsForward('oppColors', 'fa_tactic_opp_colors');
@@ -7542,9 +7641,7 @@
     }
 
     function addCircleAt(dispLeft, dispTop, isOpp) {
-      const tc = isOpp
-        ? (document.getElementById('tb-opp-color')?.value || '#e53935')
-        : (document.getElementById('tb-team-color')?.value || '#ffffff');
+      const tc = isOpp ? oppFill() : teamFill();
       // Compute next stable idx — must exceed both DOM indices and stored array length
       // so we never reuse a deleted slot's index
       const selector = isOpp ? '.tb-circle-opp' : '.tb-circle:not(.tb-circle-opp)';
@@ -7560,14 +7657,12 @@
       div.dataset.idx = maxIdx + 1;
       div.style.left = dispLeft + '%';
       div.style.top = dispTop + '%';
-      div.style.background = tc;
-      div.style.borderColor = darkenHex(tc, 50);
       const inp = document.createElement('input');
       inp.className = 'tb-num';
       inp.maxLength = 2;
-      inp.style.color = textColorFor(tc);
       inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); });
       div.appendChild(inp);
+      paintCircle(div, tc);
       makeDraggable(div);
       inner.appendChild(div);
       pushUndo();
@@ -7662,6 +7757,10 @@
         if (last) {
           const inp = last.querySelector('.tb-num');
           if (inp) { inp.value = item.num; }
+          // The home branch above has always done this; the opponent branch
+          // dropped the colour, which was invisible while every opponent was
+          // the same colour and is not once one can be striped.
+          if (item.color) applyColorToCircle(last, item.color);
         }
       } else if (item.type === 'arrow') {
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -7822,18 +7921,38 @@
       circle.addEventListener('contextmenu', e => {
         e.preventDefault();
         e.stopPropagation();
-        const currentColor = circle.dataset.color || circle.style.backgroundColor || '#ffffff';
-        const hexColor = currentColor.startsWith('#') ? currentColor : rgbToHex(currentColor);
+        /* The circle's CURRENT fill, which may be striped.
+           Note this must come from dataset.color: style.backgroundColor
+           reads back as '' under a gradient, so the old fallback showed
+           white for every striped circle. */
+        const curFill = parseFill(circle.dataset.color ||
+          (circle.style.backgroundColor
+            ? rgbToHex(circle.style.backgroundColor) : '') || '#ffffff');
+        /* One state object shared by the colour row and the stripes row, so
+           changing the first colour keeps the stripe settings and changing
+           the stripes keeps the colour. */
+        const st = {
+          on: curFill.striped, n: curFill.n || 2, dir: curFill.dir || 'v',
+          c1: curFill.c1, c2: curFill.c2 || '#ffffff'
+        };
+        const isMulti = selected.has(circle) && selected.size > 1;
+        const applyFill = () => {
+          const v = encodeFill(st.on, st.dir, st.n, st.c1, st.c2);
+          pushUndo();
+          if (isMulti) selected.forEach(c => applyColorToCircle(c, v));
+          else applyColorToCircle(circle, v);
+        };
         const items = [];
 
         // If multi-selected, offer group actions
-        if (selected.has(circle) && selected.size > 1) {
+        if (isMulti) {
           items.push({ label: 'Copy selected (' + selected.size + ')', action: () => copySelectionToClipboard() });
           items.push({ label: 'Duplicate selected (' + selected.size + ')', action: () => duplicateSelection() });
           items.push({
-            type: 'color', value: hexColor,
-            action: (col) => { pushUndo(); selected.forEach(c => applyColorToCircle(c, col)); }
+            type: 'color', value: st.c1,
+            action: (col) => { st.c1 = col; applyFill(); }
           });
+          items.push({ type: 'stripes', value: st, action: (next) => { Object.assign(st, next); applyFill(); } });
           items.push({
             label: 'Delete selected (' + selected.size + ')', danger: true,
             action: () => { pushUndo(); const toDelete = [...selected]; toDelete.forEach(c => deleteCircle(c)); }
@@ -7842,9 +7961,10 @@
           items.push({ label: 'Copy', action: () => copyElementToClipboard(circle) });
           items.push({ label: 'Duplicate', action: () => duplicateElement(circle) });
           items.push({
-            type: 'color', value: hexColor,
-            action: (col) => { pushUndo(); applyColorToCircle(circle, col); }
+            type: 'color', value: st.c1,
+            action: (col) => { st.c1 = col; applyFill(); }
           });
+          items.push({ type: 'stripes', value: st, action: (next) => { Object.assign(st, next); applyFill(); } });
           items.push({
             label: 'Delete', danger: true,
             action: () => { pushUndo(); deleteCircle(circle); }
@@ -9134,18 +9254,53 @@
     document.getElementById('tb-team-color')?.addEventListener('input', updateCircleColors);
     document.getElementById('tb-opp-color')?.addEventListener('input', updateCircleColors);
 
+    /* Stripe controls. Each writes its side's JSON key and then calls
+       updateCircleColors(), which already repaints every circle WITHOUT its
+       own fill and skips goalkeepers — so the kit lands on exactly the
+       players it should and nothing else has to know about stripes. */
+    document.querySelectorAll('.tb-stripes').forEach(function (wrap) {
+      const side = wrap.dataset.side;
+      const onEl = wrap.querySelector('.tb-stripe-on');
+      const optsEl = wrap.querySelector('.tb-stripe-opts');
+      const nEl = wrap.querySelector('.tb-stripe-n');
+      const dirEl = wrap.querySelector('.tb-stripe-dir');
+      const c2El = wrap.querySelector('.tb-stripe-c2');
+      const commit = () => {
+        const n = Math.min(6, Math.max(2, parseInt(nEl.value, 10) || 2));
+        nEl.value = n;  // clamp what the user sees, not just what we store
+        localStorage.setItem('fa_tactic_' + side + '_stripes', JSON.stringify({
+          on: onEl.checked, n: n, dir: dirEl.dataset.dir, c2: c2El.value
+        }));
+        if (optsEl) optsEl.style.display = onEl.checked ? '' : 'none';
+        updateCircleColors();
+      };
+      onEl?.addEventListener('change', commit);
+      nEl?.addEventListener('change', commit);
+      c2El?.addEventListener('input', commit);
+      dirEl?.addEventListener('click', () => {
+        dirEl.dataset.dir = dirEl.dataset.dir === 'h' ? 'v' : 'h';
+        dirEl.textContent = dirEl.dataset.dir === 'h' ? '☰' : '|||';
+        commit();
+      });
+    });
+
     // Opponent toggle
     const showOppCheck = document.getElementById('tb-show-opp');
     const oppColorPick = document.getElementById('tb-opp-color');
+    const oppStripesWrap = document.getElementById('tb-opp-stripes-wrap');
     showOppCheck?.addEventListener('change', () => {
       localStorage.setItem('fa_tactic_show_opp', showOppCheck.checked);
       if (oppColorPick) oppColorPick.style.display = showOppCheck.checked ? '' : 'none';
+      // The opponent's stripe controls follow its swatch — they are useless
+      // with no opponent on the board.
+      if (oppStripesWrap) oppStripesWrap.style.display = showOppCheck.checked ? '' : 'none';
       if (showOppCheck.checked) {
         spawnOppCircles();
       } else {
         inner.querySelectorAll('.tb-circle-opp').forEach(c => c.remove());
         localStorage.removeItem('fa_tactic_opp_positions');
         localStorage.removeItem('fa_tactic_opp_numbers');
+        localStorage.removeItem('fa_tactic_opp_colors');
       }
     });
 
@@ -9824,7 +9979,7 @@
       const oppNumsToUse = mergedOppNums;
 
       // Rebuild circles (skip null entries = deleted circles)
-      const teamColor = document.getElementById('tb-team-color')?.value || '#ffffff';
+      const teamColor = teamFill();
       const clrs = mergedColors;
       inner.querySelectorAll('.tb-circle:not(.tb-circle-opp)').forEach(c => c.remove());
       (f.positions || []).forEach((p, i) => {
@@ -9832,45 +9987,40 @@
           const d = toDisplay(p[0], p[1]);
           const num = (numsToUse && numsToUse[i]) || '';
           const isGk = String(num) === '1';
-          const bg = isGk ? GK_COLOR : (clrs[i] || teamColor);
           const div = document.createElement('div');
           div.className = 'tb-circle';
           div.dataset.idx = i;
           if (clrs[i]) div.dataset.color = clrs[i];
           div.style.left = d[0] + '%'; div.style.top = d[1] + '%';
-          div.style.background = bg; div.style.borderColor = darkenHex(bg, 50);
           const inp = document.createElement('input');
           inp.className = 'tb-num'; inp.maxLength = 2;
           inp.value = (numsToUse && numsToUse[i]) || '';
-          inp.style.color = textColorFor(bg);
           inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); autoSaveFrame(); });
           div.appendChild(inp);
+          paintCircle(div, isGk ? GK_COLOR : (clrs[i] || teamColor));
           makeDraggable(div);
           inner.appendChild(div);
         });
       // Rebuild opp circles (skip null entries)
       inner.querySelectorAll('.tb-circle-opp').forEach(c => c.remove());
-      const oc = document.getElementById('tb-opp-color')?.value || '#e53935';
-      const obc = darkenHex(oc, 50);
+      const oc = oppFill();
       const oClrs = f.oppColors || [];
       (f.oppPositions || []).forEach((p, i) => {
           if (!p) return; // null = deleted circle slot
           const d = toDisplay(p[0], p[1]);
           const num = (oppNumsToUse && oppNumsToUse[i]) || '';
           const isGk = String(num) === '1';
-          const oppBg = isGk ? GK_COLOR : (oClrs[i] || oc);
           const div = document.createElement('div');
           div.className = 'tb-circle tb-circle-opp';
           div.dataset.idx = i;
           if (oClrs[i]) div.dataset.color = oClrs[i];
           div.style.left = d[0] + '%'; div.style.top = d[1] + '%';
-          div.style.background = oppBg; div.style.borderColor = darkenHex(oppBg, 50);
           const inp = document.createElement('input');
           inp.className = 'tb-num'; inp.maxLength = 2;
           inp.value = (oppNumsToUse && oppNumsToUse[i]) || '';
-          inp.style.color = textColorFor(oppBg);
           inp.addEventListener('input', () => { saveState(); syncNumbersAcrossFrames(); autoSaveFrame(); });
           div.appendChild(inp);
+          paintCircle(div, isGk ? GK_COLOR : (oClrs[i] || oc));
           makeDraggable(div);
           inner.appendChild(div);
         });
@@ -10092,8 +10242,8 @@
     function lerp(a, b, t) { return a + (b - a) * t; }
 
     function interpolateAndApply(from, to, t) {
-      const teamColor = document.getElementById('tb-team-color')?.value || '#ffffff';
-      const oppColor = document.getElementById('tb-opp-color')?.value || '#e53935';
+      const teamColor = teamFill();
+      const oppColor = oppFill();
       const currentNumbers = JSON.parse(localStorage.getItem('fa_tactic_numbers') || '[]');
       const currentOppNumbers = JSON.parse(localStorage.getItem('fa_tactic_opp_numbers') || '[]');
       const currentColors = JSON.parse(localStorage.getItem('fa_tactic_colors') || '[]');
@@ -10109,13 +10259,13 @@
         circleMap[Number(c.dataset.idx)] = c;
       });
 
-      // Merge colors: prefer current (synced) over frame-local
-      const fClrs = to.colors || [];
-      const clrs = [];
-      const maxClrLen = Math.max(currentColors.length, fClrs.length);
-      for (let ci = 0; ci < maxClrLen; ci++) {
-        clrs[ci] = currentColors[ci] || fClrs[ci] || '';
-      }
+      /* The FRAME owns colours, matching applyFrameState since v91. This
+         used to prefer the current (synced) array over the frame's, which is
+         the opposite rule — so the editor's own playback disagreed with
+         every other renderer about what colour a player was mid-animation.
+         The same shape of divergence produced the v88 opposition flash. */
+      const clrs = to.colors || [];
+      const oClrs = to.oppColors || [];
       for (let i = 0; i < maxLen; i++) {
         const fP = fromPos[i]; // from-frame position (or null if deleted/absent)
         const tP = toPos[i];   // to-frame position (or null if deleted/absent)
@@ -10131,19 +10281,17 @@
           // Circle new in target frame — create at target position
           const num = currentNumbers[i] || '';
           const isGk = String(num) === '1';
-          const bg = isGk ? GK_COLOR : (clrs[i] || teamColor);
           const d = toDisplay(tP[0], tP[1]);
           const div = document.createElement('div');
           div.className = 'tb-circle';
           div.dataset.idx = i;
           if (clrs[i]) div.dataset.color = clrs[i];
           div.style.left = d[0] + '%'; div.style.top = d[1] + '%';
-          div.style.background = bg; div.style.borderColor = darkenHex(bg, 50);
           const inp = document.createElement('input');
           inp.className = 'tb-num'; inp.maxLength = 2;
           inp.value = num;
-          inp.style.color = textColorFor(bg);
           div.appendChild(inp);
+          paintCircle(div, isGk ? GK_COLOR : (clrs[i] || teamColor));
           inner.appendChild(div);
           circleMap[i] = div;
           continue;
@@ -10185,18 +10333,19 @@
         if (!circle) {
           const num = currentOppNumbers[i] || '';
           const isGk = String(num) === '1';
-          const oppBg = isGk ? GK_COLOR : oppColor;
           const d = toDisplay(tP[0], tP[1]);
           const div = document.createElement('div');
           div.className = 'tb-circle tb-circle-opp';
           div.dataset.idx = i;
+          // oClrs was missing here entirely: the opposition branch read only
+          // the global colour while the home branch honoured per-player.
+          if (oClrs[i]) div.dataset.color = oClrs[i];
           div.style.left = d[0] + '%'; div.style.top = d[1] + '%';
-          div.style.background = oppBg; div.style.borderColor = darkenHex(oppBg, 50);
           const inp = document.createElement('input');
           inp.className = 'tb-num'; inp.maxLength = 2;
           inp.value = num;
-          inp.style.color = textColorFor(oppBg);
           div.appendChild(inp);
+          paintCircle(div, isGk ? GK_COLOR : (oClrs[i] || oppColor));
           inner.appendChild(div);
           oppMap[i] = div;
           continue;
@@ -10690,6 +10839,11 @@
     else localStorage.removeItem('fa_tactic_colors');
     if (board.oppColors) localStorage.setItem('fa_tactic_opp_colors', JSON.stringify(board.oppColors));
     else localStorage.removeItem('fa_tactic_opp_colors');
+    // Board-wide striped kits. Stored as the JSON STRING they were saved as.
+    if (board.teamStripes) localStorage.setItem('fa_tactic_team_stripes', board.teamStripes);
+    else localStorage.removeItem('fa_tactic_team_stripes');
+    if (board.oppStripes) localStorage.setItem('fa_tactic_opp_stripes', board.oppStripes);
+    else localStorage.removeItem('fa_tactic_opp_stripes');
     if (board.arrows && board.arrows.length) localStorage.setItem('fa_tactic_arrows', JSON.stringify(board.arrows));
     else localStorage.removeItem('fa_tactic_arrows');
     if (board.rects && board.rects.length) localStorage.setItem('fa_tactic_rects', JSON.stringify(board.rects));
@@ -10724,7 +10878,9 @@
    */
   function tbClearEditor() {
     ['fa_tactic_formation', 'fa_tactic_positions', 'fa_tactic_numbers',
-      'fa_tactic_colors', 'fa_tactic_opp_colors', 'fa_tactic_name', 'fa_tactic_loaded_id',
+      'fa_tactic_colors', 'fa_tactic_opp_colors',
+      'fa_tactic_team_stripes', 'fa_tactic_opp_stripes',
+      'fa_tactic_name', 'fa_tactic_loaded_id',
       'fa_tactic_template_id', 'fa_tactic_board_type', 'fa_tactic_opp_positions',
       'fa_tactic_opp_numbers', 'fa_tactic_show_opp', 'fa_tactic_balls',
       'fa_tactic_arrows', 'fa_tactic_rects', 'fa_tactic_texts',

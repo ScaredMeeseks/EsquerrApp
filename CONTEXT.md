@@ -1637,3 +1637,37 @@ Two fixes, because the missing entry was only the symptom:
 - The DOM rebuild below the restore was missing `oppColors` too, so `applyFrameState`'s `f.oppColors || []` blanked the colours the restore had just put back.
 
 The wider lesson is the one this session keeps producing: **a parallel-array invariant that nothing checks will eventually be broken by an unrelated change.** The same shape - two things that must agree, with no assertion between them - was behind the v90 opposition-colour bug and the read-only/animation disagreement in v88.
+
+## v93 - striped kits
+
+A player marker was one flat colour, so a coach drawing against a striped side had no way to show it. Both teams read as solid blocks. Now: a **stripes** toggle beside each colour swatch and in the right-click menu, with a count (2-6), a direction, and a second colour.
+
+### The decision everything else followed from: encode a fill as a STRING
+
+```
+s|<v|h>|<n>|<c1>|<c2>        e.g.  s|v|4|#e53935|#ffffff
+```
+
+Circle colour lived as a hex string in about a dozen places - the per-frame colour arrays, every `frames[i].colors`, `buildBoardEntry`, the undo snapshots, copy/paste, `buildCircles`. Encoding into those same slots meant none of them had to learn a new shape, and **per-player stripes inherited per-frame storage and forward propagation for free**.
+
+An object would have been the obvious choice and would have broken the app: circle colours are interpolated **raw into double-quoted HTML attributes** in three places - `data-color="…"` for both teams in the editor's markup, and `data-tc="…" data-oc="…"` on read-only boards. A value containing a quote breaks the markup of every board that uses it. The pipe form has no quotes, and a test pins that.
+
+### fillCss is a chokepoint, not a tidy-up
+
+`darkenHex` had **22 callers and every one was a circle border**; `textColorFor` had 21 on circles. Both parse hex and return `'#NaNNaNNaN'` on `s|…`. So `parseFill` / `fillCss` / `paintCircle` (in `js/utils.js`, beside them) are load-bearing: **`darkenHex` now has zero callers in `app.js`**, and a source assertion keeps it that way.
+
+That matters because there are **five** places that draw a circle - the editor's markup, its frame painter, its animation player, the read-only renderer and the read-only animation player - and nothing but that assertion notices when they diverge. Both of this session's earlier colour bugs were exactly that: v88 (the animation disagreed with the static render about the opposition) and v90 (`saveState` disagreed with everything else).
+
+### Three defects found on the path and fixed
+
+- **`interpolateAndApply` merged colours preferring the current array over the frame's** - the opposite of `applyFrameState` since v91, so the editor's own playback disagreed with every other renderer mid-animation. Now frame-authoritative like the rest.
+- **Its opposition branch ignored per-player colours entirely** while the home branch honoured them.
+- **The context menu's `click` closer had no containment check** (its `pointerdown` sibling does). The existing colour and range rows survived only because they fire `input` from a drag or a native dialog; a checkbox or a number spinner would have been destroyed by the click that operated it. Also `pasteSerializedItem`'s opponent branch dropped the pasted colour, and `spawnCircles` hardcoded `#ffffff` instead of reading the picker - invisible while every opponent was one colour, not once one can be striped.
+
+### Scope
+
+Team kits are **board-wide** (`fa_tactic_team_stripes` / `fa_tactic_opp_stripes`, plus `teamStripes` / `oppStripes` at the TAIL of `buildBoardEntry` - key order is the shard diff). Per-player fills stay per-frame and propagate forward. A player's own fill still overrides the kit, and **the goalkeeper stays solid gold**: `isGk ? GK_COLOR : <fill>` comes first at every site, unchanged.
+
+`_stripeCfgOf` is the single reader of the stripe keys, shared by the toolbar builder and the paint path - the controls and the paint cannot disagree about the kit.
+
+**449 → 467 unit tests** (15 for the fills, 3 source assertions).
