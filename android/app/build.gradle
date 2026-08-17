@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+/* versionCode comes from APP_VERSION in js/app.js — the single number this
+   project already versions everything by (sw.js CACHE_NAME, check-deploy.js,
+   and the in-app "old build" banner all track it).
+
+   It was hardcoded `1` while the app was at 95, which is fine until the
+   second Play upload, when a duplicate versionCode is rejected outright.
+   Deriving it means the number can never disagree with the build, and never
+   needs remembering. */
+def appVersionCode = { ->
+    def f = file('../../js/app.js')
+    if (!f.exists()) throw new GradleException("js/app.js not found — cannot derive versionCode")
+    def m = (f.text =~ /const APP_VERSION = (\d+)/)
+    if (!m) throw new GradleException("APP_VERSION not found in js/app.js — cannot derive versionCode")
+    return m[0][1] as int
+}()
+
 android {
     namespace "com.esquerrapp.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +23,8 @@ android {
         applicationId "com.esquerrapp.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName "${appVersionCode}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +32,27 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    /* Release signing, from environment variables so no key material is ever
+       in the repo. CI populates them from secrets; absent, the release build
+       falls back to unsigned and `assembleDebug` is unaffected — so this can
+       sit here before a Play account exists without breaking anything. */
+    signingConfigs {
+        release {
+            if (System.getenv("ANDROID_KEYSTORE_PATH")) {
+                storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (System.getenv("ANDROID_KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
@@ -44,11 +77,29 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+/* google-services.json is NOT in the repo — CI writes it from the
+   GOOGLE_SERVICES_JSON secret before building.
+
+   This used to be the Capacitor template's try/catch, which logged at
+   `info` and carried on. That meant an unset or malformed secret produced a
+   BUILD THAT SUCCEEDED and an APK whose push was silently dead: no sender
+   id, no FCM, and nothing anywhere saying so. Failing loudly is the whole
+   point — a missing file here is never intentional.
+
+   `allowNoFirebase=true` is the deliberate escape hatch, for someone
+   building the UI locally without the secret:
+       ./gradlew assembleDebug -PallowNoFirebase=true                        */
+def servicesJSON = file('google-services.json')
+if (servicesJSON.exists() && servicesJSON.length() > 0) {
+    apply plugin: 'com.google.gms.google-services'
+} else if (project.hasProperty('allowNoFirebase')) {
+    logger.warn("⚠  google-services.json missing — building WITHOUT Firebase. " +
+                "Push notifications will not work in this build.")
+} else {
+    throw new GradleException(
+        "android/app/google-services.json is missing or empty.\n" +
+        "  CI writes it from the GOOGLE_SERVICES_JSON secret — if this failed in " +
+        "Actions, that secret is unset or not valid base64.\n" +
+        "  Building anyway would produce an APK with silently dead push.\n" +
+        "  To build the UI locally without Firebase: ./gradlew assembleDebug -PallowNoFirebase=true")
 }

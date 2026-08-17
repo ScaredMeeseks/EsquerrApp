@@ -33,15 +33,21 @@ jobs:
           node-version: '22'
 
       - name: Install npm dependencies
-        run: npm install
+        # ci, not install: the lockfile is the record of what a build used,
+        # and `npm install` silently rewrites it. A lock that disagrees with
+        # package.json now fails here instead of producing a differently
+        # resolved APK. (A stale lock is what broke every Cloud Function on
+        # 2026-08-08 — same trap, different directory.)
+        run: npm ci
 
-      - name: Copy web assets to www/
-        run: |
-          mkdir -p www
-          rsync -av --exclude='android' --exclude='node_modules' --exclude='www' \
-            --exclude='.git' --exclude='package.json' --exclude='package-lock.json' \
-            --exclude='capacitor.config.json' --exclude='.github' --exclude='functions' \
-            ./ www/
+      - name: Build the web mirror (www/)
+        # ONE definition of what ships inside the APK, shared with
+        # `npm run build:www`. There used to be two — this rsync and a
+        # PowerShell one-liner — excluding different sets, so a local build
+        # and a CI build put different files in the app. The script
+        # self-checks and exits non-zero if a dev file leaked or an app file
+        # is missing.
+        run: npm run build:www
 
       - name: Sync Capacitor (copy assets + install native plugins)
         run: npx cap sync android
@@ -71,3 +77,36 @@ jobs:
           name: EsquerrApp-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      # ── Play release track ──────────────────────────────────────────
+      # Runs only once an upload keystore exists in secrets, so this can sit
+      # here before there is a Play account without failing a single build.
+      # To turn it on, add: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+      # ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+      #
+      # Play needs an AAB, not an APK, and rejects debuggable builds — which
+      # is why the debug artifact above can never be uploaded to it.
+      - name: Decode upload keystore
+        id: keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > $RUNNER_TEMP/upload.jks
+          echo "path=$RUNNER_TEMP/upload.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed AAB
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Upload AAB artifact
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: EsquerrApp-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90

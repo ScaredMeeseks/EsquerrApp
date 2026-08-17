@@ -1730,3 +1730,33 @@ That plus the gesture fix is the whole iOS notification story. **No Mac, no Appl
 The send path had **no coverage at all**, which is how three defects lived in one function. `test/push-send.test.js` lifts `buildMessage` out of the source the way `reminders.test.js` lifts `squadForSession`, and pins the shape for both platforms, the channel id against the one the manifest declares, and the batching.
 
 **471 → 489 unit tests.**
+
+## v95b - the Android build stops lying, and stops shipping the repo
+
+Follow-up to the store/push audit. No frontend change (`APP_VERSION` unmoved) - this is build configuration and one new page.
+
+### The build could succeed with push dead
+
+`android/app/build.gradle` carried the Capacitor template's `try/catch` around `google-services.json`: missing file, log at `info`, carry on. CI writes that file from a secret, so an unset or malformed `GOOGLE_SERVICES_JSON` produced a **build that succeeded** and an APK with no sender id and silently no push. It now **throws**, with `-PallowNoFirebase=true` as the deliberate escape hatch for building the UI locally.
+
+### The APK was shipping the repo
+
+The mirror was an **exclude list**, so anything new in the root shipped by default. It carried `CONTEXT.md` (239 KB), the whole `test/` suite, `firestore.rules`, the deploy scripts and five debug pages that were **live routes inside the WebView**. An APK is a zip.
+
+There were also **two** definitions of that list - a PowerShell one-liner in `package.json` and the CI rsync - excluding different sets, so a local build and a CI build put different files in the app. Both are now `scripts/build-www.js`, which builds and then **checks itself**: non-zero if a dev file leaked or an app file is missing.
+
+Running it the first time immediately caught `firestore-debug.log`, an emulator leftover that a local `cap:sync` would have bundled. The mirror is 6 root entries and 3.3 MB.
+
+### versionCode was `1`, permanently
+
+Hardcoded, while the app was at 95. The first Play upload would work and the second would be rejected as a duplicate. It is now **derived from `APP_VERSION` in `js/app.js`** - the number this project already versions everything else by - so it cannot disagree with the build and never needs remembering.
+
+### Release path, present but dormant
+
+`signingConfigs.release` reads **environment variables**, so no key material is in the repo, and both it and the `bundleRelease` CI job are guarded on the keystore secret existing. With no secret they are inert and `assembleDebug` is untouched - so the whole Play path can sit here before there is a Play account. Turning it on is four secrets, listed in the workflow.
+
+`npm install` became `npm ci`: the lockfile is the record of what a build used, and `npm install` silently rewrites it. Same trap that broke every Cloud Function on 2026-08-08, one directory over. The Capacitor CLI is pinned to 8.x alongside - it was `^7.6.1` driving 8.3.0 platforms, and `^7` would never have floated.
+
+### privacy.html
+
+A **draft**, written from the code rather than from a template: what is actually stored, including that RPE and injuries are health data and that youth categories mean minors' data. Every club-specific fact is a `⚠` placeholder. It blocks both stores and needs qualified review before publishing - it is a legal exposure for the club, not a bug.
