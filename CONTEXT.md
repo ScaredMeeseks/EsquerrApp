@@ -1816,3 +1816,25 @@ Failed to download archive after 3 attempts.
 ```
 
 GitHub throttling the runner fetching its own action. Transient; a re-run clears it. Worth recording because the symptom — zero jobs, no message, failure at `Set up job` — looks exactly like a permissions or environment misconfiguration, and I spent a round ruling those out (the `github-pages` environment does allow `main`).
+
+## v96 - the two template-save defects
+
+Both were reported as one symptom - *"I'm not sure the edits are being saved correctly"* - and neither was what it looked like. The drawing always saved; two other things went wrong around it.
+
+### The editor was resetting the category
+
+`saveTemplate` wrote `category: String(entry.category || '')` unconditionally. The editor's entry carries **no category** — a template's category is *library* metadata, edited in the Biblioteca table, and the editor has no control for one. So every Save from the editor silently reset it to `''`: set a category, open the board, press Save, gone.
+
+Now guarded on the entry actually carrying one. **`tag` is deliberately left unconditional**, and that contrast is the whole rule: the editor *does* have a tag control, so it owns the tag and must be able to clear it, while the table owns the category, the packs and the published flag. A new template still gets an explicit `''` rather than an absent field, which would render as `undefined` in the table.
+
+### The list was lying about the save
+
+`_abLoad` early-returns on `loaded`, so returning to the Biblioteca re-rendered the **pre-edit row** — old name, old size. The payload had saved; the row had not been re-read. That is almost certainly what was actually seen, since re-opening the template showed the edit correctly.
+
+`_abInvalidate()` is called from **the two template save paths, not from the exit button** — the sidebar is also a way back, and a save followed by any navigation had the same problem.
+
+### Neither had a test, and the second is hard to test
+
+The `saveTemplate` boundary is now pinned by source assertions, including the negative (`category` must NOT be written unconditionally) and the deliberate exception (`tag` must be). The cache test pins that `_abLoad` still short-circuits — **if that early return ever goes, `_abInvalidate` becomes dead code and should go with it**, and the test says so rather than leaving a future reader to wonder.
+
+**489 → 496 unit tests.**

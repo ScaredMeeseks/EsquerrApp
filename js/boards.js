@@ -566,7 +566,6 @@
     var metaDoc = {
       name: String(entry.name || 'Plantilla'),
       tag: String(entry.tag || ''),
-      category: String(entry.category || ''),
       formation: String(entry.formation || ''),
       boardType: String(entry.boardType || 'full'),
       hasFrames: frames.length > 1,
@@ -575,9 +574,26 @@
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       schema: 1
     };
+    /* Only write what the caller actually carries.
+
+       `category` used to be written unconditionally as
+       `String(entry.category || '')`. The editor builds its entry with no
+       category — it has no control for one, because a template's category is
+       LIBRARY metadata edited in the Biblioteca table — so every Save from
+       the editor silently reset it to ''. Set a category, open the board,
+       press Save, and it was gone.
+
+       `tag` is deliberately NOT in this group: the editor does have a tag
+       control, so the editor is its source of truth and must write it
+       through, including clearing it. */
+    if (entry.category !== undefined) metaDoc.category = String(entry.category);
     if (Array.isArray(o.packs)) metaDoc.packs = o.packs;
     if (typeof o.published === 'boolean') metaDoc.published = o.published;
     if (!id) {
+      // A NEW template has nothing to preserve, so the defaults are written
+      // outright — a document missing `category` entirely would render as
+      // undefined in the table rather than as "no category".
+      if (metaDoc.category === undefined) metaDoc.category = '';
       metaDoc.packs = Array.isArray(o.packs) ? o.packs : [];
       metaDoc.published = o.published === true;
       metaDoc.createdAt = firebase.firestore.FieldValue.serverTimestamp();

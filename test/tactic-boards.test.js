@@ -331,3 +331,68 @@ describe('read-only board playback binds once per button', () => {
       'expected a document-wide .tb-ro-play selector');
   });
 });
+
+/* saveTemplate — the library half of the model.
+ *
+ * A template's `category` is edited in the Biblioteca table, NOT in the board
+ * editor, which has no control for it. saveTemplate wrote it unconditionally
+ * as `String(entry.category || '')`, so every Save from the editor — whose
+ * entry carries no category — silently reset it to ''. Set a category, open
+ * the board, press Save, and it was gone.
+ *
+ * These pin the boundary: the editor owns the drawing and the tag, the table
+ * owns the category, the packs and the published flag.
+ */
+describe('saveTemplate — what the editor may and may not overwrite', () => {
+  const src = fs.readFileSync(
+      path.join(__dirname, '..', 'js', 'boards.js'), 'utf8');
+  const body = src.slice(src.indexOf('function saveTemplate('),
+      src.indexOf('function patchTemplate('));
+
+  it('never writes category unconditionally', () => {
+    assert.ok(!/category:\s*String\(entry\.category/.test(body),
+      'category is written unconditionally again — a Save from the editor, ' +
+      'whose entry has no category, will reset it to ""');
+  });
+
+  it('writes category only when the entry carries one', () => {
+    assert.ok(/if \(entry\.category !== undefined\) metaDoc\.category/.test(body),
+      'category must be guarded on the entry actually carrying one');
+  });
+
+  it('still writes tag unconditionally — the editor owns it', () => {
+    // The opposite case, and the reason this is not just "guard everything":
+    // the editor HAS a tag control, so it must be able to clear a tag too.
+    assert.ok(/tag:\s*String\(entry\.tag/.test(body),
+      'tag must keep writing through — the editor is its source of truth');
+  });
+
+  it('gives a brand-new template an explicit category', () => {
+    // Absent rather than '' would render as undefined in the table.
+    assert.ok(/if \(metaDoc\.category === undefined\) metaDoc\.category = ''/.test(body));
+  });
+
+  it('leaves packs and published to the table as well', () => {
+    assert.ok(/if \(Array\.isArray\(o\.packs\)\) metaDoc\.packs/.test(body));
+    assert.ok(/if \(typeof o\.published === 'boolean'\) metaDoc\.published/.test(body));
+  });
+});
+
+/* The catalogue cache, and why a save has to dirty it. */
+describe('the superadmin catalogue cache', () => {
+  const app = fs.readFileSync(
+      path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('_abLoad still short-circuits — which is why invalidation is needed', () => {
+    assert.ok(/_abState\.loaded && !force/.test(app),
+      'if this early return goes, _abInvalidate is dead code and should go too');
+  });
+
+  it('both template save paths dirty it', () => {
+    // Not the exit button: the sidebar is also a way back to the Biblioteca,
+    // and a save followed by ANY navigation showed the pre-edit row.
+    const hits = app.match(/_abInvalidate\(\);/g) || [];
+    assert.ok(hits.length >= 2,
+      'template Save and Save As must both invalidate the catalogue, found ' + hits.length);
+  });
+});

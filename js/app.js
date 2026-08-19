@@ -1291,7 +1291,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 95;
+  const APP_VERSION = 96;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -9493,6 +9493,7 @@
         // Move the baseline forward, or leaving the editor immediately after
         // saving would still claim there is work to lose.
         _tplBaseline = _tbEntryJson(name);
+        _abInvalidate();
         if (saveBtn) {
           const o = saveBtn.textContent;
           saveBtn.textContent = t('tb.saved');
@@ -9575,6 +9576,7 @@
         localStorage.setItem('fa_tactic_template_id', saved.id);
         if (nameInput) { nameInput.value = name.trim(); localStorage.setItem('fa_tactic_name', name.trim()); }
         _tplBaseline = _tbEntryJson(name);
+        _abInvalidate();
         navigate('tactics');
         return;
       }
@@ -14372,6 +14374,20 @@
       '<div id="ab-root"><div class="card">' +
       '<p style="color:var(--text-secondary);font-size:.9rem;">Carregant…</p>' +
       '</div></div>';
+  }
+
+  /* Mark the catalogue cache dirty.
+
+     _abLoad early-returns on `loaded`, so returning to the Biblioteca after
+     editing a template re-rendered the STALE row — pre-edit name and size —
+     and it read exactly like the save had not worked. The payload had saved
+     fine; the list was lying about it.
+
+     Called from the editor's template save paths rather than from the exit
+     button, because the exit button is not the only way back: the sidebar
+     works too, and a save followed by any navigation had the same problem. */
+  function _abInvalidate() {
+    if (_abState) _abState.loaded = false;
   }
 
   /** Read everything the page needs. Small collections, one pass. */
