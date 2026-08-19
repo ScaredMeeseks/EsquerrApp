@@ -9,21 +9,15 @@ real fixes (v95 onwards).
 
 ---
 
-## ⚠ START HERE — test the RPE push notifications first
+## ⚠ START HERE — two jobs, both agreed with the owner on 2026-08-19
 
-Push is **proven end to end**: a convocatòria sent from staff arrived on an Android home-screen PWA
-(2026-08-19). Token → FCM → service worker → notification all work, after the v97 fix.
+### 1. Fix the RPE reminder's match branch — APPROVED, not yet written
 
-What is **not** proven is any of the three **scheduled** reminders. They share `sendToTokens` and
-the same token, so delivery is settled — but the trigger, the audience and the preconditions are
-untested. **Start with the RPE reminder.**
+The owner's spec: *an RPE reminder goes only to a player who **attended the training**, or who
+**was in the convocatòria** for a match.*
 
-Intended behaviour, as stated by the owner: *an RPE reminder goes only to a player who **attended
-the training**, or who **was in the convocatòria** for a match.*
-
-### The training half matches that. The match half does not.
-
-`functions/index.js` ~685, inside `scheduledRpeReminder`:
+The training half already does that. The match half does not — `functions/index.js` ~685, inside
+`scheduledRpeReminder`:
 
 ```js
 if (todayMatch) {
@@ -34,24 +28,75 @@ if (todayMatch) {
 }
 ```
 
-`getTeamMembersByRole` filters by **role only** — no category, no letter, no convocatòria. So on a
-match day **every player in the club is nagged for a match they were never called up to**, including
-players in an entirely different category. The training branch is correct (only `yes`/`late`
-answers, and only the session's own squad via `squadForSession`).
+`getTeamMembersByRole` filters by **role only** — no category, no letter, no convocatòria. On a
+match day every player in the club is nagged for a match they were never called up to, including
+players in a different category.
 
-The fix is to use the convocatòria's own list — `fa_convocatoria_sent[matchId].players`, which is
-exactly "was called up" — instead of every player with the role. Worth doing **before** the test,
-or the test will faithfully reproduce the wrong behaviour.
+**The fix**: read the called-up list from `fa_convocatoria_sent`, which is exactly "was called up".
+It lives in the shard `teams/{clubId}/data/fa_convocatoria_sent__{category}` as a map keyed by
+matchId with `{players: [uid], startingXI: [uid], …}`, so the reminder must read the shard for the
+match's own category rather than the flat role query. Fall back to today's behaviour only if the
+convocatòria is missing — a match nobody was called up to should notify nobody, not everybody.
 
-### How to test it
+Needs a functions deploy. `test/reminders.test.js` covers `squadForSession` and `answeredFor` and
+is the right place to pin the new audience.
 
-The reminder runs at **23:00 Europe/Madrid** and needs, for a training: `teams/{id}.trainingDates`
-to contain today, a session today, the player answered `yes`/`late`, and **no** `rpe` doc yet for
-it. Deleting that one `rpe` doc is the cheapest way to make yourself eligible.
+### 2. The demo club's seeded data — the owner is still not happy
 
-Watch it with `firebase functions:log --only scheduledRpeReminder --project esquerrapp` — it logs
-`rpeReminder {teamId, sessions, missing}` before sending, so a zero `missing` tells you the
+**Nothing has been applied yet.** Every run so far has been a dry run; the club is untouched.
+
+Latest dry run (2026-08-19), after two fixes to the script itself:
+
+```
+records     : 6977 availability, 6496 rpe
+live injuries: 6 amateur / 3 juvenil
+matches marked played : 0      RPE records (training): 64
+match event sets      : 0      RPE records (match)   : 313
+convocatòries         : 0      shard docs to write   : 0
+availability records  : 0
+```
+
+The 313 match-RPE records are the strongest candidate for the visible symptom: readiness estimates
+a match load whenever a player has minutes and no `{uid}_match_{matchId}` doc, and the seeder wrote
+those only for matches already played **when it ran (~5 Aug)**. Everything played since is a gap.
+That is what surfaces as *"Inclou càrrega estimada (no ha reportat RPE)"*.
+
+**But the root cause of the dissatisfaction is NOT established.** Three script bugs have already
+been found by taking the owner's description seriously rather than the script's summary — the
+`recovered`/`resolved` status literal, RPE nested inside the availability branch, and match RPE
+missing entirely. Assume there is a fourth.
+
+**Start by getting a concrete example**: one player, one date, one screen that looks wrong. Then
+read that exact record with the Admin SDK. Every round of guessing from the summary has cost a
+cycle; reading one document would have settled each of them.
+
+Then, and only then:
+
+```bash
+node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45          # dry
+node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply
+```
+
+---
+
+## Push notifications — where they actually stand
+
+**Proven end to end (2026-08-19):** a convocatòria sent by staff arrived on an Android home-screen
+PWA. Token → FCM → service worker → notification all work, after the v97 fix.
+
+**Not proven:** all three scheduled reminders. They share `sendToTokens` and the same token, so
+delivery is settled — the triggers, audiences and preconditions are untested.
+
+To test the RPE reminder: it runs at **23:00 Europe/Madrid** and needs `teams/{id}.trainingDates`
+to contain today, a session today, the player answered `yes`/`late`, and **no** `rpe` doc yet.
+Deleting that one `rpe` doc is the cheapest way to become eligible. Watch it with
+`firebase functions:log --only scheduledRpeReminder --project esquerrapp` — it logs
+`rpeReminder {teamId, sessions, missing}` *before* sending, so a zero `missing` means the
 preconditions failed rather than the push.
+
+One loose end: on one device the permission grant showed an error and the notification arrived
+anyway. That fits `_requestWebPermission` throwing after the grant while `_ensureWebToken` succeeded
+on the next render. Harmless, but the console text would confirm it.
 
 ---
 
@@ -186,22 +231,28 @@ Add-to-Home-Screen banner for iOS Safari. `manifest.json` was already correct.
 
 ## Parking lot
 
-1. **The two template-save defects above.**
-2. **Test push on real devices** — Android, and an iPhone with the app added to the home screen.
-   Everything upstream of the device is verified; **delivery is not**. Nothing else on this list
-   matters as much, because push is what makes the app useful.
-3. **Fill in `privacy.html`** and have it reviewed. Blocks both stores, no code dependency.
-4. **Play Console** — $25, see below. Then four secrets turn on the dormant AAB build.
+The two jobs at the top come first. After those:
+
+1. **Test the remaining two scheduled reminders** — training (3.5–4.5 h ahead, hourly tick) and
+   match availability (Fri 20:00). Delivery is proven; the triggers are not.
+2. **Fill in `privacy.html`** and have it reviewed. It is live at
+   `https://scaredmeeseks.github.io/EsquerrApp/privacy.html` with every club-specific fact still a
+   `⚠` placeholder. Blocks **both** stores, no code dependency, so it can start any time.
+3. **The free D-U-N-S lookup** — <https://developer.apple.com/enroll/duns-lookup/>. The long pole on
+   iOS and it costs nothing to check. Running this from a company, so organisation enrolment is the
+   right route.
+4. **Play Console** — $25 plus identity verification (days). Then four secrets
+   (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+   `ANDROID_KEY_PASSWORD`) turn on the signed AAB build already sitting dormant in the workflow.
 5. **Training detail / session planning** (reported 2026-08-09, untouched): expected-player count
    beside "Assistència Jugadors"; strike through no-shows in the exercise teams; equalise the
    "Planificació entrenament" panel width; make that panel free-text editable. v85 changed the
    squad plumbing underneath — read that part of CONTEXT.md first.
 6. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved` for
    the v43-era APK. **Gated on a current APK actually being on the phones.**
-7. **The APK itself** — CI has built through v95; the phones are on v43-era. Set
+7. **The APK itself** — CI has built through v97; the phones are on v43-era. Set
    `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` only once a current APK is installed. Blocks 6.
-8. **Readiness thresholds** — every measurement so far is against synthetic demo data. Re-measure
-   against real data before touching another one.
+8. **Readiness thresholds** — every measurement so far is against synthetic demo data.
 9. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
    directly. Delete once a v55+ APK circulates.
 10. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to the whole
@@ -209,8 +260,6 @@ Add-to-Home-Screen banner for iOS Safari. `manifest.json` was already correct.
 11. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
     orphaned shards when a category is emptied; uncategorised players inconsistent across three
     staff pages; `backfill-training-teams.js` has no `preflight()`.
-
----
 
 ## Current state
 
@@ -293,6 +342,10 @@ uids and would treat much of the current demo corpus as garbage.
   broken.
 - **A parallel-array invariant that nothing checks will be broken by an unrelated change.** Two
   lists that must stay index-aligned is what broke undo in v90.
+- **Read one document instead of guessing from a summary.** Three bugs in `topup-demo-season.js`
+  were found only because the owner's description of the app contradicted the script's own output —
+  the status literal, RPE nested inside the availability branch, and match RPE missing entirely.
+  Each cost a round trip that reading a single Firestore record would have closed.
 - **"Is this legacy?" is the right question, and the answer is often no.** Two prior fixes in the
   same area made "already fixed" the tempting reply to the v88 flash. It was live.
 - **A failure that looks like misconfiguration may be infrastructure.** Three Pages deploys failed
