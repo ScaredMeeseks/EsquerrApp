@@ -1,8 +1,8 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-19._
+_Rolling document, overwritten each session. Last updated: 2026-08-20._
 
-**Production is on v95.** Tests **685 passing** (489 unit + 134 rules + 53 functions + 9 backfill).
+**Production is on v97.** Tests **698 passing** (499 unit + 134 rules + 56 functions + 9 backfill).
 
 Two blocks of work: the tactical-board features (v86–v94) and a mobile/push audit that turned into
 real fixes (v95 onwards).
@@ -55,49 +55,25 @@ preconditions failed rather than the push.
 
 ---
 
-## ⚠ Two known defects, unfixed
+## The two template-save defects — FIXED in v96
 
-Both found by reading the code after the owner said *"I'm not sure the edits are being saved
-correctly"* on library templates. **Confirmed by inspection, never reproduced in a browser, still
-present.** Either produces exactly that impression.
+Kept as a note because the symptom was misleading and may recur in another form. Reported as
+*"I'm not sure the edits are being saved correctly"*; the drawing always saved.
 
-### A — every template Save wipes the template's category
+- **`saveTemplate` wrote `category` unconditionally.** The editor's entry carries none — a
+  template's category is *library* metadata edited in the Biblioteca table — so every Save from the
+  editor reset it to `''`. Now guarded on the entry carrying one. **`tag` stays unconditional on
+  purpose**: the editor *has* a tag control, so it owns the tag and must be able to clear it. That
+  contrast is the rule.
+- **`_abLoad` short-circuits on `loaded`**, so returning to the Biblioteca re-rendered the pre-edit
+  row. The payload had saved; the row was lying — which is almost certainly what was seen, since
+  re-opening the template showed the edit. `_abInvalidate()` hangs off the two save paths rather
+  than the exit button, because the sidebar is also a way back.
 
-`_tbTemplateEntry(name)` ([js/app.js](js/app.js), search `_tbTemplateEntry`) builds the entry with
-**no category**. `buildBoardEntry` only sets the field when passed
-([js/boards.js:56](js/boards.js#L56)), so `saveTemplate` writes
-`category: String(entry.category || '')` → **`''`** ([js/boards.js](js/boards.js), in
-`saveTemplate`).
-
-Set a category in the Biblioteca table, open the board in the editor, press Save — it is gone.
-
-**Fix in `saveTemplate`, not the caller.** Category is *library* metadata edited in the table; the
-editor has no control for it, so the editor must not write it. Make it conditional, exactly as
-`packs` and `published` already are two lines below:
-
-```js
-if (entry.category !== undefined) metaDoc.category = String(entry.category);
-```
-
-`tag` is the opposite case and must keep writing through — the editor *does* have a tag control.
-
-### B — the Biblioteca list is stale after you leave the editor
-
-`_abLoad(force)` early-returns on `_abState.loaded` ([js/app.js:14381](js/app.js#L14381)). "Tornar
-a la biblioteca" re-renders through `renderPage` → `bindDynamicActions` → `_abLoad(false)`, so the
-row still shows the **pre-edit name and size**. The payload did save; the list is lying. This is
-the likelier cause of what was actually reported, since the drawing round-trips correctly.
-
-Fix: `if (_abState) _abState.loaded = false;` in the `tb-tpl-exit` handler, or `_abLoad(true)`
-after that render.
-
-**Verify by reading the documents, not the row** — that is what distinguishes "did not save" from
-"saved but the list is stale", which the UI cannot:
-
-```python
-db.collection('tacticTemplates').document(TPL).get().to_dict()          # name/tag/category/bytes
-json.loads(db.collection('tacticTemplateData').document(TPL).get().to_dict()['v'])
-```
+Also v96b: a promoted template's category now defaults to **the author's highest category** from
+`clubs/{id}/boardAuthors` rather than the board's `getCurrentCategory()` stamp, falling back to the
+stamp when `ownerUid` is `''` (every migrated and seeded board). The Biblioteca dropdown stays — it
+is a default, not a constraint.
 
 ---
 
