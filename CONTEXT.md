@@ -1778,3 +1778,41 @@ The site is Jekyll-processed (there is **no `.nojekyll`**), so a `_config.yml` `
 **Two lists now, deliberately**: `_config.yml` for the web, `scripts/build-www.js` for the APK. They are different distribution channels with different mechanics, and merging them would mean one of the two lying. They should be changed together, and both fail loudly if the app's own files go missing.
 
 The rules are enforced server-side so publishing them was not a compromise by itself. `CONTEXT.md` is the one that mattered.
+
+## The APK, finally opened (2026-08-19)
+
+The audit left one question unresolved because artifact download needs a token: **has native Android push ever worked?** The committed `android/` project has neither the push plugin wired nor `google-services.json`, so a LOCAL build definitely produces an APK with dead push. CI regenerates both — but nothing asserted it.
+
+Downloaded and unzipped the artifact from `8a01eaf`. It is fine:
+
+```
+assets/capacitor.plugins.json
+  @capacitor/push-notifications   → PushNotificationsPlugin
+  @capacitor/local-notifications  → LocalNotificationsPlugin
+
+resources.arsc
+  1:555691808277:android:0c708830b22c6ddc09601c     ← google-services.json WAS applied
+```
+
+So **native push is wired in every CI build**, and has been. The stale committed Gradle files only bite someone building locally. The `throw` added in the previous version now makes the CI half impossible to break silently as well.
+
+The same unzip confirmed the mirror trim landed, which is the point of checking the artifact rather than the script:
+
+```
+assets/public/  →  index.html  sw.js  manifest.json  privacy.html  css  img  js
+                   (+ cordova.js / cordova_plugins.js, injected by Capacitor)
+assets/public/CONTEXT.md        0 entries
+assets/public/test              0 entries
+assets/public/firestore.rules   0 entries
+```
+
+### The Pages failures were never ours
+
+Three consecutive `pages build and deployment` failures, all with the **build** green and the **deploy** job dying in `Set up job`. The log says why, and it is nothing to do with this repo:
+
+```
+Failed to download action 'actions/deploy-pages' ... 429 (Too Many Requests)
+Failed to download archive after 3 attempts.
+```
+
+GitHub throttling the runner fetching its own action. Transient; a re-run clears it. Worth recording because the symptom — zero jobs, no message, failure at `Set up job` — looks exactly like a permissions or environment misconfiguration, and I spent a round ruling those out (the `github-pages` environment does allow `main`).
