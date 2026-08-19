@@ -2461,9 +2461,39 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
         throw new HttpsError("not-found", "Pissarra no trobada.");
       }
 
+      const board = metaSnap.data() || {};
       const v = anonymiseBoardPayload((dataSnap.data() || {}).v);
       const templateId = "tt_" + Date.now() + "_" +
         Math.random().toString(36).slice(2, 8);
+
+      /* The template's category defaults to THE AUTHOR'S — the highest
+         category they coach — not to the board's own stamp.
+
+         A board is stamped with `getCurrentCategory()`, whichever squad the
+         coach happened to be looking at when they saved. The author label in
+         clubs/{clubId}/boardAuthors already holds something better: their
+         highest category, picked by authorLabelFrom as the LOWEST index in
+         CATEGORY_ORDER, and frozen if they leave. For a library sold by
+         level, "what a cadet coach drew" is the useful default; "which tab
+         was open" is not.
+
+         Falls back to the board's stamp when there is no author to ask —
+         ownerUid is '' for everything the migration produced and for seeded
+         boards — and the superadmin can override it in the Biblioteca table
+         either way. This is a DEFAULT, not a constraint. */
+      let category = String(board.category || "");
+      if (board.ownerUid && board.clubId) {
+        try {
+          const authorSnap = await db.collection("clubs").doc(String(board.clubId))
+              .collection("boardAuthors").doc(String(board.ownerUid)).get();
+          const authorCat = authorSnap.exists ?
+            String((authorSnap.data() || {}).category || "") : "";
+          if (authorCat) category = authorCat;
+        } catch (e) {
+          // A label is cosmetic. Never fail a promotion over one.
+          logger.warn("boardAuthors lookup failed", {boardId, error: e.message});
+        }
+      }
 
       // One batch: a template whose payload is missing is a row in the
       // superadmin library that cannot be seeded, and nothing would say why.
@@ -2474,7 +2504,8 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
       // has not been.
       const batch = db.batch();
       batch.set(db.collection("tacticTemplates").doc(templateId),
-          Object.assign(templateMetaFrom(metaSnap.data() || {}), {
+          Object.assign(templateMetaFrom(board), {
+            category,
             packs,
             published: false,
             bytes: Buffer.byteLength(v, "utf8"),
@@ -2490,7 +2521,7 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
       // re-promoting the same board overwrites rather than accumulating.
       batch.set(db.collection("tacticTemplateSources").doc(boardId), {
         templateId,
-        clubId: String((metaSnap.data() || {}).clubId || ""),
+        clubId: String(board.clubId || ""),
         promotedAt: FieldValue.serverTimestamp(),
       });
       await batch.commit();

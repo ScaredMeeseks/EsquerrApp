@@ -87,6 +87,11 @@ async function wipe() {
     const s = await db.collection(c).get();
     await Promise.all(s.docs.map((d) => d.ref.delete()));
   }
+  // Author labels drive the promoted category now, so a leftover one would
+  // make the fallback tests pass for the wrong reason.
+  const authors = await db.collection('clubs').doc(CLUB)
+      .collection('boardAuthors').get();
+  await Promise.all(authors.docs.map((d) => d.ref.delete()));
 }
 
 /** Promote, then publish — what the superadmin UI does in two steps. */
@@ -145,6 +150,39 @@ describe('promoteBoardTemplate', function () {
     assert.strictEqual(t.ownerName, undefined);
     assert.strictEqual(t.clubId, undefined);
     assert.strictEqual(t.sourceBoardId, undefined);
+  });
+
+  /* The category a template lands with is the AUTHOR'S highest category,
+     not the board's own stamp. A board carries whichever squad the coach was
+     looking at when they saved (`getCurrentCategory()`); the author label
+     carries their highest, which is what a library sold by level wants. */
+  it("defaults the category to the author's highest, not the board's stamp", async () => {
+    // seedBoard stamps the board 'cadet'; the author coaches amateur, which
+    // is higher (lower index in CATEGORY_ORDER).
+    await db.doc('clubs/' + CLUB + '/boardAuthors/uidCoach').set({
+      name: 'Coach Name', category: 'amateur', letters: ['A'], active: true,
+    });
+    const r = await promote({boardId: 'b1'});
+    const t = (await db.doc('tacticTemplates/' + r.templateId).get()).data();
+    assert.strictEqual(t.category, 'amateur');
+  });
+
+  it("falls back to the board's stamp when there is no author", async () => {
+    // ownerUid '' is every migrated and every seeded board — there is no
+    // author to ask, and inventing one would be a lie.
+    await db.doc('tacticBoards/b1').set({ownerUid: ''}, {merge: true});
+    const r = await promote({boardId: 'b1'});
+    const t = (await db.doc('tacticTemplates/' + r.templateId).get()).data();
+    assert.strictEqual(t.category, 'cadet');
+  });
+
+  it('falls back when the author record exists but has no category', async () => {
+    await db.doc('clubs/' + CLUB + '/boardAuthors/uidCoach').set({
+      name: 'Coach Name', category: '', letters: [], active: false,
+    });
+    const r = await promote({boardId: 'b1'});
+    const t = (await db.doc('tacticTemplates/' + r.templateId).get()).data();
+    assert.strictEqual(t.category, 'cadet');
   });
 
   it('lands as a DRAFT — a copy to work on, not a product', async () => {

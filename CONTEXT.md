@@ -1838,3 +1838,17 @@ Now guarded on the entry actually carrying one. **`tag` is deliberately left unc
 The `saveTemplate` boundary is now pinned by source assertions, including the negative (`category` must NOT be written unconditionally) and the deliberate exception (`tag` must be). The cache test pins that `_abLoad` still short-circuits — **if that early return ever goes, `_abInvalidate` becomes dead code and should go with it**, and the test says so rather than leaving a future reader to wonder.
 
 **489 → 496 unit tests.**
+
+### The promoted category comes from the AUTHOR, not the board (v96b)
+
+Follow-up on the owner's read of it: *"show which category the coach worked on (higher level)"*.
+
+A board is stamped with `getCurrentCategory()` — whichever squad the coach happened to have open when they saved. `clubs/{clubId}/boardAuthors` already holds something better: the author's **highest** category, picked by `authorLabelFrom` as the lowest index in `CATEGORY_ORDER`, and frozen if they leave the club. For a library sold by level, "what a cadet coach drew" is the useful default; "which tab was open" is not.
+
+`promoteBoardTemplate` now reads that label and uses it, **falling back to the board's stamp** when there is no author to ask — `ownerUid` is `''` for everything the migration produced and for every seeded board. The lookup is wrapped: a label is cosmetic and must never fail a promotion.
+
+It remains a **default**. The dropdown in the Biblioteca stays, because the derived value can still be wrong — a coach who works across categories, or a general drill that belongs to no level in particular — and because for a sellable pack the category is a product decision rather than a fact about who drew it.
+
+Three tests: the author's category wins over the board's, and both fallbacks (no author, author with no category). `wipe()` now clears `boardAuthors` too, or the fallback tests would have passed for the wrong reason.
+
+**53 → 56 functions tests.**
