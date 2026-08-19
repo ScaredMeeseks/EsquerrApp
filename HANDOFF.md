@@ -9,7 +9,53 @@ real fixes (v95 onwards).
 
 ---
 
-## ⚠ START HERE — two known defects, unfixed
+## ⚠ START HERE — test the RPE push notifications first
+
+Push is **proven end to end**: a convocatòria sent from staff arrived on an Android home-screen PWA
+(2026-08-19). Token → FCM → service worker → notification all work, after the v97 fix.
+
+What is **not** proven is any of the three **scheduled** reminders. They share `sendToTokens` and
+the same token, so delivery is settled — but the trigger, the audience and the preconditions are
+untested. **Start with the RPE reminder.**
+
+Intended behaviour, as stated by the owner: *an RPE reminder goes only to a player who **attended
+the training**, or who **was in the convocatòria** for a match.*
+
+### The training half matches that. The match half does not.
+
+`functions/index.js` ~685, inside `scheduledRpeReminder`:
+
+```js
+if (todayMatch) {
+  const all = await getTeamMembersByRole(teamId, "player");   // EVERY player in the club
+  all.forEach((uid) => {
+    if (!rpeIds.has(uid + "_match_" + todayMatch.id)) missing.add(uid);
+  });
+}
+```
+
+`getTeamMembersByRole` filters by **role only** — no category, no letter, no convocatòria. So on a
+match day **every player in the club is nagged for a match they were never called up to**, including
+players in an entirely different category. The training branch is correct (only `yes`/`late`
+answers, and only the session's own squad via `squadForSession`).
+
+The fix is to use the convocatòria's own list — `fa_convocatoria_sent[matchId].players`, which is
+exactly "was called up" — instead of every player with the role. Worth doing **before** the test,
+or the test will faithfully reproduce the wrong behaviour.
+
+### How to test it
+
+The reminder runs at **23:00 Europe/Madrid** and needs, for a training: `teams/{id}.trainingDates`
+to contain today, a session today, the player answered `yes`/`late`, and **no** `rpe` doc yet for
+it. Deleting that one `rpe` doc is the cheapest way to make yourself eligible.
+
+Watch it with `firebase functions:log --only scheduledRpeReminder --project esquerrapp` — it logs
+`rpeReminder {teamId, sessions, missing}` before sending, so a zero `missing` tells you the
+preconditions failed rather than the push.
+
+---
+
+## ⚠ Two known defects, unfixed
 
 Both found by reading the code after the owner said *"I'm not sure the edits are being saved
 correctly"* on library templates. **Confirmed by inspection, never reproduced in a browser, still
@@ -212,6 +258,30 @@ Add-to-Home-Screen banner for iOS Safari. `manifest.json` was already correct.
   `--name`), join code `9CA4RR`, `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`.
   3 teams / 77 members.
 - `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona test club. **Holds seeded boards from template testing.**
+
+### Demo club data — state as of 2026-08-19
+
+`--verify` is clean: 78 members, 6977 availability, 6496 rpe, 48 training dates, 34 match dates,
+season from 2026-03-01, every stored score already agreeing with its events. The club is populated,
+not empty.
+
+`topup-demo-season.js` (dry run) finds only small gaps, all of them dated **after the seed run
+(~5 Aug)** — the seeder writes availability and RPE only for sessions already in the past when it
+runs, so everything played since is thin:
+
+```
+matches marked played : 0     RPE (training) : 64
+convocatòries         : 0     RPE (match)    : added in the last fix, re-run to see
+availability records  : 0
+```
+
+Live injuries are **6 amateur / 3 juvenil** — normal. An earlier run reported 23 and 12 because the
+script tested `status !== "recovered"` while the seeder writes `active|recovering|resolved`, so
+every historical injury counted as live. That was a bug in the script, not in the data.
+
+**"Inclou càrrega estimada (no ha reportat RPE)"** appears when a player has availability but no RPE
+for that session — readiness then borrows the squad average. It is the visible symptom of the gap
+above, and of missing **match** RPE, which the first version of the top-up did not handle at all.
 
 ### ⚠ Never run `seed-demo-club.js --apply` at the demo club
 

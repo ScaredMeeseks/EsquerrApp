@@ -166,7 +166,7 @@ async function main() {
 
   const writes = [];   // {ref, data, merge}
   const records = [];  // {ref, data}
-  const summary = {matchesPlayed: 0, events: 0, convocatories: 0, avail: 0, rpe: 0};
+  const summary = {matchesPlayed: 0, events: 0, convocatories: 0, avail: 0, rpe: 0, matchRpe: 0};
 
   for (const cat of cats) {
     rnd = mulberry32(SEED + cat.length); // stable per category
@@ -212,6 +212,29 @@ async function main() {
         };
         cChanged = true; summary.convocatories++;
       }
+
+      /* Match RPE, for the players who were actually called up.
+
+         Missed on the first pass, which is why "Inclou càrrega estimada"
+         survived a run that reported almost nothing to do: readiness
+         estimates a match load whenever the player has minutes and no RPE
+         doc, and the seeder only wrote match RPE for matches that were
+         already played WHEN IT RAN. Everything played since is a gap. */
+      const called = (convo[m.id] && convo[m.id].players) || [];
+      const startingXI = (convo[m.id] && convo[m.id].startingXI) || [];
+      called.forEach((uid) => {
+        const rKey = `${uid}_match_${m.id}`;
+        if (haveRpe.has(rKey)) return;
+        // Starters go the distance; the rest come off the bench.
+        const minutes = startingXI.includes(uid) ? rint(70, 90) : rint(10, 35);
+        const rpe = rint(5, 9); // a match is harder than a session
+        records.push({ref: rpeCol.doc(rKey),
+          data: {uid, rpe, minutes, ua: rpe * minutes,
+            tag: "match", date: m.date, matchId: m.id,
+            updatedAt: FieldValue.serverTimestamp(), source: "topup"}});
+        haveRpe.add(rKey);
+        summary.matchRpe++;
+      });
 
       if (!events[m.id] || !events[m.id].length) {
         const ourSide = (m.home && club.name && m.home === club.name) ? "home" : "away";
@@ -317,7 +340,8 @@ async function main() {
   log(`  match event sets      : ${summary.events}`);
   log(`  convocatòries         : ${summary.convocatories}`);
   log(`  availability records  : ${summary.avail}`);
-  log(`  RPE records           : ${summary.rpe}`);
+  log(`  RPE records (training): ${summary.rpe}`);
+  log(`  RPE records (match)   : ${summary.matchRpe}`);
   log(`  shard docs to write   : ${writes.length}`);
   log(`  trainingDates/matchDates → ${teamPatch.trainingDates.length}/${teamPatch.matchDates.length}`);
 
