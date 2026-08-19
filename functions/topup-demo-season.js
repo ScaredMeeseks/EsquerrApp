@@ -155,6 +155,15 @@ async function main() {
       .filter((c) => c && c !== "none"))];
   log(`categories  : ${cats.join(", ") || "(none)"}`);
 
+  /* Read the record collections ONCE, with their VALUES — the RPE decision
+     depends on what the player answered, not merely on whether they did. */
+  const availCol = db.collection("teams").doc(CLUB).collection("trainingAvail");
+  const rpeCol = db.collection("teams").doc(CLUB).collection("rpe");
+  const [availSnap, rpeSnap] = await Promise.all([availCol.get(), rpeCol.get()]);
+  const availByKey = new Map(availSnap.docs.map((d) => [d.id, d.data() || {}]));
+  const haveRpe = new Set(rpeSnap.docs.map((d) => d.id));
+  log(`records     : ${availByKey.size} availability, ${haveRpe.size} rpe`);
+
   const writes = [];   // {ref, data, merge}
   const records = [];  // {ref, data}
   const summary = {matchesPlayed: 0, events: 0, convocatories: 0, avail: 0, rpe: 0};
@@ -170,11 +179,17 @@ async function main() {
     // Injured players must never be marked available: the roster badge and
     // the medical page would contradict each other, which is exactly the
     // kind of detail a football person spots immediately.
+    /* `resolved` is the seeder's word for a finished injury — NOT
+       "recovered", which is what this line said first. Testing the wrong
+       literal counted every historical injury as live and reported 23 of 50
+       players injured when the squad has three live cases. It was cosmetic
+       here (this set only picks the availability value for sessions that
+       have none) but it was wrong on screen, which is worse. */
     const injuredUids = new Set((blobOf(docs.get(key("fa_injuries"))) || [])
-        .filter((i) => i && i.status !== "recovered")
+        .filter((i) => i && (i.status === "active" || i.status === "recovering"))
         .map((i) => String(i.playerId || i.uid)));
 
-    step(`${cat} — ${players.length} players, ${injuredUids.size} injured`);
+    step(`${cat} — ${players.length} players`);
 
     // ── 1/2/3. Matches ──
     const matches = blobOf(docs.get(key("fa_matches"))) || [];
@@ -233,43 +248,53 @@ async function main() {
     // ── 4. Trainings: availability, then RPE for those who turned up ──
     const trainings = blobOf(docs.get(key("fa_training"))) || [];
     const past = trainings.filter((t) => t.date && t.date < todayStr && t.date >= start);
-    log(`  matches: ${matches.length} (${summary.matchesPlayed} newly played)  ` +
+    log(`  live injuries: ${injuredUids.size}
+  matches: ${matches.length} (${summary.matchesPlayed} newly played)  ` +
         `trainings in window: ${past.length}`);
 
-    // Existing records, so we only ever create.
-    const availCol = db.collection("teams").doc(CLUB).collection("trainingAvail");
-    const rpeCol = db.collection("teams").doc(CLUB).collection("rpe");
-    const [availSnap, rpeSnap] = await Promise.all([availCol.get(), rpeCol.get()]);
-    const haveAvail = new Set(availSnap.docs.map((d) => d.id));
-    const haveRpe = new Set(rpeSnap.docs.map((d) => d.id));
+    /* Availability and RPE are decided SEPARATELY.
 
+       They were nested — RPE was only considered when creating a new
+       availability record — so on a club that already had 6854 availability
+       records the RPE branch could never run, and the script reported
+       "0 RPE records" while the app was visibly falling back to
+       "Inclou càrrega estimada (no ha reportat RPE)" for those very
+       sessions. A gap inside a filled-in field is exactly the shape a
+       top-up has to be able to see. */
     for (const t of past) {
       for (const p of players) {
         const uid = String(p.id || p.uid);
-        // The seeder's legacy key shape, which the app still reads.
-        const aKey = `${uid}_${t.date}`;
-        const injured = injuredUids.has(uid);
-        if (!haveAvail.has(aKey) && !haveAvail.has(`${uid}_${t.id}`)) {
-          const value = injured ? "injured" :
+        // Session-keyed is the current shape; date-keyed is the seeder's.
+        // The app reads both, so either counts as present.
+        const aSess = `${uid}_${t.id}`;
+        const aDate = `${uid}_${t.date}`;
+        const existing = availByKey.get(aSess) || availByKey.get(aDate);
+        let value = existing && existing.value;
+
+        if (!value) {
+          value = injuredUids.has(uid) ? "injured" :
             weighted([["yes", 78], ["late", 8], ["no", 14]]);
-          records.push({ref: availCol.doc(aKey),
+          records.push({ref: availCol.doc(aDate),
             data: {uid, date: t.date, sessionId: t.id || null, value,
               updatedAt: FieldValue.serverTimestamp(), source: "topup"}});
           summary.avail++;
-          if (value === "yes" || value === "late") {
-            const rKey = `${uid}_training_${t.date}`;
-            if (!haveRpe.has(rKey) && !haveRpe.has(`${uid}_training_${t.id}`)) {
-              const rpe = rint(3, 9);
-              const minutes = weighted([[60, 20], [75, 35], [90, 45]]);
-              records.push({ref: rpeCol.doc(rKey),
-                data: {uid, rpe, minutes,
-                  ua: rpe * minutes, // invariant the seeder's selfCheck pins
-                  tag: "training", date: t.date, sessionId: t.id || null,
-                  updatedAt: FieldValue.serverTimestamp(), source: "topup"}});
-              summary.rpe++;
-            }
-          }
         }
+
+        // Only players who actually turned up report a load. `no` and
+        // `injured` are excluded by readiness anyway, so an RPE for them
+        // would be noise the app then has to ignore.
+        if (value !== "yes" && value !== "late") continue;
+        const rKey = `${uid}_training_${t.date}`;
+        if (haveRpe.has(rKey) || haveRpe.has(`${uid}_training_${t.id}`)) continue;
+        const rpe = rint(3, 9);
+        const minutes = weighted([[60, 20], [75, 35], [90, 45]]);
+        records.push({ref: rpeCol.doc(rKey),
+          data: {uid, rpe, minutes,
+            ua: rpe * minutes, // invariant the seeder's selfCheck pins
+            tag: "training", date: t.date, sessionId: t.id || null,
+            updatedAt: FieldValue.serverTimestamp(), source: "topup"}});
+        haveRpe.add(rKey); // a session can appear in two categories' shards
+        summary.rpe++;
       }
     }
   }
