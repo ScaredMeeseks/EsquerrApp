@@ -1852,3 +1852,40 @@ It remains a **default**. The dropdown in the Biblioteca stays, because the deri
 Three tests: the author's category wins over the board's, and both fallbacks (no author, author with no category). `wipe()` now clears `boardAuthors` too, or the fallback tests would have passed for the wrong reason.
 
 **53 → 56 functions tests.**
+
+## v97 - a granted user could end up with no token, and no way back
+
+Found while writing the push test guide, not from a report — which is the point: it is **silent on every side**.
+
+v95 moved the permission prompt behind a user gesture. That was right; it had been firing from the auth-state handler with no gesture, which browsers auto-deny and iOS ignores outright. But the soft-ask banner then became the **only** caller of `requestPermission()`, and the banner only renders while `Notification.permission === 'default'`. Logging out deletes the token by design. So:
+
+```
+grant → token saved → log out (token deleted) → log back in
+     → banner hidden, because permission is 'granted', not 'default'
+     → no token, no UI to create one, nothing logged anywhere
+```
+
+Before v95 the auth handler re-saved the token on every login, which quietly covered this. Removing that call took the re-registration path with it — and it also stranded **every user who had granted before v95**, whose token was never refreshed again.
+
+`_ensureWebToken()` now runs from `_initWeb`: if permission is **already granted**, acquire and save. No gesture is needed precisely *because* permission exists — `getToken()` prompts nobody when the answer is already yes. The banner keeps owning the actual ask, so the v95 fix stands.
+
+`_initNative` had the identical hole — `register()` was only reachable through `_requestNativePermission`, which only the banner calls — so it now registers when `checkPermissions()` reports granted.
+
+Three source assertions pin both halves, including the negative: `_ensureWebToken` must test for `'granted'`, or it becomes the gesture-less prompt v95 removed, reintroduced by the fix for its own side effect.
+
+**496 → 499 unit tests.**
+
+## topup-demo-season.js
+
+`seed-demo-club.js --apply` builds a club **from nothing**, and is guarded by neither the `demoSeed` stamp nor `PROTECTED_CLUBS` — only `--purge` and `--add-team` are. Aimed at the populated demo club it would rewrite the `categories` map, **replace** data shards with a bare `set()` (losing amateur-B and juvenil-A from `fa_users__amateur`, which is routed by category with no team letter), and reset all 77 Auth passwords.
+
+So topping up a demo season needed a different tool, built on the opposite principle: **only ever add**.
+
+- Refuses any club not stamped `demoSeed: true`, and anything in `PROTECTED_CLUBS`.
+- Every shard write is read-merge-write keyed by row id; every record write is create-only, because a real answer from a demo login is worth more than a fabricated one.
+- Fills what actually makes the app look alive: past matches still stamped `upcoming` (the seeder sets status once and never revisits it), `fa_match_events` for played matches — **the score is recomputed from events, so a played match without them renders 0-0** — `fa_convocatoria_sent`, without which a match contributes **zero** to every player's stats, and then availability followed by RPE, because readiness needs the whole chain or it skips the session silently.
+- Writes nothing before the club's `seasonBoundary`; six read-time filters slice on it.
+- Refreshes `trainingDates`/`matchDates`, which every push reminder queries.
+- Dry run by default.
+
+**The first move is still `seed-demo-club.js --verify`** — read-only, and the club may well already have the data, with only the stale `upcoming` status making it look empty.

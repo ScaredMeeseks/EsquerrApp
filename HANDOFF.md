@@ -208,9 +208,30 @@ Add-to-Home-Screen banner for iOS Safari. `manifest.json` was already correct.
 ### Clubs in production
 
 - `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`, `amateur` only.
-- `Tm96gel58VSQvxgynf45` — **demo club**, join code `9CA4RR`, `coach@demo.esquerrapp.app` /
-  `DemoEsquerra2026!`.
+- `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar", the seeder's default
+  `--name`), join code `9CA4RR`, `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`.
+  3 teams / 77 members.
 - `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona test club. **Holds seeded boards from template testing.**
+
+### ⚠ Never run `seed-demo-club.js --apply` at the demo club
+
+`apply()` builds a club **from nothing**. Pointed at the populated demo club it destroys it three
+ways, silently: it rewrites the whole `categories` map, it **replaces** data shards with a bare
+`set()` — and `fa_users` is routed by category with no team letter, so `fa_users__amateur` would
+lose amateur-B and juvenil-A — and it resets all 77 Auth passwords. It is guarded by neither the
+`demoSeed` stamp nor `PROTECTED_CLUBS`; only `--purge` and `--add-team` are.
+
+What is safe:
+
+```bash
+node functions/seed-demo-club.js --verify --club Tm96gel58VSQvxgynf45   # read-only
+node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45         # dry run
+node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additive only
+```
+
+`--purge` works but deletes the club, all 77 Auth accounts, and invalidates `9CA4RR` and the
+handed-out credentials. **Do not run `cleanup-seed.js`** — it still keys on pre-Phase-1 numeric
+uids and would treat much of the current demo corpus as garbage.
 
 ---
 

@@ -180,3 +180,45 @@ describe('sendToTokens batching', () => {
     assert.ok(/messaging\/invalid-argument/.test(SRC));
   });
 });
+
+/* The CLIENT half — token registration.
+ *
+ * v95 moved the permission prompt behind a user gesture, which was right: it
+ * had been firing from the auth-state handler with no gesture, which browsers
+ * auto-deny and iOS ignores outright. But the soft-ask banner became the ONLY
+ * caller of requestPermission(), and it only renders while
+ * Notification.permission === 'default'. Since logging out deletes the token
+ * by design, a user who granted and then logged out had no token and no UI to
+ * make one — silently, with nothing logged.
+ *
+ * The repair is to acquire a token on init when permission is ALREADY
+ * granted, which needs no gesture precisely because there is nothing to
+ * prompt. These pin that both platforms do it.
+ */
+describe('push client — a granted user always ends up with a token', () => {
+  const push = fs.readFileSync(
+      path.join(__dirname, '..', 'js', 'push.js'), 'utf8');
+
+  it('the web init path acquires a token when permission is granted', () => {
+    assert.ok(/_ensureWebToken\s*\(\)/.test(push),
+      '_initWeb must call _ensureWebToken, or a granted user who logs out ' +
+      'can never register again');
+    const fn = push.slice(push.indexOf('async function _ensureWebToken'));
+    assert.ok(/Notification\.permission !== 'granted'/.test(fn.slice(0, 600)),
+      'it must only run when permission is already granted — otherwise it is ' +
+      'the gesture-less prompt v95 removed, reintroduced');
+  });
+
+  it('the native init path registers when permission is granted', () => {
+    const fn = push.slice(push.indexOf('async function _initNative'),
+        push.indexOf('async function _requestNativePermission'));
+    assert.ok(/checkPermissions\(\)/.test(fn) && /\.register\(\)/.test(fn),
+      '_initNative must register when checkPermissions() reports granted');
+  });
+
+  it('still saves the platform, which decides the message shape', () => {
+    // 'android' (browser) vs 'android-native' (Capacitor) picks web vs native
+    // in buildMessage. Getting it wrong shows nothing on the device.
+    assert.ok(/platform: _isNative\(\) \? 'android-native' : _getPlatform\(\)/.test(push));
+  });
+});

@@ -33,6 +33,22 @@ const Push = (() => {
     }
     console.log('Push: native plugin found, setting up listeners');
 
+    /* Register when permission has ALREADY been granted — the native twin of
+       _ensureWebToken. register() was only reachable through
+       _requestNativePermission, which only the soft-ask banner calls, so a
+       native user who had granted and then logged out (removeToken) had no
+       way to get a token back either.
+
+       checkPermissions() prompts nobody; it only reports. */
+    PushNotifications.checkPermissions()
+      .then((res) => {
+        if (res && res.receive === 'granted') {
+          console.log('Push: permission already granted, registering');
+          return PushNotifications.register();
+        }
+      })
+      .catch((e) => console.warn('Push: permission check failed:', e && e.message));
+
     // Create notification channel (required on Android 8+)
     PushNotifications.createChannel({
       id: 'esquerrapp_default',
@@ -188,9 +204,52 @@ const Push = (() => {
     }
   }
 
+  /**
+   * Acquire a token when permission has ALREADY been granted.
+   *
+   * The soft-ask banner is the only thing that calls requestPermission(), and
+   * it only renders while `Notification.permission === 'default'`. So a user
+   * who has granted but has no token had no way back:
+   *
+   *     grant -> token saved -> log out (removeToken deletes it)
+   *     -> log back in -> banner hidden, permission is 'granted'
+   *     -> no token, no UI to make one, nothing logged
+   *
+   * Before v95 the auth handler called requestPermission() on every login,
+   * which re-saved the token each time. Dropping that call was right — it
+   * fired a prompt with no user gesture, which browsers auto-deny and iOS
+   * ignores — but it took re-registration with it.
+   *
+   * No gesture is needed here precisely BECAUSE permission already exists:
+   * getToken() prompts nobody when the answer is already 'granted'. The
+   * banner keeps owning the actual ask.
+   */
+  async function _ensureWebToken() {
+    if (!messaging) return null;
+    if (typeof Notification === 'undefined') return null;
+    if (Notification.permission !== 'granted') return null;
+    try {
+      const swReg = await navigator.serviceWorker.ready;
+      const token = await messaging.getToken({
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: swReg
+      });
+      if (token) await _saveToken(token);
+      return token;
+    } catch (err) {
+      // Never fatal: a missing token costs notifications, not the app.
+      console.warn('Push: could not refresh token:', err && err.message);
+      return null;
+    }
+  }
+
   function _initWeb() {
     if (_initialized || !messaging) return;
     _initialized = true;
+
+    // Fire and forget — init() is called from the auth handler and must not
+    // wait on the network.
+    _ensureWebToken();
 
     messaging.onMessage(payload => {
       const data = payload.data || {};
