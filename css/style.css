@@ -1990,6 +1990,22 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   font-size: .6rem; font-weight: 700; flex-shrink: 0;
   border: 1.5px solid #212121;
 }
+/* A category initial beside a name, shown only when the list mixes
+   categories. Grey, bold, italic, and deliberately NOT in a circle, pill or
+   box: .conv-team-circle directly above IS a circle and means a TEAM, so a
+   bordered category letter would be a second thing that looks like the first.
+   Anything that gives this a background, a border or a border-radius has
+   misunderstood it — layout.test.js asserts their absence. */
+.cat-badge {
+  font-style: italic; font-weight: 700;
+  color: var(--text-secondary);
+  font-size: .78rem; line-height: 1;
+  flex-shrink: 0; margin-left: .2rem;
+}
+/* The flex name wrappers already space their children by .3rem; the margin
+   above is only for the sites that interpolate straight into a <td>. */
+.conv-name-wrap > .cat-badge,
+.roster-name-wrap > .cat-badge { margin-left: 0; }
 .conv-name { font-weight: 600; }
 .conv-num { color: var(--text-secondary); font-size: .82rem; font-weight: 600; }
 .conv-status { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }

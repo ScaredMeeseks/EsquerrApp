@@ -1291,7 +1291,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 98;
+  const APP_VERSION = 99;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -5509,13 +5509,18 @@
                 const boardHtml = tbRoBoardHtml(b, 'ro-ptd-');
                 let teamsBlock = '';
                 if (b.linkedTeams && b.linkedTeams.length) {
+                  // Flattened across every linked team: a snapshot split into
+                  // two cards is still one squad, and deciding per card would
+                  // badge team 1 and not team 2.
+                  const ltSpan = catSpanOf(b.linkedTeams.reduce(
+                      (acc, t2) => acc.concat(t2.players || []), []));
                   teamsBlock = '<div class="tb-linked-teams">' +
                     b.linkedTeams.map((tm, ti) => {
                       const rows = tm.players.map(p => {
                         const posArr = (p.position || '').split(',').map(s => s.trim()).filter(Boolean);
                         const posHtml = posArr.length ? posArr.map(pos => '<span class="pos-circle pos-' + pos + '">' + pos + '</span>').join('') : '';
                         const teamC = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-                        return '<div class="tb-lt-player">' + posHtml + ' <span>' + sanitize(p.name) + '</span>' + teamC + '</div>';
+                        return '<div class="tb-lt-player">' + posHtml + ' <span>' + sanitize(p.name) + '</span>' + catBadgeHtmlGlobal(p, ltSpan) + teamC + '</div>';
                       }).join('');
                       return '<div class="tb-lt-team"><div class="tb-lt-team-title">Equip ' + (ti + 1) + ' <span class="tg-team-count">' + tm.players.length + '</span></div>' + rows + '</div>';
                     }).join('') + '</div>';
@@ -11690,13 +11695,16 @@
             const boardHtml = tbRoBoardHtml(b, 'ro-std-');
             let teamsBlock = '';
             if (b.linkedTeams && b.linkedTeams.length) {
+              // Flattened across every linked team — see renderTrainingDetail.
+              const ltSpan = catSpanOf(b.linkedTeams.reduce(
+                  (acc, t2) => acc.concat(t2.players || []), []));
               teamsBlock = '<div class="tb-linked-teams">' +
                 b.linkedTeams.map((tm, ti) => {
                   const rows = tm.players.map(p => {
                     const posArr = (p.position || '').split(',').map(s => s.trim()).filter(Boolean);
                     const posHtml = posArr.length ? posArr.map(pos => '<span class="pos-circle pos-' + pos + '">' + pos + '</span>').join('') : '';
                     const teamC = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-                    return '<div class="tb-lt-player">' + posHtml + ' <span>' + sanitize(p.name) + '</span>' + teamC + '</div>';
+                    return '<div class="tb-lt-player">' + posHtml + ' <span>' + sanitize(p.name) + '</span>' + catBadgeHtmlGlobal(p, ltSpan) + teamC + '</div>';
                   }).join('');
                   return '<div class="tb-lt-team"><div class="tb-lt-team-title">Equip ' + (ti + 1) + ' <span class="tg-team-count">' + tm.players.length + '</span></div>' + rows + '</div>';
                 }).join('') +
@@ -12130,6 +12138,10 @@
     const players = !stdTeamFilter ? calledSquad
       : calledSquad.filter(p => stdTeamFilter.has(p.team || ''));
     const stdLettersForSlot = trainingTeams(tr);
+    /* This list is mixed even for a coach who has filtered to one category:
+       calledPlayers() honours the session's `guests`, which is precisely a
+       player borrowed from another squad. */
+    const catSpan = catSpanOf(players);
     const locked = isTrainingLocked(tr);
     /* The squad can be changed until the session STARTS -- looser than
        `locked`, which freezes attendance answers an hour earlier. A late
@@ -12164,6 +12176,7 @@
           `<option value="${o}" ${effective === o ? 'selected' : ''}>${labels[o]}</option>`
         ).join('');
       const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
+      const catBadge = catBadgeHtmlGlobal(p, catSpan);
 
       const derived = deriveFitnessStatus(p.id, false, _stdFitCtx);
       const fStatus = derived.fitnessStatus;
@@ -12183,7 +12196,7 @@
       return `<tr>
         ${dropCell}
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
-        <td><span class="roster-name-wrap">${sanitize(p.name)}${teamCircle}</span></td>
+        <td><span class="roster-name-wrap">${sanitize(p.name)}${catBadge}${teamCircle}</span></td>
         <td class="center-cell">${statusIcon}</td>
         <td class="center-cell">${readinessCellHtml(rd, fStatus === 'injured')}</td>
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
@@ -12477,13 +12490,17 @@
       const eff = getEffectiveAnswer(p.id, sess, locked);
       return (eff === 'yes' || eff === 'late') && !assignedIds.has(String(p.id));
     });
+    /* Over the WHOLE squad, not per team card: the cards and the "no
+       inclosos" strip are one squad split up, and a guest dragged between
+       them must not gain or lose his badge on the way. */
+    const catSpan = catSpanOf(allPlayers);
 
     const teamCards = teams.map((team, ti) => {
       const playerRows = team.map(p => {
         const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
         return `<div class="tg-player-row" draggable="true" data-player-id="${p.id}">
           <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${teamCircle}</span>
+          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${teamCircle}</span>
           <span class="tg-player-num">#${sanitize(p.playerNumber || '—')}</span>
           <button class="tg-remove-player" data-team-idx="${ti}" data-player-id="${p.id}" title="Remove">&times;</button>
         </div>`;
@@ -12493,7 +12510,7 @@
         const tc = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
         return `<div class="tg-dd-option" data-pid="${p.id}">
           <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${tc}</span>
+          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${tc}</span>
           <span class="tg-player-num">${sanitize(p.position || '—')}</span>
         </div>`;
       }).join('');
@@ -12519,7 +12536,7 @@
         const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
         return `<span class="tg-ni-player" draggable="true" data-player-id="${p.id}">
           <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${teamCircle}</span>
+          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${teamCircle}</span>
         </span>`;
       }).join('');
       notIncludedHtml = `<div class="tg-not-included">
@@ -12760,6 +12777,8 @@
       .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
     const _fitCtx = fitnessContext();
     const _msCtx = matchStatsContext();
+    // Only under the "Totes" tab can this list hold more than one category.
+    const catSpan = catSpanOf(players);
     let rows = players.map(u => {
       const derived = deriveFitnessStatus(u.id, false, _fitCtx);
       const status = derived.fitnessStatus;
@@ -12794,7 +12813,7 @@
 
       return `<tr>
         <td class="roster-pos-col"><span class="conv-pos-circles">${posCirclesHtmlGlobal(u)}</span></td>
-        <td><a href="#" class="roster-player-link" data-player-id="${u.id}"><span class="roster-name-wrap">${sanitize(u.name)}${teamCircle}</span></a></td>
+        <td><a href="#" class="roster-player-link" data-player-id="${u.id}"><span class="roster-name-wrap">${sanitize(u.name)}${catBadgeHtmlGlobal(u, catSpan)}${teamCircle}</span></a></td>
         <td class="center-cell">${statusIcon}</td>
         <td class="center-cell">${readinessCellHtml(rd, status === 'injured')}</td>
         <td class="center-cell roster-tsnc"><span class="roster-t">${titulars}</span>/<span class="roster-s">${suplents}</span>/<span class="roster-nc">${noConvocats}</span></td>
@@ -13128,6 +13147,11 @@
     const hasChanges = isSent && JSON.stringify(saved) !== JSON.stringify(sentPlayers);
 
     const calledIds = new Set(saved.map(String));
+    /* ONE span for BOTH panes, computed over the whole pool rather than per
+       pane: `available` and `called` are two halves of one list, and deciding
+       separately would badge one column and not the other as players are
+       dragged across. */
+    const catSpan = catSpanOf(players);
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
     const available = players.filter(p => !calledIds.has(String(p.id))).sort((a, b) => posRank(a) - posRank(b));
     const called = saved.map(id => players.find(p => String(p.id) === String(id))).filter(Boolean).sort((a, b) => posRank(a) - posRank(b));
@@ -13143,12 +13167,12 @@
             : maStatus === 'no_disponible' ? '<span class="conv-ma-tag conv-ma-nodisp">No Disponible</span>'
             : '<span class="conv-ma-tag conv-ma-pending">—</span>';
           const pTeam = p.team || '';
-          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>${maTag}<span class="conv-status">${convStatus(p)}</span></div>`;
+          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>${maTag}<span class="conv-status">${convStatus(p)}</span></div>`;
         }).join('')
       : '<p class="conv-empty-hint">No players available</p>';
 
     const calledHtml = called.length
-      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
+      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
       : '<p class="conv-drop-hint"><span class="conv-hint-desktop">' + t('conv.drag_desktop') + '</span><span class="conv-hint-mobile">' + t('conv.drag_mobile') + '</span></p>';
 
     // Uniform: auto-default for home games
@@ -13340,6 +13364,9 @@
     // setRole, so the badge changed and the person's real permissions did not.
     // Roles come from the email lists now: staff in "Configura el teu club",
     // players in the pre-registered list on Registrations.
+    /* The one list that is NEVER category-filtered, so it is the surface the
+       badge helps most. Staff and the lead carry no category and get none. */
+    const catSpan = catSpanOf(users);
     let rows = users.map(u => {
       const roleLabels = {
         player: t('common.player'), staff: t('common.staff'), lead: t('auth.role_lead'),
@@ -13349,7 +13376,7 @@
         : '<span class="badge badge-yellow">' + t('reg.status_none') + '</span>';
 
       return `<tr>
-        <td>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</td>
+        <td>${sanitize(u.name)}${catBadgeHtmlGlobal(u, catSpan)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</td>
         <td>${sanitize(u.email)}</td>
         <td>${rolesDisplay}</td>
         <td class="user-actions">
@@ -17319,6 +17346,11 @@
       && (medicalTeamFilter === 'all' || (u.team || '') === medicalTeamFilter));
     const inScope = {};
     players.forEach(p => { inScope[String(p.id)] = true; });
+    /* Computed over the page's whole scope, not per card list: the squad
+       grid, the active-injury cards and the past-injury rows are four views
+       of the same players, and badging them independently would mark a
+       player in one list and not in another on the same screen. */
+    const catSpan = catSpanOf(players);
     // Always filter through the in-scope players — an injury has no category
     // or team of its own. (This used to short-circuit on `!curCat`, which let
     // the whole club's injuries through whenever "Totes" was selected and
@@ -17385,6 +17417,7 @@
       const st = playerStatusMap[p.id];
       const posHtml = posCirclesHtmlGlobal(p);
       const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
+      const catBadge = catBadgeHtmlGlobal(p, catSpan);
       let borderColor = '#43a047'; // fit green
       let statusLabel = t('medical.status_fit');
       let statusClass = 'fit';
@@ -17410,7 +17443,7 @@
       return '<div class="med-player-card" data-player-id="' + p.id + '" style="border-left:4px solid ' + borderColor + ';">' +
         '<div class="med-card-top">' +
           '<span class="conv-pos-circles">' + posHtml + '</span>' +
-          '<span class="med-card-name">' + sanitize(p.name) + teamCircle + '</span>' +
+          '<span class="med-card-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
           '<span class="med-status-dot med-status-' + statusClass + '" title="' + statusLabel + '"></span>' +
         '</div>' +
         injExcerpt +
@@ -17432,6 +17465,7 @@
         if (!p) return '';
         const posHtml = posCirclesHtmlGlobal(p);
         const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
+        const catBadge = catBadgeHtmlGlobal(p, catSpan);
         const days = Math.max(0, Math.floor((now - new Date(inj.startDate + 'T12:00:00')) / 86400000));
         const durationStr = days === 0 ? t('medical.today') : days === 1 ? '1 day' : days + ' days';
         const sinceStr = tDateDayMonth(inj.startDate);
@@ -17452,7 +17486,7 @@
           '<div class="med-inj-card-top">' +
             '<div class="med-inj-player">' +
               '<span class="conv-pos-circles">' + posHtml + '</span>' +
-              '<span class="med-card-name">' + sanitize(p.name) + teamCircle + '</span>' +
+              '<span class="med-card-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
             '</div>' +
             statusBadge +
           '</div>' +
@@ -17478,6 +17512,7 @@
         const st = playerStatusMap[p.id];
         const posHtml = posCirclesHtmlGlobal(p);
         const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
+        const catBadge = catBadgeHtmlGlobal(p, catSpan);
         const badgeColor = st === 'injured' ? '#e53935' : '#f9a825';
         const badgeText = st === 'injured' ? t('medical.injured') : t('medical.recovering');
         const note = playerNoteMap[p.id];
@@ -17485,7 +17520,7 @@
           '<div class="med-inj-card-top">' +
             '<div class="med-inj-player">' +
               '<span class="conv-pos-circles">' + posHtml + '</span>' +
-              '<span class="med-card-name">' + sanitize(p.name) + teamCircle + '</span>' +
+              '<span class="med-card-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
             '</div>' +
             '<span class="med-severity-badge" style="background:' + badgeColor + (st === 'doubt' ? ';color:#333' : '') + ';">' + badgeText + '</span>' +
           '</div>' +
@@ -17515,6 +17550,7 @@
         if (!p) return '';
         const posHtml = posCirclesHtmlGlobal(p);
         const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
+        const catBadge = catBadgeHtmlGlobal(p, catSpan);
         const startStr = tDateDayMonth(inj.startDate);
         const endStr = inj.endDate ? tDateDayMonth(inj.endDate) : '?';
         const s = new Date(inj.startDate + 'T12:00:00');
@@ -17525,7 +17561,7 @@
         return '<div class="medical-row med-past-row" data-player-id="' + p.id + '">' +
           '<div class="medical-player">' +
             '<span class="conv-pos-circles">' + posHtml + '</span>' +
-            '<span class="medical-name">' + sanitize(p.name) + teamCircle + '</span>' +
+            '<span class="medical-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
           '</div>' +
           '<div class="medical-injury"><span class="med-severity-dot" style="background:' + (sevColors[inj.severity] || '#999') + ';"></span>' + sanitize(inj.muscleGroup || 'Injury') + '</div>' +
           '<div class="medical-duration">' +

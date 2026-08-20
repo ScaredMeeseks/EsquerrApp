@@ -58,6 +58,41 @@ const CATEGORY_LABELS = {
 };
 const CATEGORY_ORDER = ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'];
 
+/* The one-letter marker beside a player's name when a list mixes categories.
+   AMATEUR IS DELIBERATELY '' — it is the senior category, so "no badge" is
+   DATA here rather than a special case in twelve renderers.
+   Every CATEGORY_ORDER key must have an entry; a missing one would silently
+   drop the badge for a whole category, which cat-badge.test.js asserts. */
+const CATEGORY_INITIALS = {
+  amateur: '', juvenil: 'J', cadet: 'C',
+  infantil: 'I', alevi: 'A', benjami: 'B'
+};
+
+/* Does the list ON SCREEN span more than one category?
+   Computed from the RENDERED ARRAY, never from getVisibleCategories(): a lead
+   of a two-category club who has filtered to juvenil is looking at a
+   one-category list and must see no badges, and getVisibleCategories() would
+   say 2. Rows with no category at all (staff, legacy members) are ignored
+   rather than counted as a category of their own — counting them would badge
+   an entirely amateur list because one row was uncategorised. */
+function catSpanOf(rows) {
+  const seen = new Set();
+  (rows || []).forEach(function (r) { if (r && r.category) seen.add(r.category); });
+  return seen.size > 1;
+}
+
+/* Grey, bold, italic, and deliberately NOT in a circle, pill or box:
+   .conv-team-circle IS a circle and means a TEAM, so a bordered category
+   letter would be a second thing that looks like the first. A circled letter
+   is always a team; a bare italic one is always a category.
+   The letter comes from a fixed map, never from user input, so this needs no
+   sanitize() — which is also what keeps it require()-able without a DOM. */
+function catBadgeHtmlGlobal(p, span) {
+  if (!span) return '';
+  const ch = CATEGORY_INITIALS[(p && p.category) || ''] || '';
+  return ch ? '<span class="cat-badge">' + ch + '</span>' : '';
+}
+
 const POS_COLORS = {
   GK: '#f9a825', CB: '#1e88e5', LB: '#1e88e5', RB: '#1e88e5',
   DM: '#43a047', OM: '#43a047', LW: '#e53935', RW: '#e53935', ST: '#e53935'
@@ -343,6 +378,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getSeasonWeek,
     CATEGORY_ORDER,
     CATEGORY_LABELS,
+    CATEGORY_INITIALS,
+    catSpanOf,
+    catBadgeHtmlGlobal,
     POS_ORDER,
     DAY_VALUES,
     // Exported so seed-demo-club.js can build injuries against the real

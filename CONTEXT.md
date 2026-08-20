@@ -1897,6 +1897,24 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v99 - a category letter on player rows
+
+Requested 2026-08-20. A coach with more than one category had nothing on a player row saying which category the player was in, on screens that genuinely mix them.
+
+**A grey, bold, ITALIC capital, with no container** — `J` juvenil, `C` cadet, `I` infantil, `A` aleví, `B` benjamí. **Amateur carries none**: it is the senior category, so "no badge" is data in `CATEGORY_INITIALS` rather than a special case in eleven renderers.
+
+The no-container part is the whole design. `.conv-team-circle` sits on the very same row and is a *circled* capital meaning a **team**. A circled letter is a team; a bare italic one is a category. Give the badge a border, a background or a radius and the two become one thing again — `cat-badge.test.js` asserts all three are absent. This also settles the `A` = aleví vs team-A question the owner raised: the treatments are unmistakably different, and amateur (the only category that plays alongside a team letter A) has no badge at all.
+
+`catSpanOf(rows)` decides whether to show anything, and it takes **the rendered array** — never `getVisibleCategories()`. A lead of a two-category club filtered to juvenil is looking at a one-category list and must see nothing; `getVisibleCategories()` would say 2 and badge a screen where the letters carry no information. Rows with no category (staff, the lead, legacy members) are ignored rather than counted as a category of their own, or one blank row would badge an entirely amateur club.
+
+The span is computed **once per render, above the `.map()`**, and always over the widest array on screen. That is not just an optimisation: `renderConvocatoria` has two panes fed by one pool, `renderMedical` has four lists of the same players, and `renderGeneratedTeams` splits one squad into cards — deciding per list would badge a player in one column and not the other, or move his badge as he is dragged between them.
+
+Eleven surfaces, 14 call sites. Three of them are mixed **even for a coach who has filtered to one category**, because a session's `guests` are by definition borrowed from another squad: `renderStaffTrainingDetail`, `renderGeneratedTeams` and the two linked-team snapshots. `renderAdminUsers` is never filtered at all and is where it helps most.
+
+**Deliberately excluded**: `_ntPlayerRow`, which already has `nt-cat-tag` — a marker answering the strictly better question *"is this player a guest relative to THIS session's category"*. In the club-wide picker a `J` on a juvenil player in a juvenil session is noise. One marker per row and the more informative one wins; a test pins the exclusion so nobody "finishes the rollout" later. Also excluded: `renderMedicalDetail` (one player is not a list) and the five sites where the circled letter belongs to a **match**, not a player.
+
+**538 unit tests** (+16). `functions/check-deploy.js` was stale at `esquerrapp-v97` while `sw.js` was on v98 — all three version sites now say v99.
+
 ## v97c - the Friday availability reminder asked the whole club
 
 The same defect as v97b, in the third scheduler. `scheduledMatchAvailReminder` asked the club-wide role query, which filters by **role alone**. On a weekend with three fixtures - amateur A, amateur B, juvenil - **every player in the club got three separate pushes**, two of them about teams he is not in. They do not even collapse on the device: the tag is `match-avail-<matchId>`, so they stack.
