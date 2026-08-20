@@ -250,6 +250,159 @@ function paintCircle(el, v) {
   }
 }
 
+// ---------- Club kits ----------
+/*
+ * A club's kits live at clubs/{clubId}.kits, up to three of them, and each
+ * one is a SOURCE OF PIECES rather than an atomic outfit: the convocatòria
+ * keeps a separate toggle per garment, so a coach can still send the 1a
+ * shirt with the 2a socks. What changed is that both of those now have to be
+ * pieces the club actually owns.
+ *
+ *   {id, label, shirt, shorts, socks}
+ *
+ * `shirt` and `socks` are encodeFill() strings — a bare hex, or `s|…` for
+ * stripes — so the kit editor reuses the tactical board's colour tool
+ * unchanged. `shorts` is ALWAYS a bare hex: real shorts are single-colour,
+ * and parseFill degrades a striped value to solid silently, so the rule is
+ * enforced server-side rather than left to the UI.
+ */
+
+/* What a club that has never configured a kit wears.
+ *
+ * These reproduce TODAY'S hardcoded icons exactly, which is the entire
+ * point: every club on the platform currently renders Esquerra de
+ * l'Eixample's white and yellow kit, so a default that IS that kit leaves
+ * all of them looking precisely as they do now. Two, not three — inventing a
+ * third would show every club a kit nobody owns.
+ *
+ * Shorts had no representation at all before this, so black is a new
+ * assertion rather than a preserved one; a club that cares sets its own. */
+var DEFAULT_KITS = [
+  {id: 'kit-1', label: '1a', shirt: '#FFFFFF', shorts: '#000000',
+    socks: 's|h|6|#ffffff|#222222'},
+  {id: 'kit-2', label: '2a', shirt: '#FFD662', shorts: '#000000',
+    socks: '#FFD662'}
+];
+
+/** A club's kits, or the defaults. NEVER an empty array: an empty picker is
+    a screen with no way to answer, and every caller would need the guard. */
+function kitsOf(clubConfig) {
+  const k = clubConfig && clubConfig.kits;
+  return (Array.isArray(k) && k.length) ? k : DEFAULT_KITS;
+}
+
+/**
+ * What one stored convocatòria says the team wore — across three eras of
+ * this field, without a backfill.
+ *
+ *   era 1  a bare ARRAY of player ids. No kit ever existed. → null, so the
+ *          renderers show nothing, exactly as the `(jersey || socks)` guard
+ *          does today. Never invent a kit for a record that had none.
+ *   era 2  {jersey:'white'|'yellow', socks:'striped'|'yellow'}. Resolved to
+ *          the literal colours those words meant, INCLUDING the mixes — a
+ *          coach could already send a white shirt with yellow socks, and
+ *          that record must keep rendering as what was actually sent.
+ *          Shorts did not exist, so they stay null and go undrawn.
+ *   era 3  {shirtId, shortsId, socksId} into the club's kits.
+ *
+ * → {shirt, shorts, socks} of fill values (any may be null), or null.
+ * Returns VALUES, not ids: era 2 has no id to give, and returning resolved
+ * pieces is what keeps all three renderers era-blind.
+ *
+ * A deleted kit resolves to null rather than to kits[0] — a historical match
+ * showing nothing is honest; showing the wrong kit is not.
+ */
+function resolveKitPieces(entry, kits) {
+  if (!entry || Array.isArray(entry)) return null;
+  const byId = (id) => (kits || []).find((k) => k && k.id === id) || null;
+  if (entry.shirtId || entry.shortsId || entry.socksId) {
+    const sh = byId(entry.shirtId);
+    const sp = byId(entry.shortsId);
+    const so = byId(entry.socksId);
+    if (!sh && !sp && !so) return null;
+    return {
+      shirt: sh ? sh.shirt : null,
+      shorts: sp ? sp.shorts : null,
+      socks: so ? so.socks : null
+    };
+  }
+  if (entry.jersey || entry.socks) {
+    return {
+      shirt: entry.jersey === 'yellow' ? '#FFD662' : '#FFFFFF',
+      shorts: null,
+      socks: entry.socks === 'yellow' ? '#FFD662' : 's|h|6|#ffffff|#222222'
+    };
+  }
+  return null;
+}
+
+/** The board toolbar's {on,n,dir,c2} shape, normalised. Extracted from
+    _stripeCfgOf so the kit editor shares one clamp with the board — the old
+    inline `o.n || 2` happily accepted 9 bands. */
+function normalizeStripeState(o) {
+  const s = (o && typeof o === 'object') ? o : {};
+  return {
+    on: !!s.on,
+    n: Math.min(6, Math.max(2, parseInt(s.n, 10) || 2)),
+    dir: s.dir === 'h' ? 'h' : 'v',
+    c2: s.c2 || '#ffffff'
+  };
+}
+
+/** A fill value from a base colour plus a stripe config. The storage-only
+    half of the board's teamFill(), which reads its c1 from a DOM input and
+    is therefore unusable anywhere else. */
+function fillFrom(c1, cfg) {
+  const s = normalizeStripeState(cfg);
+  return encodeFill(s.on, s.dir, s.n, c1 || '#ffffff', s.c2);
+}
+
+/**
+ * An SVG paint for a fill value, because a CSS gradient CANNOT be used as an
+ * SVG fill — fillCss()'s `repeating-linear-gradient` works on a div and does
+ * nothing on a <path>. The shirt and sock are stroked, non-rectangular
+ * outlines with a crest composited on top, so they stay SVG and get a real
+ * <linearGradient> built from the same parseFill().
+ *
+ * Stops are DOUBLED at each boundary, which is how a gradient produces hard
+ * edges — the same trick fillCss uses with its two-stop bands.
+ *
+ * Units are objectBoundingBox (the SVG default), so the bands span the SHAPE
+ * rather than the viewBox: a shirt path running x=6..58 inside a 0..64 box
+ * still gets n even bands across the shirt itself.
+ *
+ * Direction MUST agree with fillCss or the same kit stripes one way on the
+ * tactical board and the other way on the shirt:
+ *   'v' vertical bands  → gradient runs left→right (x2=1), fillCss 90deg
+ *   'h' horizontal hoops → gradient runs top→bottom (y2=1), fillCss 180deg
+ *
+ * `uid` must be unique per document — the picker draws every kit at once,
+ * and duplicate ids make every shirt take the first one's gradient.
+ *
+ * @return {{paint: string, defs: string}} `paint` goes in fill="…".
+ */
+function fillSvgPaint(v, uid) {
+  const f = parseFill(v);
+  if (!f.striped) return {paint: f.c1, defs: ''};
+  const id = 'kf' + String(uid == null ? '' : uid);
+  const vert = f.dir !== 'h';
+  /* Offsets are computed from the band INDEX over n, not by accumulating a
+     rounded width: n=3 with w=33.3333 ends the last band at 99.9999%, which
+     leaves a hairline of the previous colour down the edge of every shirt.
+     The last boundary is pinned to exactly 100. */
+  const at = (i) => (i === f.n ? 100 : Math.round((i / f.n) * 1e6) / 1e4);
+  let stops = '';
+  for (let i = 0; i < f.n; i++) {
+    const c = (i % 2) ? f.c2 : f.c1;
+    stops += '<stop offset="' + at(i) + '%" stop-color="' + c + '"/>' +
+             '<stop offset="' + at(i + 1) + '%" stop-color="' + c + '"/>';
+  }
+  const defs = '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="' +
+    (vert ? '1' : '0') + '" y2="' + (vert ? '0' : '1') + '">' + stops +
+    '</linearGradient></defs>';
+  return {paint: 'url(#' + id + ')', defs: defs};
+}
+
 // ---------- SVG Helpers ----------
 function crSplinePath(pts, tension) {
   if (pts.length < 2) return '';
@@ -394,6 +547,15 @@ if (typeof module !== 'undefined' && module.exports) {
     // among them; fillCss is the part worth pinning.
     parseFill,
     encodeFill,
-    fillCss
+    fillCss,
+    // Club kits. fillSvgPaint is the SVG counterpart of fillCss — a CSS
+    // gradient cannot be an SVG fill, so the two must be kept in step and
+    // fills.test.js pins that they agree on direction.
+    DEFAULT_KITS,
+    kitsOf,
+    resolveKitPieces,
+    normalizeStripeState,
+    fillFrom,
+    fillSvgPaint
   };
 }

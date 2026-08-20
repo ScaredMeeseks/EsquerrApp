@@ -19,10 +19,25 @@ const path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
 describe('app.js paints every circle through the fill helpers', () => {
-  it('calls darkenHex nowhere — fillCss owns the border colour', () => {
-    const hits = src.match(/darkenHex\(/g) || [];
-    assert.strictEqual(hits.length, 0,
-      'a circle is being painted by hand again; use paintCircle() or fillCss()');
+  it('never hands darkenHex a value that could be an encoded fill', () => {
+    /* The real rule, which used to be enforced by a blunter proxy — a flat
+       count of zero. darkenHex parses hex, so an `s|v|4|#a|#b` string comes
+       back '#NaNNaNNaN': a silently wrong colour on one renderer out of
+       several.
+
+       Zero was right while every caller was a circle border, and fillCss
+       took those over. The kit icons then needed a genuinely different
+       thing: a collar and a cuff shaded from the kit's BASE colour.
+       `darkenHex(parseFill(x).c1, …)` is safe by construction — parseFill
+       always yields a plain hex in `c1`, striped or not — so that form is
+       the proof, and anything else is the bug. */
+    const lines = src.match(/.*darkenHex\(.*/g) || [];
+    lines.forEach((l) => {
+      assert.ok(/darkenHex\(\s*parseFill\(/.test(l),
+        'darkenHex on a possibly-encoded fill; wrap it in parseFill(x).c1: ' + l.trim());
+      assert.ok(!/tb-circle|tb-num|borderColor/.test(l),
+        'a circle border is fillCss\'s job, not darkenHex\'s: ' + l.trim());
+    });
   });
 
   it('calls textColorFor only for text labels, never for a circle', () => {

@@ -1897,6 +1897,50 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v100 - club kits, stage 1 of 2: the model, the icons and the picker
+
+Requested 2026-08-20. `jerseySvg(variant)` knew exactly two words, `'white'` and `'yellow'`, with the hexes inline and `img/logo.png` baked into the crest; `sockSvg` knew `'striped'` and `'yellow'`. **Every club on the platform wore Esquerra de l'Eixample's kit.**
+
+Both were also **binary tests with a silent fallback** — `variant === 'yellow' ? … : white` — so an unrecognised value rendered a *wrong* shirt rather than failing. The replacements take a **fill value** and return `''` for a missing one, which turns that whole class into an absent icon instead of a quietly incorrect one.
+
+### The pieces stay independently selectable
+
+The owner's decision, and it shapes everything. A kit is a **source of pieces**, not an atomic outfit: the Equipació block is three rows — Samarreta / Pantalons / Mitges — each offering that garment from every kit. A coach can still send the 1a shirt with the 2a socks, exactly as the two old toggles allowed, but only from pieces the club owns. So the stored record carries **three ids**, not one.
+
+`clubs/{clubId}.kits` is a list of up to three `{id, label, shirt, shorts, socks}`. `shirt` and `socks` are `encodeFill()` strings, so the kit editor will reuse the tactical board's colour tool unchanged; **`shorts` is always a bare hex** because real shorts are single-colour — and since `parseFill` degrades a striped value to solid *silently*, that rule has to be enforced server-side rather than left to the UI.
+
+### No backfill: one resolver, three eras
+
+`resolveKitPieces(entry, kits)` reads every historical shape:
+
+- **era 1** — a bare **array** of player ids. There was never a kit, so it returns `null` and nothing is drawn. Painting one on would be inventing data that was never sent.
+- **era 2** — `{jersey, socks}`. Resolved to the colours those words meant, **including the mixes**: a record saying white shirt + yellow socks still renders as white shirt + yellow socks. That is why the resolver returns *pieces* rather than snapping to a stored kit. Shorts stay `null` and go undrawn, because they did not exist.
+- **era 3** — `{shirtId, shortsId, socksId}`.
+
+A **deleted** kit resolves to `null`, never to `kits[0]`: a historical match showing nothing is honest, showing the wrong kit is not. `fa_convocatoria_uniform` (the draft) is device-local and unsynced, so it gets a clean break with no migration at all.
+
+`DEFAULT_KITS` reproduces today's two options exactly, so the ~60 clubs that have configured nothing look precisely as they do now. Two, not three — inventing a third would show every club a kit nobody owns.
+
+### Stripes in SVG
+
+A CSS gradient **cannot** be an SVG fill, so `fillCss()`'s `repeating-linear-gradient` is useless on a `<path>`. `fillSvgPaint(v, uid)` builds a real `<linearGradient>` from the same `parseFill()`, with **doubled stops** for hard edges and `objectBoundingBox` units so the bands span the *shape* rather than the viewBox. Two bugs the tests caught while writing it:
+
+- the default socks were `s|h|8|…` and **8 is outside `parseFill`'s 2-6 range**, so they silently were not striped at all;
+- offsets accumulated from a rounded width ended the last band at **99.9999%**, leaving a hairline of the previous colour down the edge of every shirt. Offsets now come from the band index over `n`, with the last pinned to exactly 100.
+
+Direction has its own test, because it is the one thing no visual check catches: the same kit striping vertically on the tactical board and horizontally on the shirt. `'v'` → `x2="1"` ↔ `fillCss` 90deg; `'h'` → `y2="1"` ↔ 180deg.
+
+**The white sock looks slightly different from before** — hoops now come from a 6-band fill instead of three hand-placed `<rect>`s, and the foot is the translucent overlay the yellow sock used rather than the striped one's opaque black (an opaque black foot on a red sock is simply wrong).
+
+### Two adjacent fixes
+
+- **`startingXI` was silently discarded on every re-save.** Both writers assigned a fresh object literal while `saveStartingXI` bolts `startingXI` onto the existing entry. One `convSentEntry(prev, …)` builder merges over `prev` instead. Pre-existing, unrelated to kits, and standing directly on the lines being changed.
+- `darkenHex`'s source guard said **zero callers**, which was the right proxy while every caller was a circle border. The kit collar and cuff need a genuine shade of the kit's base colour, so the test now pins the actual rule — `darkenHex(parseFill(x).c1, …)` is safe by construction, anything else is the bug it was written to catch.
+
+`conv.white` / `conv.yellow` / `conv.striped` are **deleted**: they named the two hardcoded kits, were never actually called, and a kit's name is now club-entered data that goes through `sanitize()`, never `t()`.
+
+**567 unit tests** (+29). **Stage 2 is the lead's editor and the `setClubKits` callable** — until it ships, every club silently uses `DEFAULT_KITS` and nothing looks different except the new shorts icon.
+
 ## v99 - a category letter on player rows
 
 Requested 2026-08-20. A coach with more than one category had nothing on a player row saying which category the player was in, on screens that genuinely mix them.

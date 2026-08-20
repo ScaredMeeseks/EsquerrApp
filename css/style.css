@@ -2198,10 +2198,16 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .conv-top-group { flex: 1; min-width: 0; }
 .conv-top-group:nth-child(2) { flex: 0 0 auto; white-space: nowrap; }
-.conv-top-group:nth-child(3) { flex: 0 0 auto; }
+/* The Equipació group. Was `flex: 0 0 auto` when it held two toggles of two
+   buttons; it now holds THREE garment rows of up to three kits each, and a
+   fixed group at that width pushes the match selector off screen. */
+.conv-top-group:nth-child(3) { flex: 1 1 auto; min-width: 0; }
 .conv-uniform-row {
   display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;
 }
+/* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
+   the shirt, shorts and sock sit on a common line despite differing heights. */
+.kit-icons { display: flex; align-items: flex-end; gap: 1px; }
 .conv-uniform-group {
   display: flex; align-items: center; gap: .5rem;
 }
@@ -2872,6 +2878,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .conv-top-row { flex-direction: column; gap: .8rem; align-items: stretch; }
   .conv-top-group:nth-child(2) { white-space: normal; }
   .conv-uniform-row { gap: .8rem; }
+  /* Three garment rows of up to three kits is nine icons on a phone. */
+  .conv-uniform-row .kit-icons svg,
+  .conv-uniform-row .uniform-opt svg { width: 26px; height: 26px; }
   .conv-player { cursor: pointer; }
   .conv-player:active { background: rgba(189,22,44,.08); }
   .conv-drop-hint { padding: 1rem; font-size: .82rem; }

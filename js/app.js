@@ -262,10 +262,12 @@
     'conv.callup_time':     { ca:'Hora de citació', es:'Hora de citación', en:'Call-up Time' },
     'conv.uniform':         { ca:'Equipació', es:'Equipación', en:'Uniform' },
     'conv.jersey':          { ca:'Samarreta', es:'Camiseta', en:'Jersey' },
+    'conv.shorts':          { ca:'Pantalons', es:'Pantalones', en:'Shorts' },
     'conv.socks':           { ca:'Mitges', es:'Medias', en:'Socks' },
-    'conv.white':           { ca:'Blanca', es:'Blanca', en:'White' },
-    'conv.yellow':          { ca:'Groga', es:'Amarilla', en:'Yellow' },
-    'conv.striped':         { ca:'Ratlles', es:'Rayas', en:'Black & White' },
+    /* conv.white / conv.yellow / conv.striped are GONE. They named the two
+       hardcoded kits, were never actually called (the buttons used raw
+       `title="White"` attributes), and a kit's name is now club-entered
+       data — so it goes through sanitize(), never through t(). */
     'conv.available':       { ca:'Jugadors disponibles', es:'Jugadores disponibles', en:'Available Players' },
     'conv.called_up':       { ca:'Convocats', es:'Convocados', en:'Called Up' },
     'conv.no_players':      { ca:'Cap jugador disponible', es:'Sin jugadores disponibles', en:'No players available' },
@@ -1291,7 +1293,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 99;
+  const APP_VERSION = 100;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -1587,6 +1589,17 @@
   // Get the club display name (for matching in stored data)
   function getClubName() {
     return (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+  }
+
+  /** The club crest, or the app logo. The `|| 'img/logo.png'` fallback was
+      hand-rolled at three call sites before the kit shirt needed a fourth. */
+  function clubBadgeUrl() {
+    return (_clubConfig && _clubConfig.badgeUrl) ? _clubConfig.badgeUrl : 'img/logo.png';
+  }
+
+  /** This club's kits — configured, or the two that reproduce today's look. */
+  function clubKits() {
+    return kitsOf(_clubConfig);
   }
 
   // Check if a team name in a match is "ours"
@@ -5157,11 +5170,16 @@
     const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
     const convSent = sentPlayers.length > 0;
     const convIncluded = convSent && sentPlayers.some(id => String(id) === String(session.id));
-    const sentJersey = sentEntry && !Array.isArray(sentEntry) ? sentEntry.jersey : null;
-    const sentSocks = sentEntry && !Array.isArray(sentEntry) ? sentEntry.socks : null;
+    /* resolveKitPieces owns all three eras of this field, including the
+       Array form that never had a kit — so the `(jersey || socks)` guard
+       that used to live here is now a single null check. */
+    const sentPieces = resolveKitPieces(sentEntry, clubKits());
     let convHtml = '';
     if (convSent) {
-      const uniformIcons = (sentJersey || sentSocks) ? `<span class="detail-uniform-inline">${jerseySvg(sentJersey || 'white')}${sockSvg(sentSocks || 'striped')}</span>` : '';
+      // Shorts dropped: .detail-uniform-inline svg is pinned at 30px and
+      // three icons is 90px inside a one-line banner.
+      const uniformIcons = sentPieces
+        ? `<span class="detail-uniform-inline">${kitIconsHtml(sentPieces, {shorts: false})}</span>` : '';
       convHtml = convIncluded
         ? `<div class="detail-conv detail-conv-yes"><span class="conv-blink-dot"></span> ${t('match_detail.conv_available')} ${uniformIcons}</div>`
         : `<div class="detail-conv detail-conv-no"><span class="conv-grey-dot"></span> ${t('match_detail.conv_not_called')}</div>`;
@@ -13045,32 +13063,86 @@
     return opts;
   }
 
-  function jerseySvg(variant) {
-    const fill = variant === 'yellow' ? '#FFD662' : '#FFFFFF';
-    const collar = variant === 'yellow' ? '#e6b800' : '#CCCCCC';
-    return `<svg viewBox="0 0 64 64" width="34" height="34" style="display:block">
-      <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="${fill}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+  /* ── Kit icons ──────────────────────────────────────────────────
+     These replaced jerseySvg(variant)/sockSvg(variant), which knew exactly
+     two words each and hardcoded Esquerra de l'Eixample's colours — so every
+     club on the platform wore Esquerra's kit.
+
+     They took a STRING and were binary tests with a silent fallback
+     (`variant === 'yellow' ? … : white`), meaning an unrecognised value
+     rendered a *wrong* shirt rather than failing. These take a FILL VALUE
+     and return '' for a missing one, so a gap is visibly absent instead of
+     quietly incorrect.
+
+     A CSS gradient cannot be an SVG fill, so stripes come from
+     fillSvgPaint()'s <linearGradient>, not from fillCss(). Every id must be
+     unique per document — the picker draws every kit at once — which is what
+     _kitUid is for; callers never pass one. */
+  let _kitUid = 0;
+
+  /* The outline stays a FIXED dark stroke rather than a shade of the kit: a
+     white shirt on a white card is only readable because of it.
+     Detail colours (collar, cuff) are shaded from parseFill().c1, never from
+     the raw fill — an encoded stripe string run through a hex darkener comes
+     back '#NaNNaNNaN', which fills-source.test.js exists to prevent. */
+  function shirtSvg(fill) {
+    if (!fill) return '';
+    const p = fillSvgPaint(fill, ++_kitUid);
+    const collar = darkenHex(parseFill(fill).c1, 40);
+    return `<svg viewBox="0 0 64 64" width="34" height="34" style="display:block">${p.defs}
+      <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
-      <image href="img/logo.png" x="33" y="18" width="10" height="10" opacity=".7"/>
+      <image href="${sanitize(clubBadgeUrl())}" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg>`;
   }
-  function sockSvg(variant) {
-    if (variant === 'yellow') {
-      return `<svg viewBox="0 0 32 64" width="22" height="34" style="display:block">
-        <path d="M8 2 L8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 L22 2 Z" fill="#FFD662" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
-        <rect x="8" y="2" width="14" height="6" rx="1" fill="#222" stroke="none"/>
-        <path d="M8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 Z" fill="#222" opacity=".15"/>
-      </svg>`;
-    }
-    return `<svg viewBox="0 0 32 64" width="22" height="34" style="display:block">
-      <path d="M8 2 L8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 L22 2 Z" fill="#fff" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
-      <rect x="8" y="2" width="14" height="6" rx="1" fill="#222" stroke="none"/>
-      <rect x="8" y="12" width="14" height="4" fill="#222" stroke="none"/>
-      <rect x="8" y="20" width="14" height="4" fill="#222" stroke="none"/>
-      <rect x="8" y="28" width="14" height="4" fill="#222" stroke="none"/>
-      <path d="M8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 Z" fill="#222" stroke="none"/>
+
+  /* Shorts are single-colour by decision — real ones are, and setClubKits
+     rejects an encoded fill here. Still routed through fillSvgPaint so a bad
+     stored value degrades to solid rather than throwing. */
+  function shortsSvg(fill) {
+    if (!fill) return '';
+    const p = fillSvgPaint(fill, ++_kitUid);
+    const shade = darkenHex(parseFill(fill).c1, 40);
+    return `<svg viewBox="0 0 64 64" width="30" height="30" style="display:block">${p.defs}
+      <path d="M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+      <line x1="14" y1="20" x2="50" y2="20" stroke="${shade}" stroke-width="1" opacity=".5"/>
     </svg>`;
+  }
+
+  /* The foot shading is the TRANSLUCENT overlay the old yellow sock used,
+     not the opaque black foot of the striped one — an opaque black foot on a
+     red sock is simply wrong. Esquerra's white sock therefore looks slightly
+     different from before: hoops now come from the fill (6 bands) instead of
+     three hand-placed rects, and the foot is shaded rather than solid. */
+  function kitSockSvg(fill) {
+    if (!fill) return '';
+    const p = fillSvgPaint(fill, ++_kitUid);
+    const cuff = darkenHex(parseFill(fill).c1, 60);
+    return `<svg viewBox="0 0 32 64" width="22" height="34" style="display:block">${p.defs}
+      <path d="M8 2 L8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 L22 2 Z" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+      <rect x="8" y="2" width="14" height="6" rx="1" fill="${cuff}" stroke="none"/>
+      <path d="M8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 Z" fill="#222" opacity=".15"/>
+    </svg>`;
+  }
+
+  /**
+   * The pieces of one resolved kit, side by side.
+   * `pieces` is what resolveKitPieces() returns — any member may be null, and
+   * a null piece is simply not drawn. That is how an era-2 record (which had
+   * no shorts) keeps rendering exactly as it does today.
+   * `opts.shorts === false` drops them where the row is too tight: the
+   * inline icons on match detail and the activity strip are pinned at 30px
+   * by CSS, and three of them is 90px in a one-line row.
+   */
+  function kitIconsHtml(pieces, opts) {
+    if (!pieces) return '';
+    const withShorts = !opts || opts.shorts !== false;
+    return '<span class="kit-icons">' +
+      shirtSvg(pieces.shirt) +
+      (withShorts ? shortsSvg(pieces.shorts) : '') +
+      kitSockSvg(pieces.socks) +
+      '</span>';
   }
 
   function matchdayRowHtml(g, i) {
@@ -13175,20 +13247,31 @@
       ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
       : '<p class="conv-drop-hint"><span class="conv-hint-desktop">' + t('conv.drag_desktop') + '</span><span class="conv-hint-mobile">' + t('conv.drag_mobile') + '</span></p>';
 
-    // Uniform: auto-default for home games
+    /* Equipació: one row PER GARMENT, each offering that piece from every
+       kit the lead defined. The pieces stay independently selectable by
+       decision — a coach can still send the 1a shirt with the 2a socks, as
+       the two old toggles allowed — but now only from pieces the club owns.
+
+       The draft (fa_convocatoria_uniform) is device-local and unsynced, so
+       there is nothing historical to migrate here: an old {jersey,socks}
+       draft simply falls through to the first kit. */
+    const kits = clubKits();
     const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
-    let curJersey = 'white';
-    let curSocks = 'striped';
-    if (convSelectedMatchId && uniformData[convSelectedMatchId]) {
-      curJersey = uniformData[convSelectedMatchId].jersey || 'white';
-      curSocks = uniformData[convSelectedMatchId].socks || 'striped';
-    } else if (selected && isOurTeam(selected.home)) {
-      curJersey = 'white'; curSocks = 'striped';
-    }
-    const jWhite = curJersey === 'white' ? ' uniform-opt-active' : '';
-    const jYellow = curJersey === 'yellow' ? ' uniform-opt-active' : '';
-    const sStriped = curSocks === 'striped' ? ' uniform-opt-active' : '';
-    const sYellow = curSocks === 'yellow' ? ' uniform-opt-active' : '';
+    const draft = (convSelectedMatchId && uniformData[convSelectedMatchId]) || {};
+    /* Clamped to an id that still EXISTS. A draft naming a deleted kit must
+       not leave every button inactive — which is exactly what the four
+       separate literal comparisons this replaced would have done. */
+    const pickedId = (field) => {
+      const want = draft[field];
+      return kits.some((k) => k.id === want) ? want : kits[0].id;
+    };
+    const curShirt = pickedId('shirtId');
+    const curShorts = pickedId('shortsId');
+    const curSocks = pickedId('socksId');
+    const kitRow = (field, cur, draw) => kits.map((k) =>
+      `<button type="button" class="uniform-opt conv-kit-opt${k.id === cur ? ' uniform-opt-active' : ''}"` +
+      ` data-field="${field}" data-kit="${sanitize(k.id)}" title="${sanitize(k.label || '')}">` +
+      draw(k) + '</button>').join('');
 
     // Default callup: 1h30 before kickoff, rounded down to 15min
     const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
@@ -13236,17 +13319,15 @@
             <div class="conv-uniform-row">
               <div class="conv-uniform-group">
                 <span class="conv-uniform-label">${t('conv.jersey')}</span>
-                <div class="uniform-toggle" id="conv-jersey-toggle">
-                  <button type="button" class="uniform-opt conv-jersey-opt${jWhite}" data-val="white" title="White">${jerseySvg('white')}</button>
-                  <button type="button" class="uniform-opt conv-jersey-opt${jYellow}" data-val="yellow" title="Yellow">${jerseySvg('yellow')}</button>
-                </div>
+                <div class="uniform-toggle">${kitRow('shirtId', curShirt, (k) => shirtSvg(k.shirt))}</div>
+              </div>
+              <div class="conv-uniform-group">
+                <span class="conv-uniform-label">${t('conv.shorts')}</span>
+                <div class="uniform-toggle">${kitRow('shortsId', curShorts, (k) => shortsSvg(k.shorts))}</div>
               </div>
               <div class="conv-uniform-group">
                 <span class="conv-uniform-label">${t('conv.socks')}</span>
-                <div class="uniform-toggle" id="conv-socks-toggle">
-                  <button type="button" class="uniform-opt conv-socks-opt${sStriped}" data-val="striped" title="Black & White">${sockSvg('striped')}</button>
-                  <button type="button" class="uniform-opt conv-socks-opt${sYellow}" data-val="yellow" title="Yellow">${sockSvg('yellow')}</button>
-                </div>
+                <div class="uniform-toggle">${kitRow('socksId', curSocks, (k) => kitSockSvg(k.socks))}</div>
               </div>
             </div>
           </div>` : ''}
@@ -15333,10 +15414,12 @@
       const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
       const convSent = sentPlayers.length > 0;
       const convIncluded = convSent && sentPlayers.some(id => String(id) === String(session.id));
-      const sentJersey = sentEntry && !Array.isArray(sentEntry) ? sentEntry.jersey : null;
-      const sentSocks = sentEntry && !Array.isArray(sentEntry) ? sentEntry.socks : null;
+      // Resolved once here rather than carried as two raw fields: the
+      // activity object is built in one place and rendered in another, and
+      // the three eras of this field belong in the resolver, not in both.
+      const sentPieces = resolveKitPieces(sentEntry, clubKits());
       const dayName = m.date ? tDay(new Date(m.date + 'T12:00:00').getDay()) : '';
-      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} · ${m.time} · ${sanitize(m.location || '')}`, convSent, convIncluded, sentJersey, sentSocks });
+      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} · ${m.time} · ${sanitize(m.location || '')}`, convSent, convIncluded, sentPieces });
     });
     const todayStr = localDateStr(now);
     const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -15386,8 +15469,9 @@
       let convTag = '';
       let uniformIcons = '';
       if (a.convSent) {
-        if (a.sentJersey || a.sentSocks) {
-          uniformIcons = `<span class="activity-uniform">${jerseySvg(a.sentJersey || 'white')}${sockSvg(a.sentSocks || 'striped')}</span>`;
+        if (a.sentPieces) {
+          // Shorts dropped — .activity-uniform svg is pinned at 30px.
+          uniformIcons = `<span class="activity-uniform">${kitIconsHtml(a.sentPieces, {shorts: false})}</span>`;
         }
         convTag = a.convIncluded
           ? '<span class="conv-available-tag" data-conv-link data-conv-match="' + a.id + '" style="cursor:pointer"><span class="conv-blink-dot"></span> ' + t('activity.conv_available') + '</span>'
@@ -16716,6 +16800,26 @@
         renderPage(getSession());
       });
     }
+    /* One builder for both writers.
+       They were two identical object LITERALS, which silently dropped
+       `startingXI` — saveStartingXI() bolts that onto the existing entry, so
+       a re-save or a re-send wiped the coach's line-up. Merging over `prev`
+       keeps it. The era-2 keys are deleted rather than left beside the new
+       ids so one entry can never claim two different kits. */
+    function convSentEntry(prev, list, videos) {
+      const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
+      const d = (convSelectedMatchId && uniformData[convSelectedMatchId]) || {};
+      const kits = clubKits();
+      const pick = (f) => (kits.some((k) => k.id === d[f]) ? d[f] : kits[0].id);
+      const next = Object.assign({}, prev || {}, {
+        players: list, videos: videos,
+        shirtId: pick('shirtId'), shortsId: pick('shortsId'), socksId: pick('socksId')
+      });
+      delete next.jersey;
+      delete next.socks;
+      return next;
+    }
+
     if (saveBtn) {
       saveBtn.addEventListener('click', () => {
         // If already sent, auto-update the sent data too
@@ -16725,11 +16829,10 @@
           const list = Array.from(calledEls).map(el => el.dataset.id);
           if (list.length) {
             setSaved(list);
-            const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
-            const curU = uniformData[convSelectedMatchId] || { jersey: 'white', socks: 'striped' };
             const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
             const videos = vData[convSelectedMatchId] || [];
-            sentData[convSelectedMatchId] = { players: list, jersey: curU.jersey, socks: curU.socks, videos: videos };
+            sentData[convSelectedMatchId] = convSentEntry(
+                sentData[convSelectedMatchId], list, videos);
             localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
           }
         }
@@ -16761,11 +16864,10 @@
           const list = Array.from(calledEls).map(el => el.dataset.id);
           if (!list.length) return;
           setSaved(list);
-          const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
-          const curU = uniformData[convSelectedMatchId] || { jersey: 'white', socks: 'striped' };
           const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
           const videos = vData[convSelectedMatchId] || [];
-          sentData[convSelectedMatchId] = { players: list, jersey: curU.jersey, socks: curU.socks, videos: videos };
+          sentData[convSelectedMatchId] = convSentEntry(
+              sentData[convSelectedMatchId], list, videos);
           localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
 
           // Push notification to called-up players
@@ -16795,26 +16897,22 @@
       });
     }
 
-    // Uniform toggle bindings
-    document.querySelectorAll('.conv-jersey-opt').forEach(btn => {
+    /* Equipació bindings — ONE handler for all three rows, keyed by the
+       button's own data-field. The two hand-written copies this replaced
+       differed only in which literal they stored, which is precisely how a
+       third garment would have become a third near-identical copy.
+       Deselecting is scoped to the clicked row, so choosing a shirt does not
+       clear the socks. */
+    document.querySelectorAll('.conv-kit-opt').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.conv-jersey-opt').forEach(b => b.classList.remove('uniform-opt-active'));
+        const row = btn.closest('.uniform-toggle');
+        if (row) row.querySelectorAll('.conv-kit-opt')
+            .forEach(b => b.classList.remove('uniform-opt-active'));
         btn.classList.add('uniform-opt-active');
         if (!convSelectedMatchId) return;
         const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
         if (!uniformData[convSelectedMatchId]) uniformData[convSelectedMatchId] = {};
-        uniformData[convSelectedMatchId].jersey = btn.dataset.val;
-        localStorage.setItem('fa_convocatoria_uniform', JSON.stringify(uniformData));
-      });
-    });
-    document.querySelectorAll('.conv-socks-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.conv-socks-opt').forEach(b => b.classList.remove('uniform-opt-active'));
-        btn.classList.add('uniform-opt-active');
-        if (!convSelectedMatchId) return;
-        const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
-        if (!uniformData[convSelectedMatchId]) uniformData[convSelectedMatchId] = {};
-        uniformData[convSelectedMatchId].socks = btn.dataset.val;
+        uniformData[convSelectedMatchId][btn.dataset.field] = btn.dataset.kit;
         localStorage.setItem('fa_convocatoria_uniform', JSON.stringify(uniformData));
       });
     });
