@@ -10,7 +10,7 @@
     "test:router": "mocha router.test.js --exit",
     "test:utils": "mocha utils.test.js --exit",
     "test:rules": "firebase emulators:exec --only firestore --project=demo-esquerrapp \"mocha rules.test.js --timeout 20000 --exit\"",
-    "test:functions": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha functions.test.js wipe.test.js teams.test.js templates.test.js --timeout 120000 --exit\"",
+    "test:functions": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha functions.test.js wipe.test.js teams.test.js templates.test.js club-kits.test.js --timeout 120000 --exit\"",
     "test:templates": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha templates.test.js --timeout 120000 --exit\"",
     "test:backfill-boards": "firebase emulators:exec --only firestore --project=esquerrapp \"mocha backfill-boards.test.js --timeout 120000 --exit\"",
     "test:nav": "mocha navigation.test.js --exit",
@@ -31,7 +31,8 @@
     "test:fills": "mocha fills.test.js fills-source.test.js --exit",
     "test:authors": "mocha board-authors.test.js --exit",
     "test:catbadge": "mocha cat-badge.test.js --exit",
-    "test:kits": "mocha kits.test.js --exit"
+    "test:kits": "mocha kits.test.js --exit",
+    "test:clubkits": "firebase emulators:exec --only firestore,functions --project=demo-esquerrapp \"mocha club-kits.test.js --timeout 120000 --exit\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

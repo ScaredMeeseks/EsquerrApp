@@ -187,6 +187,14 @@
           <p style="margin:0 0 .6rem;font-size:.8rem;color:var(--text-secondary);" data-i18n="auth.staff_desc">Els correus que afegeixis aquí podran registrar-se com a staff d'aquesta categoria.</p>
           <div id="team-setup-staff-inputs"></div>
         </div>
+        <!-- Kits. NOT `hidden` like the three sections above it: those depend
+             on which categories are ticked, and a club's shirts do not. -->
+        <div id="team-setup-kits">
+          <h3 style="margin:1.2rem 0 .3rem;font-size:1rem;color:var(--text-secondary);" data-i18n="kits.title">Equipacions</h3>
+          <p style="margin:0 0 .6rem;font-size:.8rem;color:var(--text-secondary);" data-i18n="kits.desc">Fins a 3 equipacions. Són les que apareixeran a la convocatòria.</p>
+          <div id="team-setup-kits-inputs"></div>
+          <button type="button" class="btn btn-outline btn-small" id="btn-add-kit" data-i18n="kits.add">+ Equipació</button>
+        </div>
         <div id="team-setup-error" class="error-msg" hidden></div>
         <button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;" data-i18n="auth.save_continue">Desar i continuar</button>
         <!-- Only shown when the screen was opened voluntarily from Settings.

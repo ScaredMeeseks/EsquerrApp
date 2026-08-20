@@ -2208,6 +2208,30 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
 .kit-icons { display: flex; align-items: flex-end; gap: 1px; }
+
+/* ── Kit editor (team setup) ── */
+.ts-kit-block {
+  border: 2px solid var(--border); border-radius: var(--radius);
+  padding: .6rem; margin-bottom: .7rem;
+}
+.ts-kit-head { display: flex; align-items: center; gap: .5rem; }
+.ts-kit-head .reg-input { flex: 1; min-width: 0; }
+.ts-kit-preview { flex: 0 0 auto; }
+.ts-kit-preview svg { width: 26px; height: 26px; }
+.ts-kit-garments {
+  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .6rem;
+}
+.ts-kit-garment { display: flex; align-items: center; gap: .4rem; }
+.ts-kit-garment-label {
+  font-size: .8rem; color: var(--text-secondary); min-width: 4.5rem;
+}
+/* The shared stripe row is built for the board's dark context menu; inside
+   the setup card it needs the card's own colours and no menu padding. */
+.ts-kit-garment .tb-ctx-item {
+  padding: 0; background: none; color: var(--text); cursor: default;
+  display: flex; align-items: center; gap: .4rem; font-size: .8rem;
+}
+.ts-kit-garment .tb-ctx-item:hover { background: none; }
 .conv-uniform-group {
   display: flex; align-items: center; gap: .5rem;
 }

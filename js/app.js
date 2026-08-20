@@ -264,6 +264,15 @@
     'conv.jersey':          { ca:'Samarreta', es:'Camiseta', en:'Jersey' },
     'conv.shorts':          { ca:'Pantalons', es:'Pantalones', en:'Shorts' },
     'conv.socks':           { ca:'Mitges', es:'Medias', en:'Socks' },
+    // ── Club kits ──
+    'kits.title':           { ca:'Equipacions', es:'Equipaciones', en:'Kits' },
+    'kits.desc':            { ca:'Fins a 3 equipacions. Són les que apareixeran a la convocatòria.', es:'Hasta 3 equipaciones. Son las que aparecerán en la convocatoria.', en:'Up to 3 kits. These are what appear on the call-up.' },
+    'kits.edit':            { ca:'Editar equipacions', es:'Editar equipaciones', en:'Edit kits' },
+    'kits.add':             { ca:'+ Equipació', es:'+ Equipación', en:'+ Kit' },
+    'kits.name_ph':         { ca:'Nom (p. ex. Primera)', es:'Nombre (p. ej. Primera)', en:'Name (e.g. Home)' },
+    'kits.err_name':        { ca:'Cada equipació necessita un nom.', es:'Cada equipación necesita un nombre.', en:'Every kit needs a name.' },
+    'kits.err_shorts':      { ca:'Els pantalons han de ser d\'un sol color.', es:'Los pantalones deben ser de un solo color.', en:'Shorts must be a single colour.' },
+    'kits.err_none':        { ca:'Cal com a mínim una equipació.', es:'Se necesita al menos una equipación.', en:'At least one kit is required.' },
     /* conv.white / conv.yellow / conv.striped are GONE. They named the two
        hardcoded kits, were never actually called (the buttons used raw
        `title="White"` attributes), and a kit's name is now club-entered
@@ -1293,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 100;
+  const APP_VERSION = 101;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2736,8 +2745,33 @@
     _refreshTeamSetupFcf();
     _refreshTeamSetupSchedules();
     _refreshTeamSetupStaff();
+    // Not category-dependent, so it renders once here and is never rebuilt
+    // by a category toggle — which also keeps a colour picker open on Android
+    // from being destroyed mid-edit.
+    _refreshTeamSetupKits();
     _refreshTeamSetupQuota();
     _bindTeamSetupEvents(container);
+
+    var addKit = document.getElementById('btn-add-kit');
+    if (addKit && !addKit._bound) {
+      addKit._bound = true;
+      addKit.addEventListener('click', function () {
+        var kits = _collectKitsFromDom();
+        if (kits.length >= 3) return;
+        /* A time-based id, never the array index: an index would repoint
+           every historical convocatòria the moment a lead deletes a kit. */
+        kits.push({
+          id: 'k' + Date.now().toString(36),
+          label: '', shirt: '#ffffff', shorts: '#000000', socks: '#ffffff'
+        });
+        _refreshTeamSetupKits(kits);
+      });
+    }
+    // Opened from the Kits card rather than the Categories one.
+    if (opts && opts.focus === 'kits') {
+      var sec = document.getElementById('team-setup-kits');
+      if (sec && sec.scrollIntoView) sec.scrollIntoView({block: 'start'});
+    }
   }
 
   /**
@@ -2747,6 +2781,159 @@
    * _clubConfig: toggling a letter would then wipe a half-typed list of
    * addresses. Current DOM values win over the stored ones.
    */
+  /* ── Kit editor ──────────────────────────────────────────────────
+     Reads what is ON SCREEN, never what is stored, for the same reason the
+     fcf and schedule sections do: a re-render that pulled from _clubConfig
+     would throw away half-typed input.
+
+     But the hazard is sharper here than there. <input type="color"> opens a
+     MODAL picker on Android Chrome, and re-rendering the section destroys
+     the input that picker is bound to. So _refreshTeamSetupKits() runs only
+     on STRUCTURAL changes — a kit added or removed. Colour and stripe edits
+     commit into the block's dataset and repaint one preview node in place,
+     exactly as the board's per-player menu commits without re-rendering. */
+
+  function _collectKitsFromDom() {
+    var out = [];
+    document.querySelectorAll('#team-setup-kits-inputs .ts-kit-block')
+        .forEach(function (b) {
+          var label = b.querySelector('[data-kit-label]');
+          var shorts = b.querySelector('[data-kit-shorts]');
+          out.push({
+            id: b.dataset.kitId,
+            label: label ? label.value.trim().slice(0, 24) : '',
+            // The encoded fills live on the block, because a striped value
+            // cannot be held in an <input type="color">.
+            shirt: b.dataset.shirt || '#ffffff',
+            shorts: shorts ? shorts.value : '#000000',
+            socks: b.dataset.socks || '#ffffff'
+          });
+        });
+    return out;
+  }
+
+  function _kitPreviewHtml(kit) {
+    return '<span class="kit-icons">' + shirtSvg(kit.shirt) +
+      shortsSvg(kit.shorts) + kitSockSvg(kit.socks) + '</span>';
+  }
+
+  function _repaintKitBlock(block) {
+    var prev = block.querySelector('.ts-kit-preview');
+    if (!prev) return;
+    var shorts = block.querySelector('[data-kit-shorts]');
+    prev.innerHTML = _kitPreviewHtml({
+      shirt: block.dataset.shirt,
+      shorts: shorts ? shorts.value : '#000000',
+      socks: block.dataset.socks
+    });
+  }
+
+  /** One garment's controls: base colour, live preview, and — for the shirt
+      and socks — the shared stripe row. */
+  function _buildKitGarment(block, garment, labelKey, opts) {
+    var wrap = document.createElement('div');
+    wrap.className = 'ts-kit-garment';
+    var lab = document.createElement('span');
+    lab.className = 'ts-kit-garment-label';
+    lab.textContent = t(labelKey);
+    wrap.appendChild(lab);
+
+    var base = document.createElement('input');
+    base.type = 'color';
+    base.className = 'tb-color-pick';
+    if (garment === 'shorts') {
+      // Shorts are single-colour: a plain swatch, no stripe row, and
+      // setClubKits rejects an encoded value here too.
+      base.setAttribute('data-kit-shorts', '');
+      base.value = block.dataset.shorts || '#000000';
+      base.addEventListener('input', function () {
+        block.dataset.shorts = base.value;
+        _repaintKitBlock(block);
+      });
+      wrap.appendChild(base);
+      return wrap;
+    }
+
+    var f = parseFill(block.dataset[garment] || '#ffffff');
+    base.value = f.c1;
+    var cfg = {on: f.striped, n: f.n || 2, dir: f.dir || 'v', c2: f.c2 || '#ffffff'};
+    var apply = function () {
+      block.dataset[garment] = fillFrom(base.value, cfg);
+      _repaintKitBlock(block);
+    };
+    base.addEventListener('input', apply);
+    wrap.appendChild(base);
+    wrap.appendChild(stripeRowEl(cfg, function (next) {
+      cfg = next;
+      apply();
+    }, opts));
+    return wrap;
+  }
+
+  function _buildKitBlock(kit) {
+    var block = document.createElement('div');
+    block.className = 'ts-kit-block';
+    block.dataset.kitId = kit.id;
+    block.dataset.shirt = kit.shirt;
+    block.dataset.socks = kit.socks;
+
+    var head = document.createElement('div');
+    head.className = 'ts-kit-head';
+    var name = document.createElement('input');
+    name.className = 'reg-input';
+    name.setAttribute('data-kit-label', '');
+    name.maxLength = 24;
+    name.value = kit.label || '';
+    name.placeholder = t('kits.name_ph');
+    head.appendChild(name);
+    var prev = document.createElement('span');
+    prev.className = 'ts-kit-preview';
+    head.appendChild(prev);
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'md-remove-btn ts-kit-remove';
+    del.textContent = '×';
+    del.addEventListener('click', function () {
+      // Structural, so a full refresh is right here — and a club may never
+      // reach zero kits, or kitsOf() would silently restore the defaults.
+      var kits = _collectKitsFromDom().filter(function (k) {
+        return k.id !== kit.id;
+      });
+      if (!kits.length) return;
+      _refreshTeamSetupKits(kits);
+    });
+    head.appendChild(del);
+    block.appendChild(head);
+
+    var row = document.createElement('div');
+    row.className = 'ts-kit-garments';
+    row.appendChild(_buildKitGarment(block, 'shirt', 'conv.jersey'));
+    row.appendChild(_buildKitGarment(block, 'shorts', 'conv.shorts'));
+    // Hoops are horizontal — the direction control is locked for socks.
+    row.appendChild(_buildKitGarment(block, 'socks', 'conv.socks', {dirs: false}));
+    block.appendChild(row);
+    // Built before the shorts input exists otherwise, so paint last.
+    _repaintKitBlock(block);
+    return block;
+  }
+
+  /** Full re-render. Structural changes only — see the note above. */
+  function _refreshTeamSetupKits(kits) {
+    var inputsEl = document.getElementById('team-setup-kits-inputs');
+    if (!inputsEl) return;
+    var typed = _collectKitsFromDom();
+    /* Typed wins WHOLESALE, not field by field: a kit is one atomic row, and
+       a half-merged one — typed name, stored colours — is worse than either.
+       Nothing is typed on the first render, so stored wins there. */
+    var list = kits || (typed.length ? typed : kitsOf(_clubConfig));
+    inputsEl.innerHTML = '';
+    list.slice(0, 3).forEach(function (k) {
+      inputsEl.appendChild(_buildKitBlock(k));
+    });
+    var add = document.getElementById('btn-add-kit');
+    if (add) add.hidden = list.length >= 3;
+  }
+
   function _refreshTeamSetupStaff() {
     var section = document.getElementById('team-setup-staff');
     var inputsEl = document.getElementById('team-setup-staff-inputs');
@@ -3344,6 +3531,22 @@
       return;
     }
 
+    /* Kits, validated locally BEFORE the network and before the button is
+       disabled — the same order badEmail above uses. The server enforces all
+       of this again; this is only so a typo does not cost a round trip. */
+    var kits = _collectKitsFromDom();
+    var badKit = null;
+    kits.forEach(function (k) {
+      if (!k.label) badKit = badKit || t('kits.err_name');
+      if (!/^#[0-9a-fA-F]{6}$/.test(k.shorts)) badKit = badKit || t('kits.err_shorts');
+    });
+    if (!kits.length) badKit = badKit || t('kits.err_none');
+    if (badKit) {
+      errEl.textContent = badKit;
+      errEl.hidden = false;
+      return;
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = t('auth.saving');
     try {
@@ -3355,6 +3558,13 @@
          querying a category its own token does not authorise. */
       var setCats = firebase.app().functions('us-central1').httpsCallable('setClubCategories');
       await setCats({ categories: categories, fcfLinks: fcfLinks, schedules: schedules });
+      /* Its own callable, and deliberately AFTER setCats: kits share no
+         invariant with categories, and setClubCategories does quota
+         accounting and a claims refresh that saving a colour must not be
+         able to trip. Ordering it second means a kit failure can never leave
+         the categories unsaved. */
+      var setKits = firebase.app().functions('us-central1').httpsCallable('setClubKits');
+      await setKits({ kits: kits });
       // Roster docs live in their own subcollection, so they are separate
       // writes. Only push the ones that actually changed — every write fires
       // the onRosterWritten trigger, which re-derives members' permissions.
@@ -6799,16 +7009,84 @@
     localStorage.setItem('fa_cleanup_orphan_match_boards', '1');
   }
 
-  /** The stored stripe settings for a side, or the defaults. */
+  /** The stored stripe settings for a side, or the defaults. The clamp lives
+      in normalizeStripeState (utils.js) so the board and the kit editor
+      cannot disagree — this used to accept `n: 9` via a bare `o.n || 2`. */
   function _stripeCfgOf(which) {
     try {
       const raw = localStorage.getItem('fa_tactic_' + which + '_stripes');
-      const o = raw ? JSON.parse(raw) : null;
-      if (o && typeof o === 'object') {
-        return {on: !!o.on, n: o.n || 2, dir: o.dir === 'h' ? 'h' : 'v', c2: o.c2 || '#ffffff'};
-      }
+      if (raw) return normalizeStripeState(JSON.parse(raw));
     } catch (e) { /* corrupt value → defaults, never a broken toolbar */ }
-    return {on: false, n: 2, dir: 'v', c2: '#ffffff'};
+    return normalizeStripeState(null);
+  }
+
+  /**
+   * The stripe controls — toggle, band count, direction, second colour — as
+   * one detached element that reports the WHOLE state through `onChange`.
+   *
+   * Lifted out of the board's context menu, which was already the decoupled
+   * copy: it took a state object in and called an action out, touching no
+   * storage and no canvas. Two callers now — the per-player menu and the
+   * club kit editor — and one definition, because the board's OTHER copy
+   * (_stripeControlsHtml, a string builder wired to localStorage and
+   * updateCircleColors) is exactly the kind of near-duplicate that drifts.
+   *
+   * `opts.dirs === false` locks the direction, which is what the socks row
+   * uses: hoops are horizontal.
+   */
+  function stripeRowEl(state, onChange, opts) {
+    const st = normalizeStripeState(state);
+    const lockDir = opts && opts.dirs === false;
+    const row = document.createElement('div');
+    row.className = 'tb-ctx-item tb-ctx-color-row tb-ctx-stripes';
+    const lab = document.createElement('label');
+    lab.style.cssText = 'display:flex;align-items:center;gap:.3rem;cursor:pointer;';
+    const on = document.createElement('input');
+    on.type = 'checkbox';
+    on.checked = !!st.on;
+    lab.appendChild(on);
+    lab.appendChild(document.createTextNode(t('tactics.stripes')));
+    row.appendChild(lab);
+
+    const optsEl = document.createElement('span');
+    optsEl.className = 'tb-stripe-opts';
+    optsEl.style.display = st.on ? '' : 'none';
+    const nEl = document.createElement('input');
+    nEl.type = 'number'; nEl.min = 2; nEl.max = 6; nEl.value = st.n;
+    nEl.className = 'tb-stripe-n';
+    const dirEl = document.createElement('button');
+    dirEl.type = 'button';
+    dirEl.className = 'tb-stripe-dir';
+    dirEl.dataset.dir = st.dir;
+    dirEl.textContent = st.dir === 'h' ? '☰' : '|||';
+    if (lockDir) { dirEl.disabled = true; dirEl.style.opacity = '.4'; }
+    const c2El = document.createElement('input');
+    c2El.type = 'color';
+    c2El.className = 'tb-ctx-color-pick';
+    c2El.value = st.c2;
+    optsEl.appendChild(nEl); optsEl.appendChild(dirEl); optsEl.appendChild(c2El);
+    row.appendChild(optsEl);
+
+    const commit = () => {
+      // Clamp what the user SEES, not merely what is stored.
+      const next = normalizeStripeState({
+        on: on.checked, n: nEl.value, dir: dirEl.dataset.dir, c2: c2El.value
+      });
+      nEl.value = next.n;
+      optsEl.style.display = next.on ? '' : 'none';
+      onChange(next);
+    };
+    on.addEventListener('change', commit);
+    nEl.addEventListener('change', commit);
+    c2El.addEventListener('input', commit);
+    if (!lockDir) {
+      dirEl.addEventListener('click', () => {
+        dirEl.dataset.dir = dirEl.dataset.dir === 'h' ? 'v' : 'h';
+        dirEl.textContent = dirEl.dataset.dir === 'h' ? '☰' : '|||';
+        commit();
+      });
+    }
+    return row;
   }
 
   /* Stripe controls for one side, inline beside its colour swatch. The
@@ -7609,56 +7887,7 @@
           row.appendChild(picker);
           ctxMenu.appendChild(row);
         } else if (it.type === 'stripes') {
-          /* Toggle + count + direction + second colour, as one row group.
-             Every control commits through the same `it.action`, which is
-             handed the WHOLE settings object — the caller keeps the state so
-             changing the first colour does not lose the stripe settings and
-             vice versa. */
-          const st = it.value;
-          const row = document.createElement('div');
-          row.className = 'tb-ctx-item tb-ctx-color-row tb-ctx-stripes';
-          const lab = document.createElement('label');
-          lab.style.cssText = 'display:flex;align-items:center;gap:.3rem;cursor:pointer;';
-          const on = document.createElement('input');
-          on.type = 'checkbox';
-          on.checked = !!st.on;
-          lab.appendChild(on);
-          lab.appendChild(document.createTextNode(t('tactics.stripes')));
-          row.appendChild(lab);
-
-          const opts = document.createElement('span');
-          opts.className = 'tb-stripe-opts';
-          opts.style.display = st.on ? '' : 'none';
-          const nEl = document.createElement('input');
-          nEl.type = 'number'; nEl.min = 2; nEl.max = 6; nEl.value = st.n || 2;
-          nEl.className = 'tb-stripe-n';
-          const dirEl = document.createElement('button');
-          dirEl.type = 'button';
-          dirEl.className = 'tb-stripe-dir';
-          dirEl.dataset.dir = st.dir === 'h' ? 'h' : 'v';
-          dirEl.textContent = dirEl.dataset.dir === 'h' ? '☰' : '|||';
-          const c2El = document.createElement('input');
-          c2El.type = 'color';
-          c2El.className = 'tb-ctx-color-pick';
-          c2El.value = st.c2 || '#ffffff';
-          opts.appendChild(nEl); opts.appendChild(dirEl); opts.appendChild(c2El);
-          row.appendChild(opts);
-
-          const commit = () => {
-            const n = Math.min(6, Math.max(2, parseInt(nEl.value, 10) || 2));
-            nEl.value = n;
-            opts.style.display = on.checked ? '' : 'none';
-            it.action({on: on.checked, n: n, dir: dirEl.dataset.dir, c2: c2El.value});
-          };
-          on.addEventListener('change', commit);
-          nEl.addEventListener('change', commit);
-          c2El.addEventListener('input', commit);
-          dirEl.addEventListener('click', () => {
-            dirEl.dataset.dir = dirEl.dataset.dir === 'h' ? 'v' : 'h';
-            dirEl.textContent = dirEl.dataset.dir === 'h' ? '☰' : '|||';
-            commit();
-          });
-          ctxMenu.appendChild(row);
+          ctxMenu.appendChild(stripeRowEl(it.value, it.action));
         } else if (it.type === 'range') {
           const row = document.createElement('label');
           row.className = 'tb-ctx-item tb-ctx-color-row';
@@ -15041,6 +15270,19 @@
       </div>`;
     }
 
+    // ---------- Team Lead / Admin: Kits ----------
+    // Same editor as the categories card — kits are a section of team setup,
+    // not a screen of their own, so they inherit its save flow and its
+    // error element rather than needing a second write path.
+    if (session && (session.isTeamLead || session.isAdmin) && _clubConfig) {
+      html += `
+      <div class="card">
+        <div class="card-title">${t('kits.title')}</div>
+        <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">${t('kits.desc')}</p>
+        <button class="btn btn-primary" id="btn-edit-kits">${t('kits.edit')}</button>
+      </div>`;
+    }
+
     // ---------- Team Lead / Admin: New Season ----------
     if (session && (session.isTeamLead || session.isAdmin)) {
       html += `
@@ -19811,6 +20053,11 @@
         if (e.target.closest('#btn-edit-categories')) {
           // The only voluntary entry, so the only one that may be left.
           showTeamSetup({ cancellable: true });
+          return;
+        }
+        // Kits live in the same editor; both cards open it the same way.
+        if (e.target.closest('#btn-edit-kits')) {
+          showTeamSetup({ cancellable: true, focus: 'kits' });
           return;
         }
         /* Notification soft-ask. THE tap that carries the user gesture into

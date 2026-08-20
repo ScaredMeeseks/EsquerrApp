@@ -1897,6 +1897,41 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v101 - club kits, stage 2 of 2: the lead's editor
+
+The editor lives as a fifth section of **team setup**, not a screen of its own, so it inherits `_leaveTeamSetup()`, the `#team-setup-error` element and the disable-and-`t('auth.saving')` save flow — and, more to the point, it writes to the same club document through the same button rather than needing a second write path. A new **Kits card** in Settings opens it with `{cancellable: true, focus: 'kits'}`, exactly as the Categories card does.
+
+Unlike the fcf, schedules and staff sections, `#team-setup-kits` is **not `hidden`**: those three depend on which categories are ticked, and a club's shirts do not.
+
+### The colour tool is now shared, not copied
+
+The board had **two** stripe UIs: `_stripeControlsHtml` (a string builder welded to localStorage and `updateCircleColors`) and the per-player context menu — which was already the decoupled one, taking a state object in and calling an action out, touching neither storage nor canvas. That second copy is now `stripeRowEl(state, onChange, opts)`, with two callers and one definition. `opts.dirs === false` locks the direction, which is what the **socks** row uses: hoops are horizontal.
+
+`_stripeCfgOf` now delegates its clamp to `normalizeStripeState`, which removes a real difference — the board's inline `o.n || 2` happily accepted `n: 9`, a value `parseFill` then rejects, so the stripes silently vanished.
+
+### The Android colour-picker hazard
+
+`_refreshTeamSetupKits()` runs on **structural changes only** — a kit added or removed. `<input type="color">` opens a *modal* picker on Android Chrome, and re-rendering the section destroys the input that picker is bound to. Colour and stripe edits therefore commit into the block's `dataset` and repaint one preview node in place, the same way the board's per-player menu commits without re-rendering. The typed-over-stored rule the other sections use is still honoured, but **wholesale per kit**: a kit is one atomic row, and a half-merged one (typed name, stored colours) is worse than either.
+
+### setClubKits, not a wider rules allow-list
+
+`firestore.rules` is **untouched**. Three reasons, heaviest first:
+
+1. The clause a lead writes through — `hasOnly(['fcfLinks','schedules'])` — is documented as a **back-compat shim to be dropped** once a v55+ APK circulates. Adding `'kits'` would make a permanent feature depend on a clause the next maintainer is instructed to delete.
+2. `setClubCategories` does quota accounting, roster-key removal checks and **a claims refresh over every member**. Saving a colour must not be able to trip *"Per eliminar un equip utilitza deleteTeam"*, and must not re-stamp custom claims. Kits and categories share no invariant.
+3. `clubs/{clubId}` is downloaded by every member, which is the stated reason unknown category keys are rejected — kits need the same strictness.
+
+The validator enforces two rules **nothing else can**: shorts must be a single colour (`parseFill` degrades a striped value to solid *silently*, so a bad one would sit in the document rendering plausibly), and a club may never store **zero** kits (`kitsOf` falls back to the defaults on an empty list, so saving none would silently restore the kits the lead had just deleted). Plus: 1-3 kits, unique `[a-z0-9-]` ids, unknown fields rejected, labels ≤24 chars with no control characters, hex validated, `n` in 2-6, `dir` in `v|h`. `merge: true`, so `categories` and `badgeUrl` are untouched.
+
+Client-side validation runs **before the network and before the button is disabled**, the same order `badEmail` uses; the server enforces everything again.
+
+### Two notes for whoever is next
+
+- Writing the control-character regex through the shell put **literal control bytes** in `functions/index.js` twice, which made git treat it as binary. It has to be written from a script file, or with `String.fromCharCode(92)` for the backslash. Same family as the CLAUDE.md warning about PowerShell `Set-Content`.
+- `quota.test.js`'s "cancellable ONLY from Settings" test counted cancellable call sites and required exactly **1**. That was a fine proxy while Settings had one button, but the Kits card is a second, equally legitimate voluntary entry. It now asserts the actual rule — every **forced** entry passes no options at all, and every cancellable one sits behind a `btn-edit-*` button — because the count would have forced a real feature to fight a test that never meant to forbid it.
+
+**582 tests** (567 unit + 15 new emulator). Needs **both** a Pages push and a functions deploy.
+
 ## v100 - club kits, stage 1 of 2: the model, the icons and the picker
 
 Requested 2026-08-20. `jerseySvg(variant)` knew exactly two words, `'white'` and `'yellow'`, with the hexes inline and `img/logo.png` baked into the crest; `sockSvg` knew `'striped'` and `'yellow'`. **Every club on the platform wore Esquerra de l'Eixample's kit.**

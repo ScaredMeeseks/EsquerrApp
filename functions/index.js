@@ -1500,6 +1500,119 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
   return {ok: true, teams: nextKeys.length, max, refreshed};
 });
 
+// ── 7a-bis. setClubKits — the club's shirts, shorts and socks ──
+//
+// A separate callable rather than a field on setClubCategories, and rather
+// than a wider allow-list in firestore.rules. Three reasons, heaviest first:
+//
+//   1. The rules clause a lead writes through — hasOnly(['fcfLinks',
+//      'schedules']) — is documented as a BACK-COMPAT SHIM to be dropped
+//      once a v55+ APK circulates. Adding 'kits' there would make a
+//      permanent feature depend on a clause the next maintainer is
+//      instructed to delete, and kits would break from a rules change
+//      nobody connected to them.
+//   2. setClubCategories does quota accounting, roster-key removal checks
+//      and a claims refresh over every member. Saving a colour must not be
+//      able to trip "Per eliminar un equip utilitza deleteTeam", and must
+//      not re-stamp custom claims. Kits and categories share no invariant.
+//   3. This document is downloaded by every member of the club, which is
+//      the stated reason unknown category keys are rejected above. Kits are
+//      free-form colour data and need the same strictness.
+//
+// firestore.rules is deliberately UNTOUCHED: members can already read the
+// club doc, and the Admin SDK bypasses rules for the write.
+const KIT_HEX = /^#[0-9a-fA-F]{6}$/;
+const KIT_ID = /^[a-z0-9][a-z0-9-]{2,31}$/;
+
+/**
+ * A stored fill: a bare hex, or `s|<v|h>|<n>|<c1>|<c2>`.
+ * `allowStripes` is false for shorts — real ones are single-colour, and
+ * parseFill() degrades a striped value to solid SILENTLY, so enforcing it
+ * only in the UI would leave a bad value sitting in the document looking
+ * fine.
+ */
+function validKitFill(v, allowStripes) {
+  if (typeof v !== "string") return false;
+  if (v.slice(0, 2) !== "s|") return KIT_HEX.test(v);
+  if (!allowStripes) return false;
+  const p = v.split("|");
+  if (p.length !== 5) return false;
+  if (p[1] !== "v" && p[1] !== "h") return false;
+  const n = Number(p[2]);
+  if (!Number.isInteger(n) || n < 2 || n > 6) return false;
+  return KIT_HEX.test(p[3]) && KIT_HEX.test(p[4]);
+}
+
+exports.setClubKits = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const caller = request.auth;
+  const isSuper = caller.token.email === SUPERUSER_EMAIL;
+  // Same rule as setClubCategories: the club comes from the CLAIM, never the
+  // payload, or any lead could restyle any other club.
+  const clubId = (isSuper && request.data && request.data.clubId) ?
+    String(request.data.clubId) : caller.token.teamId;
+  if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
+  if (!isSuper && caller.token.role !== "lead") {
+    throw new HttpsError("permission-denied",
+        "Només el responsable del club pot configurar les equipacions.");
+  }
+
+  const kits = (request.data || {}).kits;
+  if (!Array.isArray(kits)) {
+    throw new HttpsError("invalid-argument", "kits no vàlid.");
+  }
+  // At least one: kitsOf() falls back to the defaults on an empty list, so
+  // saving zero would silently resurrect them after the lead deleted
+  // everything — a save that appears to do the opposite of what was asked.
+  if (kits.length < 1 || kits.length > 3) {
+    throw new HttpsError("invalid-argument", "Entre 1 i 3 equipacions.");
+  }
+
+  const seen = new Set();
+  const clean = kits.map((k) => {
+    if (!k || typeof k !== "object" || Array.isArray(k)) {
+      throw new HttpsError("invalid-argument", "Equipació no vàlida.");
+    }
+    const extra = Object.keys(k).filter((f) =>
+      ["id", "label", "shirt", "shorts", "socks"].indexOf(f) === -1);
+    if (extra.length) {
+      throw new HttpsError("invalid-argument",
+          "Camps desconeguts: " + extra.join(", "));
+    }
+    const id = String(k.id || "");
+    if (!KIT_ID.test(id)) {
+      throw new HttpsError("invalid-argument", "id d'equipació no vàlid.");
+    }
+    if (seen.has(id)) {
+      throw new HttpsError("invalid-argument", "ids d'equipació repetits.");
+    }
+    seen.add(id);
+    const label = String(k.label == null ? "" : k.label);
+    // Control characters would render as mojibake in a button title on
+    // every member's device.
+    // eslint-disable-next-line no-control-regex
+    if (label.length > 24 || /[\x00-\x1f\x7f]/.test(label)) {
+      throw new HttpsError("invalid-argument", "Nom d'equipació no vàlid.");
+    }
+    if (!validKitFill(k.shirt, true) || !validKitFill(k.socks, true)) {
+      throw new HttpsError("invalid-argument", "Color d'equipació no vàlid.");
+    }
+    if (!validKitFill(k.shorts, false)) {
+      throw new HttpsError("invalid-argument",
+          "Els pantalons han de ser d'un sol color.");
+    }
+    return {id, label, shirt: k.shirt, shorts: k.shorts, socks: k.socks};
+  });
+
+  // merge:true — this callable owns `kits` and must not disturb categories,
+  // fcfLinks, badgeUrl or anything else on the document.
+  await db.collection("clubs").doc(clubId).set({kits: clean}, {merge: true});
+  logger.info("setClubKits", {clubId, by: caller.uid, kits: clean.length});
+  return {ok: true, kits: clean.length};
+});
+
 // ── 7b. onRosterWritten — roster list edits re-apply to existing members ──
 // When the lead adds a staff email (or staff add a player email) belonging to
 // somebody who has ALREADY registered, joinClub has long since run for them.
