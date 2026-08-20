@@ -1291,7 +1291,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 97;
+  const APP_VERSION = 98;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -5649,9 +5649,37 @@
     const todayStr = localDateStr(now);
     const seasonStart = seasonStartStr(now);
 
+    /* The sessions this player was actually called to.
+
+       computeReadiness read the WHOLE downloaded training list, with no
+       playerIsCalled() filter — the one filter every other player surface
+       applies. A player's own client downloads one category, so this was
+       invisible from a phone; a coach downloads every category, and on the
+       staff roster it credited each player with the OTHER categories'
+       sessions. Not as a real reading — the player has no RPE for a session
+       he was never at — but as an ESTIMATE, because the branch below borrows
+       the squad's answer whenever the player has no availability record
+       saying he was out, and he has none for another category's session.
+
+       Measured against the demo club: it moved 54 of 75 players' scores, by
+       up to 34 points, and put the "includes estimated load" badge on 20
+       players where 9 earn it.
+
+       A uid that is not on the roster keeps the old behaviour rather than
+       losing every session: the roster may simply not have loaded yet, and a
+       confident "no data" would be worse than a slightly wide one.
+
+       MATCHES are deliberately NOT filtered the same way. A B-team player
+       called up for the A team is a normal Saturday, and m.team would drop
+       exactly that. The match branch needs no filter anyway: it keys on his
+       own RPE and, failing that, on minutes derived from the events, both of
+       which are already about him. */
+    const me = getUsers().find(u => String(u.id) === String(uid));
+    const myTraining = me ? trainingList.filter(t => playerIsCalled(t, me)) : trainingList;
+
     // Build sessions
     const sessions = [];
-    trainingList.forEach(t => {
+    myTraining.forEach(t => {
       if (!t.date || t.date < seasonStart || t.date > todayStr) return;
       const avail = readRecord(staffOverrides, uid, t, 'avail') ||
         readRecord(availData, uid, t, 'avail') || '';

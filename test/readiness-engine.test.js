@@ -51,9 +51,18 @@ function engine(o) {
     fa_training_availability: JSON.stringify(o.avail || {}),
     fa_training_staff_override: '{}',
     fa_match_availability: '{}',
+    fa_users: JSON.stringify(o.users || []),
   };
   const sandbox = {
     localStorage: {getItem: (k) => (k in store ? store[k] : null)},
+    getUsers: () => JSON.parse(store.fa_users || '[]'),
+    /* The club's letters, as getTeamLetters reads them. An empty `teams` on
+       a session means every letter of the category, so this decides who a
+       letter-less session is for. */
+    _clubConfig: o.clubConfig ||
+      {categories: {amateur: {enabled: true, letters: ['A', 'B']},
+        juvenil: {enabled: true, letters: ['A']}}},
+    CATEGORY_ORDER: utils.CATEGORY_ORDER,
     // The one reader for fa_training. Stubbed rather than sliced: its job
     // is repairing missing session ids, which is not this file's subject.
     getTrainings: () => JSON.parse(store.fa_training || '[]'),
@@ -76,7 +85,12 @@ function engine(o) {
   /* The record resolver is sliced in alongside: getReadinessData() asks
      readRecord() instead of building a key, and a stub here would be free
      to drift from the real precedence. */
+  /* playerIsCalled is sliced in rather than stubbed for the same reason
+     readRecord is: computeReadiness now asks it which sessions are the
+     player's, and a stub would be free to drift from the real rule. */
   const code = grab('  function recordKey(playerId, sess, kind)', '  async function handleRegister') +
+    grab('  function getTeamLetters(category)',
+        '  /** The squad for a session, in roster order. */') +
     grab('  function getReadinessData()', '\n  function buildReadinessCard');
   // eslint-disable-next-line no-new-func
   return new Function(...Object.keys(sandbox), `
@@ -221,6 +235,77 @@ describe('readiness — a missing RPE borrows from the squad', () => {
     avail['p1_' + d] = 'no';
     rpe['p2_training_' + d] = {rpe: 9, minutes: 90, date: d};
     assert.strictEqual(engine({trainings, rpe, avail})('p1').estimated, false);
+  });
+});
+
+describe('readiness — only the sessions he was called to', () => {
+  /* The live bug: computeReadiness read the whole downloaded training list.
+     A player's phone holds one category so this never showed there, but a
+     coach downloads every category — and on the staff roster an amateur
+     player was credited with juvenil load, as an ESTIMATE borrowed from the
+     juvenil squad, because he has no availability record saying he was out
+     of a session that was never his.
+
+     Against the demo club it moved 54 of 75 scores, by up to 34 points. */
+  const AM = {id: 'p1', category: 'amateur', team: 'A', roles: ['player']};
+  const JU = {id: 'j1', category: 'juvenil', team: 'A', roles: ['player']};
+
+  /** One juvenil session j1 reported and p1 has no record of either way. */
+  function withOtherCategory(users) {
+    const b = baseTrainings('p1');
+    const d = day(-2);
+    b.trainings.push({id: 'ju0', date: d, time: '20:00', category: 'juvenil'});
+    b.rpe['j1_training_ju0'] = {rpe: 9, minutes: 120, date: d, sessionId: 'ju0'};
+    b.avail['j1_ju0'] = 'yes';
+    b.users = users;
+    return engine(b)('p1');
+  }
+
+  it('does not borrow load from another category', () => {
+    assert.strictEqual(withOtherCategory([AM, JU]).estimated, false);
+  });
+
+  it('borrowed it before, which is what the roster was showing', () => {
+    // The same fixture with no roster loaded — the old behaviour, pinned so
+    // the test cannot pass by doing nothing.
+    assert.strictEqual(withOtherCategory([]).estimated, true);
+  });
+
+  it('changes the score, not merely the badge', () => {
+    const withRoster = withOtherCategory([AM, JU]);
+    const without = withOtherCategory([]);
+    assert.notStrictEqual(withRoster.acwr, without.acwr);
+  });
+
+  it('keeps every session of his own category, both letters', () => {
+    /* fa_training is routed by category with no team letter, so amateur-A
+       and amateur-B share one calendar: a letter-less session is for both. */
+    const b = baseTrainings('p1');
+    b.users = [Object.assign({}, AM, {team: 'B'})];
+    const rd = engine(b)('p1');
+    assert.strictEqual(rd.hasData, true, 'his own sessions must survive the filter');
+  });
+
+  it('still counts a session he was a guest at', () => {
+    const b = baseTrainings('p1');
+    const d = day(-2);
+    b.trainings.push({id: 'ju1', date: d, time: '20:00', category: 'juvenil',
+      guests: ['p1']});
+    b.rpe['j1_training_ju1'] = {rpe: 9, minutes: 120, date: d, sessionId: 'ju1'};
+    b.rpe['p1_training_ju1'] = {rpe: 8, minutes: 120, date: d, sessionId: 'ju1'};
+    b.avail['p1_ju1'] = 'yes';
+    b.users = [AM, JU];
+    const rd = engine(b)('p1');
+    assert.ok(rd.acwr > engine(baseTrainings('p1'))('p1').acwr,
+        'a guest appearance is real load and must count');
+  });
+
+  it('an unknown uid keeps every session rather than losing them all', () => {
+    // The roster may simply not have loaded. A confident "no data" would be
+    // worse than a slightly wide one.
+    const b = baseTrainings('p1');
+    b.users = [JU];
+    assert.strictEqual(engine(b)('p1').hasData, true);
   });
 });
 

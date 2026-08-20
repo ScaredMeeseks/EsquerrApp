@@ -1897,6 +1897,22 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v98 - readiness was counting the other category's training
+
+Found by running the **real** `computeReadiness` - lifted out of `js/app.js` the way `test/readiness-engine.test.js` lifts it - over the **real** demo-club data, rather than reasoning about it.
+
+`computeReadiness` iterated the whole downloaded `trainingList` with no `playerIsCalled()` filter, the one filter every other player surface applies. It never showed on a phone: a player's client downloads his own category, so the list is already his. **A coach downloads every category**, and on the staff roster each player was credited with the other categories' sessions.
+
+Not as a reading - he has no RPE for a session he was never at - but as an **estimate**, and that is the part that makes it invisible. The borrow branch fires when the player has no availability record saying he was out, and he has none for a session that was never his. So the load was borrowed from the juvenil squad and added to an amateur player's curve.
+
+Against the demo club: **54 of 75 players' scores moved, by up to 34 points**, and the "includes estimated load" badge sat on 20 players where 9 earn it.
+
+`me` is resolved through `getUsers()`; a uid **not on the roster keeps the old behaviour** rather than losing every session, because the roster may simply not have loaded yet and a confident "no data" is worse than a slightly wide one. Six new tests pin it, including the negative - the same fixture with no roster still borrows, so the test cannot pass by doing nothing.
+
+**Matches are deliberately NOT filtered the same way.** A B-team player called up for the A team is a normal Saturday and `m.team` would drop exactly that. The match branch needs no filter: it keys on his own RPE and, failing that, on minutes derived from the events, both already about him.
+
+**508 → 514 unit tests.** `APP_VERSION` 97 → 98, `sw.js` cache `esquerrapp-v98`.
+
 ## topup-demo-season.js
 
 `seed-demo-club.js --apply` builds a club **from nothing**, and is guarded by neither the `demoSeed` stamp nor `PROTECTED_CLUBS` — only `--purge` and `--add-team` are. Aimed at the populated demo club it would rewrite the `categories` map, **replace** data shards with a bare `set()` (losing amateur-B and juvenil-A from `fa_users__amateur`, which is routed by category with no team letter), and reset all 77 Auth passwords.
