@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 103;
+  const APP_VERSION = 104;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -13574,7 +13574,7 @@
             <div class="card-title" style="margin-bottom:.5rem;">${t('conv.choose_match')}</div>
             <div class="conv-match-selector" id="conv-match-selector">
               <div class="conv-match-toggle" id="conv-match-toggle">
-                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? tDateShort(selected.date) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">' + t('conv.select_match') + '</span>'}
+                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams" title="${sanitize(selected.home + ' vs ' + selected.away)}">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? tDateShort(selected.date) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">' + t('conv.select_match') + '</span>'}
                 <span class="conv-match-chevron"></span>
               </div>
               <div class="conv-match-dropdown" id="conv-match-dropdown" hidden>${matchOptions}</div>

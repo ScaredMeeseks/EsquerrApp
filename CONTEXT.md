@@ -1897,6 +1897,24 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v104 - the convocatòria row gets a fixed height to key off
+
+The owner diagnosed this correctly: the match toggle had **no fixed height**, so every attempt to size the call-up select and the kit buttons against it was chasing a moving target. A long fixture — *"C.E. Sant Andreu del Palomar (A) vs C.D. Vallcarca"* — wrapped the team names to a second line, making the box three lines tall, while a short one stayed at two. Two previous rounds of "make them the same height" set a `min-height` against whichever case happened to be on screen.
+
+The fix is to make the toggle deterministic first, then derive from it:
+
+- `.conv-match-teams` is `nowrap` + ellipsis with a **fixed `line-height`**, so the names always occupy exactly one row and the date/time exactly one more. A `title` carries the full fixture when it is clipped.
+- `--conv-ctl-h` is **derived, not guessed**: `2 × (2px border + .65rem padding) + 1.35rem + 1.2rem`.
+- The toggle, the select and each kit button all take that one token, and the icon is `calc(var(--conv-ctl-h) - 10px)` — the button's 2px border and 3px padding on each side.
+- `width: auto` on the icons, so the sock keeps its 1:2 ratio instead of being squared off.
+- The phone breakpoint lowers the **token**, so the three stay tied rather than one breaking rank.
+
+Checked by doing the arithmetic externally rather than asserting the token equals itself: natural height **65.6px**, declared **65.6px**, icon budget 55.6px against an icon of 55.6px.
+
+Also `.conv-top-group:nth-child(1)` gets `flex: 1 1 22rem; min-width: 14rem` so the fixture has room before the ellipsis bites.
+
+**571 unit tests.** Frontend only.
+
 ## v103 - plain sleeves on a striped shirt, and bigger icons
 
 **Vertical stripes now stop at the shoulder seam.** Real striped shirts have plain sleeves; bands running out to the cuffs read as a rugby shirt. The shirt was one `<path>`, so it is now drawn in pieces:

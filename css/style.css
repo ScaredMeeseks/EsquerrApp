@@ -1899,8 +1899,20 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .conv-match-option:hover { background: var(--bg); }
 .conv-match-option-active { background: rgba(255,214,98,.15); font-weight: 600; }
-.conv-match-teams { font-weight: 600; font-size: .92rem; }
-.conv-match-date { font-size: .85rem; color: var(--text-secondary); display: flex; align-items: center; gap: .5rem; }
+/* Exactly TWO rows: teams on the first, date and time on the second.
+   Without the nowrap a long fixture ("C.E. Sant Andreu del Palomar (A) vs
+   C.D. Vallcarca") wrapped to a third line, so the toggle had no fixed
+   height — and every attempt to size the call-up select and the kit buttons
+   against it was chasing a moving target. `title` on the element keeps the
+   full name reachable when it is clipped. */
+.conv-match-teams {
+  font-weight: 600; font-size: .92rem; line-height: 1.35rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.conv-match-date {
+  font-size: .85rem; color: var(--text-secondary); line-height: 1.2rem;
+  display: flex; align-items: center; gap: .5rem;
+}
 .conv-match-time { color: var(--text); font-size: .85rem; }
 .conv-match-empty { padding: 1rem; text-align: center; color: var(--text-secondary); font-size: .9rem; }
 
@@ -2208,17 +2220,24 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    control, so with three controls of different heights the three headings
    landed at three different y positions. flex-start plus a column layout
    puts "Tria el partit", "Hora de citació" and "Equipació" on one line. */
+/* ONE height for all three controls in this row.
+   Derived, not guessed: the match toggle is 2px border + .65rem padding on
+   each side, over two fixed lines of 1.35rem and 1.2rem.
+     2 × (2px + .65rem) + 1.35rem + 1.2rem = 2.55rem + 1.3rem + 4px
+   The select and the kit buttons then key off the same token instead of
+   each carrying its own guess. */
+:root { --conv-ctl-h: calc(3.85rem + 4px); }
 .conv-top-row {
   display: flex; gap: 1.5rem; align-items: flex-start;
 }
 .conv-top-group {
   flex: 1; min-width: 0; display: flex; flex-direction: column;
 }
+/* The fixture names need room before the ellipsis bites. */
+.conv-top-group:nth-child(1) { flex: 1 1 22rem; min-width: 14rem; }
 .conv-top-group:nth-child(2) { flex: 0 0 auto; white-space: nowrap; }
-/* The call-up select matches the match toggle's height: both are .65rem of
-   padding on a 2px border, but a <select>'s intrinsic line-height is shorter
-   than the toggle's two stacked lines, so it needs the explicit floor. */
-.conv-callup-select { min-height: 3.25rem; }
+.conv-match-toggle { min-height: var(--conv-ctl-h); }
+.conv-callup-select { min-height: var(--conv-ctl-h); }
 /* The Equipació group. Was `flex: 0 0 auto` when it held two toggles of two
    buttons; it now holds THREE garment rows of up to three kits each, and a
    fixed group at that width pushes the match selector off screen. */
@@ -2234,9 +2253,13 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    sized so the button matches the match toggle's height rather than sitting
    short beside it. The toggle is two stacked lines on .65rem padding; the
    button is 3px padding on a 2px border, so the icon carries the rest. */
-.conv-uniform-row .uniform-opt svg { width: 46px; height: 46px; }
 .conv-uniform-row .uniform-opt {
-  min-height: 3.25rem; display: inline-flex; align-items: center;
+  height: var(--conv-ctl-h); display: inline-flex; align-items: center;
+  justify-content: center;
+}
+/* The icon fills the button minus its 2px border and 3px padding. */
+.conv-uniform-row .uniform-opt svg {
+  height: calc(var(--conv-ctl-h) - 10px); width: auto;
 }
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
@@ -2939,10 +2962,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .conv-top-row { flex-direction: column; gap: .8rem; align-items: stretch; }
   .conv-top-group:nth-child(2) { white-space: normal; }
   .conv-uniform-row { gap: .8rem; }
-  /* Three garment rows of up to three kits is nine icons on a phone. */
-  .conv-uniform-row .kit-icons svg,
-  .conv-uniform-row .uniform-opt svg { width: 34px; height: 34px; }
-  .conv-uniform-row .uniform-opt { min-height: 0; }
+  /* Three garment rows of up to three kits is nine icons on a phone, so the
+     shared height comes down rather than the buttons breaking their tie
+     with the two dropdowns. */
+  :root { --conv-ctl-h: calc(3.2rem + 4px); }
+  .conv-uniform-row .kit-icons svg { width: 26px; height: 26px; }
   .conv-player { cursor: pointer; }
   .conv-player:active { background: rgba(189,22,44,.08); }
   .conv-drop-hint { padding: 1rem; font-size: .82rem; }
