@@ -366,49 +366,58 @@ function fillFrom(c1, cfg) {
 }
 
 /**
- * An SVG paint for a fill value, because a CSS gradient CANNOT be used as an
- * SVG fill — fillCss()'s `repeating-linear-gradient` works on a div and does
- * nothing on a <path>. The shirt and sock are stroked, non-rectangular
- * outlines with a crest composited on top, so they stay SVG and get a real
- * <linearGradient> built from the same parseFill().
+ * A striped fill as CLIPPED RECTS, not a gradient.
  *
- * Stops are DOUBLED at each boundary, which is how a gradient produces hard
- * edges — the same trick fillCss uses with its two-stop bands.
+ * It was a <linearGradient> with hard stops, and at icon size the stripes
+ * looked uneven — bands appearing to have different widths, with the gaps
+ * between them varying. That is subpixel rounding: a gradient stop lands on
+ * a FRACTIONAL device pixel, and the browser antialiases each boundary by a
+ * different amount, so one edge renders sharp and the next renders as a
+ * half-tone smear. At 56px with nine bands each band is barely three pixels,
+ * which is exactly where that is most visible.
  *
- * Units are objectBoundingBox (the SVG default), so the bands span the SHAPE
- * rather than the viewBox: a shirt path running x=6..58 inside a 0..64 box
- * still gets n even bands across the shirt itself.
+ * Real rects with shape-rendering="crispEdges" snap every edge to the pixel
+ * grid instead. Bands can still differ by at most ONE device pixel — that is
+ * unavoidable when 28 pixels have to hold 9 stripes — but every edge is
+ * sharp and evenly spaced, which is what the eye actually reads as regular.
  *
- * Direction MUST agree with fillCss or the same kit stripes one way on the
- * tactical board and the other way on the shirt:
- *   'v' vertical bands  → gradient runs left→right (x2=1), fillCss 90deg
- *   'h' horizontal hoops → gradient runs top→bottom (y2=1), fillCss 180deg
+ * Only the alternating c2 bands are drawn, over a solid c1 base: half the
+ * rects, and two adjacent same-coloured bands can never show a seam.
  *
- * `uid` must be unique per document — the picker draws every kit at once,
- * and duplicate ids make every shirt take the first one's gradient.
+ * Boundaries come from i/n each time rather than by accumulating a rounded
+ * width, so the last band ends exactly on the edge instead of leaving a
+ * hairline of the base colour.
  *
- * @return {{paint: string, defs: string}} `paint` goes in fill="…".
+ * @param {string} v      the fill value
+ * @param {string|number} uid  unique per document — several kits render at once
+ * @param {string} pathD  the shape to fill, and to clip the bands to
+ * @param {{x:number,y:number,w:number,h:number}} box  that shape's bounding box
+ * @return {{defs: string, shapes: string}}
  */
-function fillSvgPaint(v, uid) {
+function stripeSvg(v, uid, pathD, box) {
   const f = parseFill(v);
-  if (!f.striped) return {paint: f.c1, defs: ''};
-  const id = 'kf' + String(uid == null ? '' : uid);
-  const vert = f.dir !== 'h';
-  /* Offsets are computed from the band INDEX over n, not by accumulating a
-     rounded width: n=3 with w=33.3333 ends the last band at 99.9999%, which
-     leaves a hairline of the previous colour down the edge of every shirt.
-     The last boundary is pinned to exactly 100. */
-  const at = (i) => (i === f.n ? 100 : Math.round((i / f.n) * 1e6) / 1e4);
-  let stops = '';
-  for (let i = 0; i < f.n; i++) {
-    const c = (i % 2) ? f.c2 : f.c1;
-    stops += '<stop offset="' + at(i) + '%" stop-color="' + c + '"/>' +
-             '<stop offset="' + at(i + 1) + '%" stop-color="' + c + '"/>';
+  const base = '<path d="' + pathD + '" fill="' + f.c1 + '" stroke="none"/>';
+  if (!f.striped) return {defs: '', shapes: base};
+  const id = 'ks' + String(uid == null ? '' : uid);
+  const horiz = f.dir === 'h';
+  const start = horiz ? box.y : box.x;
+  const span = horiz ? box.h : box.w;
+  const at = (i) => Math.round((start + (span * i) / f.n) * 1e4) / 1e4;
+  let rects = '';
+  for (let i = 1; i < f.n; i += 2) {
+    const a = at(i);
+    const b = at(i + 1);
+    rects += horiz ?
+      '<rect x="' + box.x + '" y="' + a + '" width="' + box.w +
+        '" height="' + (Math.round((b - a) * 1e4) / 1e4) + '"' :
+      '<rect x="' + a + '" y="' + box.y + '" width="' +
+        (Math.round((b - a) * 1e4) / 1e4) + '" height="' + box.h + '"';
+    rects += ' fill="' + f.c2 + '" shape-rendering="crispEdges"/>';
   }
-  const defs = '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="' +
-    (vert ? '1' : '0') + '" y2="' + (vert ? '0' : '1') + '">' + stops +
-    '</linearGradient></defs>';
-  return {paint: 'url(#' + id + ')', defs: defs};
+  return {
+    defs: '<defs><clipPath id="' + id + '"><path d="' + pathD + '"/></clipPath></defs>',
+    shapes: base + '<g clip-path="url(#' + id + ')">' + rects + '</g>'
+  };
 }
 
 // ---------- SVG Helpers ----------
@@ -557,7 +566,7 @@ if (typeof module !== 'undefined' && module.exports) {
     encodeFill,
     fillCss,
     STRIPE_MAX,
-    // Club kits. fillSvgPaint is the SVG counterpart of fillCss — a CSS
+    // Club kits. stripeSvg is the SVG counterpart of fillCss — a CSS
     // gradient cannot be an SVG fill, so the two must be kept in step and
     // fills.test.js pins that they agree on direction.
     DEFAULT_KITS,
@@ -565,6 +574,6 @@ if (typeof module !== 'undefined' && module.exports) {
     resolveKitPieces,
     normalizeStripeState,
     fillFrom,
-    fillSvgPaint
+    stripeSvg
   };
 }

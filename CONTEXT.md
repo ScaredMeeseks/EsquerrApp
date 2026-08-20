@@ -1897,6 +1897,26 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v105 - stripes as rects, because a gradient cannot be even at icon size
+
+Reported as *"different separations or different widths"*, and visible only at normal zoom — which is the tell. It was **subpixel rounding**, not a geometry bug: `fillSvgPaint` built a `<linearGradient>` with hard stops, those stops land on **fractional device pixels**, and the browser antialiases each boundary by a different amount. One edge renders sharp, the next as a half-tone smear, and the eye reads that as bands of unequal width. At 56px with nine bands each band is barely three pixels, which is exactly where it shows.
+
+No amount of adjusting the stop arithmetic fixes that — the stops were already exact. `stripeSvg()` replaces the gradient with **real `<rect>`s carrying `shape-rendering="crispEdges"`**, which snaps every edge to the pixel grid. Bands can still differ by at most one device pixel — unavoidable when 28 pixels must hold 9 stripes — but every edge is sharp and evenly spaced, and *regular* is what the eye actually reads.
+
+- Only the **alternating `c2` bands** are drawn, over a solid `c1` base: half the rects, and two adjacent same-coloured bands can never show a seam.
+- A `<clipPath>` holds the shape, so rectangular bands follow a non-rectangular shirt.
+- Boundaries come from `i/n` each time rather than by accumulating a rounded width, so the last band ends exactly on the edge.
+
+### The socks were also striping the wrong region
+
+Laying the hoops across the sock's **full** bounding box put one band under the cuff, where it is invisible, and another across the foot, which no sock has. `SOCK_BOX` is now the **leg only**, `y = 8..34`.
+
+Shorts route through the same helper and take its solid branch, so a bad stored value still degrades rather than throwing.
+
+Tests moved from asserting gradient stops to asserting **band geometry**: every band exactly `span/n` wide across n = 2,3,4,5,9; the last ending on the shape's edge; every rect crisp; the clip present; direction agreeing with `fillCss`.
+
+**573 unit tests.** Frontend only.
+
 ## v104 - the convocatòria row gets a fixed height to key off
 
 The owner diagnosed this correctly: the match toggle had **no fixed height**, so every attempt to size the call-up select and the kit buttons against it was chasing a moving target. A long fixture — *"C.E. Sant Andreu del Palomar (A) vs C.D. Vallcarca"* — wrapped the team names to a second line, making the box three lines tall, while a short one stayed at two. Two previous rounds of "make them the same height" set a `min-height` against whichever case happened to be on screen.

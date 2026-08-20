@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 104;
+  const APP_VERSION = 105;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -13314,7 +13314,7 @@
      quietly incorrect.
 
      A CSS gradient cannot be an SVG fill, so stripes come from
-     fillSvgPaint()'s <linearGradient>, not from fillCss(). Every id must be
+     stripeSvg()'s clipped rects, not from fillCss(). Every id must be
      unique per document — the picker draws every kit at once — which is what
      _kitUid is for; callers never pass one. */
   let _kitUid = 0;
@@ -13337,6 +13337,11 @@
   const SHIRT_SLEEVE_L = 'M22 6 L14 10 L6 18 L12 24 L16 20 Z';
   const SHIRT_SLEEVE_R = 'M42 6 L50 10 L58 18 L52 24 L48 20 Z';
 
+  // The bounding boxes the two shirt shapes occupy, in viewBox units. The
+  // bands are laid out across these, so they must match the paths above.
+  const SHIRT_BODY_BOX = {x: 16, y: 6, w: 32, h: 50};
+  const SHIRT_FULL_BOX = {x: 6, y: 6, w: 52, h: 50};
+
   function shirtSvg(fill) {
     if (!fill) return '';
     const f = parseFill(fill);
@@ -13344,22 +13349,21 @@
     const plainSleeves = f.striped && f.dir !== 'h';
     let body;
     if (plainSleeves) {
-      /* The gradient is bound to the BODY path's bounding box, so the bands
-         span the torso rather than the full shirt — which is also why the
-         count still reads correctly with the sleeves excluded. */
-      const p = fillSvgPaint(fill, ++_kitUid);
-      body = p.defs +
+      /* The bands are laid across the BODY box, so they span the torso
+         rather than the full shirt — which is also why the count still
+         reads correctly with the sleeves excluded. */
+      const s = stripeSvg(fill, ++_kitUid, SHIRT_BODY, SHIRT_BODY_BOX);
+      body = s.defs +
         `<path d="${SHIRT_OUTLINE}" fill="${f.c1}" stroke="none"/>` +
-        `<path d="${SHIRT_BODY}" fill="${p.paint}" stroke="none"/>` +
+        s.shapes +
         `<path d="${SHIRT_SLEEVE_L}" fill="${f.c1}" stroke="none"/>` +
-        `<path d="${SHIRT_SLEEVE_R}" fill="${f.c1}" stroke="none"/>` +
-        // Outline last, so the stripes never overdraw it.
-        `<path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
+        `<path d="${SHIRT_SLEEVE_R}" fill="${f.c1}" stroke="none"/>`;
     } else {
-      const p = fillSvgPaint(fill, ++_kitUid);
-      body = p.defs +
-        `<path d="${SHIRT_OUTLINE}" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
+      const s = stripeSvg(fill, ++_kitUid, SHIRT_OUTLINE, SHIRT_FULL_BOX);
+      body = s.defs + s.shapes;
     }
+    // Outline last in both branches, so no fill can overdraw it.
+    body += `<path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
     return `<svg viewBox="0 0 64 64" width="34" height="34" style="display:block">${body}
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
@@ -13368,14 +13372,18 @@
   }
 
   /* Shorts are single-colour by decision — real ones are, and setClubKits
-     rejects an encoded fill here. Still routed through fillSvgPaint so a bad
+     rejects an encoded fill here. Still routed through stripeSvg so a bad
      stored value degrades to solid rather than throwing. */
+  const SHORTS_PATH = 'M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z';
+  const SHORTS_BOX = {x: 12, y: 14, w: 40, h: 30};
+
   function shortsSvg(fill) {
     if (!fill) return '';
-    const p = fillSvgPaint(fill, ++_kitUid);
+    const s = stripeSvg(fill, ++_kitUid, SHORTS_PATH, SHORTS_BOX);
     const shade = darkenHex(parseFill(fill).c1, 40);
-    return `<svg viewBox="0 0 64 64" width="30" height="30" style="display:block">${p.defs}
-      <path d="M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    return `<svg viewBox="0 0 64 64" width="30" height="30" style="display:block">${s.defs}
+      ${s.shapes}
+      <path d="${SHORTS_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <line x1="14" y1="20" x2="50" y2="20" stroke="${shade}" stroke-width="1" opacity=".5"/>
     </svg>`;
   }
@@ -13385,12 +13393,20 @@
      red sock is simply wrong. Esquerra's white sock therefore looks slightly
      different from before: hoops now come from the fill (6 bands) instead of
      three hand-placed rects, and the foot is shaded rather than solid. */
+  const SOCK_PATH = 'M8 2 L8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 ' +
+    'Q28 36 22 34 L22 2 Z';
+  /* The LEG only, from below the cuff to the ankle. Hoops laid across the
+     full path would put a band under the cuff, where it is invisible, and
+     another across the foot, which no sock has. */
+  const SOCK_BOX = {x: 8, y: 8, w: 20, h: 26};
+
   function kitSockSvg(fill) {
     if (!fill) return '';
-    const p = fillSvgPaint(fill, ++_kitUid);
+    const s = stripeSvg(fill, ++_kitUid, SOCK_PATH, SOCK_BOX);
     const cuff = darkenHex(parseFill(fill).c1, 60);
-    return `<svg viewBox="0 0 32 64" width="22" height="34" style="display:block">${p.defs}
-      <path d="M8 2 L8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 L22 2 Z" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    return `<svg viewBox="0 0 32 64" width="22" height="34" style="display:block">${s.defs}
+      ${s.shapes}
+      <path d="${SOCK_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <rect x="8" y="2" width="14" height="6" rx="1" fill="${cuff}" stroke="none"/>
       <path d="M8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 Z" fill="#222" opacity=".15"/>
     </svg>`;

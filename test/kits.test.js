@@ -104,64 +104,105 @@ describe('kits — resolving a stored convocatòria', () => {
   });
 });
 
-describe('kits — the SVG paint', () => {
-  it('hands a solid fill straight through, with no defs', () => {
-    assert.deepStrictEqual(U.fillSvgPaint('#ff0000', 'a'),
-        {paint: '#ff0000', defs: ''});
+describe('kits — striped fills are drawn as rects, not a gradient', () => {
+  /* It WAS a <linearGradient> with hard stops, and at icon size the stripes
+     looked uneven — bands appearing to have different widths and the gaps
+     between them varying. A gradient stop lands on a fractional device
+     pixel and the browser antialiases each boundary by a different amount,
+     so one edge renders sharp and the next as a half-tone smear. At 56px
+     with 9 bands each band is barely 3 pixels, which is where that shows
+     most. Rects with shape-rendering="crispEdges" snap to the pixel grid. */
+  const BOX = {x: 16, y: 6, w: 32, h: 50};
+  const rectsOf = (r) => [...r.shapes.matchAll(
+      /<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)];
+
+  it('hands a solid fill through as one path, with no defs', () => {
+    const r = U.stripeSvg('#ff0000', 'a', 'M0 0', BOX);
+    assert.strictEqual(r.defs, '');
+    assert.ok(r.shapes.indexOf('fill="#ff0000"') !== -1);
+    assert.strictEqual(rectsOf(r).length, 0);
   });
 
-  it('builds a gradient for a striped fill', () => {
-    const r = U.fillSvgPaint('s|v|2|#ff0000|#ffffff', 'a');
-    assert.strictEqual(r.paint, 'url(#kfa)');
-    assert.ok(r.defs.indexOf('<linearGradient') !== -1);
+  it('snaps every band edge to the pixel grid', () => {
+    // Without this the whole change is pointless: an antialiased boundary
+    // is exactly what made the stripes look irregular.
+    const r = U.stripeSvg('s|v|4|#ff0000|#ffffff', 'a', 'M0 0', BOX);
+    rectsOf(r).forEach(() => {});
+    const crisp = (r.shapes.match(/shape-rendering="crispEdges"/g) || []).length;
+    assert.strictEqual(crisp, rectsOf(r).length,
+        'every band must be crisp, not just some');
+  });
+
+  it('makes every band exactly the same width', () => {
+    /* The complaint was "different separations or different widths".
+       Boundaries come from i/n each time rather than by accumulating a
+       rounded width, which is what drifts. */
+    [2, 3, 4, 5, 9].forEach((n) => {
+      const r = U.stripeSvg('s|v|' + n + '|#a1a1a1|#ffffff', 'x', 'M0 0', BOX);
+      const expect = BOX.w / n;
+      rectsOf(r).forEach((m) => {
+        assert.ok(Math.abs(Number(m[3]) - expect) < 1e-3,
+            'n=' + n + ' band width ' + m[3] + ' != ' + expect);
+      });
+    });
+  });
+
+  it('draws only the alternating bands, over a solid base', () => {
+    // Half the rects, and two adjacent same-coloured bands can never show
+    // a seam between them.
+    assert.strictEqual(rectsOf(U.stripeSvg('s|v|4|#a|#b', 'x', 'M0 0', BOX)).length, 2);
+    assert.strictEqual(rectsOf(U.stripeSvg('s|v|9|#a|#b', 'x', 'M0 0', BOX)).length, 4);
+    assert.strictEqual(rectsOf(U.stripeSvg('s|v|2|#a|#b', 'x', 'M0 0', BOX)).length, 1);
+  });
+
+  it('ends the last band exactly on the shape\'s edge', () => {
+    // An accumulated width leaves a hairline of the base colour down the
+    // side of every shirt.
+    const r = U.stripeSvg('s|v|4|#a1a1a1|#ffffff', 'x', 'M0 0', BOX);
+    const last = rectsOf(r).pop();
+    assert.strictEqual(Number(last[1]) + Number(last[3]), BOX.x + BOX.w);
   });
 
   it('agrees with fillCss about DIRECTION', () => {
     /* The one bug no visual check catches: the same kit striping vertically
-       on the tactical board and horizontally on the shirt. fillCss uses
-       90deg for 'v' and 180deg for 'h'; the SVG must use x2 and y2 to
-       match. */
-    const v = U.fillSvgPaint('s|v|4|#a1a1a1|#ffffff', 'x');
+       on the tactical board and horizontally on the shirt. */
+    const v = U.stripeSvg('s|v|4|#a1a1a1|#ffffff', 'x', 'M0 0', BOX);
     assert.ok(U.fillCss('s|v|4|#a1a1a1|#ffffff').background.indexOf('90deg') !== -1);
-    assert.ok(/x2="1"/.test(v.defs) && /y2="0"/.test(v.defs),
-        'vertical bands run left to right');
+    const vr = rectsOf(v)[0];
+    assert.ok(Number(vr[3]) < BOX.w && Number(vr[4]) === BOX.h,
+        'a vertical band is narrow and full height');
 
-    const h = U.fillSvgPaint('s|h|4|#a1a1a1|#ffffff', 'x');
+    const h = U.stripeSvg('s|h|4|#a1a1a1|#ffffff', 'x', 'M0 0', BOX);
     assert.ok(U.fillCss('s|h|4|#a1a1a1|#ffffff').background.indexOf('180deg') !== -1);
-    assert.ok(/x2="0"/.test(h.defs) && /y2="1"/.test(h.defs),
-        'horizontal hoops run top to bottom');
+    const hr = rectsOf(h)[0];
+    assert.ok(Number(hr[3]) === BOX.w && Number(hr[4]) < BOX.h,
+        'a horizontal hoop is full width and short');
   });
 
-  it('doubles the stops, which is what makes the edges hard', () => {
-    const r = U.fillSvgPaint('s|h|3|#111111|#222222', 'x');
-    const stops = r.defs.match(/<stop /g) || [];
-    assert.strictEqual(stops.length, 6, '3 bands = 6 stops');
-    assert.ok(r.defs.indexOf('offset="0%"') !== -1);
-    assert.ok(r.defs.indexOf('offset="100%"') !== -1);
-    // The boundary appears twice, once closing a band and once opening it.
-    const at33 = (r.defs.match(/offset="33\.3333%"/g) || []).length;
-    assert.strictEqual(at33, 2, 'a single stop at a boundary would blur it');
+  it('clips the bands to the shape', () => {
+    // Rects are rectangles; the shirt is not. Without the clip the stripes
+    // would run square across the sleeves and out past the hem.
+    const r = U.stripeSvg('s|v|4|#a|#b', 'q', 'M1 2 L3 4', BOX);
+    assert.ok(r.defs.indexOf('<clipPath id="ksq"') !== -1);
+    assert.ok(r.defs.indexOf('M1 2 L3 4') !== -1, 'the shape must be the clip');
+    assert.ok(r.shapes.indexOf('clip-path="url(#ksq)"') !== -1);
   });
 
-  it('alternates the two colours', () => {
-    const r = U.fillSvgPaint('s|v|2|#aaaaaa|#bbbbbb', 'x');
-    assert.ok(r.defs.indexOf('#aaaaaa') !== -1 && r.defs.indexOf('#bbbbbb') !== -1);
-  });
-
-  it('gives each instance its own id — three kits render at once', () => {
-    // Duplicate ids make every shirt take the first one's gradient.
-    const a = U.fillSvgPaint('s|v|2|#111111|#ffffff', 1);
-    const b = U.fillSvgPaint('s|v|2|#111111|#ffffff', 2);
-    assert.notStrictEqual(a.paint, b.paint);
+  it('gives each instance its own id — several kits render at once', () => {
+    // Duplicate ids make every shirt take the first one's clip.
+    const a = U.stripeSvg('s|v|2|#111111|#ffffff', 1, 'M0 0', BOX);
+    const b = U.stripeSvg('s|v|2|#111111|#ffffff', 2, 'M0 0', BOX);
     assert.notStrictEqual(a.defs, b.defs);
+    assert.notStrictEqual(a.shapes, b.shapes);
   });
 
   it('degrades a malformed fill to solid instead of throwing', () => {
-    assert.strictEqual(U.fillSvgPaint('s|v|10|#a|#b', 'x').defs, '',
+    assert.strictEqual(U.stripeSvg('s|v|10|#a|#b', 'x', 'M0 0', BOX).defs, '',
         'n out of range is not a stripe');
-    assert.doesNotThrow(() => U.fillSvgPaint(null, 'x'));
+    assert.doesNotThrow(() => U.stripeSvg(null, 'x', 'M0 0', BOX));
   });
 });
+
 
 describe('kits — the old hardcoded renderers are gone', () => {
   const fs = require('fs');
