@@ -3,7 +3,7 @@
 _Rolling document, overwritten each session. Last updated: 2026-08-20._
 
 **Production is on v98** (frontend, served and verified) **and functions are deployed** (v97b).
-Tests **714 passing** (514 unit + 134 rules + 56 functions + 9 backfill, +15 this session).
+Tests **713 passing** (514 unit + 134 rules + 56 functions + 9 backfill, +15 this session).
 
 Both jobs agreed on 2026-08-19 are **done**. A third defect was found on the way and is also fixed.
 
