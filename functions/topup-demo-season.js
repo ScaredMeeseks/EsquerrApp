@@ -41,6 +41,21 @@
  *    answered yes/late. Readiness needs the WHOLE chain — session →
  *    availability → rpe — or the session is silently skipped, not shown as a
  *    gap.
+ * 5. The FORWARD training calendar. Read from production on 2026-08-20:
+ *
+ *      fa_training  93 rows   93 past /  0 future   → 2026-08-13
+ *      fa_matches  102 rows   72 past / 30 future   → 2026-10-24
+ *
+ *    A club with a next match and no next session ever. Empty "pròxims
+ *    entrenaments", nothing to confirm availability for, and `trainingDates`
+ *    holding only past dates — so scheduledTrainingReminder can never fire
+ *    for it, which is also why the training reminder had never been tested
+ *    against the demo club.
+ *
+ *    Everything above this line writes into the PAST, by construction:
+ *    `t.date < todayStr` guards each loop. So no number of re-runs could
+ *    ever have fixed it, and every dry run kept reporting healthy figures
+ *    about a calendar that was a dead end.
  *
  * Nothing is written dated before the club's `seasonBoundary`: six read-time
  * filters in app.js slice on it, so earlier rows are invisible anyway.
@@ -110,6 +125,27 @@ const {FieldValue} = require("firebase-admin/firestore");
 
 const todayStr = new Date().toISOString().slice(0, 10);
 
+/* Calendar arithmetic, NOT milliseconds — the same reason seed-demo-club.js
+   spells this out: Spain has a 25-hour day at the autumn transition, so
+   `new Date(t + 86400000)` lands back on the same date and a `d <= end` loop
+   spins for ever. setDate() counts days and steps over both transitions. */
+const parseDay = (s) => {
+  const [y, m, d] = String(s).split("-").map(Number);
+  return new Date(y, m - 1, d, 12);
+};
+const dayStr = (d) => d.getFullYear() + "-" +
+  String(d.getMonth() + 1).padStart(2, "0") + "-" +
+  String(d.getDate()).padStart(2, "0");
+const addDays = (s, n) => {
+  const d = parseDay(s);
+  d.setDate(d.getDate() + n);
+  return dayStr(d);
+};
+/** 1 = Monday … 7 = Sunday. */
+const dow = (s) => (parseDay(s).getDay() + 6) % 7 + 1;
+const CATALAN_DAYS = ["Dilluns", "Dimarts", "Dimecres", "Dijous",
+  "Divendres", "Dissabte", "Diumenge"];
+
 /** Season start for a boundary like "03-01", mirroring utils.js seasonStartStr. */
 function seasonStart(boundary) {
   const b = /^\d{2}-\d{2}$/.test(boundary || "") ? boundary : "08-15";
@@ -166,7 +202,7 @@ async function main() {
 
   const writes = [];   // {ref, data, merge}
   const records = [];  // {ref, data}
-  const summary = {matchesPlayed: 0, events: 0, convocatories: 0, avail: 0, rpe: 0, matchRpe: 0};
+  const summary = {matchesPlayed: 0, events: 0, convocatories: 0, avail: 0, rpe: 0, matchRpe: 0, sessions: 0};
 
   for (const cat of cats) {
     rnd = mulberry32(SEED + cat.length); // stable per category
@@ -270,6 +306,78 @@ async function main() {
 
     // ── 4. Trainings: availability, then RPE for those who turned up ──
     const trainings = blobOf(docs.get(key("fa_training"))) || [];
+
+    /* 4a. The forward calendar — see the header. The club had matches
+       booked to October and no session after 2026-08-13.
+
+       The schedule is DERIVED from the club's own sessions rather than
+       hardcoded to the seeder's Tuesday/Thursday: weekdays, time, location,
+       map link and the focus rotation all come from what is already there,
+       so a club whose demo was edited by hand keeps its own shape. Nothing
+       is invented for a category that has no sessions to model on — that is
+       a seeding job, not a top-up. */
+    const lastMatch = matches.reduce((a, m) => (m.date && m.date > a ? m.date : a), "");
+    const haveDate = new Set(trainings.map((t) => t.date).filter(Boolean));
+    let tChanged = false;
+    if (!trainings.length) {
+      log("  calendar: no sessions to model a schedule on — skipped");
+    } else if (!lastMatch || lastMatch <= todayStr) {
+      log("  calendar: no future fixtures — nothing to extend towards");
+    } else {
+      const sorted = trainings.slice()
+          .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      const template = sorted[sorted.length - 1];
+      // Weekdays this category actually trains on, commonest first.
+      const dowCount = {};
+      trainings.forEach((t) => {
+        if (t.date) dowCount[dow(t.date)] = (dowCount[dow(t.date)] || 0) + 1;
+      });
+      const days = Object.keys(dowCount).map(Number)
+          .filter((d) => dowCount[d] >= 3).sort((a, b) => dowCount[b] - dowCount[a]);
+      const focuses = [...new Set(trainings.map((t) => t.focus).filter(Boolean))];
+      const from = template.date >= todayStr ? addDays(template.date, 1) : todayStr;
+      let added = 0;
+      if (!days.length) {
+        log("  calendar: no repeating weekday found — skipped");
+      } else {
+        for (let d = from; d <= lastMatch; d = addDays(d, 1)) {
+          if (days.indexOf(dow(d)) === -1) continue;
+          if (haveDate.has(d)) continue;
+          trainings.push({
+            // The seeder's shape, so nothing downstream can tell them apart.
+            id: `tr_${parseDay(d).getTime()}_${Math.floor(rnd() * 1e6).toString(36)}`,
+            day: CATALAN_DAYS[dow(d) - 1],
+            date: d,
+            time: template.time || "20:00",
+            focus: focuses.length ? focuses[(trainings.length + added) % focuses.length] : "",
+            location: template.location || "",
+            mapLink: template.mapLink || "",
+            status: "upcoming",
+            category: cat,
+          });
+          haveDate.add(d);
+          added++;
+        }
+      }
+      if (added) {
+        // Newest first: the order the app saves in and the route merges in.
+        trainings.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        tChanged = true;
+        summary.sessions += added;
+        log(`  calendar: +${added} sessions, ${from} → ${lastMatch} ` +
+          `(${days.map((d) => CATALAN_DAYS[d - 1]).join("/")})`);
+      } else {
+        log("  calendar: already runs to the last fixture");
+      }
+    }
+    if (tChanged) {
+      writes.push({ref: dataCol.doc(key("fa_training")),
+        data: {v: JSON.stringify(trainings), category: cat}});
+    }
+
+    /* Only the PAST gets availability and RPE. A session in the future with
+       attendance already filled in is worse than an empty one: it is the
+       screen the coach is meant to fill in himself. */
     const past = trainings.filter((t) => t.date && t.date < todayStr && t.date >= start);
     log(`  live injuries: ${injuredUids.size}
   matches: ${matches.length} (${summary.matchesPlayed} newly played)  ` +
@@ -323,12 +431,26 @@ async function main() {
   }
 
   // ── The date arrays every push reminder queries ──
+  /* From what this run is about to WRITE, not from what it read. The block
+     below used to walk `docs` alone, which was harmless while every change
+     was a status flag or a per-record document — no shard gained a date. The
+     forward calendar does, and a `trainingDates` array recomputed from the
+     pre-run snapshot would have left every new session invisible to
+     scheduledTrainingReminder: the club would have a calendar again and
+     still never be reminded about it. */
+  const pending = new Map(writes.map((w) => [w.ref.id, w.data.v]));
+  const rowsOf = (id, doc) => {
+    if (pending.has(id)) {
+      try { return JSON.parse(pending.get(id)); } catch (e) { return []; }
+    }
+    return blobOf(doc) || [];
+  };
   const allTraining = [];
   const allMatch = [];
   for (const [id, doc] of docs) {
     const k = id.split(Shard.SEP)[0];
-    if (k === "fa_training") (blobOf(doc) || []).forEach((t) => t.date && allTraining.push(t.date));
-    if (k === "fa_matches") (blobOf(doc) || []).forEach((m) => m.date && allMatch.push(m.date));
+    if (k === "fa_training") rowsOf(id, doc).forEach((t) => t.date && allTraining.push(t.date));
+    if (k === "fa_matches") rowsOf(id, doc).forEach((m) => m.date && allMatch.push(m.date));
   }
   const teamPatch = {
     trainingDates: [...new Set(allTraining)].sort(),
@@ -336,6 +458,7 @@ async function main() {
   };
 
   step("Summary");
+  log(`  future sessions added : ${summary.sessions}`);
   log(`  matches marked played : ${summary.matchesPlayed}`);
   log(`  match event sets      : ${summary.events}`);
   log(`  convocatòries         : ${summary.convocatories}`);

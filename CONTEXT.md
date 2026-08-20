@@ -1927,3 +1927,22 @@ So topping up a demo season needed a different tool, built on the opposite princ
 - Dry run by default.
 
 **The first move is still `seed-demo-club.js --verify`** — read-only, and the club may well already have the data, with only the stale `upcoming` status making it look empty.
+
+### The forward calendar (2026-08-20)
+
+Three rounds of "the demo club still looks wrong" were answered from the script's own summary, which kept reporting small gaps. Reading the data instead:
+
+```
+fa_training  93 rows   93 past /  0 future   → 2026-08-13
+fa_matches  102 rows   72 past / 30 future   → 2026-10-24
+```
+
+**A club with a next match and no next session, ever.** Empty "pròxims entrenaments", nothing to confirm availability for, and `trainingDates` holding only past dates — so `scheduledTrainingReminder` could never fire for it, which is also why that reminder had never been tested against the demo club.
+
+Everything the top-up did was guarded by `t.date < todayStr`, by construction. **No number of re-runs could ever have fixed it**, which is exactly why every dry run kept reporting healthy figures about a calendar that was a dead end. Step 5 now extends it, with the schedule **derived from the club's own sessions** — weekdays, time, location, map link, focus rotation — rather than hardcoded to the seeder's Tuesday/Thursday, so a demo edited by hand keeps its shape. Only the past gets availability and RPE: a future session with attendance already filled in is the screen the coach is meant to fill in himself.
+
+`trainingDates`/`matchDates` are now recomputed from **what the run is about to write**, not from the snapshot it read. That was harmless while every change was a status flag or a per-record document — no shard gained a date. The forward calendar does, and the first dry run duly reported `trainingDates 48` for a club that was about to gain 19 dates: a calendar restored and still invisible to the reminder.
+
+**Applied 2026-08-20**: +38 sessions (19 per category, to 2026-10-22), +64 training RPE, +313 match RPE, `trainingDates` 48 → 67, rpe 6496 → 6873. Measured with the real engine before and after: `hasData` **21/75 → 54/75**, estimated badge **20/75 → 3/75** (the theoretical ceiling with every gap filled is 55).
+
+**The club goes stale again.** `hasData` expires at `STALE_AFTER_DAYS = 10`, so a demo nobody tops up shows 54 grey dashes about ten days after the last run. That is the shape of the recurring complaint, not a new bug each time.
