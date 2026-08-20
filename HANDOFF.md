@@ -208,39 +208,95 @@ pipeline may not be worth it.
    so he never downloads `fa_convocatoria_sent__amateur` **or `fa_matches__amateur`** — the call-up
    and the match itself would be invisible in his app, and the push would open onto nothing.
 
-   Two shapes to choose between: **staff-side only** (he appears on the convocatòria the coach sends
-   and prints; nothing lands in his app) or **widen a player's shard scope**, which touches
+   **The push is NOT a blocker** — an earlier note in this session said it was, wrongly. The
+   convocatòria push is addressed by uid: `Push.sendToPlayers(teamId, targetUids)` writes a
+   `pushQueue` doc with `targetPlayers`, and `onPushQueueCreate` calls
+   `getTokensForUsers(data.targetPlayers)`. Category never enters it. A juvenil player called up to
+   an amateur match **would** be notified today, if he could be selected. That is also the right
+   behaviour and the right distinction: the Friday reminder is a broadcast to a *squad*, which he is
+   correctly not in; the convocatòria is addressed to *named individuals the coach chose*.
+
+   So the work is the picker plus what he sees after tapping. Two shapes: **staff-side only** (he
+   appears on the convocatòria the coach sends and prints, and gets the push, but the match itself
+   is still missing from his app) or **widen a player's shard scope**, which touches
    `firestore.rules` and undoes part of the isolation Phase 5 bought. The same hole already exists
    for a training `guests` entry from another category: `playerIsCalled` honours it, the guest's
    client never downloads the session.
-2. **Watch tonight's 23:00 RPE reminder log**, then the Friday 20:00 availability run, then test the
+2. **A category badge on player rows, when more than one category is on screen** (requested
+   2026-08-20). A small grey capital beside the name: **J** juvenil, **C** cadet, **I** infantil,
+   **A** aleví, **B** benjamí; amateur carries none, being the senior default. Show it only when the
+   rendered list spans more than one category — a single-category club like Esquerra de l'Eixample
+   must see no change.
+
+   ⚠ **A and B already mean something else on these very rows.** `conv-team-circle` renders the
+   *team letter*, so "A" would read as amateur-A and aleví depending on which badge it is. Decide
+   before building: distinct shape/colour for the two badges, or two-letter initials for the
+   colliding pair (`AL`, `BE`), or category-then-team with a separator. A grey capital alone is
+   ambiguous exactly where the feature is meant to remove ambiguity.
+
+   Natural home: a `CATEGORY_INITIALS` map next to `CATEGORY_LABELS` in `js/utils.js`, and one
+   shared `catBadgeHtml(player)` used by every player-row renderer (convocatòria picker, roster,
+   attendance, injuries) rather than per-surface markup.
+
+3. **Club kits are hardcoded to Esquerra de l'Eixample** (requested 2026-08-20). `jerseySvg(variant)`
+   knows exactly two values, `'white'` and `'yellow'`, with the hexes inline (`#FFFFFF`/`#FFD662`,
+   collars `#CCCCCC`/`#e6b800`) and `img/logo.png` baked into the `<image>` tag. `sockSvg` knows
+   `'striped'` (black-and-white hoops) and `'yellow'`. **Every club in the platform wears Esquerra's
+   kit.** `fa_convocatoria_sent` stores those literals, so old records constrain any fix.
+
+   Proposed shape — put the kit on the club and give the app **one** kit model, because there are
+   currently two. The tactical board already has a good one: a hex plus `{on, n, dir}` stripes
+   (`_stripeCfgOf` / `teamFill`), but it is stored **per board** (`fa_tactic_team_stripes`), not per
+   club, which is why a new board does not know the club's colours either.
+
+   ```
+   clubs/{clubId}.kits = [
+     { id: 'home', label: 'Local',
+       shirt: { base: '#ffffff', stripes: {on: false} },
+       socks: { base: '#ffffff', stripes: {on: true, n: 5, dir: 'h', color: '#222'} } },
+     { id: 'away', label: 'Visitant', shirt: {...}, socks: {...} }
+   ]
+   ```
+
+   Then: `jerseySvg`/`sockSvg` take a **kit object** instead of a literal; the convocatòria renders
+   one button per configured kit instead of two hardcoded ones; `fa_convocatoria_sent` stores the
+   kit **id**, with `'white'|'yellow'|'striped'` still resolving for records already written; the
+   board's default team fill seeds from the club's first kit; and the shirt's `<image>` uses club
+   branding rather than `img/logo.png`. Lead-only in the club settings page, and `firestore.rules`
+   must restrict `kits` to the lead — it is `clubs/{clubId}`, which the old-APK shim still leaves
+   partly writable (item 11).
+
+   Note `seed-demo-club.js` and `topup-demo-season.js` both write `jersey: "white", socks:
+   "striped"`; the fallback covers them, but the demo club should get its own kit once this exists.
+
+4. **Watch tonight's 23:00 RPE reminder log**, then the Friday 20:00 availability run, then test the
    training reminder against the demo club's 2026-08-25 session. Delivery is proven; **no trigger
    is**. All three now log their audience before sending, so a zero reads as a precondition failure
    rather than a push failure.
-3. **Fill in `privacy.html`** and have it reviewed. Live at
+5. **Fill in `privacy.html`** and have it reviewed. Live at
    `https://scaredmeeseks.github.io/EsquerrApp/privacy.html` with every club-specific fact still a
    `⚠` placeholder. Blocks **both** stores, no code dependency.
-4. **The free D-U-N-S lookup** — <https://developer.apple.com/enroll/duns-lookup/>. Long pole on iOS,
+6. **The free D-U-N-S lookup** — <https://developer.apple.com/enroll/duns-lookup/>. Long pole on iOS,
    costs nothing to check.
-5. **Play Console** — $25 plus identity verification. Then four secrets
+7. **Play Console** — $25 plus identity verification. Then four secrets
    (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
    `ANDROID_KEY_PASSWORD`) turn on the signed AAB build already dormant in the workflow.
-6. **Training detail / session planning** (reported 2026-08-09, untouched): expected-player count
+8. **Training detail / session planning** (reported 2026-08-09, untouched): expected-player count
    beside "Assistència Jugadors"; strike through no-shows in the exercise teams; equalise the
    "Planificació entrenament" panel width; make that panel free-text editable. v85 changed the squad
    plumbing underneath — read that part of CONTEXT.md first.
-7. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved` for
+9. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved` for
    the v43-era APK. **Gated on a current APK actually being on the phones.**
-8. **The APK itself** — CI has built through v98; the phones are on v43-era. Set
+10. **The APK itself** — CI has built through v98; the phones are on v43-era. Set
    `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` only once a current APK is installed. Blocks 7.
-9. **Readiness thresholds** — every measurement is still against demo data, but the demo data is now
+11. **Readiness thresholds** — every measurement is still against demo data, but the demo data is now
    materially different from what those measurements were taken on. Re-measure before touching a
    threshold.
-10. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
+12. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
     directly. Delete once a v55+ APK circulates.
-11. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to the whole
+13. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to the whole
     team, with no staff check and no validation of `title`/`body`. `Push.sendToTeam` is dead code.
-12. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
+14. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
     orphaned shards when a category is emptied; uncategorised players inconsistent across three
     staff pages; `backfill-training-teams.js` has no `preflight()`. Also **19 players answered
     `injured` for the 2026-08-13 demo session while only 9 injuries are live** — probably just
