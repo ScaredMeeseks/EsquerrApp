@@ -2,123 +2,151 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-20._
 
-**Production is on v97.** Tests **698 passing** (499 unit + 134 rules + 56 functions + 9 backfill).
+**Production is on v98** (frontend, served and verified) **and functions are deployed** (v97b).
+Tests **714 passing** (514 unit + 134 rules + 56 functions + 9 backfill, +15 this session).
 
-Two blocks of work: the tactical-board features (v86–v94) and a mobile/push audit that turned into
-real fixes (v95 onwards).
-
----
-
-## ⚠ START HERE — two jobs, both agreed with the owner on 2026-08-19
-
-### 1. Fix the RPE reminder's match branch — APPROVED, not yet written
-
-The owner's spec: *an RPE reminder goes only to a player who **attended the training**, or who
-**was in the convocatòria** for a match.*
-
-The training half already does that. The match half does not — `functions/index.js` ~685, inside
-`scheduledRpeReminder`:
-
-```js
-if (todayMatch) {
-  const all = await getTeamMembersByRole(teamId, "player");   // EVERY player in the club
-  all.forEach((uid) => {
-    if (!rpeIds.has(uid + "_match_" + todayMatch.id)) missing.add(uid);
-  });
-}
-```
-
-`getTeamMembersByRole` filters by **role only** — no category, no letter, no convocatòria. On a
-match day every player in the club is nagged for a match they were never called up to, including
-players in a different category.
-
-**The fix**: read the called-up list from `fa_convocatoria_sent`, which is exactly "was called up".
-It lives in the shard `teams/{clubId}/data/fa_convocatoria_sent__{category}` as a map keyed by
-matchId with `{players: [uid], startingXI: [uid], …}`, so the reminder must read the shard for the
-match's own category rather than the flat role query. Fall back to today's behaviour only if the
-convocatòria is missing — a match nobody was called up to should notify nobody, not everybody.
-
-Needs a functions deploy. `test/reminders.test.js` covers `squadForSession` and `answeredFor` and
-is the right place to pin the new audience.
-
-### 2. The demo club's seeded data — the owner is still not happy
-
-**Nothing has been applied yet.** Every run so far has been a dry run; the club is untouched.
-
-Latest dry run (2026-08-19), after two fixes to the script itself:
-
-```
-records     : 6977 availability, 6496 rpe
-live injuries: 6 amateur / 3 juvenil
-matches marked played : 0      RPE records (training): 64
-match event sets      : 0      RPE records (match)   : 313
-convocatòries         : 0      shard docs to write   : 0
-availability records  : 0
-```
-
-The 313 match-RPE records are the strongest candidate for the visible symptom: readiness estimates
-a match load whenever a player has minutes and no `{uid}_match_{matchId}` doc, and the seeder wrote
-those only for matches already played **when it ran (~5 Aug)**. Everything played since is a gap.
-That is what surfaces as *"Inclou càrrega estimada (no ha reportat RPE)"*.
-
-**But the root cause of the dissatisfaction is NOT established.** Three script bugs have already
-been found by taking the owner's description seriously rather than the script's summary — the
-`recovered`/`resolved` status literal, RPE nested inside the availability branch, and match RPE
-missing entirely. Assume there is a fourth.
-
-**Start by getting a concrete example**: one player, one date, one screen that looks wrong. Then
-read that exact record with the Admin SDK. Every round of guessing from the summary has cost a
-cycle; reading one document would have settled each of them.
-
-Then, and only then:
-
-```bash
-node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45          # dry
-node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply
-```
+Both jobs agreed on 2026-08-19 are **done**. A third defect was found on the way and is also fixed.
 
 ---
 
-## Push notifications — where they actually stand
+## What shipped today
+
+### v97b — the RPE reminder's match branch nagged the whole club (functions, deployed)
+
+The training half of `scheduledRpeReminder` has been squad-scoped since v71. The match half called
+`getTeamMembersByRole(teamId, "player")`, which filters by **role alone** — so on a match day every
+player in the club was told to log RPE for a match they were never called up to, including players
+in a category that was not even playing.
+
+`squadForMatch()` reads the audience from `fa_convocatoria_sent` — literally "was called up" — from
+the shard of the **match's own category**. An entry that lists nobody notifies nobody; that is the
+answer, not a reason to fall back. Only a *missing* entry falls back, because fixtures predate the
+feature, and then to the match's own squad rather than the club.
+
+`matches.find(m => m.date === today)` was the **same defect the training half already had fixed**:
+two categories play the same Saturday, so the second one's match was never chased while its players
+were nagged about the first. It filters and loops now, and the log line carries a per-match
+`{id, source, called}` so a zero audience reads as "nobody called up" or "no convocatòria" without
+opening Firestore.
+
+**Deployed** 2026-08-20, all 17 functions updated. **Not yet proven end to end** — the reminder runs
+at 23:00 Europe/Madrid, so the first honest evidence is tonight's log:
+`firebase functions:log --only scheduledRpeReminder --project esquerrapp`. Look for `source` on the
+match entries.
+
+### v98 — readiness was counting the other category's training (frontend, served)
+
+Found by running the **real** `computeReadiness` over the **real** demo-club data, not by reading it.
+
+It iterated the whole downloaded `trainingList` with no `playerIsCalled()` filter — the one filter
+every other player surface applies. Invisible from a phone, because a player's client downloads his
+own category. **A coach downloads every category**, and on the staff roster each player was credited
+with the other categories' sessions — not as a reading, but as an **estimate**, because the borrow
+branch fires when the player has no availability record saying he was out, and he has none for a
+session that was never his.
+
+Measured: **54 of 75 scores moved, by up to 34 points**; the "includes estimated load" badge sat on
+20 players where 9 earned it. Matches are deliberately not filtered the same way — a B-team player
+called up for the A team is a normal Saturday, and the match branch already keys on his own RPE or
+his own minutes.
+
+Served and verified: `esquerrapp-v98`, `APP_VERSION = 98`, `playerIsCalled(t, me)` present in the
+deployed `js/app.js`, and `/CONTEXT.md` + `/firestore.rules` still 404.
+
+### The demo club — the fourth bug, and it was the whole story
+
+Three rounds of "still not happy" had been answered from `topup-demo-season.js`'s own summary, which
+kept reporting small gaps. Reading the data instead:
+
+```
+fa_training  93 rows   93 past /  0 future   → 2026-08-13
+fa_matches  102 rows   72 past / 30 future   → 2026-10-24
+```
+
+**A club with a next match and no next session, ever.** Empty "pròxims entrenaments", nothing to
+confirm availability for, `trainingDates` holding only past dates — so `scheduledTrainingReminder`
+could never fire for it, which is *also* why that reminder had never been testable here.
+
+Every step of the top-up is guarded by `t.date < todayStr`, by construction. **No number of re-runs
+could have fixed it**, which is exactly why every dry run kept reporting a healthy-looking club.
+
+Step 5 now extends the calendar, with the schedule **derived from the club's own sessions** —
+weekdays, time, location, map link, focus rotation — rather than hardcoded to the seeder's
+Tuesday/Thursday. Only the past gets availability and RPE.
+
+A second, quieter bug went with it: `trainingDates`/`matchDates` were recomputed from the snapshot
+the run **read**, not from what it was about to **write**. Harmless while every change was a status
+flag or a per-record document — no shard gained a date. The calendar is the first change that adds
+one, and the first dry run duly reported `trainingDates 48` for a club about to gain 19: a calendar
+restored and still invisible to the reminder.
+
+**Applied** (2026-08-20): +38 sessions to 2026-10-22, +64 training RPE, +313 match RPE,
+`trainingDates` 48 → 67, rpe 6496 → 6873. `--verify` clean afterwards.
+
+Measured with the real engine either side of the change:
+
+|                | before  | after   |
+|----------------|---------|---------|
+| `hasData`      | 21 / 75 | 54 / 75 |
+| estimated badge| 20 / 75 |  3 / 75 |
+
+55/75 is the ceiling with every gap filled, so 54 is essentially maxed. The remaining 21 have nothing
+recent to report *on* — not called up, or answered no/injured.
+
+**The club goes stale again.** `hasData` expires at `STALE_AFTER_DAYS = 10`, so a demo nobody tops up
+shows ~54 grey dashes about ten days after the last run. That is the shape of the recurring
+complaint, not a new bug each time. Re-run the top-up before showing the demo to anyone.
+
+---
+
+## ⚠ The Admin SDK runs locally now — no Cloud Shell
+
+This is the change that made today's diagnosis possible, and it replaces the old
+"Admin SDK still needs Cloud Shell" note.
+
+`firebase-tools` stores `marna96@gmail.com`'s refresh token in
+`~/.config/configstore/firebase-tools.json` (`additionalAccounts[]`), and that is already in ADC's
+**`authorized_user`** shape. Write `{type: "authorized_user", client_id, client_secret,
+refresh_token}` to a scratch file, point `GOOGLE_APPLICATION_CREDENTIALS` at it, and every
+`firebase-admin` script runs as that account. The client id/secret are firebase-tools' own public
+pair, in `lib/api.js` of the global install. **Never print the token.** Delete the scratch file when
+finished.
+
+Verified with `seed-demo-club.js --verify` against production.
+
+### The technique that found all three bugs
+
+`test/readiness-engine.test.js` lifts `computeReadiness` out of `js/app.js` with `grab()` and runs it
+over a fake `localStorage`. Point that same harness at **production data** and you get the app's own
+answer for every player, without a browser. That is how "the badge is a data gap" was disproved and
+the category leak found. The harness needs four things the tests stub: `getUsers`, `_clubConfig`,
+`CATEGORY_ORDER`, and `utils.setSeasonBoundary(club.seasonBoundary)` — **leaving the boundary at the
+08-15 default put every session outside the season window and reported `hasData` 0/75**, which looked
+exactly like a catastrophic finding for about a minute. Verify the harness before believing it.
+
+---
+
+## Push notifications — where they stand
 
 **Proven end to end (2026-08-19):** a convocatòria sent by staff arrived on an Android home-screen
 PWA. Token → FCM → service worker → notification all work, after the v97 fix.
 
-**Not proven:** all three scheduled reminders. They share `sendToTokens` and the same token, so
-delivery is settled — the triggers, audiences and preconditions are untested.
+**Not proven:** the three scheduled reminders. They share `sendToTokens` and the same token, so
+delivery is settled — triggers, audiences and preconditions are not.
 
-To test the RPE reminder: it runs at **23:00 Europe/Madrid** and needs `teams/{id}.trainingDates`
-to contain today, a session today, the player answered `yes`/`late`, and **no** `rpe` doc yet.
-Deleting that one `rpe` doc is the cheapest way to become eligible. Watch it with
-`firebase functions:log --only scheduledRpeReminder --project esquerrapp` — it logs
-`rpeReminder {teamId, sessions, missing}` *before* sending, so a zero `missing` means the
+The RPE reminder is now testable and worth watching tonight (23:00 Madrid). It needs
+`teams/{id}.trainingDates` to contain today, a session today, the player answered `yes`/`late`, and
+**no** `rpe` doc yet — deleting that one doc is the cheapest way to become eligible. It logs
+`rpeReminder {teamId, sessions, matches, missing}` *before* sending, so a zero `missing` means the
 preconditions failed rather than the push.
+
+**The training reminder is testable for the first time**: the demo club has 36 future sessions, and
+`trainingDates` now holds them, so the 3.5–4.5 h hourly tick has something to find. First candidate
+session: **2026-08-25**.
 
 One loose end: on one device the permission grant showed an error and the notification arrived
 anyway. That fits `_requestWebPermission` throwing after the grant while `_ensureWebToken` succeeded
-on the next render. Harmless, but the console text would confirm it.
-
----
-
-## The two template-save defects — FIXED in v96
-
-Kept as a note because the symptom was misleading and may recur in another form. Reported as
-*"I'm not sure the edits are being saved correctly"*; the drawing always saved.
-
-- **`saveTemplate` wrote `category` unconditionally.** The editor's entry carries none — a
-  template's category is *library* metadata edited in the Biblioteca table — so every Save from the
-  editor reset it to `''`. Now guarded on the entry carrying one. **`tag` stays unconditional on
-  purpose**: the editor *has* a tag control, so it owns the tag and must be able to clear it. That
-  contrast is the rule.
-- **`_abLoad` short-circuits on `loaded`**, so returning to the Biblioteca re-rendered the pre-edit
-  row. The payload had saved; the row was lying — which is almost certainly what was seen, since
-  re-opening the template showed the edit. `_abInvalidate()` hangs off the two save paths rather
-  than the exit button, because the sidebar is also a way back.
-
-Also v96b: a promoted template's category now defaults to **the author's highest category** from
-`clubs/{id}/boardAuthors` rather than the board's `getCurrentCategory()` stamp, falling back to the
-stamp when `ownerUid` is `''` (every migrated and seeded board). The Biblioteca dropdown stays — it
-is a default, not a constraint.
+on the next render. Harmless; the console text would confirm it.
 
 ---
 
@@ -126,194 +154,94 @@ is a default, not a constraint.
 
 Stated 2026-08-19. This **changes the iOS answer**, which until now was "not startable".
 
-With a Mac, the App Store path opens: local builds, simulator, and real APNs debugging — the part
-that is genuinely painful on cloud CI. Claude Code and GitHub both work fine from macOS.
-
-**Still required, and not free:** the **Apple Developer Program, $99/year**. Individual enrolment
-takes a day or two; **organisation** enrolment needs a **D-U-N-S number** for the club and takes
-longer, but publishes under the club's name rather than a person's — for a football club that is
-almost certainly what you want.
+With a Mac the App Store path opens: local builds, simulator, real APNs debugging. **Still required,
+and not free:** the **Apple Developer Program, $99/year**. Individual enrolment takes a day or two;
+**organisation** enrolment needs a **D-U-N-S number** and takes longer, but publishes under the
+club's name — for a football club that is almost certainly what you want.
 
 What iOS would need, in order (none of it exists today):
 
 1. `npx cap add ios` — the trivial part.
 2. **`NSPhotoLibraryUsageDescription`** in `Info.plist`. The profile-photo picker
-   (`index.html:216`) opens the photo library; without the string the app **crashes at runtime**,
-   which is a review failure *and* a user crash.
-3. **`PrivacyInfo.xcprivacy`** — mandatory since 2024, must declare required-reason API use.
+   (`index.html:216`) opens the photo library; without the string the app **crashes at runtime**.
+3. **`PrivacyInfo.xcprivacy`** — mandatory since 2024.
 4. **An `apns` block in `sendToTokens`** ([functions/index.js](functions/index.js)). There is none;
-   `buildMessage` builds web and android shapes only. Without `aps` and `apns-push-type`, APNs
-   rejects or drops the message.
+   `buildMessage` builds web and android shapes only.
 5. APNs key (.p8) uploaded to Firebase, push entitlement, `remote-notification` background mode.
 
-**Do this before spending anything:** iOS 16.4+ already supports web push for a PWA added to the
-home screen, and v95 shipped everything needed for it (see below). If that serves the club's iPhone
-users, the $99 and the build pipeline may simply not be worth it.
-
----
-
-## What shipped
-
-### Tactical boards (v86–v94)
-
-Superadmin catalogue of every club's boards, and a platform template library. Club boards are
-**read-only** there by decision; the only way one leaves its club is `promoteBoardTemplate`, which
-takes an anonymised copy. Templates land as **drafts** (`published: false`) and
-`seedClubFromTemplates` refuses anything unpublished.
-
-Then a run of defects, each found by the owner testing:
-
-- **v88** — the opposition flashed on and off around playback: `renderReadOnlyBoard` decided
-  visibility **twice, differently** (the static render tested `showOpp`, the animation did not).
-- **v89** — an animated board opened on its **last** frame. `positions` is whatever was on screen at
-  Save, and `tbHydrateEditor` reset the frame index to 0 — so the editor believed frame 0 and
-  displayed frame N. Worse: `autoSaveFrame()` then **overwrote frame 0** on the next drag.
-- **v90/v91** — per-player colours for the opposition (the picker was offered and silently
-  reverted by `saveState`), then forward-only propagation for both teams.
-- **v92** — **undo had been scrambling the board since v90**: `popUndo` restored through two
-  index-aligned arrays and v90 added an entry to one and not the other. Now one list of pairs.
-- **v93/v94** — striped kits, and the shirt number on a two-colour kit.
-
-**The structural win:** `darkenHex` went from **22 callers to zero** in `app.js`. Five separate
-places draw a circle, and nothing but a source assertion notices when they drift — which is exactly
-how v88 and v90 happened.
-
-### Push and store readiness (v95 →)
-
-An audit of "can this ship to the stores, and does push work" found four **live** defects on the
-web app the club actually uses:
-
-- `webpush.fcmOptions.link` was `"/"` while the app is on a GitHub Pages **subpath**, so
-  cold-start notification clicks opened the domain root.
-- **Logging out never removed your push token.** `_removeWebToken` called `getToken()` with no
-  options, fell back to `/firebase-messaging-sw.js` (which does not exist here), threw, and the
-  error was swallowed. On a shared device the next push for the previous user still arrived.
-- **Duplicate notifications**: one message went to every token, so the SDK displayed the
-  `notification` payload and `sw.js` displayed it again. Now split by the `platform` field the
-  client already stored — **web gets data-only**, native gets `notification` +
-  `android.notification`.
-- **The permission prompt was being spent for nothing** — it ran from the auth-state handler with
-  no user gesture. Browsers auto-deny that and **iOS ignores it outright**. It is behind a tap now,
-  which is also what unlocks iOS.
-
-Plus: the `tag` never reached Android (wrong field, so reminders stacked there), and the
-**500-token multicast cap** was never chunked.
-
-**iOS web push is now possible with no Mac and no money**: the gesture fix plus an
-Add-to-Home-Screen banner for iOS Safari. `manifest.json` was already correct.
-
-### Build and exposure
-
-- A missing `google-services.json` now **throws** instead of producing a successful build with
-  silently dead push. Escape hatch: `-PallowNoFirebase=true`.
-- **`versionCode` derives from `APP_VERSION`.** It was hardcoded `1` while the app was at 95 — the
-  second Play upload would have been rejected.
-- Release signing and `bundleRelease` **exist but are dormant**, guarded on a keystore secret.
-- `npm install` → `npm ci`; Capacitor CLI pinned to 8.x (was 7.6.1 driving 8.3.0).
-- **The APK was shipping the repo** — `CONTEXT.md` (239 KB), the whole `test/` suite,
-  `firestore.rules`, deploy scripts, and five debug pages that were live routes in the WebView.
-  Now one shared definition, `scripts/build-www.js`, which checks itself.
-- **So was the website.** Pages serves the whole branch, so `/CONTEXT.md` and `/firestore.rules`
-  were returning 200. Fixed with `_config.yml`. **Adding a `.nojekyll` would publish it all again.**
-- `privacy.html` is drafted and live, with `⚠` placeholders. **It needs the club's details and a
-  qualified review** — it makes representations about health and minors' data.
-
-### Verified against the artifacts, not the scripts
-
-- **Native push IS wired in every CI APK** and has been: `assets/capacitor.plugins.json` lists both
-  plugins and the FCM app id is in `resources.arsc`. The stale committed Gradle files only bite a
-  local build.
-- The mirror trim is confirmed **in the binary**: `assets/public/` is the app plus `privacy.html`,
-  with `CONTEXT.md`, `test/` and `firestore.rules` at zero entries.
-- Pages 404s the excluded files now, and still 200s the app.
+**Do this before spending anything:** iOS 16.4+ already supports web push for a home-screen PWA, and
+v95 shipped everything needed for it. If that serves the club's iPhone users, the $99 and the build
+pipeline may not be worth it.
 
 ---
 
 ## Parking lot
 
-The two jobs at the top come first. After those:
-
-1. **Test the remaining two scheduled reminders** — training (3.5–4.5 h ahead, hourly tick) and
-   match availability (Fri 20:00). Delivery is proven; the triggers are not.
-2. **Fill in `privacy.html`** and have it reviewed. It is live at
+1. **`scheduledMatchAvailReminder` has the same shape as the bug just fixed** — it still calls
+   `getTeamMembersByRole(teamId, "player")`. It *cannot* use the convocatòria, because it runs
+   before one exists, to ask for availability. But it should scope to the match's category and team
+   letter. Deliberately left alone today; it is the obvious next functions change.
+2. **Watch tonight's 23:00 RPE reminder log**, then test the training reminder against the demo
+   club's 2026-08-25 session. Delivery is proven; the triggers are not.
+3. **Fill in `privacy.html`** and have it reviewed. Live at
    `https://scaredmeeseks.github.io/EsquerrApp/privacy.html` with every club-specific fact still a
-   `⚠` placeholder. Blocks **both** stores, no code dependency, so it can start any time.
-3. **The free D-U-N-S lookup** — <https://developer.apple.com/enroll/duns-lookup/>. The long pole on
-   iOS and it costs nothing to check. Running this from a company, so organisation enrolment is the
-   right route.
-4. **Play Console** — $25 plus identity verification (days). Then four secrets
+   `⚠` placeholder. Blocks **both** stores, no code dependency.
+4. **The free D-U-N-S lookup** — <https://developer.apple.com/enroll/duns-lookup/>. Long pole on iOS,
+   costs nothing to check.
+5. **Play Console** — $25 plus identity verification. Then four secrets
    (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
-   `ANDROID_KEY_PASSWORD`) turn on the signed AAB build already sitting dormant in the workflow.
-5. **Training detail / session planning** (reported 2026-08-09, untouched): expected-player count
+   `ANDROID_KEY_PASSWORD`) turn on the signed AAB build already dormant in the workflow.
+6. **Training detail / session planning** (reported 2026-08-09, untouched): expected-player count
    beside "Assistència Jugadors"; strike through no-shows in the exercise teams; equalise the
-   "Planificació entrenament" panel width; make that panel free-text editable. v85 changed the
-   squad plumbing underneath — read that part of CONTEXT.md first.
-6. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved` for
+   "Planificació entrenament" panel width; make that panel free-text editable. v85 changed the squad
+   plumbing underneath — read that part of CONTEXT.md first.
+7. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved` for
    the v43-era APK. **Gated on a current APK actually being on the phones.**
-7. **The APK itself** — CI has built through v97; the phones are on v43-era. Set
-   `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` only once a current APK is installed. Blocks 6.
-8. **Readiness thresholds** — every measurement so far is against synthetic demo data.
-9. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
-   directly. Delete once a v55+ APK circulates.
-10. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to the whole
+8. **The APK itself** — CI has built through v98; the phones are on v43-era. Set
+   `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` only once a current APK is installed. Blocks 7.
+9. **Readiness thresholds** — every measurement is still against demo data, but the demo data is now
+   materially different from what those measurements were taken on. Re-measure before touching a
+   threshold.
+10. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
+    directly. Delete once a v55+ APK circulates.
+11. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to the whole
     team, with no staff check and no validation of `title`/`body`. `Push.sendToTeam` is dead code.
-11. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
+12. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
     orphaned shards when a category is emptied; uncategorised players inconsistent across three
-    staff pages; `backfill-training-teams.js` has no `preflight()`.
+    staff pages; `backfill-training-teams.js` has no `preflight()`. Also **19 players answered
+    `injured` for the 2026-08-13 demo session while only 9 injuries are live** — probably just
+    injuries that resolved since, but it has not been checked and it is the kind of detail a
+    football person notices.
 
 ## Current state
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase project
   `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push; rules/functions =
-  `.\deploy.ps1`.
-- **`main` is at v95, working tree clean.** Verified SERVED, not merely pushed.
+  `.\deploy.ps1`; Admin SDK = local, see above.
+- **`main` is at v98 (`e9342e1`), working tree clean, pushed and SERVED.**
 - Tests: `cd test && npm test`. Fast path `npm run test:unit` (~1s). If a suite says
   `Could not spawn java -version`:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
 - **New test files must be added to `test:unit` / `test:functions` by hand.**
 - `gh` is **not** installed. The GitHub REST API with `curl` works; unauthenticated is **60
-  requests/hour**, which a polling loop exhausts in minutes. A read-only fine-grained PAT (Actions:
-  Read, Contents: Read) lifts it to 5000 and is the only way to read Actions logs or download
-  artifacts.
+  requests/hour**. A read-only fine-grained PAT (Actions: Read, Contents: Read) lifts it to 5000 and
+  is the only way to read Actions logs or download artifacts.
 
 ### Clubs in production
 
 - `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`, `amateur` only.
-- `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar", the seeder's default
-  `--name`), join code `9CA4RR`, `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`.
-  3 teams / 77 members.
+- `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar"), join code `9CA4RR`,
+  `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`. 3 teams / 77 members. Topped up 2026-08-20:
+  131 sessions (36 future, to 2026-10-22), 102 matches (30 future), 6873 rpe, 6977 availability,
+  1713 matchAvail, 67 trainingDates.
 - `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona test club. **Holds seeded boards from template testing.**
-
-### Demo club data — state as of 2026-08-19
-
-`--verify` is clean: 78 members, 6977 availability, 6496 rpe, 48 training dates, 34 match dates,
-season from 2026-03-01, every stored score already agreeing with its events. The club is populated,
-not empty.
-
-`topup-demo-season.js` (dry run) finds only small gaps, all of them dated **after the seed run
-(~5 Aug)** — the seeder writes availability and RPE only for sessions already in the past when it
-runs, so everything played since is thin:
-
-```
-matches marked played : 0     RPE (training) : 64
-convocatòries         : 0     RPE (match)    : added in the last fix, re-run to see
-availability records  : 0
-```
-
-Live injuries are **6 amateur / 3 juvenil** — normal. An earlier run reported 23 and 12 because the
-script tested `status !== "recovered"` while the seeder writes `active|recovering|resolved`, so
-every historical injury counted as live. That was a bug in the script, not in the data.
-
-**"Inclou càrrega estimada (no ha reportat RPE)"** appears when a player has availability but no RPE
-for that session — readiness then borrows the squad average. It is the visible symptom of the gap
-above, and of missing **match** RPE, which the first version of the top-up did not handle at all.
 
 ### ⚠ Never run `seed-demo-club.js --apply` at the demo club
 
 `apply()` builds a club **from nothing**. Pointed at the populated demo club it destroys it three
 ways, silently: it rewrites the whole `categories` map, it **replaces** data shards with a bare
-`set()` — and `fa_users` is routed by category with no team letter, so `fa_users__amateur` would
-lose amateur-B and juvenil-A — and it resets all 77 Auth passwords. It is guarded by neither the
+`set()` — and `fa_users` is routed by category with no team letter, so `fa_users__amateur` would lose
+amateur-B and juvenil-A — and it resets all 77 Auth passwords. It is guarded by neither the
 `demoSeed` stamp nor `PROTECTED_CLUBS`; only `--purge` and `--add-team` are.
 
 What is safe:
@@ -325,28 +253,28 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additi
 ```
 
 `--purge` works but deletes the club, all 77 Auth accounts, and invalidates `9CA4RR` and the
-handed-out credentials. **Do not run `cleanup-seed.js`** — it still keys on pre-Phase-1 numeric
-uids and would treat much of the current demo corpus as garbage.
+handed-out credentials. **Do not run `cleanup-seed.js`** — it still keys on pre-Phase-1 numeric uids
+and would treat much of the current demo corpus as garbage.
 
 ---
 
 ## Lessons that keep repeating
 
-- **Check the artefact, not the operation.** This session: a deploy that reported success while the
-  function was unreachable (403 at Cloud Run's IAM layer); a push that reported success while the
-  site served the previous version; a mirror script that looked right until the APK was unzipped.
-  Every one had a free, unambiguous probe available from the start.
-- **Read the implementation, not just the type.** `invoker: "public"` type-checks on `onCall` and is
-  silently dropped.
+- **Read the data, not the summary.** Four bugs in `topup-demo-season.js` were found only by
+  distrusting its own output: the status literal, RPE nested inside the availability branch, match
+  RPE missing entirely, and — the one that explained everything — a calendar with no future. Each
+  cost a round trip that one Firestore read would have closed. The fourth cost three.
+- **A tool that reports on its own work will report success.** Every dry run was truthful about what
+  it could see, and every step it could see was guarded to the past. The gap was in a dimension the
+  summary had no line for.
+- **Run the real implementation over the real data.** The test harness that lifts a function out of
+  `app.js` is also a production diagnostic. It settled in one run what three sessions of reasoning
+  about the readiness badge had not — *and* it lied convincingly for one run first, because the
+  season boundary was left at its default. Check the harness before believing the harness.
+- **Check the artefact, not the operation.** Today: `curl` the served `sw.js` and `app.js`, not the
+  push output; `--verify` the club, not the "Done" line.
 - **A test that pins a no-op is worse than no test** — it goes green for ever while the thing stays
-  broken.
-- **A parallel-array invariant that nothing checks will be broken by an unrelated change.** Two
-  lists that must stay index-aligned is what broke undo in v90.
-- **Read one document instead of guessing from a summary.** Three bugs in `topup-demo-season.js`
-  were found only because the owner's description of the app contradicted the script's own output —
-  the status literal, RPE nested inside the availability branch, and match RPE missing entirely.
-  Each cost a round trip that reading a single Firestore record would have closed.
-- **"Is this legacy?" is the right question, and the answer is often no.** Two prior fixes in the
-  same area made "already fixed" the tempting reply to the v88 flash. It was live.
-- **A failure that looks like misconfiguration may be infrastructure.** Three Pages deploys failed
-  in `Set up job` with zero jobs and no message; it was GitHub 429ing its own action download.
+  broken. Every new test this session has a paired negative that fails on the old code.
+- **A parallel-array invariant that nothing checks will be broken by an unrelated change.**
+- **"Is this legacy?" is the right question, and the answer is often no.**
+- **A failure that looks like misconfiguration may be infrastructure.**
