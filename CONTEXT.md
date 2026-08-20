@@ -1875,6 +1875,28 @@ Three source assertions pin both halves, including the negative: `_ensureWebToke
 
 **496 → 499 unit tests.**
 
+## v97b - the RPE reminder's match branch nagged the whole club
+
+The training half of `scheduledRpeReminder` was scoped to the squad in v71. The **match** half never was:
+
+```js
+const all = await getTeamMembersByRole(teamId, "player");   // EVERY player in the club
+```
+
+`getTeamMembersByRole` filters by **role alone** - no category, no team letter, no call-up. So on a match day every player in the club was told to log RPE for a match they were never in, including players in a different category, and including players whose category was not even playing. The owner's spec is narrower than "attended": *an RPE reminder goes to a player who **attended the training**, or who **was in the convocatòria** for a match.*
+
+`squadForMatch()` reads that list from `fa_convocatoria_sent`, which is precisely "was called up" - a map keyed by matchId with `{players, startingXI, …}`, sharded per category **through the match** (`Shard.ROUTES`, `by: 'match'`), so the reminder reads the shard for the match's own category rather than a flat role query. The other shards are scanned only as a safety net, for a match that changed category and left its convocatòria behind.
+
+**An empty `players` list is an answer, not a fallback trigger.** A match nobody was called up to notifies nobody. Only a *missing* entry falls back, because fixtures predate the feature - and even then to the match's own squad, `squadForSession` on its category and team letter, never to the club.
+
+`matches.find(m => m.date === today)` was the **same defect the training half already had fixed**: two categories play on the same Saturday, and `find` silently picked one - so the second category's match was never chased at all, while its players were being nagged about the first one. It filters and loops now, and the `rpeReminder` log line carries a per-match `{id, source, called}` so a zero audience can be read as "nobody called up" or "no convocatòria" without opening Firestore.
+
+**499 → 508 unit tests.** `test/reminders.test.js` grabs `parseDataDoc` out of the source alongside the helpers, so a convocatòria stored in the per-field merge format resolves in the test exactly as it does in production.
+
+Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailReminder` also calls `getTeamMembersByRole(teamId, "player")`. It cannot use the convocatòria - it runs *before* one exists, to ask for availability - but it should still scope to the match's category and letter.
+
+Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
+
 ## topup-demo-season.js
 
 `seed-demo-club.js --apply` builds a club **from nothing**, and is guarded by neither the `demoSeed` stamp nor `PROTECTED_CLUBS` — only `--purge` and `--add-team` are. Aimed at the populated demo club it would rewrite the `categories` map, **replace** data shards with a bare `set()` (losing amateur-B and juvenil-A from `fa_users__amateur`, which is routed by category with no team letter), and reset all 77 Auth passwords.

@@ -34,7 +34,7 @@ function grab(from, to) {
   return src.slice(i, j);
 }
 
-/** The two helpers, over a fake users collection. */
+/** The helpers, over a fake users collection. */
 function load(users) {
   const db = {
     collection: () => ({
@@ -46,11 +46,25 @@ function load(users) {
       }),
     }),
   };
-  const code = grab('async function squadForSession(teamId, session)',
-      '// ── Helper: get all team members ──');
+  /* parseDataDoc and SHARD_NONE come along because squadForMatch reads a
+     shard. The parser is grabbed rather than faked: a convocatòria stored
+     in the per-field merge format has to resolve the same way here. */
+  const code = grab('function parseDataDoc(snap, fallback)', '// ── Phase 5') +
+    '\nconst SHARD_NONE = "none";\n' +
+    grab('async function squadForSession(teamId, session)',
+        '// ── Helper: get all team members ──');
   // eslint-disable-next-line no-new-func
   return new Function('db', `${code}
-    return { squadForSession, answeredFor };`)(db);
+    return { squadForSession, squadForMatch, answeredFor };`)(db);
+}
+
+/** A teams/{id}/data shard list, as readDataShards returns it. */
+function shardsOf(byCat) {
+  const list = Object.keys(byCat).map((cat) => ({
+    cat,
+    snap: {exists: true, data: () => ({v: JSON.stringify(byCat[cat]), category: cat})},
+  }));
+  return new Map([['fa_convocatoria_sent', list]]);
 }
 
 const P = (id, category, team) => ({id, category, team, roles: ['player']});
@@ -112,6 +126,80 @@ describe('reminders — who a session is for', () => {
   });
 });
 
+describe('reminders — who a MATCH is for', () => {
+  const H = load(ROSTER);
+  const M = (over) => Object.assign(
+      {id: 4001, date: '2026-09-05', category: 'amateur', team: 'A'}, over);
+
+  it('only the convocatòria — the live bug', () => {
+    /* getTeamMembersByRole filters by role alone, so every player in the
+       club was told to log RPE for a match they never played, juvenil
+       included. b1 is even in the right category and still was not called. */
+    const shards = shardsOf({amateur: {4001: {players: ['a1'], startingXI: ['a1']}}});
+    return H.squadForMatch('t', M({}), shards).then((r) => {
+      assert.deepStrictEqual(r.uids, ['a1']);
+      assert.strictEqual(r.source, 'convocatoria');
+    });
+  });
+
+  it('a convocatòria that called nobody notifies nobody', () => {
+    // An empty list is an answer, not a reason to fall back to the club.
+    const shards = shardsOf({amateur: {4001: {players: []}}});
+    return H.squadForMatch('t', M({}), shards).then((r) => {
+      assert.deepStrictEqual(r.uids, []);
+      assert.strictEqual(r.source, 'convocatoria');
+    });
+  });
+
+  it('reads the shard of the match\'s OWN category', () => {
+    // Ids can repeat across categories; the wrong shard is the wrong squad.
+    const shards = shardsOf({
+      amateur: {4001: {players: ['a1', 'a2']}},
+      juvenil: {4001: {players: ['j1']}},
+    });
+    return H.squadForMatch('t', M({}), shards).then((r) => {
+      assert.deepStrictEqual(r.uids.sort(), ['a1', 'a2']);
+    });
+  });
+
+  it('falls back to the match squad, never the club', () => {
+    // Fixtures predate the convocatòria feature. Category + letter, not role.
+    return H.squadForMatch('t', M({}), shardsOf({})).then((r) => {
+      assert.deepStrictEqual(r.uids.sort(), ['a1', 'a2']);
+      assert.strictEqual(r.source, 'squad');
+      assert.ok(!r.uids.includes('j1') && !r.uids.includes('b1'));
+    });
+  });
+
+  it('the fallback honours the team letter', () => {
+    return H.squadForMatch('t', M({team: 'B'}), shardsOf({})).then((r) => {
+      assert.deepStrictEqual(r.uids, ['b1']);
+    });
+  });
+
+  it('a legacy match with no category still reaches everyone', () => {
+    const m = M({category: '', team: ''});
+    return H.squadForMatch('t', m, shardsOf({})).then((r) => {
+      assert.deepStrictEqual(r.uids.sort(), ['a1', 'a2', 'b1', 'j1']);
+    });
+  });
+
+  it('matches a string matchId against a numeric one', () => {
+    // JSON object keys are strings; fa_matches ids are numbers.
+    const shards = shardsOf({amateur: {4001: {players: ['a2']}}});
+    return H.squadForMatch('t', M({id: '4001'}), shards).then((r) => {
+      assert.deepStrictEqual(r.uids, ['a2']);
+      assert.strictEqual(r.source, 'convocatoria');
+    });
+  });
+
+  it('never notifies staff through the fallback', () => {
+    return H.squadForMatch('t', M({team: ''}), shardsOf({})).then((r) => {
+      assert.ok(!r.uids.includes('coach'));
+    });
+  });
+});
+
 describe('reminders — has this player answered', () => {
   const H = load(ROSTER);
   const answers = (arr) => new Set(arr);
@@ -161,6 +249,17 @@ describe('reminders — the schedulers use them', () => {
     assert.ok(body.includes('training.filter((t) => t.date === today)'),
         'a find() here silently dropped the second squad\'s session');
     assert.ok(body.includes('await squadForSession(teamId, session)'));
+  });
+
+  it('the RPE reminder scopes a MATCH to the convocatòria', () => {
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    assert.ok(body.includes('await squadForMatch(teamId, match, shards)'));
+    assert.ok(!/getTeamMembersByRole\(teamId, "player"\)/.test(body),
+        'the club-wide roster nagged players who were never called up');
+    assert.ok(body.includes('matches.filter((m) => m.date === today)'),
+        'a find() here dropped the second category\'s match');
+    assert.ok(body.includes('"fa_convocatoria_sent"'),
+        'the shard has to be READ for squadForMatch to see it');
   });
 
   it('notifications are tagged per session, not per date', () => {

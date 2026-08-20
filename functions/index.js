@@ -346,6 +346,53 @@ async function squadForSession(teamId, session) {
 }
 
 /**
+ * The players a match RPE reminder is FOR: the convocatòria.
+ *
+ * This branch used to call getTeamMembersByRole(teamId, "player"), which
+ * filters by ROLE alone — no category, no team letter, no call-up. On a
+ * match day that nagged EVERY player in the club for a match they were
+ * never called up to, juvenil players included.
+ *
+ * `fa_convocatoria_sent` is exactly "was called up": a map keyed by matchId
+ * with {players: [uid], startingXI: [uid], …}, sharded per category through
+ * the match (Shard.ROUTES, by: 'match'). An entry that exists and lists
+ * nobody means nobody is notified — that is the answer, not a reason to
+ * fall back.
+ *
+ * Only a MISSING entry falls back, because fixtures predate the feature.
+ * The fallback is the match's own squad — its category and team letter —
+ * never the club.
+ *
+ * → {uids, source}. `source` is logged so "nobody was called up" can be
+ * told apart from "there was no convocatòria" without a second look.
+ */
+async function squadForMatch(teamId, match, shards) {
+  const cat = match.category || SHARD_NONE;
+  /* The match's own shard first. The rest are scanned only as a safety net:
+     a match that changed category leaves its convocatòria behind until the
+     next write re-routes it, and reading a stale one beats notifying the
+     whole squad. */
+  const all = shards.get("fa_convocatoria_sent") || [];
+  const ordered = all.filter((s) => s.cat === cat)
+      .concat(all.filter((s) => s.cat !== cat));
+  for (const s of ordered) {
+    const convo = parseDataDoc(s.snap, {});
+    const entry = convo[match.id] || convo[String(match.id)];
+    if (entry && Array.isArray(entry.players)) {
+      return {uids: entry.players.map(String), source: "convocatoria"};
+    }
+  }
+  const uids = await squadForSession(teamId, {
+    id: String(match.id),
+    date: match.date,
+    category: match.category || "",
+    // Matches carry a single letter; sessions carry a list of them.
+    teams: match.team ? [match.team] : [],
+  });
+  return {uids, source: "squad"};
+}
+
+/**
  * Has this player answered for this session?
  * New records are keyed by session id; legacy ones by date, and those can
  * only ever have meant the player's OWN session -- the client that wrote
@@ -642,15 +689,17 @@ exports.scheduledRpeReminder = onSchedule({
   }
 
   await Promise.all([...teamDocs.keys()].map(async (teamId) => {
-    const shards = await readDataShards(teamId, ["fa_training", "fa_matches"]);
+    const shards = await readDataShards(teamId,
+        ["fa_training", "fa_matches", "fa_convocatoria_sent"]);
     const training = mergeArrayShards(shards.get("fa_training"));
     const matches = mergeArrayShards(shards.get("fa_matches"));
     /* filter, not find. Two squads can train the same evening, and `find`
        silently picked one -- so the other squad was never chased, and the
        first squad's session was used to judge everybody. */
     const todaysTraining = training.filter((t) => t.date === today);
-    const todayMatch = matches.find((m) => m.date === today);
-    if (!todaysTraining.length && !todayMatch) return;
+    // Same reason: two categories play on the same Saturday.
+    const todaysMatches = matches.filter((m) => m.date === today);
+    if (!todaysTraining.length && !todaysMatches.length) return;
 
     // RPE + availability from the canonical record collections
     const teamRef = db.collection("teams").doc(teamId);
@@ -682,15 +731,18 @@ exports.scheduledRpeReminder = onSchedule({
         missing.add(uid);
       });
     }
-    if (todayMatch) {
-      const all = await getTeamMembersByRole(teamId, "player");
-      all.forEach((uid) => {
-        if (!rpeIds.has(uid + "_match_" + todayMatch.id)) missing.add(uid);
+    const matchAudiences = [];
+    for (const match of todaysMatches) {
+      const called = await squadForMatch(teamId, match, shards);
+      matchAudiences.push({id: match.id, source: called.source,
+        called: called.uids.length});
+      called.uids.forEach((uid) => {
+        if (!rpeIds.has(uid + "_match_" + match.id)) missing.add(uid);
       });
     }
     const missingRpe = [...missing];
     logger.info("rpeReminder", {teamId, sessions: todaysTraining.length,
-      missing: missingRpe.length});
+      matches: matchAudiences, missing: missingRpe.length});
 
     if (missingRpe.length) {
       const tokens = await getTokensForUsers(missingRpe);
