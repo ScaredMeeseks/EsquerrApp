@@ -382,14 +382,29 @@ async function squadForMatch(teamId, match, shards) {
       return {uids: entry.players.map(String), source: "convocatoria"};
     }
   }
-  const uids = await squadForSession(teamId, {
+  return {uids: await squadForSession(teamId, matchAsSession(match)),
+    source: "squad"};
+}
+
+/**
+ * A match, in the shape squadForSession() reads.
+ *
+ * The squad rule lives in ONE place. Two reminders need "the players this
+ * match is for" and re-deriving it in the second is how the two halves of
+ * scheduledRpeReminder drifted apart in the first place.
+ *
+ * A match carries a single `team` letter where a session carries a list; an
+ * EMPTY letter means every letter of the category, exactly as an empty
+ * `teams` does — which is also the honest reading of a fixture created
+ * before letters existed.
+ */
+function matchAsSession(match) {
+  return {
     id: String(match.id),
     date: match.date,
     category: match.category || "",
-    // Matches carry a single letter; sessions carry a list of them.
     teams: match.team ? [match.team] : [],
-  });
-  return {uids, source: "squad"};
+  };
 }
 
 /**
@@ -796,12 +811,34 @@ exports.scheduledMatchAvailReminder = onSchedule({
     const availSnap = await db.collection("teams").doc(teamId)
         .collection("matchAvail").where("matchId", "in", matchIds.slice(0, 10)).get();
     const answered = new Set(availSnap.docs.map((d) => d.data().uid + "_" + d.data().matchId));
-    const playerUids = await getTeamMembersByRole(teamId, "player");
 
     for (const match of weekendMatches) {
+      /* The squad this fixture is for — category AND team letter.
+
+         This asked the club-wide role query, which filters by ROLE alone —
+         no category, no letter. On a weekend with three fixtures (amateur A, amateur B,
+         juvenil) every player in the club got three separate pushes, two of
+         them about teams he is not in, and they do not collapse on the
+         device because the tag is per match.
+
+         It cannot use the convocatòria the way scheduledRpeReminder does:
+         this runs on FRIDAY, before one exists, and exists precisely so the
+         coach has availability answers to pick from on Saturday.
+
+         INJURED PLAYERS ARE STILL ASKED, deliberately. Nothing here consults
+         fa_injuries and nothing should: a player recovering may well be
+         available by Sunday, and that answer is the coach's to receive
+         rather than the server's to assume. Availability is a question, not
+         a status.
+
+         A player from another category who is called up by agreement never
+         gets this push, and that is correct — he is not in this squad. The
+         coach adds him to the convocatòria by hand. */
+      const playerUids = await squadForSession(teamId, matchAsSession(match));
       const unanswered = playerUids.filter((uid) =>
         !answered.has(uid + "_" + String(match.id)));
       logger.info("matchAvailReminder", {teamId, matchId: match.id,
+        category: match.category || "", team: match.team || "",
         players: playerUids.length, unanswered: unanswered.length});
       if (!unanswered.length) continue;
       const tokens = await getTokensForUsers(unanswered);

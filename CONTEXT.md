@@ -1897,6 +1897,29 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v97c - the Friday availability reminder asked the whole club
+
+The same defect as v97b, in the third scheduler. `scheduledMatchAvailReminder` asked the club-wide role query, which filters by **role alone**. On a weekend with three fixtures - amateur A, amateur B, juvenil - **every player in the club got three separate pushes**, two of them about teams he is not in. They do not even collapse on the device: the tag is `match-avail-<matchId>`, so they stack.
+
+It **cannot** be fixed the way v97b was. That one reads `fa_convocatoria_sent`, which is definitive. This runs on **Friday, before a convocatòria exists** - it exists precisely so the coach has availability answers to pick from on Saturday. So the audience is the squad instead: **category plus team letter**, via `squadForSession(teamId, matchAsSession(match))`.
+
+`matchAsSession()` is new and shared with `squadForMatch`'s fallback, so the squad rule has exactly one definition. Re-deriving it in the second caller is precisely how the two halves of `scheduledRpeReminder` drifted apart in the first place. A match carries a single `team` letter where a session carries a list, and an **empty letter means every letter of the category** - the same convention `trainingTeams` uses, and the only honest reading of a fixture created before letters existed.
+
+**Injured players are still asked, deliberately.** Nothing on this path consults `fa_injuries` and nothing should: a player recovering may well be fit by Sunday, and that answer is the coach's to receive rather than the server's to assume. Availability is a question, not a status. Pinned by a **behavioural** test - an injured roster member is in the audience - after a first attempt asserted `!/injur/i` over the source and failed against the comment explaining that there is no filter. A grep cannot tell a filter apart from prose saying there is none.
+
+### What this does NOT enable: the cross-category call-up
+
+The intended workflow is: an amateur coach agrees with a juvenil player and calls him up, even though he never got the Friday push. **Within a category that already works** - `renderConvocatoria` filters the picker by category only, never by letter ([js/app.js:13097](js/app.js)), and each row carries a `conv-team-circle` letter badge, so an amateur coach already sees A and B and can call a B player up for an A fixture.
+
+**Across categories it does not, and it is not a small fix.** Two independent blockers:
+
+1. That same line filters the picker to the coach's current category, so a juvenil player is not in the list to drag.
+2. Even if he were, `getVisibleCategories()` returns `[s.category]` for a player, and `DB.init` subscribes only to those shards. He would never download `fa_convocatoria_sent__amateur` **or `fa_matches__amateur`** - so the call-up, and the match itself, would be invisible in his app. The push would arrive and open nothing.
+
+The second is architectural, and it is the same reason a training `guests` entry from another category is effectively a coach-side note: `playerIsCalled` honours it, but the guest's client never downloads the session it belongs to.
+
+**508 → 522 unit tests** (with v98). Functions only; needs a functions deploy.
+
 ## v98 - readiness was counting the other category's training
 
 Found by running the **real** `computeReadiness` - lifted out of `js/app.js` the way `test/readiness-engine.test.js` lifts it - over the **real** demo-club data, rather than reasoning about it.

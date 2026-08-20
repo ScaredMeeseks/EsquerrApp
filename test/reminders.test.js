@@ -55,7 +55,7 @@ function load(users) {
         '// ── Helper: get all team members ──');
   // eslint-disable-next-line no-new-func
   return new Function('db', `${code}
-    return { squadForSession, squadForMatch, answeredFor };`)(db);
+    return { squadForSession, squadForMatch, matchAsSession, answeredFor };`)(db);
 }
 
 /** A teams/{id}/data shard list, as readDataShards returns it. */
@@ -200,6 +200,72 @@ describe('reminders — who a MATCH is for', () => {
   });
 });
 
+describe('reminders — who to ASK about a match', () => {
+  /* The Friday availability reminder. It cannot read the convocatòria the
+     way the RPE one does — it runs BEFORE one exists, to collect the
+     answers the coach picks from — so the audience is the squad: category
+     plus team letter. */
+  const H = load(ROSTER);
+  const M = (over) => Object.assign(
+      {id: 4001, date: '2026-09-05', category: 'amateur', team: 'A'}, over);
+
+  it('asks amateur A and nobody else — the live bug', () => {
+    // Three fixtures on one weekend meant three pushes to every player in
+    // the club, two of them about teams he is not in.
+    return H.squadForSession('t', H.matchAsSession(M({}))).then((uids) => {
+      assert.deepStrictEqual(uids.sort(), ['a1', 'a2']);
+    });
+  });
+
+  it('asks the B squad about a B fixture', () => {
+    return H.squadForSession('t', H.matchAsSession(M({team: 'B'}))).then((uids) => {
+      assert.deepStrictEqual(uids, ['b1']);
+    });
+  });
+
+  it('a fixture with no letter means every letter of the category', () => {
+    // What it meant before letters existed, and the only honest reading.
+    return H.squadForSession('t', H.matchAsSession(M({team: ''}))).then((uids) => {
+      assert.deepStrictEqual(uids.sort(), ['a1', 'a2', 'b1']);
+    });
+  });
+
+  it('never crosses category', () => {
+    return H.squadForSession('t', H.matchAsSession(M({}))).then((uids) => {
+      assert.ok(!uids.includes('j1'));
+    });
+  });
+
+  it('never asks staff', () => {
+    return H.squadForSession('t', H.matchAsSession(M({team: ''}))).then((uids) => {
+      assert.ok(!uids.includes('coach'));
+    });
+  });
+
+  it('asks an INJURED player too', () => {
+    /* Availability is a question, not a status. A player recovering may
+       well be fit by Sunday, and that answer is the coach's to receive
+       rather than the server's to assume — so no injury filter belongs
+       anywhere on this path. Asserted on behaviour, not on a grep for
+       "injur", which cannot tell a filter apart from a comment saying
+       there is no filter. */
+    const injured = load([
+      P('a1', 'amateur', 'A'),
+      Object.assign(P('a3', 'amateur', 'A'),
+          {fitnessStatus: 'injured', injured: true}),
+    ]);
+    return injured.squadForSession('t', injured.matchAsSession(M({}))).then((uids) => {
+      assert.ok(uids.includes('a3'), 'an injured player is still asked');
+    });
+  });
+
+  it('carries a match\'s single letter into a session\'s list', () => {
+    assert.deepStrictEqual(H.matchAsSession(M({})).teams, ['A']);
+    assert.deepStrictEqual(H.matchAsSession(M({team: ''})).teams, []);
+    assert.strictEqual(H.matchAsSession(M({id: 7})).id, '7');
+  });
+});
+
 describe('reminders — has this player answered', () => {
   const H = load(ROSTER);
   const answers = (arr) => new Set(arr);
@@ -260,6 +326,13 @@ describe('reminders — the schedulers use them', () => {
         'a find() here dropped the second category\'s match');
     assert.ok(body.includes('"fa_convocatoria_sent"'),
         'the shard has to be READ for squadForMatch to see it');
+  });
+
+  it('the availability reminder scopes to the squad, not the club', () => {
+    const body = grab('exports.scheduledMatchAvailReminder', '// ── 5. fcfClassificacio');
+    assert.ok(body.includes('await squadForSession(teamId, matchAsSession(match))'));
+    assert.ok(!/getTeamMembersByRole\(teamId, "player"\)/.test(body),
+        'three weekend fixtures meant three pushes to every player in the club');
   });
 
   it('notifications are tagged per session, not per date', () => {
