@@ -2,10 +2,12 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-20._
 
-**Production is on v98** (frontend, served and verified) **and functions are deployed** (v97b).
-Tests **713 passing** (514 unit + 134 rules + 56 functions + 9 backfill, +15 this session).
+**Production is on v98** (frontend, served and verified) **and functions are deployed** (v97c).
+Tests **721 passing** (522 unit + 134 rules + 56 functions + 9 backfill, +23 this session).
 
-Both jobs agreed on 2026-08-19 are **done**. A third defect was found on the way and is also fixed.
+Both jobs agreed on 2026-08-19 are **done**. Two further defects were found on the way, both fixed:
+**all three schedulers** were notifying the whole club, and the readiness score was borrowing load
+across categories.
 
 ---
 
@@ -33,6 +35,24 @@ opening Firestore.
 at 23:00 Europe/Madrid, so the first honest evidence is tonight's log:
 `firebase functions:log --only scheduledRpeReminder --project esquerrapp`. Look for `source` on the
 match entries.
+
+### v97c — the Friday availability reminder asked the whole club (functions, deployed)
+
+The same defect, third scheduler. On a weekend with three fixtures — amateur A, amateur B, juvenil —
+**every player in the club got three separate pushes**, two about teams he is not in, and they stack
+rather than collapse because the tag is per match.
+
+It **cannot** be fixed the way v97b was: this runs on **Friday, before a convocatòria exists**, and
+exists precisely so the coach has availability answers to pick from on Saturday. So the audience is
+the squad instead: **category plus team letter**. `matchAsSession()` is shared with
+`squadForMatch`'s fallback, so the squad rule has exactly one definition.
+
+**Injured players are still asked, deliberately** — availability is a question, not a status, and a
+player recovering may be fit by Sunday. Pinned by a *behavioural* test after a first attempt
+asserted `!/injur/i` over the source and failed against the comment explaining there is no filter.
+
+Deployed 2026-08-20, all 17 functions updated. First real evidence is a Friday 20:00 run: the log
+line now carries `{category, team, players, unanswered}`.
 
 ### v98 — readiness was counting the other category's training (frontend, served)
 
@@ -177,12 +197,26 @@ pipeline may not be worth it.
 
 ## Parking lot
 
-1. **`scheduledMatchAvailReminder` has the same shape as the bug just fixed** — it still calls
-   `getTeamMembersByRole(teamId, "player")`. It *cannot* use the convocatòria, because it runs
-   before one exists, to ask for availability. But it should scope to the match's category and team
-   letter. Deliberately left alone today; it is the obvious next functions change.
-2. **Watch tonight's 23:00 RPE reminder log**, then test the training reminder against the demo
-   club's 2026-08-25 session. Delivery is proven; the triggers are not.
+1. **The cross-category call-up — decide before building.** The owner's workflow (2026-08-20): an
+   amateur coach agrees with a juvenil player and calls him up despite his never having had the
+   Friday availability push. **Within a category this already works** — `renderConvocatoria` filters
+   the picker by category only, never by letter ([js/app.js:13097](js/app.js)), so an amateur coach
+   already sees A and B and can call a B player up for an A fixture.
+
+   **Across categories it does not**, and there are two independent blockers. The picker filters to
+   the coach's current category. And `getVisibleCategories()` returns `[s.category]` for a player,
+   so he never downloads `fa_convocatoria_sent__amateur` **or `fa_matches__amateur`** — the call-up
+   and the match itself would be invisible in his app, and the push would open onto nothing.
+
+   Two shapes to choose between: **staff-side only** (he appears on the convocatòria the coach sends
+   and prints; nothing lands in his app) or **widen a player's shard scope**, which touches
+   `firestore.rules` and undoes part of the isolation Phase 5 bought. The same hole already exists
+   for a training `guests` entry from another category: `playerIsCalled` honours it, the guest's
+   client never downloads the session.
+2. **Watch tonight's 23:00 RPE reminder log**, then the Friday 20:00 availability run, then test the
+   training reminder against the demo club's 2026-08-25 session. Delivery is proven; **no trigger
+   is**. All three now log their audience before sending, so a zero reads as a precondition failure
+   rather than a push failure.
 3. **Fill in `privacy.html`** and have it reviewed. Live at
    `https://scaredmeeseks.github.io/EsquerrApp/privacy.html` with every club-specific fact still a
    `⚠` placeholder. Blocks **both** stores, no code dependency.
