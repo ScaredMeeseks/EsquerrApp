@@ -251,32 +251,15 @@ describe('team setup — leaving the screen', () => {
     // The over-quota redirect and the no-category wizard must stay
     // inescapable: escaping the first defeats the gate, and behind the
     // second there is no configured club to go back to.
-    /* The rule is about the FORCED entries, so that is what this asserts.
-       It used to count cancellable call sites and require exactly 1, which
-       was a fine proxy while Settings had one button; the Kits card is a
-       second voluntary entry and equally legitimate. Counting would have
-       forced a real feature to fight a test that never meant to forbid it.
-
-       What must stay true: every entry that is NOT from Settings passes no
-       options at all, so _tsCancellable is false and the back button stays
-       hidden. */
     const calls = appSrc.match(/showTeamSetup\((\{[^)]*\})?\)/g) || [];
-    const forced = calls.filter((c) => !c.includes('cancellable'));
-    assert.ok(forced.length >= 3,
-        'the forced entries have gone missing: ' + calls.join(' | '));
-    forced.forEach((c) => {
+    const cancellable = calls.filter((c) => c.includes('cancellable'));
+    assert.strictEqual(cancellable.length, 1,
+        'exactly one call site may pass cancellable, got: ' + calls.join(' | '));
+    // Belt and braces: every OTHER entry passes no options at all, so
+    // _tsCancellable is false and the back button stays hidden.
+    calls.filter((c) => !c.includes('cancellable')).forEach((c) => {
       assert.strictEqual(c, 'showTeamSetup()',
         'a forced entry passes options and could become escapable: ' + c);
-    });
-    // And every escapable one is a deliberate Settings button, not a redirect.
-    const cancellable = calls.filter((c) => c.includes('cancellable'));
-    assert.ok(cancellable.length >= 1 && cancellable.length <= 2,
-        'unexpected number of voluntary entries: ' + cancellable.join(' | '));
-    cancellable.forEach((c) => {
-      const i = appSrc.indexOf(c);
-      const before = appSrc.slice(Math.max(0, i - 400), i);
-      assert.ok(/btn-edit-(categories|kits)/.test(before),
-        'a cancellable entry that is not behind a Settings button: ' + c);
     });
   });
 

@@ -128,10 +128,10 @@ describe('setClubKits', function () {
     await rejects(kit({socks: 's|h|6|#ffffff|nope'}), 'bad second colour');
   });
 
-  it('refuses a band count outside 2-6', async () => {
+  it('refuses a band count outside the range', async () => {
     // parseFill() would degrade these to solid, so a stored 9 renders as a
     // plain shirt and looks like the stripes were simply forgotten.
-    await rejects(kit({socks: 's|h|9|#ffffff|#222222'}), 'n too high');
+    await rejects(kit({socks: 's|h|10|#ffffff|#222222'}), 'n above STRIPE_MAX');
     await rejects(kit({socks: 's|h|1|#ffffff|#222222'}), 'n too low');
     await rejects(kit({socks: 's|x|4|#ffffff|#222222'}), 'bad direction');
     await rejects(kit({socks: 's|h|4|#ffffff'}), 'truncated');

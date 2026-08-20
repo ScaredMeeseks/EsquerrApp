@@ -158,6 +158,14 @@ function textColorFor(hex) {
    run on every repaint of every circle, and a board that fails to draw is
    worse than one drawn in the wrong colour. */
 
+/* The most bands a striped fill may have. ONE constant, because the cap was
+   enforced in seven independent places — parseFill, encodeFill,
+   normalizeStripeState, two number inputs, the board's commit handler and the
+   server validator — and raising it meant finding all of them. Miss one and
+   the UI offers a value parseFill then silently rejects, so the stripes just
+   vanish. Raised 6 → 9 on request (2026-08-21). */
+var STRIPE_MAX = 9;
+
 /** @return {{striped:boolean, dir?:string, n?:number, c1:string, c2?:string}} */
 function parseFill(v) {
   const s = String(v == null ? '' : v);
@@ -167,14 +175,14 @@ function parseFill(v) {
   const dir = p[1] === 'h' ? 'h' : 'v';
   const c1 = p[3] || '#ffffff';
   const c2 = p[4] || '#ffffff';
-  if (!(n >= 2 && n <= 6)) return {striped: false, c1: c1};
+  if (!(n >= 2 && n <= STRIPE_MAX)) return {striped: false, c1: c1};
   return {striped: true, dir: dir, n: n, c1: c1, c2: c2};
 }
 
 /** Build the stored string. Solid when `on` is false, so callers stay simple. */
 function encodeFill(on, dir, n, c1, c2) {
   if (!on) return c1;
-  const clamped = Math.min(6, Math.max(2, parseInt(n, 10) || 2));
+  const clamped = Math.min(STRIPE_MAX, Math.max(2, parseInt(n, 10) || 2));
   return 's|' + (dir === 'h' ? 'h' : 'v') + '|' + clamped + '|' + c1 + '|' + c2;
 }
 
@@ -343,7 +351,7 @@ function normalizeStripeState(o) {
   const s = (o && typeof o === 'object') ? o : {};
   return {
     on: !!s.on,
-    n: Math.min(6, Math.max(2, parseInt(s.n, 10) || 2)),
+    n: Math.min(STRIPE_MAX, Math.max(2, parseInt(s.n, 10) || 2)),
     dir: s.dir === 'h' ? 'h' : 'v',
     c2: s.c2 || '#ffffff'
   };
@@ -548,6 +556,7 @@ if (typeof module !== 'undefined' && module.exports) {
     parseFill,
     encodeFill,
     fillCss,
+    STRIPE_MAX,
     // Club kits. fillSvgPaint is the SVG counterpart of fillCss — a CSS
     // gradient cannot be an SVG fill, so the two must be kept in step and
     // fills.test.js pins that they agree on direction.

@@ -1897,6 +1897,21 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v102 - kits: eight fixes from the first real use
+
+All reported 2026-08-21 after testing v101.
+
+1. **The Settings "Equipacions" card is gone.** Kits are simply the bottom section of *Configura el teu club*. This also restores `quota.test.js`'s original rule — exactly **one** call site may open team setup escapably — which the second card had forced me to weaken. Worth noting: I had loosened that test to accommodate the card, and the right answer turned out to be removing the card.
+2. **Stripe cap 6 → 9.** The cap was enforced in **seven independent literal 6s** across three files (`parseFill`, `encodeFill`, `normalizeStripeState`, two number inputs, the board's commit handler, the server validator). It is now one `STRIPE_MAX` in `js/utils.js`, mirrored by hand in `functions/index.js` — which `kits.test.js` asserts agree, because a server cap *below* the client's would reject a kit the editor happily offered. Missing one of the seven would have let the UI offer a value `parseFill` then silently rejects, so the stripes just vanish.
+3. **Garment labels sit against their swatch.** `.ts-kit-garment-label` had `min-width: 4.5rem`, which pushed each label a *different* distance from the control it names, "Mitges" being half the width of "Pantalons".
+4. **The colour picker stayed round with stripes on.** `.tb-ctx-color-pick` (the stripe row's second colour) had `border-radius: 50%` on the element but none of the `appearance: none` + `::-webkit-color-swatch` overrides `.tb-color-pick` carries — so Chrome painted a **square swatch inside the round box**. Turning stripes on appeared to change the picker's shape.
+5. **Kit previews 26px → 40px**, and the convocatòria's buttons likewise.
+6. **The shorts picker felt unresponsive, and it was real.** `<input type="color">` fires `input` *continuously* while the swatch is dragged, and every event replaced three SVGs — one of which carries an `<image href>` pointing at the club badge, a **network image being re-decoded dozens of times a second**. The repaint is now coalesced to one per frame with `requestAnimationFrame`. All three garments shared the bug; shorts merely have no stripe row to distract from the lag.
+7. **"+ Equipació" now actually disappears at three kits.** It was hidden with the `hidden` attribute, but `.btn` sets an explicit `display`, which **wins over `[hidden]`'s `display: none`** — so the button stayed on screen and did nothing when tapped. Uses `style.display` now.
+8. **Convocatòria top row.** `align-items: flex-end` had put each group's title directly above its own control, so three controls of different heights produced three headings at three different heights; `flex-start` plus a column layout puts *Tria el partit*, *Hora de citació* and *Equipació* on one line. The call-up `<select>` gets an explicit `min-height` to match the match toggle, whose two stacked lines are taller than a select's intrinsic height. The kit rows were right-aligned because the group is `flex: 1 1 auto` and the heading carried `text-align: center` — both removed, so they start under the *Equipació* heading.
+
+**570 unit + 15 emulator tests.** Needs **both** a Pages push and a functions deploy (the server's `STRIPE_MAX`).
+
 ## v101 - club kits, stage 2 of 2: the lead's editor
 
 The editor lives as a fifth section of **team setup**, not a screen of its own, so it inherits `_leaveTeamSetup()`, the `#team-setup-error` element and the disable-and-`t('auth.saving')` save flow — and, more to the point, it writes to the same club document through the same button rather than needing a second write path. A new **Kits card** in Settings opens it with `{cancellable: true, focus: 'kits'}`, exactly as the Categories card does.

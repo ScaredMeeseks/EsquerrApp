@@ -1523,6 +1523,11 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
 // club doc, and the Admin SDK bypasses rules for the write.
 const KIT_HEX = /^#[0-9a-fA-F]{6}$/;
 const KIT_ID = /^[a-z0-9][a-z0-9-]{2,31}$/;
+// Mirrors STRIPE_MAX in js/utils.js. functions/ deploys on its own and cannot
+// require ../js at runtime, so the two are kept in step by hand — and
+// kits.test.js asserts they agree, because a server cap BELOW the client's
+// would reject a kit the editor happily offered.
+const STRIPE_MAX = 9;
 
 /**
  * A stored fill: a bare hex, or `s|<v|h>|<n>|<c1>|<c2>`.
@@ -1539,7 +1544,7 @@ function validKitFill(v, allowStripes) {
   if (p.length !== 5) return false;
   if (p[1] !== "v" && p[1] !== "h") return false;
   const n = Number(p[2]);
-  if (!Number.isInteger(n) || n < 2 || n > 6) return false;
+  if (!Number.isInteger(n) || n < 2 || n > STRIPE_MAX) return false;
   return KIT_HEX.test(p[3]) && KIT_HEX.test(p[4]);
 }
 

@@ -19,7 +19,7 @@
  *      colour is recoverable, a board that fails to draw is not.
  */
 const assert = require('assert');
-const { parseFill, encodeFill, fillCss } = require('../js/utils.js');
+const { parseFill, encodeFill, fillCss, STRIPE_MAX } = require('../js/utils.js');
 
 describe('parseFill', () => {
   it('treats anything without the s| prefix as a plain hex', () => {
@@ -42,7 +42,7 @@ describe('parseFill', () => {
      from an <input type=number> the user emptied. */
   it('degrades to solid rather than throwing', () => {
     const bad = ['', null, undefined, 's|', 's|v', 's|v|', 's|v|x|#a|#b',
-      's|v|1|#a|#b', 's|v|7|#a|#b', 's|v|0|#a|#b'];
+      's|v|1|#a|#b', 's|v|99|#a|#b', 's|v|0|#a|#b'];
     bad.forEach((v) => {
       const f = parseFill(v);
       assert.strictEqual(f.striped, false, JSON.stringify(v) + ' must not parse as striped');
@@ -51,9 +51,9 @@ describe('parseFill', () => {
   });
 
   it('an out-of-range count keeps the first colour rather than losing it', () => {
-    // 1 and 7 are outside 2-6. Falling back to '#ffffff' would silently
-    // white out a player the coach had deliberately coloured.
-    assert.strictEqual(parseFill('s|v|7|#123456|#ffffff').c1, '#123456');
+    /* 1 and 99 are outside the range. Falling back to '#ffffff' would
+       silently white out a player the coach had deliberately coloured. */
+    assert.strictEqual(parseFill('s|v|99|#123456|#ffffff').c1, '#123456');
   });
 });
 
@@ -68,8 +68,10 @@ describe('encodeFill', () => {
       { striped: true, dir: 'h', n: 3, c1: '#ff0000', c2: '#00ff00' });
   });
 
-  it('clamps the count into 2-6', () => {
-    assert.strictEqual(parseFill(encodeFill(true, 'v', 99, '#a', '#b')).n, 6);
+  it('clamps the count into range', () => {
+    // Against STRIPE_MAX, not a literal: the cap moved 6 → 9 once already.
+    assert.strictEqual(parseFill(encodeFill(true, 'v', 99, '#a', '#b')).n,
+        STRIPE_MAX);
     assert.strictEqual(parseFill(encodeFill(true, 'v', 0, '#a', '#b')).n, 2);
     assert.strictEqual(parseFill(encodeFill(true, 'v', '', '#a', '#b')).n, 2);
   });

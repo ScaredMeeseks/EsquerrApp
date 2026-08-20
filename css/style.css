@@ -935,7 +935,18 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .tb-ctx-danger:hover { background:#ffebee; }
 .tb-ctx-color-row { display:flex; align-items:center; gap:8px; padding:8px 14px; cursor:pointer; }
 .tb-ctx-color-row span { flex:1; }
-.tb-ctx-color-pick { width:28px; height:28px; border:none; border-radius:50%; cursor:pointer; padding:0; }
+/* The ELEMENT was round but the inner swatch was not: without
+   appearance:none plus the ::-webkit-color-swatch overrides that
+   .tb-color-pick carries, Chrome paints a square swatch inside the round
+   box — so turning stripes on appeared to change the picker's shape. */
+.tb-ctx-color-pick {
+  width:28px; height:28px; border:none; border-radius:50%; cursor:pointer;
+  padding:0; background:transparent;
+  -webkit-appearance:none; appearance:none; flex-shrink:0;
+}
+.tb-ctx-color-pick::-webkit-color-swatch-wrapper { padding:0; border-radius:50%; }
+.tb-ctx-color-pick::-webkit-color-swatch { border:none; border-radius:50%; }
+.tb-ctx-color-pick::-moz-color-swatch { border:none; border-radius:50%; }
 
 /* Arrow SVG overlay */
 .tb-arrows-svg {
@@ -2193,18 +2204,34 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .uniform-opt-active {
   opacity: 1; border-color: #888; box-shadow: 0 0 0 2px rgba(0, 0, 0, .12);
 }
+/* align-items: flex-end put each group's TITLE directly above its own
+   control, so with three controls of different heights the three headings
+   landed at three different y positions. flex-start plus a column layout
+   puts "Tria el partit", "Hora de citació" and "Equipació" on one line. */
 .conv-top-row {
-  display: flex; gap: 1.5rem; align-items: flex-end;
+  display: flex; gap: 1.5rem; align-items: flex-start;
 }
-.conv-top-group { flex: 1; min-width: 0; }
+.conv-top-group {
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
+}
 .conv-top-group:nth-child(2) { flex: 0 0 auto; white-space: nowrap; }
+/* The call-up select matches the match toggle's height: both are .65rem of
+   padding on a 2px border, but a <select>'s intrinsic line-height is shorter
+   than the toggle's two stacked lines, so it needs the explicit floor. */
+.conv-callup-select { min-height: 3.25rem; }
 /* The Equipació group. Was `flex: 0 0 auto` when it held two toggles of two
    buttons; it now holds THREE garment rows of up to three kits each, and a
    fixed group at that width pushes the match selector off screen. */
 .conv-top-group:nth-child(3) { flex: 1 1 auto; min-width: 0; }
+/* justify-content: flex-start so the garment rows begin under the
+   "Equipació" heading. The group is `flex: 1 1 auto`, so without it the
+   content sat pushed to the right edge of the stretched group. */
 .conv-uniform-row {
   display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;
+  justify-content: flex-start;
 }
+/* Bigger, because these are the thing a coach is actually looking at. */
+.conv-uniform-row .uniform-opt svg { width: 40px; height: 40px; }
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
 .kit-icons { display: flex; align-items: flex-end; gap: 1px; }
@@ -2217,13 +2244,17 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .ts-kit-head { display: flex; align-items: center; gap: .5rem; }
 .ts-kit-head .reg-input { flex: 1; min-width: 0; }
 .ts-kit-preview { flex: 0 0 auto; }
-.ts-kit-preview svg { width: 26px; height: 26px; }
+.ts-kit-preview svg { width: 40px; height: 40px; }
 .ts-kit-garments {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .6rem;
 }
-.ts-kit-garment { display: flex; align-items: center; gap: .4rem; }
+/* The garment name sits tight against its own swatch. It had a 4.5rem
+   min-width, which pushed every label a variable distance from the control
+   it names — "Mitges" is half the width of "Pantalons". */
+.ts-kit-garment { display: flex; align-items: center; gap: .35rem; }
 .ts-kit-garment-label {
-  font-size: .8rem; color: var(--text-secondary); min-width: 4.5rem;
+  font-size: .8rem; color: var(--text-secondary);
+  font-weight: 600; white-space: nowrap;
 }
 /* The shared stripe row is built for the board's dark context menu; inside
    the setup card it needs the card's own colours and no menu padding. */

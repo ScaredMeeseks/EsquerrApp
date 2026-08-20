@@ -157,7 +157,7 @@ describe('kits — the SVG paint', () => {
   });
 
   it('degrades a malformed fill to solid instead of throwing', () => {
-    assert.strictEqual(U.fillSvgPaint('s|v|9|#a|#b', 'x').defs, '',
+    assert.strictEqual(U.fillSvgPaint('s|v|10|#a|#b', 'x').defs, '',
         'n out of range is not a stripe');
     assert.doesNotThrow(() => U.fillSvgPaint(null, 'x'));
   });
@@ -237,10 +237,49 @@ describe('kits — the old hardcoded renderers are gone', () => {
   });
 });
 
+describe('kits — the band cap has ONE source', () => {
+  const fs = require('fs');
+  const path = require('path');
+
+  it('the server agrees with the client', () => {
+    /* functions/ deploys on its own and cannot require ../js, so STRIPE_MAX
+       is duplicated by hand. A server cap BELOW the client's would reject a
+       kit the editor happily offered — the lead would pick 9 bands, hit
+       save, and get "Color d'equipació no vàlid" with nothing on screen
+       looking wrong. */
+    const fn = fs.readFileSync(
+        path.join(__dirname, '..', 'functions', 'index.js'), 'utf8');
+    const m = fn.match(/const STRIPE_MAX = (\d+);/);
+    assert.ok(m, 'functions/index.js has no STRIPE_MAX');
+    assert.strictEqual(Number(m[1]), U.STRIPE_MAX,
+        'server cap ' + m[1] + ' != client cap ' + U.STRIPE_MAX);
+  });
+
+  it('nothing enforces a cap of its own', () => {
+    /* There were seven independent literal 6s across three files. Missing
+       one when raising the limit means the UI offers a value parseFill then
+       silently rejects, so the stripes simply vanish. */
+    const app = fs.readFileSync(
+        path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    const utils = fs.readFileSync(
+        path.join(__dirname, '..', 'js', 'utils.js'), 'utf8');
+    [['js/app.js', app], ['js/utils.js', utils]].forEach(([name, s]) => {
+      assert.ok(!/Math\.min\(6,/.test(s), name + ' still clamps to a literal 6');
+      assert.ok(!/max = 6;|max="6"/.test(s), name + ' still offers max 6');
+    });
+  });
+
+  it('accepts the whole range and rejects just past it', () => {
+    assert.strictEqual(U.parseFill('s|v|9|#ffffff|#000000').n, 9);
+    assert.strictEqual(U.parseFill('s|v|10|#ffffff|#000000').striped, false);
+    assert.strictEqual(U.parseFill('s|v|1|#ffffff|#000000').striped, false);
+  });
+});
+
 describe('kits — the stripe state shared with the board', () => {
   it('clamps the band count both ways', () => {
     // The board's inline `o.n || 2` accepted 9. This is the shared clamp.
-    assert.strictEqual(U.normalizeStripeState({n: 9}).n, 6);
+    assert.strictEqual(U.normalizeStripeState({n: 99}).n, U.STRIPE_MAX);
     assert.strictEqual(U.normalizeStripeState({n: 1}).n, 2);
     assert.strictEqual(U.normalizeStripeState({n: 'x'}).n, 2);
   });

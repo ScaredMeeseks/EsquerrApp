@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 101;
+  const APP_VERSION = 102;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2767,11 +2767,6 @@
         _refreshTeamSetupKits(kits);
       });
     }
-    // Opened from the Kits card rather than the Categories one.
-    if (opts && opts.focus === 'kits') {
-      var sec = document.getElementById('team-setup-kits');
-      if (sec && sec.scrollIntoView) sec.scrollIntoView({block: 'start'});
-    }
   }
 
   /**
@@ -2817,14 +2812,26 @@
       shortsSvg(kit.shorts) + kitSockSvg(kit.socks) + '</span>';
   }
 
+  /* Coalesced to one repaint per frame.
+     <input type="color"> fires `input` CONTINUOUSLY while the swatch is
+     dragged, and each repaint replaced three SVGs whose shirt carries an
+     <image href> pointing at the club badge — so the browser was re-decoding
+     a network image dozens of times a second and the picker felt like it had
+     stopped responding. Reported against the shorts, but all three shared it;
+     shorts merely have no stripe row to distract from the lag. */
   function _repaintKitBlock(block) {
-    var prev = block.querySelector('.ts-kit-preview');
-    if (!prev) return;
-    var shorts = block.querySelector('[data-kit-shorts]');
-    prev.innerHTML = _kitPreviewHtml({
-      shirt: block.dataset.shirt,
-      shorts: shorts ? shorts.value : '#000000',
-      socks: block.dataset.socks
+    if (block._paintQueued) return;
+    block._paintQueued = true;
+    requestAnimationFrame(function () {
+      block._paintQueued = false;
+      var prev = block.querySelector('.ts-kit-preview');
+      if (!prev) return;
+      var shorts = block.querySelector('[data-kit-shorts]');
+      prev.innerHTML = _kitPreviewHtml({
+        shirt: block.dataset.shirt,
+        shorts: shorts ? shorts.value : '#000000',
+        socks: block.dataset.socks
+      });
     });
   }
 
@@ -2930,8 +2937,11 @@
     list.slice(0, 3).forEach(function (k) {
       inputsEl.appendChild(_buildKitBlock(k));
     });
+    /* style.display, NOT the `hidden` attribute: .btn sets an explicit
+       `display`, which wins over [hidden]'s display:none, so the button
+       stayed visible at three kits and did nothing when tapped. */
     var add = document.getElementById('btn-add-kit');
-    if (add) add.hidden = list.length >= 3;
+    if (add) add.style.display = list.length >= 3 ? 'none' : '';
   }
 
   function _refreshTeamSetupStaff() {
@@ -7052,7 +7062,7 @@
     optsEl.className = 'tb-stripe-opts';
     optsEl.style.display = st.on ? '' : 'none';
     const nEl = document.createElement('input');
-    nEl.type = 'number'; nEl.min = 2; nEl.max = 6; nEl.value = st.n;
+    nEl.type = 'number'; nEl.min = 2; nEl.max = STRIPE_MAX; nEl.value = st.n;
     nEl.className = 'tb-stripe-n';
     const dirEl = document.createElement('button');
     dirEl.type = 'button';
@@ -7101,7 +7111,7 @@
         sanitize(t('tactics.stripes')) +
       '</label>' +
       '<span class="tb-stripe-opts"' + hid + '>' +
-        '<input type="number" class="tb-stripe-n" min="2" max="6" value="' + c.n + '" ' +
+        '<input type="number" class="tb-stripe-n" min="2" max="' + STRIPE_MAX + '" value="' + c.n + '" ' +
           'data-tooltip="' + sanitize(t('tactics.stripes_count')) + '">' +
         '<button type="button" class="tb-stripe-dir" data-dir="' + c.dir + '" ' +
           'data-tooltip="' + sanitize(t('tactics.stripes_dir')) + '">' +
@@ -9559,7 +9569,7 @@
       const dirEl = wrap.querySelector('.tb-stripe-dir');
       const c2El = wrap.querySelector('.tb-stripe-c2');
       const commit = () => {
-        const n = Math.min(6, Math.max(2, parseInt(nEl.value, 10) || 2));
+        const n = Math.min(STRIPE_MAX, Math.max(2, parseInt(nEl.value, 10) || 2));
         nEl.value = n;  // clamp what the user sees, not just what we store
         localStorage.setItem('fa_tactic_' + side + '_stripes', JSON.stringify({
           on: onEl.checked, n: n, dir: dirEl.dataset.dir, c2: c2El.value
@@ -13544,7 +13554,7 @@
             <select class="conv-callup-select" id="conv-callup-time">${buildTimeOptions(callupDefault)}</select>
           </div>
           <div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;text-align:center;">${t('conv.uniform')}</div>
+            <div class="card-title" style="margin-bottom:.5rem;">${t('conv.uniform')}</div>
             <div class="conv-uniform-row">
               <div class="conv-uniform-group">
                 <span class="conv-uniform-label">${t('conv.jersey')}</span>
@@ -15267,19 +15277,6 @@
           ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enllaços classificació FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
           : '<p style="color:var(--text-secondary);font-size:.9rem;">No estàs vinculat a cap club. Contacta l\'administrador.</p>'
         }
-      </div>`;
-    }
-
-    // ---------- Team Lead / Admin: Kits ----------
-    // Same editor as the categories card — kits are a section of team setup,
-    // not a screen of their own, so they inherit its save flow and its
-    // error element rather than needing a second write path.
-    if (session && (session.isTeamLead || session.isAdmin) && _clubConfig) {
-      html += `
-      <div class="card">
-        <div class="card-title">${t('kits.title')}</div>
-        <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">${t('kits.desc')}</p>
-        <button class="btn btn-primary" id="btn-edit-kits">${t('kits.edit')}</button>
       </div>`;
     }
 
@@ -20053,11 +20050,6 @@
         if (e.target.closest('#btn-edit-categories')) {
           // The only voluntary entry, so the only one that may be left.
           showTeamSetup({ cancellable: true });
-          return;
-        }
-        // Kits live in the same editor; both cards open it the same way.
-        if (e.target.closest('#btn-edit-kits')) {
-          showTeamSetup({ cancellable: true, focus: 'kits' });
           return;
         }
         /* Notification soft-ask. THE tap that carries the user gesture into
