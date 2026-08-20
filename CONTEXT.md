@@ -1897,6 +1897,29 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v103 - plain sleeves on a striped shirt, and bigger icons
+
+**Vertical stripes now stop at the shoulder seam.** Real striped shirts have plain sleeves; bands running out to the cuffs read as a rugby shirt. The shirt was one `<path>`, so it is now drawn in pieces:
+
+1. the full outline filled with the base colour (so the sleeves are `c1`),
+2. `SHIRT_BODY` — the torso alone, shoulders sloping out to the seam at `y=20` — filled with the gradient,
+3. both sleeve polygons repainted in `c1`,
+4. the outline again, `fill="none"`, stroked **last** so no fill can overdraw it.
+
+The gradient binds to the *body* path's bounding box rather than the whole shirt, so the band count still reads correctly across the narrower torso.
+
+**Only vertical splits.** Hoops legitimately continue across a sleeve — a hooped shirt with plain sleeves would look wrong — and a solid kit has nothing to split. The condition `f.striped && f.dir !== 'h'` is what the test pins, not the paths.
+
+Icons: editor previews 40 → **52px**, convocatòria buttons 40 → **46px** with a `min-height` matching the match-selector dropdown, since they were visibly shorter than it. Phone breakpoint 26 → 34px.
+
+### A test that was pinning a spelling, not a rule
+
+`fills-source.test.js` required the literal `darkenHex(parseFill(` form. Hoisting `parseFill(fill)` into a variable — needed here because the shirt now asks it for `.striped` and `.dir` as well as `.c1` — broke it, though `darkenHex(f.c1, 40)` is exactly as safe.
+
+The invariant is **`.c1`**, which `parseFill` guarantees is a plain hex whether the fill was striped or not. The assertion now accepts either spelling and still rejects a bare identifier, which is how a raw encoded fill would actually be passed. Verified against both forms rather than assumed.
+
+**571 unit tests.** Frontend only — no functions deploy.
+
 ## v102 - kits: eight fixes from the first real use
 
 All reported 2026-08-21 after testing v101.

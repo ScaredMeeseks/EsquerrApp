@@ -2230,8 +2230,14 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;
   justify-content: flex-start;
 }
-/* Bigger, because these are the thing a coach is actually looking at. */
-.conv-uniform-row .uniform-opt svg { width: 40px; height: 40px; }
+/* Bigger, because these are the thing a coach is actually looking at, and
+   sized so the button matches the match toggle's height rather than sitting
+   short beside it. The toggle is two stacked lines on .65rem padding; the
+   button is 3px padding on a 2px border, so the icon carries the rest. */
+.conv-uniform-row .uniform-opt svg { width: 46px; height: 46px; }
+.conv-uniform-row .uniform-opt {
+  min-height: 3.25rem; display: inline-flex; align-items: center;
+}
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
 .kit-icons { display: flex; align-items: flex-end; gap: 1px; }
@@ -2244,7 +2250,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .ts-kit-head { display: flex; align-items: center; gap: .5rem; }
 .ts-kit-head .reg-input { flex: 1; min-width: 0; }
 .ts-kit-preview { flex: 0 0 auto; }
-.ts-kit-preview svg { width: 40px; height: 40px; }
+.ts-kit-preview svg { width: 52px; height: 52px; }
 .ts-kit-garments {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .6rem;
 }
@@ -2935,7 +2941,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .conv-uniform-row { gap: .8rem; }
   /* Three garment rows of up to three kits is nine icons on a phone. */
   .conv-uniform-row .kit-icons svg,
-  .conv-uniform-row .uniform-opt svg { width: 26px; height: 26px; }
+  .conv-uniform-row .uniform-opt svg { width: 34px; height: 34px; }
+  .conv-uniform-row .uniform-opt { min-height: 0; }
   .conv-player { cursor: pointer; }
   .conv-player:active { background: rgba(189,22,44,.08); }
   .conv-drop-hint { padding: 1rem; font-size: .82rem; }

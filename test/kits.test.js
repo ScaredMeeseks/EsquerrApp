@@ -226,6 +226,22 @@ describe('kits — the old hardcoded renderers are gone', () => {
         'deselection must be scoped to one garment row');
   });
 
+  it('leaves the sleeves plain on VERTICAL stripes only', () => {
+    /* Real striped shirts have plain sleeves; bands running out to the cuffs
+       read as a rugby shirt. Hoops are the opposite — they legitimately
+       continue across a sleeve — so the split is conditional, and the
+       condition is the thing worth pinning. */
+    const i = src.indexOf('function shirtSvg(');
+    const body = src.slice(i, src.indexOf('\n  }', i));
+    assert.ok(/f\.striped && f\.dir !== 'h'/.test(body),
+        'the sleeve split must fire for vertical stripes and not for hoops');
+    assert.ok(/SHIRT_SLEEVE_L/.test(body) && /SHIRT_SLEEVE_R/.test(body));
+    // The outline is drawn last so the stripes cannot overdraw it.
+    const outlineLast = body.lastIndexOf('SHIRT_OUTLINE');
+    assert.ok(outlineLast > body.indexOf('SHIRT_SLEEVE_R'),
+        'the outline must be painted after the fills');
+  });
+
   it('puts the club badge on the shirt, not the app logo', () => {
     const i = src.indexOf('function shirtSvg(');
     const body = src.slice(i, src.indexOf('\n  }', i));

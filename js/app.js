@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 102;
+  const APP_VERSION = 103;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -13324,12 +13324,43 @@
      Detail colours (collar, cuff) are shaded from parseFill().c1, never from
      the raw fill — an encoded stripe string run through a hex darkener comes
      back '#NaNNaNNaN', which fills-source.test.js exists to prevent. */
+  /* The shirt, in three pieces so VERTICAL stripes can stop at the sleeves.
+     Real striped shirts almost always have plain sleeves, and running the
+     bands out to the cuffs read as a rugby shirt.
+
+     Only vertical stripes split. Hoops legitimately continue across a
+     sleeve, and a solid kit has nothing to split. */
+  const SHIRT_OUTLINE = 'M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 ' +
+    'L48 20 L52 24 L58 18 L50 10 L42 6';
+  // The torso alone: shoulders sloping out to the sleeve seam at y=20.
+  const SHIRT_BODY = 'M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z';
+  const SHIRT_SLEEVE_L = 'M22 6 L14 10 L6 18 L12 24 L16 20 Z';
+  const SHIRT_SLEEVE_R = 'M42 6 L50 10 L58 18 L52 24 L48 20 Z';
+
   function shirtSvg(fill) {
     if (!fill) return '';
-    const p = fillSvgPaint(fill, ++_kitUid);
-    const collar = darkenHex(parseFill(fill).c1, 40);
-    return `<svg viewBox="0 0 64 64" width="34" height="34" style="display:block">${p.defs}
-      <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    const f = parseFill(fill);
+    const collar = darkenHex(f.c1, 40);
+    const plainSleeves = f.striped && f.dir !== 'h';
+    let body;
+    if (plainSleeves) {
+      /* The gradient is bound to the BODY path's bounding box, so the bands
+         span the torso rather than the full shirt — which is also why the
+         count still reads correctly with the sleeves excluded. */
+      const p = fillSvgPaint(fill, ++_kitUid);
+      body = p.defs +
+        `<path d="${SHIRT_OUTLINE}" fill="${f.c1}" stroke="none"/>` +
+        `<path d="${SHIRT_BODY}" fill="${p.paint}" stroke="none"/>` +
+        `<path d="${SHIRT_SLEEVE_L}" fill="${f.c1}" stroke="none"/>` +
+        `<path d="${SHIRT_SLEEVE_R}" fill="${f.c1}" stroke="none"/>` +
+        // Outline last, so the stripes never overdraw it.
+        `<path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
+    } else {
+      const p = fillSvgPaint(fill, ++_kitUid);
+      body = p.defs +
+        `<path d="${SHIRT_OUTLINE}" fill="${p.paint}" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
+    }
+    return `<svg viewBox="0 0 64 64" width="34" height="34" style="display:block">${body}
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
       <image href="${sanitize(clubBadgeUrl())}" x="33" y="18" width="10" height="10" opacity=".7"/>

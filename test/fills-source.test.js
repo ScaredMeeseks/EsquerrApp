@@ -33,8 +33,13 @@ describe('app.js paints every circle through the fill helpers', () => {
        the proof, and anything else is the bug. */
     const lines = src.match(/.*darkenHex\(.*/g) || [];
     lines.forEach((l) => {
-      assert.ok(/darkenHex\(\s*parseFill\(/.test(l),
-        'darkenHex on a possibly-encoded fill; wrap it in parseFill(x).c1: ' + l.trim());
+      /* `.c1` is the invariant, not the spelling: parseFill guarantees that
+         field is a plain hex whether the fill was striped or not, so both
+         `darkenHex(parseFill(x).c1, …)` and a hoisted `darkenHex(f.c1, …)`
+         are safe. A raw fill value would be passed as a bare identifier,
+         which is exactly what this rejects. */
+      assert.ok(/darkenHex\(\s*(?:parseFill\([^)]*\)|\w+)\.c1\s*,/.test(l),
+        'darkenHex on a possibly-encoded fill; pass parseFill(x).c1: ' + l.trim());
       assert.ok(!/tb-circle|tb-num|borderColor/.test(l),
         'a circle border is fillCss\'s job, not darkenHex\'s: ' + l.trim());
     });
