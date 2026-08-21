@@ -2,23 +2,31 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-## ⚠️ READ THIS FIRST — the deploy is HALF DONE
+**`main` is at v111, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
+functions both. Verified against the live artefacts rather than the deploy output:
 
-`main` is at **v111** and pushed, so the **frontend is live**. The **Cloud Functions are
-NOT** — `scheduledRpeReminder` in production is still the old 23:00 cron.
-
-```powershell
-cd c:\DATA\CLAUDE\EsquerrApp
-.\deploy.ps1 functions          # -DryRun first if you want to see it validate
+```bash
+curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
+curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
+# both said 111 at 2026-08-21
 ```
 
-Nothing is broken in the meantime: the app now offers the RPE form at the session's end
-while the server still nags at 23:00. That is the *old* behaviour on the server side plus
-an earlier form on the client — degraded, not wrong. But the whole point of the change is
-the trigger, and it does not exist in production until that command runs.
+All 18 functions **ACTIVE** on fresh revisions at 14:41Z (`scheduledrpereminder-00031-kem`),
+and the **Cloud Scheduler job itself** now reads `every 30 minutes` / `Europe/Madrid` /
+`ENABLED`. That last one matters: `firebase functions:list` only ever says `scheduled`, so
+it cannot tell you the cron actually changed. The scheduler API can — see
+"Reading production without a browser" for the token, then:
 
-Unit tests **620 passing** (+25 this session). Rules and functions suites were **not**
-re-run — `firestore.rules` did not change — so their totals are whatever the last run said.
+```
+GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
+```
+
+Rules unchanged and not redeployed. Unit tests **620 passing** (+25 this session); the
+rules and functions emulator suites were **not** re-run.
+
+**One thing is still unproven:** no RPE reminder has been observed *firing* under the new
+schedule. The deploy is confirmed; a live send is not. See "Verify it" below — it is now
+cheap to test, because it no longer means waiting until 23:00.
 
 ---
 
@@ -97,7 +105,7 @@ the answer changes and a shared module becomes worth the build step.**
 
 ---
 
-## Verify it, once the functions are deployed
+## Verify it — the deploy is done, the behaviour is not confirmed
 
 Nothing here has been clicked through in a real browser. Both halves are pinned by unit
 tests over the real functions, and every new assertion was run against `git show HEAD` in
@@ -152,6 +160,28 @@ Two traps, both cost time this session:
 Sessions live in `teams/{id}/data/fa_training__{category}`, either as `{v:"<json>"}` or in
 the per-field merge shape — `parseDataDoc()` in `functions/index.js` handles both, and
 reading only `.v` on a merge doc silently yields `{}`.
+
+### Beyond Firestore: any Google API, no `gcloud` needed
+
+`gcloud` is **not** installed. The *same* refresh token exchanges for a
+`cloud-platform` access token, which reaches every REST API the account has rights to —
+this is how the deploy above was verified:
+
+```
+POST https://oauth2.googleapis.com/token
+  grant_type=refresh_token & refresh_token=… & client_id=… & client_secret=…
+→ Authorization: Bearer <access_token>
+```
+
+Two endpoints worth remembering:
+
+- **Cloud Scheduler** — `…/v1/projects/esquerrapp/locations/us-central1/jobs` returns each
+  job's real `schedule`, `timeZone` and `state`. **`firebase functions:list` only says
+  `scheduled`** and can never tell you a cron actually changed.
+- **Cloud Functions v2** — `…/v2/projects/esquerrapp/locations/us-central1/functions`
+  returns `state`, `updateTime` and the Cloud Run `revision`. A container that fails its
+  health check leaves the *old* revision serving, so a new revision id is the proof a
+  deploy really took, not the CLI's success message.
 
 ---
 
@@ -333,4 +363,8 @@ of the current demo corpus as garbage.
 - **An empty query result is not evidence of absence** — it is often the wrong query.
   `where("clubId","==",…)` on `teams` returns nothing because the field does not exist.
 - **Read the data, not the summary.** A tool that reports on its own work will report success.
-- **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push output.
+- **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push
+  output; read the Cloud Scheduler job, not the deploy log. A CLI reports what it *sent*.
+- **`deploy.ps1` is Windows-only and Cloud Shell is not the local machine.** Pasting
+  `cd c:\DATA\...` + `.\deploy.ps1` into Cloud Shell fails twice over — wrong filesystem,
+  wrong shell. The bash counterpart there is `./deploy.sh`, after a `cd` into the clone.

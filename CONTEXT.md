@@ -2302,4 +2302,8 @@ client, `test/reminders.test.js` for the server.
 Unit tests 595 → **620**. Every new assertion was run against `git show HEAD` in a
 throwaway worktree first and fails there.
 
-⚠ Rules unchanged; **this needs a functions deploy**, not hosting alone.
+**Deployed 2026-08-21.** Frontend v111 served (confirmed by fetching `sw.js`/`app.js`,
+not by trusting the push); all 18 functions ACTIVE on new revisions at 14:41Z. The live
+Cloud Scheduler job now reads `every 30 minutes` / `Europe/Madrid` / ENABLED — read from
+the Cloud Scheduler API, which is the artefact, rather than from the deploy output.
+Rules unchanged and not redeployed.
