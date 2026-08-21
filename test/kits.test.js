@@ -294,6 +294,63 @@ describe('kits — the old hardcoded renderers are gone', () => {
   });
 });
 
+describe('kits — nine bands land on whole pixels', () => {
+  /* The half-viewBox invariant. Every STRIPED region is exactly 32 of its
+     viewBox's 64 units — the shirt body x=16..48, the sock leg y=8..40 — so
+     at a rendered size S the span is S/2, and nine bands (the maximum) are
+     whole pixels whenever S is a multiple of 18.
+
+     Break either half and the bands land on fractional pixels; crispEdges
+     then snaps them to a mix of 3px and 4px, which is precisely the
+     "different separations or different widths" that was reported. The
+     arithmetic is done here rather than the constants compared, because a
+     constant asserted against itself proves nothing. */
+  const fs = require('fs');
+  const path = require('path');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const css = fs.readFileSync(
+      path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const VIEW = 64;
+
+  const box = (name) => {
+    const m = app.match(new RegExp('const ' + name +
+        ' = \\{x: (\\d+), y: (\\d+), w: (\\d+), h: (\\d+)\\}'));
+    assert.ok(m, 'no ' + name + ' in app.js');
+    return {x: +m[1], y: +m[2], w: +m[3], h: +m[4]};
+  };
+
+  it('the shirt body is half the viewBox wide', () => {
+    assert.strictEqual(box('SHIRT_BODY_BOX').w, VIEW / 2);
+  });
+
+  it('the sock leg is half the viewBox tall', () => {
+    // The ankle sits at y=40 to make this true; moving it back to 36 breaks
+    // the hoops at nine bands.
+    const b = box('SOCK_BOX');
+    assert.strictEqual(b.h, VIEW / 2);
+    assert.strictEqual(b.y, 8, 'the leg starts below the cuff');
+  });
+
+  it('every declared icon size divides into nine whole bands', () => {
+    const sizes = [];
+    (css.match(/\.conv-uniform-row \.uniform-opt svg \{ height: (\d+)px/g) || [])
+        .forEach((s) => sizes.push(+s.match(/(\d+)px/)[1]));
+    const ed = css.match(/\.ts-kit-preview svg \{ height: (\d+)px/);
+    if (ed) sizes.push(+ed[1]);
+    assert.ok(sizes.length >= 2, 'expected the convocatòria and editor sizes');
+
+    sizes.forEach((S) => {
+      assert.strictEqual(S % 18, 0,
+          S + 'px is not a multiple of 18, so 9 bands cannot be whole pixels');
+      [box('SHIRT_BODY_BOX').w, box('SOCK_BOX').h].forEach((units) => {
+        const band = (S * units / VIEW) / U.STRIPE_MAX;
+        assert.ok(Number.isInteger(band),
+            'at ' + S + 'px a band is ' + band + 'px, not a whole number');
+      });
+    });
+  });
+});
+
 describe('kits — the band cap has ONE source', () => {
   const fs = require('fs');
   const path = require('path');

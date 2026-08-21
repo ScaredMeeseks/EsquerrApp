@@ -1897,6 +1897,23 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v106 - the half-viewBox invariant: nine bands on whole pixels
+
+v105 made the stripes crisp but conceded that bands could still differ by one device pixel, because 55.6px of shirt cannot hold nine equal stripes. That concession was avoidable — the icon size was never chosen, it was whatever the button left over.
+
+**The invariant**: every striped region is exactly **32 of its viewBox's 64 units**, so at a rendered size *S* the span is exactly *S/2*, and nine bands — the maximum — are whole pixels whenever **S is a multiple of 18**.
+
+- shirt body `x = 16..48` — already half, by luck
+- sock leg `y = 8..40` — **was** `8..36`, so the ankle moved down four units to make it half. Not cosmetic: it is what lets the same size serve both shapes. A football sock is mostly leg anyway.
+
+Icons are now **54px** (= 18 × 3) in the convocatòria and the editor, giving a 27px span and nine bands of exactly **3px**. At the button's natural 55.6px they were 3.09px, which `crispEdges` snapped to a mix of 3px and 4px — the reported unevenness. The phone breakpoint uses **36px** (= 18 × 2), nine bands of 2px.
+
+The full-shirt box is deliberately *not* half the viewBox: hoops across a whole shirt are a more forgiving case than nine vertical bands down a narrow torso, and constraining it would have meant redrawing the sleeves.
+
+`kits.test.js` reads the sizes out of `css/style.css` and the boxes out of `js/app.js` and **does the division**, rather than comparing a constant with itself — so a size that is not a multiple of 18, or a box that stops being half the viewBox, fails.
+
+**576 unit tests.** Frontend only.
+
 ## v105 - stripes as rects, because a gradient cannot be even at icon size
 
 Reported as *"different separations or different widths"*, and visible only at normal zoom — which is the tell. It was **subpixel rounding**, not a geometry bug: `fillSvgPaint` built a `<linearGradient>` with hard stops, those stops land on **fractional device pixels**, and the browser antialiases each boundary by a different amount. One edge renders sharp, the next as a half-tone smear, and the eye reads that as bands of unequal width. At 56px with nine bands each band is barely three pixels, which is exactly where it shows.

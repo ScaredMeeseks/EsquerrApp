@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 105;
+  const APP_VERSION = 106;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -13337,9 +13337,24 @@
   const SHIRT_SLEEVE_L = 'M22 6 L14 10 L6 18 L12 24 L16 20 Z';
   const SHIRT_SLEEVE_R = 'M42 6 L50 10 L58 18 L52 24 L48 20 Z';
 
-  // The bounding boxes the two shirt shapes occupy, in viewBox units. The
-  // bands are laid out across these, so they must match the paths above.
+  /* ── The half-viewBox invariant ──────────────────────────────────
+     Every STRIPED region is exactly 32 of its viewBox's 64 units:
+
+       shirt body  x = 16..48   (vertical bands run across this)
+       sock leg    y =  8..40   (horizontal hoops run down this)
+
+     So at a rendered size S the striped span is exactly S/2 px, and 9
+     bands — the maximum — are whole pixels whenever S is a multiple of 18.
+     KIT_ICON_PX below is that size; kits.test.js pins both halves, because
+     the invariant is only useful while it holds on BOTH shapes.
+
+     Without it the bands land on fractional pixels, and even with
+     shape-rendering="crispEdges" they snap to widths differing by one
+     device pixel — which is exactly the unevenness this replaced. */
   const SHIRT_BODY_BOX = {x: 16, y: 6, w: 32, h: 50};
+  // The full shirt is NOT half the viewBox, and does not need to be: hoops
+  // across a whole shirt are a different, more forgiving case than nine
+  // vertical bands down a narrow torso.
   const SHIRT_FULL_BOX = {x: 6, y: 6, w: 52, h: 50};
 
   function shirtSvg(fill) {
@@ -13393,12 +13408,18 @@
      red sock is simply wrong. Esquerra's white sock therefore looks slightly
      different from before: hoops now come from the fill (6 bands) instead of
      three hand-placed rects, and the foot is shaded rather than solid. */
-  const SOCK_PATH = 'M8 2 L8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 ' +
-    'Q28 36 22 34 L22 2 Z';
-  /* The LEG only, from below the cuff to the ankle. Hoops laid across the
-     full path would put a band under the cuff, where it is invisible, and
-     another across the foot, which no sock has. */
-  const SOCK_BOX = {x: 8, y: 8, w: 20, h: 26};
+  /* The ankle sits at y=40, not y=36, so the LEG spans y=8..40 — exactly
+     half the 64-unit viewBox. That is not cosmetic: it makes the striped
+     span exactly S/2 at any rendered size S, which is what lets KIT_ICON_PX
+     guarantee whole-pixel hoops (see the invariant below). A football sock
+     is mostly leg anyway. */
+  const SOCK_PATH = 'M8 2 L8 40 Q8 52 14 56 L22 60 Q28 62 28 54 L28 46 ' +
+    'Q28 40 22 38 L22 2 Z';
+  const SOCK_FOOT = 'M8 40 Q8 52 14 56 L22 60 Q28 62 28 54 L28 46 Q28 40 22 38 Z';
+  /* The LEG only, below the cuff. Hoops laid across the full path would put
+     one band under the cuff, where it is invisible, and another across the
+     foot, which no sock has. */
+  const SOCK_BOX = {x: 8, y: 8, w: 20, h: 32};
 
   function kitSockSvg(fill) {
     if (!fill) return '';
@@ -13408,7 +13429,7 @@
       ${s.shapes}
       <path d="${SOCK_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <rect x="8" y="2" width="14" height="6" rx="1" fill="${cuff}" stroke="none"/>
-      <path d="M8 36 Q8 48 14 52 L22 56 Q28 58 28 50 L28 42 Q28 36 22 34 Z" fill="#222" opacity=".15"/>
+      <path d="${SOCK_FOOT}" fill="#222" opacity=".15"/>
     </svg>`;
   }
 

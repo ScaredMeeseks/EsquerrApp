@@ -2257,10 +2257,13 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   height: var(--conv-ctl-h); display: inline-flex; align-items: center;
   justify-content: center;
 }
-/* The icon fills the button minus its 2px border and 3px padding. */
-.conv-uniform-row .uniform-opt svg {
-  height: calc(var(--conv-ctl-h) - 10px); width: auto;
-}
+/* An EXACT multiple of 18, not "as big as the button allows".
+   Every striped region is half its viewBox (see the invariant in app.js),
+   so the span is 54/2 = 27px and nine bands — the maximum — are exactly
+   3px each. At the button's natural 55.6px they would be 3.09px, and
+   crispEdges would snap them to a mix of 3px and 4px: the unevenness the
+   owner reported. The button is 65.6px, so 54 fits with room to spare. */
+.conv-uniform-row .uniform-opt svg { height: 54px; width: auto; }
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
 .kit-icons { display: flex; align-items: flex-end; gap: 1px; }
@@ -2273,7 +2276,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .ts-kit-head { display: flex; align-items: center; gap: .5rem; }
 .ts-kit-head .reg-input { flex: 1; min-width: 0; }
 .ts-kit-preview { flex: 0 0 auto; }
-.ts-kit-preview svg { width: 52px; height: 52px; }
+.ts-kit-preview svg { height: 54px; width: auto; }
 .ts-kit-garments {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .6rem;
 }
@@ -2966,7 +2969,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
      shared height comes down rather than the buttons breaking their tie
      with the two dropdowns. */
   :root { --conv-ctl-h: calc(3.2rem + 4px); }
-  .conv-uniform-row .kit-icons svg { width: 26px; height: 26px; }
+  /* 36 = 18 × 2, so nine bands are still whole pixels — 2px each. */
+  .conv-uniform-row .uniform-opt svg { height: 36px; }
+  .conv-uniform-row .kit-icons svg { height: 26px; width: auto; }
   .conv-player { cursor: pointer; }
   .conv-player:active { background: rgba(189,22,44,.08); }
   .conv-drop-hint { padding: 1rem; font-size: .82rem; }
