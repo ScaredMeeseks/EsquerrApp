@@ -1897,6 +1897,27 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v107 - the grid ORIGIN, which v106 forgot
+
+v106 checked that a band was a whole number of pixels and stopped there. Two things have to be whole, and the second is what was still wrong:
+
+```
+band width   span/9  = (S/2)/9 = S/18
+grid origin  shirt x=16 → S/4      sock y=8 → S/8
+```
+
+At **54px** the bands were exactly 3px — but the grid started at **x = 13.5px**, so every edge sat on a half pixel. `crispEdges` rounds those, and rounding a run of `.5` values is where a renderer is free to be inconsistent: some edges go up, some down, and adjacent stripes come out 2px and 4px. Exactly what the screenshot showed, and exactly why the previous fix looked like it had not worked.
+
+*S* must therefore divide by 18, 4 **and** 8. **72px is the smallest such size** — searched rather than reasoned, and a test now re-runs that search so the claim cannot rot.
+
+- Icons are **72px** in the convocatòria and the editor: a 36px span, nine bands of exactly **4px**, origin at 18px (shirt) and 9px (sock).
+- `--conv-ctl-h` is now driven by the icon rather than by the match toggle, since the icon is the constrained one. **82px** = 72 + 2 × (3px padding + 2px border). The toggle needs only ~66px, so the row is visibly taller than before — that is the price of even stripes, and it is a deliberate trade rather than an oversight.
+- **The phone keeps 72px too.** Shrinking there was the obvious move and it is wrong: no smaller size puts the edges on whole pixels, so a phone would get the unevenness straight back. The rows wrap instead.
+
+The test now checks the **origin** as well as the width, against the real shape offsets, and separately asserts that nothing below 72 satisfies both — so "72 is the minimum" is verified rather than asserted.
+
+**577 unit tests.** Frontend only.
+
 ## v106 - the half-viewBox invariant: nine bands on whole pixels
 
 v105 made the stripes crisp but conceded that bands could still differ by one device pixel, because 55.6px of shirt cannot hold nine equal stripes. That concession was avoidable — the icon size was never chosen, it was whatever the button left over.

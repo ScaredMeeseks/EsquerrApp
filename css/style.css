@@ -2221,12 +2221,13 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    landed at three different y positions. flex-start plus a column layout
    puts "Tria el partit", "Hora de citació" and "Equipació" on one line. */
 /* ONE height for all three controls in this row.
-   Derived, not guessed: the match toggle is 2px border + .65rem padding on
-   each side, over two fixed lines of 1.35rem and 1.2rem.
-     2 × (2px + .65rem) + 1.35rem + 1.2rem = 2.55rem + 1.3rem + 4px
-   The select and the kit buttons then key off the same token instead of
-   each carrying its own guess. */
-:root { --conv-ctl-h: calc(3.85rem + 4px); }
+   It is now driven by the KIT ICON rather than by the match toggle, because
+   the icon's size is the constrained one: 72px is the smallest that puts
+   every stripe edge on a whole pixel (see .uniform-opt svg below). The
+   toggle's own content needs only ~66px, so it gains a little slack —
+   the row is taller than it was, and that is the cost of even stripes.
+     82 = 72px icon + 2 × (3px padding + 2px border) */
+:root { --conv-ctl-h: 82px; }
 .conv-top-row {
   display: flex; gap: 1.5rem; align-items: flex-start;
 }
@@ -2257,13 +2258,15 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   height: var(--conv-ctl-h); display: inline-flex; align-items: center;
   justify-content: center;
 }
-/* An EXACT multiple of 18, not "as big as the button allows".
-   Every striped region is half its viewBox (see the invariant in app.js),
-   so the span is 54/2 = 27px and nine bands — the maximum — are exactly
-   3px each. At the button's natural 55.6px they would be 3.09px, and
-   crispEdges would snap them to a mix of 3px and 4px: the unevenness the
-   owner reported. The button is 65.6px, so 54 fits with room to spare. */
-.conv-uniform-row .uniform-opt svg { height: 54px; width: auto; }
+/* 72px, and it is the SMALLEST size that works — see KIT_ICON_PX in app.js.
+   Two things must both be whole pixels, and v106 only checked the first:
+     band width   span/9   = (S/2)/9 = S/18
+     grid ORIGIN  shirt x=16 → S/4 ,  sock y=8 → S/8
+   At 54px the bands were exactly 3px but started at x=13.5px, so every
+   edge sat on a half pixel and crispEdges rounded them inconsistently —
+   which is what made adjacent stripes look different widths.
+   S must therefore divide by 18, 4 and 8: 72 is the least such size. */
+.conv-uniform-row .uniform-opt svg { height: 72px; width: auto; }
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
 .kit-icons { display: flex; align-items: flex-end; gap: 1px; }
@@ -2276,7 +2279,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .ts-kit-head { display: flex; align-items: center; gap: .5rem; }
 .ts-kit-head .reg-input { flex: 1; min-width: 0; }
 .ts-kit-preview { flex: 0 0 auto; }
-.ts-kit-preview svg { height: 54px; width: auto; }
+.ts-kit-preview svg { height: 72px; width: auto; }
 .ts-kit-garments {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .6rem;
 }
@@ -2965,12 +2968,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .conv-top-row { flex-direction: column; gap: .8rem; align-items: stretch; }
   .conv-top-group:nth-child(2) { white-space: normal; }
   .conv-uniform-row { gap: .8rem; }
-  /* Three garment rows of up to three kits is nine icons on a phone, so the
-     shared height comes down rather than the buttons breaking their tie
-     with the two dropdowns. */
-  :root { --conv-ctl-h: calc(3.2rem + 4px); }
-  /* 36 = 18 × 2, so nine bands are still whole pixels — 2px each. */
-  .conv-uniform-row .uniform-opt svg { height: 36px; }
+  /* The icons stay 72px on a phone. Shrinking them was the obvious move and
+     it is wrong: no smaller size puts the stripe edges on whole pixels, so
+     a phone would get back exactly the unevenness this fixed. The rows wrap
+     instead — .conv-uniform-row is already flex-wrap. */
   .conv-uniform-row .kit-icons svg { height: 26px; width: auto; }
   .conv-player { cursor: pointer; }
   .conv-player:active { background: rgba(189,22,44,.08); }

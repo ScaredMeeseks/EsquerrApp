@@ -331,7 +331,14 @@ describe('kits — nine bands land on whole pixels', () => {
     assert.strictEqual(b.y, 8, 'the leg starts below the cuff');
   });
 
-  it('every declared icon size divides into nine whole bands', () => {
+  it('every declared icon size puts every band EDGE on a whole pixel', () => {
+    /* Two things must hold, and checking only the first was the v106 bug:
+       bands of exactly 3px starting at x=13.5px still leave every edge on a
+       half pixel, and crispEdges rounds those inconsistently — which is
+       what made adjacent stripes look different widths.
+
+       So the ORIGIN is checked as well as the width, and against the real
+       shape offsets rather than a rule of thumb. */
     const sizes = [];
     (css.match(/\.conv-uniform-row \.uniform-opt svg \{ height: (\d+)px/g) || [])
         .forEach((s) => sizes.push(+s.match(/(\d+)px/)[1]));
@@ -339,15 +346,41 @@ describe('kits — nine bands land on whole pixels', () => {
     if (ed) sizes.push(+ed[1]);
     assert.ok(sizes.length >= 2, 'expected the convocatòria and editor sizes');
 
+    const shapes = [
+      {name: 'shirt body', origin: box('SHIRT_BODY_BOX').x, span: box('SHIRT_BODY_BOX').w},
+      {name: 'sock leg', origin: box('SOCK_BOX').y, span: box('SOCK_BOX').h}
+    ];
     sizes.forEach((S) => {
-      assert.strictEqual(S % 18, 0,
-          S + 'px is not a multiple of 18, so 9 bands cannot be whole pixels');
-      [box('SHIRT_BODY_BOX').w, box('SOCK_BOX').h].forEach((units) => {
-        const band = (S * units / VIEW) / U.STRIPE_MAX;
+      shapes.forEach((sh) => {
+        const perUnit = S / VIEW;
+        const origin = sh.origin * perUnit;
+        const band = (sh.span * perUnit) / U.STRIPE_MAX;
+        assert.ok(Number.isInteger(origin),
+            'at ' + S + 'px the ' + sh.name + ' grid starts at ' + origin +
+            'px — a fractional origin puts every edge on a part pixel');
         assert.ok(Number.isInteger(band),
-            'at ' + S + 'px a band is ' + band + 'px, not a whole number');
+            'at ' + S + 'px a ' + sh.name + ' band is ' + band + 'px');
       });
     });
+  });
+
+  it('72 is genuinely the smallest size that works', () => {
+    // Guards against someone "optimising" it back down. Nothing between 18
+    // and 72 satisfies both the origin and the width for both shapes.
+    const shapes = [
+      {origin: box('SHIRT_BODY_BOX').x, span: box('SHIRT_BODY_BOX').w},
+      {origin: box('SOCK_BOX').y, span: box('SOCK_BOX').h}
+    ];
+    const works = (S) => shapes.every((sh) => {
+      const perUnit = S / VIEW;
+      return Number.isInteger(sh.origin * perUnit) &&
+        Number.isInteger((sh.span * perUnit) / U.STRIPE_MAX);
+    });
+    for (let S = 2; S < 72; S += 2) {
+      assert.ok(!works(S), S + 'px also works — the comment claiming 72 is ' +
+        'the minimum is now wrong');
+    }
+    assert.ok(works(72), '72px must work');
   });
 });
 
