@@ -3756,6 +3756,13 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-fcf-label{font-weight:600;font-size:.85rem;min-width:80px;flex-shrink:0;}
 .ts-fcf-row input{flex:1;font-size:.82rem;padding:.4rem .5rem;}
 
+/* Reminder timings. Label / number / unit on one line, wrapping on a
+   narrow phone rather than squeezing the input to nothing. */
+.ts-rem-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;}
+.ts-rem-label{flex:1 1 9rem;font-size:.9rem;color:var(--text);}
+.ts-rem-input{width:4.5rem;padding:.45rem .5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--text);font-size:.95rem;text-align:center;}
+.ts-rem-unit{font-size:.82rem;color:var(--text-secondary);}
+
 /* Schedule setup */
 .ts-sched-block{margin-bottom:1.2rem;padding:.8rem;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border-light);}
 .ts-sched-title{font-weight:700;font-size:.95rem;margin-bottom:.6rem;color:var(--primary);}

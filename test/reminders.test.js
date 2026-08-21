@@ -56,7 +56,16 @@ function load(users) {
   // eslint-disable-next-line no-new-func
   return new Function('db', `${code}
     return { squadForSession, squadForMatch, matchAsSession, answeredFor,
-             overrideFor, attendedFor };`)(db);
+             overrideFor, attendedFor, countedFor };`)(db);
+}
+
+/** remindersOf and its constants, lifted on their own. */
+function loadReminders() {
+  const code = grab('const DEFAULT_SESSION_MINS = 90;', '/** "HH:MM" → minutes');
+  // eslint-disable-next-line no-new-func
+  return new Function(`${code}
+    return { remindersOf, REMINDER_PUSH_HOURS, REMINDER_LOCK_HOURS,
+             REMINDER_HOURS_MAX };`)();
 }
 
 /** A teams/{id}/data shard list, as readDataShards returns it. */
@@ -376,6 +385,30 @@ describe('reminders — the coach\'s override wins', () => {
         H.overrideFor({j1_tr_2: 'yes'}, 'j1', borrowed), 'yes');
   });
 
+  it('countedFor defaults to YES — attendance here is opt-OUT', () => {
+    /* The opposite default to attendedFor, and deliberately so. Before a
+       session, silence means the player is expected; afterwards, silence
+       means he was never marked present. Same two stores, two questions. */
+    assert.strictEqual(H.countedFor({}, {}, 'a1', S({})), true,
+        'said nothing, still expected at training');
+    assert.strictEqual(H.attendedFor({}, no, 'a1', S({})), false,
+        'said nothing, not chased for an RPE');
+  });
+
+  it('only a real "no" or "injured" takes a player out', () => {
+    assert.strictEqual(H.countedFor({}, {a1_tr_1: 'yes'}, 'a1', S({})), true);
+    assert.strictEqual(H.countedFor({}, {a1_tr_1: 'late'}, 'a1', S({})), true);
+    assert.strictEqual(H.countedFor({}, {a1_tr_1: 'no'}, 'a1', S({})), false);
+    assert.strictEqual(H.countedFor({}, {a1_tr_1: 'injured'}, 'a1', S({})), false);
+  });
+
+  it('the coach can excuse a player who said yes, and un-excuse one who said no', () => {
+    assert.strictEqual(
+        H.countedFor({a1_tr_1: 'no'}, {a1_tr_1: 'yes'}, 'a1', S({})), false);
+    assert.strictEqual(
+        H.countedFor({a1_tr_1: 'yes'}, {a1_tr_1: 'no'}, 'a1', S({})), true);
+  });
+
   it('the reminder actually reads the override shard', () => {
     const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
     assert.ok(body.includes('"fa_training_staff_override"'),
@@ -395,7 +428,40 @@ describe('reminders — the schedulers use them', () => {
     assert.ok(body.includes('await squadForSession(teamId, session)'));
     assert.ok(!/getTeamMembersByRole\(teamId, "player"\)/.test(body),
         'the club-wide roster is what nagged the wrong squad');
-    assert.ok(body.includes('answeredFor(answered, uid, session)'));
+    /* It used to chase only the UNANSWERED. That is the wrong half: a
+       player who said nothing and one who said yes are both expected at
+       training, and only one was being told. countedFor is the audience
+       now — everyone not excused. */
+    assert.ok(body.includes('countedFor(overrides, values, uid, session)'));
+    assert.ok(!/const unanswered = /.test(body),
+        'the unanswered-only audience was the bug');
+  });
+
+  it('the training reminder is on WALL-CLOCK cron with a half-open band', () => {
+    const body = grab('exports.scheduledTrainingReminder', 'exports.scheduledRpeReminder');
+    assert.ok(/schedule: "0 \* \* \* \*"/.test(body),
+        '"every 60 minutes" drifts by each run\'s duration');
+    /* The old band was `hoursUntil < 3.5 || hoursUntil > 4.5` — inclusive
+       at BOTH ends, so a session landing exactly on 3.5 or 4.5 hours (any
+       session at half past the hour) was reminded twice. */
+    assert.ok(body.includes('hoursUntil < pushHours - 0.5 || hoursUntil >= pushHours + 0.5'));
+  });
+
+  it('the training reminder reads the club\'s own timings', () => {
+    const body = grab('exports.scheduledTrainingReminder', 'exports.scheduledRpeReminder');
+    assert.ok(body.includes('remindersOf(clubSnap.data())'),
+        'the lead sets these per club; 4/3 is only the fallback');
+    assert.ok(!/hoursUntil [<>]=? [0-9]/.test(body),
+        'the window must come from the club, not from a literal');
+    assert.ok(body.includes('lockHours * 36e5'),
+        'the push has to name the deadline the app will actually enforce');
+  });
+
+  it('the coach\'s override counts here too', () => {
+    // A player the staff dropped is not "counted", so must not be told he is.
+    const body = grab('exports.scheduledTrainingReminder', 'exports.scheduledRpeReminder');
+    assert.ok(body.includes('"fa_training_staff_override"'));
+    assert.ok(body.includes('mergeMapShards(shards.get("fa_training_staff_override"))'));
   });
 
   it('the RPE reminder considers EVERY session, not the first', () => {
@@ -562,5 +628,86 @@ describe('reminders — when an activity ends', () => {
       if (H.endedInWindow(s, 'training', now)) claimed++;
     }
     assert.strictEqual(claimed, 1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Per-club reminder timings.
+ *
+ * Two numbers the club lead sets in Config Club: how long before a
+ * session the "we are counting on you" push goes out, and how long
+ * before it the answering window closes. They are load-bearing for each
+ * other -- a push that announces a deadline already past is worse than
+ * no push -- so both the callable and the reader enforce push > lock.
+ * ------------------------------------------------------------------ */
+describe('reminders — the club lead\'s timings', () => {
+  const R = loadReminders();
+
+  it('defaults to 4 hours notice, closing 3 hours before', () => {
+    assert.deepStrictEqual(R.remindersOf({}), {pushHours: 4, lockHours: 3});
+    assert.deepStrictEqual(R.remindersOf(null), {pushHours: 4, lockHours: 3});
+    assert.deepStrictEqual(R.remindersOf({reminders: {}}), {pushHours: 4, lockHours: 3});
+  });
+
+  it('takes what the lead set', () => {
+    assert.deepStrictEqual(
+        R.remindersOf({reminders: {pushHours: 24, lockHours: 12}}),
+        {pushHours: 24, lockHours: 12});
+  });
+
+  it('refuses a pair that would announce a deadline already past', () => {
+    /* Only reachable by a write that bypassed the callable, but the reader
+       must not send that push -- falling back is the safe answer. */
+    assert.deepStrictEqual(
+        R.remindersOf({reminders: {pushHours: 2, lockHours: 5}}),
+        {pushHours: 4, lockHours: 3});
+    assert.deepStrictEqual(
+        R.remindersOf({reminders: {pushHours: 3, lockHours: 3}}),
+        {pushHours: 4, lockHours: 3}, 'equal is not "before"');
+  });
+
+  it('ignores junk rather than muting the reminder for the whole club', () => {
+    const bad = [null, 'soon', 0, -1, NaN, R.REMINDER_HOURS_MAX + 1];
+    bad.forEach((v) => {
+      assert.deepStrictEqual(
+          R.remindersOf({reminders: {pushHours: v, lockHours: 3}}),
+          {pushHours: 4, lockHours: 3}, 'pushHours ' + String(v));
+    });
+  });
+
+  it('the callable validates the pair, not just the client', () => {
+    const body = grab('exports.setClubCategories', 'exports.setClubKits');
+    assert.ok(body.includes('"reminders: camp desconegut "'),
+        'unknown keys would sit forever in a doc every member downloads');
+    assert.ok(/if \(push <= lock\)/.test(body),
+        'the ordering rule has to hold server-side too');
+    assert.ok(body.includes('Number.isInteger(n) && n >= 1'),
+        'a fractional or zero hour count is not a schedule');
+  });
+
+  it('the client and the server agree on the defaults', () => {
+    /* Duplicated because functions/ deploys alone and cannot require
+       ../js. Same reason, and same guard, as DEFAULT_MATCH_MINS. */
+    const app = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    const pairs = [
+      ['REMINDER_PUSH_HOURS', 4],
+      ['REMINDER_LOCK_HOURS', 3],
+      ['REMINDER_HOURS_MAX', 72],
+    ];
+    /* Plain string slicing rather than a built regex: escaping `\d` through
+       a constructed RegExp is exactly the kind of quiet mistake that makes
+       a cross-file guard pass while checking nothing. */
+    const valueAfter = (text, decl) => {
+      const i = text.indexOf(decl);
+      if (i === -1) return null;
+      return text.slice(i + decl.length, text.indexOf(';', i)).trim();
+    };
+    pairs.forEach(([name, expected]) => {
+      const c = valueAfter(app, 'var ' + name + ' = ');
+      const s = valueAfter(src, 'const ' + name + ' = ');
+      assert.ok(c !== null && s !== null, name + ' is gone from one side');
+      assert.strictEqual(Number(c), expected, name + ' (client)');
+      assert.strictEqual(c, s, name + ' differs between the two files');
+    });
   });
 });

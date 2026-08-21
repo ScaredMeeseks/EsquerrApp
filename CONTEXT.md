@@ -2365,3 +2365,60 @@ together.
 **Found from evidence, not from reading**: after the v111 deploy the scheduler's
 `lastAttemptTime` was still the previous day's 23:00 run, well past when a wall-clock
 half-hourly job should have fired.
+
+### v113 (2026-08-21) — the pre-session push tells everyone, and the club sets the clock
+
+Two changes to `scheduledTrainingReminder`, both asked for directly.
+
+#### a) It goes to everyone who is COUNTED, not only the unanswered
+
+Attendance here is **opt-out**: `getEffectiveAnswer` returns `yes` for an unlocked session
+nobody has answered. The reminder went only to players with no record — which is the wrong
+half. A player who said nothing and a player who said "Sí" are in exactly the same
+position, both expected at training, and only one of them was being told.
+
+`countedFor(overrides, values, uid, session)` is the audience now: **everyone except a
+`no`/`injured`**, from the player or from his coach. That last part matters — telling a
+player the staff has dropped that "we are counting on you" is the one thing this message
+must never do. It is the deliberate mirror of `attendedFor`: *before* a session silence
+means expected, *after* one it means never marked present. Same two stores, opposite
+defaults.
+
+The body now carries the deadline: *"Comptem amb tu — si no pots venir, canvia-ho abans de
+les HH:MM."* That time is `start − lockHours`, the exact instant `isTrainingLocked` will
+start refusing changes, so the message cannot promise a window the app then denies.
+
+#### b) `pushHours` and `lockHours` are per club, set by the lead
+
+Stored as `clubs/{id}.reminders`, edited in Config Club (the team-setup screen), saved
+through `setClubCategories` — the callable already owns club config, and `categories` is
+refused from a client outright.
+
+**Defaults 4 and 3.** `lockHours` replaces a **hardcoded one hour** in `isTrainingLocked`,
+so ⚠ **every existing club's answering window closes two hours earlier than it did** until
+its lead changes it. That is the requested behaviour, not a side effect.
+
+`push > lock` is enforced in three places and each one is load-bearing: the client (so a
+typo costs no round trip), the callable (because these two numbers drive a push to every
+player in the club), and `remindersOf` on read (a pair written by anything that bypassed
+the callable falls back rather than announcing a deadline already past).
+
+#### Two latent bugs fixed on the way
+
+- **`every 60 minutes` → `0 * * * *`.** Same interval-vs-wall-clock trap as v112: the App
+  Engine form waits N minutes after the previous run *finishes*, so runs drift and a
+  fixed-width band stops tiling.
+- **The band was inclusive at both ends** (`< 3.5 || > 4.5`), so a session landing exactly
+  on the boundary — *any session at half past the hour* — was reminded **twice**. It is
+  half-open now: `[pushHours − 0.5, pushHours + 0.5)`.
+
+The date window widened from today+tomorrow to three days, because `pushHours` can now be
+up to 72.
+
+**Not done, deliberately:** the lock is enforced in the client only. `firestore.rules`
+cannot cheaply reach a session's start time, so a determined user could still write a late
+answer. Same as before this change — it was never enforced server-side.
+
+Unit tests 631 → **643**, including a cross-file guard that reads
+`REMINDER_PUSH_HOURS`/`LOCK_HOURS`/`HOURS_MAX` out of **both** `js/app.js` and
+`functions/index.js` and asserts they are equal. Verified it bites by mutating one side.

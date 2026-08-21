@@ -436,6 +436,34 @@ const DEFAULT_MATCH_MINS = 120;
 // Must equal scheduledRpeReminder's schedule interval — see endedInWindow.
 const RPE_WINDOW_MINS = 30;
 
+/* ── Per-club reminder timing ───────────────────────────────────
+   How many hours before a session the "you are counted" push goes out,
+   and how many hours before it the answering window closes. Both are set
+   by the club lead; these are the fallbacks for a club that has never
+   opened the setting. Mirrored in js/app.js — functions/ deploys alone.
+
+   PUSH must be strictly greater than LOCK, or the push announces a
+   deadline that has already passed. setClubCategories enforces it. */
+const REMINDER_PUSH_HOURS = 4;
+const REMINDER_LOCK_HOURS = 3;
+const REMINDER_HOURS_MAX = 72;
+
+/** One club's reminder timings, defaulted and sanity-checked. */
+function remindersOf(club) {
+  const r = (club && club.reminders) || {};
+  const num = (v, dflt) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 && n <= REMINDER_HOURS_MAX ? n : dflt;
+  };
+  const push = num(r.pushHours, REMINDER_PUSH_HOURS);
+  const lock = num(r.lockHours, REMINDER_LOCK_HOURS);
+  /* A stored pair that does not satisfy push > lock can only come from a
+     write that bypassed the callable. Fall back rather than announce a
+     deadline in the past. */
+  if (push <= lock) return {pushHours: REMINDER_PUSH_HOURS, lockHours: REMINDER_LOCK_HOURS};
+  return {pushHours: push, lockHours: lock};
+}
+
 /** "HH:MM" → minutes past midnight, or null. */
 function hhmmToMins(v) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || "").trim());
@@ -559,6 +587,33 @@ function attendedFor(overrides, answers, uid, session) {
   const call = overrideFor(overrides, uid, session);
   if (call !== undefined && call !== "") return call === "yes" || call === "late";
   return answeredFor(answers, uid, session);
+}
+
+/**
+ * Is this player COUNTED for a session that has not happened yet?
+ *
+ * Different question from attendedFor, and the difference is the default.
+ * Attendance is opt-OUT in this app: silence means yes, which is what
+ * getEffectiveAnswer in js/app.js returns for an unlocked session. So the
+ * only players not counted are the ones who (or whose coach) actively said
+ * `no` or `injured`.
+ *
+ * That is exactly the audience for the pre-session push: telling a player
+ * who has declined that he "is counted" would be wrong, and telling one who
+ * has said nothing is the entire point of the reminder.
+ *
+ * @param {object} overrides staff calls, uid_sessionId → value
+ * @param {object} values the players' own answers, uid_sessionId → value
+ * @param {string} uid the player
+ * @param {object} session the training session
+ * @return {boolean} true when he is expected to turn up
+ */
+function countedFor(overrides, values, uid, session) {
+  const call = overrideFor(overrides, uid, session);
+  const own = overrideFor(values, uid, session);
+  const v = (call !== undefined && call !== "") ? call : own;
+  if (v === undefined || v === "") return true; // silence is a yes
+  return v !== "no" && v !== "injured";
 }
 
 // ── Helper: get all team members ──
@@ -738,81 +793,117 @@ exports.onPushQueueCreate = onDocumentCreated({
 });
 
 // ════════════════════════════════════════════════════════════
-// 2. Training Reminder — runs every hour, checks for training
-//    starting in ~4 hours. Default attendance is "Yes", so this
-//    only notifies as a general heads-up, not for unanswered players.
+// 2. Training Reminder — runs on the hour and tells every player
+//    COUNTED for a session that he is counted, and by when he can
+//    still change his mind.
+//
+//    Attendance is opt-OUT here: silence means yes. The reminder
+//    used to go only to players who had not answered, which is the
+//    wrong half — a player who has said nothing and a player who
+//    said yes are in exactly the same position, both expected at
+//    training, and only one of them was being told. Now everyone
+//    who is counted hears it, and the message carries the deadline.
+//
+//    Both timings are per club and set by the lead:
+//      pushHours  how long before the session this goes out (4)
+//      lockHours  when the answering window closes          (3)
 // ════════════════════════════════════════════════════════════
 exports.scheduledTrainingReminder = onSchedule({
-  schedule: "every 60 minutes",
+  // Wall-clock cron, not "every 60 minutes" — see scheduledRpeReminder.
+  // The App Engine interval form drifts by each run's duration, and the
+  // ±30-minute band below assumes runs are exactly an hour apart.
+  schedule: "0 * * * *",
   timeZone: "Europe/Madrid",
   region: "us-central1",
 }, async () => {
   const now = new Date();
-  // A session ~4h away is today or (for a run near midnight) early tomorrow.
+  /* A session up to REMINDER_HOURS_MAX away can be today, tomorrow or the
+     day after. Three dates costs nothing: `array-contains-any` takes 30. */
   const fmt = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"});
-  const today = fmt.format(now);
-  const tomorrow = fmt.format(new Date(now.getTime() + 24 * 36e5));
+  const dates = [0, 1, 2].map((d) => fmt.format(new Date(now.getTime() + d * 24 * 36e5)));
 
   // Only teams that actually train on these dates (denormalized field
   // maintained by updateTeamDates) — no full collection scan.
   const teamsSnap = await db.collection("teams")
-      .where("trainingDates", "array-contains-any", [today, tomorrow]).get();
-  if (teamsSnap.empty) {
-    logger.info("trainingReminder: no team trains today/tomorrow");
-    return;
-  }
+      .where("trainingDates", "array-contains-any", dates).get();
+  if (teamsSnap.empty) return;
 
   await Promise.all(teamsSnap.docs.map(async (teamDoc) => {
     const teamId = teamDoc.id;
+    /* teams/{id} and clubs/{id} share an id. The lead's timings live on the
+       club doc; a club that has never opened the setting gets the defaults. */
+    const clubSnap = await db.collection("clubs").doc(teamId).get();
+    const {pushHours, lockHours} = remindersOf(clubSnap.data());
+
     // Every category's sessions, merged: the reminder is per team, and a
     // shard-at-a-time read would remind one squad and silently skip the rest.
-    const shards = await readDataShards(teamId, ["fa_training"]);
+    const shards = await readDataShards(teamId,
+        ["fa_training", "fa_training_staff_override"]);
     const training = mergeArrayShards(shards.get("fa_training"));
+    // The coach's call outranks the player's answer here exactly as it does
+    // in the RPE reminder — a player dropped by staff is not counted.
+    const overrides = mergeMapShards(shards.get("fa_training_staff_override"));
     const upcoming = training.filter((s) =>
-      s.status !== "past" && s.time &&
-      (s.date === today || s.date === tomorrow));
+      s.status !== "past" && s.time && dates.includes(s.date));
     if (!upcoming.length) return;
 
     // Answers come from the canonical record collection
     const availSnap = await db.collection("teams").doc(teamId)
-        .collection("trainingAvail").where("date", "in", [today, tomorrow]).get();
-    /* Both key formats, so a record written by an old client still counts
-       as answered. answeredFor() decides which one applies. */
-    const answered = new Set();
+        .collection("trainingAvail").where("date", "in", dates).get();
+    /* Both key formats, so a record written by an old client still counts.
+       A MAP, not a set: countedFor needs the value — only `no`/`injured`
+       take a player out of the audience, and "has answered" cannot say
+       which answer it was. */
+    const values = {};
     availSnap.docs.forEach((d) => {
       const r = d.data() || {};
-      if (r.sessionId) answered.add(r.uid + "_" + r.sessionId);
-      if (r.date) answered.add(r.uid + "_" + r.date);
+      if (r.sessionId) values[r.uid + "_" + r.sessionId] = r.value;
+      if (r.date && values[r.uid + "_" + r.date] === undefined) {
+        values[r.uid + "_" + r.date] = r.value;
+      }
     });
 
     for (const session of upcoming) {
       const startTime = session.time.split(" - ")[0]?.trim();
       if (!startTime) continue;
       const sessionDate = parseMadridDate(session.date, startTime);
-      const hoursUntil = (sessionDate - now) / (1000 * 60 * 60);
-      if (hoursUntil < 3.5 || hoursUntil > 4.5) continue;
+      const hoursUntil = (sessionDate - now) / 36e5;
+      /* Half-open, exactly one hour wide, so a session falls to precisely
+         one run. The old band was `< 3.5 || > 4.5` -- inclusive at BOTH
+         ends, which double-sends for a session landing exactly on 3.5 or
+         4.5 hours, i.e. any session at half past the hour. */
+      if (hoursUntil < pushHours - 0.5 || hoursUntil >= pushHours + 0.5) continue;
 
       // The session's own squad, not the whole club.
       const playerUids = await squadForSession(teamId, session);
-      const unanswered = playerUids.filter((uid) => !answeredFor(answered, uid, session));
+      // Everyone expected to turn up -- which INCLUDES those who have said
+      // nothing, and excludes only a `no`/`injured` from the player or his
+      // coach. Telling someone who has declined that he is counted is the
+      // one thing this message must never do.
+      const counted = playerUids.filter((uid) =>
+        countedFor(overrides, values, uid, session));
+      const lockAt = new Date(sessionDate.getTime() - lockHours * 36e5);
+      const lockHhmm = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit",
+        hour12: false,
+      }).format(lockAt);
       logger.info("trainingReminder", {teamId, date: session.date,
         sessionId: session.id, players: playerUids.length,
-        unanswered: unanswered.length});
+        counted: counted.length, pushHours, lockHours, lockAt: lockHhmm});
 
-      if (unanswered.length) {
-        const tokens = await getTokensForUsers(unanswered);
-        if (tokens.length) {
-          await sendToTokens(tokens, {
-            title: "🏋️ Entrenament avui!",
-            body: (session.focus || "Entrenament") + " a les " +
-              startTime + ". Confirma la teva assistència.",
-            // Tagged per SESSION: two squads training the same evening are
-            // two notifications, and a date tag would collapse them into one.
-            type: "training_reminder", page: "player-home",
-            tag: "training-" + (session.id || session.date),
-          });
-        }
-      }
+      if (!counted.length) continue;
+      const tokens = await getTokensForUsers(counted);
+      if (!tokens.length) continue;
+      await sendToTokens(tokens, {
+        title: "🏋️ Entrenament avui!",
+        body: (session.focus || "Entrenament") + " a les " + startTime +
+          ". Comptem amb tu — si no pots venir, canvia-ho abans de les " +
+          lockHhmm + ".",
+        // Tagged per SESSION: two squads training the same evening are
+        // two notifications, and a date tag would collapse them into one.
+        type: "training_reminder", page: "player-home",
+        tag: "training-" + (session.id || session.date),
+      });
     }
   }));
 });
@@ -1640,9 +1731,42 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
         "Per eliminar un equip utilitza deleteTeam (" + removed.join(", ") + ").");
   }
 
+  /* Reminder timings. Validated HERE rather than trusted from the client,
+     because they drive a push to every player in the club: a lockHours
+     above pushHours would announce a deadline that had already passed, and
+     a bad number would silently mute the reminder for the whole club. */
+  if (data.reminders !== undefined) {
+    const r = data.reminders;
+    if (!r || typeof r !== "object" || Array.isArray(r)) {
+      throw new HttpsError("invalid-argument", "reminders no vàlid.");
+    }
+    for (const k of Object.keys(r)) {
+      if (k !== "pushHours" && k !== "lockHours") {
+        throw new HttpsError("invalid-argument", "reminders: camp desconegut " + k);
+      }
+    }
+    const push = Number(r.pushHours);
+    const lock = Number(r.lockHours);
+    const ok = (n) => Number.isInteger(n) && n >= 1 && n <= REMINDER_HOURS_MAX;
+    if (!ok(push) || !ok(lock)) {
+      throw new HttpsError("invalid-argument",
+          "Les hores han de ser un nombre enter entre 1 i " + REMINDER_HOURS_MAX + ".");
+    }
+    if (push <= lock) {
+      throw new HttpsError("invalid-argument",
+          "L'avís s'ha d'enviar abans de tancar les respostes.");
+    }
+  }
+
   const payload = {categories};
   if (data.fcfLinks !== undefined) payload.fcfLinks = data.fcfLinks;
   if (data.schedules !== undefined) payload.schedules = data.schedules;
+  if (data.reminders !== undefined) {
+    payload.reminders = {
+      pushHours: Number(data.reminders.pushHours),
+      lockHours: Number(data.reminders.lockHours),
+    };
+  }
   await clubRef.set(payload, {merge: true});
 
   // Claims: the enabled set drives every member's `cats`, and nothing else

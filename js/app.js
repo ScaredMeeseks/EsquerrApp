@@ -786,6 +786,14 @@
     'auth.fcf_title':        { ca:'Enllaços classificació FCF', es:'Enlaces clasificación FCF', en:'FCF League Links' },
     'auth.fcf_optional':     { ca:'(opcional)', es:'(opcional)', en:'(optional)' },
     'auth.schedules_title':  { ca:'Horaris per defecte', es:'Horarios por defecto', en:'Default Schedules' },
+    'rem.title':             { ca:'Avisos d\'entrenament', es:'Avisos de entrenamiento', en:'Training reminders' },
+    'rem.desc':              { ca:'Els jugadors compten com a assistents si no diuen el contrari. Aquest avís els ho recorda i els diu fins quan poden canviar la resposta.', es:'Los jugadores cuentan como asistentes si no dicen lo contrario. Este aviso se lo recuerda y les dice hasta cuándo pueden cambiar la respuesta.', en:'Players count as attending unless they say otherwise. This reminder tells them so, and until when they can still change their answer.' },
+    'rem.push_hours':        { ca:'Enviar l\'avís', es:'Enviar el aviso', en:'Send the reminder' },
+    'rem.lock_hours':        { ca:'Tancar respostes', es:'Cerrar respuestas', en:'Close answers' },
+    'rem.hours_before':      { ca:'hores abans', es:'horas antes', en:'hours before' },
+    'rem.err_range':         { ca:'Les hores han de ser un nombre enter entre 1 i {max}.', es:'Las horas deben ser un número entero entre 1 y {max}.', en:'Hours must be a whole number between 1 and {max}.' },
+    'rem.err_order':         { ca:'L\'avís s\'ha d\'enviar abans de tancar les respostes.', es:'El aviso debe enviarse antes de cerrar las respuestas.', en:'The reminder must go out before answers close.' },
+    'rem.locked_at':         { ca:'Respostes tancades des de les {time}', es:'Respuestas cerradas desde las {time}', en:'Answers closed since {time}' },
     'auth.staff_title':      { ca:'Staff per equip', es:'Staff por equipo', en:'Staff per Team' },
     'auth.staff_desc':       { ca:'Els correus que afegeixis aquí podran registrar-se com a staff d\'aquesta categoria.', es:'Los correos que añadas aquí podrán registrarse como staff de esta categoría.', en:'Addresses added here may register as staff for this category.' },
     'auth.staff_add':        { ca:'+ Staff', es:'+ Staff', en:'+ Staff' },
@@ -1346,7 +1354,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 112;
+  const APP_VERSION = 113;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -1464,6 +1472,37 @@
   // ---------- Club helpers ----------
   let _clubConfig = null;
   function getClubConfig() { return _clubConfig; }
+
+  /* ── Per-club reminder timing ───────────────────────────────
+     How many hours before a session the "we are counting on you" push goes
+     out, and how many hours before it the answering window closes. Set by
+     the club lead in Config Club; these are the fallbacks for a club that
+     has never opened the setting.
+
+     lockHours REPLACES a hardcoded one hour in isTrainingLocked. The
+     default is deliberately 3, not 1 — a coach who has to plan a session
+     cannot do it on an hour's notice, which is why this was asked for.
+
+     Mirrored in functions/index.js (remindersOf), which cannot require
+     this file. setClubCategories validates the pair server-side; these
+     numbers must stay in step with the ones there. */
+  var REMINDER_PUSH_HOURS = 4;
+  var REMINDER_LOCK_HOURS = 3;
+  var REMINDER_HOURS_MAX = 72;
+
+  /** This club's reminder timings, defaulted and sanity-checked. */
+  function clubReminders(club) {
+    var r = ((club === undefined ? _clubConfig : club) || {}).reminders || {};
+    function num(v, dflt) {
+      var n = Number(v);
+      return (isFinite(n) && n > 0 && n <= REMINDER_HOURS_MAX) ? n : dflt;
+    }
+    var push = num(r.pushHours, REMINDER_PUSH_HOURS);
+    var lock = num(r.lockHours, REMINDER_LOCK_HOURS);
+    // push must be strictly greater, or the push announces a passed deadline.
+    if (push <= lock) return { pushHours: REMINDER_PUSH_HOURS, lockHours: REMINDER_LOCK_HOURS };
+    return { pushHours: push, lockHours: lock };
+  }
 
   function generateClubCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -2831,6 +2870,8 @@
     // by a category toggle — which also keeps a colour picker open on Android
     // from being destroyed mid-edit.
     _refreshTeamSetupKits();
+    // Club-wide, same reasoning: seeded once, never blown away by a toggle.
+    _refreshTeamSetupReminders();
     _refreshTeamSetupQuota();
     _bindTeamSetupEvents(container);
 
@@ -3170,6 +3211,35 @@
       };
     });
     return schedules;
+  }
+
+  /* The two reminder inputs, seeded from the club doc.
+     Unlike every other section here this one is club-wide, so it does not
+     depend on which categories are ticked and is never hidden. */
+  function _refreshTeamSetupReminders() {
+    var pushEl = document.getElementById('ts-rem-push');
+    var lockEl = document.getElementById('ts-rem-lock');
+    if (!pushEl || !lockEl) return;
+    var r = clubReminders();
+    pushEl.value = String(r.pushHours);
+    lockEl.value = String(r.lockHours);
+    pushEl.max = String(REMINDER_HOURS_MAX);
+    lockEl.max = String(REMINDER_HOURS_MAX);
+  }
+
+  /** null when the pair is unusable — the caller shows the reason. */
+  function _collectRemindersFromDom() {
+    var pushEl = document.getElementById('ts-rem-push');
+    var lockEl = document.getElementById('ts-rem-lock');
+    if (!pushEl || !lockEl) return undefined;   // section not on the page
+    var push = Number(pushEl.value);
+    var lock = Number(lockEl.value);
+    function ok(n) {
+      return isFinite(n) && Math.floor(n) === n && n >= 1 && n <= REMINDER_HOURS_MAX;
+    }
+    if (!ok(push) || !ok(lock)) return { error: t('rem.err_range').replace('{max}', REMINDER_HOURS_MAX) };
+    if (push <= lock) return { error: t('rem.err_order') };
+    return { pushHours: push, lockHours: lock };
   }
 
   function _refreshTeamSetupSchedules() {
@@ -3639,6 +3709,17 @@
       return;
     }
 
+    /* Reminder timings, validated locally before the network for the same
+       reason as the kits and the emails above. The callable checks all of
+       it again — these two numbers drive a push to every player in the
+       club, so the client is not the place that decides they are sane. */
+    var reminders = _collectRemindersFromDom();
+    if (reminders && reminders.error) {
+      errEl.textContent = reminders.error;
+      errEl.hidden = false;
+      return;
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = t('auth.saving');
     try {
@@ -3649,7 +3730,9 @@
          set changes — without that, enabling a new category leaves the client
          querying a category its own token does not authorise. */
       var setCats = firebase.app().functions('us-central1').httpsCallable('setClubCategories');
-      await setCats({ categories: categories, fcfLinks: fcfLinks, schedules: schedules });
+      var catsPayload = { categories: categories, fcfLinks: fcfLinks, schedules: schedules };
+      if (reminders) catsPayload.reminders = reminders;
+      await setCats(catsPayload);
       /* Its own callable, and deliberately AFTER setCats: kits share no
          invariant with categories, and setClubCategories does quota
          accounting and a claims refresh that saving a colour must not be
@@ -11925,10 +12008,32 @@
       </div>`;
   }
 
+  /* When the answering window closes. Was a hardcoded one hour; it is the
+     club lead's `lockHours` now, defaulting to 3. The push sent
+     `pushHours` before the session names this exact moment, so the two
+     have to come from the same place — a player told "change it before
+     17:00" and then refused at 16:55 is the failure this shape prevents. */
+  function trainingLockAt(t) {
+    if (!t || !t.date || !t.time) return null;
+    const start = new Date(t.date + 'T' + String(t.time).split(' - ')[0] + ':00');
+    if (isNaN(start.getTime())) return null;
+    return new Date(start.getTime() - clubReminders().lockHours * 36e5);
+  }
+
   function isTrainingLocked(t) {
-    if (!t.date || !t.time) return false;
-    const start = new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00');
-    return new Date() >= new Date(start.getTime() - 60 * 60 * 1000);
+    const lock = trainingLockAt(t);
+    return !!lock && new Date() >= lock;
+  }
+
+  /* "Answers closed since 17:00" — the same instant the push named.
+     The parameter is `sess`, NOT `t`: every other helper here takes `t`
+     for the session, which would shadow the i18n `t()` this needs. */
+  function trainingLockedTitle(sess) {
+    const lock = trainingLockAt(sess);
+    if (!lock) return '';
+    const hhmm = String(lock.getHours()).padStart(2, '0') + ':' +
+      String(lock.getMinutes()).padStart(2, '0');
+    return t('rem.locked_at').replace('{time}', hhmm);
   }
 
   /* Parsed availability blobs, memoised on the RAW STRING.
@@ -15954,7 +16059,10 @@
           const chosen = stored || 'na';
           const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
-          availHtml = `<span class="avail-chosen ${cls[chosen]}">${labels[chosen]}</span>`;
+          // The tooltip closes the loop with the push, which named this
+          // exact time — a badge that just stops responding is a bug to
+          // the player who was told he could still change it.
+          availHtml = `<span class="avail-chosen ${cls[chosen]}" title="${sanitize(trainingLockedTitle(tObj))}">${labels[chosen]}</span>`;
         } else if (stored) {
           const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
           const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };

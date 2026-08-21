@@ -182,6 +182,23 @@
           <h3 style="margin:1.2rem 0 .6rem;font-size:1rem;color:var(--text-secondary);" data-i18n="auth.schedules_title">Horaris per defecte</h3>
           <div id="team-setup-schedule-inputs"></div>
         </div>
+        <!-- Reminder timings. NOT `hidden` like the sections around it:
+             those depend on which categories are ticked, and these two
+             numbers are club-wide. -->
+        <div id="team-setup-reminders">
+          <h3 style="margin:1.2rem 0 .3rem;font-size:1rem;color:var(--text-secondary);" data-i18n="rem.title">Avisos d'entrenament</h3>
+          <p style="margin:0 0 .6rem;font-size:.8rem;color:var(--text-secondary);" data-i18n="rem.desc">Els jugadors compten com a assistents si no diuen el contrari.</p>
+          <div class="ts-rem-row">
+            <label class="ts-rem-label" for="ts-rem-push" data-i18n="rem.push_hours">Enviar l'avís</label>
+            <input type="number" id="ts-rem-push" class="ts-rem-input" min="1" max="72" step="1" value="4">
+            <span class="ts-rem-unit" data-i18n="rem.hours_before">hores abans</span>
+          </div>
+          <div class="ts-rem-row">
+            <label class="ts-rem-label" for="ts-rem-lock" data-i18n="rem.lock_hours">Tancar respostes</label>
+            <input type="number" id="ts-rem-lock" class="ts-rem-input" min="1" max="72" step="1" value="3">
+            <span class="ts-rem-unit" data-i18n="rem.hours_before">hores abans</span>
+          </div>
+        </div>
         <div id="team-setup-staff" hidden>
           <h3 style="margin:1.2rem 0 .3rem;font-size:1rem;color:var(--text-secondary);" data-i18n="auth.staff_title">Staff per equip</h3>
           <p style="margin:0 0 .6rem;font-size:.8rem;color:var(--text-secondary);" data-i18n="auth.staff_desc">Els correus que afegeixis aquí podran registrar-se com a staff d'aquesta categoria.</p>

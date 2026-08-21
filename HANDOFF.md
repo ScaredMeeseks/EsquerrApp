@@ -2,13 +2,13 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-**`main` is at v112, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
+**`main` is at v113, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
 functions both. Verified against the live artefacts rather than the deploy output:
 
 ```bash
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-# both said 112 at 2026-08-21
+# both said 113 at 2026-08-21
 ```
 
 All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** now
@@ -20,12 +20,61 @@ it cannot tell you the cron actually changed. The scheduler API can — see
 GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
 ```
 
-Rules unchanged and not redeployed. Unit tests **631 passing** (+36 this session); the
+Rules unchanged and not redeployed. Unit tests **643 passing** (+48 this session); the
 rules and functions emulator suites were **not** re-run.
 
-**One thing is still unproven:** no RPE reminder has been observed *firing* under the new
-schedule. The deploy is confirmed; a live send is not. See "Verify it" below — it is now
-cheap to test, because it no longer means waiting until 23:00.
+**The scheduler fires** — observed at `2026-08-21T15:30:01Z`, exactly on the wall clock,
+which is also the proof the cron change took. **A live SEND is still unproven**: nothing was
+due in that window, so no push has yet gone out under any of the new logic. See "Verify it"
+below — both reminders are cheap to test now.
+
+---
+
+## What shipped: v113 — the pre-session push, and the club's own clock
+
+Asked for directly, two parts.
+
+### a) The push goes to everyone COUNTED, not only the unanswered
+
+Attendance here is **opt-out**: `getEffectiveAnswer` returns `yes` for an unlocked session
+nobody answered. The reminder went only to players with no record — the wrong half. A
+player who said nothing and one who said "Sí" are in the same position, both expected at
+training, and only one was being told.
+
+`countedFor()` is the audience now: **everyone except a `no`/`injured`**, from the player
+or his coach. Telling a player the staff has dropped that "we are counting on you" is the
+one thing this message must never do. It is the deliberate mirror of `attendedFor` —
+*before* a session silence means expected, *after* one it means never marked present. Same
+two stores, opposite defaults.
+
+The body carries the deadline: *"Comptem amb tu — si no pots venir, canvia-ho abans de les
+HH:MM."* That time is `start − lockHours`, the exact instant `isTrainingLocked` starts
+refusing changes, so the push cannot promise a window the app then denies.
+
+### b) `pushHours` / `lockHours` are per club
+
+`clubs/{id}.reminders`, edited in Config Club (the team-setup screen), saved through
+`setClubCategories`. **Defaults 4 and 3.**
+
+⚠ `lockHours` replaces a **hardcoded one hour** in `isTrainingLocked`, so **every existing
+club's answering window now closes two hours earlier** until its lead changes it. Requested,
+not a side effect — but it is the one change here a coach will notice without being told.
+
+`push > lock` is enforced in three places, each load-bearing: the client (a typo costs no
+round trip), the callable (these two numbers drive a push to every player in the club), and
+`remindersOf` on read (a pair written by anything bypassing the callable falls back rather
+than announcing a deadline already past).
+
+### Two latent bugs fixed on the way
+
+- **`every 60 minutes` → `0 * * * *`** — the same interval-vs-wall-clock trap as v112.
+- **The band was inclusive at both ends** (`< 3.5 || > 4.5`), so a session landing exactly
+  on the boundary — **any session at half past the hour** — was reminded **twice**. Now
+  half-open: `[pushHours − 0.5, pushHours + 0.5)`.
+
+**Not done, deliberately:** the lock is client-side only. `firestore.rules` cannot cheaply
+reach a session's start time, so a determined user could still write a late answer — as was
+already true before this change.
 
 ---
 
@@ -177,6 +226,14 @@ a throwaway worktree first and fails there — but that is not the same as seein
    - **Or test v112's path instead**: leave a player unanswered and *add* him to the
      session as a coach. He should now be chased. The inverse is worth one click too —
      set a player's staff answer to **No** and confirm he is not.
+4. **v113's pre-session push** — create a session starting in ~4 h and wait for the next
+   o'clock run. Everyone not excused should get it, including players who have answered
+   nothing *and* players who answered Sí. The body must name `start − lockHours`.
+5. **v113's config** — Config Club → Avisos d'entrenament. Set push 6 / lock 5, save,
+   reopen and confirm they persisted. Then try push 2 / lock 5: it must refuse, both in the
+   app and (if you bypass the form) in the callable.
+6. **The lock moved from 1 h to 3 h.** Open a session starting in two hours as a player —
+   the availability badge should be frozen, with a tooltip naming the time it closed.
    - Confirm no `rpe` doc exists for that uid + session.
    - Wait for the half-hour boundary, then read the log:
 
@@ -333,12 +390,10 @@ the same token, so delivery is settled — triggers, audiences and preconditions
    since changed materially. Re-measure before touching a threshold.
 10. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
     directly. Delete once a v55+ APK circulates.
-11. **`scheduledTrainingReminder` has v111's schedule bug.** It is on
-    `every 60 minutes` — the App Engine *interval* form — with a 1-hour
-    `3.5 <= hoursUntil <= 4.5` band. Runs drift by each run's duration, so the band can
-    slip relative to the wall clock and a session can be reminded twice or not at all. The
-    fix is the same one v112 applied to the RPE reminder: `0 * * * *`. Its band is also
-    *inclusive* at both ends, which can double-fire at exactly 3.5 or 4.5 h.
+11. **`scheduledMatchAvailReminder` is the last `onSchedule` not yet checked** for the
+    interval/band traps v112 and v113 fixed. It is a weekly `0 20 * * 5` cron, so the
+    wall-clock issue does not apply — but nothing has verified its audience or that it
+    fires at all.
 12. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to
     the whole team, with no staff check and no validation of `title`/`body`.
     `Push.sendToTeam` is dead code.
@@ -421,6 +476,15 @@ of the current demo corpus as garbage.
 - **A schedule string is not a schedule.** `every 30 minutes` and `*/30 * * * *` look
   interchangeable and are not — one is an interval from the previous run's *end*. Reading
   `lastAttemptTime` back off the deployed job is what exposed it.
+- **A band with `<=` on both ends double-fires.** v113's training window was
+  `< 3.5 || > 4.5`, so any session at half past the hour was reminded twice. Half-open
+  intervals, every time.
+- **Ask which default a question carries.** `countedFor` and `attendedFor` read the same
+  two stores and disagree only about silence — before a session it means "expected", after
+  it means "never showed". Getting that backwards sends a push to exactly the wrong people.
+- **A cross-file guard built with a constructed RegExp can silently check nothing.** The
+  first version of the v113 constants guard had `'(\d+)'` collapse to `(d+)` and passed
+  while matching nothing. String slicing, and then *mutate one side to prove it fails*.
 - **A duplicated rule needs a test that reads BOTH copies.** Not one that tests each side's
   behaviour separately — one that asserts they are equal. Behaviour tests pass happily
   while the two drift.
