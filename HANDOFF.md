@@ -2,14 +2,13 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-**`main` is at v110 (`25c8090`), working tree clean, pushed.** At the moment of writing GitHub Pages
-was still serving **v109** — the v110 deploy had not finished. **First thing next session: confirm it
-landed**, because nothing else here is worth trusting until it has:
+**`main` is at v110, working tree clean, pushed — and SERVED.** Verified by fetching the deployed
+files, not by trusting the push:
 
 ```bash
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-# both must say 110
+# both said 110 at 2026-08-21
 ```
 
 Unit tests **595 passing** (+17 this session). The rules and functions suites were **not re-run** —
