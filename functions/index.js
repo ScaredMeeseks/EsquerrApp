@@ -896,7 +896,10 @@ exports.scheduledTrainingReminder = onSchedule({
       if (!tokens.length) continue;
       await sendToTokens(tokens, {
         title: "🏋️ Entrenament avui!",
-        body: (session.focus || "Entrenament") + " a les " + startTime +
+        /* Deliberately NOT session.focus. The focus is the coach's own
+           planning label ("Força i prevenció", "Partit condicionat") and
+           means nothing to a player reading a lock-screen notification. */
+        body: "Entrenament a les " + startTime +
           ". Comptem amb tu — si no pots venir, canvia-ho abans de les " +
           lockHhmm + ".",
         // Tagged per SESSION: two squads training the same evening are
@@ -1018,9 +1021,9 @@ exports.scheduledRpeReminder = onSchedule({
       if (!tokens.length) continue;
       await sendToTokens(tokens, {
         title: "📊 No oblidis el RPE!",
-        body: "Com ha anat " +
-          (session.focus ? "«" + session.focus + "»" : "l'entrenament") +
-          "? Registra el teu RPE.",
+        // The focus is the coach's planning label, not something a player
+        // recognises on a lock screen. Same reason as the training reminder.
+        body: "Com ha anat l'entrenament? Registra el teu RPE.",
         type: "rpe_reminder",
         page: "player-actions",
         // Tagged per ACTIVITY: a date tag collapsed two squads' reminders

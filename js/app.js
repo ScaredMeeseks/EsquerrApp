@@ -1354,7 +1354,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 113;
+  const APP_VERSION = 114;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2256,6 +2256,20 @@
     var start = new Date(t.date + 'T' + minsToHHMM(w.start) + ':00');
     if (isNaN(start.getTime())) return null;
     return new Date(start.getTime() + (w.end - w.start) * 60000);
+  }
+
+  /* Ceilings for the RPE form's Minutes box. A MATCH cannot run past 100
+     — 90 plus added time — and the old flat 300 let a mistyped "900" through
+     as 300, which is ten times a real session and skews the load charts for
+     the rest of the season. A training has no equivalent natural bound, so
+     it keeps the wide one. */
+  var ACTION_MINUTES_MAX = 300;
+  var MATCH_MINUTES_MAX = 100;
+
+  /** How long a session lasts, in minutes — the RPE form's default. */
+  function sessionMinutes(t) {
+    var w = sessionWindow(t);
+    return w ? (w.end - w.start) : null;
   }
 
   /** The instant a match finishes. No endTime field exists for matches. */
@@ -4412,23 +4426,32 @@
 
     let pendingHtml = '';
     pendingTraining.forEach(tr => {
+      /* Pre-filled with the session's own length — the coach set an
+         endTime, so asking the player to work it out again is a step with
+         no information in it. Still editable: he may have left early. */
+      const trMins = sessionMinutes(tr);
       pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${sanitize(recordKey(session.id, tr, 'rpe'))}">
         <div class="action-header"><span class="badge badge-green">${t('activity.badge_training')}</span><span class="action-date">${tDayDDMM(tr.date)} · ${tr.time}</span></div>
         <div class="action-label">${sanitize(tr.focus || t('activity.badge_training'))}</div>
         <div class="action-form">
           <div class="action-field"><label data-tooltip="${t('actions.rpe_tooltip')}">${t('actions.rpe')}</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
+          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3" data-max="${ACTION_MINUTES_MAX}" value="${trMins == null ? '' : trMins}"></div>
           <button class="btn btn-primary btn-small action-submit">${t('btn.submit')}</button>
         </div>
       </div>`;
     });
     pendingMatches.forEach(m => {
+      /* Minutes played, derived from the starting XI and the substitution
+         events — the club already records them, so the player should not
+         be retyping what the coach entered. NULL (blank) when there is no
+         line-up to derive from; see playerMatchMinutesKnown. */
+      const mMins = playerMatchMinutesKnown(session.id, m.id);
       pendingHtml += `<div class="action-card" data-action-type="match" data-action-key="${session.id}_match_${m.id}">
         <div class="action-header"><span class="badge badge-yellow">${t('activity.badge_match')}</span><span class="action-date">${tDayDDMM(m.date)} · ${m.time}</span></div>
         <div class="action-label">${matchLabel(m)}</div>
         <div class="action-form">
           <div class="action-field"><label data-tooltip="${t('actions.rpe_tooltip')}">${t('actions.rpe')}</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
+          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3" data-max="${MATCH_MINUTES_MAX}" value="${mMins == null ? '' : mMins}"></div>
           <button class="btn btn-primary btn-small action-submit">${t('btn.submit')}</button>
         </div>
       </div>`;
@@ -6040,6 +6063,23 @@
       _pmMinutesCache[uid] = byId;
     }
     return _pmMinutesCache[uid][String(matchId)] || 0;
+  }
+
+  /**
+   * The same number, but NULL when it cannot be derived at all.
+   *
+   * playerMatchMinutes() collapses "played nothing" and "no line-up
+   * recorded" into 0, which is right for load maths and wrong for a form
+   * default: pre-filling 0 for a whole squad whose coach never entered a
+   * starting XI invites everyone to submit a zero and quietly flatten the
+   * club's load data. computePlayerMatchStats already distinguishes them —
+   * it returns '—' when there is no XI and 'NC' when the player was not
+   * called — and only a real number reaches the cache.
+   */
+  function playerMatchMinutesKnown(uid, matchId) {
+    playerMatchMinutes(uid, matchId);          // fills the memo
+    var v = _pmMinutesCache[uid][String(matchId)];
+    return (typeof v === 'number') ? v : null;
   }
 
   function imputeMatchRpe(squad, matchId, minutes) {
@@ -19483,12 +19523,15 @@
       });
     });
 
-    // Player actions: clamp Minutes inputs (digits only, max 300)
+    /* Player actions: clamp Minutes inputs (digits only, per-card ceiling).
+       `data-max` because a MATCH caps at 100 and a training does not — a
+       single hardcoded 300 let a mistyped match length through as 300. */
     $$('.action-minutes').forEach(inp => {
+      const cap = Number(inp.dataset.max) || ACTION_MINUTES_MAX;
       inp.addEventListener('input', () => {
         inp.value = inp.value.replace(/[^0-9]/g, '');
         const v = parseInt(inp.value, 10);
-        if (!isNaN(v) && v > 300) inp.value = 300;
+        if (!isNaN(v) && v > cap) inp.value = cap;
       });
     });
 
@@ -19514,7 +19557,13 @@
         const rpe = parseInt(rpeInput.value, 10);
         const minutes = parseInt(minInput.value, 10);
         if (isNaN(rpe) || rpe < 0 || rpe > 10) { rpeInput.classList.add('input-error'); return; }
-        if (isNaN(minutes) || minutes < 0) { minInput.classList.add('input-error'); return; }
+        /* The ceiling again at submit, not only on `input`. A value the
+           form PRE-FILLED never fires an input event, and neither does an
+           autofill — so the clamp above cannot be the only check. */
+        const minCap = Number(minInput.dataset.max) || ACTION_MINUTES_MAX;
+        if (isNaN(minutes) || minutes < 0 || minutes > minCap) {
+          minInput.classList.add('input-error'); return;
+        }
         const key = card.dataset.actionKey;
         const tag = card.dataset.actionType;
         const ua = rpe * minutes;

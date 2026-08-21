@@ -2422,3 +2422,40 @@ answer. Same as before this change — it was never enforced server-side.
 Unit tests 631 → **643**, including a cross-file guard that reads
 `REMINDER_PUSH_HOURS`/`LOCK_HOURS`/`HOURS_MAX` out of **both** `js/app.js` and
 `functions/index.js` and asserts they are equal. Verified it bites by mutating one side.
+
+### v114 (2026-08-21) — the RPE form stops asking for what the club already knows
+
+The first live push arrived and the feedback was immediate. Three changes, all small.
+
+**1. The push says "Entrenament", not the focus.** `session.focus` is the coach's own
+planning label — "Força i prevenció", "Partit condicionat" — and means nothing to a player
+reading a lock-screen notification. Both bodies drop it: the pre-session reminder and the
+RPE chase.
+
+**2. A training's Minutes box is pre-filled with the session's length.** `sessionMinutes()`
+is `sessionWindow`'s duration, so it honours `endTime` and falls back to 90. The coach
+already set it; asking the player to work it out again is a step with no information in it.
+Still editable — he may have left early.
+
+**3. A match's Minutes box is pre-filled from the substitution events.**
+`playerMatchMinutes` already derived this from the starting XI and the `change` events, for
+the readiness estimator — it just was not offered to the player. **Verified against
+production before relying on it**: the demo club holds 199 substitution events across 72
+matches, with a `startingXI` on 73 of 75 convocatòries.
+
+`playerMatchMinutesKnown()` is new and exists for one reason: `playerMatchMinutes` collapses
+"played nothing" and "no line-up recorded" into **0**, which is right for load maths and
+wrong for a form default. Pre-filling 0 for a whole squad whose coach never entered a
+starting XI invites everyone to submit a zero and quietly flatten the club's load data.
+`computePlayerMatchStats` already distinguishes them — `'—'` for no XI, `'NC'` for not
+called — so only a real number reaches the cache, and a null renders an **empty** box.
+Esquerra de l'Eixample has no matches at all yet, so that is the branch it will actually hit.
+
+**The match cap is 100 minutes** (90 plus added time), the training cap stays 300. It was a
+flat 300 for both, so a mistyped match length sailed through as 300 — ten times a real
+session, and it skews the load charts for the rest of the season. The ceiling now comes from
+`data-max` per card **and is re-checked at submit**: a value the form PRE-FILLED never fires
+an `input` event, and neither does an autofill, so the keystroke clamp cannot be the only
+check. That trap was created by this very change.
+
+Unit tests 643 → **651**.

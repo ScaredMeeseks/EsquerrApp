@@ -38,7 +38,8 @@ function load(letters) {
   return new Function('getTeamLetters', `
     ${code}
     return { trainingTeams, playerIsCalled, calledPlayers, playerTrainings,
-             sessionWindow, sessionEndsAt, matchEndsAt, trainingsOverlap,
+             sessionWindow, sessionEndsAt, matchEndsAt, sessionMinutes,
+             trainingsOverlap,
              hhmmToMins, minsToHHMM,
              defaultEndTime };`)(
       () => letters || ['A']);
@@ -943,4 +944,71 @@ describe('new-session date field', () => {
         assert.ok(dp.includes('dpInput.dataset.dateIso = iso'),
             'and the ISO date lives in the dataset, not the visible value');
       });
+});
+
+/* ------------------------------------------------------------------ *
+ * The RPE form's Minutes box.
+ *
+ * It was blank and capped at a flat 300 for everything. Three problems:
+ * a player retyped a number the club already knew, a mistyped match
+ * length sailed through as 300 (ten times a real session, and it skews
+ * the load charts for the rest of the season), and nothing distinguished
+ * "played nothing" from "no line-up was ever recorded".
+ * ------------------------------------------------------------------ */
+describe('training — the RPE form defaults', () => {
+  const H = load(['A']);
+
+  it('a session\'s length comes from its own endTime', () => {
+    assert.strictEqual(
+        H.sessionMinutes({ date: '2026-08-21', time: '11:30', endTime: '12:00' }), 30);
+    assert.strictEqual(
+        H.sessionMinutes({ date: '2026-08-21', time: '20:00', endTime: '21:30' }), 90);
+  });
+
+  it('falls back to 90 when no endTime is set', () => {
+    assert.strictEqual(H.sessionMinutes({ date: '2026-08-21', time: '20:00' }), 90);
+  });
+
+  it('is null when the session cannot be timed, so the box stays blank', () => {
+    assert.strictEqual(H.sessionMinutes({ date: '2026-08-21', time: '' }), null);
+    assert.strictEqual(H.sessionMinutes(null), null);
+  });
+
+  it('the training card is pre-filled with that length', () => {
+    const body = grab('    pendingTraining.forEach(tr => {', '    pendingMatches.forEach(m => {');
+    assert.ok(body.includes('const trMins = sessionMinutes(tr);'));
+    assert.ok(body.includes("value=\"${trMins == null ? '' : trMins}\""),
+        'null must render an empty box, not the string "null"');
+  });
+
+  it('the match card is pre-filled from the recorded minutes', () => {
+    const body = grab('    pendingMatches.forEach(m => {', '    // Availability cards for matches');
+    assert.ok(body.includes('playerMatchMinutesKnown(session.id, m.id)'),
+        'the club records substitutions; the player should not retype them');
+    assert.ok(body.includes("value=\"${mMins == null ? '' : mMins}\""));
+  });
+
+  it('a match caps at 100 minutes, a training does not', () => {
+    const capMatch = /var MATCH_MINUTES_MAX = (\d+);/.exec(src);
+    const capAny = /var ACTION_MINUTES_MAX = (\d+);/.exec(src);
+    assert.ok(capMatch && capAny);
+    assert.strictEqual(capMatch[1], '100', '90 plus added time');
+    assert.strictEqual(capAny[1], '300');
+    const matchCard = grab('    pendingMatches.forEach(m => {', '    // Availability cards for matches');
+    assert.ok(matchCard.includes('data-max="${MATCH_MINUTES_MAX}"'));
+  });
+
+  it('the cap is enforced at SUBMIT, not only while typing', () => {
+    /* A pre-filled value fires no `input` event, and neither does an
+       autofill, so the keystroke clamp cannot be the only check. */
+    const body = grab('    $$(\'.action-submit\').forEach(btn => {', '        const key = card.dataset.actionKey;');
+    assert.ok(body.includes('minutes > minCap'));
+    assert.ok(body.includes('Number(minInput.dataset.max) || ACTION_MINUTES_MAX'));
+  });
+
+  it('the keystroke clamp reads the card\'s own ceiling', () => {
+    const body = grab('    $$(\'.action-minutes\').forEach(inp => {', '    // Player actions: clamp RPE inputs');
+    assert.ok(body.includes('Number(inp.dataset.max) || ACTION_MINUTES_MAX'));
+    assert.ok(!body.includes('> 300'), 'the flat 300 was the bug');
+  });
 });

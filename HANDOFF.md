@@ -2,13 +2,13 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-**`main` is at v113, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
+**`main` is at v114, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
 functions both. Verified against the live artefacts rather than the deploy output:
 
 ```bash
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-# both said 113 at 2026-08-21
+# both said 114 at 2026-08-21
 ```
 
 All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** now
@@ -20,13 +20,44 @@ it cannot tell you the cron actually changed. The scheduler API can — see
 GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
 ```
 
-Rules unchanged and not redeployed. Unit tests **643 passing** (+48 this session); the
+Rules unchanged and not redeployed. Unit tests **651 passing** (+56 this session); the
 rules and functions emulator suites were **not** re-run.
 
-**The scheduler fires** — observed at `2026-08-21T15:30:01Z`, exactly on the wall clock,
-which is also the proof the cron change took. **A live SEND is still unproven**: nothing was
-due in that window, so no push has yet gone out under any of the new logic. See "Verify it"
-below — both reminders are cheap to test now.
+**The push chain is PROVEN end to end.** The scheduler fired at `2026-08-21T15:30:01Z`,
+exactly on the wall clock — which is also the proof the cron change took — and the owner
+received the resulting RPE notification on his phone. That closes the oldest open question
+in this file: the scheduled reminders work, not just the manual convocatòria push.
+
+v114 is the feedback from that first live push, already shipped.
+
+---
+
+## What shipped: v114 — the RPE form stops asking for what the club already knows
+
+**1. The push says "Entrenament", not the focus.** `session.focus` is the coach's planning
+label — "Força i prevenció", "Partit condicionat" — and means nothing on a lock screen.
+Dropped from both bodies.
+
+**2. A training's Minutes box is pre-filled with the session's length.** `sessionMinutes()`
+is `sessionWindow`'s duration, so it honours `endTime` and falls back to 90.
+
+**3. A match's Minutes box is pre-filled from the substitution events.** The derivation
+already existed — `playerMatchMinutes`, from the starting XI and the `change` events, built
+for the readiness estimator — it just was never offered to the player. **Checked against
+production first**: the demo club holds 199 substitution events across 72 matches, with a
+`startingXI` on 73 of 75 convocatòries.
+
+`playerMatchMinutesKnown()` is new for one reason: `playerMatchMinutes` collapses "played
+nothing" and "no line-up recorded" into **0**. Right for load maths, wrong for a form
+default — pre-filling 0 for a squad whose coach never entered an XI invites everyone to
+submit a zero and flatten the club's load data. A null renders an empty box instead.
+**Esquerra de l'Eixample has no matches at all, so that is the branch it will hit.**
+
+**The match cap is 100** (90 + added time); training stays 300. It was a flat 300 for both,
+so a mistyped match length sailed through as 300. The cap is `data-max` per card **and is
+re-checked at submit** — a PRE-FILLED value fires no `input` event, and neither does an
+autofill, so the keystroke clamp cannot be the only check. This change created that trap
+itself.
 
 ---
 
@@ -219,7 +250,8 @@ a throwaway worktree first and fails there — but that is not the same as seein
    "Completat". Not two hours later.
 2. **Coach home** — a finished session disappears from "Aquesta setmana" instead of
    sitting there until Sunday night.
-3. **The push, end to end** — this is the one that has never been proven:
+3. **The push, end to end** — ✅ **PROVEN 2026-08-21**, an RPE notification arrived on the
+   owner's phone from the scheduled job. Re-run this only when changing the audience logic:
    - Create a session ending in the next ~30 minutes.
    - As a demo player, answer **Sí** for it (the audience is `yes`/`late` only — an
      `injured` answer is excluded, which is exactly why the 2026-08-20 run sent nothing).
@@ -234,6 +266,10 @@ a throwaway worktree first and fails there — but that is not the same as seein
    app and (if you bypass the form) in the callable.
 6. **The lock moved from 1 h to 3 h.** Open a session starting in two hours as a player —
    the availability badge should be frozen, with a tooltip naming the time it closed.
+7. **v114's pre-filled Minutes.** A training card should open with the session's own length
+   already in the box; a match card with the minutes derived from the substitutions. Try
+   typing 900 into a match card — it must clamp to 100, and submitting a pre-filled value
+   above the cap must be refused rather than silently stored.
    - Confirm no `rpe` doc exists for that uid + session.
    - Wait for the half-hour boundary, then read the log:
 
