@@ -1897,6 +1897,20 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v108 - why the convocatòria and the editor disagreed
+
+The owner spotted that v107 fixed the editor previews and *not* the convocatòria — same code, same stylesheet, two different results. That difference is the whole diagnosis.
+
+The icons were sized `height: 72px; width: auto` in CSS. **`width: auto` on an inline `<svg>` is not reliably resolved from the viewBox ratio**; where it falls back to the element's `width="34"` attribute the shirt renders **34px wide at 72px tall**, and nine bands across a squashed 17px torso are 1.9px each — irregular, and irregular in a way that depends on where the browser decides to round. Nothing about the band arithmetic was wrong; the arithmetic was being applied to a width that was not 72.
+
+**Both dimensions now live in the markup** (`KIT_ICON_PX = 72`, the sock `36 × 72` because its viewBox is `32 × 64`), so there is nothing left for the browser to resolve. The CSS rules that set a size are gone, and a test asserts no `svg { height: …; width: auto }` rule comes back.
+
+The small inline strips on match detail and the activity list still scale down, but now state **both** dimensions per shape — they were forcing `30 × 30` on a sock that is 1:2, which squashed it. Stripes are not even at that size and are not meant to be: they are decorative icons beside a line of text, not something to pick a kit from.
+
+Also: `stripeSvg` rounded band coordinates to 4 decimal places, which put edges at `22.00005px` instead of `22px`. Far too small to see, but it is a needless approximation in the one place the whole feature is about exactness — now 6 decimals, and the emitted bands land on exactly `22/30/38/46px` at exactly `4px` wide.
+
+**578 unit tests.** Frontend only.
+
 ## v107 - the grid ORIGIN, which v106 forgot
 
 v106 checked that a band was a whole number of pixels and stopped there. Two things have to be whole, and the second is what was still wrong:

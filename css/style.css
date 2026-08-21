@@ -2266,7 +2266,10 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    edge sat on a half pixel and crispEdges rounded them inconsistently —
    which is what made adjacent stripes look different widths.
    S must therefore divide by 18, 4 and 8: 72 is the least such size. */
-.conv-uniform-row .uniform-opt svg { height: 72px; width: auto; }
+/* No size here: both dimensions are in the markup (KIT_ICON_PX in app.js),
+   because width:auto on an inline <svg> is not reliably resolved from the
+   viewBox ratio and a squashed shirt is what made these stripes uneven
+   while the editor previews looked right. */
 /* The pieces of one kit, side by side in an inline icon. Bottom-aligned so
    the shirt, shorts and sock sit on a common line despite differing heights. */
 .kit-icons { display: flex; align-items: flex-end; gap: 1px; }
@@ -2279,7 +2282,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .ts-kit-head { display: flex; align-items: center; gap: .5rem; }
 .ts-kit-head .reg-input { flex: 1; min-width: 0; }
 .ts-kit-preview { flex: 0 0 auto; }
-.ts-kit-preview svg { height: 72px; width: auto; }
+/* Sized by the markup too — see the note on .conv-uniform-row above. */
 .ts-kit-garments {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .6rem;
 }
@@ -2307,11 +2310,18 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .activity-uniform {
   display: inline-flex; align-items: center; gap: 2px; margin-left: .5rem; vertical-align: middle;
 }
-.activity-uniform svg { width: 30px; height: 30px; }
+/* The small inline strips scale the icons down. BOTH dimensions are given
+   explicitly per shape — the sock is 1:2, not square — because width:auto on
+   an inline <svg> is not reliably resolved and a squashed shirt is what made
+   the stripes look uneven. Stripes are not even at this size; these are
+   6mm decorative icons beside a line of text, not something to pick a kit
+   from. */
+.activity-uniform .kit-svg, .detail-uniform-inline .kit-svg { width: 30px; height: 30px; }
+.activity-uniform .kit-svg-tall, .detail-uniform-inline .kit-svg-tall { width: 15px; height: 30px; }
 .detail-uniform-inline {
   display: inline-flex; align-items: center; gap: 2px; margin-left: .5rem; vertical-align: middle;
 }
-.detail-uniform-inline svg { width: 30px; height: 30px; }
+
 
 /* ===== Training Availability ===== */
 .avail-btns {
@@ -2972,7 +2982,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
      it is wrong: no smaller size puts the stripe edges on whole pixels, so
      a phone would get back exactly the unevenness this fixed. The rows wrap
      instead — .conv-uniform-row is already flex-wrap. */
-  .conv-uniform-row .kit-icons svg { height: 26px; width: auto; }
+  .conv-uniform-row .kit-icons .kit-svg { width: 26px; height: 26px; }
+  .conv-uniform-row .kit-icons .kit-svg-tall { width: 13px; height: 26px; }
   .conv-player { cursor: pointer; }
   .conv-player:active { background: rgba(189,22,44,.08); }
   .conv-drop-hint { padding: 1rem; font-size: .82rem; }

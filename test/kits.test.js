@@ -339,12 +339,17 @@ describe('kits — nine bands land on whole pixels', () => {
 
        So the ORIGIN is checked as well as the width, and against the real
        shape offsets rather than a rule of thumb. */
-    const sizes = [];
-    (css.match(/\.conv-uniform-row \.uniform-opt svg \{ height: (\d+)px/g) || [])
-        .forEach((s) => sizes.push(+s.match(/(\d+)px/)[1]));
-    const ed = css.match(/\.ts-kit-preview svg \{ height: (\d+)px/);
-    if (ed) sizes.push(+ed[1]);
-    assert.ok(sizes.length >= 2, 'expected the convocatòria and editor sizes');
+    /* The size lives in the MARKUP now, not the stylesheet: width:auto on an
+       inline <svg> is not reliably resolved from the viewBox ratio, and a
+       shirt rendered 34px wide at 72px tall squashes nine 4px bands into
+       1.9px — which is why the convocatòria looked wrong while the editor,
+       with the same CSS, looked right. */
+    const m = app.match(/const KIT_ICON_PX = (\d+);/);
+    assert.ok(m, 'no KIT_ICON_PX in app.js');
+    const sizes = [+m[1]];
+    assert.ok(!/svg \{ height: \d+px; width: auto/.test(css),
+        'a CSS rule is sizing a kit icon again; both dimensions belong in ' +
+        'the markup so nothing is left for the browser to resolve');
 
     const shapes = [
       {name: 'shirt body', origin: box('SHIRT_BODY_BOX').x, span: box('SHIRT_BODY_BOX').w},
@@ -362,6 +367,15 @@ describe('kits — nine bands land on whole pixels', () => {
             'at ' + S + 'px a ' + sh.name + ' band is ' + band + 'px');
       });
     });
+  });
+
+  it('emits both dimensions, so nothing is left to resolve', () => {
+    // The sock's viewBox is 32×64, so its width is half its height. Getting
+    // that wrong squashes it; leaving it to `auto` squashed the shirt.
+    assert.ok(/width="\$\{KIT_ICON_PX\}" height="\$\{KIT_ICON_PX\}"/.test(app),
+        'the square shapes must state both dimensions');
+    assert.ok(/width="\$\{KIT_ICON_PX \/ 2\}" height="\$\{KIT_ICON_PX\}"/.test(app),
+        'the sock is 1:2 and must state it');
   });
 
   it('72 is genuinely the smallest size that works', () => {

@@ -402,16 +402,16 @@ function stripeSvg(v, uid, pathD, box) {
   const horiz = f.dir === 'h';
   const start = horiz ? box.y : box.x;
   const span = horiz ? box.h : box.w;
-  const at = (i) => Math.round((start + (span * i) / f.n) * 1e4) / 1e4;
+  const at = (i) => Math.round((start + (span * i) / f.n) * 1e6) / 1e6;
   let rects = '';
   for (let i = 1; i < f.n; i += 2) {
     const a = at(i);
     const b = at(i + 1);
     rects += horiz ?
       '<rect x="' + box.x + '" y="' + a + '" width="' + box.w +
-        '" height="' + (Math.round((b - a) * 1e4) / 1e4) + '"' :
+        '" height="' + (Math.round((b - a) * 1e6) / 1e6) + '"' :
       '<rect x="' + a + '" y="' + box.y + '" width="' +
-        (Math.round((b - a) * 1e4) / 1e4) + '" height="' + box.h + '"';
+        (Math.round((b - a) * 1e6) / 1e6) + '" height="' + box.h + '"';
     rects += ' fill="' + f.c2 + '" shape-rendering="crispEdges"/>';
   }
   return {

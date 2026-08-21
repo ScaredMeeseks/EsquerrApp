@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 107;
+  const APP_VERSION = 108;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -13351,6 +13351,17 @@
      Without it the bands land on fractional pixels, and even with
      shape-rendering="crispEdges" they snap to widths differing by one
      device pixel — which is exactly the unevenness this replaced. */
+  /* The rendered size, in the markup rather than in CSS.
+     It was `height: 72px; width: auto` in the stylesheet, and `width: auto`
+     on an INLINE <svg> is not reliably resolved from the viewBox ratio —
+     where it falls back to the width attribute the shirt renders 34px wide
+     at 72px tall, which squashes nine 4px bands into 1.9px each. That is
+     the difference between the two screens: the same CSS, two different
+     resolved widths.
+     Both dimensions are stated explicitly here so there is nothing left to
+     resolve. 72 is the size the pixel arithmetic requires; the sock is
+     36 × 72 because its viewBox is 32 × 64. */
+  const KIT_ICON_PX = 72;
   const SHIRT_BODY_BOX = {x: 16, y: 6, w: 32, h: 50};
   // The full shirt is NOT half the viewBox, and does not need to be: hoops
   // across a whole shirt are a different, more forgiving case than nine
@@ -13379,7 +13390,7 @@
     }
     // Outline last in both branches, so no fill can overdraw it.
     body += `<path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
-    return `<svg viewBox="0 0 64 64" width="34" height="34" style="display:block">${body}
+    return `<svg class="kit-svg" viewBox="0 0 64 64" width="${KIT_ICON_PX}" height="${KIT_ICON_PX}" style="display:block">${body}
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
       <image href="${sanitize(clubBadgeUrl())}" x="33" y="18" width="10" height="10" opacity=".7"/>
@@ -13396,7 +13407,7 @@
     if (!fill) return '';
     const s = stripeSvg(fill, ++_kitUid, SHORTS_PATH, SHORTS_BOX);
     const shade = darkenHex(parseFill(fill).c1, 40);
-    return `<svg viewBox="0 0 64 64" width="30" height="30" style="display:block">${s.defs}
+    return `<svg class="kit-svg" viewBox="0 0 64 64" width="${KIT_ICON_PX}" height="${KIT_ICON_PX}" style="display:block">${s.defs}
       ${s.shapes}
       <path d="${SHORTS_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <line x1="14" y1="20" x2="50" y2="20" stroke="${shade}" stroke-width="1" opacity=".5"/>
@@ -13425,7 +13436,7 @@
     if (!fill) return '';
     const s = stripeSvg(fill, ++_kitUid, SOCK_PATH, SOCK_BOX);
     const cuff = darkenHex(parseFill(fill).c1, 60);
-    return `<svg viewBox="0 0 32 64" width="22" height="34" style="display:block">${s.defs}
+    return `<svg class="kit-svg kit-svg-tall" viewBox="0 0 32 64" width="${KIT_ICON_PX / 2}" height="${KIT_ICON_PX}" style="display:block">${s.defs}
       ${s.shapes}
       <path d="${SOCK_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <rect x="8" y="2" width="14" height="6" rx="1" fill="${cuff}" stroke="none"/>
