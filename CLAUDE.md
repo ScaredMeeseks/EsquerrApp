@@ -25,7 +25,7 @@ cd test && npm run test:functions # Firestore + Functions emulators, real trigge
 cd test && npm test               # the above plus the rules suite
 ```
 
-143 tests today (42 unit + 87 rules + 14 functions). `test:unit` covers `js/shard.js` (which category each row of each key belongs to) and `js/db.js` (the router, run for real against an in-memory Firestore fake). `test:functions` runs `functions/index.js` itself in the Functions emulator — `reshardMember`/`onMemberCategoryChanged`, `updateTeamDates`, and the `wipe-team-data.js` cutover script. Everything uses the fake project `demo-esquerrapp` — no credentials, no Cloud Shell round-trip.
+**595 unit tests** as of v110, plus the rules and functions suites (run them for the current figures — the totals quoted here go stale within a session or two). `test:unit` covers `js/shard.js` (which category each row of each key belongs to), `js/db.js` (the router, run for real against an in-memory Firestore fake) and, increasingly, logic lifted straight out of `js/app.js`: a `grab()` helper slices a function block out of the source and runs it in a `new Function` over stubs, which is the only coverage `app.js` has and doubles as a production diagnostic. `test:functions` runs `functions/index.js` itself in the Functions emulator — `reshardMember`/`onMemberCategoryChanged`, `updateTeamDates`, and the `wipe-team-data.js` cutover script. Everything uses the fake project `demo-esquerrapp` — no credentials, no Cloud Shell round-trip.
 
 Run `test:unit` after **any** change to `js/db.js` or `js/shard.js`, `test:functions` after **any** change to `functions/`, and the full suite after **any** change to `firestore.rules` or to the custom claims that rules read (`teamId`, `role`, `cats`).
 
