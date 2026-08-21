@@ -310,10 +310,14 @@ describe('reminders — the schedulers use them', () => {
     assert.ok(body.includes('answeredFor(answered, uid, session)'));
   });
 
-  it('the RPE reminder considers EVERY session that day', () => {
+  it('the RPE reminder considers EVERY session, not the first', () => {
     const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
-    assert.ok(body.includes('training.filter((t) => t.date === today)'),
+    /* The date equality moved into endedInWindow when the reminder stopped
+       being a 23:00 sweep, so this pins the INVARIANT rather than the old
+       expression: every due session is considered, never just one. */
+    assert.ok(body.includes('const dueTraining = training.filter('),
         'a find() here silently dropped the second squad\'s session');
+    assert.ok(!/\btraining\.find\(/.test(body));
     assert.ok(body.includes('await squadForSession(teamId, session)'));
   });
 
@@ -322,10 +326,35 @@ describe('reminders — the schedulers use them', () => {
     assert.ok(body.includes('await squadForMatch(teamId, match, shards)'));
     assert.ok(!/getTeamMembersByRole\(teamId, "player"\)/.test(body),
         'the club-wide roster nagged players who were never called up');
-    assert.ok(body.includes('matches.filter((m) => m.date === today)'),
+    assert.ok(body.includes('const dueMatches = matches.filter('),
         'a find() here dropped the second category\'s match');
+    assert.ok(!/\bmatches\.find\(/.test(body));
     assert.ok(body.includes('"fa_convocatoria_sent"'),
         'the shard has to be READ for squadForMatch to see it');
+  });
+
+  it('the RPE reminder fires at the END of an activity, not at 23:00', () => {
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    assert.ok(!body.includes('"0 23 * * *"'),
+        'a nightly sweep chased an 11:30 session eleven hours late');
+    assert.ok(/schedule: "every 30 minutes"/.test(body));
+    assert.ok(body.includes('endedInWindow(t, "training", now)'));
+    assert.ok(body.includes('endedInWindow(m, "match", now)'));
+    /* A session ending after midnight belongs to tomorrow's 00:00 run.
+       Querying today alone would never chase it. */
+    assert.ok(body.includes('const dates = [yesterday, today]'));
+    assert.ok(body.includes('"trainingDates", "array-contains-any", dates'));
+  });
+
+  it('the window is exactly as wide as the schedule interval', () => {
+    /* Narrower leaves gaps (an activity nothing chases); wider double-sends
+       on consecutive runs. Both are silent, so pin them to each other. */
+    const win = /const RPE_WINDOW_MINS = (\d+);/.exec(src);
+    assert.ok(win, 'RPE_WINDOW_MINS is gone');
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    const sched = /schedule: "every (\d+) minutes"/.exec(body);
+    assert.ok(sched, 'the RPE reminder is no longer on an interval schedule');
+    assert.strictEqual(win[1], sched[1]);
   });
 
   it('the availability reminder scopes to the squad, not the club', () => {
@@ -339,5 +368,101 @@ describe('reminders — the schedulers use them', () => {
     // A date tag collapses two squads' reminders into one on the device.
     const body = grab('exports.scheduledTrainingReminder', 'exports.scheduledRpeReminder');
     assert.ok(body.includes('"training-" + (session.id || session.date)'));
+  });
+
+  it('the RPE push is tagged per ACTIVITY too', () => {
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    assert.ok(body.includes('"rpe-training-" + (session.id || session.date)'));
+    assert.ok(body.includes('"rpe-match-" + match.id'));
+    assert.ok(!/tag: "rpe-" \+ today/.test(body),
+        'one tag a day meant the evening squad replaced the morning squad\'s');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * When an activity ends, server side.
+ *
+ * These numbers MUST match sessionWindow()/matchEndsAt() in js/app.js:
+ * the client decides when a player may enter an RPE, the server decides
+ * when to ask for one, and a mismatch pushes people at a screen with
+ * nothing to answer. test/training.test.js pins the client half.
+ * ------------------------------------------------------------------ */
+describe('reminders — when an activity ends', () => {
+  /* parseMadridDate comes along because activityEndsAt needs it: the
+     fallback arithmetic is in minutes but the answer is an instant, and
+     Madrid is the only timezone the schedulers ever reason in. */
+  const H = (() => {
+    const code = grab('function parseMadridDate(dateStr, timeStr)',
+        '// ── Helper: parse a teams/{id}/data/{key} doc in EITHER format ──') +
+      grab('const DEFAULT_SESSION_MINS = 90;', '/**\n * Has this player answered');
+    // eslint-disable-next-line no-new-func
+    return new Function(`${code}
+      return { activityEndsAt, endedInWindow, hhmmToMins, RPE_WINDOW_MINS };`)();
+  })();
+
+  // 2026-08-21 is CEST (UTC+2), so 12:00 Madrid is 10:00Z.
+  const utc = (s) => new Date(s).getTime();
+
+  it('uses the endTime the coach set', () => {
+    assert.strictEqual(
+        H.activityEndsAt({date: '2026-08-21', time: '11:30', endTime: '12:00'},
+            'training').getTime(),
+        utc('2026-08-21T10:00:00Z'));
+  });
+
+  it('falls back to 90 minutes for a session with no endTime', () => {
+    assert.strictEqual(
+        H.activityEndsAt({date: '2026-08-20', time: '22:00'}, 'training').getTime(),
+        utc('2026-08-20T21:30:00Z'));
+  });
+
+  it('gives a match two hours and ignores any endTime on it', () => {
+    // No match has ever carried one; honouring a stray field would make
+    // the server disagree with matchEndsAt() in the client.
+    assert.strictEqual(
+        H.activityEndsAt({date: '2026-08-22', time: '18:00', endTime: '19:00'},
+            'match').getTime(),
+        utc('2026-08-22T18:00:00Z'));
+  });
+
+  it('crosses midnight rather than going Invalid', () => {
+    const end = H.activityEndsAt({date: '2026-08-21', time: '23:30'}, 'training');
+    assert.ok(end && !isNaN(end.getTime()));
+    assert.strictEqual(end.getTime(), utc('2026-08-21T23:00:00Z')); // 01:00 Madrid
+  });
+
+  it('honours a legacy "HH:MM - HH:MM" range for a session', () => {
+    assert.strictEqual(
+        H.activityEndsAt({date: '2026-08-21', time: '20:00 - 21:30'},
+            'training').getTime(),
+        utc('2026-08-21T19:30:00Z'));
+  });
+
+  it('is null when it cannot be timed', () => {
+    assert.strictEqual(H.activityEndsAt({date: '2026-08-21', time: ''}, 'training'), null);
+    assert.strictEqual(H.activityEndsAt({time: '20:00'}, 'training'), null);
+    assert.strictEqual(H.activityEndsAt(null, 'training'), null);
+  });
+
+  it('claims an activity for exactly one run', () => {
+    const s = {date: '2026-08-21', time: '11:30', endTime: '12:00'};
+    const at = (iso) => H.endedInWindow(s, 'training', new Date(iso));
+    assert.strictEqual(at('2026-08-21T09:30:00Z'), false, 'still training');
+    assert.strictEqual(at('2026-08-21T10:00:00Z'), true, 'the run that owns it');
+    assert.strictEqual(at('2026-08-21T10:29:00Z'), true, 'a late run still catches it');
+    assert.strictEqual(at('2026-08-21T10:30:00Z'), false, 'the next run must not repeat');
+    assert.strictEqual(at('2026-08-21T21:00:00Z'), false, 'and 23:00 is long past');
+  });
+
+  it('leaves no gap between consecutive runs', () => {
+    /* Walk a day of runs and assert every session is claimed exactly once.
+       A window narrower than the interval loses activities silently. */
+    const s = {date: '2026-08-21', time: '11:30', endTime: '12:07'};
+    let claimed = 0;
+    for (let m = 0; m < 24 * 60; m += H.RPE_WINDOW_MINS) {
+      const now = new Date(utc('2026-08-21T00:00:00Z') + m * 60000);
+      if (H.endedInWindow(s, 'training', now)) claimed++;
+    }
+    assert.strictEqual(claimed, 1);
   });
 });

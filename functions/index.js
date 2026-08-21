@@ -7,8 +7,8 @@
 // 1. onPushQueueCreate — sends FCM when a doc is added to pushQueue
 // 2. scheduledTrainingReminder — runs every hour, sends reminders
 //    4h before training to players who haven't answered availability
-// 3. scheduledRpeReminder — runs at 23:00 daily, reminds players
-//    who haven't submitted RPE for today's completed training/match
+// 3. scheduledRpeReminder — runs every 30 minutes, reminds players
+//    as each training/match ENDS (endTime, else start + 90/120 min)
 // ============================================================
 
 const {onDocumentCreated, onDocumentWritten} = require("firebase-functions/v2/firestore");
@@ -407,6 +407,86 @@ function matchAsSession(match) {
   };
 }
 
+/* ── When an activity finishes ─────────────────────────────────
+   Mirrors sessionWindow()/matchEndsAt() in js/app.js, which cannot be
+   shared because functions/ deploys on its own. If you change the numbers
+   here, change them there: the client decides when a player may ENTER an
+   RPE and the server decides when to ask for one, and a mismatch means
+   pushing people at a screen that has nothing to answer yet. */
+const DEFAULT_SESSION_MINS = 90;
+const DEFAULT_MATCH_MINS = 120;
+// Must equal scheduledRpeReminder's schedule interval — see endedInWindow.
+const RPE_WINDOW_MINS = 30;
+
+/** "HH:MM" → minutes past midnight, or null. */
+function hhmmToMins(v) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || "").trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const mi = Number(m[2]);
+  if (h > 23 || mi > 59) return null;
+  return h * 60 + mi;
+}
+
+/**
+ * The instant an activity ends, as a real Date, or null when it cannot be
+ * timed at all.
+ *
+ * Built as start + duration rather than by formatting the end back to
+ * HH:MM — a 23:30 session with no endTime ends at "25:00", which no date
+ * parser accepts and which would silently become an Invalid Date that
+ * every comparison answers `false` for.
+ *
+ * `time` is normally a plain HH:MM; a vestigial "HH:MM - HH:MM" range
+ * survives in old rows, so its second half is honoured for a session
+ * before the 90-minute fallback. A MATCH has no endTime field and never
+ * had one — it is always kick-off + 120 (90 + half time + added time).
+ *
+ * @param {object} item a training session or a match
+ * @param {string} kind "training" or "match"
+ * @return {?Date} when it finishes
+ */
+function activityEndsAt(item, kind) {
+  if (!item || !item.date) return null;
+  const parts = String(item.time || "").split(" - ");
+  const startHhmm = (parts[0] || "").trim();
+  const startMins = hhmmToMins(startHhmm);
+  if (startMins === null) return null;
+
+  let endMins = null;
+  if (kind !== "match") {
+    endMins = hhmmToMins(item.endTime);
+    if (endMins === null && parts.length > 1) endMins = hhmmToMins(parts[1]);
+  }
+  if (endMins === null || endMins <= startMins) {
+    endMins = startMins +
+      (kind === "match" ? DEFAULT_MATCH_MINS : DEFAULT_SESSION_MINS);
+  }
+  const start = parseMadridDate(item.date, startHhmm);
+  if (isNaN(start.getTime())) return null;
+  return new Date(start.getTime() + (endMins - startMins) * 60000);
+}
+
+/**
+ * Did this activity finish inside the window this run is responsible for?
+ *
+ * The band is half-open and exactly as wide as the schedule interval, so
+ * every activity falls to precisely ONE run — no repeats, no gaps, and no
+ * per-send bookkeeping doc to go stale. Same shape as the training
+ * reminder's 3.5–4.5 h band.
+ *
+ * @param {object} item a training session or a match
+ * @param {string} kind "training" or "match"
+ * @param {Date} now this run's clock
+ * @return {boolean} true when it is this run's to send
+ */
+function endedInWindow(item, kind, now) {
+  const end = activityEndsAt(item, kind);
+  if (!end) return false;
+  const mins = (now.getTime() - end.getTime()) / 60000;
+  return mins >= 0 && mins < RPE_WINDOW_MINS;
+}
+
 /**
  * Has this player answered for this session?
  * New records are keyed by session id; legacy ones by date, and those can
@@ -678,30 +758,45 @@ exports.scheduledTrainingReminder = onSchedule({
 });
 
 // ════════════════════════════════════════════════════════════
-// 3. RPE Reminder — runs at 23:00 CEST daily.
-//    Reminds players who completed training/match today but
-//    haven't submitted RPE.
+// 3. RPE Reminder — runs every 30 minutes and asks each squad for
+//    its RPE as ITS OWN activity ends.
+//
+//    This was a single 23:00 cron. That was wrong in both
+//    directions: an 11:30–12:00 session was chased eleven hours
+//    late, and a 22:00 session was chased at 23:00 — an hour in,
+//    while it was still being trained. The end time the coach
+//    actually set is the honest trigger; start + 90 (training) or
+//    + 120 (match) is the fallback when none was set.
+//
+//    One push PER ACTIVITY rather than one per player per day: two
+//    squads training the same evening finish at different times and
+//    are two different questions.
 // ════════════════════════════════════════════════════════════
 exports.scheduledRpeReminder = onSchedule({
-  schedule: "0 23 * * *",
+  schedule: "every 30 minutes", // keep RPE_WINDOW_MINS in step
   timeZone: "Europe/Madrid",
   region: "us-central1",
 }, async () => {
   const now = new Date();
-  const today = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"}).format(now);
+  const fmt = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"});
+  const today = fmt.format(now);
+  /* A 23:30 session ends after midnight, and the run that owns it is
+     tomorrow's 00:00. Yesterday has to stay in scope or that session is
+     never chased at all. */
+  const yesterday = fmt.format(new Date(now.getTime() - 24 * 36e5));
+  const dates = [yesterday, today];
 
-  // Only teams with a training or match today (denormalized fields)
+  // Only teams with a training or match on those dates (denormalized fields)
   const [trainTeams, matchTeams] = await Promise.all([
-    db.collection("teams").where("trainingDates", "array-contains", today).get(),
-    db.collection("teams").where("matchDates", "array-contains", today).get(),
+    db.collection("teams")
+        .where("trainingDates", "array-contains-any", dates).get(),
+    db.collection("teams")
+        .where("matchDates", "array-contains-any", dates).get(),
   ]);
   const teamDocs = new Map();
   trainTeams.forEach((d) => teamDocs.set(d.id, d));
   matchTeams.forEach((d) => teamDocs.set(d.id, d));
-  if (!teamDocs.size) {
-    logger.info("rpeReminder: no team had training or a match today");
-    return;
-  }
+  if (!teamDocs.size) return;
 
   await Promise.all([...teamDocs.keys()].map(async (teamId) => {
     const shards = await readDataShards(teamId,
@@ -711,16 +806,24 @@ exports.scheduledRpeReminder = onSchedule({
     /* filter, not find. Two squads can train the same evening, and `find`
        silently picked one -- so the other squad was never chased, and the
        first squad's session was used to judge everybody. */
-    const todaysTraining = training.filter((t) => t.date === today);
+    const dueTraining = training.filter((t) =>
+      dates.includes(t.date) && endedInWindow(t, "training", now));
     // Same reason: two categories play on the same Saturday.
-    const todaysMatches = matches.filter((m) => m.date === today);
-    if (!todaysTraining.length && !todaysMatches.length) return;
+    const dueMatches = matches.filter((m) =>
+      dates.includes(m.date) && endedInWindow(m, "match", now));
+    if (!dueTraining.length && !dueMatches.length) return;
+
+    /* Only the dates something actually ended on. `in` takes at most 30
+       values and this is at most 2, but reading a date with nothing due on
+       it is a wasted query on every one of the 48 daily runs. */
+    const dueDates = [...new Set(
+        [...dueTraining, ...dueMatches].map((a) => a.date))];
 
     // RPE + availability from the canonical record collections
     const teamRef = db.collection("teams").doc(teamId);
     const [rpeSnap, availSnap] = await Promise.all([
-      teamRef.collection("rpe").where("date", "==", today).get(),
-      teamRef.collection("trainingAvail").where("date", "==", today).get(),
+      teamRef.collection("rpe").where("date", "in", dueDates).get(),
+      teamRef.collection("trainingAvail").where("date", "in", dueDates).get(),
     ]);
     const rpeIds = new Set(rpeSnap.docs.map((d) => d.id));
     /* Availability keyed per SESSION: with two sessions on one date a
@@ -733,43 +836,52 @@ exports.scheduledRpeReminder = onSchedule({
       if (r.date) availBySession.add(r.uid + "_" + r.date);
     });
 
-    const missing = new Set();
-    for (const session of todaysTraining) {
+    for (const session of dueTraining) {
       const squad = await squadForSession(teamId, session);
-      squad.forEach((uid) => {
-        if (!answeredFor(availBySession, uid, session)) return;   // did not attend
-        if (rpeIds.has(uid + "_training_" + session.id)) return;
+      const missing = squad.filter((uid) => {
+        if (!answeredFor(availBySession, uid, session)) return false; // absent
+        if (rpeIds.has(uid + "_training_" + session.id)) return false;
         if (!Array.isArray(session.guests) ||
             !session.guests.map(String).includes(String(uid))) {
-          if (rpeIds.has(uid + "_training_" + session.date)) return;  // legacy
+          if (rpeIds.has(uid + "_training_" + session.date)) return false; // legacy
         }
-        missing.add(uid);
+        return true;
+      });
+      logger.info("rpeReminder", {teamId, kind: "training", date: session.date,
+        sessionId: session.id, squad: squad.length, missing: missing.length});
+      if (!missing.length) continue;
+      const tokens = await getTokensForUsers(missing);
+      if (!tokens.length) continue;
+      await sendToTokens(tokens, {
+        title: "📊 No oblidis el RPE!",
+        body: "Com ha anat " +
+          (session.focus ? "«" + session.focus + "»" : "l'entrenament") +
+          "? Registra el teu RPE.",
+        type: "rpe_reminder",
+        page: "player-actions",
+        // Tagged per ACTIVITY: a date tag collapsed two squads' reminders
+        // into one notification on Android.
+        tag: "rpe-training-" + (session.id || session.date),
       });
     }
-    const matchAudiences = [];
-    for (const match of todaysMatches) {
-      const called = await squadForMatch(teamId, match, shards);
-      matchAudiences.push({id: match.id, source: called.source,
-        called: called.uids.length});
-      called.uids.forEach((uid) => {
-        if (!rpeIds.has(uid + "_match_" + match.id)) missing.add(uid);
-      });
-    }
-    const missingRpe = [...missing];
-    logger.info("rpeReminder", {teamId, sessions: todaysTraining.length,
-      matches: matchAudiences, missing: missingRpe.length});
 
-    if (missingRpe.length) {
-      const tokens = await getTokensForUsers(missingRpe);
-      if (tokens.length) {
-        await sendToTokens(tokens, {
-          title: "📊 No oblidis el RPE!",
-          body: "Registra el teu RPE d'avui abans de dormir.",
-          type: "rpe_reminder",
-          page: "player-actions",
-          tag: "rpe-" + today,
-        });
-      }
+    for (const match of dueMatches) {
+      const called = await squadForMatch(teamId, match, shards);
+      const missing = called.uids.filter((uid) =>
+        !rpeIds.has(uid + "_match_" + match.id));
+      logger.info("rpeReminder", {teamId, kind: "match", date: match.date,
+        matchId: match.id, source: called.source, called: called.uids.length,
+        missing: missing.length});
+      if (!missing.length) continue;
+      const tokens = await getTokensForUsers(missing);
+      if (!tokens.length) continue;
+      await sendToTokens(tokens, {
+        title: "📊 No oblidis el RPE!",
+        body: "Com ha anat el partit? Registra el teu RPE.",
+        type: "rpe_reminder",
+        page: "player-actions",
+        tag: "rpe-match-" + match.id,
+      });
     }
   }));
 });

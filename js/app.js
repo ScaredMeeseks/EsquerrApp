@@ -1346,7 +1346,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 110;
+  const APP_VERSION = 111;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -2086,6 +2086,15 @@
      the discriminator on the entry rather than deriving it from a date
      that two squads can share. */
   var DEFAULT_SESSION_MINS = 90;
+  /* A match has no endTime field and never has had one, so its end is
+     always derived from kick-off. TWO HOURS, not the 105 minutes the
+     pending-RPE counter used to assume: 90 + half time leaves nothing for
+     added time, and a match that runs long was being called finished while
+     it was still being played. */
+  var DEFAULT_MATCH_MINS = 120;
+  // The staff list's badge has always allowed a session two hours before
+  // calling it done. Kept as the FALLBACK only — an explicit endTime wins.
+  var BADGE_FALLBACK_MINS = 120;
 
   function trainingTeams(t) {
     var list = (t && Array.isArray(t.teams)) ? t.teams.filter(Boolean) : [];
@@ -2177,16 +2186,45 @@
   /* [start, end) in minutes past midnight. `time` is normally a plain
      HH:MM but a vestigial "HH:MM - HH:MM" range exists in old rows and is
      defended against everywhere else in this file — so if endTime is blank
-     the range's own second half is used before falling back to 90 min. */
-  function sessionWindow(t) {
+     the range's own second half is used before falling back to 90 min.
+
+     `fallbackMins` overrides that last resort ONLY. An explicit endTime
+     always wins, which is the whole point: the staff badge wants a two-hour
+     grace for a session nobody gave an end to, and no grace at all for one
+     that says when it finishes. */
+  function sessionWindow(t, fallbackMins) {
     if (!t) return null;
     var parts = String(t.time || '').split(' - ');
     var start = hhmmToMins(parts[0]);
     if (start === null) return null;
     var end = hhmmToMins(t.endTime);
     if (end === null && parts.length > 1) end = hhmmToMins(parts[1]);
-    if (end === null || end <= start) end = start + DEFAULT_SESSION_MINS;
+    if (end === null || end <= start) {
+      end = start + (fallbackMins > 0 ? fallbackMins : DEFAULT_SESSION_MINS);
+    }
     return { start: start, end: end };
+  }
+
+  /* The instant a session finishes, as a real Date.
+     Built as start + duration rather than by formatting `end` back to HH:MM:
+     a 23:30 session with no endTime ends at 25:00, which minsToHHMM refuses
+     and `new Date("…T25:00:00")` would turn into an Invalid Date that every
+     comparison silently answers `false` for. */
+  function sessionEndsAt(t, fallbackMins) {
+    if (!t || !t.date) return null;
+    var w = sessionWindow(t, fallbackMins);
+    if (!w) return null;
+    var start = new Date(t.date + 'T' + minsToHHMM(w.start) + ':00');
+    if (isNaN(start.getTime())) return null;
+    return new Date(start.getTime() + (w.end - w.start) * 60000);
+  }
+
+  /** The instant a match finishes. No endTime field exists for matches. */
+  function matchEndsAt(m) {
+    if (!m || !m.date || !m.time) return null;
+    var start = new Date(m.date + 'T' + String(m.time).split(' - ')[0] + ':00');
+    if (isNaN(start.getTime())) return null;
+    return new Date(start.getTime() + DEFAULT_MATCH_MINS * 60000);
   }
 
   /** Two sessions clash when they share a date and their windows intersect. */
@@ -4209,9 +4247,8 @@
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const completedTraining = training.filter(t => {
-      if (!t.date || !t.time) return false;
-      const start = new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00');
-      return now >= new Date(start.getTime() + 90 * 60 * 1000);
+      const done = sessionEndsAt(t);
+      return !!done && now >= done;
     }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
     const pt = completedTraining.filter(t => {
       const eff = readRecord(staffOverrides, session.id, t, 'avail') ||
@@ -4220,9 +4257,8 @@
       return !readRecord(rpeData, session.id, t, 'rpe');
     }).length;
     const pm = matches.filter(m => {
-      if (!m.date || !m.time) return false;
-      const start = new Date(m.date + 'T' + m.time + ':00');
-      if (now < new Date(start.getTime() + 105 * 60 * 1000)) return false;
+      const done = matchEndsAt(m);
+      if (!done || now < done) return false;
       return !rpeData[session.id + '_match_' + m.id];
     }).length;
     const todayStr = now.toISOString().slice(0, 10);
@@ -4252,11 +4288,15 @@
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
 
-    // Pending training: last 5 completed sessions (1.5h / 90min after start)
+    /* Pending training: the last 5 sessions that have ENDED.
+       This asked for start + 90 min flat, which is now the fallback inside
+       sessionWindow rather than the rule. It has to agree with the server:
+       scheduledRpeReminder pushes "log your RPE" at the session's end, and
+       a 30-minute session would otherwise be chased an hour before the app
+       offered anywhere to answer. */
     const completedTraining = training.filter(t => {
-      if (!t.date || !t.time) return false;
-      const start = new Date(t.date + 'T' + t.time.split(' - ')[0] + ':00');
-      return now >= new Date(start.getTime() + 90 * 60 * 1000);
+      const done = sessionEndsAt(t);
+      return !!done && now >= done;
     }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
 
     const pendingTraining = completedTraining.filter(t => {
@@ -4266,12 +4306,10 @@
       return !readRecord(rpeData, session.id, t, 'rpe');
     });
 
-    // Pending matches: 1h45 (105min) after kickoff
+    // Pending matches: DEFAULT_MATCH_MINS (2h) after kick-off
     const pendingMatches = matches.filter(m => {
-      if (!m.date || !m.time) return false;
-      const start = new Date(m.date + 'T' + m.time + ':00');
-      const readyAt = new Date(start.getTime() + 105 * 60 * 1000);
-      if (now < readyAt) return false;
+      const readyAt = matchEndsAt(m);
+      if (!readyAt || now < readyAt) return false;
       const key = session.id + '_match_' + m.id;
       return !rpeData[key];
     });
@@ -11667,11 +11705,17 @@
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
 
+    /* "Completat" at the session's OWN end time. This used to be a flat
+       start + 2h, which called a 11:30–12:00 session in progress until
+       13:30 and a 20:00–22:00 one done on the dot regardless of what the
+       coach had typed. The two hours survive only as the fallback for a
+       session with no endTime, so nothing changes for the old rows. */
     function computeStatus(tr) {
       if (!tr.date || !tr.time) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
       const start = new Date(tr.date + 'T' + tr.time.split(' - ')[0] + ':00');
+      const endWindow = sessionEndsAt(tr, BADGE_FALLBACK_MINS);
+      if (isNaN(start.getTime()) || !endWindow) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
       const now = new Date();
-      const endWindow = new Date(start.getTime() + 2 * 60 * 60 * 1000);
       if (now >= endWindow) return { label: t('training.completed'), cls: 'badge-grey', key: 'completed' };
       if (now >= start) return { label: t('training.in_progress'), cls: 'badge-yellow', key: 'inprogress' };
       return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
@@ -12895,8 +12939,19 @@
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const curCat = getCurrentCategory();
     const rows = [];
+    const now = new Date();
 
     training.filter(tr => tr.date >= start && tr.date <= end)
+        /* Finished sessions drop off, as they already do on the player's
+           own week strip. This list used to filter on the DATE alone, so
+           Thursday's session sat on the coach's landing page until Sunday
+           night wearing a "Completat" badge from the other page. A session
+           we cannot time (no date, no parseable start) is kept: better a
+           stale row than one that vanishes for the wrong reason. */
+        .filter(tr => {
+          const done = sessionEndsAt(tr);
+          return !done || now < done;
+        })
         .filter(tr => !curCat || (tr.category || '') === curCat)
         .forEach(tr => {
           let available = 0; let answered = 0;
@@ -12920,6 +12975,14 @@
         });
 
     matches.filter(m => m.date >= start && m.date <= end)
+        /* Same rule for matches. Deliberately NOT the player strip's test,
+           which drops a match at KICK-OFF — that one hides a fixture while
+           it is still being played. 105 minutes is the number the pending
+           -RPE counter already used for a match. */
+        .filter(m => {
+          const done = matchEndsAt(m);
+          return !done || now < done;
+        })
         .filter(m => !curCat || (m.category || '') === curCat)
         .forEach(m => {
           const sent = sentData[m.id];
@@ -15788,9 +15851,14 @@
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const now = new Date();
     const activities = [];
+    /* A match runs until FULL TIME, not until kick-off. This used to drop
+       a fixture the moment it started — 18:00 on the calendar meant gone at
+       18:00, while it was being played — which is the same mistake the
+       session strip made before endTime existed. matchEndsAt is what the
+       coach's week uses, so both pages now agree. */
     matches.filter(m => m.date >= start && m.date <= end).filter(m => {
-      if (!m.date || !m.time) return true;
-      return new Date(m.date + 'T' + m.time + ':00') > now;
+      const done = matchEndsAt(m);
+      return !done || now < done;
     }).forEach(m => {
       const sentEntry = sentData[m.id];
       const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];

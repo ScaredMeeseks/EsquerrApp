@@ -2226,3 +2226,80 @@ Everything the top-up did was guarded by `t.date < todayStr`, by construction. *
 **Applied 2026-08-20**: +38 sessions (19 per category, to 2026-10-22), +64 training RPE, +313 match RPE, `trainingDates` 48 → 67, rpe 6496 → 6873. Measured with the real engine before and after: `hasData` **21/75 → 54/75**, estimated badge **20/75 → 3/75** (the theoretical ceiling with every gap filled is 55).
 
 **The club goes stale again.** `hasData` expires at `STALE_AFTER_DAYS = 10`, so a demo nobody tops up shows 54 grey dashes about ten days after the last run. That is the shape of the recurring complaint, not a new bug each time.
+
+### v111 (2026-08-21) — one definition of "the session is over"
+
+Reported as three separate things; they were one. A 11:30–12:00 session sat on the
+Entrenaments page as **"En curs" until 13:30**, yesterday's 22:00 session wore
+**"Completat"** while still occupying the coach's landing page, and the RPE push for
+either was expected at the whistle and never came.
+
+**There were four different answers to "has it finished?", and the field that knows
+was consulted by none of them.** `endTime` has existed since the per-team session
+rework; only `sessionWindow()` — used by the *player's* week strip — ever read it.
+
+| surface | old rule | now |
+|---|---|---|
+| staff list badge (`computeStatus`) | start + 2h, flat | `endTime`, else start + **120** (`BADGE_FALLBACK_MINS`) |
+| coach landing page (`renderStaffWeek`) | **the date alone** | `sessionEndsAt` / `matchEndsAt` |
+| player pending-RPE (×2 call sites) | start + 90 / + 105, inline | `sessionEndsAt` / `matchEndsAt` |
+| player week strip, matches | **kick-off** | `matchEndsAt` |
+| `scheduledRpeReminder` | a **23:00 cron** | the activity's own end |
+
+The badge keeps **two** hours as its fallback while everything else keeps ninety. That
+is deliberate, not drift: the fallback only applies to a session nobody gave an end to,
+and changing it there would have silently re-dated every legacy row's badge.
+
+**`sessionEndsAt(t, fallbackMins)` / `matchEndsAt(m)`** are the Date form of
+`sessionWindow`, which answers in minutes-past-midnight and therefore cannot compare
+across dates — both new callers span days. They are built as **start + duration**, never
+by formatting the end back to HH:MM: a 23:30 session with no `endTime` ends at "25:00",
+which `minsToHHMM` refuses and every date parser turns into `Invalid Date` — and a NaN
+comparison answers `false`, so the session would have counted as *never over*.
+
+`DEFAULT_MATCH_MINS = 120` replaces the 105 the pending-RPE counter had inlined twice.
+90 + half time leaves **nothing for added time**, so a match that ran long was called
+finished while it was still being played. A match has no `endTime` field and never has
+had one; the server ignores a stray one so the two sides cannot disagree.
+
+**Both week strips now drop a match at full time.** The player's used to drop it at
+**kick-off** (`new Date(m.date+'T'+m.time) > now`) — 18:00 on the calendar meant gone
+from the strip at 18:00, mid-match — which is the same mistake the session strip made
+before `endTime` existed. It reads `matchEndsAt` now, so the coach's page and the
+player's page agree.
+
+#### `scheduledRpeReminder`: `every 30 minutes`, not `0 23 * * *`
+
+The nightly sweep was wrong in both directions: it chased the 11:30 session eleven hours
+late, and it chased the 22:00 one at 23:00 — **an hour in, while it was still being
+trained**.
+
+`endedInWindow()` claims an activity for the run whose half-open band `[end, end + 30min)`
+contains its end. The band is **exactly as wide as the schedule interval**: narrower
+leaves gaps (an activity nothing ever chases), wider double-sends on consecutive runs,
+and both failures are silent. `RPE_WINDOW_MINS` and the cron string are pinned to each
+other by a test that parses both out of the source.
+
+Consequences that are not obvious:
+
+- **Yesterday stays in scope.** A 23:30 session ends after midnight and belongs to
+  *tomorrow's* 00:00 run. `array-contains-any [yesterday, today]` on `trainingDates`,
+  and `where("date","in",dueDates)` where `dueDates` is only the dates something
+  actually ended on — the other 47 runs a day must not pay for a second date.
+- **One push per ACTIVITY, not per player per day.** Two squads finishing at different
+  times are two questions. The tag moved from `rpe-<date>` to
+  `rpe-training-<sessionId>` / `rpe-match-<matchId>`; the date tag collapsed the evening
+  squad's reminder onto the morning squad's on Android.
+- **The client had to move with it.** `completedTraining` gated the RPE form on
+  start + 90 min. Left alone, a 30-minute session would have been pushed at 12:00 and
+  offered nowhere to answer until 13:00.
+
+`activityEndsAt()` in `functions/index.js` duplicates `sessionWindow`/`matchEndsAt`
+because functions/ deploys on its own and cannot require `../js`. **The two copies are
+pinned to the same numbers by tests on both sides** — `test/training.test.js` for the
+client, `test/reminders.test.js` for the server.
+
+Unit tests 595 → **620**. Every new assertion was run against `git show HEAD` in a
+throwaway worktree first and fails there.
+
+⚠ Rules unchanged; **this needs a functions deploy**, not hosting alone.

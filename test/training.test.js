@@ -38,7 +38,8 @@ function load(letters) {
   return new Function('getTeamLetters', `
     ${code}
     return { trainingTeams, playerIsCalled, calledPlayers, playerTrainings,
-             sessionWindow, trainingsOverlap, hhmmToMins, minsToHHMM,
+             sessionWindow, sessionEndsAt, matchEndsAt, trainingsOverlap,
+             hhmmToMins, minsToHHMM,
              defaultEndTime };`)(
       () => letters || ['A']);
 }
@@ -532,6 +533,155 @@ describe('training — when a session stops showing', () => {
         'a past date must end a session whatever its time says');
     assert.ok(body.includes('nowMins < w.end'), 'and it runs until its END');
     assert.ok(!body.includes('60 * 60 * 1000'), 'not an hour after the start');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The end of an activity as an absolute instant.
+ *
+ * sessionWindow answers in minutes-past-midnight, which is fine for the
+ * clash maths and for a same-day strip but cannot compare across dates —
+ * and the two surfaces that needed it (the staff week list and the staff
+ * badge) both span days. sessionEndsAt is the Date form.
+ * ------------------------------------------------------------------ */
+describe('training — when an activity ends, as a real instant', () => {
+  const H = load(['A']);
+  const iso = (d) => d && d.toISOString();
+  const local = (s) => new Date(s).toISOString();
+
+  it('uses the endTime the coach set', () => {
+    assert.strictEqual(
+        iso(H.sessionEndsAt({ date: '2026-08-21', time: '11:30', endTime: '12:00' })),
+        local('2026-08-21T12:00:00'));
+  });
+
+  it('falls back to 90 minutes with no endTime', () => {
+    assert.strictEqual(
+        iso(H.sessionEndsAt({ date: '2026-08-21', time: '11:30' })),
+        local('2026-08-21T13:00:00'));
+  });
+
+  it('takes an explicit fallback without touching a real endTime', () => {
+    // What the staff badge does: two hours of grace for an untimed
+    // session, none at all for one that says when it finishes.
+    assert.strictEqual(
+        iso(H.sessionEndsAt({ date: '2026-08-21', time: '11:30' }, 120)),
+        local('2026-08-21T13:30:00'));
+    assert.strictEqual(
+        iso(H.sessionEndsAt({ date: '2026-08-21', time: '11:30', endTime: '12:00' }, 120)),
+        local('2026-08-21T12:00:00'));
+  });
+
+  it('crosses midnight instead of producing an Invalid Date', () => {
+    /* 23:30 + 90 min is "25:00", which minsToHHMM refuses and which every
+       date parser turns into NaN -- and a NaN comparison answers `false`,
+       so the session would have been treated as never over. */
+    const end = H.sessionEndsAt({ date: '2026-08-21', time: '23:30' });
+    assert.ok(end && !isNaN(end.getTime()));
+    assert.strictEqual(iso(end), local('2026-08-22T01:00:00'));
+  });
+
+  it('honours a legacy "HH:MM - HH:MM" range', () => {
+    assert.strictEqual(
+        iso(H.sessionEndsAt({ date: '2026-08-21', time: '20:00 - 21:30' })),
+        local('2026-08-21T21:30:00'));
+  });
+
+  it('is null when the session cannot be timed at all', () => {
+    assert.strictEqual(H.sessionEndsAt({ date: '2026-08-21', time: '' }), null);
+    assert.strictEqual(H.sessionEndsAt({ time: '20:00' }), null);
+    assert.strictEqual(H.sessionEndsAt(null), null);
+  });
+
+  it('gives a match two hours from kick-off', () => {
+    /* Matches have no endTime field and never have had one. Two hours, not
+       90 + half time: added time is not optional and a match that ran long
+       was being called finished mid-play. */
+    assert.strictEqual(
+        iso(H.matchEndsAt({ date: '2026-08-22', time: '18:00' })),
+        local('2026-08-22T20:00:00'));
+    assert.strictEqual(H.matchEndsAt({ date: '2026-08-22' }), null);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The staff list's badge, and the coach's landing page.
+ *
+ * The badge was a flat start + 2h that ignored endTime entirely, so an
+ * 11:30-12:00 session read "En curs" until 13:30. The coach's week list
+ * filtered on the DATE alone, so Thursday's finished session sat on the
+ * landing page until Sunday night.
+ * ------------------------------------------------------------------ */
+describe('training — the staff badge and the coach\'s week', () => {
+  it('the badge ends at the endTime, falling back to two hours', () => {
+    const body = grab('    function computeStatus(tr) {', '\n    function fmtDate');
+    assert.ok(body.includes('sessionEndsAt(tr, BADGE_FALLBACK_MINS)'),
+        'the badge must read the endTime the coach set');
+    assert.ok(!body.includes('2 * 60 * 60 * 1000'),
+        'the flat two hours was the bug, not the rule');
+    assert.strictEqual(
+        /var BADGE_FALLBACK_MINS = (\d+);/.exec(src)[1], '120',
+        'a session with no endTime keeps the behaviour it always had');
+  });
+
+  it('the coach\'s week drops what has finished', () => {
+    const body = grab(
+        '    training.filter(tr => tr.date >= start && tr.date <= end)',
+        '        .forEach(tr => {');
+    assert.ok(body.includes('sessionEndsAt(tr)'),
+        'the date alone kept Thursday\'s session up until Sunday');
+    assert.ok(body.includes('return !done || now < done;'),
+        'a session we cannot time stays, rather than vanishing');
+  });
+
+  it('the coach\'s week keeps a match until FULL TIME, not kick-off', () => {
+    const body = grab(
+        '    matches.filter(m => m.date >= start && m.date <= end)',
+        '        .forEach(m => {');
+    assert.ok(body.includes('matchEndsAt(m)'));
+    assert.ok(!body.includes('> now'), 'kick-off is not full time');
+  });
+
+  it('the PLAYER\'s week does the same — both pages agree now', () => {
+    /* This one dropped a fixture the moment it started: 18:00 on the
+       calendar meant gone from the strip at 18:00, mid-match. */
+    const body = grab(
+        '    matches.filter(m => m.date >= start && m.date <= end).filter(m => {',
+        '    }).forEach(m => {');
+    assert.ok(body.includes('matchEndsAt(m)'));
+    assert.ok(!/> now/.test(body), 'kick-off is not full time');
+  });
+
+  it('a match gets two hours, and both files say so', () => {
+    /* Added time is not optional. The number lives in TWO files —
+       functions/ deploys on its own and cannot require ../js — so a change
+       to one and not the other would push players for an RPE before the
+       app offered the form. reminders.test.js pins the server's copy to
+       its own behaviour; this pins the two constants to each other. */
+    const client = /var DEFAULT_MATCH_MINS = (\d+);/.exec(src);
+    const server = /const DEFAULT_MATCH_MINS = (\d+);/.exec(
+        fs.readFileSync(path.join(__dirname, '..', 'functions', 'index.js'), 'utf8'));
+    assert.ok(client && server, 'DEFAULT_MATCH_MINS is gone from one side');
+    assert.strictEqual(client[1], '120');
+    assert.strictEqual(client[1], server[1]);
+  });
+
+  it('a session\'s fallback is 90 in both files too', () => {
+    const client = /var DEFAULT_SESSION_MINS = (\d+);/.exec(src);
+    const server = /const DEFAULT_SESSION_MINS = (\d+);/.exec(
+        fs.readFileSync(path.join(__dirname, '..', 'functions', 'index.js'), 'utf8'));
+    assert.ok(client && server);
+    assert.strictEqual(client[1], server[1]);
+  });
+
+  it('the pending-RPE list agrees with the server\'s trigger', () => {
+    /* The push now arrives at the session's end. If the app still waited
+       start + 90 min to offer the form, a 30-minute session would be
+       chased an hour before there was anywhere to answer. */
+    const body = grab('    const completedTraining = training.filter(t => {',
+        '    const pt = completedTraining.filter(t => {');
+    assert.ok(body.includes('sessionEndsAt(t)'));
+    assert.ok(!body.includes('90 * 60 * 1000'));
   });
 });
 
