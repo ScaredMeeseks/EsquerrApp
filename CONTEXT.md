@@ -1897,6 +1897,24 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v110 - a resolved injury that only the Medical page believed
+
+Reported as: mark an injury resolved as a coach, and the player goes right on showing as injured everywhere else.
+
+**Two sources of truth, and only one of them moved.** `deriveFitnessStatus()` reads the player's own training answers (a last answer of `injured` means injured) *and* `fa_injuries`. But the `fa_injuries` branch runs last and can only **override** the answers — `active` → injured, `recovering` → doubt. It has no way to **cancel** one. So resolving the record simply removed the override and let the stale self-report through untouched, and the record's own screen — the only one that reads `fa_injuries` directly — was the only one that changed.
+
+The mechanism for standing a self-report down already existed: `fa_injury_dismissed`, a date up to which an `injured` answer counts as a plain absence, written when staff *discard* a report. A resolution is the same act with a medical record attached, so it now supplies that date too. **Derived from the record, not written as a flag**: the stand-down is `max(dismissedUpTo, latest resolved endDate)`, computed on every read, so records resolved before this existed heal themselves on the next render and no repair pass is needed. An injury reported *after* the all-clear is newer than the date and still counts, which is the property that makes this safe.
+
+**Three more leaks found in the same sweep:**
+
+- **`fa_injury_notes` / `fa_injury_zone` were never deleted.** These per-player maps predate `fa_injuries`, are written every time an injury is logged, and are read by surfaces that know nothing about records — the status tooltips and the medical hover body map. `clearStaleInjuryCaches()` drops them once the player has no `active`/`recovering` record left (a second open injury owns them). `_mergeUpdates` in `db.js` turns a removed field into `FieldValue.delete()`, so this syncs rather than resurrecting from another device.
+- **The "currently injured" panel** on the staff training page derived nothing. It scanned `fa_training_availability` with the legacy `{uid}_{date}` key — which the move to session-id keys left matching almost nothing — and then fell back to the roster's cached `fitnessStatus`. It knew about neither `fa_injuries`, nor a discard, nor a resolution. It now goes through `deriveFitnessStatus()` like every other surface, and its "weeks injured" count stops at the last all-clear instead of counting through a closed injury.
+- **Four call sites** (Resolve and Mark-recovering on both the Medical list and the detail page, plus the Edit modal's Save) each did their own `updateInjury` + `deriveFitnessStatus`. They share `afterInjuryChange()` now, so the cache cleanup cannot be added to three of them and forgotten in the fourth.
+
+**Deliberately unchanged:** a player answering "Yes" does not close a staff-logged injury. The medical record is staff-owned and only staff end it — the asymmetry is the point.
+
+**595 unit tests** (+13, `test/injuries.test.js`, added to `test:unit` by hand). The headline test was run against `git show HEAD:js/app.js` first and confirmed to report `injured` after a resolve — the fix is measured against the old behaviour, not against itself. `APP_VERSION` 109 → 110, `sw.js` cache `esquerrapp-v110`.
+
 ## v109 - the new session's date could not be moved off the default day
 
 Reported as "I can't add a training on a day that isn't in my defaults". The date **looked** editable: the picker opened, a day could be clicked, the field showed it. Save then wrote the seeded day.

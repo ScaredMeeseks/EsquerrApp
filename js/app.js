@@ -1023,11 +1023,28 @@
     const availData = c.availData;
     const training = c.training;
     const injNotes = c.injNotes;
+    const playerInj = c.injuries.filter(
+      inj => String(inj.playerId) === String(playerId));
     // Staff can discard a self-reported injury from the Medical page. We store
     // the date it was discarded rather than editing the player's own answer:
     // attendance history stays intact, and if he reports injured again on a
     // LATER date the flag comes back on its own.
     const dismissedUpTo = c.dismissed[playerId] || '';
+    /* Resolving a logged injury stands the self-report down the same way.
+       Without this the record went to `resolved` and the player stayed red
+       on every other screen, because his last training answer was still
+       'injured' and the fa_injuries branch below can only ever OVERRIDE that
+       answer -- it has no way to cancel one. Keyed on the resolution date, so
+       an injury reported AFTER the all-clear raises the flag again by
+       itself, and so that no repair pass is needed for records resolved
+       before this existed. */
+    let resolvedUpTo = '';
+    playerInj.forEach(inj => {
+      if (inj.status !== 'resolved') return;
+      const d = inj.endDate || inj.startDate || '';
+      if (d > resolvedUpTo) resolvedUpTo = d;
+    });
+    const standDownUpTo = resolvedUpTo > dismissedUpTo ? resolvedUpTo : dismissedUpTo;
 
     // Collect all answered trainings for this player, sorted by date
     const answered = training
@@ -1035,9 +1052,9 @@
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(t => {
         const v = readRecord(availData, playerId, t, 'avail');
-        // A discarded 'injured' counts as a plain absence, so it drives
-        // neither the 'injured' nor the 'doubt' rule below.
-        return (v === 'injured' && dismissedUpTo && t.date <= dismissedUpTo) ? 'no' : v;
+        // A discarded or resolved 'injured' counts as a plain absence, so it
+        // drives neither the 'injured' nor the 'doubt' rule below.
+        return (v === 'injured' && standDownUpTo && t.date <= standDownUpTo) ? 'no' : v;
       });
 
     const injNote = injNotes[playerId] || '';
@@ -1057,8 +1074,6 @@
     }
 
     // Also check fa_injuries for staff-logged injuries
-    const injuries = c.injuries;
-    const playerInj = injuries.filter(inj => inj.playerId === playerId);
     const activeInj = playerInj.find(inj => inj.status === 'active');
     const recoveringInj = playerInj.find(inj => inj.status === 'recovering');
     if (activeInj) {
@@ -1080,7 +1095,10 @@
         saveUsers(users);
       }
     }
-    return { fitnessStatus: status, injuryNote: note };
+    /* standDownUpTo is returned, not just used: a caller counting how long
+       someone has been injured has to stop at the last all-clear, or it
+       counts answers from an injury that was closed months ago. */
+    return { fitnessStatus: status, injuryNote: note, standDownUpTo: standDownUpTo };
   }
 
   // ---------- Injury helpers ----------
@@ -1105,6 +1123,32 @@
     const now = new Date();
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     updateInjury(id, { status: 'resolved', endDate: todayStr });
+  }
+
+  /* `fa_injury_notes` and `fa_injury_zone` are per-PLAYER caches from before
+     fa_injuries existed. They are written whenever an injury is logged and
+     were never deleted when one ended, so surfaces that read them directly --
+     the status tooltips and the medical hover body map -- kept describing an
+     injury the coach had already closed. Only clear them once the player has
+     no open record left; a second, still-active injury owns them. */
+  function clearStaleInjuryCaches(playerId) {
+    const stillOpen = getInjuries().some(i =>
+      String(i.playerId) === String(playerId) &&
+      (i.status === 'active' || i.status === 'recovering'));
+    if (stillOpen) return;
+    [['fa_injury_notes'], ['fa_injury_zone']].forEach(([key]) => {
+      const map = JSON.parse(localStorage.getItem(key) || '{}');
+      if (map[playerId] === undefined) return;
+      delete map[playerId];
+      localStorage.setItem(key, JSON.stringify(map));
+    });
+  }
+
+  /** Everything that must follow a change to an injury's status. */
+  function afterInjuryChange(playerId) {
+    if (!playerId) return;
+    clearStaleInjuryCaches(playerId);
+    deriveFitnessStatus(playerId, true);
   }
 
   // ---------- Injury data migration ----------
@@ -1302,7 +1346,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 109;
+  const APP_VERSION = 110;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -11741,23 +11785,32 @@
       const top3AttendHtml = sortedAttend.map((p, i) => `<div class="std-top-row"><span class="std-top-rank">${i + 1}.</span><span class="std-top-name">${sanitize(p.name)}</span><span class="std-top-count" style="color:#66bb6a">${p.count}</span></div>`).join('');
       const top3AbsentHtml = sortedAbsent.map((p, i) => `<div class="std-top-row"><span class="std-top-rank">${i + 1}.</span><span class="std-top-name">${sanitize(p.name)}</span><span class="std-top-count" style="color:#ef5350">${p.count}</span></div>`).join('');
 
-      // Currently injured players
+      /* Currently injured players -- through the SAME derivation as every
+         other surface. This list used to read fa_training_availability with
+         the legacy `{uid}_{date}` key, which the move to session-id keys left
+         matching almost nothing, and then fell back to the roster's cached
+         fitnessStatus. It knew nothing about fa_injuries, about a discarded
+         self-report or about a resolution, so a player the coach had signed
+         off stayed on it. */
       const availAllData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-      const sortedDates = training.filter(t => t.date).map(t => t.date).sort();
-      const injuredPlayers = allPlayers.filter(p => {
-        // Find their most recent answer across all training sessions
-        for (let d = sortedDates.length - 1; d >= 0; d--) {
-          const v = availAllData[p.id + '_' + sortedDates[d]];
-          if (v) return v === 'injured';
-        }
-        return (p.fitnessStatus || 'fit') === 'injured';
-      });
+      const sortedSessions = training.filter(t => t.date)
+        .slice().sort((a, b) => a.date.localeCompare(b.date));
+      const _injCtx = fitnessContext();
+      const _injDerived = {};
+      allPlayers.forEach(p => { _injDerived[p.id] = deriveFitnessStatus(p.id, false, _injCtx); });
+      const injuredPlayers = allPlayers.filter(p =>
+        _injDerived[p.id].fitnessStatus === 'injured');
       const injuredHtml = injuredPlayers.map(p => {
-        const injury = p.injuryNote || 'Injured';
-        // Count consecutive weeks injured from most recent backwards
+        const injury = _injDerived[p.id].injuryNote || t('fitness.injury');
+        // Count consecutive weeks injured from most recent backwards, back to
+        // the last all-clear at the most — answers from an injury already
+        // closed are not part of how long this one has lasted.
+        const since = _injDerived[p.id].standDownUpTo || '';
         let weeks = 0;
-        for (let d = sortedDates.length - 1; d >= 0; d--) {
-          const v = availAllData[p.id + '_' + sortedDates[d]];
+        for (let d = sortedSessions.length - 1; d >= 0; d--) {
+          const sess = sortedSessions[d];
+          if (since && sess.date <= since) break;
+          const v = readRecord(availAllData, p.id, sess, 'avail');
           if (v === 'injured') weeks++;
           else if (v) break;
         }
@@ -18664,8 +18717,9 @@
         notes: document.getElementById('med-edit-notes').value.trim()
       };
       updateInjury(injuryId, changes);
-      // Update player fitness status
-      if (player) deriveFitnessStatus(player.id, true);
+      // Update player fitness status — and drop the legacy note/zone caches
+      // if this was the last open injury, exactly as the Resolve button does.
+      if (player) afterInjuryChange(player.id);
       closeOverlay();
       renderPage(getSession());
     });
@@ -18757,7 +18811,7 @@
         const id = btn.dataset.injId;
         updateInjury(id, { status: 'recovering' });
         const inj = getInjuries().find(i => i.id === id);
-        if (inj) deriveFitnessStatus(inj.playerId, true);
+        if (inj) afterInjuryChange(inj.playerId);
         renderPage(getSession());
       });
     });
@@ -18768,7 +18822,7 @@
         e.stopPropagation();
         resolveInjury(btn.dataset.injId);
         const inj = getInjuries().find(i => i.id === btn.dataset.injId);
-        if (inj) deriveFitnessStatus(inj.playerId, true);
+        if (inj) afterInjuryChange(inj.playerId);
         renderPage(getSession());
       });
     });
@@ -18813,7 +18867,7 @@
       btn.addEventListener('click', () => {
         updateInjury(btn.dataset.injId, { status: 'recovering' });
         const inj = getInjuries().find(i => i.id === btn.dataset.injId);
-        if (inj) deriveFitnessStatus(inj.playerId, true);
+        if (inj) afterInjuryChange(inj.playerId);
         renderPage(getSession());
       });
     });
@@ -18821,7 +18875,7 @@
       btn.addEventListener('click', () => {
         resolveInjury(btn.dataset.injId);
         const inj = getInjuries().find(i => i.id === btn.dataset.injId);
-        if (inj) deriveFitnessStatus(inj.playerId, true);
+        if (inj) afterInjuryChange(inj.playerId);
         renderPage(getSession());
       });
     });
