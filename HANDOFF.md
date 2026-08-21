@@ -2,20 +2,21 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-> **⚠️ v115 is WRITTEN AND TESTED BUT NOT DEPLOYED, NOT COMMITTED.** Working tree dirty.
-> It touches `firestore.rules` and `functions/index.js` as well as the frontend, so
-> `./deploy.ps1` must cover **rules + functions + hosting** — a hosting-only push would
-> ship a client that reads a `staffRole` no function ever writes, and every staff member
-> would silently stay a coach. See "Deploying v115" below.
-
-**`main` is at v114 and fully deployed**, frontend and functions both, verified against the
-live artefacts rather than the deploy output:
+**`main` is at v115 (`ca13f12`), working tree clean, pushed — and FULLY DEPLOYED**: rules,
+functions and frontend. Verified against the live artefacts rather than the deploy output:
 
 ```bash
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-# both said 114 at 2026-08-21
+# both said 115 at 2026-08-21
 ```
+
+`.\deploy.ps1 all` released `firestore.rules` + `storage.rules` and updated **all 18
+functions** ("Successful update operation" on every one). Deployed BEFORE the frontend push
+on purpose: a client that reads a `staffRole` no function writes would leave every staff
+member silently a coach.
+
+**v115 is deployed but NOT yet exercised by a human** — see "Verify v115" below.
 
 All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** reads
 `*/30 * * * *` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list`
@@ -37,7 +38,7 @@ in this file: the scheduled reminders work, not just the manual convocatòria pu
 
 ---
 
-## What's written but NOT shipped: v115 — three staff sub-roles
+## What shipped: v115 — three staff sub-roles
 
 `staff` was one role: `buildSidebarItems()` and `STAFF_PAGES` both gated on the same
 `roles.includes('staff')`, so every staff member got all ten staff sections with full edit
@@ -91,23 +92,32 @@ in CONTEXT.md for exactly which cross-writes have to be split first.
 New: `test/staff-roles.test.js` (20 tests) — **and it had to be added to `test:unit` in
 `test/package.json` by hand**, which is the standing trap in this repo.
 
-### Deploying v115
+### Verify v115 — deployed, not yet confirmed by a human
 
-```powershell
-cd c:\DATA\CLAUDE\EsquerrApp
-cd test; npm run test:functions; cd ..   # onRosterWritten changed — not yet re-run
-.\deploy.ps1                             # rules + functions + hosting, NOT hosting-only
-git add -A; git commit; git push         # push also builds the APK
-```
+Nothing below has been done yet. All three test suites pass (671 unit / 139 rules / 71
+functions) and the served bundle carries the code, but no real account has used it.
 
-Then, as the lead: Config Club → set one staff address to Preparador físic and another to
-Delegat → Save. **Confirm both halves landed**: `clubs/{c}/rosters/{key}.staffRoles` in the
-console, *and* that each affected `users/{uid}.staffRole` was re-stamped. The second is what
-catches a missed `sigOf`. Then sign in as each and walk the table above — including typing a
-hidden page's id and using the Back button, which must land on `staff-home`, never a blank
-screen.
+1. **As the lead**: Config Club → the staff section now has a Rol dropdown beside each
+   address. Set one to **Preparador físic**, another to **Delegat** → Save.
+2. **Confirm BOTH halves landed**, in the Firebase console:
+   - `clubs/{c}/rosters/{key}.staffRoles` holds `{email: "fitness"}`;
+   - each affected `users/{uid}.staffRole` was **re-stamped** by `onRosterWritten`.
+   The second is the one that matters — it is what catches a missed `sigOf`, and the first
+   can be right while the second is stale.
+3. **Sign in as each** and walk the table above. Include the two things the sidebar cannot
+   show you: type a hidden page's id, and use the Back button. Both must land on
+   `staff-home`, never a blank screen.
+4. **Demote one back to Entrenador** and confirm the sub-role actually comes off — that is
+   the `FieldValue.delete()` path, and a deep-merge bug here looks exactly like a caching
+   problem.
+5. **Regression**: an untouched coach must be unchanged. `staffRoles` is absent for them,
+   which is the whole point of the coach default.
 
-No `minAppVersion` bump: the change is UI-only, so an old APK simply behaves as it does today.
+`node functions/check-deploy.js` reports any `users/{uid}.staffRole` that disagrees with the
+rosters — worth a run after step 2.
+
+No `minAppVersion` bump: the change is UI-only, so an old APK simply behaves as it does
+today (every staff member stays a full coach until they update).
 
 ---
 
