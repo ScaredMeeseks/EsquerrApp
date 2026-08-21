@@ -2345,6 +2345,23 @@ have added by hand. It costs no extra query: `readDataShards` already reads the 
 **Matches are unaffected** — there is no staff override for a match; the convocatòria is
 already the coach's own list.
 
-Unit tests 620 → **630**. Both gaps were reproduced against `git show HEAD` in a throwaway
+Unit tests 620 → **631**. Both gaps were reproduced against `git show HEAD` in a throwaway
 worktree — with no override present the old and new answers are identical, which is the
 part that matters.
+
+#### The schedule became real cron in the same deploy
+
+v111 shipped `schedule: "every 30 minutes"`. That is the **App Engine interval** form: it
+waits N minutes after the previous run *finishes*, so consecutive runs drift apart by each
+run's duration — and `endedInWindow`'s bands stop tiling. The last seconds of one band get
+covered by no run at all, and an activity ending in that sliver is chased by nobody. Silent,
+rare, and exactly the failure the fixed-width band was meant to rule out.
+
+`*` `/30 * * * *` fires on the wall clock at :00 and :30 whatever a run costs, so
+consecutive runs are exactly `RPE_WINDOW_MINS` apart, always. A test now asserts the
+schedule is **not** an `every N` interval, on top of the one pinning the two numbers
+together.
+
+**Found from evidence, not from reading**: after the v111 deploy the scheduler's
+`lastAttemptTime` was still the previous day's 23:00 run, well past when a wall-clock
+half-hourly job should have fired.

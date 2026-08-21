@@ -833,7 +833,14 @@ exports.scheduledTrainingReminder = onSchedule({
 //    are two different questions.
 // ════════════════════════════════════════════════════════════
 exports.scheduledRpeReminder = onSchedule({
-  schedule: "every 30 minutes", // keep RPE_WINDOW_MINS in step
+  // Unix cron, deliberately NOT the App Engine "every 30 minutes" form.
+  // That one is an INTERVAL schedule: it waits N minutes after the previous
+  // run FINISHES, so consecutive runs drift apart by each run's duration and
+  // endedInWindow's bands stop tiling — the last few seconds of one band get
+  // covered by nothing, and an activity ending there is chased by no run at
+  // all. Unix cron fires on the wall clock at :00 and :30, so consecutive
+  // runs are exactly RPE_WINDOW_MINS apart, always.
+  schedule: "*/30 * * * *", // keep RPE_WINDOW_MINS in step
   timeZone: "Europe/Madrid",
   region: "us-central1",
 }, async () => {

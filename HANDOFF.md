@@ -12,7 +12,7 @@ curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep
 ```
 
 All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** now
-reads `every 30 minutes` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list` only ever says `scheduled`, so
+reads `*/30 * * * *` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list` only ever says `scheduled`, so
 it cannot tell you the cron actually changed. The scheduler API can — see
 "Reading production without a browser" for the token, then:
 
@@ -20,7 +20,7 @@ it cannot tell you the cron actually changed. The scheduler API can — see
 GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
 ```
 
-Rules unchanged and not redeployed. Unit tests **630 passing** (+35 this session); the
+Rules unchanged and not redeployed. Unit tests **631 passing** (+36 this session); the
 rules and functions emulator suites were **not** re-run.
 
 **One thing is still unproven:** no RPE reminder has been observed *firing* under the new
@@ -65,6 +65,23 @@ already the coach's own list.
 
 Both gaps were reproduced against `git show HEAD`, and with no override present the old
 and new answers are identical — that is the part that matters.
+
+### And the schedule became real cron
+
+v111 shipped `schedule: "every 30 minutes"` — the **App Engine interval** form, which waits
+N minutes after the previous run *finishes*. Consecutive runs therefore drift apart by each
+run's duration and `endedInWindow`'s bands stop tiling: the last seconds of one band belong
+to no run, and an activity ending there is chased by nobody. Silent, rare, and exactly what
+the fixed-width band existed to prevent.
+
+`*/30 * * * *` fires on the wall clock at :00 and :30 whatever a run costs. A test now
+asserts the schedule is **not** an `every N` interval, alongside the one pinning
+`RPE_WINDOW_MINS` to the cron's number.
+
+**This came from evidence, not from re-reading the code**: after the v111 deploy the
+scheduler's `lastAttemptTime` was still the previous day's 23:00 run, long past when a
+wall-clock half-hourly job should have fired. `scheduledTrainingReminder` still uses
+`every 60 minutes` with a 1-hour band — **same latent gap, untouched, worth fixing.**
 
 ---
 
@@ -316,15 +333,21 @@ the same token, so delivery is settled — triggers, audiences and preconditions
    since changed materially. Re-measure before touching a threshold.
 10. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
     directly. Delete once a v55+ APK circulates.
-11. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to
+11. **`scheduledTrainingReminder` has v111's schedule bug.** It is on
+    `every 60 minutes` — the App Engine *interval* form — with a 1-hour
+    `3.5 <= hoursUntil <= 4.5` band. Runs drift by each run's duration, so the band can
+    slip relative to the wall clock and a session can be reminded twice or not at all. The
+    fix is the same one v112 applied to the RPE reminder: `0 * * * *`. Its band is also
+    *inclusive* at both ends, which can double-fire at exactly 3.5 or 4.5 h.
+12. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to
     the whole team, with no staff check and no validation of `title`/`body`.
     `Push.sendToTeam` is dead code.
-12. **The demo club's 19-vs-9** — "19 players answered `injured` for the 2026-08-13 demo
+13. **The demo club's 19-vs-9** — "19 players answered `injured` for the 2026-08-13 demo
     session while only 9 injuries are live" is the shape of what v110 fixed. **Still a
     hypothesis, never checked**, and the top-up script writes those answers synthetically,
     so it may simply be seed data. Cheap to settle with
     `test/readiness-engine.test.js`'s harness pointed at production.
-13. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide
+14. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide
     readable; orphaned shards when a category is emptied; uncategorised players inconsistent
     across three staff pages; `backfill-training-teams.js` has no `preflight()`.
 
@@ -395,6 +418,9 @@ of the current demo corpus as garbage.
   disagree exactly where a human intervened — which is the case that matters most.
 - **"Does X still happen if…" is worth answering by reading the code, not by intuition.**
   The v112 gaps had been live for months and nothing surfaced them.
+- **A schedule string is not a schedule.** `every 30 minutes` and `*/30 * * * *` look
+  interchangeable and are not — one is an interval from the previous run's *end*. Reading
+  `lastAttemptTime` back off the deployed job is what exposed it.
 - **A duplicated rule needs a test that reads BOTH copies.** Not one that tests each side's
   behaviour separately — one that asserts they are equal. Behaviour tests pass happily
   while the two drift.

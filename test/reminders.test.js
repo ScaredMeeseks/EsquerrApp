@@ -425,7 +425,7 @@ describe('reminders — the schedulers use them', () => {
     const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
     assert.ok(!body.includes('"0 23 * * *"'),
         'a nightly sweep chased an 11:30 session eleven hours late');
-    assert.ok(/schedule: "every 30 minutes"/.test(body));
+    assert.ok(/schedule: "\*\/30 \* \* \* \*"/.test(body));
     assert.ok(body.includes('endedInWindow(t, "training", now)'));
     assert.ok(body.includes('endedInWindow(m, "match", now)'));
     /* A session ending after midnight belongs to tomorrow's 00:00 run.
@@ -434,15 +434,25 @@ describe('reminders — the schedulers use them', () => {
     assert.ok(body.includes('"trainingDates", "array-contains-any", dates'));
   });
 
-  it('the window is exactly as wide as the schedule interval', () => {
+  it('the window is exactly as wide as the gap between runs', () => {
     /* Narrower leaves gaps (an activity nothing chases); wider double-sends
        on consecutive runs. Both are silent, so pin them to each other. */
     const win = /const RPE_WINDOW_MINS = (\d+);/.exec(src);
     assert.ok(win, 'RPE_WINDOW_MINS is gone');
     const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
-    const sched = /schedule: "every (\d+) minutes"/.exec(body);
-    assert.ok(sched, 'the RPE reminder is no longer on an interval schedule');
+    const sched = /schedule: "\*\/(\d+) \* \* \* \*"/.exec(body);
+    assert.ok(sched, 'the RPE reminder is no longer on a per-N-minutes cron');
     assert.strictEqual(win[1], sched[1]);
+  });
+
+  it('the schedule is WALL-CLOCK cron, not an App Engine interval', () => {
+    /* "every N minutes" waits N minutes after the previous run FINISHES, so
+       consecutive runs drift apart by each run's duration and the bands stop
+       tiling — the last seconds of one band belong to no run at all. Unix
+       cron fires at :00 and :30 regardless of how long a run took. */
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    assert.ok(!/schedule: "every /.test(body),
+        'an interval schedule cannot guarantee runs are RPE_WINDOW_MINS apart');
   });
 
   it('the availability reminder scopes to the squad, not the club', () => {
