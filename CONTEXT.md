@@ -2307,3 +2307,44 @@ not by trusting the push); all 18 functions ACTIVE on new revisions at 14:41Z. T
 Cloud Scheduler job now reads `every 30 minutes` / `Europe/Madrid` / ENABLED — read from
 the Cloud Scheduler API, which is the artefact, rather than from the deploy output.
 Rules unchanged and not redeployed.
+
+### v112 (2026-08-21) — the coach's override reaches the server
+
+Asked as a question: *"if a player hasn't answered and the coach overrides him and adds
+him, does he still get the RPE push?"* He did not. Two live gaps, in **opposite**
+directions, both pre-dating v111:
+
+- **A player the coach ADDED by hand was never chased.** `_ntMarkAttending` writes
+  `fa_training_staff_override`, never a record under the player's own key — deliberately,
+  so the app does not forge an answer as him — while `scheduledRpeReminder` read only the
+  `trainingAvail` collection. He saw the RPE waiting on his home screen and was never told
+  about it.
+- **A player the coach marked ABSENT was chased anyway**, because his own stale `yes` was
+  the only thing being read.
+
+**Two stores, one of them never consulted** — the same shape as v110's injuries bug and
+v111's `endTime`. The client has always applied `readRecord(staffOverrides, …) ||
+readRecord(availData, …)` in `renderPlayerActions`; this is the server learning the rule it
+already had.
+
+`attendedFor(overrides, answers, uid, session)` replaces the bare `answeredFor` call in the
+training half of the reminder. **The coach wins in both directions** — an override is a
+human saying he was or was not there, which outranks the player's answer *and* his silence.
+`overrideFor()` mirrors `readRecord`: session-keyed first, date-keyed legacy second, and
+**never** the legacy key for a guest — a date-keyed record predates call-ups and can only
+have meant the player's own session.
+
+`mergeMapShards()` is new, the map counterpart of `mergeArrayShards`. It merges **every**
+category's shard, which matters here specifically: `fa_training_staff_override` is in
+`ROSTER_JOINED_KEYS` as `uidPrefix`, so it is routed by the **player's** category — a
+juvenil guest at an amateur session has his override in `…__juvenil`. Reading only the
+session's own shard would have missed exactly the borrowed players a coach is most likely to
+have added by hand. It costs no extra query: `readDataShards` already reads the whole
+`data/` collection.
+
+**Matches are unaffected** — there is no staff override for a match; the convocatòria is
+already the coach's own list.
+
+Unit tests 620 → **630**. Both gaps were reproduced against `git show HEAD` in a throwaway
+worktree — with no override present the old and new answers are identical, which is the
+part that matters.

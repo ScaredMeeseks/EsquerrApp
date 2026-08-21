@@ -139,6 +139,24 @@ function mergeArrayShards(shards) {
   return out;
 }
 
+/**
+ * Merge one key's MAP shards into the single object the old code read.
+ *
+ * Needed for the keys in ROSTER_JOINED_KEYS, which are routed by the
+ * PLAYER's category rather than the session's — a juvenil guest at an
+ * amateur session has his staff override in `…__juvenil`, so reading only
+ * the session's own shard would miss exactly the borrowed players a coach
+ * is most likely to have overridden by hand.
+ */
+function mergeMapShards(shards) {
+  const out = {};
+  (shards || []).forEach((s) => {
+    const v = parseDataDoc(s.snap, {});
+    if (v && typeof v === "object" && !Array.isArray(v)) Object.assign(out, v);
+  });
+  return out;
+}
+
 // Keys whose category comes from a live join to the roster rather than a
 // stamp on the row. Injuries are deliberately NOT stamped — medical history
 // follows the player — which is exactly why a category change has to MOVE
@@ -501,6 +519,48 @@ function answeredFor(answers, uid, session) {
   return !isGuest && answers.has(uid + "_" + session.date);
 }
 
+/**
+ * The STAFF's call for this player and session, or undefined.
+ *
+ * Same key shape and the same legacy guard as answeredFor, but a map
+ * rather than a set: the value matters, because "no" and "injured" have to
+ * be able to CANCEL a player's own "yes", not merely fail to add one.
+ * Mirrors readRecord() in js/app.js.
+ */
+function overrideFor(overrides, uid, session) {
+  const v = overrides[uid + "_" + session.id];
+  if (v !== undefined) return v;
+  const isGuest = Array.isArray(session.guests) &&
+    session.guests.map(String).includes(String(uid));
+  if (isGuest) return undefined;
+  return overrides[uid + "_" + session.date];
+}
+
+/**
+ * Is this player to be chased for an RPE for this session?
+ *
+ * THE COACH WINS. A staff override is a human saying "he was there" (or
+ * "he was not"), which outranks both the player's own answer and his
+ * silence. Two live gaps before this, in opposite directions:
+ *
+ *   - a player the coach ADDED by hand never got the push. The client
+ *     writes fa_training_staff_override, never a record under the player's
+ *     own key (deliberately -- see _ntMarkAttending in js/app.js), and the
+ *     reminder read only the trainingAvail collection. He saw the RPE
+ *     waiting on his home screen and was never told about it.
+ *   - a player the coach marked absent still got chased, because his own
+ *     stale "yes" was the only thing being read.
+ *
+ * This is the rule the CLIENT has always applied in renderPlayerActions:
+ *   readRecord(staffOverrides, …) || readRecord(availData, …)
+ * The two sides now agree on who attended.
+ */
+function attendedFor(overrides, answers, uid, session) {
+  const call = overrideFor(overrides, uid, session);
+  if (call !== undefined && call !== "") return call === "yes" || call === "late";
+  return answeredFor(answers, uid, session);
+}
+
 // ── Helper: get all team members ──
 async function getAllTeamMembers(teamId) {
   const snap = await db.collection("users")
@@ -800,9 +860,14 @@ exports.scheduledRpeReminder = onSchedule({
 
   await Promise.all([...teamDocs.keys()].map(async (teamId) => {
     const shards = await readDataShards(teamId,
-        ["fa_training", "fa_matches", "fa_convocatoria_sent"]);
+        ["fa_training", "fa_matches", "fa_convocatoria_sent",
+          "fa_training_staff_override"]);
     const training = mergeArrayShards(shards.get("fa_training"));
     const matches = mergeArrayShards(shards.get("fa_matches"));
+    /* The coach's call, which outranks the player's own answer in BOTH
+       directions -- see attendedFor. Free: readDataShards already reads the
+       whole data/ collection, so this costs no extra query. */
+    const overrides = mergeMapShards(shards.get("fa_training_staff_override"));
     /* filter, not find. Two squads can train the same evening, and `find`
        silently picked one -- so the other squad was never chased, and the
        first squad's session was used to judge everybody. */
@@ -839,7 +904,8 @@ exports.scheduledRpeReminder = onSchedule({
     for (const session of dueTraining) {
       const squad = await squadForSession(teamId, session);
       const missing = squad.filter((uid) => {
-        if (!answeredFor(availBySession, uid, session)) return false; // absent
+        // The coach's call wins over the player's answer AND over silence.
+        if (!attendedFor(overrides, availBySession, uid, session)) return false;
         if (rpeIds.has(uid + "_training_" + session.id)) return false;
         if (!Array.isArray(session.guests) ||
             !session.guests.map(String).includes(String(uid))) {

@@ -55,7 +55,8 @@ function load(users) {
         '// ── Helper: get all team members ──');
   // eslint-disable-next-line no-new-func
   return new Function('db', `${code}
-    return { squadForSession, squadForMatch, matchAsSession, answeredFor };`)(db);
+    return { squadForSession, squadForMatch, matchAsSession, answeredFor,
+             overrideFor, attendedFor };`)(db);
 }
 
 /** A teams/{id}/data shard list, as readDataShards returns it. */
@@ -298,6 +299,93 @@ describe('reminders — has this player answered', () => {
 
   it('reports unanswered when nothing is stored', () => {
     assert.strictEqual(H.answeredFor(answers([]), 'a1', S({})), false);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The coach's override, and why it has to WIN.
+ *
+ * Two live gaps before this, in opposite directions. A player the coach
+ * ADDED by hand never got the RPE push: the client writes
+ * fa_training_staff_override and never a record under the player's own key
+ * (deliberately -- _ntMarkAttending in js/app.js says so), while the
+ * reminder read only the trainingAvail collection. He saw the RPE waiting
+ * on his home screen and was never told about it. And a player the coach
+ * marked ABSENT was still chased, because his own stale "yes" was the only
+ * thing being read.
+ *
+ * The client has always applied `override || answer` in
+ * renderPlayerActions. This is the server learning the same rule.
+ * ------------------------------------------------------------------ */
+describe('reminders — the coach\'s override wins', () => {
+  const H = load(ROSTER);
+  const answers = (arr) => new Set(arr);
+  const no = answers([]);
+  const yes = answers(['a1_tr_1']);
+
+  it('THE REPORTED CASE: an unanswered player the coach added is chased', () => {
+    assert.strictEqual(H.attendedFor({}, no, 'a1', S({})), false,
+        'silence alone is still not attendance');
+    assert.strictEqual(H.attendedFor({a1_tr_1: 'yes'}, no, 'a1', S({})), true);
+  });
+
+  it('an override of "no" cancels the player\'s own yes', () => {
+    assert.strictEqual(H.attendedFor({}, yes, 'a1', S({})), true);
+    assert.strictEqual(H.attendedFor({a1_tr_1: 'no'}, yes, 'a1', S({})), false);
+  });
+
+  it('"injured" cancels it too', () => {
+    assert.strictEqual(H.attendedFor({a1_tr_1: 'injured'}, yes, 'a1', S({})), false);
+  });
+
+  it('"late" counts as attending, exactly as an answer does', () => {
+    assert.strictEqual(H.attendedFor({a1_tr_1: 'late'}, no, 'a1', S({})), true);
+  });
+
+  it('falls through to the answer when there is no call', () => {
+    assert.strictEqual(H.attendedFor({}, yes, 'a1', S({})), true);
+    assert.strictEqual(H.attendedFor({a2_tr_1: 'no'}, yes, 'a1', S({})), true,
+        'another player\'s override must not touch this one');
+  });
+
+  it('treats an empty override as no call, not as absence', () => {
+    // The client deletes the key rather than storing '', but a blank left
+    // by any other writer must not silently mute a real answer.
+    assert.strictEqual(H.attendedFor({a1_tr_1: ''}, yes, 'a1', S({})), true);
+  });
+
+  it('keeps two sessions on one date apart', () => {
+    const o = {a1_tr_am: 'yes'};
+    assert.strictEqual(H.attendedFor(o, no, 'a1', S({id: 'tr_am'})), true);
+    assert.strictEqual(H.attendedFor(o, no, 'a1', S({id: 'tr_pm'})), false);
+  });
+
+  it('honours a legacy date-keyed override', () => {
+    assert.strictEqual(
+        H.overrideFor({'a1_2026-09-01': 'yes'}, 'a1', S({})), 'yes');
+  });
+
+  it('does NOT honour a legacy override for a guest appearance', () => {
+    /* Same guard as answeredFor and as readRecord in the client: a
+       date-keyed record predates call-ups and can only ever have meant the
+       player's OWN session. */
+    const borrowed = S({id: 'tr_2', guests: ['j1']});
+    assert.strictEqual(
+        H.overrideFor({'j1_2026-09-01': 'yes'}, 'j1', borrowed), undefined);
+    assert.strictEqual(
+        H.overrideFor({j1_tr_2: 'yes'}, 'j1', borrowed), 'yes');
+  });
+
+  it('the reminder actually reads the override shard', () => {
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    assert.ok(body.includes('"fa_training_staff_override"'),
+        'the shard has to be READ or the override can never be seen');
+    assert.ok(body.includes('mergeMapShards(shards.get("fa_training_staff_override"))'),
+        'every category\'s shard, not just the session\'s — a guest\'s ' +
+        'override lives in HIS category');
+    assert.ok(body.includes('attendedFor(overrides, availBySession, uid, session)'));
+    assert.ok(!/if \(!answeredFor\(availBySession, uid, session\)\) return false;/.test(body),
+        'reading the answer alone is the bug');
   });
 });
 

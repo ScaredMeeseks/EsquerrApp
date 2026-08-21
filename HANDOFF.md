@@ -2,18 +2,17 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-**`main` is at v111, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
+**`main` is at v112, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
 functions both. Verified against the live artefacts rather than the deploy output:
 
 ```bash
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-# both said 111 at 2026-08-21
+# both said 112 at 2026-08-21
 ```
 
-All 18 functions **ACTIVE** on fresh revisions at 14:41Z (`scheduledrpereminder-00031-kem`),
-and the **Cloud Scheduler job itself** now reads `every 30 minutes` / `Europe/Madrid` /
-`ENABLED`. That last one matters: `firebase functions:list` only ever says `scheduled`, so
+All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** now
+reads `every 30 minutes` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list` only ever says `scheduled`, so
 it cannot tell you the cron actually changed. The scheduler API can — see
 "Reading production without a browser" for the token, then:
 
@@ -21,12 +20,51 @@ it cannot tell you the cron actually changed. The scheduler API can — see
 GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
 ```
 
-Rules unchanged and not redeployed. Unit tests **620 passing** (+25 this session); the
+Rules unchanged and not redeployed. Unit tests **630 passing** (+35 this session); the
 rules and functions emulator suites were **not** re-run.
 
 **One thing is still unproven:** no RPE reminder has been observed *firing* under the new
 schedule. The deploy is confirmed; a live send is not. See "Verify it" below — it is now
 cheap to test, because it no longer means waiting until 23:00.
+
+---
+
+## What shipped: v112 — the coach's override reaches the server
+
+Asked as a question: *"if a player hasn't answered and the coach overrides him and adds
+him, does he still get the RPE push?"* **He did not.** Two gaps, in opposite directions,
+both older than v111:
+
+- A player the coach **added by hand** was never chased. `_ntMarkAttending` writes
+  `fa_training_staff_override` and never a record under the player's own key —
+  deliberately, so the app does not forge an answer as him — while the reminder read only
+  the `trainingAvail` collection. He saw the RPE waiting on his home screen and was never
+  told about it.
+- A player the coach marked **absent** was chased anyway, because his own stale `yes` was
+  the only thing being read.
+
+**Two stores, one never consulted** — the same shape as v110's injuries and v111's
+`endTime`. The client has always applied `override || answer` in `renderPlayerActions`;
+this is the server learning the rule it already had.
+
+`attendedFor(overrides, answers, uid, session)` replaces the bare `answeredFor` call.
+**The coach wins in both directions** — an override is a human saying he was or was not
+there, which outranks the player's answer *and* his silence. `overrideFor()` mirrors
+`readRecord`: session key first, legacy date key second, and **never** the legacy key for
+a guest.
+
+`mergeMapShards()` merges **every** category's shard, which matters here specifically:
+`fa_training_staff_override` is in `ROSTER_JOINED_KEYS` as `uidPrefix`, so it is routed by
+the **player's** category — a juvenil guest at an amateur session has his override in
+`…__juvenil`. Reading only the session's shard would miss exactly the borrowed players a
+coach is most likely to have added by hand. No extra query: `readDataShards` already reads
+the whole `data/` collection.
+
+**Matches are unaffected** — there is no staff override for a match; the convocatòria is
+already the coach's own list.
+
+Both gaps were reproduced against `git show HEAD`, and with no override present the old
+and new answers are identical — that is the part that matters.
 
 ---
 
@@ -119,6 +157,9 @@ a throwaway worktree first and fails there — but that is not the same as seein
    - Create a session ending in the next ~30 minutes.
    - As a demo player, answer **Sí** for it (the audience is `yes`/`late` only — an
      `injured` answer is excluded, which is exactly why the 2026-08-20 run sent nothing).
+   - **Or test v112's path instead**: leave a player unanswered and *add* him to the
+     session as a coach. He should now be chased. The inverse is worth one click too —
+     set a player's staff answer to **No** and confirm he is not.
    - Confirm no `rpe` doc exists for that uid + session.
    - Wait for the half-hour boundary, then read the log:
 
@@ -349,6 +390,11 @@ of the current demo corpus as garbage.
 - **When one screen disagrees with another, count the definitions before hunting for a
   render bug.** v111 was four independent answers to one question, three of them ignoring
   the field that knew.
+- **Two stores means the server probably reads one of them.** v112, v111 and v110 were all
+  this. When a client resolves `a || b` and a Cloud Function reads only `b`, the two will
+  disagree exactly where a human intervened — which is the case that matters most.
+- **"Does X still happen if…" is worth answering by reading the code, not by intuition.**
+  The v112 gaps had been live for months and nothing surfaced them.
 - **A duplicated rule needs a test that reads BOTH copies.** Not one that tests each side's
   behaviour separately — one that asserts they are equal. Behaviour tests pass happily
   while the two drift.
