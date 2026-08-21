@@ -2459,3 +2459,106 @@ an `input` event, and neither does an autofill, so the keystroke clamp cannot be
 check. That trap was created by this very change.
 
 Unit tests 643 → **651**.
+
+### v115 (2026-08-21) — three staff sub-roles: coach, fitness, delegate
+
+`staff` was one role. `buildSidebarItems()` and `STAFF_PAGES` both gated on the same
+`roles.includes('staff')`, so every staff member got all ten staff sections with full edit
+rights. A club wanted to hand accounts to a fitness coach and a match delegate without also
+handing over the tactical boards, the medical file and the ability to delete a fixture.
+
+**The sub-role lives on the roster doc, as a parallel map.**
+
+```
+clubs/{clubId}/rosters/{cat}-{letter}
+  staffEmails : ["a@x.com", "b@x.com"]        // unchanged
+  staffRoles  : { "b@x.com": "fitness" }      // NEW — absent ⇒ "coach"
+```
+
+A parallel map rather than turning `staffEmails` into objects: no shim in `normEmails`, no
+migration of existing docs, and it inherits the right permissions for free — `firestore.rules`
+already gives full roster writes to the lead only and pins staff to
+`hasOnly(['playerEmails','updatedAt'])`, so `staffRoles` is lead-only without a rule change.
+
+**Absent means coach, everywhere.** On the server (`normStaffRoles`, `membershipFrom`), in the
+client's `staffAccess()`, and in `check-deploy.js`. That is what every roster doc and every
+user doc written before today looks like, so an existing coach's behaviour is bit-identical.
+
+**Resolution across categories is deliberately permissive** (`resolveStaffRole`): a staff
+member can be on several lists and the lead sets the dropdown per list. Any list that leaves
+them undowngraded wins, and two *different* downgrades cancel back to coach. The failure that
+actually hurts is a real head coach locked out of their own sections by a stale dropdown
+somewhere else; the gating is a UI convenience, so the permissive fallback costs nothing.
+
+**The access matrix** — `edit` is today's behaviour, `view` renders the page with every
+mutating control left out, `hidden` is dropped from the sidebar and bounced by the route guard:
+
+| Section | page id | coach | fitness | delegate |
+|---|---|---|---|---|
+| Inici | `staff-home` | edit | view | view |
+| Registres | `registrations` | edit | view | view |
+| Plantilla | `manage-roster` | edit | view | view |
+| Perfil de jugador | `staff-player-stats` | view | view | view |
+| Sessions d'entrenament | `staff-training`, `-detail` | edit | view | view |
+| Nova sessió | `training-new` | edit | hidden | hidden |
+| Calendari | `matchday` | edit | view | edit |
+| Convocatòria | `convocatoria` | edit | hidden | view |
+| Jornada | `staff-matchday`, `match-detail` | edit | edit | edit |
+| Mèdic | `medical`, `-detail` | edit | edit | hidden |
+| Pissarra tàctica | `tactics` | edit | hidden | hidden |
+| Notificacions | `staff-notifications` | edit | edit | hidden |
+
+A page absent from a sub-role's table is `edit`, so `coach` has no table at all.
+`staff-notifications` is `edit` for fitness on purpose: its only writes are mark-as-read and
+Clear All, and a read-only notification feed is not a meaningful thing.
+
+**This is a UI gate, not a security boundary, and that was a decision rather than an
+oversight.** All three sub-roles still carry `role:'staff'` in their token and
+`firestore.rules` still lets them write the same documents. It could not be otherwise today:
+Calendari, Jornada **and** Convocatòria all write the same `teams/{id}/data/fa_matches__{cat}`
+document as one opaque `{v:"<json>"}` blob (`saveMatchEvents` syncs the score back at
+app.js:1717, marked "backward compat"; Convocatòria writes `callupTime` at ~17600), so
+"Jornada but not Calendari" is not expressible in a rule. Server-side enforcement needs those
+cross-writes split first — score into `fa_match_events` only, `callupTime` into
+`fa_convocatoria_callup` only, starting-XI out of `fa_convocatoria_sent` — and then a
+`sections` claim keyed off `baseKey(key)` in `firestore.rules:115`.
+
+**Two gates, always in step.** `buildSidebarItems()` filters each staff item through
+`canViewPage(id)`; `renderPage()` bounces a staff page the sub-role may not view. Hiding the
+sidebar item alone is not enough — detail pages are not sidebar items, and the Back button,
+the staff-home shortcuts and a stale `currentPage` from before a role change all reach a page
+without passing the sidebar. `shomeLinkAttrs()` drops the `data-shome-link` attribute for a
+destination this sub-role cannot open, so a delegate's "Out of action" rows are inert text
+instead of clicks that bounce.
+
+**Two render-time writes had to be guarded**, or merely OPENING a page would be a write from a
+session that may not change anything: the id-repair + sort in `renderStaffTraining` (app.js
+~11933) and the computed call-up default in `renderConvocatoria` (~14020).
+
+**Read-only rendering reuses what was already there where it could.** A completed training
+session already renders as static cells, so a view-only sub-role takes that branch — minus the
+`st-locked` class, which greys the row to mean "this session is over". Squad edits on the
+training detail fold into the existing `squadEditable` flag. Everywhere else the pattern is the
+same: leave the control out of the markup AND refuse in the handler. The delegated listeners on
+`#dashboard-content` (registrations, board↔teams linking) are bound once and outlive any
+render, so the markup half alone would not hold.
+
+**`set({merge:true}) deep-merges a map field**, so writing the new `staffRoles` alone would only
+ever ADD keys — demoting someone back to Coach would leave `fitness` in the document forever.
+Every key that has gone is deleted with `FieldValue.delete()` (app.js, Config Club save).
+
+**`onRosterWritten`'s membership signature now carries the sub-role** (`"s:" + role`, was `"s"`).
+Without that, flipping only the dropdown produces a roster write the trigger classifies as a
+no-op and returns from — and `users/{uid}.staffRole` stays stale. This was the easiest thing in
+the whole change to miss.
+
+`users/{uid}.staffRole` joins the server-owned field list in `firestore.rules` (self-create and
+self-update, plus the staff allowlist it is deliberately absent from) and the strip-list in
+`setSession()`. `check-deploy.js` now audits it against the rosters — a mismatch never denies a
+write, it just shows or hides the wrong sections, silently.
+
+Files: `js/app.js`, `functions/index.js`, `functions/check-deploy.js`, `firestore.rules`,
+`index.html`, `css/style.css`, `sw.js` (v114 → v115), `test/staff-roles.test.js` (new),
+`test/rules.test.js`, `test/package.json`.
+
+Unit tests 651 → **671**; rules tests 134 → **139**.

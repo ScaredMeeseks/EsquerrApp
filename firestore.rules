@@ -48,7 +48,7 @@ service cloud.firestore {
         request.auth != null && request.auth.uid == uid
         && !request.resource.data.keys().hasAny(['teamId', 'isTeamLead', 'isAdmin',
                                                  'roles', 'category', 'team',
-                                                 'staffCategories'])
+                                                 'staffCategories', 'staffRole'])
       );
       allow update: if request.auth != null && (
         isSuperUser()
@@ -57,11 +57,14 @@ service cloud.firestore {
         // membership is decided by the club's roster email lists and applied
         // server-side (joinClub / onRosterWritten / setRole). Leaving them
         // open made the registration gate bypassable from the console.
+        // `staffRole` (coach | fitness | delegate) belongs in that list for
+        // the same reason: the lead sets it on the roster doc, the server
+        // re-derives it, and it is what the client's section gating reads.
         || (request.auth.uid == uid
             && !request.resource.data.diff(resource.data).affectedKeys()
                  .hasAny(['teamId', 'isTeamLead', 'isAdmin', 'claimsUpdatedAt',
                           'roles', 'category', 'team', 'staffCategories',
-                          'prevCategory', 'prevTeam']))
+                          'staffRole', 'prevCategory', 'prevTeam']))
         // Staff of the member's club: registration fields only. `roles` is not
         // here either — it only moves through the setRole callable, which keeps
         // the Auth claims in sync.

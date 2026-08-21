@@ -76,11 +76,30 @@ async function checkRosters() {
     const leadEmail = String(club.leadEmail || "").toLowerCase();
     const rosters = await clubDoc.ref.collection("rosters").get();
     const listed = new Set();
+    /* Sub-role per staff address, resolved the way membershipFrom() does:
+       any list that leaves them undowngraded wins, and two different
+       downgrades cancel back to coach. Audited below against the user doc —
+       drift here is invisible in the app until the wrong sections vanish. */
+    const subRoleSeen = {};
     rosters.forEach((d) => {
       const v = d.data() || {};
       [].concat(v.staffEmails || [], v.playerEmails || [])
           .forEach((e) => listed.add(String(e || "").trim().toLowerCase()));
+      const map = v.staffRoles || {};
+      (v.staffEmails || []).forEach((raw) => {
+        const e = String(raw || "").trim().toLowerCase();
+        if (!e) return;
+        const r = String(map[e] || "coach").trim().toLowerCase();
+        (subRoleSeen[e] = subRoleSeen[e] || []).push(r);
+      });
     });
+    const subRoleOf = (email) => {
+      const found = subRoleSeen[email] || [];
+      if (!found.length) return "coach";
+      if (found.includes("coach")) return "coach";
+      const distinct = [...new Set(found)];
+      return distinct.length === 1 ? distinct[0] : "coach";
+    };
 
     // Members who actually need to be on a list. The lead and the superuser
     // bypass the gate, so they are never listed and must not count here.
@@ -128,6 +147,14 @@ async function checkRosters() {
                 `${JSON.stringify(c.cats)} != doc ${JSON.stringify(cats)}`);
           }
         } catch (e) { /* no Auth account — already warned in [1/5] */ }
+        // The sub-role is UI-only, so a mismatch never denies a write — it
+        // just shows or hides the wrong sections, silently.
+        const want = subRoleOf(email);
+        const have = String(u.staffRole || "coach");
+        if (have !== want) {
+          bad(`${clubDoc.id}/${u.name || uDoc.id}: staffRole "${have}" != ` +
+              `roster "${want}" — onRosterWritten did not re-derive it`);
+        }
       }
     }
   }
@@ -192,7 +219,7 @@ async function checkFrontend() {
     const sw = await (await fetch(`${base}/sw.js`, {cache: "no-store"})).text();
     const m = sw.match(/CACHE_NAME\s*=\s*'([^']+)'/);
     const v = m ? m[1] : "?";
-    const CURRENT = "esquerrapp-v114"; // bump alongside sw.js
+    const CURRENT = "esquerrapp-v115"; // bump alongside sw.js
     if (v === CURRENT) ok(`sw.js CACHE_NAME = ${v} (latest frontend live)`);
     else bad(`sw.js CACHE_NAME = ${v} — expected ${CURRENT}; merge the phase branch to main`);
 

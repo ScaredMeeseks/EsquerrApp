@@ -2,8 +2,14 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-21._
 
-**`main` is at v114, working tree clean, pushed — and FULLY DEPLOYED**, frontend and
-functions both. Verified against the live artefacts rather than the deploy output:
+> **⚠️ v115 is WRITTEN AND TESTED BUT NOT DEPLOYED, NOT COMMITTED.** Working tree dirty.
+> It touches `firestore.rules` and `functions/index.js` as well as the frontend, so
+> `./deploy.ps1` must cover **rules + functions + hosting** — a hosting-only push would
+> ship a client that reads a `staffRole` no function ever writes, and every staff member
+> would silently stay a coach. See "Deploying v115" below.
+
+**`main` is at v114 and fully deployed**, frontend and functions both, verified against the
+live artefacts rather than the deploy output:
 
 ```bash
 curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
@@ -11,24 +17,97 @@ curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep
 # both said 114 at 2026-08-21
 ```
 
-All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** now
-reads `*/30 * * * *` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list` only ever says `scheduled`, so
-it cannot tell you the cron actually changed. The scheduler API can — see
-"Reading production without a browser" for the token, then:
+All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** reads
+`*/30 * * * *` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list`
+only ever says `scheduled`, so it cannot tell you the cron actually changed. The scheduler
+API can — see "Reading production without a browser" for the token, then:
 
 ```
 GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
 ```
 
-Rules unchanged and not redeployed. Unit tests **651 passing** (+56 this session); the
-rules and functions emulator suites were **not** re-run.
+Unit tests **671 passing**, rules tests **139 passing** (both re-run this session). The
+**functions** emulator suite was not re-run — worth doing before deploying v115, since
+`onRosterWritten` changed.
 
 **The push chain is PROVEN end to end.** The scheduler fired at `2026-08-21T15:30:01Z`,
 exactly on the wall clock — which is also the proof the cron change took — and the owner
 received the resulting RPE notification on his phone. That closes the oldest open question
 in this file: the scheduled reminders work, not just the manual convocatòria push.
 
-v114 is the feedback from that first live push, already shipped.
+---
+
+## What's written but NOT shipped: v115 — three staff sub-roles
+
+`staff` was one role: `buildSidebarItems()` and `STAFF_PAGES` both gated on the same
+`roles.includes('staff')`, so every staff member got all ten staff sections with full edit
+rights. The club wanted to hand accounts to a fitness coach and a match delegate without also
+handing over the tactical boards, the medical file and the ability to delete a fixture.
+
+**Where it lives.** A parallel map on the roster doc the lead already owns:
+
+```
+clubs/{clubId}/rosters/{cat}-{letter}
+  staffEmails : ["a@x.com", "b@x.com"]      // unchanged
+  staffRoles  : { "b@x.com": "fitness" }    // NEW — absent ⇒ "coach"
+```
+
+Chosen over turning `staffEmails` into objects: no shim in `normEmails`, no migration, and
+`firestore.rules` already pins staff to `hasOnly(['playerEmails','updatedAt'])` and gives the
+lead everything — so `staffRoles` is lead-only with no rule change. The lead sets it from a
+dropdown next to each address in **Config Club**; `onRosterWritten` re-derives
+`users/{uid}.staffRole` for everyone the edit touched.
+
+**Absent means coach, everywhere** — server, client, `check-deploy.js`. Every existing account
+behaves bit-identically, which is the whole reason for that default.
+
+| Section | coach | fitness | delegate |
+|---|---|---|---|
+| Inici, Plantilla, perfil de jugador | edit | view | view |
+| Registres | edit | view | view |
+| Sessions d'entrenament (+ nova sessió) | edit | view (hidden) | view (hidden) |
+| Calendari | edit | view | **edit** |
+| Convocatòria | edit | **hidden** | view |
+| Jornada | edit | edit | edit |
+| Mèdic | edit | **edit** | **hidden** |
+| Pissarra tàctica | edit | hidden | hidden |
+| Notificacions | edit | edit | **hidden** |
+
+**It is a UI gate, not a security boundary — a decision, not an oversight.** All three still
+carry `role:'staff'` and can still write the same documents. It could not be otherwise today:
+Calendari, Jornada **and** Convocatòria all write the same `fa_matches__{cat}` doc as one
+opaque blob, so "Jornada but not Calendari" is not expressible in a rule. See the v115 entry
+in CONTEXT.md for exactly which cross-writes have to be split first.
+
+**The two things most likely to bite whoever picks this up:**
+
+1. `onRosterWritten`'s membership signature had to carry the sub-role (`"s:" + role`). Without
+   it, changing only the dropdown is a roster write the trigger reads as a no-op — it returns,
+   and `users/{uid}.staffRole` stays stale. Nothing else in the change is as easy to miss.
+2. `set({merge:true})` **deep-merges a map field**. Sending the new `staffRoles` alone only ever
+   ADDS keys, so demoting someone back to Coach would leave `fitness` in the doc forever. Keys
+   that have gone are deleted with `FieldValue.delete()`.
+
+New: `test/staff-roles.test.js` (20 tests) — **and it had to be added to `test:unit` in
+`test/package.json` by hand**, which is the standing trap in this repo.
+
+### Deploying v115
+
+```powershell
+cd c:\DATA\CLAUDE\EsquerrApp
+cd test; npm run test:functions; cd ..   # onRosterWritten changed — not yet re-run
+.\deploy.ps1                             # rules + functions + hosting, NOT hosting-only
+git add -A; git commit; git push         # push also builds the APK
+```
+
+Then, as the lead: Config Club → set one staff address to Preparador físic and another to
+Delegat → Save. **Confirm both halves landed**: `clubs/{c}/rosters/{key}.staffRoles` in the
+console, *and* that each affected `users/{uid}.staffRole` was re-stamped. The second is what
+catches a missed `sigOf`. Then sign in as each and walk the table above — including typing a
+hidden page's id and using the Back button, which must land on `staff-home`, never a blank
+screen.
+
+No `minAppVersion` bump: the change is UI-only, so an old APK simply behaves as it does today.
 
 ---
 
@@ -450,7 +529,8 @@ the same token, so delivery is settled — triggers, audiences and preconditions
   project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push;
   rules/functions = `.\deploy.ps1`; Admin SDK = local, see above.
 - **Bump the version in THREE places together**: `CACHE_NAME` in `sw.js`, `APP_VERSION` in
-  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **111**.
+  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **115**
+  (v115 is written but not yet deployed — see the top of this file).
 - Verify a deploy by fetching the served files, not by trusting the push:
 
 ```bash

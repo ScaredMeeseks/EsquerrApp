@@ -1183,6 +1183,26 @@ function normEmails(arr) {
       .map((e) => String(e || "").trim().toLowerCase()).filter(Boolean);
 }
 
+/** The sub-roles under `staff`. "coach" is the default and the most permissive. */
+const STAFF_SUB_ROLES = ["coach", "fitness", "delegate"];
+
+/**
+ * Normalise the `staffRoles` map off a roster doc: {email: subRole}, both
+ * sides lowercased, unknown values dropped. An address absent from the map is
+ * a plain coach — that is what every roster written before sub-roles existed
+ * looks like, so "absent" must keep meaning "full access".
+ */
+function normStaffRoles(obj) {
+  const out = {};
+  if (!obj || typeof obj !== "object") return out;
+  Object.keys(obj).forEach((k) => {
+    const email = String(k || "").trim().toLowerCase();
+    const role = String(obj[k] || "").trim().toLowerCase();
+    if (email && STAFF_SUB_ROLES.includes(role)) out[email] = role;
+  });
+  return out;
+}
+
 /** Read every roster doc of a club once, as [{key, staff[], players[]}]. */
 async function loadRosters(clubId) {
   const snap = await db.collection("clubs").doc(clubId)
@@ -1191,24 +1211,49 @@ async function loadRosters(clubId) {
     key: doc.id,
     staff: normEmails((doc.data() || {}).staffEmails),
     players: normEmails((doc.data() || {}).playerEmails),
+    staffRoles: normStaffRoles((doc.data() || {}).staffRoles),
   }));
+}
+
+/**
+ * Collapse the sub-roles an address holds across several rosters into one.
+ *
+ * A staff member can be on more than one category's list, and the lead sets
+ * the dropdown per list — so the values can disagree. Resolution is
+ * deliberately PERMISSIVE: any roster that leaves them undowngraded (or says
+ * "coach") wins, and two different downgrades cancel out back to coach. The
+ * gating is a UI convenience, and the failure that actually hurts is a real
+ * head coach locked out of their own sections by a stale dropdown elsewhere.
+ *
+ * @param {Array<string>} found Sub-role per roster the address is staff on.
+ * @return {string} One of STAFF_SUB_ROLES.
+ */
+function resolveStaffRole(found) {
+  if (!found.length) return "coach";
+  if (found.includes("coach")) return "coach";
+  const distinct = [...new Set(found)];
+  return distinct.length === 1 ? distinct[0] : "coach";
 }
 
 /**
  * Resolve one address against already-loaded rosters.
  * @param {Array} rosters Result of loadRosters.
  * @param {string} email Lowercased address to look for.
- * @return {Object} {roles, staffCats, category, team}. `roles` is empty when
- *   the address is on no list at all — the caller decides whether that is a
- *   rejection.
+ * @return {Object} {roles, staffCats, staffRole, category, team}. `roles` is
+ *   empty when the address is on no list at all — the caller decides whether
+ *   that is a rejection. `staffRole` is "" for anyone who is not staff.
  */
 function membershipFrom(rosters, email) {
-  const out = {roles: [], staffCats: [], category: "", team: ""};
+  const out = {roles: [], staffCats: [], staffRole: "", category: "", team: ""};
   if (!email) return out;
   const staffCats = new Set();
+  const subRoles = [];
   let playerKey = null;
   rosters.forEach((r) => {
-    if (r.staff.includes(email)) staffCats.add(r.key.split("-")[0]);
+    if (r.staff.includes(email)) {
+      staffCats.add(r.key.split("-")[0]);
+      subRoles.push((r.staffRoles || {})[email] || "coach");
+    }
     // First player match wins — a player belongs to exactly one team.
     if (!playerKey && r.players.includes(email)) playerKey = r.key;
   });
@@ -1221,6 +1266,7 @@ function membershipFrom(rosters, email) {
   if (staffCats.size) {
     out.roles.push("staff");
     out.staffCats = [...staffCats];
+    out.staffRole = resolveStaffRole(subRoles);
     // A staff-only member still needs a category for the UI's default view.
     if (!out.category) out.category = out.staffCats[0];
   }
@@ -1451,6 +1497,9 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
     category: m.category,
     team: m.team,
     staffCategories: m.staffCats,
+    // Sub-role under `staff` — "" for a player. Gates which staff sections the
+    // client shows; see STAFF_ROLE_ACCESS in js/app.js.
+    staffRole: m.staffRole,
   }, {merge: true});
 
   // Stamp membership + role as Auth custom claims so security rules can
@@ -1490,6 +1539,7 @@ exports.joinClub = onCall({region: "us-central1"}, async (request) => {
     category: m.category,
     team: m.team,
     staffCategories: m.staffCats,
+    staffRole: m.staffRole,
   };
 });
 
@@ -1542,7 +1592,8 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
   // Rosters loaded once — membershipFrom and the board-author sync below both
   // read them, and this is a single collection read either way.
   const rosters = teamId ? await loadRosters(teamId) : [];
-  const m = teamId ? membershipFrom(rosters, email) : {roles: [], staffCats: []};
+  const m = teamId ? membershipFrom(rosters, email) :
+    {roles: [], staffCats: [], staffRole: ""};
 
   const targetIsLead = target.isTeamLead === true;
 
@@ -1579,10 +1630,17 @@ exports.setRole = onCall({region: "us-central1"}, async (request) => {
     else if (m.category) cats = [m.category];
   }
 
+  // Re-derived from the roster lists like `roles` and `cats` above, never
+  // taken from the payload: the sub-role is the lead's to set in Config Club,
+  // and a self-call must not be able to promote itself out of Fitness. Someone
+  // the lead marks staff manually is on no list, so they get the default.
+  const staffRole = roles.includes("staff") ? (m.staffRole || "coach") : "";
+
   await admin.auth().setCustomUserClaims(uid, {teamId: teamId || null, role, cats});
   await db.collection("users").doc(uid).set({
     roles,
     staffCategories: cats,
+    staffRole,
     claimsUpdatedAt: FieldValue.serverTimestamp(),
   }, {merge: true});
   // Board author label — this is usually where a NAME first becomes available
@@ -1795,6 +1853,7 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
             {teamId: clubId, role: next.role, cats: next.cats});
         await doc.ref.set({
           staffCategories: next.cats,
+          staffRole: m.staffRole,
           claimsUpdatedAt: FieldValue.serverTimestamp(),
         }, {merge: true});
         refreshed++;
@@ -1942,15 +2001,19 @@ exports.onRosterWritten = onDocumentWritten({
   region: "us-central1",
 }, async (event) => {
   const clubId = event.params.clubId;
-  // Membership signature per address: "s" if on staffEmails, "p" if on
-  // playerEmails. Comparing signatures (rather than a flat email list) also
-  // catches an address MOVED between the two lists in a single edit.
+  // Membership signature per address: "s:{subRole}" if on staffEmails, "p" if
+  // on playerEmails. Comparing signatures (rather than a flat email list) also
+  // catches an address MOVED between the two lists in a single edit — and,
+  // because the staff signature carries the sub-role, a lead flipping only the
+  // Coach/Fitness/Delegate dropdown. Without the sub-role in here that edit
+  // looks like a no-op and returns below, leaving users/{uid}.staffRole stale.
   const sigOf = (snap) => {
     const out = {};
     if (!snap || !snap.exists) return out;
     const d = snap.data() || {};
+    const subs = normStaffRoles(d.staffRoles);
     normEmails(d.staffEmails).forEach((e) => {
-      out[e] = (out[e] || "") + "s";
+      out[e] = (out[e] || "") + "s:" + (subs[e] || "coach");
     });
     normEmails(d.playerEmails).forEach((e) => {
       out[e] = (out[e] || "") + "p";
@@ -2012,6 +2075,10 @@ exports.onRosterWritten = onDocumentWritten({
     const patch = {
       roles: nextRoles,
       staffCategories: m.staffCats,
+      // Re-derived, never merged: a lead who drops someone from Fitness back
+      // to Coach must see the downgrade reversed, and a member taken off every
+      // staff list keeps no sub-role at all.
+      staffRole: m.staffRole,
       category: detached ? "" : (m.category || prevCat),
       team: detached ? "" : (m.team || prevTeam),
       claimsUpdatedAt: FieldValue.serverTimestamp(),
@@ -2042,7 +2109,7 @@ exports.onRosterWritten = onDocumentWritten({
           {clubId, uid: doc.id, err: String(e)});
     }
     logger.info("onRosterWritten",
-        {clubId, uid: doc.id, email, role, cats, detached});
+        {clubId, uid: doc.id, email, role, cats, staffRole: m.staffRole, detached});
   }
 });
 
@@ -2093,6 +2160,7 @@ exports.onClubLeadChanged = onDocumentWritten({
         isTeamLead: false,
         roles: rolesFor(false, m.roles),
         staffCategories: m.staffCats,
+        staffRole: m.staffRole,
         category: m.category || outgoing.data().category || "",
         team: m.team || outgoing.data().team || "",
         claimsUpdatedAt: FieldValue.serverTimestamp(),
@@ -2108,6 +2176,7 @@ exports.onClubLeadChanged = onDocumentWritten({
         isTeamLead: false,
         roles: [],
         staffCategories: [],
+        staffRole: "",
         category: "",
         team: "",
         claimsUpdatedAt: FieldValue.serverTimestamp(),
@@ -2150,6 +2219,10 @@ exports.onClubLeadChanged = onDocumentWritten({
     await incoming.ref.update({
       isTeamLead: true,
       roles: rolesFor(true, [...new Set([...prev, ...m.roles])]),
+      // Re-derived from the lists like everywhere else. A lead is on no roster
+      // of their own, so this is usually "" — harmless, because a lead is
+      // never gated by sub-role in the first place.
+      staffRole: m.staffRole,
       claimsUpdatedAt: FieldValue.serverTimestamp(),
     });
     // A lead's claim is role:'lead', which passes isStaffOf in the rules, so
@@ -2650,6 +2723,7 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
                 {teamId: clubId, role: next.role, cats: next.cats});
             await doc.ref.set({
               staffCategories: next.cats,
+              staffRole: m.staffRole,
               claimsUpdatedAt: FieldValue.serverTimestamp(),
             }, {merge: true});
             refreshed++;

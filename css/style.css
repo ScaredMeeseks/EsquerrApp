@@ -368,6 +368,14 @@ a:hover { text-decoration: underline; }
   margin-bottom: 1.5rem;
 }
 .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--primary-dark); }
+/* "You may look but not touch." Shown at the top of a section a staff
+   sub-role can read but not change — without it the page just looks like the
+   buttons failed to render. Quieter than a card: less padding, no shadow. */
+.view-only-note {
+  padding: .6rem .9rem; margin-bottom: 1rem; box-shadow: none;
+  font-size: .85rem; color: var(--text-secondary);
+  border: 1px dashed var(--border);
+}
 
 /* ===== Tables ===== */
 .table-wrap { overflow-x: auto; }
@@ -3779,6 +3787,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-sched-row{display:flex;gap:.4rem;align-items:center;margin-bottom:.35rem;flex-wrap:wrap;}
 .ts-sched-row select{flex:1;min-width:90px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row select.ts-time{flex:0 0 auto;min-width:0;width:82px;text-align:center;}
+/* Staff sub-role picker: fixed width, so it never competes with the email
+   field for the row's spare space the way a flex:1 select would. */
+.ts-sched-row select[data-staff-role]{flex:0 0 auto;min-width:0;width:140px;}
 .ts-sched-row input[type="text"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"]{flex:1;min-width:100px;font-size:.82rem;padding:.35rem .4rem;border:1px solid var(--border);border-radius:var(--radius);}
 .ts-sched-row input[type="email"].invalid{border-color:var(--danger);}

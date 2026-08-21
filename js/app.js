@@ -29,6 +29,16 @@
     'sidebar.medical':         { ca:'Mèdic', es:'Médico', en:'Medical' },
     'sidebar.tactics':         { ca:'Pissarra tàctica', es:'Pizarra táctica', en:'Tactical Board' },
     'sidebar.notifications':   { ca:'Notificacions', es:'Notificaciones', en:'Notifications' },
+
+    /* Staff sub-roles. `staffrole.<value>` is looked up by concatenation in
+       four places (the Config Club dropdown, the Registres badge, …), so the
+       key suffixes must stay exactly the STAFF_SUB_ROLES values. */
+    'staffrole.coach':         { ca:'Entrenador', es:'Entrenador', en:'Coach' },
+    'staffrole.fitness':       { ca:'Preparador físic', es:'Preparador físico', en:'Fitness coach' },
+    'staffrole.delegate':      { ca:'Delegat', es:'Delegado', en:'Delegate' },
+    'staffrole.label':         { ca:'Rol', es:'Rol', en:'Role' },
+    'staffrole.hint':          { ca:'L\'entrenador té accés complet. El preparador físic i el delegat només veuen la part que els pertoca.', es:'El entrenador tiene acceso completo. El preparador físico y el delegado solo ven la parte que les corresponde.', en:'A coach has full access. A fitness coach and a delegate only see the part that concerns them.' },
+    'staffrole.view_only':     { ca:'Només lectura: aquesta secció no la pots modificar amb el teu rol.', es:'Solo lectura: no puedes modificar esta sección con tu rol.', en:'View only: your role cannot change anything in this section.' },
     'sidebar.section_admin':   { ca:'Admin', es:'Admin', en:'Admin' },
     'sidebar.users':           { ca:'Gestió d\'usuaris', es:'Gestión de usuarios', en:'Manage Users' },
     'sidebar.settings':        { ca:'Configuració', es:'Configuración', en:'Settings' },
@@ -394,6 +404,7 @@
     // ── Registrations ──
     'reg.card_title':   { ca:'Tots els membres registrats', es:'Todos los miembros registrados', en:'All Registered Members' },
     'reg.edit_desc':     { ca:'Edita l\'estat, posició i dorsal de cada membre. Els canvis es desen automàticament.', es:'Edita el estado, posición y dorsal de cada miembro. Los cambios se guardan automáticamente.', en:'Edit each member\'s status, position, and player number. Changes are saved automatically.' },
+    'reg.view_desc':     { ca:'Estat, posició i dorsal de cada membre del club.', es:'Estado, posición y dorsal de cada miembro del club.', en:'Each club member\'s status, position and player number.' },
     'reg.th_name':      { ca:'Nom', es:'Nombre', en:'Name' },
     'reg.th_status':    { ca:'Estat', es:'Estado', en:'Status' },
     'reg.th_category':  { ca:'Categoria', es:'Categoría', en:'Category' },
@@ -1270,7 +1281,7 @@
       // used to be a way round the registration gate entirely).
       const {
         password, isAdmin, isTeamLead, teamId,
-        roles, category, team, staffCategories,
+        roles, category, team, staffCategories, staffRole,
         ...profile
       } = user;
       db.collection('users').doc(auth.currentUser.uid).set(profile, { merge: true }).catch(console.error);
@@ -1354,7 +1365,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 114;
+  const APP_VERSION = 115;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -1613,7 +1624,11 @@
         var d = doc.exists ? doc.data() : {};
         out[key] = {
           staffEmails: Array.isArray(d.staffEmails) ? d.staffEmails : [],
-          playerEmails: Array.isArray(d.playerEmails) ? d.playerEmails : []
+          playerEmails: Array.isArray(d.playerEmails) ? d.playerEmails : [],
+          // {email: 'coach'|'fitness'|'delegate'}. An address absent from the
+          // map is a plain coach, which is what every roster written before
+          // sub-roles existed looks like.
+          staffRoles: (d.staffRoles && typeof d.staffRoles === 'object') ? d.staffRoles : {}
         };
       }).catch(function () {
         // permission-denied for another category — expected, not an error.
@@ -1622,12 +1637,18 @@
     return out;
   }
 
+  /** Merge a patch into one roster doc. Rejects loudly; callers must await. */
+  function saveRosterFields(clubId, key, patch) {
+    var payload = Object.assign({}, patch);
+    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    return rosterRef(clubId, key).set(payload, { merge: true });
+  }
+
   /** Write one field of one roster doc. Rejects loudly; callers must await. */
   function saveRoster(clubId, key, field, emails) {
     var payload = {};
     payload[field] = emails;
-    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    return rosterRef(clubId, key).set(payload, { merge: true });
+    return saveRosterFields(clubId, key, payload);
   }
 
   function normalizeEmail(v) {
@@ -2518,6 +2539,7 @@
         category: (club && club.category) || '',
         team: (club && club.team) || '',
         staffCategories: (club && club.staffCategories) || [],
+        staffRole: (club && club.staffRole) || '',
         isAdmin: email === ADMIN_EMAIL,
         isTeamLead: club ? !!club.isTeamLead : false,
         teamId: club ? club.clubId : 'none'
@@ -2602,6 +2624,10 @@
       if (user.isTeamLead === undefined) user.isTeamLead = false;
       if (!user.category) user.category = '';
       if (!Array.isArray(user.staffCategories)) user.staffCategories = [];
+      // Sub-role under `staff`. Absent on every account written before
+      // sub-roles existed, and '' must keep meaning "full coach" — see
+      // staffAccess(), which is where that default is applied.
+      if (typeof user.staffRole !== 'string') user.staffRole = '';
       if (!user.teamId || user.teamId === 'default') {
         // No club yet — the app routes to the join-club view, where the
         // joinClub Cloud Function assigns membership (leads included).
@@ -2777,6 +2803,7 @@
     session.category = club.category || '';
     session.team = club.team || '';
     session.staffCategories = club.staffCategories || [];
+    session.staffRole = club.staffRole || '';
     setSession(session);
     // joinClub set custom claims — force-refresh the ID token so the
     // new security rules authorize this session immediately.
@@ -3100,12 +3127,21 @@
       var catKey = row.dataset.cat;
       row.querySelectorAll('.ts-letter-chip').forEach(function (chip) {
         var key = catKey + '-' + chip.dataset.letter;
-        var emails = typed[key] || (stored[key] && stored[key].staffEmails) || [];
+        var typedHere = typed[key];
+        var emails = (typedHere && typedHere.emails) ||
+          (stored[key] && stored[key].staffEmails) || [];
+        // Sub-roles are layered the same way as the addresses: what is on
+        // screen wins over what is stored, so re-rendering the section (a
+        // category toggled, a row added) does not throw away an unsaved pick.
+        var subRoles = (typedHere && typedHere.roles) ||
+          (stored[key] && stored[key].staffRoles) || {};
         if (!emails.length) emails = [''];
         html += '<div class="ts-sched-block" data-staff-key="' + key + '">' +
           '<div class="ts-sched-title">' + CATEGORY_LABELS[catKey] + ' ' + chip.dataset.letter + '</div>' +
           '<div class="ts-staff-list" data-staff-key="' + key + '">' +
-          emails.map(function (em, idx) { return _buildStaffEmailRow(key, idx, em); }).join('') +
+          emails.map(function (em, idx) {
+            return _buildStaffEmailRow(key, idx, em, subRoles[normalizeEmail(em)]);
+          }).join('') +
           '</div>' +
           '<button class="btn btn-outline btn-small ts-add-staff" data-staff-key="' + key +
           '" style="margin:.4rem 0 .8rem;">' + t('auth.staff_add') + '</button>' +
@@ -3115,25 +3151,52 @@
     inputsEl.innerHTML = html;
   }
 
-  function _buildStaffEmailRow(key, idx, email) {
+  /* The sub-roles under `staff`, in the order the dropdown offers them.
+     Mirrors STAFF_SUB_ROLES in functions/index.js — the server re-derives
+     from the roster doc, so an unrecognised value there falls back to
+     'coach' rather than trusting whatever the client wrote. */
+  var STAFF_SUB_ROLES = ['coach', 'fitness', 'delegate'];
+
+  function _buildStaffEmailRow(key, idx, email, subRole) {
+    var cur = STAFF_SUB_ROLES.indexOf(subRole) !== -1 ? subRole : 'coach';
+    var opts = STAFF_SUB_ROLES.map(function (r) {
+      return '<option value="' + r + '"' + (r === cur ? ' selected' : '') + '>' +
+        t('staffrole.' + r) + '</option>';
+    }).join('');
     return '<div class="ts-sched-row" data-staff-idx="' + idx + '">' +
       '<input type="email" inputmode="email" autocomplete="off" data-staff-email="' + key + '-' + idx +
       '" value="' + sanitize(email || '') + '" placeholder="' + t('auth.email_ph') + '" style="flex:1;">' +
+      '<select data-staff-role="' + key + '-' + idx + '">' + opts + '</select>' +
       '<button class="btn btn-small ts-remove-staff" title="' + t('btn.remove') +
       '" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
       '</div>';
   }
 
-  /** Read the staff-email section back out of the DOM, keyed by team. */
+  /**
+   * Read the staff section back out of the DOM, keyed by team:
+   * `{ '{cat}-{letter}': {emails: [...], roles: {email: subRole}} }`.
+   *
+   * `roles` carries ONLY the downgrades. A coach is the default everywhere —
+   * on the server, in staffAccess(), and on every roster doc written before
+   * sub-roles existed — so writing 'coach' into the map would add a key that
+   * means exactly what its absence already means.
+   */
   function _collectStaffEmailsFromDom() {
     var out = {};
     document.querySelectorAll('#team-setup-staff-inputs .ts-staff-list').forEach(function (list) {
       var emails = [];
-      list.querySelectorAll('input[data-staff-email]').forEach(function (inp) {
+      var roles = {};
+      list.querySelectorAll('.ts-sched-row').forEach(function (row) {
+        var inp = row.querySelector('input[data-staff-email]');
+        if (!inp) return;
         var v = normalizeEmail(inp.value);
-        if (v && emails.indexOf(v) === -1) emails.push(v);
+        if (!v || emails.indexOf(v) !== -1) return;
+        emails.push(v);
+        var sel = row.querySelector('select[data-staff-role]');
+        var r = sel ? sel.value : 'coach';
+        if (r && r !== 'coach' && STAFF_SUB_ROLES.indexOf(r) !== -1) roles[v] = r;
       });
-      out[list.dataset.staffKey] = emails;
+      out[list.dataset.staffKey] = { emails: emails, roles: roles };
     });
     return out;
   }
@@ -3760,11 +3823,33 @@
       var storedRosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
       await Promise.all(Object.keys(staffEmails).map(function (key) {
         var before = (storedRosters[key] && storedRosters[key].staffEmails) || [];
-        var after = staffEmails[key];
-        if (before.length === after.length && before.every(function (e, i) { return e === after[i]; })) {
+        var after = staffEmails[key].emails;
+        var beforeRoles = (storedRosters[key] && storedRosters[key].staffRoles) || {};
+        var afterRoles = staffEmails[key].roles;
+        var sameEmails = before.length === after.length &&
+          before.every(function (e, i) { return e === after[i]; });
+        /* Compared as a canonical string: the map is small and its key order
+           is not meaningful, so sorting is both correct and cheaper than
+           walking two objects. A sub-role change alone still has to produce a
+           write — onRosterWritten re-derives every touched member from it. */
+        var roleSig = function (m) {
+          return Object.keys(m).sort().map(function (k) { return k + '=' + m[k]; }).join(',');
+        };
+        if (sameEmails && roleSig(beforeRoles) === roleSig(afterRoles)) {
           return Promise.resolve();
         }
-        return saveRoster(session.teamId, key, 'staffEmails', after);
+        /* set({merge:true}) DEEP-merges a map field, so sending the new map
+           alone would only ever ADD keys: demoting someone back to Coach, or
+           removing them from the team, would leave their old sub-role in the
+           document forever. Every key that has gone is deleted explicitly. */
+        var nextRoles = Object.assign({}, afterRoles);
+        Object.keys(beforeRoles).forEach(function (e) {
+          if (!(e in afterRoles)) {
+            nextRoles[e] = firebase.firestore.FieldValue.delete();
+          }
+        });
+        return saveRosterFields(session.teamId, key,
+          { staffEmails: after, staffRoles: nextRoles });
       }));
       _clubConfig = await getClub(session.teamId);
       _clubConfig.rosters = await loadRosters(session.teamId, _clubConfig);
@@ -3968,17 +4053,23 @@
     // meanwhile. A staff+player keeps the player section below.
     if (roles.includes('staff') &&
         !(isClubOverQuota() && !session.isAdmin && !session.isTeamLead)) {
+      /* Sub-role filter. Its twin is the route guard in renderPage() — an
+         item dropped here is still reachable by Back button or by a
+         staff-home shortcut unless that guard drops it too. */
+      const staffItem = (id, icon, label) => {
+        if (canViewPage(id)) items.push({ id, icon, label });
+      };
       items.push({ section: t('sidebar.section_staff') });
-      items.push({ id: 'staff-home', icon: '🏠', label: t('sidebar.staff_home') });
-      items.push({ id: 'registrations', icon: '📝', label: t('sidebar.registrations') });
-      items.push({ id: 'manage-roster', icon: '<img src="img/icon-boot.png" class="sidebar-img-icon">', label: t('sidebar.manage_roster') });
-      items.push({ id: 'staff-training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: t('sidebar.staff_training') });
-      items.push({ id: 'matchday', icon: '📅', label: t('sidebar.matchday') });
-      items.push({ id: 'convocatoria', icon: '📋', label: t('sidebar.convocatoria') });
-      items.push({ id: 'staff-matchday', icon: '⚽', label: t('sidebar.staff_matchday') });
-      items.push({ id: 'medical', icon: '<img src="img/icon-medical.svg" class="sidebar-img-icon">', label: t('sidebar.medical') });
-      items.push({ id: 'tactics', icon: '📐', label: t('sidebar.tactics') });
-      items.push({ id: 'staff-notifications', icon: '🔔', label: t('sidebar.notifications') });
+      staffItem('staff-home', '🏠', t('sidebar.staff_home'));
+      staffItem('registrations', '📝', t('sidebar.registrations'));
+      staffItem('manage-roster', '<img src="img/icon-boot.png" class="sidebar-img-icon">', t('sidebar.manage_roster'));
+      staffItem('staff-training', '<img src="img/icon-cone.svg" class="sidebar-img-icon">', t('sidebar.staff_training'));
+      staffItem('matchday', '📅', t('sidebar.matchday'));
+      staffItem('convocatoria', '📋', t('sidebar.convocatoria'));
+      staffItem('staff-matchday', '⚽', t('sidebar.staff_matchday'));
+      staffItem('medical', '<img src="img/icon-medical.svg" class="sidebar-img-icon">', t('sidebar.medical'));
+      staffItem('tactics', '📐', t('sidebar.tactics'));
+      staffItem('staff-notifications', '🔔', t('sidebar.notifications'));
     }
 
     if (session.isAdmin) {
@@ -4098,6 +4189,89 @@
      superadmin's alone. */
   const SUPERADMIN_PAGES = new Set(['admin-boards']);
 
+  /* ── Staff sub-roles ────────────────────────────────────────────────────
+     `staff` is one role in the claims and in the security rules, but not
+     every staff member does the same job. The club's lead assigns a sub-role
+     per staff email in Config Club, and it narrows what the CLIENT shows:
+
+       'edit'   full access — what every staff member had before sub-roles
+       'view'   the page renders, every mutating control is left out
+       'hidden' not in the sidebar, and renderPage() bounces the route
+
+     A page absent from a sub-role's table is 'edit'. `coach` therefore has no
+     table at all, which is what keeps every existing account behaving exactly
+     as it did.
+
+     This is a UI gate, not a security boundary: all three sub-roles still
+     carry role:'staff' in their token and firestore.rules still lets them
+     write the same documents. It could not be otherwise today — Calendari,
+     Jornada and Convocatòria all write the same fa_matches__{cat} document
+     as one opaque blob, so "Jornada but not Calendari" is not expressible in
+     a rule until those cross-writes are split apart. */
+  const STAFF_ROLE_ACCESS = {
+    fitness: {
+      'staff-home': 'view',
+      'registrations': 'view',
+      'manage-roster': 'view',
+      'staff-training': 'view',
+      'staff-training-detail': 'view',
+      'training-new': 'hidden',
+      'matchday': 'view',
+      'convocatoria': 'hidden',
+      'tactics': 'hidden'
+      // staff-matchday, medical, medical-detail, staff-player-stats and
+      // staff-notifications are omitted: full access. The medical file is
+      // this role's whole job.
+    },
+    delegate: {
+      'staff-home': 'view',
+      'registrations': 'view',
+      'manage-roster': 'view',
+      'staff-training': 'view',
+      'staff-training-detail': 'view',
+      'training-new': 'hidden',
+      'convocatoria': 'view',
+      'medical': 'hidden',
+      'medical-detail': 'hidden',
+      'tactics': 'hidden',
+      'staff-notifications': 'hidden'
+      // matchday, staff-matchday and staff-player-stats: full access.
+    }
+  };
+
+  /**
+   * What this session may do with `pageId`: 'edit' | 'view' | 'hidden'.
+   *
+   * The lead and the superadmin are never narrowed. They are not on a roster
+   * staff list, so they have no sub-role to read — and a lead locked out of
+   * the sections they administer would have no way to unlock themselves.
+   */
+  function staffAccess(pageId) {
+    const s = getSession();
+    if (!s || s.isAdmin || s.isTeamLead) return 'edit';
+    const table = STAFF_ROLE_ACCESS[s.staffRole];
+    if (!table) return 'edit';           // 'coach', '' or anything unrecognised
+    return table[pageId] || 'edit';
+  }
+
+  function canViewPage(pageId) { return staffAccess(pageId) !== 'hidden'; }
+  function canEditPage(pageId) { return staffAccess(pageId) === 'edit'; }
+
+  /* The staff-home shortcut attributes, or nothing when this sub-role may not
+     open the destination. Returning '' makes the row inert text rather than a
+     click that silently bounces off the route guard. */
+  function shomeLinkAttrs(link, id) {
+    if (!canViewPage(link)) return '';
+    return ' data-shome-link="' + link + '" data-shome-id="' + sanitize(String(id)) + '"';
+  }
+
+  /* Says why the buttons are missing. Without it a view-only page just looks
+     broken — the section is there, the data is there, and nothing can be
+     changed, with no explanation on screen. */
+  function viewOnlyBanner() {
+    return '<div class="card view-only-note">👁️ ' + t('staffrole.view_only') + '</div>';
+  }
+
   /* The page we were on before this one, and the page last rendered.
      Every navigation funnels through renderPage(), so tracking it here
      costs one place instead of the dozen call sites that set currentPage. */
@@ -4178,6 +4352,20 @@
     // the platform library is edited, and a template belongs to no club.
     if (STAFF_PAGES.has(currentPage) && !roles.includes('staff') &&
         !(currentPage === 'tactics' && session.isAdmin)) {
+      currentPage = fallbackPage();
+    }
+    /* Sub-role gate, the twin of the sidebar filter in buildSidebarItems().
+       Hiding a sidebar item is not enough on its own: detail pages are not
+       sidebar items at all, and the Back button, the staff-home shortcuts and
+       a stale `currentPage` from before a role change all reach a page
+       without ever passing the sidebar. `training-new` is the one page whose
+       access follows another's — it is the editor for staff-training, so a
+       view-only session must not reach it even though the list is visible. */
+    if (STAFF_PAGES.has(currentPage) && roles.includes('staff') &&
+        !canViewPage(currentPage)) {
+      currentPage = fallbackPage();
+    }
+    if (currentPage === 'training-new' && !canEditPage('staff-training')) {
       currentPage = fallbackPage();
     }
     if (SUPERADMIN_PAGES.has(currentPage) && !session.isAdmin) {
@@ -11819,7 +12007,12 @@
     // getTrainings() does the id repair for every surface, not just this one.
     var allTraining = getTrainings();
     allTraining.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    localStorage.setItem('fa_training', JSON.stringify(allTraining));
+    /* A fitness coach and a delegate read this page; they do not run it.
+       The id repair + sort above is written back on every render, so without
+       this guard merely OPENING the page is a write from a session that is
+       not supposed to change anything here. */
+    const ro = !canEditPage('staff-training');
+    if (!ro) localStorage.setItem('fa_training', JSON.stringify(allTraining));
     var curCat = getCurrentCategory();
     var training = allTraining.filter(function (t) {
       if (curCat && t.category && t.category !== curCat) return false;
@@ -11862,8 +12055,12 @@
       const assistanceCell = tr.date
         ? buildAvailDonut(tr.date, tr)
         : '<span style="color:var(--text-secondary)">\u2014</span>';
-      if (locked) {
-        return `<tr data-tid="${i}" class="st-locked">
+      /* The completed-session layout is already an exact read-only rendering
+         of this row, so a view-only sub-role reuses it rather than growing a
+         second one. The `st-locked` class stays off, though: that greys the
+         row to mean "this session is over", which is not what is going on. */
+      if (locked || ro) {
+        return `<tr data-tid="${i}"${locked ? ' class="st-locked"' : ''}>
       <td style="white-space:nowrap">
         <span>${fmtDate(tr.date)}</span>
         <span class="st-day-label">${sanitize(dayName)}</span>
@@ -12026,6 +12223,7 @@
 
     return `
       <h2 class="page-title">${t('page.training')}</h2>
+      ${ro ? viewOnlyBanner() : ''}
       ${seasonDonutHtml}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:.5rem;flex-wrap:wrap;">
@@ -12039,7 +12237,7 @@
             return '<div class="roster-team-filter" style="margin-bottom:0;">' +
               btn('all', t('roster.all')) + ls.map(l => btn(l, l)).join('') + '</div>';
           })()}
-          <button class="btn btn-outline btn-small matchday-add" id="btn-training-add-top">${t('training.add')}</button>
+          ${ro ? '' : `<button class="btn btn-outline btn-small matchday-add" id="btn-training-add-top">${t('training.add')}</button>`}
         </div>
         <div class="table-wrap"><table class="matchday-table">
         <thead><tr><th>${t('training.th_date')}</th><th>${t('training.th_time')}</th><th>${t('training.th_focus')}</th><th>${t('training.th_location')}</th><th>${t('training.th_link')}</th><th class="center-cell">${t('training.th_status')}</th><th class="center-cell">${t('training.th_attendance')}</th><th></th></tr></thead>
@@ -12207,7 +12405,9 @@
                   }).join('');
                   return '<div class="tb-lt-team"><div class="tb-lt-team-title">Equip ' + (ti + 1) + ' <span class="tg-team-count">' + tm.players.length + '</span></div>' + rows + '</div>';
                 }).join('') +
-                '<button class="tb-unlink-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button></div>';
+                (canEditPage('staff-training-detail')
+                  ? '<button class="tb-unlink-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button>'
+                  : '') + '</div>';
             } else if (hasTeams) {
               teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" data-tsid="' + sanitize(String((sess && sess.id) || '')) + '">📋 Afegir equips</button></div>';
             }
@@ -12657,8 +12857,13 @@
        `locked`, which freezes attendance answers an hour earlier. A late
        call-up is exactly when a coach needs this, and the player is marked
        attending on the way in so the frozen answer does not matter. */
-    const squadEditable = !tr.date || !tr.time ||
-      new Date() < new Date(tr.date + 'T' + (tr.time.split(' - ')[0]) + ':00');
+    /* A fitness coach and a delegate read the session; the squad, the staff
+       call and the team generator all stay the head coach's. Folded into
+       `squadEditable` rather than checked separately, so the drop buttons,
+       the "+ Jugador" button and the extra table column all follow one flag. */
+    const ro = !canEditPage('staff-training-detail');
+    const squadEditable = !ro && (!tr.date || !tr.time ||
+      new Date() < new Date(tr.date + 'T' + (tr.time.split(' - ')[0]) + ':00'));
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -12712,9 +12917,11 @@
         <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
         <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
         <td class="center-cell">
-          <select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-sid="${sanitize(String(tr.id || ''))}">
+          ${ro
+            ? `<span class="std-player-answer ${effectiveCls}">${effectiveLabel}</span>`
+            : `<select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-sid="${sanitize(String(tr.id || ''))}">
             ${dropdown}
-          </select>
+          </select>`}
         </td>
       </tr>`;
     }).join('');
@@ -12786,6 +12993,7 @@
           }).join('') + '</div>';
       })()}
       </div>
+      ${ro ? '' : `
       <div class="card">
         <div class="tg-header">
           <div class="card-title" style="margin-bottom:0;">Auto Generate Teams</div>
@@ -12834,7 +13042,7 @@
           </div>
         </div>
         <div id="tg-teams-container">${teamsHtml}</div>
-      </div>
+      </div>`}
       ${(() => {
         return '<div id="std-boards-section">' + renderStdBoardsSection(tr) + '</div>';
       })()}`;
@@ -13168,7 +13376,7 @@
           ? `<span class="shome-tag shome-tag-done">${t('shome.conv_sent')} · ${r.called}</span>`
           : `<span class="shome-tag shome-tag-todo">${t('shome.conv_pending')}</span>`)
         : '';
-      return `<div class="shome-row" data-shome-link="${r.link}" data-shome-id="${sanitize(String(r.linkId))}">
+      return `<div class="shome-row"${shomeLinkAttrs(r.link, r.linkId)}>
         <div class="shome-row-head">${badge}<span class="shome-when">${tDayDDMM(r.date)} · ${sanitize(r.time)}</span>${conv}</div>
         <div class="shome-row-label">${r.label}</div>
         <div class="shome-row-meta">${r.place ? r.place + ' · ' : ''}${counts}</div>
@@ -13204,7 +13412,7 @@
       else tag = `<span class="shome-tag">${t('shome.expected_return')} · ${tDayDDMM(ret)}</span>`;
       const what = sanitize(i.muscleGroup || '') + (i.muscleSub ? ' (' + sanitize(i.muscleSub) + ')' : '');
       const dot = i.status === 'active' ? 'roster-status-injured' : 'roster-status-doubt';
-      return `<div class="shome-row" data-shome-link="medical-detail" data-shome-id="${sanitize(String(i.playerId))}">
+      return `<div class="shome-row"${shomeLinkAttrs('medical-detail', i.playerId)}>
         <div class="shome-row-head"><span class="roster-status-icon ${dot}">${i.status === 'active' ? '✕' : '?'}</span>
           <span class="shome-row-label">${sanitize(p.name)}</span>${tag}</div>
         <div class="shome-row-meta">${what}${i.description ? ' – ' + sanitize(i.description) : ''}</div>
@@ -13229,7 +13437,7 @@
     const watchMore = watch.length - watchShown.length;
 
     const watchHtml = watch.length ? watchShown.map(({ p, rd }) => `
-      <div class="shome-row" data-shome-link="staff-player-stats" data-shome-id="${sanitize(String(p.id))}">
+      <div class="shome-row"${shomeLinkAttrs('staff-player-stats', p.id)}>
         <div class="shome-row-head">
           <span class="readiness-dot readiness-${rd.color}"></span>
           <span class="shome-row-label">${sanitize(p.name)}</span>
@@ -13237,7 +13445,7 @@
         </div>
         <div class="shome-row-meta">${posCirclesHtmlGlobal(p)}</div>
       </div>`).join('') + (watchMore > 0
-      ? `<p class="shome-more" data-shome-link="manage-roster" data-shome-id="">+${watchMore} ${t('shome.more')}</p>`
+      ? `<p class="shome-more"${shomeLinkAttrs('manage-roster', '')}>+${watchMore} ${t('shome.more')}</p>`
       : '') : `<p style="color:var(--text-secondary)">${t('shome.none_watch')}</p>`;
 
     /* Low load, listed apart from the risk dot. A high-ACWR player needs
@@ -13255,7 +13463,7 @@
         <span class="shome-badge">${under.length}</span>
         <span class="shome-subhint">${t('shome.underloaded_hint')}</span>
       </div>` + under.map(({ p, rd }) => `
-      <div class="shome-row" data-shome-link="staff-player-stats" data-shome-id="${sanitize(String(p.id))}">
+      <div class="shome-row"${shomeLinkAttrs('staff-player-stats', p.id)}>
         <div class="shome-row-head">
           <span class="readiness-dot readiness-nodata"></span>
           <span class="shome-row-label">${sanitize(p.name)}</span>
@@ -13461,6 +13669,11 @@
   function renderMatchday() {
     const now = new Date();
     const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+    /* A fitness coach reads the fixture list; scheduling is not their job.
+       (A delegate DOES schedule — running the calendar is most of the role —
+       so this is false for them.) The drafts card, the add button and the
+       per-row edit/delete all disappear; the fixtures themselves stay. */
+    var ro = !canEditPage('matchday');
     var curCat = getCurrentCategory();
     // New (unsaved) games from fa_matchday. These used to be shown
     // unfiltered while the saved matches below were scoped, so every coach
@@ -13491,7 +13704,7 @@
     }).reverse(); // most recent first
 
     function buildSavedRow(m) {
-      var isEditing = _mdEditingId === m.id;
+      var isEditing = !ro && _mdEditingId === m.id;
       if (isEditing) {
         var isHome = isOurTeam(m.home);
         var opponent = isHome ? m.away : m.home;
@@ -13522,8 +13735,9 @@
         '<td>' + dateFmt + '</td>' +
         '<td>' + timeFmt + '</td>' +
         '<td>' + sanitize(m.location || '') + '</td>' +
-        '<td class="md-saved-actions"><button class="btn btn-outline btn-small md-edit-match" data-match-id="' + m.id + '">' + t('btn.edit') + '</button>' +
-        ' <button class="md-remove-btn md-delete-match" data-match-id="' + m.id + '" title="Delete">&times;</button></td>' +
+        '<td class="md-saved-actions">' + (ro ? '' :
+          '<button class="btn btn-outline btn-small md-edit-match" data-match-id="' + m.id + '">' + t('btn.edit') + '</button>' +
+          ' <button class="md-remove-btn md-delete-match" data-match-id="' + m.id + '" title="Delete">&times;</button>') + '</td>' +
       '</tr>';
     }
 
@@ -13532,7 +13746,7 @@
 
     // New games section (add form)
     var newSection = '';
-    if (hasNew) {
+    if (hasNew && !ro) {
       newSection = '<div class="card" style="margin-bottom:1rem;">' +
         '<div class="card-title">' + t('cal.new_game') + '</div>' +
         '<div class="table-wrap"><table class="matchday-table">' +
@@ -13556,7 +13770,8 @@
       '</div>';
 
     return '<h2 class="page-title">' + t('page.set_calendar') + '</h2>' +
-      '<div style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button></div>' +
+      (ro ? viewOnlyBanner()
+        : '<div style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button></div>') +
       newSection +
       upcomingCard +
       pastCard;
@@ -13758,6 +13973,11 @@
   }
 
   function renderConvocatoria() {
+    /* A delegate reads the call-up — they need to know who is coming and in
+       which kit — but the squad, the kit and the send are the coach's call.
+       Picking WHICH match to look at stays live: that is view state, not a
+       write. */
+    var ro = !canEditPage('convocatoria');
     var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     var curCat = getCurrentCategory();
     var matches = curCat ? allMatches.filter(function(m) { return !m.category || m.category === curCat; }) : allMatches;
@@ -13823,7 +14043,7 @@
           const maKey = p.id + '_' + convSelectedMatchId;
           const maStatus = matchAvailData[maKey] || null;
           const isNoDisp = maStatus === 'no_disponible';
-          const dragAttr = isNoDisp ? 'draggable="false"' : 'draggable="true"';
+          const dragAttr = (isNoDisp || ro) ? 'draggable="false"' : 'draggable="true"';
           const greyClass = isNoDisp ? ' conv-player-unavailable' : '';
           const maTag = maStatus === 'disponible' ? '<span class="conv-ma-tag conv-ma-disp">Disponible</span>'
             : maStatus === 'no_disponible' ? '<span class="conv-ma-tag conv-ma-nodisp">No Disponible</span>'
@@ -13834,7 +14054,7 @@
       : '<p class="conv-empty-hint">No players available</p>';
 
     const calledHtml = called.length
-      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="true" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span><button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button></div>`; }).join('')
+      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="${ro ? 'false' : 'true'}" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span>${ro ? '' : `<button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button>`}</div>`; }).join('')
       : '<p class="conv-drop-hint"><span class="conv-hint-desktop">' + t('conv.drag_desktop') + '</span><span class="conv-hint-mobile">' + t('conv.drag_mobile') + '</span></p>';
 
     /* Equipació: one row PER GARMENT, each offering that piece from every
@@ -13858,10 +14078,16 @@
     const curShirt = pickedId('shirtId');
     const curShorts = pickedId('shortsId');
     const curSocks = pickedId('socksId');
-    const kitRow = (field, cur, draw) => kits.map((k) =>
-      `<button type="button" class="uniform-opt conv-kit-opt${k.id === cur ? ' uniform-opt-active' : ''}"` +
-      ` data-field="${field}" data-kit="${sanitize(k.id)}" title="${sanitize(k.label || '')}">` +
-      draw(k) + '</button>').join('');
+    /* Read-only shows the CHOSEN piece only, as a static swatch. A delegate
+       has to know which kit to take; offering the alternatives as buttons
+       that do nothing would only look broken. */
+    const kitRow = (field, cur, draw) => kits
+      .filter((k) => !ro || k.id === cur)
+      .map((k) => ro
+        ? `<span class="uniform-opt uniform-opt-active" title="${sanitize(k.label || '')}">${draw(k)}</span>`
+        : `<button type="button" class="uniform-opt conv-kit-opt${k.id === cur ? ' uniform-opt-active' : ''}"` +
+          ` data-field="${field}" data-kit="${sanitize(k.id)}" title="${sanitize(k.label || '')}">` +
+          draw(k) + '</button>').join('');
 
     // Default callup: 1h30 before kickoff, rounded down to 15min
     const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
@@ -13878,8 +14104,10 @@
         const ch = Math.floor(totalMin / 60) % 24;
         const cm = totalMin % 60;
         callupDefault = String(ch).padStart(2, '0') + ':' + String(cm).padStart(2, '0');
-        // Persist the computed default
-        if (convSelectedMatchId) {
+        // Persist the computed default — but not from a read-only session:
+        // this runs on RENDER, so without the guard merely opening the page
+        // would be a write.
+        if (convSelectedMatchId && !ro) {
           convCallupData[convSelectedMatchId] = callupDefault;
           localStorage.setItem('fa_convocatoria_callup', JSON.stringify(convCallupData));
         }
@@ -13888,6 +14116,7 @@
 
     return `
       <h2 class="page-title">${t('page.convocatoria')}</h2>
+      ${ro ? viewOnlyBanner() : ''}
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="conv-top-row">
           <div class="conv-top-group">
@@ -13902,7 +14131,9 @@
           </div>
           ${selected ? `<div class="conv-top-group">
             <div class="card-title" style="margin-bottom:.5rem;">${t('conv.callup_time')}</div>
-            <select class="conv-callup-select" id="conv-callup-time">${buildTimeOptions(callupDefault)}</select>
+            ${ro
+              ? `<span class="reg-status-flat">${sanitize(callupDefault || '—')}</span>`
+              : `<select class="conv-callup-select" id="conv-callup-time">${buildTimeOptions(callupDefault)}</select>`}
           </div>
           <div class="conv-top-group">
             <div class="card-title" style="margin-bottom:.5rem;">${t('conv.uniform')}</div>
@@ -13931,11 +14162,11 @@
         <div class="conv-panel conv-panel-called">
           <div class="conv-panel-header">${t('conv.called_up')} <span class="conv-count" id="conv-called-count">${called.length}</span></div>
           <div class="conv-list conv-drop-zone" id="conv-called">${calledHtml}</div>
-          <div class="conv-actions">
+          ${ro ? '' : `<div class="conv-actions">
             <button class="btn btn-small" id="btn-conv-clear" style="background:#9e9e9e;color:#fff;border:none;">${t('btn.clear_all')}</button>
             <button class="btn btn-outline btn-small" id="btn-conv-save">${t('btn.save')}</button>
             <button class="btn ${isSent && !hasChanges ? 'btn-danger' : 'btn-primary'} btn-small" id="btn-conv-send">${isSent && !hasChanges ? t('btn.unsend') : t('btn.send')}</button>
-          </div>
+          </div>`}
         </div>
       </div>
       ${(() => {
@@ -13950,6 +14181,17 @@
         if (!convSelectedMatchId) return '';
         const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
         const videos = vData[convSelectedMatchId] || [];
+        // Read-only: the links as links, and nothing at all when there are none.
+        if (ro) {
+          if (!videos.length) return '';
+          return '<div class="card"><div class="card-title">' + t('conv.video_links') + '</div>' +
+            videos.map(v => '<div class="conv-video-row">' +
+              (v.url
+                ? '<a href="' + sanitize(v.url) + '" target="_blank" rel="noopener">' + sanitize(v.title || v.url) + '</a>'
+                : '<span>' + sanitize(v.title || '') + '</span>') + '</div>' +
+              (v.comment ? '<p style="color:var(--text-secondary);font-size:.85rem;margin:.2rem 0 .6rem;">' + sanitize(v.comment) + '</p>' : '')
+            ).join('') + '</div>';
+        }
         const rows = videos.map((v, i) => '<div class="conv-video-row" data-video-idx="' + i + '">' +
           '<input type="text" class="reg-input conv-video-title" value="' + sanitize(v.title) + '" placeholder="' + t('conv.video_title_ph') + '" style="flex:1;min-width:80px;">' +
           '<input type="text" class="reg-input conv-video-url" value="' + sanitize(v.url) + '" placeholder="' + t('conv.video_url_ph') + '" style="flex:2;min-width:140px;">' +
@@ -14197,6 +14439,12 @@
     // Only the lead may change roles — setRole rejects everyone else, and
     // staff membership is driven by the club's staff email lists anyway.
     const canEditRoles = !!(session && (session.isAdmin || session.isTeamLead));
+    /* A fitness coach or a delegate reads this page but does not run it:
+       squad assignment, pre-registration and the profile fields all stay the
+       head coach's. Every mutating control is left OUT of the markup rather
+       than disabled in CSS, and the delegated handlers refuse the same way —
+       one of the two alone is not a gate. */
+    const ro = !canEditPage('registrations');
     // Two groups. Assigned = in a squad, and category-filtered like the rest
     // of the app. Unassigned = in the club but in no squad: brand-new members
     // nobody has placed yet, and anyone just taken off a team with "Treure de
@@ -14216,6 +14464,16 @@
       if (em) heldEmails[em] = true;
     });
     const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    /* Sub-role per staff address, read from the roster docs rather than from
+       the fa_users blob: the roster is where the lead sets it and where the
+       server re-derives it from, and fa_users carries it only for whoever
+       happened to log in on this device. Coach is the default, so only a
+       downgrade produces a badge. */
+    const staffSubRoles = {};
+    Object.keys(rosters).forEach(key => {
+      const map = (rosters[key] || {}).staffRoles || {};
+      Object.keys(map).forEach(em => { staffSubRoles[normalizeEmail(em)] = map[em]; });
+    });
     const pending = [];
     Object.keys(rosters).forEach(key => {
       const cat = key.slice(0, key.indexOf('-'));
@@ -14241,16 +14499,20 @@
 
       const positions = (u.position || '').split(',').map(s => s.trim()).filter(Boolean);
       const posOptions = ['GK','CB','LB','RB','DM','OM','LW','RW','ST'];
-      const posChips = posOptions.map(p => `<span class="reg-pos-chip${positions.includes(p) ? ' active' : ''}" data-pos="${p}">${p}</span>`).join('');
+      const posChips = posOptions
+        .filter(p => !ro || positions.includes(p))
+        .map(p => `<span class="reg-pos-chip${positions.includes(p) ? ' active' : ''}"${ro ? '' : ` data-pos="${p}"`}>${p}</span>`).join('');
 
       const team = u.team || '';
       const uCat = u.category || '';
       const catOptions = enabledCats.length
         ? enabledCats.map(function (k) { return '<option value="' + k + '"' + (uCat === k ? ' selected' : '') + '>' + CATEGORY_LABELS[k] + '</option>'; }).join('')
         : '';
-      const catSelect = enabledCats.length
-        ? '<select class="reg-cat-select" data-uid="' + u.id + '"><option value=""' + (!uCat ? ' selected' : '') + '>—</option>' + catOptions + '</select>'
-        : '';
+      const catSelect = ro
+        ? '<span class="reg-status-flat">' + (CATEGORY_LABELS[uCat] || uCat || '—') + '</span>'
+        : (enabledCats.length
+          ? '<select class="reg-cat-select" data-uid="' + u.id + '"><option value=""' + (!uCat ? ' selected' : '') + '>—</option>' + catOptions + '</select>'
+          : '');
 
       // Estat is a choice only for someone who is actually staff, and only the
       // lead may make it — setRole rejects anyone else. A player's status
@@ -14277,17 +14539,30 @@
       return `<tr data-uid="${u.id}">
         <td class="reg-name-cell">${regDot(true)}${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
         <td class="reg-email-cell">${sanitize(u.email || '')}</td>
-        <td>${statusCell}</td>
+        <td>${statusCell}${(() => {
+          // The lead sets this in Config Club; here it is a label, so a coach
+          // can see who is a fitness coach or a delegate without going there.
+          if (!isStaffRow) return '';
+          const sub = staffSubRoles[normalizeEmail(u.email)];
+          return (sub && sub !== 'coach')
+            ? ` <span class="badge badge-grey">${t('staffrole.' + sub)}</span>` : '';
+        })()}</td>
         <td>${catSelect}</td>
         <td class="reg-team-cell">
-          ${getTeamLetters(u.category || '').map(function(l) {
-            return '<span class="reg-team-circle' + (team === l ? ' active' : '') + '" data-uid="' + u.id + '" data-team="' + l + '">' + l + '</span>';
-          }).join('')}
+          ${getTeamLetters(u.category || '')
+            .filter(function(l) { return !ro || team === l; })
+            .map(function(l) {
+              var attrs = ro ? '' : ' data-uid="' + u.id + '" data-team="' + l + '"';
+              return '<span class="reg-team-circle' + (team === l ? ' active' : '') + '"' +
+                attrs + '>' + l + '</span>';
+            }).join('')}
         </td>
         <td class="reg-pos-cell">${posChips}</td>
-        <td><input type="text" inputmode="numeric" class="reg-input reg-number" data-uid="${u.id}" value="${u.playerNumber || ''}" placeholder="#" maxlength="2"></td>
+        <td>${ro
+          ? `<span class="reg-status-flat">${sanitize(String(u.playerNumber || '—'))}</span>`
+          : `<input type="text" inputmode="numeric" class="reg-input reg-number" data-uid="${u.id}" value="${u.playerNumber || ''}" placeholder="#" maxlength="2">`}</td>
         <td class="reg-actions">
-          ${(() => {
+          ${ro ? '' : (() => {
             // "Leave the squad", not a delete: it detaches the member and
             // keeps every record. Only offered when they are actually in a
             // squad. Staff are appointed through the lead's staff email
@@ -14315,8 +14590,8 @@
         <td class="reg-pos-cell"></td>
         <td></td>
         <td class="reg-actions">
-          <button class="btn btn-small btn-outline btn-remove-pending"
-            data-pending-email="${sanitize(p.email)}" data-pending-key="${sanitize(p.key)}">${t('btn.leave_squad')}</button>
+          ${ro ? '' : `<button class="btn btn-small btn-outline btn-remove-pending"
+            data-pending-email="${sanitize(p.email)}" data-pending-key="${sanitize(p.key)}">${t('btn.leave_squad')}</button>`}
         </td>
       </tr>`).join('');
 
@@ -14345,11 +14620,11 @@
         <td class="reg-email-cell">${sanitize(u.email || '')}</td>
         <td><span class="reg-status-flat">${prevLabel}</span></td>
         <td class="reg-assign-cell">
-          ${assignCats.length ? `
+          ${ro ? `<span class="reg-status-flat">—</span>` : (assignCats.length ? `
             <select class="reg-input reg-assign-cat" data-uid="${u.id}">${catOpts}</select>
             <select class="reg-input reg-assign-team" data-uid="${u.id}">${letterOpts}</select>
             <button class="btn btn-small btn-primary btn-assign" data-uid="${u.id}">${t('reg.assign')}</button>
-          ` : `<span class="reg-status-flat">${t('error.no_categories')}</span>`}
+          ` : `<span class="reg-status-flat">${t('error.no_categories')}</span>`)}
         </td>
       </tr>`;
     }).join('');
@@ -14368,11 +14643,11 @@
 
     return `
       <h2 class="page-title">${t('page.registrations')}</h2>
-      ${renderPreRegisteredPlayers()}
+      ${ro ? viewOnlyBanner() : renderPreRegisteredPlayers()}
       <div class="card">
         <div class="card-title">${t('reg.assigned')} (${assigned.length + pending.length})</div>
         <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
-          ${t('reg.edit_desc')}
+          ${ro ? t('reg.view_desc') : t('reg.edit_desc')}
         </p>
         <div class="table-wrap"><table>
           <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th><th>${t('reg.th_status')}</th><th>${t('reg.th_category')}</th><th style="text-align:center">${t('reg.th_team')}</th><th>${t('reg.th_position')}</th><th>${t('reg.th_number')}</th><th></th></tr></thead>
@@ -16214,6 +16489,11 @@
 
   // ---------- Matchday bindings ----------
   function bindMatchday() {
+    /* Everything this binds writes fa_matchday or fa_matches. A fitness
+       coach gets the fixture list rendered as plain cells, so there is
+       nothing here to attach to — leaving early is the second gate, the one
+       that survives a later markup change. */
+    if (!canEditPage('matchday')) return;
     const body = document.getElementById('matchday-body');
 
     // Add game button (always present)
@@ -16774,6 +17054,31 @@
   function bindStaffTraining() {
     const body = document.getElementById('staff-training-body');
     if (!body) return;
+
+    // Click any training row → open staff training detail. Bound FIRST and
+    // above the read-only bail-out below: opening a session is the one thing
+    // a view-only sub-role still does on this page.
+    body.querySelectorAll('tr[data-tid]').forEach(tr => {
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', (e) => {
+        // Don't navigate if clicking inputs, buttons or links
+        if (e.target.closest('input, select, button, a, .md-remove-btn, .st-remove')) return;
+        const training = getTrainings();
+        const t = training.find(x => x.id === tr.dataset.tid);
+        if (!t || !t.date) return;
+        detailTrainingId = t.id;
+        currentPage = 'staff-training-detail';
+        renderPage(getSession());
+      });
+    });
+
+    /* Everything past this point writes fa_training. A fitness coach or a
+       delegate gets the list rendered as static cells (see renderStaffTraining),
+       so there is nothing here for them to bind to — but binding the auto-save
+       listeners on the tbody regardless is how a later markup change would
+       quietly hand them an editor again. */
+    if (!canEditPage('staff-training')) return;
+
     const DEFAULT_LOC = 'Escola Industrial';
     const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
 
@@ -16879,25 +17184,15 @@
         renderPage(getSession());
       });
     }
-
-    // Click any training row → open staff training detail
-    body.querySelectorAll('tr[data-tid]').forEach(tr => {
-      tr.style.cursor = 'pointer';
-      tr.addEventListener('click', (e) => {
-        // Don't navigate if clicking inputs, buttons or links
-        if (e.target.closest('input, select, button, a, .md-remove-btn, .st-remove')) return;
-        const training = getTrainings();
-        const t = training.find(x => x.id === tr.dataset.tid);
-        if (!t || !t.date) return;
-        detailTrainingId = t.id;
-        currentPage = 'staff-training-detail';
-        renderPage(getSession());
-      });
-    });
   }
 
   // Staff training detail: staff override selects + team generation
   function bindStaffTrainingDetail() {
+    /* Every binding in here mutates: the squad, the staff call, the team
+       generator. The Back button and the team-letter filter are bound
+       elsewhere (bindDashboard), so a view-only sub-role loses nothing by
+       leaving now. */
+    if (!canEditPage('staff-training-detail')) return;
     /* Squad edits on an ALREADY SAVED session. Every write goes through
        _ntPersistSession, which hands the mutation the row from the array it
        is about to write -- getTrainings() re-parses on every call, so a row
@@ -17286,6 +17581,11 @@
         if (!e.target.closest('#conv-match-selector')) { dropdown.hidden = true; toggle.classList.remove('conv-match-toggle-open'); }
       });
     }
+
+    /* The match selector above is view state and stays live for everyone.
+       Everything below writes the squad, the kit, the call-up time or the
+       push — a delegate reads all of it and changes none of it. */
+    if (!canEditPage('convocatoria')) return;
 
     function getConvKey() { return convSelectedMatchId ? String(convSelectedMatchId) : null; }
     function getConvAll() {
@@ -19344,6 +19644,11 @@
       row.addEventListener('click', () => {
         const to = row.dataset.shomeLink;
         const id = row.dataset.shomeId;
+        // staff-home is visible to every sub-role, but its shortcuts are not:
+        // the Out-of-action rows point at medical-detail, which a delegate may
+        // not open. shomeLinkAttrs() already leaves the attribute off those
+        // rows; this is the guard for anything that slips through.
+        if (!canViewPage(to)) return;
         if (to === 'staff-training-detail') detailTrainingId = id;
         else if (to === 'match-detail') detailMatchId = Number(id);
         else if (to === 'medical-detail') medicalDetailPlayerId = id;
@@ -20650,6 +20955,9 @@
 
       function autoSaveFromRow(row) {
         if (!row || !row.dataset.uid) return;
+        // The last line of defence for a view-only sub-role: every caller is
+        // gated above, so reaching here means one of them was missed.
+        if (!canEditPage('registrations')) return;
         const uid = row.dataset.uid;
         const selPos = Array.from(row.querySelectorAll('.reg-pos-chip.active')).map(c => c.dataset.pos);
         const position = selPos.join(',');
@@ -20730,7 +21038,12 @@
       // ── Pre-registered player email lists ──
       // Pre-registration: one address + one team letter + Add. The write is
       // awaited and reported — a silently dropped one locks a real player out.
+      /* These listeners are bound once, on #dashboard-content, so they
+         outlive any single render — a sub-role that may only READ this page
+         has to be refused here as well as have the controls left out of the
+         markup. Cheap, and it is the layer that survives a stale DOM. */
       content.addEventListener('click', e => {
+        if (!canEditPage('registrations')) return;
         if (e.target.closest('#reg-add-btn')) {
           addPreRegisteredPlayer();
           return;
@@ -20755,6 +21068,7 @@
         }
       });
       content.addEventListener('keydown', e => {
+        if (!canEditPage('registrations')) return;
         if (e.target.id === 'reg-add-email' && e.key === 'Enter') {
           e.preventDefault();
           addPreRegisteredPlayer();
@@ -20766,6 +21080,7 @@
 
       // Status select or category select change
       content.addEventListener('change', e => {
+        if (!canEditPage('registrations')) return;
         // Unassigned card: team letters belong to the chosen category, so the
         // second dropdown has to follow the first.
         if (e.target.classList.contains('reg-assign-cat')) {
@@ -20797,6 +21112,7 @@
 
       // Player number input
       content.addEventListener('input', e => {
+        if (!canEditPage('registrations')) return;
         if (e.target.classList.contains('reg-number')) {
           autoSaveFromRow(e.target.closest('tr'));
         }
@@ -20804,6 +21120,7 @@
 
       // Team circle + position chip clicks
       content.addEventListener('click', e => {
+        if (!canEditPage('registrations')) return;
         const circle = e.target.closest('.reg-team-circle');
         if (circle) {
           const row = circle.closest('tr');
@@ -20843,6 +21160,10 @@
       if (!content) return;
 
       content.addEventListener('click', e => {
+        // Bound once on #dashboard-content, so it outlives any render: a
+        // view-only sub-role has to be refused here too, not just have the
+        // buttons left out of renderStdBoardsSection.
+        if (!canEditPage('staff-training-detail')) return;
         // "Afegir equips" button
         const linkBtn = e.target.closest('.tb-link-teams');
         if (linkBtn) {
@@ -20899,6 +21220,8 @@
               // Drives getVisibleCategories() — written server-side from the
               // club's staff email lists.
               if (!Array.isArray(user.staffCategories)) user.staffCategories = [];
+              // Sub-role under `staff`; '' means full coach. See staffAccess().
+              if (typeof user.staffRole !== 'string') user.staffRole = '';
               _currentSession = user;
               // No club yet → the app routes to the join-club view; membership
               // is assigned only by the joinClub Cloud Function (leads included).

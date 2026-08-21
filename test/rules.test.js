@@ -186,6 +186,16 @@ describe("Self-escalation is blocked", () => {
   it("player CANNOT set own staffCategories", async () => {
     await assertFails(asA().doc("users/" + A).update({staffCategories: ["cadet"]}));
   });
+  // The sub-role the client's section gating reads. The lead sets it on the
+  // roster doc and the server re-derives it; self-promoting out of Fitness
+  // by writing your own user doc is the obvious way round that.
+  it("player CANNOT set own staffRole", async () => {
+    await assertFails(asA().doc("users/" + A).update({staffRole: "coach"}));
+  });
+  it("self-create WITH staffRole is denied", async () => {
+    await assertFails(db("newUid2", {email: "n2@x.com"})
+        .doc("users/newUid2").set({name: "N", staffRole: "coach"}));
+  });
   it("self-create WITH roles is denied", async () => {
     await assertFails(
         db("newUid", {email: "n@x.com"}).doc("users/newUid").set({name: "N", roles: ["staff"]}));
@@ -210,6 +220,9 @@ describe("Staff updates of members", () => {
   });
   it("staff CANNOT set a member's staffCategories", async () => {
     await assertFails(asStaffA().doc("users/" + A).update({staffCategories: ["cadet"]}));
+  });
+  it("staff CANNOT set a member's staffRole", async () => {
+    await assertFails(asStaffA().doc("users/" + A).update({staffRole: "delegate"}));
   });
   // "Leave the squad" on the Registrations page: a coach clears the squad
   // assignment but must not be able to remove the person from the club.
@@ -269,6 +282,16 @@ describe("Roster email lists (clubs/{club}/rosters/{cat}-{letter})", () => {
   });
   it("staff CANNOT edit staffEmails (only the lead appoints staff)", async () => {
     await assertFails(cadet(asStaffA()).set({staffEmails: ["me@x.com"]}, {merge: true}));
+  });
+  // staffRoles rides on the same doc and is covered by the same hasOnly:
+  // appointing a coach and downgrading one are the same decision.
+  it("lead CAN write staffRoles", async () => {
+    await assertSucceeds(cadet(asLeadA())
+        .set({staffRoles: {"pf@x.com": "fitness"}}, {merge: true}));
+  });
+  it("staff CANNOT edit staffRoles", async () => {
+    await assertFails(cadet(asStaffA())
+        .set({staffRoles: {"me@x.com": "coach"}}, {merge: true}));
   });
   it("staff CANNOT edit playerEmails in another category", async () => {
     await assertFails(juvenil(asStaffA()).set({playerEmails: ["x@x.com"]}, {merge: true}));
