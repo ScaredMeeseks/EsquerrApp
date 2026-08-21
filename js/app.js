@@ -1302,7 +1302,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 108;
+  const APP_VERSION = 109;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -12251,8 +12251,19 @@
         if (f === 'date') d.day = d.date ? tDay(new Date(d.date + 'T12:00:00').getDay()) : d.day;
       };
       el.addEventListener('change', () => { commit(); rerender(); });
-      if (el.tagName === 'INPUT' && el.type === 'text' && !el.classList.contains('md-datepicker')) {
-        el.addEventListener('input', commit);
+      if (el.tagName === 'INPUT' && el.type === 'text') {
+        /* The date field MUST be included. It is readonly and written
+           programmatically by the datepicker, which fires only `input` --
+           a readonly field never fires `change`. Excluding it here meant the
+           picked day was displayed but never reached the draft, so Save
+           silently wrote back the seeded default weekday: the coach could
+           not book a session outside the team's own schedule. */
+        const isDate = el.classList.contains('md-datepicker');
+        el.addEventListener('input', () => {
+          commit();
+          // Re-render so the clash warnings match the day now chosen.
+          if (isDate) rerender();
+        });
       }
     });
 

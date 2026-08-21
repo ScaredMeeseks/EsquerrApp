@@ -699,3 +699,98 @@ describe('training — editing a saved session', () => {
     assert.ok(page.includes('std-drop'), 'and so is the per-row remove');
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────
+ * The date field of a draft session.
+ *
+ * The seeded date is a SUGGESTION -- the next slot on the team's own
+ * schedule -- and the coach must be able to move it anywhere, otherwise a
+ * one-off session on a day the team does not normally train cannot be
+ * created at all.
+ *
+ * The bindings used to wire `input` on every text field EXCEPT
+ * `.md-datepicker`, and the date input is `readonly`, so `change` never
+ * fired for it either: the picked day was displayed and then dropped, and
+ * Save wrote back the seeded weekday.
+ * ──────────────────────────────────────────────────────────────────────── */
+describe('new-session date field', () => {
+  const DAYS = ['Diumenge', 'Dilluns', 'Dimarts', 'Dimecres', 'Dijous',
+    'Divendres', 'Dissabte'];
+
+  function fakeEl(o) {
+    return {
+      tagName: o.tagName || 'INPUT',
+      type: o.type || 'text',
+      value: o.value || '',
+      dataset: o.dataset || {},
+      classList: { contains: (c) => (o.classes || []).indexOf(c) !== -1 },
+      _h: {},
+      addEventListener(ev, fn) { (this._h[ev] = this._h[ev] || []).push(fn); },
+      dispatchEvent(ev) { (this._h[ev.type] || []).forEach((fn) => fn(ev)); }
+    };
+  }
+
+  /** Run the real binding block from bindTrainingNew over fake fields. */
+  function bind(els, drafts) {
+    const code = grab('    // Field edits write straight to the draft',
+        "\n    $$('[data-nt-drop]')");
+    let renders = 0;
+    // eslint-disable-next-line no-new-func
+    new Function('$$', '_ntDrafts', 'tDay', 'rerender', code)(
+        () => els, drafts, (i) => DAYS[i], () => { renders++; });
+    return () => renders;
+  }
+
+  /** What renderDP() does to the input it was opened on. */
+  function pick(el, iso) {
+    el.dataset.dateIso = iso;
+    el.value = iso.split('-').reverse().join('/');
+    el.dispatchEvent({ type: 'input' });
+  }
+
+  function dateField() {
+    return fakeEl({
+      classes: ['nt-f', 'md-datepicker'],
+      dataset: { ntF: 'date', ntI: '0', dateIso: '2026-08-25' },
+      value: '25/08/2026'
+    });
+  }
+
+  it('a picked date reaches the draft', () => {
+    // 2026-08-27 is a Thursday; the seed proposed Tuesday the 25th.
+    const draft = { date: '2026-08-25', day: 'Dimarts' };
+    const el = dateField();
+    bind([el], [draft]);
+    pick(el, '2026-08-27');
+    assert.strictEqual(draft.date, '2026-08-27', 'the picker is not ignored');
+    assert.strictEqual(draft.day, 'Dijous', 'and the day label follows it');
+  });
+
+  it('re-renders after a date change, so the clash warnings match it', () => {
+    const el = dateField();
+    const renders = bind([el], [{ date: '2026-08-25', day: 'Dimarts' }]);
+    pick(el, '2026-08-27');
+    assert.strictEqual(renders(), 1);
+  });
+
+  it('does NOT re-render while an ordinary text field is typed into', () => {
+    // Re-rendering per keystroke would blow away the field being typed in.
+    const draft = { date: '2026-08-25', focus: '' };
+    const el = fakeEl({
+      classes: ['nt-f'], dataset: { ntF: 'focus', ntI: '0' }, value: 'Pressing'
+    });
+    const renders = bind([el], [draft]);
+    el.dispatchEvent({ type: 'input' });
+    assert.strictEqual(draft.focus, 'Pressing', 'still committed');
+    assert.strictEqual(renders(), 0, 'but silently');
+  });
+
+  it('the picker signals with `input`, which is why the binding must take it',
+      () => {
+        const dp = grab('  function renderDP()', '  function getWeekBounds');
+        assert.ok(dp.includes("new Event('input'"),
+            'renderDP dispatches input, not change');
+        assert.ok(dp.includes('dpInput.dataset.dateIso = iso'),
+            'and the ISO date lives in the dataset, not the visible value');
+      });
+});

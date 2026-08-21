@@ -1897,6 +1897,20 @@ Still open, same shape, deliberately **not** changed here: `scheduledMatchAvailR
 
 Functions only - **`APP_VERSION` is unmoved at 97**, no frontend file changed. Needs a **functions** deploy, not a Pages push.
 
+## v109 - the new session's date could not be moved off the default day
+
+Reported as "I can't add a training on a day that isn't in my defaults". The date **looked** editable: the picker opened, a day could be clicked, the field showed it. Save then wrote the seeded day.
+
+`renderTrainingNew`'s date input is `readonly` and driven by the custom picker, which sets `value` + `dataset.dateIso` programmatically and dispatches **`input`**. `bindTrainingNew` committed field edits on `change` — which a programmatic write never fires, and a readonly field never fires at all — and its `input` fallback was explicitly gated `&& !el.classList.contains('md-datepicker')`. So the one field that *only* signals through `input` was the one field not listening for it, and every pick was written to the DOM and dropped before reaching `_ntDrafts`.
+
+The gate existed to stop a re-render on every keystroke (it would blow away the field being typed in). That reason is real, so it is kept — but by branching on `isDate` rather than by skipping the listener: **all** text fields commit on `input`, and only the date re-renders, which is also what makes the clash warnings match the day now chosen.
+
+The seeding is unchanged and deliberately so — the proposed date is still the next slot on the team's own schedule. It was always meant to be a suggestion.
+
+`bindStaffTraining` (the saved-sessions table) was never affected: it delegates `input` on the whole `<tbody>` and re-reads the row from the DOM, so the picker's event was already caught.
+
+**582 unit tests** (+4: the binding block is executed against fake fields, including the negative — an ordinary text field must still commit *without* re-rendering — plus a source check that `renderDP` still signals with `input` and still parks the ISO date in `dataset`). Frontend only. `APP_VERSION` 108 → 109, `sw.js` cache `esquerrapp-v109`.
+
 ## v108 - why the convocatòria and the editor disagreed
 
 The owner spotted that v107 fixed the editor previews and *not* the convocatòria — same code, same stylesheet, two different results. That difference is the whole diagnosis.
