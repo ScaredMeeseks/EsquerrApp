@@ -23,6 +23,10 @@ const admin = require("firebase-admin");
 // is undefined under the emulator and every delete()/serverTimestamp() throws
 // there while working in production. Same sentinels, testable in both.
 const {FieldValue} = require("firebase-admin/firestore");
+// The functions deploy uploads functions/ alone, so js/utils.js is not
+// reachable from this side — see functions/fcf.js on why that helper is a
+// second copy and how the two are kept honest.
+const {fcfGrupIdOf} = require("./fcf");
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -1138,25 +1142,40 @@ exports.scheduledMatchAvailReminder = onSchedule({
 });
 
 // ── 5. fcfClassificacio — proxy FCF league standings ──
-// Allow any fcf.cat classificacio URL (dynamic per club)
+//
+// Takes a grupId, NOT a URL. fcf.cat's August-2026 rebuild put the standings
+// behind /api/competition/classificacio?grupId=…, which sends no
+// Access-Control-Allow-Origin, so a browser still cannot read it directly and
+// this proxy stays.
+//
+// The parameter change is also the point. The previous version fetched a
+// client-supplied URL behind a regex allowlist — a shape that is one
+// loosened character away from an SSRF, and that had to be reasoned about
+// every time it was edited. Now the only thing a caller controls is a run of
+// digits interpolated into a constant address: there is no URL to get wrong.
+//
+// Clients built before v117 call this with ?url= and parse HTML. They get a
+// 400 and no standings, which is exactly what they get today from the dead
+// fcf.cat pages — there is deliberately no compatibility branch keeping an
+// HTML path alive that no longer has any HTML to parse.
+const FCF_API = "https://www.fcf.cat/api/competition/classificacio?grupId=";
+
 exports.fcfClassificacio = onRequest(
     {cors: true, region: "us-central1", memory: "256MiB"},
     async (req, res) => {
-      const url = req.query.url;
-      // Full-path allowlist: only FCF classification pages, no query
-      // strings, fragments or path tricks past the prefix.
-      if (!url || !/^https:\/\/www\.fcf\.cat\/classificacio\/[a-zA-Z0-9/_-]+$/.test(url)) {
-        res.status(400).json({error: "Invalid URL"});
+      const grupId = String(req.query.grupId || "");
+      if (!/^\d{1,15}$/.test(grupId)) {
+        res.status(400).json({error: "Invalid grupId"});
         return;
       }
       try {
-        const resp = await fetch(url, {
+        const resp = await fetch(FCF_API + grupId, {
           headers: {"User-Agent": "Mozilla/5.0"},
         });
         if (!resp.ok) throw new Error("FCF returned " + resp.status);
-        const html = await resp.text();
+        const json = await resp.json();
         res.set("Cache-Control", "public, max-age=300");
-        res.send(html);
+        res.json(json);
       } catch (err) {
         logger.error("fcfClassificacio error", err);
         res.status(502).json({error: "Failed to fetch FCF"});
@@ -1772,6 +1791,21 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
       if (!allowed.has(k)) {
         throw new HttpsError("invalid-argument",
             field + " conté un equip inexistent: " + k);
+      }
+    }
+  }
+
+  // An FCF link is only ever consumed for its grupId, so a link with no
+  // grupId in it is not a link — it is the pre-rebuild address, which now
+  // 404s. Refusing it here is the only place a lead is told BEFORE the
+  // standings quietly come back empty.
+  if (data.fcfLinks) {
+    for (const [k, v] of Object.entries(data.fcfLinks)) {
+      if (v === "" || v === null || v === undefined) continue;
+      if (typeof v !== "string" || !fcfGrupIdOf(v)) {
+        throw new HttpsError("invalid-argument",
+            "L'enllaç FCF de " + k + " no és vàlid. Obre la classificació a " +
+            "fcf.cat i copia l'adreça sencera (ha de contenir grupId).");
       }
     }
   }
@@ -2819,6 +2853,25 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
             teamRef.collection("matchAvail").where("matchId", "in", c));
       }
 
+      /* The staff's notes for those fixtures. The doc id IS the match id, so
+         this deletes by reference rather than by query — and a delete of a
+         document that never existed is a no-op in the Admin SDK, so there is
+         nothing to check first. Left behind they would be unreachable but
+         not gone: notes on a squad the club has disbanded. */
+      if (deletedMatchIds.length) {
+        let nbatch = db.batch();
+        let nops = 0;
+        for (const mid of deletedMatchIds) {
+          nbatch.delete(teamRef.collection("matchNotes").doc(String(mid)));
+          if (++nops >= 450) {
+            await nbatch.commit();
+            nbatch = db.batch();
+            nops = 0;
+          }
+        }
+        if (nops > 0) await nbatch.commit();
+      }
+
       // fa_users is a MOVE, not an edit. Clearing the fields in place would
       // leave the shard document's `category` disagreeing with the row, and
       // the client's next whole-blob write would re-route and duplicate the
@@ -3289,6 +3342,14 @@ const SEASON_KEYS = [
   "fa_injuries", "fa_injury_notes", "fa_injury_zone",
   "fa_convocatoria_sent", "fa_convocatoria_callup",
   "fa_matchday",
+  /* Board LINKS, keyed by matchId — not the boards themselves, which live in
+     tacticBoards/ and outlive any season. This was missing: fa_matches was
+     emptied and this map was not, so every rollover left a season's worth of
+     links pointing at fixtures that no longer existed, and nothing ever
+     cleaned them up. (There is a one-off client-side sweep for orphans by
+     NAME, `fa_cleanup_orphan_match_boards` in js/app.js, which never ran
+     again after its first pass.) */
+  "fa_tactic_match_boards",
 ];
 
 // Keys stored as per-field merge (not blob {v: "..."}). Describes the
@@ -3312,6 +3373,8 @@ const OBJECT_KEYS = new Set([
   "fa_player_rpe",
   "fa_convocatoria_sent", "fa_convocatoria_callup",
   "fa_injury_notes", "fa_injury_zone",
+  // Keyed by matchId — an object, so the reset must write {} and not [].
+  "fa_tactic_match_boards",
 ]);
 
 exports.archiveSeason = onRequest(
@@ -3455,7 +3518,12 @@ exports.archiveSeason = onRequest(
         // ── Archive + clear the per-record player-data collections ──
         // (Canonical data; the legacy availability/RPE blobs reset below
         // are frozen mirrors kept only until --delete-legacy runs.)
-        for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+        /* matchNotes rides in this loop rather than in SEASON_KEYS because
+           it is a per-record collection, not a data/ blob — one document per
+           match, keyed by the match id. Archiving it matters more than it
+           looks: fa_matches is emptied further down, so a note left behind
+           would point at a fixture that no longer exists, for ever. */
+        for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes"]) {
           const collSnap = await db.collection("teams").doc(teamId)
               .collection(coll).get();
           if (collSnap.empty) continue;

@@ -51,6 +51,218 @@ function getSeasonWeek(dateStr) {
   return Math.floor(diff / (7 * 86400000)) + 1;
 }
 
+/* ---------- Link safety ----------
+
+   A URL we are willing to hand to window.open(), or ''.
+
+   This is NOT what sanitize() does, and the difference is the whole point.
+   sanitize() escapes < > & " so a string cannot break out of the attribute
+   it is written into — an HTML problem. It leaves `javascript:fetch(…)`
+   completely untouched, because there is nothing in it to escape, and
+   `dataset.*` decodes the escaping back to the original string anyway.
+
+   window.open() on a `javascript:` or `data:` URL does not navigate: it
+   opens a window and RUNS the code, on our own origin, in the viewer's
+   signed-in session. Only staff can enter a video link, so the exposure is a
+   stored value shared BETWEEN staff — which is exactly the case worth
+   closing, since one account then reaches what another can do.
+
+   Allowlist, not a blocklist: `javascript:` and `data:` are the two everyone
+   remembers, and there is no reason a match video is ever anything but
+   http(s). */
+function safeHttpUrl(u) {
+  const s = String(u === undefined || u === null ? '' : u).trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+
+/* ---------- FCF (Federació Catalana de Futbol) ----------
+
+   fcf.cat was rebuilt as a Next.js app in August 2026. The old
+   `https://www.fcf.cat/classificacio/{season}/{discipline}/{division}/{group}`
+   pages 307 to `/ca/classificacio/…` and then 404, and the page that replaced
+   them ships NO server-rendered table — the standings arrive from
+   `/api/competition/classificacio?grupId=…` after hydration. So the old
+   scrape had two independent deaths: a dead URL and, had it resolved, an
+   empty document.
+
+   Every link a club lead saved before that date is unrecoverable. The new
+   slug does not encode the old one and vice versa, and the old slug names
+   LAST season anyway, so there is no migration to write: the lead re-pastes.
+
+   What we consume now is the JSON, which is better in every way — stable
+   `teamId`s, badge filenames, and last-5 form all arrive in the same payload
+   the standings table needs. */
+
+/* The `grupId` of a pasted FCF link, as a digit string, or ''.
+
+   Deliberately tolerant about the SHAPE of what is pasted and strict about
+   what it returns: leads paste the whole address bar, sometimes with a
+   trailing `&tab=classificacio`, sometimes the bare number from a colleague.
+   Anything that does not yield digits — an old-format link above all —
+   returns '' rather than throwing, because '' is what the config UI keys its
+   "this link is out of date" warning off. */
+function fcfGrupId(url) {
+  const s = String(url === undefined || url === null ? '' : url).trim();
+  if (/^\d{1,15}$/.test(s)) return s;                 // pasted the bare id
+  const m = /[?&]grupId=(\d{1,15})\b/.exec(s);
+  return m ? m[1] : '';
+}
+
+const FCF_BADGE_BASE = 'https://files.fcf.cat/escudos/clubes/escudos/';
+
+/**
+ * The rows of `/api/competition/classificacio?grupId=…`, in the shape both
+ * league renderers in app.js already consume, plus `teamId`/`rawName` for the
+ * opponent picker.
+ *
+ * ⚠ `played`, `won`, `drawn` and `lost` are NOT numbers. FCF concatenates the
+ * home and away halves as strings: `played:"1515"` is 15 + 15 = 30,
+ * `won:"139"` is 13 + 9 = 22, `drawn:"05"` is 0 + 5 = 5. Their own site
+ * renders them raw, so fcf.cat displays "1515" too — this is not a decoding
+ * we are missing, it is their bug, and it will not be fixed for us. The split
+ * cannot be recovered in general either: "139" is 13|9 or 1|39 with nothing
+ * in the payload to choose between them.
+ *
+ * `coefficient` is points-per-game, and points is clean, so matches played
+ * comes back exactly as points / coefficient — verified against 258 rows
+ * across five divisions, every one landing on an integer. That is why J is
+ * derived and the field literally called `played` is ignored.
+ */
+function parseFcfClassificacio(json, clubName) {
+  const data = (json && json.data) || [];
+  const ours = normTeamName(clubName || '');
+  return data.map(function (r, i) {
+    const team = r.team || {};
+    const pts = parseFloat(r.points) || 0;
+    const coef = parseFloat(r.coefficient) || 0;
+    const logo = team.logo || '';
+    return {
+      /* Pre-season FCF sends position:"0" for every team and orders the
+         array by teamId. Falling back to the index keeps the column
+         readable instead of printing a column of zeros. */
+      pos: parseInt(r.position, 10) || (i + 1),
+      club: String(team.name || '').trim(),
+      rawName: String(team.name || '').trim(),
+      teamId: String(team.teamId || ''),
+      pts: Math.round(pts),
+      j: coef > 0 ? Math.round(pts / coef) : 0,
+      f: parseInt(r.goalsFor, 10) || 0,
+      c: parseInt(r.goalsAgainst, 10) || 0,
+      badge: (!logo || logo.indexOf('escutbase') !== -1) ? '' : FCF_BADGE_BASE + logo,
+      /* The promotion/relegation stripe. `promociones` came back empty for
+         every group sampled after the rebuild, so there is nothing to colour
+         — but the field and both renderers' `r.zone` branches stay, so it
+         lights up again the day FCF starts populating it. */
+      zone: '',
+      /* An exact normalised match, not the old substring test: "Gràcia" is
+         contained in "Gràcia Atlètic", and the old needle highlighted
+         whichever of the two came first. */
+      ours: !!ours && normTeamName(team.name) === ours
+    };
+  });
+}
+
+/* ---------- Match legs (anada / tornada) ----------
+
+   Nothing on a match row says "this is the return fixture": there is no
+   competition, no round, no leg field, and no fixture import to supply one —
+   `fcfLinks` is a standings URL per squad and nothing more. The pairing is
+   therefore DERIVED (same rival, venue swapped, earlier date, same season)
+   and then confirmed by a human, because a friendly and a league game against
+   the same club satisfy that rule equally well.
+
+   Pure and dependency-free so test/match-legs.test.js can require this file
+   directly, the way shard.test.js requires js/shard.js. */
+
+/* Rival names are typed by hand into the Calendari, so the same club arrives
+   as "C.F. Gràcia", "CF Gracia" and "Gràcia F.C." across one season. Strip the
+   parts that carry no identity — accents, punctuation, and the legal-form
+   prefixes every Catalan club shares — and compare what is left.
+
+   Deliberately NOT an edit-distance match: two different clubs from the same
+   town ("Gràcia" and "Gràcia Atlètic") are a few characters apart and must
+   never collapse into each other. "Atlètic" is deliberately NOT on the list
+   for exactly that reason — a parent club and its feeder often differ by that
+   one word, and stripping it would merge them. */
+const TEAM_NAME_NOISE = /\b(c\s*f|f\s*c|u\s*e|c\s*e|a\s*e|c\s*d|u\s*d|s\s*d|club|futbol|football|esportiu|esportiva|unio|union|associacio|asociacion|societat|sociedad|deportivo|deportiva)\b/g;
+
+/* U+0300–U+036F, the combining diacritical marks that NFD splits off.
+   Built from char codes rather than written as a literal character class:
+   the characters themselves are invisible in an editor and would silently
+   vanish if this file were ever normalised back to NFC. */
+const COMBINING_MARKS = new RegExp(
+  '[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+
+function normTeamName(s) {
+  const raw = String(s || '').toLowerCase()
+    .normalize('NFD').replace(COMBINING_MARKS, '');   // Gracia, from Gràcia
+  const bare = raw.replace(/[^a-z0-9]/g, '');
+  const stripped = raw
+    .replace(/[.\-_]/g, ' ')          // "C.F." → "c f ", so the noise list matches
+    .replace(TEAM_NAME_NOISE, ' ')
+    .replace(/[^a-z0-9]/g, '');
+  /* A name that is NOTHING BUT noise ("C.F.", "U.E.") keeps its letters: an
+     empty string here would make every such rival equal to every other one. */
+  return stripped || bare;
+}
+
+/* Mirrors isOurTeam() in app.js — EXACT equality on the club name, not the
+   normalised form. Being lenient would let this helper and the match
+   scoreboard disagree about which side is ours on the same screen. A club that
+   renames mid-season therefore loses the suggestion (opponentOf returns the
+   old club name and nothing pairs) rather than getting a wrong one, which is
+   the right way round to fail. */
+function ourSideOf(m, clubName) {
+  return (m && m.home === clubName) ? 'home' : 'away';
+}
+
+function opponentOf(m, clubName) {
+  if (!m) return '';
+  return ourSideOf(m, clubName) === 'home' ? (m.away || '') : (m.home || '');
+}
+
+/**
+ * The first leg of `candidate` within the same season, or null.
+ *
+ * Returns the MOST RECENT qualifying earlier match: a club met three times in
+ * a season (league double plus a cup tie) should pair with the game just
+ * played, not the one from September.
+ *
+ * `seasonStart` is a parameter only so the tests can pin a season without
+ * reaching into the module-level boundary; callers omit it.
+ */
+function findFirstLeg(candidate, allMatches, clubName, seasonStart) {
+  if (!candidate || !candidate.date) return null;
+  const start = seasonStart || seasonStartStr();
+  const rival = normTeamName(opponentOf(candidate, clubName));
+  if (!rival) return null;
+  const side = ourSideOf(candidate, clubName);
+  const cid = String(candidate.id);
+  /* Fixtures whose rival was picked from the FCF group carry the
+     federation's own team id. When BOTH sides of a pairing have one, that id
+     answers the question outright and normTeamName never runs: two squads of
+     the same club, or two clubs whose names normalise together, stop being
+     ambiguous. Everything else — every fixture created before the picker
+     shipped, every friendly, every club with no FCF link — still pairs by
+     name, which is why normTeamName stays. */
+  const cRival = String(candidate.opponentTeamId || '');
+
+  return (allMatches || []).filter(function (m) {
+    if (!m || !m.date || String(m.id) === cid) return false;
+    // amateur-A and amateur-B play different leagues against different clubs.
+    if ((m.category || '') !== (candidate.category || '')) return false;
+    if ((m.team || '') !== (candidate.team || '')) return false;
+    if (m.date >= candidate.date) return false;         // strictly earlier
+    if (m.date < start) return false;                   // this season only
+    if (ourSideOf(m, clubName) === side) return false;  // venue must be swapped
+    const mRival = String(m.opponentTeamId || '');
+    if (cRival && mRival) return mRival === cRival;
+    return normTeamName(opponentOf(m, clubName)) === rival;
+  }).sort(function (a, b) {
+    return String(b.date).localeCompare(String(a.date));
+  })[0] || null;
+}
+
 // ---------- Category & Position Constants ----------
 const CATEGORY_LABELS = {
   amateur: 'Amateur', juvenil: 'Juvenil', cadet: 'Cadet',
@@ -546,12 +758,28 @@ if (typeof module !== 'undefined' && module.exports) {
     setSeasonBoundary,
     getSeasonBoundary,
     getSeasonWeek,
+    safeHttpUrl,
+    // FCF. Both are pure string/JSON work, and parseFcfClassificacio is the
+    // only place the "played is two numbers glued together" trap is handled.
+    fcfGrupId,
+    parseFcfClassificacio,
+    FCF_BADGE_BASE,
+    // Match legs. findFirstLeg is the whole of the anada/tornada detection —
+    // the UI only asks it a question and stores the coach's answer.
+    normTeamName,
+    ourSideOf,
+    opponentOf,
+    findFirstLeg,
     CATEGORY_ORDER,
     CATEGORY_LABELS,
     CATEGORY_INITIALS,
     catSpanOf,
     catBadgeHtmlGlobal,
     POS_ORDER,
+    // Exported so the briefing tests can assert the squad really is ordered
+    // goalkeeper-first, against the REAL ranking rather than a stub that
+    // would pass whatever order it was handed.
+    posRankGlobal,
     DAY_VALUES,
     // Exported so seed-demo-club.js can build injuries against the real
     // zone indices: fa_injuries stores `bodyZone` as an index INTO this

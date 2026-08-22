@@ -120,6 +120,23 @@ beforeEach(async () => {
         .set({v: "[]", category: "none"});
     await d.doc("teams/teamA/seasons/2024-2025/trainingAvail/" + A + "_2025-01-01")
         .set({uid: A, date: "2025-01-01", value: "yes"});
+    /* Coach match notes. Doc id is the match id; `category` is duplicated
+       onto the doc so the rule never needs a get() of fa_matches. */
+    await d.doc("teams/teamA/matchNotes/2001").set({
+      matchId: "2001", category: "cadet", team: "A",
+      pre: {text: "press high"}, post: {text: ""},
+      videos: [], boards: [], firstLegId: null, legDismissed: false,
+    });
+    await d.doc("teams/teamA/matchNotes/2002").set({
+      matchId: "2002", category: "juvenil", team: "A",
+      pre: {text: "juvenil plan"}, post: {text: ""},
+      videos: [], boards: [], firstLegId: null, legDismissed: false,
+    });
+    await d.doc("teams/teamA/seasons/2024-2025/matchNotes/1901").set({
+      matchId: "1901", category: "cadet", team: "A",
+      pre: {text: "last season"}, post: {text: ""},
+      videos: [], boards: [], firstLegId: null, legDismissed: false,
+    });
     await d.doc("teams/teamA/data/fa_users__none").set({v: "[]", category: "none"});
     await d.doc("teams/teamB/data/fa_injuries__cadet").set({v: "[]", category: "cadet"});
     await d.doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01")
@@ -566,6 +583,73 @@ describe("Clubs, codes, join-attempts", () => {
  * ALSO match seasons/{id}/data/* and hand back the club-wide read the
  * narrower block just removed. It would look correct and do nothing.
  * ------------------------------------------------------------------ */
+describe("Coach match notes (teams/{t}/matchNotes/{matchId})", () => {
+  const note = (d, id) => d.doc("teams/teamA/matchNotes/" + id);
+  const CADET = "2001";     // seeded, category cadet
+  const JUVENIL = "2002";   // seeded, category juvenil
+
+  /* THE assertion this whole collection exists for. Everything else about
+     the feature is a UI choice; this one is the security claim. */
+  it("a PLAYER of the same club and category cannot read a note", async () => {
+    await assertFails(note(asA(), CADET).get());
+  });
+  it("a player cannot write one either", async () => {
+    await assertFails(note(asA(), CADET).update({pre: {text: "hi"}}));
+    await assertFails(note(asA(), "9999").set({matchId: "9999", category: "cadet"}));
+    await assertFails(note(asA(), CADET).delete());
+  });
+  it("an unassigned player is not a special case", async () => {
+    await assertFails(note(asUnassigned(), CADET).get());
+  });
+
+  it("a cadet coach reads and writes cadet notes", async () => {
+    await assertSucceeds(note(asStaffA(), CADET).get());
+    await assertSucceeds(note(asStaffA(), CADET).update({pre: {text: "v2"}}));
+  });
+  it("a cadet coach CANNOT read juvenil's notes", async () => {
+    // Same compartmentalisation as the medical record: a coach's read of
+    // another squad's preparation is not his to have.
+    await assertFails(note(asStaffA(), JUVENIL).get());
+    await assertFails(note(asStaffA(), JUVENIL).update({pre: {text: "x"}}));
+    await assertFails(note(asStaffA(), JUVENIL).delete());
+  });
+  it("a cadet coach cannot CREATE one in juvenil either", async () => {
+    // create tests request.resource, not resource — a separate arm of the
+    // rule, and the one an attacker would reach for.
+    await assertFails(note(asStaffA(), "3001")
+        .set({matchId: "3001", category: "juvenil", team: "A"}));
+    await assertSucceeds(note(asStaffA(), "3002")
+        .set({matchId: "3002", category: "cadet", team: "A"}));
+  });
+  it("the category is immutable — a note cannot be moved between squads", async () => {
+    // Otherwise a cadet coach could hand his own note to juvenil, or walk a
+    // juvenil note into cadet one write at a time.
+    await assertFails(note(asStaffA(), CADET).update({category: "juvenil"}));
+  });
+  it("the lead reads every category of their club", async () => {
+    await assertSucceeds(note(asLeadA(), CADET).get());
+    await assertSucceeds(note(asLeadA(), JUVENIL).get());
+  });
+  it("another club cannot touch them at all", async () => {
+    await assertFails(note(asB(), CADET).get());
+  });
+  it("a token with no cats claim is denied, not errored", async () => {
+    await assertFails(note(asStaffNoCats(), CADET).get());
+  });
+  it("a note with NO category is unreadable", async () => {
+    // Same failure direction as an unstamped data/ shard: it goes dark
+    // rather than leaking.
+    await env.withSecurityRulesDisabled(async (c) => {
+      await c.firestore().doc("teams/teamA/matchNotes/4001").set({matchId: "4001"});
+    });
+    await assertFails(note(asStaffA(), "4001").get());
+    await assertFails(note(asLeadA(), "4001").get());
+  });
+  it("superuser reads across categories and clubs", async () => {
+    await assertSucceeds(note(asSuper(), JUVENIL).get());
+  });
+});
+
 describe("Archived seasons", () => {
   const arch = (d, cat) =>
     d.doc("teams/teamA/seasons/2024-2025/data/fa_injuries__" + cat);
@@ -608,6 +692,18 @@ describe("Archived seasons", () => {
         .doc("teams/teamA/seasons/2024-2025/trainingAvail/" + A + "_2025-01-01").get());
     await assertFails(asB()
         .doc("teams/teamA/seasons/2024-2025/trainingAvail/" + A + "_2025-01-01").get());
+  });
+
+  it("archived coach notes stay STAFF-only, unlike the per-record archives", async () => {
+    // The three per-record archives above are club-wide because their live
+    // counterparts are. matchNotes' live counterpart is not, so archiving
+    // must not declassify it.
+    const an = (d) => d.doc("teams/teamA/seasons/2024-2025/matchNotes/1901");
+    await assertSucceeds(an(asStaffA()).get());
+    await assertSucceeds(an(asLeadA()).get());
+    await assertFails(an(asA()).get());
+    await assertFails(an(asB()).get());
+    await assertFails(an(asStaffA()).update({pre: {text: "rewrite history"}}));
   });
 
   it("nobody but the superuser writes an archive", async () => {

@@ -157,6 +157,17 @@
     'common.edit':       { ca:'Editar', es:'Editar', en:'Edit' },
     'common.player_not_found': { ca:'Jugador no trobat', es:'Jugador no encontrado', en:'Player not found' },
 
+    // ── FCF standings ──
+    // Why a league table is empty. Before v117 there was no such string: a
+    // broken feed and a division that had not kicked off looked identical.
+    'fcf.loading':     { ca:'Carregant la classificació…', es:'Cargando la clasificación…', en:'Loading standings…' },
+    'fcf.unavailable': { ca:'No s\'ha pogut carregar la classificació. Torna-ho a provar més tard.', es:'No se ha podido cargar la clasificación. Inténtalo más tarde.', en:'Could not load the standings. Try again later.' },
+    'fcf.empty':       { ca:'La FCF encara no ha publicat aquesta classificació.', es:'La FCF aún no ha publicado esta clasificación.', en:'The FCF has not published this group yet.' },
+    'fcf.link_outdated': { ca:'Enllaç FCF antic. La FCF ha canviat el seu web: un responsable ha de copiar la nova adreça de la classificació a la configuració del club.', es:'Enlace FCF antiguo. La FCF ha cambiado su web: un responsable debe copiar la nueva dirección de la clasificación en la configuración del club.', en:'Outdated FCF link. The FCF changed their site — a team lead needs to paste the new standings address in club setup.' },
+    'fcf.link_invalid': { ca:'Enllaç no vàlid. Ha de contenir grupId — copia l\'adreça sencera de la pestanya Classificació a fcf.cat.', es:'Enlace no válido. Debe contener grupId — copia la dirección entera de la pestaña Clasificación en fcf.cat.', en:'Invalid link. It must contain grupId — copy the whole address from the Classificació tab on fcf.cat.' },
+    'fcf.link_old_hint': { ca:'⚠ Aquest enllaç ja no funciona (la FCF ha canviat el web). Obre la classificació a fcf.cat i enganxa la nova adreça.', es:'⚠ Este enlace ya no funciona (la FCF ha cambiado la web). Abre la clasificación en fcf.cat y pega la nueva dirección.', en:'⚠ This link no longer works (the FCF changed their site). Open the standings on fcf.cat and paste the new address.' },
+    'fcf.opponent_matched': { ca:'Rival de la FCF', es:'Rival de la FCF', en:'FCF opponent' },
+
     // ── Player Home ──
     'home.attendance':    { ca:'Assistència', es:'Asistencia', en:'Attendance' },
     'home.this_week':     { ca:'Aquesta setmana', es:'Esta semana', en:'This Week' },
@@ -240,6 +251,35 @@
     'match_detail.event_delete':    { ca:'Eliminar', es:'Eliminar', en:'Delete' },
     'match_detail.videos':          { ca:'🎬 Vídeos', es:'🎬 Vídeos', en:'🎬 Videos' },
     'match_detail.tactical_boards': { ca:'Pissarres tàctiques', es:'Pizarras tácticas', en:'Tactical Boards' },
+
+    // ── Coach match notes + anada/tornada briefing ──
+    // Staff-only strings: no player's client ever renders any of these.
+    'mn.title':          { ca:'Notes del cos tècnic', es:'Notas del cuerpo técnico', en:'Coaching notes' },
+    'mn.staff_only':     { ca:'Només visible per al cos tècnic', es:'Solo visible para el cuerpo técnico', en:'Visible to staff only' },
+    'mn.pre':            { ca:'Abans del partit', es:'Antes del partido', en:'Before the match' },
+    'mn.post':           { ca:'Després del partit', es:'Después del partido', en:'After the match' },
+    'mn.pre_ph':         { ca:'Pla de partit, rival, consignes…', es:'Plan de partido, rival, consignas…', en:'Match plan, opponent, instructions…' },
+    'mn.post_ph':        { ca:'Què ha passat, què cal corregir…', es:'Qué ha pasado, qué corregir…', en:'What happened, what to fix…' },
+    'mn.videos':         { ca:'🎬 Vídeos', es:'🎬 Vídeos', en:'🎬 Videos' },
+    'mn.add_video':      { ca:'+ Afegir enllaç de vídeo', es:'+ Añadir enlace de vídeo', en:'+ Add video link' },
+    'mn.boards':         { ca:'Pissarres', es:'Pizarras', en:'Boards' },
+    'mn.boards_private': { ca:'Aquestes pissarres són només per a tu. Les que veu la plantilla s\'afegeixen des de la convocatòria.', es:'Estas pizarras son solo para ti. Las que ve la plantilla se añaden desde la convocatoria.', en:'These boards are yours alone. The ones the squad sees are added from the call-up.' },
+    'mn.pick_board':     { ca:'Tria una pissarra…', es:'Elige una pizarra…', en:'Pick a board…' },
+    'mn.add_board':      { ca:'Afegir', es:'Añadir', en:'Add' },
+    'mn.no_boards':      { ca:'La biblioteca del club encara no té cap pissarra.', es:'La biblioteca del club aún no tiene ninguna pizarra.', en:'The club library has no boards yet.' },
+    'mn.lineup':         { ca:'Alineació', es:'Alineación', en:'Line-up' },
+    'mn.subs':           { ca:'Suplents', es:'Suplentes', en:'Subs' },
+    'mn.media_private':  { ca:'🔒 Privat', es:'🔒 Privado', en:'🔒 Private' },
+    'mn.media_sent':     { ca:'📣 Enviat a la convocatòria', es:'📣 Enviado en la convocatoria', en:'📣 Sent with the call-up' },
+    'mn.first_leg':      { ca:'Anada', es:'Ida', en:'First leg' },
+    'mn.first_leg_summary': { ca:'Resum partit d\'anada', es:'Resumen partido de ida', en:'First leg summary' },
+    'mn.at_home':        { ca:'Casa', es:'Casa', en:'Home' },
+    'mn.at_away':        { ca:'Fora', es:'Fuera', en:'Away' },
+    'mn.looks_like_second_leg': { ca:'Sembla la tornada', es:'Parece la vuelta', en:'Looks like the return leg' },
+    'mn.link':           { ca:'Enllaçar', es:'Enlazar', en:'Link' },
+    'mn.not_a_leg':      { ca:'No', es:'No', en:'No' },
+    'mn.leg_card_title': { ca:'Possibles tornades', es:'Posibles vueltas', en:'Possible return legs' },
+    'mn.save_failed':    { ca:'No s\'han pogut desar les notes', es:'No se han podido guardar las notas', en:'Could not save the notes' },
 
     // ── Match Events ──
     'ev.goal':           { ca:'Gol', es:'Gol', en:'Goal' },
@@ -1365,7 +1405,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 115;
+  const APP_VERSION = 117;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -3230,9 +3270,15 @@
         var letter = chip.dataset.letter;
         var linkKey = catKey + '-' + letter;
         var val = (linkKey in typedLinks) ? typedLinks[linkKey] : (existingLinks[linkKey] || '');
-        html += '<div class="ts-fcf-row">' +
+        /* A saved value with no grupId is a pre-rebuild link: it 404s and
+           the standings for that squad are blank until someone re-pastes.
+           Nothing else in the app tells the lead that, so the warning lives
+           beside the box that fixes it. */
+        var stale = !!val && !fcfGrupId(val);
+        html += '<div class="ts-fcf-row' + (stale ? ' ts-fcf-stale' : '') + '">' +
           '<span class="ts-fcf-label">' + CATEGORY_LABELS[catKey] + ' ' + letter + '</span>' +
-          '<input type="url" placeholder="https://fcf.cat/classificacio/..." data-fcf-key="' + linkKey + '" value="' + sanitize(val) + '">' +
+          '<input type="url" placeholder="https://www.fcf.cat/ca/competicio?...&grupId=..." data-fcf-key="' + linkKey + '" value="' + sanitize(val) + '">' +
+          (stale ? '<span class="ts-fcf-warn">' + sanitize(t('fcf.link_old_hint')) + '</span>' : '') +
           '</div>';
       });
     });
@@ -3749,12 +3795,22 @@
       errEl.hidden = false;
       return;
     }
-    // Collect FCF links
+    // Collect FCF links. Validated here, before the network, for the same
+    // reason the staff emails below are: a link with no grupId cannot be
+    // fetched, and saving it silently costs the club a season of standings.
     var fcfLinks = {};
+    var badLink = null;
     document.querySelectorAll('#team-setup-fcf-inputs input[data-fcf-key]').forEach(function (inp) {
       var val = inp.value.trim();
-      if (val) fcfLinks[inp.dataset.fcfKey] = val;
+      if (!val) return;
+      if (!fcfGrupId(val) && !badLink) badLink = inp.dataset.fcfKey;
+      fcfLinks[inp.dataset.fcfKey] = val;
     });
+    if (badLink) {
+      errEl.textContent = badLink + ': ' + t('fcf.link_invalid');
+      errEl.hidden = false;
+      return;
+    }
     var schedules = _collectSchedulesFromDom();
     // Collect staff emails. Validate before touching the network — a typo
     // here means somebody cannot register at all.
@@ -4506,9 +4562,22 @@
     // Scroll RPE and UA charts to the right (most recent) by default
     content.querySelectorAll('.rpe-chart-scroll').forEach(el => { el.scrollLeft = el.scrollWidth; });
 
-    // Ensure RO board proportional scaling after layout
-    requestAnimationFrame(() => requestAnimationFrame(() => scaleRoBoards()));
+    /* Ensure RO board proportional scaling after layout — and, in the same
+       pass and for the same reason, size the anada scoreline's club names.
+       Both need real measured widths, so neither can run before layout. */
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      scaleRoBoards();
+      fitMnScoreNames();
+    }));
   }
+
+  /* A resized window changes what fits on one line. Debounced, and a no-op
+     on every page that has no scoreline. */
+  var _mnFitDebounce = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(_mnFitDebounce);
+    _mnFitDebounce = setTimeout(fitMnScoreNames, 150);
+  });
 
   // #endregion Dashboard & Page Router
 
@@ -4676,9 +4745,8 @@
 
   // #endregion Player Pages & Actions
 
-  // #region FCF League Scraper
-  /* ---------- Live FCF league scraper ---------- */
-  var ESQUERRA_NEEDLE_DEFAULT = "esquerra";
+  // #region FCF League Standings
+  /* ---------- Live FCF league standings ---------- */
 
   function getActiveFcfLeagues() {
     // No hardcoded fallback: clubs without configured FCF links simply
@@ -4708,10 +4776,11 @@
     return leagues;
   }
 
-  function getClubNeedle() {
-    if (_clubConfig && _clubConfig.name) return _clubConfig.name.toLowerCase();
-    return ESQUERRA_NEEDLE_DEFAULT;
-  }
+  /* getClubNeedle() is gone with the scraper. Highlighting "our" row is now
+     an exact normTeamName() comparison inside parseFcfClassificacio() — the
+     old lowercase substring test matched the wrong club whenever one name
+     contained another ("Gràcia" inside "Gràcia Atlètic"), and the hardcoded
+     "esquerra" fallback highlighted a stranger's row for every other club. */
 
   function scrollLeagueToCentre() {
     document.querySelectorAll('.league-scroll').forEach(function(el) {
@@ -4727,61 +4796,163 @@
     });
   }
 
-  function parseFcfHtml(html) {
-    var doc = new DOMParser().parseFromString(html, 'text/html');
-    var trs = doc.querySelectorAll('table.fcftable-e tbody tr');
-    var rows = [];
-    trs.forEach(function(tr) {
-      var allTds = tr.querySelectorAll('td');
-      if (allTds.length < 10) return;
-      // Filter to visible-only cells (exclude detallada / display:none)
-      var vis = [];
-      allTds.forEach(function(td) {
-        if (td.style.display === 'none') return;
-        if (td.classList.contains('detallada')) return;
-        vis.push(td);
-      });
-      if (vis.length < 8) return;
-      // vis[0]=Pos  vis[1]=Badge  vis[2]=Club  vis[3]=Pts  ...  vis[end-4]=F  vis[end-3]=C
-      var posCell = vis[0];
-      var zone = '';
-      var ascSpan = posCell.querySelector('span.ascens');
-      if (ascSpan && ascSpan.style.backgroundColor) zone = ascSpan.style.backgroundColor;
-      var pos = parseInt(posCell.textContent.trim(), 10) || 0;
-      // badge
-      var img = vis[1].querySelector('img');
-      var badge = img ? img.getAttribute('src') : '';
-      if (badge && badge.indexOf('escutbase') !== -1) badge = '';
-      // club name from resumida cell
-      var clubTd = vis[2];
-      var anchor = clubTd.querySelector('a');
-      var club = anchor ? anchor.textContent.trim() : clubTd.textContent.trim();
-      // pts
-      var pts = parseInt(vis[3].textContent.trim(), 10) || 0;
-      // F and C are always 4th and 3rd from end of visible cells (before Últims + Sanció)
-      var gf = parseInt(vis[vis.length - 4].textContent.trim(), 10) || 0;
-      var gc = parseInt(vis[vis.length - 3].textContent.trim(), 10) || 0;
-      // J: first resumida numeric cell after pts (skip Coef/Provisional if present)
-      var j = 0;
-      for (var k = 4; k < vis.length - 4; k++) {
-        var val = parseInt(vis[k].textContent.trim(), 10);
-        if (!isNaN(val) && vis[k].classList.contains('resumida')) { j = val; break; }
-      }
-      var ours = club.toLowerCase().indexOf(getClubNeedle()) !== -1;
-      rows.push({ pos: pos, club: club, pts: pts, j: j, f: gf, c: gc, badge: badge, zone: zone, ours: ours });
-    });
-    return rows;
+  /* parseFcfHtml() is gone. fcf.cat's 2026 rebuild serves the standings as
+     JSON after hydration and the old /classificacio/ pages 404 — there is no
+     table.fcftable-e anywhere on the internet to parse any more.
+     parseFcfClassificacio() in js/utils.js replaces it, and lives there
+     because it is pure and the "played is two numbers glued together" trap
+     needs a test. */
+
+  var LEAGUE_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+  /* v2 of the key. v116 rows carry no teamId, and the opponent picker feeds
+     off this same cache — a stale v1 entry would silently offer a list of
+     names with no ids behind them and quietly disable the exact-match
+     pairing. A new key makes the old rows unreachable instead. */
+  var _leagueCache = JSON.parse(localStorage.getItem('fa_league_cache_v2') || '{}');
+  var _leagueCacheTime = parseInt(localStorage.getItem('fa_league_cache_v2_t') || '0', 10);
+  var FCF_PROXY_BASE = 'https://fcfclassificacio-674dkdzfja-uc.a.run.app?grupId=';
+  /* Leagues whose most recent fetch failed, so the table can say so instead
+     of showing nothing. Keyed by league id, never persisted: a network blip
+     must not outlive the session that saw it. */
+  var _leagueErrors = {};
+  /* When each league was last asked for, so a miss retries on the same
+     five-minute cadence as the standings rather than once per session. An
+     "in flight or recently failed" flag with no clock would leave the
+     Calendari's opponent list empty until reload after one bad request. */
+  var _leagueAsked = {};
+
+  function fetchFcfGroup(grupId) {
+    return fetch(FCF_PROXY_BASE + encodeURIComponent(grupId))
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(json) { return parseFcfClassificacio(json, getClubName()); });
   }
 
-  var _leagueLastFetch = 0;
-  var LEAGUE_CACHE_MS = 5 * 60 * 1000; // 5 minutes
-  var _leagueCache = JSON.parse(localStorage.getItem('fa_league_cache') || '{}');
-  var _leagueCacheTime = parseInt(localStorage.getItem('fa_league_cache_t') || '0', 10);
-  var FCF_PROXY_BASE = 'https://fcfclassificacio-674dkdzfja-uc.a.run.app?url=';
+  function _saveLeagueCache() {
+    try { localStorage.setItem('fa_league_cache_v2', JSON.stringify(_leagueCache)); } catch (e) {}
+  }
 
-  function fetchFcfPage(url) {
-    return fetch(FCF_PROXY_BASE + encodeURIComponent(url))
-      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.text(); });
+  /* The FCF team list for one squad, as [{name, teamId, badge}], or [].
+
+     Reads the standings cache rather than fetching a team list of its own:
+     /api/competition/classificacio already carries every club in the group
+     with its federation id, so the Calendari's opponent picker costs nothing
+     the standings table was not already paying. (FCF does publish
+     /api/competition/equipos, but it is broken — it returns the first team of
+     the group repeated once per row.)
+
+     A miss kicks off the fetch and returns [] for this render; the datalist
+     fills in on the next one. */
+  function fcfTeamsFor(category, letter) {
+    if (!category || !letter) return [];
+    var id = 'league-' + category + '-' + letter;
+    var rows = _leagueCache[id];
+    if (!rows) {
+      var links = (_clubConfig && _clubConfig.fcfLinks) || {};
+      var grupId = fcfGrupId(links[category + '-' + letter] || '');
+      var now = Date.now();
+      if (grupId && now - (_leagueAsked[id] || 0) >= LEAGUE_CACHE_MS) {
+        _leagueAsked[id] = now;
+        fetchFcfGroup(grupId).then(function(fresh) {
+          delete _leagueErrors[id];
+          if (!fresh.length) return;
+          _leagueCache[id] = fresh;
+          _saveLeagueCache();
+          renderOpponentDatalists();
+        }).catch(function() { _leagueErrors[id] = 'error'; });
+      }
+      return [];
+    }
+    return rows.map(function(r) {
+      return { name: r.rawName || r.club, teamId: r.teamId || '', badge: r.badge || '' };
+    }).filter(function(x) { return !!x.name; });
+  }
+
+  /* The FCF entry for a rival name, or null.
+
+     Matched on the exact trimmed name, case-insensitively — NOT on
+     normTeamName. This decides whether a fixture earns a federation teamId,
+     and an id is a claim of certainty: normTeamName deliberately collapses
+     "C.F. Gràcia" and "Gràcia F.C." for the leg SUGGESTION, which a human
+     then confirms, and that is the right amount of leniency for a hint and
+     the wrong amount for a stored identifier. A coach who types a rival
+     freehand simply gets no id, and the name path he has always had. */
+  function fcfLookup(category, letter, name) {
+    var needle = String(name || '').trim().toLowerCase();
+    if (!needle) return null;
+    var hit = fcfTeamsFor(category, letter).filter(function(x) {
+      return x.name.toLowerCase() === needle;
+    })[0];
+    return hit || null;
+  }
+
+  /* Which league a matchday row belongs to, as {cat, letter}.
+
+     ONE definition, used by the datalist, the ✓ and both save paths. It has
+     to be one: the tick is a promise that saving will store a federation id,
+     and the moment the tick and the save resolve the squad differently the
+     app shows a ✓ for a fixture it then stores without an id.
+
+     The single-letter fallback is the substance of it. A club with one team
+     per category never renders an active chip, so `.md-team-circle.active`
+     is null and `g.team` is '' — and that is the commonest club in the app.
+     Keying off the raw value would leave exactly those clubs with no
+     completions at all. */
+  function mdRowSquad(tr) {
+    var cat = (tr && tr.dataset.category) || getCurrentCategory() || '';
+    var active = tr && tr.querySelector('.md-team-circle.active');
+    var letters = getTeamLetters(cat);
+    var letter = (active && active.dataset.team) ||
+      (letters.length === 1 ? letters[0] : '');
+    return { cat: cat, letter: letter };
+  }
+
+  /* Fill (or refill) every opponent datalist currently on screen.
+
+     Called on render, whenever a row's category or squad letter changes, and
+     again when a group's standings land — the list a row needs depends on
+     which squad the row is for, and that is a live control inside the row. */
+  function renderOpponentDatalists() {
+    document.querySelectorAll('.md-opponent[list]').forEach(function(inp) {
+      var dl = document.getElementById(inp.getAttribute('list'));
+      if (!dl) return;
+      var sq = mdRowSquad(inp.closest('tr'));
+      dl.innerHTML = fcfTeamsFor(sq.cat, sq.letter).map(function(x) {
+        return '<option value="' + sanitize(x.name) + '"></option>';
+      }).join('');
+      markOpponentMatch(inp);
+    });
+  }
+
+  /* The ✓ beside an opponent box: this name is the federation's own, so the
+     fixture will carry a teamId and its return leg will pair without anyone
+     confirming a guess. Absence of a tick is not an error — friendlies and
+     cup ties against clubs outside the group never have one. */
+  function markOpponentMatch(inp) {
+    var tr = inp.closest('tr');
+    var tick = tr && tr.querySelector('.md-fcf-tick');
+    if (!tick) return;
+    var sq = mdRowSquad(tr);
+    tick.hidden = !fcfLookup(sq.cat, sq.letter, inp.value);
+  }
+
+  /* The two FCF fields a match row carries, for a rival that is in the group.
+     Returns {} for everything else, so the caller can spread it unconditionally
+     and a hand-typed rival simply has no such fields. */
+  function fcfMatchFields(category, letter, opponent) {
+    var hit = fcfLookup(category, letter, opponent);
+    if (!hit || !hit.teamId) return {};
+    return { opponentTeamId: hit.teamId, opponentBadge: hit.badge || '' };
+  }
+
+  /* One row spanning the table, for the two ways a standings table can have
+     nothing to show.
+
+     This exists because the August-2026 fcf.cat outage went unnoticed for
+     weeks: applyLeagueRows() returned early on zero rows, so a dead feed and
+     a working one looked identical on screen — an empty table reads as "the
+     season has not started". A feed that is broken must SAY so. */
+  function leagueMessageHtml(msg) {
+    return '<tr><td colspan="7" class="league-msg">' + sanitize(msg) + '</td></tr>';
   }
 
   function applyLeagueRows(container, rows) {
@@ -4797,32 +4968,59 @@
     requestAnimationFrame(function() { scrollLeagueToCentre(); });
   }
 
+  function _leagueMsgInto(id, msg) {
+    var el = document.getElementById(id);
+    if (el) el.querySelector('tbody').innerHTML = leagueMessageHtml(msg);
+  }
+
   function refreshLeagueTables() {
     var now = Date.now();
     var needsFetch = now - _leagueCacheTime >= LEAGUE_CACHE_MS;
     getActiveFcfLeagues().forEach(function(league) {
       var container = document.getElementById(league.id);
       if (!container) return;
+      var grupId = fcfGrupId(league.url);
+      /* A pre-rebuild link. Nothing to fetch and nothing to retry — only a
+         lead re-pasting the address fixes it, so say that rather than
+         burning a request on a URL that 404s. */
+      if (!grupId) {
+        if (!_leagueCache[league.id]) _leagueMsgInto(league.id, t('fcf.link_outdated'));
+        return;
+      }
       // Apply cached rows immediately
       if (_leagueCache[league.id]) {
         applyLeagueRows(container, _leagueCache[league.id]);
       }
       if (!needsFetch) return;
-      fetchFcfPage(league.url)
-        .then(function(html) {
-          var rows = parseFcfHtml(html);
-          if (rows.length === 0) return;
+      // Shared with fcfTeamsFor, so the standings table and the Calendari's
+      // opponent list never both fetch the same group in one window.
+      _leagueAsked[league.id] = now;
+      fetchFcfGroup(grupId)
+        .then(function(rows) {
+          if (rows.length === 0) {
+            if (!_leagueCache[league.id]) _leagueMsgInto(league.id, t('fcf.empty'));
+            return;
+          }
+          delete _leagueErrors[league.id];
           _leagueCache[league.id] = rows;
-          try { localStorage.setItem('fa_league_cache', JSON.stringify(_leagueCache)); } catch(e) {}
+          _saveLeagueCache();
           // Re-query DOM in case page was re-rendered while fetch was in flight
           var freshContainer = document.getElementById(league.id);
           if (freshContainer) applyLeagueRows(freshContainer, rows);
+          // A fresh group means fresh opponent names for the Calendari.
+          renderOpponentDatalists();
         })
-        .catch(function() { /* keep current data on error */ });
+        .catch(function() {
+          /* Keep whatever is cached — a five-minute-old table beats a blank
+             one — but a league that has NEVER loaded must not sit there
+             looking like an empty division. */
+          _leagueErrors[league.id] = 'error';
+          if (!_leagueCache[league.id]) _leagueMsgInto(league.id, t('fcf.unavailable'));
+        });
     });
     if (needsFetch) {
       _leagueCacheTime = now;
-      try { localStorage.setItem('fa_league_cache_t', String(now)); } catch(e) {}
+      try { localStorage.setItem('fa_league_cache_v2_t', String(now)); } catch(e) {}
     }
   }
 
@@ -4836,6 +5034,10 @@
     var html = '<div class="league-snippet card' + (isHidden ? ' league-hidden' : '') + '">';
     html += '<div class="card-title" style="font-size:.82rem;' + (isHidden ? 'margin-bottom:0;' : 'margin-bottom:.5rem;') + 'display:flex;align-items:center;justify-content:space-between;">⚽ ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
     html += '<div class="league-scroll" id="' + snippetId + '"' + (isHidden ? ' style="display:none"' : '') + '><table class="league-tbl"><thead><tr><th>P</th><th></th><th>Club</th><th>Pts</th><th>J</th><th>F</th><th>C</th></tr></thead><tbody>';
+    /* First paint of a league nobody has loaded yet. refreshLeagueTables()
+       overwrites this the moment the fetch lands — or replaces it with the
+       reason it did not. */
+    if (!useRows.length) html += leagueMessageHtml(t('fcf.loading'));
     useRows.forEach(function(r) {
       var cls = r.ours ? ' class="league-ours"' : '';
       var badge = r.badge ? '<img src="' + r.badge + '" class="league-badge" onerror="this.style.display=\'none\'">' : '';
@@ -5756,6 +5958,589 @@
     if (svg) refreshArrowheads(svg);
   }
 
+  /* ── One match's result, read-only ──────────────────────────
+     Lifted out of renderMatchDetail so the anada briefing can render the
+     FIRST leg through exactly the same code. Only the read-only halves
+     moved: the staff "+ Event" forms stayed behind, because they write to
+     the match being VIEWED and a briefing is a read of a different one. */
+  function matchScoreboardHtml(m, events) {
+    const sc = calcMatchScore(events);
+    return '<div class="ev-scoreboard"><span class="ev-sb-team">' + sanitize(m.home) +
+      '</span><span class="ev-sb-score">' + sc.home + ' - ' + sc.away +
+      '</span><span class="ev-sb-team">' + sanitize(m.away) + '</span></div>';
+  }
+
+  /** `staff` adds the per-event delete buttons and suppresses the legacy
+   *  fa_match_goals fallback, exactly as the inline version did. */
+  function matchTimelineHtml(m, events, users, staff) {
+    const sorted = events.slice().sort(function(a, b) { return parseEventMinute(b.minute) - parseEventMinute(a.minute); });
+    let timelineHtml = '';
+    if (sorted.length) {
+      // Track yellow counts per player to detect 2nd yellow
+      const yellowCounts = {};
+      // First pass: count all yellows per player
+      events.forEach(function(e) {
+        if (e.type !== 'yellow') return;
+        var key = e.side + '_' + (e.playerId || e.playerNumber);
+        yellowCounts[key] = (yellowCounts[key] || 0) + 1;
+      });
+      // Second pass: track running count for rendering
+      const yellowSeen = {};
+
+      timelineHtml = '<div class="ev-timeline">' + sorted.map(function(ev) {
+        var key = ev.side + '_' + (ev.playerId || ev.playerNumber);
+        var ycForIcon = 0;
+        if (ev.type === 'yellow') {
+          yellowSeen[key] = (yellowSeen[key] || 0) + 1;
+          // Reverse order since sorted desc — 2nd yellow is the one with higher minute
+          // Actually we need ordinal among this player's yellows. Use total count.
+          ycForIcon = yellowCounts[key] >= 2 && yellowSeen[key] === yellowCounts[key] ? 2 : 1;
+        }
+
+        var icon = getEventIcon(ev, ycForIcon);
+        var name = getEventPlayerName(ev, users);
+        var min = formatEventMinute(ev.minute);
+
+        // Build detail line
+        var detail = '';
+        if (ev.type === 'goal') {
+          if (ev.goalDetail === 'assistencia' && ev.assistPlayerId) {
+            var assistName = resolveEventName(ev.assistPlayerId, ev.assistPlayerName, null, users);
+            // Format like a substitution: scorer bold + assister grey
+            if (ev.side === 'home') {
+              name = '<span class="ev-scorer-name">' + name + '</span><span class="ev-assist-name">' + assistName + '</span>';
+            } else {
+              name = '<span class="ev-assist-name">' + assistName + '</span><span class="ev-scorer-name">' + name + '</span>';
+            }
+            detail = ''; // name already includes assist
+          }
+        }
+        if (ev.type === 'change') {
+          var outName = resolveEventName(ev.playerOutId, ev.playerOutName, ev.playerOutNumber, users);
+          var inName = resolveEventName(ev.playerInId, ev.playerInName, ev.playerInNumber, users);
+          // Home: IN (bold) then OUT (grey) | Away: OUT (grey) then IN (bold)
+          if (ev.side === 'home') {
+            name = '<span class="ev-sub-in">' + inName + '</span><span class="ev-sub-out">' + outName + '</span>';
+          } else {
+            name = '<span class="ev-sub-out">' + outName + '</span><span class="ev-sub-in">' + inName + '</span>';
+          }
+        }
+
+        var deleteBtn = staff ? '<button class="ev-delete" data-ev-id="' + ev.id + '" title="Eliminar">✕</button>' : '';
+
+        if (ev.side === 'home') {
+          return '<div class="ev-row ev-row-home">' +
+            (staff ? '<div class="ev-cell ev-cell-del">' + deleteBtn + '</div>' : '') +
+            '<div class="ev-cell ev-cell-min">' + min + '</div>' +
+            '<div class="ev-cell ev-cell-icon">' + icon + '</div>' +
+            '<div class="ev-cell ev-cell-home"><span class="ev-name">' + name + '</span>' + detail + '</div>' +
+            '<div class="ev-cell ev-cell-away"></div>' +
+          '</div>';
+        } else {
+          return '<div class="ev-row ev-row-away">' +
+            '<div class="ev-cell ev-cell-home"></div>' +
+            '<div class="ev-cell ev-cell-away"><span class="ev-name">' + name + '</span>' + detail + '</div>' +
+            '<div class="ev-cell ev-cell-icon">' + icon + '</div>' +
+            '<div class="ev-cell ev-cell-min">' + min + '</div>' +
+            (staff ? '<div class="ev-cell ev-cell-del">' + deleteBtn + '</div>' : '') +
+          '</div>';
+        }
+      }).join('') + '</div>';
+    } else if (!staff) {
+      // Fallback: old fa_match_goals for player view on old matches
+      var oldGoals = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
+      var mg = oldGoals[m.id] || [];
+      if (mg.length) {
+        timelineHtml = '<div class="ev-timeline">' + mg.map(function(g) {
+          var pName = g.playerId === 'og' ? 'Gol en pròpia' : (function() { var p = users.find(function(u) { return String(u.id) === String(g.playerId); }); return p ? sanitize(p.name) : 'Desconegut'; })();
+          return '<div class="ev-row"><div class="ev-cell ev-cell-home"><span class="ev-name">' + pName + '</span></div><div class="ev-cell ev-cell-icon"><span class="ev-icon ev-icon-goal">⚽</span></div><div class="ev-cell ev-cell-min">' + (g.minute ? g.minute + "'" : '') + '</div><div class="ev-cell ev-cell-away"></div></div>';
+        }).join('') + '</div>';
+      }
+    }
+    return timelineHtml;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     Coach match notes, and the anada/tornada briefing.
+
+     The notes themselves live in teams/{id}/matchNotes/{matchId} and are
+     reached through MN (js/match-notes.js) — NOT through localStorage.
+     Everything here therefore reads MN.get() rather than a blob, and
+     nothing here is ever rendered for a player: mnEnabled() gates the two
+     call sites, and firestore.rules is what actually enforces it.
+
+     The leg link is derived, not stored: findFirstLeg() (js/utils.js) asks
+     the question on every render, and only the coach's ANSWER — link or
+     dismiss — is written down. That is what makes the suggestion appear
+     for fixtures created before this feature existed, and reappear when a
+     coach corrects a misspelled rival.
+     ═══════════════════════════════════════════════════════════ */
+
+  /* Whether the coach has put the anada summary away. A per-DEVICE UI
+     preference, so a plain localStorage key and deliberately NOT in
+     SYNCED_KEYS — one coach collapsing it on his phone must not fold it up
+     on his colleague's laptop. */
+  var MN_BRIEF_COLLAPSED = 'fa_mn_brief_collapsed';
+
+  /** Staff-only. A convenience gate, not the security boundary — that is
+   *  the matchNotes rule, which players fail regardless of this. */
+  function mnEnabled(session) {
+    var s = session || getSession();
+    return !!(s && (s.roles || []).includes('staff'));
+  }
+
+  function mnAllMatches(cache) {
+    return cache || JSON.parse(localStorage.getItem('fa_matches') || '[]');
+  }
+
+  /** The match a stored note points at, resolved back to a row. */
+  function mnLinkedFirstLeg(m, allMatches) {
+    var id = MN.firstLegId(m.id);
+    if (!id) return null;
+    return mnAllMatches(allMatches).find(function (x) {
+      return String(x.id) === String(id);
+    }) || null;
+  }
+
+  /** A first leg the coach has not yet been asked about, or null. */
+  function mnLegSuggestion(m, allMatches) {
+    if (MN.legAnswered(m.id)) return null;
+    return findFirstLeg(m, mnAllMatches(allMatches), getClubName());
+  }
+
+  /**
+   * 'win' | 'draw' | 'loss' | 'none', from OUR side.
+   *
+   * 'none' is a result nobody ever entered, which is NOT the same statement
+   * as a 0-0 — rendering it as a draw would invent a scoreless match out of
+   * a fixture the coach simply never filled in.
+   *
+   * The one definition: the leg banner's inline line and the briefing's
+   * colour block both read it, and two copies of a rule like this drift into
+   * a screen that says "won" beside a block coloured red.
+   */
+  function mnOutcome(m) {
+    var events = getMatchEvents(m.id);
+    if (!events.length && !m.score) return 'none';
+    var sc = calcMatchScore(events);
+    var home = isOurTeam(m.home);
+    var ours = home ? sc.home : sc.away;
+    var theirs = home ? sc.away : sc.home;
+    return ours > theirs ? 'win' : (ours < theirs ? 'loss' : 'draw');
+  }
+
+  /** "Fora 1-2" from OUR side, colour-coded — the compact form, for the
+   *  Calendari suggestion banner. */
+  function mnResultLine(m) {
+    var venue = '<span class="mn-venue">' +
+      (isOurTeam(m.home) ? t('mn.at_home') : t('mn.at_away')) + '</span>';
+    var out = mnOutcome(m);
+    if (out === 'none') {
+      return venue + '<span class="mn-score mn-res-none">—</span>';
+    }
+    var sc = calcMatchScore(getMatchEvents(m.id));
+    var home = isOurTeam(m.home);
+    var ours = home ? sc.home : sc.away;
+    var theirs = home ? sc.away : sc.home;
+    return venue + '<span class="mn-score mn-res-' + out + '">' +
+      ours + '-' + theirs + '</span>';
+  }
+
+  /**
+   * The first leg's scoreline: two club names either side of the result.
+   *
+   * The colour is ONLY on the score — green won, grey drew, red lost, the
+   * same three the player's Historial de partits uses (`.pmt-win/draw/loss`).
+   * Reusing those is the point: a coach and his players should not be reading
+   * two different colour languages for the same fact.
+   *
+   * The SCORE stays in natural home-away order while the colour is from our
+   * side; it sits between the two names and has to agree with them.
+   *
+   * The names are sized by fitMnScoreNames() after layout — see there.
+   */
+  function mnScoreBlockHtml(m) {
+    var out = mnOutcome(m);
+    var sc = calcMatchScore(getMatchEvents(m.id));
+    var score = out === 'none' ? '—' : (sc.home + ' - ' + sc.away);
+    return '<div class="mn-sb">' +
+      '<span class="mn-sb-team">' + sanitize(m.home) + '</span>' +
+      '<span class="mn-sb-score mn-sb-' + out + '">' + score + '</span>' +
+      '<span class="mn-sb-team mn-sb-team-away">' + sanitize(m.away) + '</span>' +
+    '</div>';
+  }
+
+  /**
+   * Shrink a scoreline until both club names fit on one line.
+   *
+   * CSS cannot do this: there is no "size to fit" for text, and wrapping or
+   * ellipsing a club name in a two-name scoreline is exactly what must not
+   * happen. So it is measured — the same approach scaleRoBoards() takes.
+   *
+   * The size is set on the CONTAINER, so both names always shrink together:
+   * one long name and one short one at different sizes reads as emphasis
+   * that was never meant.
+   *
+   * Called after layout, from renderPage's rAF pass. `clientWidth === 0`
+   * means the element is not laid out yet (display:none, a detached node) —
+   * shrinking against that would run the loop to its floor for nothing.
+   */
+  /**
+   * How wide the scoreline's contents actually WANT to be.
+   *
+   * Summed from the children rather than read off `scrollWidth`, and that is
+   * load-bearing: the container is `justify-content:center`, and a centred
+   * flex container overflows symmetrically — the left overflow is not
+   * scrollable, so `scrollWidth` can equal `clientWidth` even when the
+   * content plainly does not fit. Measuring that would have silently never
+   * shrunk anything. The children are `flex:0 0 auto` and `nowrap`, so their
+   * offsetWidth IS their natural width.
+   */
+  function _mnScoreNeed(el) {
+    var total = 0;
+    for (var i = 0; i < el.children.length; i++) total += el.children[i].offsetWidth;
+    var gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    return total + gap * Math.max(0, el.children.length - 1);
+  }
+
+  function fitMnScoreNames() {
+    var MIN = 10;   // px
+    document.querySelectorAll('.mn-sb').forEach(function (el) {
+      /* Clear the inline size FIRST, so the starting point comes back from
+         the stylesheet. The header row is sized to match the club names, and
+         hardcoding the maximum here would be a second copy of that number in
+         a different file — they would drift, and the drift would be silent. */
+      el.style.fontSize = '';
+      if (!el.clientWidth) return;   // not laid out yet — nothing to fit against
+      var size = parseFloat(getComputedStyle(el).fontSize) || 16;
+      // +1 absorbs offsetWidth's integer rounding: without it a scoreline
+      // that fits exactly still gives up a step.
+      while (_mnScoreNeed(el) > el.clientWidth + 1 && size > MIN) {
+        size -= 1;
+        el.style.fontSize = size + 'px';
+      }
+    });
+  }
+
+  function mnGroup(title, body) {
+    if (!body) return '';
+    return '<div class="mn-group"><div class="mn-group-title">' + title + '</div>' + body + '</div>';
+  }
+
+  function mnTextRoHtml(txt, title) {
+    if (!txt) return '';
+    return mnGroup(title, '<div class="mn-text-ro">' +
+      sanitize(txt).replace(/\n/g, '<br>') + '</div>');
+  }
+
+  /** Video LINKS, read-only. Same markup as the convocatòria's, so the
+   *  existing `.detail-video-link` handler opens them with no new code. */
+  function mnVideosRoHtml(videos, title) {
+    var list = videos || [];
+    if (!list.length) return '';
+    return mnGroup(title, list.map(function (v) {
+      var c = v.comment
+        ? '<div class="detail-comments">' + sanitize(v.comment).replace(/\n/g, '<br>') + '</div>' : '';
+      /* The click handler refuses a bad scheme too, and that is the real
+         guard — both video render sites feed it. This one is so a refused
+         URL LOOKS refused, instead of being a link that does nothing. */
+      var url = safeHttpUrl(v.url);
+      var label = sanitize(v.title || 'Video');
+      // A rejected scheme keeps the title as plain text: silently dropping
+      // the row would hide that the coach typed something unusable.
+      var link = url
+        ? '<a href="#" class="detail-video-link" data-video-url="' + sanitize(url) + '">' + label + '</a>'
+        : '<span class="mn-video-bad">' + label + '</span>';
+      return '<div class="detail-video-item">' + link + c + '</div>';
+    }).join(''));
+  }
+
+  /** Board refs are tbSessionRef()'s shape, so the read-only renderer takes
+   *  them unchanged. `prefix` must differ per panel — it becomes element
+   *  ids, and the same board can appear in two panels on one page. */
+  function mnBoardsRoHtml(boards, title, prefix) {
+    var list = boards || [];
+    if (!list.length) return '';
+    /* A grid, so two boards sit side by side wherever there is room instead
+       of stacking down a column with half the width empty. `auto-fit`
+       collapses the empty track, so a LONE board still spans the full width
+       — which is what it needs, being the widest thing here. */
+    return mnGroup(title, '<div class="mn-boards">' + list.map(function (b) {
+      return tbRoBoardHtml(b, prefix);
+    }).join('') + '</div>');
+  }
+
+
+  /**
+   * The first leg's squad, as two labelled chip lists: the starting XI, then
+   * everyone else who was called up.
+   *
+   * Deliberately not the `.detail-player` rows the match page uses for its
+   * OWN call-up: those are a row each, and eighteen of them beside the match
+   * you actually came to look at is not a briefing, it is a wall. The XI is
+   * marked by its outline alone — a star as well would be saying the same
+   * thing twice in a space this small.
+   *
+   * A squad with no XI recorded falls through to one "Convocats" list rather
+   * than an empty "Alineació" heading.
+   */
+  function mnLineupChipsHtml(m, users) {
+    var sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    var entry = sentData[m.id];
+    var ids = entry ? (Array.isArray(entry) ? entry : (entry.players || [])) : [];
+    if (!ids.length) return '';
+    var xi = getStartingXI(m.id, sentData);
+    var players = ids.map(function (id) {
+      return users.find(function (u) { return String(u.id) === String(id); });
+    }).filter(Boolean).sort(function (a, b) { return posRankGlobal(a) - posRankGlobal(b); });
+    if (!players.length) return '';
+
+    var starters = [], rest = [];
+    players.forEach(function (p) {
+      var isXI = xi.some(function (id) { return String(id) === String(p.id); });
+      (isXI ? starters : rest).push(p);
+    });
+
+    /* One column of players, top to bottom, goalkeeper first — `players` is
+       already sorted by posRankGlobal and POS_ORDER starts at 'GK'. A team
+       sheet is read down the spine of the team, not across a wrap. */
+    function column(label, list, cls) {
+      if (!list.length) return '';
+      return '<div class="mn-squad-col">' +
+        '<div class="mn-group-title">' + label +
+          ' <span class="conv-count">' + list.length + '</span></div>' +
+        '<div class="mn-players">' + list.map(function (p) {
+          return '<span class="mn-chip' + cls + '">' +
+            '<span class="mn-chip-num">' + sanitize(p.playerNumber || '—') + '</span>' +
+            '<span class="mn-chip-name">' + sanitize(p.name) + '</span></span>';
+        }).join('') + '</div>' +
+      '</div>';
+    }
+
+    return '<div class="mn-squad">' +
+      column(t('mn.lineup'), starters, ' mn-chip-xi') +
+      column(t('mn.subs'), rest, '') +
+    '</div>';
+  }
+
+  /**
+   * The anada briefing — the first leg, inline and already open at the top
+   * of the SECOND leg's page.
+   *
+   * Not a <details>, and it does not link to the first leg's own page: the
+   * point is that the coach preparing the return fixture never leaves it.
+   * Everything here is read-only — the timeline is rendered with staff=false
+   * so it carries no delete buttons, and the "+ Event" forms are not built
+   * at all. Editing the first leg happens on the first leg.
+   *
+   * Three columns — what HAPPENED, who PLAYED, what was SAID:
+   *
+   *   left    the scoreline and the event timeline
+   *   middle  Alineació and Suplents
+   *   right   the coach's notes from before and after
+   *
+   * then, full width beneath them, the media. That last row is split by
+   * AUDIENCE rather than by kind, because the audience is the thing a coach
+   * has to be sure of: `mn.media_private` is what only the staff ever saw,
+   * `mn.media_sent` is what went out to the squad with the convocatòria. A
+   * board of opponent analysis in the wrong one of those is the mistake this
+   * layout exists to make impossible to walk into.
+   *
+   * The header strip is only a label — the score lives in the left column,
+   * between the two club names it belongs to.
+   */
+  function mnBriefingHtml(m, allMatches) {
+    var first = mnLinkedFirstLeg(m, allMatches);
+    if (!first) return '';
+    var users = getUsers();
+    var events = getMatchEvents(first.id);
+    var note = MN.get(first.id);
+
+    var cols = [
+      mnScoreBlockHtml(first) + matchTimelineHtml(first, events, users, false),
+      mnLineupChipsHtml(first, users),
+      (note ? mnTextRoHtml(note.pre && note.pre.text, t('mn.pre')) : '') +
+        (note ? mnTextRoHtml(note.post && note.post.text, t('mn.post')) : '')
+    ];
+
+    var media =
+      mnMediaColHtml(t('mn.media_private'),
+          note ? note.videos : [], note ? note.boards : [], 'mnb-') +
+      mnMediaColHtml(t('mn.media_sent'),
+          mnSentVideos(first), mnSentBoards(first), 'mns-');
+
+    /* <details> again, but OPEN by default and remembered. The information
+       has to be there without being asked for — that is the whole feature —
+       while a coach who does not want it above every match can put it away
+       and have it stay away. The state is a local UI preference, so it lives
+       in a plain localStorage key that db.js does not sync: it belongs to
+       this device, not to the club. */
+    var open = localStorage.getItem(MN_BRIEF_COLLAPSED) === '1' ? '' : ' open';
+    var venue = isOurTeam(first.home) ? '🏠' : '✈️';
+
+    return '<details class="mn-brief"' + open + '>' +
+      '<summary class="mn-brief-summary">' +
+        '<span class="mn-brief-tag">' + t('mn.first_leg_summary') + '</span>' +
+        '<span class="mn-brief-venue" title="' +
+          (isOurTeam(first.home) ? t('mn.at_home') : t('mn.at_away')) + '">' + venue + '</span>' +
+        '<span class="mn-brief-date">' + tDateShort(first.date) + '</span>' +
+        '<span class="mn-brief-caret" aria-hidden="true"></span>' +
+      '</summary>' +
+      '<div class="mn-brief-grid">' +
+        // An empty column is omitted rather than left blank, so two columns
+        // of content spread across the width instead of hugging one edge.
+        cols.filter(Boolean).map(function (c) {
+          return '<div class="mn-brief-col">' + c + '</div>';
+        }).join('') +
+      '</div>' +
+      (media ? '<div class="mn-brief-media">' + media + '</div>' : '') +
+    '</details>';
+  }
+
+  /* What the SQUAD was given for that match, as opposed to what the coach
+     kept: the convocatòria's video links and the boards attached to the
+     match. Both are the ordinary shared blobs — this is the same data the
+     players saw on their own match page. */
+  function mnSentVideos(m) {
+    var sent = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    var e = sent[m.id];
+    // Era-1 entries were a bare array of player ids and carry no videos.
+    return (e && !Array.isArray(e) && Array.isArray(e.videos)) ? e.videos : [];
+  }
+
+  function mnSentBoards(m) {
+    var mb = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+    return Array.isArray(mb[m.id]) ? mb[m.id] : [];
+  }
+
+  /** One audience's media, or '' when that audience got nothing. `prefix`
+   *  must differ per column — it becomes element ids, and the same board can
+   *  legitimately be in both. */
+  function mnMediaColHtml(title, videos, boards, prefix) {
+    var v = mnVideosRoHtml(videos, t('mn.videos'));
+    var b = mnBoardsRoHtml(boards, t('mn.boards'), prefix);
+    if (!v && !b) return '';
+    return '<div class="mn-media-col">' +
+      '<div class="mn-media-title">' + title + '</div>' + v + b + '</div>';
+  }
+
+  /** Editor rows for one phase's video links. */
+  function mnVideoRowsHtml(videos, phase) {
+    return (videos || []).map(function (v, i) {
+      return '<div class="mn-video-row" data-mn-phase="' + phase + '" data-mn-idx="' + i + '">' +
+        '<input type="text" class="reg-input mn-video-title" value="' + sanitize(v.title || '') +
+          '" placeholder="' + t('conv.video_title_ph') + '" style="flex:1;min-width:80px;">' +
+        '<input type="text" class="reg-input mn-video-url" value="' + sanitize(v.url || '') +
+          '" placeholder="' + t('conv.video_url_ph') + '" style="flex:2;min-width:140px;">' +
+        '<button class="btn btn-small mn-video-remove" title="' + t('btn.delete') + '">✕</button>' +
+        '<textarea class="reg-input mn-video-comment" rows="2" placeholder="' +
+          t('conv.video_comment_ph') + '">' + sanitize(v.comment || '') + '</textarea>' +
+      '</div>';
+    }).join('');
+  }
+
+  function mnPhaseHtml(m, note, phase, ro) {
+    var block = (phase === 'post' ? note.post : note.pre) || {};
+    var vids = (note.videos || []).filter(function (v) {
+      return (v.phase === 'post' ? 'post' : 'pre') === phase;
+    });
+    var title = phase === 'post' ? t('mn.post') : t('mn.pre');
+    if (ro) {
+      var roBody = mnTextRoHtml(block.text, title) + mnVideosRoHtml(vids, t('mn.videos'));
+      return roBody || '';
+    }
+    return '<div class="mn-phase" data-mn-phase="' + phase + '">' +
+      '<div class="mn-group-title">' + title + '</div>' +
+      '<textarea class="reg-input mn-text" data-mn-phase="' + phase + '" rows="4" placeholder="' +
+        (phase === 'post' ? t('mn.post_ph') : t('mn.pre_ph')) + '">' +
+        sanitize(block.text || '') + '</textarea>' +
+      '<div class="mn-video-list" data-mn-phase="' + phase + '">' +
+        mnVideoRowsHtml(vids, phase) + '</div>' +
+      '<button class="btn btn-outline btn-small mn-video-add" data-mn-phase="' + phase + '">' +
+        t('mn.add_video') + '</button>' +
+    '</div>';
+  }
+
+  /** The coach's PRIVATE board list — distinct from fa_tactic_match_boards,
+   *  which is what the squad sees once the convocatòria is sent. Same ref
+   *  shape and same renderer; different audience, hence the label. */
+  function mnBoardsEditHtml(m, note, ro) {
+    var list = note.boards || [];
+    if (ro) return mnBoardsRoHtml(list, t('mn.boards'), 'mne-');
+    var opts = (typeof TB !== 'undefined' && TB.ready() ? TB.library() : [])
+      .map(function (b) {
+        return '<option value="' + sanitize(b.id) + '">' + sanitize(b.name || '—') + '</option>';
+      }).join('');
+    var chips = list.map(function (b, i) {
+      return '<span class="mn-board-chip">' + sanitize(b.name || b.boardId) +
+        '<button class="mn-board-remove" data-mn-idx="' + i + '" title="' +
+        t('btn.delete') + '">✕</button></span>';
+    }).join('');
+    return '<div class="mn-phase mn-boards-edit">' +
+      '<div class="mn-group-title">' + t('mn.boards') + '</div>' +
+      '<div class="mn-hint">' + t('mn.boards_private') + '</div>' +
+      '<div class="mn-board-chips">' + chips + '</div>' +
+      (opts
+        ? '<div class="mn-board-picker"><select class="reg-input" id="mn-board-select">' +
+            '<option value="">' + t('mn.pick_board') + '</option>' + opts + '</select>' +
+            '<button class="btn btn-outline btn-small" id="mn-board-add">' + t('mn.add_board') + '</button></div>'
+        : '<div class="mn-hint">' + t('mn.no_boards') + '</div>') +
+      mnBoardsRoHtml(list, '', 'mne-') +
+    '</div>';
+  }
+
+  /**
+   * The notes card on the staff match-detail page.
+   *
+   * Notes are writable by every staff sub-role — a delegate filing the
+   * post-match report is a real workflow, and all three are staff to the
+   * rules anyway. The BOARDS block follows staffAccess('tactics') so it
+   * stays hidden from fitness and delegate, exactly as the Pissarra page is.
+   */
+  function mnNotesCardHtml(m) {
+    var note = MN.getOrBlank(m);
+    var ro = !canEditPage('staff-matchday');
+    var boards = staffAccess('tactics') === 'edit' ? mnBoardsEditHtml(m, note, ro) : '';
+    var pre = mnPhaseHtml(m, note, 'pre', ro);
+    var post = mnPhaseHtml(m, note, 'post', ro);
+    if (ro && !pre && !post && !boards) return '';
+    return '<div class="card mn-card" data-mn-match="' + sanitize(String(m.id)) + '">' +
+      '<div class="card-title">' + t('mn.title') +
+        '<span class="mn-lock" title="' + t('mn.staff_only') + '">🔒</span></div>' +
+      pre + post + boards +
+    '</div>';
+  }
+
+  /**
+   * The "is this the return fixture?" banner.
+   *
+   * Rendered wherever a coach meets a fixture — the Calendari list and the
+   * match detail page — for any match with a candidate he has not yet
+   * answered about. Accepting writes firstLegId; declining writes
+   * legDismissed, which is the only reason that field exists: without it an
+   * unanswered suggestion and a declined one are the same state and the
+   * banner returns for ever.
+   */
+  function mnLegBannerHtml(m, allMatches) {
+    var first = mnLegSuggestion(m, allMatches);
+    if (!first) return '';
+    return '<div class="mn-leg-banner" data-mn-match="' + sanitize(String(m.id)) + '">' +
+      '<div class="mn-leg-text">' +
+        '<strong>🔁 ' + t('mn.looks_like_second_leg') + '</strong>' +
+        '<span class="mn-leg-detail">' + t('mn.first_leg') + ': ' + tDateShort(first.date) +
+          ' · ' + mnResultLine(first) + ' · ' +
+          sanitize(opponentOf(first, getClubName())) + '</span>' +
+      '</div>' +
+      '<div class="mn-leg-actions">' +
+        '<button class="btn btn-primary btn-small mn-leg-link" data-match-id="' +
+          sanitize(String(m.id)) + '" data-first-id="' + sanitize(String(first.id)) + '">' +
+          t('mn.link') + '</button>' +
+        '<button class="btn btn-outline btn-small mn-leg-dismiss" data-match-id="' +
+          sanitize(String(m.id)) + '">' + t('mn.not_a_leg') + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderMatchDetail() {
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const m = matches.find(x => x.id === detailMatchId);
@@ -5770,8 +6555,19 @@
        Array form that never had a kit — so the `(jersey || socks)` guard
        that used to live here is now a single null check. */
     const sentPieces = resolveKitPieces(sentEntry, clubKits());
+    const showNotes = mnEnabled(session);
+
+    /* The call-up banner is addressed to the PLAYER looking at the fixture.
+       A coach is never on his own convocatòria, so it told every staff member
+       "No convocat" on every match they opened — an answer to a question they
+       had not asked.
+       Gated on being a PLAYER, not on NOT being staff: a playing coach is
+       both, and for him "am I called up?" is a real question with a real
+       answer. Only accounts with no player role lose the banner. */
+    const isPlayerViewer = (session.roles || []).includes('player');
+
     let convHtml = '';
-    if (convSent) {
+    if (convSent && isPlayerViewer) {
       // Shorts dropped: .detail-uniform-inline svg is pinned at 30px and
       // three icons is 90px inside a one-line banner.
       const uniformIcons = sentPieces
@@ -5786,6 +6582,11 @@
       : `📍 ${sanitize(m.location || '—')}`;
 
     // Build called-up player list
+    /* `isStaff` is entry-point-scoped, so a coach arriving from the PLAYER
+       list sees the page as a player does — right for the event-editing
+       controls. `showNotes` (above) is role-scoped instead: the notes are his
+       own working document, he should find them wherever he opened the match
+       from, and firestore.rules gates them by role rather than by route. */
     const isStaff = detailMatchFrom === 'staff-matchday' && (session.roles || []).includes('staff');
     const isPast = m.date && m.time && new Date(m.date + 'T' + m.time + ':00') <= new Date();
     let calledHtml = '';
@@ -5826,14 +6627,11 @@
     if (isPast) {
       const events = getMatchEvents(m.id);
       const users = getUsers();
-      const sc = calcMatchScore(events);
       const ourSide = isOurTeam(m.home) ? 'home' : 'away';
       const oppSide = ourSide === 'home' ? 'away' : 'home';
 
       // ── Scoreboard ──
-      const scoreboardHtml = '<div class="ev-scoreboard"><span class="ev-sb-team">' + sanitize(m.home) +
-        '</span><span class="ev-sb-score">' + sc.home + ' - ' + sc.away +
-        '</span><span class="ev-sb-team">' + sanitize(m.away) + '</span></div>';
+      const scoreboardHtml = matchScoreboardHtml(m, events);
 
       // ── + Event buttons (staff only) ──
       let addEventHtml = '';
@@ -5862,90 +6660,7 @@
       }
 
       // ── Event timeline ──
-      const sorted = events.slice().sort(function(a, b) { return parseEventMinute(b.minute) - parseEventMinute(a.minute); });
-      let timelineHtml = '';
-      if (sorted.length) {
-        // Track yellow counts per player to detect 2nd yellow
-        const yellowCounts = {};
-        // First pass: count all yellows per player
-        events.forEach(function(e) {
-          if (e.type !== 'yellow') return;
-          var key = e.side + '_' + (e.playerId || e.playerNumber);
-          yellowCounts[key] = (yellowCounts[key] || 0) + 1;
-        });
-        // Second pass: track running count for rendering
-        const yellowSeen = {};
-
-        timelineHtml = '<div class="ev-timeline">' + sorted.map(function(ev) {
-          var key = ev.side + '_' + (ev.playerId || ev.playerNumber);
-          var ycForIcon = 0;
-          if (ev.type === 'yellow') {
-            yellowSeen[key] = (yellowSeen[key] || 0) + 1;
-            // Reverse order since sorted desc — 2nd yellow is the one with higher minute
-            // Actually we need ordinal among this player's yellows. Use total count.
-            ycForIcon = yellowCounts[key] >= 2 && yellowSeen[key] === yellowCounts[key] ? 2 : 1;
-          }
-
-          var icon = getEventIcon(ev, ycForIcon);
-          var name = getEventPlayerName(ev, users);
-          var min = formatEventMinute(ev.minute);
-
-          // Build detail line
-          var detail = '';
-          if (ev.type === 'goal') {
-            if (ev.goalDetail === 'assistencia' && ev.assistPlayerId) {
-              var assistName = resolveEventName(ev.assistPlayerId, ev.assistPlayerName, null, users);
-              // Format like a substitution: scorer bold + assister grey
-              if (ev.side === 'home') {
-                name = '<span class="ev-scorer-name">' + name + '</span><span class="ev-assist-name">' + assistName + '</span>';
-              } else {
-                name = '<span class="ev-assist-name">' + assistName + '</span><span class="ev-scorer-name">' + name + '</span>';
-              }
-              detail = ''; // name already includes assist
-            }
-          }
-          if (ev.type === 'change') {
-            var outName = resolveEventName(ev.playerOutId, ev.playerOutName, ev.playerOutNumber, users);
-            var inName = resolveEventName(ev.playerInId, ev.playerInName, ev.playerInNumber, users);
-            // Home: IN (bold) then OUT (grey) | Away: OUT (grey) then IN (bold)
-            if (ev.side === 'home') {
-              name = '<span class="ev-sub-in">' + inName + '</span><span class="ev-sub-out">' + outName + '</span>';
-            } else {
-              name = '<span class="ev-sub-out">' + outName + '</span><span class="ev-sub-in">' + inName + '</span>';
-            }
-          }
-
-          var deleteBtn = isStaff ? '<button class="ev-delete" data-ev-id="' + ev.id + '" title="Eliminar">✕</button>' : '';
-
-          if (ev.side === 'home') {
-            return '<div class="ev-row ev-row-home">' +
-              (isStaff ? '<div class="ev-cell ev-cell-del">' + deleteBtn + '</div>' : '') +
-              '<div class="ev-cell ev-cell-min">' + min + '</div>' +
-              '<div class="ev-cell ev-cell-icon">' + icon + '</div>' +
-              '<div class="ev-cell ev-cell-home"><span class="ev-name">' + name + '</span>' + detail + '</div>' +
-              '<div class="ev-cell ev-cell-away"></div>' +
-            '</div>';
-          } else {
-            return '<div class="ev-row ev-row-away">' +
-              '<div class="ev-cell ev-cell-home"></div>' +
-              '<div class="ev-cell ev-cell-away"><span class="ev-name">' + name + '</span>' + detail + '</div>' +
-              '<div class="ev-cell ev-cell-icon">' + icon + '</div>' +
-              '<div class="ev-cell ev-cell-min">' + min + '</div>' +
-              (isStaff ? '<div class="ev-cell ev-cell-del">' + deleteBtn + '</div>' : '') +
-            '</div>';
-          }
-        }).join('') + '</div>';
-      } else if (!isStaff) {
-        // Fallback: old fa_match_goals for player view on old matches
-        var oldGoals = JSON.parse(localStorage.getItem('fa_match_goals') || '{}');
-        var mg = oldGoals[m.id] || [];
-        if (mg.length) {
-          timelineHtml = '<div class="ev-timeline">' + mg.map(function(g) {
-            var pName = g.playerId === 'og' ? 'Gol en pròpia' : (function() { var p = users.find(function(u) { return String(u.id) === String(g.playerId); }); return p ? sanitize(p.name) : 'Desconegut'; })();
-            return '<div class="ev-row"><div class="ev-cell ev-cell-home"><span class="ev-name">' + pName + '</span></div><div class="ev-cell ev-cell-icon"><span class="ev-icon ev-icon-goal">⚽</span></div><div class="ev-cell ev-cell-min">' + (g.minute ? g.minute + "'" : '') + '</div><div class="ev-cell ev-cell-away"></div></div>';
-          }).join('') + '</div>';
-        }
-      }
+      const timelineHtml = matchTimelineHtml(m, events, users, isStaff);
 
       eventsHtml = '<div class="card ev-card"><div class="card-title">' + t('match_detail.events') + '</div>' +
         scoreboardHtml + addEventHtml + timelineHtml + '</div>';
@@ -6031,6 +6746,7 @@
 
     return `
       <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">${t('btn.back')}</button>
+      ${showNotes ? mnBriefingHtml(m, matches) : ''}
       <div class="detail-hero detail-hero-match">
         <div class="detail-hero-badge"><span class="badge badge-yellow" style="font-size:.9rem;padding:.3rem .8rem;">${t('match_detail.badge')}</span></div>
         <h2 class="detail-title">${matchLabel(m)}</h2>
@@ -6042,7 +6758,9 @@
         </div>
         ${convHtml}
       </div>
+      ${showNotes ? mnLegBannerHtml(m, matches) : ''}
       ${eventsHtml}
+      ${showNotes ? mnNotesCardHtml(m) : ''}
       ${(() => {
         if (!convSent) return calledHtml;
         const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
@@ -13717,7 +14435,7 @@
             return '<span class="md-team-circle' + ((m.team || '') === l ? ' active' : '') + '" data-team="' + l + '">' + l + '</span>';
           }).join('') + '</td>' +
           '<td><input type="text" class="reg-input md-date md-datepicker" value="' + sanitize(m.date || '') + '" placeholder="YYYY-MM-DD" readonly style="width:140px;cursor:pointer;"></td>' +
-          '<td><input class="reg-input md-opponent" value="' + sanitize(opponent) + '" placeholder="Opponent" style="width:140px;"></td>' +
+          '<td class="md-opponent-cell">' + opponentInputHtml('edit-' + m.id, opponent) + '</td>' +
           '<td><input class="reg-input md-location" value="' + sanitize(m.location || '') + '" placeholder="Location" style="width:150px;"></td>' +
           '<td><input class="reg-input md-maplink" value="' + sanitize(m.mapLink || '') + '" placeholder="Google Maps link" style="width:150px;"></td>' +
           '<td><input type="text" class="reg-input md-kickoff" value="' + sanitize(m.time || '') + '" placeholder="HH:MM" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" style="width:80px;text-align:center;"></td>' +
@@ -13757,6 +14475,22 @@
         '</div></div>';
     }
 
+    /* Return fixtures the coach has not yet been asked about.
+       UPCOMING only, deliberately. The suggestion is derived on every
+       render, so offering it for past matches too would greet a club with a
+       season of history with twenty banners at once; the match-detail page
+       still offers it for any single fixture he opens. */
+    var legCard = '';
+    if (mnEnabled()) {
+      var legBanners = upcomingMatches.map(function (m) {
+        return mnLegBannerHtml(m, allMatches);
+      }).filter(Boolean).join('');
+      if (legBanners) {
+        legCard = '<div class="card mn-leg-card" style="margin-bottom:1rem;">' +
+          '<div class="card-title">' + t('mn.leg_card_title') + '</div>' + legBanners + '</div>';
+      }
+    }
+
     var theadHtml = '<thead><tr><th>' + t('cal.th_match') + '</th><th>' + t('cal.th_date') + '</th><th>' + t('cal.th_kickoff') + '</th><th>' + t('cal.th_location') + '</th><th></th></tr></thead>';
 
     var upcomingCard = '<div class="card" style="margin-bottom:1rem;"><div class="card-title">' + t('matches.upcoming') + '</div>' +
@@ -13773,6 +14507,7 @@
       (ro ? viewOnlyBanner()
         : '<div style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button></div>') +
       newSection +
+      legCard +
       upcomingCard +
       pastCard;
   }
@@ -13950,6 +14685,23 @@
       '</span>';
   }
 
+  /* The opponent box, shared by the draft row and the inline edit row.
+
+     A <datalist>, not a <select>, and that is the whole design. The FCF group
+     covers the league and nothing else: a friendly, a cup tie against a club
+     two divisions up, and every club that has configured no FCF link at all
+     still have to be typeable. So the control stays a text input — the read
+     paths in readGames() and the edit handler are untouched, .value is still
+     a string — and the group's own names are offered as completions on top.
+     Picking one is what earns the fixture a federation teamId. */
+  function opponentInputHtml(rowKey, value) {
+    var dlId = 'md-fcf-' + rowKey;
+    return '<input class="reg-input md-opponent" list="' + dlId + '" value="' + sanitize(value || '') +
+      '" placeholder="Opponent" style="width:140px;" autocomplete="off">' +
+      '<datalist id="' + dlId + '"></datalist>' +
+      '<span class="md-fcf-tick" title="' + sanitize(t('fcf.opponent_matched')) + '" hidden>✓</span>';
+  }
+
   function matchdayRowHtml(g, i) {
     const homeChecked = g.homeAway === 'home' ? 'checked' : '';
     const awayChecked = g.homeAway === 'away' ? 'checked' : '';
@@ -13964,7 +14716,7 @@
         }).join('')}
       </td>
       <td><input type="text" class="reg-input md-date md-datepicker" value="${sanitize(g.date || '')}" placeholder="YYYY-MM-DD" readonly style="width:140px;cursor:pointer;"></td>
-      <td><input class="reg-input md-opponent" value="${sanitize(g.opponent || '')}" placeholder="Opponent name" style="width:140px;"></td>
+      <td class="md-opponent-cell">${opponentInputHtml('new-' + i, g.opponent || '')}</td>
       <td><input class="reg-input md-location" value="${sanitize(g.location || '')}" placeholder="Location" style="width:150px;"></td>
       <td><input class="reg-input md-maplink" value="${sanitize(g.mapLink || '')}" placeholder="Google Maps link" style="width:150px;"></td>
       <td><input type="text" class="reg-input md-kickoff" value="${sanitize(g.kickoff || '')}" placeholder="HH:MM" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" style="width:80px;text-align:center;"></td>
@@ -16543,7 +17295,12 @@
         const mapLink = tr.querySelector('.md-maplink').value.trim();
         const kickoff = tr.querySelector('.md-kickoff').value;
         const category = tr.dataset.category || '';
-        games.push({ homeAway, team, date, opponent, location, mapLink, kickoff, category });
+        /* The squad the FCF lookup should use, which is NOT `team`: a club
+           with one team per category never activates a chip, so `team` is ''
+           while the row unambiguously belongs to that single squad. Carried
+           separately so `team` keeps meaning "the letter the coach picked". */
+        const squadLetter = mdRowSquad(tr).letter;
+        games.push({ homeAway, team, date, opponent, location, mapLink, kickoff, category, squadLetter });
       });
       return games;
     }
@@ -16614,8 +17371,17 @@
         td.querySelectorAll('.md-team-circle').forEach(c => c.classList.remove('active'));
         circle.classList.add('active');
         saveGames();
+        // amateur-A and amateur-B are different leagues against different
+        // clubs, so the completions for this row just changed.
+        renderOpponentDatalists();
       });
     });
+
+    // Keep the ✓ honest as the coach types or picks.
+    body.addEventListener('input', function(e) {
+      if (e.target.classList.contains('md-opponent')) markOpponentMatch(e.target);
+    });
+    renderOpponentDatalists();
 
     // Remove row. Splices the rendered (category-scoped) list, then goes back
     // through saveGames so the hidden categories' drafts survive.
@@ -16635,19 +17401,26 @@
         const games = readGames();
         const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
         const today = new Date().toISOString().slice(0, 10);
-        const newMatches = games.filter(g => g.opponent && g.date).map((g, i) => ({
-          id: Date.now() + i,
-          home: g.homeAway === 'home' ? TEAM : g.opponent,
-          away: g.homeAway === 'home' ? g.opponent : TEAM,
-          date: g.date,
-          time: g.kickoff || '00:00',
-          score: null,
-          status: g.date >= today ? 'upcoming' : 'played',
-          location: g.location,
-          mapLink: g.mapLink,
-          team: g.team || '',
-          category: g.category || getCurrentCategory() || ''
-        }));
+        const newMatches = games.filter(g => g.opponent && g.date).map((g, i) => {
+          const cat = g.category || getCurrentCategory() || '';
+          return Object.assign({
+            id: Date.now() + i,
+            home: g.homeAway === 'home' ? TEAM : g.opponent,
+            away: g.homeAway === 'home' ? g.opponent : TEAM,
+            date: g.date,
+            time: g.kickoff || '00:00',
+            score: null,
+            status: g.date >= today ? 'upcoming' : 'played',
+            location: g.location,
+            mapLink: g.mapLink,
+            team: g.team || '',
+            category: cat
+          /* Resolved from the name at save time rather than captured when the
+             coach clicked a completion: a <datalist> fires no "picked" event
+             worth trusting, and this way a rival typed out in full earns the
+             id too. */
+          }, fcfMatchFields(cat, g.squadLetter || g.team || '', g.opponent));
+        });
         // Append to existing matches instead of replacing
         var existing = JSON.parse(localStorage.getItem('fa_matches') || '[]');
         existing = existing.concat(newMatches);
@@ -16710,6 +17483,20 @@
           matches[idx].location = location;
           matches[idx].mapLink = mapLink;
           matches[idx].team = team;
+          /* Re-resolved, and DELETED when it no longer resolves. Editing the
+             rival of a fixture that used to be an FCF club must not leave the
+             old federation id behind — findFirstLeg() trusts a teamId over
+             the name, so a stale one would pair this fixture with the wrong
+             opponent's first leg and look authoritative doing it. */
+          var sq = mdRowSquad(tr);
+          var fcfFields = fcfMatchFields(sq.cat, sq.letter, opponent);
+          if (fcfFields.opponentTeamId) {
+            matches[idx].opponentTeamId = fcfFields.opponentTeamId;
+            matches[idx].opponentBadge = fcfFields.opponentBadge;
+          } else {
+            delete matches[idx].opponentTeamId;
+            delete matches[idx].opponentBadge;
+          }
           localStorage.setItem('fa_matches', JSON.stringify(matches));
         }
         _mdEditingId = null;
@@ -16739,8 +17526,13 @@
         var td = circle.closest('td');
         td.querySelectorAll('.md-team-circle').forEach(function(c) { c.classList.remove('active'); });
         circle.classList.add('active');
+        renderOpponentDatalists();
       });
     });
+    $$('.md-saved-table .md-opponent').forEach(function(inp) {
+      inp.addEventListener('input', function() { markOpponentMatch(inp); });
+    });
+    renderOpponentDatalists();
   }
 
   // ---------- Custom Modal ----------
@@ -17964,6 +18756,21 @@
   function ackSaveRecord(coll, docId, data, legacyKey, legacyValue, el) {
     localStorage.setItem(legacyKey, legacyValue);
     return _ackUi(DB.submit(coll, docId, data), el);
+  }
+
+  /**
+   * Acked save of a coach match note.
+   *
+   * MN writes straight to Firestore instead of going through db.js, so
+   * there is no 'db-write-error' listener behind it — the toast has to be
+   * raised here or a refused write would leave the spinner and say nothing.
+   */
+  function ackSaveNotes(p, el) {
+    p.catch(function (e) {
+      console.warn('[MN] save failed:', e && e.message);
+      _showPushToast(t('save.sync_title'), t('mn.save_failed'));
+    });
+    return _ackUi(p, el);
   }
 
   /** Record delete (un-answer flows); same local-cache update. */
@@ -20258,10 +21065,157 @@
         e.preventDefault();
         const url = link.dataset.videoUrl;
         if (!url) return;
+        /* THE guard — both video render sites (the convocatòria's links and
+           the coach's notes) end up in this one handler, so it belongs here
+           rather than duplicated at each of them. See safeHttpUrl() in
+           utils.js for why sanitize() at the render site does not cover it. */
+        if (!safeHttpUrl(url)) {
+          console.warn('[video] refusing a non-http(s) URL');
+          return;
+        }
         const sw = screen.width, sh = screen.height;
         const pw = Math.round(sw * 0.55), ph = Math.round(sh * 0.65);
         const pl = sw - pw - 30, pt = sh - ph - 80;
         window.open(url, 'videoPlayer', 'width=' + pw + ',height=' + ph + ',left=' + pl + ',top=' + pt + ',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no');
+      });
+    });
+
+    /* ── Coach match notes ──────────────────────────────────────
+       Every handler resolves the match row from fa_matches rather than
+       trusting the DOM: MN.save needs the CATEGORY, and a note written
+       without one is unreadable by everyone including its author. */
+    function mnMatchOf(id) {
+      return JSON.parse(localStorage.getItem('fa_matches') || '[]')
+        .find(function (x) { return String(x.id) === String(id); }) || null;
+    }
+    function mnCardMatch(el) {
+      var card = el.closest('[data-mn-match]');
+      return card ? mnMatchOf(card.dataset.mnMatch) : null;
+    }
+    /* Read every video row of one phase back off the DOM, and carry the
+       OTHER phase's videos through untouched — they live in one array on
+       the doc, so saving one section must not delete the other. */
+    function mnCollectVideos(m, phase) {
+      var kept = (MN.get(m.id) || {}).videos || [];
+      kept = kept.filter(function (v) {
+        return (v.phase === 'post' ? 'post' : 'pre') !== phase;
+      });
+      // Array.from, not $$ directly — $$ returns a NodeList, which has
+      // forEach but no map.
+      var rows = Array.from($$('.mn-video-row[data-mn-phase="' + phase + '"]')).map(function (row) {
+        return {
+          title: (row.querySelector('.mn-video-title') || {}).value || '',
+          url: (row.querySelector('.mn-video-url') || {}).value || '',
+          comment: (row.querySelector('.mn-video-comment') || {}).value || '',
+          phase: phase
+        };
+      }).filter(function (v) { return v.title.trim() || v.url.trim(); });
+      return kept.concat(rows);
+    }
+
+    $$('.mn-text').forEach(function (ta) {
+      // On blur, not on input: one Firestore write per edit, not per keystroke.
+      ta.addEventListener('blur', function () {
+        var m = mnCardMatch(ta);
+        if (!m) return;
+        ackSaveNotes(MN.saveText(m, ta.dataset.mnPhase, ta.value), ta);
+      });
+    });
+
+    $$('.mn-video-title, .mn-video-url, .mn-video-comment').forEach(function (inp) {
+      inp.addEventListener('blur', function () {
+        var m = mnCardMatch(inp);
+        if (!m) return;
+        var phase = inp.closest('.mn-video-row').dataset.mnPhase;
+        ackSaveNotes(MN.saveVideos(m, mnCollectVideos(m, phase)), inp);
+      });
+    });
+
+    $$('.mn-video-add').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = mnCardMatch(btn);
+        if (!m) return;
+        var phase = btn.dataset.mnPhase;
+        var vids = mnCollectVideos(m, phase);
+        vids.push({title: '', url: '', comment: '', phase: phase});
+        // Saved empty so the re-render has a row to draw; an all-blank row
+        // is dropped again by mnCollectVideos the next time anything saves.
+        MN.saveVideos(m, vids).then(function () { renderPage(getSession()); })
+          .catch(function () { _showPushToast(t('save.sync_title'), t('mn.save_failed')); });
+      });
+    });
+
+    $$('.mn-video-remove').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = mnCardMatch(btn);
+        var row = btn.closest('.mn-video-row');
+        if (!m || !row) return;
+        var phase = row.dataset.mnPhase;
+        row.remove();
+        ackSaveNotes(MN.saveVideos(m, mnCollectVideos(m, phase)), null)
+          .then(function () { renderPage(getSession()); });
+      });
+    });
+
+    var mnBoardAdd = document.getElementById('mn-board-add');
+    if (mnBoardAdd) {
+      mnBoardAdd.addEventListener('click', function () {
+        var m = mnCardMatch(mnBoardAdd);
+        var sel = document.getElementById('mn-board-select');
+        if (!m || !sel || !sel.value) return;
+        var meta = TB.meta(sel.value);
+        if (!meta) return;
+        var list = ((MN.get(m.id) || {}).boards || []).slice();
+        if (list.some(function (b) { return b.boardId === meta.id; })) return;
+        list.push({boardId: meta.id, name: meta.name || '', tag: meta.tag || ''});
+        MN.saveBoards(m, list).then(function () { renderPage(getSession()); })
+          .catch(function () { _showPushToast(t('save.sync_title'), t('mn.save_failed')); });
+      });
+    }
+
+    $$('.mn-board-remove').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = mnCardMatch(btn);
+        if (!m) return;
+        var list = ((MN.get(m.id) || {}).boards || []).slice();
+        list.splice(Number(btn.dataset.mnIdx), 1);
+        MN.saveBoards(m, list).then(function () { renderPage(getSession()); })
+          .catch(function () { _showPushToast(t('save.sync_title'), t('mn.save_failed')); });
+      });
+    });
+
+    // ── The anada/tornada answer ──
+    $$('.mn-leg-link').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = mnMatchOf(btn.dataset.matchId);
+        if (!m) return;
+        MN.linkFirstLeg(m, btn.dataset.firstId).then(function () { renderPage(getSession()); })
+          .catch(function () { _showPushToast(t('save.sync_title'), t('mn.save_failed')); });
+      });
+    });
+
+    $$('.mn-leg-dismiss').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var m = mnMatchOf(btn.dataset.matchId);
+        if (!m) return;
+        MN.dismissLeg(m).then(function () { renderPage(getSession()); })
+          .catch(function () { _showPushToast(t('save.sync_title'), t('mn.save_failed')); });
+      });
+    });
+
+    /* The briefing renders inline and OPEN, so the page-wide passes
+       (scaleRoBoards, hydrateRoBoards, .detail-video-link) already reach it.
+       This handler only remembers the coach's choice, and re-measures on the
+       way back open: a board laid out while collapsed has zero width, which
+       scaleRoBoards() cannot work with and silently skips.
+       There is deliberately no control that navigates to the first leg — the
+       coach preparing the return fixture should never leave its page. */
+    $$('.mn-brief').forEach(function (d) {
+      d.addEventListener('toggle', function () {
+        localStorage.setItem(MN_BRIEF_COLLAPSED, d.open ? '0' : '1');
+        if (!d.open) return;
+        scaleRoBoards();
+        fitMnScoreNames();
       });
     });
 
@@ -21380,6 +22334,21 @@
     window.addEventListener('tactic-boards-sync', () => {
       if (currentPage !== 'tactics') return;
       tbRefreshSavedListEl();
+    });
+
+    /* A colleague's note arriving from Firestore.
+       `match-detail` is EXCLUDED for the same reason it is excluded from
+       firestore-sync below: it holds the notes editor itself, and a
+       re-render mid-sentence would throw away what is being typed. The
+       Calendari has no editing state, and its leg banners are exactly what
+       a colleague's answer changes, so it does re-render. */
+    window.addEventListener('match-notes-sync', () => {
+      if (currentPage !== 'matchday') return;
+      clearTimeout(_syncDebounce);
+      _syncDebounce = setTimeout(() => {
+        const s = getSession();
+        if (s && s.profileSetupDone && s.roles && s.roles.length) renderPage(s);
+      }, 500);
     });
 
     window.addEventListener('firestore-sync', (e) => {

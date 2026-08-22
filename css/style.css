@@ -1765,6 +1765,10 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .league-zone { position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:2px; }
 .league-ours { background:#fff8e1; font-weight:700; }
 .league-ours td { color:#f57f17; }
+/* Why a table has no rows — a dead FCF link, a failed fetch, a group that has
+   not been published yet. `white-space:normal` overrides the nowrap every
+   other cell carries; these are sentences, not figures. */
+.league-msg { white-space:normal !important; text-align:center !important; color:var(--text-secondary); font-size:.7rem; line-height:1.4; padding:.75rem .5rem !important; }
 @media (max-width:500px) { .league-tables-row { flex-direction:column; } }
 
 /* ===== Player Overview ===== */
@@ -3121,6 +3125,238 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   margin-top:.25rem; margin-left:.2rem;
 }
 
+/* ===== Coach match notes + anada/tornada briefing =====
+   Staff-only surfaces. The lock glyph on the card title is the whole visual
+   contract: everything inside this card is invisible to the squad, and a
+   coach typing an opponent's weakness needs to be sure of that at a glance
+   rather than by remembering. */
+.mn-card .card-title { display:flex; align-items:center; gap:.4rem; }
+.mn-lock { font-size:.8rem; opacity:.65; cursor:help; }
+.mn-phase { margin-bottom:1.2rem; }
+.mn-phase:last-child { margin-bottom:0; }
+.mn-group { margin-bottom:1rem; }
+.mn-group-title {
+  font-size:.85rem; font-weight:700; color:var(--primary-dark);
+  margin-bottom:.5rem; text-transform:uppercase; letter-spacing:.03em;
+}
+.mn-hint { font-size:.8rem; color:var(--text-secondary); margin-bottom:.6rem; }
+.mn-text { width:100%; resize:vertical; min-height:80px; }
+.mn-text-ro {
+  font-size:.9rem; line-height:1.5; white-space:pre-wrap; color:var(--text);
+}
+.mn-video-row {
+  display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin-bottom:.6rem;
+}
+.mn-video-row .mn-video-comment {
+  flex-basis:100%; resize:vertical; min-height:40px;
+}
+.mn-video-remove {
+  background:var(--danger); color:#fff; border:none; padding:.2rem .5rem;
+  border-radius:6px; cursor:pointer;
+}
+/* A video URL whose scheme was refused — shown as text, not silently
+   dropped, so the coach can see that what he typed is not usable. */
+.mn-video-bad { color:var(--text-secondary); text-decoration:line-through; }
+.mn-board-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.6rem; }
+.mn-board-chip {
+  display:inline-flex; align-items:center; gap:.3rem;
+  background:var(--bg); border:1px solid var(--border); border-radius:999px;
+  padding:.15rem .6rem; font-size:.82rem;
+}
+.mn-board-remove {
+  background:none; border:none; color:var(--danger); cursor:pointer;
+  font-size:.8rem; line-height:1; padding:0;
+}
+.mn-board-picker { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+.mn-board-picker select { flex:1; min-width:140px; }
+
+/* The suggestion. Accent-bordered rather than danger-coloured: it is a
+   question, not a warning. */
+.mn-leg-banner {
+  display:flex; flex-wrap:wrap; gap:.6rem; align-items:center;
+  justify-content:space-between;
+  border-left:4px solid var(--accent); background:var(--bg);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:.7rem .9rem; margin-bottom:.6rem;
+}
+.mn-leg-banner:last-child { margin-bottom:0; }
+.mn-leg-text { display:flex; flex-direction:column; gap:.15rem; min-width:0; }
+.mn-leg-detail { font-size:.82rem; color:var(--text-secondary); }
+.mn-leg-actions { display:flex; gap:.4rem; flex-shrink:0; }
+
+/* The anada briefing: inline above the match hero, OPEN by default, and
+   collapsible from the caret on its header row.
+   Deliberately NOT a .card and deliberately smaller than everything under
+   it: it is context for the match you are looking at, so it must be
+   readable at a glance and must not compete with the match itself. */
+.mn-brief {
+  display:block;
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:var(--radius); margin-bottom:.6rem;
+  /* ONE definition of "the big text in here": the header row and the club
+     names are meant to read as the same size, and fitMnScoreNames() starts
+     its measuring from whatever the stylesheet says rather than carrying its
+     own copy of the number. Change it here and all three follow. */
+  --mn-title-size:1.15rem;
+}
+/* The header carries three things and no more: what this is, whether it was
+   played at home, and when. The score, the rival and the result all live in
+   the left column now — repeating any of them here made a header that had to
+   be read rather than glanced at. */
+.mn-brief-summary {
+  display:flex; gap:.5rem; align-items:center;
+  font-size:var(--mn-title-size); padding:.4rem .7rem; min-width:0;
+  cursor:pointer; list-style:none;
+}
+.mn-brief-summary::-webkit-details-marker { display:none; }
+.mn-brief[open] .mn-brief-summary { border-bottom:1px solid var(--border); }
+.mn-brief-tag { font-weight:700; color:var(--primary-dark); white-space:nowrap; }
+.mn-brief-venue { flex:0 0 auto; line-height:1; }
+/* Relative to the header, not absolute: the date rides whatever size the
+   title is, and stays a step below it. */
+.mn-brief-date { color:var(--text-secondary); white-space:nowrap; font-size:.8em; }
+
+/* The collapse control, pinned right. A caret rather than a button element:
+   the whole <summary> is already the click target, and a nested button would
+   need its own handler just to do what the row does anyway. */
+.mn-brief-caret {
+  margin-left:auto; flex:0 0 auto;
+  width:0; height:0; border-left:5px solid transparent;
+  border-right:5px solid transparent; border-top:6px solid var(--text-secondary);
+  transition:transform .15s ease;
+}
+.mn-brief:not([open]) .mn-brief-caret { transform:rotate(-90deg); }
+/* Three columns: what HAPPENED, who PLAYED, what was SAID.
+   An explicit breakpoint, NOT `auto-fit`: the dividers below have to know
+   how many columns there are. With auto-fit the first column of a wrapped
+   row keeps its left border and the rule reads as a stray vertical line in
+   the middle of nothing. Three columns or one, never an awkward two. */
+.mn-brief-grid {
+  display:grid; grid-template-columns:1fr; gap:.7rem;
+  padding:.6rem .7rem; align-items:start;
+}
+.mn-brief-col { min-width:0; }
+
+@media (min-width: 860px) {
+  .mn-brief-grid { grid-template-columns:repeat(3, 1fr); }
+  /* Vertical rules BETWEEN the sections. On the column rather than the gap
+     so it stretches to the tallest row, which is what makes three lists of
+     different lengths read as three sections. */
+  .mn-brief-col + .mn-brief-col {
+    border-left:1px solid var(--border); padding-left:.7rem;
+  }
+}
+/* Stacked, the same separation has to be horizontal or the sections run
+   together into one long ribbon. */
+@media (max-width: 859px) {
+  .mn-brief-col + .mn-brief-col {
+    border-top:1px solid var(--border); padding-top:.6rem;
+  }
+}
+
+/* Media, full width beneath the columns and split by AUDIENCE — what only
+   the staff saw, versus what went to the squad with the convocatòria. That
+   distinction is the point: a board of opponent analysis in the wrong one is
+   the mistake this row exists to make obvious. */
+.mn-brief-media {
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:.7rem; padding:0 .7rem .6rem; align-items:start;
+  border-top:1px solid var(--border); margin-top:.2rem; padding-top:.6rem;
+}
+.mn-media-col { min-width:0; }
+.mn-media-title {
+  font-size:.72rem; font-weight:700; margin-bottom:.4rem;
+  color:var(--text-secondary); text-transform:uppercase; letter-spacing:.03em;
+}
+
+/* Boards two-up wherever there is room, rather than stacked down a column
+   with half its width empty. `auto-fit` collapses the empty track, so a lone
+   board still spans the full width — it is the widest thing in the briefing
+   and needs it. The 190px floor is what keeps a miniature legible; below it
+   the grid drops back to one per row on its own. */
+.mn-boards {
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+  gap:.4rem; align-items:start;
+}
+
+.mn-brief-col .mn-group { margin-bottom:.6rem; }
+.mn-brief-col .mn-group:last-child { margin-bottom:0; }
+.mn-brief-col .mn-group-title { font-size:.72rem; margin-bottom:.3rem; }
+.mn-brief-col .mn-text-ro { font-size:.82rem; }
+/* The first leg's scoresheet, shrunk. It is a reference here, not the
+   scoreboard of the match on screen. */
+.mn-brief-col .ev-timeline { font-size:.78rem; margin-bottom:.6rem; }
+.mn-brief-col .ev-row { padding:.1rem 0; }
+
+/* The scoreline, carrying the outcome as colour. Read from OUR side —
+   green won, orange drew, red lost — while the SCORE stays in home-away
+   order, because it sits between the two club names and must agree with
+   them. Grey is "no result was ever entered", which is not a 0-0 draw. */
+.mn-sb {
+  display:flex; align-items:center; justify-content:center; gap:.5rem;
+  margin-bottom:.6rem; overflow:hidden; font-weight:700;
+  font-size:var(--mn-title-size);   /* the size we WANT; the fitter reduces from here */
+}
+.mn-sb-team { flex:0 0 auto; white-space:nowrap; min-width:0; }
+.mn-sb-team-away { text-align:right; }
+
+/* Colour goes ONLY behind the result, never behind the names. Same three as
+   the player's Historial de partits (.pmt-win / .pmt-draw / .pmt-loss) — a
+   coach and his players should not read two colour languages for one fact.
+   The score keeps a FIXED size: it is the anchor the names are sized around,
+   and shrinking it too would defeat the point. */
+.mn-sb-score {
+  flex:0 0 auto; white-space:nowrap;
+  font-size:.95rem; color:#fff;
+  padding:.15rem .5rem; border-radius:6px;
+}
+.mn-sb-win  { background:#66bb6a; }
+.mn-sb-draw { background:#78909c; }
+.mn-sb-loss { background:#ef5350; }
+/* "No result was ever entered" — not a 0-0 draw, so not the draw colour. */
+.mn-sb-none { background:var(--border); color:var(--text-secondary); }
+
+/* Alineació and Suplents, side by side, each read DOWN the spine of the team
+   — goalkeeper first, since posRankGlobal sorts on POS_ORDER and that starts
+   at 'GK'. A team sheet is read down a column, not across a wrap. */
+/* Alineació beside Suplents, but they now live inside ONE of three columns,
+   so they wrap to stacked rather than squeezing two name lists into ~90px. */
+.mn-squad { display:flex; flex-wrap:wrap; gap:.5rem; align-items:flex-start; }
+.mn-squad-col { flex:1 1 110px; min-width:0; }
+.mn-players { display:flex; flex-direction:column; gap:.2rem; }
+.mn-chip {
+  display:flex; align-items:center; gap:.3rem;
+  background:var(--card); border:2px solid var(--border);
+  border-radius:999px; padding:.1rem .5rem;
+  font-size:.75rem; min-width:0;
+}
+/* The XI is marked by its outline ALONE — no star as well. Border width
+   matches the subs' so the two columns stay on the same rhythm. */
+.mn-chip-xi { border-color:var(--accent); font-weight:600; }
+.mn-chip-num {
+  color:var(--text-secondary); font-size:.7rem;
+  flex:0 0 auto; min-width:1.1em; text-align:right;
+}
+/* The name is the only part allowed to lose characters — a shirt number that
+   ellipses tells you nothing at all. */
+.mn-chip-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mn-venue {
+  font-size:.78rem; text-transform:uppercase; letter-spacing:.03em;
+  color:var(--text-secondary); margin-right:.35rem;
+}
+.mn-score { font-weight:700; }
+.mn-res-win { color:var(--success); }
+.mn-res-loss { color:var(--danger); }
+.mn-res-draw { color:var(--text-secondary); }
+/* No result was ever entered. Deliberately not styled as a draw: a 0-0 for
+   a match nobody scored is a different statement from an actual 0-0. */
+.mn-res-none { color:var(--text-secondary); font-weight:400; }
+
+@media (max-width: 700px) {
+  .mn-leg-banner { flex-direction:column; align-items:stretch; }
+  .mn-leg-actions { justify-content:flex-end; }
+}
+
 /* ===== Medical page ===== */
 .medical-stats-row {
   display:flex; gap:1rem; margin-bottom:1.2rem; flex-wrap:wrap;
@@ -3763,6 +3999,17 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-fcf-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;}
 .ts-fcf-label{font-weight:600;font-size:.85rem;min-width:80px;flex-shrink:0;}
 .ts-fcf-row input{flex:1;font-size:.82rem;padding:.4rem .5rem;}
+/* A saved link from before the fcf.cat rebuild. The row wraps so the warning
+   sits under the box it is about rather than squeezing it. */
+/* The rival is a club in the configured FCF group, so the fixture carries a
+   federation id. Sits inside the opponent cell, right of the box. */
+.md-opponent-cell{white-space:nowrap;}
+.md-fcf-tick{color:#43a047;font-weight:700;margin-left:.25rem;font-size:.8rem;}
+.md-fcf-tick[hidden]{display:none;}
+
+.ts-fcf-row.ts-fcf-stale{flex-wrap:wrap;}
+.ts-fcf-row.ts-fcf-stale input{border-color:#f57f17;}
+.ts-fcf-warn{flex-basis:100%;font-size:.72rem;line-height:1.35;color:#f57f17;padding-left:calc(80px + .5rem);}
 
 /* Reminder timings. Label / number / unit on one line, wrapping on a
    narrow phone rather than squeezing the input to nothing. */

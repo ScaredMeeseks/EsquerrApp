@@ -2562,3 +2562,448 @@ Files: `js/app.js`, `functions/index.js`, `functions/check-deploy.js`, `firestor
 `test/rules.test.js`, `test/package.json`.
 
 Unit tests 651 → **671**; rules tests 134 → **139**.
+
+### v116 (2026-08-22) — coach match notes, and the return fixture briefs itself
+
+Two things the staff asked for, and one of them turned out to be a data-model question.
+
+**1. Per-match coaching notes** — a plan before the match, a debrief after it, video links and
+tactical boards, none of it visible to the squad.
+
+**2. When the return fixture is created**, the coach is handed the first leg without going to
+look for it: result, events, line-up, and whatever he attached the first time.
+
+#### Where the notes live, and why not in the blob layer
+
+`teams/{teamId}/matchNotes/{matchId}` — a collection of its own, outside `js/db.js` and
+`js/shard.js` entirely.
+
+The obvious move was another `SYNCED_KEYS` entry (`fa_match_notes`, `{shape:'map', by:'match'}`,
+exactly like `fa_tactic_match_boards`). It cannot be done. The `data/{key}` read rule
+(`firestore.rules:113`) is scoped by **category, not by role** — it has to be, because players
+read their own squad's fixtures out of the same collection — so a notes shard would be
+downloaded onto the phone of every player in the category. Staff-only means its own rule.
+
+```
+teams/{teamId}/matchNotes/{matchId}
+  matchId, category, team
+  pre  : { text, updatedAt, updatedBy }
+  post : { text, updatedAt, updatedBy }
+  videos : [ { id, title, url, comment, phase } ]
+  boards : [ { boardId, name, tag } ]     // tbSessionRef()'s shape, unchanged
+  firstLegId, legDismissed
+```
+
+Doc id is the match id — **not** `{uid}_{matchId}`. This is the staff's shared preparation for
+one match, not each coach's private diary; `owns(docId)` would fragment one plan across whoever
+typed which half and turn the briefing into a multi-doc merge.
+
+`category` is duplicated onto the doc for the same reason `ownerUid`/`clubId` are duplicated onto
+`tacticBoardData`: the rule stays self-contained and never needs a `get()` of `fa_matches`. It is
+**immutable on update**, or a note could be walked from one squad's compartment into another's
+one write at a time.
+
+> WARNING — **the staff sub-roles are still invisible to the rules.** coach, fitness and delegate
+> all carry `role:'staff'`; `staffRole` lives on `users/{uid}` and is not a claim. So the rule is
+> **staff-only, hard**, and "coach-only" is the v115 client gate on top — players are excluded by
+> the rule, a delegate by the UI, exactly as with Pissarra. Notes and the briefing are open to all
+> three sub-roles (a delegate filing the post-match report is a real workflow); only the boards
+> block follows `staffAccess('tactics')`.
+
+`js/match-notes.js` (new, `MN`) is modelled on `js/boards.js`: in-memory cache, one `onSnapshot`,
+a `match-notes-sync` event. **`MN.init` decides for itself whether the session is staff**, from
+the same custom claims `firestore.rules` reads, rather than being told by app.js — the listener
+query has to satisfy the rule exactly, so it takes its answer from the same place. A player's
+client opens no listener at all; passing the role in would have worked today and drifted later.
+Hooked into `DB.init`/`DB.cleanup` beside `TB`, for the same reason: one place where a club's
+per-team stores come up together instead of seven call sites that can diverge.
+
+There is no localStorage mirror. Firestore's own persistence covers a cold pitch-side connection.
+
+#### How the app knows a match is the second leg
+
+It does not, and could not: a match row is
+`{id, home, away, date, time, score, status, location, mapLink, team, category}` and there is no
+competition, no round, no leg and no fixture import — `fcfLinks` is a standings URL per squad.
+The pairing is **derived and then confirmed**.
+
+`findFirstLeg()` (`js/utils.js`, pure, 21 tests) returns the most recent earlier match with: same
+category, same team letter, rival name normalising equal, **home/away swapped**, strictly earlier
+date, and inside the current season (`seasonStartStr()` — no season field was added, and none
+should be).
+
+`normTeamName()` strips accents, punctuation and legal forms so "C.F. Gracia" / "CF Gracia" /
+"Gracia F.C." are one club. **"Atletic" is deliberately NOT on the noise list**: a parent club and
+its feeder differ by exactly that word, and merging them is the one false positive that would
+survive a careless click. Names that are nothing *but* noise ("C.F.") keep their letters — an
+empty string would make every such rival equal to every other.
+
+`ourSideOf()` uses **exact** equality on the club name, mirroring `isOurTeam()`. Being lenient
+would let this helper and the scoreboard disagree about which side is ours on the same screen; a
+club that renames mid-season loses the suggestion rather than getting a wrong one.
+
+**Why confirm at all**: a friendly and a league game against the same club with swapped venues
+satisfy the rule equally well. The banner costs one click and makes a wrong pairing visible
+instead of silent.
+
+Only the ANSWER is stored. `legDismissed` exists because without it an unanswered suggestion and
+a declined one are the same state, and the banner returns for ever. Detection runs off the live
+blob on every render, so the offer also appears for fixtures created before this shipped, and
+comes back when a coach corrects a misspelled rival.
+
+The banner is on **Calendari** for upcoming fixtures only — deriving it for past ones too would
+greet a club with a season of history with twenty banners at once — and on match detail for any
+single fixture opened.
+
+#### The briefing
+
+**Inline, always open, at the very top of the second leg's page — above the match hero.** Not a
+`<details>`, and with no control that navigates to the first leg. Both of those were tried and
+both were wrong, for the same reason: the coach is preparing the RETURN fixture, so the first
+leg's information has to come to him on that page. Anything that asks him to click, or that takes
+him somewhere else, defeats the whole feature.
+
+**Three columns, then a media row beneath them:**
+
+| | |
+|---|---|
+| **left** | the scoreline (colour-coded) and the event timeline |
+| **middle** | Alineació and Suplents |
+| **right** | the coach's notes from before and after the game |
+| **below, full width** | every video link and board, split by AUDIENCE |
+
+**The header carries three things and no more**: `Resum partit d'anada`, a house or a plane for
+where it was played, and the date. The score, the rival and the result all live in the left column
+-- a header repeating any of them has to be read rather than glanced at.
+
+**Collapsible, and it remembers.** Back to a `<details>`, but `open` by default: the information
+has to be there without being asked for, while a coach who does not want it above every match can
+put it away and have it stay away. The state is `fa_mn_brief_collapsed`, a plain localStorage key
+that db.js does NOT sync -- it is a per-device UI preference, and one coach folding it up on his
+phone must not fold it up on a colleague's laptop. The toggle handler re-runs `scaleRoBoards()`
+and `fitMnScoreNames()` on the way back open, because a board or a scoreline laid out while
+collapsed measures zero and both functions correctly skip it.
+
+The media row is split **by audience, not by kind**: `🔒 Privat` is what only the staff ever saw
+(`matchNotes.videos` / `.boards`), `📣 Enviat a la convocatòria` is what went out to the squad
+(`fa_convocatoria_sent[id].videos` and `fa_tactic_match_boards[id]`). The audience is the thing a
+coach has to be sure of, and a board of opponent analysis in the wrong one is exactly the mistake
+this layout exists to make impossible to walk into. The two columns take **different board id
+prefixes** (`mnb-` / `mns-`), because the same board can legitimately be in both and
+`tbRoBoardHtml` builds element ids from the prefix — a test asserts they differ.
+
+The three columns are separated by **vertical rules**, drawn on the column rather than in the gap
+so they stretch to the tallest of the three -- that is what makes three lists of different lengths
+read as three sections. Stacked, the same separation becomes horizontal, or the sections run into
+one ribbon.
+
+Those dividers are why the column grid uses an **explicit 860px breakpoint** instead of
+`auto-fit`: with `auto-fit` the first column of a wrapped row keeps its left border, and the rule
+reads as a stray vertical line in the middle of nothing. Three columns or one, never an awkward
+two. (The media row keeps `auto-fit` -- it has two items and no dividers.) An **empty column is
+omitted**, not left blank, and the media row disappears entirely when the first leg had no media
+at all.
+
+`mnOutcome()` is the single definition of win/draw/loss, read by both the scoreline and the
+Calendari banner's inline line -- two copies of that rule drift into a screen that says "won"
+beside a block coloured red.
+
+**Colour goes only behind the RESULT**, never behind the club names, and it is the same three the
+player's Historial de partits uses -- `#66bb6a` / `#78909c` / `#ef5350`, lifted straight from
+`.pmt-win` / `.pmt-draw` / `.pmt-loss`. A coach and his players should not be reading two colour
+languages for the same fact. The **score stays in home-away order** while the colour is ours,
+because it sits between the two club names and has to agree with them. A fourth state, grey with
+a dash, is "no result was ever entered" -- rendering that as a draw would invent a scoreless
+match out of a fixture the coach simply never filled in.
+
+**The club names are fitted, not truncated.** They are the loudest thing in the briefing and must
+never wrap, so `fitMnScoreNames()` measures and steps the font size down (1.15rem to a 0.62rem
+floor) until both fit. The size is set on the CONTAINER so both names always shrink together --
+one long name and one short one at different sizes reads as emphasis nobody meant.
+
+> The trap, and it is a silent one: the container is `justify-content:center`, and a **centred
+> flex container overflows symmetrically**. The left overflow is not scrollable, so `scrollWidth`
+> can equal `clientWidth` while the content plainly does not fit -- a fitter built on it never
+> shrinks anything and looks correct in every test. `_mnScoreNeed()` sums the children's
+> `offsetWidth` instead (they are `flex:0 0 auto` and `nowrap`, so that IS their natural width).
+> It runs in renderPage's post-layout rAF pass and again, debounced, on resize.
+>
+> **It is the one thing in this change no test proves.** jsdom has no layout, so every assertion
+> would pass against a function that does nothing; the tests pin only the wiring and the
+> scrollWidth trap. Confirm it in a browser against a long club name.
+
+Everything is read-only. `matchTimelineHtml()` is called with `staff=false`, so it carries no
+per-event delete buttons, and the "+ Event" forms are not built at all — editing the first leg
+happens on the first leg. A test asserts the absence of `ev-delete`, `ev-add-btn`,
+`starter-toggle` and `<textarea>` anywhere inside it.
+
+`matchScoreboardHtml()` and `matchTimelineHtml()` were lifted out of `renderMatchDetail` so both
+legs render through the same code; only the read-only halves moved.
+
+**Compactness is a requirement, not polish** — this sits above the match you actually opened. The
+squad is `mnLineupChipsHtml()`: **Alineació and Suplents side by side, each read DOWN its own
+column**, goalkeeper first -- `posRankGlobal` sorts on `POS_ORDER` and that starts at `GK`. A team
+sheet is read down the spine of the team, not across a wrap, and it is not the `.detail-player`
+rows the match page uses for its own call-up: eighteen of those beside the match is a wall.
+**The XI is marked by its outline alone**, no star -- in a chip that size the star says the same
+thing the 2px accent border already does. A squad with no XI recorded falls through to a single
+"Suplents" list rather than an empty "Alineació" heading.
+
+`posRankGlobal` is now exported from `js/utils.js` so the ordering test can assert against the
+REAL ranking; a stub would have passed whatever order the call-up happened to be in.
+
+`fa_tactic_match_boards[matchId]` (what the squad sees, once the convocatoria is sent) and
+`matchNotes.boards` (the coach's own) are now two lists per match. Same ref shape, same renderer,
+different audience — labelled in the UI so nobody attaches opponent analysis to the wrong one.
+
+**`match-detail` is on the `firestore-sync` re-render exclusion list** because it holds editing
+state, and it now holds the notes editor too. `match-notes-sync` therefore re-renders `matchday`
+only.
+
+**One definition of the title size.** `--mn-title-size` on `.mn-brief` is read by both the header
+row and the club names, which are meant to read as the same size, and `fitMnScoreNames()` now
+clears its inline size and starts measuring from `getComputedStyle().fontSize` rather than
+carrying a copy of the number. A hardcoded maximum in the JS would have been a second copy in a
+different file, and the drift would be silent -- the title would simply stop matching the names
+one day. A test asserts exactly two rules use the token and that the fitter holds no `MAX`.
+
+**Boards go two-up where there is room.** `.mn-boards` is
+`repeat(auto-fit, minmax(190px, 1fr))`, so a pair sits side by side instead of stacking down a
+column with half its width empty. `auto-fit` and not `auto-fill`: a lone board must still span the
+full width, being the widest thing in the briefing, and `auto-fill` would leave it holding an
+empty track.
+
+#### Unrelated, found while testing: staff were told "No convocat"
+
+The call-up banner on the match page is addressed to the PLAYER looking at the fixture, and a
+coach is never on his own convocatoria -- so every staff member opening any match with a call-up
+sent was told **"No convocat"**, an answer to a question they had not asked.
+
+Gated on `isPlayerViewer` (`roles.includes('player')`), **not** on "is not staff". A playing coach
+is both, and for him "am I called up?" is a real question with a real answer; only accounts with no
+player role lose the banner. The same message on the player actions page needed no change -- that
+whole sidebar section is already gated on the player role.
+
+#### Season rollover — including a bug that was already there
+
+`archiveSeason` empties `fa_matches`, so anything keyed by match id and left behind points at
+fixtures that no longer exist. `matchNotes` joins the per-record archive loop beside
+`trainingAvail`/`matchAvail`/`rpe`, with a `seasons/{id}/matchNotes/{docId}` rule that is
+**enumerated, never a wildcard** (`firestore.rules:174` explains why: a wildcard there also
+matches `seasons/{id}/data/*`). Archived notes keep their `category`, so the staff+cats check
+applies verbatim — archiving is not declassification.
+
+**`fa_tactic_match_boards` was missing from `SEASON_KEYS` and always had been.** Every rollover
+left a season of board links pointing at deleted fixtures, with nothing to clean them up (the
+client-side `fa_cleanup_orphan_match_boards` sweep matched by NAME and never ran again after its
+first pass). Added to `SEASON_KEYS` and to `OBJECT_KEYS`, since it is a map and the reset must
+write `{}` and not `[]`.
+
+`deleteTeam` now also deletes the `matchNotes` of the fixtures it removes — by doc reference, not
+by query, since the doc id *is* the match id and `matchNotes` has no `uid` field to filter on.
+
+#### Tests
+
+`test/match-legs.test.js` (21) is mostly NEGATIVE cases, and deliberately: a false positive is
+offered and can be declined, while a wrong link accepted without looking puts last season's team
+sheet in front of the coach as this week's preparation. Every clause of the rule has a test
+proving its removal would pair two matches that are not legs.
+
+`test/match-notes.test.js` (39) drives `MN.save` over a fake `db`/`auth` — both are read at CALL
+time, never at load time, precisely so they can be stubbed — and pins the two ways a later change
+could quietly undo the security model: widening the rule to `sameTeam` (one word, and the coach's preparation goes to the whole
+squad) and moving the notes into the sync layer (same outcome, different route). **Both guards
+were verified by mutation** — adding `sameTeam(teamId)` to the read arm fails exactly one test.
+
+`test/match-notes-render.test.js` (38) runs the ~250 lines of renderer source through the
+`grab()` harness. It found two things nothing else would have, and now also pins the shape of the
+briefing itself (inline, read-only, no way out of the page). The two: the **cache was applied
+after the server ack**, so typing a note and then pressing "+ Add video" re-rendered the old text and the
+coach watched his sentence disappear (saved, but invisible); and a **`javascript:` video URL
+reached `window.open()`**.
+
+That second one is worth spelling out, because `sanitize()` looks like it should have covered it
+and does not — they solve different problems. `sanitize()` escapes `< > & "` so a string cannot
+break out of the attribute it is written into. `javascript:fetch(...)` contains none of those
+characters, so it passes through completely untouched, and `dataset.videoUrl` decodes the
+escaping back to the original string when the handler reads it. `window.open()` on such a URL
+does not navigate anywhere: it opens a window and RUNS the code, on our own origin, in the
+viewer's signed-in session. Only staff can enter a video link, so the exposure is a STORED value
+shared between staff — which is precisely the case worth closing, since one account then reaches
+what another can do.
+
+`safeHttpUrl()` (js/utils.js) is an allowlist — http(s) only, so `data:`, `blob:`, `vbscript:`
+and a schemeless `//evil.test/x` all fail with it. **The guard lives in the click handler**, not
+at the render sites: the convocatòria's video links and the coach's notes both feed the one
+`.detail-video-link` listener, so one check covers both and a third render site inherits it for
+free. The render site also greys out a refused URL, so it LOOKS refused rather than being a link
+that does nothing — but that is cosmetic, and the handler is the guard.
+
+Every guard in this change was checked by mutation, not by reading: adding `sameTeam(teamId)` to
+the matchNotes read arm, deleting the scheme check from the click handler, and moving the cache
+write back into the `.then()` each fail exactly the tests that claim to catch them, and only
+those.
+
+`test/rules.test.js` gains 13 assertions against the emulator, the load-bearing one being that a
+player of the same club and the same category is **denied**.
+
+Files: `js/match-notes.js` (new), `js/utils.js`, `js/app.js`, `js/db.js`, `firestore.rules`,
+`functions/index.js`, `functions/check-deploy.js`, `index.html`, `css/style.css`, `sw.js`
+(v115 to v116), `test/match-legs.test.js` (new), `test/match-notes.test.js` (new),
+`test/match-notes-render.test.js` (new), `test/rules.test.js`, `test/package.json`.
+
+Unit tests 671 to **769**; rules tests 139 to **152**; functions 71, unchanged.
+
+No `minAppVersion` bump: an old APK never fetches `matchNotes` and behaves exactly as it does
+today.
+
+### Next, and it changes two things here — the FCF classificacio scrape
+
+The owner reports that **fcf.cat has changed and the standings scrape is probably broken**
+(`fcfClassificacio` in `functions/index.js`, the CORS proxy, plus `clubs/{id}.fcfLinks`). Nothing
+has been investigated yet and nothing here anticipates it — but the intended shape of the fix
+lands directly on this feature, so it is worth knowing before touching either:
+
+1. **Match creation gets an opponent DROPDOWN** fed from the competition's team list, instead of a
+   free-text `md-opponent` box. Rival names then match exactly, every time.
+2. **Badges and league positions** become available for a match, so a fixture and this briefing
+   could show who the opponent was and where they stood *when the game was played*.
+
+The consequence for the anada/tornada work: `normTeamName()` and the whole confirm step exist
+**because the rival is typed by hand**. With an exact-match dropdown the pairing becomes
+unambiguous, and the `Enllaçar` / `No` banner could be dropped in favour of an automatic link --
+`legDismissed` would survive only for the genuine ambiguity (a friendly and a league game against
+the same club with venues swapped). Do not pre-empt that: the normaliser is what keeps the feature
+working for every fixture already in the database, and for any club that never adopts the
+dropdown.
+
+**Known flake, not caused by this change**: `npm test` (the full chain) can fail the functions
+suite with `Cannot determine backend specification. Timeout after 10000` — the emulator's
+10s function-discovery budget, running hot straight after the rules suite. `npm run
+test:functions` on its own passes 71/71 every time. `deploy.ps1` already sets
+`FUNCTIONS_DISCOVERY_TIMEOUT=120` for the same reason; the test script does not.
+
+### 2026-08-22 — v117: FCF standings on the rebuilt fcf.cat, and an opponent picker fed by it
+
+**The outage.** fcf.cat was rebuilt as a Next.js app. Every league link a club lead had saved was
+dead: `https://www.fcf.cat/classificacio/…` 307s to `/ca/classificacio/…` and returns **404**, and
+the page that replaced it ships no server-rendered table at all — the standings arrive after
+hydration. So `parseFcfHtml()` had two independent deaths, a dead URL and an empty document.
+Nothing in the app said so: `applyLeagueRows()` returned early on zero rows, so a dead feed and a
+division that had not kicked off looked identical. That is why it went unnoticed for weeks, and it
+is the reason half of this entry is about error states rather than parsing.
+
+**What replaced it: a public JSON API**, no key, no auth, verified live.
+`/api/competition/classificacio?grupId=` returns `{data, promociones}` with the whole table,
+stable `team.teamId`s, badge filenames and last-5 form. Siblings exist and are worth knowing
+about: `partidos?grupId=` (the full calendar — jornada, kickoff, venue, coordinates, both escuts),
+`grupos?competicioId=`, `competicions?disciplinaId=&temporada=`, `disciplines`, `temporadas`.
+**`equipos?grupId=` is broken on FCF's side** — it returns the first team of the group repeated
+once per row — so the team list comes from `classificacio`, which already carries it.
+
+> ⚠ **`played` / `won` / `drawn` / `lost` are the home and away halves CONCATENATED as
+> strings.** `played:"1515"` is 15 + 15 = 30. `won:"139"` is 13 + 9 = 22. `drawn:"05"` is
+> 0 + 5 = 5. Proven by replaying a whole 240-fixture group from `partidos` and matching every row.
+> FCF's own site renders them raw and displays "1515", so this is their bug arriving in our JSON,
+> not a decoding we are missing — and the split is unrecoverable in general ("139" is 13|9 or 1|39
+> with nothing to choose between them). **J is therefore derived as `round(points / coefficient)`**
+> — `coefficient` is points-per-game and `points` is clean. Checked on 258 rows across five
+> divisions, every one landing on an integer. `points`, `position`, `goalsFor` and `goalsAgainst`
+> are clean totals and must NOT be put through any split rule.
+
+**The proxy takes a grupId, not a URL** (`fcfClassificacio`, `functions/index.js`). The API sends
+no `Access-Control-Allow-Origin`, so the proxy stays; the parameter change is a security
+improvement in its own right. The old handler fetched a client-supplied URL behind a regex
+allowlist — a shape one loosened character away from an SSRF. Now the only thing a caller controls
+is a run of digits interpolated into a constant address. Clients older than v117 call it with
+`?url=` and get a 400, which is exactly what they get today from the dead pages; there is
+deliberately no compatibility branch keeping an HTML path alive that has no HTML to parse.
+
+**Two pure functions in `js/utils.js`**, where they are testable: `fcfGrupId(url)` (the digits, or
+`''` — and `''` is what the UI keys its "this link is out of date" warning off) and
+`parseFcfClassificacio(json, clubName)`, which returns the row shape both league renderers already
+consumed plus `teamId`/`rawName`. `parseFcfHtml()` is deleted.
+
+Two behaviour changes fell out of the rewrite:
+
+- **`ours` is now an exact `normTeamName` comparison.** The old test was
+  `club.toLowerCase().indexOf(needle) !== -1` with the needle hardcoded to `"esquerra"` for any
+  club with no name configured — so it highlighted "Gràcia" inside "Gràcia Atlètic", and a
+  stranger's row for every club that was not Esquerra.
+- **Pre-season, FCF sends `position:"0"` for every team** and orders by teamId, so `pos` falls
+  back to the array index rather than printing a column of zeros.
+
+**Empty tables now say why.** `leagueMessageHtml()` plus i18n keys `fcf.loading`,
+`fcf.unavailable`, `fcf.empty`, `fcf.link_outdated`, `fcf.link_invalid`, `fcf.link_old_hint`,
+`fcf.opponent_matched` — all three languages. A pre-rebuild link is never fetched at all: it 404s,
+so spending a request on it every five minutes buys nothing.
+
+**Team Setup** validates before the network, the way the staff-email box already did: a value with
+no `grupId` blocks the save with `fcf.link_invalid`, and a SAVED old-format value renders with a ⚠
+and the sentence that fixes it. `setClubCategories` refuses the same values server-side —
+`firestore.rules` still carries the back-compat shim letting an old APK write `fcfLinks` straight
+onto the club doc, so the callable is the only checkpoint that sees them. That check is a second
+copy of `fcfGrupId` in **`functions/fcf.js`**, forced (the functions deploy uploads `functions/`
+alone); `test/fcf.test.js` runs one input table through **both copies** and asserts they agree,
+rather than testing each side separately.
+
+**Every club must re-paste its links.** There is no migration: the old slug names the group by
+name, and last season's at that, and nothing maps it to a grupId.
+
+#### The opponent picker
+
+`fcfTeamsFor(cat, letter)` reads the **standings cache** — `classificacio` already carries every
+club in the group with its federation id, so the Calendari's completions cost nothing the
+standings table was not already paying. Cache key bumped to `fa_league_cache_v2`: v116 rows carry
+no `teamId`, and a stale v1 entry would silently offer names with no ids behind them.
+
+Both matchday rows (draft and inline edit) now render `opponentInputHtml()` — an `<input list=…>`
+with a `<datalist>` and a ✓, **not a `<select>`**. A select cannot express a friendly, a cup tie
+against a club two divisions up, or a club with no FCF link at all; the read paths in
+`readGames()` and the edit handler are untouched because `.value` is still a string.
+
+- **`fcfLookup` matches the EXACT trimmed name, case-insensitively — not `normTeamName`.** An id
+  is a claim of certainty. `normTeamName` collapses "C.F. Gràcia" and "Gràcia F.C." on purpose,
+  which is the right leniency for a suggestion a human confirms and the wrong leniency for a
+  stored identifier. Picking from the list inserts the federation's own string, so that is the
+  path that earns an id; anything typed by hand keeps the name pairing it always had.
+- **`mdRowSquad(tr)` is one definition on purpose.** The ✓ promises that saving will store an id,
+  and before it existed the tick resolved the squad from the active chip while the save resolved
+  it from `g.team` — which is `''` for every club with **one team per category**, the commonest
+  club in the app. Those clubs would have seen a ✓ and got no id. `readGames()` now carries
+  `squadLetter` separately so `team` keeps meaning "the letter the coach picked".
+- Matches gain optional `opponentTeamId` / `opponentBadge`. Shards are written whole-document with
+  no per-field rule validation, so no rules change and no migration. The **edit path deletes them**
+  when the rival no longer resolves — `findFirstLeg` trusts an id over a name, so a stale one
+  would pair with the wrong opponent's first leg and look authoritative doing it.
+- **`findFirstLeg()` gains an exact-id fast path**: when BOTH matches carry a non-empty
+  `opponentTeamId`, that answers it and `normTeamName` never runs. Every other clause still
+  applies — the id is not an override, and a matching id cannot smuggle a same-venue pairing
+  through. `normTeamName` and the `Enllaçar`/`No` confirm step **stay**: every fixture already in
+  the database predates the picker, so the name path is not a fallback that may quietly rot.
+
+#### Tests
+
+Unit 769 → **834**. Two new files, **both added to `test:unit` by hand** (the standing trap):
+`test/fcf.test.js` (30) and `test/fcf-app.test.js` (29), plus 6 new cases in
+`test/match-legs.test.js`. Rules 152 and functions 71 both unchanged. Fixtures are REAL captured
+payloads in `test/fixtures/`: a finished Tercera Catalana group (every field populated, the one
+whose 240 fixtures were replayed) and the pre-season Quarta Catalana Grup 10 behind the owner's
+own link.
+
+Every guard was checked by mutation — reading `played` directly, dropping the position fallback,
+reverting `ours` to a substring test, removing the teamId fast path, dropping the badge null
+guard, removing the stampede clock, fetching a link with no grupId, removing the empty-table
+message, sharing one datalist id across rows, bypassing the proxy, loosening `fcfLookup` to ignore
+punctuation, and dropping the single-letter squad fallback each fail exactly the test that claims
+to catch them, and only that one.
+
+**Not unit-tested, and said so rather than faked**: `renderOpponentDatalists()`,
+`markOpponentMatch()` and `refreshLeagueTables()` read and write a live DOM, and there is no jsdom
+in this suite. A hand-rolled document stub would only assert that the stub behaves as the test
+author imagined. They are checked by hand in a browser. Everything that decides *what* they would
+render is covered.
+
+**Deploy order**: `.\deploy.ps1 functions` BEFORE pushing the frontend. The reverse leaves a v117
+client calling a proxy that still demands `?url=` — verified: the deployed v116 proxy returns 400
+for `?grupId=`.

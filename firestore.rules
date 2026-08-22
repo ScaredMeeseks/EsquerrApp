@@ -150,6 +150,53 @@ service cloud.firestore {
           || (sameTeam(teamId) && owns(docId));
       }
 
+      /* ── Coach match notes — the staff's own working document ──
+         One doc per match: the pre-match plan, the post-match debrief, video
+         LINKS, references to tactical boards, and the anada/tornada link.
+
+         A SEPARATE COLLECTION, not another key under data/. That rule is
+         scoped by category but NOT by role — it has to be, since players read
+         their own squad's matches out of it — so a `fa_match_notes` shard
+         would land on the phone of every player in the category. There is no
+         way to make a blob under data/ staff-only without carving a key
+         allowlist into a rule that is already the most load-bearing one in
+         this file. Being outside data/ also keeps the notes out of js/db.js
+         and js/shard.js entirely.
+
+         Doc id is the match id (a NUMBER in fa_matches, so the client writes
+         String(m.id)). Not `{uid}_{matchId}`: this is the staff's shared
+         preparation for one match, not each coach's private diary, and
+         owns(docId) would fragment one plan across whoever typed which half.
+
+         `category` is duplicated onto the doc for the same reason every rule
+         in this file duplicates ownerUid/clubId — so the check is
+         self-contained and never needs a get() of fa_matches. It is immutable
+         on update: letting it change would move a note between compartments
+         without anyone in the new one having agreed.
+
+         ⚠ THE SUB-ROLES ARE NOT VISIBLE HERE. coach, fitness and delegate all
+         carry role:'staff' in the token; `staffRole` lives on users/{uid} and
+         is not a claim. So this rule is STAFF-ONLY, hard, and "coach-only" is
+         the client gate on top of it (js/app.js STAFF_ROLE_ACCESS), exactly
+         as with the Pissarra page. Players are excluded by the rule; a
+         delegate is excluded by the UI. Making the sub-role real means adding
+         it to the claims — joinClub, setRole, onRosterWritten and this file. */
+      match /matchNotes/{matchId} {
+        allow read: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && resource.data.category in request.auth.token.cats);
+        allow create: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && request.resource.data.category in request.auth.token.cats);
+        allow update: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && resource.data.category in request.auth.token.cats
+              && request.resource.data.category == resource.data.category);
+        allow delete: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && resource.data.category in request.auth.token.cats);
+      }
+
       match /seasons/{seasonId} {
         // The season doc itself is just a label and a timestamp.
         allow read: if sameTeam(teamId) || isSuperUser();
@@ -193,6 +240,18 @@ service cloud.firestore {
         }
         match /rpe/{docId} {
           allow read: if sameTeam(teamId) || isSuperUser();
+          allow write: if isSuperUser();
+        }
+
+        /* Archived coach notes. Unlike the three above, these are NOT
+           club-wide readable: they carry a `category` and their live
+           counterpart is staff-only, so the live check applies verbatim.
+           Archiving is not declassification — the same principle the
+           seasons/{id}/data block above was rewritten for. */
+        match /matchNotes/{docId} {
+          allow read: if isSuperUser()
+            || (isStaffOf(teamId) && 'cats' in request.auth.token
+                && resource.data.category in request.auth.token.cats);
           allow write: if isSuperUser();
         }
       }

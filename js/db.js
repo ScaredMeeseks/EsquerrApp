@@ -550,6 +550,19 @@ const DB = (function () {
       console.warn('[DB] tactical board registry unavailable:', e && e.message);
     }
 
+    // ── Coach match notes ────────────────────────────────────────
+    // Hooked here for the same reason TB is: one place where a club's
+    // per-team stores come up together, rather than seven call sites that
+    // can drift. MN decides for itself whether this session is staff —
+    // from the same custom claims firestore.rules reads — so there is
+    // nothing to pass and nothing to keep in step. A player's client opens
+    // no listener.
+    try {
+      if (typeof MN !== 'undefined' && MN.init) await MN.init(teamId);
+    } catch (e) {
+      console.warn('[DB] coach match notes unavailable:', e && e.message);
+    }
+
     // ── Reconcile users/ collection → fa_users blob ──────────────
     // Query MUST be team-scoped: security rules reject unscoped user list reads.
     try {
@@ -676,6 +689,11 @@ const DB = (function () {
     _shards = {};
     _badShards = {};
     _scope = null;
+    /* Torn down beside the rest: MN holds a live listener and one club's
+       coaching notes in memory, and the next person to sign in on this
+       device must not inherit either. */
+    try { if (typeof MN !== 'undefined' && MN.cleanup) MN.cleanup(); }
+    catch (e) { console.warn('[DB] MN cleanup failed:', e && e.message); }
   }
 
   // ── localStorage monkey-patch ────────────────────────────────

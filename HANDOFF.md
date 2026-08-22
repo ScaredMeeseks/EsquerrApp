@@ -1,533 +1,194 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-21._
+_Rolling document, overwritten each session. Last updated: 2026-08-22._
 
-**`main` is at v115 (`ca13f12`), working tree clean, pushed — and FULLY DEPLOYED**: rules,
-functions and frontend. Verified against the live artefacts rather than the deploy output:
+## ⚠ Read this first: v116 AND v117 are written, neither is shipped
 
-```bash
-curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
-curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-# both said 115 at 2026-08-21
-```
-
-`.\deploy.ps1 all` released `firestore.rules` + `storage.rules` and updated **all 18
-functions** ("Successful update operation" on every one). Deployed BEFORE the frontend push
-on purpose: a client that reads a `staffRole` no function writes would leave every staff
-member silently a coach.
-
-**v115 is deployed but NOT yet exercised by a human** — see "Verify v115" below.
-
-All 18 functions **ACTIVE** on fresh revisions, and the **Cloud Scheduler job itself** reads
-`*/30 * * * *` / `Europe/Madrid` / `ENABLED`. That last one matters: `firebase functions:list`
-only ever says `scheduled`, so it cannot tell you the cron actually changed. The scheduler
-API can — see "Reading production without a browser" for the token, then:
+`main` is still at **v115** (`cebf286`). Two versions of work sit in the working tree,
+uncommitted. v117 was written on top of v116 without committing v116 first, so they ship
+together.
 
 ```
-GET https://cloudscheduler.googleapis.com/v1/projects/esquerrapp/locations/us-central1/jobs
+ M CONTEXT.md  HANDOFF.md  css/style.css  firestore.rules
+ M functions/check-deploy.js  functions/index.js  index.html
+ M js/app.js  js/db.js  js/utils.js  sw.js  test/package.json  test/rules.test.js
+?? functions/fcf.js  js/match-notes.js  test/fixtures/
+?? test/fcf.test.js  test/fcf-app.test.js  test/match-legs.test.js
+?? test/match-notes.test.js  test/match-notes-render.test.js
 ```
 
-Unit tests **671 passing**, rules tests **139 passing** (both re-run this session). The
-**functions** emulator suite was not re-run — worth doing before deploying v115, since
-`onRosterWritten` changed.
+`test/fixtures/` is new and untracked — it holds the two captured FCF payloads the unit tests
+read. `git add -A` picks it up; do not let it be missed, the suite fails without it.
 
-**The push chain is PROVEN end to end.** The scheduler fired at `2026-08-21T15:30:01Z`,
-exactly on the wall clock — which is also the proof the cron change took — and the owner
-received the resulting RPE notification on his phone. That closes the oldest open question
-in this file: the scheduled reminders work, not just the manual convocatòria push.
+| | state |
+|---|---|
+| **firestore.rules** | **DEPLOYED** (v116's block, mid-session last time). v117 changes nothing in rules. Re-running `.\deploy.ps1 rules` is idempotent if in doubt. |
+| **functions** | **NOT deployed, and v117 makes this URGENT.** See the deploy order below. |
+| **frontend** | **NOT pushed.** `git add -A`, commit, push to `main`. That also triggers the APK CI build. |
+
+### ⚠ Deploy order, and why it matters more than last session
+
+```
+1. .\deploy.ps1 functions      ← MUST be first
+2. git add -A && git commit && git push
+```
+
+v117 changes the `fcfClassificacio` proxy from `?url=` to `?grupId=`. Pushing the frontend first
+leaves every client calling a proxy that still demands the old parameter — **verified, not
+assumed**: the currently deployed v116 proxy returns **400** for `?grupId=58161881`. The standings
+would stay broken with a fresh version number on them.
+
+`archiveSeason` and `deleteTeam` also changed in v116 and are still undeployed; neither runs until
+a season rollover or a squad deletion, but the functions deploy above covers them too.
+
+Version triple is consistent at **117**: `sw.js` `CACHE_NAME`, `js/app.js` `APP_VERSION`,
+`functions/check-deploy.js` `CURRENT`.
+
+**No `minAppVersion` bump.** An old APK never fetches `matchNotes`, and its standings are already
+broken by fcf.cat's own rebuild — v117 does not make anything worse for it.
+
+## Tests — all three suites green
+
+```
+834 unit    (was 769)      cd test && npm run test:unit
+152 rules   (unchanged)    cd test && npm run test:rules
+ 71 functions (unchanged)  cd test && npm run test:functions
+```
+
+New this session, **both added to `test:unit` by hand** — the standing trap in this repo:
+`test/fcf.test.js` (30) and `test/fcf-app.test.js` (29), plus 6 new cases in
+`test/match-legs.test.js`. There is also a `test:fcf` shortcut.
+
+> **`npm test` (the full chain) flakes.** The functions suite fails with
+> `Cannot determine backend specification. Timeout after 10000` when it runs straight after the
+> rules suite — the emulator's 10s function-discovery budget on a busy machine, the same trap
+> `deploy.ps1` sets `FUNCTIONS_DISCOVERY_TIMEOUT=120` for. The three suites pass individually
+> every time. Export that variable, or run them separately.
+
+> **Do not serve the app on port 8080.** That is the Firestore emulator's port, and a
+> `python -m http.server 8080` makes the whole rules suite fail with
+> `501 Unsupported method ('PUT')`. Use 8000.
 
 ---
 
-## What shipped: v115 — three staff sub-roles
-
-`staff` was one role: `buildSidebarItems()` and `STAFF_PAGES` both gated on the same
-`roles.includes('staff')`, so every staff member got all ten staff sections with full edit
-rights. The club wanted to hand accounts to a fitness coach and a match delegate without also
-handing over the tactical boards, the medical file and the ability to delete a fixture.
-
-**Where it lives.** A parallel map on the roster doc the lead already owns:
-
-```
-clubs/{clubId}/rosters/{cat}-{letter}
-  staffEmails : ["a@x.com", "b@x.com"]      // unchanged
-  staffRoles  : { "b@x.com": "fitness" }    // NEW — absent ⇒ "coach"
-```
-
-Chosen over turning `staffEmails` into objects: no shim in `normEmails`, no migration, and
-`firestore.rules` already pins staff to `hasOnly(['playerEmails','updatedAt'])` and gives the
-lead everything — so `staffRoles` is lead-only with no rule change. The lead sets it from a
-dropdown next to each address in **Config Club**; `onRosterWritten` re-derives
-`users/{uid}.staffRole` for everyone the edit touched.
-
-**Absent means coach, everywhere** — server, client, `check-deploy.js`. Every existing account
-behaves bit-identically, which is the whole reason for that default.
-
-| Section | coach | fitness | delegate |
-|---|---|---|---|
-| Inici, Plantilla, perfil de jugador | edit | view | view |
-| Registres | edit | view | view |
-| Sessions d'entrenament (+ nova sessió) | edit | view (hidden) | view (hidden) |
-| Calendari | edit | view | **edit** |
-| Convocatòria | edit | **hidden** | view |
-| Jornada | edit | edit | edit |
-| Mèdic | edit | **edit** | **hidden** |
-| Pissarra tàctica | edit | hidden | hidden |
-| Notificacions | edit | edit | **hidden** |
-
-**It is a UI gate, not a security boundary — a decision, not an oversight.** All three still
-carry `role:'staff'` and can still write the same documents. It could not be otherwise today:
-Calendari, Jornada **and** Convocatòria all write the same `fa_matches__{cat}` doc as one
-opaque blob, so "Jornada but not Calendari" is not expressible in a rule. See the v115 entry
-in CONTEXT.md for exactly which cross-writes have to be split first.
-
-**The two things most likely to bite whoever picks this up:**
-
-1. `onRosterWritten`'s membership signature had to carry the sub-role (`"s:" + role`). Without
-   it, changing only the dropdown is a roster write the trigger reads as a no-op — it returns,
-   and `users/{uid}.staffRole` stays stale. Nothing else in the change is as easy to miss.
-2. `set({merge:true})` **deep-merges a map field**. Sending the new `staffRoles` alone only ever
-   ADDS keys, so demoting someone back to Coach would leave `fitness` in the doc forever. Keys
-   that have gone are deleted with `FieldValue.delete()`.
-
-New: `test/staff-roles.test.js` (20 tests) — **and it had to be added to `test:unit` in
-`test/package.json` by hand**, which is the standing trap in this repo.
-
-### Verify v115 — deployed, not yet confirmed by a human
-
-Nothing below has been done yet. All three test suites pass (671 unit / 139 rules / 71
-functions) and the served bundle carries the code, but no real account has used it.
-
-1. **As the lead**: Config Club → the staff section now has a Rol dropdown beside each
-   address. Set one to **Preparador físic**, another to **Delegat** → Save.
-2. **Confirm BOTH halves landed**, in the Firebase console:
-   - `clubs/{c}/rosters/{key}.staffRoles` holds `{email: "fitness"}`;
-   - each affected `users/{uid}.staffRole` was **re-stamped** by `onRosterWritten`.
-   The second is the one that matters — it is what catches a missed `sigOf`, and the first
-   can be right while the second is stale.
-3. **Sign in as each** and walk the table above. Include the two things the sidebar cannot
-   show you: type a hidden page's id, and use the Back button. Both must land on
-   `staff-home`, never a blank screen.
-4. **Demote one back to Entrenador** and confirm the sub-role actually comes off — that is
-   the `FieldValue.delete()` path, and a deep-merge bug here looks exactly like a caching
-   problem.
-5. **Regression**: an untouched coach must be unchanged. `staffRoles` is absent for them,
-   which is the whole point of the coach default.
-
-`node functions/check-deploy.js` reports any `users/{uid}.staffRole` that disagrees with the
-rosters — worth a run after step 2.
-
-No `minAppVersion` bump: the change is UI-only, so an old APK simply behaves as it does
-today (every staff member stays a full coach until they update).
-
----
-
-## What shipped: v114 — the RPE form stops asking for what the club already knows
-
-**1. The push says "Entrenament", not the focus.** `session.focus` is the coach's planning
-label — "Força i prevenció", "Partit condicionat" — and means nothing on a lock screen.
-Dropped from both bodies.
-
-**2. A training's Minutes box is pre-filled with the session's length.** `sessionMinutes()`
-is `sessionWindow`'s duration, so it honours `endTime` and falls back to 90.
-
-**3. A match's Minutes box is pre-filled from the substitution events.** The derivation
-already existed — `playerMatchMinutes`, from the starting XI and the `change` events, built
-for the readiness estimator — it just was never offered to the player. **Checked against
-production first**: the demo club holds 199 substitution events across 72 matches, with a
-`startingXI` on 73 of 75 convocatòries.
-
-`playerMatchMinutesKnown()` is new for one reason: `playerMatchMinutes` collapses "played
-nothing" and "no line-up recorded" into **0**. Right for load maths, wrong for a form
-default — pre-filling 0 for a squad whose coach never entered an XI invites everyone to
-submit a zero and flatten the club's load data. A null renders an empty box instead.
-**Esquerra de l'Eixample has no matches at all, so that is the branch it will hit.**
-
-**The match cap is 100** (90 + added time); training stays 300. It was a flat 300 for both,
-so a mistyped match length sailed through as 300. The cap is `data-max` per card **and is
-re-checked at submit** — a PRE-FILLED value fires no `input` event, and neither does an
-autofill, so the keystroke clamp cannot be the only check. This change created that trap
-itself.
-
----
-
-## What shipped: v113 — the pre-session push, and the club's own clock
-
-Asked for directly, two parts.
-
-### a) The push goes to everyone COUNTED, not only the unanswered
-
-Attendance here is **opt-out**: `getEffectiveAnswer` returns `yes` for an unlocked session
-nobody answered. The reminder went only to players with no record — the wrong half. A
-player who said nothing and one who said "Sí" are in the same position, both expected at
-training, and only one was being told.
-
-`countedFor()` is the audience now: **everyone except a `no`/`injured`**, from the player
-or his coach. Telling a player the staff has dropped that "we are counting on you" is the
-one thing this message must never do. It is the deliberate mirror of `attendedFor` —
-*before* a session silence means expected, *after* one it means never marked present. Same
-two stores, opposite defaults.
-
-The body carries the deadline: *"Comptem amb tu — si no pots venir, canvia-ho abans de les
-HH:MM."* That time is `start − lockHours`, the exact instant `isTrainingLocked` starts
-refusing changes, so the push cannot promise a window the app then denies.
-
-### b) `pushHours` / `lockHours` are per club
-
-`clubs/{id}.reminders`, edited in Config Club (the team-setup screen), saved through
-`setClubCategories`. **Defaults 4 and 3.**
-
-⚠ `lockHours` replaces a **hardcoded one hour** in `isTrainingLocked`, so **every existing
-club's answering window now closes two hours earlier** until its lead changes it. Requested,
-not a side effect — but it is the one change here a coach will notice without being told.
-
-`push > lock` is enforced in three places, each load-bearing: the client (a typo costs no
-round trip), the callable (these two numbers drive a push to every player in the club), and
-`remindersOf` on read (a pair written by anything bypassing the callable falls back rather
-than announcing a deadline already past).
-
-### Two latent bugs fixed on the way
-
-- **`every 60 minutes` → `0 * * * *`** — the same interval-vs-wall-clock trap as v112.
-- **The band was inclusive at both ends** (`< 3.5 || > 4.5`), so a session landing exactly
-  on the boundary — **any session at half past the hour** — was reminded **twice**. Now
-  half-open: `[pushHours − 0.5, pushHours + 0.5)`.
-
-**Not done, deliberately:** the lock is client-side only. `firestore.rules` cannot cheaply
-reach a session's start time, so a determined user could still write a late answer — as was
-already true before this change.
-
----
-
-## What shipped: v112 — the coach's override reaches the server
-
-Asked as a question: *"if a player hasn't answered and the coach overrides him and adds
-him, does he still get the RPE push?"* **He did not.** Two gaps, in opposite directions,
-both older than v111:
-
-- A player the coach **added by hand** was never chased. `_ntMarkAttending` writes
-  `fa_training_staff_override` and never a record under the player's own key —
-  deliberately, so the app does not forge an answer as him — while the reminder read only
-  the `trainingAvail` collection. He saw the RPE waiting on his home screen and was never
-  told about it.
-- A player the coach marked **absent** was chased anyway, because his own stale `yes` was
-  the only thing being read.
-
-**Two stores, one never consulted** — the same shape as v110's injuries and v111's
-`endTime`. The client has always applied `override || answer` in `renderPlayerActions`;
-this is the server learning the rule it already had.
-
-`attendedFor(overrides, answers, uid, session)` replaces the bare `answeredFor` call.
-**The coach wins in both directions** — an override is a human saying he was or was not
-there, which outranks the player's answer *and* his silence. `overrideFor()` mirrors
-`readRecord`: session key first, legacy date key second, and **never** the legacy key for
-a guest.
-
-`mergeMapShards()` merges **every** category's shard, which matters here specifically:
-`fa_training_staff_override` is in `ROSTER_JOINED_KEYS` as `uidPrefix`, so it is routed by
-the **player's** category — a juvenil guest at an amateur session has his override in
-`…__juvenil`. Reading only the session's shard would miss exactly the borrowed players a
-coach is most likely to have added by hand. No extra query: `readDataShards` already reads
-the whole `data/` collection.
-
-**Matches are unaffected** — there is no staff override for a match; the convocatòria is
-already the coach's own list.
-
-Both gaps were reproduced against `git show HEAD`, and with no override present the old
-and new answers are identical — that is the part that matters.
-
-### And the schedule became real cron
-
-v111 shipped `schedule: "every 30 minutes"` — the **App Engine interval** form, which waits
-N minutes after the previous run *finishes*. Consecutive runs therefore drift apart by each
-run's duration and `endedInWindow`'s bands stop tiling: the last seconds of one band belong
-to no run, and an activity ending there is chased by nobody. Silent, rare, and exactly what
-the fixed-width band existed to prevent.
-
-`*/30 * * * *` fires on the wall clock at :00 and :30 whatever a run costs. A test now
-asserts the schedule is **not** an `every N` interval, alongside the one pinning
-`RPE_WINDOW_MINS` to the cron's number.
-
-**This came from evidence, not from re-reading the code**: after the v111 deploy the
-scheduler's `lastAttemptTime` was still the previous day's 23:00 run, long past when a
-wall-clock half-hourly job should have fired. `scheduledTrainingReminder` still uses
-`every 60 minutes` with a 1-hour band — **same latent gap, untouched, worth fixing.**
-
----
-
-## What shipped: v111 — one definition of "the session is over"
-
-The owner reported three things; they were one bug. A 11:30–12:00 session showed
-**"En curs" until 13:30**, yesterday's 22:00 session showed **"Completat"** while still
-sitting on the coach's landing page, and the RPE push for either was expected at the
-whistle and never came.
-
-**There were four different answers to "has it finished?", and `endTime` — which has
-existed since the per-team session rework — was read by none of them.** Only
-`sessionWindow()`, used by the player's week strip, ever looked at it.
-
-| surface | was | now |
-|---|---|---|
-| staff list badge (`computeStatus`) | start + 2h, flat | `endTime`, else start + **120** (`BADGE_FALLBACK_MINS`) |
-| coach landing page (`renderStaffWeek`) | **the date alone** | `sessionEndsAt` / `matchEndsAt` |
-| player pending-RPE (×2 call sites) | start + 90 / +105, inline | `sessionEndsAt` / `matchEndsAt` |
-| player week strip, matches | **kick-off** | `matchEndsAt` |
-| `scheduledRpeReminder` | a **23:00 cron** | the activity's own end |
-
-The badge keeps **two hours** as its fallback while everything else keeps ninety. That is
-deliberate: the fallback only applies to a session nobody gave an end to, and changing it
-there would have silently re-dated every legacy row's badge.
-
-**Matches end at kick-off + 2h** (`DEFAULT_MATCH_MINS`), raised from 105 at the owner's
-request — 90 + half time leaves nothing for added time, so a match that ran long was
-called finished mid-play.
-
-### `sessionEndsAt` / `matchEndsAt`
-
-The `Date` form of `sessionWindow`, which answers in minutes-past-midnight and therefore
-cannot compare across dates — both new callers span days.
-
-Built as **start + duration**, never by formatting the end back to HH:MM. A 23:30 session
-with no `endTime` ends at "25:00", which `minsToHHMM` refuses and every date parser turns
-into `Invalid Date` — and a NaN comparison answers `false`, so the session would have
-counted as **never over**.
-
-### The reminder: `every 30 minutes`, not `0 23 * * *`
-
-The nightly sweep was wrong in both directions — it chased the 11:30 session eleven hours
-late, and the 22:00 one at 23:00, **an hour in, while it was still being trained**.
-
-`endedInWindow()` claims an activity for the run whose half-open band
-`[end, end + 30 min)` contains its end. The band is **exactly as wide as the schedule
-interval**: narrower leaves gaps (an activity nothing ever chases), wider double-sends on
-consecutive runs, and both failures are silent. A test parses `RPE_WINDOW_MINS` and the
-cron string out of the source and fails if they drift apart.
-
-Three consequences that are not obvious:
-
-- **Yesterday stays in scope.** A 23:30 session ends after midnight and belongs to
-  *tomorrow's* 00:00 run. Hence `array-contains-any [yesterday, today]`, plus
-  `where("date","in", dueDates)` where `dueDates` holds only the dates something actually
-  ended on — the other 47 runs a day must not pay for a second date.
-- **One push per ACTIVITY**, tagged `rpe-training-<sessionId>` / `rpe-match-<matchId>`.
-  The old `rpe-<date>` tag collapsed the evening squad's reminder onto the morning
-  squad's on Android.
-- **The client had to move with it.** `completedTraining` gated the RPE form on
-  start + 90 min; left alone, a 30-minute session would have been pushed at 12:00 with
-  nowhere to answer until 13:00.
-
-### The duplication, and why it is accepted
-
-`activityEndsAt()` in `functions/index.js` duplicates `sessionWindow`/`matchEndsAt`
-because **functions/ deploys on its own and cannot require `../js`**. Sharing them means
-a build step this project deliberately does not have.
-
-It is a maintenance cost, not a scalability one — two copies cost the same at 50 players
-as at 5,000. It is bounded (three constants and one function) and it **fails loudly**:
-`test/training.test.js` reads `DEFAULT_MATCH_MINS` and `DEFAULT_SESSION_MINS` out of
-*both* files and asserts they are equal. **If that list of shared rules keeps growing,
-the answer changes and a shared module becomes worth the build step.**
-
----
-
-## Verify it — the deploy is done, the behaviour is not confirmed
-
-Nothing here has been clicked through in a real browser. Both halves are pinned by unit
-tests over the real functions, and every new assertion was run against `git show HEAD` in
-a throwaway worktree first and fails there — but that is not the same as seeing it work.
-
-1. **Badge** — Entrenaments, a session with an `endTime`: "En curs" until that time, then
-   "Completat". Not two hours later.
-2. **Coach home** — a finished session disappears from "Aquesta setmana" instead of
-   sitting there until Sunday night.
-3. **The push, end to end** — ✅ **PROVEN 2026-08-21**, an RPE notification arrived on the
-   owner's phone from the scheduled job. Re-run this only when changing the audience logic:
-   - Create a session ending in the next ~30 minutes.
-   - As a demo player, answer **Sí** for it (the audience is `yes`/`late` only — an
-     `injured` answer is excluded, which is exactly why the 2026-08-20 run sent nothing).
-   - **Or test v112's path instead**: leave a player unanswered and *add* him to the
-     session as a coach. He should now be chased. The inverse is worth one click too —
-     set a player's staff answer to **No** and confirm he is not.
-4. **v113's pre-session push** — create a session starting in ~4 h and wait for the next
-   o'clock run. Everyone not excused should get it, including players who have answered
-   nothing *and* players who answered Sí. The body must name `start − lockHours`.
-5. **v113's config** — Config Club → Avisos d'entrenament. Set push 6 / lock 5, save,
-   reopen and confirm they persisted. Then try push 2 / lock 5: it must refuse, both in the
-   app and (if you bypass the form) in the callable.
-6. **The lock moved from 1 h to 3 h.** Open a session starting in two hours as a player —
-   the availability badge should be frozen, with a tooltip naming the time it closed.
-7. **v114's pre-filled Minutes.** A training card should open with the session's own length
-   already in the box; a match card with the minutes derived from the substitutions. Try
-   typing 900 into a match card — it must clamp to 100, and submitting a pre-filled value
-   above the cap must be refused rather than silently stored.
-   - Confirm no `rpe` doc exists for that uid + session.
-   - Wait for the half-hour boundary, then read the log:
-
-```bash
-firebase functions:log --only scheduledRpeReminder --project esquerrapp
-```
-
-The audience is logged **before** the send, so a zero reads as a precondition failure
-rather than a push failure. A healthy line looks like
-`{"kind":"training","sessionId":"…","squad":N,"missing":M}`.
-
-**Evidence the old one never fired**, from the 2026-08-20 23:00 run:
-`{"sessions":2,"missing":0,"matches":[],"teamId":"Tm96gel58VSQvxgynf45"}` — both sessions
-found, **zero recipients**, because the only availability answer that day was `injured`.
-
----
-
-## Reading production without a browser
-
-Both of this session's diagnoses came from production data, read locally. This works and
-is worth reusing:
-
-```js
-// ADC from firebase-tools' stored refresh token — no service-account key needed.
-// ~/.config/configstore/firebase-tools.json → additionalAccounts[] (marna96@gmail.com)
-// Write {type:"authorized_user", client_id, client_secret, refresh_token} to a scratch
-// file, point GOOGLE_APPLICATION_CREDENTIALS at it. NEVER print the token; delete after.
-// client id/secret are firebase-tools' own public pair, in lib/api.js of the global install.
-```
-
-Two traps, both cost time this session:
-
-- **A scratch script must live inside `functions/`**, or `require("firebase-admin")` cannot
-  resolve. Running it from the scratchpad fails with `MODULE_NOT_FOUND`.
-- **`teams/{id}` is keyed by CLUB id.** There is no `clubId` field on a team doc — a
-  `where("clubId","==",…)` query returns empty, which reads as "the club has no teams"
-  rather than "wrong query". `teams/nDLJCpJfDvFHs8MnwtzW` *is* Esquerra de l'Eixample.
-
-Sessions live in `teams/{id}/data/fa_training__{category}`, either as `{v:"<json>"}` or in
-the per-field merge shape — `parseDataDoc()` in `functions/index.js` handles both, and
-reading only `.v` on a merge doc silently yields `{}`.
-
-### Beyond Firestore: any Google API, no `gcloud` needed
-
-`gcloud` is **not** installed. The *same* refresh token exchanges for a
-`cloud-platform` access token, which reaches every REST API the account has rights to —
-this is how the deploy above was verified:
-
-```
-POST https://oauth2.googleapis.com/token
-  grant_type=refresh_token & refresh_token=… & client_id=… & client_secret=…
-→ Authorization: Bearer <access_token>
-```
-
-Two endpoints worth remembering:
-
-- **Cloud Scheduler** — `…/v1/projects/esquerrapp/locations/us-central1/jobs` returns each
-  job's real `schedule`, `timeZone` and `state`. **`firebase functions:list` only says
-  `scheduled`** and can never tell you a cron actually changed.
-- **Cloud Functions v2** — `…/v2/projects/esquerrapp/locations/us-central1/functions`
-  returns `state`, `updateTime` and the Cloud Run `revision`. A container that fails its
-  health check leaves the *old* revision serving, so a new revision id is the proof a
-  deploy really took, not the CLI's success message.
-
----
-
-## Where the owner is testing
-
-**The demo club** (`Tm96gel58VSQvxgynf45`), not Esquerra de l'Eixample — worth knowing
-before hunting for a session in the wrong team. Esquerra has exactly **one** session, on
-2026-08-04.
-
-The non-default-day session created this session saved and synced correctly, `endTime` and
-all — v109's fix is confirmed working against real data:
-
-```
-tr_1787303860725_0_uenqwc  2026-08-21  11:30 → 12:00  Recuperació  amateur/["A"]
-```
-
----
-
-## Push notifications — where they stand
-
-**Proven end to end (2026-08-19):** a convocatòria sent by staff arrived on an Android
-home-screen PWA. Token → FCM → service worker → notification all work.
-
-**Still not proven: any of the three scheduled reminders.** They share `sendToTokens` and
-the same token, so delivery is settled — triggers, audiences and preconditions are not.
-
-- **RPE** — rewritten this session, see above. Now the most testable of the three, because
-  it no longer means waiting until 23:00.
-- **Availability**, Friday 20:00.
-- **Training**, hourly, 3.5–4.5 h before a session. The demo club has future sessions
-  again, so this is testable.
+## What shipped: v117 — FCF standings, and an opponent picker fed by them
+
+Full writeup in CONTEXT.md. The parts most likely to bite:
+
+**fcf.cat's rebuild killed the scrape twice over.** The old
+`https://www.fcf.cat/classificacio/…` addresses 307 to `/ca/classificacio/…` and then **404**, and
+the page that replaced them ships no server-rendered table — the standings arrive from
+`/api/competition/classificacio?grupId=…` after hydration. `parseFcfHtml()` is deleted.
+
+**The new source is a public JSON API**, no key, no auth. Worth knowing what else is on it, since
+the fixture-import idea in the parking lot lives here: `partidos?grupId=` gives the entire calendar
+(jornada, kickoff, venue, coordinates, both escuts, scores), and `grupos` / `competicions` /
+`disciplines` / `temporadas` walk the competition tree. **`equipos?grupId=` is broken on FCF's
+side** — the same team repeated 16 times — so the team list comes from `classificacio`.
+
+> ⚠ **`played`, `won`, `drawn` and `lost` are the home and away halves glued together as
+> strings.** `played:"1515"` is 30. `won:"139"` is 22. `drawn:"05"` is 5. FCF's own site renders
+> them raw and shows "1515", so this is their bug arriving in our JSON. The split is not
+> recoverable — "139" is 13|9 or 1|39 and nothing chooses. **J is derived from
+> `points / coefficient`** instead. If someone ever "fixes" `parseFcfClassificacio` by reading the
+> field literally called `played`, `test/fcf.test.js` fails four ways.
+
+**Every club must re-paste its FCF links.** There is no migration and there cannot be one: the old
+slug names the group by name, and last season's at that. A saved old-format link now renders in
+Team Setup with a ⚠ and the sentence that fixes it, and the standings table says so instead of
+sitting there empty.
+
+**The proxy takes a grupId, not a URL.** That is also the fix for a shape that was one loosened
+regex character from an SSRF: the only thing a caller controls now is a run of digits.
+
+**`fcfLookup` is EXACT-match, deliberately.** Picking a rival from the datalist inserts the
+federation's own string and earns the fixture an `opponentTeamId`; typing "Can Buxeres FC" by hand
+does not. An id is a claim of certainty, and `normTeamName` is tuned for a suggestion a human
+confirms — the two leniencies are not interchangeable. `normTeamName` and the `Enllaçar`/`No`
+confirm step **stay**, because every fixture already in the database predates the picker.
+
+**`mdRowSquad()` is one definition, and that is load-bearing.** The ✓ beside the opponent box
+promises the save will store an id. Written separately, the tick resolved the squad from the
+active chip while the save used `g.team` — `''` for every club with one team per category, which
+is most of them. Those clubs would have seen a ✓ and got no id. Found by reading, not by a test;
+now pinned by four.
+
+### What is NOT unit-tested, and why that is stated rather than faked
+
+`renderOpponentDatalists()`, `markOpponentMatch()` and `refreshLeagueTables()` read and write a
+live DOM, and this suite has no jsdom. A hand-rolled `document` stub would only assert that the
+stub behaves the way the test author imagined. **These three need a browser check** — see below.
+Everything that decides *what* they render is covered.
+
+## Verify v117 by hand once functions are deployed
+
+Serve on **port 8000** and sign in to the demo club as a coach.
+
+1. **Team Setup → FCF links.** Paste
+   `https://www.fcf.cat/ca/competicio?temporadaId=22&disciplinaId=19308233&competicioId=58161869&grupId=58161881&tab=classificacio`
+   for `amateur-A`. Then paste an old `fcf.cat/classificacio/…` link and confirm the save is
+   **blocked** with an inline message, not silently accepted.
+2. **Player home → standings.** 16 rows, L'ESQUERRA DE L'EIXAMPLE highlighted (it is 6th in the
+   array pre-season), badges loading from `files.fcf.cat`, and **J showing 0, never "1515"**.
+   The pure path was confirmed end to end against live FCF this session; what needs eyes is the
+   rendering.
+3. **A league that cannot load says so.** Easiest check: leave a stale link saved and confirm the
+   table shows the "enllaç antic" row rather than an empty body.
+4. **Calendari → opponent box.** The 16 group teams autocomplete. Switch the squad letter on a
+   row and confirm the list changes. Type a name freely and confirm it still saves.
+5. **The ✓.** Pick a rival from the list — tick appears. Save, then confirm in the console that
+   the match carries `opponentTeamId`:
+   `JSON.parse(localStorage.fa_matches).slice(-1)[0]`
+6. **The leg pairing via id.** Create that fixture's return with venues swapped and confirm the
+   anada banner appears.
+7. **Confirm the artefact, not the operation:**
+   ```bash
+   curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep APP_VERSION
+   curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
+   # both must say 117
+   ```
+
+Still outstanding from v116 and worth re-checking after the push: a player is DENIED on
+`teams/{id}/matchNotes/{matchId}` (confirmed on localhost 2026-08-22), and the **scoreline fitter**
+— jsdom has no layout so no test proves it; check a long club name shrinks the NAMES, not the
+title.
 
 ---
 
 ## Parking lot
 
-1. **Neither week strip re-renders on a timer.** A session drops off when the page next
-   renders, not the instant it ends. Pre-existing and unchanged, but the new behaviour
-   makes it more visible: a coach watching the page at 12:00 sees the row until something
-   triggers a re-render.
-2. **The cross-category call-up — decide before building.** The owner's workflow: an
-   amateur coach agrees with a juvenil player and calls him up despite his never having
-   had the Friday availability push. **Within a category this already works** —
-   `renderConvocatoria` filters the picker by category only, never by letter.
+Renumbered items are the same items.
 
-   **Across categories it does not**, and there are two independent blockers: the picker
-   filters to the coach's current category, and `getVisibleCategories()` returns
-   `[s.category]` for a player, so he never downloads `fa_convocatoria_sent__amateur`
-   **or `fa_matches__amateur`** — the call-up and the match would be invisible in his app.
-
-   **The push is NOT a blocker.** `Push.sendToPlayers(teamId, targetUids)` writes a
-   `pushQueue` doc with `targetPlayers` and `onPushQueueCreate` calls `getTokensForUsers`;
-   category never enters it. That is also the right distinction: the Friday reminder is a
-   broadcast to a *squad* he is correctly not in; the convocatòria is addressed to *named
-   individuals the coach chose*.
-
-   Two shapes: **staff-side only** (he appears on the convocatòria and gets the push, but
-   the match is still missing from his app) or **widen a player's shard scope**, which
-   touches `firestore.rules` and undoes part of the isolation Phase 5 bought. The same
-   hole already exists for a training `guests` entry from another category.
-3. **Training detail / session planning** (reported 2026-08-09, untouched): expected-player
-   count beside "Assistència Jugadors"; strike through no-shows in the exercise teams;
-   equalise the "Planificació entrenament" panel width; make that panel free-text editable.
-   v85 changed the squad plumbing underneath — read that part of CONTEXT.md first.
-4. **Fill in `privacy.html`** and have it reviewed. Live at
-   `https://scaredmeeseks.github.io/EsquerrApp/privacy.html` with every club-specific fact
-   still a `⚠` placeholder. Blocks **both** stores, no code dependency.
-5. **The APK** — CI has built through v111; the phones are on v43-era. Set
+1. **Fixture import from `partidos?grupId=`.** Now clearly within reach and the natural next step:
+   the endpoint gives dates, kick-off times, venues, coordinates and both escuts for the whole
+   season. It needs its own data-model decisions (what wins when FCF and the coach disagree about
+   a kick-off time) and was deliberately left out of v117.
+2. **Opponent badges and league position on the match page.** `opponentBadge` is now stored, and
+   `mnScoreBlockHtml()` / `mnLegBannerHtml()` already have the club names in hand. The position
+   *at the time of the game* still has no source — the API only serves the current table.
+3. **Neither week strip re-renders on a timer.** Pre-existing.
+4. **The cross-category call-up** — decide before building. Within a category it already works;
+   across them the picker filters to the coach's category and `getVisibleCategories()` returns
+   `[s.category]` for a player, so he never downloads the other shard. Not a push blocker.
+5. **Training detail / session planning** (reported 2026-08-09, untouched).
+6. **Fill in `privacy.html`** — blocks both stores, no code dependency.
+7. **The APK** — CI has built through v115; phones are on v43-era. Set
    `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` only once a current APK is actually installed.
-6. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into
-   `fa_tactic_saved` for the v43-era APK. Gated on 5.
-7. **Play Console** — $25 plus identity verification. Then four secrets
-   (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
-   `ANDROID_KEY_PASSWORD`) turn on the signed AAB build already dormant in the workflow.
-   Gated on 5.
-8. **iOS** — the owner may have access to two Macs (stated 2026-08-19), which changes the
-   answer from "not startable". Still required: the **Apple Developer Program, $99/year**
-   (organisation enrolment needs a D-U-N-S number but publishes under the club's name).
-   What iOS would need, none of which exists: `npx cap add ios`;
-   **`NSPhotoLibraryUsageDescription`** in `Info.plist` (the profile-photo picker crashes
-   at runtime without it); **`PrivacyInfo.xcprivacy`**; an **`apns` block in
-   `sendToTokens`** (`buildMessage` builds web and android shapes only); an APNs .p8 key,
-   push entitlement, `remote-notification` background mode.
-
-   **Do this before spending anything:** iOS 16.4+ already supports web push for a
-   home-screen PWA, and v95 shipped everything needed for it. If that serves the club's
-   iPhone users, the $99 and the build pipeline may not be worth it. The free D-U-N-S
-   lookup — <https://developer.apple.com/enroll/duns-lookup/> — is the long pole and costs
-   nothing to check.
-9. **Readiness thresholds** — every measurement is against demo data, and the demo data has
-   since changed materially. Re-measure before touching a threshold.
-10. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
-    directly. Delete once a v55+ APK circulates.
-11. **`scheduledMatchAvailReminder` is the last `onSchedule` not yet checked** for the
-    interval/band traps v112 and v113 fixed. It is a weekly `0 20 * * 5` cron, so the
-    wall-clock issue does not apply — but nothing has verified its audience or that it
-    fires at all.
-12. **Push governance** — `firestore.rules:197` lets **any team member** enqueue a push to
-    the whole team, with no staff check and no validation of `title`/`body`.
-    `Push.sendToTeam` is dead code.
-13. **The demo club's 19-vs-9** — "19 players answered `injured` for the 2026-08-13 demo
-    session while only 9 injuries are live" is the shape of what v110 fixed. **Still a
-    hypothesis, never checked**, and the top-up script writes those answers synthetically,
-    so it may simply be seed data. Cheap to settle with
-    `test/readiness-engine.test.js`'s harness pointed at production.
-14. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide
+8. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved`.
+   Gated on 7.
+9. **Play Console** — $25 plus identity verification, then four secrets turn on the signed AAB.
+10. **iOS** — the owner may have access to two Macs. Try web push on a home-screen PWA first
+    (iOS 16.4+, and v95 shipped what it needs) before spending the $99.
+11. **Readiness thresholds** — every measurement is against demo data that has since changed.
+12. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
+    directly, bypassing the new server-side link validation in `setClubCategories`. Delete once a
+    v55+ APK circulates.
+13. **`scheduledMatchAvailReminder`** is the last `onSchedule` not checked for the interval/band
+    traps v112 and v113 fixed.
+14. **Push governance** — `firestore.rules` lets any team member enqueue a push to the whole team,
+    with no staff check and no validation of `title`/`body`. `Push.sendToTeam` is dead code.
+15. **The demo club's 19-vs-9** — still a hypothesis, never checked.
+16. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide
     readable; orphaned shards when a category is emptied; uncategorised players inconsistent
     across three staff pages; `backfill-training-teams.js` has no `preflight()`.
 
@@ -537,46 +198,55 @@ the same token, so delivery is settled — triggers, audiences and preconditions
 
 - Repo: `c:\DATA\CLAUDE\EsquerrApp` → https://github.com/ScaredMeeseks/EsquerrApp. Firebase
   project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push;
-  rules/functions = `.\deploy.ps1`; Admin SDK = local, see above.
+  rules/functions = `.\deploy.ps1`; Admin SDK = local, see below.
 - **Bump the version in THREE places together**: `CACHE_NAME` in `sw.js`, `APP_VERSION` in
-  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **115**
-  (v115 is written but not yet deployed — see the top of this file).
-- Verify a deploy by fetching the served files, not by trusting the push:
-
-```bash
-curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
-curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep "const APP_VERSION"
-```
-
+  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **117**.
+- A new JS/CSS file must be added to **`STATIC_ASSETS` in `sw.js`** and to the `<script>` list in
+  `index.html`, in load order. v117 added no frontend file (the FCF helpers went into the existing
+  `js/utils.js` and `js/app.js`); `functions/fcf.js` is server-side and needs neither.
 - Tests: `cd test && npm test`. Fast path `npm run test:unit` (~1s). If a suite says
   `Could not spawn java -version`:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
 - **New test files must be added to `test:unit` / `test:functions` by hand.**
-- `gh` is **not** installed. The GitHub REST API with `curl` works; unauthenticated is
-  **60 requests/hour**. A read-only fine-grained PAT (Actions: Read, Contents: Read) lifts
-  it to 5000 and is the only way to read Actions logs or download artifacts.
+- `gh` is **not** installed. The GitHub REST API with `curl` works; unauthenticated is 60/hour.
+- No browser automation (playwright/puppeteer) is installed — DOM behaviour is verified by hand.
 - **Never edit `www/`** — CI-generated mirror for the Capacitor build.
+
+### Reading production without a browser
+
+ADC from firebase-tools' stored refresh token — no service-account key needed.
+`~/.config/configstore/firebase-tools.json` → `additionalAccounts[]` (marna96@gmail.com). Write
+`{type:"authorized_user", client_id, client_secret, refresh_token}` to a scratch file, point
+`GOOGLE_APPLICATION_CREDENTIALS` at it. **Never print the token; delete after.**
+
+- **A scratch script must live inside `functions/`**, or `require("firebase-admin")` cannot
+  resolve.
+- **`teams/{id}` is keyed by CLUB id.** There is no `clubId` field on a team doc — a
+  `where("clubId","==",…)` query returns empty, which reads as "no teams" rather than "wrong
+  query". `teams/nDLJCpJfDvFHs8MnwtzW` *is* Esquerra de l'Eixample.
+- The same refresh token exchanges at `oauth2.googleapis.com/token` for a `cloud-platform` access
+  token, which reaches **Cloud Scheduler** (`…/v1/projects/esquerrapp/locations/us-central1/jobs`
+  — the only way to see a cron's real schedule; `functions:list` only ever says `scheduled`) and
+  **Cloud Functions v2** (`…/v2/…/functions` — a new Cloud Run `revision` is the proof a deploy
+  took, since a container failing its health check leaves the old one serving).
 
 ### Clubs in production
 
-- `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`,
-  `amateur` only. One session, 2026-08-04.
-- `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar"), join code
-  `9CA4RR`, `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`. 3 teams / 77 members. Topped
-  up 2026-08-20: 135 sessions (36 future, to 2026-10-22), 102 matches (30 future), 6873
-  rpe, 6977 availability, 1713 matchAvail, 67 trainingDates. **It goes stale**: `hasData`
-  expires at `STALE_AFTER_DAYS = 10`, so a demo nobody tops up shows ~54 grey dashes ten
-  days after the last run. Re-run the top-up before showing it to anyone.
-- `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona test club. Holds seeded boards from template testing.
+- `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`, `amateur`
+  only. **No matches at all**, so the anada briefing has nothing to find here — test it on the
+  demo club. Its FCF group for 2026-27 is **grupId 58161881** (Quarta Catalana, Grup 10), the
+  group captured in `test/fixtures/fcf-preseason.json`.
+- `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar"), join code `9CA4RR`,
+  `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`. 3 teams / 77 members, 102 matches (72 with
+  events). Topped up 2026-08-20. **It goes stale**: `hasData` expires at `STALE_AFTER_DAYS = 10`.
+- `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona test club. Seeded boards from template testing.
 
 ### ⚠ Never run `seed-demo-club.js --apply` at the demo club
 
-`apply()` builds a club **from nothing**. Pointed at the populated demo club it destroys it
-three ways, silently: it rewrites the whole `categories` map, it **replaces** data shards
-with a bare `set()` — and `fa_users` is routed by category with no team letter, so
-`fa_users__amateur` would lose amateur-B and juvenil-A — and it resets all 77 Auth
-passwords. It is guarded by neither the `demoSeed` stamp nor `PROTECTED_CLUBS`; only
-`--purge` and `--add-team` are.
+`apply()` builds a club from nothing. Pointed at the populated demo club it destroys it three
+ways, silently: it rewrites the whole `categories` map, **replaces** data shards with a bare
+`set()`, and resets all 77 Auth passwords. Guarded by neither the `demoSeed` stamp nor
+`PROTECTED_CLUBS`.
 
 ```bash
 node functions/seed-demo-club.js --verify --club Tm96gel58VSQvxgynf45   # read-only
@@ -584,49 +254,38 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45         # dry ru
 node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additive only
 ```
 
-**Do not run `cleanup-seed.js`** — it keys on pre-Phase-1 numeric uids and would treat much
-of the current demo corpus as garbage.
+**Do not run `cleanup-seed.js`** — it keys on pre-Phase-1 numeric uids.
 
 ---
 
 ## Lessons that keep repeating
 
-- **When one screen disagrees with another, count the definitions before hunting for a
-  render bug.** v111 was four independent answers to one question, three of them ignoring
-  the field that knew.
-- **Two stores means the server probably reads one of them.** v112, v111 and v110 were all
-  this. When a client resolves `a || b` and a Cloud Function reads only `b`, the two will
-  disagree exactly where a human intervened — which is the case that matters most.
-- **"Does X still happen if…" is worth answering by reading the code, not by intuition.**
-  The v112 gaps had been live for months and nothing surfaced them.
-- **A schedule string is not a schedule.** `every 30 minutes` and `*/30 * * * *` look
-  interchangeable and are not — one is an interval from the previous run's *end*. Reading
-  `lastAttemptTime` back off the deployed job is what exposed it.
-- **A band with `<=` on both ends double-fires.** v113's training window was
-  `< 3.5 || > 4.5`, so any session at half past the hour was reminded twice. Half-open
-  intervals, every time.
-- **Ask which default a question carries.** `countedFor` and `attendedFor` read the same
-  two stores and disagree only about silence — before a session it means "expected", after
-  it means "never showed". Getting that backwards sends a push to exactly the wrong people.
-- **A cross-file guard built with a constructed RegExp can silently check nothing.** The
-  first version of the v113 constants guard had `'(\d+)'` collapse to `(d+)` and passed
-  while matching nothing. String slicing, and then *mutate one side to prove it fails*.
-- **A duplicated rule needs a test that reads BOTH copies.** Not one that tests each side's
-  behaviour separately — one that asserts they are equal. Behaviour tests pass happily
-  while the two drift.
-- **When a trigger moves, look for what gates the response.** Pushing at the session's end
-  was useless until the client also offered the form at the session's end.
-- **Two sources of truth need something that can cancel, not just override.** v110's whole
-  bug was a branch that could raise a flag and not lower one.
-- **A field that is `readonly` fires no `change`, and a programmatic `.value =` fires
-  nothing at all.** v109. Any custom picker's own event is the only signal there is.
-- **Prove the old code fails.** Every assertion added this session was run against
-  `git show HEAD` in a throwaway worktree first.
+- **A broken feed and an empty one must not look alike.** The FCF outage went unnoticed for weeks
+  because `applyLeagueRows()` returned early on zero rows, and an empty league table reads as "the
+  season has not started". Every no-data path now renders a reason.
+- **An upstream field can be wrong, not just missing.** `played:"1515"` parses cleanly to a
+  number, passes every type check, and is nonsense. The only way this was caught was recomputing
+  the table from a second endpoint and comparing — the check has to come from outside the thing
+  being checked.
+- **Two leniencies are not one leniency.** `normTeamName` is right for a suggestion a human
+  confirms and wrong for a stored identifier. Ask what the value will be USED for before reusing a
+  comparison that already exists.
+- **One definition, or it drifts.** `mdRowSquad()` exists because a ✓ that promises an id and a
+  save that stores one were computing "which squad is this row" two different ways.
+- **Escaping and validation are different jobs.** `sanitize()` makes a string safe as HTML and
+  says nothing about what the string MEANS.
+- **Test the thing the user will see, not the function you happened to write.**
+- **A guard you have not seen fail is not a guard.** Every guard added this session was checked by
+  mutating the source and watching exactly one test go red.
+- **When layout or a live DOM is involved, ask whether the measurement is even possible.** jsdom
+  has no layout, and this suite has no jsdom at all — say what is not covered instead of writing
+  assertions that pass against a stub.
 - **An empty query result is not evidence of absence** — it is often the wrong query.
-  `where("clubId","==",…)` on `teams` returns nothing because the field does not exist.
-- **Read the data, not the summary.** A tool that reports on its own work will report success.
-- **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push
-  output; read the Cloud Scheduler job, not the deploy log. A CLI reports what it *sent*.
-- **`deploy.ps1` is Windows-only and Cloud Shell is not the local machine.** Pasting
-  `cd c:\DATA\...` + `.\deploy.ps1` into Cloud Shell fails twice over — wrong filesystem,
-  wrong shell. The bash counterpart there is `./deploy.sh`, after a `cd` into the clone.
+- **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push output. This
+  session's version: the deployed proxy was probed with the NEW parameter and returned 400, which
+  is how the deploy order above stopped being a guess.
+- **Ask which default a question carries.** `countedFor` and `attendedFor` read the same two
+  stores and disagree only about silence.
+- **A duplicated rule needs a test that reads BOTH copies**, not one that tests each side's
+  behaviour separately. `js/utils.js` and `functions/fcf.js` are checked against one input table.
+- **`deploy.ps1` is Windows-only and Cloud Shell is not the local machine.**
