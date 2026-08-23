@@ -2,29 +2,44 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-24._
 
-## ⚠ v123 is uncommitted — frontend AND functions
+## ⚠ v124 is uncommitted — FRONTEND ONLY
 
-The last two tabs, built to the shape v118 recorded: **Sancions** and **Golejadors**. Both
-staff-only, no push.
-
-**Deploy functions FIRST** — v123 adds `fcfApi`, the allowlisted proxy both tabs read through, and
-without it every request 404s:
+v123 (`05d18e0`) is committed and deployed, `fcfApi` included, and **both tabs were dead on every
+real screen**: each said "no s'ha pogut carregar". v124 is the fix.
 
 ```
-1. .\deploy.ps1 functions      ← MUST be first
-2. git add -A && git commit && git push
+git add -A && git commit && git push      # that is the whole deploy
 ```
 
-Version triple is at **123**. Rules unchanged.
+Version triple is at **124**. `functions/fcf.js` changed only by DELETING the parsers that moved
+browser-side; the server never called them, so a functions deploy is tidiness, not a requirement.
 
-> ⚠ **The DNI.** Both payloads carry `licencia`, a Spanish DNI/NIE for players who are often
-> minors. It is dropped in `functions/fcf.js` at the parse boundary, and the committed fixtures
-> were SCRUBBED before `git add` — this repo is public and Pages serves it, so a raw capture would
-> have published fifty real identity numbers. A test keeps both true. Do not re-capture a fixture
-> from the live API without stripping `licencia` and `ficha`.
+### ⚠ The two traps in this feature
 
-> ⚠ **Sancions needs the Calendari synced.** The jornada comes from an imported fixture; with no
-> upcoming official fixture the page says so rather than guessing.
+**1. The browser boundary — this is what broke it.** `parseFcfSanctions`, `parseFcfScorers` and
+`bansForJornada` were written in `functions/fcf.js`, which the browser never loads. Every request
+succeeded, the parser threw `ReferenceError`, and the catch reported it as "could not load".
+
+> **Both test suites were green the whole time.** Node's `require` reaches `functions/` perfectly
+> well, and the renderer tests STUB those helpers by name. Green tests, dead feature.
+>
+> The guard added is the general one, not three names: **every plain function call in the tabs
+> block must be declared in the block, somewhere in `js/`, or be a builtin.** Anything those tabs
+> need at runtime goes browser-side.
+
+**2. The DNI.** Both payloads carry `licencia`, a Spanish DNI/NIE for players who are often minors.
+It is dropped at the parse boundary, and the committed fixtures were **scrubbed before `git add`** —
+this repo is public and Pages serves it, so a raw capture would have published fifty real identity
+numbers. Tests keep both true. **Never re-capture a fixture from the live API without stripping
+`licencia` and `ficha`.**
+
+> **Sancions needs the Calendari synced.** The jornada comes from an imported fixture; with none
+> upcoming the page says so rather than guessing.
+
+> **Golejadors: an empty filter means ALL**, and "all" is ~460 groups for one discipline, ~3000
+> across all seven. The page resolves the scope to a concrete group list first, reads up to 40
+> automatically, asks above that, and refuses past 80 divisions — the tree-walk alone is one
+> request per division. `SC_AUTO_GROUPS` / `SC_MAX_DIVISIONS` in js/app.js.
 
 ### v118, for reference — DEPLOYED and verified
 

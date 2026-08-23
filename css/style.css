@@ -4434,3 +4434,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .sc-club{color:var(--text-secondary);}
 .sc-note{margin:.6rem 0 0;font-size:.7rem;color:var(--text-secondary);text-align:right;}
 @media (max-width:640px){ .sanc-split{flex-direction:column;} .sc-f{flex-basis:100%;} }
+.sc-f select[multiple]{height:auto;padding:.3rem;font-size:.78rem;}
+.sc-hint{flex-basis:100%;margin:.25rem 0 0;font-size:.7rem;color:var(--text-secondary);}
+.sc-count{font-size:.75rem;color:var(--text-secondary);margin-bottom:.4rem;}
+.sc-grp{color:var(--text-secondary);font-size:.72rem;}

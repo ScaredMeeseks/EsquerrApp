@@ -23,7 +23,14 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const F = require(path.join(__dirname, '..', 'functions', 'fcf.js'));
+/* js/utils.js, NOT functions/fcf.js. These parsers are called from the
+   browser by the Sancions and Golejadors tabs, and nothing on the server
+   parses either payload. They were written on the wrong side of that
+   boundary first: every request succeeded, the parser threw ReferenceError
+   in the browser, and the catch reported it to the user as "could not
+   load". The suite below passed the whole time, because Node could see what
+   the browser could not. */
+const F = require(path.join(__dirname, '..', 'js', 'utils.js'));
 
 const fixture = (n) => JSON.parse(
     fs.readFileSync(path.join(__dirname, 'fixtures', n), 'utf8'));

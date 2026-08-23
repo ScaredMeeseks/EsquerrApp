@@ -18,7 +18,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
-const F = require(path.join(root, 'functions', 'fcf.js'));
+const F = require(path.join(root, 'js', 'utils.js'));
 
 const SANCIONS = JSON.parse(fs.readFileSync(
     path.join(__dirname, 'fixtures', 'fcf-sancions.json'), 'utf8'));
@@ -89,6 +89,103 @@ const fixture = (o) => Object.assign({
   date: '2099-09-19', time: '18:00', team: 'A', category: 'amateur',
   fcfActaId: '4119501', fcfJornada: 5, opponentTeamId: '33183',
 }, o);
+
+describe('every helper these tabs call exists IN THE BROWSER', () => {
+  /* The bug this exists for: parseFcfSanctions, parseFcfScorers and
+     bansForJornada were written in functions/fcf.js, which the browser never
+     loads. Every request succeeded, the parser threw ReferenceError, and the
+     catch reported it to the user as "could not load the standings".
+
+     Nothing else could have caught it. Node's `require` reaches
+     functions/fcf.js perfectly well, and the renderer tests above STUB these
+     helpers by name — so both suites were green while the feature was dead
+     on every real screen. The only honest check is against the files the
+     browser is actually served. */
+  const BROWSER_SRC = ['utils.js', 'app.js', 'db.js', 'shard.js', 'boards.js',
+    'match-notes.js', 'push.js', 'firebase-config.js']
+      .map((f) => {
+        try {
+          return fs.readFileSync(path.join(root, 'js', f), 'utf8');
+        } catch (e) { return ''; }
+      }).join('\n');
+
+  const tabsBlock = grab(appSrc,
+      '  /* ═══════════════════════════════════════════════════════════\n' +
+      '     Sancions and Top Scorers',
+      '  function renderPlayerHome()');
+
+  it('the FCF helpers are declared in a file the browser loads', () => {
+    ['parseFcfSanctions', 'parseFcfScorers', 'bansForJornada',
+      'banCoversJornada', 'fcfGrupId'].forEach((fn) => {
+      assert.ok(new RegExp('function\\s+' + fn + '\\s*\\(').test(BROWSER_SRC),
+          fn + ' is not defined in any js/ file — the browser cannot see it, ' +
+          'however well it works under require()');
+    });
+  });
+
+  it('and NOT only in functions/, which is never served', () => {
+    const server = fs.readFileSync(path.join(root, 'functions', 'fcf.js'), 'utf8');
+    ['parseFcfSanctions', 'parseFcfScorers'].forEach((fn) => {
+      assert.ok(!new RegExp('function\\s+' + fn + '\\s*\\(').test(server),
+          fn + ' is still in functions/fcf.js as well — one definition, or ' +
+          'the two drift');
+    });
+  });
+
+  it('EVERY function these tabs call is reachable from the browser', () => {
+    /* The general form, and the one that would actually have caught this.
+       Naming the three known helpers is not enough — the next one will be
+       called something else. So: every plain function call in the block must
+       be declared in the block, declared somewhere in js/, or be a language
+       or browser builtin. A call that resolves only under Node's require()
+       fails here.
+
+       Member calls (`x.map(`) are excluded: they resolve against a value,
+       not a global, and this is about globals. */
+    const code = ('/*' + tabsBlock).replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const BUILTIN = new Set(['JSON', 'Date', 'Promise', 'Object', 'String',
+      'Number', 'Array', 'Math', 'parseInt', 'parseFloat', 'isFinite', 'isNaN',
+      'encodeURIComponent', 'decodeURIComponent', 'fetch', 'setTimeout',
+      'clearTimeout', 'requestAnimationFrame', 'console', 'RegExp', 'Set',
+      'Map', 'Boolean', 'Error', 'if', 'for', 'while', 'switch', 'catch', 'return',
+      'function', 'typeof', 'new', 'delete', 'else']);
+    const local = new Set([...code.matchAll(/function\s+(\w+)\s*\(/g)].map((m) => m[1]));
+    const called = new Set([...code.matchAll(/(?<![.\w$])([a-zA-Z_$][\w$]*)\s*\(/g)]
+        .map((m) => m[1])
+        .filter((n) => !BUILTIN.has(n) && !local.has(n)));
+    assert.ok(called.size > 0, 'the block calls nothing at all?');
+    called.forEach((fn) => {
+      assert.ok(new RegExp('function\\s+' + fn + '\\s*\\(').test(BROWSER_SRC),
+          fn + '() is called by the tabs but is declared in no js/ file — it ' +
+          'will throw ReferenceError in the browser however well it resolves ' +
+          'under require()');
+    });
+  });
+
+  it('every FCF helper the tabs call is one of those', () => {
+    /* Catches the NEXT one: any fcf-ish call added to this block has to be
+       declared browser-side, or this fails the moment it is written.
+
+       Comments are stripped first — the block's own header says both tabs
+       "read through fcfApi()", and scanning prose finds a call that is not
+       one. The slice BEGINS inside that header, so there is no opening
+       delimiter for the stripper to match and one has to be prefixed.
+       Functions the block declares itself are excluded the same way. */
+    const code = ('/*' + tabsBlock).replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const local = new Set([...code.matchAll(/function\s+(\w+)\s*\(/g)].map((m) => m[1]));
+    /* `(?<![.\w])` and not `\b`: a word boundary matches after a dot too, so
+       `JSON.parse(` came back as a call to a global named `parse`. */
+    const called = new Set([...code.matchAll(/(?<![.\w])((?:parse|bans|ban|fcf)[A-Za-z]+)\s*\(/g)]
+        .map((m) => m[1]).filter((n) => !local.has(n)));
+    assert.ok(called.size > 0, 'the block calls no FCF helpers at all?');
+    called.forEach((fn) => {
+      assert.ok(new RegExp('function\\s+' + fn + '\\s*\\(').test(BROWSER_SRC),
+          fn + '() is called by the tabs but defined nowhere in js/');
+    });
+  });
+});
 
 describe('renderSancions', () => {
   it('explains itself when the category has no FCF link', () => {
@@ -201,22 +298,67 @@ describe('renderSancions', () => {
 });
 
 describe('renderScorers', () => {
-  it('asks the user to pick before fetching anything', () => {
+  it('offers all four filters, three of them multi-select', () => {
+    /* The owner's ask: every filter takes several values, and leaving one
+       empty means all of it. Season stays single — every competition id is
+       season-specific, so mixing seasons in one table compares different
+       competitions. */
     const R = makeTabs({currentPage: 'scorers'});
     const html = R.renderScorers();
-    assert.ok(html.includes('sc.pick'), html.slice(0, 300));
-    assert.ok(html.includes('data-sc="temporada"'));
-    assert.ok(html.includes('data-sc="grup"'));
+    assert.ok(/data-sc="temporada"(?![^>]*multiple)/.test(html),
+        'season should be single-select');
+    ['disciplina', 'competicio', 'grup'].forEach((f) => {
+      assert.ok(new RegExp('data-sc="' + f + '"[^>]*multiple').test(html),
+          f + ' must accept several values');
+    });
+    assert.ok(html.includes('sc.hint'), 'the empty-means-all rule is unexplained');
   });
 
-  it('disables a level until the one above it is answered', () => {
-    /* Picking a group before a division is meaningless, and an enabled but
-       empty select reads as "there are none". */
+  it('says "all" on a filter with nothing chosen, and a count once it has', () => {
     const R = makeTabs({currentPage: 'scorers'});
+    assert.ok(R.renderScorers().includes('sc.all'));
+    R._scorersState.disciplina = ['19308233', '19308237'];
+    assert.ok(R.renderScorers().includes('(2)'), 'the chosen count is not shown');
+  });
+
+  it('refuses to walk an absurd number of divisions', () => {
+    /* "Every division of every discipline" is ~500 divisions and ~3000
+       groups; the tree-walk alone is one request per division. The page says
+       how wide the selection is instead of trying. */
+    const R = makeTabs({currentPage: 'scorers'});
+    const many = [];
+    for (let i = 0; i < 200; i++) many.push(String(i));
+    R._scorersState.competicio = many;
+    R._scorersState.opts.disciplina = [{value: '1', label: 'F11'}];
+    R._scorersState.opts['comp_1_22'] = [];
     const html = R.renderScorers();
-    const grup = html.slice(html.indexOf('data-sc="competicio"'));
-    assert.ok(/data-sc="competicio"[^>]*disabled/.test(html), 'division not disabled');
-    assert.ok(/data-sc="grup"[^>]*disabled/.test(grup), 'group not disabled');
+    assert.ok(html.includes('sc.too_wide'), html.slice(0, 400));
+  });
+
+  it('asks before reading a large but legitimate selection', () => {
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'F11'}];
+    st.opts['comp_1_22'] = [{value: 'c1', label: 'X'}];
+    const groups = [];
+    for (let i = 0; i < 60; i++) groups.push({value: 'g' + i, label: 'G' + i});
+    st.opts.grup_c1 = groups;
+    const html = R.renderScorers();
+    assert.ok(html.includes('sc.confirm'), 'no confirmation for 60 groups');
+    assert.ok(html.includes('id="sc-go"'), 'no way to proceed');
+    // ...and once confirmed it goes ahead.
+    st.confirmed = true;
+    assert.ok(!R.renderScorers().includes('sc.confirm'));
+  });
+
+  it('reads a small selection without asking', () => {
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'F11'}];
+    st.opts['comp_1_22'] = [{value: 'c1', label: 'X'}];
+    st.opts.grup_c1 = [{value: 'g1', label: 'GRUP 1'}];
+    const html = R.renderScorers();
+    assert.ok(!html.includes('sc.confirm'), 'asked about a single group');
   });
 
   it('renders the table with the official figures', () => {

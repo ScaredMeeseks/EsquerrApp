@@ -167,6 +167,122 @@ function parseFcfClassificacio(json, clubName) {
   });
 }
 
+/** An absolute crest URL from FCF's filename, or ''. */
+function fcfBadgeOf(logo) {
+  const s = String(logo || '');
+  return (!s || s.indexOf('escutbase') !== -1) ? '' : FCF_BADGE_BASE + s;
+}
+
+/* ── Sancions and top scorers ─────────────────────────────────
+ *
+ * These live HERE, in js/utils.js, and not in functions/fcf.js — which is
+ * where they were first written, and where the browser cannot see them. The
+ * two tabs call them directly from js/app.js; nothing on the server parses a
+ * sanction or a scorer at all. Putting them the wrong side of that boundary
+ * cost a release: every request succeeded, the parser threw ReferenceError,
+ * and the catch reported it to the user as "could not load".
+ *
+ * ── Sancions ─────────────────────────────────────────────────
+ *
+ * `/api/competition/sanciones?grupId=&temporada=` returns an object keyed by
+ * jornada. Each row is one ruling.
+ *
+ * ⚠ `licencia` is a Spanish DNI/NIE — "41566132A" — for players who in most
+ * of this app's categories are MINORS. It is dropped HERE, at the parse
+ * boundary, and never reaches a caller: a field that is merely "not
+ * rendered" is one careless console.log or one JSON.stringify away from
+ * being stored, and there is no use for it anywhere in this product.
+ * `codparticipante` is the federation's own opaque id and is kept instead.
+ */
+function parseFcfSanctions(json) {
+  const out = [];
+  Object.keys(json && typeof json === "object" ? json : {}).forEach((jornada) => {
+    const list = Array.isArray(json[jornada]) ? json[jornada] : [];
+    list.forEach((r) => {
+      const isTeam = String(r.tipo || "") === "equipo";
+      const matches = parseInt(r.partidos_sancion, 10) || 0;
+      out.push({
+        jornada: parseInt(r.jornada, 10) || parseInt(jornada, 10) || 0,
+        /* A ruling against the CLUB — a fine, a closed ground, a match
+           ordered to resume. Carried, because a coach wants to see it, but
+           flagged: listing one as a missing player is simply wrong, and the
+           42 of them in a single season's group all have matches === 0. */
+        isTeam: isTeam,
+        player: isTeam ? "" : String(r.participante_nombre || "").trim(),
+        playerId: isTeam ? "" : String(r.codparticipante || ""),
+        teamId: String(r.codequipo || ""),
+        teamName: String(r.nombre_equipo || "").trim(),
+        badge: fcfBadgeOf(r.escudo),
+        matches: matches,
+        reason: String(r.motivo_sancion || "").trim(),
+        article: String(r.articulo_salida || ""),
+      });
+    });
+  });
+  out.sort((a, b) => b.jornada - a.jornada);
+  return out;
+}
+
+/**
+ * Does this ruling keep the player out of jornada `j`?
+ *
+ * A ban handed down at jornada N for P matches covers N+1 … N+P — the round
+ * it was issued in is the one he was sent off in, not one he misses. A team
+ * ruling and a zero-match ruling keep nobody out of anything.
+ */
+function banCoversJornada(row, j) {
+  const target = parseInt(j, 10);
+  if (!row || row.isTeam || !row.matches || !isFinite(target)) return false;
+  return target > row.jornada && target <= row.jornada + row.matches;
+}
+
+/** Every ruling that keeps someone out of jornada `j`, for one team or all. */
+function bansForJornada(rows, jornada, teamId) {
+  const want = String(teamId || "");
+  return (rows || []).filter((r) =>
+    banCoversJornada(r, jornada) && (!want || String(r.teamId) === want));
+}
+
+/* ── Top scorers ──────────────────────────────────────────────
+ *
+ * ⚠ Same DNI, same treatment: `licencia` is dropped here.
+ *
+ * ⚠ `goles` is NOT a goal count. It is the home and away tallies
+ * concatenated as strings, exactly like `played:"1515"` in the standings —
+ * Empuriabrava's five listed scorers sum to 157 for a team that scored 106
+ * all season, and six of eight teams in that group fail the same check. The
+ * OWNER'S DECISION is to publish what the federation publishes, so the raw
+ * value is what comes out of here and `FCF_SCORERS_RAW` is the one line to
+ * flip if the table ever looks wrong in use. `total` is matches played —
+ * FCF's own frontend names it `matchesPlayed`.
+ */
+var FCF_SCORERS_RAW = true;
+
+function parseFcfScorers(json) {
+  const rows = (Array.isArray(json) ? json : []).map((r, i) => ({
+    rank: i + 1,
+    player: String(r.nombre_jugador || "").trim(),
+    playerId: String(r.codjugador || ""),
+    teamId: String(r.codequipo || ""),
+    teamName: String(r.nombre_equipo || "").trim(),
+    badge: fcfBadgeOf(r.escudo),
+    goals: FCF_SCORERS_RAW ? (parseInt(r.goles, 10) || 0) : splitFcfTally(r.goles),
+    penalties: FCF_SCORERS_RAW ?
+      (parseInt(r.penalti, 10) || 0) : splitFcfTally(r.penalti),
+    played: parseInt(r.total, 10) || 0,
+  }));
+  return rows;
+}
+
+/** The home|away split, for the day the raw figure is abandoned. */
+function splitFcfTally(v) {
+  const s = String(v == null ? "" : v);
+  if (!/^\d+$/.test(s)) return 0;
+  if (s.length === 1) return parseInt(s, 10);
+  return Math.min(...Array.from({length: s.length - 1}, (_, i) =>
+    parseInt(s.slice(0, i + 1), 10) + parseInt(s.slice(i + 1), 10)));
+}
+
 /* ---------- Match legs (anada / tornada) ----------
 
    Nothing on a match row says "this is the return fixture": there is no
@@ -936,6 +1052,13 @@ if (typeof module !== 'undefined' && module.exports) {
     FCF_BADGE_BASE,
     // The rival's kit. fcfShirtFill is where FCF's pattern vocabulary meets
     // the app's fill encoding, and the only place that mapping exists.
+    fcfBadgeOf,
+    parseFcfSanctions,
+    banCoversJornada,
+    bansForJornada,
+    parseFcfScorers,
+    splitFcfTally,
+    FCF_SCORERS_RAW,
     fcfShirtFill,
     fcfShirtPattern,
     fcfKitPieces,

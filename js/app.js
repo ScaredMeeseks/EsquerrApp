@@ -207,6 +207,13 @@
     'sc.division':        { ca:'Categoria', es:'Categoría', en:'Division' },
     'sc.group':           { ca:'Grup', es:'Grupo', en:'Group' },
     'sc.any':             { ca:'— Tria —', es:'— Elige —', en:'— Pick —' },
+    'sc.all':             { ca:'totes', es:'todas', en:'all' },
+    'sc.hint':            { ca:'Pots triar-ne més d\'una a cada filtre. Si no en tries cap, s\'hi inclouen totes.', es:'Puedes elegir más de una en cada filtro. Si no eliges ninguna, se incluyen todas.', en:'Pick as many as you like in each filter. Choose none and they are all included.' },
+    'sc.confirm':         { ca:'Aquesta selecció són {n} grups. Llegir-los tots pot trigar una estona.', es:'Esta selección son {n} grupos. Leerlos todos puede tardar un rato.', en:'This selection is {n} groups. Reading them all may take a while.' },
+    'sc.load_anyway':     { ca:'Carregar igualment', es:'Cargar igualmente', en:'Load anyway' },
+    'sc.too_wide':        { ca:'{n} categories seleccionades: massa per recórrer-les. Tria una modalitat o unes quantes categories.', es:'{n} categorías seleccionadas: demasiadas para recorrerlas. Elige una modalidad o unas cuantas categorías.', en:'{n} divisions selected — too many to scan. Narrow it to a discipline, or a few divisions.' },
+    'sc.reading':         { ca:'Llegint grups… {n} de {total}', es:'Leyendo grupos… {n} de {total}', en:'Reading groups… {n} of {total}' },
+    'sc.count':           { ca:'{n} jugadors', es:'{n} jugadores', en:'{n} players' },
     'sc.pick':            { ca:'Tria una modalitat, una categoria i un grup per veure\'n els golejadors.', es:'Elige una modalidad, una categoría y un grupo para ver sus goleadores.', en:'Pick a discipline, a division and a group to see its scorers.' },
     'sc.none':            { ca:'La FCF encara no ha publicat golejadors d\'aquest grup.', es:'La FCF aún no ha publicado goleadores de este grupo.', en:'The FCF has not published scorers for this group yet.' },
     'sc.player':          { ca:'Jugador', es:'Jugador', en:'Player' },
@@ -1453,7 +1460,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 123;
+  const APP_VERSION = 124;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -5303,95 +5310,222 @@
 
   // ── Top Scorers ─────────────────────────────────────────────
   /* A scouting tool, so it deliberately does NOT follow the category bar:
-     the point is to look at divisions this club does not play in. The
-     filters walk the federation's own competition tree, one group at a time,
-     which keeps it to a single request per view. */
+     the point is to look at divisions this club does not play in.
+
+     Discipline, division and group are all MULTI-select, and leaving one
+     empty means ALL of it. That is what makes it a scouting tool rather than
+     a league table — but "all" is not free, and the numbers decide the
+     design rather than the other way round:
+
+       Futbol 11, one season          74 divisions, ~460 groups
+       every discipline               ~3000 groups
+
+     Each group is one request. So the page RESOLVES the selection into a
+     concrete list of groups first, shows how many it is, and only reads them
+     when the scope is small — or when the user says so explicitly. Silently
+     firing four hundred requests at the federation because a filter was left
+     blank is not a feature. */
+  var SC_AUTO_GROUPS = 40;      // read without asking
+  var SC_MAX_DIVISIONS = 80;    // never walk more divisions than this
+  var SC_CONCURRENCY = 5;
+
   var _scorersState = {
-    temporada: '', disciplina: '', competicio: '', grup: '',
-    sortBy: 'rank', sortDir: 1,
+    temporada: '', disciplina: [], competicio: [], grup: [],
+    sortBy: 'goals', sortDir: -1,
     opts: {}, rows: null, loading: false, err: '', key: '',
-    _compKey: '', _grupKey: ''
+    scope: null, confirmed: false, progress: 0
   };
 
-  function scorersLoad(what, params, onto) {
-    if (_scorersState.opts[onto] || _scorersState['loading_' + onto]) return;
-    _scorersState['loading_' + onto] = true;
+  /* One level of the tree, cached by its own query. Returns null while in
+     flight, so the caller can tell "not yet" from "none". */
+  function scTree(what, params, key) {
+    var st = _scorersState;
+    st.opts = st.opts || {};
+    if (st.opts[key] !== undefined) return st.opts[key];
+    if (st['busy_' + key]) return null;
+    st['busy_' + key] = true;
     fcfApiGet(what, params).then(function (list) {
-      _scorersState.opts[onto] = Array.isArray(list) ? list : [];
+      st.opts[key] = Array.isArray(list) ? list : [];
     }).catch(function () {
-      _scorersState.opts[onto] = [];
+      st.opts[key] = [];
     }).then(function () {
-      _scorersState['loading_' + onto] = false;
+      st['busy_' + key] = false;
+      if (currentPage === 'scorers') renderPage(getSession());
+    });
+    return null;
+  }
+
+  /** The chosen values, or every value there is when nothing is chosen. */
+  function scChosen(sel, all) {
+    if (sel && sel.length) return sel.slice();
+    return (all || []).map(function (o) { return String(o.value); });
+  }
+
+  /**
+   * What the current filters actually resolve to.
+   *
+   * → {groups:[{value,label}], divisions:n, waiting:bool, tooWide:bool}
+   *
+   * `waiting` means a level of the tree is still loading, so the answer is
+   * not final yet. `tooWide` means the selection spans more divisions than
+   * this will walk at all — the tree-walk itself is one request per division,
+   * so "every division of every discipline" is expensive before a single
+   * scorer has been read.
+   */
+  function scResolve() {
+    var st = _scorersState;
+    var disciplines = scTree('disciplines', {}, 'disciplina');
+    if (!disciplines) return {groups: [], divisions: 0, waiting: true};
+    var discIds = scChosen(st.disciplina, disciplines);
+
+    var divisions = [];
+    var waiting = false;
+    discIds.forEach(function (d) {
+      var key = 'comp_' + d + '_' + st.temporada;
+      var list = scTree('competicions',
+          {disciplinaId: d, temporada: st.temporada}, key);
+      if (!list) { waiting = true; return; }
+      divisions = divisions.concat(list);
+    });
+    if (waiting) return {groups: [], divisions: 0, waiting: true};
+
+    var divIds = scChosen(st.competicio, divisions);
+    if (divIds.length > SC_MAX_DIVISIONS) {
+      return {groups: [], divisions: divIds.length, waiting: false, tooWide: true};
+    }
+
+    var groups = [];
+    divIds.forEach(function (c) {
+      var list = scTree('grupos', {competicioId: c}, 'grup_' + c);
+      if (!list) { waiting = true; return; }
+      groups = groups.concat(list);
+    });
+    if (waiting) return {groups: [], divisions: divIds.length, waiting: true};
+
+    var grupIds = scChosen(st.grup, groups);
+    var byId = {};
+    groups.forEach(function (g) { byId[String(g.value)] = g; });
+    return {
+      groups: grupIds.map(function (g) { return byId[g] || {value: g, label: g}; }),
+      divisions: divIds.length,
+      waiting: false
+    };
+  }
+
+  /* Read the scorers of every resolved group, a few at a time, and merge.
+     Limited concurrency because this can legitimately be forty requests and
+     firing them all at once is how a browser and a federation both suffer. */
+  function scFetchGroups(groups) {
+    var st = _scorersState;
+    st.loading = true;
+    st.err = '';
+    st.progress = 0;
+    var out = [];
+    var i = 0;
+    function next() {
+      if (i >= groups.length) return Promise.resolve();
+      var g = groups[i++];
+      return fcfApiGet('goleadores', {grupId: g.value, temporada: st.temporada})
+          .then(function (j) {
+            parseFcfScorers(j).forEach(function (r) {
+              r.groupLabel = g.label;
+              out.push(r);
+            });
+          })
+          .catch(function () { /* one bad group must not lose the rest */ })
+          .then(function () {
+            st.progress++;
+            if (currentPage === 'scorers') renderPage(getSession());
+            return next();
+          });
+    }
+    var lanes = [];
+    for (var k = 0; k < Math.min(SC_CONCURRENCY, groups.length); k++) lanes.push(next());
+    return Promise.all(lanes).then(function () {
+      /* Re-ranked across everything that was read, because a rank of 1 in
+         each of forty groups is forty number ones. */
+      out.sort(function (a, b) { return b.goals - a.goals; });
+      out.forEach(function (r, n) { r.rank = n + 1; });
+      st.rows = out;
+      st.loading = false;
       if (currentPage === 'scorers') renderPage(getSession());
     });
   }
 
-  function scorersSelect(id, label, opts, value, disabled) {
-    return '<label class="sc-f"><span>' + sanitize(label) + '</span>' +
-      '<select class="reg-input sc-filter" data-sc="' + id + '"' +
-        (disabled ? ' disabled' : '') + '>' +
-      '<option value="">' + sanitize(t('sc.any')) + '</option>' +
+  function scorersMultiSelect(id, label, opts, chosen) {
+    var sel = chosen || [];
+    return '<label class="sc-f"><span>' + sanitize(label) +
+      (sel.length ? ' (' + sel.length + ')' : ' · ' + sanitize(t('sc.all'))) + '</span>' +
+      '<select class="reg-input sc-filter" data-sc="' + id + '" multiple size="4">' +
       (opts || []).map(function (o) {
         return '<option value="' + sanitize(o.value) + '"' +
-          (String(o.value) === String(value) ? ' selected' : '') + '>' +
+          (sel.indexOf(String(o.value)) !== -1 ? ' selected' : '') + '>' +
           sanitize(o.label) + '</option>';
       }).join('') + '</select></label>';
   }
 
   function renderScorers() {
     var st = _scorersState;
-    // The tree: season → discipline → competition → group. Each level is
-    // only fetched once the one above it has an answer.
-    scorersLoad('temporadas', {}, 'temporada');
-    scorersLoad('disciplines', {}, 'disciplina');
-    if (!st.temporada) st.temporada = fcfSeasonId();
-    var compKey = st.disciplina + '|' + st.temporada;
-    if (st.disciplina && st._compKey !== compKey) {
-      st._compKey = compKey;
-      delete st.opts.competicio;
-      delete st.opts.grup;
-      scorersLoad('competicions',
-          {disciplinaId: st.disciplina, temporada: st.temporada}, 'competicio');
-    }
-    if (st.competicio && st._grupKey !== st.competicio) {
-      st._grupKey = st.competicio;
-      delete st.opts.grup;
-      scorersLoad('grupos', {competicioId: st.competicio}, 'grup');
-    }
+    var seasons = scTree('temporadas', {}, 'temporada');
+    if (!st.temporada) st.temporada = fcfSeasonId() || '';
 
-    var key = st.grup + '|' + st.temporada;
-    if (st.grup && st.key !== key) {
-      st.key = key;
-      st.rows = null;
-      st.err = '';
-      st.loading = true;
-      fcfApiGet('goleadores', {grupId: st.grup, temporada: st.temporada})
-          .then(function (j) { st.rows = parseFcfScorers(j); })
-          .catch(function () { st.err = t('fcf.unavailable'); })
-          .then(function () {
-            st.loading = false;
-            if (currentPage === 'scorers') renderPage(getSession());
-          });
-    }
+    var scope = scResolve();
+    var disciplines = st.opts.disciplina || [];
+    /* The division and group pickers list what the levels ABOVE resolve to,
+       so they narrow as the user chooses rather than offering the whole
+       federation at every level. */
+    var divisions = [];
+    scChosen(st.disciplina, disciplines).forEach(function (d) {
+      var l = st.opts['comp_' + d + '_' + st.temporada];
+      if (l) divisions = divisions.concat(l);
+    });
+    var groups = [];
+    scChosen(st.competicio, divisions).slice(0, SC_MAX_DIVISIONS).forEach(function (c) {
+      var l = st.opts['grup_' + c];
+      if (l) groups = groups.concat(l);
+    });
 
     var filters = '<div class="card sc-filters">' +
-      scorersSelect('temporada', t('sc.season'), st.opts.temporada, st.temporada) +
-      scorersSelect('disciplina', t('sc.discipline'), st.opts.disciplina, st.disciplina) +
-      scorersSelect('competicio', t('sc.division'), st.opts.competicio, st.competicio, !st.disciplina) +
-      scorersSelect('grup', t('sc.group'), st.opts.grup, st.grup, !st.competicio) +
+      '<label class="sc-f"><span>' + sanitize(t('sc.season')) + '</span>' +
+      '<select class="reg-input sc-filter" data-sc="temporada">' +
+      (seasons || []).map(function (o) {
+        return '<option value="' + sanitize(o.value) + '"' +
+          (String(o.value) === String(st.temporada) ? ' selected' : '') + '>' +
+          sanitize(o.label) + '</option>';
+      }).join('') + '</select></label>' +
+      scorersMultiSelect('disciplina', t('sc.discipline'), disciplines, st.disciplina) +
+      scorersMultiSelect('competicio', t('sc.division'), divisions, st.competicio) +
+      scorersMultiSelect('grup', t('sc.group'), groups, st.grup) +
+      '<p class="sc-hint">' + sanitize(t('sc.hint')) + '</p>' +
       '</div>';
 
     var body;
-    if (!st.grup) {
-      body = '<div class="card fcf-empty">' + sanitize(t('sc.pick')) + '</div>';
-    } else if (st.loading) {
+    if (scope.tooWide) {
+      body = '<div class="card fcf-empty">' +
+        sanitize(t('sc.too_wide').replace('{n}', scope.divisions)) + '</div>';
+    } else if (scope.waiting) {
       body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
+    } else if (st.loading) {
+      body = '<div class="card fcf-empty">' +
+        sanitize(t('sc.reading').replace('{n}', st.progress)
+            .replace('{total}', (st.scope || []).length)) + '</div>';
     } else if (st.err) {
       body = '<div class="card fcf-empty">' + sanitize(st.err) + '</div>';
-    } else if (!(st.rows || []).length) {
-      body = '<div class="card fcf-empty">' + sanitize(t('sc.none')) + '</div>';
-    } else {
+    } else if (st.rows) {
       body = scorersTableHtml(st.rows);
+    } else if (!scope.groups.length) {
+      body = '<div class="card fcf-empty">' + sanitize(t('sc.none')) + '</div>';
+    } else if (scope.groups.length > SC_AUTO_GROUPS && !st.confirmed) {
+      /* Big, but legitimate. Say the number and let the user decide, rather
+         than either refusing or quietly making four hundred requests. */
+      body = '<div class="card fcf-empty">' +
+        sanitize(t('sc.confirm').replace('{n}', scope.groups.length)) +
+        '<br><button class="btn btn-primary btn-small" id="sc-go">' +
+        sanitize(t('sc.load_anyway')) + '</button></div>';
+    } else {
+      st.scope = scope.groups;
+      scFetchGroups(scope.groups);
+      body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
     }
     return '<h2 class="page-title">' + t('page.scorers') + '</h2>' + filters + body;
   }
@@ -5400,19 +5534,23 @@
     var by = _scorersState.sortBy;
     var dir = _scorersState.sortDir;
     return rows.slice().sort(function (a, b) {
-      if (by === 'player' || by === 'teamName') {
-        return dir * String(a[by]).localeCompare(String(b[by]));
+      if (by === 'player' || by === 'teamName' || by === 'groupLabel') {
+        return dir * String(a[by] || '').localeCompare(String(b[by] || ''));
       }
       return dir * ((a[by] || 0) - (b[by] || 0));
     });
   }
 
   function scorersTableHtml(rows) {
+    var many = rows.some(function (r) { return r.groupLabel; }) &&
+      new Set(rows.map(function (r) { return r.groupLabel; })).size > 1;
     var cols = [
-      ['rank', '#'], ['player', t('sc.player')], ['teamName', t('sc.club')],
-      ['goals', t('sc.goals')], ['penalties', t('sc.pens')],
-      ['played', t('sc.played')]
+      ['rank', '#'], ['player', t('sc.player')], ['teamName', t('sc.club')]
     ];
+    // The group column only earns its width when more than one was read.
+    if (many) cols.push(['groupLabel', t('sc.group')]);
+    cols = cols.concat([['goals', t('sc.goals')], ['penalties', t('sc.pens')],
+      ['played', t('sc.played')]]);
     var head = '<thead><tr>' + cols.map(function (c) {
       var on = _scorersState.sortBy === c[0];
       return '<th class="sc-th' + (on ? ' sc-on' : '') + '" data-sc-sort="' + c[0] + '">' +
@@ -5424,10 +5562,13 @@
       return '<tr><td class="sc-rank">' + r.rank + '</td>' +
         '<td class="sc-player">' + sanitize(r.player) + '</td>' +
         '<td class="sc-club">' + badge + sanitize(r.teamName) + '</td>' +
+        (many ? '<td class="sc-grp">' + sanitize(r.groupLabel || '') + '</td>' : '') +
         '<td><strong>' + r.goals + '</strong></td>' +
         '<td>' + r.penalties + '</td><td>' + r.played + '</td></tr>';
     }).join('');
-    return '<div class="card"><div class="table-wrap">' +
+    return '<div class="card"><div class="sc-count">' +
+      sanitize(t('sc.count').replace('{n}', rows.length)) + '</div>' +
+      '<div class="table-wrap">' +
       '<table class="sanc-tbl sc-tbl">' + head + '<tbody>' + body + '</tbody></table></div>' +
       '<p class="sc-note">' + sanitize(t('sc.note')) + '</p></div>';
   }
@@ -5443,20 +5584,33 @@
     document.querySelectorAll('.sc-filter').forEach(function (sel) {
       sel.addEventListener('change', function () {
         var f = sel.dataset.sc;
-        _scorersState[f] = sel.value;
-        // Anything below the level that changed is no longer valid.
+        if (sel.multiple) {
+          _scorersState[f] = Array.prototype.filter
+              .call(sel.options, function (o) { return o.selected; })
+              .map(function (o) { return o.value; });
+        } else {
+          _scorersState[f] = sel.value;
+        }
+        /* Anything BELOW the level that changed is no longer a valid choice.
+           The cached tree above it is kept — re-picking a division should not
+           re-download the list of disciplines. */
         var order = ['temporada', 'disciplina', 'competicio', 'grup'];
         order.slice(order.indexOf(f) + 1).forEach(function (k) {
-          _scorersState[k] = '';
-          delete _scorersState.opts[k];
+          _scorersState[k] = [];
         });
-        _scorersState._compKey = '';
-        _scorersState._grupKey = '';
-        _scorersState.key = '';
         _scorersState.rows = null;
+        _scorersState.confirmed = false;
+        _scorersState.err = '';
         renderPage(getSession());
       });
     });
+    var scGo = document.getElementById('sc-go');
+    if (scGo) {
+      scGo.addEventListener('click', function () {
+        _scorersState.confirmed = true;
+        renderPage(getSession());
+      });
+    }
     document.querySelectorAll('[data-sc-sort]').forEach(function (th) {
       th.addEventListener('click', function () {
         var by = th.dataset.scSort;

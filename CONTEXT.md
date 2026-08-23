@@ -3483,3 +3483,52 @@ a played fixture as "next", and sorting names numerically.
 > substring — and these renderers emit their own `<img … onerror>` for a crest that fails to load.
 > The check is for an unescaped TAG, with the legitimate crests stripped by their exact markup
 > first.
+
+#### v123 fix — the parsers were on the wrong side of the browser boundary
+
+Shipped, and both tabs said "no s'ha pogut carregar". Not the proxy: the deployed `fcfApi`
+returned 200 and full payloads for every endpoint when curled directly, and the four dropdowns
+populated from it fine.
+
+**`parseFcfSanctions`, `parseFcfScorers` and `bansForJornada` were written in
+`functions/fcf.js`, which the browser never loads.** Every request succeeded, the parser threw
+`ReferenceError`, and the `.catch` reported it to the user as "could not load". They are now in
+`js/utils.js` — a MOVE, not a copy: nothing on the server parses either payload.
+
+> ⚠ **Both test suites were green the entire time.** Node's `require` reaches `functions/fcf.js`
+> perfectly well, and the renderer tests STUB those helpers by name. Green tests, dead feature, on
+> every real screen.
+>
+> The new guard is the general one, not three names: **every plain function call in the tabs block
+> must be declared in the block, declared somewhere in `js/`, or be a builtin.** Verified by
+> mutation — swapping `parseFcfScorers` for `mergeFcfFixtures` (which exists only server-side)
+> fails it by name. Two false positives had to be fixed on the way: the block *starts* inside its
+> own header comment, so the comment stripper had no opening delimiter to match, and `\b` matches
+> after a dot, so `JSON.parse(` looked like a call to a global named `parse`.
+
+#### Filters, as the owner asked
+
+Discipline, division and group are now **multi-select, and empty means all**. Season stays single:
+every competition id is season-specific, so mixing seasons in one table compares different
+competitions.
+
+"All" is not free, and the numbers shaped the design rather than the other way round:
+
+```
+Futbol 11, one season     74 divisions, ~460 groups
+every discipline          ~3000 groups         (one request each)
+```
+
+So the page **resolves the selection into a concrete list of groups first**, then decides:
+
+- up to **40 groups** — read straight away;
+- more — say how many and offer a button, rather than refusing or quietly firing 400 requests;
+- more than **80 divisions** — refuse to walk at all and say so, because the tree-walk alone is
+  one request per division.
+
+Reads run five at a time with a progress count, one bad group cannot lose the rest, and results
+are **re-ranked across everything read** — a rank of 1 in each of forty groups is forty number
+ones. A `GRUP` column appears only when more than one was read.
+
+Verified live: six groups of Tercera Catalana merged to 300 players, correctly ordered, no DNI
+anywhere in the result.
