@@ -2,27 +2,26 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-23._
 
-## ⚠ A v119 HOTFIX is uncommitted — functions only, no version bump
+## ⚠ v120 is uncommitted — FRONTEND ONLY
 
-v119 is deployed (`72c642c`, functions on revision `-00002`) but its second kit column was still
-empty in the app. **Not the deploy** — a read of production showed all 30 fixtures with
-`opponentKit` and zero with `opponentKitAway`.
+The v119 hotfix is already committed as `94de843`; check whether it has been **deployed**
+(`.\deploy.ps1 functions`) before assuming the second kit column is broken again. Without it,
+`opponentKitAway` is never written, because `_syncFcfSquad` skips the Firestore write when the
+sync summary is all zeros and attaching a kit did not move any of date/time/location/mapLink.
+`summary` is a CONTRACT with that caller — the merge was right and the caller discarded it.
 
-`_syncFcfSquad` skips the Firestore write when the summary is all zeros, so `summary` is a
-CONTRACT — and `summary.updated` was set only inside the `FCF_OWNED` loop. Attaching a kit moves
-none of date/time/location/mapLink, so every sync said "nothing changed" and the write was
-skipped. The merge was right; the caller discarded it.
-
-Fixed in `functions/fcf.js`: `summary.updated` now counts any difference between the row in and
-the row out. **`functions/fcf.js` and `test/fcf-fixtures.test.js` are the only changed files.**
+**v120 is the shirts themselves.** The rival's kit is now drawn to the federation's own
+description — "3 rayas horizontales", "Franja lateral izquierda", "Mangas colores" — instead of
+being forced through `parseFill`, which knows only solid and evenly spaced stripes and so rendered
+five of the eleven forms as the wrong shirt.
 
 ```
-.\deploy.ps1 functions     # that is the whole deploy
+git add -A && git commit && git push      # that is the whole deploy
 ```
 
-No frontend change, so **no version bump** — the triple stays at 119 and nothing needs pushing for
-the fix itself (commit it anyway). Then press 🔄 in the Calendari once: the sync will report 30
-updates and the 2a column fills in.
+No functions change in v120, so nothing needs redeploying for it. Version triple is at **120**.
+If the 2a column is still empty after this, the missing step is the FUNCTIONS deploy of `94de843`,
+then one press of 🔄 (which should report **30 updated**).
 
 ### v118, for reference — DEPLOYED and verified
 

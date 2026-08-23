@@ -200,20 +200,52 @@ describe('fcfShirtFill / fcfKitPieces — the rival\'s shirt', () => {
     });
   });
 
-  it('stripes the six patterns that have a fill, solid for the rest', () => {
-    const striped = ['faf-barres', 'faf-barres2', 'faf-barres3',
-      'faf-fineshoritzontals', 'faf-horitzontals3'];
-    striped.forEach((p) => {
-      const f = U.parseFill(U.fcfShirtFill('shirt faf ' + p, '#FF0000', '#0000FF'));
-      assert.strictEqual(f.striped, true, p + ' should stripe');
-      assert.strictEqual(f.c1, '#FF0000');
-      assert.strictEqual(f.c2, '#0000FF');
+  it('decodes every class to what the description SAYS it is', () => {
+    /* FCF ships the plain-language name alongside the class, so the mapping
+       is checkable rather than a guess. Getting this wrong draws a picture
+       of a different shirt — "3 rayas horizontales" as generic stripes is
+       not the same kit. */
+    const WANT = {
+      'faf-base': 'plain',                     // Lisa
+      'faf-barres': 'stripes',                 // Rayas
+      'faf-barres2': 'wide-stripes',           // Rayas anchas
+      'faf-barres3': 'wide-stripes',           // Rayas anchas
+      'faf-fineshoritzontals': 'fine-hoops',   // Rayas finas horizontales
+      'faf-horitzontals3': 'hoops3',           // 3 rayas horizontales
+      'faf-franjahoritzontal': 'band-top',     // Franja horizontal arriba
+      'faf-lateralesquerra': 'band-left',      // Franja lateral izquierda
+      'faf-lateraldreta': 'band-right',        // Franja lateral derecha
+      'faf-obliquesinverted': 'diagonal',      // Rayas oblicuas invertidas
+      'faf-sinmangas': 'sleeves',              // Mangas colores
+    };
+    Object.keys(WANT).forEach((cls) => {
+      assert.strictEqual(U.fcfShirtPattern('shirt faf ' + cls), WANT[cls], cls);
     });
-    // Diagonals and side bands have no fill form and say so by going solid.
-    ['faf-obliquesinverted', 'faf-lateraldreta', 'faf-lateralesquerra',
-      'faf-franjahoritzontal', 'faf-sinmangas', 'faf-base'].forEach((p) => {
+    // Every class in the REAL payload is accounted for.
+    const seen = new Set(EQUIPACIONS.map((k) => k.CLASE_CSS_CAMISETA));
+    assert.strictEqual(seen.size, Object.keys(WANT).length);
+    seen.forEach((p) => {
+      const cls = p.split(/\s+/).filter((c) => c.indexOf('faf-') === 0)[0];
+      assert.ok(WANT[cls], 'undecoded class in the payload: ' + p);
+    });
+  });
+
+  it('only the three stripe forms become a parseFill fill', () => {
+    /* The other five are bands, diagonals and coloured sleeves — shapes the
+       encoding cannot describe at all. They stay solid HERE and are drawn by
+       fcfShirtSvg instead; a fill that pretended otherwise would be the
+       wrong shirt with no way to tell. */
+    ['faf-barres', 'faf-barres2', 'faf-barres3', 'faf-fineshoritzontals']
+        .forEach((p) => {
+          const f = U.parseFill(U.fcfShirtFill('shirt faf ' + p, '#FF0000', '#0000FF'));
+          assert.strictEqual(f.striped, true, p + ' should stripe');
+          assert.strictEqual(f.c1, '#FF0000');
+          assert.strictEqual(f.c2, '#0000FF');
+        });
+    ['faf-base', 'faf-horitzontals3', 'faf-obliquesinverted', 'faf-lateraldreta',
+      'faf-lateralesquerra', 'faf-franjahoritzontal', 'faf-sinmangas'].forEach((p) => {
       const f = U.parseFill(U.fcfShirtFill('shirt faf ' + p, '#FF0000', '#0000FF'));
-      assert.strictEqual(f.striped, false, p + ' should be solid');
+      assert.strictEqual(f.striped, false, p + ' must not become a stripe fill');
       assert.strictEqual(f.c1, '#FF0000');
     });
   });
@@ -236,10 +268,34 @@ describe('fcfShirtFill / fcfKitPieces — the rival\'s shirt', () => {
     /* STRIPE_MAX has been raised before; a mapping above it renders SOLID
        and the stripes just vanish, which is exactly the trap the constant's
        own comment warns about. */
-    Object.keys(U.FCF_SHIRT_PATTERNS).forEach((p) => {
-      const f = U.parseFill(U.fcfShirtFill('faf ' + p, '#FF0000', '#0000FF'));
-      assert.strictEqual(f.striped, true, p + ' exceeded STRIPE_MAX');
+    Object.keys(U.FCF_SHIRT_PATTERNS).forEach((cls) => {
+      const kind = U.FCF_SHIRT_PATTERNS[cls];
+      if (!['stripes', 'wide-stripes', 'fine-hoops'].includes(kind)) return;
+      const f = U.parseFill(U.fcfShirtFill('faf ' + cls, '#FF0000', '#0000FF'));
+      assert.strictEqual(f.striped, true, cls + ' exceeded STRIPE_MAX');
     });
+  });
+
+  it('fcfKitPieces carries the pattern AND the two colours', () => {
+    // fcfShirtSvg needs all three to draw a band or a diagonal.
+    const kits = F.parseFcfKits(EQUIPACIONS);
+    const id = Object.keys(kits)[0];
+    const p = U.fcfKitPieces(kits[id].home);
+    assert.ok(p.pattern, 'no pattern carried');
+    assert.ok(/^#/.test(p.c1) && /^#/.test(p.c2));
+  });
+
+  it('two identical colours are a PLAIN shirt, whatever the class says', () => {
+    // #FFFFFF/#FFFFFF with a stripe class is all over the real payload.
+    const p = U.fcfKitPieces({shirt1: '#FFFFFF', shirt2: '#ffffff',
+      pattern: 'shirt faf faf-barres'});
+    assert.strictEqual(p.pattern, 'plain');
+  });
+
+  it('an unknown future class decodes to plain, not to undefined', () => {
+    assert.strictEqual(U.fcfShirtPattern('shirt faf faf-brandnew'), 'plain');
+    assert.strictEqual(U.fcfShirtPattern(''), 'plain');
+    assert.strictEqual(U.fcfShirtPattern(null), 'plain');
   });
 
   it('turns a stored kit into the three pieces the renderers take', () => {

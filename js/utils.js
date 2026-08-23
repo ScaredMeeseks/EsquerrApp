@@ -463,12 +463,47 @@ function encodeFill(on, dir, n, c1, c2) {
    The mapping lives here, next to encodeFill, rather than server-side: the
    sync stores FCF's raw fields, because reaching encodeFill from functions/
    would mean a THIRD duplicated function across that boundary. */
+/* FCF's own class name → what the shirt actually LOOKS like.
+
+   The payload also carries `NOMBRE_CAMISETA`, a plain-language description
+   in Spanish — "3 rayas horizontales", "Franja lateral izquierda", "Mangas
+   colores" — and the class is that description in machine-readable form.
+   Following it is the whole point: a shirt drawn as generic stripes when the
+   federation says "one band across the top" is a picture of a different
+   shirt.
+
+   The five band/diagonal/sleeve forms have NO representation in parseFill —
+   that encoding knows only solid and evenly-spaced stripes — so they are
+   drawn directly by fcfShirtSvg() in js/app.js. This table is the single
+   place the vocabulary is decoded, and it is pure so it can be tested
+   against the real payload. */
 var FCF_SHIRT_PATTERNS = {
-  'faf-barres': ['v', 6],              // Rayas — vertical stripes
-  'faf-barres2': ['v', 4],             // Rayas anchas
-  'faf-barres3': ['v', 4],             // Rayas anchas, the other spelling
-  'faf-fineshoritzontals': ['h', 8],   // Rayas finas horizontales
-  'faf-horitzontals3': ['h', 3]        // 3 rayas horizontales
+  'faf-base': 'plain',                     // Lisa
+  'faf-barres': 'stripes',                 // Rayas
+  'faf-barres2': 'wide-stripes',           // Rayas anchas
+  'faf-barres3': 'wide-stripes',           // Rayas anchas, the other spelling
+  'faf-fineshoritzontals': 'fine-hoops',   // Rayas finas horizontales
+  'faf-horitzontals3': 'hoops3',           // 3 rayas horizontales
+  'faf-franjahoritzontal': 'band-top',     // Franja horizontal arriba
+  'faf-lateralesquerra': 'band-left',      // Franja lateral izquierda
+  'faf-lateraldreta': 'band-right',        // Franja lateral derecha
+  'faf-obliquesinverted': 'diagonal',      // Rayas oblicuas invertidas
+  'faf-sinmangas': 'sleeves'               // Mangas colores
+};
+
+/** FCF's `CLASE_CSS_CAMISETA` → one of the keys above, or 'plain'. */
+function fcfShirtPattern(pattern) {
+  const key = String(pattern || '').split(/\s+/)
+      .filter(function (c) { return c.indexOf('faf-') === 0; })[0] || '';
+  return FCF_SHIRT_PATTERNS[key] || 'plain';
+}
+
+/* The three patterns parseFill CAN express, so they keep the pixel-aligned
+   stripe machinery rather than being redrawn by hand. */
+var FCF_FILL_PATTERNS = {
+  'stripes': ['v', 6],
+  'wide-stripes': ['v', 4],
+  'fine-hoops': ['h', 8]
 };
 
 /** The fill string for an FCF shirt: `s|dir|n|c1|c2`, or a bare hex. */
@@ -480,9 +515,7 @@ function fcfShirtFill(pattern, c1, c2) {
      one colour against itself draws a solid shirt the slow way and, worse,
      makes parseFill report `striped` to callers that then reason about it. */
   if (base.toLowerCase() === other.toLowerCase()) return base;
-  const key = String(pattern || '').split(/\s+/)
-      .filter(function (c) { return c.indexOf('faf-') === 0; })[0] || '';
-  const spec = FCF_SHIRT_PATTERNS[key];
+  const spec = FCF_FILL_PATTERNS[fcfShirtPattern(pattern)];
   if (!spec) return base;
   return encodeFill(true, spec[0], spec[1], base, other);
 }
@@ -497,10 +530,21 @@ function fcfShirtFill(pattern, c1, c2) {
  */
 function fcfKitPieces(kit) {
   if (!kit || !kit.shirt1) return null;
+  const c1 = kit.shirt1;
+  const c2 = kit.shirt2 || kit.shirt1;
+  /* `pattern` is carried alongside `shirt` rather than replacing it: the
+     three stripe forms ARE expressible as a fill and every existing renderer
+     understands one, so `shirt` stays useful on its own. fcfShirtSvg() reads
+     `pattern` to draw the five that a fill cannot describe. Two identical
+     colours mean a plain shirt whatever the class says. */
+  const same = String(c1).toLowerCase() === String(c2).toLowerCase();
   return {
-    shirt: fcfShirtFill(kit.pattern, kit.shirt1, kit.shirt2),
+    shirt: fcfShirtFill(kit.pattern, c1, c2),
     shorts: kit.shorts1 || '#ffffff',
-    socks: kit.socks1 || '#ffffff'
+    socks: kit.socks1 || '#ffffff',
+    pattern: same ? 'plain' : fcfShirtPattern(kit.pattern),
+    c1: c1,
+    c2: c2
   };
 }
 
@@ -873,6 +917,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // The rival's kit. fcfShirtFill is where FCF's pattern vocabulary meets
     // the app's fill encoding, and the only place that mapping exists.
     fcfShirtFill,
+    fcfShirtPattern,
     fcfKitPieces,
     FCF_SHIRT_PATTERNS,
     // Match legs. findFirstLeg is the whole of the anada/tornada detection —

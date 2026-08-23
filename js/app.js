@@ -1421,7 +1421,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 119;
+  const APP_VERSION = 120;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -14477,8 +14477,12 @@
   function mdKitCellHtml(kit, titleKey, badgeUrl) {
     var pieces = fcfKitPieces(kit);
     if (!pieces) return '<td class="md-kit-cell"></td>';
+    /* fcfShirtSvg, not the generic shirt: the federation describes five
+       shapes — bands, diagonals, coloured sleeves — that a parseFill stripe
+       cannot express, and drawing them as stripes shows the wrong shirt. */
     return '<td class="md-kit-cell" title="' + sanitize(t(titleKey)) + '">' +
-      kitIconsHtml(pieces, { badge: badgeUrl || '' }) + '</td>';
+      '<span class="kit-icons">' + fcfShirtSvg(pieces, badgeUrl || '') +
+      shortsSvg(pieces.shorts) + kitSockSvg(pieces.socks) + '</span></td>';
   }
 
   function renderMatchday() {
@@ -14747,13 +14751,92 @@
       const s = stripeSvg(fill, ++_kitUid, SHIRT_OUTLINE, SHIRT_FULL_BOX);
       body = s.defs + s.shapes;
     }
-    // Outline last in both branches, so no fill can overdraw it.
-    body += `<path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>`;
+    return shirtWrap(body, f.c1, badge);
+  }
+
+  /* The parts of a shirt that never change: the outline, the collar, the
+     seam and the crest. ONE definition, because shirtSvg (the club's own
+     kits) and fcfShirtSvg (the rival's, drawn from the federation's pattern
+     names) both need it, and two copies would drift the moment either is
+     tweaked. `body` is whatever fills the shirt; the outline is drawn AFTER
+     it so no fill can overdraw the edge. */
+  function shirtWrap(body, baseColour, badge) {
+    /* parseFill, even though both callers already hand over a bare hex: an
+       encoded fill reaching darkenHex returns '#NaNNaNNaN' and paints the
+       collar black, and this is now the ONE place that decision is made for
+       every shirt in the app. */
+    const collar = darkenHex(parseFill(baseColour).c1, 40);
     return `<svg class="kit-svg" viewBox="0 0 64 64" width="${KIT_ICON_PX}" height="${KIT_ICON_PX}" style="display:block">${body}
+      <path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
       ${badge ? `<image href="${sanitize(badge)}" x="33" y="18" width="10" height="10" opacity=".7"/>` : ''}
     </svg>`;
+  }
+
+  /* The rival's shirt, drawn the way the federation DESCRIBES it.
+   *
+   * FCF ships a plain-language name for every kit — "3 rayas horizontales",
+   * "Franja lateral izquierda", "Mangas colores" — and five of the eleven
+   * forms cannot be expressed as a parseFill stripe at all. Drawing those as
+   * generic stripes is a picture of a different shirt, so each is drawn to
+   * its own description instead.
+   *
+   * The three stripe forms still go through stripeSvg: that path carries the
+   * half-viewBox pixel arithmetic that keeps nine bands even, and there is no
+   * reason to re-derive it by hand.
+   *
+   * ⚠ "izquierda"/"esquerra" is taken as the VIEWER's left. Nothing in the
+   * payload says whether the federation means the viewer's side or the
+   * wearer's, and a kit icon is a picture — the viewer's left is what a
+   * reader compares against a photo.
+   */
+  function fcfShirtSvg(pieces, badgeUrl) {
+    if (!pieces || !pieces.c1) return '';
+    const c1 = pieces.c1;
+    const c2 = pieces.c2 || c1;
+    const kind = pieces.pattern || 'plain';
+    const badge = badgeUrl === undefined ? clubBadgeUrl() : badgeUrl;
+
+    // The three parseFill can describe — keep the aligned stripe machinery.
+    if (kind === 'stripes' || kind === 'wide-stripes' || kind === 'fine-hoops') {
+      return shirtSvg(pieces.shirt, badge);
+    }
+    if (kind === 'plain') {
+      return shirtWrap(`<path d="${SHIRT_OUTLINE}" fill="${c1}" stroke="none"/>`, c1, badge);
+    }
+
+    const uid = 'fs' + (++_kitUid);
+    const base = `<path d="${SHIRT_OUTLINE}" fill="${c1}" stroke="none"/>`;
+    let overlay = '';
+    if (kind === 'hoops3') {
+      /* "3 rayas horizontales" — THREE stripes on the base colour, which is
+         a different picture from three alternating bands. */
+      overlay = [22, 33, 44].map((y) =>
+        `<rect x="4" y="${y}" width="56" height="5" fill="${c2}" shape-rendering="crispEdges"/>`
+      ).join('');
+    } else if (kind === 'band-top') {
+      // "Franja horizontal arriba" — one band across the chest.
+      overlay = `<rect x="4" y="20" width="56" height="10" fill="${c2}" shape-rendering="crispEdges"/>`;
+    } else if (kind === 'band-left' || kind === 'band-right') {
+      // "Franja lateral" — one band down one side of the torso.
+      const x = kind === 'band-left' ? 16 : 38;
+      overlay = `<rect x="${x}" y="4" width="10" height="56" fill="${c2}" shape-rendering="crispEdges"/>`;
+    } else if (kind === 'diagonal') {
+      /* "Rayas oblicuas invertidas" — bands at 45°, running the opposite way
+         to the plain oblique. Rotated about the shirt's centre and drawn far
+         wider than the shirt so the corners are still covered once turned. */
+      const bars = [-48, -24, 0, 24, 48].map((y) =>
+        `<rect x="-40" y="${y}" width="150" height="12" fill="${c2}"/>`).join('');
+      overlay = `<g transform="rotate(-45 32 31)">${bars}</g>`;
+    } else if (kind === 'sleeves') {
+      // "Mangas colores" — plain body, sleeves in the second colour.
+      overlay = `<path d="${SHIRT_SLEEVE_L}" fill="${c2}" stroke="none"/>` +
+        `<path d="${SHIRT_SLEEVE_R}" fill="${c2}" stroke="none"/>`;
+    }
+    const body = `<defs><clipPath id="${uid}"><path d="${SHIRT_OUTLINE}"/></clipPath></defs>` +
+      base + `<g clip-path="url(#${uid})">${overlay}</g>`;
+    return shirtWrap(body, c1, badge);
   }
 
   /* Shorts are single-colour by decision — real ones are, and setClubKits

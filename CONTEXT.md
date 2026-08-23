@@ -3256,3 +3256,58 @@ kit, and the run after that is all zeros again.
 > decides what to do with the result.** No test of `mergeFcfFixtures`' output would ever have
 > caught this — the rows it returned were right every time. The bug lived in the summary, which is
 > the only thing the caller reads.
+
+### 2026-08-23 — v120: the rival's shirt, drawn to the federation's own description
+
+The owner: *"follow the small description that exists for the shirt, in order to properly build
+it. For example, in Baron de Viver it says '3 rayas horizontales'."*
+
+`equipacions` carries `NOMBRE_CAMISETA` — a plain-language name in Spanish — alongside the CSS
+class, and v119 mapped the whole vocabulary onto `parseFill`, which knows only solid and evenly
+spaced stripes. **Five of the eleven forms have no expression there at all**, so they were
+rendering solid: a picture of a different shirt. "3 rayas horizontales" was worse than solid — it
+became three ALTERNATING bands, which is not three stripes on a body.
+
+**`fcfShirtPattern()`** (js/utils.js) now decodes the class to a shape name, and
+**`fcfShirtSvg()`** (js/app.js) draws each one:
+
+| description | class | drawn as |
+|---|---|---|
+| Lisa | `faf-base` | solid |
+| Rayas / Rayas anchas / Rayas finas horizontales | `faf-barres`, `faf-barres2/3`, `faf-fineshoritzontals` | **still `stripeSvg`** — that path carries the half-viewBox pixel arithmetic and there is no reason to re-derive it |
+| 3 rayas horizontales | `faf-horitzontals3` | three explicit stripes on the base |
+| Franja horizontal arriba | `faf-franjahoritzontal` | one band across the chest |
+| Franja lateral izquierda / derecha | `faf-lateralesquerra`, `faf-lateraldreta` | one band down that side |
+| Rayas oblicuas invertidas | `faf-obliquesinverted` | bands rotated −45° about the shirt's centre |
+| Mangas colores | `faf-sinmangas` | plain body, sleeves in the second colour |
+
+Every overlay is clipped to `SHIRT_OUTLINE`, or a band runs off the shirt.
+
+> ⚠ **"izquierda"/"esquerra" is taken as the VIEWER's left.** Nothing in the payload says whether
+> the federation means the viewer's side or the wearer's, and a kit icon is a picture — the
+> viewer's left is what a reader compares against a photo. If it turns out to be the wearer's, it
+> is one constant.
+
+**`shirtWrap()` is new and is the point of the refactor**: the outline, collar, seam and crest now
+have ONE definition, shared by `shirtSvg` (the club's own kits) and `fcfShirtSvg` (the rival's).
+Two copies would have drifted the moment either was tweaked. It also parses its base colour
+defensively — an encoded fill reaching `darkenHex` returns `#NaNNaNNaN` and paints the collar
+black, and this is now the single place that decision is made for every shirt in the app.
+
+`fcfKitPieces` carries `pattern`, `c1` and `c2` alongside the fills, because a band or a diagonal
+needs all three. Two identical colours still mean a plain shirt whatever the class says —
+`#FFFFFF`/`#FFFFFF` with a stripe class is all over the real payload.
+
+#### Tests
+
+Unit 922 → **927**. The decode table is asserted against the description of every class, AND
+against the real payload: any class appearing in `fcf-equipacions.json` that the table does not
+know fails the suite, so a new FCF pattern cannot slip in as "plain" unnoticed.
+
+Five mutations checked — two stripes instead of three, left and right bands identical, an
+unclipped overlay, `hoops3` remapped to stripes, and coloured sleeves lost — each fails exactly
+the test that claims it.
+
+Three tests in `kits.test.js` and `fills-source.test.js` were rewritten rather than loosened: they
+sliced `shirtSvg` for markup that now lives in `shirtWrap`, and the `darkenHex` source guard wants
+a `.c1`, which the defensive parse above supplies honestly.

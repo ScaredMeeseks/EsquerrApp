@@ -284,13 +284,20 @@ describe('kits — the old hardcoded renderers are gone', () => {
   });
 
   it('puts the club badge on the shirt, not the app logo', () => {
+    /* The outline, collar, seam and crest moved into shirtWrap() in v119, so
+       the rival's shirt — drawn from FCF's own pattern names — cannot drift
+       away from the club's own. shirtWrap is now the one place this geometry
+       exists, so it is the one place worth pinning. */
+    const w = src.indexOf('function shirtWrap(');
+    assert.notStrictEqual(w, -1, 'shirtWrap moved');
+    const wrap = src.slice(w, src.indexOf('\n  }', w));
+    assert.ok(!/img\/logo\.png/.test(wrap), 'hardcoded app logo on the shirt');
+    // The owner asked for the same geometry as the current Esquerra shirt.
+    assert.ok(/x="33" y="18" width="10" height="10" opacity="\.7"/.test(wrap),
+        'the crest moved or resized');
     const i = src.indexOf('function shirtSvg(');
     const body = src.slice(i, src.indexOf('\n  }', i));
-    assert.ok(/clubBadgeUrl\(\)/.test(body), 'the crest must be the club\'s');
-    assert.ok(!/img\/logo\.png/.test(body), 'hardcoded app logo on the shirt');
-    // The owner asked for the same geometry as the current Esquerra shirt.
-    assert.ok(/x="33" y="18" width="10" height="10" opacity="\.7"/.test(body),
-        'the crest moved or resized');
+    assert.ok(/clubBadgeUrl\(\)/.test(body), 'the crest must default to the club\'s');
   });
 
   it('the crest is OVERRIDABLE, or every rival wears ours (v118)', () => {
@@ -306,8 +313,52 @@ describe('kits — the old hardcoded renderers are gone', () => {
     assert.ok(/badgeUrl === undefined \? clubBadgeUrl\(\)/.test(body),
         'our crest must remain the default');
     // An explicit '' means "no crest", and must not fall back to ours.
-    assert.ok(/\$\{badge \?/.test(body),
+    const w = src.indexOf('function shirtWrap(');
+    assert.ok(/\$\{badge \?/.test(src.slice(w, src.indexOf('\n  }', w))),
         'an empty crest must render nothing, not the club\'s');
+    // fcfShirtSvg draws the RIVAL's, and must default the same way.
+    const f = src.indexOf('function fcfShirtSvg(');
+    assert.notStrictEqual(f, -1, 'fcfShirtSvg moved');
+    assert.ok(/badgeUrl === undefined \? clubBadgeUrl\(\)/.test(
+        src.slice(f, src.indexOf('\n  }', f))),
+    'fcfShirtSvg must default the crest the same way shirtSvg does');
+  });
+
+  it('draws each FCF pattern to its own description (v119)', () => {
+    /* The federation ships a plain-language name for every kit — "3 rayas
+       horizontales", "Franja lateral izquierda", "Mangas colores" — and five
+       of the eleven are shapes parseFill cannot describe at all. Drawing
+       those as generic stripes is a picture of a DIFFERENT shirt, which is
+       exactly what the owner reported. */
+    const i = src.indexOf('function fcfShirtSvg(');
+    assert.notStrictEqual(i, -1, 'fcfShirtSvg moved');
+    const body = src.slice(i, src.indexOf('\n  }', i));
+
+    // The three that ARE fills keep the pixel-aligned stripe machinery.
+    assert.ok(/=== 'stripes' \|\| kind === 'wide-stripes' \|\| kind === 'fine-hoops'/
+        .test(body), 'the stripe forms must still go through shirtSvg');
+    assert.ok(/return shirtSvg\(pieces\.shirt, badge\)/.test(body));
+
+    // Each of the five drawn by hand must have its own branch.
+    ['hoops3', 'band-top', 'band-left', 'band-right', 'diagonal', 'sleeves']
+        .forEach((k) => {
+          assert.ok(new RegExp("kind === '" + k + "'").test(body),
+              k + ' has no branch — it would fall through to plain');
+        });
+
+    // "3 rayas horizontales" is THREE stripes, not three alternating bands.
+    const hoops = body.slice(body.indexOf("kind === 'hoops3'"));
+    const ys = (hoops.slice(0, hoops.indexOf('else')).match(/\[[\d, ]+\]/) || [''])[0];
+    assert.strictEqual((ys.match(/\d+/g) || []).length, 3,
+        'hoops3 must draw exactly three stripes');
+
+    // Left and right must not be the same band.
+    assert.ok(/kind === 'band-left' \? 16 : 38/.test(body),
+        'the side band does not move between left and right');
+
+    // Every overlay is clipped, or a band runs off the shirt.
+    assert.ok(/clip-path="url\(#\$\{uid\}\)"/.test(body),
+        'the overlay must be clipped to the shirt outline');
   });
 
   it('kitIconsHtml forwards the crest to the shirt', () => {
