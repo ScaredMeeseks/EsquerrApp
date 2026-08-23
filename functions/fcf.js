@@ -298,7 +298,6 @@ function mergeFcfFixtures(existing, incoming, opts) {
     const cur = rows[idx];
     const snap = cur.fcfSnapshot || {};
     const next = Object.assign({}, cur);
-    let changed = false;
     FCF_OWNED.forEach((k) => {
       /* ADOPTION needs no special case, and that is worth stating because it
          looks like it should. An adopted row has no snapshot, so `snap[k]` is
@@ -310,7 +309,6 @@ function mergeFcfFixtures(existing, incoming, opts) {
       const ownedByFcf = (cur[k] || "") === (snap[k] || "");
       if (ownedByFcf && (cur[k] || "") !== (fcfFields[k] || "")) {
         next[k] = fcfFields[k];
-        changed = true;
       }
     });
     next.fcfActaId = acta;
@@ -322,7 +320,7 @@ function mergeFcfFixtures(existing, incoming, opts) {
     if (kit && kit.away) next.opponentKitAway = kit.away;
     /* Back from the dead: a fixture the federation restored after removing
        it. Leaving the flag would keep the row struck through for ever. */
-    if (next.fcfRemoved) { delete next.fcfRemoved; changed = true; }
+    if (next.fcfRemoved) delete next.fcfRemoved;
     // The opponent name follows the id, not the other way round: FCF renames
     // clubs mid-season and the acta id is what actually identifies them.
     const oppName = f.opponentName;
@@ -330,7 +328,22 @@ function mergeFcfFixtures(existing, incoming, opts) {
       next.home = oppName; next.away = clubName;
     }
     rows[idx] = next;
-    if (changed && !adopting) summary.updated++;
+    /* Did ANYTHING about this row change — not just the four fields the
+       coach can own.
+
+       `summary` is the contract with _syncFcfSquad, which skips the Firestore
+       write entirely when the summary is all zeros. A flag set only inside
+       the FCF_OWNED loop under-reported: v119 added the rival's change strip,
+       nothing about date/time/location/mapLink moved, so every sync reported
+       "no changes", the write was skipped and `opponentKitAway` could never
+       reach a single club. The merge was right and the caller threw the
+       result away.
+
+       Comparing the whole row is the only version of this that cannot rot as
+       fields are added. Both sides are plain JSON — `next` is built by
+       Object.assign from `cur`, so shared keys keep their order and a new
+       field simply appends. */
+    if (!adopting && JSON.stringify(next) !== JSON.stringify(cur)) summary.updated++;
   });
 
   /* Gone from the federation's list — postponed out of the calendar, or the

@@ -3229,3 +3229,30 @@ broke that guard; the code was rewritten to keep them on one line rather than lo
 
 Verified end to end against live fcf.cat: all 30 fixtures carry both kits, with stripes, shorts and
 socks resolved (`4v #00005C/#F2FFFF`, `3h #FFFF00/#FF0000`, and so on).
+
+#### v119 hotfix — the second kit never reached anybody
+
+Shipped v119, the owner reported the 2a column was still empty. Not the deploy: `syncFcfFixtures`
+was on revision `-00002` and a read of production showed all 30 fixtures carrying `opponentKit`
+and **zero** carrying `opponentKitAway`.
+
+`_syncFcfSquad` skips the Firestore write when the summary is all zeros — deliberately, so the
+nightly job does not re-fire `updateTeamDates` and every client's full re-render for every club on
+the platform every night. That made `summary` a **contract**, and `summary.updated` was being set
+only inside the `FCF_OWNED` loop. Attaching the change strip moves none of date/time/location/
+mapLink, so every sync reported "nothing changed", the write was skipped, and the field could
+never arrive. **The merge was correct; the caller threw the result away.**
+
+`summary.updated` now counts any difference between the row that goes in and the row that comes
+out (`JSON.stringify(next) !== JSON.stringify(cur)`) — the only version of this that cannot rot as
+fields are added. Six tests pin the contract in BOTH directions: a new kit, a changed crest, a
+changed jornada and a renamed rival must each report an update, and an unchanged sync must still
+report nothing — because if that half breaks, the nightly job wakes every client in the platform.
+
+Replayed against live fcf.cat over a simulated v118 shard: 30 updates, all 30 rows gain the away
+kit, and the run after that is all zeros again.
+
+> The lesson worth keeping: **a correct function can still be a broken feature if its caller
+> decides what to do with the result.** No test of `mergeFcfFixtures`' output would ever have
+> caught this — the rows it returned were right every time. The bug lived in the summary, which is
+> the only thing the caller reads.

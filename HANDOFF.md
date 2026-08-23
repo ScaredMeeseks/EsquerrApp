@@ -2,20 +2,27 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-23._
 
-## ⚠ v119 is written and NOT shipped; v118 is live and tested
+## ⚠ A v119 HOTFIX is uncommitted — functions only, no version bump
 
-The owner tested v118 in the browser and signed it off ("Really nice!"), then asked for three
-changes — those are **v119**, sitting uncommitted in the working tree:
+v119 is deployed (`72c642c`, functions on revision `-00002`) but its second kit column was still
+empty in the app. **Not the deploy** — a read of production showed all 30 fixtures with
+`opponentKit` and zero with `opponentKitAway`.
 
-1. our own club name in capitals in the fixture list, like every rival;
-2. the rival's kits as large as the row allows, **both** of them, in separate columns, with
-   shorts and socks;
-3. (found while doing 2) every rival was wearing OUR crest — `shirtSvg` bakes `clubBadgeUrl()`
-   into the shirt. Invisible at 16px, unmissable at 32.
+`_syncFcfSquad` skips the Firestore write when the summary is all zeros, so `summary` is a
+CONTRACT — and `summary.updated` was set only inside the `FCF_OWNED` loop. Attaching a kit moves
+none of date/time/location/mapLink, so every sync said "nothing changed" and the write was
+skipped. The merge was right; the caller discarded it.
 
-**v119 is frontend + functions.** `parseFcfKits` now returns both kits, so `.\deploy.ps1 functions`
-comes first again, exactly as before. Until it is deployed the change-strip column stays empty —
-the client reads `opponentKitAway`, which only the new server code writes.
+Fixed in `functions/fcf.js`: `summary.updated` now counts any difference between the row in and
+the row out. **`functions/fcf.js` and `test/fcf-fixtures.test.js` are the only changed files.**
+
+```
+.\deploy.ps1 functions     # that is the whole deploy
+```
+
+No frontend change, so **no version bump** — the triple stays at 119 and nothing needs pushing for
+the fix itself (commit it anyway). Then press 🔄 in the Calendari once: the sync will report 30
+updates and the 2a column fills in.
 
 ### v118, for reference — DEPLOYED and verified
 

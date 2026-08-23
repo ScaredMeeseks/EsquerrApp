@@ -401,6 +401,72 @@ describe('mergeFcfFixtures — the merge rule', () => {
     assert.strictEqual(r.matches[0].home, CLUB);
   });
 
+  describe('the summary is a CONTRACT — it decides whether anything is saved', () => {
+    /* _syncFcfSquad skips the Firestore write when the summary is all zeros,
+       to keep the nightly job from re-firing updateTeamDates and every
+       client's re-render for every club on the platform.
+
+       That made `summary.updated` load-bearing, and it originally counted
+       only the four fields a coach can own. v119 attached the rival's change
+       strip; nothing about date/time/location/mapLink moved; so every sync
+       reported "no changes", the write was skipped, and `opponentKitAway`
+       reached exactly nobody. The merge was correct and the caller discarded
+       it — which is why these assert on the SUMMARY, not on the rows. */
+    const changedRow = (mutate) => {
+      const rows = imported();
+      const inc2 = [Object.assign({}, one[0])];
+      mutate(rows[0], inc2[0]);
+      return F.mergeFcfFixtures(rows, inc2, opts({kits: {'50599042': {
+        home: {shirt1: '#111111', pattern: 'shirt faf faf-base'},
+        away: {shirt1: '#222222', pattern: 'shirt faf faf-base'},
+      }}}));
+    };
+
+    it('reports a new kit, even with every owned field unchanged', () => {
+      const r = changedRow(() => {});
+      assert.strictEqual(r.matches[0].opponentKitAway.shirt1, '#222222');
+      assert.ok(r.summary.updated > 0,
+          'a new kit was produced but the summary said nothing changed');
+    });
+
+    it('reports a changed crest', () => {
+      const r = changedRow((row) => { row.opponentBadge = 'https://old/x.png'; });
+      assert.ok(r.summary.updated > 0);
+    });
+
+    it('reports a changed jornada', () => {
+      const r = changedRow((row) => { row.fcfJornada = 99; });
+      assert.ok(r.summary.updated > 0);
+    });
+
+    it('reports a renamed rival', () => {
+      const r = changedRow((row, f) => { f.opponentName = 'RENAMED, C.F.'; });
+      assert.ok(r.summary.updated > 0);
+    });
+
+    it('still reports NOTHING when nothing at all moved', () => {
+      /* The other half of the contract. If this starts counting, the nightly
+         job writes every shard of every club every night and wakes every
+         client with a full re-render. */
+      const kits = {'50599042': {
+        home: {shirt1: '#111111', pattern: 'shirt faf faf-base'},
+        away: {shirt1: '#222222', pattern: 'shirt faf faf-base'},
+      }};
+      const first = F.mergeFcfFixtures([], one, opts({kits}));
+      const again = F.mergeFcfFixtures(first.matches, one, opts({kits}));
+      assert.deepStrictEqual(again.summary,
+          {adopted: 0, added: 0, updated: 0, removed: 0});
+    });
+
+    it('an adopted row is counted once, as adopted and not as updated', () => {
+      const m = manual({rival: 'INSPIRE SOCCER,F.C.', at: 'home',
+        date: '2026-09-19'});
+      const r = F.mergeFcfFixtures([m], one, opts());
+      assert.strictEqual(r.summary.adopted, 1);
+      assert.strictEqual(r.summary.updated, 0);
+    });
+  });
+
   it('a fixture that vanishes is MARKED, never dropped', () => {
     /* Call-ups, notes, availability and lineups all hang off the match id. */
     const other = [{
