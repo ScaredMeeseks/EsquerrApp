@@ -26,7 +26,9 @@ const {FieldValue} = require("firebase-admin/firestore");
 // The functions deploy uploads functions/ alone, so js/utils.js is not
 // reachable from this side — see functions/fcf.js on why that helper is a
 // second copy and how the two are kept honest.
-const {fcfGrupIdOf} = require("./fcf");
+const {
+  fcfGrupIdOf, sameClubNameOf, parseFcfFixtures, parseFcfKits, mergeFcfFixtures,
+} = require("./fcf");
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -1182,6 +1184,197 @@ exports.fcfClassificacio = onRequest(
       }
     },
 );
+
+// ── 5b. syncFcfFixtures — the Calendari fills itself ─────────
+//
+// The federation publishes the whole fixture list of the group a squad
+// already has configured for its standings: date, kick-off, venue name and
+// COORDINATES, plus every rival's crest and kit colours. A coach was typing
+// all of that in by hand, getting it subtly wrong, and never hearing about a
+// postponement until somebody told him.
+//
+// This runs SERVER-side, and that is the point rather than an implementation
+// detail: one fetch serves a whole club instead of one per device, and a
+// kick-off moved on Tuesday evening is on every phone by Wednesday morning
+// without anyone opening the app.
+//
+// Two callers, ONE implementation — the nightly job and the Calendari's
+// refresh button both land on _syncFcfSquad. A second copy for the button is
+// how the two would drift.
+
+const FCF_BASE = "https://www.fcf.cat/api/competition/";
+
+async function fcfGet(path) {
+  const resp = await fetch(FCF_BASE + path, {
+    headers: {"User-Agent": "Mozilla/5.0"},
+  });
+  if (!resp.ok) throw new Error("FCF " + path + " returned " + resp.status);
+  return resp.json();
+}
+
+/**
+ * Which team in this group is US, as the federation's own team id.
+ *
+ * Read off the standings rather than taken from configuration, because
+ * nothing in the club document holds an FCF team id — and it must be an id
+ * rather than a name, since the club calls itself "Esquerra de l'Eixample
+ * F.C." while the federation writes "L'ESQUERRA DE L'EIXAMPLE, F.C.".
+ * normTeamName bridges that once, here, and every fixture afterwards is
+ * matched on the id.
+ */
+function ourTeamIdIn(classificacio, clubName) {
+  const rows = (classificacio && classificacio.data) || [];
+  const hit = rows.find((r) =>
+    sameClubNameOf(((r || {}).team || {}).name, clubName));
+  return hit ? String(hit.team.teamId || "") : "";
+}
+
+/**
+ * Pull one squad's fixtures and fold them into its category shard.
+ *
+ * Returns a summary, or throws. `club` is the already-read club document, so
+ * the nightly job reads each club once rather than once per squad.
+ */
+async function _syncFcfSquad(clubId, category, letter, club) {
+  const grupId = fcfGrupIdOf((club.fcfLinks || {})[category + "-" + letter]);
+  if (!grupId) return {skipped: "no-link"};
+
+  const [classificacio, partidos, equipacions] = await Promise.all([
+    fcfGet("classificacio?grupId=" + grupId),
+    fcfGet("partidos?grupId=" + grupId),
+    fcfGet("equipacions?grupId=" + grupId),
+  ]);
+
+  const clubName = String(club.name || "");
+  const ourId = ourTeamIdIn(classificacio, clubName);
+  /* Not an error worth throwing: a lead who pastes the link of a group his
+     club is not in gets an honest "we are not in that group" rather than an
+     imported season of other people's fixtures. */
+  if (!ourId) return {skipped: "not-in-group"};
+
+  const incoming = parseFcfFixtures(partidos, ourId);
+  const kits = parseFcfKits(equipacions);
+
+  const ref = db.collection("teams").doc(clubId).collection("data")
+      .doc(shardDocId("fa_matches", category));
+  const snap = await ref.get();
+  const existing = parseDataDoc(snap, []);
+  const today = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
+      .format(new Date());
+
+  const {matches, summary} = mergeFcfFixtures(
+      Array.isArray(existing) ? existing : [], incoming,
+      {clubName, category, letter, kits, today});
+
+  const touched = summary.added + summary.adopted + summary.updated +
+    summary.removed;
+  // Nothing changed: skip the write, so updateTeamDates does not re-fire and
+  // the client's onSnapshot does not trigger a full-page re-render nightly
+  // for every club in the platform.
+  if (!touched) return summary;
+
+  /* `category` is not decoration — the client queries
+     where('category','in',…) and the rules test the same field, so a shard
+     written without it is invisible to the entire app. */
+  await ref.set({v: JSON.stringify(matches), category}, {merge: true});
+  return summary;
+}
+
+/** Every {category, letter} of a club that has an FCF link configured. */
+function fcfSquadsOf(club) {
+  const links = club.fcfLinks || {};
+  const cats = club.categories || {};
+  const out = [];
+  Object.keys(links).forEach((key) => {
+    if (!fcfGrupIdOf(links[key])) return;
+    const i = key.indexOf("-");
+    if (i === -1) return;
+    const category = key.slice(0, i);
+    const letter = key.slice(i + 1);
+    const cfg = cats[category];
+    // A link left behind for a squad that has since been disabled must not
+    // resurrect its fixtures.
+    if (!cfg || !cfg.enabled) return;
+    if (Array.isArray(cfg.letters) && cfg.letters.indexOf(letter) === -1) return;
+    out.push({category, letter});
+  });
+  return out;
+}
+
+exports.syncFcfFixtures = onCall({region: "us-central1", timeoutSeconds: 300},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+      }
+      const token = request.auth.token || {};
+      const clubId = token.teamId;
+      if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
+      /* Staff or lead. Refreshing rewrites the calendar every player reads.
+         The staff sub-roles are invisible to the token — coach, fitness and
+         delegate all carry role:'staff' — so this cannot be narrowed to
+         delegates here even though running the calendar is their job; that
+         stays a client gate, like every other sub-role rule in this app.
+         No superuser branch: clubId comes from the caller's own token, so a
+         superuser is scoped to their own club exactly like anyone else. */
+      if (token.role !== "staff" && token.role !== "lead") {
+        throw new HttpsError("permission-denied",
+            "Només el cos tècnic pot actualitzar el calendari.");
+      }
+      const clubSnap = await db.collection("clubs").doc(clubId).get();
+      if (!clubSnap.exists) throw new HttpsError("not-found", "Club no trobat.");
+      const club = clubSnap.data() || {};
+
+      const only = request.data || {};
+      const squads = fcfSquadsOf(club).filter((s) =>
+        (!only.category || s.category === only.category) &&
+        (!only.letter || s.letter === only.letter));
+      if (!squads.length) return {squads: 0, added: 0, adopted: 0, updated: 0, removed: 0};
+
+      const total = {squads: 0, added: 0, adopted: 0, updated: 0, removed: 0};
+      for (const s of squads) {
+        const r = await _syncFcfSquad(clubId, s.category, s.letter, club);
+        if (r.skipped) continue;
+        total.squads++;
+        ["added", "adopted", "updated", "removed"].forEach((k) => {
+          total[k] += r[k] || 0;
+        });
+      }
+      return total;
+    });
+
+/* Every morning at six, before anyone is awake to care.
+   Wall-clock cron in Europe/Madrid, matching every other scheduler here —
+   the App Engine interval form drifts by each run's duration. */
+exports.scheduledFcfSync = onSchedule({
+  schedule: "0 6 * * *",
+  timeZone: "Europe/Madrid",
+  region: "us-central1",
+  timeoutSeconds: 540,
+}, async () => {
+  /* A full read of `clubs`. Firestore cannot ask "is this map non-empty", and
+     the collection is small enough that denormalising a flag would be more
+     code to keep honest than the scan costs. */
+  const clubsSnap = await db.collection("clubs").get();
+  let clubs = 0;
+  let squads = 0;
+  for (const doc of clubsSnap.docs) {
+    const club = doc.data() || {};
+    const list = fcfSquadsOf(club);
+    if (!list.length) continue;
+    clubs++;
+    for (const s of list) {
+      try {
+        const r = await _syncFcfSquad(doc.id, s.category, s.letter, club);
+        if (!r.skipped) squads++;
+      } catch (err) {
+        /* One club's bad link, or one FCF hiccup, must not stop the other
+           clubs' calendars from updating. */
+        logger.error("fcfSync failed", {clubId: doc.id, squad: s, err: String(err)});
+      }
+    }
+  }
+  logger.info("fcfSync done", {clubs, squads});
+});
 
 // ── Membership helpers (roster email lists) ──────────────────
 // clubs/{clubId}/rosters/{category}-{letter} holds the two email lists that

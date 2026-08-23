@@ -4001,6 +4001,29 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-fcf-row input{flex:1;font-size:.82rem;padding:.4rem .5rem;}
 /* A saved link from before the fcf.cat rebuild. The row wraps so the warning
    sits under the box it is about rather than squeezing it. */
+/* ===== Calendari: fixtures imported from the FCF ===== */
+.md-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
+/* The jornada badge. Its ABSENCE is the signal that a row is the coach's
+   own — a friendly he typed — so it must not look like decoration. */
+.md-fcf-jornada{display:inline-block;min-width:1.9em;text-align:center;font-size:.62rem;font-weight:700;
+  padding:.1rem .3rem;margin-right:.4rem;border-radius:4px;background:var(--border);color:var(--text-secondary);vertical-align:middle;}
+.md-opp-kit{display:inline-block;margin-left:.4rem;vertical-align:middle;}
+.md-opp-kit svg{width:16px;height:16px;display:block;}
+.md-map-link{margin-left:.35rem;text-decoration:none;font-size:.85rem;}
+/* Withdrawn by the federation. Kept because the call-up and the notes hang
+   off this row; struck through so nobody turns up for it. */
+.md-row-removed td{opacity:.55;text-decoration:line-through;}
+.md-row-removed .md-saved-actions{text-decoration:none;}
+
+/* Club crests on a scoreline. Fixed px and flex:0 0 auto on purpose: the
+   scoreline fitter (_mnScoreNeed) sums these children's widths, so a crest
+   sized in em would shrink along with the text it is supposed to be
+   measured against. */
+.sb-badge{width:20px;height:20px;object-fit:contain;flex:0 0 auto;vertical-align:middle;border-radius:2px;}
+.mn-sb-team .sb-badge{margin-right:.35rem;}
+.mn-sb-team-away .sb-badge{margin-right:0;margin-left:.35rem;}
+.ev-sb-team .sb-badge{margin-right:.35rem;}
+
 /* The rival is a club in the configured FCF group, so the fixture carries a
    federation id. Sits inside the opponent cell, right of the box. */
 .md-opponent-cell{white-space:nowrap;}

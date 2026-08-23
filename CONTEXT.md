@@ -3007,3 +3007,163 @@ render is covered.
 **Deploy order**: `.\deploy.ps1 functions` BEFORE pushing the frontend. The reverse leaves a v117
 client calling a proxy that still demands `?url=` — verified: the deployed v116 proxy returns 400
 for `?grupId=`.
+
+### 2026-08-23 — v118: the Calendari fills itself from the FCF
+
+v117 read the federation's API for the standings only. The same API publishes the **whole fixture
+list** of the group a squad already has configured, and it is complete: 240 of 240 fixtures in
+L'Esquerra's group carry a kick-off, a venue name **and coordinates**, in both seasons sampled. A
+coach was typing all of that in by hand and never hearing about a postponement until somebody
+told him.
+
+**What lands**: fixtures import themselves, refresh on demand and again at 06:00 daily, carry a
+Google Maps link built from the federation's coordinates and the rival's crest and kit colours;
+the second leg pairs itself; and both scorelines show club crests.
+
+#### The sync
+
+`syncFcfFixtures` (callable) and `scheduledFcfSync` (06:00 Europe/Madrid) are **two callers of one
+function**, `_syncFcfSquad`. The refresh button is not a second, client-side importer — that is how
+the two would drift, and it is the same lesson `mdRowSquad` taught in v117.
+
+Server-side is the point, not an implementation detail: one fetch serves a whole club instead of
+one per device, and a kick-off moved on Tuesday evening is on every phone by Wednesday morning
+without anyone opening the app.
+
+Per squad it fetches `classificacio` (to learn our own FCF team id), `partidos` and `equipacions`,
+then writes `teams/{id}/data/fa_matches__{category}` — which the client already listens to, so
+fixtures arrive through the ordinary `firestore-sync` re-render. **`updateTeamDates` is an
+`onDocumentWritten` trigger on exactly that document**, so `teams/{id}.matchDates` refreshes by
+itself; without it the Friday availability reminder would ignore every imported fixture. A sync
+that changes nothing skips the write entirely, so the trigger and every client's re-render do not
+fire nightly for every club on the platform.
+
+#### The merge rule — the whole of the feature
+
+**A field belongs to the federation for as long as it still equals what the last sync wrote**
+(`fcfSnapshot`). The moment a coach edits a kick-off, his value and the snapshot differ and the
+sync stops writing that field — for ever, and only that field; the venue on the same row keeps
+updating. There are no `userEdited` flags to maintain and therefore none to get out of step.
+
+The snapshot refreshes on every sync regardless, so a later federation change to a field the coach
+has claimed does not silently hand it back.
+
+> An explicit `adopting ? !cur[k] : …` branch was written first and **removed**: with no snapshot,
+> `snap[k]` is `""` and the general rule already reduces to "is this field empty", which is exactly
+> what adoption wants. The mutation test that was supposed to catch its removal passed, which is
+> how it was found to be a second spelling of the same condition.
+
+Match rows gain `fcfActaId` (its presence is what makes a fixture FCF-owned), `fcfJornada`,
+`fcfSnapshot` and `opponentKit`. All optional and additive — shards are written whole-document with
+no per-field rule validation, so no rules change and no migration.
+
+**A fixture that vanishes from the federation is MARKED (`fcfRemoved`), never deleted** — call-ups,
+coach notes, availability answers and lineups all hang off the match id. An **empty** response is
+treated as an outage, not a cancelled season.
+
+**New fixtures take the acta number as their id.** It is stable, globally unique and ~4e6 — three
+orders of magnitude below the `Date.now()` ids the manual path mints, so they cannot collide, and
+a double import is idempotent rather than duplicating a season.
+
+#### Adoption: the club may already have typed the season in
+
+A row with no `fcfActaId` is claimed by an incoming fixture when the rival normalises equal, the
+venue side agrees and the dates are **within one day** — then it keeps its own id, which is what
+preserves the call-up, the notes and the availability already attached to it. ±1 day because a
+fixture copied off a printed calendar and moved by the federation is the same fixture; a week away
+is a different question. **A tie is refused outright**: a duplicate row is something a coach can
+see and delete, while a wrongly adopted one silently attaches last month's call-up to the wrong
+game and nothing on screen would say so. The adoption pool is consumed as it is claimed.
+
+#### ⚠ The leading article — a bug this found in v117
+
+fcf.cat writes **"L'ESQUERRA DE L'EIXAMPLE, F.C."** where the club calls itself **"Esquerra de
+l'Eixample F.C."**. `normTeamName` keeps the article, so the two do not match — which means
+**v117's standings highlighted the wrong row, or none, for this club** (the live check that
+"proved" it worked had passed FCF's own spelling in as the club name). It would also have made the
+fixture import unable to tell which of sixteen teams it was.
+
+`sameClubName` / `sameClubNameOf` fixes it, and is deliberately **narrow**:
+
+- Used ONLY to identify OURSELVES inside a group we have already been told we are in — sixteen
+  teams, one of them us, and the club's own name comes from its own configuration. A false
+  positive there is close to impossible.
+- **Not** used by `findFirstLeg`. Pairing two fixtures is a question about clubs that are both
+  strangers to the app, and the extra leniency would buy wrong answers there.
+- The article is stripped from the **raw** name, before normalising, because that is where the
+  separator still is. Stripping "l" off the normalised `lleida` leaves `leida`; the raw `lleida`
+  has no apostrophe or space after the l, so it cannot match. An earlier version stripped from the
+  normalised form and turned `lajonquera` into `ajonquera` — JS alternation takes `l` before `la`.
+
+#### The rival's kit
+
+`equipacions` carries six hex colours **plus a named pattern** (`CLASE_CSS_CAMISETA`, FCF's own
+stylesheet class) — eleven distinct ones in a single group. Six map exactly onto the app's existing
+fill encoding, so a striped rival renders through `shirtSvg()` with **no new drawing code**:
+
+| FCF class | fill |
+|---|---|
+| `faf-barres` / `faf-barres2` / `faf-barres3` | `s\|v\|6` / `s\|v\|4` |
+| `faf-fineshoritzontals` / `faf-horitzontals3` | `s\|h\|8` / `s\|h\|3` |
+| `faf-base` and the five with no fill form | solid `c1` |
+
+Diagonals, side bands and coloured sleeves render solid, and that is a decision rather than a gap:
+a delegate needs to know the rival plays in red so he does not bring the red strip. Two identical
+colours render solid even when the pattern says stripes — `#FFFFFF`/`#FFFFFF` is how FCF spells a
+plain shirt.
+
+**The mapping lives in `js/utils.js` next to `encodeFill`; the server stores FCF's raw fields.**
+Reaching `encodeFill` from `functions/` would have meant a THIRD duplicated function across that
+boundary. `equipacions` also returns a cross join — 542 rows for 16 teams — so `parseFcfKits`
+takes the first `PRINCIPAL === "1"` row per team.
+
+#### The second leg pairs itself
+
+Two imported fixtures both carry an acta id and the rival's federation team id, so "same rival,
+venue swapped, earlier date, same squad" stops being an inference. `mnCertainFirstLeg` links them
+silently and **no `Enllaçar`/`No` banner is offered**.
+
+> ⚠ `normTeamName` and the confirm step **stay**. A friendly, a cup tie and every fixture entered
+> before v118 still go through the question. A coach's stored answer outranks the derived one, and
+> `legDismissed` is respected — re-deriving over the top of a deliberate "no" is the one thing an
+> automatic link must never do.
+
+#### Badges on the match sheet
+
+`matchSideBadgeHtml` feeds both `matchScoreboardHtml` and `mnScoreBlockHtml`: ours from
+`clubBadgeUrl()`, the rival's from `opponentBadge`. A club in neither the group nor the picker gets
+nothing rather than a placeholder — an empty space reads as "no crest", a generic shield reads as
+the club's actual badge.
+
+> ⚠ **The scoreline fitter counts them.** `_mnScoreNeed()` sums the children's `offsetWidth`, so
+> `.sb-badge` is sized in **px** with `flex:0 0 auto`: sized in `em` it would shrink along with the
+> text it is supposed to be measured against.
+
+#### What this does NOT cover
+
+- **Cup ties and friendlies stay manual.** `fcfLinks` is one league group per squad; a cup is a
+  different `competicioId`. Manual entry is exactly why it was kept — the draft row, the opponent
+  datalist and the ✓ from v117 are untouched, and a fixture with no `fcfActaId` is never looked at
+  by the sync.
+- **Results are not imported.** `GOLES_*` and `CERRADA` are available, but the app's scoreline is
+  computed from the events a coach enters, and two sources of truth for a score is a fight.
+
+#### Tests
+
+Unit 834 → **906**. `test/fcf-fixtures.test.js` (54) is new and **was added to `test:unit` by
+hand** — the standing trap. Rules 152 and functions 71 unchanged. Fixtures are real captured
+payloads: `fcf-partidos.json` in full, and `fcf-equipacions.json` reduced by a documented rule that
+puts the CHANGE strip first so a parser taking "the first row per team" instead of "the first
+`PRINCIPAL=1` row" fails loudly.
+
+Thirteen mutations were checked: always overwriting, never refreshing the snapshot, deleting
+instead of marking, treating an empty response as a cancelled season, widening the adoption window,
+guessing at a tie, ignoring the venue side, adopting one row twice, storing FCF's spelling of our
+own club, and the three leg-pairing guards each fail exactly the test that claims to catch them.
+
+The whole pipeline was also run end to end against **live** fcf.cat: 30 fixtures, every one with a
+venue, a working maps link, a crest and a kit; a second run reports no changes; and an edited
+kick-off survives a sync while the venue on the same row still updates.
+
+**Deploy order**: `.\deploy.ps1 functions` BEFORE pushing the frontend — the callable must exist
+before a client offers the button.

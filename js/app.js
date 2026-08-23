@@ -168,6 +168,19 @@
     'fcf.link_old_hint': { ca:'⚠ Aquest enllaç ja no funciona (la FCF ha canviat el web). Obre la classificació a fcf.cat i enganxa la nova adreça.', es:'⚠ Este enlace ya no funciona (la FCF ha cambiado la web). Abre la clasificación en fcf.cat y pega la nueva dirección.', en:'⚠ This link no longer works (the FCF changed their site). Open the standings on fcf.cat and paste the new address.' },
     'fcf.opponent_matched': { ca:'Rival de la FCF', es:'Rival de la FCF', en:'FCF opponent' },
 
+    // ── Calendari: the FCF import ──
+    'cal.refresh':        { ca:'Actualitzar calendari', es:'Actualizar calendario', en:'Refresh calendar' },
+    'cal.refreshing':     { ca:'Actualitzant…', es:'Actualizando…', en:'Refreshing…' },
+    'cal.refresh_hint':   { ca:'Descarrega els partits de la FCF. També es fa sol cada dia a les 6 del matí.', es:'Descarga los partidos de la FCF. También se hace solo cada día a las 6 de la mañana.', en:'Pull the fixtures from the FCF. This also runs by itself every day at 6am.' },
+    'cal.refresh_none':   { ca:'Cal configurar l\'enllaç de la classificació FCF d\'aquesta categoria.', es:'Hay que configurar el enlace de la clasificación FCF de esta categoría.', en:'This category needs its FCF standings link configured first.' },
+    'cal.refresh_done':   { ca:'{added} partits nous, {updated} actualitzats, {removed} retirats.', es:'{added} partidos nuevos, {updated} actualizados, {removed} retirados.', en:'{added} new fixtures, {updated} updated, {removed} withdrawn.' },
+    'cal.refresh_nochange': { ca:'Tot al dia. Cap canvi a la FCF.', es:'Todo al día. Ningún cambio en la FCF.', en:'Up to date — nothing changed at the FCF.' },
+    'cal.refresh_failed': { ca:'No s\'ha pogut actualitzar el calendari.', es:'No se ha podido actualizar el calendario.', en:'Could not refresh the calendar.' },
+    'cal.from_fcf':       { ca:'Partit oficial, importat de la FCF', es:'Partido oficial, importado de la FCF', en:'Official fixture, imported from the FCF' },
+    'cal.opp_kit':        { ca:'Equipació titular del rival (FCF)', es:'Equipación titular del rival (FCF)', en:'Opponent\'s first-choice kit (FCF)' },
+    'cal.open_map':       { ca:'Obrir al mapa', es:'Abrir en el mapa', en:'Open in maps' },
+    'cal.removed':        { ca:'Retirat del calendari de la FCF', es:'Retirado del calendario de la FCF', en:'Withdrawn from the FCF calendar' },
+
     // ── Player Home ──
     'home.attendance':    { ca:'Assistència', es:'Asistencia', en:'Attendance' },
     'home.this_week':     { ca:'Aquesta setmana', es:'Esta semana', en:'This Week' },
@@ -1405,7 +1418,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 117;
+  const APP_VERSION = 118;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -5963,11 +5976,32 @@
      FIRST leg through exactly the same code. Only the read-only halves
      moved: the staff "+ Event" forms stayed behind, because they write to
      the match being VIEWED and a briefing is a read of a different one. */
+  /* The crest of one side of a fixture, or ''.
+   *
+   * Ours comes from the club config; the rival's from `opponentBadge`, which
+   * the FCF import fills for every league fixture and the v117 opponent
+   * picker fills for anything typed exactly. A friendly against a club that
+   * is in neither has none, and renders as nothing rather than as a
+   * placeholder — an empty space reads as "no crest", a generic shield reads
+   * as the club's actual badge.
+   *
+   * `onerror` hides a broken image the same way the league table does:
+   * files.fcf.cat is someone else's host and 404s on its own schedule.
+   */
+  function matchSideBadgeHtml(m, side) {
+    var url = isOurTeam(m[side]) ? clubBadgeUrl() : (m.opponentBadge || '');
+    if (!url) return '';
+    return '<img src="' + sanitize(safeHttpUrl(url)) + '" class="sb-badge" alt="" ' +
+      'onerror="this.style.display=\'none\'">';
+  }
+
   function matchScoreboardHtml(m, events) {
     const sc = calcMatchScore(events);
-    return '<div class="ev-scoreboard"><span class="ev-sb-team">' + sanitize(m.home) +
+    return '<div class="ev-scoreboard"><span class="ev-sb-team">' +
+      matchSideBadgeHtml(m, 'home') + sanitize(m.home) +
       '</span><span class="ev-sb-score">' + sc.home + ' - ' + sc.away +
-      '</span><span class="ev-sb-team">' + sanitize(m.away) + '</span></div>';
+      '</span><span class="ev-sb-team">' + sanitize(m.away) +
+      matchSideBadgeHtml(m, 'away') + '</span></div>';
   }
 
   /** `staff` adds the per-event delete buttons and suppresses the legacy
@@ -6093,10 +6127,34 @@
     return cache || JSON.parse(localStorage.getItem('fa_matches') || '[]');
   }
 
+  /**
+   * The first leg the FEDERATION says this is — not a suggestion.
+   *
+   * Both fixtures imported from the FCF means both carry an acta id and the
+   * rival's own team id, so "same rival, venue swapped, earlier date, same
+   * squad" stops being an inference and becomes a lookup. There is nothing
+   * for a human to confirm, so v118 links it silently and shows no banner.
+   *
+   * Only when BOTH sides are the federation's. A friendly, a cup tie, and
+   * every fixture typed in before v118 still go through the suggestion and
+   * the coach's yes/no — which is why normTeamName and legDismissed stay.
+   */
+  function mnCertainFirstLeg(m, allMatches) {
+    if (!m || !m.fcfActaId) return null;
+    var hit = findFirstLeg(m, mnAllMatches(allMatches), getClubName());
+    return (hit && hit.fcfActaId) ? hit : null;
+  }
+
   /** The match a stored note points at, resolved back to a row. */
   function mnLinkedFirstLeg(m, allMatches) {
     var id = MN.firstLegId(m.id);
-    if (!id) return null;
+    /* A coach's stored answer outranks the federation's: he may have linked
+       a cup tie on purpose, and re-deriving over the top of that would undo
+       a decision he made deliberately. `legDismissed` is respected too — if
+       he said "no", no banner and no automatic link. */
+    if (!id) {
+      return MN.legAnswered(m.id) ? null : mnCertainFirstLeg(m, allMatches);
+    }
     return mnAllMatches(allMatches).find(function (x) {
       return String(x.id) === String(id);
     }) || null;
@@ -6105,6 +6163,9 @@
   /** A first leg the coach has not yet been asked about, or null. */
   function mnLegSuggestion(m, allMatches) {
     if (MN.legAnswered(m.id)) return null;
+    // Certain pairs are already linked; asking would be a question with one
+    // possible answer.
+    if (mnCertainFirstLeg(m, allMatches)) return null;
     return findFirstLeg(m, mnAllMatches(allMatches), getClubName());
   }
 
@@ -6163,10 +6224,16 @@
     var out = mnOutcome(m);
     var sc = calcMatchScore(getMatchEvents(m.id));
     var score = out === 'none' ? '—' : (sc.home + ' - ' + sc.away);
+    /* ⚠ The crests are children of the flex row that _mnScoreNeed() measures,
+       so they count toward the fit. They are sized in px and flex:0 0 auto in
+       CSS precisely so a long club name shrinks the NAMES and leaves the
+       badges alone — see the scoreline fitter below. */
     return '<div class="mn-sb">' +
-      '<span class="mn-sb-team">' + sanitize(m.home) + '</span>' +
+      '<span class="mn-sb-team">' + matchSideBadgeHtml(m, 'home') +
+        sanitize(m.home) + '</span>' +
       '<span class="mn-sb-score mn-sb-' + out + '">' + score + '</span>' +
-      '<span class="mn-sb-team mn-sb-team-away">' + sanitize(m.away) + '</span>' +
+      '<span class="mn-sb-team mn-sb-team-away">' + sanitize(m.away) +
+        matchSideBadgeHtml(m, 'away') + '</span>' +
     '</div>';
   }
 
@@ -14384,6 +14451,27 @@
       </div>`;
   }
 
+  /* The jornada badge on an imported fixture, or ''.
+     Its presence is the visible answer to "where did this row come from",
+     and its ABSENCE is what tells a coach a friendly he typed is his own. */
+  function mdFixtureTagHtml(m) {
+    if (!m || !m.fcfActaId) return '';
+    var label = m.fcfJornada ? 'J' + m.fcfJornada : 'FCF';
+    return '<span class="md-fcf-jornada" title="' + sanitize(t('cal.from_fcf')) + '">' +
+      sanitize(label) + '</span>';
+  }
+
+  /* The rival's first-choice shirt, from the federation's own kit register.
+     Renders through the existing shirtSvg(), so a striped rival draws as
+     stripes with no new code — see fcfKitPieces in js/utils.js for what does
+     and does not survive the mapping. */
+  function mdOpponentKitHtml(m) {
+    var pieces = fcfKitPieces(m && m.opponentKit);
+    if (!pieces) return '';
+    return '<span class="md-opp-kit" title="' + sanitize(t('cal.opp_kit')) + '">' +
+      shirtSvg(pieces.shirt) + '</span>';
+  }
+
   function renderMatchday() {
     const now = new Date();
     const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
@@ -14448,11 +14536,19 @@
       var dateObj = m.date ? new Date(m.date + 'T12:00:00') : null;
       var dateFmt = dateObj ? tDateShort(m.date) : '—';
       var timeFmt = m.time || '—';
-      return '<tr class="md-saved-row">' +
-        '<td>' + homeName + ' vs ' + awayName + '</td>' +
+      /* A fixture the federation dropped from its calendar. Kept, struck
+         through and labelled, because the call-up, the notes and the
+         availability answers all still hang off it — deleting the row to
+         match an upstream list would take them with it. */
+      var gone = m.fcfRemoved ? ' md-row-removed' : '';
+      var mapBtn = m.mapLink ? ' <a class="md-map-link" href="' + sanitize(safeHttpUrl(m.mapLink)) +
+        '" target="_blank" rel="noopener noreferrer" title="' + sanitize(t('cal.open_map')) + '">📍</a>' : '';
+      return '<tr class="md-saved-row' + gone + '">' +
+        '<td>' + mdFixtureTagHtml(m) + homeName + ' vs ' + awayName +
+          mdOpponentKitHtml(m) + '</td>' +
         '<td>' + dateFmt + '</td>' +
         '<td>' + timeFmt + '</td>' +
-        '<td>' + sanitize(m.location || '') + '</td>' +
+        '<td>' + sanitize(m.location || '') + mapBtn + '</td>' +
         '<td class="md-saved-actions">' + (ro ? '' :
           '<button class="btn btn-outline btn-small md-edit-match" data-match-id="' + m.id + '">' + t('btn.edit') + '</button>' +
           ' <button class="md-remove-btn md-delete-match" data-match-id="' + m.id + '" title="Delete">&times;</button>') + '</td>' +
@@ -14503,9 +14599,23 @@
         : '<p style="text-align:center;color:var(--text-secondary);padding:1rem;">' + t('matches.no_past') + '</p>') +
       '</div>';
 
+    /* Refreshing pulls the federation's calendar for every squad of the
+       CURRENT category. Offered only when a link is actually configured:
+       a button that can only ever say "nothing to do" is worse than no
+       button, so it explains itself instead of being hidden. */
+    var fcfSquads = curCat ? getTeamLetters(curCat).filter(function (l) {
+      return fcfGrupId(((_clubConfig && _clubConfig.fcfLinks) || {})[curCat + '-' + l] || '');
+    }) : [];
+    var refreshBtn = ro ? '' :
+      '<button class="btn btn-outline btn-small" id="btn-fcf-refresh"' +
+        (fcfSquads.length ? '' : ' disabled') +
+        ' title="' + sanitize(t(fcfSquads.length ? 'cal.refresh_hint' : 'cal.refresh_none')) + '">' +
+        '🔄 ' + sanitize(t('cal.refresh')) + '</button>';
+
     return '<h2 class="page-title">' + t('page.set_calendar') + '</h2>' +
       (ro ? viewOnlyBanner()
-        : '<div style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button></div>') +
+        : '<div class="md-toolbar" style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button>' +
+          refreshBtn + '</div>') +
       newSection +
       legCard +
       upcomingCard +
@@ -17276,6 +17386,8 @@
       });
     }
 
+    bindFcfRefresh();
+
     if (!body) {
       // No new games form — still bind saved match handlers below
       bindSavedMatchHandlers();
@@ -17438,6 +17550,52 @@
     }
 
     bindSavedMatchHandlers();
+  }
+
+  /* The Calendari's refresh button.
+   *
+   * Calls the SAME server function the 06:00 job runs — the button exists for
+   * a late change the club hears about before the federation's nightly window
+   * comes round, not as a second, client-side importer. A parallel client
+   * implementation is how the two would drift.
+   *
+   * The sync writes teams/{id}/data/fa_matches__{cat}, which the client is
+   * already listening to, so the new fixtures arrive through the ordinary
+   * firestore-sync re-render rather than anything special here.
+   */
+  function bindFcfRefresh() {
+    var btn = document.getElementById('btn-fcf-refresh');
+    if (!btn || btn.disabled) return;
+    btn.addEventListener('click', function () {
+      if (btn.dataset.busy) return;        // double-tap on a phone
+      btn.dataset.busy = '1';
+      var label = btn.innerHTML;
+      btn.innerHTML = '⏳ ' + sanitize(t('cal.refreshing'));
+      var fn = firebase.app().functions('us-central1').httpsCallable('syncFcfFixtures');
+      fn({ category: getCurrentCategory() || undefined })
+        .then(function (res) {
+          var d = (res && res.data) || {};
+          var changed = (d.added || 0) + (d.adopted || 0) + (d.updated || 0) +
+            (d.removed || 0);
+          /* Say what happened, in numbers. "Updated" with nothing to show is
+             the message that makes a coach press it again and again. */
+          _showPushToast(t('cal.refresh'), changed ?
+            t('cal.refresh_done')
+                .replace('{added}', (d.added || 0) + (d.adopted || 0))
+                .replace('{updated}', d.updated || 0)
+                .replace('{removed}', d.removed || 0) :
+            t('cal.refresh_nochange'));
+        })
+        .catch(function (err) {
+          _showPushToast(t('cal.refresh'),
+              sanitize((err && err.message) || t('cal.refresh_failed')));
+        })
+        .then(function () {
+          delete btn.dataset.busy;
+          btn.innerHTML = label;
+          renderPage(getSession());
+        });
+    });
   }
 
   function bindSavedMatchHandlers() {

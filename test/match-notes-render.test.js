@@ -63,7 +63,7 @@ function makeRenderers(opts) {
       'tDateShort', 'getUsers', 'getStartingXI', 'posRankGlobal',
       'posCirclesHtmlGlobal', 'tbRoBoardHtml', 'matchScoreboardHtml',
       'matchTimelineHtml', 'canEditPage', 'staffAccess', 'TB', 'localStorage',
-      'safeHttpUrl',
+      'safeHttpUrl', 'matchSideBadgeHtml',
       logic + '\n return {mnEnabled, mnLegSuggestion, mnLinkedFirstLeg,' +
         ' mnResultLine, mnBriefingHtml, mnNotesCardHtml, mnLegBannerHtml,' +
         ' mnLineupChipsHtml};');
@@ -108,7 +108,13 @@ function makeRenderers(opts) {
       {ready: () => false, library: () => [], meta: () => null},
       {getItem: (k) => (k === 'fa_matches' ? JSON.stringify(matches) : store[k]) || null},
       // The REAL one — the scheme assertions below are testing it, not a stub.
-      U.safeHttpUrl);
+      U.safeHttpUrl,
+      /* Crests are a v118 addition to the scoreline. Stubbed to a marker
+         rather than rendered: what these tests are about is the scoreline's
+         STRUCTURE, and the only property that matters here is that a badge
+         is a child of the name span — the scoreline fitter measures children,
+         so one that lands outside the flex row would break the fit silently. */
+      (m, side) => '<img class="sb-badge" data-side="' + side + '">');
 }
 
 let _id = 500;
@@ -158,6 +164,72 @@ describe('mnLegBannerHtml', () => {
 
   it('is silent when there is no candidate', () => {
     assert.strictEqual(makeRenderers({matches: [second]}).mnLegBannerHtml(second, [second]), '');
+  });
+});
+
+describe('the leg pairs itself when the FEDERATION already knows (v118)', () => {
+  /* Two imported fixtures carry an acta id and the rival's own team id, so
+     "same rival, venue swapped, earlier date" stops being an inference. There
+     is nothing for a coach to confirm, so no banner is offered and the
+     briefing links silently.
+
+     Everything else still goes through the question — which is why
+     normTeamName and legDismissed are still here. */
+  const fcf = (o) => Object.assign(match(o),
+      {fcfActaId: o.acta, opponentTeamId: o.rivalId});
+
+  const firstF = fcf({rival: 'GRACIA, C.F.', at: 'home', date: '2026-09-14',
+    acta: '111', rivalId: '900'});
+  const secondF = fcf({rival: 'GRACIA, C.F.', at: 'away', date: '2026-11-23',
+    acta: '222', rivalId: '900'});
+  const bothFcf = [firstF, secondF];
+
+  it('offers NO banner for two official fixtures', () => {
+    assert.strictEqual(
+        makeRenderers({matches: bothFcf}).mnLegBannerHtml(secondF, bothFcf), '');
+  });
+
+  it('...and links them anyway, with nothing stored', () => {
+    const linked = makeRenderers({matches: bothFcf})
+        .mnLinkedFirstLeg(secondF, bothFcf);
+    assert.ok(linked, 'the official pair was not linked');
+    assert.strictEqual(linked.id, firstF.id);
+  });
+
+  it('STILL asks when only one side is official', () => {
+    // A friendly against the same club, then the league game. Exactly the
+    // ambiguity legDismissed exists for.
+    const friendly = match({rival: 'C.F. Gràcia', at: 'home', date: '2026-09-14'});
+    const mixed = [friendly, secondF];
+    const html = makeRenderers({matches: mixed}).mnLegBannerHtml(secondF, mixed);
+    assert.ok(html.includes('mn-leg-banner'), 'the question was skipped');
+  });
+
+  it('STILL asks when neither side is official', () => {
+    const a = match({rival: 'C.F. Gràcia', at: 'home', date: '2026-09-14'});
+    const b = match({rival: 'Gracia CF', at: 'away', date: '2026-11-23'});
+    const html = makeRenderers({matches: [a, b]}).mnLegBannerHtml(b, [a, b]);
+    assert.ok(html.includes('mn-leg-banner'));
+  });
+
+  it('a coach who declined is not overruled by the federation', () => {
+    /* He may have declined for a reason the data cannot see. Re-deriving
+       over the top of a deliberate "no" is the one thing an automatic link
+       must never do. */
+    const notes = {[String(secondF.id)]: {legDismissed: true}};
+    const R = makeRenderers({matches: bothFcf, notes});
+    assert.strictEqual(R.mnLegBannerHtml(secondF, bothFcf), '');
+    assert.strictEqual(R.mnLinkedFirstLeg(secondF, bothFcf), null);
+  });
+
+  it('a coach\'s own link outranks the derived one', () => {
+    const other = fcf({rival: 'GRACIA, C.F.', at: 'home', date: '2026-08-01',
+      acta: '333', rivalId: '900'});
+    const all3 = [other, firstF, secondF];
+    const notes = {[String(secondF.id)]: {firstLegId: String(other.id)}};
+    const linked = makeRenderers({matches: all3, notes})
+        .mnLinkedFirstLeg(secondF, all3);
+    assert.strictEqual(linked.id, other.id);
   });
 });
 
@@ -411,6 +483,17 @@ describe('mnNotesCardHtml', () => {
 describe('every user-supplied string is escaped', () => {
   const XSS = '<img src=x onerror=alert(1)>';
 
+  /* `!includes('<img')` is the assertion these tests want: a payload that
+     survives as escaped TEXT still contains "onerror=", so asserting on that
+     alone would fail against correctly-escaped output.
+     v118 gave the scoreline club crests, so the renderer now emits `<img>`
+     tags of its own. Those are stripped first — by the exact marker the badge
+     stub emits, never by a loose `<img[^>]*>` — so a real payload cannot hide
+     inside the exemption. */
+  const withoutBadges = (html) =>
+    html.split('<img class="sb-badge" data-side="home">').join('')
+        .split('<img class="sb-badge" data-side="away">').join('');
+
   it('in a rival name on the leg banner', () => {
     const first = match({rival: XSS, at: 'home', date: '2026-09-14'});
     const second = match({rival: XSS, at: 'away', date: '2026-11-23'});
@@ -436,7 +519,7 @@ describe('every user-supplied string is escaped', () => {
     // `<img` and a bare `"` are the two ways out — a payload that survives
     // as ESCAPED text still contains the substring `onerror=`, so asserting
     // on that alone would fail on correctly-escaped output.
-    assert.ok(!html.includes('<img'), 'unescaped note content: ' + html);
+    assert.ok(!withoutBadges(html).includes('<img'), 'unescaped note content: ' + html);
     assert.ok(!/data-video-url="[^"]*"[^>]*onerror/.test(html),
         'attribute broken out of: ' + html);
   });
@@ -447,7 +530,7 @@ describe('every user-supplied string is escaped', () => {
     const all2 = [f, s];
     const notes = {[String(s.id)]: {firstLegId: String(f.id)}};
     const html = makeRenderers({matches: all2, notes}).mnBriefingHtml(s, all2);
-    assert.ok(!html.includes('<img'), 'unescaped rival on the summary: ' + html);
+    assert.ok(!withoutBadges(html).includes('<img'), 'unescaped rival on the summary: ' + html);
   });
 
   it('refuses a javascript: video URL rather than handing it to window.open', () => {

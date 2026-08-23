@@ -1,157 +1,167 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-22._
+_Rolling document, overwritten each session. Last updated: 2026-08-23._
 
-## ⚠ Read this first: v116 AND v117 are written, neither is shipped
+## ⚠ Read this first: v118 is written, NOT shipped
 
-`main` is still at **v115** (`cebf286`). Two versions of work sit in the working tree,
-uncommitted. v117 was written on top of v116 without committing v116 first, so they ship
-together.
+`main` is at **v117** (`9ade7c3`), which was deployed and verified live yesterday. v118 is the
+whole of the working tree:
 
 ```
- M CONTEXT.md  HANDOFF.md  css/style.css  firestore.rules
- M functions/check-deploy.js  functions/index.js  index.html
- M js/app.js  js/db.js  js/utils.js  sw.js  test/package.json  test/rules.test.js
-?? functions/fcf.js  js/match-notes.js  test/fixtures/
-?? test/fcf.test.js  test/fcf-app.test.js  test/match-legs.test.js
-?? test/match-notes.test.js  test/match-notes-render.test.js
+ M CONTEXT.md  HANDOFF.md  css/style.css  functions/check-deploy.js
+ M functions/fcf.js  functions/index.js  js/app.js  js/utils.js  sw.js
+ M test/fcf.test.js  test/match-notes-render.test.js  test/package.json
+?? test/fcf-fixtures.test.js
+?? test/fixtures/fcf-partidos.json  test/fixtures/fcf-equipacions.json
 ```
 
-`test/fixtures/` is new and untracked — it holds the two captured FCF payloads the unit tests
-read. `git add -A` picks it up; do not let it be missed, the suite fails without it.
-
-| | state |
-|---|---|
-| **firestore.rules** | **DEPLOYED** (v116's block, mid-session last time). v117 changes nothing in rules. Re-running `.\deploy.ps1 rules` is idempotent if in doubt. |
-| **functions** | **NOT deployed, and v117 makes this URGENT.** See the deploy order below. |
-| **frontend** | **NOT pushed.** `git add -A`, commit, push to `main`. That also triggers the APK CI build. |
-
-### ⚠ Deploy order, and why it matters more than last session
+### ⚠ Deploy order — functions FIRST, again
 
 ```
 1. .\deploy.ps1 functions      ← MUST be first
 2. git add -A && git commit && git push
 ```
 
-v117 changes the `fcfClassificacio` proxy from `?url=` to `?grupId=`. Pushing the frontend first
-leaves every client calling a proxy that still demands the old parameter — **verified, not
-assumed**: the currently deployed v116 proxy returns **400** for `?grupId=58161881`. The standings
-would stay broken with a fresh version number on them.
+v118 adds the `syncFcfFixtures` callable and the `scheduledFcfSync` job. Push the frontend first
+and the Calendari offers a refresh button that calls a function which does not exist. Same shape
+as v117's reason, different cause.
 
-`archiveSeason` and `deleteTeam` also changed in v116 and are still undeployed; neither runs until
-a season rollover or a squad deletion, but the functions deploy above covers them too.
+Rules are unchanged — the new match fields are optional and shards are written whole-document with
+no per-field validation.
 
-Version triple is consistent at **117**: `sw.js` `CACHE_NAME`, `js/app.js` `APP_VERSION`,
-`functions/check-deploy.js` `CURRENT`.
+Version triple is consistent at **118**: `sw.js` `CACHE_NAME`, `js/app.js` `APP_VERSION`,
+`functions/check-deploy.js` `CURRENT`. **No `minAppVersion` bump** — an old APK simply never sees a
+refresh button, and the nightly sync improves its calendar anyway.
 
-**No `minAppVersion` bump.** An old APK never fetches `matchNotes`, and its standings are already
-broken by fcf.cat's own rebuild — v117 does not make anything worse for it.
+**`git add -A` must pick up `test/fixtures/`** — two new captured payloads, and the unit suite
+fails without them.
 
 ## Tests — all three suites green
 
 ```
-834 unit    (was 769)      cd test && npm run test:unit
+906 unit    (was 834)      cd test && npm run test:unit
 152 rules   (unchanged)    cd test && npm run test:rules
  71 functions (unchanged)  cd test && npm run test:functions
 ```
 
-New this session, **both added to `test:unit` by hand** — the standing trap in this repo:
-`test/fcf.test.js` (30) and `test/fcf-app.test.js` (29), plus 6 new cases in
-`test/match-legs.test.js`. There is also a `test:fcf` shortcut.
+`test/fcf-fixtures.test.js` (54) is new and **was added to `test:unit` by hand** — the standing
+trap in this repo. `npm run test:fcf` runs the three FCF suites together.
 
-> **`npm test` (the full chain) flakes.** The functions suite fails with
+> **`npm test` (the full chain) flakes** — the functions suite fails with
 > `Cannot determine backend specification. Timeout after 10000` when it runs straight after the
-> rules suite — the emulator's 10s function-discovery budget on a busy machine, the same trap
-> `deploy.ps1` sets `FUNCTIONS_DISCOVERY_TIMEOUT=120` for. The three suites pass individually
-> every time. Export that variable, or run them separately.
+> rules suite. Export `FUNCTIONS_DISCOVERY_TIMEOUT=120`, or run the suites separately.
 
-> **Do not serve the app on port 8080.** That is the Firestore emulator's port, and a
-> `python -m http.server 8080` makes the whole rules suite fail with
-> `501 Unsupported method ('PUT')`. Use 8000.
+> **Do not serve the app on port 8080** — that is the Firestore emulator's port and it makes the
+> whole rules suite fail with `501 Unsupported method ('PUT')`. Use 8000.
 
 ---
 
-## What shipped: v117 — FCF standings, and an opponent picker fed by them
+## What shipped: v118 — the Calendari fills itself
 
 Full writeup in CONTEXT.md. The parts most likely to bite:
 
-**fcf.cat's rebuild killed the scrape twice over.** The old
-`https://www.fcf.cat/classificacio/…` addresses 307 to `/ca/classificacio/…` and then **404**, and
-the page that replaced them ships no server-rendered table — the standings arrive from
-`/api/competition/classificacio?grupId=…` after hydration. `parseFcfHtml()` is deleted.
+**The refresh button and the 06:00 job are two callers of ONE function** (`_syncFcfSquad`). Do not
+add a client-side importer for either; that is how they would drift.
 
-**The new source is a public JSON API**, no key, no auth. Worth knowing what else is on it, since
-the fixture-import idea in the parking lot lives here: `partidos?grupId=` gives the entire calendar
-(jornada, kickoff, venue, coordinates, both escuts, scores), and `grupos` / `competicions` /
-`disciplines` / `temporadas` walk the competition tree. **`equipos?grupId=` is broken on FCF's
-side** — the same team repeated 16 times — so the team list comes from `classificacio`.
+**The merge rule is the whole feature**: a field is the federation's for as long as it still equals
+`fcfSnapshot`. Edit a kick-off and the sync stops touching it — for ever, and only that field. No
+`userEdited` flags, so nothing to get out of step.
 
-> ⚠ **`played`, `won`, `drawn` and `lost` are the home and away halves glued together as
-> strings.** `played:"1515"` is 30. `won:"139"` is 22. `drawn:"05"` is 5. FCF's own site renders
-> them raw and shows "1515", so this is their bug arriving in our JSON. The split is not
-> recoverable — "139" is 13|9 or 1|39 and nothing chooses. **J is derived from
-> `points / coefficient`** instead. If someone ever "fixes" `parseFcfClassificacio` by reading the
-> field literally called `played`, `test/fcf.test.js` fails four ways.
+> ⚠ **A fixture withdrawn by the FCF is MARKED, never deleted.** Call-ups, coach notes,
+> availability answers and lineups all hang off the match id. An empty response is an outage, not a
+> cancelled season, and is ignored.
 
-**Every club must re-paste its FCF links.** There is no migration and there cannot be one: the old
-slug names the group by name, and last season's at that. A saved old-format link now renders in
-Team Setup with a ⚠ and the sentence that fixes it, and the standings table says so instead of
-sitting there empty.
+**Imported fixtures take the acta number as their id** (~4e6, three orders below the `Date.now()`
+ids the manual path mints, so they cannot collide). A double import is idempotent.
 
-**The proxy takes a grupId, not a URL.** That is also the fix for a shape that was one loosened
-regex character from an SSRF: the only thing a caller controls now is a run of digits.
+### ⚠ A v117 bug this uncovered: the leading article
 
-**`fcfLookup` is EXACT-match, deliberately.** Picking a rival from the datalist inserts the
-federation's own string and earns the fixture an `opponentTeamId`; typing "Can Buxeres FC" by hand
-does not. An id is a claim of certainty, and `normTeamName` is tuned for a suggestion a human
-confirms — the two leniencies are not interchangeable. `normTeamName` and the `Enllaçar`/`No`
-confirm step **stay**, because every fixture already in the database predates the picker.
+fcf.cat writes **"L'ESQUERRA DE L'EIXAMPLE, F.C."**; the club calls itself **"Esquerra de
+l'Eixample F.C."**. `normTeamName` keeps the article, so they never matched — meaning **v117's
+standings were highlighting the wrong row, or none, for the real club.** The live check that
+"proved" it worked had passed FCF's own spelling in as the club name, so it proved nothing. Worth
+remembering the shape of that mistake.
 
-**`mdRowSquad()` is one definition, and that is load-bearing.** The ✓ beside the opponent box
-promises the save will store an id. Written separately, the tick resolved the squad from the
-active chip while the save used `g.team` — `''` for every club with one team per category, which
-is most of them. Those clubs would have seen a ✓ and got no id. Found by reading, not by a test;
-now pinned by four.
+`sameClubName` fixes it and is deliberately narrow: only for identifying OURSELVES in a group we
+already know we are in, **never** in `findFirstLeg`. The article is stripped from the RAW name,
+where the separator still exists — off the normalised form, `lajonquera` becomes `ajonquera`
+(JS alternation takes `l` before `la`) and `lleida` becomes `leida`.
 
-### What is NOT unit-tested, and why that is stated rather than faked
+**Worth checking on the real club after deploy**: its own row in the standings should now be
+highlighted, which it may never have been.
 
-`renderOpponentDatalists()`, `markOpponentMatch()` and `refreshLeagueTables()` read and write a
-live DOM, and this suite has no jsdom. A hand-rolled `document` stub would only assert that the
-stub behaves the way the test author imagined. **These three need a browser check** — see below.
-Everything that decides *what* they render is covered.
+### Other things to know
 
-## Verify v117 by hand once functions are deployed
+- **The rival's kit renders through the existing `shirtSvg()`.** FCF publishes a named pattern
+  (`CLASE_CSS_CAMISETA`); six of the eleven map onto the app's fill encoding, the rest render
+  solid on purpose. The mapping is in `js/utils.js` next to `encodeFill`, and the server stores
+  FCF's raw fields — reaching `encodeFill` from `functions/` would have meant a third duplicated
+  function across that boundary.
+- **`.sb-badge` is sized in px with `flex:0 0 auto`, and must stay that way.** `_mnScoreNeed()`
+  sums the scoreline's children, so a crest sized in `em` would shrink along with the text it is
+  supposed to be measured against.
+- **The second leg pairs itself only when BOTH fixtures are FCF-owned.** `normTeamName`, the
+  `Enllaçar`/`No` banner and `legDismissed` all stay — friendlies, cup ties and every fixture
+  entered before v118 still go through the question, and a coach's stored answer outranks the
+  derived one.
+- `equipacions` returns a **cross join** (542 rows for 16 teams) and `equipos` is broken outright
+  (the same team repeated ~20 times). Neither is a parsing mistake at our end.
 
-Serve on **port 8000** and sign in to the demo club as a coach.
+## Verify v118 by hand once functions are deployed
 
-1. **Team Setup → FCF links.** Paste
-   `https://www.fcf.cat/ca/competicio?temporadaId=22&disciplinaId=19308233&competicioId=58161869&grupId=58161881&tab=classificacio`
-   for `amateur-A`. Then paste an old `fcf.cat/classificacio/…` link and confirm the save is
-   **blocked** with an inline message, not silently accepted.
-2. **Player home → standings.** 16 rows, L'ESQUERRA DE L'EIXAMPLE highlighted (it is 6th in the
-   array pre-season), badges loading from `files.fcf.cat`, and **J showing 0, never "1515"**.
-   The pure path was confirmed end to end against live FCF this session; what needs eyes is the
-   rendering.
-3. **A league that cannot load says so.** Easiest check: leave a stale link saved and confirm the
-   table shows the "enllaç antic" row rather than an empty body.
-4. **Calendari → opponent box.** The 16 group teams autocomplete. Switch the squad letter on a
-   row and confirm the list changes. Type a name freely and confirm it still saves.
-5. **The ✓.** Pick a rival from the list — tick appears. Save, then confirm in the console that
-   the match carries `opponentTeamId`:
-   `JSON.parse(localStorage.fa_matches).slice(-1)[0]`
-6. **The leg pairing via id.** Create that fixture's return with venues swapped and confirm the
-   anada banner appears.
+Serve on **port 8000**. As a coach on the demo club, or on the real club (which already has
+grupId 58161881 configured for `amateur-A`):
+
+1. **Calendari → 🔄 Actualitzar calendari.** 30 fixtures land, each with venue, kick-off, a 📍 maps
+   link, the rival's crest and its shirt. The pure pipeline was run end to end against LIVE fcf.cat
+   this session and produced exactly that; what needs eyes is the rendering.
+2. **Press it again** — "Tot al dia. Cap canvi a la FCF." and no duplicated season.
+3. **The merge rule, which nothing else proves in a browser**: edit a kick-off by hand, refresh,
+   confirm it survived AND that the venue on the same row still updated.
+4. **Add a friendly manually**, refresh, confirm it is untouched and carries no jornada tag.
+5. **The second leg**: open a J16+ fixture and confirm the briefing is linked with **no** banner;
+   open the return of a manual fixture and confirm the banner is still offered.
+6. **The match sheet** shows both crests, and a long club name shrinks the NAMES, not the crests.
 7. **Confirm the artefact, not the operation:**
    ```bash
    curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep APP_VERSION
    curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
-   # both must say 117
+   # both must say 118
    ```
+8. **Confirm the cron's REAL schedule** via the Cloud Scheduler API — `functions:list` only ever
+   says `scheduled`, and v112 and v113 were both interval-band bugs found exactly this way. It
+   should be `0 6 * * *` in `Europe/Madrid`.
 
-Still outstanding from v116 and worth re-checking after the push: a player is DENIED on
-`teams/{id}/matchNotes/{matchId}` (confirmed on localhost 2026-08-22), and the **scoreline fitter**
-— jsdom has no layout so no test proves it; check a long club name shrinks the NAMES, not the
-title.
+---
+
+## Next: v119 — the Sancions and Top Scorers tabs
+
+Planned with the owner, deliberately deferred out of v118. Both are new sidebar pages
+(`buildSidebarItems` + `STAFF_PAGES` + a render function + a `renderPage` case).
+
+**Sancions.** `sanciones?grupId=&temporada=` returns rows keyed by jornada with
+`participante_nombre`, `nombre_equipo`, `partidos_sancion` and `motivo_sancion`. A ban issued at
+jornada N covers N+1 … N+`partidos_sancion`, so "who misses the next game" is derivable for our
+squad and for the opposition. `tipo` is `participante` or `equipo`; the `equipo` rows with
+`partidos_sancion: "0"` are procedural rulings, **not** bans, and must not be listed as missing
+players.
+
+**Top Scorers.** `goleadores?grupId=&temporada=`, filterable by discipline (Masculí
+`disciplinaId 19308233`, Femení `19308237`), division and group — one group per view, so no bulk
+sweep is needed. Sortable on goals, penalties and matches played. `total` is matches played, not
+goals (FCF's own frontend names it `matchesPlayed`).
+
+> ⚠ **`licencia` is a Spanish DNI/NIE** (`41566132A`, `40449950B`) for players who include minors.
+> It is the only extra identifier in the payload — **there is no contact information of any kind**,
+> so the "scouting contact details" idea has no source — and it must be dropped at the parse
+> boundary, not merely left unrendered.
+
+> ⚠ **The goal figures are arithmetically impossible as published.** Empuriabrava's five listed
+> scorers sum to 157 for a team that scored 106 all season; six of eight teams in that group fail
+> the same check. It is the same home|away string concatenation as the standings' `played:"1515"`,
+> in FCF's aggregation rather than in the referees' match sheets. **The owner's decision is to show
+> the official figure as published** — so v119 does that, behind a single constant, so the derived
+> reading can be switched on if the table looks wrong in use.
 
 ---
 
@@ -159,20 +169,18 @@ title.
 
 Renumbered items are the same items.
 
-1. **Fixture import from `partidos?grupId=`.** Now clearly within reach and the natural next step:
-   the endpoint gives dates, kick-off times, venues, coordinates and both escuts for the whole
-   season. It needs its own data-model decisions (what wins when FCF and the coach disagree about
-   a kick-off time) and was deliberately left out of v117.
-2. **Opponent badges and league position on the match page.** `opponentBadge` is now stored, and
-   `mnScoreBlockHtml()` / `mnLegBannerHtml()` already have the club names in hand. The position
-   *at the time of the game* still has no source — the API only serves the current table.
+1. **Fixture import covers the LEAGUE only.** A cup tie is a different `competicioId` with its own
+   group, and `fcfLinks` holds one link per squad. Supporting cups means a second link per squad,
+   or a competition picker.
+2. **Results are not imported.** `GOLES_*` and `CERRADA` are there; the app computes its scoreline
+   from coach-entered events, and reconciling the two needs a decision first.
 3. **Neither week strip re-renders on a timer.** Pre-existing.
 4. **The cross-category call-up** — decide before building. Within a category it already works;
    across them the picker filters to the coach's category and `getVisibleCategories()` returns
-   `[s.category]` for a player, so he never downloads the other shard. Not a push blocker.
+   `[s.category]` for a player, so he never downloads the other shard.
 5. **Training detail / session planning** (reported 2026-08-09, untouched).
 6. **Fill in `privacy.html`** — blocks both stores, no code dependency.
-7. **The APK** — CI has built through v115; phones are on v43-era. Set
+7. **The APK** — CI has built through v117; phones are on v43-era. Set
    `clubs/nDLJCpJfDvFHs8MnwtzW.minAppVersion` only once a current APK is actually installed.
 8. **Drop dual-write** — `TB_DUAL_WRITE` still mirrors the board library into `fa_tactic_saved`.
    Gated on 7.
@@ -181,10 +189,10 @@ Renumbered items are the same items.
     (iOS 16.4+, and v95 shipped what it needs) before spending the $99.
 11. **Readiness thresholds** — every measurement is against demo data that has since changed.
 12. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
-    directly, bypassing the new server-side link validation in `setClubCategories`. Delete once a
+    directly, bypassing the server-side link validation in `setClubCategories`. Delete once a
     v55+ APK circulates.
 13. **`scheduledMatchAvailReminder`** is the last `onSchedule` not checked for the interval/band
-    traps v112 and v113 fixed.
+    traps v112 and v113 fixed. `scheduledFcfSync` is a plain daily cron and does not have them.
 14. **Push governance** — `firestore.rules` lets any team member enqueue a push to the whole team,
     with no staff check and no validation of `title`/`body`. `Push.sendToTeam` is dead code.
 15. **The demo club's 19-vs-9** — still a hypothesis, never checked.
@@ -200,10 +208,10 @@ Renumbered items are the same items.
   project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push;
   rules/functions = `.\deploy.ps1`; Admin SDK = local, see below.
 - **Bump the version in THREE places together**: `CACHE_NAME` in `sw.js`, `APP_VERSION` in
-  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **117**.
+  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **118**.
 - A new JS/CSS file must be added to **`STATIC_ASSETS` in `sw.js`** and to the `<script>` list in
-  `index.html`, in load order. v117 added no frontend file (the FCF helpers went into the existing
-  `js/utils.js` and `js/app.js`); `functions/fcf.js` is server-side and needs neither.
+  `index.html`, in load order. v118 added no frontend file; `functions/fcf.js` is server-side and
+  needs neither.
 - Tests: `cd test && npm test`. Fast path `npm run test:unit` (~1s). If a suite says
   `Could not spawn java -version`:
   `$env:PATH = "C:\Program Files\Microsoft\jdk-21.0.12.8-hotspot\bin;$env:PATH"`
@@ -211,6 +219,27 @@ Renumbered items are the same items.
 - `gh` is **not** installed. The GitHub REST API with `curl` works; unauthenticated is 60/hour.
 - No browser automation (playwright/puppeteer) is installed — DOM behaviour is verified by hand.
 - **Never edit `www/`** — CI-generated mirror for the Capacitor build.
+- **Editing a source file with a Python round-trip rewrites its line endings** (`io.open` in text
+  mode translates on write). Two test suites broke that way this session because
+  `match-notes-render.test.js` slices app.js on a MULTI-LINE marker. Use `newline=''` on both read
+  and write, or use `sed`.
+
+### The FCF API — what is on it
+
+Base `https://www.fcf.cat/api/competition/`. No key, no auth, no cookie, no Referer; CloudFront
+caches with `s-maxage=60`. It is an internal Next.js route set found by reading their JS chunks,
+not a published contract — it can change shape without notice, which is precisely what happened to
+the HTML in v117.
+
+`classificacio?grupId=` · `partidos?grupId=` · `equipacions?grupId=` · `goleadores?grupId=&temporada=`
+· `sanciones?grupId=&temporada=` · `grupos?competicioId=` · `competicions?disciplinaId=&temporada=`
+· `disciplines` · `temporadas` · `goles-favor`/`goles-contra?grupId=&equipId=`.
+**`equipos?grupId=` is broken** — the same team repeated ~20 times.
+
+> ⚠ **Numeric fields are home and away CONCATENATED as strings** in `classificacio`
+> (`played:"1515"` = 30, `won:"139"` = 22) and in `goleadores` (`goles`). `points`, `position`,
+> `goalsFor`, `goalsAgainst`, `coefficient` and `goles-favor` are clean. J is derived as
+> `round(points / coefficient)`; there is no equivalent derivation for a player's goals.
 
 ### Reading production without a browser
 
@@ -226,16 +255,16 @@ ADC from firebase-tools' stored refresh token — no service-account key needed.
   query". `teams/nDLJCpJfDvFHs8MnwtzW` *is* Esquerra de l'Eixample.
 - The same refresh token exchanges at `oauth2.googleapis.com/token` for a `cloud-platform` access
   token, which reaches **Cloud Scheduler** (`…/v1/projects/esquerrapp/locations/us-central1/jobs`
-  — the only way to see a cron's real schedule; `functions:list` only ever says `scheduled`) and
-  **Cloud Functions v2** (`…/v2/…/functions` — a new Cloud Run `revision` is the proof a deploy
-  took, since a container failing its health check leaves the old one serving).
+  — the only way to see a cron's real schedule) and **Cloud Functions v2** (`…/v2/…/functions` —
+  a new Cloud Run `revision` is the proof a deploy took, since a container failing its health
+  check leaves the old one serving).
 
 ### Clubs in production
 
 - `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`, `amateur`
-  only. **No matches at all**, so the anada briefing has nothing to find here — test it on the
-  demo club. Its FCF group for 2026-27 is **grupId 58161881** (Quarta Catalana, Grup 10), the
-  group captured in `test/fixtures/fcf-preseason.json`.
+  only. **No matches at all** before v118 — the import should now fill its whole season. Its FCF
+  group for 2026-27 is **grupId 58161881** (Quarta Catalana, Grup 10), FCF team id **35410**; that
+  group is captured in `test/fixtures/`.
 - `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar"), join code `9CA4RR`,
   `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`. 3 teams / 77 members, 102 matches (72 with
   events). Topped up 2026-08-20. **It goes stale**: `hasData` expires at `STALE_AFTER_DAYS = 10`.
@@ -260,32 +289,29 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additi
 
 ## Lessons that keep repeating
 
-- **A broken feed and an empty one must not look alike.** The FCF outage went unnoticed for weeks
-  because `applyLeagueRows()` returned early on zero rows, and an empty league table reads as "the
-  season has not started". Every no-data path now renders a reason.
-- **An upstream field can be wrong, not just missing.** `played:"1515"` parses cleanly to a
-  number, passes every type check, and is nonsense. The only way this was caught was recomputing
-  the table from a second endpoint and comparing — the check has to come from outside the thing
-  being checked.
-- **Two leniencies are not one leniency.** `normTeamName` is right for a suggestion a human
-  confirms and wrong for a stored identifier. Ask what the value will be USED for before reusing a
-  comparison that already exists.
-- **One definition, or it drifts.** `mdRowSquad()` exists because a ✓ that promises an id and a
-  save that stores one were computing "which squad is this row" two different ways.
-- **Escaping and validation are different jobs.** `sanitize()` makes a string safe as HTML and
-  says nothing about what the string MEANS.
-- **Test the thing the user will see, not the function you happened to write.**
-- **A guard you have not seen fail is not a guard.** Every guard added this session was checked by
-  mutating the source and watching exactly one test go red.
-- **When layout or a live DOM is involved, ask whether the measurement is even possible.** jsdom
-  has no layout, and this suite has no jsdom at all — say what is not covered instead of writing
-  assertions that pass against a stub.
+- **A test that passes against a mutation is telling you something.** The `adopting ?` branch in
+  `mergeFcfFixtures` was removed because the mutation meant to break it changed nothing — it was a
+  second spelling of a condition the general rule already expressed.
+- **Check the thing against a value it did not come from.** The v117 "our row is highlighted" check
+  passed FCF's own club name in as the club name, so it proved nothing; the real club's row was
+  never highlighted. Feed a check the value the PRODUCT would use, not the one that makes it pass.
+- **A broken feed and an empty one must not look alike.** Every no-data path in the standings and
+  the calendar renders a reason.
+- **An upstream field can be wrong, not just missing.** `played:"1515"` parses cleanly to a number,
+  passes every type check, and is nonsense. Recomputing from a second endpoint is what caught it.
+- **Two leniencies are not one leniency.** `sameClubName` is right for finding ourselves in a group
+  and wrong for pairing two strangers' fixtures; `normTeamName` is right for a suggestion a human
+  confirms and wrong for a stored identifier.
+- **One definition, or it drifts.** `_syncFcfSquad` serves both the button and the cron;
+  `mdRowSquad` serves the tick and both save paths.
+- **Escaping and validation are different jobs.** `sanitize()` makes a string safe as HTML and says
+  nothing about what the string MEANS.
+- **A guard you have not seen fail is not a guard.** Thirteen mutations this session, each failing
+  exactly one test.
+- **When a live DOM is involved, ask whether the test is possible.** There is no jsdom in this
+  suite; say what is not covered instead of asserting against a stub of your own imagination.
 - **An empty query result is not evidence of absence** — it is often the wrong query.
-- **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push output. This
-  session's version: the deployed proxy was probed with the NEW parameter and returned 400, which
-  is how the deploy order above stopped being a guess.
-- **Ask which default a question carries.** `countedFor` and `attendedFor` read the same two
-  stores and disagree only about silence.
-- **A duplicated rule needs a test that reads BOTH copies**, not one that tests each side's
-  behaviour separately. `js/utils.js` and `functions/fcf.js` are checked against one input table.
+- **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push output.
+- **A duplicated rule needs a test that reads BOTH copies.** `js/utils.js` and `functions/fcf.js`
+  are checked against one input table, for `fcfGrupId` and now `sameClubName` too.
 - **`deploy.ps1` is Windows-only and Cloud Shell is not the local machine.**

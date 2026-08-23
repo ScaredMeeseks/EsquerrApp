@@ -76,6 +76,57 @@ describe('fcfGrupId — what a club lead pastes', () => {
   });
 });
 
+describe('sameClubName — us, as the federation spells us', () => {
+  /* fcf.cat writes the leading article a club drops from its own name. Get
+     this wrong and L'Esquerra de l'Eixample's own row is the ONE row in the
+     standings that is never highlighted, and the fixture import cannot find
+     which of the sixteen teams in the group it is. */
+  const SAME = [
+    ['Esquerra de l\'Eixample F.C.', 'L\'ESQUERRA DE L\'EIXAMPLE, F.C.'],
+    ['Prat', 'EL PRAT, A.E.'],
+    ['Jonquera', 'LA JONQUERA, U.E.'],
+    ['L\'Escala FC', 'L\'ESCALA, F.C.'],
+    ['Gràcia', 'GRACIA, C.F.'],
+  ];
+  const DIFFERENT = [
+    /* The leniency must stay narrow. These are the pairs normTeamName was
+       built to keep apart, and stripping an article must not merge them. */
+    ['Gràcia', 'Gràcia Atlètic'],
+    ['Sants', 'Sant Andreu'],
+    ['Roses', 'Base Roses'],
+    ['', 'ANYTHING, C.F.'],
+    ['ANYTHING, C.F.', ''],
+  ];
+
+  SAME.forEach(([a, b]) => {
+    it(`"${a}" is "${b}"`, () => {
+      assert.strictEqual(U.sameClubName(a, b), true);
+      assert.strictEqual(U.sameClubName(b, a), true, 'not symmetric');
+    });
+  });
+
+  DIFFERENT.forEach(([a, b]) => {
+    it(`"${a}" is NOT "${b}"`, () => {
+      assert.strictEqual(U.sameClubName(a, b), false);
+      assert.strictEqual(U.sameClubName(b, a), false, 'not symmetric');
+    });
+  });
+
+  it('the server copy agrees on every one of them', () => {
+    SAME.concat(DIFFERENT).forEach(([a, b]) => {
+      assert.strictEqual(SERVER.sameClubNameOf(a, b), U.sameClubName(a, b),
+          'copies disagree on ' + JSON.stringify([a, b]));
+    });
+  });
+
+  it('findFirstLeg still uses the STRICT rule, not this one', () => {
+    /* The article leniency is for finding ourselves in a group we already
+       know we are in. Pairing two fixtures is a question about strangers,
+       and there it would buy wrong answers. */
+    assert.notStrictEqual(U.normTeamName('La Jonquera'), U.normTeamName('Jonquera'));
+  });
+});
+
 describe('parseFcfClassificacio — the concatenation trap', () => {
   const rows = U.parseFcfClassificacio(FINISHED, 'ROSES, A.E.');
   const top = rows[0];

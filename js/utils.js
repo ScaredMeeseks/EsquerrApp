@@ -130,7 +130,9 @@ const FCF_BADGE_BASE = 'https://files.fcf.cat/escudos/clubes/escudos/';
  */
 function parseFcfClassificacio(json, clubName) {
   const data = (json && json.data) || [];
-  const ours = normTeamName(clubName || '');
+  // Only "is the club named at all" — the comparison itself is sameClubName
+  // below, which knows about the federation's leading article.
+  const ours = !!normTeamName(clubName || '');
   return data.map(function (r, i) {
     const team = r.team || {};
     const pts = parseFloat(r.points) || 0;
@@ -154,10 +156,13 @@ function parseFcfClassificacio(json, clubName) {
          — but the field and both renderers' `r.zone` branches stay, so it
          lights up again the day FCF starts populating it. */
       zone: '',
-      /* An exact normalised match, not the old substring test: "Gràcia" is
-         contained in "Gràcia Atlètic", and the old needle highlighted
-         whichever of the two came first. */
-      ours: !!ours && normTeamName(team.name) === ours
+      /* Not the old substring test: "Gràcia" is contained in "Gràcia
+         Atlètic", and the old needle highlighted whichever came first.
+         sameClubName rather than bare equality because the federation writes
+         the leading article a club usually drops from its own name — without
+         it, L'Esquerra de l'Eixample's own row is the one row in the table
+         that never gets highlighted. */
+      ours: ours && sameClubName(team.name, clubName)
     };
   });
 }
@@ -204,6 +209,48 @@ function normTeamName(s) {
   /* A name that is NOTHING BUT noise ("C.F.", "U.E.") keeps its letters: an
      empty string here would make every such rival equal to every other one. */
   return stripped || bare;
+}
+
+/* The leading article, which the federation writes and clubs usually do not.
+   "L'ESQUERRA DE L'EIXAMPLE, F.C." on fcf.cat is "Esquerra de l'Eixample
+   F.C." in its own app; "EL PRAT" is "Prat"; "LA JONQUERA" is "Jonquera".
+   normTeamName keeps the l/el/la, so the two spellings do not match.
+
+   Stripping it inside normTeamName was the obvious fix and is the wrong one:
+   it would silently merge "La Jonquera" with a different club called
+   "Jonquera" for every fixture in the app, for ever, to solve a problem that
+   only exists in ONE place. So it stays a separate, narrower comparison —
+   see sameClubName.
+
+   Applied to the RAW name, before normalising, because that is where the
+   SEPARATOR still exists. Stripping "l" off the normalised "lleida" leaves
+   "leida"; stripping it off the raw "lleida" cannot happen, because there is
+   no apostrophe or space after it. The article is only an article when
+   something separates it from the name. */
+var LEADING_ARTICLE = /^\s*(l\s*['’]\s*|el\s+|la\s+|els\s+|les\s+)/;
+
+/**
+ * Are these two strings the same club, allowing for the federation's
+ * leading article?
+ *
+ * ONLY for identifying OURSELVES inside a group we have already been told we
+ * are in — sixteen teams, one of which is us, and the club's own name came
+ * from its own configuration. A false positive there is close to impossible.
+ *
+ * NOT a replacement for normTeamName in findFirstLeg: pairing two fixtures is
+ * a question about two clubs that are both strangers to the app, and there
+ * the extra leniency buys a wrong answer rather than a right one.
+ */
+function sameClubName(a, b) {
+  const x = normTeamName(a);
+  const y = normTeamName(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  const bare = (s) => normTeamName(
+      String(s || '').toLowerCase().replace(LEADING_ARTICLE, ''));
+  const bx = bare(a);
+  const by = bare(b);
+  return !!bx && bx === by;
 }
 
 /* Mirrors isOurTeam() in app.js — EXACT equality on the club name, not the
@@ -396,6 +443,65 @@ function encodeFill(on, dir, n, c1, c2) {
   if (!on) return c1;
   const clamped = Math.min(STRIPE_MAX, Math.max(2, parseInt(n, 10) || 2));
   return 's|' + (dir === 'h' ? 'h' : 'v') + '|' + clamped + '|' + c1 + '|' + c2;
+}
+
+/* ---------- The rival's kit, from the federation ----------
+
+   FCF publishes every team's kit as six hex colours plus a NAMED pattern in
+   `CLASE_CSS_CAMISETA` — their own stylesheet's class. Eleven distinct ones
+   appear in a single group. Six of them are stripes and map exactly onto the
+   fill encoding above, so the rival's shirt renders through shirtSvg() with
+   no new drawing code at all.
+
+   The other five — diagonals, side bands, coloured sleeves — have no
+   representation in parseFill, and they render SOLID in the base colour.
+   That is a decision, not a gap waiting to be filled: a delegate looking at
+   next Sunday's fixture needs to know the rival plays in red so he does not
+   bring the red strip, and inventing a diagonal renderer for someone else's
+   shirt earns nothing.
+
+   The mapping lives here, next to encodeFill, rather than server-side: the
+   sync stores FCF's raw fields, because reaching encodeFill from functions/
+   would mean a THIRD duplicated function across that boundary. */
+var FCF_SHIRT_PATTERNS = {
+  'faf-barres': ['v', 6],              // Rayas — vertical stripes
+  'faf-barres2': ['v', 4],             // Rayas anchas
+  'faf-barres3': ['v', 4],             // Rayas anchas, the other spelling
+  'faf-fineshoritzontals': ['h', 8],   // Rayas finas horizontales
+  'faf-horitzontals3': ['h', 3]        // 3 rayas horizontales
+};
+
+/** The fill string for an FCF shirt: `s|dir|n|c1|c2`, or a bare hex. */
+function fcfShirtFill(pattern, c1, c2) {
+  const base = c1 || '#ffffff';
+  const other = c2 || '#ffffff';
+  /* Two identical colours are how FCF spells a plain shirt even when the
+     pattern says stripes (#FFFFFF/#FFFFFF is all over the payload). Striping
+     one colour against itself draws a solid shirt the slow way and, worse,
+     makes parseFill report `striped` to callers that then reason about it. */
+  if (base.toLowerCase() === other.toLowerCase()) return base;
+  const key = String(pattern || '').split(/\s+/)
+      .filter(function (c) { return c.indexOf('faf-') === 0; })[0] || '';
+  const spec = FCF_SHIRT_PATTERNS[key];
+  if (!spec) return base;
+  return encodeFill(true, spec[0], spec[1], base, other);
+}
+
+/**
+ * An FCF kit as the three fill values the app's own renderers take.
+ *
+ * → {shirt, shorts, socks}, or null when there is nothing to draw.
+ * Shorts are always solid: real shorts are single-colour, and the kit editor
+ * enforces the same rule. Socks too — FCF sends two sock colours but no sock
+ * pattern, and guessing one from the shirt's would be inventing a kit.
+ */
+function fcfKitPieces(kit) {
+  if (!kit || !kit.shirt1) return null;
+  return {
+    shirt: fcfShirtFill(kit.pattern, kit.shirt1, kit.shirt2),
+    shorts: kit.shorts1 || '#ffffff',
+    socks: kit.socks1 || '#ffffff'
+  };
 }
 
 /**
@@ -764,9 +870,15 @@ if (typeof module !== 'undefined' && module.exports) {
     fcfGrupId,
     parseFcfClassificacio,
     FCF_BADGE_BASE,
+    // The rival's kit. fcfShirtFill is where FCF's pattern vocabulary meets
+    // the app's fill encoding, and the only place that mapping exists.
+    fcfShirtFill,
+    fcfKitPieces,
+    FCF_SHIRT_PATTERNS,
     // Match legs. findFirstLeg is the whole of the anada/tornada detection —
     // the UI only asks it a question and stores the coach's answer.
     normTeamName,
+    sameClubName,
     ourSideOf,
     opponentOf,
     findFirstLeg,
