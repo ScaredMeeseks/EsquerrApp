@@ -2,30 +2,34 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-23._
 
-## ⚠ v121 is uncommitted — FRONTEND ONLY
+## ⚠ v122 is uncommitted — FRONTEND ONLY
 
-v120 shipped (`24c12bf`) and the owner reported stripes of visibly different widths. **Not a
-stripe-drawing bug — a scaling bug**, and this file's own comments predicted it.
+v121 shipped and the stripes were STILL uneven. The screenshot was a **125%-scaled Windows
+display**, and that is the whole bug: the arithmetic has to hold in DEVICE pixels.
 
-The striped torso is exactly half the shirt's viewBox, so at a rendered size S a band is `S/(2n)`
-device pixels; `KIT_ICON_PX = 72` exists because it makes that whole. v119's stylesheet then did
-`.md-kit-cell .kit-svg { width: 32px }` — a 16px torso, six bands, 2.667px each, snapped by
-crispEdges to 3,2,3,3,2,3.
+```
+32px, 8 bands → 2.00px @100%  2.50px @125%   snapped 2,3,2,3
+48px, 6 bands → 4.00px @100%  5.00px @125%   6.00px @150%   even
+```
 
-**Fixed two ways, both needed**: the render size is a parameter (`kitPx`) so the icons are DRAWN
-at 32px instead of scaled to it, and the counts now divide a 16px torso — "Rayas" 6 → **8**,
-"Rayas anchas" stays **4**. The CSS size rules are deleted, desktop and mobile, with a comment
-saying why.
+A band is whole at every common scaling only when `size / (2 × bands)` is a **multiple of 4**. At
+32px that allows 2 or 4 bands and nothing finer, so the owner chose bigger icons:
+**`MD_KIT_PX` = 48**, "Rayas" = **6**, "Rayas anchas" = **3**. Fixture rows are ~15px taller as a
+result, deliberately.
 
-> ⚠ **Never re-add a width/height rule for `.md-kit-cell .kit-svg`.** That single line is the
-> entire bug. If a kit needs a different size, change `MD_KIT_PX` — and check it still divides by
-> both stripe counts, which a test now enforces.
+**Horizontal hoops were never even either** — they used `SHIRT_FULL_BOX`, whose `y = 6` origin is
+4.5 device pixels at 48px and fractional at every scaling. They now have `SHIRT_HOOP_BOX`
+(`y = 16, h = 32`), the same half-viewBox invariant as the torso and the sock.
+
+> ⚠ Changing `MD_KIT_PX` or any stripe count means re-checking the others. A test sweeps
+> [1, 1.25, 1.5, 1.75, 2] and asserts both the band width and the grid ORIGIN — "even at 100%"
+> proves nothing, which is what the previous two attempts learned the hard way.
 
 ```
 git add -A && git commit && git push      # that is the whole deploy
 ```
 
-No functions change. Version triple is at **121**.
+No functions change. Version triple is at **122**.
 
 ### v118, for reference — DEPLOYED and verified
 

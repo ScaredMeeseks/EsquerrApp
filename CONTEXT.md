@@ -3358,3 +3358,45 @@ Three tests in `kits.test.js` were updated rather than loosened: they pinned the
 `${KIT_ICON_PX}` in the markup, which is now `${px}`. The guarantee they exist for — both
 dimensions stated in the markup, never left to CSS — is unchanged and now also asserts that the
 size is a parameter.
+
+### 2026-08-23 — v122: stripes even at 125% display scaling, not just at 100%
+
+v121 made the bands divide exactly and they were still visibly uneven. The screenshot that
+settled it was a **125%-scaled Windows display**, and that is the whole story: the arithmetic has
+to hold in DEVICE pixels, not CSS pixels.
+
+```
+32px, 8 bands  → 2.00px @100%   2.50px @125%   → crispEdges snaps 2,3,2,3
+48px, 6 bands  → 4.00px @100%   5.00px @125%   6.00px @150%   → always even
+```
+
+A band is whole at 100/125/150/175/200% only when `size / (2 × bands)` is a **multiple of 4**. At
+a row-friendly 32px that leaves 2 and 4 bands and nothing else; 6 bands needs 48px. The owner
+chose the bigger icons over fewer stripes, so fixture rows are about 15px taller than the action
+buttons alone would need.
+
+- `MD_KIT_PX` 32 → **48**
+- "Rayas" 8 → **6**, "Rayas anchas" 4 → **3**, "Rayas finas horizontales" 8 → **6**
+
+#### The hoops were never even, and nobody had looked
+
+Horizontal stripes were laid over `SHIRT_FULL_BOX`, which starts at `y = 6` — **4.5 device pixels
+at 48px, and fractional at every display scaling**. The grid began on a part pixel before a single
+band was measured, so no band count could have saved it. They now have `SHIRT_HOOP_BOX`
+(`y = 16, h = 32`), mirroring the vertical torso and the sock: thirty-two of the sixty-four units,
+the invariant this file has documented all along. The cost is that hoops stop short of the collar
+and the hem; equal widths were the thing actually asked for.
+
+#### Tests
+
+Unit 931 → **933**. The pixel assertions now sweep **[1, 1.25, 1.5, 1.75, 2]** rather than
+assuming 1 — the check the first two attempts were missing — and cover the grid ORIGIN as well as
+the band width, since a fractional origin ruins evenly-divided bands. Five mutations checked:
+reverting to 32px, to 8 bands, to 4 wide bands, putting hoops back on the unaligned box, and
+nudging the hoop origin two units off the grid.
+
+> Three attempts, and the lesson is the same each time, sharpened: **a pixel calculation is only
+> as good as the pixel it is calculated against.** First the SVG was scaled after the fact by CSS;
+> then it divided exactly at 100% and nowhere else; and all along the horizontal box had never
+> been aligned at all. Each fix was correct about the thing it looked at and silent about the
+> thing it did not.

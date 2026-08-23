@@ -314,18 +314,52 @@ describe('fcfShirtFill / fcfKitPieces — the rival\'s shirt', () => {
           'the mobile block is sizing kits again');
     });
 
-    it('every stripe count divides that size exactly', () => {
-      const span = MD_KIT_PX / 2;          // the striped torso, in device px
+    /* DEVICE pixels, at the scalings Windows actually runs at. This is the
+       assertion the first two attempts were missing: 8 bands over a 32px
+       shirt is exactly 2px at 100% and 2.5px at 125%, and the screenshot
+       that reopened the bug was a 125% display. "Even at 100%" proves
+       nothing on its own. */
+    const DPRS = [1, 1.25, 1.5, 1.75, 2];
+    const VIEW = 64;
+    const bandOf = (n) => DPRS.map((d) => (32 * MD_KIT_PX * d) / (VIEW * n));
+    const originOf = (u) => DPRS.map((d) => (u * MD_KIT_PX * d) / VIEW);
+
+    it('every stripe count is whole device pixels at EVERY scaling', () => {
       Object.keys(U.FCF_SHIRT_PATTERNS).forEach((cls) => {
-        const kind = U.FCF_SHIRT_PATTERNS[cls];
-        const spec = ({'stripes': 1, 'wide-stripes': 1})[kind];
-        if (!spec) return;                 // only the VERTICAL torso bands
+        if (!['stripes', 'wide-stripes', 'fine-hoops']
+            .includes(U.FCF_SHIRT_PATTERNS[cls])) return;
         const n = U.parseFill(
             U.fcfShirtFill('faf ' + cls, '#FF0000', '#0000FF')).n;
-        assert.ok(Number.isInteger(span / n),
-            cls + ': ' + n + ' bands over a ' + span + 'px torso is ' +
-            (span / n) + 'px each — they will render uneven');
+        bandOf(n).forEach((w, i) => {
+          assert.ok(Number.isInteger(w),
+              cls + ': ' + n + ' bands at ' + (DPRS[i] * 100) + '% scaling is ' +
+              w + ' device px each — they will render uneven');
+        });
       });
+    });
+
+    it('the band GRID starts on a whole pixel too', () => {
+      /* A fractional origin puts every edge on a part pixel however evenly
+         the bands divide. SHIRT_FULL_BOX starts at y=6, which is 4.5px at
+         48px — the horizontal hoops were never aligned, which is why they
+         have a box of their own. */
+      const app2 = app;
+      const hoop = app2.match(/SHIRT_HOOP_BOX = \{x: \d+, y: (\d+), w: \d+, h: (\d+)\}/);
+      assert.ok(hoop, 'SHIRT_HOOP_BOX is gone');
+      originOf(Number(hoop[1])).forEach((o, i) => {
+        assert.ok(Number.isInteger(o),
+            'the hoop grid starts at ' + o + 'px at ' + (DPRS[i] * 100) + '%');
+      });
+      assert.strictEqual(Number(hoop[2]), 32,
+          'the hoop span must be half the viewBox, like the torso and the sock');
+      // And the vertical torso, which shares the same origin by design.
+      originOf(16).forEach((o) => assert.ok(Number.isInteger(o)));
+    });
+
+    it('hoops do NOT use the unaligned full-shirt box', () => {
+      assert.ok(/f\.striped \? SHIRT_HOOP_BOX : SHIRT_FULL_BOX/.test(app),
+          'horizontal stripes are back on SHIRT_FULL_BOX, whose origin is '
+          + 'fractional at every display scaling');
     });
 
     it('the two vertical forms are still visibly different', () => {

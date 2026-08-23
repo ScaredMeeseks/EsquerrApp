@@ -501,20 +501,29 @@ function fcfShirtPattern(pattern) {
 /* The three patterns parseFill CAN express, so they keep the pixel-aligned
    stripe machinery rather than being redrawn by hand.
 
-   ⚠ The COUNTS are constrained by arithmetic, not taste. The striped torso is
-   exactly 32 of the shirt's 64 viewBox units, so at a rendered size S a band
-   is S/(2n) pixels, and it is only ever even when that divides. The Calendari
-   draws kits at 32px — a 16px torso — so n must divide 16: 2, 4, 8 and no
-   others. Six bands there is 2.667px each, which crispEdges snaps to
-   3,2,3,3,2,3, and that unevenness is exactly what got reported.
+   ⚠ The COUNTS are constrained by arithmetic, not taste, and the constraint
+   is stricter than it first looks.
 
-   So "Rayas" is 8 and "Rayas anchas" is 4: both exact, and still plainly
-   different from each other. Anything that changes these must re-check
-   FCF_STRIPE_SIZES in the tests. */
+   The striped torso is exactly 32 of the shirt's 64 viewBox units, so at a
+   rendered size S a band is S/(2n) CSS pixels — but what has to be whole is
+   DEVICE pixels, and Windows runs at 125%, 150% and 175% as happily as at
+   100%. A band is even at every one of those only when S/(2n) is a multiple
+   of 4.
+
+     32px, 8 bands → 2px at 100%, 2.5px at 125%  → snapped 2,3,2,3
+     48px, 6 bands → 4px at 100%, 5px at 125%, 6px at 150%  → always even
+
+   Two rounds of this were spent getting it wrong: first by scaling a 72px
+   SVG down in CSS, then by dividing exactly at 100% and no other scaling.
+   The screenshot that finally settled it was a 125% display.
+
+   So the Calendari draws at 48px, "Rayas" is 6 and "Rayas anchas" is 3.
+   Changing any of the three means re-checking the other two — there is a
+   test that does exactly that. */
 var FCF_FILL_PATTERNS = {
-  'stripes': ['v', 8],
-  'wide-stripes': ['v', 4],
-  'fine-hoops': ['h', 8]
+  'stripes': ['v', 6],
+  'wide-stripes': ['v', 3],
+  'fine-hoops': ['h', 6]
 };
 
 /** The fill string for an FCF shirt: `s|dir|n|c1|c2`, or a bare hex. */

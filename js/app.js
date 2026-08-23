@@ -1421,7 +1421,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 121;
+  const APP_VERSION = 122;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -14474,10 +14474,13 @@
      Always renders a cell, even with nothing to draw, so the two kit columns
      stay aligned down the table — a fixture against a club outside the group
      leaves a gap rather than shifting the row's other cells left. */
-  /* 32, and it is not a free choice — see FCF_FILL_PATTERNS in js/utils.js.
-     It also has to stay inside the row height the action buttons already
-     set (.btn-small ≈ 33px), or every fixture row grows. */
-  var MD_KIT_PX = 32;
+  /* 48, and it is not a free choice — see FCF_FILL_PATTERNS in js/utils.js.
+     A stripe has to be a whole number of DEVICE pixels at 125% and 150%
+     display scaling too, not just at 100%, and 48 is the smallest size where
+     six bands manage that. It does make each fixture row about 15px taller
+     than the buttons alone would need; that was the owner's call, taken
+     against the alternative of dropping to four stripes. */
+  var MD_KIT_PX = 48;
 
   function mdKitCellHtml(kit, titleKey, badgeUrl) {
     var pieces = fcfKitPieces(kit);
@@ -14749,6 +14752,17 @@
   // across a whole shirt are a different, more forgiving case than nine
   // vertical bands down a narrow torso.
   const SHIRT_FULL_BOX = {x: 6, y: 6, w: 52, h: 50};
+  /* HOOPS get their own box, and it mirrors the vertical torso exactly:
+     16..48, thirty-two of the sixty-four units, the same invariant the sock
+     uses. SHIRT_FULL_BOX cannot carry them — it starts at y=6, which is
+     4.5 device pixels at 48px and fractional at every display scaling, so
+     the hoop grid began on a part pixel before a single band was measured.
+     They were never even; nobody had looked closely at a hooped kit.
+
+     The cost is that hoops stop short of the collar and the hem rather than
+     running the whole shirt. That is the price of every band being the same
+     width, which is the thing that was actually reported. */
+  const SHIRT_HOOP_BOX = {x: 6, y: 16, w: 52, h: 32};
 
   /* `badgeUrl` defaults to OUR crest, which is right for every caller that
      existed before v118 — they all draw the club's own kit. It became a
@@ -14773,7 +14787,9 @@
         `<path d="${SHIRT_SLEEVE_L}" fill="${f.c1}" stroke="none"/>` +
         `<path d="${SHIRT_SLEEVE_R}" fill="${f.c1}" stroke="none"/>`;
     } else {
-      const s = stripeSvg(fill, ++_kitUid, SHIRT_OUTLINE, SHIRT_FULL_BOX);
+      // Hoops use the aligned box; a solid fill does not care which it gets.
+      const box = f.striped ? SHIRT_HOOP_BOX : SHIRT_FULL_BOX;
+      const s = stripeSvg(fill, ++_kitUid, SHIRT_OUTLINE, box);
       body = s.defs + s.shapes;
     }
     return shirtWrap(body, f.c1, badge, size);
