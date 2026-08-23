@@ -443,6 +443,53 @@ describe('renderScorers', () => {
   });
 });
 
+describe('the markup these tabs emit is actually styled', () => {
+  /* v125 shipped the checkbox dropdown with NO stylesheet: the CSS append was
+     chained behind a `node --check` that failed, `&&` short-circuited, and
+     the rules were never written. The result rendered as a paragraph of run-
+     together checkboxes — worse than the <select multiple> it replaced.
+
+     A renderer test cannot catch that: the HTML was perfect. So this checks
+     the other half — every class the tabs emit for LAYOUT has a rule in the
+     stylesheet. */
+  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+
+  const NEEDS_STYLE = [
+    'sc-dd', 'sc-dd-btn', 'sc-dd-panel', 'sc-dd-opt', 'sc-dd-tools',
+    'sc-dd-mini', 'sc-dd-caret', 'sc-dd-label',
+    'sc-bar', 'sc-bar-fill',
+    'sc-club-card', 'sc-club-bits', 'sc-club-note', 'sc-zone', 'sc-card-row',
+    'sanc-tbl', 'sanc-who', 'sanc-why', 'sanc-split', 'sanc-side', 'fcf-empty',
+  ];
+
+  it('every layout class the tabs emit has a rule', () => {
+    NEEDS_STYLE.forEach((cls) => {
+      assert.ok(new RegExp('\\.' + cls + '[\\s,{:.]').test(css),
+          '.' + cls + ' is emitted but has no CSS rule — it will render ' +
+          'unstyled, which for a dropdown panel means a wall of text');
+    });
+  });
+
+  it('the floating panel is positioned, and its card does not clip it', () => {
+    /* Two rules, both load-bearing. Without `position:absolute` the panel
+       shoves the table down the page; with the mobile block's
+       `.card { overflow: hidden }` and no override it is clipped to a
+       sliver. */
+    assert.ok(/\.sc-dd-panel\s*\{[^}]*position:\s*absolute/.test(css),
+        'the panel must float, not push the page down');
+    assert.ok(/\.card\.sc-filters\s*\{[^}]*overflow:\s*visible/.test(css),
+        'the filters card will clip the panel on mobile');
+    assert.ok(/\.sc-dd\s*\{[^}]*position:\s*relative/.test(css),
+        'an absolute panel with no positioned parent escapes its column');
+  });
+
+  it('an option is a row, not a run of inline text', () => {
+    // The exact failure the screenshot showed.
+    assert.ok(/\.sc-dd-opt\s*\{[^}]*display:\s*flex/.test(css),
+        '.sc-dd-opt must lay each option out as its own row');
+  });
+});
+
 describe('the club card — geography, and the only contact that exists', () => {
   /* ⚠ There is NO player contact information in any FCF payload: no email,
      no phone, nothing. The only player-level identifier the federation

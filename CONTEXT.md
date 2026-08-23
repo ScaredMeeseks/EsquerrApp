@@ -3586,3 +3586,27 @@ Unit 983 → **991**. New: the panel opens with one checkbox per option and a cl
 button's summary is a name, a count or "all"; the bar reflects progress; the Zona column appears
 only once a club has loaded; the contact card opens under its own row, adds a scheme to a bare
 domain, renders nothing rather than an empty card, and escapes everything.
+
+#### v126 — the v125 dropdown shipped with no stylesheet
+
+The panel rendered as a paragraph of run-together checkboxes: worse than the `<select multiple>`
+it replaced. The cause was not CSS at all — **the `cat >> css/style.css` was chained behind a
+`node --check` that failed on an unescaped Catalan apostrophe, `&&` short-circuited, and the rules
+were never written.** The commit went out with `css/style.css` untouched.
+
+Three rules carry the whole thing, and each is now pinned by a test that fails on its exact
+mutation:
+
+- `.sc-dd-panel { position: absolute }` — otherwise the panel shoves the table down the page.
+- `.sc-dd { position: relative }` — an absolute panel with no positioned parent escapes its column.
+- `.sc-dd-opt { display: flex }` — **this is the screenshot**: without it every option is inline
+  text and forty divisions become one grey paragraph.
+
+Plus `.card.sc-filters { overflow: visible }`, because the mobile block sets
+`.card { overflow: hidden }` and would clip the panel to a sliver. Two classes beat one, so it
+wins wherever it sits in the file.
+
+> **A renderer test could never have caught this** — the HTML was perfect. So the guard checks the
+> other half: **every layout class the tabs emit has a rule in the stylesheet.** Twenty-one
+> classes, asserted against `css/style.css`. A feature whose markup is right and whose styling is
+> absent is still a broken feature, and nothing in this repo was looking at that seam.

@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-24._
 
-## ⚠ v125 is uncommitted — frontend AND functions
+## ⚠ v126 is uncommitted — frontend AND functions
 
 v124 fixed the browser-boundary bug and the tabs work. v125 is the follow-up the owner asked for
 after using them: **checkbox dropdowns** instead of `<select multiple>`, a **progress bar**, a
@@ -13,7 +13,13 @@ after using them: **checkbox dropdowns** instead of `<select multiple>`, a **pro
 2. git add -A && git commit && git push
 ```
 
-Version triple is at **125**. Rules unchanged.
+Version triple is at **126**. Rules unchanged.
+
+> ⚠ **v125's dropdown shipped with NO stylesheet.** The `cat >> css/style.css` was chained behind
+> a `node --check` that failed, `&&` short-circuited, and the commit went out with the CSS
+> untouched — the panel rendered as a wall of inline text. A test now asserts that **every layout
+> class these tabs emit has a rule in `css/style.css`**. When appending to a file in a chained
+> shell command, check the file afterwards, not just the exit code of the thing before it.
 
 > ⚠ **There is no player contact information in any FCF payload** — no email, no phone. The only
 > player-level identifier is `licencia`, a DNI/NIE, which is dropped at the parse boundary and
