@@ -292,6 +292,32 @@ describe('kits — the old hardcoded renderers are gone', () => {
     assert.ok(/x="33" y="18" width="10" height="10" opacity="\.7"/.test(body),
         'the crest moved or resized');
   });
+
+  it('the crest is OVERRIDABLE, or every rival wears ours (v118)', () => {
+    /* The Calendari draws the OPPONENT's kits. The crest is baked into the
+       shirt path, so before this was a parameter every rival in the fixture
+       list wore an Esquerra badge — invisible at 16px, unmissable once the
+       icons grew to 32. clubBadgeUrl() has to stay the DEFAULT, because
+       every caller that predates v118 draws the club's own kit. */
+    const i = src.indexOf('function shirtSvg(');
+    const body = src.slice(i, src.indexOf('\n  }', i));
+    assert.ok(/function shirtSvg\(fill, badgeUrl\)/.test(body),
+        'shirtSvg must accept a crest');
+    assert.ok(/badgeUrl === undefined \? clubBadgeUrl\(\)/.test(body),
+        'our crest must remain the default');
+    // An explicit '' means "no crest", and must not fall back to ours.
+    assert.ok(/\$\{badge \?/.test(body),
+        'an empty crest must render nothing, not the club\'s');
+  });
+
+  it('kitIconsHtml forwards the crest to the shirt', () => {
+    const i = src.indexOf('function kitIconsHtml(');
+    const body = src.slice(i, src.indexOf('\n  }', i));
+    assert.ok(/shirtSvg\(pieces\.shirt, badge\)/.test(body),
+        'the crest must reach shirtSvg');
+    assert.ok(/'badge' in opts/.test(body),
+        'absent and empty must be distinguishable');
+  });
 });
 
 describe('kits — nine bands land on whole pixels', () => {

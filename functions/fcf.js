@@ -142,16 +142,18 @@ function parseFcfFixtures(json, ourTeamId) {
 }
 
 /**
- * Every team's PRINCIPAL kit, from `/api/competition/equipacions?grupId=`,
- * as `{[teamId]: {shirt1, shirt2, shorts1, socks1, socks2, pattern}}`.
+ * Every team's kits, from `/api/competition/equipacions?grupId=`, as
+ * `{[teamId]: {home: kit|null, away: kit|null}}` where a kit is
+ * `{shirt1, shirt2, shorts1, socks1, socks2, pattern}`.
  *
  * The endpoint returns a cross join — 542 rows for a 16-team group, the same
- * two kits repeated ~20 times each — so the first row per team wins and the
- * rest are dropped.
+ * two kits repeated ~20 times each — so the first row per team per
+ * `PRINCIPAL` wins and the rest are dropped.
  *
- * `PRINCIPAL === "1"` is the home kit. The away kit is deliberately NOT
- * carried: what a delegate needs is what the rival will most likely wear, and
- * two kits per fixture is a picker nobody asked for.
+ * `PRINCIPAL === "1"` is the first-choice kit, `"2"` the change strip. BOTH
+ * are carried: a delegate picking a strip needs to know what the rival can
+ * turn up in, not just what they usually wear, and the away kit is the one
+ * that decides a clash.
  *
  * Colours are stored RAW, exactly as FCF sends them. Turning `pattern` into
  * the app's fill encoding needs encodeFill(), which lives in js/utils.js and
@@ -162,10 +164,14 @@ function parseFcfFixtures(json, ourTeamId) {
 function parseFcfKits(json) {
   const out = {};
   (Array.isArray(json) ? json : []).forEach((k) => {
-    if (String(k.PRINCIPAL) !== "1") return;
+    const slot = String(k.PRINCIPAL) === "1" ? "home" :
+      (String(k.PRINCIPAL) === "2" ? "away" : "");
+    if (!slot) return;
     const id = String(k.CODEQUIPO || "");
-    if (!id || out[id]) return;
-    out[id] = {
+    if (!id) return;
+    if (!out[id]) out[id] = {home: null, away: null};
+    if (out[id][slot]) return;
+    out[id][slot] = {
       shirt1: String(k.COLOR_CAMISETA1 || ""),
       shirt2: String(k.COLOR_CAMISETA2 || ""),
       shorts1: String(k.COLOR_PANTALON1 || ""),
@@ -275,7 +281,14 @@ function mergeFcfFixtures(existing, incoming, opts) {
         opponentTeamId: f.opponentTeamId,
         opponentBadge: f.opponentBadge,
       };
-      if (kit) m.opponentKit = kit;
+      /* Two fields rather than one nested object, on purpose: v118 shipped
+         `opponentKit` as the flat first-choice kit and clubs have already
+         imported a season with it. A nested {home, away} would need every
+         reader to sniff the shape; a second field leaves the old rows
+         rendering exactly as they do, with an empty change-strip column
+         until the next sync fills it. */
+      if (kit && kit.home) m.opponentKit = kit.home;
+      if (kit && kit.away) m.opponentKitAway = kit.away;
       rows.push(m);
       summary.added++;
       return;
@@ -305,7 +318,8 @@ function mergeFcfFixtures(existing, incoming, opts) {
     next.fcfSnapshot = Object.assign({}, fcfFields);
     next.opponentTeamId = f.opponentTeamId;
     next.opponentBadge = f.opponentBadge;
-    if (kit) next.opponentKit = kit;
+    if (kit && kit.home) next.opponentKit = kit.home;
+    if (kit && kit.away) next.opponentKitAway = kit.away;
     /* Back from the dead: a fixture the federation restored after removing
        it. Leaving the flag would keep the row struck through for ever. */
     if (next.fcfRemoved) { delete next.fcfRemoved; changed = true; }

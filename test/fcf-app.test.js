@@ -221,6 +221,51 @@ describe('fcfLookup / fcfMatchFields — which fixtures earn a federation id', (
   });
 });
 
+describe('our own club, in capitals like every rival', () => {
+  /* The federation writes every club in caps and a club writes its own name
+     however it likes, so the fixture list read "CAN BUXERES, F.C. vs Esquerra
+     de l'Eixample F.C." — the odd one out was always us.
+
+     A source-level test, like the ones in kits.test.js and cat-badge.test.js,
+     because the rule being protected is about WHICH MECHANISM is used, and
+     that is visible in the source and nowhere else. */
+  const saved = (() => {
+    const i = appSrc.indexOf('    function buildSavedRow(m) {');
+    assert.notStrictEqual(i, -1, 'buildSavedRow moved');
+    return appSrc.slice(i, appSrc.indexOf('\n    }', i));
+  })();
+  /* Comments stripped, because the rule is about what the CODE does and the
+     comment beside it names the very thing it must not call. Testing the
+     prose would fail on a correct implementation that explains itself. */
+  const savedCode = saved.replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+
+  it('wraps our name in the class the stylesheet uppercases', () => {
+    assert.ok(/md-our-club/.test(saved), 'the club name is not marked up');
+  });
+
+  it('NEVER uppercases the stored value', () => {
+    /* isOurTeam() compares the stored name with ===. An uppercased value
+       written back would make the app believe we were the other team — every
+       fixture would flip home for away, and the squad letter with it. */
+    assert.ok(!/toUpperCase/.test(savedCode),
+        'the club name must be uppercased in CSS, not in JS');
+  });
+
+  it('the stylesheet is what does it', () => {
+    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    assert.ok(/\.md-our-club\s*\{[^}]*text-transform:\s*uppercase/.test(css),
+        '.md-our-club does not uppercase anything');
+  });
+
+  it('leaves the RIVAL alone — FCF already sends caps', () => {
+    // Marking both sides would be harmless today and wrong the day a club
+    // outside the federation is typed in by hand.
+    const hits = savedCode.match(/md-our-club/g) || [];
+    assert.strictEqual(hits.length, 1, 'expected one shared helper, not two');
+  });
+});
+
 describe('mdRowSquad — which league a matchday row belongs to', () => {
   /* Not a DOM test. mdRowSquad reads exactly two things off the row —
      dataset.category and whether a squad chip is active — and the substance

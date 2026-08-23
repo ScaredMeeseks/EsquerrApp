@@ -2,46 +2,50 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-23._
 
-## ⚠ Read this first: v118 is written, NOT shipped
+## ⚠ v119 is written and NOT shipped; v118 is live and tested
 
-`main` is at **v117** (`9ade7c3`), which was deployed and verified live yesterday. v118 is the
-whole of the working tree:
+The owner tested v118 in the browser and signed it off ("Really nice!"), then asked for three
+changes — those are **v119**, sitting uncommitted in the working tree:
 
-```
- M CONTEXT.md  HANDOFF.md  css/style.css  functions/check-deploy.js
- M functions/fcf.js  functions/index.js  js/app.js  js/utils.js  sw.js
- M test/fcf.test.js  test/match-notes-render.test.js  test/package.json
-?? test/fcf-fixtures.test.js
-?? test/fixtures/fcf-partidos.json  test/fixtures/fcf-equipacions.json
-```
+1. our own club name in capitals in the fixture list, like every rival;
+2. the rival's kits as large as the row allows, **both** of them, in separate columns, with
+   shorts and socks;
+3. (found while doing 2) every rival was wearing OUR crest — `shirtSvg` bakes `clubBadgeUrl()`
+   into the shirt. Invisible at 16px, unmissable at 32.
 
-### ⚠ Deploy order — functions FIRST, again
+**v119 is frontend + functions.** `parseFcfKits` now returns both kits, so `.\deploy.ps1 functions`
+comes first again, exactly as before. Until it is deployed the change-strip column stays empty —
+the client reads `opponentKitAway`, which only the new server code writes.
 
-```
-1. .\deploy.ps1 functions      ← MUST be first
-2. git add -A && git commit && git push
-```
+### v118, for reference — DEPLOYED and verified
 
-v118 adds the `syncFcfFixtures` callable and the `scheduledFcfSync` job. Push the frontend first
-and the Calendari offers a refresh button that calls a function which does not exist. Same shape
-as v117's reason, different cause.
+`main` is at **v118** (`304630c`). Functions and frontend both shipped, functions first. Verified
+by artefact, not by the deploy output:
 
-Rules are unchanged — the new match fields are optional and shards are written whole-document with
-no per-field validation.
+| | evidence |
+|---|---|
+| **functions** | `syncFcfFixtures` and `scheduledFcfSync` both `ACTIVE` on revision `-00001`; `fcfClassificacio` moved to revision 38 in the same deploy. A new Cloud Run revision is the proof — a container failing its health check leaves the old one serving. |
+| **cron** | `firebase-schedule-scheduledFcfSync-us-central1` → `0 6 * * *`, `Europe/Madrid`, `ENABLED`, read from the Cloud Scheduler API. |
+| **frontend** | `APP_VERSION = 118` and `CACHE_NAME = esquerrapp-v118` served from GitHub Pages. |
+| **rules** | Unchanged — the new match fields are optional and shards are written whole-document with no per-field validation. |
 
-Version triple is consistent at **118**: `sw.js` `CACHE_NAME`, `js/app.js` `APP_VERSION`,
-`functions/check-deploy.js` `CURRENT`. **No `minAppVersion` bump** — an old APK simply never sees a
-refresh button, and the nightly sync improves its calendar anyway.
+**No `minAppVersion` bump** — an old APK simply never sees a refresh button, and the nightly sync
+improves its calendar anyway.
 
-**`git add -A` must pick up `test/fixtures/`** — two new captured payloads, and the unit suite
-fails without them.
+> **Pages lags the push by a minute or two.** The first version check after pushing said 117 and
+> looked like a failed deploy; it was the build still running. Check
+> `raw.githubusercontent.com/.../main/js/app.js` to separate "the repo is wrong" from "Pages has
+> not rebuilt". Also note `?cb=$(Get-Random)` can repeat within one PowerShell session.
+
+v118's hands-on test is **done** — the owner ran the import against the real club and signed it
+off. What has NOT been tested in a browser is v119's two kit columns and the uppercase name.
 
 ## Tests — all three suites green
 
 ```
-906 unit    (was 834)      cd test && npm run test:unit
-152 rules   (unchanged)    cd test && npm run test:rules
- 71 functions (unchanged)  cd test && npm run test:functions
+916 unit    (834 → 906 → 916)   cd test && npm run test:unit
+152 rules   (unchanged)         cd test && npm run test:rules
+ 71 functions (unchanged)       cd test && npm run test:functions
 ```
 
 `test/fcf-fixtures.test.js` (54) is new and **was added to `test:unit` by hand** — the standing
@@ -107,10 +111,24 @@ highlighted, which it may never have been.
 - `equipacions` returns a **cross join** (542 rows for 16 teams) and `equipos` is broken outright
   (the same team repeated ~20 times). Neither is a parsing mistake at our end.
 
-## Verify v118 by hand once functions are deployed
+## Verifying, once v119 is deployed
 
-Serve on **port 8000**. As a coach on the demo club, or on the real club (which already has
-grupId 58161881 configured for `amateur-A`):
+v118's steps 1-7 below were all walked through by the owner and passed. **The v119 additions have
+NOT been looked at in a browser** — check these first:
+
+- **A) The two kit columns.** Every imported fixture shows the rival's 1a and 2a kits, each with
+  shirt, shorts and socks. The change strip only appears after `.\deploy.ps1 functions` AND a
+  refresh — `opponentKitAway` is written by the server, not derived on the client.
+- **B) The row must not have grown.** 32px is meant to sit inside the height the action buttons
+  already set. If rows are taller than they were in v118, the number needs to come down.
+- **C) The rival's own crest is on the rival's shirt** — not Esquerra's. This is the bug the
+  bigger icons exposed, and the whole reason to look closely at a shirt.
+- **D) Our club name is in capitals**, and home/away are still the right way round. If a fixture
+  looks inverted, the uppercase went through `toUpperCase()` instead of CSS and `isOurTeam()` is
+  failing.
+
+Then re-walk v118's list. Serve on **port 8000**. As a coach on the demo club, or on the real club
+(which already has grupId 58161881 configured for `amateur-A`):
 
 1. **Calendari → 🔄 Actualitzar calendari.** 30 fixtures land, each with venue, kick-off, a 📍 maps
    link, the rival's crest and its shirt. The pure pipeline was run end to end against LIVE fcf.cat
@@ -126,11 +144,14 @@ grupId 58161881 configured for `amateur-A`):
    ```bash
    curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep APP_VERSION
    curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
-   # both must say 118
+   # both must say 119
    ```
-8. **Confirm the cron's REAL schedule** via the Cloud Scheduler API — `functions:list` only ever
-   says `scheduled`, and v112 and v113 were both interval-band bugs found exactly this way. It
-   should be `0 6 * * *` in `Europe/Madrid`.
+8. ~~Confirm the cron's REAL schedule~~ — **done, 2026-08-23**. Verified through the Cloud
+   Scheduler API (`functions:list` only ever says `scheduled`, and v112 and v113 were both
+   interval-band bugs found exactly this way):
+   `firebase-schedule-scheduledFcfSync-us-central1` → `0 6 * * *`, `Europe/Madrid`, `ENABLED`.
+   `syncFcfFixtures` and `scheduledFcfSync` are both `ACTIVE` on revision `-00001`, and
+   `fcfClassificacio` moved to revision 38 in the same deploy.
 
 ---
 
@@ -208,7 +229,7 @@ Renumbered items are the same items.
   project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push;
   rules/functions = `.\deploy.ps1`; Admin SDK = local, see below.
 - **Bump the version in THREE places together**: `CACHE_NAME` in `sw.js`, `APP_VERSION` in
-  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **118**.
+  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **119**.
 - A new JS/CSS file must be added to **`STATIC_ASSETS` in `sw.js`** and to the `<script>` list in
   `index.html`, in load order. v118 added no frontend file; `functions/fcf.js` is server-side and
   needs neither.
@@ -247,6 +268,19 @@ ADC from firebase-tools' stored refresh token — no service-account key needed.
 `~/.config/configstore/firebase-tools.json` → `additionalAccounts[]` (marna96@gmail.com). Write
 `{type:"authorized_user", client_id, client_secret, refresh_token}` to a scratch file, point
 `GOOGLE_APPLICATION_CREDENTIALS` at it. **Never print the token; delete after.**
+
+> ⚠ **Take the token from `additionalAccounts[]`, NOT from the top-level `tokens`.** That file
+> holds several accounts: `tokens` is whichever was primary — here
+> `administracion@mov-ment.com`, the **Movment** account — while `activeAccounts` maps
+> `C:\DATA\CLAUDE\EsquerrApp` → `marna96@gmail.com`, which lives in `additionalAccounts[]`.
+> The Movment token is currently in a reauth state, so exchanging it fails with
+> `400 invalid_grant / invalid_rapt`, which reads as a broken script rather than the wrong
+> account. Cost a round trip on 2026-08-23.
+>
+> ```powershell
+> $cfg = Get-Content "$env:USERPROFILE\.config\configstore\firebase-tools.json" | ConvertFrom-Json
+> $rt  = ($cfg.additionalAccounts | Where-Object { $_.user.email -eq 'marna96@gmail.com' }).tokens.refresh_token
+> ```
 
 - **A scratch script must live inside `functions/`**, or `require("firebase-admin")` cannot
   resolve.

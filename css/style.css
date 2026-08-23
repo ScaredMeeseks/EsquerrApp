@@ -3059,6 +3059,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* ── Training table card → tight padding ── */
   .table-wrap { margin: 0 -.75rem; }
   .matchday-table td { padding: .4rem .3rem; }
+  /* .btn-small is smaller here too (≈28px), so the kits follow it down —
+     see the note beside the desktop sizes. */
+  .md-kit-cell .kit-svg { width: 26px; height: 26px; }
+  .md-kit-cell .kit-svg-tall { width: 13px; height: 26px; }
+  .md-kit-cell .kit-icons { gap: 1px; }
   .matchday-table .reg-input,
   .matchday-table select.reg-input { font-size: .72rem; padding: .25rem .3rem; }
   .st-date { width: 100px !important; font-size: .72rem !important; }
@@ -4007,8 +4012,23 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    own — a friendly he typed — so it must not look like decoration. */
 .md-fcf-jornada{display:inline-block;min-width:1.9em;text-align:center;font-size:.62rem;font-weight:700;
   padding:.1rem .3rem;margin-right:.4rem;border-radius:4px;background:var(--border);color:var(--text-secondary);vertical-align:middle;}
-.md-opp-kit{display:inline-block;margin-left:.4rem;vertical-align:middle;}
-.md-opp-kit svg{width:16px;height:16px;display:block;}
+/* Our own club, in capitals like every rival the federation names. Done in
+   CSS and never with toUpperCase(): isOurTeam() compares the STORED name
+   with ===, so an uppercased value written back would make the app believe
+   we were the other team. */
+.md-our-club{text-transform:uppercase;}
+
+/* The rival's two kits, one column each.
+   32px is the largest that does NOT grow the row: the row's height is set by
+   the action buttons (.btn-small = .35rem padding + .82rem text + 2px border
+   ≈ 33px), so anything up to that is free and anything past it pushes every
+   row taller. The mobile block below drops to 26px for the same reason,
+   because .btn-small shrinks there too. */
+.md-kit-cell{padding:.2rem .4rem !important;white-space:nowrap;}
+.md-kit-cell .kit-icons{gap:2px;}
+.md-kit-cell .kit-svg{width:32px;height:32px;}
+.md-kit-cell .kit-svg-tall{width:16px;height:32px;}
+.md-kit-th{text-align:center;}
 .md-map-link{margin-left:.35rem;text-decoration:none;font-size:.85rem;}
 /* Withdrawn by the federation. Kept because the call-up and the notes hang
    off this row; struck through so nobody turns up for it. */

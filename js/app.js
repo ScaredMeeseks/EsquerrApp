@@ -177,7 +177,10 @@
     'cal.refresh_nochange': { ca:'Tot al dia. Cap canvi a la FCF.', es:'Todo al día. Ningún cambio en la FCF.', en:'Up to date — nothing changed at the FCF.' },
     'cal.refresh_failed': { ca:'No s\'ha pogut actualitzar el calendari.', es:'No se ha podido actualizar el calendario.', en:'Could not refresh the calendar.' },
     'cal.from_fcf':       { ca:'Partit oficial, importat de la FCF', es:'Partido oficial, importado de la FCF', en:'Official fixture, imported from the FCF' },
-    'cal.opp_kit':        { ca:'Equipació titular del rival (FCF)', es:'Equipación titular del rival (FCF)', en:'Opponent\'s first-choice kit (FCF)' },
+    'cal.th_kit_1':       { ca:'1a', es:'1a', en:'1st' },
+    'cal.th_kit_2':       { ca:'2a', es:'2a', en:'2nd' },
+    'cal.opp_kit_1':      { ca:'Equipació titular del rival (FCF)', es:'Equipación titular del rival (FCF)', en:'Opponent\'s first-choice kit (FCF)' },
+    'cal.opp_kit_2':      { ca:'Segona equipació del rival (FCF)', es:'Segunda equipación del rival (FCF)', en:'Opponent\'s change kit (FCF)' },
     'cal.open_map':       { ca:'Obrir al mapa', es:'Abrir en el mapa', en:'Open in maps' },
     'cal.removed':        { ca:'Retirat del calendari de la FCF', es:'Retirado del calendario de la FCF', en:'Withdrawn from the FCF calendar' },
 
@@ -1418,7 +1421,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 118;
+  const APP_VERSION = 119;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -14461,15 +14464,21 @@
       sanitize(label) + '</span>';
   }
 
-  /* The rival's first-choice shirt, from the federation's own kit register.
-     Renders through the existing shirtSvg(), so a striped rival draws as
-     stripes with no new code — see fcfKitPieces in js/utils.js for what does
-     and does not survive the mapping. */
-  function mdOpponentKitHtml(m) {
-    var pieces = fcfKitPieces(m && m.opponentKit);
-    if (!pieces) return '';
-    return '<span class="md-opp-kit" title="' + sanitize(t('cal.opp_kit')) + '">' +
-      shirtSvg(pieces.shirt) + '</span>';
+  /* One of the rival's kits — shirt, shorts and socks — from the
+     federation's own kit register.
+
+     Renders through the existing kitIconsHtml()/shirtSvg(), so a striped
+     rival draws as stripes with no new drawing code; see fcfKitPieces in
+     js/utils.js for what does and does not survive the mapping.
+
+     Always renders a cell, even with nothing to draw, so the two kit columns
+     stay aligned down the table — a fixture against a club outside the group
+     leaves a gap rather than shifting the row's other cells left. */
+  function mdKitCellHtml(kit, titleKey, badgeUrl) {
+    var pieces = fcfKitPieces(kit);
+    if (!pieces) return '<td class="md-kit-cell"></td>';
+    return '<td class="md-kit-cell" title="' + sanitize(t(titleKey)) + '">' +
+      kitIconsHtml(pieces, { badge: badgeUrl || '' }) + '</td>';
   }
 
   function renderMatchday() {
@@ -14531,8 +14540,16 @@
         '</tr>';
       }
       var teamLetter = m.team || '';
-      var homeName = isOurTeam(m.home) && teamLetter ? sanitize(m.home) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.home);
-      var awayName = isOurTeam(m.away) && teamLetter ? sanitize(m.away) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.away);
+      /* Our own name goes up in capitals to match the rivals'. The
+         federation writes every club in caps and the club writes its own
+         name however it likes, so a fixture list reads "CAN BUXERES, F.C. vs
+         Esquerra de l'Eixample F.C." — the odd one out is always us.
+         `text-transform` in CSS, never `toUpperCase()`: isOurTeam() compares
+         the STORED name with ===, and an uppercased value written back would
+         make the app think we were the other team. */
+      var ourName = function (n) { return '<span class="md-our-club">' + sanitize(n) + '</span>'; };
+      var homeName = isOurTeam(m.home) && teamLetter ? ourName(m.home) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : (isOurTeam(m.home) ? ourName(m.home) : sanitize(m.home));
+      var awayName = isOurTeam(m.away) && teamLetter ? ourName(m.away) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : (isOurTeam(m.away) ? ourName(m.away) : sanitize(m.away));
       var dateObj = m.date ? new Date(m.date + 'T12:00:00') : null;
       var dateFmt = dateObj ? tDateShort(m.date) : '—';
       var timeFmt = m.time || '—';
@@ -14544,8 +14561,9 @@
       var mapBtn = m.mapLink ? ' <a class="md-map-link" href="' + sanitize(safeHttpUrl(m.mapLink)) +
         '" target="_blank" rel="noopener noreferrer" title="' + sanitize(t('cal.open_map')) + '">📍</a>' : '';
       return '<tr class="md-saved-row' + gone + '">' +
-        '<td>' + mdFixtureTagHtml(m) + homeName + ' vs ' + awayName +
-          mdOpponentKitHtml(m) + '</td>' +
+        '<td>' + mdFixtureTagHtml(m) + homeName + ' vs ' + awayName + '</td>' +
+        mdKitCellHtml(m.opponentKit, 'cal.opp_kit_1', m.opponentBadge) +
+        mdKitCellHtml(m.opponentKitAway, 'cal.opp_kit_2', m.opponentBadge) +
         '<td>' + dateFmt + '</td>' +
         '<td>' + timeFmt + '</td>' +
         '<td>' + sanitize(m.location || '') + mapBtn + '</td>' +
@@ -14587,7 +14605,10 @@
       }
     }
 
-    var theadHtml = '<thead><tr><th>' + t('cal.th_match') + '</th><th>' + t('cal.th_date') + '</th><th>' + t('cal.th_kickoff') + '</th><th>' + t('cal.th_location') + '</th><th></th></tr></thead>';
+    var theadHtml = '<thead><tr><th>' + t('cal.th_match') + '</th>' +
+      '<th class="md-kit-th">' + t('cal.th_kit_1') + '</th>' +
+      '<th class="md-kit-th">' + t('cal.th_kit_2') + '</th>' +
+      '<th>' + t('cal.th_date') + '</th><th>' + t('cal.th_kickoff') + '</th><th>' + t('cal.th_location') + '</th><th></th></tr></thead>';
 
     var upcomingCard = '<div class="card" style="margin-bottom:1rem;"><div class="card-title">' + t('matches.upcoming') + '</div>' +
       (upcomingMatches.length ? '<div class="table-wrap"><table class="matchday-table md-saved-table">' + theadHtml + '<tbody>' + upcomingRows + '</tbody></table></div>'
@@ -14700,8 +14721,14 @@
   // vertical bands down a narrow torso.
   const SHIRT_FULL_BOX = {x: 6, y: 6, w: 52, h: 50};
 
-  function shirtSvg(fill) {
+  /* `badgeUrl` defaults to OUR crest, which is right for every caller that
+     existed before v118 — they all draw the club's own kit. It became a
+     parameter when the Calendari started drawing the RIVAL's: the crest is
+     baked into the shirt, so without this every opponent in the fixture list
+     wore an Esquerra badge. Invisible at 16px, unmissable at 32. */
+  function shirtSvg(fill, badgeUrl) {
     if (!fill) return '';
+    const badge = badgeUrl === undefined ? clubBadgeUrl() : badgeUrl;
     const f = parseFill(fill);
     const collar = darkenHex(f.c1, 40);
     const plainSleeves = f.striped && f.dir !== 'h';
@@ -14725,7 +14752,7 @@
     return `<svg class="kit-svg" viewBox="0 0 64 64" width="${KIT_ICON_PX}" height="${KIT_ICON_PX}" style="display:block">${body}
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
-      <image href="${sanitize(clubBadgeUrl())}" x="33" y="18" width="10" height="10" opacity=".7"/>
+      ${badge ? `<image href="${sanitize(badge)}" x="33" y="18" width="10" height="10" opacity=".7"/>` : ''}
     </svg>`;
   }
 
@@ -14788,8 +14815,11 @@
   function kitIconsHtml(pieces, opts) {
     if (!pieces) return '';
     const withShorts = !opts || opts.shorts !== false;
+    // `opts.badge` overrides the crest baked into the shirt. Only the
+    // Calendari passes it, and only because the kits there are the RIVAL's.
+    const badge = opts && 'badge' in opts ? opts.badge : undefined;
     return '<span class="kit-icons">' +
-      shirtSvg(pieces.shirt) +
+      shirtSvg(pieces.shirt, badge) +
       (withShorts ? shortsSvg(pieces.shorts) : '') +
       kitSockSvg(pieces.socks) +
       '</span>';

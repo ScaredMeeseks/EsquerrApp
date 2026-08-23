@@ -3167,3 +3167,65 @@ kick-off survives a sync while the venue on the same row still updates.
 
 **Deploy order**: `.\deploy.ps1 functions` BEFORE pushing the frontend — the callable must exist
 before a client offers the button.
+
+### 2026-08-23 — v119: the Calendari's kit columns, and our own name in capitals
+
+Three changes the owner asked for after using v118 for an afternoon, plus one bug they exposed.
+
+**Our club name is now uppercase in the fixture list.** The federation writes every club in caps
+and a club writes its own name however it likes, so the list read "CAN BUXERES, F.C. vs Esquerra
+de l'Eixample F.C." — the odd one out was always us. Done with `text-transform` on a
+`.md-our-club` span, **never** with `toUpperCase()`: `isOurTeam()` compares the STORED name with
+`===`, so an uppercased value written back would make the app believe we were the other team, and
+every fixture would flip home for away with the squad letter following it.
+
+**Both of the rival's kits, in two columns, with shorts and socks.** `parseFcfKits` used to keep
+only `PRINCIPAL === "1"`; it now returns `{home, away}` per team, and the merge writes
+`opponentKit` and `opponentKitAway`.
+
+> Two flat fields rather than one nested object, deliberately: v118 shipped `opponentKit` as a
+> flat kit and a club had already imported a season with it. A nested `{home, away}` would make
+> every reader sniff the shape; a second field leaves those rows rendering exactly as they were,
+> with an empty change-strip column until the next sync fills it.
+
+The cells render through the existing `kitIconsHtml()`, so shorts and socks came free.
+`mdKitCellHtml` emits a `<td>` even with nothing to draw, so a fixture against a club outside the
+group leaves a gap instead of shifting the row's other cells left.
+
+**Sized to the row, not past it.** 32px is the largest icon that does not grow the row: the height
+is already set by the action buttons (`.btn-small` ≈ 33px), so anything up to that is free.
+The mobile block drops to 26px for the same reason, because `.btn-small` shrinks there too.
+
+#### ⚠ The bug the bigger icons exposed: every rival wore our crest
+
+`shirtSvg()` bakes `clubBadgeUrl()` into the shirt path. That is right for every caller written
+before v118 — they all draw the club's own kit — but the Calendari draws the RIVAL's, so each
+opponent in the fixture list was wearing an Esquerra badge. Invisible at 16px, unmissable at 32.
+
+`shirtSvg(fill, badgeUrl)` now takes the crest, defaulting to `clubBadgeUrl()` when the argument
+is **absent** — `undefined`, not falsy, because an explicit `''` has to mean "no crest" and not
+fall back to ours. `kitIconsHtml` forwards it via `'badge' in opts`, for the same reason.
+
+#### Tests
+
+Unit 906 → **916**. Rules 152 and functions 71 unchanged. `parseFcfKits`'s tests were rewritten
+for the two-kit shape, and the reduced `fcf-equipacions.json` fixture still lists each team's
+CHANGE strip first so a parser taking "the first row per team" instead of "the first
+`PRINCIPAL=1` row" fails loudly rather than showing the wrong shirt all season.
+
+Four mutations checked: not forwarding the crest, letting an empty crest fall back to ours, making
+absent and empty indistinguishable, and dropping the `.md-our-club` class each fail exactly the
+tests that claim them.
+
+> The uppercase rule is pinned by a SOURCE-level test, like the ones in `kits.test.js` and
+> `cat-badge.test.js`, because what matters is which mechanism is used and that is visible only in
+> the source. It strips comments before asserting — the comment beside the code names the very
+> call it must not make, and testing the prose would fail a correct implementation that explains
+> itself.
+
+Also worth knowing: `cat-badge.test.js` greps app.js for lines carrying BOTH `conv-team-circle`
+and `isOurTeam(`. Refactoring the club-name markup into a helper split them across two lines and
+broke that guard; the code was rewritten to keep them on one line rather than loosening the test.
+
+Verified end to end against live fcf.cat: all 30 fixtures carry both kits, with stripes, shorts and
+socks resolved (`4v #00005C/#F2FFFF`, `3h #FFFF00/#FF0000`, and so on).

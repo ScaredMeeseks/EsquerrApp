@@ -137,31 +137,53 @@ describe('fcfMapsLink', () => {
 describe('parseFcfKits', () => {
   const kits = F.parseFcfKits(EQUIPACIONS);
 
-  it('collapses the cross join to one kit per team', () => {
+  it('collapses the cross join to one pair of kits per team', () => {
     const teams = new Set(EQUIPACIONS.map((k) => k.CODEQUIPO));
     assert.ok(EQUIPACIONS.length > teams.size, 'fixture has lost its duplicates');
     assert.strictEqual(Object.keys(kits).length, teams.size);
   });
 
-  it('takes the PRINCIPAL kit, not the change strip', () => {
+  it('carries BOTH kits — the change strip decides a clash', () => {
     Object.keys(kits).forEach((id) => {
-      const rows = EQUIPACIONS.filter((k) => k.CODEQUIPO === id &&
+      assert.ok(kits[id].home, id + ' has no first-choice kit');
+      assert.ok(kits[id].away, id + ' has no change kit');
+    });
+  });
+
+  it('does not mix the two up', () => {
+    /* The fixture deliberately lists each team's CHANGE strip first, so a
+       parser that takes "the first row per team" instead of "the first
+       PRINCIPAL=1 row" fails here rather than silently showing the wrong
+       shirt all season. */
+    Object.keys(kits).forEach((id) => {
+      const first = EQUIPACIONS.find((k) => k.CODEQUIPO === id &&
         String(k.PRINCIPAL) === '1');
-      if (!rows.length) return;
-      assert.strictEqual(kits[id].shirt1, rows[0].COLOR_CAMISETA1);
+      const second = EQUIPACIONS.find((k) => k.CODEQUIPO === id &&
+        String(k.PRINCIPAL) === '2');
+      if (first) assert.strictEqual(kits[id].home.shirt1, first.COLOR_CAMISETA1);
+      if (second) assert.strictEqual(kits[id].away.shirt1, second.COLOR_CAMISETA1);
     });
   });
 
   it('carries the pattern, not just the colours', () => {
     Object.keys(kits).forEach((id) => {
-      assert.ok(/^shirt faf faf-/.test(kits[id].pattern), kits[id].pattern);
+      assert.ok(/^shirt faf faf-/.test(kits[id].home.pattern), kits[id].home.pattern);
+      assert.ok(/^shirt faf faf-/.test(kits[id].away.pattern), kits[id].away.pattern);
     });
+  });
+
+  it('a team with only one kit registered gets the other as null', () => {
+    const one = F.parseFcfKits([{PRINCIPAL: '2', CODEQUIPO: '9',
+      COLOR_CAMISETA1: '#111111', CLASE_CSS_CAMISETA: 'shirt faf faf-base'}]);
+    assert.strictEqual(one['9'].home, null);
+    assert.strictEqual(one['9'].away.shirt1, '#111111');
   });
 
   it('survives an empty or malformed payload', () => {
     assert.deepStrictEqual(F.parseFcfKits(null), {});
     assert.deepStrictEqual(F.parseFcfKits([]), {});
-    assert.deepStrictEqual(F.parseFcfKits([{PRINCIPAL: '2', CODEQUIPO: '1'}]), {});
+    // PRINCIPAL 3 is neither kit and must not invent a slot.
+    assert.deepStrictEqual(F.parseFcfKits([{PRINCIPAL: '3', CODEQUIPO: '1'}]), {});
   });
 });
 
@@ -223,10 +245,12 @@ describe('fcfShirtFill / fcfKitPieces — the rival\'s shirt', () => {
   it('turns a stored kit into the three pieces the renderers take', () => {
     const kits = F.parseFcfKits(EQUIPACIONS);
     const id = Object.keys(kits)[0];
-    const p = U.fcfKitPieces(kits[id]);
-    assert.ok(p.shirt && p.shorts && p.socks);
-    assert.ok(!/\|/.test(p.shorts), 'shorts must be a single colour');
-    assert.ok(!/\|/.test(p.socks), 'socks have no pattern in the payload');
+    ['home', 'away'].forEach((slot) => {
+      const p = U.fcfKitPieces(kits[id][slot]);
+      assert.ok(p.shirt && p.shorts && p.socks, slot + ' kit is incomplete');
+      assert.ok(!/\|/.test(p.shorts), 'shorts must be a single colour');
+      assert.ok(!/\|/.test(p.socks), 'socks have no pattern in the payload');
+    });
   });
 
   it('returns null when there is nothing to draw', () => {
@@ -274,11 +298,34 @@ describe('mergeFcfFixtures — the first import', () => {
     assert.strictEqual(new Set(r.matches.map((m) => m.id)).size, 30);
   });
 
-  it('attaches the opponent crest and home kit', () => {
+  it('attaches the opponent crest and BOTH kits', () => {
     const r = F.mergeFcfFixtures([], inc, opts({kits: kits}));
     const withKit = r.matches.filter((m) => m.opponentKit);
-    assert.ok(withKit.length >= 28, 'kits reached only ' + withKit.length);
+    const withAway = r.matches.filter((m) => m.opponentKitAway);
+    assert.ok(withKit.length >= 28, 'first kits reached only ' + withKit.length);
+    assert.ok(withAway.length >= 28, 'change kits reached only ' + withAway.length);
     assert.ok(/^#[0-9A-Fa-f]{6}$/.test(withKit[0].opponentKit.shirt1));
+    assert.ok(/^#[0-9A-Fa-f]{6}$/.test(withAway[0].opponentKitAway.shirt1));
+  });
+
+  it('the two kits are stored FLAT, not nested', () => {
+    /* v118 shipped `opponentKit` as a flat kit and clubs have already
+       imported a season with it. A nested {home, away} would make every
+       reader sniff the shape; a second field leaves those rows rendering
+       unchanged, with an empty change-strip column until the next sync. */
+    const r = F.mergeFcfFixtures([], inc, opts({kits: kits}));
+    const m = r.matches.find((x) => x.opponentKit);
+    assert.strictEqual(typeof m.opponentKit.shirt1, 'string');
+    assert.strictEqual(m.opponentKit.home, undefined);
+    assert.strictEqual(m.opponentKit.away, undefined);
+  });
+
+  it('a rival with only one registered kit still imports', () => {
+    const half = {};
+    Object.keys(kits).forEach((id) => { half[id] = {home: kits[id].home, away: null}; });
+    const r = F.mergeFcfFixtures([], inc, opts({kits: half}));
+    assert.ok(r.matches.every((m) => m.opponentKitAway === undefined));
+    assert.ok(r.matches.filter((m) => m.opponentKit).length >= 28);
   });
 
   it('marks past fixtures played and future ones upcoming', () => {
