@@ -2,44 +2,47 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-24._
 
-## ⚠ v124 is uncommitted — FRONTEND ONLY
+## ⚠ v125 is uncommitted — frontend AND functions
 
-v123 (`05d18e0`) is committed and deployed, `fcfApi` included, and **both tabs were dead on every
-real screen**: each said "no s'ha pogut carregar". v124 is the fix.
+v124 fixed the browser-boundary bug and the tabs work. v125 is the follow-up the owner asked for
+after using them: **checkbox dropdowns** instead of `<select multiple>`, a **progress bar**, a
+**Zona** column, and a **club contact card**.
 
 ```
-git add -A && git commit && git push      # that is the whole deploy
+1. .\deploy.ps1 functions      ← MUST be first: fcfApi gains the `club` endpoint
+2. git add -A && git commit && git push
 ```
 
-Version triple is at **124**. `functions/fcf.js` changed only by DELETING the parsers that moved
-browser-side; the server never called them, so a functions deploy is tidiness, not a requirement.
+Version triple is at **125**. Rules unchanged.
 
-### ⚠ The two traps in this feature
+> ⚠ **There is no player contact information in any FCF payload** — no email, no phone. The only
+> player-level identifier is `licencia`, a DNI/NIE, which is dropped at the parse boundary and
+> will not be shown. The card is the CLUB's published contact, and says so on screen.
 
-**1. The browser boundary — this is what broke it.** `parseFcfSanctions`, `parseFcfScorers` and
-`bansForJornada` were written in `functions/fcf.js`, which the browser never loads. Every request
-succeeded, the parser threw `ReferenceError`, and the catch reported it as "could not load".
+> ⚠ **There is no comarca field either.** "Zona" is the club's town plus the federation's
+> DELEGACIÓ (five of them), which is the closest the data comes to Barcelonès / Vallès.
 
-> **Both test suites were green the whole time.** Node's `require` reaches `functions/` perfectly
-> well, and the renderer tests STUB those helpers by name. Green tests, dead feature.
->
-> The guard added is the general one, not three names: **every plain function call in the tabs
-> block must be declared in the block, somewhere in `js/`, or be a builtin.** Anything those tabs
-> need at runtime goes browser-side.
+> **Cost**: each group is now TWO requests (scorers + standings, to map teamId → clubId), plus one
+> per distinct club. Gates: 40 groups auto, 80 divisions hard, `SC_AUTO_CLUBS = 60` for the Zona
+> column. Tapping a single club always works regardless.
 
-**2. The DNI.** Both payloads carry `licencia`, a Spanish DNI/NIE for players who are often minors.
-It is dropped at the parse boundary, and the committed fixtures were **scrubbed before `git add`** —
-this repo is public and Pages serves it, so a raw capture would have published fifty real identity
-numbers. Tests keep both true. **Never re-capture a fixture from the live API without stripping
-`licencia` and `ficha`.**
+### ⚠ If a screen looks stale, suspect the service worker FIRST
 
-> **Sancions needs the Calendari synced.** The jornada comes from an imported fixture; with none
-> upcoming the page says so rather than guessing.
+This cost a long round of wrong diagnoses. A tester sat on a **v117 worker across seven releases**:
+`caches.keys()` said `esquerrapp-v117` while `main` was v124, and the page kept executing old
+`app.js`. The tell was an error string that only existed in the older version.
 
-> **Golejadors: an empty filter means ALL**, and "all" is ~460 groups for one discipline, ~3000
-> across all seven. The page resolves the scope to a concrete group list first, reads up to 40
-> automatically, asks above that, and refuses past 80 divisions — the tree-walk alone is one
-> request per division. `SC_AUTO_GROUPS` / `SC_MAX_DIVISIONS` in js/app.js.
+```js
+navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister())))
+  .then(() => caches.keys()).then(ks => Promise.all(ks.map(k => caches.delete(k))))
+  .then(() => location.reload(true));
+```
+
+`typeof parseFcfScorers` is a good "which version am I running" probe — a top-level global in
+js/utils.js since v124. **`APP_VERSION` is NOT usable**: it lives inside app.js's IIFE. A private
+window is the fastest way to rule caching in or out. The same can happen to any of the 77 members,
+who would silently keep running old code — worth deciding whether the app should compare itself
+against the served `sw.js` and prompt.
 
 ### v118, for reference — DEPLOYED and verified
 

@@ -3532,3 +3532,57 @@ ones. A `GRUP` column appears only when more than one was read.
 
 Verified live: six groups of Tercera Catalana merged to 300 players, correctly ordered, no DNI
 anywhere in the result.
+
+### 2026-08-24 — v125: checkbox dropdowns, a progress bar, and the club card
+
+Four requests after using the scouting tab.
+
+**1. Dropdowns with checkboxes, not `<select multiple>`.** A native multi-select needs ctrl-click
+for a second value, shows four rows of a hundred-item list, and on a phone loses the selection as
+often as it keeps it. `scDropdown()` is a button that says what is chosen — the option's NAME when
+one is picked, a count when several, "all" when none — over a panel of ordinary checkboxes. Open
+state lives in `_scorersState.open` so the re-render that follows every change puts it back.
+
+**2. A bar that fills** beside "llegint grups… n/total". The count alone gives no sense of how far
+through forty groups you are.
+
+**3. Player contact: it does not exist.** No email, no phone, nothing, in any FCF payload. The
+only player-level identifier the federation publishes is `licencia` — the DNI/NIE this app already
+drops at the parse boundary. What DOES exist, published openly, is the **club's** card:
+`/api/clubs/{id}` carries `TELEFONO_1/2`, `EMAIL`, `WEB`, `NOMBRE_RESP`. Tapping a club opens it
+under the row, labelled as the club's details and stating that FCF publishes none for players. To
+reach a player you go through his club, which is how it works anyway.
+
+**4. Geography: DELEGACIÓ and LOCALITAT, not comarca.** There is no comarca field anywhere in the
+API — the federation divides Catalonia into five DELEGACIONS (Barcelona, Girona, Lleida,
+Tarragona, Terres de l'Ebre) and records the club's town beside it. The new **Zona** column reads
+`Roses · Girona`, `Castelló D'Empúries · Girona`. Not "Barcelonès / Vallès", and the closest the
+data comes; the delegation is title-cased because FCF shouts it and `GIRONA` next to `Roses` reads
+as an error rather than a region.
+
+#### What it costs, and the gates
+
+`goleadores` names a player's TEAM but never his club, so each group now costs **two** requests:
+the scorers, plus `classificacio` to map `teamId → clubId`. Then one request per distinct club —
+about 14 for a single group.
+
+- **Groups**: read up to 40 automatically, ask above that, refuse past 80 divisions (unchanged).
+- **Clubs**: look up to `SC_AUTO_CLUBS = 60` automatically. Past that the Zona column stays blank
+  and says why; tapping one club still loads that club on demand, which the cap never blocks.
+
+Both the Zona column and the group column appear only when there is something in them — an empty
+column is worse than none.
+
+`scSetFilter()` is now the single definition of "a filter changed" (clear everything below it,
+drop the results, forget the confirmation), because the checkboxes and the season select both do
+it and two copies would drift.
+
+The proxy's allowlist grew a **path**-parameter form for `/api/clubs/{id}`, validated as digits
+exactly like the query ones — `clubId=../secret` is refused. `classificacio` was added to it too.
+
+#### Tests
+
+Unit 983 → **991**. New: the panel opens with one checkbox per option and a clear button; the
+button's summary is a name, a count or "all"; the bar reflects progress; the Zona column appears
+only once a club has loaded; the contact card opens under its own row, adds a scheme to a bare
+domain, renders nothing rather than an empty card, and escapes everything.

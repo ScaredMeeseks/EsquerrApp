@@ -56,7 +56,8 @@ function makeTabs(opts) {
       block +
       '\n return {renderSancions, renderScorers, sancionsBodyHtml,' +
       ' scorersTableHtml, scorersSortedRows, sancionsNextFixture,' +
-      ' fcfOurTeamId, fcfSeasonId, _sancionsState, _scorersState};');
+      ' fcfOurTeamId, fcfSeasonId, scZone, scClubCardHtml, _fcfClubs,' +
+      ' _sancionsState, _scorersState};');
 
   return factory(
       opts.clubConfig === undefined ?
@@ -298,27 +299,67 @@ describe('renderSancions', () => {
 });
 
 describe('renderScorers', () => {
-  it('offers all four filters, three of them multi-select', () => {
-    /* The owner's ask: every filter takes several values, and leaving one
-       empty means all of it. Season stays single — every competition id is
-       season-specific, so mixing seasons in one table compares different
-       competitions. */
+  it('offers all four filters, three of them checkbox dropdowns', () => {
+    /* The owner's ask, twice over: every filter takes several values and
+       leaving one empty means all of it — and it is a DROPDOWN WITH CHECKS,
+       not a <select multiple>. A native multi-select needs ctrl-click, shows
+       four rows of a hundred, and on a phone loses the selection as often as
+       it keeps it. Season stays single: every competition id is
+       season-specific, so mixing seasons compares different competitions. */
     const R = makeTabs({currentPage: 'scorers'});
     const html = R.renderScorers();
-    assert.ok(/data-sc="temporada"(?![^>]*multiple)/.test(html),
-        'season should be single-select');
+    assert.ok(/data-sc="temporada"/.test(html), 'season picker missing');
+    assert.ok(!/<select[^>]*multiple/.test(html),
+        'a native multi-select is back');
     ['disciplina', 'competicio', 'grup'].forEach((f) => {
-      assert.ok(new RegExp('data-sc="' + f + '"[^>]*multiple').test(html),
-          f + ' must accept several values');
+      assert.ok(html.includes('data-sc-open="' + f + '"'),
+          f + ' has no dropdown button');
     });
     assert.ok(html.includes('sc.hint'), 'the empty-means-all rule is unexplained');
   });
 
-  it('says "all" on a filter with nothing chosen, and a count once it has', () => {
+  it('the panel opens on click, with a checkbox per option', () => {
     const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'Futbol 11'},
+      {value: '2', label: 'Futbol 7'}];
+    assert.ok(!R.renderScorers().includes('sc-dd-panel'), 'panel open unasked');
+    st.open = 'disciplina';
+    const html = R.renderScorers();
+    assert.ok(html.includes('sc-dd-panel'), 'panel did not open');
+    assert.ok((html.match(/type="checkbox" data-sc-pick="disciplina"/g) || []).length === 2,
+        'one checkbox per option');
+    assert.ok(html.includes('data-sc-none="disciplina"'), 'no way to clear it');
+  });
+
+  it('the button says "all" when empty, the name when one, a count when more', () => {
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'Futbol 11'},
+      {value: '2', label: 'Futbol 7'}];
     assert.ok(R.renderScorers().includes('sc.all'));
-    R._scorersState.disciplina = ['19308233', '19308237'];
-    assert.ok(R.renderScorers().includes('(2)'), 'the chosen count is not shown');
+    st.disciplina = ['1'];
+    assert.ok(R.renderScorers().includes('Futbol 11'),
+        'one choice should name it, not count it');
+    st.disciplina = ['1', '2'];
+    assert.ok(R.renderScorers().includes('sc.n_chosen'));
+  });
+
+  it('shows a bar that fills, not just a count', () => {
+    /* The scope has to RESOLVE before the reading state is reachable — the
+       waiting branch sits above it — so the tree is primed here. */
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'F11'}];
+    st.opts['comp_1_22'] = [{value: 'c1', label: 'X'}];
+    st.opts.grup_c1 = [{value: 'g1', label: 'GRUP 1'}];
+    st.loading = true;
+    st.scope = new Array(20).fill({value: 'g', label: 'G'});
+    st.progress = 5;
+    const html = R.renderScorers();
+    assert.ok(html.includes('sc.reading'), 'not in the reading state: ' + html.slice(0, 400));
+    assert.ok(html.includes('sc-bar-fill'), 'no progress bar');
+    assert.ok(/width:25%/.test(html), 'the bar does not reflect progress');
   });
 
   it('refuses to walk an absurd number of divisions', () => {
@@ -399,6 +440,77 @@ describe('renderScorers', () => {
     R._scorersState.sortBy = 'goals';
     R.scorersSortedRows(rows);
     assert.deepStrictEqual(rows.map((r) => r.rank), before);
+  });
+});
+
+describe('the club card — geography, and the only contact that exists', () => {
+  /* ⚠ There is NO player contact information in any FCF payload: no email,
+     no phone, nothing. The only player-level identifier the federation
+     publishes is `licencia`, a DNI/NIE, which this app drops at the parse
+     boundary. What does exist, published openly by the federation, is the
+     CLUB's own card — and that also carries the closest thing to
+     "Barcelonès / Vallès" that the data has. There is no comarca field
+     anywhere; FCF divides Catalonia into five DELEGACIONS and records the
+     club's town beside it. */
+  const INFO = {NOMBRE: 'L\'ESQUERRA DE L\'EIXAMPLE, F.C.',
+    DELEGACION: 'DELEGACIÓ BARCELONA', LOCALIDAD: 'Barcelona',
+    TELEFONO_1: '610700068', EMAIL: 'a@b.test', WEB: 'www.example.test'};
+
+  const withClub = () => {
+    const R = makeTabs({currentPage: 'scorers'});
+    R._fcfClubs['2776'] = INFO;
+    return R;
+  };
+
+  it('reduces the delegation to something readable', () => {
+    const R = withClub();
+    assert.strictEqual(R.scZone(INFO), 'Barcelona');
+    assert.strictEqual(R.scZone(Object.assign({}, INFO, {LOCALIDAD: 'Roses',
+      DELEGACION: 'DELEGACIÓ GIRONA'})), 'Roses · Girona');
+    assert.strictEqual(R.scZone(null), '');
+  });
+
+  it('adds the zona column only once a club has loaded', () => {
+    const R = makeTabs({currentPage: 'scorers'});
+    const rows = F.parseFcfScorers(SCORERS).slice(0, 3);
+    rows.forEach((r) => { r.clubId = '2776'; });
+    assert.ok(!R.scorersTableHtml(rows).includes('sc.zone'),
+        'an empty column was rendered');
+    R._fcfClubs['2776'] = INFO;
+    const html = R.scorersTableHtml(rows);
+    assert.ok(html.includes('sc.zone') && html.includes('Barcelona'));
+  });
+
+  it('opens the contact card under the row it belongs to', () => {
+    const R = withClub();
+    const rows = F.parseFcfScorers(SCORERS).slice(0, 2);
+    rows.forEach((r) => { r.clubId = '2776'; });
+    assert.ok(!R.scorersTableHtml(rows).includes('sc-club-card'), 'card open unasked');
+    R._scorersState.openClub = '2776';
+    const html = R.scorersTableHtml(rows);
+    assert.ok(html.includes('sc-club-card'));
+    assert.ok(html.includes('tel:610700068') && html.includes('mailto:a@b.test'));
+    assert.ok(html.includes('https://www.example.test'), 'a bare domain needs a scheme');
+  });
+
+  it('says plainly that these are the CLUB\'s details, not a player\'s', () => {
+    const R = withClub();
+    assert.ok(R.scClubCardHtml(INFO).includes('sc.club_note'));
+  });
+
+  it('renders nothing rather than an empty card', () => {
+    const R = withClub();
+    assert.strictEqual(R.scClubCardHtml(null), '');
+    assert.strictEqual(R.scClubCardHtml({}), '');
+    assert.strictEqual(R.scClubCardHtml({NOMBRE: 'X'}), '',
+        'a club with no contact details at all should render nothing');
+  });
+
+  it('escapes everything in the card', () => {
+    const R = withClub();
+    const html = R.scClubCardHtml({NOMBRE: '<img src=x onerror=alert(1)>',
+      LOCALIDAD: '<img src=x>', EMAIL: '"><img src=x>', WEB: 'javascript:alert(1)'});
+    assert.ok(!/<img\s+src=x/.test(html), 'unescaped: ' + html);
   });
 });
 

@@ -214,6 +214,13 @@
     'sc.too_wide':        { ca:'{n} categories seleccionades: massa per recórrer-les. Tria una modalitat o unes quantes categories.', es:'{n} categorías seleccionadas: demasiadas para recorrerlas. Elige una modalidad o unas cuantas categorías.', en:'{n} divisions selected — too many to scan. Narrow it to a discipline, or a few divisions.' },
     'sc.reading':         { ca:'Llegint grups… {n} de {total}', es:'Leyendo grupos… {n} de {total}', en:'Reading groups… {n} of {total}' },
     'sc.count':           { ca:'{n} jugadors', es:'{n} jugadores', en:'{n} players' },
+    'sc.n_chosen':        { ca:'{n} triades', es:'{n} elegidas', en:'{n} chosen' },
+    'sc.clear':           { ca:'Esborrar', es:'Borrar', en:'Clear' },
+    'sc.zone':            { ca:'Zona', es:'Zona', en:'Area' },
+    'sc.tap_club':        { ca:'toca un club per veure\'n el contacte', es:'toca un club para ver su contacto', en:'tap a club for its contact details' },
+    'sc.zone_loading':    { ca:'carregant clubs… {n}/{total}', es:'cargando clubes… {n}/{total}', en:'loading clubs… {n}/{total}' },
+    'sc.zone_skipped':    { ca:'massa clubs per carregar-ne la zona; toca un club per veure\'l', es:'demasiados clubes para cargar la zona; toca un club para verlo', en:'too many clubs to load areas; tap one to see it' },
+    'sc.club_note':       { ca:'Dades del CLUB publicades per la FCF. La FCF no publica cap contacte dels jugadors.', es:'Datos del CLUB publicados por la FCF. La FCF no publica ningún contacto de los jugadores.', en:'CLUB details as published by the FCF. The FCF publishes no player contact details at all.' },
     'sc.pick':            { ca:'Tria una modalitat, una categoria i un grup per veure\'n els golejadors.', es:'Elige una modalidad, una categoría y un grupo para ver sus goleadores.', en:'Pick a discipline, a division and a group to see its scorers.' },
     'sc.none':            { ca:'La FCF encara no ha publicat golejadors d\'aquest grup.', es:'La FCF aún no ha publicado goleadores de este grupo.', en:'The FCF has not published scorers for this group yet.' },
     'sc.player':          { ca:'Jugador', es:'Jugador', en:'Player' },
@@ -1460,7 +1467,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 124;
+  const APP_VERSION = 125;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -5425,13 +5432,26 @@
     function next() {
       if (i >= groups.length) return Promise.resolve();
       var g = groups[i++];
-      return fcfApiGet('goleadores', {grupId: g.value, temporada: st.temporada})
-          .then(function (j) {
-            parseFcfScorers(j).forEach(function (r) {
-              r.groupLabel = g.label;
-              out.push(r);
-            });
-          })
+      /* Two calls per group, not one. `goleadores` names a player's TEAM but
+         never his club, and the club is what carries the geography and the
+         only contact details that exist — so the standings come along to map
+         teamId → clubId. It is the cheapest source of that mapping and the
+         proxy caches it for ten minutes anyway. */
+      return Promise.all([
+        fcfApiGet('goleadores', {grupId: g.value, temporada: st.temporada}),
+        fcfApiGet('classificacio', {grupId: g.value}).catch(function () { return null; })
+      ]).then(function (both) {
+        var byTeam = {};
+        (((both[1] || {}).data) || []).forEach(function (row) {
+          var team = row.team || {};
+          if (team.teamId) byTeam[String(team.teamId)] = String(team.clubId || '');
+        });
+        parseFcfScorers(both[0]).forEach(function (r) {
+          r.groupLabel = g.label;
+          r.clubId = byTeam[String(r.teamId)] || '';
+          out.push(r);
+        });
+      })
           .catch(function () { /* one bad group must not lose the rest */ })
           .then(function () {
             st.progress++;
@@ -5448,20 +5468,150 @@
       out.forEach(function (r, n) { r.rank = n + 1; });
       st.rows = out;
       st.loading = false;
+      /* The zona column and the contact cards, for a set small enough to be
+         worth the lookups. Past the cap the column stays blank rather than
+         firing six hundred requests nobody asked for — one per club. */
+      var clubIds = [];
+      out.forEach(function (r) {
+        if (r.clubId && clubIds.indexOf(r.clubId) === -1) clubIds.push(r.clubId);
+      });
+      st.clubsSkipped = clubIds.length > SC_AUTO_CLUBS;
+      if (!st.clubsSkipped) scLoadClubs(clubIds);
       if (currentPage === 'scorers') renderPage(getSession());
     });
   }
 
-  function scorersMultiSelect(id, label, opts, chosen) {
+  /* A dropdown of checkboxes, not a <select multiple>.
+
+     A native multi-select needs ctrl-click to pick a second value, shows
+     four rows of a hundred-item list, and on a phone opens a picker that
+     loses the selection as often as it keeps it. This is a button that says
+     what is chosen and a panel of ordinary checkboxes — which is what people
+     mean by "a dropdown with checks".
+
+     Open state lives in `_scorersState.open` so a re-render (and everything
+     here re-renders on every change) puts it back where it was. */
+  /* A bar that fills, beside the count. The count alone gives no sense of
+     how far along forty groups are. */
+  function scBarHtml(done, total) {
+    var pct = Math.max(0, Math.min(100, Math.round((done / (total || 1)) * 100)));
+    return '<div class="sc-bar"><div class="sc-bar-fill" style="width:' + pct + '%"></div></div>';
+  }
+
+  function scDropdown(id, label, opts, chosen) {
     var sel = chosen || [];
-    return '<label class="sc-f"><span>' + sanitize(label) +
-      (sel.length ? ' (' + sel.length + ')' : ' · ' + sanitize(t('sc.all'))) + '</span>' +
-      '<select class="reg-input sc-filter" data-sc="' + id + '" multiple size="4">' +
-      (opts || []).map(function (o) {
-        return '<option value="' + sanitize(o.value) + '"' +
-          (sel.indexOf(String(o.value)) !== -1 ? ' selected' : '') + '>' +
-          sanitize(o.label) + '</option>';
-      }).join('') + '</select></label>';
+    var open = _scorersState.open === id;
+    var summary = !sel.length ? t('sc.all') :
+      (sel.length === 1 ?
+        ((opts || []).filter(function (o) { return String(o.value) === sel[0]; })[0] || {}).label || sel[0] :
+        t('sc.n_chosen').replace('{n}', sel.length));
+    return '<div class="sc-f sc-dd' + (open ? ' sc-dd-open' : '') + '">' +
+      '<span class="sc-dd-label">' + sanitize(label) + '</span>' +
+      '<button type="button" class="reg-input sc-dd-btn" data-sc-open="' + id + '">' +
+        '<span>' + sanitize(summary) + '</span><span class="sc-dd-caret">▾</span></button>' +
+      (open ? '<div class="sc-dd-panel">' +
+        '<div class="sc-dd-tools">' +
+          '<button type="button" class="sc-dd-mini" data-sc-none="' + id + '">' +
+            sanitize(t('sc.clear')) + '</button></div>' +
+        (opts || []).map(function (o) {
+          var on = sel.indexOf(String(o.value)) !== -1;
+          return '<label class="sc-dd-opt"><input type="checkbox" data-sc-pick="' + id +
+            '" value="' + sanitize(o.value) + '"' + (on ? ' checked' : '') + '>' +
+            '<span>' + sanitize(o.label) + '</span></label>';
+        }).join('') +
+      '</div>' : '') +
+      '</div>';
+  }
+
+  /* ── The club card: geography, and the only contact details that exist ──
+   *
+   * ⚠ There is NO player contact information in any FCF payload — no email,
+   * no phone, nothing. The only player-level identifier the federation
+   * publishes is `licencia`, a DNI/NIE, which this app drops at the parse
+   * boundary and will not show. What DOES exist, and is published openly by
+   * the federation, is the CLUB's own contact card. To reach a player you go
+   * through his club, which is how it works anyway.
+   *
+   * `/api/clubs/{id}` also carries DELEGACIÓ and LOCALITAT — the closest the
+   * data comes to the "Barcelonès / Vallès" idea. There is no comarca field
+   * anywhere; the federation divides Catalonia into five DELEGACIONS
+   * (Barcelona, Girona, Lleida, Tarragona, Terres de l'Ebre) and records the
+   * club's town alongside.
+   */
+  var _fcfClubs = {};            // clubId → info, or 'loading'
+  var SC_AUTO_CLUBS = 60;        // look up this many without asking
+
+  function scClubInfo(clubId) {
+    var id = String(clubId || '');
+    var hit = _fcfClubs[id];
+    return (hit && hit !== 'loading') ? hit : null;
+  }
+
+  function scLoadClubs(ids) {
+    var todo = ids.filter(function (id) { return id && !_fcfClubs[id]; });
+    if (!todo.length) return;
+    var st = _scorersState;
+    st.clubsTotal = todo.length;
+    st.clubsDone = 0;
+    todo.forEach(function (id) { _fcfClubs[id] = 'loading'; });
+    var i = 0;
+    function next() {
+      if (i >= todo.length) return Promise.resolve();
+      var id = todo[i++];
+      return fcfApiGet('club', {clubId: id})
+          .then(function (j) {
+            _fcfClubs[id] = (j && j.data && j.data.info) || {};
+          })
+          .catch(function () { _fcfClubs[id] = {}; })
+          .then(function () {
+            st.clubsDone++;
+            if (currentPage === 'scorers' &&
+                (st.clubsDone === todo.length || st.clubsDone % 5 === 0)) {
+              renderPage(getSession());
+            }
+            return next();
+          });
+    }
+    var lanes = [];
+    for (var k = 0; k < Math.min(SC_CONCURRENCY, todo.length); k++) lanes.push(next());
+    Promise.all(lanes);
+  }
+
+  /** DELEGACIÓ BARCELONA → Barcelona. The prefix is on every one of them. */
+  function scZone(info) {
+    if (!info) return '';
+    /* "DELEGACIÓ GIRONA" → "Girona". FCF shouts it, and GIRONA beside a
+       town written "Roses" reads as an error rather than a region. */
+    var d = String(info.DELEGACION || '').replace(/^DELEGACI[ÓO]\s+/i, '')
+        .toLowerCase().replace(/(^|[\s'-])([a-zà-ÿ])/g, function (m, sep, c) {
+          return sep + c.toUpperCase();
+        });
+    var town = String(info.LOCALIDAD || '');
+    if (d && town && town.toLowerCase() !== d.toLowerCase()) return town + ' · ' + d;
+    return town || d;
+  }
+
+  function scClubCardHtml(info) {
+    if (!info || !info.NOMBRE) return '';
+    var bits = [];
+    if (scZone(info)) bits.push('<span>📍 ' + sanitize(scZone(info)) + '</span>');
+    [info.TELEFONO_1, info.TELEFONO_2].filter(Boolean).forEach(function (tel) {
+      bits.push('<a href="tel:' + sanitize(String(tel).replace(/\s/g, '')) + '">📞 ' +
+        sanitize(tel) + '</a>');
+    });
+    if (info.EMAIL) {
+      bits.push('<a href="mailto:' + sanitize(info.EMAIL) + '">✉️ ' +
+        sanitize(info.EMAIL) + '</a>');
+    }
+    if (info.WEB) {
+      var web = /^https?:\/\//i.test(info.WEB) ? info.WEB : 'https://' + info.WEB;
+      bits.push('<a href="' + sanitize(web) + '" target="_blank" rel="noopener noreferrer">🌐 ' +
+        sanitize(info.WEB) + '</a>');
+    }
+    if (!bits.length) return '';
+    return '<div class="sc-club-card"><strong>' + sanitize(info.NOMBRE) + '</strong>' +
+      '<div class="sc-club-bits">' + bits.join('') + '</div>' +
+      '<span class="sc-club-note">' + sanitize(t('sc.club_note')) + '</span></div>';
   }
 
   function renderScorers() {
@@ -5493,9 +5643,9 @@
           (String(o.value) === String(st.temporada) ? ' selected' : '') + '>' +
           sanitize(o.label) + '</option>';
       }).join('') + '</select></label>' +
-      scorersMultiSelect('disciplina', t('sc.discipline'), disciplines, st.disciplina) +
-      scorersMultiSelect('competicio', t('sc.division'), divisions, st.competicio) +
-      scorersMultiSelect('grup', t('sc.group'), groups, st.grup) +
+      scDropdown('disciplina', t('sc.discipline'), disciplines, st.disciplina) +
+      scDropdown('competicio', t('sc.division'), divisions, st.competicio) +
+      scDropdown('grup', t('sc.group'), groups, st.grup) +
       '<p class="sc-hint">' + sanitize(t('sc.hint')) + '</p>' +
       '</div>';
 
@@ -5506,9 +5656,10 @@
     } else if (scope.waiting) {
       body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
     } else if (st.loading) {
+      var tot = (st.scope || []).length || 1;
       body = '<div class="card fcf-empty">' +
-        sanitize(t('sc.reading').replace('{n}', st.progress)
-            .replace('{total}', (st.scope || []).length)) + '</div>';
+        sanitize(t('sc.reading').replace('{n}', st.progress).replace('{total}', tot)) +
+        scBarHtml(st.progress, tot) + '</div>';
     } else if (st.err) {
       body = '<div class="card fcf-empty">' + sanitize(st.err) + '</div>';
     } else if (st.rows) {
@@ -5533,22 +5684,25 @@
   function scorersSortedRows(rows) {
     var by = _scorersState.sortBy;
     var dir = _scorersState.sortDir;
+    var text = (by === 'player' || by === 'teamName' ||
+      by === 'groupLabel' || by === 'zone');
     return rows.slice().sort(function (a, b) {
-      if (by === 'player' || by === 'teamName' || by === 'groupLabel') {
-        return dir * String(a[by] || '').localeCompare(String(b[by] || ''));
-      }
-      return dir * ((a[by] || 0) - (b[by] || 0));
+      var x = scorersSortValue(a, by);
+      var y = scorersSortValue(b, by);
+      if (text) return dir * String(x || '').localeCompare(String(y || ''));
+      return dir * ((x || 0) - (y || 0));
     });
   }
 
   function scorersTableHtml(rows) {
-    var many = rows.some(function (r) { return r.groupLabel; }) &&
-      new Set(rows.map(function (r) { return r.groupLabel; })).size > 1;
+    var many = new Set(rows.map(function (r) { return r.groupLabel; })).size > 1;
+    var anyZone = rows.some(function (r) { return !!scClubInfo(r.clubId); });
     var cols = [
       ['rank', '#'], ['player', t('sc.player')], ['teamName', t('sc.club')]
     ];
-    // The group column only earns its width when more than one was read.
+    // Each of these earns its width only when there is something in it.
     if (many) cols.push(['groupLabel', t('sc.group')]);
+    if (anyZone) cols.push(['zone', t('sc.zone')]);
     cols = cols.concat([['goals', t('sc.goals')], ['penalties', t('sc.pens')],
       ['played', t('sc.played')]]);
     var head = '<thead><tr>' + cols.map(function (c) {
@@ -5556,21 +5710,72 @@
       return '<th class="sc-th' + (on ? ' sc-on' : '') + '" data-sc-sort="' + c[0] + '">' +
         sanitize(c[1]) + (on ? (_scorersState.sortDir > 0 ? ' ▲' : ' ▼') : '') + '</th>';
     }).join('') + '</tr></thead>';
-    var body = scorersSortedRows(rows).map(function (r) {
+
+    var body = scorersSortedRows(rows).map(function (r, i) {
+      var info = scClubInfo(r.clubId);
       var badge = r.badge ? '<img src="' + sanitize(r.badge) +
         '" class="sanc-badge" alt="" onerror="this.style.display=&quot;none&quot;">' : '';
-      return '<tr><td class="sc-rank">' + r.rank + '</td>' +
-        '<td class="sc-player">' + sanitize(r.player) + '</td>' +
-        '<td class="sc-club">' + badge + sanitize(r.teamName) + '</td>' +
+      var open = _scorersState.openClub === r.clubId;
+      var clubCell = '<td class="sc-club' + (r.clubId ? ' sc-club-link' : '') + '"' +
+        (r.clubId ? ' data-sc-club="' + sanitize(r.clubId) + '"' : '') + '>' +
+        badge + sanitize(r.teamName) + '</td>';
+      var row = '<tr><td class="sc-rank">' + r.rank + '</td>' +
+        '<td class="sc-player">' + sanitize(r.player) + '</td>' + clubCell +
         (many ? '<td class="sc-grp">' + sanitize(r.groupLabel || '') + '</td>' : '') +
+        (anyZone ? '<td class="sc-zone">' + sanitize(scZone(info)) + '</td>' : '') +
         '<td><strong>' + r.goals + '</strong></td>' +
         '<td>' + r.penalties + '</td><td>' + r.played + '</td></tr>';
+      /* The contact card opens under the row it belongs to, so the club it
+         describes is never ambiguous. */
+      if (open && info) {
+        row += '<tr class="sc-card-row"><td colspan="' + cols.length + '">' +
+          scClubCardHtml(info) + '</td></tr>';
+      }
+      return row;
     }).join('');
+
+    var note = '<p class="sc-note">' + sanitize(t('sc.note'));
+    if (_scorersState.clubsSkipped) {
+      note += ' · ' + sanitize(t('sc.zone_skipped'));
+    } else if (_scorersState.clubsTotal &&
+        _scorersState.clubsDone < _scorersState.clubsTotal) {
+      note += ' · ' + sanitize(t('sc.zone_loading')
+          .replace('{n}', _scorersState.clubsDone)
+          .replace('{total}', _scorersState.clubsTotal));
+    }
+    note += '</p>';
+
     return '<div class="card"><div class="sc-count">' +
-      sanitize(t('sc.count').replace('{n}', rows.length)) + '</div>' +
+      sanitize(t('sc.count').replace('{n}', rows.length)) +
+      (anyZone || _scorersState.clubsSkipped ? '' :
+        ' · ' + sanitize(t('sc.tap_club'))) + '</div>' +
       '<div class="table-wrap">' +
       '<table class="sanc-tbl sc-tbl">' + head + '<tbody>' + body + '</tbody></table></div>' +
-      '<p class="sc-note">' + sanitize(t('sc.note')) + '</p></div>';
+      note + '</div>';
+  }
+
+  function scorersSortValue(r, by) {
+    if (by === 'zone') return scZone(scClubInfo(r.clubId));
+    return r[by];
+  }
+
+  /* One definition for "a filter changed": clear everything BELOW it, drop
+     the results, and forget any confirmation the old scope had. The dropdown
+     checkboxes and the season select both go through it. */
+  function scSetFilter(f, value) {
+    _scorersState[f] = value;
+    var order = ['temporada', 'disciplina', 'competicio', 'grup'];
+    order.slice(order.indexOf(f) + 1).forEach(function (k) {
+      _scorersState[k] = [];
+    });
+    _scorersState.rows = null;
+    _scorersState.confirmed = false;
+    _scorersState.openClub = '';
+    _scorersState.clubsTotal = 0;
+    _scorersState.clubsDone = 0;
+    _scorersState.clubsSkipped = false;
+    _scorersState.err = '';
+    renderPage(getSession());
   }
 
   function bindFcfTabs() {
@@ -5581,27 +5786,39 @@
         renderPage(getSession());
       });
     });
+    document.querySelectorAll('[data-sc-open]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.dataset.scOpen;
+        _scorersState.open = _scorersState.open === id ? '' : id;
+        renderPage(getSession());
+      });
+    });
+    document.querySelectorAll('[data-sc-pick]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var f = cb.dataset.scPick;
+        var cur = (_scorersState[f] || []).slice();
+        var v = cb.value;
+        var at = cur.indexOf(v);
+        if (cb.checked && at === -1) cur.push(v);
+        if (!cb.checked && at !== -1) cur.splice(at, 1);
+        scSetFilter(f, cur);
+      });
+    });
+    document.querySelectorAll('[data-sc-none]').forEach(function (b) {
+      b.addEventListener('click', function () { scSetFilter(b.dataset.scNone, []); });
+    });
+    document.querySelectorAll('[data-sc-club]').forEach(function (td) {
+      td.addEventListener('click', function () {
+        var id = td.dataset.scClub;
+        _scorersState.openClub = _scorersState.openClub === id ? '' : id;
+        // One club, on demand — the cap on the bulk lookup never blocks this.
+        if (_scorersState.openClub) scLoadClubs([id]);
+        renderPage(getSession());
+      });
+    });
     document.querySelectorAll('.sc-filter').forEach(function (sel) {
       sel.addEventListener('change', function () {
-        var f = sel.dataset.sc;
-        if (sel.multiple) {
-          _scorersState[f] = Array.prototype.filter
-              .call(sel.options, function (o) { return o.selected; })
-              .map(function (o) { return o.value; });
-        } else {
-          _scorersState[f] = sel.value;
-        }
-        /* Anything BELOW the level that changed is no longer a valid choice.
-           The cached tree above it is kept — re-picking a division should not
-           re-download the list of disciplines. */
-        var order = ['temporada', 'disciplina', 'competicio', 'grup'];
-        order.slice(order.indexOf(f) + 1).forEach(function (k) {
-          _scorersState[k] = [];
-        });
-        _scorersState.rows = null;
-        _scorersState.confirmed = false;
-        _scorersState.err = '';
-        renderPage(getSession());
+        scSetFilter(sel.dataset.sc, sel.value);
       });
     });
     var scGo = document.getElementById('sc-go');

@@ -1199,25 +1199,40 @@ exports.fcfClassificacio = onRequest(
 // steer. `fcfClassificacio` above stays as it is — v117+ clients call it by
 // name and it costs nothing to leave standing.
 const FCF_ENDPOINTS = {
-  temporadas: [],
-  disciplines: [],
-  competicions: ["disciplinaId", "temporada"],
-  grupos: ["competicioId"],
-  sanciones: ["grupId", "temporada"],
-  goleadores: ["grupId", "temporada"],
+  temporadas: {path: "competition/temporadas", params: []},
+  disciplines: {path: "competition/disciplines", params: []},
+  competicions: {path: "competition/competicions",
+    params: ["disciplinaId", "temporada"]},
+  grupos: {path: "competition/grupos", params: ["competicioId"]},
+  classificacio: {path: "competition/classificacio", params: ["grupId"]},
+  sanciones: {path: "competition/sanciones", params: ["grupId", "temporada"]},
+  goleadores: {path: "competition/goleadores", params: ["grupId", "temporada"]},
+  /* The club card: delegation, town, and the club's PUBLISHED contact
+     details. A path parameter rather than a query one, hence `pathParam` —
+     it is validated as digits exactly like the rest, so it still cannot
+     steer the URL anywhere. */
+  club: {path: "clubs/", pathParam: "clubId", params: []},
 };
 
 exports.fcfApi = onRequest(
     {cors: true, region: "us-central1", memory: "256MiB"},
     async (req, res) => {
       const name = String(req.query.endpoint || "");
-      const allowed = FCF_ENDPOINTS[name];
-      if (!allowed) {
+      const spec = FCF_ENDPOINTS[name];
+      if (!spec) {
         res.status(400).json({error: "Unknown endpoint"});
         return;
       }
+      let tail = "";
+      if (spec.pathParam) {
+        tail = String(req.query[spec.pathParam] || "");
+        if (!/^\d{1,15}$/.test(tail)) {
+          res.status(400).json({error: "Invalid " + spec.pathParam});
+          return;
+        }
+      }
       const parts = [];
-      for (const key of allowed) {
+      for (const key of spec.params) {
         const v = String(req.query[key] || "");
         if (!v) continue;                       // every one is optional
         if (!/^\d{1,15}$/.test(v)) {
@@ -1226,7 +1241,8 @@ exports.fcfApi = onRequest(
         }
         parts.push(key + "=" + v);
       }
-      const url = FCF_BASE + name + (parts.length ? "?" + parts.join("&") : "");
+      const url = FCF_ROOT + spec.path + tail +
+        (parts.length ? "?" + parts.join("&") : "");
       try {
         const resp = await fetch(url, {headers: {"User-Agent": "Mozilla/5.0"}});
         if (!resp.ok) throw new Error("FCF returned " + resp.status);
@@ -1261,6 +1277,7 @@ exports.fcfApi = onRequest(
 // how the two would drift.
 
 const FCF_BASE = "https://www.fcf.cat/api/competition/";
+const FCF_ROOT = "https://www.fcf.cat/api/";
 
 async function fcfGet(path) {
   const resp = await fetch(FCF_BASE + path, {
