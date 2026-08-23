@@ -2,7 +2,7 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-24._
 
-## ⚠ v126 is uncommitted — frontend AND functions
+## ⚠ v127 is uncommitted — frontend AND functions
 
 v124 fixed the browser-boundary bug and the tabs work. v125 is the follow-up the owner asked for
 after using them: **checkbox dropdowns** instead of `<select multiple>`, a **progress bar**, a
@@ -13,7 +13,7 @@ after using them: **checkbox dropdowns** instead of `<select multiple>`, a **pro
 2. git add -A && git commit && git push
 ```
 
-Version triple is at **126**. Rules unchanged.
+Version triple is at **127**. Rules unchanged.
 
 > ⚠ **v125's dropdown shipped with NO stylesheet.** The `cat >> css/style.css` was chained behind
 > a `node --check` that failed, `&&` short-circuited, and the commit went out with the CSS

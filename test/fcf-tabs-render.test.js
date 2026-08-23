@@ -57,9 +57,10 @@ function makeTabs(opts) {
       '\n return {renderSancions, renderScorers, sancionsBodyHtml,' +
       ' scorersTableHtml, scorersSortedRows, sancionsNextFixture,' +
       ' fcfOurTeamId, fcfSeasonId, scZone, scClubCardHtml, _fcfClubs,' +
+      ' bindFcfTabs,' +
       ' _sancionsState, _scorersState};');
 
-  return factory(
+  const api = factory(
       opts.clubConfig === undefined ?
         {name: CLUB, categories: {amateur: {enabled: true, letters: ['A']}},
           fcfLinks: {'amateur-A': LINK}} : opts.clubConfig,
@@ -81,8 +82,10 @@ function makeTabs(opts) {
       (name) => name === CLUB,
       opts.leagueCache || {},
       (u) => { fetched.push(u); return new Promise(() => {}); },
-      {querySelectorAll: () => []},
+      opts.document || {querySelectorAll: () => [], addEventListener: () => {}},
   );
+  api._fetched = fetched;
+  return api;
 }
 
 const fixture = (o) => Object.assign({
@@ -345,6 +348,50 @@ describe('renderScorers', () => {
     assert.ok(R.renderScorers().includes('sc.n_chosen'));
   });
 
+  it('reads NOTHING while a panel is open', () => {
+    /* The other half of "unresponsive". Every checkbox tick re-renders, and
+       the render used to resolve a scope and fire a fetch — so picking four
+       divisions meant four rounds of requests, three of them for a selection
+       the user had not finished making. */
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'F11'}];
+    st.opts['comp_1_22'] = [{value: 'c1', label: 'X'}];
+    st.opts.grup_c1 = [{value: 'g1', label: 'GRUP 1'}];
+    st.open = 'grup';
+    const html = R.renderScorers();
+    /* Scorer READS specifically. Filling the filter lists themselves is
+       fine and expected while picking — it is what puts options on screen. */
+    const reads = R._fetched.filter((u) => u.indexOf('goleadores') !== -1);
+    assert.strictEqual(reads.length, 0,
+        'a group was read while the user was still picking: ' + reads.join(', '));
+    assert.ok(html.includes('sc.picking'), 'no explanation of the wait: ' + html.slice(-300));
+  });
+
+  it('...and reads as soon as the panel closes', () => {
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'F11'}];
+    st.opts['comp_1_22'] = [{value: 'c1', label: 'X'}];
+    st.opts.grup_c1 = [{value: 'g1', label: 'GRUP 1'}];
+    st.open = '';
+    R.renderScorers();
+    const reads = R._fetched.filter((u) => u.indexOf('goleadores') !== -1);
+    assert.ok(reads.length > 0, 'closing the panel did not read anything');
+  });
+
+  it('opening one panel closes the other', () => {
+    // Two floating panels overlapping is a mess, and both are absolute.
+    const R = makeTabs({currentPage: 'scorers'});
+    const st = R._scorersState;
+    st.opts.disciplina = [{value: '1', label: 'F11'}];
+    st.opts.competicio = [{value: 'c1', label: 'X'}];
+    st.open = 'disciplina';
+    const html = R.renderScorers();
+    assert.strictEqual((html.match(/sc-dd-panel/g) || []).length, 1,
+        'more than one panel is open at once');
+  });
+
   it('shows a bar that fills, not just a count', () => {
     /* The scope has to RESOLVE before the reading state is reachable — the
        waiting branch sits above it — so the tree is primed here. */
@@ -487,6 +534,73 @@ describe('the markup these tabs emit is actually styled', () => {
     // The exact failure the screenshot showed.
     assert.ok(/\.sc-dd-opt\s*\{[^}]*display:\s*flex/.test(css),
         '.sc-dd-opt must lay each option out as its own row');
+  });
+});
+
+describe('the filter panel dismisses itself', () => {
+  /* Reported as "a bit unresponsive": the panel stayed open until you clicked
+     its button again. These fire the REAL handlers the block registers — a
+     document stub records them, and the test calls them with the kind of
+     event a browser would deliver. It is the handler's decision being
+     tested, not the browser's event plumbing. */
+  function withDoc() {
+    const listeners = {};
+    const doc = {
+      querySelectorAll: () => [],
+      getElementById: () => null,
+      addEventListener: (type, fn) => {
+        (listeners[type] = listeners[type] || []).push(fn);
+      },
+    };
+    const R = makeTabs({currentPage: 'scorers', document: doc});
+    R.bindFcfTabs();
+    return {R, fire: (type, ev) => (listeners[type] || []).forEach((f) => f(ev))};
+  }
+
+  it('closes on a click anywhere else', () => {
+    const {R, fire} = withDoc();
+    R._scorersState.open = 'disciplina';
+    fire('click', {target: {closest: () => null}});
+    assert.strictEqual(R._scorersState.open, '');
+  });
+
+  it('stays open when the click is INSIDE it', () => {
+    // Ticking a second checkbox must not dismiss the panel.
+    const {R, fire} = withDoc();
+    R._scorersState.open = 'disciplina';
+    fire('click', {target: {closest: (sel) => sel === '.sc-dd' ? {} : null}});
+    assert.strictEqual(R._scorersState.open, 'disciplina');
+  });
+
+  it('closes on Escape', () => {
+    const {R, fire} = withDoc();
+    R._scorersState.open = 'grup';
+    fire('keydown', {key: 'Escape'});
+    assert.strictEqual(R._scorersState.open, '');
+  });
+
+  it('ignores other keys', () => {
+    const {R, fire} = withDoc();
+    R._scorersState.open = 'grup';
+    fire('keydown', {key: 'a'});
+    assert.strictEqual(R._scorersState.open, 'grup');
+  });
+
+  it('binds the document listeners ONCE, not per render', () => {
+    /* bindFcfTabs runs after every render. Re-registering there would stack
+       a fresh listener on every keystroke of every filter. */
+    const listeners = {};
+    const doc = {
+      querySelectorAll: () => [], getElementById: () => null,
+      addEventListener: (type, fn) => {
+        (listeners[type] = listeners[type] || []).push(fn);
+      },
+    };
+    const R = makeTabs({currentPage: 'scorers', document: doc});
+    R.bindFcfTabs(); R.bindFcfTabs(); R.bindFcfTabs();
+    assert.strictEqual((listeners.click || []).length, 1,
+        'the dismiss listener stacked up');
+    assert.strictEqual((listeners.keydown || []).length, 1);
   });
 });
 

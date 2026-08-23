@@ -3610,3 +3610,30 @@ wins wherever it sits in the file.
 > other half: **every layout class the tabs emit has a rule in the stylesheet.** Twenty-one
 > classes, asserted against `css/style.css`. A feature whose markup is right and whose styling is
 > absent is still a broken feature, and nothing in this repo was looking at that seam.
+
+#### v127 — the panel dismisses itself, and stops reading mid-selection
+
+Reported as "a bit unresponsive". Two separate causes, and the second was the real one.
+
+**1. It only closed by clicking its own button.** A document-level click listener now closes the
+open panel, unless the click landed inside a `.sc-dd` — ticking a second checkbox must not dismiss
+it. Escape closes it too, and opening one panel closes any other, since both float and overlapping
+absolutes are a mess.
+
+> Bound **once**, guarded by `_scDismissBound`, and NOT inside `bindFcfTabs` — that runs after
+> every render, so registering there would stack a fresh listener on every keystroke of every
+> filter. The button's own click calls `stopPropagation`, or it would open and immediately dismiss
+> itself.
+
+**2. Every checkbox tick fired a fetch.** The render resolves the scope and reads it, and every
+tick re-renders — so picking four divisions meant four rounds of requests, three of them for a
+selection the user had not finished making. Nothing is read while a panel is open; the page says
+how many groups are selected and reads them when it closes.
+
+#### Tests
+
+Unit 994 → **1002**. The dismiss handlers are tested for real: a document stub records what the
+block registers, and the test calls those handlers with the kind of event a browser delivers —
+the handler's DECISION is what is under test, not the browser's event plumbing. Five mutations,
+each failing exactly one test: reads firing while picking, an outside click never closing, closing
+even when the click is inside, Escape doing nothing, and the listeners stacking per render.

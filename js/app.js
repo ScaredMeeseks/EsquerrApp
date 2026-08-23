@@ -214,6 +214,7 @@
     'sc.too_wide':        { ca:'{n} categories seleccionades: massa per recórrer-les. Tria una modalitat o unes quantes categories.', es:'{n} categorías seleccionadas: demasiadas para recorrerlas. Elige una modalidad o unas cuantas categorías.', en:'{n} divisions selected — too many to scan. Narrow it to a discipline, or a few divisions.' },
     'sc.reading':         { ca:'Llegint grups… {n} de {total}', es:'Leyendo grupos… {n} de {total}', en:'Reading groups… {n} of {total}' },
     'sc.count':           { ca:'{n} jugadors', es:'{n} jugadores', en:'{n} players' },
+    'sc.picking':         { ca:'{n} grups seleccionats. Tanca el desplegable per llegir-los.', es:'{n} grupos seleccionados. Cierra el desplegable para leerlos.', en:'{n} groups selected. Close the dropdown to read them.' },
     'sc.n_chosen':        { ca:'{n} triades', es:'{n} elegidas', en:'{n} chosen' },
     'sc.clear':           { ca:'Esborrar', es:'Borrar', en:'Clear' },
     'sc.zone':            { ca:'Zona', es:'Zona', en:'Area' },
@@ -1467,7 +1468,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 126;
+  const APP_VERSION = 127;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -5650,6 +5651,13 @@
       '</div>';
 
     var body;
+    /* Nothing is READ while a panel is open. Every tick of a checkbox
+       re-renders, and without this each one also resolved a new scope and
+       fired a fetch — so picking four divisions meant four rounds of
+       requests, three of them for a selection the user had not finished
+       making. That is what "unresponsive" was. The read happens when the
+       panel closes. */
+    var picking = !!st.open;
     if (scope.tooWide) {
       body = '<div class="card fcf-empty">' +
         sanitize(t('sc.too_wide').replace('{n}', scope.divisions)) + '</div>';
@@ -5666,6 +5674,9 @@
       body = scorersTableHtml(st.rows);
     } else if (!scope.groups.length) {
       body = '<div class="card fcf-empty">' + sanitize(t('sc.none')) + '</div>';
+    } else if (picking) {
+      body = '<div class="card fcf-empty">' +
+        sanitize(t('sc.picking').replace('{n}', scope.groups.length)) + '</div>';
     } else if (scope.groups.length > SC_AUTO_GROUPS && !st.confirmed) {
       /* Big, but legitimate. Say the number and let the user decide, rather
          than either refusing or quietly making four hundred requests. */
@@ -5778,7 +5789,32 @@
     renderPage(getSession());
   }
 
+  /* Close the open filter panel on a click anywhere else, or on Escape.
+
+     Bound ONCE, at the document, rather than in bindFcfTabs — that runs
+     after every render, and re-binding there would stack a fresh listener on
+     each keystroke. It reads _scorersState directly, so one listener serves
+     every render for the life of the page. */
+  var _scDismissBound = false;
+  function bindScDismiss() {
+    if (_scDismissBound) return;
+    _scDismissBound = true;
+    document.addEventListener('click', function (e) {
+      if (!_scorersState.open) return;
+      // A click INSIDE a dropdown is picking, not dismissing.
+      if (e.target.closest && e.target.closest('.sc-dd')) return;
+      _scorersState.open = '';
+      if (currentPage === 'scorers') renderPage(getSession());
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !_scorersState.open) return;
+      _scorersState.open = '';
+      if (currentPage === 'scorers') renderPage(getSession());
+    });
+  }
+
   function bindFcfTabs() {
+    bindScDismiss();
     document.querySelectorAll('[data-sanc-letter]').forEach(function (el) {
       el.addEventListener('click', function () {
         _sancionsState.letter = el.dataset.sancLetter;
@@ -5787,8 +5823,10 @@
       });
     });
     document.querySelectorAll('[data-sc-open]').forEach(function (b) {
-      b.addEventListener('click', function () {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
         var id = b.dataset.scOpen;
+        // Opening one closes any other — two panels overlapping is a mess.
         _scorersState.open = _scorersState.open === id ? '' : id;
         renderPage(getSession());
       });
