@@ -2,26 +2,30 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-23._
 
-## ⚠ v120 is uncommitted — FRONTEND ONLY
+## ⚠ v121 is uncommitted — FRONTEND ONLY
 
-The v119 hotfix is already committed as `94de843`; check whether it has been **deployed**
-(`.\deploy.ps1 functions`) before assuming the second kit column is broken again. Without it,
-`opponentKitAway` is never written, because `_syncFcfSquad` skips the Firestore write when the
-sync summary is all zeros and attaching a kit did not move any of date/time/location/mapLink.
-`summary` is a CONTRACT with that caller — the merge was right and the caller discarded it.
+v120 shipped (`24c12bf`) and the owner reported stripes of visibly different widths. **Not a
+stripe-drawing bug — a scaling bug**, and this file's own comments predicted it.
 
-**v120 is the shirts themselves.** The rival's kit is now drawn to the federation's own
-description — "3 rayas horizontales", "Franja lateral izquierda", "Mangas colores" — instead of
-being forced through `parseFill`, which knows only solid and evenly spaced stripes and so rendered
-five of the eleven forms as the wrong shirt.
+The striped torso is exactly half the shirt's viewBox, so at a rendered size S a band is `S/(2n)`
+device pixels; `KIT_ICON_PX = 72` exists because it makes that whole. v119's stylesheet then did
+`.md-kit-cell .kit-svg { width: 32px }` — a 16px torso, six bands, 2.667px each, snapped by
+crispEdges to 3,2,3,3,2,3.
+
+**Fixed two ways, both needed**: the render size is a parameter (`kitPx`) so the icons are DRAWN
+at 32px instead of scaled to it, and the counts now divide a 16px torso — "Rayas" 6 → **8**,
+"Rayas anchas" stays **4**. The CSS size rules are deleted, desktop and mobile, with a comment
+saying why.
+
+> ⚠ **Never re-add a width/height rule for `.md-kit-cell .kit-svg`.** That single line is the
+> entire bug. If a kit needs a different size, change `MD_KIT_PX` — and check it still divides by
+> both stripe counts, which a test now enforces.
 
 ```
 git add -A && git commit && git push      # that is the whole deploy
 ```
 
-No functions change in v120, so nothing needs redeploying for it. Version triple is at **120**.
-If the 2a column is still empty after this, the missing step is the FUNCTIONS deploy of `94de843`,
-then one press of 🔄 (which should report **30 updated**).
+No functions change. Version triple is at **121**.
 
 ### v118, for reference — DEPLOYED and verified
 

@@ -1421,7 +1421,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 120;
+  const APP_VERSION = 121;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -14474,15 +14474,27 @@
      Always renders a cell, even with nothing to draw, so the two kit columns
      stay aligned down the table — a fixture against a club outside the group
      leaves a gap rather than shifting the row's other cells left. */
+  /* 32, and it is not a free choice — see FCF_FILL_PATTERNS in js/utils.js.
+     It also has to stay inside the row height the action buttons already
+     set (.btn-small ≈ 33px), or every fixture row grows. */
+  var MD_KIT_PX = 32;
+
   function mdKitCellHtml(kit, titleKey, badgeUrl) {
     var pieces = fcfKitPieces(kit);
     if (!pieces) return '<td class="md-kit-cell"></td>';
     /* fcfShirtSvg, not the generic shirt: the federation describes five
        shapes — bands, diagonals, coloured sleeves — that a parseFill stripe
        cannot express, and drawing them as stripes shows the wrong shirt. */
+    /* The size is passed, NOT set in CSS. Every band boundary in these SVGs
+       is arithmetic against the rendered size; scaling the result afterwards
+       turns 4px bands into 1.78px ones and crispEdges snaps them unevenly.
+       MD_KIT_PX is 32 because a 16px torso divides by 4 and by 8 — the two
+       stripe counts FCF_FILL_PATTERNS uses — exactly. */
     return '<td class="md-kit-cell" title="' + sanitize(t(titleKey)) + '">' +
-      '<span class="kit-icons">' + fcfShirtSvg(pieces, badgeUrl || '') +
-      shortsSvg(pieces.shorts) + kitSockSvg(pieces.socks) + '</span></td>';
+      '<span class="kit-icons">' +
+      fcfShirtSvg(pieces, badgeUrl || '', MD_KIT_PX) +
+      shortsSvg(pieces.shorts, MD_KIT_PX) +
+      kitSockSvg(pieces.socks, MD_KIT_PX) + '</span></td>';
   }
 
   function renderMatchday() {
@@ -14719,6 +14731,19 @@
      resolve. 72 is the size the pixel arithmetic requires; the sock is
      36 × 72 because its viewBox is 32 × 64. */
   const KIT_ICON_PX = 72;
+  /* The size a kit icon is DRAWN at, which must be the size it is DISPLAYED
+     at. Everything above is pixel arithmetic against the rendered size, and
+     scaling the result down in CSS throws all of it away: the SVG is built
+     so six bands are exactly 6px at 72, then `width:32px` in a stylesheet
+     re-scales those to 2.667px each and crispEdges snaps them independently
+     to 3,2,3,3,2,3. That is the "stripes that should be the same width look
+     different widths" report, and no amount of care inside stripeSvg can fix
+     it from the wrong side of a CSS transform.
+     So callers that show a kit smaller pass the real size here instead. */
+  function kitPx(size) {
+    const n = parseInt(size, 10);
+    return n > 0 ? n : KIT_ICON_PX;
+  }
   const SHIRT_BODY_BOX = {x: 16, y: 6, w: 32, h: 50};
   // The full shirt is NOT half the viewBox, and does not need to be: hoops
   // across a whole shirt are a different, more forgiving case than nine
@@ -14730,7 +14755,7 @@
      parameter when the Calendari started drawing the RIVAL's: the crest is
      baked into the shirt, so without this every opponent in the fixture list
      wore an Esquerra badge. Invisible at 16px, unmissable at 32. */
-  function shirtSvg(fill, badgeUrl) {
+  function shirtSvg(fill, badgeUrl, size) {
     if (!fill) return '';
     const badge = badgeUrl === undefined ? clubBadgeUrl() : badgeUrl;
     const f = parseFill(fill);
@@ -14751,7 +14776,7 @@
       const s = stripeSvg(fill, ++_kitUid, SHIRT_OUTLINE, SHIRT_FULL_BOX);
       body = s.defs + s.shapes;
     }
-    return shirtWrap(body, f.c1, badge);
+    return shirtWrap(body, f.c1, badge, size);
   }
 
   /* The parts of a shirt that never change: the outline, the collar, the
@@ -14760,13 +14785,14 @@
      names) both need it, and two copies would drift the moment either is
      tweaked. `body` is whatever fills the shirt; the outline is drawn AFTER
      it so no fill can overdraw the edge. */
-  function shirtWrap(body, baseColour, badge) {
+  function shirtWrap(body, baseColour, badge, size) {
     /* parseFill, even though both callers already hand over a bare hex: an
        encoded fill reaching darkenHex returns '#NaNNaNNaN' and paints the
        collar black, and this is now the ONE place that decision is made for
        every shirt in the app. */
     const collar = darkenHex(parseFill(baseColour).c1, 40);
-    return `<svg class="kit-svg" viewBox="0 0 64 64" width="${KIT_ICON_PX}" height="${KIT_ICON_PX}" style="display:block">${body}
+    const px = kitPx(size);
+    return `<svg class="kit-svg" viewBox="0 0 64 64" width="${px}" height="${px}" style="display:block">${body}
       <path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
       <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
@@ -14791,7 +14817,7 @@
    * wearer's, and a kit icon is a picture — the viewer's left is what a
    * reader compares against a photo.
    */
-  function fcfShirtSvg(pieces, badgeUrl) {
+  function fcfShirtSvg(pieces, badgeUrl, size) {
     if (!pieces || !pieces.c1) return '';
     const c1 = pieces.c1;
     const c2 = pieces.c2 || c1;
@@ -14800,10 +14826,10 @@
 
     // The three parseFill can describe — keep the aligned stripe machinery.
     if (kind === 'stripes' || kind === 'wide-stripes' || kind === 'fine-hoops') {
-      return shirtSvg(pieces.shirt, badge);
+      return shirtSvg(pieces.shirt, badge, size);
     }
     if (kind === 'plain') {
-      return shirtWrap(`<path d="${SHIRT_OUTLINE}" fill="${c1}" stroke="none"/>`, c1, badge);
+      return shirtWrap(`<path d="${SHIRT_OUTLINE}" fill="${c1}" stroke="none"/>`, c1, badge, size);
     }
 
     const uid = 'fs' + (++_kitUid);
@@ -14836,7 +14862,7 @@
     }
     const body = `<defs><clipPath id="${uid}"><path d="${SHIRT_OUTLINE}"/></clipPath></defs>` +
       base + `<g clip-path="url(#${uid})">${overlay}</g>`;
-    return shirtWrap(body, c1, badge);
+    return shirtWrap(body, c1, badge, size);
   }
 
   /* Shorts are single-colour by decision — real ones are, and setClubKits
@@ -14845,11 +14871,12 @@
   const SHORTS_PATH = 'M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z';
   const SHORTS_BOX = {x: 12, y: 14, w: 40, h: 30};
 
-  function shortsSvg(fill) {
+  function shortsSvg(fill, size) {
     if (!fill) return '';
     const s = stripeSvg(fill, ++_kitUid, SHORTS_PATH, SHORTS_BOX);
     const shade = darkenHex(parseFill(fill).c1, 40);
-    return `<svg class="kit-svg" viewBox="0 0 64 64" width="${KIT_ICON_PX}" height="${KIT_ICON_PX}" style="display:block">${s.defs}
+    const px = kitPx(size);
+    return `<svg class="kit-svg" viewBox="0 0 64 64" width="${px}" height="${px}" style="display:block">${s.defs}
       ${s.shapes}
       <path d="${SHORTS_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <line x1="14" y1="20" x2="50" y2="20" stroke="${shade}" stroke-width="1" opacity=".5"/>
@@ -14874,11 +14901,12 @@
      foot, which no sock has. */
   const SOCK_BOX = {x: 8, y: 8, w: 20, h: 32};
 
-  function kitSockSvg(fill) {
+  function kitSockSvg(fill, size) {
     if (!fill) return '';
     const s = stripeSvg(fill, ++_kitUid, SOCK_PATH, SOCK_BOX);
     const cuff = darkenHex(parseFill(fill).c1, 60);
-    return `<svg class="kit-svg kit-svg-tall" viewBox="0 0 32 64" width="${KIT_ICON_PX / 2}" height="${KIT_ICON_PX}" style="display:block">${s.defs}
+    const px = kitPx(size);
+    return `<svg class="kit-svg kit-svg-tall" viewBox="0 0 32 64" width="${px / 2}" height="${px}" style="display:block">${s.defs}
       ${s.shapes}
       <path d="${SOCK_PATH}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <rect x="8" y="2" width="14" height="6" rx="1" fill="${cuff}" stroke="none"/>

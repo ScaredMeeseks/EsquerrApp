@@ -308,8 +308,8 @@ describe('kits — the old hardcoded renderers are gone', () => {
        every caller that predates v118 draws the club's own kit. */
     const i = src.indexOf('function shirtSvg(');
     const body = src.slice(i, src.indexOf('\n  }', i));
-    assert.ok(/function shirtSvg\(fill, badgeUrl\)/.test(body),
-        'shirtSvg must accept a crest');
+    assert.ok(/function shirtSvg\(fill, badgeUrl, size\)/.test(body),
+        'shirtSvg must accept a crest and a size');
     assert.ok(/badgeUrl === undefined \? clubBadgeUrl\(\)/.test(body),
         'our crest must remain the default');
     // An explicit '' means "no crest", and must not fall back to ours.
@@ -337,7 +337,8 @@ describe('kits — the old hardcoded renderers are gone', () => {
     // The three that ARE fills keep the pixel-aligned stripe machinery.
     assert.ok(/=== 'stripes' \|\| kind === 'wide-stripes' \|\| kind === 'fine-hoops'/
         .test(body), 'the stripe forms must still go through shirtSvg');
-    assert.ok(/return shirtSvg\(pieces\.shirt, badge\)/.test(body));
+    assert.ok(/return shirtSvg\(pieces\.shirt, badge, size\)/.test(body),
+        'the render size must reach the stripe path too');
 
     // Each of the five drawn by hand must have its own branch.
     ['hoops3', 'band-top', 'band-left', 'band-right', 'diagonal', 'sleeves']
@@ -449,10 +450,16 @@ describe('kits — nine bands land on whole pixels', () => {
   it('emits both dimensions, so nothing is left to resolve', () => {
     // The sock's viewBox is 32×64, so its width is half its height. Getting
     // that wrong squashes it; leaving it to `auto` squashed the shirt.
-    assert.ok(/width="\$\{KIT_ICON_PX\}" height="\$\{KIT_ICON_PX\}"/.test(app),
+    /* v120 made the size a PARAMETER (kitPx), because the Calendari draws
+       kits smaller and CSS-scaling a finished SVG is what made equal bands
+       render unevenly. Both dimensions still have to be stated in the
+       markup — that has not changed, only where the number comes from. */
+    assert.ok(/width="\$\{px\}" height="\$\{px\}"/.test(app),
         'the square shapes must state both dimensions');
-    assert.ok(/width="\$\{KIT_ICON_PX \/ 2\}" height="\$\{KIT_ICON_PX\}"/.test(app),
+    assert.ok(/width="\$\{px \/ 2\}" height="\$\{px\}"/.test(app),
         'the sock is 1:2 and must state it');
+    assert.ok(/function kitPx\(size\)/.test(app),
+        'the render size must be a parameter, not a constant');
   });
 
   it('72 is genuinely the smallest size that works', () => {

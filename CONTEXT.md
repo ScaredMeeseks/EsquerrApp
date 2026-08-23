@@ -3311,3 +3311,50 @@ the test that claims it.
 Three tests in `kits.test.js` and `fills-source.test.js` were rewritten rather than loosened: they
 sliced `shirtSvg` for markup that now lives in `shirtWrap`, and the `darkenHex` source guard wants
 a `.c1`, which the defensive parse above supplies honestly.
+
+### 2026-08-23 — v121: stripes that are actually the same width
+
+Reported: *"some stripes that should be the same width are looking weird, not the same width."*
+
+Not a stripe-drawing bug — a **scaling** bug, and the file's own comments predicted it. The
+striped torso is exactly 32 of the shirt's 64 viewBox units, so at a rendered size S a band is
+`S/(2n)` device pixels, and `KIT_ICON_PX = 72` was chosen precisely because it makes that a whole
+number. Then v119's stylesheet did `.md-kit-cell .kit-svg { width: 32px }`.
+
+At 32px the torso is 16px, six bands is **2.667px each**, and `crispEdges` snaps every edge
+independently to 3,2,3,3,2,3. No care inside `stripeSvg` can survive being re-scaled afterwards:
+the arithmetic has to be done for the size the icon is actually drawn at.
+
+**Two changes, both necessary:**
+
+1. **The render size is a parameter now** (`kitPx`), threaded through `shirtSvg`, `shirtWrap`,
+   `fcfShirtSvg`, `shortsSvg` and `kitSockSvg`, defaulting to `KIT_ICON_PX` so every pre-existing
+   caller is untouched. The Calendari passes `MD_KIT_PX = 32`, and **the CSS width/height rules
+   are gone** — with a comment saying why, because re-adding them is the whole bug.
+2. **The stripe counts now divide that size.** A 16px torso divides by 2, 4 and 8 and nothing
+   else, so "Rayas" went 6 → **8** and "Rayas anchas" stays **4**. Both exact, and still plainly
+   different from one another.
+
+The mobile override went too: 26px gives a 13px torso, which divides by neither, so every band
+would land unevenly. Four extra pixels of row height is the cheaper trade, and it is written down
+next to the rule.
+
+> The general lesson, and it is not specific to SVG: **a computation tuned to a rendered size is
+> destroyed by scaling the result.** The invariant was documented, the constant was chosen for it,
+> and a one-line stylesheet rule in a different file silently invalidated the lot.
+
+#### Tests
+
+Unit 927 → **931**. Four new assertions pin the whole chain rather than the symptom: the Calendari
+states its own size, **no stylesheet rule re-sizes a kit** (desktop or mobile block), every stripe
+count divides that size exactly, and the two vertical forms remain visibly different — because 4
+and 4 would divide beautifully and look identical.
+
+Five mutations checked: reverting to six bands, making both counts 4, choosing a size that divides
+nothing (26), re-adding a CSS size rule, and failing to pass the size through — each fails exactly
+one test, and the first is a straight revert to the reported bug.
+
+Three tests in `kits.test.js` were updated rather than loosened: they pinned the literal
+`${KIT_ICON_PX}` in the markup, which is now `${px}`. The guarantee they exist for — both
+dimensions stated in the markup, never left to CSS — is unchanged and now also asserts that the
+size is a parameter.

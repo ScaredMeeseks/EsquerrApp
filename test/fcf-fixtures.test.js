@@ -276,6 +276,69 @@ describe('fcfShirtFill / fcfKitPieces — the rival\'s shirt', () => {
     });
   });
 
+  describe('the Calendari kits land on whole pixels', () => {
+    /* The reported bug: "some stripes that should be the same width are
+       looking weird, not the same width".
+
+       The striped torso is exactly 32 of the shirt's 64 viewBox units, so at
+       a rendered size S a band is S/(2n) device pixels. When that does not
+       divide, crispEdges snaps each edge independently — six bands over a
+       16px torso become 3,2,3,3,2,3. The SVGs were built for 72px and then
+       SCALED DOWN by CSS to 32, which threw away every bit of the arithmetic
+       that made them even in the first place.
+
+       Two things had to hold, and this pins both: the icons are drawn at the
+       size they are shown, and that size divides by the stripe counts. */
+    const app = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+    const MD_KIT_PX = Number((app.match(/var MD_KIT_PX = (\d+);/) || [])[1]);
+
+    it('the Calendari states its own render size', () => {
+      assert.ok(MD_KIT_PX > 0, 'MD_KIT_PX is gone from js/app.js');
+      assert.ok(/fcfShirtSvg\(pieces, badgeUrl \|\| '', MD_KIT_PX\)/.test(app),
+          'the shirt is not drawn at MD_KIT_PX');
+      assert.ok(/shortsSvg\(pieces\.shorts, MD_KIT_PX\)/.test(app));
+      assert.ok(/kitSockSvg\(pieces\.socks, MD_KIT_PX\)/.test(app));
+    });
+
+    it('NO stylesheet rule re-sizes a Calendari kit', () => {
+      /* This is the actual bug. Scaling a finished SVG undoes every band
+         boundary it computed, and no care inside stripeSvg can survive it. */
+      const block = css.slice(css.indexOf('.md-kit-cell'),
+          css.indexOf('.md-map-link'));
+      assert.ok(!/\.kit-svg[^{]*\{[^}]*(width|height)\s*:/.test(block),
+          'a CSS rule is sizing the Calendari kits again: ' + block);
+      const mob = css.slice(css.indexOf('.md-kit-cell .kit-icons { gap: 1px; }') - 400,
+          css.indexOf('.md-kit-cell .kit-icons { gap: 1px; }') + 60);
+      assert.ok(!/\.md-kit-cell \.kit-svg\s*\{\s*width/.test(mob),
+          'the mobile block is sizing kits again');
+    });
+
+    it('every stripe count divides that size exactly', () => {
+      const span = MD_KIT_PX / 2;          // the striped torso, in device px
+      Object.keys(U.FCF_SHIRT_PATTERNS).forEach((cls) => {
+        const kind = U.FCF_SHIRT_PATTERNS[cls];
+        const spec = ({'stripes': 1, 'wide-stripes': 1})[kind];
+        if (!spec) return;                 // only the VERTICAL torso bands
+        const n = U.parseFill(
+            U.fcfShirtFill('faf ' + cls, '#FF0000', '#0000FF')).n;
+        assert.ok(Number.isInteger(span / n),
+            cls + ': ' + n + ' bands over a ' + span + 'px torso is ' +
+            (span / n) + 'px each — they will render uneven');
+      });
+    });
+
+    it('the two vertical forms are still visibly different', () => {
+      // Both must divide, but 4 and 4 would divide beautifully and look
+      // identical, which is not the point of having two.
+      const n = (cls) => U.parseFill(
+          U.fcfShirtFill('faf ' + cls, '#FF0000', '#0000FF')).n;
+      assert.notStrictEqual(n('faf-barres'), n('faf-barres2'));
+      assert.ok(n('faf-barres') > n('faf-barres2'),
+          '"Rayas" must be finer than "Rayas anchas"');
+    });
+  });
+
   it('fcfKitPieces carries the pattern AND the two colours', () => {
     // fcfShirtSvg needs all three to draw a band or a diagonal.
     const kits = F.parseFcfKits(EQUIPACIONS);

@@ -499,9 +499,20 @@ function fcfShirtPattern(pattern) {
 }
 
 /* The three patterns parseFill CAN express, so they keep the pixel-aligned
-   stripe machinery rather than being redrawn by hand. */
+   stripe machinery rather than being redrawn by hand.
+
+   ⚠ The COUNTS are constrained by arithmetic, not taste. The striped torso is
+   exactly 32 of the shirt's 64 viewBox units, so at a rendered size S a band
+   is S/(2n) pixels, and it is only ever even when that divides. The Calendari
+   draws kits at 32px — a 16px torso — so n must divide 16: 2, 4, 8 and no
+   others. Six bands there is 2.667px each, which crispEdges snaps to
+   3,2,3,3,2,3, and that unevenness is exactly what got reported.
+
+   So "Rayas" is 8 and "Rayas anchas" is 4: both exact, and still plainly
+   different from each other. Anything that changes these must re-check
+   FCF_STRIPE_SIZES in the tests. */
 var FCF_FILL_PATTERNS = {
-  'stripes': ['v', 6],
+  'stripes': ['v', 8],
   'wide-stripes': ['v', 4],
   'fine-hoops': ['h', 8]
 };

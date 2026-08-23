@@ -3059,10 +3059,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* ── Training table card → tight padding ── */
   .table-wrap { margin: 0 -.75rem; }
   .matchday-table td { padding: .4rem .3rem; }
-  /* .btn-small is smaller here too (≈28px), so the kits follow it down —
-     see the note beside the desktop sizes. */
-  .md-kit-cell .kit-svg { width: 26px; height: 26px; }
-  .md-kit-cell .kit-svg-tall { width: 13px; height: 26px; }
+  /* The kits do NOT shrink on mobile, and that is deliberate: 26px gives a
+     13px torso, which divides by neither 4 nor 8, so every stripe would land
+     unevenly. Four extra pixels of row height is the cheaper trade. */
   .md-kit-cell .kit-icons { gap: 1px; }
   .matchday-table .reg-input,
   .matchday-table select.reg-input { font-size: .72rem; padding: .25rem .3rem; }
@@ -4026,8 +4025,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    because .btn-small shrinks there too. */
 .md-kit-cell{padding:.2rem .4rem !important;white-space:nowrap;}
 .md-kit-cell .kit-icons{gap:2px;}
-.md-kit-cell .kit-svg{width:32px;height:32px;}
-.md-kit-cell .kit-svg-tall{width:16px;height:32px;}
+/* ⚠ Deliberately NO width/height here. The SVGs are drawn at MD_KIT_PX
+   (js/app.js) and every stripe boundary is arithmetic against that size —
+   re-scaling them in CSS is what made bands that should be equal render as
+   3,2,3,3,2,3. If a kit needs to be a different size, change MD_KIT_PX. */
 .md-kit-th{text-align:center;}
 .md-map-link{margin-left:.35rem;text-decoration:none;font-size:.85rem;}
 /* Withdrawn by the federation. Kept because the call-up and the notes hang
