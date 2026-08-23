@@ -184,6 +184,38 @@
     'cal.open_map':       { ca:'Obrir al mapa', es:'Abrir en el mapa', en:'Open in maps' },
     'cal.removed':        { ca:'Retirat del calendari de la FCF', es:'Retirado del calendario de la FCF', en:'Withdrawn from the FCF calendar' },
 
+    // ── Sancions ──
+    'sidebar.sancions':   { ca:'Sancions', es:'Sanciones', en:'Sanctions' },
+    'page.sancions':      { ca:'Sancions', es:'Sanciones', en:'Sanctions' },
+    'sanc.who':           { ca:'Qui', es:'Quién', en:'Who' },
+    'sanc.matches':       { ca:'Partits', es:'Partidos', en:'Matches' },
+    'sanc.reason':        { ca:'Motiu', es:'Motivo', en:'Reason' },
+    'sanc.next_title':    { ca:'Baixes per sanció — {j} contra {rival}', es:'Bajas por sanción — {j} contra {rival}', en:'Suspended for {j} v {rival}' },
+    'sanc.ours':          { ca:'Nosaltres', es:'Nosotros', en:'Us' },
+    'sanc.side_clear':    { ca:'Ningú sancionat.', es:'Nadie sancionado.', en:'Nobody suspended.' },
+    'sanc.no_fixture':    { ca:'Cap partit oficial pendent per a aquest equip. Actualitza el calendari a Calendari.', es:'Ningún partido oficial pendiente para este equipo. Actualiza el calendario en Calendario.', en:'No upcoming official fixture for this squad — refresh the calendar first.' },
+    'sanc.all_title':     { ca:'Totes les sancions del grup', es:'Todas las sanciones del grupo', en:'Every sanction in the group' },
+    'sanc.club_title':    { ca:'Resolucions contra clubs (no són baixes)', es:'Resoluciones contra clubes (no son bajas)', en:'Rulings against clubs (not player bans)' },
+    'sanc.none':          { ca:'Cap sanció publicada en aquest grup.', es:'Ninguna sanción publicada en este grupo.', en:'No sanctions published for this group.' },
+    'fcf.no_link_here':   { ca:'Cal configurar l\'enllaç de la classificació FCF d\'aquesta categoria per veure aquesta pàgina.', es:'Hay que configurar el enlace de la clasificación FCF de esta categoría para ver esta página.', en:'This category needs its FCF standings link configured to use this page.' },
+
+    // ── Top scorers ──
+    'sidebar.scorers':    { ca:'Golejadors', es:'Goleadores', en:'Top scorers' },
+    'page.scorers':       { ca:'Golejadors', es:'Goleadores', en:'Top scorers' },
+    'sc.season':          { ca:'Temporada', es:'Temporada', en:'Season' },
+    'sc.discipline':      { ca:'Modalitat', es:'Modalidad', en:'Discipline' },
+    'sc.division':        { ca:'Categoria', es:'Categoría', en:'Division' },
+    'sc.group':           { ca:'Grup', es:'Grupo', en:'Group' },
+    'sc.any':             { ca:'— Tria —', es:'— Elige —', en:'— Pick —' },
+    'sc.pick':            { ca:'Tria una modalitat, una categoria i un grup per veure\'n els golejadors.', es:'Elige una modalidad, una categoría y un grupo para ver sus goleadores.', en:'Pick a discipline, a division and a group to see its scorers.' },
+    'sc.none':            { ca:'La FCF encara no ha publicat golejadors d\'aquest grup.', es:'La FCF aún no ha publicado goleadores de este grupo.', en:'The FCF has not published scorers for this group yet.' },
+    'sc.player':          { ca:'Jugador', es:'Jugador', en:'Player' },
+    'sc.club':            { ca:'Club', es:'Club', en:'Club' },
+    'sc.goals':           { ca:'Gols', es:'Goles', en:'Goals' },
+    'sc.pens':            { ca:'Penals', es:'Penaltis', en:'Pens' },
+    'sc.played':          { ca:'PJ', es:'PJ', en:'MP' },
+    'sc.note':            { ca:'Xifres oficials de la FCF, tal com les publica.', es:'Cifras oficiales de la FCF, tal como las publica.', en:'Official FCF figures, exactly as published.' },
+
     // ── Player Home ──
     'home.attendance':    { ca:'Assistència', es:'Asistencia', en:'Attendance' },
     'home.this_week':     { ca:'Aquesta setmana', es:'Esta semana', en:'This Week' },
@@ -1421,7 +1453,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 122;
+  const APP_VERSION = 123;
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -4139,6 +4171,8 @@
       staffItem('matchday', '📅', t('sidebar.matchday'));
       staffItem('convocatoria', '📋', t('sidebar.convocatoria'));
       staffItem('staff-matchday', '⚽', t('sidebar.staff_matchday'));
+      staffItem('sancions', '🟥', t('sidebar.sancions'));
+      staffItem('scorers', '🥇', t('sidebar.scorers'));
       staffItem('medical', '<img src="img/icon-medical.svg" class="sidebar-img-icon">', t('sidebar.medical'));
       staffItem('tactics', '📐', t('sidebar.tactics'));
       staffItem('staff-notifications', '🔔', t('sidebar.notifications'));
@@ -4251,7 +4285,8 @@
     'staff-training', 'staff-training-detail', 'training-new', 'matchday',
     'convocatoria', 'staff-matchday', 'tactics',
     'manage-roster', 'registrations', 'staff-notifications',
-    'staff-player-stats', 'medical', 'medical-detail'
+    'staff-player-stats', 'medical', 'medical-detail',
+    'sancions', 'scorers'
   ]);
   const ADMIN_PAGES = new Set(['users']);
   const LEAD_PAGES  = new Set(['settings']);
@@ -4474,6 +4509,8 @@
       'matchday': renderMatchday,
       'convocatoria': renderConvocatoria,
       'staff-matchday': renderMatches,
+      'sancions': renderSancions,
+      'scorers': renderScorers,
       'tactics': renderTactics,
       'manage-roster': renderStaffRoster,
       'staff-player-stats': renderStaffPlayerStats,
@@ -4533,7 +4570,7 @@
       // which squad it was drawn for, and hiding two thirds of it behind a
       // filter they did not set is how a library stops being one. Search
       // narrows it instead, across name, coach and category together.
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions']);
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions', 'sancions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + renderPushBanner() +
         renderIosInstallBanner() + catBar + fn(session);
@@ -4570,6 +4607,7 @@
     }
 
     // Injury description hover → body map popup + medical tab bindings
+    if (currentPage === 'sancions' || currentPage === 'scorers') bindFcfTabs();
     if (currentPage === 'training-new') bindTrainingNew();
     if (currentPage === 'medical') bindMedical();
     if (currentPage === 'medical-detail') bindMedicalDetail();
@@ -5070,6 +5108,368 @@
   }
   function _setHiddenLeagues(arr) {
     localStorage.setItem('fa_hidden_leagues', JSON.stringify(arr));
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     Sancions and Top Scorers — the federation's other two tables.
+
+     Both read through fcfApi(), the allowlisted proxy: none of these
+     endpoints sends Access-Control-Allow-Origin, so a browser cannot reach
+     fcf.cat directly however public the data is.
+
+     Both are STAFF-ONLY by the owner's decision. A ban is something a player
+     would want to know, but FCF names players "COGNOMS, NOM" and matching
+     that against a roster is fuzzy — telling somebody he is suspended when
+     he is not is worse than telling him nothing, so a coach reads the
+     federation's own spelling and judges for himself.
+
+     ⚠ Neither payload's `licencia` reaches this file. It is a Spanish
+     DNI/NIE and functions/fcf.js drops it at the parse boundary.
+     ═══════════════════════════════════════════════════════════ */
+
+  var FCF_API_BASE = 'https://fcfapi-674dkdzfja-uc.a.run.app?endpoint=';
+  /* Ten minutes, matching the proxy's own Cache-Control. Keyed by the whole
+     query, so flipping between two divisions does not re-fetch either. */
+  var _fcfApiCache = {};
+
+  function fcfApiGet(endpoint, params) {
+    var qs = Object.keys(params || {})
+        .filter(function (k) { return params[k]; })
+        .map(function (k) { return '&' + k + '=' + encodeURIComponent(params[k]); })
+        .join('');
+    var key = endpoint + qs;
+    var hit = _fcfApiCache[key];
+    if (hit && Date.now() - hit.t < 10 * 60 * 1000) return Promise.resolve(hit.v);
+    return fetch(FCF_API_BASE + encodeURIComponent(endpoint) + qs)
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (v) { _fcfApiCache[key] = {t: Date.now(), v: v}; return v; });
+  }
+
+  /* The season id FCF uses. Derived from the club's own configured link
+     rather than assumed: the link a lead pasted carries `temporadaId`, and
+     that is the season this club is actually playing. */
+  function fcfSeasonId() {
+    var links = (_clubConfig && _clubConfig.fcfLinks) || {};
+    var found = '';
+    Object.keys(links).forEach(function (k) {
+      var m = /[?&]temporadaId=(\d{1,4})\b/.exec(String(links[k] || ''));
+      if (m && !found) found = m[1];
+    });
+    return found;
+  }
+
+  // ── Sancions ────────────────────────────────────────────────
+  var _sancionsState = {loading: false, rows: null, err: '', key: '', letter: ''};
+
+  /* The next fixture of this squad. A ban is only meaningful against a
+     JORNADA, and an imported fixture is the only place the app knows one. */
+  function sancionsNextFixture(category, letter) {
+    var now = new Date();
+    return JSON.parse(localStorage.getItem('fa_matches') || '[]')
+        .filter(function (m) {
+          return m.fcfActaId && m.fcfJornada && !m.fcfRemoved &&
+            (m.category || '') === category && (m.team || '') === letter &&
+            m.date && new Date(m.date + 'T23:59:59') >= now;
+        })
+        .sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); })[0] || null;
+  }
+
+  /* Our own FCF team id, read off the cached standings — the same place the
+     opponent picker gets its ids. '' when the table has not loaded, and then
+     bansForJornada returns EVERYONE, which is the safer way to be wrong than
+     showing nobody. */
+  function fcfOurTeamId(category, letter) {
+    var rows = _leagueCache['league-' + category + '-' + letter] || [];
+    var ours = rows.filter(function (r) { return r.ours; })[0];
+    return ours ? (ours.teamId || '') : '';
+  }
+
+  function renderSancions() {
+    var cat = getCurrentCategory() || '';
+    var links = (_clubConfig && _clubConfig.fcfLinks) || {};
+    var letters = getTeamLetters(cat).filter(function (l) {
+      return fcfGrupId(links[cat + '-' + l] || '');
+    });
+    if (!letters.length) {
+      return '<h2 class="page-title">' + t('page.sancions') + '</h2>' +
+        '<div class="card fcf-empty">' + sanitize(t('fcf.no_link_here')) + '</div>';
+    }
+    var letter = letters.indexOf(_sancionsState.letter) !== -1 ?
+      _sancionsState.letter : letters[0];
+    _sancionsState.letter = letter;
+    var grupId = fcfGrupId(links[cat + '-' + letter]);
+    var key = grupId + '|' + fcfSeasonId();
+
+    if (_sancionsState.key !== key) {
+      _sancionsState.key = key;
+      _sancionsState.rows = null;
+      _sancionsState.err = '';
+      _sancionsState.loading = true;
+      fcfApiGet('sanciones', {grupId: grupId, temporada: fcfSeasonId()})
+          .then(function (j) { _sancionsState.rows = parseFcfSanctions(j); })
+          .catch(function () { _sancionsState.err = t('fcf.unavailable'); })
+          .then(function () {
+            _sancionsState.loading = false;
+            if (currentPage === 'sancions') renderPage(getSession());
+          });
+    }
+
+    var squadPicker = letters.length > 1 ?
+      '<div class="fcf-squads">' + letters.map(function (l) {
+        return '<span class="md-team-circle' + (l === letter ? ' active' : '') +
+          '" data-sanc-letter="' + l + '">' + l + '</span>';
+      }).join('') + '</div>' : '';
+
+    var body;
+    if (_sancionsState.loading) {
+      body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
+    } else if (_sancionsState.err) {
+      body = '<div class="card fcf-empty">' + sanitize(_sancionsState.err) + '</div>';
+    } else {
+      body = sancionsBodyHtml(_sancionsState.rows || [], cat, letter);
+    }
+    return '<h2 class="page-title">' + t('page.sancions') + '</h2>' + squadPicker + body;
+  }
+
+  function sancionsRowsHtml(rows) {
+    return rows.map(function (r) {
+      var badge = r.badge ? '<img src="' + sanitize(r.badge) +
+        '" class="sanc-badge" alt="" onerror="this.style.display=&quot;none&quot;">' : '';
+      return '<tr><td class="sanc-j">J' + r.jornada + '</td>' +
+        '<td class="sanc-who">' + badge +
+          '<span>' + sanitize(r.player || r.teamName) + '</span>' +
+          (r.player ? '<small>' + sanitize(r.teamName) + '</small>' : '') + '</td>' +
+        '<td class="sanc-n">' + (r.matches || '—') + '</td>' +
+        '<td class="sanc-why">' + sanitize(r.reason) +
+          (r.article ? ' <span class="sanc-art">art. ' + sanitize(r.article) + '</span>' : '') +
+        '</td></tr>';
+    }).join('');
+  }
+
+  function sancionsHeadHtml() {
+    return '<thead><tr><th>J</th><th>' + t('sanc.who') + '</th><th>' +
+      t('sanc.matches') + '</th><th>' + t('sanc.reason') + '</th></tr></thead>';
+  }
+
+  function sancionsSideHtml(title, rows) {
+    return '<div class="sanc-side"><div class="sanc-side-title">' + title + '</div>' +
+      (rows.length ?
+        '<div class="table-wrap"><table class="sanc-tbl">' + sancionsHeadHtml() +
+          '<tbody>' + sancionsRowsHtml(rows) + '</tbody></table></div>' :
+        '<p class="fcf-empty">' + sanitize(t('sanc.side_clear')) + '</p>') +
+      '</div>';
+  }
+
+  function sancionsBodyHtml(rows, cat, letter) {
+    var out = '';
+
+    /* The question a coach actually has: who is unavailable on Sunday, on
+       BOTH sides. Everything below this is the archive. */
+    var next = sancionsNextFixture(cat, letter);
+    if (next) {
+      var mine = bansForJornada(rows, next.fcfJornada, fcfOurTeamId(cat, letter));
+      var theirs = bansForJornada(rows, next.fcfJornada, next.opponentTeamId || '');
+      var rival = isOurTeam(next.home) ? next.away : next.home;
+      out += '<div class="card"><div class="card-title">' +
+        sanitize(t('sanc.next_title').replace('{j}', 'J' + next.fcfJornada)
+            .replace('{rival}', rival)) + '</div>' +
+        '<div class="sanc-split">' +
+          sancionsSideHtml(sanitize(t('sanc.ours')), mine) +
+          sancionsSideHtml(sanitize(rival), theirs) +
+        '</div></div>';
+    } else {
+      out += '<div class="card fcf-empty">' + sanitize(t('sanc.no_fixture')) + '</div>';
+    }
+
+    var players = rows.filter(function (r) { return !r.isTeam; });
+    var clubs = rows.filter(function (r) { return r.isTeam; });
+    out += '<div class="card"><div class="card-title">' + t('sanc.all_title') + '</div>' +
+      (players.length ?
+        '<div class="table-wrap"><table class="sanc-tbl">' + sancionsHeadHtml() +
+          '<tbody>' + sancionsRowsHtml(players) + '</tbody></table></div>' :
+        '<p class="fcf-empty">' + sanitize(t('sanc.none')) + '</p>') +
+      '</div>';
+    if (clubs.length) {
+      /* Kept apart, and labelled. These are fines, closed grounds and
+         procedural rulings — 20 of the 48 in one sampled group — and every
+         one has zero matches. Mixed into the list above they would read as
+         players who are unavailable. */
+      out += '<div class="card"><div class="card-title">' + t('sanc.club_title') + '</div>' +
+        '<div class="table-wrap"><table class="sanc-tbl">' + sancionsHeadHtml() +
+        '<tbody>' + sancionsRowsHtml(clubs) + '</tbody></table></div></div>';
+    }
+    return out;
+  }
+
+  // ── Top Scorers ─────────────────────────────────────────────
+  /* A scouting tool, so it deliberately does NOT follow the category bar:
+     the point is to look at divisions this club does not play in. The
+     filters walk the federation's own competition tree, one group at a time,
+     which keeps it to a single request per view. */
+  var _scorersState = {
+    temporada: '', disciplina: '', competicio: '', grup: '',
+    sortBy: 'rank', sortDir: 1,
+    opts: {}, rows: null, loading: false, err: '', key: '',
+    _compKey: '', _grupKey: ''
+  };
+
+  function scorersLoad(what, params, onto) {
+    if (_scorersState.opts[onto] || _scorersState['loading_' + onto]) return;
+    _scorersState['loading_' + onto] = true;
+    fcfApiGet(what, params).then(function (list) {
+      _scorersState.opts[onto] = Array.isArray(list) ? list : [];
+    }).catch(function () {
+      _scorersState.opts[onto] = [];
+    }).then(function () {
+      _scorersState['loading_' + onto] = false;
+      if (currentPage === 'scorers') renderPage(getSession());
+    });
+  }
+
+  function scorersSelect(id, label, opts, value, disabled) {
+    return '<label class="sc-f"><span>' + sanitize(label) + '</span>' +
+      '<select class="reg-input sc-filter" data-sc="' + id + '"' +
+        (disabled ? ' disabled' : '') + '>' +
+      '<option value="">' + sanitize(t('sc.any')) + '</option>' +
+      (opts || []).map(function (o) {
+        return '<option value="' + sanitize(o.value) + '"' +
+          (String(o.value) === String(value) ? ' selected' : '') + '>' +
+          sanitize(o.label) + '</option>';
+      }).join('') + '</select></label>';
+  }
+
+  function renderScorers() {
+    var st = _scorersState;
+    // The tree: season → discipline → competition → group. Each level is
+    // only fetched once the one above it has an answer.
+    scorersLoad('temporadas', {}, 'temporada');
+    scorersLoad('disciplines', {}, 'disciplina');
+    if (!st.temporada) st.temporada = fcfSeasonId();
+    var compKey = st.disciplina + '|' + st.temporada;
+    if (st.disciplina && st._compKey !== compKey) {
+      st._compKey = compKey;
+      delete st.opts.competicio;
+      delete st.opts.grup;
+      scorersLoad('competicions',
+          {disciplinaId: st.disciplina, temporada: st.temporada}, 'competicio');
+    }
+    if (st.competicio && st._grupKey !== st.competicio) {
+      st._grupKey = st.competicio;
+      delete st.opts.grup;
+      scorersLoad('grupos', {competicioId: st.competicio}, 'grup');
+    }
+
+    var key = st.grup + '|' + st.temporada;
+    if (st.grup && st.key !== key) {
+      st.key = key;
+      st.rows = null;
+      st.err = '';
+      st.loading = true;
+      fcfApiGet('goleadores', {grupId: st.grup, temporada: st.temporada})
+          .then(function (j) { st.rows = parseFcfScorers(j); })
+          .catch(function () { st.err = t('fcf.unavailable'); })
+          .then(function () {
+            st.loading = false;
+            if (currentPage === 'scorers') renderPage(getSession());
+          });
+    }
+
+    var filters = '<div class="card sc-filters">' +
+      scorersSelect('temporada', t('sc.season'), st.opts.temporada, st.temporada) +
+      scorersSelect('disciplina', t('sc.discipline'), st.opts.disciplina, st.disciplina) +
+      scorersSelect('competicio', t('sc.division'), st.opts.competicio, st.competicio, !st.disciplina) +
+      scorersSelect('grup', t('sc.group'), st.opts.grup, st.grup, !st.competicio) +
+      '</div>';
+
+    var body;
+    if (!st.grup) {
+      body = '<div class="card fcf-empty">' + sanitize(t('sc.pick')) + '</div>';
+    } else if (st.loading) {
+      body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
+    } else if (st.err) {
+      body = '<div class="card fcf-empty">' + sanitize(st.err) + '</div>';
+    } else if (!(st.rows || []).length) {
+      body = '<div class="card fcf-empty">' + sanitize(t('sc.none')) + '</div>';
+    } else {
+      body = scorersTableHtml(st.rows);
+    }
+    return '<h2 class="page-title">' + t('page.scorers') + '</h2>' + filters + body;
+  }
+
+  function scorersSortedRows(rows) {
+    var by = _scorersState.sortBy;
+    var dir = _scorersState.sortDir;
+    return rows.slice().sort(function (a, b) {
+      if (by === 'player' || by === 'teamName') {
+        return dir * String(a[by]).localeCompare(String(b[by]));
+      }
+      return dir * ((a[by] || 0) - (b[by] || 0));
+    });
+  }
+
+  function scorersTableHtml(rows) {
+    var cols = [
+      ['rank', '#'], ['player', t('sc.player')], ['teamName', t('sc.club')],
+      ['goals', t('sc.goals')], ['penalties', t('sc.pens')],
+      ['played', t('sc.played')]
+    ];
+    var head = '<thead><tr>' + cols.map(function (c) {
+      var on = _scorersState.sortBy === c[0];
+      return '<th class="sc-th' + (on ? ' sc-on' : '') + '" data-sc-sort="' + c[0] + '">' +
+        sanitize(c[1]) + (on ? (_scorersState.sortDir > 0 ? ' ▲' : ' ▼') : '') + '</th>';
+    }).join('') + '</tr></thead>';
+    var body = scorersSortedRows(rows).map(function (r) {
+      var badge = r.badge ? '<img src="' + sanitize(r.badge) +
+        '" class="sanc-badge" alt="" onerror="this.style.display=&quot;none&quot;">' : '';
+      return '<tr><td class="sc-rank">' + r.rank + '</td>' +
+        '<td class="sc-player">' + sanitize(r.player) + '</td>' +
+        '<td class="sc-club">' + badge + sanitize(r.teamName) + '</td>' +
+        '<td><strong>' + r.goals + '</strong></td>' +
+        '<td>' + r.penalties + '</td><td>' + r.played + '</td></tr>';
+    }).join('');
+    return '<div class="card"><div class="table-wrap">' +
+      '<table class="sanc-tbl sc-tbl">' + head + '<tbody>' + body + '</tbody></table></div>' +
+      '<p class="sc-note">' + sanitize(t('sc.note')) + '</p></div>';
+  }
+
+  function bindFcfTabs() {
+    document.querySelectorAll('[data-sanc-letter]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        _sancionsState.letter = el.dataset.sancLetter;
+        _sancionsState.key = '';
+        renderPage(getSession());
+      });
+    });
+    document.querySelectorAll('.sc-filter').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var f = sel.dataset.sc;
+        _scorersState[f] = sel.value;
+        // Anything below the level that changed is no longer valid.
+        var order = ['temporada', 'disciplina', 'competicio', 'grup'];
+        order.slice(order.indexOf(f) + 1).forEach(function (k) {
+          _scorersState[k] = '';
+          delete _scorersState.opts[k];
+        });
+        _scorersState._compKey = '';
+        _scorersState._grupKey = '';
+        _scorersState.key = '';
+        _scorersState.rows = null;
+        renderPage(getSession());
+      });
+    });
+    document.querySelectorAll('[data-sc-sort]').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var by = th.dataset.scSort;
+        if (_scorersState.sortBy === by) {
+          _scorersState.sortDir = -_scorersState.sortDir;
+        } else {
+          _scorersState.sortBy = by;
+          // Numbers read best biggest-first, names A-Z.
+          _scorersState.sortDir = (by === 'player' || by === 'teamName') ? 1 : -1;
+        }
+        renderPage(getSession());
+      });
+    });
   }
 
   function renderPlayerHome() {

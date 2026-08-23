@@ -3400,3 +3400,86 @@ nudging the hoop origin two units off the grid.
 > then it divided exactly at 100% and nowhere else; and all along the horizontal box had never
 > been aligned at all. Each fix was correct about the thing it looked at and silent about the
 > thing it did not.
+
+### 2026-08-24 — v123: the Sancions and Golejadors tabs
+
+The two tabs deferred out of v118, built to the shape recorded there. Both **staff-only** and
+**no push**, by the owner's decision: FCF names players "COGNOMS, NOM" and matching that against a
+roster is fuzzy, so telling a player he is suspended when he is not would be worse than telling
+him nothing. A coach reads the federation's own spelling and judges for himself.
+
+#### `fcfApi` — one proxy, an allowlist
+
+Six more endpoints, none of which sends `Access-Control-Allow-Origin`, so each still has to come
+through us. **One handler with a table** rather than six functions: adding an endpoint is a line
+instead of a deploy-shaped decision, and there is exactly one place to look when asking what this
+project can reach.
+
+```
+temporadas · disciplines · competicions · grupos · sanciones · goleadores
+```
+
+Every parameter is digits-only — that is the whole security model, and it is deliberately boring:
+nothing a caller sends can be anything but a number substituted into a constant URL. Verified by
+replaying the handler: `partidos` (not on the list), `../../secret`, `competicioId=1;DROP` and
+`grupId=https://evil.test` are all refused. `fcfClassificacio` stays as it is — v117+ clients call
+it by name and it costs nothing to leave standing.
+
+#### ⚠ The DNI, and the fixtures
+
+Both payloads carry `licencia` — a Spanish **DNI/NIE**, for players who in most of this app's
+categories are minors. `functions/fcf.js` drops it, and `ficha` with it, at the parse boundary.
+Not "does not render it": a field that merely goes unrendered is one `JSON.stringify` away from
+being stored. `codparticipante` / `codjugador`, the federation's own opaque ids, are kept instead.
+
+**The captured fixtures were scrubbed before committing.** This repo is public and GitHub Pages
+serves it, so a raw `goleadores` capture would have published fifty real identity numbers by the
+act of `git add`. `licencia` and `ficha` are stripped from `fcf-sancions.json` and
+`fcf-goleadors.json`; the DNI guard injects a synthetic one instead, which tests the guard
+properly and puts nobody's document in git. A test asserts the fixtures stay clean.
+
+#### Sancions
+
+Reads the group's rulings and answers the question a coach actually has — **who is unavailable on
+Sunday, on both sides** — then shows the archive below it.
+
+- A ban issued at jornada N for P matches covers **N+1 … N+P**: the round he was sent off in is
+  not one he misses. `banCoversJornada` is the one definition.
+- **`tipo: "equipo"` rulings are separated and labelled.** Twenty of the forty-eight in one
+  sampled group are fines, closed grounds and procedural decisions, every one with zero matches;
+  mixed into the players' table they read as men who are unavailable.
+- The jornada comes from the **imported fixture**, so this needs the Calendari synced first, and
+  says so when there is none. Past fixtures are excluded — "who is suspended for the next game" is
+  a question about a game that has not happened.
+- Our own FCF team id comes from the standings cache. With no cache it is `''` and
+  `bansForJornada` then shows EVERYONE, which is the safer way to be wrong than showing nobody.
+
+#### Golejadors
+
+A scouting tool, so it deliberately does **not** follow the category bar — the point is to look at
+divisions this club does not play in. Season → discipline → competition → group, walking the
+federation's own tree, one group per view and therefore one request. Sortable on every column;
+numbers default to biggest-first and names to A–Z.
+
+> ⚠ **The goal figures are published exactly as FCF publishes them**, which is the owner's
+> decision, recorded in v118 and unchanged. They are arithmetically impossible — `goles` is the
+> home and away tallies concatenated, so one club's five listed scorers sum to 157 for a team that
+> scored 106 — and `FCF_SCORERS_RAW` in `functions/fcf.js` is the single line to flip.
+> `splitFcfTally` is written and tested against that day, wired to nothing.
+
+#### Tests
+
+Unit 954 → **976**, rules 152 and functions 71 unchanged. Two new files, **both added to
+`test:unit` by hand**: `fcf-discipline.test.js` (the parsers and the ban window) and
+`fcf-tabs-render.test.js` (the renderers, via the `grab()` convention — ~250 lines of string
+building whose failure mode is a blank page).
+
+Eleven mutations checked. The ones worth naming: leaking the DNI from either parser, starting the
+ban window a round early or ending it a round short, listing club rulings as player bans, treating
+a played fixture as "next", and sorting names numerically.
+
+> The escaping assertion needed the lesson this repo already had written down: `!includes(
+> 'onerror=')` FAILS on correctly-escaped output, because the escaped payload still contains that
+> substring — and these renderers emit their own `<img … onerror>` for a crest that fails to load.
+> The check is for an unescaped TAG, with the legitimate crests stripped by their exact markup
+> first.

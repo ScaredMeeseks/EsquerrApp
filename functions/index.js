@@ -1185,6 +1185,64 @@ exports.fcfClassificacio = onRequest(
     },
 );
 
+// ── 5a. fcfApi — the read-only competition endpoints, proxied ──
+//
+// The Sancions and Top Scorers tabs need six more FCF endpoints, and none of
+// them sends Access-Control-Allow-Origin, so each still has to come through
+// us. One handler with an ALLOWLIST rather than six functions: a new endpoint
+// is then a line in a table instead of a deploy-shaped decision, and there is
+// exactly one place to look when asking what this project can reach.
+//
+// Every parameter is digits-only. That is the whole security model and it is
+// deliberately boring: nothing a caller sends can be anything but a number
+// substituted into a constant URL, so there is no URL for an attacker to
+// steer. `fcfClassificacio` above stays as it is — v117+ clients call it by
+// name and it costs nothing to leave standing.
+const FCF_ENDPOINTS = {
+  temporadas: [],
+  disciplines: [],
+  competicions: ["disciplinaId", "temporada"],
+  grupos: ["competicioId"],
+  sanciones: ["grupId", "temporada"],
+  goleadores: ["grupId", "temporada"],
+};
+
+exports.fcfApi = onRequest(
+    {cors: true, region: "us-central1", memory: "256MiB"},
+    async (req, res) => {
+      const name = String(req.query.endpoint || "");
+      const allowed = FCF_ENDPOINTS[name];
+      if (!allowed) {
+        res.status(400).json({error: "Unknown endpoint"});
+        return;
+      }
+      const parts = [];
+      for (const key of allowed) {
+        const v = String(req.query[key] || "");
+        if (!v) continue;                       // every one is optional
+        if (!/^\d{1,15}$/.test(v)) {
+          res.status(400).json({error: "Invalid " + key});
+          return;
+        }
+        parts.push(key + "=" + v);
+      }
+      const url = FCF_BASE + name + (parts.length ? "?" + parts.join("&") : "");
+      try {
+        const resp = await fetch(url, {headers: {"User-Agent": "Mozilla/5.0"}});
+        if (!resp.ok) throw new Error("FCF returned " + resp.status);
+        const json = await resp.json();
+        /* The competition TREE barely changes within a season, the tables
+           change weekly; ten minutes suits both and keeps a coach clicking
+           through divisions off the federation's back. */
+        res.set("Cache-Control", "public, max-age=600");
+        res.json(json);
+      } catch (err) {
+        logger.error("fcfApi error", {endpoint: name, err: String(err)});
+        res.status(502).json({error: "Failed to fetch FCF"});
+      }
+    },
+);
+
 // ── 5b. syncFcfFixtures — the Calendari fills itself ─────────
 //
 // The federation publishes the whole fixture list of the group a squad

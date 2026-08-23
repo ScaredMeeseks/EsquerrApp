@@ -1,35 +1,30 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-23._
+_Rolling document, overwritten each session. Last updated: 2026-08-24._
 
-## ⚠ v122 is uncommitted — FRONTEND ONLY
+## ⚠ v123 is uncommitted — frontend AND functions
 
-v121 shipped and the stripes were STILL uneven. The screenshot was a **125%-scaled Windows
-display**, and that is the whole bug: the arithmetic has to hold in DEVICE pixels.
+The last two tabs, built to the shape v118 recorded: **Sancions** and **Golejadors**. Both
+staff-only, no push.
 
-```
-32px, 8 bands → 2.00px @100%  2.50px @125%   snapped 2,3,2,3
-48px, 6 bands → 4.00px @100%  5.00px @125%   6.00px @150%   even
-```
-
-A band is whole at every common scaling only when `size / (2 × bands)` is a **multiple of 4**. At
-32px that allows 2 or 4 bands and nothing finer, so the owner chose bigger icons:
-**`MD_KIT_PX` = 48**, "Rayas" = **6**, "Rayas anchas" = **3**. Fixture rows are ~15px taller as a
-result, deliberately.
-
-**Horizontal hoops were never even either** — they used `SHIRT_FULL_BOX`, whose `y = 6` origin is
-4.5 device pixels at 48px and fractional at every scaling. They now have `SHIRT_HOOP_BOX`
-(`y = 16, h = 32`), the same half-viewBox invariant as the torso and the sock.
-
-> ⚠ Changing `MD_KIT_PX` or any stripe count means re-checking the others. A test sweeps
-> [1, 1.25, 1.5, 1.75, 2] and asserts both the band width and the grid ORIGIN — "even at 100%"
-> proves nothing, which is what the previous two attempts learned the hard way.
+**Deploy functions FIRST** — v123 adds `fcfApi`, the allowlisted proxy both tabs read through, and
+without it every request 404s:
 
 ```
-git add -A && git commit && git push      # that is the whole deploy
+1. .\deploy.ps1 functions      ← MUST be first
+2. git add -A && git commit && git push
 ```
 
-No functions change. Version triple is at **122**.
+Version triple is at **123**. Rules unchanged.
+
+> ⚠ **The DNI.** Both payloads carry `licencia`, a Spanish DNI/NIE for players who are often
+> minors. It is dropped in `functions/fcf.js` at the parse boundary, and the committed fixtures
+> were SCRUBBED before `git add` — this repo is public and Pages serves it, so a raw capture would
+> have published fifty real identity numbers. A test keeps both true. Do not re-capture a fixture
+> from the live API without stripping `licencia` and `ficha`.
+
+> ⚠ **Sancions needs the Calendari synced.** The jornada comes from an imported fixture; with no
+> upcoming official fixture the page says so rather than guessing.
 
 ### v118, for reference — DEPLOYED and verified
 
