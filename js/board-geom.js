@@ -62,10 +62,24 @@
      which is what makes the feature need no migration. */
   var DEFAULT_PITCH = [105, 68];
 
-  /* Outer bounds. Generous on purpose: these exist to stop a drag
+  /* ═══ THE PITCH SIZE LIMITS — change them here, nowhere else ═══
+
+     These four numbers are the only place the allowed range is
+     written down. The typed inputs take their `min`/`max` from them,
+     the drag grips clamp against them, and the tests read them rather
+     than repeating the figures, so moving one moves everything.
+     Metres.
+
+     Currently generous on purpose: they exist to stop a drag
      producing a pitch of zero or of ten kilometres, not to enforce
-     competition rules. A coach sketching a 30 x 20 rondo grid is
-     doing something legitimate. */
+     competition rules. The Laws of the Game would say 90-120 x 45-90
+     for eleven-a-side, which is the obvious thing to tighten to.
+
+     Note the FLOOR IS NOT ALWAYS THESE NUMBERS: clamp() also refuses
+     any pitch too small to contain its own penalty areas, which for
+     the regulation marks works out at 42.32 m wide and 37 m long. So
+     lowering MIN_W below 42.32 has no effect without also changing
+     the marking set. Raising it does. */
   var MIN_L = 25, MAX_L = 130;
   var MIN_W = 15, MAX_W = 90;
 

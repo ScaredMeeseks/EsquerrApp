@@ -808,12 +808,16 @@ tr:hover td { background: #f7f8fa; }
 }
 .tb-pitch-reset:hover { border-color:var(--primary); color:var(--text); }
 
-/* The two drag grips, one per axis, sitting ON the line they move:
-   tb-pitch-grip-x is the goal line (length), -y the touchline
-   (width). Each owns ONE dimension — a corner handle dragging both at
-   once makes it impossible to hold one measurement steady while
-   adjusting the other, and a coach matching a real ground usually
-   knows one of the two numbers exactly. */
+/* The two drag grips, named for the SCREEN EDGE they sit on rather
+   than for a pitch dimension — which of the two they edit depends on
+   whether the board is rotated (see gripDim in js/app.js). Naming
+   them -x/-y after the pitch axes is what let the first version put
+   the length handle on the right edge of a VERTICAL board, where it
+   read as a horizontal drag and behaved as a vertical one.
+
+   Each owns ONE dimension. Not a corner handle: a coach matching a
+   real ground usually knows one of the two numbers exactly, and a
+   handle that moves both makes it impossible to hold one steady. */
 .tb-pitch-grip {
   position:absolute; background:rgba(255,255,255,.25);
   opacity:0; transition:opacity .15s, background .15s;
@@ -821,8 +825,8 @@ tr:hover td { background: #f7f8fa; }
 }
 .tb-field:hover .tb-pitch-grip { opacity:1; }
 .tb-pitch-grip:hover, .tb-pitch-grip.tb-grip-active { background:var(--primary); opacity:1; }
-.tb-pitch-grip-x { top:0; bottom:0; right:0; width:10px; cursor:ew-resize; }
-.tb-pitch-grip-y { left:0; right:0; bottom:0; height:10px; cursor:ns-resize; }
+.tb-pitch-grip-right  { top:0; bottom:0; right:0; width:10px;  cursor:ew-resize; }
+.tb-pitch-grip-bottom { left:0; right:0; bottom:0; height:10px; cursor:ns-resize; }
 /* The live metre readout while dragging. */
 .tb-pitch-grip.tb-grip-active::after {
   content:attr(data-val); position:absolute;
@@ -830,8 +834,8 @@ tr:hover td { background: #f7f8fa; }
   padding:.15rem .35rem; border-radius:4px; white-space:nowrap;
   font-variant-numeric:tabular-nums;
 }
-.tb-pitch-grip-x.tb-grip-active::after { top:50%; right:14px; transform:translateY(-50%); }
-.tb-pitch-grip-y.tb-grip-active::after { left:50%; bottom:14px; transform:translateX(-50%); }
+.tb-pitch-grip-right.tb-grip-active::after  { top:50%; right:14px; transform:translateY(-50%); }
+.tb-pitch-grip-bottom.tb-grip-active::after { left:50%; bottom:14px; transform:translateX(-50%); }
 /* Touch has no hover, so the grips would be invisible and unfindable. */
 @media (hover: none) {
   .tb-pitch-grip { opacity:.6; }

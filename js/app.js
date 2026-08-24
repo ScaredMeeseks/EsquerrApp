@@ -9765,8 +9765,8 @@
           <div class="tb-field-inner" style="${tbFieldInnerStyle(savedPitch, boardType, isVertical)}">
             ${tbMarkingsHtml(savedPitch, boardType, isVertical)}
             ${(!boardType || boardType === 'full') ? `
-            <div class="tb-pitch-grip tb-pitch-grip-x" id="tb-grip-x" data-tooltip="${t('tactics.pitch_drag')}"></div>
-            <div class="tb-pitch-grip tb-pitch-grip-y" id="tb-grip-y" data-tooltip="${t('tactics.pitch_drag')}"></div>` : ''}
+            <div class="tb-pitch-grip tb-pitch-grip-right" id="tb-grip-h" data-tooltip="${t('tactics.pitch_drag')}"></div>
+            <div class="tb-pitch-grip tb-pitch-grip-bottom" id="tb-grip-v" data-tooltip="${t('tactics.pitch_drag')}"></div>` : ''}
             ${circlesHtml}
             ${oppCirclesHtml}
             ${savedBalls.map((bp,bi) => { if(!bp) return ''; let bx=bp[0],by=bp[1]; if(isVertical&&boardType==='full'){bx=bp[1];by=100-bp[0];} return '<div class="tb-ball" data-idx="'+bi+'" style="left:'+bx+'%;top:'+by+'%;">' + '</div>'; }).join('')}
@@ -12226,7 +12226,7 @@
        Live during the drag would mean a full re-render per pointermove;
        instead the box is scaled visually and the real setPitch lands on
        pointerup. */
-    ['x', 'y'].forEach(axis => {
+    ['h', 'v'].forEach(axis => {
       const grip = document.getElementById('tb-grip-' + axis);
       if (!grip) return;
       let drag = null;
@@ -12245,7 +12245,7 @@
         field.style.setProperty('--tb-preview-l', g[0]);
         field.style.setProperty('--tb-preview-w', g[1]);
         inner.style.paddingTop = BG.aspectPct(g, curBoardType(), isVertical()) + '%';
-        grip.dataset.val = axis === 'x' ? g[0] + ' m' : g[1] + ' m';
+        grip.dataset.val = g[gripDim(axis)] + ' m';
       });
       grip.addEventListener('pointerup', e => {
         if (!drag) return;
@@ -12263,25 +12263,46 @@
       });
     });
 
+    /* Which PITCH dimension a grip edits: 0 = length, 1 = width.
+
+       A grip is named for the SCREEN EDGE it sits on — 'h' is the
+       right-hand edge, dragged horizontally; 'v' is the bottom edge,
+       dragged vertically. Which pitch dimension that is depends on
+       whether the board is rotated:
+
+         horizontal board   right edge = a goal line   -> length
+                            bottom edge = a touchline  -> width
+         vertical board     right edge = a touchline   -> width
+                            bottom edge = a goal line  -> length
+
+       The first version rotated the LOGIC but left the handles where
+       they were, so on a vertical board the right-hand grip — which
+       reads as a horizontal drag, and has an ew-resize cursor —
+       edited the length. The handle's position and its behaviour
+       disagreed, which is the kind of wrong that still produces a
+       plausible pitch. Now the grip owns its edge and the rotation
+       only decides what that edge means. */
+    function gripDim(axis) {
+      const rot = BG.isRotated(curBoardType(), isVertical());
+      return axis === 'h' ? (rot ? 1 : 0) : (rot ? 0 : 1);
+    }
+
     /* Where the pointer is, as a pitch dimension.
 
        The grip sits on the far edge, so the fraction of the box the
-       pointer is at scales the dimension it owns. On a VERTICAL full
-       board the axes are swapped on screen, so the grip that owns the
-       pitch length is the one running horizontally — which is why the
-       axis is chosen against isVertical() rather than assumed. */
+       pointer has reached scales the dimension that edge governs. The
+       pointer axis read is always the grip's own screen axis — a
+       horizontal grip reads clientX, in every orientation. */
     function gripPitchFor(e, drag, axis) {
       const r = drag.rect;
-      const vert = BG.isRotated(curBoardType(), isVertical());
-      const alongX = (axis === 'x') !== vert;
-      const frac = alongX
+      const frac = axis === 'h'
         ? (e.clientX - r.left) / r.width
         : (e.clientY - r.top) / r.height;
       const f = Math.max(0.05, Math.min(1.6, frac));
-      const base = drag.start;
-      return axis === 'x'
-        ? BG.clamp(Math.round(base[0] * f), base[1])
-        : BG.clamp(base[0], Math.round(base[1] * f));
+      const out = drag.start.slice();
+      const dim = gripDim(axis);
+      out[dim] = Math.round(drag.start[dim] * f);
+      return BG.clamp(out[0], out[1]);
     }
 
     // --- Silhouette picker ---

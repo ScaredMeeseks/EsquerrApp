@@ -5,11 +5,16 @@
  * is what makes the clamp, the undo entry and the re-render impossible
  * to apply on one route and forget on the other.
  *
- * The grip axis mapping is the part most likely to be wrong and least
- * likely to look wrong: on a vertical full board the pitch is rotated
- * on screen, so the grip that owns the pitch LENGTH is the one running
- * horizontally. Get it backwards and dragging the touchline changes
- * the length — which still produces a plausible pitch.
+ * A grip is named for the SCREEN EDGE it sits on: 'h' is the right
+ * edge and always reads clientX, 'v' is the bottom edge and always
+ * reads clientY. Rotation decides only WHICH pitch dimension that edge
+ * represents — on a vertical board the right edge is a touchline, not
+ * a goal line.
+ *
+ * The first version got this wrong in a way that still produced a
+ * plausible pitch: it rotated the LOGIC but left the handles where
+ * they were, so on a vertical board the right-hand grip carried an
+ * ew-resize cursor, read as a horizontal drag, and edited the LENGTH.
  */
 const assert = require('assert');
 const fs = require('fs');
@@ -25,17 +30,27 @@ function grab(src, from, to, label) {
   return src.slice(i, j);
 }
 
-/* gripPitchFor is self-contained apart from BG, curBoardType and
-   isVertical, so it lifts cleanly. */
+/* gripDim and gripPitchFor together — the latter calls the former, so
+   slicing only the second leaves it unresolvable. Both are
+   self-contained apart from BG, curBoardType and isVertical. */
 function makeGrip(opts) {
   opts = opts || {};
-  const block = grab(appSrc, '    function gripPitchFor(e, drag, axis) {',
+  const block = grab(appSrc, '    function gripDim(axis) {',
       '\n    // --- Silhouette picker ---', 'js/app.js');
   return new Function('BG', 'curBoardType', 'isVertical',
       block + '\n; return gripPitchFor;')(
       BG,
       () => opts.boardType || 'full',
       () => !!opts.vertical);
+}
+
+function makeDim(opts) {
+  opts = opts || {};
+  const block = grab(appSrc, '    function gripDim(axis) {',
+      '    function gripPitchFor', 'js/app.js');
+  return new Function('BG', 'curBoardType', 'isVertical',
+      block + '\n; return gripDim;')(
+      BG, () => opts.boardType || 'full', () => !!opts.vertical);
 }
 
 const RECT = {left: 0, top: 0, width: 800, height: 500,
@@ -47,29 +62,29 @@ describe('dragging a grip', () => {
   it('halving the box halves the dimension the grip owns', () => {
     const drag = {start: [105, 68], rect: RECT};
     // Pointer at 50% across -> length scales by 0.5.
-    const out = gripFor({clientX: 400, clientY: 250}, drag, 'x');
+    const out = gripFor({clientX: 400, clientY: 250}, drag, 'h');
     assert.strictEqual(out[0], 53);          // round(105 * 0.5)
     assert.strictEqual(out[1], 68);          // width untouched
   });
 
-  it('the y grip owns the width and leaves the length alone', () => {
+  it('the bottom grip owns the width and leaves the length alone', () => {
     // Start wide enough that halving stays above the 42.32 m floor,
     // so this tests the AXIS and not the clamp.
     const drag = {start: [105, 90], rect: RECT};
-    const out = gripFor({clientX: 400, clientY: 250}, drag, 'y');
+    const out = gripFor({clientX: 400, clientY: 250}, drag, 'v');
     assert.strictEqual(out[0], 105);
     assert.strictEqual(out[1], 45);
   });
 
   it('a width drag below the floor is clamped, not accepted', () => {
     const drag = {start: [105, 68], rect: RECT};
-    const out = gripFor({clientX: 400, clientY: 250}, drag, 'y');
+    const out = gripFor({clientX: 400, clientY: 250}, drag, 'v');
     assert.strictEqual(out[1], 42.32, 'half of 68 is 34, which cannot hold the box');
   });
 
   it('dragging outward past the edge grows the pitch', () => {
     const drag = {start: [80, 60], rect: RECT};
-    const out = gripFor({clientX: 1200, clientY: 250}, drag, 'x');
+    const out = gripFor({clientX: 1200, clientY: 250}, drag, 'h');
     assert.ok(out[0] > 80, 'expected growth, got ' + out[0]);
   });
 
@@ -77,10 +92,10 @@ describe('dragging a grip', () => {
     /* The grip is bounded, but the clamp is what guarantees the
        result, and it is the same clamp the typed inputs use. */
     const drag = {start: [105, 68], rect: RECT};
-    const tiny = gripFor({clientX: 1, clientY: 1}, drag, 'y');
+    const tiny = gripFor({clientX: 1, clientY: 1}, drag, 'v');
     assert.ok(tiny[1] >= BG.MARKS.paWidth,
         'width ' + tiny[1] + ' cannot hold the penalty area');
-    const huge = gripFor({clientX: 99999, clientY: 250}, drag, 'x');
+    const huge = gripFor({clientX: 99999, clientY: 250}, drag, 'h');
     assert.ok(huge[0] <= BG.BOUNDS.MAX_L);
   });
 
@@ -88,49 +103,84 @@ describe('dragging a grip', () => {
     /* Otherwise the pitch compounds: each pointermove would scale
        whatever the previous one produced, and a slow drag would shrink
        the pitch to nothing while a fast one barely moved it. */
-    const a = gripFor({clientX: 400, clientY: 250}, {start: [105, 68], rect: RECT}, 'x');
-    const b = gripFor({clientX: 400, clientY: 250}, {start: [105, 68], rect: RECT}, 'x');
+    const a = gripFor({clientX: 400, clientY: 250}, {start: [105, 68], rect: RECT}, 'h');
+    const b = gripFor({clientX: 400, clientY: 250}, {start: [105, 68], rect: RECT}, 'h');
     assert.deepStrictEqual(a, b);
   });
 });
 
-describe('the grip axes follow what is on SCREEN', () => {
-  it('a vertical full board swaps which grip owns which dimension', () => {
-    /* The board is rotated, so the pitch's length runs across the
-       screen. The x grip still owns the length — it just reads the
-       pointer's Y. Backwards, this silently edits the wrong
-       dimension and still yields a plausible pitch. */
-    const vert = makeGrip({vertical: true, boardType: 'full'});
-    const drag = {start: [105, 68], rect: RECT};
+describe('a grip belongs to its SCREEN EDGE', () => {
+  /* The first version rotated the LOGIC but left the handles where
+     they were, so on a vertical board the right-hand grip — which
+     reads as a horizontal drag and carries an ew-resize cursor —
+     edited the pitch LENGTH. Position and behaviour disagreed, which
+     is the kind of wrong that still produces a plausible pitch.
 
-    // Moving the pointer VERTICALLY should now drive the length.
-    const movedY = vert({clientX: 400, clientY: 250}, drag, 'x');
-    assert.strictEqual(movedY[0], 53, 'vertical board: x grip should read clientY');
+     The rule now: 'h' is the right edge and always reads clientX;
+     'v' is the bottom edge and always reads clientY. Rotation decides
+     only WHICH pitch dimension that edge represents. */
 
-    // And moving HORIZONTALLY should drive the width.
-    const wide = {start: [105, 90], rect: RECT};
-    const movedX = vert({clientX: 400, clientY: 250}, wide, 'y');
-    assert.strictEqual(movedX[1], 45);
+  const flat = makeGrip({vertical: false, boardType: 'full'});
+  const vert = makeGrip({vertical: true, boardType: 'full'});
+  const drag = () => ({start: [105, 90], rect: RECT});
+  const MID = {clientX: 400, clientY: 250};   // 50% on both axes
+
+  it('horizontal board: the right edge is a goal line, so it sets LENGTH', () => {
+    const out = flat(MID, drag(), 'h');
+    assert.strictEqual(out[0], 53, 'length should halve');
+    assert.strictEqual(out[1], 90, 'width must not move');
   });
 
-  it('half and area boards are NOT swapped', () => {
-    /* They are rotated by a CSS transform on the whole field, which
-       moves the pointer coordinates with it — so the untransformed
-       mapping is already correct. Exactly the isRotated() rule. */
-    const half = makeGrip({vertical: true, boardType: 'half'});
-    const flat = makeGrip({vertical: false, boardType: 'half'});
-    const drag = {start: [105, 68], rect: RECT};
-    assert.deepStrictEqual(
-        half({clientX: 400, clientY: 250}, drag, 'x'),
-        flat({clientX: 400, clientY: 250}, drag, 'x'));
+  it('horizontal board: the bottom edge is a touchline, so it sets WIDTH', () => {
+    const out = flat(MID, drag(), 'v');
+    assert.strictEqual(out[0], 105, 'length must not move');
+    assert.strictEqual(out[1], 45, 'width should halve');
   });
 
-  it('uses the same isRotated the markings use', () => {
-    // Not a re-derivation: one rule, or the pitch and its markings
-    // come apart. Pinned at the source level.
-    const src = grab(appSrc, '    function gripPitchFor(e, drag, axis) {',
-        '\n    // --- Silhouette picker ---', 'js/app.js');
-    assert.ok(/BG\.isRotated\(curBoardType\(\), isVertical\(\)\)/.test(src), src);
+  it('vertical board: the right edge is now a TOUCHLINE, so it sets WIDTH', () => {
+    const out = vert(MID, drag(), 'h');
+    assert.strictEqual(out[0], 105, 'length must not move');
+    assert.strictEqual(out[1], 45);
+  });
+
+  it('vertical board: the bottom edge is now a GOAL LINE, so it sets LENGTH', () => {
+    const out = vert(MID, drag(), 'v');
+    assert.strictEqual(out[0], 53);
+    assert.strictEqual(out[1], 90, 'width must not move');
+  });
+
+  it('rotating swaps which dimension each edge owns', () => {
+    // Stated directly, so the intent survives a refactor of the above.
+    const dims = makeDim({vertical: false});
+    const dimsV = makeDim({vertical: true});
+    assert.strictEqual(dims('h'), 0);
+    assert.strictEqual(dims('v'), 1);
+    assert.strictEqual(dimsV('h'), 1);
+    assert.strictEqual(dimsV('v'), 0);
+  });
+
+  it('the pointer axis read never changes — h reads X, v reads Y', () => {
+    /* If a grip ever read the other axis, dragging it would feel like
+       pushing a door sideways. Moving ONLY the axis a grip does not
+       own must leave the pitch alone. */
+    const onlyY = {clientX: 800, clientY: 250};   // full width, half height
+    assert.strictEqual(flat(onlyY, drag(), 'h')[0], 105, 'h grip must ignore clientY');
+    const onlyX = {clientX: 400, clientY: 500};   // half width, full height
+    assert.strictEqual(flat(onlyX, drag(), 'v')[1], 90, 'v grip must ignore clientX');
+  });
+
+  it('half and area boards are never rotated for this purpose', () => {
+    /* CSS rotates the whole field, so pointer coordinates come along
+       already. Exactly the isRotated() rule the markings use. */
+    const half = makeDim({vertical: true, boardType: 'half'});
+    assert.strictEqual(half('h'), 0);
+  });
+
+  it('asks BG.isRotated rather than re-deriving the condition', () => {
+    // One rule, or the pitch and its markings come apart.
+    const src = grab(appSrc, '    function gripDim(axis) {',
+        '    function gripPitchFor', 'js/app.js');
+    assert.ok(src.includes('BG.isRotated(curBoardType(), isVertical())'), src);
   });
 });
 
