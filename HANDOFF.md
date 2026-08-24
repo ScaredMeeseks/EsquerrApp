@@ -43,11 +43,15 @@ exist anywhere in the federation's data; reds and second bookings come from `san
 carries `codacta`. Scope is the five senior Futbol 11 tiers — 64 groups, 14,390 matches a season,
 about a twentieth of all Futbol 11. Full detail in CONTEXT.md under v129.
 
-**Three things are still to do, in this order:**
+**PAUSED 2026-08-24 by the owner** — revisit when fcf.cat is more settled. `fcfCrawl/config` has
+`enabled: false`; the scope beside it is ready to go, so **resuming is that one field**. It ran
+once first, and what it produced is kept: `fcfRefIndex/21_54486121` (Tercera Grup 1, 240 actas,
+240 with a referee) and **44 referee profiles**. The crawl will not re-fetch any of it.
 
-1. **Deploy** (below), then create `fcfCrawl/config` with `enabled: true`. Nothing crawls until
-   that document exists — the default is off, because turning it on aims tens of thousands of
-   requests at the federation's website.
+**When it resumes, three things, in this order:**
+
+1. Set `enabled: true`. The config document already exists and is scoped to all five tiers across
+   both seasons; nothing crawls while the flag is false.
 2. **Start small and watch it.** Set `onlyGroups` to one or two group ids first, run
    `runFcfCrawl` by hand (superuser callable), and confirm the referee names match fcf.cat by eye
    for three of them. Then clear `onlyGroups` and let the nightly job work through both seasons
