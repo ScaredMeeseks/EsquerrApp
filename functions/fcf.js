@@ -238,13 +238,41 @@ function decodeHtmlEntities(s) {
  *    contains "PREPARADOR FÍSIC, MERGE O A.T.S" — comma and all — which is
  *    why the block is bounded at the next `<h3>` rather than scanned loosely.
  */
+/* ── The yellow-card tripwire ───────────────────────────────────────────
+ *
+ * Every acta renders exactly FOUR card-sized boxes and two yellow swatches,
+ * and always the same four: they are the legend at the foot of the sheet, not
+ * anybody's booking. Verified against a played acta, an unplayed one, and —
+ * the one that settles it — acta 3781800, where `sanciones` records BOTH a
+ * player sent off for two yellows AND a second man disciplined for his
+ * language, and the page still shows four.
+ *
+ * The owner expects the federation to publish cards eventually. Rather than
+ * leave that as a note nobody re-reads, the crawler counts these boxes on
+ * every acta it fetches: the day one comes back with more than the legend,
+ * something is being drawn on the sheet that was not there before, and the
+ * job says so in the log. It is a WATCH, not a parser — a redesign that
+ * merely restyles the legend will also trip it, which is the right outcome,
+ * because that is exactly when this needs looking at again.
+ */
+const FCF_ACTA_LEGEND_MARKS = 4;
+const FCF_ACTA_CARD_MARK = /w-\[18px\] h-\[22px\]/g;
+
+/** How many card-sized boxes the page draws. See FCF_ACTA_LEGEND_MARKS. */
+function fcfActaCardMarks(html) {
+  const m = String(html === undefined || html === null ? "" : html)
+      .match(FCF_ACTA_CARD_MARK);
+  return m ? m.length : 0;
+}
+
 function parseFcfActa(html) {
   const h = String(html === undefined || html === null ? "" : html);
   const heading = /Àrbitres<\/h3>/g;
+  const cardMarks = fcfActaCardMarks(h);
   let start = -1;
   let m;
   while ((m = heading.exec(h))) start = m.index + m[0].length;
-  if (start === -1) return {referees: [], principal: ""};
+  if (start === -1) return {referees: [], principal: "", cardMarks};
 
   const end = h.indexOf("<h3", start);
   const block = h.slice(start, end === -1 ? start + 4000 : end);
@@ -257,7 +285,7 @@ function parseFcfActa(html) {
     if (!name || name.indexOf(",") === -1) continue;
     if (out.indexOf(name) === -1) out.push(name);
   }
-  return {referees: out, principal: out[0] || ""};
+  return {referees: out, principal: out[0] || "", cardMarks};
 }
 
 /**
@@ -470,6 +498,65 @@ const FCF_SANCTION_DOUBLE = "102";
 const FCF_SANCTION_RED = "103";
 
 /**
+ * The federation's disciplinary ARTICLES, which say what the offence was.
+ *
+ * `cod_tiposancion` says how someone left the pitch; `articulo_salida` says
+ * why, and it is the difference between "four sendings-off" and "four
+ * sendings-off, three of them for dissent". Read off 2,482 sanction rows
+ * across all five tiers.
+ *
+ * ⚠ Two things about this field that a first reading gets wrong:
+ *
+ *  1. It is a comma-separated LIST, not a code. "338.1d,338.1h" and
+ *     "336,338.1c" are both real — one incident can breach several articles,
+ *     and the same article can appear twice.
+ *  2. The spellings vary. "338c" and "338f" are the federation's shorthand
+ *     for "338.1c" and "338.1f" (identical `motivo_sancion` text), and some
+ *     values carry a trailing space.
+ *
+ * `dissent` is deliberately two articles: 338.1d is protesting to the
+ * referee, 338.2b is addressing him injuriously. Both are the same question
+ * — how does he handle being argued with — and splitting them would halve an
+ * already thin count.
+ */
+const FCF_ARTICLES = {
+  "334": "accumulation",   // reaching a fifth booking
+  "336": "second_booking", // sent off for two yellows
+  "337": "straight_red",   // a direct red, offence unspecified
+  "338.1a": "insult",      // insulting, threatening or provoking another
+  "338.1c": "decorum",     // expressions against decorum or dignity
+  "338.1d": "dissent",     // protesting ostensibly or insistently
+  "338.1f": "violent",     // violent conduct arising from play
+  "338.1i": "interrupt",   // provoking a stoppage
+  "338.1k": "rough",       // pushing, shaking — only lightly violent
+  "338.2b": "dissent",     // addressing officials injuriously
+  "339": "assault",        // assaulting another
+  "341": "delegate",       // a delegate failing their obligations
+};
+
+/* The offences worth showing, in the order a delegate would care about them.
+   `accumulation` and `second_booking` are NOT here: they describe how a
+   player left the pitch, not what he did, and both are already counted. */
+const FCF_OFFENCE_ORDER = ["dissent", "decorum", "insult", "violent", "rough",
+  "assault", "interrupt", "straight_red", "delegate"];
+
+/** One `articulo_salida` value → the distinct offences it names. */
+function fcfArticleOffences(value) {
+  const out = [];
+  String(value === undefined || value === null ? "" : value)
+      .split(",").forEach((raw) => {
+        const art = raw.trim();
+        if (!art) return;
+        /* "338c" is the federation's shorthand for "338.1c" — same article,
+           same `motivo_sancion`, written two ways in the same season. */
+        const key = FCF_ARTICLES[art] ||
+          FCF_ARTICLES[art.replace(/^338([a-z])$/, "338.1$1")];
+        if (key && out.indexOf(key) === -1) out.push(key);
+      });
+  return out;
+}
+
+/**
  * `sanciones` folded to `{actaId: {reds, doubles}}`.
  *
  * This is what makes cards possible at all. FCF publishes NO card markers on
@@ -495,10 +582,18 @@ function parseFcfSanctionsByActa(json) {
       if (!actaId) return;
       if (String(r.tipo || "") === "equipo") return;
       const code = String(r.cod_tiposancion === null ||
-        r.cod_tiposancion === undefined ? "" : r.cod_tiposancion);
+        r.cod_tiposancion === undefined ? "" : r.cod_tiposancion).trim();
       if (code !== FCF_SANCTION_DOUBLE && code !== FCF_SANCTION_RED) return;
-      const e = out[actaId] || (out[actaId] = {reds: 0, doubles: 0});
+      const e = out[actaId] || (out[actaId] = {reds: 0, doubles: 0, off: {}});
       if (code === FCF_SANCTION_DOUBLE) e.doubles++; else e.reds++;
+      /* What the offence WAS, kept beside the count. Free — it is the same
+         row we already have — and it is the only route to a question like
+         "how does he handle being argued with", since the bookings that
+         answer it directly are never published. */
+      fcfArticleOffences(r.articulo_salida).forEach((key) => {
+        if (key === "accumulation" || key === "second_booking") return;
+        e.off[key] = (e.off[key] || 0) + 1;
+      });
     });
   });
   return out;
@@ -544,7 +639,7 @@ function aggregateFcfReferees(groups, sanctionsByActa) {
          display so the name shown is the one on the latest acta. */
       if ((e.d || "") >= (p.lastSeen || "")) p.name = name;
       const d = p.byDivision[comp] || (p.byDivision[comp] = {
-        matches: 0, H: 0, D: 0, A: 0, reds: 0, doubles: 0,
+        matches: 0, H: 0, D: 0, A: 0, reds: 0, doubles: 0, off: {},
       });
       p.matches++;
       d.matches++;
@@ -553,6 +648,9 @@ function aggregateFcfReferees(groups, sanctionsByActa) {
       if (c) {
         d.reds += c.reds || 0;
         d.doubles += c.doubles || 0;
+        Object.keys(c.off || {}).forEach((k) => {
+          d.off[k] = (d.off[k] || 0) + c.off[k];
+        });
       }
       if (season) p.seasons[season] = (p.seasons[season] || 0) + 1;
       if (e.d) {
@@ -792,6 +890,8 @@ module.exports = {
   mergeFcfFixtures,
   decodeHtmlEntities,
   parseFcfActa,
+  fcfActaCardMarks,
+  FCF_ACTA_LEGEND_MARKS,
   fcfRefereeSlug,
   FCF_SENIOR_TIERS,
   FCF_DISCIPLINE_F11,
@@ -806,5 +906,8 @@ module.exports = {
   aggregateFcfReferees,
   FCF_SANCTION_DOUBLE,
   FCF_SANCTION_RED,
+  FCF_ARTICLES,
+  FCF_OFFENCE_ORDER,
+  fcfArticleOffences,
   FCF_OWNED,
 };

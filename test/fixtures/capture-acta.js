@@ -37,6 +37,19 @@ const WANTED = [
 const BEFORE = 2500;
 const AFTER = 600;
 
+/* The yellow-card baseline, which the windows cannot carry.
+   Every acta draws the same card-sized boxes at the foot of the sheet — they
+   are a legend, not anybody's booking — and the crawler watches that count so
+   it can say the day the federation starts publishing bookings. 3781800 is
+   the one that settles it: `sanciones` records two sanctions on that match
+   and its sheet still draws only the legend. */
+const CARD_BASELINE = [
+  [3784040, "played, Lliga Elit"],
+  [3781801, "played, Tercera"],
+  [4106975, "unplayed, no referees assigned"],
+  [3781800, "played — TWO sanctions recorded against it"],
+];
+
 async function main() {
   for (const [name, actaId, note] of WANTED) {
     const url = "https://www.fcf.cat/ca/competicio/acta/" + actaId;
@@ -51,6 +64,19 @@ async function main() {
       "\n     A window of the real page; see capture-acta.js. -->\n";
     fs.writeFileSync(path.join(__dirname, name), header + slice);
     console.log(name, slice.length, "bytes");
+  }
+
+  const {fcfActaCardMarks, FCF_ACTA_LEGEND_MARKS} =
+    require(path.join(__dirname, "..", "..", "functions", "fcf.js"));
+  console.log("\ncard marks per acta (legend baseline is " +
+    FCF_ACTA_LEGEND_MARKS + "):");
+  for (const [actaId, note] of CARD_BASELINE) {
+    const html = await (await fetch(
+        "https://www.fcf.cat/ca/competicio/acta/" + actaId)).text();
+    const n = fcfActaCardMarks(html);
+    console.log("  " + actaId + "  " + String(n).padStart(3) +
+      (n > FCF_ACTA_LEGEND_MARKS ? "  ← MORE THAN THE LEGEND: bookings?" : "") +
+      "   (" + note + ")");
   }
 }
 

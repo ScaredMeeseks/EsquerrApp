@@ -31,7 +31,7 @@ const {
   parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
   fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
   fcfShouldRebuild,
-  FCF_SENIOR_TIERS, FCF_DISCIPLINE_F11,
+  FCF_SENIOR_TIERS, FCF_DISCIPLINE_F11, FCF_ACTA_LEGEND_MARKS,
 } = require("./fcf");
 admin.initializeApp();
 
@@ -1609,7 +1609,8 @@ async function _crawlGroup(entry, opts) {
   if (!o.wantUnplayed) due = due.filter((d) => d.closed);
   if (o.maxActas) due = due.slice(0, o.maxActas);
 
-  const stats = {fetched: 0, withRef: 0, closedFetched: 0, remaining: 0};
+  const stats = {fetched: 0, withRef: 0, closedFetched: 0, remaining: 0,
+    maxCardMarks: 0, cardActa: ""};
   const next = {};
   let i = 0;
   let stopped = false;
@@ -1621,9 +1622,16 @@ async function _crawlGroup(entry, opts) {
       if (!d) return;
       try {
         const html = await fcfActaHtml(d.actaId);
-        const {referees} = parseFcfActa(html);
+        const {referees, cardMarks} = parseFcfActa(html);
         next[d.actaId] = fcfActaEntry(d, referees);
         stats.fetched++;
+        /* The yellow-card watch — see FCF_ACTA_LEGEND_MARKS in fcf.js. Every
+           acta draws the same four legend boxes today; more than that means
+           something new is being rendered on the sheet. */
+        if (cardMarks > stats.maxCardMarks) {
+          stats.maxCardMarks = cardMarks;
+          stats.cardActa = d.actaId;
+        }
         if (d.closed) {
           stats.closedFetched++;
           if (referees.length) stats.withRef++;
@@ -1707,7 +1715,8 @@ async function _runFcfCrawl(opts) {
   }
 
   const deadline = Date.now() + cfg.budgetMs;
-  const total = {groups: 0, fetched: 0, withRef: 0, closedFetched: 0};
+  const total = {groups: 0, fetched: 0, withRef: 0, closedFetched: 0,
+    maxCardMarks: 0, cardActa: ""};
   while (at < queue.length && Date.now() < deadline) {
     const entry = queue[at];
     try {
@@ -1720,6 +1729,10 @@ async function _runFcfCrawl(opts) {
       total.fetched += s.fetched;
       total.withRef += s.withRef;
       total.closedFetched += s.closedFetched;
+      if (s.maxCardMarks > total.maxCardMarks) {
+        total.maxCardMarks = s.maxCardMarks;
+        total.cardActa = s.cardActa;
+      }
       // Cut off mid-group: leave the pointer here and resume next run.
       if (s.remaining) break;
     } catch (err) {
@@ -1740,6 +1753,20 @@ async function _runFcfCrawl(opts) {
   if (total.closedFetched >= 10 && total.withRef === 0) {
     logger.error("FCF acta parser found NO referees at all — has fcf.cat " +
       "changed? parseFcfActa needs checking.", total);
+  }
+
+  /* ── The yellow-card watch ───────────────────────────────────────────
+     Every acta draws exactly FCF_ACTA_LEGEND_MARKS card-sized boxes, and has
+     done on a played sheet, an unplayed one, and one carrying two separate
+     sanctions. More than that means the federation has started drawing
+     something on the match sheet — most likely the bookings it has never
+     published — and parseFcfActa can finally be taught to read them. */
+  if (total.maxCardMarks > FCF_ACTA_LEGEND_MARKS) {
+    logger.warn("FCF actas now draw MORE card marks than the legend — the " +
+      "federation may have started publishing bookings. Check acta " +
+      total.cardActa + " and see the yellow-card note in fcf.js.",
+    {maxCardMarks: total.maxCardMarks, legend: FCF_ACTA_LEGEND_MARKS,
+      actaId: total.cardActa});
   }
   total.done = at >= queue.length;
   total.at = at;

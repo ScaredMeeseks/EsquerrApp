@@ -3815,3 +3815,86 @@ because turning it on aims tens of thousands of requests at the federation's web
 2026-27 fixture has been played**, so it could not be confirmed that appointments appear on the
 Thursday; the Friday job is built on the owner's knowledge of how the federation works. If the
 season's first Friday comes back with no appointments, only that half of the job is affected.
+
+### 2026-08-24 — v130: the referee on the match detail, and what he sends people off for
+
+Three things the owner asked for after seeing v129.
+
+#### 1. The card on the match detail page
+
+Beside the first-leg banner, same figures as the Calendari panel plus two things a fixture row has
+no room for: **the assistants** (a Tercera match with a full trio is not the usual case, and the
+morning of the game that is worth a line), and **our own history with him**.
+
+#### 2. "Have we had him before?"
+
+That join needed no new data at all. Our fixtures already carry `fcfActaId` and the group index
+already maps acta → officials, so `refereeHistoryWithUs` is a filter over what both sides hold.
+Newest first, played matches only, and only where he was the **referee** rather than an assistant.
+
+> The result comes from the index's `res`, not from the coach-entered score — `res` came off the
+> federation's own closed match sheet, while a score is only as complete as the events somebody
+> remembered to enter. `res` is the HOME side's result, so `ourResultFrom(res, weWereHome)` flips
+> it. **Getting that backwards would report a defeat as a win** on the page a delegate reads before
+> kick-off, so it has its own test and its own mutation.
+
+#### 3. What the sendings-off were FOR — `articulo_salida`
+
+The owner asked whether the sanction codes could show how a referee handles verbal protest. They
+can. `cod_tiposancion` says how a player left the pitch; **`articulo_salida` says why.** Read off
+2,482 sanction rows across all five tiers:
+
+| Article | Offence | in sample |
+|---|---|---|
+| `338.1d` | **protesting ostensibly/insistently to the referee** | 77 |
+| `338.2b` | **addressing officials injuriously** | 39 |
+| `338.1c` | expressions against decorum | 104 |
+| `338.1f` | violent conduct arising from play | 96 |
+| `338.1k` | pushing, shaking — only lightly violent | 53 |
+| `337` | straight red, offence unspecified | 71 |
+| `339` | assault | 27 |
+| `334` / `336` | accumulation / second booking | 958 / 407 |
+
+`dissent` is deliberately **both** 338.1d and 338.2b: same question, and splitting them would halve
+an already thin count. `334` and `336` are excluded from the offence list — they describe the exit,
+not the act, and are already counted as reds/doubles.
+
+⚠ **Two traps in that field.** It is a **comma-separated LIST** (`338.1d,338.1h`, `336,338.1c`) —
+read as a single code, every multi-article row falls through and the offence is lost. And the
+spellings vary: `338c`/`338f` are the federation's shorthand for `338.1c`/`338.1f`, with identical
+`motivo_sancion`, in the same season; some values carry a trailing space.
+
+> **COUNTS ONLY, never a rate, and the panel says why.** The federation records an offence solely
+> where the sanction carried a suspension, so a referee who books dissent and stops there leaves no
+> trace whatever. "3 for dissent" is a fact; "30% of his cards are dissent" would be arithmetic
+> over a denominator that does not exist. At roughly twelve dissent sanctions per group-season
+> across forty-odd referees, this is thin after one season and only starts meaning something after
+> two — which is another reason it is shown as a count a reader can weigh for themselves.
+
+#### 4. The yellow-card tripwire
+
+The owner expects the federation to publish bookings eventually. Rather than a note nobody
+re-reads, `parseFcfActa` now counts the card-sized boxes on every acta it already has in hand — a
+second regex, no extra request — and the crawler logs a warning the day one exceeds the legend.
+
+Every acta draws exactly **four**, verified live on a played sheet, an unplayed one, and — the one
+that settles it — **acta 3781800, where `sanciones` records TWO sanctions** (a second booking and a
+man disciplined for his language) and the page still draws four. `node test/fixtures/capture-acta.js`
+re-runs that check and prints the counts, so the baseline is one command away rather than folklore.
+
+#### Tests
+
+Unit 1109 → **1147**. Ten more mutations, each failing at least one test: reading `articulo_salida`
+as a single code, dropping the `338c` shorthand, not trimming it, counting accumulations as
+offences, leaking offences across divisions, a wrong legend baseline, reporting our result from the
+home side's view, counting unplayed matches in the history, crediting assistants in it, and sorting
+it oldest-first.
+
+> **Two of the new guards were caught proving nothing and rewritten.** The legend test built its
+> legend *from* `FCF_ACTA_LEGEND_MARKS`, so it passed just as happily with the constant wrong —
+> there is now a literal `=== 4` pinning the live observation. And the "every class has a CSS rule"
+> guard split `class="…"` on whitespace, which hands back `ref-offence'` with the quote still
+> attached from `class="ref-offence' + (…) + '"`; it tokenises now. Both were then mutation-checked.
+
+The v123 browser-reachability guard and the v125 stylesheet guard were **widened to cover the new
+detail card**, not just the fixture-row panel, and both re-verified by mutation.

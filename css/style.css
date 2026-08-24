@@ -4556,3 +4556,39 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-size:.72rem;}
 .md-ref-note{margin-top:.35rem;font-size:.66rem;color:var(--text-secondary);
   line-height:1.35;}
+
+/* ── The referee card on the match detail page ─────────────────────────
+   Same figures as the Calendari panel, plus his history with this club. */
+.ref-detail-card{margin-bottom:1rem;}
+.ref-detail-name{font-size:1.05rem;font-weight:500;margin-bottom:.15rem;}
+.ref-crew{font-size:.72rem;color:var(--text-secondary);margin-bottom:.55rem;}
+
+.ref-offences{margin-top:.75rem;padding-top:.6rem;border-top:1px solid var(--border);}
+.ref-offences-h,.ref-hist-h{font-size:.68rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--text-secondary);margin-bottom:.4rem;
+  display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;}
+.ref-offence-list{display:flex;flex-wrap:wrap;gap:.35rem;}
+.ref-offence{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;
+  padding:.2rem .5rem;border-radius:999px;border:1px solid var(--border);
+  background:var(--card);}
+.ref-offence b{font-variant-numeric:tabular-nums;}
+/* Dissent is the one a delegate came looking for. */
+.ref-offence-dissent{border-color:var(--primary);color:var(--primary);}
+
+.ref-hist{margin-top:.75rem;padding-top:.6rem;border-top:1px solid var(--border);}
+.ref-hist-tally{font-weight:400;letter-spacing:0;text-transform:none;
+  font-variant-numeric:tabular-nums;color:var(--text);}
+.ref-hist-none{font-size:.76rem;color:var(--text-secondary);font-style:italic;}
+.ref-hist-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.2rem;}
+.ref-hist-row{display:flex;align-items:baseline;gap:.5rem;font-size:.76rem;
+  padding:.2rem 0;border-bottom:1px solid var(--border);}
+.ref-hist-row:last-child{border-bottom:none;}
+.ref-hist-date{font-variant-numeric:tabular-nums;color:var(--text-secondary);
+  white-space:nowrap;}
+.ref-hist-opp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ref-out{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  padding:.1rem .4rem;border-radius:4px;white-space:nowrap;
+  background:var(--border);color:var(--text);}
+.ref-out-w{background:#2e7d32;color:#fff;}
+.ref-out-d{background:#9E9E9E;color:#fff;}
+.ref-out-l{background:var(--primary);color:#fff;}

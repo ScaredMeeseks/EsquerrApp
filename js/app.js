@@ -200,6 +200,33 @@
     'ref.too_few':        { ca:'Només {n} partits: massa pocs per calcular percentatges.', es:'Solo {n} partidos: demasiado pocos para calcular porcentajes.', en:'Only {n} matches — too few to draw percentages from.' },
     'ref.no_yellows':     { ca:'La FCF no publica les targetes grogues, així que no hi surten.', es:'La FCF no publica las tarjetas amarillas, así que no aparecen.', en:'The FCF does not publish yellow cards, so they are not shown.' },
     'ref.name_only':      { ca:'Els àrbitres s\'identifiquen només pel nom: dos amb el mateix nom es comptarien junts.', es:'Los árbitros se identifican solo por el nombre: dos con el mismo nombre se contarían juntos.', en:'Referees are identified by name alone — two sharing one would be counted as the same person.' },
+    'ref.card_title':     { ca:'L\'àrbitre', es:'El árbitro', en:'The referee' },
+    'ref.assistants':     { ca:'Assistents', es:'Asistentes', en:'Assistants' },
+    'ref.with_us':        { ca:'Partits nostres que ha arbitrat', es:'Partidos nuestros que ha arbitrado', en:'Our matches he has refereed' },
+    'ref.with_us_none':   { ca:'Cap encara.', es:'Ninguno todavía.', en:'None yet.' },
+    'ref.vs_home':        { ca:'contra', es:'contra', en:'vs' },
+    'ref.vs_away':        { ca:'a camp de', es:'en campo de', en:'away at' },
+    'ref.won':            { ca:'Victòria', es:'Victoria', en:'Won' },
+    'ref.drew':           { ca:'Empat', es:'Empate', en:'Drew' },
+    'ref.lost':           { ca:'Derrota', es:'Derrota', en:'Lost' },
+    'ref.w':              { ca:'V', es:'V', en:'W' },
+    'ref.d':              { ca:'E', es:'E', en:'D' },
+    'ref.l':              { ca:'D', es:'D', en:'L' },
+    /* What the sendings-off were FOR. The federation records an offence only
+       when it produced a suspension, which is exactly what the note says —
+       without it, "1 per protestar" reads as a complete count of how he
+       handles dissent, and it is nothing of the kind. */
+    'ref.offences':       { ca:'Expulsions, per motiu', es:'Expulsiones, por motivo', en:'Sendings-off, by offence' },
+    'ref.offences_note':  { ca:'Només consten els motius quan la sanció va portar suspensió: una targeta que no va més enllà no deixa cap rastre.', es:'Solo constan los motivos cuando la sanción conllevó suspensión: una tarjeta que no va más allá no deja rastro.', en:'Offences are recorded only where the sanction carried a suspension — a card that went no further leaves no trace.' },
+    'ref.off_dissent':    { ca:'Protestar a l\'àrbitre', es:'Protestar al árbitro', en:'Dissent at the referee' },
+    'ref.off_decorum':    { ca:'Expressions contra el decòrum', es:'Expresiones contra el decoro', en:'Expressions against decorum' },
+    'ref.off_insult':     { ca:'Insultar o amenaçar', es:'Insultar o amenazar', en:'Insults or threats' },
+    'ref.off_violent':    { ca:'Conducta violenta', es:'Conducta violenta', en:'Violent conduct' },
+    'ref.off_rough':      { ca:'Empènyer o sacsejar', es:'Empujar o zarandear', en:'Pushing or shoving' },
+    'ref.off_assault':    { ca:'Agressió', es:'Agresión', en:'Assault' },
+    'ref.off_interrupt':  { ca:'Interrompre el joc', es:'Interrumpir el juego', en:'Stopping play' },
+    'ref.off_straight_red': { ca:'Vermella directa', es:'Roja directa', en:'Straight red' },
+    'ref.off_delegate':   { ca:'Delegat de camp', es:'Delegado de campo', en:'Ground delegate' },
     'cal.th_kit_1':       { ca:'1a', es:'1a', en:'1st' },
     'cal.th_kit_2':       { ca:'2a', es:'2a', en:'2nd' },
     'cal.opp_kit_1':      { ca:'Equipació titular del rival (FCF)', es:'Equipación titular del rival (FCF)', en:'Opponent\'s first-choice kit (FCF)' },
@@ -1491,7 +1518,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 129;
+  const APP_VERSION = 130;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7563,6 +7590,127 @@
     '</div>';
   }
 
+  /* ── The referee, on the match detail page ────────────────────────────
+     The same figures as the Calendari's panel, plus the one question the
+     fixture list has no room for: have we had him before, and how did it go?
+
+     That join needs nothing new. Our fixtures already carry `fcfActaId` and
+     the group index already maps acta → officials, so his history with this
+     club is a filter over data both sides already hold. */
+  function mdRefDetailHtml(m, matches) {
+    /* Also loaded here, not only from the Calendari: a player can reach a
+       fixture straight from the dashboard without the fixture list ever
+       having rendered, and the referee would silently never appear. */
+    mdLoadAllRefIndices();
+    var ref = mdRefereeFor(m);
+    if (!ref) return '';
+    var name = ref.names[0];
+    mdLoadRefProfile(name);
+
+    var p = _refProfiles[fcfRefereeSlug(name)];
+    var s = (p && p !== 'loading' && p !== 'none') ?
+      refereeDivisionStats(p, ref.comp) : null;
+
+    /* Assistants are named here but nowhere else. On a fixture row they are
+       noise; on the page a delegate opens the morning of the match, knowing
+       there IS a full trio — or that there is not — is worth a line. */
+    var crew = ref.names.length > 1 ?
+      '<div class="ref-crew">' + sanitize(t('ref.assistants')) + ': ' +
+        ref.names.slice(1).map(sanitize).join(' · ') + '</div>' : '';
+
+    var body;
+    if (p === 'loading' || !p) {
+      body = '<div class="fcf-empty">' + sanitize(t('ref.loading')) + '</div>';
+    } else if (!s) {
+      body = '<div class="fcf-empty">' + sanitize(t('ref.no_record')) + '</div>';
+    } else {
+      var bar = s.pct ?
+        '<div class="md-ref-bar">' +
+          '<span class="md-ref-seg md-ref-h" style="width:' + s.pct.H + '%" title="' +
+            sanitize(t('ref.home_wins')) + '">' + s.pct.H + '%</span>' +
+          '<span class="md-ref-seg md-ref-d" style="width:' + s.pct.D + '%" title="' +
+            sanitize(t('ref.draws')) + '">' + s.pct.D + '%</span>' +
+          '<span class="md-ref-seg md-ref-a" style="width:' + s.pct.A + '%" title="' +
+            sanitize(t('ref.away_wins')) + '">' + s.pct.A + '%</span>' +
+        '</div>' :
+        '<div class="md-ref-thin">' +
+          sanitize(t('ref.too_few').replace('{n}', s.matches)) + '</div>';
+
+      body = '<div class="md-ref-div">' + sanitize(ref.comp || t('ref.this_division')) +
+          ' · ' + sanitize(t('ref.n_matches').replace('{n}', s.matches)) + '</div>' +
+        bar +
+        '<div class="md-ref-counts">' +
+          '<span>' + sanitize(t('ref.hda')) + ': ' + s.H + '/' + s.D + '/' + s.A + '</span>' +
+          '<span>🟥 ' + sanitize(t('ref.reds')) + ': ' + s.reds + '</span>' +
+          '<span>🟨🟨 ' + sanitize(t('ref.doubles')) + ': ' + s.doubles + '</span>' +
+        '</div>' +
+        refOffencesHtml(s) +
+        refHistoryHtml(name, matches) +
+        '<div class="md-ref-note">' + sanitize(t('ref.no_yellows')) + '</div>' +
+        '<div class="md-ref-note">' + sanitize(t('ref.name_only')) + '</div>';
+    }
+
+    return '<div class="card ref-detail-card">' +
+      '<div class="card-title">' + sanitize(t('ref.card_title')) + '</div>' +
+      '<div class="ref-detail-name">' + sanitize(name) + '</div>' + crew +
+      body + '</div>';
+  }
+
+  /* What his sendings-off were FOR.
+     COUNTS ONLY, and the note says why: the federation records an offence
+     only when it produced a suspension, so a referee who books dissent and
+     leaves it there is invisible here. "3 for dissent" is a fact; a
+     percentage would be arithmetic over a denominator that does not exist. */
+  function refOffencesHtml(s) {
+    if (!s || !s.offences || !s.offences.length) return '';
+    return '<div class="ref-offences">' +
+      '<div class="ref-offences-h">' + sanitize(t('ref.offences')) + '</div>' +
+      '<div class="ref-offence-list">' +
+        s.offences.map(function (o) {
+          return '<span class="ref-offence' +
+            (o.key === 'dissent' ? ' ref-offence-dissent' : '') + '">' +
+            sanitize(t('ref.off_' + o.key)) +
+            '<b>' + o.n + '</b></span>';
+        }).join('') +
+      '</div>' +
+      '<div class="md-ref-note">' + sanitize(t('ref.offences_note')) + '</div>' +
+      '</div>';
+  }
+
+  /** Our own past fixtures with this referee, newest first. */
+  function refHistoryHtml(name, matches) {
+    var idx = null;
+    Object.keys(_refIndex).forEach(function (g) {
+      var v = _refIndex[g];
+      if (v && typeof v === 'object' && v.actas) idx = Object.assign(idx || {}, v.actas);
+    });
+    var rows = refereeHistoryWithUs(matches, idx, name, isOurTeam);
+    if (!rows.length) {
+      return '<div class="ref-hist"><div class="ref-hist-h">' +
+        sanitize(t('ref.with_us')) + '</div><div class="ref-hist-none">' +
+        sanitize(t('ref.with_us_none')) + '</div></div>';
+    }
+    var tal = refereeHistoryTally(rows);
+    var OUTCOME = {W: 'ref.won', D: 'ref.drew', L: 'ref.lost'};
+    return '<div class="ref-hist">' +
+      '<div class="ref-hist-h">' + sanitize(t('ref.with_us')) +
+        '<span class="ref-hist-tally">' + tal.W + t('ref.w') + ' · ' +
+        tal.D + t('ref.d') + ' · ' + tal.L + t('ref.l') + '</span></div>' +
+      '<ul class="ref-hist-list">' +
+        rows.map(function (r) {
+          var cls = r.outcome ? ' ref-out-' + r.outcome.toLowerCase() : '';
+          return '<li class="ref-hist-row">' +
+            '<span class="ref-hist-date">' + sanitize(tDateShort(r.date)) + '</span>' +
+            '<span class="ref-hist-opp">' +
+              sanitize(t(r.weWereHome ? 'ref.vs_home' : 'ref.vs_away')) + ' ' +
+              sanitize(r.opponent) + '</span>' +
+            '<span class="ref-out' + cls + '">' +
+              sanitize(r.outcome ? t(OUTCOME[r.outcome]) : '—') + '</span>' +
+          '</li>';
+        }).join('') +
+      '</ul></div>';
+  }
+
   function renderMatchDetail() {
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const m = matches.find(x => x.id === detailMatchId);
@@ -7781,6 +7929,7 @@
         ${convHtml}
       </div>
       ${showNotes ? mnLegBannerHtml(m, matches) : ''}
+      ${mdRefDetailHtml(m, matches)}
       ${eventsHtml}
       ${showNotes ? mnNotesCardHtml(m) : ''}
       ${(() => {

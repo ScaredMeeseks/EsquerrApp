@@ -249,6 +249,118 @@ describe('sendings-off, from sanciones', () => {
   });
 });
 
+describe('what the sending-off was FOR', () => {
+  /* `articulo_salida` is the federation's disciplinary article, and it is the
+     difference between "four sendings-off" and "four sendings-off, three of
+     them for arguing with him". Read off 2,482 sanction rows across all five
+     tiers before any of this was written. */
+
+  it('reads the article that answers the dissent question', () => {
+    /* 338.1d is protesting ostensibly or insistently to the referee; 338.2b
+       is addressing him injuriously. Both are the same question — how does he
+       handle being argued with — and splitting them would halve an already
+       thin count. */
+    assert.deepStrictEqual(F.fcfArticleOffences('338.1d'), ['dissent']);
+    assert.deepStrictEqual(F.fcfArticleOffences('338.2b'), ['dissent']);
+  });
+
+  it('handles the COMMA-SEPARATED LIST, which is what the field really is', () => {
+    /* One incident can breach several articles. Read as a single code — the
+       obvious first assumption — every one of these falls through as unknown
+       and the offence is lost. */
+    assert.deepStrictEqual(F.fcfArticleOffences('338.1d,338.1h'), ['dissent']);
+    assert.deepStrictEqual(F.fcfArticleOffences('336,338.1c'),
+        ['second_booking', 'decorum']);
+    assert.deepStrictEqual(F.fcfArticleOffences('338.2b,338.1h'), ['dissent']);
+  });
+
+  it('accepts the federation\'s shorthand spellings', () => {
+    // "338c" and "338.1c" carry identical motivo text, in the same season.
+    assert.deepStrictEqual(F.fcfArticleOffences('338c'),
+        F.fcfArticleOffences('338.1c'));
+    assert.deepStrictEqual(F.fcfArticleOffences('338f'),
+        F.fcfArticleOffences('338.1f'));
+  });
+
+  it('tolerates the whitespace FCF leaves in', () => {
+    assert.deepStrictEqual(F.fcfArticleOffences('336 '), ['second_booking']);
+    assert.deepStrictEqual(F.fcfArticleOffences(' 338.1d , 338.2b '), ['dissent']);
+  });
+
+  it('counts a repeated article once', () => {
+    assert.deepStrictEqual(F.fcfArticleOffences('338.1c,338.1c'), ['decorum']);
+  });
+
+  it('is silent about articles it does not know', () => {
+    /* A new article must produce NOTHING rather than a wrong bucket. An
+       unrecognised offence quietly filed as "violent conduct" would be a
+       statement about a referee that nothing supports. */
+    [null, undefined, '', '999', 'nonsense', ',', '338.9z'].forEach((v) => {
+      assert.deepStrictEqual(F.fcfArticleOffences(v), [], JSON.stringify(v));
+    });
+  });
+
+  it('attaches the offences to the acta they happened in', () => {
+    const by = F.parseFcfSanctionsByActa(SANCIONS);
+    const tot = {};
+    Object.keys(by).forEach((id) => {
+      Object.keys(by[id].off || {}).forEach((k) => {
+        tot[k] = (tot[k] || 0) + by[id].off[k];
+      });
+    });
+    assert.deepStrictEqual(tot, {
+      decorum: 3, violent: 4, rough: 2, dissent: 2,
+      straight_red: 2, interrupt: 1, insult: 1, assault: 1,
+    });
+  });
+
+  it('does NOT file "how he left the pitch" as an offence', () => {
+    /* 334 and 336 say a player accumulated bookings or got a second one —
+       they describe the exit, not the act, and both are already counted as
+       reds/doubles. Listing them beside "dissent" would double-count and
+       tell a delegate nothing. */
+    const by = F.parseFcfSanctionsByActa(SANCIONS);
+    Object.keys(by).forEach((id) => {
+      const keys = Object.keys(by[id].off || {});
+      assert.ok(keys.indexOf('accumulation') === -1, id);
+      assert.ok(keys.indexOf('second_booking') === -1, id);
+    });
+  });
+
+  it('every article maps to a label the UI can actually print', () => {
+    /* A mapping whose value has no translation renders as a raw key on a
+       delegate's screen. */
+    const appSrc = fs.readFileSync(
+        path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    const used = new Set(Object.values(F.FCF_ARTICLES));
+    used.delete('accumulation');
+    used.delete('second_booking');
+    [...used].forEach((key) => {
+      assert.ok(appSrc.indexOf("'ref.off_" + key + "'") !== -1,
+          'no translation for ref.off_' + key);
+    });
+  });
+
+  it('folds offences into the division they happened in', () => {
+    const groups = [{comp: 'TERCERA CATALANA', season: '21', actas: {
+      1: {r: ['A, B'], c: 1, res: 'H', d: '2025-09-14'},
+      2: {r: ['A, B'], c: 1, res: 'D', d: '2025-09-21'},
+    }}, {comp: 'QUARTA CATALANA', season: '21', actas: {
+      3: {r: ['A, B'], c: 1, res: 'A', d: '2025-10-01'},
+    }}];
+    const cards = {
+      1: {reds: 1, doubles: 0, off: {dissent: 1}},
+      2: {reds: 1, doubles: 0, off: {dissent: 1, violent: 1}},
+      3: {reds: 1, doubles: 0, off: {assault: 1}},
+    };
+    const p = F.aggregateFcfReferees(groups, cards)[F.fcfRefereeSlug('A, B')];
+    assert.deepStrictEqual(p.byDivision['TERCERA CATALANA'].off,
+        {dissent: 2, violent: 1});
+    assert.deepStrictEqual(p.byDivision['QUARTA CATALANA'].off, {assault: 1},
+        'offences leaked across divisions');
+  });
+});
+
 describe('the derived profiles', () => {
   const REF = 'TORRIJO SIERRA, ANDREA';
   const OTHER = 'BOADA BARCELONA, MARC';

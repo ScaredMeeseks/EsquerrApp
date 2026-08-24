@@ -374,6 +374,16 @@ function refereeDivisionStats(profile, division, minSample) {
     D: Math.round((d.D || 0) * 100 / n),
     A: Math.round((d.A || 0) * 100 / n)
   };
+  /* What the sendings-off were FOR, most frequent first. Counts only, never
+     a rate: the federation records an offence solely when it produced a
+     suspension, so a referee who books dissent and stops there leaves no
+     trace. "3 for dissent" is a fact; "30% of his cards are dissent" would
+     be arithmetic over a denominator that does not exist. */
+  const offences = Object.keys(d.off || {})
+    .filter(function (k) { return d.off[k] > 0; })
+    .map(function (k) { return {key: k, n: d.off[k]}; })
+    .sort(function (a, b) { return b.n - a.n || a.key.localeCompare(b.key); });
+
   return {
     name: (profile || {}).name || '',
     division: division,
@@ -381,9 +391,73 @@ function refereeDivisionStats(profile, division, minSample) {
     H: d.H || 0, D: d.D || 0, A: d.A || 0,
     reds: d.reds || 0, doubles: d.doubles || 0,
     perMatch: Math.round(((d.reds || 0) + (d.doubles || 0)) * 100 / n) / 100,
+    offences: offences,
     thin: thin,
     pct: pct
   };
+}
+
+/**
+ * Our result, from the federation's home-side view of it.
+ *
+ * The index stores `res` as "H"/"D"/"A" — who won, not whether we did — so
+ * turning it into W/D/L needs to know which side we were. Taken from the
+ * stored fixture rather than from a coach-entered score: the score is only
+ * as complete as the events somebody remembered to enter, while `res` came
+ * off the federation's own closed match sheet.
+ */
+function ourResultFrom(res, weWereHome) {
+  if (res !== 'H' && res !== 'D' && res !== 'A') return '';
+  if (res === 'D') return 'D';
+  return (res === 'H') === !!weWereHome ? 'W' : 'L';
+}
+
+/**
+ * Our own past fixtures that THIS referee took, newest first.
+ *
+ * The question a delegate actually asks — "have we had him before, and how
+ * did it go?" — and it needs no extra data: the club's fixtures already carry
+ * `fcfActaId`, and the group index already maps acta → officials. This is the
+ * join, and nothing more.
+ *
+ * Only PLAYED matches (`c`), and only where he was the referee rather than an
+ * assistant, for the same reason the profiles are built that way.
+ *
+ * `isOurTeam` is passed in rather than reached for: this file is pure, and
+ * the app's own version compares against the configured club name.
+ */
+function refereeHistoryWithUs(matches, actas, refereeName, isOurTeam) {
+  const want = fcfRefereeSlug(refereeName);
+  if (!want || !actas) return [];
+  const mine = typeof isOurTeam === 'function' ? isOurTeam : function () { return false; };
+  const out = [];
+  (Array.isArray(matches) ? matches : []).forEach(function (m) {
+    if (!m || !m.fcfActaId) return;
+    const e = actas[String(m.fcfActaId)];
+    if (!e || !e.c) return;
+    if (fcfRefereeSlug((e.r || [])[0]) !== want) return;
+    const weWereHome = mine(m.home);
+    out.push({
+      matchId: m.id,
+      date: m.date || e.d || '',
+      weWereHome: weWereHome,
+      opponent: weWereHome ? (m.away || '') : (m.home || ''),
+      outcome: ourResultFrom(e.res, weWereHome),
+      score: m.score || null
+    });
+  });
+  out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  return out;
+}
+
+/** W/D/L counts of a history list, for the one-line summary above it. */
+function refereeHistoryTally(rows) {
+  const t = {W: 0, D: 0, L: 0, played: 0};
+  (rows || []).forEach(function (r) {
+    t.played++;
+    if (r && (r.outcome === 'W' || r.outcome === 'D' || r.outcome === 'L')) t[r.outcome]++;
+  });
+  return t;
 }
 
 /* The leading article, which the federation writes and clubs usually do not.
@@ -1114,6 +1188,9 @@ if (typeof module !== 'undefined' && module.exports) {
     fcfBadgeOf,
     fcfRefereeSlug,
     refereeDivisionStats,
+    ourResultFrom,
+    refereeHistoryWithUs,
+    refereeHistoryTally,
     REF_MIN_SAMPLE,
     parseFcfSanctions,
     banCoversJornada,

@@ -67,24 +67,51 @@ Suggested first config document:
   concurrency: 3 }                // 5 is the hard ceiling
 ```
 
-> **Watch the log line `FCF acta parser found NO referees at all`.** That is the v117 failure
-> repeating — hundreds of played actas fetched and not one referee found means fcf.cat has changed
-> and `parseFcfActa` needs looking at. Everything else would keep running and look healthy.
+**Two log lines to watch for, both from the crawl:**
+
+- `FCF acta parser found NO referees at all` — the v117 failure repeating. Hundreds of played
+  actas fetched and not one referee found means fcf.cat has changed and `parseFcfActa` needs
+  looking at. Everything else would keep running and look perfectly healthy.
+- `FCF actas now draw MORE card marks than the legend` — **the yellow-card tripwire.** Every acta
+  today draws exactly four card-sized boxes whether or not anyone was booked; more than that means
+  the federation has started drawing bookings on the sheet. When it fires, teach `parseFcfActa` to
+  read them and re-run the aggregation — the raw index means **no re-crawl** is needed.
+
+### The yellow-card check, run by hand
+
+`node test/fixtures/capture-acta.js` re-captures the fixtures **and** prints the card-mark count for
+four known actas, including 3781800 — the one whose `sanciones` record carries two sanctions and
+whose sheet still draws only the legend. Anything other than 4 there is the news we are waiting for.
+
+### Still open on the referee work
+
+- **Dissent counts are thin.** About twelve dissent sanctions per group-season across forty-odd
+  referees, so most will show 0–1 after one season. It gets useful once both seasons are
+  backfilled, and more so for referees who work several groups. Worth revisiting after the first
+  full crawl to see whether the figure is worth its space on the card.
+- **Single yellow cards remain unpublished.** Code `101` (accumulation) is evidence of a booking,
+  but it fires once every five, so it is deliberately not counted — see CONTEXT.md v130.
 
 ---
 
-## ⚠ v129 is uncommitted — functions, RULES and frontend
+## v129 / v130 — the referee database
 
-The referee database. All three deploy targets changed, and the order matters.
+**v129 is deployed and live** (functions + rules + frontend, 2026-08-24). Cloud Scheduler was
+checked against its own API rather than `functions:list`, which only ever says `scheduled`:
 
 ```
-1. .\deploy.ps1 functions      ← FIRST: crawlFcfActas, fcfWeeklyRefs, runFcfCrawl are new
-2. .\deploy.ps1 rules          ← fcfReferees / fcfRefIndex / fcfCrawl are new collections;
-                                 without this every referee lookup is permission-denied
-3. git add -A && git commit && git push
+firebase-schedule-fcfWeeklyRefs-us-central1   "0 6,7,8 * * 5"   Europe/Madrid   ENABLED
+firebase-schedule-crawlFcfActas-us-central1   "0 3 * * *"       Europe/Madrid   ENABLED
 ```
 
-Version triple is at **129**.
+**v130 is uncommitted — functions and frontend. Rules unchanged.**
+
+```
+1. .\deploy.ps1 functions      ← the offence breakdown + the yellow-card tripwire
+2. git add -A && git commit && git push
+```
+
+Version triple is at **130**.
 
 > **Rules are not optional here and `--only hosting` would skip them silently.** The app reads
 > `fcfReferees` and `fcfRefIndex`; both are new `match` blocks. Deploy the frontend without them

@@ -37,6 +37,12 @@ const BLOCK = grab(
     '     Who is refereeing, and what his record in THIS division is',
     '  function renderMatchday()');
 
+/* The match-detail card is a second block, further up the file — it renders
+   the same figures plus his history with this club. */
+const DETAIL = grab(
+    '  /* ── The referee, on the match detail page ─────',
+    '  function renderMatchDetail()');
+
 const sanitize = (s) => String(s === undefined || s === null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
@@ -206,6 +212,126 @@ describe('the referee panel', () => {
   });
 });
 
+describe('the referee card on the match detail page', () => {
+  function makeDetail(opts) {
+    opts = opts || {};
+    const factory = new Function(
+        'sanitize', 't', 'db', 'currentPage', 'renderPage', 'getSession',
+        'fcfRefereeSlug', 'refereeDivisionStats', 'refereeHistoryWithUs',
+        'refereeHistoryTally', 'isOurTeam', 'tDateShort',
+        'mdRefereeFor', 'mdLoadRefProfile', 'mdLoadAllRefIndices',
+        '_refIndex', '_refProfiles',
+        DETAIL + '\n return {mdRefDetailHtml, refOffencesHtml, refHistoryHtml};');
+    return factory(
+        sanitize, (k) => k, {}, 'match-detail', () => {}, () => ({}),
+        U.fcfRefereeSlug, U.refereeDivisionStats, U.refereeHistoryWithUs,
+        U.refereeHistoryTally,
+        (n) => n === opts.club, (d) => String(d),
+        () => opts.ref || null,
+        () => {}, () => {},
+        opts.index || {}, opts.profiles || {},
+    );
+  }
+
+  const CLUB = "L'Esquerra de l'Eixample F.C.";
+  const REF = 'CABRERA VIDAL, DAVID';
+  const CREW = {names: [REF, 'ASSISTANT, ONE', 'ASSISTANT, TWO'],
+    comp: 'TERCERA CATALANA'};
+  const PROF = {
+    name: REF, matches: 9,
+    byDivision: {'TERCERA CATALANA': {matches: 9, H: 3, D: 2, A: 4,
+      reds: 6, doubles: 5, off: {dissent: 3, violent: 2}}},
+  };
+  const MATCHES = [
+    {id: 1, fcfActaId: '101', date: '2025-09-20', home: CLUB, away: 'MONELLS, A.E.'},
+    {id: 2, fcfActaId: '102', date: '2025-11-08', home: 'PALS AT.', away: CLUB},
+  ];
+  const INDEX = {g1: {comp: 'TERCERA CATALANA', actas: {
+    101: {r: [REF], c: 1, res: 'H'},
+    102: {r: [REF], c: 1, res: 'H'},
+  }}};
+
+  function card(extra) {
+    const D = makeDetail(Object.assign({
+      club: CLUB, ref: CREW, index: INDEX,
+      profiles: {[U.fcfRefereeSlug(REF)]: PROF},
+    }, extra || {}));
+    return D.mdRefDetailHtml({id: 3, fcfActaId: '999'}, MATCHES);
+  }
+
+  it('names the crew, which the fixture row has no room for', () => {
+    /* On a row three names are noise. On the page a delegate opens the
+       morning of the match, knowing whether there IS a full trio is worth a
+       line — a Tercera match with three officials is not the usual case. */
+    const html = card();
+    assert.ok(html.indexOf('ASSISTANT, ONE') !== -1, html);
+    assert.ok(html.indexOf('ASSISTANT, TWO') !== -1);
+    assert.ok(html.indexOf('ref.assistants') !== -1);
+  });
+
+  it('shows our own past matches with him, and how they went', () => {
+    const html = card();
+    assert.ok(html.indexOf('MONELLS, A.E.') !== -1, 'a past fixture is missing');
+    assert.ok(html.indexOf('PALS AT.') !== -1);
+    assert.ok(html.indexOf('ref.won') !== -1, 'the home win is not marked');
+    assert.ok(html.indexOf('ref.lost') !== -1, 'the away defeat is not marked');
+  });
+
+  it('does not report an away defeat as a win', () => {
+    /* Match 102: we were away and the HOME side won. The single most
+       damaging thing this card could get wrong is telling a delegate we beat
+       a side we lost to. */
+    const html = card();
+    const away = html.indexOf('PALS AT.');
+    const slice = html.slice(away, away + 220);
+    assert.ok(slice.indexOf('ref.lost') !== -1, slice);
+    assert.ok(slice.indexOf('ref.won') === -1, slice);
+  });
+
+  it('says plainly when we have never had him', () => {
+    const D = makeDetail({club: CLUB, ref: CREW, index: {},
+      profiles: {[U.fcfRefereeSlug(REF)]: PROF}});
+    const html = D.mdRefDetailHtml({id: 3, fcfActaId: '999'}, MATCHES);
+    assert.ok(html.indexOf('ref.with_us_none') !== -1, html);
+  });
+
+  it('lists what his sendings-off were for', () => {
+    const html = card();
+    assert.ok(html.indexOf('ref.off_dissent') !== -1, 'dissent is not shown');
+    assert.ok(html.indexOf('ref.off_violent') !== -1);
+    assert.ok(html.indexOf('ref-offence-dissent') !== -1,
+        'dissent should be the one that stands out');
+  });
+
+  it('always explains what the offence counts do NOT cover', () => {
+    /* Without this line, "3 for dissent" reads as a complete account of how
+       he handles being argued with. It is only the dissent that reached a
+       suspension — a booking that went no further leaves no trace at all. */
+    assert.ok(card().indexOf('ref.offences_note') !== -1);
+  });
+
+  it('keeps the yellow-card and name-only notes here too', () => {
+    const html = card();
+    assert.ok(html.indexOf('ref.no_yellows') !== -1);
+    assert.ok(html.indexOf('ref.name_only') !== -1);
+  });
+
+  it('renders nothing at all when no referee is appointed', () => {
+    const D = makeDetail({club: CLUB, ref: null});
+    assert.strictEqual(D.mdRefDetailHtml({id: 3}, MATCHES), '');
+  });
+
+  it('escapes every name it prints', () => {
+    const D = makeDetail({
+      club: CLUB,
+      ref: {names: ['<img src=x onerror=1>, X'], comp: 'TERCERA CATALANA'},
+      index: {}, profiles: {},
+    });
+    const html = D.mdRefDetailHtml({id: 3, fcfActaId: '999'}, MATCHES);
+    assert.ok(html.indexOf('<img') === -1, html);
+  });
+});
+
 describe('the two ways this has shipped broken before', () => {
   it('calls nothing that only exists in functions/', () => {
     /* v123: the tabs were dead on every screen because their parsers lived
@@ -230,7 +356,7 @@ describe('the two ways this has shipped broken before', () => {
        full of "the group's index (one document…" — a word followed by an
        open bracket, which is indistinguishable from a call once you are
        reading with a regex. */
-    const code = BLOCK.replace(/\/\*[\s\S]*?\*\//g, '')
+    const code = (BLOCK + '\n' + DETAIL).replace(/\/\*[\s\S]*?\*\//g, '')
         .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
     const calls = new Set();
     const callRe = /(?:^|[^.\w$])([a-zA-Z_$][\w$]*)\s*\(/g;
@@ -250,12 +376,24 @@ describe('the two ways this has shipped broken before', () => {
     const emitted = new Set();
     const re = /class="([^"]+)"/g;
     let m;
-    while ((m = re.exec(BLOCK))) {
-      m[1].split(/\s+/).forEach((cls) => {
-        if (cls && cls.indexOf('md-ref') === 0) emitted.add(cls);
+    const src = BLOCK + '\n' + DETAIL;
+    while ((m = re.exec(src))) {
+      /* TOKENISED, not split on whitespace. Half these attributes are built
+         by concatenation — `class="ref-offence' + (dissent ? ' …' : '') + '"`
+         — so a naive split hands back `ref-offence'` with the quote still
+         attached and the test fails on a class that is perfectly well styled.
+         Both families are collected: `md-ref-*` on the fixture row and
+         `ref-*` on the detail card, since a class emitted by one and styled
+         only for the other is the gap this exists to close. */
+      (m[1].match(/[a-z][a-z0-9-]*/g) || []).forEach((cls) => {
+        if (cls.indexOf('md-ref') === 0 || cls.indexOf('ref-') === 0) {
+          emitted.add(cls);
+        }
       });
     }
-    assert.ok(emitted.size >= 8, 'expected the panel to emit its own classes');
+    assert.ok(emitted.size >= 16,
+        'expected both the panel and the detail card to emit their classes, ' +
+        'saw only ' + emitted.size);
     const unstyled = [...emitted].filter((cls) =>
       !new RegExp('\\.' + cls.replace(/[-]/g, '\\-') + '\\b').test(cssSrc));
     assert.deepStrictEqual(unstyled, [],
