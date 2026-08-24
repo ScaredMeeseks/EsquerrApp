@@ -2,169 +2,124 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-24._
 
-## ▶ NEXT SESSION — the owner's four, in his order
+## Where things stand
 
-### 1. ~~A version check in the app~~ — DONE in v128
+**Version triple is at 135** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+(functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if
+two of them disagree.
 
-Ships in v128. `fetch('sw.js', {cache:'reload'})` → read `CACHE_NAME` → compare with
-`APP_VERSION`; on load and on `visibilitychange`, throttled to 15 minutes. Shows a bottom banner
-with **Actualitzar** (unregisters the worker, deletes every cache, reloads onto `?v=<now>`) and
-**Més tard** (hides it, asks again in 15 min). Never auto-reloads, never nags backwards, and says
-nothing when it cannot reach the server.
+**Everything is deployed and pushed.** Working tree clean, `main` at `4d93c3a`, functions and rules
+both live. Nothing is half-finished.
 
-**Still to do: watch it fire once, for real.** Everything so far is unit-tested and the parser was
-run against the live `sw.js`, but nobody has yet seen the banner appear in a browser. The way to
-provoke it: load the app, then deploy the next version, then switch back to the tab.
+| | |
+|---|---|
+| Unit tests | **1182** — `cd test && npm run test:unit` (~1 s) |
+| Rules tests | **164** — needs the emulator, see below |
+| Functions tests | 71 — emulator |
 
-### 2. ~~Finish the Golejadors tab~~ — CLOSED
-
-- **Several divisions at once**: confirmed working by the owner.
-- **Season stays SINGLE-select** — the owner's decision. Every competition id is season-specific,
-  so mixing seasons compares different competitions rather than the same one over time. Nothing to
-  build; it is already single.
-- **The goal figures stay exactly as FCF publishes them.** See the parking lot.
-
-### 3. Check how Sancions actually works
-
-**It has never been seen with real bans.** The 2026-27 season had not kicked off, so the group has
-no sanctions at all, and every test runs against a captured 2025-26 fixture. Once a round has been
-played:
-
-- Confirm the ban window on screen — a ban at jornada N covers N+1 … N+P, and the round he was
-  sent off in is not one he misses.
-- Confirm **our own** bans appear (needs `fcfOurTeamId`, which reads the standings cache — with no
-  cache it returns `''` and shows EVERYONE, deliberately the safer failure).
-- Confirm club rulings stay in their own section and are never read as missing players.
-
-### 4. ~~Referee information~~ — BUILT in v129, not yet switched on
-
-Referees are published on the acta page and nowhere else, so this is scraping. Yellow cards do not
-exist anywhere in the federation's data; reds and second bookings come from `sanciones`, which
-carries `codacta`. Scope is the five senior Futbol 11 tiers — 64 groups, 14,390 matches a season,
-about a twentieth of all Futbol 11. Full detail in CONTEXT.md under v129.
-
-**PAUSED 2026-08-24 by the owner** — revisit when fcf.cat is more settled. `fcfCrawl/config` has
-`enabled: false`; the scope beside it is ready to go, so **resuming is that one field**. It ran
-once first, and what it produced is kept: `fcfRefIndex/21_54486121` (Tercera Grup 1, 240 actas,
-240 with a referee) and **44 referee profiles**. The crawl will not re-fetch any of it.
-
-**When it resumes, three things, in this order:**
-
-1. Set `enabled: true`. The config document already exists and is scoped to all five tiers across
-   both seasons; nothing crawls while the flag is false.
-2. **Start small and watch it.** Set `onlyGroups` to one or two group ids first, run
-   `runFcfCrawl` by hand (superuser callable), and confirm the referee names match fcf.cat by eye
-   for three of them. Then clear `onlyGroups` and let the nightly job work through both seasons
-   over several nights.
-3. **On the season's first Friday, check whether an unplayed acta names its referee.** Today every
-   one reads "Sense àrbitres assignats", and no 2026-27 fixture has been played, so this could not
-   be tested. If appointments never appear in advance, the feature is retrospective only — the
-   Friday job's other half (last weekend's results) still works, and the database is unaffected.
-
-Suggested first config document:
-
-```js
-// fcfCrawl/config
-{ enabled: true,
-  seasons: ["22", "21"],          // 2026-27 and 2025-26
-  onlyGroups: ["54486121"],       // start with one; clear it to open up to all 64
-  concurrency: 3 }                // 5 is the hard ceiling
 ```
-
-**Two log lines to watch for, both from the crawl:**
-
-- `FCF acta parser found NO referees at all` — the v117 failure repeating. Hundreds of played
-  actas fetched and not one referee found means fcf.cat has changed and `parseFcfActa` needs
-  looking at. Everything else would keep running and look perfectly healthy.
-- `FCF actas now draw MORE card marks than the legend` — **the yellow-card tripwire.** Every acta
-  today draws exactly four card-sized boxes whether or not anyone was booked; more than that means
-  the federation has started drawing bookings on the sheet. When it fires, teach `parseFcfActa` to
-  read them and re-run the aggregation — the raw index means **no re-crawl** is needed.
-
-### The yellow-card check, run by hand
-
-`node test/fixtures/capture-acta.js` re-captures the fixtures **and** prints the card-mark count for
-four known actas, including 3781800 — the one whose `sanciones` record carries two sanctions and
-whose sheet still draws only the legend. Anything other than 4 there is the news we are waiting for.
-
-### Still open on the referee work
-
-- **Dissent counts are thin.** About twelve dissent sanctions per group-season across forty-odd
-  referees, so most will show 0–1 after one season. It gets useful once both seasons are
-  backfilled, and more so for referees who work several groups. Worth revisiting after the first
-  full crawl to see whether the figure is worth its space on the card.
-- **Single yellow cards remain unpublished.** Code `101` (accumulation) is evidence of a booking,
-  but it fires once every five, so it is deliberately not counted — see CONTEXT.md v130.
+cd test && npx firebase emulators:exec --only firestore --project=demo-esquerrapp \
+    "npx mocha rules.test.js --timeout 20000"
+```
+Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
 
 ---
 
-## v129 / v130 — the referee database
+## This session: v129 → v135
 
-**v129 is deployed and live** (functions + rules + frontend, 2026-08-24). Cloud Scheduler was
-checked against its own API rather than `functions:list`, which only ever says `scheduled`:
+### The referee database (v129–v132)
 
-```
-firebase-schedule-fcfWeeklyRefs-us-central1   "0 6,7,8 * * 5"   Europe/Madrid   ENABLED
-firebase-schedule-crawlFcfActas-us-central1   "0 3 * * *"       Europe/Madrid   ENABLED
-```
+Who refereed a match, and his record **in the division this squad plays in**. Referees are
+published only on the acta page — nowhere in the JSON API — so this is the app's one scraping job,
+bounded to the five senior Futbol 11 tiers: 64 groups, 14,390 matches a season, about a twentieth
+of all Futbol 11.
 
-**v130 is deployed.** The offence breakdown, the yellow-card tripwire and the match-detail card.
+- `parseFcfActa` in `functions/fcf.js`, bounded at `<h3>Àrbitres</h3>` and the next `<h3>`, rows
+  filtered on containing a comma. 240/240 extraction on a full real group.
+- `fcfRefIndex/{season}_{grupId}` holds acta → officials, result, goals and the sanctions join.
+  `fcfReferees/{slug}` holds the derived profile, keyed **by division**.
+- `crawlFcfActas` nightly (played matches only), `fcfWeeklyRefs` Fridays at 6/7/8 — **two cursors
+  over one queue**, because a shared one let Saturday's backfill skate past groups Friday had not
+  reached.
+- **Yellow cards do not exist** anywhere in the federation's data. Reds and second bookings come
+  from `sanciones`, which carries `codacta`. `articulo_salida` gives the *offence* — `338.1d` and
+  `338.2b` are both dissent.
+- The match detail card adds the assistants and **our own past matches under him**, with the
+  scoreline flipped to our side.
 
-**v131 is deployed.** Scorelines in the history rows (`fcfActaEntry` now stores `gh`/`ga`).
+### Two parking-lot items closed
 
-**v132 is deployed.** The history rows' column alignment (frontend only).
+- **Item 14 — push governance.** Writing to `pushQueue` *is* the send, and the rule was
+  `create: if sameTeam(teamId)` — any of the 77. Now staff-only, explicit recipients, bounded text,
+  no `url`. A live bug sat inside it: a call-up made entirely of seeded players sent
+  `targetPlayers: []`, which the old consumer read as a broadcast to the whole club.
+- **Item 13 — the Friday availability push.** Neither v112/v113 trap applied, but the answered-set
+  query was truncated to ten while the loop walked every fixture, so from the eleventh onwards
+  players who *had* replied were pushed again. Cancelled (`fcfRemoved`) fixtures were asked about
+  too. Both fixed.
 
-**v133 is deployed.** The push-governance fix (parking-lot item 14).
+### What a real run showed that no test could
 
-**v134 — functions ARE DEPLOYED; the frontend is uncommitted.**
+The crawl was switched on for one group: 240 actas indexed, 240 with a referee — and **every
+referee panel still said "no record"**. The app reads `fcfReferees`, not the raw index, and only
+the Friday job rebuilt it. Both jobs were individually correct; the gap was *between* them.
+`crawlFcfActas` now rebuilds on completion too. **Run the thing and look at what the user would
+actually see.**
 
-```
-git add -A && git commit && git push
-```
+---
 
-Version triple is at **134**. The Friday availability push (parking-lot item 13).
+## ▶ NEXT SESSION
 
-> **The functions deploy reported `Deploy failed (exit 2)`, then `No changes detected` on retry.**
-> It had in fact shipped: the Cloud Functions API showed `onPushQueueCreate` at revision 47,
-> updated in that window, and all 24 functions ACTIVE. When the CLI's summary and the API
-> disagree, believe the API.
+### The crawl is PAUSED, on purpose
 
-> **Running the emulator rules suite on this machine:**
-> `cd test && npx firebase emulators:exec --only firestore --project=demo-esquerrapp "npx mocha rules.test.js --timeout 20000"`
-> Java 21 is installed and on PATH; it takes about 20 s and is not in `test:unit`.
+`fcfCrawl/config` has `enabled: false` — the owner wants to wait until fcf.cat is more settled.
+The scope beside it is ready (all five tiers, both seasons), so **resuming is that one field**.
 
-> **The crawl stores goals from v131 onward.** Nothing has been crawled in production yet, so
-> there is no back-fill problem today — but if a crawl ever runs on an older build, those entries
-> will carry `res` and no `gh`/`ga`, and the history rows fall back to the outcome letter. To fill
-> them in, delete `fcfRefIndex` and re-run rather than writing a migration: the crawl is the
-> cheaper of the two.
+What it already produced is kept and will not be re-fetched: `fcfRefIndex/21_54486121` (Tercera
+Grup 1, 240 actas) and **44 referee profiles**.
 
-> **Rules are not optional here and `--only hosting` would skip them silently.** The app reads
-> `fcfReferees` and `fcfRefIndex`; both are new `match` blocks. Deploy the frontend without them
-> and the panel shows "loading" for ever, with the real error only in the console.
+To drive it without a service account — there is no local Admin SDK credential for this project —
+the `firebase-tools` refresh token for `marna96@gmail.com` mints a `cloud-platform` token that
+reaches the Firestore REST admin surface (IAM, not rules) and Cloud Scheduler's `jobs:run`. Write
+the config by REST, trigger `firebase-schedule-crawlFcfActas-us-central1`, poll `fcfRefIndex`. That
+exercises the deployed code path rather than a local re-implementation.
 
-> **Two new scheduled jobs.** `crawlFcfActas` nightly at 03:00 and `fcfWeeklyRefs` at 06:00, 07:00
-> and 08:00 on Fridays, both Europe/Madrid. Both no-op immediately while `fcfCrawl/config` is
-> absent or `enabled` is false, so deploying them is safe on its own — but confirm the Cloud
-> Scheduler entries actually exist afterwards rather than trusting `functions:list`, which only
-> says `scheduled`.
+### Still open on the referee work
 
-> ⚠ **v125's dropdown shipped with NO stylesheet.** The `cat >> css/style.css` was chained behind
-> a `node --check` that failed, `&&` short-circuited, and the commit went out with the CSS
-> untouched — the panel rendered as a wall of inline text. A test now asserts that **every layout
-> class these tabs emit has a rule in `css/style.css`**. When appending to a file in a chained
-> shell command, check the file afterwards, not just the exit code of the thing before it.
+- **Do referees appear BEFORE a match?** Every unplayed acta today says *"Sense àrbitres
+  assignats"*, and no 2026-27 fixture has been played. Check on the season's first Friday. If they
+  never appear in advance the feature is retrospective only — the Friday job's other half still
+  works.
+- **Dissent counts are thin** — about twelve per group-season across forty-odd referees, so most
+  show 0–1. Revisit after a full backfill whether the figure earns its space on the card.
+- **Sancions has never been seen with real bans** (parking-lot item 3). Once a round is played:
+  confirm the ban window on screen (a ban at jornada N covers N+1 … N+P), that **our own** bans
+  appear, and that club rulings stay out of the missing-players list.
 
-> ⚠ **There is no player contact information in any FCF payload** — no email, no phone. The only
-> player-level identifier is `licencia`, a DNI/NIE, which is dropped at the parse boundary and
-> will not be shown. The card is the CLUB's published contact, and says so on screen.
+### Two log lines that mean something
 
-> ⚠ **There is no comarca field either.** "Zona" is the club's town plus the federation's
-> DELEGACIÓ (five of them), which is the closest the data comes to Barcelonès / Vallès.
+- `FCF acta parser found NO referees at all` — the v117 failure repeating. Everything else would
+  keep running and look healthy.
+- `FCF actas now draw MORE card marks than the legend` — **the yellow-card tripwire.** Every acta
+  today draws exactly four card-sized boxes whether or not anyone was booked. More means the
+  federation has started publishing bookings; teach `parseFcfActa` to read them and re-run the
+  aggregation — the raw index means **no re-crawl**.
 
-> **Cost**: each group is now TWO requests (scorers + standings, to map teamId → clubId), plus one
-> per distinct club. Gates: 40 groups auto, 80 divisions hard, `SC_AUTO_CLUBS = 60` for the Zona
-> column. Tapping a single club always works regardless.
+`node test/fixtures/capture-acta.js` re-captures the fixtures and prints that count for four known
+actas, including 3781800 — which carries two recorded sanctions and still draws only the legend.
+
+### Small things needing the owner, not code
+
+- **Watch the update banner fire once.** Unit-tested and the parser runs against the live `sw.js`,
+  but nobody has seen it in a browser. Load the app, deploy, switch back to the tab.
+- **The APK gap is the longest pole and it is widening.** Phones are on a v43-era build; `main` is
+  at 135. Parking-lot items 8 and 12 sit behind installing a current one. Old APKs still satisfy
+  the tightened push rules — checked — but only because the document shape happened to match.
+- **`privacy.html` is empty and blocks both stores.** Needs the club's legal name and address, a
+  contact address for data requests, and confirmation of whether Google Analytics is active (there
+  is a `measurementId` in the config).
+
+---
 
 ### ⚠ If a screen looks stale, suspect the service worker FIRST
 
@@ -180,43 +135,25 @@ navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.
 
 `typeof parseFcfScorers` is a good "which version am I running" probe — a top-level global in
 js/utils.js since v124. **`APP_VERSION` is NOT usable**: it lives inside app.js's IIFE. A private
-window is the fastest way to rule caching in or out. The same can happen to any of the 77 members,
-who would silently keep running old code — worth deciding whether the app should compare itself
-against the served `sw.js` and prompt.
+window is the fastest way to rule caching in or out.
 
-### v118, for reference — DEPLOYED and verified
+**v128 fixed the underlying problem**: the app now fetches `sw.js` with `cache: 'reload'`, compares
+`CACHE_NAME` against its own `APP_VERSION`, and offers a banner. So a member should no longer sit
+on old code silently — but **nobody has yet watched that banner appear in a browser**, which is why
+it is still on the list above. Until someone has, treat a stale screen as this bug first.
 
-`main` is at **v118** (`304630c`). Functions and frontend both shipped, functions first. Verified
-by artefact, not by the deploy output:
-
-| | evidence |
-|---|---|
-| **functions** | `syncFcfFixtures` and `scheduledFcfSync` both `ACTIVE` on revision `-00001`; `fcfClassificacio` moved to revision 38 in the same deploy. A new Cloud Run revision is the proof — a container failing its health check leaves the old one serving. |
-| **cron** | `firebase-schedule-scheduledFcfSync-us-central1` → `0 6 * * *`, `Europe/Madrid`, `ENABLED`, read from the Cloud Scheduler API. |
-| **frontend** | `APP_VERSION = 118` and `CACHE_NAME = esquerrapp-v118` served from GitHub Pages. |
-| **rules** | Unchanged — the new match fields are optional and shards are written whole-document with no per-field validation. |
-
-**No `minAppVersion` bump** — an old APK simply never sees a refresh button, and the nightly sync
-improves its calendar anyway.
-
-> **Pages lags the push by a minute or two.** The first version check after pushing said 117 and
-> looked like a failed deploy; it was the build still running. Check
-> `raw.githubusercontent.com/.../main/js/app.js` to separate "the repo is wrong" from "Pages has
-> not rebuilt". Also note `?cb=$(Get-Random)` can repeat within one PowerShell session.
-
-v118's hands-on test is **done** — the owner ran the import against the real club and signed it
-off. What has NOT been tested in a browser is v119's two kit columns and the uppercase name.
-
-## Tests — all three suites green
+## Tests
 
 ```
-1002 unit    (983 → 991 → 994 → 1002)   cd test && npm run test:unit
- 152 rules   (unchanged)                cd test && npm run test:rules
-  71 functions (unchanged)               cd test && npm run test:functions
+1182 unit      cd test && npm run test:unit          (~1 s, no emulator)
+ 164 rules     cd test && npm run test:rules         (emulator + Java)
+  71 functions cd test && npm run test:functions     (emulator + Java)
 ```
 
-`test/fcf-fixtures.test.js` (54) is new and **was added to `test:unit` by hand** — the standing
-trap in this repo. `npm run test:fcf` runs the three FCF suites together.
+> **New test files must be added to `test:unit` / `test:functions` BY HAND.** The standing trap in
+> this repo — `focus-plan.test.js` was missing for several versions and silently never ran.
+> `suite-registry.test.js` now fails if any suite on disk is unregistered, or if the list names a
+> file that no longer exists.
 
 > **`npm test` (the full chain) flakes** — the functions suite fails with
 > `Cannot determine backend specification. Timeout after 10000` when it runs straight after the
@@ -225,10 +162,14 @@ trap in this repo. `npm run test:fcf` runs the three FCF suites together.
 > **Do not serve the app on port 8080** — that is the Firestore emulator's port and it makes the
 > whole rules suite fail with `501 Unsupported method ('PUT')`. Use 8000.
 
+> **Any test that greps source must strip comments first.** Three separate suites this session
+> matched their own explanatory comment — a note naming the very thing it was guarding against.
+
 ---
 
-## What shipped: v118 — the Calendari fills itself
+## How the FCF fixture import works
 
+The parts most likely to bite (full writeup in CONTEXT.md):
 Full writeup in CONTEXT.md. The parts most likely to bite:
 
 **The refresh button and the 06:00 job are two callers of ONE function** (`_syncFcfSquad`). Do not
@@ -277,79 +218,6 @@ highlighted, which it may never have been.
   derived one.
 - `equipacions` returns a **cross join** (542 rows for 16 teams) and `equipos` is broken outright
   (the same team repeated ~20 times). Neither is a parsing mistake at our end.
-
-## Verifying, once v119 is deployed
-
-v118's steps 1-7 below were all walked through by the owner and passed. **The v119 additions have
-NOT been looked at in a browser** — check these first:
-
-- **A) The two kit columns.** Every imported fixture shows the rival's 1a and 2a kits, each with
-  shirt, shorts and socks. The change strip only appears after `.\deploy.ps1 functions` AND a
-  refresh — `opponentKitAway` is written by the server, not derived on the client.
-- **B) The row must not have grown.** 32px is meant to sit inside the height the action buttons
-  already set. If rows are taller than they were in v118, the number needs to come down.
-- **C) The rival's own crest is on the rival's shirt** — not Esquerra's. This is the bug the
-  bigger icons exposed, and the whole reason to look closely at a shirt.
-- **D) Our club name is in capitals**, and home/away are still the right way round. If a fixture
-  looks inverted, the uppercase went through `toUpperCase()` instead of CSS and `isOurTeam()` is
-  failing.
-
-Then re-walk v118's list. Serve on **port 8000**. As a coach on the demo club, or on the real club
-(which already has grupId 58161881 configured for `amateur-A`):
-
-1. **Calendari → 🔄 Actualitzar calendari.** 30 fixtures land, each with venue, kick-off, a 📍 maps
-   link, the rival's crest and its shirt. The pure pipeline was run end to end against LIVE fcf.cat
-   this session and produced exactly that; what needs eyes is the rendering.
-2. **Press it again** — "Tot al dia. Cap canvi a la FCF." and no duplicated season.
-3. **The merge rule, which nothing else proves in a browser**: edit a kick-off by hand, refresh,
-   confirm it survived AND that the venue on the same row still updated.
-4. **Add a friendly manually**, refresh, confirm it is untouched and carries no jornada tag.
-5. **The second leg**: open a J16+ fixture and confirm the briefing is linked with **no** banner;
-   open the return of a manual fixture and confirm the banner is still offered.
-6. **The match sheet** shows both crests, and a long club name shrinks the NAMES, not the crests.
-7. **Confirm the artefact, not the operation:**
-   ```bash
-   curl -s "https://scaredmeeseks.github.io/EsquerrApp/js/app.js?cb=$RANDOM" | grep APP_VERSION
-   curl -s "https://scaredmeeseks.github.io/EsquerrApp/sw.js?cb=$RANDOM" | grep CACHE_NAME
-   # both must say 119
-   ```
-8. ~~Confirm the cron's REAL schedule~~ — **done, 2026-08-23**. Verified through the Cloud
-   Scheduler API (`functions:list` only ever says `scheduled`, and v112 and v113 were both
-   interval-band bugs found exactly this way):
-   `firebase-schedule-scheduledFcfSync-us-central1` → `0 6 * * *`, `Europe/Madrid`, `ENABLED`.
-   `syncFcfFixtures` and `scheduledFcfSync` are both `ACTIVE` on revision `-00001`, and
-   `fcfClassificacio` moved to revision 38 in the same deploy.
-
----
-
-## Next: v119 — the Sancions and Top Scorers tabs
-
-Planned with the owner, deliberately deferred out of v118. Both are new sidebar pages
-(`buildSidebarItems` + `STAFF_PAGES` + a render function + a `renderPage` case).
-
-**Sancions.** `sanciones?grupId=&temporada=` returns rows keyed by jornada with
-`participante_nombre`, `nombre_equipo`, `partidos_sancion` and `motivo_sancion`. A ban issued at
-jornada N covers N+1 … N+`partidos_sancion`, so "who misses the next game" is derivable for our
-squad and for the opposition. `tipo` is `participante` or `equipo`; the `equipo` rows with
-`partidos_sancion: "0"` are procedural rulings, **not** bans, and must not be listed as missing
-players.
-
-**Top Scorers.** `goleadores?grupId=&temporada=`, filterable by discipline (Masculí
-`disciplinaId 19308233`, Femení `19308237`), division and group — one group per view, so no bulk
-sweep is needed. Sortable on goals, penalties and matches played. `total` is matches played, not
-goals (FCF's own frontend names it `matchesPlayed`).
-
-> ⚠ **`licencia` is a Spanish DNI/NIE** (`41566132A`, `40449950B`) for players who include minors.
-> It is the only extra identifier in the payload — **there is no contact information of any kind**,
-> so the "scouting contact details" idea has no source — and it must be dropped at the parse
-> boundary, not merely left unrendered.
-
-> ⚠ **The goal figures are arithmetically impossible as published.** Empuriabrava's five listed
-> scorers sum to 157 for a team that scored 106 all season; six of eight teams in that group fail
-> the same check. It is the same home|away string concatenation as the standings' `played:"1515"`,
-> in FCF's aggregation rather than in the referees' match sheets. **The owner's decision is to show
-> the official figure as published** — so v119 does that, behind a single constant, so the derived
-> reading can be switched on if the table looks wrong in use.
 
 ---
 
@@ -434,7 +302,7 @@ Renumbered items are the same items.
   project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push;
   rules/functions = `.\deploy.ps1`; Admin SDK = local, see below.
 - **Bump the version in THREE places together**: `CACHE_NAME` in `sw.js`, `APP_VERSION` in
-  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **132**.
+  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **135**.
   (`version-check.test.js` asserts `sw.js` and `js/app.js` agree, so a half-bump fails the suite.)
 - A new JS/CSS file must be added to **`STATIC_ASSETS` in `sw.js`** and to the `<script>` list in
   `index.html`, in load order. v118 added no frontend file; `functions/fcf.js` is server-side and
@@ -494,10 +362,19 @@ ADC from firebase-tools' stored refresh token — no service-account key needed.
   `where("clubId","==",…)` query returns empty, which reads as "no teams" rather than "wrong
   query". `teams/nDLJCpJfDvFHs8MnwtzW` *is* Esquerra de l'Eixample.
 - The same refresh token exchanges at `oauth2.googleapis.com/token` for a `cloud-platform` access
-  token, which reaches **Cloud Scheduler** (`…/v1/projects/esquerrapp/locations/us-central1/jobs`
-  — the only way to see a cron's real schedule) and **Cloud Functions v2** (`…/v2/…/functions` —
-  a new Cloud Run `revision` is the proof a deploy took, since a container failing its health
-  check leaves the old one serving).
+  token. That one token reaches four surfaces, and between them they cover almost everything the
+  Console is otherwise needed for:
+
+  | surface | what it is good for |
+  |---|---|
+  | **Cloud Scheduler** `…/v1/projects/esquerrapp/locations/us-central1/jobs` | the only way to see a cron's REAL schedule; `…/{job}:run` triggers a scheduled job by hand, exercising the deployed code path rather than a local re-implementation |
+  | **Cloud Functions v2** `…/v2/…/functions` | a new Cloud Run `revision` is the proof a deploy took — a container failing its health check leaves the old one serving |
+  | **Firestore REST** `firestore.googleapis.com/v1/projects/esquerrapp/databases/(default)/documents` | read and write production documents. This is the ADMIN surface, gated by IAM and **not** by `firestore.rules` — which is why it can write `fcfCrawl/*` even though clients are denied outright |
+  | **Firebase Rules** `firebaserules.googleapis.com/v1/projects/esquerrapp/releases/cloud.firestore` | read the LIVE ruleset back after a deploy, rather than trusting the CLI's summary |
+
+  > **When the CLI and the API disagree, believe the API.** A functions deploy this session printed
+  > `Deploy failed (exit 2)` and then `No changes detected` on retry — reading as though nothing
+  > had shipped. It had: the Functions API showed the new revision and all 24 functions ACTIVE.
 
 ### Clubs in production
 
@@ -555,3 +432,18 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additi
 - **A duplicated rule needs a test that reads BOTH copies.** `js/utils.js` and `functions/fcf.js`
   are checked against one input table, for `fcfGrupId` and now `sameClubName` too.
 - **`deploy.ps1` is Windows-only and Cloud Shell is not the local machine.**
+- **A test that greps source will match its own comment.** Three suites this session asserted "the
+  bad pattern is gone" and found it in the note explaining why it had been removed. Strip comments
+  before scanning.
+- **A test built from the constant it is checking proves nothing.** The yellow-card legend test
+  composed its legend from `FCF_ACTA_LEGEND_MARKS`, so it passed just as happily with the constant
+  wrong. Pin an observed value as a literal.
+- **Assert the thing the code chose, not the thing you passed in.** The tier test checked labels —
+  which the function echoes back from the wanted list — so it passed even when every competition
+  resolved to the wrong id. Assert the ids.
+- **Two correct jobs can leave a gap between them.** The crawl filled its index and the app read a
+  different collection that nothing rebuilt. Unit tests could not see it; running it and looking at
+  what the USER would see could. **Ship it, then go and look.**
+- **A guard shadowed by another guard is untested.** The club-ruling filter was covered by the
+  code filter, so removing it changed nothing. If a mutation survives, either delete the guard or
+  write the case where it is the only thing standing.
