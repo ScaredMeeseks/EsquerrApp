@@ -520,6 +520,15 @@ export function createBoard3D(opts) {
     ev.preventDefault();
     renderer.domElement.setPointerCapture(ev.pointerId);
     last = {x: ev.clientX, y: ev.clientY};
+    /* Right button — or middle, or shift-drag — pans the camera
+       TARGET across the turf. Without it the target is pinned to the
+       centre spot, so zooming always converges there and a coach who
+       wants a close look at a corner cannot get one. */
+    if (ev.button === 2 || ev.button === 1 || ev.shiftKey) {
+      mode = 'pan';
+      camTouched = true;
+      return;
+    }
     const hit = readOnly ? null : pick(ev);
     if (hit) {
       mode = 'drag';
@@ -531,8 +540,43 @@ export function createBoard3D(opts) {
     }
   }
 
+  /**
+   * Move the look-at point across the ground plane.
+   *
+   * Scaled so the turf tracks the cursor roughly one-to-one: at
+   * distance `d` a vertical FOV of `fov` covers `2 d tan(fov/2)` world
+   * units over the canvas height, so that over the pixel height is the
+   * world-units-per-pixel. Panning at a fixed rate instead feels
+   * glued when zoomed out and frantic when zoomed in.
+   */
+  function panBy(dxPx, dyPx) {
+    const h = renderer.domElement.clientHeight || 1;
+    const perPx = (2 * cam.dist * Math.tan((camera.fov * Math.PI / 180) / 2)) / h;
+
+    // Screen right and screen "forward", both flattened onto the turf.
+    const right = new THREE.Vector3(-Math.sin(cam.theta), 0, Math.cos(cam.theta));
+    const fwd = new THREE.Vector3(-Math.cos(cam.theta), 0, -Math.sin(cam.theta));
+
+    cam.target.addScaledVector(right, -dxPx * perPx);
+    cam.target.addScaledVector(fwd, -dyPx * perPx);
+
+    /* Bounded to a pitch-and-a-half either way. Unbounded panning
+       loses the board entirely, and "where did my pitch go" has no
+       affordance to undo it short of the reset. */
+    const e = BG.extent(getPitch(), getBoardType(), false);
+    const lim = Math.max(e.ax, e.ay) * 0.75;
+    cam.target.x = Math.max(-lim, Math.min(lim, cam.target.x));
+    cam.target.z = Math.max(-lim, Math.min(lim, cam.target.z));
+    applyCamera();
+  }
+
   function onPointerMove(ev) {
     if (!mode) return;
+    if (mode === 'pan') {
+      panBy(ev.clientX - last.x, ev.clientY - last.y);
+      last = {x: ev.clientX, y: ev.clientY};
+      return;
+    }
     if (mode === 'orbit') {
       cam.theta -= (ev.clientX - last.x) * 0.006;
       cam.phi -= (ev.clientY - last.y) * 0.006;
@@ -589,6 +633,8 @@ export function createBoard3D(opts) {
      canvas does not cover. */
   el.addEventListener('wheel', onWheel, {passive: false});
   container.addEventListener('wheel', onWheel, {passive: false});
+  /* Right-drag pans, so the context menu must not open on top of it. */
+  el.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   /* ── Render loop ─────────────────────────────────────────────
      Renders on demand, not on a permanent rAF: a static board is the

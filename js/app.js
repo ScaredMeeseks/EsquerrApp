@@ -653,6 +653,10 @@
     'tactics.pitch_drag':    { ca:'Arrossega per canviar la mida del camp', es:'Arrastra para cambiar el tamaño del campo', en:'Drag to resize the pitch' },
     'tactics.view_hint':     { ca:'Canvia entre pissarra 2D i 3D', es:'Cambia entre pizarra 2D y 3D', en:'Switch between the 2D and 3D board' },
     'tactics.loading_3d':    { ca:'Carregant la pissarra 3D…', es:'Cargando la pizarra 3D…', en:'Loading the 3D board…' },
+    'tactics.reset_view':    { ca:'Centra la vista', es:'Centrar la vista', en:'Reset view' },
+    'tactics.orbit_hint':    { ca:'Arrossega per girar · botó dret per moure · roda per apropar',
+      es:'Arrastra para girar · botón derecho para mover · rueda para acercar',
+      en:'Drag to orbit · right-drag to pan · wheel to zoom' },
     'tactics.load_3d_failed':{ ca:'No s\'ha pogut carregar la pissarra 3D. Torna a 2D per continuar.',
       es:'No se ha podido cargar la pizarra 3D. Vuelve a 2D para continuar.',
       en:'The 3D board could not be loaded. Switch back to 2D to carry on.' },
@@ -6397,6 +6401,59 @@
   }
 
   var _tb3d = null;          // the live instance, or null
+  var _tb3dPending = false;  // a refresh is already queued for this frame
+  var _tb3dShape = '';       // pitch + board type, to spot a full rebuild
+
+  /**
+   * Tell the 3D view the state moved under it.
+   *
+   * Called from saveState() and autoSaveFrame(), which between them
+   * follow every mutation the 2D editor makes — choosing a formation,
+   * toggling the opposition, dragging, recolouring, stepping a frame.
+   * Without it the 3D board is a snapshot from mount time and only
+   * catches up when you leave and come back.
+   *
+   * Coalesced to one rebuild per animation frame: saveState() fires
+   * several times for a single gesture, and rebuilding the scene on
+   * each would be a dozen wasted teardowns per drag.
+   */
+  function tb3dTouch() {
+    if (!_tb3d || _tb3dPending) return;
+    _tb3dPending = true;
+    requestAnimationFrame(function () {
+      _tb3dPending = false;
+      if (!_tb3d) return;
+      /* A changed PITCH or board type means new turf, new markings and
+         new goals; anything else is just objects moving. Rebuilding
+         the pitch on every player drag would regenerate a 2048px
+         canvas texture for nothing. */
+      var shape = (localStorage.getItem('fa_tactic_pitch') || '') + '|' +
+                  (localStorage.getItem('fa_tactic_board_type') || 'full');
+      if (shape !== _tb3dShape) { _tb3dShape = shape; _tb3d.refresh(); }
+      else _tb3d.refreshObjects();
+    });
+  }
+
+  /**
+   * Drive the 3D scene from a tweened track during playback.
+   *
+   * The 2D renderer and the 3D one consume the SAME BS.tweenTrack
+   * output, so the two views cannot disagree about where a player is
+   * mid-animation — which is the exact class of bug that produced v88
+   * and v91 when playback was written twice.
+   *
+   * Per-object `setPosition` rather than a rebuild: rebuilding the
+   * scene at 60 fps would regenerate every mesh and texture on every
+   * frame. A null entry is a slot deleted in this frame; leaving the
+   * mesh where it was is wrong but rare, and cheaper than a rebuild
+   * mid-play — the next refreshObjects() (on stop) corrects it.
+   */
+  function tb3dTween(kind, track) {
+    if (!_tb3d) return;
+    for (var i = 0; i < track.length; i++) {
+      if (track[i]) _tb3d.setPosition(kind, i, track[i]);
+    }
+  }
 
   /** Tear down the 3D view. Safe to call when there is none. */
   function tbDestroy3D() {
@@ -6453,7 +6510,11 @@
     hooks = hooks || {};
     try {
       const mod = await import('./board3d.js');
-      wrap.innerHTML = '';
+      /* Remove only the loading message. innerHTML='' would take the
+         reset button and the hint with it — they are siblings of the
+         canvas, not children of it. */
+      const loading = wrap.querySelector('.tb-3d-loading');
+      if (loading) loading.remove();
       tbDestroy3D();
       _tb3d = mod.createBoard3D({
         container: wrap,
@@ -6480,6 +6541,8 @@
         },
         onSelect: () => {}
       });
+      const reset = document.getElementById('tb-3d-reset');
+      if (reset) reset.addEventListener('click', () => _tb3d && _tb3d.resetCamera());
     } catch (err) {
       /* A failed import is the likeliest real-world failure — offline,
          or a blocked module. Say so and fall back rather than leaving
@@ -9944,7 +10007,11 @@
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
         </div>
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
-        ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap"><div class="tb-3d-loading">${t('tactics.loading_3d')}</div></div>` : ''}
+        ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap">
+          <div class="tb-3d-loading">${t('tactics.loading_3d')}</div>
+          <button class="tb-3d-reset" id="tb-3d-reset" data-tooltip="${t('tactics.reset_view')}">${t('tactics.reset_view')}</button>
+          <div class="tb-3d-hint">${t('tactics.orbit_hint')}</div>
+        </div>` : ''}
         <div class="${fieldCls}" id="tb-field"${is3d ? ' hidden' : ''} style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
           <div class="tb-field-inner" style="${tbFieldInnerStyle(savedPitch, boardType, isVertical)}">
             ${tbMarkingsHtml(savedPitch, boardType, isVertical)}
@@ -10244,6 +10311,9 @@
       if (nameInput) localStorage.setItem('fa_tactic_name', nameInput.value);
       // Save ball positions
       saveBalls();
+      /* Every 2D mutation lands here or in autoSaveFrame; both poke the
+         3D view so it is never a snapshot from mount time. */
+      tb3dTouch();
     }
 
     function spawnCircles(posArr, nums) {
@@ -13265,6 +13335,7 @@
         frames[activeFrameIdx].duration = existingDur;
         saveFrames();
       }
+      tb3dTouch();
     }
 
     function renderFrameStrip() {
@@ -13426,7 +13497,9 @@
          removed the fourth branch this loop used to have: lerp-vs-snap
          is decided inside the tween, so here a slot is either at a
          position or it is not there at all. */
-      BS.tweenTrack(fromPos, toPos, t).forEach((pos, i) => {
+      const trackTeam = BS.tweenTrack(fromPos, toPos, t);
+      tb3dTween('positions', trackTeam);
+      trackTeam.forEach((pos, i) => {
         const circle = circleMap[i];
 
         if (!pos) {
@@ -13467,7 +13540,9 @@
         oppMap[Number(c.dataset.idx)] = c;
       });
 
-      BS.tweenTrack(fromOpp, toOpp, t).forEach((pos, i) => {
+      const trackOpp = BS.tweenTrack(fromOpp, toOpp, t);
+      tb3dTween('oppPositions', trackOpp);
+      trackOpp.forEach((pos, i) => {
         const circle = oppMap[i];
 
         if (!pos) {
@@ -13505,7 +13580,9 @@
       const toBalls = to.balls || [];
       let ballMap = {};
       inner.querySelectorAll('.tb-ball').forEach(b => { ballMap[Number(b.dataset.idx || 0)] = b; });
-      BS.tweenTrack(fromBalls, toBalls, t).forEach((pos, bi) => {
+      const trackBalls = BS.tweenTrack(fromBalls, toBalls, t);
+      tb3dTween('balls', trackBalls);
+      trackBalls.forEach((pos, bi) => {
         let ball = ballMap[bi];
         if (!pos) { if (ball) ball.remove(); return; }
         const d = toDisplay(pos[0], pos[1]);

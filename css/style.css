@@ -831,6 +831,20 @@ tr:hover td { background: #f7f8fa; }
   justify-content:center; color:#cfe0c4; font-size:.9rem; text-align:center;
   padding:1rem;
 }
+/* Overlay controls. Siblings of the canvas, not children — three.js
+   owns the canvas element and replaces it on teardown. */
+.tb-3d-reset {
+  position:absolute; top:.6rem; right:.6rem; z-index:2;
+  padding:.3rem .6rem; border:1px solid rgba(255,255,255,.35);
+  border-radius:6px; background:rgba(0,0,0,.45); color:#fff;
+  font-size:.75rem; cursor:pointer;
+}
+.tb-3d-reset:hover { background:rgba(0,0,0,.7); }
+.tb-3d-hint {
+  position:absolute; left:.6rem; bottom:.6rem; z-index:2;
+  color:rgba(255,255,255,.6); font-size:.72rem; pointer-events:none;
+}
+@media (max-width: 640px) { .tb-3d-hint { display:none; } }
 
 /* ── Pitch size controls ──────────────────────────────────────────
    Two metre boxes and a reset, sitting with the formation and

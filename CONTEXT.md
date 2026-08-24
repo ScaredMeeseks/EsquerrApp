@@ -4434,3 +4434,26 @@ markup and **not** in `fa_tactic_positions` — and board3d reads the keys, not 
 board3d about formations.
 
 Unit 1335 → **1343**.
+
+#### The 3D board keeps up, and the camera can be moved (v136)
+
+**It was a snapshot from mount time.** Adding a formation or the opposition changed the 2D board
+and nothing told the 3D one. `tb3dTouch()` is now called from `saveState()` and `autoSaveFrame()`,
+which between them follow every mutation the editor makes. Coalesced to one rebuild per animation
+frame (saveState fires several times per gesture), and it compares a pitch+boardType signature so a
+player drag does **not** regenerate the 2048 px marking texture — only a real pitch change does.
+
+**Right-drag pans the camera target.** Zoom converges on the look-at point, so with the target
+pinned to the centre spot there was no way to get a close look at a corner. Right button, middle
+button or shift-drag. Scaled by distance and FOV so the turf tracks the cursor at any zoom — a
+fixed rate feels glued when zoomed out and frantic when zoomed in — and bounded to three quarters
+of the pitch either way, because unbounded panning loses the board with no affordance to get it
+back. A **Reset view** button recentres and re-enables auto-framing; the context menu is suppressed
+so the pan does not open a menu over itself.
+
+**Playback works in 3D.** `interpolateAndApply` feeds the same `BS.tweenTrack` output to both
+renderers, so they cannot disagree about where a player is mid-animation — the exact class of bug
+that produced v88 and v91 when playback was written twice. Per-object `setPosition` rather than a
+rebuild, because rebuilding at 60 fps would regenerate every mesh and texture each frame.
+
+Unit 1343 → **1352**.

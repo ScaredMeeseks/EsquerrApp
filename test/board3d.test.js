@@ -251,3 +251,84 @@ describe('the 3D view sees the players immediately', () => {
         'the flush must happen BEFORE the mount');
   });
 });
+
+describe('the 3D view keeps up with the 2D editor', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('is poked from both mutation funnels', () => {
+    /* saveState() and autoSaveFrame() between them follow every edit
+       the 2D editor makes — choosing a formation, toggling the
+       opposition, dragging, recolouring, stepping a frame. Without
+       both, the 3D board is a snapshot from mount time that only
+       catches up when you leave and come back. */
+    const save = a.slice(a.indexOf('function saveState()'),
+        a.indexOf('function spawnCircles'));
+    assert.ok(/tb3dTouch\(\)/.test(save), 'saveState must poke the 3D view');
+    const auto = a.slice(a.indexOf('function autoSaveFrame()'),
+        a.indexOf('function autoSaveFrame()') + 500);
+    assert.ok(/tb3dTouch\(\)/.test(auto), 'autoSaveFrame must poke the 3D view');
+  });
+
+  it('coalesces a burst into one rebuild per frame', () => {
+    // saveState fires several times for a single gesture.
+    const fn = a.slice(a.indexOf('function tb3dTouch'),
+        a.indexOf('function tb3dTween'));
+    assert.ok(/_tb3dPending/.test(fn) && /requestAnimationFrame/.test(fn), fn);
+  });
+
+  it('rebuilds the pitch only when the pitch actually changed', () => {
+    /* Regenerating a 2048px marking texture on every player drag is
+       the difference between a smooth board and a stuttering one. */
+    const fn = a.slice(a.indexOf('function tb3dTouch'),
+        a.indexOf('function tb3dTween'));
+    assert.ok(/_tb3dShape/.test(fn), fn);
+    assert.ok(/refreshObjects\(\)/.test(fn), 'the cheap path must exist');
+  });
+
+  it('drives playback from the SAME tween the 2D view uses', () => {
+    /* Two renderers computing their own idea of halfway between two
+       frames is exactly what produced v88 and v91. */
+    ['positions', 'oppPositions', 'balls'].forEach((k) => {
+      assert.ok(a.includes("tb3dTween('" + k + "'"), 'no 3D tween for ' + k);
+    });
+    const fn = a.slice(a.indexOf('function tb3dTween'), a.indexOf('function tbDestroy3D'));
+    assert.ok(/setPosition\(kind, i/.test(fn),
+        'playback must move objects, not rebuild the scene each frame');
+  });
+});
+
+describe('the camera can be moved and recovered', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('right, middle or shift drag pans the target', () => {
+    /* Zoom converges on the look-at point, so with the target pinned
+       to the centre spot a coach cannot get a close look at a corner. */
+    const down = s3.slice(s3.indexOf('function onPointerDown'), s3.indexOf('function panBy'));
+    assert.ok(/ev\.button === 2/.test(down) && /ev\.shiftKey/.test(down), down);
+  });
+
+  it('suppresses the context menu, or the pan opens a menu over itself', () => {
+    assert.ok(/'contextmenu'.*preventDefault/.test(s3));
+  });
+
+  it('scales the pan by distance, so it tracks the cursor at any zoom', () => {
+    // A fixed rate feels glued when zoomed out and frantic when in.
+    const fn = s3.slice(s3.indexOf('function panBy'), s3.indexOf('function onPointerMove'));
+    assert.ok(/cam\.dist/.test(fn) && /camera\.fov/.test(fn), fn);
+  });
+
+  it('bounds the pan, so the pitch cannot be lost entirely', () => {
+    const fn = s3.slice(s3.indexOf('function panBy'), s3.indexOf('function onPointerMove'));
+    assert.ok(/Math\.max\(-lim, Math\.min\(lim/.test(fn), fn);
+  });
+
+  it('offers a reset that recentres AND re-enables auto-framing', () => {
+    assert.ok(/resetCamera\(\) \{ camTouched = false; frameBoard\(\)/.test(s3));
+    const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    assert.ok(/tb-3d-reset/.test(a) && /resetCamera\(\)/.test(a));
+  });
+});
