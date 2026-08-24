@@ -440,6 +440,32 @@ describe('the two ways this has shipped broken before', () => {
         'classes with no CSS rule: ' + unstyled.join(', '));
   });
 
+  it('gives the history row fixed lead columns', () => {
+    /* A third failure mode the render tests cannot see: the HTML was correct
+       and the alignment was not. The two emoji are NOT the same width — ✈️
+       carries a variation selector and renders wider than 🏠 — so without a
+       fixed box the opponents' names started at a different column on every
+       row, and `tabular-nums` on the date keeps the digits even but not the
+       box around them.
+
+       Asserting the DECLARATIONS rather than the rendering, because there is
+       no browser here; it is the difference between "a rule exists" (which
+       the guard above already checks) and "the rule pins the column". */
+    const rule = (cls) => {
+      const m = new RegExp('\\.' + cls + '\\s*\\{([^}]*)\\}').exec(cssSrc);
+      assert.ok(m, cls + ' has no rule at all');
+      return m[1];
+    };
+    assert.ok(/flex:\s*0\s+0\s+[\d.]+rem/.test(rule('ref-hist-date')),
+        'the date column can still change width');
+    assert.ok(/flex:\s*0\s+0\s+[\d.]+rem/.test(rule('ref-hist-where')),
+        'the home/away icon has no fixed box — the two emoji differ in width');
+    assert.ok(/text-align:\s*left/.test(rule('ref-hist-opp')),
+        'the opponent name is not pinned left');
+    assert.ok(/align-items:\s*center/.test(rule('ref-hist-row')),
+        'baseline alignment makes an emoji ride high on some rows');
+  });
+
   it('reads the collections the security rules actually allow', () => {
     /* Both are `allow read: if request.auth != null` in firestore.rules;
        fcfCrawl is denied outright and must never be touched from here. */

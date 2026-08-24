@@ -106,14 +106,15 @@ firebase-schedule-crawlFcfActas-us-central1   "0 3 * * *"       Europe/Madrid   
 
 **v130 is deployed.** The offence breakdown, the yellow-card tripwire and the match-detail card.
 
-**v131 is uncommitted — functions and frontend. Rules unchanged.**
+**v131 is deployed.** Scorelines in the history rows (`fcfActaEntry` now stores `gh`/`ga`).
+
+**v132 is uncommitted — FRONTEND ONLY. No functions, no rules.**
 
 ```
-1. .\deploy.ps1 functions      ← fcfActaEntry now stores gh/ga (the scoreline)
-2. git add -A && git commit && git push
+git add -A && git commit && git push
 ```
 
-Version triple is at **131**.
+Version triple is at **132**. CSS only: the history rows' column alignment.
 
 > **The crawl stores goals from v131 onward.** Nothing has been crawled in production yet, so
 > there is no back-fill problem today — but if a crawl ever runs on an older build, those entries

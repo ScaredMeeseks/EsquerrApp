@@ -4580,20 +4580,26 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-variant-numeric:tabular-nums;color:var(--text);}
 .ref-hist-none{font-size:.76rem;color:var(--text-secondary);font-style:italic;}
 .ref-hist-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.2rem;}
-.ref-hist-row{display:flex;align-items:baseline;gap:.5rem;font-size:.76rem;
+/* `center`, not `baseline`: an emoji has no reliable baseline across
+   platforms, so baseline alignment made the icon ride high on some rows and
+   low on others. */
+.ref-hist-row{display:flex;align-items:center;gap:.5rem;font-size:.76rem;
   padding:.2rem 0;border-bottom:1px solid var(--border);}
 .ref-hist-row:last-child{border-bottom:none;}
-/* Home or away. Fixed width so the opponents' names all start on the same
-   column — a ragged left edge down a list of six is harder to scan than the
-   icon is to recognise. */
-.ref-hist-where{width:1.25rem;flex:0 0 auto;text-align:center;font-size:.8rem;
-  line-height:1;cursor:default;}
-.ref-hist-date{font-variant-numeric:tabular-nums;color:var(--text-secondary);
-  white-space:nowrap;}
-.ref-hist-opp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Three FIXED columns before the name, so every opponent starts on the same
+   column. Each width is load-bearing: `tabular-nums` keeps the digits even
+   but not the box, and the two emoji are NOT the same width — ✈️ carries a
+   variation selector and renders wider than 🏠, which walked the names to
+   different starting positions down the list. */
+.ref-hist-date{flex:0 0 3rem;font-variant-numeric:tabular-nums;
+  color:var(--text-secondary);white-space:nowrap;text-align:left;}
+.ref-hist-where{flex:0 0 1.4rem;display:inline-flex;align-items:center;
+  justify-content:center;font-size:.8rem;line-height:1;cursor:default;}
+.ref-hist-opp{flex:1 1 auto;min-width:0;overflow:hidden;text-align:left;
+  text-overflow:ellipsis;white-space:nowrap;}
 /* The scoreline, coloured by the outcome — the colour still says won/drew/
    lost at a glance, the number is what was actually wanted. */
-.ref-out{font-size:.7rem;font-weight:700;letter-spacing:.02em;
+.ref-out{flex:0 0 auto;font-size:.7rem;font-weight:700;letter-spacing:.02em;
   padding:.1rem .45rem;border-radius:4px;white-space:nowrap;
   font-variant-numeric:tabular-nums;min-width:2.6rem;text-align:center;
   background:var(--border);color:var(--text);}

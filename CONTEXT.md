@@ -3936,3 +3936,27 @@ swapping ours for theirs.
 The two render tests that asserted the old wording now assert the **outcome class** rather than any
 words — the colour is the durable signal — plus the icons, their accessible names, and the
 no-goals fallback path.
+
+### 2026-08-24 — v132: the history rows line up
+
+The owner sent a screenshot: the home/away icons sat at different horizontal positions and the
+club names started on a different column on every row.
+
+**The two emoji are not the same width.** ✈️ carries a variation selector and renders wider than
+🏠, so with no fixed box each icon pushed the name that followed it a different distance. The
+screenshot was of the design page, which had no `.ref-hist-where` rule at all — the app's own
+stylesheet did have one, but with `align-items: baseline` on the row, and **an emoji has no
+reliable baseline across platforms**, so the icon rode high on some rows and low on others.
+
+The row now has three fixed lead columns — date, icon, then the name taking the remaining space —
+and aligns on `center`. Each width is load-bearing in a way that is easy to mistake for decoration:
+`tabular-nums` keeps the date's *digits* even but not the box around them.
+
+#### Tests
+
+Unit 1156 → **1157**. A third guard beside the v123 (browser-reachability) and v125 (stylesheet)
+ones, and it closes a gap both of those leave open: **the HTML was correct and the layout was
+not.** The existing guard only asserts a class *has* a rule; this one asserts the rule actually
+pins the column — a fixed `flex` basis on the date and the icon, `text-align: left` on the name,
+and `align-items: center` on the row. Mutation-checked both ways: removing the icon's fixed basis
+and reverting the row to `baseline` each fail it with the reason named.
