@@ -2,6 +2,60 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-24._
 
+## ▶ NEXT SESSION — the owner's four, in his order
+
+### 1. ~~A version check in the app~~ — DONE in v128
+
+Ships in v128. `fetch('sw.js', {cache:'reload'})` → read `CACHE_NAME` → compare with
+`APP_VERSION`; on load and on `visibilitychange`, throttled to 15 minutes. Shows a bottom banner
+with **Actualitzar** (unregisters the worker, deletes every cache, reloads onto `?v=<now>`) and
+**Més tard** (hides it, asks again in 15 min). Never auto-reloads, never nags backwards, and says
+nothing when it cannot reach the server.
+
+**Still to do: watch it fire once, for real.** Everything so far is unit-tested and the parser was
+run against the live `sw.js`, but nobody has yet seen the banner appear in a browser. The way to
+provoke it: load the app, then deploy the next version, then switch back to the tab.
+
+### 2. Finish the Golejadors tab
+
+Working and deployed through v127. Left to do:
+
+- **Walk it live** across several divisions at once — everything so far was verified one or two
+  groups at a time, plus a 6-group merge in Node. Confirm the 40-group gate, the confirm button
+  and the progress bar behave with a genuinely wide selection.
+- Decide whether **season should also be multi-select**. It is single today because every
+  competition id is season-specific, so mixing seasons compares different competitions — but the
+  owner did originally ask for "all filters".
+- The **goal figures are still FCF's own**, and still arithmetically impossible (`goles` is home
+  and away concatenated). `FCF_SCORERS_RAW` in js/utils.js is the one line; `splitFcfTally` is
+  written and tested for the day that flips.
+
+### 3. Check how Sancions actually works
+
+**It has never been seen with real bans.** The 2026-27 season had not kicked off, so the group has
+no sanctions at all, and every test runs against a captured 2025-26 fixture. Once a round has been
+played:
+
+- Confirm the ban window on screen — a ban at jornada N covers N+1 … N+P, and the round he was
+  sent off in is not one he misses.
+- Confirm **our own** bans appear (needs `fcfOurTeamId`, which reads the standings cache — with no
+  cache it returns `''` and shows EVERYONE, deliberately the safer failure).
+- Confirm club rulings stay in their own section and are never read as missing players.
+
+### 4. Referee information — investigate before promising
+
+Not in any JSON endpoint. `/api/competition/*` has nothing, and the acta page carries an i18n
+string `no_referees: "Sense àrbitres assignats"` — so the section EXISTS on
+`/ca/competicio/acta/{actaId}`, it was simply empty for the acta sampled. Before building
+anything:
+
+- Check an acta from a **played** round for a named referee in the RSC payload.
+- If it is there, it is HTML/RSC scraping, not an API — the thing this whole project has twice
+  been burned by. Weigh that against the value.
+- `/ca/arbitres` is the referees' own section of the site; worth a look for a directory.
+
+---
+
 ## ⚠ v127 is uncommitted — frontend AND functions
 
 v124 fixed the browser-boundary bug and the tabs work. v125 is the follow-up the owner asked for
@@ -76,9 +130,9 @@ off. What has NOT been tested in a browser is v119's two kit columns and the upp
 ## Tests — all three suites green
 
 ```
-916 unit    (834 → 906 → 916)   cd test && npm run test:unit
-152 rules   (unchanged)         cd test && npm run test:rules
- 71 functions (unchanged)       cd test && npm run test:functions
+1002 unit    (983 → 991 → 994 → 1002)   cd test && npm run test:unit
+ 152 rules   (unchanged)                cd test && npm run test:rules
+  71 functions (unchanged)               cd test && npm run test:functions
 ```
 
 `test/fcf-fixtures.test.js` (54) is new and **was added to `test:unit` by hand** — the standing

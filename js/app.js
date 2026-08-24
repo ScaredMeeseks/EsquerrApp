@@ -160,6 +160,12 @@
     // ── FCF standings ──
     // Why a league table is empty. Before v117 there was no such string: a
     // broken feed and a division that had not kicked off looked identical.
+    // ── App version ──
+    'update.available':   { ca:'Hi ha una versió nova de l\'app.', es:'Hay una versión nueva de la app.', en:'A new version of the app is available.' },
+    'update.reload':      { ca:'Actualitzar', es:'Actualizar', en:'Update' },
+    'update.reloading':   { ca:'Actualitzant…', es:'Actualizando…', en:'Updating…' },
+    'update.later':       { ca:'Més tard', es:'Más tarde', en:'Later' },
+
     'fcf.loading':     { ca:'Carregant la classificació…', es:'Cargando la clasificación…', en:'Loading standings…' },
     'fcf.unavailable': { ca:'No s\'ha pogut carregar la classificació. Torna-ho a provar més tard.', es:'No se ha podido cargar la clasificación. Inténtalo más tarde.', en:'Could not load the standings. Try again later.' },
     'fcf.empty':       { ca:'La FCF encara no ha publicat aquesta classificació.', es:'La FCF aún no ha publicado esta clasificación.', en:'The FCF has not published this group yet.' },
@@ -1468,7 +1474,127 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 127;
+  const APP_VERSION = 128;
+
+  /* ═══════════════════════════════════════════════════════════
+     Is this the version the server is serving?
+
+     Built because it stopped being hypothetical. A tester sat on a **v117
+     service worker across seven releases** while `main` was v124 — every
+     deploy landed, every check of the served files said the new code was
+     there, and his browser kept running the old one. Three separate
+     "the fix doesn't work" rounds went by before the cache was suspected,
+     and the tell in the end was an error string that only existed in the
+     older version.
+
+     The 77 members of this club have no console to paste a cache-clear
+     into. So the app asks the question itself.
+
+     WHY sw.js and not a version file: it already carries the number, it is
+     already bumped in lockstep with APP_VERSION (functions/check-deploy.js
+     asserts all three move together), and `updateViaCache: 'none'` on the
+     registration means the browser is not allowed to answer from its HTTP
+     cache. One less artefact to keep in step.
+
+     It NEVER reloads by itself. A delegate halfway through a convocatòria
+     would lose what he had typed, and an app that throws work away to
+     update itself teaches people to distrust it.
+     ═══════════════════════════════════════════════════════════ */
+
+  /* Every 15 minutes at most, plus whenever the tab comes back to the
+     front — which is when someone returns to a phone left open since
+     Tuesday, the exact case this exists for. */
+  var VERSION_CHECK_MS = 15 * 60 * 1000;
+  var _lastVersionCheck = 0;
+  var _versionBannerShown = false;
+
+  /** The version in a served sw.js, or 0 when it cannot be read. */
+  function parseServedVersion(text) {
+    var m = /CACHE_NAME\s*=\s*['"]esquerrapp-v(\d+)['"]/.exec(String(text || ''));
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  /* 0 on ANY failure — offline, a 404, a Capacitor build with no sw.js at
+     all. A version check that cannot reach the server has nothing to say,
+     and must never turn that into a banner. */
+  function fetchServedVersion() {
+    return fetch('sw.js', {cache: 'reload'})
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(parseServedVersion)
+        .catch(function () { return 0; });
+  }
+
+  /** Strictly NEWER, so a rollback does not nag people to "update" backwards. */
+  function versionIsStale(served, running) {
+    return !!served && served > running;
+  }
+
+  function checkAppVersion(force) {
+    var now = Date.now();
+    if (_versionBannerShown) return;
+    if (!force && now - _lastVersionCheck < VERSION_CHECK_MS) return;
+    _lastVersionCheck = now;
+    fetchServedVersion().then(function (served) {
+      if (versionIsStale(served, APP_VERSION)) showUpdateBanner(served);
+    });
+  }
+
+  function showUpdateBanner(served) {
+    if (_versionBannerShown || document.getElementById('update-banner')) return;
+    _versionBannerShown = true;
+    var el = document.createElement('div');
+    el.id = 'update-banner';
+    el.className = 'update-banner';
+    el.innerHTML = '<span>' + sanitize(t('update.available')) + '</span>' +
+      '<button class="btn btn-primary btn-small" id="btn-update-now">' +
+      sanitize(t('update.reload')) + '</button>' +
+      '<button class="update-banner-x" id="btn-update-later" title="' +
+      sanitize(t('update.later')) + '">&times;</button>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('show'); });
+    document.getElementById('btn-update-now')
+        .addEventListener('click', function () { applyUpdate(); });
+    document.getElementById('btn-update-later')
+        .addEventListener('click', function () {
+          /* Dismissed, not answered. The next check is 15 minutes away, so
+             it will ask again — but it will not sit on top of whatever he
+             is doing right now. */
+          el.remove();
+          _versionBannerShown = false;
+          _lastVersionCheck = Date.now();
+        });
+  }
+
+  /* Everything the console snippet did, because a normal reload is exactly
+     what was NOT enough: unregister the worker, drop every cache, and land
+     on a URL the browser has to treat as new. */
+  function applyUpdate() {
+    var btn = document.getElementById('btn-update-now');
+    if (btn) { btn.disabled = true; btn.textContent = t('update.reloading'); }
+    var steps = [];
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      steps.push(navigator.serviceWorker.getRegistrations()
+          .then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          }).catch(function () {}));
+    }
+    if (window.caches && caches.keys) {
+      steps.push(caches.keys().then(function (ks) {
+        return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+      }).catch(function () {}));
+    }
+    Promise.all(steps).then(function () {
+      location.replace(location.pathname + '?v=' + Date.now());
+    });
+  }
+
+  function bindVersionCheck() {
+    checkAppVersion(true);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) checkAppVersion(false);
+    });
+  }
+
 
   /* SEASON_KEYS used to be duplicated here. It had no readers — archiving
      is entirely server-side — and it had drifted: it still listed
@@ -23528,5 +23654,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', bindVersionCheck);
   // #endregion Init & Bootstrap
 })();

@@ -4496,3 +4496,25 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    `.card { overflow: hidden }` — which would clip it to a sliver. Two
    classes beat one, so this wins wherever it is in the file. */
 .card.sc-filters { overflow: visible; }
+
+/* ===== "A new version is available" =====
+   Fixed to the bottom, above everything, and NEVER covering the screen: it
+   can appear while somebody is halfway through a convocatòria, so it has to
+   be noticeable and ignorable at the same time. */
+.update-banner { position: fixed; left: 50%; bottom: 1rem; transform: translate(-50%, 200%);
+  z-index: 9999; display: flex; align-items: center; gap: .75rem;
+  max-width: calc(100vw - 2rem); padding: .7rem .9rem;
+  background: var(--card); color: var(--text);
+  border: 2px solid var(--primary, #8b1a2b); border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0,0,0,.28); font-size: .85rem;
+  transition: transform .28s ease; }
+.update-banner.show { transform: translate(-50%, 0); }
+.update-banner > span { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+.update-banner .btn { flex: 0 0 auto; }
+.update-banner-x { flex: 0 0 auto; background: none; border: none; cursor: pointer;
+  color: var(--text-secondary); font-size: 1.25rem; line-height: 1; padding: 0 .2rem; }
+.update-banner-x:hover { color: var(--text); }
+@media (max-width: 480px) {
+  .update-banner { left: 1rem; right: 1rem; transform: translate(0, 200%); }
+  .update-banner.show { transform: translate(0, 0); }
+}

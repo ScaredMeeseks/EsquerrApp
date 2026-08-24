@@ -3637,3 +3637,56 @@ block registers, and the test calls those handlers with the kind of event a brow
 the handler's DECISION is what is under test, not the browser's event plumbing. Five mutations,
 each failing exactly one test: reads firing while picking, an outside click never closing, closing
 even when the click is inside, Escape doing nothing, and the listeners stacking per render.
+
+### 2026-08-24 — v128: the app checks its own version
+
+The first of the owner's four. Built because it had stopped being hypothetical: a tester sat on a
+**v117 service worker across seven releases** while `main` was v124. Every deploy landed, every
+check of the served files said the new code was there, and his browser kept running the old one.
+Three rounds of "the fix doesn't work" went by before the cache was suspected, and the tell in the
+end was an error string that only existed in the older version. The 77 members of this club have
+no console to paste a cache-clear into.
+
+**How it asks.** `fetch('sw.js', {cache: 'reload'})`, read `CACHE_NAME`, compare with
+`APP_VERSION`. `sw.js` rather than a new version file because it already carries the number, it is
+already bumped in lockstep (`functions/check-deploy.js` asserts all three move together), and one
+fewer artefact is one fewer thing to drift. `{cache: 'reload'}` is load-bearing: the
+`updateViaCache: 'none'` on the registration governs the WORKER's own script, but this is an
+ordinary fetch and would otherwise be answered from the HTTP cache — the very failure being fixed.
+
+**When.** On load, and on `visibilitychange` when the tab becomes visible — a phone left open
+since Tuesday is exactly the case. Throttled to 15 minutes so it is a check, not a poll.
+
+**What it does NOT do.**
+
+- **It never reloads by itself.** A delegate halfway through a convocatòria would lose what he had
+  typed, and an app that throws work away to update itself teaches people to distrust it. A test
+  asserts there is exactly ONE `location.replace` in the whole block and that it lives inside
+  `applyUpdate()`.
+- **It never nags backwards.** Strictly newer only, so deploying an older build — a decision —
+  is not treated as something to undo.
+- **It says nothing when it cannot ask.** A failed fetch, a 404, a Capacitor build with no `sw.js`
+  all read 0, and 0 is "I could not ask", never "you are out of date". Otherwise every user who
+  went through a tunnel would be told to update to a release that does not exist.
+
+**The button does what the console snippet did**, because a plain reload is exactly what was NOT
+enough: unregister the worker, delete every cache, then `location.replace` onto a `?v=<now>` URL
+the browser has to treat as new. "Més tard" only hides the banner and resets the throttle — it
+asks again in fifteen minutes rather than sitting on top of what someone is doing.
+
+#### Tests
+
+Unit 1002 → **1022**. `test/version-check.test.js` is new and **added to `test:unit` by hand**.
+The parser is asserted against the REAL `sw.js` and cross-checked against the REAL `APP_VERSION`,
+so a rename or reformat of either constant fails the suite rather than silently reading 0 for ever.
+
+Eight mutations, each failing exactly one test: nagging backwards, nagging when offline, asking
+through the HTTP cache, a plain reload instead of the full clear, the banner stacking, the Update
+button doing nothing, "Més tard" reloading, and the banner losing its stylesheet.
+
+> Two of those tests only became real after a stub was fixed. `getElementById` returned `null` for
+> the buttons, so wiring them threw INSIDE a promise, mocha swallowed it, and the suite was green
+> over a banner whose Update button was never connected. And asserting `typeof handler ===
+> 'function'` passes against an empty function — the test now presses the button and watches the
+> caches go. Both are the same lesson this week keeps giving: **a green test that never exercised
+> the thing is worse than no test.**
