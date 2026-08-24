@@ -6362,9 +6362,40 @@
    * aspects are the only ones possible.
    */
   function tbFieldOuterStyle(pitch, boardType, vertical) {
-    if (!vertical || (boardType !== 'half' && boardType !== 'area')) return '';
-    const m = BS.round2((100 - BG.aspectPct(pitch, boardType, vertical)) / 2);
-    return 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
+    if (vertical && (boardType === 'half' || boardType === 'area')) {
+      const m = BS.round2((100 - BG.aspectPct(pitch, boardType, vertical)) / 2);
+      return 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
+    }
+    return tbFieldScaleStyle(pitch, boardType, vertical);
+  }
+
+  /**
+   * Render the board at a consistent SCALE, so a metre is the same
+   * number of pixels on both axes.
+   *
+   * Without this the board's width is pinned by `max-width: 820px` and
+   * only `padding-top` varies, so the rendered width never changes and
+   * every pitch change is expressed as a change in HEIGHT. Halving the
+   * length left the board 820 px wide and made it 531 -> 1052 px tall:
+   * dragging the right-hand grip grew the board downwards, which reads
+   * exactly like the handle editing the wrong axis. It was not the
+   * mapping; it was that a shorter pitch had nowhere to get shorter.
+   *
+   * Scaling against the DEFAULT pitch rather than against the maximum
+   * keeps 105 x 68 rendering at exactly the size it always has, so
+   * nothing moves for a board nobody has resized. A pitch longer than
+   * the default is capped by the container instead of overflowing it.
+   */
+  function tbFieldScaleStyle(pitch, boardType, vertical) {
+    /* The base widths the stylesheet used to hold. Here rather than in
+       CSS because the scale multiplies them, and a number that is
+       multiplied in JS but declared in CSS is a number that will
+       eventually disagree with itself. */
+    const base = (vertical && (boardType || 'full') === 'full') ? 520 : 820;
+    const ax = BG.extent(pitch, boardType, vertical).ax;
+    const axDefault = BG.extent(null, boardType, vertical).ax;
+    const w = Math.round(base * (ax / axDefault));
+    return 'max-width:' + w + 'px;';
   }
 
   function renderReadOnlyBoard(b, prefix) {
@@ -12231,9 +12262,13 @@
       grip.addEventListener('pointermove', e => {
         if (!drag) return;
         const g = gripPitchFor(e, drag, axis);
-        // Preview by stretching the existing box; no re-render yet.
-        field.style.setProperty('--tb-preview-l', g[0]);
-        field.style.setProperty('--tb-preview-w', g[1]);
+        /* Preview BOTH axes, not just the aspect. Setting only
+           padding-top meant the box could never get narrower, so a
+           length drag showed up as the board getting taller — the
+           handle left the cursor behind and appeared to move the other
+           dimension. Width and aspect together make the edge follow
+           the pointer. */
+        field.style.cssText = tbFieldScaleStyle(g, curBoardType(), isVertical());
         inner.style.paddingTop = BG.aspectPct(g, curBoardType(), isVertical()) + '%';
         grip.dataset.val = g[gripDim(axis)] + ' m';
       });

@@ -4324,3 +4324,43 @@ Caught while refactoring: deleting `lerp` broke the read-only text labels, which
 `node --check` passes on a ReferenceError, so only reading the greps caught it.
 
 Unit 1289 → **1316**.
+
+#### The axes were never inverted — the board could not get narrower (v136)
+
+Reported twice as "dragging one axis edits the other". The first fix changed the grip→dimension
+MAPPING, which was addressing the wrong layer and did not help. The actual cause:
+
+`.tb-field` had `width:100%; max-width:820px` and `.tb-field-inner` carried the size as
+`padding-top: <aspect>%`. So **the rendered width never changed** — every pitch change came out as
+a change in height. Halving the length left the board 820 px wide and took it from 531 px to
+**1052 px tall**. Dragging the right-hand grip grew the board downwards, which is indistinguishable
+from the handle editing the wrong dimension. A shorter pitch simply had nowhere to get shorter.
+
+`tbFieldScaleStyle()` now emits `max-width` inline, scaled by `ax / axDefault`, so a metre is the
+same number of pixels on both axes:
+
+| pitch | before | after |
+|---|---|---|
+| 105 × 68 | 820 × 531 | 820 × 531 |
+| 53 × 68 | 820 × 1052 | 414 × 531 |
+| 105 × 34 | 820 × 330 | 820 × 330 |
+
+Scaled against the DEFAULT pitch rather than the maximum, so an unresized board renders at exactly
+the size it always has and nothing moves for anyone who never touches the feature. The two base
+widths (820, and 520 for vertical full) moved out of the stylesheet into JS — the scale multiplies
+them, and a number multiplied in JS but declared in CSS eventually disagrees with itself.
+
+The live drag preview sets width AND aspect now; it used to set only `padding-top`, so the edge
+left the cursor behind mid-drag.
+
+Vertical half/area keep their CSS `max-width:820px` and are not scaled: they are rotated by a CSS
+transform whose compensating margins resolve against the CONTAINER width, so scaling the element
+would need that compensation reworked for no benefit — neither board type carries resize handles.
+
+**Diagnostic worth keeping**: the dev server refuses to serve `sw.js`. A cache-first service worker
+on a dev origin serves the code you wrote twenty minutes ago, and a hard refresh reloads the
+document while the worker keeps answering for subresources — so the page looks stale in a way that
+reads exactly like an edit not working. A 404 on the worker script also unregisters an installed
+one, so a poisoned origin self-heals. `GET /__version` reports what is on disk.
+
+Unit 1316 → **1319**.

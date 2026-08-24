@@ -164,9 +164,50 @@ describe('the field box styles', () => {
   });
 
   it('only the CSS-rotated board types get compensating margins', () => {
-    assert.strictEqual(api.tbFieldOuterStyle(null, 'full', true), '');
-    assert.strictEqual(api.tbFieldOuterStyle(null, 'half', false), '');
+    assert.ok(!/margin-top/.test(api.tbFieldOuterStyle(null, 'full', true)));
+    assert.ok(!/margin-top/.test(api.tbFieldOuterStyle(null, 'half', false)));
     assert.ok(/margin-top:calc\(/.test(api.tbFieldOuterStyle(null, 'half', true)));
+  });
+
+  it('a metre is the same number of pixels on BOTH axes', () => {
+    /* The bug this exists to prevent, and it is worth stating plainly
+       because it was reported as "the axes are inverted".
+
+       The board's width used to be pinned by `max-width: 820px` while
+       only padding-top varied. So the rendered width never changed and
+       every pitch change came out as a change in HEIGHT: halving the
+       length left the board 820 px wide and made it 531 -> 1052 px
+       tall. Dragging the right-hand grip grew the board downwards,
+       which is indistinguishable from the handle editing the wrong
+       dimension. The mapping was right; a shorter pitch simply had
+       nowhere to get shorter.
+
+       Halving the length must now halve the WIDTH and leave the height
+       alone. */
+    const px = (s) => parseInt(/max-width:(\d+)px/.exec(s)[1], 10);
+    const full = px(api.tbFieldOuterStyle([105, 68], 'full', false));
+    const half = px(api.tbFieldOuterStyle([53, 68], 'full', false));
+    assert.ok(Math.abs(half / full - 0.5) < 0.02,
+        'halving the length should halve the rendered width: ' + half + ' vs ' + full);
+
+    // Height comes from width x aspect, so check it did NOT change.
+    const h = (pitch, w) => w * BG.aspectPct(pitch, 'full', false) / 100;
+    assert.ok(Math.abs(h([105, 68], full) - h([53, 68], half)) < 2,
+        'the height must not move when only the length changes');
+  });
+
+  it('the default pitch renders at exactly the size it always did', () => {
+    // 820 px for horizontal, 520 for vertical — the two numbers the
+    // stylesheet used to hold. Nothing moves for an unresized board.
+    assert.ok(/max-width:820px/.test(api.tbFieldOuterStyle(null, 'full', false)));
+    assert.ok(/max-width:520px/.test(api.tbFieldOuterStyle(null, 'full', true)));
+  });
+
+  it('a narrower pitch keeps its width and loses height', () => {
+    const px = (s) => parseInt(/max-width:(\d+)px/.exec(s)[1], 10);
+    assert.strictEqual(px(api.tbFieldOuterStyle([105, 34], 'full', false)), 820);
+    assert.ok(BG.aspectPct([105, 34], 'full', false) <
+              BG.aspectPct([105, 68], 'full', false));
   });
 
   it('reproduces the old hardcoded HALF margin from the geometry', () => {
