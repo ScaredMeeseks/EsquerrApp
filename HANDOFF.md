@@ -370,8 +370,12 @@ Renumbered items are the same items.
 1. **Fixture import covers the LEAGUE only.** A cup tie is a different `competicioId` with its own
    group, and `fcfLinks` holds one link per squad. Supporting cups means a second link per squad,
    or a competition picker.
-2. **Results are not imported.** `GOLES_*` and `CERRADA` are there; the app computes its scoreline
-   from coach-entered events, and reconciling the two needs a decision first.
+2. **Results are not imported into the app's own fixtures.** `GOLES_*` and `CERRADA` are there;
+   the app computes its scoreline from coach-entered events, and reconciling the two needs a
+   decision first. **Partly overtaken by v131**: the referee index now stores the federation's
+   `gh`/`ga` per acta, so the referee history shows real scorelines. That is a separate store
+   from `fa_matches` and does not touch the coach's own score — but it does mean the federation's
+   result is already on the device if that decision is ever taken.
 3. **Neither week strip re-renders on a timer.** Pre-existing.
 4. **The cross-category call-up** — decide before building. Within a category it already works;
    across them the picker filters to the coach's category and `getVisibleCategories()` returns
@@ -406,7 +410,8 @@ Renumbered items are the same items.
   project `esquerrapp`. Frontend = GitHub Pages from `main`; APK = CI on push;
   rules/functions = `.\deploy.ps1`; Admin SDK = local, see below.
 - **Bump the version in THREE places together**: `CACHE_NAME` in `sw.js`, `APP_VERSION` in
-  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **119**.
+  `js/app.js`, `CURRENT` in `functions/check-deploy.js`. All three are at **132**.
+  (`version-check.test.js` asserts `sw.js` and `js/app.js` agree, so a half-bump fails the suite.)
 - A new JS/CSS file must be added to **`STATIC_ASSETS` in `sw.js`** and to the `<script>` list in
   `index.html`, in load order. v118 added no frontend file; `functions/fcf.js` is server-side and
   needs neither.
