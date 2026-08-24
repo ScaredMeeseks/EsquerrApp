@@ -16,19 +16,13 @@ nothing when it cannot reach the server.
 run against the live `sw.js`, but nobody has yet seen the banner appear in a browser. The way to
 provoke it: load the app, then deploy the next version, then switch back to the tab.
 
-### 2. Finish the Golejadors tab
+### 2. ~~Finish the Golejadors tab~~ — CLOSED
 
-Working and deployed through v127. Left to do:
-
-- **Walk it live** across several divisions at once — everything so far was verified one or two
-  groups at a time, plus a 6-group merge in Node. Confirm the 40-group gate, the confirm button
-  and the progress bar behave with a genuinely wide selection.
-- Decide whether **season should also be multi-select**. It is single today because every
-  competition id is season-specific, so mixing seasons compares different competitions — but the
-  owner did originally ask for "all filters".
-- The **goal figures are still FCF's own**, and still arithmetically impossible (`goles` is home
-  and away concatenated). `FCF_SCORERS_RAW` in js/utils.js is the one line; `splitFcfTally` is
-  written and tested for the day that flips.
+- **Several divisions at once**: confirmed working by the owner.
+- **Season stays SINGLE-select** — the owner's decision. Every competition id is season-specific,
+  so mixing seasons compares different competitions rather than the same one over time. Nothing to
+  build; it is already single.
+- **The goal figures stay exactly as FCF publishes them.** See the parking lot.
 
 ### 3. Check how Sancions actually works
 
@@ -42,32 +36,65 @@ played:
   cache it returns `''` and shows EVERYONE, deliberately the safer failure).
 - Confirm club rulings stay in their own section and are never read as missing players.
 
-### 4. Referee information — investigate before promising
+### 4. ~~Referee information~~ — BUILT in v129, not yet switched on
 
-Not in any JSON endpoint. `/api/competition/*` has nothing, and the acta page carries an i18n
-string `no_referees: "Sense àrbitres assignats"` — so the section EXISTS on
-`/ca/competicio/acta/{actaId}`, it was simply empty for the acta sampled. Before building
-anything:
+Referees are published on the acta page and nowhere else, so this is scraping. Yellow cards do not
+exist anywhere in the federation's data; reds and second bookings come from `sanciones`, which
+carries `codacta`. Scope is the five senior Futbol 11 tiers — 64 groups, 14,390 matches a season,
+about a twentieth of all Futbol 11. Full detail in CONTEXT.md under v129.
 
-- Check an acta from a **played** round for a named referee in the RSC payload.
-- If it is there, it is HTML/RSC scraping, not an API — the thing this whole project has twice
-  been burned by. Weigh that against the value.
-- `/ca/arbitres` is the referees' own section of the site; worth a look for a directory.
+**Three things are still to do, in this order:**
+
+1. **Deploy** (below), then create `fcfCrawl/config` with `enabled: true`. Nothing crawls until
+   that document exists — the default is off, because turning it on aims tens of thousands of
+   requests at the federation's website.
+2. **Start small and watch it.** Set `onlyGroups` to one or two group ids first, run
+   `runFcfCrawl` by hand (superuser callable), and confirm the referee names match fcf.cat by eye
+   for three of them. Then clear `onlyGroups` and let the nightly job work through both seasons
+   over several nights.
+3. **On the season's first Friday, check whether an unplayed acta names its referee.** Today every
+   one reads "Sense àrbitres assignats", and no 2026-27 fixture has been played, so this could not
+   be tested. If appointments never appear in advance, the feature is retrospective only — the
+   Friday job's other half (last weekend's results) still works, and the database is unaffected.
+
+Suggested first config document:
+
+```js
+// fcfCrawl/config
+{ enabled: true,
+  seasons: ["22", "21"],          // 2026-27 and 2025-26
+  onlyGroups: ["54486121"],       // start with one; clear it to open up to all 64
+  concurrency: 3 }                // 5 is the hard ceiling
+```
+
+> **Watch the log line `FCF acta parser found NO referees at all`.** That is the v117 failure
+> repeating — hundreds of played actas fetched and not one referee found means fcf.cat has changed
+> and `parseFcfActa` needs looking at. Everything else would keep running and look healthy.
 
 ---
 
-## ⚠ v127 is uncommitted — frontend AND functions
+## ⚠ v129 is uncommitted — functions, RULES and frontend
 
-v124 fixed the browser-boundary bug and the tabs work. v125 is the follow-up the owner asked for
-after using them: **checkbox dropdowns** instead of `<select multiple>`, a **progress bar**, a
-**Zona** column, and a **club contact card**.
+The referee database. All three deploy targets changed, and the order matters.
 
 ```
-1. .\deploy.ps1 functions      ← MUST be first: fcfApi gains the `club` endpoint
-2. git add -A && git commit && git push
+1. .\deploy.ps1 functions      ← FIRST: crawlFcfActas, fcfWeeklyRefs, runFcfCrawl are new
+2. .\deploy.ps1 rules          ← fcfReferees / fcfRefIndex / fcfCrawl are new collections;
+                                 without this every referee lookup is permission-denied
+3. git add -A && git commit && git push
 ```
 
-Version triple is at **127**. Rules unchanged.
+Version triple is at **129**.
+
+> **Rules are not optional here and `--only hosting` would skip them silently.** The app reads
+> `fcfReferees` and `fcfRefIndex`; both are new `match` blocks. Deploy the frontend without them
+> and the panel shows "loading" for ever, with the real error only in the console.
+
+> **Two new scheduled jobs.** `crawlFcfActas` nightly at 03:00 and `fcfWeeklyRefs` at 06:00, 07:00
+> and 08:00 on Fridays, both Europe/Madrid. Both no-op immediately while `fcfCrawl/config` is
+> absent or `enabled` is false, so deploying them is safe on its own — but confirm the Cloud
+> Scheduler entries actually exist afterwards rather than trusting `functions:list`, which only
+> says `scheduled`.
 
 > ⚠ **v125's dropdown shipped with NO stylesheet.** The `cat >> css/style.css` was chained behind
 > a `node --check` that failed, `&&` short-circuited, and the commit went out with the CSS
@@ -274,6 +301,33 @@ goals (FCF's own frontend names it `matchesPlayed`).
 ---
 
 ## Parking lot
+
+0. **The FCF's broken goal figures — deliberately NOT corrected.**
+
+   `goles` is the home and away tallies concatenated as strings: 5 at home and 10 away prints as
+   `510`. The evidence is not in doubt —
+
+   - across 160 teams, **32%** publish more scorer-goals than the team scored all season; after
+     splitting home|away, **0%** do;
+   - the one 3-digit value in 2650 rows (Quarta Catalana, Grup 22) reads `110` for a player whose
+     team scored **111** all season. Both possible splits agree on **11**, in 25 appearances;
+   - it is the same bug as `played:"1515"` in the standings, which IS corrected because
+     `coefficient` gives an exact derivation there. No such second field exists per player.
+
+   **The owner's call is to leave it**, and the reasoning is sound beyond "publish the official
+   number": this is a bug in FCF's new website that they will very likely fix. **If they fix it
+   and we are splitting, we would double-correct and be silently wrong** — showing 11 where the
+   feed now correctly says 76. Staying raw is the position that survives their fix without anyone
+   noticing.
+
+   `FCF_SCORERS_RAW = true` in js/utils.js is the switch; `splitFcfTally` is written and tested
+   for the day it is wanted. If it is ever flipped, the note under the table must stop calling the
+   figures official.
+
+   > Watch for the upstream fix: when a group's scorer sums stop exceeding its teams' goal totals,
+   > FCF has repaired it and nothing here needs to change.
+
+
 
 Renumbered items are the same items.
 

@@ -4518,3 +4518,41 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .update-banner { left: 1rem; right: 1rem; transform: translate(0, 200%); }
   .update-banner.show { transform: translate(0, 0); }
 }
+
+/* ── The referee under a fixture, and his record in this division ──────
+   Sits inside the first cell of the matchday row rather than in a column of
+   its own: the table already carries seven and an eighth would squeeze the
+   kit icons off a phone. */
+.md-ref{display:flex;align-items:baseline;gap:.35rem;margin-top:.25rem;flex-wrap:wrap;}
+.md-ref-label{font-size:.68rem;color:var(--text-secondary);text-transform:uppercase;
+  letter-spacing:.04em;}
+.md-ref-name{background:none;border:none;padding:0;cursor:pointer;font:inherit;
+  font-size:.74rem;font-weight:600;color:var(--accent,#F30000);text-align:left;
+  text-decoration:underline dotted;text-underline-offset:2px;}
+.md-ref-name:hover{text-decoration-style:solid;}
+
+.md-ref-panel{margin:.5rem 0 .25rem;padding:.6rem .7rem;border-radius:10px;
+  border:1px solid var(--border,#e5e5e5);background:var(--bg-subtle,#fafafa);
+  max-width:26rem;}
+.md-ref-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  font-size:.82rem;}
+.md-ref-close{background:none;border:none;font-size:1.15rem;line-height:1;cursor:pointer;
+  color:var(--text-secondary);padding:0 .15rem;}
+.md-ref-div{font-size:.7rem;color:var(--text-secondary);margin:.15rem 0 .45rem;}
+
+/* Home / draw / away as one bar. Percentages only — the counts are spelled
+   out underneath, and a bar with no numbers invites eyeballing. */
+.md-ref-bar{display:flex;height:1.15rem;border-radius:5px;overflow:hidden;
+  font-size:.62rem;font-weight:700;color:#fff;}
+.md-ref-seg{display:flex;align-items:center;justify-content:center;min-width:0;
+  overflow:hidden;white-space:nowrap;}
+.md-ref-h{background:#2E7D32;}
+.md-ref-d{background:#9E9E9E;}
+.md-ref-a{background:#1565C0;}
+
+.md-ref-thin{font-size:.72rem;color:var(--text-secondary);font-style:italic;
+  padding:.2rem 0;}
+.md-ref-counts{display:flex;flex-wrap:wrap;gap:.5rem .9rem;margin-top:.45rem;
+  font-size:.72rem;}
+.md-ref-note{margin-top:.35rem;font-size:.66rem;color:var(--text-secondary);
+  line-height:1.35;}

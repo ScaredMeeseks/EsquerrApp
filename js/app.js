@@ -183,6 +183,23 @@
     'cal.refresh_nochange': { ca:'Tot al dia. Cap canvi a la FCF.', es:'Todo al día. Ningún cambio en la FCF.', en:'Up to date — nothing changed at the FCF.' },
     'cal.refresh_failed': { ca:'No s\'ha pogut actualitzar el calendari.', es:'No se ha podido actualizar el calendario.', en:'Could not refresh the calendar.' },
     'cal.from_fcf':       { ca:'Partit oficial, importat de la FCF', es:'Partido oficial, importado de la FCF', en:'Official fixture, imported from the FCF' },
+    /* Referees. The two "note" strings are not boilerplate: without them a
+       reader takes an empty yellow-card figure for a lenient referee, and
+       takes a name for an identity. Both are wrong and both matter. */
+    'ref.whistle':        { ca:'Àrbitre:', es:'Árbitro:', en:'Referee:' },
+    'ref.loading':        { ca:'Carregant el registre de l\'àrbitre…', es:'Cargando el registro del árbitro…', en:'Loading the referee\'s record…' },
+    'ref.no_record':      { ca:'Encara no tenim partits d\'aquest àrbitre en aquesta categoria.', es:'Todavía no tenemos partidos de este árbitro en esta categoría.', en:'No matches recorded for this referee in this division yet.' },
+    'ref.this_division':  { ca:'Aquesta categoria', es:'Esta categoría', en:'This division' },
+    'ref.n_matches':      { ca:'{n} partits', es:'{n} partidos', en:'{n} matches' },
+    'ref.hda':            { ca:'Local/Empat/Visitant', es:'Local/Empate/Visitante', en:'Home/Draw/Away' },
+    'ref.home_wins':      { ca:'Victòries locals', es:'Victorias locales', en:'Home wins' },
+    'ref.draws':          { ca:'Empats', es:'Empates', en:'Draws' },
+    'ref.away_wins':      { ca:'Victòries visitants', es:'Victorias visitantes', en:'Away wins' },
+    'ref.reds':           { ca:'Vermelles', es:'Rojas', en:'Reds' },
+    'ref.doubles':        { ca:'Dobles grogues', es:'Dobles amarillas', en:'Second bookings' },
+    'ref.too_few':        { ca:'Només {n} partits: massa pocs per calcular percentatges.', es:'Solo {n} partidos: demasiado pocos para calcular porcentajes.', en:'Only {n} matches — too few to draw percentages from.' },
+    'ref.no_yellows':     { ca:'La FCF no publica les targetes grogues, així que no hi surten.', es:'La FCF no publica las tarjetas amarillas, así que no aparecen.', en:'The FCF does not publish yellow cards, so they are not shown.' },
+    'ref.name_only':      { ca:'Els àrbitres s\'identifiquen només pel nom: dos amb el mateix nom es comptarien junts.', es:'Los árbitros se identifican solo por el nombre: dos con el mismo nombre se contarían juntos.', en:'Referees are identified by name alone — two sharing one would be counted as the same person.' },
     'cal.th_kit_1':       { ca:'1a', es:'1a', en:'1st' },
     'cal.th_kit_2':       { ca:'2a', es:'2a', en:'2nd' },
     'cal.opp_kit_1':      { ca:'Equipació titular del rival (FCF)', es:'Equipación titular del rival (FCF)', en:'Opponent\'s first-choice kit (FCF)' },
@@ -1474,7 +1491,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 128;
+  const APP_VERSION = 129;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -15435,7 +15452,160 @@
       kitSockSvg(pieces.socks, MD_KIT_PX) + '</span></td>';
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     Who is refereeing, and what his record in THIS division is
+
+     The federation names the referee only on the acta page, so a crawler in
+     functions/index.js reads them and keeps two collections: `fcfRefIndex`,
+     one document per group-season holding acta → officials, and
+     `fcfReferees`, one per referee holding his figures per division.
+
+     The app therefore does TWO reads and no scraping: the group's index (one
+     document, all of this squad's fixtures) and, for a referee it wants to
+     show, his profile. Both are cached for the session — they change once a
+     week at most.
+
+     ⚠ Only the division this squad plays in is ever displayed. See
+     refereeDivisionStats in js/utils.js for why a career average is worse
+     than useless here.
+     ═══════════════════════════════════════════════════════════ */
+
+  var _refIndex = {};        // grupId → {actas, comp} | 'loading' | 'none'
+  var _refProfiles = {};     // slug → profile | 'loading' | 'none'
+  var _refOpen = null;       // {matchId, name, comp} — at most one panel open
+
+  /** The officials of one fixture, from the cached group index, or null. */
+  function mdRefereeFor(m) {
+    if (!m || !m.fcfActaId) return null;
+    var keys = Object.keys(_refIndex);
+    for (var i = 0; i < keys.length; i++) {
+      var idx = _refIndex[keys[i]];
+      if (!idx || typeof idx !== 'object') continue;
+      var e = (idx.actas || {})[String(m.fcfActaId)];
+      if (e && e.r && e.r.length) return {names: e.r, comp: idx.comp || ''};
+    }
+    return null;
+  }
+
+  /* One document per group, holding every fixture's officials. Loaded once
+     per session and re-rendered when it lands — never awaited on the render
+     path, because a fixture list must draw with or without it. */
+  function mdLoadRefIndex(grupId) {
+    var id = String(grupId || '');
+    if (!id || _refIndex[id]) return;
+    _refIndex[id] = 'loading';
+    db.collection('fcfRefIndex').where('grupId', '==', id).get()
+      .then(function (snap) {
+        /* Two seasons can share a group id in the index; the newest wins for
+           display, since these are this season's fixtures. */
+        var best = null;
+        snap.forEach(function (doc) {
+          var d = doc.data() || {};
+          if (!best || String(d.season || '') > String(best.season || '')) best = d;
+        });
+        _refIndex[id] = best || 'none';
+        if (best && currentPage === 'matchday') renderPage(getSession());
+      })
+      .catch(function () { _refIndex[id] = 'none'; });
+  }
+
+  function mdLoadRefProfile(name) {
+    var slug = fcfRefereeSlug(name);
+    if (!slug || _refProfiles[slug]) return;
+    _refProfiles[slug] = 'loading';
+    db.collection('fcfReferees').doc(slug).get()
+      .then(function (doc) {
+        _refProfiles[slug] = doc.exists ? (doc.data() || {}) : 'none';
+        if (currentPage === 'matchday') renderPage(getSession());
+      })
+      .catch(function () { _refProfiles[slug] = 'none'; });
+  }
+
+  /** The referee's name under a fixture, or '' when nobody is appointed. */
+  function mdRefereeTagHtml(m) {
+    var ref = mdRefereeFor(m);
+    if (!ref) return '';
+    var name = ref.names[0];
+    /* The match id rides on the button, not on the row. A read-only viewer
+       has no edit or delete button to read it off, and the panel has to work
+       for a player looking up Sunday's referee just as much as for a
+       delegate. */
+    return '<div class="md-ref"><span class="md-ref-label">' +
+      sanitize(t('ref.whistle')) + '</span>' +
+      '<button type="button" class="md-ref-name" data-ref-name="' +
+      sanitize(name) + '" data-ref-comp="' + sanitize(ref.comp) +
+      '" data-ref-match="' + sanitize(String(m.id)) + '">' +
+      sanitize(name) + '</button></div>';
+  }
+
+  /**
+   * The referee panel: his record in the division this squad plays in.
+   *
+   * Everything it will not claim is as deliberate as what it shows —
+   *  · one division only, named on the panel, never a career blend;
+   *  · no percentages under REF_MIN_SAMPLE matches, because three games at
+   *    100% home wins would mislead a delegate who trusted it;
+   *  · a standing note that YELLOW CARDS DO NOT EXIST in the federation's
+   *    data, so their absence is not read as "he books nobody";
+   *  · a note that referees are identified by NAME alone — FCF publishes no
+   *    id, so two officials sharing one would merge and nothing in the data
+   *    could separate them.
+   */
+  function mdRefPanelHtml(name, comp) {
+    var slug = fcfRefereeSlug(name);
+    var p = _refProfiles[slug];
+    if (p === 'loading' || !p) {
+      return '<div class="md-ref-panel"><div class="fcf-empty">' +
+        sanitize(t('ref.loading')) + '</div></div>';
+    }
+    var head = '<div class="md-ref-head"><strong>' + sanitize(name) + '</strong>' +
+      '<button type="button" class="md-ref-close" data-ref-close="1">&times;</button></div>';
+    var s = p === 'none' ? null : refereeDivisionStats(p, comp);
+    if (!s) {
+      /* He exists but has never worked this tier, or has no record at all.
+         Both read as "nothing to show", which is the honest answer. */
+      return '<div class="md-ref-panel">' + head +
+        '<div class="fcf-empty">' + sanitize(t('ref.no_record')) + '</div></div>';
+    }
+    var pctRow = s.pct ?
+      '<div class="md-ref-bar">' +
+        '<span class="md-ref-seg md-ref-h" style="width:' + s.pct.H + '%" title="' +
+          sanitize(t('ref.home_wins')) + '">' + s.pct.H + '%</span>' +
+        '<span class="md-ref-seg md-ref-d" style="width:' + s.pct.D + '%" title="' +
+          sanitize(t('ref.draws')) + '">' + s.pct.D + '%</span>' +
+        '<span class="md-ref-seg md-ref-a" style="width:' + s.pct.A + '%" title="' +
+          sanitize(t('ref.away_wins')) + '">' + s.pct.A + '%</span>' +
+      '</div>' :
+      '<div class="md-ref-thin">' +
+        sanitize(t('ref.too_few').replace('{n}', s.matches)) + '</div>';
+
+    return '<div class="md-ref-panel">' + head +
+      '<div class="md-ref-div">' + sanitize(comp || t('ref.this_division')) +
+        ' · ' + sanitize(t('ref.n_matches').replace('{n}', s.matches)) + '</div>' +
+      pctRow +
+      '<div class="md-ref-counts">' +
+        '<span>' + sanitize(t('ref.hda')) + ': ' + s.H + '/' + s.D + '/' + s.A + '</span>' +
+        '<span>🟥 ' + sanitize(t('ref.reds')) + ': ' + s.reds + '</span>' +
+        '<span>🟨🟨 ' + sanitize(t('ref.doubles')) + ': ' + s.doubles + '</span>' +
+      '</div>' +
+      '<div class="md-ref-note">' + sanitize(t('ref.no_yellows')) + '</div>' +
+      '<div class="md-ref-note">' + sanitize(t('ref.name_only')) + '</div>' +
+      '</div>';
+  }
+
+  /* Kick off the referee index for every group this club has configured.
+     Fire-and-forget on purpose: the fixture list must draw immediately, with
+     or without referees, and the load re-renders when it lands. */
+  function mdLoadAllRefIndices() {
+    var links = (_clubConfig && _clubConfig.fcfLinks) || {};
+    Object.keys(links).forEach(function (key) {
+      var grupId = fcfGrupId(links[key]);
+      if (grupId) mdLoadRefIndex(grupId);
+    });
+  }
+
   function renderMatchday() {
+    mdLoadAllRefIndices();
     const now = new Date();
     const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
     /* A fitness coach reads the fixture list; scheduling is not their job.
@@ -15514,8 +15684,15 @@
       var gone = m.fcfRemoved ? ' md-row-removed' : '';
       var mapBtn = m.mapLink ? ' <a class="md-map-link" href="' + sanitize(safeHttpUrl(m.mapLink)) +
         '" target="_blank" rel="noopener noreferrer" title="' + sanitize(t('cal.open_map')) + '">📍</a>' : '';
+      /* The referee sits under the fixture rather than in a column of its
+         own: the table already carries seven, and a name of forty characters
+         in an eighth would squeeze the kits on a phone. */
+      var refTag = mdRefereeTagHtml(m);
+      var refPanel = (_refOpen && String(_refOpen.matchId) === String(m.id)) ?
+        mdRefPanelHtml(_refOpen.name, _refOpen.comp) : '';
       return '<tr class="md-saved-row' + gone + '">' +
-        '<td>' + mdFixtureTagHtml(m) + homeName + ' vs ' + awayName + '</td>' +
+        '<td>' + mdFixtureTagHtml(m) + homeName + ' vs ' + awayName +
+          refTag + refPanel + '</td>' +
         mdKitCellHtml(m.opponentKit, 'cal.opp_kit_1', m.opponentBadge) +
         mdKitCellHtml(m.opponentKitAway, 'cal.opp_kit_2', m.opponentBadge) +
         '<td>' + dateFmt + '</td>' +
@@ -18691,6 +18868,32 @@
   }
 
   function bindSavedMatchHandlers() {
+    /* The referee's name opens his record for THIS division, and closes it
+       again. Clicking a different fixture's referee moves the panel rather
+       than opening a second one — two panels of near-identical figures side
+       by side is how you misread one for the other. */
+    $$('.md-ref-name').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var matchId = btn.dataset.refMatch || '';
+        var name = btn.dataset.refName || '';
+        if (_refOpen && _refOpen.name === name &&
+            String(_refOpen.matchId) === String(matchId)) {
+          _refOpen = null;
+        } else {
+          _refOpen = {matchId: matchId, name: name, comp: btn.dataset.refComp || ''};
+          mdLoadRefProfile(name);
+        }
+        renderPage(getSession());
+      });
+    });
+
+    $$('[data-ref-close]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _refOpen = null;
+        renderPage(getSession());
+      });
+    });
+
     // Edit button on saved match
     $$('.md-edit-match').forEach(function(btn) {
       btn.addEventListener('click', function() {

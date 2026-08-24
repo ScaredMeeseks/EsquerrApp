@@ -28,6 +28,10 @@ const {FieldValue} = require("firebase-admin/firestore");
 // second copy and how the two are kept honest.
 const {
   fcfGrupIdOf, sameClubNameOf, parseFcfFixtures, parseFcfKits, mergeFcfFixtures,
+  parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
+  fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
+  fcfShouldRebuild,
+  FCF_SENIOR_TIERS, FCF_DISCIPLINE_F11,
 } = require("./fcf");
 admin.initializeApp();
 
@@ -1449,6 +1453,406 @@ exports.scheduledFcfSync = onSchedule({
     }
   }
   logger.info("fcfSync done", {clubs, squads});
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   The referee database
+   ═══════════════════════════════════════════════════════════════════════
+
+   Who refereed a match, and what his record in this division looks like.
+
+   The federation publishes referees NOWHERE in its JSON API — only in the
+   HTML of the acta page — so this is the one scraping job in the app, and it
+   is bounded accordingly: the five senior tiers of Futbol 11, which is 64
+   groups and ~14,400 matches a season rather than the 532 groups and
+   ~106,000 matches that all of Futbol 11 would be.
+
+   Two jobs share one crawler:
+
+     crawlFcfActas   the backfill. Runs nightly, works through a queue of
+                     group-seasons a few hundred actas at a time, and once the
+                     queue is exhausted costs nothing until the scope changes.
+     fcfWeeklyRefs   Fridays at six, over every group: last weekend's results
+                     and referees, plus the appointments the federation posts
+                     on the Thursday.
+
+   Nothing here is on a user's path. Everything is written to Firestore and
+   read from there by the app.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const FCF_ACTA_URL = "https://www.fcf.cat/ca/competicio/acta/";
+
+/* Says who we are and how to reach us. The federation's robots.txt allows
+   `/ca/competicio/acta/…` (it disallows `/api/`, which is a separate
+   conversation about the endpoints every FCF feature already uses), and an
+   automated reader that identifies itself is the least this should do. */
+const FCF_CRAWL_UA = "EsquerrApp/1.0 (+https://scaredmeeseks.github.io/EsquerrApp/)";
+
+/* Politeness, not throughput. Three at a time against a volunteer
+   federation's website, with a backfill that has no deadline — the whole job
+   is a few nights either way, and there is nothing to be gained by making it
+   one. */
+const FCF_CRAWL_CONCURRENCY = 3;
+/* The function's own limit is 540s; stopping at 480 leaves room to write the
+   cursor and the index, which is the part that must not be cut off. */
+const FCF_CRAWL_BUDGET_MS = 480 * 1000;
+
+const FCF_CRAWL_CFG = "fcfCrawl/config";
+/* TWO cursors over the same queue, not one. The nightly backfill and the
+   Friday pass walk the same 128 group-seasons but want different things —
+   the backfill only played matches, the Friday pass unplayed ones as well —
+   and a shared pointer would let whichever ran last decide what the other
+   collected. In practice that meant Saturday's backfill skating past the
+   groups Friday had not reached yet, and their appointments never being read
+   at all. */
+const FCF_CRAWL_STATE = "fcfCrawl/state";
+const FCF_WEEKLY_STATE = "fcfCrawl/weekly";
+
+/** An acta's HTML, or "" — a page that will not load is a gap, not a crash. */
+async function fcfActaHtml(actaId) {
+  const resp = await fetch(FCF_ACTA_URL + encodeURIComponent(actaId), {
+    headers: {"User-Agent": FCF_CRAWL_UA},
+  });
+  if (!resp.ok) throw new Error("acta " + actaId + " returned " + resp.status);
+  return resp.text();
+}
+
+/**
+ * The crawl scope, with defaults that are deliberately small.
+ *
+ * `enabled` is false until someone turns it on, and `onlyGroups` narrows the
+ * crawl to a handful of group ids. Both live in Firestore rather than in this
+ * file so that widening from "our own groups" to "all 64" is a config edit
+ * and not a deploy — the difference between them is days of crawling, and
+ * that is a decision to take deliberately and be able to undo in a minute.
+ */
+async function fcfCrawlConfig() {
+  const snap = await db.doc(FCF_CRAWL_CFG).get();
+  const c = (snap.exists && snap.data()) || {};
+  const tiers = Array.isArray(c.tiers) && c.tiers.length ?
+    c.tiers.filter((t) => FCF_SENIOR_TIERS.indexOf(t) !== -1) : FCF_SENIOR_TIERS;
+  return {
+    enabled: c.enabled === true,
+    seasons: Array.isArray(c.seasons) && c.seasons.length ?
+      c.seasons.map(String) : [],
+    tiers,
+    onlyGroups: (Array.isArray(c.onlyGroups) ? c.onlyGroups : []).map(String),
+    budgetMs: Number(c.budgetMs) > 0 ? Number(c.budgetMs) : FCF_CRAWL_BUDGET_MS,
+    concurrency: Number(c.concurrency) > 0 ?
+      Math.min(Number(c.concurrency), 5) : FCF_CRAWL_CONCURRENCY,
+  };
+}
+
+/**
+ * Every group-season in scope, as `[{season, competicioId, comp, grupId}]`.
+ *
+ * ⚠ Competition ids are NOT stable between seasons — Lliga Elit is 58161860
+ * in 2026-27 and 54322936 in 2025-26 — so they are resolved from the label
+ * every time the queue is built. A hardcoded id would not fail; it would
+ * quietly backfill the wrong year, which is far worse.
+ */
+async function fcfBuildQueue(cfg) {
+  const out = [];
+  for (const season of cfg.seasons) {
+    const comps = await fcfGet("competicions?disciplinaId=" +
+      FCF_DISCIPLINE_F11 + "&temporada=" + encodeURIComponent(season));
+    for (const tier of pickFcfTiers(comps, cfg.tiers)) {
+      const groups = await fcfGet("grupos?competicioId=" + tier.competicioId);
+      fcfList(groups).forEach((g) => {
+        const grupId = String((g || {}).value || "");
+        if (!grupId) return;
+        if (cfg.onlyGroups.length && cfg.onlyGroups.indexOf(grupId) === -1) return;
+        out.push({
+          season,
+          competicioId: tier.competicioId,
+          comp: tier.label,
+          grupId,
+          grup: String((g || {}).label || ""),
+        });
+      });
+    }
+  }
+  return out;
+}
+
+/** A scope fingerprint, so the queue is rebuilt when the config changes. */
+function fcfScopeKey(cfg) {
+  return [cfg.seasons.join(","), cfg.tiers.join(","),
+    cfg.onlyGroups.slice().sort().join(",")].join("|");
+}
+
+/**
+ * Fetch the outstanding actas of ONE group and fold them into its index.
+ *
+ * Returns `{fetched, withRef, closedFetched, remaining}`. `remaining` is what
+ * the budget did not reach — the caller stops on it rather than pretending
+ * the group is done, and the next run picks the same group up again.
+ *
+ * `wantUnplayed` is what separates the two callers: the backfill only cares
+ * about matches that have been played, while the Friday pass also reads the
+ * unplayed ones to learn who has been appointed for the weekend.
+ */
+async function _crawlGroup(entry, opts) {
+  const o = opts || {};
+  const deadline = o.deadline || (Date.now() + FCF_CRAWL_BUDGET_MS);
+  const id = fcfRefIndexId(entry.season, entry.grupId);
+  const ref = db.collection("fcfRefIndex").doc(id);
+
+  const [snap, partidos] = await Promise.all([
+    ref.get(),
+    fcfGet("partidos?grupId=" + encodeURIComponent(entry.grupId)),
+  ]);
+  const stored = (snap.exists && snap.data()) || {};
+  const actas = stored.actas || {};
+
+  let due = fcfActasDue(partidos, actas);
+  if (!o.wantUnplayed) due = due.filter((d) => d.closed);
+  if (o.maxActas) due = due.slice(0, o.maxActas);
+
+  const stats = {fetched: 0, withRef: 0, closedFetched: 0, remaining: 0};
+  const next = {};
+  let i = 0;
+  let stopped = false;
+
+  async function lane() {
+    for (;;) {
+      if (Date.now() > deadline) { stopped = true; return; }
+      const d = due[i++];
+      if (!d) return;
+      try {
+        const html = await fcfActaHtml(d.actaId);
+        const {referees} = parseFcfActa(html);
+        next[d.actaId] = fcfActaEntry(d, referees);
+        stats.fetched++;
+        if (d.closed) {
+          stats.closedFetched++;
+          if (referees.length) stats.withRef++;
+        }
+      } catch (err) {
+        /* One unreachable acta is a gap in a database of thousands, not a
+           reason to abandon the run. It is simply not written, so the next
+           pass finds it due again. */
+        logger.warn("acta fetch failed", {actaId: d.actaId, err: String(err)});
+      }
+    }
+  }
+  const lanes = [];
+  const width = Math.min(o.concurrency || FCF_CRAWL_CONCURRENCY, due.length);
+  for (let k = 0; k < width; k++) lanes.push(lane());
+  await Promise.all(lanes);
+  /* Items below `i` were all CLAIMED, and Promise.all waited for the ones
+     still in flight, so everything below `i` is genuinely done. */
+  stats.remaining = stopped ? Math.max(0, due.length - i) : 0;
+
+  /* Sendings-off, from the one place the federation records them. Refreshed
+     whenever the group is visited and stored beside the actas so that
+     rebuilding the profiles later needs no network at all — see
+     parseFcfSanctionsByActa on why the acta itself cannot supply them. */
+  let cards = stored.cards || {};
+  if (stats.fetched || !snap.exists) {
+    try {
+      cards = parseFcfSanctionsByActa(await fcfGet(
+          "sanciones?grupId=" + encodeURIComponent(entry.grupId) +
+          "&temporada=" + encodeURIComponent(entry.season)));
+    } catch (err) {
+      logger.warn("sanciones failed", {grupId: entry.grupId, err: String(err)});
+    }
+  }
+
+  if (stats.fetched || !snap.exists) {
+    const merged = Object.assign({}, actas, next);
+    await ref.set({
+      season: String(entry.season),
+      grupId: String(entry.grupId),
+      comp: entry.comp,
+      grup: entry.grup || "",
+      actas: merged,
+      cards,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  }
+  return stats;
+}
+
+/**
+ * Walk the queue until the budget runs out.
+ *
+ * The cursor is a position in a stored queue rather than a fine-grained
+ * season/competition/group/jornada tuple: a group either has outstanding
+ * actas or it does not, and asking it costs one cheap `partidos` request. So
+ * a run that is cut off mid-group simply leaves the pointer where it is, and
+ * the next run re-asks and carries on. There is no partial state to keep
+ * consistent, which is the kind of state that rots.
+ */
+async function _runFcfCrawl(opts) {
+  const o = opts || {};
+  const cfg = await fcfCrawlConfig();
+  if (!cfg.enabled) return {skipped: "disabled"};
+  if (!cfg.seasons.length) return {skipped: "no-seasons"};
+
+  const stateRef = db.doc(o.stateDoc || FCF_CRAWL_STATE);
+  const state = (await stateRef.get()).data() || {};
+  const scope = fcfScopeKey(cfg);
+
+  let queue = Array.isArray(state.queue) ? state.queue : [];
+  let at = Number(state.at) || 0;
+  if (fcfShouldRebuild(state, scope, o.freshFor)) {
+    queue = await fcfBuildQueue(cfg);
+    at = 0;
+    await stateRef.set({
+      scope, queue, at,
+      freshFor: o.freshFor || null,
+      builtAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  }
+
+  const deadline = Date.now() + cfg.budgetMs;
+  const total = {groups: 0, fetched: 0, withRef: 0, closedFetched: 0};
+  while (at < queue.length && Date.now() < deadline) {
+    const entry = queue[at];
+    try {
+      const s = await _crawlGroup(entry, {
+        deadline,
+        concurrency: cfg.concurrency,
+        wantUnplayed: !!o.wantUnplayed,
+      });
+      total.groups++;
+      total.fetched += s.fetched;
+      total.withRef += s.withRef;
+      total.closedFetched += s.closedFetched;
+      // Cut off mid-group: leave the pointer here and resume next run.
+      if (s.remaining) break;
+    } catch (err) {
+      /* One group's outage must not wedge the queue behind it for ever. */
+      logger.error("crawl group failed", {entry, err: String(err)});
+    }
+    at++;
+  }
+  await stateRef.set({at, scope, freshFor: o.freshFor || null,
+    ranAt: FieldValue.serverTimestamp()}, {merge: true});
+
+  /* ── The v117 alarm ──────────────────────────────────────────────────
+     Referees are scraped out of HTML, so a redesign takes them away without
+     taking anything else. Fetching hundreds of PLAYED actas and finding a
+     referee on none of them is not a quiet season — it is the parser having
+     stopped working, and it must be shouted about rather than recorded as
+     "no referees this week". */
+  if (total.closedFetched >= 10 && total.withRef === 0) {
+    logger.error("FCF acta parser found NO referees at all — has fcf.cat " +
+      "changed? parseFcfActa needs checking.", total);
+  }
+  total.done = at >= queue.length;
+  total.at = at;
+  total.queued = queue.length;
+  return total;
+}
+
+/* The backfill: nightly, and idle once it has caught up. Played matches only —
+   an unplayed acta has no result and no cards, so it teaches the database
+   nothing. */
+exports.crawlFcfActas = onSchedule({
+  schedule: "0 3 * * *",
+  timeZone: "Europe/Madrid",
+  region: "us-central1",
+  timeoutSeconds: 540,
+  memory: "512MiB",
+}, async () => {
+  const r = await _runFcfCrawl({wantUnplayed: false});
+  logger.info("crawlFcfActas", r);
+});
+
+/* The weekly pass: Friday mornings, over every group in scope, doing both
+   halves of the week at once — last weekend's results and referees, and the
+   appointments the federation posts on a Thursday for the coming one. One job
+   rather than two, because the queue, the budget and the parser are identical
+   either way; the only difference is whether unplayed actas are wanted, and
+   that is a flag.
+   THREE firings, not one: a weekend is ~480 played actas plus ~480 newly
+   appointed ones, which at three-at-a-time is nine minutes of fetching and
+   does not fit in one 540-second function. Each firing continues where the
+   last ran out of budget, and the 06:00 one starts the week afresh. */
+exports.fcfWeeklyRefs = onSchedule({
+  schedule: "0 6,7,8 * * 5",
+  timeZone: "Europe/Madrid",
+  region: "us-central1",
+  timeoutSeconds: 540,
+  memory: "512MiB",
+}, async () => {
+  const today = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
+      .format(new Date());
+  const r = await _runFcfCrawl({
+    wantUnplayed: true,
+    stateDoc: FCF_WEEKLY_STATE,
+    freshFor: today,
+  });
+  logger.info("fcfWeeklyRefs", r);
+  /* Only once the sweep is complete. The rebuild reads every index document
+     and rewrites every profile; doing it after each of the three firings
+     would treble that for figures nobody reads until the sweep has finished
+     anyway. */
+  if (r.done) await _rebuildFcfReferees();
+});
+
+/**
+ * Rebuild every referee profile from the raw index.
+ *
+ * Deliberately a full recompute rather than an incremental update. The whole
+ * point of keeping the raw index is that the derivation can change — when the
+ * federation finally publishes yellow cards, or when the shape of the profile
+ * does — without re-fetching ten gigabytes of HTML. An incremental path would
+ * be a second, subtly different implementation of the same arithmetic, and
+ * the two would drift.
+ */
+async function _rebuildFcfReferees() {
+  const snap = await db.collection("fcfRefIndex").get();
+  const groups = [];
+  const cards = {};
+  snap.docs.forEach((doc) => {
+    const d = doc.data() || {};
+    groups.push({comp: d.comp || "", season: d.season || "", actas: d.actas || {}});
+    Object.keys(d.cards || {}).forEach((actaId) => {
+      cards[actaId] = d.cards[actaId];
+    });
+  });
+  const profiles = aggregateFcfReferees(groups, cards);
+  const slugs = Object.keys(profiles);
+  /* Chunked at 450, under Firestore's 500-op ceiling, the same way every
+     other bulk write here does it. A full rebuild across both seasons is a
+     few thousand referees. */
+  let batch = db.batch();
+  let ops = 0;
+  for (const slug of slugs) {
+    batch.set(db.collection("fcfReferees").doc(slug),
+        Object.assign({updatedAt: FieldValue.serverTimestamp()}, profiles[slug]));
+    if (++ops >= 450) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+  logger.info("fcfReferees rebuilt", {referees: slugs.length, groups: groups.length});
+  return {referees: slugs.length, groups: groups.length};
+}
+
+/* Kicking the crawl by hand: the backfill is days long and nobody wants to
+   wait for 3am to find out the scope was wrong. Superuser only — it spends
+   the federation's bandwidth, not ours. */
+exports.runFcfCrawl = onCall({region: "us-central1", timeoutSeconds: 540,
+  memory: "512MiB"}, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  if ((request.auth.token || {}).email !== SUPERUSER_EMAIL) {
+    throw new HttpsError("permission-denied", "Només l'administrador.");
+  }
+  const d = request.data || {};
+  if (d.rebuildOnly) return _rebuildFcfReferees();
+  const r = await _runFcfCrawl({
+    wantUnplayed: !!d.wantUnplayed,
+    stateDoc: d.weekly ? FCF_WEEKLY_STATE : FCF_CRAWL_STATE,
+    freshFor: d.restart ? String(Date.now()) : "",
+  });
+  if (d.aggregate) r.profiles = await _rebuildFcfReferees();
+  return r;
 });
 
 // ── Membership helpers (roster email lists) ──────────────────

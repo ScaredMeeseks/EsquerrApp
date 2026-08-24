@@ -3690,3 +3690,128 @@ button doing nothing, "Més tard" reloading, and the banner losing its styleshee
 > 'function'` passes against an empty function — the test now presses the button and watches the
 > caches go. Both are the same lesson this week keeps giving: **a green test that never exercised
 > the thing is worse than no test.**
+
+### 2026-08-24 — v129: the referee database
+
+Item 4 of the owner's list. Every fixture already comes from the federation; this adds **who is
+refereeing it** and what his record in *this division* looks like.
+
+#### What the FCF actually publishes, and what it does not
+
+| | |
+|---|---|
+| Referee + assistants | ✅ on the acta page, server-rendered. 30/30 extracted across all five tiers. |
+| **Yellow cards** | ❌ **nowhere at all.** |
+| Reds / second bookings | ✅ but from `sanciones`, not the acta. |
+| Results, divisions | ✅ from `partidos`, already used. |
+
+**The cards proof.** `sanciones` names a player sent off for two yellows in acta 3781800. That acta
+renders no card markers whatsoever — the coloured swatches on every acta are a legend, byte
+identical whether or not anyone was booked. Yellows are absent, not merely hidden.
+
+What replaces them: every sanction carries `codacta`, so one JSON request per group-season
+attributes every sending-off to the referee who gave it **without scraping a single card**. The
+classification comes from `cod_tiposancion` — `102` a second booking, `103` a direct expulsion,
+`101` an accumulation — not from `motivo_sancion`, which is a paragraph of Catalan legalese that
+would have to be pattern-matched in three languages.
+
+> Code 101 *is* evidence of a yellow in that match — it is the fifth-booking ruling. It is
+> deliberately not counted: it fires once every five, so the result would look like a yellow-card
+> tally and be a fifth of one.
+
+#### The size of it, measured rather than estimated
+
+`partidos?grupId=` returns every match in a group with its `CODACTA` already attached, so the crawl
+list costs **64 requests**, not a discovery crawl.
+
+```
+Lliga Elit 1 · Primera 3 · Segona 6 · Tercera 18 · Quarta 36   =  64 groups
+one season      14,390 matches        one acta   370 KB, 1.7 s
+two seasons     ~28,800 actas ≈ 10.6 GB ≈ 4.5 h at concurrency 3
+weekly pass     ~480 played + ~480 upcoming ≈ 9 min
+```
+
+The owner's chosen scope — the five senior Futbol 11 tiers — is a **twentieth** of all Futbol 11
+(532 groups, ~106,000 matches, ~20 h). The youth, women's and lúdica competitions are what make
+that number.
+
+⚠ **Competition ids are not stable between seasons.** Lliga Elit is `58161860` in 2026-27 and
+`54322936` in 2025-26, so they are resolved **by label every run**. A hardcoded id would not fail;
+it would quietly backfill the wrong year.
+
+#### The pieces
+
+`parseFcfActa` in **functions/fcf.js** — bounded at `<h3>Àrbitres</h3>` and the next `<h3>`, rows
+filtered on containing a comma (the federation writes `COGNOMS, NOM`; the "Sense àrbitres
+assignats" placeholder reuses the same markup, and matching the placeholder text would need three
+languages and break when they reword it). `referees[0]` is the referee; the rest ran the line.
+
+Two collections. `fcfRefIndex/{season}_{grupId}` holds acta → officials + result + the sanctions
+join, ~240 entries a document. `fcfReferees/{slug}` holds the derived profile, **keyed by
+division** — which is not a breakdown for its own sake but exactly what the match page reads.
+
+Two scheduled jobs over one queue but **two cursors**: `crawlFcfActas` nightly (played matches
+only, idle once caught up) and `fcfWeeklyRefs` Fridays at 6, 7 and 8 (a weekend does not fit in one
+540-second function). A shared cursor would have let Saturday's backfill skate past the groups
+Friday had not reached, and their appointments would never have been read.
+
+> **The re-fetch rule is "indexed *as closed*", not "seen"** — the one guard here whose failure is
+> invisible. The Friday pass reads *unplayed* actas for the appointments, so by Monday the index
+> already "has" the match; keyed on presence alone, every match that job touched would be
+> permanently invisible to the historian, and the only symptom months later would be referees whose
+> records stopped growing.
+
+#### The UI, and what it refuses to say
+
+Only the division this squad plays in, named on the panel. **No percentages under six matches** —
+three games at 100% home wins is not a finding, and a delegate who trusted it would be worse
+informed than if we had shown nothing; the counts stay, only the inference is suppressed. Two
+standing notes: yellows are unpublished (so their absence is not read as a lenient referee), and
+**referees are identified by name alone** — FCF publishes no id, so two sharing one would merge and
+nothing in the data could separate them.
+
+#### Tests
+
+Unit 1078 → **1109**. Four new suites, all added to `test:unit` **by hand**: `fcf-acta.test.js`,
+`fcf-referees.test.js`, `fcf-referee-render.test.js`, `suite-registry.test.js`.
+
+**Twenty mutations, each failing at least one test**: the comma filter, the section bound, the last
+heading, the dedupe, entity decoding, accent folding in the slug, slug separator trimming, throwing
+on bad input, both halves of the re-fetch rule, tier matching by prefix, crediting assistants,
+counting unplayed matches, dropping the division split, 0-0 as unreadable, counting accumulations,
+counting club rulings, an unplayed acta looking played, aliasing the referee array, and dropping
+the season from the index id.
+
+> **Two tests initially passed for the wrong reason and were rewritten.** The tier test asserted
+> *labels*, which the function echoes back from the wanted list — so it passed even when every
+> competition resolved to the wrong id; it now asserts the ids, and the cup variants are listed
+> *before* the tier they shadow so ordering luck cannot save it. And the club-ruling test was
+> shadowed by the code filter, so it now uses a synthetic club ruling that *does* carry a
+> sending-off code — the only case where the `tipo` guard does any work.
+
+`suite-registry.test.js` closes the standing trap for good: mocha is handed an explicit file list,
+and `focus-plan.test.js` was missing from it for several versions and silently never ran. The guard
+fails when any suite on disk is unregistered, when the list names a file that no longer exists, and
+it lists itself.
+
+The v123 and v125 guards are repeated for this feature: **every helper the block calls must be
+declared in `js/`** (v123 shipped tabs whose parsers lived in `functions/`, dead on every screen,
+with both suites green) and **every class it emits must have a CSS rule** (v125 shipped a feature
+whose stylesheet append was chained behind a failing `node --check`). Both were mutation-verified.
+
+#### Fixtures, and why they are windows
+
+`test/fixtures/acta-*.html` are ~3.6 KB slices of real 400 KB acta pages, cut by
+`fixtures/capture-acta.js`. This repo is public and GitHub Pages serves it; committing whole pages
+would republish a few hundred footballers' names to fix a parser that reads one box. A test asserts
+the fixtures contain no `licencia`, no `ficha`, no DNI-shaped token, and **no visible text but the
+referees, the role labels and the section headings** — so a wider re-capture fails rather than
+quietly publishing a line-up.
+
+#### Not yet true
+
+Nothing is crawled until `fcfCrawl/config` is created with `enabled: true` — the default is off,
+because turning it on aims tens of thousands of requests at the federation's website. And **no
+2026-27 fixture has been played**, so it could not be confirmed that appointments appear on the
+Thursday; the Friday job is built on the owner's knowledge of how the federation works. If the
+season's first Friday comes back with no appointments, only that half of the job is affected.

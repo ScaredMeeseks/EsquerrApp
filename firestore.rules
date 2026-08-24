@@ -455,5 +455,43 @@ service cloud.firestore {
     match /joinAttempts/{uid} {
       allow read, write: if false;
     }
+
+    /* ── The referee database ────────────────────────────────────────────
+       Built by the crawler in functions/index.js from what the federation
+       publishes openly: who refereed a match, what the result was, and the
+       sendings-off `sanciones` records. Nothing here is private, nothing is
+       club-scoped, and there is no personal data beyond the officials' names
+       — which fcf.cat prints on every match sheet.
+
+       READ is for any signed-in user: a delegate opens a fixture and wants
+       the referee's record in his own division. There is nothing to gate it
+       on, and gating it per club would mean a copy per club of a table that
+       is identical for everyone.
+
+       WRITE is `false` for everybody, superuser included. The only writer is
+       the Admin SDK inside the scheduled crawl, which bypasses rules
+       entirely, and these are DERIVED documents: a hand edit would survive
+       until the next rebuild and then vanish, which is worse than not being
+       possible at all. */
+    match /fcfReferees/{slug} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    /* The raw acta→referee index the profiles are rebuilt from. Readable for
+       the same reason and just as un-writable; the app does not currently
+       need it, but keeping it readable means a question the profiles cannot
+       answer can be checked without a deploy. */
+    match /fcfRefIndex/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    /* Crawl scope and cursor. NOT client-readable: the config decides how
+       many requests get aimed at the federation's website, and the queue is a
+       hundred-plus entries of machinery nobody's phone should download. */
+    match /fcfCrawl/{docId} {
+      allow read, write: if false;
+    }
   }
 }

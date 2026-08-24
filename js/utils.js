@@ -327,6 +327,65 @@ function normTeamName(s) {
   return stripped || bare;
 }
 
+/* ── Referees ──────────────────────────────────────────────────────────
+ *
+ * A referee's key, and the figures the match page shows for him.
+ *
+ * fcfRefereeSlug is a DUPLICATE of the copy in functions/fcf.js, and has to
+ * be: the functions deploy uploads functions/ alone, so js/ does not exist
+ * there and a require would resolve on the dev machine and fail in
+ * production. test/fcf-acta.test.js runs one input table through BOTH copies
+ * and asserts they agree — the crawler keys profile documents with its copy
+ * and the app looks them up with this one, so a disagreement means every
+ * referee silently has no record.
+ */
+function fcfRefereeSlug(name) {
+  return String(name === undefined || name === null ? '' : name)
+    .toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/* Below this many matches in a division, the percentages are suppressed.
+   Six is not a statistical threshold, it is an honesty one: a referee three
+   games into a tier has a "100% home wins" that means nothing, and a delegate
+   reading it before a match would be worse informed than if we had shown him
+   nothing. The counts are still shown — those are facts. */
+const REF_MIN_SAMPLE = 6;
+
+/**
+ * What to show about a referee FOR ONE DIVISION, or null if there is nothing.
+ *
+ * Only the division the team plays in, deliberately. A referee's Quarta record
+ * says nothing useful about how he handles a Segona match, and a blended
+ * career average mixes the two without saying so.
+ *
+ * `thin` is true when the sample is too small to draw a percentage from;
+ * `pct` is null in that case rather than a number the caller might render
+ * anyway.
+ */
+function refereeDivisionStats(profile, division, minSample) {
+  const min = minSample === undefined ? REF_MIN_SAMPLE : minSample;
+  const d = ((profile || {}).byDivision || {})[division];
+  if (!d || !d.matches) return null;
+  const n = d.matches;
+  const thin = n < min;
+  const pct = thin ? null : {
+    H: Math.round((d.H || 0) * 100 / n),
+    D: Math.round((d.D || 0) * 100 / n),
+    A: Math.round((d.A || 0) * 100 / n)
+  };
+  return {
+    name: (profile || {}).name || '',
+    division: division,
+    matches: n,
+    H: d.H || 0, D: d.D || 0, A: d.A || 0,
+    reds: d.reds || 0, doubles: d.doubles || 0,
+    perMatch: Math.round(((d.reds || 0) + (d.doubles || 0)) * 100 / n) / 100,
+    thin: thin,
+    pct: pct
+  };
+}
+
 /* The leading article, which the federation writes and clubs usually do not.
    "L'ESQUERRA DE L'EIXAMPLE, F.C." on fcf.cat is "Esquerra de l'Eixample
    F.C." in its own app; "EL PRAT" is "Prat"; "LA JONQUERA" is "Jonquera".
@@ -1053,6 +1112,9 @@ if (typeof module !== 'undefined' && module.exports) {
     // The rival's kit. fcfShirtFill is where FCF's pattern vocabulary meets
     // the app's fill encoding, and the only place that mapping exists.
     fcfBadgeOf,
+    fcfRefereeSlug,
+    refereeDivisionStats,
+    REF_MIN_SAMPLE,
     parseFcfSanctions,
     banCoversJornada,
     bansForJornada,
