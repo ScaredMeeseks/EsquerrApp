@@ -3960,3 +3960,61 @@ not.** The existing guard only asserts a class *has* a rule; this one asserts th
 pins the column — a fixed `flex` basis on the date and the icon, `text-align: left` on the name,
 and `align-items: center` on the row. Mutation-checked both ways: removing the icon's fixed basis
 and reverting the row to `baseline` each fail it with the reason named.
+
+### 2026-08-24 — v133: closing the push hole (parking-lot item 14)
+
+Writing a document to `teams/{id}/pushQueue` **is** the send — `onPushQueueCreate` picks it up and
+pushes to real phones. The rule guarding that was `allow create: if sameTeam(teamId)`: **any of the
+77 members**. And the consumer treated a document with no `targetPlayers` as *send to every member
+of the team*, taking `title`, `body` and `url` straight from it.
+
+So any member could push an arbitrary message, carrying an arbitrary link, to the whole club,
+wearing the club's own app icon.
+
+#### The live bug inside the hole
+
+Not hypothetical. The convocatòria sender maps roster ids to Firebase uids and **drops seeded
+numeric ones**:
+
+```js
+const targetUids = list.map(...).filter(Boolean);
+Push.sendToPlayers(teamId, targetUids, {...});
+```
+
+A call-up made entirely of seeded players yields `[]`. The old consumer tested
+`data.targetPlayers && data.targetPlayers.length` — `[]` is truthy but has no length — so it fell
+through to the broadcast branch. **Publishing a demo squad's call-up would have pushed to the
+entire club.**
+
+#### Both locks, because they fail differently
+
+`firestore.rules` now requires **staff**, a **non-empty bounded `targetPlayers`**, bounded
+`title`/`body`, `status == 'pending'`, and forbids `url`, `targetRole`, `sentAt` and `tokenCount`.
+The consumer repeats those limits: it refuses a targetless document rather than broadcasting,
+builds its payload field by field rather than spreading the document, clamps the text, and **never
+forwards `url`** — a push carrying a sender-chosen link is phishing with the club's icon on it.
+
+A rules deploy can be skipped silently (`--only hosting` does exactly that), which is why the
+server does not simply trust the rule.
+
+`sendToTeam` in `js/push.js` is **deleted**, not just unused. It was never called but *was*
+exported — one autocomplete from a club-wide send the rules then permitted. Genuine club-wide
+sends still exist (training and RPE reminders); they call `sendToTokens` directly and never come
+through this queue, so nothing was lost.
+
+#### Verification
+
+- **11 new emulator tests** in `rules.test.js` (164 passing). The proof that matters: reverting to
+  `sameTeam(teamId)` turns **8 of them red**, including "an ordinary player CANNOT send anything at
+  all". The hole was real, and the tests see it.
+- **12 unit tests** in `push-guard.test.js` for the two halves an emulator cannot reach — the
+  client never writing a targetless document, and the function refusing one.
+- **The live ruleset was read back from the Firebase Rules API** rather than assumed: released
+  15:35 UTC, `sameTeam` gone, every clause present.
+
+> The functions deploy reported `Deploy failed (exit 2)` and then, on retry, `No changes detected`
+> — which reads as though nothing shipped. It had: the Cloud Functions API showed
+> `onPushQueueCreate` updated at 15:37 (revision 47) and **all 24 functions ACTIVE**. The failure
+> was transient. Worth checking the API rather than the CLI's own summary when the two disagree.
+
+Unit 1157 → **1169**.

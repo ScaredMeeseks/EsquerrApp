@@ -108,13 +108,24 @@ firebase-schedule-crawlFcfActas-us-central1   "0 3 * * *"       Europe/Madrid   
 
 **v131 is deployed.** Scorelines in the history rows (`fcfActaEntry` now stores `gh`/`ga`).
 
-**v132 is uncommitted — FRONTEND ONLY. No functions, no rules.**
+**v132 is deployed.** The history rows' column alignment (frontend only).
+
+**v133 — rules and functions ARE DEPLOYED; the frontend is uncommitted.**
 
 ```
 git add -A && git commit && git push
 ```
 
-Version triple is at **132**. CSS only: the history rows' column alignment.
+Version triple is at **133**. The push-governance fix (parking-lot item 14).
+
+> **The functions deploy reported `Deploy failed (exit 2)`, then `No changes detected` on retry.**
+> It had in fact shipped: the Cloud Functions API showed `onPushQueueCreate` at revision 47,
+> updated in that window, and all 24 functions ACTIVE. When the CLI's summary and the API
+> disagree, believe the API.
+
+> **Running the emulator rules suite on this machine:**
+> `cd test && npx firebase emulators:exec --only firestore --project=demo-esquerrapp "npx mocha rules.test.js --timeout 20000"`
+> Java 21 is installed and on PATH; it takes about 20 s and is not in `test:unit`.
 
 > **The crawl stores goals from v131 onward.** Nothing has been crawled in production yet, so
 > there is no back-fill problem today — but if a crawl ever runs on an older build, those entries
@@ -395,8 +406,12 @@ Renumbered items are the same items.
     v55+ APK circulates.
 13. **`scheduledMatchAvailReminder`** is the last `onSchedule` not checked for the interval/band
     traps v112 and v113 fixed. `scheduledFcfSync` is a plain daily cron and does not have them.
-14. **Push governance** — `firestore.rules` lets any team member enqueue a push to the whole team,
-    with no staff check and no validation of `title`/`body`. `Push.sendToTeam` is dead code.
+14. ~~**Push governance**~~ — **CLOSED in v133.** Staff-only, a non-empty bounded `targetPlayers`
+    required, `title`/`body` bounded, `url`/`targetRole`/`sentAt`/`tokenCount` refused, and the
+    consumer repeats all of it rather than trusting the rule. `Push.sendToTeam` deleted.
+    Proved both ways: 11 emulator tests, and reverting to the old rule turns 8 of them red.
+    A live bug was inside it — a call-up made entirely of seeded players sent `targetPlayers: []`,
+    which the old consumer read as a broadcast to the whole club.
 15. **The demo club's 19-vs-9** — still a hypothesis, never checked.
 16. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide
     readable; orphaned shards when a category is emptied; uncategorised players inconsistent

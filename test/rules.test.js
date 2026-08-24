@@ -994,4 +994,115 @@ describe("Tactical boards", () => {
       await assertSucceeds(asSuper().doc("tacticTemplateSources/bA2").set({templateId: "t1"}));
     });
   });
+
+  /* ── Push notifications ─────────────────────────────────────────────
+     Writing to pushQueue SENDS a notification: onPushQueueCreate picks the
+     document up and pushes it to real phones. Until v133 the rule was
+     `create: if sameTeam(teamId)` — any of the club's members — and the
+     consumer treated a document with no `targetPlayers` as "send to EVERY
+     member of the team", taking title, body and url straight from it.
+});
+
+   So these tests are the fix's whole justification: the first one is the
+   hole, and it must fail now. */
+describe("pushQueue — writing here rings real phones", () => {
+  const push = (extra) => Object.assign({
+    targetPlayers: ["uidA"],
+    title: "Convocatòria publicada",
+    body: "L'Escala vs Sauleda",
+    type: "convocatoria",
+    status: "pending",
+  }, extra || {});
+
+  it("an ordinary player CANNOT send anything at all", async () => {
+    // The hole. Before v133 this succeeded.
+    await assertFails(asA().collection("teams/teamA/pushQueue").add(push()));
+  });
+
+  it("...and certainly not to the whole club", async () => {
+    /* No targetPlayers is the broadcast path: the consumer read it as
+       every member of the team. An arbitrary message with the club's own
+       app icon, to all 77. */
+    await assertFails(asA().collection("teams/teamA/pushQueue")
+        .add(push({targetPlayers: null})));
+  });
+
+  it("staff can send a call-up, which is the one real use", async () => {
+    await assertSucceeds(
+        asStaffA().collection("teams/teamA/pushQueue").add(push()));
+  });
+
+  it("a lead can too", async () => {
+    await assertSucceeds(
+        asLeadA().collection("teams/teamA/pushQueue").add(push()));
+  });
+
+  it("staff of another club cannot reach this one", async () => {
+    await assertFails(
+        asStaffB().collection("teams/teamA/pushQueue").add(push()));
+  });
+
+  it("even staff must name their recipients", async () => {
+    /* The broadcast path is closed to the CLIENT entirely, staff included.
+       Club-wide sends still exist — the training and RPE reminders — but
+       they are written by Cloud Functions, which bypass these rules. */
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({targetPlayers: []})));
+    const noField = push();
+    delete noField.targetPlayers;
+    await assertFails(
+        asStaffA().collection("teams/teamA/pushQueue").add(noField));
+  });
+
+  it("no targetRole either — it is the same broadcast by another name", async () => {
+    const byRole = push({targetRole: "player"});
+    delete byRole.targetPlayers;
+    await assertFails(
+        asStaffA().collection("teams/teamA/pushQueue").add(byRole));
+  });
+
+  it("a url is refused, because a push with a link is phishing", async () => {
+    /* `url` becomes the notification's click destination. Nothing in the
+       app sets one, so nothing legitimate is lost. */
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({url: "https://not-the-club.example/login"})));
+  });
+
+  it("the text is bounded", async () => {
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({title: "x".repeat(121)})));
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({body: "x".repeat(301)})));
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({title: ""})));
+  });
+
+  it("a sender cannot pre-mark a send as done", async () => {
+    /* status/sentAt/tokenCount are the FUNCTION's fields. A document that
+       arrives already saying "sent" is a document trying to look handled. */
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({status: "sent"})));
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({sentAt: new Date()})));
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({tokenCount: 99})));
+  });
+
+  it("a send cannot target a hundred and one people", async () => {
+    const many = [];
+    for (let i = 0; i < 101; i++) many.push("uid" + i);
+    await assertFails(asStaffA().collection("teams/teamA/pushQueue")
+        .add(push({targetPlayers: many})));
+  });
+
+  it("nobody reads, edits or deletes the queue", async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await c.firestore().doc("teams/teamA/pushQueue/p1").set(push());
+    });
+    await assertFails(asStaffA().doc("teams/teamA/pushQueue/p1").get());
+    await assertFails(asLeadA().doc("teams/teamA/pushQueue/p1").get());
+    await assertFails(asStaffA().doc("teams/teamA/pushQueue/p1").update({title: "x"}));
+    await assertFails(asStaffA().doc("teams/teamA/pushQueue/p1").delete());
+  });
+});
 });

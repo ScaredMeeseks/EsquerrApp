@@ -762,29 +762,44 @@ exports.onPushQueueCreate = onDocumentCreated({
   if (!snap) return;
   const data = snap.data();
   const teamId = event.params.teamId;
-  logger.info("onPushQueueCreate fired", {teamId, data});
+  logger.info("onPushQueueCreate fired", {teamId, docId: event.params.docId});
 
-  let tokenEntries = [];
+  /* ── The second lock ──────────────────────────────────────────────────
+     firestore.rules is the first, and it now allows only staff, only with an
+     explicit target list, and never with a `url`. This repeats those limits
+     here because the two locks fail differently: a rules deploy can be
+     skipped (`--only hosting` does exactly that), and this collection is a
+     send button — a document that reaches it rings real phones.
 
-  if (data.targetPlayers && data.targetPlayers.length) {
-    tokenEntries = await getTokensForUsers(data.targetPlayers);
-  } else if (data.targetRole) {
-    const uids = await getTeamMembersByRole(teamId, data.targetRole);
-    tokenEntries = await getTokensForUsers(uids);
-  } else {
-    const uids = await getAllTeamMembers(teamId);
-    tokenEntries = await getTokensForUsers(uids);
+     `targetPlayers` is REQUIRED. The old code treated its absence as "send
+     to every member of the team", which meant one field left off a
+     client-written document reached the entire club. Broadcasts still exist,
+     but they are written by the scheduled jobs, which call sendToTokens
+     directly and never come through here. */
+  const targets = Array.isArray(data.targetPlayers) ? data.targetPlayers : [];
+  if (!targets.length) {
+    logger.error("pushQueue document with no targetPlayers — refusing to " +
+      "broadcast", {teamId, docId: event.params.docId});
+    await snap.ref.update({status: "rejected", reason: "no-targets"})
+        .catch(() => {});
+    return;
   }
 
+  const tokenEntries = await getTokensForUsers(targets.slice(0, 100));
+
   if (tokenEntries.length) {
+    /* Built field by field, never spread from the document. `url` is
+       deliberately absent: it becomes the notification's click destination,
+       and a link chosen by whoever wrote the document is how a push turns
+       into phishing. Text is clamped so neither field can carry a wall of
+       characters into a notification tray. */
     const payload = {
-      title: data.title || "EsquerrApp",
-      body: data.body || "",
-      type: data.type || "general",
-      tag: data.type || "esquerrapp",
+      title: String(data.title || "EsquerrApp").slice(0, 120),
+      body: String(data.body || "").slice(0, 300),
+      type: String(data.type || "general").slice(0, 40),
+      tag: String(data.type || "esquerrapp").slice(0, 40),
     };
-    if (data.matchId) payload.matchId = String(data.matchId);
-    if (data.url) payload.url = data.url;
+    if (data.matchId) payload.matchId = String(data.matchId).slice(0, 40);
 
     await sendToTokens(tokenEntries, payload);
   } else {

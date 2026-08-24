@@ -385,26 +385,25 @@ const Push = (() => {
     }
   }
 
-  // Write a notification document to Firestore (triggers Cloud Function to send push)
-  async function sendToTeam(teamId, notification) {
-    if (!teamId) return;
-    try {
-      await db.collection('teams').doc(teamId).collection('pushQueue').add({
-        ...notification,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        status: 'pending'
-      });
-    } catch (err) {
-      console.error('Push: failed to queue notification:', err);
-    }
-  }
-
+  /* Queue a notification for named players. Writing the document IS the
+     send: onPushQueueCreate picks it up and pushes to their phones.
+     ALWAYS a named list. `sendToTeam(teamId, notification)` used to sit here
+     — same write with no `targetPlayers`, which the consumer read as "send
+     to every member of the team". Nothing ever called it, but it was
+     exported, so the broadcast was one autocomplete away from being used,
+     and firestore.rules let any member make that write. Both halves are now
+     closed and the function is gone: a genuine club-wide announcement should
+     be a Cloud Function that decides its own recipients, like the training
+     and RPE reminders already do, not a document any phone can write. */
   async function sendToPlayers(teamId, playerIds, notification) {
     if (!teamId) return;
+    const targets = (playerIds || []).filter(Boolean);
+    // No recipients is not a broadcast — it is nothing to do.
+    if (!targets.length) return;
     try {
       await db.collection('teams').doc(teamId).collection('pushQueue').add({
         ...notification,
-        targetPlayers: playerIds,
+        targetPlayers: targets,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         status: 'pending'
       });
@@ -413,5 +412,5 @@ const Push = (() => {
     }
   }
 
-  return { init, requestPermission, removeToken, sendToTeam, sendToPlayers };
+  return { init, requestPermission, removeToken, sendToPlayers };
 })();

@@ -256,8 +256,52 @@ service cloud.firestore {
         }
       }
 
+      /* ── Push notifications ─────────────────────────────────────────
+         Writing here SENDS A NOTIFICATION to real phones: onPushQueueCreate
+         picks the document up and pushes it. So this rule is the only thing
+         standing between a member and the club's whole membership.
+
+         It used to be `create: if sameTeam(teamId)` — any member at all. And
+         the consumer treats a document with no `targetPlayers` and no
+         `targetRole` as "send to EVERY member of the team", taking `title`,
+         `body` and `url` straight from it. So any of the 77 could push an
+         arbitrary message, with an arbitrary link, to all of them, wearing
+         the club's own app icon.
+
+         Four things are now required, and each closes one part of that:
+
+           1. STAFF ONLY. Publishing a call-up is a coach's job, and it is
+              the only thing in the app that legitimately sends a push.
+           2. AN EXPLICIT TARGET LIST. `targetPlayers` must be a non-empty
+              list, which removes the broadcast-to-everyone path from the
+              client entirely — the scheduled reminders still reach everyone,
+              but they are written by the Admin SDK, which bypasses rules.
+           3. BOUNDED TEXT. `title` and `body` are strings with a ceiling, so
+              neither can carry a wall of text into a notification tray.
+           4. NO `url`. It becomes the notification's click destination, and
+              a link chosen by a sender is how a push becomes phishing. The
+              one legitimate caller does not set it; the consumer will simply
+              never see one.
+
+         `status` is pinned to 'pending' so a sender cannot pre-mark a
+         document as sent, and the fields the FUNCTION writes back —
+         `sentAt`, `tokenCount` — are not creatable. Updates and reads stay
+         closed to everyone: the Admin SDK bypasses this. */
       match /pushQueue/{docId} {
-        allow create: if sameTeam(teamId);
+        allow create: if isStaffOf(teamId)
+          && request.resource.data.targetPlayers is list
+          && request.resource.data.targetPlayers.size() > 0
+          && request.resource.data.targetPlayers.size() <= 100
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 120
+          && request.resource.data.body is string
+          && request.resource.data.body.size() <= 300
+          && request.resource.data.status == 'pending'
+          && !('url' in request.resource.data)
+          && !('sentAt' in request.resource.data)
+          && !('tokenCount' in request.resource.data)
+          && !('targetRole' in request.resource.data);
         allow read, update, delete: if false;
       }
     }
