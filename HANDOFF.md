@@ -110,13 +110,15 @@ firebase-schedule-crawlFcfActas-us-central1   "0 3 * * *"       Europe/Madrid   
 
 **v132 is deployed.** The history rows' column alignment (frontend only).
 
-**v133 — rules and functions ARE DEPLOYED; the frontend is uncommitted.**
+**v133 is deployed.** The push-governance fix (parking-lot item 14).
+
+**v134 — functions ARE DEPLOYED; the frontend is uncommitted.**
 
 ```
 git add -A && git commit && git push
 ```
 
-Version triple is at **133**. The push-governance fix (parking-lot item 14).
+Version triple is at **134**. The Friday availability push (parking-lot item 13).
 
 > **The functions deploy reported `Deploy failed (exit 2)`, then `No changes detected` on retry.**
 > It had in fact shipped: the Cloud Functions API showed `onPushQueueCreate` at revision 47,
@@ -404,8 +406,11 @@ Renumbered items are the same items.
 12. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules`
     directly, bypassing the server-side link validation in `setClubCategories`. Delete once a
     v55+ APK circulates.
-13. **`scheduledMatchAvailReminder`** is the last `onSchedule` not checked for the interval/band
-    traps v112 and v113 fixed. `scheduledFcfSync` is a plain daily cron and does not have them.
+13. ~~**`scheduledMatchAvailReminder`**~~ — **CHECKED and CLOSED in v134.** Neither trap applied
+    (`0 20 * * 5` is wall-clock; there is no band). Reading it found two other bugs instead: the
+    answered-set query was truncated to ten while the loop walked every weekend fixture, so from
+    the eleventh onwards players who HAD replied were pushed again; and fixtures the federation
+    had cancelled (`fcfRemoved`) were still asked about. Both fixed, three mutations.
 14. ~~**Push governance**~~ — **CLOSED in v133.** Staff-only, a non-empty bounded `targetPlayers`
     required, `title`/`body` bounded, `url`/`targetRole`/`sentAt`/`tokenCount` refused, and the
     consumer repeats all of it rather than trusting the rule. `Push.sendToTeam` deleted.

@@ -1106,15 +1106,34 @@ exports.scheduledMatchAvailReminder = onSchedule({
     const shards = await readDataShards(teamId, ["fa_matches"]);
     const matches = mergeArrayShards(shards.get("fa_matches"));
     if (!matches.length) return;
+    /* `fcfRemoved` is a fixture the federation dropped from its calendar.
+       The row is KEPT — call-ups, notes and availability answers all hang off
+       its id — and the Calendari strikes it through, but it is not being
+       played. Asking a squad to confirm availability for a cancelled match is
+       a push that wastes everyone's Friday evening and teaches them to ignore
+       the next one. */
     const weekendMatches = matches.filter((m) =>
-      m.status !== "past" && m.date && (m.date === satStr || m.date === sunStr));
+      m.status !== "past" && !m.fcfRemoved && m.date &&
+      (m.date === satStr || m.date === sunStr));
     if (!weekendMatches.length) return;
 
-    // Answers from the canonical record collection; roster queried ONCE
+    /* Answers from the canonical record collection; roster queried ONCE.
+
+       CHUNKED, because Firestore's `in` takes at most ten values. This read
+       `matchIds.slice(0, 10)` while the loop below walked EVERY weekend
+       fixture — so from the eleventh onwards `answered` was empty, and every
+       player who had already replied was pushed again as though he had not.
+       A club with four categories running A and B squads clears ten fixtures
+       on an ordinary weekend, and the bug got worse as the club grew.
+       chunk10() is the helper the delete path already uses. */
     const matchIds = weekendMatches.map((m) => String(m.id));
-    const availSnap = await db.collection("teams").doc(teamId)
-        .collection("matchAvail").where("matchId", "in", matchIds.slice(0, 10)).get();
-    const answered = new Set(availSnap.docs.map((d) => d.data().uid + "_" + d.data().matchId));
+    const answered = new Set();
+    for (const ids of chunk10(matchIds)) {
+      const availSnap = await db.collection("teams").doc(teamId)
+          .collection("matchAvail").where("matchId", "in", ids).get();
+      availSnap.docs.forEach((d) =>
+        answered.add(d.data().uid + "_" + d.data().matchId));
+    }
 
     for (const match of weekendMatches) {
       /* The squad this fixture is for — category AND team letter.

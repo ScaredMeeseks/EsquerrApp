@@ -4018,3 +4018,56 @@ through this queue, so nothing was lost.
 > was transient. Worth checking the API rather than the CLI's own summary when the two disagree.
 
 Unit 1157 → **1169**.
+
+### 2026-08-24 — v134: the Friday availability push (parking-lot item 13)
+
+`scheduledMatchAvailReminder` was the last `onSchedule` never examined for the two traps v112 and
+v113 fixed elsewhere. **Neither applies**, and that is now pinned rather than left to be
+re-derived:
+
+- the **interval-vs-wall-clock** trap needs an `every N minutes` schedule, which drifts because App
+  Engine waits N minutes after the previous run *finishes*. This is `0 20 * * 5` — wall-clock,
+  once a week.
+- the **double-fire** trap needs a fixed-width band closed at both ends. This has no band at all;
+  it compares dates for exact equality.
+
+Reading it turned up two real bugs instead.
+
+#### 1. The answered-set was truncated and the loop was not
+
+```js
+.where("matchId", "in", matchIds.slice(0, 10))   // ten
+for (const match of weekendMatches)              // all of them
+```
+
+Firestore's `in` takes ten values. From the **eleventh** weekend fixture onwards `answered` was
+empty, so every player who *had* already replied was pushed again as though he had not. A club
+running four categories with A and B squads clears ten fixtures on an ordinary weekend, and the bug
+got worse as the club grew. It now chunks through `chunk10()` — the helper the delete path was
+already using correctly.
+
+#### 2. Cancelled fixtures were still asked about
+
+The filter was `m.status !== "past" && m.date && …`. A fixture the federation drops is marked
+`fcfRemoved` and **kept** — call-ups, notes and answers all hang off its id — and the Calendari
+strikes it through. But Friday's push asked the squad to confirm availability for it anyway.
+Asking about a cancelled match wastes their evening and teaches them to ignore the next one.
+
+#### Tests
+
+Unit 1169 → **1180**. `test/match-avail-reminder.test.js`, added to `test:unit` by hand. Three
+mutations, each failing a test: truncating the query back to ten, dropping the `fcfRemoved` check,
+and switching to an interval schedule.
+
+> **What actually runs the deployed code, stated in the file itself:** `chunk10` is lifted from
+> `functions/index.js`, so the chunking tests exercise the real helper. The date/removed filter is
+> a faithful reimplementation — it sits inline inside a large async function and cannot be lifted
+> cleanly — so a final describe pins the source to match it. Behaviour in one half, shape in the
+> other; neither is worth much alone.
+
+> A third instance of the comment-versus-code trap: the source assertions matched
+> `matchIds.slice(0, 10)` inside the *comment explaining its removal*. All of them now read a
+> comment-stripped copy. That is three files this session — worth remembering that any test which
+> greps source needs to strip comments first.
+
+Verified against the API, not the CLI: revision 48, ACTIVE, cron still `0 20 * * 5` Europe/Madrid.
