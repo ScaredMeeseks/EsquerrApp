@@ -788,6 +788,13 @@ tr:hover td { background: #f7f8fa; }
   position:absolute; aspect-ratio:1; border-radius:50%;
   transform:translate(-50%,-50%); pointer-events:none;
 }
+/* Corner arcs. Centred ON the corner and clipped to a quarter by
+   .tb-field's overflow:hidden — which is why there is no clip-path
+   here and why the rule works unchanged in every orientation. */
+.tb-corner {
+  position:absolute; aspect-ratio:1; border-radius:50%;
+  transform:translate(-50%,-50%); pointer-events:none;
+}
 /* Penalty spots */
 .tb-penalty-spot-left, .tb-penalty-spot-right {
   position:absolute; width:5px; height:5px;

@@ -11,8 +11,8 @@
    Nothing else may compute any of it. Before this file the markings
    were fixed percentages in css/style.css and the pitch was a fixed
    `padding-top: 62%`, which works exactly as long as every pitch is
-   the same size — and stops working the moment a coach wants a
-   futbol-7 pitch, or the 3D view wants metres.
+   the same size — and stops working the moment a coach sets up on
+   a smaller pitch, or the 3D view wants metres.
 
    THE RULE THAT MAKES THIS FILE NECESSARY: when the pitch is
    resized, the OUTER perimeter changes and the markings do NOT. A
@@ -37,54 +37,30 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  /* Regulation marking sets, in METRES.
+  /* The regulation marking set, in METRES.
 
-     f11 is exact — these are the Laws of the Game, and they do not
-     vary: 16.5 m penalty area, 9.15 m circle, 7.32 x 2.44 goal.
+     One set, not a table of them. These are the Laws of the Game and
+     they do not vary: 16.5 m penalty area, 9.15 m circle, 11 m spot,
+     7.32 x 2.44 goal, 1 m corner arc.
 
-     f9 and f7 are NOT standardised the same way. Federations differ,
-     and Catalan youth football has its own variants. The numbers
-     below are the common Spanish values and are a sensible starting
-     point, not a citation — which is precisely why the coach can
-     override the pitch size afterwards. If a club needs different
-     marks, this table is the one place to change them.
-
-     Futsal is deliberately absent. Its area is a 6 m ARC, not a
-     rectangle, so it is a different marking topology rather than
-     different numbers, and drawing it as a rectangle would be wrong
-     in a way that looks right. */
-  var FORMATS = {
-    f11: {
-      label: 'Futbol 11',
-      dim: [105, 68],          // default length x width
-      paDepth: 16.5, paWidth: 40.32,
-      gaDepth: 5.5,  gaWidth: 18.32,
-      spot: 11, circleR: 9.15, arcR: 9.15,
-      goalW: 7.32, goalH: 2.44, cornerR: 1
-    },
-    f9: {
-      label: 'Futbol 9',
-      dim: [75, 50],
-      paDepth: 13, paWidth: 26,
-      gaDepth: 4,  gaWidth: 12,
-      spot: 9, circleR: 7, arcR: 7,
-      goalW: 6, goalH: 2, cornerR: 1
-    },
-    f7: {
-      label: 'Futbol 7',
-      dim: [60, 40],
-      paDepth: 9,  paWidth: 23,
-      gaDepth: 3,  gaWidth: 10,
-      spot: 8, circleR: 6, arcR: 6,
-      goalW: 6, goalH: 2, cornerR: 0.5
-    }
+     There is deliberately no futbol-7 or futbol-9 variant. Those are
+     not standardised the way this is — federations differ, and any
+     numbers here would have been a plausible guess dressed as a
+     citation. A coach who wants a smaller pitch resizes the
+     PERIMETER, which is the thing this whole module exists to make
+     possible; the marks stay regulation, which is what happens on a
+     real training ground when you set up on half a pitch. */
+  var MARKS = {
+    paDepth: 16.5, paWidth: 40.32,
+    gaDepth: 5.5,  gaWidth: 18.32,
+    spot: 11, circleR: 9.15, arcR: 9.15,
+    goalW: 7.32, goalH: 2.44, cornerR: 1
   };
 
-  /* The historical board: 105 x 68, eleven-a-side. A board saved
-     before pitches were resizable has no `pitch` key at all, and
-     resolves to exactly this — which is what makes the feature need
-     no migration. */
-  var DEFAULT_PITCH = [105, 68, 'f11'];
+  /* The historical board: 105 x 68. A board saved before pitches were
+     resizable has no `pitch` key at all and resolves to exactly this,
+     which is what makes the feature need no migration. */
+  var DEFAULT_PITCH = [105, 68];
 
   /* Outer bounds. Generous on purpose: these exist to stop a drag
      producing a pitch of zero or of ten kilometres, not to enforce
@@ -93,14 +69,10 @@
   var MIN_L = 25, MAX_L = 130;
   var MIN_W = 15, MAX_W = 90;
 
-  function fmtOf(key) {
-    return FORMATS[key] || FORMATS.f11;
-  }
-
   /**
    * Resolve a stored pitch value into usable geometry.
    *
-   * Accepts the raw [L, W, format] array, a whole board entry, or
+   * Accepts the raw [L, W] array, a whole board entry, or
    * null/undefined. Always returns a complete object — callers must
    * never have to handle "no pitch", because that is the common case
    * and every one of them would get it slightly differently.
@@ -117,15 +89,13 @@
        box, so a 60 m pitch drew its penalty area at the 105 m proportion.
        Caught by the "share of the pitch grows as the pitch shrinks" test,
        which is the one assertion that compares two different pitches. */
-    else if (src && isFinite(src.L) && isFinite(src.W)) raw = [src.L, src.W, src.fmt];
-    var fmtKey = (raw && raw[2]) || DEFAULT_PITCH[2];
-    var f = fmtOf(fmtKey);
+    else if (src && isFinite(src.L) && isFinite(src.W)) raw = [src.L, src.W];
     var L = Number(raw && raw[0]);
     var W = Number(raw && raw[1]);
     if (!isFinite(L) || L <= 0) L = DEFAULT_PITCH[0];
     if (!isFinite(W) || W <= 0) W = DEFAULT_PITCH[1];
-    var c = clamp(L, W, fmtKey);
-    return {L: c[0], W: c[1], fmt: fmtKey, marks: f};
+    var c = clamp(L, W);
+    return {L: c[0], W: c[1], marks: MARKS};
   }
 
   /**
@@ -137,10 +107,9 @@
    * dragging the touchline far enough inward puts the penalty box
    * outside the pitch and the board stops meaning anything.
    */
-  function clamp(L, W, fmtKey) {
-    var f = fmtOf(fmtKey);
-    var minW = Math.max(MIN_W, f.paWidth + 2);
-    var minL = Math.max(MIN_L, f.paDepth * 2 + 4);
+  function clamp(L, W) {
+    var minW = Math.max(MIN_W, MARKS.paWidth + 2);
+    var minL = Math.max(MIN_L, MARKS.paDepth * 2 + 4);
     return [
       Math.round(Math.min(MAX_L, Math.max(minL, Number(L) || 0)) * 100) / 100,
       Math.round(Math.min(MAX_W, Math.max(minW, Number(W) || 0)) * 100) / 100
@@ -178,10 +147,18 @@
     var e;
     if (boardType === 'half') e = {ax: p.W, ay: p.L / 2, swap: true};
     else if (boardType === 'area') {
-      /* The penalty area plus a working margin, so a drill has room
-         either side of the box rather than the box filling the frame
-         edge to edge. */
-      e = {ax: Math.min(p.W, f.paWidth + 12), ay: f.paDepth + 12, swap: true};
+      /* THE FULL WIDTH OF THE PITCH, and therefore both corners.
+
+         It used to be the penalty area plus a margin either side,
+         which cropped the touchlines away — and the most common thing
+         an area board is actually for is corners and crossing, which
+         you cannot set up on a board with no corner to cross from.
+
+         The depth is the final third, in the footballing sense, so it
+         scales with the pitch instead of being a fixed number of
+         metres. The floor stops a short pitch cropping the penalty
+         arc, which reaches spot + radius from the goal line. */
+      e = {ax: p.W, ay: Math.max(p.L / 3, f.spot + f.arcR + 4), swap: true};
     } else e = {ax: p.L, ay: p.W, swap: false};
     if (isRotated(boardType, vertical)) return {ax: e.ay, ay: e.ax, swap: e.swap, rot: true};
     return e;
@@ -263,6 +240,10 @@
       var h2 = rot(m.halfway.x2, m.halfway.y2, ax);
       out.halfway = {x1: h1[0], y1: h1[1], x2: h2[0], y2: h2[1]};
     } else out.halfway = null;
+    out.corners = (m.corners || []).map(function (c) {
+      var q = rot(c.cx, c.cy, ax);
+      return {cx: q[0], cy: q[1]};
+    });
     return out;
   }
 
@@ -292,6 +273,13 @@
         arcRight:       {cx: p.L - f.spot, cy: midY, r: f.arcR, clipTo: p.L - f.paDepth},
         goalLeft:       {x: 0, y: midY - f.goalW / 2, w: f.goalW, h: f.goalH},
         goalRight:      {x: p.L, y: midY - f.goalW / 2, w: f.goalW, h: f.goalH},
+        /* All four, because a full board shows all four. Drawn as
+           whole circles centred exactly ON the corner and clipped by
+           the pitch's own `overflow:hidden` — the quarter that stays
+           is the quarter inside the pitch, with no clip-path needed
+           and nothing to get wrong when the board rotates. */
+        corners:        [{cx: 0, cy: 0}, {cx: p.L, cy: 0},
+          {cx: 0, cy: p.W}, {cx: p.L, cy: p.W}],
         cornerR:        f.cornerR,
         extent:         e
       };
@@ -314,6 +302,11 @@
       arcRight:     null,
       goalLeft:     {x: midX - f.goalW / 2, y: 0, w: f.goalW, h: f.goalH},
       goalRight:    null,
+      /* Both portrait board types show the goal line and both
+         touchlines, so both have two real corners. The far edge is a
+         halfway line or an arbitrary cut across the pitch — an arc
+         there would invent a boundary that is not on the ground. */
+      corners:      [{cx: 0, cy: 0}, {cx: e.ax, cy: 0}],
       cornerR:      f.cornerR,
       extent:       e
     };
@@ -388,6 +381,13 @@
       ? {left: px(m.halfway.x1), top: py(m.halfway.y1),
         vertical: m.halfway.x1 === m.halfway.x2}
       : null;
+    /* Corner arcs. `size` is the full diameter as a percentage of the
+       board width; the circle is centred on the corner, so three
+       quarters of it fall outside the pitch and are clipped away by
+       .tb-field's overflow:hidden. */
+    out.corners = (m.corners || []).map(function (c) {
+      return {left: px(c.cx), top: py(c.cy), size: px(m.cornerR * 2)};
+    });
     return out;
   }
 
@@ -419,7 +419,7 @@
   }
 
   return {
-    FORMATS: FORMATS,
+    MARKS: MARKS,
     DEFAULT_PITCH: DEFAULT_PITCH,
     BOUNDS: {MIN_L: MIN_L, MAX_L: MAX_L, MIN_W: MIN_W, MAX_W: MAX_W},
     pitchOf: pitchOf,

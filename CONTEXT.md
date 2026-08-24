@@ -4196,3 +4196,38 @@ differ, hence the coach override). **Futsal is deliberately absent**: its area i
 different topology, and a rectangle would look right and be wrong.
 
 Unit 1197 → **1254**.
+
+#### Corrections after looking at it (same version)
+
+Three things the preview surfaced, one of which was the preview's own fault.
+
+**The preview was lying about the perimeter.** `make-pitch-preview.js` extracts the pitch rules out
+of `style.css` by matching selectors, and the chunker handed it each rule together with any
+preceding comment — so `^\s*\.tb-` never matched a commented rule and dropped it. `.tb-field` sits
+under `/* Horizontal football field */`, and it is the rule carrying the green surface, the white
+perimeter border **and** `overflow:hidden`. The generated page therefore showed pitches with no
+turf and no touchlines while the app itself was fine. Comments are stripped first now, and the
+script **throws** if `.tb-field` goes missing rather than quietly rendering a lie.
+
+**Corner arcs were genuinely absent.** `markings()` returned `cornerR` and nothing drew it. Each is
+a whole 1 m circle centred exactly ON the corner; `.tb-field`'s `overflow:hidden` clips it to the
+quarter inside the pitch. No `clip-path`, and nothing to re-derive when the board rotates — a
+corner is a corner in every orientation.
+
+**Futbol-7 and futbol-9 presets removed.** They were not standardised the way the Laws of the Game
+are — federations differ, and the numbers were a plausible guess dressed as a citation. One
+marking set now; `pitch` is `[lengthM, widthM]`, the third slot is gone (a stray one is ignored).
+The consequence, which is real: the narrowest pitch is now **42.32 m**, because it cannot be
+narrower than the 40.32 m penalty area. Fine for any ground, too wide for a 30×20 rondo grid —
+grids are what the `area` board type is for.
+
+**The area board now spans the FULL pitch width** (owner's call, and the right one): it used to be
+the penalty box plus a margin, which cropped the touchlines off and left no corner to cross from,
+while corners and crossing are the most common thing the board is opened for. Depth is the final
+third — `L/3`, so it scales with the pitch — floored at `spot + arcR + 4` so a short pitch cannot
+cut through the D. Aspect moves 58% → ~51%, so **existing area boards reflow**: players stay
+proportionally placed, the frame around them is a different shape. Unavoidable given the request.
+`adaptFormation`'s `* 1.7` area heuristic is left alone — it is the legacy formation spread, not a
+marking, and touching it would move players for no reason.
+
+Unit 1254 → **1268**.

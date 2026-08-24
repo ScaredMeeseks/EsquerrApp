@@ -6321,6 +6321,14 @@
     circle('tb-penalty-arc-right', css.arcRight, 'rgba(255,255,255,.4)', true);
     spot('tb-penalty-spot-left', css.penaltySpotL);
     spot('tb-penalty-spot-right', css.penaltySpotR);
+    /* Corner arcs. A whole 1 m-radius circle centred ON each corner;
+       .tb-field's overflow:hidden keeps the quarter that is inside the
+       pitch and throws the rest away. No clip-path, and nothing to
+       re-derive when the board rotates — a corner is a corner. */
+    (css.corners || []).forEach((c) => {
+      out.push('<div class="tb-corner" style="left:' + c.left + '%;top:' + c.top +
+        '%;width:' + c.size + '%;border:2px solid rgba(255,255,255,.4);"></div>');
+    });
     return out.join('');
   }
 

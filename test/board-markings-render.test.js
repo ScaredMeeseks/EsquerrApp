@@ -113,6 +113,34 @@ describe('tbMarkingsHtml', () => {
     assert.ok(/clip-path:inset\(/.test(styleOf(h, 'tb-penalty-arc-left')));
   });
 
+  it('draws four corner arcs on a full board', () => {
+    const html = api.tbMarkingsHtml(null, 'full', false);
+    assert.strictEqual((html.match(/class="tb-corner"/g) || []).length, 4);
+  });
+
+  it('two on each portrait board type, at the goal line', () => {
+    /* The area board included: it spans the full pitch width, so it
+       has both corners — which is what makes it usable for the drill
+       it is most often opened for, a corner or a cross. */
+    ['half', 'area'].forEach((bt) => {
+      assert.strictEqual(
+          (api.tbMarkingsHtml(null, bt, false).match(/tb-corner/g) || []).length, 2,
+          bt + ' should draw two corner arcs');
+    });
+  });
+
+  it('does NOT clip-path the corner arcs', () => {
+    /* They are clipped by .tb-field's overflow:hidden instead — the
+       circle is centred on the corner, so the quarter that survives is
+       the quarter inside the pitch, in any orientation, with nothing
+       to re-derive. A clip-path here would be a second mechanism doing
+       the same job and would have to be rotated by hand. */
+    const html = api.tbMarkingsHtml(null, 'full', false);
+    const first = /<div class="tb-corner" style="([^"]*)"/.exec(html);
+    assert.ok(first, 'no corner emitted');
+    assert.ok(!/clip-path/.test(first[1]), first[1]);
+  });
+
   it('does not clip the centre circle', () => {
     // It is a whole circle; a stray inset would eat three quarters of it.
     const h = api.tbMarkingsHtml(null, 'full', false);
@@ -140,15 +168,22 @@ describe('the field box styles', () => {
     assert.ok(/margin-top:calc\(/.test(api.tbFieldOuterStyle(null, 'half', true)));
   });
 
-  it('reproduces the old hardcoded margins for the old pitch', () => {
-    /* The deleted CSS said calc(11.5% + 1rem) for half and
-       calc(21% + 1rem) for area. Those are (100 - 77)/2 and
-       (100 - 58)/2. Landing back on them from the geometry is the
-       evidence that the formula is the one the CSS encoded. */
-    const half = api.tbFieldOuterStyle([105, 68, 'f11'], 'half', true);
-    const area = api.tbFieldOuterStyle([105, 68, 'f11'], 'area', true);
-    approxPct(half, 11.5, 0.6);
-    approxPct(area, 21, 3);
+  it('reproduces the old hardcoded HALF margin from the geometry', () => {
+    /* The deleted CSS said calc(11.5% + 1rem) for a half board, which
+       is (100 - 77)/2. Landing back on it from the geometry is the
+       evidence that the formula is the one the CSS encoded.
+
+       The area board deliberately does NOT match its old 21%: it was
+       widened to the full pitch width so it would carry both corners,
+       which changes its aspect from 58% to about 51%. The next test
+       pins that divergence so it reads as a decision rather than
+       as drift. */
+    approxPct(api.tbFieldOuterStyle([105, 68], 'half', true), 11.5, 0.6);
+  });
+
+  it('the area margin follows the widened area board', () => {
+    const area = api.tbFieldOuterStyle([105, 68], 'area', true);
+    approxPct(area, (100 - 51.47) / 2, 0.6);
   });
 });
 
