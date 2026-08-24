@@ -4364,3 +4364,47 @@ reads exactly like an edit not working. A 404 on the worker script also unregist
 one, so a poisoned origin self-heals. `GET /__version` reports what is on disk.
 
 Unit 1316 → **1319**.
+
+### 2026-08-25 — v136: the 3D board (premium), first working version
+
+`js/board3d.js` + `vendor/three.module.min.js` + `vendor/three.core.min.js` (733 KB, r0.185.1,
+ESM). Web only, lazily imported, gated on `clubFeature('board3d')` AND a WebGL probe.
+
+**It is a second VIEW over the same state, not a second board.** It reads and writes the same
+`fa_tactic_*` keys through the same `board-state.js` setters, so `buildBoardEntry` produces a
+byte-identical payload whichever view drew it. No 3D-specific data exists anywhere: a camera angle
+is not saved, a player position is a percentage of the pitch exactly as it always was. Everything
+visual is derived — `BG.toWorld` on the way in, `BG.toPercent` on the way out. board3d hardcodes
+**no** regulation distances; a test asserts that.
+
+Notable choices:
+- **Markings are a CanvasTexture**, not meshes. Thirty thin boxes fighting the turf is how you get
+  z-fighting on the lines; one texture cannot z-fight, redraws instantly on resize, one draw call.
+- **Goals are real geometry** at regulation size, so they stay physically sized as the pitch grows.
+- **A small orbit controller instead of the OrbitControls addon** — the addon is a large file of
+  features this does not use, and the polar clamp (never under the turf, never exactly overhead,
+  where the look-at basis degenerates) is the only part that matters.
+- **Renders on demand**, not a permanent rAF. A static board is the usual state.
+- **Whole-scene rebuild** rather than diffing a few dozen objects — diffing would be more code than
+  it saves and is where a stale-object bug would live.
+- The edit hook is **passed in**, not dispatched as an event: a listener bound in `bindTactics`
+  would capture that render's `autoSaveFrame` and keep it after the next re-render. Same shape as
+  the `tb-ro-play` double-binding.
+
+**Bug caught before shipping**: board3d read `parseFill(...).on`. `parseFill` returns `{striped,…}`;
+`on` is the first ARGUMENT of `encodeFill`. Reading the parser's output under the encoder's
+parameter name renders every striped kit solid — a wrong board that throws nothing, on a feature
+nobody has looked at yet. Pinned by a test that also asserts utils' shape has not changed.
+
+**APK exclusion**: `'vendor'` in `DENY_EXACT`, `^board3d\.js$` in `DENY_PATTERN`, and `copyDir` now
+applies the patterns at **every depth** — it only filtered root entries, so a nested file always
+shipped. Verified: `www/` builds clean with neither present.
+
+**What is NOT built yet** — this is a 3D viewer and object editor, not the full editor:
+- drawing arrows, zones, pen strokes and labels IN 3D (they RENDER, but must be drawn in 2D)
+- animation playback in 3D (`BS.tweenFrame` and `setPosition()` exist for it; not wired)
+- selection and delete in 3D
+- the `setClubPlan` callable and the superadmin control for `features.board3d` (the client gate and
+  the rules position are in place; the superadmin currently passes by `isAdmin`)
+
+Unit 1319 → **1335**.

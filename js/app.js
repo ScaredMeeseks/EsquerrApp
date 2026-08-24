@@ -651,6 +651,11 @@
       en:'The pitch dimensions. The areas, the circle and the goals do not change size.' },
     'tactics.pitch_reset':   { ca:'Torna a la mida reglamentària', es:'Volver al tamaño reglamentario', en:'Back to the regulation size' },
     'tactics.pitch_drag':    { ca:'Arrossega per canviar la mida del camp', es:'Arrastra para cambiar el tamaño del campo', en:'Drag to resize the pitch' },
+    'tactics.view_hint':     { ca:'Canvia entre pissarra 2D i 3D', es:'Cambia entre pizarra 2D y 3D', en:'Switch between the 2D and 3D board' },
+    'tactics.loading_3d':    { ca:'Carregant la pissarra 3D…', es:'Cargando la pizarra 3D…', en:'Loading the 3D board…' },
+    'tactics.load_3d_failed':{ ca:'No s\'ha pogut carregar la pissarra 3D. Torna a 2D per continuar.',
+      es:'No se ha podido cargar la pizarra 3D. Vuelve a 2D para continuar.',
+      en:'The 3D board could not be loaded. Switch back to 2D to carry on.' },
     'tactics.dash':          { ca:'Disc.', es:'Disc.', en:'Dash' },
     'tactics.stripes':       { ca:'Ratlles', es:'Rayas', en:'Stripes' },
     'tactics.stripes_count': { ca:'Nombre de ratlles (2-6)', es:'Número de rayas (2-6)', en:'Number of stripes (2-6)' },
@@ -1702,6 +1707,30 @@
   function clubMaxTeams() {
     var n = Math.floor(Number(_clubConfig && _clubConfig.maxTeams));
     return (isFinite(n) && n >= 1) ? n : 1;
+  }
+
+  /**
+   * Is a premium feature switched on for this club?
+   *
+   * Same shape as `maxTeams`: a superadmin-owned field on
+   * `clubs/{clubId}` that no client may write. The rule at
+   * firestore.rules restricts lead updates to an explicit key
+   * allowlist, so `features` is non-client-writable the moment it
+   * exists — a lead cannot grant themselves premium from a console.
+   *
+   * BE HONEST ABOUT WHAT THIS GATE IS. Unlike maxTeams, the 3D board
+   * is client-side drawing with no server call to intercept, so this
+   * is a COMMERCIAL boundary, not a security one: someone determined
+   * can run the code. Its value is that the same field will gate the
+   * premium features that do touch the server, and those get real
+   * teeth. CONTEXT.md:704 is right that the UI can never be the
+   * enforcement point; this is the UI, and it knows it.
+   */
+  function clubFeature(name) {
+    var s = getSession();
+    if (s && s.isAdmin) return true;   // the superadmin sees everything
+    var f = _clubConfig && _clubConfig.features;
+    return !!(f && f[name]);
   }
 
   /** Teams the club actually has right now. */
@@ -6340,6 +6369,127 @@
     return out.join('');
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     The 3D board, loaded on demand.
+
+     three.js is 733 KB. It is fetched the first time a coach opens the
+     3D view and never otherwise — no <script> tag, so first paint is
+     untouched, the service worker precache list stays as it is, and an
+     APK (which ships neither vendor/ nor board3d.js) simply never has
+     a 3D toggle to press.
+     ═══════════════════════════════════════════════════════════ */
+
+  /** Can this machine do WebGL at all? Probed once, and cached. */
+  var _webglOk = null;
+  function tbWebglOk() {
+    if (_webglOk !== null) return _webglOk;
+    try {
+      const c = document.createElement('canvas');
+      _webglOk = !!(window.WebGLRenderingContext &&
+          (c.getContext('webgl2') || c.getContext('webgl')));
+    } catch (e) {
+      /* A context probe can THROW, not just return null — some
+         hardened browsers and remote sessions do exactly that. An
+         exception here must degrade to 2D, not take the board down. */
+      _webglOk = false;
+    }
+    return _webglOk;
+  }
+
+  var _tb3d = null;          // the live instance, or null
+
+  /** Tear down the 3D view. Safe to call when there is none. */
+  function tbDestroy3D() {
+    if (_tb3d) { try { _tb3d.destroy(); } catch (e) { /* already gone */ } }
+    _tb3d = null;
+  }
+
+  /** The editor's scratch state as plain data, for the 3D view. */
+  function tb3dState() {
+    const g = (k, d) => BS.readJson(localStorage, k, d);
+    return {
+      positions: g(BS.KEYS.positions, null),
+      numbers: g(BS.KEYS.numbers, null),
+      colors: g(BS.KEYS.colors, null),
+      oppPositions: g(BS.KEYS.oppPositions, null),
+      oppNumbers: g(BS.KEYS.oppNumbers, null),
+      oppColors: g(BS.KEYS.oppColors, null),
+      balls: g(BS.KEYS.balls, []),
+      cones: g(BS.KEYS.cones, []),
+      arrows: g(BS.KEYS.arrows, []),
+      rects: g(BS.KEYS.rects, []),
+      texts: g(BS.KEYS.texts, []),
+      penLines: g(BS.KEYS.penLines, []),
+      showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
+      teamColor: _tbFillFor('team'),
+      oppColor: _tbFillFor('opp')
+    };
+  }
+
+  /* The board-wide kit, including stripes. The editor builds this from
+     a colour input plus a stripes key; outside bindTactics only the
+     stored values exist, so read those. */
+  function _tbFillFor(side) {
+    const base = localStorage.getItem('fa_tactic_' + (side === 'opp' ? 'opp' : 'team') + '_color')
+        || (side === 'opp' ? '#e53935' : '#ffffff');
+    const raw = localStorage.getItem('fa_tactic_' + (side === 'opp' ? 'opp' : 'team') + '_stripes');
+    if (!raw) return base;
+    try {
+      const c = JSON.parse(raw);
+      return c && c.on ? encodeFill(true, c.dir, c.n, base, c.c2) : base;
+    } catch (e) { return base; }
+  }
+
+  /**
+   * Mount the 3D board into #tb-3d-wrap.
+   *
+   * Everything it needs is injected — board-geom, the fill helpers —
+   * so js/board3d.js imports nothing from app.js and can be reasoned
+   * about (and tested) on its own.
+   */
+  async function tbMount3D(hooks) {
+    const wrap = document.getElementById('tb-3d-wrap');
+    if (!wrap) return;
+    hooks = hooks || {};
+    try {
+      const mod = await import('./board3d.js');
+      wrap.innerHTML = '';
+      tbDestroy3D();
+      _tb3d = mod.createBoard3D({
+        container: wrap,
+        BG: BG,
+        fillCss: fillCss,
+        parseFill: parseFill,
+        getPitch: () => BS.readJson(localStorage, BS.KEYS.pitch, null),
+        /* ALWAYS the unrotated board. Orientation is a 2D affordance
+           for a fixed camera; in 3D the camera orbits, so rotating the
+           world as well would just mean two controls fighting. */
+        getBoardType: () => localStorage.getItem('fa_tactic_board_type') || 'full',
+        getState: tb3dState,
+        onMove: (kind, index, pct) => {
+          /* Write through the SAME setters the 2D editor uses, so the
+             saved payload is byte-identical whichever view drew it. */
+          const key = BS.KEYS[kind];
+          if (!key) return;
+          if (hooks.beforeEdit) hooks.beforeEdit();   // undo, before the write
+          const arr = BS.readJson(localStorage, key, []) || [];
+          while (arr.length <= index) arr.push(null);
+          arr[index] = pct;
+          BS.setPoints(localStorage, key, arr);
+          if (hooks.afterEdit) hooks.afterEdit();     // frame autosave
+        },
+        onSelect: () => {}
+      });
+    } catch (err) {
+      /* A failed import is the likeliest real-world failure — offline,
+         or a blocked module. Say so and fall back rather than leaving
+         an empty green rectangle. */
+      console.error('3D board failed to load:', err);
+      wrap.innerHTML = '<div class="tb-3d-loading">' +
+          sanitize(t('tactics.load_3d_failed')) + '</div>';
+    }
+  }
+
   /** The field box's own aspect, as an inline style. Replaces the
    *  hardcoded `padding-top:62%` — which described a 105x65 pitch, not
    *  the 105x68 one the markings assume. */
@@ -9618,6 +9768,11 @@
        historical 105x68 — so the absence of the key IS the default and
        no board needs migrating. */
     const savedPitch = JSON.parse(localStorage.getItem('fa_tactic_pitch') || 'null');
+    /* Which view is showing. A per-DEVICE preference, exactly like
+       fa_tactic_orient — never part of a saved board, because a board
+       is a drawing and not a camera position. */
+    const is3d = localStorage.getItem('fa_tactic_view_3d') === '1'
+                 && clubFeature('board3d') && tbWebglOk();
     const GK_COLOR = '#f5c842';
 
     let circlesHtml = '';
@@ -9721,7 +9876,12 @@
               ${Object.keys(formations).map(f => `<div class="tb-formation-option${f === savedFormation ? ' active' : ''}" data-val="${f}">${f}</div>`).join('')}
             </div>
           </div>
-          <button class="tb-orient-btn" id="tb-orient" data-tooltip="Toggle orientation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+          <button class="tb-orient-btn" id="tb-orient" data-tooltip="Toggle orientation"${is3d ? ' style="display:none"' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+          ${(clubFeature('board3d') && tbWebglOk()) ? `
+          <div class="tb-view-toggle" id="tb-view-toggle" data-tooltip="${t('tactics.view_hint')}">
+            <button class="tb-view-btn${is3d ? '' : ' active'}" data-view="2d">2D</button>
+            <button class="tb-view-btn${is3d ? ' active' : ''}" data-view="3d">3D</button>
+          </div>` : ''}
           ${(() => {
             /* Pitch size, in metres. Shown for the FULL board only:
                half and area are derived views of the same pitch, so
@@ -9784,7 +9944,8 @@
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
         </div>
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
-        <div class="${fieldCls}" id="tb-field" style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
+        ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap"><div class="tb-3d-loading">${t('tactics.loading_3d')}</div></div>` : ''}
+        <div class="${fieldCls}" id="tb-field"${is3d ? ' hidden' : ''} style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
           <div class="tb-field-inner" style="${tbFieldInnerStyle(savedPitch, boardType, isVertical)}">
             ${tbMarkingsHtml(savedPitch, boardType, isVertical)}
             ${(!boardType || boardType === 'full') ? `
@@ -12167,6 +12328,33 @@
             localStorage.removeItem('fa_tactic_opp_numbers');
           }
         });
+      });
+    }
+
+    /* 2D / 3D. A full re-render rather than swapping the surfaces in
+       place: the toolbar itself changes (orientation is meaningless
+       under an orbiting camera) and the 2D board must be rebuilt from
+       state anyway when coming back from a 3D edit. */
+    const viewToggle = document.getElementById('tb-view-toggle');
+    if (viewToggle) {
+      viewToggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tb-view-btn');
+        if (!btn || btn.classList.contains('active')) return;
+        localStorage.setItem('fa_tactic_view_3d', btn.dataset.view === '3d' ? '1' : '0');
+        tbDestroy3D();
+        navigate();
+      });
+    }
+    /* The edit hook is passed IN rather than dispatched as an event.
+       An event listener bound here would capture this render's
+       autoSaveFrame and keep it after the next re-render — a stale
+       closure writing into a frame array nobody is looking at any
+       more. Same shape as the tb-ro-play double-binding it took a
+       version to notice. */
+    if (document.getElementById('tb-3d-wrap')) {
+      tbMount3D({
+        beforeEdit: () => pushUndo(),
+        afterEdit: () => autoSaveFrame()
       });
     }
 

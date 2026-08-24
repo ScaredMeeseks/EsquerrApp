@@ -28,6 +28,11 @@ const OUT = path.join(ROOT, 'www');
 
 /** Exact names never copied. */
 const DENY_EXACT = new Set([
+  /* three.js and the 3D board, which are WEB ONLY by decision. 733 KB
+     of library that no phone build would ever load — the 3D toggle is
+     hidden without WebGL and the module is fetched lazily, so an APK
+     that shipped it would carry the weight and never use it. */
+  'vendor',
   'android', 'ios', 'node_modules', 'www', 'scripts',
   '.git', '.github', '.claude', '.vscode',
   'package.json', 'package-lock.json', 'capacitor.config.json',
@@ -47,6 +52,9 @@ const DENY_PATTERN = [
                      // by running this the first time. Gitignored, so CI
                      // never sees them, but a local cap:sync would have
                      // bundled one straight into the APK.
+  /^board3d\.js$/,   // the 3D board — web only, and useless without
+                     // vendor/three, which is excluded above. Matched at
+                     // any depth (see copyDir).
 ];
 
 function denied(name) {
@@ -56,6 +64,13 @@ function denied(name) {
 function copyDir(src, dst) {
   fs.mkdirSync(dst, {recursive: true});
   for (const entry of fs.readdirSync(src, {withFileTypes: true})) {
+    /* Patterns apply at EVERY depth, not just the root. DENY_EXACT
+       stays root-only — those are top-level directory names — but a
+       pattern describes a kind of file, and `js/board3d.js` is as much
+       a web-only file as anything at the root. Verified against the
+       tree: no legitimate file under js/, css/ or img/ matches any of
+       the patterns. */
+    if (DENY_PATTERN.some((re) => re.test(entry.name))) continue;
     const from = path.join(src, entry.name);
     const to = path.join(dst, entry.name);
     if (entry.isDirectory()) copyDir(from, to);

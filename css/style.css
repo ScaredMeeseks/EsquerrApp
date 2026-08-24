@@ -790,6 +790,33 @@ tr:hover td { background: #f7f8fa; }
   position:absolute; aspect-ratio:1; border-radius:50%;
   transform:translate(-50%,-50%); pointer-events:none;
 }
+/* ── 2D / 3D view toggle and the 3D surface ───────────────────────
+   The toggle only exists for a club with the premium feature and a
+   machine with WebGL; see clubFeature() and tbWebglOk(). */
+.tb-view-toggle {
+  display:inline-flex; border:1px solid var(--border); border-radius:6px;
+  overflow:hidden;
+}
+.tb-view-btn {
+  padding:.25rem .6rem; border:none; background:var(--card);
+  color:var(--text-secondary); font-size:.8rem; font-weight:700; cursor:pointer;
+}
+.tb-view-btn.active { background:var(--primary); color:#fff; }
+.tb-view-btn:not(.active):hover { color:var(--text); }
+
+.tb-3d-wrap {
+  width:100%; max-width:820px; margin:0 auto 1rem;
+  border-radius:var(--radius); overflow:hidden; border:3px solid #fff;
+  background:#1a2410; min-height:320px; position:relative;
+  touch-action:none;   /* the canvas owns the pointer, like .tb-field-inner */
+}
+.tb-3d-wrap canvas { display:block; width:100%; }
+.tb-3d-loading {
+  position:absolute; inset:0; display:flex; align-items:center;
+  justify-content:center; color:#cfe0c4; font-size:.9rem; text-align:center;
+  padding:1rem;
+}
+
 /* ── Pitch size controls ──────────────────────────────────────────
    Two metre boxes and a reset, sitting with the formation and
    orientation controls. Narrow on purpose: they hold two or three
