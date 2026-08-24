@@ -4110,3 +4110,45 @@ Unit 1180 → **1182**, with a mutation confirming the backfill-derives-nothing 
 > Scheduler's `jobs:run`. So: write `fcfCrawl/config` by REST, trigger the scheduled job by name,
 > poll `fcfRefIndex` — no Console, no Cloud Shell, and the deployed code path is the one exercised
 > rather than a local re-implementation of it.
+
+### 2026-08-24 — v136: pen lines join the coordinate system everything else uses
+
+Groundwork for the premium 3D tactical board (plan:
+`~/.claude/plans/working-on-the-esquerrapp-floating-barto.md`). Shippable on its own — it is a
+bug fix that happens to also be a prerequisite.
+
+**The bug.** Every geometry layer on the board normalises to the HORIZONTAL full pitch on the way
+out: `saveArrows` and `saveRects` run their endpoints through `toHorizontal`, and so do
+`saveBalls`, `saveCones` and `saveTexts`. `savePenLines` did not — it stored the raw display
+points, with a comment saying so. Orientation is a per-DEVICE preference (`fa_tactic_orient` is
+deliberately not part of a saved board), so a stroke drawn on a phone held portrait came back
+rotated on the coach's laptop, while the arrows on the same board stayed put. The stroke and the
+arrow pointing at it drifted apart.
+
+**Why it could not just be fixed.** Nothing records which orientation an existing stroke was drawn
+in, so reinterpreting what is already stored would move every old drawing. Hence `penSpace`, a new
+tail key: `''` (or absent) means "legacy, render raw exactly as before", `'h'` means normalised.
+Every save writes `'h'` — including a re-save of a legacy board, which heals it using the same
+orientation the raw render was already assuming, so what the coach sees is what gets stored.
+
+**A second bug, one line over.** `applyFrameState` restored balls through `toDisplay` but cones
+raw, so a cone jumped across the pitch every time you stepped a frame on a vertical board.
+
+**Also landed, unused for now:** `pitch` (`[lengthM, widthM, format]`, `null` = the historical
+105×68) appended alongside `penSpace`. Both tail keys went in together **deliberately**: key order
+is the shard diff (`db.js` compares serialised strings), so two separate appends would have
+rewritten every board shard in every club twice instead of once.
+
+- `js/boards.js` — `penSpace` + `pitch` at the tail of `buildBoardEntry`.
+- `js/app.js` — `penPointsToDisplay`/`penPointsToHorizontal` beside `toDisplay`/`toHorizontal`;
+  `savePenLines` normalises and stamps; both restore sites convert; cone frame restore fixed;
+  `tbHydrateEditor`/`tbClearEditor` own the two new scratch keys; `pushUndo`/`popUndo` carry
+  `penSpace` **in both lists** — the v90 scramble was exactly this pair going out of lockstep.
+- `test/pen-space.test.js` — new, 12 tests, running the real sliced helpers plus source assertions
+  that pin the call sites. Registered in `test/package.json` (`suite-registry.test.js` enforces it).
+
+A board with no strokes opens as `'h'` rather than legacy: there is nothing to misread, so it is
+never healed pointlessly, and the first stroke drawn on it does not store display coordinates all
+over again.
+
+Unit 1182 → **1197**.

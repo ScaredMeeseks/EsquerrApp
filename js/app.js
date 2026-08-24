@@ -1519,7 +1519,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 135;
+  const APP_VERSION = 136;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -9818,6 +9818,35 @@
       return [dLeft, dTop];
     }
 
+    /* Pen lines, and the one coordinate space that was never normalised.
+       See the penSpace note in boards.js: strokes used to be stored raw, in
+       whatever orientation the coach happened to be using, so the same board
+       drew differently on two devices. These two turn an SVG `points` string
+       between display and horizontal space, the way toDisplay/toHorizontal do
+       for every other layer.
+
+       penIsNormalised() reads the flag rather than assuming: a board saved
+       before this version must keep rendering raw, or every old stroke moves
+       the first time it is opened. */
+    const penIsNormalised = () => localStorage.getItem('fa_tactic_pen_space') === 'h';
+
+    function penPointsToDisplay(pointsStr) {
+      if (!penIsNormalised()) return pointsStr;   // legacy: already display space
+      return String(pointsStr || '').trim().split(/\s+/).map(pair => {
+        const xy = pair.split(',');
+        const d = toDisplay(parseFloat(xy[0]), parseFloat(xy[1]));
+        return (Math.round(d[0] * 100) / 100) + ',' + (Math.round(d[1] * 100) / 100);
+      }).join(' ');
+    }
+
+    function penPointsToHorizontal(pointsStr) {
+      return String(pointsStr || '').trim().split(/\s+/).map(pair => {
+        const xy = pair.split(',');
+        const h = toHorizontal(parseFloat(xy[0]), parseFloat(xy[1]));
+        return (Math.round(h[0] * 100) / 100) + ',' + (Math.round(h[1] * 100) / 100);
+      }).join(' ');
+    }
+
     function saveState() {
       const tc = teamFill();
       const oc = oppFill();
@@ -10012,7 +10041,13 @@
         texts: localStorage.getItem('fa_tactic_texts'),
         penLines: localStorage.getItem('fa_tactic_pen_lines'),
         silhouette: localStorage.getItem('fa_tactic_silhouette'),
-        cones: localStorage.getItem('fa_tactic_cones')
+        cones: localStorage.getItem('fa_tactic_cones'),
+        /* Travels WITH penLines or undo cannot restore them: the first stroke
+           on a legacy board flips the space to 'h' and rewrites every stored
+           stroke, so putting the old strokes back without putting the old flag
+           back would render horizontal points as though they were display
+           ones. Restored before the DOM rebuild below, which reads the flag. */
+        penSpace: localStorage.getItem('fa_tactic_pen_space')
       });
       if (undoStack.length > 50) undoStack.shift();
     }
@@ -10042,7 +10077,8 @@
         ['texts',        'fa_tactic_texts'],
         ['penLines',     'fa_tactic_pen_lines'],
         ['silhouette',   'fa_tactic_silhouette'],
-        ['cones',        'fa_tactic_cones']
+        ['cones',        'fa_tactic_cones'],
+        ['penSpace',     'fa_tactic_pen_space']
       ];
       UNDO_KEYS.forEach(([k, lsKey]) => {
         if (s[k] !== null && s[k] !== undefined) localStorage.setItem(lsKey, s[k]);
@@ -10974,10 +11010,14 @@
       const arr = [];
       lines.forEach(pl => {
         const pts = pl.getAttribute('points') || '';
-        // Store raw display points + color + dash
-        arr.push([pts, pl.dataset.color || '#ffffff', pl.dataset.dash === '1']);
+        // Normalise to the horizontal pitch, like saveArrows and saveRects.
+        arr.push([penPointsToHorizontal(pts), pl.dataset.color || '#ffffff', pl.dataset.dash === '1']);
       });
       localStorage.setItem('fa_tactic_pen_lines', JSON.stringify(arr));
+      /* Stamp the space AFTER converting. A legacy board being re-saved is
+         healed here, using the same orientation its raw render was already
+         assuming — so what the coach sees is what gets stored. */
+      localStorage.setItem('fa_tactic_pen_space', 'h');
     }
 
     function spawnPenLine(pointsStr, color, dash) {
@@ -10994,7 +11034,7 @@
 
     // Restore saved pen lines
     const savedPenLines = JSON.parse(localStorage.getItem('fa_tactic_pen_lines') || '[]');
-    savedPenLines.forEach(p => spawnPenLine(p[0], p[1], p[2]));
+    savedPenLines.forEach(p => spawnPenLine(penPointsToDisplay(p[0]), p[1], p[2]));
 
     if (penToolBtn) {
       penToolBtn.addEventListener('click', () => {
@@ -12679,7 +12719,7 @@
       });
       // Pen lines
       arrowsSvg.querySelectorAll('.tb-pen-line').forEach(p => p.remove());
-      (f.penLines || []).forEach(p => spawnPenLine(p[0], p[1], p[2]));
+      (f.penLines || []).forEach(p => spawnPenLine(penPointsToDisplay(p[0]), p[1], p[2]));
       // Silhouette
       const silVal = f.silhouette || '';
       localStorage.setItem('fa_tactic_silhouette', silVal);
@@ -12693,7 +12733,11 @@
       // Cones
       localStorage.setItem('fa_tactic_cones', JSON.stringify(f.cones || []));
       inner.querySelectorAll('.tb-cone').forEach(c => c.remove());
-      (f.cones || []).forEach(c => spawnCone(c[0], c[1]));
+      /* toDisplay, like the balls above. Without it a cone jumped across the
+         pitch every time you stepped a frame on a vertical full board:
+         saveCones normalises to horizontal, so the stored value is not what
+         the style attribute wants. Balls had the conversion, cones did not. */
+      (f.cones || []).forEach(c => { const d = toDisplay(c[0], c[1]); spawnCone(d[0], d[1]); });
       clearSelection();
     }
 
@@ -13451,6 +13495,18 @@
     else localStorage.removeItem('fa_tactic_texts');
     if (board.penLines && board.penLines.length) localStorage.setItem('fa_tactic_pen_lines', JSON.stringify(board.penLines));
     else localStorage.removeItem('fa_tactic_pen_lines');
+    /* Which space those strokes are in. A board with NO strokes is normalised
+       by definition — there is nothing to misread — so it opens as 'h' and
+       never gets healed pointlessly. */
+    if (board.penSpace === 'h' || !(board.penLines && board.penLines.length)) {
+      localStorage.setItem('fa_tactic_pen_space', 'h');
+    } else {
+      localStorage.removeItem('fa_tactic_pen_space');
+    }
+    /* Pitch dimensions. Absent means the historical 105x68 — board-geom.js
+       owns that default, so it is stored as absent rather than expanded here. */
+    if (board.pitch) localStorage.setItem('fa_tactic_pitch', JSON.stringify(board.pitch));
+    else localStorage.removeItem('fa_tactic_pitch');
     if (board.frames && board.frames.length) localStorage.setItem('fa_tactic_frames', JSON.stringify(board.frames));
     else localStorage.removeItem('fa_tactic_frames');
     if (board.tag) localStorage.setItem('fa_tactic_tag', board.tag);
@@ -13484,8 +13540,13 @@
       'fa_tactic_opp_numbers', 'fa_tactic_show_opp', 'fa_tactic_balls',
       'fa_tactic_arrows', 'fa_tactic_rects', 'fa_tactic_texts',
       'fa_tactic_pen_lines', 'fa_tactic_frames', 'fa_tactic_frame_idx',
-      'fa_tactic_tag', 'fa_tactic_silhouette', 'fa_tactic_cones'
+      'fa_tactic_tag', 'fa_tactic_silhouette', 'fa_tactic_cones',
+      'fa_tactic_pen_space', 'fa_tactic_pitch'
     ].forEach(function (k) { localStorage.removeItem(k); });
+    /* A blank board has no legacy strokes to preserve, so it starts
+       normalised. Leaving it cleared would make the first stroke drawn on a
+       vertical board store display coordinates all over again. */
+    localStorage.setItem('fa_tactic_pen_space', 'h');
     _tplBaseline = null;
   }
 

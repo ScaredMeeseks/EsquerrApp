@@ -55,7 +55,10 @@ const KEY_ORDER = [
   'id', 'category', 'name', 'formation', 'positions', 'numbers', 'boardType',
   'teamColor', 'oppColor', 'showOpp', 'oppPositions', 'oppNumbers', 'balls',
   'colors', 'oppColors', 'arrows', 'rects', 'texts', 'penLines', 'frames',
-  'tag', 'silhouette', 'cones', 'teamStripes', 'oppStripes'
+  'tag', 'silhouette', 'cones', 'teamStripes', 'oppStripes',
+  // Appended at the tail, together, for the reason above: two separate
+  // appends would have rewritten every board shard twice instead of once.
+  'penSpace', 'pitch'
 ];
 
 describe('buildBoardEntry — defaults', () => {
@@ -84,8 +87,31 @@ describe('buildBoardEntry — defaults', () => {
       silhouette: '',
       cones: [],
       teamStripes: '',
-      oppStripes: ''
+      oppStripes: '',
+      penSpace: '',
+      pitch: null
     });
+  });
+
+  it('penSpace defaults to legacy, not to normalised', () => {
+    /* '' means "these points are in display space, render them raw".
+       Defaulting to 'h' instead would silently reinterpret every stroke
+       drawn before this version and move it on screen. */
+    const e = TB.buildBoardEntry(store({}), { name: 'B' });
+    assert.strictEqual(e.penSpace, '');
+  });
+
+  it('pitch defaults to null, meaning the historical 105x68', () => {
+    // Not [105,68,'f11'] — an explicit default would be written into every
+    // board on its next save, which is a migration nobody asked for.
+    const e = TB.buildBoardEntry(store({}), { name: 'B' });
+    assert.strictEqual(e.pitch, null);
+  });
+
+  it('carries a resized pitch through verbatim', () => {
+    const e = TB.buildBoardEntry(
+        store({ fa_tactic_pitch: '[60,40,"f7"]' }), { name: 'B' });
+    assert.deepStrictEqual(e.pitch, [60, 40, 'f7']);
   });
 
   it('showOpp is a real boolean, not the string "true"', () => {

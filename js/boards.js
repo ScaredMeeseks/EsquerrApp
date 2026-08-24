@@ -84,6 +84,32 @@
        same reason oppColors is: key order is the shard diff. */
     e.teamStripes = store.getItem('fa_tactic_team_stripes') || '';
     e.oppStripes = store.getItem('fa_tactic_opp_stripes') || '';
+    /* Which coordinate space `penLines` is in.
+
+       Every other geometry layer normalises to the HORIZONTAL full pitch on
+       the way out — saveArrows and saveRects both run their endpoints through
+       toHorizontal. penLines never did: it stored the raw DISPLAY points, so a
+       stroke drawn on a vertical board came back rotated when the same board
+       was later opened horizontally. Orientation is a per-DEVICE preference,
+       so that is not a hypothetical — two coaches on the same board see
+       different drawings.
+
+       '' (or absent) means a legacy board whose points are in display space
+       and must be rendered raw, exactly as before, or every stroke drawn
+       before this version would move the first time it was viewed. 'h' means
+       normalised, and is what every save writes from now on — including a
+       re-save of a legacy board, which heals it using the same orientation
+       assumption the raw render was already making. */
+    e.penSpace = store.getItem('fa_tactic_pen_space') || '';
+    /* Pitch dimensions: [lengthM, widthM, format].
+
+       null is the historical default — 105 × 68, eleven-a-side — so every
+       board that predates resizable pitches renders exactly as it did, with
+       no migration and no backfill. Only the OUTER perimeter is stored: the
+       markings are regulation sizes derived from `format` by board-geom.js,
+       which is what keeps the penalty area the same size on a 40 m pitch as
+       on a 105 m one. */
+    e.pitch = JSON.parse(store.getItem('fa_tactic_pitch') || 'null');
     return e;
   }
 
