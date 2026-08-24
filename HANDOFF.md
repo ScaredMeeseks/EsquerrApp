@@ -78,11 +78,11 @@ The scope beside it is ready (all five tiers, both seasons), so **resuming is th
 What it already produced is kept and will not be re-fetched: `fcfRefIndex/21_54486121` (Tercera
 Grup 1, 240 actas) and **44 referee profiles**.
 
-To drive it without a service account — there is no local Admin SDK credential for this project —
-the `firebase-tools` refresh token for `marna96@gmail.com` mints a `cloud-platform` token that
-reaches the Firestore REST admin surface (IAM, not rules) and Cloud Scheduler's `jobs:run`. Write
-the config by REST, trigger `firebase-schedule-crawlFcfActas-us-central1`, poll `fcfRefIndex`. That
-exercises the deployed code path rather than a local re-implementation.
+How it was driven: write the config by REST, trigger
+`firebase-schedule-crawlFcfActas-us-central1` by name, poll `fcfRefIndex`. That exercises the
+**deployed** code path rather than a local re-implementation of it. No service-account key is
+involved — see "Reading production without a browser" below for the token, and note that the REST
+route needs no ADC file and no scratch script inside `functions/`, unlike the Admin SDK.
 
 ### Still open on the referee work
 
