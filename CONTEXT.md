@@ -4152,3 +4152,47 @@ never healed pointlessly, and the first stroke drawn on it does not store displa
 over again.
 
 Unit 1182 → **1197**.
+
+#### Then the geometry (same version)
+
+`js/board-geom.js` — new, pure, 45 tests. The one owner of how big a pitch is, where its markings
+sit, and where a percentage lands in metres. Loaded before `boards.js`; in `sw.js` precache.
+
+**The rule it exists to enforce: markings are ABSOLUTE, objects are RELATIVE.** Resize a pitch and
+the penalty area stays 16.5 m deep — it just occupies more of a smaller pitch. The players move
+proportionally, because a 4-3-3 on a small pitch is still a 4-3-3. Scaling a percentage would
+shrink the penalty spot along with the pitch, which is the one thing football does not do.
+
+The markings used to be fixed percentages in `css/style.css` with **four** override blocks —
+`.tb-vertical`, `.tb-half`, `.tb-area`, `.tb-vertical.tb-half`. All deleted. Class rules now carry
+appearance only; every position, size, open edge, clip-path and the box's own `padding-top` is
+inline, written by `tbMarkingsHtml()` / `tbFieldInnerStyle()` / `tbFieldOuterStyle()`.
+
+**The old constants were approximations, and existing boards will shift slightly.** A 14% penalty
+area is 14.7 m where the Laws say 16.5; the centre circle was 14.7 m across against a real 18.3;
+`padding-top: 62%` describes a 105×65 pitch while the markings assumed 105×68. This is a
+correction, but it is a visible one — `pitch-preview.html` (regenerate with
+`node test/make-pitch-preview.js`) renders ten configurations from the real module for eyeballing.
+
+Three things the geometry independently re-derived, which is the best evidence available that the
+axis conventions are right:
+- **77%** for a half board — `.tb-half .tb-field-inner` has hardcoded exactly that for years, and
+  52.5 m of pitch length across 68 m of width is 77.2%. (A half board is WIDER than tall, despite
+  being drawn goal-at-top. This surprises people; there is a test.)
+- **11.5% / 21%** — the deleted rotation margins are exactly `(100 - aspect) / 2` for 77% and 58%.
+- The penalty arc clip: derived **80.05%**, hardcoded was 75%.
+
+Two bugs the tests caught while writing them:
+- `pitchOf` was not **idempotent**. `markings()` resolves a pitch and hands the result to
+  `extent()`, which resolved again, did not recognise its own output, and silently returned the
+  105×68 default — so a 60 m pitch drew its penalty area at the 105 m proportion. Only the one
+  assertion comparing *two different pitches* could see it.
+- Vertical half/area must **not** be pre-rotated (CSS already rotates the whole `.tb-field`), while
+  vertical full must be. `isRotated()` is exactly `useJsSwap()`; if the two ever disagree the
+  penalty spot drifts away from the penalty taker.
+
+`FORMATS` carries f11 (exact, Laws of the Game), f9 and f7 (common Spanish values — federations
+differ, hence the coach override). **Futsal is deliberately absent**: its area is a 6 m arc, a
+different topology, and a rectangle would look right and be wrong.
+
+Unit 1197 → **1254**.

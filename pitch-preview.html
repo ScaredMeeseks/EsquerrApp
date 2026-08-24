@@ -1,3 +1,7 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pitch markings preview</title>
+<style>
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 button, input, select, textarea { font-family: inherit; }
@@ -4462,3 +4466,96 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ref-out-w{background:#2e7d32;color:#fff;}
 .ref-out-d{background:#9E9E9E;color:#fff;}
 .ref-out-l{background:var(--primary);color:#fff;}
+
+body { font-family: system-ui, sans-serif; margin: 2rem; background:#11151a; color:#e8eaed; }
+h1 { font-size:1.1rem; font-weight:600; }
+p.note { color:#9aa4b2; max-width:60ch; line-height:1.5; font-size:.9rem; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:2.5rem; margin-top:2rem; }
+figure { margin:0; }
+figcaption { font-size:.85rem; margin-bottom:.6rem; color:#c8cdd4; }
+figcaption small { color:#7d8794; }
+.tb-field { margin-bottom:0 !important; }
+</style>
+<h1>Pitch markings — generated from js/board-geom.js</h1>
+<p class="note">
+  What to check: the penalty area, goal area, centre circle and penalty spot must be the
+  <strong>same real size</strong> on every board below, however big or small the pitch is —
+  they should take up more of a small pitch and less of a large one. The two RESIZED boards
+  are the test: same f11 markings, different perimeter.
+</p>
+<p class="note">
+  These are slightly larger than the old board on purpose. The previous CSS used approximations —
+  a 14% penalty area is 14.7 m where the Laws say 16.5 m, and the centre circle was 14.7 m across
+  against a real 18.3 m.
+</p>
+<div class="grid"><figure>
+    <figcaption>Futbol 11 · 105 × 68 · horizontal<br><small>105 × 68 m · f11 · aspect 64.76%</small></figcaption>
+    <div class="tb-field" style="">
+      <div class="tb-field-inner" style="padding-top:64.76%;">
+        <div class="tb-halfway" style="left:50%;top:0;width:2px;height:100%;"></div><div class="tb-center-circle" style="left:50%;top:50%;width:17.43%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:50%;"></div><div class="tb-penalty-left" style="left:0%;top:20.35%;width:15.71%;height:59.29%;border:2px solid rgba(255,255,255,.4);border-left:none;"></div><div class="tb-penalty-right" style="left:84.29%;top:20.35%;width:15.71%;height:59.29%;border:2px solid rgba(255,255,255,.4);border-right:none;"></div><div class="tb-goal-left" style="left:0%;top:36.53%;width:5.24%;height:26.94%;border:2px solid rgba(255,255,255,.55);border-left:none;"></div><div class="tb-goal-right" style="left:94.76%;top:36.53%;width:5.24%;height:26.94%;border:2px solid rgba(255,255,255,.55);border-right:none;"></div><div class="tb-penalty-arc-left" style="left:10.48%;top:50%;width:17.43%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 0 0 80.05%);"></div><div class="tb-penalty-arc-right" style="left:89.52%;top:50%;width:17.43%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 80.05% 0 0);"></div><div class="tb-penalty-spot-left" style="left:10.48%;top:50%;"></div><div class="tb-penalty-spot-right" style="left:89.52%;top:50%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Futbol 11 · 105 × 68 · vertical<br><small>105 × 68 m · f11 · aspect 154.41%</small></figcaption>
+    <div class="tb-field tb-vertical" style="">
+      <div class="tb-field-inner" style="padding-top:154.41%;">
+        <div class="tb-halfway" style="left:0;top:50%;width:100%;height:2px;"></div><div class="tb-center-circle" style="left:50%;top:50%;width:26.91%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:50%;"></div><div class="tb-penalty-left" style="left:20.35%;top:84.29%;width:59.29%;height:15.71%;border:2px solid rgba(255,255,255,.4);border-bottom:none;"></div><div class="tb-penalty-right" style="left:20.35%;top:0%;width:59.29%;height:15.71%;border:2px solid rgba(255,255,255,.4);border-top:none;"></div><div class="tb-goal-left" style="left:36.53%;top:94.76%;width:26.94%;height:5.24%;border:2px solid rgba(255,255,255,.55);border-bottom:none;"></div><div class="tb-goal-right" style="left:36.53%;top:0%;width:26.94%;height:5.24%;border:2px solid rgba(255,255,255,.55);border-top:none;"></div><div class="tb-penalty-arc-left" style="left:50%;top:89.52%;width:26.91%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 0 80.05% 0);"></div><div class="tb-penalty-arc-right" style="left:50%;top:10.48%;width:26.91%;border:2px solid rgba(255,255,255,.4);clip-path:inset(80.05% 0 0 0);"></div><div class="tb-penalty-spot-left" style="left:50%;top:89.52%;"></div><div class="tb-penalty-spot-right" style="left:50%;top:10.48%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Half pitch · horizontal<br><small>105 × 68 m · f11 · aspect 77.21%</small></figcaption>
+    <div class="tb-field tb-half" style="">
+      <div class="tb-field-inner" style="padding-top:77.21%;">
+        <div class="tb-halfway" style="left:0;top:100%;width:100%;height:2px;"></div><div class="tb-center-circle" style="left:50%;top:100%;width:26.91%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:100%;"></div><div class="tb-penalty-left" style="left:20.35%;top:0%;width:59.29%;height:31.43%;border:2px solid rgba(255,255,255,.4);border-top:none;"></div><div class="tb-goal-left" style="left:36.53%;top:0%;width:26.94%;height:10.48%;border:2px solid rgba(255,255,255,.55);border-top:none;"></div><div class="tb-penalty-arc-left" style="left:50%;top:20.95%;width:26.91%;border:2px solid rgba(255,255,255,.4);clip-path:inset(80.05% 0 0 0);"></div><div class="tb-penalty-spot-left" style="left:50%;top:20.95%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Area · horizontal<br><small>105 × 68 m · f11 · aspect 54.47%</small></figcaption>
+    <div class="tb-field tb-area" style="">
+      <div class="tb-field-inner" style="padding-top:54.47%;">
+        <div class="tb-penalty-left" style="left:11.47%;top:0%;width:77.06%;height:57.89%;border:2px solid rgba(255,255,255,.4);border-top:none;"></div><div class="tb-goal-left" style="left:32.49%;top:0%;width:35.02%;height:19.3%;border:2px solid rgba(255,255,255,.55);border-top:none;"></div><div class="tb-penalty-arc-left" style="left:50%;top:38.6%;width:34.98%;border:2px solid rgba(255,255,255,.4);clip-path:inset(80.05% 0 0 0);"></div><div class="tb-penalty-spot-left" style="left:50%;top:38.6%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>RESIZED 60 × 45 · same f11 markings<br><small>60 × 45 m · f11 · aspect 75%</small></figcaption>
+    <div class="tb-field" style="">
+      <div class="tb-field-inner" style="padding-top:75%;">
+        <div class="tb-halfway" style="left:50%;top:0;width:2px;height:100%;"></div><div class="tb-center-circle" style="left:50%;top:50%;width:30.5%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:50%;"></div><div class="tb-penalty-left" style="left:0%;top:5.2%;width:27.5%;height:89.6%;border:2px solid rgba(255,255,255,.4);border-left:none;"></div><div class="tb-penalty-right" style="left:72.5%;top:5.2%;width:27.5%;height:89.6%;border:2px solid rgba(255,255,255,.4);border-right:none;"></div><div class="tb-goal-left" style="left:0%;top:29.64%;width:9.17%;height:40.71%;border:2px solid rgba(255,255,255,.55);border-left:none;"></div><div class="tb-goal-right" style="left:90.83%;top:29.64%;width:9.17%;height:40.71%;border:2px solid rgba(255,255,255,.55);border-right:none;"></div><div class="tb-penalty-arc-left" style="left:18.33%;top:50%;width:30.5%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 0 0 80.05%);"></div><div class="tb-penalty-arc-right" style="left:81.67%;top:50%;width:30.5%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 80.05% 0 0);"></div><div class="tb-penalty-spot-left" style="left:18.33%;top:50%;"></div><div class="tb-penalty-spot-right" style="left:81.67%;top:50%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>RESIZED 130 × 90 · same f11 markings<br><small>130 × 90 m · f11 · aspect 69.23%</small></figcaption>
+    <div class="tb-field" style="">
+      <div class="tb-field-inner" style="padding-top:69.23%;">
+        <div class="tb-halfway" style="left:50%;top:0;width:2px;height:100%;"></div><div class="tb-center-circle" style="left:50%;top:50%;width:14.08%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:50%;"></div><div class="tb-penalty-left" style="left:0%;top:27.6%;width:12.69%;height:44.8%;border:2px solid rgba(255,255,255,.4);border-left:none;"></div><div class="tb-penalty-right" style="left:87.31%;top:27.6%;width:12.69%;height:44.8%;border:2px solid rgba(255,255,255,.4);border-right:none;"></div><div class="tb-goal-left" style="left:0%;top:39.82%;width:4.23%;height:20.36%;border:2px solid rgba(255,255,255,.55);border-left:none;"></div><div class="tb-goal-right" style="left:95.77%;top:39.82%;width:4.23%;height:20.36%;border:2px solid rgba(255,255,255,.55);border-right:none;"></div><div class="tb-penalty-arc-left" style="left:8.46%;top:50%;width:14.08%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 0 0 80.05%);"></div><div class="tb-penalty-arc-right" style="left:91.54%;top:50%;width:14.08%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 80.05% 0 0);"></div><div class="tb-penalty-spot-left" style="left:8.46%;top:50%;"></div><div class="tb-penalty-spot-right" style="left:91.54%;top:50%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Futbol 7 preset · 60 × 40<br><small>60 × 40 m · f7 · aspect 66.67%</small></figcaption>
+    <div class="tb-field" style="">
+      <div class="tb-field-inner" style="padding-top:66.67%;">
+        <div class="tb-halfway" style="left:50%;top:0;width:2px;height:100%;"></div><div class="tb-center-circle" style="left:50%;top:50%;width:20%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:50%;"></div><div class="tb-penalty-left" style="left:0%;top:21.25%;width:15%;height:57.5%;border:2px solid rgba(255,255,255,.4);border-left:none;"></div><div class="tb-penalty-right" style="left:85%;top:21.25%;width:15%;height:57.5%;border:2px solid rgba(255,255,255,.4);border-right:none;"></div><div class="tb-goal-left" style="left:0%;top:37.5%;width:5%;height:25%;border:2px solid rgba(255,255,255,.55);border-left:none;"></div><div class="tb-goal-right" style="left:95%;top:37.5%;width:5%;height:25%;border:2px solid rgba(255,255,255,.55);border-right:none;"></div><div class="tb-penalty-arc-left" style="left:13.33%;top:50%;width:20%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 0 0 58.33%);"></div><div class="tb-penalty-arc-right" style="left:86.67%;top:50%;width:20%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 58.33% 0 0);"></div><div class="tb-penalty-spot-left" style="left:13.33%;top:50%;"></div><div class="tb-penalty-spot-right" style="left:86.67%;top:50%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Futbol 9 preset · 75 × 50<br><small>75 × 50 m · f9 · aspect 66.67%</small></figcaption>
+    <div class="tb-field" style="">
+      <div class="tb-field-inner" style="padding-top:66.67%;">
+        <div class="tb-halfway" style="left:50%;top:0;width:2px;height:100%;"></div><div class="tb-center-circle" style="left:50%;top:50%;width:18.67%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:50%;"></div><div class="tb-penalty-left" style="left:0%;top:24%;width:17.33%;height:52%;border:2px solid rgba(255,255,255,.4);border-left:none;"></div><div class="tb-penalty-right" style="left:82.67%;top:24%;width:17.33%;height:52%;border:2px solid rgba(255,255,255,.4);border-right:none;"></div><div class="tb-goal-left" style="left:0%;top:38%;width:5.33%;height:24%;border:2px solid rgba(255,255,255,.55);border-left:none;"></div><div class="tb-goal-right" style="left:94.67%;top:38%;width:5.33%;height:24%;border:2px solid rgba(255,255,255,.55);border-right:none;"></div><div class="tb-penalty-arc-left" style="left:12%;top:50%;width:18.67%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 0 0 78.57%);"></div><div class="tb-penalty-arc-right" style="left:88%;top:50%;width:18.67%;border:2px solid rgba(255,255,255,.4);clip-path:inset(0 78.57% 0 0);"></div><div class="tb-penalty-spot-left" style="left:12%;top:50%;"></div><div class="tb-penalty-spot-right" style="left:88%;top:50%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Half pitch · vertical (CSS-rotated)<br><small>105 × 68 m · f11 · aspect 77.21%</small></figcaption>
+    <div class="tb-field tb-half tb-vertical" style="margin-top:calc(11.4% + 1rem);margin-bottom:calc(11.4% + 1rem);">
+      <div class="tb-field-inner" style="padding-top:77.21%;">
+        <div class="tb-halfway" style="left:0;top:100%;width:100%;height:2px;"></div><div class="tb-center-circle" style="left:50%;top:100%;width:26.91%;border:2px solid rgba(255,255,255,.45);"></div><div class="tb-center-spot" style="left:50%;top:100%;"></div><div class="tb-penalty-left" style="left:20.35%;top:0%;width:59.29%;height:31.43%;border:2px solid rgba(255,255,255,.4);border-top:none;"></div><div class="tb-goal-left" style="left:36.53%;top:0%;width:26.94%;height:10.48%;border:2px solid rgba(255,255,255,.55);border-top:none;"></div><div class="tb-penalty-arc-left" style="left:50%;top:20.95%;width:26.91%;border:2px solid rgba(255,255,255,.4);clip-path:inset(80.05% 0 0 0);"></div><div class="tb-penalty-spot-left" style="left:50%;top:20.95%;"></div>
+      </div>
+    </div>
+  </figure><figure>
+    <figcaption>Area · vertical (CSS-rotated)<br><small>105 × 68 m · f11 · aspect 54.47%</small></figcaption>
+    <div class="tb-field tb-area tb-vertical" style="margin-top:calc(22.77% + 1rem);margin-bottom:calc(22.77% + 1rem);">
+      <div class="tb-field-inner" style="padding-top:54.47%;">
+        <div class="tb-penalty-left" style="left:11.47%;top:0%;width:77.06%;height:57.89%;border:2px solid rgba(255,255,255,.4);border-top:none;"></div><div class="tb-goal-left" style="left:32.49%;top:0%;width:35.02%;height:19.3%;border:2px solid rgba(255,255,255,.55);border-top:none;"></div><div class="tb-penalty-arc-left" style="left:50%;top:38.6%;width:34.98%;border:2px solid rgba(255,255,255,.4);clip-path:inset(80.05% 0 0 0);"></div><div class="tb-penalty-spot-left" style="left:50%;top:38.6%;"></div>
+      </div>
+    </div>
+  </figure></div>

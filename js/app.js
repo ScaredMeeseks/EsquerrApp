@@ -6249,6 +6249,108 @@
 
   // ---- Read-only board helper (shared by match-detail & convocatòria) ----
   let _roBoardIdx = 0;
+  /* ═══════════════════════════════════════════════════════════
+     Pitch markings, drawn from geometry rather than from constants.
+
+     These eleven divs used to carry their positions in css/style.css
+     as fixed percentages — `.tb-penalty-left { width:14%; height:56% }`
+     and so on — with a second set of overrides for `.tb-vertical`, a
+     third for `.tb-half` and a fourth for `.tb-area`. That works for
+     exactly one pitch size, which is what the board had.
+
+     Now the numbers come from js/board-geom.js, so a resized pitch
+     keeps its penalty area 16.5 m deep instead of shrinking it. Two
+     consequences worth knowing:
+
+       - the class rules keep only APPEARANCE (colour, radius); every
+         position, size and open edge is inline, because an inline
+         style beats a class rule and half-and-half would have been
+         unreadable;
+       - the markings shift slightly on existing boards. The old
+         constants were approximations — a 14% penalty area is 14.7 m
+         where the Laws say 16.5 m, and the centre circle was 14.7 m
+         across against a real 18.3 m. This corrects them.
+
+     `vertical` is passed rather than read so the read-only renderer,
+     which is always horizontal, cannot accidentally inherit the
+     editor's per-device orientation preference.
+     ═══════════════════════════════════════════════════════════ */
+  function tbMarkingsHtml(pitch, boardType, vertical) {
+    const css = BG.toCss(pitch, boardType, vertical);
+    const out = [];
+    const box = (cls, r, color) => {
+      if (!r) return;
+      /* Which edge sits on the goal line, and is therefore open. The
+         old CSS hardcoded `border-left:none` for the left box, which
+         is wrong the moment the board rotates and that box is at the
+         bottom. */
+      let open = 'bottom';
+      if (r.left <= 0.01) open = 'left';
+      else if (r.left + r.width >= 99.99) open = 'right';
+      else if (r.top <= 0.01) open = 'top';
+      out.push('<div class="' + cls + '" style="left:' + r.left + '%;top:' + r.top +
+        '%;width:' + r.width + '%;height:' + r.height +
+        '%;border:2px solid ' + color + ';border-' + open + ':none;"></div>');
+    };
+    const circle = (cls, c, color, clip) => {
+      if (!c) return;
+      out.push('<div class="' + cls + '" style="left:' + c.left + '%;top:' + c.top +
+        '%;width:' + c.size + '%;border:2px solid ' + color + ';' +
+        (clip && c.clip ? 'clip-path:' + c.clip + ';' : '') + '"></div>');
+    };
+    const spot = (cls, s) => {
+      if (!s) return;
+      out.push('<div class="' + cls + '" style="left:' + s.left + '%;top:' + s.top + '%;"></div>');
+    };
+
+    if (css.halfway) {
+      // A line, not a border: expressing it as a 2px box works the same
+      // way whichever axis it runs along, which a border does not.
+      const h = css.halfway;
+      out.push(h.vertical
+        ? '<div class="tb-halfway" style="left:' + h.left + '%;top:0;width:2px;height:100%;"></div>'
+        : '<div class="tb-halfway" style="left:0;top:' + h.top + '%;width:100%;height:2px;"></div>');
+    }
+    circle('tb-center-circle', css.centerCircle, 'rgba(255,255,255,.45)', false);
+    spot('tb-center-spot', css.centerSpot);
+    box('tb-penalty-left', css.penaltyLeft, 'rgba(255,255,255,.4)');
+    box('tb-penalty-right', css.penaltyRight, 'rgba(255,255,255,.4)');
+    box('tb-goal-left', css.goalAreaLeft, 'rgba(255,255,255,.55)');
+    box('tb-goal-right', css.goalAreaRight, 'rgba(255,255,255,.55)');
+    circle('tb-penalty-arc-left', css.arcLeft, 'rgba(255,255,255,.4)', true);
+    circle('tb-penalty-arc-right', css.arcRight, 'rgba(255,255,255,.4)', true);
+    spot('tb-penalty-spot-left', css.penaltySpotL);
+    spot('tb-penalty-spot-right', css.penaltySpotR);
+    return out.join('');
+  }
+
+  /** The field box's own aspect, as an inline style. Replaces the
+   *  hardcoded `padding-top:62%` — which described a 105x65 pitch, not
+   *  the 105x68 one the markings assume. */
+  function tbFieldInnerStyle(pitch, boardType, vertical) {
+    return 'padding-top:' + BG.aspectPct(pitch, boardType, vertical) + '%;';
+  }
+
+  /**
+   * Margins for the board types that are rotated by CSS.
+   *
+   * A vertical half or area board is turned with `transform:
+   * rotate(-90deg)`, and a transform does not change the space the
+   * layout reserves — so a box 820 wide and 631 tall still occupies
+   * 631 of vertical space after becoming 631 wide and 820 tall, and
+   * overlaps whatever is above and below by the difference.
+   *
+   * That difference is (1 - aspect) / 2 per side. The old CSS wrote it
+   * as `calc(11.5% + 1rem)` and `calc(21% + 1rem)` — which are exactly
+   * half of 1 - 0.77 and 1 - 0.58, correct only while those two
+   * aspects are the only ones possible.
+   */
+  function tbFieldOuterStyle(pitch, boardType, vertical) {
+    if (!vertical || (boardType !== 'half' && boardType !== 'area')) return '';
+    const m = Math.round(((100 - BG.aspectPct(pitch, boardType, vertical)) / 2) * 100) / 100;
+    return 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
+  }
+
   function renderReadOnlyBoard(b, prefix) {
     const bid = 'ro-board-' + (++_roBoardIdx);
     let fCls = 'tb-field tb-field-readonly';
@@ -6332,12 +6434,11 @@
     })) : [];
     const framesAttr = hasFrames ? " data-frames='" + sanitize(JSON.stringify(framesForAnim)).replace(/'/g, '&#39;') + "'" : '';
     return '<div style="margin-bottom:1rem;"><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + (b.formation ? ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span>' : '') + '</div>' +
-      '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner">' +
-      '<div class="tb-halfway"></div><div class="tb-center-circle"></div><div class="tb-center-spot"></div>' +
-      '<div class="tb-penalty-left"></div><div class="tb-penalty-right"></div>' +
-      '<div class="tb-goal-left"></div><div class="tb-goal-right"></div>' +
-      '<div class="tb-penalty-arc-left"></div><div class="tb-penalty-arc-right"></div>' +
-      '<div class="tb-penalty-spot-left"></div><div class="tb-penalty-spot-right"></div>' +
+      '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner" style="' +
+      /* Always horizontal: a read-only board never gets the .tb-vertical
+         class, so it must not inherit the editor's orientation. */
+      tbFieldInnerStyle(b.pitch, b.boardType, false) + '">' +
+      tbMarkingsHtml(b.pitch, b.boardType, false) +
       circles + oppCircles + ballHtml + svgHtml + textsHtml + playBtnH +
       ((src.cones && src.cones.length) ? src.cones.map(c => '<div class="tb-cone" style="left:' + c[0] + '%;top:' + c[1] + '%;pointer-events:none;"></div>').join('') : '') +
       (b.silhouette ? '<img class="tb-silhouette" src="img/sil-' + b.silhouette + '.png" alt="" style="display:block;pointer-events:none;">' : '') +
@@ -9474,6 +9575,10 @@
     const savedTexts = JSON.parse(localStorage.getItem('fa_tactic_texts') || '[]');
     const savedSilhouette = localStorage.getItem('fa_tactic_silhouette') || '';
     const savedCones = JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]');
+    /* null on an unresized board, which board-geom reads as the
+       historical 105x68 — so the absence of the key IS the default and
+       no board needs migrating. */
+    const savedPitch = JSON.parse(localStorage.getItem('fa_tactic_pitch') || 'null');
     const GK_COLOR = '#f5c842';
 
     let circlesHtml = '';
@@ -9623,19 +9728,9 @@
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
         </div>
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
-        <div class="${fieldCls}" id="tb-field">
-          <div class="tb-field-inner">
-            <div class="tb-halfway"></div>
-            <div class="tb-center-circle"></div>
-            <div class="tb-center-spot"></div>
-            <div class="tb-penalty-left"></div>
-            <div class="tb-penalty-right"></div>
-            <div class="tb-goal-left"></div>
-            <div class="tb-goal-right"></div>
-            <div class="tb-penalty-arc-left"></div>
-            <div class="tb-penalty-arc-right"></div>
-            <div class="tb-penalty-spot-left"></div>
-            <div class="tb-penalty-spot-right"></div>
+        <div class="${fieldCls}" id="tb-field" style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
+          <div class="tb-field-inner" style="${tbFieldInnerStyle(savedPitch, boardType, isVertical)}">
+            ${tbMarkingsHtml(savedPitch, boardType, isVertical)}
             ${circlesHtml}
             ${oppCirclesHtml}
             ${savedBalls.map((bp,bi) => { if(!bp) return ''; let bx=bp[0],by=bp[1]; if(isVertical&&boardType==='full'){bx=bp[1];by=100-bp[0];} return '<div class="tb-ball" data-idx="'+bi+'" style="left:'+bx+'%;top:'+by+'%;">' + '</div>'; }).join('')}
