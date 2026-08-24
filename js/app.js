@@ -643,6 +643,14 @@
     'tactics.formation':     { ca:'Formació', es:'Formación', en:'Formation' },
     'tactics.select_formation':{ ca:'— Selecciona —', es:'— Seleccionar —', en:'— Select —' },
     'tactics.opp':           { ca:'Riv', es:'Riv', en:'Opp' },
+    'tactics.pitch':         { ca:'Camp', es:'Campo', en:'Pitch' },
+    'tactics.pitch_length':  { ca:'Llargada del camp, en metres', es:'Largo del campo, en metros', en:'Pitch length, in metres' },
+    'tactics.pitch_width':   { ca:'Amplada del camp, en metres', es:'Ancho del campo, en metros', en:'Pitch width, in metres' },
+    'tactics.pitch_hint':    { ca:'Les mides del camp. Les àrees, el cercle i les porteries no canvien de mida.',
+      es:'Las medidas del campo. Las áreas, el círculo y las porterías no cambian de tamaño.',
+      en:'The pitch dimensions. The areas, the circle and the goals do not change size.' },
+    'tactics.pitch_reset':   { ca:'Torna a la mida reglamentària', es:'Volver al tamaño reglamentario', en:'Back to the regulation size' },
+    'tactics.pitch_drag':    { ca:'Arrossega per canviar la mida del camp', es:'Arrastra para cambiar el tamaño del campo', en:'Drag to resize the pitch' },
     'tactics.dash':          { ca:'Disc.', es:'Disc.', en:'Dash' },
     'tactics.stripes':       { ca:'Ratlles', es:'Rayas', en:'Stripes' },
     'tactics.stripes_count': { ca:'Nombre de ratlles (2-6)', es:'Número de rayas (2-6)', en:'Number of stripes (2-6)' },
@@ -9691,6 +9699,23 @@
             </div>
           </div>
           <button class="tb-orient-btn" id="tb-orient" data-tooltip="Toggle orientation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+          ${(() => {
+            /* Pitch size, in metres. Shown for the FULL board only:
+               half and area are derived views of the same pitch, so
+               editing the perimeter from them would change a frame the
+               coach cannot see the edges of. */
+            if (boardType && boardType !== 'full') return '';
+            const gp = BG.pitchOf(savedPitch);
+            return `<span class="tb-sep"></span>
+          <label class="tb-label tb-pitch-label" data-tooltip="${t('tactics.pitch_hint')}">${t('tactics.pitch')}</label>
+          <input type="number" class="tb-pitch-input" id="tb-pitch-l" value="${gp.L}"
+                 min="${BG.BOUNDS.MIN_L}" max="${BG.BOUNDS.MAX_L}" step="1" data-tooltip="${t('tactics.pitch_length')}">
+          <span class="tb-pitch-x">&times;</span>
+          <input type="number" class="tb-pitch-input" id="tb-pitch-w" value="${gp.W}"
+                 min="${BG.BOUNDS.MIN_W}" max="${BG.BOUNDS.MAX_W}" step="1" data-tooltip="${t('tactics.pitch_width')}">
+          <span class="tb-pitch-unit">m</span>
+          <button class="tb-pitch-reset" id="tb-pitch-reset" data-tooltip="${t('tactics.pitch_reset')}">${BG.DEFAULT_PITCH[0]}&times;${BG.DEFAULT_PITCH[1]}</button>`;
+          })()}
           <input type="color" class="tb-color-pick" id="tb-team-color" value="${teamColor}" data-tooltip="Team color">
           ${_stripeControlsHtml('team')}
           <label class="tb-opp-toggle"><input type="checkbox" id="tb-show-opp" ${showOpp ? 'checked' : ''}> Opp</label>
@@ -9739,6 +9764,9 @@
         <div class="${fieldCls}" id="tb-field" style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
           <div class="tb-field-inner" style="${tbFieldInnerStyle(savedPitch, boardType, isVertical)}">
             ${tbMarkingsHtml(savedPitch, boardType, isVertical)}
+            ${(!boardType || boardType === 'full') ? `
+            <div class="tb-pitch-grip tb-pitch-grip-x" id="tb-grip-x" data-tooltip="${t('tactics.pitch_drag')}"></div>
+            <div class="tb-pitch-grip tb-pitch-grip-y" id="tb-grip-y" data-tooltip="${t('tactics.pitch_drag')}"></div>` : ''}
             ${circlesHtml}
             ${oppCirclesHtml}
             ${savedBalls.map((bp,bi) => { if(!bp) return ''; let bx=bp[0],by=bp[1]; if(isVertical&&boardType==='full'){bx=bp[1];by=100-bp[0];} return '<div class="tb-ball" data-idx="'+bi+'" style="left:'+bx+'%;top:'+by+'%;">' + '</div>'; }).join('')}
@@ -10150,7 +10178,12 @@
            stroke, so putting the old strokes back without putting the old flag
            back would render horizontal points as though they were display
            ones. Restored before the DOM rebuild below, which reads the flag. */
-        penSpace: localStorage.getItem('fa_tactic_pen_space')
+        penSpace: localStorage.getItem('fa_tactic_pen_space'),
+        /* A resize is an undoable edit like any other. It changes no
+           object coordinates — everything on the board is a percentage
+           — so restoring the key alone puts the pitch back, provided
+           the caller re-renders (popUndo does). */
+        pitch: localStorage.getItem('fa_tactic_pitch')
       });
       if (undoStack.length > 50) undoStack.shift();
     }
@@ -10181,12 +10214,24 @@
         ['penLines',     'fa_tactic_pen_lines'],
         ['silhouette',   'fa_tactic_silhouette'],
         ['cones',        'fa_tactic_cones'],
-        ['penSpace',     'fa_tactic_pen_space']
+        ['penSpace',     'fa_tactic_pen_space'],
+        ['pitch',        'fa_tactic_pitch']
       ];
+      const pitchBefore = localStorage.getItem('fa_tactic_pitch');
       UNDO_KEYS.forEach(([k, lsKey]) => {
         if (s[k] !== null && s[k] !== undefined) localStorage.setItem(lsKey, s[k]);
         else localStorage.removeItem(lsKey);
       });
+      /* Undoing a RESIZE needs a re-render, not a DOM rebuild.
+         applyFrameState below puts the players back but knows nothing
+         about markings, the box aspect or the rotation margins — all
+         of which derive from the pitch. Without this, undo restored
+         the stored dimensions while leaving the pitch on screen at its
+         new size, and the two only agreed again after a navigation. */
+      if ((localStorage.getItem('fa_tactic_pitch') || '') !== (pitchBefore || '')) {
+        navigate();
+        return;
+      }
       // Rebuild DOM from restored state
       const f = {
         positions: JSON.parse(s.positions || 'null'),
@@ -12116,6 +12161,127 @@
         // in the meantime back to the board. It is a same-page re-render.
         setTimeout(() => { navigate(); }, 300);
       });
+    }
+
+    /* ── Pitch size ──────────────────────────────────────────────
+       Two routes to the same setter: the numeric inputs and the two
+       drag grips on the touchline and the goal line. Both go through
+       setPitch(), so the clamp, the undo entry and the re-render
+       cannot be applied by one route and forgotten by the other.
+
+       A resize re-renders rather than patching styles in place: the
+       markings, the box aspect and the rotation margins all derive
+       from the pitch, and re-deriving them by hand here would be a
+       second copy of tbMarkingsHtml waiting to drift. */
+    function currentPitch() {
+      const p = BG.pitchOf(JSON.parse(localStorage.getItem('fa_tactic_pitch') || 'null'));
+      return [p.L, p.W];
+    }
+
+    function setPitch(L, W, opts) {
+      const c = BG.clamp(L, W);
+      const now = currentPitch();
+      if (c[0] === now[0] && c[1] === now[1]) return c;   // nothing moved
+      pushUndo();
+      localStorage.setItem('fa_tactic_pitch', JSON.stringify(c));
+      /* Players, arrows and everything else are percentages of the
+         board, so they need no adjustment — they move with the pitch,
+         which is what a coach means by resizing. Only the frame and
+         the markings change, and both come from the re-render. */
+      if (!opts || opts.render !== false) navigate();
+      return c;
+    }
+
+    const pitchLInput = document.getElementById('tb-pitch-l');
+    const pitchWInput = document.getElementById('tb-pitch-w');
+    if (pitchLInput && pitchWInput) {
+      /* On `change`, not `input`: typing "6" on the way to "60" would
+         otherwise clamp to the minimum and fight the keyboard. */
+      const commit = () => {
+        const c = setPitch(parseFloat(pitchLInput.value), parseFloat(pitchWInput.value));
+        // Show what was actually stored, so a clamped value is visible
+        // rather than silently different from the box on screen.
+        pitchLInput.value = c[0];
+        pitchWInput.value = c[1];
+      };
+      pitchLInput.addEventListener('change', commit);
+      pitchWInput.addEventListener('change', commit);
+      [pitchLInput, pitchWInput].forEach(el => {
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+      });
+    }
+    const pitchReset = document.getElementById('tb-pitch-reset');
+    if (pitchReset) {
+      pitchReset.addEventListener('click', () => {
+        setPitch(BG.DEFAULT_PITCH[0], BG.DEFAULT_PITCH[1]);
+      });
+    }
+
+    /* The grips. Dragging the goal line changes the LENGTH and the
+       touchline the WIDTH — each grip owns one axis, because a corner
+       handle dragging both at once makes it impossible to keep one
+       dimension while adjusting the other, and a coach matching a real
+       ground usually knows one of the two numbers exactly.
+
+       Live during the drag would mean a full re-render per pointermove;
+       instead the box is scaled visually and the real setPitch lands on
+       pointerup. */
+    ['x', 'y'].forEach(axis => {
+      const grip = document.getElementById('tb-grip-' + axis);
+      if (!grip) return;
+      let drag = null;
+      grip.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const r = inner.getBoundingClientRect();
+        drag = {start: currentPitch(), rect: r, id: e.pointerId};
+        grip.setPointerCapture(e.pointerId);
+        grip.classList.add('tb-grip-active');
+      });
+      grip.addEventListener('pointermove', e => {
+        if (!drag) return;
+        const g = gripPitchFor(e, drag, axis);
+        // Preview by stretching the existing box; no re-render yet.
+        field.style.setProperty('--tb-preview-l', g[0]);
+        field.style.setProperty('--tb-preview-w', g[1]);
+        inner.style.paddingTop = BG.aspectPct(g, curBoardType(), isVertical()) + '%';
+        grip.dataset.val = axis === 'x' ? g[0] + ' m' : g[1] + ' m';
+      });
+      grip.addEventListener('pointerup', e => {
+        if (!drag) return;
+        const g = gripPitchFor(e, drag, axis);
+        drag = null;
+        grip.classList.remove('tb-grip-active');
+        delete grip.dataset.val;
+        setPitch(g[0], g[1]);
+      });
+      grip.addEventListener('pointercancel', () => {
+        drag = null;
+        grip.classList.remove('tb-grip-active');
+        delete grip.dataset.val;
+        navigate();   // put the box back
+      });
+    });
+
+    /* Where the pointer is, as a pitch dimension.
+
+       The grip sits on the far edge, so the fraction of the box the
+       pointer is at scales the dimension it owns. On a VERTICAL full
+       board the axes are swapped on screen, so the grip that owns the
+       pitch length is the one running horizontally — which is why the
+       axis is chosen against isVertical() rather than assumed. */
+    function gripPitchFor(e, drag, axis) {
+      const r = drag.rect;
+      const vert = BG.isRotated(curBoardType(), isVertical());
+      const alongX = (axis === 'x') !== vert;
+      const frac = alongX
+        ? (e.clientX - r.left) / r.width
+        : (e.clientY - r.top) / r.height;
+      const f = Math.max(0.05, Math.min(1.6, frac));
+      const base = drag.start;
+      return axis === 'x'
+        ? BG.clamp(Math.round(base[0] * f), base[1])
+        : BG.clamp(base[0], Math.round(base[1] * f));
     }
 
     // --- Silhouette picker ---

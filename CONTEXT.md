@@ -4231,3 +4231,50 @@ proportionally placed, the frame around them is a different shape. Unavoidable g
 marking, and touching it would move players for no reason.
 
 Unit 1254 → **1268**.
+
+### 2026-08-24 — v136: the pitch is resizable
+
+The user-facing half of the geometry work. A coach sets the perimeter two ways — typing metres, or
+dragging a grip — and the markings stay regulation size, which is the whole point.
+
+**One setter, two routes.** `setPitch(L, W)` clamps, pushes an undo entry and re-renders; the
+numeric inputs, the reset button and the grip `pointerup` all go through it, so none of those three
+steps can be applied on one route and forgotten on the other. It **returns early when nothing
+moved**, or every blur of an untouched input and every pointerup on a grip that went nowhere would
+push a no-op onto the undo stack.
+
+A resize **re-renders** rather than patching styles: the markings, the box aspect and the rotation
+margins all derive from the pitch, and re-deriving them here would be a second copy of
+`tbMarkingsHtml` waiting to drift. During a drag the box is only stretched visually; the real write
+lands on pointerup.
+
+**Two grips, one axis each** — `-x` on the goal line (length), `-y` on the touchline (width). Not a
+corner handle: a coach matching a real ground usually knows one of the two numbers exactly, and a
+handle that moves both makes it impossible to hold one steady. Hidden until hover, and always
+faintly visible under `@media (hover: none)` where there is no hover to reveal them.
+
+**The subtle part is `gripPitchFor`.** On a vertical FULL board the pitch is rotated on screen, so
+the grip owning the pitch length is the one running horizontally — it reads `clientY`. It asks
+`BG.isRotated(curBoardType(), isVertical())`, the same predicate the markings use, rather than
+re-deriving the condition. Backwards, this edits the wrong dimension and still produces a
+plausible pitch, which is why there is a test for each orientation. Half and area are **not**
+swapped: CSS rotates the whole field, so pointer coordinates come along already.
+
+Also: the drag measures from the pitch as it was at `pointerdown`, not from the live value. Scaling
+the previous result each move would compound — a slow drag would shrink the pitch to nothing.
+
+`pitch` joins `pushUndo`/`popUndo` **in both lists** (the v90 scramble was that pair drifting), and
+`popUndo` **re-renders and returns early** when the pitch changed: `applyFrameState` restores the
+players but knows nothing about markings or the box aspect, so undo used to restore the stored
+dimensions while leaving the pitch on screen at its new size.
+
+Controls are hidden on half/area boards — they are derived views of the same pitch, and editing a
+perimeter whose edges are off-frame is a control with no visible effect.
+
+Six i18n keys, ca/es/en, with a test (`t()` returns the key itself on a miss, so a gap ships as raw
+`tactics.pitch` on screen).
+
+**Still needs hands-on checking in the running app**: the grips are hover-driven, so the static
+preview page cannot exercise them.
+
+Unit 1268 → **1284**.
