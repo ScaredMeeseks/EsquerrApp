@@ -563,3 +563,34 @@ describe('one acta\'s entry', () => {
     assert.deepStrictEqual(e.r, ['A, B']);
   });
 });
+
+describe('the backfill has to produce something the app can read', () => {
+  /* The raw index is not what the app reads — fcfReferees is. The first
+     production run indexed 240 actas and left every referee panel saying "no
+     record", because only the Friday job rebuilt the profiles and it was days
+     away. Found by watching a real crawl, not by reading the code. */
+  const fs = require('fs');
+  const src = fs.readFileSync(
+      path.join(__dirname, '..', 'functions', 'index.js'), 'utf8');
+  const grab = (from, to) => {
+    const i = src.indexOf(from);
+    const j = src.indexOf(to, i);
+    assert.ok(i !== -1 && j !== -1, 'marker not found: ' + from);
+    return src.slice(i, j);
+  };
+
+  it('the nightly backfill rebuilds the profiles when it finishes', () => {
+    const body = grab('exports.crawlFcfActas = onSchedule(',
+        'exports.fcfWeeklyRefs');
+    assert.ok(/_rebuildFcfReferees\(\)/.test(body),
+        'the backfill fills the index and derives nothing from it');
+    assert.ok(/if \(r\.done\)/.test(body),
+        'rebuilding mid-backfill is work with no reader');
+  });
+
+  it('so does the weekly pass', () => {
+    const body = grab('exports.fcfWeeklyRefs = onSchedule(',
+        '/**\n * Rebuild every referee profile');
+    assert.ok(/if \(r\.done\) await _rebuildFcfReferees\(\)/.test(body));
+  });
+});

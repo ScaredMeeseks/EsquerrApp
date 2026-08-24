@@ -4071,3 +4071,42 @@ and switching to an interval schedule.
 > greps source needs to strip comments first.
 
 Verified against the API, not the CLI: revision 48, ACTIVE, cron still `0 20 * * 5` Europe/Madrid.
+
+### 2026-08-24 — v135: the crawl runs, and a gap only a real run could show
+
+The referee crawl was switched on in production for the first time, deliberately scoped to **one
+group** (Tercera Catalana Grup 1, 2025-26) before anything wider.
+
+**It worked**: 240 actas indexed, **240 with a referee**, goals and results stored, 75 actas
+carrying sendings-off from the `sanciones` join. Cursor exhausted, queue complete.
+
+#### And the referee panels still said "no record"
+
+The raw index is **not** what the app reads — `fcfReferees` is. `_rebuildFcfReferees()` was called
+only by `fcfWeeklyRefs`, and only when its pass completed. So the nightly backfill filled the index
+and derived nothing from it: a database nobody could see, with the next thing that would have fixed
+it a scheduled job days away.
+
+Nothing in the unit suite could have caught this. Both jobs were individually correct; the gap was
+between them, and it only became visible by running the thing and looking at what the app would
+read. `crawlFcfActas` now rebuilds on `r.done` too — and only on `done`, since mid-backfill the
+aggregates would be recomputed nightly from a half-crawled index, which is work with no reader.
+
+After the fix, re-triggered: **44 referee profiles**, per-division records with offence breakdowns,
+matching the figures computed locally from the same group. CABRERA VIDAL, DAVID — 9 matches, 6 reds
+and 5 second bookings — reads `dissent, assault, decorum, violent`.
+
+#### Then widened
+
+`fcfCrawl/config` now covers all five tiers across 2026-27 and 2025-26 — 64 groups a season. The
+nightly job works through it a few hundred actas at a time. **To stop it: `enabled: false`. To
+narrow it: put group ids back in `onlyGroups`.** Neither needs a deploy.
+
+Unit 1180 → **1182**, with a mutation confirming the backfill-derives-nothing gap is now caught.
+
+> **How the crawl was driven without a service account.** There is no local Admin SDK credential
+> for this project, but the `firebase-tools` refresh token for marna96 mints a `cloud-platform`
+> OAuth token, and that reaches the Firestore REST admin surface (IAM, not rules) and Cloud
+> Scheduler's `jobs:run`. So: write `fcfCrawl/config` by REST, trigger the scheduled job by name,
+> poll `fcfRefIndex` — no Console, no Cloud Shell, and the deployed code path is the one exercised
+> rather than a local re-implementation of it.

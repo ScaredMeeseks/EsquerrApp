@@ -1820,6 +1820,15 @@ exports.crawlFcfActas = onSchedule({
 }, async () => {
   const r = await _runFcfCrawl({wantUnplayed: false});
   logger.info("crawlFcfActas", r);
+  /* Derive the profiles as soon as a pass finishes, rather than leaving it to
+     Friday. The raw index is not what the app reads — `fcfReferees` is — so a
+     backfill that indexes 240 actas and stops has produced a database nobody
+     can see. That is exactly what the first production run did: the index
+     filled, every referee panel still said "no record", and the next thing
+     that would have fixed it was a scheduled job days away.
+     Only on `done`: mid-backfill the aggregates would be rebuilt every night
+     from a half-crawled index, which is work with no reader. */
+  if (r.done) await _rebuildFcfReferees();
 });
 
 /* The weekly pass: Friday mornings, over every group in scope, doing both
