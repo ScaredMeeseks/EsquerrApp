@@ -329,11 +329,11 @@ describe('have we had him before, and how did it go', () => {
     {id: 6, date: '2025-08-30', home: CLUB, away: 'A FRIENDLY F.C.'},
   ];
   const actas = {
-    101: {r: [REF], c: 1, res: 'H'},          // we were home, home won  → W
-    102: {r: [REF], c: 1, res: 'H'},          // we were away, home won  → L
-    103: {r: [REF], c: 1, res: 'D'},          // draw                    → D
-    104: {r: [OTHER], c: 1, res: 'H'},        // a different referee
-    105: {r: [REF], j: 30},                   // appointed, not yet played
+    101: {r: [REF], c: 1, res: 'H', gh: 3, ga: 1},  // home, we won 3-1
+    102: {r: [REF], c: 1, res: 'H', gh: 2, ga: 0},  // away, we lost 0-2
+    103: {r: [REF], c: 1, res: 'D', gh: 0, ga: 0},  // home, goalless draw
+    104: {r: [OTHER], c: 1, res: 'H', gh: 1, ga: 0},  // a different referee
+    105: {r: [REF], j: 30},                          // appointed, not played
   };
 
   it('turns the federation\'s home-side result into ours', () => {
@@ -395,6 +395,39 @@ describe('have we had him before, and how did it go', () => {
     const a = {301: {r: ['DOMÍNGUEZ GUTIÉRREZ, FRAN'], c: 1, res: 'H'}};
     assert.strictEqual(
         U.refereeHistoryWithUs(ms, a, 'DOMINGUEZ GUTIERREZ, FRAN', isOurs).length, 1);
+  });
+
+  it('puts the score our way round', () => {
+    const rows = U.refereeHistoryWithUs(matches, actas, REF, isOurs);
+    const byId = {};
+    rows.forEach((r) => { byId[r.matchId] = r; });
+    assert.strictEqual(byId[1].score, '3-1', 'a home win');
+    assert.strictEqual(byId[2].score, '0-2',
+        'the federation writes 2-0 home-first; ours is 0-2');
+    assert.strictEqual(byId[2].ourGoals, 0);
+    assert.strictEqual(byId[2].theirGoals, 2);
+  });
+
+  it('keeps a goalless draw, which is the one 0 that gets dropped', () => {
+    /* `if (e.gh)` is the obvious guard and it is wrong: 0 is falsy, so every
+       0-0 would silently lose its scoreline and fall back to the outcome
+       letter. The check is against null, not against falsiness. */
+    const rows = U.refereeHistoryWithUs(matches, actas, REF, isOurs);
+    const draw = rows.find((r) => r.matchId === 3);
+    assert.strictEqual(draw.score, '0-0');
+    assert.strictEqual(draw.ourGoals, 0);
+    assert.strictEqual(draw.outcome, 'D');
+  });
+
+  it('has no score when an older crawl stored no goals', () => {
+    /* Entries written before goals were captured carry `res` and nothing
+       else. The outcome must still work; only the scoreline is missing. */
+    const old = {101: {r: [REF], c: 1, res: 'H'}};
+    const rows = U.refereeHistoryWithUs(matches, old, REF, isOurs);
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].score, '');
+    assert.strictEqual(rows[0].ourGoals, null);
+    assert.strictEqual(rows[0].outcome, 'W', 'the outcome must survive');
   });
 
   it('tallies what it lists', () => {

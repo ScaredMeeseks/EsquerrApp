@@ -104,14 +104,22 @@ firebase-schedule-fcfWeeklyRefs-us-central1   "0 6,7,8 * * 5"   Europe/Madrid   
 firebase-schedule-crawlFcfActas-us-central1   "0 3 * * *"       Europe/Madrid   ENABLED
 ```
 
-**v130 is uncommitted — functions and frontend. Rules unchanged.**
+**v130 is deployed.** The offence breakdown, the yellow-card tripwire and the match-detail card.
+
+**v131 is uncommitted — functions and frontend. Rules unchanged.**
 
 ```
-1. .\deploy.ps1 functions      ← the offence breakdown + the yellow-card tripwire
+1. .\deploy.ps1 functions      ← fcfActaEntry now stores gh/ga (the scoreline)
 2. git add -A && git commit && git push
 ```
 
-Version triple is at **130**.
+Version triple is at **131**.
+
+> **The crawl stores goals from v131 onward.** Nothing has been crawled in production yet, so
+> there is no back-fill problem today — but if a crawl ever runs on an older build, those entries
+> will carry `res` and no `gh`/`ga`, and the history rows fall back to the outcome letter. To fill
+> them in, delete `fcfRefIndex` and re-run rather than writing a migration: the crawl is the
+> cheaper of the two.
 
 > **Rules are not optional here and `--only hosting` would skip them silently.** The app reads
 > `fcfReferees` and `fcfRefIndex`; both are new `match` blocks. Deploy the frontend without them

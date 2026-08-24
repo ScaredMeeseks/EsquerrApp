@@ -247,8 +247,8 @@ describe('the referee card on the match detail page', () => {
     {id: 2, fcfActaId: '102', date: '2025-11-08', home: 'PALS AT.', away: CLUB},
   ];
   const INDEX = {g1: {comp: 'TERCERA CATALANA', actas: {
-    101: {r: [REF], c: 1, res: 'H'},
-    102: {r: [REF], c: 1, res: 'H'},
+    101: {r: [REF], c: 1, res: 'H', gh: 3, ga: 1},   // we were home → won 3-1
+    102: {r: [REF], c: 1, res: 'H', gh: 2, ga: 0},   // we were away → lost 0-2
   }}};
 
   function card(extra) {
@@ -269,23 +269,63 @@ describe('the referee card on the match detail page', () => {
     assert.ok(html.indexOf('ref.assistants') !== -1);
   });
 
-  it('shows our own past matches with him, and how they went', () => {
+  it('shows our own past matches with him, and the score', () => {
     const html = card();
     assert.ok(html.indexOf('MONELLS, A.E.') !== -1, 'a past fixture is missing');
     assert.ok(html.indexOf('PALS AT.') !== -1);
-    assert.ok(html.indexOf('ref.won') !== -1, 'the home win is not marked');
-    assert.ok(html.indexOf('ref.lost') !== -1, 'the away defeat is not marked');
+    assert.ok(html.indexOf('>3-1<') !== -1, 'the home win\'s score is missing');
+    assert.ok(html.indexOf('>0-2<') !== -1, 'the away score is missing');
+  });
+
+  it('puts the score OUR way round', () => {
+    /* Match 102 finished 2-0 to the home side and we were away, so it reads
+       0-2. Printing the federation's home-first score unchanged would tell a
+       delegate we won 2-0 a match we lost. */
+    const html = card();
+    assert.ok(html.indexOf('>0-2<') !== -1, 'the away score was not flipped');
+    assert.ok(html.indexOf('>2-0<') === -1,
+        'the home-side score was printed as though it were ours');
   });
 
   it('does not report an away defeat as a win', () => {
-    /* Match 102: we were away and the HOME side won. The single most
-       damaging thing this card could get wrong is telling a delegate we beat
-       a side we lost to. */
+    /* The single most damaging thing this card could get wrong: telling a
+       delegate we beat a side we lost to. The colour carries it, so the
+       CLASS is what is asserted rather than any wording. */
     const html = card();
     const away = html.indexOf('PALS AT.');
-    const slice = html.slice(away, away + 220);
-    assert.ok(slice.indexOf('ref.lost') !== -1, slice);
-    assert.ok(slice.indexOf('ref.won') === -1, slice);
+    const slice = html.slice(away, away + 200);
+    assert.ok(slice.indexOf('ref-out-l') !== -1, slice);
+    assert.ok(slice.indexOf('ref-out-w') === -1, slice);
+  });
+
+  it('marks home and away with an icon, not with words', () => {
+    /* "a camp de" ate a third of a narrow row before the opponent's name
+       even started, and on a phone the name is what got truncated. */
+    const html = card();
+    assert.ok(html.indexOf('🏠') !== -1, 'no home icon');
+    assert.ok(html.indexOf('✈️') !== -1, 'no away icon');
+    assert.ok(html.indexOf('ref.vs_away') === -1, '"a camp de" is still there');
+  });
+
+  it('gives the icon an accessible name', () => {
+    /* An icon with nothing but a picture is unreadable to a screen reader
+       and ambiguous to everyone else. */
+    const html = card();
+    assert.ok(/aria-label="ref\.at_home"/.test(html), html.slice(0, 200));
+    assert.ok(/aria-label="ref\.away"/.test(html));
+    assert.ok(/title="ref\.at_home"/.test(html));
+  });
+
+  it('falls back to the outcome when an older crawl stored no goals', () => {
+    /* Entries written before goals were captured have `res` but no `gh`/`ga`.
+       An empty badge would look like a rendering fault; the outcome letter is
+       the honest smaller answer. */
+    const D = makeDetail({club: CLUB, ref: CREW,
+      index: {g1: {comp: 'TERCERA CATALANA', actas: {101: {r: [REF], c: 1, res: 'H'}}}},
+      profiles: {[U.fcfRefereeSlug(REF)]: PROF}});
+    const html = D.mdRefDetailHtml({id: 3, fcfActaId: '999'}, MATCHES);
+    assert.ok(html.indexOf('ref-out-w') !== -1, 'the outcome colour is gone too');
+    assert.ok(html.indexOf('ref.w') !== -1, 'nothing at all was shown: ' + html);
   });
 
   it('says plainly when we have never had him', () => {

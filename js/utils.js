@@ -437,13 +437,21 @@ function refereeHistoryWithUs(matches, actas, refereeName, isOurTeam) {
     if (!e || !e.c) return;
     if (fcfRefereeSlug((e.r || [])[0]) !== want) return;
     const weWereHome = mine(m.home);
+    /* The scoreline OUR way round, from the federation's home/away goals.
+       `!= null` on purpose — a 0-0 is a real result, and `if (e.gh)` would
+       silently drop every goalless draw. */
+    const haveGoals = e.gh !== undefined && e.gh !== null &&
+      e.ga !== undefined && e.ga !== null;
     out.push({
       matchId: m.id,
       date: m.date || e.d || '',
       weWereHome: weWereHome,
       opponent: weWereHome ? (m.away || '') : (m.home || ''),
       outcome: ourResultFrom(e.res, weWereHome),
-      score: m.score || null
+      ourGoals: haveGoals ? (weWereHome ? e.gh : e.ga) : null,
+      theirGoals: haveGoals ? (weWereHome ? e.ga : e.gh) : null,
+      score: haveGoals ?
+        (weWereHome ? e.gh : e.ga) + '-' + (weWereHome ? e.ga : e.gh) : ''
     });
   });
   out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });

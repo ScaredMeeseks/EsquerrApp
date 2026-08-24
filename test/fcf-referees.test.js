@@ -522,15 +522,38 @@ describe('the index document id', () => {
 });
 
 describe('one acta\'s entry', () => {
-  it('carries the result only once the match is played', () => {
-    const closed = F.fcfActaEntry(
-        {jornada: 4, closed: true, result: 'H', date: '2025-09-14'}, ['A, B']);
-    assert.deepStrictEqual(closed, {r: ['A, B'], j: 4, d: '2025-09-14', c: 1, res: 'H'});
+  it('carries the result and the score only once the match is played', () => {
+    const closed = F.fcfActaEntry({jornada: 4, closed: true, result: 'H',
+      goalsHome: 3, goalsAway: 1, date: '2025-09-14'}, ['A, B']);
+    assert.deepStrictEqual(closed,
+        {r: ['A, B'], j: 4, d: '2025-09-14', c: 1, res: 'H', gh: 3, ga: 1});
 
-    const open = F.fcfActaEntry(
-        {jornada: 4, closed: false, result: '', date: '2026-05-01'}, ['A, B']);
+    const open = F.fcfActaEntry({jornada: 4, closed: false, result: '',
+      goalsHome: null, goalsAway: null, date: '2026-05-01'}, ['A, B']);
     assert.strictEqual(open.c, undefined, 'an unplayed match must not look played');
     assert.strictEqual(open.res, undefined);
+    assert.strictEqual(open.gh, undefined);
+  });
+
+  it('stores a 0-0, which is the score most likely to be dropped', () => {
+    /* Guarded on null, not on falsiness: `if (due.goalsHome)` would throw
+       away every goalless draw in the database. */
+    const e = F.fcfActaEntry({jornada: 1, closed: true, result: 'D',
+      goalsHome: 0, goalsAway: 0}, ['A, B']);
+    assert.strictEqual(e.gh, 0);
+    assert.strictEqual(e.ga, 0);
+  });
+
+  it('reads the goals off a real group payload', () => {
+    const due = F.fcfActasDue(PARTIDOS, {});
+    // The fixture is a season not yet played, so nothing is closed and no
+    // goals are carried — which is itself the rule being checked.
+    due.forEach((d) => {
+      if (!d.closed) {
+        assert.strictEqual(d.goalsHome, null, d.actaId);
+        assert.strictEqual(d.goalsAway, null, d.actaId);
+      }
+    });
   });
 
   it('copies the names rather than aliasing them', () => {

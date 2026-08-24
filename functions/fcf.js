@@ -438,11 +438,19 @@ function fcfActasDue(partidos, indexed) {
       const closed = String(m.CERRADA || "") === "1";
       const cur = have[actaId];
       if (cur && (cur.c || !closed)) return;
+      const gh = parseInt(m.GOLES_CASA, 10);
+      const ga = parseInt(m.GOLES_FUERA, 10);
       out.push({
         actaId,
         closed,
         jornada: parseInt(m.JORNADA, 10) || 0,
         result: closed ? fcfMatchResult(m.GOLES_CASA, m.GOLES_FUERA) : "",
+        /* The scoreline, not just who won. `res` alone answers "did we win",
+           but the match page shows the actual score, and re-deriving it later
+           would mean another 14,000 `partidos` reads for something already in
+           our hands at crawl time. */
+        goalsHome: closed && isFinite(gh) ? gh : null,
+        goalsAway: closed && isFinite(ga) ? ga : null,
         date: String(m.COMIENZO1 || "").slice(0, 10),
       });
     });
@@ -464,7 +472,11 @@ function fcfActasDue(partidos, indexed) {
  *   r  the officials, in role order: referee first, then assistants
  *   c  1 once the match has been played — see fcfActasDue
  *   res  "H" | "D" | "A", only meaningful when c
+ *   gh, ga  goals home and away, likewise
  *   j  jornada,  d  date
+ *
+ * `gh`/`ga` are written even when 0 — a 0-0 is a scoreline, and the guard is
+ * on null rather than on falsiness for exactly that reason.
  */
 function fcfActaEntry(due, referees) {
   const e = {r: (referees || []).slice(), j: due.jornada || 0};
@@ -472,6 +484,8 @@ function fcfActaEntry(due, referees) {
   if (due.closed) {
     e.c = 1;
     if (due.result) e.res = due.result;
+    if (due.goalsHome !== null && due.goalsHome !== undefined) e.gh = due.goalsHome;
+    if (due.goalsAway !== null && due.goalsAway !== undefined) e.ga = due.goalsAway;
   }
   return e;
 }

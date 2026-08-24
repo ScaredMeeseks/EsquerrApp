@@ -4583,11 +4583,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ref-hist-row{display:flex;align-items:baseline;gap:.5rem;font-size:.76rem;
   padding:.2rem 0;border-bottom:1px solid var(--border);}
 .ref-hist-row:last-child{border-bottom:none;}
+/* Home or away. Fixed width so the opponents' names all start on the same
+   column — a ragged left edge down a list of six is harder to scan than the
+   icon is to recognise. */
+.ref-hist-where{width:1.25rem;flex:0 0 auto;text-align:center;font-size:.8rem;
+  line-height:1;cursor:default;}
 .ref-hist-date{font-variant-numeric:tabular-nums;color:var(--text-secondary);
   white-space:nowrap;}
 .ref-hist-opp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ref-out{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
-  padding:.1rem .4rem;border-radius:4px;white-space:nowrap;
+/* The scoreline, coloured by the outcome — the colour still says won/drew/
+   lost at a glance, the number is what was actually wanted. */
+.ref-out{font-size:.7rem;font-weight:700;letter-spacing:.02em;
+  padding:.1rem .45rem;border-radius:4px;white-space:nowrap;
+  font-variant-numeric:tabular-nums;min-width:2.6rem;text-align:center;
   background:var(--border);color:var(--text);}
 .ref-out-w{background:#2e7d32;color:#fff;}
 .ref-out-d{background:#9E9E9E;color:#fff;}

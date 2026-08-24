@@ -3898,3 +3898,41 @@ it oldest-first.
 
 The v123 browser-reachability guard and the v125 stylesheet guard were **widened to cover the new
 detail card**, not just the fixture-row panel, and both re-verified by mutation.
+
+### 2026-08-24 — v131: the history rows read like a results list
+
+The owner's note on v130: in "Partits nostres que ha arbitrat", drop "a camp de", mark home or away
+with an icon, and show **the score** rather than the words Victòria / Empat / Derrota.
+
+**The score had to be captured, not derived.** The index stored `res` — who won — and nothing else,
+so `fcfActaEntry` now also keeps `gh`/`ga` from the `partidos` payload the crawl already holds.
+Deriving it later would have meant re-reading `partidos` for all 14,000 fixtures to recover
+something that was in our hands at crawl time.
+
+> **Guarded on null, never on falsiness.** `if (due.goalsHome)` is the obvious spelling and it
+> throws away **every goalless draw** — 0 is falsy, so a 0-0 would silently lose its scoreline and
+> fall back to the outcome letter. The same trap sits in the reader: `haveGoals` tests against
+> null. Both have their own test and their own mutation.
+
+The scoreline is flipped to our side, like the outcome before it: the federation writes it
+home-first, so a 2-0 defeat away from home reads **0-2**. Printing it unchanged would tell a
+delegate we won a match we lost — the same failure the outcome already guards, one layer down.
+
+Home and away are now 🏠 and ✈️. "a camp de" ate a third of a narrow row before the opponent's name
+began, and the name was what got truncated on a phone. Both icons carry `title` and `aria-label`,
+because an icon alone is unreadable to a screen reader and ambiguous to everyone else; the column
+is a fixed width so every opponent starts on the same column.
+
+The badge keeps its colour, so won/drew/lost still reads at a glance while the number carries the
+detail. An entry from a crawl that predates goals falls back to the outcome letter rather than
+rendering an empty badge, which would look like a fault.
+
+#### Tests
+
+Unit 1147 → **1156**. Five more mutations: a falsy guard dropping 0-0 at the writer, storing goals
+for unplayed matches, printing the score home-first, a falsy guard dropping 0-0 at the reader, and
+swapping ours for theirs.
+
+The two render tests that asserted the old wording now assert the **outcome class** rather than any
+words — the colour is the durable signal — plus the icons, their accessible names, and the
+no-goals fallback path.

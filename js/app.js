@@ -204,11 +204,12 @@
     'ref.assistants':     { ca:'Assistents', es:'Asistentes', en:'Assistants' },
     'ref.with_us':        { ca:'Partits nostres que ha arbitrat', es:'Partidos nuestros que ha arbitrado', en:'Our matches he has refereed' },
     'ref.with_us_none':   { ca:'Cap encara.', es:'Ninguno todavía.', en:'None yet.' },
-    'ref.vs_home':        { ca:'contra', es:'contra', en:'vs' },
-    'ref.vs_away':        { ca:'a camp de', es:'en campo de', en:'away at' },
-    'ref.won':            { ca:'Victòria', es:'Victoria', en:'Won' },
-    'ref.drew':           { ca:'Empat', es:'Empate', en:'Drew' },
-    'ref.lost':           { ca:'Derrota', es:'Derrota', en:'Lost' },
+    /* The icon's accessible name. The row shows 🏠 / ✈️ rather than "a camp
+       de", which ate a third of a narrow row before the opponent's name even
+       began — but an icon with no name is unreadable to a screen reader and
+       ambiguous to anyone else, so both carry these. */
+    'ref.at_home':        { ca:'A casa', es:'En casa', en:'At home' },
+    'ref.away':           { ca:'A fora', es:'Fuera', en:'Away' },
     'ref.w':              { ca:'V', es:'V', en:'W' },
     'ref.d':              { ca:'E', es:'E', en:'D' },
     'ref.l':              { ca:'D', es:'D', en:'L' },
@@ -1518,7 +1519,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 130;
+  const APP_VERSION = 131;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7691,21 +7692,32 @@
         sanitize(t('ref.with_us_none')) + '</div></div>';
     }
     var tal = refereeHistoryTally(rows);
-    var OUTCOME = {W: 'ref.won', D: 'ref.drew', L: 'ref.lost'};
     return '<div class="ref-hist">' +
       '<div class="ref-hist-h">' + sanitize(t('ref.with_us')) +
         '<span class="ref-hist-tally">' + tal.W + t('ref.w') + ' · ' +
         tal.D + t('ref.d') + ' · ' + tal.L + t('ref.l') + '</span></div>' +
       '<ul class="ref-hist-list">' +
         rows.map(function (r) {
+          /* Home or away as an ICON, not as words. "a camp de" ate a third of
+             a narrow row before the opponent's name even started, and on a
+             phone that is what got truncated. The icon carries a title so the
+             meaning is not locked inside a picture. */
+          var where = r.weWereHome ?
+            '<span class="ref-hist-where" title="' + sanitize(t('ref.at_home')) +
+              '" role="img" aria-label="' + sanitize(t('ref.at_home')) + '">🏠</span>' :
+            '<span class="ref-hist-where" title="' + sanitize(t('ref.away')) +
+              '" role="img" aria-label="' + sanitize(t('ref.away')) + '">✈️</span>';
+          /* The SCORE, coloured by the outcome. The colour still carries
+             won/drew/lost at a glance; the number is what a delegate actually
+             wanted. An older crawl has no goals stored, so it falls back to
+             the outcome letter rather than printing an empty badge. */
           var cls = r.outcome ? ' ref-out-' + r.outcome.toLowerCase() : '';
+          var label = r.score || (r.outcome ? t('ref.' + r.outcome.toLowerCase()) : '—');
           return '<li class="ref-hist-row">' +
             '<span class="ref-hist-date">' + sanitize(tDateShort(r.date)) + '</span>' +
-            '<span class="ref-hist-opp">' +
-              sanitize(t(r.weWereHome ? 'ref.vs_home' : 'ref.vs_away')) + ' ' +
-              sanitize(r.opponent) + '</span>' +
-            '<span class="ref-out' + cls + '">' +
-              sanitize(r.outcome ? t(OUTCOME[r.outcome]) : '—') + '</span>' +
+            where +
+            '<span class="ref-hist-opp">' + sanitize(r.opponent) + '</span>' +
+            '<span class="ref-out' + cls + '">' + sanitize(label) + '</span>' +
           '</li>';
         }).join('') +
       '</ul></div>';
