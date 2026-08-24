@@ -4408,3 +4408,29 @@ shipped. Verified: `www/` builds clean with neither present.
   the rules position are in place; the superadmin currently passes by `isAdmin`)
 
 Unit 1319 → **1335**.
+
+#### Three fixes from the first look at the 3D board (v136)
+
+**The page scrolled while orbiting.** The wheel listener was registered non-passively on the canvas
+only, so `preventDefault` worked there and nothing stopped a wheel that reached the element's edge
+from chaining out to the document. Now: non-passive wheel on the canvas **and** the container,
+`overscroll-behavior:contain` on the wrap, and `preventDefault()` on pointerdown — a mouse drag
+starting on a canvas otherwise becomes a selection drag that scrolls once it leaves the element.
+
+**The viewer was too small.** 820 px is plenty for the 2D board, which is seen from directly above;
+in 3D the far half is foreshortened into a fraction of the height and the same box is unreadable.
+Now `max-width:1400px` and `height:clamp(420px, 72vh, 900px)`, with `resize()` reading
+`clientHeight` so **CSS owns the shape** rather than a hardcoded width ratio.
+
+`frameBoard()` now fits the pitch against **both** axes of the frustum — the vertical FOV is fixed,
+so the horizontal one depends on aspect, and fitting only the long axis leaves the pitch overflowing
+on one axis with a band of empty sky on the other. It also stops re-framing once `camTouched` is
+set: a window resize must not throw away the angle the coach chose.
+
+**The pitch came up empty until you visited 2D.** `saveState()` is only ever called from an
+interaction, so a board whose players came from the formation defaults had them in the (hidden) 2D
+markup and **not** in `fa_tactic_positions` — and board3d reads the keys, not the DOM. A single
+`saveState()` before mounting fixes it, and keeps one source for the positions rather than teaching
+board3d about formations.
+
+Unit 1335 → **1343**.

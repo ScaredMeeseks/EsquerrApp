@@ -446,6 +446,8 @@ export function createBoard3D(opts) {
      clamp — never let the camera go under the turf — is the only part
      that actually matters here. */
   const cam = {theta: -Math.PI / 2, phi: 1.02, dist: 100, target: new THREE.Vector3()};
+  /* Set once the coach orbits or zooms; see resize(). */
+  let camTouched = false;
 
   function applyCamera() {
     const sp = Math.sin(cam.phi), cp = Math.cos(cam.phi);
@@ -456,10 +458,21 @@ export function createBoard3D(opts) {
     camera.lookAt(cam.target);
   }
 
+  /**
+   * Pull back far enough that the whole pitch fits, in BOTH axes.
+   *
+   * The vertical field of view is fixed, so the horizontal one depends
+   * on the aspect ratio: a wide short viewport runs out of height
+   * first, a tall narrow one runs out of width. Taking the max of the
+   * two required distances is what stops the pitch overflowing the
+   * canvas on one axis while leaving a band of empty sky on the other.
+   */
   function frameBoard() {
     const e = BG.extent(getPitch(), getBoardType(), false);
-    // Far enough back that the long axis fits the vertical FOV.
-    cam.dist = Math.max(e.ax, e.ay) * 1.15;
+    const halfFov = (camera.fov * Math.PI / 180) / 2;
+    const distV = (e.ay / 2) / Math.tan(halfFov);
+    const distH = (e.ax / 2) / (Math.tan(halfFov) * Math.max(0.2, camera.aspect));
+    cam.dist = Math.max(distV, distH) * 1.25;   // a little air around it
     cam.target.set(0, 0, 0);
     applyCamera();
   }
@@ -499,6 +512,12 @@ export function createBoard3D(opts) {
   }
 
   function onPointerDown(ev) {
+    /* Stop the browser starting its own gesture — text selection on
+       desktop, pan/scroll on touch. touch-action:none covers the
+       touch case, but a mouse drag that begins on a canvas can still
+       turn into a selection drag that scrolls the page once it leaves
+       the element. */
+    ev.preventDefault();
     renderer.domElement.setPointerCapture(ev.pointerId);
     last = {x: ev.clientX, y: ev.clientY};
     const hit = readOnly ? null : pick(ev);
@@ -521,6 +540,7 @@ export function createBoard3D(opts) {
          look-at basis degenerates and the view snaps through a right
          angle. */
       cam.phi = Math.max(0.12, Math.min(Math.PI / 2 - 0.02, cam.phi));
+      camTouched = true;
       last = {x: ev.clientX, y: ev.clientY};
       applyCamera();
       return;
@@ -550,16 +570,25 @@ export function createBoard3D(opts) {
   function onWheel(ev) {
     ev.preventDefault();
     cam.dist = Math.max(15, Math.min(400, cam.dist * (1 + Math.sign(ev.deltaY) * 0.1)));
+    camTouched = true;
     applyCamera();
   }
 
   const el = renderer.domElement;
   el.style.touchAction = 'none';
+  el.style.display = 'block';
   el.addEventListener('pointerdown', onPointerDown);
   el.addEventListener('pointermove', onPointerMove);
   el.addEventListener('pointerup', onPointerUp);
   el.addEventListener('pointercancel', onPointerUp);
+  /* Wheel on BOTH the canvas and its container, non-passive.
+     `passive:false` is what makes preventDefault work at all — without
+     it the browser scrolls the page as well as zooming the camera,
+     which is the "the whole page moves while I orbit" symptom. The
+     container copy catches the few pixels of border and any gap the
+     canvas does not cover. */
   el.addEventListener('wheel', onWheel, {passive: false});
+  container.addEventListener('wheel', onWheel, {passive: false});
 
   /* ── Render loop ─────────────────────────────────────────────
      Renders on demand, not on a permanent rAF: a static board is the
@@ -569,12 +598,21 @@ export function createBoard3D(opts) {
   let alive = true;
   function invalidate() { needsRender = true; }
 
+  /* The container owns the size — CSS gives it a viewport-relative
+     height so the 3D board can be much larger than the 2D one without
+     hardcoding a number here. Falling back to a 0.6 ratio only for the
+     case where the element has not been laid out yet. */
   function resize() {
     const w = container.clientWidth || 800;
-    const h = Math.max(320, Math.round(w * 0.6));
+    const h = container.clientHeight || Math.round(w * 0.6);
     renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    /* Re-frame only until the coach has touched the camera. After
+       that a window resize must not throw away the angle they chose —
+       re-framing on every ResizeObserver tick would snap the view back
+       mid-session for no reason they asked for. */
+    if (!camTouched) frameBoard();
     invalidate();
   }
 
@@ -614,7 +652,7 @@ export function createBoard3D(opts) {
       o.mesh.position.set(w.x, o.mesh.position.y, w.z);
       invalidate();
     },
-    resetCamera() { frameBoard(); invalidate(); },
+    resetCamera() { camTouched = false; frameBoard(); invalidate(); },
     resize,
     invalidate,
     destroy() {

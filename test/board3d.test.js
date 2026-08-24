@@ -167,3 +167,87 @@ describe('i18n', () => {
     });
   });
 });
+
+describe('the page stays still while orbiting', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+  const css = fs2.readFileSync(p2.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const wrap = css.slice(css.indexOf('.tb-3d-wrap {'), css.indexOf('.tb-3d-loading'));
+
+  it('registers wheel non-passively, or preventDefault does nothing', () => {
+    /* A passive wheel listener cannot cancel the scroll, so the page
+       moves while the camera zooms — reported as "the whole page
+       scrolls up and down when I orbit". */
+    const nonPassive = (s3.match(/'wheel', onWheel, \{passive: false\}/g) || []);
+    assert.strictEqual(nonPassive.length, 2,
+        'expected the canvas AND its container to take a non-passive wheel');
+  });
+
+  it('cancels the default gesture on pointerdown', () => {
+    // A mouse drag starting on the canvas otherwise becomes a
+    // selection drag that scrolls once it leaves the element.
+    const down = s3.slice(s3.indexOf('function onPointerDown'),
+        s3.indexOf('function onPointerMove'));
+    assert.ok(/ev\.preventDefault\(\)/.test(down), down);
+  });
+
+  it('contains overscroll and disables touch panning', () => {
+    assert.ok(/overscroll-behavior:contain/.test(wrap), wrap);
+    assert.ok(/touch-action:none/.test(wrap), wrap);
+  });
+});
+
+describe('the 3D surface is bigger than the 2D one', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const css = fs2.readFileSync(p2.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('is wider than the 820px 2D board and has a real height', () => {
+    /* Seen at an angle the far half is foreshortened, so a viewport
+       sized for the top-down 2D view is unreadable in 3D. */
+    const wrap = css.slice(css.indexOf('.tb-3d-wrap {'), css.indexOf('.tb-3d-loading'));
+    const mw = /max-width:(\d+)px/.exec(wrap);
+    assert.ok(mw && parseInt(mw[1], 10) > 820, 'expected wider than 820px: ' + wrap);
+    assert.ok(/height:clamp\(/.test(wrap), 'height should be viewport-relative');
+  });
+
+  it('takes its height from the container, not from a width ratio', () => {
+    assert.ok(/container\.clientHeight/.test(s3),
+        'resize() must read clientHeight so CSS owns the shape');
+  });
+
+  it('frames the pitch against BOTH axes of the frustum', () => {
+    /* Fitting only the long axis leaves the pitch overflowing on one
+       axis and a band of empty sky on the other, depending on the
+       viewport shape. */
+    const fb = s3.slice(s3.indexOf('function frameBoard'), s3.indexOf('/* ── Interaction'));
+    assert.ok(/camera\.aspect/.test(fb) && /camera\.fov/.test(fb), fb);
+  });
+
+  it('stops re-framing once the coach has moved the camera', () => {
+    // A window resize must not throw away the angle they chose.
+    assert.ok(/if \(!camTouched\) frameBoard\(\)/.test(s3));
+    assert.ok(/camTouched = true/.test(s3));
+  });
+});
+
+describe('the 3D view sees the players immediately', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('flushes the 2D DOM into the scratch keys before mounting', () => {
+    /* saveState() is only ever called from an interaction, so a board
+       whose players came from the formation defaults has them in the
+       markup and NOT in fa_tactic_positions. board3d reads the keys,
+       so the pitch came up empty until you visited 2D once and moved
+       something. */
+    const i = a.indexOf("if (document.getElementById('tb-3d-wrap'))");
+    const block = a.slice(i, i + 900);
+    assert.ok(block.indexOf('saveState();') !== -1, block);
+    assert.ok(block.indexOf('saveState();') < block.indexOf('tbMount3D('),
+        'the flush must happen BEFORE the mount');
+  });
+});

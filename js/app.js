@@ -12352,6 +12352,15 @@
        more. Same shape as the tb-ro-play double-binding it took a
        version to notice. */
     if (document.getElementById('tb-3d-wrap')) {
+      /* Flush the 2D DOM into the scratch keys BEFORE mounting.
+         saveState() is only ever called from an interaction, so a
+         board whose players came from the formation defaults has them
+         in the (hidden) markup and NOT in fa_tactic_positions — and
+         the 3D view reads the keys, not the DOM. The symptom was an
+         empty pitch until you visited 2D once and moved something.
+         Calling it here keeps one source for the positions rather
+         than teaching board3d about formations. */
+      saveState();
       tbMount3D({
         beforeEdit: () => pushUndo(),
         afterEdit: () => autoSaveFrame()
