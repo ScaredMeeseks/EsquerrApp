@@ -20,6 +20,7 @@ const ROOT = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
 const BG = require(path.join(ROOT, 'js', 'board-geom.js'));
+const BS = require(path.join(ROOT, 'js', 'board-state.js'));
 
 /* The selectors that draw a pitch. Everything else in style.css is
    toolbar, tag list, saved-board rows — irrelevant here and 36 KB of
@@ -46,9 +47,9 @@ if (!/\.tb-field\s*\{[^}]*border\s*:/.test(pitchCss)) {
 const i = appSrc.indexOf('  function tbMarkingsHtml(');
 const j = appSrc.indexOf('  function renderReadOnlyBoard(');
 if (i < 0 || j < 0) throw new Error('markers not found in app.js');
-const api = new Function('BG',
+const api = new Function('BG', 'BS',
     appSrc.slice(i, j) +
-    '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle};')(BG);
+    '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle};')(BG, BS);
 
 /* Each plate names what it is FOR, so a wrong one is identifiable
    rather than just "one of them looks odd". `note` is the thing to

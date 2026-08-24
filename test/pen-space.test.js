@@ -50,10 +50,12 @@ function makePen(opts) {
     removeItem: (k) => { delete store[k]; }
   };
 
-  const fn = new Function('useJsSwap', 'localStorage',
+  // BS supplies the 2dp rounding the converters share with every other
+  // layer — see board-state.js.
+  const fn = new Function('useJsSwap', 'localStorage', 'BS',
       block + '\n; return {toDisplay, toHorizontal, penIsNormalised, ' +
       'penPointsToDisplay, penPointsToHorizontal};');
-  return fn(() => !!opts.vertical, localStorage);
+  return fn(() => !!opts.vertical, localStorage, require('../js/board-state.js'));
 }
 
 describe('the pen coordinate converters', () => {

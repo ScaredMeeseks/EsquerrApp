@@ -15,6 +15,7 @@ const path = require('path');
 
 const appSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const BG = require('../js/board-geom.js');
+const BS = require('../js/board-state.js');
 
 function grab(src, from, to, label) {
   const i = src.indexOf(from);
@@ -25,8 +26,8 @@ function grab(src, from, to, label) {
 
 const block = grab(appSrc, '  function tbMarkingsHtml(',
     '  function renderReadOnlyBoard(', 'js/app.js');
-const api = new Function('BG',
-    block + '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle};')(BG);
+const api = new Function('BG', 'BS',
+    block + '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle};')(BG, BS);
 
 /** Every inline style on elements whose class matches, as one string. */
 function styleOf(html, cls) {

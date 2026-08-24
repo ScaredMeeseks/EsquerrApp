@@ -85,6 +85,7 @@ const STATIC_ASSETS = [
   './js/shard.js',
   './js/db.js',
   './js/board-geom.js',
+  './js/board-state.js',
   './js/boards.js',
   './js/match-notes.js',
   './js/push.js',

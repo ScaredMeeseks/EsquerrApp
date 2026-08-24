@@ -6363,7 +6363,7 @@
    */
   function tbFieldOuterStyle(pitch, boardType, vertical) {
     if (!vertical || (boardType !== 'half' && boardType !== 'area')) return '';
-    const m = Math.round(((100 - BG.aspectPct(pitch, boardType, vertical)) / 2) * 100) / 100;
+    const m = BS.round2((100 - BG.aspectPct(pitch, boardType, vertical)) / 2);
     return 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
   }
 
@@ -6693,8 +6693,9 @@
           scaleRoField(innerEl, innerEl.offsetWidth);
         }
 
-        function lerp(a, b, t) { return a + (b - a) * t; }
-
+        /* lerp lived here too. BS.tweenTrack owns it now, so this
+           renderer and the editor cannot disagree about what halfway
+           between two frames means. */
         function interpolateRo(from, to, t) {
           const GK_C = '#f5c842';
 
@@ -6702,7 +6703,6 @@
           const fromPos = from.positions || [];
           const toPos = to.positions || [];
           const toNums = to.numbers || [];
-          const maxLen = Math.max(fromPos.length, toPos.length);
 
           // Build a map of existing DOM circles by data-idx
           let circleMap = {};
@@ -6710,14 +6710,18 @@
             circleMap[Number(c.dataset.idx || c.getAttribute('data-idx') || 0)] = c;
           });
 
-          for (let i = 0; i < maxLen; i++) {
-            const fP = fromPos[i];
-            const tP = toPos[i];
+          /* The SAME tween the editor uses. These two renderers each
+             had their own copy of this loop, and the copies drifted:
+             v91 was the editor preferring the current colour array
+             over the frame's, v88 the opposition appearing and
+             vanishing around playback. One source now, so a third
+             renderer cannot open a third front. */
+          BS.tweenTrack(fromPos, toPos, t).forEach((pos, i) => {
             const circle = circleMap[i];
 
-            if (!tP) {
+            if (!pos) {
               if (circle) { circle.remove(); delete circleMap[i]; }
-              continue;
+              return;
             }
 
             if (!circle) {
@@ -6727,7 +6731,7 @@
               const div = document.createElement('div');
               div.className = 'tb-circle';
               div.setAttribute('data-idx', i);
-              div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cssN.background + ';border-color:' + cssN.borderColor + ';';
+              div.style.cssText = 'left:' + pos[0] + '%;top:' + pos[1] + '%;pointer-events:none;background:' + cssN.background + ';border-color:' + cssN.borderColor + ';';
               const span = document.createElement('span');
               span.className = 'tb-num';
               span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssN.fg + ';text-shadow:' + (cssN.fgShadow || 'none') + ';';
@@ -6735,37 +6739,29 @@
               div.appendChild(span);
               innerEl.appendChild(div);
               circleMap[i] = div;
-              continue;
+              return;
             }
 
-            if (fP && tP) {
-              circle.style.left = lerp(fP[0], tP[0], t) + '%';
-              circle.style.top = lerp(fP[1], tP[1], t) + '%';
-            } else if (!fP && tP) {
-              circle.style.left = tP[0] + '%';
-              circle.style.top = tP[1] + '%';
-            }
-          }
+            circle.style.left = pos[0] + '%';
+            circle.style.top = pos[1] + '%';
+          });
 
           // --- Opp circles: same stable-index matching ---
           const fromOpp = from.oppPositions || [];
           const toOpp = to.oppPositions || [];
           const toOppNums = to.oppNumbers || [];
-          const maxOppLen = Math.max(fromOpp.length, toOpp.length);
 
           let oppMap = {};
           innerEl.querySelectorAll('.tb-circle-opp').forEach(c => {
             oppMap[Number(c.dataset.idx || c.getAttribute('data-idx') || 0)] = c;
           });
 
-          for (let i = 0; i < maxOppLen; i++) {
-            const fP = fromOpp[i];
-            const tP = toOpp[i];
+          BS.tweenTrack(fromOpp, toOpp, t).forEach((pos, i) => {
             const circle = oppMap[i];
 
-            if (!tP) {
+            if (!pos) {
               if (circle) { circle.remove(); delete oppMap[i]; }
-              continue;
+              return;
             }
 
             if (!circle) {
@@ -6776,7 +6772,7 @@
               const div = document.createElement('div');
               div.className = 'tb-circle tb-circle-opp';
               div.setAttribute('data-idx', i);
-              div.style.cssText = 'left:' + tP[0] + '%;top:' + tP[1] + '%;pointer-events:none;background:' + cssNO.background + ';border-color:' + cssNO.borderColor + ';';
+              div.style.cssText = 'left:' + pos[0] + '%;top:' + pos[1] + '%;pointer-events:none;background:' + cssNO.background + ';border-color:' + cssNO.borderColor + ';';
               const span = document.createElement('span');
               span.className = 'tb-num';
               span.style.cssText = 'pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + cssNO.fg + ';text-shadow:' + (cssNO.fgShadow || 'none') + ';';
@@ -6784,46 +6780,32 @@
               div.appendChild(span);
               innerEl.appendChild(div);
               oppMap[i] = div;
-              continue;
+              return;
             }
 
-            if (fP && tP) {
-              circle.style.left = lerp(fP[0], tP[0], t) + '%';
-              circle.style.top = lerp(fP[1], tP[1], t) + '%';
-            } else if (!fP && tP) {
-              circle.style.left = tP[0] + '%';
-              circle.style.top = tP[1] + '%';
-            }
-          }
+            circle.style.left = pos[0] + '%';
+            circle.style.top = pos[1] + '%';
+          });
 
           // Balls
           const fromBalls = from.balls || [];
           const toBalls = to.balls || [];
-          const maxBalls = Math.max(fromBalls.length, toBalls.length);
           let roBallMap = {};
           innerEl.querySelectorAll('.tb-ball').forEach(b => { roBallMap[Number(b.dataset.idx || b.getAttribute('data-idx') || 0)] = b; });
-          for (let bi = 0; bi < maxBalls; bi++) {
-            const fB = fromBalls[bi];
-            const tB = toBalls[bi];
+          BS.tweenTrack(fromBalls, toBalls, t).forEach((pos, bi) => {
             let ball = roBallMap[bi];
-            if (!tB) { if (ball) { ball.remove(); } continue; }
+            if (!pos) { if (ball) ball.remove(); return; }
             if (!ball) {
               ball = document.createElement('div');
               ball.className = 'tb-ball';
               ball.setAttribute('data-idx', bi);
-              ball.style.cssText = 'left:' + tB[0] + '%;top:' + tB[1] + '%;pointer-events:none;';
+              ball.style.cssText = 'pointer-events:none;';
               innerEl.appendChild(ball);
               roBallMap[bi] = ball;
-              continue;
             }
-            if (fB && tB) {
-              ball.style.left = lerp(fB[0], tB[0], t) + '%';
-              ball.style.top = lerp(fB[1], tB[1], t) + '%';
-            } else if (!fB && tB) {
-              ball.style.left = tB[0] + '%';
-              ball.style.top = tB[1] + '%';
-            }
-          }
+            ball.style.left = pos[0] + '%';
+            ball.style.top = pos[1] + '%';
+          });
           // Arrows — snap to target frame at t=0
           const tArr = to.arrows || [];
           let svg = innerEl.querySelector('.tb-arrows-svg');
@@ -6878,11 +6860,21 @@
           // Text labels — snap content to target at t=0, interpolate position
           const tT = to.texts || [];
           const fT = from.texts || [];
-          const maxT = Math.max(fT.length, tT.length);
           let textEls = Array.from(innerEl.querySelectorAll('.tb-text-label'));
           for (let i = textEls.length - 1; i >= tT.length; i--) textEls[i].remove();
+          /* Labels are the one drawing layer that MOVES during playback
+             — the editor snaps them, this renderer slides them. Kept as
+             it is rather than unified: changing it would alter how every
+             existing animated board plays, which is not this refactor's
+             business. It goes through the shared tween like everything
+             else, so at least the arithmetic is the same arithmetic.
+
+             `fT[i] || tT[i]` stays outside the tween: a label absent
+             from the previous frame has no start, and the tween's own
+             snap rule would give the same answer anyway. */
+          const textTrack = BS.tweenTrack(tT.map((tt, i) => fT[i] || tt), tT, t);
           for (let i = 0; i < tT.length; i++) {
-            const ft = fT[i] || tT[i], tt = tT[i];
+            const tt = tT[i];
             let lbl = innerEl.querySelectorAll('.tb-text-label')[i];
             if (!lbl) {
               lbl = document.createElement('div');
@@ -6890,8 +6882,8 @@
               lbl.style.pointerEvents = 'none';
               innerEl.appendChild(lbl);
             }
-            lbl.style.left = lerp(ft[0], tt[0], t) + '%';
-            lbl.style.top = lerp(ft[1], tt[1], t) + '%';
+            lbl.style.left = textTrack[i][0] + '%';
+            lbl.style.top = textTrack[i][1] + '%';
             lbl.textContent = tt[2];
             const ic = tt[3]||'#000000';
             const ia = tt[4]!=null?tt[4]:0.8;
@@ -9966,7 +9958,7 @@
       return String(pointsStr || '').trim().split(/\s+/).map(pair => {
         const xy = pair.split(',');
         const d = toDisplay(parseFloat(xy[0]), parseFloat(xy[1]));
-        return (Math.round(d[0] * 100) / 100) + ',' + (Math.round(d[1] * 100) / 100);
+        return BS.round2(d[0]) + ',' + BS.round2(d[1]);
       }).join(' ');
     }
 
@@ -9974,7 +9966,7 @@
       return String(pointsStr || '').trim().split(/\s+/).map(pair => {
         const xy = pair.split(',');
         const h = toHorizontal(parseFloat(xy[0]), parseFloat(xy[1]));
-        return (Math.round(h[0] * 100) / 100) + ',' + (Math.round(h[1] * 100) / 100);
+        return BS.round2(h[0]) + ',' + BS.round2(h[1]);
       }).join(' ');
     }
 
@@ -10006,7 +9998,7 @@
         const dL = parseFloat(c.style.left);
         const dT = parseFloat(c.style.top);
         const h = toHorizontal(dL, dT);
-        pos[idx] = [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
+        pos[idx] = h;
         const inp = c.querySelector('.tb-num');
         const num = inp.value;
         nums[idx] = num;
@@ -10016,9 +10008,9 @@
         if (isGk) paintCircle(c, GK_COLOR);
         else if (!c.dataset.color) paintCircle(c, tc);
       });
-      localStorage.setItem('fa_tactic_positions', JSON.stringify(pos));
-      localStorage.setItem('fa_tactic_numbers', JSON.stringify(nums));
-      localStorage.setItem('fa_tactic_colors', JSON.stringify(colors));
+      BS.setPoints(localStorage, BS.KEYS.positions, pos);
+      BS.writeJson(localStorage, BS.KEYS.numbers, nums);
+      BS.writeJson(localStorage, BS.KEYS.colors, colors);
       const oppCircles = inner.querySelectorAll('.tb-circle-opp');
       let maxOppIdx = -1;
       oppCircles.forEach(c => { const idx = Number(c.dataset.idx); if (idx > maxOppIdx) maxOppIdx = idx; });
@@ -10039,7 +10031,7 @@
           const dL = parseFloat(c.style.left);
           const dT = parseFloat(c.style.top);
           const h = toHorizontal(dL, dT);
-          oppPos[idx] = [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
+          oppPos[idx] = h;
           const inp = c.querySelector('.tb-num');
           const num = inp.value;
           oppNums[idx] = num;
@@ -10053,9 +10045,9 @@
           if (num.trim() === '1') paintCircle(c, GK_COLOR);
           else if (!c.dataset.color) paintCircle(c, oc);
         });
-        localStorage.setItem('fa_tactic_opp_positions', JSON.stringify(oppPos));
-        localStorage.setItem('fa_tactic_opp_numbers', JSON.stringify(oppNums));
-        localStorage.setItem('fa_tactic_opp_colors', JSON.stringify(oppColors));
+        BS.setPoints(localStorage, BS.KEYS.oppPositions, oppPos);
+        BS.writeJson(localStorage, BS.KEYS.oppNumbers, oppNums);
+        BS.writeJson(localStorage, BS.KEYS.oppColors, oppColors);
       }
       if (nameInput) localStorage.setItem('fa_tactic_name', nameInput.value);
       // Save ball positions
@@ -10452,7 +10444,7 @@
       // Add this circle to all future frames at the same position
       const newIdx = maxIdx + 1;
       const h = toHorizontal(dispLeft, dispTop);
-      const hPos = [Math.round(h[0]*100)/100, Math.round(h[1]*100)/100];
+      const hPos = BS.roundPt(h);
       const posKey = isOpp ? 'oppPositions' : 'positions';
       for (let fi = activeFrameIdx + 1; fi < frames.length; fi++) {
         if (!frames[fi][posKey]) frames[fi][posKey] = [];
@@ -11109,12 +11101,11 @@
         const y2 = parseFloat(l.dataset.origY2 || l.getAttribute('y2'));
         const h1 = toHorizontal(x1, y1);
         const h2 = toHorizontal(x2, y2);
-        arrows.push([Math.round(h1[0]*100)/100, Math.round(h1[1]*100)/100,
-                      Math.round(h2[0]*100)/100, Math.round(h2[1]*100)/100,
+        arrows.push([h1[0], h1[1], h2[0], h2[1],
                       l.dataset.color || '#ffffff',
                       l.dataset.dash === '1']);
       });
-      localStorage.setItem('fa_tactic_arrows', JSON.stringify(arrows));
+      BS.setArrows(localStorage, arrows);
     }
 
     function deleteArrow(lineEl) {
@@ -11161,7 +11152,7 @@
         // Normalise to the horizontal pitch, like saveArrows and saveRects.
         arr.push([penPointsToHorizontal(pts), pl.dataset.color || '#ffffff', pl.dataset.dash === '1']);
       });
-      localStorage.setItem('fa_tactic_pen_lines', JSON.stringify(arr));
+      BS.writeJson(localStorage, BS.KEYS.penLines, arr);
       /* Stamp the space AFTER converting. A legacy board being re-saved is
          healed here, using the same orientation its raw render was already
          assuming — so what the coach sees is what gets stored. */
@@ -11435,12 +11426,11 @@
         const hy = Math.min(tl[1], br[1]);
         const hw = Math.abs(br[0] - tl[0]);
         const hh = Math.abs(br[1] - tl[1]);
-        arr.push([Math.round(hx*100)/100, Math.round(hy*100)/100,
-                   Math.round(hw*100)/100, Math.round(hh*100)/100,
+        arr.push([hx, hy, hw, hh,
                    r.dataset.color || '#ffffff',
                    parseFloat(r.dataset.opacity) || 0.3]);
       });
-      localStorage.setItem('fa_tactic_rects', JSON.stringify(arr));
+      BS.setRects(localStorage, arr);
     }
 
     function deleteRect(rectEl) {
@@ -11555,13 +11545,13 @@
         const elW = el.style.width ? parseFloat(el.style.width) : null;
         const elH = el.style.height ? parseFloat(el.style.height) : null;
         const elFs = el.style.fontSize ? parseFloat(el.style.fontSize) : null;
-        arr.push([Math.round(h[0]*100)/100, Math.round(h[1]*100)/100,
+        arr.push([h[0], h[1],
                    el.textContent,
                    el.dataset.color || '#000000',
                    parseFloat(el.dataset.opacity) || 0.8,
                    elW, elH, elFs]);
       });
-      localStorage.setItem('fa_tactic_texts', JSON.stringify(arr));
+      BS.setTexts(localStorage, arr);
     }
 
     function reindexTexts() {
@@ -11775,9 +11765,9 @@
         b.dataset.idx = i;
         const bL = parseFloat(b.style.left), bT = parseFloat(b.style.top);
         const bH = toHorizontal(bL, bT);
-        arr.push([Math.round(bH[0]*100)/100, Math.round(bH[1]*100)/100]);
+        arr.push(bH);
       });
-      localStorage.setItem('fa_tactic_balls', JSON.stringify(arr));
+      BS.setPoints(localStorage, BS.KEYS.balls, arr);
     }
 
     function spawnBall(pctX, pctY) {
@@ -11901,9 +11891,9 @@
       cones.forEach(c => {
         const cL = parseFloat(c.style.left), cT = parseFloat(c.style.top);
         const cH = toHorizontal(cL, cT);
-        arr.push([Math.round(cH[0]*100)/100, Math.round(cH[1]*100)/100]);
+        arr.push(cH);
       });
-      localStorage.setItem('fa_tactic_cones', JSON.stringify(arr));
+      BS.setPoints(localStorage, BS.KEYS.cones, arr);
     }
 
     function spawnCone(pctX, pctY) {
@@ -13172,8 +13162,9 @@
       }
       setTimeout(playNext, 200);
     });
-    function lerp(a, b, t) { return a + (b - a) * t; }
-
+    /* lerp lived here; BS.tweenTrack owns interpolation now, so the
+       editor and the read-only renderer cannot drift apart about what
+       'halfway between two frames' means. */
     function interpolateAndApply(from, to, t) {
       const teamColor = teamFill();
       const oppColor = oppFill();
@@ -13184,7 +13175,6 @@
       // --- Team circles: match by stable array index ---
       const fromPos = from.positions || [];
       const toPos = to.positions || [];
-      const maxLen = Math.max(fromPos.length, toPos.length);
 
       // Build a map of existing DOM circles by dataset.idx
       let circleMap = {};
@@ -13199,22 +13189,25 @@
          The same shape of divergence produced the v88 opposition flash. */
       const clrs = to.colors || [];
       const oClrs = to.oppColors || [];
-      for (let i = 0; i < maxLen; i++) {
-        const fP = fromPos[i]; // from-frame position (or null if deleted/absent)
-        const tP = toPos[i];   // to-frame position (or null if deleted/absent)
+      /* WHERE each player is at time t comes from BS.tweenTrack; what
+         to do about it is this function's business. That split is what
+         removed the fourth branch this loop used to have: lerp-vs-snap
+         is decided inside the tween, so here a slot is either at a
+         position or it is not there at all. */
+      BS.tweenTrack(fromPos, toPos, t).forEach((pos, i) => {
         const circle = circleMap[i];
 
-        if (!tP) {
-          // Circle deleted in target frame — remove from DOM
+        if (!pos) {
+          // Deleted in the target frame — take it off the board.
           if (circle) { circle.remove(); delete circleMap[i]; }
-          continue;
+          return;
         }
 
+        const d = toDisplay(pos[0], pos[1]);
+
         if (!circle) {
-          // Circle new in target frame — create at target position
           const num = currentNumbers[i] || '';
           const isGk = String(num) === '1';
-          const d = toDisplay(tP[0], tP[1]);
           const div = document.createElement('div');
           div.className = 'tb-circle';
           div.dataset.idx = i;
@@ -13227,46 +13220,34 @@
           paintCircle(div, isGk ? GK_COLOR : (clrs[i] || teamColor));
           inner.appendChild(div);
           circleMap[i] = div;
-          continue;
+          return;
         }
 
-        // Circle exists in both frames — interpolate position
-        if (fP && tP) {
-          const hL = lerp(fP[0], tP[0], t);
-          const hT = lerp(fP[1], tP[1], t);
-          const d = toDisplay(hL, hT);
-          circle.style.left = d[0] + '%'; circle.style.top = d[1] + '%';
-        } else if (!fP && tP) {
-          // Snap: circle new in target frame, already in DOM from prior tick
-          const d = toDisplay(tP[0], tP[1]);
-          circle.style.left = d[0] + '%'; circle.style.top = d[1] + '%';
-        }
-      }
+        circle.style.left = d[0] + '%'; circle.style.top = d[1] + '%';
+      });
 
       // --- Opp circles: same stable-index matching ---
       const fromOpp = from.oppPositions || [];
       const toOpp = to.oppPositions || [];
-      const maxOppLen = Math.max(fromOpp.length, toOpp.length);
 
       let oppMap = {};
       inner.querySelectorAll('.tb-circle-opp').forEach(c => {
         oppMap[Number(c.dataset.idx)] = c;
       });
 
-      for (let i = 0; i < maxOppLen; i++) {
-        const fP = fromOpp[i];
-        const tP = toOpp[i];
+      BS.tweenTrack(fromOpp, toOpp, t).forEach((pos, i) => {
         const circle = oppMap[i];
 
-        if (!tP) {
+        if (!pos) {
           if (circle) { circle.remove(); delete oppMap[i]; }
-          continue;
+          return;
         }
+
+        const d = toDisplay(pos[0], pos[1]);
 
         if (!circle) {
           const num = currentOppNumbers[i] || '';
           const isGk = String(num) === '1';
-          const d = toDisplay(tP[0], tP[1]);
           const div = document.createElement('div');
           div.className = 'tb-circle tb-circle-opp';
           div.dataset.idx = i;
@@ -13281,49 +13262,28 @@
           paintCircle(div, isGk ? GK_COLOR : (oClrs[i] || oppColor));
           inner.appendChild(div);
           oppMap[i] = div;
-          continue;
+          return;
         }
 
-        if (fP && tP) {
-          const hL = lerp(fP[0], tP[0], t);
-          const hT = lerp(fP[1], tP[1], t);
-          const d = toDisplay(hL, hT);
-          circle.style.left = d[0] + '%'; circle.style.top = d[1] + '%';
-        } else if (!fP && tP) {
-          const d = toDisplay(tP[0], tP[1]);
-          circle.style.left = d[0] + '%'; circle.style.top = d[1] + '%';
-        }
-      }
+        circle.style.left = d[0] + '%'; circle.style.top = d[1] + '%';
+      });
 
       // Balls
       const fromBalls = from.balls || [];
       const toBalls = to.balls || [];
-      const maxBalls = Math.max(fromBalls.length, toBalls.length);
       let ballMap = {};
       inner.querySelectorAll('.tb-ball').forEach(b => { ballMap[Number(b.dataset.idx || 0)] = b; });
-      for (let bi = 0; bi < maxBalls; bi++) {
-        const fB = fromBalls[bi];
-        const tB = toBalls[bi];
+      BS.tweenTrack(fromBalls, toBalls, t).forEach((pos, bi) => {
         let ball = ballMap[bi];
-        if (!tB) { if (ball) { ball.remove(); } continue; }
+        if (!pos) { if (ball) ball.remove(); return; }
+        const d = toDisplay(pos[0], pos[1]);
         if (!ball) {
-          const d = toDisplay(tB[0], tB[1]);
           ball = document.createElement('div');
           ball.className = 'tb-ball'; ball.dataset.idx = bi;
-          ball.style.left = d[0] + '%'; ball.style.top = d[1] + '%';
           inner.appendChild(ball);
-          continue;
         }
-        if (fB && tB) {
-          const bL = lerp(fB[0], tB[0], t);
-          const bT = lerp(fB[1], tB[1], t);
-          const bd = toDisplay(bL, bT);
-          ball.style.left = bd[0] + '%'; ball.style.top = bd[1] + '%';
-        } else if (!fB && tB) {
-          const d = toDisplay(tB[0], tB[1]);
-          ball.style.left = d[0] + '%'; ball.style.top = d[1] + '%';
-        }
-      }
+        ball.style.left = d[0] + '%'; ball.style.top = d[1] + '%';
+      });
       // Arrows — snap to target frame at t=0
       const tArr = to.arrows || [];
       const curArrows = arrowsSvg.querySelectorAll('.tb-arrow');
@@ -13396,7 +13356,12 @@
       const curConeKey = Array.from(curCones).map(c => parseFloat(c.style.left) + ',' + parseFloat(c.style.top)).join('|');
       if (coneKey !== curConeKey) {
         curCones.forEach(c => c.remove());
-        tCones.forEach(c => spawnCone(c[0], c[1]));
+        /* toDisplay, for the same reason applyFrameState needed it:
+           saveCones normalises to the horizontal pitch, so the stored
+           value is not what the style attribute wants. Without it a
+           cone jumped across the pitch the moment playback started on
+           a vertical board. */
+        tCones.forEach(c => { const d = toDisplay(c[0], c[1]); spawnCone(d[0], d[1]); });
       }
     }
 

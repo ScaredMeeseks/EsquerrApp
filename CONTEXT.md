@@ -4278,3 +4278,49 @@ Six i18n keys, ca/es/en, with a test (`t()` returns the key itself on a miss, so
 preview page cannot exercise them.
 
 Unit 1268 → **1284**.
+
+### 2026-08-25 — v136: one tween, one rounding (`js/board-state.js`)
+
+Phase 2 of the premium-board work. Not the "decouple the editor from the DOM" refactor the plan
+described — that was the wrong shape. The save functions READ the DOM, which is their job as a
+view; what needed extracting was what the value IS. Narrower, and it buys the same thing.
+
+**The tween was written twice.** `interpolateAndApply` (editor) and `interpolateRo` (read-only)
+were two ~120-line functions doing the same index matching and the same lerp against different
+DOM. They drifted, and the drift shipped twice: **v91** was the editor preferring the current
+colour array over the frame's — the opposite of every other renderer, so a player changed colour
+mid-animation in the editor and nowhere else. **v88**'s opposition flash was the same shape. A
+third copy for 3D would have been a third chance.
+
+The whole thing reduces to one question with no DOM in it: *where is each thing at time t, or is it
+not there.* `BS.tweenTrack(from, to, t)` answers it — lerp when present in both, **snap** when new
+in the target (a player with no previous position must not fly in from the corner), `null` when
+absent. Whether that means create, move or remove depends on what is on screen, which stays with
+each renderer. Both call sites lost a branch: lerp-vs-snap is decided inside the tween now.
+
+Both copies of `lerp` are gone; a test fails if one comes back.
+
+**Rounding was written six times.** `Math.round(v * 100) / 100` in each save function. Now
+`BS.round2`, with a 4000-sample property test asserting it is byte-identical to the expression it
+replaced — db.js diffs shards as serialised strings, so one differing digit rewrites every board
+shard in every club.
+
+`BS.KEYS` names the scratch keys so no caller spells one as a literal (a typo there is silent: the
+write lands on a key nothing reads and the value is gone at reload). `readJson` swallows a corrupt
+value rather than taking the board down — localStorage is shared across tabs and outlives version
+changes.
+
+Two things deliberately NOT in the module: **numbers** (a shirt number belongs to the player, not
+the moment, so it is merged from live editor state, which is not frame data) and **text-label
+tweening** (the editor snaps labels, the read-only renderer slides them; unifying that would change
+how every existing animated board plays, which is not this refactor's business — it now at least
+goes through the same arithmetic).
+
+**A third cone bug**, same family as the other two: `interpolateAndApply` spawned cones without
+`toDisplay`, so a cone jumped across the pitch the moment playback started on a vertical board.
+That is now fixed in all three places it existed.
+
+Caught while refactoring: deleting `lerp` broke the read-only text labels, which still called it —
+`node --check` passes on a ReferenceError, so only reading the greps caught it.
+
+Unit 1289 → **1316**.
