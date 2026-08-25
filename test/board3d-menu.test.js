@@ -632,12 +632,72 @@ describe('the file actions moved into the menu', () => {
         .forEach((s) => assert.ok(init.indexOf(s) !== -1, s + ' must be adopted'));
   });
 
-  it('the library panel is sized and scrolls', () => {
-    /* It is the largest hover-held surface in the app; unbounded it
-       would run off the window. */
+  it('the library is two columns, each scrolling on its own', () => {
+    /* Stacked, the library started below the fold of the panel and
+       its search box scrolled away with it — the one control you
+       reach for first. The COLUMNS scroll now, not the panel, so
+       reading the favourites never moves the library. */
     const r = rule('#tb-panel-open');
-    assert.ok(/max-height:/.test(r) && /overflow-y:auto/.test(r),
-        'the library must be bounded and scrollable');
+    assert.ok(/grid-template-columns:1fr 1fr/.test(r), 'two columns, side by side');
+    assert.ok(/max-height:/.test(r), 'the panel must still be bounded');
+    const col = rule('#tb-panel-open .tb-m-col');
+    assert.ok(/overflow-y:auto/.test(col) && /max-height:/.test(col),
+        'each column scrolls within its own height');
+  });
+
+  it('the search box sticks, on a ground you cannot see through', () => {
+    const search = rule('#tb-panel-open .tb-lib-search');
+    assert.ok(/position:sticky/.test(search), 'it must stay put while the list moves');
+    /* The BACKGROUND, not the whole rule — the border is legitimately
+       translucent and the first version of this rejected it, failing
+       on correct CSS. */
+    const bg = /background:([^;]+);/.exec(search);
+    assert.ok(bg, 'the sticky box must declare its own ground');
+    assert.ok(/^#[0-9a-f]{3,8}$/i.test(bg[1].trim()),
+        'a translucent sticky box shows the rows scrolling through it; got ' + bg[1]);
+  });
+
+  it('nothing the coach reads through is translucent', () => {
+    /* The icon buttons SHOULD be translucent — they sit on the pitch
+       and are meant to. The surfaces carrying text must not: at 96%
+       over a green pitch, turf comes through the words. */
+    ['.tb-m-panel', '.tb-m-sub', '.tb-m-kit-opts'].forEach((sel) => {
+      const r = rule(sel);
+      assert.ok(/background:#[0-9a-f]{6}/i.test(r),
+          sel + ' must have a solid ground');
+      assert.ok(!/backdrop-filter/.test(r),
+          sel + ' needs no blur behind an opaque surface — it is a ' +
+          'compositor pass for nothing');
+    });
+  });
+
+  it('the two dropdowns have their own ground and room to read', () => {
+    const list = rule('#tb-panel-link .tb-match-list');
+    assert.ok(/background:#[0-9a-f]{6}/i.test(list),
+        'behind these is turf, not a page');
+    assert.ok(/min-width:\d+px/.test(list) && /right:auto/.test(list),
+        'the list must be able to outgrow the toggle it drops from');
+  });
+
+  it('Save and Save As build their boxes the same way', () => {
+    /* .btn-tb-saveas carries a 2px border and .btn-primary none, so
+       the two rules disagreed about where the padding ends. Matching
+       the construction beats subtracting padding from one of them and
+       hoping the pair stays in step. */
+    const b = rule('#tb-panel-save .btn');
+    assert.ok(/border:2px solid transparent/.test(b),
+        'the primary needs the border Save As already has');
+    assert.ok(/flex:1 1 0/.test(b), 'and both share the row evenly');
+  });
+
+  it('tags moved in with Save, emptying the page below the window', () => {
+    /* A tag is what you set when you FILE the board:
+       tbLibraryListHtml groups by b.tag and the search matches on it,
+       so it decides where the board turns up next time. */
+    assert.ok(/savePanel\.appendChild\(tagSection\)/.test(init),
+        'the tag section must be adopted into the save panel');
+    assert.ok(/querySelector\('\.tb-tag-section'\)/.test(init),
+        'and taken from the page, not rebuilt');
   });
 
   it('the delete cross is drawn, not typed', () => {

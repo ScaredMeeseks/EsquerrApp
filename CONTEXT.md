@@ -5747,3 +5747,36 @@ first held the geometry. Nothing conflicted, but "where is this element styled" 
 Merged.
 
 Unit 1713 → **1720**. Version triple → v158. **Still nothing deployed.**
+
+### 2026-08-26 — Opaque panels, a two-column library, and tags (v159)
+
+- **The panels carrying text are opaque now.** `.tb-m-panel`, `.tb-m-sub` and `.tb-m-kit-obs` sat at
+  `rgba(18,20,23,.96)`; over a green pitch that last 4% shows turf through the words. The
+  `backdrop-filter` went with them — a blur behind an opaque surface is a compositor pass for nothing.
+  The **icon buttons stay translucent** on purpose: they sit on the pitch and are meant to read as
+  floating on it, and a test now says which of the two rules applies to which.
+- **The library is two columns.** Stacked, Biblioteca Club began below the fold of a 560px panel and
+  its search box scrolled away with it — the one control you reach for first. Each column scrolls on
+  its own, so reading the favourites never moves the library, and the search box is `position:sticky`
+  on an **opaque** ground (a translucent one shows the rows scrolling through it). The columns are real
+  elements rather than `grid-column` on each adopted node, because sticky needs a scrolling parent.
+- **The two dropdowns** had `left:0; right:0`, so a fixture line was cut at the toggle's width. They
+  can outgrow it now, and have their own ground rather than a tint of the turf behind them.
+- **Save and Save As build the same box.** `.btn-tb-saveas` carries a 2px border and `.btn-primary`
+  none, so the two rules disagreed about where the padding ends. The primary gets a transparent border
+  of the same width — matching the construction, rather than subtracting padding from one and hoping
+  the pair stays in step.
+- **Tags moved into the Save panel** (owner's call). A tag is what you set when you FILE a board:
+  `tbLibraryListHtml` groups by `b.tag` and the search matches on it, so it decides where the board
+  turns up next time. That was the last thing still rendered below the window, so the page under the
+  3D board is finally empty.
+
+The widened duplicate-selector guard earned itself again, catching a second
+`#tb-panel-open .tb-lib-search` rule the moment it was written. One test also had to be narrowed: it
+rejected any `rgba(255,255,255…)` in the sticky rule and so failed on a legitimately translucent
+BORDER — it checks the background declaration now.
+
+**Unverified visually, as always here.** These tests read CSS text; whether turf shows through a panel
+is a hand check.
+
+Unit 1720 → **1725**. Version triple → v159. **Still nothing deployed.**

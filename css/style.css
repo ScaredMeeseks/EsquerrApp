@@ -4831,8 +4831,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   position:absolute; left:calc(100% + .4rem); top:-.25rem; min-width:180px;
   display:none; flex-direction:column; gap:.35rem;
   padding:.55rem .65rem; border-radius:10px;
-  background:rgba(18,20,23,.96); box-shadow:0 8px 26px rgba(0,0,0,.45);
-  backdrop-filter:blur(8px);
+  background:#14171a; box-shadow:0 8px 26px rgba(0,0,0,.5);
 }
 .tb-m-entry.tb-m-hot > .tb-m-panel { display:flex; }
 
@@ -4850,7 +4849,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   position:absolute; left:calc(100% + .5rem); top:-.4rem; min-width:150px;
   display:none; flex-direction:column; gap:.15rem;
   padding:.5rem .55rem; border-radius:10px;
-  background:rgba(18,20,23,.96); box-shadow:0 8px 26px rgba(0,0,0,.45);
+  background:#14171a; box-shadow:0 8px 26px rgba(0,0,0,.5);
 }
 .tb-m-side:hover > .tb-m-sub, .tb-m-side:focus-within > .tb-m-sub { display:flex; }
 .tb-m-forms { display:flex; flex-direction:column; gap:.1rem; }
@@ -4863,7 +4862,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   position:absolute; left:calc(100% + .5rem); top:-.4rem;
   display:none; align-items:center; gap:.4rem; flex-wrap:wrap; width:max-content;
   max-width:230px; padding:.5rem .55rem; border-radius:10px;
-  background:rgba(18,20,23,.96); box-shadow:0 8px 26px rgba(0,0,0,.45);
+  background:#14171a; box-shadow:0 8px 26px rgba(0,0,0,.5);
 }
 .tb-m-kit:hover > .tb-m-kit-opts, .tb-m-kit:focus-within > .tb-m-kit-opts { display:flex; }
 
@@ -5031,16 +5030,33 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    scrollbar — because the panel is a DOM CHILD of its entry, and DOM
    containment is what pointerleave answers to, not screen position.
    The 260ms grace period covers the gap between rail and panel. */
+/* Two columns rather than one long scroll: stacked, the library began
+   below the fold and its search box went with it. Each column scrolls
+   on its own, so reading the favourites never moves the library. */
 #tb-panel-open {
-  width:min(420px, 60vw); max-height:min(70vh, 560px);
-  overflow-y:auto; gap:.15rem;
+  width:min(680px, 78vw); max-height:min(70vh, 560px);
+  display:grid; grid-template-columns:1fr 1fr; gap:.1rem .8rem;
+  overflow:hidden;                 /* the COLUMNS scroll, not the panel */
 }
+#tb-panel-open .tb-m-col {
+  display:flex; flex-direction:column; min-width:0;
+  max-height:min(66vh, 520px); overflow-y:auto;
+}
+/* The one control you reach for first stays put while its list moves
+   under it. Sticky needs the scrolling parent above, which is why the
+   columns are elements rather than grid placement on each node. */
 #tb-panel-open .tb-saved-title {
   color:#8b9096; font-size:.68rem; letter-spacing:.06em;
   text-transform:uppercase; margin:.4rem 0 .2rem;
 }
 #tb-panel-open .tb-lib-search {
-  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+  /* The one control you reach for first stays put while its list
+     moves under it. Sticky needs the scrolling parent above, which
+     is why the columns are elements rather than grid placement on
+     each adopted node — and an OPAQUE ground, or the rows scroll
+     visibly through the box. */
+  position:sticky; top:0; z-index:1;
+  background:#1c2024; border:1px solid rgba(255,255,255,.18);
   color:#fff; border-radius:8px; padding:.35rem .5rem; width:100%;
 }
 #tb-panel-open .tb-lib-search::placeholder { color:#7d8288; }
@@ -5051,13 +5067,50 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 /* ── Save and link, adopted ───────────────────────────────────── */
 #tb-panel-save, #tb-panel-link { min-width:200px; }
+/* Save and Save As were different sizes because they build their
+   boxes differently: .btn-tb-saveas carries a 2px border and
+   .btn-primary none, so the two rules disagree about where the
+   padding ends. Giving the primary a transparent border of the same
+   width makes both boxes the same construction — better than
+   subtracting padding from one and hoping the pair stays in step. */
+#tb-panel-save .btn {
+  border:2px solid transparent;
+  flex:1 1 0; min-width:0; text-align:center;
+}
+#tb-panel-save .tb-btn-row { display:flex; gap:.4rem; width:100%; margin:0; }
+/* Tags, adopted in beside them. */
+#tb-panel-save .tb-tag-section { margin:0; padding:.2rem 0; width:100%; }
+#tb-panel-save .tb-tag-label {
+  color:#8b9096; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
+}
+#tb-panel-save .tb-tag-toggle, #tb-panel-save .tb-tag-add-input {
+  background:#1c2024; border-color:rgba(255,255,255,.18); color:#fff;
+}
+#tb-panel-save .tb-tag-list {
+  background:#14171a; border-color:rgba(255,255,255,.18);
+  box-shadow:0 8px 26px rgba(0,0,0,.5);
+}
+#tb-panel-save .tb-tag-option { color:#c9ccd1; }
+#tb-panel-save .tb-tag-option:hover { background:rgba(255,255,255,.08); color:#fff; }
 #tb-panel-link .tb-match-section { margin:0; padding:.2rem 0; }
 #tb-panel-link .tb-match-label {
   color:#8b9096; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
 }
-#tb-panel-link .tb-match-toggle, #tb-panel-link .tb-match-list {
-  background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:#fff;
+/* Their own ground, not a tint of what is behind — behind them is
+   turf. */
+#tb-panel-link .tb-match-toggle {
+  background:#1c2024; border-color:rgba(255,255,255,.18); color:#fff;
 }
+#tb-panel-link .tb-match-list {
+  background:#14171a; border-color:rgba(255,255,255,.18); color:#fff;
+  /* Wider than the toggle it drops from. A fixture line runs to
+     "Esquerra B - Sant Andreu, dg 14/09" and was cut at the toggle's
+     width; the list is absolutely positioned, so overflowing to the
+     right costs the panel's layout nothing. */
+  right:auto; min-width:330px; box-shadow:0 8px 26px rgba(0,0,0,.5);
+}
+#tb-panel-link .tb-match-option { color:#c9ccd1; }
+#tb-panel-link .tb-match-option:hover { background:rgba(255,255,255,.08); color:#fff; }
 #tb-panel-link .tb-match-linked { color:#c9ccd1; font-size:.75rem; }
 /* The read-only note travels with Save As and has to stay legible —
    it is the only thing explaining why Save is missing. */

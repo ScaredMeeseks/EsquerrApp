@@ -1578,7 +1578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 158;
+  const APP_VERSION = 159;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6978,6 +6978,16 @@
        nothing explains the absence. */
     adopt('save', ['#tb-save', '#tb-save-as', '.tb-readonly-note']);
 
+    /* Tags live with Save, because a tag is what you set when you
+       FILE the board: tbLibraryListHtml groups by `b.tag` and the
+       search matches on it, so the tag decides where the board turns
+       up when you next go looking. Adopted whole, handlers intact —
+       and this is the last thing that was still rendered below the
+       window. */
+    const savePanel = document.getElementById('tb-panel-save');
+    const tagSection = document.querySelector('.tb-tag-section');
+    if (savePanel && tagSection) savePanel.appendChild(tagSection);
+
     /* Link. BOTH sections carry the class `.tb-match-section` — match
        and training — so a querySelector would take the first and
        leave training stranded below the window. That is exactly the
@@ -6993,15 +7003,35 @@
        like everything else, so bindTacticsSavedList's handlers — and
        the search box, which re-renders the list by id — keep working
        from their new home. */
+    /* TWO COLUMNS, side by side. Stacked, the library began below the
+       fold of the panel and its search box scrolled away with it —
+       the one control you reach for first.
+
+       Each column is its own element rather than a `grid-column` on
+       each adopted node: the search box sticks to the top of its
+       column while the list scrolls under it, and sticky needs a
+       scrolling parent of its own. */
     const openPanel = document.getElementById('tb-panel-open');
     if (openPanel) {
-      ['.tb-saved-title:not(.tb-lib-title)', '#tb-saved-list', '.tb-lib-title',
-       '#tb-lib-search', '#tb-lib-list'].forEach((sel) => {
-        const el = sel[0] === '#'
-          ? document.getElementById(sel.slice(1))
-          : document.querySelector(sel);
-        if (el) openPanel.appendChild(el);
-      });
+      const col = () => {
+        const d = document.createElement('div');
+        d.className = 'tb-m-col';
+        openPanel.appendChild(d);
+        return d;
+      };
+      const favs = col();
+      const lib = col();
+      /* The library heading carries BOTH .tb-saved-title and
+         .tb-lib-title, so the favourites pick must exclude it rather
+         than trust document order. */
+      [['.tb-saved-title:not(.tb-lib-title)', favs], ['#tb-saved-list', favs],
+       ['.tb-lib-title', lib], ['#tb-lib-search', lib], ['#tb-lib-list', lib]]
+        .forEach(([sel, into]) => {
+          const el = sel[0] === '#'
+            ? document.getElementById(sel.slice(1))
+            : document.querySelector(sel);
+          if (el) into.appendChild(el);
+        });
     }
 
     tbMenuSquad(hooks || {});
