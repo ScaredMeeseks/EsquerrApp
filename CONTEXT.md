@@ -5015,3 +5015,48 @@ That first pattern is worth reaching for whenever something in `bindTactics` use
 `renderTactics`; the split is invisible to `node --check` and to every regex test in the suite.
 
 Unit 1537 → **1540**. Version triple → v139.
+
+### 2026-08-25 — Flat arrows, and the camera comes back (v140)
+
+**Arrows had volume because they were solids.** A `CylinderGeometry` shaft and a `ConeGeometry` head,
+sitting 0.16 m proud of the grass — which reads as pipes laid on the pitch from every angle except
+straight down. An arrow on a tactics board is a **mark**: the thing it represents has no thickness, so
+neither should it. Now one flat `ShapeGeometry` polygon (shaft rectangle plus head triangle) built in 2D
+and rotated into the turf plane, as a single mesh rather than two.
+
+The rotation uses `makeBasis(dir, perp, up)` with `perp = (dir.z, 0, -dir.x)` — **not** the other sign.
+With the other one `dir × perp` points down, the basis is left-handed and the face normal points at the
+ground. Flat either way, invisible one of them.
+
+Zones and pen strokes were already flat (a rotated plane and a line); a regression test now says so, and
+that no drawn mark may become an extruded solid.
+
+**Putting a draw tool down now gives the camera back.** It flew overhead on pick-up and stayed there on
+release, so a coach who set up a broadcast angle, drew one arrow and put the pen down got a flat board
+with nothing to explain it — reported, reasonably, as "the board snaps back to the wrong orientation".
+`setDrawLock` now remembers the pre-lock angle (target **cloned** — the live vector keeps moving) and
+eases back over the same 550 ms, unless the coach was already overhead.
+
+Two smaller leaks in the same release path: `#tb-field` is reparented into the 3D wrapper for the
+overlay and now goes back to its original parent **and sibling position** (left there, the next render
+replaces the wrapper and takes the board with it), and the inline `visibility:hidden` the follow loop
+sets is cleared — `hidden` does not override it, so the 2D board would have come back invisible.
+
+**The orientation report was diagnosed by measurement, not by reading.** The obvious suspect was the
+overlay mapping — half and area boards are drawn portrait, with board x = pitch WIDTH, so a transposed
+axis would rotate every stroke a quarter turn. `test/overlay-align.test.js` (new, executable, real
+three.js) projects six asymmetric probe points through a real `top`-preset camera and compares them
+against where the overlay puts the same percent, for **five board type / pitch combinations**. All agree
+to under a pixel — which cleared the mapping and left the camera as the only candidate. The suite
+includes a guard that a mirrored point would land >50 px away, so a passing run is not vacuous.
+
+`board3d-camera.test.js` gained the flat-mark tests, which **build the real arrow and measure vertex
+spread** rather than grepping for `ShapeGeometry` — a source test cannot see a rotation that tips the
+plane out of the turf. Against the old cylinder-and-cone arrow, 11 of them fail, and the message names
+the defect exactly: *vertical spread 0.32* — the cylinder's diameter.
+
+One thing found and left alone: `setPreset`'s `held.target` mutation revealed that it too would break if
+the clone were dropped, and no test covers that. Noted, not fixed — it is correct today.
+
+Unit 1540 → **1566** (new file `overlay-align.test.js`, registered in `test/package.json` — the list is
+hand-maintained). Version triple → v140. **Still nothing deployed.**

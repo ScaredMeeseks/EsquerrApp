@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 139;
+  const APP_VERSION = 140;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6667,6 +6667,8 @@
      drawing: turf, markings, players, ball, cones. What shows is the
      drawing layers and nothing else. */
   var _tbDrawRaf = 0;
+  var _tbFieldHome = null;   // where #tb-field lives when not overlaid
+  var _tbFieldAfter = null;  // and which sibling it sat before
 
   function tbDrawSurface(on) {
     const field = document.getElementById('tb-field');
@@ -6679,6 +6681,16 @@
       field.classList.remove('tb-draw-surface');
       field.hidden = true;
       field.style.left = field.style.top = field.style.width = field.style.height = '';
+      /* The follow loop sets this to 'hidden' whenever the rect is
+         null. Left set, the board is invisible the next time the 2D
+         view renders it — `hidden` alone does not clear it. */
+      field.style.visibility = '';
+      /* Back where the render put it. The 2D view expects it as a
+         sibling of the toolbar, and leaving it parented to a wrapper
+         that a later render replaces would take the board with it. */
+      if (_tbFieldHome && field.parentNode !== _tbFieldHome) {
+        _tbFieldHome.insertBefore(field, _tbFieldAfter || null);
+      }
       return;
     }
 
@@ -6686,8 +6698,13 @@
     field.classList.add('tb-draw-surface');
     field.hidden = false;
     /* Inside the 3D wrapper, so it scrolls and clips with the canvas
-       rather than floating over the page. */
-    if (field.parentNode !== wrap) wrap.appendChild(field);
+       rather than floating over the page. Where it came FROM is
+       remembered so it can go back — see above. */
+    if (field.parentNode !== wrap) {
+      _tbFieldHome = field.parentNode;
+      _tbFieldAfter = field.nextSibling;
+      wrap.appendChild(field);
+    }
 
     /* Followed frame by frame rather than pushed from a camera
        callback: the camera also moves under the tween that takes it

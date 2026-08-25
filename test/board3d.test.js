@@ -1703,3 +1703,69 @@ describe('bindTactics does not reach into renderTactics', () => {
     assert.strictEqual(field.hidden, true, 'and hide the field again');
   });
 });
+
+/* ── Putting the tool down gives the view back ────────────────────
+   Picking a draw tool flies the camera overhead. Releasing it used to
+   leave the camera there — so a coach who set up a broadcast angle,
+   drew one arrow and put the pen down got a flat board back, with
+   nothing to say why. It reads as the board having snapped to the
+   wrong orientation, which is exactly how it was reported.
+*/
+describe('the draw lock gives the camera back', () => {
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const fn = bare.slice(bare.indexOf('function setDrawLock('),
+      bare.indexOf('function pitchScreenRect(', bare.indexOf('function setDrawLock(')));
+
+  it('remembers where the camera was before it locks', () => {
+    assert.ok(/preLockCam = \{theta: cam\.theta, phi: cam\.phi, dist: cam\.dist,/.test(fn),
+        'the angle must be captured, not just the distance');
+    assert.ok(/target: cam\.target\.clone\(\)/.test(fn),
+        'and the pan target CLONED — the live vector keeps moving');
+    assert.ok(fn.indexOf('preLockCam =') < fn.indexOf("setPreset('top')"),
+        'it must be captured BEFORE the preset overwrites it');
+  });
+
+  it('eases back rather than snapping', () => {
+    assert.ok(/tweenCameraTo\(to, 550\)/.test(fn),
+        'the return must use the same easing as the trip out');
+  });
+
+  it('leaves a coach who was already overhead where they are', () => {
+    assert.ok(/Math\.abs\(preLockCam\.phi - cam\.phi\) > 0\.02/.test(fn),
+        'an unchanged view must not be nudged');
+  });
+
+  it('clears the memory so a later release cannot resurrect it', () => {
+    /* Restoring a camera position from two tools ago would be worse
+       than not restoring at all. */
+    const i = fn.indexOf('preLockCam = null');
+    assert.ok(i !== -1, 'preLockCam must be cleared on release');
+    assert.ok(i < fn.indexOf('tweenCameraTo'),
+        'and cleared before the tween, so an early return cannot skip it');
+  });
+
+  it('puts the 2D board back where the render left it', () => {
+    /* The overlay reparents #tb-field into the 3D wrapper. Left
+       there, the next render replaces the wrapper and takes the board
+       with it. */
+    const surf = appBare.slice(appBare.indexOf('function tbDrawSurface('),
+        appBare.indexOf('function tb3dState('));
+    assert.ok(/_tbFieldHome = field\.parentNode/.test(surf),
+        'the original parent must be remembered');
+    assert.ok(/_tbFieldAfter = field\.nextSibling/.test(surf),
+        'and the sibling it sat before, or it comes back in the wrong order');
+    assert.ok(/_tbFieldHome\.insertBefore\(field, _tbFieldAfter \|\| null\)/.test(surf),
+        'and it must actually go back');
+  });
+
+  it('clears the visibility the follow loop may have set', () => {
+    /* `hidden` does not override an inline visibility:hidden, so the
+       2D board would come back invisible. */
+    const surf = appBare.slice(appBare.indexOf('function tbDrawSurface('),
+        appBare.indexOf('function tb3dState('));
+    const off = surf.slice(surf.indexOf('if (!on) {'), surf.indexOf('_tb3d.setDrawLock(true)'));
+    assert.ok(/field\.style\.visibility = ''/.test(off),
+        'releasing must clear visibility, not only the geometry');
+  });
+});

@@ -264,3 +264,136 @@ describe('the side views are not mirrored against the 2D board', () => {
         'the 2D top edge should be the top of the screen');
   });
 });
+
+/* ── Drawn marks have no thickness, MEASURED ──────────────────────
+ *
+ * Arrows were a cylinder shaft and a cone head: real solids standing
+ * 0.16m proud of the grass, which read as pipes laid on the pitch
+ * from every angle except straight down. An arrow on a tactics board
+ * is a MARK — the thing it represents has no thickness, so neither
+ * should it.
+ *
+ * "Flat" is a property of the built geometry, not of the source, so
+ * these tests build the real arrow over the real three.js and measure
+ * the vertical extent of every vertex. A source test could confirm
+ * ShapeGeometry is used and still miss a rotation that tips the plane
+ * out of the turf.
+ */
+describe('drawn marks lie flat on the turf', () => {
+  let addArrow, added;
+
+  before(() => {
+    /* addArrow needs BG.toWorld, a colour and somewhere to add to.
+       Everything else it touches is three.js. */
+    const body = (() => {
+      const i = src.indexOf('  function addArrow(a) {');
+      const j = src.indexOf('\n  }', i) + '\n  }'.length;
+      assert.ok(i !== -1, 'addArrow not found');
+      return src.slice(i, j);
+    })();
+    added = [];
+    addArrow = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
+        body + '\nreturn addArrow;')(
+      THREE,
+      {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})},
+      () => null, () => 'full',
+      {add: (m) => added.push(m)});
+  });
+
+  /** Every vertex of a mesh, in world space. */
+  const verts = (mesh) => {
+    mesh.updateMatrixWorld(true);
+    const pos = mesh.geometry.attributes.position;
+    const out = [];
+    for (let i = 0; i < pos.count; i++) {
+      out.push(new THREE.Vector3().fromBufferAttribute(pos, i)
+          .applyMatrix4(mesh.matrixWorld));
+    }
+    return out;
+  };
+
+  const DIRECTIONS = [
+    ['left to right', 10, 50, 90, 50],
+    ['right to left', 90, 50, 10, 50],
+    ['down the pitch', 50, 10, 50, 90],
+    ['diagonal', 20, 80, 75, 15],
+    ['short', 48, 50, 55, 53]
+  ];
+
+  DIRECTIONS.forEach(([name, x1, y1, x2, y2]) => {
+    it('has zero thickness — ' + name, () => {
+      added.length = 0;
+      addArrow([x1, y1, x2, y2, '#ff0000', false]);
+      assert.strictEqual(added.length, 1, 'one mesh, not a shaft plus a head');
+
+      const ys = verts(added[0]).map((v) => v.y);
+      const spread = Math.max.apply(null, ys) - Math.min.apply(null, ys);
+      assert.ok(spread < 1e-6,
+          'the arrow must lie in one horizontal plane; vertical spread ' + spread);
+      assert.ok(Math.min.apply(null, ys) > 0,
+          'and sit above the turf, not inside it');
+      assert.ok(Math.max.apply(null, ys) < 0.2,
+          'barely above it — a mark, not an object');
+    });
+
+    it('points from the tail to the head — ' + name, () => {
+      /* The direction is the whole meaning of an arrow, and a basis
+         built with the wrong perpendicular flips it silently. */
+      added.length = 0;
+      addArrow([x1, y1, x2, y2, '#ff0000', false]);
+      const vs = verts(added[0]);
+      const toWorld = (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68});
+      const tail = toWorld(x1, y1), tip = toWorld(x2, y2);
+
+      const near = (p, v) => Math.hypot(v.x - p.x, v.z - p.z);
+      const nearestTip = Math.min.apply(null, vs.map((v) => near(tip, v)));
+      const nearestTail = Math.min.apply(null, vs.map((v) => near(tail, v)));
+      assert.ok(nearestTip < 0.05,
+          'a vertex must sit on the arrow head; closest was ' + nearestTip.toFixed(3));
+      assert.ok(nearestTail < 0.4,
+          'and the shaft must start at the tail; closest was ' + nearestTail.toFixed(3));
+    });
+  });
+
+  it('faces the sky, not the ground', () => {
+    /* makeBasis with the other perpendicular gives a left-handed
+       basis: the shape is still flat, but its normal points DOWN and
+       it disappears under a single-sided material. */
+    added.length = 0;
+    addArrow([20, 80, 75, 15, '#ff0000', false]);
+    const m = added[0];
+    m.updateMatrixWorld(true);
+    const n = new THREE.Vector3(0, 0, 1).applyQuaternion(m.quaternion);
+    assert.ok(n.y > 0.999, 'the face normal must point up; y = ' + n.y.toFixed(4));
+  });
+
+  it('is a single opaque mark, not a lit solid', () => {
+    added.length = 0;
+    addArrow([10, 50, 90, 50, '#ff0000', false]);
+    const mat = added[0].material;
+    assert.strictEqual(mat.type, 'MeshBasicMaterial',
+        'a lit material would shade the mark as though it had volume');
+    assert.strictEqual(added[0].castShadow, false,
+        'a flat mark casting a shadow reads as an object standing on the grass');
+  });
+
+  it('degenerate arrows are dropped rather than drawn as a speck', () => {
+    added.length = 0;
+    addArrow([50, 50, 50, 50, '#ff0000', false]);
+    assert.strictEqual(added.length, 0, 'a zero-length arrow must add nothing');
+  });
+
+  it('zones and pen strokes were already flat, and stay that way', () => {
+    /* Both are built in the turf plane; this is a regression guard,
+       not a fix. A zone is a rotated plane, a stroke is a line — and
+       neither may quietly become an extruded solid. */
+    const bare = src.replace(/\/\*[\s\S]*?\*\//g, '');
+    const rect = bare.slice(bare.indexOf('function addRect('), bare.indexOf('function addPenLine('));
+    assert.ok(/PlaneGeometry/.test(rect) && /rotation\.x = -Math\.PI \/ 2/.test(rect),
+        'a zone must stay a plane laid flat');
+    const pen = bare.slice(bare.indexOf('function addPenLine('), bare.indexOf('function addText('));
+    assert.ok(/THREE\.Line\(/.test(pen), 'a pen stroke must stay a line');
+    assert.ok(!/(Cylinder|Cone|Box|Extrude|Tube|Sphere)Geometry/.test(rect + pen),
+        'no solids among the drawn marks');
+  });
+});

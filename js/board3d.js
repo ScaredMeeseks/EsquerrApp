@@ -439,29 +439,60 @@ export function createBoard3D(opts) {
   }
 
   /** Arrows: a flat shaft on the turf plus a cone head. */
+  /**
+   * Arrows: a FLAT silhouette painted on the turf.
+   *
+   * They used to be a cylinder shaft and a cone head — actual solids,
+   * standing 0.16m proud of the grass and reading as pipes laid on
+   * the pitch from any angle but straight down. An arrow on a
+   * tactics board is a mark, not an object: it has no thickness,
+   * because the thing it represents has no thickness.
+   *
+   * So the whole arrow is one flat polygon lying in the turf plane —
+   * a shaft rectangle that stops where the head begins, plus the
+   * triangle. Built in 2D and then rotated into place, which is both
+   * simpler than assembling it in world space and impossible to get
+   * subtly out of plane.
+   */
   function addArrow(a) {
     const pitch = getPitch(), bt = getBoardType();
     const p1 = BG.toWorld(a[0], a[1], pitch, bt);
     const p2 = BG.toWorld(a[2], a[3], pitch, bt);
     const col = new THREE.Color(a[4] || '#ffffff');
-    const from = new THREE.Vector3(p1.x, 0.06, p1.z);
-    const to = new THREE.Vector3(p2.x, 0.06, p2.z);
-    const dir = new THREE.Vector3().subVectors(to, from);
+    const from = new THREE.Vector3(p1.x, 0, p1.z);
+    const dir = new THREE.Vector3(p2.x - p1.x, 0, p2.z - p1.z);
     const len = dir.length();
     if (len < 0.01) return;
     dir.normalize();
 
     const HEAD = Math.min(2.2, len * 0.3);
-    const mat = new THREE.MeshBasicMaterial({color: col});
-    const shaft = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.16, len - HEAD, 8), mat);
-    // A cylinder is Y-aligned; point it along the arrow.
-    shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    shaft.position.copy(from).addScaledVector(dir, (len - HEAD) / 2);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, HEAD, 12), mat);
-    head.quaternion.copy(shaft.quaternion);
-    head.position.copy(to).addScaledVector(dir, -HEAD / 2);
-    drawRoot.add(shaft, head);
+    const SW = 0.3;                    // shaft width
+    const HW = Math.max(SW * 2.6, 0.9);  // head width
+
+    /* Local axes: +x along the arrow, +y across it. */
+    const shape = new THREE.Shape();
+    shape.moveTo(0, -SW / 2);
+    shape.lineTo(len - HEAD, -SW / 2);
+    shape.lineTo(len - HEAD, -HW / 2);
+    shape.lineTo(len, 0);
+    shape.lineTo(len - HEAD, HW / 2);
+    shape.lineTo(len - HEAD, SW / 2);
+    shape.lineTo(0, SW / 2);
+    shape.closePath();
+
+    const mesh = new THREE.Mesh(
+        new THREE.ShapeGeometry(shape),
+        new THREE.MeshBasicMaterial({color: col, side: THREE.DoubleSide}));
+
+    /* Map local (x, y, z) onto (along, across, up). The perpendicular
+       is (dir.z, 0, -dir.x) and not the other sign: with that one
+       dir x perp points UP, so the basis is right-handed and the
+       shape faces the sky instead of the ground. */
+    const perp = new THREE.Vector3(dir.z, 0, -dir.x);
+    mesh.setRotationFromMatrix(
+        new THREE.Matrix4().makeBasis(dir, perp, new THREE.Vector3(0, 1, 0)));
+    mesh.position.set(from.x, 0.06, from.z);
+    drawRoot.add(mesh);
   }
 
   /** Zones: a translucent plane just above the turf. */
@@ -1303,6 +1334,8 @@ export function createBoard3D(opts) {
      camera and never change the mapping, so the coach can still work
      close up on a corner. */
   let drawLock = false;
+  /* Where the camera was before the lock took it overhead. */
+  let preLockCam = null;
 
   function setDrawLock(on) {
     on = !!on;
@@ -1314,7 +1347,22 @@ export function createBoard3D(opts) {
       dragging = null;
       setSelected(null);
       followBall = false;
+      /* Remember the angle the coach was looking from. Putting the
+         tool down used to leave the camera flat, which reads as the
+         board having snapped to the wrong orientation — they set up a
+         broadcast angle, drew one arrow, and got a top-down board
+         back with no obvious way to tell what had happened. */
+      preLockCam = {theta: cam.theta, phi: cam.phi, dist: cam.dist,
+                    target: cam.target.clone()};
       setPreset('top');
+    } else if (preLockCam) {
+      /* Only worth restoring if it was actually a different view —
+         a coach who was already overhead should not be nudged. */
+      const moved = Math.abs(preLockCam.phi - cam.phi) > 0.02 ||
+                    Math.abs(preLockCam.theta - cam.theta) > 0.02;
+      const to = preLockCam;
+      preLockCam = null;
+      if (moved) { tweenCameraTo(to, 550); invalidate(); return; }
     }
     invalidate();
   }
