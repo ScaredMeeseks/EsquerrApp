@@ -4785,3 +4785,29 @@ One more source test had to be inverted: it asserted `const orientProbe = new TH
 i.e. it pinned the defect itself.
 
 Unit 1468 → **1475**.
+
+#### Broadcast and Side sat on the wrong touchline (v136)
+
+Both were at `theta = -PI/2`, which puts the camera on the **-Z** side and mirrors the pitch
+left-to-right against the 2D board: a player the coach sees on the left in 2D appeared on the right
+in 3D. Measured by projecting a known point rather than reasoning about handedness, which is easy to
+get backwards on paper —
+
+```
+  theta=-PI/2   x=10% -> NDC +0.45,  x=90% -> NDC -0.45   MIRRORED
+  theta=+PI/2   x=10% -> NDC -0.45,  x=90% -> NDC +0.45   matches 2D
+```
+
+Both now `+PI/2`. **Top is untouched and already correct**: its up vector is derived from its own
+theta, and `-PI/2` happens to put screen-up along `-Z`, which is the top edge of the 2D board — there
+is now a test for that too, since it is a coincidence worth pinning. **Goal** looks straight down the
+X axis, so left-right does not arise (both reference points project to NDC x = 0).
+
+`board3d-camera.test.js` gained the mirroring checks, reading the presets **out of the shipped
+source** so it cannot drift from a copy. Two escaping notes from writing it, both mine: a heredoc
+collapsed `\s` to `\s` (which in a JS string is just `s`), so the built regex silently matched
+nothing — replaced with plain line parsing, which has no escaping to get wrong; and
+`l.startsWith('side:')` first matched `side: THREE.DoubleSide` on a material, so the finder now
+requires the line to contain `{theta:`.
+
+Unit 1475 → **1479**.

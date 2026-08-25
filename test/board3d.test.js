@@ -898,7 +898,10 @@ describe('broadcast is centred', () => {
   it('sits square on the touchline, with no off-axis offset', () => {
     /* It carried -0.35, meant as "off the halfway line", which only
        pushed the camera 34% off-axis in X. */
-    assert.ok(/broadcast: \{theta: -Math\.PI \/ 2, phi:/.test(s3),
+    /* The SIGN moved too — broadcast and side sit on +Z now, so they
+       are not mirrored against the 2D board. That is measured for
+       real in board3d-camera.test.js; this only guards the offset. */
+    assert.ok(/broadcast: \{theta: -?Math\.PI \/ 2, phi:/.test(s3),
         'broadcast must not carry a theta offset');
   });
 });

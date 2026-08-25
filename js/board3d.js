@@ -1161,13 +1161,27 @@ export function createBoard3D(opts) {
      pitch to the current viewport — a hardcoded distance would crop
      the pitch on a narrow window. */
   const PRESETS = {
-    /* Dead on the touchline. This carried a -0.35 offset, meant as
-       "slightly off the halfway line", which only pushed the camera
-       34% off-axis in X and left the pitch visibly off-centre. */
-    broadcast: {theta: -Math.PI / 2, phi: 1.0},
+    /* THE SIDE VIEWS SIT ON +Z, NOT -Z.
+
+       Both were on the far touchline, which mirrors the pitch
+       left-to-right against the 2D board: a player the coach sees on
+       the left in 2D appeared on the right in 3D. Measured by
+       projecting a known point — at theta -PI/2 the x=10% player
+       lands at NDC x +0.45, at +PI/2 it lands at -0.45, and 2D puts
+       it on the left.
+
+       Dead on the touchline, too: broadcast used to carry a -0.35
+       offset meant as "slightly off the halfway line", which only
+       pushed the camera 34% off-axis and left the pitch off-centre.
+
+       Top is already correct and stays where it is — its up vector is
+       derived from its own theta, and -PI/2 happens to put screen-up
+       along -Z, which is the top of the 2D board. Goal looks along the
+       X axis, so left-right does not arise. */
+    broadcast: {theta: Math.PI / 2, phi: 1.0},
     top:       {theta: -Math.PI / 2, phi: 0.001},
     goal:      {theta: Math.PI, phi: 1.32},
-    side:      {theta: -Math.PI / 2, phi: 1.38}
+    side:      {theta: Math.PI / 2, phi: 1.38}
   };
 
   function setPreset(name) {

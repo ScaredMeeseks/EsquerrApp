@@ -168,3 +168,83 @@ describe('the up rule', () => {
     });
   });
 });
+
+describe('the side views are not mirrored against the 2D board', () => {
+  /* The 2D board is a map seen from above: a player at x=10% is on the
+     LEFT of the screen. A side camera on the wrong touchline reverses
+     that, and a coach reading the same board in two views sees the
+     pitch flipped — which is exactly as confusing as it sounds.
+     Measured by projecting a known point, not by reasoning about
+     handedness, which is easy to get backwards on paper. */
+  let BG;
+  before(async () => { BG = require('../js/board-geom.js'); });
+
+  const ndcX = (theta, phi, pct) => {
+    const target = new THREE.Vector3(0, 0, 0);
+    const dist = 140;
+    const cam = new THREE.PerspectiveCamera(45, 1.6, 0.5, 1000);
+    cam.position.copy(api.positionFor(theta, phi, dist, target));
+    cam.up.copy(api.upFor(phi, theta));
+    cam.lookAt(target);
+    cam.updateMatrixWorld();
+    const w = BG.toWorld(pct[0], pct[1], [105, 68], 'full');
+    return new THREE.Vector3(w.x, 0, w.z).project(cam).x;
+  };
+
+  /* Read the shipped presets out of the source, so this tests what
+     actually ships rather than a copy that can drift. */
+  const preset = (name) => {
+    /* Parsed by finding the line, not by a built regex — escaping a
+       pattern through a string literal is its own small hazard and
+       has nothing to do with what is being tested. */
+    /* Must look like a preset: `side:` alone also matches
+       `side: THREE.DoubleSide` on a material, which appears first. */
+    const line = src.split('\n').find((l) =>
+      l.trim().startsWith(name + ':') && l.includes('{theta:'));
+    assert.ok(line, 'preset not found: ' + name);
+    const inner = line.slice(line.indexOf('{') + 1, line.lastIndexOf('}'));
+    const parts = inner.split(',').map((s) => s.trim());
+    const val = (key) => {
+      const p = parts.find((s) => s.startsWith(key + ':'));
+      assert.ok(p, key + ' missing from ' + name);
+      // eslint-disable-next-line no-new-func
+      return new Function('Math', 'return ' + p.slice(key.length + 1))(Math);
+    };
+    return {theta: val('theta'), phi: val('phi')};
+  };
+
+  ['broadcast', 'side'].forEach((name) => {
+    it(name + ' keeps the pitch the same way round as 2D', () => {
+      const p = preset(name);
+      const left = ndcX(p.theta, p.phi, [10, 50]);
+      const right = ndcX(p.theta, p.phi, [90, 50]);
+      assert.ok(left < right,
+          name + ' is mirrored: x=10% lands at ' + left.toFixed(2) +
+          ', x=90% at ' + right.toFixed(2));
+    });
+  });
+
+  it('top keeps it the same way round too', () => {
+    const p = preset('top');
+    assert.ok(ndcX(p.theta, p.phi, [10, 50]) < ndcX(p.theta, p.phi, [90, 50]));
+  });
+
+  it('top also puts the 2D board top away from the camera', () => {
+    /* y=0 is the top edge in 2D. Looking straight down it must appear
+       at the top of the screen, or the board is flipped vertically
+       even though left-right is right. */
+    const p = preset('top');
+    const target = new THREE.Vector3(0, 0, 0);
+    const cam = new THREE.PerspectiveCamera(45, 1.6, 0.5, 1000);
+    cam.position.copy(api.positionFor(p.theta, p.phi, 140, target));
+    cam.up.copy(api.upFor(p.phi, p.theta));
+    cam.lookAt(target);
+    cam.updateMatrixWorld();
+    const yOf = (pct) => {
+      const w = BG.toWorld(pct[0], pct[1], [105, 68], 'full');
+      return new THREE.Vector3(w.x, 0, w.z).project(cam).y;
+    };
+    assert.ok(yOf([50, 10]) > yOf([50, 90]),
+        'the 2D top edge should be the top of the screen');
+  });
+});
