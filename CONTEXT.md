@@ -4753,3 +4753,35 @@ rather than a literal, to strip comments before searching, and to assert that a 
 than what it is.
 
 Unit 1459 → **1468**.
+
+#### The flip, actually fixed — and why the tests missed it (v136)
+
+The slerp change made the flip WORSE, on every transition rather than some. Cause, measured:
+
+**`Object3D.lookAt` and `Camera.lookAt` are not the same operation.** three.js branches on
+`isCamera || isLight`: an ordinary object points **+Z** at the target, a camera points **−Z**. The
+destination orientation was built with a plain `Object3D` probe, so it came out rotated by **exactly
+180°** — verified, not inferred — and the slerp obediently drove the camera round to face away from
+the pitch.
+
+Now built with `Matrix4.lookAt(eye, target, up)`, which produces the camera basis with no dependence
+on an object-type flag. Checked identical to a real `PerspectiveCamera` across 30 angles including
+overhead: worst disagreement **0.0000°**.
+
+**The test lesson is the important part of this entry.** The existing suite happily confirmed that
+the tween "computes the destination with the same up rule" and "slerps rather than re-deriving
+angles". Both true. Both useless — the camera was 180° wrong and every assertion passed, because
+they all grep the source for call shapes and no amount of that notices that two identically-named
+methods do different things.
+
+`test/board3d-camera.test.js` is new and different in kind: it **executes** the maths against the
+real three.js (importable in Node — only the WebGL parts of board3d are not) and measures the
+result. It asserts the camera actually faces its target, that the orientation matches a real
+`PerspectiveCamera`, and that no pair of presets produces a step larger than 15°. **Confirmed to
+FAIL against the old implementation** — a test that passes on both versions would have proved
+nothing.
+
+One more source test had to be inverted: it asserted `const orientProbe = new THREE.Object3D()`,
+i.e. it pinned the defect itself.
+
+Unit 1468 → **1475**.

@@ -1098,8 +1098,18 @@ describe('the camera cannot flip between views', () => {
     assert.ok(!/0\.15 - /.test(fn), 'the blend band must be gone');
   });
 
-  it('reuses one probe object rather than allocating per transition', () => {
-    assert.ok(/const orientProbe = new THREE\.Object3D\(\)/.test(s3));
+  it('builds the destination with Matrix4, not an Object3D probe', () => {
+    /* This test previously asserted the probe — the thing that WAS
+       the bug. Object3D.lookAt points +Z at the target and
+       Camera.lookAt points -Z, so a plain probe yields an orientation
+       rotated by exactly 180 degrees.
+
+       The behaviour is verified for real in board3d-camera.test.js,
+       which runs the maths against three.js; this only guards the
+       construct from coming back. */
+    assert.ok(/orientMatrix\.lookAt\(/.test(s3), 'expected Matrix4.lookAt');
+    assert.ok(!/new THREE\.Object3D\(\)/.test(s3),
+        'an Object3D probe orients backwards for a camera');
   });
 });
 

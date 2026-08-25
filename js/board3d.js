@@ -1053,16 +1053,30 @@ export function createBoard3D(opts) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   }
 
-  /* A scratch object used only to derive a destination orientation.
-     Reused rather than allocated per transition. */
-  const orientProbe = new THREE.Object3D();
+  /* Scratch, reused rather than allocated per transition. */
+  const orientMatrix = new THREE.Matrix4();
 
-  /** The quaternion the camera would have at a given orbit angle. */
+  /**
+   * The quaternion the camera would have at a given orbit angle.
+   *
+   * Built from `Matrix4.lookAt`, NOT from a probe object's `lookAt`.
+   *
+   * Object3D.lookAt and Camera.lookAt are not the same operation:
+   * three.js branches on `isCamera`, pointing +Z at the target for an
+   * ordinary object and -Z for a camera. A plain Object3D probe
+   * therefore yields an orientation rotated by exactly 180 degrees —
+   * measured, not guessed — and slerping the camera into it turned a
+   * flip on some transitions into a flip on every one.
+   *
+   * Matrix4.lookAt(eye, target, up) builds the camera basis with no
+   * dependence on any object-type flag. Verified identical to a real
+   * PerspectiveCamera across the full range of angles, including
+   * overhead.
+   */
   function quaternionFor(theta, phi, dist, target) {
-    orientProbe.position.copy(positionFor(theta, phi, dist, target));
-    orientProbe.up.copy(upFor(phi, theta));
-    orientProbe.lookAt(target);
-    return orientProbe.quaternion.clone();
+    orientMatrix.lookAt(
+        positionFor(theta, phi, dist, target), target, upFor(phi, theta));
+    return new THREE.Quaternion().setFromRotationMatrix(orientMatrix);
   }
 
   function tweenCameraTo(to, ms) {
