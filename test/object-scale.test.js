@@ -104,15 +104,19 @@ describe('an object is the same size in both views', () => {
         'a player must be bigger on a bigger board');
   });
 
-  it('marks are metric too, and match the 2D weights they came from', () => {
-    /* Converted at the full board's 7.81 px/m, so the marks a coach
-       already draws keep the weight they have. */
+  it('marks are metric, and every stroke is ONE weight', () => {
+    /* Pen strokes and arrow shafts were 0.32 (the 2D 2.5px) against a
+       0.19 zone outline (1.5px) — three marks from the same hand at
+       two weights. They are one number now. */
     const perM = BG.ppm(820, null, 'full', false);
     const back = (m) => m * perM;
-    assert.ok(Math.abs(back(BG.MARK.pen) - 2.5) < 0.1,
-        'pen should be the 2D 2.5px, got ' + back(BG.MARK.pen).toFixed(2));
+    assert.strictEqual(BG.MARK.pen, BG.MARK.rectStroke,
+        'a pen stroke must be as thick as a zone outline');
+    assert.strictEqual(BG.MARK.arrowShaft, BG.MARK.rectStroke,
+        'an arrow shaft must be as thick as a zone outline');
     assert.ok(Math.abs(back(BG.MARK.rectStroke) - 1.5) < 0.1,
-        'zone outline should be the 2D 1.5px');
+        'and that weight is the 2D 1.5px, got ' + back(BG.MARK.rectStroke).toFixed(2));
+    /* The head is a shape, not a weight, so it keeps its own size. */
     assert.ok(Math.abs(back(BG.MARK.arrowHead) - 12) < 0.5,
         'arrow head should be the 2D 12px');
   });

@@ -71,6 +71,9 @@ export function createBoard3D(opts) {
     onMove,             // (kind, index, [leftPct, topPct]) => void
     onSelect,           // (kind, index) => void  (null when deselecting)
     onPath,             // (kind, index, {bend}|{apex}) => void
+    /* A parked right-click on an object or on bare turf. app.js opens
+       the 2D board's own menu; `pct` is where the turf was hit. */
+    onContext,          // (kind|null, index|null, x, y, pct) => void
     BG,                 // board-geom, injected so this file imports nothing app-side
     BS,                 // board-state: the curve maths the tween also uses
     fillCss,            // the striped-kit renderer from utils.js
@@ -385,10 +388,29 @@ export function createBoard3D(opts) {
        throws nothing. */
     if (p && p.striped) {
       const n = p.n;
+      /* THE AXES ARE SWAPPED ON PURPOSE, and this is not a typo.
+         Do not "fix" it without re-reading the measurement.
+
+         A cylinder's top cap does not map the texture the obvious
+         way. Measured off a real CylinderGeometry(0.9, 0.9, 0.35, 24):
+
+           +X (screen right)  u=0.5  v=1     -> v follows world X
+           +Z (screen down)   u=1    v=0.5   -> u follows world Z
+
+         So texture u runs along world Z and v along world X — a
+         quarter turn from canvas orientation. A canvas-VERTICAL band
+         therefore varies along world Z, which under the top-down
+         camera spans the screen horizontally: a `dir:'v'` kit that
+         is vertical in 2D came out horizontal in 3D.
+
+         Painting each direction on the other canvas axis puts it
+         back. There is a test that checks the world axis the bands
+         end up varying along, not this branch, so a future change of
+         geometry or texture matrix is free to reach it another way. */
       for (let i = 0; i < n; i++) {
         g.fillStyle = (i % 2 === 0) ? p.c1 : p.c2;
-        if (p.dir === 'h') g.fillRect(0, (i / n) * S, S, S / n);
-        else g.fillRect((i / n) * S, 0, S / n, S);
+        if (p.dir === 'h') g.fillRect((i / n) * S, 0, S / n, S);
+        else g.fillRect(0, (i / n) * S, S, S / n);
       }
     } else {
       // Solid: parseFill puts the colour in c1 either way.
@@ -1752,6 +1774,25 @@ export function createBoard3D(opts) {
   /** Act on a right-click that stayed put. */
   function runContext(p) {
     const h = p.hit;
+
+    /* Not a trajectory handle: hand it to app.js, which owns the 2D
+       elements and therefore the menus. board3d does not build a menu
+       of its own — the 2D board already has one per object type, with
+       kit editing, copy, duplicate and delete in it, and a second
+       implementation would be a second thing to keep in step. Same
+       rule as the drag and the delete key: an input device, not a
+       second writer.
+
+       A miss reports the turf position instead, so "add a player
+       here" lands where the coach clicked. */
+    if (!h || SELECTABLE.indexOf(h.kind) !== -1) {
+      if (onContext) {
+        const pct = p.at
+          ? BG.toPercent(p.at.x, p.at.z, getPitch(), getBoardType()) : null;
+        onContext(h ? h.kind : null, h ? h.index : null, p.x, p.y, pct);
+      }
+      return;
+    }
     if (h.kind === 'pathBend' || h.kind === 'pathApex') {
       const k = modeKey(h.owner, h.index);
       handleModes.set(k, handleModes.get(k) === 'apex' ? 'bend' : 'apex');
@@ -1796,14 +1837,21 @@ export function createBoard3D(opts) {
        the ray hits nothing interesting. The action itself waits for
        the release and for the pointer to have barely moved, so a pan
        that happens to START on a handle is still a pan. */
-    if (ev.button === 2 && !readOnly) {
-      const hit = pick(ev, true);
-      if (hit && (hit.kind === 'pathDot' || hit.kind === 'pathLine' ||
-                  hit.kind === 'pathBend' || hit.kind === 'pathApex')) {
-        mode = 'context';
-        pending = {hit, at: groundPoint(ev), x: ev.clientX, y: ev.clientY};
-        return;
-      }
+    /* EVERY right-click is armed as a context click, not just the
+       ones landing on a trajectory handle. Players, the ball, cones
+       and bare turf all carry a menu in 2D, and the 3D view had none
+       of them — right-click only ever panned.
+
+       Arming is safe because a press that then travels is promoted to
+       a pan in onPointerMove, so right-drag still moves the camera.
+       Not armed while draw-locked: the 2D overlay sits on top there
+       and handles right-click natively, which is the whole point of
+       the overlay. */
+    if (ev.button === 2 && !readOnly && !drawLock) {
+      mode = 'context';
+      pending = {hit: pick(ev, true), at: groundPoint(ev),
+                 x: ev.clientX, y: ev.clientY};
+      return;
     }
     /* Right — or middle, or shift-drag — pans the camera TARGET
        across the turf. Without it the target is pinned to the centre
@@ -1871,6 +1919,26 @@ export function createBoard3D(opts) {
 
   function onPointerMove(ev) {
     if (!mode) return;
+    /* An armed right-click that starts travelling becomes a PAN.
+
+       Without this, `mode === 'context'` simply swallowed the move —
+       the comment at the arming site claimed "a pan that happens to
+       START on a handle is still a pan" and it was not: the camera
+       sat still until the button came up. Harmless while only handles
+       armed it; not harmless now that every right-click does, since
+       right-drag is the only way to pan. Same four-pixel slop the
+       release uses, so one threshold decides both. */
+    if (mode === 'context') {
+      if (!pending) { mode = null; return; }
+      if (Math.hypot(ev.clientX - pending.x, ev.clientY - pending.y) < 4) return;
+      mode = 'pan';
+      pending = null;
+      camTouched = true;
+      followBall = false;
+      cancelCameraTween();
+      last = {x: ev.clientX, y: ev.clientY};
+      return;
+    }
     if (mode === 'pan') {
       panBy(ev.clientX - last.x, ev.clientY - last.y);
       last = {x: ev.clientX, y: ev.clientY};

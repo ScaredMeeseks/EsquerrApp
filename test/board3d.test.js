@@ -1922,3 +1922,116 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
           c + ' must not be re-shown on the overlay'));
   });
 });
+
+/* ── Right-click in 3D opens the 2D board's own menus ─────────────
+   Players, the ball and cones each carry a contextmenu handler in 2D
+   — kit editing, copy, duplicate, delete — and bare turf has one for
+   adding things. The 3D view had none of them: right-click only
+   panned. It does not build menus of its own; it dispatches into the
+   ones that exist, which is the same rule the drag and the delete key
+   follow.
+*/
+describe('right-click in 3D', () => {
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const down = bare.slice(bare.indexOf('function onPointerDown('),
+      bare.indexOf('function panBy(', bare.indexOf('function onPointerDown(')));
+  const move = bare.slice(bare.indexOf('function onPointerMove('),
+      bare.indexOf('function movePathEnd(', bare.indexOf('function onPointerMove(')));
+  /* The IMPLEMENTATION, not the forwarder. tbMount3D has a hook of
+     the same signature that just passes through, and it comes first
+     in the file — indexOf found that one and sliced three lines of
+     nothing. Anchored on a line only the real body contains. */
+  const ctxImpl = () => {
+    const marker = appBare.indexOf('if (pct) showFieldCtxMenu(');
+    assert.ok(marker !== -1, 'the app-side onContext body was not found');
+    const start = appBare.lastIndexOf('onContext:', marker);
+    /* To the end of the whole hook, not to the first `}` at that
+       indent — that one closes the `if (!kind)` guard three lines in,
+       and the slice missed the object branch entirely. */
+    return appBare.slice(start, appBare.indexOf('\n      });', marker));
+  };
+  const ctx = bare.slice(bare.indexOf('function runContext('),
+      bare.indexOf('function groundPoint(', bare.indexOf('function runContext(')));
+
+  it('arms on every right-click, not only on a trajectory handle', () => {
+    assert.ok(/if \(ev\.button === 2 && !readOnly && !drawLock\) \{[\s\S]{0,200}?mode = 'context';/
+        .test(down), 'every right-click must arm a context click');
+    assert.ok(/pending = \{hit: pick\(ev, true\)/.test(down),
+        'the hit may be null — bare turf has a menu too');
+  });
+
+  it('is inert while a draw tool is active', () => {
+    /* The 2D overlay sits on top there and handles right-click
+       natively, which is the entire point of the overlay. */
+    assert.ok(/!drawLock/.test(down.slice(down.indexOf('ev.button === 2'),
+        down.indexOf('ev.button === 2') + 60)),
+        'the arming condition must exclude the draw lock');
+  });
+
+  it('a right-DRAG is still a pan', () => {
+    /* Right-drag is the only way to pan, so arming every right-click
+       would have killed it. The armed click is promoted once it
+       travels past the same slop the release uses. */
+    assert.ok(/if \(mode === 'context'\)/.test(move),
+        'onPointerMove must handle an armed context click');
+    assert.ok(/mode = 'pan';/.test(move.slice(move.indexOf("mode === 'context'"),
+        move.indexOf("mode === 'context'") + 400)),
+        'a travelling right-press must become a pan');
+    const slopMove = /< 4\) return;/.test(move);
+    assert.ok(slopMove, 'the promotion must use the four-pixel slop');
+  });
+
+  it('hands objects and turf to app.js rather than building a menu', () => {
+    assert.ok(/onContext\(/.test(ctx), 'runContext must call the hook');
+    assert.ok(!/showCtxMenu|createElement\('div'\)/.test(bare),
+        'board3d must not build a context menu of its own');
+    assert.ok(/SELECTABLE\.indexOf\(h\.kind\) !== -1/.test(ctx),
+        'only real objects route to the menu; handles keep their own behaviour');
+  });
+
+  it('reports where the turf was hit, for "add a player here"', () => {
+    assert.ok(/BG\.toPercent\(p\.at\.x, p\.at\.z/.test(ctx),
+        'a miss must carry the ground position in board percentages');
+    assert.ok(/onContext\(h \? h\.kind : null, h \? h\.index : null/.test(ctx),
+        'a miss reports a null kind rather than being dropped');
+  });
+
+  it('trajectory handles keep their own right-click', () => {
+    /* Adding and removing path dots, and swapping the bend handle for
+       the apex, all happen on right-click and must not be swallowed. */
+    ['pathBend', 'pathApex', 'pathDot', 'pathLine'].forEach((k) =>
+      assert.ok(ctx.indexOf(k) !== -1, k + ' lost its right-click'));
+  });
+
+  it('app.js dispatches into the 2D handlers, and writes no state', () => {
+    const fn = ctxImpl();
+    assert.ok(fn.length > 100, 'the app-side onContext was not found');
+    assert.ok(/dispatchEvent\(new MouseEvent\('contextmenu'/.test(fn),
+        'an object menu must come from the 2D element itself');
+    assert.ok(/clientX: x, clientY: y/.test(fn),
+        'the 2D handlers place the menu from clientX/clientY');
+    assert.ok(!/localStorage\.setItem|BS\.set|pushUndo/.test(fn),
+        'opening a menu must not write state');
+  });
+
+  it('resolves the element the same way the drag does', () => {
+    const fn = ctxImpl();
+    assert.ok(/querySelectorAll\(sel\)\[index\]/.test(fn),
+        'cones are addressed positionally, as in applyMove');
+    assert.ok(/data-idx="' \+ index \+ '"/.test(fn),
+        'everything else by index, as in applyMove');
+    assert.ok(/\.tb-circle:not\(\.tb-circle-opp\)/.test(fn),
+        'own players must exclude opponents');
+  });
+
+  it('the turf menu is shared, not reimplemented', () => {
+    /* showFieldCtxMenu takes the position as an argument precisely so
+       the 3D view can call it — it has a ray hit and no DOM rect. */
+    assert.ok(/function showFieldCtxMenu\(pctLeft, pctTop, atX, atY\)/.test(appBare),
+        'the turf menu must be a function of the position');
+    const calls = appBare.match(/showFieldCtxMenu\(/g) || [];
+    assert.strictEqual(calls.length, 3,
+        'expected the definition plus one call from each view; got ' + calls.length);
+  });
+});

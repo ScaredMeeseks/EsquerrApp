@@ -917,7 +917,7 @@ tr:hover td { background: #f7f8fa; }
 }
 .tb-field.tb-draw-surface .tb-arrow,
 .tb-field.tb-draw-surface .tb-pen-line {
-  stroke-width:calc(var(--tb-ppm, 7.81px) * 0.32) !important;
+  stroke-width:calc(var(--tb-ppm, 7.81px) * 0.19) !important;
 }
 .tb-field.tb-draw-surface .tb-rect {
   stroke-width:calc(var(--tb-ppm, 7.81px) * 0.19) !important;

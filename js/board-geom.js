@@ -84,12 +84,21 @@
   /* MARK is the 2D board's pixel weights converted at the full
      board's 7.81 px/m, so the marks a coach already draws keep the
      weight they have and 3D adopts it. `dash` is 6 4 in pixels. */
+  /* ONE stroke weight for every drawn mark. Pen strokes and arrow
+     shafts were 0.32 (the 2D board's 2.5px) against a 0.19 zone
+     outline (1.5px), so three marks drawn with the same hand came out
+     at two weights. Written once rather than as three equal numbers:
+     three numbers that happen to agree are three numbers that will
+     stop agreeing. */
+  var STROKE = 0.19;   // 1.5px on the 820px board
   var MARK = {
-    pen: 0.32,         // stroke-width 2.5px
-    arrowShaft: 0.32,  // stroke-width 2.5px
-    arrowHead: 1.54,   // aLen 12px, a FIXED head as in 2D
-    arrowHeadW: 1.28,  // aHW 5px, either side
-    rectStroke: 0.19,  // stroke-width 1.5px
+    pen: STROKE,
+    arrowShaft: STROKE,
+    rectStroke: STROKE,
+    /* The head is a SHAPE, not a weight, so it keeps its own figures:
+       aLen 12px and aHW 5px either side, as refreshArrowheads uses. */
+    arrowHead: 1.54,
+    arrowHeadW: 1.28,
     rectRadius: 0.26,  // rx 2px
     dash: [0.77, 0.51]
   };

@@ -5305,3 +5305,58 @@ Nothing else from v144 changed — the size table, the metric marks, the round j
 zone outline were all correct; only the unit that carries them to the browser was missing.
 
 Unit 1624 → **1628**. Version triple → v145. **Still nothing deployed.**
+
+### 2026-08-25 — Phase 1 closes: stripe direction, right-click in 3D, one stroke weight (v146)
+
+**1. Stripes ran a quarter turn out in 3D.** The painter was not wrong — `playerTexture()` drew
+canvas-vertical bands for `dir:'v'`, exactly as `fillCss()` does. **A cylinder's top cap does not map
+the texture the obvious way.** Measured off a real `CylinderGeometry(0.9, 0.9, 0.35, 24)`:
+
+| cap point | world | u | v |
+|---|---|---|---|
+| +X (screen right) | (0.9, 0) | 0.5 | **1** |
+| +Z (screen down) | (0, 0.9) | **1** | 0.5 |
+
+Texture **u follows world Z**, **v follows world X**. So a canvas-vertical band varies along world Z,
+which under the top-down camera spans the screen horizontally. Each direction is painted on the other
+canvas axis now, with the measurement written beside it — it looks like a typo otherwise and would be
+"corrected" back.
+
+**The test asserts the observable, not the swap**: it reads the real cap UVs, works out which world axis
+the bands vary along, and requires `'v'` → world X and `'h'` → world Z. A texture matrix or a different
+cap geometry would satisfy it equally. Both directions are checked, because swapping both branches
+leaves one looking right on its own.
+
+**2. Right-click did nothing in 3D.** Every 2D object has its own `contextmenu` handler — the player
+menu with kit editing, ball and cone with copy/duplicate/delete — and bare turf has one for adding
+things. In 3D right-click only ever panned.
+
+Every right-click is armed as a context click now, and `runContext` hands anything that is not a
+trajectory handle to app.js, which **dispatches a synthetic `contextmenu` on the 2D element**. Those
+handlers read nothing from the event but `clientX/clientY`, so the reuse is total and there is no second
+menu to keep in step. Bare turf cannot go through an event — the 2D handler derives the position from
+`inner.getBoundingClientRect()`, which is not on screen in 3D — so the block was extracted as
+`showFieldCtxMenu(pctLeft, pctTop, x, y)` and 3D passes the ray's own hit straight in.
+
+**A latent bug surfaced doing it.** `mode === 'context'` had no branch in `onPointerMove`, so a
+right-*drag* that began on a trajectory handle swallowed the move and the camera sat still — despite a
+comment at the arming site claiming "a pan that happens to START on a handle is still a pan". Harmless
+while only handles armed it; fatal once every right-click does, since right-drag is the only pan. An
+armed click that travels past the same four-pixel slop the release uses is promoted to a pan.
+
+Inert while draw-locked: the 2D overlay is on top there and handles right-click natively.
+
+**3. One stroke weight.** `MARK.pen` and `arrowShaft` were 0.32 (the 2D 2.5px) against a 0.19 zone
+outline (1.5px) — three marks from the same hand at two weights. They are one `STROKE = 0.19` now,
+written once rather than as three equal numbers, since three numbers that happen to agree are three
+numbers that will stop agreeing. `arrowHead`/`arrowHeadW` keep their own figures: the head is a shape,
+not a weight. Consequence, stated: 2D arrows and pen strokes go from 2.5px to 1.5px.
+
+**Two more slice-anchor faults, both the same shape as ever.** `onContext:` matches the forwarder in
+`tbMount3D` as well as the implementation in `bindTactics`, and `indexOf` found the forwarder — three
+lines of pass-through. Anchored on a line only the real body contains. Then the end bound stopped at
+the `}` closing the `if (!kind)` guard, cutting the object branch off. That makes **nine** false
+failures from slice anchors in this suite; the pattern is always a marker that is not unique or a
+terminator that is not the one meant.
+
+Unit 1632 → **1641**. Version triple → v146. **Still nothing deployed.**

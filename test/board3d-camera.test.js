@@ -819,3 +819,124 @@ describe('3D marks carry the 2D formatting', () => {
         'the outline must be a decal like everything else'));
   });
 });
+
+/* ── Stripes run the same way in both views ───────────────────────
+ *
+ * A `dir: 'v'` kit painted vertical bands in 2D and HORIZONTAL ones
+ * in 3D. The painter was not wrong: it drew canvas-vertical bands for
+ * 'v', exactly as fillCss does. The cylinder cap's UV mapping swaps
+ * the axes, and not in the direction anyone would guess. Measured off
+ * a real CylinderGeometry:
+ *
+ *     +X (screen right)  u=0.5  v=1        -> v follows world X
+ *     +Z (screen down)   u=1    v=0.5      -> u follows world Z
+ *
+ * So a canvas-vertical band varies along world Z, which under the
+ * top-down camera spans the screen horizontally.
+ *
+ * These tests assert the OBSERVABLE — which world axis the bands vary
+ * along — rather than that the painter's branches are swapped. The
+ * swap is one way to get there; a texture matrix or a different cap
+ * geometry would be another, and both should pass.
+ */
+describe('a striped kit reads the same way in 2D and 3D', () => {
+  let capUv;
+
+  before(() => {
+    /* The real mapping, read off the real geometry: for each cap
+       vertex, where it sits in the world and where it samples the
+       texture. Hardcoding the table would make this a test of my
+       arithmetic rather than of three.js. */
+    const R = 0.9;
+    const g = new THREE.CylinderGeometry(R, R, 0.35, 24);
+    const idx = g.getIndex(), pos = g.getAttribute('position'),
+          uv = g.getAttribute('uv');
+    const cap = g.groups.find((gr) => gr.materialIndex === 1);  // top cap
+    assert.ok(cap, 'no top cap group');
+    const seen = new Set();
+    capUv = [];
+    for (let i = cap.start; i < cap.start + cap.count; i++) {
+      const v = idx.getX(i);
+      if (seen.has(v)) continue;
+      seen.add(v);
+      capUv.push({x: pos.getX(v), z: pos.getZ(v), u: uv.getX(v), v: uv.getY(v)});
+    }
+    assert.ok(capUv.length > 20, 'too few cap vertices to measure');
+  });
+
+  /** The painter, run over a stub canvas that records its fillRects. */
+  const paint = (fill) => {
+    const rects = [];
+    const S = 128;
+    const ctx = {
+      set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; },
+      fillRect: (x, y, w, h) => rects.push({x, y, w, h}),
+      fillText: () => {}, set font(v) {}, set textAlign(v) {}, set textBaseline(v) {}
+    };
+    const body = (() => {
+      const i = src.indexOf('  function playerTexture(fill, number) {');
+      assert.ok(i !== -1, 'playerTexture not found');
+      return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
+    })();
+    const fn = new Function('THREE', 'document', 'fillCss', 'parseFill',
+        body + '\nreturn playerTexture;')(
+      {CanvasTexture: function () { return {}; }, SRGBColorSpace: 'srgb'},
+      {createElement: () => ({getContext: () => ctx, width: S, height: S})},
+      require('../js/utils.js').fillCss,
+      require('../js/utils.js').parseFill);
+    fn(fill, '');
+    return {rects, S};
+  };
+
+  /**
+   * Which WORLD axis the painted bands vary along.
+   *
+   * A band that varies in canvas x varies in texture u; u follows one
+   * world axis and v the other. Rather than reasoning about which,
+   * look it up in the measured table.
+   */
+  const bandAxis = (fill) => {
+    const {rects, S} = paint(fill);
+    assert.ok(rects.length >= 2, 'expected several bands, got ' + rects.length);
+    const variesInX = rects.some((r) => r.x !== rects[0].x);
+    const variesInY = rects.some((r) => r.y !== rects[0].y);
+    assert.ok(variesInX !== variesInY,
+        'bands must step along exactly one canvas axis');
+
+    // Which world axis does that canvas axis correspond to?
+    const spread = (key, axis) => {
+      const lo = capUv.filter((p) => p[key] < 0.25);
+      const hi = capUv.filter((p) => p[key] > 0.75);
+      if (!lo.length || !hi.length) return 0;
+      const avg = (a) => a.reduce((s, p) => s + p[axis], 0) / a.length;
+      return Math.abs(avg(hi) - avg(lo));
+    };
+    const texAxis = variesInX ? 'u' : 'v';
+    return spread(texAxis, 'x') > spread(texAxis, 'z') ? 'worldX' : 'worldZ';
+  };
+
+  it('a vertical kit stripes along world X — vertical from above', () => {
+    /* The 2D board draws `dir:'v'` with a 90deg gradient, whose bands
+       are vertical on screen. Under the top-down camera world X is
+       screen right, so bands varying along X are vertical there too. */
+    assert.strictEqual(bandAxis('s|v|4|#a50044|#004d98'), 'worldX',
+        'a vertical kit must vary along world X, or it reads horizontal');
+  });
+
+  it('a horizontal kit stripes along world Z', () => {
+    /* Checked as well as the vertical case: swapping both branches
+       leaves one of them looking correct on its own. */
+    assert.strictEqual(bandAxis('s|h|4|#a50044|#004d98'), 'worldZ',
+        'a horizontal kit must vary along world Z');
+  });
+
+  it('the two directions are not the same, which is the whole point', () => {
+    assert.notStrictEqual(bandAxis('s|v|4|#a50044|#004d98'),
+        bandAxis('s|h|4|#a50044|#004d98'));
+  });
+
+  it('a solid kit paints one band and no stripes', () => {
+    const {rects} = paint('#a50044');
+    assert.strictEqual(rects.length, 1, 'a solid kit is one fill');
+  });
+});

@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 145;
+  const APP_VERSION = 146;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6865,6 +6865,11 @@
         onPath: (kind, index, patch) => {
           if (hooks.applyPath) hooks.applyPath(kind, index, patch);
         },
+        /* Right-click. Forwarded rather than handled here: the menus
+           belong to the 2D elements, which only bindTactics can see. */
+        onContext: (kind, index, x, y, pct) => {
+          if (hooks.onContext) hooks.onContext(kind, index, x, y, pct);
+        },
         onSelect: () => {}
       });
       const cams = document.getElementById('tb-3d-cams');
@@ -11406,20 +11411,15 @@
     }
 
     // Right-click on field to add player
-    inner.addEventListener('contextmenu', e => {
-      if (e.target.closest('.tb-circle') || e.target.closest('.tb-ball') || e.target.closest('.tb-silhouette')) return;
-      e.preventDefault();
-      const rect = inner.getBoundingClientRect();
-      const isCssRotated = field.classList.contains('tb-half') || field.classList.contains('tb-area');
-      const vert = field.classList.contains('tb-vertical');
-      let pctLeft, pctTop;
-      if (isCssRotated && vert) {
-        pctLeft = ((rect.bottom - e.clientY) / rect.height) * 100;
-        pctTop = ((e.clientX - rect.left) / rect.width) * 100;
-      } else {
-        pctLeft = ((e.clientX - rect.left) / rect.width) * 100;
-        pctTop = ((e.clientY - rect.top) / rect.height) * 100;
-      }
+    /* The turf menu, as a FUNCTION of where the pitch was hit.
+
+       It used to be inline in the listener below, deriving the
+       percentages from the mouse and the board rect. The 3D view has
+       neither: it knows where its ray struck the turf and nothing
+       about a DOM rectangle. Taking the position as an argument lets
+       both views open the same menu, instead of the 3D one growing a
+       second copy that drifts away from this one. */
+    function showFieldCtxMenu(pctLeft, pctTop, atX, atY) {
       const items = [
         { label: 'Add player', action: () => addCircleAt(pctLeft, pctTop, false) }
       ];
@@ -11475,7 +11475,24 @@
           pasteClipboardAtOffset(pctLeft - cx, pctTop - cy);
         }});
       }
-      showCtxMenu(e.clientX, e.clientY, items);
+      showCtxMenu(atX, atY, items);
+    }
+
+    inner.addEventListener('contextmenu', e => {
+      if (e.target.closest('.tb-circle') || e.target.closest('.tb-ball') || e.target.closest('.tb-silhouette')) return;
+      e.preventDefault();
+      const rect = inner.getBoundingClientRect();
+      const isCssRotated = field.classList.contains('tb-half') || field.classList.contains('tb-area');
+      const vert = field.classList.contains('tb-vertical');
+      let pctLeft, pctTop;
+      if (isCssRotated && vert) {
+        pctLeft = ((rect.bottom - e.clientY) / rect.height) * 100;
+        pctTop = ((e.clientX - rect.left) / rect.width) * 100;
+      } else {
+        pctLeft = ((e.clientX - rect.left) / rect.width) * 100;
+        pctTop = ((e.clientY - rect.top) / rect.height) * 100;
+      }
+      showFieldCtxMenu(pctLeft, pctTop, e.clientX, e.clientY);
     });
 
     // Click on field background clears selection (skip in select mode so long-press context menu keeps selection)
@@ -12954,6 +12971,49 @@
           f.paths[kind][index] = next;
           saveFrames();
           tb3dTouch();
+        },
+
+        /**
+         * A right-click in 3D, on an object or on bare turf.
+         *
+         * For an object this **dispatches a synthetic `contextmenu`
+         * on the 2D element**, which runs the board's own handler —
+         * the player menu with its kit editing, the ball and cone
+         * menus with copy, duplicate and delete. Those handlers read
+         * nothing from the event but `clientX/clientY` for placement,
+         * so the reuse is total and there is no second menu to keep
+         * in step. Same rule as the drag and the delete key: the 3D
+         * view is an input device, not a second writer.
+         *
+         * Bare turf cannot go through an event — the 2D handler
+         * derives the pitch position from `inner.getBoundingClientRect()`
+         * and in 3D that rectangle is not on screen. It calls
+         * showFieldCtxMenu directly with the ray's own hit instead,
+         * so "add a player" lands where the coach clicked.
+         *
+         * The element is resolved exactly as applyMove resolves it:
+         * cones positionally (spawnCone sets no data-idx),
+         * everything else by index.
+         */
+        onContext: (kind, index, x, y, pct) => {
+          if (!kind) {
+            if (pct) showFieldCtxMenu(pct[0], pct[1], x, y);
+            return;
+          }
+          const sel = {
+            positions: '.tb-circle:not(.tb-circle-opp)',
+            oppPositions: '.tb-circle-opp',
+            balls: '.tb-ball',
+            cones: '.tb-cone'
+          }[kind];
+          if (!sel) return;
+          const el = kind === 'cones'
+            ? inner.querySelectorAll(sel)[index]
+            : inner.querySelector(sel + '[data-idx="' + index + '"]');
+          if (!el) return;
+          el.dispatchEvent(new MouseEvent('contextmenu', {
+            clientX: x, clientY: y, bubbles: true, cancelable: true
+          }));
         }
       });
 
