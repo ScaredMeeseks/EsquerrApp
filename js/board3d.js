@@ -47,6 +47,12 @@ const PLAYER_H = 0.35;
    be confusable. */
 const BALL_R = 0.25;
 const CONE_R = 0.35;
+/* Every trajectory handle, one size. They were 0.5 and 0.45 against a
+   0.25 ball, which read as the handles being the main object. Still
+   comfortably larger than the ball so they stay easy to hit — a
+   control that is hard to grab is worse than one that is slightly
+   prominent. */
+const HANDLE_R = 0.34;
 const CONE_H = 0.7;
 
 export function createBoard3D(opts) {
@@ -697,7 +703,7 @@ export function createBoard3D(opts) {
          the diamond owns the height. Two handles, two questions. */
       const active = handleMode(kind, index);   // 'bend' | 'apex'
 
-      const bend = flatDot(0.5, col, active === 'bend' ? 1 : 0.25);
+      const bend = flatDot(HANDLE_R, col, active === 'bend' ? 1 : 0.25);
       entry.bendMesh = bend;
       entry.meshes.push(bend);
       bend.position.copy(mid);
@@ -712,7 +718,7 @@ export function createBoard3D(opts) {
          perspective is just a hexagon, and its faces are impossible
          to separate — the outline is what makes it read as a solid
          sitting above the turf rather than another mark on it. */
-      const diaGeo = new THREE.OctahedronGeometry(0.5);
+      const diaGeo = new THREE.OctahedronGeometry(HANDLE_R);
       const dia = new THREE.Mesh(
           diaGeo,
           new THREE.MeshLambertMaterial({
@@ -744,7 +750,7 @@ export function createBoard3D(opts) {
        right-clicking a dot removes it. */
     BS.pointsOf(path).forEach((pt, di) => {
       const w = BG.toWorld(pt[0], pt[1], getPitch(), getBoardType());
-      const h = flatDot(0.45, col);
+      const h = flatDot(HANDLE_R, col);
       h.position.set(w.x, 0.12, w.z);
       objectRoot.add(h);
       entry.meshes.push(h);
@@ -853,6 +859,7 @@ export function createBoard3D(opts) {
     addPathsFor(s, 'positions');
     addPathsFor(s, 'oppPositions');
     addPathsFor(s, 'balls');
+    drawSelection();   // the meshes it was pointing at are gone
     /* A chip should read while it is being set up, not only on play. */
     restBallMarker();
   }
@@ -1317,6 +1324,44 @@ export function createBoard3D(opts) {
     return handleModes.get(modeKey(kind, index)) || 'bend';
   }
 
+  /* ── Selection ───────────────────────────────────────────────
+     One object at a time, and only things that can be deleted:
+     players, the ball and cones. A trajectory handle is part of
+     something else, so picking one is not a selection.
+
+     The highlight is a ring on the turf rather than a colour change
+     on the object — a recoloured player stops showing their kit,
+     which is the one thing a coach reads them by. */
+  let selected = null;
+  const selRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.95, 1.12, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x66d9ff, transparent: true, opacity: 0.9,
+        depthWrite: false, side: THREE.DoubleSide}));
+  selRing.rotation.x = -Math.PI / 2;
+  selRing.visible = false;
+  scene.add(selRing);
+
+  const SELECTABLE = ['positions', 'oppPositions', 'balls', 'cones'];
+
+  function setSelected(hit) {
+    selected = (hit && SELECTABLE.indexOf(hit.kind) !== -1)
+      ? {kind: hit.kind, index: hit.index} : null;
+    drawSelection();
+    if (onSelect) onSelect(selected ? selected.kind : null, selected ? selected.index : null);
+  }
+
+  function drawSelection() {
+    if (!selected) { selRing.visible = false; invalidate(); return; }
+    const o = objects.find((x) => x.kind === selected.kind && x.index === selected.index);
+    if (!o) { selRing.visible = false; invalidate(); return; }
+    const r = selected.kind === 'balls' ? BALL_R * 2.2 : PLAYER_R * 1.35;
+    selRing.scale.set(r, r, 1);
+    selRing.position.set(o.mesh.position.x, 0.07, o.mesh.position.z);
+    selRing.visible = true;
+    invalidate();
+  }
+
   /** Act on a right-click that stayed put. */
   function runContext(p) {
     const h = p.hit;
@@ -1388,10 +1433,10 @@ export function createBoard3D(opts) {
     if (hit) {
       mode = 'drag';
       dragging = hit;
-      if (onSelect) onSelect(hit.kind, hit.index);
+      setSelected(hit);
     } else {
       mode = 'orbit';
-      if (onSelect) onSelect(null, null);
+      setSelected(null);
     }
   }
 
@@ -1507,6 +1552,7 @@ export function createBoard3D(opts) {
        the release rebuild is the same complaint as the handles: the
        line snaps into place instead of following. */
     movePathEnd(dragging.kind, dragging.index, g);
+    drawSelection();
   }
 
   /** Re-point a trajectory's end at a dragged object, and redraw it. */
@@ -1702,6 +1748,11 @@ export function createBoard3D(opts) {
       if (!playing) clearTrails();
       invalidate();
     },
+
+    /** What is selected, or null. The delete key is handled by app.js,
+     *  which owns the 2D elements that actually get removed. */
+    getSelected() { return selected ? {kind: selected.kind, index: selected.index} : null; },
+    clearSelection() { setSelected(null); },
 
     setPreset,
     /** Follow the ball. Cleared by any manual orbit or pan. */

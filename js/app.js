@@ -141,6 +141,8 @@
     'push.ios_install':  { ca:'Per rebre avisos a l\'iPhone: Compartir → «Afegir a la pantalla d\'inici».',
                            es:'Para recibir avisos en el iPhone: Compartir → «Añadir a pantalla de inicio».',
                            en:'To get alerts on iPhone: Share → "Add to Home Screen".' },
+    'club.feature_board3d':  { ca:'Pissarra 3D (premium)', es:'Pizarra 3D (premium)', en:'3D board (premium)' },
+    'club.feature_saved':    { ca:'Funcions actualitzades', es:'Funciones actualizadas', en:'Features updated' },
     'club.min_version':  { ca:'Versió mínima', es:'Versión mínima', en:'Min version' },
     'club.change_lead':  { ca:'Canviar responsable', es:'Cambiar responsable', en:'Change club manager' },
     'club.change_badge': { ca:'Canviar escut (clica-hi)', es:'Cambiar escudo (haz clic)', en:'Change crest (click it)' },
@@ -663,9 +665,9 @@
     'tactics.cam_side':      { ca:'Lateral', es:'Lateral', en:'Side' },
     'tactics.cam_follow':    { ca:'Segueix la pilota', es:'Seguir el balón', en:'Follow ball' },
     'tactics.reset_view':    { ca:'Centra la vista', es:'Centrar la vista', en:'Reset view' },
-    'tactics.orbit_hint':    { ca:'Arrossega per girar · botó dret per moure · roda per apropar',
-      es:'Arrastra para girar · botón derecho para mover · rueda para acercar',
-      en:'Drag to orbit · right-drag to pan · wheel to zoom' },
+    'tactics.orbit_hint':    { ca:'Arrossega per girar · botó dret per moure · roda per apropar · Supr per esborrar',
+      es:'Arrastra para girar · botón derecho para mover · rueda para acercar · Supr para borrar',
+      en:'Drag to orbit · right-drag to pan · wheel to zoom · Del to delete' },
     'tactics.load_3d_failed':{ ca:'No s\'ha pogut carregar la pissarra 3D. Torna a 2D per continuar.',
       es:'No se ha podido cargar la pizarra 3D. Vuelve a 2D para continuar.',
       en:'The 3D board could not be loaded. Switch back to 2D to carry on.' },
@@ -1545,7 +1547,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 136;
+  const APP_VERSION = 137;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -12757,6 +12759,47 @@
           tb3dTouch();
         }
       });
+
+      /* Delete what is selected in the 3D view.
+
+         Routed to the 2D board's OWN deleters — deleteCircle also
+         nulls the slot in every later frame so the index stays
+         stable, and reimplementing that here is how the two views
+         would come to disagree about who exists from the next frame
+         onwards. Same rule as the drag: the 3D view is an input
+         device, not a second writer.
+
+         Bound on the board container rather than the document so it
+         cannot swallow a Delete meant for a text field elsewhere. */
+      const wrap3d = document.getElementById('tb-3d-wrap');
+      wrap3d.tabIndex = 0;   // needs focus to receive keys at all
+      /* And focus it by hand: board3d's pointerdown calls
+         preventDefault() to kill the browser's own drag gesture, and
+         that also suppresses the focus the click would otherwise
+         give. Without this the key never arrives. */
+      wrap3d.addEventListener('pointerdown', () => wrap3d.focus());
+      wrap3d.addEventListener('keydown', (e) => {
+        if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+        if (!_tb3d) return;
+        const sel = _tb3d.getSelected();
+        if (!sel) return;
+        e.preventDefault();
+
+        if (sel.kind === 'positions' || sel.kind === 'oppPositions') {
+          const q = sel.kind === 'oppPositions'
+            ? '.tb-circle-opp[data-idx="' + sel.index + '"]'
+            : '.tb-circle:not(.tb-circle-opp)[data-idx="' + sel.index + '"]';
+          const el = inner.querySelector(q);
+          if (el) { pushUndo(); deleteCircle(el); }
+        } else if (sel.kind === 'balls') {
+          const el = inner.querySelectorAll('.tb-ball')[sel.index];
+          if (el) { pushUndo(); deleteBall(el); }
+        } else if (sel.kind === 'cones') {
+          const el = inner.querySelectorAll('.tb-cone')[sel.index];
+          if (el) { pushUndo(); el.remove(); saveCones(); autoSaveFrame(); }
+        }
+        _tb3d.clearSelection();
+      });
     }
 
     // Orientation toggle
@@ -19265,6 +19308,11 @@
                    value="${Math.max(1, Number(c.maxTeams || 1))}" title="${t('quota.max_teams')}"
                    style="width:70px;font-size:.82rem;">
           </td>
+          <td style="white-space:nowrap;text-align:center;">
+            <input type="checkbox" class="club-feature-3d" data-club="${d.id}"
+                   ${(c.features && c.features.board3d) ? 'checked' : ''}
+                   title="${t('club.feature_board3d')}">
+          </td>
           <td style="white-space:nowrap;">
             <button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button>
             <button class="btn btn-small btn-primary btn-save-lead" data-club="${d.id}" title="${t('club.change_lead')}" disabled>💾</button>
@@ -19272,7 +19320,7 @@
         </tr>`;
       });
       listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
-        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th>${t('club.min_version')}</th><th>${t('quota.max_teams')}</th><th></th></tr></thead>
+        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th>${t('club.min_version')}</th><th>${t('quota.max_teams')}</th><th>3D</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
       // Look the address up as it is typed. Bound here rather than in the
@@ -19294,6 +19342,30 @@
          Lowering it below a club's current count is allowed and warns —
          until deploy 2 ships the delete flow, an over-quota lead has no way
          to resolve it, so the warning is not decorative. */
+      /* The premium flag. Through the CALLABLE, not updateClub: like
+         maxTeams, `features` is commercial and the rules refuse a
+         client write, so the callable is the only sanctioned writer —
+         and it logs who flipped it. */
+      listEl.querySelectorAll('.club-feature-3d').forEach(function (box) {
+        box.addEventListener('change', function () {
+          box.disabled = true;
+          // Region named explicitly, like every other callable here —
+          // the implicit default happens to match today and would stop
+          // matching the moment anything moves.
+          firebase.app().functions('us-central1').httpsCallable('setClubFeatures')({
+            clubId: box.dataset.club,
+            features: {board3d: box.checked}
+          }).then(function () {
+            _showPushToast(t('club.feature_board3d'), t('club.feature_saved'));
+          }).catch(function (err) {
+            console.error('setClubFeatures failed:', err);
+            // Put the box back: it must not claim a state the server refused.
+            box.checked = !box.checked;
+            _showPushToast(t('save.sync_title'), t('save.error'));
+          }).finally(function () { box.disabled = false; });
+        });
+      });
+
       listEl.querySelectorAll('.club-maxteams-input').forEach(function (inp) {
         inp.addEventListener('change', function () {
           var v = Math.max(1, Math.floor(Number(inp.value) || 1));

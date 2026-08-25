@@ -311,6 +311,19 @@ service cloud.firestore {
       allow read: if sameTeam(clubId) || isSuperUser();
       allow create, delete: if isSuperUser();
 
+      // `features` is the premium entitlement — {board3d: true} and
+      // whatever follows it. Commercial and superadmin-owned exactly
+      // like maxTeams below, and non-client-writable for the same
+      // reason: the update rule allows a lead only fcfLinks and
+      // schedules, so a lead cannot grant their own club the premium
+      // package. The sanctioned writer is the setClubFeatures
+      // callable, which is superadmin-gated and logs who flipped it.
+      //
+      // What this does NOT do is stop anyone running the 3D board's
+      // code — that is client-side drawing. The field is a commercial
+      // boundary, and the thing it will really enforce is the premium
+      // features that cost a server call.
+      //
       // The superadmin owns this document. `maxTeams` is a COMMERCIAL limit
       // on how many teams a lead may create, and `categories` is the thing it
       // limits — so neither is client-writable at all. Both go through the

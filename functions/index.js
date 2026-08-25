@@ -2647,6 +2647,66 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
   return {ok: true, teams: nextKeys.length, max, refreshed};
 });
 
+// ── 7a-ter. setClubFeatures — the premium entitlement ──
+//
+// SUPERADMIN ONLY, and that is the whole point. `features` is a
+// commercial field on the club document, exactly like `maxTeams`: a
+// lead who could write it could grant their own club the premium
+// package from a console in seconds.
+//
+// The rules already refuse it — the clubs/{clubId} update rule allows
+// a lead only `hasOnly(['fcfLinks','schedules'])` — so this callable is
+// not the only thing standing in the way. It exists so there IS a
+// sanctioned writer, and so the write is logged with who did it.
+//
+// BE HONEST ABOUT WHAT THIS GATES. The 3D board is client-side
+// drawing: someone determined can run the code whatever this field
+// says. What the field really buys is a single, server-owned answer to
+// "is this club premium" that future features CAN enforce for real —
+// anything that costs a server call, an export, or a seat.
+exports.setClubFeatures = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  if ((request.auth.token || {}).email !== SUPERUSER_EMAIL) {
+    throw new HttpsError("permission-denied", "Només l'administrador.");
+  }
+
+  const data = request.data || {};
+  const clubId = String(data.clubId || "");
+  if (!clubId) throw new HttpsError("invalid-argument", "Cap club.");
+
+  const features = data.features;
+  if (!features || typeof features !== "object" || Array.isArray(features)) {
+    throw new HttpsError("invalid-argument", "features no vàlid.");
+  }
+
+  /* An ALLOWLIST, not a passthrough. An unknown key would sit forever
+     in a document every member of the club downloads on login, and
+     nothing would ever read it. */
+  const KNOWN = ["board3d"];
+  const clean = {};
+  for (const key of Object.keys(features)) {
+    if (KNOWN.indexOf(key) === -1) {
+      throw new HttpsError("invalid-argument", "Funció desconeguda: " + key);
+    }
+    clean[key] = features[key] === true;
+  }
+
+  const clubRef = db.collection("clubs").doc(clubId);
+  if (!(await clubRef.get()).exists) {
+    throw new HttpsError("not-found", "Club no trobat.");
+  }
+
+  /* Merged per key rather than replaced: a Firestore merge deep-merges
+     maps, so writing {board3d:false} turns the feature OFF rather than
+     wiping any sibling flag added later. */
+  await clubRef.set({features: clean}, {merge: true});
+
+  logger.info("setClubFeatures", {clubId, by: request.auth.uid, features: clean});
+  return {ok: true, features: clean};
+});
+
 // ── 7a-bis. setClubKits — the club's shirts, shorts and socks ──
 //
 // A separate callable rather than a field on setClubCategories, and rather

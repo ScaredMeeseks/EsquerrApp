@@ -4884,3 +4884,50 @@ comment pushed the assertion out of a 400-char window and it reported the code a
 is now bounded by the function's own end, like the others.
 
 Unit 1493 → **1496**.
+
+### 2026-08-25 — Premium entitlement, and selection/delete in 3D (v137, branch `premium-3d-board`)
+
+**The entitlement is now real.** `clubs/{clubId}.features` — `{board3d: true}` today, more later — is
+written by a new superadmin-only callable `setClubFeatures` (`functions/index.js`), surfaced as a `3D`
+checkbox column in the superadmin club table, and read by `clubFeature(name)` in the frontend. The
+callable allowlists the known feature names, coerces every value with `=== true` so a truthy string
+cannot grant anything, writes with `{merge: true}`, and logs who flipped what.
+
+`firestore.rules` gained a comment rather than a rule: the club update rule already allows a lead only
+`fcfLinks` and `schedules`, so `features` is non-client-writable by construction. The comment records
+*why* it is left that way — and, more usefully, what the gate does **not** do. The 3D board is
+client-side drawing; anyone who wants to run that code can. The field is a **commercial** boundary, and
+what it will really enforce is the premium features that cost a server call.
+
+**Selection and delete in 3D.** One object at a time, and only things that can be deleted — players,
+the ball, cones. `SELECTABLE` excludes trajectory handles on purpose: a handle is part of something
+else, so picking one is an edit, not a selection.
+
+The highlight is a **ring on the turf**, not a recolour of the object. A recoloured player stops showing
+their kit, which is the one thing a coach reads them by.
+
+**The delete goes through the 2D board's own deleters** (`deleteCircle`, `deleteBall`), never through
+state. `deleteCircle` also nulls the slot in every LATER frame so the index stays stable; a delete that
+only removed the mesh and rewrote the current frame would leave the two views disagreeing about who
+exists from the next frame onwards. Same rule as the drag, which was fixed the same way two versions
+ago: **the 3D view is an input device, not a second writer.** The element is resolved exactly as
+`applyMove` resolves it — cones positionally (`spawnCone` sets no `data-idx`), everything else by index.
+
+Two things that would have made the feature silently dead:
+- `onPointerDown` calls `preventDefault()` to kill the browser's drag gesture, and that **also suppresses
+  the focus** the click would have given the wrapper. An unfocused element receives no keys at all, so
+  the wrapper focuses itself on `pointerdown`.
+- The key is bound on the board container, not the document, so Delete typed into a label elsewhere is
+  not swallowed.
+
+**Sixth false failure from a fixed-character-window slice**, and this time the anchor rather than the
+window: `the 3D view sees the players immediately` sliced forward from
+`if (document.getElementById('tb-3d-wrap'))`, which stopped being unique the moment a second guard
+appeared — it then failed on code that was correct. Now anchored on `tbMount3D({` and read *backwards*.
+The delete wiring was also folded into the existing mount block, so there is one guard again.
+
+All twelve new assertions were checked by mutation — deleters swapped for a bare `remove()`, cones
+re-addressed by `data-idx`, a handle added to `SELECTABLE`, the post-rebuild `drawSelection()` dropped —
+and each one failed on the mutant and passed on the real code.
+
+Unit 1496 → **1519**. Version triple → v137. **Still nothing deployed.**

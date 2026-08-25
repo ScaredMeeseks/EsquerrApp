@@ -278,11 +278,15 @@ describe('the 3D view sees the players immediately', () => {
        markup and NOT in fa_tactic_positions. board3d reads the keys,
        so the pitch came up empty until you visited 2D once and moved
        something. */
-    const i = a.indexOf("if (document.getElementById('tb-3d-wrap'))");
-    const block = a.slice(i, i + 900);
-    assert.ok(block.indexOf('saveState();') !== -1, block);
-    assert.ok(block.indexOf('saveState();') < block.indexOf('tbMount3D('),
-        'the flush must happen BEFORE the mount');
+    /* Anchored on the mount and read BACKWARDS. Anchoring on the
+       enclosing `if` was a fixed-size window keyed on a string that
+       stopped being unique the moment a second guard was added — the
+       test then failed on code that was correct. */
+    const m = a.indexOf('tbMount3D({');
+    assert.ok(m !== -1, 'tbMount3D call not found');
+    const before = a.slice(Math.max(0, m - 900), m);
+    assert.ok(before.indexOf('saveState();') !== -1,
+        'the flush must happen BEFORE the mount:\n' + before);
   });
 });
 
@@ -881,7 +885,16 @@ describe('the apex diamond reads as a solid', () => {
   const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
 
   it('is the same size as a bend dot', () => {
-    assert.ok(/OctahedronGeometry\(0\.5\)/.test(s3));
+    /* One constant for every handle, so "the same size" is structural
+       rather than two numbers that happen to match today. */
+    assert.ok(/OctahedronGeometry\(HANDLE_R\)/.test(s3));
+  });
+
+  it('and every handle is smaller than it was, but bigger than the ball', () => {
+    const handle = parseFloat(/const HANDLE_R = ([\d.]+);/.exec(s3)[1]);
+    const ball = parseFloat(/const BALL_R = ([\d.]+);/.exec(s3)[1]);
+    assert.ok(handle < 0.45, 'handles should have shrunk: ' + handle);
+    assert.ok(handle > ball, 'a handle must stay easy to grab: ' + handle + ' vs ' + ball);
   });
 
   it('has dark edges, because a flat-shaded solid in perspective is a hexagon', () => {
@@ -1142,9 +1155,206 @@ describe('decoration is dimmer than the controls', () => {
   it('but the HANDLES stay full strength', () => {
     /* They are targets the coach has to hit. Dimming an interactive
        control to match decoration makes it harder to use for nothing. */
-    assert.ok(/flatDot\(0\.5, col, active === 'bend' \? 1 : 0\.25\)/.test(s3),
+    assert.ok(/flatDot\(HANDLE_R, col, active === 'bend' \? 1 : 0\.25\)/.test(s3),
         'the ball bend handle must be fully opaque when active');
-    assert.ok(/const h = flatDot\(0\.45, col\);/.test(s3),
+    assert.ok(/const h = flatDot\(HANDLE_R, col\);/.test(s3),
         'player bend dots take the default full opacity');
+  });
+});
+
+describe('the premium entitlement has a sanctioned writer', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const fns = fs2.readFileSync(p2.join(__dirname, '..', 'functions', 'index.js'), 'utf8');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const fn = fns.slice(fns.indexOf('exports.setClubFeatures'),
+      fns.indexOf('// ── 7a-bis. setClubKits'));
+
+  it('is superadmin only', () => {
+    /* A lead who could write `features` could grant their own club the
+       premium package from a console in seconds. */
+    assert.ok(/!== SUPERUSER_EMAIL/.test(fn), fn.slice(0, 400));
+    assert.ok(/permission-denied/.test(fn));
+  });
+
+  it('takes the club from the payload, but only for the superadmin', () => {
+    // There is no other caller, so there is no claim to read it from.
+    assert.ok(/String\(data\.clubId \|\| ""\)/.test(fn), fn);
+  });
+
+  it('allowlists the feature keys', () => {
+    /* An unknown key would sit forever in a document every member of
+       the club downloads on login, and nothing would ever read it. */
+    assert.ok(/const KNOWN = \["board3d"\]/.test(fn), fn);
+    assert.ok(/Funció desconeguda/.test(fn));
+  });
+
+  it('coerces to a real boolean', () => {
+    // "false" is truthy; a string here would silently grant premium.
+    assert.ok(/features\[key\] === true/.test(fn), fn);
+  });
+
+  it('merges rather than replacing', () => {
+    /* Firestore merge deep-merges maps, so writing {board3d:false}
+       turns the feature off without wiping a sibling flag added
+       later. */
+    assert.ok(/\{merge: true\}/.test(fn), fn);
+  });
+
+  it('logs who flipped it', () => {
+    assert.ok(/logger\.info\("setClubFeatures"/.test(fn), fn);
+  });
+
+  it('the client goes through the callable, never a direct write', () => {
+    const ui = a.slice(a.indexOf(".club-feature-3d')"),
+        a.indexOf(".club-maxteams-input')"));
+    assert.ok(/httpsCallable\('setClubFeatures'\)/.test(ui), ui);
+    assert.ok(!/updateClub\(/.test(ui), 'features must not be written directly');
+  });
+
+  it('names the region explicitly, like every other callable', () => {
+    const ui = a.slice(a.indexOf(".club-feature-3d')"),
+        a.indexOf(".club-maxteams-input')"));
+    assert.ok(/functions\('us-central1'\)/.test(ui), ui);
+  });
+
+  it('reverts the checkbox if the server refuses', () => {
+    // It must not claim a state the server rejected.
+    const ui = a.slice(a.indexOf(".club-feature-3d')"),
+        a.indexOf(".club-maxteams-input')"));
+    assert.ok(/box\.checked = !box\.checked/.test(ui), ui);
+  });
+});
+
+/* ── Selection and delete ─────────────────────────────────────────
+   The delete path is the one place where 3D touches something
+   destructive, and both bugs it can have are structural rather than
+   graphical: deleting the wrong object because the index was resolved
+   differently than the drag resolves it, and deleting state directly
+   instead of going through the 2D deleters (which also null the slot
+   in every LATER frame — miss that and the two views disagree about
+   who exists from the next frame onwards). Both are visible in source.
+*/
+describe('selection and delete in 3D', () => {
+  /* Comments discuss the very identifiers being searched for, so
+     every assertion below runs against a comment-stripped copy. */
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('only offers deletable objects for selection', () => {
+    const m = bare.match(/const SELECTABLE = \[([^\]]*)\]/);
+    assert.ok(m, 'SELECTABLE list not found');
+    const kinds = m[1].match(/'[^']+'/g).map((s) => s.slice(1, -1)).sort();
+    assert.deepStrictEqual(kinds,
+        ['balls', 'cones', 'oppPositions', 'positions'],
+        'a trajectory handle is part of another object, not a selection');
+  });
+
+  it('picking a handle clears the selection rather than selecting it', () => {
+    /* setSelected filters by SELECTABLE, so a handle hit arrives and
+       comes out null — the important thing is that the hit is not
+       stored unfiltered. */
+    assert.ok(/SELECTABLE\.indexOf\(hit\.kind\) !== -1/.test(bare),
+        'setSelected must filter the hit against SELECTABLE');
+  });
+
+  it('picking empty turf deselects', () => {
+    const orbit = bare.match(/mode = 'orbit';[\s\S]{0,120}/);
+    assert.ok(orbit && /setSelected\(null\)/.test(orbit[0]),
+        'starting an orbit (nothing under the ray) must clear the selection');
+  });
+
+  it('highlights with a ring, not by recolouring the object', () => {
+    /* A recoloured player stops showing their kit, which is the one
+       thing a coach reads them by. */
+    assert.ok(/selRing[\s\S]{0,200}RingGeometry/.test(bare),
+        'the highlight must be a separate ring mesh');
+    assert.ok(/selRing\.position\.set\(/.test(bare),
+        'the ring must be positioned on the selected object');
+  });
+
+  it('keeps the ring on the object through drags and rebuilds', () => {
+    /* Both are cases where the meshes move or are replaced wholesale;
+       a ring left behind points at nothing. */
+    const drag = bare.match(/movePathEnd\(dragging\.kind[\s\S]{0,120}/);
+    assert.ok(drag && /drawSelection\(\)/.test(drag[0]),
+        'a drag must move the ring with the object');
+    const rebuild = bare.match(/addPathsFor\(s, 'balls'\);[\s\S]{0,120}/);
+    assert.ok(rebuild && /drawSelection\(\)/.test(rebuild[0]),
+        'a rebuild replaces the meshes — the ring must be re-placed');
+  });
+
+  it('exposes the selection instead of handling the key itself', () => {
+    /* board3d owns no 2D elements and no frame array, so it cannot
+       delete correctly; app.js can. */
+    assert.ok(/getSelected\(\)\s*\{/.test(bare), 'getSelected must be exported');
+    assert.ok(/clearSelection\(\)\s*\{/.test(bare), 'clearSelection must be exported');
+    assert.ok(!/'keydown'/.test(bare),
+        'board3d must not bind keys — app.js owns the delete');
+  });
+
+  it('returns a copy of the selection, not the live object', () => {
+    /* Handing out the internal object lets a caller mutate the index
+       the ring is drawn from. */
+    assert.ok(/getSelected\(\)\s*\{ return selected \? \{kind: selected\.kind, index: selected\.index\}/
+        .test(bare), 'getSelected must return a fresh object');
+  });
+
+  it('deletes through the 2D deleters, never through state', () => {
+    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/);
+    assert.ok(h, 'the delete handler was not found in app.js');
+    const body = h[0];
+    assert.ok(/deleteCircle\(el\)/.test(body),
+        'players must go through deleteCircle (it nulls later frames)');
+    assert.ok(/deleteBall\(el\)/.test(body),
+        'balls must go through deleteBall (it nulls later frames)');
+    assert.ok(!/setPoints|localStorage\.setItem/.test(body),
+        'the handler must not write the scratch keys directly');
+  });
+
+  it('resolves the element the same way the drag does', () => {
+    /* applyMove addresses cones positionally (spawnCone sets no
+       data-idx) and everything else by data-idx. A delete that used
+       the other rule would remove a different object than the one
+       under the ring. */
+    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/)[0];
+    assert.ok(/querySelectorAll\('\.tb-cone'\)\[sel\.index\]/.test(h),
+        'cones are addressed positionally, as in applyMove');
+    assert.ok(/data-idx="' \+ sel\.index \+ '"/.test(h),
+        'players and balls are addressed by data-idx, as in applyMove');
+    assert.ok(/\.tb-circle:not\(\.tb-circle-opp\)/.test(h),
+        'own players must exclude opponents — .tb-circle matches both');
+  });
+
+  it('is undoable and clears the stale selection', () => {
+    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/)[0];
+    const undos = h.match(/pushUndo\(\)/g) || [];
+    assert.strictEqual(undos.length, 3, 'every branch must push an undo step');
+    assert.ok(/_tb3d\.clearSelection\(\)/.test(h),
+        'the deleted object must not stay selected');
+  });
+
+  it('takes focus by hand, because preventDefault suppresses it', () => {
+    /* onPointerDown calls preventDefault() to kill the browser drag
+       gesture; that also cancels the focus a click would give, and
+       an unfocused element receives no keys at all. */
+    assert.ok(/wrap3d\.addEventListener\('pointerdown', \(\) => wrap3d\.focus\(\)\)/
+        .test(appBare), 'the wrapper must focus itself on pointerdown');
+    assert.ok(/wrap3d\.tabIndex = 0/.test(appBare),
+        'and be focusable in the first place');
+  });
+
+  it('binds the key on the board, not the document', () => {
+    /* A document-level Delete would fire while typing in a label. */
+    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/)[0];
+    assert.ok(!/document\.addEventListener\('keydown'/.test(appBare.slice(
+        appBare.indexOf(h) - 400, appBare.indexOf(h))),
+        'the delete must be scoped to the 3D wrapper');
+  });
+
+  it('tells the coach the key exists', () => {
+    const hint = appBare.match(/'tactics\.orbit_hint':[\s\S]*?\n.*?\},/)[0];
+    assert.ok(/Supr/.test(hint) && /Del to delete/.test(hint),
+        'the orbit hint must mention delete in every language');
   });
 });
