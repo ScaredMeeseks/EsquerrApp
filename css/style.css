@@ -4580,3 +4580,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ref-out-w{background:#2e7d32;color:#fff;}
 .ref-out-d{background:#9E9E9E;color:#fff;}
 .ref-out-l{background:var(--primary);color:#fff;}
+
+/* Movement paths — the plan-view half of a trajectory. The arc HEIGHT
+   has no top-down representation, so 2D draws only the bend; a chipped
+   ball looks like a pass here and like a chip in 3D. */
+.tb-move-path {
+  fill:none; stroke-width:1.6; stroke-dasharray:3 2;
+  opacity:.75; pointer-events:none;
+  vector-effect:non-scaling-stroke;
+}

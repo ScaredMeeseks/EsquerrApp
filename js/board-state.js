@@ -147,7 +147,7 @@
      move one or remove one depends on what is already on screen,
      which is the caller's business and the reason this function has
      no DOM in it. */
-  function tweenTrack(from, to, t) {
+  function tweenTrack(from, to, t, paths) {
     var a = from || [];
     var b = to || [];
     var n = Math.max(a.length, b.length);
@@ -157,7 +157,13 @@
       var g = b[i];
       if (!g) { out.push(null); continue; }
       if (!f) { out.push([g[0], g[1]]); continue; }   // snap
-      out.push([f[0] + (g[0] - f[0]) * t, f[1] + (g[1] - f[1]) * t]);
+      /* `paths` is optional and sparse. Without one this is the same
+         straight lerp it has always been — pathPoint's no-bend branch
+         is the identical expression, so nothing that predates
+         trajectories moves by a pixel. */
+      var path = paths && paths[i];
+      if (path && path.bend) out.push(pathPoint(f, g, path, t));
+      else out.push([f[0] + (g[0] - f[0]) * t, f[1] + (g[1] - f[1]) * t]);
     }
     return out;
   }
@@ -194,8 +200,89 @@
     };
   }
 
+  /* ── Trajectories ──────────────────────────────────────────────
+     A path describes HOW something got from its place in one frame to
+     its place in the next. It belongs to the frame it leads INTO, so
+     `frames[n].paths` is about the move from frame n-1 to frame n.
+
+       {bend: [x, y] | null, apex: metres}
+
+     `bend` is the point the coach drags — the middle of the curve, on
+     the curve. Storing the on-curve midpoint rather than the Bézier
+     control point matters: the handle is what the user manipulates,
+     so round-tripping it must be exact, and `null` (no bend) then
+     means precisely "the midpoint is where a straight line would put
+     it". Deriving the control point is one line; deriving the handle
+     from a stored control point is one line the UI would have to get
+     right in three places.
+
+     Both curves are parabolas, as specified:
+       - in PLAN, a quadratic Bézier, which is a parabola by
+         definition;
+       - in ELEVATION, 4h·t(1-t), which peaks at exactly h when
+         t = 0.5.
+
+     `apex` is in METRES above the turf, so it means the same thing on
+     any size of pitch — a 3 m chip is a 3 m chip. It has no top-down
+     representation, so the 2D board ignores it. */
+
+  /** The Bézier control point that puts the curve's midpoint on `bend`. */
+  function bendToControl(p0, p1, bend) {
+    if (!bend) return [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+    // B(0.5) = (P0 + 2C + P1) / 4  =>  C = (4M - P0 - P1) / 2
+    return [(4 * bend[0] - p0[0] - p1[0]) / 2,
+      (4 * bend[1] - p0[1] - p1[1]) / 2];
+  }
+
+  /** Where the thing is at time t, in board percentages. */
+  function pathPoint(p0, p1, path, t) {
+    if (!p0 || !p1) return p1 || p0 || null;
+    const bend = path && path.bend;
+    if (!bend) {
+      // No bend is a straight line, and must be EXACTLY the old lerp.
+      return [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
+    }
+    const c = bendToControl(p0, p1, bend);
+    const u = 1 - t;
+    return [
+      u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0],
+      u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1]
+    ];
+  }
+
+  /** Height above the turf at time t, in metres. Zero without an apex. */
+  function pathHeight(path, t) {
+    const h = path && Number(path.apex);
+    if (!isFinite(h) || h <= 0) return 0;
+    return 4 * h * t * (1 - t);
+  }
+
+  /** The curve as `n` points, for drawing it. */
+  function samplePath(p0, p1, path, n) {
+    const out = [];
+    const steps = Math.max(2, n || 24);
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const p = pathPoint(p0, p1, path, t);
+      out.push([p[0], p[1], pathHeight(path, t)]);
+    }
+    return out;
+  }
+
+  /** Read one object's path out of a frame. Null when it has none. */
+  function pathOf(frame, kind, index) {
+    const paths = frame && frame.paths;
+    const forKind = paths && paths[kind];
+    return (forKind && forKind[index]) || null;
+  }
+
   return {
     KEYS: K,
+    bendToControl: bendToControl,
+    pathPoint: pathPoint,
+    pathHeight: pathHeight,
+    samplePath: samplePath,
+    pathOf: pathOf,
     round2: round2,
     roundPt: roundPt,
     roundPts: roundPts,

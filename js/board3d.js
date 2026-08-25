@@ -53,7 +53,9 @@ export function createBoard3D(opts) {
     getState,           // () => the current scratch state, plain data
     onMove,             // (kind, index, [leftPct, topPct]) => void
     onSelect,           // (kind, index) => void  (null when deselecting)
+    onPath,             // (kind, index, {bend}|{apex}) => void
     BG,                 // board-geom, injected so this file imports nothing app-side
+    BS,                 // board-state: the curve maths the tween also uses
     fillCss,            // the striped-kit renderer from utils.js
     parseFill,
     readOnly            // true for playback-only surfaces
@@ -393,12 +395,100 @@ export function createBoard3D(opts) {
     return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#000000' : '#ffffff';
   }
 
+  /* ── Trajectories ────────────────────────────────────────────
+     A path is drawn for anything that MOVED between the previous
+     frame and this one. It is the move made visible: the curve is
+     what the object will follow during playback, not a decoration
+     laid on top of it, so the same BS.pathPoint that drives the tween
+     draws the line.
+
+     Three parts, matching the reference tool:
+       the curve itself
+       a dot running end to end, on a loop, showing direction
+       two handles — a ROUND one on the curve that bends it, and a
+       DIAMOND above it that sets the arc's peak
+
+     Both handles are registered as pickable objects so the ordinary
+     raycast drag machinery moves them; `kind` says which. */
+  const travellers = [];     // {mesh, p0, p1, path} — animated each frame
+
+  function pathWorld(p0, p1, path, t) {
+    const pitch = getPitch(), bt = getBoardType();
+    const pt = BS.pathPoint(p0, p1, path, t);
+    const w = BG.toWorld(pt[0], pt[1], pitch, bt);
+    return new THREE.Vector3(w.x, BS.pathHeight(path, t) + 0.12, w.z);
+  }
+
+  function addPath(kind, index, p0, p1, path, colour) {
+    const col = new THREE.Color(colour || 0xffe066);
+
+    // The curve.
+    const pts = [];
+    for (let i = 0; i <= 32; i++) pts.push(pathWorld(p0, p1, path, i / 32));
+    objectRoot.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineDashedMaterial({color: col, dashSize: 1.2, gapSize: 0.8})
+    ).computeLineDistances());
+
+    /* The travelling dot. Registered rather than animated in place so
+       one clock drives every dot on the board — separate phases would
+       look like noise instead of like direction. */
+    const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 10, 8),
+        new THREE.MeshBasicMaterial({color: col}));
+    objectRoot.add(dot);
+    travellers.push({mesh: dot, p0, p1, path});
+
+    // The bend handle, ON the curve at its middle.
+    const bend = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7, 14, 10),
+        new THREE.MeshBasicMaterial({color: 0xffffff}));
+    bend.position.copy(pathWorld(p0, p1, path, 0.5));
+    objectRoot.add(bend);
+    objects.push({mesh: bend, kind: 'pathBend', index, owner: kind});
+
+    /* The apex handle, a diamond directly above the bend handle. It
+       sits a little off the turf even at apex 0, or there would be
+       nothing to grab to lift the ball in the first place. */
+    const apexY = Math.max(BS.pathHeight(path, 0.5), 1.2);
+    const dia = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.7),
+        new THREE.MeshBasicMaterial({color: 0x66d9ff}));
+    const mid = pathWorld(p0, p1, path, 0.5);
+    dia.position.set(mid.x, apexY, mid.z);
+    objectRoot.add(dia);
+    objects.push({mesh: dia, kind: 'pathApex', index, owner: kind});
+
+    // A hairline from the turf to the diamond, so the height reads.
+    objectRoot.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(mid.x, 0.05, mid.z), dia.position.clone()]),
+        new THREE.LineBasicMaterial({color: 0x66d9ff, transparent: true, opacity: 0.5})));
+  }
+
+  /** Did this thing move between the two frames? */
+  function moved(a, b) {
+    return a && b && (Math.abs(a[0] - b[0]) > 0.5 || Math.abs(a[1] - b[1]) > 0.5);
+  }
+
+  function addPathsFor(s, kind, colour) {
+    const prev = (s.prev && s.prev[kind]) || null;
+    const cur = s[kind] || [];
+    if (!prev) return;
+    const paths = (s.paths && s.paths[kind]) || {};
+    cur.forEach((p, i) => {
+      if (!moved(prev[i], p)) return;
+      addPath(kind, i, prev[i], p, paths[i] || null, colour);
+    });
+  }
+
   /* ── Rebuilding ──────────────────────────────────────────────
      Whole-scene rebuild rather than diffing. A board holds a few dozen
      objects; diffing them would be more code than it saves and is
      where a stale-object bug would live. */
   function rebuild() {
     objects.length = 0;
+    travellers.length = 0;
     scene.remove(objectRoot);
     disposeTree(objectRoot);
     objectRoot = new THREE.Group();
@@ -430,6 +520,11 @@ export function createBoard3D(opts) {
     (s.arrows || []).forEach(addArrow);
     (s.penLines || []).forEach(addPenLine);
     (s.texts || []).forEach(addText);
+    /* After the objects, so a handle sits on top of whatever it
+       belongs to when the two overlap. */
+    addPathsFor(s, 'positions', 0xffe066);
+    addPathsFor(s, 'oppPositions', 0xff9e80);
+    addPathsFor(s, 'balls', 0xffffff);
   }
 
   function disposeTree(root) {
@@ -589,23 +684,48 @@ export function createBoard3D(opts) {
       applyCamera();
       return;
     }
+    if (!dragging) return;
+    /* The apex handle moves in HEIGHT, not across the turf — a
+       diamond dragged sideways would mean nothing, and raycasting it
+       onto the ground plane would send it to the horizon as the
+       pointer approached eye level. Vertical pointer travel maps to
+       metres through the same per-pixel scale the pan uses. */
+    if (dragging.kind === 'pathApex') {
+      const h = renderer.domElement.clientHeight || 1;
+      const perPx = (2 * cam.dist * Math.tan((camera.fov * Math.PI / 180) / 2)) / h;
+      const next = dragging.mesh.position.y - (ev.clientY - last.y) * perPx;
+      dragging.mesh.position.y = Math.max(0, Math.min(40, next));
+      last = {x: ev.clientX, y: ev.clientY};
+      return;
+    }
     const g = groundPoint(ev);
-    if (!g || !dragging) return;
+    if (!g) return;
     const y = dragging.mesh.position.y;
     dragging.mesh.position.set(g.x, y, g.z);
   }
 
   function onPointerUp() {
-    if (mode === 'drag' && dragging && onMove) {
+    if (mode === 'drag' && dragging) {
       const p = dragging.mesh.position;
-      const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
-      /* Clamped to the board: a drag that leaves the pitch would
-         otherwise store a percentage outside 0-100, which the 2D view
-         renders off the edge of its box with no way to grab it back. */
-      onMove(dragging.kind, dragging.index, [
-        Math.max(0, Math.min(100, pct[0])),
-        Math.max(0, Math.min(100, pct[1]))
-      ]);
+      if (dragging.kind === 'pathApex') {
+        // Height in metres, straight off the handle.
+        if (onPath) onPath(dragging.owner, dragging.index, {apex: Math.round(p.y * 100) / 100});
+      } else if (dragging.kind === 'pathBend') {
+        const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
+        if (onPath) onPath(dragging.owner, dragging.index, {bend: [pct[0], pct[1]]});
+      } else if (onMove) {
+        const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
+        /* Clamped to the board: a drag that leaves the pitch would
+           otherwise store a percentage outside 0-100, which the 2D
+           view renders off the edge of its box with no way to grab it
+           back. The bend handle is NOT clamped — a curve may bulge
+           past the touchline, which is what an outswinging cross
+           does. */
+        onMove(dragging.kind, dragging.index, [
+          Math.max(0, Math.min(100, pct[0])),
+          Math.max(0, Math.min(100, pct[1]))
+        ]);
+      }
     }
     mode = null;
     dragging = null;
@@ -662,8 +782,19 @@ export function createBoard3D(opts) {
     invalidate();
   }
 
-  function tick() {
+  /* Render on demand, EXCEPT while a trajectory is on screen: the
+     dot running along it is the direction cue, and a static frame
+     cannot show direction. One clock drives every dot, so they move
+     in step rather than looking like noise. A three-second loop is
+     slow enough to read and fast enough not to feel stalled. */
+  function tick(now) {
     if (!alive) return;
+    if (travellers.length) {
+      const t = ((now || 0) % 3000) / 3000;
+      travellers.forEach((tr) => tr.mesh.position.copy(
+          pathWorld(tr.p0, tr.p1, tr.path, t)));
+      needsRender = true;
+    }
     if (needsRender) {
       renderer.render(scene, camera);
       needsRender = false;

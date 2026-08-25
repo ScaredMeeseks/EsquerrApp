@@ -277,3 +277,111 @@ describe('tweenFrame — the v91 rule, stated once', () => {
     });
   });
 });
+
+describe('trajectories', () => {
+  const P0 = [0, 0];
+  const P1 = [100, 0];
+
+  it('no bend is EXACTLY the straight lerp it replaced', () => {
+    /* The load-bearing back-compat claim. Every board that predates
+       trajectories has no paths, so if this diverged by a floating
+       hair, every existing animation would move. */
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      assert.deepStrictEqual(
+          BS.pathPoint([10, 20], [90, 60], null, t),
+          [10 + 80 * t, 20 + 40 * t]);
+    }
+  });
+
+  it('the handle sits ON the curve, at its middle', () => {
+    /* The coach drags the midpoint, so storing the midpoint means the
+       handle round-trips exactly. Storing a Bezier control point
+       instead would put the handle somewhere the user did not leave
+       it. */
+    const bend = [50, 30];
+    const mid = BS.pathPoint(P0, P1, {bend}, 0.5);
+    assert.ok(Math.abs(mid[0] - 50) < 1e-9, 'x drifted: ' + mid[0]);
+    assert.ok(Math.abs(mid[1] - 30) < 1e-9, 'y drifted: ' + mid[1]);
+  });
+
+  it('always starts and ends exactly where the object does', () => {
+    // A bend must not move the endpoints; those are the frame poses.
+    const p = {bend: [20, 80]};
+    assert.deepStrictEqual(BS.pathPoint(P0, P1, p, 0), [0, 0]);
+    assert.deepStrictEqual(BS.pathPoint(P0, P1, p, 1), [100, 0]);
+  });
+
+  it('is a PARABOLA, not an arbitrary curve', () => {
+    /* Stated as a requirement, so it is tested as one. A quadratic
+       Bezier is a parabola iff its second difference is constant:
+       sample at even t and the differences of the differences must
+       all agree. */
+    const p = {bend: [50, 40]};
+    const ys = [];
+    for (let i = 0; i <= 10; i++) ys.push(BS.pathPoint(P0, P1, p, i / 10)[1]);
+    const d2 = [];
+    for (let i = 2; i < ys.length; i++) d2.push(ys[i] - 2 * ys[i - 1] + ys[i - 2]);
+    d2.forEach((v) => assert.ok(Math.abs(v - d2[0]) < 1e-9,
+        'second difference varies: ' + d2.join(', ')));
+  });
+
+  it('the apex is the peak height, in metres, at the middle', () => {
+    assert.strictEqual(BS.pathHeight({apex: 4}, 0.5), 4);
+    assert.strictEqual(BS.pathHeight({apex: 4}, 0), 0);
+    assert.strictEqual(BS.pathHeight({apex: 4}, 1), 0);
+  });
+
+  it('the height profile is a parabola too', () => {
+    const hs = [];
+    for (let i = 0; i <= 10; i++) hs.push(BS.pathHeight({apex: 3}, i / 10));
+    const d2 = [];
+    for (let i = 2; i < hs.length; i++) d2.push(hs[i] - 2 * hs[i - 1] + hs[i - 2]);
+    d2.forEach((v) => assert.ok(Math.abs(v - d2[0]) < 1e-9, d2.join(', ')));
+  });
+
+  it('a missing or nonsense apex is flat, not NaN', () => {
+    [null, undefined, {}, {apex: 0}, {apex: -2}, {apex: 'x'}].forEach((p) => {
+      assert.strictEqual(BS.pathHeight(p, 0.5), 0, JSON.stringify(p));
+    });
+  });
+
+  it('samplePath returns x, y and height together', () => {
+    const pts = BS.samplePath(P0, P1, {bend: [50, 20], apex: 5}, 5);
+    assert.strictEqual(pts.length, 5);
+    assert.deepStrictEqual(pts[0].slice(0, 2), [0, 0]);
+    assert.deepStrictEqual(pts[4].slice(0, 2), [100, 0]);
+    assert.strictEqual(pts[2][2], 5, 'the middle sample carries the apex');
+  });
+
+  it('pathOf digs one object out of a frame, sparsely', () => {
+    const frame = {paths: {balls: {0: {apex: 2}}}};
+    assert.deepStrictEqual(BS.pathOf(frame, 'balls', 0), {apex: 2});
+    assert.strictEqual(BS.pathOf(frame, 'balls', 1), null);
+    assert.strictEqual(BS.pathOf(frame, 'positions', 0), null);
+    assert.strictEqual(BS.pathOf({}, 'balls', 0), null);
+    assert.strictEqual(BS.pathOf(null, 'balls', 0), null);
+  });
+});
+
+describe('tweenTrack follows a trajectory when there is one', () => {
+  it('is unchanged when there are no paths at all', () => {
+    assert.deepStrictEqual(BS.tweenTrack([[0, 0]], [[10, 20]], 0.5), [[5, 10]]);
+    assert.deepStrictEqual(BS.tweenTrack([[0, 0]], [[10, 20]], 0.5, {}), [[5, 10]]);
+  });
+
+  it('curves the one object that has a path, and only that one', () => {
+    const out = BS.tweenTrack(
+        [[0, 0], [0, 0]], [[100, 0], [100, 0]], 0.5,
+        {0: {bend: [50, 40]}});
+    assert.deepStrictEqual(out[0], [50, 40], 'the bent one');
+    assert.deepStrictEqual(out[1], [50, 0], 'the straight one');
+  });
+
+  it('a path with only an apex does not bend the plan view', () => {
+    /* Height and bend are independent: a ball chipped straight down
+       the line has an apex and no bend. */
+    const out = BS.tweenTrack([[0, 0]], [[100, 0]], 0.5, {0: {apex: 5}});
+    assert.deepStrictEqual(out[0], [50, 0]);
+  });
+});

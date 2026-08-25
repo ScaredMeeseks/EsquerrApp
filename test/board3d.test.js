@@ -300,8 +300,11 @@ describe('the 3D view keeps up with the 2D editor', () => {
     const save = a.slice(a.indexOf('function saveState()'),
         a.indexOf('function spawnCircles'));
     assert.ok(/tb3dTouch\(\)/.test(save), 'saveState must poke the 3D view');
-    const auto = a.slice(a.indexOf('function autoSaveFrame()'),
-        a.indexOf('function autoSaveFrame()') + 500);
+    /* Bounded by the NEXT function rather than a character count —
+       a fixed window silently stops covering the tail as soon as the
+       function grows, and reports the tail as missing. */
+    const from = a.indexOf('function autoSaveFrame()');
+    const auto = a.slice(from, a.indexOf('function ', from + 40));
     assert.ok(/tb3dTouch\(\)/.test(auto), 'autoSaveFrame must poke the 3D view');
   });
 
@@ -396,5 +399,132 @@ describe('playback returns the 3D scene to the start', () => {
     assert.ok(start !== -1, 'editor play button not found');
     const loop = a.slice(start, start + 2600);
     assert.ok(/applyFrameState\(frames\[0\]\)/.test(loop), loop.slice(0, 300));
+  });
+});
+
+describe('trajectories', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('draws the curve with the SAME maths that drives playback', () => {
+    /* If the drawn line and the animated motion came from two
+       different functions, the ball would visibly leave its own
+       trajectory — the one thing a trajectory must never do. */
+    assert.ok(/BS\.pathPoint\(/.test(s3), 'board3d must draw via BS.pathPoint');
+    assert.ok(/BS\.pathHeight\(/.test(s3));
+    assert.ok(/BS\.tweenTrack\(fromBalls, toBalls, t, toPaths\.balls\)/.test(a),
+        'playback must be handed the same paths');
+  });
+
+  it('has a bend handle and an apex handle, as two pickable kinds', () => {
+    assert.ok(/kind: 'pathBend'/.test(s3));
+    assert.ok(/kind: 'pathApex'/.test(s3));
+  });
+
+  it('the apex handle moves in HEIGHT, never across the turf', () => {
+    /* Raycasting a diamond onto the ground plane sends it to the
+       horizon as the pointer approaches eye level. */
+    const mv = s3.slice(s3.indexOf('function onPointerMove'), s3.indexOf('function onPointerUp'));
+    assert.ok(/pathApex/.test(mv), mv);
+    assert.ok(/mesh\.position\.y = Math\.max\(0, Math\.min\(/.test(mv),
+        'height must be clamped, not unbounded');
+  });
+
+  it('the bend handle is NOT clamped to the pitch', () => {
+    // An outswinging cross bulges past the touchline.
+    const up = s3.slice(s3.indexOf('function onPointerUp'), s3.indexOf('function onWheel'));
+    const bendBranch = up.slice(up.indexOf("'pathBend'"), up.indexOf('} else if (onMove)'));
+    assert.ok(!/Math\.min\(100/.test(bendBranch), bendBranch);
+  });
+
+  it('a path is only drawn for something that actually moved', () => {
+    assert.ok(/function moved\(a, b\)/.test(s3));
+    const fn = s3.slice(s3.indexOf('function addPathsFor'), s3.indexOf('/* ── Rebuilding'));
+    assert.ok(/if \(!moved\(prev\[i\], p\)\) return;/.test(fn), fn);
+  });
+
+  it('the travelling dot runs on one shared clock', () => {
+    /* Per-dot phases look like noise; in step they read as direction.
+       And the render loop can no longer be purely on demand, because
+       a static frame cannot show direction. */
+    const fn = s3.slice(s3.indexOf('function tick('), s3.indexOf('const ro ='));
+    assert.ok(/travellers\.length/.test(fn), fn);
+    assert.ok(/% 3000/.test(fn), 'expected one shared period');
+  });
+
+  it('clears the travellers on rebuild, or they accumulate', () => {
+    const fn = s3.slice(s3.indexOf('function rebuild()'), s3.indexOf('function disposeTree'));
+    assert.ok(/travellers\.length = 0/.test(fn), fn);
+  });
+});
+
+describe('where a trajectory is stored', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('lives on the frame it leads INTO, like duration', () => {
+    const fn = a.slice(a.indexOf('applyPath: (kind, index, patch)'),
+        a.indexOf('applyPath: (kind, index, patch)') + 900);
+    assert.ok(/frames\[activeFrameIdx\]/.test(fn), fn);
+    assert.ok(/saveFrames\(\)/.test(fn));
+  });
+
+  it('MERGES a patch, so setting height keeps the bend', () => {
+    /* The two handles edit one path. Replacing instead of merging
+       makes each handle silently undo the other. */
+    const fn = a.slice(a.indexOf('applyPath: (kind, index, patch)'),
+        a.indexOf('applyPath: (kind, index, patch)') + 900);
+    assert.ok(/Object\.assign\(\{\}, f\.paths\[kind\]\[index\], patch\)/.test(fn), fn);
+  });
+
+  it('survives autoSaveFrame, which replaces the whole frame', () => {
+    /* Paths are not derived from the DOM, so a capture would wipe
+       them. Carried across exactly like duration. */
+    const from = a.indexOf('function autoSaveFrame()');
+    const fn = a.slice(from, a.indexOf('function ', from + 40));
+    assert.ok(/existingPaths/.test(fn), fn);
+  });
+
+  it('frame 0 has no trajectories, because nothing has moved yet', () => {
+    const fn = a.slice(a.indexOf('function _tb3dPrevFrame'),
+        a.indexOf('function _tb3dPrevFrame') + 260);
+    assert.ok(/i > 0/.test(fn), fn);
+  });
+});
+
+describe('the 2D board draws the bend, but not the height', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const fn = a.slice(a.indexOf('function tbPaths2D()'),
+      a.indexOf('/** Tear down the 3D view'));
+
+  it('uses the same control point the curve maths derives', () => {
+    // Not a re-derivation: the drawn curve and the animated motion
+    // must be the same parabola.
+    assert.ok(/BS\.bendToControl\(p0, p1, path && path\.bend\)/.test(fn), fn);
+  });
+
+  it('ignores the apex, which has no top-down meaning', () => {
+    assert.ok(!/apex/.test(fn), '2D must not try to draw arc height');
+  });
+
+  it('rotates by the same rule the markings and players use', () => {
+    assert.ok(/BG\.isRotated\(bt, vert\)/.test(fn), fn);
+  });
+
+  it('rebuilds rather than patching, and is driven by the shared funnel', () => {
+    assert.ok(/querySelectorAll\('\.tb-move-path'\)\.forEach\(\(el\) => el\.remove\(\)\)/.test(fn),
+        'stale paths must be cleared, not reused');
+    const touch = a.slice(a.indexOf('function tb3dTouch()'),
+        a.indexOf('function tb3dTouch()') + 400);
+    assert.ok(/tbPaths2D\(\)/.test(touch), touch);
+  });
+
+  it('draws nothing on frame 0', () => {
+    assert.ok(/if \(!cur \|\| !prev\) return;/.test(fn), fn);
   });
 });

@@ -4488,3 +4488,52 @@ appears first in the file, and proved nothing about the editor. Anchored on the 
 now.
 
 Unit 1352 → **1356**.
+
+### 2026-08-25 — v136: movement trajectories (premium 3D)
+
+The first genuinely NEW data this feature has added — everything before it was derived. Modelled
+from the owner's description of the reference tool; the video could not be watched.
+
+**A trajectory belongs to the frame it leads INTO.** `frames[n].paths[kind][index] =
+{bend, apex}` — sparse, and absent on frame 0 because nothing has moved yet. It is frame metadata
+like `duration`, which is why `autoSaveFrame` carries it across a capture: paths are not derived
+from the DOM, so a capture would wipe them.
+
+**`bend` is the on-curve MIDPOINT, not the Bézier control point.** The handle is what the coach
+drags, so round-tripping it must be exact, and `null` then means precisely "where a straight line
+would put it". Deriving the control point is one line (`bendToControl`); deriving the handle back
+out of a stored control point is one line the UI would have to get right in three places.
+
+Both curves are parabolas, as specified — in plan a quadratic Bézier (a parabola by definition), in
+elevation `4h·t(1−t)`, peaking at exactly `h` at t=0.5. There are tests asserting parabola-ness via
+constant second differences, because it was stated as a requirement rather than as a preference.
+
+**`apex` is METRES**, not a percentage, so a 3 m chip is a 3 m chip on any size of pitch.
+
+`tweenTrack` takes an optional sparse `paths` map. **With no paths it is byte-identical to the lerp
+it replaced** — pinned by a test, because every board predating this has none and a floating-point
+hair would move every existing animation.
+
+**Both views draw it, from the same maths.** 3D: a dashed curve, a dot running end to end on one
+shared 3-second clock (per-dot phases read as noise; in step they read as direction), a round bend
+handle on the curve and a diamond above it for the apex, with a hairline to the turf so the height
+reads. 2D: the plan-view bend only — the arc height has no top-down representation, so a chipped
+ball looks like a pass there and like a chip in 3D.
+
+The apex handle drags in HEIGHT, never across the turf: raycasting a diamond onto the ground plane
+sends it to the horizon as the pointer approaches eye level. The bend handle is deliberately **not**
+clamped to the pitch — an outswinging cross bulges past the touchline.
+
+`applyPath` MERGES its patch. The two handles edit one path, so replacing would make each silently
+undo the other.
+
+The render loop is no longer purely on demand: a static frame cannot show direction, so it runs
+continuously while any trajectory is on screen and returns to on-demand when none is.
+
+Also fixed: a test bounded by a fixed character count silently stopped covering `autoSaveFrame`'s
+tail once the function grew, and reported the tail as missing. Bounded by the next function now.
+
+**Still not built**: drawing tools in 3D (arrows, zones, pen, labels render but are drawn in 2D),
+selection/delete in 3D, editing the bend from the 2D board, and the `setClubPlan` callable.
+
+Unit 1356 → **1384**.

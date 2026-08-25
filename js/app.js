@@ -6418,6 +6418,9 @@
    * each would be a dozen wasted teardowns per drag.
    */
   function tb3dTouch() {
+    /* The 2D path layer rides the same funnel — cheap, and it means
+       one place decides when a movement path is out of date. */
+    tbPaths2D();
     if (!_tb3d || _tb3dPending) return;
     _tb3dPending = true;
     requestAnimationFrame(function () {
@@ -6455,6 +6458,57 @@
     }
   }
 
+  /**
+   * Draw the movement paths on the 2D board.
+   *
+   * The plan-view curve is meaningful from directly above, so the flat
+   * board shows it; the arc HEIGHT is not, so 2D ignores `apex` and a
+   * chipped ball simply looks like a pass. Both views therefore tell
+   * the same story about where things go, and only 3D tells the one
+   * about how high.
+   *
+   * Rebuilt from the frames rather than kept in sync incrementally:
+   * there are a handful of paths, and an incremental updater is where
+   * a stale-path bug would live. Called from the same funnels that
+   * poke the 3D view, so the curve follows a drag live.
+   */
+  function tbPaths2D() {
+    const svg = document.getElementById('tb-arrows-svg');
+    if (!svg) return;
+    svg.querySelectorAll('.tb-move-path').forEach((el) => el.remove());
+
+    const cur = _tb3dCurFrame();
+    const prev = _tb3dPrevFrame();
+    if (!cur || !prev) return;   // frame 0: nothing has moved yet
+
+    const vert = localStorage.getItem('fa_tactic_orient') === 'vertical';
+    const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
+    const swap = BG.isRotated(bt, vert);
+    // The same transform every other layer uses, spelled once here.
+    const disp = (p) => (swap ? [p[1], 100 - p[0]] : [p[0], p[1]]);
+
+    [['positions', '#ffe066'], ['oppPositions', '#ff9e80'], ['balls', '#ffffff']]
+        .forEach(([kind, colour]) => {
+          const from = prev[kind] || [];
+          const to = cur[kind] || [];
+          const paths = (cur.paths && cur.paths[kind]) || {};
+          to.forEach((p1, i) => {
+            const p0 = from[i];
+            if (!p0 || !p1) return;
+            if (Math.abs(p0[0] - p1[0]) < 0.5 && Math.abs(p0[1] - p1[1]) < 0.5) return;
+            const path = paths[i] || null;
+            const c = BS.bendToControl(p0, p1, path && path.bend);
+            const a = disp(p0), b = disp(p1), cc = disp(c);
+            const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            el.setAttribute('class', 'tb-move-path');
+            el.setAttribute('d', 'M' + a[0] + ',' + a[1] +
+                ' Q' + cc[0] + ',' + cc[1] + ' ' + b[0] + ',' + b[1]);
+            el.setAttribute('stroke', colour);
+            svg.appendChild(el);
+          });
+        });
+  }
+
   /** Tear down the 3D view. Safe to call when there is none. */
   function tbDestroy3D() {
     if (_tb3d) { try { _tb3d.destroy(); } catch (e) { /* already gone */ } }
@@ -6479,8 +6533,32 @@
       penLines: g(BS.KEYS.penLines, []),
       showOpp: localStorage.getItem('fa_tactic_show_opp') === 'true',
       teamColor: _tbFillFor('team'),
-      oppColor: _tbFillFor('opp')
+      oppColor: _tbFillFor('opp'),
+      /* The move this frame represents, so the 3D view can draw the
+         trajectory INTO it. A path belongs to the frame it leads into,
+         so the previous frame supplies the start point and the current
+         one supplies both the end point and the curve. Frame 0 has no
+         previous frame and therefore no trajectories, which is right:
+         nothing has moved yet. */
+      prev: _tb3dPrevFrame(),
+      paths: (_tb3dCurFrame() || {}).paths || null
     };
+  }
+
+  function _tb3dFrames() {
+    return BS.readJson(localStorage, 'fa_tactic_frames', []) || [];
+  }
+  function _tb3dIdx() {
+    var i = parseInt(localStorage.getItem('fa_tactic_frame_idx'), 10);
+    return isFinite(i) ? i : -1;
+  }
+  function _tb3dCurFrame() {
+    var f = _tb3dFrames(), i = _tb3dIdx();
+    return (i >= 0 && i < f.length) ? f[i] : null;
+  }
+  function _tb3dPrevFrame() {
+    var f = _tb3dFrames(), i = _tb3dIdx();
+    return (i > 0 && i <= f.length) ? f[i - 1] : null;
   }
 
   /* The board-wide kit, including stripes. The editor builds this from
@@ -6519,6 +6597,7 @@
       _tb3d = mod.createBoard3D({
         container: wrap,
         BG: BG,
+        BS: BS,
         fillCss: fillCss,
         parseFill: parseFill,
         getPitch: () => BS.readJson(localStorage, BS.KEYS.pitch, null),
@@ -6541,6 +6620,9 @@
            device for the 2D board, not a second writer. */
         onMove: (kind, index, pct) => {
           if (hooks.applyMove) hooks.applyMove(kind, index, pct);
+        },
+        onPath: (kind, index, patch) => {
+          if (hooks.applyPath) hooks.applyPath(kind, index, patch);
         },
         onSelect: () => {}
       });
@@ -6963,7 +7045,8 @@
              over the frame's, v88 the opposition appearing and
              vanishing around playback. One source now, so a third
              renderer cannot open a third front. */
-          BS.tweenTrack(fromPos, toPos, t).forEach((pos, i) => {
+          const roPaths = to.paths || {};
+          BS.tweenTrack(fromPos, toPos, t, roPaths.positions).forEach((pos, i) => {
             const circle = circleMap[i];
 
             if (!pos) {
@@ -7003,7 +7086,7 @@
             oppMap[Number(c.dataset.idx || c.getAttribute('data-idx') || 0)] = c;
           });
 
-          BS.tweenTrack(fromOpp, toOpp, t).forEach((pos, i) => {
+          BS.tweenTrack(fromOpp, toOpp, t, roPaths.oppPositions).forEach((pos, i) => {
             const circle = oppMap[i];
 
             if (!pos) {
@@ -7039,7 +7122,7 @@
           const toBalls = to.balls || [];
           let roBallMap = {};
           innerEl.querySelectorAll('.tb-ball').forEach(b => { roBallMap[Number(b.dataset.idx || b.getAttribute('data-idx') || 0)] = b; });
-          BS.tweenTrack(fromBalls, toBalls, t).forEach((pos, bi) => {
+          BS.tweenTrack(fromBalls, toBalls, t, roPaths.balls).forEach((pos, bi) => {
             let ball = roBallMap[bi];
             if (!pos) { if (ball) ball.remove(); return; }
             if (!ball) {
@@ -12466,6 +12549,30 @@
           // saveState covers players and balls; cones have their own.
           if (kind === 'cones') saveCones(); else saveState();
           autoSaveFrame();
+        },
+
+        /**
+         * Store a bend or an apex on the CURRENT frame.
+         *
+         * A trajectory belongs to the frame it leads into, so it is
+         * written straight onto `frames[activeFrameIdx]` rather than
+         * into a scratch key — it is frame metadata, like `duration`,
+         * and captureFrameState carries it across for exactly that
+         * reason.
+         *
+         * Merged, not replaced: the bend handle and the diamond are
+         * two handles on ONE path, so setting a height must not throw
+         * away the curve the coach just drew.
+         */
+        applyPath: (kind, index, patch) => {
+          if (activeFrameIdx < 0 || activeFrameIdx >= frames.length) return;
+          pushUndo();
+          const f = frames[activeFrameIdx];
+          if (!f.paths) f.paths = {};
+          if (!f.paths[kind]) f.paths[kind] = {};
+          f.paths[kind][index] = Object.assign({}, f.paths[kind][index], patch);
+          saveFrames();
+          tb3dTouch();
         }
       });
     }
@@ -13374,8 +13481,15 @@
     function autoSaveFrame() {
       if (activeFrameIdx >= 0 && activeFrameIdx < frames.length && !framePlaying) {
         const existingDur = frames[activeFrameIdx].duration || 1000;
+        /* Trajectories are not derived from the DOM — they come from
+           dragging the curve handles — so a capture would wipe them.
+           Carried across exactly like duration, and for the same
+           reason: captureFrameState knows about the board, not about
+           the frame's own metadata. */
+        const existingPaths = frames[activeFrameIdx].paths;
         frames[activeFrameIdx] = captureFrameState();
         frames[activeFrameIdx].duration = existingDur;
+        if (existingPaths) frames[activeFrameIdx].paths = existingPaths;
         saveFrames();
       }
       tb3dTouch();
@@ -13540,7 +13654,8 @@
          removed the fourth branch this loop used to have: lerp-vs-snap
          is decided inside the tween, so here a slot is either at a
          position or it is not there at all. */
-      const trackTeam = BS.tweenTrack(fromPos, toPos, t);
+      const toPaths = to.paths || {};
+      const trackTeam = BS.tweenTrack(fromPos, toPos, t, toPaths.positions);
       tb3dTween('positions', trackTeam);
       trackTeam.forEach((pos, i) => {
         const circle = circleMap[i];
@@ -13583,7 +13698,7 @@
         oppMap[Number(c.dataset.idx)] = c;
       });
 
-      const trackOpp = BS.tweenTrack(fromOpp, toOpp, t);
+      const trackOpp = BS.tweenTrack(fromOpp, toOpp, t, toPaths.oppPositions);
       tb3dTween('oppPositions', trackOpp);
       trackOpp.forEach((pos, i) => {
         const circle = oppMap[i];
@@ -13623,7 +13738,7 @@
       const toBalls = to.balls || [];
       let ballMap = {};
       inner.querySelectorAll('.tb-ball').forEach(b => { ballMap[Number(b.dataset.idx || 0)] = b; });
-      const trackBalls = BS.tweenTrack(fromBalls, toBalls, t);
+      const trackBalls = BS.tweenTrack(fromBalls, toBalls, t, toPaths.balls);
       tb3dTween('balls', trackBalls);
       trackBalls.forEach((pos, bi) => {
         let ball = ballMap[bi];
