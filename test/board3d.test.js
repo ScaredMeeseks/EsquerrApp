@@ -572,7 +572,7 @@ describe('playback dressing', () => {
     /* It is the only cue to altitude from directly overhead, where
        the arc itself is edge-on and invisible. */
     const fn = s3.slice(s3.indexOf('function setBallShadow'), s3.indexOf('/* Player trails'));
-    assert.ok(/1 \+ height \* /.test(fn), 'radius must scale with height');
+    assert.ok(/height \* 0\.12/.test(fn), 'radius must still scale with height');
     assert.ok(/opacity = Math\.max\(/.test(fn), 'and fade as it grows');
     assert.ok(/if \(!\(height > 0\.05\)\)/.test(fn), 'hidden at rest');
   });
@@ -719,7 +719,11 @@ describe('flat markers, not half-buried balls', () => {
        overhead, and the previous one faded to near-invisible. */
     const fn = s3.slice(s3.indexOf('const ballShadow ='), s3.indexOf('function restBallMarker'));
     assert.ok(/RingGeometry/.test(fn), fn);
-    assert.ok(/Math\.max\(0\.35,/.test(fn), 'opacity floor must be visible');
+    /* Deliberately subtle now — it only has to say where the ball is
+       over the pitch, not compete with the ball. Still FLOORED, so it
+       cannot fade away to nothing the way the first version did. */
+    assert.ok(/Math\.max\(0\.2\d?,/.test(fn), 'opacity must still have a floor');
+    assert.ok(/RingGeometry\(0\.9/.test(fn), 'the ring must be thin');
   });
 
   it('shows for a lofted ball at REST, not only during playback', () => {
@@ -784,5 +788,99 @@ describe('the ball bend handle is constrained in 3D', () => {
     const mv = s3.slice(s3.indexOf('function onPointerMove'), s3.indexOf('function onPointerUp'));
     const dotBranch = mv.slice(mv.indexOf('} else {'), mv.indexOf('// Snap the handle'));
     assert.ok(!/constrainBend/.test(dotBranch), dotBranch);
+  });
+});
+
+describe('the shadow setup is sized against the scene', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+  const fn = s3.slice(s3.indexOf('function fitShadowCamera'), s3.indexOf('/* ── The pitch'));
+
+  it('fits the bounding SPHERE, not the longest side', () => {
+    /* The shadow camera looks down the light's axis, so what must fit
+       is the pitch as seen from the light — and a rectangle viewed
+       off-axis projects up to its full diagonal. */
+    assert.ok(/Math\.hypot\(e\.ax, e\.ay\)/.test(fn), fn);
+  });
+
+  it('scales the light distance with the pitch', () => {
+    // A fixed position pushed a large pitch's corners behind the light.
+    assert.ok(/key\.position\.copy\(LIGHT_DIR\)\.multiplyScalar\(dist\)/.test(fn), fn);
+  });
+
+  it('hugs near and far to the scene', () => {
+    /* bias is a fraction of the DEPTH RANGE, so a range six times
+       wider than the scene needs makes the bias six times as costly
+       in metres. */
+    assert.ok(/c\.near = Math\.max\(1, dist - radius/.test(fn), fn);
+    assert.ok(/c\.far = dist \+ radius/.test(fn), fn);
+    assert.ok(!/c\.far = 400/.test(fn), 'the fixed 400 far plane is the bug');
+  });
+
+  it('keeps the bias well under a player height', () => {
+    /* THE fault behind "shadows vanish when I orbit": at -0.0008 over
+       a 1..400 range the bias was 0.32 m, and a player disc is 0.35 m
+       tall — so its shadow was pushed through the turf entirely.
+       Invisible from overhead, where the shadow hides under the
+       player; gone the moment you orbit. */
+    const m = /key\.shadow\.bias = (-?[\d.]+)/.exec(fn);
+    assert.ok(m, 'bias not found');
+    const bias = Math.abs(parseFloat(m[1]));
+    // Worst case depth range across the allowed pitch sizes.
+    const BG = require('../js/board-geom.js');
+    const e = BG.extent([130, 90], 'full', false);
+    const radius = Math.hypot(e.ax, e.ay) / 2 * 1.15 + 12;
+    const range = (radius * 2.2 + radius + 20) - Math.max(1, radius * 2.2 - radius - 20);
+    const offsetMetres = bias * range;
+    assert.ok(offsetMetres < 0.35 * 0.4,
+        'bias is ' + offsetMetres.toFixed(3) + ' m against a 0.35 m player');
+  });
+});
+
+describe('the object drag carries its trajectory', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('re-points the curve end while the object moves', () => {
+    // The curve ends where the object is; leaving it until release is
+    // the same "snaps into place" complaint as the handles had.
+    assert.ok(/movePathEnd\(dragging\.kind, dragging\.index, g\)/.test(s3));
+    const fn = s3.slice(s3.indexOf('function movePathEnd'), s3.indexOf('function movePathEnd') + 700);
+    assert.ok(/e\.p1 = /.test(fn) && /updatePath\(e, e\.path\)/.test(fn), fn);
+  });
+
+  it('re-points the travelling dot too, which holds its own endpoints', () => {
+    const fn = s3.slice(s3.indexOf('function movePathEnd'), s3.indexOf('function movePathEnd') + 700);
+    assert.ok(/tr\.p1 = e\.p1/.test(fn), fn);
+  });
+});
+
+describe('the apex diamond reads as a solid', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('is the same size as a bend dot', () => {
+    assert.ok(/OctahedronGeometry\(0\.5\)/.test(s3));
+  });
+
+  it('has dark edges, because a flat-shaded solid in perspective is a hexagon', () => {
+    assert.ok(/EdgesGeometry\(diaGeo\)/.test(s3));
+    assert.ok(/flatShading: true/.test(s3), 'faces must separate');
+  });
+});
+
+describe('broadcast is centred', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('sits square on the touchline, with no off-axis offset', () => {
+    /* It carried -0.35, meant as "off the halfway line", which only
+       pushed the camera 34% off-axis in X. */
+    assert.ok(/broadcast: \{theta: -Math\.PI \/ 2, phi:/.test(s3),
+        'broadcast must not carry a theta offset');
   });
 });

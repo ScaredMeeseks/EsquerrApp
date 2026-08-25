@@ -4636,3 +4636,39 @@ rewrites the **existing** position buffers per pointermove — allocating a new 
 how a smooth drag becomes a stuttering one.
 
 Unit 1409 → **1434**.
+
+#### Shadow bias, subtler marker, live endpoints (v136)
+
+**Why shadows vanished when the camera moved, exactly.** `shadow.bias` is a fraction of the shadow
+camera's DEPTH RANGE, so what it costs in metres depends on near/far. At `-0.0008` over a `1..400`
+range it was **0.32 m of depth — and a player is a disc 0.35 m tall**. The bias pushed almost the
+whole shadow through the turf, leaving nothing to see. From directly overhead you cannot tell,
+because the shadow hides under the player casting it; orbit, and it is simply gone. Fixed at both
+ends: near/far now hug the scene (range ~208 instead of 399) and the bias halved, giving 0.08 m —
+under a quarter of a player's height.
+
+The frustum is also fitted to the pitch's **bounding sphere** rather than its longest side. The
+shadow camera looks down the light's axis, and a rectangle viewed off-axis projects up to its full
+diagonal; the old `max(ax, ay) * 0.75` happened to cover a 105×68 pitch but not by much, and not at
+130×90. The light's DISTANCE now scales with the pitch too — it was a fixed `(40, 70, 30)`, so a
+large pitch pushed its own corners behind the light.
+
+**Broadcast was off-centre by construction**: `theta: -Math.PI/2 - 0.35`. The offset was meant as
+"slightly off the halfway line" but it only pushes the camera 34% off-axis in X. Removed.
+
+**The ball ring is much subtler** — thin (0.93→1 radius), smaller, and quieter (0.45 falling to a
+0.22 floor). It still cannot fade to nothing, which was the original fault.
+
+**The apex diamond** is now the same size as a bend dot with dark edges and flat shading: a
+single-colour octahedron in perspective is just a hexagon, and the outline is what makes it read as
+a solid above the turf rather than another mark on it.
+
+**Dragging an object now carries its trajectory.** The curve ends where the object is, so leaving it
+until the release rebuild was the same "snaps into place" complaint the handles had. `movePathEnd()`
+re-points the curve and the travelling dot — which holds its own copy of the endpoints and would
+otherwise keep running to where the object used to be.
+
+Two of my own earlier tests pinned the numbers this round deliberately changed, and had to be
+relaxed to assert the property rather than the value.
+
+Unit 1434 → **1443**.

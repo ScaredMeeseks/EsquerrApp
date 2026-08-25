@@ -90,8 +90,12 @@ export function createBoard3D(opts) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x2a3a1a, 1.2));
+  /* The sun's DIRECTION is fixed; its distance is set from the pitch
+     size in fitShadowCamera(), so a big pitch does not push its own
+     corners behind the light. */
+  const LIGHT_DIR = new THREE.Vector3(0.5, 0.85, 0.38).normalize();
   const key = new THREE.DirectionalLight(0xffffff, 1.5);
-  key.position.set(40, 70, 30);
+  key.position.copy(LIGHT_DIR).multiplyScalar(120);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   scene.add(key);
@@ -103,16 +107,52 @@ export function createBoard3D(opts) {
      pitch is resizable, so this is refitted whenever it is rebuilt. */
   function fitShadowCamera() {
     const e = BG.extent(getPitch(), getBoardType(), false);
-    const r = Math.max(e.ax, e.ay) * 0.75;
+
+    /* Fit the BOUNDING SPHERE, not the pitch's width.
+
+       The shadow camera looks down the light's axis, so what has to
+       fit inside its frustum is the pitch as seen FROM THE LIGHT —
+       and a rectangle viewed off-axis projects up to its full
+       diagonal, not its longest side. Sizing against `max(ax, ay)`
+       covered the middle of the board and clipped the corners, which
+       is invisible from directly overhead and obvious the moment you
+       orbit. Plus headroom, because a lofted ball and the goal frames
+       stand above the turf and cast from there. */
+    const radius = Math.hypot(e.ax, e.ay) / 2 * 1.15 + 12;
+
+    /* The light DISTANCE scales with the pitch too. It was a fixed
+       (40, 70, 30) regardless of pitch size, so a large pitch pushed
+       geometry behind the light and a small one wasted the whole
+       depth range. */
+    const dist = radius * 2.2;
+    key.position.copy(LIGHT_DIR).multiplyScalar(dist);
+    key.target.position.set(0, 0, 0);
+    key.target.updateMatrixWorld();
+
     const c = key.shadow.camera;
-    c.left = -r; c.right = r; c.top = r; c.bottom = -r;
-    c.near = 1; c.far = 400;
+    c.left = -radius; c.right = radius; c.top = radius; c.bottom = -radius;
+    /* Near and far hug the scene. They were 1 and 400 over a scene
+       about 60 deep — spreading the depth buffer over six times the
+       range it needed, which is what forced the large bias below. */
+    c.near = Math.max(1, dist - radius - 20);
+    c.far = dist + radius + 20;
     c.updateProjectionMatrix();
-    /* Bias tuned against the map size and frustum: too little and the
-       turf shadow-acnes itself in stripes, too much and shadows
-       detach from the feet of what casts them. */
-    key.shadow.bias = -0.0008;
-    key.shadow.normalBias = 0.04;
+
+    /* THIS is what made shadows vanish when you orbited.
+
+       `bias` is a fraction of the shadow camera's DEPTH RANGE, so its
+       real cost depends on near/far. At the old -0.0008 over a 1..400
+       range it was 0.32 m of depth — and a player is a disc 0.35 m
+       tall. The bias pushed almost the whole player's shadow through
+       the turf, so there was nothing left to see. From directly
+       overhead you cannot tell, because the shadow hides under the
+       player that casts it; the moment you orbit, it is simply gone.
+
+       Tight near/far plus half the bias is 0.08 m — under a quarter
+       of a player's height — which leaves the shadow on the grass
+       while still clearing the acne. */
+    key.shadow.bias = -0.0004;
+    key.shadow.normalBias = 0.02;
   }
 
   /* ── The pitch ───────────────────────────────────────────────
@@ -607,10 +647,22 @@ export function createBoard3D(opts) {
       if (active === 'bend') objects.push({mesh: bend, kind: 'pathBend', index, owner: kind});
 
       const apexY = Math.max(BS.pathHeight(path, 0.5), 1.5);
+      /* Same size as a bend dot, so the two handles read as a pair.
+         Flat shading plus dark EDGES: a single-colour octahedron in
+         perspective is just a hexagon, and its faces are impossible
+         to separate — the outline is what makes it read as a solid
+         sitting above the turf rather than another mark on it. */
+      const diaGeo = new THREE.OctahedronGeometry(0.5);
       const dia = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.7),
-          new THREE.MeshBasicMaterial({
-            color: 0x66d9ff, transparent: true, opacity: active === 'apex' ? 1 : 0.25}));
+          diaGeo,
+          new THREE.MeshLambertMaterial({
+            color: 0x66d9ff, flatShading: true,
+            transparent: true, opacity: active === 'apex' ? 1 : 0.25}));
+      dia.add(new THREE.LineSegments(
+          new THREE.EdgesGeometry(diaGeo),
+          new THREE.LineBasicMaterial({
+            color: 0x0b3d4d, transparent: true,
+            opacity: active === 'apex' ? 0.9 : 0.25})));
       entry.apexMesh = dia;
       dia.position.set(mid.x, apexY, mid.z);
       objectRoot.add(dia);
@@ -756,9 +808,9 @@ export function createBoard3D(opts) {
      invisible in practice. This one is white, holds its opacity, and
      grows enough to be found. */
   const ballShadow = new THREE.Mesh(
-      new THREE.RingGeometry(0.8, 1, 32),
+      new THREE.RingGeometry(0.93, 1, 40),
       new THREE.MeshBasicMaterial({
-        color: 0xffffff, transparent: true, opacity: 0.75,
+        color: 0xffffff, transparent: true, opacity: 0.4,
         depthWrite: false, side: THREE.DoubleSide}));
   ballShadow.rotation.x = -Math.PI / 2;
   ballShadow.position.y = 0.05;
@@ -769,9 +821,11 @@ export function createBoard3D(opts) {
     if (!(height > 0.05)) { ballShadow.visible = false; invalidate(); return; }
     /* Grows with height — the cue that reads from directly overhead,
        the one angle where the arc itself is edge-on and invisible. */
-    const r = 1.1 + height * 0.22;
+    /* A hairline ring, not a target. It only has to say where the
+       ball is over the pitch, not compete with the ball itself. */
+    const r = 0.7 + height * 0.12;
     ballShadow.scale.set(r, r, 1);
-    ballShadow.material.opacity = Math.max(0.35, 0.8 - height * 0.012);
+    ballShadow.material.opacity = Math.max(0.22, 0.45 - height * 0.008);
     ballShadow.position.set(x, 0.05, z);
     ballShadow.visible = true;
     invalidate();
@@ -890,7 +944,10 @@ export function createBoard3D(opts) {
      pitch to the current viewport — a hardcoded distance would crop
      the pitch on a narrow window. */
   const PRESETS = {
-    broadcast: {theta: -Math.PI / 2 - 0.35, phi: 1.0},
+    /* Dead on the touchline. This carried a -0.35 offset, meant as
+       "slightly off the halfway line", which only pushed the camera
+       34% off-axis in X and left the pitch visibly off-centre. */
+    broadcast: {theta: -Math.PI / 2, phi: 1.0},
     top:       {theta: -Math.PI / 2, phi: 0.001},
     goal:      {theta: Math.PI, phi: 1.32},
     side:      {theta: -Math.PI / 2, phi: 1.38}
@@ -1154,6 +1211,26 @@ export function createBoard3D(opts) {
 
     const y = dragging.mesh.position.y;
     dragging.mesh.position.set(g.x, y, g.z);
+
+    /* Dragging the OBJECT drags the end of its trajectory with it.
+       The curve ends where the object is, so leaving it behind until
+       the release rebuild is the same complaint as the handles: the
+       line snaps into place instead of following. */
+    movePathEnd(dragging.kind, dragging.index, g);
+  }
+
+  /** Re-point a trajectory's end at a dragged object, and redraw it. */
+  function movePathEnd(kind, index, world) {
+    const e = findPath(kind, index);
+    if (!e) return;
+    const pct = BG.toPercent(world.x, world.z, getPitch(), getBoardType());
+    e.p1 = [BS.round2(pct[0]), BS.round2(pct[1])];
+    /* The traveller holds its own copy of the endpoints, so it has to
+       be re-pointed too or the dot keeps running to where the object
+       used to be. */
+    const tr = travellers.find((x) => x.mesh === e.traveller);
+    if (tr) tr.p1 = e.p1;
+    updatePath(e, e.path);
   }
 
   function onPointerUp(ev) {
