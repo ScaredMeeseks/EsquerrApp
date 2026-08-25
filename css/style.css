@@ -4785,13 +4785,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-m-top { display:flex; align-items:center; gap:.5rem; }
 .tb-m-name .tb-board-name {
   margin:0; width:clamp(140px, 22vw, 280px);
-  background:rgba(18,20,23,.72); color:#e8eaed;
-  border:0; border-radius:10px; padding:.5rem .7rem;
-  backdrop-filter:blur(6px); font-size:.82rem;
+  /* No ground of its own — it reads as a title on the pitch, not as
+     another control beside the hamburger. */
+  background:transparent; color:#e8eaed;
+  border:0; border-radius:10px; padding:.5rem .4rem;
+  text-align:left; font-size:.9rem; font-weight:700;
 }
 .tb-m-name .tb-board-name::placeholder { color:#7d8288; }
 .tb-m-name .tb-board-name:focus {
-  outline:none; background:rgba(18,20,23,.94); color:#fff;
+  outline:none; background:rgba(18,20,23,.72); color:#fff;
 }
 
 .tb-m-rail {
@@ -4874,7 +4876,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    fixture in the window, and at full strength a column of tiles
    competes with the pitch for attention all the time. */
 .tb-rail {
-  position:absolute; top:50%; right:.75rem; transform:translateY(-50%);
+  position:absolute; right:.75rem;
+  /* Nudged below centre: the camera list opens down this same edge
+     and the two were meeting. Still reads as centred, with room. */
+  top:calc(50% + 1.75rem); transform:translateY(-50%);
   z-index:5; opacity:.35; transition:opacity .18s ease;
 }
 .tb-rail:hover, .tb-rail:focus-within { opacity:1; }
@@ -4889,16 +4894,26 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    horizontal strip; only the copy inside the window is turned. */
 .tb-rail .tb-frames-strip {
   flex-direction:column; align-items:center; gap:.3rem; padding:0;
-  max-height:min(52vh, 420px); overflow-y:auto; overflow-x:hidden;
+  max-height:min(46vh, 360px); overflow-y:auto; overflow-x:hidden;
+  /* The scrollbar is HIDDEN, not the overflow. A visible bar reserves
+     width on the right, which pushed every tile a scrollbar's width
+     left of the rail's edge while the camera button stayed flush
+     against it — that was the axis being off. */
+  scrollbar-width:none; -ms-overflow-style:none;
 }
+.tb-rail .tb-frames-strip::-webkit-scrollbar { width:0; height:0; }
+/* The header holds only play once the title is hidden — the tiles
+   already say what the column is. */
 .tb-rail .tb-frames-header {
-  flex-direction:column; gap:.35rem; margin:0 0 .4rem;
+  flex-direction:column; align-items:center; gap:.35rem; margin:.4rem 0 0;
 }
-.tb-rail .tb-frames-title { display:none; }   /* the tiles say what it is */
+.tb-rail .tb-frames-title { display:none; }
 .tb-rail .tb-frame-gap { margin:0; }
-.tb-rail .tb-frame-dur { width:44px; text-align:center; }
-.tb-rail .tb-frames-title, .tb-rail .tb-frame-dur { color:#c9ccd1; }
 .tb-rail .tb-frame-dur {
+  /* A tile's width exactly. At 44px the column was wider than the
+     38px tiles, so the tiles centred inside it and sat off the axis
+     the camera icon defines. */
+  width:38px; padding:3px 2px; text-align:center;
   background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:#fff;
 }
 
@@ -4966,4 +4981,3 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   backdrop-filter:blur(6px);
 }
 .tb-rail .tb-frame-play:hover { background:rgba(18,20,23,.94); color:#fff; }
-.tb-rail .tb-frames-header { align-items:center; margin:.4rem 0 0; }

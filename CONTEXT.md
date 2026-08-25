@@ -5582,3 +5582,26 @@ Two rules for `.tb-rail .tb-frames-section` had accumulated — the second silen
 the test that found it was looking up the FIRST match by selector.
 
 Unit 1697 → **1702**. Version triple → v152. **Still nothing deployed.**
+
+### 2026-08-26 — The axis was a scrollbar (v153)
+
+**Matching the widths was not enough, and the reason is worth writing down.** Every rail control was
+already 38px, the same as the camera button — but `.tb-rail .tb-frames-strip` carries
+`overflow-y:auto`, and a visible scrollbar **reserves width on the right**. Every tile therefore sat a
+scrollbar's width inside the rail's edge while the camera button above stayed flush against it. The
+scrollbar is hidden now (`scrollbar-width:none` plus the WebKit pseudo-element); the scrolling is not.
+
+Second contributor: the duration input was 44px in a column of 38px tiles, so the column was wider than
+its own contents and the tiles centred inside it. Now 38px, like everything else.
+
+Also: the rail sits at `calc(50% + 1.75rem)` rather than dead centre, because the camera list opens
+downward along the same edge and the two were meeting; the board name lost its background and reads
+from the left — `.tb-board-name` centres itself for the 2D page, which is wrong for a title on a pitch.
+
+**Three selectors had grown a second rule** while this was built in pieces — `.tb-frames-section`,
+`.tb-frames-header` and `.tb-frames-title` — each time with the later one silently winning, and one pair
+disagreeing about a margin. All merged, and there is now a test that fails if any `.tb-rail`, `.tb-cams`
+or `.tb-m` selector is written twice. A duplicate is not a style bug by itself; it is what makes the
+next style bug unreadable.
+
+Unit 1702 → **1707**. Version triple → v153. **Still nothing deployed.**

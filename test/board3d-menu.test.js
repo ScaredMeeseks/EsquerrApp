@@ -396,3 +396,60 @@ describe('the rail and the camera share one vertical axis', () => {
         'the section must be reversed so the header lands underneath');
   });
 });
+
+describe('the rail sits on the axis, and the CSS says each thing once', () => {
+  const rule = (sel) => {
+    const i = css.indexOf(sel + ' {');
+    assert.ok(i !== -1, sel + ' not found');
+    return css.slice(i, css.indexOf('}', i));
+  };
+
+  it('nothing reserves scrollbar width on the rail edge', () => {
+    /* THE misalignment. `overflow-y:auto` draws a scrollbar on the
+       RIGHT, and its width pushed every tile inward while the camera
+       button above stayed flush against the same edge. Hiding the bar
+       keeps the scrolling and returns the width. */
+    const strip = rule('.tb-rail .tb-frames-strip');
+    assert.ok(/overflow-y:auto/.test(strip), 'a long animation must still scroll');
+    assert.ok(/scrollbar-width:none/.test(strip),
+        'but the bar must not take width off the aligned edge');
+    assert.ok(/\.tb-rail \.tb-frames-strip::-webkit-scrollbar/.test(css),
+        'and the same for WebKit, which ignores scrollbar-width');
+  });
+
+  it('the duration input is exactly a tile wide', () => {
+    /* At 44px against 38px tiles the column was wider than its own
+       contents, so the tiles centred inside it and sat off the axis. */
+    const dur = /width:(\d+)px/.exec(rule('.tb-rail .tb-frame-dur'))[1];
+    const tile = /width:(\d+)px/.exec(rule('.tb-rail .tb-frame-thumb'))[1];
+    assert.strictEqual(dur, tile,
+        'the duration is ' + dur + 'px in a column of ' + tile + 'px tiles');
+  });
+
+  it('the rail clears the camera list, which opens down the same edge', () => {
+    assert.ok(/top:calc\(50% \+ [\d.]+rem\)/.test(rule('.tb-rail')),
+        'the rail must sit below centre, or the two meet');
+  });
+
+  it('the board name is a title, not another control', () => {
+    const name = rule('.tb-m-name .tb-board-name');
+    assert.ok(/background:transparent/.test(name),
+        'it must have no ground of its own');
+    assert.ok(/text-align:left/.test(name),
+        'and read from the left — .tb-board-name centres it for the 2D page');
+  });
+
+  it('every new selector is written exactly once', () => {
+    /* Three selectors had accumulated a second rule while this was
+       built in pieces, each time with the later one silently winning
+       — and one of those pairs disagreed about a margin. A duplicate
+       is not a style bug on its own; it is the thing that makes the
+       next style bug impossible to read. */
+    const sels = (css.match(/^\.tb-(rail|cams|m)[^{]*\{/gm) || [])
+        .map((x) => x.slice(0, -1).trim());
+    const seen = {};
+    const dup = sels.filter((x) => (seen[x] ? true : (seen[x] = 1, false)));
+    assert.deepStrictEqual([...new Set(dup)], [],
+        'these selectors are written twice: ' + [...new Set(dup)].join(', '));
+  });
+});
