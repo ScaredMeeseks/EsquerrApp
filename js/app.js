@@ -668,6 +668,9 @@
     /* ── The 3D menu ──────────────────────────────────────────── */
     'tactics.menu':          { ca:'Menú', es:'Menú', en:'Menu' },
     'tactics.cameras':       { ca:'Càmeres', es:'Cámaras', en:'Cameras' },
+    'tactics.open':          { ca:'Obre', es:'Abrir', en:'Open' },
+    'tactics.save':          { ca:'Desa', es:'Guardar', en:'Save' },
+    'tactics.link':          { ca:'Vincula', es:'Vincular', en:'Link' },
     'tactics.new_board':     { ca:'Pissarra nova', es:'Pizarra nueva', en:'New board' },
     'tactics.view_2d':       { ca:'Vista 2D', es:'Vista 2D', en:'2D view' },
     'tactics.field':         { ca:'Camp', es:'Campo', en:'Field' },
@@ -1575,7 +1578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 157;
+  const APP_VERSION = 158;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6715,6 +6718,18 @@
       pen: '<path d="M12 19l7-7 3 3-7 7-3-3z"/>' +
            '<path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/>' +
            '<circle cx="11" cy="11" r="2"/>',
+      /* A floppy: still the only picture everyone reads as "save". */
+      save: '<path d="M5 3h11l3 3v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>' +
+            '<path d="M8 3v6h7V3"/><rect x="8" y="14" width="8" height="7" rx="1"/>',
+      /* A chain link: attach this board to a match or a session. */
+      link: '<path d="M10 13a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.3 6"/>' +
+            '<path d="M14 11a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7L12.7 18"/>',
+      /* An opening folder, rather than a second sheet of paper — the
+         squad entry already uses a page and two pages would read as
+         the same thing twice. */
+      open: '<path d="M3 7a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v2"/>' +
+            '<path d="M3 7v11a1 1 0 0 0 1 1h14.5a1 1 0 0 0 1-.7l2.2-7a1 1 0 0 0-1-1.3H7.5' +
+            'a1 1 0 0 0-1 .7L3 18"/>',
       burger: '<path d="M4 7h16M4 12h16M4 17h16"/>'
     };
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -6740,7 +6755,12 @@
         '<span class="tb-m-name" id="tb-menu-name"></span>' +
       '</div>' +
       '<div class="tb-m-rail" id="tb-menu-rail">' +
+        /* The FILE actions first, together: what you do to the board
+           as a thing, before the tools that change what is on it. */
         entry('new', tbIcon('new'), t('tactics.new_board'), false) +
+        entry('open', tbIcon('open'), t('tactics.open'), true) +
+        entry('save', tbIcon('save'), t('tactics.save'), true) +
+        entry('link', tbIcon('link'), t('tactics.link'), true) +
         /* Not an icon: the whole point of this control is the two
            words, and a picture of "2D/3D" is just the words drawn
            badly. */
@@ -6950,6 +6970,39 @@
         t('tactics.pen'));
     adopt('draw', ['#tb-text-tool', '#tb-text-color', '#tb-text-opacity',
       '.tb-size-label-sm', '#tb-text-size', '.tb-size-label-lg'], t('tactics.text'));
+
+    /* Save. `#tb-save` is CONDITIONALLY rendered — on a board that is
+       not this coach's, tbSaveButtonsHtml emits only Save As plus a
+       note saying why. adopt() skips ids it cannot find, so the note
+       has to be in the list too: without it Save is simply absent and
+       nothing explains the absence. */
+    adopt('save', ['#tb-save', '#tb-save-as', '.tb-readonly-note']);
+
+    /* Link. BOTH sections carry the class `.tb-match-section` — match
+       and training — so a querySelector would take the first and
+       leave training stranded below the window. That is exactly the
+       `.tb-pen-dash-label` bug, where one class served two elements
+       and the second silently lost its control. Indexed instead. */
+    const linkPanel = document.getElementById('tb-panel-link');
+    if (linkPanel) {
+      document.querySelectorAll('.tb-match-section')
+          .forEach((sec) => linkPanel.appendChild(sec));
+    }
+
+    /* Open: the whole library, floated. Adopted rather than rebuilt
+       like everything else, so bindTacticsSavedList's handlers — and
+       the search box, which re-renders the list by id — keep working
+       from their new home. */
+    const openPanel = document.getElementById('tb-panel-open');
+    if (openPanel) {
+      ['.tb-saved-title:not(.tb-lib-title)', '#tb-saved-list', '.tb-lib-title',
+       '#tb-lib-search', '#tb-lib-list'].forEach((sel) => {
+        const el = sel[0] === '#'
+          ? document.getElementById(sel.slice(1))
+          : document.querySelector(sel);
+        if (el) openPanel.appendChild(el);
+      });
+    }
 
     tbMenuSquad(hooks || {});
 

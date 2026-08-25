@@ -5710,3 +5710,40 @@ The overhang test now checks the honest invariant — **overhang ≤ pad, per si
 overhang" (v156, wrong design) or a clearance sum from the axis (v155, wrong geometry).
 
 Unit 1712 → **1713**. Version triple → v157. **Still nothing deployed.**
+
+### 2026-08-26 — The hamburger takes over the file actions (v158)
+
+Save, Save As, Add to Match, Add to Training and the whole board library move into the menu, so in 3D
+the window holds everything and the page below it is empty. Entry order groups the **file** actions
+first — new, open, save, link — then the view toggle, then the tools that change what is on the board.
+
+**Two traps the markup sets, both versions of one already paid for:**
+
+- **`#tb-save` is conditionally rendered.** On a board that is not this coach's, `tbSaveButtonsHtml()`
+  emits only Save As plus a `.tb-readonly-note` saying why. `adopt()` silently skips ids it cannot
+  find, so leaving the note behind would have removed Save *and* the explanation — a panel simply
+  missing a button. The note is adopted with it.
+- **Match and training share the class `.tb-match-section`.** A `querySelector` takes the first and
+  strands training below the window: the `.tb-pen-dash-label` bug exactly, where one class served two
+  elements and the second lost its control without a sound. `querySelectorAll`, and a test that counts
+  **two** sections in the render so the assertion cannot pass on a page that only has one.
+- Third of the same shape, caught while writing it: the library heading carries **both**
+  `.tb-saved-title` and `.tb-lib-title`, so the favourites pick is `:not(.tb-lib-title)` rather than
+  relying on which comes first.
+
+**The library is held open by hover** — the owner's call over a click-modal — and it works because the
+panel is a **DOM child** of its entry: `pointerleave` answers to DOM containment, not screen position,
+so the search field, the lists and the panel's own scrollbar all count as inside. It is the largest
+hover-held surface in the app; if it proves fiddly the fallback is a click-modal, one CSS rule and one
+listener.
+
+**The delete cross is drawn, not typed.** A `✕` character centred with flexbox is centred by its LINE
+BOX, not its ink, and that glyph does not sit centred in its own line box — which is what "not centred
+in the red dot" was. Two bars pinned to the middle and rotated ±45° involve no font metrics at all.
+
+The duplicate-selector guard is widened from `.tb-rail`/`.tb-cams`/`.tb-m` to **every `tb-` selector in
+the stylesheet**, and immediately found a second `.tb-3d-wrap` rule holding the size tokens while the
+first held the geometry. Nothing conflicted, but "where is this element styled" had two answers.
+Merged.
+
+Unit 1713 → **1720**. Version triple → v158. **Still nothing deployed.**

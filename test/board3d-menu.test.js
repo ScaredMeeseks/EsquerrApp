@@ -51,10 +51,13 @@ describe('the 3D menu — what it offers', () => {
   const html = fn('tbMenuHtml()');
 
   it('has the six entries, in the order they were asked for', () => {
+    /* The FILE actions group at the top — what you do to the board as
+       a thing — then the view toggle, then the tools that change what
+       is on it. */
     const order = (html.match(/entry\('(\w+)'/g) || []).map((m) => m.slice(7, -1));
     assert.deepStrictEqual(order,
-        ['new', 'view', 'gear', 'squad', 'props', 'draw'],
-        'New Board is first; the rest follow the hamburger design');
+        ['new', 'open', 'save', 'link', 'view', 'gear', 'squad', 'props', 'draw'],
+        'file actions first, then the view, then the drawing tools');
   });
 
   it('only the four that hold something get a panel', () => {
@@ -575,5 +578,95 @@ describe('three small faults from the first pass', () => {
         'and coming back must cancel it');
     assert.ok(/clearTimeout\(leaveTimer\)/.test(init.slice(init.indexOf('MutationObserver'))),
         'the timer must be cleared on teardown, or it fires into a dead menu');
+  });
+});
+
+describe('the file actions moved into the menu', () => {
+  const init = fn('tbMenuInit(hooks)');
+  const rule = (sel) => {
+    const i = css.indexOf(sel + ' {');
+    assert.ok(i !== -1, sel + ' not found');
+    return css.slice(i, css.indexOf('}', i));
+  };
+
+  it('the read-only note travels with Save As', () => {
+    /* #tb-save is CONDITIONALLY rendered — on a board that is not
+       this coach's, tbSaveButtonsHtml emits only Save As plus a note
+       saying why. adopt() skips ids it cannot find, so leaving the
+       note behind would remove Save and remove the explanation with
+       it: the panel would just be missing a button. */
+    const save = /adopt\('save', \[([^\]]*)\]/.exec(init);
+    assert.ok(save, 'the save panel adopts nothing');
+    ['#tb-save', '#tb-save-as', '.tb-readonly-note'].forEach((s) =>
+      assert.ok(save[1].indexOf(s) !== -1, s + ' must be adopted'));
+    assert.ok(app.indexOf('tb-readonly-note') !== -1,
+        'and the note must actually be rendered somewhere');
+  });
+
+  it('BOTH link sections are adopted, not just the first', () => {
+    /* Match and training share the class `.tb-match-section`. A
+       querySelector would take the first and strand training below
+       the window — the `.tb-pen-dash-label` bug again, where one
+       class served two elements and the second lost its control
+       silently. */
+    assert.ok(/querySelectorAll\('\.tb-match-section'\)[\s\S]{0,90}appendChild\(sec\)/
+        .test(init), 'the link panel must adopt every matching section');
+    assert.ok(!/querySelector\('\.tb-match-section'\)/.test(init),
+        'a single querySelector would take only the match section');
+    const count = (app.match(/class="tb-match-section"/g) || []).length;
+    assert.strictEqual(count, 2,
+        'expected a match and a training section; found ' + count);
+  });
+
+  it('the library title is picked unambiguously', () => {
+    /* The library heading carries BOTH .tb-saved-title and
+       .tb-lib-title, so a bare .tb-saved-title matches it as well as
+       the favourites heading. Relying on which comes first is the
+       same trap one function above. */
+    assert.ok(/'\.tb-saved-title:not\(\.tb-lib-title\)'/.test(init),
+        'the favourites heading must exclude the library one');
+  });
+
+  it('every part of the library is adopted, so none is left behind', () => {
+    ['#tb-saved-list', '.tb-lib-title', '#tb-lib-search', '#tb-lib-list']
+        .forEach((s) => assert.ok(init.indexOf(s) !== -1, s + ' must be adopted'));
+  });
+
+  it('the library panel is sized and scrolls', () => {
+    /* It is the largest hover-held surface in the app; unbounded it
+       would run off the window. */
+    const r = rule('#tb-panel-open');
+    assert.ok(/max-height:/.test(r) && /overflow-y:auto/.test(r),
+        'the library must be bounded and scrollable');
+  });
+
+  it('the delete cross is drawn, not typed', () => {
+    /* A `✕` character centred with flexbox is centred by its LINE
+       BOX, not its ink, and that glyph does not sit centred in its
+       own line box. Two rotated bars pinned to the middle have no
+       font metrics involved. */
+    const del = rule('.tb-rail .tb-frame-del');
+    assert.ok(/font-size:0/.test(del), 'the glyph must be dropped');
+    assert.ok(/\.tb-rail \.tb-frame-del::before/.test(css) &&
+              /\.tb-rail \.tb-frame-del::after/.test(css),
+        'and the cross drawn from two bars');
+    const bar = css.slice(css.indexOf('.tb-rail .tb-frame-del::before,'));
+    assert.ok(/left:50%; top:50%/.test(bar), 'each bar starts at the centre');
+    assert.ok(/margin:-0\.75px 0 0 -3\.5px/.test(bar),
+        'and is pulled back by half its own size on both axes');
+  });
+
+  it('no tb- selector in the stylesheet is written twice', () => {
+    /* Widened from the .tb-rail/.tb-cams/.tb-m guard: the same habit
+       had produced a second .tb-3d-wrap rule holding the size tokens
+       while the first held the geometry. Nothing conflicted, but a
+       reader looking for "where is this element styled" had two
+       answers. */
+    const sels = (css.match(/^[#.]tb-[^{]*\{/gm) || [])
+        .map((x) => x.slice(0, -1).trim());
+    const seen = {};
+    const dup = sels.filter((x) => (seen[x] ? true : (seen[x] = 1, false)));
+    assert.deepStrictEqual([...new Set(dup)], [],
+        'written twice: ' + [...new Set(dup)].join(', '));
   });
 });
