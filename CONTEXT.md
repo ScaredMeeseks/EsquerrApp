@@ -4862,3 +4862,25 @@ test now reads the real `TB_THEMES` object instead of pattern-matching the sourc
 `node test/make-pitch-preview.js dark`.
 
 Unit 1480 → **1493**.
+
+#### Light: dark surround, and the spots the palette missed (v136)
+
+**The light look keeps a dark background.** `light.sky` was near-white, which floated a pale pitch
+on a pale scene and lost its own edges. Now the same near-black as the dark look — a light PITCH,
+not a light scene: the pitch is the subject and the sky is the frame around it.
+
+**The centre and penalty spots were still white in 3D.** They are the only markings that are
+FILLED rather than stroked, and the theming pass replaced `strokeStyle` and missed the `fillStyle`
+literal inside `dot()` — so on the light pitch they were white on near-white. The 2D board was
+already correct: its spots are styled through `--tb-line-rgb`. A test now asserts the texture
+painter has **no colour literals at all**, which is the general form of the mistake rather than the
+one instance.
+
+Contrast across the three, line against turf: green 0.64, dark 0.91, light 0.62 — all comfortably
+legible, and there is a test that no palette can be added with the two tones close together.
+
+**Fifth false failure in this suite from a fixed-character-window slice** — adding the explanatory
+comment pushed the assertion out of a 400-char window and it reported the code as missing. That one
+is now bounded by the function's own end, like the others.
+
+Unit 1493 → **1496**.

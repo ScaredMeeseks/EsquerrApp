@@ -231,7 +231,12 @@ export function createBoard3D(opts) {
       if (!s) return;
       g.beginPath();
       g.ellipse(s.cx * sx, s.cy * sy, 0.2 * sx, 0.2 * sy, 0, 0, Math.PI * 2);
-      g.fillStyle = '#ffffff'; g.fill();
+      /* The line colour, not a white literal. These three — the centre
+         spot and the two penalty spots — are FILLED rather than
+         stroked, so they were the one marking the palette missed:
+         white dots on a near-white pitch. */
+      g.fillStyle = hex(th.line);
+      g.fill();
     };
 
     // Perimeter — the touchlines and goal lines, inset by half a

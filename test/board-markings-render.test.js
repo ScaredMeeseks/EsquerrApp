@@ -359,3 +359,39 @@ describe('marking definition', () => {
     assert.ok(after > before * 1.8, after.toFixed(1) + ' px/m vs ' + before);
   });
 });
+
+describe('nothing in a palette is a white literal', () => {
+  const s3 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+
+  it('the 3D spots take the line colour, not #ffffff', () => {
+    /* The centre spot and the two penalty spots are FILLED rather
+       than stroked, so they were the one marking the palette missed:
+       white dots on a near-white pitch. */
+    /* Bounded by the function's own end, not a character count — a
+       fixed window stops covering the tail the moment a comment is
+       added, and then reports the tail as missing. That has now cost
+       four separate false failures in this suite. */
+    const from = s3.indexOf('const dot = (s) => {');
+    const fn = s3.slice(from, s3.indexOf('\n    };', from));
+    assert.ok(/fillStyle = hex\(th\.line\)/.test(fn), fn);
+    assert.ok(!/fillStyle = '#ffffff'/.test(fn), 'a white literal is invisible on light');
+  });
+
+  it('the texture painter has no colour literals left at all', () => {
+    const fn = s3.slice(s3.indexOf('function markingsTexture'),
+        s3.indexOf('function buildPitch'));
+    const literals = (fn.match(/'#[0-9a-fA-F]{3,6}'/g) || []);
+    assert.deepStrictEqual(literals, [],
+        'hardcoded colours survive in the texture: ' + literals.join(', '));
+  });
+
+  it('the LIGHT pitch sits on a dark surround', () => {
+    /* Deliberate: the pitch is the subject and the sky is the frame.
+       A pale pitch on a pale background loses its own edges. */
+    const T = api.TB_THEMES;
+    const lum2 = (n) => (((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 +
+        (n & 255) * 0.114) / 255;
+    assert.ok(lum2(T.light.sky) < 0.2, 'the light look should keep a dark background');
+    assert.ok(lum2(T.light.turf) > 0.75, 'but the pitch itself stays light');
+  });
+});

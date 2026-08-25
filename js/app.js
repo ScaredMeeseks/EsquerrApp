@@ -6318,7 +6318,11 @@
   const TB_THEMES = {
     green: {turf: 0x2e7d32, stripe: 0x27682b, line: 0xffffff, sky: 0x1a2410, lineAlpha: 0.95},
     dark:  {turf: 0x14171a, stripe: 0x1b1f23, line: 0xffffff, sky: 0x0a0c0e, lineAlpha: 0.92},
-    light: {turf: 0xeceee9, stripe: 0xe3e6e0, line: 0x4a5157, sky: 0xf5f6f3, lineAlpha: 0.95}
+    /* A light PITCH on a dark surround, deliberately — not a light
+       scene. The pitch is the subject and the sky is the frame around
+       it, and a pale pitch floating on a pale background loses its own
+       edges. Same sky as the dark look. */
+    light: {turf: 0xeceee9, stripe: 0xe3e6e0, line: 0x4a5157, sky: 0x0a0c0e, lineAlpha: 0.95}
   };
 
   /** The chosen look. A per-DEVICE preference, never part of a board. */
