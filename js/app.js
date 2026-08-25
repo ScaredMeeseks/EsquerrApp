@@ -10768,7 +10768,11 @@
 
     function spawnOppCircles() {
       inner.querySelectorAll('.tb-circle-opp').forEach(c => c.remove());
-      const f = localStorage.getItem('fa_tactic_formation');
+      /* Their shape if they have one, ours mirrored if they do not.
+         The fallback is what keeps every board saved before this
+         version rendering exactly as it did. */
+      const f = localStorage.getItem('fa_tactic_opp_formation') ||
+                localStorage.getItem('fa_tactic_formation');
       if (!f || !formations[f]) return;
       const mirrored = formations[f].map(([l,t]) => [100 - l, t]);
       const adapted = adaptFormation(mirrored);
@@ -14764,6 +14768,10 @@
       delete board.duration; // frame-local; the board has no such field
     }
     localStorage.setItem('fa_tactic_formation', board.formation || '');
+    /* '' on a board saved before opponents had a shape of their own.
+       spawnOppCircles reads that as 'mirror ours', which is exactly
+       what those boards used to do. */
+    localStorage.setItem('fa_tactic_opp_formation', board.oppFormation || '');
     localStorage.setItem('fa_tactic_positions', JSON.stringify(board.positions));
     localStorage.setItem('fa_tactic_numbers', JSON.stringify(board.numbers));
     localStorage.setItem('fa_tactic_name', board.name || '');
@@ -14847,7 +14855,8 @@
       'fa_tactic_arrows', 'fa_tactic_rects', 'fa_tactic_texts',
       'fa_tactic_pen_lines', 'fa_tactic_frames', 'fa_tactic_frame_idx',
       'fa_tactic_tag', 'fa_tactic_silhouette', 'fa_tactic_cones',
-      'fa_tactic_pen_space', 'fa_tactic_pitch'
+      'fa_tactic_pen_space', 'fa_tactic_pitch',
+      'fa_tactic_opp_formation'
     ].forEach(function (k) { localStorage.removeItem(k); });
     /* A blank board has no legacy strokes to preserve, so it starts
        normalised. Leaving it cleared would make the first stroke drawn on a

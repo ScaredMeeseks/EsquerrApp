@@ -110,6 +110,24 @@
        which is what keeps the penalty area the same size on a 40 m pitch as
        on a 105 m one. */
     e.pitch = JSON.parse(store.getItem('fa_tactic_pitch') || 'null');
+    /* The OPPONENT's shape, independent of ours.
+
+       There used to be one formation: it placed our team and
+       spawnOppCircles mirrored the same shape back, so a 4-3-3
+       against a 4-4-2 could not be drawn at all — which is most of
+       what a session is about.
+
+       '' means "no opponent formation of its own", and that is what
+       every board saved before this version reports. Read that way it
+       falls back to mirroring `formation`, so those boards render
+       exactly as they did and nothing needs migrating.
+
+       At the TAIL, like oppColors, teamStripes and penSpace before
+       it, and for the same reason: key order IS the shard diff (see
+       the note on buildBoardEntry), so a new key costs one rewrite
+       wherever it goes and the tail is the only position that does
+       not also move every key after it. */
+    e.oppFormation = store.getItem('fa_tactic_opp_formation') || '';
     return e;
   }
 

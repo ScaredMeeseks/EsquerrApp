@@ -2326,3 +2326,38 @@ describe('the 3D cursor says what can be picked up', () => {
         'onHover must run only when there is no active gesture');
   });
 });
+
+/* ── The opponent mirror reads their shape, then ours ─────────────
+   spawnOppCircles used to read `fa_tactic_formation` — ours — and
+   mirror it. It reads the opponent's own key first now, and falls
+   back to ours, which is what keeps every board saved before this
+   version rendering exactly as it did.
+*/
+describe('the opponent has a shape of their own', () => {
+  const a = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const fn = a.slice(a.indexOf('function spawnOppCircles() {'),
+      a.indexOf('\n    }', a.indexOf('function spawnOppCircles() {')));
+
+  it('prefers the opponent key and falls back to ours', () => {
+    assert.ok(/fa_tactic_opp_formation/.test(fn),
+        'the mirror must look for the opponent formation');
+    assert.ok(fn.indexOf('fa_tactic_opp_formation') < fn.indexOf('fa_tactic_formation'),
+        'theirs must be read FIRST, or the fallback always wins');
+    assert.ok(/fa_tactic_opp_formation'\) \|\|/.test(fn),
+        'and ours must remain the fallback, for boards that have no opponent shape');
+  });
+
+  it('the key is cleared with the rest of the editor', () => {
+    /* tbClearEditor exists because two lists that must stay in step
+       is how a New Board once kept a layer from the old one. */
+    const clear = a.slice(a.indexOf('function tbClearEditor() {'),
+        a.indexOf('\n  }', a.indexOf('function tbClearEditor() {')));
+    assert.ok(/fa_tactic_opp_formation/.test(clear),
+        'a new board would otherwise inherit the last opponent shape');
+  });
+
+  it('is restored when a board is loaded', () => {
+    assert.ok(/setItem\('fa_tactic_opp_formation', board\.oppFormation \|\| ''\)/.test(a),
+        'loading must restore it, defaulting to the mirror for old boards');
+  });
+});

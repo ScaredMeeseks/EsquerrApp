@@ -58,7 +58,11 @@ const KEY_ORDER = [
   'tag', 'silhouette', 'cones', 'teamStripes', 'oppStripes',
   // Appended at the tail, together, for the reason above: two separate
   // appends would have rewritten every board shard twice instead of once.
-  'penSpace', 'pitch'
+  'penSpace', 'pitch',
+  // The opponent's own shape, appended after those for the same
+  // reason. '' means a board from before opponents had one, which
+  // spawnOppCircles reads as 'mirror ours'.
+  'oppFormation'
 ];
 
 describe('buildBoardEntry — defaults', () => {
@@ -89,7 +93,8 @@ describe('buildBoardEntry — defaults', () => {
       teamStripes: '',
       oppStripes: '',
       penSpace: '',
-      pitch: null
+      pitch: null,
+      oppFormation: ''
     });
   });
 
@@ -420,5 +425,60 @@ describe('the superadmin catalogue cache', () => {
     const hits = app.match(/_abInvalidate\(\);/g) || [];
     assert.ok(hits.length >= 2,
       'template Save and Save As must both invalidate the catalogue, found ' + hits.length);
+  });
+});
+
+/* ── The opponent's own shape ─────────────────────────────────────
+ * There used to be ONE formation: it placed our team and
+ * spawnOppCircles mirrored the same shape back, so a 4-3-3 against a
+ * 4-4-2 — most of what a session is about — could not be drawn.
+ *
+ * The risk in adding it is not the new board, it is the old one.
+ * Every board saved before this version has no such key, and must go
+ * on mirroring exactly as it did.
+ */
+describe('buildBoardEntry — the opponent formation', () => {
+  it('is empty for a store that has never set one', () => {
+    /* '' is the legacy signal, and it has to survive the round trip
+       as '' rather than as undefined or null — the reader tests it
+       with `||`, and only a falsy value falls through to the mirror. */
+    const e = TB.buildBoardEntry(store({}), {name: 'Board'});
+    assert.strictEqual(e.oppFormation, '');
+  });
+
+  it('carries the shape when one is set', () => {
+    const e = TB.buildBoardEntry(
+        store({fa_tactic_formation: '4-3-3', fa_tactic_opp_formation: '4-4-2'}),
+        {name: 'Board'});
+    assert.strictEqual(e.formation, '4-3-3');
+    assert.strictEqual(e.oppFormation, '4-4-2');
+  });
+
+  it('is independent of ours, which is the entire point', () => {
+    const e = TB.buildBoardEntry(
+        store({fa_tactic_formation: '4-4-2', fa_tactic_opp_formation: '3-5-2'}),
+        {name: 'Board'});
+    assert.notStrictEqual(e.formation, e.oppFormation);
+  });
+
+  it('sits at the TAIL, so the shard diff rewrites boards once', () => {
+    /* db.js compares shards as serialised strings, so a key inserted
+       anywhere but the end reorders everything after it and marks
+       every board in every club as changed. */
+    const e = TB.buildBoardEntry(store({}), {name: 'Board'});
+    const keys = Object.keys(e);
+    assert.strictEqual(keys[keys.length - 1], 'oppFormation',
+        'a new key belongs at the end: ' + keys.join(', '));
+  });
+
+  it('a board saved before this version still round-trips', () => {
+    /* The real regression risk. An entry with no oppFormation must
+       come back with '' — the mirror signal — and never with the
+       team formation copied into it, which would freeze the mirror
+       into a real value and stop it following later edits. */
+    const legacy = TB.buildBoardEntry(
+        store({fa_tactic_formation: '4-3-3'}), {name: 'Old'});
+    assert.strictEqual(legacy.oppFormation, '');
+    assert.notStrictEqual(legacy.oppFormation, legacy.formation);
   });
 });
