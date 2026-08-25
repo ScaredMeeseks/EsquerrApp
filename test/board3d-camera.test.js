@@ -281,24 +281,45 @@ describe('the side views are not mirrored against the 2D board', () => {
  * out of the turf.
  */
 describe('drawn marks lie flat on the turf', () => {
-  let addArrow, added;
+  let addArrow, addPenLine, added;
 
   before(() => {
-    /* addArrow needs BG.toWorld, a colour and somewhere to add to.
-       Everything else it touches is three.js. */
-    const body = (() => {
-      const i = src.indexOf('  function addArrow(a) {');
-      const j = src.indexOf('\n  }', i) + '\n  }'.length;
-      assert.ok(i !== -1, 'addArrow not found');
-      return src.slice(i, j);
+    /* The builders plus the decal machinery they now share — the
+       constants and helpers come out of the SOURCE rather than being
+       stubbed, so the y-offset and the polygon offset under test are
+       the real ones. Stubbing decalMaterial here would have let the
+       marks float again with every test still green. */
+    const fn = (marker) => {
+      const i = src.indexOf(marker);
+      assert.ok(i !== -1, 'not found: ' + marker);
+      return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
+    };
+    const consts = (() => {
+      // Anchored on the NAME, not on its current value — pinning
+      // 'const DECAL_Y = 0;' meant changing the value broke the slice
+      // and the test failed to find it rather than failing on it.
+      const i = src.indexOf('  const DECAL_Y =');
+      assert.ok(i !== -1, 'DECAL_Y not found');
+      // To the END of the PEN_W statement, not a character count past
+      // its start — that landed mid-line and produced a syntax error.
+      const p = src.indexOf('const PEN_W', i);
+      return src.slice(i, src.indexOf(';', p) + 1);
     })();
+
     added = [];
-    addArrow = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
-        body + '\nreturn addArrow;')(
+    const built = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
+        consts + '\n' +
+        fn('  function decalMaterial(colour, opacity) {') + '\n' +
+        fn('  function ribbonGeometry(pts, width) {') + '\n' +
+        fn('  function addArrow(a) {') + '\n' +
+        fn('  function addPenLine(p) {') + '\n' +
+        'return {addArrow, addPenLine, DECAL_Y, PEN_W, ORDER};')(
       THREE,
       {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})},
       () => null, () => 'full',
       {add: (m) => added.push(m)});
+    addArrow = built.addArrow;
+    addPenLine = built.addPenLine;
   });
 
   /** Every vertex of a mesh, in world space. */
@@ -331,10 +352,12 @@ describe('drawn marks lie flat on the turf', () => {
       const spread = Math.max.apply(null, ys) - Math.min.apply(null, ys);
       assert.ok(spread < 1e-6,
           'the arrow must lie in one horizontal plane; vertical spread ' + spread);
-      assert.ok(Math.min.apply(null, ys) > 0,
-          'and sit above the turf, not inside it');
-      assert.ok(Math.max.apply(null, ys) < 0.2,
-          'barely above it — a mark, not an object');
+      /* AT the turf, not above it. The old assertion demanded the
+         opposite — `> 0` — which is exactly the offset that made a
+         mark float 76px off the grass once the camera came in close.
+         Depth is handled by polygonOffset now, not by height. */
+      assert.ok(Math.abs(ys[0]) < 1e-9,
+          'a mark must sit AT y=0; found ' + ys[0]);
     });
 
     it('points from the tail to the head — ' + name, () => {
@@ -384,17 +407,195 @@ describe('drawn marks lie flat on the turf', () => {
     assert.strictEqual(added.length, 0, 'a zero-length arrow must add nothing');
   });
 
-  it('zones and pen strokes were already flat, and stay that way', () => {
-    /* Both are built in the turf plane; this is a regression guard,
-       not a fix. A zone is a rotated plane, a stroke is a line — and
-       neither may quietly become an extruded solid. */
+  it('zones stay a plane laid flat, with no solids among the marks', () => {
     const bare = src.replace(/\/\*[\s\S]*?\*\//g, '');
     const rect = bare.slice(bare.indexOf('function addRect('), bare.indexOf('function addPenLine('));
     assert.ok(/PlaneGeometry/.test(rect) && /rotation\.x = -Math\.PI \/ 2/.test(rect),
         'a zone must stay a plane laid flat');
     const pen = bare.slice(bare.indexOf('function addPenLine('), bare.indexOf('function addText('));
-    assert.ok(/THREE\.Line\(/.test(pen), 'a pen stroke must stay a line');
     assert.ok(!/(Cylinder|Cone|Box|Extrude|Tube|Sphere)Geometry/.test(rect + pen),
         'no solids among the drawn marks');
+  });
+
+  /* ── Pen strokes ────────────────────────────────────────────────
+     They were `THREE.Line`, which is one device pixel however far you
+     zoom and cannot carry polygonOffset — WebGL's depth bias applies
+     to polygons only. So a line at y=0 z-fights the grass and a line
+     above it floats: at the zoom where a player reads 300px wide, the
+     old y=0.08 put a stroke 76px off the turf on the side view. A
+     ribbon fixes both: it is a polygon, so it takes the offset, and
+     it has a width in METRES so it grows with the pitch. */
+  const STROKES = [
+    ['a straight run', '10,50 30,50 50,50'],
+    ['a hard turn', '20,20 40,20 40,60'],
+    ['a scribble', '30,30 35,38 44,33 50,45 58,40 63,52']
+  ];
+
+  STROKES.forEach(([name, points]) => {
+    it('a pen stroke lies in the turf plane — ' + name, () => {
+      added.length = 0;
+      addPenLine([points, '#ff0000', false]);
+      assert.strictEqual(added.length, 1, 'one mesh per stroke');
+      const ys = verts(added[0]).map((v) => v.y);
+      assert.ok(ys.length >= 6, 'a ribbon needs at least one quad');
+      assert.ok(Math.max.apply(null, ys) === 0 && Math.min.apply(null, ys) === 0,
+          'every vertex must sit AT y=0; found ' +
+          Math.min.apply(null, ys) + '..' + Math.max.apply(null, ys));
+    });
+
+    it('and has real width, in metres — ' + name, () => {
+      /* The width is what makes it visible at all once it is flat on
+         the grass, and what makes it scale with the pitch instead of
+         staying a hairline. */
+      added.length = 0;
+      addPenLine([points, '#ff0000', false]);
+      const vs = verts(added[0]);
+      const first = String(points).split(' ')[0].split(',').map(Number);
+      const w = {x: (first[0] - 50) * 1.05, z: (first[1] - 50) * 0.68};
+      const spread = Math.max.apply(null, vs.map(
+          (v) => Math.hypot(v.x - w.x, v.z - w.z)));
+      assert.ok(spread > 0.1, 'the ribbon must have breadth; got ' + spread.toFixed(3));
+    });
+  });
+
+  it('a pen stroke wins the depth fight without leaving the ground', () => {
+    /* polygonOffset biases the depth VALUE, so the mark can be
+       coplanar with the turf and still win. Height was the old way
+       and it is what floated. */
+    added.length = 0;
+    addPenLine(['10,50 40,50', '#ff0000', false]);
+    const m = added[0].material;
+    assert.strictEqual(m.polygonOffset, true, 'polygonOffset must be on');
+    assert.ok(m.polygonOffsetFactor < 0 && m.polygonOffsetUnits < 0,
+        'the bias must pull the mark TOWARD the camera');
+    assert.strictEqual(m.depthTest, true,
+        'depthTest stays on, or a player no longer occludes the stroke');
+    assert.strictEqual(m.depthWrite, false,
+        'depthWrite stays off, so the marks do not fight each other');
+  });
+
+  it('marks stack by renderOrder, in the 2D board\'s order', () => {
+    /* Height used to carry this (0.04 / 0.06 / 0.08). With everything
+       at zero it has to be explicit, and it must match the SVG: the
+       2D board paints zones, then arrows, then pen. */
+    added.length = 0;
+    addArrow([10, 50, 40, 50, '#fff', false]);
+    const arrowOrder = added[0].renderOrder;
+    added.length = 0;
+    addPenLine(['10,50 40,50', '#fff', false]);
+    const penOrder = added[0].renderOrder;
+    assert.ok(penOrder > arrowOrder,
+        'a pen stroke must paint over an arrow, as in 2D (' +
+        penOrder + ' vs ' + arrowOrder + ')');
+  });
+
+  it('a degenerate stroke adds nothing', () => {
+    added.length = 0;
+    addPenLine(['50,50', '#fff', false]);
+    assert.strictEqual(added.length, 0, 'a single point is not a stroke');
+  });
+});
+
+/* ── The camera the overlay reads is the current one ──────────────
+ *
+ * `lookAt()` updates a camera's LOCAL matrix. `matrixWorld` — and so
+ * `matrixWorldInverse`, which `Vector3.project()` uses — is refreshed
+ * inside `renderer.render()`. Anything that moves the camera and then
+ * projects a point before the next render reads the PREVIOUS frame's
+ * camera.
+ *
+ * `pitchScreenRect()` does exactly that, from app.js's own rAF loop,
+ * and the drawing overlay lagged the pitch on every zoom. Worse on a
+ * static board: no camera path called `invalidate()`, so a zoom
+ * scheduled no frame at all and the overlay simply froze until an
+ * unrelated edit forced a render. It only looked like it worked
+ * because a board with trajectories re-renders every frame for the
+ * travelling dots.
+ *
+ * There is no renderer here, which is the point: if `applyCamera()`
+ * leaves the matrix to the render, this test sees the stale one.
+ */
+describe('applyCamera leaves the camera ready to project', () => {
+  let build;
+
+  before(() => {
+    const grabFn = (marker) => {
+      const i = src.indexOf(marker);
+      assert.ok(i !== -1, 'not found: ' + marker);
+      return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
+    };
+    build = () => {
+      const camera = new THREE.PerspectiveCamera(45, 1200 / 700, 0.5, 1000);
+      const cam = {theta: -Math.PI / 2, phi: 0, dist: 100,
+                   target: new THREE.Vector3()};
+      let invalidated = 0;
+      const applyCamera = new Function('THREE', 'camera', 'cam', 'upFor', 'invalidate',
+          grabFn('  function applyCamera() {') + '\nreturn applyCamera;')(
+        THREE, camera, cam,
+        (phi, theta) => (phi < 0.02
+          ? new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta))
+          : new THREE.Vector3(0, 1, 0)),
+        () => { invalidated++; });
+      return {camera, cam, applyCamera, seen: () => invalidated};
+    };
+  });
+
+  const project = (camera, v) => v.clone().project(camera);
+
+  it('a zoom moves the projection immediately, with no render', () => {
+    const b = build();
+    b.applyCamera();
+    const before = project(b.camera, new THREE.Vector3(40, 0, 20)).x;
+
+    b.cam.dist = 25;                 // four notches of wheel, roughly
+    b.applyCamera();
+    const after = project(b.camera, new THREE.Vector3(40, 0, 20)).x;
+
+    assert.ok(Math.abs(after - before) > 0.1,
+        'the projection must follow the zoom without waiting for a render; ' +
+        'moved from ' + before.toFixed(4) + ' to ' + after.toFixed(4));
+  });
+
+  it('a pan moves it too', () => {
+    const b = build();
+    b.applyCamera();
+    const before = project(b.camera, new THREE.Vector3(0, 0, 0)).x;
+    b.cam.target.set(20, 0, 0);
+    b.applyCamera();
+    const after = project(b.camera, new THREE.Vector3(0, 0, 0)).x;
+    assert.ok(Math.abs(after - before) > 0.1,
+        'panning must move the projection; ' + before.toFixed(4) +
+        ' -> ' + after.toFixed(4));
+  });
+
+  it('and schedules a frame, or nothing redraws', () => {
+    /* The other half. A correct matrix that nobody renders is still a
+       board that does not move when you spin the wheel. */
+    const b = build();
+    const at = b.seen();
+    b.cam.dist = 40;
+    b.applyCamera();
+    assert.ok(b.seen() > at, 'applyCamera must invalidate');
+  });
+
+  it('the projection agrees with a camera that HAS been rendered', () => {
+    /* Guards the test: proves the fresh matrix is the RIGHT one, not
+       merely a different one. */
+    const b = build();
+    b.cam.dist = 33;
+    b.applyCamera();
+    const fresh = project(b.camera, new THREE.Vector3(-30, 0, 12));
+
+    const ref = new THREE.PerspectiveCamera(45, 1200 / 700, 0.5, 1000);
+    ref.position.copy(b.camera.position);
+    ref.up.copy(b.camera.up);
+    ref.lookAt(b.cam.target);
+    ref.updateMatrixWorld(true);
+    const want = project(ref, new THREE.Vector3(-30, 0, 12));
+
+    assert.ok(Math.abs(fresh.x - want.x) < 1e-9 &&
+              Math.abs(fresh.y - want.y) < 1e-9,
+        'fresh ' + fresh.x.toFixed(6) + ',' + fresh.y.toFixed(6) +
+        ' vs ' + want.x.toFixed(6) + ',' + want.y.toFixed(6));
   });
 });

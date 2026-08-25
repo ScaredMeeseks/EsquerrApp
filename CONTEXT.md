@@ -5159,3 +5159,59 @@ inside `.tb-field-inner`, but the players arrive through `${circlesHtml}`. It fo
 interpolation now.
 
 Unit 1571 → **1593** (27 in the alignment sweep alone). Version triple → v142. **Still nothing deployed.**
+
+### 2026-08-25 — Both v142 diagnoses were wrong; here is what it actually was (v143)
+
+The owner sent a screenshot of a pen line crossing a player's disc and said neither fix had worked. They
+were right on both counts.
+
+**The zoom lag was never the overlay maths — it was a stale camera matrix.** `applyCamera()` calls
+`camera.lookAt()`, which updates the camera's LOCAL matrix; `matrixWorld` and `matrixWorldInverse` — the
+one `Vector3.project()` reads — are refreshed inside `renderer.render()`. `pitchScreenRect()` projects
+from app.js's own rAF loop, so it was reading the **previous frame's camera** every time. And no camera
+path called `invalidate()`, so on a board with no animated trajectory a zoom scheduled **no frame at
+all** — the overlay simply froze until an unrelated edit forced a render. It only ever appeared to work
+because a board with trajectories re-renders every frame for the travelling dots.
+
+`applyCamera()` now ends with `camera.updateMatrixWorld(true); invalidate();`. One place, every camera
+path. (The v142 `phi: 0` change was still correct and stays — it removed a real 3.8px projective error.
+It just was not what the owner was seeing.)
+
+**Pen strokes really were above the floor, and the measurement that said otherwise was taken at the wrong
+zoom.** v142's "0.6px of displacement" was measured at the FITTED distance. Screen displacement of a
+raised point scales with zoom and with the cotangent of the camera's elevation. Re-measured at the zoom
+in the screenshot (a player reading ~300px wide):
+
+| preset | y=0.08 (pen) | y=0.04 | y=0.01 | y=0 |
+|---|---|---|---|---|
+| side | **75.9 px** | 38.4 px | 9.7 px | 0 |
+| goal | **108.9 px** | 55.2 px | 14.0 px | 0 |
+| broadcast | 2510 px | 1392 px | 379 px | 0 |
+
+There is no small-enough height. So every drawn mark now sits at **y = 0** and wins the depth fight with
+`polygonOffset`, which biases the depth value without moving geometry — the standard decal technique.
+`renderOrder` carries the stacking that height used to (zones, arrows, pen — the 2D board's SVG order),
+`depthWrite` is off so marks cannot fight each other, and `depthTest` stays **on** so a player still
+occludes them.
+
+**Pen strokes became ribbons.** `THREE.Line` cannot take `polygonOffset` at all — WebGL's depth bias
+applies to polygons only — so a line at y=0 would z-fight the grass and a line above it floats. As
+geometry a ribbon also fixes the other half: a `THREE.Line` is one device pixel however far you zoom,
+while a ribbon has a width in **metres** (0.3, matching the 2D board's 2.5px stroke and the arrow shaft)
+and grows with the pitch like every other mark on it.
+
+**A mutation survived, and that is how the missing test was found.** Removing the `updateMatrixWorld` /
+`invalidate` lines broke nothing — there was no test for the fix. There is now, and it is executable:
+build a real `PerspectiveCamera` with **no renderer**, move `cam.dist`, call the grabbed `applyCamera`,
+and check the projection moved — plus a separate assertion for `invalidate`, since the two halves fail
+independently. A fourth test compares against a camera that HAS been updated, so a fresh matrix is proved
+to be the RIGHT one rather than merely a different one.
+
+Two test-harness faults fixed: a slice anchored on `const DECAL_Y = 0;` (the value, so changing it broke
+the anchor instead of failing the assertion — now anchored on the name), and one bounded by a character
+count past a statement's start rather than its end.
+
+Also corrected: an assertion reading `Math.min(ys) > 0`, "and sit above the turf, not inside it" — it
+required the very offset that was the bug.
+
+Unit 1593 → **1606**. Version triple → v143. **Still nothing deployed.**

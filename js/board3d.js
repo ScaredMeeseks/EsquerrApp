@@ -439,6 +439,84 @@ export function createBoard3D(opts) {
   }
 
   /** Arrows: a flat shaft on the turf plus a cone head. */
+  /* ── Drawn marks are DECALS, at y = 0 ────────────────────────────
+     They used to be lifted clear of the turf — zones 0.04, arrows
+     0.06, pen strokes 0.08 — to dodge z-fighting. That offset is
+     invisible zoomed out and enormous zoomed in, because the screen
+     displacement of a raised point scales with the zoom and with the
+     cotangent of the camera's elevation. Measured at the zoom where a
+     player reads 300px wide: a pen stroke at y=0.08 floats **76px**
+     off the grass on the side view, 109px on the goal view. That is
+     what "the pen lines are above the floor, I can see them crossing
+     a player" was, and it was right.
+
+     There is no small-enough height: even 0.01 leaves ~10px there.
+     So the marks sit AT zero and win the depth fight with
+     polygonOffset, which biases the depth value without moving the
+     geometry — the standard way to lay a decal on a coplanar surface.
+
+     `renderOrder` carries the stacking instead of height, in the same
+     order the 2D board's SVG uses: zones, then arrows, then pen.
+     depthWrite stays off so they cannot fight each other; depthTest
+     stays ON so a player still occludes them. */
+  const DECAL_Y = 0;
+  const ORDER = {rect: 1, arrow: 2, pen: 3};
+  /* Pen width in METRES, matched to the 2D board: a 2.5px stroke on
+     an 820px board showing 105m of pitch is 0.32m. Same as the
+     arrow shaft, so a stroke and an arrow read as one hand. */
+  const PEN_W = 0.3;
+
+  function decalMaterial(colour, opacity) {
+    return new THREE.MeshBasicMaterial({
+      color: colour,
+      transparent: opacity != null && opacity < 1,
+      opacity: opacity != null ? opacity : 1,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4
+    });
+  }
+
+  /**
+   * A flat ribbon through a polyline, in the turf plane.
+   *
+   * Pen strokes were `THREE.Line`, which cannot carry polygonOffset —
+   * WebGL's depth bias applies to polygons only — so a line at y=0
+   * would z-fight the grass and a line above it floats. As geometry
+   * it also solves the other half: a `THREE.Line` is one device pixel
+   * whatever the zoom, while a real ribbon has a width in METRES and
+   * grows with the pitch, like every other mark on it.
+   *
+   * A quad per segment, plus a square at each interior joint to fill
+   * the wedge a turn opens on its outside. Good enough for a hand
+   * stroke, whose points are close together.
+   */
+  function ribbonGeometry(pts, width) {
+    const h = width / 2;
+    const pos = [];
+    const quad = (ax, az, bx, bz, cx, cz, dx, dz) => {
+      pos.push(ax, DECAL_Y, az, bx, DECAL_Y, bz, cx, DECAL_Y, cz);
+      pos.push(ax, DECAL_Y, az, cx, DECAL_Y, cz, dx, DECAL_Y, dz);
+    };
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-6) continue;
+      const nx = (dz / len) * h, nz = (-dx / len) * h;
+      quad(a.x + nx, a.z + nz, b.x + nx, b.z + nz,
+           b.x - nx, b.z - nz, a.x - nx, a.z - nz);
+      // Joint filler, so a sharp turn does not open a notch.
+      if (i > 0) quad(a.x - h, a.z - h, a.x + h, a.z - h,
+                      a.x + h, a.z + h, a.x - h, a.z + h);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    return g;
+  }
+
   /**
    * Arrows: a FLAT silhouette painted on the turf.
    *
@@ -480,9 +558,8 @@ export function createBoard3D(opts) {
     shape.lineTo(0, SW / 2);
     shape.closePath();
 
-    const mesh = new THREE.Mesh(
-        new THREE.ShapeGeometry(shape),
-        new THREE.MeshBasicMaterial({color: col, side: THREE.DoubleSide}));
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), decalMaterial(col));
+    mesh.renderOrder = ORDER.arrow;
 
     /* Map local (x, y, z) onto (along, across, up). The perpendicular
        is (dir.z, 0, -dir.x) and not the other sign: with that one
@@ -491,7 +568,7 @@ export function createBoard3D(opts) {
     const perp = new THREE.Vector3(dir.z, 0, -dir.x);
     mesh.setRotationFromMatrix(
         new THREE.Matrix4().makeBasis(dir, perp, new THREE.Vector3(0, 1, 0)));
-    mesh.position.set(from.x, 0.06, from.z);
+    mesh.position.set(from.x, DECAL_Y, from.z);
     drawRoot.add(mesh);
   }
 
@@ -505,15 +582,10 @@ export function createBoard3D(opts) {
     const c = BG.toWorld(r[0] + r[2] / 2, r[1] + r[3] / 2, pitch, bt);
     const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({
-          color: new THREE.Color(r[4] || '#ffffff'),
-          transparent: true,
-          opacity: r[5] != null ? r[5] : 0.3,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        }));
+        decalMaterial(new THREE.Color(r[4] || '#ffffff'), r[5] != null ? r[5] : 0.3));
+    mesh.renderOrder = ORDER.rect;
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(c.x, 0.04, c.z);
+    mesh.position.set(c.x, DECAL_Y, c.z);
     drawRoot.add(mesh);
   }
 
@@ -523,12 +595,14 @@ export function createBoard3D(opts) {
     const pts = String(p[0] || '').trim().split(/\s+/).map((pair) => {
       const xy = pair.split(',');
       const w = BG.toWorld(parseFloat(xy[0]), parseFloat(xy[1]), pitch, bt);
-      return new THREE.Vector3(w.x, 0.08, w.z);
+      return {x: w.x, z: w.z};
     }).filter((v) => isFinite(v.x) && isFinite(v.z));
     if (pts.length < 2) return;
-    drawRoot.add(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({color: new THREE.Color(p[1] || '#ffffff')})));
+    const mesh = new THREE.Mesh(
+        ribbonGeometry(pts, PEN_W),
+        decalMaterial(new THREE.Color(p[1] || '#ffffff')));
+    mesh.renderOrder = ORDER.pen;
+    drawRoot.add(mesh);
   }
 
   /** Text labels: a billboarded sprite that always faces the camera. */
@@ -1106,6 +1180,24 @@ export function createBoard3D(opts) {
 
     camera.up.copy(upFor(cam.phi, cam.theta));
     camera.lookAt(cam.target);
+
+    /* lookAt() updates the camera's local matrix, NOT matrixWorld —
+       that happens inside renderer.render(). Anything projecting a
+       point between the two reads the PREVIOUS frame's camera, and
+       pitchScreenRect() does exactly that from app.js's own rAF loop:
+       the drawing overlay lagged the pitch on every zoom, or froze
+       until some unrelated edit forced a render. Updating it here
+       costs one matrix inverse and removes the dependence on render
+       timing entirely.
+
+       The invalidate() matters just as much. The render loop is on
+       demand, and no camera path called it — a zoom on a board with
+       no animated trajectory scheduled no frame at all, so nothing
+       moved until something else did. It only looked like it worked
+       because a board with trajectories re-renders every frame for
+       the travelling dots. */
+    camera.updateMatrixWorld(true);
+    invalidate();
   }
 
   /**
