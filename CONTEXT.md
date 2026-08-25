@@ -5273,3 +5273,35 @@ now — the literal is gone on purpose.
 
 Unit 1606 → **1624** (new `test/object-scale.test.js`, registered by hand in `test/package.json`).
 Version triple → v144. **Still nothing deployed.**
+
+### 2026-08-25 — v144 shipped a broken 2D board: one missing unit (v145)
+
+**`--tb-ppm` was written as a bare number.** `calc(var(--tb-ppm) * 1.80)` then evaluates to `14.06` — a
+NUMBER, not a length — and `width: max(16px, 14.06)` mixes a length with a number, which is invalid, so
+the browser **drops the whole declaration**. Width fell back to `auto`, and an auto-width flex box sizes
+itself around the `<input>` it contains: an input defaults to about twenty characters wide. Every player
+rendered as a wide ellipse. Fixed by emitting `px` at both writers (`tbPpmVar` and the overlay's follow
+loop) and on all thirteen `var(--tb-ppm, 7.81)` fallbacks.
+
+**The test written for exactly this passed on it.** `object-scale.test.js` pulled the metre multiplier
+out of the declaration with a regex and compared it to `BG.OBJ.player`. The multiplier was right. Nothing
+asked whether the expression it sits in produces a length — a source-*shaped* assertion, green against
+CSS the browser was throwing away. That is the same failure as the `is3d` ReferenceError and the
+`.tb-markings` rule that matched nothing: **the text was correct and referred to nothing that works.**
+
+Four tests now, and all of them fail against the exact code that shipped:
+- every writer of `--tb-ppm` emits a unit;
+- every `var(--tb-ppm, …)` fallback is a length — the same bug wearing a disguise, since a fallback only
+  shows when the property is missing, which is exactly when nobody is looking;
+- every `calc()` built from it carries **exactly one** unit, and any `max()`/`min()` floor beside it is a
+  length rather than a bare number;
+- a player's width and height are the *same expression*, so a disc cannot render as an ellipse.
+
+The first mutation attempt also missed, and for a familiar reason: the regex required the write statement
+to end `))` when the real one ends `+ 'px')`, so it reported the writer as **absent** rather than
+unitless. Anchored on the property name and read forward a fixed window now.
+
+Nothing else from v144 changed — the size table, the metric marks, the round joins, the dashes and the
+zone outline were all correct; only the unit that carries them to the browser was missing.
+
+Unit 1624 → **1628**. Version triple → v145. **Still nothing deployed.**

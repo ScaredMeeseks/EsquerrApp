@@ -917,11 +917,11 @@ tr:hover td { background: #f7f8fa; }
 }
 .tb-field.tb-draw-surface .tb-arrow,
 .tb-field.tb-draw-surface .tb-pen-line {
-  stroke-width:calc(var(--tb-ppm, 7.81) * 0.32) !important;
+  stroke-width:calc(var(--tb-ppm, 7.81px) * 0.32) !important;
 }
 .tb-field.tb-draw-surface .tb-rect {
-  stroke-width:calc(var(--tb-ppm, 7.81) * 0.19) !important;
-  rx:calc(var(--tb-ppm, 7.81) * 0.26); ry:calc(var(--tb-ppm, 7.81) * 0.26);
+  stroke-width:calc(var(--tb-ppm, 7.81px) * 0.19) !important;
+  rx:calc(var(--tb-ppm, 7.81px) * 0.26); ry:calc(var(--tb-ppm, 7.81px) * 0.26);
 }
 
 /* A pen, so the locked view is legible as a mode rather than as a
@@ -1075,8 +1075,8 @@ tr:hover td { background: #f7f8fa; }
    The fallback keeps the board sane if --tb-ppm is ever missing. */
 .tb-circle {
   position:absolute;
-  width:max(16px, calc(var(--tb-ppm, 7.81) * 1.80));
-  height:max(16px, calc(var(--tb-ppm, 7.81) * 1.80));
+  width:max(16px, calc(var(--tb-ppm, 7.81px) * 1.80));
+  height:max(16px, calc(var(--tb-ppm, 7.81px) * 1.80));
   background:#fff; border:2px solid #333; border-radius:50%;
   transform:translate(-50%,-50%); cursor:grab; z-index:2;
   display:flex; align-items:center; justify-content:center;
@@ -1090,7 +1090,7 @@ tr:hover td { background: #f7f8fa; }
   text-align:center; font-weight:700; color:#222;
   /* Tied to the disc, not to the root font size: the disc is metric
      now and a fixed .7rem overflowed it the moment it shrank. */
-  font-size:max(8px, calc(var(--tb-ppm, 7.81) * 1.80 * 0.46));
+  font-size:max(8px, calc(var(--tb-ppm, 7.81px) * 1.80 * 0.46));
   outline:none; cursor:inherit; border-radius:50%;
   padding:0; pointer-events:none;
 }
@@ -1098,13 +1098,13 @@ tr:hover td { background: #f7f8fa; }
 /* Ball */
 .tb-ball {
   position:absolute;
-  width:max(10px, calc(var(--tb-ppm, 7.81) * 0.50));
-  height:max(10px, calc(var(--tb-ppm, 7.81) * 0.50));
+  width:max(10px, calc(var(--tb-ppm, 7.81px) * 0.50));
+  height:max(10px, calc(var(--tb-ppm, 7.81px) * 0.50));
   border-radius:50%;
   transform:translate(-50%,-50%); cursor:grab; z-index:3;
   background:transparent; border:none;
   /* The glyph fills the box, whatever size the box now is. */
-  font-size:max(10px, calc(var(--tb-ppm, 7.81) * 0.50));
+  font-size:max(10px, calc(var(--tb-ppm, 7.81px) * 0.50));
   line-height:1; text-align:center;
   box-shadow:none;
   touch-action:none;
@@ -1120,9 +1120,9 @@ tr:hover td { background: #f7f8fa; }
 /* Cones */
 .tb-cone {
   position:absolute; width:0; height:0;
-  border-left:max(5px, calc(var(--tb-ppm, 7.81) * 0.35)) solid transparent;
-  border-right:max(5px, calc(var(--tb-ppm, 7.81) * 0.35)) solid transparent;
-  border-bottom:max(10px, calc(var(--tb-ppm, 7.81) * 0.70)) solid #ff8c00;
+  border-left:max(5px, calc(var(--tb-ppm, 7.81px) * 0.35)) solid transparent;
+  border-right:max(5px, calc(var(--tb-ppm, 7.81px) * 0.35)) solid transparent;
+  border-bottom:max(10px, calc(var(--tb-ppm, 7.81px) * 0.70)) solid #ff8c00;
   transform:translate(-50%,-100%); cursor:grab; z-index:3;
   touch-action:none;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));

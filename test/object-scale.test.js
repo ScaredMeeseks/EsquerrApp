@@ -124,3 +124,106 @@ describe('an object is the same size in both views', () => {
         'the standalone 0.3 must be gone, or the two tables drift apart');
   });
 });
+
+/* ── The sizes must resolve to LENGTHS ────────────────────────────
+ *
+ * This shipped broken and looked exactly like a rendering disaster:
+ * every player became a wide ellipse. The cause was one missing unit.
+ * `--tb-ppm` was written as a bare number, so `calc(var(--tb-ppm) *
+ * 1.80)` evaluated to `14.06` — a NUMBER. `width: max(16px, 14.06)`
+ * mixes a length with a number, which is invalid, so the browser drops
+ * the whole declaration and width falls back to `auto`. An auto-width
+ * flex box sizes itself around the `<input>` it contains, and an input
+ * defaults to about twenty characters wide.
+ *
+ * The test that was supposed to cover this read the metre multiplier
+ * out of the declaration with a regex. The multiplier was correct.
+ * Nothing checked that the expression it sits in produces a length —
+ * so a source-shaped assertion passed on CSS the browser threw away.
+ */
+describe('the metric sizes resolve to real lengths', () => {
+  const app = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
+  const LENGTH = /^-?[\d.]+(px|rem|em|vw|vh|pt|%)$/;
+
+  /** Every value app.js ever assigns to --tb-ppm. */
+  const emitted = () => {
+    /* Anchored on each write and read forward a fixed window, then
+       asked one question: does the emitted string carry `px`? Trying
+       to match the whole expression was brittle — the first attempt
+       required the statement to end `))` and the real one ends
+       `+ 'px')`, so it found nothing and reported the writer missing
+       rather than unitless. */
+    const sites = [
+      ['tbPpmVar', app.indexOf("'--tb-ppm:'")],
+      ['follow loop', app.indexOf("setProperty('--tb-ppm'")]
+    ];
+    return sites.map(([where, at]) => ({
+      where,
+      found: at !== -1,
+      unit: at === -1 ? '' : (/\+\s*'(\w+);?'/.exec(app.slice(at, at + 220)) || ['', ''])[1]
+    }));
+  };
+
+  it('every writer gives --tb-ppm a unit', () => {
+    const writers = emitted();
+    writers.forEach((w) => assert.ok(w.found,
+        w.where + ' no longer writes --tb-ppm at all'));
+    writers.forEach((w) => {
+      assert.strictEqual(w.unit, 'px',
+          w.where + ' writes --tb-ppm without a unit; calc() would then ' +
+          'produce a number and every declaration using it is dropped');
+    });
+  });
+
+  it('every fallback is a length too', () => {
+    /* `var(--tb-ppm, 7.81)` is the same bug wearing the fallback: it
+       only shows when the property is missing, which is exactly when
+       nobody is looking. */
+    const fallbacks = css.match(/var\(--tb-ppm,\s*([^)]+)\)/g) || [];
+    assert.ok(fallbacks.length > 0, 'no --tb-ppm fallbacks found at all');
+    fallbacks.forEach((f) => {
+      const v = /var\(--tb-ppm,\s*([^)]+)\)/.exec(f)[1].trim();
+      assert.ok(LENGTH.test(v),
+          f + ' falls back to "' + v + '", which is not a length');
+    });
+  });
+
+  it('every declaration built from it mixes only lengths', () => {
+    /* Resolve each calc() by substituting the fallback, and check the
+       result still carries a unit. A max() of a length and a number
+       is invalid however sensible the numbers look. */
+    const uses = css.match(/[a-z-]+:\s*(?:max\([^;]*?\))?[^;]*?var\(--tb-ppm[^;]*;/g) || [];
+    assert.ok(uses.length >= 8, 'expected the object and mark rules; got ' + uses.length);
+    uses.forEach((decl) => {
+      const calcs = decl.match(/calc\([^)]*\)/g) || [];
+      assert.ok(calcs.length > 0, 'no calc() in: ' + decl);
+      calcs.forEach((c) => {
+        // Everything multiplied inside must be a plain number except
+        // the variable, which supplies the one unit.
+        const units = (c.match(/\d+(px|rem|em|%)/g) || []).length;
+        assert.strictEqual(units, 1,
+            'calc must carry exactly one unit, from the variable: ' + c +
+            ' in ' + decl);
+      });
+      // And any max()/min() sibling must be a length, not a bare number.
+      const guard = /(?:max|min)\(\s*([^,]+),/.exec(decl);
+      if (guard) {
+        assert.ok(LENGTH.test(guard[1].trim()),
+            'the floor "' + guard[1].trim() + '" is not a length in: ' + decl);
+      }
+    });
+  });
+
+  it('a player is a circle, not whatever its contents make it', () => {
+    /* The visible symptom was width:auto stretching the disc around
+       the shirt-number input. Width and height must be the same
+       expression, and both explicit. */
+    const i = css.indexOf('.tb-circle {');
+    const rule = css.slice(i, css.indexOf('}', i));
+    const w = /width:([^;]+);/.exec(rule);
+    const h = /height:([^;]+);/.exec(rule);
+    assert.ok(w && h, '.tb-circle must set both width and height');
+    assert.strictEqual(w[1].trim(), h[1].trim(),
+        'a player disc must be square, or it renders as an ellipse');
+  });
+});

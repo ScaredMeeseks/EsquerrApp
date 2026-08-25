@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 144;
+  const APP_VERSION = 145;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6747,7 +6747,7 @@
            them grow and shrink with the pitch instead of holding a
            fixed pixel size while the turf zooms away underneath. */
         field.style.setProperty('--tb-ppm', BS.round2(BG.ppm(
-            r.width, tbPitch(), tbBoardType(), false)));
+            r.width, tbPitch(), tbBoardType(), false)) + 'px');
       }
       _tbDrawRaf = requestAnimationFrame(follow);
     };
@@ -6940,7 +6940,11 @@
    */
   function tbPpmVar(pitch, boardType, vertical) {
     const w = tbFieldWidthPx(pitch, boardType, vertical);
-    return '--tb-ppm:' + BS.round2(BG.ppm(w, pitch, boardType, vertical)) + ';';
+    /* WITH THE UNIT. calc(var(--tb-ppm) * 1.8) is a LENGTH only if
+       the variable is one; a bare number made every width and
+       font-size that used it invalid, so they fell back to auto and
+       the discs stretched around the number input inside them. */
+    return '--tb-ppm:' + BS.round2(BG.ppm(w, pitch, boardType, vertical)) + 'px;';
   }
 
   /**
