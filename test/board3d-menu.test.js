@@ -236,3 +236,56 @@ describe('applying a formation is one path, for both sides', () => {
         'a formation change is an edit like any other');
   });
 });
+
+describe('the camera menu and the frames rail', () => {
+  const init = fn('tbMenuInit(hooks)');
+  const cams = fn('tbCamsHtml()');
+
+  it('offers three views and a crosshair, and not lateral', () => {
+    const order = (cams.match(/one\('(\w+)'/g) || []).map((m) => m.slice(5, -1));
+    assert.deepStrictEqual(order, ['broadcast', 'goal', 'top', 'reset'],
+        'Realitzacio, Porteria, Zenital, then centre the view');
+  });
+
+  it('each view is a drawing, not its name', () => {
+    /* Three Catalan words take more room than three pictures, and a
+       drawing of the goal end-on answers "what will I get" better
+       than the word Porteria. */
+    assert.ok(/tbCamThumb\(cam\)/.test(cams), 'the entry must render a thumbnail');
+    const thumb = fn('tbCamThumb(kind)');
+    ['broadcast', 'goal', 'top', 'reset'].forEach((k) =>
+      assert.ok(new RegExp(k + ':').test(thumb), k + ' has no drawing'));
+  });
+
+  it('the board name and the frames move into the window', () => {
+    /* Both were outside it. The name costs no height beside the
+       hamburger, and that height is the point. */
+    assert.ok(/nameSlot\.appendChild\(nameInp\)/.test(init),
+        'the board name must be adopted into the menu bar');
+    assert.ok(/railSlot\.appendChild\(frames\)/.test(init),
+        'the frames section must be adopted into the rail');
+    assert.ok(/querySelector\('\.tb-frames-section'\)/.test(init),
+        'the whole SECTION moves — play lives in its header, and ' +
+        'moving only the strip would leave the button under the board');
+  });
+
+  it('New Board is hidden in 3D, because the hamburger has it', () => {
+    assert.ok(/class="tb-btn-row\$\{is3d \? ' tb-controls-3d' : ''\}"/.test(app),
+        'the button row must be hidden in 3D only');
+  });
+
+  it('the rail is dimmed until it is wanted', () => {
+    /* A permanent column of tiles at full strength competes with the
+       pitch for attention the whole time. */
+    const rule = css.slice(css.indexOf('.tb-rail {'), css.indexOf('.tb-rail:hover'));
+    assert.ok(/opacity:\.35/.test(rule), 'the rail must start dimmed');
+    assert.ok(/\.tb-rail:hover, \.tb-rail:focus-within \{ opacity:1; \}/.test(css),
+        'and come up on hover — focus-within too, or a keyboard user never sees it');
+  });
+
+  it('frame 1 is seeded, so the rail is never an empty column', () => {
+    assert.ok(/if \(!frames\.length\) \{[\s\S]{0,160}captureFrameState\(\)/.test(bare),
+        'entering 3D with no frames must seed one from the board');
+    assert.ok(/activeFrameIdx = 0;/.test(bare), 'and select it');
+  });
+});

@@ -4778,6 +4778,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* The rail is laid out but not shown until the menu opens. Animating
    from display:none would not animate at all, and a rail that pops
    into place reads as a glitch rather than a menu. */
+/* The hamburger and the board name share the top line, so the name
+   costs no height of its own — which is why it moved in here from
+   above the window. */
+.tb-m-top { display:flex; align-items:center; gap:.5rem; }
+.tb-m-name .tb-board-name {
+  margin:0; width:clamp(140px, 22vw, 280px);
+  background:rgba(18,20,23,.72); color:#e8eaed;
+  border:0; border-radius:10px; padding:.5rem .7rem;
+  backdrop-filter:blur(6px); font-size:.82rem;
+}
+.tb-m-name .tb-board-name::placeholder { color:#7d8288; }
+.tb-m-name .tb-board-name:focus {
+  outline:none; background:rgba(18,20,23,.94); color:#fff;
+}
+
 .tb-m-rail {
   display:flex; flex-direction:column; gap:.25rem; margin-top:.4rem;
   opacity:0; transform:translateY(-6px); pointer-events:none;
@@ -4852,3 +4867,61 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-m-panel .tb-pitch-input, .tb-m-panel .tb-stripe-n {
   background:rgba(255,255,255,.08); color:#fff; border-color:rgba(255,255,255,.18);
 }
+
+/* ── The frames rail, middle right ─────────────────────────────────
+   Dimmed until the pointer is near it: the frames are a permanent
+   fixture in the window, and at full strength a column of tiles
+   competes with the pitch for attention all the time. */
+.tb-rail {
+  position:absolute; top:50%; right:.75rem; transform:translateY(-50%);
+  z-index:5; opacity:.35; transition:opacity .18s ease;
+}
+.tb-rail:hover, .tb-rail:focus-within { opacity:1; }
+.tb-rail .tb-frames-section {
+  margin:0; padding:.5rem .45rem; border-radius:12px;
+  background:rgba(18,20,23,.72); backdrop-filter:blur(6px);
+}
+/* Vertical, because it lives in a column now. The 2D board keeps the
+   horizontal strip; only the copy inside the window is turned. */
+.tb-rail .tb-frames-strip {
+  flex-direction:column; align-items:center; gap:.3rem;
+  max-height:min(52vh, 420px); overflow-y:auto; overflow-x:hidden;
+}
+.tb-rail .tb-frames-header {
+  flex-direction:column; gap:.35rem; margin:0 0 .4rem;
+}
+.tb-rail .tb-frames-title { display:none; }   /* the tiles say what it is */
+.tb-rail .tb-frame-gap { margin:0; }
+.tb-rail .tb-frame-dur { width:44px; text-align:center; }
+.tb-rail .tb-frames-title, .tb-rail .tb-frame-dur { color:#c9ccd1; }
+.tb-rail .tb-frame-dur {
+  background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:#fff;
+}
+
+/* ── The camera menu, top right ────────────────────────────────── */
+.tb-cams { position:absolute; top:.75rem; right:.75rem; z-index:6; }
+.tb-cams-btn {
+  width:38px; height:38px; padding:0; border:0; border-radius:10px;
+  display:flex; align-items:center; justify-content:center; margin-left:auto;
+  background:rgba(18,20,23,.72); color:#e8eaed; cursor:pointer;
+  backdrop-filter:blur(6px); transition:background .15s, color .15s;
+}
+.tb-cams-btn:hover, .tb-cams.tb-cams-open .tb-cams-btn {
+  background:rgba(18,20,23,.92); color:#fff;
+}
+.tb-cams-btn svg { width:20px; height:20px; }
+.tb-cams-list {
+  display:flex; gap:.35rem; margin-top:.4rem; justify-content:flex-end;
+  opacity:0; transform:translateY(-6px); pointer-events:none;
+  transition:opacity .16s ease, transform .16s ease;
+}
+.tb-cams.tb-cams-open .tb-cams-list { opacity:1; transform:none; pointer-events:auto; }
+/* Circles, as asked — each a small drawing of what that camera sees. */
+.tb-cams-list .tb-cam-btn {
+  width:38px; height:38px; padding:0; border:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(18,20,23,.86); color:#c9ccd1; cursor:pointer;
+  backdrop-filter:blur(6px); transition:background .15s, color .15s;
+}
+.tb-cams-list .tb-cam-btn:hover { background:rgba(18,20,23,.98); color:#fff; }
+.tb-cams-list .tb-cam-btn svg { width:22px; height:22px; }

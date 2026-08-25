@@ -667,6 +667,7 @@
     'tactics.reset_view':    { ca:'Centra la vista', es:'Centrar la vista', en:'Reset view' },
     /* ── The 3D menu ──────────────────────────────────────────── */
     'tactics.menu':          { ca:'Menú', es:'Menú', en:'Menu' },
+    'tactics.cameras':       { ca:'Càmeres', es:'Cámaras', en:'Cameras' },
     'tactics.new_board':     { ca:'Pissarra nova', es:'Pizarra nueva', en:'New board' },
     'tactics.view_2d':       { ca:'Vista 2D', es:'Vista 2D', en:'2D view' },
     'tactics.field':         { ca:'Camp', es:'Campo', en:'Field' },
@@ -1574,7 +1575,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 149;
+  const APP_VERSION = 150;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6730,8 +6731,14 @@
         (panel ? '<div class="tb-m-panel" id="tb-panel-' + key + '"></div>' : '') +
       '</div>';
     return '<div class="tb-m" id="tb-menu">' +
-      '<button class="tb-m-btn" id="tb-menu-btn" aria-expanded="false" ' +
-        'aria-label="' + sanitize(t('tactics.menu')) + '">' + tbIcon('burger') + '</button>' +
+      '<div class="tb-m-top">' +
+        '<button class="tb-m-btn" id="tb-menu-btn" aria-expanded="false" ' +
+          'aria-label="' + sanitize(t('tactics.menu')) + '">' + tbIcon('burger') + '</button>' +
+        /* The board name sits BESIDE the hamburger rather than above
+           the window. It was above; moving it in buys the height it
+           was costing, and a board's name belongs with the board. */
+        '<span class="tb-m-name" id="tb-menu-name"></span>' +
+      '</div>' +
       '<div class="tb-m-rail" id="tb-menu-rail">' +
         entry('new', tbIcon('new'), t('tactics.new_board'), false) +
         /* Not an icon: the whole point of this control is the two
@@ -6826,6 +6833,62 @@
     });
   }
 
+  /* ── The camera menu, top right ───────────────────────────────────
+     A TV camera that opens three views and a crosshair, replacing the
+     row of six text buttons.
+
+     Each view is a tiny picture of the pitch from that camera rather
+     than its name: three words in Catalan take more room than three
+     drawings, and a drawing of the goal seen end-on is a better
+     answer to "what will I get" than the word "Porteria".
+
+     LATERAL IS GONE from the menu, not from the code. `PRESETS.side`
+     stays: board3d-camera.test.js measures the transition between
+     every pair of presets, and side->top is one of the two that used
+     to whip 172 degrees through the overhead singularity. Losing that
+     coverage to delete a button would be a bad trade.
+
+     FOLLOW-BALL is parked (HANDOFF item 19). setFollowBall and
+     isFollowingBall stay; only the button goes. */
+  function tbCamThumb(kind) {
+    /* A pitch outline seen from each camera. Deliberately crude: at
+       34px a faithful drawing is mud. */
+    const F = {
+      /* Broadcast: the pitch in perspective, wider at the near edge. */
+      broadcast: '<path d="M3 20h18l-4-11H7z"/><path d="M9.5 9v11M14.5 9v11" opacity=".45"/>',
+      /* Goal: the frame end-on, the pitch running away behind it. */
+      goal: '<path d="M6 15h12v6H6z"/><path d="M4 21h16"/><path d="M9 15V9h6v6"/>',
+      /* Zenital: straight down — a plain rectangle with a halfway line. */
+      top: '<rect x="4" y="6" width="16" height="12" rx="1"/>' +
+           '<path d="M12 6v12"/><circle cx="12" cy="12" r="2.4"/>',
+      /* Centre the view: a crosshair, not a picture of a pitch. */
+      reset: '<path d="M12 4v5M12 15v5M4 12h5M15 12h5"/><circle cx="12" cy="12" r="2.5"/>'
+    };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+        (F[kind] || '') + '</svg>';
+  }
+
+  function tbCamsHtml() {
+    const one = (cam, label) =>
+      '<button class="tb-cam-btn" data-cam="' + cam + '" ' +
+        'title="' + sanitize(label) + '" aria-label="' + sanitize(label) + '">' +
+        tbCamThumb(cam) + '</button>';
+    return '<div class="tb-cams" id="tb-3d-cams">' +
+      '<button class="tb-cams-btn" id="tb-cams-btn" aria-expanded="false" ' +
+        'aria-label="' + sanitize(t('tactics.cameras')) + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="2" y="7" width="13" height="10" rx="2"/>' +
+        '<path d="M15 11l6-3v8l-6-3z"/></svg></button>' +
+      '<div class="tb-cams-list" id="tb-cams-list">' +
+        one('broadcast', t('tactics.cam_broadcast')) +
+        one('goal', t('tactics.cam_goal')) +
+        one('top', t('tactics.cam_top')) +
+        one('reset', t('tactics.reset_view')) +
+      '</div></div>';
+  }
+
   /**
    * Fill the panels with the REAL controls, and wire the menu.
    *
@@ -6889,6 +6952,23 @@
       '.tb-size-label-sm', '#tb-text-size', '.tb-size-label-lg'], t('tactics.text'));
 
     tbMenuSquad(hooks || {});
+
+    /* The board name, moved in beside the hamburger. Adopted like
+       every other control — it is bound by bindTactics and a copy
+       would be a second input writing the same key. */
+    const nameSlot = document.getElementById('tb-menu-name');
+    const nameInp = document.getElementById('tb-board-name');
+    if (nameSlot && nameInp) nameSlot.appendChild(nameInp);
+
+    /* The frames, moved into the window at middle right, with play
+       under them. The whole SECTION moves, not just the strip: the
+       strip is rebuilt wholesale by renderFrameStrip(), which finds
+       it by id and would happily rebuild it wherever it now lives —
+       but play sits in the section's header, and leaving that behind
+       would put the button back under the board. */
+    const railSlot = document.getElementById('tb-rail');
+    const frames = document.querySelector('.tb-frames-section');
+    if (railSlot && frames) railSlot.appendChild(frames);
 
     /* ── Opening and closing ────────────────────────────────────
        Hover where a real pointer exists, tap everywhere. One extra
@@ -7204,22 +7284,35 @@
         },
         onSelect: () => {}
       });
+      /* The camera menu. Every entry is an ACTION — pick a view, or
+         re-centre — so the list closes on click. Nothing here holds
+         state, which is what the follow-ball button used to need and
+         is why it read its lit class back from the view rather than
+         toggling it blind. Follow is parked; see HANDOFF item 19. */
       const cams = document.getElementById('tb-3d-cams');
-      if (cams) {
+      const camsBtn = document.getElementById('tb-cams-btn');
+      if (cams && camsBtn) {
+        const openCams = (on) => {
+          cams.classList.toggle('tb-cams-open', on);
+          camsBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        };
+        camsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openCams(!cams.classList.contains('tb-cams-open'));
+        });
+        if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+          cams.addEventListener('pointerenter', () => openCams(true));
+          cams.addEventListener('pointerleave', () => openCams(false));
+        }
         cams.addEventListener('click', (e) => {
           const btn = e.target.closest('.tb-cam-btn');
           if (!btn || !_tb3d) return;
-          const which = btn.dataset.cam;
-          if (which === 'reset') _tb3d.resetCamera();
-          else if (which === 'follow') _tb3d.setFollowBall(!_tb3d.isFollowingBall());
-          else _tb3d.setPreset(which);
-          /* Follow is a STATE; the presets are actions. Only the
-             follow button stays lit, and it goes out on its own when a
-             manual orbit or pan clears the flag inside board3d — which
-             is why the class is read back from the view rather than
-             toggled blind. */
-          cams.querySelectorAll('.tb-cam-follow').forEach((b) =>
-            b.classList.toggle('active', _tb3d.isFollowingBall()));
+          if (btn.dataset.cam === 'reset') _tb3d.resetCamera();
+          else _tb3d.setPreset(btn.dataset.cam);
+          openCams(false);          // "The icons disappear after click."
+        });
+        document.addEventListener('pointerdown', (e) => {
+          if (!cams.contains(e.target)) openCams(false);
         });
       }
     } catch (err) {
@@ -10718,21 +10811,15 @@
           <span class="tb-sep"></span>
           <button class="tb-select-tool" id="tb-select-tool" data-tooltip="Select mode (tap to select)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-7 2-4 7-3-18z"/></svg></button>
         </div>
-        <div class="tb-btn-row">
+        <div class="tb-btn-row${is3d ? ' tb-controls-3d' : ''}">
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
         </div>
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
         ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap">
           <div class="tb-3d-loading">${t('tactics.loading_3d')}</div>
           ${tbMenuHtml()}
-          <div class="tb-3d-cams" id="tb-3d-cams">
-            <button class="tb-cam-btn" data-cam="broadcast">${t('tactics.cam_broadcast')}</button>
-            <button class="tb-cam-btn" data-cam="top">${t('tactics.cam_top')}</button>
-            <button class="tb-cam-btn" data-cam="goal">${t('tactics.cam_goal')}</button>
-            <button class="tb-cam-btn" data-cam="side">${t('tactics.cam_side')}</button>
-            <button class="tb-cam-btn tb-cam-follow" data-cam="follow">${t('tactics.cam_follow')}</button>
-            <button class="tb-cam-btn" data-cam="reset">${t('tactics.reset_view')}</button>
-          </div>
+          <div class="tb-rail" id="tb-rail"></div>
+          ${tbCamsHtml()}
           <div class="tb-3d-hint">${t('tactics.orbit_hint')}</div>
         </div>` : ''}
         <div class="${fieldCls}" id="tb-field"${is3d ? ' hidden' : ''} style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
@@ -13454,6 +13541,23 @@
          3D and because the controls it adopts are bound by the code
          above — adopting them AFTER that is what keeps every
          existing handler working. */
+      /* FRAME 1 ALWAYS EXISTS in 3D.
+         The rail is a permanent fixture at middle right, and an empty
+         one is a column of nothing beside a board that plainly has
+         players on it. A board with no frames is seeded from what is
+         already drawn.
+
+         Stated plainly because it is a state write on a view change:
+         this creates a frame the coach did not ask for. A single
+         frame is exactly the board itself, so nothing is invented —
+         but it does mean entering 3D marks the board as edited. */
+      if (!frames.length) {
+        frames = [captureFrameState()];
+        activeFrameIdx = 0;
+        saveFrames();
+      }
+      renderFrameStrip();
+
       tbMenuInit({onFormation: applyFormation});
 
       /* Delete what is selected in the 3D view.

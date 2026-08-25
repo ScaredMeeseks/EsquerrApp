@@ -5461,3 +5461,71 @@ The hover cursor needed no change — it asks `pick(ev)`, which is by definition
 marks joined it the moment they became draggable.
 
 Unit 1658 → **1662**. Version triple → v149. **Still nothing deployed.**
+
+### 2026-08-26 — The 3D board gets its own menu (v150)
+
+The 3D view no longer wears the 2D board's 32-control toolbar. Three commits, deliberately separate so
+a bad menu would not have arrived with a broken layout.
+
+**The window** fills the card horizontally — bleeding `1.5rem` each side to cancel exactly the card's
+padding, with a test that reads both numbers from the two places they are written — and runs to the
+bottom of the viewport vertically. That height is **measured**, not declared: CSS cannot see the
+element's top offset, which moves with the topnav, the breadcrumb and the board name. `tbSize3DWindow()`
+measures it, floors at 420px (a short window computes a negative height, and a board with no height
+looks like one that failed to load) and runs before the mount, or the board visibly re-frames itself on
+every entry.
+
+**The opponent got a formation of its own** first, because the paper menu assumes one and the app had
+none: a single `fa_tactic_formation` placed our team and `spawnOppCircles` mirrored the same shape back,
+so 4-3-3 against 4-4-2 could not be drawn. `fa_tactic_opp_formation` is appended at the **tail** of
+`buildBoardEntry`, where every late key goes — db.js diffs shards as serialised strings, so a key
+inserted anywhere else marks every board in every club as changed. `''` is the legacy signal and the
+mirror falls back to ours, so nothing needs migrating. A test pins that the fallback is **not** baked in
+at save time: copying the team formation into the new key would freeze the mirror.
+
+**The menu** is a hamburger with six entries — New Board, 2D/3D, field, players, props, draw — four of
+which open a panel, plus a camera menu top-right and the frames rail at middle-right. Dismissal is
+written once and covers all four routes: the hamburger, a click outside, Escape, play.
+
+The panels **adopt** the real controls; they do not clone them. A clone gives two elements one id, and
+the visible one would be the one `deactivateDrawTools()` never lights up, because it sets the active
+class by id. The board name and the whole frames **section** are adopted in the same way — the section,
+not the strip, because play sits in its header and moving only the strip would leave the button under
+the board.
+
+Formations reach the editor through a **hook passed into the menu**, not a document event: a listener on
+the document would outlive the menu and capture this render's frames array, which is the stale-closure
+trap the `tb-ro-play` double-binding taught once already. The two dismissal listeners that must be on the
+document are removed when the menu leaves the DOM.
+
+`applyFormationShape` is extracted so the 2D dropdown and the 3D menu run one path, and it clears **only
+the side being changed** — clearing both was right when one formation placed both teams and would now
+discard the opponent's shape every time ours changed.
+
+**Lateral and follow-ball left the MENU, not the code.** `PRESETS.side` stays because
+`board3d-camera.test.js` measures every pair of transitions and `side -> top` is one of the two that used
+to whip 172 degrees through the overhead singularity. Follow-ball is HANDOFF item 19.
+
+**Two real bugs the tests found while writing them:**
+- **`.tb-pen-dash-label` did not exist.** The pen's Dash toggle reused the arrow's class, so
+  `querySelector` returned the ARROW's label for both rows and the pen row silently lost its toggle.
+  Each has its own hook now, and the shared style class is `.tb-dash-label`.
+- The menu test's slice helper bounded on a two-space indent, so anything nested inside `bindTactics`
+  (four spaces) ran on for thousands of lines — an "must be absent" assertion found the thing elsewhere
+  and failed on correct code.
+
+**Three tests were vacuously true and were tightened**: an ordering check where the deleted call made
+`indexOf` return -1 (`-1 < anything`); a window-wide search for `openCams(false)` that also matched the
+outside-click dismissal; and a slice bounded by a comment marker in a comment-stripped string, which
+threw at collection time and aborted the whole run instead of failing one test.
+
+**Frame 1 is seeded on entering 3D** if the board has none — stated plainly because it is a state write
+on a view change. A single frame is exactly the board itself, so nothing is invented, but entering 3D
+does mark the board as edited.
+
+`test/board3d-menu.test.js` opens with a warning: there is no jsdom here, so **whether a panel appears on
+hover is a hand check**, listed in the plan rather than faked. What the tests do settle is that every id
+and class referenced actually exists, that controls are moved rather than duplicated, that every label
+resolves in three languages, and that document listeners come off again.
+
+Unit 1663 → **1694**. Version triple → v150. **Still nothing deployed.**

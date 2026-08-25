@@ -418,7 +418,10 @@ describe('the camera can be moved and recovered', () => {
     assert.ok(/followBall = false/.test(rc), 'reset must also stop following the ball');
     const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
     // Reset now lives in the camera preset row rather than on its own.
-    assert.ok(/data-cam="reset"/.test(a) && /_tb3d\.resetCamera\(\)/.test(a));
+    /* The attribute is templated now (`data-cam="' + cam + '"`), so
+       the literal it used to grep for no longer appears anywhere. */
+    assert.ok(/one\('reset'/.test(a) && /_tb3d\.resetCamera\(\)/.test(a),
+        'the crosshair entry must exist and must call resetCamera');
   });
 });
 
@@ -671,11 +674,27 @@ describe('camera presets', () => {
   const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
   const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
-  it('offers the four angles plus follow-ball', () => {
+  it('keeps all four presets, and offers three of them', () => {
+    /* The menu shows Realització, Porteria and Zenital, plus a
+       crosshair to re-centre. Lateral and follow-ball were taken OUT
+       OF THE MENU — not out of the code:
+
+       - `PRESETS.side` stays because board3d-camera.test.js measures
+         the transition between every pair of presets, and side->top
+         is one of the two that used to whip 172 degrees through the
+         overhead singularity. Deleting a button is not worth losing
+         that coverage.
+       - follow-ball is parked (HANDOFF 19); setFollowBall and
+         isFollowingBall are untouched. */
     ['broadcast', 'top', 'goal', 'side'].forEach((k) =>
       assert.ok(new RegExp(k + ':').test(s3), 'missing preset ' + k));
-    ['broadcast', 'top', 'goal', 'side', 'follow'].forEach((k) =>
-      assert.ok(a.includes('data-cam="' + k + '"'), 'missing button ' + k));
+    ['broadcast', 'goal', 'top', 'reset'].forEach((k) =>
+      assert.ok(a.includes("data-cam=\"' + cam + '\"") || a.includes("one('" + k + "'"),
+          'missing camera entry ' + k));
+    assert.ok(!/one\('side'/.test(a), 'lateral must not be in the menu');
+    assert.ok(!/one\('follow'/.test(a), 'follow-ball is parked');
+    assert.ok(/setFollowBall/.test(s3) && /isFollowingBall/.test(s3),
+        'but its code must survive the button');
   });
 
   it('handles the degenerate overhead case explicitly', () => {
@@ -705,10 +724,27 @@ describe('camera presets', () => {
     assert.ok((s3.match(/followBall = false/g) || []).length >= 3, 'orbit, pan and preset');
   });
 
-  it('only Follow can latch, because only Follow is a state', () => {
-    const fn = a.slice(a.indexOf("const cams = document.getElementById('tb-3d-cams')"),
-        a.indexOf("const cams = document.getElementById('tb-3d-cams')") + 1100);
-    assert.ok(/tb-cam-follow/.test(fn) && /isFollowingBall\(\)/.test(fn), fn);
+  it('nothing in the camera menu latches — every entry is an action', () => {
+    /* This used to assert the opposite: that Follow latched and read
+       its lit class back from the view rather than toggling blind.
+       Follow is parked (HANDOFF 19) and its button is gone, so the
+       menu now holds only actions — pick a view, or re-centre — and
+       an entry that stayed lit would be claiming a state that does
+       not exist. The list closes on click instead. */
+    const i = a.indexOf('const camsBtn =');
+    assert.ok(i !== -1, 'the camera menu wiring was not found');
+    const fn = a.slice(i, i + 1400);
+    assert.ok(!/tb-cam-follow/.test(fn), 'no latching entry remains');
+    assert.ok(/setPreset\(btn\.dataset\.cam\)/.test(fn),
+        'and the other entries are plain presets');
+    /* Scoped to the BUTTON handler. A window-wide search for
+       openCams(false) also found the outside-click dismissal, so
+       deleting the close-on-click passed the test unchanged. */
+    const at = fn.indexOf("cams.addEventListener('click'");
+    assert.ok(at !== -1, 'the camera click handler was not found');
+    const click = fn.slice(at, fn.indexOf('});', at));
+    assert.ok(/openCams\(false\)/.test(click),
+        'choosing a view must close the list — the icons disappear after click');
   });
 });
 

@@ -322,6 +322,24 @@ Renumbered items are the same items.
     certificate itself, and serves both apex and `www`. Buy the name anywhere; only DNS records
     change hands. Same for Pages, so the domain and the hosting move are independent decisions.
 
+19. **Follow-ball has no button any more.** *(parked 2026-08-26)*
+
+    The 3D camera menu was rebuilt as three circular views — Realització, Porteria, Zenital —
+    plus a crosshair to re-centre. The owner asked for lateral to be dropped and follow-ball
+    to be parked.
+
+    **The CODE is untouched**: `setFollowBall`, `isFollowingBall` and the `followBall` flag all
+    still work, including the part that clears the flag on any manual orbit or pan. Only the
+    button is gone. Bringing it back is one entry in `tbCamsHtml()` and one branch in the click
+    handler — but note it is the only camera control that holds STATE, so it also needs its lit
+    class read back from the view rather than toggled blind, which is what the old code did and
+    what the test `nothing in the camera menu latches` now forbids.
+
+    `PRESETS.side` also stays, deliberately, though lateral has no button:
+    `board3d-camera.test.js` measures the transition between every pair of presets, and
+    `side -> top` is one of the two that used to whip 172 degrees through the overhead
+    singularity. Deleting the preset to match the menu would quietly drop that coverage.
+
 18. **Code-gate the 3D board, if the entitlement is meant to bite.** *(owner asked 2026-08-25)*
 
     `clubFeature('board3d')` gates **the toggle button and nothing else**. Someone IT-savvy can flip
