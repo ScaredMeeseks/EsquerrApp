@@ -501,18 +501,39 @@ describe('three small faults from the first pass', () => {
        on either axis is the bug, so that is what this forbids —
        rather than trying to compute how much room a given layout
        leaves, which is what got it wrong twice. */
+    /* Forbidding a negative offset outright was the FIX for the
+       clipping and the wrong answer for the design: the cross is
+       meant to straddle the tile's corner as a badge, and a badge
+       that sits fully inside looks like a mistake.
+
+       The real rule is neither "no overhang" nor a clearance sum from
+       the axis. `overflow` clips at the PADDING box, so an absolutely
+       positioned child may spill out of the content box by up to the
+       padding and still be drawn. That is the invariant: overhang <=
+       pad, on every side that has one. */
     const del = rule('.tb-rail .tb-frame-del');
+    const pad = parseFloat(/--tb-pad:([\d.]+)px/.exec(css)[1]);
     ['top', 'right', 'bottom', 'left'].forEach((side) => {
       const m = new RegExp(side + ':(-?[\\d.]+)px').exec(del);
       if (!m) return;
-      assert.ok(parseFloat(m[1]) >= 0,
-          side + ':' + m[1] + 'px hangs outside the item, and the strip clips ' +
-          'on both axes — overflow-y:auto makes overflow-x clip as well');
+      const over = -parseFloat(m[1]);          // negative offset = overhang
+      assert.ok(over <= pad,
+          side + ':' + m[1] + 'px overhangs by ' + over + 'px into a ' + pad +
+          'px pad — the strip clips at its padding box, so it is cut');
     });
-    /* And it is placed from the tokens, so moving either one moves
-       the cross with it. */
-    assert.ok(/right:calc\(\(var\(--tb-axis\) - var\(--tb-tile\)\) \/ 2/.test(del),
-        'the offset must be derived from the axis and tile, not typed');
+    assert.ok(/padding:var\(--tb-pad\)/.test(rule('.tb-rail .tb-frames-strip')),
+        'the strip must carry that pad, or there is nothing to spill into');
+  });
+
+  it('the three size tokens are consistent with each other', () => {
+    /* The axis is not a free number: it is a tile plus two pads. If
+       they disagree the tile either overflows the content box or
+       floats inside it, and the columns stop sharing a centre line —
+       which is the bug this whole run of commits kept re-finding. */
+    const g = (k) => parseFloat(new RegExp('--' + k + ':([\\d.]+)px').exec(css)[1]);
+    assert.strictEqual(g('tb-axis') - 2 * g('tb-pad'), g('tb-tile'),
+        'axis (' + g('tb-axis') + ') must be tile (' + g('tb-tile') +
+        ') plus two pads (' + g('tb-pad') + ')');
   });
 
   it('the item is full width, which is WHY the cross must stay inside', () => {

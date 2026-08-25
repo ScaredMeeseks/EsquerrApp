@@ -4894,7 +4894,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Vertical, because it lives in a column now. The 2D board keeps the
    horizontal strip; only the copy inside the window is turned. */
 .tb-rail .tb-frames-strip {
-  flex-direction:column; align-items:center; gap:.3rem; padding:0; width:100%;
+  flex-direction:column; align-items:center; gap:.3rem; width:100%;
+  padding:var(--tb-pad);
   max-height:min(46vh, 360px); overflow-y:auto; overflow-x:hidden;
   /* The scrollbar is HIDDEN, not the overflow. A visible bar reserves
      width on the right, which pushed every tile a scrollbar's width
@@ -4924,7 +4925,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    cross hangs past its tile — the strip clips horizontally, so
    anything that overhangs has to fit inside this width or it is cut
    in half. */
-.tb-3d-wrap { --tb-axis:52px; --tb-tile:38px; }
+/* --tb-axis is the OUTER width of both columns; --tb-pad is the
+   room around the frames strip; --tb-tile is what fits between them.
+   They are not independent — the axis is a tile plus two pads — and
+   the frame-strip rule below depends on that holding. */
+.tb-3d-wrap { --tb-tile:38px; --tb-pad:8px; --tb-axis:54px; }
 .tb-cams {
   position:absolute; top:.75rem; right:.75rem; z-index:6;
   width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;
@@ -4986,8 +4991,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    38px tile. It comes back on hover, where it is wanted. */
 .tb-rail .tb-frame-del {
   opacity:0; transition:opacity .15s;
-  top:2px; right:calc((var(--tb-axis) - var(--tb-tile)) / 2 + 2px);
-  width:14px; height:14px; font-size:.55rem;
+  /* Centred ON the tile's top-right corner, as a badge. Half of it
+     hangs outside the tile — which is legal only because the strip
+     has a pad wider than the overhang; see --tb-pad. */
+  top:-7px; right:-7px; width:14px; height:14px; font-size:.55rem;
 }
 .tb-rail .tb-frame-item:hover .tb-frame-del { opacity:1; }
 .tb-rail .tb-frame-play {

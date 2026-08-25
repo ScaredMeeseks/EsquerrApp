@@ -5687,3 +5687,26 @@ moving either token moves the cross with it.
 The tooltip and hover-out fixes from v155 are confirmed working.
 
 Unit 1711 → **1712**. Version triple → v156. **Still nothing deployed.**
+
+### 2026-08-26 — The badge is back on the corner, legally (v157)
+
+v156 stopped the clipping by forbidding any overhang, which fixed the bug and broke the design: the
+delete cross is meant to straddle the tile's top-right corner, and one sitting fully inside reads as a
+mistake.
+
+**The rule that was missing all along: `overflow` clips at the PADDING box, not the content box.** An
+absolutely positioned child may spill out of the content box by up to the padding and still be drawn.
+So an overhang is legal exactly when there is padding to spill into — which the strip had none of
+(`padding:0`), and no amount of axis-widening could substitute for, because the item is `width:100%`
+and grew with it.
+
+Three tokens now, and they are **not independent**: `--tb-axis` (54) = `--tb-tile` (38) + 2 × `--tb-pad`
+(8). The cross straddles at `-7px`, inside the 8px pad. A test asserts the arithmetic, so the three
+cannot drift apart — if they do, the tile either overflows the content box or floats inside it, and the
+two columns stop sharing a centre line, which is the bug this run of commits kept re-finding under
+different names.
+
+The overhang test now checks the honest invariant — **overhang ≤ pad, per side** — rather than "no
+overhang" (v156, wrong design) or a clearance sum from the axis (v155, wrong geometry).
+
+Unit 1712 → **1713**. Version triple → v157. **Still nothing deployed.**
