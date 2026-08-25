@@ -444,10 +444,14 @@ describe('trajectories', () => {
     assert.ok(!/Math\.min\(100/.test(bendBranch), bendBranch);
   });
 
-  it('a path is only drawn for something that actually moved', () => {
+  it('a path is only SHOWN for something that actually moved', () => {
+    /* It used to be only BUILT for something that had moved, which
+       left a drag with no entry to update until the release rebuild.
+       Now it is always built and gated on visibility — what the coach
+       sees is the same invariant, reached a different way. */
     assert.ok(/function moved\(a, b\)/.test(s3));
     const fn = s3.slice(s3.indexOf('function addPathsFor'), s3.indexOf('/* ── Rebuilding'));
-    assert.ok(/if \(!moved\(prev\[i\], p\)\) return;/.test(fn), fn);
+    assert.ok(/setPathVisible\(e, moved\(prev\[i\], p\)\)/.test(fn), fn);
   });
 
   it('the travelling dot runs on one shared clock', () => {
@@ -584,13 +588,16 @@ describe('playback dressing', () => {
     assert.ok(/kind === 'balls'/.test(fn), 'only the ball has height');
   });
 
-  it('trails fade by vertex colour, not by a shader', () => {
-    /* LineBasicMaterial has only a uniform opacity, and a custom
-       shader is a lot of machinery for something meant to be barely
-       noticeable. Lerping toward the turf reads as a fade. */
-    const fn = s3.slice(s3.indexOf('function trailPush'), s3.indexOf('function clearTrails'));
-    assert.ok(/vertexColors: true/.test(fn), fn);
-    assert.ok(/turf\.clone\(\)\.lerp/.test(fn), 'fade toward the turf colour');
+  it('trails fade to TRANSPARENT, via per-vertex alpha', () => {
+    /* This faked the fade by lerping colour toward a flat turf green,
+       on the grounds that a custom shader was too much machinery for
+       something barely noticeable. Wrong on both counts: the turf is
+       lit, mown-striped and shadowed, so a flat green line reads as a
+       pale streak over a dark stripe — and the real thing is fifteen
+       lines of GLSL. */
+    const fn = s3.slice(s3.indexOf('const TRAIL_MAT'), s3.indexOf('function clearTrails'));
+    assert.ok(/attribute float alpha/.test(fn), fn.slice(0, 200));
+    assert.ok(!/turf\.clone\(\)\.lerp/.test(fn), 'the colour-lerp fake must be gone');
   });
 
   it('a short trail repeats its oldest point instead of collapsing', () => {
@@ -626,8 +633,12 @@ describe('camera presets', () => {
     /* Straight down, the default up vector is parallel to the view
        direction and lookAt's basis collapses — the pitch spins. The
        orbit control forbids the angle; the preset has to survive it. */
-    const fn = s3.slice(s3.indexOf('function applyCamera'), s3.indexOf('const PRESETS'));
-    assert.ok(/cam\.phi < 0\.02/.test(fn) && /camera\.up\.set\(/.test(fn), fn);
+    const fn = s3.slice(s3.indexOf('function applyCamera'), s3.indexOf('/* ── Easing between'));
+    /* Still handled, but BLENDED across a band rather than switched
+       at a threshold: a hard switch is invisible on a snap and flicks
+       part-way through an animated move to Top. */
+    assert.ok(/camera\.up\.set\(/.test(fn), fn);
+    assert.ok(/0\.15 - cam\.phi/.test(fn), 'expected a blend band, not a threshold');
   });
 
   it('leaves the distance to frameBoard rather than hardcoding it', () => {
@@ -882,5 +893,148 @@ describe('broadcast is centred', () => {
        pushed the camera 34% off-axis in X. */
     assert.ok(/broadcast: \{theta: -Math\.PI \/ 2, phi:/.test(s3),
         'broadcast must not carry a theta offset');
+  });
+});
+
+describe('the ball is a ball, not a boulder', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  const num = (re) => {
+    const m = re.exec(s3);
+    assert.ok(m, 'not found: ' + re);
+    return parseFloat(m[1]);
+  };
+
+  it('shrank, but is still visible at pitch scale', () => {
+    // A real ball is 0.11 m and invisible on a 105 m pitch, so this
+    // stays oversized on purpose — just not by as much.
+    const r = num(/const BALL_R = ([\d.]+);/);
+    assert.ok(r < 0.35 && r > 0.15, 'BALL_R is ' + r);
+  });
+
+  it('the travelling dot stays well under it', () => {
+    /* They were separated deliberately so a path marker is never
+       mistaken for a ball; shrinking one without the other would undo
+       that. */
+    const ball = num(/const BALL_R = ([\d.]+);/);
+    const dot = num(/const dot = flatDot\(([\d.]+), col\);/);
+    assert.ok(dot < ball * 0.6, 'dot ' + dot + ' vs ball ' + ball);
+  });
+
+  it('the ground ring is tied to the ball, not a fixed size', () => {
+    // A hardcoded radius would be three times the ball after this change.
+    assert.ok(/const r = BALL_R \* [\d.]+ \+ height/.test(s3));
+  });
+});
+
+describe('trails fade to nothing', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('uses per-vertex ALPHA, not a colour lerp toward the turf', () => {
+    /* The turf is lit, mown-striped and shadowed, so a flat green
+       line does not match it — over a dark stripe the fake fade reads
+       as a pale streak, which is the "fading to white" report. */
+    const fn = s3.slice(s3.indexOf('const TRAIL_MAT'), s3.indexOf('function clearTrails'));
+    assert.ok(/attribute float alpha/.test(fn), 'expected an alpha attribute');
+    assert.ok(/gl_FragColor = vec4\(vCol, vAlpha\)/.test(fn), fn.slice(0, 300));
+    assert.ok(!/turf\.clone\(\)\.lerp/.test(fn),
+        'the colour-lerp fake must be gone');
+  });
+
+  it('writes the alpha buffer alongside position and colour', () => {
+    const fn = s3.slice(s3.indexOf('function trailPush'), s3.indexOf('function clearTrails'));
+    assert.ok(/attributes\.alpha\.needsUpdate = true/.test(fn), fn);
+    assert.ok(/alpha\[i\] = /.test(fn));
+  });
+
+  it('the newest end is the opaque one', () => {
+    // f runs 0 (oldest) to 1 (newest); the tail must be the faint end.
+    const fn = s3.slice(s3.indexOf('function trailPush'), s3.indexOf('function clearTrails'));
+    assert.ok(/const f = i \/ \(TRAIL_LEN - 1\)/.test(fn), fn);
+    assert.ok(/alpha\[i\] = f \* f/.test(fn), 'expected the fade weighted to the tail');
+  });
+});
+
+describe('a trajectory exists before the first drag', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('builds an entry for anything with a previous position', () => {
+    /* It used to skip unmoved objects, so at the moment a drag began
+       there was no entry and movePathEnd() bailed — the curve only
+       appeared after the release rebuild. */
+    const fn = s3.slice(s3.indexOf('function addPathsFor'), s3.indexOf('/* ── Rebuilding'));
+    assert.ok(/if \(!prev\[i\] \|\| !p\) return;/.test(fn), fn);
+    assert.ok(!/if \(!moved\(prev\[i\], p\)\) return;/.test(fn),
+        'the skip-if-unmoved guard is the bug');
+  });
+
+  it('hides it until the object has actually moved', () => {
+    const fn = s3.slice(s3.indexOf('function addPathsFor'), s3.indexOf('/* ── Rebuilding'));
+    assert.ok(/setPathVisible\(e, moved\(prev\[i\], p\)\)/.test(fn), fn);
+  });
+
+  it('reveals it mid-drag, from updatePath', () => {
+    const fn = s3.slice(s3.indexOf('function updatePath('), s3.indexOf('/** Did this thing'));
+    assert.ok(/const should = moved\(p0, p1\)/.test(fn), fn);
+    assert.ok(/setPathVisible\(entry, should\)/.test(fn));
+  });
+
+  it('an invisible path cannot be clicked', () => {
+    /* three.js does not reliably skip invisible meshes in a raycast,
+       and an invisible pick-line would swallow a right-click meant
+       for the turf. */
+    assert.ok(/objects\.filter\(\(o\) => o\.mesh\.visible\)/.test(s3));
+  });
+});
+
+describe('camera moves are eased', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('takes the shortest way round', () => {
+    /* theta is an angle: the raw difference sends the camera the long
+       way round the pitch about half the time. */
+    const fn = s3.slice(s3.indexOf('function tweenCameraTo'), s3.indexOf('/** Advance an in-flight'));
+    assert.ok(/while \(dTheta > Math\.PI\) dTheta -= Math\.PI \* 2/.test(fn), fn);
+  });
+
+  it('blends the up vector instead of switching it', () => {
+    /* A hard switch at phi < 0.02 is invisible on a snap but flicks
+       part-way through an animated move to Top. */
+    const fn = s3.slice(s3.indexOf('function applyCamera'), s3.indexOf('/* ── Easing between'));
+    assert.ok(!/if \(cam\.phi < 0\.02\) camera\.up\.set/.test(fn), 'the hard switch must be gone');
+    assert.ok(/0\.15 - cam\.phi/.test(fn), fn);
+  });
+
+  it('holds the render loop open for the duration', () => {
+    // The loop is on demand; otherwise the move shows one frame.
+    const fn = s3.slice(s3.indexOf('function tick('), s3.indexOf('const ro ='));
+    assert.ok(/stepCameraTween\(/.test(fn), fn);
+  });
+
+  it('manual input cancels it — orbit, pan and zoom', () => {
+    assert.strictEqual((s3.match(/cancelCameraTween\(\)/g) || []).length, 4,
+        'expected the definition plus orbit, pan and wheel');
+  });
+
+  it('the preset computes its destination without moving the camera', () => {
+    /* frameBoard() fits the distance to the viewport AND depends on
+       the angle, so the target distance has to be measured at the
+       preset's angle and then handed to the tween. */
+    const fn = s3.slice(s3.indexOf('function setPreset'), s3.indexOf('/* ── Interaction'));
+    assert.ok(/tweenCameraTo\(to, 550\)/.test(fn), fn);
+    assert.ok(/cam\.target\.copy\(held\.target\)/.test(fn), 'must restore before gliding');
+  });
+
+  it('reset glides too', () => {
+    const fn = s3.slice(s3.indexOf('resetCamera()'), s3.indexOf('resetCamera()') + 600);
+    assert.ok(/tweenCameraTo\(/.test(fn), fn);
   });
 });

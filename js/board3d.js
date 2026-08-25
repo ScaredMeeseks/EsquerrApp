@@ -41,7 +41,11 @@ const GK_COLOR = '#f5c842';      // same gold the 2D board uses
    every distance in the file can be read as metres. */
 const PLAYER_R = 0.9;            // a disc a bit wider than a person
 const PLAYER_H = 0.35;
-const BALL_R = 0.45;             // oversized; a real ball is invisible here
+/* A real ball is 0.11 m and invisible at pitch scale, so this is
+   still oversized — but 0.45 overcorrected and read as a boulder.
+   The travelling dot below is kept well under it: the two must never
+   be confusable. */
+const BALL_R = 0.25;
 const CONE_R = 0.35;
 const CONE_H = 0.7;
 
@@ -515,10 +519,26 @@ export function createBoard3D(opts) {
    * geometry: allocating a new buffer per pointermove is how a smooth
    * drag turns into a stuttering one.
    */
+  /* An entry exists for every object with a previous position, but a
+     trajectory only MEANS anything once the object has left it. Show
+     the whole set or none of it — a handle floating with no curve
+     under it is worse than nothing. */
+  function setPathVisible(entry, on) {
+    entry.visible = on;
+    entry.meshes.forEach((m) => { m.visible = on; });
+    // The traveller is animated from its own list, so it needs the
+    // same treatment or a dot runs along an invisible line.
+    if (entry.traveller) entry.traveller.visible = on;
+  }
+
   function updatePath(entry, path) {
     if (!entry) return;
     const {p0, p1} = entry;
     entry.path = path;
+
+    const should = moved(p0, p1);
+    if (should !== entry.visible) setPathVisible(entry, should);
+    if (!should) { invalidate(); return; }
 
     const writeCurve = (line, flat) => {
       if (!line) return;
@@ -599,7 +619,7 @@ export function createBoard3D(opts) {
 
     /* The curve. Continuous and hairline-thin: WebGL caps line width
        at 1 px almost everywhere, which is exactly the weight wanted. */
-    const entry = {kind, index, p0, p1, path};
+    const entry = {kind, index, p0, p1, path, meshes: []};
     pathEntries.push(entry);
 
     const pts = [];
@@ -608,6 +628,7 @@ export function createBoard3D(opts) {
         new THREE.BufferGeometry().setFromPoints(pts),
         new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.9}));
     objectRoot.add(entry.curve);
+    entry.meshes.push(entry.curve);
 
     /* A lofted ball also gets its GROUND TRACK, so the plan-view path
        is readable when the arc is high — otherwise a chip looks like
@@ -619,14 +640,16 @@ export function createBoard3D(opts) {
           new THREE.BufferGeometry().setFromPoints(flat),
           new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.35}));
       objectRoot.add(entry.ground);
+      entry.meshes.push(entry.ground);
     }
 
     /* The travelling dot. Registered rather than animated in place so
        one clock drives every dot on the board — separate phases would
        look like noise instead of like direction. */
-    const dot = flatDot(0.16, col);
+    const dot = flatDot(0.12, col);
     entry.traveller = dot;
     objectRoot.add(dot);
+    entry.meshes.push(dot);
     travellers.push({mesh: dot, p0, p1, path});
 
     const mid = groundAt(p0, p1, path, 0.5);
@@ -640,6 +663,7 @@ export function createBoard3D(opts) {
 
       const bend = flatDot(0.5, col, active === 'bend' ? 1 : 0.25);
       entry.bendMesh = bend;
+      entry.meshes.push(bend);
       bend.position.copy(mid);
       objectRoot.add(bend);
       // Only the ACTIVE handle is pickable, so a click from directly
@@ -664,6 +688,7 @@ export function createBoard3D(opts) {
             color: 0x0b3d4d, transparent: true,
             opacity: active === 'apex' ? 0.9 : 0.25})));
       entry.apexMesh = dia;
+      entry.meshes.push(dia);
       dia.position.set(mid.x, apexY, mid.z);
       objectRoot.add(dia);
       if (active === 'apex') objects.push({mesh: dia, kind: 'pathApex', index, owner: kind});
@@ -674,6 +699,7 @@ export function createBoard3D(opts) {
             new THREE.Vector3(mid.x, 0.05, mid.z), dia.position.clone()]),
           new THREE.LineBasicMaterial({color: 0x66d9ff, transparent: true, opacity: 0.5}));
       objectRoot.add(entry.hairline);
+      entry.meshes.push(entry.hairline);
       return;
     }
 
@@ -685,6 +711,7 @@ export function createBoard3D(opts) {
       const h = flatDot(0.45, col);
       h.position.set(w.x, 0.12, w.z);
       objectRoot.add(h);
+      entry.meshes.push(h);
       objects.push({mesh: h, kind: 'pathDot', index, owner: kind, dot: di});
     });
 
@@ -696,6 +723,7 @@ export function createBoard3D(opts) {
         new THREE.LineBasicMaterial({visible: false}));
     entry.pickLine = pickLine;
     objectRoot.add(pickLine);
+    entry.meshes.push(pickLine);
     objects.push({mesh: pickLine, kind: 'pathLine', index, owner: kind, p0, p1});
   }
 
@@ -722,13 +750,26 @@ export function createBoard3D(opts) {
     const own = kind === 'oppPositions' ? s.oppColors : s.colors;
     const nums = kind === 'oppPositions' ? s.oppNumbers : s.numbers;
     cur.forEach((p, i) => {
-      if (!moved(prev[i], p)) return;
+      /* Built for everything that HAS a previous position, whether or
+         not it has moved yet — and hidden until it has.
+
+         It used to skip unmoved objects entirely, so at the moment a
+         drag began there was no entry at all and movePathEnd() bailed.
+         The curve only appeared after the release rebuild, which is
+         the "works, but not on the first movement" report. A
+         visibility toggle costs nothing; building meshes mid-gesture
+         is what makes a drag stutter. */
+      if (!prev[i] || !p) return;
       let fill = base;
       if (kind !== 'balls') {
         const isGk = String((nums && nums[i]) || '') === '1';
         fill = isGk ? GK_COLOR : ((own && own[i]) || base);
       }
       addPath(kind, i, prev[i], p, paths[i] || null, pathColour(fill));
+      /* Set AFTER addPath, which registers meshes in two branches and
+         returns early for the ball — doing it inside would miss some. */
+      const e = pathEntries[pathEntries.length - 1];
+      if (e) setPathVisible(e, moved(prev[i], p));
     });
   }
 
@@ -823,7 +864,7 @@ export function createBoard3D(opts) {
        the one angle where the arc itself is edge-on and invisible. */
     /* A hairline ring, not a target. It only has to say where the
        ball is over the pitch, not compete with the ball itself. */
-    const r = 0.7 + height * 0.12;
+    const r = BALL_R * 1.8 + height * 0.12;
     ballShadow.scale.set(r, r, 1);
     ballShadow.material.opacity = Math.max(0.22, 0.45 - height * 0.008);
     ballShadow.position.set(x, 0.05, z);
@@ -865,14 +906,49 @@ export function createBoard3D(opts) {
   const trailRoot = new THREE.Group();
   scene.add(trailRoot);
 
+  /* Per-vertex ALPHA, which LineBasicMaterial cannot do — it has only
+     a uniform opacity, so the first version faked the fade by lerping
+     the colour toward a flat `TURF` green.
+
+     That fake is visible. The turf as rendered is lit, mown-striped
+     and shadowed, so a flat green line does not match it: over a dark
+     stripe or inside a shadow it reads as a pale streak rather than
+     disappearing. Hence "the trails fade to white".
+
+     I called a custom shader "a lot of machinery for something barely
+     noticeable" when I wrote the fake. That was wrong twice over — it
+     IS noticeable, and the real thing is fifteen lines. */
+  const TRAIL_MAT = () => new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    vertexShader: [
+      'attribute float alpha;',
+      'attribute vec3 color;',
+      'varying float vAlpha;',
+      'varying vec3 vCol;',
+      'void main() {',
+      '  vAlpha = alpha;',
+      '  vCol = color;',
+      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      '}'
+    ].join('\n'),
+    fragmentShader: [
+      'varying float vAlpha;',
+      'varying vec3 vCol;',
+      'void main() {',
+      '  gl_FragColor = vec4(vCol, vAlpha);',
+      '}'
+    ].join('\n')
+  });
+
   function trailPush(key, colour, x, z) {
     let tr = trails.get(key);
     if (!tr) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_LEN * 3), 3));
       geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_LEN * 3), 3));
-      const mesh = new THREE.Line(geo,
-          new THREE.LineBasicMaterial({vertexColors: true, transparent: true, opacity: 0.55}));
+      geo.setAttribute('alpha', new THREE.BufferAttribute(new Float32Array(TRAIL_LEN), 1));
+      const mesh = new THREE.Line(geo, TRAIL_MAT());
       mesh.frustumCulled = false;
       trailRoot.add(mesh);
       tr = {mesh, pts: [], colour};
@@ -883,7 +959,7 @@ export function createBoard3D(opts) {
 
     const pos = tr.mesh.geometry.attributes.position.array;
     const col = tr.mesh.geometry.attributes.color.array;
-    const turf = new THREE.Color(TURF);
+    const alpha = tr.mesh.geometry.attributes.alpha.array;
     const c = new THREE.Color(colour);
     for (let i = 0; i < TRAIL_LEN; i++) {
       // Short trails repeat their oldest point rather than collapsing
@@ -892,12 +968,15 @@ export function createBoard3D(opts) {
       pos[i * 3] = src[0];
       pos[i * 3 + 1] = 0.06;
       pos[i * 3 + 2] = src[1];
-      const f = i / (TRAIL_LEN - 1);       // 0 = oldest, 1 = newest
-      const mix = turf.clone().lerp(c, f);
-      col[i * 3] = mix.r; col[i * 3 + 1] = mix.g; col[i * 3 + 2] = mix.b;
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      /* 0 = oldest, 1 = newest. Squared so the tail thins out quickly
+         and the trail stays subtle rather than becoming a streak. */
+      const f = i / (TRAIL_LEN - 1);
+      alpha[i] = f * f * 0.6;
     }
     tr.mesh.geometry.attributes.position.needsUpdate = true;
     tr.mesh.geometry.attributes.color.needsUpdate = true;
+    tr.mesh.geometry.attributes.alpha.needsUpdate = true;
   }
 
   function clearTrails() {
@@ -926,15 +1005,70 @@ export function createBoard3D(opts) {
         cam.target.x + cam.dist * sp * Math.cos(cam.theta),
         cam.target.y + cam.dist * cp,
         cam.target.z + cam.dist * sp * Math.sin(cam.theta));
+
     /* Straight overhead, the default up vector (0,1,0) is parallel to
-       the view direction and lookAt's basis collapses — the view
-       snaps through a right angle and the pitch spins. Give it a real
-       up vector for that case instead of forbidding the angle, which
-       is what the phi clamp does for the orbit control. */
-    if (cam.phi < 0.02) camera.up.set(Math.cos(cam.theta), 0, Math.sin(cam.theta));
-    else camera.up.set(0, 1, 0);
+       the view direction and lookAt's basis collapses — the pitch
+       spins through a right angle.
+
+       BLENDED across a band rather than switched at a threshold. A
+       hard switch is invisible on a snap but produces a visible flick
+       part-way through an animated move to Top, at the instant phi
+       crosses it. Blending turns that flick into a roll. */
+    const k = Math.min(1, Math.max(0, (0.15 - cam.phi) / 0.15));
+    if (k <= 0) camera.up.set(0, 1, 0);
+    else {
+      camera.up.set(
+          Math.cos(cam.theta) * k,
+          1 - k,
+          Math.sin(cam.theta) * k).normalize();
+    }
     camera.lookAt(cam.target);
   }
+
+  /* ── Easing between camera positions ─────────────────────────
+     A preset used to assign the angles and apply them, which snaps.
+     This interpolates from wherever the camera actually is. */
+  let camTween = null;
+
+  function easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function tweenCameraTo(to, ms) {
+    /* Shortest way round. theta is an angle, so a preset on the far
+       side of the pitch is reachable in two directions and the raw
+       difference picks the long one about half the time. */
+    let dTheta = to.theta - cam.theta;
+    while (dTheta > Math.PI) dTheta -= Math.PI * 2;
+    while (dTheta < -Math.PI) dTheta += Math.PI * 2;
+
+    camTween = {
+      from: {theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone()},
+      to: to,
+      dTheta: dTheta,
+      start: (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+      ms: ms || 550
+    };
+    invalidate();
+  }
+
+  /** Advance an in-flight camera move. Returns true while running. */
+  function stepCameraTween(now) {
+    if (!camTween) return false;
+    const t = Math.min(1, (now - camTween.start) / camTween.ms);
+    const e = easeInOut(t);
+    const f = camTween.from, to = camTween.to;
+    cam.theta = f.theta + camTween.dTheta * e;
+    cam.phi = f.phi + (to.phi - f.phi) * e;
+    cam.dist = f.dist + (to.dist - f.dist) * e;
+    cam.target.lerpVectors(f.target, to.target, e);
+    applyCamera();
+    if (t >= 1) camTween = null;
+    return true;
+  }
+
+  /** Any manual input takes the camera back, mid-move or not. */
+  function cancelCameraTween() { camTween = null; }
 
   /* The presets. Angles are in the same spherical terms the orbit
      control uses, so a preset is a starting point the coach can then
@@ -958,11 +1092,25 @@ export function createBoard3D(opts) {
     if (!p) return;
     followBall = false;
     camTouched = true;
+
+    /* Work out the destination WITHOUT moving the camera, so the
+       tween has somewhere to go. frameBoard() fits the distance to
+       the viewport, and that fit depends on the angle — so compute it
+       against the preset's phi rather than the current one. */
+    const held = {theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone()};
     cam.theta = p.theta;
     cam.phi = p.phi;
     cam.target.set(0, 0, 0);
-    frameBoard();          // fits the pitch, then applies
-    invalidate();
+    frameBoard();
+    const to = {theta: p.theta, phi: p.phi, dist: cam.dist, target: cam.target.clone()};
+
+    // Put it back, then glide there.
+    cam.theta = held.theta;
+    cam.phi = held.phi;
+    cam.dist = held.dist;
+    cam.target.copy(held.target);
+    applyCamera();
+    tweenCameraTo(to, 550);
   }
 
   /**
@@ -1012,7 +1160,8 @@ export function createBoard3D(opts) {
        threshold never hits one. In world units — the scene is in
        metres — under a metre is a forgiving but not sloppy target. */
     ray.params.Line.threshold = includeLines ? 0.8 : 0;
-    const hits = ray.intersectObjects(objects.map((o) => o.mesh), false);
+    const hits = ray.intersectObjects(
+        objects.filter((o) => o.mesh.visible).map((o) => o.mesh), false);
     if (!hits.length) return null;
     return objects.find((o) => o.mesh === hits[0].object) || null;
   }
@@ -1096,6 +1245,7 @@ export function createBoard3D(opts) {
       mode = 'pan';
       camTouched = true;
       followBall = false;   // the coach is steering now
+      cancelCameraTween();
       return;
     }
     const hit = readOnly ? null : pick(ev);
@@ -1155,6 +1305,7 @@ export function createBoard3D(opts) {
       cam.phi = Math.max(0.12, Math.min(Math.PI / 2 - 0.02, cam.phi));
       camTouched = true;
       followBall = false;   // the coach is steering now
+      cancelCameraTween();
       camera.up.set(0, 1, 0);
       last = {x: ev.clientX, y: ev.clientY};
       applyCamera();
@@ -1288,6 +1439,7 @@ export function createBoard3D(opts) {
     ev.preventDefault();
     cam.dist = Math.max(15, Math.min(400, cam.dist * (1 + Math.sign(ev.deltaY) * 0.1)));
     camTouched = true;
+    cancelCameraTween();
     applyCamera();
   }
 
@@ -1342,6 +1494,9 @@ export function createBoard3D(opts) {
      slow enough to read and fast enough not to feel stalled. */
   function tick(now) {
     if (!alive) return;
+    // A tween renders every frame for its duration, or the move shows
+    // one frame and stops — the loop is on demand by default.
+    if (stepCameraTween(now || 0)) needsRender = true;
     if (travellers.length) {
       const t = ((now || 0) % 3000) / 3000;
       travellers.forEach((tr) => tr.mesh.position.copy(
@@ -1419,11 +1574,15 @@ export function createBoard3D(opts) {
     isFollowingBall() { return followBall; },
 
     resetCamera() {
-      camTouched = false;
       followBall = false;
-      camera.up.set(0, 1, 0);
-      frameBoard();
-      invalidate();
+      const held = {theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone()};
+      camTouched = false;
+      frameBoard();        // computes the fitted distance and centre
+      const to = {theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone()};
+      cam.theta = held.theta; cam.phi = held.phi; cam.dist = held.dist;
+      cam.target.copy(held.target);
+      applyCamera();
+      tweenCameraTo(to, 550);
     },
     resize,
     invalidate,

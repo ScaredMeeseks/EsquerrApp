@@ -4672,3 +4672,43 @@ Two of my own earlier tests pinned the numbers this round deliberately changed, 
 relaxed to assert the property rather than the value.
 
 Unit 1434 → **1443**.
+
+#### Ball scale, true trail fade, first-drag curves, camera easing (v136)
+
+**The ball was a boulder.** `BALL_R` 0.45 → **0.25**. A real ball is 0.11 m and invisible at pitch
+scale, so it stays oversized — just not by as much. The travelling dot shrank with it (0.16 → 0.12)
+because the two were separated deliberately, and the ground ring is now `BALL_R * 1.8 + …` rather
+than a fixed 0.7, which would otherwise have been three times the ball. Bend dots left alone: they
+are handles and have to stay grabbable, so they now read larger than the ball.
+
+**Trails were faking the fade.** They lerped vertex colours toward the constant `TURF` green while
+the material's opacity stayed a uniform 0.55 — so they never became transparent at all. The turf as
+rendered is lit, mown-striped and shadowed, so a flat green line does not match it: over a dark
+stripe it reads as a pale streak, which is the "fading to white" report. Replaced with a small
+`ShaderMaterial` carrying a per-vertex `alpha` attribute. **I called a custom shader "a lot of
+machinery for something barely noticeable" when I wrote the fake — wrong on both counts.**
+
+**Trajectories were absent on the first drag.** `addPathsFor()` skipped anything that had not moved,
+so at the moment a drag began there was no entry and `movePathEnd()` bailed; the curve only appeared
+after the release rebuild. Entries are now built for **everything with a previous-frame position**
+and hidden until it has moved, with `updatePath()` revealing them mid-drag. A visibility toggle
+costs nothing; building meshes mid-gesture is what makes a drag stutter. The raycast now also skips
+invisible meshes — three.js does not reliably do that, and an invisible pick-line would swallow a
+right-click meant for the turf.
+
+**Camera presets snapped.** Now a 550 ms eased tween from wherever the camera is. Three details:
+`theta` takes the **shortest arc** (the raw difference sends it the long way round about half the
+time); the up vector is **blended across a band** instead of switched at `phi < 0.02`, since a hard
+switch is invisible on a snap but flicks part-way through an animated move to Top; and the tween
+**holds the render loop open**, which is otherwise on demand and would show a single frame. Any
+orbit, pan or zoom cancels it. `resetCamera()` glides too.
+
+`setPreset` computes its destination by momentarily setting the angles, calling `frameBoard()` to
+get the fitted distance, then putting the camera back — the fit depends on the angle, so it cannot
+be measured from where the camera currently is.
+
+**Three of my own tests had to be rewritten** because they pinned the decisions this round reversed
+(build-if-moved, colour-lerp fade, threshold up-switch). Third round running that has happened; the
+replacements assert the invariant the coach sees rather than the mechanism.
+
+Unit 1443 → **1459**.
