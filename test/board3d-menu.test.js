@@ -338,3 +338,61 @@ describe('the menu is built after what it reaches for', () => {
         'the menu must only be built in 3D');
   });
 });
+
+describe('the rail and the camera share one vertical axis', () => {
+  const rule = (sel) => {
+    const i = css.indexOf(sel + ' {');
+    assert.ok(i !== -1, sel + ' not found');
+    return css.slice(i, css.indexOf('}', i));
+  };
+
+  it('every rail control is the width of the camera button', () => {
+    /* The alignment is not a magic offset — it is that the camera
+       button, the frame tiles, the add button and play are all the
+       same width and all centred, so they cannot drift apart when
+       one of them is restyled. */
+    const w = /width:(\d+)px/.exec(rule('.tb-cams-btn'))[1];
+    ['.tb-rail .tb-frame-thumb', '.tb-rail .tb-frame-add',
+     '.tb-rail .tb-frame-play'].forEach((sel) => {
+      const m = /width:(\d+)px/.exec(rule(sel));
+      assert.ok(m, sel + ' sets no width');
+      assert.strictEqual(m[1], w,
+          sel + ' is ' + m[1] + 'px against a ' + w + 'px camera button');
+    });
+    assert.ok(/align-items:center/.test(rule('.tb-rail .tb-frames-strip')),
+        'the strip must centre its children on that axis');
+  });
+
+  it('the frames are not a white box on a pitch', () => {
+    /* The 2D board's white tiles and orange borders are a page
+       vocabulary. Over turf, a column of white squares is the loudest
+       thing on the board. */
+    const thumb = rule('.tb-rail .tb-frame-thumb');
+    assert.ok(/background:none/.test(thumb), 'a tile must be transparent');
+    assert.ok(/border:2px solid transparent/.test(thumb),
+        'and carry no border of its own');
+    assert.ok(/background:none/.test(rule('.tb-rail .tb-frames-section')),
+        'and the section around them must not be a grey box either');
+  });
+
+  it('only the current frame is outlined', () => {
+    const on = rule('.tb-rail .tb-frame-active .tb-frame-thumb');
+    assert.ok(/border-color:#fb8c00/.test(on), 'the active tile must be outlined');
+    assert.ok(/box-shadow:none/.test(on),
+        'and only outlined — the 2D board doubles it with a glow');
+  });
+
+  it('the camera list drops down, it does not run across', () => {
+    /* It sits at the top-right corner; a row would run back along the
+       top edge and collide with the board name. */
+    assert.ok(/flex-direction:column/.test(rule('.tb-cams-list')),
+        'the list must stack');
+  });
+
+  it('play sits below the frames it runs', () => {
+    /* It arrives in the section HEADER, which is above the strip.
+       Above them it reads as a title; below, as "run these". */
+    assert.ok(/flex-direction:column-reverse/.test(rule('.tb-rail .tb-frames-section')),
+        'the section must be reversed so the header lands underneath');
+  });
+});

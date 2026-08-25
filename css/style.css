@@ -845,7 +845,8 @@ tr:hover td { background: #f7f8fa; }
    value below is only what the window looks like before the first
    measurement lands. */
 .tb-3d-wrap {
-  width:calc(100% + 3rem); margin:0 -1.5rem 1rem;
+  width:calc(100% + 3rem); margin:-1.5rem -1.5rem 1rem;
+  border-radius:var(--radius) var(--radius) 0 0;
   height:clamp(420px, 72vh, 900px);
   overflow:hidden; border:0;
   background:#1a2410; position:relative;
@@ -4878,13 +4879,16 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .tb-rail:hover, .tb-rail:focus-within { opacity:1; }
 .tb-rail .tb-frames-section {
-  margin:0; padding:.5rem .45rem; border-radius:12px;
-  background:rgba(18,20,23,.72); backdrop-filter:blur(6px);
+  margin:0; padding:0; background:none;
+  /* Reversed: play arrives in the section HEADER, above the strip.
+     Above the frames it reads as a title; below them, as "run
+     these". */
+  display:flex; flex-direction:column-reverse;
 }
 /* Vertical, because it lives in a column now. The 2D board keeps the
    horizontal strip; only the copy inside the window is turned. */
 .tb-rail .tb-frames-strip {
-  flex-direction:column; align-items:center; gap:.3rem;
+  flex-direction:column; align-items:center; gap:.3rem; padding:0;
   max-height:min(52vh, 420px); overflow-y:auto; overflow-x:hidden;
 }
 .tb-rail .tb-frames-header {
@@ -4911,7 +4915,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .tb-cams-btn svg { width:20px; height:20px; }
 .tb-cams-list {
-  display:flex; gap:.35rem; margin-top:.4rem; justify-content:flex-end;
+  display:flex; flex-direction:column; gap:.35rem; margin-top:.4rem;
+  align-items:flex-end;
   opacity:0; transform:translateY(-6px); pointer-events:none;
   transition:opacity .16s ease, transform .16s ease;
 }
@@ -4925,3 +4930,40 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .tb-cams-list .tb-cam-btn:hover { background:rgba(18,20,23,.98); color:#fff; }
 .tb-cams-list .tb-cam-btn svg { width:22px; height:22px; }
+
+/* ── The frames, inside the 3D window ─────────────────────────────
+   Over a pitch rather than on a page, so the 2D board's white tiles
+   and orange borders are the wrong vocabulary: a column of white
+   squares reads as the loudest thing on the board. Only the CURRENT
+   frame is outlined; the rest are just their number.
+
+   Everything is 38px wide — tiles, the add button, play — and every
+   row is centred, so the whole rail sits on one vertical axis with
+   the camera icon above it. */
+.tb-rail .tb-frame-thumb {
+  width:38px; height:38px;
+  background:none; border:2px solid transparent; color:#c9ccd1;
+  box-shadow:none; font-weight:600;
+}
+.tb-rail .tb-frame-thumb:hover { border-color:rgba(255,255,255,.35); color:#fff; }
+/* The one you are looking at, and nothing else. */
+.tb-rail .tb-frame-active .tb-frame-thumb {
+  border-color:#fb8c00; color:#fff; box-shadow:none;
+}
+.tb-rail .tb-frame-add {
+  width:38px; height:38px; margin:0;
+  background:none; border:2px dashed rgba(255,255,255,.28); color:#c9ccd1;
+}
+.tb-rail .tb-frame-add:hover { border-color:rgba(255,255,255,.5); color:#fff; }
+.tb-rail .tb-frame-item { align-items:center; }
+/* The delete cross is a page affordance; on the rail it clutters a
+   38px tile. It comes back on hover, where it is wanted. */
+.tb-rail .tb-frame-del { opacity:0; transition:opacity .15s; }
+.tb-rail .tb-frame-item:hover .tb-frame-del { opacity:1; }
+.tb-rail .tb-frame-play {
+  width:38px; height:38px; margin:0; align-self:center;
+  background:rgba(18,20,23,.72); border:0; color:#e8eaed;
+  backdrop-filter:blur(6px);
+}
+.tb-rail .tb-frame-play:hover { background:rgba(18,20,23,.94); color:#fff; }
+.tb-rail .tb-frames-header { align-items:center; margin:.4rem 0 0; }

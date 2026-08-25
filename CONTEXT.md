@@ -5557,3 +5557,28 @@ carries its own 3D gate. Both mutations — moving the call above the declaratio
 fail them.
 
 Unit 1694 → **1697**. Version triple → v151. **Still nothing deployed.**
+
+### 2026-08-26 — Cosmetics: the window reaches the card top, the rail loses its box (v152)
+
+- **The window bleeds on three edges now**, not two, cancelling the card's `1.5rem` on the top as well
+  as the sides. The top corners keep the card's own radius and the bottom two go square, because that
+  edge no longer meets anything. The height follows on its own — `tbSize3DWindow()` measures the top
+  offset, which just moved up.
+- **The frames stopped being a page.** The 2D board's white tiles and orange borders are a page
+  vocabulary; over turf a column of white squares is the loudest thing on the board. Tiles are
+  transparent with a number, and **only the current one is outlined** — the 2D board doubles that
+  outline with a glow, which is one signal too many at 38px. The grey box around the section is gone
+  too. The delete cross appears on hover, where it is wanted, rather than sitting on every tile.
+- **One vertical axis.** The camera button, the frame tiles, the add button and play are all 38px and
+  centred, so the rail lines up under the camera icon by construction rather than by a magic offset.
+  A test reads the camera button's width and requires the other three to match it, so restyling one
+  cannot quietly drift it off the axis.
+- **The camera list drops down** instead of running across: it sits in the top-right corner, and a row
+  would run back along the top edge into the board name.
+- **Play sits below the frames it runs.** It arrives in the section header, which is above the strip;
+  `column-reverse` puts it underneath, where it reads as "run these" rather than as a title.
+
+Two rules for `.tb-rail .tb-frames-section` had accumulated — the second silently winning. Merged, and
+the test that found it was looking up the FIRST match by selector.
+
+Unit 1697 → **1702**. Version triple → v152. **Still nothing deployed.**
