@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 148;
+  const APP_VERSION = 149;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6870,6 +6870,10 @@
         onContext: (kind, index, x, y, pct) => {
           if (hooks.onContext) hooks.onContext(kind, index, x, y, pct);
         },
+        /* A mark dragged across the turf, as a delta. */
+        onMarkMove: (kind, index, d) => {
+          if (hooks.applyMarkMove) hooks.applyMarkMove(kind, index, d);
+        },
         onSelect: () => {}
       });
       const cams = document.getElementById('tb-3d-cams');
@@ -10917,7 +10921,11 @@
 
     // Helpers to read/write display positions for any element type
     function getElPos(el) {
-      if (el.classList.contains('tb-circle') || el.classList.contains('tb-ball')) {
+      /* Labels sit on left/top like a circle. They were missing here,
+         so moveEl left them behind in a multi-select drag as well —
+         adding the branch fixes that too. */
+      if (el.classList.contains('tb-circle') || el.classList.contains('tb-ball') ||
+          el.classList.contains('tb-text-label')) {
         return { left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
       }
       if (el.classList.contains('tb-arrow')) {
@@ -10934,7 +10942,8 @@
       return {};
     }
     function moveEl(el, start, dx, dy) {
-      if (el.classList.contains('tb-circle') || el.classList.contains('tb-ball')) {
+      if (el.classList.contains('tb-circle') || el.classList.contains('tb-ball') ||
+          el.classList.contains('tb-text-label')) {
         el.style.left = Math.max(0, Math.min(100, start.left + dx)) + '%';
         el.style.top = Math.max(0, Math.min(100, start.top + dy)) + '%';
       } else if (el.classList.contains('tb-arrow')) {
@@ -12995,6 +13004,33 @@
          * cones positionally (spawnCone sets no data-idx),
          * everything else by index.
          */
+        /**
+         * A drawn mark dragged in 3D, as an offset in board percent.
+         *
+         * Runs the 2D board's OWN translate — `getElPos` then
+         * `moveEl`, the same pair its pointermove uses — and then the
+         * same save path its pointerup runs. Nothing here knows how
+         * an arrow or a pen stroke is stored, which is the point: the
+         * 3D view supplies a delta and the 2D board applies it.
+         */
+        applyMarkMove: (kind, index, d) => {
+          const sel = {
+            arrows: '.tb-arrow', rects: '.tb-rect',
+            penLines: '.tb-pen-line', texts: '.tb-text-label'
+          }[kind];
+          if (!sel) return;
+          const el = inner.querySelectorAll(sel)[index];
+          if (!el) return;
+          pushUndo();
+          moveEl(el, getElPos(el), d[0], d[1]);
+          if (kind === 'arrows') saveArrows();
+          else if (kind === 'rects') saveRects();
+          else if (kind === 'penLines') savePenLines();
+          else saveTexts();
+          refreshArrowheads(arrowsSvg);
+          autoSaveFrame();
+        },
+
         onContext: (kind, index, x, y, pct) => {
           if (!kind) {
             if (pct) showFieldCtxMenu(pct[0], pct[1], x, y);

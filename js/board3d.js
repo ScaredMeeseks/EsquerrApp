@@ -74,6 +74,9 @@ export function createBoard3D(opts) {
     /* A parked right-click on an object or on bare turf. app.js opens
        the 2D board's own menu; `pct` is where the turf was hit. */
     onContext,          // (kind|null, index|null, x, y, pct) => void
+    /* A drawn mark dragged across the turf, as a DELTA in board
+       percent — marks translate, they do not snap to the cursor. */
+    onMarkMove,         // (kind, index, [dx, dy]) => void
     BG,                 // board-geom, injected so this file imports nothing app-side
     BS,                 // board-state: the curve maths the tween also uses
     fillCss,            // the striped-kit renderer from utils.js
@@ -1733,18 +1736,16 @@ export function createBoard3D(opts) {
        threshold never hits one. In world units — the scene is in
        metres — under a metre is a forgiving but not sloppy target. */
     ray.params.Line.threshold = includeLines ? 0.8 : 0;
-    /* Drawn marks — arrows, zones, pen strokes, labels — are pickable
-       for the RIGHT button only, which is the same gate `includeLines`
-       already opens for trajectory lines.
+    /* Drawn marks are in the pool for BOTH buttons now. They were
+       right-click only for a while, on the reasoning that a dragged
+       object commits a single position and an arrow has two endpoints
+       — true, but the answer was to commit a DELTA rather than to
+       refuse the drag. The 2D board has always dragged them exactly
+       that way (`computeDelta` then `moveEl`), so 3D now does too.
 
-       Not for the left button, deliberately. A left drag would set
-       them as `dragging`, and onPointerUp moves a dragged object by
-       writing a single position; an arrow has two endpoints, a zone
-       four corners and a pen stroke a whole polyline, so there is
-       nothing sensible for it to write. They were unpickable before,
-       which meant right-click on an arrow opened the TURF menu. */
-    const pool = objects.filter((o) => o.mesh.visible &&
-        (includeLines || MARK_KINDS.indexOf(o.kind) === -1));
+       `includeLines` still gates the trajectory pick-LINES, which
+       take right-clicks and are not draggable. */
+    const pool = objects.filter((o) => o.mesh.visible);
     const hits = ray.intersectObjects(pool.map((o) => o.mesh), false);
     if (!hits.length) return null;
     return objects.find((o) => o.mesh === hits[0].object) || null;
@@ -1916,6 +1917,13 @@ export function createBoard3D(opts) {
     if (hit) {
       mode = 'drag';
       dragging = hit;
+      /* A mark translates, so the drag needs its starting place and
+         the point on the turf the hand closed on. Everything else
+         simply follows the cursor and needs neither. */
+      if (MARK_KINDS.indexOf(hit.kind) !== -1) {
+        dragging.from = hit.mesh.position.clone();
+        dragging.grab = groundPoint(ev);
+      }
       setSelected(hit);
     } else {
       mode = 'orbit';
@@ -2077,6 +2085,23 @@ export function createBoard3D(opts) {
       return;
     }
 
+    /* A MARK moves by a DELTA, not to the pointer.
+       An arrow, a zone, a pen stroke and a label have no single
+       position to snap to a cursor — an arrow has two endpoints, a
+       stroke a whole polyline. The 2D board drags them the same way:
+       `computeDelta` then `moveEl(el, startPos, dx, dy)` translates
+       the whole thing. So the mesh is offset from where it was when
+       the drag began, and the release reports that offset. */
+    if (MARK_KINDS.indexOf(dragging.kind) !== -1) {
+      if (!dragging.grab) return;
+      dragging.mesh.position.set(
+          dragging.from.x + (g.x - dragging.grab.x),
+          dragging.from.y,
+          dragging.from.z + (g.z - dragging.grab.z));
+      invalidate();
+      return;
+    }
+
     const y = dragging.mesh.position.y;
     dragging.mesh.position.set(g.x, y, g.z);
 
@@ -2132,6 +2157,16 @@ export function createBoard3D(opts) {
         const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
         if (onPath) onPath(dragging.owner, dragging.index,
             {moveDot: dragging.dot, to: [pct[0], pct[1]]});
+      } else if (MARK_KINDS.indexOf(dragging.kind) !== -1) {
+        /* The OFFSET, in board percent — the same units the 2D board
+           drags in, so app.js can hand it straight to moveEl(). */
+        if (onMarkMove && dragging.from) {
+          const a = BG.toPercent(dragging.from.x, dragging.from.z, getPitch(), getBoardType());
+          const b = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
+          if (Math.abs(b[0] - a[0]) > 1e-6 || Math.abs(b[1] - a[1]) > 1e-6) {
+            onMarkMove(dragging.kind, dragging.index, [b[0] - a[0], b[1] - a[1]]);
+          }
+        }
       } else if (dragging.kind === 'pathLine') {
         // The invisible pick line is not draggable; it only takes
         // right-clicks. Ignore a left drag that started on it.

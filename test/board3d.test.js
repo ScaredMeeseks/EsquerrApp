@@ -2090,18 +2090,73 @@ describe('drawn marks can be right-clicked in 3D', () => {
           k + ' must be built from s.' + k));
   });
 
-  it('marks are pickable for the RIGHT button only', () => {
-    /* A left drag would set one as `dragging`, and onPointerUp moves a
-       dragged object by writing a single position — an arrow has two
-       endpoints and a pen stroke a whole polyline, so there is
-       nothing sensible to write. */
-    assert.ok(/includeLines \|\| MARK_KINDS\.indexOf\(o\.kind\) === -1/.test(pickFn),
-        'the pick pool must gate marks behind includeLines');
+  it('marks are pickable by BOTH buttons, so they can be dragged', () => {
+    /* They were right-click only for a while, on the reasoning that a
+       dragged object commits a single position and an arrow has two
+       endpoints. True, but the answer was to commit a DELTA, not to
+       refuse the drag — which is exactly what the 2D board does. */
+    assert.ok(!/MARK_KINDS\.indexOf\(o\.kind\) === -1/.test(pickFn),
+        'marks must not be gated out of the left-button pool');
+    assert.ok(/objects\.filter\(\(o\) => o\.mesh\.visible\)/.test(pickFn),
+        'the pool is every visible object');
+  });
+
+  it('a mark drag commits an OFFSET, never a position', () => {
+    /* An arrow has two endpoints, a zone four corners and a pen
+       stroke a whole polyline; there is no single place to put any of
+       them. The 2D board translates them, and so does this. */
+    const up = bare.slice(bare.indexOf('function onPointerUp(ev) {'),
+        bare.indexOf('function onWheel('));
+    assert.ok(/onMarkMove\(dragging\.kind, dragging\.index, \[b\[0\] - a\[0\], b\[1\] - a\[1\]\]\)/
+        .test(up), 'the release must report a delta in board percent');
+    assert.ok(/Math\.abs\(b\[0\] - a\[0\]\) > 1e-6/.test(up),
+        'a click that moved nothing must not push an undo step');
+  });
+
+  it('a dragged mark follows the hand by the same offset', () => {
+    /* Snapping the mesh to the cursor would jump the mark so its
+       ORIGIN sat under the pointer — grabbing an arrow by its head
+       would teleport the tail to your cursor. */
+    const move = bare.slice(bare.indexOf('function onPointerMove('),
+        bare.indexOf('function movePathEnd(', bare.indexOf('function onPointerMove(')));
+    assert.ok(/dragging\.from\.x \+ \(g\.x - dragging\.grab\.x\)/.test(move),
+        'the mesh must move by the offset from where it was grabbed');
     const down = bare.slice(bare.indexOf('function onPointerDown('),
         bare.indexOf('function panBy(', bare.indexOf('function onPointerDown(')));
-    assert.ok(/pick\(ev, true\)/.test(down), 'the right-click pass includes marks');
-    assert.ok(/const hit = readOnly \? null : pick\(ev\);/.test(down),
-        'the left-button pass must NOT, or a mark becomes draggable');
+    assert.ok(/dragging\.from = hit\.mesh\.position\.clone\(\)/.test(down),
+        'the starting position must be CLONED — the live vector moves');
+    assert.ok(/dragging\.grab = groundPoint\(ev\)/.test(down),
+        'and the grab point recorded');
+  });
+
+  it('app.js runs the 2D translate rather than knowing the storage', () => {
+    /* getElPos + moveEl are the pair the 2D pointermove uses. Nothing
+       on this path knows how an arrow or a pen stroke is stored. */
+    const fn = appBareAll.slice(
+        appBareAll.indexOf('applyMarkMove: (kind, index, d) => {'),
+        appBareAll.indexOf('onContext: (kind, index, x, y, pct) => {',
+            appBareAll.indexOf('applyMarkMove: (kind, index, d) => {')));
+    assert.ok(fn.length > 100, 'applyMarkMove was not found');
+    assert.ok(/moveEl\(el, getElPos\(el\), d\[0\], d\[1\]\)/.test(fn),
+        'it must use the 2D board own translate');
+    assert.ok(/pushUndo\(\)/.test(fn) && /autoSaveFrame\(\)/.test(fn),
+        'and the same undo and save path the 2D release runs');
+    ['saveArrows', 'saveRects', 'savePenLines', 'saveTexts'].forEach((s) =>
+      assert.ok(fn.indexOf(s) !== -1, s + ' is missing from the save path'));
+    assert.ok(!/setAttribute|style\.left/.test(fn),
+        'it must not reach into the element itself — that is moveEl s job');
+  });
+
+  it('labels move with the rest, in 2D as well', () => {
+    /* getElPos and moveEl had no branch for .tb-text-label, so a
+       multi-select drag left labels behind. Adding it for the 3D path
+       fixes that too. */
+    const pos = appBareAll.slice(appBareAll.indexOf('function getElPos(el) {'),
+        appBareAll.indexOf('function moveEl('));
+    assert.ok(/tb-text-label/.test(pos), 'getElPos must know labels');
+    const mv = appBareAll.slice(appBareAll.indexOf('function moveEl(el, start, dx, dy) {'),
+        appBareAll.indexOf('function buildGroupStarts'));
+    assert.ok(/tb-text-label/.test(mv), 'moveEl must know labels');
   });
 
   it('a mark is not selectable, so Delete cannot half-work on it', () => {

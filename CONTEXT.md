@@ -5434,3 +5434,30 @@ One test of my own failed on correct code again: it asserted `setCursor('grab')`
 out of a ternary. It checks the vocabulary now, and a separate test pins how the value is reached.
 
 Unit 1652 → **1658**. Version triple → v148. **Still nothing deployed.**
+
+### 2026-08-25 — Drawn marks are draggable in 3D, so the hand means something (v149)
+
+v147 made arrows, zones, pen strokes and labels right-clickable but deliberately kept them out of the
+**left**-button pick pool, reasoning that a dragged object commits a single position and an arrow has
+two endpoints. The reasoning was right and the conclusion was wrong: **the answer is to commit a DELTA,
+not to refuse the drag.** The 2D board has always dragged them exactly that way — `computeDelta` then
+`moveEl(el, startPos, dx, dy)` — and refusing left them with no hover cursor and nothing to hover for.
+
+- `board3d` records where a mark was (`from`, **cloned** — the live vector moves under you) and the
+  turf point the hand closed on (`grab`), then offsets the mesh by the difference. Snapping to the
+  cursor would jump the mark so its ORIGIN sat under the pointer: grab an arrow by its head and the
+  tail teleports to your hand.
+- The release reports `[dx, dy]` in **board percent**, the same units the 2D board drags in, and skips
+  the report entirely when nothing moved so a plain click does not push an undo step.
+- `applyMarkMove` in app.js runs the 2D board's own `getElPos` + `moveEl` and then the same save path
+  its pointerup runs. Nothing on that path knows how an arrow or a pen stroke is stored, which is the
+  whole point — 3D supplies a delta, 2D applies it. Same rule as every other 3D input.
+
+**A latent 2D bug fell out.** `getElPos` and `moveEl` had no branch for `.tb-text-label`, so a
+multi-select drag in 2D moved everything except the labels. Adding the branch for the 3D path fixes
+that too; there is a test for it now.
+
+The hover cursor needed no change — it asks `pick(ev)`, which is by definition the draggable set, so
+marks joined it the moment they became draggable.
+
+Unit 1658 → **1662**. Version triple → v149. **Still nothing deployed.**
