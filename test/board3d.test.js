@@ -632,13 +632,15 @@ describe('camera presets', () => {
   it('handles the degenerate overhead case explicitly', () => {
     /* Straight down, the default up vector is parallel to the view
        direction and lookAt's basis collapses — the pitch spins. The
-       orbit control forbids the angle; the preset has to survive it. */
-    const fn = s3.slice(s3.indexOf('function applyCamera'), s3.indexOf('/* ── Easing between'));
-    /* Still handled, but BLENDED across a band rather than switched
-       at a threshold: a hard switch is invisible on a snap and flicks
-       part-way through an animated move to Top. */
-    assert.ok(/camera\.up\.set\(/.test(fn), fn);
-    assert.ok(/0\.15 - cam\.phi/.test(fn), 'expected a blend band, not a threshold');
+       orbit control forbids the angle; the preset has to survive it.
+
+       Handled in upFor(), which applyCamera and the tween's
+       destination-orientation both go through, so the static frame
+       and the animated one cannot disagree. */
+    const fn = s3.slice(s3.indexOf('function upFor'), s3.indexOf('function positionFor'));
+    assert.ok(/phi < 0\.02/.test(fn), fn);
+    assert.ok(/Math\.cos\(theta\), 0, Math\.sin\(theta\)/.test(fn),
+        'the overhead case needs a horizontal up vector');
   });
 
   it('leaves the distance to frameBoard rather than hardcoding it', () => {
@@ -714,10 +716,14 @@ describe('flat markers, not half-buried balls', () => {
   });
 
   it('the travelling dot cannot be mistaken for the ball', () => {
-    // BALL_R is 0.45; the marker has to be clearly smaller.
-    const m = /flatDot\(([\d.]+), col\);/.exec(s3);
+    /* Compared against BALL_R rather than a written-down number, so
+       this keeps meaning the same thing when the ball is resized —
+       which it has been twice. */
+    const ball = parseFloat(/const BALL_R = ([\d.]+);/.exec(s3)[1]);
+    const m = /const dot = flatDot\(([\d.]+), col/.exec(s3);
     assert.ok(m, 'traveller size not found');
-    assert.ok(parseFloat(m[1]) < 0.25, 'traveller is ' + m[1] + ', too close to a ball');
+    assert.ok(parseFloat(m[1]) < ball * 0.6,
+        'traveller is ' + m[1] + ' against a ball of ' + ball);
   });
 
   it('the apex diamond stays a diamond', () => {
@@ -733,7 +739,8 @@ describe('flat markers, not half-buried balls', () => {
     /* Deliberately subtle now — it only has to say where the ball is
        over the pitch, not compete with the ball. Still FLOORED, so it
        cannot fade away to nothing the way the first version did. */
-    assert.ok(/Math\.max\(0\.2\d?,/.test(fn), 'opacity must still have a floor');
+    // A floor must EXIST; its value is a taste call that has moved.
+    assert.ok(/Math\.max\(0\.\d+,/.test(fn), 'opacity must still have a floor');
     assert.ok(/RingGeometry\(0\.9/.test(fn), 'the ring must be thin');
   });
 
@@ -919,7 +926,7 @@ describe('the ball is a ball, not a boulder', () => {
        mistaken for a ball; shrinking one without the other would undo
        that. */
     const ball = num(/const BALL_R = ([\d.]+);/);
-    const dot = num(/const dot = flatDot\(([\d.]+), col\);/);
+    const dot = num(/const dot = flatDot\(([\d.]+), col/);
     assert.ok(dot < ball * 0.6, 'dot ' + dot + ' vs ball ' + ball);
   });
 
@@ -1005,12 +1012,16 @@ describe('camera moves are eased', () => {
     assert.ok(/while \(dTheta > Math\.PI\) dTheta -= Math\.PI \* 2/.test(fn), fn);
   });
 
-  it('blends the up vector instead of switching it', () => {
-    /* A hard switch at phi < 0.02 is invisible on a snap but flicks
-       part-way through an animated move to Top. */
-    const fn = s3.slice(s3.indexOf('function applyCamera'), s3.indexOf('/* ── Easing between'));
-    assert.ok(!/if \(cam\.phi < 0\.02\) camera\.up\.set/.test(fn), 'the hard switch must be gone');
-    assert.ok(/0\.15 - cam\.phi/.test(fn), fn);
+  it('never interpolates the up vector at all', () => {
+    /* This test used to demand a BLEND, on the theory that a hard
+       switch would flick part-way through a move to Top. The blend
+       was worse: it drags `up` toward the view axis across the whole
+       band, and the measured result was a 172-degree whip. The right
+       answer was to stop interpolating orientation as angles — see
+       the slerp — and leave the up rule as a stable hard switch. */
+    assert.ok(!/0\.15 - cam\.phi/.test(s3), 'the blend band must be gone');
+    const fn = s3.slice(s3.indexOf('function upFor'), s3.indexOf('function positionFor'));
+    assert.ok(/phi < 0\.02/.test(fn), fn);
   });
 
   it('holds the render loop open for the duration', () => {
@@ -1036,5 +1047,91 @@ describe('camera moves are eased', () => {
   it('reset glides too', () => {
     const fn = s3.slice(s3.indexOf('resetCamera()'), s3.indexOf('resetCamera()') + 600);
     assert.ok(/tweenCameraTo\(/.test(fn), fn);
+  });
+});
+
+describe('the camera cannot flip between views', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('interpolates ORIENTATION, not the orbit angles', () => {
+    /* Rebuilding the frame from angles each step means passing
+       through the overhead singularity, where up goes parallel to
+       view and lookAt has no basis. Measured on a Side->Top move:
+       up.view reached -1.00 at phi 0.139 and the next step rotated
+       172 degrees. A slerp takes the shortest rotation between two
+       well-defined frames and cannot pass through a degenerate one. */
+    const fn = s3.slice(s3.indexOf('function stepCameraTween'), s3.indexOf('/** Any manual input'));
+    assert.ok(/slerpQuaternions\(f\.quat, camTween\.toQuat, e\)/.test(fn), fn);
+    assert.ok(/camera\.position\.lerpVectors\(f\.pos/.test(fn));
+  });
+
+  it('does NOT rebuild from angles mid-flight', () => {
+    /* applyCamera() is exactly what reintroduces the flip. Comments
+       stripped before asserting: the function explains WHY it must
+       not call applyCamera, and a naive search finds that sentence. */
+    const fn = s3.slice(s3.indexOf('function stepCameraTween'), s3.indexOf('if (t >= 1)'))
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    assert.ok(!/applyCamera\(\)/.test(fn), fn);
+  });
+
+  it('lands exactly on the destination and hands control back', () => {
+    /* If the tween's final frame and the first applyCamera() after it
+       disagreed, the camera would snap once at the end — the same bug
+       in a different costume. */
+    const fn = s3.slice(s3.indexOf('if (t >= 1)'), s3.indexOf('/** Any manual input'));
+    assert.ok(/cam\.theta = to\.theta/.test(fn) && /applyCamera\(\)/.test(fn), fn);
+  });
+
+  it('derives the destination orientation with the SAME up rule', () => {
+    const fn = s3.slice(s3.indexOf('function quaternionFor'), s3.indexOf('function tweenCameraTo'));
+    assert.ok(/upFor\(phi, theta\)/.test(fn), fn);
+  });
+
+  it('the up rule is a hard switch again, not a blend', () => {
+    /* The blend was worse and measurably so: widening a band around
+       the singularity drags up TOWARD the view axis across the whole
+       band rather than only at the pole. */
+    const fn = s3.slice(s3.indexOf('function upFor'), s3.indexOf('function positionFor'));
+    assert.ok(/phi < 0\.02/.test(fn), fn);
+    assert.ok(!/0\.15 - /.test(fn), 'the blend band must be gone');
+  });
+
+  it('reuses one probe object rather than allocating per transition', () => {
+    assert.ok(/const orientProbe = new THREE\.Object3D\(\)/.test(s3));
+  });
+});
+
+describe('decoration is dimmer than the controls', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  const opacityOf = (re) => {
+    const m = re.exec(s3);
+    assert.ok(m, 'not found: ' + re);
+    return parseFloat(m[1]);
+  };
+
+  it('the trajectory curve is a quiet mark', () => {
+    const curve = opacityOf(/LineBasicMaterial\(\{color: col, transparent: true, opacity: ([\d.]+)\}\)\);\n\s*objectRoot\.add\(entry\.curve\)/);
+    assert.ok(curve <= 0.6, 'curve opacity ' + curve);
+  });
+
+  it('the ball ring is subtler still, and keeps a floor', () => {
+    const base = opacityOf(/color: 0xffffff, transparent: true, opacity: ([\d.]+),/);
+    assert.ok(base <= 0.3, 'ring base ' + base);
+    // Still floored, so it cannot fade away entirely when high.
+    assert.ok(/Math\.max\(0\.1\d?,/.test(s3), 'the ring must keep a visible floor');
+  });
+
+  it('but the HANDLES stay full strength', () => {
+    /* They are targets the coach has to hit. Dimming an interactive
+       control to match decoration makes it harder to use for nothing. */
+    assert.ok(/flatDot\(0\.5, col, active === 'bend' \? 1 : 0\.25\)/.test(s3),
+        'the ball bend handle must be fully opaque when active');
+    assert.ok(/const h = flatDot\(0\.45, col\);/.test(s3),
+        'player bend dots take the default full opacity');
   });
 });

@@ -626,7 +626,9 @@ export function createBoard3D(opts) {
     for (let i = 0; i <= 48; i++) pts.push(pathWorld(p0, p1, path, i / 48));
     entry.curve = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.9}));
+        // Quiet. A trajectory is a read-only mark; the HANDLES stay
+        // bright because they are targets the coach has to hit.
+        new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.55}));
     objectRoot.add(entry.curve);
     entry.meshes.push(entry.curve);
 
@@ -638,7 +640,7 @@ export function createBoard3D(opts) {
       for (let i = 0; i <= 48; i++) flat.push(groundAt(p0, p1, path, i / 48));
       entry.ground = new THREE.Line(
           new THREE.BufferGeometry().setFromPoints(flat),
-          new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.35}));
+          new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.18}));
       objectRoot.add(entry.ground);
       entry.meshes.push(entry.ground);
     }
@@ -646,7 +648,7 @@ export function createBoard3D(opts) {
     /* The travelling dot. Registered rather than animated in place so
        one clock drives every dot on the board — separate phases would
        look like noise instead of like direction. */
-    const dot = flatDot(0.12, col);
+    const dot = flatDot(0.12, col, 0.8);
     entry.traveller = dot;
     objectRoot.add(dot);
     entry.meshes.push(dot);
@@ -851,7 +853,7 @@ export function createBoard3D(opts) {
   const ballShadow = new THREE.Mesh(
       new THREE.RingGeometry(0.93, 1, 40),
       new THREE.MeshBasicMaterial({
-        color: 0xffffff, transparent: true, opacity: 0.4,
+        color: 0xffffff, transparent: true, opacity: 0.28,
         depthWrite: false, side: THREE.DoubleSide}));
   ballShadow.rotation.x = -Math.PI / 2;
   ballShadow.position.y = 0.05;
@@ -866,7 +868,7 @@ export function createBoard3D(opts) {
        ball is over the pitch, not compete with the ball itself. */
     const r = BALL_R * 1.8 + height * 0.12;
     ballShadow.scale.set(r, r, 1);
-    ballShadow.material.opacity = Math.max(0.22, 0.45 - height * 0.008);
+    ballShadow.material.opacity = Math.max(0.12, 0.28 - height * 0.006);
     ballShadow.position.set(x, 0.05, z);
     ballShadow.visible = true;
     invalidate();
@@ -1006,23 +1008,40 @@ export function createBoard3D(opts) {
         cam.target.y + cam.dist * cp,
         cam.target.z + cam.dist * sp * Math.sin(cam.theta));
 
-    /* Straight overhead, the default up vector (0,1,0) is parallel to
-       the view direction and lookAt's basis collapses — the pitch
-       spins through a right angle.
-
-       BLENDED across a band rather than switched at a threshold. A
-       hard switch is invisible on a snap but produces a visible flick
-       part-way through an animated move to Top, at the instant phi
-       crosses it. Blending turns that flick into a roll. */
-    const k = Math.min(1, Math.max(0, (0.15 - cam.phi) / 0.15));
-    if (k <= 0) camera.up.set(0, 1, 0);
-    else {
-      camera.up.set(
-          Math.cos(cam.theta) * k,
-          1 - k,
-          Math.sin(cam.theta) * k).normalize();
-    }
+    camera.up.copy(upFor(cam.phi, cam.theta));
     camera.lookAt(cam.target);
+  }
+
+  /**
+   * The up vector for a given camera angle.
+   *
+   * A HARD SWITCH, back from the blend that replaced it. Straight
+   * overhead, world-up is parallel to the view direction and lookAt
+   * has no plane to build a basis in — so within a hair of vertical
+   * the up vector goes horizontal instead.
+   *
+   * The blend was worse, and measurably so. Widening a band around
+   * the singularity drags `up` TOWARD the view axis across the whole
+   * band rather than only at the pole: through a Side→Top move,
+   * `up · view` reached -1.00 at phi 0.139 and the frame whipped 172
+   * degrees in one step. The hard switch is stable precisely because
+   * nothing ever interpolates through that region — and now nothing
+   * does, because transitions slerp the orientation instead of
+   * rebuilding it from angles.
+   */
+  function upFor(phi, theta) {
+    return phi < 0.02
+      ? new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta))
+      : new THREE.Vector3(0, 1, 0);
+  }
+
+  /** Where the camera sits for a given orbit angle. */
+  function positionFor(theta, phi, dist, target) {
+    const sp = Math.sin(phi), cp = Math.cos(phi);
+    return new THREE.Vector3(
+        target.x + dist * sp * Math.cos(theta),
+        target.y + dist * cp,
+        target.z + dist * sp * Math.sin(theta));
   }
 
   /* ── Easing between camera positions ─────────────────────────
@@ -1034,17 +1053,42 @@ export function createBoard3D(opts) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   }
 
+  /* A scratch object used only to derive a destination orientation.
+     Reused rather than allocated per transition. */
+  const orientProbe = new THREE.Object3D();
+
+  /** The quaternion the camera would have at a given orbit angle. */
+  function quaternionFor(theta, phi, dist, target) {
+    orientProbe.position.copy(positionFor(theta, phi, dist, target));
+    orientProbe.up.copy(upFor(phi, theta));
+    orientProbe.lookAt(target);
+    return orientProbe.quaternion.clone();
+  }
+
   function tweenCameraTo(to, ms) {
-    /* Shortest way round. theta is an angle, so a preset on the far
-       side of the pitch is reachable in two directions and the raw
-       difference picks the long one about half the time. */
+    /* Shortest way round, for the STORED angle. theta is an angle, so
+       a preset on the far side of the pitch is reachable in two
+       directions and the raw difference picks the long one about half
+       the time. The camera itself no longer travels by angle, but
+       cam.theta has to land somewhere sane for the orbit control to
+       continue from. */
     let dTheta = to.theta - cam.theta;
     while (dTheta > Math.PI) dTheta -= Math.PI * 2;
     while (dTheta < -Math.PI) dTheta += Math.PI * 2;
 
     camTween = {
-      from: {theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone()},
+      from: {
+        theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone(),
+        pos: camera.position.clone(),
+        quat: camera.quaternion.clone()
+      },
       to: to,
+      /* The DESTINATION orientation, computed with the same up rule
+         applyCamera uses. If these disagreed, the camera would snap
+         once as control handed back — the same bug in a different
+         costume. */
+      toPos: positionFor(to.theta, to.phi, to.dist, to.target),
+      toQuat: quaternionFor(to.theta, to.phi, to.dist, to.target),
       dTheta: dTheta,
       start: (typeof performance !== 'undefined' ? performance.now() : Date.now()),
       ms: ms || 550
@@ -1052,18 +1096,43 @@ export function createBoard3D(opts) {
     invalidate();
   }
 
-  /** Advance an in-flight camera move. Returns true while running. */
+  /**
+   * Advance an in-flight camera move. Returns true while running.
+   *
+   * Interpolates POSITION and ORIENTATION, not the orbit angles.
+   * Rebuilding the frame from angles each step meant passing through
+   * the overhead singularity, where up and view go parallel and the
+   * view flips. A quaternion slerp takes the shortest rotation
+   * between two well-defined frames and cannot pass through a
+   * degenerate basis, so a move to Top rolls into place.
+   */
   function stepCameraTween(now) {
     if (!camTween) return false;
     const t = Math.min(1, (now - camTween.start) / camTween.ms);
     const e = easeInOut(t);
     const f = camTween.from, to = camTween.to;
+
+    camera.position.lerpVectors(f.pos, camTween.toPos, e);
+    camera.quaternion.slerpQuaternions(f.quat, camTween.toQuat, e);
+
+    /* The orbit state is carried along so the controls resume from
+       the right place, but it does NOT drive the camera here —
+       applyCamera() must not run mid-flight or it would rebuild the
+       frame from angles and reintroduce the flip. */
     cam.theta = f.theta + camTween.dTheta * e;
     cam.phi = f.phi + (to.phi - f.phi) * e;
     cam.dist = f.dist + (to.dist - f.dist) * e;
     cam.target.lerpVectors(f.target, to.target, e);
-    applyCamera();
-    if (t >= 1) camTween = null;
+
+    if (t >= 1) {
+      // Land exactly on the destination and hand control back.
+      cam.theta = to.theta;
+      cam.phi = to.phi;
+      cam.dist = to.dist;
+      cam.target.copy(to.target);
+      applyCamera();
+      camTween = null;
+    }
     return true;
   }
 
@@ -1306,7 +1375,10 @@ export function createBoard3D(opts) {
       camTouched = true;
       followBall = false;   // the coach is steering now
       cancelCameraTween();
-      camera.up.set(0, 1, 0);
+      /* No up reset here — applyCamera() below derives it from the
+         angle through upFor(), and the orbit clamp keeps phi out of
+         the degenerate region anyway. Setting it by hand was a
+         leftover from when the blend could leave it somewhere odd. */
       last = {x: ev.clientX, y: ev.clientY};
       applyCamera();
       return;

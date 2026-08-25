@@ -4712,3 +4712,44 @@ be measured from where the camera currently is.
 replacements assert the invariant the coach sees rather than the mechanism.
 
 Unit 1443 → **1459**.
+
+#### Dimmer trajectories, and a camera that cannot flip (v136)
+
+**Dimming**: trajectory curve 0.9 → 0.55, lofted ground track 0.35 → 0.18, ball ring 0.4 → 0.28
+with its floor 0.22 → 0.12, travelling dot → 0.8. **Handles deliberately untouched** — the bend
+dots and the diamond are targets the coach has to hit, and dimming an interactive control to match
+decoration costs usability for nothing.
+
+**The board flipped between views, and the blend I added last round was the cause.** Measured
+through a Side → Top transition, holding theta fixed:
+
+```
+  phi=1.380   up·view = -0.19    roll step   0.0°
+  phi=0.139   up·view = -1.00    roll step   7.9°
+  phi=0.001   up·view = -0.01    roll step 172.1°   <-- the flip
+```
+
+`up · view` reaching −1.00 means the up vector had become **parallel to the view direction**, so
+`lookAt` had no plane to build a basis in and the frame whipped through half a turn. Widening a band
+around the singularity drags `up` toward the view axis across the *whole band* instead of only at
+the pole — the previous hard switch was stable precisely because nothing ever interpolated through
+that region. No band width fixes it: the degeneracy is at the destination.
+
+The fix is to stop interpolating orientation as angles at all. `applyCamera()` is back to the hard
+switch (via a shared `upFor()`), and transitions now **lerp position and slerp the quaternion**
+between the start frame and a destination frame computed with the same `upFor` rule. Slerp takes the
+shortest rotation between two well-defined frames and cannot pass through a degenerate basis.
+Re-measured: largest single step **5.7°**, evenly spaced.
+
+Computing the destination with the *same* up rule matters — if the tween's final frame and the first
+`applyCamera()` after it disagreed, the camera would snap once as control handed back, which is the
+same bug in a different costume. The tween never calls `applyCamera()` mid-flight for the same
+reason.
+
+**Six of my own tests failed on this change** — three regexes matching call shapes that gained an
+argument, two slices that no longer bracketed moved code, and one matching `applyCamera()` inside a
+*comment explaining why applyCamera must not be called*. Rewritten to compare against `BALL_R`
+rather than a literal, to strip comments before searching, and to assert that a floor exists rather
+than what it is.
+
+Unit 1459 → **1468**.
