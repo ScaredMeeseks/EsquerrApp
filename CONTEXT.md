@@ -5215,3 +5215,61 @@ Also corrected: an assertion reading `Math.min(ys) > 0`, "and sit above the turf
 required the very offset that was the bug.
 
 Unit 1593 → **1606**. Version triple → v143. **Still nothing deployed.**
+
+### 2026-08-25 — One size table for both boards, and 3D marks formatted like the 2D ones (v144)
+
+**The two views measured in different units.** 2D sized objects in fixed PIXELS, 3D in metres, so they
+could not agree by construction — and 2D could not agree with itself either: the same 24px disc was a
+**3.07 m** player on a full board and a **1.99 m** player on a half board, because the two have
+different px-per-metre (7.81 vs 12.06). Fixed pixels are also why nothing grew when the drawing overlay
+was zoomed: a pixel is a pixel however large the pitch behind it has become. Both reported symptoms,
+one cause.
+
+`js/board-geom.js` now holds `OBJ` and `MARK` in metres — it is the only module both views import, so a
+number that must not diverge belongs there. **The owner chose 3D as the reference scale** (player 1.80,
+ball 0.50, cone 0.70): a 1.8 m disc is about a player's personal space, where 3.07 m was a UI affordance
+that had drifted into being a measurement. `MARK` is the 2D board's pixel weights converted at its own
+7.81 px/m, so marks keep the weight a coach already draws with and 3D adopts it.
+
+The bridge is `BG.ppm(widthPx, …)` and a `--tb-ppm` custom property on `.tb-field`. CSS sizes objects
+through it; **the overlay's follow loop rewrites it every frame**, which is the whole of "they should
+scale up or down like the rest". `vector-effect: non-scaling-stroke` is disabled on the overlay for the
+same reason — it pins a stroke to device pixels, right on the small board and wrong under a zoom.
+`refreshArrowheads`'s flat `aLen = 12, aHW = 5` are metric now too, or the shaft grew with the zoom
+while the head stayed the size of a full stop.
+
+**A floor, deliberately.** At 820px a true-to-scale ball is 4px and a player 14px with a shirt number
+inside. `max(16px, …)` / `max(10px, …)` keep the small standalone board usable; the overlay is always
+far above the floor, so where the two views are actually seen together the sizes are exact. The main 2D
+board's players do shrink from 24px — accepted, with the trade-off stated.
+
+**3D marks got the 2D formatting.**
+- **Round joins and caps.** The joint filler was an **axis-aligned square** — it does not rotate with
+  the stroke, so its corners poked out of any diagonal turn. A disc has no orientation and cannot be
+  wrong; it is also exactly what `stroke-linecap/linejoin: round` mean.
+- **A fixed arrow head** (`MARK.arrowHead`), as `refreshArrowheads` uses a constant `aLen`. The old
+  `len * 0.3` grew the head with the arrow — a different drawing at every length.
+- **Zones gained their outline**: a rounded-rect ribbon at `rectStroke` width. The corners are sampled
+  ARCS on the rectangle's own edge — an inset polyline rounds by the stroke's half-width and pulls the
+  whole outline off the edge it is meant to trace, which is a different rectangle.
+- **Dashes**, walked by arc length so the pattern is continuous across corners. First attempt put a
+  round cap on each dash end and measured 29.4 of turf covered against a solid 30.4 — 2 × half-width of
+  cap pushed into a 0.51 m gap very nearly closes it. `.tb-pen-line` has no `stroke-linecap`, so 2D
+  dashes are butt-ended and now these are too.
+
+Arrows are built in **world coordinates** as a single merged geometry (shaft ribbon + head triangle).
+That removed the hand-built basis entirely, and with it the test asserting its face normal pointed up —
+that assertion was measuring an identity quaternion and proving nothing. It now checks the property that
+still matters: `DoubleSide`, so a winding mistake cannot make a mark vanish.
+
+**The execution test earned its keep again.** `tbDrawSurface` gained `BS`, `BG`, `tbPitch` and
+`tbBoardType`, and the `new Function` harness failed immediately on `BS is not defined` — the same class
+of bug as the v138 `is3d` crash, caught before it shipped this time. `tbPitch`/`tbBoardType` are new
+module-scope readers precisely because `bindTactics`' `curBoardType` is a different function's local.
+
+Also: `tbFieldWidthPx` split out of `tbFieldScaleStyle`, since `--tb-ppm` and `max-width` must never
+disagree about how wide the board is. Four tests that grepped `const BALL_R = …` read `BG.OBJ.ball / 2`
+now — the literal is gone on purpose.
+
+Unit 1606 → **1624** (new `test/object-scale.test.js`, registered by hand in `test/package.json`).
+Version triple → v144. **Still nothing deployed.**

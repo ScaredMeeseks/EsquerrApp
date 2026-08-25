@@ -280,8 +280,24 @@ describe('the side views are not mirrored against the 2D board', () => {
  * ShapeGeometry is used and still miss a rotation that tips the plane
  * out of the turf.
  */
+/* The mark builders, shared by both describes below. At file scope
+   because the formatting suite needs the same harness, and building
+   it twice means two chances for the stubs to differ. */
+let addArrow, addPenLine, added;
+
+/** Every vertex of a mesh, in world space. */
+const verts = (mesh) => {
+  mesh.updateMatrixWorld(true);
+  const pos = mesh.geometry.attributes.position;
+  const out = [];
+  for (let i = 0; i < pos.count; i++) {
+    out.push(new THREE.Vector3().fromBufferAttribute(pos, i)
+        .applyMatrix4(mesh.matrixWorld));
+  }
+  return out;
+};
+
 describe('drawn marks lie flat on the turf', () => {
-  let addArrow, addPenLine, added;
 
   before(() => {
     /* The builders plus the decal machinery they now share — the
@@ -310,29 +326,23 @@ describe('drawn marks lie flat on the turf', () => {
     const built = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
         consts + '\n' +
         fn('  function decalMaterial(colour, opacity) {') + '\n' +
-        fn('  function ribbonGeometry(pts, width) {') + '\n' +
+        fn('  function ribbonGeometry(pts, width, dashed) {') + '\n' +
+        fn('  function roundedRectPath(cx, cz, w, h, radius) {') + '\n' +
         fn('  function addArrow(a) {') + '\n' +
         fn('  function addPenLine(p) {') + '\n' +
         'return {addArrow, addPenLine, DECAL_Y, PEN_W, ORDER};')(
       THREE,
-      {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})},
+      /* The REAL size tables, with only toWorld stubbed to a simple
+         linear map. Stubbing MARK would let the mark weights drift
+         from the 2D board with every test still green — the tables
+         are the thing under test. */
+      Object.assign(Object.create(require('../js/board-geom.js')),
+          {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})}),
       () => null, () => 'full',
       {add: (m) => added.push(m)});
     addArrow = built.addArrow;
     addPenLine = built.addPenLine;
   });
-
-  /** Every vertex of a mesh, in world space. */
-  const verts = (mesh) => {
-    mesh.updateMatrixWorld(true);
-    const pos = mesh.geometry.attributes.position;
-    const out = [];
-    for (let i = 0; i < pos.count; i++) {
-      out.push(new THREE.Vector3().fromBufferAttribute(pos, i)
-          .applyMatrix4(mesh.matrixWorld));
-    }
-    return out;
-  };
 
   const DIRECTIONS = [
     ['left to right', 10, 50, 90, 50],
@@ -379,16 +389,24 @@ describe('drawn marks lie flat on the turf', () => {
     });
   });
 
-  it('faces the sky, not the ground', () => {
-    /* makeBasis with the other perpendicular gives a left-handed
-       basis: the shape is still flat, but its normal points DOWN and
-       it disappears under a single-sided material. */
+  it('cannot be hidden by a winding mistake', () => {
+    /* This used to check the face normal pointed up, because the
+       arrow was a local shape rotated into place by a hand-built
+       basis and the wrong perpendicular turned it face-down. It is
+       built directly in world coordinates now, so there is no basis
+       to get backwards and the mesh carries no rotation at all — the
+       old assertion measured an identity quaternion and proved
+       nothing.
+
+       What still matters is that a mark is visible from either side:
+       these are decals in the turf plane, and a triangle wound the
+       other way must not vanish. */
     added.length = 0;
     addArrow([20, 80, 75, 15, '#ff0000', false]);
-    const m = added[0];
-    m.updateMatrixWorld(true);
-    const n = new THREE.Vector3(0, 0, 1).applyQuaternion(m.quaternion);
-    assert.ok(n.y > 0.999, 'the face normal must point up; y = ' + n.y.toFixed(4));
+    assert.strictEqual(added[0].material.side, THREE.DoubleSide,
+        'a decal must render from both sides');
+    assert.ok(added[0].quaternion.equals(new THREE.Quaternion()),
+        'the geometry is already in world space; a rotation would move it twice');
   });
 
   it('is a single opaque mark, not a lit solid', () => {
@@ -597,5 +615,207 @@ describe('applyCamera leaves the camera ready to project', () => {
               Math.abs(fresh.y - want.y) < 1e-9,
         'fresh ' + fresh.x.toFixed(6) + ',' + fresh.y.toFixed(6) +
         ' vs ' + want.x.toFixed(6) + ',' + want.y.toFixed(6));
+  });
+});
+
+/* ── 3D marks are formatted like the 2D ones ──────────────────────
+ *
+ * The 2D board draws arrows with round caps, zones with a rounded
+ * outline, and either with a dash pattern. In 3D they were bare
+ * shapes: no caps, no outline, and the dash flag was read from the
+ * data and thrown away. All three are measured here on the built
+ * geometry, because "has round caps" is a claim about vertices, not
+ * about the source.
+ */
+describe('3D marks carry the 2D formatting', () => {
+  const BGEOM = require('../js/board-geom.js');
+  let addRect, added2;
+
+  before(() => {
+    const fn = (marker) => {
+      const i = src.indexOf(marker);
+      assert.ok(i !== -1, 'not found: ' + marker);
+      return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
+    };
+    const consts = (() => {
+      const i = src.indexOf('  const DECAL_Y =');
+      const p = src.indexOf('const PEN_W', i);
+      return src.slice(i, src.indexOf(';', p) + 1);
+    })();
+    added2 = [];
+    addRect = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
+        consts + '\n' +
+        fn('  function decalMaterial(colour, opacity) {') + '\n' +
+        fn('  function ribbonGeometry(pts, width, dashed) {') + '\n' +
+        fn('  function roundedRectPath(cx, cz, w, h, radius) {') + '\n' +
+        fn('  function addRect(r) {') + '\nreturn addRect;')(
+      THREE,
+      Object.assign(Object.create(BGEOM),
+          {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})}),
+      () => null, () => 'full',
+      {add: (m) => added2.push(m)});
+  });
+
+  const verts2 = (mesh) => {
+    const pos = mesh.geometry.attributes.position;
+    const out = [];
+    for (let i = 0; i < pos.count; i++) {
+      out.push(new THREE.Vector3().fromBufferAttribute(pos, i));
+    }
+    return out;
+  };
+
+  it('a stroke end is ROUND, not a square corner', () => {
+    /* A butt cap puts exactly two vertices at the end, both at half
+       the width from the centreline. A round cap puts a fan of them
+       all round it — including BEYOND the end, which a square cap
+       never does. That overshoot is the measurement. */
+    added.length = 0;
+    addPenLine(['20,50 60,50', '#fff', false]);
+    const vs = verts(added[0]);
+    const endX = (60 - 50) * 1.05;
+    const beyond = vs.filter((v) => v.x > endX + BGEOM.MARK.pen * 0.2);
+    assert.ok(beyond.length >= 3,
+        'a round cap must put vertices past the stroke end; found ' + beyond.length);
+  });
+
+  it('the round join has no orientation, so a diagonal turn is clean', () => {
+    /* The first version filled joints with an AXIS-ALIGNED SQUARE.
+       It looked right on a horizontal stroke and poked out of a
+       diagonal one, because a square does not rotate with the line.
+       A disc is the same shape from every angle: every join vertex
+       must sit within half a width of the corner it rounds. */
+    added.length = 0;
+    addPenLine(['30,30 50,50', '#fff', false]);
+    const corner = {x: (50 - 50) * 1.05, z: (50 - 50) * 0.68};
+    const h = BGEOM.MARK.pen / 2;
+    const near = verts(added[0]).filter(
+        (v) => Math.hypot(v.x - corner.x, v.z - corner.z) < h * 1.001);
+    assert.ok(near.length > 0, 'no vertices round the corner at all');
+    // Not a single vertex further than the radius: that is the square.
+    const worst = Math.max.apply(null, verts(added[0]).map((v) => {
+      const d = Math.hypot(v.x - corner.x, v.z - corner.z);
+      return d < h * 1.5 ? d : 0;
+    }));
+    assert.ok(worst <= h * 1.001,
+        'a join vertex sits ' + worst.toFixed(4) + ' from the corner, ' +
+        'past the ' + h.toFixed(4) + ' radius — that is a square, not a disc');
+  });
+
+  it('the arrow head is a FIXED length, as in 2D', () => {
+    /* refreshArrowheads uses a constant aLen, so a short arrow and a
+       long one carry the same head. The old 3D head was len * 0.3 —
+       a different drawing at every length. */
+    const headOf = (x1, x2) => {
+      added.length = 0;
+      addArrow([x1, 50, x2, 50, '#fff', false]);
+      const vs = verts(added[0]);
+      const tip = Math.max.apply(null, vs.map((v) => v.x));
+      // The widest pair of vertices is the head's base.
+      const wide = vs.filter((v) => Math.abs(v.z) > BGEOM.MARK.arrowShaft);
+      assert.ok(wide.length >= 2, 'no head found');
+      return tip - Math.max.apply(null, wide.map((v) => v.x));
+    };
+    const shortArrow = headOf(40, 60);
+    const longArrow = headOf(10, 90);
+    assert.ok(Math.abs(shortArrow - longArrow) < 0.01,
+        'head length must not depend on arrow length: ' +
+        shortArrow.toFixed(3) + ' vs ' + longArrow.toFixed(3));
+    assert.ok(Math.abs(longArrow - BGEOM.MARK.arrowHead) < 0.01,
+        'and must be MARK.arrowHead (' + BGEOM.MARK.arrowHead + '), got ' +
+        longArrow.toFixed(3));
+  });
+
+  it('a very short arrow keeps a head rather than inverting', () => {
+    /* A fixed 1.54m head on a 1m arrow would put the base behind the
+       tail and fold the shaft inside out. */
+    added.length = 0;
+    addArrow([50, 50, 51, 50, '#fff', false]);
+    assert.strictEqual(added.length, 1, 'a short arrow still draws');
+    const vs = verts(added[0]);
+    const span = Math.max.apply(null, vs.map((v) => v.x)) -
+                 Math.min.apply(null, vs.map((v) => v.x));
+    assert.ok(span > 0 && span < 3, 'the mark must stay near its own length: ' + span);
+  });
+
+  it('a dashed stroke has gaps; a solid one does not', () => {
+    /* stroke-dasharray 6 4 exists on both arrows and pen strokes in
+       2D and used to be read from the data and thrown away in 3D. */
+    const area = (mesh) => {
+      const vs = verts(mesh);
+      let a = 0;
+      for (let i = 0; i < vs.length; i += 3) {
+        a += Math.abs((vs[i + 1].x - vs[i].x) * (vs[i + 2].z - vs[i].z) -
+                      (vs[i + 2].x - vs[i].x) * (vs[i + 1].z - vs[i].z)) / 2;
+      }
+      return a;
+    };
+    const line = '5,50 95,50';
+    added.length = 0; addPenLine([line, '#fff', false]);
+    const solid = area(added[0]);
+    added.length = 0; addPenLine([line, '#fff', true]);
+    const dashed = area(added[0]);
+    assert.ok(dashed < solid * 0.85,
+        'a dashed stroke must cover less turf than a solid one: ' +
+        dashed.toFixed(2) + ' vs ' + solid.toFixed(2));
+    assert.ok(dashed > solid * 0.3, 'but must not vanish: ' + dashed.toFixed(2));
+  });
+
+  it('the dash pattern is the same table the 2D board uses', () => {
+    assert.ok(Array.isArray(BGEOM.MARK.dash) && BGEOM.MARK.dash.length === 2,
+        'MARK.dash must be an on/off pair');
+    assert.ok(BGEOM.MARK.dash[0] > BGEOM.MARK.dash[1],
+        'the 2D pattern is 6 on, 4 off — the dash is longer than the gap');
+  });
+
+  it('a zone has an outline, not just a fill', () => {
+    /* In 2D a zone is a translucent fill inside a SOLID stroke. In 3D
+       it was fill only, which reads as a smudge rather than a marked
+       area. */
+    added2.length = 0;
+    addRect([20, 20, 30, 25, '#ff0000', 0.3]);
+    assert.strictEqual(added2.length, 2, 'a zone is a fill plus an outline');
+    const opacities = added2.map((m) => m.material.opacity).sort();
+    assert.ok(opacities[0] < 0.9, 'the fill must stay translucent');
+    assert.strictEqual(opacities[1], 1, 'the outline must be solid, as in 2D');
+  });
+
+  it('the outline is drawn over its own fill', () => {
+    added2.length = 0;
+    addRect([20, 20, 30, 25, '#ff0000', 0.3]);
+    const [fill, border] = added2;
+    assert.ok(border.renderOrder > fill.renderOrder,
+        'the outline must paint after the fill it surrounds');
+  });
+
+  it('the outline has rounded corners, on the edge it traces', () => {
+    /* rx:2 in 2D. An inset polyline would round by the STROKE's
+       half-width and pull the whole outline away from the edge — a
+       different rectangle. The corner vertices must sit ON the
+       rectangle's bounds. */
+    added2.length = 0;
+    addRect([20, 20, 30, 25, '#ff0000', 0.3]);
+    const border = added2[1];
+    const vs = verts2(border);
+    const xs = vs.map((v) => v.x), zs = vs.map((v) => v.z);
+    const fillVs = verts2(added2[0]);
+    /* The fill is a PlaneGeometry rotated flat, so compare against
+       its own extent rather than recomputing the rectangle here. */
+    const fw = Math.max.apply(null, fillVs.map((v) => v.x)) -
+               Math.min.apply(null, fillVs.map((v) => v.x));
+    const bw = Math.max.apply(null, xs) - Math.min.apply(null, xs);
+    assert.ok(bw > fw * 0.9,
+        'the outline must trace the zone edge, not sit inset from it: ' +
+        bw.toFixed(2) + ' vs a zone ' + fw.toFixed(2) + ' wide');
+    assert.ok(zs.length > 40,
+        'a rounded outline needs sampled corner arcs; got ' + zs.length + ' vertices');
+  });
+
+  it('every mark lies at y=0, outline included', () => {
+    added2.length = 0;
+    addRect([20, 20, 30, 25, '#ff0000', 0.3]);
+    const border = added2[1];
+    verts2(border).forEach((v) => assert.strictEqual(v.y, 0,
+        'the outline must be a decal like everything else'));
   });
 });

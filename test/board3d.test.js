@@ -723,7 +723,7 @@ describe('flat markers, not half-buried balls', () => {
     /* Compared against BALL_R rather than a written-down number, so
        this keeps meaning the same thing when the ball is resized —
        which it has been twice. */
-    const ball = parseFloat(/const BALL_R = ([\d.]+);/.exec(s3)[1]);
+    const ball = require('../js/board-geom.js').OBJ.ball / 2;
     const m = /const dot = flatDot\(([\d.]+), col/.exec(s3);
     assert.ok(m, 'traveller size not found');
     assert.ok(parseFloat(m[1]) < ball * 0.6,
@@ -892,7 +892,7 @@ describe('the apex diamond reads as a solid', () => {
 
   it('and every handle is smaller than it was, but bigger than the ball', () => {
     const handle = parseFloat(/const HANDLE_R = ([\d.]+);/.exec(s3)[1]);
-    const ball = parseFloat(/const BALL_R = ([\d.]+);/.exec(s3)[1]);
+    const ball = require('../js/board-geom.js').OBJ.ball / 2;
     assert.ok(handle < 0.45, 'handles should have shrunk: ' + handle);
     assert.ok(handle > ball, 'a handle must stay easy to grab: ' + handle + ' vs ' + ball);
   });
@@ -933,7 +933,7 @@ describe('the ball is a ball, not a boulder', () => {
   it('shrank, but is still visible at pitch scale', () => {
     // A real ball is 0.11 m and invisible on a 105 m pitch, so this
     // stays oversized on purpose — just not by as much.
-    const r = num(/const BALL_R = ([\d.]+);/);
+    const r = require('../js/board-geom.js').OBJ.ball / 2;
     assert.ok(r < 0.35 && r > 0.15, 'BALL_R is ' + r);
   });
 
@@ -941,7 +941,7 @@ describe('the ball is a ball, not a boulder', () => {
     /* They were separated deliberately so a path marker is never
        mistaken for a ball; shrinking one without the other would undo
        that. */
-    const ball = num(/const BALL_R = ([\d.]+);/);
+    const ball = require('../js/board-geom.js').OBJ.ball / 2;
     const dot = num(/const dot = flatDot\(([\d.]+), col/);
     assert.ok(dot < ball * 0.6, 'dot ' + dot + ' vs ball ' + ball);
   });
@@ -1685,18 +1685,27 @@ describe('bindTactics does not reach into renderTactics', () => {
 
     const seen = [];
     const field = {classList: {add: () => seen.push('add'), remove: () => seen.push('remove')},
-                   style: {}, hidden: false, parentNode: null};
+                   style: {setProperty(k, v) { this[k] = v; }},
+                   hidden: false, parentNode: null};
     const wrap = {appendChild: () => seen.push('reparent')};
     const view = {
       setDrawLock: (on) => seen.push('lock:' + on),
       isDrawLocked: () => true,
       pitchScreenRect: () => ({left: 1, top: 2, width: 3, height: 4})
     };
+    /* BS, BG and the board readers are real globals in the app, so
+       they are parameters here. The list grows as the function grows,
+       and that is the point: a name it reaches for which is NOT here
+       and not a real global is the bug this test exists to catch. */
     const fn = new Function('document', '_tb3d', '_tbDrawRaf',
         'requestAnimationFrame', 'cancelAnimationFrame',
+        'BS', 'BG', 'tbPitch', 'tbBoardType',
         body + '\nreturn tbDrawSurface;')(
       {getElementById: (id) => (id === 'tb-field' ? field : wrap)},
-      view, 0, () => 1, () => {});
+      view, 0, () => 1, () => {},
+      {round2: (n) => Math.round(n * 100) / 100},
+      require('../js/board-geom.js'),
+      () => null, () => 'full');
 
     fn(true);
     assert.ok(seen.indexOf('lock:true') !== -1, 'must lock the camera');

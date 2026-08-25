@@ -57,6 +57,43 @@
     goalW: 7.32, goalH: 2.44, cornerR: 1
   };
 
+  /* ═══ HOW BIG THINGS ARE, IN METRES ═══════════════════════════
+     One table, both views, because the alternative was tried and it
+     does not work: 2D sized objects in fixed PIXELS and 3D in metres,
+     so they could never agree — and 2D could not even agree with
+     itself. The same 24px disc was a 3.07 m player on a full board
+     and a 1.99 m player on a half board, because the two have
+     different px-per-metre (7.81 vs 12.06). Fixed pixels are also why
+     nothing grew when the drawing overlay was zoomed: a pixel is a
+     pixel however large the pitch behind it has become.
+
+     Metres are the unit both views can express. 2D multiplies by its
+     own px-per-metre (`--tb-ppm`); 3D uses them directly.
+
+     OBJ takes the 3D figures as the reference — a 1.8 m disc is about
+     a player's personal space, where 3.07 m was a UI affordance that
+     had drifted into being a measurement. The 2D board floors them in
+     CSS so a shirt number still fits on a phone; see .tb-circle. */
+  var OBJ = {
+    player: 1.80,      // disc diameter
+    ball: 0.50,
+    cone: 0.70,        // base diameter
+    coneHeight: 0.70
+  };
+
+  /* MARK is the 2D board's pixel weights converted at the full
+     board's 7.81 px/m, so the marks a coach already draws keep the
+     weight they have and 3D adopts it. `dash` is 6 4 in pixels. */
+  var MARK = {
+    pen: 0.32,         // stroke-width 2.5px
+    arrowShaft: 0.32,  // stroke-width 2.5px
+    arrowHead: 1.54,   // aLen 12px, a FIXED head as in 2D
+    arrowHeadW: 1.28,  // aHW 5px, either side
+    rectStroke: 0.19,  // stroke-width 1.5px
+    rectRadius: 0.26,  // rx 2px
+    dash: [0.77, 0.51]
+  };
+
   /* The historical board: 105 x 68. A board saved before pitches were
      resizable has no `pitch` key at all and resolves to exactly this,
      which is what makes the feature need no migration. */
@@ -432,8 +469,25 @@
     ];
   }
 
+  /**
+   * Pixels per metre for a board rendered `widthPx` wide.
+   *
+   * The one bridge between the metric sizes above and the 2D board's
+   * pixels. `extent().ax` is what the board's width REPRESENTS, so
+   * the ratio holds for any board type, any pitch size and any zoom —
+   * including the drawing overlay, whose width changes every frame.
+   */
+  function ppm(widthPx, pitch, boardType, vertical) {
+    var ax = extent(pitch, boardType, vertical).ax;
+    return ax > 0 ? widthPx / ax : 0;
+  }
+
   return {
     MARKS: MARKS,
+    OBJ: OBJ,
+    MARK: MARK,
+    /** px per metre for a board of this size — the 2D bridge. */
+    ppm: ppm,
     DEFAULT_PITCH: DEFAULT_PITCH,
     BOUNDS: {MIN_L: MIN_L, MAX_L: MAX_L, MIN_W: MIN_W, MAX_W: MAX_W},
     pitchOf: pitchOf,

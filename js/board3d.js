@@ -38,15 +38,14 @@ import * as THREE from '../vendor/three.module.min.js';
 const GK_COLOR = '#f5c842';      // same gold the 2D board uses
 
 /* One metre of pitch is one unit of world. Nothing rescales this, so
-   every distance in the file can be read as metres. */
-const PLAYER_R = 0.9;            // a disc a bit wider than a person
+   every distance in the file can be read as metres.
+
+   The OBJECT sizes are no longer here: they come from BG.OBJ, inside
+   the factory, because the 2D board needs the same numbers and a
+   second copy of them is a second copy that drifts. This one is the
+   disc's THICKNESS, which has no 2D equivalent — a flat board has no
+   opinion about how tall a player is. */
 const PLAYER_H = 0.35;
-/* A real ball is 0.11 m and invisible at pitch scale, so this is
-   still oversized — but 0.45 overcorrected and read as a boulder.
-   The travelling dot below is kept well under it: the two must never
-   be confusable. */
-const BALL_R = 0.25;
-const CONE_R = 0.35;
 /* Every trajectory handle, one size. They were 0.5 and 0.45 against a
    0.25 ball, which read as the handles being the main object. Still
    comfortably larger than the ball so they stay easy to hit — a
@@ -61,8 +60,6 @@ const HANDLE_R = 0.26;
    "there is a control here", not compete with the curve. */
 const BEND_ALPHA = 0.7;
 const BEND_ALPHA_OFF = 0.15;
-const CONE_H = 0.7;
-
 export function createBoard3D(opts) {
   const {
     container,          // the element to mount into
@@ -80,6 +77,16 @@ export function createBoard3D(opts) {
     parseFill,
     readOnly            // true for playback-only surfaces
   } = opts;
+
+  /* Object and mark sizes, from the ONE table both views read.
+     board-geom holds them because it is the only module 2D and 3D
+     have in common; keeping a second set of numbers here is exactly
+     how a 1.80m player in 3D ended up beside a 3.07m one in 2D.
+     BG.OBJ is in DIAMETRES, three.js wants radii. */
+  const PLAYER_R = BG.OBJ.player / 2;
+  const BALL_R = BG.OBJ.ball / 2;
+  const CONE_R = BG.OBJ.cone / 2;
+  const CONE_H = BG.OBJ.coneHeight;
 
   /* The active palette, read fresh each time rather than cached: the
      toggle changes it between renders and every consumer must agree. */
@@ -461,10 +468,10 @@ export function createBoard3D(opts) {
      stays ON so a player still occludes them. */
   const DECAL_Y = 0;
   const ORDER = {rect: 1, arrow: 2, pen: 3};
-  /* Pen width in METRES, matched to the 2D board: a 2.5px stroke on
-     an 820px board showing 105m of pitch is 0.32m. Same as the
-     arrow shaft, so a stroke and an arrow read as one hand. */
-  const PEN_W = 0.3;
+  /* Mark weights, from the same shared table. They are the 2D board's
+     pixel widths converted at its own scale, so a stroke drawn in
+     either view has the same weight in the other. */
+  const PEN_W = BG.MARK.pen;
 
   function decalMaterial(colour, opacity) {
     return new THREE.MeshBasicMaterial({
@@ -493,28 +500,115 @@ export function createBoard3D(opts) {
    * the wedge a turn opens on its outside. Good enough for a hand
    * stroke, whose points are close together.
    */
-  function ribbonGeometry(pts, width) {
+  function ribbonGeometry(pts, width, dashed) {
     const h = width / 2;
     const pos = [];
     const quad = (ax, az, bx, bz, cx, cz, dx, dz) => {
       pos.push(ax, DECAL_Y, az, bx, DECAL_Y, bz, cx, DECAL_Y, cz);
       pos.push(ax, DECAL_Y, az, cx, DECAL_Y, cz, dx, DECAL_Y, dz);
     };
-    for (let i = 0; i < pts.length - 1; i++) {
-      const a = pts[i], b = pts[i + 1];
+    /* Round cap and round join, both the same disc.
+
+       The first version filled joints with an AXIS-ALIGNED SQUARE,
+       which does not rotate with the stroke — on a diagonal turn its
+       corners poked out past the ribbon. A disc has no orientation,
+       so it cannot be wrong, and it is what `stroke-linecap: round`
+       and `stroke-linejoin: round` mean on the 2D board. */
+    const disc = (cx, cz) => {
+      const SEG = 10;
+      for (let k = 0; k < SEG; k++) {
+        const a0 = (k / SEG) * Math.PI * 2, a1 = ((k + 1) / SEG) * Math.PI * 2;
+        pos.push(cx, DECAL_Y, cz);
+        pos.push(cx + Math.cos(a0) * h, DECAL_Y, cz + Math.sin(a0) * h);
+        pos.push(cx + Math.cos(a1) * h, DECAL_Y, cz + Math.sin(a1) * h);
+      }
+    };
+
+    const seg = (a, b) => {
       const dx = b.x - a.x, dz = b.z - a.z;
       const len = Math.hypot(dx, dz);
-      if (len < 1e-6) continue;
+      if (len < 1e-6) return;
       const nx = (dz / len) * h, nz = (-dx / len) * h;
       quad(a.x + nx, a.z + nz, b.x + nx, b.z + nz,
            b.x - nx, b.z - nz, a.x - nx, a.z - nz);
-      // Joint filler, so a sharp turn does not open a notch.
-      if (i > 0) quad(a.x - h, a.z - h, a.x + h, a.z - h,
-                      a.x + h, a.z + h, a.x - h, a.z + h);
+    };
+
+    if (!dashed) {
+      for (let i = 0; i < pts.length - 1; i++) seg(pts[i], pts[i + 1]);
+      // A disc at every point: the ends are caps, the rest are joins.
+      pts.forEach((p) => disc(p.x, p.z));
+    } else {
+      /* Walked by ARC LENGTH, so the pattern is continuous across
+         corners — restarting it per segment makes a hand stroke's
+         dashes bunch up wherever the points happen to be close. */
+      const [on, off] = BG.MARK.dash;
+      let dist = 0;               // how far along the current phase
+      let drawing = true;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        const total = Math.hypot(b.x - a.x, b.z - a.z);
+        let t = 0;
+        while (t < total) {
+          const room = (drawing ? on : off) - dist;
+          const step = Math.min(room, total - t);
+          if (drawing) {
+            const p0 = {x: a.x + (b.x - a.x) * (t / total),
+                        z: a.z + (b.z - a.z) * (t / total)};
+            const p1 = {x: a.x + (b.x - a.x) * ((t + step) / total),
+                        z: a.z + (b.z - a.z) * ((t + step) / total)};
+            /* No cap disc per dash. `.tb-pen-line` has no
+               stroke-linecap, so 2D dashes are butt-ended — and a
+               round cap on each end would push 2 x half-width into a
+               0.51 m gap and very nearly close it. Measured: the
+               dashed stroke covered 29.4 of turf against a solid
+               30.4, which is not a dashed line. */
+            seg(p0, p1);
+          }
+          t += step;
+          dist += step;
+          if (dist >= (drawing ? on : off) - 1e-9) { drawing = !drawing; dist = 0; }
+        }
+      }
     }
+
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     return g;
+  }
+
+  /**
+   * A closed rounded-rectangle path, for a zone's outline.
+   *
+   * The corners are sampled arcs rather than an inset polyline: an
+   * inset one rounds by the STROKE's half-width and pulls the whole
+   * outline away from the edge it is meant to trace, which is a
+   * different rectangle. `rx: 2px` on the 2D `.tb-rect` is a corner
+   * radius on the edge, and this is that.
+   */
+  function roundedRectPath(cx, cz, w, h, radius) {
+    const rad = Math.max(0, Math.min(radius, w / 2, h / 2));
+    const left = cx - w / 2, right = cx + w / 2;
+    const top = cz - h / 2, bottom = cz + h / 2;
+    const out = [];
+    const arc = (ax, az, from, to) => {
+      const SEG = 4;
+      for (let k = 0; k <= SEG; k++) {
+        const t = from + (to - from) * (k / SEG);
+        out.push({x: ax + Math.cos(t) * rad, z: az + Math.sin(t) * rad});
+      }
+    };
+    const H = Math.PI / 2;
+    out.push({x: left + rad, z: top});
+    out.push({x: right - rad, z: top});
+    arc(right - rad, top + rad, -H, 0);
+    out.push({x: right, z: bottom - rad});
+    arc(right - rad, bottom - rad, 0, H);
+    out.push({x: left + rad, z: bottom});
+    arc(left + rad, bottom - rad, H, Math.PI);
+    out.push({x: left, z: top + rad});
+    arc(left + rad, top + rad, Math.PI, Math.PI + H);
+    out.push({x: left + rad, z: top});    // close the loop
+    return out;
   }
 
   /**
@@ -543,32 +637,41 @@ export function createBoard3D(opts) {
     if (len < 0.01) return;
     dir.normalize();
 
-    const HEAD = Math.min(2.2, len * 0.3);
-    const SW = 0.3;                    // shaft width
-    const HW = Math.max(SW * 2.6, 0.9);  // head width
-
-    /* Local axes: +x along the arrow, +y across it. */
-    const shape = new THREE.Shape();
-    shape.moveTo(0, -SW / 2);
-    shape.lineTo(len - HEAD, -SW / 2);
-    shape.lineTo(len - HEAD, -HW / 2);
-    shape.lineTo(len, 0);
-    shape.lineTo(len - HEAD, HW / 2);
-    shape.lineTo(len - HEAD, SW / 2);
-    shape.lineTo(0, SW / 2);
-    shape.closePath();
-
-    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), decalMaterial(col));
-    mesh.renderOrder = ORDER.arrow;
-
-    /* Map local (x, y, z) onto (along, across, up). The perpendicular
-       is (dir.z, 0, -dir.x) and not the other sign: with that one
-       dir x perp points UP, so the basis is right-handed and the
-       shape faces the sky instead of the ground. */
+    /* The head is a FIXED length, as in 2D — refreshArrowheads uses a
+       constant `aLen`, so a short arrow and a long one carry the same
+       head and read as the same pen. The old `len * 0.3` grew the
+       head with the arrow, which is a different drawing. Shortened
+       only when the arrow is too short to hold it. */
+    const HEAD = Math.min(BG.MARK.arrowHead, len * 0.6);
+    const SW = BG.MARK.arrowShaft;
+    const HW = BG.MARK.arrowHeadW;
     const perp = new THREE.Vector3(dir.z, 0, -dir.x);
-    mesh.setRotationFromMatrix(
-        new THREE.Matrix4().makeBasis(dir, perp, new THREE.Vector3(0, 1, 0)));
-    mesh.position.set(from.x, DECAL_Y, from.z);
+    const at = (d, across) => ({
+      x: from.x + dir.x * d + perp.x * across,
+      z: from.z + dir.z * d + perp.z * across
+    });
+
+    /* Shaft as a ribbon, which brings the round caps `stroke-linecap:
+       round` gives it in 2D and the dash pattern with it. Built in
+       WORLD coordinates, so the mesh needs no rotation of its own —
+       one fewer basis to get backwards. */
+    const base = at(len - HEAD, 0);
+    const shaft = ribbonGeometry([{x: from.x, z: from.z}, base], SW, !!a[5]);
+    const pos = Array.from(shaft.getAttribute('position').array);
+
+    // The head stays solid on a dashed arrow, exactly as in 2D.
+    const l = at(len - HEAD, HW / 2), r = at(len - HEAD, -HW / 2);
+    const tip = at(len, 0);
+    pos.push(tip.x, DECAL_Y, tip.z, l.x, DECAL_Y, l.z, r.x, DECAL_Y, r.z);
+
+    /* One mesh, not a shaft plus a head: two meshes for one mark is
+       two things to keep in step, and they would sort against each
+       other under depthWrite:false. */
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    shaft.dispose();
+    const mesh = new THREE.Mesh(geo, decalMaterial(col));
+    mesh.renderOrder = ORDER.arrow;
     drawRoot.add(mesh);
   }
 
@@ -587,6 +690,19 @@ export function createBoard3D(opts) {
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(c.x, DECAL_Y, c.z);
     drawRoot.add(mesh);
+
+    /* The OUTLINE. In 2D a zone is a translucent fill inside a solid
+       stroke with rounded corners (`.tb-rect`, stroke-width 1.5, rx 2);
+       in 3D it was fill only, which is why it read as a smudge on the
+       grass rather than a marked-out area. The border is drawn as a
+       closed ribbon so it gets the same rounded corners for free —
+       the disc at each turn IS the corner radius. */
+    const border = new THREE.Mesh(
+        ribbonGeometry(roundedRectPath(c.x, c.z, w, h, BG.MARK.rectRadius),
+            BG.MARK.rectStroke),
+        decalMaterial(new THREE.Color(r[4] || '#ffffff')));
+    border.renderOrder = ORDER.rect + 0.5;   // over its own fill
+    drawRoot.add(border);
   }
 
   /** Pen strokes: a line strip laid on the turf. */
@@ -599,7 +715,7 @@ export function createBoard3D(opts) {
     }).filter((v) => isFinite(v.x) && isFinite(v.z));
     if (pts.length < 2) return;
     const mesh = new THREE.Mesh(
-        ribbonGeometry(pts, PEN_W),
+        ribbonGeometry(pts, PEN_W, !!p[2]),
         decalMaterial(new THREE.Color(p[1] || '#ffffff')));
     mesh.renderOrder = ORDER.pen;
     drawRoot.add(mesh);

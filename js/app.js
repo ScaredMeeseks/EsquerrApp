@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 143;
+  const APP_VERSION = 144;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6282,7 +6282,14 @@
         if (len < 2) return;
         const ux = dx / len, uy = dy / len;
         const nx = -uy, ny = ux;
-        const aLen = 12, aHW = 5;
+        /* In METRES, converted at the board's own scale. They were a
+           flat 12 and 5 pixels, so on the drawing overlay the shaft
+           grew with the zoom and the head stayed the size of a full
+           stop. Same table the 3D arrow reads, so a head is the same
+           length in both views. */
+        const ppm = BG.ppm(w, tbPitch(), tbBoardType(), tbVertical());
+        const aLen = BG.MARK.arrowHead * ppm;
+        const aHW = (BG.MARK.arrowHeadW / 2) * ppm;
         const bx = px2 - ux * aLen, by = py2 - uy * aLen;
         const lx = bx + nx * aHW, ly = by + ny * aHW;
         const rx = bx - nx * aHW, ry = by - ny * aHW;
@@ -6496,6 +6503,17 @@
    */
   function tbVertical() {
     return !tbIs3D() && localStorage.getItem('fa_tactic_orient') === 'vertical';
+  }
+
+  /* Board type and pitch, read at MODULE scope. bindTactics has its
+     own `curBoardType`, but that is a different function's local and
+     reaching for it from here is a ReferenceError — the same trap
+     that killed the drawing tools and playback in v138. */
+  function tbBoardType() {
+    return localStorage.getItem('fa_tactic_board_type') || 'full';
+  }
+  function tbPitch() {
+    return JSON.parse(localStorage.getItem('fa_tactic_pitch') || 'null');
   }
 
   var _tb3d = null;          // the live instance, or null
@@ -6724,6 +6742,12 @@
         field.style.top = r.top + 'px';
         field.style.width = r.width + 'px';
         field.style.height = r.height + 'px';
+        /* The scale, rewritten with the box. Objects and mark strokes
+           are sized from this in CSS, so this one line is what makes
+           them grow and shrink with the pitch instead of holding a
+           fixed pixel size while the turf zooms away underneath. */
+        field.style.setProperty('--tb-ppm', BS.round2(BG.ppm(
+            r.width, tbPitch(), tbBoardType(), false)));
       }
       _tbDrawRaf = requestAnimationFrame(follow);
     };
@@ -6895,9 +6919,28 @@
   function tbFieldOuterStyle(pitch, boardType, vertical) {
     if (vertical && (boardType === 'half' || boardType === 'area')) {
       const m = BS.round2((100 - BG.aspectPct(pitch, boardType, vertical)) / 2);
-      return tbThemeVars() + 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
+      return tbThemeVars() + tbPpmVar(pitch, boardType, vertical) +
+          'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
     }
-    return tbThemeVars() + tbFieldScaleStyle(pitch, boardType, vertical);
+    return tbThemeVars() + tbPpmVar(pitch, boardType, vertical) +
+        tbFieldScaleStyle(pitch, boardType, vertical);
+  }
+
+  /**
+   * `--tb-ppm`: pixels per metre, for a board at its rendered width.
+   *
+   * The bridge between the metric sizes in board-geom and the 2D
+   * board's pixels. Objects and mark strokes are sized through it in
+   * CSS, which is what lets them agree with the 3D scene and — on the
+   * drawing overlay, where the follow loop rewrites it every frame —
+   * grow and shrink with the pitch when the camera zooms.
+   *
+   * Derived from the SAME width tbFieldScaleStyle caps the board at,
+   * so the two cannot disagree about how wide the board is.
+   */
+  function tbPpmVar(pitch, boardType, vertical) {
+    const w = tbFieldWidthPx(pitch, boardType, vertical);
+    return '--tb-ppm:' + BS.round2(BG.ppm(w, pitch, boardType, vertical)) + ';';
   }
 
   /**
@@ -6917,7 +6960,14 @@
    * nothing moves for a board nobody has resized. A pitch longer than
    * the default is capped by the container instead of overflowing it.
    */
-  function tbFieldScaleStyle(pitch, boardType, vertical) {
+  /**
+   * How wide the board renders, in CSS pixels.
+   *
+   * Its own function because two things need it now — the `max-width`
+   * below and `--tb-ppm` above — and a width computed twice is a
+   * width that eventually disagrees with itself.
+   */
+  function tbFieldWidthPx(pitch, boardType, vertical) {
     /* The base widths the stylesheet used to hold. Here rather than in
        CSS because the scale multiplies them, and a number that is
        multiplied in JS but declared in CSS is a number that will
@@ -6925,8 +6975,11 @@
     const base = (vertical && (boardType || 'full') === 'full') ? 520 : 820;
     const ax = BG.extent(pitch, boardType, vertical).ax;
     const axDefault = BG.extent(null, boardType, vertical).ax;
-    const w = Math.round(base * (ax / axDefault));
-    return 'max-width:' + w + 'px;';
+    return Math.round(base * (ax / axDefault));
+  }
+
+  function tbFieldScaleStyle(pitch, boardType, vertical) {
+    return 'max-width:' + tbFieldWidthPx(pitch, boardType, vertical) + 'px;';
   }
 
   function renderReadOnlyBoard(b, prefix) {
