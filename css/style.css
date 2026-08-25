@@ -4877,6 +4877,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    competes with the pitch for attention all the time. */
 .tb-rail {
   position:absolute; right:.75rem;
+  width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;
   /* Nudged below centre: the camera list opens down this same edge
      and the two were meeting. Still reads as centred, with room. */
   top:calc(50% + 1.75rem); transform:translateY(-50%);
@@ -4884,7 +4885,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .tb-rail:hover, .tb-rail:focus-within { opacity:1; }
 .tb-rail .tb-frames-section {
-  margin:0; padding:0; background:none;
+  margin:0; padding:0; background:none; width:100%;
   /* Reversed: play arrives in the section HEADER, above the strip.
      Above the frames it reads as a title; below them, as "run
      these". */
@@ -4893,7 +4894,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Vertical, because it lives in a column now. The 2D board keeps the
    horizontal strip; only the copy inside the window is turned. */
 .tb-rail .tb-frames-strip {
-  flex-direction:column; align-items:center; gap:.3rem; padding:0;
+  flex-direction:column; align-items:center; gap:.3rem; padding:0; width:100%;
   max-height:min(46vh, 360px); overflow-y:auto; overflow-x:hidden;
   /* The scrollbar is HIDDEN, not the overflow. A visible bar reserves
      width on the right, which pushed every tile a scrollbar's width
@@ -4906,9 +4907,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    already say what the column is. */
 .tb-rail .tb-frames-header {
   flex-direction:column; align-items:center; gap:.35rem; margin:.4rem 0 0;
+  width:100%;
 }
 .tb-rail .tb-frames-title { display:none; }
-.tb-rail .tb-frame-gap { margin:0; }
+
 .tb-rail .tb-frame-dur {
   /* A tile's width exactly. At 44px the column was wider than the
      38px tiles, so the tiles centred inside it and sat off the axis
@@ -4918,10 +4920,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ── The camera menu, top right ────────────────────────────────── */
-.tb-cams { position:absolute; top:.75rem; right:.75rem; z-index:6; }
+.tb-3d-wrap { --tb-axis:44px; }
+.tb-cams {
+  position:absolute; top:.75rem; right:.75rem; z-index:6;
+  width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;
+}
 .tb-cams-btn {
   width:38px; height:38px; padding:0; border:0; border-radius:10px;
-  display:flex; align-items:center; justify-content:center; margin-left:auto;
+  display:flex; align-items:center; justify-content:center; margin:0;
   background:rgba(18,20,23,.72); color:#e8eaed; cursor:pointer;
   backdrop-filter:blur(6px); transition:background .15s, color .15s;
 }
@@ -4931,7 +4937,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-cams-btn svg { width:20px; height:20px; }
 .tb-cams-list {
   display:flex; flex-direction:column; gap:.35rem; margin-top:.4rem;
-  align-items:flex-end;
+  align-items:center;
   opacity:0; transform:translateY(-6px); pointer-events:none;
   transition:opacity .16s ease, transform .16s ease;
 }
@@ -4970,7 +4976,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   background:none; border:2px dashed rgba(255,255,255,.28); color:#c9ccd1;
 }
 .tb-rail .tb-frame-add:hover { border-color:rgba(255,255,255,.5); color:#fff; }
-.tb-rail .tb-frame-item { align-items:center; }
+.tb-rail .tb-frame-item { align-items:center; width:100%; }
+.tb-rail .tb-frame-gap { display:flex; justify-content:center; width:100%; margin:0; }
 /* The delete cross is a page affordance; on the rail it clutters a
    38px tile. It comes back on hover, where it is wanted. */
 .tb-rail .tb-frame-del { opacity:0; transition:opacity .15s; }

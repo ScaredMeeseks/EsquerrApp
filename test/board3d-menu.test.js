@@ -346,21 +346,42 @@ describe('the rail and the camera share one vertical axis', () => {
     return css.slice(i, css.indexOf('}', i));
   };
 
-  it('every rail control is the width of the camera button', () => {
-    /* The alignment is not a magic offset — it is that the camera
-       button, the frame tiles, the add button and play are all the
-       same width and all centred, so they cannot drift apart when
-       one of them is restyled. */
-    const w = /width:(\d+)px/.exec(rule('.tb-cams-btn'))[1];
-    ['.tb-rail .tb-frame-thumb', '.tb-rail .tb-frame-add',
-     '.tb-rail .tb-frame-play'].forEach((sel) => {
-      const m = /width:(\d+)px/.exec(rule(sel));
-      assert.ok(m, sel + ' sets no width');
-      assert.strictEqual(m[1], w,
-          sel + ' is ' + m[1] + 'px against a ' + w + 'px camera button');
+  it('both columns are one declared width, anchored to one edge', () => {
+    /* THE FIX, after two failed attempts at the same thing.
+
+       Matching each control's width did not work and could not:
+       both columns were shrink-to-fit and RIGHT-aligned, so each
+       one's centre line was wherever its own widest child put it.
+       That holds until something gains a border, a scrollbar or a
+       padding — and twice it did not hold, while a test comparing
+       declared `width:` values passed both times. Declared widths are
+       not rendered boxes, and source cannot see the difference.
+
+       So the axis is a number now. Two columns, the same explicit
+       width, the same right edge, children CENTRED rather than
+       pushed against an edge. That much IS provable from the CSS. */
+    assert.ok(/--tb-axis:\d+px/.test(css), 'the axis must be declared once');
+    ['.tb-cams', '.tb-rail'].forEach((sel) => {
+      const r = rule(sel);
+      assert.ok(/width:var\(--tb-axis\)/.test(r),
+          sel + ' must take the shared axis width');
+      assert.ok(/right:\.75rem/.test(r), sel + ' must use the same right edge');
+      assert.ok(/align-items:center/.test(r),
+          sel + ' must centre its children, not push them to an edge');
     });
-    assert.ok(/align-items:center/.test(rule('.tb-rail .tb-frames-strip')),
-        'the strip must centre its children on that axis');
+    assert.ok(!/margin-left:auto/.test(rule('.tb-cams-btn')),
+        'right-aligning the camera button is what made the axis depend on it');
+    assert.ok(!/align-items:flex-end/.test(rule('.tb-cams-list')),
+        'and the same for the view circles');
+  });
+
+  it('the rail children fill the axis instead of shrinking inside it', () => {
+    /* A column that shrinks to its widest child re-introduces the
+       whole problem one level down. */
+    ['.tb-rail .tb-frames-section', '.tb-rail .tb-frames-strip',
+     '.tb-rail .tb-frames-header', '.tb-rail .tb-frame-item',
+     '.tb-rail .tb-frame-gap'].forEach((sel) =>
+      assert.ok(/width:100%/.test(rule(sel)), sel + ' must fill the axis'));
   });
 
   it('the frames are not a white box on a pitch', () => {

@@ -5605,3 +5605,34 @@ or `.tb-m` selector is written twice. A duplicate is not a style bug by itself; 
 next style bug unreadable.
 
 Unit 1702 → **1707**. Version triple → v153. **Still nothing deployed.**
+
+### 2026-08-26 — The axis, third attempt: declare it instead of matching it (v154)
+
+Twice this was "fixed" by making the controls the same width, and twice it was still visibly out — the
+second time reported with a screenshot after CONTEXT.md had already recorded it as done. **The method
+was wrong, not the numbers.**
+
+Both columns were **shrink-to-fit and right-aligned**, so each one's centre line sat wherever its own
+widest child put it. That arrangement only holds while every child is identical, and it stopped holding
+the moment one gained a border, a scrollbar or a padding. Worse, a test comparing declared `width:`
+values passed on both broken versions: **a declared width is not a rendered box**, and source cannot see
+the difference.
+
+The axis is a number now — `--tb-axis: 44px` on the wrapper. `.tb-cams` and `.tb-rail` both take that
+width and the same right edge, and every child is **centred** in it rather than pushed against an edge;
+the rail's own containers take `width:100%` so none of them shrinks back to its contents. Whether the
+two line up is now a property of two CSS rules rather than of everything inside them, and *that* is
+something a source test can honestly check — so it does, including that `margin-left:auto` and
+`align-items:flex-end` do not come back.
+
+`.tb-cams-btn` also carried `margin-left:auto` and a later `margin:0` at once. The second won, so it
+worked — but a rule contradicting itself four lines apart is exactly the clutter that makes the next
+layout bug unreadable.
+
+The duplicate-selector guard added in v153 earned itself immediately: it caught a second
+`.tb-rail .tb-frame-gap` rule within a minute of being written.
+
+**Still not verified visually.** Nothing here proves the two columns line up on screen; the tests prove
+the CSS says they should. That distinction is the whole lesson of this entry.
+
+Unit 1707 → **1708**. Version triple → v154. **Still nothing deployed.**
