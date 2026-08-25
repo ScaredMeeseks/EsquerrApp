@@ -1628,6 +1628,10 @@ export function createBoard3D(opts) {
     objectRoot.visible = !on;
     if (on) ballShadow.visible = false;   // lives on the scene, not in objectRoot
     else restBallMarker();
+    /* Hand the cursor back at once. onHover would clear it too, but
+       only on the next mouse move — so picking up a tool while
+       hovering a player left a `grab` hand sitting under the pen. */
+    if (on) setCursor('');
     if (on) {
       mode = null;          // abandon any orbit in progress
       dragging = null;
@@ -1949,8 +1953,38 @@ export function createBoard3D(opts) {
     applyCamera();
   }
 
+  /**
+   * The hover cursor: `grab` over anything you can pick up.
+   *
+   * The 2D board gets this from CSS — `.tb-circle { cursor: grab }`
+   * and `.tb-dragging { cursor: grabbing }`. A canvas has one cursor
+   * for the whole surface, so it has to be decided per frame from
+   * what the ray is over.
+   *
+   * `pick(ev)` WITHOUT includeLines is exactly the right question,
+   * and not by accident: that pool is the set the left button can
+   * drag. Drawn marks are gated out of it (nothing sensible to write
+   * when you drop an arrow) and trajectory lines have a zero
+   * threshold, so both correctly read as not-grabbable, while the
+   * handles on those lines — which ARE draggable — read as grabbable.
+   */
+  let cursorNow = '';
+  function setCursor(c) {
+    if (c === cursorNow) return;      // a DOM write per mousemove adds up
+    cursorNow = c;
+    renderer.domElement.style.cursor = c;
+  }
+
+  function onHover(ev) {
+    /* Locked: the 2D overlay is on top and owns the cursor — it shows
+       a pen, and fighting it from underneath would flicker. */
+    if (readOnly || drawLock) { setCursor(''); return; }
+    setCursor(pick(ev) ? 'grab' : '');
+  }
+
   function onPointerMove(ev) {
-    if (!mode) return;
+    if (!mode) { onHover(ev); return; }
+    if (mode === 'drag') setCursor('grabbing');
     /* An armed right-click that starts travelling becomes a PAN.
 
        Without this, `mode === 'context'` simply swallowed the move —
@@ -2117,6 +2151,10 @@ export function createBoard3D(opts) {
     }
     mode = null;
     dragging = null;
+    /* Back to `grab` if the pointer is still over the object, rather
+       than staying `grabbing` until it moves again. Only meaningful
+       for a real event — a pointercancel carries no position. */
+    if (ev && ev.clientX !== undefined) onHover(ev);
   }
 
   function onWheel(ev) {
@@ -2134,6 +2172,11 @@ export function createBoard3D(opts) {
   el.addEventListener('pointermove', onPointerMove);
   el.addEventListener('pointerup', onPointerUp);
   el.addEventListener('pointercancel', onPointerUp);
+  /* Leaving with the button up strands whatever the cursor was on the
+     last object hovered — the canvas keeps it until the pointer comes
+     back. Cleared here rather than in onPointerUp, which does not
+     fire when the pointer simply leaves. */
+  el.addEventListener('pointerleave', () => { if (!mode) setCursor(''); });
   /* Wheel on BOTH the canvas and its container, non-passive.
      `passive:false` is what makes preventDefault work at all — without
      it the browser scrolls the page as well as zooming the camera,

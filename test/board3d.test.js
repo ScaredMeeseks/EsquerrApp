@@ -2153,3 +2153,76 @@ describe('drawn marks can be right-clicked in 3D', () => {
         'delegated handlers need the event to bubble to the SVG');
   });
 });
+
+/* ── The hover cursor ─────────────────────────────────────────────
+   The 2D board gets this from CSS: `.tb-circle { cursor: grab }` and
+   `.tb-dragging { cursor: grabbing }`. A canvas has ONE cursor for
+   the whole surface, so 3D has to decide it per frame from what the
+   ray is over — and the interesting part is which pool it asks.
+*/
+describe('the 3D cursor says what can be picked up', () => {
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const hover = bare.slice(bare.indexOf('function onHover(ev) {'),
+      bare.indexOf('function onPointerMove('));
+  const move = bare.slice(bare.indexOf('function onPointerMove('),
+      bare.indexOf('function movePathEnd(', bare.indexOf('function onPointerMove(')));
+  const up = bare.slice(bare.indexOf('function onPointerUp(ev) {'),
+      bare.indexOf('function onWheel('));
+
+  it('uses the same words as the 2D board', () => {
+    /* Not `pointer` or `move`: a coach who knows the 2D board reads
+       the hand as "this is draggable", and a different cursor for the
+       same affordance is a different affordance. */
+    /* The VOCABULARY only — the test below pins how the grab value is
+       reached. Asserting `setCursor('grab')` here failed on correct
+       code, because the value comes out of a ternary. */
+    assert.ok(/'grab'/.test(hover), 'hover must offer grab');
+    assert.ok(/setCursor\('grabbing'\)/.test(move), 'a drag must show grabbing');
+  });
+
+  it('asks the DRAGGABLE pool, not the pickable one', () => {
+    /* pick(ev) without includeLines is exactly the set the left
+       button can drag. With it, marks and trajectory lines join in —
+       and neither can be dragged, so the hand would be a lie. */
+    assert.ok(/pick\(ev\) \? 'grab' : ''/.test(hover),
+        'the hover test must use the left-button pool');
+    assert.ok(!/pick\(ev, true\)/.test(hover),
+        'includeLines would offer a hand over things that cannot move');
+  });
+
+  it('is silent while a draw tool is active', () => {
+    /* The 2D overlay is on top there and shows a pen. Fighting it
+       from underneath would flicker between the two. */
+    assert.ok(/if \(readOnly \|\| drawLock\) \{ setCursor\(''\); return; \}/.test(hover),
+        'draw lock and read-only must clear the cursor and stop');
+    const lock = bare.slice(bare.indexOf('function setDrawLock(on) {'),
+        bare.indexOf('function pitchScreenRect('));
+    assert.ok(/if \(on\) setCursor\(''\)/.test(lock),
+        'locking must clear it at once, not wait for the next move');
+  });
+
+  it('does not write to the DOM on every mouse move', () => {
+    /* pointermove fires at pointer rate; an unconditional style write
+       is a style invalidation each time for no change. */
+    const setter = bare.slice(bare.indexOf('function setCursor(c) {'),
+        bare.indexOf('function onHover('));
+    assert.ok(/if \(c === cursorNow\) return;/.test(setter),
+        'setCursor must skip a write that changes nothing');
+  });
+
+  it('hands the cursor back when the drag ends or the pointer leaves', () => {
+    assert.ok(/onHover\(ev\)/.test(up),
+        'releasing must re-evaluate, or it stays grabbing until you move');
+    assert.ok(/ev && ev\.clientX !== undefined/.test(up),
+        'a pointercancel carries no position and must not be used');
+    assert.ok(/'pointerleave', \(\) => \{ if \(!mode\) setCursor\(''\); \}/.test(bare),
+        'leaving the canvas must clear a stranded hand');
+  });
+
+  it('hover work happens only when nothing is being dragged', () => {
+    /* A raycast per move is cheap but not free, and during a drag the
+       answer is already known. */
+    assert.ok(/if \(!mode\) \{ onHover\(ev\); return; \}/.test(move),
+        'onHover must run only when there is no active gesture');
+  });
+});

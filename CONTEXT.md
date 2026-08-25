@@ -5406,3 +5406,31 @@ instead of measuring. Both are plain substring searches now, which need no escap
 measurement rather than taking two.
 
 Unit 1644 → **1652**. Version triple → v147. **Still nothing deployed.**
+
+### 2026-08-25 — The 3D cursor says what can be picked up (v148)
+
+The 2D board gets this from CSS — `.tb-circle { cursor: grab }`, `.tb-dragging { cursor: grabbing }`.
+A canvas has ONE cursor for its whole surface, so 3D decides it per frame from what the ray is over.
+
+**The interesting part is which pool it asks.** `pick(ev)` *without* `includeLines` is exactly the set
+the left button can drag — drawn marks are gated out of it (there is nothing sensible to write when you
+drop an arrow) and trajectory lines carry a zero threshold, while the handles on those lines, which ARE
+draggable, stay in. Asking the right-click pool instead would have offered a hand over things that
+cannot move, which is a cursor that lies.
+
+Details that make it behave rather than flicker:
+- **Silent while draw-locked.** The 2D overlay is on top there and shows a pen; a hand underneath would
+  fight it. Cleared the moment the lock goes on, not on the next mouse move — otherwise picking up a
+  tool while hovering a player leaves a hand sitting under the pen.
+- **`setCursor` skips a write that changes nothing.** `pointermove` fires at pointer rate and an
+  unconditional style write is a style invalidation per event for no change.
+- **`pointerleave` clears it**, or the hand is stranded on the canvas until the pointer returns —
+  `onPointerUp` does not fire when the pointer simply leaves.
+- **Releasing re-evaluates**, so it drops back to `grab` while still over the object instead of staying
+  `grabbing` until the next move. Guarded on the event carrying a position: a `pointercancel` does not.
+- Hover raycasts only when no gesture is active; during a drag the answer is already known.
+
+One test of my own failed on correct code again: it asserted `setCursor('grab')` when the value comes
+out of a ternary. It checks the vocabulary now, and a separate test pins how the value is reached.
+
+Unit 1652 → **1658**. Version triple → v148. **Still nothing deployed.**
