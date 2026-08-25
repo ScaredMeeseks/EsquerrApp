@@ -6660,6 +6660,33 @@
         });
   }
 
+  /**
+   * Run the 3D window down to the bottom of the browser window.
+   *
+   * In JS because CSS cannot see this element's top offset — it sits
+   * below a topnav, a breadcrumb and the board name, and every one of
+   * those changes height with the content. Measuring is the only
+   * honest way to get "whatever fits".
+   *
+   * The floor matters more than it looks: on a short laptop window
+   * with the keyboard shelf up, the arithmetic can go negative, and a
+   * board with no height is indistinguishable from a board that
+   * failed to load.
+   */
+  var _tb3dSizeBound = false;
+  function tbSize3DWindow() {
+    const wrap = document.getElementById('tb-3d-wrap');
+    if (!wrap) return;
+    const top = wrap.getBoundingClientRect().top;
+    /* A little air below, so the window does not butt against the
+       bottom edge and hide that the page scrolls on. */
+    const h = Math.max(420, Math.round(window.innerHeight - top - 16));
+    wrap.style.height = h + 'px';
+    /* board3d watches the wrapper with a ResizeObserver, so the
+       canvas and the camera aspect follow from here without this
+       function knowing anything about them. */
+  }
+
   /** Tear down the 3D view. Safe to call when there is none. */
   function tbDestroy3D() {
     if (_tb3d) { try { _tb3d.destroy(); } catch (e) { /* already gone */ } }
@@ -12890,6 +12917,15 @@
          Calling it here keeps one source for the positions rather
          than teaching board3d about formations. */
       saveState();
+      /* Size the window BEFORE mounting, so board3d's first camera
+         fit is made against the real aspect. Fitting to the CSS
+         placeholder and then resizing works, but the board visibly
+         re-frames itself on every entry to 3D. */
+      tbSize3DWindow();
+      if (!_tb3dSizeBound) {
+        _tb3dSizeBound = true;
+        window.addEventListener('resize', tbSize3DWindow);
+      }
       tbMount3D({
         /**
          * Land a 3D drag on the 2D board.

@@ -830,10 +830,24 @@ tr:hover td { background: #f7f8fa; }
    small viewport makes the whole thing unreadable. The height is
    viewport-relative rather than a ratio of the width — board3d's
    resize() reads clientHeight, so CSS owns the shape. */
+/* ── The 3D window ────────────────────────────────────────────────
+   Bleeds to the card's edge horizontally and runs to the bottom of
+   the viewport vertically.
+
+   The `1.5rem` is the card's own padding — the only margin between
+   this element and the card edge — cancelled on both sides. If the
+   card's padding ever changes, this must change with it; there is a
+   test that reads both numbers rather than trusting them to agree.
+
+   The HEIGHT is set from JS (tbSize3DWindow), not here. CSS cannot
+   know this element's top offset: it depends on the topnav, the
+   breadcrumb and the board name above it, and all three vary. The
+   value below is only what the window looks like before the first
+   measurement lands. */
 .tb-3d-wrap {
-  width:100%; max-width:1400px; margin:0 auto 1rem;
+  width:calc(100% + 3rem); margin:0 -1.5rem 1rem;
   height:clamp(420px, 72vh, 900px);
-  border-radius:var(--radius); overflow:hidden; border:3px solid #fff;
+  overflow:hidden; border:0;
   background:#1a2410; position:relative;
   /* touch-action stops the browser panning the page from a drag that
      starts here; overscroll-behavior stops a wheel that reaches the

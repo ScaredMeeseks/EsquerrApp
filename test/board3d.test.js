@@ -238,13 +238,58 @@ describe('the 3D surface is bigger than the 2D one', () => {
   const css = fs2.readFileSync(p2.join(__dirname, '..', 'css', 'style.css'), 'utf8');
   const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
 
-  it('is wider than the 820px 2D board and has a real height', () => {
-    /* Seen at an angle the far half is foreshortened, so a viewport
-       sized for the top-down 2D view is unreadable in 3D. */
+  it('bleeds to the card edge, cancelling exactly the card padding', () => {
+    /* This used to assert a `max-width` above 820px — the 3D window
+       has to be wider than the 2D board because at an angle the far
+       half is foreshortened. It is wider still now: it takes the
+       whole card. The cap it pinned is gone, so the test asserts the
+       bleed, and asserts it against the card's REAL padding rather
+       than a number typed twice. Two numbers that must agree, read
+       from the two places they are written. */
     const wrap = css.slice(css.indexOf('.tb-3d-wrap {'), css.indexOf('.tb-3d-loading'));
-    const mw = /max-width:(\d+)px/.exec(wrap);
-    assert.ok(mw && parseInt(mw[1], 10) > 820, 'expected wider than 820px: ' + wrap);
-    assert.ok(/height:clamp\(/.test(wrap), 'height should be viewport-relative');
+    assert.ok(!/max-width:\d+px/.test(wrap),
+        'a width cap would stop it reaching the card edge');
+
+    const card = css.slice(css.indexOf('.card {'), css.indexOf('.card-title'));
+    const pad = /padding:\s*([\d.]+)rem/.exec(card);
+    assert.ok(pad, 'card padding not found: ' + card);
+    const p = parseFloat(pad[1]);
+
+    const marg = /margin:0 -([\d.]+)rem/.exec(wrap);
+    assert.ok(marg, 'the window must pull out to the card edge: ' + wrap);
+    assert.strictEqual(parseFloat(marg[1]), p,
+        'the bleed must cancel the card padding exactly');
+
+    const w = /width:calc\(100% \+ ([\d.]+)rem\)/.exec(wrap);
+    assert.ok(w, 'the window must grow by what it pulled out on both sides');
+    assert.strictEqual(parseFloat(w[1]), p * 2,
+        'growing by anything but twice the padding leaves a gap or overflows');
+  });
+
+  it('takes its height from the viewport, measured rather than guessed', () => {
+    /* CSS cannot see this element's top offset — topnav, breadcrumb
+       and board name all vary — so the height is set from JS. The CSS
+       value is only what shows before the first measurement. */
+    const app = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    const fn = app.slice(app.indexOf('function tbSize3DWindow() {'),
+        app.indexOf('function tbDestroy3D('));
+    assert.ok(fn.length > 100, 'tbSize3DWindow not found');
+    assert.ok(/getBoundingClientRect\(\)\.top/.test(fn),
+        'the top offset must be measured');
+    assert.ok(/window\.innerHeight - top/.test(fn),
+        'the height must run to the bottom of the viewport');
+    assert.ok(/Math\.max\(420,/.test(fn),
+        'a floor, or a short window can compute a negative height');
+    assert.ok(/window\.addEventListener\('resize', tbSize3DWindow\)/.test(app),
+        'and it must follow the browser window');
+    /* The call has to EXIST before its position means anything.
+       Without this line, deleting the call left indexOf at -1 and
+       `-1 < anything` passed the ordering check vacuously — the
+       mutation survived. */
+    const at = app.indexOf('tbSize3DWindow();');
+    assert.ok(at !== -1, 'nothing calls tbSize3DWindow');
+    assert.ok(at < app.indexOf('tbMount3D({'),
+        'sized BEFORE mounting, or the board re-frames itself on every entry');
   });
 
   it('takes its height from the container, not from a width ratio', () => {
