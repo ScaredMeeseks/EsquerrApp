@@ -409,8 +409,21 @@ export function createBoard3D(opts) {
          geometry or texture matrix is free to reach it another way. */
       for (let i = 0; i < n; i++) {
         g.fillStyle = (i % 2 === 0) ? p.c1 : p.c2;
-        if (p.dir === 'h') g.fillRect((i / n) * S, 0, S / n, S);
-        else g.fillRect(0, (i / n) * S, S, S / n);
+        if (p.dir === 'h') {
+          /* u runs -Z to +Z, so canvas x=0 is the top of the board —
+             where the 2D 180deg gradient also starts. In order. */
+          g.fillRect((i / n) * S, 0, S / n, S);
+        } else {
+          /* MIRRORED, and this is the other half of the same story.
+             v runs -X to +X, but CanvasTexture flips Y on upload, so
+             canvas row 0 samples v=1 — the RIGHT of the board, while
+             the 2D 90deg gradient starts on the LEFT. Painting the
+             bands in reverse puts c1 back on the left.
+
+             Measured: with the bands in order, band 0 landed at world
+             X +0.78; the 2D board puts it at negative X. */
+          g.fillRect(0, ((n - 1 - i) / n) * S, S, S / n);
+        }
       }
     } else {
       // Solid: parseFill puts the colour in c1 either way.
@@ -648,7 +661,7 @@ export function createBoard3D(opts) {
    * simpler than assembling it in world space and impossible to get
    * subtly out of plane.
    */
-  function addArrow(a) {
+  function addArrow(a, ai) {
     const pitch = getPitch(), bt = getBoardType();
     const p1 = BG.toWorld(a[0], a[1], pitch, bt);
     const p2 = BG.toWorld(a[2], a[3], pitch, bt);
@@ -695,10 +708,11 @@ export function createBoard3D(opts) {
     const mesh = new THREE.Mesh(geo, decalMaterial(col));
     mesh.renderOrder = ORDER.arrow;
     drawRoot.add(mesh);
+    objects.push({mesh, kind: 'arrows', index: ai});
   }
 
   /** Zones: a translucent plane just above the turf. */
-  function addRect(r) {
+  function addRect(r, ri) {
     const pitch = getPitch(), bt = getBoardType();
     const e = BG.extent(pitch, bt, false);
     const w = (r[2] / 100) * e.ax;
@@ -712,6 +726,7 @@ export function createBoard3D(opts) {
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(c.x, DECAL_Y, c.z);
     drawRoot.add(mesh);
+    objects.push({mesh, kind: 'rects', index: ri});
 
     /* The OUTLINE. In 2D a zone is a translucent fill inside a solid
        stroke with rounded corners (`.tb-rect`, stroke-width 1.5, rx 2);
@@ -728,7 +743,7 @@ export function createBoard3D(opts) {
   }
 
   /** Pen strokes: a line strip laid on the turf. */
-  function addPenLine(p) {
+  function addPenLine(p, pi) {
     const pitch = getPitch(), bt = getBoardType();
     const pts = String(p[0] || '').trim().split(/\s+/).map((pair) => {
       const xy = pair.split(',');
@@ -741,10 +756,11 @@ export function createBoard3D(opts) {
         decalMaterial(new THREE.Color(p[1] || '#ffffff')));
     mesh.renderOrder = ORDER.pen;
     drawRoot.add(mesh);
+    objects.push({mesh, kind: 'penLines', index: pi});
   }
 
   /** Text labels: a billboarded sprite that always faces the camera. */
-  function addText(t) {
+  function addText(t, ti) {
     const cv = document.createElement('canvas');
     const g0 = cv.getContext('2d');
     const FS = 48;
@@ -771,6 +787,7 @@ export function createBoard3D(opts) {
     spr.scale.set(scale, scale * (cv.height / cv.width), 1);
     spr.position.set(w.x, 2.2, w.z);
     drawRoot.add(spr);
+    objects.push({mesh: spr, kind: 'texts', index: ti});
   }
 
   // Local copy so this module needs nothing from app.js at import time.
@@ -1712,8 +1729,19 @@ export function createBoard3D(opts) {
        threshold never hits one. In world units — the scene is in
        metres — under a metre is a forgiving but not sloppy target. */
     ray.params.Line.threshold = includeLines ? 0.8 : 0;
-    const hits = ray.intersectObjects(
-        objects.filter((o) => o.mesh.visible).map((o) => o.mesh), false);
+    /* Drawn marks — arrows, zones, pen strokes, labels — are pickable
+       for the RIGHT button only, which is the same gate `includeLines`
+       already opens for trajectory lines.
+
+       Not for the left button, deliberately. A left drag would set
+       them as `dragging`, and onPointerUp moves a dragged object by
+       writing a single position; an arrow has two endpoints, a zone
+       four corners and a pen stroke a whole polyline, so there is
+       nothing sensible for it to write. They were unpickable before,
+       which meant right-click on an arrow opened the TURF menu. */
+    const pool = objects.filter((o) => o.mesh.visible &&
+        (includeLines || MARK_KINDS.indexOf(o.kind) === -1));
+    const hits = ray.intersectObjects(pool.map((o) => o.mesh), false);
     if (!hits.length) return null;
     return objects.find((o) => o.mesh === hits[0].object) || null;
   }
@@ -1752,6 +1780,9 @@ export function createBoard3D(opts) {
   scene.add(selRing);
 
   const SELECTABLE = ['positions', 'oppPositions', 'balls', 'cones'];
+  /* Drawn marks. Right-clickable, not selectable and not draggable —
+     see pick(). The names match the state keys app.js reads. */
+  const MARK_KINDS = ['rects', 'arrows', 'penLines', 'texts'];
 
   function setSelected(hit) {
     selected = (hit && SELECTABLE.indexOf(hit.kind) !== -1)
@@ -1785,7 +1816,8 @@ export function createBoard3D(opts) {
 
        A miss reports the turf position instead, so "add a player
        here" lands where the coach clicked. */
-    if (!h || SELECTABLE.indexOf(h.kind) !== -1) {
+    if (!h || SELECTABLE.indexOf(h.kind) !== -1 ||
+        MARK_KINDS.indexOf(h.kind) !== -1) {
       if (onContext) {
         const pct = p.at
           ? BG.toPercent(p.at.x, p.at.z, getPitch(), getBoardType()) : null;

@@ -5360,3 +5360,49 @@ failures from slice anchors in this suite; the pattern is always a marker that i
 terminator that is not the one meant.
 
 Unit 1632 → **1641**. Version triple → v146. **Still nothing deployed.**
+
+### 2026-08-25 — Stripe colours the right way round, and marks are right-clickable (v147)
+
+**1. Getting the stripe AXIS right left two ways to paint it, and v146 picked the wrong one.** The cap's
+`v` axis runs −X to +X, but `CanvasTexture` flips Y on upload, so canvas row 0 samples v=1 — the RIGHT
+of the board, while the 2D `linear-gradient(90deg)` starts on the LEFT. Measured: band 0 landed at world
+X **+0.78** where 2D puts it at negative X. The `'v'` bands are painted in reverse now. `'h'` was already
+correct — canvas x maps to u, which runs −Z to +Z, matching the 2D 180deg gradient's start at the top.
+
+The test asserts **which side c1 lands on in world space**, for both directions and at an odd stripe
+count. That last case matters: mirroring by swapping the two colours instead of reversing the band order
+is indistinguishable at n=4 and wrong at n=3, and the mutation check confirms it is caught.
+
+**2. Drawn marks were unpickable, so a right-click on an arrow opened the TURF menu.** Arrows, zones,
+pen strokes and labels went into `drawRoot` and were never registered in `objects`, so the raycast could
+not see them at all. Each builder now takes its index and registers itself; `runContext` routes a mark
+hit to the same `onContext` hook objects use, and app.js dispatches a synthetic `contextmenu` on the 2D
+element. The arrow, zone and pen menus are **delegated off the arrows SVG**, so a synthetic event on the
+element resolves through `e.target.closest(...)` and bubbles exactly as a real one does — nothing new to
+maintain.
+
+**Right button only, and deliberately.** `pick()` gates marks behind the same `includeLines` flag the
+trajectory lines already use. A left drag would set a mark as `dragging`, and `onPointerUp` moves a
+dragged object by writing **one** position — an arrow has two endpoints, a zone four corners and a pen
+stroke a whole polyline, so there is nothing sensible for it to write. **Dragging a mark in 3D is
+therefore still not possible**; that needs a per-type move and was not in this phase.
+
+Marks are not `SELECTABLE` either: the selection ring is a circle sized for a player and there is none
+that makes sense for a forty-metre arrow. Delete lives in each mark's own right-click menu.
+
+Marks are addressed **positionally**, like cones. Every `save*` function builds its state array from DOM
+order, so position IS the index; `data-idx` exists on arrows, zones and labels but only as a cache a
+reindex has to keep true, and pen lines have none at all. One rule beats four.
+
+**A test pinned an expression again.** `an invisible path cannot be clicked` asserted the literal
+`objects.filter((o) => o.mesh.visible)` and broke the moment that filter grew a second condition — code
+that still did exactly what the test asks for. It checks the property now: the pool excludes invisible
+meshes, and does so *before* the raycast.
+
+**And the escaping trap, twice more.** Writing `\.` and `\{` into a `new RegExp(...)` string through a
+shell heredoc lost a backslash each time and produced an invalid expression, so the test **threw**
+instead of measuring. Both are plain substring searches now, which need no escaping. Two harness helpers
+(`ctxImpl`, the stripe painter and cap table) were also hoisted to file scope so two suites share one
+measurement rather than taking two.
+
+Unit 1644 → **1652**. Version triple → v147. **Still nothing deployed.**

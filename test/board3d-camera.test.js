@@ -284,6 +284,8 @@ describe('the side views are not mirrored against the 2D board', () => {
    because the formatting suite needs the same harness, and building
    it twice means two chances for the stubs to differ. */
 let addArrow, addPenLine, added;
+/* What the builders registered as pickable, in order. */
+const picked = [];
 
 /** Every vertex of a mesh, in world space. */
 const verts = (mesh) => {
@@ -323,13 +325,13 @@ describe('drawn marks lie flat on the turf', () => {
     })();
 
     added = [];
-    const built = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
+    const built = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot', 'objects',
         consts + '\n' +
         fn('  function decalMaterial(colour, opacity) {') + '\n' +
         fn('  function ribbonGeometry(pts, width, dashed) {') + '\n' +
         fn('  function roundedRectPath(cx, cz, w, h, radius) {') + '\n' +
-        fn('  function addArrow(a) {') + '\n' +
-        fn('  function addPenLine(p) {') + '\n' +
+        fn('  function addArrow(a, ai) {') + '\n' +
+        fn('  function addPenLine(p, pi) {') + '\n' +
         'return {addArrow, addPenLine, DECAL_Y, PEN_W, ORDER};')(
       THREE,
       /* The REAL size tables, with only toWorld stubbed to a simple
@@ -339,7 +341,7 @@ describe('drawn marks lie flat on the turf', () => {
       Object.assign(Object.create(require('../js/board-geom.js')),
           {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})}),
       () => null, () => 'full',
-      {add: (m) => added.push(m)});
+      {add: (m) => added.push(m)}, picked);
     addArrow = built.addArrow;
     addPenLine = built.addPenLine;
   });
@@ -643,17 +645,17 @@ describe('3D marks carry the 2D formatting', () => {
       return src.slice(i, src.indexOf(';', p) + 1);
     })();
     added2 = [];
-    addRect = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot',
+    addRect = new Function('THREE', 'BG', 'getPitch', 'getBoardType', 'drawRoot', 'objects',
         consts + '\n' +
         fn('  function decalMaterial(colour, opacity) {') + '\n' +
         fn('  function ribbonGeometry(pts, width, dashed) {') + '\n' +
         fn('  function roundedRectPath(cx, cz, w, h, radius) {') + '\n' +
-        fn('  function addRect(r) {') + '\nreturn addRect;')(
+        fn('  function addRect(r, ri) {') + '\nreturn addRect;')(
       THREE,
       Object.assign(Object.create(BGEOM),
           {toWorld: (x, y) => ({x: (x - 50) * 1.05, z: (y - 50) * 0.68})}),
       () => null, () => 'full',
-      {add: (m) => added2.push(m)});
+      {add: (m) => added2.push(m)}, picked);
   });
 
   const verts2 = (mesh) => {
@@ -839,9 +841,36 @@ describe('3D marks carry the 2D formatting', () => {
  * swap is one way to get there; a texture matrix or a different cap
  * geometry would be another, and both should pass.
  */
-describe('a striped kit reads the same way in 2D and 3D', () => {
-  let capUv;
+/* The measured cap mapping and the painter, at file scope: the
+   colour-side suite below needs both, and measuring twice means two
+   chances for the two measurements to disagree. */
+let capUvTable;
 
+const paintKit = (fill) => {
+  const rects = [];
+  const S = 128;
+  const ctx = {
+    set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; },
+    fillRect: (x, y, w, h) => rects.push({x, y, w, h}),
+    fillText: () => {}, set font(v) {}, set textAlign(v) {}, set textBaseline(v) {}
+  };
+  const body = (() => {
+    const i = src.indexOf('  function playerTexture(fill, number) {');
+    assert.ok(i !== -1, 'playerTexture not found');
+    return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
+  })();
+  const fn = new Function('THREE', 'document', 'fillCss', 'parseFill',
+      body + '\nreturn playerTexture;')(
+    {CanvasTexture: function () { return {}; }, SRGBColorSpace: 'srgb'},
+    {createElement: () => ({getContext: () => ctx, width: S, height: S})},
+    require('../js/utils.js').fillCss,
+    require('../js/utils.js').parseFill);
+  fn(fill, '');
+  return {rects, S};
+};
+
+
+describe('a striped kit reads the same way in 2D and 3D', () => {
   before(() => {
     /* The real mapping, read off the real geometry: for each cap
        vertex, where it sits in the world and where it samples the
@@ -854,39 +883,18 @@ describe('a striped kit reads the same way in 2D and 3D', () => {
     const cap = g.groups.find((gr) => gr.materialIndex === 1);  // top cap
     assert.ok(cap, 'no top cap group');
     const seen = new Set();
-    capUv = [];
+    capUvTable = [];
     for (let i = cap.start; i < cap.start + cap.count; i++) {
       const v = idx.getX(i);
       if (seen.has(v)) continue;
       seen.add(v);
-      capUv.push({x: pos.getX(v), z: pos.getZ(v), u: uv.getX(v), v: uv.getY(v)});
+      capUvTable.push({x: pos.getX(v), z: pos.getZ(v), u: uv.getX(v), v: uv.getY(v)});
     }
-    assert.ok(capUv.length > 20, 'too few cap vertices to measure');
+    assert.ok(capUvTable.length > 20, 'too few cap vertices to measure');
   });
 
   /** The painter, run over a stub canvas that records its fillRects. */
-  const paint = (fill) => {
-    const rects = [];
-    const S = 128;
-    const ctx = {
-      set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; },
-      fillRect: (x, y, w, h) => rects.push({x, y, w, h}),
-      fillText: () => {}, set font(v) {}, set textAlign(v) {}, set textBaseline(v) {}
-    };
-    const body = (() => {
-      const i = src.indexOf('  function playerTexture(fill, number) {');
-      assert.ok(i !== -1, 'playerTexture not found');
-      return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
-    })();
-    const fn = new Function('THREE', 'document', 'fillCss', 'parseFill',
-        body + '\nreturn playerTexture;')(
-      {CanvasTexture: function () { return {}; }, SRGBColorSpace: 'srgb'},
-      {createElement: () => ({getContext: () => ctx, width: S, height: S})},
-      require('../js/utils.js').fillCss,
-      require('../js/utils.js').parseFill);
-    fn(fill, '');
-    return {rects, S};
-  };
+
 
   /**
    * Which WORLD axis the painted bands vary along.
@@ -896,7 +904,7 @@ describe('a striped kit reads the same way in 2D and 3D', () => {
    * look it up in the measured table.
    */
   const bandAxis = (fill) => {
-    const {rects, S} = paint(fill);
+    const {rects, S} = paintKit(fill);
     assert.ok(rects.length >= 2, 'expected several bands, got ' + rects.length);
     const variesInX = rects.some((r) => r.x !== rects[0].x);
     const variesInY = rects.some((r) => r.y !== rects[0].y);
@@ -905,8 +913,8 @@ describe('a striped kit reads the same way in 2D and 3D', () => {
 
     // Which world axis does that canvas axis correspond to?
     const spread = (key, axis) => {
-      const lo = capUv.filter((p) => p[key] < 0.25);
-      const hi = capUv.filter((p) => p[key] > 0.75);
+      const lo = capUvTable.filter((p) => p[key] < 0.25);
+      const hi = capUvTable.filter((p) => p[key] > 0.75);
       if (!lo.length || !hi.length) return 0;
       const avg = (a) => a.reduce((s, p) => s + p[axis], 0) / a.length;
       return Math.abs(avg(hi) - avg(lo));
@@ -936,7 +944,62 @@ describe('a striped kit reads the same way in 2D and 3D', () => {
   });
 
   it('a solid kit paints one band and no stripes', () => {
-    const {rects} = paint('#a50044');
+    const {rects} = paintKit('#a50044');
     assert.strictEqual(rects.length, 1, 'a solid kit is one fill');
+  });
+});
+
+/* ── And the colours are the same way round ───────────────────────
+   Getting the AXIS right still leaves two ways to paint it. The first
+   fix put a vertical kit's first colour on the right where 2D puts it
+   on the left, because CanvasTexture flips Y on upload and the cap's
+   v axis runs -X to +X. Measured: band 0 landed at world X +0.78.
+*/
+describe('a striped kit starts on the same side in both views', () => {
+  /* Where a canvas coordinate lands in the world, from the same
+     measured cap table the axis tests use. */
+  const worldOf = (texKey, texVal, axis) => {
+    const lo = capUvTable.filter((p) => p[texKey] < 0.25);
+    const hi = capUvTable.filter((p) => p[texKey] > 0.75);
+    const avg = (a) => a.reduce((s, p) => s + p[axis], 0) / a.length;
+    return texVal < 0.5 ? avg(lo) : avg(hi);
+  };
+
+  /** Where the FIRST band — colour c1 — ends up in world space. */
+  const firstBandAt = (fill) => {
+    const {rects, S} = paintKit(fill);
+    const first = rects[0];
+    if (rects.some((r) => r.x !== rects[0].x)) {
+      // Bands step along canvas x, which is texture u, no flip.
+      return {axis: 'z', at: worldOf('u', (first.x + first.w / 2) / S, 'z')};
+    }
+    // Bands step along canvas y — texture v, FLIPPED on upload.
+    const v = 1 - (first.y + first.h / 2) / S;
+    return {axis: 'x', at: worldOf('v', v, 'x')};
+  };
+
+  it('a vertical kit starts its first colour on the LEFT, as in 2D', () => {
+    /* linear-gradient(90deg, c1 …) runs left to right, so 2D puts c1
+       on the left. World -X is screen left under the top view. */
+    const r = firstBandAt('s|v|4|#a50044|#004d98');
+    assert.strictEqual(r.axis, 'x');
+    assert.ok(r.at < 0,
+        'c1 must land at negative world X (screen left); got ' + r.at.toFixed(2));
+  });
+
+  it('a horizontal kit starts its first colour at the TOP, as in 2D', () => {
+    /* linear-gradient(180deg, c1 …) runs top to bottom. World -Z is
+       screen up. */
+    const r = firstBandAt('s|h|4|#a50044|#004d98');
+    assert.strictEqual(r.axis, 'z');
+    assert.ok(r.at < 0,
+        'c1 must land at negative world Z (screen top); got ' + r.at.toFixed(2));
+  });
+
+  it('an odd stripe count keeps c1 first, not last', () => {
+    /* Mirroring by swapping the two colours instead of reversing the
+       band ORDER looks identical at n=4 and is wrong at n=3. */
+    const r = firstBandAt('s|v|3|#a50044|#004d98');
+    assert.ok(r.at < 0, 'c1 must still start on the left at n=3; got ' + r.at.toFixed(2));
   });
 });

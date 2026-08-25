@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 146;
+  const APP_VERSION = 147;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -13004,10 +13004,25 @@
             positions: '.tb-circle:not(.tb-circle-opp)',
             oppPositions: '.tb-circle-opp',
             balls: '.tb-ball',
-            cones: '.tb-cone'
+            cones: '.tb-cone',
+            /* The drawn marks. Their menus hang off the arrows SVG by
+               delegation (`e.target.closest('.tb-arrow')`), so a
+               synthetic event on the element itself resolves and
+               bubbles exactly as a real one does. */
+            arrows: '.tb-arrow',
+            rects: '.tb-rect',
+            penLines: '.tb-pen-line',
+            texts: '.tb-text-label'
           }[kind];
           if (!sel) return;
-          const el = kind === 'cones'
+          /* Marks are addressed POSITIONALLY, like cones. Every
+             save* function builds its state array from DOM order, so
+             position IS the index; `data-idx` exists on some of them
+             but only as a cache that a reindex has to keep true, and
+             pen lines have none at all. One rule beats four. */
+          const positional = kind === 'cones' ||
+              ['arrows', 'rects', 'penLines', 'texts'].indexOf(kind) !== -1;
+          const el = positional
             ? inner.querySelectorAll(sel)[index]
             : inner.querySelector(sel + '[data-idx="' + index + '"]');
           if (!el) return;

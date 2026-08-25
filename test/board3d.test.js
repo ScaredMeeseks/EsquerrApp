@@ -1012,7 +1012,16 @@ describe('a trajectory exists before the first drag', () => {
     /* three.js does not reliably skip invisible meshes in a raycast,
        and an invisible pick-line would swallow a right-click meant
        for the turf. */
-    assert.ok(/objects\.filter\(\(o\) => o\.mesh\.visible\)/.test(s3));
+    /* The PROPERTY, not the expression. This pinned the exact filter
+       text and broke when the same filter grew a second condition for
+       drawn marks — a test failing on code that still does what it
+       asks for. */
+    const fn = s3.slice(s3.indexOf('function pick(ev, includeLines) {'),
+        s3.indexOf('const handleModes'));
+    assert.ok(/o\.mesh\.visible/.test(fn),
+        'the pick pool must exclude invisible meshes');
+    assert.ok(fn.indexOf('o.mesh.visible') < fn.indexOf('intersectObjects'),
+        'and exclude them BEFORE the raycast, not after');
   });
 });
 
@@ -1931,6 +1940,20 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
    ones that exist, which is the same rule the drag and the delete key
    follow.
 */
+/* Comment-stripped app.js, at file scope for the helper below
+   and the suites that share it. */
+const appBareAll = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+const ctxImpl = () => {
+  const marker = appBareAll.indexOf('if (pct) showFieldCtxMenu(');
+  assert.ok(marker !== -1, 'the app-side onContext body was not found');
+  const start = appBareAll.lastIndexOf('onContext:', marker);
+  /* To the end of the whole hook, not to the first `}` at that
+     indent — that one closes the `if (!kind)` guard three lines in,
+     and the slice missed the object branch entirely. */
+  return appBareAll.slice(start, appBareAll.indexOf('\n      });', marker));
+};
+
 describe('right-click in 3D', () => {
   const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -1942,15 +1965,7 @@ describe('right-click in 3D', () => {
      the same signature that just passes through, and it comes first
      in the file — indexOf found that one and sliced three lines of
      nothing. Anchored on a line only the real body contains. */
-  const ctxImpl = () => {
-    const marker = appBare.indexOf('if (pct) showFieldCtxMenu(');
-    assert.ok(marker !== -1, 'the app-side onContext body was not found');
-    const start = appBare.lastIndexOf('onContext:', marker);
-    /* To the end of the whole hook, not to the first `}` at that
-       indent — that one closes the `if (!kind)` guard three lines in,
-       and the slice missed the object branch entirely. */
-    return appBare.slice(start, appBare.indexOf('\n      });', marker));
-  };
+
   const ctx = bare.slice(bare.indexOf('function runContext('),
       bare.indexOf('function groundPoint(', bare.indexOf('function runContext(')));
 
@@ -2033,5 +2048,108 @@ describe('right-click in 3D', () => {
     const calls = appBare.match(/showFieldCtxMenu\(/g) || [];
     assert.strictEqual(calls.length, 3,
         'expected the definition plus one call from each view; got ' + calls.length);
+  });
+});
+
+/* ── Drawn marks are right-clickable in 3D ────────────────────────
+   Arrows, zones, pen strokes and labels were never registered for
+   picking, so a right-click on one fell through to the turf and
+   opened the "add a player here" menu. They each carry a menu in 2D
+   — copy, duplicate, delete — and now reach it.
+*/
+describe('drawn marks can be right-clicked in 3D', () => {
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const pickFn = bare.slice(bare.indexOf('function pick(ev, includeLines) {'),
+      bare.indexOf('const handleModes'));
+
+  it('every mark kind registers itself for picking', () => {
+    const kinds = /const MARK_KINDS = \[([^\]]*)\]/.exec(bare);
+    assert.ok(kinds, 'MARK_KINDS not found');
+    const names = kinds[1].match(/'[^']+'/g).map((s) => s.slice(1, -1)).sort();
+    assert.deepStrictEqual(names, ['arrows', 'penLines', 'rects', 'texts']);
+    /* Plain substring search, not a built regex. Writing `\.` and
+       `\{` into a RegExp string through a shell heredoc lost a
+       backslash every time and produced an invalid expression — the
+       test threw rather than measuring anything. Nothing here needs
+       escaping. */
+    const pushes = bare.split('objects.push({');
+    names.forEach((k) => assert.ok(
+        pushes.some((p) => p.indexOf("kind: '" + k + "'") !== -1 &&
+                           p.indexOf("kind: '" + k + "'") < 40),
+        k + ' must push itself onto the pick list'));
+  });
+
+  it('the kinds are the state keys app.js reads', () => {
+    /* A mark's index is its position in `s.<kind>`, so the name has
+       to be the key that array comes from or the index means nothing. */
+    const rebuild = bare.slice(bare.indexOf('function rebuild()'),
+        bare.indexOf('function disposeTree'));
+    ['rects', 'arrows', 'penLines', 'texts'].forEach((k) =>
+      assert.ok(new RegExp('s\.' + k + ' \|\| \[\]').test(rebuild),
+          k + ' must be built from s.' + k));
+  });
+
+  it('marks are pickable for the RIGHT button only', () => {
+    /* A left drag would set one as `dragging`, and onPointerUp moves a
+       dragged object by writing a single position — an arrow has two
+       endpoints and a pen stroke a whole polyline, so there is
+       nothing sensible to write. */
+    assert.ok(/includeLines \|\| MARK_KINDS\.indexOf\(o\.kind\) === -1/.test(pickFn),
+        'the pick pool must gate marks behind includeLines');
+    const down = bare.slice(bare.indexOf('function onPointerDown('),
+        bare.indexOf('function panBy(', bare.indexOf('function onPointerDown(')));
+    assert.ok(/pick\(ev, true\)/.test(down), 'the right-click pass includes marks');
+    assert.ok(/const hit = readOnly \? null : pick\(ev\);/.test(down),
+        'the left-button pass must NOT, or a mark becomes draggable');
+  });
+
+  it('a mark is not selectable, so Delete cannot half-work on it', () => {
+    /* The selection ring is a circle sized for a player; there is no
+       sensible one for a 40-metre arrow. Delete lives in the mark's
+       own right-click menu instead. */
+    const sel = /const SELECTABLE = \[([^\]]*)\]/.exec(bare)[1];
+    ['arrows', 'rects', 'penLines', 'texts'].forEach((k) =>
+      assert.ok(sel.indexOf(k) === -1, k + ' must not be selectable'));
+  });
+
+  it('runContext routes marks to app.js like any other object', () => {
+    const ctx = bare.slice(bare.indexOf('function runContext('),
+        bare.indexOf('function groundPoint(', bare.indexOf('function runContext(')));
+    assert.ok(/MARK_KINDS\.indexOf\(h\.kind\) !== -1/.test(ctx),
+        'a mark hit must reach the onContext hook');
+    assert.ok(ctx.indexOf('MARK_KINDS') < ctx.indexOf('pathBend'),
+        'and before the trajectory-handle branches, which are unrelated');
+  });
+
+  it('app.js maps every mark kind to its 2D element', () => {
+    const fn = ctxImpl();
+    // Substring, not a built regex — see the note on the pick test.
+    ['arrows', 'rects', 'penLines', 'texts'].forEach((k) =>
+      assert.ok(fn.indexOf(k + ": '.tb-") !== -1,
+          k + ' has no 2D selector'));
+    assert.ok(/arrows: '\.tb-arrow'/.test(fn) && /penLines: '\.tb-pen-line'/.test(fn),
+        'the selectors must match the 2D class names');
+  });
+
+  it('marks are addressed positionally, as their state is built', () => {
+    /* Every save* function reads DOM order, so position IS the index.
+       data-idx exists on arrows, zones and labels but only as a cache
+       a reindex has to keep true, and pen lines have none at all. */
+    const fn = ctxImpl();
+    assert.ok(/\['arrows', 'rects', 'penLines', 'texts'\]\.indexOf\(kind\) !== -1/.test(fn),
+        'all four must take the positional branch');
+    assert.ok(/querySelectorAll\(sel\)\[index\]/.test(fn),
+        'positional lookup must be by querySelectorAll index');
+  });
+
+  it('the 2D menus are reached by dispatch, not rebuilt', () => {
+    /* Arrow, zone and pen menus are delegated off the arrows SVG, so
+       a synthetic event on the element resolves and bubbles exactly
+       as a real one does. */
+    const fn = ctxImpl();
+    assert.ok(/dispatchEvent\(new MouseEvent\('contextmenu'/.test(fn));
+    assert.ok(/bubbles: true/.test(fn),
+        'delegated handlers need the event to bubble to the SVG');
   });
 });
