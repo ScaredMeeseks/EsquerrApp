@@ -294,6 +294,69 @@ Renumbered items are the same items.
     readable; orphaned shards when a category is emptied; uncategorised players inconsistent
     across three staff pages; `backfill-training-teams.js` has no `preflight()`.
 
+17. **Move hosting off GitHub Pages, so the repo can go private.** *(owner asked 2026-08-25)*
+
+    The repo is **public** — verified, not assumed: `GET api.github.com/repos/ScaredMeeseks/EsquerrApp`
+    unauthenticated returns 200 with `"private": false`. 0 forks, 0 stars, 0 watchers, so nothing
+    suggests it has been taken. It is public **because Pages requires it**: a private repo needs
+    GitHub Pro ($4/mo) to publish Pages.
+
+    `firebase.json` has **no `hosting` block at all** — Firebase Hosting is not set up here, so this
+    is real work, not a flag. The shape:
+
+    - add `hosting` to `firebase.json` with an `ignore` list mirroring `_config.yml`'s `exclude`
+      (they are two lists for two channels and must be changed together — `scripts/build-www.js` is
+      the third);
+    - ⚠ **do not** serve `public: "."` without proving the exclusions. See Movment's CLAUDE.md: both
+      `"**/.*"` **and** `"**/.*/**"` are required, because `*` does not cross `/` — the first alone
+      matches `.gitignore` but not `.git/objects/…`. Sanity check: the CLI should report tens of
+      files, not thousands, and `curl <site>/.git/config` must return index.html;
+    - deploy, verify the served site, THEN repoint the domain, THEN flip the repo private.
+
+    **What going private actually buys**: git history, `functions/`, `firestore.rules`, the deploy
+    scripts, `CONTEXT.md`/`CLAUDE.md`/`HANDOFF.md`, `test/`. **What it does not**: the frontend.
+    `js/app.js`, `js/board3d.js` and the CSS ship unminified to every browser whatever the repo
+    setting. Private repo ≠ private frontend — see item 18.
+
+    Custom domain: Firebase Hosting takes one for free (no Blaze needed), provisions the TLS
+    certificate itself, and serves both apex and `www`. Buy the name anywhere; only DNS records
+    change hands. Same for Pages, so the domain and the hosting move are independent decisions.
+
+18. **Code-gate the 3D board, if the entitlement is meant to bite.** *(owner asked 2026-08-25)*
+
+    `clubFeature('board3d')` gates **the toggle button and nothing else**. Someone IT-savvy can flip
+    `_clubConfig.features` in devtools, or fetch `js/board3d.js` and drive `createBoard3D` directly —
+    both files are served publicly. They cannot make it *persist* (the callable is superadmin-gated
+    and the club update rule allows a lead only `fcfLinks`/`schedules`), so it is a per-session hack,
+    but the board works.
+
+    **Gating the SAVE cannot work**, and it is worth writing down why so nobody tries: a saved board
+    carries no evidence of which view drew it. It is arrows, positions and pen strokes as
+    percentages — byte-identical from 2D or 3D. There is nothing for the server to detect. The one
+    exception is 3D-only *content*: `paths` carrying a non-zero height cannot come from the 2D board,
+    so a server-side reject on that is enforceable — but narrow.
+
+    **The gate that works is not shipping the code.** Sketch:
+
+    - a callable `getBoard3d` verifies auth, reads the club doc, checks `features.board3d === true`,
+      and returns the module source as a string;
+    - the client wraps it: `import(URL.createObjectURL(new Blob([src], {type:'text/javascript'})))`;
+    - ⚠ **the import specifier has to be rewritten first.** `board3d.js` line 30 is
+      `import * as THREE from '../vendor/three.module.min.js'`, and a relative specifier inside a
+      blob module has no base path to resolve against. The client knows its own origin, so let it do
+      the rewrite: `new URL('vendor/three.module.min.js', location.href).href`. three.js itself stays
+      public — MIT, and not the IP worth protecting;
+    - remove `js/board3d.js` from hosting (`firebase.json` `ignore`, `_config.yml` `exclude`); it is
+      already denied from `www/` by `scripts/build-www.js`;
+    - the function needs its own copy of the source. Copy `js/board3d.js` → `functions/private/` in
+      the deploy script and add a test asserting the two are byte-identical, so a stale copy fails
+      the suite rather than shipping a board two versions old.
+
+    Cost: one callable per session that opens the board, ~76 KB. Effect: an unentitled club gets a
+    hard refusal from the server; an entitled user can still extract the source from devtools, which
+    is unavoidable for anything that runs in a browser. It moves the bar from "read a URL" to
+    "deliberately exfiltrate".
+
 ---
 
 ## Current state
