@@ -162,7 +162,8 @@
          is the identical expression, so nothing that predates
          trajectories moves by a pixel. */
       var path = paths && paths[i];
-      if (path && path.bend) out.push(pathPoint(f, g, path, t));
+      var shaped = path && (path.bend || (path.pts && path.pts.length));
+      if (shaped) out.push(pathPoint(f, g, path, t));
       else out.push([f[0] + (g[0] - f[0]) * t, f[1] + (g[1] - f[1]) * t]);
     }
     return out;
@@ -234,20 +235,129 @@
       (4 * bend[1] - p0[1] - p1[1]) / 2];
   }
 
+  /* A player's bend points, tolerating the shape that came before.
+
+     Ball and player paths are deliberately DIFFERENT shapes, because
+     they are different things: a ball flight is a parabola and carries
+     {bend, apex}; a player run is a shaped path and carries {pts}.
+     Player paths written before multi-point runs existed have a single
+     `bend`, which reads perfectly well as a one-element `pts`. */
+  function pointsOf(path) {
+    if (!path) return [];
+    if (Array.isArray(path.pts)) return path.pts.filter(Boolean);
+    return path.bend ? [path.bend] : [];
+  }
+
+  /* Centripetal Catmull-Rom through one segment.
+
+     CENTRIPETAL (alpha = 0.5), not uniform. Uniform Catmull-Rom forms
+     cusps and self-intersecting loops when the points are unevenly
+     spaced — and a coach dropping bend dots by hand spaces them very
+     unevenly. Centripetal is the variant with the proof that it never
+     does that, which is the whole reason to prefer it here. */
+  function crSeg(p0, p1, p2, p3, u) {
+    const knot = (a, b, t0) => {
+      const d = Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1]));
+      // Coincident points would make a zero-length knot span and
+      // divide by zero; nudge rather than special-case downstream.
+      return t0 + (d < 1e-6 ? 1e-6 : d);
+    };
+    const t0 = 0;
+    const t1 = knot(p0, p1, t0);
+    const t2 = knot(p1, p2, t1);
+    const t3 = knot(p2, p3, t2);
+    const t = t1 + (t2 - t1) * u;
+
+    const lerpP = (a, b, ta, tb) => {
+      const w = (tb - t) / (tb - ta);
+      const v = (t - ta) / (tb - ta);
+      return [a[0] * w + b[0] * v, a[1] * w + b[1] * v];
+    };
+    const a1 = lerpP(p0, p1, t0, t1);
+    const a2 = lerpP(p1, p2, t1, t2);
+    const a3 = lerpP(p2, p3, t2, t3);
+    const b1 = lerpP(a1, a2, t0, t2);
+    const b2 = lerpP(a2, a3, t1, t3);
+    return lerpP(b1, b2, t1, t2);
+  }
+
+  /**
+   * A run through every bend dot, at time t.
+   *
+   * The curve PASSES THROUGH each dot — that is the point of a spline
+   * here rather than a Bézier: the coach drops a dot where the player
+   * should be, and the player goes there.
+   *
+   * End tangents come from duplicating the endpoints, which makes the
+   * curve leave the start and arrive at the end without the overshoot
+   * a phantom control point would introduce.
+   */
+  function splinePoint(p0, pts, p1, t) {
+    const P = [p0].concat(pts || []).concat([p1]);
+    const n = P.length - 1;
+    if (n < 1) return p0;
+    const clamped = Math.max(0, Math.min(1, t));
+    let seg = Math.floor(clamped * n);
+    if (seg >= n) seg = n - 1;
+    const u = clamped * n - seg;
+    return crSeg(
+        P[seg - 1] || P[seg],
+        P[seg],
+        P[seg + 1],
+        P[seg + 2] || P[seg + 1],
+        u);
+  }
+
   /** Where the thing is at time t, in board percentages. */
   function pathPoint(p0, p1, path, t) {
     if (!p0 || !p1) return p1 || p0 || null;
+    const pts = path && Array.isArray(path.pts) ? path.pts.filter(Boolean) : null;
+    // A player run: a spline through every dot.
+    if (pts && pts.length) return splinePoint(p0, pts, p1, t);
     const bend = path && path.bend;
     if (!bend) {
       // No bend is a straight line, and must be EXACTLY the old lerp.
       return [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
     }
+    // A ball flight: one control point, therefore a parabola.
     const c = bendToControl(p0, p1, bend);
     const u = 1 - t;
     return [
       u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0],
       u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1]
     ];
+  }
+
+  /** Squared distance from `p` to the segment `a`-`b`. */
+  function distToSeg(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len2 = dx * dx + dy * dy;
+    let u = len2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2 : 0;
+    u = Math.max(0, Math.min(1, u));
+    const qx = a[0] + dx * u, qy = a[1] + dy * u;
+    return (p[0] - qx) * (p[0] - qx) + (p[1] - qy) * (p[1] - qy);
+  }
+
+  /**
+   * Add a bend dot where the coach clicked, IN THE RIGHT PLACE.
+   *
+   * The index matters as much as the position: appending would send a
+   * dot dropped near the start of a run to the end of the list, and
+   * the run would loop back on itself to collect it. So the nearest
+   * segment of the current control polygon decides where it goes —
+   * segment i sits between control point i and i+1, and `pts` is the
+   * polygon minus its two endpoints, so segment i inserts at index i.
+   */
+  function insertPointAt(path, p0, p1, at) {
+    const pts = pointsOf(path).slice();
+    const P = [p0].concat(pts).concat([p1]);
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < P.length - 1; i++) {
+      const d = distToSeg(at, P[i], P[i + 1]);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    pts.splice(best, 0, [round2(at[0]), round2(at[1])]);
+    return pts;
   }
 
   /** Height above the turf at time t, in metres. Zero without an apex. */
@@ -279,6 +389,9 @@
   return {
     KEYS: K,
     bendToControl: bendToControl,
+    pointsOf: pointsOf,
+    splinePoint: splinePoint,
+    insertPointAt: insertPointAt,
     pathPoint: pathPoint,
     pathHeight: pathHeight,
     samplePath: samplePath,

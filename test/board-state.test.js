@@ -385,3 +385,129 @@ describe('tweenTrack follows a trajectory when there is one', () => {
     assert.deepStrictEqual(out[0], [50, 0]);
   });
 });
+
+describe('multi-point player runs', () => {
+  const P0 = [0, 0];
+  const P1 = [100, 0];
+
+  it('the curve passes EXACTLY through every dot', () => {
+    /* The whole reason for a spline rather than a Bezier: the coach
+       drops a dot where the player should be, and the player goes
+       there. A Bezier control point would only pull the curve
+       towards it. */
+    [[[50, 40]], [[30, 30], [70, -20]], [[20, 10], [50, 40], [80, 5]]]
+        .forEach((pts) => {
+          const n = pts.length + 1;
+          pts.forEach((pt, i) => {
+            const got = BS.splinePoint(P0, pts, P1, (i + 1) / n);
+            assert.ok(Math.abs(got[0] - pt[0]) < 1e-6 &&
+                      Math.abs(got[1] - pt[1]) < 1e-6,
+            'dot ' + JSON.stringify(pt) + ' -> ' + JSON.stringify(got));
+          });
+        });
+  });
+
+  it('still starts and ends exactly where the player does', () => {
+    const pts = [[30, 30], [70, -20]];
+    assert.deepStrictEqual(BS.splinePoint(P0, pts, P1, 0), [0, 0]);
+    const end = BS.splinePoint(P0, pts, P1, 1);
+    assert.ok(Math.abs(end[0] - 100) < 1e-6 && Math.abs(end[1]) < 1e-6, end);
+  });
+
+  it('survives coincident dots instead of dividing by zero', () => {
+    /* Two dots dropped on the same spot makes a zero-length knot
+       span. Centripetal Catmull-Rom divides by it. */
+    const out = BS.splinePoint(P0, [[50, 10], [50, 10]], P1, 0.5);
+    assert.ok(isFinite(out[0]) && isFinite(out[1]), out);
+  });
+
+  it('never forms a CUSP, however badly the dots are spaced', () => {
+    /* This is why it is CENTRIPETAL and not uniform Catmull-Rom.
+       Uniform forms cusps and self-intersecting loops when the
+       spacing is very uneven, which is exactly what hand-placed dots
+       produce.
+
+       A cusp is the curve reversing direction on the spot, so the
+       test is on the TANGENT: between consecutive samples the
+       direction may turn, but never flip. Note this does NOT assert
+       x-monotonicity — a run that goes up, across and back is a
+       legitimate curve, and centripetal CR does not promise
+       monotonicity in any case. */
+    [[[2, 30], [98, -30]], [[1, 1], [99, 40]], [[50, 90], [51, -90]]]
+        .forEach((pts) => {
+          let prevDir = null;
+          for (let i = 0; i < 120; i++) {
+            const a = BS.splinePoint(P0, pts, P1, i / 120);
+            const b = BS.splinePoint(P0, pts, P1, (i + 1) / 120);
+            const dx = b[0] - a[0], dy = b[1] - a[1];
+            const len = Math.hypot(dx, dy);
+            if (len < 1e-9) continue;
+            const dir = [dx / len, dy / len];
+            if (prevDir) {
+              const dot = dir[0] * prevDir[0] + dir[1] * prevDir[1];
+              assert.ok(dot > -0.5,
+                  'direction flipped (cusp) at t=' + (i / 120).toFixed(3) +
+                  ' for ' + JSON.stringify(pts));
+            }
+            prevDir = dir;
+          }
+        });
+  });
+
+  it('reads a legacy single bend as a one-dot run', () => {
+    // Player paths written before multi-point runs existed.
+    assert.deepStrictEqual(BS.pointsOf({bend: [50, 20]}), [[50, 20]]);
+    assert.deepStrictEqual(BS.pointsOf({pts: [[1, 2]]}), [[1, 2]]);
+    assert.deepStrictEqual(BS.pointsOf(null), []);
+    assert.deepStrictEqual(BS.pointsOf({}), []);
+  });
+
+  it('pathPoint prefers pts, and falls back to the parabola', () => {
+    // The ball keeps its parabola; only a run becomes a spline.
+    const spline = BS.pathPoint(P0, P1, {pts: [[50, 40]]}, 0.5);
+    assert.ok(Math.abs(spline[1] - 40) < 1e-6, spline);
+    const parabola = BS.pathPoint(P0, P1, {bend: [50, 40]}, 0.5);
+    assert.ok(Math.abs(parabola[1] - 40) < 1e-9, parabola);
+  });
+
+  it('an empty pts array is still a straight line', () => {
+    assert.deepStrictEqual(BS.pathPoint(P0, P1, {pts: []}, 0.5), [50, 0]);
+  });
+
+  it('tweenTrack follows a multi-dot run', () => {
+    const out = BS.tweenTrack([P0], [P1], 0.5, {0: {pts: [[50, 40]]}});
+    assert.ok(Math.abs(out[0][1] - 40) < 1e-6, out[0]);
+  });
+});
+
+describe('adding a bend dot lands in the right place', () => {
+  const P0 = [0, 0];
+  const P1 = [100, 0];
+
+  it('a dot dropped near the START goes first, not last', () => {
+    /* Appending would send it to the end of the list and the run
+       would double back on itself to collect it. */
+    const pts = BS.insertPointAt({pts: [[80, 20]]}, P0, P1, [15, 5]);
+    assert.deepStrictEqual(pts[0], [15, 5]);
+    assert.strictEqual(pts.length, 2);
+  });
+
+  it('a dot dropped near the END goes last', () => {
+    const pts = BS.insertPointAt({pts: [[20, 20]]}, P0, P1, [85, 5]);
+    assert.deepStrictEqual(pts[1], [85, 5]);
+  });
+
+  it('a dot dropped BETWEEN two existing ones goes between them', () => {
+    const pts = BS.insertPointAt({pts: [[20, 20], [80, 20]]}, P0, P1, [50, 30]);
+    assert.deepStrictEqual(pts.map((p) => p[0]), [20, 50, 80]);
+  });
+
+  it('the first dot on a straight run just works', () => {
+    assert.deepStrictEqual(BS.insertPointAt(null, P0, P1, [50, 25]), [[50, 25]]);
+  });
+
+  it('rounds like every other stored coordinate', () => {
+    assert.deepStrictEqual(BS.insertPointAt(null, P0, P1, [50.123456, 25.987]),
+        [[50.12, 25.99]]);
+  });
+});

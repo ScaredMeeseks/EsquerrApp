@@ -653,6 +653,11 @@
     'tactics.pitch_drag':    { ca:'Arrossega per canviar la mida del camp', es:'Arrastra para cambiar el tamaño del campo', en:'Drag to resize the pitch' },
     'tactics.view_hint':     { ca:'Canvia entre pissarra 2D i 3D', es:'Cambia entre pizarra 2D y 3D', en:'Switch between the 2D and 3D board' },
     'tactics.loading_3d':    { ca:'Carregant la pissarra 3D…', es:'Cargando la pizarra 3D…', en:'Loading the 3D board…' },
+    'tactics.cam_broadcast': { ca:'Realització', es:'Realización', en:'Broadcast' },
+    'tactics.cam_top':       { ca:'Zenital', es:'Cenital', en:'Top' },
+    'tactics.cam_goal':      { ca:'Porteria', es:'Portería', en:'Goal' },
+    'tactics.cam_side':      { ca:'Lateral', es:'Lateral', en:'Side' },
+    'tactics.cam_follow':    { ca:'Segueix la pilota', es:'Seguir el balón', en:'Follow ball' },
     'tactics.reset_view':    { ca:'Centra la vista', es:'Centrar la vista', en:'Reset view' },
     'tactics.orbit_hint':    { ca:'Arrossega per girar · botó dret per moure · roda per apropar',
       es:'Arrastra para girar · botón derecho para mover · rueda para acercar',
@@ -6451,10 +6456,16 @@
    * mesh where it was is wrong but rare, and cheaper than a rebuild
    * mid-play — the next refreshObjects() (on stop) corrects it.
    */
-  function tb3dTween(kind, track) {
+  function tb3dTween(kind, track, paths, t) {
     if (!_tb3d) return;
     for (var i = 0; i < track.length; i++) {
-      if (track[i]) _tb3d.setPosition(kind, i, track[i]);
+      if (!track[i]) continue;
+      /* Height comes from the same path object the tween used, so the
+         ball's altitude and its plan position cannot disagree. Only
+         the ball has one; a run has no height. */
+      var h = (kind === 'balls' && paths && paths[i])
+        ? BS.pathHeight(paths[i], t) : 0;
+      _tb3d.setPosition(kind, i, track[i], h);
     }
   }
 
@@ -6487,8 +6498,22 @@
     // The same transform every other layer uses, spelled once here.
     const disp = (p) => (swap ? [p[1], 100 - p[0]] : [p[0], p[1]]);
 
-    [['positions', '#ffe066'], ['oppPositions', '#ff9e80'], ['balls', '#ffffff']]
-        .forEach(([kind, colour]) => {
+    /* The line takes the OBJECT's colour, exactly as in 3D, so a run
+       belongs visibly to the player making it. A striped kit cannot be
+       one line colour, so parseFill's base colour stands in. */
+    const st = tb3dState();
+    const lineColour = (kind, i) => {
+      if (kind === 'balls') return '#ffffff';
+      const opp = kind === 'oppPositions';
+      const nums = opp ? st.oppNumbers : st.numbers;
+      if (String((nums && nums[i]) || '') === '1') return '#f5c842';   // GK gold
+      const own = opp ? st.oppColors : st.colors;
+      const base = opp ? st.oppColor : st.teamColor;
+      return (parseFill((own && own[i]) || base) || {}).c1 || '#ffffff';
+    };
+
+    ['positions', 'oppPositions', 'balls']
+        .forEach((kind) => {
           const from = prev[kind] || [];
           const to = cur[kind] || [];
           const paths = (cur.paths && cur.paths[kind]) || {};
@@ -6497,13 +6522,28 @@
             if (!p0 || !p1) return;
             if (Math.abs(p0[0] - p1[0]) < 0.5 && Math.abs(p0[1] - p1[1]) < 0.5) return;
             const path = paths[i] || null;
-            const c = BS.bendToControl(p0, p1, path && path.bend);
-            const a = disp(p0), b = disp(p1), cc = disp(c);
             const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             el.setAttribute('class', 'tb-move-path');
-            el.setAttribute('d', 'M' + a[0] + ',' + a[1] +
-                ' Q' + cc[0] + ',' + cc[1] + ' ' + b[0] + ',' + b[1]);
-            el.setAttribute('stroke', colour);
+            /* A player run is a spline through its dots and has no
+               closed form to hand SVG, so it is SAMPLED — through the
+               very same BS.pathPoint the tween uses, which is what
+               stops the drawn line and the animated motion diverging.
+               The ball keeps its exact quadratic: one segment, drawn
+               as a Q, so the curve is smooth at any zoom. */
+            const isSpline = path && path.pts && path.pts.length;
+            if (isSpline) {
+              const pts = [];
+              for (let k = 0; k <= 40; k++) {
+                pts.push(disp(BS.pathPoint(p0, p1, path, k / 40)));
+              }
+              el.setAttribute('d', 'M' + pts.map((q) => q[0] + ',' + q[1]).join(' L'));
+            } else {
+              const c = BS.bendToControl(p0, p1, path && path.bend);
+              const a = disp(p0), b = disp(p1), cc = disp(c);
+              el.setAttribute('d', 'M' + a[0] + ',' + a[1] +
+                  ' Q' + cc[0] + ',' + cc[1] + ' ' + b[0] + ',' + b[1]);
+            }
+            el.setAttribute('stroke', lineColour(kind, i));
             svg.appendChild(el);
           });
         });
@@ -6626,8 +6666,24 @@
         },
         onSelect: () => {}
       });
-      const reset = document.getElementById('tb-3d-reset');
-      if (reset) reset.addEventListener('click', () => _tb3d && _tb3d.resetCamera());
+      const cams = document.getElementById('tb-3d-cams');
+      if (cams) {
+        cams.addEventListener('click', (e) => {
+          const btn = e.target.closest('.tb-cam-btn');
+          if (!btn || !_tb3d) return;
+          const which = btn.dataset.cam;
+          if (which === 'reset') _tb3d.resetCamera();
+          else if (which === 'follow') _tb3d.setFollowBall(!_tb3d.isFollowingBall());
+          else _tb3d.setPreset(which);
+          /* Follow is a STATE; the presets are actions. Only the
+             follow button stays lit, and it goes out on its own when a
+             manual orbit or pan clears the flag inside board3d — which
+             is why the class is read back from the view rather than
+             toggled blind. */
+          cams.querySelectorAll('.tb-cam-follow').forEach((b) =>
+            b.classList.toggle('active', _tb3d.isFollowingBall()));
+        });
+      }
     } catch (err) {
       /* A failed import is the likeliest real-world failure — offline,
          or a blocked module. Say so and fall back rather than leaving
@@ -10095,7 +10151,14 @@
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
         ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap">
           <div class="tb-3d-loading">${t('tactics.loading_3d')}</div>
-          <button class="tb-3d-reset" id="tb-3d-reset" data-tooltip="${t('tactics.reset_view')}">${t('tactics.reset_view')}</button>
+          <div class="tb-3d-cams" id="tb-3d-cams">
+            <button class="tb-cam-btn" data-cam="broadcast">${t('tactics.cam_broadcast')}</button>
+            <button class="tb-cam-btn" data-cam="top">${t('tactics.cam_top')}</button>
+            <button class="tb-cam-btn" data-cam="goal">${t('tactics.cam_goal')}</button>
+            <button class="tb-cam-btn" data-cam="side">${t('tactics.cam_side')}</button>
+            <button class="tb-cam-btn tb-cam-follow" data-cam="follow">${t('tactics.cam_follow')}</button>
+            <button class="tb-cam-btn" data-cam="reset">${t('tactics.reset_view')}</button>
+          </div>
           <div class="tb-3d-hint">${t('tactics.orbit_hint')}</div>
         </div>` : ''}
         <div class="${fieldCls}" id="tb-field"${is3d ? ' hidden' : ''} style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
@@ -12566,11 +12629,45 @@
          */
         applyPath: (kind, index, patch) => {
           if (activeFrameIdx < 0 || activeFrameIdx >= frames.length) return;
-          pushUndo();
           const f = frames[activeFrameIdx];
           if (!f.paths) f.paths = {};
           if (!f.paths[kind]) f.paths[kind] = {};
-          f.paths[kind][index] = Object.assign({}, f.paths[kind][index], patch);
+          const cur = f.paths[kind][index] || {};
+
+          /* Two families of patch. `bend` and `apex` set a value on
+             the BALL's parabola; the dot operations edit a PLAYER's
+             list of bend points. They are kept apart deliberately —
+             one path shape per kind, each matching its own rule. */
+          let next;
+          if (patch.addDot) {
+            const prev = _tb3dPrevFrame();
+            const p0 = prev && (prev[kind] || [])[index];
+            const p1 = (f[kind] || [])[index];
+            if (!p0 || !p1) return;
+            next = Object.assign({}, cur, {
+              pts: BS.insertPointAt(cur, p0, p1, patch.addDot)});
+          } else if (patch.removeDot !== undefined) {
+            const pts = BS.pointsOf(cur).slice();
+            pts.splice(patch.removeDot, 1);
+            /* Drop `bend` on the way out: a legacy single-bend path
+               reads as one dot, so removing that dot has to clear the
+               field it actually came from or it comes straight back. */
+            next = Object.assign({}, cur, {pts});
+            delete next.bend;
+          } else if (patch.moveDot !== undefined) {
+            const pts = BS.pointsOf(cur).slice();
+            if (!pts[patch.moveDot]) return;
+            pts[patch.moveDot] = [BS.round2(patch.to[0]), BS.round2(patch.to[1])];
+            next = Object.assign({}, cur, {pts});
+            delete next.bend;
+          } else {
+            // Merged: the dot and the diamond are two handles on ONE
+            // path, so setting a height must not discard the curve.
+            next = Object.assign({}, cur, patch);
+          }
+
+          pushUndo();
+          f.paths[kind][index] = next;
           saveFrames();
           tb3dTouch();
         }
@@ -13241,6 +13338,7 @@
     let frames = JSON.parse(localStorage.getItem('fa_tactic_frames') || '[]');
     let activeFrameIdx = frames.length ? Math.min(Number(localStorage.getItem('fa_tactic_frame_idx') || 0), frames.length - 1) : -1;
     let framePlaying = false;
+          if (_tb3d) _tb3d.setPlaying(false);
 
     function syncNumbersAcrossFrames() {
       const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || '[]');
@@ -13565,11 +13663,13 @@
     // Play animation: interpolates positions between frames
     const playBtn = document.getElementById('tb-frame-play');
     playBtn?.addEventListener('click', () => {
-      if (framePlaying) { framePlaying = false; playBtn.classList.remove('playing'); return; }
+      if (framePlaying) { framePlaying = false;
+          if (_tb3d) _tb3d.setPlaying(false); playBtn.classList.remove('playing'); return; }
       if (frames.length < 2) return;
       autoSaveFrame();
       framePlaying = true;
       playBtn.classList.add('playing');
+      if (_tb3d) _tb3d.setPlaying(true);
       deactivateDrawTools();
       clearSelection();
       let fIdx = 0;
@@ -13584,6 +13684,7 @@
           activeFrameIdx = 0;
           renderFrameStrip();
           framePlaying = false;
+          if (_tb3d) _tb3d.setPlaying(false);
           playBtn.classList.remove('playing');
           return;
         }
@@ -13613,6 +13714,7 @@
                 activeFrameIdx = 0;
                 renderFrameStrip();
                 framePlaying = false;
+          if (_tb3d) _tb3d.setPlaying(false);
                 playBtn.classList.remove('playing');
               }, 1000);
             }
@@ -13656,7 +13758,7 @@
          position or it is not there at all. */
       const toPaths = to.paths || {};
       const trackTeam = BS.tweenTrack(fromPos, toPos, t, toPaths.positions);
-      tb3dTween('positions', trackTeam);
+      tb3dTween('positions', trackTeam, toPaths.positions, t);
       trackTeam.forEach((pos, i) => {
         const circle = circleMap[i];
 
@@ -13699,7 +13801,7 @@
       });
 
       const trackOpp = BS.tweenTrack(fromOpp, toOpp, t, toPaths.oppPositions);
-      tb3dTween('oppPositions', trackOpp);
+      tb3dTween('oppPositions', trackOpp, toPaths.oppPositions, t);
       trackOpp.forEach((pos, i) => {
         const circle = oppMap[i];
 
@@ -13739,7 +13841,7 @@
       let ballMap = {};
       inner.querySelectorAll('.tb-ball').forEach(b => { ballMap[Number(b.dataset.idx || 0)] = b; });
       const trackBalls = BS.tweenTrack(fromBalls, toBalls, t, toPaths.balls);
-      tb3dTween('balls', trackBalls);
+      tb3dTween('balls', trackBalls, toPaths.balls, t);
       trackBalls.forEach((pos, bi) => {
         let ball = ballMap[bi];
         if (!pos) { if (ball) ball.remove(); return; }

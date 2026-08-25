@@ -4537,3 +4537,58 @@ tail once the function grew, and reported the tail as missing. Bounded by the ne
 selection/delete in 3D, editing the bend from the 2D board, and the `setClubPlan` callable.
 
 Unit 1356 → **1384**.
+
+### 2026-08-25 — v136: trajectory handles, trails, and playback cameras
+
+Second round on trajectories, from the owner's written description. **The GIF could not be seen**
+either — it failed to process at 146 MB — so this is built from the description like the first
+round. Three decisions were taken by asking rather than guessing: spline type, timing, and when the
+camera presets are available.
+
+**Ball handles split by meaning.** The round dot moved to the GROUND — it is the curve's
+projection, "where the ball passes over", so it stays on the grass however high the arc goes — and
+the diamond owns the height. Only ONE is pickable at a time and **right-click swaps them**: they
+occupy the same screen position from directly overhead and no amount of offsetting fixes that. The
+inactive one still renders, dimmed, so it is obvious the other exists. A lofted ball also gets a
+faint ground track, or a chip looks like it lands somewhere it does not.
+
+**Right-click stopped meaning only "pan".** It returned into pan mode *before* picking, so a
+right-click on a handle panned the camera. Now: pick first, and a right-press only becomes a pan if
+the ray hits nothing interesting. The action waits for release and for the pointer to have moved
+less than 4 px, so a pan that happens to start on a handle is still a pan. Line picking needs
+`raycaster.params.Line.threshold` in world units — the default never hits a hairline.
+
+**Players get multiple bend dots and no diamond** — a run has no height. Right-click the line to
+add a dot, right-click a dot to remove it (not requested, but without it a misplaced dot is
+permanent). The curve is a **centripetal Catmull-Rom** through every dot: it passes exactly through
+each one, and centripetal specifically because uniform Catmull-Rom forms cusps and loops on the
+unevenly spaced points hand placement produces.
+
+Two path shapes, deliberately: `{bend, apex}` for a ball (a flight IS a parabola) and `{pts}` for a
+run. Back-compatible — a player's legacy single `bend` reads as a one-element `pts`.
+
+**Timing is unchanged, by decision.** `t` still runs 0→1 across the frame's duration; only
+`pathPoint` consults a spline. The accepted consequence, recorded because it will be noticed:
+**bending a run makes that player faster**, since they cover more ground in the same time.
+
+**Lines take the object's colour** (`parseFill(...).c1`, since a striped kit cannot be one line
+colour), and are continuous and hairline — `LineBasicMaterial`, no dashes. WebGL caps line width at
+1 px almost everywhere, which is exactly the weight wanted.
+
+**Playback dressing.** A ball shadow that grows and fades with height — the only altitude cue from
+directly overhead, where the arc is edge-on. Player trails as a short ribbon fading via **vertex
+colours lerped toward the turf**, not per-vertex alpha, which `LineBasicMaterial` cannot do without
+a custom shader. Both are built once and hidden, never allocated per frame.
+
+**Camera presets** — Broadcast, Top, Goal, Side, Follow ball — always available, not a playback
+mode. Distance is left to `frameBoard()` so a preset never crops the pitch on a narrow window.
+**Top is the degenerate case**: straight down, the default up vector is parallel to the view and
+`lookAt`'s basis collapses, so it sets `camera.up` explicitly. Any manual orbit or pan clears
+follow-ball, or the camera fights the coach.
+
+Two test-quality notes: a fixed-character-window slice silently stopped covering `applyPath`'s tail
+once it grew, reporting the tail as missing — the second time that pattern has bitten, so those
+slices are now bounded by structure. And a diagnostic regex with a nested capture group read the
+wrong group and claimed every i18n key was missing all three languages; the code was fine.
+
+Unit 1384 → **1409**.

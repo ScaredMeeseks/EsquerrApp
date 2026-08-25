@@ -271,7 +271,7 @@ export function createBoard3D(opts) {
         [side, top, side]);
     mesh.position.set(w.x, PLAYER_H / 2, w.z);
     objectRoot.add(mesh);
-    objects.push({mesh, kind, index: i});
+    objects.push({mesh, kind, index: i, trailColour: pathColour(fill).getHex()});
     return mesh;
   }
 
@@ -419,51 +419,102 @@ export function createBoard3D(opts) {
     return new THREE.Vector3(w.x, BS.pathHeight(path, t) + 0.12, w.z);
   }
 
-  function addPath(kind, index, p0, p1, path, colour) {
-    const col = new THREE.Color(colour || 0xffe066);
+  /** A point on the path, projected flat onto the turf. */
+  function groundAt(p0, p1, path, t) {
+    const pt = BS.pathPoint(p0, p1, path, t);
+    const w = BG.toWorld(pt[0], pt[1], getPitch(), getBoardType());
+    return new THREE.Vector3(w.x, 0.1, w.z);
+  }
 
-    // The curve.
+  function addPath(kind, index, p0, p1, path, colour) {
+    const col = new THREE.Color(colour || 0xffffff);
+    const isBall = kind === 'balls';
+
+    /* The curve. Continuous and hairline-thin: WebGL caps line width
+       at 1 px almost everywhere, which is exactly the weight wanted. */
     const pts = [];
-    for (let i = 0; i <= 32; i++) pts.push(pathWorld(p0, p1, path, i / 32));
+    for (let i = 0; i <= 48; i++) pts.push(pathWorld(p0, p1, path, i / 48));
     objectRoot.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineDashedMaterial({color: col, dashSize: 1.2, gapSize: 0.8})
-    ).computeLineDistances());
+        new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.85})));
+
+    /* A lofted ball also gets its GROUND TRACK, so the plan-view path
+       is readable when the arc is high — otherwise a chip looks like
+       it lands somewhere it does not. */
+    if (isBall && BS.pathHeight(path, 0.5) > 0.05) {
+      const flat = [];
+      for (let i = 0; i <= 48; i++) flat.push(groundAt(p0, p1, path, i / 48));
+      objectRoot.add(new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(flat),
+          new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.3})));
+    }
 
     /* The travelling dot. Registered rather than animated in place so
        one clock drives every dot on the board — separate phases would
        look like noise instead of like direction. */
     const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.35, 10, 8),
+        new THREE.SphereGeometry(0.3, 10, 8),
         new THREE.MeshBasicMaterial({color: col}));
     objectRoot.add(dot);
     travellers.push({mesh: dot, p0, p1, path});
 
-    // The bend handle, ON the curve at its middle.
-    const bend = new THREE.Mesh(
-        new THREE.SphereGeometry(0.7, 14, 10),
-        new THREE.MeshBasicMaterial({color: 0xffffff}));
-    bend.position.copy(pathWorld(p0, p1, path, 0.5));
-    objectRoot.add(bend);
-    objects.push({mesh: bend, kind: 'pathBend', index, owner: kind});
+    const mid = groundAt(p0, p1, path, 0.5);
 
-    /* The apex handle, a diamond directly above the bend handle. It
-       sits a little off the turf even at apex 0, or there would be
-       nothing to grab to lift the ball in the first place. */
-    const apexY = Math.max(BS.pathHeight(path, 0.5), 1.2);
-    const dia = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.7),
-        new THREE.MeshBasicMaterial({color: 0x66d9ff}));
-    const mid = pathWorld(p0, p1, path, 0.5);
-    dia.position.set(mid.x, apexY, mid.z);
-    objectRoot.add(dia);
-    objects.push({mesh: dia, kind: 'pathApex', index, owner: kind});
+    if (isBall) {
+      /* THE BALL: one dot on the GROUND and one diamond above it.
+         The dot is the curve's projection — where the ball passes
+         OVER — so it stays on the grass however high the arc goes;
+         the diamond owns the height. Two handles, two questions. */
+      const active = handleMode(kind, index);   // 'bend' | 'apex'
 
-    // A hairline from the turf to the diamond, so the height reads.
-    objectRoot.add(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(mid.x, 0.05, mid.z), dia.position.clone()]),
-        new THREE.LineBasicMaterial({color: 0x66d9ff, transparent: true, opacity: 0.5})));
+      const bend = new THREE.Mesh(
+          new THREE.SphereGeometry(0.7, 14, 10),
+          new THREE.MeshBasicMaterial({
+            color: col, transparent: true, opacity: active === 'bend' ? 1 : 0.25}));
+      bend.position.copy(mid);
+      objectRoot.add(bend);
+      // Only the ACTIVE handle is pickable, so a click from directly
+      // overhead cannot land on the one underneath.
+      if (active === 'bend') objects.push({mesh: bend, kind: 'pathBend', index, owner: kind});
+
+      const apexY = Math.max(BS.pathHeight(path, 0.5), 1.5);
+      const dia = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.7),
+          new THREE.MeshBasicMaterial({
+            color: 0x66d9ff, transparent: true, opacity: active === 'apex' ? 1 : 0.25}));
+      dia.position.set(mid.x, apexY, mid.z);
+      objectRoot.add(dia);
+      if (active === 'apex') objects.push({mesh: dia, kind: 'pathApex', index, owner: kind});
+
+      // A hairline from the turf to the diamond, so the height reads.
+      objectRoot.add(new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(mid.x, 0.05, mid.z), dia.position.clone()]),
+          new THREE.LineBasicMaterial({color: 0x66d9ff, transparent: true, opacity: 0.4})));
+      return;
+    }
+
+    /* A PLAYER: no diamond — a run has no height — and as many bend
+       dots as the coach has dropped. Right-clicking the line adds one,
+       right-clicking a dot removes it. */
+    BS.pointsOf(path).forEach((pt, di) => {
+      const w = BG.toWorld(pt[0], pt[1], getPitch(), getBoardType());
+      const h = new THREE.Mesh(
+          new THREE.SphereGeometry(0.6, 14, 10),
+          new THREE.MeshBasicMaterial({color: col}));
+      h.position.set(w.x, 0.1, w.z);
+      objectRoot.add(h);
+      objects.push({mesh: h, kind: 'pathDot', index, owner: kind, dot: di});
+    });
+
+    /* The line itself is pickable, so a right-click on it can add a
+       dot. Registered last so a dot already on the line wins the
+       raycast when they overlap. */
+    const pickLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({visible: false}));
+    objectRoot.add(pickLine);
+    objects.push({mesh: pickLine, kind: 'pathLine', index, owner: kind, p0, p1});
   }
 
   /** Did this thing move between the two frames? */
@@ -471,14 +522,31 @@ export function createBoard3D(opts) {
     return a && b && (Math.abs(a[0] - b[0]) > 0.5 || Math.abs(a[1] - b[1]) > 0.5);
   }
 
-  function addPathsFor(s, kind, colour) {
+  /* The line takes the OBJECT's colour, so a run belongs visibly to
+     the player who makes it. A striped kit cannot be one line colour,
+     so the base colour is used — parseFill puts it in c1 either way. */
+  function pathColour(fill) {
+    const f = parseFill(fill);
+    return new THREE.Color((f && f.c1) || '#ffffff');
+  }
+
+  function addPathsFor(s, kind) {
     const prev = (s.prev && s.prev[kind]) || null;
     const cur = s[kind] || [];
     if (!prev) return;
     const paths = (s.paths && s.paths[kind]) || {};
+    const base = kind === 'oppPositions' ? (s.oppColor || '#e53935')
+      : kind === 'balls' ? '#ffffff' : (s.teamColor || '#ffffff');
+    const own = kind === 'oppPositions' ? s.oppColors : s.colors;
+    const nums = kind === 'oppPositions' ? s.oppNumbers : s.numbers;
     cur.forEach((p, i) => {
       if (!moved(prev[i], p)) return;
-      addPath(kind, i, prev[i], p, paths[i] || null, colour);
+      let fill = base;
+      if (kind !== 'balls') {
+        const isGk = String((nums && nums[i]) || '') === '1';
+        fill = isGk ? GK_COLOR : ((own && own[i]) || base);
+      }
+      addPath(kind, i, prev[i], p, paths[i] || null, pathColour(fill));
     });
   }
 
@@ -522,9 +590,9 @@ export function createBoard3D(opts) {
     (s.texts || []).forEach(addText);
     /* After the objects, so a handle sits on top of whatever it
        belongs to when the two overlap. */
-    addPathsFor(s, 'positions', 0xffe066);
-    addPathsFor(s, 'oppPositions', 0xff9e80);
-    addPathsFor(s, 'balls', 0xffffff);
+    addPathsFor(s, 'positions');
+    addPathsFor(s, 'oppPositions');
+    addPathsFor(s, 'balls');
   }
 
   function disposeTree(root) {
@@ -533,6 +601,93 @@ export function createBoard3D(opts) {
       const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
       mats.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
     });
+  }
+
+  /* ── Playback dressing ───────────────────────────────────────
+     A ball shadow and player trails. Both exist only while the
+     animation runs, and both are built once and hidden rather than
+     created and destroyed per frame — allocating meshes at 60 fps is
+     how a smooth board becomes a stuttering one. */
+
+  /** The ball's ground projection: bigger and fainter the higher it is. */
+  const ballShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(1, 24),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false}));
+  ballShadow.rotation.x = -Math.PI / 2;
+  ballShadow.position.y = 0.03;
+  ballShadow.visible = false;
+  scene.add(ballShadow);
+
+  function setBallShadow(x, z, height) {
+    if (!(height > 0.05)) { ballShadow.visible = false; return; }
+    /* Grows with height and fades as it grows, which is what a real
+       shadow does and what makes the height readable from directly
+       above — the one camera angle where the arc itself is invisible. */
+    const r = BALL_R * (1 + height * 0.35);
+    ballShadow.scale.set(r, r, 1);
+    ballShadow.material.opacity = Math.max(0.06, 0.3 - height * 0.012);
+    ballShadow.position.set(x, 0.03, z);
+    ballShadow.visible = true;
+    invalidate();
+  }
+
+  /* Player trails. A short ribbon of recent positions, fading out
+     behind each player.
+
+     The fade is done with VERTEX COLOURS lerped toward the turf, not
+     per-vertex alpha: LineBasicMaterial has only a uniform opacity,
+     and a custom shader is a lot of machinery for an effect that is
+     meant to be barely noticeable. */
+  const TRAIL_LEN = 18;                 // ~0.3 s at 60 fps
+  const trails = new Map();             // key -> {mesh, pts: []}
+  const trailRoot = new THREE.Group();
+  scene.add(trailRoot);
+
+  function trailPush(key, colour, x, z) {
+    let tr = trails.get(key);
+    if (!tr) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_LEN * 3), 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_LEN * 3), 3));
+      const mesh = new THREE.Line(geo,
+          new THREE.LineBasicMaterial({vertexColors: true, transparent: true, opacity: 0.55}));
+      mesh.frustumCulled = false;
+      trailRoot.add(mesh);
+      tr = {mesh, pts: [], colour};
+      trails.set(key, tr);
+    }
+    tr.pts.push([x, z]);
+    if (tr.pts.length > TRAIL_LEN) tr.pts.shift();
+
+    const pos = tr.mesh.geometry.attributes.position.array;
+    const col = tr.mesh.geometry.attributes.color.array;
+    const turf = new THREE.Color(TURF);
+    const c = new THREE.Color(colour);
+    for (let i = 0; i < TRAIL_LEN; i++) {
+      // Short trails repeat their oldest point rather than collapsing
+      // to the origin, which would draw a line to the centre spot.
+      const src = tr.pts[Math.max(0, i - (TRAIL_LEN - tr.pts.length))] || tr.pts[0];
+      pos[i * 3] = src[0];
+      pos[i * 3 + 1] = 0.06;
+      pos[i * 3 + 2] = src[1];
+      const f = i / (TRAIL_LEN - 1);       // 0 = oldest, 1 = newest
+      const mix = turf.clone().lerp(c, f);
+      col[i * 3] = mix.r; col[i * 3 + 1] = mix.g; col[i * 3 + 2] = mix.b;
+    }
+    tr.mesh.geometry.attributes.position.needsUpdate = true;
+    tr.mesh.geometry.attributes.color.needsUpdate = true;
+  }
+
+  function clearTrails() {
+    trails.forEach((tr) => {
+      trailRoot.remove(tr.mesh);
+      tr.mesh.geometry.dispose();
+      tr.mesh.material.dispose();
+    });
+    trails.clear();
+    ballShadow.visible = false;
+    invalidate();
   }
 
   /* ── Camera ──────────────────────────────────────────────────
@@ -550,7 +705,40 @@ export function createBoard3D(opts) {
         cam.target.x + cam.dist * sp * Math.cos(cam.theta),
         cam.target.y + cam.dist * cp,
         cam.target.z + cam.dist * sp * Math.sin(cam.theta));
+    /* Straight overhead, the default up vector (0,1,0) is parallel to
+       the view direction and lookAt's basis collapses — the view
+       snaps through a right angle and the pitch spins. Give it a real
+       up vector for that case instead of forbidding the angle, which
+       is what the phi clamp does for the orbit control. */
+    if (cam.phi < 0.02) camera.up.set(Math.cos(cam.theta), 0, Math.sin(cam.theta));
+    else camera.up.set(0, 1, 0);
     camera.lookAt(cam.target);
+  }
+
+  /* The presets. Angles are in the same spherical terms the orbit
+     control uses, so a preset is a starting point the coach can then
+     drag away from rather than a mode they have to leave.
+
+     `dist` is left to frameBoard(), which already knows how to fit the
+     pitch to the current viewport — a hardcoded distance would crop
+     the pitch on a narrow window. */
+  const PRESETS = {
+    broadcast: {theta: -Math.PI / 2 - 0.35, phi: 1.0},
+    top:       {theta: -Math.PI / 2, phi: 0.001},
+    goal:      {theta: Math.PI, phi: 1.32},
+    side:      {theta: -Math.PI / 2, phi: 1.38}
+  };
+
+  function setPreset(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    followBall = false;
+    camTouched = true;
+    cam.theta = p.theta;
+    cam.phi = p.phi;
+    cam.target.set(0, 0, 0);
+    frameBoard();          // fits the pitch, then applies
+    invalidate();
   }
 
   /**
@@ -580,7 +768,10 @@ export function createBoard3D(opts) {
   const ray = new THREE.Raycaster();
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const ndc = new THREE.Vector2();
-  let mode = null;            // 'orbit' | 'drag'
+  let mode = null;            // 'orbit' | 'drag' | 'pan' | 'context'
+  let pending = null;         // an armed right-click, awaiting release
+  let followBall = false;     // camera target tracks the ball
+  let playing = false;        // playback is running (trails + shadow)
   let dragging = null;        // the picked {mesh, kind, index}
   let last = {x: 0, y: 0};
 
@@ -590,12 +781,53 @@ export function createBoard3D(opts) {
         -((ev.clientY - r.top) / r.height) * 2 + 1);
   }
 
-  function pick(ev) {
+  function pick(ev, includeLines) {
     toNdc(ev);
     ray.setFromCamera(ndc, camera);
+    /* A hairline is essentially zero-width, so the default line
+       threshold never hits one. In world units — the scene is in
+       metres — under a metre is a forgiving but not sloppy target. */
+    ray.params.Line.threshold = includeLines ? 0.8 : 0;
     const hits = ray.intersectObjects(objects.map((o) => o.mesh), false);
     if (!hits.length) return null;
     return objects.find((o) => o.mesh === hits[0].object) || null;
+  }
+
+  /* Which of the ball's two handles is currently grabbable.
+
+     They occupy the same spot on screen when the arc is flat or the
+     camera is overhead, and no amount of offsetting fixes the
+     top-down case — so rather than guess, one is active at a time and
+     a right-click swaps them. The inactive one still renders, dimmed,
+     so it is obvious the other exists. Per path, and per session:
+     which handle you were last using is not something a board should
+     remember. */
+  const handleModes = new Map();
+  const modeKey = (kind, index) => kind + ':' + index;
+  function handleMode(kind, index) {
+    return handleModes.get(modeKey(kind, index)) || 'bend';
+  }
+
+  /** Act on a right-click that stayed put. */
+  function runContext(p) {
+    const h = p.hit;
+    if (h.kind === 'pathBend' || h.kind === 'pathApex') {
+      const k = modeKey(h.owner, h.index);
+      handleModes.set(k, handleModes.get(k) === 'apex' ? 'bend' : 'apex');
+      rebuild();
+      invalidate();
+      return;
+    }
+    if (h.kind === 'pathDot') {
+      // The inverse of adding one. Without it a misplaced dot is
+      // permanent, which is worse than not being able to add one.
+      if (onPath) onPath(h.owner, h.index, {removeDot: h.dot});
+      return;
+    }
+    if (h.kind === 'pathLine' && p.at) {
+      const pct = BG.toPercent(p.at.x, p.at.z, getPitch(), getBoardType());
+      if (onPath) onPath(h.owner, h.index, {addDot: [pct[0], pct[1]]});
+    }
   }
 
   /** Where the pointer meets the turf, in world metres. */
@@ -615,13 +847,31 @@ export function createBoard3D(opts) {
     ev.preventDefault();
     renderer.domElement.setPointerCapture(ev.pointerId);
     last = {x: ev.clientX, y: ev.clientY};
-    /* Right button — or middle, or shift-drag — pans the camera
-       TARGET across the turf. Without it the target is pinned to the
-       centre spot, so zooming always converges there and a coach who
-       wants a close look at a corner cannot get one. */
+    /* RIGHT BUTTON means two things, and which one depends on what is
+       under it. It used to mean only "pan", and returned before
+       picking — so a right-click on a handle panned the camera.
+
+       Order matters: pick first, and fall through to pan only when
+       the ray hits nothing interesting. The action itself waits for
+       the release and for the pointer to have barely moved, so a pan
+       that happens to START on a handle is still a pan. */
+    if (ev.button === 2 && !readOnly) {
+      const hit = pick(ev, true);
+      if (hit && (hit.kind === 'pathDot' || hit.kind === 'pathLine' ||
+                  hit.kind === 'pathBend' || hit.kind === 'pathApex')) {
+        mode = 'context';
+        pending = {hit, at: groundPoint(ev), x: ev.clientX, y: ev.clientY};
+        return;
+      }
+    }
+    /* Right — or middle, or shift-drag — pans the camera TARGET
+       across the turf. Without it the target is pinned to the centre
+       spot, so zooming always converges there and a coach who wants a
+       close look at a corner cannot get one. */
     if (ev.button === 2 || ev.button === 1 || ev.shiftKey) {
       mode = 'pan';
       camTouched = true;
+      followBall = false;   // the coach is steering now
       return;
     }
     const hit = readOnly ? null : pick(ev);
@@ -680,6 +930,8 @@ export function createBoard3D(opts) {
          angle. */
       cam.phi = Math.max(0.12, Math.min(Math.PI / 2 - 0.02, cam.phi));
       camTouched = true;
+      followBall = false;   // the coach is steering now
+      camera.up.set(0, 1, 0);
       last = {x: ev.clientX, y: ev.clientY};
       applyCamera();
       return;
@@ -704,7 +956,18 @@ export function createBoard3D(opts) {
     dragging.mesh.position.set(g.x, y, g.z);
   }
 
-  function onPointerUp() {
+  function onPointerUp(ev) {
+    /* A right-press that stayed put is a click; one that travelled is
+       a pan the coach happened to start on a handle. Four pixels is
+       the usual slop for "did not mean to drag". */
+    if (mode === 'context' && pending) {
+      const moved = Math.hypot((ev ? ev.clientX : pending.x) - pending.x,
+          (ev ? ev.clientY : pending.y) - pending.y);
+      if (moved < 4) runContext(pending);
+      mode = null;
+      pending = null;
+      return;
+    }
     if (mode === 'drag' && dragging) {
       const p = dragging.mesh.position;
       if (dragging.kind === 'pathApex') {
@@ -713,6 +976,13 @@ export function createBoard3D(opts) {
       } else if (dragging.kind === 'pathBend') {
         const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
         if (onPath) onPath(dragging.owner, dragging.index, {bend: [pct[0], pct[1]]});
+      } else if (dragging.kind === 'pathDot') {
+        const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
+        if (onPath) onPath(dragging.owner, dragging.index,
+            {moveDot: dragging.dot, to: [pct[0], pct[1]]});
+      } else if (dragging.kind === 'pathLine') {
+        // The invisible pick line is not draggable; it only takes
+        // right-clicks. Ignore a left drag that started on it.
       } else if (onMove) {
         const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
         /* Clamped to the board: a drag that leaves the pitch would
@@ -821,15 +1091,57 @@ export function createBoard3D(opts) {
     refresh() { buildPitch(); rebuild(); invalidate(); },
     /** Re-read objects only — cheaper, and enough during playback. */
     refreshObjects() { rebuild(); invalidate(); },
-    /** Move one object without a rebuild, for animation frames. */
-    setPosition(kind, index, pct) {
+    /**
+     * Move one object without a rebuild, for animation frames.
+     *
+     * `height` is the ball's altitude in metres. It drives the mesh's
+     * Y, its ground shadow and, when the camera is following, the
+     * look-at point — all from the one call the playback loop already
+     * makes, so there is no second place that has to agree about
+     * where the ball is.
+     */
+    setPosition(kind, index, pct, height) {
       const o = objects.find((x) => x.kind === kind && x.index === index);
       if (!o) return;
       const w = BG.toWorld(pct[0], pct[1], getPitch(), getBoardType());
-      o.mesh.position.set(w.x, o.mesh.position.y, w.z);
+      const isBall = kind === 'balls';
+      const y = isBall ? BALL_R + (height || 0) : o.mesh.position.y;
+      o.mesh.position.set(w.x, y, w.z);
+
+      if (playing) {
+        if (isBall) {
+          setBallShadow(w.x, w.z, height || 0);
+          if (followBall) { cam.target.set(w.x, 0, w.z); applyCamera(); }
+        } else {
+          trailPush(kind + ':' + index, o.trailColour || 0xffffff, w.x, w.z);
+        }
+      }
       invalidate();
     },
-    resetCamera() { camTouched = false; frameBoard(); invalidate(); },
+
+    /** Playback started or stopped. */
+    setPlaying(on) {
+      playing = !!on;
+      if (!playing) clearTrails();
+      invalidate();
+    },
+
+    setPreset,
+    /** Follow the ball. Cleared by any manual orbit or pan. */
+    setFollowBall(on) {
+      followBall = !!on;
+      camTouched = true;
+      invalidate();
+    },
+    isFollowingBall() { return followBall; },
+
+    resetCamera() {
+      camTouched = false;
+      followBall = false;
+      camera.up.set(0, 1, 0);
+      frameBoard();
+      invalidate();
+    },
     resize,
     invalidate,
     destroy() {

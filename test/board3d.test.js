@@ -364,9 +364,12 @@ describe('the camera can be moved and recovered', () => {
   });
 
   it('offers a reset that recentres AND re-enables auto-framing', () => {
-    assert.ok(/resetCamera\(\) \{ camTouched = false; frameBoard\(\)/.test(s3));
+    const rc = s3.slice(s3.indexOf('resetCamera()'), s3.indexOf('resetCamera()') + 260);
+    assert.ok(/camTouched = false/.test(rc) && /frameBoard\(\)/.test(rc), rc);
+    assert.ok(/followBall = false/.test(rc), 'reset must also stop following the ball');
     const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-    assert.ok(/tb-3d-reset/.test(a) && /resetCamera\(\)/.test(a));
+    // Reset now lives in the camera preset row rather than on its own.
+    assert.ok(/data-cam="reset"/.test(a) && /_tb3d\.resetCamera\(\)/.test(a));
   });
 });
 
@@ -465,19 +468,47 @@ describe('where a trajectory is stored', () => {
   const p2 = require('path');
   const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
+  /* Bounded by the function's own closing brace, not by a character
+     count. A fixed window silently stops covering the tail as soon as
+     the function grows, and then reports the tail as missing — which
+     is exactly what happened when applyPath gained the dot
+     operations. */
+  const applyPathSrc = () => {
+    const i = a.indexOf('applyPath: (kind, index, patch)');
+    assert.ok(i !== -1, 'applyPath not found');
+    return a.slice(i, a.indexOf('\n        }', i));
+  };
+
   it('lives on the frame it leads INTO, like duration', () => {
-    const fn = a.slice(a.indexOf('applyPath: (kind, index, patch)'),
-        a.indexOf('applyPath: (kind, index, patch)') + 900);
+    const fn = applyPathSrc();
     assert.ok(/frames\[activeFrameIdx\]/.test(fn), fn);
     assert.ok(/saveFrames\(\)/.test(fn));
   });
 
-  it('MERGES a patch, so setting height keeps the bend', () => {
+  it('MERGES a bend/apex patch, so setting height keeps the curve', () => {
     /* The two handles edit one path. Replacing instead of merging
        makes each handle silently undo the other. */
-    const fn = a.slice(a.indexOf('applyPath: (kind, index, patch)'),
-        a.indexOf('applyPath: (kind, index, patch)') + 900);
-    assert.ok(/Object\.assign\(\{\}, f\.paths\[kind\]\[index\], patch\)/.test(fn), fn);
+    const fn = applyPathSrc();
+    assert.ok(/Object\.assign\(\{\}, cur, patch\)/.test(fn), fn);
+  });
+
+  it('handles the player dot operations separately from the ball', () => {
+    /* Two path shapes for two different things: {bend, apex} is a
+       ball's parabola, {pts} is a player's run. One function, but the
+       branches must not bleed into each other. */
+    const fn = applyPathSrc();
+    ['patch.addDot', 'patch.removeDot', 'patch.moveDot']
+        .forEach((op) => assert.ok(fn.includes(op), 'missing ' + op));
+    assert.ok(/BS\.insertPointAt\(cur, p0, p1, patch\.addDot\)/.test(fn),
+        'adding a dot must go through insertPointAt, which picks the index');
+  });
+
+  it('clears a legacy bend when the dots are edited', () => {
+    /* A legacy single-bend path reads as one dot, so removing that
+       dot has to clear the field it actually came from — otherwise it
+       reappears on the next read. */
+    const fn = applyPathSrc();
+    assert.ok((fn.match(/delete next\.bend/g) || []).length >= 2, fn);
   });
 
   it('survives autoSaveFrame, which replaces the whole frame', () => {
@@ -526,5 +557,93 @@ describe('the 2D board draws the bend, but not the height', () => {
 
   it('draws nothing on frame 0', () => {
     assert.ok(/if \(!cur \|\| !prev\) return;/.test(fn), fn);
+  });
+});
+
+describe('playback dressing', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('the ball shadow grows with height and fades as it grows', () => {
+    /* It is the only cue to altitude from directly overhead, where
+       the arc itself is edge-on and invisible. */
+    const fn = s3.slice(s3.indexOf('function setBallShadow'), s3.indexOf('/* Player trails'));
+    assert.ok(/1 \+ height \* /.test(fn), 'radius must scale with height');
+    assert.ok(/opacity = Math\.max\(/.test(fn), 'and fade as it grows');
+    assert.ok(/if \(!\(height > 0\.05\)\)/.test(fn), 'hidden at rest');
+  });
+
+  it('the ball height comes from the same path the tween used', () => {
+    // Otherwise altitude and plan position could disagree.
+    const fn = a.slice(a.indexOf('function tb3dTween'), a.indexOf('function tbDestroy3D'));
+    assert.ok(/BS\.pathHeight\(paths\[i\], t\)/.test(fn), fn);
+    assert.ok(/kind === 'balls'/.test(fn), 'only the ball has height');
+  });
+
+  it('trails fade by vertex colour, not by a shader', () => {
+    /* LineBasicMaterial has only a uniform opacity, and a custom
+       shader is a lot of machinery for something meant to be barely
+       noticeable. Lerping toward the turf reads as a fade. */
+    const fn = s3.slice(s3.indexOf('function trailPush'), s3.indexOf('function clearTrails'));
+    assert.ok(/vertexColors: true/.test(fn), fn);
+    assert.ok(/turf\.clone\(\)\.lerp/.test(fn), 'fade toward the turf colour');
+  });
+
+  it('a short trail repeats its oldest point instead of collapsing', () => {
+    /* A part-filled buffer would otherwise leave zeroed vertices and
+       draw a line to the centre spot. */
+    const fn = s3.slice(s3.indexOf('function trailPush'), s3.indexOf('function clearTrails'));
+    assert.ok(/tr\.pts\[0\]/.test(fn), fn);
+  });
+
+  it('every exit from playback stops the dressing', () => {
+    /* There are four ways out of the play loop — finishing, the stop
+       button, and two guard paths. Miss one and the trails hang
+       around over a static board. */
+    assert.strictEqual((a.match(/_tb3d\.setPlaying\(false\)/g) || []).length, 4);
+    assert.ok(/_tb3d\.setPlaying\(true\)/.test(a));
+  });
+});
+
+describe('camera presets', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('offers the four angles plus follow-ball', () => {
+    ['broadcast', 'top', 'goal', 'side'].forEach((k) =>
+      assert.ok(new RegExp(k + ':').test(s3), 'missing preset ' + k));
+    ['broadcast', 'top', 'goal', 'side', 'follow'].forEach((k) =>
+      assert.ok(a.includes('data-cam="' + k + '"'), 'missing button ' + k));
+  });
+
+  it('handles the degenerate overhead case explicitly', () => {
+    /* Straight down, the default up vector is parallel to the view
+       direction and lookAt's basis collapses — the pitch spins. The
+       orbit control forbids the angle; the preset has to survive it. */
+    const fn = s3.slice(s3.indexOf('function applyCamera'), s3.indexOf('const PRESETS'));
+    assert.ok(/cam\.phi < 0\.02/.test(fn) && /camera\.up\.set\(/.test(fn), fn);
+  });
+
+  it('leaves the distance to frameBoard rather than hardcoding it', () => {
+    // A fixed distance crops the pitch on a narrow window.
+    const fn = s3.slice(s3.indexOf('function setPreset'), s3.indexOf('/* ── Interaction'));
+    assert.ok(/frameBoard\(\)/.test(fn), fn);
+    assert.ok(!/dist:/.test(s3.slice(s3.indexOf('const PRESETS'), s3.indexOf('function setPreset'))),
+        'presets should not carry their own distance');
+  });
+
+  it('a manual orbit or pan stops the camera following the ball', () => {
+    // Or the camera and the coach fight each other.
+    assert.ok((s3.match(/followBall = false/g) || []).length >= 3, 'orbit, pan and preset');
+  });
+
+  it('only Follow can latch, because only Follow is a state', () => {
+    const fn = a.slice(a.indexOf("const cams = document.getElementById('tb-3d-cams')"),
+        a.indexOf("const cams = document.getElementById('tb-3d-cams')") + 1100);
+    assert.ok(/tb-cam-follow/.test(fn) && /isFollowingBall\(\)/.test(fn), fn);
   });
 });
