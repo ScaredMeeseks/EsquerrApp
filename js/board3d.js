@@ -873,9 +873,9 @@ export function createBoard3D(opts) {
     scene.remove(objectRoot);
     disposeTree(objectRoot);
     objectRoot = new THREE.Group();
+    objectRoot.visible = !drawLock;   // a new group defaults to visible
     scene.add(objectRoot);
     drawRoot = new THREE.Group();
-    drawRoot.visible = !drawLock;   // a new group defaults to visible
     objectRoot.add(drawRoot);
 
     const s = getState();
@@ -1275,7 +1275,26 @@ export function createBoard3D(opts) {
        along -Z, which is the top of the 2D board. Goal looks along the
        X axis, so left-right does not arise. */
     broadcast: {theta: Math.PI / 2, phi: 1.0},
-    top:       {theta: -Math.PI / 2, phi: 0.001},
+    /* EXACTLY zero, and it matters more than it looks.
+
+       It was 0.001 — a hair off vertical, left over from the blend
+       that upFor() replaced, and harmless for looking at the pitch.
+       It is not harmless for the drawing overlay: a tilted
+       perspective camera maps the turf plane PROJECTIVELY, while
+       pitchScreenRect returns a bounding box and the overlay
+       interpolates percentages linearly inside it — an AFFINE
+       assumption. The mismatch is proportional to how much depth
+       varies across the pitch, so it grows as the camera comes down:
+       0.24px at the fitted distance, 0.95px at 2x, 3.80px at 4x.
+       That is what "the field and the drawings zoom at different
+       rates" was.
+
+       At exactly zero every point on the turf is the same distance
+       from the camera, the projection is a uniform scale, and the two
+       agree to 0.00px at every zoom and pan. upFor() already
+       hard-switches to a horizontal up below 0.02, so the basis stays
+       well defined. */
+    top:       {theta: -Math.PI / 2, phi: 0},
     goal:      {theta: Math.PI, phi: 1.32},
     side:      {theta: Math.PI / 2, phi: 1.38}
   };
@@ -1341,7 +1360,27 @@ export function createBoard3D(opts) {
     on = !!on;
     if (on === drawLock) return;
     drawLock = on;
-    drawRoot.visible = !on;
+    /* Hide the WHOLE object layer, not just the drawings.
+
+       While a tool is active the overlay IS the 2D board — it brings
+       its own players, ball, cones and drawings — so anything of ours
+       underneath is a second copy. Worse than a copy, actually: the
+       overlay is a DOM layer above the canvas, so its strokes paint
+       over our 3D players whatever the depth buffer says, and a pen
+       line crossing a player looked like it was floating above the
+       pitch. It was not: the line sits on the turf (measured at 0.6px
+       of displacement) and had simply lost the thing that should have
+       covered it.
+
+       With the pieces hidden the overlay carries the 2D board's own
+       z-order — players above strokes, exactly as in 2D — and the 3D
+       scene is left as what it should be here: the turf underneath.
+
+       Trajectory handles go with them. They are interactive, picking
+       is off while locked, and the 2D board draws its own move paths. */
+    objectRoot.visible = !on;
+    if (on) ballShadow.visible = false;   // lives on the scene, not in objectRoot
+    else restBallMarker();
     if (on) {
       mode = null;          // abandon any orbit in progress
       dragging = null;
@@ -1380,7 +1419,14 @@ export function createBoard3D(opts) {
    * silently position an overlay against a meaningless rectangle.
    */
   function pitchScreenRect() {
-    if (cam.phi > 0.05) return null;
+    /* EXACTLY overhead, not merely close to it. The old bound was
+       0.05, which is precisely the range where this function's own
+       affine assumption breaks — it accepted the camera that made the
+       overlay drift. There is no useful tilt here: either the turf
+       projects as a uniform scale or the bounding box is the wrong
+       shape to describe it. The tolerance is for float noise in the
+       tween's final frame, nothing more. */
+    if (Math.abs(cam.phi) > 1e-6) return null;
     const e = BG.extent(getPitch(), getBoardType(), false);
     const w = renderer.domElement.clientWidth;
     const h = renderer.domElement.clientHeight;

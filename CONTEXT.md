@@ -5102,3 +5102,60 @@ Sub-pixel, so the height is not it either. Left open pending a look at the actua
 duplication above was live in exactly the state the report describes.
 
 Unit 1566 → **1571**. Version triple → v141. **Still nothing deployed.**
+
+### 2026-08-25 — The overlay drifted on zoom, and strokes had nothing to hide behind (v142)
+
+Two reports against the drawing overlay. Neither was a bug in the 3D scene; both were the overlay
+disagreeing with the scene it sits on.
+
+**1. "The field and the drawn things zoom at different rates."**
+
+`PRESETS.top` was `phi: 0.001` — a hair off vertical, left over from the blend `upFor()` replaced. A
+**tilted** perspective camera maps the turf plane *projectively*; only an exactly overhead one maps it
+*affinely*. `pitchScreenRect()` returns a bounding box and the overlay interpolates percentages linearly
+inside it, which is an affine assumption. The error is proportional to how much depth varies across the
+pitch, so it **grows as you zoom in**. Measured over the real camera:
+
+| camera | phi 0.001 | phi 0 |
+|---|---|---|
+| fitted | 0.24 px | 0.00 px |
+| zoom ×2 | 0.95 px | 0.00 px |
+| zoom ×4 | **3.80 px** | 0.00 px |
+| panned + ×3 | 2.25 px | 0.00 px |
+
+`phi` is now exactly `0`, and `pitchScreenRect` refuses anything but overhead (`> 1e-6`, float noise
+only). The old bound was `0.05` — **precisely the range in which its own affine assumption is wrong**, so
+it was accepting the camera that caused the drift. `upFor()` already hard-switches below `0.02`, so the
+basis stays well defined at zero.
+
+**2. "Pen lines have volume — I can see them crossing THROUGH objects."**
+
+They do not. `addPenLine` is a 1px `THREE.Line` with depth testing on, and a mark at y=0.08 displaces
+from the turf beneath it by **0.6–0.7 px** at the low presets — both measured before changing anything.
+The real cause: the overlay is a **DOM layer above the canvas**, so its strokes paint over the 3D players
+whatever the depth buffer says. v141's blanket hide rule removed the overlay's own players, leaving
+strokes nothing to disappear behind — and contradicting the 2D board, where `.tb-circle` is z-index 2 and
+`.tb-arrows-svg` is 1.
+
+Owner's call: **while a tool is active the overlay shows the 2D objects and board3d hides its own**
+(`objectRoot.visible = !on` — players, ball, cones, drawings and trajectory handles together, plus
+`ballShadow`, which lives on the scene rather than in `objectRoot`). The overlay becomes the complete 2D
+board over a 3D turf backdrop, carrying the 2D board's z-order. From dead overhead — the only place this
+applies — a shaded 3D disc and a flat 2D circle are all but identical.
+
+**Two duplicated constants, both silently stale.** `overlay-align.test.js` transcribed `phi = 0.001` by
+hand, so it could never have caught the value being wrong — it measured the camera the test believed in.
+`board3d-camera.test.js` kept a whole PRESETS copy with **broadcast and side at `theta: -PI/2`** while the
+shipped table has `+PI/2`: it went stale when those were un-mirrored and nobody noticed, because the
+smoothness it measures is symmetric in theta. Both now read the table from source via the new
+`test/board3d-presets.js` (brace-matched extraction, not a character window).
+
+**Why the alignment suite passed on the bug**: it measured only the fitted distance, where the error is
+0.24 px — under its own 1 px tolerance. It now sweeps zoom ×½…×4 and a pan, at a 0.5 px tolerance, across
+five board-type/pitch combinations: **16 failures** against the old code, up to 4.58 px.
+
+One more test fixed for failing on correct markup: the direct-child check grepped for `class="tb-circle"`
+inside `.tb-field-inner`, but the players arrive through `${circlesHtml}`. It follows one level of
+interpolation now.
+
+Unit 1571 → **1593** (27 in the alignment sweep alone). Version triple → v142. **Still nothing deployed.**

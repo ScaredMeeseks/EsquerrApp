@@ -878,11 +878,30 @@ tr:hover td { background: #f7f8fa; }
    is hidden by default, and anything that must show has to be named
    here on purpose.
 
-   The drawing layers are exactly two — one SVG holding zones, arrows
-   and pen strokes, and the label divs. */
+   What comes back is the drawing layers AND the objects — one SVG
+   holding zones, arrows and pen strokes, the label divs, and the
+   players, ball and cones.
+
+   The objects are here on purpose. The overlay is a DOM layer above
+   the canvas, so its strokes paint over the 3D players whatever the
+   depth buffer says; with no players of its own, a pen line crossing
+   one had nothing to disappear behind and read as floating above the
+   pitch. Bringing them back restores the 2D board's own z-order —
+   .tb-circle is z-index 2, .tb-arrows-svg is 1, so players sit above
+   strokes exactly as they do in 2D — and board3d hides its object
+   layer for the duration so there is only ever one set. Seen from
+   dead overhead, which is the only place this rule applies, a shaded
+   3D disc and a flat 2D circle are all but identical.
+
+   What stays hidden: the pitch markings (the 3D turf draws those),
+   the silhouette, and the resize grips — resizing the pitch is not a
+   drawing action. */
 .tb-field.tb-draw-surface > .tb-field-inner > * { display:none !important; }
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-arrows-svg,
-.tb-field.tb-draw-surface > .tb-field-inner > .tb-text-label { display:block !important; }
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-text-label,
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-circle,
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-ball,
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-cone { display:block !important; }
 
 /* A pen, so the locked view is legible as a mode rather than as a
    camera that has stopped responding. 16px, hotspot at the nib. */

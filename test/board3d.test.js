@@ -1431,8 +1431,17 @@ describe('the draw lock', () => {
     assert.ok(/setPreset\('top'\)/.test(fn), 'the lock must go top-down');
     assert.ok(/followBall = false/.test(fn),
         'a camera that follows the ball is not locked');
-    assert.ok(/drawRoot\.visible = !on/.test(fn),
-        'the 3D copies of the drawings must hide behind the overlay');
+    /* The WHOLE object layer, not just the drawings. The overlay
+       brings its own players, ball and cones, and being a DOM layer
+       above the canvas its strokes paint over anything of ours
+       underneath — which is what made a pen line crossing a player
+       look like it floated. */
+    assert.ok(/objectRoot\.visible = !on/.test(fn),
+        'players, ball, cones, drawings and handles must all hide behind the overlay');
+    assert.ok(/ballShadow\.visible = false/.test(fn),
+        'the ball marker lives on the scene, not in objectRoot, and needs its own line');
+    assert.ok(/else restBallMarker\(\)/.test(fn),
+        'and must come back when the tool is put down');
   });
 
   it('refuses every camera move except pan and zoom', () => {
@@ -1464,8 +1473,12 @@ describe('the draw lock', () => {
        after drawing on it. */
     const fn = bare.slice(bare.indexOf('function pitchScreenRect('),
         bare.indexOf('function frameBoard(', bare.indexOf('function pitchScreenRect(')));
-    assert.ok(/if \(cam\.phi > 0\.05\) return null;/.test(fn),
-        'a tilted camera must yield null');
+    /* EXACTLY overhead. The old bound was 0.05 — precisely the range
+       in which this function's own affine assumption is wrong, so it
+       accepted the camera that made the overlay drift on zoom. The
+       remaining tolerance is float noise in the tween's last frame. */
+    assert.ok(/if \(Math\.abs\(cam\.phi\) > 1e-6\) return null;/.test(fn),
+        'anything but exactly overhead must yield null');
     const projections = fn.match(/\.project\(camera\)/g) || [];
     assert.strictEqual(projections.length, 1, 'one projection helper');
     assert.ok(/toPx\(-e\.ax \/ 2, -e\.ay \/ 2\)[\s\S]*?toPx\(e\.ax \/ 2, e\.ay \/ 2\)/.test(fn),
@@ -1827,10 +1840,25 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
         .test(cssSrc), 'the blanket hide rule is missing');
   });
 
-  it('brings back only the drawing layers', () => {
+  it('brings back the drawing layers AND the objects', () => {
+    /* The objects are here on purpose, not by oversight. Without
+       them a pen stroke crossing a player had nothing to disappear
+       behind — the overlay is a DOM layer above the canvas, so it
+       paints over the 3D players whatever the depth buffer says — and
+       the line read as floating above the pitch. */
     assert.ok(shown.length, 'the re-show rule is missing entirely');
-    assert.deepStrictEqual(shown.sort(), ['tb-arrows-svg', 'tb-text-label'],
-        'exactly the two layers the coach draws into');
+    assert.deepStrictEqual(shown.sort(),
+        ['tb-arrows-svg', 'tb-ball', 'tb-circle', 'tb-cone', 'tb-text-label'],
+        'the drawing layers plus the objects the coach draws around');
+  });
+
+  it('pairs the re-show with board3d hiding its own object layer', () => {
+    /* Two sets of players otherwise — one flat, one lit, a frame
+       apart. The pairing is the invariant: whichever view owns the
+       objects, exactly one of them draws them. */
+    const b3 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+    assert.ok(/objectRoot\.visible = !on/.test(b3),
+        'board3d must hide its objects while the overlay shows the 2D ones');
   });
 
   it('never re-shows a pitch marking', () => {
@@ -1855,18 +1883,33 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
     const i = appSrc2.lastIndexOf('<div class="tb-field-inner"', svg);
     assert.ok(i !== -1, 'no .tb-field-inner encloses it');
     const block = appSrc2.slice(i, svg + 4000);
+
+    /* Some children are interpolated rather than written inline —
+       `${circlesHtml}` and `${oppCirclesHtml}` carry the players — so
+       follow one level into whatever the block interpolates. Checking
+       only the literals reported the players as missing when they are
+       there, which is a test failing on correct markup. */
+    const interpolated = (block.match(/\$\{([a-zA-Z_]\w*)\}/g) || [])
+        .map((m) => m.slice(2, -1));
+    const builders = interpolated.map((name) => {
+      const at = appSrc2.indexOf(name + ' = ');
+      return at === -1 ? '' : appSrc2.slice(at, at + 3000);
+    }).join('\n');
+
     shown.forEach((c) => {
-      assert.ok(new RegExp('class="' + c + '"').test(block),
-          c + ' must be rendered inside .tb-field-inner');
+      const re = new RegExp('class="' + c + '[" ]');
+      assert.ok(re.test(block) || re.test(builders),
+          c + ' must be rendered inside .tb-field-inner, inline or via ' +
+          'one of: ' + interpolated.join(', '));
     });
   });
 
-  it('the players, ball and cones are covered by the blanket rule', () => {
-    /* They used to be named explicitly. They are still hidden — by
-       the universal selector now — and this says so, because losing
-       them would put two sets of players on the pitch. */
-    ['tb-circle', 'tb-ball', 'tb-cone', 'tb-silhouette', 'tb-pitch-grip']
-        .forEach((c) => assert.ok(shown.indexOf(c) === -1,
-            c + ' must not be re-shown on the overlay'));
+  it('leaves the props and the resize grips hidden', () => {
+    /* The silhouette is a 2D-only prop, and dragging a grip resizes
+       the pitch — which is not a drawing action and would fight the
+       locked camera. */
+    ['tb-silhouette', 'tb-pitch-grip'].forEach((c) =>
+      assert.ok(shown.indexOf(c) === -1,
+          c + ' must not be re-shown on the overlay'));
   });
 });

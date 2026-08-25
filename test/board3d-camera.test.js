@@ -113,13 +113,14 @@ describe('a transition never whips round', () => {
     return worst;
   };
 
-  /* Roughly the shipped presets. Top is the one that used to flip. */
-  const PRESETS = {
-    broadcast: {theta: -Math.PI / 2, phi: 1.0},
-    top: {theta: -Math.PI / 2, phi: 0.001},
-    goal: {theta: Math.PI, phi: 1.32},
-    side: {theta: -Math.PI / 2, phi: 1.38}
-  };
+  /* THE shipped presets, read out of board3d.js — not "roughly" them.
+     The transcription this replaces had broadcast and side at
+     theta -PI/2 while the shipped table has +PI/2: it went stale when
+     those were un-mirrored and nobody noticed, because the smoothness
+     it measures is symmetric in theta. It was testing a camera the
+     app does not build. The same copy also pinned top at phi 0.001,
+     which is the value that made the drawing overlay drift. */
+  const PRESETS = require('./board3d-presets.js').readPresets();
 
   it('moves smoothly between every pair of presets', () => {
     const names = Object.keys(PRESETS);
