@@ -997,7 +997,12 @@ export function createBoard3D(opts) {
      addon is a large file of features this does not use, and the polar
      clamp — never let the camera go under the turf — is the only part
      that actually matters here. */
-  const cam = {theta: -Math.PI / 2, phi: 1.02, dist: 100, target: new THREE.Vector3()};
+  /* The STARTING view, and it has to obey the same rule the presets
+     do: +PI/2 puts the camera on the touchline nearest the top of the
+     2D board, so the pitch reads the same way round in both views.
+     At -PI/2 it is mirrored — which is what the board loaded with
+     after the presets were fixed and this was not. */
+  const cam = {theta: Math.PI / 2, phi: 1.02, dist: 100, target: new THREE.Vector3()};
   /* Set once the coach orbits or zooms; see resize(). */
   let camTouched = false;
 

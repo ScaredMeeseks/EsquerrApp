@@ -4811,3 +4811,15 @@ nothing — replaced with plain line parsing, which has no escaping to get wrong
 requires the line to contain `{theta:`.
 
 Unit 1475 → **1479**.
+
+#### And the STARTING camera, which nothing covered (v136)
+
+The presets were fixed; the angle the board actually **loads** with was not. `const cam = {theta:
+-Math.PI / 2, …}` is set separately from `PRESETS`, so the first thing a coach saw was still
+mirrored against the 2D board. Now `+PI/2`, matching the rule the presets follow.
+
+The test gap is the point: every camera test named a preset, and the initial view is not a preset.
+`board3d-camera.test.js` now reads `const cam = {theta:` out of the source and projects through it
+like the rest — **confirmed to fail against the old default** before being accepted.
+
+Unit 1479 → **1480**.

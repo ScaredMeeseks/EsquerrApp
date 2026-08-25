@@ -224,6 +224,22 @@ describe('the side views are not mirrored against the 2D board', () => {
     });
   });
 
+  it('the STARTING camera is not mirrored either', () => {
+    /* The gap the preset tests left. They checked every preset and
+       said nothing about the angle the board actually loads with, so
+       fixing the presets left the initial view still mirrored — the
+       first thing a coach sees, and the only one nothing covered. */
+    const line = src.split('\n').find((l) => l.includes('const cam = {theta:'));
+    assert.ok(line, 'initial camera not found');
+    const inner = line.slice(line.indexOf('{') + 1);
+    const theta = new Function('Math',
+        'return ' + inner.split(',')[0].split(':')[1])(Math);
+    const phi = new Function('Math',
+        'return ' + inner.split(',')[1].split(':')[1])(Math);
+    assert.ok(ndcX(theta, phi, [10, 50]) < ndcX(theta, phi, [90, 50]),
+        'the board loads mirrored against the 2D view');
+  });
+
   it('top keeps it the same way round too', () => {
     const p = preset('top');
     assert.ok(ndcX(p.theta, p.phi, [10, 50]) < ndcX(p.theta, p.phi, [90, 50]));
