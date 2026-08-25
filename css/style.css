@@ -847,6 +847,42 @@ tr:hover td { background: #f7f8fa; }
    case only. :focus-visible still shows it when tabbing in. */
 .tb-3d-wrap:focus { outline:none; }
 .tb-3d-wrap:focus-visible { outline:2px solid var(--accent, #66d9ff); outline-offset:-3px; }
+/* ── The 2D board, laid over the 3D turf while a draw tool is on ──
+   Only the drawing layers show; the turf, markings and every object
+   are already in the 3D scene behind it. The outer box normally
+   holds its shape with a padding-top aspect trick — here it is given
+   an explicit rect that tracks the projected pitch, so that has to
+   go. */
+.tb-field.tb-draw-surface {
+  position:absolute; margin:0; padding:0 !important;
+  max-width:none !important; border:0 !important; background:none !important;
+  box-shadow:none !important; border-radius:0; z-index:3;
+}
+.tb-field.tb-draw-surface > .tb-field-inner {
+  position:absolute; inset:0; width:100%; height:100%;
+  background:none !important; border:0 !important; box-shadow:none !important;
+}
+/* Everything the 3D scene is already drawing. The drawing layers —
+   the arrows SVG, pen SVG, zones and labels — are what is left. */
+.tb-field.tb-draw-surface .tb-markings,
+.tb-field.tb-draw-surface .tb-circle,
+.tb-field.tb-draw-surface .tb-ball,
+.tb-field.tb-draw-surface .tb-cone,
+.tb-field.tb-draw-surface .tb-silhouette,
+.tb-field.tb-draw-surface .tb-pitch-grip { display:none !important; }
+
+/* A pen, so the locked view is legible as a mode rather than as a
+   camera that has stopped responding. 16px, hotspot at the nib. */
+.tb-field.tb-draw-surface,
+.tb-field.tb-draw-surface * {
+  cursor:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M2.5 17.5l1.2-4 9-9 2.8 2.8-9 9-4 1.2z' fill='%23fff' stroke='%23111' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M12.7 4.5l2.8 2.8 1.6-1.6a1.4 1.4 0 0 0 0-2L16 2.9a1.4 1.4 0 0 0-2 0z' fill='%23ffd54a' stroke='%23111' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 2 18, crosshair;
+}
+
+/* The camera buttons are refused while locked; say so. */
+.tb-3d-cams.tb-cams-locked .tb-cam-btn {
+  opacity:0.35; pointer-events:none;
+}
+
 .tb-3d-wrap canvas {
   display:block; width:100%; height:100%;
   touch-action:none; outline:none;

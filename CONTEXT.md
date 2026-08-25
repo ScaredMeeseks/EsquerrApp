@@ -4931,3 +4931,61 @@ re-addressed by `data-idx`, a handle added to `SELECTABLE`, the post-rebuild `dr
 and each one failed on the mutant and passed on the real code.
 
 Unit 1496 → **1519**. Version triple → v137. **Still nothing deployed.**
+
+### 2026-08-25 — Drawing tools in 3D: the flat surface, laid over the turf (v138)
+
+**The question was how a pen stroke should behave under an orbiting camera. The answer is that it
+shouldn't.** Picking the arrow, zone, text, pen or cone tool while in 3D snaps the camera straight
+overhead and **locks it** — pan and zoom stay live, orbit and every preset are refused — and then lays
+the **real 2D board** over the turf, matched to the projected pitch pixel for pixel.
+
+That is the whole design, and the reason there is no `board3d` drawing code: `#tb-field` is already in
+the DOM in 3D (rendered, then `hidden`), with every arrow, pen, zone and label handler bound to it.
+Showing it in the right place means the coach is using **the 2D editor** — same code, same coordinate
+space, same undo — while looking at the 3D pitch. The alternative was a second implementation that
+raycast onto the turf, and two implementations of the same drawing is how the two views come to
+disagree. A test asserts board3d never grows one.
+
+Details that decide whether it lands in the right place:
+- **Both pitch corners are projected**, not one corner plus a scale. Under a perspective camera the
+  scale depends on depth; assuming it constant is the kind of nearly-right that shows as a few pixels
+  of drift at the far end.
+- `pitchScreenRect()` **returns null unless the camera really is overhead**, and the surface hides
+  rather than guessing. A surface positioned against a tilted camera is wrong everywhere, and the coach
+  only finds out after drawing on it.
+- It **follows the camera in a rAF loop** rather than being pushed once — the camera also moves under
+  the tween going overhead, under a pan and under a resize, and one loop covers all three.
+- **Orientation is forced horizontal in 3D** (`tbVertical()`). The 3D pitch lies along X; a board left
+  set to vertical would have put every stroke a quarter turn from where the hand drew it. There is now
+  exactly **one** reader of `fa_tactic_orient`, and a test counts them.
+- Arrows, zones, pen strokes and labels moved into their own `drawRoot` group so the 3D copies can hide
+  behind the overlay — drawn twice, they read as a ghost a frame behind the cursor.
+- The surface is a **child of the 3D wrapper**, so a Backspace typed into a label bubbled into the
+  delete handler. Delete is now inert while locked and never fires on an editable target.
+
+The lock is armed once per tool and disarmed from the single place every tool already calls
+(`deactivateDrawTools`). That asymmetry is deliberate: a tool that forgets to arm behaves as it does
+today, whereas a tool that forgot to disarm would strand the camera overhead with no way back.
+
+A **pen cursor** and a changed hint say the view is locked — without them a camera that has stopped
+orbiting just looks broken. The cursor keeps a `crosshair` keyword fallback, because a `cursor:url()`
+with no keyword after it is ignored entirely if the URL fails.
+
+**Bend dots are smaller and dimmer** — `HANDLE_R` 0.34 → 0.26, and a shared `BEND_ALPHA` 0.7 /
+`BEND_ALPHA_OFF` 0.15. The apex diamond keeps its size (so the two read as a pair) but not its weight:
+it appears once per ball where a bend dot is on every trajectory, and it is a lit solid whose dark edges
+wash out when made translucent.
+
+**Two tests were asserting the design being changed.** `but the HANDLES stay full strength` pinned the
+literal `active === 'bend' ? 1 : 0.25`, so it failed the moment the dots were deliberately dimmed; it
+now asserts the **ordering** (a control reads stronger than the curve it sits on, active beats inactive).
+`manual input cancels it` counted `cancelCameraTween()` occurrences and broke on a fifth legitimate
+caller; it now checks each handler by name — which would also have caught a cancel *moved* out of the
+wheel, something the count never could.
+
+**Seventh and eighth false failures from slice anchors.** Both new this time: a slice terminator found
+with an absolute `indexOf` matched an *earlier* occurrence (`if (arrowToolBtn)` also appears inside
+`deactivateDrawTools`), producing an empty slice. Terminators are now searched **from** the start index.
+
+Unit 1519 → **1537**; all seventeen new assertions verified against mutants. Version triple → v138.
+**Still nothing deployed.**

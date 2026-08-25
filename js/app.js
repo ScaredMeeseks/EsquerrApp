@@ -668,6 +668,9 @@
     'tactics.orbit_hint':    { ca:'Arrossega per girar · botó dret per moure · roda per apropar · Supr per esborrar',
       es:'Arrastra para girar · botón derecho para mover · rueda para acercar · Supr para borrar',
       en:'Drag to orbit · right-drag to pan · wheel to zoom · Del to delete' },
+    'tactics.draw_hint':     { ca:'Vista zenital bloquejada mentre dibuixes · botó dret per moure · roda per apropar',
+      es:'Vista cenital bloqueada mientras dibujas · botón derecho para mover · rueda para acercar',
+      en:'Top-down view locked while drawing · right-drag to pan · wheel to zoom' },
     'tactics.load_3d_failed':{ ca:'No s\'ha pogut carregar la pissarra 3D. Torna a 2D per continuar.',
       es:'No se ha podido cargar la pizarra 3D. Vuelve a 2D para continuar.',
       en:'The 3D board could not be loaded. Switch back to 2D to carry on.' },
@@ -1547,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 137;
+  const APP_VERSION = 138;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6472,6 +6475,29 @@
     return _webglOk;
   }
 
+  /** Is the 3D view the one showing? Every gate the render uses. */
+  function tbIs3D() {
+    return localStorage.getItem('fa_tactic_view_3d') === '1'
+        && clubFeature('board3d') && tbWebglOk();
+  }
+
+  /**
+   * Is the 2D board drawn the tall way round?
+   *
+   * Always NO in 3D. The 3D scene has one orientation — the pitch
+   * lies along X — and the 2D board is laid straight over it while a
+   * draw tool is active. A board still set to vertical from the last
+   * 2D session would put the overlay's arrows across the pitch
+   * instead of along it, and every stroke would land rotated a
+   * quarter turn from where the hand drew it.
+   *
+   * The orientation button is already hidden in 3D, so nothing is
+   * taken away — this only stops a stale preference leaking in.
+   */
+  function tbVertical() {
+    return !tbIs3D() && localStorage.getItem('fa_tactic_orient') === 'vertical';
+  }
+
   var _tb3d = null;          // the live instance, or null
   var _tb3dPending = false;  // a refresh is already queued for this frame
   var _tb3dShape = '';       // pitch + board type, to spot a full rebuild
@@ -6559,7 +6585,7 @@
     const prev = _tb3dPrevFrame();
     if (!cur || !prev) return;   // frame 0: nothing has moved yet
 
-    const vert = localStorage.getItem('fa_tactic_orient') === 'vertical';
+    const vert = tbVertical();
     const bt = localStorage.getItem('fa_tactic_board_type') || 'full';
     const swap = BG.isRotated(bt, vert);
     // The same transform every other layer uses, spelled once here.
@@ -6620,6 +6646,71 @@
   function tbDestroy3D() {
     if (_tb3d) { try { _tb3d.destroy(); } catch (e) { /* already gone */ } }
     _tb3d = null;
+    tbDrawSurface(false);
+  }
+
+  /* ── The flat drawing surface, over the 3D view ──────────────────
+     Arrows, zones, pen strokes and labels are flat, and drawing them
+     under an orbiting camera does not work — see setDrawLock in
+     board3d.js for why. When a draw tool is picked in 3D the camera
+     locks straight overhead and the REAL 2D BOARD is laid over the
+     turf, matched to it pixel for pixel.
+
+     That is the whole trick, and the reason there is no second
+     implementation of drawing: `#tb-field` is already in the DOM in
+     3D (rendered, then hidden), with every arrow, pen and label
+     handler bound to it. Showing it in the right place means the
+     coach is using the 2D editor — the same code, the same
+     coordinate space, the same undo — while looking at the 3D pitch.
+
+     What is hidden on it is everything the 3D scene is already
+     drawing: turf, markings, players, ball, cones. What shows is the
+     drawing layers and nothing else. */
+  var _tbDrawRaf = 0;
+
+  function tbDrawSurface(on) {
+    const field = document.getElementById('tb-field');
+    const wrap = document.getElementById('tb-3d-wrap');
+    if (_tbDrawRaf) { cancelAnimationFrame(_tbDrawRaf); _tbDrawRaf = 0; }
+    if (!field || !wrap || !_tb3d) return;
+
+    if (!on) {
+      _tb3d.setDrawLock(false);
+      field.classList.remove('tb-draw-surface');
+      field.hidden = true;
+      field.style.left = field.style.top = field.style.width = field.style.height = '';
+      return;
+    }
+
+    _tb3d.setDrawLock(true);
+    field.classList.add('tb-draw-surface');
+    field.hidden = false;
+    /* Inside the 3D wrapper, so it scrolls and clips with the canvas
+       rather than floating over the page. */
+    if (field.parentNode !== wrap) wrap.appendChild(field);
+
+    /* Followed frame by frame rather than pushed from a camera
+       callback: the camera also moves under the tween that takes it
+       overhead, under a pan, and under a resize, and a single rAF
+       loop covers all three without board3d having to announce any
+       of them. It stops the moment the tool is put down. */
+    const follow = () => {
+      if (!_tb3d || !_tb3d.isDrawLocked()) { _tbDrawRaf = 0; return; }
+      const r = _tb3d.pitchScreenRect();
+      /* null until the camera finishes arriving overhead. Hide rather
+         than guess: a surface positioned against a tilted camera is
+         wrong everywhere, and a coach who starts drawing on it gets
+         strokes that land somewhere else. */
+      field.style.visibility = r ? '' : 'hidden';
+      if (r) {
+        field.style.left = r.left + 'px';
+        field.style.top = r.top + 'px';
+        field.style.width = r.width + 'px';
+        field.style.height = r.height + 'px';
+      }
+      _tbDrawRaf = requestAnimationFrame(follow);
+    };
+    follow();
   }
 
   /** The editor's scratch state as plain data, for the 3D view. */
@@ -10022,7 +10113,7 @@
         <div class="card">${tbBoardsPanelHtml()}</div>`;
     }
 
-    const isVertical = localStorage.getItem('fa_tactic_orient') === 'vertical';
+    const isVertical = tbVertical();
     const savedFormation = localStorage.getItem('fa_tactic_formation') || '';
     const savedPositions = JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null');
     const savedNumbers = JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null');
@@ -10045,8 +10136,7 @@
     /* Which view is showing. A per-DEVICE preference, exactly like
        fa_tactic_orient — never part of a saved board, because a board
        is a drawing and not a camera position. */
-    const is3d = localStorage.getItem('fa_tactic_view_3d') === '1'
-                 && clubFeature('board3d') && tbWebglOk();
+    const is3d = tbIs3D();
     const GK_COLOR = '#f5c842';
 
     let circlesHtml = '';
@@ -10381,7 +10471,7 @@
 
     const formations = TACTIC_FORMATIONS;
 
-    const isVertical = () => localStorage.getItem('fa_tactic_orient') === 'vertical';
+    const isVertical = () => tbVertical();
     const useJsSwap = () => isVertical() && (localStorage.getItem('fa_tactic_board_type') || 'full') === 'full';
     const curBoardType = () => localStorage.getItem('fa_tactic_board_type') || 'full';
 
@@ -11451,6 +11541,28 @@
       const selectToolBtn = document.getElementById('tb-select-tool');
       if (selectToolBtn) selectToolBtn.classList.remove('tb-select-tool-active');
       inner.style.cursor = '';
+      tbSetDrawMode(false);
+    }
+
+    /**
+     * A draw tool went on or off, and the 3D view has to react.
+     *
+     * Called from ONE place for off — deactivateDrawTools, which every
+     * tool button already calls before turning itself on — and once
+     * per tool for on. That asymmetry is deliberate: a tool that
+     * forgets to turn the lock on simply behaves as it does today,
+     * whereas a tool that forgets to turn it off would strand the
+     * camera overhead with no way back.
+     *
+     * A no-op in 2D, where the board is already flat.
+     */
+    function tbSetDrawMode(on) {
+      if (!is3d) return;
+      tbDrawSurface(on);
+      const cams = document.getElementById('tb-3d-cams');
+      if (cams) cams.classList.toggle('tb-cams-locked', !!on);
+      const hint = document.querySelector('.tb-3d-hint');
+      if (hint) hint.textContent = t(on ? 'tactics.draw_hint' : 'tactics.orbit_hint');
     }
 
     if (arrowToolBtn) {
@@ -11458,6 +11570,7 @@
         const wasActive = arrowMode;
         deactivateDrawTools();
         if (!wasActive) {
+          tbSetDrawMode(true);
           arrowMode = true;
           arrowToolBtn.classList.add('tb-arrow-tool-active');
           inner.style.cursor = 'crosshair';
@@ -11496,6 +11609,7 @@
         const wasActive = rectMode;
         deactivateDrawTools();
         if (!wasActive) {
+          tbSetDrawMode(true);
           rectMode = true;
           rectToolBtn.classList.add('tb-rect-tool-active');
           inner.style.cursor = 'crosshair';
@@ -11532,6 +11646,7 @@
         const wasActive = textMode;
         deactivateDrawTools();
         if (!wasActive) {
+          tbSetDrawMode(true);
           textMode = true;
           textToolBtn.classList.add('tb-text-tool-active');
           inner.style.cursor = 'crosshair';
@@ -11663,6 +11778,7 @@
         const wasActive = penMode;
         deactivateDrawTools();
         if (!wasActive) {
+          tbSetDrawMode(true);
           penMode = true;
           penToolBtn.classList.add('tb-pen-tool-active');
           inner.style.cursor = 'crosshair';
@@ -12456,6 +12572,7 @@
         const wasActive = coneMode;
         deactivateDrawTools();
         if (!wasActive) {
+          tbSetDrawMode(true);
           coneMode = true;
           coneToolBtn.classList.add('tb-cone-tool-active');
           inner.style.cursor = 'crosshair';
@@ -12781,6 +12898,16 @@
       wrap3d.addEventListener('keydown', (e) => {
         if (e.key !== 'Delete' && e.key !== 'Backspace') return;
         if (!_tb3d) return;
+        /* The 2D drawing surface is a CHILD of this wrapper while a
+           tool is active, so a Backspace typed into a text label
+           bubbles up here. Nothing is selectable while locked, but
+           that is a consequence of the lock rather than a rule — and
+           a delete key that eats a character is not a bug worth
+           leaving to a side effect. */
+        if (_tb3d.isDrawLocked()) return;
+        const tgt = e.target;
+        if (tgt && (tgt.isContentEditable ||
+            /^(INPUT|TEXTAREA|SELECT)$/.test(tgt.tagName || ''))) return;
         const sel = _tb3d.getSelected();
         if (!sel) return;
         e.preventDefault();

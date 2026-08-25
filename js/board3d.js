@@ -52,7 +52,15 @@ const CONE_R = 0.35;
    comfortably larger than the ball so they stay easy to hit — a
    control that is hard to grab is worse than one that is slightly
    prominent. */
-const HANDLE_R = 0.34;
+const HANDLE_R = 0.26;
+/* Bend dots are quieter than the diamond on purpose. Every trajectory
+   carries at least one, so they are the most numerous thing on a busy
+   board, while the diamond appears once per ball and is a LIT solid
+   with dark edges — matching its weight would have made the dots the
+   loudest marks on the pitch. The inactive value only has to say
+   "there is a control here", not compete with the curve. */
+const BEND_ALPHA = 0.7;
+const BEND_ALPHA_OFF = 0.15;
 const CONE_H = 0.7;
 
 export function createBoard3D(opts) {
@@ -344,6 +352,14 @@ export function createBoard3D(opts) {
   let objectRoot = new THREE.Group();
   scene.add(objectRoot);
 
+  /* Arrows, zones, pen strokes and labels live in their own group.
+     They are the only things that can be edited from the flat 2D
+     surface, so while that surface is overlaid on this view they have
+     to be hidden here — otherwise the coach draws one arrow and sees
+     two, the 3D copy a frame behind the one under the cursor. */
+  let drawRoot = new THREE.Group();
+  objectRoot.add(drawRoot);
+
   /** A player disc, its number and kit painted into a canvas. */
   function playerTexture(fill, number) {
     const S = 128;
@@ -445,7 +461,7 @@ export function createBoard3D(opts) {
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, HEAD, 12), mat);
     head.quaternion.copy(shaft.quaternion);
     head.position.copy(to).addScaledVector(dir, -HEAD / 2);
-    objectRoot.add(shaft, head);
+    drawRoot.add(shaft, head);
   }
 
   /** Zones: a translucent plane just above the turf. */
@@ -467,7 +483,7 @@ export function createBoard3D(opts) {
         }));
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(c.x, 0.04, c.z);
-    objectRoot.add(mesh);
+    drawRoot.add(mesh);
   }
 
   /** Pen strokes: a line strip laid on the turf. */
@@ -479,7 +495,7 @@ export function createBoard3D(opts) {
       return new THREE.Vector3(w.x, 0.08, w.z);
     }).filter((v) => isFinite(v.x) && isFinite(v.z));
     if (pts.length < 2) return;
-    objectRoot.add(new THREE.Line(
+    drawRoot.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
         new THREE.LineBasicMaterial({color: new THREE.Color(p[1] || '#ffffff')})));
   }
@@ -511,7 +527,7 @@ export function createBoard3D(opts) {
     const scale = 6;
     spr.scale.set(scale, scale * (cv.height / cv.width), 1);
     spr.position.set(w.x, 2.2, w.z);
-    objectRoot.add(spr);
+    drawRoot.add(spr);
   }
 
   // Local copy so this module needs nothing from app.js at import time.
@@ -703,7 +719,7 @@ export function createBoard3D(opts) {
          the diamond owns the height. Two handles, two questions. */
       const active = handleMode(kind, index);   // 'bend' | 'apex'
 
-      const bend = flatDot(HANDLE_R, col, active === 'bend' ? 1 : 0.25);
+      const bend = flatDot(HANDLE_R, col, active === 'bend' ? BEND_ALPHA : BEND_ALPHA_OFF);
       entry.bendMesh = bend;
       entry.meshes.push(bend);
       bend.position.copy(mid);
@@ -750,7 +766,7 @@ export function createBoard3D(opts) {
        right-clicking a dot removes it. */
     BS.pointsOf(path).forEach((pt, di) => {
       const w = BG.toWorld(pt[0], pt[1], getPitch(), getBoardType());
-      const h = flatDot(HANDLE_R, col);
+      const h = flatDot(HANDLE_R, col, BEND_ALPHA);
       h.position.set(w.x, 0.12, w.z);
       objectRoot.add(h);
       entry.meshes.push(h);
@@ -827,6 +843,9 @@ export function createBoard3D(opts) {
     disposeTree(objectRoot);
     objectRoot = new THREE.Group();
     scene.add(objectRoot);
+    drawRoot = new THREE.Group();
+    drawRoot.visible = !drawLock;   // a new group defaults to visible
+    objectRoot.add(drawRoot);
 
     const s = getState();
     const teamFill = s.teamColor || '#ffffff';
@@ -1265,6 +1284,72 @@ export function createBoard3D(opts) {
    * two required distances is what stops the pitch overflowing the
    * canvas on one axis while leaving a band of empty sky on the other.
    */
+  /* ── The draw lock ───────────────────────────────────────────
+     Arrows, zones, pen strokes and labels are flat things. Drawing
+     them under an orbiting perspective camera is not the same gesture
+     as drawing them on a board: a stroke made from a low angle lands
+     on the turf stretched away from the cursor, and nothing about the
+     result resembles what the hand did.
+
+     So a draw tool locks the camera straight overhead. From there the
+     turf plane projects to a plain axis-aligned rectangle, the 2D
+     board can be laid over it pixel-for-pixel, and every existing
+     drawing handler works untouched — which is the real point. The
+     alternative was a second implementation of arrows, zones, pen and
+     labels that raycast onto the turf, and two implementations of the
+     same drawing is how the two views come to disagree.
+
+     Pan and zoom stay live: they move the whole overlay with the
+     camera and never change the mapping, so the coach can still work
+     close up on a corner. */
+  let drawLock = false;
+
+  function setDrawLock(on) {
+    on = !!on;
+    if (on === drawLock) return;
+    drawLock = on;
+    drawRoot.visible = !on;
+    if (on) {
+      mode = null;          // abandon any orbit in progress
+      dragging = null;
+      setSelected(null);
+      followBall = false;
+      setPreset('top');
+    }
+    invalidate();
+  }
+
+  /**
+   * Where the pitch lands on the canvas, in CSS pixels.
+   *
+   * Only meaningful straight overhead, which is the only time it is
+   * asked for. Both corners are projected rather than one corner plus
+   * a scale factor: under a perspective camera the scale depends on
+   * depth, and assuming it constant is exactly the kind of nearly-
+   * right that shows up as a few pixels of drift at the far end.
+   *
+   * Returns null when the camera is not overhead, so a caller cannot
+   * silently position an overlay against a meaningless rectangle.
+   */
+  function pitchScreenRect() {
+    if (cam.phi > 0.05) return null;
+    const e = BG.extent(getPitch(), getBoardType(), false);
+    const w = renderer.domElement.clientWidth;
+    const h = renderer.domElement.clientHeight;
+    if (!w || !h) return null;
+
+    const toPx = (x, z) => {
+      const v = new THREE.Vector3(x, 0, z).project(camera);
+      return {x: (v.x + 1) / 2 * w, y: (1 - v.y) / 2 * h};
+    };
+    const a = toPx(-e.ax / 2, -e.ay / 2);
+    const b = toPx(e.ax / 2, e.ay / 2);
+    return {
+      left: Math.min(a.x, b.x), top: Math.min(a.y, b.y),
+      width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y)
+    };
+  }
+
   function frameBoard() {
     const e = BG.extent(getPitch(), getBoardType(), false);
     const halfFov = (camera.fov * Math.PI / 180) / 2;
@@ -1426,6 +1511,18 @@ export function createBoard3D(opts) {
       mode = 'pan';
       camTouched = true;
       followBall = false;   // the coach is steering now
+      cancelCameraTween();
+      return;
+    }
+    /* Locked: the left button pans instead of orbiting or dragging.
+       The 2D surface is overlaid on the pitch and swallows everything
+       that lands on it, so what reaches here is a drag on the sky —
+       and panning is the one camera move still allowed. Dragging an
+       object is blocked for the same reason the 2D board blocks it
+       while a tool is active: the gesture already means "draw". */
+    if (drawLock) {
+      mode = 'pan';
+      camTouched = true;
       cancelCameraTween();
       return;
     }
@@ -1754,16 +1851,29 @@ export function createBoard3D(opts) {
     getSelected() { return selected ? {kind: selected.kind, index: selected.index} : null; },
     clearSelection() { setSelected(null); },
 
-    setPreset,
+    /* The camera controls are refused while a draw tool is active,
+       not merely greyed out. The buttons ARE disabled in the UI, but
+       playback and follow-ball can also aim the camera, and a board
+       that tilts under a half-drawn arrow is the bug this whole lock
+       exists to prevent. One refusal here covers every caller. */
+    setPreset(name) { if (!drawLock) setPreset(name); },
     /** Follow the ball. Cleared by any manual orbit or pan. */
     setFollowBall(on) {
+      if (drawLock) return;
       followBall = !!on;
       camTouched = true;
       invalidate();
     },
     isFollowingBall() { return followBall; },
 
+    /** Lock the camera overhead for flat drawing; see setDrawLock. */
+    setDrawLock,
+    isDrawLocked() { return drawLock; },
+    /** Where the pitch sits on the canvas, for the 2D overlay. */
+    pitchScreenRect,
+
     resetCamera() {
+      if (drawLock) return;
       followBall = false;
       const held = {theta: cam.theta, phi: cam.phi, dist: cam.dist, target: cam.target.clone()};
       camTouched = false;

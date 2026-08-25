@@ -1047,8 +1047,19 @@ describe('camera moves are eased', () => {
   });
 
   it('manual input cancels it — orbit, pan and zoom', () => {
-    assert.strictEqual((s3.match(/cancelCameraTween\(\)/g) || []).length, 4,
-        'expected the definition plus orbit, pan and wheel');
+    /* Named sites, not a count. The count broke the moment a fifth
+       legitimate caller appeared (the draw lock's pan), which is a
+       test failing on correct code — and it would equally have passed
+       if someone had moved a cancel from the wheel to somewhere
+       useless. Each handler is checked for its own call. */
+    const body = (name, end) =>
+      s3.slice(s3.indexOf('function ' + name + '('), s3.indexOf(end));
+    assert.ok(/cancelCameraTween\(\)/.test(body('onPointerDown', 'function panBy(')),
+        'a pointer that grabs the camera must cancel the tween');
+    assert.ok(/cancelCameraTween\(\)/.test(body('onPointerMove', 'function movePathEnd(')),
+        'an orbit drag must cancel the tween');
+    assert.ok(/cancelCameraTween\(\)/.test(body('onWheel', 'const el =')),
+        'a zoom must cancel the tween');
   });
 
   it('the preset computes its destination without moving the camera', () => {
@@ -1152,13 +1163,45 @@ describe('decoration is dimmer than the controls', () => {
     assert.ok(/Math\.max\(0\.1\d?,/.test(s3), 'the ring must keep a visible floor');
   });
 
-  it('but the HANDLES stay full strength', () => {
-    /* They are targets the coach has to hit. Dimming an interactive
-       control to match decoration makes it harder to use for nothing. */
-    assert.ok(/flatDot\(HANDLE_R, col, active === 'bend' \? 1 : 0\.25\)/.test(s3),
-        'the ball bend handle must be fully opaque when active');
-    assert.ok(/const h = flatDot\(HANDLE_R, col\);/.test(s3),
-        'player bend dots take the default full opacity');
+  it('but the HANDLES stay louder than what they sit on', () => {
+    /* An ORDERING, not the literals. The previous version pinned the
+       exact expression `active === 'bend' ? 1 : 0.25`, so it failed
+       the moment the dots were deliberately dimmed — asserting the
+       design that was being changed rather than the property worth
+       keeping. What must hold is that a control the coach has to hit
+       reads more strongly than the curve it sits on, and that the
+       active handle beats the inactive one. */
+    const num = (re, what) => {
+      const m = s3.match(re);
+      assert.ok(m, what + ' not found');
+      return parseFloat(m[1]);
+    };
+    const on = num(/const BEND_ALPHA = ([\d.]+);/, 'BEND_ALPHA');
+    const off = num(/const BEND_ALPHA_OFF = ([\d.]+);/, 'BEND_ALPHA_OFF');
+    const curve = opacityOf(/LineBasicMaterial\(\{color: col, transparent: true, opacity: ([\d.]+)\}\)\);\n\s*objectRoot\.add\(entry\.curve\)/);
+
+    assert.ok(on > curve, 'an active bend dot (' + on +
+        ') must read stronger than its curve (' + curve + ')');
+    assert.ok(on > off, 'active (' + on + ') must beat inactive (' + off + ')');
+    assert.ok(off > 0, 'an inactive handle must still be visible');
+    assert.ok(on <= 1 && off < 0.4, 'and neither may be louder than the objects');
+
+    // Both bend dots go through the same pair, so they cannot drift.
+    assert.ok(/flatDot\(HANDLE_R, col, active === 'bend' \? BEND_ALPHA : BEND_ALPHA_OFF\)/.test(s3),
+        'the ball bend handle must use the shared constants');
+    assert.ok(/const h = flatDot\(HANDLE_R, col, BEND_ALPHA\);/.test(s3),
+        'player bend dots must use the shared constant too');
+  });
+
+  it('keeps the diamond brighter than the dots it pairs with', () => {
+    /* Same SIZE so the two read as a pair, but not the same weight:
+       the diamond appears once per ball while a bend dot is on every
+       trajectory, and it is a lit solid whose dark edges wash out if
+       it is made translucent. */
+    assert.ok(/opacity: active === 'apex' \? 1 : 0\.25/.test(s3),
+        'the apex diamond stays full strength when active');
+    assert.ok(/OctahedronGeometry\(HANDLE_R\)/.test(s3),
+        'and the same size as a bend dot');
   });
 });
 
@@ -1356,5 +1399,189 @@ describe('selection and delete in 3D', () => {
     const hint = appBare.match(/'tactics\.orbit_hint':[\s\S]*?\n.*?\},/)[0];
     assert.ok(/Supr/.test(hint) && /Del to delete/.test(hint),
         'the orbit hint must mention delete in every language');
+  });
+});
+
+/* ── The draw lock ────────────────────────────────────────────────
+   Arrows, zones, pen strokes and labels are flat things, so a draw
+   tool locks the camera overhead and lays the REAL 2D board over the
+   turf. The value of that design is that there is no second
+   implementation of drawing — so the assertions below are mostly
+   about keeping it that way, plus the handful of details that make
+   the overlay land in the right place.
+*/
+describe('the draw lock', () => {
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+
+  it('reuses the 2D drawing code rather than raycasting onto the turf', () => {
+    /* The point of the whole design. If board3d ever grows its own
+       arrow/pen/zone input, there are two implementations of the same
+       drawing and they will disagree. */
+    assert.ok(!/arrowMode|penMode|rectMode|textMode/.test(bare),
+        'board3d must not implement drawing input');
+    assert.ok(/pitchScreenRect/.test(bare),
+        'it exposes where the pitch is, and app.js overlays the 2D board');
+  });
+
+  it('locks the camera overhead, and only then', () => {
+    const fn = bare.slice(bare.indexOf('function setDrawLock('),
+        bare.indexOf('function pitchScreenRect(', bare.indexOf('function setDrawLock(')));
+    assert.ok(/setPreset\('top'\)/.test(fn), 'the lock must go top-down');
+    assert.ok(/followBall = false/.test(fn),
+        'a camera that follows the ball is not locked');
+    assert.ok(/drawRoot\.visible = !on/.test(fn),
+        'the 3D copies of the drawings must hide behind the overlay');
+  });
+
+  it('refuses every camera move except pan and zoom', () => {
+    /* The buttons are disabled in the UI too, but playback and
+       follow-ball can also aim the camera. */
+    assert.ok(/setPreset\(name\) \{ if \(!drawLock\) setPreset\(name\); \}/.test(bare),
+        'presets must be refused while locked');
+    const follow = bare.slice(bare.indexOf('setFollowBall(on) {'),
+        bare.indexOf('isFollowingBall()', bare.indexOf('setFollowBall(on) {')));
+    assert.ok(/if \(drawLock\) return;/.test(follow), 'follow-ball must be refused');
+    const reset = bare.slice(bare.indexOf('resetCamera() {'), bare.indexOf('resize,'));
+    assert.ok(/if \(drawLock\) return;/.test(reset), 'reset must be refused');
+  });
+
+  it('turns the left button into a pan, not an orbit or a drag', () => {
+    const fn = bare.slice(bare.indexOf('function onPointerDown('),
+        bare.indexOf('function panBy(', bare.indexOf('function onPointerDown(')));
+    const i = fn.indexOf('if (drawLock)');
+    assert.ok(i !== -1, 'the lock branch is missing');
+    assert.ok(fn.indexOf("mode = 'orbit'") > i && fn.indexOf("mode = 'drag'") > i,
+        'the lock must be decided BEFORE picking an object to drag');
+    assert.ok(/if \(drawLock\) \{\s*mode = 'pan';/.test(fn),
+        'a left drag on the sky still pans');
+  });
+
+  it('refuses to report a rect unless the camera really is overhead', () => {
+    /* Returning a best guess would position the surface against a
+       tilted camera — wrong everywhere, and the coach only finds out
+       after drawing on it. */
+    const fn = bare.slice(bare.indexOf('function pitchScreenRect('),
+        bare.indexOf('function frameBoard(', bare.indexOf('function pitchScreenRect(')));
+    assert.ok(/if \(cam\.phi > 0\.05\) return null;/.test(fn),
+        'a tilted camera must yield null');
+    const projections = fn.match(/\.project\(camera\)/g) || [];
+    assert.strictEqual(projections.length, 1, 'one projection helper');
+    assert.ok(/toPx\(-e\.ax \/ 2, -e\.ay \/ 2\)[\s\S]*?toPx\(e\.ax \/ 2, e\.ay \/ 2\)/.test(fn),
+        'BOTH corners must be projected — perspective scale varies with depth');
+  });
+
+  it('hides the surface while the camera is still on its way over', () => {
+    const fn = appBare.slice(appBare.indexOf('function tbDrawSurface('),
+        appBare.indexOf('function tb3dState(', appBare.indexOf('function tbDrawSurface(')));
+    assert.ok(/visibility = r \? '' : 'hidden'/.test(fn),
+        'a null rect must hide the surface, not leave it where it was');
+  });
+
+  it('follows the camera every frame instead of being pushed once', () => {
+    /* The camera moves under the tween, under a pan and under a
+       resize; one rAF loop covers all three. */
+    const fn = appBare.slice(appBare.indexOf('function tbDrawSurface('),
+        appBare.indexOf('function tb3dState(', appBare.indexOf('function tbDrawSurface(')));
+    assert.ok(/requestAnimationFrame\(follow\)/.test(fn), 'the follow loop is missing');
+    assert.ok(/if \(!_tb3d \|\| !_tb3d\.isDrawLocked\(\)\) \{ _tbDrawRaf = 0; return; \}/.test(fn),
+        'the loop must stop when the lock goes');
+    assert.ok(/cancelAnimationFrame\(_tbDrawRaf\)/.test(fn),
+        'and be cancelled rather than left to race a second one');
+  });
+
+  it('tears the surface down with the view', () => {
+    const fn = appBare.slice(appBare.indexOf('function tbDestroy3D('),
+        appBare.indexOf('var _tbDrawRaf', appBare.indexOf('function tbDestroy3D(')));
+    assert.ok(/tbDrawSurface\(false\)/.test(fn),
+        'destroying the 3D view must stop the follow loop');
+  });
+
+  it('arms on every tool that needs a click on the board', () => {
+    /* The ball tool is NOT one: it spawns at the centre spot. */
+    ['arrow', 'rect', 'text', 'pen', 'cone'].forEach((k) => {
+      const i = appBare.indexOf(k + 'Mode = true;');
+      assert.ok(i !== -1, k + 'Mode not found');
+      const before = appBare.slice(Math.max(0, i - 120), i);
+      assert.ok(/tbSetDrawMode\(true\)/.test(before),
+          k + ' must arm the draw lock');
+    });
+  });
+
+  it('disarms from the one place every tool already calls', () => {
+    const fn = appBare.slice(appBare.indexOf('function deactivateDrawTools('),
+        appBare.indexOf('function tbSetDrawMode(', appBare.indexOf('function deactivateDrawTools(')));
+    assert.ok(/tbSetDrawMode\(false\)/.test(fn),
+        'deactivateDrawTools is the single off-switch');
+    ['arrow', 'rect', 'text', 'pen', 'cone'].forEach((k) => {
+      const i = appBare.indexOf(k + 'Mode = true;');
+      assert.ok(/deactivateDrawTools\(\)/.test(appBare.slice(Math.max(0, i - 260), i)),
+          k + ' must go through deactivateDrawTools first');
+    });
+  });
+
+  it('is a no-op in 2D, where the board is already flat', () => {
+    const fn = appBare.slice(appBare.indexOf('function tbSetDrawMode('),
+        appBare.indexOf('if (arrowToolBtn)', appBare.indexOf('function tbSetDrawMode(')));
+    assert.ok(/if \(!is3d\) return;/.test(fn), 'tbSetDrawMode must return early in 2D');
+  });
+
+  it('forces the 2D board horizontal in 3D, so the overlay aligns', () => {
+    /* The 3D pitch lies along X. A board left set to vertical would
+       put every stroke a quarter turn from where the hand drew it. */
+    assert.ok(/function tbVertical\(\) \{\s*return !tbIs3D\(\) &&/.test(appBare),
+        'tbVertical must be false in 3D');
+    const readers = appBare.match(/localStorage\.getItem\('fa_tactic_orient'\)/g) || [];
+    assert.strictEqual(readers.length, 1,
+        'orientation must be read in ONE place (tbVertical); found ' + readers.length);
+  });
+
+  it('shows only the drawing layers on the surface', () => {
+    /* Turf, markings, players, ball and cones are all in the 3D scene
+       behind it — drawn twice, they read as a ghost a frame behind. */
+    const rule = cssSrc.slice(cssSrc.indexOf('.tb-field.tb-draw-surface .tb-markings'));
+    ['.tb-markings', '.tb-circle', '.tb-ball', '.tb-cone', '.tb-silhouette', '.tb-pitch-grip']
+        .forEach((c) => assert.ok(rule.indexOf(c) !== -1 &&
+            rule.indexOf(c) < rule.indexOf('display:none'), c + ' must be hidden'));
+  });
+
+  it('drops the aspect-ratio padding the outer box normally uses', () => {
+    /* The box holds its shape with padding-top; given an explicit
+       rect, that padding would push everything down inside it. */
+    const rule = cssSrc.slice(cssSrc.indexOf('.tb-field.tb-draw-surface {'),
+        cssSrc.indexOf('.tb-field.tb-draw-surface > .tb-field-inner', cssSrc.indexOf('.tb-field.tb-draw-surface {')));
+    assert.ok(/padding:0 !important/.test(rule), 'padding must be cleared');
+    assert.ok(/position:absolute/.test(rule), 'and the box positioned explicitly');
+    assert.ok(/max-width:none !important/.test(rule),
+        'the 820px cap would otherwise crop the surface on a wide canvas');
+  });
+
+  it('shows a pen cursor, so the lock reads as a mode', () => {
+    /* Without it a camera that has stopped orbiting looks broken. */
+    const rule = cssSrc.slice(cssSrc.indexOf('.tb-field.tb-draw-surface,'));
+    assert.ok(/cursor:url\("data:image\/svg\+xml/.test(rule), 'pen cursor missing');
+    assert.ok(/, crosshair;/.test(rule.slice(0, rule.indexOf('}'))),
+        'a cursor with no keyword fallback is ignored entirely when the URL fails');
+  });
+
+  it('keeps the delete key off the drawing surface', () => {
+    /* The surface is a CHILD of the 3D wrapper, so a Backspace typed
+       into a label bubbles into the delete handler. */
+    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/)[0];
+    assert.ok(/if \(_tb3d\.isDrawLocked\(\)\) return;/.test(h),
+        'delete must be inert while drawing');
+    assert.ok(/isContentEditable/.test(h) && /INPUT\|TEXTAREA\|SELECT/.test(h),
+        'and must never eat a keystroke meant for a field');
+  });
+
+  it('says the view is locked rather than letting it look broken', () => {
+    assert.ok(/'tactics\.draw_hint'/.test(appBare), 'the hint key is missing');
+    const fn = appBare.slice(appBare.indexOf('function tbSetDrawMode('),
+        appBare.indexOf('if (arrowToolBtn)', appBare.indexOf('function tbSetDrawMode(')));
+    assert.ok(/tactics\.draw_hint.*:.*tactics\.orbit_hint/.test(fn),
+        'the hint must swap both ways');
+    assert.ok(/tb-cams-locked/.test(fn) && /tb-cams-locked/.test(cssSrc),
+        'the camera buttons must be visibly disabled');
   });
 });
