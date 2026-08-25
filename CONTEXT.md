@@ -4989,3 +4989,29 @@ with an absolute `indexOf` matched an *earlier* occurrence (`if (arrowToolBtn)` 
 
 Unit 1519 → **1537**; all seventeen new assertions verified against mutants. Version triple → v138.
 **Still nothing deployed.**
+
+### 2026-08-25 — Fix: one free variable killed the tools AND playback (v139)
+
+`tbSetDrawMode` read **`is3d`**, a const declared in `renderTactics`, from inside **`bindTactics`** — a
+different function. Every call threw a `ReferenceError`, and since `deactivateDrawTools()` runs from the
+play button and from every tool button, the throw aborted `bindTactics` partway through: the drawing
+tools went dead **and** playback stopped mid-start (`framePlaying = true` and the button lit, then the
+throw, before `applyFrameState`). Two symptoms that look unrelated, one identifier. Now `tbIs3D()`.
+
+**The test written to cover this passed on the broken code.** It asserted the source text
+`if (!is3d) return;` was present — and it was; the text was exactly right, the name just did not
+resolve. The lesson is sharper than the usual "test behaviour, not mechanism": a source-text assertion
+cannot see scope *at all*, so no amount of care in writing one would have caught this.
+
+Three tests now cover it, and the mutation check confirms all three fail on the original bug:
+1. `tbSetDrawMode` is **executed** in `new Function` over stubs. Any name that is neither a parameter
+   nor a real global throws on read, which is precisely the bug class — and the test also pins what the
+   function should do in each view rather than only that it survives.
+2. `tbDrawSurface` gets the same execution check.
+3. A structural one: `bindTactics` must not contain the identifier `is3d` anywhere (comments stripped —
+   the comment recording this bug names it).
+
+That first pattern is worth reaching for whenever something in `bindTactics` uses a value from
+`renderTactics`; the split is invisible to `node --check` and to every regex test in the suite.
+
+Unit 1537 → **1540**. Version triple → v139.

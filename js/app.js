@@ -1550,7 +1550,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 138;
+  const APP_VERSION = 139;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -11557,7 +11557,13 @@
      * A no-op in 2D, where the board is already flat.
      */
     function tbSetDrawMode(on) {
-      if (!is3d) return;
+      /* tbIs3D(), NOT the `is3d` const — that one lives in
+         renderTactics and this function lives in bindTactics, so
+         reading it threw a ReferenceError on every call. Which killed
+         bindTactics outright: deactivateDrawTools() runs from the play
+         button and from every tool, so the tools went dead AND
+         playback stopped mid-start. Two symptoms, one free variable. */
+      if (!tbIs3D()) return;
       tbDrawSurface(on);
       const cams = document.getElementById('tb-3d-cams');
       if (cams) cams.classList.toggle('tb-cams-locked', !!on);

@@ -1524,7 +1524,11 @@ describe('the draw lock', () => {
   it('is a no-op in 2D, where the board is already flat', () => {
     const fn = appBare.slice(appBare.indexOf('function tbSetDrawMode('),
         appBare.indexOf('if (arrowToolBtn)', appBare.indexOf('function tbSetDrawMode(')));
-    assert.ok(/if \(!is3d\) return;/.test(fn), 'tbSetDrawMode must return early in 2D');
+    /* tbIs3D(), not `is3d`. The const belongs to renderTactics and
+       this function is in bindTactics — see the execution test below,
+       which is what actually proves the name resolves. */
+    assert.ok(/if \(!tbIs3D\(\)\) return;/.test(fn),
+        'tbSetDrawMode must gate on tbIs3D(), which resolves in bindTactics');
   });
 
   it('forces the 2D board horizontal in 3D, so the overlay aligns', () => {
@@ -1583,5 +1587,119 @@ describe('the draw lock', () => {
         'the hint must swap both ways');
     assert.ok(/tb-cams-locked/.test(fn) && /tb-cams-locked/.test(cssSrc),
         'the camera buttons must be visibly disabled');
+  });
+});
+
+/* ── Free variables across the render/bind split ──────────────────
+   renderTactics builds the markup; bindTactics wires it up. They are
+   SEPARATE functions, so a const declared in one is not in scope in
+   the other — and JavaScript only says so when the line actually
+   runs.
+
+   tbSetDrawMode read `is3d`, a renderTactics const, from inside
+   bindTactics. Every call threw a ReferenceError, and because
+   deactivateDrawTools() runs from the play button and from every tool
+   button, the throw aborted bindTactics: the drawing tools went dead
+   AND playback stopped mid-start. One free variable, two symptoms
+   that look unrelated.
+
+   The test that was supposed to cover this asserted the SOURCE TEXT
+   `if (!is3d) return;` was present. It passed on the broken code,
+   because the text was exactly right — the identifier just did not
+   resolve. So these tests RUN the function instead. Inside
+   `new Function`, any name that is neither a parameter nor a real
+   global throws on read, which is precisely the bug class.
+*/
+describe('bindTactics does not reach into renderTactics', () => {
+  const appSrc2 = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
+
+  const bindBody = (() => {
+    const i = appSrc2.indexOf('  function bindTactics(');
+    assert.ok(i !== -1, 'bindTactics not found');
+    /* Bounded by the next sibling declaration at the same indent,
+       not by a character count. */
+    const j = appSrc2.indexOf('\n  function ', i + 10);
+    return appSrc2.slice(i, j === -1 ? appSrc2.length : j);
+  })();
+
+  it('never names is3d, which belongs to renderTactics', () => {
+    /* The general form of the bug, cheap enough to state directly.
+       tbIs3D() is the global helper and reads the same thing. */
+    /* Comments discuss the identifier — including the one recording
+       this very bug — so strip them first. */
+    const code = bindBody.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const hits = code.match(/\bis3d\b/g) || [];
+    assert.deepStrictEqual(hits, [],
+        'bindTactics must call tbIs3D(), not read renderTactics\' is3d const');
+  });
+
+  it('tbSetDrawMode runs without a ReferenceError', () => {
+    const i = appSrc2.indexOf('    function tbSetDrawMode(on) {');
+    assert.ok(i !== -1, 'tbSetDrawMode not found');
+    const j = appSrc2.indexOf('\n    }', i) + '\n    }'.length;
+    const body = appSrc2.slice(i, j);
+
+    const calls = [];
+    const stubEl = {classList: {toggle: (c, on) => calls.push(['class', c, on])},
+                    textContent: ''};
+    const make = (is3d) => new Function('tbIs3D', 'tbDrawSurface', 'document', 't',
+        body + '\nreturn tbSetDrawMode;')(
+      () => is3d,
+      (on) => calls.push(['surface', on]),
+      {getElementById: () => stubEl, querySelector: () => stubEl},
+      (k) => k);
+
+    // 2D: a no-op, and specifically NOT a throw.
+    calls.length = 0;
+    make(false)(true);
+    assert.deepStrictEqual(calls, [], 'must do nothing in 2D');
+
+    // 3D: drives the surface, the buttons and the hint.
+    calls.length = 0;
+    make(true)(true);
+    assert.ok(calls.some((c) => c[0] === 'surface' && c[1] === true),
+        'must arm the drawing surface');
+    assert.ok(calls.some((c) => c[0] === 'class' && c[1] === 'tb-cams-locked' && c[2] === true),
+        'must disable the camera buttons');
+    assert.strictEqual(stubEl.textContent, 'tactics.draw_hint');
+
+    calls.length = 0;
+    make(true)(false);
+    assert.ok(calls.some((c) => c[0] === 'surface' && c[1] === false),
+        'must release the surface');
+    assert.strictEqual(stubEl.textContent, 'tactics.orbit_hint');
+  });
+
+  it('tbDrawSurface only reaches for real globals', () => {
+    /* It lives at module level, so its dependencies are different —
+       but the same execution check applies. */
+    const i = appSrc2.indexOf('  function tbDrawSurface(on) {');
+    assert.ok(i !== -1, 'tbDrawSurface not found');
+    const j = appSrc2.indexOf('\n  }', i) + '\n  }'.length;
+    const body = appSrc2.slice(i, j);
+
+    const seen = [];
+    const field = {classList: {add: () => seen.push('add'), remove: () => seen.push('remove')},
+                   style: {}, hidden: false, parentNode: null};
+    const wrap = {appendChild: () => seen.push('reparent')};
+    const view = {
+      setDrawLock: (on) => seen.push('lock:' + on),
+      isDrawLocked: () => true,
+      pitchScreenRect: () => ({left: 1, top: 2, width: 3, height: 4})
+    };
+    const fn = new Function('document', '_tb3d', '_tbDrawRaf',
+        'requestAnimationFrame', 'cancelAnimationFrame',
+        body + '\nreturn tbDrawSurface;')(
+      {getElementById: (id) => (id === 'tb-field' ? field : wrap)},
+      view, 0, () => 1, () => {});
+
+    fn(true);
+    assert.ok(seen.indexOf('lock:true') !== -1, 'must lock the camera');
+    assert.ok(seen.indexOf('add') !== -1, 'must mark the field as the draw surface');
+    assert.strictEqual(field.style.left, '1px', 'must position from the rect');
+
+    fn(false);
+    assert.ok(seen.indexOf('lock:false') !== -1, 'must release the lock');
+    assert.strictEqual(field.hidden, true, 'and hide the field again');
   });
 });
