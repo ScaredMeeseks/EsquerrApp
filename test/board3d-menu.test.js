@@ -438,13 +438,16 @@ describe('the rail sits on the axis, and the CSS says each thing once', () => {
         'and the same for WebKit, which ignores scrollbar-width');
   });
 
-  it('the duration input is exactly a tile wide', () => {
-    /* At 44px against 38px tiles the column was wider than its own
-       contents, so the tiles centred inside it and sat off the axis. */
-    const dur = /width:(\d+)px/.exec(rule('.tb-rail .tb-frame-dur'))[1];
-    const tile = /width:(\d+)px/.exec(rule('.tb-rail .tb-frame-thumb'))[1];
-    assert.strictEqual(dur, tile,
-        'the duration is ' + dur + 'px in a column of ' + tile + 'px tiles');
+  it('every control on the axis takes the tile token', () => {
+    /* The widths were literal 38s repeated across seven rules. One
+       token instead, so "the same width" is a fact about the CSS
+       rather than a coincidence someone has to maintain. */
+    assert.ok(/--tb-tile:\d+px/.test(css), 'the tile width must be declared once');
+    ['.tb-rail .tb-frame-thumb', '.tb-rail .tb-frame-add',
+     '.tb-rail .tb-frame-play', '.tb-rail .tb-frame-dur',
+     '.tb-cams-btn', '.tb-cams-list .tb-cam-btn'].forEach((sel) =>
+      assert.ok(/width:var\(--tb-tile\)/.test(rule(sel)),
+          sel + ' must take the tile token, not its own number'));
   });
 
   it('the rail clears the camera list, which opens down the same edge', () => {
@@ -483,21 +486,43 @@ describe('three small faults from the first pass', () => {
   };
   const init = fn('tbMenuInit(hooks)');
 
-  it('the axis is wide enough for what hangs off a tile', () => {
-    /* The delete cross is absolutely positioned 6px past the tile's
-       right edge, and the strip clips horizontally so a long
-       animation cannot scroll sideways — so anything that overhangs
-       must fit inside the axis or it is cut in half. It was: a 38px
-       tile in a 44px axis left 3px for a 6px overhang. */
-    const axis = parseInt(/--tb-axis:(\d+)px/.exec(css)[1], 10);
-    const tile = parseInt(/width:(\d+)px/.exec(rule('.tb-rail .tb-frame-thumb'))[1], 10);
-    const del = rule('.tb-frame-del');
-    const over = Math.abs(parseInt(/right:(-?\d+)px/.exec(del)[1], 10));
-    assert.ok((axis - tile) / 2 >= over,
-        'a tile overhangs by ' + over + 'px and has ' + ((axis - tile) / 2) +
-        'px of room; the cross is clipped');
+  it('the delete cross does not hang outside the strip at all', () => {
+    /* Twice wrong before this. The cross hangs -6px past its PARENT,
+       and its parent is `.tb-frame-item` — which I had made
+       `width:100%` of the axis, so -6px was outside the strip
+       whatever the axis was. Widening the axis could never have
+       helped: the item grew with it. The first attempt's test passed
+       because it modelled the cross as anchored to the 38px TILE,
+       which is not what it is anchored to.
+       `overflow-y:auto` clips the top edge too, so the first tile's
+       cross also lost its head.
+
+       The cross sits INSIDE the tile's corner now. A negative offset
+       on either axis is the bug, so that is what this forbids —
+       rather than trying to compute how much room a given layout
+       leaves, which is what got it wrong twice. */
+    const del = rule('.tb-rail .tb-frame-del');
+    ['top', 'right', 'bottom', 'left'].forEach((side) => {
+      const m = new RegExp(side + ':(-?[\\d.]+)px').exec(del);
+      if (!m) return;
+      assert.ok(parseFloat(m[1]) >= 0,
+          side + ':' + m[1] + 'px hangs outside the item, and the strip clips ' +
+          'on both axes — overflow-y:auto makes overflow-x clip as well');
+    });
+    /* And it is placed from the tokens, so moving either one moves
+       the cross with it. */
+    assert.ok(/right:calc\(\(var\(--tb-axis\) - var\(--tb-tile\)\) \/ 2/.test(del),
+        'the offset must be derived from the axis and tile, not typed');
+  });
+
+  it('the item is full width, which is WHY the cross must stay inside', () => {
+    /* Recording the trap: the item fills the axis so the column
+       cannot shrink to its contents. That is deliberate, and it is
+       exactly what makes an overhanging child unclippable-by-luck. */
+    assert.ok(/width:100%/.test(rule('.tb-rail .tb-frame-item')),
+        'the item fills the axis');
     assert.ok(/overflow-x:hidden/.test(rule('.tb-rail .tb-frames-strip')),
-        'the strip clips horizontally, which is why the room is needed');
+        'and the strip clips, so nothing may overhang it');
   });
 
   it('a tooltip cannot outlive the element that opened it', () => {

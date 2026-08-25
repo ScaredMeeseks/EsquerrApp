@@ -5660,3 +5660,30 @@ flicker the menu shut as the coach reached for it. 260ms, cancelled on re-entry,
 menu is torn down or it fires into a dead one.
 
 Unit 1708 → **1711**. Version triple → v155. **Still nothing deployed.**
+
+### 2026-08-26 — The cross was anchored to the wrong box (v156)
+
+Widening the axis in v155 could never have fixed this, and the reason is worth keeping.
+
+`.tb-frame-del` hangs `-6px` past **its parent**, and its parent is `.tb-frame-item` — which is
+`width:100%` of the axis, deliberately, so the column cannot shrink to its contents. So `-6px` is
+outside the strip *whatever the axis is*: widening the axis widened the item with it. On top of that,
+`overflow-y:auto` makes the other axis clip as well, so the first tile's cross also lost its head.
+
+v155's test passed on the broken layout because it modelled the cross as anchored to the **38px tile**.
+It is not; it is anchored to the full-width item. **The geometry in the test was wrong, so the test
+agreed with the code and both were wrong together** — the same shape of failure as the declared-width
+test two entries ago.
+
+The cross sits INSIDE the tile's corner now, and the test stopped trying to compute how much room a
+layout leaves. It asserts the thing that is actually true or false: **no offset on any side may be
+negative**, because the strip clips on both axes. That cannot be got subtly wrong the way a clearance
+calculation can.
+
+While there: `--tb-tile: 38px` joins `--tb-axis`, replacing the literal `38` repeated across seven
+rules, and the cross's offset is `calc((var(--tb-axis) - var(--tb-tile)) / 2 + 2px)` — derived, so
+moving either token moves the cross with it.
+
+The tooltip and hover-out fixes from v155 are confirmed working.
+
+Unit 1711 → **1712**. Version triple → v156. **Still nothing deployed.**

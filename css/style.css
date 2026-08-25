@@ -4915,7 +4915,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* A tile's width exactly. At 44px the column was wider than the
      38px tiles, so the tiles centred inside it and sat off the axis
      the camera icon defines. */
-  width:38px; padding:3px 2px; text-align:center;
+  width:var(--tb-tile); padding:3px 2px; text-align:center;
   background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:#fff;
 }
 
@@ -4924,13 +4924,13 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    cross hangs past its tile — the strip clips horizontally, so
    anything that overhangs has to fit inside this width or it is cut
    in half. */
-.tb-3d-wrap { --tb-axis:52px; }
+.tb-3d-wrap { --tb-axis:52px; --tb-tile:38px; }
 .tb-cams {
   position:absolute; top:.75rem; right:.75rem; z-index:6;
   width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;
 }
 .tb-cams-btn {
-  width:38px; height:38px; padding:0; border:0; border-radius:10px;
+  width:var(--tb-tile); height:var(--tb-tile); padding:0; border:0; border-radius:10px;
   display:flex; align-items:center; justify-content:center; margin:0;
   background:rgba(18,20,23,.72); color:#e8eaed; cursor:pointer;
   backdrop-filter:blur(6px); transition:background .15s, color .15s;
@@ -4948,7 +4948,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-cams.tb-cams-open .tb-cams-list { opacity:1; transform:none; pointer-events:auto; }
 /* Circles, as asked — each a small drawing of what that camera sees. */
 .tb-cams-list .tb-cam-btn {
-  width:38px; height:38px; padding:0; border:0; border-radius:50%;
+  width:var(--tb-tile); height:var(--tb-tile); padding:0; border:0; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
   background:rgba(18,20,23,.86); color:#c9ccd1; cursor:pointer;
   backdrop-filter:blur(6px); transition:background .15s, color .15s;
@@ -4966,7 +4966,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    row is centred, so the whole rail sits on one vertical axis with
    the camera icon above it. */
 .tb-rail .tb-frame-thumb {
-  width:38px; height:38px;
+  width:var(--tb-tile); height:var(--tb-tile);
   background:none; border:2px solid transparent; color:#c9ccd1;
   box-shadow:none; font-weight:600;
 }
@@ -4976,7 +4976,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-color:#fb8c00; color:#fff; box-shadow:none;
 }
 .tb-rail .tb-frame-add {
-  width:38px; height:38px; margin:0;
+  width:var(--tb-tile); height:var(--tb-tile); margin:0;
   background:none; border:2px dashed rgba(255,255,255,.28); color:#c9ccd1;
 }
 .tb-rail .tb-frame-add:hover { border-color:rgba(255,255,255,.5); color:#fff; }
@@ -4984,10 +4984,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-rail .tb-frame-gap { display:flex; justify-content:center; width:100%; margin:0; }
 /* The delete cross is a page affordance; on the rail it clutters a
    38px tile. It comes back on hover, where it is wanted. */
-.tb-rail .tb-frame-del { opacity:0; transition:opacity .15s; }
+.tb-rail .tb-frame-del {
+  opacity:0; transition:opacity .15s;
+  top:2px; right:calc((var(--tb-axis) - var(--tb-tile)) / 2 + 2px);
+  width:14px; height:14px; font-size:.55rem;
+}
 .tb-rail .tb-frame-item:hover .tb-frame-del { opacity:1; }
 .tb-rail .tb-frame-play {
-  width:38px; height:38px; margin:0; align-self:center;
+  width:var(--tb-tile); height:var(--tb-tile); margin:0; align-self:center;
   background:rgba(18,20,23,.72); border:0; color:#e8eaed;
   backdrop-filter:blur(6px);
 }
