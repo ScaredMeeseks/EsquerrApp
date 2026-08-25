@@ -511,3 +511,61 @@ describe('adding a bend dot lands in the right place', () => {
         [[50.12, 25.99]]);
   });
 });
+
+describe('the ball bend handle stays at the midpoint', () => {
+  const P0 = [0, 0];
+  const P1 = [100, 0];
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  it('is always equidistant from both ends', () => {
+    /* That is what "at the midpoint" means from any camera angle,
+       and it is the property the whole constraint exists for. */
+    [[50, 30], [10, 40], [90, -25], [0, 0], [120, 5]].forEach((at) => {
+      const b = BS.constrainBend(P0, P1, at);
+      assert.ok(Math.abs(dist(b, P0) - dist(b, P1)) < 0.02,
+          JSON.stringify(at) + ' -> ' + JSON.stringify(b));
+    });
+  });
+
+  it('a push ALONG the line moves it nowhere', () => {
+    // Sliding toward an end is exactly what is being prevented.
+    assert.deepStrictEqual(BS.constrainBend(P0, P1, [90, 0]), [50, 0]);
+    assert.deepStrictEqual(BS.constrainBend(P0, P1, [10, 0]), [50, 0]);
+  });
+
+  it('a push ACROSS the line moves it fully', () => {
+    assert.deepStrictEqual(BS.constrainBend(P0, P1, [50, 30]), [50, 30]);
+    // And the sideways component survives even when dragged askew.
+    assert.deepStrictEqual(BS.constrainBend(P0, P1, [90, 30]), [50, 30]);
+  });
+
+  it('works on a diagonal flight, not just an axis-aligned one', () => {
+    const a = [0, 0], b = [60, 80];
+    const out = BS.constrainBend(a, b, [70, 10]);
+    assert.ok(Math.abs(dist(out, a) - dist(out, b)) < 0.02, out);
+  });
+
+  it('the resulting parabola is symmetric', () => {
+    /* Equidistant handle plus quadratic Bezier means the curve at t
+       and at 1-t are mirror images about the bisector — measurable as
+       equal distances from the two endpoints. */
+    const bend = BS.constrainBend(P0, P1, [50, 40]);
+    for (let i = 1; i < 5; i++) {
+      const t = i / 10;
+      const a = BS.pathPoint(P0, P1, {bend}, t);
+      const b = BS.pathPoint(P0, P1, {bend}, 1 - t);
+      assert.ok(Math.abs(dist(a, P0) - dist(b, P1)) < 1e-6,
+          't=' + t + ' ' + JSON.stringify(a) + ' vs ' + JSON.stringify(b));
+    }
+  });
+
+  it('survives a zero-length flight instead of dividing by zero', () => {
+    const out = BS.constrainBend([50, 50], [50, 50], [60, 60]);
+    assert.ok(isFinite(out[0]) && isFinite(out[1]), out);
+  });
+
+  it('rounds like every other stored coordinate', () => {
+    const out = BS.constrainBend(P0, P1, [50, 30.987654]);
+    assert.strictEqual(out[1], 30.99);
+  });
+});

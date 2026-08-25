@@ -4592,3 +4592,47 @@ slices are now bounded by structure. And a diagnostic regex with a nested captur
 wrong group and claimed every i18n key was missing all three languages; the code was fine.
 
 Unit 1384 → **1409**.
+
+### 2026-08-25 — v136: real shadows, flat markers, live curve editing
+
+Five corrections from using the 3D board. As with the previous two rounds the reference material
+could not be seen — the GIF failed to process at 146 MB — so this is built from the description.
+Two decisions were taken by asking: the shadow model and what "at the midpoint" means.
+
+**Real shadows.** `shadowMap` on, `PCFSoftShadowMap`, the key light casting, players/ball/cones/
+goals casting and the pitch receiving. I argued against shadow maps first time round on cost
+grounds; **that was over-cautious** — about twenty-five casters and one extra pass, against a ball
+that was genuinely hard to place in depth.
+
+The light is **angled, not overhead**, on purpose: an overhead light puts every shadow directly
+under its object and adds no depth information at all. The shadow camera is an orthographic frustum
+**fitted to the pitch** and refitted in `buildPitch()`, because the pitch is resizable — the default
+frustum is a couple of units across and would leave nearly the whole board unshadowed. `key.target`
+has to be added to the scene or the light aims at nothing.
+
+**The ball marker was not broken, it was invisible.** A 0.45–2 m disc at 6–30% opacity on a 105 m
+pitch is about 2% of the board's width in dark grey on mid-green. Now a white **ring** — a filled
+dark circle is indistinguishable from the ball from overhead — holding at least 0.35 opacity, and
+shown for a lofted ball **at rest**, not only during playback, because a chip should read while it
+is being set up. It stays straight down: the angled shadow answers "where is the sun", this answers
+"where is the ball".
+
+**Flat markers.** The travelling dots and bend dots were spheres, which read as balls half-sunk in
+the turf — confusing beside the one round thing that IS a ball. All now flat `CircleGeometry` discs
+lying face-up with `depthWrite:false`. The travelling dot is **0.16 m against the ball's 0.45 m**,
+so it cannot be mistaken for one. The apex diamond stays a diamond: it means "up".
+
+**The ball's bend dot is locked to the perpendicular bisector** of the start–end line
+(`BS.constrainBend`). It can be pushed sideways but never slid toward either end, so it is always
+equidistant from both and the parabola is symmetric — which is what a struck ball does. Constrained
+**during** the drag, not on release, so the dot slides under the cursor instead of jumping when the
+button comes up; and again on commit, so the stored value never depends on the drag path. Player
+runs are deliberately unconstrained — a run may bend late.
+
+**Curves now follow the handle live.** The cause of the snapping: the curve `Line`s were added
+anonymously, so a drag could only move the handle mesh and nothing could recompute the curve until
+the rebuild on release. A `pathEntries` registry holds each trajectory's meshes, and `updatePath()`
+rewrites the **existing** position buffers per pointermove — allocating a new buffer each move is
+how a smooth drag becomes a stuttering one.
+
+Unit 1409 → **1434**.

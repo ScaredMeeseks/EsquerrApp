@@ -71,12 +71,49 @@ export function createBoard3D(opts) {
 
   /* ── Lighting ────────────────────────────────────────────────
      A hemisphere for ambient sky/ground bounce plus one directional
-     key. No shadow maps: eleven discs casting shadows costs a shadow
-     pass every frame and buys nothing a coach is looking for. */
-  scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x2a3a1a, 1.5));
-  const key = new THREE.DirectionalLight(0xffffff, 1.1);
-  key.position.set(30, 60, 20);
+     key that CASTS SHADOWS.
+
+     I argued against shadow maps first time round on cost grounds.
+     That was over-cautious: this scene has about twenty-five casters
+     and one extra pass over them is nothing, while a ball with no
+     shadow is genuinely hard to place in depth — which is the whole
+     point of showing the board in 3D.
+
+     The light is deliberately ANGLED, not overhead. An overhead light
+     puts every shadow directly under its object, which adds no depth
+     information at all; an angled one separates them and the eye
+     reads height immediately. The cost is that a lofted ball's shadow
+     lands away from where the ball is over the pitch — which is why
+     the ball ALSO gets a straight-down marker below. Two different
+     questions: "where is the sun" and "where is the ball". */
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x2a3a1a, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5);
+  key.position.set(40, 70, 30);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
   scene.add(key);
+  scene.add(key.target);          // the target must be in the scene to count
+
+  /* The shadow camera has to be FITTED to the pitch. Its default
+     frustum is a couple of units across, so almost the whole board
+     would fall outside it and receive no shadow at all — and the
+     pitch is resizable, so this is refitted whenever it is rebuilt. */
+  function fitShadowCamera() {
+    const e = BG.extent(getPitch(), getBoardType(), false);
+    const r = Math.max(e.ax, e.ay) * 0.75;
+    const c = key.shadow.camera;
+    c.left = -r; c.right = r; c.top = r; c.bottom = -r;
+    c.near = 1; c.far = 400;
+    c.updateProjectionMatrix();
+    /* Bias tuned against the map size and frustum: too little and the
+       turf shadow-acnes itself in stripes, too much and shadows
+       detach from the feet of what casts them. */
+    key.shadow.bias = -0.0008;
+    key.shadow.normalBias = 0.04;
+  }
 
   /* ── The pitch ───────────────────────────────────────────────
      Markings are drawn into a CanvasTexture rather than built as
@@ -182,7 +219,9 @@ export function createBoard3D(opts) {
         new THREE.PlaneGeometry(e.ax, e.ay),
         new THREE.MeshLambertMaterial({map: markingsTexture(pitch, bt)}));
     pitchMesh.rotation.x = -Math.PI / 2;   // lie flat, Y-up
+    pitchMesh.receiveShadow = true;
     scene.add(pitchMesh);
+    fitShadowCamera();   // the pitch can be resized under it
 
     // Goals: real geometry at regulation size, so they stay physically
     // sized while the pitch grows around them.
@@ -203,6 +242,7 @@ export function createBoard3D(opts) {
           new THREE.CylinderGeometry(postR, postR, gl.w, 8), mat);
       bar.rotation.x = Math.PI / 2;
       bar.position.set(0, gl.h, 0);
+      [a, b, bar].forEach((m) => { m.castShadow = true; });
       grp.add(a, b, bar);
       // gl.x is the goal LINE; the mouth faces into the pitch.
       const w = BG.toWorld((gl.x / e.ax) * 100, ((gl.y + gl.h / 2) / e.ay) * 100, pitch, bt);
@@ -270,6 +310,7 @@ export function createBoard3D(opts) {
         new THREE.CylinderGeometry(PLAYER_R, PLAYER_R, PLAYER_H, 24),
         [side, top, side]);
     mesh.position.set(w.x, PLAYER_H / 2, w.z);
+    mesh.castShadow = true;
     objectRoot.add(mesh);
     objects.push({mesh, kind, index: i, trailColour: pathColour(fill).getHex()});
     return mesh;
@@ -281,6 +322,7 @@ export function createBoard3D(opts) {
         new THREE.SphereGeometry(BALL_R, 20, 14),
         new THREE.MeshLambertMaterial({color: 0xffffff}));
     mesh.position.set(w.x, BALL_R, w.z);
+    mesh.castShadow = true;
     objectRoot.add(mesh);
     objects.push({mesh, kind: 'balls', index: i});
   }
@@ -291,6 +333,7 @@ export function createBoard3D(opts) {
         new THREE.ConeGeometry(CONE_R, CONE_H, 12),
         new THREE.MeshLambertMaterial({color: 0xff8c00}));
     mesh.position.set(w.x, CONE_H / 2, w.z);
+    mesh.castShadow = true;
     objectRoot.add(mesh);
     objects.push({mesh, kind: 'cones', index: i});
   }
@@ -412,6 +455,67 @@ export function createBoard3D(opts) {
      raycast drag machinery moves them; `kind` says which. */
   const travellers = [];     // {mesh, p0, p1, path} — animated each frame
 
+  /* Every drawn trajectory, keyed by what it belongs to.
+
+     Without this the curve Lines were added anonymously, so a drag
+     could only move the handle mesh and nothing could recompute the
+     curve until the rebuild on release — which is exactly the
+     "lines snap into place instead of following" report. Holding the
+     meshes lets updatePath() rewrite them per pointermove. */
+  const pathEntries = [];
+
+  function findPath(owner, index) {
+    return pathEntries.find((e) => e.kind === owner && e.index === index) || null;
+  }
+
+  /**
+   * Redraw one trajectory from a provisional path, mid-drag.
+   *
+   * Rewrites the EXISTING position buffers rather than rebuilding
+   * geometry: allocating a new buffer per pointermove is how a smooth
+   * drag turns into a stuttering one.
+   */
+  function updatePath(entry, path) {
+    if (!entry) return;
+    const {p0, p1} = entry;
+    entry.path = path;
+
+    const writeCurve = (line, flat) => {
+      if (!line) return;
+      const attr = line.geometry.attributes.position;
+      const n = attr.count;
+      for (let i = 0; i < n; i++) {
+        const t = i / (n - 1);
+        const v = flat ? groundAt(p0, p1, path, t) : pathWorld(p0, p1, path, t);
+        attr.setXYZ(i, v.x, v.y, v.z);
+      }
+      attr.needsUpdate = true;
+      line.geometry.computeBoundingSphere();
+    };
+    writeCurve(entry.curve, false);
+    writeCurve(entry.ground, true);
+    writeCurve(entry.pickLine, false);
+
+    const mid = groundAt(p0, p1, path, 0.5);
+    if (entry.bendMesh) entry.bendMesh.position.copy(mid);
+    if (entry.apexMesh) {
+      const y = Math.max(BS.pathHeight(path, 0.5), 1.5);
+      entry.apexMesh.position.set(mid.x, y, mid.z);
+    }
+    if (entry.hairline) {
+      const a = entry.hairline.geometry.attributes.position;
+      a.setXYZ(0, mid.x, 0.05, mid.z);
+      a.setXYZ(1, mid.x, entry.apexMesh ? entry.apexMesh.position.y : 1.5, mid.z);
+      a.needsUpdate = true;
+    }
+    // The traveller shares the path object, so it follows for free.
+    const tr = travellers.find((x) => x.mesh === entry.traveller);
+    if (tr) tr.path = path;
+
+    if (entry.kind === 'balls') restBallMarker();
+    invalidate();
+  }
+
   function pathWorld(p0, p1, path, t) {
     const pitch = getPitch(), bt = getBoardType();
     const pt = BS.pathPoint(p0, p1, path, t);
@@ -426,17 +530,44 @@ export function createBoard3D(opts) {
     return new THREE.Vector3(w.x, 0.1, w.z);
   }
 
+  /* A flat disc lying face-up.
+
+     These were spheres, which read as balls half-sunk into the turf —
+     confusing next to an actual ball, which is the one round thing on
+     the pitch that IS a sphere. Flat and small: the game ball is 0.45 m
+     across, so a 0.16 m marker cannot be mistaken for one.
+
+     `depthWrite: false` and a few centimetres of lift keep them off
+     the markings texture without z-fighting it. */
+  function flatDot(radius, colour, opacity) {
+    const m = new THREE.Mesh(
+        new THREE.CircleGeometry(radius, 20),
+        new THREE.MeshBasicMaterial({
+          color: colour,
+          transparent: true,
+          opacity: opacity === undefined ? 1 : opacity,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        }));
+    m.rotation.x = -Math.PI / 2;
+    return m;
+  }
+
   function addPath(kind, index, p0, p1, path, colour) {
     const col = new THREE.Color(colour || 0xffffff);
     const isBall = kind === 'balls';
 
     /* The curve. Continuous and hairline-thin: WebGL caps line width
        at 1 px almost everywhere, which is exactly the weight wanted. */
+    const entry = {kind, index, p0, p1, path};
+    pathEntries.push(entry);
+
     const pts = [];
     for (let i = 0; i <= 48; i++) pts.push(pathWorld(p0, p1, path, i / 48));
-    objectRoot.add(new THREE.Line(
+    entry.curve = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.85})));
+        new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.9}));
+    objectRoot.add(entry.curve);
 
     /* A lofted ball also gets its GROUND TRACK, so the plan-view path
        is readable when the arc is high — otherwise a chip looks like
@@ -444,17 +575,17 @@ export function createBoard3D(opts) {
     if (isBall && BS.pathHeight(path, 0.5) > 0.05) {
       const flat = [];
       for (let i = 0; i <= 48; i++) flat.push(groundAt(p0, p1, path, i / 48));
-      objectRoot.add(new THREE.Line(
+      entry.ground = new THREE.Line(
           new THREE.BufferGeometry().setFromPoints(flat),
-          new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.3})));
+          new THREE.LineBasicMaterial({color: col, transparent: true, opacity: 0.35}));
+      objectRoot.add(entry.ground);
     }
 
     /* The travelling dot. Registered rather than animated in place so
        one clock drives every dot on the board — separate phases would
        look like noise instead of like direction. */
-    const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3, 10, 8),
-        new THREE.MeshBasicMaterial({color: col}));
+    const dot = flatDot(0.16, col);
+    entry.traveller = dot;
     objectRoot.add(dot);
     travellers.push({mesh: dot, p0, p1, path});
 
@@ -467,10 +598,8 @@ export function createBoard3D(opts) {
          the diamond owns the height. Two handles, two questions. */
       const active = handleMode(kind, index);   // 'bend' | 'apex'
 
-      const bend = new THREE.Mesh(
-          new THREE.SphereGeometry(0.7, 14, 10),
-          new THREE.MeshBasicMaterial({
-            color: col, transparent: true, opacity: active === 'bend' ? 1 : 0.25}));
+      const bend = flatDot(0.5, col, active === 'bend' ? 1 : 0.25);
+      entry.bendMesh = bend;
       bend.position.copy(mid);
       objectRoot.add(bend);
       // Only the ACTIVE handle is pickable, so a click from directly
@@ -482,15 +611,17 @@ export function createBoard3D(opts) {
           new THREE.OctahedronGeometry(0.7),
           new THREE.MeshBasicMaterial({
             color: 0x66d9ff, transparent: true, opacity: active === 'apex' ? 1 : 0.25}));
+      entry.apexMesh = dia;
       dia.position.set(mid.x, apexY, mid.z);
       objectRoot.add(dia);
       if (active === 'apex') objects.push({mesh: dia, kind: 'pathApex', index, owner: kind});
 
       // A hairline from the turf to the diamond, so the height reads.
-      objectRoot.add(new THREE.Line(
+      entry.hairline = new THREE.Line(
           new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(mid.x, 0.05, mid.z), dia.position.clone()]),
-          new THREE.LineBasicMaterial({color: 0x66d9ff, transparent: true, opacity: 0.4})));
+          new THREE.LineBasicMaterial({color: 0x66d9ff, transparent: true, opacity: 0.5}));
+      objectRoot.add(entry.hairline);
       return;
     }
 
@@ -499,10 +630,8 @@ export function createBoard3D(opts) {
        right-clicking a dot removes it. */
     BS.pointsOf(path).forEach((pt, di) => {
       const w = BG.toWorld(pt[0], pt[1], getPitch(), getBoardType());
-      const h = new THREE.Mesh(
-          new THREE.SphereGeometry(0.6, 14, 10),
-          new THREE.MeshBasicMaterial({color: col}));
-      h.position.set(w.x, 0.1, w.z);
+      const h = flatDot(0.45, col);
+      h.position.set(w.x, 0.12, w.z);
       objectRoot.add(h);
       objects.push({mesh: h, kind: 'pathDot', index, owner: kind, dot: di});
     });
@@ -513,6 +642,7 @@ export function createBoard3D(opts) {
     const pickLine = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
         new THREE.LineBasicMaterial({visible: false}));
+    entry.pickLine = pickLine;
     objectRoot.add(pickLine);
     objects.push({mesh: pickLine, kind: 'pathLine', index, owner: kind, p0, p1});
   }
@@ -557,6 +687,7 @@ export function createBoard3D(opts) {
   function rebuild() {
     objects.length = 0;
     travellers.length = 0;
+    pathEntries.length = 0;
     scene.remove(objectRoot);
     disposeTree(objectRoot);
     objectRoot = new THREE.Group();
@@ -593,6 +724,8 @@ export function createBoard3D(opts) {
     addPathsFor(s, 'positions');
     addPathsFor(s, 'oppPositions');
     addPathsFor(s, 'balls');
+    /* A chip should read while it is being set up, not only on play. */
+    restBallMarker();
   }
 
   function disposeTree(root) {
@@ -609,27 +742,61 @@ export function createBoard3D(opts) {
      created and destroyed per frame — allocating meshes at 60 fps is
      how a smooth board becomes a stuttering one. */
 
-  /** The ball's ground projection: bigger and fainter the higher it is. */
+  /* The ball's ground marker: where the ball is OVER the pitch.
+
+     Not the same thing as its shadow. The light is angled, so the
+     real shadow lands off to one side — that answers "where is the
+     sun". This answers "where is the ball", which is the tactical
+     question, and so it is always straight down.
+
+     A RING, not a filled disc: from overhead a filled dark circle is
+     indistinguishable from the ball itself. The previous version was
+     a 0.45-2 m disc at 6-30% opacity on a 105 m pitch — about 2% of
+     the board's width in dark grey on mid-green, which is why it was
+     invisible in practice. This one is white, holds its opacity, and
+     grows enough to be found. */
   const ballShadow = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 24),
+      new THREE.RingGeometry(0.8, 1, 32),
       new THREE.MeshBasicMaterial({
-        color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false}));
+        color: 0xffffff, transparent: true, opacity: 0.75,
+        depthWrite: false, side: THREE.DoubleSide}));
   ballShadow.rotation.x = -Math.PI / 2;
-  ballShadow.position.y = 0.03;
+  ballShadow.position.y = 0.05;
   ballShadow.visible = false;
   scene.add(ballShadow);
 
   function setBallShadow(x, z, height) {
-    if (!(height > 0.05)) { ballShadow.visible = false; return; }
-    /* Grows with height and fades as it grows, which is what a real
-       shadow does and what makes the height readable from directly
-       above — the one camera angle where the arc itself is invisible. */
-    const r = BALL_R * (1 + height * 0.35);
+    if (!(height > 0.05)) { ballShadow.visible = false; invalidate(); return; }
+    /* Grows with height — the cue that reads from directly overhead,
+       the one angle where the arc itself is edge-on and invisible. */
+    const r = 1.1 + height * 0.22;
     ballShadow.scale.set(r, r, 1);
-    ballShadow.material.opacity = Math.max(0.06, 0.3 - height * 0.012);
-    ballShadow.position.set(x, 0.03, z);
+    ballShadow.material.opacity = Math.max(0.35, 0.8 - height * 0.012);
+    ballShadow.position.set(x, 0.05, z);
     ballShadow.visible = true;
     invalidate();
+  }
+
+  /* Show it for a ball sitting lofted in the CURRENT frame too, not
+     only during playback — a chip should read while it is being set
+     up, which is when the coach is looking hardest at it. */
+  function restBallMarker() {
+    if (playing) return;
+    const s = getState();
+    const prev = s.prev && s.prev.balls;
+    const paths = (s.paths && s.paths.balls) || {};
+    let best = null;
+    (s.balls || []).forEach((b, i) => {
+      if (!b || !prev || !prev[i]) return;
+      const h = BS.pathHeight(paths[i] || null, 0.5);
+      if (h > 0.05 && (!best || h > best.h)) {
+        const mid = BS.pathPoint(prev[i], b, paths[i] || null, 0.5);
+        const w = BG.toWorld(mid[0], mid[1], getPitch(), getBoardType());
+        best = {h, x: w.x, z: w.z};
+      }
+    });
+    if (best) setBallShadow(best.x, best.z, best.h);
+    else { ballShadow.visible = false; }
   }
 
   /* Player trails. A short ribbon of recent positions, fading out
@@ -946,12 +1113,45 @@ export function createBoard3D(opts) {
       const h = renderer.domElement.clientHeight || 1;
       const perPx = (2 * cam.dist * Math.tan((camera.fov * Math.PI / 180) / 2)) / h;
       const next = dragging.mesh.position.y - (ev.clientY - last.y) * perPx;
-      dragging.mesh.position.y = Math.max(0, Math.min(40, next));
+      const y = Math.max(0, Math.min(40, next));
+      dragging.mesh.position.y = y;
       last = {x: ev.clientX, y: ev.clientY};
+      // Redraw the arc as it is lifted, not on release.
+      const e = findPath(dragging.owner, dragging.index);
+      if (e) updatePath(e, Object.assign({}, e.path, {apex: BS.round2(y)}));
       return;
     }
     const g = groundPoint(ev);
     if (!g) return;
+
+    /* Path handles redraw their curve every move. Without this the
+       handle moved on its own and the line only caught up on release,
+       which reads as the curve snapping into place. */
+    if (dragging.kind === 'pathBend' || dragging.kind === 'pathDot') {
+      const e = findPath(dragging.owner, dragging.index);
+      if (!e) return;
+      let pct = BG.toPercent(g.x, g.z, getPitch(), getBoardType());
+      let next;
+      if (dragging.kind === 'pathBend') {
+        /* THE BALL'S HANDLE STAYS AT THE MIDDLE. Constrained here,
+           during the drag, rather than on release — so the dot slides
+           along the bisector under the cursor instead of jumping
+           somewhere else when the button comes up. */
+        pct = BS.constrainBend(e.p0, e.p1, pct);
+        next = Object.assign({}, e.path, {bend: pct});
+      } else {
+        const pts = BS.pointsOf(e.path).slice();
+        pts[dragging.dot] = [BS.round2(pct[0]), BS.round2(pct[1])];
+        next = Object.assign({}, e.path, {pts});
+        delete next.bend;
+      }
+      // Snap the handle to where the constraint actually put it.
+      const w = BG.toWorld(pct[0], pct[1], getPitch(), getBoardType());
+      dragging.mesh.position.set(w.x, dragging.mesh.position.y, w.z);
+      updatePath(e, next);
+      return;
+    }
+
     const y = dragging.mesh.position.y;
     dragging.mesh.position.set(g.x, y, g.z);
   }
@@ -974,7 +1174,13 @@ export function createBoard3D(opts) {
         // Height in metres, straight off the handle.
         if (onPath) onPath(dragging.owner, dragging.index, {apex: Math.round(p.y * 100) / 100});
       } else if (dragging.kind === 'pathBend') {
-        const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
+        /* Constrained again on commit. The move handler already put
+           the handle on the bisector, so this is the same number —
+           but the stored value must not depend on the drag path
+           having gone through that branch. */
+        const e = findPath(dragging.owner, dragging.index);
+        const raw = BG.toPercent(p.x, p.z, getPitch(), getBoardType());
+        const pct = e ? BS.constrainBend(e.p0, e.p1, raw) : raw;
         if (onPath) onPath(dragging.owner, dragging.index, {bend: [pct[0], pct[1]]});
       } else if (dragging.kind === 'pathDot') {
         const pct = BG.toPercent(p.x, p.z, getPitch(), getBoardType());

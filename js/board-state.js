@@ -308,6 +308,35 @@
         u);
   }
 
+  /**
+   * Keep a ball's bend handle at the MIDDLE of its flight.
+   *
+   * Projects the dragged point onto the perpendicular bisector of the
+   * start-end line, so the handle can be pushed sideways but never
+   * slid toward either end. Two consequences, both wanted:
+   *
+   *   - the handle is always equidistant from both ends, so it reads
+   *     as the midpoint from any camera angle;
+   *   - the parabola is symmetric, which is what a struck ball
+   *     actually does. A late-bending ball flight is not a thing.
+   *
+   * Player runs are NOT constrained — a run bends wherever the coach
+   * puts the dot, and can bend late.
+   */
+  function constrainBend(p0, p1, at) {
+    const mx = (p0[0] + p1[0]) / 2;
+    const my = (p0[1] + p1[1]) / 2;
+    let dx = p1[0] - p0[0];
+    let dy = p1[1] - p0[1];
+    const len = Math.hypot(dx, dy);
+    // Start and end on top of each other: no chord, no bisector.
+    if (len < 1e-9) return [round2(at[0]), round2(at[1])];
+    dx /= len; dy /= len;
+    const nx = -dy, ny = dx;                       // the chord's normal
+    const s = (at[0] - mx) * nx + (at[1] - my) * ny;
+    return [round2(mx + nx * s), round2(my + ny * s)];
+  }
+
   /** Where the thing is at time t, in board percentages. */
   function pathPoint(p0, p1, path, t) {
     if (!p0 || !p1) return p1 || p0 || null;
@@ -389,6 +418,7 @@
   return {
     KEYS: K,
     bendToControl: bendToControl,
+    constrainBend: constrainBend,
     pointsOf: pointsOf,
     splinePoint: splinePoint,
     insertPointAt: insertPointAt,

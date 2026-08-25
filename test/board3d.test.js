@@ -431,8 +431,10 @@ describe('trajectories', () => {
        horizon as the pointer approaches eye level. */
     const mv = s3.slice(s3.indexOf('function onPointerMove'), s3.indexOf('function onPointerUp'));
     assert.ok(/pathApex/.test(mv), mv);
-    assert.ok(/mesh\.position\.y = Math\.max\(0, Math\.min\(/.test(mv),
+    assert.ok(/Math\.max\(0, Math\.min\(40,/.test(mv),
         'height must be clamped, not unbounded');
+    // And the arc must redraw as it is lifted, not on release.
+    assert.ok(/updatePath\(e, Object\.assign\(\{\}, e\.path, \{apex/.test(mv), mv);
   });
 
   it('the bend handle is NOT clamped to the pitch', () => {
@@ -645,5 +647,142 @@ describe('camera presets', () => {
     const fn = a.slice(a.indexOf("const cams = document.getElementById('tb-3d-cams')"),
         a.indexOf("const cams = document.getElementById('tb-3d-cams')") + 1100);
     assert.ok(/tb-cam-follow/.test(fn) && /isFollowingBall\(\)/.test(fn), fn);
+  });
+});
+
+describe('real shadows', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('the renderer casts them at all', () => {
+    assert.ok(/shadowMap\.enabled = true/.test(s3));
+    assert.ok(/PCFSoftShadowMap/.test(s3));
+  });
+
+  it('the shadow camera is FITTED to the pitch', () => {
+    /* Its default frustum is a couple of units across, so almost the
+       whole board would fall outside it and receive no shadow. */
+    const fn = s3.slice(s3.indexOf('function fitShadowCamera'), s3.indexOf('/* ── The pitch'));
+    assert.ok(/BG\.extent\(/.test(fn), fn);
+    assert.ok(/updateProjectionMatrix\(\)/.test(fn));
+  });
+
+  it('and refitted when the pitch is rebuilt, because it can be resized', () => {
+    const fn = s3.slice(s3.indexOf('function buildPitch'), s3.indexOf('/* ── Objects'));
+    assert.ok(/fitShadowCamera\(\)/.test(fn), fn);
+    assert.ok(/receiveShadow = true/.test(fn), 'the pitch must receive');
+  });
+
+  it('the light target is in the scene, or the light aims nowhere', () => {
+    assert.ok(/scene\.add\(key\.target\)/.test(s3));
+  });
+
+  it('the solid objects cast', () => {
+    // Players, ball, cones and the goal frames.
+    assert.ok((s3.match(/castShadow = true/g) || []).length >= 4, s3.length);
+  });
+});
+
+describe('flat markers, not half-buried balls', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('only the game ball is still a sphere', () => {
+    /* The dots were spheres, which read as balls sunk into the turf —
+       confusing next to the one round thing that IS a ball. */
+    assert.strictEqual((s3.match(/SphereGeometry/g) || []).length, 1);
+  });
+
+  it('the flat dot helper lies face-up and does not z-fight', () => {
+    const fn = s3.slice(s3.indexOf('function flatDot'), s3.indexOf('function addPath'));
+    assert.ok(/CircleGeometry/.test(fn), fn);
+    assert.ok(/rotation\.x = -Math\.PI \/ 2/.test(fn), 'must lie flat');
+    assert.ok(/depthWrite: false/.test(fn));
+  });
+
+  it('the travelling dot cannot be mistaken for the ball', () => {
+    // BALL_R is 0.45; the marker has to be clearly smaller.
+    const m = /flatDot\(([\d.]+), col\);/.exec(s3);
+    assert.ok(m, 'traveller size not found');
+    assert.ok(parseFloat(m[1]) < 0.25, 'traveller is ' + m[1] + ', too close to a ball');
+  });
+
+  it('the apex diamond stays a diamond', () => {
+    // It means "up"; flattening it would make it another ground dot.
+    assert.ok(/OctahedronGeometry/.test(s3));
+  });
+
+  it('the ball marker is a RING, and holds its opacity', () => {
+    /* A filled dark disc is indistinguishable from the ball from
+       overhead, and the previous one faded to near-invisible. */
+    const fn = s3.slice(s3.indexOf('const ballShadow ='), s3.indexOf('function restBallMarker'));
+    assert.ok(/RingGeometry/.test(fn), fn);
+    assert.ok(/Math\.max\(0\.35,/.test(fn), 'opacity floor must be visible');
+  });
+
+  it('shows for a lofted ball at REST, not only during playback', () => {
+    assert.ok(/function restBallMarker/.test(s3));
+    const rb = s3.slice(s3.indexOf('function rebuild()'), s3.indexOf('function disposeTree'));
+    assert.ok(/restBallMarker\(\)/.test(rb), 'rebuild must place it');
+  });
+});
+
+describe('curves follow the handle live', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('every drawn trajectory is held, not added anonymously', () => {
+    /* The cause of the snapping: the Lines were added with no
+       reference kept, so a drag could only move the handle mesh and
+       nothing could recompute the curve until the release rebuild. */
+    const fn = s3.slice(s3.indexOf('function addPath('), s3.indexOf('function moved('));
+    ['entry.curve', 'entry.traveller', 'entry.pickLine']
+        .forEach((k) => assert.ok(fn.includes(k), 'not registered: ' + k));
+    assert.ok(/pathEntries\.push\(entry\)/.test(fn));
+  });
+
+  it('rewrites the existing buffer instead of rebuilding geometry', () => {
+    // Allocating a buffer per pointermove is how a smooth drag stutters.
+    const fn = s3.slice(s3.indexOf('function updatePath('), s3.indexOf('/** Did this thing moved') + 1);
+    assert.ok(/attr\.setXYZ\(/.test(s3), 'must write into the attribute');
+    assert.ok(/needsUpdate = true/.test(s3));
+  });
+
+  it('all three handle kinds redraw during the move', () => {
+    const mv = s3.slice(s3.indexOf('function onPointerMove'), s3.indexOf('function onPointerUp'));
+    assert.ok(/updatePath\(/.test(mv), 'the move handler must redraw');
+    assert.ok(/pathBend' \|\| dragging\.kind === 'pathDot'/.test(mv), mv.slice(0, 400));
+  });
+
+  it('the registry is cleared on rebuild, or entries accumulate', () => {
+    const rb = s3.slice(s3.indexOf('function rebuild()'), s3.indexOf('function disposeTree'));
+    assert.ok(/pathEntries\.length = 0/.test(rb), rb);
+  });
+});
+
+describe('the ball bend handle is constrained in 3D', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+
+  it('constrains DURING the drag, so the dot tracks the cursor', () => {
+    /* Constraining only on release would let the dot wander off the
+       bisector and then jump when the button comes up. */
+    const mv = s3.slice(s3.indexOf('function onPointerMove'), s3.indexOf('function onPointerUp'));
+    assert.ok(/BS\.constrainBend\(e\.p0, e\.p1, pct\)/.test(mv), mv.slice(0, 600));
+  });
+
+  it('and again on commit, so the stored value never depends on the drag path', () => {
+    const up = s3.slice(s3.indexOf('function onPointerUp'), s3.indexOf('function onWheel'));
+    assert.ok(/BS\.constrainBend\(/.test(up), up);
+  });
+
+  it('player dots are NOT constrained — a run may bend late', () => {
+    const mv = s3.slice(s3.indexOf('function onPointerMove'), s3.indexOf('function onPointerUp'));
+    const dotBranch = mv.slice(mv.indexOf('} else {'), mv.indexOf('// Snap the handle'));
+    assert.ok(!/constrainBend/.test(dotBranch), dotBranch);
   });
 });
