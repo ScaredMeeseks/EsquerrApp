@@ -5636,3 +5636,27 @@ The duplicate-selector guard added in v153 earned itself immediately: it caught 
 the CSS says they should. That distinction is the whole lesson of this entry.
 
 Unit 1707 → **1708**. Version triple → v154. **Still nothing deployed.**
+
+### 2026-08-26 — A clipped cross, a stranded tooltip, and closing on hover-out (v155)
+
+**The delete cross was cut in half by the axis.** It is absolutely positioned 6px past its tile's right
+edge, and the frames strip clips horizontally so a long animation cannot scroll sideways — so anything
+overhanging has to fit inside the axis width or it is simply cut. A 38px tile in a 44px axis left 3px of
+room for a 6px overhang. The axis is 52px now, and a test derives the requirement rather than pinning
+the number: it reads the overhang from `.tb-frame-del`, the tile width and the axis, and asserts the
+clearance covers it.
+
+**The tooltip is a body-level singleton, and `mouseleave` cannot fire on an element that no longer
+exists.** Clicking 2D/3D re-renders the page out from under the cursor, so "Canvia de pissarra…" was
+orphaned visible over the 3D board. Two fixes, because they cover different moments: the binder clears
+any stale tooltip *before* rebinding — and every render runs the binder, so that one line covers every
+path that can strand one, including ones added later — and a click on any tooltipped control closes its
+own, which handles the gap before the render lands.
+
+**The menu closes on hover-out, after a grace period.** The panels are DOM children of their entry, so
+hovering one never counts as leaving however far outside it sits. What does count is the 6px gap between
+the rail and a panel, where the pointer is over the canvas for a frame or two — closing on that would
+flicker the menu shut as the coach reached for it. 260ms, cancelled on re-entry, and cleared when the
+menu is torn down or it fires into a dead one.
+
+Unit 1708 → **1711**. Version triple → v155. **Still nothing deployed.**

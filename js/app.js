@@ -1575,7 +1575,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 154;
+  const APP_VERSION = 155;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6986,7 +6986,25 @@
     const isOpen = () => menu.classList.contains('tb-m-open');
 
     btn.addEventListener('click', (e) => { e.stopPropagation(); setOpen(!isOpen()); });
-    if (canHover) btn.addEventListener('pointerenter', () => setOpen(true));
+
+    /* Opening and closing by hover, with a grace period.
+       The panels are DOM children of their entry, so hovering one
+       never counts as leaving the menu however far outside it sits.
+       What DOES leave is the 6px gap between the rail and a panel —
+       the pointer is over the canvas there for a frame or two — and
+       closing on that would make the menu flicker shut as you reach
+       for it. A short delay, cancelled on re-entry, is the whole
+       mechanism. */
+    let leaveTimer = null;
+    const cancelLeave = () => { clearTimeout(leaveTimer); leaveTimer = null; };
+    if (canHover) {
+      btn.addEventListener('pointerenter', () => { cancelLeave(); setOpen(true); });
+      menu.addEventListener('pointerenter', cancelLeave);
+      menu.addEventListener('pointerleave', () => {
+        cancelLeave();
+        leaveTimer = setTimeout(() => setOpen(false), 260);
+      });
+    }
 
     rail.querySelectorAll('.tb-m-entry').forEach((entry) => {
       const open = () => {
@@ -7032,6 +7050,7 @@
     if (wrap) {
       const obs = new MutationObserver(() => {
         if (!document.body.contains(menu)) {
+          clearTimeout(leaveTimer);   // or it fires into a dead menu
           document.removeEventListener('pointerdown', away);
           document.removeEventListener('keydown', esc);
           obs.disconnect();
@@ -13820,6 +13839,11 @@
         tooltipEl.className = 'roster-tooltip';
         document.body.appendChild(tooltipEl);
       }
+      /* Clear anything left over from the render BEFORE this one.
+         Every re-render runs this function, so one line here covers
+         every path that can strand a tooltip — the view toggle, the
+         theme buttons, the orientation button and any added later. */
+      tooltipEl.classList.remove('visible');
       document.querySelectorAll('.tb-controls [data-tooltip]').forEach(el => {
         el.addEventListener('mouseenter', () => {
           tooltipEl.textContent = el.getAttribute('data-tooltip');
@@ -13832,6 +13856,13 @@
           tooltipEl.style.top = r.top - tooltipEl.offsetHeight - 10 + 'px';
         });
         el.addEventListener('mouseleave', () => {
+          tooltipEl.classList.remove('visible');
+        });
+        /* And on click, because several of these re-render the page:
+           the element goes away mid-hover and mouseleave never comes.
+           Hiding here closes it before the render, rather than leaving
+           it up until the next one. */
+        el.addEventListener('click', () => {
           tooltipEl.classList.remove('visible');
         });
       });

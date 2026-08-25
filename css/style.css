@@ -4920,7 +4920,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ── The camera menu, top right ────────────────────────────────── */
-.tb-3d-wrap { --tb-axis:44px; }
+/* Wide enough for a 38px control PLUS the 6px the frame delete
+   cross hangs past its tile — the strip clips horizontally, so
+   anything that overhangs has to fit inside this width or it is cut
+   in half. */
+.tb-3d-wrap { --tb-axis:52px; }
 .tb-cams {
   position:absolute; top:.75rem; right:.75rem; z-index:6;
   width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;

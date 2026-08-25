@@ -474,3 +474,60 @@ describe('the rail sits on the axis, and the CSS says each thing once', () => {
         'these selectors are written twice: ' + [...new Set(dup)].join(', '));
   });
 });
+
+describe('three small faults from the first pass', () => {
+  const rule = (sel) => {
+    const i = css.indexOf(sel + ' {');
+    assert.ok(i !== -1, sel + ' not found');
+    return css.slice(i, css.indexOf('}', i));
+  };
+  const init = fn('tbMenuInit(hooks)');
+
+  it('the axis is wide enough for what hangs off a tile', () => {
+    /* The delete cross is absolutely positioned 6px past the tile's
+       right edge, and the strip clips horizontally so a long
+       animation cannot scroll sideways — so anything that overhangs
+       must fit inside the axis or it is cut in half. It was: a 38px
+       tile in a 44px axis left 3px for a 6px overhang. */
+    const axis = parseInt(/--tb-axis:(\d+)px/.exec(css)[1], 10);
+    const tile = parseInt(/width:(\d+)px/.exec(rule('.tb-rail .tb-frame-thumb'))[1], 10);
+    const del = rule('.tb-frame-del');
+    const over = Math.abs(parseInt(/right:(-?\d+)px/.exec(del)[1], 10));
+    assert.ok((axis - tile) / 2 >= over,
+        'a tile overhangs by ' + over + 'px and has ' + ((axis - tile) / 2) +
+        'px of room; the cross is clipped');
+    assert.ok(/overflow-x:hidden/.test(rule('.tb-rail .tb-frames-strip')),
+        'the strip clips horizontally, which is why the room is needed');
+  });
+
+  it('a tooltip cannot outlive the element that opened it', () => {
+    /* #roster-tooltip is a body-level singleton. Its mouseleave never
+       fires when a click re-renders the page out from under the
+       cursor — the element is gone — so the label hung over the 3D
+       board. Cleared on every bind, which every render runs, and on
+       click, which is what triggers those renders. */
+    const tt = bare.slice(bare.indexOf('function bindToolbarTooltips()'),
+        bare.indexOf('const saveBtn'));
+    assert.ok(tt.length > 100, 'the tooltip binder was not found');
+    const firstHide = tt.indexOf("tooltipEl.classList.remove('visible')");
+    assert.ok(firstHide !== -1 && firstHide < tt.indexOf('.forEach'),
+        'a stale tooltip must be cleared BEFORE rebinding, or it survives the render');
+    assert.ok(/addEventListener\('click', \(\) => \{[\s\S]{0,80}remove\('visible'\)/.test(tt),
+        'and clicking a control that re-renders must close its own tooltip');
+  });
+
+  it('hovering away closes the menu, but not instantly', () => {
+    /* The panels are DOM children of their entry, so hovering one
+       never counts as leaving. The 6px gap between rail and panel
+       does, though, and closing on that would flicker the menu shut
+       as the coach reaches for it. */
+    assert.ok(/menu\.addEventListener\('pointerleave'/.test(init),
+        'leaving the menu must close it');
+    assert.ok(/setTimeout\(\(\) => setOpen\(false\), \d+\)/.test(init),
+        'after a grace period, not at once');
+    assert.ok(/menu\.addEventListener\('pointerenter', cancelLeave\)/.test(init),
+        'and coming back must cancel it');
+    assert.ok(/clearTimeout\(leaveTimer\)/.test(init.slice(init.indexOf('MutationObserver'))),
+        'the timer must be cleared on teardown, or it fires into a dead menu');
+  });
+});
