@@ -1575,7 +1575,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 150;
+  const APP_VERSION = 151;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -13541,24 +13541,9 @@
          3D and because the controls it adopts are bound by the code
          above — adopting them AFTER that is what keeps every
          existing handler working. */
-      /* FRAME 1 ALWAYS EXISTS in 3D.
-         The rail is a permanent fixture at middle right, and an empty
-         one is a column of nothing beside a board that plainly has
-         players on it. A board with no frames is seeded from what is
-         already drawn.
-
-         Stated plainly because it is a state write on a view change:
-         this creates a frame the coach did not ask for. A single
-         frame is exactly the board itself, so nothing is invented —
-         but it does mean entering 3D marks the board as edited. */
-      if (!frames.length) {
-        frames = [captureFrameState()];
-        activeFrameIdx = 0;
-        saveFrames();
-      }
-      renderFrameStrip();
-
-      tbMenuInit({onFormation: applyFormation});
+      /* The menu is built at the END of bindTactics, not here — see
+         the note beside the call. It needs `frames`, which is not
+         declared until much further down. */
 
       /* Delete what is selected in the 3D view.
 
@@ -14878,6 +14863,38 @@
 
     // Init
     renderFrameStrip();
+
+    /* ── The 3D menu, built LAST ────────────────────────────────
+       It used to be built up in the 3D mount block, next to the code
+       it belongs with. That threw: `frames` is declared with `let`
+       hundreds of lines below, so touching it from up there is a
+       TEMPORAL DEAD ZONE — `ReferenceError: Cannot access 'frames'
+       before initialization`. The throw aborted the rest of the
+       block, so the menu was never wired and nothing was adopted:
+       the hamburger did nothing, the board name stayed above the
+       window and the frames stayed under it. The camera menu kept
+       working only because it is wired earlier.
+
+       Third variant of the same trap in this feature — after `is3d`
+       reaching across functions and `tbDrawSurface` reaching for BS.
+       Built here, where everything it touches already exists. */
+    if (tbIs3D()) {
+      /* FRAME 1 ALWAYS EXISTS in 3D. The rail is a permanent fixture
+         at middle right, and an empty one is a column of nothing
+         beside a board that plainly has players on it.
+
+         Stated plainly because it is a state write on a view change:
+         this creates a frame the coach did not ask for. A single
+         frame is exactly the board itself, so nothing is invented —
+         but it does mean entering 3D marks the board as edited. */
+      if (!frames.length) {
+        frames = [captureFrameState()];
+        activeFrameIdx = 0;
+        saveFrames();
+        renderFrameStrip();
+      }
+      tbMenuInit({onFormation: applyFormation});
+    }
     // Compute polygon arrowheads after layout is ready
     requestAnimationFrame(() => refreshArrowheads(arrowsSvg));
     // Update arrowheads on resize

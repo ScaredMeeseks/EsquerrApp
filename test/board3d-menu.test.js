@@ -289,3 +289,52 @@ describe('the camera menu and the frames rail', () => {
     assert.ok(/activeFrameIdx = 0;/.test(bare), 'and select it');
   });
 });
+
+/* ── Nothing touches a `let` before it is declared ────────────────
+ *
+ * The menu shipped dead: built up in the 3D mount block, it reached
+ * for `frames`, which is declared with `let` hundreds of lines below.
+ * That is a temporal dead zone — `ReferenceError: Cannot access
+ * 'frames' before initialization` — and the throw aborted the rest of
+ * the block, so nothing was adopted and the hamburger was never
+ * wired. The camera menu kept working only because it is wired
+ * earlier in the same function.
+ *
+ * The whole suite passed. Every assertion about the menu was about
+ * source text, and the text was right — it just ran too early. That
+ * is the THIRD variant of the same trap here, after `is3d` reaching
+ * across functions and `tbDrawSurface` reaching for BS.
+ *
+ * Ordering is one thing source CAN settle honestly, so these do.
+ */
+describe('the menu is built after what it reaches for', () => {
+  const at = (needle) => {
+    const i = bare.indexOf(needle);
+    assert.ok(i !== -1, 'not found: ' + needle);
+    return i;
+  };
+
+  it('runs after every let it touches is initialised', () => {
+    const call = at('tbMenuInit({onFormation');
+    [['let frames =', 'frames'],
+     ['let activeFrameIdx', 'activeFrameIdx']].forEach(([decl, name]) => {
+      assert.ok(at(decl) < call,
+          'tbMenuInit runs before `' + name + '` exists — a temporal dead zone, ' +
+          'and the throw takes the whole block with it');
+    });
+  });
+
+  it('so does the frame-1 seed, which reads frames directly', () => {
+    assert.ok(at('let frames =') < at('if (!frames.length) {'),
+        'the seed must come after the declaration');
+  });
+
+  it('and it is gated on the 3D view, not on the mount block', () => {
+    /* Moving it out of the mount block means it no longer inherits
+       that block's `if (3D)`, so it has to carry its own. */
+    const i = at('tbMenuInit({onFormation');
+    const before = bare.slice(Math.max(0, i - 700), i);
+    assert.ok(/if \(tbIs3D\(\)\) \{/.test(before),
+        'the menu must only be built in 3D');
+  });
+});

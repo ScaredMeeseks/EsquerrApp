@@ -5529,3 +5529,31 @@ and class referenced actually exists, that controls are moved rather than duplic
 resolves in three languages, and that document listeners come off again.
 
 Unit 1663 → **1694**. Version triple → v150. **Still nothing deployed.**
+
+### 2026-08-26 — The menu shipped dead: a temporal dead zone (v151)
+
+v150's menu never ran. It was built inside the 3D mount block, next to the code it belongs with, and
+reached for `frames` — declared with `let` some seven hundred lines further down. That is a **temporal
+dead zone**: `ReferenceError: Cannot access 'frames' before initialization`, thrown before anything was
+adopted. The throw aborted the rest of the block, so `tbMenuInit` never ran at all — the hamburger did
+nothing, the board name stayed above the window and the frames stayed under it. The camera menu kept
+working only because it is wired earlier in the same function.
+
+Built at the end of `bindTactics` now, where everything it touches already exists, and carrying its own
+`if (tbIs3D())` since it no longer inherits the mount block's.
+
+**This is the third variant of the same trap in this feature**, and the pattern is worth naming:
+- v138 — `tbSetDrawMode` read `is3d`, a const belonging to a *different function*;
+- v144 — `tbDrawSurface` reached for `BS`, caught only because that one is executed in a test;
+- v150 — the menu read `frames` *before its declaration in the same function*.
+
+All three are "the identifier is spelled correctly and does not resolve **here**", and all three shipped
+past a green suite because every assertion about them was about source text. The text was right each
+time.
+
+Ordering is one thing source can settle honestly, so it now does: three tests assert that `tbMenuInit`
+and the frame-1 seed both appear **after** `let frames` and `let activeFrameIdx`, and that the menu
+carries its own 3D gate. Both mutations — moving the call above the declaration, and moving the seed —
+fail them.
+
+Unit 1694 → **1697**. Version triple → v151. **Still nothing deployed.**
