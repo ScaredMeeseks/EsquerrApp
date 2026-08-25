@@ -4457,3 +4457,34 @@ that produced v88 and v91 when playback was written twice. Per-object `setPositi
 rebuild, because rebuilding at 60 fps would regenerate every mesh and texture each frame.
 
 Unit 1343 → **1352**.
+
+#### Two regressions from wiring the 3D view live (v136)
+
+Both from the same root: the 3D view had become a **second writer** of the scratch state.
+
+**A 3D drag snapped back.** `onMove` wrote the scratch key directly, then `autoSaveFrame()` ran
+`captureFrameState()`, which begins with `saveState()` — and `saveState` reads the **2D DOM**. The
+hidden 2D board still held the pre-drag position, so it overwrote the 3D write. (Only visible on a
+board WITH frames; without them `autoSaveFrame` short-circuits and the drag stuck, which is why it
+looked intermittent.)
+
+Fixed by inverting the relationship: `applyMove` moves the 2D **element** — `toDisplay(pct)` into
+`style.left/top` — and then runs the editor's own save path. One source of truth, and undo, frames,
+the number inputs and saving all keep working because nothing is bypassed. **The 3D view is an
+input device for the 2D board, not a second writer.** Cones are addressed positionally: `spawnCone`
+sets no `data-idx` and `saveCones` reads DOM order, so an index lookup finds nothing.
+
+**Playback froze on the last frame in 3D.** `applyFrameState` writes the scratch keys directly
+rather than through `saveState`, so it missed the `tb3dTouch()` every other mutation gets — and the
+play loop ends by calling it to return to frame 0. The 2D board reset; the 3D scene sat on the last
+tweened positions. Stepping between frame thumbnails had the identical gap.
+
+A test asserting the OLD architecture (`BS.setPoints` from the mount) had to be inverted — it was
+pinning the design that caused the bug. Worth noting as a caution: a test written alongside a
+design defends that design, correct or not.
+
+Also caught: a test anchored on `function playNext()` sliced the READ-ONLY renderer's loop, which
+appears first in the file, and proved nothing about the editor. Anchored on the editor's play button
+now.
+
+Unit 1352 → **1356**.

@@ -6527,17 +6527,20 @@
            world as well would just mean two controls fighting. */
         getBoardType: () => localStorage.getItem('fa_tactic_board_type') || 'full',
         getState: tb3dState,
+        /* A 3D drag moves the 2D ELEMENT and then runs the editor's own
+           save path. It used to write the scratch key directly, which
+           looked right and lost the drag: autoSaveFrame() calls
+           captureFrameState(), which begins with saveState() — and
+           saveState reads the 2D DOM. The hidden 2D board still held
+           the pre-drag position, so it overwrote the 3D write and the
+           player snapped back.
+
+           Moving the element instead keeps ONE source of truth. Undo,
+           frames, the number inputs and the save path all keep working
+           because nothing has been bypassed: the 3D view is an input
+           device for the 2D board, not a second writer. */
         onMove: (kind, index, pct) => {
-          /* Write through the SAME setters the 2D editor uses, so the
-             saved payload is byte-identical whichever view drew it. */
-          const key = BS.KEYS[kind];
-          if (!key) return;
-          if (hooks.beforeEdit) hooks.beforeEdit();   // undo, before the write
-          const arr = BS.readJson(localStorage, key, []) || [];
-          while (arr.length <= index) arr.push(null);
-          arr[index] = pct;
-          BS.setPoints(localStorage, key, arr);
-          if (hooks.afterEdit) hooks.afterEdit();     // frame autosave
+          if (hooks.applyMove) hooks.applyMove(kind, index, pct);
         },
         onSelect: () => {}
       });
@@ -12432,8 +12435,38 @@
          than teaching board3d about formations. */
       saveState();
       tbMount3D({
-        beforeEdit: () => pushUndo(),
-        afterEdit: () => autoSaveFrame()
+        /**
+         * Land a 3D drag on the 2D board.
+         *
+         * `pct` arrives in HORIZONTAL storage space (board3d only ever
+         * knows that space); the element's style is in DISPLAY space,
+         * so it goes through toDisplay like every other writer here.
+         *
+         * Cones carry no data-idx — spawnCone does not set one and
+         * saveCones reads them in DOM order — so they are addressed
+         * positionally. Everything else has a stable index.
+         */
+        applyMove: (kind, index, pct) => {
+          const sel = {
+            positions: '.tb-circle:not(.tb-circle-opp)',
+            oppPositions: '.tb-circle-opp',
+            balls: '.tb-ball',
+            cones: '.tb-cone'
+          }[kind];
+          if (!sel) return;
+          let el;
+          if (kind === 'cones') el = inner.querySelectorAll(sel)[index];
+          else el = inner.querySelector(sel + '[data-idx="' + index + '"]');
+          if (!el) return;
+
+          pushUndo();
+          const d = toDisplay(pct[0], pct[1]);
+          el.style.left = d[0] + '%';
+          el.style.top = d[1] + '%';
+          // saveState covers players and balls; cones have their own.
+          if (kind === 'cones') saveCones(); else saveState();
+          autoSaveFrame();
+        }
       });
     }
 
@@ -13321,6 +13354,16 @@
          the style attribute wants. Balls had the conversion, cones did not. */
       (f.cones || []).forEach(c => { const d = toDisplay(c[0], c[1]); spawnCone(d[0], d[1]); });
       clearSelection();
+      /* The 3D view has to hear about this too.
+
+         applyFrameState writes the scratch keys DIRECTLY rather than
+         going through saveState, so it misses the tb3dTouch that every
+         other mutation gets. The play loop ends by calling it to return
+         to frame 0 — so without this the 3D scene sat on the last
+         tweened positions and looked frozen on the final frame while
+         the 2D board had already reset. Stepping between frame
+         thumbnails had the same gap. */
+      tb3dTouch();
     }
 
     function saveFrames() {

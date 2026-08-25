@@ -49,14 +49,48 @@ describe('the seam with the rest of the app', () => {
         'board3d must not hardcode regulation distances');
   });
 
-  it('writes through the shared setters', () => {
-    /* The whole premise: a board edited in 3D must serialise
-       identically to one edited in 2D. */
-    const mount = appSrc.slice(appSrc.indexOf('async function tbMount3D'));
-    assert.ok(/BS\.setPoints\(localStorage, key/.test(mount),
-        '3D drags must go through BS.setPoints');
-    assert.ok(/BS\.KEYS\[kind\]/.test(mount),
-        'the kind must map to a real scratch key');
+  it('a 3D drag moves the 2D ELEMENT, it does not write state directly', () => {
+    /* This was the other way round and it lost every drag.
+       onMove wrote the scratch key, then autoSaveFrame() ran
+       captureFrameState(), which begins with saveState() — and
+       saveState reads the 2D DOM. The hidden 2D board still held the
+       pre-drag position, so it overwrote the 3D write and the player
+       snapped back.
+
+       One source of truth: the 3D view is an input device for the 2D
+       board, not a second writer. Undo, frames, the number inputs and
+       the save path then keep working because nothing is bypassed. */
+    const i = appSrc.indexOf('applyMove: (kind, index, pct)');
+    assert.ok(i !== -1, 'expected an applyMove hook');
+    const fn = appSrc.slice(i, i + 1200);
+    assert.ok(/el\.style\.left/.test(fn) && /el\.style\.top/.test(fn),
+        'applyMove must position the 2D element');
+    assert.ok(/toDisplay\(pct\[0\], pct\[1\]\)/.test(fn),
+        'storage space -> display space, like every other writer');
+    assert.ok(/saveState\(\)/.test(fn) && /autoSaveFrame\(\)/.test(fn),
+        'and then run the editor\'s own save path');
+
+    const mount = appSrc.slice(appSrc.indexOf('async function tbMount3D'),
+        appSrc.indexOf('/** The field box\'s own aspect'));
+    assert.ok(!/BS\.setPoints/.test(mount),
+        'the 3D mount must not write scratch keys behind the 2D board');
+  });
+
+  it('takes an undo snapshot before moving anything', () => {
+    const i = appSrc.indexOf('applyMove: (kind, index, pct)');
+    const fn = appSrc.slice(i, i + 1200);
+    assert.ok(fn.indexOf('pushUndo()') < fn.indexOf('el.style.left'),
+        'pushUndo must come before the move');
+  });
+
+  it('addresses cones positionally, because they carry no index', () => {
+    /* spawnCone sets no data-idx and saveCones reads them in DOM
+       order, so a [data-idx] lookup finds nothing and the cone
+       silently refuses to move. */
+    const i = appSrc.indexOf('applyMove: (kind, index, pct)');
+    const fn = appSrc.slice(i, i + 1200);
+    assert.ok(/querySelectorAll\(sel\)\[index\]/.test(fn), fn);
+    assert.ok(/saveCones\(\)/.test(fn), 'cones save through their own writer');
   });
 
   it('clamps a drag to the pitch', () => {
@@ -330,5 +364,37 @@ describe('the camera can be moved and recovered', () => {
     assert.ok(/resetCamera\(\) \{ camTouched = false; frameBoard\(\)/.test(s3));
     const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
     assert.ok(/tb-3d-reset/.test(a) && /resetCamera\(\)/.test(a));
+  });
+});
+
+describe('playback returns the 3D scene to the start', () => {
+  const fs2 = require('fs');
+  const p2 = require('path');
+  const a = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+  it('applyFrameState pokes the 3D view', () => {
+    /* It writes the scratch keys DIRECTLY rather than through
+       saveState, so it misses the tb3dTouch every other mutation
+       gets. The play loop ends by calling it to return to frame 0 —
+       without this the 3D scene sat on the last tweened positions and
+       looked frozen on the final frame while the 2D board had already
+       reset. Stepping between frame thumbnails had the same gap. */
+    const fn = a.slice(a.indexOf('function applyFrameState'),
+        a.indexOf('function saveFrames'));
+    assert.ok(/tb3dTouch\(\)/.test(fn),
+        'applyFrameState must notify the 3D view');
+  });
+
+  it('the play loop ends by applying frame 0', () => {
+    /* Which is what makes the poke above sufficient.
+
+       Anchored on the EDITOR's play button, not on `function
+       playNext()` — there are two of those, and the read-only
+       renderer's comes first in the file. Slicing from the wrong one
+       finds applyRoFrame and proves nothing about the editor. */
+    const start = a.indexOf("const playBtn = document.getElementById('tb-frame-play')");
+    assert.ok(start !== -1, 'editor play button not found');
+    const loop = a.slice(start, start + 2600);
+    assert.ok(/applyFrameState\(frames\[0\]\)/.test(loop), loop.slice(0, 300));
   });
 });
