@@ -29,12 +29,12 @@
    ========================================================= */
 import * as THREE from '../vendor/three.module.min.js';
 
-/* Colours picked to match the 2D board rather than to look good in
-   isolation: a coach switching views should recognise the same pitch.
-   #2e7d32 is .tb-field's background. */
-const TURF = 0x2e7d32;
-const TURF_DARK = 0x27682b;      // the mown stripe
-const LINE = 0xffffff;
+/* The field palettes are INJECTED, not defined here.
+
+   They skin the 2D board as well, and a coach switching views has to
+   see the same pitch — so two tables, one per view, would be two
+   tables that drift. app.js owns the single one and passes it in,
+   the same way BG, BS and the fill helpers arrive. */
 const GK_COLOR = '#f5c842';      // same gold the 2D board uses
 
 /* One metre of pitch is one unit of world. Nothing rescales this, so
@@ -55,6 +55,8 @@ export function createBoard3D(opts) {
     getPitch,           // () => [L, W] or null
     getBoardType,       // () => 'full' | 'half' | 'area'
     getState,           // () => the current scratch state, plain data
+    getTheme,           // () => 'green' | 'dark' | 'light'
+    themes,             // the palette table, owned by app.js
     onMove,             // (kind, index, [leftPct, topPct]) => void
     onSelect,           // (kind, index) => void  (null when deselecting)
     onPath,             // (kind, index, {bend}|{apex}) => void
@@ -65,8 +67,15 @@ export function createBoard3D(opts) {
     readOnly            // true for playback-only surfaces
   } = opts;
 
+  /* The active palette, read fresh each time rather than cached: the
+     toggle changes it between renders and every consumer must agree. */
+  function theme() {
+    const t = themes || {};
+    return t[(getTheme && getTheme()) || 'green'] || t.green;
+  }
+
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a2410);
+  scene.background = new THREE.Color(theme().sky);
 
   const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 1000);
   const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
@@ -93,7 +102,11 @@ export function createBoard3D(opts) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x2a3a1a, 1.2));
+  /* Ground bounce takes the turf colour: a light pitch lit by a dark
+     green bounce looks muddy, and a dark one lit by a bright bounce
+     never gets dark. Rebuilt with the pitch. */
+  const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x2a3a1a, 1.2);
+  scene.add(hemi);
   /* The sun's DIRECTION is fixed; its distance is set from the pitch
      size in fitShadowCamera(), so a big pitch does not push its own
      corners behind the light. */
@@ -169,28 +182,42 @@ export function createBoard3D(opts) {
 
   function markingsTexture(pitch, boardType) {
     const e = BG.extent(pitch, boardType, false);
-    /* ~10 px per metre, capped: a 130 m pitch would otherwise ask for
-       a 1300 px texture on an axis nobody is looking at closely. */
-    const PPM = 10;
-    const cw = Math.min(2048, Math.round(e.ax * PPM));
-    const ch = Math.min(2048, Math.round(e.ay * PPM));
+    const th = theme();
+
+    /* SPEND THE WHOLE TEXTURE BUDGET on the long axis.
+
+       This was a flat 10 px per metre, which on a 105 m pitch is a
+       1050 px texture stretched across a board rendered up to 1400 px
+       wide — under one texel per screen pixel, which is exactly why
+       the lines looked soft. Scaling to fill 2048 on the longer side
+       roughly doubles the density and costs one more canvas draw on a
+       pitch change, which is not per frame. */
+    const MAX = 2048;
+    const ppm = Math.min(MAX / Math.max(e.ax, e.ay), 40);
+    const cw = Math.round(e.ax * ppm);
+    const ch = Math.round(e.ay * ppm);
     const cv = document.createElement('canvas');
     cv.width = cw; cv.height = ch;
     const g = cv.getContext('2d');
     const sx = cw / e.ax, sy = ch / e.ay;
 
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+
     // Turf, with mown stripes running along the pitch's length.
-    g.fillStyle = '#' + TURF.toString(16).padStart(6, '0');
+    g.fillStyle = hex(th.turf);
     g.fillRect(0, 0, cw, ch);
-    g.fillStyle = '#' + TURF_DARK.toString(16).padStart(6, '0');
+    g.fillStyle = hex(th.stripe);
     const stripes = 10;
     for (let i = 0; i < stripes; i += 2) {
       g.fillRect((i / stripes) * cw, 0, cw / stripes, ch);
     }
 
-    g.strokeStyle = '#ffffff';
+    g.strokeStyle = hex(th.line);
+    /* A real pitch line is 12 cm. At the old density that rounded to
+       a 1.5 px floor — now it is the real width, about 2.3 px, and
+       actually resolves. */
     g.lineWidth = Math.max(1.5, 0.12 * Math.min(sx, sy));
-    g.globalAlpha = 0.85;
+    g.globalAlpha = th.lineAlpha;
 
     const m = BG.markings(pitch, boardType, false);
     const rect = (r) => { if (r) g.strokeRect(r.x * sx, r.y * sy, r.w * sx, r.h * sy); };
@@ -264,6 +291,8 @@ export function createBoard3D(opts) {
         new THREE.MeshLambertMaterial({map: markingsTexture(pitch, bt)}));
     pitchMesh.rotation.x = -Math.PI / 2;   // lie flat, Y-up
     pitchMesh.receiveShadow = true;
+    scene.background = new THREE.Color(theme().sky);
+    hemi.groundColor = new THREE.Color(theme().turf);
     scene.add(pitchMesh);
     fitShadowCamera();   // the pitch can be resized under it
 

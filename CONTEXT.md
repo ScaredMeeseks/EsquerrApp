@@ -4823,3 +4823,42 @@ The test gap is the point: every camera test named a preset, and the initial vie
 like the rest — **confirmed to fail against the old default** before being accepted.
 
 Unit 1479 → **1480**.
+
+### 2026-08-25 — v136: sharper markings, and three field looks
+
+**Definition.** The marking texture was a flat 10 px per metre — a **1050×680** canvas stretched
+across a board rendered up to 1400 px wide, i.e. under one texel per screen pixel, which is exactly
+why the lines looked soft. It now spends the whole 2048 budget on the long axis: **2048×1326**,
+19.5 px/m, and the line width is the real **12 cm** rather than bottoming out on a 1.5 px floor.
+Line alpha 0.85 → 0.92-0.95 per palette. Costs one extra canvas draw when the pitch changes, which
+is not per frame.
+
+**Three field looks — green, dark, light — across BOTH views.** A coach switching views has to see
+the same pitch, so there is exactly **one palette table** (`TB_THEMES` in app.js) and the 3D board
+takes it by injection, the way it already takes BG, BS and the fill helpers. Two tables would be two
+tables that drift.
+
+Reaching every layer took three mechanisms, because the markings are drawn three different ways:
+
+- **inline colours** (boxes, circles, arcs) — read from the palette in `tbMarkingsHtml`;
+- **CSS-styled marks** (halfway line, spots, turf, the board's own border) — themed through
+  `--tb-turf` and `--tb-line-rgb` custom properties set on the field element, with green fallbacks
+  so a board rendered before they land still looks right. `--tb-line-rgb` is a bare triple so the
+  stylesheet keeps choosing its own alpha per marking;
+- **the 3D scene** — turf, stripe, line and `sky`, plus the hemisphere light's ground colour, which
+  takes the turf: a light pitch lit by a dark green bounce looks muddy.
+
+The toggle is three swatches rather than three words — the choice is entirely visual, and a swatch
+needs no translation. Preference is per-device (`fa_tactic_theme`), never part of a board.
+
+Test notes, all mine: the markings harness had to slice from the **palette** rather than from
+`tbMarkingsHtml`, since the colours now come from it — 17 tests failed at once on that. One new
+assertion was simply **wrong**: it demanded no `rgba(255,255,255)` in the output, but green's line
+colour *is* white, so it failed on correct code; it now renders through the light palette and checks
+the result is dark. And a heredoc ate `\s` in a built regex for the third time this session — that
+test now reads the real `TB_THEMES` object instead of pattern-matching the source.
+
+`make-pitch-preview.js` takes a theme argument, so all three looks can be eyeballed:
+`node test/make-pitch-preview.js dark`.
+
+Unit 1480 → **1493**.

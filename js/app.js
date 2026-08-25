@@ -652,6 +652,10 @@
     'tactics.pitch_reset':   { ca:'Torna a la mida reglamentària', es:'Volver al tamaño reglamentario', en:'Back to the regulation size' },
     'tactics.pitch_drag':    { ca:'Arrossega per canviar la mida del camp', es:'Arrastra para cambiar el tamaño del campo', en:'Drag to resize the pitch' },
     'tactics.view_hint':     { ca:'Canvia entre pissarra 2D i 3D', es:'Cambia entre pizarra 2D y 3D', en:'Switch between the 2D and 3D board' },
+    'tactics.theme_hint':    { ca:'Aspecte del camp', es:'Aspecto del campo', en:'Field look' },
+    'tactics.theme_green':   { ca:'Gespa', es:'Césped', en:'Grass' },
+    'tactics.theme_dark':    { ca:'Fosc', es:'Oscuro', en:'Dark' },
+    'tactics.theme_light':   { ca:'Clar', es:'Claro', en:'Light' },
     'tactics.loading_3d':    { ca:'Carregant la pissarra 3D…', es:'Cargando la pizarra 3D…', en:'Loading the 3D board…' },
     'tactics.cam_broadcast': { ca:'Realització', es:'Realización', en:'Broadcast' },
     'tactics.cam_top':       { ca:'Zenital', es:'Cenital', en:'Top' },
@@ -6296,6 +6300,59 @@
   // ---- Read-only board helper (shared by match-detail & convocatòria) ----
   let _roBoardIdx = 0;
   /* ═══════════════════════════════════════════════════════════
+     Field palettes — the ONE table, used by both views.
+
+     The 3D board takes this by injection rather than keeping its own
+     copy: a coach switching views has to see the same pitch, and two
+     tables would be two tables that drift.
+
+     `sky` is 3D-only (the scene background behind the pitch), and
+     matters more than it sounds — on a low camera it is most of the
+     screen. The 2D board ignores it.
+
+     Dark and light are the analyst's palettes: near-black with white
+     lines, and near-white with dark grey lines. Both keep the mown
+     stripes, barely, because they are the depth cue that stops a flat
+     surface looking like a flat surface.
+     ═══════════════════════════════════════════════════════════ */
+  const TB_THEMES = {
+    green: {turf: 0x2e7d32, stripe: 0x27682b, line: 0xffffff, sky: 0x1a2410, lineAlpha: 0.95},
+    dark:  {turf: 0x14171a, stripe: 0x1b1f23, line: 0xffffff, sky: 0x0a0c0e, lineAlpha: 0.92},
+    light: {turf: 0xeceee9, stripe: 0xe3e6e0, line: 0x4a5157, sky: 0xf5f6f3, lineAlpha: 0.95}
+  };
+
+  /** The chosen look. A per-DEVICE preference, never part of a board. */
+  function tbThemeName() {
+    const t = localStorage.getItem('fa_tactic_theme');
+    return TB_THEMES[t] ? t : 'green';
+  }
+
+  function tbTheme() { return TB_THEMES[tbThemeName()]; }
+
+  /** `#rrggbb` for a palette entry, optionally with alpha. */
+  /**
+   * The palette as CSS custom properties for the field element.
+   *
+   * The halfway line, the spots, the turf and the board's own border
+   * are styled in style.css, not inline — so they are themed through
+   * variables rather than by inlining every one of them. `--tb-line-rgb`
+   * is a bare triple so the stylesheet can still choose its own alpha
+   * per marking, which it does.
+   */
+  function tbThemeVars() {
+    const th = tbTheme();
+    const rgb = (n) => ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+    return '--tb-turf:' + tbCss(th.turf) + ';--tb-line-rgb:' + rgb(th.line) + ';';
+  }
+
+  function tbCss(n, alpha) {
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return alpha === undefined
+      ? 'rgb(' + r + ',' + g + ',' + b + ')'
+      : 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      Pitch markings, drawn from geometry rather than from constants.
 
      These eleven divs used to carry their positions in css/style.css
@@ -6324,6 +6381,10 @@
   function tbMarkingsHtml(pitch, boardType, vertical) {
     const css = BG.toCss(pitch, boardType, vertical);
     const out = [];
+    /* Marking colours come from the chosen palette. They were white
+       literals, which is invisible on the light field. */
+    const th = tbTheme();
+    const LN = (a) => tbCss(th.line, a);
     const box = (cls, r, color) => {
       if (!r) return;
       /* Which edge sits on the goal line, and is therefore open. The
@@ -6357,14 +6418,14 @@
         ? '<div class="tb-halfway" style="left:' + h.left + '%;top:0;width:2px;height:100%;"></div>'
         : '<div class="tb-halfway" style="left:0;top:' + h.top + '%;width:100%;height:2px;"></div>');
     }
-    circle('tb-center-circle', css.centerCircle, 'rgba(255,255,255,.45)', false);
+    circle('tb-center-circle', css.centerCircle, LN(0.55), false);
     spot('tb-center-spot', css.centerSpot);
-    box('tb-penalty-left', css.penaltyLeft, 'rgba(255,255,255,.4)');
-    box('tb-penalty-right', css.penaltyRight, 'rgba(255,255,255,.4)');
-    box('tb-goal-left', css.goalAreaLeft, 'rgba(255,255,255,.55)');
-    box('tb-goal-right', css.goalAreaRight, 'rgba(255,255,255,.55)');
-    circle('tb-penalty-arc-left', css.arcLeft, 'rgba(255,255,255,.4)', true);
-    circle('tb-penalty-arc-right', css.arcRight, 'rgba(255,255,255,.4)', true);
+    box('tb-penalty-left', css.penaltyLeft, LN(0.5));
+    box('tb-penalty-right', css.penaltyRight, LN(0.5));
+    box('tb-goal-left', css.goalAreaLeft, LN(0.65));
+    box('tb-goal-right', css.goalAreaRight, LN(0.65));
+    circle('tb-penalty-arc-left', css.arcLeft, LN(0.5), true);
+    circle('tb-penalty-arc-right', css.arcRight, LN(0.5), true);
     spot('tb-penalty-spot-left', css.penaltySpotL);
     spot('tb-penalty-spot-right', css.penaltySpotR);
     /* Corner arcs. A whole 1 m-radius circle centred ON each corner;
@@ -6373,7 +6434,7 @@
        re-derive when the board rotates — a corner is a corner. */
     (css.corners || []).forEach((c) => {
       out.push('<div class="tb-corner" style="left:' + c.left + '%;top:' + c.top +
-        '%;width:' + c.size + '%;border:2px solid rgba(255,255,255,.4);"></div>');
+        '%;width:' + c.size + '%;border:2px solid ' + LN(0.5) + ';"></div>');
     });
     return out.join('');
   }
@@ -6638,6 +6699,8 @@
         container: wrap,
         BG: BG,
         BS: BS,
+        themes: TB_THEMES,
+        getTheme: tbThemeName,
         fillCss: fillCss,
         parseFill: parseFill,
         getPitch: () => BS.readJson(localStorage, BS.KEYS.pitch, null),
@@ -6718,9 +6781,9 @@
   function tbFieldOuterStyle(pitch, boardType, vertical) {
     if (vertical && (boardType === 'half' || boardType === 'area')) {
       const m = BS.round2((100 - BG.aspectPct(pitch, boardType, vertical)) / 2);
-      return 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
+      return tbThemeVars() + 'margin-top:calc(' + m + '% + 1rem);margin-bottom:calc(' + m + '% + 1rem);';
     }
-    return tbFieldScaleStyle(pitch, boardType, vertical);
+    return tbThemeVars() + tbFieldScaleStyle(pitch, boardType, vertical);
   }
 
   /**
@@ -10087,6 +10150,9 @@
             <button class="tb-view-btn${is3d ? '' : ' active'}" data-view="2d">2D</button>
             <button class="tb-view-btn${is3d ? ' active' : ''}" data-view="3d">3D</button>
           </div>` : ''}
+          <div class="tb-theme-toggle" id="tb-theme-toggle" data-tooltip="${t('tactics.theme_hint')}">
+            ${['green', 'dark', 'light'].map((k) => `<button class="tb-theme-btn tb-theme-${k}${tbThemeName() === k ? ' active' : ''}" data-theme="${k}" title="${t('tactics.theme_' + k)}"></button>`).join('')}
+          </div>
           ${(() => {
             /* Pitch size, in metres. Shown for the FULL board only:
                half and area are derived views of the same pitch, so
@@ -12547,6 +12613,21 @@
             localStorage.removeItem('fa_tactic_opp_numbers');
           }
         });
+      });
+    }
+
+    /* Field look. A full re-render: the palette reaches the markings
+       (inline colours), the field element (custom properties) and the
+       3D scene, so there is no in-place patch that would cover all
+       three without duplicating the table a third time. */
+    const themeToggle = document.getElementById('tb-theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tb-theme-btn');
+        if (!btn || btn.classList.contains('active')) return;
+        localStorage.setItem('fa_tactic_theme', btn.dataset.theme);
+        tbDestroy3D();
+        navigate();
       });
     }
 

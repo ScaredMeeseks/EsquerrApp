@@ -13,7 +13,8 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const appSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+const ROOT = path.join(__dirname, '..');
+const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 const BG = require('../js/board-geom.js');
 const BS = require('../js/board-state.js');
 
@@ -24,10 +25,23 @@ function grab(src, from, to, label) {
   return src.slice(i, j);
 }
 
-const block = grab(appSrc, '  function tbMarkingsHtml(',
+/* The slice starts at the PALETTE, not at tbMarkingsHtml: the markings
+   take their colours from the chosen field look, so the theme helpers
+   are part of what is being tested rather than something to stub out.
+   `localStorage` is stubbed because tbThemeName reads the preference —
+   an empty store means the default green, which is what these
+   assertions are written against. */
+const block = grab(appSrc, '  const TB_THEMES = {',
     '  function renderReadOnlyBoard(', 'js/app.js');
-const api = new Function('BG', 'BS',
-    block + '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle};')(BG, BS);
+const makeApi = (themeName) => new Function('BG', 'BS', 'localStorage',
+    block + '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle, ' +
+    'tbThemeName, tbTheme, tbCss, tbThemeVars, TB_THEMES};')(
+    BG, BS, {getItem: () => themeName, setItem: () => {}, removeItem: () => {}});
+
+/* The default (green) instance, plus one per palette for the theme
+   assertions — the look is read from localStorage, so the only honest
+   way to test another one is to render through it. */
+const api = makeApi(null);
 
 /** Every inline style on elements whose class matches, as one string. */
 function styleOf(html, cls) {
@@ -236,3 +250,112 @@ function approxPct(style, expected, tol) {
   assert.ok(Math.abs(got - expected) < tol,
       'expected about ' + expected + '%, got ' + got + '%');
 }
+
+describe('field looks', () => {
+  it('offers exactly the three the toggle shows', () => {
+    ['green', 'dark', 'light'].forEach((k) => {
+      assert.ok(api.tbCss, 'palette helpers not exported');
+      const html = appSrc.slice(appSrc.indexOf('const TB_THEMES = {'),
+          appSrc.indexOf('/** The chosen look'));
+      assert.ok(html.includes(k + ':'), 'missing palette: ' + k);
+    });
+  });
+
+  it('defaults to green, including for a nonsense stored value', () => {
+    /* The preference is per-device localStorage, which outlives
+       version changes and is editable by hand. */
+    assert.strictEqual(api.tbThemeName(), 'green');
+  });
+
+  /* Read the real table rather than regexing the source for it —
+     building a pattern through a string literal is its own hazard and
+     the values are right here. */
+  const lum = (n) => (((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 +
+      (n & 255) * 0.114) / 255;
+
+  it('dark and light really are dark and light', () => {
+    // Guards a swapped table, which would be invisible in a diff.
+    const T = api.TB_THEMES;
+    assert.ok(lum(T.dark.turf) < 0.25, 'dark turf is not dark');
+    assert.ok(lum(T.light.turf) > 0.75, 'light turf is not light');
+  });
+
+  it('every palette keeps its lines legible against its own turf', () => {
+    /* The failure this prevents is white lines on a white pitch —
+       which is what you get by copying the green palette and changing
+       only the turf. */
+    Object.entries(api.TB_THEMES).forEach(([name, th]) => {
+      assert.ok(Math.abs(lum(th.line) - lum(th.turf)) > 0.35,
+          name + ': lines and turf are too close in tone');
+    });
+  });
+
+  it('the LIGHT field actually renders dark markings', () => {
+    /* Rendered through the light palette, not read off the table —
+       green's line colour IS white, so asserting "no white in the
+       output" would fail on the correct default. */
+    const light = makeApi('light');
+    const style = styleOf(light.tbMarkingsHtml(null, 'full', false), 'tb-penalty-left');
+    const m = /rgba\((\d+),(\d+),(\d+)/.exec(style);
+    assert.ok(m, 'no colour emitted: ' + style);
+    const l = lum((+m[1] << 16) | (+m[2] << 8) | +m[3]);
+    assert.ok(l < 0.6, 'light field drew a pale marking: ' + style);
+  });
+
+  it('and the green field still renders white ones', () => {
+    const style = styleOf(api.tbMarkingsHtml(null, 'full', false), 'tb-penalty-left');
+    assert.ok(/rgba\(255,255,255/.test(style), style);
+  });
+
+  it('the field variables follow the chosen palette', () => {
+    const dark = makeApi('dark');
+    assert.notStrictEqual(
+        dark.tbFieldOuterStyle(null, 'full', false),
+        api.tbFieldOuterStyle(null, 'full', false));
+  });
+
+  it('the field element carries the palette as CSS variables', () => {
+    /* The halfway line, spots, turf and border are styled in the
+       stylesheet, so they are themed through variables rather than by
+       inlining each one. */
+    const style = api.tbFieldOuterStyle(null, 'full', false);
+    assert.ok(/--tb-turf:/.test(style) && /--tb-line-rgb:/.test(style), style);
+  });
+
+  it('the rotated board types carry them too', () => {
+    // They take a different branch and would otherwise stay green.
+    const style = api.tbFieldOuterStyle(null, 'half', true);
+    assert.ok(/--tb-turf:/.test(style), style);
+  });
+
+  it('the stylesheet consumes the variables with a green fallback', () => {
+    const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+    assert.ok(/background:var\(--tb-turf, #2e7d32\)/.test(css), 'turf not themed');
+    assert.ok(/rgba\(var\(--tb-line-rgb, 255,255,255\), \.55\)/.test(css),
+        'the halfway line is not themed');
+  });
+});
+
+describe('marking definition', () => {
+  const s3 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+
+  it('spends the whole texture budget on the long axis', () => {
+    /* It was a flat 10 px per metre — a 1050 px texture stretched
+       across a board rendered up to 1400 px wide, which is under one
+       texel per screen pixel and exactly why the lines looked soft. */
+    const fn = s3.slice(s3.indexOf('function markingsTexture'), s3.indexOf('function buildPitch'));
+    assert.ok(/MAX \/ Math\.max\(e\.ax, e\.ay\)/.test(fn), fn.slice(0, 600));
+    assert.ok(!/const PPM = 10;/.test(fn), 'the flat 10 px/m is the soft-lines bug');
+  });
+
+  it('draws lines at their real 12 cm width', () => {
+    const fn = s3.slice(s3.indexOf('function markingsTexture'), s3.indexOf('function buildPitch'));
+    assert.ok(/0\.12 \* Math\.min\(sx, sy\)/.test(fn), fn.slice(0, 400));
+  });
+
+  it('roughly doubles the texel density on a full pitch', () => {
+    const before = 10;
+    const after = Math.min(2048 / 105, 40);
+    assert.ok(after > before * 1.8, after.toFixed(1) + ' px/m vs ' + before);
+  });
+});

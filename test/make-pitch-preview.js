@@ -44,12 +44,16 @@ if (!/\.tb-field\s*\{[^}]*border\s*:/.test(pitchCss)) {
   throw new Error('extraction lost .tb-field — the perimeter would be missing');
 }
 
-const i = appSrc.indexOf('  function tbMarkingsHtml(');
+/* From the PALETTE, so the markings get their colours the same way
+   the app does. `theme` picks which look the preview renders. */
+const THEME = process.argv[2] || 'green';
+const i = appSrc.indexOf('  const TB_THEMES = {');
 const j = appSrc.indexOf('  function renderReadOnlyBoard(');
 if (i < 0 || j < 0) throw new Error('markers not found in app.js');
-const api = new Function('BG', 'BS',
+const api = new Function('BG', 'BS', 'localStorage',
     appSrc.slice(i, j) +
-    '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle};')(BG, BS);
+    '\n; return {tbMarkingsHtml, tbFieldInnerStyle, tbFieldOuterStyle, tbTheme};')(
+    BG, BS, {getItem: () => THEME, setItem: () => {}, removeItem: () => {}});
 
 /* Each plate names what it is FOR, so a wrong one is identifiable
    rather than just "one of them looks odd". `note` is the thing to
@@ -252,7 +256,7 @@ ${pitchCss}
 </style>
 <div class="wrap">
   <header class="mast">
-    <p class="eyebrow">EsquerrApp &middot; tactical board &middot; v136</p>
+    <p class="eyebrow">EsquerrApp &middot; tactical board &middot; v136 &middot; ${THEME} field</p>
     <h1>Regulation marks</h1>
     <p class="lede">
       Ten pitches drawn by <strong>js/board-geom.js</strong>, through the real
@@ -281,6 +285,6 @@ ${pitchCss}
 </div>
 `;
 
-const out = path.join(ROOT, 'pitch-preview.html');
+const out = path.join(ROOT, THEME === 'green' ? 'pitch-preview.html' : 'pitch-' + THEME + '-preview.html');
 fs.writeFileSync(out, html);
 console.log('wrote', out, '(' + Math.round(html.length / 1024) + ' KB)');

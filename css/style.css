@@ -746,8 +746,11 @@ tr:hover td { background: #f7f8fa; }
   /* max-width is INLINE — it carries the pitch scale, so a metre is
      the same number of pixels on both axes. See tbFieldScaleStyle(). */
   width:100%; margin:0 auto 1rem;
-  background:#2e7d32; border-radius:var(--radius); overflow:hidden;
-  border:3px solid #fff; user-select:none;
+  /* Turf and border come from the chosen field palette, set inline on
+     this element by tbThemeVars(). The fallbacks are the green look,
+     so a board rendered before the variables land still looks right. */
+  background:var(--tb-turf, #2e7d32); border-radius:var(--radius); overflow:hidden;
+  border:3px solid rgba(var(--tb-line-rgb, 255,255,255), .9); user-select:none;
 }
 .tb-field-inner {
   /* padding-top is INLINE — it is the pitch's aspect ratio, and the
@@ -768,7 +771,7 @@ tr:hover td { background: #f7f8fa; }
    left/top/width/height back here: inline styles win, so a rule added
    here would simply be ignored, which is worse than failing loudly. */
 .tb-halfway {
-  position:absolute; background:rgba(255,255,255,.45);
+  position:absolute; background:rgba(var(--tb-line-rgb, 255,255,255), .55);
   transform:translate(-1px,-1px); pointer-events:none;
 }
 .tb-center-circle {
@@ -777,7 +780,7 @@ tr:hover td { background: #f7f8fa; }
 }
 .tb-center-spot {
   position:absolute; width:6px; height:6px;
-  background:rgba(255,255,255,.5); border-radius:50%;
+  background:rgba(var(--tb-line-rgb, 255,255,255), .6); border-radius:50%;
   transform:translate(-50%,-50%); pointer-events:none;
 }
 .tb-penalty-left, .tb-penalty-right,
@@ -790,6 +793,23 @@ tr:hover td { background: #f7f8fa; }
   position:absolute; aspect-ratio:1; border-radius:50%;
   transform:translate(-50%,-50%); pointer-events:none;
 }
+/* ── Field look ───────────────────────────────────────────────────
+   Three swatches rather than three words: the choice is entirely
+   visual, and a swatch says what it does without translating. The
+   colours mirror TB_THEMES in js/app.js, which is the source. */
+.tb-theme-toggle {
+  display:inline-flex; gap:.25rem; align-items:center;
+}
+.tb-theme-btn {
+  width:20px; height:20px; padding:0; cursor:pointer;
+  border:2px solid var(--border); border-radius:50%;
+}
+.tb-theme-btn:hover { border-color:var(--text-secondary); }
+.tb-theme-btn.active { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-light); }
+.tb-theme-green { background:#2e7d32; }
+.tb-theme-dark  { background:#14171a; }
+.tb-theme-light { background:#eceee9; }
+
 /* ── 2D / 3D view toggle and the 3D surface ───────────────────────
    The toggle only exists for a club with the premium feature and a
    machine with WebGL; see clubFeature() and tbWebglOk(). */
@@ -917,7 +937,7 @@ tr:hover td { background: #f7f8fa; }
 /* Penalty spots */
 .tb-penalty-spot-left, .tb-penalty-spot-right {
   position:absolute; width:5px; height:5px;
-  background:rgba(255,255,255,.5); border-radius:50%;
+  background:rgba(var(--tb-line-rgb, 255,255,255), .6); border-radius:50%;
   transform:translate(-50%,-50%); pointer-events:none;
 }
 
