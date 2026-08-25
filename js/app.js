@@ -665,6 +665,30 @@
     'tactics.cam_side':      { ca:'Lateral', es:'Lateral', en:'Side' },
     'tactics.cam_follow':    { ca:'Segueix la pilota', es:'Seguir el balón', en:'Follow ball' },
     'tactics.reset_view':    { ca:'Centra la vista', es:'Centrar la vista', en:'Reset view' },
+    /* ── The 3D menu ──────────────────────────────────────────── */
+    'tactics.menu':          { ca:'Menú', es:'Menú', en:'Menu' },
+    'tactics.new_board':     { ca:'Pissarra nova', es:'Pizarra nueva', en:'New board' },
+    'tactics.view_2d':       { ca:'Vista 2D', es:'Vista 2D', en:'2D view' },
+    'tactics.field':         { ca:'Camp', es:'Campo', en:'Field' },
+    'tactics.players':       { ca:'Jugadors', es:'Jugadores', en:'Players' },
+    'tactics.props':         { ca:'Material', es:'Material', en:'Props' },
+    'tactics.draw':          { ca:'Dibuixa', es:'Dibujar', en:'Draw' },
+    'tactics.theme':         { ca:'Color', es:'Color', en:'Colour' },
+    'tactics.ball':          { ca:'Pilota', es:'Balón', en:'Ball' },
+    'tactics.cone':          { ca:'Con', es:'Cono', en:'Cone' },
+    'tactics.arrow':         { ca:'Fletxa', es:'Flecha', en:'Arrow' },
+    'tactics.zone':          { ca:'Zona', es:'Zona', en:'Zone' },
+    'tactics.pen':           { ca:'Traç lliure', es:'Trazo libre', en:'Freehand' },
+    'tactics.text':          { ca:'Text', es:'Texto', en:'Text' },
+    'tactics.silhouette':    { ca:'Silueta', es:'Silueta', en:'Silhouette' },
+    /* Distinct from tactics.pitch, which is also 'Camp' in Catalan:
+       the gear ENTRY is the field, the row inside it is its size. */
+    'tactics.pitch_size':    { ca:'Mida', es:'Tamaño', en:'Size' },
+    'tactics.kit':           { ca:'Equipació', es:'Equipación', en:'Kit' },
+    /* {team} is the club's own name, so the entry reads "Afegeix
+       Esquerra" rather than a generic "Add team". */
+    'tactics.add_side':      { ca:'Afegeix {team}', es:'Añadir {team}', en:'Add {team}' },
+    'tactics.opponent':      { ca:'Rival', es:'Rival', en:'Opponent' },
     'tactics.orbit_hint':    { ca:'Arrossega per girar · botó dret per moure · roda per apropar · Supr per esborrar',
       es:'Arrastra para girar · botón derecho para mover · rueda para acercar · Supr para borrar',
       en:'Drag to orbit · right-drag to pan · wheel to zoom · Del to delete' },
@@ -6660,6 +6684,283 @@
         });
   }
 
+  /* ── The 3D menu ──────────────────────────────────────────────────
+     The 2D toolbar is 32 controls in a strip. In 3D it is replaced by
+     this: a hamburger that drops six entries, four of which open a
+     panel.
+
+     The panels are EMPTY here on purpose. tbMenuAdopt() moves the
+     real controls into them after the render, rather than the markup
+     cloning them — a second `<input type="color">` for the same
+     setting is a second thing to keep in sync, and the tool buttons
+     carry live state (`tb-arrow-tool-active`) that
+     deactivateDrawTools() manages by id. Two elements with one id is
+     the bug that would follow.
+
+     Icons are inline SVG at 20px on `currentColor`, like the toolbar's
+     own. No icon font, no sprite sheet — this file has neither. */
+  function tbIcon(name) {
+    const P = {
+      /* A board with a corner turned: start again. */
+      'new': '<path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/>' +
+             '<path d="M15 4v5h5"/><path d="M8 13h8M8 17h5"/>',
+      gear: '<circle cx="12" cy="12" r="3"/>' +
+            '<path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+      /* A team sheet: a page with an x moving to an o. */
+      squad: '<rect x="4" y="3" width="16" height="18" rx="2"/>' +
+             '<path d="M8 9l3 3M11 9l-3 3"/><circle cx="16" cy="10.5" r="2"/>' +
+             '<path d="M11.5 10.5h2.5"/><path d="M8 16h8"/>',
+      cone: '<path d="M12 4l6 15H6z"/><path d="M4 20h16"/><path d="M9.2 13h5.6"/>',
+      pen: '<path d="M12 19l7-7 3 3-7 7-3-3z"/>' +
+           '<path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/>' +
+           '<circle cx="11" cy="11" r="2"/>',
+      burger: '<path d="M4 7h16M4 12h16M4 17h16"/>'
+    };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        (P[name] || '') + '</svg>';
+  }
+
+  function tbMenuHtml() {
+    const entry = (key, icon, label, panel) =>
+      '<div class="tb-m-entry" data-entry="' + key + '" tabindex="0" ' +
+        'role="button" aria-label="' + sanitize(label) + '">' +
+        '<span class="tb-m-ico">' + icon + '</span>' +
+        '<span class="tb-m-label">' + sanitize(label) + '</span>' +
+        (panel ? '<div class="tb-m-panel" id="tb-panel-' + key + '"></div>' : '') +
+      '</div>';
+    return '<div class="tb-m" id="tb-menu">' +
+      '<button class="tb-m-btn" id="tb-menu-btn" aria-expanded="false" ' +
+        'aria-label="' + sanitize(t('tactics.menu')) + '">' + tbIcon('burger') + '</button>' +
+      '<div class="tb-m-rail" id="tb-menu-rail">' +
+        entry('new', tbIcon('new'), t('tactics.new_board'), false) +
+        /* Not an icon: the whole point of this control is the two
+           words, and a picture of "2D/3D" is just the words drawn
+           badly. */
+        entry('view', '<span class="tb-m-2d3d">2D</span>', t('tactics.view_2d'), false) +
+        entry('gear', tbIcon('gear'), t('tactics.field'), true) +
+        entry('squad', tbIcon('squad'), t('tactics.players'), true) +
+        entry('props', tbIcon('cone'), t('tactics.props'), true) +
+        entry('draw', tbIcon('pen'), t('tactics.draw'), true) +
+      '</div></div>';
+  }
+
+  /**
+   * The squad panel: two sides, each with its formations and its kit.
+   *
+   * The only panel that is BUILT rather than adopted, because the
+   * shape it needs does not exist in the toolbar. The toolbar has one
+   * formation dropdown, for our team; this has a list per side, and
+   * the opponent's is a shape of its own (see `fa_tactic_opp_formation`
+   * in boards.js).
+   *
+   * The kit is its own entry beside the formations, not something you
+   * reach by picking a formation. Otherwise recolouring means
+   * re-applying a formation, which puts every player back on their
+   * starting mark — a coach who has spent ten minutes dragging them
+   * loses the lot to change a shirt colour.
+   */
+  function tbMenuSquad(hooks) {
+    const panel = document.getElementById('tb-panel-squad');
+    if (!panel) return;
+    const club = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+    const cur = localStorage.getItem('fa_tactic_formation') || '';
+    const curOpp = localStorage.getItem('fa_tactic_opp_formation') || '';
+
+    const side = (key, label, active) =>
+      '<div class="tb-m-side" data-side="' + key + '" tabindex="0">' +
+        '<span class="tb-m-side-label">' + sanitize(label) + '</span>' +
+        '<div class="tb-m-sub">' +
+          '<div class="tb-m-forms" data-side="' + key + '">' +
+            Object.keys(TACTIC_FORMATIONS).map((f) =>
+              '<div class="tb-m-form' + (f === active ? ' tb-m-form-on' : '') +
+                '" data-side="' + key + '" data-val="' + sanitize(f) + '">' +
+                sanitize(f) + '</div>').join('') +
+          '</div>' +
+          '<div class="tb-m-kit" data-side="' + key + '" tabindex="0">' +
+            '<span>' + sanitize(t('tactics.kit')) + '</span>' +
+            '<div class="tb-m-kit-opts" id="tb-kit-' + key + '"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    panel.innerHTML =
+      side('team', t('tactics.add_side').replace('{team}', club), cur) +
+      side('opp', t('tactics.opponent'), curOpp);
+
+    /* The colour and stripe controls are ADOPTED into the kit slots —
+       the same elements the 2D toolbar binds, moved. */
+    const kitTeam = document.getElementById('tb-kit-team');
+    const kitOpp = document.getElementById('tb-kit-opp');
+    [['#tb-team-color', '.tb-stripes[data-side="team"]', kitTeam],
+     ['#tb-opp-color', '.tb-stripes[data-side="opp"]', kitOpp]].forEach(
+      ([colSel, stripeSel, slot]) => {
+        if (!slot) return;
+        const col = document.querySelector(colSel);
+        const st = document.querySelector(stripeSel);
+        if (col) slot.appendChild(col);
+        if (st) slot.appendChild(st);
+      });
+    /* The opponent's kit is only meaningful when they are shown, so
+       the show-opponent checkbox lives with it rather than floating
+       loose in the panel. */
+    const oppToggle = document.querySelector('.tb-opp-toggle input#tb-show-opp');
+    if (oppToggle && kitOpp) kitOpp.appendChild(oppToggle.closest('label'));
+
+    /* Applying a formation is bindTactics' job — it owns the frames
+       it has to reset and the circles it has to spawn. The menu only
+       says which side and which shape. */
+    panel.querySelectorAll('.tb-m-form').forEach((opt) => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panel.querySelectorAll('.tb-m-form[data-side="' + opt.dataset.side + '"]')
+            .forEach((o) => o.classList.remove('tb-m-form-on'));
+        opt.classList.add('tb-m-form-on');
+        /* A HOOK, not a document event. A listener on the document
+           would outlive this menu — every re-render would leave
+           another one behind, each holding the previous render's
+           frames array. That is the stale-closure trap the tb-ro-play
+           double-binding taught, and it took a version to spot. */
+        if (hooks.onFormation) hooks.onFormation(opt.dataset.side, opt.dataset.val);
+      });
+    });
+  }
+
+  /**
+   * Fill the panels with the REAL controls, and wire the menu.
+   *
+   * Every control here already exists in `.tb-controls` and is already
+   * bound by bindTactics. This moves the elements; it does not copy
+   * them. Cloning would give two elements the same id — and the tool
+   * buttons carry live state that deactivateDrawTools() sets by id,
+   * so the copy the coach could see would be the one that never lit
+   * up.
+   *
+   * Module scope, and it touches nothing but the DOM: reaching for a
+   * bindTactics local from here is the ReferenceError that killed the
+   * drawing tools and playback in v138.
+   */
+  function tbMenuInit(hooks) {
+    const menu = document.getElementById('tb-menu');
+    if (!menu) return;
+    const rail = document.getElementById('tb-menu-rail');
+    const btn = document.getElementById('tb-menu-btn');
+
+    /** Move nodes into a panel, in the order given. Missing ids are
+     *  skipped: half the toolbar is conditional on board type. */
+    const adopt = (panelId, picks, groupLabel) => {
+      const panel = document.getElementById('tb-panel-' + panelId);
+      if (!panel) return;
+      const row = document.createElement('div');
+      row.className = 'tb-m-row';
+      if (groupLabel) {
+        const h = document.createElement('span');
+        h.className = 'tb-m-row-label';
+        h.textContent = groupLabel;
+        row.appendChild(h);
+      }
+      picks.forEach((sel) => {
+        const el = sel[0] === '#'
+          ? document.getElementById(sel.slice(1))
+          : document.querySelector(sel);
+        if (el) row.appendChild(el);      // appendChild MOVES it
+      });
+      if (row.children.length > (groupLabel ? 1 : 0)) panel.appendChild(row);
+    };
+
+    adopt('gear', ['#tb-pitch-l', '.tb-pitch-x', '#tb-pitch-w', '.tb-pitch-unit',
+      '#tb-pitch-reset'], t('tactics.pitch_size'));
+    adopt('gear', ['#tb-theme-toggle'], t('tactics.theme'));
+
+    adopt('props', ['#tb-ball-tool'], t('tactics.ball'));
+    adopt('props', ['#tb-cone-tool'], t('tactics.cone'));
+    adopt('props', ['#tb-sil-wrap'], t('tactics.silhouette'));
+
+    /* One row per tool, so each carries its own options — which is
+       what "options on hover over each" means once the row is the
+       hover target. */
+    adopt('draw', ['#tb-arrow-tool', '#tb-arrow-color', '.tb-arrow-dash-label'],
+        t('tactics.arrow'));
+    adopt('draw', ['#tb-rect-tool', '#tb-rect-color', '#tb-rect-opacity'],
+        t('tactics.zone'));
+    adopt('draw', ['#tb-pen-tool', '#tb-pen-color', '.tb-pen-dash-label'],
+        t('tactics.pen'));
+    adopt('draw', ['#tb-text-tool', '#tb-text-color', '#tb-text-opacity',
+      '.tb-size-label-sm', '#tb-text-size', '.tb-size-label-lg'], t('tactics.text'));
+
+    tbMenuSquad(hooks || {});
+
+    /* ── Opening and closing ────────────────────────────────────
+       Hover where a real pointer exists, tap everywhere. One extra
+       binding per level, and it is the difference between a tablet
+       working and a tablet showing icons that do nothing. */
+    const canHover = window.matchMedia &&
+        window.matchMedia('(hover: hover)').matches;
+
+    const setOpen = (on) => {
+      menu.classList.toggle('tb-m-open', on);
+      btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+      if (!on) rail.querySelectorAll('.tb-m-entry').forEach(
+          (e) => e.classList.remove('tb-m-hot'));
+    };
+    const isOpen = () => menu.classList.contains('tb-m-open');
+
+    btn.addEventListener('click', (e) => { e.stopPropagation(); setOpen(!isOpen()); });
+    if (canHover) btn.addEventListener('pointerenter', () => setOpen(true));
+
+    rail.querySelectorAll('.tb-m-entry').forEach((entry) => {
+      const open = () => {
+        /* One panel at a time. Two open panels overlap and the coach
+           cannot tell which control belongs to which. */
+        rail.querySelectorAll('.tb-m-entry').forEach(
+            (o) => o.classList.toggle('tb-m-hot', o === entry));
+      };
+      if (canHover) entry.addEventListener('pointerenter', open);
+      entry.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const which = entry.dataset.entry;
+        /* The two that DO something rather than opening a panel. Both
+           re-render the page, which tears this menu down with it. */
+        if (which === 'new') { document.getElementById('tb-new-board')?.click(); return; }
+        if (which === 'view') {
+          document.querySelector('.tb-view-btn[data-view="2d"]')?.click();
+          return;
+        }
+        open();
+      });
+      entry.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); entry.click(); }
+      });
+    });
+
+    /* Four ways out, as asked: the hamburger, a click outside the
+       board, Escape, and play. Bound on the document so a click on
+       the turf counts as outside — the menu floats over the canvas
+       and the canvas is not part of it. */
+    const away = (e) => { if (!menu.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', away);
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', esc);
+    document.getElementById('tb-frame-play')
+        ?.addEventListener('click', () => setOpen(false));
+
+    /* Both listeners are on the DOCUMENT and this menu dies with the
+       next render, so they have to come off with it or every
+       re-render leaves another pair behind, each holding a reference
+       to a detached menu. */
+    const wrap = document.getElementById('tb-3d-wrap');
+    if (wrap) {
+      const obs = new MutationObserver(() => {
+        if (!document.body.contains(menu)) {
+          document.removeEventListener('pointerdown', away);
+          document.removeEventListener('keydown', esc);
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.body, {childList: true, subtree: true});
+    }
+  }
+
   /**
    * Run the 3D window down to the bottom of the browser window.
    *
@@ -10341,7 +10642,7 @@
         <button class="btn btn-small btn-outline" id="tb-tpl-exit">Tornar a la biblioteca</button>
       </div>` : ''}
       <div class="card">
-        <div class="tb-controls">
+        <div class="tb-controls${is3d ? ' tb-controls-3d' : ''}">
           <label class="tb-label">${t('tactics.formation')}</label>
           <div class="tb-formation-wrap" id="tb-formation-wrap">
             <div class="tb-formation-toggle" id="tb-formation-toggle">${savedFormation || '— Select —'}</div>
@@ -10384,7 +10685,7 @@
           <span class="tb-sep"></span>
           <button class="tb-arrow-tool" id="tb-arrow-tool" data-tooltip="Draw arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
           <input type="color" class="tb-color-pick tb-arrow-color-pick" id="tb-arrow-color" value="${localStorage.getItem('fa_tactic_arrow_color') || '#ffffff'}" data-tooltip="Arrow color">
-          <label class="tb-opp-toggle tb-arrow-dash-label"><input type="checkbox" id="tb-arrow-dash" ${localStorage.getItem('fa_tactic_arrow_dash') === 'true' ? 'checked' : ''}> Dash</label>
+          <label class="tb-opp-toggle tb-dash-label tb-arrow-dash-label"><input type="checkbox" id="tb-arrow-dash" ${localStorage.getItem('fa_tactic_arrow_dash') === 'true' ? 'checked' : ''}> Dash</label>
           <span class="tb-sep"></span>
           <button class="tb-rect-tool" id="tb-rect-tool" data-tooltip="Draw rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></svg></button>
           <input type="color" class="tb-color-pick" id="tb-rect-color" value="${localStorage.getItem('fa_tactic_rect_color') || '#ffffff'}" data-tooltip="Rectangle color">
@@ -10397,7 +10698,7 @@
           <span class="tb-sep"></span>
           <button class="tb-pen-tool" id="tb-pen-tool" data-tooltip="Freehand pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>
           <input type="color" class="tb-color-pick" id="tb-pen-color" value="${localStorage.getItem('fa_tactic_pen_color') || '#ffffff'}" data-tooltip="Pen color">
-          <label class="tb-opp-toggle tb-arrow-dash-label"><input type="checkbox" id="tb-pen-dash" ${localStorage.getItem('fa_tactic_pen_dash') === 'true' ? 'checked' : ''}> Dash</label>
+          <label class="tb-opp-toggle tb-dash-label tb-pen-dash-label"><input type="checkbox" id="tb-pen-dash" ${localStorage.getItem('fa_tactic_pen_dash') === 'true' ? 'checked' : ''}> Dash</label>
           <span class="tb-sep"></span>
           <div class="tb-sil-wrap" id="tb-sil-wrap">
             <button class="tb-sil-btn" id="tb-sil-btn" data-tooltip="Silhouette">
@@ -10423,6 +10724,7 @@
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
         ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap">
           <div class="tb-3d-loading">${t('tactics.loading_3d')}</div>
+          ${tbMenuHtml()}
           <div class="tb-3d-cams" id="tb-3d-cams">
             <button class="tb-cam-btn" data-cam="broadcast">${t('tactics.cam_broadcast')}</button>
             <button class="tb-cam-btn" data-cam="top">${t('tactics.cam_top')}</button>
@@ -10765,6 +11067,59 @@
       });
       saveState();
     }
+
+    /**
+     * Put a formation on the board, for one side.
+     *
+     * Extracted from the 2D dropdown's click handler so the 3D menu
+     * can reach the same code. The dropdown and the menu are two ways
+     * of saying the same thing, and two copies of "reset the frames,
+     * clear the positions, respawn" is how they would come to disagree
+     * about which of those steps a formation change involves.
+     *
+     * `side` is 'team' or 'opp'. An empty `name` clears that side.
+     */
+    function applyFormationShape(side, name) {
+      const opp = side === 'opp';
+      const key = opp ? 'fa_tactic_opp_formation' : 'fa_tactic_formation';
+      const posKey = opp ? 'fa_tactic_opp_positions' : 'fa_tactic_positions';
+      const numKey = opp ? 'fa_tactic_opp_numbers' : 'fa_tactic_numbers';
+
+      if (name) localStorage.setItem(key, name);
+      else localStorage.removeItem(key);
+
+      if (name && formations[name]) {
+        /* Only THIS side's placements go. Clearing both was right
+           when there was one formation for both; now it would throw
+           away the opponent's shape every time ours changed. */
+        localStorage.removeItem(posKey);
+        localStorage.removeItem(numKey);
+        if (opp) {
+          /* Choosing a shape for a side you cannot see is a dead end,
+             so picking one turns them on. */
+          const show = document.getElementById('tb-show-opp');
+          if (show && !show.checked) {
+            show.checked = true;
+            localStorage.setItem('fa_tactic_show_opp', 'true');
+          }
+          spawnOppCircles();
+        } else {
+          spawnCircles(adaptFormation(formations[name]), null);
+          if (document.getElementById('tb-show-opp')?.checked) spawnOppCircles();
+        }
+      } else {
+        inner.querySelectorAll(opp ? '.tb-circle-opp' : '.tb-circle:not(.tb-circle-opp)')
+            .forEach(c => c.remove());
+        localStorage.removeItem(posKey);
+        localStorage.removeItem(numKey);
+        localStorage.removeItem(key);
+      }
+      saveState();
+      autoSaveFrame();
+    }
+
+    /** What the 3D menu calls. Same code, one argument order. */
+    function applyFormation(side, name) { applyFormationShape(side, name); }
 
     function spawnOppCircles() {
       inner.querySelectorAll('.tb-circle-opp').forEach(c => c.remove());
@@ -12857,21 +13212,7 @@
             if (typeof renderFrameStrip === 'function') renderFrameStrip();
           }
           localStorage.setItem('fa_tactic_formation', f);
-          if (f && formations[f]) {
-            localStorage.removeItem('fa_tactic_positions');
-            localStorage.removeItem('fa_tactic_numbers');
-            localStorage.removeItem('fa_tactic_opp_positions');
-            localStorage.removeItem('fa_tactic_opp_numbers');
-            spawnCircles(adaptFormation(formations[f]), null);
-            if (document.getElementById('tb-show-opp')?.checked) spawnOppCircles();
-          } else {
-            inner.querySelectorAll('.tb-circle').forEach(c => c.remove());
-            localStorage.removeItem('fa_tactic_positions');
-            localStorage.removeItem('fa_tactic_numbers');
-            localStorage.removeItem('fa_tactic_formation');
-            localStorage.removeItem('fa_tactic_opp_positions');
-            localStorage.removeItem('fa_tactic_opp_numbers');
-          }
+          applyFormationShape('team', f);
         });
       });
     }
@@ -13107,6 +13448,13 @@
           }));
         }
       });
+
+      /* ── The menu ──────────────────────────────────────────────
+         Wired here, inside the 3D block, because it only exists in
+         3D and because the controls it adopts are bound by the code
+         above — adopting them AFTER that is what keeps every
+         existing handler working. */
+      tbMenuInit({onFormation: applyFormation});
 
       /* Delete what is selected in the 3D view.
 

@@ -1248,7 +1248,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .tb-arrow-tool-active { background:var(--primary); color:#fff; border-color:var(--primary); }
 .tb-sep { width:1px; height:24px; background:var(--border); flex-shrink:0; }
 .tb-arrow-color-pick { margin-left:0; }
-.tb-arrow-dash-label { font-size:.82rem; }
+.tb-dash-label { font-size:.82rem; }
 
 /* Rect tool */
 .tb-rect-tool {
@@ -4749,4 +4749,106 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   fill:none; stroke-width:1.6; stroke-dasharray:3 2;
   opacity:.75; pointer-events:none;
   vector-effect:non-scaling-stroke;
+}
+
+/* ══ The 3D menu ═══════════════════════════════════════════════════
+   The 2D toolbar is 32 controls in a strip; in 3D it is replaced by a
+   hamburger that drops six entries, four of which open a panel.
+
+   Everything floats over the canvas, so every layer needs its own
+   ground — a translucent panel over a dark pitch and a light pitch
+   are two different readability problems, and the pitch theme is the
+   coach's choice. The panels use a near-black ground at high opacity
+   for that reason rather than a tint of the turf. */
+.tb-controls-3d { display:none !important; }
+
+.tb-m {
+  position:absolute; top:.75rem; left:.75rem; z-index:6;
+  font-size:.82rem; user-select:none;
+}
+.tb-m-btn {
+  width:38px; height:38px; padding:0; border:0; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(18,20,23,.72); color:#e8eaed; cursor:pointer;
+  backdrop-filter:blur(6px); transition:background .15s, color .15s;
+}
+.tb-m-btn:hover, .tb-m.tb-m-open .tb-m-btn { background:rgba(18,20,23,.92); color:#fff; }
+.tb-m-btn svg { width:20px; height:20px; }
+
+/* The rail is laid out but not shown until the menu opens. Animating
+   from display:none would not animate at all, and a rail that pops
+   into place reads as a glitch rather than a menu. */
+.tb-m-rail {
+  display:flex; flex-direction:column; gap:.25rem; margin-top:.4rem;
+  opacity:0; transform:translateY(-6px); pointer-events:none;
+  transition:opacity .16s ease, transform .16s ease;
+}
+.tb-m.tb-m-open .tb-m-rail { opacity:1; transform:none; pointer-events:auto; }
+
+.tb-m-entry {
+  position:relative; display:flex; align-items:center; gap:.5rem;
+  padding:.4rem .6rem; border-radius:9px; cursor:pointer;
+  background:rgba(18,20,23,.72); color:#c9ccd1;
+  backdrop-filter:blur(6px); white-space:nowrap;
+  transition:background .15s, color .15s;
+}
+.tb-m-entry:hover, .tb-m-entry.tb-m-hot { background:rgba(18,20,23,.94); color:#fff; }
+.tb-m-entry:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
+.tb-m-ico { display:flex; }
+.tb-m-ico svg { width:18px; height:18px; }
+.tb-m-2d3d { font-weight:700; font-size:.7rem; letter-spacing:.04em; width:18px; text-align:center; }
+/* The labels are the affordance — five grey glyphs with no words is a
+   puzzle, not a menu. They are narrow enough to sit beside the icon
+   permanently rather than appearing on hover. */
+.tb-m-label { font-size:.78rem; }
+
+/* Panels open to the RIGHT of the rail, so the rail never covers what
+   it opened and the eye travels one way. */
+.tb-m-panel {
+  position:absolute; left:calc(100% + .4rem); top:-.25rem; min-width:180px;
+  display:none; flex-direction:column; gap:.35rem;
+  padding:.55rem .65rem; border-radius:10px;
+  background:rgba(18,20,23,.96); box-shadow:0 8px 26px rgba(0,0,0,.45);
+  backdrop-filter:blur(8px);
+}
+.tb-m-entry.tb-m-hot > .tb-m-panel { display:flex; }
+
+.tb-m-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.tb-m-row-label {
+  flex:0 0 100%; font-size:.68rem; letter-spacing:.06em;
+  text-transform:uppercase; color:#8b9096;
+}
+
+/* Two sides, each opening its own formations and kit. */
+.tb-m-side { position:relative; padding:.3rem .1rem; cursor:pointer; color:#c9ccd1; }
+.tb-m-side:hover, .tb-m-side:focus-within { color:#fff; }
+.tb-m-side-label { font-weight:600; }
+.tb-m-sub {
+  position:absolute; left:calc(100% + .5rem); top:-.4rem; min-width:150px;
+  display:none; flex-direction:column; gap:.15rem;
+  padding:.5rem .55rem; border-radius:10px;
+  background:rgba(18,20,23,.96); box-shadow:0 8px 26px rgba(0,0,0,.45);
+}
+.tb-m-side:hover > .tb-m-sub, .tb-m-side:focus-within > .tb-m-sub { display:flex; }
+.tb-m-forms { display:flex; flex-direction:column; gap:.1rem; }
+.tb-m-form { padding:.22rem .45rem; border-radius:6px; color:#c9ccd1; }
+.tb-m-form:hover { background:rgba(255,255,255,.09); color:#fff; }
+.tb-m-form-on { color:#fff; background:rgba(255,255,255,.14); }
+.tb-m-kit { position:relative; margin-top:.35rem; padding-top:.35rem;
+  border-top:1px solid rgba(255,255,255,.12); }
+.tb-m-kit-opts {
+  position:absolute; left:calc(100% + .5rem); top:-.4rem;
+  display:none; align-items:center; gap:.4rem; flex-wrap:wrap; width:max-content;
+  max-width:230px; padding:.5rem .55rem; border-radius:10px;
+  background:rgba(18,20,23,.96); box-shadow:0 8px 26px rgba(0,0,0,.45);
+}
+.tb-m-kit:hover > .tb-m-kit-opts, .tb-m-kit:focus-within > .tb-m-kit-opts { display:flex; }
+
+/* Adopted controls keep their own styling but lose the toolbar's
+   light-on-light assumptions: the panel ground is dark. */
+.tb-m-panel .tb-opp-toggle, .tb-m-kit-opts .tb-opp-toggle,
+.tb-m-panel .tb-label, .tb-m-panel .tb-pitch-unit, .tb-m-panel .tb-pitch-x,
+.tb-m-panel .tb-size-label { color:#c9ccd1; }
+.tb-m-panel .tb-pitch-input, .tb-m-panel .tb-stripe-n {
+  background:rgba(255,255,255,.08); color:#fff; border-color:rgba(255,255,255,.18);
 }
