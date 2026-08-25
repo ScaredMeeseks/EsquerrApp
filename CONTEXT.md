@@ -5060,3 +5060,45 @@ the clone were dropped, and no test covers that. Noted, not fixed — it is corr
 
 Unit 1540 → **1566** (new file `overlay-align.test.js`, registered in `test/package.json` — the list is
 hand-maintained). Version triple → v140. **Still nothing deployed.**
+
+### 2026-08-25 — The overlay was painting a second set of pitch lines (v141)
+
+**`.tb-markings` does not exist.** The CSS that was meant to hide the 2D pitch from the drawing overlay
+named it, and the markings are actually a dozen individual sibling divs — `tb-halfway`,
+`tb-center-circle`, `tb-penalty-left`, `tb-corner` and the rest. The rule matched nothing, so every
+stroke the coach drew sat on a board carrying **two** sets of pitch lines. At rest they overlap within a
+pixel and read as slightly bolder markings; zoom in and they separate visibly, because the 2D borders are
+a fixed `2px` while the 3D markings are a texture that scales with the camera. That is exactly how it was
+reported: *"if I zoom in, the field lines duplicate"*.
+
+**The rule is inverted now**: hide every child of `.tb-field-inner`, then re-show the two layers the
+coach draws into (`.tb-arrows-svg`, which holds zones, arrows and pen strokes, and `.tb-text-label`).
+An allow-list of things to hide is wrong by construction — it has to be updated whenever a marking is
+added, and it fails silently when it is not. A deny-everything rule cannot have this bug.
+
+**The test passed on the broken code**, and for the same reason as the `is3d` ReferenceError two releases
+ago: it asserted the *string* `.tb-markings` appeared in the stylesheet before a `display:none`, which
+it did. Neither test could see that the name referred to nothing. The replacement reads the class names
+`tbMarkingsHtml` actually emits and asserts none of them is in the re-show list — so it is checked
+against the app's own output rather than a list written from memory. Both mutations (the shipped rule,
+and re-showing `tb-halfway` by mistake) fail it.
+
+Three test-harness faults found while writing it, all the same shape — **an anchor that matched the
+wrong occurrence**:
+- `> \.(tb-[a-z-]+)` also matched `> .tb-field-inner`, the container rather than the subject;
+- the block bound cut the markup short;
+- `indexOf('<div class="tb-field-inner"')` found the **read-only card's** field, not the editor's —
+  there are two. Now anchored on the editor's unique `id="tb-arrows-svg"` and read backwards.
+
+Also fixed: an `assert` in a `describe` body runs at COLLECTION time, so the first mutation aborted the
+whole run with "Exception during run" instead of failing one test, hiding everything else. The extractor
+returns `[]` now and the assertion lives in an `it`.
+
+**Pen strokes: no volume found, and the two candidates were measured out.** `addPenLine` builds a
+`THREE.Line` with `LineBasicMaterial` — one pixel wide in screen space, no geometry to have volume — and
+the 2D overlay draws a flat 2.5px SVG stroke. The float hypothesis was tested numerically: a mark at
+y=0.08 displaces from the turf directly under it by **0.6px at broadcast, 0.7px at side, 0.1px at top**.
+Sub-pixel, so the height is not it either. Left open pending a look at the actual view — but note the
+duplication above was live in exactly the state the report describes.
+
+Unit 1566 → **1571**. Version triple → v141. **Still nothing deployed.**

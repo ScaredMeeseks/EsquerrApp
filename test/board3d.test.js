@@ -1541,14 +1541,6 @@ describe('the draw lock', () => {
         'orientation must be read in ONE place (tbVertical); found ' + readers.length);
   });
 
-  it('shows only the drawing layers on the surface', () => {
-    /* Turf, markings, players, ball and cones are all in the 3D scene
-       behind it — drawn twice, they read as a ghost a frame behind. */
-    const rule = cssSrc.slice(cssSrc.indexOf('.tb-field.tb-draw-surface .tb-markings'));
-    ['.tb-markings', '.tb-circle', '.tb-ball', '.tb-cone', '.tb-silhouette', '.tb-pitch-grip']
-        .forEach((c) => assert.ok(rule.indexOf(c) !== -1 &&
-            rule.indexOf(c) < rule.indexOf('display:none'), c + ' must be hidden'));
-  });
 
   it('drops the aspect-ratio padding the outer box normally uses', () => {
     /* The box holds its shape with padding-top; given an explicit
@@ -1767,5 +1759,114 @@ describe('the draw lock gives the camera back', () => {
     const off = surf.slice(surf.indexOf('if (!on) {'), surf.indexOf('_tb3d.setDrawLock(true)'));
     assert.ok(/field\.style\.visibility = ''/.test(off),
         'releasing must clear visibility, not only the geometry');
+  });
+});
+
+/* ── The overlay hides what the 3D scene already draws ────────────
+ *
+ * This started as an allow-list of things to hide, and the list named
+ * `.tb-markings` — an element that does not exist. The pitch markings
+ * are a dozen individual sibling divs, so the rule matched nothing
+ * and the 2D lines were painted straight over the 3D ones. It took a
+ * user report to find, because the test asserted the STRING
+ * '.tb-markings' appeared in the stylesheet before a `display:none`,
+ * which it did.
+ *
+ * The rule is inverted now — hide every child, re-show the two
+ * drawing layers — and these tests check the two halves against what
+ * the app actually renders, not against a list written from memory.
+ */
+describe('the drawing overlay hides the 3D scene\'s own marks', () => {
+  const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+  const appSrc2 = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
+
+  /** Every class tbMarkingsHtml can emit, read from the function. */
+  const markingClasses = (() => {
+    const i = appSrc2.indexOf('function tbMarkingsHtml');
+    assert.ok(i !== -1, 'tbMarkingsHtml not found');
+    const body = appSrc2.slice(i, appSrc2.indexOf('\n  }', i));
+    const out = new Set();
+    (body.match(/class="(tb-[a-z-]+)"/g) || []).forEach((m) => out.add(m.slice(7, -1)));
+    (body.match(/\((?:'|")(tb-[a-z-]+)(?:'|")/g) || []).forEach((m) => out.add(m.slice(2, -1)));
+    return [...out];
+  })();
+
+  /** The classes the overlay rule brings back. */
+  /* Returns [] rather than throwing when the rule is gone. An assert
+     in a describe body runs at COLLECTION time, so it aborts the whole
+     suite instead of failing one test — which is how the mutation
+     check reported this, and it hides everything else that ran. */
+  const shown = (() => {
+    const i = cssSrc.indexOf('.tb-field.tb-draw-surface > .tb-field-inner > .tb-');
+    if (i === -1) return [];
+    const rule = cssSrc.slice(i, cssSrc.indexOf('}', i));
+    /* The LAST `> .x` of each selector — the subject. Matching every
+       `> .x` in the rule also picked up `> .tb-field-inner`, which is
+       the container, not something being re-shown. */
+    return rule.split(',').map((sel) => {
+      const parts = sel.trim().split('>');
+      return parts[parts.length - 1].trim().replace(/\s*\{[\s\S]*$/, '').replace(/^\./, '');
+    }).filter(Boolean);
+  })();
+
+  it('finds the markings the app really renders', () => {
+    // Guards the test: an empty list would make everything below vacuous.
+    assert.ok(markingClasses.length >= 8,
+        'expected the full set of markings, got ' + markingClasses.join(', '));
+    assert.ok(markingClasses.indexOf('tb-halfway') !== -1 &&
+              markingClasses.indexOf('tb-center-circle') !== -1,
+        'the halfway line and centre circle must be among them');
+    assert.ok(markingClasses.indexOf('tb-markings') === -1,
+        'there is no .tb-markings element — that assumption was the bug');
+  });
+
+  it('hides every child by default, rather than listing what to hide', () => {
+    /* The universal selector is the point: a marking added next year
+       is hidden without anyone remembering to add it. */
+    assert.ok(/\.tb-field\.tb-draw-surface > \.tb-field-inner > \* \{ display:none !important; \}/
+        .test(cssSrc), 'the blanket hide rule is missing');
+  });
+
+  it('brings back only the drawing layers', () => {
+    assert.ok(shown.length, 'the re-show rule is missing entirely');
+    assert.deepStrictEqual(shown.sort(), ['tb-arrows-svg', 'tb-text-label'],
+        'exactly the two layers the coach draws into');
+  });
+
+  it('never re-shows a pitch marking', () => {
+    /* The regression, stated against the real marking list rather
+       than a remembered one. */
+    markingClasses.forEach((c) => {
+      assert.ok(shown.indexOf(c) === -1,
+          c + ' is a pitch marking and the 3D scene already draws it');
+    });
+  });
+
+  it('the two drawing layers are direct children, or the rule misses', () => {
+    /* `> .tb-arrows-svg` only matches a DIRECT child. If the render
+       ever nests them, the rule silently stops re-showing them and
+       the coach draws into an invisible layer. */
+    /* The EDITOR's field, not the read-only card's — there are two
+       `.tb-field-inner` renders and indexOf found the wrong one,
+       failing on markup that was correct. Anchored on the editor's
+       unique id and read backwards to its container. */
+    const svg = appSrc2.indexOf('id="tb-arrows-svg"');
+    assert.ok(svg !== -1, 'the editor arrows layer was not found');
+    const i = appSrc2.lastIndexOf('<div class="tb-field-inner"', svg);
+    assert.ok(i !== -1, 'no .tb-field-inner encloses it');
+    const block = appSrc2.slice(i, svg + 4000);
+    shown.forEach((c) => {
+      assert.ok(new RegExp('class="' + c + '"').test(block),
+          c + ' must be rendered inside .tb-field-inner');
+    });
+  });
+
+  it('the players, ball and cones are covered by the blanket rule', () => {
+    /* They used to be named explicitly. They are still hidden — by
+       the universal selector now — and this says so, because losing
+       them would put two sets of players on the pitch. */
+    ['tb-circle', 'tb-ball', 'tb-cone', 'tb-silhouette', 'tb-pitch-grip']
+        .forEach((c) => assert.ok(shown.indexOf(c) === -1,
+            c + ' must not be re-shown on the overlay'));
   });
 });

@@ -862,14 +862,27 @@ tr:hover td { background: #f7f8fa; }
   position:absolute; inset:0; width:100%; height:100%;
   background:none !important; border:0 !important; box-shadow:none !important;
 }
-/* Everything the 3D scene is already drawing. The drawing layers —
-   the arrows SVG, pen SVG, zones and labels — are what is left. */
-.tb-field.tb-draw-surface .tb-markings,
-.tb-field.tb-draw-surface .tb-circle,
-.tb-field.tb-draw-surface .tb-ball,
-.tb-field.tb-draw-surface .tb-cone,
-.tb-field.tb-draw-surface .tb-silhouette,
-.tb-field.tb-draw-surface .tb-pitch-grip { display:none !important; }
+/* Hide EVERYTHING, then bring back the two drawing layers.
+
+   An allow-list of things to hide was the first attempt and it was
+   wrong in a way that took a user report to find: it named
+   `.tb-markings`, and there is no such element. The pitch markings are
+   a dozen individual sibling divs — .tb-halfway, .tb-center-circle,
+   .tb-penalty-left and the rest — so the rule matched nothing and the
+   2D lines were drawn straight over the 3D ones. At rest they overlap
+   within a pixel and read as slightly bolder lines; zoom in and they
+   separate visibly, because the 2D borders are a fixed 2px while the
+   3D markings are a texture that scales.
+
+   Inverting it removes the whole class of bug: a marking added later
+   is hidden by default, and anything that must show has to be named
+   here on purpose.
+
+   The drawing layers are exactly two — one SVG holding zones, arrows
+   and pen strokes, and the label divs. */
+.tb-field.tb-draw-surface > .tb-field-inner > * { display:none !important; }
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-arrows-svg,
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-text-label { display:block !important; }
 
 /* A pen, so the locked view is legible as a mode rather than as a
    camera that has stopped responding. 16px, hotspot at the nib. */
