@@ -717,6 +717,58 @@ describe('the rail sits on the axis, and the CSS says each thing once', () => {
           sel + ' must take the tile token, not its own number'));
   });
 
+  it('the floating controls do not eat the board underneath them', () => {
+    /* THE BUG THIS CAUGHT. Both `.tb-m` and `.tb-cams` hold a list
+       that fades with OPACITY rather than display — so it can animate
+       — which means each container keeps a full-height layout box
+       whether it is open or shut. With no plate drawn on it, nothing
+       showed for that box, and it was still a hit target: roughly
+       200x340 of dead pitch in the top-left corner and a strip in the
+       top-right. In 3D it went unnoticed, because board3d listens on
+       the WRAPPER and a swallowed click still bubbled up to it. In 2D
+       it means the players in that corner cannot be dragged,
+       double-clicked to number, or ctrl-clicked to select.
+
+       Derived rather than pinned: any absolutely positioned overlay in
+       this window that holds a fade-out list has to be transparent to
+       the pointer, and the control inside it has to take it back. */
+    [['.tb-m', '.tb-m-top'], ['.tb-cams', '.tb-cams-btn']].forEach(
+      ([box, ctrl]) => {
+        assert.ok(/pointer-events:none/.test(rule(box)),
+            box + ' covers pitch it does not draw on and must not be a hit ' +
+            'target');
+        assert.ok(/pointer-events:auto/.test(rule(ctrl)),
+            ctrl + ' must take the pointer back, or the menu cannot be opened');
+      });
+    /* And the two lists inside them turn their own back on when open,
+       which is why neither needs naming above. */
+    assert.ok(/pointer-events:none/.test(rule('.tb-m-rail')) &&
+              /pointer-events:auto/.test(rule('.tb-m.tb-m-open .tb-m-rail')),
+        'the rail is off while shut and on while open');
+    assert.ok(/pointer-events:none/.test(rule('.tb-cams-list')) &&
+              /pointer-events:auto/.test(rule('.tb-cams.tb-cams-open .tb-cams-list')),
+        'and so is the camera list');
+  });
+
+  it('the cameras highlight and dim like the menu entries', () => {
+    const btn = rule('.tb-cams-list .tb-cam-btn');
+    assert.ok(/background:none/.test(btn), 'no plate behind a camera thumb');
+    assert.ok(/filter:drop-shadow/.test(btn),
+        'a drawing with no ground needs its own shadow over the turf — and ' +
+        'drop-shadow, not text-shadow, because the mark is an SVG stroke');
+    assert.ok(/\.tb-cams-list:hover \.tb-cam-btn \{ opacity:\.\d+; \}/.test(css),
+        'the rest must dim while one is pointed at');
+    assert.ok(/\.tb-cams-list:hover \.tb-cam-btn:hover \{ opacity:1/.test(css),
+        'and the one under the pointer come back up');
+    /* The SVG grows, not the button — a scaled 38px button would
+       reflow the column it is centred in. Same reason the menu grows
+       its icon and label rather than the entry. */
+    assert.ok(/\.tb-cams-list:hover \.tb-cam-btn:hover svg \{ transform:scale\(/.test(css),
+        'the drawing carries the growth');
+    assert.ok(!/transform:scale/.test(btn),
+        'the button itself must not scale — the column is centred on it');
+  });
+
   it('play sits ON the centre line, not the rail', () => {
     /* The rail used to be centred as a whole, so play drifted upward
        as frames were added — the one control that should be findable
@@ -999,18 +1051,56 @@ describe('the file actions moved into the menu', () => {
         'a translucent sticky box shows the rows scrolling through it; got ' + bg[1]);
   });
 
-  it('nothing the coach reads through is translucent', () => {
-    /* The icon buttons SHOULD be translucent — they sit on the pitch
-       and are meant to. The surfaces carrying text must not: at 96%
-       over a green pitch, turf comes through the words. */
+  it('the short panels rest on the pitch, and carry their own legibility', () => {
+    /* REVERSED, on the owner's call, and the reason it was safe to
+       reverse: these panels are a handful of controls, not prose. What
+       made the old opaque rule necessary was TEXT over turf, so the
+       ground is traded for a text-shadow rather than simply dropped —
+       and the one panel that really is prose keeps its ground below. */
     ['.tb-m-panel', '.tb-m-sub', '.tb-m-kit-opts'].forEach((sel) => {
       const r = rule(sel);
-      assert.ok(/background:#[0-9a-f]{6}/i.test(r),
-          sel + ' must have a solid ground');
-      assert.ok(!/backdrop-filter/.test(r),
-          sel + ' needs no blur behind an opaque surface — it is a ' +
-          'compositor pass for nothing');
+      const bg = /background:([^;]+);/.exec(r);
+      assert.ok(bg, sel + ' must still declare a ground, however faint');
+      const a = /rgba\([^)]*,\s*([\d.]+)\)/.exec(bg[1]);
+      assert.ok(a && parseFloat(a[1]) < 0.5,
+          sel + ' must be see-through, not a second window: ' + bg[1]);
+      assert.ok(/text-shadow:/.test(r),
+          sel + ' carries text over turf now — without a shadow the ' +
+          'ground was the only thing making it readable');
+      assert.ok(!/box-shadow:/.test(r),
+          sel + ' must drop its drop-shadow too — a heavy shadow under ' +
+          'a sheet you can see through announces a box that is not there');
     });
+  });
+
+  it('but the library keeps a solid one, because it is a long list', () => {
+    /* Two scrolling columns. Rows sliding under half-visible turf is
+       the one case where the see-through treatment stops working, so
+       this panel opts back out by id. */
+    const r = rule('#tb-panel-open');
+    assert.ok(/background:#[0-9a-f]{6}/i.test(r),
+        'the library must have a solid ground');
+    assert.ok(/box-shadow:/.test(r),
+        'and the shadow that separates it from the board');
+    assert.ok(/text-shadow:none/.test(r),
+        'and switch the panel text-shadow back off — it is a page again');
+    /* An id beats the class it is overriding, so this cannot be a
+       document-order accident. */
+    assert.ok(css.indexOf('#tb-panel-open {') > 0);
+  });
+
+  it('the panel opens beside the LABEL, not beside the padding box', () => {
+    /* The entry's .6rem of right padding was invisible while it had a
+       plate; with the plate gone it became dead air, and a panel 6px
+       off the box read as 16px off the word. */
+    const gap = /left:calc\(100% ([-+]) ([\d.]+)rem\)/.exec(rule('.tb-m-panel'));
+    assert.ok(gap, 'the panel must be positioned from the entry\'s right edge');
+    const pad = /padding:[\d.]+rem ([\d.]+)rem/.exec(rule('.tb-m-entry'));
+    assert.ok(pad, 'the entry must declare the padding this pulls back into');
+    const off = (gap[1] === '-' ? -1 : 1) * parseFloat(gap[2]);
+    assert.ok(off < parseFloat(pad[1]),
+        'the panel must sit inside the entry\'s own right padding (' +
+        off + 'rem against ' + pad[1] + 'rem), or it reads as floating away');
   });
 
   it('the two dropdowns have their own ground and room to read', () => {

@@ -6040,3 +6040,46 @@ feature** — every CSS assertion in the file went through that helper.
 Fifteen mutations. One survived twice — the `min-height:0` above — and it was the helper, not the test.
 
 Unit 1786 → **1795**. Version triple → v167. **Still nothing deployed.**
+
+### 2026-08-26 — The overlays stop eating the board (v168)
+
+Three asks. The third — "player numbering and Ctrl+C/Ctrl+V are not working" — turned out to be a
+**click-blocking bug that has been there since the 3D menu was built**, and the diff makes the case:
+nothing in the numbering or clipboard code has changed since v165. What changed is that those controls
+finally have a board underneath them.
+
+`.tb-m` and `.tb-cams` each hold a list that fades with **opacity, not display**, so it can animate — which
+means each container keeps a full-height layout box whether it is open or shut. Neither had
+`pointer-events:none`. With no plate drawn on them nothing showed for those boxes, but they were still hit
+targets: roughly **200x340 of dead pitch in the top-left corner** and a strip in the top-right. In 3D it
+went unnoticed, because board3d listens on the WRAPPER and a swallowed click still bubbled up to it, so the
+camera kept orbiting. In 2D the goalkeeper and the back line simply cannot be dragged, double-clicked to
+number, or ctrl-clicked to select — and numbering is a `dblclick` on the circle, while Ctrl+C needs a
+selection, so both of the reported symptoms are the same corner.
+
+Fixed by making the containers transparent to the pointer and giving it back to the controls inside. The
+two lists already toggled their own `pointer-events` with the open class, so neither needed naming. The
+test is derived: any absolutely positioned overlay in this window that holds a fade-out list must not be a
+hit target, and its control must take the pointer back.
+
+**Flagged to the owner rather than claimed as fixed**: this explains a dead corner, not a dead board. If
+numbering still fails on a player in open space, it is something else and needs a different look.
+
+The other two, both cosmetic and both applied to the cameras as well as the menu:
+
+- **Camera thumbs get the entry treatment** — no plate, dim the rest, white and 1.12x on the one under the
+  pointer. `drop-shadow` rather than `text-shadow`, because the mark is an SVG stroke and not a glyph, and
+  the SVG grows rather than the button, since the column is centred on the button.
+- **Panels open beside the LABEL and are see-through.** The entry's `.6rem` of right padding was invisible
+  while it had a plate and became dead air the moment the plate went, so a panel 6px off the box read as
+  16px off the word; it now sits back inside that padding. The ground goes to `rgba(...,.34)` and the drop
+  shadow with it — a heavy shadow under a sheet you can see through announces a box that is not there —
+  with a text-shadow taking over the legibility that the ground used to provide.
+  **`#tb-panel-open` is the exception** and keeps a solid ground: two long scrolling lists are the one case
+  where rows sliding under half-visible turf stops being readable. That **reverses an earlier decision**
+  ("Opaque panels", v154) and the test was rewritten to say so rather than deleted.
+
+The duplicate-selector guard earned its keep again — it caught `.tb-cams-list .tb-cam-btn svg` written
+twice within a minute of it happening. Nine mutations, all killed.
+
+Unit 1795 → **1799**. Version triple → v168. **Still nothing deployed.**
