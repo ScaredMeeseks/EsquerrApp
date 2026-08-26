@@ -255,20 +255,18 @@ describe('the 3D surface is bigger than the 2D one', () => {
     assert.ok(pad, 'card padding not found: ' + card);
     const p = parseFloat(pad[1]);
 
-    /* Three edges now, not two: the window reaches the TOP of the
-       card as well as its sides. Top and sides are read separately
-       because they are separate values in the shorthand and only one
-       of them used to exist. */
-    const marg = /margin:-([\d.]+)rem -([\d.]+)rem/.exec(wrap);
-    assert.ok(marg, 'the window must pull out to the card edge: ' + wrap);
+    /* ALL FOUR edges now. It started as sides only, then gained the
+       top; the bottom followed once tags — the last thing rendered
+       below the window — moved into the menu, leaving nothing inside
+       the card for the window to make room for. */
+    const marg = /margin:-([\d.]+)rem;/.exec(wrap);
+    assert.ok(marg, 'the window must pull out to the card edge on every side: ' + wrap);
     assert.strictEqual(parseFloat(marg[1]), p,
-        'the TOP bleed must cancel the card padding exactly');
-    assert.strictEqual(parseFloat(marg[2]), p,
-        'and so must the sides');
-    /* The rounded top corners are kept on purpose — the window meets
-       the card's own edge there, so it borrows the card's radius. */
-    assert.ok(/border-radius:var\(--radius\) var\(--radius\) 0 0/.test(wrap),
-        'the top corners must stay rounded, the bottom ones square');
+        'the bleed must cancel the card padding exactly');
+    /* And with nothing meeting it on any side, it takes the card's own
+       radius the whole way round. */
+    assert.ok(/border-radius:var\(--radius\);/.test(wrap),
+        'all four corners must be rounded now, not just the top two');
 
     const w = /width:calc\(100% \+ ([\d.]+)rem\)/.exec(wrap);
     assert.ok(w, 'the window must grow by what it pulled out on both sides');

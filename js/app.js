@@ -1578,7 +1578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 159;
+  const APP_VERSION = 160;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -11038,7 +11038,7 @@
           </div>
           <div class="tb-match-linked" id="tb-training-linked"></div>
         </div>`}
-        <div class="tb-btn-row">
+        <div class="tb-btn-row${is3d ? ' tb-controls-3d' : ''}">
           ${tbSaveButtonsHtml()}
         </div>
         ${tplId ? '' : tbBoardsPanelHtml()}

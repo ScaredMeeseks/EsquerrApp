@@ -850,8 +850,8 @@ tr:hover td { background: #f7f8fa; }
      the frames strip, --tb-tile what fits between them. They are not
      independent: axis = tile + 2 pads, and there is a test for it. */
   --tb-tile:38px; --tb-pad:8px; --tb-axis:54px;
-  width:calc(100% + 3rem); margin:-1.5rem -1.5rem 1rem;
-  border-radius:var(--radius) var(--radius) 0 0;
+  width:calc(100% + 3rem); margin:-1.5rem;
+  border-radius:var(--radius);
   height:clamp(420px, 72vh, 900px);
   overflow:hidden; border:0;
   background:#1a2410; position:relative;

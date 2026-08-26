@@ -5780,3 +5780,20 @@ BORDER — it checks the background declaration now.
 is a hand check.
 
 Unit 1720 → **1725**. Version triple → v159. **Still nothing deployed.**
+
+### 2026-08-26 — The window takes the whole card (v160)
+
+It bled sideways, then gained the top, and now takes the bottom too: `margin:-1.5rem` on all four
+edges and the card's own radius on all four corners. That is only honest because tags — the last thing
+rendered below it — moved into the Save panel in v159, so nothing inside the card follows the window.
+
+**One leftover was still holding space.** The Save row is *emptied* by adoption, not removed: its two
+buttons live in the menu now, but the wrapper keeps its padding, and that padding is exactly the gap
+that would stop the window reaching the card's bottom edge. It carries the 3D hide class too — which is
+safe precisely because the buttons are no longer its children, so hiding the wrapper cannot hide them.
+
+A new test lists every section rendered after the window and requires each to be **either adopted or
+hidden**. Adding a section below the board without handling it now fails there, rather than showing up
+as the window mysteriously not reaching the edge.
+
+Unit 1725 → **1726**. Version triple → v160. **Still nothing deployed.**

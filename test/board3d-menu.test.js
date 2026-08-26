@@ -272,9 +272,39 @@ describe('the camera menu and the frames rail', () => {
         'moving only the strip would leave the button under the board');
   });
 
-  it('New Board is hidden in 3D, because the hamburger has it', () => {
-    assert.ok(/class="tb-btn-row\$\{is3d \? ' tb-controls-3d' : ''\}"/.test(app),
-        'the button row must be hidden in 3D only');
+  it('BOTH button rows are hidden in 3D, for different reasons', () => {
+    /* One holds New Board, which the hamburger carries instead. The
+       other held Save and Save As, which are ADOPTED out — so the row
+       is left empty, and an empty row still holds its padding. That
+       padding is space inside the card below the window, which is
+       exactly what stops the window reaching the card's bottom edge.
+
+       Hiding the wrapper cannot affect the buttons: they are no
+       longer its children. */
+    const rows = (app.match(/class="tb-btn-row[^"]*"/g) || []);
+    assert.strictEqual(rows.length, 2, 'expected a New Board row and a Save row');
+    rows.forEach((r) => assert.ok(r.indexOf("is3d ? ' tb-controls-3d'") !== -1,
+        'this row keeps its space in 3D: ' + r));
+  });
+
+  it('nothing is left holding space between the window and the card edge', () => {
+    /* The window bleeds to all four edges of the card, which is only
+       honest if nothing renders after it. Everything that does is
+       either adopted into the menu at runtime or hidden — and this
+       lists which, so adding a section below the board without
+       handling it fails here rather than by pushing the window up. */
+    const i = app.indexOf('tbMenuHtml()');
+    const after = app.slice(app.indexOf('tb-3d-hint', i),
+        app.indexOf('function bindTactics', i));
+    const sections = ['tb-frames-section', 'tb-tag-section', 'tb-match-section',
+      'tb-btn-row', 'tb-saved-list', 'tb-lib-list'];
+    sections.forEach((c) => {
+      if (after.indexOf(c) === -1) return;      // not rendered here at all
+      const adopted = init.indexOf(c) !== -1;
+      const hidden = new RegExp('class="' + c + '\\$\\{is3d').test(app);
+      assert.ok(adopted || hidden,
+          c + ' renders below the window and is neither adopted nor hidden');
+    });
   });
 
   it('the rail is dimmed until it is wanted', () => {
