@@ -735,7 +735,15 @@ describe('camera presets', () => {
        not exist. The list closes on click instead. */
     const i = a.indexOf('const camsBtn =');
     assert.ok(i !== -1, 'the camera menu wiring was not found');
-    const fn = a.slice(i, i + 1400);
+    /* Bounded on the catch that ends the mount, not on a character
+       count. The window was 1400 and a grace timer added to the hover
+       wiring pushed the click handler past the end of it — so the test
+       failed reporting that the presets had gone, when they had only
+       moved. Fixed-width windows have cost this suite four assertions
+       now. */
+    const end = a.indexOf('} catch (err)', i);
+    assert.ok(end !== -1, 'the mount block has no visible end');
+    const fn = a.slice(i, end);
     assert.ok(!/tb-cam-follow/.test(fn), 'no latching entry remains');
     assert.ok(/setPreset\(btn\.dataset\.cam\)/.test(fn),
         'and the other entries are plain presets');
@@ -1451,22 +1459,94 @@ describe('selection and delete in 3D', () => {
     /* applyMove addresses cones positionally (spawnCone sets no
        data-idx) and everything else by data-idx. A delete that used
        the other rule would remove a different object than the one
-       under the ring. */
-    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/)[0];
+       under the ring.
+
+       ONE RESOLVER now, shared with copy — it was written out inside
+       the delete handler and had to be written again for Ctrl+C, which
+       is two chances to disagree about what a selection means. */
+    const r = appBare.match(/const sel2dEl = \(sel\) => \{[\s\S]*?\n      \};/);
+    assert.ok(r, 'the shared selection resolver was not found');
+    const h = r[0];
     assert.ok(/querySelectorAll\('\.tb-cone'\)\[sel\.index\]/.test(h),
         'cones are addressed positionally, as in applyMove');
     assert.ok(/data-idx="' \+ sel\.index \+ '"/.test(h),
         'players and balls are addressed by data-idx, as in applyMove');
     assert.ok(/\.tb-circle:not\(\.tb-circle-opp\)/.test(h),
         'own players must exclude opponents — .tb-circle matches both');
+    /* And both callers go through it rather than round it. Named
+       rather than counted: `const sel2dEl = (sel) =>` is not a call,
+       so a count was off by one and said 3 where 2 was right. */
+    assert.ok(/sel2dEl\(_tb3d\.getSelected\(\)\)/.test(appBare),
+        'copy must resolve through it');
+    assert.ok(/const el = sel2dEl\(sel\);/.test(appBare),
+        'and so must delete');
   });
 
   it('is undoable and clears the stale selection', () => {
-    const h = appBare.match(/wrap3d\.addEventListener\('keydown'[\s\S]*?clearSelection\(\);/)[0];
+    const h = appBare.match(/if \(e\.key !== 'Delete'[\s\S]*?clearSelection\(\);/)[0];
     const undos = h.match(/pushUndo\(\)/g) || [];
-    assert.strictEqual(undos.length, 3, 'every branch must push an undo step');
+    /* ONE, not three. It used to be pushed inside each branch; with a
+       shared resolver the element is known before the branch, so the
+       undo step is pushed once above it — and "every branch pushes"
+       becomes "the branch cannot be reached without one". */
+    assert.strictEqual(undos.length, 1, 'exactly one undo step, above the branch');
+    assert.ok(/if \(el\) \{\s*\n\s*pushUndo\(\);/.test(h),
+        'and it must be guarded on the element actually being found — ' +
+        'an undo step for a delete that did not happen is a dead press ' +
+        'of Ctrl+Z later');
     assert.ok(/_tb3d\.clearSelection\(\)/.test(h),
         'the deleted object must not stay selected');
+  });
+
+  it('a shirt number can be set without the flat board', () => {
+    /* In 2D you double-click the disc, which focuses the input inside
+       it. THAT DOES NOT EXIST IN 3D: the flat board is hidden and what
+       the coach clicks is a mesh, so there was no way to number a
+       player at all without switching views.
+
+       The right-click menu already works in both — board3d forwards
+       the hit to the 2D element, which dispatches its own contextmenu
+       — so one row there serves both, rather than a second numbering
+       path bolted onto board3d. */
+    assert.ok(/dispatchEvent\(new MouseEvent\('contextmenu'/.test(appBare),
+        'the premise: a 3D right-click reaches the 2D element');
+    assert.ok(/items\.push\(\{\s*\n\s*type: 'number', value: inp\.value/.test(appBare),
+        'the circle menu must offer the number');
+    /* Written through the SAME input the 2D double-click edits, and
+       then through the editor's own save path — a second writer for
+       shirt numbers is how the two views come to disagree. */
+    const row = appBare.match(/type: 'number', value: inp\.value[\s\S]*?\n          \}\);/)[0];
+    assert.ok(/inp\.value = v;/.test(row),
+        'it must write the 2D input, not the storage key');
+    assert.ok(/syncNumbersAcrossFrames\(\)/.test(row),
+        'and carry the number forward, as typing into the disc does');
+    /* And the row itself has to be usable the moment it opens: the
+       coach right-clicked a player in order to type. */
+    assert.ok(/box\.focus\(\); box\.select\(\)/.test(appBare),
+        'the field must take focus when the menu opens');
+  });
+
+  it('copy and paste reach the 3D view too', () => {
+    /* The document-level handler needs `selected` — the 2D
+       multi-select Set — or one of the single-selection globals, and
+       3D fills neither: it keeps its own selection and the flat board
+       is hidden. So the keys did nothing there while working in 2D,
+       which reads as broken rather than absent. */
+    const h = appBare.match(
+        /wrap3d\.addEventListener\('keydown', \(e\) => \{\s*\n\s*if \(!_tb3d \|\| !\(e\.ctrlKey[\s\S]*?\n      \}\);/);
+    assert.ok(h, 'the 3D copy/paste handler was not found');
+    const body = h[0];
+    assert.ok(/sel2dEl\(_tb3d\.getSelected\(\)\)/.test(body),
+        'copy must resolve the 3D selection to its 2D element');
+    assert.ok(/copyElementToClipboard\(el\)/.test(body) &&
+              /pasteClipboardAtOffset\(PASTE_OFFSET/.test(body),
+        'and reuse the 2D clipboard, so a copy in one view pastes in the other');
+    assert.ok(/isDrawLocked\(\)\) return;/.test(body),
+        'nothing is selectable under the draw lock, so the keys must stand down');
+    assert.ok(/INPUT\|TEXTAREA\|SELECT/.test(body),
+        'and a Ctrl+C typed into a field must stay in the field');
+    assert.ok(/e\.shiftKey\) return;/.test(body),
+        'Ctrl+Shift+C is the browser inspector, not a board copy');
   });
 
   it('takes focus by hand, because preventDefault suppresses it', () => {

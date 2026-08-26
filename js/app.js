@@ -676,6 +676,7 @@
     'tactics.view_3d':       { ca:'Vista 3D', es:'Vista 3D', en:'3D view' },
     'tactics.orientation':   { ca:'Orientació', es:'Orientación', en:'Orientation' },
     'tactics.select':        { ca:'Selecciona', es:'Seleccionar', en:'Select' },
+    'tactics.number':        { ca:'Dorsal', es:'Dorsal', en:'Number' },
     'tactics.field':         { ca:'Camp', es:'Campo', en:'Field' },
     'tactics.players':       { ca:'Jugadors', es:'Jugadores', en:'Players' },
     'tactics.props':         { ca:'Material', es:'Material', en:'Props' },
@@ -1581,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 168;
+  const APP_VERSION = 169;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7862,8 +7863,22 @@
           openCams(!cams.classList.contains('tb-cams-open'));
         });
         if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
-          cams.addEventListener('pointerenter', () => openCams(true));
-          cams.addEventListener('pointerleave', () => openCams(false));
+          /* With a grace period, like the hamburger's. The container is
+             transparent to the pointer so it stops eating the board,
+             which means the 8px either side of the 38px button — the
+             column is wider than the control it centres — is not a hit
+             target either. A diagonal move from the icon to a thumb
+             crosses it, and closing on that made the list impossible to
+             reach. Cancelled on re-entry, so it only ever covers a
+             gap the pointer is passing through. */
+          let camLeave = null;
+          cams.addEventListener('pointerenter', () => {
+            clearTimeout(camLeave); openCams(true);
+          });
+          cams.addEventListener('pointerleave', () => {
+            clearTimeout(camLeave);
+            camLeave = setTimeout(() => openCams(false), 260);
+          });
         }
         cams.addEventListener('click', (e) => {
           const btn = e.target.closest('.tb-cam-btn');
@@ -12077,6 +12092,37 @@
           ctxMenu.appendChild(row);
         } else if (it.type === 'stripes') {
           ctxMenu.appendChild(stripeRowEl(it.value, it.action));
+        } else if (it.type === 'number') {
+          /* A shirt number, editable from the menu.
+             In 2D you get at it by double-clicking the disc, which
+             focuses the input inside it. THAT DOES NOT EXIST IN 3D:
+             the flat board is hidden there and what the coach clicks
+             is a mesh, so there was no way to number a player at all
+             without switching views. The right-click menu already
+             works in both — board3d forwards the hit to the 2D
+             element, which dispatches its own contextmenu — so the
+             number belongs here, where one row serves both views. */
+          const row = document.createElement('label');
+          row.className = 'tb-ctx-item tb-ctx-color-row';
+          row.innerHTML = '<span>' + sanitize(t('tactics.number')) + '</span>';
+          const box = document.createElement('input');
+          box.type = 'text';
+          box.inputMode = 'numeric';
+          box.maxLength = 2;
+          box.className = 'tb-ctx-num';
+          box.value = it.value || '';
+          box.addEventListener('input', () => { it.action(box.value); });
+          /* Enter closes, like picking any other row. */
+          box.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); closeCtxMenu(); }
+          });
+          row.appendChild(box);
+          ctxMenu.appendChild(row);
+          /* Focused on open: the coach right-clicked a player to type a
+             number, and making them click once more into a box they can
+             already see is a step for nothing. After the menu is in the
+             DOM, so setTimeout rather than a call from here. */
+          setTimeout(() => { box.focus(); box.select(); }, 0);
         } else if (it.type === 'range') {
           const row = document.createElement('label');
           row.className = 'tb-ctx-item tb-ctx-color-row';
@@ -12440,6 +12486,17 @@
             action: () => { pushUndo(); const toDelete = [...selected]; toDelete.forEach(c => deleteCircle(c)); }
           });
         } else {
+          /* First, because it is the reason most right-clicks on a
+             player happen — and in 3D it is the ONLY way in. */
+          items.push({
+            type: 'number', value: inp.value || '',
+            action: (v) => {
+              inp.value = v;
+              saveState();
+              syncNumbersAcrossFrames();
+              autoSaveFrame();
+            }
+          });
           items.push({ label: 'Copy', action: () => copyElementToClipboard(circle) });
           items.push({ label: 'Duplicate', action: () => duplicateElement(circle) });
           items.push({
@@ -14139,6 +14196,50 @@
          that also suppresses the focus the click would otherwise
          give. Without this the key never arrives. */
       wrap3d.addEventListener('pointerdown', () => wrap3d.focus());
+      /* The 2D element behind a 3D selection.
+         board3d holds a kind and an index and nothing else; every
+         action on it is performed by the 2D editor's own function, so
+         the first thing anything here does is find the element. Same
+         rule as the drag: the 3D view is an input device, not a second
+         writer. */
+      const sel2dEl = (sel) => {
+        if (!sel) return null;
+        if (sel.kind === 'positions' || sel.kind === 'oppPositions') {
+          return inner.querySelector(sel.kind === 'oppPositions'
+            ? '.tb-circle-opp[data-idx="' + sel.index + '"]'
+            : '.tb-circle:not(.tb-circle-opp)[data-idx="' + sel.index + '"]');
+        }
+        if (sel.kind === 'balls') return inner.querySelectorAll('.tb-ball')[sel.index];
+        if (sel.kind === 'cones') return inner.querySelectorAll('.tb-cone')[sel.index];
+        return null;
+      };
+
+      /* COPY AND PASTE, in 3D.
+         The document-level handler further up needs `selected` — the
+         2D multi-select Set — or one of the single-selection globals,
+         and 3D fills neither: it keeps its own selection and the flat
+         board is hidden. So the keys did nothing here, while working
+         in 2D, which reads as the feature being broken rather than
+         absent. Routed through the same serialise/paste pair the 2D
+         board uses, so a board copied in one view pastes in the other. */
+      wrap3d.addEventListener('keydown', (e) => {
+        if (!_tb3d || !(e.ctrlKey || e.metaKey) || e.shiftKey) return;
+        if (_tb3d.isDrawLocked()) return;
+        const tgt = e.target;
+        if (tgt && (tgt.isContentEditable ||
+            /^(INPUT|TEXTAREA|SELECT)$/.test(tgt.tagName || ''))) return;
+        if (e.key === 'c') {
+          const el = sel2dEl(_tb3d.getSelected());
+          if (!el) return;
+          e.preventDefault();
+          copyElementToClipboard(el);
+        } else if (e.key === 'v') {
+          if (!tbClipboard || !tbClipboard.items || !tbClipboard.items.length) return;
+          e.preventDefault();
+          pasteClipboardAtOffset(PASTE_OFFSET, PASTE_OFFSET);
+        }
+      });
+
       wrap3d.addEventListener('keydown', (e) => {
         if (e.key !== 'Delete' && e.key !== 'Backspace') return;
         if (!_tb3d) return;
@@ -14156,18 +14257,14 @@
         if (!sel) return;
         e.preventDefault();
 
-        if (sel.kind === 'positions' || sel.kind === 'oppPositions') {
-          const q = sel.kind === 'oppPositions'
-            ? '.tb-circle-opp[data-idx="' + sel.index + '"]'
-            : '.tb-circle:not(.tb-circle-opp)[data-idx="' + sel.index + '"]';
-          const el = inner.querySelector(q);
-          if (el) { pushUndo(); deleteCircle(el); }
-        } else if (sel.kind === 'balls') {
-          const el = inner.querySelectorAll('.tb-ball')[sel.index];
-          if (el) { pushUndo(); deleteBall(el); }
-        } else if (sel.kind === 'cones') {
-          const el = inner.querySelectorAll('.tb-cone')[sel.index];
-          if (el) { pushUndo(); el.remove(); saveCones(); autoSaveFrame(); }
+        /* Through the same resolver copy uses, so the two cannot come
+           to disagree about which element a selection means. */
+        const el = sel2dEl(sel);
+        if (el) {
+          pushUndo();
+          if (sel.kind === 'cones') { el.remove(); saveCones(); autoSaveFrame(); }
+          else if (sel.kind === 'balls') deleteBall(el);
+          else deleteCircle(el);
         }
         _tb3d.clearSelection();
       });

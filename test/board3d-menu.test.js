@@ -796,10 +796,17 @@ describe('the rail sits on the axis, and the CSS says each thing once', () => {
     const list = rule('.tb-cams-list');
     const btns = (fn('tbCamsHtml()').match(/one\('/g) || []).length;
     assert.ok(btns >= 3, 'expected the camera buttons; got ' + btns);
+    /* The gap under the trigger is PADDING on the list, not margin
+       above it — it was margin, and 6px of nothing between two hit
+       targets closed the menu before the pointer could cross it. It
+       still counts the same towards the stack's height, so this reads
+       whichever the sheet declares rather than assuming. */
+    const gapUnder = /(?:margin-top|padding-top):([\d.]+rem)/.exec(list);
+    assert.ok(gapUnder, 'the camera list must declare the gap under its trigger');
     const need =
         px(/top:([\d.]+rem)/.exec(cams)[1]) +          // the stack's inset
         tile +                                          // the camera button
-        px(/margin-top:([\d.]+rem)/.exec(list)[1]) +    // gap under it
+        px(gapUnder[1]) +
         btns * tile +
         (btns - 1) * px(/gap:([\d.]+rem)/.exec(list)[1]);
     const floor = px(/top:max\(calc\(50% - var\(--tb-tile\) \/ 2\), ([\d.]+rem)\)/
@@ -1087,6 +1094,61 @@ describe('the file actions moved into the menu', () => {
     /* An id beats the class it is overriding, so this cannot be a
        document-order accident. */
     assert.ok(css.indexOf('#tb-panel-open {') > 0);
+  });
+
+  it('an entry is only as wide as its own label', () => {
+    /* A flex column stretches its children to the widest by default,
+       so every entry was as wide as "Biblioteca" — and a panel
+       positioned off the entry's right edge opened level with THAT
+       word, not with its own. The short ones looked as though their
+       panel had drifted halfway across the pitch, because relative to
+       the label it had. */
+    assert.ok(/align-items:flex-start/.test(rule('.tb-m-rail')),
+        'the rail must not stretch its entries to a common width');
+    assert.ok(/align-items:flex-start/.test(rule('.tb-m-forms')),
+        'nor the formation list, for the same reason one level in');
+  });
+
+  it('the sub-options highlight and grow like the entries do', () => {
+    assert.ok(/\.tb-m-panel:hover \.tb-m-side \{ opacity:\.\d+; \}/.test(css),
+        'the other side must dim');
+    assert.ok(/\.tb-m-forms:hover \.tb-m-form \{ opacity:\.\d+; \}/.test(css),
+        'and the other formations');
+    assert.ok(/\.tb-m-forms:hover \.tb-m-form:hover \{[\s\S]{0,80}transform:scale\(/.test(css),
+        'a formation row grows — it holds no absolutely positioned child, ' +
+        'so it is safe to scale directly');
+    /* THE SIDE IS NOT. `.tb-m-side` is the positioning parent of its
+       own `.tb-m-sub`, so scaling it would take the submenu with it —
+       the same trap the rail entries hit. */
+    assert.ok(!/transform:scale/.test(rule('.tb-m-side')),
+        '.tb-m-side must never be scaled — it holds .tb-m-sub');
+    assert.ok(/\.tb-m-side:focus-within > \.tb-m-side-label \{ transform:scale\(/
+        .test(css) ||
+        /\.tb-m-side:hover > \.tb-m-side-label,\s*\n\.tb-m-side:focus-within > \.tb-m-side-label \{ transform:scale\(/
+        .test(css),
+        'its label carries the growth instead');
+  });
+
+  it('the trip from the camera icon to a camera never leaves the menu', () => {
+    /* The gap under the trigger was a `margin-top`: 6px of nothing
+       between two hit targets, with the container transparent to the
+       pointer, so crossing it fired pointerleave and shut the list
+       before the pointer arrived. As padding it belongs to the list's
+       own box, which is a hit target the moment the list is open. */
+    const list = rule('.tb-cams-list');
+    assert.ok(/padding-top:[\d.]+rem/.test(list),
+        'the gap must be inside the list, not between it and the button');
+    assert.ok(!/margin-top:/.test(list),
+        'a margin here is dead space that closes the menu');
+    /* And a grace period on top, for the 8px either side of the 38px
+       button — the column is wider than the control it centres, so a
+       diagonal move crosses ground that is not a hit target. */
+    const i = app.indexOf('const camsBtn =');
+    const wiring = app.slice(i, app.indexOf('} catch (err)', i));
+    assert.ok(/setTimeout\(\(\) => openCams\(false\), \d+\)/.test(wiring),
+        'closing must be deferred, as the hamburger already defers it');
+    assert.ok(/clearTimeout\(camLeave\); openCams\(true\)/.test(wiring),
+        'and cancelled on re-entry, or it closes anyway a moment later');
   });
 
   it('the panel opens beside the LABEL, not beside the padding box', () => {

@@ -6083,3 +6083,46 @@ The duplicate-selector guard earned its keep again — it caught `.tb-cams-list 
 twice within a minute of it happening. Nine mutations, all killed.
 
 Unit 1795 → **1799**. Version triple → v168. **Still nothing deployed.**
+
+### 2026-08-26 — Numbering and clipboard reach 3D; the camera menu becomes reachable (v169)
+
+**The camera list closed before you could get to it.** The gap under the trigger was a `margin-top` — 6px
+of nothing — and v168 made `.tb-cams` transparent to the pointer, so crossing that gap left every hit
+target and `pointerleave` shut the list. A regression from the previous fix, and the previous fix was still
+right: the answer is to move the gap INTO the list as padding, where it is part of a hit target the moment
+the list opens. A 260ms grace period on top, the same one the hamburger already had, covers the 8px either
+side of the 38px button — the column is wider than the control it centres.
+
+**The panels were opening off the wrong edge.** A flex column stretches its children to the widest by
+default, so every entry was as wide as "Biblioteca", and a panel positioned at `left:100%` of the ENTRY
+opened level with that word rather than with its own. `align-items:flex-start` on the rail (and on the
+formation list, one level in) makes each entry its own width, which is what "still too far to the right"
+actually was.
+
+**Sub-options got the entry treatment**: dim the rest, highlight and grow the one under the pointer. And
+the trap held for a second time — `.tb-m-side` is the positioning parent of its own `.tb-m-sub`, so the
+label carries the growth, not the side. A formation row has no absolutely positioned child and is scaled
+directly. `.tb-m-form-on` traded its white wash for weight: it would have been the only plate left in the
+menu.
+
+**Numbering and Ctrl+C/V in 3D — a missing feature, not a regression.** Numbering is a `dblclick` on the
+2D disc, and the flat board is HIDDEN in 3D, so there was never a way to number a player there. Copy/paste
+needs `selected` (the 2D multi-select Set) or one of the single-selection globals, and 3D fills neither —
+it keeps its own selection. Both worked in 2D throughout, which is what made them read as broken.
+
+- The number moves into the CIRCLE'S CONTEXT MENU, which already works in both views: board3d forwards a
+  right-click to the 2D element, which dispatches its own `contextmenu`. One row serves both, instead of a
+  second numbering path bolted onto board3d — and it writes the same input the double-click edits, then
+  goes through `syncNumbersAcrossFrames()`, so there is still one writer.
+- Ctrl+C/V follow the Delete key's precedent exactly: resolve the 3D selection to its 2D element, then call
+  the 2D editor's own function. The resolver was written out inline inside the delete handler and would
+  have had to be written again for copy, so it was lifted into `sel2dEl()` — which also collapsed three
+  `pushUndo()` calls into one above the branch, guarded on the element actually being found.
+
+**A fourth fixed-width slice bit.** `a.slice(i, i + 1400)` for the camera wiring: the grace timer pushed the
+click handler past the end of the window, and the test reported that the presets had gone when they had only
+moved. Bounded on the `catch` that ends the mount now. That is four assertions this pattern has cost.
+
+Eleven mutations, all killed.
+
+Unit 1799 → **1804**. Version triple → v169. **Still nothing deployed.**
