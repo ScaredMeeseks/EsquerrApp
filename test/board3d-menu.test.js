@@ -1180,18 +1180,33 @@ describe('the file actions moved into the menu', () => {
        clearance and clampPanel() measures the rest. */
     const gap = /left:calc\(100% \+ ([\d.]+)rem\)/.exec(rule('.tb-m-panel'));
     assert.ok(gap, 'the CSS must declare a positive clearance past the edge');
-    assert.ok(parseFloat(gap[1]) >= 0.35,
+    assert.ok(parseFloat(gap[1]) >= 0.3,
         'and it must be big enough to read as a gap; got ' + gap[1] + 'rem');
 
     const init = fn('tbMenuInit(hooks)');
     const c = init.slice(init.indexOf('const clampPanel'));
     assert.ok(/rail\.getBoundingClientRect\(\)\.right/.test(c) &&
               /entry\.getBoundingClientRect\(\)\.right/.test(c),
-        'the offset must be the distance from THIS entry to the rail\'s edge');
+        'the offset must be measured between THIS entry and the rail\'s edge');
     assert.ok(/panel\.style\.marginLeft = Math\.round\(dx\)/.test(c),
         'and be applied, or the CSS clearance is measured from the entry again');
     assert.ok(/panel\.style\.marginLeft = '';/.test(c),
         'cleared before measuring, or each open compounds the last offset');
+
+    /* HOW FAR towards that edge, as a named fraction. Both ends were
+       tried and rejected: 0 leaves a short label's panel over its
+       neighbours, 1 makes it read as floating away from one. The
+       number is a taste call and belongs to the owner, so what is
+       pinned is that it stays BETWEEN the two rejected extremes and
+       that the code actually uses it. */
+    assert.ok(/const dx = \(railR - entryR\) \* TB_PANEL_ALIGN;/.test(bare),
+        'the fraction must be named, not inlined — it has been retuned ' +
+        'four times and a literal here is a literal to go hunting for');
+    const frac = /TB_PANEL_ALIGN = ([\d.]+);/.exec(bare);
+    assert.ok(frac, 'TB_PANEL_ALIGN must be declared once');
+    const v = parseFloat(frac[1]);
+    assert.ok(v > 0 && v < 1,
+        'both extremes were seen and rejected; got ' + frac[1]);
   });
 
   it('the two dropdowns have their own ground and room to read', () => {

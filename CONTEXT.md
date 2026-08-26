@@ -6202,3 +6202,23 @@ Four mutations, all killed.
 
 Unit **1813**, unchanged — the rewritten test replaced one that was checking the wrong thing.
 Version triple → v171. **Still nothing deployed.**
+
+### 2026-08-26 — The panel gap, split down the middle (v172)
+
+v171 aligned every panel to the rail's right edge, which cleared the neighbouring entries and — from a
+short label like "Camp" — read as floating away. v170 hung it off the entry's own edge, which read as
+sitting on top of them. Owner's call after seeing both: halfway.
+
+The fraction is `TB_PANEL_ALIGN`, named rather than inlined, because this number has now been retuned four
+times and a literal buried in a measurement is a literal somebody goes hunting for. The trade is explicit
+in the comment: a short entry's panel overlaps the widest ones by half the difference, which was judged the
+better of the two errors.
+
+The test pins what is actually decidable — that the fraction is named, used, and strictly between the two
+rejected extremes — and leaves the value itself to taste. Pinning 0.5 would only mean re-editing the test
+the next time it is retuned, which is the failure mode that made the previous version of this assertion
+useless.
+
+Three mutations, all killed.
+
+Unit **1813**, unchanged. Version triple → v172. **Still nothing deployed.**

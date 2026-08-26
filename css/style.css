@@ -4965,10 +4965,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    on top of the long ones above and below it. Every attempt to fix
    the "gap" by moving this number was moving the wrong measurement.
 
-   The offset below is only the CLEARANCE past the rail's edge —
-   clampPanel() adds the distance from this entry's edge to the rail's,
-   measured, because the widest label is a translation away from being
-   a different width.
+   The offset below is only the CLEARANCE; clampPanel() adds a measured
+   fraction of the distance from this entry's edge to the rail's, so the
+   number here is not the whole gap and moving it alone will not fix
+   one. That fraction is TB_PANEL_ALIGN, and it is a half — clearing the
+   rail entirely read as floating away from a short label, and not
+   clearing it at all put a short label's panel over its neighbours.
 
    And near-transparent, so the panel reads as controls resting on the
    pitch rather than a second window over it. The library is the one
@@ -4978,7 +4980,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    shadow under a sheet you can see through announces a box that is
    not there — and a text-shadow takes over the legibility. */
 .tb-m-panel {
-  position:absolute; left:calc(100% + .55rem); top:50%; min-width:180px;
+  position:absolute; left:calc(100% + .375rem); top:50%; min-width:180px;
   transform:translateY(-50%);
   display:none; flex-direction:column; gap:.35rem;
   padding:.55rem .65rem; border-radius:10px;

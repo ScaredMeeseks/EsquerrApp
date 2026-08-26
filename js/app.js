@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 171;
+  const APP_VERSION = 172;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6987,6 +6987,10 @@
    * bindTactics local from here is the ReferenceError that killed the
    * drawing tools and playback in v138.
    */
+  /* How far a panel is pushed towards the rail's right edge, where 0
+     is the entry's own edge and 1 is the rail's. See clampPanel(). */
+  var TB_PANEL_ALIGN = 0.5;
+
   function tbMenuInit(hooks) {
     const menu = document.getElementById('tb-menu');
     if (!menu) return;
@@ -7231,7 +7235,14 @@
          being a different width. */
       const railR = rail.getBoundingClientRect().right;
       const entryR = entry.getBoundingClientRect().right;
-      const dx = railR - entryR;
+      /* HALFWAY, on the owner's call after seeing both ends.
+         At 0 the panel hangs off the entry's own edge and a short
+         label's panel covers its neighbours; at 1 it clears the rail
+         entirely and, from a short label, reads as floating away. The
+         trade is explicit: a short entry's panel now overlaps the
+         widest ones by half the difference, which was judged the
+         better of the two errors. */
+      const dx = (railR - entryR) * TB_PANEL_ALIGN;
       if (dx > 0.5) panel.style.marginLeft = Math.round(dx) + 'px';
 
       /* ── Down: back inside the window ──────────────────────────
