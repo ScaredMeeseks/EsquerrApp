@@ -5831,3 +5831,32 @@ The height follows on its own — `tbSize3DWindow()` measures the top offset, wh
 its 16px bottom gap is gone for a genuine bleed.
 
 Unit 1726 → **1731**. Version triple → v161. **Still nothing deployed.**
+
+### 2026-08-26 — The white band, the announcement's home, and a scrollbar (v162)
+
+**The band below the board was a stale measurement, not a margin.** `tbMenuInit()` adopts the board
+name — rendered ABOVE the window — into the menu, so the window rises by that input's height the moment
+the menu is built. `tbSize3DWindow()` had already run at mount, for the old position, and the difference
+was exactly the strip of page showing underneath. Measured again after adoption. The re-measure follows
+`tbMenuInit` rather than being tied to the board name, because anything adopted from above the window
+has the same effect.
+
+Both measurements are needed and the tests say so: the first so board3d fits its camera to the real
+aspect (without it the board visibly re-frames on every entry), the second because the page moves
+underneath it.
+
+**The announcement is parented to the board**, not the body: `position:fixed` centred it on the browser
+window, which with the sidebar open is a different place from the window the coach is looking at. It
+falls back to the body if the board is not up yet — better a label in the wrong place than no label —
+and the node is rebuilt when the host changes rather than reused blindly. Font up to 1.6rem, with a
+smaller step under 640px.
+
+**Scrollbars on the board's dark surfaces** are a thin translucent-white pill on no track. The default
+is a light-grey slab from the page palette, which on a near-black panel over turf is the loudest thing
+on screen — which is why it only ever gets noticed when it appears. Both syntaxes are written:
+`scrollbar-width`/`scrollbar-color` for Firefox and Chromium 121+, `::-webkit-scrollbar` for Safari and
+older Chromium. They never both apply, so they cannot disagree.
+
+One process note: the band fix initially had **no test**, and the mutation survived. It has one now.
+
+Unit 1731 → **1733**. Version triple → v162. **Still nothing deployed.**

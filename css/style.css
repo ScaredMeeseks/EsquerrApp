@@ -5138,15 +5138,66 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    board happens to be doing; pointer-events:none so it cannot eat a
    click on the board underneath during its two seconds. */
 .tb-page-flash {
-  position:fixed; top:calc(var(--topnav-h, 56px) + 1.2rem); left:50%;
-  transform:translate(-50%, -6px);
+  /* ABSOLUTE, inside the board: centred on the window the coach is
+     looking at. Fixed positioning centred it on the browser, which
+     with the sidebar open is a different place. */
+  position:absolute; top:1.6rem; left:50%;
+  transform:translate(-50%, -8px);
   z-index:60; pointer-events:none;
-  padding:.5rem 1.1rem; border-radius:999px;
+  padding:.6rem 1.6rem; border-radius:999px;
   background:rgba(18,20,23,.82); color:#fff;
-  font-size:1rem; font-weight:700; letter-spacing:.01em;
+  font-size:1.6rem; font-weight:700; letter-spacing:.01em;
   opacity:0; transition:opacity .45s ease, transform .45s ease;
 }
 .tb-page-flash.tb-flash-on { opacity:1; transform:translate(-50%, 0); }
+@media (max-width: 640px) { .tb-page-flash { font-size:1.15rem; } }
 @media (prefers-reduced-motion: reduce) {
   .tb-page-flash { transition:opacity .01s; }
+}
+
+/* ── Scrollbars on the board's dark surfaces ──────────────────────
+   The default bar is a light-grey slab from the page's own palette,
+   and on a near-black panel floating over turf it is the loudest
+   thing on screen — which is why it only ever gets noticed when it
+   appears.
+
+   Both syntaxes on purpose: `scrollbar-width`/`scrollbar-color` is
+   the standard one (Firefox, and Chromium since 121) and the
+   ::-webkit- rules cover the Safari and older-Chromium the app still
+   sees. The two never both apply, so they cannot disagree.
+
+   No track at all: a groove drawn behind the thumb doubles the ink
+   for something that is already only a hint. */
+.tb-m-panel, .tb-m-sub, .tb-m-kit-opts,
+#tb-panel-open .tb-m-col, #tb-panel-link .tb-match-list,
+#tb-panel-save .tb-tag-list {
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.22) transparent;
+}
+.tb-m-panel::-webkit-scrollbar, .tb-m-sub::-webkit-scrollbar,
+.tb-m-kit-opts::-webkit-scrollbar,
+#tb-panel-open .tb-m-col::-webkit-scrollbar,
+#tb-panel-link .tb-match-list::-webkit-scrollbar,
+#tb-panel-save .tb-tag-list::-webkit-scrollbar { width:8px; height:8px; }
+.tb-m-panel::-webkit-scrollbar-track, .tb-m-sub::-webkit-scrollbar-track,
+.tb-m-kit-opts::-webkit-scrollbar-track,
+#tb-panel-open .tb-m-col::-webkit-scrollbar-track,
+#tb-panel-link .tb-match-list::-webkit-scrollbar-track,
+#tb-panel-save .tb-tag-list::-webkit-scrollbar-track { background:transparent; }
+.tb-m-panel::-webkit-scrollbar-thumb, .tb-m-sub::-webkit-scrollbar-thumb,
+.tb-m-kit-opts::-webkit-scrollbar-thumb,
+#tb-panel-open .tb-m-col::-webkit-scrollbar-thumb,
+#tb-panel-link .tb-match-list::-webkit-scrollbar-thumb,
+#tb-panel-save .tb-tag-list::-webkit-scrollbar-thumb {
+  /* Inset by a transparent border so the thumb reads as a slim pill
+     with air around it rather than a bar wedged against the edge. */
+  background-clip:padding-box; border:2px solid transparent;
+  border-radius:999px; background-color:rgba(255,255,255,.22);
+}
+.tb-m-panel::-webkit-scrollbar-thumb:hover, .tb-m-sub::-webkit-scrollbar-thumb:hover,
+.tb-m-kit-opts::-webkit-scrollbar-thumb:hover,
+#tb-panel-open .tb-m-col::-webkit-scrollbar-thumb:hover,
+#tb-panel-link .tb-match-list::-webkit-scrollbar-thumb:hover,
+#tb-panel-save .tb-tag-list::-webkit-scrollbar-thumb:hover {
+  background-color:rgba(255,255,255,.38);
 }

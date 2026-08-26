@@ -815,17 +815,51 @@ describe('the board takes the content area, and gives it back', () => {
     const r = rule('.tb-page-flash');
     assert.ok(/pointer-events:none/.test(r),
         'it sits over the board for two seconds and must not take a click');
-    assert.ok(/position:fixed/.test(r),
-        'centred on the viewport, not on whatever the board is doing');
+    /* ABSOLUTE now, and parented to the board: fixed centred it on
+       the browser window, which with the sidebar open is a different
+       place from the window the coach is looking at. */
+    assert.ok(/position:absolute/.test(r),
+        'it must be centred on the board, not on the browser');
   });
 
   it('one label at a time, removed after it fades', () => {
     const flash = fn('tbFlashPageTitle(text)');
-    assert.ok(/document\.body\.contains\(_tbFlashEl\)/.test(flash),
-        'the node is reused — two labels crossing is worse than none');
+    assert.ok(/_tbFlashEl\.parentNode !== host/.test(flash),
+        'the node is reused — two labels crossing is worse than none — but ' +
+        'rebuilt when the host changes, since it now lives inside the board');
+    assert.ok(/getElementById\('tb-3d-wrap'\) \|\| document\.body/.test(flash),
+        'parented to the board, falling back to the body if it is not up yet');
     const hide = flash.indexOf('2000');
     const drop = flash.indexOf('2600');
     assert.ok(hide !== -1 && drop !== -1 && drop > hide,
         'it must be removed AFTER the fade-out, or it vanishes instead');
+  });
+});
+
+describe('the board is re-measured after the menu rearranges the page', () => {
+  it('sizes again once adoption has moved things above it', () => {
+    /* THE WHITE BAND. tbMenuInit adopts the board name — which is
+       rendered ABOVE the window — into the menu, so the window rises
+       by that input's height the moment the menu is built. The height
+       computed at mount was for the old position, and the difference
+       showed as a strip of page below the board.
+
+       Any future adoption of something above the window has the same
+       effect, which is why the re-measure follows tbMenuInit rather
+       than being tied to the board name specifically. */
+    const at = bare.indexOf('tbMenuInit({onFormation');
+    assert.ok(at !== -1, 'the menu is never built');
+    const after = bare.slice(at, at + 260);
+    assert.ok(/tbSize3DWindow\(\)/.test(after),
+        'the window must be measured again AFTER the menu adopts, or it ' +
+        'keeps the height it had while the board name was still above it');
+  });
+
+  it('and the first measurement still happens before the mount', () => {
+    /* Both are needed: the first so board3d fits its camera to the
+       real aspect, the second because the page moves underneath it. */
+    const first = bare.indexOf('tbSize3DWindow();');
+    assert.ok(first !== -1 && first < bare.indexOf('tbMount3D({'),
+        'the pre-mount measurement must survive');
   });
 });

@@ -1578,7 +1578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 161;
+  const APP_VERSION = 162;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7213,10 +7213,19 @@
   function tbFlashPageTitle(text) {
     _tbFlashTimers.forEach(clearTimeout);
     _tbFlashTimers = [];
-    if (!_tbFlashEl || !document.body.contains(_tbFlashEl)) {
+    /* Parented to the BOARD, not the body: centred on the window
+       the coach is looking at rather than on the browser, which on a
+       wide screen with the sidebar open are not the same place.
+       Falls back to the body if the board is not up yet — better a
+       label in the wrong place than no label. */
+    const host = document.getElementById('tb-3d-wrap') || document.body;
+    if (!_tbFlashEl || _tbFlashEl.parentNode !== host) {
+      if (_tbFlashEl && _tbFlashEl.parentNode) {
+        _tbFlashEl.parentNode.removeChild(_tbFlashEl);
+      }
       _tbFlashEl = document.createElement('div');
       _tbFlashEl.className = 'tb-page-flash';
-      document.body.appendChild(_tbFlashEl);
+      host.appendChild(_tbFlashEl);
     }
     const el = _tbFlashEl;
     el.textContent = text;
@@ -15072,6 +15081,12 @@
         renderFrameStrip();
       }
       tbMenuInit({onFormation: applyFormation});
+      /* MEASURE AGAIN. tbMenuInit adopts the board name — which sat
+         ABOVE the window — into the menu, so the window moves up by
+         that input's height the moment the menu is built. The height
+         computed at mount was for the old position, and the
+         difference showed as a band of page below the board. */
+      tbSize3DWindow();
     }
     // Compute polygon arrowheads after layout is ready
     requestAnimationFrame(() => refreshArrowheads(arrowsSvg));
