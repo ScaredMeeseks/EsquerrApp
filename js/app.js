@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 169;
+  const APP_VERSION = 170;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7021,8 +7021,14 @@
     /* Orientation. A 2D-only control, and it had no home here because
        3D hides it outright — the scene has one orientation. Now that
        the flat board wears this menu, an unadopted control is simply
-       gone: .tb-controls is display:none. */
-    adopt('gear', ['#tb-orient'], t('tactics.orientation'));
+       gone: .tb-controls is display:none.
+
+       NOT ADOPTED IN 3D. The button carries `display:none` there, so
+       adopting it produced a row holding a heading and an invisible
+       control — a title for nothing. adopt() drops a row that gains no
+       children, but a row with a LABEL already has one, so the guard
+       has to be here. */
+    if (!tbIs3D()) adopt('gear', ['#tb-orient'], t('tactics.orientation'));
 
     adopt('props', ['#tb-ball-tool'], t('tactics.ball'));
     adopt('props', ['#tb-cone-tool'], t('tactics.cone'));
@@ -7843,6 +7849,12 @@
         /* A mark dragged across the turf, as a delta. */
         onMarkMove: (kind, index, d) => {
           if (hooks.applyMarkMove) hooks.applyMarkMove(kind, index, d);
+        },
+        /* Double-click. The flat board opens a shirt number on one;
+           forwarded so 3D does the same gesture rather than a
+           different one. */
+        onDblClick: (kind, index, x, y) => {
+          if (hooks.onDblClick) hooks.onDblClick(kind, index, x, y);
         },
         onSelect: () => {}
       });
@@ -12486,17 +12498,6 @@
             action: () => { pushUndo(); const toDelete = [...selected]; toDelete.forEach(c => deleteCircle(c)); }
           });
         } else {
-          /* First, because it is the reason most right-clicks on a
-             player happen — and in 3D it is the ONLY way in. */
-          items.push({
-            type: 'number', value: inp.value || '',
-            action: (v) => {
-              inp.value = v;
-              saveState();
-              syncNumbersAcrossFrames();
-              autoSaveFrame();
-            }
-          });
           items.push({ label: 'Copy', action: () => copyElementToClipboard(circle) });
           items.push({ label: 'Duplicate', action: () => duplicateElement(circle) });
           items.push({
@@ -12632,6 +12633,13 @@
     let tbClipboard = null;
     document.addEventListener('keydown', e => {
       if (!(e.ctrlKey || e.metaKey) || !document.querySelector('.tb-field')) return;
+      /* ALREADY DEALT WITH. The 3D wrapper has its own Ctrl+C/V — it
+         has to, because this handler needs the 2D selection state and
+         3D keeps its own — and the wrapper is INSIDE the document, so
+         both fired on the same keypress and a paste landed twice.
+         The wrapper calls preventDefault() when it acts, which is
+         exactly the signal for "this key has been used". */
+      if (e.defaultPrevented) return;
 
       if (e.key === 'c' && !e.shiftKey) {
         // Multi-select copy
@@ -13991,6 +13999,31 @@
          Calling it here keeps one source for the positions rather
          than teaching board3d about formations. */
       saveState();
+
+      /* The 2D element behind a 3D selection or hit.
+         board3d holds a kind and an index and nothing else; every
+         action on it is performed by the 2D editor's own function, so
+         the first thing anything here does is find the element. Same
+         rule as the drag: the 3D view is an input device, not a second
+         writer.
+
+         Declared BEFORE the mount rather than beside the key handlers
+         that came first. All three callers are closures and would have
+         resolved it at call time either way — but three temporal dead
+         zones in this feature is enough to stop relying on that being
+         obvious to the next reader. */
+      const sel2dEl = (sel) => {
+        if (!sel) return null;
+        if (sel.kind === 'positions' || sel.kind === 'oppPositions') {
+          return inner.querySelector(sel.kind === 'oppPositions'
+            ? '.tb-circle-opp[data-idx="' + sel.index + '"]'
+            : '.tb-circle:not(.tb-circle-opp)[data-idx="' + sel.index + '"]');
+        }
+        if (sel.kind === 'balls') return inner.querySelectorAll('.tb-ball')[sel.index];
+        if (sel.kind === 'cones') return inner.querySelectorAll('.tb-cone')[sel.index];
+        return null;
+      };
+
       tbMount3D({
         /**
          * Land a 3D drag on the 2D board.
@@ -14132,6 +14165,35 @@
           autoSaveFrame();
         },
 
+        /* SHIRT NUMBERS, in 3D.
+           The gesture is the flat board's: double-click a player and
+           type. What it cannot be is the flat board's mechanism —
+           that focuses an <input> sitting inside the disc, and in 3D
+           the disc is a mesh while the board holding that input is
+           hidden. So the same one-field popup the menu builder can
+           already make is opened at the cursor, wired to the very
+           same input, and everything downstream (saveState, the
+           forward sync, the frames) is untouched.
+
+           Players only. A double-click on a ball or a cone has
+           nothing to edit, and opening an empty popup on one would be
+           worse than doing nothing. */
+        onDblClick: (kind, index, x, y) => {
+          if (kind !== 'positions' && kind !== 'oppPositions') return;
+          const el = sel2dEl({kind: kind, index: index});
+          const inp = el && el.querySelector('.tb-num');
+          if (!inp) return;
+          showCtxMenu(x, y, [{
+            type: 'number', value: inp.value || '',
+            action: (v) => {
+              inp.value = v;
+              saveState();
+              syncNumbersAcrossFrames();
+              autoSaveFrame();
+            }
+          }]);
+        },
+
         onContext: (kind, index, x, y, pct) => {
           if (!kind) {
             if (pct) showFieldCtxMenu(pct[0], pct[1], x, y);
@@ -14196,24 +14258,6 @@
          that also suppresses the focus the click would otherwise
          give. Without this the key never arrives. */
       wrap3d.addEventListener('pointerdown', () => wrap3d.focus());
-      /* The 2D element behind a 3D selection.
-         board3d holds a kind and an index and nothing else; every
-         action on it is performed by the 2D editor's own function, so
-         the first thing anything here does is find the element. Same
-         rule as the drag: the 3D view is an input device, not a second
-         writer. */
-      const sel2dEl = (sel) => {
-        if (!sel) return null;
-        if (sel.kind === 'positions' || sel.kind === 'oppPositions') {
-          return inner.querySelector(sel.kind === 'oppPositions'
-            ? '.tb-circle-opp[data-idx="' + sel.index + '"]'
-            : '.tb-circle:not(.tb-circle-opp)[data-idx="' + sel.index + '"]');
-        }
-        if (sel.kind === 'balls') return inner.querySelectorAll('.tb-ball')[sel.index];
-        if (sel.kind === 'cones') return inner.querySelectorAll('.tb-cone')[sel.index];
-        return null;
-      };
-
       /* COPY AND PASTE, in 3D.
          The document-level handler further up needs `selected` — the
          2D multi-select Set — or one of the single-selection globals,

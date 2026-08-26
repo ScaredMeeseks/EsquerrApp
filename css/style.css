@@ -4973,7 +4973,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    shadow under a sheet you can see through announces a box that is
    not there — and a text-shadow takes over the legibility. */
 .tb-m-panel {
-  position:absolute; left:calc(100% - .25rem); top:50%; min-width:180px;
+  position:absolute; left:calc(100% + .2rem); top:50%; min-width:180px;
   transform:translateY(-50%);
   display:none; flex-direction:column; gap:.35rem;
   padding:.55rem .65rem; border-radius:10px;
@@ -5007,7 +5007,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-m-side:hover > .tb-m-side-label,
 .tb-m-side:focus-within > .tb-m-side-label { transform:scale(1.12); }
 .tb-m-sub {
-  position:absolute; left:calc(100% + .1rem); top:50%; min-width:150px;
+  position:absolute; left:calc(100% + .35rem); top:50%; min-width:150px;
   transform:translateY(-50%);
   display:none; flex-direction:column; gap:.15rem;
   padding:.5rem .55rem; border-radius:10px;
@@ -5034,7 +5034,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-m-kit { position:relative; margin-top:.35rem; padding-top:.35rem;
   border-top:1px solid rgba(255,255,255,.12); }
 .tb-m-kit-opts {
-  position:absolute; left:calc(100% + .1rem); top:50%;
+  position:absolute; left:calc(100% + .35rem); top:50%;
   transform:translateY(-50%);
   display:none; align-items:center; gap:.4rem; flex-wrap:wrap; width:max-content;
   max-width:230px; padding:.5rem .55rem; border-radius:10px;

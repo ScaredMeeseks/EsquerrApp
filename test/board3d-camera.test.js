@@ -846,32 +846,72 @@ describe('3D marks carry the 2D formatting', () => {
    chances for the two measurements to disagree. */
 let capUvTable;
 
-const paintKit = (fill) => {
+const paintKit = (fill, number) => {
   const rects = [];
-  const S = 128;
+  /* The painter declares its own texture size; this stub only has to
+     report the canvas it was handed, and the caller reads the size
+     back out of the result rather than assuming it. */
+  const S = 256;
+  /* Records what the painter does. The text side is recorded too now,
+     with the transform, because the number is drawn through a rotate
+     and the only way to know where it lands is to follow the matrix
+     the painter set. A no-op stub would have hidden that entirely. */
+  const ops = [];
+  let cur = {a: 1, b: 0, c: 0, d: 1, e: 0, f: 0};   // identity
+  const stack = [];
   const ctx = {
     set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; },
+    set strokeStyle(v) { this._s = v; }, get strokeStyle() { return this._s; },
+    set font(v) { this._font = v; }, get font() { return this._font; },
+    set lineWidth(v) {}, set lineJoin(v) {}, set miterLimit(v) {},
+    set textAlign(v) {}, set textBaseline(v) {},
     fillRect: (x, y, w, h) => rects.push({x, y, w, h}),
-    fillText: () => {}, set font(v) {}, set textAlign(v) {}, set textBaseline(v) {}
+    save: () => { stack.push(Object.assign({}, cur)); },
+    restore: () => { cur = stack.pop() || cur; },
+    translate: (x, y) => {
+      cur = {a: cur.a, b: cur.b, c: cur.c, d: cur.d,
+             e: cur.e + cur.a * x + cur.c * y,
+             f: cur.f + cur.b * x + cur.d * y};
+    },
+    rotate: (t) => {
+      const co = Math.cos(t), si = Math.sin(t);
+      cur = {a: cur.a * co + cur.c * si, b: cur.b * co + cur.d * si,
+             c: cur.c * co - cur.a * si, d: cur.d * co - cur.b * si,
+             e: cur.e, f: cur.f};
+    },
+    /* Enough of TextMetrics for the ink-centring to have something to
+       work with; the exact numbers do not matter to any assertion, but
+       their PRESENCE decides which branch the painter takes. */
+    measureText: () => ({width: 40, actualBoundingBoxAscent: 30,
+                         actualBoundingBoxDescent: 2}),
+    fillText: (t, x, y) => ops.push({op: 'fill', t, x, y, m: Object.assign({}, cur)}),
+    strokeText: (t, x, y) => ops.push({op: 'stroke', t, x, y, m: Object.assign({}, cur)})
   };
+  /* The helper block AND the painter: playerTexture reads NUM_SCALE,
+     isLight and maxAnisotropy, which live above it. */
   const body = (() => {
-    const i = src.indexOf('  function playerTexture(fill, number) {');
-    assert.ok(i !== -1, 'playerTexture not found');
-    return src.slice(i, src.indexOf('\n  }', i) + '\n  }'.length);
+    const i = src.indexOf('  const NUM_SCALE =');
+    assert.ok(i !== -1, 'the player-texture helpers were not found');
+    const j = src.indexOf('  function playerTexture(fill, number) {');
+    assert.ok(j !== -1 && j > i, 'playerTexture not found below its helpers');
+    return src.slice(i, src.indexOf('\n  }', j) + '\n  }'.length);
   })();
-  const fn = new Function('THREE', 'document', 'fillCss', 'parseFill',
+  const fn = new Function('THREE', 'document', 'fillCss', 'parseFill', 'renderer',
       body + '\nreturn playerTexture;')(
     {CanvasTexture: function () { return {}; }, SRGBColorSpace: 'srgb'},
     {createElement: () => ({getContext: () => ctx, width: S, height: S})},
     require('../js/utils.js').fillCss,
-    require('../js/utils.js').parseFill);
-  fn(fill, '');
-  return {rects, S};
+    require('../js/utils.js').parseFill,
+    null);
+  fn(fill, number || '');
+  return {rects, ops, S};
 };
 
 
-describe('a striped kit reads the same way in 2D and 3D', () => {
-  before(() => {
+/* ROOT-LEVEL, not inside one suite's before(). Two suites read this
+   table now — the stripes and the shirt number — and a `before` in the
+   first of them only feeds the second by accident of file order. */
+before(() => {
     /* The real mapping, read off the real geometry: for each cap
        vertex, where it sits in the world and where it samples the
        texture. Hardcoding the table would make this a test of my
@@ -891,11 +931,9 @@ describe('a striped kit reads the same way in 2D and 3D', () => {
       capUvTable.push({x: pos.getX(v), z: pos.getZ(v), u: uv.getX(v), v: uv.getY(v)});
     }
     assert.ok(capUvTable.length > 20, 'too few cap vertices to measure');
-  });
+});
 
-  /** The painter, run over a stub canvas that records its fillRects. */
-
-
+describe('a striped kit reads the same way in 2D and 3D', () => {
   /**
    * Which WORLD axis the painted bands vary along.
    *
@@ -1001,5 +1039,127 @@ describe('a striped kit starts on the same side in both views', () => {
        band ORDER looks identical at n=4 and is wrong at n=3. */
     const r = firstBandAt('s|v|3|#a50044|#004d98');
     assert.ok(r.at < 0, 'c1 must still start on the left at n=3; got ' + r.at.toFixed(2));
+  });
+});
+
+/* ── And the shirt number reads the right way up ──────────────────
+ *
+ * The same cap mapping, applied to the thing it was never applied to.
+ * An upright glyph has its top at canvas -y, which is texture +v,
+ * which is world +X — SCREEN RIGHT under the top-down camera. Every
+ * number would have lain on its side.
+ *
+ * Nobody saw it because nobody could put a number on a 3D player
+ * until v169: numbering was a double-click on the flat board, and the
+ * flat board is hidden in 3D.
+ *
+ * Measured, not reasoned about. The painter's transform is followed
+ * through the stub, the glyph's up vector is pushed through it into
+ * texture space, and the measured cap table says where that lands in
+ * the world. A different fix — a texture matrix, another geometry —
+ * passes this too.
+ */
+describe('a shirt number reads the right way up from above', () => {
+  /* Where a texture-space direction points in the world, from the
+     same measured table the stripe tests use. */
+  const worldDirOf = (texKey, axis) => {
+    const lo = capUvTable.filter((p) => p[texKey] < 0.25);
+    const hi = capUvTable.filter((p) => p[texKey] > 0.75);
+    assert.ok(lo.length && hi.length, 'the cap table has no spread in ' + texKey);
+    const avg = (a) => a.reduce((s, p) => s + p[axis], 0) / a.length;
+    return avg(hi) - avg(lo);          // world delta per +1 of that tex axis
+  };
+
+  /** Which way the top of the painted glyph points, in world space. */
+  const glyphUpWorld = () => {
+    const {ops} = paintKit('#ffffff', '9');
+    const fill = ops.filter((o) => o.op === 'fill');
+    assert.strictEqual(fill.length, 1, 'expected exactly one fillText');
+    const m = fill[0].m;
+    /* Local up is (0,-1). A canvas matrix maps a DIRECTION by its
+       linear part alone — the translation is where the glyph sits,
+       not which way it faces. */
+    const cx = m.c * -1, cy = m.d * -1;          // canvas-space up
+    /* canvas x -> texture u directly; canvas y -> texture v FLIPPED,
+       because CanvasTexture flips Y on upload. */
+    const du = cx, dv = -cy;
+    return {
+      x: du * worldDirOf('u', 'x') + dv * worldDirOf('v', 'x'),
+      z: du * worldDirOf('u', 'z') + dv * worldDirOf('v', 'z')
+    };
+  };
+
+  it('its top points at world -Z, which is screen up', () => {
+    const up = glyphUpWorld();
+    assert.ok(Math.abs(up.z) > Math.abs(up.x),
+        'the number must stand along Z, not across it — it is lying on ' +
+        'its side; up = (' + up.x.toFixed(2) + ', ' + up.z.toFixed(2) + ')');
+    assert.ok(up.z < 0,
+        'and point at -Z (screen up), not +Z — it is upside down; got z=' +
+        up.z.toFixed(2));
+  });
+
+  it('the correction is a real one, not a no-op', () => {
+    /* Guards the guard: without the rotate, up lands along X and the
+       assertion above is the only thing that would have caught it. */
+    const {ops} = paintKit('#ffffff', '9');
+    const m = ops.filter((o) => o.op === 'fill')[0].m;
+    assert.ok(Math.abs(m.a) < 1e-9 && Math.abs(m.d) < 1e-9,
+        'the painter must actually turn the canvas — the matrix is still ' +
+        'axis-aligned, so nothing was rotated');
+  });
+
+  it('it is drawn twice: an outline, then the fill', () => {
+    /* Half a number can sit on each colour of a striped kit, and `fg`
+       is only ever right for one of them. */
+    const {ops} = paintKit('s|v|4|#ffffff|#111111', '9');
+    assert.strictEqual(ops.filter((o) => o.op === 'stroke').length, 1,
+        'the number must carry an outline');
+    const iStroke = ops.findIndex((o) => o.op === 'stroke');
+    const iFill = ops.findIndex((o) => o.op === 'fill');
+    assert.ok(iStroke < iFill, 'the outline goes down first, or it covers the ink');
+  });
+
+  it('and centred on its own ink, not on the em box', () => {
+    /* textBaseline:'middle' centres the em box, which for digits sits
+       low — the same mistake the frame delete cross made with flexbox.
+       With ascent 30 and descent 2 the offset must be 14. */
+    const {ops} = paintKit('#ffffff', '9');
+    const fill = ops.filter((o) => o.op === 'fill')[0];
+    assert.strictEqual(fill.x, 0, 'centred across by textAlign, so x is 0');
+    assert.ok(Math.abs(fill.y - 14) < 1e-9,
+        'y must be (ascent - descent) / 2 = 14; got ' + fill.y);
+  });
+
+  it('a bare disc paints no text at all', () => {
+    assert.strictEqual(paintKit('#ffffff', '').ops.length, 0,
+        'an unnumbered player must not get a blank glyph');
+  });
+
+  it('it is big enough to read, and the map sharp enough to hold it', () => {
+    /* Both of these are REQUIREMENTS rather than implementation
+       details, so they are pinned deliberately. A shirt number fills
+       most of the back it is printed on; at the old 0.5 it read as a
+       small mark in the middle of a disc. And a 1.8m disc covers a lot
+       of screen at any real zoom — the old 128px map was visibly soft
+       the moment there was anything on it worth reading.
+
+       Named rather than measured because the stub's TextMetrics are
+       invented: what can be checked here is that the constants say
+       what they should and that the painter actually uses them. */
+    const scale = /const NUM_SCALE = ([\d.]+);/.exec(src);
+    assert.ok(scale, 'the number scale must be declared once, by name');
+    assert.ok(parseFloat(scale[1]) >= 0.6,
+        'a shirt number must fill most of the disc; got ' + scale[1]);
+    /* THE FONT LINE, not the constant anywhere. A bare search matched
+       the no-metrics fallback further down, which also multiplies by
+       NUM_SCALE — so hard-coding 0.5 back into the font left the test
+       green while the number went small again. */
+    assert.ok(/g\.font = 'bold ' \+ Math\.round\(S \* NUM_SCALE\) \+ 'px/.test(src),
+        'the font size must come from the constant, or it is decoration');
+    const size = /function playerTexture\(fill, number\) \{[\s\S]*?const S = (\d+);/.exec(src);
+    assert.ok(size, 'the texture size must be declared inside the painter');
+    assert.ok(Number(size[1]) >= 256,
+        'the disc map must be at least 256px or the number is soft; got ' + size[1]);
   });
 });

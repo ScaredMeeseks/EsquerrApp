@@ -329,11 +329,18 @@ describe('the 3D view sees the players immediately', () => {
        enclosing `if` was a fixed-size window keyed on a string that
        stopped being unique the moment a second guard was added — the
        test then failed on code that was correct. */
+    /* Bounded on the BLOCK, not on a character count. The window was
+       900 and a helper moved in above the mount pushed the flush out
+       of it — the test then failed on code that was correct, for the
+       second time in this one assertion and the fifth time in this
+       suite. A fixed-width slice is a bug waiting for the next edit. */
     const m = a.indexOf('tbMount3D({');
     assert.ok(m !== -1, 'tbMount3D call not found');
-    const before = a.slice(Math.max(0, m - 900), m);
+    const open = a.lastIndexOf('if (tbIs3D()) {', m);
+    assert.ok(open !== -1, 'the mount is not inside a 3D guard');
+    const before = a.slice(open, m);
     assert.ok(before.indexOf('saveState();') !== -1,
-        'the flush must happen BEFORE the mount:\n' + before);
+        'the flush must happen BEFORE the mount, inside the same block');
   });
 });
 
@@ -1508,22 +1515,76 @@ describe('selection and delete in 3D', () => {
        the hit to the 2D element, which dispatches its own contextmenu
        — so one row there serves both, rather than a second numbering
        path bolted onto board3d. */
-    assert.ok(/dispatchEvent\(new MouseEvent\('contextmenu'/.test(appBare),
-        'the premise: a 3D right-click reaches the 2D element');
-    assert.ok(/items\.push\(\{\s*\n\s*type: 'number', value: inp\.value/.test(appBare),
-        'the circle menu must offer the number');
+    /* THE SAME GESTURE AS 2D — a double-click, not a right-click. It
+       shipped on the context menu first, which worked and was the
+       wrong verb: the flat board opens a number by double-clicking the
+       disc, and a coach who learns one view should not have to learn a
+       second way round in the other. */
+    assert.ok(/el\.addEventListener\('dblclick', onDblClick_\)/.test(bare),
+        'board3d must forward a double-click on an object');
+    /* The HANDLER, not the forwarder. board3d's hook is passed through
+       a one-line relay in tbMount3D that carries the same name, and a
+       lazy match found that instead — three lines of nothing, against
+       which every assertion below was false. */
+    const h = appBare.match(
+        /onDblClick: \(kind, index, x, y\) => \{\s*\n\s*if \(kind !== 'positions'[\s\S]*?\n        \},/);
+    assert.ok(h, 'app.js must handle the forwarded double-click');
+    const body = h[0];
+    assert.ok(/kind !== 'positions' && kind !== 'oppPositions'/.test(body),
+        'players only — a ball has no number, and an empty popup on one ' +
+        'is worse than nothing happening');
     /* Written through the SAME input the 2D double-click edits, and
        then through the editor's own save path — a second writer for
        shirt numbers is how the two views come to disagree. */
-    const row = appBare.match(/type: 'number', value: inp\.value[\s\S]*?\n          \}\);/)[0];
-    assert.ok(/inp\.value = v;/.test(row),
-        'it must write the 2D input, not the storage key');
-    assert.ok(/syncNumbersAcrossFrames\(\)/.test(row),
+    assert.ok(/sel2dEl\(\{kind: kind, index: index\}\)/.test(body),
+        'it must resolve to the 2D element like every other 3D action');
+    assert.ok(/inp\.value = v;/.test(body),
+        'and write the 2D input, not the storage key');
+    assert.ok(/syncNumbersAcrossFrames\(\)/.test(body),
         'and carry the number forward, as typing into the disc does');
-    /* And the row itself has to be usable the moment it opens: the
-       coach right-clicked a player in order to type. */
+    /* And the field has to be usable the moment it opens: the coach
+       double-clicked a player in order to type. */
     assert.ok(/box\.focus\(\); box\.select\(\)/.test(appBare),
-        'the field must take focus when the menu opens');
+        'the field must take focus when the popup opens');
+    /* Not on the right-click menu any more — two ways in is two things
+       to keep working, and the owner picked the double-click. */
+    /* Scoped to the MENU BUILDER — `items.push` — because the
+       double-click handler builds a one-row menu of its own and uses
+       the same row type, so a bare search for the type matched the
+       very code this test is here to require. */
+    assert.ok(!/items\.push\(\{\s*\n\s*type: 'number'/.test(appBare),
+        'the number must not also hang off the right-click menu — two ' +
+        'ways in is two things to keep working, and the owner picked ' +
+        'the double-click');
+  });
+
+  it('one keypress pastes once', () => {
+    /* The 3D wrapper is INSIDE the document, so its Ctrl+V and the
+       document-level one both fired on the same keypress and the
+       clipboard landed twice. The wrapper calls preventDefault() when
+       it acts, which is exactly the signal for "this key is spoken
+       for" — and reading it beats a flag, which would be a second
+       thing to keep true. */
+    const doc = appBare.match(
+        /document\.addEventListener\('keydown', e => \{\s*\n\s*if \(!\(e\.ctrlKey[\s\S]*?\n    \}\);/);
+    assert.ok(doc, 'the document-level clipboard handler was not found');
+    assert.ok(/if \(e\.defaultPrevented\) return;/.test(doc[0]),
+        'it must stand down for a key the wrapper already used');
+    /* And the wrapper must actually raise that signal, or the guard
+       above is guarding nothing. */
+    const w = appBare.match(
+        /wrap3d\.addEventListener\('keydown', \(e\) => \{\s*\n\s*if \(!_tb3d \|\| !\(e\.ctrlKey[\s\S]*?\n      \}\);/)[0];
+    assert.strictEqual((w.match(/e\.preventDefault\(\)/g) || []).length, 2,
+        'both copy and paste must mark the key as handled');
+  });
+
+  it('the double-click stands down where picking does', () => {
+    const f = bare.match(/function onDblClick_\(ev\) \{[\s\S]*?\n  \}/)[0];
+    assert.ok(/readOnly \|\| drawLock \|\| !onDblClick/.test(f),
+        'a read-only board has nothing to edit, and under the draw lock ' +
+        'the gesture already means "draw"');
+    assert.ok(/const hit = pick\(ev\)/.test(f),
+        'it must use the same picker every other gesture uses');
   });
 
   it('copy and paste reach the 3D view too', () => {

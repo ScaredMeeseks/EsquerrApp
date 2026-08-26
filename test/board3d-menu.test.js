@@ -319,6 +319,20 @@ describe('the 3D menu — it moves controls, it does not copy them', () => {
         'the panel must be visible before it is measured');
   });
 
+  it('orientation is adopted in 2D only', () => {
+    /* The button carries display:none in 3D — the scene has one
+       orientation — so adopting it there produced a row with a
+       heading and an invisible control: a title for nothing. adopt()
+       drops a row that gains no children, but a row with a LABEL
+       already has one, so the guard has to be at the call. */
+    assert.ok(/if \(!tbIs3D\(\)\) adopt\('gear', \['#tb-orient'\]/.test(bare),
+        'the orientation row must not be built in 3D');
+    /* And the button is still hidden there, which is what makes the
+       guard necessary rather than merely tidy. */
+    assert.ok(/id="tb-orient"[^>]*\$\{is3d \? ' style="display:none"' : ''\}/.test(app),
+        'the premise: 3D hides the orientation button');
+  });
+
   it('the two controls 3D never needed a home for get one', () => {
     /* Both are 2D-only: 3D hides the orientation button outright, and
        in 3D a click on a mesh selects it so the select MODE is
@@ -1160,9 +1174,17 @@ describe('the file actions moved into the menu', () => {
     const pad = /padding:[\d.]+rem ([\d.]+)rem/.exec(rule('.tb-m-entry'));
     assert.ok(pad, 'the entry must declare the padding this pulls back into');
     const off = (gap[1] === '-' ? -1 : 1) * parseFloat(gap[2]);
-    assert.ok(off < parseFloat(pad[1]),
-        'the panel must sit inside the entry\'s own right padding (' +
-        off + 'rem against ' + pad[1] + 'rem), or it reads as floating away');
+    /* TWO-SIDED, because this has now been wrong in both directions:
+       first it opened off a stretched box and read as floating away,
+       then it was pulled so far back that it touched the word. What
+       the eye judges is the distance from the LABEL, which is the
+       entry's right padding plus this offset — not the offset alone,
+       which the first version of this test asserted on and passed
+       while the gap was visibly wrong. */
+    const fromLabel = parseFloat(pad[1]) + off;
+    assert.ok(fromLabel >= 0.5 && fromLabel <= 1.1,
+        'the panel must clear the label by roughly half a rem to a rem; ' +
+        'it sits at ' + fromLabel.toFixed(2) + 'rem');
   });
 
   it('the two dropdowns have their own ground and room to read', () => {

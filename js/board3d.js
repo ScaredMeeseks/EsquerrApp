@@ -74,6 +74,10 @@ export function createBoard3D(opts) {
     /* A parked right-click on an object or on bare turf. app.js opens
        the 2D board's own menu; `pct` is where the turf was hit. */
     onContext,          // (kind|null, index|null, x, y, pct) => void
+    /* A double-click on an object. The flat board opens a shirt number
+       for editing on one; here the board is hidden, so the hit is
+       forwarded and app.js decides what a double-click means. */
+    onDblClick,         // (kind, index, x, y) => void
     /* A drawn mark dragged across the turf, as a DELTA in board
        percent — marks translate, they do not snap to the cursor. */
     onMarkMove,         // (kind, index, [dx, dy]) => void
@@ -373,9 +377,35 @@ export function createBoard3D(opts) {
   let drawRoot = new THREE.Group();
   objectRoot.add(drawRoot);
 
+  /* The shirt number, as a fraction of the disc texture. It was 0.5
+     and read small on the disc; a real shirt number fills most of the
+     back it is printed on. */
+  const NUM_SCALE = 0.62;
+
+  /** Is this text colour a light one? Decides the outline's tone. */
+  function isLight(hex) {
+    const h = String(hex || '#000').replace('#', '');
+    if (h.length < 6) return h.toLowerCase() === 'fff';
+    const n = parseInt(h.slice(0, 6), 16);
+    /* Rec. 601 luma, the same rough weighting textColorFor uses to
+       pick `fg` in the first place. */
+    return (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 +
+            (n & 255) * 114) / 1000 > 140;
+  }
+
+  /** What the renderer can actually do, once it exists. */
+  function maxAnisotropy() {
+    try {
+      return renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
+    } catch (e) { return 1; }
+  }
+
   /** A player disc, its number and kit painted into a canvas. */
   function playerTexture(fill, number) {
-    const S = 128;
+    /* 256, not 128. The disc is 1.8m across and fills a good part of
+       the window at any real zoom, so a 128px map was visibly soft the
+       moment there was anything on it worth reading. */
+    const S = 256;
     const cv = document.createElement('canvas');
     cv.width = S; cv.height = S;
     const g = cv.getContext('2d');
@@ -434,14 +464,57 @@ export function createBoard3D(opts) {
       g.fillRect(0, 0, S, S);
     }
     if (number) {
-      g.fillStyle = css.fg || '#000';
-      g.font = 'bold ' + Math.round(S * 0.5) + 'px system-ui, sans-serif';
+      const txt = String(number);
+      g.save();
+      /* A QUARTER TURN, for the same reason the stripes are painted on
+         the other axis — and it is the same measurement.
+
+         Canvas +x is texture u is world +Z (screen down); canvas -y is
+         texture +v is world +X (screen right), because CanvasTexture
+         flips Y on upload. So an upright glyph, whose top points at
+         canvas -y, ends up with its top pointing SCREEN RIGHT: every
+         shirt number lies on its side.
+
+         Nobody saw it because nobody could put a number on a 3D
+         player until now — numbering was a double-click on the flat
+         board, and the flat board is hidden in 3D.
+
+         rotate(-PI/2) sends local up (0,-1) to (-1,0) — canvas left,
+         which is -u, which is world -Z, which is screen up. There is a
+         test that reads the cap's real UVs and checks where the up
+         vector lands, so it holds against a change of geometry too. */
+      g.translate(S / 2, S / 2);
+      g.rotate(-Math.PI / 2);
+      g.font = 'bold ' + Math.round(S * NUM_SCALE) + 'px system-ui, sans-serif';
       g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText(String(number), S / 2, S / 2);
+      /* THE INK, NOT THE LINE BOX. `textBaseline:'middle'` centres the
+         em box, which for digits sits low — the same mistake the frame
+         delete cross made with flexbox. Measuring the glyph's own
+         ascent and descent puts the painted marks on the centre. */
+      g.textBaseline = 'alphabetic';
+      const m = g.measureText(txt);
+      const asc = m.actualBoundingBoxAscent, desc = m.actualBoundingBoxDescent;
+      const dy = (typeof asc === 'number' && typeof desc === 'number')
+        ? (asc - desc) / 2
+        : Math.round(S * NUM_SCALE) * 0.35;   // no metrics: a decent guess
+      /* An outline in the opposite tone, so the number holds its edge
+         over a striped kit — where half of it can sit on each colour
+         and `fg` is only ever right for one of them. */
+      g.lineWidth = Math.max(2, S * 0.05);
+      g.lineJoin = 'round';
+      g.miterLimit = 2;
+      g.strokeStyle = isLight(css.fg) ? 'rgba(0,0,0,.75)' : 'rgba(255,255,255,.8)';
+      g.strokeText(txt, 0, dy);
+      g.fillStyle = css.fg || '#000';
+      g.fillText(txt, 0, dy);
+      g.restore();
     }
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
+    /* Zoomed in, a disc covers far more screen pixels than the texture
+       has; anisotropy is what keeps the number crisp when the same
+       disc is seen at a glancing angle from the broadcast camera. */
+    tex.anisotropy = maxAnisotropy();
     return tex;
   }
 
@@ -2200,9 +2273,23 @@ export function createBoard3D(opts) {
     applyCamera();
   }
 
+  /* A double-click on an object, forwarded like the right-click.
+     Nothing is decided here: what a double-click means belongs to the
+     2D editor, which is the only place that knows a disc has a shirt
+     number in it. Refused under the draw lock for the same reason
+     picking is — the gesture already means "draw". */
+  function onDblClick_(ev) {
+    if (readOnly || drawLock || !onDblClick) return;
+    const hit = pick(ev);
+    if (!hit) return;
+    ev.preventDefault();
+    onDblClick(hit.kind, hit.index, ev.clientX, ev.clientY);
+  }
+
   const el = renderer.domElement;
   el.style.touchAction = 'none';
   el.style.display = 'block';
+  el.addEventListener('dblclick', onDblClick_);
   el.addEventListener('pointerdown', onPointerDown);
   el.addEventListener('pointermove', onPointerMove);
   el.addEventListener('pointerup', onPointerUp);

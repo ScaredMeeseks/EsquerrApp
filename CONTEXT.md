@@ -6126,3 +6126,51 @@ moved. Bounded on the `catch` that ends the mount now. That is four assertions t
 Eleven mutations, all killed.
 
 Unit 1799 → **1804**. Version triple → v169. **Still nothing deployed.**
+
+### 2026-08-26 — Shirt numbers were lying on their side (v170)
+
+**Every number on a 3D player was rotated a quarter turn, and nobody had ever seen one.** The disc's
+texture is painted on a cylinder's top cap, whose UV mapping is a quarter turn off canvas orientation —
+documented, measured and tested since the striped-kit fix, and never applied to the TEXT. An upright glyph
+has its top at canvas -y, which is texture +v, which is world +X: screen right. It went unnoticed because
+numbering was a double-click on the flat board and the flat board is hidden in 3D, so until v169 there was
+no way to put a number on a 3D player at all.
+
+`rotate(-PI/2)` sends local up to canvas left, which is -u, which is world -Z, which is screen up. The test
+does not assert the rotate: it follows the painter's transform matrix through a stub, pushes the glyph's up
+vector into texture space, and asks the MEASURED cap table where that lands in the world. A texture matrix
+or a different geometry would pass it too.
+
+While there: the map goes 128 -> 256 (a 1.8m disc covers a lot of screen at any real zoom), the number goes
+0.5 -> 0.62 of the disc, it gets an outline in the opposite tone so it holds its edge where a striped kit
+puts half of it on each colour, and it is centred on its own INK rather than on the em box —
+`textBaseline:'middle'` centres the line box, which for digits sits low. Third time that distinction has
+decided a bug here, after the frame delete cross and the drawing overlay.
+
+**Numbering moves from right-click to double-click**, which is the flat board's own gesture — a coach who
+learns one view should not have to learn a different verb in the other. board3d gains an `onDblClick` hook
+alongside `onContext`, refused under the draw lock exactly as picking is; app.js resolves the hit through
+`sel2dEl()` and opens the same one-field popup, wired to the very same input, so `saveState`, the forward
+sync and the frames are untouched. Players only — a ball has no number, and an empty popup is worse than
+nothing happening.
+
+**The paste landed twice.** The 3D wrapper's Ctrl+V and the document-level one both fired: the wrapper is
+inside the document. It already calls `preventDefault()` when it acts, which is exactly the signal for
+"this key is spoken for", so the document handler reads `e.defaultPrevented` — no flag to keep true.
+
+Also: the **"Orientació" heading in 3D** was a title for nothing (the button carries `display:none` there,
+and `adopt()` only drops a row that gains NO children — a row with a label already has one), so it is not
+adopted in 3D at all. And the panels move back out to `+.2rem`: with `align-items:flex-start` the entry is
+its own width now, so the offset that read as "too far" in v168 read as "too close" in v169. The test is
+two-sided now — it measures the distance from the LABEL, which is the entry's padding plus the offset, and
+the one-sided version passed happily while the gap was visibly wrong in both directions.
+
+**A fifth and a sixth fixed-width slice bit**, both in the same session: `a.slice(m - 900, m)` for the
+flush-before-mount check, and a lazy `onDblClick:` match that found the one-line relay in `tbMount3D`
+instead of the handler. Both are bounded on real markers now.
+
+Fourteen mutations. Two survived and both were assertions reading the wrong thing: a bare
+`Math.round(S * NUM_SCALE)` matched the no-metrics fallback rather than the font line, and a bare
+`type: 'number'` matched the double-click's own popup rather than the context menu it was meant to forbid.
+
+Unit 1804 → **1813**. Version triple → v170. **Still nothing deployed.**
