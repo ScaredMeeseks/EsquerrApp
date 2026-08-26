@@ -2640,3 +2640,110 @@ describe('the opponent has a shape of their own', () => {
         'loading must restore it, defaulting to the mirror for old boards');
   });
 });
+
+/* ── The goals stand on the goal lines, in every view ──────────────
+ *
+ * Not a source assertion: the placement arithmetic is lifted out of
+ * buildPitch and RUN against board-geom, and the answer is compared
+ * with the pitch's own edges — which is the thing a goal has to line
+ * up with, and the thing source text cannot tell anyone.
+ *
+ * What it caught: `position.set(w.x, 0, 0)` pinned every goal to the
+ * centre line, and the mouth's centre was computed with `gl.h`, the
+ * goal's HEIGHT, as though it were a span in plan. A full pitch hides
+ * both — its goals belong on the centre line and the discarded value
+ * was the wrong one anyway. A half or area board put its single goal
+ * in the middle of the pitch, turned ninety degrees, at the x of its
+ * own left post.
+ */
+describe('the goals stand on the goal lines, in every view', () => {
+  const BG3 = require('../js/board-geom.js');
+
+  /* buildPitch's arithmetic, extracted from the source so a change
+     there breaks this rather than sailing past it.
+
+     BUILT LAZILY, inside the tests. An assert in a describe BODY
+     throws at collection time and takes the entire run with it — so a
+     mutation that moved either anchor reported "Exception during run"
+     with no failing test name, which is a worse signal than a red
+     assertion even though the mutation was caught. Third time this
+     suite has met that trap. */
+  const place = (() => {
+    let fn = null;
+    return (...args) => {
+      if (!fn) {
+        const src2 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+        const i = src2.indexOf('const portrait = !!e.swap;');
+        assert.ok(i !== -1, 'the portrait flag was not found in buildPitch');
+        const j = src2.indexOf('grp.position.set(w.x, 0, w.z);', i);
+        assert.ok(j !== -1,
+            'the goal placement was not found — buildPitch must position a ' +
+            'goal at BOTH of the coordinates it just computed');
+        fn = new Function('BG', 'portrait', 'gl', 'e', 'pitch', 'bt',
+            src2.slice(src2.indexOf('const cx = portrait', i), j) + '\nreturn w;');
+      }
+      return fn(...args);
+    };
+  })();
+
+  const goalsFor = (bt) => {
+    const e = BG3.extent(null, bt, false);
+    const m = BG3.markings(null, bt, false);
+    const portrait = !!e.swap;
+    return {
+      e, portrait,
+      at: [m.goalLeft, m.goalRight].filter(Boolean)
+          .map((gl) => place(BG3, portrait, gl, e, null, bt))
+    };
+  };
+
+  it('a full pitch has two, one on each goal line, centred', () => {
+    const {e, at} = goalsFor('full');
+    assert.strictEqual(at.length, 2, 'a full pitch has two goals');
+    at.forEach((w) => {
+      assert.ok(Math.abs(Math.abs(w.x) - e.ax / 2) < 1e-9,
+          'a goal must sit ON the goal line (x = +/-' + (e.ax / 2) +
+          '); got ' + w.x.toFixed(2));
+      assert.ok(Math.abs(w.z) < 1e-9,
+          'and centred between the touchlines; got z=' + w.z.toFixed(2));
+    });
+    assert.ok(at[0].x * at[1].x < 0, 'and one at each END, not both at one');
+  });
+
+  ['half', 'area'].forEach((bt) => {
+    it('a ' + bt + ' board has one, at the top edge, centred', () => {
+      /* board-geom draws these portrait with the goal at the top —
+         which is the whole reason the placement has two cases. */
+      const {e, at, portrait} = goalsFor(bt);
+      assert.ok(portrait, bt + ' must be a portrait board');
+      assert.strictEqual(at.length, 1, bt + ' shows one goal, the attacking one');
+      const w = at[0];
+      assert.ok(Math.abs(w.z + e.ay / 2) < 1e-9,
+          'it must sit on the goal line at the TOP (z = ' + (-e.ay / 2) +
+          '); got ' + w.z.toFixed(2));
+      assert.ok(Math.abs(w.x) < 1e-9,
+          'and centred across the pitch; got x=' + w.x.toFixed(2));
+    });
+  });
+
+  it('and a portrait goal is turned to face down the pitch', () => {
+    /* The posts are built along local Z. Without the rotation a half
+       board's goal spans the wrong axis — the mouth faces the corner
+       flag instead of the pitch. */
+    const src2 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+    assert.ok(/if \(portrait\) grp\.rotation\.y = Math\.PI \/ 2;/.test(src2),
+        'a portrait goal must be rotated a quarter turn');
+  });
+
+  it('the mouth is measured by its SPAN, never by its height', () => {
+    /* gl.h is 2.44 m of goal above the turf and is not a plan
+       measurement at all. Using it as one is what the full board hid. */
+    const src2 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+    const block = src2.slice(src2.indexOf('const cx = portrait'),
+        src2.indexOf('grp.position.set(w.x, 0, w.z);'));
+    assert.ok(!/gl\.h/.test(block),
+        'the goal height must play no part in where the goal is placed: ' +
+        block);
+    assert.ok(/gl\.w \/ 2/.test(block), 'the span is what centres it');
+  });
+});

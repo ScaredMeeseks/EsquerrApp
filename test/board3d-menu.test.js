@@ -1340,22 +1340,80 @@ describe('the board takes the content area, and gives it back', () => {
         'never added unconditionally');
   });
 
-  it('the editor renders no header, in either view', () => {
-    /* The board-type picker still needs a title — it is a page with
-       nothing else on it. The editor's is announced instead, and that
-       is now true of 2D as well: the header was the last thing keeping
-       the flat board a different shape from the 3D one. */
+  it('the tactical board renders no header at all', () => {
+    /* It was two: one on the board-type picker, one on the editor. The
+       editor's went when the window took the content area, and the
+       picker's went with the picker — the board opens on the board
+       now, and the type is a toggle in the Field panel. The title is
+       announced for two seconds instead. */
     const titles = (app.match(/<h2 class="page-title">\$\{t\('page\.tactical_board'\)\}<\/h2>/g) || []);
-    assert.strictEqual(titles.length, 1, 'only the picker renders one');
+    assert.strictEqual(titles.length, 0,
+        'renderTactics must render no page-title; got ' + titles.length);
     assert.ok(!/is3d \? '' : `<h2 class="page-title">/.test(app),
-        'and no conditional header is left in the editor');
-    /* The one that survives must be the PICKER's. Bounded by the
-       editor's own return, which is what tells the two halves of
-       renderTactics apart in a comment-stripped string. */
-    const editor = app.indexOf('<div class="card tb-card-window">');
-    assert.ok(editor !== -1, 'the editor card is not rendered');
-    assert.ok(app.indexOf('<h2 class="page-title">${t(\'page.tactical_board\')}</h2>') < editor,
-        'the surviving title must be the picker\'s, above the editor');
+        'and no conditional header is left behind either');
+    /* And the thing that replaces it is still wired. */
+    assert.ok(/tbFlashPageTitle\(t\('page\.tactical_board'\)\)/.test(bare),
+        'the announcement is now the ONLY place this page is named');
+  });
+
+  it('the board opens on the board, never on a picker', () => {
+    /* The landing screen made sense while the board type was a
+       decision taken once at the start and not revisitable without
+       leaving the editor. It is a toggle in the Field panel now, so
+       the screen was a gate in front of the thing the coach came for. */
+    /* SCOPED TO renderTactics. That exact expression appears at five
+       other sites which have always defaulted to 'full', so a search
+       of the whole file passed while the render — the one that decides
+       what the coach lands on — still defaulted to ''. */
+    const rt = bare.slice(bare.indexOf('function renderTactics()'),
+        bare.indexOf('const isVertical = tbVertical();'));
+    assert.ok(rt.length > 50 && rt.length < 3000, 'the renderTactics slice looks wrong');
+    assert.ok(/localStorage\.getItem\('fa_tactic_board_type'\) \|\| 'full'/.test(rt),
+        'an unset board type must default to the full pitch, not to nothing — ' +
+        'an empty default is what used to summon the picker');
+    assert.ok(!/tb-type-picker/.test(app),
+        'the picker markup must be gone, not merely unreachable');
+    assert.ok(!/tb-type-card/.test(bare),
+        'and its bindings with it — a handler for markup that no longer ' +
+        'renders is dead weight that reads as live code');
+  });
+
+  it('the type toggle offers all three, and says which is on', () => {
+    assert.ok(/id="tb-btype"/.test(app), 'the toggle must be rendered');
+    ['full', 'half', 'area'].forEach((k) =>
+      assert.ok(new RegExp("'" + k + "', 'tactics\\.bt_" + k + "'").test(app),
+          k + ' must be offered'));
+    assert.ok(/boardType === k \? ' active' : ''/.test(app),
+        'the current one must be marked');
+    /* UNCONDITIONAL, unlike the pitch size above it: that row is
+       hidden on half and area, and if this one were too there would be
+       no way back to the full pitch. */
+    const ctrl = app.slice(app.indexOf('id="tb-btype"') - 400,
+        app.indexOf('id="tb-btype"'));
+    assert.ok(!/return '';\s*$/.test(ctrl.trim()),
+        'the toggle must not sit inside the pitch-size guard');
+    assert.ok(/adopt\('gear', \['#tb-btype'\]/.test(bare),
+        'and it belongs in the Field panel, below the size');
+  });
+
+  it('changing the type tears the 3D scene down first', () => {
+    /* The scene is built AROUND a pitch shape — turf, markings, goals
+       and the camera fit all come from the extent. Re-rendering without
+       destroying it leaves half a pitch's markings under a full board's
+       geometry until something else happens to rebuild it. The 2D/3D
+       toggle beside it has always done this; found by mutation, because
+       nothing asserted it for the new one. */
+    const i = bare.indexOf("const btype = document.getElementById('tb-btype');");
+    assert.ok(i !== -1, 'the type toggle is not bound');
+    const h = bare.slice(i, i + 500);
+    assert.ok(/setItem\('fa_tactic_board_type', btn\.dataset\.bt\)/.test(h),
+        'it must write the key everything downstream reads');
+    assert.ok(/tbDestroy3D\(\);/.test(h),
+        'and destroy the scene before the re-render');
+    assert.ok(h.indexOf('tbDestroy3D()') < h.indexOf('navigate()'),
+        'in that order — navigate() is what rebuilds it');
+    assert.ok(/btn\.classList\.contains\('active'\)\) return;/.test(h),
+        'and do nothing at all when the type is already the one showing');
   });
 
   it('the announcement fires on entering the tab, not on every render', () => {

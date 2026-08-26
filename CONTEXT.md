@@ -6442,3 +6442,40 @@ is a claim about the tests, and it is only as good as the harness making it.
 Thirteen mutations, all killed once the harness was honest.
 
 Unit 1858 → **1876**. Version triple → v178. **Not yet deployed — this is the last thing before it.**
+
+### 2026-08-26 — The board opens on the board, and the goals stand where they should (v179)
+
+**The picker was a gate in front of the thing the coach came for.** Three cards — full pitch, half, area —
+shown before every board. It made sense while the board type was a decision taken once at the start and not
+revisitable without leaving the editor. It is a toggle in the Field panel now, so the screen was pure
+friction: `renderTactics` defaults to `'full'`, the picker markup and its bindings are deleted rather than
+left unreachable, and the saved-boards list it used to carry is in the Open panel off the same menu.
+
+**Vista: Tot / Mig camp / Àrea**, in the Field panel directly below the pitch size, which is the other
+question about what the pitch IS. Unconditional, unlike the size row above it — that row is hidden on half
+and area boards, and if this one were too there would be no way back to the full pitch. Changing it tears
+the 3D scene down before re-rendering, exactly as the 2D/3D toggle does: the scene is built AROUND a pitch
+shape.
+
+**And the goals were wrong in two views, which only the third one hid.** `buildPitch` ended with
+`grp.position.set(w.x, 0, 0)` — pinning every goal to the centre line — and computed the mouth's centre as
+`gl.y + gl.h/2`, using the goal's HEIGHT (2.44 m) as though it were a span in plan. On a full pitch the
+goals belong on the centre line and the discarded coordinate was the wrong one anyway, so both errors were
+invisible. On a half or area board, which board-geom draws PORTRAIT with the goal at the top, the single
+goal sat in the middle of the pitch, turned ninety degrees, at the x of its own left post.
+
+`gl.w` is the mouth's span whichever axis it runs along and `gl.h` is never a plan measurement; `e.swap` is
+board-geom's own name for portrait. The test does not read any of that: it lifts the placement arithmetic
+out of buildPitch, runs it against board-geom for all three views, and compares the answer with the pitch's
+own edges — ±52.5 on x for a full pitch, −26.25 on z for a half, −17.5 for an area.
+
+Two mutations survived the first pass, both real. One was an assertion scoped to the whole file when the
+expression it matched appears at five other sites that were never wrong — so it passed while the render,
+the one that decides what the coach lands on, still defaulted to `''`. The other was `tbDestroy3D()` on the
+type change, which nothing asserted at all.
+
+And the describe-body assert trap for the **third** time: the goal slicer asserted at collection, so two
+mutations reported "Exception during run" with no failing test name instead of a red assertion. Built
+lazily now, inside the tests.
+
+Unit 1876 → **1884**. Version triple → v179.

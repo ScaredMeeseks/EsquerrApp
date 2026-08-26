@@ -337,6 +337,20 @@ export function createBoard3D(opts) {
     goals.forEach((gg) => scene.remove(gg));
     goals = [];
     const m = BG.markings(pitch, bt, false);
+    /* HALF AND AREA ARE DRAWN PORTRAIT, with their single goal at the
+       TOP — see board-geom. That changes which axis the mouth spans,
+       and `swap` is board-geom's own name for it.
+
+       Both halves of this were wrong and only the full board showed
+       it. The centre of the mouth was computed as `gl.y + gl.h/2`,
+       using the goal's HEIGHT (2.44 m) as if it were a span in plan;
+       and the result was then thrown away by `position.set(w.x, 0, 0)`,
+       which pins the goal to the centre line. On a full board the
+       centre line IS where the goal belongs, so the arithmetic error
+       was invisible. On a half or area board it put the goal in the
+       middle of the pitch, turned ninety degrees, at the x of the
+       mouth's left post. */
+    const portrait = !!e.swap;
     [m.goalLeft, m.goalRight].forEach((gl) => {
       if (!gl) return;
       const grp = new THREE.Group();
@@ -353,9 +367,17 @@ export function createBoard3D(opts) {
       bar.position.set(0, gl.h, 0);
       [a, b, bar].forEach((m) => { m.castShadow = true; });
       grp.add(a, b, bar);
-      // gl.x is the goal LINE; the mouth faces into the pitch.
-      const w = BG.toWorld((gl.x / e.ax) * 100, ((gl.y + gl.h / 2) / e.ay) * 100, pitch, bt);
-      grp.position.set(w.x, 0, 0);
+      /* One coordinate is the goal LINE, the other is the middle of
+         the mouth — and which is which depends on the orientation.
+         `gl.w` is the mouth's span in plan whichever axis it runs
+         along; `gl.h` is the height above the turf and is never a plan
+         measurement. */
+      const cx = portrait ? gl.x + gl.w / 2 : gl.x;
+      const cy = portrait ? gl.y : gl.y + gl.w / 2;
+      const w = BG.toWorld((cx / e.ax) * 100, (cy / e.ay) * 100, pitch, bt);
+      grp.position.set(w.x, 0, w.z);
+      // The posts are built along local Z; a portrait goal spans X.
+      if (portrait) grp.rotation.y = Math.PI / 2;
       scene.add(grp);
       goals.push(grp);
     });

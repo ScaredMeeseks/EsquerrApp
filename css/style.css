@@ -836,6 +836,22 @@ tr:hover td { background: #f7f8fa; }
 .tb-view-btn.active { background:var(--primary); color:#fff; }
 .tb-view-btn:not(.active):hover { color:var(--text); }
 
+/* How much of the pitch to draw — Tot / Mig camp / Àrea. The same
+   segmented control as the 2D/3D toggle, because it answers the same
+   KIND of question: which board am I looking at. It replaced a landing
+   screen of three preview cards; those previews are gone with it. */
+.tb-btype-toggle {
+  display:inline-flex; border:1px solid rgba(255,255,255,.18);
+  border-radius:6px; overflow:hidden;
+}
+.tb-btype-btn {
+  padding:.25rem .55rem; border:none; background:transparent;
+  color:#c9ccd1; font-size:.76rem; font-weight:600; cursor:pointer;
+  white-space:nowrap;
+}
+.tb-btype-btn.active { background:var(--primary); color:#fff; }
+.tb-btype-btn:not(.active):hover { background:rgba(255,255,255,.09); color:#fff; }
+
 /* Deliberately larger than the 2D board. In 2D the pitch is seen from
    directly above and 820px is plenty; in 3D it is seen at an angle, so
    the far half is foreshortened into a fraction of the height and a

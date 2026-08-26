@@ -677,6 +677,12 @@
     'tactics.orientation':   { ca:'Orientació', es:'Orientación', en:'Orientation' },
     'tactics.select':        { ca:'Selecciona', es:'Seleccionar', en:'Select' },
     'tactics.number':        { ca:'Dorsal', es:'Dorsal', en:'Number' },
+    'tactics.board_type':    { ca:'Vista', es:'Vista', en:'View' },
+    'tactics.board_type_hint': { ca:'Quina part del camp es dibuixa',
+      es:'Qué parte del campo se dibuja', en:'How much of the pitch to draw' },
+    'tactics.bt_full':       { ca:'Tot', es:'Todo', en:'Full' },
+    'tactics.bt_half':       { ca:'Mig camp', es:'Medio campo', en:'Half' },
+    'tactics.bt_area':       { ca:'Àrea', es:'Área', en:'Area' },
     'tactics.field':         { ca:'Camp', es:'Campo', en:'Field' },
     'tactics.players':       { ca:'Jugadors', es:'Jugadores', en:'Players' },
     'tactics.props':         { ca:'Material', es:'Material', en:'Props' },
@@ -1582,7 +1588,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 178;
+  const APP_VERSION = 179;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7047,6 +7053,12 @@
 
     adopt('gear', ['#tb-pitch-l', '.tb-pitch-x', '#tb-pitch-w', '.tb-pitch-unit',
       '#tb-pitch-reset'], t('tactics.pitch_size'));
+    /* Directly below the size, which is the other question about what
+       the pitch is. On a half or area board the size row above is not
+       rendered at all — it edits a perimeter those views cannot show —
+       so this becomes the panel's first row, which is right: it is the
+       way back to the full pitch. */
+    adopt('gear', ['#tb-btype'], t('tactics.board_type'));
     adopt('gear', ['#tb-theme-toggle'], t('tactics.theme'));
     /* Orientation. A 2D-only control, and it had no home here because
        3D hides it outright — the scene has one orientation. Now that
@@ -11298,44 +11310,18 @@
   function renderTactics() {
     const formations = TACTIC_FORMATIONS;
 
-    const boardType = localStorage.getItem('fa_tactic_board_type') || '';
+    /* THE BOARD OPENS ON THE BOARD.
+       There used to be a landing screen here — three cards, pick a
+       full pitch, a half or an area — and it was the first thing a
+       coach saw every time. It made sense while the board type was a
+       decision you took once at the start and could not revisit
+       without coming back out; now it is a toggle in the Field panel
+       beside the pitch size, which is where a coach looks for it.
 
-    // If no board type chosen, show picker (with the boards below it)
-    if (!boardType) {
-      return `
-        <h2 class="page-title">${t('page.tactical_board')}</h2>
-        <div class="card">
-          <div class="tb-type-picker" id="tb-type-picker">
-            <div class="tb-type-card" data-board-type="full">
-              <div class="tb-type-preview">
-                <div class="tbp-halfway"></div>
-                <div class="tbp-center-circle"></div>
-                <div class="tbp-penalty-l"></div>
-                <div class="tbp-penalty-r"></div>
-                <div class="tbp-goal-l"></div>
-                <div class="tbp-goal-r"></div>
-              </div>
-            </div>
-            <div class="tb-type-card" data-board-type="half">
-              <div class="tb-type-preview half">
-                <div class="tbp-half-line"></div>
-                <div class="tbp-half-circle"></div>
-                <div class="tbp-half-penalty"></div>
-                <div class="tbp-half-goal"></div>
-                <div class="tbp-half-arc"></div>
-              </div>
-            </div>
-            <div class="tb-type-card" data-board-type="area">
-              <div class="tb-type-preview area">
-                <div class="tbp-area-box"></div>
-                <div class="tbp-area-goal"></div>
-                <div class="tbp-area-arc"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="card">${tbBoardsPanelHtml()}</div>`;
-    }
+       A full pitch is the default because it is the one that contains
+       the other two: arriving on it, everything a saved board might
+       need is already on screen. */
+    const boardType = localStorage.getItem('fa_tactic_board_type') || 'full';
 
     const isVertical = tbVertical();
     const savedFormation = localStorage.getItem('fa_tactic_formation') || '';
@@ -11496,6 +11482,17 @@
           <span class="tb-pitch-unit">m</span>
           <button class="tb-pitch-reset" id="tb-pitch-reset" data-tooltip="${t('tactics.pitch_reset')}">${BG.DEFAULT_PITCH[0]}&times;${BG.DEFAULT_PITCH[1]}</button>`;
           })()}
+          ${/* How much of the pitch to draw. This was a landing screen
+                of three cards that a coach met before every board;
+                here it sits beside the pitch size, which is the other
+                question about what the pitch IS. Unconditional, unlike
+                the size above — from a half board the way back to the
+                full one has to be visible. */''}
+          <div class="tb-btype-toggle" id="tb-btype" data-tooltip="${t('tactics.board_type_hint')}">
+            ${[['full', 'tactics.bt_full'], ['half', 'tactics.bt_half'],
+               ['area', 'tactics.bt_area']].map(([k, key]) =>
+              `<button class="tb-btype-btn${boardType === k ? ' active' : ''}" data-bt="${k}">${t(key)}</button>`).join('')}
+          </div>
           <input type="color" class="tb-color-pick" id="tb-team-color" value="${teamColor}" data-tooltip="Team color">
           ${_stripeControlsHtml('team')}
           <label class="tb-opp-toggle"><input type="checkbox" id="tb-show-opp" ${showOpp ? 'checked' : ''}> Opp</label>
@@ -11684,18 +11681,10 @@
   function bindTactics() {
     const GK_COLOR = '#f5c842';
     // Board type picker
-    const picker = document.getElementById('tb-type-picker');
-    if (picker) {
-      picker.querySelectorAll('.tb-type-card').forEach(card => {
-        card.addEventListener('click', () => {
-          localStorage.setItem('fa_tactic_board_type', card.dataset.boardType);
-          navigate('tactics');
-        });
-      });
-      // Still bind saved list on picker screen
-      bindTacticsSavedList();
-      return;
-    }
+    /* The board-type picker screen is gone — see renderTactics. The
+       choice lives in the Field panel now, and the saved-boards list
+       it used to carry is in the Open panel, reachable from the same
+       menu. Nothing here is conditional on it any more. */
 
     const field = document.getElementById('tb-field');
     if (!field) return;
@@ -14106,6 +14095,24 @@
         const btn = e.target.closest('.tb-view-btn');
         if (!btn || btn.classList.contains('active')) return;
         localStorage.setItem('fa_tactic_view_3d', btn.dataset.view === '3d' ? '1' : '0');
+        tbDestroy3D();
+        navigate();
+      });
+    }
+
+    /* How much of the pitch to draw. Everything downstream already
+       reads `fa_tactic_board_type` — the markings, the extent, the 3D
+       turf and goals — so this writes the key and re-renders, exactly
+       as the picker screen it replaced did.
+       tbDestroy3D() because the scene is built around a pitch shape:
+       leaving it up would put half a pitch's markings under a full
+       board's geometry until something else rebuilt it. */
+    const btype = document.getElementById('tb-btype');
+    if (btype) {
+      btype.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tb-btype-btn');
+        if (!btn || btn.classList.contains('active')) return;
+        localStorage.setItem('fa_tactic_board_type', btn.dataset.bt);
         tbDestroy3D();
         navigate();
       });
@@ -16549,7 +16556,10 @@
    */
   function tbHasUnsavedWork() {
     if (typeof TB === 'undefined') return false;
-    // No board type means the picker is showing: nothing is open to lose.
+    /* An untouched board has nothing to lose. The key is only absent
+       before the coach has opened the board for the first time — it
+       used to mean "the picker is showing", and now means "the editor
+       has never rendered", which is the same answer for this. */
     if (!localStorage.getItem('fa_tactic_board_type')) return false;
     const name = (localStorage.getItem('fa_tactic_name') || '').trim() || 'Board';
     /* Template mode compares against the baseline captured when the template
