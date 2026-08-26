@@ -1165,26 +1165,33 @@ describe('the file actions moved into the menu', () => {
         'and cancelled on re-entry, or it closes anyway a moment later');
   });
 
-  it('the panel opens beside the LABEL, not beside the padding box', () => {
-    /* The entry's .6rem of right padding was invisible while it had a
-       plate; with the plate gone it became dead air, and a panel 6px
-       off the box read as 16px off the word. */
-    const gap = /left:calc\(100% ([-+]) ([\d.]+)rem\)/.exec(rule('.tb-m-panel'));
-    assert.ok(gap, 'the panel must be positioned from the entry\'s right edge');
-    const pad = /padding:[\d.]+rem ([\d.]+)rem/.exec(rule('.tb-m-entry'));
-    assert.ok(pad, 'the entry must declare the padding this pulls back into');
-    const off = (gap[1] === '-' ? -1 : 1) * parseFloat(gap[2]);
-    /* TWO-SIDED, because this has now been wrong in both directions:
-       first it opened off a stretched box and read as floating away,
-       then it was pulled so far back that it touched the word. What
-       the eye judges is the distance from the LABEL, which is the
-       entry's right padding plus this offset — not the offset alone,
-       which the first version of this test asserted on and passed
-       while the gap was visibly wrong. */
-    const fromLabel = parseFloat(pad[1]) + off;
-    assert.ok(fromLabel >= 0.5 && fromLabel <= 1.1,
-        'the panel must clear the label by roughly half a rem to a rem; ' +
-        'it sits at ' + fromLabel.toFixed(2) + 'rem');
+  it('the panel clears the whole RAIL, not just its own entry', () => {
+    /* THE MEASUREMENT THAT WAS WRONG THREE TIMES.
+       `left:100%` is the entry's own right edge, and the entries are
+       each their own width — so a short one ("Camp", seventy pixels)
+       opened its panel over the long ones above and below it. Every
+       attempt to fix the reported "gap" by changing the CSS offset was
+       moving a number measured from the wrong edge, and this test kept
+       passing because it checked that same wrong number.
+
+       What has to hold is that the panel clears the WIDEST entry.
+       Neither the widest label nor the rail's width is knowable from
+       source — the labels are translated — so the CSS carries only the
+       clearance and clampPanel() measures the rest. */
+    const gap = /left:calc\(100% \+ ([\d.]+)rem\)/.exec(rule('.tb-m-panel'));
+    assert.ok(gap, 'the CSS must declare a positive clearance past the edge');
+    assert.ok(parseFloat(gap[1]) >= 0.35,
+        'and it must be big enough to read as a gap; got ' + gap[1] + 'rem');
+
+    const init = fn('tbMenuInit(hooks)');
+    const c = init.slice(init.indexOf('const clampPanel'));
+    assert.ok(/rail\.getBoundingClientRect\(\)\.right/.test(c) &&
+              /entry\.getBoundingClientRect\(\)\.right/.test(c),
+        'the offset must be the distance from THIS entry to the rail\'s edge');
+    assert.ok(/panel\.style\.marginLeft = Math\.round\(dx\)/.test(c),
+        'and be applied, or the CSS clearance is measured from the entry again');
+    assert.ok(/panel\.style\.marginLeft = '';/.test(c),
+        'cleared before measuring, or each open compounds the last offset');
   });
 
   it('the two dropdowns have their own ground and room to read', () => {

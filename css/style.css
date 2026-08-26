@@ -4959,11 +4959,16 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
    translateY(-50%) is safe here in a way it is not on the entries: a
    panel has no absolutely positioned descendants of its own. */
-/* CLOSE TO THE LABEL, not to the box. The entry's own .6rem of
-   right padding was invisible while it had a plate and became dead
-   air the moment the plate went — the panel measured 6px from the
-   entry's edge and read as 16px from the word. Pulling back into the
-   padding puts it where the eye expects it.
+/* THE GAP IS FROM THE RAIL, NOT FROM THE ENTRY, and that took three
+   goes to see. `left:100%` is the entry's own right edge; the entries
+   are each their own width, so a short one ("Camp") opened its panel
+   on top of the long ones above and below it. Every attempt to fix
+   the "gap" by moving this number was moving the wrong measurement.
+
+   The offset below is only the CLEARANCE past the rail's edge —
+   clampPanel() adds the distance from this entry's edge to the rail's,
+   measured, because the widest label is a translation away from being
+   a different width.
 
    And near-transparent, so the panel reads as controls resting on the
    pitch rather than a second window over it. The library is the one
@@ -4973,7 +4978,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    shadow under a sheet you can see through announces a box that is
    not there — and a text-shadow takes over the legibility. */
 .tb-m-panel {
-  position:absolute; left:calc(100% + .2rem); top:50%; min-width:180px;
+  position:absolute; left:calc(100% + .55rem); top:50%; min-width:180px;
   transform:translateY(-50%);
   display:none; flex-direction:column; gap:.35rem;
   padding:.55rem .65rem; border-radius:10px;

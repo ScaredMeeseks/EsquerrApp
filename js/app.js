@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 170;
+  const APP_VERSION = 171;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7211,7 +7211,34 @@
     const clampPanel = (entry) => {
       const panel = entry.querySelector('.tb-m-panel');
       if (!panel || !wrapEl) return;
-      panel.style.marginTop = '';        // measure from the centred position
+      // Measure from the position CSS gives it, never from the last nudge.
+      panel.style.marginTop = '';
+      panel.style.marginLeft = '';
+
+      /* ── Across: off the RAIL's edge, not the entry's ──────────
+         The entries are each their own width — they have to be, or a
+         panel opens level with the longest label rather than its own.
+         But `left:100%` of a SHORT entry puts the panel over the long
+         ones above and below it: "Camp" is seventy pixels wide and
+         "Biblioteca" is twice that, so the Field panel opened on top
+         of its neighbours. Three attempts at this were all spent
+         moving a gap that was measured from the wrong edge.
+
+         The rail's right edge is the one that matters: every panel
+         then clears every entry, and none of them shift sideways as
+         the pointer moves down the list. Measured rather than
+         declared, because the widest label is a translation away from
+         being a different width. */
+      const railR = rail.getBoundingClientRect().right;
+      const entryR = entry.getBoundingClientRect().right;
+      const dx = railR - entryR;
+      if (dx > 0.5) panel.style.marginLeft = Math.round(dx) + 'px';
+
+      /* ── Down: back inside the window ──────────────────────────
+         Centring is right for a five-row panel and would put the club
+         library half outside the top of the window, where the
+         wrapper's overflow:hidden cuts it off. Taller than the window:
+         pin the TOP — pinning the bottom hides the search box. */
       const w = wrapEl.getBoundingClientRect();
       const p = panel.getBoundingClientRect();
       const PAD = 8;

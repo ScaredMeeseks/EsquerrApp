@@ -6174,3 +6174,31 @@ Fourteen mutations. Two survived and both were assertions reading the wrong thin
 `type: 'number'` matched the double-click's own popup rather than the context menu it was meant to forbid.
 
 Unit 1804 → **1813**. Version triple → v170. **Still nothing deployed.**
+
+### 2026-08-26 — The panel gap was measured from the wrong edge (v171)
+
+Reported three times — too far, too close, still too close — and moved three times, because every move was
+adjusting a number measured against the wrong thing.
+
+`left:100%` on `.tb-m-panel` is THIS ENTRY's right edge. Since v169 the entries are each their own width
+(`align-items:flex-start`, which is what fixed "too far to the right"), so a short entry like "Camp" is
+seventy pixels wide where "Biblioteca" is twice that — and its panel opened **on top of the entries above
+and below it**. That is what "too close to the parent items" was: not a gap, an overlap. Adjusting the CSS
+offset could never fix it, because the offset was doing its job perfectly against an edge that was not the
+one that mattered.
+
+The panel now clears the **rail's** right edge. `clampPanel()` already measured this panel against the
+window for the vertical clamp; it measures across as well now, adding the distance from this entry's edge
+to the rail's, so every panel lands on the same line and none of them shift sideways as the pointer runs
+down the list. Measured rather than declared, because the widest label is a translation away from being a
+different width. The CSS keeps only the clearance past that edge (`.55rem`).
+
+**The test was passing on the wrong number too** — it asserted the distance from the label, which was
+genuinely fine at every one of the three settings. Rewritten to assert what actually has to hold: a
+positive clearance in CSS, and clampPanel measuring rail-edge minus entry-edge and applying it. That is the
+kind of hole that survives a mutation run: the assertion was true, precise, and about the wrong quantity.
+
+Four mutations, all killed.
+
+Unit **1813**, unchanged — the rewritten test replaced one that was checking the wrong thing.
+Version triple → v171. **Still nothing deployed.**
