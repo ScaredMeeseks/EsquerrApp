@@ -6357,3 +6357,47 @@ correct and was luck.
 Five mutations, all killed.
 
 Unit 1831 → **1834**. Version triple → v176. **Still nothing deployed.**
+
+### 2026-08-26 — The ball spins (v177)
+
+The 3D ball was a plain white sphere that slid to its next position without turning — a marker being
+dragged rather than a ball being struck, and with nothing on it that COULD show a turn if it did.
+
+**Everything comes from two consecutive positions.** No path data is plumbed in: `setPosition` already
+receives the ball's world position every animation frame during playback, and the distance and the change
+of heading between two of those is all the spin needs. `ballSpinStep(prev, now, dirPrev)` is pure, which
+is why the tests run it rather than read it.
+
+- **Roll** — `dist / BALL_R * SPIN_ROLL`, about `(dir.z, 0, -dir.x)`. The axis is DERIVED: a point at the
+  top of the ball is moved by `w x (0,R,0) = (-w_z·R, 0, w_x·R)`, and requiring that to point along the
+  heading fixes `w`. Roll per frame ∝ distance per frame IS ∝ speed, so "faster forward, faster spin"
+  needed no second term. `SPIN_ROLL` damps it: undamped, a quarter-metre ball at a hard pass turns at
+  ~120 rad/s, which renders as a blur.
+- **Yaw** — the signed turn between headings, times `SPIN_BEND`, about `+Y`. `(a x b).y = a.z·b.x - a.x·b.z`
+  is positive for a turn to the LEFT OF TRAVEL, and clockwise-from-above is a negative rotation about `+Y`,
+  hence the flip. Left of travel and not of screen, on the owner's call: the same drawn bend then spins the
+  same way whether the flight is played away from the camera or back towards it.
+
+**The rebuild was the trap, and it is worth remembering.** `applyFrameState` fires at every frame boundary
+during playback and ends in `tb3dTouch()`, whose deferred half calls `refreshObjects()` → `rebuild()`,
+which recreates every mesh. A rotation living only on the mesh would have snapped to identity at each
+keyframe. So the spin lives in a `Map` outside `objects`, exactly as `handleModes` does, and `addBall` puts
+it back. `setPlaying(true)` clears the last position and heading but **never the quaternion** — clearing
+that snaps the ball to a fresh orientation the instant Play is pressed.
+
+**The markings** are twelve black dots on the vertices of an icosahedron, painted into a cached canvas.
+That orientation of the solid — the cyclic permutations of (0, ±1, ±φ) — puts them at latitudes 0, ±31.7
+and ±58.3 and NONE at a pole, which matters because an equirectangular map smears a polar dot across the
+whole top row. Each is widened by `1/cos(lat)` so it comes out round on the sphere, and painted twice when
+it straddles the seam.
+
+Sixteen mutations. One survived and taught something: `PHI = 1` turns the solid into a **cuboctahedron**,
+whose twelve vertices are ALSO all equivalent — so "evenly spread" passed on a worse arrangement. The
+assertion now pins the real claim: 63.435 degrees is the proven maximum separation for twelve points on a
+sphere, the icosahedron is what reaches it, and anything below leaves a bigger bare patch for the camera
+to catch.
+
+Also, the seventh fixed-width slice bit — mine, written last version: the spin moved in above
+`setBallShadow` and pushed it out of a 200-character window, failing on correct code.
+
+Unit 1834 → **1858**. Version triple → v177. **Still nothing deployed.**

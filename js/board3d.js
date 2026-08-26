@@ -534,12 +534,143 @@ export function createBoard3D(opts) {
     return mesh;
   }
 
+  /* ── The ball's markings ──────────────────────────────────────────
+     A plain white sphere cannot show a rotation: it looks identical at
+     every orientation, so a spinning one and a still one are the same
+     picture. Twelve dots on the vertices of an ICOSAHEDRON, which is
+     the cheap way to get even coverage — the spacing is a property of
+     the solid rather than something to eyeball — and guarantees a dot
+     facing the camera from any angle.
+
+     Placeholder for a real ball model; that is why it is a canvas and
+     not a second geometry. */
+  const PHI = (1 + Math.sqrt(5)) / 2;
+
+  /**
+   * The twelve vertices, as equirectangular (u, v) plus their latitude.
+   *
+   * This orientation — the cyclic permutations of (0, ±1, ±φ) — puts
+   * the vertices at latitudes 0, ±31.7 and ±58.3 degrees and NONE at a
+   * pole, which matters: an equirectangular map smears a polar dot
+   * across the whole top row of the canvas, so a vertex there would
+   * paint a band instead of a spot.
+   */
+  function ballDots() {
+    const raw = [];
+    [-1, 1].forEach((a) => [-PHI, PHI].forEach((b) => {
+      raw.push([0, a, b], [a, b, 0], [b, 0, a]);
+    }));
+    return raw.map((p) => {
+      const L = Math.hypot(p[0], p[1], p[2]);
+      const x = p[0] / L, y = p[1] / L, z = p[2] / L;
+      const lat = Math.asin(y);
+      return {
+        u: (Math.atan2(z, x) / (2 * Math.PI) + 0.5) % 1,
+        v: 0.5 - lat / Math.PI,      // v=0 is the north pole, as three.js maps it
+        lat: lat
+      };
+    });
+  }
+
+  /* Built ONCE. Unlike playerTexture, which varies per player and is
+     rebuilt with them, this never changes — and rebuild() runs on
+     every drag, so making a canvas each time would be pure waste. */
+  let _ballTex = null;
+  function ballTexture() {
+    if (_ballTex) return _ballTex;
+    const W = 512, H = 256;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = '#141414';
+    const r = H * 0.085;
+    ballDots().forEach((d) => {
+      /* An equirectangular map stretches horizontally towards the
+         poles, so a round dot painted here comes out squashed on the
+         sphere. Widening by 1/cos(lat) undoes exactly that. */
+      const rx = r / Math.max(0.35, Math.cos(d.lat));
+      const cx = d.u * W, cy = d.v * H;
+      const blob = (x) => {
+        g.beginPath();
+        g.ellipse(x, cy, rx, r, 0, 0, Math.PI * 2);
+        g.fill();
+      };
+      blob(cx);
+      // Straddling the seam: paint the other half or the dot is cut.
+      if (cx < rx) blob(cx + W);
+      else if (cx > W - rx) blob(cx - W);
+    });
+    _ballTex = new THREE.CanvasTexture(cv);
+    _ballTex.colorSpace = THREE.SRGBColorSpace;
+    return _ballTex;
+  }
+
+  /* ── Spin ─────────────────────────────────────────────────────────
+     How much the ball turns between two positions.
+
+     ROLL is rolling-without-slipping, damped: dist/R on a 0.25 m ball
+     is about 120 rad/s at a hard pass, which renders as a blur rather
+     than as spin. Damped, it is still proportional to distance per
+     frame — which IS proportional to speed, so "faster forward, faster
+     spin" needs no separate term.
+
+     YAW is the sidespin that goes with a bend. Its SIGN is the owner's
+     stated convention and not a derivation: a bend to the LEFT OF
+     TRAVEL spins the ball clockwise seen from above. Left of travel
+     rather than left of screen, so the same drawn bend spins the same
+     way whether the flight is played away from the camera or back
+     towards it.
+
+     The two compose: a bending pass rolls and twists at once. */
+  const SPIN_ROLL = 0.35;
+  const SPIN_BEND = 6;
+
+  function ballSpinStep(prev, now, dirPrev) {
+    const dx = now.x - prev.x, dz = now.z - prev.z;
+    const dist = Math.hypot(dx, dz);
+    // A ball that has not moved has no heading; an axis of (0,0,0)
+    // normalises to NaN and takes the mesh with it.
+    if (dist < 1e-6) return null;
+    const dir = {x: dx / dist, z: dz / dist};
+
+    /* The axis is DERIVED, not chosen. A point at the top of the ball
+       is moved by w x (0,R,0) = (-w_z*R, 0, w_x*R); requiring that to
+       point along `dir` gives w = (dir.z, 0, -dir.x). That is what
+       "tops down", i.e. rolling forward, actually means. */
+    const rollAxis = {x: dir.z, y: 0, z: -dir.x};
+    const roll = (dist / BALL_R) * SPIN_ROLL;
+
+    let yaw = 0;
+    if (dirPrev) {
+      /* The signed turn. For two vectors in the XZ plane,
+         (a x b).y = a.z*b.x - a.x*b.z, which is POSITIVE for a turn to
+         the left of travel. Clockwise seen from above is a NEGATIVE
+         rotation about +Y, hence the sign flip. */
+      const cross = dirPrev.z * dir.x - dirPrev.x * dir.z;
+      const dot = dirPrev.x * dir.x + dirPrev.z * dir.z;
+      yaw = -Math.atan2(cross, dot) * SPIN_BEND;
+    }
+    return {dir, roll, rollAxis, yaw};
+  }
+
+  /* The spin state, OUTSIDE `objects` — like handleModes, and for the
+     same reason. rebuild() recreates every mesh, and applyFrameState
+     triggers one at every frame boundary during playback, so a
+     rotation living only on the mesh would snap back to identity at
+     each keyframe. Keyed by ball index: {quat, pos, dir}. */
+  const ballSpin = new Map();
+
   function addBall(i, pct) {
     const w = BG.toWorld(pct[0], pct[1], getPitch(), getBoardType());
     const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(BALL_R, 20, 14),
-        new THREE.MeshLambertMaterial({color: 0xffffff}));
+        new THREE.MeshLambertMaterial({color: 0xffffff, map: ballTexture()}));
     mesh.position.set(w.x, BALL_R, w.z);
+    // Put back whatever this ball had been spun to before the rebuild.
+    const st = ballSpin.get(i);
+    if (st && st.quat) mesh.quaternion.copy(st.quat);
     mesh.castShadow = true;
     objectRoot.add(mesh);
     objects.push({mesh, kind: 'balls', index: i});
@@ -2420,6 +2551,25 @@ export function createBoard3D(opts) {
 
       if (playing) {
         if (isBall) {
+          /* SPIN, from this step and the last one — no path data is
+             needed here, because the distance and the change of
+             heading between two positions is all it takes. */
+          const st = ballSpin.get(index) || {};
+          if (st.pos) {
+            const s = ballSpinStep(st.pos, w, st.dir);
+            if (s) {
+              o.mesh.rotateOnWorldAxis(
+                  new THREE.Vector3(s.rollAxis.x, s.rollAxis.y, s.rollAxis.z)
+                      .normalize(), s.roll);
+              if (s.yaw) o.mesh.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), s.yaw);
+              st.dir = s.dir;
+            }
+          }
+          st.pos = {x: w.x, z: w.z};
+          /* Kept off the mesh, which the next rebuild replaces. */
+          st.quat = o.mesh.quaternion.clone();
+          ballSpin.set(index, st);
+
           setBallShadow(w.x, w.z, height || 0);
           if (followBall) { cam.target.set(w.x, 0, w.z); applyCamera(); }
         } else {
@@ -2432,6 +2582,12 @@ export function createBoard3D(opts) {
     /** Playback started or stopped. */
     setPlaying(on) {
       playing = !!on;
+      /* Forget where each ball WAS, never how it is turned. Without
+         the first, the opening step of a playback is a jump from
+         wherever the ball last sat and the spin arrives as a snap;
+         clearing the quaternion instead would snap the ball to a fresh
+         orientation the instant Play was pressed. */
+      ballSpin.forEach((st) => { st.pos = null; st.dir = null; });
       /* The drawn trajectories come off for the duration. They are a
          plan of the move; while the move is running they duplicate it,
          and their handles are targets for a gesture nobody can make

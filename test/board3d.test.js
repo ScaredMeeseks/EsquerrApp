@@ -689,11 +689,20 @@ describe('playback dressing', () => {
         s3.indexOf('function updatePath'));
     assert.ok(/pathEntries\.forEach/.test(refresh), 'over ALL of them');
 
-    /* The two things that must NOT go: they describe the present. */
-    assert.ok(/if \(playing\) \{[\s\S]{0,200}setBallShadow\(/.test(s3),
+    /* The two things that must NOT go: they describe the present.
+       Sliced to setPosition's own `if (playing)` block rather than
+       matched within a character budget — the ball's spin moved in
+       above the shadow and pushed it out of a 200-char window, which
+       failed reporting that the shadow had gone when it had not. That
+       is the seventh fixed-width slice to bite in this suite, and the
+       first one I wrote myself. */
+    const sp2 = s3.slice(s3.indexOf('setPosition(kind, index, pct, height)'),
+        s3.indexOf('setPlaying(on) {'));
+    assert.ok(sp2.length > 200, 'the setPosition slice looks wrong');
+    const hot = sp2.slice(sp2.indexOf('if (playing) {'));
+    assert.ok(/setBallShadow\(/.test(hot),
         'the ball shadow is drawn precisely BECAUSE it is playing');
-    assert.ok(/if \(playing\) \{[\s\S]{0,300}trailPush\(/.test(s3),
-        'and so is the trail');
+    assert.ok(/trailPush\(/.test(hot), 'and so is the trail');
   });
 
   it('and the flat board takes its own down too', () => {
