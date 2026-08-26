@@ -5860,3 +5860,27 @@ older Chromium. They never both apply, so they cannot disagree.
 One process note: the band fix initially had **no test**, and the mutation survived. It has one now.
 
 Unit 1731 → **1733**. Version triple → v162. **Still nothing deployed.**
+
+### 2026-08-26 — The right scrollbar, and the frames rail scrolls at last (v163)
+
+**v162 styled the wrong element.** "The left panel" was the app's own navigation sidebar, not the 3D
+menu's panels — the ugly bar is `.sidebar`'s, where the default is a light-grey slab with stepper arrows
+on a dark column, the brightest thing in it and only ever seen when a club has enough pages to overflow.
+It takes the same thin translucent pill on no track, and a test asserts it uses the **same values** as
+the board surfaces rather than a second grey nobody would notice was different.
+
+**The frames rail could never scroll, and the CSS was not the reason.** It has carried
+`overflow-y:auto` since it was built. board3d binds `wheel` on the **wrapper** as well as the canvas —
+to catch the border and any gap the canvas does not cover — and the rail lives inside that wrapper, so
+every notch over the frame list bubbled up and zoomed the board instead. The rail stops the event now;
+the canvas handler is untouched and simply never sees a wheel that began on the rail.
+
+Worth naming: a hidden scrollbar (`scrollbar-width:none`, added in v153 to fix the alignment axis) hides
+the one affordance that would have said "this scrolls", so the list looked cropped rather than
+unreachable. The bar stays hidden — it is a 38px column over a pitch — but the list is taller now
+(54vh) so it crops later.
+
+Also: play moves **above** frame 1 (the `column-reverse` from v152 is gone — the header is already
+first), and the rail sits a little lower.
+
+Unit 1733 → **1736**. Version triple → v163. **Still nothing deployed.**

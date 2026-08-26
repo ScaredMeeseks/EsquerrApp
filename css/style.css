@@ -234,7 +234,19 @@ a:hover { text-decoration: underline; }
   width: 240px; min-width: 240px; background: var(--sidebar-bg);
   color: #e0e0e0; padding: 1.5rem 0;
   flex-shrink: 0; overflow-y: auto;
+  /* A thin pill on no track, matching the board panels. The default
+     is a light-grey slab with stepper arrows, which on a dark column
+     is the brightest thing in it. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.22) transparent;
 }
+.sidebar::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb {
+  background-clip: padding-box; border: 2px solid transparent;
+  border-radius: 999px; background-color: rgba(255,255,255,.22);
+}
+.sidebar::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,.38); }
 .sidebar-item {
   display: flex; align-items: center; gap: .7rem;
   padding: .75rem 1.5rem;
@@ -4884,23 +4896,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;
   /* Nudged below centre: the camera list opens down this same edge
      and the two were meeting. Still reads as centred, with room. */
-  top:calc(50% + 1.75rem); transform:translateY(-50%);
+  top:calc(50% + 3.25rem); transform:translateY(-50%);
   z-index:5; opacity:.35; transition:opacity .18s ease;
 }
 .tb-rail:hover, .tb-rail:focus-within { opacity:1; }
 .tb-rail .tb-frames-section {
   margin:0; padding:0; background:none; width:100%;
-  /* Reversed: play arrives in the section HEADER, above the strip.
-     Above the frames it reads as a title; below them, as "run
-     these". */
-  display:flex; flex-direction:column-reverse;
+  /* Play arrives in the section HEADER, which is already first, so
+     no reversal: it sits above frame 1. */
+  display:flex; flex-direction:column;
 }
 /* Vertical, because it lives in a column now. The 2D board keeps the
    horizontal strip; only the copy inside the window is turned. */
 .tb-rail .tb-frames-strip {
   flex-direction:column; align-items:center; gap:.3rem; width:100%;
   padding:var(--tb-pad);
-  max-height:min(46vh, 360px); overflow-y:auto; overflow-x:hidden;
+  max-height:min(54vh, 440px); overflow-y:auto; overflow-x:hidden;
   /* The scrollbar is HIDDEN, not the overflow. A visible bar reserves
      width on the right, which pushed every tile a scrollbar's width
      left of the rail's edge while the camera button stayed flush
@@ -4911,7 +4922,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* The header holds only play once the title is hidden — the tiles
    already say what the column is. */
 .tb-rail .tb-frames-header {
-  flex-direction:column; align-items:center; gap:.35rem; margin:.4rem 0 0;
+  flex-direction:column; align-items:center; gap:.35rem; margin:0 0 .4rem;
   width:100%;
 }
 .tb-rail .tb-frames-title { display:none; }

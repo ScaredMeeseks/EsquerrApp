@@ -443,11 +443,29 @@ describe('the rail and the camera share one vertical axis', () => {
         'the list must stack');
   });
 
-  it('play sits below the frames it runs', () => {
-    /* It arrives in the section HEADER, which is above the strip.
-       Above them it reads as a title; below, as "run these". */
-    assert.ok(/flex-direction:column-reverse/.test(rule('.tb-rail .tb-frames-section')),
-        'the section must be reversed so the header lands underneath');
+  it('play sits above frame 1', () => {
+    /* It arrives in the section HEADER, which is already first, so no
+       reversal. This was briefly reversed to put play underneath —
+       the owner wants it on top. */
+    assert.ok(/flex-direction:column;/.test(rule('.tb-rail .tb-frames-section')),
+        'the section must run header-first, so play leads the column');
+    assert.ok(!/column-reverse/.test(rule('.tb-rail .tb-frames-section')),
+        'reversing it would put play under the last frame');
+  });
+
+  it('a wheel over the rail scrolls the frames, not the camera', () => {
+    /* board3d binds `wheel` on the WRAPPER as well as the canvas, to
+       catch the border and any gap the canvas does not cover — and
+       the rail lives inside that wrapper. Every notch over the frame
+       list bubbled up and zoomed the board, so a list that had
+       `overflow-y:auto` all along could not be reached. */
+    assert.ok(/railSlot\.addEventListener\('wheel', \(e\) => e\.stopPropagation\(\)/
+        .test(fn('tbMenuInit(hooks)')),
+        'the rail must keep its wheel from reaching board3d');
+    const strip = rule('.tb-rail .tb-frames-strip');
+    assert.ok(/overflow-y:auto/.test(strip), 'and the list must actually scroll');
+    assert.ok(/scrollbar-width:none/.test(strip),
+        'without showing a bar — it is a 38px column over a pitch');
   });
 });
 
@@ -861,5 +879,38 @@ describe('the board is re-measured after the menu rearranges the page', () => {
     const first = bare.indexOf('tbSize3DWindow();');
     assert.ok(first !== -1 && first < bare.indexOf('tbMount3D({'),
         'the pre-mount measurement must survive');
+  });
+});
+
+describe('the sidebar scrollbar', () => {
+  const rule = (sel) => {
+    const i = css.indexOf(sel + ' {');
+    assert.ok(i !== -1, sel + ' not found');
+    return css.slice(i, css.indexOf('}', i));
+  };
+
+  it('is the same thin pill as the board panels', () => {
+    /* The first pass styled the MENU panels, which was the wrong
+       element: the ugly bar is the app's own left navigation column,
+       where the default is a light-grey slab with stepper arrows on a
+       dark ground — the brightest thing in it, and only ever seen
+       when a club has enough pages to overflow. */
+    const bar = rule('.sidebar');
+    assert.ok(/scrollbar-width: ?thin/.test(bar), 'the standard syntax');
+    assert.ok(/scrollbar-color: ?rgba\(255,255,255,\.22\) transparent/.test(bar),
+        'a translucent thumb on no track');
+    assert.ok(/\.sidebar::-webkit-scrollbar-thumb \{/.test(css),
+        'and the webkit syntax, for Safari and older Chromium');
+    assert.ok(/\.sidebar::-webkit-scrollbar-track \{ background: ?transparent; \}/.test(css),
+        'no track — a groove doubles the ink for something that is only a hint');
+  });
+
+  it('uses the same values as the board surfaces, not a second palette', () => {
+    /* Two nearly-identical greys would be worse than one obvious one. */
+    const bar = rule('.sidebar');
+    const panel = css.slice(css.indexOf('.tb-m-panel, .tb-m-sub, .tb-m-kit-opts,'));
+    const thumb = /scrollbar-color: ?(rgba\([^)]+\))/.exec(bar)[1];
+    assert.ok(panel.indexOf(thumb) !== -1,
+        'the sidebar thumb ' + thumb + ' must match the board panels');
   });
 });

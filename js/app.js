@@ -1578,7 +1578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 162;
+  const APP_VERSION = 163;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7078,6 +7078,19 @@
     const railSlot = document.getElementById('tb-rail');
     const frames = document.querySelector('.tb-frames-section');
     if (railSlot && frames) railSlot.appendChild(frames);
+
+    /* A wheel over the rail scrolls the FRAMES, not the camera.
+       board3d binds `wheel` on the wrapper as well as the canvas — to
+       catch the border and any gap the canvas does not cover — and
+       the rail lives inside that wrapper, so every notch over the
+       frame list bubbled up and zoomed the board instead. The list
+       had `overflow-y:auto` all along and could not be reached.
+       Stopping propagation here leaves the canvas handler untouched;
+       it simply never sees a wheel that started on the rail. */
+    if (railSlot) {
+      railSlot.addEventListener('wheel', (e) => e.stopPropagation(),
+          {passive: true});
+    }
 
     /* ── Opening and closing ────────────────────────────────────
        Hover where a real pointer exists, tap everywhere. One extra
