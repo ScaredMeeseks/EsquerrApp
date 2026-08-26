@@ -661,6 +661,78 @@ describe('playback dressing', () => {
     assert.ok(!/turf\.clone\(\)\.lerp/.test(fn), 'the colour-lerp fake must be gone');
   });
 
+  it('the drawn trajectories come off while the move is running', () => {
+    /* A trajectory is a PLAN of a move. While the move is playing it
+       duplicates the move, drawn through the very objects it
+       describes — and its handles are targets for a gesture nobody can
+       make mid-playback. What stays is the trail behind each object
+       and the ball's ground shadow, which say where things ARE rather
+       than where they were going to go. */
+    const vis = s3.slice(s3.indexOf('function setPathVisible'),
+        s3.indexOf('function updatePath'));
+    assert.ok(/entry\.visible = on;/.test(vis),
+        'the entry must keep its own INTENT — has this object moved at all');
+    assert.ok(/const show = on && !playing;/.test(vis),
+        'and what renders is that intent AND not playing');
+    assert.ok(/entry\.meshes\.forEach\(\(m\) => \{ m\.visible = show; \}\)/.test(vis),
+        'every mesh of the path — curve, ground track and both handles');
+    assert.ok(/entry\.traveller\.visible = show/.test(vis),
+        'and the travelling dot, which is animated from its own list');
+
+    /* Re-applied on the toggle, and re-applied rather than remembered:
+       applyFrameState pokes a rebuild at every frame boundary during
+       playback, which would otherwise put them straight back. */
+    const sp = s3.slice(s3.indexOf('setPlaying(on) {'), s3.indexOf('getSelected()'));
+    assert.ok(/refreshPathVisibility\(\)/.test(sp),
+        'setPlaying must re-apply the visibility over every entry');
+    const refresh = s3.slice(s3.indexOf('function refreshPathVisibility'),
+        s3.indexOf('function updatePath'));
+    assert.ok(/pathEntries\.forEach/.test(refresh), 'over ALL of them');
+
+    /* The two things that must NOT go: they describe the present. */
+    assert.ok(/if \(playing\) \{[\s\S]{0,200}setBallShadow\(/.test(s3),
+        'the ball shadow is drawn precisely BECAUSE it is playing');
+    assert.ok(/if \(playing\) \{[\s\S]{0,300}trailPush\(/.test(s3),
+        'and so is the trail');
+  });
+
+  it('and the flat board takes its own down too', () => {
+    /* tbPaths2D draws the same curves as SVG. It lives at module
+       scope, where `framePlaying` — a local of bindTactics — cannot be
+       seen, which is why the flag it reads is set through the one
+       function that tells both views. */
+    const f = a.slice(a.indexOf('function tbPaths2D'), a.indexOf('function tbIcon'));
+    assert.ok(/querySelectorAll\('\.tb-move-path'\)[\s\S]{0,80}remove\(\)/.test(f),
+        'the existing lines must be cleared first');
+    const iClear = f.indexOf(".tb-move-path");
+    const iBail = f.indexOf('if (_tbPlaying) return;');
+    assert.ok(iBail !== -1, 'it must stand down during playback');
+    assert.ok(iClear < iBail,
+        'and stand down AFTER clearing, or switching to playing freezes ' +
+        'the lines on the board instead of taking them off');
+
+    /* And SOMETHING has to run it on the toggle. Found by mutation:
+       with the redraw removed, the lines only came off at the next
+       tb3dTouch — which playback happens to trigger a moment later, so
+       it looked correct and was luck. */
+    const bare = a.replace(/\/\*[\s\S]*?\*\//g, '');
+    const set = bare.slice(bare.indexOf('function tbSetPlaying'),
+        bare.indexOf('function tb3dTouch'));
+    assert.ok(/_tbPlaying = !!on;/.test(set), 'it must set the module flag');
+    assert.ok(/tbPaths2D\(\);/.test(set),
+        'and redraw the flat board, rather than waiting for something ' +
+        'else to happen to do it');
+  });
+
+  it('and stops driving dots nobody can see', () => {
+    /* The travelling dots are hidden during playback; walking them
+       round their curves anyway forces a redraw every frame, on top of
+       the redraws playback is already asking for. */
+    const tick = s3.slice(s3.indexOf('if (travellers.length'), s3.indexOf('if (needsRender)'));
+    assert.ok(/!playing/.test(tick),
+        'the traveller loop must stand down during playback');
+  });
+
   it('a short trail repeats its oldest point instead of collapsing', () => {
     /* A part-filled buffer would otherwise leave zeroed vertices and
        draw a line to the centre spot. */
@@ -671,9 +743,21 @@ describe('playback dressing', () => {
   it('every exit from playback stops the dressing', () => {
     /* There are four ways out of the play loop — finishing, the stop
        button, and two guard paths. Miss one and the trails hang
-       around over a static board. */
-    assert.strictEqual((a.match(/_tb3d\.setPlaying\(false\)/g) || []).length, 4);
-    assert.ok(/_tb3d\.setPlaying\(true\)/.test(a));
+       around over a static board.
+
+       Through tbSetPlaying now, not `_tb3d.setPlaying` directly: the
+       flat board has a trajectory layer to take down too, and it is
+       drawn from module scope where `framePlaying` cannot be seen.
+       One function tells both, so the pair cannot come apart — which
+       is the same split that put the trajectory layer a frame behind. */
+    assert.strictEqual((a.match(/tbSetPlaying\(false\)/g) || []).length, 4);
+    assert.ok(/tbSetPlaying\(true\)/.test(a));
+    /* And exactly one place still speaks to the scene directly.
+       Comment-stripped: tbSetPlaying's own docstring names the call it
+       replaced, and counting raw text found that too. */
+    const aBare = a.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.strictEqual((aBare.match(/_tb3d\.setPlaying\(/g) || []).length, 1,
+        'only tbSetPlaying may drive the scene\'s playback flag');
   });
 });
 

@@ -6324,3 +6324,36 @@ against a fake one, at every index including both ends.
 Eight mutations, all killed.
 
 Unit 1814 → **1831**. Version triple → v175. **Still nothing deployed.**
+
+### 2026-08-26 — The plan of a move stops being drawn over the move (v176)
+
+A trajectory is a PLAN: where an object will curve on its way to the next frame, and how high the ball
+will go. While the move is actually running it duplicates the move, drawn straight through the objects it
+describes — and its handles are targets for a gesture nobody can make mid-playback. What should stay, and
+does, is the **trail** behind each object and the ball's **ground shadow**: those say where things ARE
+rather than where they were going to go.
+
+Both views were drawing them. In 3D, `setPathVisible` now separates the entry's INTENT (has this object
+moved between the two frames at all) from what renders, which is that intent AND not playing;
+`refreshPathVisibility()` re-applies it on the toggle rather than remembering it, because `applyFrameState`
+pokes a rebuild at every frame boundary during playback and would otherwise put them straight back. The
+travelling dots stop being walked round their curves too — hidden meshes forcing a redraw every frame, on
+top of the redraws playback already asks for.
+
+In 2D, `tbPaths2D` stands down — **after** clearing, not before, or switching to playing freezes the
+existing lines on the board instead of taking them off.
+
+**And it needed the same fix as yesterday's bug, for the same reason.** `framePlaying` is a local of
+bindTactics; `tbPaths2D` lives at module scope and could see neither it nor the scene's flag. So playback
+is now announced through one `tbSetPlaying(on)` that sets the module flag, forwards to the scene and
+redraws the flat board — replacing five call sites that each set two things separately. That is the second
+time this week that a bindTactics local and a module-scope reader of the same fact have disagreed; the
+pattern is worth watching for.
+
+Two mutations survived the first pass and both were real: removing the redraw from `tbSetPlaying` left the
+lines up until the next `tb3dTouch` — which playback happens to trigger a moment later, so it looked
+correct and was luck.
+
+Five mutations, all killed.
+
+Unit 1831 → **1834**. Version triple → v176. **Still nothing deployed.**

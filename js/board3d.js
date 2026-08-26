@@ -915,12 +915,32 @@ export function createBoard3D(opts) {
      trajectory only MEANS anything once the object has left it. Show
      the whole set or none of it — a handle floating with no curve
      under it is worse than nothing. */
+  /**
+   * Show or hide one trajectory — curve, ground track and handles.
+   *
+   * `entry.visible` is the INTENT (has this object moved between the
+   * two frames at all); what is rendered is that AND not playing. A
+   * trajectory is a plan of a move; during the move itself the move is
+   * on screen, and the drawn line is a duplicate of it running through
+   * the object — plus its handles, which are targets for a gesture
+   * nobody can make mid-playback. What stays is the trail behind each
+   * object and the ball's ground shadow, which describe where things
+   * ARE rather than where they were going to go.
+   */
   function setPathVisible(entry, on) {
     entry.visible = on;
-    entry.meshes.forEach((m) => { m.visible = on; });
+    const show = on && !playing;
+    entry.meshes.forEach((m) => { m.visible = show; });
     // The traveller is animated from its own list, so it needs the
     // same treatment or a dot runs along an invisible line.
-    if (entry.traveller) entry.traveller.visible = on;
+    if (entry.traveller) entry.traveller.visible = show;
+  }
+
+  /* Re-apply the playing state over every entry's own intent. Cheap,
+     and it means `playing` is read in exactly one place rather than
+     threaded through the builders. */
+  function refreshPathVisibility() {
+    pathEntries.forEach((e) => setPathVisible(e, e.visible !== false));
   }
 
   function updatePath(entry, path) {
@@ -2346,7 +2366,10 @@ export function createBoard3D(opts) {
     // A tween renders every frame for its duration, or the move shows
     // one frame and stops — the loop is on demand by default.
     if (stepCameraTween(now || 0)) needsRender = true;
-    if (travellers.length) {
+    /* Not while playing: the dots are hidden then, and driving a
+       hidden mesh round a curve every frame forces a redraw for
+       nothing — on top of the redraws playback is already asking for. */
+    if (travellers.length && !playing) {
       const t = ((now || 0) % 3000) / 3000;
       travellers.forEach((tr) => tr.mesh.position.copy(
           pathWorld(tr.p0, tr.p1, tr.path, t)));
@@ -2409,6 +2432,13 @@ export function createBoard3D(opts) {
     /** Playback started or stopped. */
     setPlaying(on) {
       playing = !!on;
+      /* The drawn trajectories come off for the duration. They are a
+         plan of the move; while the move is running they duplicate it,
+         and their handles are targets for a gesture nobody can make
+         mid-playback. Re-applied rather than remembered, so a rebuild
+         part-way through playback — applyFrameState pokes one at every
+         frame boundary — cannot bring them back. */
+      refreshPathVisibility();
       if (!playing) clearTrails();
       invalidate();
     },

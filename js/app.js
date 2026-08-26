@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 175;
+  const APP_VERSION = 176;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6601,6 +6601,11 @@
 
   var _tb3d = null;          // the live instance, or null
   var _tb3dPending = false;  // a refresh is already queued for this frame
+  /* Playback, at MODULE scope. `framePlaying` is a local of
+     bindTactics and tbPaths2D lives out here — the same split that
+     put the trajectory layer one frame behind, so this one is set
+     through a single function that both views go through. */
+  var _tbPlaying = false;
   var _tb3dShape = '';       // pitch + board type, to spot a full rebuild
 
   /**
@@ -6616,6 +6621,21 @@
    * several times for a single gesture, and rebuilding the scene on
    * each would be a dozen wasted teardowns per drag.
    */
+  /**
+   * Playback started or stopped — told to BOTH views at once.
+   *
+   * The two used to be set separately: `framePlaying` for the editor
+   * and `_tb3d.setPlaying()` for the scene, at five call sites. The
+   * flat board's trajectory layer is drawn from module scope and could
+   * see neither, so it kept drawing plans over a running animation.
+   * One function, and the pair cannot come apart.
+   */
+  function tbSetPlaying(on) {
+    _tbPlaying = !!on;
+    if (_tb3d) _tb3d.setPlaying(_tbPlaying);
+    tbPaths2D();     // take the drawn plans off, or put them back
+  }
+
   function tb3dTouch() {
     /* The 2D path layer rides the same funnel — cheap, and it means
        one place decides when a movement path is out of date. */
@@ -6681,6 +6701,12 @@
     const svg = document.getElementById('tb-arrows-svg');
     if (!svg) return;
     svg.querySelectorAll('.tb-move-path').forEach((el) => el.remove());
+    /* NOT DURING PLAYBACK. The curve is a plan of the move; while the
+       move is running it is a duplicate of it, drawn through the very
+       objects it describes. Cleared above first, so switching to
+       playing takes the existing lines off rather than freezing them
+       on the board. */
+    if (_tbPlaying) return;
 
     const cur = _tb3dCurFrame();
     const prev = _tb3dPrevFrame();
@@ -15068,7 +15094,7 @@
        two agree from the first render, not from the first edit. */
     localStorage.setItem('fa_tactic_frame_idx', activeFrameIdx);
     let framePlaying = false;
-          if (_tb3d) _tb3d.setPlaying(false);
+    tbSetPlaying(false);
 
     function syncNumbersAcrossFrames() {
       const nums = JSON.parse(localStorage.getItem('fa_tactic_numbers') || '[]');
@@ -15435,12 +15461,12 @@
     const playBtn = document.getElementById('tb-frame-play');
     playBtn?.addEventListener('click', () => {
       if (framePlaying) { framePlaying = false;
-          if (_tb3d) _tb3d.setPlaying(false); playBtn.classList.remove('playing'); return; }
+          tbSetPlaying(false); playBtn.classList.remove('playing'); return; }
       if (frames.length < 2) return;
       autoSaveFrame();
       framePlaying = true;
       playBtn.classList.add('playing');
-      if (_tb3d) _tb3d.setPlaying(true);
+      tbSetPlaying(true);
       deactivateDrawTools();
       clearSelection();
       let fIdx = 0;
@@ -15455,7 +15481,7 @@
           refreshArrowheads(arrowsSvg);
           renderFrameStrip();
           framePlaying = false;
-          if (_tb3d) _tb3d.setPlaying(false);
+          tbSetPlaying(false);
           playBtn.classList.remove('playing');
           return;
         }
@@ -15485,7 +15511,7 @@
                 refreshArrowheads(arrowsSvg);
                 renderFrameStrip();
                 framePlaying = false;
-          if (_tb3d) _tb3d.setPlaying(false);
+          tbSetPlaying(false);
                 playBtn.classList.remove('playing');
               }, 1000);
             }
