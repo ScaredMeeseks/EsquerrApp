@@ -6250,3 +6250,32 @@ is the shape the next retune of this gap will take.
 Five mutations, all killed.
 
 Unit 1813 → **1814**. Version triple → v173. **Still nothing deployed.**
+
+### 2026-08-26 — The rail flashed, and the panel was measured against the wrong box (again) (v174)
+
+A screenshot settled two things at once that source could not.
+
+**The dimming was driven by `.tb-m-rail:hover`, and the panels open OUTSIDE the rail's box.** So the trip
+from an entry to its own panel crosses ground that is inside neither: `:hover` on the rail went false there
+and the whole column flashed back to full strength for the width of the gap, then dimmed again on arrival.
+The v173 bridge fixed this one level down, between a side and its submenu, and could not fix it here —
+the gap is variable and the panel is not a geometric descendant.
+
+Driven by a CLASS now, `tb-m-focus`, set with the hot entry and cleared with it. The dimming follows the
+open panel, which is the thing it is actually about, and the pointer's whereabouts stop mattering. The test
+forbids `.tb-m-rail:hover` outright rather than pinning the replacement.
+
+**And the panel offset was measured against the rail's box — the fourth wrong reference for this one gap.**
+`.tb-m-rail` is a block child of `.tb-m`, whose shrink-to-fit width comes from the TOP LINE: the hamburger
+plus a board-name input up to 280px wide. So the rail's right edge sits far past the longest label, and
+half of that (TB_PANEL_ALIGN) put every panel a hundred pixels out into the pitch — visible in the
+screenshot as a panel floating in open turf beside a short "Vincula".
+
+What the eye compares a panel against is the column of LABELS, so clampPanel measures the widest ENTRY.
+The sequence is worth keeping: entry edge (overlapped its neighbours) → label distance (a true assertion
+about the wrong quantity) → rail edge (a box whose width has nothing to do with the labels) → widest entry.
+Every one of the first three passed its test.
+
+Four mutations, all killed.
+
+Unit **1814**, unchanged. Version triple → v174. **Still nothing deployed.**

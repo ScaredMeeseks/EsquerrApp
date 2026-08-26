@@ -254,10 +254,28 @@ describe('the 3D menu — it moves controls, it does not copy them', () => {
   });
 
   it('hovering one entry lifts it and drops the others', () => {
-    assert.ok(/\.tb-m-rail:hover \.tb-m-entry \{ opacity:\.\d+; \}/.test(css),
-        'the rest must dim while one is pointed at');
-    assert.ok(/\.tb-m-rail:hover \.tb-m-entry:hover,\s*\n\.tb-m-entry\.tb-m-hot \{ opacity:1/
-        .test(css), 'and the one under the pointer must come back up');
+    /* A CLASS, NOT `:hover` ON THE RAIL. The two look equivalent and
+       are not: the panels open outside the rail's box, so the trip
+       from an entry to its own panel crosses ground inside neither and
+       `.tb-m-rail:hover` went false there — the whole column flashed
+       back to full strength for the width of the gap, then dimmed
+       again on arrival. The class follows the open panel, which is
+       what the dimming is about; where the pointer is stops mattering. */
+    assert.ok(!/\.tb-m-rail:hover /.test(cssBare),
+        'the dimming must not depend on the pointer being geometrically ' +
+        'inside the rail — the panels open outside it');
+    assert.ok(/\.tb-m-rail\.tb-m-focus \.tb-m-entry \{ opacity:\.\d+; \}/.test(css),
+        'the rest must dim while one entry is the active one');
+    assert.ok(/\.tb-m-rail\.tb-m-focus \.tb-m-entry:hover,\s*\n\.tb-m-entry\.tb-m-hot \{ opacity:1/
+        .test(css), 'and the active one must come back up');
+    /* Set with the hot entry and cleared with it, or the rail stays
+       faded with nothing picked. */
+    const init = fn('tbMenuInit(hooks)');
+    assert.ok(/rail\.classList\.add\('tb-m-focus'\)/.test(init),
+        'the class must go on when an entry becomes active');
+    assert.ok(/rail\.classList\.remove\('tb-m-focus'\)/.test(init),
+        'and come off when the menu closes — an evenly lit rail is the ' +
+        'resting state');
     /* Transitions mention opacity too, so strip them before asking
        whether the entry SETS one — the first version of this read the
        word inside `transition:` and failed on correct CSS. */
@@ -1199,19 +1217,21 @@ describe('the file actions moved into the menu', () => {
         'and cancelled on re-entry, or it closes anyway a moment later');
   });
 
-  it('the panel clears the whole RAIL, not just its own entry', () => {
-    /* THE MEASUREMENT THAT WAS WRONG THREE TIMES.
+  it('the panel is placed against the widest ENTRY', () => {
+    /* THE MEASUREMENT THAT WAS WRONG THREE TIMES, AND THEN A FOURTH.
        `left:100%` is the entry's own right edge, and the entries are
-       each their own width — so a short one ("Camp", seventy pixels)
-       opened its panel over the long ones above and below it. Every
-       attempt to fix the reported "gap" by changing the CSS offset was
-       moving a number measured from the wrong edge, and this test kept
-       passing because it checked that same wrong number.
+       each their own width — so a short one ("Camp") opened its panel
+       over the long ones above and below it. Measuring to the RAIL's
+       edge instead looked like the fix and was the next wrong
+       reference: `.tb-m-rail` is a block child of `.tb-m`, whose
+       shrink-to-fit width comes from the top line — the hamburger plus
+       a board-name input up to 280px wide. Every panel went a hundred
+       pixels out into the pitch.
 
-       What has to hold is that the panel clears the WIDEST entry.
-       Neither the widest label nor the rail's width is knowable from
-       source — the labels are translated — so the CSS carries only the
-       clearance and clampPanel() measures the rest. */
+       What the eye compares a panel against is the column of LABELS.
+       That is not knowable from source, since the labels are
+       translated, so the CSS carries only the clearance and
+       clampPanel() measures the widest entry itself. */
     const gap = /left:calc\(100% \+ ([\d.]+)rem\)/.exec(rule('.tb-m-panel'));
     assert.ok(gap, 'the CSS must declare a positive clearance past the edge');
     assert.ok(parseFloat(gap[1]) >= 0.3,
@@ -1219,9 +1239,13 @@ describe('the file actions moved into the menu', () => {
 
     const init = fn('tbMenuInit(hooks)');
     const c = init.slice(init.indexOf('const clampPanel'));
-    assert.ok(/rail\.getBoundingClientRect\(\)\.right/.test(c) &&
-              /entry\.getBoundingClientRect\(\)\.right/.test(c),
-        'the offset must be measured between THIS entry and the rail\'s edge');
+    assert.ok(!/rail\.getBoundingClientRect\(\)/.test(c),
+        'the rail\'s own box is not the column of labels — its width comes ' +
+        'from the board-name input on the top line');
+    assert.ok(/rail\.querySelectorAll\('\.tb-m-entry'\)[\s\S]{0,140}Math\.max\(widestR, o\.getBoundingClientRect\(\)\.right\)/.test(c),
+        'the reference must be the widest ENTRY, measured across them all');
+    assert.ok(/const dx = \(widestR - entryR\)/.test(c),
+        'and the offset the distance from this entry to it');
     assert.ok(/panel\.style\.marginLeft = Math\.round\(dx\)/.test(c),
         'and be applied, or the CSS clearance is measured from the entry again');
     assert.ok(/panel\.style\.marginLeft = '';/.test(c),
@@ -1233,7 +1257,7 @@ describe('the file actions moved into the menu', () => {
        number is a taste call and belongs to the owner, so what is
        pinned is that it stays BETWEEN the two rejected extremes and
        that the code actually uses it. */
-    assert.ok(/const dx = \(railR - entryR\) \* TB_PANEL_ALIGN;/.test(bare),
+    assert.ok(/const dx = \(widestR - entryR\) \* TB_PANEL_ALIGN;/.test(bare),
         'the fraction must be named, not inlined — it has been retuned ' +
         'four times and a literal here is a literal to go hunting for');
     const frac = /TB_PANEL_ALIGN = ([\d.]+);/.exec(bare);

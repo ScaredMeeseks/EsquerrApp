@@ -4916,13 +4916,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   text-shadow:0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
   transition:color .15s ease, opacity .15s ease;
 }
-/* Dim the rest, but only while one of them is actually under the
-   pointer — a rail nobody is pointing at should be evenly legible,
-   not permanently faded. `.tb-m-rail:hover` is true whenever the
-   pointer is inside ANY entry, including inside an open panel, since
-   a panel is a DOM child of the entry that owns it. */
-.tb-m-rail:hover .tb-m-entry { opacity:.42; }
-.tb-m-rail:hover .tb-m-entry:hover,
+/* Dim the rest while one entry is the active one — a rail nobody has
+   picked from should be evenly legible, not permanently faded.
+
+   A CLASS, NOT `:hover` ON THE RAIL. `.tb-m-rail:hover` looked
+   equivalent and is not: the panels open OUTSIDE the rail's box, so
+   the trip from an entry to its own panel crosses ground that is
+   inside neither. `:hover` on the rail went false there and the whole
+   column flashed back to full strength for the width of the gap,
+   then dimmed again on arrival. The class follows the open panel
+   instead, which is the thing the dimming is actually about, and the
+   pointer's whereabouts stop mattering. */
+.tb-m-rail.tb-m-focus .tb-m-entry { opacity:.42; }
+.tb-m-rail.tb-m-focus .tb-m-entry:hover,
 .tb-m-entry.tb-m-hot { opacity:1; color:#fff; }
 .tb-m-entry:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
 /* GROWN BY THE CHILDREN, NOT BY THE ENTRY.
@@ -4937,8 +4943,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   transform-origin:left center;
   transition:transform .15s ease;
 }
-.tb-m-rail:hover .tb-m-entry:hover > .tb-m-ico,
-.tb-m-rail:hover .tb-m-entry:hover > .tb-m-label,
+.tb-m-rail.tb-m-focus .tb-m-entry:hover > .tb-m-ico,
+.tb-m-rail.tb-m-focus .tb-m-entry:hover > .tb-m-label,
 .tb-m-entry.tb-m-hot > .tb-m-ico,
 .tb-m-entry.tb-m-hot > .tb-m-label { transform:scale(1.12); }
 .tb-m-ico { display:flex; }

@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 173;
+  const APP_VERSION = 174;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7168,8 +7168,14 @@
     const setOpen = (on) => {
       menu.classList.toggle('tb-m-open', on);
       btn.setAttribute('aria-expanded', on ? 'true' : 'false');
-      if (!on) rail.querySelectorAll('.tb-m-entry').forEach(
-          (e) => e.classList.remove('tb-m-hot'));
+      if (!on) {
+        rail.querySelectorAll('.tb-m-entry').forEach(
+            (e) => e.classList.remove('tb-m-hot'));
+        /* The dimming goes with the last hot entry: an evenly lit rail
+           is the resting state, and leaving this on would fade every
+           entry with none of them picked. */
+        rail.classList.remove('tb-m-focus');
+      }
     };
     const isOpen = () => menu.classList.contains('tb-m-open');
 
@@ -7233,16 +7239,27 @@
          the pointer moves down the list. Measured rather than
          declared, because the widest label is a translation away from
          being a different width. */
-      const railR = rail.getBoundingClientRect().right;
+      /* THE WIDEST ENTRY, not the rail's box — and this was the third
+         wrong reference in a row. `.tb-m-rail` is a block child of
+         `.tb-m`, whose shrink-to-fit width comes from the top line:
+         the hamburger plus the board-name input, which is up to 280px.
+         So the rail's right edge sits far past the longest label, and
+         measuring to it pushed every panel a hundred pixels out into
+         the pitch. What the eye compares a panel against is the column
+         of LABELS, so that is what gets measured. */
       const entryR = entry.getBoundingClientRect().right;
+      let widestR = entryR;
+      rail.querySelectorAll('.tb-m-entry').forEach((o) => {
+        widestR = Math.max(widestR, o.getBoundingClientRect().right);
+      });
       /* HALFWAY, on the owner's call after seeing both ends.
          At 0 the panel hangs off the entry's own edge and a short
-         label's panel covers its neighbours; at 1 it clears the rail
-         entirely and, from a short label, reads as floating away. The
-         trade is explicit: a short entry's panel now overlaps the
-         widest ones by half the difference, which was judged the
-         better of the two errors. */
-      const dx = (railR - entryR) * TB_PANEL_ALIGN;
+         label's panel covers its neighbours; at 1 it clears the whole
+         column and, from a short label, reads as floating away. The
+         trade is explicit: a short entry's panel overlaps the widest
+         ones by half the difference, which was judged the better of
+         the two errors. */
+      const dx = (widestR - entryR) * TB_PANEL_ALIGN;
       if (dx > 0.5) panel.style.marginLeft = Math.round(dx) + 'px';
 
       /* ── Down: back inside the window ──────────────────────────
@@ -7267,6 +7284,11 @@
            cannot tell which control belongs to which. */
         rail.querySelectorAll('.tb-m-entry').forEach(
             (o) => o.classList.toggle('tb-m-hot', o === entry));
+        /* One entry is now the active one, so the rest fade. Driven
+           from here rather than from `.tb-m-rail:hover` — see the
+           stylesheet: the pointer leaves the rail's box on its way to
+           a panel, and the column flashed every time. */
+        rail.classList.add('tb-m-focus');
         /* After the class, not before: the panel is display:none until
            it is hot, and a hidden element measures zero on every edge. */
         clampPanel(entry);
