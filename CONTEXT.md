@@ -6401,3 +6401,44 @@ Also, the seventh fixed-width slice bit — mine, written last version: the spin
 `setBallShadow` and pushed it out of a 200-character window, failing on correct code.
 
 Unit 1834 → **1858**. Version triple → v177. **Still nothing deployed.**
+
+### 2026-08-26 — The premium board stops being a public file (v178) — HANDOFF item 18
+
+`clubFeature('board3d')` gated the toggle and nothing else. While `js/board3d.js` was served by Pages,
+anyone could fetch it and drive `createBoard3D` directly, or flip `_clubConfig.features` in devtools.
+Neither hack persists — the write is superadmin-gated and the club update rule allows a lead only
+`fcfLinks`/`schedules` — but the board worked.
+
+**Gating the save cannot work**, and it is now written down in three places so nobody tries: a saved board
+is arrows, positions and pen strokes as percentages, byte-identical whichever view drew it. There is
+nothing for the server to detect.
+
+**The gate that works is not shipping the code.** `getBoard3d` is a callable that checks the caller's
+entitlement and returns the module source; the client evaluates it as a blob module. The club comes from
+the caller's own **custom claims**, never from the request body — a `clubId` in the payload would let any
+signed-in user name an entitled club and be handed the module. The superadmin passes, mirroring
+`clubFeature()`, or the one account that has to demo the feature is the one that cannot open it.
+
+**The trap the parked note warned about is real** and is now covered by a test: `board3d.js` opens with a
+RELATIVE import of three.js, and a relative specifier inside a blob module has no base to resolve against —
+the browser tries it against `blob:` and fails naming neither file. The page rewrites it against
+`document.baseURI` before evaluating, and **throws if the rewrite matches nothing**, so a rename in
+board3d.js fails loudly instead of shipping a module that 404s on its own import months later. three.js
+itself stays public: MIT, and not the part worth protecting.
+
+Three things have to hold together, and each is a test: the file is off **Pages** (`_config.yml`), off the
+**APK mirror** (`scripts/build-www.js`, which already denied it), and the deployable copy in
+`functions/private/` is **byte-identical** to the real one. That last is the rot this arrangement invites —
+edit the module, forget the copy, and the server serves a board several versions old with nothing failing.
+`scripts/sync-board3d.js` does the copy, both deploy scripts run it before deploying functions, and the
+suite compares bytes with a message naming the command.
+
+**A harness lesson, and a near miss.** The mutation harness restored files with `git checkout --`, which on
+a tree full of uncommitted new work reverts the work rather than the mutation. It quietly undid the
+callable mid-run and reported a mutation as SURVIVING when the test was fine. Two mutations had to be
+undone by hand afterwards. Backups are copies now, never git. Worth remembering: a mutation that "survives"
+is a claim about the tests, and it is only as good as the harness making it.
+
+Thirteen mutations, all killed once the harness was honest.
+
+Unit 1858 → **1876**. Version triple → v178. **Not yet deployed — this is the last thing before it.**

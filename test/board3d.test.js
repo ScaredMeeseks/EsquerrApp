@@ -108,8 +108,15 @@ describe('the load path', () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     assert.ok(!/board3d|three\.module/.test(html),
         'the 3D board must not be in index.html');
-    assert.ok(/await import\('\.\/board3d\.js'\)/.test(appSrc),
-        'expected a dynamic import');
+    /* Still lazy, but no longer by URL: the module is the paid feature
+       and is not served as a file any more. It comes from the
+       getBoard3d callable and is evaluated as a blob module — see
+       test/board3d-gate.test.js, which owns that whole path. What
+       matters HERE is only that nothing pays for it up front. */
+    assert.ok(/await tbLoad3D\(\)/.test(appSrc),
+        'expected the module to be fetched on demand');
+    assert.ok(/await import\(\/\* webpackIgnore: true \*\/ url\)/.test(appSrc),
+        'and evaluated by dynamic import, not injected as a script tag');
   });
 
   it('is not precached by the service worker', () => {

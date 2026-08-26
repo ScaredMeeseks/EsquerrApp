@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 177;
+  const APP_VERSION = 178;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7883,12 +7883,58 @@
    * so js/board3d.js imports nothing from app.js and can be reasoned
    * about (and tested) on its own.
    */
+  /**
+   * Fetch and evaluate the 3D module, which is no longer a public file.
+   *
+   * js/board3d.js is excluded from GitHub Pages and from the APK mirror;
+   * the server hands it over only to a club that has bought it. See
+   * `getBoard3d` in functions/index.js for why the SAVE could not be
+   * gated instead.
+   *
+   * Cached for the session: the coach may enter and leave 3D a dozen
+   * times, and each of those is a callable and 76 KB otherwise.
+   */
+  var _board3dMod = null;
+  async function tbLoad3D() {
+    if (_board3dMod) return _board3dMod;
+    const res = await firebase.app().functions('us-central1')
+        .httpsCallable('getBoard3d')({});
+    const src = (res && res.data && res.data.source) || '';
+    if (!src) throw new Error('getBoard3d returned no source');
+
+    /* THE SPECIFIER HAS TO BE REWRITTEN FIRST.
+       board3d.js opens with `import * as THREE from
+       '../vendor/three.module.min.js'`, and a RELATIVE specifier inside a
+       blob module has no base path to resolve against — the browser tries
+       it against `blob:` and fails with a message that names neither file.
+       The page knows its own origin, so it does the rewrite. three.js
+       itself stays public: MIT, and not the part worth protecting. */
+    const threeUrl = new URL('vendor/three.module.min.js', document.baseURI).href;
+    const patched = src.replace(
+        /(['"])\.\.\/vendor\/three\.module\.min\.js\1/, JSON.stringify(threeUrl));
+    if (patched === src) {
+      /* Loudly, rather than shipping a module that will 404 on its own
+         import: if board3d.js ever changes how it names three.js, this is
+         the line that has to change with it. */
+      throw new Error('board3d.js three.js import not found — specifier changed?');
+    }
+
+    const url = URL.createObjectURL(new Blob([patched], {type: 'text/javascript'}));
+    try {
+      _board3dMod = await import(/* webpackIgnore: true */ url);
+    } finally {
+      // The module is fetched by the time import() settles.
+      URL.revokeObjectURL(url);
+    }
+    return _board3dMod;
+  }
+
   async function tbMount3D(hooks) {
     const wrap = document.getElementById('tb-3d-wrap');
     if (!wrap) return;
     hooks = hooks || {};
     try {
-      const mod = await import('./board3d.js');
+      const mod = await tbLoad3D();
       /* Remove only the loading message. innerHTML='' would take the
          reset button and the hint with it — they are siblings of the
          canvas, not children of it. */

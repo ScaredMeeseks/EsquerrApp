@@ -42,7 +42,7 @@ echo "✔ Firebase CLI pinned to $PROJECT"
 #    Always read the "=== Deploying to '...'" header before confirming anything.
 case "$TARGET" in
   rules)     firebase deploy --only firestore:rules,storage --project "$PROJECT" ;;
-  functions) (cd functions && npm install) && firebase deploy --only functions --project "$PROJECT" ;;
-  all)       (cd functions && npm install) && firebase deploy --only firestore:rules,storage,functions --project "$PROJECT" ;;
+  functions) node scripts/sync-board3d.js && (cd functions && npm install) && firebase deploy --only functions --project "$PROJECT" ;;
+  all)       node scripts/sync-board3d.js && (cd functions && npm install) && firebase deploy --only firestore:rules,storage,functions --project "$PROJECT" ;;
   *)         echo "Usage: ./deploy.sh [rules|functions|all]"; exit 1 ;;
 esac

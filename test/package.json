@@ -5,7 +5,7 @@
   "description": "Dev-only test suite for EsquerrApp: the shard router, the security rules and the Cloud Functions. Self-contained (does not touch the app's root package.json). The rules and functions suites need the Firebase Emulator Suite (Java) to actually run.",
   "scripts": {
     "test": "npm run test:unit && npm run test:rules && npm run test:functions",
-    "test:unit": "mocha shard.test.js router.test.js utils.test.js navigation.test.js availability.test.js context.test.js readiness.test.js quota.test.js readiness-engine.test.js layout.test.js seed-add-team.test.js seed-multi-team.test.js archive.test.js training.test.js reminders.test.js cat-badge.test.js kits.test.js tactic-boards.test.js pen-space.test.js board-geom.test.js board-state.test.js board3d.test.js board3d-camera.test.js ball-spin.test.js board3d-menu.test.js board-window.test.js frames.test.js overlay-align.test.js object-scale.test.js board-markings-render.test.js pitch-resize.test.js board-authors.test.js fills.test.js fills-source.test.js push-send.test.js injuries.test.js staff-roles.test.js match-legs.test.js match-notes.test.js match-notes-render.test.js fcf.test.js fcf-app.test.js fcf-fixtures.test.js fcf-discipline.test.js fcf-tabs-render.test.js fcf-acta.test.js fcf-referees.test.js fcf-referee-render.test.js version-check.test.js push-guard.test.js match-avail-reminder.test.js suite-registry.test.js --exit",
+    "test:unit": "mocha shard.test.js router.test.js utils.test.js navigation.test.js availability.test.js context.test.js readiness.test.js quota.test.js readiness-engine.test.js layout.test.js seed-add-team.test.js seed-multi-team.test.js archive.test.js training.test.js reminders.test.js cat-badge.test.js kits.test.js tactic-boards.test.js pen-space.test.js board-geom.test.js board-state.test.js board3d.test.js board3d-camera.test.js ball-spin.test.js board3d-gate.test.js board3d-menu.test.js board-window.test.js frames.test.js overlay-align.test.js object-scale.test.js board-markings-render.test.js pitch-resize.test.js board-authors.test.js fills.test.js fills-source.test.js push-send.test.js injuries.test.js staff-roles.test.js match-legs.test.js match-notes.test.js match-notes-render.test.js fcf.test.js fcf-app.test.js fcf-fixtures.test.js fcf-discipline.test.js fcf-tabs-render.test.js fcf-acta.test.js fcf-referees.test.js fcf-referee-render.test.js version-check.test.js push-guard.test.js match-avail-reminder.test.js suite-registry.test.js --exit",
     "test:shard": "mocha shard.test.js --exit",
     "test:router": "mocha router.test.js --exit",
     "test:utils": "mocha utils.test.js --exit",
@@ -28,7 +28,7 @@
     "test:reminders": "mocha reminders.test.js --exit",
     "test:boards": "mocha tactic-boards.test.js frames.test.js --exit",
     "test:penspace": "mocha pen-space.test.js --exit",
-    "test:3d": "mocha board3d.test.js board3d-camera.test.js ball-spin.test.js board3d-menu.test.js board-window.test.js overlay-align.test.js --exit",
+    "test:3d": "mocha board3d.test.js board3d-camera.test.js ball-spin.test.js board3d-gate.test.js board3d-menu.test.js board-window.test.js overlay-align.test.js --exit",
     "test:scale": "mocha object-scale.test.js --exit",
     "test:geom": "mocha board-geom.test.js board-state.test.js board3d.test.js board3d-camera.test.js board-markings-render.test.js pitch-resize.test.js --exit",
     "test:push-send": "mocha push-send.test.js --exit",

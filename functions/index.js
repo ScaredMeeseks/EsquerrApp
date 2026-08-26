@@ -1420,7 +1420,7 @@ exports.syncFcfFixtures = onCall({region: "us-central1", timeoutSeconds: 300},
         throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
       }
       const token = request.auth.token || {};
-      const clubId = token.teamId;
+      const clubId = (request.data || {}).clubId;
       if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
       /* Staff or lead. Refreshing rewrites the calendar every player reads.
          The staff sub-roles are invisible to the token — coach, fitness and
@@ -2705,6 +2705,64 @@ exports.setClubFeatures = onCall({region: "us-central1"}, async (request) => {
 
   logger.info("setClubFeatures", {clubId, by: request.auth.uid, features: clean});
   return {ok: true, features: clean};
+});
+
+// ── 7a-ter. getBoard3d — the premium board, served only to buyers ──
+//
+// `clubFeature('board3d')` in the client gates the TOGGLE and nothing more.
+// While js/board3d.js was a public file, anyone could fetch it and drive
+// createBoard3D directly, or simply flip _clubConfig.features in devtools.
+// Neither hack persists — the write is superadmin-gated and the club update
+// rule allows a lead only fcfLinks/schedules — but the board worked.
+//
+// GATING THE SAVE CANNOT WORK, and it is worth repeating here so nobody
+// tries: a saved board carries no evidence of which view drew it. It is
+// arrows, positions and pen strokes as percentages, byte-identical from
+// either view. There is nothing for the server to detect.
+//
+// The gate that works is NOT SHIPPING THE CODE. The module is excluded from
+// GitHub Pages (_config.yml) and from the APK mirror (scripts/build-www.js),
+// and arrives only through this call.
+//
+// What it does NOT do is stop an ENTITLED user reading the source out of
+// devtools. That is unavoidable for anything that runs in a browser. It
+// moves the bar from "read a URL" to "deliberately exfiltrate".
+let _board3dSrc = null;
+
+exports.getBoard3d = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const token = request.auth.token || {};
+
+  /* The superadmin sees everything, mirroring clubFeature() in the client —
+     otherwise the one account that has to demo the feature to a prospect is
+     the one account that cannot open it. */
+  const isSuper = String(token.email || "").toLowerCase() === SUPERUSER_EMAIL;
+  if (!isSuper) {
+    /* THE CALLER'S OWN TOKEN, never a clubId from the request body. A club
+       id in the payload would let any signed-in user name an entitled club
+       and be handed the module. */
+    const clubId = token.teamId;
+    if (!clubId) {
+      throw new HttpsError("permission-denied", "Cap club.");
+    }
+    const snap = await db.collection("clubs").doc(clubId).get();
+    const features = (snap.exists && snap.data().features) || {};
+    if (features.board3d !== true) {
+      logger.info("getBoard3d refused", {clubId, by: request.auth.uid});
+      throw new HttpsError("permission-denied", "Funció no contractada.");
+    }
+  }
+
+  /* Read once per instance, not at module load: index.js is loaded by every
+     function in the deployment, and 76 KB of file read on each of their cold
+     starts would be paid by callers who never open a board. */
+  if (_board3dSrc === null) {
+    _board3dSrc = require("fs").readFileSync(
+        require("path").join(__dirname, "private", "board3d.js"), "utf8");
+  }
+  return {source: _board3dSrc};
 });
 
 // ── 7a-bis. setClubKits — the club's shirts, shorts and socks ──

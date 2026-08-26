@@ -22,6 +22,18 @@
 # and `exclude` is honoured. Adding .nojekyll would publish everything again.
 
 exclude:
+  # The premium 3D board. NOT a secret in the security sense — it is
+  # client-side drawing code and an entitled user can read it out of
+  # devtools — but it is the paid feature, and while it sat here anyone
+  # could fetch it and drive createBoard3D directly. It now arrives only
+  # through the `getBoard3d` callable, which checks the club's
+  # entitlement. Keeping it off Pages is what makes that check mean
+  # anything. The APK half is the board3d.js pattern in
+  # scripts/build-www.js, and the deployable copy is
+  # functions/private/board3d.js (kept in step by scripts/sync-board3d.js).
+  #
+  # ⚠ Verify after deploying: /js/board3d.js must 404.
+  - js/board3d.js
   - CONTEXT.md
   - CLAUDE.md
   - HANDOFF.md

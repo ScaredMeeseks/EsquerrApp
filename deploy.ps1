@@ -128,6 +128,21 @@ if ($Install -and $Target -ne 'rules') {
     }
 }
 
+# ── 5b. The premium board's deployable copy ──────────────────
+# `firebase deploy --only functions` uploads functions/ and nothing else, so
+# the 3D module has to be inside it — getBoard3d reads it from disk. Synced
+# here rather than trusted: a stale copy would serve a board several versions
+# behind with nothing failing anywhere. The test suite compares the two byte
+# for byte, but the suite is not what runs immediately before a deploy.
+if ($Target -ne 'rules') {
+    Write-Host "-> syncing functions/private/board3d.js ..." -ForegroundColor Cyan
+    node scripts/sync-board3d.js
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "X  could not sync the 3D board into functions/." -ForegroundColor Red
+        exit 1
+    }
+}
+
 # ── 6. Deploy ────────────────────────────────────────────────
 $onlyFor = @{
     'rules'     = 'firestore:rules,storage'
