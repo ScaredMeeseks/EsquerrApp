@@ -5905,3 +5905,23 @@ The duplicate-selector guard fired again while writing this, on a second
 `#tb-panel-open .tb-saved-item`. It has now caught something on four consecutive commits.
 
 Unit 1736 → **1739**. Version triple → v164. **Still nothing deployed.**
+
+### 2026-08-26 — Room for a hovered board row (v165)
+
+`.tb-saved-item` grows by `transform:scale(1.02)` on hover — about 4px past each side of a 450px row.
+The library column clips horizontally, which it must or a long board name widens it, and **overflow
+clips at the padding box**, so both edges of every hovered row were being shaved off.
+
+The room is padding, not width: `--tb-lib-pad: 8px` on the column, with the panel widened by the same
+so the columns still hold what they did.
+
+**Third time this rule has decided a bug** — the frame delete cross, the drawing overlay's markings, and
+now this. The test is written the way the cross one ended up: it reads the **scale factor**, the panel
+width and the pad, computes the per-side overhang and checks the pad covers it. Widening the panel or
+strengthening the hover without the pad now fails there.
+
+One mutation looked like a survivor and was not: widening the panel to 1600px puts the overhang at
+exactly 8px, which the pad exactly covers — the arithmetic was right and the mutation simply was not a
+bug. At 2000px it fails as it should.
+
+Unit 1739 → **1741**. Version triple → v165. **Still nothing deployed.**

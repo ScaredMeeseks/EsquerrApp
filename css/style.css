@@ -857,6 +857,9 @@ tr:hover td { background: #f7f8fa; }
    value below is only what the window looks like before the first
    measurement lands. */
 .tb-3d-wrap {
+  /* Room for a library row to grow into when hovered; see
+     #tb-panel-open .tb-m-col. */
+  --tb-lib-pad:8px;
   /* The overlay geometry, declared once. --tb-axis is the OUTER
      width of the camera and frame columns, --tb-pad the room around
      the frames strip, --tb-tile what fits between them. They are not
@@ -5047,7 +5050,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #tb-panel-open {
   /* Wider, to fit more boards without either column wrapping a name
      onto a second line — which is what produced the horizontal bar. */
-  width:min(880px, 86vw); max-height:min(78vh, 660px);
+  width:min(920px, 88vw); max-height:min(78vh, 660px);
   overflow:hidden;                 /* the COLUMNS scroll, not the panel */
 }
 /* Display belongs to the HOT state, like every other panel. */
@@ -5057,6 +5060,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #tb-panel-open .tb-m-col {
   display:flex; flex-direction:column; min-width:0;
   max-height:min(74vh, 620px); overflow-y:auto; overflow-x:hidden;
+  padding:var(--tb-lib-pad);
 }
 /* The one control you reach for first stays put while its list moves
    under it. Sticky needs the scrolling parent above, which is why the

@@ -967,3 +967,47 @@ describe('no panel can outrank its own hide rule', () => {
         'and a long name must be cut, not allowed to widen the column');
   });
 });
+
+describe('a hovered board row has room to grow', () => {
+  it('the column pad covers what scale() adds, on both sides', () => {
+    /* `.tb-saved-item` grows by transform:scale() on hover. The
+       column clips horizontally — it must, or a long board name
+       widens it — and overflow clips at the PADDING box, so the room
+       for that growth has to be padding. With none, both edges of
+       every hovered row were shaved off.
+
+       Derived, not pinned: read the scale factor, the panel width and
+       the pad, and check the arithmetic. Changing the panel width or
+       the hover effect without the pad then fails here rather than by
+       quietly cutting the rows again. This is the third time the same
+       rule has come up — the frame delete cross, the drawing overlay,
+       and now this. */
+    const hov = css.slice(css.indexOf('.tb-saved-item:hover {'),
+        css.indexOf('}', css.indexOf('.tb-saved-item:hover {')));
+    const sc = /transform:scale\(([\d.]+)\)/.exec(hov);
+    assert.ok(sc, 'no hover scale found: ' + hov);
+    const scale = parseFloat(sc[1]);
+
+    const panel = css.slice(css.indexOf('#tb-panel-open {'),
+        css.indexOf('}', css.indexOf('#tb-panel-open {')));
+    const w = parseInt(/width:min\((\d+)px/.exec(panel)[1], 10);
+    const colW = w / 2;                       // two equal columns, gap ignored
+    const overhangPerSide = (colW * scale - colW) / 2;
+
+    const pad = parseFloat(/--tb-lib-pad:([\d.]+)px/.exec(css)[1]);
+    const col = css.slice(css.indexOf('#tb-panel-open .tb-m-col {'),
+        css.indexOf('}', css.indexOf('#tb-panel-open .tb-m-col {')));
+    assert.ok(/padding:var\(--tb-lib-pad\)/.test(col),
+        'the column must carry that pad: ' + col);
+    assert.ok(pad >= overhangPerSide,
+        'a row grows ' + overhangPerSide.toFixed(1) + 'px past each edge of a ' +
+        colW + 'px column, into a ' + pad + 'px pad — it is clipped');
+  });
+
+  it('the column still clips, which is why the pad is needed', () => {
+    const col = css.slice(css.indexOf('#tb-panel-open .tb-m-col {'),
+        css.indexOf('}', css.indexOf('#tb-panel-open .tb-m-col {')));
+    assert.ok(/overflow-x:hidden/.test(col),
+        'without this a long board name widens the column instead');
+  });
+});
