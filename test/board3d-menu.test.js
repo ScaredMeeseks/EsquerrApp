@@ -686,7 +686,14 @@ describe('the file actions moved into the menu', () => {
        reach for first. The COLUMNS scroll now, not the panel, so
        reading the favourites never moves the library. */
     const r = rule('#tb-panel-open');
-    assert.ok(/grid-template-columns:1fr 1fr/.test(r), 'two columns, side by side');
+    /* The grid lives on the HOT state now, not on the panel's own
+       rule. An id selector beat .tb-m-panel's display:none, so a
+       `display:grid` here meant the library was open from the moment
+       the menu appeared and nothing ever closed it. */
+    assert.ok(!/display:/.test(r),
+        'a panel that sets its own display is visible before it is asked for');
+    assert.ok(/.tb-m-entry.tb-m-hot > #tb-panel-open {[^}]*grid-template-columns:1fr 1fr/
+        .test(css), 'two columns, side by side, when open');
     assert.ok(/max-height:/.test(r), 'the panel must still be bounded');
     const col = rule('#tb-panel-open .tb-m-col');
     assert.ok(/overflow-y:auto/.test(col) && /max-height:/.test(col),
@@ -912,5 +919,51 @@ describe('the sidebar scrollbar', () => {
     const thumb = /scrollbar-color: ?(rgba\([^)]+\))/.exec(bar)[1];
     assert.ok(panel.indexOf(thumb) !== -1,
         'the sidebar thumb ' + thumb + ' must match the board panels');
+  });
+});
+
+describe('no panel can outrank its own hide rule', () => {
+  it('nothing sets display on a panel outside the hot state', () => {
+    /* THE STUCK LIBRARY. `.tb-m-panel` carries `display:none` and
+       `.tb-m-entry.tb-m-hot > .tb-m-panel` turns it on. But
+       `#tb-panel-open` is an ID — specificity (1,0,0) against the
+       class rule's (0,1,0) — so a `display:grid` in that rule beat
+       the base and the library was open from the moment the menu
+       appeared, with nothing to close it.
+
+       The rule is general: a panel may size itself, but only the hot
+       state may show it. Written as a check over every panel rule
+       rather than a note about the one that broke. */
+    const ids = ['#tb-panel-open', '#tb-panel-save', '#tb-panel-link',
+      '#tb-panel-gear', '#tb-panel-squad', '#tb-panel-props', '#tb-panel-draw'];
+    ids.forEach((id) => {
+      const i = css.indexOf(id + ' {');
+      if (i === -1) return;                 // not every panel needs a rule
+      const rule = css.slice(i, css.indexOf('}', i));
+      assert.ok(!/display:/.test(rule),
+          id + ' sets display in its own rule, which outranks ' +
+          '.tb-m-panel{display:none} and leaves it permanently open');
+    });
+  });
+
+  it('the base hide rule and the hot rule are both still there', () => {
+    /* If either goes, the check above passes for the wrong reason. */
+    const base = css.slice(css.indexOf('.tb-m-panel {'),
+        css.indexOf('}', css.indexOf('.tb-m-panel {')));
+    assert.ok(/display:none/.test(base), '.tb-m-panel must start hidden');
+    assert.ok(/\.tb-m-entry\.tb-m-hot > \.tb-m-panel \{ display:flex; \}/.test(css),
+        'and the hot state must be what shows it');
+  });
+
+  it('the library is wide enough not to need a sideways scrollbar', () => {
+    const rule = css.slice(css.indexOf('#tb-panel-open {'),
+        css.indexOf('}', css.indexOf('#tb-panel-open {')));
+    const w = /width:min\((\d+)px/.exec(rule);
+    assert.ok(w && parseInt(w[1], 10) >= 800,
+        'two columns of board names need room; got ' + (w ? w[1] : 'none'));
+    const col = css.slice(css.indexOf('#tb-panel-open .tb-m-col {'),
+        css.indexOf('}', css.indexOf('#tb-panel-open .tb-m-col {')));
+    assert.ok(/overflow-x:hidden/.test(col) && /min-width:0/.test(col),
+        'and a long name must be cut, not allowed to widen the column');
   });
 });

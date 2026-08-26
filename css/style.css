@@ -5045,13 +5045,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    below the fold and its search box went with it. Each column scrolls
    on its own, so reading the favourites never moves the library. */
 #tb-panel-open {
-  width:min(680px, 78vw); max-height:min(70vh, 560px);
-  display:grid; grid-template-columns:1fr 1fr; gap:.1rem .8rem;
+  /* Wider, to fit more boards without either column wrapping a name
+     onto a second line — which is what produced the horizontal bar. */
+  width:min(880px, 86vw); max-height:min(78vh, 660px);
   overflow:hidden;                 /* the COLUMNS scroll, not the panel */
+}
+/* Display belongs to the HOT state, like every other panel. */
+.tb-m-entry.tb-m-hot > #tb-panel-open {
+  display:grid; grid-template-columns:1fr 1fr; gap:.1rem .9rem;
 }
 #tb-panel-open .tb-m-col {
   display:flex; flex-direction:column; min-width:0;
-  max-height:min(66vh, 520px); overflow-y:auto;
+  max-height:min(74vh, 620px); overflow-y:auto; overflow-x:hidden;
 }
 /* The one control you reach for first stays put while its list moves
    under it. Sticky needs the scrolling parent above, which is why the
@@ -5073,7 +5078,13 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #tb-panel-open .tb-lib-search::placeholder { color:#7d8288; }
 /* The rows come from a light page; on this ground they need their own
    separators rather than the page's borders. */
-#tb-panel-open .tb-saved-item { border-color:rgba(255,255,255,.1); color:#c9ccd1; }
+#tb-panel-open .tb-saved-item {
+  border-color:rgba(255,255,255,.1); color:#c9ccd1;
+  /* A flex child will not shrink below its content by default, so a
+     long board name widened the column and put a horizontal bar under
+     the library. */
+  min-width:0;
+}
 #tb-panel-open .tb-saved-item:hover { background:rgba(255,255,255,.07); }
 
 /* ── Save and link, adopted ───────────────────────────────────── */
@@ -5211,4 +5222,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #tb-panel-link .tb-match-list::-webkit-scrollbar-thumb:hover,
 #tb-panel-save .tb-tag-list::-webkit-scrollbar-thumb:hover {
   background-color:rgba(255,255,255,.38);
+}
+
+/* A board name too long for its column is truncated, not allowed to
+   widen the panel — an overflowing row is what put a horizontal
+   scrollbar under the library. */
+#tb-panel-open .tb-saved-item > * { min-width:0; }
+#tb-panel-open .tb-saved-name {
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }

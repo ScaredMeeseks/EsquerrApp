@@ -5884,3 +5884,24 @@ Also: play moves **above** frame 1 (the `column-reverse` from v152 is gone — t
 first), and the rail sits a little lower.
 
 Unit 1733 → **1736**. Version triple → v163. **Still nothing deployed.**
+
+### 2026-08-26 — The library was stuck open: an id outranking its own hide rule (v164)
+
+`.tb-m-panel` carries `display:none` and `.tb-m-entry.tb-m-hot > .tb-m-panel` turns it on. But
+`#tb-panel-open` is an **ID** — specificity (1,0,0) against the class rule's (0,1,0) — so the
+`display:grid` written in that rule beat the base outright. The library was open from the moment the
+menu appeared, and nothing could close it: no state was ever involved.
+
+The panel keeps its **size**; the **display** moved to the hot state where every other panel gets its
+own. The rule generalises — *a panel may size itself, only the hot state may show it* — so the test is
+written as a check across **every** panel id rather than a note about the one that broke. The mutation
+that puts `display:flex` on a different panel fails it too.
+
+Also widened to `min(880px, 86vw)` at up to 78vh, with `overflow-x:hidden` and `min-width:0` on the
+columns and an ellipsis on long board names. The horizontal bar was a flex child refusing to shrink
+below its content: one long name widened its column and the panel grew a sideways scroll.
+
+The duplicate-selector guard fired again while writing this, on a second
+`#tb-panel-open .tb-saved-item`. It has now caught something on four consecutive commits.
+
+Unit 1736 → **1739**. Version triple → v164. **Still nothing deployed.**
