@@ -665,7 +665,7 @@
     'tactics.cam_side':      { ca:'Lateral', es:'Lateral', en:'Side' },
     'tactics.cam_follow':    { ca:'Segueix la pilota', es:'Seguir el balón', en:'Follow ball' },
     'tactics.reset_view':    { ca:'Centra la vista', es:'Centrar la vista', en:'Reset view' },
-    /* ── The 3D menu ──────────────────────────────────────────── */
+    /* ── The board menu (both views) ──────────────────────────── */
     'tactics.menu':          { ca:'Menú', es:'Menú', en:'Menu' },
     'tactics.cameras':       { ca:'Càmeres', es:'Cámaras', en:'Cameras' },
     'tactics.open':          { ca:'Obre', es:'Abrir', en:'Open' },
@@ -673,6 +673,9 @@
     'tactics.link':          { ca:'Vincula', es:'Vincular', en:'Link' },
     'tactics.new_board':     { ca:'Pissarra nova', es:'Pizarra nueva', en:'New board' },
     'tactics.view_2d':       { ca:'Vista 2D', es:'Vista 2D', en:'2D view' },
+    'tactics.view_3d':       { ca:'Vista 3D', es:'Vista 3D', en:'3D view' },
+    'tactics.orientation':   { ca:'Orientació', es:'Orientación', en:'Orientation' },
+    'tactics.select':        { ca:'Selecciona', es:'Seleccionar', en:'Select' },
     'tactics.field':         { ca:'Camp', es:'Campo', en:'Field' },
     'tactics.players':       { ca:'Jugadors', es:'Jugadores', en:'Players' },
     'tactics.props':         { ca:'Material', es:'Material', en:'Props' },
@@ -1578,7 +1581,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 165;
+  const APP_VERSION = 166;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4861,7 +4864,7 @@
        the tactics code and never removing it would leave every other
        page in the app without its 2rem. */
     content.classList.toggle('dashboard-flush',
-        currentPage === 'tactics' && tbIs3D());
+        currentPage === 'tactics' && tbEditorOpen());
 
     /* The page title, announced rather than parked.
        Only on ENTERING the tab — `isNav` is already the distinction
@@ -4869,8 +4872,14 @@
        a firestore sync, a language change, the category bar, and
        every toggle in the board's own menu. Fired on any of those,
        the title would flash each time the coach picked a formation. */
-    if (isNav && currentPage === 'tactics' && tbIs3D()) {
+    if (isNav && currentPage === 'tactics' && tbEditorOpen()) {
       tbFlashPageTitle(t('page.tactical_board'));
+      /* Zoom and pan are cleared on the same signal, and only on it.
+         A re-render is NOT a fresh visit — the menu, a formation pick
+         and every firestore sync trigger one, and snapping the board
+         back to fit under the coach each time would make the zoom
+         unusable. Arriving at the tab is a fresh visit. */
+      tbResetView();
     }
 
     /* A new page starts at the top. #view-dashboard is a fixed shell, so the
@@ -6536,10 +6545,29 @@
     return _webglOk;
   }
 
-  /** Is the 3D view the one showing? Every gate the render uses. */
+  /** Is the 3D view the one showing? */
   function tbIs3D() {
     return localStorage.getItem('fa_tactic_view_3d') === '1'
         && clubFeature('board3d') && tbWebglOk();
+  }
+
+  /**
+   * Is the board EDITOR on screen, as opposed to the board-type picker?
+   *
+   * The layout gate, and it used to be tbIs3D() — back when the window,
+   * the hamburger and the frames rail were a 3D affordance. They are
+   * the board's layout now, in both views, so the question the render
+   * actually asks is "is the editor up", not "which camera".
+   *
+   * Probed from the DOM rather than kept as a flag. Both screens render
+   * under `tactics`, and the wrapper exists on exactly one of them — so
+   * the DOM already holds the answer, and a second copy of it in a
+   * module variable is a second thing to get out of step. Every caller
+   * runs after the render: the page dispatcher reads it on the line
+   * after `content.innerHTML =`, and bindTactics after that.
+   */
+  function tbEditorOpen() {
+    return !!document.getElementById('tb-3d-wrap');
   }
 
   /**
@@ -6789,8 +6817,17 @@
         entry('link', tbIcon('link'), t('tactics.link'), true) +
         /* Not an icon: the whole point of this control is the two
            words, and a picture of "2D/3D" is just the words drawn
-           badly. */
-        entry('view', '<span class="tb-m-2d3d">2D</span>', t('tactics.view_2d'), false) +
+           badly.
+
+           CONDITIONAL, and it says where it GOES rather than where you
+           are. Both halves matter now that 2D wears this menu too: a
+           club without the premium feature has nothing to switch to,
+           and an entry reading "2D" while you are already looking at
+           2D is a button that appears to do nothing. */
+        ((clubFeature('board3d') && tbWebglOk())
+          ? entry('view', '<span class="tb-m-2d3d">' + (tbIs3D() ? '2D' : '3D') + '</span>',
+              t(tbIs3D() ? 'tactics.view_2d' : 'tactics.view_3d'), false)
+          : '') +
         entry('gear', tbIcon('gear'), t('tactics.field'), true) +
         entry('squad', tbIcon('squad'), t('tactics.players'), true) +
         entry('props', tbIcon('cone'), t('tactics.props'), true) +
@@ -6980,6 +7017,11 @@
     adopt('gear', ['#tb-pitch-l', '.tb-pitch-x', '#tb-pitch-w', '.tb-pitch-unit',
       '#tb-pitch-reset'], t('tactics.pitch_size'));
     adopt('gear', ['#tb-theme-toggle'], t('tactics.theme'));
+    /* Orientation. A 2D-only control, and it had no home here because
+       3D hides it outright — the scene has one orientation. Now that
+       the flat board wears this menu, an unadopted control is simply
+       gone: .tb-controls is display:none. */
+    adopt('gear', ['#tb-orient'], t('tactics.orientation'));
 
     adopt('props', ['#tb-ball-tool'], t('tactics.ball'));
     adopt('props', ['#tb-cone-tool'], t('tactics.cone'));
@@ -6996,6 +7038,11 @@
         t('tactics.pen'));
     adopt('draw', ['#tb-text-tool', '#tb-text-color', '#tb-text-opacity',
       '.tb-size-label-sm', '#tb-text-size', '.tb-size-label-lg'], t('tactics.text'));
+    /* Select mode, with the drawing tools because what it picks up is
+       what they put down. The other toolbar control 3D never needed a
+       home for: in 3D a click on a mesh selects it, so the mode is
+       redundant there. */
+    adopt('draw', ['#tb-select-tool'], t('tactics.select'));
 
     /* Save. `#tb-save` is CONDITIONALLY rendered — on a board that is
        not this coach's, tbSaveButtonsHtml emits only Save As plus a
@@ -7091,6 +7138,14 @@
       railSlot.addEventListener('wheel', (e) => e.stopPropagation(),
           {passive: true});
     }
+    /* And the same for the MENU, which had the same bug and nobody had
+       reached the bottom of a library long enough to notice: the
+       panels scroll, they live inside the wrapper, and board3d binds
+       `wheel` on the wrapper — so scrolling the club library zoomed the
+       camera behind it. The 2D view reads the wheel off the wrapper too
+       (tbBindViewGestures), and skips anything that started in .tb-m
+       for the same reason. */
+    menu.addEventListener('wheel', (e) => e.stopPropagation(), {passive: true});
 
     /* ── Opening and closing ────────────────────────────────────
        Hover where a real pointer exists, tap everywhere. One extra
@@ -7143,7 +7198,11 @@
            re-render the page, which tears this menu down with it. */
         if (which === 'new') { document.getElementById('tb-new-board')?.click(); return; }
         if (which === 'view') {
-          document.querySelector('.tb-view-btn[data-view="2d"]')?.click();
+          /* The button for the view we are NOT in. The toggle itself
+             still lives in the (hidden) toolbar and owns the write and
+             the teardown; this only presses it. */
+          document.querySelector('.tb-view-btn[data-view="' +
+              (tbIs3D() ? '2d' : '3d') + '"]')?.click();
           return;
         }
         open();
@@ -7207,6 +7266,285 @@
     /* board3d watches the wrapper with a ResizeObserver, so the
        canvas and the camera aspect follow from here without this
        function knowing anything about them. */
+    tbFit2DBoard();
+  }
+
+  /* ── The 2D board inside the window ───────────────────────────────
+     The flat board used to flow down the page at a fixed 820px. In the
+     window it is given an explicit centred rect instead, sized to
+     whatever the window can hold, and it zooms and pans — the same
+     three things the 3D camera does, so the two views answer the same
+     gestures.
+
+     A CSS TRANSFORM is what carries the zoom and the pan, and that
+     choice is the whole reason nothing else in the editor had to
+     change: every drag, draw and hit test already derives its
+     percentage from `inner.getBoundingClientRect()`, and a rect is
+     reported AFTER transforms. Pointer-to-pitch stays exact at any
+     zoom without a single line of the arithmetic moving. (The three
+     `offsetWidth` reads in this file belong to scaleRoField, on
+     read-only boards, which are not in the window.)
+
+     Sizes come along for free for the same reason: objects and mark
+     strokes are metric via --tb-ppm, the whole layer scales together,
+     so a metre stays a metre exactly as it does under the 3D camera. */
+  var TB_ZOOM_MIN = 0.5, TB_ZOOM_MAX = 6;
+  /* Zoom and pan, in WINDOW pixels. Reset by every render, which is
+     what makes "leave the tab and come back" put the board back. */
+  var _tbView = {k: 1, x: 0, y: 0};
+  /* The fitted rect, remembered so the zoom-about-cursor maths has a
+     centre to work from without re-measuring mid-gesture. */
+  var _tbFitRect = null;
+
+  /** Is this board one CSS rotates a quarter turn? See .tb-vertical.tb-half. */
+  function tbRotatedBox(boardType, vertical) {
+    return !!vertical && (boardType === 'half' || boardType === 'area');
+  }
+
+  /**
+   * The widest the LAYOUT box may be and still fit on screen.
+   *
+   * `ax` is the box's own height/width — the padding-top aspect. A
+   * rotated board is the interesting case: `rotate(-90deg)` turns the
+   * box a quarter turn without changing the box the layout made, so
+   * what the window has to hold is the box's width vertically and its
+   * height across. The two constraints swap; nothing else does.
+   *
+   * Pure, and separate from the DOM work, because it is the one part
+   * of the fit that can be checked against arithmetic rather than
+   * against its own source text.
+   */
+  function tbFitWidth(availW, availH, ax, rotated) {
+    if (!(ax > 0)) return 0;
+    return rotated ? Math.min(availW / ax, availH)
+                   : Math.min(availW, availH / ax);
+  }
+
+  /**
+   * The zoom and pan after a wheel notch at (mx, my), in window pixels.
+   *
+   * With transform-origin at the box centre, a board point p is drawn
+   * at `c + k(p - c) + T`. Keeping the point under the cursor still is
+   * that equation solved for T at the new k, and nothing more — which
+   * is why it is here, as a value in and a value out, rather than
+   * inlined among the DOM writes.
+   */
+  function tbZoomView(view, rect, factor, mx, my) {
+    const k1 = Math.min(TB_ZOOM_MAX, Math.max(TB_ZOOM_MIN, view.k * factor));
+    /* No early return for a refused notch. At the clamp r is exactly 1
+       and the two lines below reduce to `x = x`, so the guard would be
+       a branch that cannot change the answer — which a mutation run
+       proved, and a reader would have had to prove again. */
+    const r = k1 / view.k;
+    return {
+      k: k1,
+      x: mx - rect.cx - r * (mx - rect.cx - view.x),
+      y: my - rect.cy - r * (my - rect.cy - view.y)
+    };
+  }
+
+  /**
+   * Centre the flat board in the window at the largest size that fits.
+   *
+   * `pitchOverride` is for the resize grips, which preview a pitch that
+   * has not been committed yet. Everything else reads the stored one.
+   *
+   * The height is still the `padding-top` aspect trick on .tb-field-inner,
+   * so only a WIDTH is computed here — which is also why a rotated
+   * board needs its own arithmetic: `rotate(-90deg)` swaps what the box
+   * occupies on screen without changing the box the layout made.
+   */
+  function tbFit2DBoard(pitchOverride) {
+    if (tbIs3D()) return;
+    const wrap = document.getElementById('tb-3d-wrap');
+    const field = document.getElementById('tb-field');
+    if (!wrap || !field) return;
+    const pitch = pitchOverride === undefined ? tbPitch() : pitchOverride;
+    const bt = tbBoardType();
+    const vert = tbVertical();
+    const ax = BG.aspectPct(pitch, bt, vert) / 100;   // layout height / width
+    if (!(ax > 0)) return;
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    /* Room for the two things that float over the window: the frames
+       rail down the right edge (--tb-axis plus its .75rem inset) and
+       the hamburger-and-name line across the top. Taken off BOTH
+       sides, though only one side of each is occupied — the board is
+       centred in the full window, so an asymmetric reserve would not
+       move it away from anything, it would only make it smaller. */
+    const availW = Math.max(120, W - 2 * 72);
+    const availH = Math.max(120, H - 2 * 56);
+    const w = tbFitWidth(availW, availH, ax, tbRotatedBox(bt, vert));
+    if (!(w > 0)) return;
+    const h = w * ax;
+    /* Overriding the flow style the render wrote, property by property
+       rather than through cssText — the render's style also carries the
+       turf palette and --tb-ppm, and replacing it wholesale is what the
+       grip preview used to do (and why it had to be changed too). */
+    field.style.maxWidth = 'none';
+    field.style.margin = '0';
+    field.style.width = w + 'px';
+    field.style.left = Math.round((W - w) / 2) + 'px';
+    field.style.top = Math.round((H - h) / 2) + 'px';
+    field.style.setProperty('--tb-ppm',
+        BS.round2(BG.ppm(w, pitch, bt, vert)) + 'px');
+    _tbFitRect = {w: w, h: h, cx: (W - w) / 2 + w / 2, cy: (H - h) / 2 + h / 2};
+    tbApplyView();
+  }
+
+  /**
+   * Write the current zoom and pan onto the board.
+   *
+   * The quarter turn is composed HERE rather than left to the
+   * stylesheet: an inline transform replaces the rule outright, so a
+   * vertical half board would have quietly un-rotated the moment the
+   * coach zoomed. Rotate last in the list means rotate FIRST on the
+   * element, which is the order the untransformed board already had.
+   */
+  function tbApplyView() {
+    const field = document.getElementById('tb-field');
+    if (!field || tbIs3D()) return;
+    const rot = tbRotatedBox(tbBoardType(), tbVertical()) ? ' rotate(-90deg)' : '';
+    field.style.transformOrigin = '50% 50%';
+    field.style.transform = 'translate(' + BS.round2(_tbView.x) + 'px,' +
+        BS.round2(_tbView.y) + 'px) scale(' + BS.round2(_tbView.k) + ')' + rot;
+  }
+
+  /** Back to the fitted view. */
+  function tbResetView() {
+    _tbView = {k: 1, x: 0, y: 0};
+    tbApplyView();
+  }
+
+  /** Zoom about a point, given in window (wrap) coordinates. */
+  function tbZoomAt(factor, mx, my) {
+    if (!_tbFitRect) return;
+    _tbView = tbZoomView(_tbView, _tbFitRect, factor, mx, my);
+    tbApplyView();
+  }
+
+  /**
+   * Wheel to zoom, drag to pan — bound once per render, on the window.
+   *
+   * The gestures are board3d's, deliberately: right-drag, middle-drag
+   * and shift-drag pan there (see onPointerDown in js/board3d.js), so
+   * they pan here. A left drag on the SURROUND pans too, because that
+   * is what a hand tries first and there is nothing else it could mean.
+   *
+   * The four-pixel slop is board3d's as well, and it is what keeps
+   * right-CLICK alive: this board binds `contextmenu` on circles,
+   * balls, cones, arrows, rects, labels and the silhouette. Only the
+   * event that follows a real drag is swallowed.
+   */
+  function tbBindViewGestures() {
+    const wrap = document.getElementById('tb-3d-wrap');
+    if (!wrap || tbIs3D()) return;
+    const field = document.getElementById('tb-field');
+
+    wrap.addEventListener('wheel', (e) => {
+      /* A wheel that started over the menu or the rail belongs to the
+         list it started over. The rail stops its own; the panels are
+         deep inside .tb-m, so ask the tree rather than the target. */
+      if (e.target.closest && e.target.closest('.tb-m')) return;
+      e.preventDefault();
+      const r = wrap.getBoundingClientRect();
+      tbZoomAt(Math.pow(0.9985, e.deltaY), e.clientX - r.left, e.clientY - r.top);
+    }, {passive: false});
+
+    /* Declared before the pinch handlers that clear it. They only run
+       long after this function returns, so a later `let` would not
+       actually throw — but this feature has produced three temporal
+       dead zones already, and none of them looked like one either. */
+    let pan = null;
+    let panned = false;      // read by the contextmenu guard below
+
+    /* ── Two fingers ──────────────────────────────────────────
+       The wrapper sets touch-action:none, so the browser's own pinch
+       never fires here — without this, a tablet could pan and not
+       zoom, and a tablet is where this board is actually used.
+
+       Pinch is handled before the single-pointer path and cancels it:
+       the second finger down turns what was a pan into a pinch, and
+       the pan's remembered origin would otherwise fight it. */
+    const live = new Map();
+    let pinch = null;
+    const spread = () => {
+      const p = [...live.values()];
+      return {d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y),
+              mx: (p[0].x + p[1].x) / 2, my: (p[0].y + p[1].y) / 2};
+    };
+    wrap.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      if (e.target.closest && e.target.closest('.tb-m, .tb-rail')) return;
+      live.set(e.pointerId, {x: e.clientX, y: e.clientY});
+      if (live.size === 2) { pan = null; pinch = spread(); }
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!live.has(e.pointerId)) return;
+      live.set(e.pointerId, {x: e.clientX, y: e.clientY});
+      if (live.size !== 2 || !pinch) return;
+      const now = spread();
+      if (pinch.d < 1) { pinch = now; return; }
+      const r = wrap.getBoundingClientRect();
+      /* Zoom about the midpoint, then carry the midpoint's own
+         movement as a pan — so two fingers moving together slide the
+         board instead of pinning it. */
+      tbZoomAt(now.d / pinch.d, now.mx - r.left, now.my - r.top);
+      _tbView.x += now.mx - pinch.mx;
+      _tbView.y += now.my - pinch.my;
+      tbApplyView();
+      pinch = now;
+    });
+    const liftFinger = (e) => {
+      live.delete(e.pointerId);
+      if (live.size < 2) pinch = null;
+    };
+    wrap.addEventListener('pointerup', liftFinger);
+    wrap.addEventListener('pointercancel', liftFinger);
+
+    wrap.addEventListener('pointerdown', (e) => {
+      if (live.size > 1) return;          // a pinch, not a pan
+      if (e.target.closest && e.target.closest('.tb-m, .tb-rail')) return;
+      const onField = !!(field && field.contains(e.target));
+      const wants = e.button === 1 || e.button === 2 ||
+          (e.button === 0 && (e.shiftKey || !onField));
+      if (!wants) return;
+      pan = {x: e.clientX, y: e.clientY, ox: _tbView.x, oy: _tbView.y,
+             id: e.pointerId, moved: false};
+      panned = false;
+      /* NOT preventDefault here: a right-press that turns out to be a
+         click must still reach the element's own contextmenu. */
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!pan || e.pointerId !== pan.id) return;
+      const dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (!pan.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      if (!pan.moved) { pan.moved = true; wrap.setPointerCapture(pan.id); }
+      _tbView.x = pan.ox + dx;
+      _tbView.y = pan.oy + dy;
+      tbApplyView();
+    });
+    const endPan = () => {
+      if (pan && pan.moved) panned = true;
+      pan = null;
+    };
+    wrap.addEventListener('pointerup', endPan);
+    wrap.addEventListener('pointercancel', endPan);
+    /* Capture, so it runs before the seven per-object handlers rather
+       than after them. */
+    wrap.addEventListener('contextmenu', (e) => {
+      if (!panned) return;
+      panned = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+
+    /* No camera menu means no reset button, so the surround carries it:
+       double-click anywhere off the pitch and the board is fitted again. */
+    wrap.addEventListener('dblclick', (e) => {
+      if (field && field.contains(e.target)) return;
+      if (e.target.closest && e.target.closest('.tb-m, .tb-rail')) return;
+      tbResetView();
+    });
   }
 
   /**
@@ -10904,7 +11242,11 @@
     }
 
 
-    let fieldCls = 'tb-field';
+    /* `tb-fit` — the board is given an explicit centred rect inside the
+       window rather than flowing down the page at a fixed 820px. See
+       tbFit2DBoard(); the padding-top aspect trick still supplies the
+       height, so only the width is computed. */
+    let fieldCls = 'tb-field tb-fit';
     if (isVertical) fieldCls += ' tb-vertical';
     if (boardType === 'half') fieldCls += ' tb-half';
     else if (boardType === 'area') fieldCls += ' tb-area';
@@ -10915,15 +11257,17 @@
        to show beside it. */
     const tplId = tbEditingTemplateId();
 
+    /* NO page title, in either view. It is announced for two seconds on
+       entering the tab instead — see tbFlashPageTitle(). The board-type
+       picker, which is the other half of renderTactics, keeps its own. */
     return `
-      ${is3d ? '' : `<h2 class="page-title">${t('page.tactical_board')}</h2>`}
       ${tplId ? `<div class="card tb-tpl-banner">
         <strong>Editant plantilla de la biblioteca</strong>
         <span>«${sanitize(savedName || 'sense nom')}»</span>
         <button class="btn btn-small btn-outline" id="tb-tpl-exit">Tornar a la biblioteca</button>
       </div>` : ''}
-      <div class="card${is3d ? ' tb-card-3d' : ''}">
-        <div class="tb-controls${is3d ? ' tb-controls-3d' : ''}">
+      <div class="card tb-card-window">
+        <div class="tb-controls tb-controls-off">
           <label class="tb-label">${t('tactics.formation')}</label>
           <div class="tb-formation-wrap" id="tb-formation-wrap">
             <div class="tb-formation-toggle" id="tb-formation-toggle">${savedFormation || '— Select —'}</div>
@@ -10999,17 +11343,24 @@
           <span class="tb-sep"></span>
           <button class="tb-select-tool" id="tb-select-tool" data-tooltip="Select mode (tap to select)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-7 2-4 7-3-18z"/></svg></button>
         </div>
-        <div class="tb-btn-row${is3d ? ' tb-controls-3d' : ''}">
+        <div class="tb-btn-row tb-controls-off">
           <button class="btn btn-small btn-tb-new" id="tb-new-board">New Board</button>
         </div>
         <input class="tb-board-name" id="tb-board-name" placeholder="Board name…" value="${sanitize(savedName)}">
-        ${is3d ? `<div class="tb-3d-wrap" id="tb-3d-wrap">
-          <div class="tb-3d-loading">${t('tactics.loading_3d')}</div>
+        <div class="tb-3d-wrap${is3d ? '' : ' tb-wrap-2d'}" id="tb-3d-wrap">
+          ${is3d ? `<div class="tb-3d-loading">${t('tactics.loading_3d')}</div>` : ''}
           ${tbMenuHtml()}
           <div class="tb-rail" id="tb-rail"></div>
-          ${tbCamsHtml()}
-          <div class="tb-3d-hint">${t('tactics.orbit_hint')}</div>
-        </div>` : ''}
+          ${/* Cameras and the orbit hint are about a CAMERA, and 2D has
+                none — it is zenital by construction. Emitting them there
+                would be two controls that cannot do anything. */
+            is3d ? tbCamsHtml() +
+              `<div class="tb-3d-hint">${t('tactics.orbit_hint')}</div>` : ''}
+        ${/* The board itself lives INSIDE the window, in both views —
+              the same parent tbDrawSurface() moves it to when a draw
+              tool goes on in 3D, so the two views never disagree about
+              where the board is parented. `tb-fit` gives it an explicit
+              centred rect; see tbFit2DBoard(). */''}
         <div class="${fieldCls}" id="tb-field"${is3d ? ' hidden' : ''} style="${tbFieldOuterStyle(savedPitch, boardType, isVertical)}">
           <div class="tb-field-inner" style="${tbFieldInnerStyle(savedPitch, boardType, isVertical)}">
             ${tbMarkingsHtml(savedPitch, boardType, isVertical)}
@@ -11054,6 +11405,7 @@
               return '<div class="tb-text-label" data-idx="'+i+'" data-color="'+tColor+'" data-opacity="'+tOp+'" style="left:'+tx+'%;top:'+ty+'%;background:rgba('+parseInt(tColor.slice(1,3),16)+','+parseInt(tColor.slice(3,5),16)+','+parseInt(tColor.slice(5,7),16)+','+tOp+');color:'+fg+';'+tW+tH+tFs+'">'+sanitize(t[2])+'</div>';
             }).join('')}
           </div>
+        </div>
         </div>
         <div class="tb-frames-section">
           <div class="tb-frames-header">
@@ -11124,7 +11476,7 @@
           </div>
           <div class="tb-match-linked" id="tb-training-linked"></div>
         </div>`}
-        <div class="tb-btn-row${is3d ? ' tb-controls-3d' : ''}">
+        <div class="tb-btn-row tb-controls-off">
           ${tbSaveButtonsHtml()}
         </div>
         ${tplId ? '' : tbBoardsPanelHtml()}
@@ -13527,7 +13879,17 @@
        closure writing into a frame array nobody is looking at any
        more. Same shape as the tb-ro-play double-binding it took a
        version to notice. */
-    if (document.getElementById('tb-3d-wrap')) {
+    /* The window is sized in BOTH views now, so this runs outside the
+       3D branch. It used to be `if (document.getElementById('tb-3d-wrap'))`
+       — which was a fair test of "is 3D showing" while the wrapper was
+       a 3D-only element, and became true on every board the moment the
+       flat board moved inside it. */
+    tbSize3DWindow();
+    if (!_tb3dSizeBound) {
+      _tb3dSizeBound = true;
+      window.addEventListener('resize', tbSize3DWindow);
+    }
+    if (tbIs3D()) {
       /* Flush the 2D DOM into the scratch keys BEFORE mounting.
          saveState() is only ever called from an interaction, so a
          board whose players came from the formation defaults has them
@@ -13537,15 +13899,6 @@
          Calling it here keeps one source for the positions rather
          than teaching board3d about formations. */
       saveState();
-      /* Size the window BEFORE mounting, so board3d's first camera
-         fit is made against the real aspect. Fitting to the CSS
-         placeholder and then resizing works, but the board visibly
-         re-frames itself on every entry to 3D. */
-      tbSize3DWindow();
-      if (!_tb3dSizeBound) {
-        _tb3dSizeBound = true;
-        window.addEventListener('resize', tbSize3DWindow);
-      }
       tbMount3D({
         /**
          * Land a 3D drag on the 2D board.
@@ -13883,8 +14236,14 @@
            handle left the cursor behind and appeared to move the other
            dimension. Width and aspect together make the edge follow
            the pointer. */
-        field.style.cssText = tbFieldScaleStyle(g, curBoardType(), isVertical());
+        /* RE-FIT, rather than the old `field.style.cssText = …`. That
+           assignment replaced the whole inline style — which is now
+           where the board's position, its size and --tb-ppm live, so it
+           threw the board into the corner of the window for the length
+           of the drag. Fitting a provisional pitch previews the same
+           thing and keeps every other property. */
         inner.style.paddingTop = BG.aspectPct(g, curBoardType(), isVertical()) + '%';
+        tbFit2DBoard(g);
         grip.dataset.val = g[gripDim(axis)] + ' m';
       });
       grip.addEventListener('pointerup', e => {
@@ -15064,7 +15423,7 @@
     // Init
     renderFrameStrip();
 
-    /* ── The 3D menu, built LAST ────────────────────────────────
+    /* ── The window menu, built LAST ────────────────────────────
        It used to be built up in the 3D mount block, next to the code
        it belongs with. That threw: `frames` is declared with `let`
        hundreds of lines below, so touching it from up there is a
@@ -15078,15 +15437,16 @@
        Third variant of the same trap in this feature — after `is3d`
        reaching across functions and `tbDrawSurface` reaching for BS.
        Built here, where everything it touches already exists. */
-    if (tbIs3D()) {
-      /* FRAME 1 ALWAYS EXISTS in 3D. The rail is a permanent fixture
-         at middle right, and an empty one is a column of nothing
-         beside a board that plainly has players on it.
+    if (tbEditorOpen()) {
+      /* FRAME 1 ALWAYS EXISTS. The rail is a permanent fixture at
+         middle right, and an empty one is a column of nothing beside a
+         board that plainly has players on it.
 
-         Stated plainly because it is a state write on a view change:
+         Stated plainly because it is a state write on opening a board:
          this creates a frame the coach did not ask for. A single
          frame is exactly the board itself, so nothing is invented —
-         but it does mean entering 3D marks the board as edited. */
+         but it does mean opening a board marks it as edited. It was
+         3D-only when the rail was; the rail is both views now. */
       if (!frames.length) {
         frames = [captureFrameState()];
         activeFrameIdx = 0;
@@ -15100,6 +15460,7 @@
          computed at mount was for the old position, and the
          difference showed as a band of page below the board. */
       tbSize3DWindow();
+      tbBindViewGestures();
     }
     // Compute polygon arrowheads after layout is ready
     requestAnimationFrame(() => refreshArrowheads(arrowsSvg));

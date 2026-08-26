@@ -5925,3 +5925,70 @@ exactly 8px, which the pad exactly covers — the arithmetic was right and the m
 bug. At 2000px it fails as it should.
 
 Unit 1739 → **1741**. Version triple → v165. **Still nothing deployed.**
+
+### 2026-08-26 — One board layout: 2D adopts the 3D window (v166)
+
+The 3D board got a window, a hamburger, a frames rail and an announced title; the flat board still had a
+32-control strip, a permanent `<h2>` and a padded card. A club without the premium feature was looking at
+a different app, and a premium coach switching 2D↔3D watched the page rearrange itself. **The flat board
+now uses the same layout**, minus the three things that are genuinely about a camera.
+
+**The gate stopped being "is this 3D".** Nine sites branched on `tbIs3D()` to decide layout; all nine are
+unconditional for the editor — but not for the board-type picker, which renders under the same page and
+keeps its card and title. So `tbEditorOpen()` probes the DOM for `#tb-3d-wrap` instead of holding a flag:
+both screens render under `tactics`, exactly one of them has the wrapper, and every caller runs after the
+render. `tbIs3D()` keeps two jobs — `tbVertical()` and `tbSetDrawMode()`, the two places a camera really
+is the question. `.tb-controls-3d` → `.tb-controls-off`, `.tb-card-3d` → `.tb-card-window`; **`#tb-3d-wrap`
+keeps its id**, because board3d takes it by reference and renaming it would churn two test files to say
+nothing new.
+
+**The board moved inside the window** — the same parent `tbDrawSurface()` already moves it to in 3D — and
+`tbFit2DBoard()` gives it a centred rect at the largest size that fits. The `padding-top` aspect trick
+stays, so only a width is computed. A rotated board (vertical half/area) is the interesting case: the
+quarter turn swaps which constraint binds, and `tbFitWidth()` carries that branch.
+
+**Zoom and pan, on board3d's own gestures** — wheel, right/middle/shift-drag, a plain drag on the surround,
+double-click to re-fit, and a two-finger pinch (the wrapper sets `touch-action:none`, so the browser's own
+never fires and a tablet could otherwise pan but never zoom). Right-drag past board3d's own **4px slop**
+swallows the `contextmenu` that follows, in capture, which is what keeps the seven per-object menus alive.
+
+A CSS transform carries it, and that choice is why **nothing else in the editor changed**: every drag, draw
+and hit test already reads `inner.getBoundingClientRect()`, and a rect is reported after transforms. There
+is a test that pins it — no `offsetWidth`/`clientWidth` in `bindTactics`.
+
+Two traps found while writing it:
+- an inline transform **replaces** the stylesheet's, so a vertical half board would have quietly un-rotated
+  the first time anyone zoomed. `tbApplyView()` composes the rotate in, and the test derives the list from
+  the stylesheet rather than pinning `rotate(-90deg)`.
+- `.tb-field.tb-fit` and `.tb-vertical.tb-half` are the same specificity, so the fit block has to sit
+  **after** it in the file or the board caps at 820px inside a 1600px window.
+
+The grip preview's `field.style.cssText = …` had to go with it: that assignment replaced the whole inline
+style, which now carries the board's position, size and `--tb-ppm`. It re-fits a provisional pitch instead.
+
+Also fixed in passing: **a wheel over an open menu panel zoomed the board behind it.** The rail was fixed
+for this months ago; `.tb-m` never was, so scrolling the club library moved the 3D camera.
+
+Removed in 2D: the camera menu, the orbit hint, and the 2D/3D toggle as a rendered control — the hamburger's
+`view` entry is the only switch, offered only when `clubFeature('board3d') && tbWebglOk()` and labelled with
+the view it goes *to*. The z-axis apex diamond was already 3D-only. `#tb-orient` moved into the Field panel
+and `#tb-select-tool` into Draw: both are 2D-only, both had no home because 3D hides them, and `.tb-controls`
+is `display:none` — unadopted they would simply be gone.
+
+**Frame 1 is now seeded on opening any board**, not only in 3D. The rail is a permanent fixture in both
+views and an empty one beside a board with players on it reads as broken — but it does mean opening a board
+marks it as edited.
+
+Twenty-eight mutations run. Four survived and each was a real gap: the view entry's *click* was still
+hard-wired to the 2D button while its label had been made direction-aware; `tbBindViewGestures()` and
+`tbFit2DBoard()` were never asserted to be **called**; and guarding the first `tbSize3DWindow()` with
+`if (tbIs3D())` left every flat board unmeasured. A fifth was an equivalent mutant that proved a branch in
+`tbZoomView` could not change its answer — that branch was deleted rather than tested.
+
+New suite `test/board-window.test.js`, and most of it is not source-text: `tbFitWidth` and `tbZoomView`
+were pulled out of the DOM work so they could be evaluated for real. A fitted board's footprint is checked
+against the window it has to sit in (and that it reaches an edge, which a `return 0` would otherwise pass),
+and a zoom is checked by pushing a point through the transform the browser will apply and confirming it has
+not moved.
+
+Unit 1741 → **1786**. Version triple → v166. **Still nothing deployed.**

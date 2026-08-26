@@ -842,9 +842,17 @@ tr:hover td { background: #f7f8fa; }
    small viewport makes the whole thing unreadable. The height is
    viewport-relative rather than a ratio of the width — board3d's
    resize() reads clientHeight, so CSS owns the shape. */
-/* ── The 3D window ────────────────────────────────────────────────
+/* ── The board window ─────────────────────────────────────────────
    Bleeds to the card's edge horizontally and runs to the bottom of
    the viewport vertically.
+
+   THE ID IS `tb-3d-wrap` AND IT HOSTS BOTH VIEWS. It was a 3D-only
+   element; the flat board moved inside it so that one layout — window,
+   hamburger, frames rail, announced title — serves premium and
+   non-premium clubs alike. The name was kept because board3d takes
+   this element by reference and renaming it would churn the mount
+   path, this stylesheet and two test files to say nothing new.
+   `.tb-wrap-2d` is on it when the flat board is the one showing.
 
    The `1.5rem` is the card's own padding — the only margin between
    this element and the card edge — cancelled on both sides. If the
@@ -4781,7 +4789,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    are two different readability problems, and the pitch theme is the
    coach's choice. The panels use a near-black ground at high opacity
    for that reason rather than a tint of the turf. */
-.tb-controls-3d { display:none !important; }
+/* The old toolbar, kept in the DOM and never shown. Every control on
+   it has been moved into a menu panel by tbMenuInit() — moved, not
+   copied, so what is hidden here is an empty strip plus the handful of
+   controls the menu presses from behind (the 2D/3D toggle, New Board).
+   Named `-off` rather than `-3d` since the flat board wears the menu
+   too and there is no view left in which the strip shows. */
+.tb-controls-off { display:none !important; }
+
+/* ── The flat board inside the window ─────────────────────────────
+   An explicit centred rect, written by tbFit2DBoard(), instead of
+   flowing down the page at a fixed 820px.
+
+   `width`, `left`, `top`, `margin`, `max-width` and `transform` all
+   arrive INLINE from that function. The declarations here are the ones
+   that must beat a rule further up the file — `.tb-vertical.tb-half`
+   sets its own max-width and transform at equal specificity, and would
+   win on document order alone if this block sat beside the other
+   .tb-field rules. That is why it lives here and not at line 757. */
+.tb-field.tb-fit {
+  position:absolute; z-index:1;
+  margin:0; max-width:none;
+  /* Nothing to gain from animating this: the board is re-fitted on
+     every resize tick and a transition would lag the window edge. */
+  transition:none;
+}
+/* The surround is the pan surface — see tbBindViewGestures(). A class
+   rather than `:has(> .tb-fit)`, which would say the same thing but
+   only on browsers new enough for it. */
+.tb-wrap-2d { cursor:grab; }
+.tb-wrap-2d .tb-field.tb-fit { cursor:default; }
 
 .tb-m {
   position:absolute; top:.75rem; left:.75rem; z-index:6;
@@ -5144,17 +5181,20 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   color:#c9ccd1; font-size:.72rem; max-width:200px; line-height:1.3;
 }
 
-/* ── The 3D board takes the content area ──────────────────────────
-   The area gives up its 2rem while that board is showing, and the
-   card stops being a box. Neither uses a negative margin: the banners
-   are rendered into #dashboard-content too, and pulling the board up
-   by 2rem would slide it over one on the days it appears.
+/* ── The board takes the content area ─────────────────────────────
+   The area gives up its 2rem while the board editor is showing, and
+   the card stops being a box. Neither uses a negative margin: the
+   banners are rendered into #dashboard-content too, and pulling the
+   board up by 2rem would slide it over one on the days it appears.
 
    The card still EXISTS — the menu adopts controls out of it, and an
    element has to be in the DOM to be moved — it just stops looking
-   like anything. */
+   like anything.
+
+   `-window` rather than `-3d`: the flat board is in the window too, so
+   the class no longer says anything about a camera. */
 .dashboard-flush { padding:0 !important; }
-.card.tb-card-3d {
+.card.tb-card-window {
   padding:0; margin:0; background:none;
   box-shadow:none; border-radius:0;
 }

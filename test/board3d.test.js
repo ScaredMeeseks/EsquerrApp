@@ -256,10 +256,10 @@ describe('the 3D surface is bigger than the 2D one', () => {
         'a negative margin would slide the board over a banner: ' + wrap);
     assert.ok(/border-radius:0/.test(wrap), 'square, flush on every side');
 
-    const card = css.slice(css.indexOf('.card.tb-card-3d {'),
-        css.indexOf('}', css.indexOf('.card.tb-card-3d {')));
+    const card = css.slice(css.indexOf('.card.tb-card-window {'),
+        css.indexOf('}', css.indexOf('.card.tb-card-window {')));
     assert.ok(/padding:0/.test(card) && /background:none/.test(card),
-        'the card must stop being a box in 3D: ' + card);
+        'the card must stop being a box: ' + card);
     assert.ok(/\.dashboard-flush \{ padding:0 !important; \}/.test(css),
         'and the content area must give up its own padding');
   });
@@ -269,8 +269,12 @@ describe('the 3D surface is bigger than the 2D one', () => {
        and board name all vary — so the height is set from JS. The CSS
        value is only what shows before the first measurement. */
     const app = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    /* Bounded at the NEXT function, not at tbDestroy3D — the fit and
+       zoom helpers were inserted between the two, so the old bound
+       swallowed five more functions and every assertion below could
+       have been satisfied by one of them. */
     const fn = app.slice(app.indexOf('function tbSize3DWindow() {'),
-        app.indexOf('function tbDestroy3D('));
+        app.indexOf('function tbRotatedBox('));
     assert.ok(fn.length > 100, 'tbSize3DWindow not found');
     assert.ok(/getBoundingClientRect\(\)\.top/.test(fn),
         'the top offset must be measured');

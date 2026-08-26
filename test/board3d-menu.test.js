@@ -62,13 +62,64 @@ describe('the 3D menu — what it offers', () => {
 
   it('only the four that hold something get a panel', () => {
     /* New Board and 2D/3D do a thing and re-render the page. A panel
-       on either would open and be destroyed in the same gesture. */
-    ['new', 'view'].forEach((k) => assert.ok(
-        new RegExp("entry\\('" + k + "'[^\\n]*false\\)").test(html),
-        k + ' must not carry a panel'));
-    ['gear', 'squad', 'props', 'draw'].forEach((k) => assert.ok(
-        new RegExp("entry\\('" + k + "'[^\\n]*true\\)").test(html),
-        k + ' must carry a panel'));
+       on either would open and be destroyed in the same gesture.
+
+       Read to the closing paren rather than to the end of the line:
+       the view entry is wrapped in a condition now and runs over
+       three lines, which a line-bound match silently reported as
+       "carries no panel" — true, but for the wrong reason. */
+    const call = (k) => {
+      const i = html.indexOf("entry('" + k + "'");
+      assert.ok(i !== -1, k + ' is not offered at all');
+      const j = html.indexOf("entry('", i + 8);
+      return html.slice(i, j === -1 ? html.length : j);
+    };
+    ['new', 'view'].forEach((k) => {
+      const c = call(k);
+      assert.ok(/false\)/.test(c) && !/true\)/.test(c), k + ' must not carry a panel');
+    });
+    ['gear', 'squad', 'props', 'draw'].forEach((k) => {
+      const c = call(k);
+      assert.ok(/true\)/.test(c) && !/false\)/.test(c), k + ' must carry a panel');
+    });
+  });
+
+  it('the view entry is offered only when there is a view to switch to', () => {
+    /* A club without the premium feature has nothing on the other
+       side of this button. It used to be unconditional, which was
+       harmless while the menu itself was premium-only and is not now
+       that the flat board wears it. */
+    const i = html.indexOf("entry('view'");
+    const before = html.slice(0, i);
+    assert.ok(/clubFeature\('board3d'\) && tbWebglOk\(\)\s*\)?\s*$/
+        .test(before.trimEnd()) ||
+        /clubFeature\('board3d'\) && tbWebglOk\(\)[\s\S]{0,40}$/.test(before),
+        'the view entry must be gated on the premium feature and WebGL');
+  });
+
+  it('the view entry names where it GOES, not where you are', () => {
+    /* Both the glyph and the label. An entry reading "2D" while the
+       coach is looking at 2D is a button that appears to do nothing —
+       which is exactly what it was, back when only 3D had this menu. */
+    const i = html.indexOf("entry('view'");
+    const e = html.slice(i, i + 260);
+    assert.ok(/tbIs3D\(\) \? '2D' : '3D'/.test(e), 'the glyph must be the target view');
+    assert.ok(/tbIs3D\(\) \? 'tactics\.view_2d' : 'tactics\.view_3d'/.test(e),
+        'and so must the label');
+  });
+
+  it('and presses the button for the view it names', () => {
+    /* Found by mutation: the label was made direction-aware and the
+       CLICK was not, so a premium coach in 2D read "3D", pressed it,
+       and the handler clicked the 2D button — which is already active,
+       and whose own listener returns early on exactly that. A button
+       that does nothing, which is what the label change was for. */
+    const init = fn('tbMenuInit(hooks)');
+    const i = init.indexOf("if (which === 'view')");
+    assert.ok(i !== -1, 'the view entry has no click handler');
+    const h = init.slice(i, i + 300);
+    assert.ok(/tbIs3D\(\) \? '2d' : '3d'/.test(h),
+        'it must press the toggle for the OTHER view');
   });
 
   it('every label goes through t(), in all three languages', () => {
@@ -142,11 +193,28 @@ describe('the 3D menu — it moves controls, it does not copy them', () => {
     assert.ok(/appendChild/.test(squad), 'moved, not copied');
   });
 
-  it('the toolbar is hidden only in 3D', () => {
-    assert.ok(/class="tb-controls\$\{is3d \? ' tb-controls-3d' : ''\}"/.test(app),
-        'the hide class must be conditional on the 3D view');
-    assert.ok(/\.tb-controls-3d \{ display:none !important; \}/.test(css),
+  it('the toolbar is hidden in BOTH views, and unconditionally', () => {
+    /* It was `is3d ? ' tb-controls-3d' : ''`. The flat board wears the
+       menu now, so there is no view left in which the strip shows —
+       and a leftover condition would put a 32-control strip back above
+       a full-bleed window on exactly the clubs this change is for. */
+    assert.ok(/class="tb-controls tb-controls-off"/.test(app),
+        'the hide class must be unconditional');
+    assert.ok(!/tb-controls-3d/.test(app) && !/tb-controls-3d/.test(css),
+        'the 3D-flavoured name must be gone from both files');
+    assert.ok(/\.tb-controls-off \{ display:none !important; \}/.test(css),
         'and it must actually hide it');
+  });
+
+  it('the two controls 3D never needed a home for get one', () => {
+    /* Both are 2D-only: 3D hides the orientation button outright, and
+       in 3D a click on a mesh selects it so the select MODE is
+       redundant. Unadopted they are not merely awkward — .tb-controls
+       is display:none, so they would be gone. */
+    assert.ok(/adopt\('gear', \['#tb-orient'\]/.test(init),
+        'orientation must move into the Field panel');
+    assert.ok(/adopt\('draw', \['#tb-select-tool'\]/.test(init),
+        'select mode must move into the Draw panel');
   });
 });
 
@@ -272,7 +340,7 @@ describe('the camera menu and the frames rail', () => {
         'moving only the strip would leave the button under the board');
   });
 
-  it('BOTH button rows are hidden in 3D, for different reasons', () => {
+  it('BOTH button rows are hidden, for different reasons', () => {
     /* One holds New Board, which the hamburger carries instead. The
        other held Save and Save As, which are ADOPTED out — so the row
        is left empty, and an empty row still holds its padding. That
@@ -283,8 +351,8 @@ describe('the camera menu and the frames rail', () => {
        longer its children. */
     const rows = (app.match(/class="tb-btn-row[^"]*"/g) || []);
     assert.strictEqual(rows.length, 2, 'expected a New Board row and a Save row');
-    rows.forEach((r) => assert.ok(r.indexOf("is3d ? ' tb-controls-3d'") !== -1,
-        'this row keeps its space in 3D: ' + r));
+    rows.forEach((r) => assert.ok(r.indexOf('tb-controls-off') !== -1,
+        'this row keeps its space: ' + r));
   });
 
   it('nothing is left holding space between the window and the card edge', () => {
@@ -293,18 +361,45 @@ describe('the camera menu and the frames rail', () => {
        either adopted into the menu at runtime or hidden — and this
        lists which, so adding a section below the board without
        handling it fails here rather than by pushing the window up. */
+    /* Anchored past the FIELD, which lives inside the window now —
+       the old anchor was the orbit hint, the last thing before the
+       field back when the field was a sibling of the card. */
     const i = app.indexOf('tbMenuHtml()');
-    const after = app.slice(app.indexOf('tb-3d-hint', i),
+    const after = app.slice(app.indexOf('tb-frames-section', i),
         app.indexOf('function bindTactics', i));
     const sections = ['tb-frames-section', 'tb-tag-section', 'tb-match-section',
       'tb-btn-row', 'tb-saved-list', 'tb-lib-list'];
     sections.forEach((c) => {
       if (after.indexOf(c) === -1) return;      // not rendered here at all
       const adopted = init.indexOf(c) !== -1;
-      const hidden = new RegExp('class="' + c + '\\$\\{is3d').test(app);
+      const hidden = new RegExp('class="' + c + ' tb-controls-off"').test(app);
       assert.ok(adopted || hidden,
           c + ' renders below the window and is neither adopted nor hidden');
     });
+  });
+
+  it('the board itself renders INSIDE the window', () => {
+    /* The whole point of the change: one window, both views. The flat
+       board used to be a sibling of the wrapper and only moved inside
+       it while a draw tool was on in 3D (tbDrawSurface). Rendered
+       outside, it would sit below a full-bleed window with the menu
+       floating over empty turf. */
+    const open = app.indexOf('id="tb-3d-wrap"');
+    const field = app.indexOf('id="tb-field"');
+    const frames = app.indexOf('tb-frames-section', open);
+    assert.ok(open !== -1 && field > open && field < frames,
+        'the field must render between the window opening and the frames');
+    assert.ok(/let fieldCls = 'tb-field tb-fit'/.test(app),
+        'and carry tb-fit, which is what gives it the centred rect');
+  });
+
+  it('the camera menu and the orbit hint are 3D only', () => {
+    /* 2D is zenital by construction: there is no camera to pick and
+       nothing to orbit, so both would be controls that cannot act. */
+    assert.ok(/is3d \? tbCamsHtml\(\)/.test(app),
+        'the camera menu must be conditional on the 3D view');
+    assert.ok(/is3d \? tbCamsHtml\(\)[\s\S]{0,160}tb-3d-hint/.test(app),
+        'and the orbit hint must ride the same condition');
   });
 
   it('the rail is dimmed until it is wanted', () => {
@@ -362,13 +457,31 @@ describe('the menu is built after what it reaches for', () => {
         'the seed must come after the declaration');
   });
 
-  it('and it is gated on the 3D view, not on the mount block', () => {
+  it('and it is gated on the EDITOR being open, not on the view', () => {
     /* Moving it out of the mount block means it no longer inherits
-       that block's `if (3D)`, so it has to carry its own. */
+       that block's condition, so it has to carry its own — and the
+       condition changed with this feature. It was `tbIs3D()`; both
+       views wear the menu now, and the question that decides the
+       layout is whether the editor rendered at all. renderTactics'
+       other half is the board-type picker, which keeps a plain card
+       and a plain header. */
     const i = at('tbMenuInit({onFormation');
-    const before = bare.slice(Math.max(0, i - 700), i);
-    assert.ok(/if \(tbIs3D\(\)\) \{/.test(before),
-        'the menu must only be built in 3D');
+    const before = bare.slice(Math.max(0, i - 900), i);
+    assert.ok(/if \(tbEditorOpen\(\)\) \{/.test(before),
+        'the menu must be built whenever the editor is open');
+    assert.ok(!/if \(tbIs3D\(\)\) \{/.test(before),
+        'and NOT only in 3D — that is the gate this change replaced');
+  });
+
+  it('tbEditorOpen asks the DOM, and asks for the window', () => {
+    /* No second copy of the answer to keep in step: both screens
+       render under `tactics`, and the wrapper exists on exactly one
+       of them. Every caller runs after the render. */
+    const f = fn('tbEditorOpen()');
+    assert.ok(/return !!document\.getElementById\('tb-3d-wrap'\)/.test(f),
+        'it must probe for the window itself');
+    assert.ok(!/localStorage|_tb/.test(f),
+        'and hold no state of its own');
   });
 });
 
@@ -798,26 +911,28 @@ describe('the board takes the content area, and gives it back', () => {
        removed, every other page in the app would lose its 2rem — and
        the symptom would appear on a page nobody was working on. One
        expression, both arms. */
-    assert.ok(/classList\.toggle\('dashboard-flush',\s*\n?\s*currentPage === 'tactics' && tbIs3D\(\)\)/
+    assert.ok(/classList\.toggle\('dashboard-flush',\s*\n?\s*currentPage === 'tactics' && tbEditorOpen\(\)\)/
         .test(bare), 'the flush class must be a toggle on a condition, not an add');
     assert.ok(!/classList\.add\('dashboard-flush'\)/.test(bare),
         'never added unconditionally');
   });
 
-  it('the header goes only in 3D, and only in the editor', () => {
+  it('the editor renders no header, in either view', () => {
     /* The board-type picker still needs a title — it is a page with
-       nothing else on it — and 2D keeps its own by the owner's
-       decision. */
-    /* TWO titles are rendered — the picker's and the editor's — and
-       exactly one of them is conditional. Counting bare matches said
-       one, because the conditional one contains the same substring;
-       the count was wrong, not the code. */
+       nothing else on it. The editor's is announced instead, and that
+       is now true of 2D as well: the header was the last thing keeping
+       the flat board a different shape from the 3D one. */
     const titles = (app.match(/<h2 class="page-title">\$\{t\('page\.tactical_board'\)\}<\/h2>/g) || []);
-    assert.strictEqual(titles.length, 2, 'the picker and the editor each render one');
-    const guarded = (app.match(/\$\{is3d \? '' : `<h2 class="page-title">/g) || []);
-    assert.strictEqual(guarded.length, 1,
-        'exactly one — the editor\'s — is dropped in 3D; the picker is a page ' +
-        'with nothing else on it and keeps its title');
+    assert.strictEqual(titles.length, 1, 'only the picker renders one');
+    assert.ok(!/is3d \? '' : `<h2 class="page-title">/.test(app),
+        'and no conditional header is left in the editor');
+    /* The one that survives must be the PICKER's. Bounded by the
+       editor's own return, which is what tells the two halves of
+       renderTactics apart in a comment-stripped string. */
+    const editor = app.indexOf('<div class="card tb-card-window">');
+    assert.ok(editor !== -1, 'the editor card is not rendered');
+    assert.ok(app.indexOf('<h2 class="page-title">${t(\'page.tactical_board\')}</h2>') < editor,
+        'the surviving title must be the picker\'s, above the editor');
   });
 
   it('the announcement fires on entering the tab, not on every render', () => {
@@ -826,8 +941,17 @@ describe('the board takes the content area, and gives it back', () => {
        change, the category bar, and every toggle in the board's own
        menu. Fired on those, the title would flash each time the coach
        picked a formation. */
-    assert.ok(/if \(isNav && currentPage === 'tactics' && tbIs3D\(\)\)/.test(bare),
+    assert.ok(/if \(isNav && currentPage === 'tactics' && tbEditorOpen\(\)\)/.test(bare),
         'the flash must be gated on isNav');
+    /* And the zoom rides the same signal, for the same reason turned
+       around: a re-render is not a fresh visit, and snapping the board
+       back to fit under a coach who has zoomed in would make the zoom
+       unusable. */
+    const i = bare.indexOf("if (isNav && currentPage === 'tactics' && tbEditorOpen())");
+    assert.ok(/tbResetView\(\);/.test(bare.slice(i, i + 700)),
+        'the view must be reset on entering the tab, not on every render');
+    assert.ok(!/tbResetView\(\)[\s\S]{0,40}\n\s*tbFit2DBoard/.test(bare),
+        'and tbFit2DBoard must NOT reset it — it runs on every resize tick');
     const flash = fn('tbFlashPageTitle(text)');
     assert.ok(/_tbFlashTimers\.forEach\(clearTimeout\)/.test(flash),
         'a pending fade from the last visit would cut this one short');
