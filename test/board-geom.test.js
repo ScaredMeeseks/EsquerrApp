@@ -492,3 +492,117 @@ describe('toCss', () => {
     });
   });
 });
+
+/* ── The penalty arc shows on every board type ─────────────────────
+ *
+ * board3d had its own derivation of this and handled only the two
+ * LANDSCAPE cases: it clipped against an x edge, so on a half or area
+ * board — which board-geom draws portrait, with the box at the top —
+ * it drew a sliver hidden inside the box. The arc was simply missing,
+ * which is what a user reported.
+ *
+ * The rule now lives here, once, for both renderers: the arc shows the
+ * part of its circle on the far side of the box from the edge the box
+ * is pinned to. These tests check the SWEEP against that definition
+ * rather than against four remembered angles.
+ */
+describe('the penalty arc, on every board type', () => {
+  const each = (fn) => ['full', 'half', 'area'].forEach((bt) => {
+    [false, true].forEach((vert) => {
+      if (bt !== 'full' && vert) return;   // 3D never rotates; 2D does its own
+      fn(bt, vert, BG.markings(null, bt, vert));
+    });
+  });
+
+  /** A point on the arc at angle t, in marking metres (y DOWN). */
+  const at = (c, t) => ({x: c.cx + c.r * Math.cos(t), y: c.cy + c.r * Math.sin(t)});
+
+  each((bt, vert, m) => {
+    ['left', 'right'].forEach((which) => {
+      const c = which === 'right' ? m.arcRight : m.arcLeft;
+      const box = which === 'right' ? m.penaltyRight : m.penaltyLeft;
+      if (!c || !box) return;
+      const label = bt + (vert ? ' vertical' : '') + ' ' + which;
+
+      it('is entirely OUTSIDE the box: ' + label, () => {
+        /* The definition. Every sampled point of the visible sweep has
+           to be beyond the box, or the arc is drawn through it. */
+        const r = BG.arcRange(m, which);
+        assert.ok(r, 'no range for ' + label);
+        for (let i = 0; i <= 24; i++) {
+          const p = at(c, r.from + (r.to - r.from) * (i / 24));
+          const inside = p.x > box.x + 1e-6 && p.x < box.x + box.w - 1e-6 &&
+                         p.y > box.y + 1e-6 && p.y < box.y + box.h - 1e-6;
+          assert.ok(!inside, label + ': the arc passes through the penalty ' +
+              'area at (' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ')');
+        }
+      });
+
+      it('and the part just outside the sweep is INSIDE it: ' + label, () => {
+        /* The other half, and the one a `return {from:0,to:0}` would
+           pass without: the sweep has to stop exactly where the box
+           starts, not short of it. */
+        const r = BG.arcRange(m, which);
+        const eps = 0.02;
+        [r.from - eps, r.to + eps].forEach((t) => {
+          const p = at(c, t);
+          const inside = p.x >= box.x - 1e-6 && p.x <= box.x + box.w + 1e-6 &&
+                         p.y >= box.y - 1e-6 && p.y <= box.y + box.h + 1e-6;
+          assert.ok(inside, label + ': the sweep stops before the box does — ' +
+              'the arc is clipped shorter than the geometry asks');
+        });
+      });
+
+      it('sweeps a real arc, not a sliver or a whole circle: ' + label, () => {
+        const r = BG.arcRange(m, which);
+        const deg = (r.to - r.from) * 180 / Math.PI;
+        assert.ok(deg > 20 && deg < 340,
+            label + ' sweeps ' + deg.toFixed(1) + ' degrees');
+      });
+    });
+  });
+
+  it('every board type sweeps the SAME angle', () => {
+    /* Same box, same circle, same regulation distances — so the visible
+       fraction cannot depend on which way the board is turned. This is
+       the assertion that catches a case handled by the wrong axis:
+       board3d's old landscape formula gave a half board a different
+       sweep, and a different sweep is a different shape. */
+    const seen = [];
+    each((bt, vert, m) => {
+      ['left', 'right'].forEach((which) => {
+        const r = BG.arcRange(m, which);
+        if (r) seen.push({label: bt + which, deg: (r.to - r.from) * 180 / Math.PI});
+      });
+    });
+    assert.ok(seen.length >= 4, 'expected several arcs; got ' + seen.length);
+    const first = seen[0].deg;
+    seen.forEach((s) => assert.ok(Math.abs(s.deg - first) < 0.01,
+        s.label + ' sweeps ' + s.deg.toFixed(2) + ' but ' + seen[0].label +
+        ' sweeps ' + first.toFixed(2)));
+  });
+
+  it('a board with no second box asks for no second arc', () => {
+    ['half', 'area'].forEach((bt) => {
+      const m = BG.markings(null, bt, false);
+      assert.strictEqual(BG.arcRange(m, 'right'), null,
+          bt + ' has one goal and one arc');
+      assert.ok(BG.arcRange(m, 'left'), bt + ' must still have the attacking one');
+    });
+  });
+
+  it('and the CSS clip agrees with the sweep about which edge', () => {
+    /* Two renderers, one rule — that is the whole point of the shared
+       helper. A clip that insets from the left is an arc opening to the
+       right, and so on; if these ever disagree the 2D and 3D boards are
+       drawing different shapes. */
+    const css = BG.toCss(null, 'half', false);
+    const m = BG.markings(null, 'half', false);
+    assert.ok(/^inset\(\d/.test(css.arcLeft.clip),
+        'a top-edge box must inset from the TOP; got ' + css.arcLeft.clip);
+    const r = BG.arcRange(m, 'left');
+    const mid = (r.from + r.to) / 2;
+    assert.ok(Math.sin(mid) > 0.9,
+        'and the sweep must open downwards to match it');
+  });
+});

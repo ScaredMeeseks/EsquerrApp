@@ -87,6 +87,14 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
 
 Frontend: push to `main` (GitHub Pages; no cache-control headers — users may need a hard refresh after breaking changes). APK: built by CI on the same push, downloadable from the Actions run artifacts.
 
+⚠ **`js/board3d.js` IS NOT PART OF THE FRONTEND DEPLOY.** It is the premium feature and is excluded from
+Pages (`_config.yml`) and from the APK mirror (`scripts/build-www.js`); it reaches the browser only through
+the `getBoard3d` callable, which reads `functions/private/board3d.js`. **So a change to the 3D module needs
+`.\deploy.ps1 functions`, not a push.** This has already bitten once (v179): the version was bumped, the
+frontend pushed, and the server went on serving the previous module — the fix looked as if it had simply
+not worked. `scripts/sync-board3d.js` keeps the copy current and the suite fails on drift, but nothing can
+detect *forgetting to deploy functions at all*.
+
 Rules/functions: via a guard script, never bare `firebase deploy` — the CLI's remembered project once wiped another project's rules, and there are now **two Firebase projects and two accounts on this machine**. Both scripts pass `--project esquerrapp` explicitly; read the `=== Deploying to 'esquerrapp'...` header before confirming.
 
 **Locally (preferred, since 2026-08-08)** — `firebase-tools` 15.x is installed on Windows and `marna96@gmail.com` is bound to this directory:

@@ -6479,3 +6479,40 @@ mutations reported "Exception during run" with no failing test name instead of a
 lazily now, inside the tests.
 
 Unit 1876 → **1884**. Version triple → v179.
+
+### 2026-08-26 — ⚠ board3d.js now ships in the FUNCTIONS deploy (v180)
+
+**The v179 goal fix never reached anybody, and the reason is a consequence of the gate I did not think
+through.** `js/board3d.js` is no longer a public file: it travels inside the `getBoard3d` callable, from
+`functions/private/board3d.js`. So a change to the 3D module is **not** delivered by pushing to Pages — it
+needs `.\deploy.ps1 functions`. v179 bumped the version, pushed the frontend, and left the server serving
+the v178 module with the old goals. The board looked exactly as broken as before the fix.
+
+**THE NEW RULE: touching js/board3d.js means deploying functions.** The deploy scripts already sync the
+copy and the suite already fails on drift; what neither catches is forgetting to deploy at all.
+
+Two real bugs on top of it:
+
+**The penalty arc was missing on half and area boards.** board3d worked the sweep out itself and handled
+only the two LANDSCAPE cases — it clipped against an x edge, so on a portrait board, where the box is at
+the top, it drew a sliver hidden inside the box. board-geom had already solved this for the 2D clip-path,
+with a comment explaining that asking which edge the box is pinned to makes "horizontal, vertical, half and
+area fall out of one rule". So the rule moves into board-geom as `arcRange()` — the same answer in the form
+a canvas wants — and `toCss` and board3d now share the `arcEdge` branch. All four board types sweep 106.1
+degrees, which is the invariant the test asserts: same box, same circle, so the visible fraction cannot
+depend on which way the board is turned.
+
+**The 3D board could hang on "Carregant pissarra 3D".** While the module was a local file the import
+resolved in a millisecond and the element found before it was still the element after it. It is a network
+round trip now, and bindTactics re-renders freely — a firestore sync landing in that window replaces the
+wrapper, so the scene was built inside an orphan while the live board kept its loading message for ever.
+Both the success and the failure paths re-query after the await.
+
+**Two mutations were killed INCIDENTALLY and I nearly believed them.** Any edit to `js/board3d.js` makes it
+drift from `functions/private/board3d.js`, which fails the byte-identity guard — so every board3d mutation
+"died" whatever the tests actually covered. Re-run with a sync in the harness, deleting the arc drawing
+outright passed: nothing checked the arcs were drawn at all. Worth remembering with the git-checkout
+harness bug from earlier today: **a mutation result is a claim about the tests, and it is only as good as
+the harness making it.**
+
+Unit 1884 → **1907**. Version triple → v180.

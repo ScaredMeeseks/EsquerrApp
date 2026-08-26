@@ -285,19 +285,19 @@ export function createBoard3D(opts) {
     rect(m.penaltyLeft); rect(m.penaltyRight);
     rect(m.goalAreaLeft); rect(m.goalAreaRight);
     dot(m.penaltySpotL); dot(m.penaltySpotR);
-    /* The arcs, drawn as the part of the circle outside the box. In 2D
-       this is a clip-path; on a canvas it is an arc range, which is
-       both cheaper and easier to get right. */
-    if (m.arcLeft) {
-      const a = Math.acos(Math.min(1, Math.max(-1,
-          (m.penaltyLeft.x + m.penaltyLeft.w - m.arcLeft.cx) / m.arcLeft.r)));
-      circ(m.arcLeft, -a, a);
-    }
-    if (m.arcRight) {
-      const a = Math.acos(Math.min(1, Math.max(-1,
-          (m.arcRight.cx - m.penaltyRight.x) / m.arcRight.r)));
-      circ(m.arcRight, Math.PI - a, Math.PI + a);
-    }
+    /* The arcs, drawn as the part of the circle outside the box.
+       BOARD-GEOM DECIDES THE SWEEP, not this file. It had its own
+       derivation here and it handled only the two landscape cases: it
+       clipped against an x edge, so on a half or area board — where
+       the box is at the TOP — it drew a sliver hidden inside the box
+       and the arc was simply missing. board-geom already answered the
+       same question for the 2D clip-path; asking it once is what stops
+       the two views disagreeing about a shape neither of them owns. */
+    ['left', 'right'].forEach((which) => {
+      const c = which === 'right' ? m.arcRight : m.arcLeft;
+      const r = BG.arcRange(m, which);
+      if (c && r) circ(c, r.from, r.to);
+    });
     (m.corners || []).forEach((c) => {
       // A whole circle; the pitch edge crops it, same as the 2D board.
       g.beginPath();

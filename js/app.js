@@ -1588,7 +1588,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 179;
+  const APP_VERSION = 180;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7942,11 +7942,21 @@
   }
 
   async function tbMount3D(hooks) {
-    const wrap = document.getElementById('tb-3d-wrap');
-    if (!wrap) return;
+    if (!document.getElementById('tb-3d-wrap')) return;
     hooks = hooks || {};
     try {
       const mod = await tbLoad3D();
+      /* RE-QUERY AFTER THE AWAIT. The module used to be a local file,
+         so the import resolved in a millisecond and the element found
+         before it was still the element after it. It is a network
+         round trip now, and bindTactics re-renders freely — a
+         firestore sync landing in that window replaces the wrapper,
+         and the one captured above is detached. Mounting into it built
+         the whole scene inside an orphan and left the live board
+         sitting on "Carregant pissarra 3D" for ever, which is exactly
+         what a first load looked like. */
+      const wrap = document.getElementById('tb-3d-wrap');
+      if (!wrap) return;          // left the board while it loaded
       /* Remove only the loading message. innerHTML='' would take the
          reset button and the hint with it — they are siblings of the
          canvas, not children of it. */
@@ -8052,8 +8062,16 @@
          or a blocked module. Say so and fall back rather than leaving
          an empty green rectangle. */
       console.error('3D board failed to load:', err);
-      wrap.innerHTML = '<div class="tb-3d-loading">' +
-          sanitize(t('tactics.load_3d_failed')) + '</div>';
+      /* The LIVE wrapper, for the same reason the success path
+         re-queries: the failure can arrive a second or two later now
+         that the module comes over the network, and writing the
+         message into a detached element leaves the board claiming it
+         is still loading. */
+      const live = document.getElementById('tb-3d-wrap');
+      if (live) {
+        live.innerHTML = '<div class="tb-3d-loading">' +
+            sanitize(t('tactics.load_3d_failed')) + '</div>';
+      }
     }
   }
 

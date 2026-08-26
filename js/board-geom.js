@@ -391,6 +391,64 @@
    * the box's pixel aspect matches its metre aspect by construction
    * (see aspectPct).
    */
+  /**
+   * Which edge of the board a penalty area is pinned to.
+   *
+   * The one question a penalty arc has to answer: it shows the part of
+   * its circle on the far side of the box from that edge. Four
+   * hardcoded cases — the old CSS had `inset(0 0 0 75%)` for the left
+   * arc and a mirror for the right — all become wrong the moment the
+   * pitch or the orientation changes; asking the geometry instead
+   * makes horizontal, vertical, half and area fall out of one rule.
+   */
+  function arcEdge(box, e) {
+    if (box.x <= 0.001) return 'left';
+    if (box.x + box.w >= e.ax - 0.001) return 'right';
+    if (box.y <= 0.001) return 'top';
+    return 'bottom';
+  }
+
+  /**
+   * The VISIBLE sweep of a penalty arc, in radians.
+   *
+   * The same rule as the CSS clip below, in the form a canvas wants —
+   * board3d draws its markings into a texture and cannot use an
+   * `inset()`. It had its own derivation, which handled only the two
+   * landscape cases: on a half or area board, where the box is at the
+   * TOP, it clipped against an x edge and drew a sliver hidden inside
+   * the box. The arc was simply missing, which is what a user saw.
+   *
+   * Angles are in the same frame as the markings: x right, y DOWN, so
+   * they hand straight to CanvasRenderingContext2D.arc.
+   */
+  function arcRange(m, which) {
+    var c = m[which === 'right' ? 'arcRight' : 'arcLeft'];
+    var box = m[which === 'right' ? 'penaltyRight' : 'penaltyLeft'];
+    if (!c || !box || !(c.r > 0)) return null;
+    var cl = function (v) { return Math.min(1, Math.max(-1, v)); };
+    var a;
+    switch (arcEdge(box, m.extent)) {
+      /* Box on the left edge: show the part with x beyond its right
+         side, so cos(t) > k and the sweep straddles 0. */
+      case 'left':
+        a = Math.acos(cl((box.x + box.w - c.cx) / c.r));
+        return {from: -a, to: a};
+      // Mirror: cos(t) < k, straddling pi.
+      case 'right':
+        a = Math.acos(cl((box.x - c.cx) / c.r));
+        return {from: a, to: 2 * Math.PI - a};
+      /* Box on the top edge: show the part BELOW it, so sin(t) > k —
+         and with y pointing down that is the sweep straddling pi/2. */
+      case 'top':
+        a = Math.asin(cl((box.y + box.h - c.cy) / c.r));
+        return {from: a, to: Math.PI - a};
+      // Mirror: sin(t) < k, straddling 3pi/2.
+      default:
+        a = Math.asin(cl((box.y - c.cy) / c.r));
+        return {from: Math.PI - a, to: 2 * Math.PI + a};
+    }
+  }
+
   function toCss(pitch, boardType, vertical) {
     var m = markings(pitch, boardType, vertical);
     var e = m.extent;
@@ -419,18 +477,22 @@
       var c = m[pair[0]], box = m[pair[1]];
       if (!out[pair[0]] || !c || !box) return;
       var lo, frac;
-      if (box.x <= 0.001) {                       // box on the left edge
-        lo = c.cx - c.r; frac = (box.x + box.w - lo) / (c.r * 2);
-        out[pair[0]].clip = 'inset(0 0 0 ' + pctOf(frac) + '%)';
-      } else if (box.x + box.w >= e.ax - 0.001) { // right edge
-        lo = c.cx - c.r; frac = (box.x - lo) / (c.r * 2);
-        out[pair[0]].clip = 'inset(0 ' + pctOf(1 - frac) + '% 0 0)';
-      } else if (box.y <= 0.001) {                // top edge
-        lo = c.cy - c.r; frac = (box.y + box.h - lo) / (c.r * 2);
-        out[pair[0]].clip = 'inset(' + pctOf(frac) + '% 0 0 0)';
-      } else {                                    // bottom edge
-        lo = c.cy - c.r; frac = (box.y - lo) / (c.r * 2);
-        out[pair[0]].clip = 'inset(0 0 ' + pctOf(1 - frac) + '% 0)';
+      switch (arcEdge(box, e)) {
+        case 'left':
+          lo = c.cx - c.r; frac = (box.x + box.w - lo) / (c.r * 2);
+          out[pair[0]].clip = 'inset(0 0 0 ' + pctOf(frac) + '%)';
+          break;
+        case 'right':
+          lo = c.cx - c.r; frac = (box.x - lo) / (c.r * 2);
+          out[pair[0]].clip = 'inset(0 ' + pctOf(1 - frac) + '% 0 0)';
+          break;
+        case 'top':
+          lo = c.cy - c.r; frac = (box.y + box.h - lo) / (c.r * 2);
+          out[pair[0]].clip = 'inset(' + pctOf(frac) + '% 0 0 0)';
+          break;
+        default:
+          lo = c.cy - c.r; frac = (box.y - lo) / (c.r * 2);
+          out[pair[0]].clip = 'inset(0 0 ' + pctOf(1 - frac) + '% 0)';
       }
     });
     ['centerSpot', 'penaltySpotL', 'penaltySpotR'].forEach(function (k) {
@@ -504,6 +566,8 @@
     isRotated: isRotated,
     extent: extent,
     aspectPct: aspectPct,
+    /** The visible sweep of a penalty arc — see arcRange. */
+    arcRange: arcRange,
     markings: markings,
     toCss: toCss,
     toWorld: toWorld,

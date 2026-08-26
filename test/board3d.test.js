@@ -2735,6 +2735,37 @@ describe('the goals stand on the goal lines, in every view', () => {
         'a portrait goal must be rotated a quarter turn');
   });
 
+  it('the arcs come from board-geom, not from a second derivation', () => {
+    /* board3d used to work the sweep out itself and handled only the
+       two landscape cases — it clipped against an x edge, so a half or
+       area board drew a sliver hidden inside its own penalty box and
+       the arc was missing. board-geom already answered this for the 2D
+       clip-path; one rule, two renderers.
+
+       Found by mutation, twice over: deleting the arc drawing was
+       killed only INCIDENTALLY, by the byte-identity guard noticing
+       that functions/private/board3d.js had drifted. Nothing actually
+       checked the arcs were drawn at all. */
+    const src2 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
+    /* markingsTexture, which is where the lines are painted —
+       buildPitch only hangs the result on the turf. The first version
+       of this sliced buildPitch and failed on correct code, because
+       the arcs are drawn one function earlier. */
+    const pitch = src2.slice(src2.indexOf('function markingsTexture'),
+        src2.indexOf('function buildPitch'));
+    assert.ok(pitch.length > 500, 'the markingsTexture slice looks wrong');
+    assert.ok(/BG\.arcRange\(m, which\)/.test(pitch),
+        'the sweep must come from board-geom');
+    assert.ok(/circ\(c, r\.from, r\.to\)/.test(pitch),
+        'and be USED — a circ() without a range draws the whole circle, ' +
+        'straight through the penalty area');
+    assert.ok(!/Math\.acos\(/.test(pitch),
+        'no second derivation may survive here: ' + (pitch.match(/Math\.acos\([^)]*\)/) || [''])[0]);
+    /* And the module it delegates to really offers it. */
+    assert.ok(typeof require('../js/board-geom.js').arcRange === 'function',
+        'board-geom must export arcRange');
+  });
+
   it('the mouth is measured by its SPAN, never by its height', () => {
     /* gl.h is 2.44 m of goal above the turf and is not a plan
        measurement at all. Using it as one is what the full board hid. */

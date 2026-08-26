@@ -195,6 +195,32 @@ describe('the client loads it through the callable', () => {
         'vendor/ must stay on Pages — the blob module fetches three.js by URL');
   });
 
+  it('the mount re-reads the window AFTER the load', () => {
+    /* THE ONE THE NETWORK INTRODUCED. While the module was a local
+       file the import resolved in a millisecond and the element found
+       before it was still the element after it. It is a round trip
+       now, and bindTactics re-renders freely — a firestore sync
+       landing in that window replaces the wrapper, and the captured
+       one is detached. The scene was then built inside an orphan and
+       the live board sat on "Carregant pissarra 3D" for ever, which is
+       what a first load looked like. */
+    const m = app.slice(app.indexOf('async function tbMount3D'),
+        app.indexOf('function tbFieldInnerStyle'));
+    const iLoad = m.indexOf('await tbLoad3D()');
+    const iQuery = m.indexOf("const wrap = document.getElementById('tb-3d-wrap')");
+    assert.ok(iLoad !== -1 && iQuery !== -1, 'the mount path was not found');
+    assert.ok(iQuery > iLoad,
+        'the wrapper must be looked up AFTER the await, not before');
+    assert.ok(/if \(!wrap\) return;/.test(m.slice(iQuery)),
+        'and the mount must stand down if the coach has left the board');
+    /* The failure path has the same window and the same problem: a
+       message written into a detached element leaves the live board
+       claiming it is still loading. */
+    const cat = m.slice(m.indexOf('} catch (err)'));
+    assert.ok(/const live = document\.getElementById\('tb-3d-wrap'\)/.test(cat),
+        'the failure message must go to the live wrapper too');
+  });
+
   it('caches the module for the session', () => {
     /* A coach enters and leaves 3D a dozen times in a sitting; each of
        those is a callable and 117 KB otherwise. */
