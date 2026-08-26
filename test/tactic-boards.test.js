@@ -324,7 +324,10 @@ describe('changing the formation resets the animation', () => {
     // localStorage would let the very next mutation put them straight back.
     const body = formationHandler();
     assert.ok(/frames\s*=\s*\[\]/.test(body), 'in-memory frames not reset');
-    assert.ok(/activeFrameIdx\s*=\s*-1/.test(body), 'active frame index not reset');
+    /* Through setActiveFrame, like every other move: the local and the
+       stored copy have to change together or the trajectory layer is
+       drawn against the frame the coach has just left. */
+    assert.ok(/setActiveFrame\(-1\)/.test(body), 'active frame index not reset');
   });
 
   it('asks before discarding a real animation', () => {

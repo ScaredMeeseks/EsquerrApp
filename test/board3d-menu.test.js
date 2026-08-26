@@ -559,7 +559,7 @@ describe('the camera menu and the frames rail', () => {
   it('frame 1 is seeded, so the rail is never an empty column', () => {
     assert.ok(/if \(!frames\.length\) \{[\s\S]{0,160}captureFrameState\(\)/.test(bare),
         'entering 3D with no frames must seed one from the board');
-    assert.ok(/activeFrameIdx = 0;/.test(bare), 'and select it');
+    assert.ok(/setActiveFrame\(0\);/.test(bare), 'and select it');
   });
 });
 

@@ -6279,3 +6279,48 @@ Every one of the first three passed its test.
 Four mutations, all killed.
 
 Unit **1814**, unchanged. Version triple → v174. **Still nothing deployed.**
+
+### 2026-08-26 — The previous frame was one behind (v175)
+
+Reported as a hunch — "on the 3rd frame creation the code takes Frame 1 as the previous frame instead of
+frame 2, might happen with more frames too" — and it is exactly right, in both halves and at every count.
+
+**One: the stored index was published too late.** `activeFrameIdx` is a local of bindTactics;
+`fa_tactic_frame_idx` is the copy everything OUTSIDE reads — `tbPaths2D` and `tb3dState` both derive "the
+previous frame" from it. Only `saveFrames()` wrote that copy, and every caller did the same three things in
+the same wrong order:
+
+```
+activeFrameIdx = i;
+applyFrameState(frames[i]);   // ends in tb3dTouch()
+saveFrames();                 // ...which is where i lands
+```
+
+`tb3dTouch()` draws the 2D trajectory layer **synchronously**, so it read an index still pointing at the
+frame just left, and drew the move into THAT frame. On creating frame 3 you saw the curve from frame 1 to
+frame 2. **The 3D scene escaped it by accident** — its half of `tb3dTouch` is deferred to an animation
+frame, by which time `saveFrames()` had run — which is why this only ever showed on the flat board.
+
+Fixed at the root rather than per site: `setActiveFrame(i)` writes both, and every one of the nine
+assignments now goes through it. A test asserts no `activeFrameIdx =` survives outside the declaration and
+the setter, so a tenth caller cannot reintroduce it.
+
+**Two: a new frame inherited the last one's curves.** `addFrame` deep-clones the previous frame and resets
+`duration` — but not `paths`, which describes the move INTO a frame: where each object curved on its way
+here and how high the ball went. The new frame is a copy of the last one's POSITIONS, so nothing has moved
+into it yet, and the inherited curves bent the coach's next move along a trajectory drawn for a different
+pair of frames. Dropped, for the same reason `duration` is.
+
+Also found while fixing: the declaration clamps a stored index to the frame count and never wrote the clamp
+back, so a board saved with four frames and reopened with two came up drawing a transition between frames
+that no longer existed. And **the test found three more instances I had missed** — the end-of-playback
+resets and the play button's own start, all of which applied frame 0 before saying they had.
+
+`test/frames.test.js` is new, and unlike most of the board suites it mostly RUNS things: `addFrame` is small
+and depends only on what can be passed in, so it is evaluated against stubs that record their call ORDER —
+which is the whole of the bug. The frame-derivation helpers are pure functions of localStorage and are run
+against a fake one, at every index including both ends.
+
+Eight mutations, all killed.
+
+Unit 1814 → **1831**. Version triple → v175. **Still nothing deployed.**

@@ -1582,7 +1582,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 174;
+  const APP_VERSION = 175;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -13993,9 +13993,14 @@
           list.classList.remove('open');
           if (frames.length) {
             frames = [];
-            activeFrameIdx = -1;
             localStorage.removeItem('fa_tactic_frames');
+            /* AFTER the removeItem, not before. setActiveFrame writes
+               the key; removing it afterwards would put the two back
+               out of step in the other direction — and -1 is the
+               honest value here, read identically to an absent key by
+               _tb3dIdx() and by the next mount. */
             localStorage.removeItem('fa_tactic_frame_idx');
+            setActiveFrame(-1);
             if (typeof renderFrameStrip === 'function') renderFrameStrip();
           }
           localStorage.setItem('fa_tactic_formation', f);
@@ -15055,6 +15060,13 @@
     // ===== Frames (animation keyframes) =====
     let frames = JSON.parse(localStorage.getItem('fa_tactic_frames') || '[]');
     let activeFrameIdx = frames.length ? Math.min(Number(localStorage.getItem('fa_tactic_frame_idx') || 0), frames.length - 1) : -1;
+    /* The clamp above has to be written BACK. A board saved with four
+       frames and reopened with two leaves the stored index pointing
+       past the end, and that stored index is what tbPaths2D and
+       tb3dState read — so the board came up drawing a transition
+       between frames that were no longer there. Persisted here so the
+       two agree from the first render, not from the first edit. */
+    localStorage.setItem('fa_tactic_frame_idx', activeFrameIdx);
     let framePlaying = false;
           if (_tb3d) _tb3d.setPlaying(false);
 
@@ -15294,6 +15306,36 @@
       localStorage.setItem('fa_tactic_frame_idx', activeFrameIdx);
     }
 
+    /**
+     * Move to a frame, and SAY SO before anything reads it.
+     *
+     * `activeFrameIdx` is a local of bindTactics; `fa_tactic_frame_idx`
+     * is the copy that everything outside this function reads —
+     * tbPaths2D and tb3dState both derive "the previous frame" from
+     * it. Until now only saveFrames() wrote that copy, and every caller
+     * did the same three things in the same wrong order:
+     *
+     *     activeFrameIdx = i;
+     *     applyFrameState(frames[i]);   // ends in tb3dTouch()
+     *     saveFrames();                 // ...which is where i lands
+     *
+     * tb3dTouch() calls tbPaths2D() SYNCHRONOUSLY, so the trajectory
+     * layer was drawn while the stored index still pointed at the frame
+     * the coach had just left. It drew the move INTO that frame instead
+     * of the move into this one: on creating frame 3 you saw the curve
+     * from frame 1 to frame 2, and one frame behind at every count.
+     *
+     * The 3D scene escaped it by accident — its half of tb3dTouch is
+     * deferred to an animation frame, by which time saveFrames() has
+     * run — which is why this only ever showed on the flat board.
+     *
+     * Assigning through here makes the two impossible to separate.
+     */
+    function setActiveFrame(i) {
+      activeFrameIdx = i;
+      localStorage.setItem('fa_tactic_frame_idx', i);
+    }
+
     function autoSaveFrame() {
       if (activeFrameIdx >= 0 && activeFrameIdx < frames.length && !framePlaying) {
         const existingDur = frames[activeFrameIdx].duration || 1000;
@@ -15334,7 +15376,7 @@
         th.addEventListener('click', () => {
           const idx = Number(th.dataset.frameIdx);
           if (idx === activeFrameIdx) return;
-          activeFrameIdx = idx;
+          setActiveFrame(idx);
           applyFrameState(frames[idx]);
           saveFrames();
           renderFrameStrip();
@@ -15345,10 +15387,10 @@
           e.stopPropagation();
           const idx = Number(btn.dataset.delIdx);
           frames.splice(idx, 1);
-          if (frames.length === 0) { activeFrameIdx = -1; }
-          else if (activeFrameIdx >= frames.length) { activeFrameIdx = frames.length - 1; applyFrameState(frames[activeFrameIdx]); }
-          else if (idx === activeFrameIdx) { activeFrameIdx = Math.min(idx, frames.length - 1); applyFrameState(frames[activeFrameIdx]); }
-          else if (idx < activeFrameIdx) { activeFrameIdx--; }
+          if (frames.length === 0) { setActiveFrame(-1); }
+          else if (activeFrameIdx >= frames.length) { setActiveFrame(frames.length - 1); applyFrameState(frames[activeFrameIdx]); }
+          else if (idx === activeFrameIdx) { setActiveFrame(Math.min(idx, frames.length - 1)); applyFrameState(frames[activeFrameIdx]); }
+          else if (idx < activeFrameIdx) { setActiveFrame(activeFrameIdx - 1); }
           saveFrames();
           renderFrameStrip();
         });
@@ -15371,8 +15413,19 @@
       // Duplicate the last frame (regardless of which frame is selected)
       const lastFrame = frames.length > 0 ? JSON.parse(JSON.stringify(frames[frames.length - 1])) : captureFrameState();
       lastFrame.duration = 1000;
+      /* THE CURVES DO NOT COME WITH IT.
+         `paths` describes the move INTO a frame — where each object
+         curved on its way here, and how high the ball went. The new
+         frame is a copy of the last one's POSITIONS, so nothing has
+         moved into it yet and the inherited curves describe the
+         previous transition. Left in place they bent the next move the
+         coach made along a trajectory drawn for a different pair of
+         frames. Dropped for the same reason `duration` is reset. */
+      delete lastFrame.paths;
       frames.push(lastFrame);
-      activeFrameIdx = frames.length - 1;
+      /* Before applyFrameState, which ends in tb3dTouch() and so reads
+         the stored index back out. See setActiveFrame. */
+      setActiveFrame(frames.length - 1);
       applyFrameState(lastFrame);
       saveFrames();
       renderFrameStrip();
@@ -15391,15 +15444,15 @@
       deactivateDrawTools();
       clearSelection();
       let fIdx = 0;
+      setActiveFrame(0);
       applyFrameState(frames[0]);
-      activeFrameIdx = 0;
       renderFrameStrip();
 
       function playNext() {
         if (!framePlaying || fIdx >= frames.length - 1) {
+          setActiveFrame(0);
           applyFrameState(frames[0]);
           refreshArrowheads(arrowsSvg);
-          activeFrameIdx = 0;
           renderFrameStrip();
           framePlaying = false;
           if (_tb3d) _tb3d.setPlaying(false);
@@ -15412,14 +15465,14 @@
         const startT = performance.now();
 
         function animate(now) {
-          if (!framePlaying) { applyFrameState(frames[0]); refreshArrowheads(arrowsSvg); activeFrameIdx = 0; renderFrameStrip(); playBtn.classList.remove('playing'); return; }
+          if (!framePlaying) { setActiveFrame(0); applyFrameState(frames[0]); refreshArrowheads(arrowsSvg); renderFrameStrip(); playBtn.classList.remove('playing'); return; }
           const t = Math.min((now - startT) / dur, 1);
           interpolateAndApply(from, to, t);
           if (t < 1) {
             requestAnimationFrame(animate);
           } else {
             fIdx++;
-            activeFrameIdx = fIdx;
+            setActiveFrame(fIdx);
             applyFrameState(frames[fIdx]);
             refreshArrowheads(arrowsSvg);
             renderFrameStrip();
@@ -15427,9 +15480,9 @@
               setTimeout(playNext, 0);
             } else {
               setTimeout(() => {
+                setActiveFrame(0);
                 applyFrameState(frames[0]);
                 refreshArrowheads(arrowsSvg);
-                activeFrameIdx = 0;
                 renderFrameStrip();
                 framePlaying = false;
           if (_tb3d) _tb3d.setPlaying(false);
@@ -15685,7 +15738,7 @@
          3D-only when the rail was; the rail is both views now. */
       if (!frames.length) {
         frames = [captureFrameState()];
-        activeFrameIdx = 0;
+        setActiveFrame(0);
         saveFrames();
         renderFrameStrip();
       }
