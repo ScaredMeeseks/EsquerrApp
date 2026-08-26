@@ -760,3 +760,72 @@ describe('the file actions moved into the menu', () => {
         'written twice: ' + [...new Set(dup)].join(', '));
   });
 });
+
+describe('the board takes the content area, and gives it back', () => {
+  const rule = (sel) => {
+    const i = css.indexOf(sel + ' {');
+    assert.ok(i !== -1, sel + ' not found');
+    return css.slice(i, css.indexOf('}', i));
+  };
+
+  it('the flush class is toggled OFF as well as on', () => {
+    /* The dangerous half. Added in the tactics code and never
+       removed, every other page in the app would lose its 2rem — and
+       the symptom would appear on a page nobody was working on. One
+       expression, both arms. */
+    assert.ok(/classList\.toggle\('dashboard-flush',\s*\n?\s*currentPage === 'tactics' && tbIs3D\(\)\)/
+        .test(bare), 'the flush class must be a toggle on a condition, not an add');
+    assert.ok(!/classList\.add\('dashboard-flush'\)/.test(bare),
+        'never added unconditionally');
+  });
+
+  it('the header goes only in 3D, and only in the editor', () => {
+    /* The board-type picker still needs a title — it is a page with
+       nothing else on it — and 2D keeps its own by the owner's
+       decision. */
+    /* TWO titles are rendered — the picker's and the editor's — and
+       exactly one of them is conditional. Counting bare matches said
+       one, because the conditional one contains the same substring;
+       the count was wrong, not the code. */
+    const titles = (app.match(/<h2 class="page-title">\$\{t\('page\.tactical_board'\)\}<\/h2>/g) || []);
+    assert.strictEqual(titles.length, 2, 'the picker and the editor each render one');
+    const guarded = (app.match(/\$\{is3d \? '' : `<h2 class="page-title">/g) || []);
+    assert.strictEqual(guarded.length, 1,
+        'exactly one — the editor\'s — is dropped in 3D; the picker is a page ' +
+        'with nothing else on it and keeps its title');
+  });
+
+  it('the announcement fires on entering the tab, not on every render', () => {
+    /* isNav is already the distinction between a navigation and the
+       many re-renders that are not one — a firestore sync, a language
+       change, the category bar, and every toggle in the board's own
+       menu. Fired on those, the title would flash each time the coach
+       picked a formation. */
+    assert.ok(/if \(isNav && currentPage === 'tactics' && tbIs3D\(\)\)/.test(bare),
+        'the flash must be gated on isNav');
+    const flash = fn('tbFlashPageTitle(text)');
+    assert.ok(/_tbFlashTimers\.forEach\(clearTimeout\)/.test(flash),
+        'a pending fade from the last visit would cut this one short');
+    assert.ok(/requestAnimationFrame\(\(\) => requestAnimationFrame\(/.test(flash),
+        'two frames: a class on an element the browser has not laid out ' +
+        'has no start state to transition from, and the label just appears');
+  });
+
+  it('the announcement cannot swallow a click on the board', () => {
+    const r = rule('.tb-page-flash');
+    assert.ok(/pointer-events:none/.test(r),
+        'it sits over the board for two seconds and must not take a click');
+    assert.ok(/position:fixed/.test(r),
+        'centred on the viewport, not on whatever the board is doing');
+  });
+
+  it('one label at a time, removed after it fades', () => {
+    const flash = fn('tbFlashPageTitle(text)');
+    assert.ok(/document\.body\.contains\(_tbFlashEl\)/.test(flash),
+        'the node is reused — two labels crossing is worse than none');
+    const hide = flash.indexOf('2000');
+    const drop = flash.indexOf('2600');
+    assert.ok(hide !== -1 && drop !== -1 && drop > hide,
+        'it must be removed AFTER the fade-out, or it vanishes instead');
+  });
+});

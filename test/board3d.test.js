@@ -238,40 +238,30 @@ describe('the 3D surface is bigger than the 2D one', () => {
   const css = fs2.readFileSync(p2.join(__dirname, '..', 'css', 'style.css'), 'utf8');
   const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
 
-  it('bleeds to the card edge, cancelling exactly the card padding', () => {
-    /* This used to assert a `max-width` above 820px — the 3D window
-       has to be wider than the 2D board because at an angle the far
-       half is foreshortened. It is wider still now: it takes the
-       whole card. The cap it pinned is gone, so the test asserts the
-       bleed, and asserts it against the card's REAL padding rather
-       than a number typed twice. Two numbers that must agree, read
-       from the two places they are written. */
+  it('fills the content area, with no negative margins to do it', () => {
+    /* The mechanism changed three times, so it is worth saying which
+       one is in force. It began as a max-width cap; became a bleed
+       cancelling the card's padding on two edges, then three, then
+       four; and now there is no card padding left to cancel — the
+       card gives up its box and the content area gives up its 2rem,
+       so the board simply fills what remains.
+
+       NO negative margin, deliberately. The update and push banners
+       render into #dashboard-content too, and pulling the board up by
+       2rem would slide it OVER one on the days it appears. */
     const wrap = css.slice(css.indexOf('.tb-3d-wrap {'), css.indexOf('.tb-3d-loading'));
     assert.ok(!/max-width:\d+px/.test(wrap),
-        'a width cap would stop it reaching the card edge');
+        'a width cap would stop it filling the area');
+    assert.ok(!/margin:-/.test(wrap),
+        'a negative margin would slide the board over a banner: ' + wrap);
+    assert.ok(/border-radius:0/.test(wrap), 'square, flush on every side');
 
-    const card = css.slice(css.indexOf('.card {'), css.indexOf('.card-title'));
-    const pad = /padding:\s*([\d.]+)rem/.exec(card);
-    assert.ok(pad, 'card padding not found: ' + card);
-    const p = parseFloat(pad[1]);
-
-    /* ALL FOUR edges now. It started as sides only, then gained the
-       top; the bottom followed once tags — the last thing rendered
-       below the window — moved into the menu, leaving nothing inside
-       the card for the window to make room for. */
-    const marg = /margin:-([\d.]+)rem;/.exec(wrap);
-    assert.ok(marg, 'the window must pull out to the card edge on every side: ' + wrap);
-    assert.strictEqual(parseFloat(marg[1]), p,
-        'the bleed must cancel the card padding exactly');
-    /* And with nothing meeting it on any side, it takes the card's own
-       radius the whole way round. */
-    assert.ok(/border-radius:var\(--radius\);/.test(wrap),
-        'all four corners must be rounded now, not just the top two');
-
-    const w = /width:calc\(100% \+ ([\d.]+)rem\)/.exec(wrap);
-    assert.ok(w, 'the window must grow by what it pulled out on both sides');
-    assert.strictEqual(parseFloat(w[1]), p * 2,
-        'growing by anything but twice the padding leaves a gap or overflows');
+    const card = css.slice(css.indexOf('.card.tb-card-3d {'),
+        css.indexOf('}', css.indexOf('.card.tb-card-3d {')));
+    assert.ok(/padding:0/.test(card) && /background:none/.test(card),
+        'the card must stop being a box in 3D: ' + card);
+    assert.ok(/\.dashboard-flush \{ padding:0 !important; \}/.test(css),
+        'and the content area must give up its own padding');
   });
 
   it('takes its height from the viewport, measured rather than guessed', () => {

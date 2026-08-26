@@ -5797,3 +5797,37 @@ hidden**. Adding a section below the board without handling it now fails there, 
 as the window mysteriously not reaching the edge.
 
 Unit 1725 → **1726**. Version triple → v160. **Still nothing deployed.**
+
+### 2026-08-26 — The 3D board takes the content area, and the title becomes an announcement (v161)
+
+**Full bleed, without a single negative margin.** The board now fills the area beside the sidebar,
+square and flush. It does that by *removing* padding rather than pulling against it: a
+`dashboard-flush` class drops `#dashboard-content`'s 2rem, and `tb-card-3d` stops the card being a box.
+
+The negative margin was the obvious move and would have been wrong: `renderUpdateBanner()` and
+`renderPushBanner()` render into that same element, so a `-2rem` top margin slides the board **over**
+a banner on the days one is showing. Nothing about that would have been visible in a test, or on any
+day without a banner.
+
+**The flush class is toggled — both arms — in one expression, in the page dispatcher.** Added inside
+the tactics code and never removed, every other page in the app would lose its padding, and the
+symptom would appear on a page nobody had touched. There is a test for the removal specifically.
+
+**The header is now an announcement**, in 3D only: the editor's `page-title` is dropped and a label
+fades in at top centre, holds 2s and fades out. The board-type picker keeps its title — it is a page
+with nothing else on it — and 2D keeps its own, deferred by the owner.
+
+Three details it needs to behave:
+- **Gated on `isNav`**, which `navigate()` already computes to tell a real page change from the many
+  re-renders that are not one. Fired on renders instead, the title would flash every time the coach
+  picked a formation or toggled the theme.
+- **Two `requestAnimationFrame`s**, not one: a class added to an element the browser has not yet laid
+  out has no start state to transition from, and the label would appear rather than fade.
+- **`pointer-events:none`**, since it sits over the board for two seconds and must not eat a click;
+  and one reused node with its timers cleared, so a fade still running from the last visit cannot cut
+  the new one short.
+
+The height follows on its own — `tbSize3DWindow()` measures the top offset, which just moved up — and
+its 16px bottom gap is gone for a genuine bleed.
+
+Unit 1726 → **1731**. Version triple → v161. **Still nothing deployed.**

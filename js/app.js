@@ -1578,7 +1578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 160;
+  const APP_VERSION = 161;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4847,6 +4847,32 @@
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
     }
 
+    /* The 3D board runs to the edges of the content area, so the area
+       gives up its padding while that board is showing.
+
+       A class rather than a negative margin on the board itself: the
+       banners above are rendered into this same element, and a
+       negative top margin would slide the board up OVER one on the
+       days an update or push banner is showing. With the padding
+       simply gone, the banners still stack and the board fills what
+       is left.
+
+       Toggled — both arms — in this one place. Adding it somewhere in
+       the tactics code and never removing it would leave every other
+       page in the app without its 2rem. */
+    content.classList.toggle('dashboard-flush',
+        currentPage === 'tactics' && tbIs3D());
+
+    /* The page title, announced rather than parked.
+       Only on ENTERING the tab — `isNav` is already the distinction
+       between a navigation and the many re-renders that are not one:
+       a firestore sync, a language change, the category bar, and
+       every toggle in the board's own menu. Fired on any of those,
+       the title would flash each time the coach picked a formation. */
+    if (isNav && currentPage === 'tactics' && tbIs3D()) {
+      tbFlashPageTitle(t('page.tactical_board'));
+    }
+
     /* A new page starts at the top. #view-dashboard is a fixed shell, so the
        window never scrolls here — .dashboard-content is the scroller, and
        replacing its innerHTML leaves its scrollTop exactly where it was.
@@ -7163,11 +7189,49 @@
     const top = wrap.getBoundingClientRect().top;
     /* A little air below, so the window does not butt against the
        bottom edge and hide that the page scrolls on. */
-    const h = Math.max(420, Math.round(window.innerHeight - top - 16));
+    const h = Math.max(420, Math.round(window.innerHeight - top));
     wrap.style.height = h + 'px';
     /* board3d watches the wrapper with a ResizeObserver, so the
        canvas and the camera aspect follow from here without this
        function knowing anything about them. */
+  }
+
+  /**
+   * Say which page this is, briefly, instead of parking a header.
+   *
+   * A single body-level node reused across calls, like #roster-tooltip
+   * — a fresh one per navigation would leave the previous one mid-fade
+   * if the coach moved quickly, and two labels crossing is worse than
+   * none.
+   *
+   * The timers are cleared before each run for the same reason the
+   * menu clears its hover timer on teardown: a pending fade-out from
+   * the last visit would cut this one short.
+   */
+  var _tbFlashEl = null;
+  var _tbFlashTimers = [];
+  function tbFlashPageTitle(text) {
+    _tbFlashTimers.forEach(clearTimeout);
+    _tbFlashTimers = [];
+    if (!_tbFlashEl || !document.body.contains(_tbFlashEl)) {
+      _tbFlashEl = document.createElement('div');
+      _tbFlashEl.className = 'tb-page-flash';
+      document.body.appendChild(_tbFlashEl);
+    }
+    const el = _tbFlashEl;
+    el.textContent = text;
+    el.classList.remove('tb-flash-on');
+    /* Two frames, not one: the class has to land on an element the
+       browser has already laid out, or there is no start state to
+       transition FROM and it simply appears. */
+    requestAnimationFrame(() => requestAnimationFrame(
+        () => el.classList.add('tb-flash-on')));
+    _tbFlashTimers.push(setTimeout(() => el.classList.remove('tb-flash-on'), 2000));
+    /* Removed only after the fade has finished, or it vanishes. */
+    _tbFlashTimers.push(setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      if (_tbFlashEl === el) _tbFlashEl = null;
+    }, 2600));
   }
 
   /** Tear down the 3D view. Safe to call when there is none. */
@@ -10830,13 +10894,13 @@
     const tplId = tbEditingTemplateId();
 
     return `
-      <h2 class="page-title">${t('page.tactical_board')}</h2>
+      ${is3d ? '' : `<h2 class="page-title">${t('page.tactical_board')}</h2>`}
       ${tplId ? `<div class="card tb-tpl-banner">
         <strong>Editant plantilla de la biblioteca</strong>
         <span>«${sanitize(savedName || 'sense nom')}»</span>
         <button class="btn btn-small btn-outline" id="tb-tpl-exit">Tornar a la biblioteca</button>
       </div>` : ''}
-      <div class="card">
+      <div class="card${is3d ? ' tb-card-3d' : ''}">
         <div class="tb-controls${is3d ? ' tb-controls-3d' : ''}">
           <label class="tb-label">${t('tactics.formation')}</label>
           <div class="tb-formation-wrap" id="tb-formation-wrap">
