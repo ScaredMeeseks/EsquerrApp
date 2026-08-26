@@ -25,6 +25,36 @@ const app = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
 /* Comments discuss the very ids and classes under test. */
 const bare = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+/* And the stylesheet's comments do the same, at length. This one was
+   not stripped for a long time and it cost a real assertion: a rule
+   whose comment explained why it sets `min-height:0` satisfied a test
+   for `min-height:0` after the declaration itself was deleted. */
+const cssBare = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+/**
+ * The declarations of ONE rule, by exact selector.
+ *
+ * There were SIX copies of this in this file, all
+ * `css.slice(indexOf(sel + ' {'), indexOf('}'))`, and both of their
+ * weaknesses bit:
+ *
+ *  - they read the COMMENT above and inside a block as if it were
+ *    part of the rule, so prose about a declaration passed as the
+ *    declaration;
+ *  - `indexOf` finds a selector anywhere, so `.tb-m-entry` matched
+ *    `.tb-m-entry.tb-m-hot > .tb-m-ico` and an assertion about the
+ *    entry silently became one about the thing growing inside it.
+ *
+ * Anchored to the start of a line, and against the comment-stripped
+ * sheet. One copy, so a fix here is a fix everywhere.
+ */
+const rule = (sel) => {
+  const re = new RegExp('^' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+      '\\s*\\{([^}]*)\\}', 'm');
+  const m = re.exec(cssBare);
+  assert.ok(m, sel + ' has no rule of its own');
+  return m[1];
+};
 
 /* Slice a function out of the comment-stripped source, bounded by the
    NEXT declaration at the same indent.
@@ -204,6 +234,89 @@ describe('the 3D menu — it moves controls, it does not copy them', () => {
         'the 3D-flavoured name must be gone from both files');
     assert.ok(/\.tb-controls-off \{ display:none !important; \}/.test(css),
         'and it must actually hide it');
+  });
+
+  it('the entries have no ground of their own', () => {
+    /* Nine dark pills stacked down the corner read as a panel sitting
+       on the pitch. Without them they read as labels on it — but that
+       leaves the text with nothing between it and a light turf theme,
+       so the shadow is not decoration here, it is the legibility. */
+    const e = rule('.tb-m-entry');
+    assert.ok(!/background:/.test(e), 'no plate behind an entry: ' + e);
+    assert.ok(!/backdrop-filter/.test(e),
+        'and nothing to blur, with no ground to blur through');
+    assert.ok(/text-shadow:/.test(e),
+        'a label with no ground still has to be readable over the turf');
+    /* The hamburger KEEPS its ground — it is a button, and it is the
+       one thing that has to be findable before the menu is open. */
+    assert.ok(/background:rgba\(/.test(rule('.tb-m-btn')),
+        'the hamburger itself is a control and keeps its plate');
+  });
+
+  it('hovering one entry lifts it and drops the others', () => {
+    assert.ok(/\.tb-m-rail:hover \.tb-m-entry \{ opacity:\.\d+; \}/.test(css),
+        'the rest must dim while one is pointed at');
+    assert.ok(/\.tb-m-rail:hover \.tb-m-entry:hover,\s*\n\.tb-m-entry\.tb-m-hot \{ opacity:1/
+        .test(css), 'and the one under the pointer must come back up');
+    /* Transitions mention opacity too, so strip them before asking
+       whether the entry SETS one — the first version of this read the
+       word inside `transition:` and failed on correct CSS. */
+    const decls = rule('.tb-m-entry').replace(/transition:[^;]*;/g, '');
+    assert.ok(!/opacity/.test(decls),
+        'but a rail nobody is pointing at must be evenly legible — the ' +
+        'dimming belongs to the :hover state, not to the entry');
+  });
+
+  it('the growth is on the children, never on the entry', () => {
+    /* THE TRAP. A transform on .tb-m-entry makes it the containing
+       block for its absolutely positioned descendants — so scaling the
+       entry would have scaled the PANEL inside it, and the club
+       library would have opened 8% larger and resampled. */
+    assert.ok(!/transform:/.test(rule('.tb-m-entry')),
+        'the entry itself must never be transformed — it is the ' +
+        'positioning parent of its own panel');
+    assert.ok(/\.tb-m-entry\.tb-m-hot > \.tb-m-label \{ transform:scale\(/.test(css),
+        'the icon and label carry the growth instead');
+    assert.ok(/\.tb-m-ico, \.tb-m-label \{\s*\n\s*transform-origin:left center;/.test(css),
+        'grown from the left, which is the rail\'s own axis — from the ' +
+        'centre they would drift sideways as they grew');
+  });
+
+  it('a panel opens centred on the entry it belongs to', () => {
+    ['.tb-m-panel', '.tb-m-sub', '.tb-m-kit-opts'].forEach((sel) => {
+      const r = rule(sel);
+      assert.ok(/top:50%/.test(r), sel + ' must be centred on its parent');
+      assert.ok(/transform:translateY\(-50%\)/.test(r),
+          sel + ' must pull itself back by half its own height');
+    });
+  });
+
+  it('and a centred panel is clamped back inside the window', () => {
+    /* Centring is right for a five-row panel and wrong for the club
+       library: 620px of it, opening off the second entry from the top,
+       would have half of it above the window — where the wrapper's
+       overflow:hidden simply cuts it off.
+
+       CSS cannot see the sum that decides this, so it is measured. */
+    const init = fn('tbMenuInit(hooks)');
+    assert.ok(/const clampPanel = \(entry\) => \{/.test(init),
+        'a centred panel must be measured against the window');
+    assert.ok(/panel\.style\.marginTop = '';/.test(init),
+        'and measured from the CENTRED position, or each open compounds ' +
+        'the last one\'s offset');
+    assert.ok(/getBoundingClientRect/.test(init.slice(init.indexOf('clampPanel'))),
+        'measured, not guessed');
+    /* Taller than the window: pin the top. Pinning the bottom instead
+       hides the search box, which is the first thing you reach for. */
+    assert.ok(/Math\.max\(\(w\.bottom - PAD\) - p\.bottom, \(w\.top \+ PAD\) - p\.top\)/
+        .test(init),
+        'a panel taller than the window must keep its TOP on screen');
+    /* And after the class, not before — a display:none element
+       measures zero on every edge. */
+    const open = init.slice(init.indexOf('const open = () => {'));
+    assert.ok(open.indexOf("classList.toggle('tb-m-hot'") <
+              open.indexOf('clampPanel(entry)'),
+        'the panel must be visible before it is measured');
   });
 
   it('the two controls 3D never needed a home for get one', () => {
@@ -486,11 +599,6 @@ describe('the menu is built after what it reaches for', () => {
 });
 
 describe('the rail and the camera share one vertical axis', () => {
-  const rule = (sel) => {
-    const i = css.indexOf(sel + ' {');
-    assert.ok(i !== -1, sel + ' not found');
-    return css.slice(i, css.indexOf('}', i));
-  };
 
   it('both columns are one declared width, anchored to one edge', () => {
     /* THE FIX, after two failed attempts at the same thing.
@@ -583,11 +691,6 @@ describe('the rail and the camera share one vertical axis', () => {
 });
 
 describe('the rail sits on the axis, and the CSS says each thing once', () => {
-  const rule = (sel) => {
-    const i = css.indexOf(sel + ' {');
-    assert.ok(i !== -1, sel + ' not found');
-    return css.slice(i, css.indexOf('}', i));
-  };
 
   it('nothing reserves scrollbar width on the rail edge', () => {
     /* THE misalignment. `overflow-y:auto` draws a scrollbar on the
@@ -614,9 +717,90 @@ describe('the rail sits on the axis, and the CSS says each thing once', () => {
           sel + ' must take the tile token, not its own number'));
   });
 
-  it('the rail clears the camera list, which opens down the same edge', () => {
-    assert.ok(/top:calc\(50% \+ [\d.]+rem\)/.test(rule('.tb-rail')),
-        'the rail must sit below centre, or the two meet');
+  it('play sits ON the centre line, not the rail', () => {
+    /* The rail used to be centred as a whole, so play drifted upward
+       as frames were added — the one control that should be findable
+       in the same place every time was the one that moved. Anchoring
+       the rail half a tile above centre puts PLAY across it, and the
+       frames grow downward. */
+    const r = rule('.tb-rail');
+    assert.ok(/top:calc\(50% - var\(--tb-tile\) \/ 2\)/.test(r),
+        'the rail must start half a tile above centre');
+    assert.ok(/transform:none/.test(r),
+        'and drop the centring translate, or it is centred twice');
+    assert.ok(/max-height:calc\(50% - [\d.]+rem\)/.test(r),
+        'capped against the WINDOW — the rail is absolutely positioned, ' +
+        'so a percentage resolves against the wrapper it must stay inside');
+  });
+
+  it('and the 3D floor really does clear the camera stack', () => {
+    /* Derived, not pinned. The floor exists because the camera list
+       opens down this same edge and the centre line is above the
+       bottom of that stack on a short window. So: add the stack up
+       from the tokens, and require the floor to cover it. */
+    const px = (v) => /rem$/.test(v) ? parseFloat(v) * 16 : parseFloat(v);
+    const tile = px(/--tb-tile:([\d.]+px)/.exec(css)[1]);
+    const cams = rule('.tb-cams');
+    const list = rule('.tb-cams-list');
+    const btns = (fn('tbCamsHtml()').match(/one\('/g) || []).length;
+    assert.ok(btns >= 3, 'expected the camera buttons; got ' + btns);
+    const need =
+        px(/top:([\d.]+rem)/.exec(cams)[1]) +          // the stack's inset
+        tile +                                          // the camera button
+        px(/margin-top:([\d.]+rem)/.exec(list)[1]) +    // gap under it
+        btns * tile +
+        (btns - 1) * px(/gap:([\d.]+rem)/.exec(list)[1]);
+    const floor = px(/top:max\(calc\(50% - var\(--tb-tile\) \/ 2\), ([\d.]+rem)\)/
+        .exec(rule('.tb-3d-wrap:not(.tb-wrap-2d) .tb-rail'))[1]);
+    assert.ok(floor >= need,
+        'the floor is ' + floor + 'px and the camera stack reaches ' +
+        need + 'px — they will overlap on a short window');
+  });
+
+  it('but only in 3D, where there is a camera list at all', () => {
+    assert.ok(css.indexOf('.tb-3d-wrap:not(.tb-wrap-2d) .tb-rail') !== -1,
+        'the clearance must be scoped to the view that needs it — 2D has ' +
+        'no camera stack, and a floor there would push play off centre ' +
+        'on exactly the short windows this is meant to help');
+  });
+
+  it('the add button survives a scrolled strip', () => {
+    /* It is the last child of the scrolling strip, so with enough
+       frames it scrolled off the bottom — and the only way to add
+       another was to scroll down to the button first. */
+    const add = rule('.tb-rail .tb-frame-add');
+    assert.ok(/position:sticky/.test(add) && /bottom:0/.test(add),
+        'the add button must stay pinned to the bottom of the strip');
+    assert.ok(/flex-shrink:0/.test(add),
+        'and keep its height — a sticky item squashed to nothing is ' +
+        'still invisible');
+    /* Sticky floats it over the tiles it has scrolled past, so it
+       needs a ground; transparent, the numbers show through it. */
+    assert.ok(/background:rgba\(/.test(add),
+        'a sticky element over its own scrolled content needs an opaque ground');
+    /* And the premise for choosing sticky over moving it: the button
+       is written into the strip's innerHTML and re-bound by id on
+       every render, so lifting it into a sibling would mean two render
+       targets and a button that only sometimes gets its listener. */
+    const r = fn('renderFrameStrip()');
+    assert.ok(/html \+= `<button class="tb-frame-add" id="tb-frame-add"/.test(r),
+        'the add button is part of the strip markup');
+    assert.ok(/strip\.innerHTML = html;/.test(r) &&
+              /strip\.querySelector\('#tb-frame-add'\)\?\.addEventListener/.test(r),
+        'and is re-bound by id after the strip is rewritten');
+  });
+
+  it('the strip takes its height from the rail, not from a second cap', () => {
+    const strip = rule('.tb-rail .tb-frames-strip');
+    assert.ok(/flex:1 1 auto/.test(strip) && /min-height:0/.test(strip),
+        'it must flex into what the rail leaves after play');
+    assert.ok(!/max-height:min\(/.test(strip),
+        'a vh cap of its own would disagree with the rail\'s — two ' +
+        'independent height limits is how the column ends up shorter ' +
+        'than the room it has');
+    assert.ok(/min-height:0/.test(rule('.tb-rail .tb-frames-section')),
+        'and the section between them must be shrinkable too, or the ' +
+        'default content-based min-height stops the strip ever scrolling');
   });
 
   it('the board name is a title, not another control', () => {
@@ -643,11 +827,6 @@ describe('the rail sits on the axis, and the CSS says each thing once', () => {
 });
 
 describe('three small faults from the first pass', () => {
-  const rule = (sel) => {
-    const i = css.indexOf(sel + ' {');
-    assert.ok(i !== -1, sel + ' not found');
-    return css.slice(i, css.indexOf('}', i));
-  };
   const init = fn('tbMenuInit(hooks)');
 
   it('the delete cross does not hang outside the strip at all', () => {
@@ -744,11 +923,6 @@ describe('three small faults from the first pass', () => {
 
 describe('the file actions moved into the menu', () => {
   const init = fn('tbMenuInit(hooks)');
-  const rule = (sel) => {
-    const i = css.indexOf(sel + ' {');
-    assert.ok(i !== -1, sel + ' not found');
-    return css.slice(i, css.indexOf('}', i));
-  };
 
   it('the read-only note travels with Save As', () => {
     /* #tb-save is CONDITIONALLY rendered — on a board that is not
@@ -900,11 +1074,6 @@ describe('the file actions moved into the menu', () => {
 });
 
 describe('the board takes the content area, and gives it back', () => {
-  const rule = (sel) => {
-    const i = css.indexOf(sel + ' {');
-    assert.ok(i !== -1, sel + ' not found');
-    return css.slice(i, css.indexOf('}', i));
-  };
 
   it('the flush class is toggled OFF as well as on', () => {
     /* The dangerous half. Added in the tactics code and never
@@ -1014,11 +1183,6 @@ describe('the board is re-measured after the menu rearranges the page', () => {
 });
 
 describe('the sidebar scrollbar', () => {
-  const rule = (sel) => {
-    const i = css.indexOf(sel + ' {');
-    assert.ok(i !== -1, sel + ' not found');
-    return css.slice(i, css.indexOf('}', i));
-  };
 
   it('is the same thin pill as the board panels', () => {
     /* The first pass styled the MENU panels, which was the wrong

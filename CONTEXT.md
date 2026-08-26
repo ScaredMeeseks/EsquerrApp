@@ -5992,3 +5992,51 @@ and a zoom is checked by pushing a point through the transform the browser will 
 not moved.
 
 Unit 1741 → **1786**. Version triple → v166. **Still nothing deployed.**
+
+### 2026-08-26 — The rail entries lose their plates; play holds the centre (v167)
+
+Four cosmetic asks, and two of them turned into structural ones.
+
+**No ground on the entries.** They were nine dark pills stacked down the corner, which read as a panel
+sitting on the pitch; without them they read as labels on it. The text-shadow that replaces the plate is
+not decoration — it is the only thing between the label and a light turf theme. The hamburger keeps its
+plate: it is a button, and the one thing that has to be findable before the menu is open.
+
+**Hover lifts one and drops the rest**, `opacity:.42` on the others, white and 1.12× on the one under the
+pointer. The growth is on the **icon and the label, never on the entry** — a transform on `.tb-m-entry`
+would make it the containing block for its own absolutely positioned panel, so scaling the entry would
+have scaled the club library inside it by 8% and resampled it. Scaling the two children instead leaves
+the entry box where it is, so the panel's `left:calc(100% + .4rem)` still means what it says and the rail
+does not reflow.
+
+**Panels open centred on their entry** (`top:50%` + `translateY(-50%)`, on all three levels). Right for a
+five-row panel, wrong for the library: 620px of it, opening off the second entry from the top, would have
+half of it above the window where the wrapper's `overflow:hidden` cuts it off. So `clampPanel()` measures
+it back inside — CSS cannot see the sum that decides this. Taller than the window, it pins the **top**;
+pinning the bottom hides the search box, which is the first thing you reach for.
+
+**Play holds the centre line, not the rail.** The whole column was centred, so play drifted upward as
+frames were added — the one control that should be findable in the same place every time was the one that
+moved. The rail now starts half a tile above centre and the frames grow down from it, capped against the
+wrapper with a percentage rather than a vh figure, because the wrapper is the box it actually has to stay
+inside. In **3D only**, a floor keeps it clear of the camera stack, which opens down the same edge and
+meets the centre line on a window under ~490px tall; the test adds that stack up from the tokens rather
+than trusting the 15rem.
+
+**The + button is sticky at the bottom of the strip.** It was the last child of a scrolling list, so with
+enough frames the one control that is always wanted scrolled out of reach. Sticky rather than lifted out:
+`renderFrameStrip()` writes the strip as one innerHTML and re-binds the button by id, so a sibling would
+mean two render targets and a button that only sometimes gets its listener.
+
+**A test-quality fix that matters more than any of the above.** `rule()` — the helper that pulls one CSS
+block out for assertions — existed in **six identical copies** in board3d-menu.test.js, and both of its
+weaknesses bit during this change: it read a block's COMMENTS as declarations, so prose explaining why a
+rule sets `min-height:0` satisfied a test for `min-height:0` after the declaration was deleted; and
+`indexOf` finds a selector anywhere, so `.tb-m-entry` matched `.tb-m-entry.tb-m-hot > .tb-m-ico` and an
+assertion about the entry silently became one about the thing growing inside it. One copy now, anchored to
+the start of a line, against a comment-stripped sheet. **This class of hole is not specific to this
+feature** — every CSS assertion in the file went through that helper.
+
+Fifteen mutations. One survived twice — the `min-height:0` above — and it was the helper, not the test.
+
+Unit 1786 → **1795**. Version triple → v167. **Still nothing deployed.**

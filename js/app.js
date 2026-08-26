@@ -1581,7 +1581,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 166;
+  const APP_VERSION = 167;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7183,12 +7183,48 @@
       });
     }
 
+    /**
+     * Keep a centred panel inside the window.
+     *
+     * The panels open CENTRED on their entry, which is right for the
+     * small ones and would put the club library — 620px of it, opening
+     * off the second entry from the top — half outside the window,
+     * where `overflow:hidden` on the wrapper would simply cut it off.
+     *
+     * Measured rather than expressed in CSS, because the sum that
+     * matters (half the panel's height against the entry's distance
+     * from the top of the window) has one term CSS cannot see. The
+     * offset is written as a margin so the centring transform is left
+     * alone and this can be undone by clearing one property.
+     *
+     * Taller than the window: pin the TOP and let the bottom overflow.
+     * The alternative pins the bottom, which hides the search box.
+     */
+    const wrapEl = document.getElementById('tb-3d-wrap');
+    const clampPanel = (entry) => {
+      const panel = entry.querySelector('.tb-m-panel');
+      if (!panel || !wrapEl) return;
+      panel.style.marginTop = '';        // measure from the centred position
+      const w = wrapEl.getBoundingClientRect();
+      const p = panel.getBoundingClientRect();
+      const PAD = 8;
+      let d = 0;
+      if (p.top < w.top + PAD) d = (w.top + PAD) - p.top;
+      else if (p.bottom > w.bottom - PAD) {
+        d = Math.max((w.bottom - PAD) - p.bottom, (w.top + PAD) - p.top);
+      }
+      if (d) panel.style.marginTop = Math.round(d) + 'px';
+    };
+
     rail.querySelectorAll('.tb-m-entry').forEach((entry) => {
       const open = () => {
         /* One panel at a time. Two open panels overlap and the coach
            cannot tell which control belongs to which. */
         rail.querySelectorAll('.tb-m-entry').forEach(
             (o) => o.classList.toggle('tb-m-hot', o === entry));
+        /* After the class, not before: the panel is display:none until
+           it is hot, and a hidden element measures zero on every edge. */
+        clampPanel(entry);
       };
       if (canHover) entry.addEventListener('pointerenter', open);
       entry.addEventListener('click', (e) => {
@@ -7227,8 +7263,7 @@
        next render, so they have to come off with it or every
        re-render leaves another pair behind, each holding a reference
        to a detached menu. */
-    const wrap = document.getElementById('tb-3d-wrap');
-    if (wrap) {
+    if (wrapEl) {
       const obs = new MutationObserver(() => {
         if (!document.body.contains(menu)) {
           clearTimeout(leaveTimer);   // or it fires into a dead menu

@@ -4860,15 +4860,49 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .tb-m.tb-m-open .tb-m-rail { opacity:1; transform:none; pointer-events:auto; }
 
+/* ── The rail entries ─────────────────────────────────────────────
+   NO GROUND. The entries used to be nine dark pills stacked down the
+   corner of the pitch, which read as a panel sitting on the board;
+   without it they read as labels on it. What replaces the ground as
+   the "you are here" signal is contrast: the entry under the pointer
+   comes up to white and grows, and every other one drops back.
+
+   A text-shadow rather than a plate, because a label with no ground
+   still has to be readable over a light turf theme and over the
+   white-ish markings — this is the only thing standing between the
+   text and the pitch now. */
 .tb-m-entry {
   position:relative; display:flex; align-items:center; gap:.5rem;
   padding:.4rem .6rem; border-radius:9px; cursor:pointer;
-  background:rgba(18,20,23,.72); color:#c9ccd1;
-  backdrop-filter:blur(6px); white-space:nowrap;
-  transition:background .15s, color .15s;
+  color:#c9ccd1; white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
+  transition:color .15s ease, opacity .15s ease;
 }
-.tb-m-entry:hover, .tb-m-entry.tb-m-hot { background:rgba(18,20,23,.94); color:#fff; }
+/* Dim the rest, but only while one of them is actually under the
+   pointer — a rail nobody is pointing at should be evenly legible,
+   not permanently faded. `.tb-m-rail:hover` is true whenever the
+   pointer is inside ANY entry, including inside an open panel, since
+   a panel is a DOM child of the entry that owns it. */
+.tb-m-rail:hover .tb-m-entry { opacity:.42; }
+.tb-m-rail:hover .tb-m-entry:hover,
+.tb-m-entry.tb-m-hot { opacity:1; color:#fff; }
 .tb-m-entry:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
+/* GROWN BY THE CHILDREN, NOT BY THE ENTRY.
+   `transform` on .tb-m-entry would have been the obvious way to do
+   this, and it would have scaled the PANEL with it — a transformed
+   element is the containing block for its absolutely positioned
+   descendants, so the club library would have come up 8% larger and
+   resampled. Scaling the icon and the label instead leaves the entry
+   box exactly where it was, so the panel's `left:calc(100% + .4rem)`
+   still means what it says, and the rail does not reflow either. */
+.tb-m-ico, .tb-m-label {
+  transform-origin:left center;
+  transition:transform .15s ease;
+}
+.tb-m-rail:hover .tb-m-entry:hover > .tb-m-ico,
+.tb-m-rail:hover .tb-m-entry:hover > .tb-m-label,
+.tb-m-entry.tb-m-hot > .tb-m-ico,
+.tb-m-entry.tb-m-hot > .tb-m-label { transform:scale(1.12); }
 .tb-m-ico { display:flex; }
 .tb-m-ico svg { width:18px; height:18px; }
 .tb-m-2d3d { font-weight:700; font-size:.7rem; letter-spacing:.04em; width:18px; text-align:center; }
@@ -4879,8 +4913,17 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 /* Panels open to the RIGHT of the rail, so the rail never covers what
    it opened and the eye travels one way. */
+/* CENTRED ON THE ENTRY, not hung from its top edge. A one-row panel
+   used to open level with the entry's first line and a fifteen-row
+   one used to run down the board from the same point, so the same
+   gesture produced a different-looking thing each time. Centred, every
+   panel opens around the item it belongs to.
+
+   translateY(-50%) is safe here in a way it is not on the entries: a
+   panel has no absolutely positioned descendants of its own. */
 .tb-m-panel {
-  position:absolute; left:calc(100% + .4rem); top:-.25rem; min-width:180px;
+  position:absolute; left:calc(100% + .4rem); top:50%; min-width:180px;
+  transform:translateY(-50%);
   display:none; flex-direction:column; gap:.35rem;
   padding:.55rem .65rem; border-radius:10px;
   background:#14171a; box-shadow:0 8px 26px rgba(0,0,0,.5);
@@ -4898,7 +4941,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-m-side:hover, .tb-m-side:focus-within { color:#fff; }
 .tb-m-side-label { font-weight:600; }
 .tb-m-sub {
-  position:absolute; left:calc(100% + .5rem); top:-.4rem; min-width:150px;
+  position:absolute; left:calc(100% + .5rem); top:50%; min-width:150px;
+  transform:translateY(-50%);
   display:none; flex-direction:column; gap:.15rem;
   padding:.5rem .55rem; border-radius:10px;
   background:#14171a; box-shadow:0 8px 26px rgba(0,0,0,.5);
@@ -4911,7 +4955,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-m-kit { position:relative; margin-top:.35rem; padding-top:.35rem;
   border-top:1px solid rgba(255,255,255,.12); }
 .tb-m-kit-opts {
-  position:absolute; left:calc(100% + .5rem); top:-.4rem;
+  position:absolute; left:calc(100% + .5rem); top:50%;
+  transform:translateY(-50%);
   display:none; align-items:center; gap:.4rem; flex-wrap:wrap; width:max-content;
   max-width:230px; padding:.5rem .55rem; border-radius:10px;
   background:#14171a; box-shadow:0 8px 26px rgba(0,0,0,.5);
@@ -4931,13 +4976,32 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    Dimmed until the pointer is near it: the frames are a permanent
    fixture in the window, and at full strength a column of tiles
    competes with the pitch for attention all the time. */
+/* PLAY IS THE FIXED POINT, not the rail. Centring the whole column
+   meant the play button drifted upward as frames were added — the
+   thing that should be findable in the same place every time was the
+   one thing that moved. So the rail's top edge is half a tile above
+   the middle, which puts PLAY across the centre line, and the frames
+   grow downward from it.
+
+   The height is capped against the WINDOW rather than in vh: the rail
+   is absolutely positioned, so a percentage resolves against the
+   wrapper, which is the box it actually has to stay inside. */
 .tb-rail {
   position:absolute; right:.75rem;
   width:var(--tb-axis); display:flex; flex-direction:column; align-items:center;
-  /* Nudged below centre: the camera list opens down this same edge
-     and the two were meeting. Still reads as centred, with room. */
-  top:calc(50% + 3.25rem); transform:translateY(-50%);
+  top:calc(50% - var(--tb-tile) / 2); transform:none;
+  max-height:calc(50% - .75rem);
   z-index:5; opacity:.35; transition:opacity .18s ease;
+}
+/* ONLY IN 3D. The camera list opens down this same edge and the two
+   met on a short window — the centre line is above the bottom of a
+   four-button stack once the wrapper is under about 490px tall. The
+   floor is the stack's own height plus a gap, and there is a test that
+   adds the stack up from the tokens rather than trusting 15rem.
+   2D has no camera list, so nothing pushes play off the centre there,
+   which is the whole point of the rule above. */
+.tb-3d-wrap:not(.tb-wrap-2d) .tb-rail {
+  top:max(calc(50% - var(--tb-tile) / 2), 15rem);
 }
 .tb-rail:hover, .tb-rail:focus-within { opacity:1; }
 .tb-rail .tb-frames-section {
@@ -4945,13 +5009,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* Play arrives in the section HEADER, which is already first, so
      no reversal: it sits above frame 1. */
   display:flex; flex-direction:column;
+  /* min-height:0 is what lets the strip below actually shrink and
+     scroll: a flex item's default min-height is its content, so
+     without this the section would simply grow past the rail's cap
+     and take the frames off the bottom of the window. */
+  min-height:0;
 }
 /* Vertical, because it lives in a column now. The 2D board keeps the
    horizontal strip; only the copy inside the window is turned. */
 .tb-rail .tb-frames-strip {
   flex-direction:column; align-items:center; gap:.3rem; width:100%;
   padding:var(--tb-pad);
-  max-height:min(54vh, 440px); overflow-y:auto; overflow-x:hidden;
+  /* Takes whatever the rail's cap leaves after play, rather than a vh
+     figure of its own — two independent height limits is how the
+     column ends up shorter than the room it has, or longer. */
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
   /* The scrollbar is HIDDEN, not the overflow. A visible bar reserves
      width on the right, which pushed every tile a scrollbar's width
      left of the rail's edge while the camera button stayed flush
@@ -5034,9 +5107,24 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-rail .tb-frame-active .tb-frame-thumb {
   border-color:#fb8c00; color:#fff; box-shadow:none;
 }
+/* ALWAYS REACHABLE. The add button is the last child of the scrolling
+   strip, so with enough frames it scrolled off the bottom and the only
+   way to add another was to scroll down first — for the one control
+   that is always wanted.
+
+   Sticky rather than moved out of the strip: renderFrameStrip() writes
+   the whole strip as one innerHTML and re-binds the button by id, so
+   lifting it into a sibling would mean two render targets and a button
+   that only sometimes gets its listener back.
+
+   Sticky means it floats over the tiles it has scrolled past, so it
+   needs a ground of its own — the same one play uses, which also makes
+   the two permanent controls of the rail look like a pair. */
 .tb-rail .tb-frame-add {
   width:var(--tb-tile); height:var(--tb-tile); margin:0;
-  background:none; border:2px dashed rgba(255,255,255,.28); color:#c9ccd1;
+  position:sticky; bottom:0; flex-shrink:0;
+  background:rgba(18,20,23,.72); backdrop-filter:blur(6px);
+  border:2px dashed rgba(255,255,255,.28); color:#c9ccd1;
 }
 .tb-rail .tb-frame-add:hover { border-color:rgba(255,255,255,.5); color:#fff; }
 .tb-rail .tb-frame-item { align-items:center; width:100%; }
