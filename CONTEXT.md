@@ -6222,3 +6222,31 @@ useless.
 Three mutations, all killed.
 
 Unit **1813**, unchanged. Version triple → v172. **Still nothing deployed.**
+
+### 2026-08-26 — The flicker on the way into a submenu (v173)
+
+A submenu opens a few pixels to the right of the item that owns it, and those pixels belonged to neither.
+Crossing them the item lost `:hover`, so it dimmed — and lit again the moment the pointer landed in the
+submenu. A flicker on the way to every formation, and only visible at all because v167 made the unhovered
+items dim in the first place.
+
+Bridged with a transparent `::after` on the OWNER, spanning the gap. It cannot live on the submenu: that is
+`display:none` until the parent is hovered, so a hit area inside it does not exist at the moment it is
+needed — the deadlock is worth naming because it is the obvious place to put it. Wider than the gap on
+purpose: a pointer moving diagonally leaves before it arrives.
+
+`.tb-m-forms` loses its `gap` for the same reason at a smaller scale — 1.6px in which no row was hovered,
+so every row in the list dimmed for a frame each time the pointer crossed between two of them. The rows
+carry their own padding, so the column reads the same and is now continuous.
+
+**The top level needs no equivalent**, and that is worth writing down rather than rediscovering:
+`.tb-m-hot` holds the open entry lit and scaled regardless of `:hover`, which is exactly what makes the
+panel's own (and now variable) gap survivable.
+
+The test derives the requirement — any item owning a submenu that opens to its right must bridge at least
+the gap that submenu declares — so widening `.tb-m-sub`'s offset without widening the bridge fails, which
+is the shape the next retune of this gap will take.
+
+Five mutations, all killed.
+
+Unit 1813 → **1814**. Version triple → v173. **Still nothing deployed.**

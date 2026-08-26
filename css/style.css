@@ -5022,7 +5022,33 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   text-shadow:0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
 }
 .tb-m-side:hover > .tb-m-sub, .tb-m-side:focus-within > .tb-m-sub { display:flex; }
-.tb-m-forms { display:flex; flex-direction:column; align-items:flex-start; gap:.1rem; }
+
+/* ── The gap is bridged from the PARENT ───────────────────────────
+   A submenu opens a few pixels to the right of the item that owns it,
+   and those pixels belonged to neither. Crossing them, the item lost
+   :hover — so it dimmed, and lit again the moment the pointer landed
+   in the submenu. A flicker on the way to every formation.
+
+   The bridge cannot live on the submenu: that is `display:none` until
+   the parent is hovered, so a hit area inside it does not exist at the
+   moment it is needed. On the parent it is always there, and hovering
+   it keeps the submenu open as well as the label lit.
+
+   Wider than the gap on purpose — a pointer moving diagonally leaves
+   before it arrives, and a couple of pixels of overlap costs nothing.
+
+   The top level needs no equivalent: `.tb-m-hot` holds the open entry
+   lit and scaled regardless of :hover, which is what makes the panel's
+   own gap survivable. */
+.tb-m-side::after, .tb-m-kit::after {
+  content:''; position:absolute; top:0; bottom:0;
+  left:100%; width:.6rem;
+}
+/* NO GAP between the rows. At .1rem it was 1.6px in which no row was
+   hovered, so every row dimmed for a frame each time the pointer
+   crossed from one to the next. The rows carry their own padding, so
+   the column reads the same and is now continuous. */
+.tb-m-forms { display:flex; flex-direction:column; align-items:flex-start; gap:0; }
 /* A formation row is safe to scale directly — unlike a side or a rail
    entry, it holds no absolutely positioned child. */
 .tb-m-form {

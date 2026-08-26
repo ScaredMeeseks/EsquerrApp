@@ -1123,6 +1123,40 @@ describe('the file actions moved into the menu', () => {
         'nor the formation list, for the same reason one level in');
   });
 
+  it('nothing dims on the way into its own submenu', () => {
+    /* A submenu opens a few pixels right of the item that owns it, and
+       those pixels belonged to neither: crossing them the item lost
+       :hover, so it dimmed and lit again on arrival. A flicker on the
+       way to every formation.
+
+       Derived: any item that OWNS an absolutely positioned submenu
+       opening to its right has to bridge the gap it opens across. */
+    const owners = [['.tb-m-side', '.tb-m-sub'], ['.tb-m-kit', '.tb-m-kit-opts']];
+    owners.forEach(([owner, sub]) => {
+      const gap = /left:calc\(100% \+ ([\d.]+)rem\)/.exec(rule(sub));
+      assert.ok(gap, sub + ' must declare the gap it opens across');
+      const bridge = /\.tb-m-side::after, \.tb-m-kit::after \{([^}]*)\}/.exec(cssBare);
+      assert.ok(bridge, 'no bridge rule covering ' + owner);
+      const w = /width:([\d.]+)rem/.exec(bridge[1]);
+      assert.ok(w, 'the bridge must have a width');
+      assert.ok(parseFloat(w[1]) >= parseFloat(gap[1]),
+          'the bridge (' + w[1] + 'rem) must cover the gap (' + gap[1] +
+          'rem) it spans, or the pointer still falls through it');
+      assert.ok(/left:100%/.test(bridge[1]),
+          'and start at the owner\'s right edge, where the gap does');
+    });
+    /* ON THE PARENT, not the submenu — which is display:none until the
+       parent is hovered, so a hit area inside it does not exist at the
+       moment it would be needed. */
+    assert.ok(!/\.tb-m-sub::(before|after)/.test(cssBare),
+        'a bridge inside the submenu cannot work: it is display:none ' +
+        'until the very hover it is meant to preserve');
+    /* And the rows of a list must touch, for the same reason at a
+       smaller scale. */
+    assert.ok(/gap:0/.test(rule('.tb-m-forms')),
+        'a gap between formation rows is a strip where none is hovered');
+  });
+
   it('the sub-options highlight and grow like the entries do', () => {
     assert.ok(/\.tb-m-panel:hover \.tb-m-side \{ opacity:\.\d+; \}/.test(css),
         'the other side must dim');
