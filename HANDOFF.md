@@ -1,146 +1,126 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-24._
+_Rolling document, overwritten each session. Last updated: 2026-08-26._
 
 ## Where things stand
 
-**Version triple is at 135** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 180** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if
 two of them disagree.
 
-**Everything is deployed and pushed.** Working tree clean, `main` at `4d93c3a`, functions and rules
-both live. Nothing is half-finished.
+**Everything is deployed.** Working tree clean, `main` at `7051364`, Pages live at v180, functions
+live, `premium-3d-board` merged and no longer needed — its 68 commits are all on `main`.
 
 | | |
 |---|---|
-| Unit tests | **1182** — `cd test && npm run test:unit` (~1 s) |
+| Unit tests | **1907** — `cd test && npm run test:unit` (~2 s) |
 | Rules tests | **164** — needs the emulator, see below |
 | Functions tests | 71 — emulator |
 
-```
-cd test && npx firebase emulators:exec --only firestore --project=demo-esquerrapp \
-    "npx mocha rules.test.js --timeout 20000"
-```
 Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
 
 ---
 
-## This session: v129 → v135
+## READ THIS BEFORE TOUCHING THE 3D BOARD
 
-### The referee database (v129–v132)
+**`js/board3d.js` IS NOT PART OF THE FRONTEND DEPLOY.** It is the premium feature and is excluded
+from GitHub Pages (`_config.yml`) and from the APK mirror (`scripts/build-www.js`). It reaches the
+browser only through the **`getBoard3d` callable**, which reads `functions/private/board3d.js`.
 
-Who refereed a match, and his record **in the division this squad plays in**. Referees are
-published only on the acta page — nowhere in the JSON API — so this is the app's one scraping job,
-bounded to the five senior Futbol 11 tiers: 64 groups, 14,390 matches a season, about a twentieth
-of all Futbol 11.
+**So a change to the 3D module needs `.\deploy.ps1 functions`, not a push to `main`.**
 
-- `parseFcfActa` in `functions/fcf.js`, bounded at `<h3>Àrbitres</h3>` and the next `<h3>`, rows
-  filtered on containing a comma. 240/240 extraction on a full real group.
-- `fcfRefIndex/{season}_{grupId}` holds acta → officials, result, goals and the sanctions join.
-  `fcfReferees/{slug}` holds the derived profile, keyed **by division**.
-- `crawlFcfActas` nightly (played matches only), `fcfWeeklyRefs` Fridays at 6/7/8 — **two cursors
-  over one queue**, because a shared one let Saturday's backfill skate past groups Friday had not
-  reached.
-- **Yellow cards do not exist** anywhere in the federation's data. Reds and second bookings come
-  from `sanciones`, which carries `codacta`. `articulo_salida` gives the *offence* — `338.1d` and
-  `338.2b` are both dissent.
-- The match detail card adds the assistants and **our own past matches under him**, with the
-  scoreline flipped to our side.
-
-### Two parking-lot items closed
-
-- **Item 14 — push governance.** Writing to `pushQueue` *is* the send, and the rule was
-  `create: if sameTeam(teamId)` — any of the 77. Now staff-only, explicit recipients, bounded text,
-  no `url`. A live bug sat inside it: a call-up made entirely of seeded players sent
-  `targetPlayers: []`, which the old consumer read as a broadcast to the whole club.
-- **Item 13 — the Friday availability push.** Neither v112/v113 trap applied, but the answered-set
-  query was truncated to ten while the loop walked every fixture, so from the eleventh onwards
-  players who *had* replied were pushed again. Cancelled (`fcfRemoved`) fixtures were asked about
-  too. Both fixed.
-
-### What a real run showed that no test could
-
-The crawl was switched on for one group: 240 actas indexed, 240 with a referee — and **every
-referee panel still said "no record"**. The app reads `fcfReferees`, not the raw index, and only
-the Friday job rebuilt it. Both jobs were individually correct; the gap was *between* them.
-`crawlFcfActas` now rebuilds on completion too. **Run the thing and look at what the user would
-actually see.**
+This bit once already, on the day it was built (v179): the version was bumped, the frontend pushed,
+and the server went on serving the previous module. The bug the fix addressed was still on screen and
+looked as though the fix had simply not worked. `scripts/sync-board3d.js` keeps the copy current and
+`test/board3d-gate.test.js` fails on drift — but nothing can detect *forgetting to deploy functions
+at all*. Also recorded at the top of CLAUDE.md.
 
 ---
 
-## ▶ NEXT SESSION
+## This session: v136 → v180
 
-### The crawl is PAUSED, on purpose
+An unusually long one. The 3D tactical board went from a premium prototype to the layout the whole
+app uses, then got gated, then got deployed.
 
-`fcfCrawl/config` has `enabled: false` — the owner wants to wait until fcf.cat is more settled.
-The scope beside it is ready (all five tiers, both seasons), so **resuming is that one field**.
+### The flat board took the 3D board's layout (v166)
 
-What it already produced is kept and will not be re-fetched: `fcfRefIndex/21_54486121` (Tercera
-Grup 1, 240 actas) and **44 referee profiles**.
+Every coach, premium or not, now opens the same window: full-bleed, a hamburger top-left that adopts
+the whole toolbar into panels, the board name beside it, a frames rail at middle right, and the page
+title as a two-second announcement instead of a header. The 3D-only parts stayed 3D-only — the camera
+menu, the orbit hint, the z-axis apex handle.
 
-How it was driven: write the config by REST, trigger
-`firebase-schedule-crawlFcfActas-us-central1` by name, poll `fcfRefIndex`. That exercises the
-**deployed** code path rather than a local re-implementation of it. No service-account key is
-involved — see "Reading production without a browser" below for the token, and note that the REST
-route needs no ADC file and no scratch script inside `functions/`, unlike the Admin SDK.
+The layout gate stopped being `tbIs3D()` and became `tbEditorOpen()`, which probes the DOM for the
+window rather than holding a flag. **Zoom and pan ride a CSS transform**, and that choice is why none
+of the editor's arithmetic moved: every drag and hit test already reads
+`inner.getBoundingClientRect()`, which is reported *after* transforms.
 
-### Still open on the referee work
+### Then a long tail of cosmetics (v167 → v174)
 
-- **Do referees appear BEFORE a match?** Every unplayed acta today says *"Sense àrbitres
-  assignats"*, and no 2026-27 fixture has been played. Check on the season's first Friday. If they
-  never appear in advance the feature is retrospective only — the Friday job's other half still
-  works.
-- **Dissent counts are thin** — about twelve per group-season across forty-odd referees, so most
-  show 0–1. Revisit after a full backfill whether the figure earns its space on the card.
-- **Sancions has never been seen with real bans** (parking-lot item 3). Once a round is played:
-  confirm the ban window on screen (a ban at jornada N covers N+1 … N+P), that **our own** bans
-  appear, and that club rulings stay out of the missing-players list.
+Menu entries lost their plates and gained hover-dim-and-grow; panels went see-through except the
+library; the frames rail put play on the centre line and made `+` sticky. Three of these were the
+same shape of bug — **something measured against the wrong box**:
 
-### Two log lines that mean something
+- the panel gap was reported wrong FOUR times, because the offset was measured in turn from the
+  entry's edge, from the label, from the rail's box (whose width comes from the board-name input on
+  the top line, not from the labels), and finally from the widest entry. **Each of the first three
+  had a passing test**;
+- `.tb-m` and `.tb-cams` keep a full-height layout box while their lists are faded out, and neither
+  had `pointer-events:none` — so roughly 200x340 of the pitch's top-left corner was dead to clicks.
+  In 3D it went unnoticed because the click still bubbled to the wrapper; in 2D the goalkeeper and
+  the back line could not be dragged, numbered or selected;
+- the rail's dimming was driven by `:hover` on the rail, and the panels open *outside* the rail's
+  box, so the whole column flashed on the way into every panel.
 
-- `FCF acta parser found NO referees at all` — the v117 failure repeating. Everything else would
-  keep running and look healthy.
-- `FCF actas now draw MORE card marks than the legend` — **the yellow-card tripwire.** Every acta
-  today draws exactly four card-sized boxes whether or not anyone was booked. More means the
-  federation has started publishing bookings; teach `parseFcfActa` to read them and re-run the
-  aggregation — the raw index means **no re-crawl**.
+### Frames, playback and the ball (v175 → v177)
 
-`node test/fixtures/capture-acta.js` re-captures the fixtures and prints that count for four known
-actas, including 3781800 — which carries two recorded sanctions and still draws only the legend.
+**The trajectory layer was one frame behind.** `activeFrameIdx` is a local of `bindTactics`;
+`fa_tactic_frame_idx` is the copy everything outside reads. Only `saveFrames()` wrote it, and every
+caller set the local, applied the frame, and only then saved — so `tb3dTouch()`, which draws the 2D
+trajectories synchronously, read an index still pointing at the frame just left. Fixed at the root
+with `setActiveFrame()`, and a test forbids any other assignment; writing that test found three more
+instances in the playback loop.
 
-### Small things needing the owner, not code
+Also: a new frame no longer inherits the previous one's `paths`; trajectories are not drawn over a
+running animation (the trail and the ball's ground shadow stay, since those describe the present);
+and **the ball spins** — rolling with the direction of travel, sidespin with the bend, twelve
+icosahedral dots so that a spin is visible at all.
 
-- **Watch the update banner fire once.** Unit-tested and the parser runs against the live `sw.js`,
-  but nobody has seen it in a browser. Load the app, deploy, switch back to the tab.
-- **The APK gap is the longest pole and it is widening.** Phones are on a v43-era build; `main` is
-  at 135. Parking-lot items 8 and 12 sit behind installing a current one. Old APKs still satisfy
-  the tightened push rules — checked — but only because the document shape happened to match.
-- **`privacy.html` is empty and blocks both stores.** Needs the club's legal name and address, a
-  contact address for data requests, and confirmation of whether Google Analytics is active (there
-  is a `measurementId` in the config).
+### The premium gate (v178)
+
+`clubFeature('board3d')` hid the toggle and nothing else. Gating the SAVE cannot work — a saved board
+is arrows and percentages, byte-identical whichever view drew it — so the gate is **not shipping the
+code**. See the warning near the top of this file, which is the operational consequence.
+
+### And the board opens on the board (v179 → v180)
+
+The three-card landing screen is gone; the board type is a **Vista** toggle in the Field panel below
+the pitch size. On the way, two bugs that only a portrait board could show: the 3D goal was pinned to
+the centre line and its mouth centred using the goal's *height* as a plan span (a full pitch hides
+both errors at once), and the penalty arc was clipped against an x edge, so a half or area board drew
+a sliver hidden inside its own penalty box. That rule now lives once in board-geom, as `arcRange()`.
 
 ---
 
-### ⚠ If a screen looks stale, suspect the service worker FIRST
+## NEXT SESSION
 
-This cost a long round of wrong diagnoses. A tester sat on a **v117 worker across seven releases**:
-`caches.keys()` said `esquerrapp-v117` while `main` was v124, and the page kept executing old
-`app.js`. The tell was an error string that only existed in the older version.
+Nothing is half-finished. The owner is happy with the board and expects to **polish details later**.
 
-```js
-navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister())))
-  .then(() => caches.keys()).then(ks => Promise.all(ks.map(k => caches.delete(k))))
-  .then(() => location.reload(true));
-```
+### Hand checks never done
 
-`typeof parseFcfScorers` is a good "which version am I running" probe — a top-level global in
-js/utils.js since v124. **`APP_VERSION` is NOT usable**: it lives inside app.js's IIFE. A private
-window is the fastest way to rule caching in or out.
+The suite cannot see a pixel, and these shipped on arithmetic alone:
 
-**v128 fixed the underlying problem**: the app now fetches `sw.js` with `cache: 'reload'`, compares
-`CACHE_NAME` against its own `APP_VERSION`, and offers a banner. So a member should no longer sit
-on old code silently — but **nobody has yet watched that banner appear in a browser**, which is why
-it is still on the list above. Until someone has, treat a stale screen as this bug first.
+- **the ball spin** — that a straight pass rolls forward rather than backward, that the two bend
+  directions twist opposite ways, and that the rotation carries *through a keyframe boundary*
+  rather than snapping;
+- **half and area boards in 3D** — goal on the top line facing down the pitch, arc below the box.
+  Derived and deployed in v180, never watched.
+
+### Known rough edges, none blocking
+
+- **The 2D board's own header** was deferred by the owner and never revisited.
+- **The APK has no 3D at all**, by design — `vendor/` and `board3d.js` are excluded from the mirror.
+  It fails with the "could not load" message rather than hiding the toggle. Nobody has complained.
+- `TB_PANEL_ALIGN` (0.5) is the panel-gap taste value, retuned four times. The lever is there.
 
 ## Tests
 
@@ -340,7 +320,14 @@ Renumbered items are the same items.
     `side -> top` is one of the two that used to whip 172 degrees through the overhead
     singularity. Deleting the preset to match the menu would quietly drop that coverage.
 
-18. **Code-gate the 3D board, if the entitlement is meant to bite.** *(owner asked 2026-08-25)*
+18. ~~**Code-gate the 3D board.**~~ **DONE 2026-08-26 (v178).** `getBoard3d` serves the module only
+    to an entitled club; it is off Pages and off the APK mirror. The sketch below was followed almost
+    exactly, and the blob-module specifier trap it warned about was real. **Kept for the reasoning
+    about why gating the SAVE cannot work** — that argument is still true and someone will propose it
+    again. The operational consequence is at the top of this file.
+
+    <details><summary>the original note</summary>
+
 
     `clubFeature('board3d')` gates **the toggle button and nothing else**. Someone IT-savvy can flip
     `_clubConfig.features` in devtools, or fetch `js/board3d.js` and drive `createBoard3D` directly —
@@ -374,6 +361,8 @@ Renumbered items are the same items.
     hard refusal from the server; an entitled user can still extract the source from devtools, which
     is unavoidable for anything that runs in a browser. It moves the bar from "read a URL" to
     "deliberately exfiltrate".
+
+    </details>
 
 ---
 
@@ -486,6 +475,22 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additi
 ---
 
 ## Lessons that keep repeating
+
+- **A mutation result is a claim about the TESTS, and only as good as the harness making it.**
+  Twice in one day: a harness that restored files with `git checkout --` reverted uncommitted WORK
+  rather than the mutation and reported a survivor on code that was fine; and every mutation of
+  `js/board3d.js` "died" against the byte-identity guard noticing the private copy had drifted,
+  which hid that nothing tested the arcs were drawn at all. Restore by copy, and sync before running.
+- **A passing test can be about the wrong quantity.** The tactical panel gap was reported wrong four
+  times; three of those had a precise, true assertion measuring a distance that was not the one the
+  eye judges. Mutation testing cannot find this — only a screenshot did.
+- **An overlay keeps its layout box while it is faded out.** `opacity:0` still hit-tests. Two menus
+  were eating clicks on a third of the pitch with nothing drawn to show for it.
+- **When one code path hides a bug in another, fix the reference and not the symptom.** The 3D goal
+  was placed with a wrong coordinate AND that coordinate was discarded — on a full pitch the two
+  errors cancelled, so the bug existed only on board types nobody had opened.
+- **A fixed-width source slice in a test is a bug waiting for the next edit.** Seven of them bit
+  this session, one of them written the same day. Bound on a real marker.
 
 - **A test that passes against a mutation is telling you something.** The `adopting ?` branch in
   `mergeFcfFixtures` was removed because the mutation meant to break it changed nothing — it was a
