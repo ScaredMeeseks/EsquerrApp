@@ -105,15 +105,14 @@ a sliver hidden inside its own penalty box. That rule now lives once in board-ge
 
 Nothing is half-finished. The owner is happy with the board and expects to **polish details later**.
 
-### Hand checks never done
+### Hand checks: DONE, and they passed
 
-The suite cannot see a pixel, and these shipped on arithmetic alone:
+Both shipped on arithmetic the suite cannot see, and the owner confirmed them on the live site
+(2026-08-27): **the ball spin** reads correctly, and **half and area boards in 3D** have their goal
+on the top line with the arc below the box. Nothing outstanding from them.
 
-- **the ball spin** — that a straight pass rolls forward rather than backward, that the two bend
-  directions twist opposite ways, and that the rotation carries *through a keyframe boundary*
-  rather than snapping;
-- **half and area boards in 3D** — goal on the top line facing down the pitch, arc below the box.
-  Derived and deployed in v180, never watched.
+Two derivations are therefore confirmed against a real render, which is worth knowing before anyone
+"tidies" either: the roll axis `(dir.z, 0, -dir.x)` and the quarter turn on a portrait goal.
 
 ### Known rough edges, none blocking
 
