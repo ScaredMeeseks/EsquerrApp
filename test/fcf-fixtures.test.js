@@ -662,6 +662,151 @@ describe('mergeFcfFixtures — the merge rule', () => {
   });
 });
 
+describe('parseFcfPositions', () => {
+  const table = (rows) => ({data: rows.map((r) => ({
+    position: r[0], team: {teamId: r[1], name: r[2] || 'X'},
+  }))});
+
+  it('maps teamId to position', () => {
+    assert.deepStrictEqual(
+        F.parseFcfPositions(table([['1', '10'], ['4', '20'], ['12', '30']])),
+        {10: 1, 20: 4, 30: 12});
+  });
+
+  it('is EMPTY pre-season, rather than inventing positions from the order', () => {
+    /* The deliberate difference from parseFcfClassificacio in js/utils.js,
+       which falls back to the array index so the TABLE is not a column of
+       zeros. A position stamped on a fixture is frozen and read back months
+       later: "1r" because a team sorted first in August would be a lie the
+       calendar keeps telling. No position is better than a wrong one. */
+    assert.deepStrictEqual(
+        F.parseFcfPositions(table([['0', '10'], ['0', '20']])), {});
+  });
+
+  it('confirms the REAL pre-season payload is that case', () => {
+    /* Pinned against the captured response, not against my description of
+       it — and asserting the premise first, because "no positions" from a
+       fixture that turned out to have none of the shape we are reading
+       would be a test of nothing. */
+    const pre = fixture('fcf-preseason.json');
+    assert.ok(Array.isArray(pre.data) && pre.data.length >= 16,
+        'the pre-season fixture no longer holds a table');
+    assert.ok(pre.data.every((r) => String(r.position) === '0'),
+        'the pre-season fixture is no longer the all-zero case');
+    assert.deepStrictEqual(F.parseFcfPositions(pre), {});
+  });
+
+  it('takes the real positions once the season is under way', () => {
+    // The inverse, from a payload that DOES carry them: proves the parser
+    // reads the field at all rather than always returning {}.
+    const live = {data: fixture('fcf-preseason.json').data
+        .map((r, i) => Object.assign({}, r, {position: String(i + 1)}))};
+    const got = F.parseFcfPositions(live);
+    assert.strictEqual(Object.keys(got).length, live.data.length);
+    assert.ok(Object.values(got).includes(1));
+    assert.ok(Object.values(got).includes(live.data.length));
+  });
+
+  it('survives junk', () => {
+    [null, undefined, {}, {data: null}, {data: [null, {}, {team: {}}]}]
+        .forEach((j) => assert.deepStrictEqual(F.parseFcfPositions(j), {}));
+  });
+});
+
+describe('mergeFcfFixtures — the rival\'s position, frozen at kick-off', () => {
+  /* The calendar card names where the opponent stood. On an UPCOMING game
+     that has to track the live table; on a PLAYED one it has to be what it
+     said that day, or every past result silently rewrites itself as the
+     season goes on. Second legs need no special case: a different acta is a
+     different row with its own kick-off. */
+  const one = [{
+    actaId: '4119501', jornada: 1, isHome: true,
+    opponentName: 'INSPIRE SOCCER,F.C.', opponentTeamId: '50599042',
+    opponentBadge: '', date: '2026-09-19', time: '18:00',
+    location: 'CAMP', mapLink: '',
+  }];
+  const POS = (n) => ({50599042: n});
+  const at = (today, nowHM, n) =>
+    opts({today: today, nowHM: nowHM, positions: POS(n)});
+
+  const before = () => F.mergeFcfFixtures([], one, at('2026-09-01', '06:00', 4));
+
+  it('stamps the position on a fixture still ahead of us', () => {
+    const m = before().matches[0];
+    assert.strictEqual(m.opponentPos, 4);
+    assert.strictEqual(m.opponentPosAt, '2026-09-01');
+  });
+
+  it('follows the table while the fixture is still upcoming', () => {
+    const r = F.mergeFcfFixtures(before().matches, one, at('2026-09-18', '06:00', 2));
+    assert.strictEqual(r.matches[0].opponentPos, 2);
+    assert.strictEqual(r.matches[0].opponentPosAt, '2026-09-18');
+  });
+
+  it('is FROZEN once the fixture has been played', () => {
+    const r = F.mergeFcfFixtures(before().matches, one, at('2026-10-05', '06:00', 9));
+    assert.strictEqual(r.matches[0].opponentPos, 4, 'a past result rewrote itself');
+    assert.strictEqual(r.matches[0].opponentPosAt, '2026-09-01');
+  });
+
+  it('freezes to the MINUTE, not to the day', () => {
+    /* The nightly job runs at 06:00 and never meets this, but the refresh
+       button can be pressed at 20:00 on a Saturday — after the 18:00
+       kick-off, on a date that is still `today`. */
+    const sameDayBefore =
+      F.mergeFcfFixtures(before().matches, one, at('2026-09-19', '09:00', 7));
+    assert.strictEqual(sameDayBefore.matches[0].opponentPos, 7);
+    const sameDayAfter =
+      F.mergeFcfFixtures(before().matches, one, at('2026-09-19', '20:00', 7));
+    assert.strictEqual(sameDayAfter.matches[0].opponentPos, 4);
+  });
+
+  it('stamps nothing on a fixture imported already played', () => {
+    // There is no way back to where they stood that day, and today's table
+    // dressed as a record is worse than no record.
+    const m = F.mergeFcfFixtures([], one, at('2026-10-05', '06:00', 9)).matches[0];
+    assert.strictEqual(m.opponentPos, undefined);
+    assert.strictEqual(m.opponentPosAt, undefined);
+  });
+
+  it('never ERASES a stamp when the rival leaves the standings', () => {
+    const r = F.mergeFcfFixtures(before().matches, one,
+        opts({today: '2026-09-10', nowHM: '06:00', positions: {}}));
+    assert.strictEqual(r.matches[0].opponentPos, 4);
+  });
+
+  it('reports the change in the summary, or the write is skipped', () => {
+    // summary is the contract with _syncFcfSquad: all zeros means no write.
+    const r = F.mergeFcfFixtures(before().matches, one, at('2026-09-18', '06:00', 2));
+    assert.ok(r.summary.updated > 0, 'the new position would never be saved');
+  });
+
+  it('reports NOTHING when the table has not moved', () => {
+    /* The other half, and the one that matters operationally: re-stamping
+       `opponentPosAt` on every run would make summary.updated non-zero
+       nightly, defeating the skip-the-write guard and re-rendering every
+       client on the platform every morning for a table that stood still. */
+    const r = F.mergeFcfFixtures(before().matches, one, at('2026-09-18', '06:00', 4));
+    assert.strictEqual(r.summary.updated, 0);
+    assert.strictEqual(r.matches[0].opponentPosAt, '2026-09-01',
+        'the stamp date moved without the position moving');
+  });
+
+  it('freezes rather than overwrites when the caller gives no clock', () => {
+    // A wrong freeze loses an update; a wrong overwrite destroys a record.
+    const r = F.mergeFcfFixtures(before().matches, one,
+        opts({today: '', nowHM: '', positions: POS(9)}));
+    assert.strictEqual(r.matches[0].opponentPos, 4);
+  });
+
+  it('changes nothing at all when no standings are passed', () => {
+    // Every other test in this file omits `positions`; this pins that the
+    // feature is inert for them rather than quietly rewriting their rows.
+    const base = F.mergeFcfFixtures([], one, opts()).matches[0];
+    assert.strictEqual('opponentPos' in base, false);
+  });
+});
+
 describe('mergeFcfFixtures — what it must NOT touch', () => {
   const one = F.parseFcfFixtures(PARTIDOS, OUR_ID).slice(0, 1);
 

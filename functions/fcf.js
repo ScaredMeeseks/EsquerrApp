@@ -183,6 +183,34 @@ function parseFcfKits(json) {
   return out;
 }
 
+/**
+ * `{teamId: position}` from `/classificacio`, for stamping onto a fixture.
+ *
+ * `position` is one of the CLEAN fields — unlike `played`/`won`/`drawn`,
+ * which FCF publishes as the home and away halves concatenated. Nothing
+ * needs deriving here.
+ *
+ * ⚠ Deliberately NOT the same rule as parseFcfClassificacio in js/utils.js,
+ * which falls back to the array index when FCF sends `position:"0"` for
+ * every team pre-season. That fallback is right for a TABLE, where a column
+ * of zeros is unreadable and the ordering is at least something. It is
+ * wrong here: a position stamped onto a fixture is a claim that gets frozen
+ * and read back months later, and "1r" because a team happened to sort
+ * first in August is a lie the calendar would keep telling. Pre-season
+ * yields an empty map and the card simply shows no position.
+ */
+function parseFcfPositions(json) {
+  const out = {};
+  const data = (json && json.data) || [];
+  data.forEach((r) => {
+    const id = String(((r || {}).team || {}).teamId || "");
+    const pos = parseInt((r || {}).position, 10);
+    if (!id || !(pos > 0)) return;
+    out[id] = pos;
+  });
+  return out;
+}
+
 const HTML_ENTITIES = {amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " "};
 
 /** The handful of entities that actually occur in an acta, plus numerics. */
@@ -681,6 +709,24 @@ function aggregateFcfReferees(groups, sanctionsByActa) {
    a coach enters, and two sources of truth for a scoreline is a fight. */
 const FCF_OWNED = ["date", "time", "location", "mapLink"];
 
+/**
+ * Has this fixture kicked off yet?
+ *
+ * `today` and `nowHM` are the caller's Madrid wall clock, already computed
+ * for the played/upcoming split — so this is string comparison and fcf.js
+ * stays free of timezone arithmetic.
+ *
+ * Both are required. With no clock the honest answer is "assume it has",
+ * which freezes rather than overwrites: a wrong freeze loses an update, a
+ * wrong overwrite destroys a historical record.
+ */
+function _kickedOff(f, today, nowHM) {
+  if (!today || !nowHM || !f || !f.date) return true;
+  if (f.date < today) return true;
+  if (f.date > today) return false;
+  return String(f.time || "00:00") <= nowHM;
+}
+
 /** Days apart, or Infinity if either date is unusable. */
 function _dayGap(a, b) {
   const x = Date.parse(String(a) + "T12:00:00Z");
@@ -716,6 +762,14 @@ function mergeFcfFixtures(existing, incoming, opts) {
   const letter = String(o.letter || "");
   const kits = o.kits || {};
   const today = String(o.today || "");
+  /* Madrid wall clock, "HH:MM". Only used to decide whether a fixture dated
+     TODAY has already kicked off — the daily 06:00 job never needs it, but
+     the refresh button can be pressed at 20:00 on a Saturday. */
+  const nowHM = String(o.nowHM || "");
+  /* {teamId: position} from the same group's standings, which _syncFcfSquad
+     already has in hand. Absent (or pre-season) means no position is
+     stamped, and a fixture keeps whatever it was last given. */
+  const positions = o.positions || {};
   const rows = Array.isArray(existing) ? existing.slice() : [];
   const summary = {adopted: 0, added: 0, updated: 0, removed: 0};
 
@@ -782,6 +836,15 @@ function mergeFcfFixtures(existing, incoming, opts) {
          until the next sync fills it. */
       if (kit && kit.home) m.opponentKit = kit.home;
       if (kit && kit.away) m.opponentKitAway = kit.away;
+      /* The rival's league position, captured for the calendar card.
+         A fixture imported already-played takes none: there is no way back
+         to where they stood that day, and today's table would be a lie
+         dressed as a record. */
+      const pos0 = positions[String(f.opponentTeamId)];
+      if (pos0 > 0 && !_kickedOff(f, today, nowHM)) {
+        m.opponentPos = pos0;
+        m.opponentPosAt = today;
+      }
       rows.push(m);
       summary.added++;
       return;
@@ -811,6 +874,29 @@ function mergeFcfFixtures(existing, incoming, opts) {
     next.opponentBadge = f.opponentBadge;
     if (kit && kit.home) next.opponentKit = kit.home;
     if (kit && kit.away) next.opponentKitAway = kit.away;
+    /* ── The rival's league position, frozen at kick-off ────────────────
+       Tracks the live table for as long as the fixture is still ahead of
+       us, and is never written again once it has been played. That is what
+       makes a past card say where they stood THAT DAY while an upcoming
+       one stays current — and the second leg needs no special case, since
+       it is a different acta and therefore a different row with its own
+       kick-off.
+
+       Written only when the number actually CHANGES. Re-stamping
+       `opponentPosAt` on every run would make JSON.stringify(next) differ
+       from cur nightly, so `summary.updated` would never be zero, so
+       _syncFcfSquad's skip-the-write guard would never fire — and every
+       club in the platform would take a full re-render every morning for
+       a table that had not moved.
+
+       Never DELETED. A rival who drops out of the standings mid-season
+       must not silently erase what we recorded about the games already
+       played against them. */
+    const pos = positions[String(f.opponentTeamId)];
+    if (pos > 0 && pos !== cur.opponentPos && !_kickedOff(f, today, nowHM)) {
+      next.opponentPos = pos;
+      next.opponentPosAt = today;
+    }
     /* Back from the dead: a fixture the federation restored after removing
        it. Leaving the flag would keep the row struck through for ever. */
     if (next.fcfRemoved) delete next.fcfRemoved;
@@ -901,6 +987,7 @@ module.exports = {
   fcfMapsLink,
   parseFcfFixtures,
   parseFcfKits,
+  parseFcfPositions,
   mergeFcfFixtures,
   decodeHtmlEntities,
   parseFcfActa,

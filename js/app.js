@@ -185,6 +185,73 @@
     'cal.refresh_nochange': { ca:'Tot al dia. Cap canvi a la FCF.', es:'Todo al día. Ningún cambio en la FCF.', en:'Up to date — nothing changed at the FCF.' },
     'cal.refresh_failed': { ca:'No s\'ha pogut actualitzar el calendari.', es:'No se ha podido actualizar el calendario.', en:'Could not refresh the calendar.' },
     'cal.from_fcf':       { ca:'Partit oficial, importat de la FCF', es:'Partido oficial, importado de la FCF', en:'Official fixture, imported from the FCF' },
+    /* ── The month grid ── */
+    'cal.today':          { ca:'Avui', es:'Hoy', en:'Today' },
+    'cal.prev_month':     { ca:'Mes anterior', es:'Mes anterior', en:'Previous month' },
+    'cal.next_month':     { ca:'Mes següent', es:'Mes siguiente', en:'Next month' },
+    'cal.training':       { ca:'Entrenament', es:'Entrenamiento', en:'Training' },
+    'cal.activity':       { ca:'Activitat', es:'Actividad', en:'Activity' },
+    'cal.nothing':        { ca:'Res programat aquest dia.', es:'Nada programado este día.', en:'Nothing scheduled this day.' },
+    'cal.empty_month':    { ca:'Cap activitat aquest mes.', es:'Ninguna actividad este mes.', en:'Nothing scheduled this month.' },
+    'cal.home_game':      { ca:'A casa', es:'En casa', en:'Home' },
+    'cal.away_game':      { ca:'A fora', es:'Fuera', en:'Away' },
+    'cal.callup_at':      { ca:'Convocatòria a les {time}', es:'Convocatoria a las {time}', en:'Meet at {time}' },
+    'cal.kickoff_at':     { ca:'Inici a les {time}', es:'Inicio a las {time}', en:'Kick-off at {time}' },
+    /* The placeholder a click turns into a real session. "Programar" rather
+       than "Afegir": the slot already exists in the club's schedule — the
+       coach is confirming it happens this week, not inventing it. */
+    'cal.ghost_hint':     { ca:'Clica per programar aquest entrenament', es:'Clic para programar este entrenamiento', en:'Click to schedule this training' },
+    'cal.scheduled':      { ca:'Entrenament programat', es:'Entrenamiento programado', en:'Training scheduled' },
+    'cal.scheduled_body': { ca:'{day} a les {time}. Clica-hi un altre cop per editar-lo.', es:'{day} a las {time}. Haz clic otra vez para editarlo.', en:'{day} at {time}. Click it again to edit.' },
+    'cal.add':            { ca:'Afegir', es:'Añadir', en:'Add' },
+    'cal.add_on':         { ca:'Afegir el {date}', es:'Añadir el {date}', en:'Add on {date}' },
+    'cal.add_training':   { ca:'Entrenament', es:'Entrenamiento', en:'Training' },
+    'cal.add_match':      { ca:'Partit', es:'Partido', en:'Match' },
+    'cal.add_activity':   { ca:'Altra activitat', es:'Otra actividad', en:'Other activity' },
+    'cal.md_hint':        { ca:'Dies respecte del partit més proper', es:'Días respecto del partido más cercano', en:'Days from the nearest match' },
+    'cal.edit_match':     { ca:'Editar partit', es:'Editar partido', en:'Edit match' },
+    'cal.needs_opponent': { ca:'Cal indicar el rival.', es:'Hay que indicar el rival.', en:'The opponent is required.' },
+    'cal.confirm_delete_match': { ca:'Segur que vols esborrar aquest partit? La convocatòria, les notes i les alineacions se n\'aniran amb ell.', es:'¿Seguro que quieres borrar este partido? La convocatoria, las notas y las alineaciones se irán con él.', en:'Delete this match? Its call-up, notes and line-ups go with it.' },
+    'cal.edit':           { ca:'Editar', es:'Editar', en:'Edit' },
+    'cal.opp_kits':       { ca:'Equipació del rival', es:'Equipación del rival', en:'Opponent\'s kit' },
+    'cal.drafts_found':   { ca:'Tens {n} partits a mig escriure del calendari antic. Els vols desar?', es:'Tienes {n} partidos a medio escribir del calendario antiguo. ¿Los quieres guardar?', en:'You have {n} half-written fixtures from the old calendar. Save them?' },
+    'cal.drafts_keep':    { ca:'Desar-los', es:'Guardarlos', en:'Save them' },
+    'cal.drafts_drop':    { ca:'Descartar-los', es:'Descartarlos', en:'Discard them' },
+    'cal.drafts_confirm_drop': { ca:'Segur? Aquests partits no es podran recuperar.', es:'¿Seguro? Estos partidos no se podrán recuperar.', en:'Sure? These fixtures cannot be recovered.' },
+    /* ── Planned load ──
+       The coach's own 1-10 estimate of how hard a session is meant to be.
+       It is what the calendar's intensity dot reads, and the only part of
+       the load picture that exists before anybody has trained. */
+    'training.th_planned_rpe': { ca:'Intensitat prevista', es:'Intensidad prevista', en:'Planned intensity' },
+    'training.rpe_unset':  { ca:'Sense definir', es:'Sin definir', en:'Not set' },
+    'training.rpe_hint':   { ca:'Com de dura vols que sigui la sessió, de l\'1 al 10. Marca el punt de color al calendari i entra al càlcul de càrrega de la setmana.', es:'Cómo de dura quieres que sea la sesión, del 1 al 10. Marca el punto de color en el calendario y entra en el cálculo de carga de la semana.', en:'How hard you intend the session to be, 1–10. It sets the colour dot on the calendar and feeds the week\'s load figure.' },
+    'load.low':           { ca:'suau', es:'suave', en:'light' },
+    'load.mid':           { ca:'moderat', es:'moderado', en:'moderate' },
+    'load.high':          { ca:'exigent', es:'exigente', en:'hard' },
+    'load.legend':        { ca:'Càrrega', es:'Carga', en:'Load' },
+    'load.planned_rpe':   { ca:'RPE previst {n}', es:'RPE previsto {n}', en:'Planned RPE {n}' },
+    'load.actual_rpe':    { ca:'RPE {n} real · {p} previst', es:'RPE {n} real · {p} previsto', en:'RPE {n} actual · {p} planned' },
+    'load.au':            { ca:'{n} UA', es:'{n} UA', en:'{n} AU' },
+    'load.au_unrated':    { ca:'{n} sense valorar', es:'{n} sin valorar', en:'{n} unrated' },
+    'load.no_data':       { ca:'Sense dades', es:'Sin datos', en:'No data' },
+    /* ── The week strips ── */
+    'cal.week_n':         { ca:'Setmana {n}', es:'Semana {n}', en:'Week {n}' },
+    'cal.callup_short':   { ca:'Conv.', es:'Conv.', en:'Call-up' },
+    'cal.ko_short':       { ca:'Inici', es:'Inicio', en:'KO' },
+    'cal.league':         { ca:'Lliga', es:'Liga', en:'League' },
+    'cal.md_n':           { ca:'J {n}', es:'J {n}', en:'MD {n}' },
+    'cal.squad_sent':     { ca:'Convocatòria enviada · {n} jugadors', es:'Convocatoria enviada · {n} jugadores', en:'Squad sent · {n} players' },
+    'cal.squad_not_sent': { ca:'Convocatòria pendent', es:'Convocatoria pendiente', en:'Squad not sent' },
+    'cal.played_line':    { ca:'{n} convocats', es:'{n} convocados', en:'{n} called up' },
+    /* ── Other activities ── */
+    'act.title':          { ca:'Nom de l\'activitat', es:'Nombre de la actividad', en:'Activity name' },
+    'act.title_ph':       { ca:'Sopar d\'equip, gimnàs, xerrada…', es:'Cena de equipo, gimnasio, charla…', en:'Team meal, gym, talk…' },
+    'act.place':          { ca:'Lloc', es:'Lugar', en:'Place' },
+    'act.new':            { ca:'Nova activitat', es:'Nueva actividad', en:'New activity' },
+    'act.edit':           { ca:'Editar activitat', es:'Editar actividad', en:'Edit activity' },
+    'act.needs_title':    { ca:'Posa-li un nom a l\'activitat.', es:'Ponle un nombre a la actividad.', en:'Give the activity a name.' },
+    'act.needs_date':     { ca:'Cal una data.', es:'Hace falta una fecha.', en:'A date is required.' },
+    'act.saved':          { ca:'Activitat desada', es:'Actividad guardada', en:'Activity saved' },
     /* Referees. The two "note" strings are not boilerplate: without them a
        reader takes an empty yellow-card figure for a lenient referee, and
        takes a name for an identity. Both are wrong and both matter. */
@@ -1588,7 +1655,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 180;
+  const APP_VERSION = 186;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -1844,7 +1911,12 @@
     cats.forEach(function (k) {
       btns += '<button class="cat-bar-btn' + (cur === k ? ' active' : '') + '" data-cat="' + k + '">' + CATEGORY_LABELS[k] + '</button>';
     });
-    return '<div class="cat-bar">' + btns + '</div>';
+    /* The squad letters, inline with the categories they belong to and
+       revealed as one is picked. Only for the calendar: this bar is shared
+       by every page in CATEGORY_PAGES, and the roster and the medical file
+       already have letter filters of their own. */
+    var extra = (currentPage === 'calendar') ? calLetterChipsHtml() : '';
+    return '<div class="cat-bar">' + btns + extra + '</div>';
   }
 
   // ---------- Club helpers ----------
@@ -2536,7 +2608,7 @@
     if (Array.isArray(t.excluded) && t.excluded.map(String).indexOf(id) !== -1) return false;
     if (Array.isArray(t.guests) && t.guests.map(String).indexOf(id) !== -1) return true;
     // A legacy session with no category belongs to everyone, which is what
-    // renderTraining's `!t.category || t.category === curCat` already meant.
+    // the old training list's `!t.category || t.category === curCat` meant.
     if (!t.category) return true;
     if ((u.category || '') !== t.category) return false;
     return trainingTeams(t).indexOf(u.team || '') !== -1;
@@ -2556,9 +2628,10 @@
 
   /* THE reader for fa_training.
      Every navigation now addresses a session by id, so a legacy row without
-     one could be listed and never opened. Healing here rather than in
-     renderStaffTraining -- where it used to live -- means it happens on
-     every surface, including the player pages a coach never visits.
+     one could be listed and never opened. Healing here rather than in the
+     staff training list -- where it used to live, before the calendar
+     replaced that page -- means it happens on every surface, including the
+     player pages a coach never visits.
 
      The write-back is guarded: fa_training is not in the player allowlist
      in firestore.rules, so persisting from a player's client would be
@@ -2581,6 +2654,25 @@
       if (canWrite) localStorage.setItem('fa_training', JSON.stringify(all));
     }
     return all;
+  }
+
+  /* The training SESSIONS only.
+     fa_training also carries activities — a team meal, a club event — which
+     ride the same blob so that they inherit its call-ups, its availability
+     records, its rules and its T-4h reminder for free (see isActivity in
+     utils.js). The price of that is here: anything measuring TRAINING must
+     say so, or a dinner lands in the acute:chronic ratio and the readiness
+     engine starts telling a coach his squad is overloaded because they ate.
+
+     The rule for which sites take this filter: attendance of a single event
+     is kind-agnostic and does not; anything aggregating LOAD, an attendance
+     PERCENTAGE, an RPE prompt or a tactical board does. */
+  function trainingOnly(list) {
+    return (list || []).filter(function (t) { return !isActivity(t); });
+  }
+
+  function activitiesOnly(list) {
+    return (list || []).filter(function (t) { return isActivity(t); });
   }
 
   function hhmmToMins(v) {
@@ -2749,27 +2841,13 @@
    * @param {string} letter   the team letter
    */
   function buildTrainingDrafts(cat, training, letter) {
-    var dayValToJs = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-    var slots = [];
-    var sched = (_clubConfig && _clubConfig.schedules) ?
-      _clubConfig.schedules[cat + '-' + letter] : null;
-    if (sched && sched.training) {
-      sched.training.forEach(function (tr) {
-        if (!tr.day || dayValToJs[tr.day] === undefined) return;
-        slots.push({
-          jsDay: dayValToJs[tr.day], time: tr.time || '', endTime: tr.endTime || '',
-          location: tr.location || '', link: tr.link || ''
-        });
-      });
-    }
-    // Nothing configured for this team: Tue/Thu.
-    if (!slots.length) {
-      slots = [
-        { jsDay: 2, time: '21:00', endTime: '', location: '', link: '' },
-        { jsDay: 4, time: '22:00', endTime: '', location: '', link: '' }
-      ];
-    }
-    slots.sort(function (a, b) { return a.jsDay - b.jsDay; });
+    /* scheduleSlots (utils.js) owns the reading of clubs/{id}.schedules and
+       the Tue/Thu fallback — it already sorts, and the calendar's greyed
+       placeholders come from the same call. Two copies of "what does this
+       team do on a normal week" would drift, and a placeholder that creates
+       a session on a different day than it advertised is the worst way to
+       find that out. */
+    var slots = scheduleSlots(_clubConfig, cat, letter);
     var slotDays = slots.map(function (s) { return s.jsDay; });
 
     /* Cycle on from the latest session in this category, but never
@@ -2804,22 +2882,37 @@
     if (!matched.length) matched = [slots[0]];
     var dateStr = d.toISOString().slice(0, 10);
     return matched.map(function (slot, i) {
-      var loc = slot.location || TRAINING_DEFAULT_LOC;
-      return {
-        // Provisional until saved; the suffix keeps several unique.
-        id: 'tr_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 8),
-        day: tDay(d.getDay()), date: dateStr,
-        time: slot.time,
-        // Never blank when a start is known: the clash maths already
-        // assumes 90 minutes, so showing nothing made the UI and the
-        // arithmetic disagree about what was happening.
-        endTime: slot.endTime || defaultEndTime(slot.time),
-        focus: '', location: loc,
-        mapLink: slot.link || (loc === TRAINING_DEFAULT_LOC ? TRAINING_DEFAULT_MAP : ''),
-        status: 'upcoming', category: cat,
-        teams: [letter], guests: [], excluded: []
-      };
+      return trainingFromSlot(cat, letter, dateStr, slot, i);
     });
+  }
+
+  /**
+   * One session row from one schedule slot on one date.
+   *
+   * THE definition of what a training looks like. Both callers mint a row
+   * the coach will then see on the calendar, and they must be the same row:
+   * the New Training page proposes next week's, and clicking a greyed
+   * placeholder in the grid confirms this week's. When those drifted, a
+   * ghost advertising 21:00 could have created a session at some other
+   * time and nothing would have said so.
+   */
+  function trainingFromSlot(cat, letter, dateStr, slot, seq) {
+    var loc = slot.location || TRAINING_DEFAULT_LOC;
+    var d = new Date(dateStr + 'T12:00:00');
+    return {
+      // Provisional until saved; the suffix keeps several unique.
+      id: 'tr_' + Date.now() + '_' + (seq || 0) + '_' + Math.random().toString(36).slice(2, 8),
+      day: tDay(d.getDay()), date: dateStr,
+      time: slot.time,
+      // Never blank when a start is known: the clash maths already
+      // assumes 90 minutes, so showing nothing made the UI and the
+      // arithmetic disagree about what was happening.
+      endTime: slot.endTime || defaultEndTime(slot.time),
+      focus: '', location: loc,
+      mapLink: slot.link || (loc === TRAINING_DEFAULT_LOC ? TRAINING_DEFAULT_MAP : ''),
+      status: 'upcoming', category: cat,
+      teams: [letter], guests: [], excluded: []
+    };
   }
 
   async function handleRegister(e) {
@@ -4425,9 +4518,11 @@
     if (roles.includes('player')) {
       items.push({ section: t('sidebar.section_player') });
       items.push({ id: 'player-home', icon: '🏠', label: t('sidebar.player_home') });
-      items.push({ id: 'training', icon: '<img src="img/icon-cone.svg" class="sidebar-img-icon">', label: t('sidebar.training') });
+      /* One entry where there were two. "Sessions d'entrenament" and
+         "Jornada" were the same question asked about two kinds of thing,
+         and neither could show a week. */
+      items.push({ id: 'calendar', icon: '📅', label: t('sidebar.matchday') });
       items.push({ id: 'my-stats', icon: '<img src="img/icon-stats.svg" class="sidebar-img-icon">', label: t('sidebar.my_stats') });
-      items.push({ id: 'player-matchday', icon: '⚽', label: t('sidebar.player_matchday') });
       items.push({ id: 'player-actions', icon: '🔔', label: t('sidebar.player_actions') });
     }
 
@@ -4446,11 +4541,13 @@
       staffItem('staff-home', '🏠', t('sidebar.staff_home'));
       staffItem('registrations', '📝', t('sidebar.registrations'));
       staffItem('manage-roster', '<img src="img/icon-boot.png" class="sidebar-img-icon">', t('sidebar.manage_roster'));
-      staffItem('staff-training', '<img src="img/icon-cone.svg" class="sidebar-img-icon">', t('sidebar.staff_training'));
-      staffItem('matchday', '📅', t('sidebar.matchday'));
+      /* Three entries became one. `matchday` was the fixture EDITOR,
+         `staff-matchday` the fixture list and `staff-training` the session
+         list; the calendar is all of them, and the detail pages behind
+         them are reached by clicking a cell. */
+      staffItem('calendar', '📅', t('sidebar.matchday'));
       staffItem('convocatoria', '📋', t('sidebar.convocatoria'));
-      staffItem('staff-matchday', '⚽', t('sidebar.staff_matchday'));
-      staffItem('sancions', '🟥', t('sidebar.sancions'));
+      staffItem('sancions', '<img src="img/iconsancions.png" class="sidebar-img-icon" alt="">', t('sidebar.sancions'));
       staffItem('scorers', '🥇', t('sidebar.scorers'));
       staffItem('medical', '<img src="img/icon-medical.svg" class="sidebar-img-icon">', t('sidebar.medical'));
       staffItem('tactics', '📐', t('sidebar.tactics'));
@@ -4559,14 +4656,31 @@
   }
 
   // Pages that require a specific role
+  /* `calendar` is deliberately NOT here: a player opens the same page, and
+     canEditPage('calendar') is what decides whether anything on it can be
+     clicked into existence. */
   const STAFF_PAGES = new Set([
     'staff-home',
-    'staff-training', 'staff-training-detail', 'training-new', 'matchday',
-    'convocatoria', 'staff-matchday', 'tactics',
+    'staff-training-detail', 'training-new',
+    'convocatoria', 'tactics',
     'manage-roster', 'registrations', 'staff-notifications',
     'staff-player-stats', 'medical', 'medical-detail',
     'sancions', 'scorers'
   ]);
+
+  /* Pages that no longer exist, and where a request for one should land.
+     Old APKs bundle their own copy of this file and go on sending the old
+     ids in push deep links for as long as a phone is not updated — which
+     in this club has been most of a year. Aliasing keeps those taps
+     working; bouncing them to fallbackPage() would send a coach who tapped
+     "convocatòria enviada" to the home screen with no explanation. */
+  const PAGE_ALIASES = {
+    'matchday': 'calendar',
+    'staff-matchday': 'calendar',
+    'player-matchday': 'calendar',
+    'staff-training': 'calendar',
+    'training': 'calendar'
+  };
   const ADMIN_PAGES = new Set(['users']);
   const LEAD_PAGES  = new Set(['settings']);
   /* ADMIN_PAGES is deliberately open to club leads as well (a lead must be
@@ -4590,30 +4704,39 @@
 
      This is a UI gate, not a security boundary: all three sub-roles still
      carry role:'staff' in their token and firestore.rules still lets them
-     write the same documents. It could not be otherwise today — Calendari,
-     Jornada and Convocatòria all write the same fa_matches__{cat} document
-     as one opaque blob, so "Jornada but not Calendari" is not expressible in
-     a rule until those cross-writes are split apart. */
+     write the same documents. It could not be otherwise today — the
+     calendar and Convocatòria both write the same fa_matches__{cat}
+     document as one opaque blob, so a rule cannot tell one from the other.
+
+     Merging Calendari and Jornada REMOVED half of what this note used to
+     describe. "Jornada but not Calendari" was the example, and it is no
+     longer a distinction that exists: they were one page all along, split
+     only because one of them could be edited. */
   const STAFF_ROLE_ACCESS = {
     fitness: {
       'staff-home': 'view',
       'registrations': 'view',
       'manage-roster': 'view',
-      'staff-training': 'view',
+      /* The calendar reads for this role and does not write. It used to be
+         two entries — `staff-training: 'view'` and `matchday: 'view'` —
+         plus full access to the `staff-matchday` list; merging the three
+         pages narrows that to read-only throughout, which is the honest
+         reading of "scheduling is not their job". */
+      'calendar': 'view',
       'staff-training-detail': 'view',
       'training-new': 'hidden',
-      'matchday': 'view',
       'convocatoria': 'hidden',
       'tactics': 'hidden'
-      // staff-matchday, medical, medical-detail, staff-player-stats and
-      // staff-notifications are omitted: full access. The medical file is
-      // this role's whole job.
+      // medical, medical-detail, staff-player-stats and staff-notifications
+      // are omitted: full access. The medical file is this role's whole job.
     },
     delegate: {
       'staff-home': 'view',
       'registrations': 'view',
       'manage-roster': 'view',
-      'staff-training': 'view',
+      /* EDIT, unlike the fitness coach: running the calendar is most of
+         this role. It had `matchday` edit before, and the sessions it now
+         also reaches are the half it was missing. */
       'staff-training-detail': 'view',
       'training-new': 'hidden',
       'convocatoria': 'view',
@@ -4621,7 +4744,7 @@
       'medical-detail': 'hidden',
       'tactics': 'hidden',
       'staff-notifications': 'hidden'
-      // matchday, staff-matchday and staff-player-stats: full access.
+      // calendar and staff-player-stats: full access.
     }
   };
 
@@ -4642,6 +4765,17 @@
 
   function canViewPage(pageId) { return staffAccess(pageId) !== 'hidden'; }
   function canEditPage(pageId) { return staffAccess(pageId) === 'edit'; }
+
+  /* May this session bring a training session into existence?
+     Two gates, because two things can now do it: the New Training page and
+     a click on a greyed placeholder in the calendar. A delegate may edit
+     the calendar (running it is most of the role) but has `training-new`
+     hidden, so without this the placeholder would create a session the
+     page behind it refuses to open — and the add menu would offer a route
+     straight into a bounce. */
+  function canAddTraining() {
+    return canEditPage('calendar') && canViewPage('training-new');
+  }
 
   /* The staff-home shortcut attributes, or nothing when this sub-role may not
      open the destination. Returning '' makes the row inert text rather than a
@@ -4732,6 +4866,11 @@
        every path in and out of the editor to tidy up after itself. */
     if (tbEditingTemplateId() && !session.isAdmin) tbClearEditor();
 
+    /* Retired page ids, resolved BEFORE the role gates — an old APK's push
+       deep link names a page that no longer exists, and bouncing it to the
+       home screen would read as a broken notification. */
+    if (PAGE_ALIASES[currentPage]) currentPage = PAGE_ALIASES[currentPage];
+
     // Enforce role access.
     // The board editor is the one staff page the superadmin needs regardless
     // of which club they happen to be a member of: it is where a template in
@@ -4745,13 +4884,14 @@
        sidebar items at all, and the Back button, the staff-home shortcuts and
        a stale `currentPage` from before a role change all reach a page
        without ever passing the sidebar. `training-new` is the one page whose
-       access follows another's — it is the editor for staff-training, so a
-       view-only session must not reach it even though the list is visible. */
+       access follows another's — it is a way of creating a session, so a
+       session that may only READ the calendar must not reach it even though
+       the calendar itself is visible. */
     if (STAFF_PAGES.has(currentPage) && roles.includes('staff') &&
         !canViewPage(currentPage)) {
       currentPage = fallbackPage();
     }
-    if (currentPage === 'training-new' && !canEditPage('staff-training')) {
+    if (currentPage === 'training-new' && !canAddTraining()) {
       currentPage = fallbackPage();
     }
     if (SUPERADMIN_PAGES.has(currentPage) && !session.isAdmin) {
@@ -4778,16 +4918,12 @@
       'player-home': renderPlayerHome,
       'match-detail': renderMatchDetail,
       'training-detail': renderTrainingDetail,
-      'training': renderTraining,
       'my-stats': renderPlayerStats,
       'player-actions': renderPlayerActions,
-      'player-matchday': renderMatches,
-      'staff-training': renderStaffTraining,
+      'calendar': renderCalendar,
       'training-new': renderTrainingNew,
       'staff-training-detail': renderStaffTrainingDetail,
-      'matchday': renderMatchday,
       'convocatoria': renderConvocatoria,
-      'staff-matchday': renderMatches,
       'sancions': renderSancions,
       'scorers': renderScorers,
       'tactics': renderTactics,
@@ -4849,7 +4985,7 @@
       // which squad it was drawn for, and hiding two thirds of it behind a
       // filter they did not set is how a library stops being one. Search
       // narrows it instead, across name, coach and category together.
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'staff-training', 'matchday', 'convocatoria', 'staff-matchday', 'manage-roster', 'medical', 'player-matchday', 'training', 'player-home', 'player-actions', 'sancions']);
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + renderPushBanner() +
         renderIosInstallBanner() + catBar + fn(session);
@@ -4872,6 +5008,7 @@
        page in the app without its 2rem. */
     content.classList.toggle('dashboard-flush',
         currentPage === 'tactics' && tbEditorOpen());
+
 
     /* The page title, announced rather than parked.
        Only on ENTERING the tab — `isNav` is already the distinction
@@ -4957,8 +5094,11 @@
        the WHOLE club's calendar with no filter at all -- a juvenil player's
        page listed amateur sessions and let him answer availability for them
        -- and it is the same helper that makes a guest see the session he was
-       borrowed for. Narrowing and the new feature are one change. */
-    const training = playerTrainings(session, getTrainings());
+       borrowed for. Narrowing and the new feature are one change.
+
+       trainingOnly: this list becomes the RPE prompt, and nobody rates the
+       exertion of a team dinner. */
+    const training = playerTrainings(session, trainingOnly(getTrainings()));
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -4998,8 +5138,12 @@
        the WHOLE club's calendar with no filter at all -- a juvenil player's
        page listed amateur sessions and let him answer availability for them
        -- and it is the same helper that makes a guest see the session he was
-       borrowed for. Narrowing and the new feature are one change. */
-    const training = playerTrainings(session, getTrainings());
+       borrowed for. Narrowing and the new feature are one change.
+
+       trainingOnly: this list becomes the RPE prompt, and nobody rates the
+       exertion of a team dinner. Must agree with getPendingActionCount
+       above, or the badge counts a card the page does not render. */
+    const training = playerTrainings(session, trainingOnly(getTrainings()));
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
@@ -6214,7 +6358,10 @@
        page listed amateur sessions and let him answer availability for them
        -- and it is the same helper that makes a guest see the session he was
        borrowed for. Narrowing and the new feature are one change. */
-    const training = playerTrainings(session, getTrainings());
+    /* trainingOnly: this is the season attendance PERCENTAGE. An activity
+       has its own donut on its own card; folding it in here would mean a
+       player who skipped the Christmas dinner reads as a poor trainer. */
+    const training = playerTrainings(session, trainingOnly(getTrainings()));
     let pYes = 0, pLate = 0, pNo = 0, pInj = 0, pNa = 0;
     const _ctxHome = availContext();
     training.forEach(t => {
@@ -9835,8 +9982,31 @@
       '</div>';
     }
 
+    /* The rival's two strips, imported from the FCF. They used to be two
+       columns of the Calendari table, which is the one place a coach never
+       looked at them; here they sit next to the fixture they belong to,
+       which is where a clash with our own kit is actually noticed.
+       `mdKitCellHtml` renders nothing for a kit we do not have. */
+    const oppKitsHtml = (m.opponentKit || m.opponentKitAway) ? `
+      <div class="card md-oppkits">
+        <div class="card-title">${t('cal.opp_kits')}</div>
+        <div class="md-oppkits-row">
+          ${mdKitCellHtml(m.opponentKit, 'cal.opp_kit_1', m.opponentBadge)}
+          ${mdKitCellHtml(m.opponentKitAway, 'cal.opp_kit_2', m.opponentBadge)}
+        </div>
+      </div>` : '';
+    /* Editing a fixture moved here with the Calendari table it used to live
+       in. It is the only way left to correct a hand-typed kick-off or drop
+       a friendly that was cancelled, so it is not optional polish. */
+    const editBtn = canEditPage('calendar')
+      ? `<button class="btn btn-outline btn-small md-edit-fixture" data-match-id="${sanitize(String(m.id))}">✏️ ${t('cal.edit')}</button>`
+      : '';
+
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">${t('btn.back')}</button>
+      <div class="detail-topbar">
+        <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">${t('btn.back')}</button>
+        ${editBtn}
+      </div>
       ${showNotes ? mnBriefingHtml(m, matches) : ''}
       <div class="detail-hero detail-hero-match">
         <div class="detail-hero-badge"><span class="badge badge-yellow" style="font-size:.9rem;padding:.3rem .8rem;">${t('match_detail.badge')}</span></div>
@@ -9849,6 +10019,7 @@
         </div>
         ${convHtml}
       </div>
+      ${oppKitsHtml}
       ${showNotes ? mnLegBannerHtml(m, matches) : ''}
       ${mdRefDetailHtml(m, matches)}
       ${eventsHtml}
@@ -9916,6 +10087,8 @@
         <div class="detail-card"><div class="detail-card-label">Attendance</div><div class="detail-card-value">${assistHtml || '—'}</div></div>
       </div>
       ${(() => {
+        // An activity has no session plan. Same rule as the staff page.
+        if (isActivity(tr)) return '';
         const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
         const boards = trainingBoards[tr.date] || [];
         if (!boards.length) return '';
@@ -9967,7 +10140,11 @@
     if (_readinessDataCache && _readinessDataFrame === f) return _readinessDataCache;
     _readinessDataCache = {
       rpeData: JSON.parse(localStorage.getItem('fa_player_rpe') || '{}'),
-      trainingList: getTrainings(),
+      /* trainingOnly, and this is the one that matters most: everything
+         downstream of here is LOAD — acute:chronic, readiness, the watch
+         list. An activity carries no exertion and must not dilute a week's
+         chronic average or count as a session missed. */
+      trainingList: trainingOnly(getTrainings()),
       matchesList: JSON.parse(localStorage.getItem('fa_matches') || '[]'),
       availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
       staffOverrides: JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}'),
@@ -10931,7 +11108,8 @@
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const uid = session ? session.id : '';
     const now = new Date();
-    const trainingList = getTrainings();
+    // trainingOnly: these charts are load and attendance rate. See getTrainings().
+    const trainingList = trainingOnly(getTrainings());
     const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -11091,7 +11269,8 @@
 
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const now = new Date();
-    const trainingList = getTrainings();
+    // trainingOnly: these charts are load and attendance rate. See getTrainings().
+    const trainingList = trainingOnly(getTrainings());
     const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -11672,7 +11851,8 @@
               <div class="tb-match-list" id="tb-training-list">
                 <div class="tb-match-option" data-val="">None</div>
                 ${(() => {
-                  const allTraining = getTrainings();
+                  // trainingOnly: a tactical board attaches to a session, never to an activity.
+                  const allTraining = trainingOnly(getTrainings());
                   const todayStr = new Date().toISOString().slice(0, 10);
                   return allTraining.filter(t => t.date && t.date >= todayStr).map(t => {
                     const d = tDateShort(t.date);
@@ -15006,7 +15186,8 @@
       const el = document.getElementById('tb-training-linked');
       if (!el) return;
       const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-      const allTraining = getTrainings();
+      // trainingOnly: a tactical board attaches to a session, never to an activity.
+      const allTraining = trainingOnly(getTrainings());
       const curName = (nameInput ? nameInput.value : localStorage.getItem('fa_tactic_name') || '').trim();
       const linked = [];
       for (const [tdate, boards] of Object.entries(trainingBoards)) {
@@ -16676,277 +16857,6 @@
 
   // #region Training & Staff Views
   // ----- Shared pages -----
-  function renderTraining() {
-    /* Only the sessions this player is actually called to. This used to read
-       the WHOLE club's calendar with no filter at all -- a juvenil player's
-       page listed amateur sessions and let him answer availability for them
-       -- and it is the same helper that makes a guest see the session he was
-       borrowed for. Narrowing and the new feature are one change. */
-    var training = playerTrainings(getSession(), getTrainings());
-    let rows = training.map(t => {
-      const dateStr = t.date ? tDateDMY(t.date) : '—';
-      const assistanceCell = (t.status === 'past' && t.assistance != null)
-        ? buildAssistanceCircle(t.assistance)
-        : '<span style="color:var(--text-secondary)">—</span>';
-      return `<tr>
-        <td><strong>${t.date ? tDay(new Date(t.date + 'T12:00:00').getDay()) : sanitize(t.day)}</strong></td><td>${dateStr}</td><td>${sanitize(t.time)}</td><td>${sanitize(t.focus)}</td><td>${sanitize(t.location)}</td><td class="center-cell">${assistanceCell}</td>
-      </tr>`;
-    }).join('');
-    return `
-      <h2 class="page-title">${t('page.training')}</h2>
-      <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>${t('training.th_day')}</th><th>${t('training.th_date')}</th><th>${t('training.th_time')}</th><th>${t('training.th_focus')}</th><th>${t('training.th_location')}</th><th class="center-cell">${t('training.th_assistance')}</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div></div>`;
-  }
-
-  function renderStaffTraining() {
-    // Sessions are addressed by a stable id, never by array position. Position
-    // was fragile even locally (a filtered row index written into the full
-    // blob), and once Phase 5 merges several category documents into this list
-    // a remote change to ANOTHER category can reorder it between render and
-    // keystroke — silently writing one squad's edits onto another's session.
-    // getTrainings() does the id repair for every surface, not just this one.
-    var allTraining = getTrainings();
-    allTraining.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    /* A fitness coach and a delegate read this page; they do not run it.
-       The id repair + sort above is written back on every render, so without
-       this guard merely OPENING the page is a write from a session that is
-       not supposed to change anything here. */
-    const ro = !canEditPage('staff-training');
-    if (!ro) localStorage.setItem('fa_training', JSON.stringify(allTraining));
-    var curCat = getCurrentCategory();
-    var training = allTraining.filter(function (t) {
-      if (curCat && t.category && t.category !== curCat) return false;
-      return !trainingTeamFilter || trainingTeams(t).indexOf(trainingTeamFilter) !== -1;
-    });
-    const DEFAULT_LOC = 'Escola Industrial';
-    const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
-
-    /* "Completat" at the session's OWN end time. This used to be a flat
-       start + 2h, which called a 11:30–12:00 session in progress until
-       13:30 and a 20:00–22:00 one done on the dot regardless of what the
-       coach had typed. The two hours survive only as the fallback for a
-       session with no endTime, so nothing changes for the old rows. */
-    function computeStatus(tr) {
-      if (!tr.date || !tr.time) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
-      const start = new Date(tr.date + 'T' + tr.time.split(' - ')[0] + ':00');
-      const endWindow = sessionEndsAt(tr, BADGE_FALLBACK_MINS);
-      if (isNaN(start.getTime()) || !endWindow) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
-      const now = new Date();
-      if (now >= endWindow) return { label: t('training.completed'), cls: 'badge-grey', key: 'completed' };
-      if (now >= start) return { label: t('training.in_progress'), cls: 'badge-yellow', key: 'inprogress' };
-      return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
-    }
-
-    function fmtDate(dateStr) {
-      if (!dateStr) return '';
-      const [y, m, d] = dateStr.split('-');
-      return d + '/' + m + '/' + y;
-    }
-
-    let rows = training.map((tr) => {
-      // data-tid is the session's stable id — see the note in the header.
-      const i = tr.id;
-      const dayName = tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : (tr.day || '\u2014');
-      const locVal = tr.location || DEFAULT_LOC;
-      const linkVal = tr.mapLink || (locVal === DEFAULT_LOC ? DEFAULT_MAP : '');
-      const st = computeStatus(tr);
-      const locked = st.key !== 'upcoming';
-      const dis = locked ? ' disabled' : '';
-      const assistanceCell = tr.date
-        ? buildAvailDonut(tr.date, tr)
-        : '<span style="color:var(--text-secondary)">\u2014</span>';
-      /* The completed-session layout is already an exact read-only rendering
-         of this row, so a view-only sub-role reuses it rather than growing a
-         second one. The `st-locked` class stays off, though: that greys the
-         row to mean "this session is over", which is not what is going on. */
-      if (locked || ro) {
-        return `<tr data-tid="${i}"${locked ? ' class="st-locked"' : ''}>
-      <td style="white-space:nowrap">
-        <span>${fmtDate(tr.date)}</span>
-        <span class="st-day-label">${sanitize(dayName)}</span>
-      </td>
-      <td>${sanitize(tr.time || '\u2014')}</td>
-      <td>${sanitize(tr.focus || '\u2014')}</td>
-      <td>${sanitize(locVal)}</td>
-      <td>${linkVal ? '<a href="' + sanitize(linkVal) + '" target="_blank" rel="noopener" class="detail-map-link">\ud83d\udccd</a>' : '\u2014'}</td>
-      <td class="center-cell"><span class="badge ${st.cls}">${st.label}</span></td>
-      <td class="center-cell">${assistanceCell}</td>
-      <td></td>
-    </tr>`;
-      }
-      const dmyVal = tr.date ? fmtDate(tr.date) : '';
-      return `<tr data-tid="${i}">
-      <td style="white-space:nowrap">
-        <input type="text" class="reg-input st-date md-datepicker" data-display-dmy data-idx="${i}" data-date-iso="${sanitize(tr.date || '')}" value="${sanitize(dmyVal)}" placeholder="dd/mm/yyyy" readonly style="width:135px;cursor:pointer;">
-        <span class="st-day-label">${sanitize(dayName)}</span>
-      </td>
-      <td><select class="reg-input st-time" data-idx="${i}" style="width:95px;">${buildTimeOptions((tr.time || '').split(' - ')[0])}</select></td>
-      <td><input class="reg-input st-focus" data-idx="${i}" value="${sanitize(tr.focus || '')}" placeholder="${t('training.focus_ph')}" style="width:130px;"></td>
-      <td><input class="reg-input st-location" data-idx="${i}" value="${sanitize(locVal)}" placeholder="${t('training.location_ph')}" style="width:130px;"></td>
-      <td><input class="reg-input st-link" data-idx="${i}" value="${sanitize(linkVal)}" placeholder="${t('training.maplink_ph')}" style="width:160px;"></td>
-      <td class="center-cell"><span class="badge ${st.cls}">${st.label}</span></td>
-      <td class="center-cell">${assistanceCell}</td>
-      <td><button class="md-remove-btn st-remove" data-idx="${i}" title="Remove">&times;</button></td>
-    </tr>`;
-    }).join('');
-    // Overall season attendance donut
-    const allPlayers = getUsers().filter(u => (u.roles || []).includes('player'));
-    const totalPlayers = allPlayers.length;
-    const sessionCount = training.filter(t => t.date).length;
-    let seasonYes = 0, seasonLate = 0, seasonNo = 0, seasonInjured = 0, seasonNa = 0;
-    const playerAttend = {};
-    const playerAbsent = {};
-    if (totalPlayers) {
-      allPlayers.forEach(p => { playerAttend[p.id] = 0; playerAbsent[p.id] = 0; });
-      const _ctxSeason = availContext();
-      training.forEach(t => {
-        if (!t.date) return;
-        const tLocked = isTrainingLocked(t);
-        allPlayers.forEach(p => {
-          const v = getEffectiveAnswer(p.id, t, tLocked, _ctxSeason);
-          if (v === 'yes') { seasonYes++; playerAttend[p.id]++; }
-          else if (v === 'late') { seasonLate++; playerAttend[p.id]++; }
-          else if (v === 'no') { seasonNo++; playerAbsent[p.id]++; }
-          else if (v === 'injured') { seasonInjured++; playerAbsent[p.id]++; }
-          else { seasonNa++; }
-        });
-      });
-    }
-    const seasonTotal = seasonYes + seasonLate + seasonNo + seasonInjured + seasonNa;
-    const seasonAttending = seasonYes + seasonLate;
-    let seasonDonutHtml = '';
-    if (seasonTotal > 0) {
-      const size = 130, stroke = 18, radius = (size - stroke) / 2;
-      const circ = 2 * Math.PI * radius;
-      const segs = [
-        { count: seasonYes, color: '#66bb6a', label: 'Yes' },
-        { count: seasonLate, color: '#ffa726', label: 'Late' },
-        { count: seasonNo, color: '#78909c', label: 'No' },
-        { count: seasonInjured, color: '#ef5350', label: 'Injured' },
-        { count: seasonNa, color: '#d0d0d0', label: 'N/A' }
-      ];
-      let arcs = '', off = 0;
-      segs.forEach(s => {
-        if (s.count > 0) {
-          const len = (s.count / seasonTotal) * circ;
-          const sPct = Math.round((s.count / seasonTotal) * 100);
-          arcs += `<circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${s.color}" stroke-width="${stroke}"
-            stroke-dasharray="${len} ${circ - len}" stroke-dashoffset="${-off}"
-            style="--circ:${circ};cursor:pointer;pointer-events:stroke" transform="rotate(-90 ${size/2} ${size/2})" data-tooltip="${s.label}: ${sPct}%"><title>${s.label}: ${sPct}%</title></circle>`;
-          off += len;
-        }
-      });
-      const pct = Math.round((seasonAttending / seasonTotal) * 100);
-      const avgYes = Math.round(seasonYes / sessionCount);
-      const avgLate = Math.round(seasonLate / sessionCount);
-      const avgNo = Math.round(seasonNo / sessionCount);
-      const avgInj = Math.round(seasonInjured / sessionCount);
-      const avgNa = Math.round(seasonNa / sessionCount);
-
-      // Top 3 attending / not attending
-      const sortedAttend = allPlayers.map(p => ({ name: p.name, count: playerAttend[p.id] || 0 })).sort((a, b) => b.count - a.count).slice(0, 3);
-      const sortedAbsent = allPlayers.map(p => ({ name: p.name, count: playerAbsent[p.id] || 0 })).sort((a, b) => b.count - a.count).slice(0, 3);
-      const top3AttendHtml = sortedAttend.map((p, i) => `<div class="std-top-row"><span class="std-top-rank">${i + 1}.</span><span class="std-top-name">${sanitize(p.name)}</span><span class="std-top-count" style="color:#66bb6a">${p.count}</span></div>`).join('');
-      const top3AbsentHtml = sortedAbsent.map((p, i) => `<div class="std-top-row"><span class="std-top-rank">${i + 1}.</span><span class="std-top-name">${sanitize(p.name)}</span><span class="std-top-count" style="color:#ef5350">${p.count}</span></div>`).join('');
-
-      /* Currently injured players -- through the SAME derivation as every
-         other surface. This list used to read fa_training_availability with
-         the legacy `{uid}_{date}` key, which the move to session-id keys left
-         matching almost nothing, and then fell back to the roster's cached
-         fitnessStatus. It knew nothing about fa_injuries, about a discarded
-         self-report or about a resolution, so a player the coach had signed
-         off stayed on it. */
-      const availAllData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-      const sortedSessions = training.filter(t => t.date)
-        .slice().sort((a, b) => a.date.localeCompare(b.date));
-      const _injCtx = fitnessContext();
-      const _injDerived = {};
-      allPlayers.forEach(p => { _injDerived[p.id] = deriveFitnessStatus(p.id, false, _injCtx); });
-      const injuredPlayers = allPlayers.filter(p =>
-        _injDerived[p.id].fitnessStatus === 'injured');
-      const injuredHtml = injuredPlayers.map(p => {
-        const injury = _injDerived[p.id].injuryNote || t('fitness.injury');
-        // Count consecutive weeks injured from most recent backwards, back to
-        // the last all-clear at the most — answers from an injury already
-        // closed are not part of how long this one has lasted.
-        const since = _injDerived[p.id].standDownUpTo || '';
-        let weeks = 0;
-        for (let d = sortedSessions.length - 1; d >= 0; d--) {
-          const sess = sortedSessions[d];
-          if (since && sess.date <= since) break;
-          const v = readRecord(availAllData, p.id, sess, 'avail');
-          if (v === 'injured') weeks++;
-          else if (v) break;
-        }
-        if (weeks === 0) weeks = 1;
-        const weekLabel = weeks === 1 ? t('std.week_1') : weeks + ' ' + t('std.weeks');
-        return `<div class="std-top-row"><span class="std-top-name" title="${sanitize(injury)}">${sanitize(p.name)}</span><span class="std-top-count" style="color:#ef5350">${weekLabel}</span></div>`;
-      }).join('') || '<div class="std-top-row" style="color:var(--text-secondary)">' + t('std.none') + '</div>';
-
-      seasonDonutHtml = `<div class="card" style="margin-bottom:1.5rem;">
-        <div class="card-title">${t('std.season_attendance')}</div>
-        <div class="std-donut-wrap">
-          <div class="std-donut">
-            <svg viewBox="0 0 ${size} ${size}">
-              <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="var(--border)" stroke-width="${stroke}"/>
-              ${arcs}
-            </svg>
-            <span class="std-donut-label">${pct}%</span>
-          </div>
-          <div>
-            <div class="std-donut-legend">
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#66bb6a"></span>${t('avail.yes')} (${avgYes})</span>
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#ffa726"></span>${t('avail.late')} (${avgLate})</span>
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#78909c"></span>${t('avail.no')} (${avgNo})</span>
-              <span class="std-legend-item"><span class="std-legend-dot" style="background:#ef5350"></span>${t('avail.injured')} (${avgInj})</span>
-              ${avgNa ? `<span class="std-legend-item"><span class="std-legend-dot" style="background:#d0d0d0"></span>${t('avail.na')} (${avgNa})</span>` : ''}
-            </div>
-            <div class="std-season-stat">${t('std.total_sessions')} <strong>${sessionCount}</strong></div>
-          </div>
-          <div class="std-top-lists">
-            <div class="std-top-card">
-              <div class="std-top-title">${t('std.top_attendance')}</div>
-              ${top3AttendHtml}
-            </div>
-            <div class="std-top-card">
-              <div class="std-top-title">${t('std.most_absent')}</div>
-              ${top3AbsentHtml}
-            </div>
-            <div class="std-top-card">
-              <div class="std-top-title">${t('std.currently_injured')}</div>
-              <div class="std-top-scroll">${injuredHtml}</div>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    return `
-      <h2 class="page-title">${t('page.training')}</h2>
-      ${ro ? viewOnlyBanner() : ''}
-      ${seasonDonutHtml}
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:.5rem;flex-wrap:wrap;">
-          ${(function () {
-            // Only worth showing when the category actually has two squads.
-            const ls = getTeamLetters(curCat);
-            if (ls.length <= 1) return '<span></span>';
-            const btn = (val, label) => '<button class="roster-team-btn tr-team-btn' +
-              ((trainingTeamFilter === val || (val === 'all' && !trainingTeamFilter)) ? ' roster-team-btn-active' : '') +
-              '" data-tr-team="' + val + '">' + label + '</button>';
-            return '<div class="roster-team-filter" style="margin-bottom:0;">' +
-              btn('all', t('roster.all')) + ls.map(l => btn(l, l)).join('') + '</div>';
-          })()}
-          ${ro ? '' : `<button class="btn btn-outline btn-small matchday-add" id="btn-training-add-top">${t('training.add')}</button>`}
-        </div>
-        <div class="table-wrap"><table class="matchday-table">
-        <thead><tr><th>${t('training.th_date')}</th><th>${t('training.th_time')}</th><th>${t('training.th_focus')}</th><th>${t('training.th_location')}</th><th>${t('training.th_link')}</th><th class="center-cell">${t('training.th_status')}</th><th class="center-cell">${t('training.th_attendance')}</th><th></th></tr></thead>
-        <tbody id="staff-training-body">${rows}</tbody>
-      </table></div>
-      </div>`;
-  }
 
   /* When the answering window closes. Was a hardcoded one hour; it is the
      club lead's `lockHours` now, defaulting to 3. The push sent
@@ -17138,10 +17048,42 @@
      picked", not "all of them". Save stays disabled until it is set. */
   let _ntTeam = null;
 
+  /* The day the calendar was clicked on, or null for "cycle on from the
+     last session" — which is what the page did before the calendar
+     existed and still does when it is opened any other way. */
+  let _ntDate = null;
+
   function _ntReset() {
     _ntDrafts = null;
     _ntCat = null;
     _ntTeam = null;
+    /* Cleared with the rest. A date left behind would silently re-date the
+       next session a coach composed from anywhere else in the app. */
+    _ntDate = null;
+  }
+
+  /** Open the New Training page on a specific day. */
+  function _ntSeedFor(date) {
+    _ntDate = date || null;
+    _ntCat = getCurrentCategory() || (getVisibleCategories()[0] || '');
+    _ntSeed();
+  }
+
+  /**
+   * The drafts for a chosen day, rather than the next one in the cycle.
+   *
+   * Every slot the squad has on that weekday; a day it does not normally
+   * train gets ONE blank draft, because the coach clicking a Sunday means
+   * a Sunday session and the answer "we do not train then" is not useful.
+   */
+  function _ntDraftsOn(cat, letter, date) {
+    const jsDay = new Date(date + 'T12:00:00').getDay();
+    const slots = scheduleSlots(_clubConfig, cat, letter)
+        .filter(function (s) { return s.jsDay === jsDay; });
+    if (!slots.length) slots.push({ jsDay: jsDay, time: '', endTime: '', location: '', link: '' });
+    return slots.map(function (slot, i) {
+      return trainingFromSlot(cat, letter, date, slot, i);
+    });
   }
 
   /** Rebuild the drafts from the chosen team's schedule. */
@@ -17150,8 +17092,13 @@
     /* One letter means there is no choice to make, so preselect it — and do
        it HERE, before the drafts are built, not in the render afterwards. */
     if (!_ntTeam && letters.length === 1) _ntTeam = letters[0];
-    _ntDrafts = (_ntCat && _ntTeam) ?
-      buildTrainingDrafts(_ntCat, getTrainings(), _ntTeam) : [];
+    if (!_ntCat || !_ntTeam) { _ntDrafts = []; return; }
+    /* A date means the calendar sent us here and the coach has already
+       said which day he means; without one the page proposes the next
+       session in the cycle, as it always did. */
+    _ntDrafts = _ntDate
+      ? _ntDraftsOn(_ntCat, _ntTeam, _ntDate)
+      : buildTrainingDrafts(_ntCat, getTrainings(), _ntTeam);
   }
 
   /**
@@ -17234,6 +17181,8 @@
             <select class="reg-input nt-f" data-nt-f="endTime" data-nt-i="${i}">${buildTimeOptions(d.endTime)}</select></label>
           <label>${t('training.th_focus')}
             <input class="reg-input nt-f" data-nt-f="focus" data-nt-i="${i}" value="${sanitize(d.focus)}" placeholder="${t('training.focus_ph')}"></label>
+          <label>${t('training.th_planned_rpe')}
+            <select class="reg-input nt-f" data-nt-f="plannedRpe" data-nt-i="${i}">${buildRpeOptions(d.plannedRpe)}</select></label>
           <label>${t('training.th_location')}
             <input class="reg-input nt-f" data-nt-f="location" data-nt-i="${i}" value="${sanitize(d.location)}" placeholder="${t('training.location_ph')}"></label>
           <label>${t('training.th_link')}
@@ -17246,7 +17195,7 @@
     }).join('');
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="staff-training">${t('btn.back')}</button>
+      <button class="btn btn-outline btn-small detail-back" data-back="calendar">${t('btn.back')}</button>
       <h2 class="page-title">${t('nt.title')}</h2>
       ${teamBar}
       ${_ntTeam ? blocks : `<div class="card"><p class="nt-hint">${t('nt.pick_team_first')}</p></div>`}
@@ -17391,6 +17340,14 @@
         const d = _ntDrafts[Number(el.dataset.ntI)];
         if (!d) return;
         const f = el.dataset.ntF;
+        if (f === 'plannedRpe') {
+          /* A NUMBER or nothing at all. A <select> hands back '', and a
+             persisted `plannedRpe: ""` would ride every shard from here to
+             the end of the season meaning the same as its own absence. */
+          const n = Number(el.value);
+          if (n >= 1 && n <= 10) d.plannedRpe = n; else delete d.plannedRpe;
+          return;
+        }
         d[f] = (f === 'date') ? (el.dataset.dateIso || d.date) : el.value;
         if (f === 'date') d.day = d.date ? tDay(new Date(d.date + 'T12:00:00').getDay()) : d.day;
       };
@@ -17433,7 +17390,7 @@
     if (cancel) {
       cancel.addEventListener('click', () => {
         _ntReset();
-        currentPage = 'staff-training';
+        currentPage = 'calendar';
         renderPage(getSession());
       });
     }
@@ -17511,28 +17468,43 @@
     return row;
   }
 
+  /**
+   * Commit drafts to fa_training. Returns how many clashes it resolved.
+   *
+   * THE write path for a new session, whichever surface produced it: the
+   * New Training page, a click on a greyed placeholder in the calendar, or
+   * the activity dialog. Clash resolution and the guest overrides are not
+   * optional extras that one caller may skip — a session written around
+   * them leaves a player double-booked, or a borrowed player marked absent
+   * from the session he was borrowed for.
+   */
+  function _ntCommit(drafts) {
+    const list = drafts || [];
+    if (!list.length) return 0;
+    const training = getTrainings();
+    let moved = 0;
+    list.forEach(d => { moved += _ntResolveClashes(d, training); });
+    list.forEach(d => training.push(d));
+    training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    localStorage.setItem('fa_training', JSON.stringify(training));
+    // Only now: an abandoned draft must not leave overrides pointing at a
+    // session that never existed.
+    list.forEach(d => _ntMarkAttending(d, (d.guests || []).map(String), true));
+    return moved;
+  }
+
   function _ntSave() {
     const drafts = _ntDrafts || [];
     // The button is disabled without a team, but the guard is here too: a
     // save that silently created nothing would look like a broken button.
     if (!_ntTeam || !drafts.length) return;
-    const training = getTrainings();
-
-    let moved = 0;
-    drafts.forEach(d => { moved += _ntResolveClashes(d, training); });
-
-    drafts.forEach(d => training.push(d));
-    training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    localStorage.setItem('fa_training', JSON.stringify(training));
-    // Only now: an abandoned draft must not leave overrides pointing at a
-    // session that never existed.
-    drafts.forEach(d => _ntMarkAttending(d, (d.guests || []).map(String), true));
+    const moved = _ntCommit(drafts);
     if (moved) {
       _showPushToast(t('nt.saved_title'),
         t('nt.moved').replace('{n}', moved));
     }
     _ntReset();
-    currentPage = 'staff-training';
+    currentPage = 'calendar';
     renderPage(getSession());
   }
   // #endregion New Training
@@ -17648,13 +17620,48 @@
       teamsHtml = renderGeneratedTeams(_generatedTeams, calledSquad, tr, locked);
     }
 
+    /* An ACTIVITY opens this same page — it is a fa_training row, and the
+       attendance table below is exactly what it needs. What it does not
+       have is a focus, a tactical board or two teams to split into, so
+       those sections are left out rather than rendered empty. The edit
+       button is the dialog it was created in; a session is edited in the
+       list of fields above instead. */
+    const isAct = isActivity(tr);
+    const heroTitle = sanitize(activityTitleOf(tr, t(isAct ? 'cal.activity' : 'cal.training')));
+    /* The planned load, and what it costs. Shown here rather than only on
+       the calendar because this is where a coach sets it — and the AU
+       figure beside the picker is what makes 7 mean something. */
+    const plannedBand = loadBand(tr.plannedRpe);
+    const plannedLabel = plannedBand
+      ? tr.plannedRpe + ' · ' + t('load.' + plannedBand)
+      : t('training.rpe_unset');
+    const plannedAu = sessionAU(tr, tr.plannedRpe);
+    const plannedAuLabel = plannedAu === null
+      ? '' : t('load.au').replace('{n}', plannedAu);
+    const actEdit = (isAct && !ro)
+      ? `<button class="btn btn-outline btn-small" id="std-edit-activity" data-act-id="${sanitize(String(tr.id))}">✏️ ${t('cal.edit')}</button>`
+      : '';
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('staff-training')}">${t('btn.back')}</button>
+      <div class="detail-topbar">
+        <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('calendar')}">${t('btn.back')}</button>
+        ${actEdit}
+      </div>
       <div class="detail-hero detail-hero-training">
-        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">${t('training.badge')}</span></div>
-        <h2 class="detail-title">${sanitize(tr.focus)}</h2>
+        <div class="detail-hero-badge"><span class="badge ${isAct ? 'badge-yellow' : 'badge-green'}" style="font-size:.9rem;padding:.3rem .8rem;">${t(isAct ? 'cal.activity' : 'training.badge')}</span></div>
+        <h2 class="detail-title">${heroTitle}</h2>
         <div class="detail-subtitle">${dateFormatted} · ${sanitize(tr.time || '—')} · ${sanitize(tr.location || '—')}</div>
       </div>
+      ${isAct ? '' : `
+      <div class="card std-load-card">
+        <div class="card-title">${t('training.th_planned_rpe')}</div>
+        <div class="std-load-row">
+          ${ro
+            ? `<span class="std-load-static">${sanitize(plannedLabel)}</span>`
+            : `<select class="reg-input std-planned-rpe" data-sid="${sanitize(String(tr.id))}">${buildRpeOptions(tr.plannedRpe)}</select>`}
+          <span class="std-load-au">${sanitize(plannedAuLabel)}</span>
+        </div>
+        <p class="std-load-hint">${t('training.rpe_hint')}</p>
+      </div>`}
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-title">${t('std.attendance_overview')}</div>
         <div class="std-donut-wrap">${donutHtml}</div>
@@ -17678,6 +17685,7 @@
         </table></div>
       </div>
       ${(() => {
+        if (isAct) return '';        // an activity has no session plan
         const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
         const boards = trainingBoards[tr.date] || [];
         if (!boards.length) return '';
@@ -17695,7 +17703,7 @@
           }).join('') + '</div>';
       })()}
       </div>
-      ${ro ? '' : `
+      ${(ro || isAct) ? '' : `
       <div class="card">
         <div class="tg-header">
           <div class="card-title" style="margin-bottom:0;">Auto Generate Teams</div>
@@ -17745,7 +17753,7 @@
         </div>
         <div id="tg-teams-container">${teamsHtml}</div>
       </div>`}
-      ${(() => {
+      ${isAct ? '' : (() => {
         return '<div id="std-boards-section">' + renderStdBoardsSection(tr) + '</div>';
       })()}`;
   }
@@ -18278,7 +18286,8 @@
 
     // --- Team aggregate charts ---
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-    const trainingList = getTrainings();
+    // trainingOnly: these charts are load and attendance rate. See getTrainings().
+    const trainingList = trainingOnly(getTrainings());
     const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
@@ -18566,175 +18575,842 @@
     });
   }
 
-  function renderMatchday() {
-    mdLoadAllRefIndices();
-    const now = new Date();
-    const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
-    /* A fitness coach reads the fixture list; scheduling is not their job.
-       (A delegate DOES schedule — running the calendar is most of the role —
-       so this is false for them.) The drafts card, the add button and the
-       per-row edit/delete all disappear; the fixtures themselves stay. */
-    var ro = !canEditPage('matchday');
-    var curCat = getCurrentCategory();
-    // New (unsaved) games from fa_matchday. These used to be shown
-    // unfiltered while the saved matches below were scoped, so every coach
-    // saw every category's drafts. saveGames() re-attaches the out-of-scope
-    // drafts, since it rebuilds the list from the rendered rows.
-    const newGames = JSON.parse(localStorage.getItem('fa_matchday') || '[]')
-      .filter(g => !curCat || !g.category || g.category === curCat);
-    const newRows = newGames.map((g, i) => matchdayRowHtml(g, i)).join('');
-    const hasNew = newGames.length > 0;
+  // #region Calendar
+  /* ── The month grid ────────────────────────────────────────────────────
+     One page for what used to be three: Calendari (the fixture editor),
+     Jornada (the fixture list) and Sessions d'entrenament — each of the
+     last two duplicated per role, so five renderers in all.
 
-    // Saved matches from fa_matches (future only)
-    var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    var savedMatches = allMatches.filter(function(m) {
-      if (curCat && m.category && m.category !== curCat) return false;
-      return true;
-    }).sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+     What a coach could not do before: see a week. The lists answered "what
+     fixtures are there" and "what sessions are there" separately, and
+     neither could show that Thursday's session is the day before a game.
 
-    // Split into upcoming and past
-    var upcomingMatches = savedMatches.filter(function(m) {
-      if (!m.date) return true;
-      var d = m.time ? new Date(m.date + 'T' + m.time + ':00') : new Date(m.date + 'T23:59:59');
-      return d > now;
+     Three kinds of thing land in a cell:
+
+       a TRAINING or ACTIVITY   a row of fa_training (see isActivity)
+       a MATCH                  a row of fa_matches
+       a GHOST                  nothing at all — a slot in the club's own
+                                schedule that no session occupies yet
+
+     The ghost is the part worth understanding. It is computed, never
+     stored (ghostSlots in utils.js), so scheduling one is an ordinary
+     write and DELETING a session brings its placeholder back with no code
+     to do it. Players never see ghosts: an unscheduled slot is a coach's
+     decision, not an announcement. */
+
+  /* 'YYYY-MM' on screen; null means this month.
+
+     There is no selected-day state any more. v181 kept one for the phone's
+     day panel; the week strip expands in its place, which is the same
+     information without a second thing to keep in step with the grid. */
+  let calMonth = null;
+
+  function calReset() { calMonth = null; }
+
+  /* Which squad of the chosen category the calendar is showing, or 'all'.
+     Reset whenever the category changes — a letter means nothing in a
+     category that does not have it. The cat-bar handler does that, beside
+     the two filters that already needed the same treatment. */
+  let calTeamFilter = 'all';
+
+  /**
+   * The squad chips, for the category bar.
+   *
+   * '' unless a category is actually selected AND it has more than one
+   * squad: with "Totes" there is no letter set to offer, and with one
+   * squad there is no choice to make. Chips reuse .roster-team-btn, which
+   * is what the roster and medical filters are already built from.
+   */
+  function calLetterChipsHtml() {
+    var cat = getCurrentCategory();
+    if (!cat) return '';
+    var letters = getTeamLetters(cat);
+    if (letters.length <= 1) return '';
+    var html = '<span class="cat-bar-sep"></span>';
+    html += '<button class="roster-team-btn cat-bar-letter' +
+      (calTeamFilter === 'all' ? ' roster-team-btn-active' : '') +
+      '" data-cal-letter="all">' + sanitize(t('common.all')) + '</button>';
+    letters.forEach(function (l) {
+      html += '<button class="roster-team-btn cat-bar-letter' +
+        (calTeamFilter === l ? ' roster-team-btn-active' : '') +
+        '" data-cal-letter="' + sanitize(l) + '">' + sanitize(l) + '</button>';
     });
-    var pastMatches = savedMatches.filter(function(m) {
-      if (!m.date) return false;
-      var d = m.time ? new Date(m.date + 'T' + m.time + ':00') : new Date(m.date + 'T23:59:59');
-      return d <= now;
-    }).reverse(); // most recent first
+    return html;
+  }
 
-    function buildSavedRow(m) {
-      var isEditing = !ro && _mdEditingId === m.id;
-      if (isEditing) {
-        var isHome = isOurTeam(m.home);
-        var opponent = isHome ? m.away : m.home;
-        var homeChecked = isHome ? 'checked' : '';
-        var awayChecked = !isHome ? 'checked' : '';
-        return '<tr data-match-id="' + m.id + '" data-category="' + sanitize(m.category || '') + '">' +
-          '<td><label class="md-radio"><input type="radio" name="ha-edit" value="home" ' + homeChecked + ' class="md-ha"> Home</label>' +
-          '<label class="md-radio"><input type="radio" name="ha-edit" value="away" ' + awayChecked + ' class="md-ha"> Away</label></td>' +
-          '<td class="md-team-cell">' + getTeamLetters(m.category || '').map(function(l) {
-            return '<span class="md-team-circle' + ((m.team || '') === l ? ' active' : '') + '" data-team="' + l + '">' + l + '</span>';
-          }).join('') + '</td>' +
-          '<td><input type="text" class="reg-input md-date md-datepicker" value="' + sanitize(m.date || '') + '" placeholder="YYYY-MM-DD" readonly style="width:140px;cursor:pointer;"></td>' +
-          '<td class="md-opponent-cell">' + opponentInputHtml('edit-' + m.id, opponent) + '</td>' +
-          '<td><input class="reg-input md-location" value="' + sanitize(m.location || '') + '" placeholder="Location" style="width:150px;"></td>' +
-          '<td><input class="reg-input md-maplink" value="' + sanitize(m.mapLink || '') + '" placeholder="Google Maps link" style="width:150px;"></td>' +
-          '<td><input type="text" class="reg-input md-kickoff" value="' + sanitize(m.time || '') + '" placeholder="HH:MM" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" style="width:80px;text-align:center;"></td>' +
-          '<td><button class="btn btn-primary btn-small md-save-edit" data-match-id="' + m.id + '">' + t('btn.save') + '</button> <button class="btn btn-outline btn-small md-cancel-edit" data-match-id="' + m.id + '">' + t('btn.cancel') + '</button></td>' +
-        '</tr>';
-      }
-      var teamLetter = m.team || '';
-      /* Our own name goes up in capitals to match the rivals'. The
-         federation writes every club in caps and the club writes its own
-         name however it likes, so a fixture list reads "CAN BUXERES, F.C. vs
-         Esquerra de l'Eixample F.C." — the odd one out is always us.
-         `text-transform` in CSS, never `toUpperCase()`: isOurTeam() compares
-         the STORED name with ===, and an uppercased value written back would
-         make the app think we were the other team. */
-      var ourName = function (n) { return '<span class="md-our-club">' + sanitize(n) + '</span>'; };
-      var homeName = isOurTeam(m.home) && teamLetter ? ourName(m.home) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : (isOurTeam(m.home) ? ourName(m.home) : sanitize(m.home));
-      var awayName = isOurTeam(m.away) && teamLetter ? ourName(m.away) + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : (isOurTeam(m.away) ? ourName(m.away) : sanitize(m.away));
-      var dateObj = m.date ? new Date(m.date + 'T12:00:00') : null;
-      var dateFmt = dateObj ? tDateShort(m.date) : '—';
-      var timeFmt = m.time || '—';
-      /* A fixture the federation dropped from its calendar. Kept, struck
-         through and labelled, because the call-up, the notes and the
-         availability answers all still hang off it — deleting the row to
-         match an upstream list would take them with it. */
-      var gone = m.fcfRemoved ? ' md-row-removed' : '';
-      var mapBtn = m.mapLink ? ' <a class="md-map-link" href="' + sanitize(safeHttpUrl(m.mapLink)) +
-        '" target="_blank" rel="noopener noreferrer" title="' + sanitize(t('cal.open_map')) + '">📍</a>' : '';
-      /* The referee sits under the fixture rather than in a column of its
-         own: the table already carries seven, and a name of forty characters
-         in an eighth would squeeze the kits on a phone. */
-      var refTag = mdRefereeTagHtml(m);
-      var refPanel = (_refOpen && String(_refOpen.matchId) === String(m.id)) ?
-        mdRefPanelHtml(_refOpen.name, _refOpen.comp) : '';
-      return '<tr class="md-saved-row' + gone + '">' +
-        '<td>' + mdFixtureTagHtml(m) + homeName + ' vs ' + awayName +
-          refTag + refPanel + '</td>' +
-        mdKitCellHtml(m.opponentKit, 'cal.opp_kit_1', m.opponentBadge) +
-        mdKitCellHtml(m.opponentKitAway, 'cal.opp_kit_2', m.opponentBadge) +
-        '<td>' + dateFmt + '</td>' +
-        '<td>' + timeFmt + '</td>' +
-        '<td>' + sanitize(m.location || '') + mapBtn + '</td>' +
-        '<td class="md-saved-actions">' + (ro ? '' :
-          '<button class="btn btn-outline btn-small md-edit-match" data-match-id="' + m.id + '">' + t('btn.edit') + '</button>' +
-          ' <button class="md-remove-btn md-delete-match" data-match-id="' + m.id + '" title="Delete">&times;</button>') + '</td>' +
-      '</tr>';
+  /**
+   * Does this row belong to the squad on screen?
+   *
+   * A row with NO letter belongs to every squad in its category — the rule
+   * trainingTeams() and calMatchDates() already encode — so it survives any
+   * filter. `letters` is the row's own list; a fixture passes its single
+   * `team` wrapped, or nothing.
+   */
+  function calInFilter(letters) {
+    if (calTeamFilter === 'all') return true;
+    var own = (letters || []).filter(Boolean);
+    return !own.length || own.indexOf(calTeamFilter) !== -1;
+  }
+
+  /* The resize listener outlives any one render, so its guard and its
+     timer are module state — see the note where it is bound. */
+  let _calResizeBound = false;
+  let _calResizeT = null;
+
+  /**
+   * How far each strip has to open, MEASURED.
+   *
+   * It used to be a guess — 172px, or 262px when a day held more than one
+   * thing — and a guess cannot be right, because block heights differ by
+   * kind: an expanded match block is several times a placeholder. A
+   * Saturday with three fixtures was cut through the middle of a line.
+   *
+   * So each strip is opened invisibly, its tallest cell read, and the real
+   * value written back. Still a fixed pixel height for the transition,
+   * which is what the design asks for — it is just the correct one. The
+   * calculated default stays in the markup, so a browser that never runs
+   * this degrades to the old behaviour rather than to a collapsed row.
+   *
+   * Module-level, not a closure inside bindCalendar: the resize listener
+   * has to keep working across renders, and it must measure the strips on
+   * screen rather than the ones that were there when it was bound. On a
+   * page with no strips it does nothing.
+   */
+  function calMeasure() {
+    $$('.cal-week').forEach(function (wk) {
+      wk.classList.add('cal-week-measure');
+      var h = 0;
+      wk.querySelectorAll('.cal-cell').forEach(function (c) {
+        h = Math.max(h, c.scrollHeight);
+      });
+      wk.classList.remove('cal-week-measure');
+      /* +4 for sub-pixel rounding. The cell CLIPS rather than scrolls, so
+         a pixel short costs a line of text while four long costs nothing
+         anybody can see — the asymmetry is the whole reason for it. */
+      if (h) wk.style.setProperty('--cal-open-h', (h + 4) + 'px');
+    });
+  }
+
+  /** The month on screen, as {y, m, key}. */
+  function calView() {
+    const now = new Date();
+    let y = now.getFullYear();
+    let m = now.getMonth();
+    const parsed = /^(\d{4})-(\d{2})$/.exec(String(calMonth || ''));
+    if (parsed) { y = Number(parsed[1]); m = Number(parsed[2]) - 1; }
+    return { y: y, m: m, key: y + '-' + String(m + 1).padStart(2, '0') };
+  }
+
+  function calShift(delta) {
+    const v = calView();
+    const d = new Date(v.y, v.m + delta, 1, 12, 0, 0, 0);
+    calMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  /** Every {category, letter} the current view covers. */
+  function calSquads() {
+    const cur = getCurrentCategory();
+    const cats = cur ? [cur] : getVisibleCategories();
+    const out = [];
+    cats.forEach(function (c) {
+      getTeamLetters(c).forEach(function (l) {
+        /* Narrowed by the letter filter too, so the greyed placeholders
+           go with everything else — filtering to squad A and still being
+           offered B's empty slots would be the filter half-applied. */
+        if (calInFilter([l])) out.push({ category: c, letter: l });
+      });
+    });
+    return out;
+  }
+
+  /**
+   * The fixture dates that define a session's microcycle.
+   *
+   * Same category, and a squad letter that overlaps — a juvenil kick-off
+   * says nothing about the amateur team's week, and neither does amateur-B's
+   * when the session belongs to A. A blank letter on either side means "all
+   * of them", which is how a fixture entered before letters existed reads.
+   *
+   * Withdrawn fixtures are excluded: a game the federation cancelled is not
+   * a game to count down to.
+   */
+  function calMatchDates(matches, cat, letter) {
+    return (matches || []).filter(function (m) {
+      if (!m || !m.date || m.fcfRemoved) return false;
+      if (cat && m.category && m.category !== cat) return false;
+      if (letter && m.team && m.team !== letter) return false;
+      return true;
+    }).map(function (m) { return m.date; });
+  }
+
+  /**
+   * When the squad is told to be there.
+   *
+   * Kick-off minus 90 minutes, rounded down to the quarter hour, unless a
+   * coach has set one. Lifted out of renderConvocatoria so the card and the
+   * page cannot disagree about a time the players are reading off both.
+   * Read-only by design: renderConvocatoria persists its default, this must
+   * not, or merely opening the calendar would be a write.
+   */
+  function convCallupTime(m, callupData) {
+    if (!m) return '';
+    const saved = callupData ? callupData[m.id] : null;
+    if (saved) return saved;
+    if (!m.time) return '';
+    const parts = String(m.time).split(':');
+    let total = Number(parts[0]) * 60 + Number(parts[1]) - 90;
+    if (isNaN(total)) return '';
+    if (total < 0) total += 24 * 60;
+    total = Math.floor(total / 15) * 15;
+    return String(Math.floor(total / 60) % 24).padStart(2, '0') + ':' +
+      String(total % 60).padStart(2, '0');
+  }
+
+  /** 'HH:MM–HH:MM', or just the start when there is no end. */
+  function calTimeRange(row) {
+    const a = String((row && row.time) || '').trim();
+    if (!a) return '';
+    const b = String((row && row.endTime) || '').trim();
+    return b ? a + '–' + b : a;
+  }
+
+  /**
+   * Where a session is relative to now: upcoming / in progress / done.
+   *
+   * Came off the staff list with the rest of it, and is kept because it is
+   * the ONE piece of that page the grid still needs — a cell has to be able
+   * to say "this is happening now". Two hours is only the fallback; the
+   * badge reads the endTime the coach actually set, which is what an
+   * 11:30-12:00 session needs so it does not read "En curs" until 13:30.
+   */
+  function computeStatus(tr) {
+    if (!tr.date || !tr.time) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
+    const start = new Date(tr.date + 'T' + tr.time.split(' - ')[0] + ':00');
+    const endWindow = sessionEndsAt(tr, BADGE_FALLBACK_MINS);
+    if (isNaN(start.getTime()) || !endWindow) return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
+    const now = new Date();
+    if (now >= endWindow) return { label: t('training.completed'), cls: 'badge-grey', key: 'completed' };
+    if (now >= start) return { label: t('training.in_progress'), cls: 'badge-yellow', key: 'inprogress' };
+    return { label: t('training.upcoming'), cls: 'badge-green', key: 'upcoming' };
+  }
+
+  function calMdBadge(dateStr, matchDates) {
+    const label = matchdayLabel(matchdayOffset(dateStr, matchDates));
+    return label ? '<span class="cal-md" title="' + sanitize(t('cal.md_hint')) + '">' +
+      label + '</span>' : '';
+  }
+
+  // ── The blocks inside a day ──────────────────────────────────────────
+  /* A cell holds at most one block collapsed and all of them expanded.
+     Priority when collapsed is match > training > activity: a fixture is
+     the thing a coach is looking for, and the `+N` chip says what is
+     hidden behind it.
+
+     Every expanded-only field is `display:none` collapsed, never clipped.
+     That is the design's rule and it is not decoration — a cell animating
+     between two fixed heights would otherwise show the top half of a line
+     of text at its bottom edge for the length of the transition. */
+
+  function calLoadDot(rpe) {
+    var band = loadBand(rpe);
+    // No band means nobody has estimated the session. The dot is ABSENT,
+    // not green: "unknown" and "easy" are different facts.
+    return band ? '<i class="cal-dot cal-load-' + band + '"></i>' : '';
+  }
+
+  /** The RPE line: what was planned, or what was actually reported. */
+  function calLoadLine(row, ctx) {
+    var planned = Number(row.plannedRpe) || null;
+    var actual = ctx.actualRpe(row);
+    if (actual !== null) {
+      return sanitize(t('load.actual_rpe')
+        .replace('{n}', actual.toFixed(1))
+        .replace('{p}', planned || '—'));
     }
+    if (!planned) return '';
+    var au = sessionAU(row, planned);
+    return sanitize(t('load.planned_rpe').replace('{n}', planned)) +
+      (au === null ? '' : ' · ' + sanitize(t('load.au').replace('{n}', au)));
+  }
 
-    var upcomingRows = upcomingMatches.map(buildSavedRow).join('');
-    var pastRows = pastMatches.map(buildSavedRow).join('');
+  /**
+   * The availability donut, hand-built as the design specifies.
+   *
+   * 40x40 over a 38-unit viewBox, r=15, stroke-width 4, value rotated -90
+   * about the centre. The count is an HTML element centred over the SVG and
+   * NOT an SVG <text> — the handoff is explicit about that, and it is right:
+   * a <text> would not inherit the page's font stack and would fall back to
+   * the browser's default serif on the one element that must match.
+   */
+  /* One arc per answer, in the palette four other donuts in this app already
+     use (renderPlayerHome, renderStaffPlayerStats, buildDetailDonut,
+     buildAvailDonut). A single arc could only say how many were coming; the
+     question a coach actually has is who has NOT replied, and that is a
+     colour rather than a number.
 
-    // New games section (add form)
-    var newSection = '';
-    if (hasNew && !ro) {
-      newSection = '<div class="card" style="margin-bottom:1rem;">' +
-        '<div class="card-title">' + t('cal.new_game') + '</div>' +
-        '<div class="table-wrap"><table class="matchday-table">' +
-        '<thead><tr><th>' + t('cal.th_home_away') + '</th><th>' + t('cal.th_team') + '</th><th>' + t('cal.th_date') + '</th><th>' + t('cal.th_opponent') + '</th><th>' + t('cal.th_location') + '</th><th>' + t('cal.th_map') + '</th><th>' + t('cal.th_kickoff') + '</th><th></th></tr></thead>' +
-        '<tbody id="matchday-body">' + newRows + '</tbody></table></div>' +
-        '<div class="matchday-bottom-actions">' +
-        '<button class="btn btn-primary btn-small" id="btn-matchday-save">' + t('btn.save') + '</button>' +
-        '</div></div>';
-    }
+     No label beside it. "disponibles" said nothing the ring did not, and it
+     was the widest thing in an 80px cell. */
+  var CAL_AVAIL_SEGS = [
+    { k: 'yes',     color: '#66bb6a' },
+    { k: 'late',    color: '#ffa726' },
+    { k: 'no',      color: '#78909c' },
+    { k: 'injured', color: '#ef5350' },
+    { k: 'na',      color: '#d0d0d0' }
+  ];
 
-    /* Return fixtures the coach has not yet been asked about.
-       UPCOMING only, deliberately. The suggestion is derived on every
-       render, so offering it for past matches too would greet a club with a
-       season of history with twenty banners at once; the match-detail page
-       still offers it for any single fixture he opens. */
-    var legCard = '';
-    if (mnEnabled()) {
-      var legBanners = upcomingMatches.map(function (m) {
-        return mnLegBannerHtml(m, allMatches);
-      }).filter(Boolean).join('');
-      if (legBanners) {
-        legCard = '<div class="card mn-leg-card" style="margin-bottom:1rem;">' +
-          '<div class="card-title">' + t('mn.leg_card_title') + '</div>' + legBanners + '</div>';
-      }
-    }
+  function calDonutHtml(row, ctx) {
+    var tally = ctx.tallyFor(row);
+    if (!tally || !tally.total) return '';
+    var C = 2 * Math.PI * 15;
+    var arcs = '';
+    var offset = 0;
+    CAL_AVAIL_SEGS.forEach(function (s) {
+      var n = tally[s.k] || 0;
+      if (!n) return;
+      var len = (n / tally.total) * C;
+      /* A running negative dashoffset, the same construction the other four
+         use — each arc starts where the last one ended. */
+      arcs += '<circle cx="19" cy="19" r="15" fill="none" stroke="' + s.color +
+        '" stroke-width="4" stroke-dasharray="' + len.toFixed(1) + ' ' +
+        (C - len).toFixed(1) + '" stroke-dashoffset="' + (-offset).toFixed(1) +
+        '" transform="rotate(-90 19 19)"><title>' +
+        sanitize(t('avail.' + s.k)) + ': ' + n + '</title></circle>';
+      offset += len;
+    });
+    return '<div class="cal-donut-row">' +
+      '<div class="cal-donut">' +
+        '<svg width="40" height="40" viewBox="0 0 38 38">' +
+          '<circle cx="19" cy="19" r="15" fill="none" class="cal-donut-track" stroke-width="4"></circle>' +
+          arcs +
+        '</svg>' +
+        '<span class="cal-donut-num">' + tally.attending + '/' + tally.total + '</span>' +
+      '</div></div>';
+  }
 
-    var theadHtml = '<thead><tr><th>' + t('cal.th_match') + '</th>' +
-      '<th class="md-kit-th">' + t('cal.th_kit_1') + '</th>' +
-      '<th class="md-kit-th">' + t('cal.th_kit_2') + '</th>' +
-      '<th>' + t('cal.th_date') + '</th><th>' + t('cal.th_kickoff') + '</th><th>' + t('cal.th_location') + '</th><th></th></tr></thead>';
-
-    var upcomingCard = '<div class="card" style="margin-bottom:1rem;"><div class="card-title">' + t('matches.upcoming') + '</div>' +
-      (upcomingMatches.length ? '<div class="table-wrap"><table class="matchday-table md-saved-table">' + theadHtml + '<tbody>' + upcomingRows + '</tbody></table></div>'
-        : '<p style="text-align:center;color:var(--text-secondary);padding:1rem;">' + t('matches.no_upcoming') + '</p>') +
+  function calTrainingBlockHtml(row, ctx) {
+    var md = matchdayLabel(matchdayOffset(row.date,
+      calMatchDates(ctx.matches, row.category, calLetterOf(row))));
+    var loadLine = calLoadLine(row, ctx);
+    var squads = (row.teams || []).join(' + ');
+    var where = [row.location, squads].filter(Boolean).join(' · ');
+    return '<div class="cal-b cal-b-train" data-cal-session="' + sanitize(String(row.id)) + '">' +
+      '<div class="cal-b-name">' + calLoadDot(row.plannedRpe) +
+        '<span class="cal-b-ttl">' + sanitize(activityTitleOf(row, t('cal.training'))) + '</span></div>' +
+      '<div class="cal-b-when"><span class="cal-time">' + sanitize(row.time || '—') + '</span>' +
+        (md ? '<span class="cal-md">' + md + '</span>' : '') + '</div>' +
+      (where ? '<span class="cal-x cal-meta">' + sanitize(where) + '</span>' : '') +
+      (loadLine ? '<span class="cal-x cal-meta">' + loadLine + '</span>' : '') +
+      '<div class="cal-x">' + calDonutHtml(row, ctx) + '</div>' +
       '</div>';
+  }
 
-    var pastCard = '<div class="card"><div class="card-title">' + t('matches.past') + '</div>' +
-      (pastMatches.length ? '<div class="table-wrap"><table class="matchday-table md-saved-table">' + theadHtml + '<tbody>' + pastRows + '</tbody></table></div>'
-        : '<p style="text-align:center;color:var(--text-secondary);padding:1rem;">' + t('matches.no_past') + '</p>') +
+  function calActivityBlockHtml(row, ctx) {
+    return '<div class="cal-b cal-b-act" data-cal-session="' + sanitize(String(row.id)) + '">' +
+      '<div class="cal-b-name"><i class="cal-sq cal-sq-act"></i>' +
+        '<span class="cal-b-ttl">' + sanitize(activityTitleOf(row, t('cal.activity'))) + '</span></div>' +
+      '<div class="cal-b-when"><span class="cal-time cal-time-act">' +
+        sanitize(row.time || '—') + '</span></div>' +
+      (row.location ? '<span class="cal-x cal-meta">' + sanitize(row.location) + '</span>' : '') +
+      '<div class="cal-x">' + calDonutHtml(row, ctx) + '</div>' +
       '</div>';
+  }
+
+  /**
+   * A slot the club's schedule implies and no session occupies.
+   *
+   * Kept from v181 against the handoff, which gives an empty day a staff
+   * "+ Add" instead. One click still schedules it — that is the whole
+   * feature — so it renders as a real block wearing a dashed outline
+   * rather than as an absence.
+   */
+  function calGhostBlockHtml(g, ctx) {
+    var md = matchdayLabel(matchdayOffset(g.date,
+      calMatchDates(ctx.matches, g.category, g.letter)));
+    return '<div class="cal-b cal-b-ghost" data-cal-ghost="' + sanitize(g.key) +
+      '" title="' + sanitize(t('cal.ghost_hint')) + '">' +
+      '<div class="cal-b-name"><i class="cal-dot cal-dot-ghost"></i>' +
+        '<span class="cal-b-ttl">' + sanitize(t('cal.training')) + '</span></div>' +
+      '<div class="cal-b-when"><span class="cal-time">' + sanitize(g.time || '—') + '</span>' +
+        (md ? '<span class="cal-md">' + md + '</span>' : '') + '</div>' +
+      '<span class="cal-x cal-meta">' + sanitize(t('cal.ghost_hint')) + '</span>' +
+      '</div>';
+  }
+
+  function calMatchBlockHtml(m, ctx) {
+    var home = isOurTeam(m.home);
+    var rival = home ? m.away : m.home;
+    var pos = leaguePosLabel(m.opponentPos, _lang);
+    /* A house and a plane rather than the handoff's H/A letters. The glyph
+       carries its own colour, so it needs no chip behind it — an emoji in a
+       filled red box reads as mud. The classes stay: they hold the title,
+       and they are what tells the two apart in the markup. */
+    var ha = '<span class="cal-ha ' + (home ? 'cal-ha-h' : 'cal-ha-a') + '" title="' +
+      sanitize(t(home ? 'cal.home_game' : 'cal.away_game')) + '">' +
+      (home ? '🏠' : '✈️') + '</span>';
+    /* The crest is a two-letter monogram. No real crest images exist in the
+       repo or in the FCF import — the federation publishes a logo filename
+       for the STANDINGS, which is a different surface — so the handoff's
+       fallback is the only thing there is.
+
+       It sits against the NAME rather than out at the margin: a badge
+       floated to the right edge belongs to the cell instead of to the club
+       it is for, and at this size the two read as unrelated. */
+    var crest = '<span class="cal-crest">' + sanitize(calInitials(rival)) + '</span>';
+    /* `tail` is the score on a played fixture and nothing on an upcoming
+       one — the only thing the two name rows differ by. */
+    var headWith = function (tail) {
+      return '<div class="cal-b-name">' + ha +
+        '<span class="cal-b-ttl cal-opp">' + sanitize(rival) + '</span>' + crest +
+        (pos ? '<span class="cal-pos">' + pos + '</span>' : '') +
+        (tail || '') + '</div>';
+    };
+    var head = headWith('');
+
+    if (ctx.isPast(m)) {
+      /* A played fixture answers one question. The call-up, the kick-off
+         and the kit are instructions for a day that has happened, and
+         leaving them on the card buries the result.
+
+         The score lives HERE, beside the rival it belongs to, and carries
+         its own outcome colour. It used to sit in the cell header, which
+         holds one — so a day with two fixtures showed one score, and the
+         cell was coloured from a DIFFERENT match than the one the score
+         came from: the fill read `blocks[0]` and the header re-found the
+         match by date, and the two orderings do not agree. */
+      var out = calOutcomeOf(m, ctx);
+      return '<div class="cal-b cal-b-match cal-b-' + out +
+        '" data-cal-match="' + sanitize(String(m.id)) + '">' +
+        headWith('<span class="cal-b-res">' + sanitize(calResultText(m)) + '</span>') +
+        '<span class="cal-x cal-meta">' + sanitize([m.location, m.team ? t('nt.team') + ' ' + m.team : '']
+          .filter(Boolean).join(' · ')) + '</span>' +
+        '<span class="cal-x cal-meta">' + sanitize(t('cal.played_line')
+          .replace('{n}', String(ctx.calledCount(m)))) + '</span>' +
+        '</div>';
+    }
+
+    var callup = convCallupTime(m, ctx.callupData);
+    var sent = ctx.convSent(m);
+    var kit = sent ? kitIconsHtml(resolveKitPieces(ctx.sentData[m.id], ctx.kits), { shorts: false }) : '';
+    return '<div class="cal-b cal-b-match" data-cal-match="' + sanitize(String(m.id)) + '">' +
+      head +
+      '<div class="cal-b-when cal-kick">' +
+        (callup ? '<span class="cal-cu">' + sanitize(t('cal.callup_short')) + ' ' +
+          (sent ? '<span class="conv-blink-dot"></span>' : '') +
+          '<b>' + sanitize(callup) + '</b></span>' : '') +
+        '<span class="cal-ko">' + sanitize(t('cal.ko_short')) + ' <b>' +
+          sanitize(m.time || '—') + '</b></span>' +
+      '</div>' +
+      (m.fcfJornada ? '<span class="cal-x cal-comp">' + sanitize(t('cal.league')) +
+        ' · ' + sanitize(t('cal.md_n').replace('{n}', m.fcfJornada)) + '</span>' : '') +
+      '<span class="cal-x cal-meta">' + sanitize([m.location, m.team ? t('nt.team') + ' ' + m.team : '']
+        .filter(Boolean).join(' · ')) + '</span>' +
+      '<span class="cal-x cal-meta">' + sanitize(sent
+        ? t('cal.squad_sent').replace('{n}', String(ctx.calledCount(m)))
+        : t('cal.squad_not_sent')) + '</span>' +
+      (kit ? '<div class="cal-x cal-b-kit">' + kit + '</div>' : '') +
+      '</div>';
+  }
+
+  /** Two letters from an opponent's name: "CE Sabadell B" → "CS". */
+  function calInitials(name) {
+    var w = String(name || '').replace(/[.,]/g, ' ').split(/\s+/).filter(Boolean);
+    if (!w.length) return '?';
+    var main = w.find(function (x, i) { return i > 0 && x.length > 2; }) || w[1] || w[0];
+    return (w[0][0] + main[0]).toUpperCase();
+  }
+
+  /** The letter a session's microcycle should be measured against. */
+  function calLetterOf(row) {
+    var own = (row && row.teams) || [];
+    // Empty means every letter of the category, so the whole category's
+    // fixture list is the right window — see calMatchDates.
+    return own.length === 1 ? own[0] : '';
+  }
+
+  // ── Gathering a month ────────────────────────────────────────────────
+
+  /**
+   * Everything the grid needs, parsed ONCE.
+   *
+   * Every read here is a JSON.parse of a whole blob, and the month is six
+   * weeks of seven days. Doing them per cell would be 42 passes over a
+   * season for a page that fits on one screen.
+   */
+  function calContext(session) {
+    const canEdit = canEditPage('calendar');
+    const curCat = getCurrentCategory();
+    const all = getTrainings();
+    /* A player sees what he is called to and nothing else — the same rule
+       the training list used, and the one that makes a guest see the
+       session he was borrowed for. */
+    const sessions = (canEdit ? all.filter(function (s) {
+      return !curCat || !s.category || s.category === curCat;
+    }) : playerTrainings(session, all))
+      .filter(function (s) { return calInFilter(s.teams); });
+
+    let matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]'); } catch (e) { matches = []; }
+    if (!Array.isArray(matches)) matches = [];
+    matches = matches.filter(function (m) {
+      if (!m) return false;
+      if (curCat && m.category && m.category !== curCat) return false;
+      // A fixture carries one letter, or none for "the whole category".
+      if (!calInFilter(m.team ? [m.team] : [])) return false;
+      /* A player is in ONE squad. Category alone leaves amateur-B reading
+         amateur-A's fixture list, which the old Jornada page did. */
+      if (!canEdit && session) {
+        if (session.category && m.category && m.category !== session.category) return false;
+        if (session.team && m.team && m.team !== session.team) return false;
+      }
+      return true;
+    });
+
+    const now = new Date();
+    const users = getUsers().filter(function (u) { return (u.roles || []).indexOf('player') !== -1; });
+    const avail = availContext();
+    let rpeData = {};
+    try { rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}'); } catch (e) { rpeData = {}; }
+    const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+
+    return {
+      canEdit: canEdit,
+      /* A narrower gate than canEdit, and only the placeholders and the
+         add menu use it — a delegate runs the calendar but may not invent
+         a session. */
+      canAddTraining: canAddTraining(),
+      sessions: sessions,
+      matches: matches,
+      kits: clubKits(),
+      sentData: sentData,
+      callupData: JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}'),
+      isPast: function (m) { return matchEndsAt(m) <= now; },
+      sessionDone: function (row) {
+        var end = sessionEndsAt(row);
+        return !!end && end <= now;
+      },
+      convSent: function (m) {
+        var e = sentData[m.id];
+        var list = e ? (Array.isArray(e) ? e : (e.players || [])) : [];
+        return list.length > 0;
+      },
+      calledCount: function (m) {
+        var e = sentData[m.id];
+        var list = e ? (Array.isArray(e) ? e : (e.players || [])) : [];
+        return list.length;
+      },
+      /* The squad called to a session, and how many of them are coming.
+         calledPlayers, not every player in the club: the old donut counted
+         the whole roster, which is fine for a one-category club and
+         nonsense for the demo club's 77 members across three teams. */
+      tallyFor: function (row) {
+        var squad = calledPlayers(row, users);
+        if (!squad.length) return null;
+        var locked = isTrainingLocked(row);
+        /* The whole breakdown, not just a head count. The ring shows one
+           arc per answer, so "twelve coming" and "twelve coming, four
+           injured and two who never replied" stop looking identical. */
+        var by = { yes: 0, late: 0, no: 0, injured: 0, na: 0 };
+        squad.forEach(function (p) {
+          var v = getEffectiveAnswer(p.id, row, locked, avail);
+          if (by[v] === undefined) by.na++; else by[v]++;
+        });
+        by.total = squad.length;
+        by.attending = by.yes + by.late;
+        return by;
+      },
+      /* The mean RPE players actually reported for a session, or null.
+         Only responders count — averaging a missing answer as zero would
+         make a well-attended hard session look easy. */
+      actualRpe: function (row) {
+        var squad = calledPlayers(row, users);
+        var sum = 0;
+        var n = 0;
+        squad.forEach(function (p) {
+          var rec = rpeData[p.id + '_training_' + row.id];
+          var v = rec && Number(rec.rpe);
+          if (v > 0) { sum += v; n++; }
+        });
+        return n ? sum / n : null;
+      }
+    };
+  }
+
+  /**
+   * ISO date → the blocks for that day, highest priority first.
+   *
+   * Priority is match > training > activity > placeholder, which is what
+   * decides the cell's fill and which single block survives collapsing.
+   */
+  function calBlocksByDate(ctx, gridDates) {
+    const first = gridDates[0];
+    const last = gridDates[gridDates.length - 1];
+    const inGrid = function (d) { return d && d >= first && d <= last; };
+    const byDate = {};
+    const push = function (date, rank, kind, html) {
+      (byDate[date] = byDate[date] || []).push({ rank: rank, kind: kind, html: html });
+    };
+
+    /* Pushed in the order the blobs come, and ORDERED by rank below. The
+       two are deliberately different: if the push order already agreed
+       with the ranking, the sort would be dead code that looks like a
+       guarantee, and a later edit reordering these loops would silently
+       change which block owns the cell. */
+    ctx.sessions.forEach(function (s) {
+      if (!inGrid(s.date)) return;
+      if (isActivity(s)) push(s.date, 2, 'act', calActivityBlockHtml(s, ctx));
+      else push(s.date, 1, 'train', calTrainingBlockHtml(s, ctx));
+    });
+    ctx.matches.forEach(function (m) {
+      if (!inGrid(m.date)) return;
+      push(m.date, 0, ctx.isPast(m) ? calOutcomeOf(m, ctx) : 'match', calMatchBlockHtml(m, ctx));
+    });
+    if (ctx.canAddTraining) {
+      /* Placeholders are derived from EVERY session, activities included:
+         a squad at a team meal is not free to train. So this reads
+         getTrainings() rather than ctx.sessions, which is category-narrowed. */
+      ghostSlots(_clubConfig, calSquads(), getTrainings(), first, last,
+          localDateStr(new Date())).forEach(function (g) {
+        push(g.date, 3, 'ghost', calGhostBlockHtml(g, ctx));
+      });
+    }
+
+    Object.keys(byDate).forEach(function (d) {
+      byDate[d].sort(function (a, b) { return a.rank - b.rank; });
+    });
+    return byDate;
+  }
+
+  /** 'win' | 'draw' | 'loss', from OUR side of the scoreline. */
+  function calOutcomeOf(m, ctx) {
+    var sc = calcMatchScore(getMatchEvents(m.id));
+    if (sc.home === sc.away) return 'draw';
+    var home = isOurTeam(m.home);
+    return (home ? sc.home > sc.away : sc.away > sc.home) ? 'win' : 'loss';
+  }
+
+  /** The scoreline as OUR side reads it, for the cell header. */
+  function calResultText(m) {
+    var sc = calcMatchScore(getMatchEvents(m.id));
+    var home = isOurTeam(m.home);
+    return (home ? sc.home : sc.away) + ' – ' + (home ? sc.away : sc.home);
+  }
+
+  /**
+   * Fixtures typed into the OLD Calendari and never saved.
+   *
+   * `fa_matchday` was a staging blob: the old page appended a draft row per
+   * click and promoted the lot on a Save press, which meant a half-typed
+   * fixture could sit in everyone's sync for weeks. The dialog writes
+   * straight through now, so nothing produces these any more — but a club
+   * upgrading mid-week may have some, and dropping a coach's typing on the
+   * floor because we changed our minds about the data model is not ours to
+   * do. Offered once, then gone either way.
+   */
+  function calReadDrafts() {
+    let drafts = [];
+    try { drafts = JSON.parse(localStorage.getItem('fa_matchday') || '[]'); } catch (e) { drafts = []; }
+    if (!Array.isArray(drafts)) return [];
+    // Only the ones that would actually become a fixture. A row with no
+    // rival and no date is an empty form, not work worth rescuing.
+    return drafts.filter(function (g) { return g && g.opponent && g.date; });
+  }
+
+  function calDraftsBannerHtml(ctx) {
+    if (!ctx.canEdit) return '';
+    const n = calReadDrafts().length;
+    if (!n) return '';
+    return '<div class="card cal-drafts">' +
+      '<p>' + sanitize(t('cal.drafts_found').replace('{n}', n)) + '</p>' +
+      '<div class="cal-drafts-actions">' +
+        '<button class="btn btn-small btn-primary" id="btn-cal-drafts-keep">' +
+          sanitize(t('cal.drafts_keep')) + '</button>' +
+        '<button class="btn btn-small btn-outline" id="btn-cal-drafts-drop">' +
+          sanitize(t('cal.drafts_drop')) + '</button>' +
+      '</div></div>';
+  }
+
+  /**
+   * One week's load, as one number per player.
+   *
+   * Per player, not summed across the squad: a squad total moves when
+   * someone is injured, so two identical weeks would read differently.
+   *
+   * A PAST session is costed at what players reported, an upcoming one at
+   * what the coach planned. Sessions with neither are counted separately
+   * and named on screen, so a light-looking week is never actually an
+   * unrated one.
+   *
+   * There is no colour band. The handoff's thresholds (>650 amber, >800
+   * red) were calibrated against `plannedRpe * 12` in the mock, and a real
+   * week of two sessions and a match clears both — every week would be red.
+   * The figure is printed and the band waits for real weeks to say where
+   * the lines are.
+   */
+  function calWeekLoad(ctx, days) {
+    const inWeek = ctx.sessions.filter(function (s) {
+      return days.indexOf(s.date) !== -1 && !isActivity(s);
+    });
+    return weekAU(inWeek, function (row) {
+      const actual = ctx.actualRpe(row);
+      if (actual !== null) return actual;
+      return Number(row.plannedRpe) || null;
+    });
+  }
+
+  function renderCalendar(session) {
+    const ctx = calContext(session);
+    const v = calView();
+    const dates = monthGrid(v.y, v.m);
+    const byDate = calBlocksByDate(ctx, dates);
+    const todayStr = localDateStr(new Date());
+    const monthPrefix = v.key;
+
+    /* No weekday header row. Every cell opens with its own weekday — the
+       `Dt 1` in calCellHead — so a DL DT DC strip above the grid was the
+       same seven words repeated six times over. */
+    const weeks = chunkWeeks(dates).map(function (days, wi) {
+      /* One height for all seven cells of a strip, so the row stays level.
+         The taller value is for a week where some day holds more than one
+         thing — the design's 172 / 262. */
+      const maxBlocks = days.reduce(function (n, d) {
+        return Math.max(n, (byDate[d] || []).length);
+      }, 0);
+      const openH = maxBlocks > 1 ? 262 : 172;
+
+      const load = calWeekLoad(ctx, days);
+      const wk = isoWeek(days[0]);
+      const a = new Date(days[0] + 'T12:00:00');
+      const b = new Date(days[6] + 'T12:00:00');
+      const range = a.getDate() + (a.getMonth() === b.getMonth() ? '' :
+        ' ' + tMonthShort(a.getMonth())) + ' – ' + b.getDate() + ' ' + tMonthShort(b.getMonth());
+      const auText = load.counted
+        ? '<b>' + load.au.toLocaleString(_lang === 'en' ? 'en-GB' : 'ca-ES') + '</b>' +
+          '<span class="cal-au-u">' + sanitize(t('load.au').replace('{n} ', '')) + '</span>'
+        : '<span class="cal-au-none">' + sanitize(t('load.no_data')) + '</span>';
+
+      const cells = days.map(function (d) {
+        const blocks = byDate[d] || [];
+        const out = d.slice(0, 7) !== monthPrefix;
+        const dt = new Date(d + 'T12:00:00');
+        /* The cell's fill comes from the highest-priority block — EXCEPT
+           when the day holds more than one fixture, where there is no
+           single result to colour it with. Then it stays the neutral
+           white a match cell has, and each score carries its own colour
+           inside its own block.
+
+           A count of MATCHES, not of blocks: a fixture plus a training is
+           still one fixture, and that day should stay coloured. */
+        const nMatch = blocks.filter(function (b) {
+          return b.kind === 'match' || /^(win|draw|loss)$/.test(b.kind);
+        }).length;
+        const kind = !blocks.length ? '' :
+          (nMatch > 1 ? 'match' : blocks[0].kind);
+
+        const cls = ['cal-cell'];
+        if (kind) cls.push('cal-k-' + kind);
+        else cls.push(dt.getDay() === 0 || dt.getDay() === 6 ? 'cal-k-weekend' : 'cal-k-empty');
+        if (out) cls.push('cal-cell-out');
+        if (d === todayStr) cls.push('cal-cell-today');
+        /* Any played fixture on the day keeps its weight, however many
+           there are — read off the blocks rather than off blocks[0]. */
+        const anyPlayed = blocks.some(function (b) { return /^(win|draw|loss)$/.test(b.kind); });
+        if (d < todayStr && !out) cls.push(anyPlayed ? 'cal-cell-past-res' : 'cal-cell-past');
+
+        const head = '<div class="cal-cell-h">' +
+          '<span class="cal-dh">' + sanitize(tDayShort(dt.getDay())) + ' ' +
+            Number(d.slice(8, 10)) + '</span>' +
+          (d === todayStr ? '<span class="cal-today-chip">' + sanitize(t('cal.today')) + '</span>' : '') +
+          (blocks.length > 1 ? '<span class="cal-more">+' + (blocks.length - 1) + '</span>' : '') +
+          /* The add control is its own button rather than a click on the
+             cell: a cell is also the week's tap target on touch, and one
+             element cannot be both without one firing when the reader
+             meant the other. */
+          (ctx.canEdit && !out ? '<button class="cal-add" data-cal-add="' + d +
+            '" title="' + sanitize(t('cal.add_on').replace('{date}', tDateShort(d))) +
+            '">+</button>' : '') +
+          '</div>';
+
+        return '<div class="' + cls.join(' ') + '" data-cal-date="' + d + '">' + head +
+          '<div class="cal-cell-body">' +
+            blocks.map(function (b, i) {
+              // Only the first block survives collapsing; the rest are
+              // expanded-only, which is what the +N chip announces.
+              return i === 0 ? b.html : '<div class="cal-x">' + b.html + '</div>';
+            }).join('') +
+          '</div></div>';
+      }).join('');
+
+      return '<div class="cal-week" data-cal-week="' + wi + '" style="--cal-open-h:' + openH + 'px">' +
+        '<div class="cal-gutter">' +
+          '<span class="cal-wk">' + sanitize(t('cal.week_n').replace('{n}', wk.week)) + '</span>' +
+          '<span class="cal-range">' + sanitize(range) + '</span>' +
+          '<div class="cal-au">' + auText +
+            (load.unknown ? '<span class="cal-au-warn" title="' +
+              sanitize(t('load.au_unrated').replace('{n}', load.unknown)) + '">·</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="cal-days">' + cells + '</div>' +
+        '</div>';
+    }).join('');
 
     /* Refreshing pulls the federation's calendar for every squad of the
-       CURRENT category. Offered only when a link is actually configured:
-       a button that can only ever say "nothing to do" is worse than no
-       button, so it explains itself instead of being hidden. */
-    var fcfSquads = curCat ? getTeamLetters(curCat).filter(function (l) {
+       CURRENT category. Offered only when a link is configured: a button
+       that can only say "nothing to do" is worse than no button, so it
+       explains itself rather than hiding. */
+    const curCat = getCurrentCategory();
+    const fcfSquads = curCat ? getTeamLetters(curCat).filter(function (l) {
       return fcfGrupId(((_clubConfig && _clubConfig.fcfLinks) || {})[curCat + '-' + l] || '');
     }) : [];
-    var refreshBtn = ro ? '' :
+    const refreshBtn = ctx.canEdit ?
       '<button class="btn btn-outline btn-small" id="btn-fcf-refresh"' +
         (fcfSquads.length ? '' : ' disabled') +
-        ' title="' + sanitize(t(fcfSquads.length ? 'cal.refresh_hint' : 'cal.refresh_none')) + '">' +
-        '🔄 ' + sanitize(t('cal.refresh')) + '</button>';
+        ' title="' + sanitize(t(fcfSquads.length ? 'cal.refresh_hint' : 'cal.refresh_none')) +
+        '">🔄 ' + sanitize(t('cal.refresh')) + '</button>' : '';
 
-    return '<h2 class="page-title">' + t('page.set_calendar') + '</h2>' +
-      (ro ? viewOnlyBanner()
-        : '<div class="md-toolbar" style="margin-bottom:1rem;"><button class="btn btn-outline btn-small matchday-add" id="btn-matchday-add" title="' + t('matches.add_game') + '">+ ' + t('matches.add_game') + '</button>' +
-          refreshBtn + '</div>') +
-      newSection +
-      legCard +
-      upcomingCard +
-      pastCard;
+    const loadLegend = '<div class="cal-legend cal-legend-load">' +
+      '<span class="cal-legend-h">' + sanitize(t('load.legend')) + '</span>' +
+      ['low', 'mid', 'high'].map(function (b, i) {
+        return '<span class="cal-legend-i"><i class="cal-dot cal-load-' + b + '"></i>' +
+          sanitize(['1–4', '5–7', '8–10'][i]) + '</span>';
+      }).join('') + '</div>';
+    const kindLegend = '<div class="cal-legend">' +
+      [['train', 'cal.training'], ['act', 'cal.activity'], ['match', 'cal.add_match']]
+        .map(function (p) {
+          return '<span class="cal-legend-i"><i class="cal-sq cal-sq-' + p[0] + '"></i>' +
+            sanitize(t(p[1])) + '</span>';
+        }).join('') + '</div>';
+
+    /* NO category tabs, deliberately, though the handoff's top bar has
+       them: the app already renders a category bar above every page in
+       CATEGORY_PAGES, and two controls for one piece of state is how they
+       end up disagreeing. */
+    /* NO page title and NO card around it.
+
+       "Calendari" was a heading over a page that fills the whole pane and
+       is already named twice — by the lit sidebar item and by the category
+       bar above it — and the white frame was a border drawn around
+       something with nothing beside it. Between them they cost a heading's
+       line, its 1.5rem margin, and a border's padding on all four sides.
+       The month label is the heading now.
+
+       The bar keeps its bottom rule, which was doing the separating all
+       along; the card was only ever holding it. */
+    return (ctx.canEdit ? '' : viewOnlyBanner()) +
+      calDraftsBannerHtml(ctx) +
+      '<div class="cal-bar">' +
+        '<div class="cal-bar-l">' +
+          '<button class="cal-arrow" data-cal-shift="-1" title="' + sanitize(t('cal.prev_month')) + '">‹</button>' +
+          '<span class="cal-month">' + sanitize(tMonth(v.m)) + ' ' + v.y + '</span>' +
+          '<button class="cal-arrow" data-cal-shift="1" title="' + sanitize(t('cal.next_month')) + '">›</button>' +
+          '<button class="btn btn-outline btn-small" id="btn-cal-today">' + sanitize(t('cal.today')) + '</button>' +
+          loadLegend +
+        '</div>' +
+        '<div class="cal-bar-r">' + kindLegend + refreshBtn + '</div>' +
+      '</div>' +
+      '<div class="cal-weeks">' + weeks + '</div>';
   }
+
+  // #endregion Calendar
 
   function buildTimeOptions(selected) {
     let opts = '<option value="">--:--</option>';
@@ -18744,6 +19420,31 @@
         const sel = val === selected ? ' selected' : '';
         opts += `<option value="${val}"${sel}>${val}</option>`;
       }
+    }
+    return opts;
+  }
+
+  /**
+   * The planned-RPE picker: 1-10, or blank.
+   *
+   * Blank is the default and stays a real answer. The calendar's intensity
+   * dot is ABSENT for an unestimated session rather than green, because
+   * "nobody has said how hard this is" and "this is an easy session" are
+   * different facts and must not share a colour.
+   *
+   * The three bands the legend promises (<=4 light, 5-7 moderate, 8+ hard)
+   * are named in the options, so a coach picking 7 can see which side of
+   * the line it falls without consulting the key.
+   */
+  function buildRpeOptions(selected) {
+    var cur = (selected === undefined || selected === null || selected === '')
+      ? '' : String(selected);
+    var opts = '<option value=""' + (cur === '' ? ' selected' : '') + '>' +
+      sanitize(t('training.rpe_unset')) + '</option>';
+    for (var n = 1; n <= 10; n++) {
+      var band = loadBand(n);
+      opts += '<option value="' + n + '"' + (cur === String(n) ? ' selected' : '') +
+        '>' + n + ' · ' + sanitize(t('load.' + band)) + '</option>';
     }
     return opts;
   }
@@ -19043,28 +19744,6 @@
       '<span class="md-fcf-tick" title="' + sanitize(t('fcf.opponent_matched')) + '" hidden>✓</span>';
   }
 
-  function matchdayRowHtml(g, i) {
-    const homeChecked = g.homeAway === 'home' ? 'checked' : '';
-    const awayChecked = g.homeAway === 'away' ? 'checked' : '';
-    return `<tr data-idx="${i}" data-category="${sanitize(g.category || '')}">
-      <td>
-        <label class="md-radio"><input type="radio" name="ha-${i}" value="home" ${homeChecked} class="md-ha"> Home</label>
-        <label class="md-radio"><input type="radio" name="ha-${i}" value="away" ${awayChecked} class="md-ha"> Away</label>
-      </td>
-      <td class="md-team-cell">
-        ${getTeamLetters(g.category || getCurrentCategory() || '').map(function(l) {
-          return '<span class="md-team-circle' + (g.team === l ? ' active' : '') + '" data-team="' + l + '">' + l + '</span>';
-        }).join('')}
-      </td>
-      <td><input type="text" class="reg-input md-date md-datepicker" value="${sanitize(g.date || '')}" placeholder="YYYY-MM-DD" readonly style="width:140px;cursor:pointer;"></td>
-      <td class="md-opponent-cell">${opponentInputHtml('new-' + i, g.opponent || '')}</td>
-      <td><input class="reg-input md-location" value="${sanitize(g.location || '')}" placeholder="Location" style="width:150px;"></td>
-      <td><input class="reg-input md-maplink" value="${sanitize(g.mapLink || '')}" placeholder="Google Maps link" style="width:150px;"></td>
-      <td><input type="text" class="reg-input md-kickoff" value="${sanitize(g.kickoff || '')}" placeholder="HH:MM" pattern="[0-2][0-9]:[0-5][0-9]" maxlength="5" style="width:80px;text-align:center;"></td>
-      <td><button class="md-remove-btn md-remove" data-idx="${i}" title="Remove">&times;</button></td>
-    </tr>`;
-  }
-
   function renderConvocatoria() {
     /* A delegate reads the call-up — they need to know who is coming and in
        which kit — but the squad, the kit and the send are the coach's call.
@@ -19297,70 +19976,6 @@
           '</div>';
       })()}`;
   }
-
-  function renderMatches() {
-    var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    var curCat = getCurrentCategory();
-    var matches = curCat ? allMatches.filter(function(m) { return !m.category || m.category === curCat; }) : allMatches;
-    const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
-    const now = new Date();
-    const upcoming = matches.filter(m => {
-      if (!m.date || !m.time) return true;
-      return new Date(m.date + 'T' + m.time + ':00') > now;
-    });
-    const past = matches.filter(m => {
-      if (!m.date || !m.time) return false;
-      return new Date(m.date + 'T' + m.time + ':00') <= now;
-    }).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-    function buildCard(m, clickable) {
-      const teamLetter = m.team || '';
-      const homeName = isOurTeam(m.home) && teamLetter ? getClubName() + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.home);
-      const awayName = isOurTeam(m.away) && teamLetter ? getClubName() + ' <span class="conv-team-circle">' + sanitize(teamLetter) + '</span>' : sanitize(m.away);
-      let dateFmt = '—';
-      if (m.date) {
-        const d = new Date(m.date + 'T12:00:00');
-        const dayName = tDay(d.getDay());
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        dateFmt = dayName + ' ' + dd + '/' + mm + '/' + yyyy;
-      }
-      const locationHtml = m.mapLink
-        ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="md-card-map" onclick="event.stopPropagation()">📍 ${sanitize(m.location || '—')}</a>`
-        : `<span>📍 ${sanitize(m.location || '—')}</span>`;
-      const sentEntry = sentData[m.id];
-      const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
-      const convHtml = sentPlayers.length
-        ? `<span class="md-conv-sent"><span class="conv-blink-dot"></span> ${t('matches.conv_sent')}<span class="md-conv-count">${sentPlayers.length} ${t('matches.players')}</span></span>`
-        : '';
-      const clickAttr = clickable ? ` data-go-staff-match="${m.id}"` : '';
-      return `<div class="md-match-card${clickable ? '' : ' md-match-card-past'}"${clickAttr}>
-        <div class="md-match-left">
-          <div class="md-match-teams">${homeName} vs ${awayName}</div>
-          <div class="md-match-info"><span>🗓 ${dateFmt}</span><span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${m.time || '—'}</span>${locationHtml}</div>
-        </div>
-        ${convHtml}
-      </div>`;
-    }
-    const upcomingCards = upcoming.length
-      ? upcoming.map(m => buildCard(m, true)).join('')
-      : '<p style="color:var(--text-secondary)">' + t('matches.no_upcoming') + '</p>';
-    const pastCards = past.length
-      ? past.map(m => buildCard(m, true)).join('')
-      : '<p style="color:var(--text-secondary)">' + t('matches.no_previous') + '</p>';
-
-    return `
-      <h2 class="page-title">${t('page.matchday')}</h2>
-      <div class="card">
-        <div class="card-title">${t('matches.upcoming')}</div>
-        <div class="md-match-list">${upcomingCards}</div>
-      </div>
-      <div class="card">
-        <div class="card-title">${t('matches.previous')}</div>
-        <div class="md-match-list">${pastCards}</div>
-      </div>`;
-  }
-
 
   function renderAdminUsers() {
     const users = getUsers();
@@ -21526,8 +22141,23 @@
 
   function matchLabel(m) {
     const tl = m.team ? ' <span class="conv-team-circle">' + sanitize(m.team) + '</span>' : '';
-    const h = isOurTeam(m.home) ? sanitize(m.home) + tl : sanitize(m.home);
-    const a = isOurTeam(m.away) ? sanitize(m.away) + tl : sanitize(m.away);
+    /* The federation writes every club in capitals and a club writes its own
+       name however it likes, so "CAN BUXERES, F.C. vs Esquerra de l'Eixample
+       F.C." made the odd one out always us. The stylesheet uppercases this
+       class; the stored value is NEVER touched, because isOurTeam() compares
+       it with === and an uppercased one would make the app believe we were
+       the other team — every fixture flipping home for away, and the squad
+       letter with it.
+
+       It lived in the Calendari table's buildSavedRow until the calendar
+       replaced it. Here is the right home: this is the one helper that
+       prints both names, and the calendar's own cards print only the
+       rival's, so there is nothing there to mark. */
+    const ours = function (name) {
+      return '<span class="md-our-club">' + sanitize(name) + '</span>' + tl;
+    };
+    const h = isOurTeam(m.home) ? ours(m.home) : sanitize(m.home);
+    const a = isOurTeam(m.away) ? ours(m.away) : sanitize(m.away);
     return h + ' vs ' + a;
   }
 
@@ -21609,220 +22239,554 @@
     </div>`;
   }
 
-  // ---------- Matchday bindings ----------
-  function bindMatchday() {
-    /* Everything this binds writes fa_matchday or fa_matches. A fitness
-       coach gets the fixture list rendered as plain cells, so there is
-       nothing here to attach to — leaving early is the second gate, the one
-       that survives a later markup change. */
-    if (!canEditPage('matchday')) return;
-    const body = document.getElementById('matchday-body');
-
-    // Add game button (always present)
-    const addBtn = document.getElementById('btn-matchday-add');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const games = body ? readGames() : [];
-        var cat = getCurrentCategory() || '';
-        var letters = getTeamLetters(cat);
-        // schedules are keyed "{category}-{letter}" (same as fcfLinks) — this
-        // was building "{category}_{letter}", so the home-game defaults never
-        // resolved and every new row fell back to the hardcoded location.
-        var schedKey = (letters.length === 1) ? cat + '-' + letters[0] : cat;
-        var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
-        var homeGame = sched ? sched.homeGame : null;
-        var defLoc = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
-        var defMap = (defLoc === 'Escola Industrial') ? 'https://share.google/pfbMOc661aRSNlynk' : '';
-        var defKickoff = (homeGame && homeGame.time) ? homeGame.time : '';
-        games.push({ homeAway: 'home', team: '', date: '', opponent: '', location: defLoc, mapLink: defMap, kickoff: defKickoff, category: cat });
-        // readGames() only sees the rendered (category-scoped) rows, so carry
-        // the hidden categories' drafts through — fa_matchday is written whole.
-        var keptDrafts = cat
-          ? JSON.parse(localStorage.getItem('fa_matchday') || '[]')
-              .filter(function (g) { return g.category && g.category !== cat; })
-          : [];
-        localStorage.setItem('fa_matchday', JSON.stringify(keptDrafts.concat(games)));
+  // ---------- Calendar bindings ----------
+  function bindCalendar() {
+    // Month paging and the day panel work for everyone, including a player
+    // and a read-only fitness coach. Only creation is gated.
+    $$('[data-cal-shift]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        calShift(Number(btn.dataset.calShift) || 0);
+        renderPage(getSession());
+      });
+    });
+    const todayBtn = document.getElementById('btn-cal-today');
+    if (todayBtn) {
+      todayBtn.addEventListener('click', function () {
+        calReset();
         renderPage(getSession());
       });
     }
+    /* Expansion is CSS `:hover` on the week strip — no re-render, and the
+       expanded-only rows are `display:none` rather than clipped, so no
+       half-line of text can appear at a cell's bottom edge mid-transition.
+
+       This handler is the TOUCH half of it. A phone has no hover, so the
+       first tap anywhere in a strip opens that strip and closes any other;
+       a tap on a block inside an open strip opens the detail page, which
+       is why those handlers stop the event before it reaches here. */
+    calMeasure();
+
+    /* Measured again when the layout can move under it.
+     *
+     * The first pass runs before Oswald has come back from Google Fonts,
+     * so every height above was taken in the fallback face — a different
+     * width, and therefore a different number of wrapped lines. */
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      document.fonts.ready.then(calMeasure);
+    }
+    /* Bound ONCE, the same guard tbSize3DWindow uses. bindDynamicActions
+       runs after every render, so an unguarded listener here would stack up
+       one per render for as long as the session lasts. calMeasure re-queries
+       the DOM rather than closing over this render's strips, so the one
+       surviving listener always measures what is on screen — and does
+       nothing at all on a page that has no strips. */
+    if (!_calResizeBound) {
+      _calResizeBound = true;
+      window.addEventListener('resize', function () {
+        clearTimeout(_calResizeT);
+        _calResizeT = setTimeout(calMeasure, 150);
+      });
+    }
+
+    $$('.cal-week').forEach(function (wk) {
+      wk.addEventListener('click', function (e) {
+        if (e.target.closest('.cal-b, .cal-add, a, button')) return;
+        var open = wk.classList.contains('cal-week-open');
+        $$('.cal-week').forEach(function (w) { w.classList.remove('cal-week-open'); });
+        if (!open) wk.classList.add('cal-week-open');
+      });
+    });
+
+    /* Opening something that exists.
+
+       On a device with no hover the strip is collapsed until it is tapped,
+       and a collapsed block is showing one line of a card the reader has
+       not seen yet — so the FIRST tap opens the week and only the second
+       navigates. With a mouse the strip is already open under the pointer,
+       so this never fires and a single click goes straight through. */
+    const touchFirstTap = function (el) {
+      if (!window.matchMedia || !window.matchMedia('(hover: none)').matches) return false;
+      const wk = el.closest('.cal-week');
+      if (!wk || wk.classList.contains('cal-week-open')) return false;
+      $$('.cal-week').forEach(function (w) { w.classList.remove('cal-week-open'); });
+      wk.classList.add('cal-week-open');
+      return true;
+    };
+
+    $$('[data-cal-match]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (touchFirstTap(el)) return;
+        detailMatchId = Number(el.dataset.calMatch);
+        detailMatchFrom = 'calendar';
+        currentPage = 'match-detail';
+        renderPage(getSession());
+      });
+    });
+    $$('[data-cal-session]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (touchFirstTap(el)) return;
+        const id = el.dataset.calSession;
+        detailTrainingId = id;
+        currentPage = canEditPage('calendar') ? 'staff-training-detail' : 'training-detail';
+        renderPage(getSession());
+      });
+    });
 
     bindFcfRefresh();
+    if (!canEditPage('calendar')) return;
 
-    if (!body) {
-      // No new games form — still bind saved match handlers below
-      bindSavedMatchHandlers();
-      return;
-    }
-
-    function readGames() {
-      const games = [];
-      body.querySelectorAll('tr').forEach(tr => {
-        const haRadio = tr.querySelector('.md-ha:checked');
-        const homeAway = haRadio ? haRadio.value : 'home';
-        const activeTeam = tr.querySelector('.md-team-circle.active');
-        const team = activeTeam ? activeTeam.dataset.team : '';
-        const date = tr.querySelector('.md-date').value;
-        const opponent = tr.querySelector('.md-opponent').value.trim();
-        const location = tr.querySelector('.md-location').value.trim();
-        const mapLink = tr.querySelector('.md-maplink').value.trim();
-        const kickoff = tr.querySelector('.md-kickoff').value;
-        const category = tr.dataset.category || '';
-        /* The squad the FCF lookup should use, which is NOT `team`: a club
-           with one team per category never activates a chip, so `team` is ''
-           while the row unambiguously belongs to that single squad. Carried
-           separately so `team` keeps meaning "the letter the coach picked". */
-        const squadLetter = mdRowSquad(tr).letter;
-        games.push({ homeAway, team, date, opponent, location, mapLink, kickoff, category, squadLetter });
-      });
-      return games;
-    }
-
-    function saveGames() {
-      // The table only renders the current category, but fa_matchday is one
-      // club-wide blob written whole. Carry the drafts we are NOT showing
-      // through untouched, or saving here would delete other categories'.
-      var cat = getCurrentCategory();
-      var kept = cat
-        ? JSON.parse(localStorage.getItem('fa_matchday') || '[]')
-            .filter(function (g) { return g.category && g.category !== cat; })
-        : [];
-      localStorage.setItem('fa_matchday', JSON.stringify(kept.concat(readGames())));
-    }
-
-    // Auto-fill location, map link, and kick-off time when home is selected
-    body.addEventListener('change', e => {
-      if (e.target.classList.contains('md-ha')) {
-        const tr = e.target.closest('tr');
-        const locInput = tr.querySelector('.md-location');
-        const mapInput = tr.querySelector('.md-maplink');
-        const kickoffInput = tr.querySelector('.md-kickoff');
-        if (e.target.value === 'home') {
-          // Try to get defaults from club schedule config
-          var cat = tr.dataset.category || getCurrentCategory() || '';
-          var schedKey = cat;
-          var letters = getTeamLetters(cat);
-          var activeCircle = tr.querySelector('.md-team-circle.active');
-          if (activeCircle && activeCircle.dataset.team) schedKey = cat + '-' + activeCircle.dataset.team;
-          else if (letters.length === 1) schedKey = cat + '-' + letters[0];
-          var sched = (_clubConfig && _clubConfig.schedules && _clubConfig.schedules[schedKey]) ? _clubConfig.schedules[schedKey] : null;
-          var homeGame = sched ? sched.homeGame : null;
-          locInput.value = (homeGame && homeGame.location) ? homeGame.location : 'Escola Industrial';
-          mapInput.value = (homeGame && homeGame.link) ? homeGame.link : (locInput.value === 'Escola Industrial' ? 'https://share.google/pfbMOc661aRSNlynk' : '');
-          if (kickoffInput && homeGame && homeGame.time) kickoffInput.value = homeGame.time;
-        } else {
-          locInput.value = '';
-          mapInput.value = '';
-          if (kickoffInput) kickoffInput.value = '';
-        }
-        saveGames();
-      }
-    });
-
-    // Auto-save on input & change (for selects)
-    body.addEventListener('input', saveGames);
-    body.addEventListener('change', saveGames);
-
-    // Auto-format HH:MM on kickoff inputs (24h format)
-    body.addEventListener('input', function(e) {
-      if (!e.target.classList.contains('md-kickoff')) return;
-      var v = e.target.value.replace(/[^0-9]/g, '');
-      if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2, 4);
-      if (v.length > 5) v = v.slice(0, 5);
-      e.target.value = v;
-    });
-
-    // Custom Mon-Sun date picker
-    body.querySelectorAll('.md-datepicker').forEach(inp => {
-      inp.addEventListener('click', () => openDatePicker(inp));
-    });
-
-    // Team circle toggle
-    body.querySelectorAll('.md-team-circle').forEach(circle => {
-      circle.addEventListener('click', () => {
-        const td = circle.closest('td');
-        td.querySelectorAll('.md-team-circle').forEach(c => c.classList.remove('active'));
-        circle.classList.add('active');
-        saveGames();
-        // amateur-A and amateur-B are different leagues against different
-        // clubs, so the completions for this row just changed.
-        renderOpponentDatalists();
+    /* Editing a fixture, from the match detail page. Bound here rather than
+       with the rest of that page because it is a calendar concern and it is
+       the calendar's dialog that does the work — and bindCalendar runs on
+       every render, match detail included. */
+    $$('.md-edit-fixture').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        calOpenMatchModal(null, btn.dataset.matchId);
       });
     });
 
-    // Keep the ✓ honest as the coach types or picks.
-    body.addEventListener('input', function(e) {
-      if (e.target.classList.contains('md-opponent')) markOpponentMatch(e.target);
-    });
-    renderOpponentDatalists();
-
-    // Remove row. Splices the rendered (category-scoped) list, then goes back
-    // through saveGames so the hidden categories' drafts survive.
-    body.querySelectorAll('.md-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const row = btn.closest('tr');
-        if (row) row.remove();
-        saveGames();
-        renderPage(getSession());
+    if (canAddTraining()) {
+      $$('[data-cal-ghost]').forEach(function (el) {
+        el.addEventListener('click', function () { calScheduleGhost(el.dataset.calGhost); });
+      });
+    }
+    $$('[data-cal-add]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        calOpenAddMenu(btn.dataset.calAdd);
       });
     });
 
-    // Save button — add new games to fa_matches
-    const saveMdBtn = document.getElementById('btn-matchday-save');
-    if (saveMdBtn) {
-      saveMdBtn.addEventListener('click', () => {
-        const games = readGames();
-        const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
-        const today = new Date().toISOString().slice(0, 10);
-        const newMatches = games.filter(g => g.opponent && g.date).map((g, i) => {
-          const cat = g.category || getCurrentCategory() || '';
-          return Object.assign({
-            id: Date.now() + i,
-            home: g.homeAway === 'home' ? TEAM : g.opponent,
-            away: g.homeAway === 'home' ? g.opponent : TEAM,
-            date: g.date,
-            time: g.kickoff || '00:00',
-            score: null,
-            status: g.date >= today ? 'upcoming' : 'played',
-            location: g.location,
-            mapLink: g.mapLink,
-            team: g.team || '',
-            category: cat
-          /* Resolved from the name at save time rather than captured when the
-             coach clicked a completion: a <datalist> fires no "picked" event
-             worth trusting, and this way a rival typed out in full earns the
-             id too. */
-          }, fcfMatchFields(cat, g.squadLetter || g.team || '', g.opponent));
+    // The stranded drafts from the old Calendari — commit or discard.
+    const keep = document.getElementById('btn-cal-drafts-keep');
+    if (keep) {
+      keep.addEventListener('click', function () {
+        calReadDrafts().forEach(function (g) {
+          calCommitMatch({
+            homeAway: g.homeAway || 'home', opponent: g.opponent, date: g.date,
+            kickoff: g.kickoff, location: g.location, mapLink: g.mapLink,
+            team: g.team || '', category: g.category || '',
+            squadLetter: g.squadLetter || g.team || ''
+          });
         });
-        // Append to existing matches instead of replacing
-        var existing = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-        existing = existing.concat(newMatches);
-        localStorage.setItem('fa_matches', JSON.stringify(existing));
-        // Clear the new games form — but only the rows we just saved. Other
-        // categories' drafts are not ours to throw away.
-        var cat = getCurrentCategory();
-        var keptDrafts = cat
-          ? JSON.parse(localStorage.getItem('fa_matchday') || '[]')
-              .filter(function (g) { return g.category && g.category !== cat; })
-          : [];
-        localStorage.setItem('fa_matchday', JSON.stringify(keptDrafts));
+        localStorage.setItem('fa_matchday', '[]');
         renderPage(getSession());
       });
     }
-
-    bindSavedMatchHandlers();
+    const drop = document.getElementById('btn-cal-drafts-drop');
+    if (drop) {
+      drop.addEventListener('click', function () {
+        if (!confirm(t('cal.drafts_confirm_drop'))) return;
+        localStorage.setItem('fa_matchday', '[]');
+        renderPage(getSession());
+      });
+    }
   }
 
-  /* The Calendari's refresh button.
+  /**
+   * Turn a greyed placeholder into a real session.
    *
-   * Calls the SAME server function the 06:00 job runs — the button exists for
-   * a late change the club hears about before the federation's nightly window
-   * comes round, not as a second, client-side importer. A parallel client
-   * implementation is how the two would drift.
-   *
-   * The sync writes teams/{id}/data/fa_matches__{cat}, which the client is
-   * already listening to, so the new fixtures arrive through the ordinary
-   * firestore-sync re-render rather than anything special here.
+   * One click, no dialog. The slot already carries everything a session
+   * needs — day, time, place, squad — so asking the coach to confirm what
+   * he can already read on the card would be a dialog with nothing in it.
+   * Editing happens afterwards, by clicking the session again.
    */
+  function calScheduleGhost(key) {
+    const parts = String(key || '').split('|');
+    if (parts.length < 4) return;
+    const cat = parts[0];
+    const letter = parts[1];
+    const date = parts[2];
+    const time = parts[3];
+    /* Re-derived from the club config rather than read off the card: the
+       DOM carries only the four parts of the key, and a placeholder whose
+       end time and place came from an attribute could be edited in
+       devtools into a session nobody scheduled. */
+    const slot = scheduleSlots(_clubConfig, cat, letter).filter(function (s) {
+      return s.time === time &&
+        s.jsDay === new Date(date + 'T12:00:00').getDay();
+    })[0];
+    if (!slot) return;
+    const row = trainingFromSlot(cat, letter, date, slot, 0);
+    const moved = _ntCommit([row]);
+    _showPushToast(t('cal.scheduled'),
+        t('cal.scheduled_body')
+            .replace('{day}', tDateShort(date))
+            .replace('{time}', row.time || '—') +
+        (moved ? ' ' + t('nt.moved').replace('{n}', moved) : ''));
+    renderPage(getSession());
+  }
+
+  /** Training / match / other activity, for one day. */
+  function calOpenAddMenu(date) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-card cal-add-modal">' +
+        '<div class="modal-title">' + sanitize(tDateLong(date)) + '</div>' +
+        '<div class="cal-add-choices">' +
+          (canAddTraining() ? '<button class="btn btn-outline" data-cal-new="training">' +
+            '<img src="img/icon-cone.svg" class="cal-icon" alt="">' +
+            sanitize(t('cal.add_training')) + '</button>' : '') +
+          '<button class="btn btn-outline" data-cal-new="match">⚽ ' +
+            sanitize(t('cal.add_match')) + '</button>' +
+          '<button class="btn btn-outline" data-cal-new="activity">📌 ' +
+            sanitize(t('cal.add_activity')) + '</button>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-small btn-outline" data-cal-cancel>' +
+            sanitize(t('common.cancel')) + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+    const close = function () {
+      overlay.classList.remove('visible');
+      setTimeout(function () { overlay.remove(); }, 200);
+    };
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay || e.target.closest('[data-cal-cancel]')) { close(); return; }
+      const btn = e.target.closest('[data-cal-new]');
+      if (!btn) return;
+      close();
+      const kind = btn.dataset.calNew;
+      if (kind === 'training') {
+        /* The New Training page, pre-dated to the clicked day. It stays
+           because of what it carries that a dialog would not: clash
+           detection against the sessions a player already has, and the
+           picker that borrows one from another squad. */
+        _ntReset();
+        _ntSeedFor(date);
+        currentPage = 'training-new';
+        renderPage(getSession());
+      } else if (kind === 'match') {
+        calOpenMatchModal(date);
+      } else {
+        calOpenActivityModal(date, null);
+      }
+    });
+  }
+  /**
+   * A modal with a form in it.
+   *
+   * `onSubmit(card)` gets the modal's own element and returns a truthy
+   * value to close. Returning false keeps it open, which is how a
+   * validation message stays on screen next to the field it is about
+   * instead of arriving as a toast over a dialog that has already gone.
+   */
+  function calModal(title, bodyHtml, onSubmit) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-card cal-form-modal">' +
+        '<div class="modal-title">' + title + '</div>' +
+        '<div class="cal-form">' + bodyHtml + '</div>' +
+        '<p class="cal-form-err" hidden></p>' +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-small btn-outline" data-cal-cancel>' +
+            sanitize(t('common.cancel')) + '</button>' +
+          '<button class="btn btn-small btn-primary" data-cal-ok>' +
+            sanitize(t('btn.save')) + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add('visible'); });
+    const card = overlay.querySelector('.modal-card');
+    const close = function () {
+      overlay.classList.remove('visible');
+      setTimeout(function () { overlay.remove(); }, 200);
+    };
+    card.fail = function (msg) {
+      const el = card.querySelector('.cal-form-err');
+      el.textContent = msg;
+      el.hidden = false;
+    };
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay || e.target.closest('[data-cal-cancel]')) { close(); return; }
+      if (e.target.closest('[data-cal-ok]') && onSubmit(card)) close();
+    });
+    // The Mon-Sun picker the rest of the app uses, not the browser's.
+    card.querySelectorAll('.md-datepicker').forEach(function (inp) {
+      inp.addEventListener('click', function () { openDatePicker(inp); });
+    });
+    return card;
+  }
+
+  /** The squad chips shared by both dialogs; '' when there is no choice. */
+  function calSquadPickerHtml(selCat, selLetter) {
+    const cats = getVisibleCategories();
+    const catSel = cats.length > 1
+      ? '<label>' + sanitize(t('nt.category')) + '<select class="reg-input cal-f-cat">' +
+        cats.map(function (c) {
+          return '<option value="' + sanitize(c) + '"' + (c === selCat ? ' selected' : '') +
+            '>' + sanitize(CATEGORY_LABELS[c] || c) + '</option>';
+        }).join('') + '</select></label>'
+      : '';
+    const letters = getTeamLetters(selCat);
+    const letSel = letters.length > 1
+      ? '<label>' + sanitize(t('nt.team')) + '<select class="reg-input cal-f-letter">' +
+        letters.map(function (l) {
+          return '<option value="' + sanitize(l) + '"' + (l === selLetter ? ' selected' : '') +
+            '>' + sanitize(l) + '</option>';
+        }).join('') + '</select></label>'
+      : '';
+    return catSel + letSel;
+  }
+
+  function calPickedSquad(card) {
+    const catEl = card.querySelector('.cal-f-cat');
+    const letEl = card.querySelector('.cal-f-letter');
+    const cat = catEl ? catEl.value : (getCurrentCategory() || getVisibleCategories()[0] || '');
+    const letters = getTeamLetters(cat);
+    /* One letter means there is no choice to make and no control is drawn,
+       so the row still has to carry it — a session with a blank letter is
+       "every squad in the category", which is a different thing. */
+    const letter = letEl ? letEl.value : (letters.length === 1 ? letters[0] : '');
+    return { cat: cat, letter: letter };
+  }
+
+  /**
+   * A fixture the federation does not publish — a friendly, a cup tie, a
+   * league whose club never configured an FCF link.
+   *
+   * Writes straight to fa_matches. The old Calendari staged these in a
+   * second blob (fa_matchday) and needed a Save press to promote them,
+   * which meant a half-typed fixture could sit in everyone's sync for
+   * weeks. One dialog, one write, nothing in between.
+   */
+  function calOpenMatchModal(date, existingId) {
+    let matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]'); } catch (e) { matches = []; }
+    const cur = existingId != null
+      ? matches.find(function (m) { return String(m.id) === String(existingId); })
+      : null;
+    const wasHome = cur ? isOurTeam(cur.home) : true;
+    const cat = (cur && cur.category) || getCurrentCategory() || getVisibleCategories()[0] || '';
+    const letters = getTeamLetters(cat);
+    const letter = (cur && cur.team) || (letters.length === 1 ? letters[0] : '');
+    const sched = (_clubConfig && _clubConfig.schedules) ?
+      _clubConfig.schedules[cat + '-' + letter] : null;
+    const homeGame = (sched && sched.homeGame) || {};
+    const iso = (cur && cur.date) || date;
+    const val = function (a, b) { return cur ? (a || '') : (b || ''); };
+    /* An imported fixture keeps its federation fields; only the four the
+       merge rule lets a coach own are editable here, and editing one is
+       exactly what stops the nightly sync writing it again. */
+    const body =
+      (cur && cur.fcfActaId ? '<p class="cal-form-note">' + sanitize(t('cal.from_fcf')) + '</p>' : '') +
+      '<div class="cal-f-row">' +
+        '<label class="cal-f-radio"><input type="radio" name="cal-ha" value="home"' +
+          (wasHome ? ' checked' : '') + '> 🏠 ' + sanitize(t('cal.home_game')) + '</label>' +
+        '<label class="cal-f-radio"><input type="radio" name="cal-ha" value="away"' +
+          (wasHome ? '' : ' checked') + '> ✈️ ' + sanitize(t('cal.away_game')) + '</label>' +
+      '</div>' +
+      calSquadPickerHtml(cat, letter) +
+      '<label>' + sanitize(t('cal.th_opponent')) +
+        opponentInputHtml('cal-new', cur ? (wasHome ? cur.away : cur.home) : '') + '</label>' +
+      '<label>' + sanitize(t('training.th_date')) +
+        '<input type="text" class="reg-input md-datepicker cal-f-date" data-display-dmy' +
+        ' data-date-iso="' + sanitize(iso) + '" value="' + sanitize(tDateDMY(iso)) +
+        '" readonly></label>' +
+      '<label>' + sanitize(t('nt.start')) +
+        '<select class="reg-input cal-f-time">' +
+        buildTimeOptions(val(cur && cur.time, homeGame.time)) + '</select></label>' +
+      '<label>' + sanitize(t('training.th_location')) +
+        '<input class="reg-input cal-f-loc" value="' +
+        sanitize(val(cur && cur.location, homeGame.location)) + '"></label>' +
+      '<label>' + sanitize(t('training.th_link')) +
+        '<input class="reg-input cal-f-map" value="' +
+        sanitize(val(cur && cur.mapLink, homeGame.link)) + '"></label>' +
+      (cur ? '<button class="btn btn-small btn-danger cal-f-delete">' +
+        sanitize(t('btn.delete')) + '</button>' : '');
+
+    const card = calModal(sanitize(t(cur ? 'cal.edit_match' : 'cal.add_match')), body, function (c) {
+      const opp = c.querySelector('.md-opponent').value.trim();
+      if (!opp) { c.fail(t('cal.needs_opponent')); return false; }
+      const dISO = c.querySelector('.cal-f-date').dataset.dateIso || '';
+      if (!dISO) { c.fail(t('act.needs_date')); return false; }
+      const sq = calPickedSquad(c);
+      const home = c.querySelector('input[name="cal-ha"]:checked').value === 'home';
+      const g = {
+        homeAway: home ? 'home' : 'away', opponent: opp, date: dISO,
+        kickoff: c.querySelector('.cal-f-time').value,
+        location: c.querySelector('.cal-f-loc').value.trim(),
+        mapLink: c.querySelector('.cal-f-map').value.trim(),
+        team: sq.letter, category: sq.cat, squadLetter: sq.letter
+      };
+      if (cur) calUpdateMatch(cur.id, g); else calCommitMatch(g);
+      renderPage(getSession());
+      return true;
+    });
+
+    const del = card.querySelector('.cal-f-delete');
+    if (del) {
+      del.addEventListener('click', function () {
+        if (!confirm(t('cal.confirm_delete_match'))) return;
+        calDeleteMatch(cur.id);
+        /* Back to the calendar: the detail page this was opened from is
+           now about a fixture that no longer exists. */
+        currentPage = 'calendar';
+        document.getElementById('custom-modal-overlay').remove();
+        renderPage(getSession());
+      });
+    }
+    // The FCF completions, and the ✓ that says a typed name matched one.
+    renderOpponentDatalists();
+    const oppInput = card.querySelector('.md-opponent');
+    oppInput.addEventListener('input', function () { markOpponentMatch(oppInput); });
+  }
+
+  /** Mint one fa_matches row. The only definition of that shape. */
+  function calCommitMatch(g) {
+    const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+    const today = localDateStr(new Date());
+    const cat = g.category || getCurrentCategory() || '';
+    const row = Object.assign({
+      /* Date.now() is ~1.7e12; an imported fixture takes the federation's
+         acta number, ~4e6. Three orders of magnitude apart, so a manual
+         fixture and an imported one can never collide. */
+      id: Date.now(),
+      home: g.homeAway === 'home' ? TEAM : g.opponent,
+      away: g.homeAway === 'home' ? g.opponent : TEAM,
+      date: g.date,
+      time: g.kickoff || '00:00',
+      score: null,
+      status: g.date >= today ? 'upcoming' : 'played',
+      location: g.location,
+      mapLink: g.mapLink,
+      team: g.team || '',
+      category: cat
+    /* Resolved from the NAME at save time rather than captured when the
+       coach clicked a completion: a <datalist> fires no "picked" event
+       worth trusting, and this way a rival typed out in full earns the
+       federation id too. */
+    }, fcfMatchFields(cat, g.squadLetter || g.team || '', g.opponent));
+    let matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]'); } catch (e) { matches = []; }
+    if (!Array.isArray(matches)) matches = [];
+    matches.push(row);
+    localStorage.setItem('fa_matches', JSON.stringify(matches));
+    return row;
+  }
+
+  /** Edit a fixture in place. Only the coach-ownable fields move. */
+  function calUpdateMatch(id, g) {
+    let matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]'); } catch (e) { matches = []; }
+    const i = matches.findIndex(function (m) { return String(m.id) === String(id); });
+    if (i === -1) return null;
+    const TEAM = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+    const m = matches[i];
+    m.home = g.homeAway === 'home' ? TEAM : g.opponent;
+    m.away = g.homeAway === 'home' ? g.opponent : TEAM;
+    m.date = g.date;
+    m.time = g.kickoff || '00:00';
+    m.location = g.location;
+    m.mapLink = g.mapLink;
+    m.team = g.team || '';
+    /* Re-resolved, and DELETED when it no longer resolves. Editing the
+       rival of a fixture that used to be an FCF club must not leave the old
+       federation id behind — findFirstLeg() trusts a teamId over the name,
+       so a stale one would pair this fixture with the wrong opponent's
+       first leg and look authoritative doing it. */
+    const fcfFields = fcfMatchFields(g.category || m.category || '',
+        g.squadLetter || g.team || '', g.opponent);
+    if (fcfFields.opponentTeamId) {
+      Object.assign(m, fcfFields);
+    } else {
+      delete m.opponentTeamId;
+      delete m.opponentBadge;
+    }
+    localStorage.setItem('fa_matches', JSON.stringify(matches));
+    return m;
+  }
+
+  function calDeleteMatch(id) {
+    let matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]'); } catch (e) { matches = []; }
+    localStorage.setItem('fa_matches', JSON.stringify(
+        matches.filter(function (m) { return String(m.id) !== String(id); })));
+  }
+
+  /**
+   * Anything that is neither a session nor a fixture: a team meal, a gym
+   * block, a club event.
+   *
+   * Stored as a fa_training row with kind:'activity', which is what gives
+   * it a call-up, an availability question, an attendance donut and the
+   * T-4h reminder without a line of new server code. What it does NOT get
+   * is training load — see trainingOnly().
+   */
+  function calOpenActivityModal(date, existingId) {
+    const existing = existingId
+      ? getTrainings().find(function (x) { return String(x.id) === String(existingId); })
+      : null;
+    const cat = (existing && existing.category) || getCurrentCategory() ||
+      getVisibleCategories()[0] || '';
+    const letters = getTeamLetters(cat);
+    const letter = (existing && (existing.teams || [])[0]) ||
+      (letters.length === 1 ? letters[0] : '');
+    const iso = (existing && existing.date) || date;
+    const body =
+      '<label>' + sanitize(t('act.title')) +
+        '<input class="reg-input cal-f-name" value="' + sanitize((existing && existing.title) || '') +
+        '" placeholder="' + sanitize(t('act.title_ph')) + '"></label>' +
+      calSquadPickerHtml(cat, letter) +
+      '<label>' + sanitize(t('training.th_date')) +
+        '<input type="text" class="reg-input md-datepicker cal-f-date" data-display-dmy' +
+        ' data-date-iso="' + sanitize(iso) + '" value="' + sanitize(tDateDMY(iso)) +
+        '" readonly></label>' +
+      '<label>' + sanitize(t('nt.start')) +
+        '<select class="reg-input cal-f-time">' +
+        buildTimeOptions((existing && existing.time) || '') + '</select></label>' +
+      '<label>' + sanitize(t('nt.end')) +
+        '<select class="reg-input cal-f-end">' +
+        buildTimeOptions((existing && existing.endTime) || '') + '</select></label>' +
+      '<label>' + sanitize(t('act.place')) +
+        '<input class="reg-input cal-f-loc" value="' + sanitize((existing && existing.location) || '') + '"></label>' +
+      '<label>' + sanitize(t('training.th_link')) +
+        '<input class="reg-input cal-f-map" value="' + sanitize((existing && existing.mapLink) || '') + '"></label>';
+
+    calModal(sanitize(t(existing ? 'act.edit' : 'act.new')), body, function (c) {
+      const name = c.querySelector('.cal-f-name').value.trim();
+      if (!name) { c.fail(t('act.needs_title')); return false; }
+      const dISO = c.querySelector('.cal-f-date').dataset.dateIso || '';
+      if (!dISO) { c.fail(t('act.needs_date')); return false; }
+      const sq = calPickedSquad(c);
+      const start = c.querySelector('.cal-f-time').value;
+      const fields = {
+        title: name, date: dISO, day: tDay(new Date(dISO + 'T12:00:00').getDay()),
+        time: start,
+        // Same rule as a session: never blank when a start is known, or the
+        // clash arithmetic and the card disagree about what is happening.
+        endTime: c.querySelector('.cal-f-end').value || defaultEndTime(start),
+        location: c.querySelector('.cal-f-loc').value.trim(),
+        mapLink: c.querySelector('.cal-f-map').value.trim(),
+        category: sq.cat, teams: sq.letter ? [sq.letter] : []
+      };
+      if (existing) {
+        _ntPersistSession(existing.id, function (row) { Object.assign(row, fields); });
+      } else {
+        _ntCommit([Object.assign({
+          id: 'tr_' + Date.now() + '_a_' + Math.random().toString(36).slice(2, 8),
+          kind: ACTIVITY_KIND, focus: '', status: 'upcoming',
+          guests: [], excluded: []
+        }, fields)]);
+      }
+      _showPushToast(t('act.saved'), sanitize(name));
+      renderPage(getSession());
+      return true;
+    });
+  }
+
+  // ---------- Matchday bindings ----------
   function bindFcfRefresh() {
     var btn = document.getElementById('btn-fcf-refresh');
     if (!btn || btn.disabled) return;
@@ -21858,7 +22822,15 @@
     });
   }
 
-  function bindSavedMatchHandlers() {
+  /**
+   * The referee panel's own bindings.
+   *
+   * Split out of bindSavedMatchHandlers when the Calendari table went: the
+   * referee's record is rendered on the MATCH DETAIL page too, and leaving
+   * these inside a function that only ran for the fixture table would have
+   * made his name inert exactly where a coach reads it.
+   */
+  function bindRefereeHandlers() {
     /* The referee's name opens his record for THIS division, and closes it
        again. Clicking a different fixture's referee moves the panel rather
        than opening a second one — two panels of near-identical figures side
@@ -22287,148 +23259,41 @@
   }
 
   // ---------- Staff Training bindings ----------
-  function bindStaffTraining() {
-    const body = document.getElementById('staff-training-body');
-    if (!body) return;
-
-    // Click any training row → open staff training detail. Bound FIRST and
-    // above the read-only bail-out below: opening a session is the one thing
-    // a view-only sub-role still does on this page.
-    body.querySelectorAll('tr[data-tid]').forEach(tr => {
-      tr.style.cursor = 'pointer';
-      tr.addEventListener('click', (e) => {
-        // Don't navigate if clicking inputs, buttons or links
-        if (e.target.closest('input, select, button, a, .md-remove-btn, .st-remove')) return;
-        const training = getTrainings();
-        const t = training.find(x => x.id === tr.dataset.tid);
-        if (!t || !t.date) return;
-        detailTrainingId = t.id;
-        currentPage = 'staff-training-detail';
-        renderPage(getSession());
-      });
-    });
-
-    /* Everything past this point writes fa_training. A fitness coach or a
-       delegate gets the list rendered as static cells (see renderStaffTraining),
-       so there is nothing here for them to bind to — but binding the auto-save
-       listeners on the tbody regardless is how a later markup change would
-       quietly hand them an editor again. */
-    if (!canEditPage('staff-training')) return;
-
-    const DEFAULT_LOC = 'Escola Industrial';
-    const DEFAULT_MAP = 'https://share.google/pfbMOc661aRSNlynk';
-
-    function readTraining() {
-      const training = getTrainings();
-      body.querySelectorAll('tr:not(.st-locked)').forEach(tr => {
-        // By id, never by position: this runs on every keystroke, and the
-        // array it writes into can be reordered underneath us.
-        const row = training.find(x => x.id === tr.dataset.tid);
-        if (!row) return;
-        const dateInput = tr.querySelector('.st-date');
-        const timeInput = tr.querySelector('.st-time');
-        const focusInput = tr.querySelector('.st-focus');
-        const locInput = tr.querySelector('.st-location');
-        const linkInput = tr.querySelector('.st-link');
-        if (!dateInput) return;
-        const dateIso = dateInput.dataset.dateIso || dateInput.value;
-        row.date = dateIso;
-        row.day = dateIso ? tDay(new Date(dateIso + 'T12:00:00').getDay()) : row.day;
-        if (timeInput.value) row.time = timeInput.value;
-        row.focus = focusInput.value.trim();
-        row.location = locInput.value.trim();
-        row.mapLink = linkInput.value.trim();
-      });
-      return training;
-    }
-
-    // Open custom datepicker on click & update day label on input
-    body.querySelectorAll('.st-date').forEach(input => {
-      input.addEventListener('click', () => openDatePicker(input));
-      input.addEventListener('input', () => {
-        const iso = input.dataset.dateIso || input.value;
-        const dayLabel = input.closest('td').querySelector('.st-day-label');
-        if (dayLabel && iso) {
-          dayLabel.textContent = tDay(new Date(iso + 'T12:00:00').getDay());
-        }
-      });
-    });
-
-    // Escola Industrial <-> link coupling
-    body.querySelectorAll('.st-location').forEach(input => {
-      input.addEventListener('change', () => {
-        const idx = input.dataset.idx;
-        const linkInput = body.querySelector(`.st-link[data-idx="${idx}"]`);
-        const val = input.value.trim();
-        if (val === DEFAULT_LOC) {
-          linkInput.value = DEFAULT_MAP;
-        } else if (!val) {
-          linkInput.value = '';
-        }
-      });
-    });
-    body.querySelectorAll('.st-link').forEach(input => {
-      input.addEventListener('change', () => {
-        const idx = input.dataset.idx;
-        const locInput = body.querySelector(`.st-location[data-idx="${idx}"]`);
-        if (!input.value.trim() && locInput.value.trim() === DEFAULT_LOC) {
-          locInput.value = '';
-        }
-      });
-    });
-
-    // Clear error highlight on focus fields when typing
-    body.querySelectorAll('.st-focus').forEach(input => {
-      input.addEventListener('input', () => {
-        if (input.value.trim()) input.classList.remove('input-error');
-      });
-    });
-
-    // Auto-save on input/change
-    body.addEventListener('input', () => {
-      localStorage.setItem('fa_training', JSON.stringify(readTraining()));
-    });
-    body.addEventListener('change', () => {
-      localStorage.setItem('fa_training', JSON.stringify(readTraining()));
-    });
-
-    // Remove training
-    body.querySelectorAll('.st-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const training = getTrainings();
-        const pos = training.findIndex(x => x.id === btn.dataset.idx);
-        if (pos === -1) return;
-        training.splice(pos, 1);
-        localStorage.setItem('fa_training', JSON.stringify(training));
-        renderPage(getSession());
-      });
-    });
-
-    // Add training
-    /* addTraining() lived here: it appended a row to the list and left the
-       coach to edit it in place. renderTrainingNew() replaces it, and the
-       slot arithmetic it owned now lives in buildTrainingDrafts() where the
-       new page can use it too. */
-    const addBtnTop = document.getElementById('btn-training-add-top');
-    if (addBtnTop) {
-      addBtnTop.addEventListener('click', () => {
-        // Compose the session on its own page; nothing is written until
-        // Save. Appending a half-configured row to everybody's calendar and
-        // letting the coach edit it in place is what this replaces.
-        _ntReset();
-        currentPage = 'training-new';
-        renderPage(getSession());
-      });
-    }
-  }
-
-  // Staff training detail: staff override selects + team generation
   function bindStaffTrainingDetail() {
     /* Every binding in here mutates: the squad, the staff call, the team
        generator. The Back button and the team-letter filter are bound
        elsewhere (bindDashboard), so a view-only sub-role loses nothing by
        leaving now. */
     if (!canEditPage('staff-training-detail')) return;
+
+    /* An activity's own fields — name, place, times — are edited in the
+       dialog it was created in, not in a list of inputs above the squad.
+       A session has no equivalent button: its fields are the calendar's,
+       and its focus is edited on the row. */
+    const actEdit = document.getElementById('std-edit-activity');
+    if (actEdit) {
+      actEdit.addEventListener('click', function () {
+        calOpenActivityModal(null, actEdit.dataset.actId);
+      });
+    }
+
+    /* The planned-intensity picker. Editable after the session has started
+       and after it has finished, unlike the squad controls: a coach who
+       forgot to set it beforehand still wants the week's load figure to be
+       right, and the number is a statement about the session's design
+       rather than a claim about who turned up. */
+    const rpeSel = document.querySelector('.std-planned-rpe');
+    if (rpeSel) {
+      rpeSel.addEventListener('change', function () {
+        const n = Number(rpeSel.value);
+        _ntPersistSession(rpeSel.dataset.sid, function (row) {
+          // A NUMBER or nothing — never the empty string a <select> gives.
+          if (n >= 1 && n <= 10) row.plannedRpe = n; else delete row.plannedRpe;
+        });
+        renderPage(getSession());
+      });
+    }
+
     /* Squad edits on an ALREADY SAVED session. Every write goes through
        _ntPersistSession, which hands the mutation the row from the array it
        is about to write -- getTrainings() re-parses on every call, so a row
@@ -24812,8 +25677,20 @@
         // category must not silently persist into one that may not have it.
         medicalTeamFilter = 'all';
         rosterTeamFilter = 'all';
+        calTeamFilter = 'all';
         stdTeamFilter = null;
         trainingTeamFilter = null;
+        renderPage(getSession());
+      });
+    });
+
+    /* The squad chips that sit beside the categories on the calendar. Bound
+       here rather than in bindCalendar because they are part of the
+       category bar, which renderPage builds — bindCalendar only ever sees
+       what renderCalendar returned. */
+    $$('[data-cal-letter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        calTeamFilter = btn.dataset.calLetter || 'all';
         renderPage(getSession());
       });
     });
@@ -25049,11 +25926,8 @@
       });
     });
 
-    // Matchday
-    bindMatchday();
-
-    // Staff Training
-    bindStaffTraining();
+    // The calendar — the month grid, and everything created from it.
+    bindCalendar();
 
     // Staff Training Detail
     bindStaffTrainingDetail();
@@ -26751,22 +27625,22 @@
     // conservatively re-render every page. Badges refresh either way.
     // Debounced to avoid flicker; skips pages with active editing.
     const KEY_PAGES = {
-      fa_training_availability: ['staff-home', 'player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical'],
-      fa_match_availability: ['staff-home', 'player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
+      fa_training_availability: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical'],
+      fa_match_availability: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],
       fa_player_rpe: ['staff-home', 'player-home', 'player-actions', 'my-stats', 'staff-player-stats', 'manage-roster', 'staff-training-detail'],
-      fa_training: ['staff-home', 'player-home', 'player-actions', 'training', 'training-detail', 'staff-training', 'staff-training-detail', 'my-stats'],
-      fa_matches: ['staff-home', 'player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
-      fa_matchday: ['player-home', 'player-matchday', 'staff-matchday', 'matchday'],
+      fa_training: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats'],
+      fa_matches: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_matchday: ['player-home', 'calendar'],
       fa_staff_notifications: ['staff-notifications'],
       fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
       fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
       fa_injury_zone: ['my-stats', 'medical', 'medical-detail'],
       fa_injuries: ['staff-home', 'player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
-      fa_training_staff_override: ['staff-home', 'player-home', 'training', 'training-detail', 'staff-training', 'staff-training-detail'],
-      fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
-      fa_convocatoria_callup: ['player-matchday', 'staff-matchday', 'matchday', 'convocatoria', 'match-detail'],
-      fa_match_goals: ['player-matchday', 'staff-matchday', 'matchday', 'match-detail', 'my-stats', 'staff-player-stats'],
-      fa_match_events: ['player-home', 'player-matchday', 'staff-matchday', 'matchday', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_training_staff_override: ['staff-home', 'player-home', 'calendar', 'training-detail', 'staff-training-detail'],
+      fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],
+      fa_convocatoria_callup: ['calendar', 'convocatoria', 'match-detail'],
+      fa_match_goals: ['calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_match_events: ['player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_tactic_saved: ['tactics'],
       fa_tactic_match_boards: ['tactics', 'match-detail', 'convocatoria'],
       fa_tactic_training_boards: ['tactics', 'training-detail', 'staff-training-detail'],

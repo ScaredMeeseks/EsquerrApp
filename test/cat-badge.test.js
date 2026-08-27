@@ -99,12 +99,22 @@ describe('cat badge — every mixed player row carries it', () => {
   const PLAYER_ROW = /conv-team-circle">' \+ sanitize\(p\.team\)|conv-team-circle">\$\{sanitize\(p\.team\)\}|conv-team-circle">\$\{sanitize\(pTeam\)\}/;
 
   it('leaves the MATCH team letter alone', () => {
-    /* Five sites render a circled letter for a MATCH's team, not a player's
-       — `isOurTeam(m.home)` and friends. A category badge there would be
-       meaningless: a match has no player to categorise. */
+    /* Some sites render a circled letter for a MATCH's team, not a
+       player's. A category badge there would be meaningless: a match has no
+       player to categorise.
+
+       There were five when this was written. The calendar replaced the
+       Calendari table, the Jornada list and the training list with one
+       page, taking three; the 2a week strips then moved the squad letter
+       into the match block's meta line ("Camp Municipal · Squad A"),
+       taking a fourth. `matchLabel` is the one left.
+
+       The floor is only here to catch the regex matching NOTHING — a count
+       that quietly fell to zero would make every assertion below vacuous.
+       It is not a number worth defending in itself. */
     const matchRows = (src.match(/.*conv-team-circle.*/g) || [])
         .filter((l) => /isOurTeam\(|m\.team/.test(l));
-    assert.ok(matchRows.length >= 4,
+    assert.ok(matchRows.length >= 1,
         'expected the match-row sites to still exist');
     matchRows.forEach((l) => {
       assert.ok(!/catBadge/.test(l),

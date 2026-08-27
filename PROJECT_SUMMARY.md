@@ -109,9 +109,9 @@ All 17 are routed by `js/shard.js`; five different rules decide a row's category
 | Key | Description |
 |---|---|
 | `fa_users` | Club member cache (rebuilt from `users/` on login) |
-| `fa_training` | Training sessions (date, time, focus, location, category) |
-| `fa_matches` | Matches (id, home, away, date, time, score, location, team) |
-| `fa_matchday` | Matchday drafts |
+| `fa_training` | Training sessions (date, time, focus, location, category, `plannedRpe`) **and activities** — a row with `kind:'activity'` is a team meal / gym block / club event, riding the same key so it inherits the call-up, the availability records and the T-4h reminder |
+| `fa_matches` | Matches (id, home, away, date, time, score, location, team, `opponentPos` frozen at kick-off) |
+| `fa_matchday` | Matchday drafts — **retired v181**: nothing writes it any more (the calendar's dialog commits straight to `fa_matches`). The key, its shard route and its `SEASON_KEYS` entry stay so existing drafts can still be read back and offered to the coach once |
 | `fa_staff_notifications` | Staff notification feed (capped at 200, oldest trimmed) |
 | `fa_injuries` | Injury records — the canonical medical history |
 | `fa_injury_notes` | Injury description per player *(per-field merge doc)* |

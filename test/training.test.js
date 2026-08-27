@@ -260,9 +260,15 @@ describe('training — the draft builder proposes one team session', () => {
   function build(schedules, opts) {
     const code = grab('  var TRAINING_DEFAULT_LOC', '  async function handleRegister');
     const cfg = { schedules };
+    /* The REAL scheduleSlots from utils.js, not a stub. It is the one
+       definition of "what does this team do on a normal week", shared with
+       the calendar's greyed placeholders — a stub here would let the two
+       drift and these tests would go on passing while a placeholder created
+       a session on a different day than it advertised. */
     // eslint-disable-next-line no-new-func
     const fn = new Function('_clubConfig', 'getTeamLetters', 'tDay',
-        'hhmmToMins', 'minsToHHMM', 'DEFAULT_SESSION_MINS', 'defaultEndTime', `
+        'hhmmToMins', 'minsToHHMM', 'DEFAULT_SESSION_MINS', 'defaultEndTime',
+        'scheduleSlots', `
       ${code}
       return buildTrainingDrafts;`)(cfg, () => ['A', 'B'], (n) => 'day' + n,
         (v) => {
@@ -278,7 +284,8 @@ describe('training — the draft builder proposes one team session', () => {
           const mins = Number(m[1]) * 60 + Number(m[2]) + 90;
           return mins > 24 * 60 - 1 ? '' :
             String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
-        });
+        },
+        require('../js/utils.js').scheduleSlots);
     return fn('amateur', (opts && opts.training) || [], (opts && opts.letter) || 'A');
   }
 
@@ -615,7 +622,10 @@ describe('training — when an activity ends, as a real instant', () => {
  * ------------------------------------------------------------------ */
 describe('training — the staff badge and the coach\'s week', () => {
   it('the badge ends at the endTime, falling back to two hours', () => {
-    const body = grab('    function computeStatus(tr) {', '\n    function fmtDate');
+    /* Moved out of the staff list and into the calendar region when the
+       list was replaced by the month grid — it is the one piece of that
+       page a cell still needs, so a session in progress can say so. */
+    const body = grab('  function computeStatus(tr) {', '\n  function calMdBadge');
     assert.ok(body.includes('sessionEndsAt(tr, BADGE_FALLBACK_MINS)'),
         'the badge must read the endTime the coach set');
     assert.ok(!body.includes('2 * 60 * 60 * 1000'),
@@ -698,16 +708,24 @@ describe('training — the staff badge and the coach\'s week', () => {
 describe('training — a category with one team needs no click', () => {
   function seeder(lettersByCat) {
     const code = grab('  function _ntSeed()', '  /** One row of the called squad');
+    /* `_ntDate` is the calendar's doing: clicking an empty Tuesday opens
+       this page ON that Tuesday instead of on the next session in the
+       cycle. Null here, so these keep testing the cycling path they were
+       written for; `_ntDraftsOn` has its own case below. */
     // eslint-disable-next-line no-new-func
-    const api = new Function('getTeamLetters', 'getTrainings', 'buildTrainingDrafts', `
-      let _ntCat = null, _ntTeam = null, _ntDrafts = null;
+    const api = new Function('getTeamLetters', 'getTrainings', 'buildTrainingDrafts',
+        '_ntDraftsOn', `
+      let _ntCat = null, _ntTeam = null, _ntDrafts = null, _ntDate = null;
       ${code}
       return {
-        seed: (cat, team) => { _ntCat = cat; _ntTeam = team || null; _ntSeed(); },
+        seed: (cat, team, date) => {
+          _ntCat = cat; _ntTeam = team || null; _ntDate = date || null; _ntSeed();
+        },
         drafts: () => _ntDrafts,
         team: () => _ntTeam,
       };`)((c) => lettersByCat[c] || ['A'], () => [],
-        (cat, tr, letter) => [{ id: 'd1', category: cat, teams: [letter] }]);
+        (cat, tr, letter) => [{ id: 'd1', category: cat, teams: [letter] }],
+        (cat, letter, date) => [{ id: 'on', category: cat, teams: [letter], date }]);
     return api;
   }
 
@@ -737,6 +755,68 @@ describe('training — a category with one team needs no click', () => {
     const s = seeder({ amateur: ['A', 'B'] });
     s.seed('amateur', 'B');
     assert.strictEqual(s.team(), 'B');
+  });
+
+  it('takes the calendar\'s day when there is one, not the next in the cycle', () => {
+    // Clicking an empty Tuesday means THAT Tuesday. Proposing next week's
+    // session instead would silently ignore where the coach clicked.
+    const s = seeder({ juvenil: ['A'] });
+    s.seed('juvenil', null, '2026-03-04');
+    assert.strictEqual(s.drafts()[0].id, 'on');
+    assert.strictEqual(s.drafts()[0].date, '2026-03-04');
+  });
+
+  it('still cycles when opened any other way', () => {
+    const s = seeder({ juvenil: ['A'] });
+    s.seed('juvenil', null);
+    assert.strictEqual(s.drafts()[0].id, 'd1');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The drafts for a day the coach picked on the calendar.
+ * ------------------------------------------------------------------ */
+describe('training — drafts for a chosen day', () => {
+  function on(schedules, cat, letter, date) {
+    const code = grab('  function _ntDraftsOn(cat, letter, date)', '\n  /** Rebuild the drafts');
+    // eslint-disable-next-line no-new-func
+    return new Function('_clubConfig', 'scheduleSlots', 'trainingFromSlot', `
+      ${code}
+      return _ntDraftsOn;`)({ schedules },
+        require('../js/utils.js').scheduleSlots,
+        (c, l, d, slot, i) => ({ category: c, teams: [l], date: d, time: slot.time, i }))
+        (cat, letter, date);
+  }
+
+  const SCHED = {
+    'amateur-A': { training: [
+      { day: 'tue', time: '21:00' },
+      { day: 'tue', time: '09:00' },
+      { day: 'thu', time: '21:00' },
+    ] },
+  };
+
+  it('gives EVERY slot the squad has that weekday', () => {
+    // 3 March 2026 is a Tuesday, and this squad trains twice on Tuesdays.
+    const d = on(SCHED, 'amateur', 'A', '2026-03-03');
+    assert.deepStrictEqual(d.map((x) => x.time), ['09:00', '21:00']);
+    assert.ok(d.every((x) => x.date === '2026-03-03'));
+  });
+
+  it('gives ONE blank draft for a day the squad does not normally train', () => {
+    /* A coach clicking a Sunday means a Sunday session. "We do not train
+       then" is true and useless, and an empty page would read as broken. */
+    const d = on(SCHED, 'amateur', 'A', '2026-03-08');
+    assert.strictEqual(d.length, 1);
+    assert.strictEqual(d[0].time, '');
+    assert.strictEqual(d[0].date, '2026-03-08');
+  });
+
+  it('reads the squad\'s OWN schedule', () => {
+    // B has none configured, so it falls through to the Tue/Thu default —
+    // and must not inherit A's 09:00 slot.
+    const d = on(SCHED, 'amateur', 'B', '2026-03-03');
+    assert.deepStrictEqual(d.map((x) => x.time), ['21:00']);
   });
 });
 
@@ -848,6 +928,47 @@ describe('training — editing a saved session', () => {
     const page = grab('  function renderStaffTrainingDetail()', '  // ── Team generation');
     assert.ok(page.includes('squadEditable ?'), 'the add button is gated');
     assert.ok(page.includes('std-drop'), 'and so is the per-row remove');
+  });
+
+  /* An ACTIVITY opens this same page. It is a fa_training row, so the
+     attendance table below is exactly what it needs — but it has no focus,
+     no tactical board and no two teams to split into, and those sections
+     rendered empty rather than left out is what "it works" looked like
+     before this. Source-level, like the sub-role tests: the rule is about
+     which branches are gated, and there is no jsdom to render into. */
+  describe('an activity on the session detail page', () => {
+    const page = grab('  function renderStaffTrainingDetail()', '  // ── Team generation');
+    const code = page.replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+
+    it('knows which kind of row it is showing', () => {
+      assert.ok(/const isAct = isActivity\(tr\)/.test(code));
+    });
+
+    it('shows the activity\'s TITLE where a session shows its focus', () => {
+      assert.ok(code.includes('activityTitleOf(tr,'),
+          'the bold line must read the right field for the kind');
+      assert.ok(!/detail-title">\$\{sanitize\(tr\.focus\)\}/.test(code),
+          'the raw focus is blank on an activity');
+    });
+
+    it('leaves out the three training-only sections', () => {
+      assert.ok(/if \(isAct\) return '';/.test(code), 'the session plan is not gated');
+      assert.ok(code.includes('${(ro || isAct) ? \'\' : `'),
+          'the team generator is not gated');
+      assert.ok(code.includes('${isAct ? \'\' : (() => {'),
+          'the boards section is not gated');
+    });
+
+    it('offers the dialog it was created in', () => {
+      assert.ok(code.includes('std-edit-activity'));
+      // And only to someone who may write. `ro` is the page's own gate.
+      assert.ok(/isAct && !ro/.test(code));
+    });
+
+    it('goes BACK to the calendar, which is the only way in now', () => {
+      assert.ok(code.includes("backTarget('calendar')"));
+    });
   });
 });
 

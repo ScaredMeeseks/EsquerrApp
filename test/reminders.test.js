@@ -640,6 +640,63 @@ describe('reminders — when an activity ends', () => {
  * other -- a push that announces a deadline already past is worse than
  * no push -- so both the callable and the reader enforce push > lock.
  * ------------------------------------------------------------------ */
+describe('reminders — an activity is a session for the push, not for the RPE', () => {
+  /* fa_training carries activities (kind:"activity") alongside sessions.
+     They must keep the T-4h "you are counted" push — that is the whole
+     reason they ride this blob — and must NOT get the RPE chase, because
+     the client offers no box to answer it with. So the two schedulers
+     differ deliberately, and that difference is what is pinned here. */
+
+  /** The server's own isActivity, sliced out rather than re-implemented. */
+  function loadKind() {
+    const code = grab('const ACTIVITY_KIND = "activity";',
+        '/* ── When an activity finishes');
+    // eslint-disable-next-line no-new-func
+    return new Function(`${code}
+      return { isActivity, ACTIVITY_KIND };`)();
+  }
+
+  /* One input table, both copies. functions/ cannot require ../js/utils.js,
+     so this is the only thing standing between the two definitions and a
+     drift that would show up as activities silently collecting RPE pushes
+     in production while every test stayed green. */
+  const CASES = [
+    [{kind: 'activity'}, true],
+    [{kind: 'training'}, false],
+    [{id: 'tr_1', focus: 'Pressió'}, false],   // absent kind === training
+    [{kind: ''}, false],
+    [{kind: 'Activity'}, false],               // exact match, not case-folded
+    [null, false],
+    [undefined, false],
+  ];
+
+  it('the client and the server agree on what an activity is', () => {
+    const server = loadKind();
+    const client = require(path.join(__dirname, '..', 'js', 'utils.js'));
+    CASES.forEach(([row, want]) => {
+      const label = JSON.stringify(row);
+      assert.strictEqual(server.isActivity(row), want, 'server: ' + label);
+      assert.strictEqual(client.isActivity(row), want, 'client: ' + label);
+    });
+    assert.strictEqual(server.ACTIVITY_KIND, client.ACTIVITY_KIND);
+  });
+
+  it('the RPE reminder skips activities', () => {
+    const body = grab('exports.scheduledRpeReminder', 'exports.scheduledMatchAvailReminder');
+    assert.ok(/dueTraining = training\.filter\([\s\S]*?!isActivity\(t\)/.test(body),
+        'a team dinner must not be chased for an RPE');
+  });
+
+  it('the T-4h reminder does NOT skip them', () => {
+    /* The inverse assertion, and the one that would catch a well-meant
+       "consistency" edit: an activity has a call-up and an availability
+       question, so the squad still has to be told it is on. */
+    const body = grab('exports.scheduledTrainingReminder', 'exports.scheduledRpeReminder');
+    assert.ok(!body.includes('isActivity'),
+        'excluding activities here would silence the push they exist for');
+  });
+});
+
 describe('reminders — the club lead\'s timings', () => {
   const R = loadReminders();
 

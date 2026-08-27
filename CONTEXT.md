@@ -6516,3 +6516,454 @@ harness bug from earlier today: **a mutation result is a claim about the tests, 
 the harness making it.**
 
 Unit 1884 → **1907**. Version triple → v180.
+
+## v181 — one calendar where three pages were (2026-08-27)
+
+Scheduling lived in **three** sidebar entries, two of them duplicated per role, so five renderers in all:
+
+| label | page id(s) | renderer | what it was |
+|---|---|---|---|
+| Calendari | `matchday` | `renderMatchday` | the fixture EDITOR — draft table, Actualitzar calendari, saved tables, rival kit columns |
+| Jornada | `staff-matchday` + `player-matchday` | `renderMatches` | read-only cards, upcoming vs past |
+| Sessions d'entrenament | `staff-training` + `training` | `renderStaffTraining` / `renderTraining` | flat lists, inline-edit for staff |
+
+None of them was a calendar, and that is the whole point: the lists could answer "what fixtures are there"
+and "what sessions are there" separately, and neither could answer **"what does this week look like"**.
+All five are gone. One page id, `calendar`, renders for both roles; `canEditPage('calendar')` decides
+whether anything on it can be clicked into existence.
+
+### The placeholder trainings store nothing
+
+`clubs/{id}.schedules["{cat}-{letter}"]` has always declared each squad's weekly slots — it seeded the New
+Training page and nothing else. The grid now draws a greyed card on every slot no session occupies, and one
+click makes it real.
+
+**Nothing is written for a ghost.** `ghostSlots()` in `js/utils.js` derives them per render, so they cost no
+reads, no writes and no rules, and **deleting a session brings its placeholder back with no code to do it**.
+
+`freeSlots()` is the part that needed thought. Exact-time matching would leave a ghost sitting beside a
+session a coach had moved from 21:00 to 20:00, offering to create a second one; counting alone would kill
+the evening placeholder of a club that trains morning AND evening the moment the morning was scheduled.
+Greedy nearest-time matching is the rule that handles both, and each case is pinned.
+
+`scheduleSlots()` was lifted out of `buildTrainingDrafts` so the placeholders and the New Training page read
+the club's schedule through **one** definition — a ghost advertising 21:00 that created a session at some
+other time is the worst way to discover a drift. `trainingFromSlot()` is the same argument for the row
+itself, and `_ntCommit()` for the write: clash resolution and the guest overrides are not optional extras a
+second caller may skip.
+
+### Activities are fa_training rows
+
+An "other activity" — a team meal, a gym block — is a `fa_training` row with `kind:'activity'` and a `title`
+where a session has a `focus`. It rides the training blob deliberately: the shard route, the Firestore rule,
+the `trainingAvail` records, the call-up UI and the T-4h reminder all already work on that key, so it gets
+**every one of them without a new collection, a new rule or a line of new push code**.
+
+**An ABSENT `kind` is a training.** That is what lets every row written before this keep working with no
+backfill, and it is asserted in three places.
+
+The price is one audit, and it is the main risk in the change: every existing `fa_training` reader had to
+learn to filter. `trainingOnly()` marks the sites that measure TRAINING —
+
+- **excluded**: `getReadinessData` (ACWR, readiness, the watch list), the season attendance donut,
+  `renderPlayerStats` / `renderStaffPlayerStats` / `renderStaffRoster`, the RPE prompt on both the badge
+  count and the actions page, the tactical-board pickers, and `scheduledRpeReminder` server-side;
+- **included**: both week strips on the home pages, and `scheduledTrainingReminder` — an activity has a
+  call-up and an availability question, so the squad still has to be told it is on.
+
+The two schedulers therefore differ on purpose, and `reminders.test.js` pins BOTH directions: the inverse
+assertion is the one that would catch a well-meant "consistency" edit silencing the push activities exist
+for. `isActivity` is duplicated into `functions/index.js` (which cannot require `js/utils.js`, same as
+`fcfGrupId` and `sameClubName`) and one input table drives both copies.
+
+### The rival's league position, frozen at kick-off
+
+Standings are **never persisted** — they are fetched live through the `fcfClassificacio` proxy into a
+five-minute localStorage cache. So "where they stood when we played them" did not exist and had to be added.
+
+`_syncFcfSquad` already fetched `classificacio` to find our own row and threw the rest away; `opponentPos`
+and `opponentPosAt` are stamped inside `mergeFcfFixtures` from the same response. The rule is one line:
+write only while the fixture has **not** kicked off. A past card then says where they stood that day and an
+upcoming one tracks the table, and a second leg needs no special case because it is a different acta and
+therefore a different row with its own kick-off.
+
+Three things about it are load-bearing:
+
+- **written only when the number CHANGES.** Re-stamping `opponentPosAt` nightly would make
+  `JSON.stringify(next) !== JSON.stringify(cur)` true every morning, so `summary.updated` would never be
+  zero, so `_syncFcfSquad`'s skip-the-write guard would never fire — and every club on the platform would
+  take a full re-render every day for a table that had not moved;
+- **never deleted.** A rival who drops out of the standings must not erase what we recorded about the games
+  already played against them;
+- **`nowHM`, not just `today`.** The 06:00 job never meets a kicked-off fixture, but the refresh button can
+  be pressed at 20:00 on a Saturday, after the 18:00 game. `_kickedOff` takes the Madrid wall clock as a
+  string so `fcf.js` stays free of timezone arithmetic, and with no clock it assumes kicked-off: a wrong
+  freeze loses an update, a wrong overwrite destroys a record.
+
+`parseFcfPositions` is deliberately **NOT** the same rule as `parseFcfClassificacio` in `js/utils.js`, which
+falls back to the array index when FCF sends `position:"0"` for every team pre-season. That fallback is
+right for a table, where a column of zeros is unreadable; it is wrong for a value that gets frozen and read
+back in March. Pre-season yields an empty map and the card shows no position at all.
+
+### What moved rather than being lost
+
+The Calendari table was the only way to edit or delete a hand-typed fixture, and the only place the rival's
+FCF kits were rendered. Both moved onto **match detail**, where a coach actually looks: `calOpenMatchModal`
+now doubles as the editor (with delete), and `mdKitCellHtml` renders the two strips beside our own.
+
+`md-our-club` — the class the stylesheet uppercases, so our own name is not the odd lower-case one out among
+FCF's capitals — moved into `matchLabel()`. That is the better home and the reason is worth keeping:
+`matchLabel` is the one helper that prints BOTH names, and the calendar's own cards print only the rival's,
+so there is nothing on them to mark.
+
+`computeStatus` came off the staff list too. It is the one piece of that page a cell still needs — a month
+grid is worst at conveying "is that session on right now", which is exactly what `.cal-st-inprogress` says.
+
+`bindSavedMatchHandlers` was split: the referee bindings became `bindRefereeHandlers`, because the referee's
+record renders on match detail as well and leaving them inside a function that only ran for the fixture
+table would have made his name inert exactly where a coach reads it.
+
+### Two gates, not one
+
+`calendar: 'edit'` is not enough to create a training. A **delegate** runs the calendar (most of the role)
+but has `training-new: 'hidden'`, so `canAddTraining()` gates the placeholders and the add menu on both —
+without it the placeholder would create a session whose detail page then refuses to open, and the add menu
+would offer a route straight into a `fallbackPage()` bounce.
+
+Merging the pages also **narrowed the fitness coach**, and that is asserted rather than glossed over: they
+read the fixture list at `edit` before and the merged page is `view` throughout, which is the honest reading
+of "scheduling is not their job".
+
+The note above `STAFF_ROLE_ACCESS` lost half its subject. "Jornada but not Calendari" was its example of
+something a rule cannot express, and it is no longer a distinction that exists — they were one page all
+along, split only because one of them could be edited.
+
+### Old clients
+
+`PAGE_ALIASES` maps the five retired ids onto `calendar`, resolved **before** the role gates. Old APKs
+bundle their own copy of `app.js` and go on sending the old ids in push deep links for as long as a phone is
+not updated — which in this club has been most of a year. Bouncing a coach who tapped "convocatòria
+enviada" to the home screen would read as a broken notification.
+
+`fa_matchday`, the old staging blob, has no writer any more (the dialog writes straight to `fa_matches`).
+Its shard route, `SYNCED_KEYS` entry and `SEASON_KEYS` entry all stay — retiring a synced key is a separate
+and riskier change, and leaving them costs nothing. Any drafts still in it are offered back once, commit or
+discard, rather than dropped on the floor because we changed our minds about the data model.
+
+### Rendering
+
+Every blob is parsed **once** per render, in `calContext()`, and the grid is built off one date-keyed map.
+Per-cell parsing would be 42 passes over a season for a page that fits on one screen.
+
+Chips and cards are both emitted into every cell and CSS shows one: a phone has no room for a card and a
+desktop no use for a chip, and rendering both from one list is what stops them disagreeing the day only one
+builder is updated.
+
+`buildAvailDonut` was counting **every player in the club** rather than the session's squad — fine for a
+one-category club, nonsense for the demo club's 77 members across three teams. It takes `calledPlayers` now.
+
+### Tests
+
+New: `calendar.test.js` (60 — the month arithmetic, the placeholder derivation, M±x, the ordinals) and
+`calendar-render.test.js` (37). The second is the one that matters most: there is no jsdom in this suite and
+no browser automation on the box, so `renderCalendar` would otherwise only ever be exercised by a human
+opening the app — and the failure mode of a missing helper here is a ReferenceError inside `innerHTML`, a
+blank screen for every user with a green suite. It runs the real region over stubs and asserts on the HTML.
+
+**Deleting 1003 lines swallowed six shared helpers** — `trainingLockAt`, `isTrainingLocked`, `availContext`,
+`getEffectiveAnswer`, `buildDetailDonut` and `computeStatus` all lived between `renderStaffTraining` and the
+next function, and `node --check` was perfectly happy about it. A crude scan for calls to functions that no
+longer exist caught it; nothing else would have until a coach opened a session.
+
+Thirteen mutations, each killing at least one test. Two are worth recording because the test was wrong
+rather than the code: the first "an activity is not training load" fixture set no RPE, so **nothing moved
+either way and three assertions passed vacuously** — the control test written alongside them is the only
+reason that was noticed. And the pre-season assertion looped over an empty map, which is not a test; it
+asserts the premise first now.
+
+Unit 1907 → **2032**. Functions 71, unchanged. Version triple → v181.
+
+**A gate landed in the wrong function and `node --check` was happy.** Adding `if (isAct) return ''` to the
+board-summary block was done with a replace-first-match, and the first match was in `renderTrainingDetail`
+— the PLAYER page, which has no `isAct`. A ReferenceError inside `innerHTML`, so: a blank session page for
+every player, a green suite, and a passing syntax check. The test written for the staff page caught it only
+because it asserted on the staff page's source and found the gate missing there.
+
+Two things follow. **A replace-first-match across a 27k-line file is a coin flip** — bound on the enclosing
+function, which is what the fix does. And a scan for out-of-scope identifiers, written afterwards to catch
+this class, turned out **unsound for exactly this bug**: it collected `const` declarations from the whole
+file rather than per scope, so `isAct` looked module-level and the check passed. `awk` tracking the
+enclosing `function` line is what actually verified it. A tool that would not have caught the bug it was
+written for is worse than no tool, so it was thrown away rather than committed.
+
+## v182 — the calendar rebuilt as week strips, from the 2a handoff (2026-08-28)
+
+The owner brought a design bundle (`Downloads/EsquerrApp Calendar UI mockups/design_handoff_calendar_tab`)
+— a README, a `.dc.html` reference and two screenshots — after v181 shipped. Option **2a** is what this
+implements. It is not a compaction of v181's grid; it is a different structure that **adds a periodisation
+layer**:
+
+| | v181 | 2a |
+|---|---|---|
+| shape | 7x6 grid, uniform cells | 6 **week strips**, each with a 96px gutter |
+| cell | 104px always | 80px collapsed → 172px, or 262px if a day doubles up |
+| gutter | — | ISO week, date range, **weekly AU** |
+| per session | focus, time, donut, M±x | + **intensity dot**, location, squads, planned vs actual RPE |
+
+**Expansion is `:hover` on the strip, not a re-render.** The prototype rebuilt its data with a `hoverWeek`
+argument; here every expanded-only element carries `.cal-x`, which is `display:none` collapsed. That
+satisfies the handoff's one hard rule — *collapsed cells contain whole rows, conditionally rendered rather
+than clipped* — without a render pass per mouse move, because a cell animating between two fixed heights
+would otherwise show half a line of text at its bottom edge for the length of the transition. `.cal-week-open`
+is the touch half: a phone has no hover, so the first tap opens the strip and only the second navigates.
+
+### Where the handoff was followed, and where it was not
+
+**Light, not dark.** The owner's call. 2a is a dark card (`#1E1B19`) inside the light app, and the palette
+table is written for it. The translation has one real decision: on dark, a match is the LIGHT surface — the
+odd one out, the loudest thing on the page. Inverting that literally (dark cell on a light page) breaks
+played matches, which must carry win/draw/loss in their fill. So a fixture keeps a white ground and takes a
+**club-red edge**: loudest by saturation instead of by inversion, and results still colour underneath.
+
+**No category tabs**, though 2a's top bar has them. `renderCategoryBar()` already draws one above every page
+in `CATEGORY_PAGES`; two controls for one piece of state is how they end up disagreeing.
+
+**The greyed placeholders stayed**, against the design. 2a gives an empty day a staff `+ Add` and nothing
+else — the same cell v181's click-to-schedule ghosts occupy, and the feature the owner asked for by name.
+They rank below everything real, so they never take a cell, and a dashed block reads as an offer rather than
+an absence.
+
+**The opponent's frozen league position, the convocatòria dot and our kit** were all folded back in; 2a has
+no place for any of them and the position work would otherwise render nowhere.
+
+### plannedRpe, and the week figure that has no colour
+
+`plannedRpe` (1-10) is new on `fa_training` rows — a coach's estimate of how hard a session is *meant* to be,
+set in the New Training page and on the session detail. It is the only part of the load picture that exists
+before anybody has trained, and it is what the intensity dot reads. Bands are the design's: `<=4 / 5-7 / 8+`.
+
+An **unestimated session shows no dot at all**, not a green one: "nobody has said" and "this is easy" are
+different facts.
+
+The weekly gutter is where the handoff contradicts itself, and the contradiction matters. The README says AU
+is "`RPE x minutes`, the same arithmetic the Readiness engine already uses". The mock computes
+`plannedRpe * 12` — minutes = 12 — and shows weeks of 486-832 AU. Costed properly, ONE 90-minute session at
+RPE 7 is **630 AU**, and a week of two sessions and a match is **~1 900**. The mock's bands (`>650` amber,
+`>800` red) would paint **every real week red**.
+
+So the arithmetic is the README's and the bands are nobody's: **the gutter prints the figure and no dot**,
+until real weeks say where the lines are. `session-load.test.js` pins that arithmetic, including a test whose
+whole job is to show why 650 could not survive contact with real data.
+
+Two further calls in the same place: the figure is **per player**, not summed over the squad — a squad total
+moves when someone is injured, so two identical weeks would read differently — and sessions that can be
+costed at neither an actual nor a planned RPE are **counted and flagged** rather than dropped, because a
+light-looking week must never actually be an unrated one.
+
+### `sessionMinutesOf` is a second copy, on purpose
+
+`sessionWindow()` in app.js needs start and end separately for the badge; the load maths wants the duration
+alone. Rather than reach across, utils has its own — and `session-load.test.js` drives BOTH through one input
+table, the arrangement already used for `fcfGrupId` and `sameClubName`.
+
+### Two mutations survived, and both were the test's fault
+
+- **The priority sort was dead code.** `calBlocksByDate` pushed matches, then sessions, then ghosts — already
+  rank order — so deleting `sort((a,b) => a.rank - b.rank)` changed nothing and the "a match outranks a
+  session" test passed for the wrong reason. Fixed by pushing sessions FIRST, so the sort is the only thing
+  putting the fixture on top and a later edit reordering the loops cannot silently change which block owns a
+  cell.
+- **The collapsed-row test matched the wrong element.** It looked for the substring `class="cal-x`, which
+  also appears on `cal-x cal-meta` lines INSIDE a block — so unwrapping every block left it passing. It
+  splits on the exact wrapper `<div class="cal-x">` now, and checks what falls either side of it.
+
+Both are the same shape as the `isAct` bug in v181: a test that was about a slightly different thing than the
+one it was named for.
+
+Unit 2032 → **2077**. Version triple → v182.
+
+## v183 — six corrections after the first look at the strips (2026-08-28)
+
+The owner opened v182 and sent a screenshot. Five items were polish; one was a bug.
+
+**The expansion was truncated.** `--cal-open-h` was `maxBlocks > 1 ? 262 : 172` — a guess, and a guess
+cannot be right, because block heights differ by kind: an expanded match block is several times a
+placeholder. A Saturday holding three fixtures was cut through the middle of "Convocatòria pendent".
+
+`bindCalendar` **measures** now: it adds `.cal-week-measure` to each strip (which opens every `.cal-x`
+at natural height with the transition off), reads the tallest cell's `scrollHeight`, takes the class
+off and writes the value back as an inline `--cal-open-h`. Applied and removed inside one synchronous
+pass, so it never paints. Still a fixed pixel height for the transition, which is what the handoff
+asks for — it is just the correct one. The old calculation stays in the markup as the fallback, and
+`overflow-y:auto` on an open cell is the second net.
+
+**The other five.** The crest moved against the opponent's name (`.cal-opp` had `flex: 1 1 auto`, so
+the name grew to fill the row and pushed the badge to the margin, where it read as the cell's rather
+than the club's); 🏠/✈️ replaced the H/A chips, with no box behind them because an emoji in a filled
+red plate reads as mud; every fill and stroke was deepened; the page heading and the white frame went
+(the month label is the heading now, at the `h2`'s own size); and the donut became **five segments in
+the palette four other donuts in the app already use**, with the "disponibles"/"han vingut" label
+dropped and `tallyFor` returning the whole breakdown instead of a head count.
+
+**Draws are grey.** `#E8E6E1` / `#7A736B`, fill and scoreline both. 2a specifies amber
+(`#F4EBD6`/`#B0781A`) and this is the one place the design and the owner disagree.
+
+### Two process notes, both worth keeping
+
+**A Python round-trip truncated `js/app.js` to zero bytes.** The write raised
+`UnicodeEncodeError: surrogates not allowed`, but `io.open(p,'w')` had already truncated the file —
+so the exception left nothing behind, and `node --check` on an empty file passes, which is how it
+briefly looked fine. Restored from a scratchpad copy taken before the last mutation run; the only
+losses were two edits, reapplied.
+
+CLAUDE.md already warns that a Python round-trip rewrites line endings here. Extend that: **do not use
+Python for content edits of `app.js` at all** — the file carries emoji, and a bulk rewrite is one
+encoding surprise away from destroying it. The editor handles it correctly. Keep Python for read-only
+inspection.
+
+**Six mutations, and one survived the first pass.** Deleting
+`classList.add('cal-week-measure')` changed nothing, because the test asserted the substring
+`cal-week-measure` — which still appeared in the `remove()` call on the next line and in the comment
+above it. Comments stripped and the `add(` asserted specifically, it dies. That is the third time this
+session a source-scanning test has matched its own explanation.
+
+Also worth recording: after the six fixes went in, **all 47 existing render tests still passed** —
+none of them covered any of the six things that changed. Eleven were added before the mutation run,
+which is the only reason any of this is pinned.
+
+Unit 2077 → **2088**. Version triple → v183.
+
+## v184 — seven refinements, and what was actually causing the scrollbars (2026-08-28)
+
+Six of the seven were visual simplification. Two — "no scrollbars in the cells" and "show me which
+activity I am hovering" — turned out to be one change, and the first was not a styling problem at all.
+
+### The measuring state did not match the open state
+
+`.cal-week:hover .cal-b-ttl` sets `white-space: normal`, so a long focus name **wraps when a strip
+opens**. `.cal-week-measure` — the state v183 measures in — did not set it. So every wrapping title
+was measured one line short, and the `overflow-y:auto` added in v183 as a "safety net" rendered that
+shortfall as a scrollbar instead of hiding it. The net was converting a measurement bug into a
+visible one.
+
+Two lists of what the open state does, written in two places, drifting the moment they existed. Both
+declarations are **shared rules naming both selectors together** now, which is the only version that
+cannot drift again, and `calendar-render.test.js` asserts the shared-ness rather than the outcome —
+it parses the rule and checks both selectors are in it.
+
+The net is gone: a cell CLIPS rather than scrolls, so the measurement has to be right. Supporting it:
+
+- **+4px** on every measured height. The asymmetry is the reason — a pixel short costs a line of
+  text, four long costs nothing anybody can see.
+- **Re-measure on `document.fonts.ready`.** The first pass runs before Oswald is back from Google
+  Fonts, so every height was taken in the fallback face, at a different width, wrapping differently.
+- **Re-measure on a debounced resize**, since column width decides where titles wrap.
+
+`calMeasure` moved to module level for that: the resize listener outlives any one render and has to
+measure the strips on screen, not the ones that existed when it was bound. It is guarded with
+`_calResizeBound`, the same pattern `tbSize3DWindow` uses — `bindDynamicActions` runs after every
+render, so an unguarded listener would stack up one per render for the life of the session.
+
+### Hovering a block reserves its own space
+
+`.cal-b:hover` bolds and enlarges the title, which on a fixed measured height is exactly how a
+scrollbar appears. So the enlargement is in the measuring selector too: the height reserved already
+covers **every** block being large, while only one is ever hovered. Deliberately generous — taller
+rows are the trade for never scrolling, which is what was asked for.
+
+### The other five
+
+Week boxes became a hairline (`border-bottom`, no gap on `.cal-weeks` — with a gap the rules float
+between rows instead of sitting on them), with a soft tint on the open strip since the border that
+marked it is gone. `.cal-wk` bold. The `DL DT DC` header row deleted — every cell already opens with
+its own weekday. Side padding trimmed to `.75rem` via `dashboard-tight`, toggled in `renderPage`
+beside `dashboard-flush`, both arms, for the reason the comment there already gives. Arrows lost
+their box for bare red glyphs that bolden and grow on hover — keeping the 30×30 **hit area**, since a
+lone chevron is a small target on a phone, and gaining a `:focus-visible` ring because the border was
+carrying focus.
+
+Eight mutations, one per item plus the resize guard; all eight died.
+
+Unit 2088 → **2093**. Version triple → v184.
+
+## v185 — the hover tint dropped, and the Sancions icon (2026-08-28)
+
+**No background on a hovered block.** v184 added a faint grey wash under the block the pointer was
+on; the owner did not want it. The type alone carries it now — bold and a step larger, which was
+always the part doing the work. The wash was fighting the thing it sat on: a cell already has a fill
+that MEANS something (training, activity, fixture, result), and a second tint over it muddied the one
+colour on the card that is information rather than decoration.
+
+The shared `.cal-b:hover` / `.cal-week-measure` font rule is untouched — it is what keeps a hovered
+block inside the height measured for it, and removing the background changes no geometry.
+
+**Sancions tab icon** is `img/iconsancions.png` instead of the 🟥 emoji, through the existing
+`.sidebar-img-icon` class that `manage-roster`, `medical`, `training` and `my-stats` already use.
+Deliberately NOT added to `STATIC_ASSETS` in `sw.js`: no sidebar icon is — they are picked up by the
+worker's cache-first image rule on demand, and adding one would make this the odd entry.
+
+The two remaining 🟥 in `app.js` are red-card counts in the referee panel and are unrelated.
+
+Unit 2093, unchanged — this round adds no behaviour. Version triple → v185.
+
+## v186 — the clipped filter bar, multi-match days, and a squad filter (2026-08-28)
+
+### The category bar was clipped — a v185 regression
+
+`.cat-bar` bleeds to the pane edges with `margin: -2rem -2rem 1rem -2rem`, sized to cancel
+`.dashboard-content`'s `2rem` exactly. v185's `.dashboard-tight` cut that padding to `.75rem` on the
+calendar page, so the bar overshot by `1.25rem` each side and `overflow-x: hidden` clipped it.
+
+**`.dashboard-tight` is gone**, class and toggle. Patching the bar's margin under it would have fixed
+one element and left the trap for the next full-bleed thing on the page. The calendar reclaims the
+same width by pulling **its own** `.cal-bar` and `.cal-weeks` out with `-1.25rem` — zeroed inside the
+900px block, where the page padding drops to `.75rem 1rem` and the pull would overshoot again, which
+is the identical mistake one breakpoint down.
+
+### A day with more than one match had two bugs
+
+Both invisible until a day held two fixtures, and the owner found them by reasoning about the data
+rather than by seeing them:
+
+- the cell fill came from `blocks[0].kind`, so one arbitrary result coloured the whole day;
+- the header score came from `ctx.matches.filter(x => x.date === d)[0]` — **a different match**, since
+  one list is ordered by rank and the other by blob order. The colour and the number could already be
+  describing different fixtures.
+
+The score moved into the match block beside the rival it belongs to, always, with its own outcome
+class (`.cal-b-win/draw/loss`). The cell keeps its result fill **only when the day holds exactly one
+game**; two or more and it stays the neutral white. That count is of MATCHES, not of blocks — a
+fixture plus a training is still one fixture, and that day should still colour. `.cal-res` and the
+header scoreline are gone.
+
+### Filter by squad letter
+
+Inline with the category chips and revealed as a category is picked, which is where they were asked
+for. `renderCategoryBar()` is shared by every page in `CATEGORY_PAGES`, so the letters are appended
+only when `currentPage === 'calendar'` — the roster and the medical file already have letter filters
+of their own and must not grow a second.
+
+`calLetterChipsHtml()` returns '' unless a category is selected AND has more than one squad: with
+"Totes" there is no letter set to offer, and one squad is not a choice. `calTeamFilter` resets in the
+cat-bar click handler **beside `medicalTeamFilter` and `rosterTeamFilter`**, under the comment that
+was already there and already gave the reason.
+
+`calInFilter()` is applied to sessions, matches AND `calSquads()`, so the greyed placeholders narrow
+with everything else — filtering to A and still being offered B's empty slots would be the filter
+half-applied. A row with no letter belongs to every squad in its category and survives any filter,
+which is the rule `trainingTeams()` and `calMatchDates()` already encode.
+
+### Two test notes
+
+**The harness sliced under its own subject.** `calendar-render.test.js` built its scope from
+`calView()` onward, and the new filter helpers sit above it — so `calInFilter` was undefined at render
+time, which is a ReferenceError inside `innerHTML` and a blank page. The slice starts at
+`let calMonth` now and takes the whole region.
+
+**A source scan matched its own comment, for the third time this session.** The assertion that
+`.dashboard-tight` is gone found the note explaining why it was removed. Comments stripped from both
+files before scanning. Worth stating plainly since it keeps recurring: **any test that greps source
+must strip comments first** — it is already a line in HANDOFF.md's lessons and it has now bitten in
+three separate suites.
+
+Eight mutations, all lethal. Unit 2093 → **2106**. Version triple → v186.

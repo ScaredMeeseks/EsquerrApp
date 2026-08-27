@@ -27,7 +27,8 @@ const {FieldValue} = require("firebase-admin/firestore");
 // reachable from this side — see functions/fcf.js on why that helper is a
 // second copy and how the two are kept honest.
 const {
-  fcfGrupIdOf, sameClubNameOf, parseFcfFixtures, parseFcfKits, mergeFcfFixtures,
+  fcfGrupIdOf, sameClubNameOf, parseFcfFixtures, parseFcfKits, parseFcfPositions,
+  mergeFcfFixtures,
   parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
   fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
   fcfShouldRebuild,
@@ -433,6 +434,24 @@ function matchAsSession(match) {
     category: match.category || "",
     teams: match.team ? [match.team] : [],
   };
+}
+
+/* ── Sessions vs activities ────────────────────────────────────
+   fa_training carries two kinds of row. A training session is the ordinary
+   one; an activity — a team meal, a club event — is `kind: "activity"` and
+   rides the same blob so that it inherits the shard route, the rule, the
+   availability records and the T-4h reminder without a single new
+   collection.
+
+   An ABSENT kind is a training. That is what lets every row written before
+   activities existed keep working with no backfill.
+
+   Duplicated from js/utils.js, which functions/ cannot require — the same
+   arrangement as fcfGrupId and sameClubName, and `reminders.test.js` reads
+   BOTH copies against one input table so they cannot drift. */
+const ACTIVITY_KIND = "activity";
+function isActivity(row) {
+  return !!row && row.kind === ACTIVITY_KIND;
 }
 
 /* ── When an activity finishes ─────────────────────────────────
@@ -997,8 +1016,13 @@ exports.scheduledRpeReminder = onSchedule({
     /* filter, not find. Two squads can train the same evening, and `find`
        silently picked one -- so the other squad was never chased, and the
        first squad's session was used to judge everybody. */
+    /* !isActivity: nobody rates the exertion of a team dinner. Activities
+       live in the same blob and still get the T-4h "you are counted" push
+       above — they are excluded HERE and only here, because this is the one
+       reminder that asks for a number the client never offers a box for. */
     const dueTraining = training.filter((t) =>
-      dates.includes(t.date) && endedInWindow(t, "training", now));
+      dates.includes(t.date) && !isActivity(t) &&
+      endedInWindow(t, "training", now));
     // Same reason: two categories play on the same Saturday.
     const dueMatches = matches.filter((m) =>
       dates.includes(m.date) && endedInWindow(m, "match", now));
@@ -1367,17 +1391,30 @@ async function _syncFcfSquad(clubId, category, letter, club) {
 
   const incoming = parseFcfFixtures(partidos, ourId);
   const kits = parseFcfKits(equipacions);
+  /* The standings were already fetched to find our own row above; reading
+     the rivals' positions out of the same response costs nothing. The
+     calendar stamps them onto each fixture and freezes them at kick-off,
+     so a played game keeps saying where the opponent stood that day. */
+  const positions = parseFcfPositions(classificacio);
 
   const ref = db.collection("teams").doc(clubId).collection("data")
       .doc(shardDocId("fa_matches", category));
   const snap = await ref.get();
   const existing = parseDataDoc(snap, []);
+  const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
-      .format(new Date());
+      .format(now);
+  /* Madrid wall clock as "HH:MM". The nightly job runs at 06:00, before any
+     kick-off, so this only matters for the refresh button — which a coach
+     can press at 20:00 on a Saturday, after the 18:00 game. Without it the
+     position on a fixture played hours ago would still be overwritten. */
+  const nowHM = new Intl.DateTimeFormat("en-GB",
+      {timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit",
+        hour12: false}).format(now);
 
   const {matches, summary} = mergeFcfFixtures(
       Array.isArray(existing) ? existing : [], incoming,
-      {clubName, category, letter, kits, today});
+      {clubName, category, letter, kits, today, nowHM, positions});
 
   const touched = summary.added + summary.adopted + summary.updated +
     summary.removed;

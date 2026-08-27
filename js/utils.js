@@ -51,6 +51,441 @@ function getSeasonWeek(dateStr) {
   return Math.floor(diff / (7 * 86400000)) + 1;
 }
 
+/* ---------- Calendar ----------
+
+   The month grid, the placeholder ("ghost") trainings the club's own
+   schedule implies, and a session's position in the microcycle.
+
+   All of it is pure and lives here rather than in app.js so it can be
+   tested: app.js has no harness beyond grab(), and every one of these is
+   date arithmetic, which is exactly the kind of code that is wrong in a
+   way nobody notices until March. */
+
+/** Whole days from `aISO` to `bISO`; negative when b is earlier.
+
+    Noon on both ends, so a DST boundary between them cannot turn 7 days
+    into 6.96 and round to 7 by luck rather than by construction. */
+function daysBetweenISO(aISO, bISO) {
+  const a = new Date(aISO + 'T12:00:00');
+  const b = new Date(bISO + 'T12:00:00');
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+/**
+ * The 42 ISO dates of a Monday-first month grid, spilling into the
+ * neighbouring months so every row has seven cells.
+ *
+ * `monthIdx` is 0-11, as `Date` uses. Always 6 rows, never 5: a grid that
+ * changes height as you page through the year makes the whole page jump.
+ */
+function monthGrid(year, monthIdx) {
+  /* Local noon throughout. `new Date(y, m, 1)` is local midnight, and in a
+     zone that springs forward at midnight (Brazil, historically) that is
+     the day before — localDateStr would then report the wrong first day. */
+  const first = new Date(year, monthIdx, 1, 12, 0, 0, 0);
+  const dow = first.getDay();                   // 0 = Sunday
+  const back = (dow === 0) ? 6 : dow - 1;       // Monday-first
+  const cur = new Date(first.getTime());
+  cur.setDate(cur.getDate() - back);
+  const out = [];
+  for (let i = 0; i < 42; i++) {
+    out.push(localDateStr(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+const DAY_TO_JS = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+/* The fallback when a squad has no configured schedule. Lifted out of
+   buildTrainingDrafts in app.js, which now calls scheduleSlots — two copies
+   of "what does this team do on a normal week" would drift, and the ghosts
+   and the New Training page must agree or a coach sees a placeholder that
+   creates a session on a different day. */
+const DEFAULT_TRAINING_SLOTS = [
+  { jsDay: 2, time: '21:00', endTime: '', location: '', link: '' },
+  { jsDay: 4, time: '22:00', endTime: '', location: '', link: '' }
+];
+
+/**
+ * One squad's weekly training slots, sorted by weekday then start.
+ *
+ * `clubConfig.schedules` is keyed "{category}-{letter}", the same key as
+ * fcfLinks and clubs/{id}/rosters/{key}. A row with no recognised day is
+ * dropped rather than defaulted: a half-filled row in Config Club means the
+ * lead has not finished, not that they meant Sunday.
+ */
+function scheduleSlots(clubConfig, cat, letter) {
+  const sched = (clubConfig && clubConfig.schedules)
+    ? clubConfig.schedules[cat + '-' + letter] : null;
+  const slots = [];
+  if (sched && Array.isArray(sched.training)) {
+    sched.training.forEach(function (tr) {
+      if (!tr || !tr.day || DAY_TO_JS[tr.day] === undefined) return;
+      slots.push({
+        jsDay: DAY_TO_JS[tr.day],
+        time: tr.time || '',
+        endTime: tr.endTime || '',
+        location: tr.location || '',
+        link: tr.link || ''
+      });
+    });
+  }
+  // Fresh copies: a caller that edits a slot must not rewrite the constant
+  // for every other squad in the club for the rest of the session.
+  if (!slots.length) {
+    DEFAULT_TRAINING_SLOTS.forEach(function (s) { slots.push(Object.assign({}, s)); });
+  }
+  slots.sort(function (a, b) {
+    return (a.jsDay - b.jsDay) || String(a.time).localeCompare(String(b.time));
+  });
+  return slots;
+}
+
+/**
+ * Which of a day's slots are still free, given the sessions really there.
+ *
+ * Greedy nearest-time matching rather than exact-time equality. A coach who
+ * moves Tuesday's session from 21:00 to 20:00 has USED Tuesday's slot — on
+ * an equality test the ghost would sit next to the real session offering to
+ * create a second one. Counting alone is not enough either: a club that
+ * trains morning AND evening must keep the evening placeholder after the
+ * morning session is scheduled, and the nearest-time match is what decides
+ * which of the two was consumed.
+ *
+ * Both arrays are `{time}`-bearing; returns the unconsumed slots.
+ */
+function freeSlots(slots, taken) {
+  const left = (slots || []).slice();
+  (taken || []).slice()
+    .sort(function (a, b) { return String(a.time || '').localeCompare(String(b.time || '')); })
+    .forEach(function (real) {
+      if (!left.length) return;
+      const t = hhmmMins(real.time);
+      let best = 0;
+      if (t !== null) {
+        let bestGap = Infinity;
+        left.forEach(function (slot, i) {
+          const s = hhmmMins(slot.time);
+          // A slot with no time cannot be nearest to anything, but it is
+          // still consumable — Infinity keeps it last rather than first.
+          const gap = (s === null) ? Infinity : Math.abs(s - t);
+          if (gap < bestGap) { bestGap = gap; best = i; }
+        });
+      }
+      left.splice(best, 1);
+    });
+  return left;
+}
+
+/** 'HH:MM' → minutes since midnight, or null. Tolerates 'HH:MM - HH:MM',
+    the shape legacy fa_training rows still carry in `time`. */
+function hhmmMins(v) {
+  const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(v || ''));
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * The greyed placeholder trainings for a date window.
+ *
+ * Nothing is stored. A ghost is a slot in `clubConfig.schedules` that no
+ * real session occupies, and it exists only for as long as that stays true
+ * — which is why deleting a session brings its placeholder back with no
+ * code to do it.
+ *
+ * `squads` is `[{category, letter}]`; `existing` is the fa_training blob
+ * (activities included — a squad busy with an activity is not free to
+ * train). `todayISO` is inclusive: a slot later today is still schedulable,
+ * yesterday's is not.
+ */
+function ghostSlots(clubConfig, squads, existing, fromISO, toISO, todayISO) {
+  const out = [];
+  if (!Array.isArray(squads) || !squads.length) return out;
+
+  /* Index the real sessions by squad and date once. The alternative is a
+     scan of the whole blob per cell per squad, which on a 6-row grid with
+     three squads is 126 passes over a season of sessions. */
+  const byKey = {};
+  (existing || []).forEach(function (t) {
+    if (!t || !t.date) return;
+    const cat = t.category || '';
+    // teams:[] means "every letter of the category" — see trainingTeams()
+    // in app.js. Such a session occupies every squad's slot that day.
+    const letters = (Array.isArray(t.teams) && t.teams.length) ? t.teams : ['*'];
+    letters.forEach(function (l) {
+      const k = cat + '|' + l + '|' + t.date;
+      (byKey[k] = byKey[k] || []).push(t);
+    });
+  });
+
+  const dates = [];
+  const cur = new Date(fromISO + 'T12:00:00');
+  const end = new Date(toISO + 'T12:00:00');
+  while (cur.getTime() <= end.getTime()) {
+    dates.push(localDateStr(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  squads.forEach(function (sq) {
+    const slots = scheduleSlots(clubConfig, sq.category, sq.letter);
+    dates.forEach(function (date) {
+      if (todayISO && date < todayISO) return;
+      const jsDay = new Date(date + 'T12:00:00').getDay();
+      const daySlots = slots.filter(function (s) { return s.jsDay === jsDay; });
+      if (!daySlots.length) return;
+      const taken = (byKey[sq.category + '|' + sq.letter + '|' + date] || [])
+        .concat(byKey[sq.category + '|*|' + date] || []);
+      freeSlots(daySlots, taken).forEach(function (slot) {
+        out.push({
+          ghost: true,
+          // Stable across renders and unique per placeholder, so a click
+          // identifies exactly which slot to materialise.
+          key: sq.category + '|' + sq.letter + '|' + date + '|' + slot.time,
+          date: date,
+          time: slot.time,
+          endTime: slot.endTime,
+          location: slot.location,
+          link: slot.link,
+          category: sq.category,
+          letter: sq.letter
+        });
+      });
+    });
+  });
+  return out;
+}
+
+/**
+ * A date's position in the microcycle, relative to the CLOSER of the
+ * previous and next fixture.
+ *
+ * `{sign:'0'}` when a match falls on the date itself, `'-'` counting down to
+ * the next one (M-3), `'+'` counting up from the last (M+2), null when the
+ * squad has no fixtures either side. A tie goes to the next match: a coach
+ * planning Wednesday between two Saturdays cares about the one he is
+ * preparing for, not the one he is recovering from.
+ *
+ * `matchDates` must already be narrowed to the same category and an
+ * overlapping squad letter, and must exclude withdrawn fixtures — a
+ * juvenil kick-off says nothing about the amateur team's week.
+ */
+function matchdayOffset(dateISO, matchDates) {
+  if (!dateISO || !Array.isArray(matchDates)) return null;
+  let prev = null;
+  let next = null;
+  for (let i = 0; i < matchDates.length; i++) {
+    const m = String(matchDates[i] || '');
+    if (!m) continue;
+    if (m === dateISO) return { sign: '0', n: 0 };
+    if (m < dateISO) { if (prev === null || m > prev) prev = m; }
+    else if (next === null || m < next) next = m;
+  }
+  const dPrev = (prev === null) ? null : daysBetweenISO(prev, dateISO);
+  const dNext = (next === null) ? null : daysBetweenISO(dateISO, next);
+  if (dPrev === null && dNext === null) return null;
+  if (dPrev === null) return { sign: '-', n: dNext };
+  if (dNext === null) return { sign: '+', n: dPrev };
+  return (dNext <= dPrev) ? { sign: '-', n: dNext } : { sign: '+', n: dPrev };
+}
+
+/** 'MD' / 'M-3' / 'M+2', or '' when there is nothing to say. */
+function matchdayLabel(off) {
+  if (!off) return '';
+  if (off.sign === '0') return 'MD';
+  return 'M' + off.sign + off.n;
+}
+
+/* Catalan ordinals are irregular only below five: 1r, 2n, 3r, 4t, then è
+   for everything above. `-è` is the masculine form, which is what agrees
+   with "lloc" — the word a reader supplies for a league position. */
+const CA_ORDINALS = {1: '1r', 2: '2n', 3: '3r', 4: '4t'};
+const EN_ORDINALS = {1: 'st', 2: 'nd', 3: 'rd'};
+
+/**
+ * A league position as a reader would say it: `4t` / `4º` / `4th`.
+ *
+ * Returns '' for anything that is not a position, so a card with no
+ * standings simply shows nothing rather than "0è" or "undefinedth".
+ */
+function leaguePosLabel(n, lang) {
+  const v = parseInt(n, 10);
+  if (!(v > 0)) return '';
+  if (lang === 'es') return v + 'º';
+  if (lang === 'en') {
+    /* 11th, 12th and 13th are the exception every naive version of this
+       gets wrong: they end in 1, 2, 3 and still take -th. */
+    const teen = v % 100;
+    const suffix = (teen >= 11 && teen <= 13) ? 'th' : (EN_ORDINALS[v % 10] || 'th');
+    return v + suffix;
+  }
+  return CA_ORDINALS[v] || (v + 'è');
+}
+
+/* ---------- Session load ----------
+
+   `plannedRpe` is a coach's 1-10 estimate of how hard a session is meant to
+   be, set when the session is created or edited. It is what the calendar's
+   intensity dot reads, and it is the only part of the load picture that
+   exists before anybody has trained.
+
+   The bands are the design's: <=4 light, 5-7 moderate, 8+ hard. They are
+   meaningful because 1-10 is a scale a coach sets directly — unlike the
+   WEEKLY thresholds in the same mock, which were calibrated against
+   placeholder arithmetic (`rpe * 12`) and would paint every real week red.
+   The gutter prints its AU figure and no dot until real weeks say where
+   those lines are. */
+const LOAD_LOW = 'low';
+const LOAD_MID = 'mid';
+const LOAD_HIGH = 'high';
+
+/** '' for anything that is not a usable 1-10 estimate. */
+function loadBand(rpe) {
+  const v = Number(rpe);
+  if (!isFinite(v) || v <= 0) return '';
+  if (v <= 4) return LOAD_LOW;
+  if (v <= 7) return LOAD_MID;
+  return LOAD_HIGH;
+}
+
+/**
+ * How long a session runs, in minutes.
+ *
+ * Mirrors sessionWindow() in app.js, including the vestigial
+ * "HH:MM - HH:MM" range that old rows still carry in `time`, and the
+ * 90-minute last resort. app.js keeps its own copy because it needs the
+ * start and end as separate values for the badge arithmetic; this one is
+ * the duration alone, which is all the load maths wants.
+ * `session-load.test.js` pins the two against one input table.
+ */
+function sessionMinutesOf(row, fallbackMins) {
+  if (!row) return 0;
+  const parts = String(row.time || '').split(' - ');
+  const start = hhmmMins(parts[0]);
+  if (start === null) return 0;
+  let end = hhmmMins(row.endTime);
+  if (end === null && parts.length > 1) end = hhmmMins(parts[1]);
+  if (end === null || end <= start) {
+    end = start + (fallbackMins > 0 ? fallbackMins : 90);
+  }
+  return end - start;
+}
+
+/**
+ * One session's load in arbitrary units: RPE x minutes.
+ *
+ * The same arithmetic the readiness engine sums into `weekUA`, so a figure
+ * here and a figure there mean the same thing. `rpe` is passed in rather
+ * than read off the row: a PAST session should be costed at what players
+ * actually reported, an upcoming one at what the coach planned, and only
+ * the caller knows which it is holding.
+ *
+ * null when it cannot be costed — never 0, which would read as "they
+ * trained and it was effortless" rather than "nobody has said yet".
+ */
+function sessionAU(row, rpe) {
+  const r = Number(rpe);
+  if (!isFinite(r) || r <= 0) return null;
+  const mins = sessionMinutesOf(row);
+  if (!mins) return null;
+  return Math.round(r * mins);
+}
+
+/**
+ * A week's load, as one number per player.
+ *
+ * Per player, not summed across the squad: a squad total moves when someone
+ * is injured, so two identical weeks would read differently and the figure
+ * could not be compared with itself a month later.
+ *
+ * `rpeFor(row)` hands back the RPE to cost each row at, or null. Rows it
+ * cannot cost are counted in `unknown` and left out of the total, so the
+ * caller can say "1 840 AU, 2 sessions unrated" instead of quietly
+ * under-reporting a week.
+ */
+function weekAU(rows, rpeFor) {
+  let au = 0;
+  let counted = 0;
+  let unknown = 0;
+  (rows || []).forEach(function (row) {
+    const v = sessionAU(row, rpeFor ? rpeFor(row) : null);
+    if (v === null) { unknown++; return; }
+    au += v;
+    counted++;
+  });
+  return { au: au, counted: counted, unknown: unknown };
+}
+
+/* ---------- ISO weeks ----------
+
+   The gutter is labelled WEEK 42, which is the ISO 8601 week — not "the
+   42nd row of this grid". They differ, and the one a coach says out loud
+   is the ISO one, because it is what the federation's calendar uses. */
+
+/** The Monday of `dateISO`'s week, as an ISO date. */
+function mondayOf(dateISO) {
+  const d = new Date(dateISO + 'T12:00:00');
+  const dow = d.getDay();                    // 0 = Sunday
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+  return localDateStr(d);
+}
+
+/**
+ * The ISO 8601 week number, and the year it belongs to.
+ *
+ * The year matters and is not always the date's own: 1 January 2027 is a
+ * Friday, so 28-31 December 2026 are week 53 OF 2026 while 1-3 January
+ * 2027 are also week 53 of 2026. Returning the date's calendar year would
+ * label those three days "week 53 of 2027", which does not exist.
+ */
+function isoWeek(dateISO) {
+  // Thursday of this week decides the year — the ISO rule, and the reason
+  // this is not simply "days since 1 January divided by seven".
+  const d = new Date(dateISO + 'T12:00:00');
+  const dow = d.getDay();
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1) + 3);
+  const year = d.getFullYear();
+  const jan4 = new Date(year, 0, 4, 12, 0, 0, 0);
+  const jan4Dow = jan4.getDay();
+  const week1Mon = new Date(jan4.getTime());
+  week1Mon.setDate(jan4.getDate() - (jan4Dow === 0 ? 6 : jan4Dow - 1));
+  const week = Math.round((d.getTime() - week1Mon.getTime()) / (7 * 86400000)) + 1;
+  return { week: week, year: year };
+}
+
+/** Split a flat run of dates into rows of seven. */
+function chunkWeeks(dates) {
+  const out = [];
+  for (let i = 0; i < (dates || []).length; i += 7) out.push(dates.slice(i, i + 7));
+  return out;
+}
+
+/* ---------- Activities ----------
+
+   An activity — a team meal, a gym block, a club event — is a fa_training
+   row with `kind:'activity'` and a `title` where a session has a `focus`.
+
+   It rides the training blob deliberately: the shard route, the Firestore
+   rule, the availability records, the call-up UI and the T-4h reminder all
+   already work on that key, so an activity gets every one of them without a
+   new collection, a new rule or a new push path.
+
+   An ABSENT `kind` is a training. That is what lets every row written
+   before this existed keep working with no backfill. */
+const TRAINING_KIND = 'training';
+const ACTIVITY_KIND = 'activity';
+
+function isActivity(row) {
+  return !!row && row.kind === ACTIVITY_KIND;
+}
+
+/** The bold line on the card: an activity's title, or a session's focus. */
+function activityTitleOf(row, fallback) {
+  if (!row) return fallback || '';
+  const s = String((isActivity(row) ? row.title : row.focus) || '').trim();
+  return s || fallback || '';
+}
+
 /* ---------- Link safety ----------
 
    A URL we are willing to hand to window.open(), or ''.
@@ -1185,6 +1620,37 @@ if (typeof module !== 'undefined' && module.exports) {
     setSeasonBoundary,
     getSeasonBoundary,
     getSeasonWeek,
+    // Calendar. Every one of these is date arithmetic with no DOM, which is
+    // why they live here and not in app.js — see calendar.test.js.
+    daysBetweenISO,
+    monthGrid,
+    scheduleSlots,
+    freeSlots,
+    hhmmMins,
+    ghostSlots,
+    matchdayOffset,
+    matchdayLabel,
+    leaguePosLabel,
+    // Session load. The per-session band is real (a coach sets 1-10); the
+    // WEEKLY figure is printed without a band on purpose — see loadBand.
+    LOAD_LOW,
+    LOAD_MID,
+    LOAD_HIGH,
+    loadBand,
+    sessionMinutesOf,
+    sessionAU,
+    weekAU,
+    mondayOf,
+    isoWeek,
+    chunkWeeks,
+    DAY_TO_JS,
+    DEFAULT_TRAINING_SLOTS,
+    // Activities are fa_training rows with a `kind`. An ABSENT kind is a
+    // training, which is what keeps every pre-existing row working.
+    TRAINING_KIND,
+    ACTIVITY_KIND,
+    isActivity,
+    activityTitleOf,
     safeHttpUrl,
     // FCF. Both are pure string/JSON work, and parseFcfClassificacio is the
     // only place the "played is two numbers glued together" trap is handled.

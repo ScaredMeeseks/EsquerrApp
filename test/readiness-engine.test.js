@@ -77,6 +77,10 @@ function engine(o) {
     localDateStr: utils.localDateStr,
     seasonStartStr: utils.seasonStartStr,
     getSeasonWeek: utils.getSeasonWeek,
+    /* The REAL kind test, not a stub. fa_training carries activities as
+       well as sessions, and trainingOnly (sliced in below) is the only
+       thing keeping a team dinner out of the acute:chronic ratio. */
+    isActivity: utils.isActivity,
     Date: class extends Date {
       constructor(...a) { return a.length ? new Date(...a) : new Date(TODAY + 'T12:00:00'); }
       static now() { return new Date(TODAY + 'T12:00:00').getTime(); }
@@ -88,7 +92,8 @@ function engine(o) {
   /* playerIsCalled is sliced in rather than stubbed for the same reason
      readRecord is: computeReadiness now asks it which sessions are the
      player's, and a stub would be free to drift from the real rule. */
-  const code = grab('  function recordKey(playerId, sess, kind)', '  async function handleRegister') +
+  const code = grab('  function trainingOnly(list)', '  function activitiesOnly(list)') +
+    grab('  function recordKey(playerId, sess, kind)', '  async function handleRegister') +
     grab('  function getTeamLetters(category)',
         '  /** The squad for a session, in roster order. */') +
     grab('  function getReadinessData()', '\n  function buildReadinessCard');
@@ -306,6 +311,61 @@ describe('readiness — only the sessions he was called to', () => {
     const b = baseTrainings('p1');
     b.users = [JU];
     assert.strictEqual(engine(b)('p1').hasData, true);
+  });
+});
+
+describe('readiness — an activity is not training load', () => {
+  /* fa_training carries activities (a team meal, a club event) as rows with
+     kind:'activity'. They ride the training blob so that they inherit its
+     call-ups, availability records, rules and reminder for free — and
+     trainingOnly() in getReadinessData is the ONLY thing standing between
+     that decision and a readiness engine which reports a squad overloaded
+     because they had dinner, or under-trained because nobody logged an RPE
+     for one.
+
+     The fixture carries an RPE record for the activity. Nobody is prompted
+     for one, so in the field it would usually be absent — but a row written
+     by an older client, or by a coach on a session later reclassified, can
+     have one, and pinning the case where the load is REAL is what proves
+     the filter sits on the session list rather than on the RPE lookup. */
+  const P = {id: 'p1', category: 'amateur', team: 'A', roles: ['player']};
+
+  /** The baseline, plus one heavy event two days ago. */
+  function withActivity(kind) {
+    const b = baseTrainings('p1');
+    const d = day(-2);
+    const row = {id: 'act0', date: d, time: '20:00', category: 'amateur',
+      title: 'Sopar d\'equip'};
+    if (kind) row.kind = kind;
+    b.trainings.push(row);
+    b.avail['p1_act0'] = 'yes';
+    b.rpe['p1_training_act0'] = {rpe: 9, minutes: 150, date: d, sessionId: 'act0'};
+    b.users = [P];
+    return engine(b)('p1');
+  }
+
+  const base = () => engine(Object.assign(baseTrainings('p1'), {users: [P]}))('p1');
+
+  it('leaves the acute:chronic ratio exactly where it was', () => {
+    assert.strictEqual(withActivity('activity').acwr, base().acwr);
+  });
+
+  it('does not move the score', () => {
+    assert.strictEqual(withActivity('activity').score, base().score);
+  });
+
+  it('WOULD have moved it as an ordinary session — so this is not a no-op', () => {
+    /* The same row without the kind. Pinned so the assertions above cannot
+       pass by the fixture being inert, which is exactly how the first
+       version of this block passed while testing nothing. */
+    assert.notStrictEqual(withActivity(null).acwr, withActivity('activity').acwr);
+    assert.ok(withActivity(null).acwr > base().acwr,
+        'as a session the fixture must add real acute load');
+  });
+
+  it('treats kind:"training" and an absent kind identically', () => {
+    // The no-backfill guarantee, at the engine rather than at isActivity.
+    assert.strictEqual(withActivity('training').acwr, withActivity(null).acwr);
   });
 });
 

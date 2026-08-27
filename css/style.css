@@ -4163,6 +4163,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cat-bar{display:flex;gap:.35rem;padding:.7rem .8rem;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;margin:-2rem -2rem 1rem -2rem;}
 @media(max-width:500px){.cat-bar{margin:-0.75rem -0.75rem 1rem -0.75rem;}}
 .cat-bar-btn{padding:.3rem .7rem;border-radius:20px;border:1.5px solid var(--border);background:none;font-size:.82rem;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:.2s;}
+/* The squad chips the calendar adds after the categories. A rule between
+   them, so the row does not read as one flat list of unrelated choices. */
+.cat-bar-sep{flex:0 0 auto;align-self:stretch;width:1px;background:var(--border);margin:0 .35rem;}
+.cat-bar .cat-bar-letter{padding:.3rem .75rem;min-width:2.2rem;}
 .cat-bar-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
 .cat-bar-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
 
@@ -5526,4 +5530,429 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #tb-panel-open .tb-saved-item > * { min-width:0; }
 #tb-panel-open .tb-saved-name {
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   The calendar — week strips that open on hover.
+
+   Structure from the 2a handoff; palette translated to LIGHT, because
+   the app has no dark theme yet and one dark card in a light content
+   area would be a theme of its own to maintain.
+
+   The translation has one real decision in it. On the dark original a
+   match is the LIGHT surface — the odd one out, and the loudest thing
+   on the page. Inverting that literally (a dark match cell on a light
+   page) breaks played matches, which have to carry win/draw/loss in
+   their fill. So on light a fixture keeps a white ground and takes a
+   CLUB-RED edge: loudest by saturation instead of by inversion, and
+   results still colour normally underneath it.
+
+   Expansion is `:hover` on the strip, plus `.cal-week-open` for touch.
+   Every expanded-only element is `.cal-x`, which is display:none when
+   collapsed — NOT clipped. A cell animating between two fixed heights
+   would otherwise show half a line of text at its bottom edge for the
+   length of the transition, which is the one thing the handoff calls
+   out by name.
+   ═══════════════════════════════════════════════════════════ */
+
+/* There is no card. The page fills the pane, so a frame around it was a
+   border with nothing on the far side — and it cost padding on all four
+   edges plus the heading above it. The bar's own bottom rule was doing
+   the separating all along.
+
+   The width is reclaimed by pulling THESE TWO BLOCKS out, not by trimming
+   `.dashboard-content`. Trimming the page's padding was tried and reverted:
+   `.cat-bar` bleeds edge-to-edge with `margin:-2rem`, sized to cancel that
+   exact padding, so cutting it left the filter bar overshooting by the
+   difference and clipped against `overflow-x:hidden`. Anything else on the
+   page that bleeds would have broken the same way. `2rem − 1.25rem` leaves
+   the same .75rem of gutter, and touches nothing shared. */
+.cal-bar, .cal-weeks { margin-left: -1.25rem; margin-right: -1.25rem; }
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.cal-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
+  padding: 0 2px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.cal-bar-l, .cal-bar-r { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Bare glyphs, in the club's red. The 30x30 box STAYS as the hit area —
+   a lone chevron is a small target on a phone — it just stops being
+   painted. `:focus-visible` gets its own ring, because the border that
+   used to show focus is what went. */
+.cal-arrow {
+  width: 30px; height: 30px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; line-height: 1; cursor: pointer;
+  background: none; border: 0; padding: 0;
+  color: var(--primary); font-weight: 600;
+  transition: transform .12s ease, font-weight .12s ease;
+}
+.cal-arrow:hover { font-weight: 800; transform: scale(1.15); }
+.cal-arrow:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px;
+}
+/* The page's heading now that the h2 is gone, so it takes the h2's size.
+   Fixed width, so the arrows do not shuffle between "Maig" and "Setembre". */
+.cal-month {
+  font-size: 1.5rem; font-weight: 600; letter-spacing: .01em;
+  min-width: 9rem; text-align: center; color: var(--primary-dark);
+}
+
+.cal-legend { display: flex; align-items: center; gap: 11px; }
+.cal-legend-load {
+  padding-left: 16px; border-left: 1px solid var(--border);
+}
+.cal-legend-h {
+  font-size: .68rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.cal-legend-i {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .74rem; color: var(--text-secondary);
+}
+.cal-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; display: block; }
+.cal-sq  { width: 9px; height: 9px; border-radius: 2px;  flex: 0 0 auto; display: block; }
+
+/* The load scale. Distinct from the win/draw/loss trio on purpose —
+   a hard session and a lost match are different facts. */
+.cal-load-low  { background: #1F9C86; }
+.cal-load-mid  { background: #D08A12; }
+.cal-load-high { background: #D33A4E; }
+.cal-dot-ghost { background: transparent; border: 1px dashed var(--text-secondary); }
+.cal-sq-train  { background: #C1670C; }
+.cal-sq-act    { background: #2E6DA4; }
+.cal-sq-match  { background: var(--primary); }
+
+/* No weekday header row. Every cell opens with its own weekday — "Dt 1" —
+   so a DL DT DC strip above the grid was the same seven words repeated
+   six times over. tDayShort still does the work, in the cell. */
+
+/* ── Week strips ─────────────────────────────────────────────
+   No boxes. A hairline between weeks says the same thing with a fraction
+   of the ink, and six framed rows inside a page that is itself a frame
+   was two borders doing one job.
+
+   No `gap` either: the padding on each strip is the spacing now. With a
+   gap the rules would float between rows instead of sitting on them. */
+.cal-weeks { display: flex; flex-direction: column; padding: 4px 2px 16px; }
+.cal-week {
+  display: flex; gap: 12px; align-items: stretch;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border);
+  transition: background-color .2s ease;
+}
+.cal-week:last-child { border-bottom: 0; }
+/* The border used to say which strip was open. With it gone the tint
+   does — drawn only while open, so a closed month stays flat. */
+.cal-week:hover, .cal-week-open { background: #FBF7F1; }
+
+.cal-gutter {
+  width: 96px; flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: 2px;
+  padding-right: 10px; border-right: 1px solid var(--border);
+}
+.cal-wk {
+  font-size: .66rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.cal-range { font-size: .76rem; color: var(--text); }
+.cal-au {
+  margin-top: auto; display: flex; align-items: baseline; gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.cal-au b { font-size: 1.05rem; font-weight: 700; line-height: 1; }
+.cal-au-u {
+  font-size: .62rem; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.cal-au-none { font-size: .7rem; color: var(--text-secondary); }
+/* A week holding sessions nobody has rated. The figure below is real but
+   incomplete, and saying so is cheaper than showing a light-looking week. */
+.cal-au-warn { color: #D08A12; font-weight: 700; cursor: help; }
+
+.cal-days {
+  flex: 1; min-width: 0;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px;
+}
+
+/* ── A day ───────────────────────────────────────────────── */
+.cal-cell {
+  height: 80px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--cal-stroke, var(--border));
+  background: var(--cal-fill, var(--card));
+  position: relative;
+  transition: height .34s cubic-bezier(.22,.7,.2,1), border-color .2s ease;
+}
+/* The open height is MEASURED after render and written back as an inline
+   `--cal-open-h` (see bindCalendar). The value in the markup is only the
+   fallback for a browser that never runs the measurement.
+
+   NO `overflow-y` here. A scrollbar inside an 80px cell is worse than
+   anything it could rescue, so the rule is: the measurement is right, or
+   it clips. Which puts the whole weight on the block below. */
+.cal-week:hover .cal-cell, .cal-week-open .cal-cell {
+  height: var(--cal-open-h, 172px);
+}
+
+/* ── The measuring state ──────────────────────────────────────
+   Every expanded row shown, at natural height, transition off, applied
+   and removed inside one synchronous pass so it never paints.
+
+   ⚠ It must reproduce the OPEN state exactly, and that is the invariant
+   this got wrong once already: `:hover` released `white-space` on the
+   titles and the measuring state did not, so every wrapping focus name
+   was measured one line short and the shortfall came out as a scrollbar.
+
+   Anything below that changes layout when a strip opens has to appear in
+   BOTH selectors. Where the declaration is identical the two share one
+   rule, which is the only version of this that cannot drift again. */
+.cal-week-measure .cal-cell { height: auto !important; transition: none !important; }
+.cal-week-measure .cal-x { display: block; }
+.cal-week-measure .cal-cell-body .cal-x { display: flex; flex-direction: column; gap: 3px; }
+
+/* Fill and stroke by content. Priority is match > training > activity >
+   placeholder, decided in JS — the class here is only the winner. */
+.cal-k-empty   { --cal-fill: #FAF9F6; --cal-stroke: #E3DED6; }
+.cal-k-weekend { --cal-fill: #EDEAE3; --cal-stroke: #E3DED6; }
+.cal-k-ghost   { --cal-fill: #FAF9F6; --cal-stroke: #D6CFC4; }
+.cal-k-train   { --cal-fill: #FBE8D0; --cal-stroke: #D9942F; }
+.cal-k-act     { --cal-fill: #DFEAF6; --cal-stroke: #4A85BC; }
+/* The odd surface: white where everything around it is warm, edged in the
+   club's own red. This is the light answer to 2a's light-on-dark match. */
+.cal-k-match   { --cal-fill: #FFFFFF; --cal-stroke: var(--primary); }
+/* The fixture is the loudest cell on the page and its edge is what says
+   so, since the fill cannot — it is already the lightest thing there. */
+.cal-k-match   { border-width: 2px; }
+.cal-k-win     { --cal-fill: #D9EDDC; --cal-stroke: #1F7A44; }
+/* Grey, not the amber 2a specifies. A draw is the absence of a result;
+   colouring it warm put it in the same family as a training. */
+.cal-k-draw    { --cal-fill: #E8E6E1; --cal-stroke: #7A736B; }
+.cal-k-loss    { --cal-fill: #F7DADD; --cal-stroke: #BD162C; }
+.cal-cell-out  { --cal-fill: #EFEDE8; --cal-stroke: #E5E1DB; }
+.cal-cell-out .cal-dh, .cal-cell-out .cal-b-ttl { color: var(--text-secondary); }
+
+/* Past days step back so the week ahead reads first — but a PLAYED match
+   keeps almost all of its weight, because its result is the one thing on
+   a past day anybody looks for. */
+.cal-cell-past { opacity: .55; }
+.cal-cell-past-res { opacity: .92; }
+
+.cal-cell-today { --cal-stroke: var(--primary); box-shadow: 0 0 0 3px rgba(189,22,44,.22); }
+
+.cal-cell-h {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 8px 2px;
+}
+.cal-dh {
+  font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-today-chip {
+  font-size: .56rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: #fff; background: var(--primary);
+  padding: 1px 5px; border-radius: 3px; flex: 0 0 auto;
+}
+/* The score sits in the match block beside the rival it belongs to, not
+   in the cell header. The header holds ONE, so a day with two fixtures
+   showed one score — and coloured the cell from a different match than
+   the score came from, because the fill read blocks[0] while the header
+   re-found the match by date. */
+.cal-b-res {
+  margin-left: auto; flex: 0 0 auto;
+  font-size: .86rem; font-weight: 700; letter-spacing: .03em;
+  line-height: 1; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cal-b-win  .cal-b-res { color: #1F7A44; }
+.cal-b-draw .cal-b-res { color: #7A736B; }
+.cal-b-loss .cal-b-res { color: #BD162C; }
+.cal-more {
+  margin-left: auto; flex: 0 0 auto;
+  font-size: .62rem; font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 3px; padding: 0 4px;
+}
+/* Revealed on hover, so an empty month is not 42 buttons. Made permanent
+   on touch further down, where hover does not exist. */
+.cal-add {
+  margin-left: auto; flex: 0 0 auto;
+  width: 1.2rem; height: 1.2rem; line-height: 1; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--border); border-radius: 5px;
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; opacity: 0; transition: opacity .12s ease;
+}
+.cal-more ~ .cal-add { margin-left: 4px; }
+.cal-cell:hover .cal-add { opacity: 1; }
+.cal-add:hover { border-style: solid; color: var(--primary); border-color: var(--primary); }
+
+.cal-cell-body { display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; }
+
+/* ── The blocks ──────────────────────────────────────────── */
+.cal-b { display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
+.cal-b-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cal-b-ttl {
+  font-size: .8rem; line-height: 1.2; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Expanded, a name may wrap — there is room, and a focus is free text.
+   The measuring state is in this selector BECAUSE of that: a wrapping
+   title is taller than a clipped one, and measuring it clipped is what
+   produced the scrollbars. */
+.cal-week:hover .cal-b-ttl,
+.cal-week-open .cal-b-ttl,
+.cal-week-measure .cal-b-ttl { white-space: normal; }
+
+/* Which activity the pointer is on, for a day that holds several.
+   The type alone says it — bold and a step larger. A background tint was
+   tried and dropped: a cell already carries a fill for its kind, and a
+   second wash on top of it muddied the one colour that means something.
+
+   The measuring state takes the SAME declaration, so the height reserved
+   already covers a hovered block. Only one is ever hovered, so this is
+   generous by design: taller rows are the trade for never scrolling. */
+.cal-b:hover .cal-b-ttl,
+.cal-week-measure .cal-b-ttl { font-size: .88rem; font-weight: 700; }
+.cal-b-when { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cal-time { font-size: .78rem; font-weight: 600; color: #C1670C; }
+.cal-time-act { color: #2E6DA4; }
+.cal-md {
+  font-size: .62rem; font-weight: 600; letter-spacing: .04em;
+  color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 3px; padding: 0 4px;
+}
+.cal-meta { font-size: .72rem; line-height: 1.3; color: var(--text-secondary); }
+.cal-comp {
+  font-size: .68rem; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.cal-b-ghost { opacity: .62; }
+.cal-b-ghost .cal-b-ttl, .cal-b-ghost .cal-time { color: var(--text-secondary); font-weight: 400; }
+.cal-cell:hover .cal-b-ghost { opacity: 1; }
+.cal-k-ghost { border-style: dashed; }
+
+/* The match block. Its cell is white or a result tint, so the type is the
+   app's ordinary ink rather than the muted grey the other blocks use. */
+/* A house or a plane. No chip behind it: the glyph brings its own colour,
+   and an emoji inside a filled red box reads as mud. */
+.cal-ha {
+  flex: 0 0 auto; font-size: .8rem; line-height: 1;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+/* `flex: 0 1 auto`, so the name takes only what it needs and the crest
+   sits AGAINST it. At `1 1 auto` the name grew to fill the row and pushed
+   the badge out to the margin, where it stopped reading as this club's. */
+.cal-opp {
+  font-size: .84rem; font-weight: 600;
+  flex: 0 1 auto; min-width: 0;
+}
+.cal-pos { font-size: .66rem; font-weight: 700; color: var(--text-secondary); flex: 0 0 auto; }
+.cal-crest {
+  width: 22px; height: 22px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--text); color: var(--bg);
+  font-size: .6rem; font-weight: 700; letter-spacing: .02em;
+}
+.cal-kick { font-size: .7rem; color: var(--text-secondary); gap: 8px; }
+.cal-kick b { font-weight: 600; color: var(--text); }
+.cal-cu { display: flex; align-items: center; gap: 4px; }
+.cal-b-kit { margin-top: 2px; }
+.cal-b-kit .kit-icons svg { width: 22px; height: 22px; }
+
+/* The availability donut, hand-built as the handoff specifies. The count
+   is an HTML element over the SVG, not an SVG <text> — a <text> would not
+   inherit Oswald and would fall back to the browser's default serif. */
+.cal-donut-row { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+.cal-donut { position: relative; width: 40px; height: 40px; flex: 0 0 auto; }
+.cal-donut-track { stroke: var(--border); }
+/* The arcs colour themselves — one per answer, from CAL_AVAIL_SEGS, the
+   same five the rest of the app's donuts use. There is no single "value"
+   stroke any more, and no past/upcoming distinction: the states say it. */
+.cal-donut-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Everything that exists only while the strip is open. display:none, so a
+   collapsed cell holds whole rows and nothing else. */
+.cal-x { display: none; }
+.cal-week:hover .cal-x, .cal-week-open .cal-x { display: block; }
+.cal-week:hover .cal-cell-body .cal-x, .cal-week-open .cal-cell-body .cal-x {
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+/* The one-time offer to rescue drafts left in the retired fa_matchday
+   staging blob. Deliberately loud: it appears once and then never again,
+   either way. */
+.cal-drafts { border-left: 4px solid var(--accent); margin-bottom: 1rem; }
+.cal-drafts p { margin: 0 0 .6rem; font-size: .9rem; }
+.cal-drafts-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* ── The dialogs ─────────────────────────────────────────── */
+.cal-add-choices { display: flex; flex-direction: column; gap: .5rem; }
+.cal-add-choices .btn { display: flex; align-items: center; gap: .5rem; justify-content: flex-start; }
+.cal-form { display: flex; flex-direction: column; gap: .6rem; }
+.cal-form label { display: flex; flex-direction: column; gap: .2rem; font-size: .82rem; }
+.cal-form .cal-f-row { display: flex; gap: 1rem; }
+.cal-form .cal-f-radio { flex-direction: row; align-items: center; gap: .35rem; cursor: pointer; }
+.cal-form-note {
+  margin: 0; font-size: .78rem; color: var(--text-secondary);
+  background: var(--bg); border-radius: 6px; padding: .35rem .5rem;
+}
+.cal-form-err { margin: .5rem 0 0; color: var(--danger); font-size: .82rem; }
+.cal-form-modal { max-width: 26rem; width: 100%; }
+.cal-f-delete { align-self: flex-start; margin-top: .25rem; }
+.cal-icon { width: 13px; height: 13px; flex: 0 0 auto; }
+
+/* The planned-intensity card on the session detail page. */
+.std-load-card { margin-bottom: 1.5rem; }
+.std-load-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.std-load-row .reg-input { max-width: 14rem; }
+.std-load-static { font-weight: 600; }
+.std-load-au {
+  font-size: .85rem; color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.std-load-hint { margin: .5rem 0 0; font-size: .8rem; color: var(--text-secondary); }
+
+.md-oppkits-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.detail-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; margin-bottom: .75rem;
+}
+
+/* ── Narrow ──────────────────────────────────────────────────
+   Seven columns beside a 96px gutter stop being readable well before a
+   phone. The gutter goes above the days as a caption, and the strip
+   becomes one week per screen-width block: the month is still a stack of
+   weeks, just a taller one. */
+@media (max-width: 900px) {
+  /* `.dashboard-content` is down to `.75rem 1rem` by 600px, so the -1.25rem
+     pull above would overshoot the pane and clip — the same mistake that
+     removing `.dashboard-tight` was meant to end, one breakpoint down. */
+  .cal-bar, .cal-weeks { margin-left: 0; margin-right: 0; }
+  .cal-week { flex-direction: column; gap: 8px; }
+  .cal-gutter {
+    width: auto; flex-direction: row; align-items: baseline; gap: 8px;
+    padding-right: 0; padding-bottom: 8px;
+    border-right: 0; border-bottom: 1px solid var(--border);
+  }
+  .cal-au { margin-top: 0; margin-left: auto; }
+  .cal-days { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  /* Hover does not exist here, so the + would otherwise never appear and
+     an expanded-only row would never be reachable. */
+  .cal-add { opacity: 1; }
+}
+@media (max-width: 560px) {
+  .cal-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cal-bar { gap: 10px; padding: 12px 14px; }
+  .cal-legend-load { padding-left: 0; border-left: 0; }
+  .cal-month { min-width: 6.5rem; font-size: 1.1rem; }
+  .cal-weeks { padding: 8px 10px 14px; }
 }

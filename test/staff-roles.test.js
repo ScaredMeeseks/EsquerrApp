@@ -84,33 +84,58 @@ describe('staff sub-roles', () => {
       });
     });
 
-    it('gives fitness the medical file and the match, and nothing else to edit', () => {
+    /* `matchday`, `staff-matchday` and `staff-training` were three pages
+       and are one now: `calendar`. That collapse NARROWED the fitness coach
+       — they read the fixture list at 'edit' before, and the merged page is
+       'view' throughout — which is the honest reading of "scheduling is not
+       their job" and is asserted rather than glossed over. */
+    it('gives fitness the medical file, and nothing on the calendar to edit', () => {
       const g = makeGate(staff('fitness'));
       assert.strictEqual(g.staffAccess('medical'), 'edit');
       assert.strictEqual(g.staffAccess('medical-detail'), 'edit');
-      assert.strictEqual(g.staffAccess('staff-matchday'), 'edit');
       assert.strictEqual(g.staffAccess('staff-notifications'), 'edit');
       assert.strictEqual(g.staffAccess('registrations'), 'view');
       assert.strictEqual(g.staffAccess('manage-roster'), 'view');
-      assert.strictEqual(g.staffAccess('staff-training'), 'view');
-      assert.strictEqual(g.staffAccess('matchday'), 'view');
+      assert.strictEqual(g.staffAccess('calendar'), 'view');
+      assert.strictEqual(g.staffAccess('staff-training-detail'), 'view');
       assert.strictEqual(g.staffAccess('convocatoria'), 'hidden');
       assert.strictEqual(g.staffAccess('tactics'), 'hidden');
       assert.strictEqual(g.staffAccess('training-new'), 'hidden');
     });
 
-    it('gives delegate the calendar and the match, and hides the medical file', () => {
+    it('gives delegate the calendar, and hides the medical file', () => {
       const g = makeGate(staff('delegate'));
-      assert.strictEqual(g.staffAccess('matchday'), 'edit');
-      assert.strictEqual(g.staffAccess('staff-matchday'), 'edit');
+      // Running the calendar is most of this role.
+      assert.strictEqual(g.staffAccess('calendar'), 'edit');
       assert.strictEqual(g.staffAccess('convocatoria'), 'view');
       assert.strictEqual(g.staffAccess('registrations'), 'view');
       assert.strictEqual(g.staffAccess('manage-roster'), 'view');
-      assert.strictEqual(g.staffAccess('staff-training'), 'view');
+      assert.strictEqual(g.staffAccess('staff-training-detail'), 'view');
+      /* Still hidden, and it is what stops a delegate creating sessions:
+         canAddTraining() gates the greyed placeholders and the add menu on
+         this page, not on the calendar's own access. */
+      assert.strictEqual(g.staffAccess('training-new'), 'hidden');
       assert.strictEqual(g.staffAccess('medical'), 'hidden');
       assert.strictEqual(g.staffAccess('medical-detail'), 'hidden');
       assert.strictEqual(g.staffAccess('tactics'), 'hidden');
       assert.strictEqual(g.staffAccess('staff-notifications'), 'hidden');
+    });
+
+    it('a coach may create sessions; a delegate who runs the calendar may not', () => {
+      /* The two gates are deliberately different. `calendar: edit` lets the
+         delegate schedule fixtures and activities; creating a TRAINING is
+         still the coach's, and both routes to it — the placeholder and the
+         add menu — read canAddTraining(). Without the second gate the
+         placeholder would create a session whose detail page then refuses
+         to open. */
+      const coach = makeGate(staff('coach'));
+      assert.ok(coach.canEditPage('calendar') && coach.canViewPage('training-new'));
+      const del = makeGate(staff('delegate'));
+      assert.ok(del.canEditPage('calendar'));
+      assert.ok(!del.canViewPage('training-new'));
+      const fit = makeGate(staff('fitness'));
+      assert.ok(!fit.canEditPage('calendar'));
+      assert.ok(!fit.canViewPage('training-new'));
     });
 
     it('lets every sub-role see the home page and a player profile', () => {

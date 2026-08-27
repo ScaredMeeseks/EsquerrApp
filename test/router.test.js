@@ -119,8 +119,11 @@ describe('db.js router — writing', () => {
   });
 
   it('a re-render that changes nothing writes nothing', async () => {
-    // renderStaffTraining saves on every render and readTraining on every
-    // keystroke — without the per-document diff each becomes N writes.
+    /* The staff training list saved on every render, and readTraining on
+       every keystroke — without the per-document diff each became N
+       writes. That list is gone (the calendar replaced it), but the guard
+       is not about that page: any writer handing back an unchanged blob
+       must cost nothing, and there are more of them now, not fewer. */
     const {DB, store, localStorage} = bootstrap();
     seedTwoCategories(store);
     await DB.init(TEAM, ALL_CATS);

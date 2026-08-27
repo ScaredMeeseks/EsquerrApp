@@ -35,7 +35,7 @@ function grab(from, to) {
 const BLOCK = grab(
     '  /* ═══════════════════════════════════════════════════════════\n' +
     '     Who is refereeing, and what his record in THIS division is',
-    '  function renderMatchday()');
+    '  // #region Calendar');
 
 /* The match-detail card is a second block, further up the file — it renders
    the same figures plus his history with this club. */

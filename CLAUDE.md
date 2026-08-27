@@ -149,4 +149,19 @@ $txt = [System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8).TrimStart
 
 Verify with `git diff` afterwards: it should show only the lines you meant to change.
 
+## Never rewrite `js/app.js` through Python either
+
+Same rule, worse failure mode. A bulk `io.open(p,'w').write(...)` **truncated app.js to zero bytes**
+(2026-08-28): the write raised `UnicodeEncodeError: surrogates not allowed`, but `'w'` had already
+truncated the file, so the exception left nothing behind. `node --check` passes on an empty file,
+which is how it briefly looked fine.
+
+`app.js` carries emoji (🏠 ✈️ 🔺 …), so any read-modify-write through Python is one encoding surprise
+away from destroying it — and a `replace(old, new, 1)` across a 27k-line file is a coin flip about
+*which* occurrence it hits, which separately put a gate in the wrong function on the same day.
+
+**Use the editor for all content edits.** Python is fine for read-only inspection. If a bulk rewrite
+is genuinely unavoidable, write to a temp file and move it into place, so a failed write cannot
+destroy the original.
+
 **Session handoff**: when the user says the session is finished, update `HANDOFF.md` (rolling doc, overwritten each session — current state, session summary, pending items).

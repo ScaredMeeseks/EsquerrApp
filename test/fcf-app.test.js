@@ -53,7 +53,7 @@ function makeFcf(opts) {
   const region = grab(appSrc, '  // #region FCF League Standings',
       '  function renderPlayerHome()', 'js/app.js');
   const inputFn = grab(appSrc, '  function opponentInputHtml(',
-      '  function matchdayRowHtml(', 'js/app.js');
+      '  function renderConvocatoria()', 'js/app.js');
 
   const factory = new Function(
       'localStorage', '_clubConfig', 'getCurrentCategory', 'CATEGORY_LABELS',
@@ -228,11 +228,17 @@ describe('our own club, in capitals like every rival', () => {
 
      A source-level test, like the ones in kits.test.js and cat-badge.test.js,
      because the rule being protected is about WHICH MECHANISM is used, and
-     that is visible in the source and nowhere else. */
+     that is visible in the source and nowhere else.
+
+     The subject moved from the Calendari table's buildSavedRow to
+     matchLabel() when the calendar replaced the table. matchLabel is the
+     better home and the reason is worth keeping: it is the only helper that
+     prints BOTH names, and the calendar's own cards print only the rival's,
+     so there is nothing on them to mark. */
   const saved = (() => {
-    const i = appSrc.indexOf('    function buildSavedRow(m) {');
-    assert.notStrictEqual(i, -1, 'buildSavedRow moved');
-    return appSrc.slice(i, appSrc.indexOf('\n    }', i));
+    const i = appSrc.indexOf('  function matchLabel(m) {');
+    assert.notStrictEqual(i, -1, 'matchLabel moved');
+    return appSrc.slice(i, appSrc.indexOf('\n  }', i));
   })();
   /* Comments stripped, because the rule is about what the CODE does and the
      comment beside it names the very thing it must not call. Testing the
