@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 196** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 199** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2239** — `cd test && npm run test:unit` (~2 s) |
+| Unit tests | **2253** — `cd test && npm run test:unit` (~2 s) |
 | Rules tests | 164 — needs the emulator |
 | Functions tests | 71 — emulator |
 
@@ -21,12 +21,12 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 
 `firestore.rules` and `storage.rules` were **not touched** this session — no rules deploy needed.
 
-**Deployed.** `main` is at the v196 commit and Pages serves it; verified by fetching the live
+**Deployed.** `main` is at the v199 commit and Pages serves it; verified by fetching the live
 `sw.js` and `js/app.js` rather than trusting the push output.
 
 ---
 
-## This session: v187 → v196. The staff training detail, twice.
+## This session: v187 → v199. The staff training detail, twice — then three permission bugs.
 
 A session plan and material calculator were built (v187), then Claude Design redesigned the whole
 screen and it was rebuilt to that handoff (v188), then eight rounds of driving it.
@@ -119,44 +119,53 @@ every round; it is the only thing that has caught these.
 
 ## NEXT SESSION
 
-Nothing is half-finished. v196 is deployed and the owner is happy with the training detail.
+Nothing is half-finished. v199 is deployed.
 
-### The owner's next item — player routing, and their home page
+### The owner's next item — the tactical boards' animation playback
 
-**Players cannot reach a training properly.** From the Calendar and from the player Home, the route
-into `training-detail` is wrong. And the player home page shows trainings but **not other
-activities** — a team meal or a gym block is a `fa_training` row with `kind:'activity'`
-(`isActivity()` in utils.js), it rides the same blob and has the same call-ups and availability, so
-it should appear there too.
+**⚠ Parking lot item 16, and the owner called it important.** A board with more than one frame
+renders a `▶` and is supposed to tween between them; it does not play properly. **Nothing has been
+diagnosed** — the pointers are in item 16, and the first job is to reproduce it in a browser and
+write down which of four different bugs it is: does it not start, start and stop, play once, or
+drift. No test covers playback and none can from the unit suite; it is timers plus DOM.
 
-Where to start:
+### Three permission bugs closed this session, and they rhymed
 
-- `renderPage()` dispatches on `currentPage`; the split is at the calendar click handler, which
-  chooses `staff-training-detail` when `canEditPage('calendar')` and `training-detail` otherwise.
-  Check both entry points set `detailTrainingId` before navigating — it is module state, and a page
-  that navigates without setting it renders the previous session.
-- `renderTrainingDetail()` is the player-facing page. It was deliberately left untouched through the
-  whole v187–v196 rebuild, so it is still the pre-redesign layout.
-- The player home is `renderPlayerHome` / `renderWeekActivities`. Anything that aggregates LOAD must
-  keep using `trainingOnly()` — activities ride the same blob and a team dinner in the acute:chronic
-  ratio tells a coach his squad is overloaded because they ate.
+v197, v198 and v199 were the same mistake three times: **a permission or a field standing in for a
+question it does not answer.**
+
+- `canEditPage('calendar')` chose which training PAGE to open. A player has no sub-role, so
+  `staffAccess` falls through to `'edit'` — so players were routed to the staff page and bounced
+  home by the `STAFF_PAGES` guard. A fitness coach, with `calendar:'view'`, got the player page.
+- The same call chose the calendar's training LIST, so a physio fell into the player path — which
+  returns only what the viewer is personally called to — and saw no trainings at all. The fixtures
+  showed only because that filter narrows on `session.category`/`team`, both empty for staff.
+- `t.focus || 'Entrenament'` labelled the player's week list, and an activity has `title`, not
+  `focus` — so every activity rendered as the word "Entrenament" under a training badge.
+
+`isStaffViewer(session)` and `trainingDetailPageFor(session)` are the honest predicates now.
+**Worth grepping `canEditPage(` and `.focus ||` for more of the same** — there is no reason to think
+these were the last two.
 
 ### Known rough edges, none blocking
 
-- **No jsdom coverage of anything that measures.** The calendar's strip heights and the read-only
-  board's scaling both only run in a browser. `material.test.js` executes the renderers over stubs,
-  which catches a mistyped identifier but not a layout mistake.
+- **No jsdom coverage of anything that measures or animates.** The calendar's strip heights, the
+  read-only board's scaling and the board playback all only run in a browser. The render suites
+  execute the string builders over stubs, which catches a mistyped identifier and nothing about
+  layout or timing.
+- **A test harness can bake in the bug it exists to catch.** `calendar-render.test.js` stubbed
+  `canEditPage: () => canEdit`, and stubbing `isStaffViewer` the same way would have hidden v198
+  completely. It uses the real rule.
 - **`fa_matchday` is write-retired but not removed.** Its shard route, `SYNCED_KEYS` and
   `SEASON_KEYS` entries all stay; dropping a synced key is a separate, riskier change.
-- **Dead CSS from the redesign.** `.matchday-table`, `.std-donut*`, `.tg-config*` and friends have
-  no markup left (verified: 0 hits across `js/` and `index.html`), but `.tg-btn` **is** still used by
-  the injury severity picker and the `.std-donut` animation rule is shared with `.assistance-circle`.
-  Prune it in its own pass with the page in front of you, not by grep.
+- **Dead CSS from the redesign.** `.matchday-table`, `.std-donut*`, `.tg-config*` have no markup
+  left, but `.tg-btn` **is** still used by the injury severity picker and the `.std-donut` animation
+  rule is shared with `.assistance-circle`. Prune it in its own pass, not by grep.
 - **The tree is committed CRLF.** `.gitattributes` says `eol=lf` but everything predates it. A
-  `git add --renormalize .` is the fix and deserves its own quiet commit — doing it inside a feature
-  commit turns a 5k-line diff into a 45k-line one.
+  `git add --renormalize .` is the fix and deserves its own quiet commit.
 - The 2D board's own header was deferred by the owner and never revisited.
 - The APK has no 3D at all, by design.
+
 ---
 
 ## Deployment
@@ -344,49 +353,76 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additi
 
 Not ordered by priority except the first, which is next. Sizes are a first read, not estimates.
 
-**15. Player routing, and activities on the player home.** *(NEXT — see the top of this file.)*
+**15. Player routing, and activities on the player home.** ✅ **Done — v197/v198/v199.** Routing
+    fixed (`trainingDetailPageFor`), a view-only staff member sees the schedule again
+    (`isStaffViewer`), and activities now show on the player home under their own name and badge with
+    their availability buttons intact. All three were the same class of mistake: a permission or a
+    field standing in for a question it does not answer. **Worth grepping `canEditPage(` and
+    `.focus ||` for more of the same.**
+
+**16. ⚠ IMPORTANT — the tactical boards' animation playback is broken.** *(owner, 2026-08-28)*
+    A board with more than one frame renders a `▶` and is supposed to tween between them; it does
+    not play properly. Nothing about it has been diagnosed yet, so treat the pointers below as where
+    to look, not as the cause:
+
+    - `bindRoBoardAnimations()` (js/app.js ~8631) binds every `.tb-ro-play` in the DOCUMENT, and the
+      panels that re-render themselves call it again afterwards. There is a `btn._roBound` guard for
+      exactly that, and a comment recording the last time a double listener made one click start and
+      immediately stop the animation — a flash that reverts, with no error. **Check that guard still
+      holds now that `stdRefreshPlan()` is a third caller** (v188 added it).
+    - The frames travel in a `data-frames` attribute on the field (~8535), JSON with quotes escaped.
+      `renderReadOnlyBoard` emits frame 0 when `frames.length > 1`.
+    - The tween is `BS.tweenFrame` (js/board-state.js) over four tracks only — `positions`,
+      `oppPositions`, `balls`, `cones`. Everything else comes from the target frame by design.
+    - `_roPlaying` is a flag hung on the field ELEMENT (~8659), so anything that replaces that
+      element mid-play leaves the old flag with it and the button out of step.
+    - There is a stale-closure note at ~7230 about the frames array that names this same button.
+
+    No test covers playback, and it cannot be seen in the unit suite: it is timers plus DOM. Reproduce
+    it in the browser first and write down what "broken" is — does it not start, start and stop,
+    play once, or drift — because those are four different bugs.
 
 **Match and squad**
 
-16. **Past line-ups should show the substitutions.** Today the line-up and bench are the starting
+17. **Past line-ups should show the substitutions.** Today the line-up and bench are the starting
     state; the events already hold the subs (`fa_match_events`), so this is a read, not new data.
-17. **Coaches and fitness grade a player's training or match.** New per-player, per-session record —
+18. **Coaches and fitness grade a player's training or match.** New per-player, per-session record —
     the `trainingAvail`/`rpe` subcollections are the shape to copy, not a blob.
-18. **Coaches and fitness enter weight and height.** Fields on the user profile; note that
+19. **Coaches and fitness enter weight and height.** Fields on the user profile; note that
     `roles`/`category` are server-owned and clients cannot write them, so check what a coach may
     write to another player's doc before designing the form.
-19. **Fitness performance tests** — Squat Jump (both and single-leg), CMJ, Abalakov, Drop Jump.
+20. **Fitness performance tests** — Squat Jump (both and single-leg), CMJ, Abalakov, Drop Jump.
     A test has a date, a value and a unit; keep it one record per test so a new test is data, not a
     schema change.
-20. **Players vote for the MVP.** Only the called-up squad, never for themselves, and the vote is
+21. **Players vote for the MVP.** Only the called-up squad, never for themselves, and the vote is
     final once cast. ⚠ The "cannot change it" part has to be enforced in `firestore.rules`, not in
     the UI — a client-side lock on a client-written document is decoration.
-21. **RPE hidden from players.** It is a coach's planning number; check every render path, not just
+22. **RPE hidden from players.** It is a coach's planning number; check every render path, not just
     the obvious one.
 
 **Communication**
 
-22. **Simple messaging to players**, able to carry links and tactical boards. Push already exists
+23. **Simple messaging to players**, able to carry links and tactical boards. Push already exists
     (`onPushQueueCreate`, `teams/{id}/pushQueue`) — the hard part is the thread model, not delivery.
-23. **Discipline code with fines and tracking.** Money in the app; decide early whether it records
+24. **Discipline code with fines and tracking.** Money in the app; decide early whether it records
     or settles, because they are different products.
-24. **Carpooling for away games.** Offers, seats, who has a place.
+25. **Carpooling for away games.** Offers, seats, who has a place.
 
 **Opponents and the federation**
 
-25. **Opponent's last five matches.** The FCF payload already carries last-5 form for every team in
+26. **Opponent's last five matches.** The FCF payload already carries last-5 form for every team in
     the same response the standings come from — see the note in utils.js.
-26. **Search the FCF by player name.**
+27. **Search the FCF by player name.**
 
 **Tactical board**
 
-27. **The 9.15 m corner arc**, drawn outside the pitch. `BG.MARKS` is where the regulation
+28. **The 9.15 m corner arc**, drawn outside the pitch. `BG.MARKS` is where the regulation
     distances live; `board-markings-render.test.js` pins the rest.
-28. **Advertising boards around the pitch.**
+29. **Advertising boards around the pitch.**
 
 **Data**
 
-29. **Wire the Xweather free API.** The strip is already reading `tr.weather`
+30. **Wire the Xweather free API.** The strip is already reading `tr.weather`
     (`{cond, windMs, tempC}`) and rendering placeholders — this is the write side only. Wind stays
     in **m/s** and is banded at render time; the band is a presentation choice, the number is the
     fact.
