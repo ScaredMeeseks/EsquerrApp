@@ -7589,3 +7589,33 @@ unchanged), but once one is scheduled the squad, the staff call, the plan and th
 work. `staff-roles.test.js` updated with the reason, not just the value.
 
 Unit 2239 → **2246**. Version triple → v197.
+
+### 2026-08-28 — A physio saw no trainings at all (v198)
+
+Same mistake as v197, one page over. `calContext()` chose its training list on
+`canEditPage('calendar')`:
+
+```js
+const sessions = (canEdit ? all.filter(…) : playerTrainings(session, all))
+```
+
+A fitness coach has `calendar: 'view'`, so `canEdit` is false and she fell into the **player** path —
+which returns only the sessions the viewer is personally *called to*. Staff are called to none, so
+the calendar came up with **every training missing** and the load gutter reading "sense dades".
+
+The fixtures showed, which is what made it look like a sync problem rather than a filter: the match
+filter narrows on `session.category` and `session.team`, and **both are empty strings for staff**, so
+every fixture happened to fall through. Two filters, one of them accidentally permissive, and the
+difference between them is the whole reason the bug was hard to see.
+
+`isStaffViewer(session)` is the honest predicate — *are you staff* — and now gates both lists.
+`canEdit` stays exactly where it belongs, on the add button, the placeholders and the fixture
+dialog. Being read-only means you read.
+
+⚠ **The test harness had the same conflation baked in.** `calendar-render.test.js` stubbed
+`canEditPage: () => canEdit` and would have stubbed `isStaffViewer` the same way; it is the real
+predicate now, or the stub would have hidden exactly the bug it exists to catch. Three tests: a
+view-only staff member sees the club's sessions, sees a squad she is not in, and still gets no
+controls.
+
+Unit 2246 → **2249**. Version triple → v198.

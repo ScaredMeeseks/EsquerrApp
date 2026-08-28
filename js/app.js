@@ -1741,7 +1741,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 197;
+  const APP_VERSION = 198;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4890,9 +4890,29 @@
    * the page's own `ro` flag handles that.
    */
   function trainingDetailPageFor(session) {
-    const roles = (session && session.roles) || [];
-    return (roles.indexOf('staff') !== -1 && canViewPage('staff-training-detail'))
+    return (isStaffViewer(session) && canViewPage('staff-training-detail'))
       ? 'staff-training-detail' : 'training-detail';
+  }
+
+  /**
+   * Does this session read the club's schedule, or only their own?
+   *
+   * `canEditPage(...)` was standing in for this in several places and is not
+   * the same question. A fitness coach may VIEW the calendar and edit
+   * nothing on it — asking whether they may edit answered "no" and dropped
+   * them into the player path, which shows only the sessions the viewer is
+   * personally called to. A physio is called to none, so the calendar came
+   * up with every training missing and the load gutter reading "sense dades",
+   * while the fixtures showed — because the fixture filter narrows on
+   * `session.category`/`session.team`, both empty for staff, so it happened
+   * to let everything through.
+   *
+   * Being staff is the right question, and the sub-role table then decides
+   * what may be CHANGED.
+   */
+  function isStaffViewer(session) {
+    const roles = (session && session.roles) || [];
+    return roles.indexOf('staff') !== -1;
   }
 
   /* The staff-home shortcut attributes, or nothing when this sub-role may not
@@ -21074,7 +21094,8 @@
     /* A player sees what he is called to and nothing else — the same rule
        the training list used, and the one that makes a guest see the
        session he was borrowed for. */
-    const sessions = (canEdit ? all.filter(function (s) {
+    const staffView = isStaffViewer(session);
+    const sessions = (staffView ? all.filter(function (s) {
       return !curCat || !s.category || s.category === curCat;
     }) : playerTrainings(session, all))
       .filter(function (s) { return calInFilter(s.teams); });
@@ -21089,7 +21110,11 @@
       if (!calInFilter(m.team ? [m.team] : [])) return false;
       /* A player is in ONE squad. Category alone leaves amateur-B reading
          amateur-A's fixture list, which the old Jornada page did. */
-      if (!canEdit && session) {
+      /* Staff read the whole category; a PLAYER is in one squad, and
+         category alone leaves amateur-B reading amateur-A's fixtures, which
+         the old Jornada page did. Gated on being staff rather than on
+         editing — a fitness coach reads the calendar and writes nothing. */
+      if (!staffView && session) {
         if (session.category && m.category && m.category !== session.category) return false;
         if (session.team && m.team && m.team !== session.team) return false;
       }

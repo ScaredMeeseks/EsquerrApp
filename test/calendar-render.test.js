@@ -87,6 +87,11 @@ function make(o) {
     sanitize,
     CATEGORY_LABELS: U.CATEGORY_LABELS,
     canEditPage: () => canEdit,
+    /* The REAL predicate, not `() => canEdit`. The two were conflated in the
+       app until v198 and a stub that repeated the mistake would have hidden
+       it: a fitness coach who may view but not edit still reads the whole
+       club's schedule. */
+    isStaffViewer: (s) => ((s && s.roles) || []).indexOf('staff') !== -1,
     canAddTraining: () => o.role !== 'player' && o.role !== 'fitness' && o.role !== 'delegate',
     getCurrentCategory: () => o.category || '',
     getVisibleCategories: () => ['amateur'],
@@ -816,6 +821,36 @@ describe('the calendar and who is looking at it', () => {
   it('a player is not shown another squad\'s fixture', () => {
     assert.ok(!make({role: 'player', matches: [M({team: 'B'})]})(player, '2026-03')
         .includes('data-cal-match'));
+  });
+
+  /* A physio is staff, is called to no session, and may edit nothing. The
+     calendar used to pick its training list on canEditPage('calendar'), so
+     she fell into the PLAYER path — which shows only what the viewer is
+     personally called to — and the whole month came up with no trainings at
+     all while the fixtures showed, because the fixture filter narrows on
+     session.category/team and both are empty for staff. */
+  const physio = {id: 'nuria', roles: ['staff'], staffRole: 'fitness',
+    category: '', team: ''};
+
+  it('a VIEW-ONLY staff member still sees the club\'s sessions', () => {
+    const html = make({role: 'fitness', trainings: [T()], matches: [M()]})(
+        physio, '2026-03');
+    assert.ok(html.includes('data-cal-session="tr_1"'),
+        'she reads the schedule even though she writes nothing on it');
+    assert.ok(html.includes('data-cal-match="4119501"'));
+  });
+
+  it('and sees a session for a squad she is not in', () => {
+    // Staff are in no squad at all; narrowing by hers would show nothing.
+    const html = make({role: 'fitness', trainings: [T({teams: ['B']})]})(
+        physio, '2026-03');
+    assert.ok(html.includes('data-cal-session="tr_1"'));
+  });
+
+  it('but still gets no controls', () => {
+    const html = make({role: 'fitness', trainings: [T()]})(physio, '2026-03');
+    assert.ok(!html.includes('data-cal-add'));
+    assert.ok(!html.includes('data-cal-ghost'));
   });
 
   it('a read-only staff member gets the banner and no controls', () => {
