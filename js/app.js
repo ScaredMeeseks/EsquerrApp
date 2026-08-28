@@ -1741,7 +1741,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 198;
+  const APP_VERSION = 199;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24095,6 +24095,9 @@
     });
     const todayStr = localDateStr(now);
     const nowMins = now.getHours() * 60 + now.getMinutes();
+    // Resolved here because `t` is shadowed by the row inside the loops below.
+    const _wkTrainingWord = t('activity.badge_training');
+    const _wkActivityWord = t('cal.activity');
     training.filter(t => t.date >= start && t.date <= end).filter(t => {
       if (!t.date) return true;
       /* A session on a PAST DATE is over, whatever its time says. This used
@@ -24112,8 +24115,21 @@
       return nowMins < w.end;
     }).forEach(t => {
       const dayName = t.date ? tDay(new Date(t.date + 'T12:00:00').getDay()) : '';
+      /* An ACTIVITY — a team meal, a gym block, a club event — rides the
+         same fa_training blob and was already reaching this list. It just
+         had no way to say so: the label read `t.focus`, which an activity
+         does not have, so every one of them rendered as the hardcoded word
+         "Entrenament" under a training badge. Indistinguishable from a
+         session, which is the same as not being there. */
+      const act = isActivity(t);
+      /* `t` is the ROW inside this callback, not the translator — calling
+         t('…') here would call the session object. The fallback label is
+         resolved above the loop for exactly that reason. */
       // tId addresses the session; tDate is only the label's date.
-      activities.push({ type: 'training', tId: t.id, tDate: t.date, date: t.date, time: t.time, label: sanitize(t.focus || 'Entrenament'), detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
+      activities.push({ type: act ? 'activity' : 'training', tId: t.id, tDate: t.date,
+        date: t.date, time: t.time,
+        label: sanitize(activityTitleOf(t, _wkTrainingWord)),
+        detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
     });
     // Birthdays this week (skip self)
     const users = getUsers();
@@ -24137,7 +24153,9 @@
     return activities.map(a => {
       const badge = a.type === 'match'
         ? '<span class="badge badge-yellow">' + t('activity.badge_match') + '</span>'
-        : '<span class="badge badge-green">' + t('activity.badge_training') + '</span>';
+        : a.type === 'activity'
+          ? '<span class="badge badge-grey">' + _wkActivityWord + '</span>'
+          : '<span class="badge badge-green">' + t('activity.badge_training') + '</span>';
       let convTag = '';
       let uniformIcons = '';
       if (a.convSent) {
@@ -24166,9 +24184,12 @@
           </div>`;
         }
       }
-      // Training availability buttons
+      /* Availability, for sessions AND activities. An activity rides the
+         same fa_training blob precisely so it inherits the call-ups, the
+         availability records and the T-4h reminder — a club dinner nobody
+         can answer for is the one thing it must not become. */
       let availHtml = '';
-      if (a.type === 'training') {
+      if (a.type === 'training' || a.type === 'activity') {
         const tObj = training.find(tr => String(tr.id) === String(a.tId));
         const tLocked = tObj ? isTrainingLocked(tObj) : false;
         const stored = readRecord(availData, session.id, tObj, 'avail');

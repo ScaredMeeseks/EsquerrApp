@@ -7619,3 +7619,35 @@ view-only staff member sees the club's sessions, sees a squad she is not in, and
 controls.
 
 Unit 2246 → **2249**. Version triple → v198.
+
+### 2026-08-28 — Activities were on the player's home page all along, disguised (v199)
+
+`playerTrainings` does not care what kind a row is, so activities were reaching the week list from
+the day they existed. They were still invisible, and the reason is worth writing down: the label
+read
+
+```js
+label: sanitize(t.focus || 'Entrenament')
+```
+
+An activity has **`title`, not `focus`** — so every club dinner, gym block and team event rendered as
+the hardcoded word *"Entrenament"* under a green training badge. Indistinguishable from a session is
+the same as not being there, which is why this read as "activities aren't appearing".
+
+Three fixes, one shape: **decide by kind, not by a field only one kind has.**
+`activityTitleOf(t, …)` for the label, `isActivity(t)` for the type, and a grey `Activitat` badge.
+
+⚠ Availability now covers `'activity'` as well as `'training'`. It was gated on the type string, so
+the moment activities got their own type they would have lost their answer buttons — and an activity
+rides `fa_training` **precisely** to inherit the call-ups, the availability records and the T-4h
+reminder. A club dinner nobody can answer for is the one thing it must not become.
+
+⚠ `t` is shadowed by the row inside those callbacks — `t('…')` there calls the session object, not
+the translator. Both words are resolved above the loops, and a test pins that ordering, because the
+failure is a TypeError at render time: a blank home page.
+
+Four source-level tests in `training.test.js`. `renderWeekActivities` has no harness and building one
+for three rules would cost more than the rules are worth; what is pinned is the shape of the
+decision.
+
+Unit 2249 → **2253**. Version triple → v199.

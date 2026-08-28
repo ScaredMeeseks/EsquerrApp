@@ -1137,3 +1137,50 @@ describe('training — the RPE form defaults', () => {
     assert.ok(!body.includes('> 300'), 'the flat 300 was the bug');
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Activities on the PLAYER's week list.
+ *
+ * They were reaching the list all along — `playerTrainings` does not care
+ * what kind a row is — and were still invisible, which is the interesting
+ * part: the label read `t.focus`, which an activity does not have, so every
+ * one of them rendered as the hardcoded word "Entrenament" under a training
+ * badge. Indistinguishable from a session is the same as not being there.
+ *
+ * Source-level, like the sub-role and layout suites: renderWeekActivities
+ * has no harness, and building one for three rules would cost more than the
+ * rules are worth. What is pinned is the shape of the decision.
+ * ------------------------------------------------------------------ */
+describe('the player week list and activities', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const i = src.indexOf('  function renderWeekActivities(weekOffset) {');
+  const j = src.indexOf('\n  function ', i + 10);
+  assert.ok(i !== -1 && j !== -1, 'renderWeekActivities not found');
+  const fn = src.slice(i, j);
+
+  it('titles a row by its KIND, not by a field only one kind has', () => {
+    assert.ok(fn.includes('activityTitleOf(t,'),
+        "`t.focus || 'Entrenament'` names every activity 'Entrenament'");
+    assert.ok(!/label: sanitize\(t\.focus \|\| /.test(fn));
+  });
+
+  it('marks an activity as its own type', () => {
+    assert.ok(/isActivity\(t\)/.test(fn), 'the kind has to be read');
+    assert.ok(/type: act \? 'activity' : 'training'/.test(fn));
+  });
+
+  it('keeps availability on an activity', () => {
+    /* An activity rides fa_training precisely so it inherits the call-ups,
+       the availability records and the T-4h reminder. A club dinner nobody
+       can answer for is the one thing it must not become. */
+    assert.ok(/a\.type === 'training' \|\| a\.type === 'activity'/.test(fn));
+  });
+
+  it('resolves the translator OUTSIDE the loops that shadow it', () => {
+    // `t` is the row inside those callbacks; t('…') there calls the session.
+    const at = fn.indexOf('const _wkTrainingWord = t(');
+    const loop = fn.indexOf('training.filter(t =>');
+    assert.ok(at !== -1 && loop !== -1 && at < loop,
+        'resolved before `t` is shadowed, or it throws at render time');
+  });
+});
