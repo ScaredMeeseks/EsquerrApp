@@ -611,6 +611,42 @@
     'std.week_1':            { ca:'1 setmana', es:'1 semana', en:'1 week' },
     'std.weeks':             { ca:'setmanes', es:'semanas', en:'weeks' },
 
+    // ── Session plan (the exercise flow beside the attendance table) ──
+    'plan.title':        { ca:'Pla d\'entrenament', es:'Plan de entrenamiento', en:'Session Plan' },
+    'plan.empty':        { ca:'Encara no hi ha exercicis', es:'Aún no hay ejercicios', en:'No exercises yet' },
+    'plan.add':          { ca:'Afegir exercici', es:'Añadir ejercicio', en:'Add exercise' },
+    'plan.branch':       { ca:'Obrir en paral·lel', es:'Abrir en paralelo', en:'Split into parallel' },
+    'plan.lane':         { ca:'carril', es:'carril', en:'lane' },
+    'plan.parallel':     { ca:'En paral·lel', es:'En paralelo', en:'In parallel' },
+    'plan.from_board':   { ca:'Des d\'una pissarra', es:'Desde una pizarra', en:'From a board' },
+    'plan.no_boards':    { ca:'Cap pissarra vinculada a aquest entrenament', es:'Ninguna pizarra vinculada a este entrenamiento', en:'No boards linked to this training' },
+    'plan.free':         { ca:'Exercici lliure', es:'Ejercicio libre', en:'Free exercise' },
+    'plan.ex_title':     { ca:'Títol', es:'Título', en:'Title' },
+    'plan.ex_desc':      { ca:'Descripció', es:'Descripción', en:'Description' },
+    'plan.untitled':     { ca:'Sense títol', es:'Sin título', en:'Untitled' },
+    'plan.board_missing':{ ca:'Pissarra no disponible', es:'Pizarra no disponible', en:'Board unavailable' },
+    'plan.remove':       { ca:'Treure', es:'Quitar', en:'Remove' },
+
+    // ── Material ──
+    'mat.title':         { ca:'Material', es:'Material', en:'Equipment' },
+    'mat.cones':         { ca:'Cons', es:'Conos', en:'Cones' },
+    'mat.balls':         { ca:'Pilotes', es:'Balones', en:'Balls' },
+    'mat.petos':         { ca:'Petos (colors)', es:'Petos (colores)', en:'Bibs (colours)' },
+    'mat.petos_hint':    { ca:'Un equip sempre juga sense peto', es:'Un equipo siempre juega sin peto', en:'One team always plays without bibs' },
+    'mat.unknown':       { ca:'{n} exercici(s) sense pissarra — afegeix-ne el material a mà', es:'{n} ejercicio(s) sin pizarra — añade su material a mano', en:'{n} exercise(s) without a board — add their equipment by hand' },
+    'mat.nothing':       { ca:'Encara no hi ha res a calcular', es:'Aún no hay nada que calcular', en:'Nothing to calculate yet' },
+    'mat.extra':         { ca:'Altre material', es:'Otro material', en:'Other equipment' },
+    'mat.extra_label':   { ca:'Material', es:'Material', en:'Item' },
+    'mat.qty':           { ca:'Quantitat', es:'Cantidad', en:'Qty' },
+    'mat.extra_add':     { ca:'Afegir', es:'Añadir', en:'Add' },
+    'mat.duty':          { ca:'Encarregats de material', es:'Encargados de material', en:'Equipment duty' },
+    'mat.duty_n':        { ca:'Quants', es:'Cuántos', en:'How many' },
+    'mat.duty_pick':     { ca:'— Tria un jugador —', es:'— Elige un jugador —', en:'— Pick a player —' },
+    'mat.duty_random':   { ca:'🎲 Aleatori', es:'🎲 Aleatorio', en:'🎲 Random' },
+    'mat.duty_show_all': { ca:'Mostra tots', es:'Mostrar todos', en:'Show all' },
+    'mat.duty_hint':     { ca:'Només jugadors que assisteixen. Els qui ja n\'han fet més torns queden bloquejats fins que la resta els atrapi.', es:'Solo jugadores que asisten. Los que ya han hecho más turnos quedan bloqueados hasta que el resto les alcance.', en:'Attending players only. Those who have already done more turns are blocked until the rest catch up.' },
+    'mat.duty_none':     { ca:'Cap jugador disponible', es:'Ningún jugador disponible', en:'No players available' },
+
     // ── Staff Roster ──
     'roster.th_pos':    { ca:'Pos', es:'Pos', en:'Pos' },
     'roster.th_name':   { ca:'Nom', es:'Nombre', en:'Name' },
@@ -1655,7 +1691,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 186;
+  const APP_VERSION = 187;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -17028,6 +17064,897 @@
       }).join('') + '</div></div>';
   }
 
+  // #region Session plan
+  /* ── The session plan, and what it costs in equipment ────────────
+     A coach could already attach tactical boards to a training and see who
+     was coming. What was missing was the shape of the session itself — what
+     happens, in what order, and what runs alongside what — and the one
+     question a coach asks on the way out of the store: what do I take?
+
+     The plan is a SERIES-PARALLEL structure, not a free graph:
+
+         plan.blocks = [ { id, lanes: [ [ex, ex], [ex] ] }, … ]
+
+     One block follows another in time. A block with one lane is a plain
+     step; a block with several lanes is a group of exercises running side by
+     side, and it always rejoins at the bottom. That is deliberately less
+     than an arbitrary DAG: a coach cannot draw something unrunnable, and
+     — the reason it matters here — the equipment arithmetic below is exact
+     rather than a heuristic over an arbitrary graph.
+
+     It lives on the fa_training row itself. A plan is intrinsic to one
+     session, the key is already sharded by the row's own category and
+     already staff-write-only, and a new synced key would need a new route, a
+     new rule and new merge semantics to say the same thing. */
+
+  const STP_GK_FILL = '#f5c842';   // the gold every renderer paints a keeper
+
+  function _planId(prefix) {
+    return prefix + '_' + Date.now().toString(36) + '_' +
+      Math.random().toString(36).slice(2, 7);
+  }
+
+  /** Fisher–Yates on a COPY. The one in generateTrainingTeams is local to it. */
+  function _stpShuffle(arr) {
+    const a = (arr || []).slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  /**
+   * The plan of a session, normalised.
+   *
+   * Every read goes through here rather than touching `tr.plan` directly.
+   * The row is a blob written by whatever version of the app the coach was
+   * running, so a lane that is not an array, a block with no lanes left or a
+   * duty list holding a number are all things that reach this function, and
+   * none of them may reach the renderer.
+   */
+  function stdPlan(tr) {
+    const raw = (tr && tr.plan) || {};
+    const blocks = (Array.isArray(raw.blocks) ? raw.blocks : [])
+      .filter(b => b && Array.isArray(b.lanes))
+      .map(b => ({
+        id: b.id || _planId('blk'),
+        lanes: b.lanes.filter(Array.isArray)
+          .map(lane => lane.filter(e => e && typeof e === 'object').map(e => ({
+            id: e.id || _planId('ex'),
+            boardId: String(e.boardId || ''),
+            title: String(e.title || ''),
+            desc: String(e.desc || ''),
+            tag: String(e.tag || '')
+          })))
+      }))
+      .filter(b => b.lanes.length);
+    const extra = (Array.isArray(raw.extra) ? raw.extra : [])
+      .filter(x => x && String(x.label || '').trim())
+      .map(x => ({
+        id: x.id || _planId('mx'),
+        label: String(x.label).trim(),
+        qty: Math.max(1, parseInt(x.qty, 10) || 1)
+      }));
+    const rawDuty = raw.duty || {};
+    const ids = (Array.isArray(rawDuty.ids) ? rawDuty.ids : []).map(String);
+    const n = Math.max(0, Math.min(10, parseInt(rawDuty.n, 10) || ids.length || 0));
+    return { blocks: blocks, extra: extra, duty: { n: n, ids: ids.slice(0, n) } };
+  }
+
+  /**
+   * The boards linked to THIS session.
+   *
+   * The bucket is keyed by DATE, which two categories training the same
+   * evening share — the ref's own `category` stamp is the only thing that
+   * separates them. A ref written before that stamp existed carries none and
+   * belongs to whoever is looking, which is what it always meant.
+   */
+  function stdSessionBoards(tr) {
+    if (!tr || !tr.date) return [];
+    const all = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
+    const list = Array.isArray(all[tr.date]) ? all[tr.date] : [];
+    const cat = tr.category || '';
+    return list.filter(b => b && (!b.category || b.category === cat));
+  }
+
+  /**
+   * boardId → the drawing, or null.
+   *
+   * Through tbResolveRef rather than TB.peek alone: while TB_DUAL_WRITE
+   * holds, the session's own ref still carries a fat copy of the drawing,
+   * and that is the copy that resolves with no network at all. TB.peek is
+   * the fallback for a board linked from somewhere this session cannot see.
+   */
+  function stdBoardResolver(tr) {
+    const byId = {};
+    stdSessionBoards(tr).forEach(r => { if (r.boardId) byId[r.boardId] = r; });
+    return function (id) {
+      if (!id) return null;
+      const ref = byId[id];
+      if (ref) {
+        const b = tbResolveRef(ref);
+        if (b) return b;
+      }
+      return (typeof TB !== 'undefined' && TB.peek) ? (TB.peek(id) || null) : null;
+    };
+  }
+
+  function _stpCount(a) {
+    return Array.isArray(a) ? a.filter(Boolean).length : 0;
+  }
+
+  /**
+   * Every non-keeper shirt colour on one side of a board, into `out`.
+   *
+   * `positions` is the authority on who exists: its `null` entries are
+   * DELETED players, and the arrays are never compacted, so an index has to
+   * be skipped rather than read past. A keeper is shirt number '1' — the
+   * app's only keeper marker, and the same rule the editor, the read-only
+   * renderer and the 3D module each apply independently. Keepers are
+   * excluded because nobody hands a goalkeeper a bib.
+   *
+   * The colour is stored as a FILL, which may be an encoded stripe string
+   * (`s|v|4|#fff|#000`) rather than a hex, so it is compared as the stored
+   * string. Two boards agree on a colour only if they agree on the kit.
+   */
+  function _stpSideColors(positions, numbers, colors, base, out) {
+    if (!Array.isArray(positions)) return;
+    for (let i = 0; i < positions.length; i++) {
+      if (!positions[i]) continue;
+      if (String((numbers && numbers[i]) || '') === '1') continue;
+      const fill = String(((colors && colors[i]) || base) || '').trim().toLowerCase();
+      if (!fill || fill === STP_GK_FILL) continue;
+      out.add(fill);
+    }
+  }
+
+  /**
+   * What the session needs on the pitch, from the boards its exercises use.
+   *
+   * Countable objects — cones, balls — are REUSED by exercises that run one
+   * after another and NEEDED AT ONCE by exercises that run side by side, so
+   * the composition is a max down a series and a sum across parallel lanes:
+   *
+   *     need(lane)  = max over its exercises      // series → reuse
+   *     need(block) = sum over its lanes          // parallel → concurrent
+   *     need(plan)  = max over its blocks         // series → reuse
+   *
+   * Bibs do NOT follow that rule, deliberately. A bib colour is a SET taken
+   * out of the store, not an object placed on the grass: the same red bibs
+   * dress whichever group wears red, in whichever drill, whenever it runs.
+   * So the colours are unioned across the whole session and ONE is
+   * subtracted, because one team always plays peto-less.
+   *
+   * `resolve(boardId)` returns the payload or null. A free-text exercise and
+   * an unresolved board are both counted as `unknown` rather than as zero
+   * cones: "no cones" and "we don't know" are different answers, and only
+   * one of them should make a coach add something by hand.
+   */
+  function planMaterial(plan, resolve) {
+    const colors = new Set();
+    let cones = 0, balls = 0, unknown = 0, priced = 0;
+    ((plan && plan.blocks) || []).forEach(function (blk) {
+      let bCones = 0, bBalls = 0;
+      (blk.lanes || []).forEach(function (lane) {
+        let lCones = 0, lBalls = 0;
+        (lane || []).forEach(function (ex) {
+          const b = (ex && ex.boardId) ? resolve(ex.boardId) : null;
+          if (!b) { unknown++; return; }
+          priced++;
+          lCones = Math.max(lCones, _stpCount(b.cones));
+          lBalls = Math.max(lBalls, _stpCount(b.balls));
+          _stpSideColors(b.positions, b.numbers, b.colors, b.teamColor, colors);
+          // showOpp false means the coach hid the opposition; their kit is
+          // then not on the pitch and must not be in the bib count. An
+          // absent flag is a legacy board and is included, as it renders.
+          if (b.showOpp !== false) {
+            _stpSideColors(b.oppPositions, b.oppNumbers, b.oppColors, b.oppColor, colors);
+          }
+        });
+        bCones += lCones; bBalls += lBalls;
+      });
+      cones = Math.max(cones, bCones);
+      balls = Math.max(balls, bBalls);
+    });
+    const list = Array.from(colors);
+    return {
+      cones: cones, balls: balls, colors: list,
+      petos: Math.max(0, list.length - 1),
+      unknown: unknown, priced: priced
+    };
+  }
+
+  /**
+   * How many times each player has already been on equipment duty.
+   *
+   * Derived on every read, never stored — the same reason fa_player_stats
+   * was deleted: a counter written alongside the thing it counts is a
+   * counter that drifts from it. Scoped to one category, because a coach
+   * rotating his own squad does not care what the juvenils have been doing,
+   * and excluding the session being edited so re-picking the same player
+   * does not make him look overworked to his own dropdown.
+   */
+  function dutyCounts(trainings, category, excludeSessionId) {
+    const out = {};
+    (trainings || []).forEach(function (tr) {
+      if (!tr || isActivity(tr)) return;
+      if (excludeSessionId != null && String(tr.id) === String(excludeSessionId)) return;
+      if (category && String(tr.category || '') !== String(category)) return;
+      const ids = (tr.plan && tr.plan.duty && Array.isArray(tr.plan.duty.ids))
+        ? tr.plan.duty.ids : [];
+      ids.forEach(function (id) {
+        const k = String(id || '');
+        if (!k) return;
+        out[k] = (out[k] || 0) + 1;
+      });
+    });
+    return out;
+  }
+
+  /**
+   * The attending squad, each with their duty count, lowest first.
+   *
+   * `floor` is the lowest count among players NOT already picked, and it is
+   * what blocks a coach from handing the job to the same two every week: a
+   * player above the floor is greyed out, and the floor rises on its own
+   * once everyone at it has been used.
+   */
+  function dutyPool(tr, squad, locked) {
+    const ctx = availContext();
+    const counts = dutyCounts(trainingOnly(getTrainings()), tr.category || '', tr.id);
+    const plan = stdPlan(tr);
+    const chosen = new Set(plan.duty.ids);
+    const rows = (squad || []).filter(function (p) {
+      const eff = getEffectiveAnswer(p.id, tr, locked, ctx);
+      return eff === 'yes' || eff === 'late';
+    }).map(function (p) {
+      return { id: String(p.id), name: p.name || '', n: counts[String(p.id)] || 0 };
+    }).sort(function (a, b) {
+      return a.n - b.n || String(a.name).localeCompare(String(b.name));
+    });
+    let floor = 0;
+    const free = rows.filter(function (r) { return !chosen.has(r.id); });
+    if (free.length) floor = free[0].n;
+    else if (rows.length) floor = rows[rows.length - 1].n;
+    return { rows: rows, floor: floor, chosen: chosen };
+  }
+
+  // ── Rendering the flow ──
+
+  function _stpConnector(index, ro) {
+    if (ro) return '<div class="stp-link"></div>';
+    return '<div class="stp-link stp-link-live">' +
+      '<button class="stp-add" data-stp-add="' + index + '" title="' +
+        sanitize(t('plan.add')) + '">+</button>' +
+      '<button class="stp-branch" data-stp-branch="' + index + '" title="' +
+        sanitize(t('plan.branch')) + '">⑂</button>' +
+      '</div>';
+  }
+
+  function _stpExCard(ex, path, ro, resolve) {
+    let title = ex.title;
+    let tag = ex.tag;
+    if (ex.boardId) {
+      const b = resolve(ex.boardId);
+      if (b && b.name) title = b.name;
+      if (!title) title = t('plan.board_missing');
+    }
+    if (!title) title = t('plan.untitled');
+    const tagHtml = tag ? '<span class="stp-tag">' + sanitize(tag) + '</span>' : '';
+    const del = ro ? '' :
+      '<button class="stp-ex-del" data-stp-del="' + path + '" title="' +
+        sanitize(t('plan.remove')) + '">&times;</button>';
+    return '<div class="stp-ex' + (ex.boardId ? ' stp-ex-board' : '') +
+        '" data-stp-ex="' + path + '"' + (ro ? '' : ' draggable="true"') + '>' +
+      '<div class="stp-ex-head">' +
+        '<span class="stp-ex-title">' + sanitize(title) + '</span>' + tagHtml + del +
+      '</div>' +
+      (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
+      '</div>';
+  }
+
+  function _stpLane(lane, bi, li, ro, resolve, laneCount) {
+    const parts = [];
+    lane.forEach(function (ex, ei) {
+      parts.push(_stpExCard(ex, bi + '.' + li + '.' + ei, ro, resolve));
+      if (!ro) {
+        parts.push('<button class="stp-add stp-add-in" data-stp-in="' +
+          bi + '.' + li + '.' + (ei + 1) + '" title="' +
+          sanitize(t('plan.add')) + '">+</button>');
+      }
+    });
+    if (!lane.length && !ro) {
+      parts.push('<button class="stp-add stp-add-in" data-stp-in="' +
+        bi + '.' + li + '.0" title="' + sanitize(t('plan.add')) + '">+</button>');
+      // The empty lane a branch just created. Without this the only way out
+      // of a branch a coach changed his mind about is to empty the sibling.
+      if (laneCount > 1) {
+        parts.push('<button class="stp-lane-del" data-stp-lane-del="' +
+          bi + '.' + li + '" title="' + sanitize(t('plan.remove')) + '">&times;</button>');
+      }
+    }
+    return '<div class="stp-lane" data-stp-lane="' + bi + '.' + li + '">' +
+      parts.join('') + '</div>';
+  }
+
+  function _stpBlock(blk, bi, ro, resolve) {
+    const parallel = blk.lanes.length > 1;
+    const lanes = blk.lanes.map(function (lane, li) {
+      return _stpLane(lane, bi, li, ro, resolve, blk.lanes.length);
+    }).join('');
+    const addLane = (parallel && !ro)
+      ? '<button class="stp-lane-add" data-stp-lane-add="' + bi + '">+ ' +
+        sanitize(t('plan.lane')) + '</button>'
+      : '';
+    return '<div class="stp-block' + (parallel ? ' stp-parallel' : '') + '">' +
+      (parallel ? '<div class="stp-rail stp-rail-fork"></div>' : '') +
+      '<div class="stp-lanes">' + lanes + '</div>' +
+      (parallel ? '<div class="stp-rail stp-rail-merge"></div>' + addLane : '') +
+      '</div>';
+  }
+
+  function renderStdPlanPanel(tr, ro) {
+    const plan = stdPlan(tr);
+    const resolve = stdBoardResolver(tr);
+    const parts = [];
+    parts.push(_stpConnector(0, ro));
+    plan.blocks.forEach(function (blk, bi) {
+      parts.push(_stpBlock(blk, bi, ro, resolve));
+      parts.push(_stpConnector(bi + 1, ro));
+    });
+    const body = plan.blocks.length
+      ? '<div class="stp-flow">' + parts.join('') + '</div>'
+      : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>' +
+        '<div class="stp-flow">' + _stpConnector(0, ro) + '</div>';
+    return '<div class="card std-plan-panel" id="std-plan-panel">' +
+      '<div class="card-title">' + sanitize(t('plan.title')) + '</div>' +
+      body + '</div>';
+  }
+
+  // ── Rendering the material card ──
+
+  function _stpSwatch(fill) {
+    const css = fillCss(fill);
+    return '<span class="stm-swatch" style="background:' + sanitize(css.background) +
+      ';border-color:' + sanitize(css.borderColor) + '"></span>';
+  }
+
+  function _stmDutyHtml(tr, squad, locked, ro, showAll) {
+    const plan = stdPlan(tr);
+    const pool = dutyPool(tr, squad, locked);
+    if (ro) {
+      const names = plan.duty.ids.map(function (id) {
+        const row = pool.rows.find(function (r) { return r.id === String(id); });
+        return sanitize(row ? row.name : id);
+      });
+      return '<div class="stm-duty">' +
+        '<div class="stm-sub">' + sanitize(t('mat.duty')) + '</div>' +
+        (names.length ? '<div class="stm-duty-static">' + names.join(', ') + '</div>'
+                      : '<p class="stm-hint">' + sanitize(t('std.none')) + '</p>') +
+        '</div>';
+    }
+    const slots = [];
+    for (let i = 0; i < plan.duty.n; i++) {
+      const cur = String(plan.duty.ids[i] || '');
+      const opts = ['<option value="">' + sanitize(t('mat.duty_pick')) + '</option>'];
+      pool.rows.forEach(function (r) {
+        // Someone already holding another slot is not offered twice.
+        if (r.id !== cur && pool.chosen.has(r.id)) return;
+        const blocked = !showAll && r.n > pool.floor && r.id !== cur;
+        opts.push('<option value="' + sanitize(r.id) + '"' +
+          (r.id === cur ? ' selected' : '') + (blocked ? ' disabled' : '') + '>' +
+          sanitize(r.name) + ' (' + r.n + ')</option>');
+      });
+      slots.push('<select class="reg-input stm-duty-sel" data-slot="' + i + '">' +
+        opts.join('') + '</select>');
+    }
+    return '<div class="stm-duty">' +
+      '<div class="stm-sub">' + sanitize(t('mat.duty')) + '</div>' +
+      '<div class="stm-duty-row">' +
+        '<label class="stm-duty-n">' + sanitize(t('mat.duty_n')) +
+          ' <input type="number" id="stm-duty-n" min="0" max="10" value="' +
+          plan.duty.n + '"></label>' +
+        '<button class="btn btn-small btn-outline" id="stm-duty-random">' +
+          sanitize(t('mat.duty_random')) + '</button>' +
+        '<label class="stm-duty-all"><input type="checkbox" id="stm-duty-all"' +
+          (showAll ? ' checked' : '') + '> ' + sanitize(t('mat.duty_show_all')) +
+        '</label>' +
+      '</div>' +
+      (pool.rows.length
+        ? '<div class="stm-duty-slots">' + slots.join('') + '</div>'
+        : '<p class="stm-hint">' + sanitize(t('mat.duty_none')) + '</p>') +
+      '<p class="stm-hint">' + sanitize(t('mat.duty_hint')) + '</p>' +
+      '</div>';
+  }
+
+  /* The "mostra tots" override is a view preference, not session data: it
+     lets a coach hand the job to whoever he needs to for a reason the app
+     cannot know, without that choice outliving the afternoon. */
+  let _stmShowAll = false;
+
+  function renderStdMaterialCard(tr, squad, locked, ro) {
+    const plan = stdPlan(tr);
+    const mat = planMaterial(plan, stdBoardResolver(tr));
+    const rows = [];
+    if (mat.cones) {
+      rows.push('<div class="stm-row"><span class="stm-ico">🔺</span><span class="stm-lbl">' +
+        sanitize(t('mat.cones')) + '</span><span class="stm-qty">' + mat.cones + '</span></div>');
+    }
+    if (mat.balls) {
+      rows.push('<div class="stm-row"><span class="stm-ico">⚽</span><span class="stm-lbl">' +
+        sanitize(t('mat.balls')) + '</span><span class="stm-qty">' + mat.balls + '</span></div>');
+    }
+    if (mat.colors.length) {
+      rows.push('<div class="stm-row"><span class="stm-ico">🎽</span><span class="stm-lbl">' +
+        sanitize(t('mat.petos')) + ' <span class="stm-swatches">' +
+        mat.colors.map(_stpSwatch).join('') + '</span></span>' +
+        '<span class="stm-qty">' + mat.petos + '</span></div>' +
+        '<p class="stm-hint">' + sanitize(t('mat.petos_hint')) + '</p>');
+    }
+    plan.extra.forEach(function (x, i) {
+      rows.push('<div class="stm-row stm-row-extra"><span class="stm-ico">📦</span>' +
+        '<span class="stm-lbl">' + sanitize(x.label) + '</span>' +
+        '<span class="stm-qty">' + x.qty + '</span>' +
+        (ro ? '' : '<button class="stm-x" data-stm-del="' + i + '" title="' +
+          sanitize(t('plan.remove')) + '">&times;</button>') + '</div>');
+    });
+    const unknownHint = mat.unknown
+      ? '<p class="stm-hint stm-warn">' +
+        sanitize(t('mat.unknown').replace('{n}', mat.unknown)) + '</p>'
+      : '';
+    const addRow = ro ? '' :
+      '<div class="stm-add-row">' +
+        '<input class="reg-input" id="stm-extra-label" maxlength="40" placeholder="' +
+          sanitize(t('mat.extra_label')) + '">' +
+        '<input class="reg-input" id="stm-extra-qty" type="number" min="1" max="999" value="1" ' +
+          'title="' + sanitize(t('mat.qty')) + '">' +
+        '<button class="btn btn-small btn-outline" id="stm-extra-add">' +
+          sanitize(t('mat.extra_add')) + '</button>' +
+      '</div>';
+    return '<div class="card std-material-card" id="std-material-card">' +
+      '<div class="card-title">' + sanitize(t('mat.title')) + '</div>' +
+      (rows.length ? '<div class="stm-list">' + rows.join('') + '</div>'
+                   : '<p class="stm-hint">' + sanitize(t('mat.nothing')) + '</p>') +
+      unknownHint +
+      '<div class="stm-sub">' + sanitize(t('mat.extra')) + '</div>' + addRow +
+      _stmDutyHtml(tr, squad, locked, ro, _stmShowAll) +
+      '</div>';
+  }
+
+  // ── Mutating the plan ──
+
+  function _stpSession() {
+    return getTrainings().find(x => String(x.id) === String(detailTrainingId)) || null;
+  }
+
+  /**
+   * Read the plan, change it, write it back, re-render the two panels.
+   *
+   * Deliberately NOT renderPage: this page recomputes readiness for every
+   * player in the squad, and clicking "+" is not a reason to pay for that.
+   */
+  function _stpWrite(mutate, keepEmptyLanes) {
+    const tr = _stpSession();
+    if (!tr) return;
+    const plan = stdPlan(tr);
+    if (mutate(plan) === false) return;
+    // Branching deliberately creates an empty lane for the coach to fill —
+    // pruning it would undo the click that made it.
+    if (!keepEmptyLanes) _stpPrune(plan);
+    _ntPersistSession(tr.id, function (row) { row.plan = plan; });
+    stdRefreshPlan();
+  }
+
+  /** An empty lane that is not the only lane, and an empty block, both go. */
+  function _stpPrune(plan) {
+    plan.blocks.forEach(function (blk) {
+      if (blk.lanes.length > 1) {
+        blk.lanes = blk.lanes.filter(function (l) { return l.length; });
+      }
+    });
+    plan.blocks = plan.blocks.filter(function (blk) {
+      return blk.lanes.some(function (l) { return l.length; });
+    });
+  }
+
+  function _stpPath(s) {
+    const p = String(s || '').split('.').map(Number);
+    return (p.length === 3 && p.every(n => !isNaN(n))) ? p : null;
+  }
+
+  function _stpAt(plan, path) {
+    const blk = plan.blocks[path[0]];
+    if (!blk) return null;
+    const lane = blk.lanes[path[1]];
+    return lane || null;
+  }
+
+  // ── The exercise picker ──
+
+  /**
+   * Pick a board linked to this session, or write a free exercise.
+   *
+   * The board previews are the read-only renderer the rest of the app uses,
+   * scaled by scaleRoBoards() — the same three-line recipe as the superadmin
+   * board catalogue. They live here and not on the flow cards on purpose:
+   * the panel beside the attendance table is 320px wide, and a board drawn
+   * at that size tells a coach nothing he cannot read from the name.
+   */
+  function stdOpenExercisePicker(tr, onPick) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+
+    const boards = stdSessionBoards(tr);
+    const cards = boards.map(function (b, i) {
+      const tag = b.tag ? '<span class="stp-tag">' + sanitize(b.tag) + '</span>' : '';
+      return '<div class="stp-pick-card" data-stp-pick="' + i + '">' +
+        '<div class="stp-pick-name">' + sanitize(b.name || '') + tag + '</div>' +
+        '<div class="stp-pick-board">' + tbRoBoardHtml(b, 'stp-pick-') + '</div>' +
+        '</div>';
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-card stp-pick-modal">' +
+        '<div class="modal-title">' + sanitize(t('plan.add')) + '</div>' +
+        '<div class="stm-sub">' + sanitize(t('plan.from_board')) + '</div>' +
+        (cards ? '<div class="stp-pick-grid">' + cards + '</div>'
+               : '<p class="stm-hint">' + sanitize(t('plan.no_boards')) + '</p>') +
+        '<div class="stm-sub">' + sanitize(t('plan.free')) + '</div>' +
+        '<input class="reg-input" id="stp-free-title" maxlength="60" placeholder="' +
+          sanitize(t('plan.ex_title')) + '">' +
+        '<textarea class="reg-input stp-free-desc" id="stp-free-desc" maxlength="200" ' +
+          'rows="2" placeholder="' + sanitize(t('plan.ex_desc')) + '"></textarea>' +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-small btn-outline" id="stp-pick-cancel">' +
+            sanitize(t('common.cancel')) + '</button>' +
+          '<button class="btn btn-small btn-primary" id="stp-free-add" disabled>' +
+            sanitize(t('mat.extra_add')) + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    if (typeof scaleRoBoards === 'function') scaleRoBoards();
+    hydrateRoBoards();
+
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    overlay.querySelector('#stp-pick-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    overlay.querySelectorAll('[data-stp-pick]').forEach(function (card) {
+      card.addEventListener('click', function () {
+        const b = boards[Number(card.dataset.stpPick)];
+        if (!b) return;
+        close();
+        onPick({
+          id: _planId('ex'), boardId: String(b.boardId || ''),
+          title: String(b.name || ''), desc: '', tag: String(b.tag || '')
+        });
+      });
+    });
+
+    const titleEl = overlay.querySelector('#stp-free-title');
+    const descEl = overlay.querySelector('#stp-free-desc');
+    const addEl = overlay.querySelector('#stp-free-add');
+    const sync = () => { addEl.disabled = !titleEl.value.trim(); };
+    titleEl.addEventListener('input', sync);
+    addEl.addEventListener('click', function () {
+      const title = titleEl.value.trim();
+      if (!title) return;
+      close();
+      onPick({
+        id: _planId('ex'), boardId: '',
+        title: title, desc: descEl.value.trim(), tag: ''
+      });
+    });
+    titleEl.focus();
+  }
+
+  // ── Targeted re-render + bindings ──
+
+  /* Board ids already sent to TB.warm. Without this the "still missing after
+     a warm" path re-renders, finds it still missing and warms again. */
+  const _stpWarmed = new Set();
+
+  /* The exercise being dragged, as its `bi.li.ei` path. */
+  let _stpDrag = null;
+
+  function stdRefreshPlan() {
+    const tr = _stpSession();
+    if (!tr) return;
+    const ro = !canEditPage('staff-training-detail');
+    const panel = document.getElementById('std-plan-panel');
+    if (panel) panel.outerHTML = renderStdPlanPanel(tr, ro);
+    const card = document.getElementById('std-material-card');
+    if (card) {
+      card.outerHTML = renderStdMaterialCard(
+        tr, calledPlayers(tr, getUsers()), isTrainingLocked(tr), ro);
+    }
+    bindStdPlan();
+  }
+
+  function bindStdPlan() {
+    /* bindStaffTrainingDetail runs on EVERY render, on every page — so the
+       cheapest possible answer to "is the plan even on screen" comes first.
+       detailTrainingId outlives the page it was set on. */
+    if (!document.getElementById('std-plan-panel')) return;
+    const tr = _stpSession();
+    if (!tr) return;
+    const plan = stdPlan(tr);
+
+    /* A board that is linked but not in the cache prices as "unknown". Warm
+       it once and re-render, rather than telling a coach he has no cones.
+       Above the edit guard on purpose: a fitness coach reads this page too,
+       and an unresolved board reads as a broken plan to him as much as to
+       the head coach. */
+    const resolve = stdBoardResolver(tr);
+    const missing = [];
+    plan.blocks.forEach(b => b.lanes.forEach(l => l.forEach(function (ex) {
+      if (ex.boardId && !resolve(ex.boardId) && !_stpWarmed.has(ex.boardId)) {
+        _stpWarmed.add(ex.boardId);
+        missing.push(ex.boardId);
+      }
+    })));
+    if (missing.length && typeof TB !== 'undefined' && TB.warm) {
+      // Promise.resolve, not .then directly: a TB.warm that returns nothing
+      // would otherwise throw inside a binding pass and take the rest of the
+      // page's listeners down with it.
+      Promise.resolve(TB.warm(missing))
+        .then(function () { stdRefreshPlan(); })
+        .catch(function () {});
+    }
+
+    // Everything below mutates; a view-only sub-role has none of the
+    // controls rendered in the first place.
+    if (!canEditPage('staff-training-detail')) return;
+
+    // ── Adding exercises ──
+    document.querySelectorAll('[data-stp-add]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const at = Number(btn.dataset.stpAdd);
+        stdOpenExercisePicker(tr, function (ex) {
+          _stpWrite(function (p) {
+            p.blocks.splice(Math.max(0, Math.min(at, p.blocks.length)), 0,
+              { id: _planId('blk'), lanes: [[ex]] });
+          });
+        });
+      });
+    });
+
+    /* Branching inserts a block with TWO lanes: the new exercise, and an
+       empty lane holding nothing but a "+". Merge needs no control at all —
+       a parallel block always rejoins at its bottom rail, which is the whole
+       reason the model is series-parallel and not a free graph. */
+    document.querySelectorAll('[data-stp-branch]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const at = Number(btn.dataset.stpBranch);
+        stdOpenExercisePicker(tr, function (ex) {
+          _stpWrite(function (p) {
+            p.blocks.splice(Math.max(0, Math.min(at, p.blocks.length)), 0,
+              { id: _planId('blk'), lanes: [[ex], []] });
+          }, true);
+        });
+      });
+    });
+
+    document.querySelectorAll('[data-stp-in]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const path = _stpPath(btn.dataset.stpIn);
+        if (!path) return;
+        stdOpenExercisePicker(tr, function (ex) {
+          _stpWrite(function (p) {
+            const lane = _stpAt(p, path);
+            if (!lane) return false;
+            lane.splice(Math.max(0, Math.min(path[2], lane.length)), 0, ex);
+          });
+        });
+      });
+    });
+
+    document.querySelectorAll('[data-stp-lane-add]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const bi = Number(btn.dataset.stpLaneAdd);
+        stdOpenExercisePicker(tr, function (ex) {
+          _stpWrite(function (p) {
+            const blk = p.blocks[bi];
+            if (!blk) return false;
+            blk.lanes.push([ex]);
+          });
+        });
+      });
+    });
+
+    document.querySelectorAll('[data-stp-del]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const path = _stpPath(btn.dataset.stpDel);
+        if (!path) return;
+        _stpWrite(function (p) {
+          const lane = _stpAt(p, path);
+          if (!lane) return false;
+          lane.splice(path[2], 1);
+        });
+      });
+    });
+
+    document.querySelectorAll('[data-stp-lane-del]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const p2 = _stpPath(btn.dataset.stpLaneDel + '.0');
+        if (!p2) return;
+        _stpWrite(function (p) {
+          const blk = p.blocks[p2[0]];
+          if (!blk || blk.lanes.length <= 1) return false;
+          blk.lanes.splice(p2[1], 1);
+        });
+      });
+    });
+
+    // ── Drag and drop between lanes ──
+    document.querySelectorAll('.stp-ex[draggable]').forEach(function (card) {
+      card.addEventListener('dragstart', function (e) {
+        _stpDrag = card.dataset.stpEx;
+        card.classList.add('stp-dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          // Firefox refuses to start a drag with an empty data transfer.
+          e.dataTransfer.setData('text/plain', _stpDrag);
+        }
+      });
+      card.addEventListener('dragend', function () {
+        _stpDrag = null;
+        card.classList.remove('stp-dragging');
+        document.querySelectorAll('.stp-drop-on')
+          .forEach(n => n.classList.remove('stp-drop-on'));
+      });
+      card.addEventListener('dragover', function (e) {
+        if (!_stpDrag) return;
+        e.preventDefault();
+        card.classList.add('stp-drop-on');
+      });
+      card.addEventListener('dragleave', function () {
+        card.classList.remove('stp-drop-on');
+      });
+      card.addEventListener('drop', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        card.classList.remove('stp-drop-on');
+        _stpDrop(_stpPath(_stpDrag), _stpPath(card.dataset.stpEx));
+      });
+    });
+
+    document.querySelectorAll('.stp-lane').forEach(function (lane) {
+      lane.addEventListener('dragover', function (e) {
+        if (!_stpDrag) return;
+        e.preventDefault();
+        lane.classList.add('stp-drop-on');
+      });
+      lane.addEventListener('dragleave', function () {
+        lane.classList.remove('stp-drop-on');
+      });
+      lane.addEventListener('drop', function (e) {
+        e.preventDefault();
+        lane.classList.remove('stp-drop-on');
+        const to = _stpPath(lane.dataset.stpLane + '.999');
+        _stpDrop(_stpPath(_stpDrag), to);
+      });
+    });
+
+    bindStdMaterial(tr);
+  }
+
+  /**
+   * Move an exercise from one slot to another.
+   *
+   * The source is removed BEFORE the target index is used, so an intra-lane
+   * move to a later slot has to step the target back by one — otherwise
+   * dragging a card one place down does nothing at all, which is exactly the
+   * kind of bug that reads as "drag and drop is broken".
+   */
+  function _stpDrop(from, to) {
+    if (!from || !to) return;
+    if (from[0] === to[0] && from[1] === to[1] && from[2] === to[2]) return;
+    _stpWrite(function (p) {
+      const src = _stpAt(p, from);
+      const dst = _stpAt(p, to);
+      if (!src || !dst) return false;
+      const ex = src.splice(from[2], 1)[0];
+      if (!ex) return false;
+      let ti = to[2];
+      if (from[0] === to[0] && from[1] === to[1] && from[2] < ti) ti--;
+      dst.splice(Math.max(0, Math.min(ti, dst.length)), 0, ex);
+    });
+  }
+
+  function bindStdMaterial(tr) {
+    const addBtn = document.getElementById('stm-extra-add');
+    if (addBtn) {
+      const labelEl = document.getElementById('stm-extra-label');
+      const qtyEl = document.getElementById('stm-extra-qty');
+      addBtn.addEventListener('click', function () {
+        const label = String(labelEl.value || '').trim();
+        if (!label) return;
+        const qty = Math.max(1, Math.min(999, parseInt(qtyEl.value, 10) || 1));
+        _stpWrite(function (p) {
+          p.extra.push({ id: _planId('mx'), label: label, qty: qty });
+        });
+      });
+    }
+
+    document.querySelectorAll('[data-stm-del]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const i = Number(btn.dataset.stmDel);
+        _stpWrite(function (p) {
+          if (!p.extra[i]) return false;
+          p.extra.splice(i, 1);
+        });
+      });
+    });
+
+    const nEl = document.getElementById('stm-duty-n');
+    if (nEl) {
+      nEl.addEventListener('change', function () {
+        const n = Math.max(0, Math.min(10, parseInt(nEl.value, 10) || 0));
+        _stpWrite(function (p) {
+          p.duty.n = n;
+          p.duty.ids = p.duty.ids.slice(0, n);
+        });
+      });
+    }
+
+    document.querySelectorAll('.stm-duty-sel').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        const slot = Number(sel.dataset.slot);
+        _stpWrite(function (p) {
+          const ids = p.duty.ids.slice();
+          while (ids.length < p.duty.n) ids.push('');
+          ids[slot] = String(sel.value || '');
+          // Blanks are kept in place, not compacted: slot 2 must not jump to
+          // slot 1 the moment a coach clears slot 1.
+          p.duty.ids = ids;
+        });
+      });
+    });
+
+    const allEl = document.getElementById('stm-duty-all');
+    if (allEl) {
+      allEl.addEventListener('change', function () {
+        _stmShowAll = allEl.checked;
+        stdRefreshPlan();
+      });
+    }
+
+    const rndBtn = document.getElementById('stm-duty-random');
+    if (rndBtn) {
+      rndBtn.addEventListener('click', function () {
+        const sess = _stpSession();
+        if (!sess) return;
+        const pool = dutyPool(sess, calledPlayers(sess, getUsers()),
+          isTrainingLocked(sess));
+        _stpWrite(function (p) {
+          /* Fill from the lowest tier up: shuffle within each count so the
+             same two names do not come out of a tie every week, and only
+             move to the next tier when the current one is exhausted. With
+             "mostra tots" on this still prefers the fairest choice — the
+             override is about who a coach MAY pick, not who the dice should. */
+          const byTier = {};
+          pool.rows.forEach(function (r) {
+            (byTier[r.n] = byTier[r.n] || []).push(r.id);
+          });
+          const tiers = Object.keys(byTier).map(Number).sort(function (a, b) { return a - b; });
+          let order = [];
+          tiers.forEach(function (n) { order = order.concat(_stpShuffle(byTier[n])); });
+          p.duty.ids = order.slice(0, p.duty.n);
+        });
+      });
+    }
+  }
+  // #endregion Session plan
+
   // #region New Training
   /* ── Creating a training session ──────────────────────────────
      "+ Entrenament" used to append a row to the list and leave the coach
@@ -17684,25 +18611,9 @@
           <tbody>${playerRows}</tbody>
         </table></div>
       </div>
-      ${(() => {
-        if (isAct) return '';        // an activity has no session plan
-        const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-        const boards = trainingBoards[tr.date] || [];
-        if (!boards.length) return '';
-        const tagOrder = ['Presión', 'Salida', 'Estrategia'];
-        const grouped = {};
-        boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
-        const orderedTags = [];
-        tagOrder.forEach(tg => { if (grouped[tg]) orderedTags.push(tg); });
-        Object.keys(grouped).forEach(tg => { if (!orderedTags.includes(tg)) orderedTags.push(tg); });
-        return '<div class="card std-boards-summary"><div class="card-title">' + t('std.planning') + '</div>' +
-          orderedTags.map(tag => {
-            const tagTitle = tag || 'General';
-            return '<div class="std-bs-tag">' + sanitize(tagTitle) + '</div>' +
-              '<ul class="std-bs-list">' + grouped[tag].map(b => '<li>' + sanitize(b.name) + '</li>').join('') + '</ul>';
-          }).join('') + '</div>';
-      })()}
+      ${isAct ? '' : renderStdPlanPanel(tr, ro)}
       </div>
+      ${isAct ? '' : renderStdMaterialCard(tr, calledSquad, locked, ro)}
       ${(ro || isAct) ? '' : `
       <div class="card">
         <div class="tg-header">
@@ -23260,7 +24171,12 @@
 
   // ---------- Staff Training bindings ----------
   function bindStaffTrainingDetail() {
-    /* Every binding in here mutates: the squad, the staff call, the team
+    /* The session plan binds FIRST and guards itself, because part of it —
+       warming a linked board that is not in the cache — is a read that a
+       view-only sub-role needs as much as the head coach. */
+    bindStdPlan();
+
+    /* Every binding below here mutates: the squad, the staff call, the team
        generator. The Back button and the team-letter filter are bound
        elsewhere (bindDashboard), so a view-only sub-role loses nothing by
        leaving now. */

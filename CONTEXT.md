@@ -6967,3 +6967,116 @@ must strip comments first** — it is already a line in HANDOFF.md's lessons and
 three separate suites.
 
 Eight mutations, all lethal. Unit 2093 → **2106**. Version triple → v186.
+
+### 2026-08-28 — The session plan, and what it costs in equipment (v187)
+
+A coach could already attach tactical boards to a training and see who was coming. What was missing
+was the shape of the session itself — what happens, in what order, and what runs alongside what —
+and the one question he asks on the way out of the store: **what do I take?**
+
+#### The model: series-parallel, not a free graph
+
+`tr.plan` on the `fa_training` row itself:
+
+```js
+tr.plan = {
+  blocks: [ { id, lanes: [ [ex, ex], [ex] ] } ],   // one lane = a plain step
+  extra:  [ { id, label, qty } ],                  // what the coach adds by hand
+  duty:   { n, ids: [uid, …] }                     // encarregats de material
+};
+```
+
+One block follows another in time. A block with several lanes runs them side by side and **always
+rejoins at the bottom** — merge needs no control, because the structure cannot express a dangling
+branch. That is deliberately less than an arbitrary DAG, and both reasons matter: a coach cannot draw
+something unrunnable, and the equipment arithmetic below is then exact rather than a heuristic over a
+graph nobody can bound.
+
+It lives on the session row rather than in a new synced key. A plan is intrinsic to one session,
+`fa_training` is already sharded by the row's own `category` and already staff-write-only, and a new
+key would have needed a new shard route, a new rule and new merge semantics to say the same thing.
+Every read goes through `stdPlan(tr)`, which normalises whatever a previous version of the app wrote —
+a lane that is not an array and a duty list holding numbers both reach it, and neither may reach the
+renderer.
+
+#### The arithmetic, and the one place it does not apply
+
+Countable objects — cones, balls — are **reused** down a series and **needed at once** across parallel
+lanes:
+
+```
+need(lane)  = max over its exercises      // series → reuse
+need(block) = sum over its lanes          // parallel → concurrent
+need(plan)  = max over its blocks         // series → reuse
+```
+
+Bibs do **not** follow that rule, and the difference is the whole point. A bib colour is a *set taken
+out of the store*, not an object placed on the grass: the same red bibs dress whoever is in red, in
+whichever drill, whenever it runs. So the colours are unioned across the entire session and **one is
+subtracted** — one team always plays peto-less. Two parallel drills both using red/blue/green need
+**two** colours of bibs, not four. This was the owner's own worked example and it is pinned as a test.
+
+A goalkeeper is shirt number `'1'` — the app's only keeper marker, and the same rule the editor, the
+read-only renderer and `board3d.js` each apply independently. Keepers are excluded from the colour
+union because nobody hands a goalkeeper a bib; the gold `#f5c842` is dropped as a second backstop.
+Colours are compared as their **stored fill string**, so a striped kit (`s|v|4|#ffffff|#000000`) is a
+different colour from plain white — collapsing it to its first hex would leave one set behind.
+
+A free-text exercise and a board that will not resolve are both counted as `unknown`, never as zero
+cones. *"No cones"* and *"we don't know"* are different answers and only one of them should make a
+coach add something by hand.
+
+#### Encarregats de material
+
+Counts are **derived on every read, never stored** — the same reason `fa_player_stats` was deleted.
+`dutyCounts()` walks `trainingOnly(getTrainings())`, keeps the session's own category, and skips the
+session being edited so re-picking the same player does not make him look overworked to his own
+dropdown. `dutyPool()` then sorts the attending squad by count and computes a **floor**: the lowest
+count among players not already picked. Anyone above it is greyed out, and the floor **rises on its
+own** once everyone at it has been used, so the rule advances rather than deadlocking. A "mostra tots"
+checkbox overrides the block for the reasons the app cannot know; it is a view preference and does not
+outlive the afternoon. `🎲 Aleatori` shuffles *within* each tier before advancing, so the same two
+names do not come out of a tie every week — and it keeps preferring the fairest choice even with the
+override on, because the override is about who a coach *may* pick, not who the dice should.
+
+#### Where it sits, and what it replaced
+
+The flow panel took over the right-hand slot of `.std-attendance-row` from `.std-boards-summary` — a
+220px list of linked board names that was **hidden outright below 600px**. The plan is wider
+(`flex:0 0 320px`) and **stacks** on a phone instead of vanishing: a coach plans the session on his
+phone. `Material` is a new full-width card below the row. Both are gated on `isActivity(tr)`, like
+every other training-only section.
+
+Connectors are **CSS, not SVG**: the structure is only two deep, so a vertical rule between blocks and
+a horizontal rail across a fork draws every shape the model can produce.
+
+Board previews live in the picker modal and nowhere else. `renderReadOnlyBoard` + `scaleRoBoards()`
+miniaturises correctly at any width, but a board drawn at 320px tells a coach nothing he cannot read
+from the name.
+
+#### Two traps worth naming
+
+**`fa_tactic_training_boards` is keyed by DATE, not by session id** — two categories training the same
+evening share one bucket, and the ref's own `category` stamp is the only thing separating them.
+`stdSessionBoards()` filters on it, and treats an unstamped legacy ref as belonging to whoever is
+looking, which is what it always meant.
+
+**`bindStaffTrainingDetail()` runs on every render of every page**, and `detailTrainingId` outlives the
+page that set it. `bindStdPlan()` therefore opens with a DOM check before it touches `getTrainings()`
+or fires a `TB.warm`. It also binds *before* the page's view-only early-return and guards itself,
+because warming an uncached board is a read a fitness coach needs as much as the head coach — an
+unresolved board reads as a broken plan to either of them.
+
+#### Tests
+
+`test/material.test.js`, 59 cases, registered in `test:unit` and `test:material`. Half is the pure
+arithmetic (`planMaterial`, `dutyCounts`, `dutyPool`, `stdPlan`, `stdSessionBoards`); half **executes
+the renderers for real** over stubs, following `match-notes-render.test.js`. That second half is worth
+the awkwardness for one reason: the failure mode of a mistyped identifier in a string-building block
+is a **blank training page for every coach in the club**, discovered by a human.
+
+`training.test.js`'s activity gate was updated with them — it asserted on the shape of the IIFE that
+used to render the board-name list, and now names both `renderStdPlanPanel` and
+`renderStdMaterialCard`.
+
+Unit 2106 → **2165**. Version triple → v187.

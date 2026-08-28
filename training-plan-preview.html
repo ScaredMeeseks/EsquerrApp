@@ -1,3 +1,11 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EsquerrApp — Pla d'entrenament i material (v187)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 button, input, select, textarea { font-family: inherit; }
@@ -6089,3 +6097,161 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .cal-month { min-width: 6.5rem; font-size: 1.1rem; }
   .cal-weeks { padding: 8px 10px 14px; }
 }
+
+</style>
+<style>
+/* Mockup shell only — NOT part of the app. The real page renders inside
+   #content within the dashboard sidebar layout; this stands in for it. */
+body { padding: 0; }
+.mock-note {
+  background: #2D2926; color: #e0ddd9; padding: .7rem 1.2rem;
+  font-size: .82rem; line-height: 1.5;
+}
+.mock-note b { color: #FFD662; }
+.mock-page { max-width: 1180px; margin: 0 auto; padding: 1.5rem 1.2rem 4rem; }
+</style>
+</head>
+<body>
+<div class="mock-note">
+  <b>EsquerrApp v187 — staff training detail.</b>
+  The <b>session plan</b> panel (right of the attendance table) and the
+  <b>Material</b> card below it are rendered by the app's real functions and
+  real CSS. Everything else is stand-in context. Generated 2026-08-28.
+  Computed for this session: <b>20 cons</b>, <b>3 pilotes</b>,
+  <b>3 colors de petos</b> from 4 colours on 4 boards.
+</div>
+<div class="mock-page">
+
+      <div class="detail-topbar">
+        <button class="btn btn-outline btn-small detail-back">← Enrere</button>
+      </div>
+      <div class="detail-hero detail-hero-training">
+        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">Entrenament</span></div>
+        <h2 class="detail-title">Pressió alta i sortida de pilota</h2>
+        <div class="detail-subtitle">Dimarts, 1 de setembre de 2026 · 20:00 · Camp Municipal Joan Serrahima</div>
+      </div>
+      <div class="card std-load-card">
+        <div class="card-title">Intensitat prevista</div>
+        <div class="std-load-row">
+          <select class="reg-input std-planned-rpe"><option selected>7 · Alta</option></select>
+          <span class="std-load-au">630 UA</span>
+        </div>
+        <p class="std-load-hint">La càrrega prevista de la sessió, en unitats arbitràries.</p>
+      </div>
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title">Resum d'assistència</div>
+        <div class="std-donut-wrap"><div class="std-donut" style="width:100px;height:100px;">
+      <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="44" fill="none" stroke="var(--border)" stroke-width="12"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="#66bb6a" stroke-width="12"
+          stroke-dasharray="172.7875959474386 103.67255756846316" stroke-dashoffset="0"
+          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="Yes: 63%"><title>Yes: 63%</title></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#ffa726" stroke-width="12"
+          stroke-dasharray="34.55751918948772 241.90263432641405" stroke-dashoffset="-172.7875959474386"
+          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="Late: 13%"><title>Late: 13%</title></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#78909c" stroke-width="12"
+          stroke-dasharray="34.55751918948772 241.90263432641405" stroke-dashoffset="-207.34511513692632"
+          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="No: 13%"><title>No: 13%</title></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#ef5350" stroke-width="12"
+          stroke-dasharray="34.55751918948772 241.90263432641405" stroke-dashoffset="-241.90263432641405"
+          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="Injured: 13%"><title>Injured: 13%</title></circle>
+      </svg>
+      <span class="std-donut-label">6/8</span>
+    </div>
+    <div class="std-donut-legend">
+      <span class="std-legend-item"><span class="std-legend-dot" style="background:#66bb6a"></span>Yes (5)</span>
+      <span class="std-legend-item"><span class="std-legend-dot" style="background:#ffa726"></span>Late (1)</span>
+      <span class="std-legend-item"><span class="std-legend-dot" style="background:#78909c"></span>No (1)</span>
+      <span class="std-legend-item"><span class="std-legend-dot" style="background:#ef5350"></span>Injured (1)</span>
+      
+    </div></div>
+      </div>
+      <div class="std-attendance-row">
+      <div class="card" style="flex:1;min-width:0;">
+        <div class="card-title">Assistència de jugadors</div>
+        <div class="roster-team-filter">
+          <button class="roster-team-btn std-team-btn roster-team-btn-active">All</button>
+          <button class="roster-team-btn std-team-btn">A</button>
+          <button class="roster-team-btn std-team-btn">B</button>
+        </div>
+        <div class="std-attendance-head"><button class="btn btn-small btn-outline">+ Jugador</button></div>
+        <div class="table-wrap"><table class="matchday-table std-attendance-table">
+          <thead><tr><th class="std-drop-cell"></th><th>Pos</th><th>Jugador</th><th class="center-cell roster-th-wrap">Estat Mèdic</th><th class="center-cell roster-th-wrap">Forma Física</th><th class="center-cell">A/C</th><th class="center-cell">Resposta jugador</th><th class="center-cell">Staff (editable)</th></tr></thead>
+          <tbody><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-GK">GK</span></span></td>
+        <td><span class="roster-name-wrap">Aleix Ferrer<span class="conv-team-circle">A</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">1.05</td>
+        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-CB">CB</span><span class="pos-circle pos-LB">LB</span></span></td>
+        <td><span class="roster-name-wrap">Berta Puig<span class="conv-team-circle">A</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">0.92</td>
+        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-DM">DM</span><span class="pos-circle pos-OM">OM</span></span></td>
+        <td><span class="roster-name-wrap">Carles Roig<span class="conv-team-circle">A</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">1.18</td>
+        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-ST">ST</span></span></td>
+        <td><span class="roster-name-wrap">David Mas<span class="conv-team-circle">A</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-doubt">?</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#ff9800"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#ff9800">1.44</td>
+        <td class="center-cell"><span class="std-player-answer avail-late">Tard</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-late"><option>—</option><option >Sí</option><option selected>Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-RW">RW</span><span class="pos-circle pos-ST">ST</span></span></td>
+        <td><span class="roster-name-wrap">Enric Sala<span class="conv-team-circle">B</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#ff9800"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#ff9800">0.78</td>
+        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-CB">CB</span></span></td>
+        <td><span class="roster-name-wrap">Ferran Oller<span class="conv-team-circle">B</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">1.01</td>
+        <td class="center-cell"><span class="std-player-answer avail-no">No</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-no"><option>—</option><option >Sí</option><option >Tard</option><option selected>No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-LW">LW</span></span></td>
+        <td><span class="roster-name-wrap">Gerard Vila<span class="conv-team-circle">B</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-injured">✕</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#e53935"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#e53935">1.62</td>
+        <td class="center-cell"><span class="std-player-answer avail-injured">Lesionat</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-injured"><option>—</option><option >Sí</option><option >Tard</option><option >No</option><option selected>Lesionat</option><option >N/D</option></select></td>
+      </tr><tr>
+        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td><span class="conv-pos-circles"><span class="pos-circle pos-DM">DM</span></span></td>
+        <td><span class="roster-name-wrap">Hugo Camps<span class="conv-team-circle">B</span></span></td>
+        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
+        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">0.88</td>
+        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
+        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+      </tr></tbody>
+        </table></div>
+      </div>
+      <div class="card std-plan-panel" id="std-plan-panel"><div class="card-title">Pla d'entrenament</div><div class="stp-flow"><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="0" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="0" title="Obrir en paral·lel">⑂</button></div><div class="stp-block"><div class="stp-lanes"><div class="stp-lane" data-stp-lane="0.0"><div class="stp-ex stp-ex-board" data-stp-ex="0.0.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Escalfament + rondo 5v2</span><button class="stp-ex-del" data-stp-del="0.0.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="0.0.1" title="Afegir exercici">+</button></div></div></div><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="1" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="1" title="Obrir en paral·lel">⑂</button></div><div class="stp-block stp-parallel"><div class="stp-rail stp-rail-fork"></div><div class="stp-lanes"><div class="stp-lane" data-stp-lane="1.0"><div class="stp-ex stp-ex-board" data-stp-ex="1.0.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Pressió alta 6v6</span><span class="stp-tag">Presión</span><button class="stp-ex-del" data-stp-del="1.0.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="1.0.1" title="Afegir exercici">+</button></div><div class="stp-lane" data-stp-lane="1.1"><div class="stp-ex stp-ex-board" data-stp-ex="1.1.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Sortida de pilota 4+2</span><span class="stp-tag">Salida</span><button class="stp-ex-del" data-stp-del="1.1.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="1.1.1" title="Afegir exercici">+</button></div></div><div class="stp-rail stp-rail-merge"></div><button class="stp-lane-add" data-stp-lane-add="1">+ carril</button></div><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="2" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="2" title="Obrir en paral·lel">⑂</button></div><div class="stp-block"><div class="stp-lanes"><div class="stp-lane" data-stp-lane="2.0"><div class="stp-ex stp-ex-board" data-stp-ex="2.0.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Partit final 8v8</span><button class="stp-ex-del" data-stp-del="2.0.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="2.0.1" title="Afegir exercici">+</button><div class="stp-ex" data-stp-ex="2.0.1" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Tornada a la calma</span><button class="stp-ex-del" data-stp-del="2.0.1" title="Treure">&times;</button></div><div class="stp-ex-desc">Estiraments i mobilitat, 8 minuts.</div></div><button class="stp-add stp-add-in" data-stp-in="2.0.2" title="Afegir exercici">+</button></div></div></div><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="3" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="3" title="Obrir en paral·lel">⑂</button></div></div></div>
+      </div>
+      <div class="card std-material-card" id="std-material-card"><div class="card-title">Material</div><div class="stm-list"><div class="stm-row"><span class="stm-ico">🔺</span><span class="stm-lbl">Cons</span><span class="stm-qty">20</span></div><div class="stm-row"><span class="stm-ico">⚽</span><span class="stm-lbl">Pilotes</span><span class="stm-qty">3</span></div><div class="stm-row"><span class="stm-ico">🎽</span><span class="stm-lbl">Petos (colors) <span class="stm-swatches"><span class="stm-swatch" style="background:#ffffff;border-color:#cdcdcd"></span><span class="stm-swatch" style="background:#e53935;border-color:#b30703"></span><span class="stm-swatch" style="background:#1e88e5;border-color:#0056b3"></span><span class="stm-swatch" style="background:#43a047;border-color:#116e15"></span></span></span><span class="stm-qty">3</span></div><p class="stm-hint">Un equip sempre juga sense peto</p><div class="stm-row stm-row-extra"><span class="stm-ico">📦</span><span class="stm-lbl">Porteries petites</span><span class="stm-qty">2</span><button class="stm-x" data-stm-del="0" title="Treure">&times;</button></div></div><p class="stm-hint stm-warn">1 exercici(s) sense pissarra — afegeix-ne el material a mà</p><div class="stm-sub">Altre material</div><div class="stm-add-row"><input class="reg-input" id="stm-extra-label" maxlength="40" placeholder="Material"><input class="reg-input" id="stm-extra-qty" type="number" min="1" max="999" value="1" title="Quantitat"><button class="btn btn-small btn-outline" id="stm-extra-add">Afegir</button></div><div class="stm-duty"><div class="stm-sub">Encarregats de material</div><div class="stm-duty-row"><label class="stm-duty-n">Quants <input type="number" id="stm-duty-n" min="0" max="10" value="2"></label><button class="btn btn-small btn-outline" id="stm-duty-random">🎲 Aleatori</button><label class="stm-duty-all"><input type="checkbox" id="stm-duty-all"> Mostra tots</label></div><div class="stm-duty-slots"><select class="reg-input stm-duty-sel" data-slot="0"><option value="">— Tria un jugador —</option><option value="p1">Aleix Ferrer (0)</option><option value="p2">Berta Puig (0)</option><option value="p4">David Mas (0)</option><option value="p8">Hugo Camps (0)</option><option value="p3" selected>Carles Roig (2)</option></select><select class="reg-input stm-duty-sel" data-slot="1"><option value="">— Tria un jugador —</option><option value="p1">Aleix Ferrer (0)</option><option value="p2">Berta Puig (0)</option><option value="p4">David Mas (0)</option><option value="p8">Hugo Camps (0)</option><option value="p5" selected>Enric Sala (1)</option></select></div><p class="stm-hint">Només jugadors que assisteixen. Els qui ja n'han fet més torns queden bloquejats fins que la resta els atrapi.</p></div></div>
+</div>
+</body>
+</html>

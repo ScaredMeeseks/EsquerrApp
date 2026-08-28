@@ -57,6 +57,11 @@ exclude:
   - line-color-preview.html
   - new-season-preview.html
   - season-history-preview.html
+  # A rendered mockup of the v187 staff training detail page, for design
+  # work. Harmless in itself, but it inlines the WHOLE of css/style.css and
+  # carries invented player names — there is no reason for it to be a live
+  # route. Regenerate with: node scripts/build-training-plan-preview.js . training-plan-preview.html
+  - training-plan-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

@@ -952,8 +952,11 @@ describe('training — editing a saved session', () => {
           'the raw focus is blank on an activity');
     });
 
-    it('leaves out the three training-only sections', () => {
-      assert.ok(/if \(isAct\) return '';/.test(code), 'the session plan is not gated');
+    it('leaves out the four training-only sections', () => {
+      assert.ok(/isAct \? '' : renderStdPlanPanel\(/.test(code),
+          'the session plan is not gated');
+      assert.ok(/isAct \? '' : renderStdMaterialCard\(/.test(code),
+          'the material card is not gated');
       assert.ok(code.includes('${(ro || isAct) ? \'\' : `'),
           'the team generator is not gated');
       assert.ok(code.includes('${isAct ? \'\' : (() => {'),
