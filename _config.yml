@@ -57,6 +57,15 @@ exclude:
   - line-color-preview.html
   - new-season-preview.html
   - season-history-preview.html
+  # Added 2026-08-28: these three were live at
+  # scaredmeeseks.github.io/EsquerrApp/pitch-preview.html and returning 200
+  # while every other dev page 404'd — the list is by NAME, so a new preview
+  # page is public until someone remembers this file. scripts/build-www.js
+  # catches them by pattern (`-preview.html$`) and always did; only Pages
+  # needs the names.
+  - pitch-preview.html
+  - pitch-dark-preview.html
+  - pitch-light-preview.html
   # A rendered mockup of the v187 staff training detail page, for design
   # work. Harmless in itself, but it inlines the WHOLE of css/style.css and
   # carries invented player names — there is no reason for it to be a live

@@ -165,3 +165,5 @@ is genuinely unavoidable, write to a temp file and move it into place, so a fail
 destroy the original.
 
 **Session handoff**: when the user says the session is finished, update `HANDOFF.md` (rolling doc, overwritten each session — current state, session summary, pending items).
+
+⚠ **The `Parking lot` section of HANDOFF.md is carried forward VERBATIM**, not regenerated. It is the owner's backlog, accumulated over many sessions, and "overwritten each session" applies to the session summary above it — not to that list. Add to it, tick things off it, but never rewrite it from what you happen to have just done.

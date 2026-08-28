@@ -2,15 +2,18 @@
 
 _Rolling document, overwritten each session. Last updated: 2026-08-28._
 
+_The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
+verbatim when this document is rewritten — do not regenerate it from the session you just did._
+
 ## Where things stand
 
-**Version triple is at 186** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 196** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2106** — `cd test && npm run test:unit` (~2 s) |
+| Unit tests | **2239** — `cd test && npm run test:unit` (~2 s) |
 | Rules tests | 164 — needs the emulator |
 | Functions tests | 71 — emulator |
 
@@ -18,52 +21,51 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 
 `firestore.rules` and `storage.rules` were **not touched** this session — no rules deploy needed.
 
+**Deployed.** `main` is at the v196 commit and Pages serves it; verified by fetching the live
+`sw.js` and `js/app.js` rather than trusting the push output.
+
 ---
 
-## This session: v180 → v186. The Calendari was rebuilt twice.
+## This session: v187 → v196. The staff training detail, twice.
 
-The whole session is one feature. Three scheduling tabs became one month calendar; then a design
-handoff arrived and the month grid was rebuilt as week strips; then five rounds of corrections.
+A session plan and material calculator were built (v187), then Claude Design redesigned the whole
+screen and it was rebuilt to that handoff (v188), then eight rounds of driving it.
 
-### v181 — three tabs became one
+**The feature.** Beside the attendance table there is now a session plan: blocks down a rail, each
+one a time slot, everything inside a block running at the same time. From the boards those exercises
+point at, the page computes what to carry — cones and balls **summed inside a block, maxed across
+blocks**, because equipment is reused between blocks and needed at once within one. Bibs
+deliberately do not follow that rule: a colour is a set taken out of the store, so the colours are
+unioned across the whole session and one is subtracted, one team always playing peto-less. Then
+**Encarregats de material**, which picks who carries it from the lowest duty-count tier so the same
+two lads do not do it every week.
 
-**Five renderers deleted**: `renderMatchday` (the fixture editor, labelled "Calendari"),
-`renderMatches` (the "Jornada" list, duplicated for player and staff) and `renderStaffTraining` /
-`renderTraining` ("Sessions d'entrenament", also duplicated). One page id, `calendar`, serves both
-roles; `canEditPage('calendar')` decides what can be clicked into existence.
+Full detail is in CONTEXT.md under the v187–v196 entries. What matters here:
 
-Three things it introduced that everything since rests on:
+- **The data lives on the `fa_training` row** as `tr.plan` — no new synced key, no new shard route,
+  no new rules. A plan is intrinsic to one session.
+- **`plan.teams` is the generator's live set; `ex.teams` is a COPY** pinned to an exercise. That
+  distinction is the fix for the worst bug of the session: assignments used to be a pointer, so
+  re-drafting rewrote every exercise a split was already on, silently.
+- **`plan.petos` is `null` until the coach touches a swatch**, and `null` is not `[]` — null means
+  "the boards still speak for the bibs", `[]` means he removed every colour on purpose.
+- **The printout is its own window.** Printing in place was clipped to one page by the app's scroll
+  container, leaked the left pane on top of a flex layout, and dropped every background.
 
-- **Greyed placeholder trainings are computed, never stored.** `ghostSlots()` derives them per render
-  from `clubs/{id}.schedules`, so they cost no reads, no writes and no rules — and deleting a session
-  brings its placeholder back with no code to do it.
-- **An activity is a `fa_training` row with `kind:'activity'`.** It inherits the shard route, the
-  Firestore rule, the availability records, the call-up UI and the T-4h push for free. An **absent**
-  `kind` is a training, which is what made the change need no backfill.
-- **`opponentPos`, frozen at kick-off**, stamped server-side in `mergeFcfFixtures` from standings
-  `_syncFcfSquad` already fetched. Written only when the number CHANGES — re-stamping nightly would
-  defeat the skip-the-write guard and re-render every club on the platform every morning.
+### ⚠ One security fix shipped with it
 
-### v182–v186 — the 2a handoff, then corrections
+The match detail page wrote a stored `mapLink` straight into an `href`. `sanitize()` does **not**
+stop `javascript:` — it escapes quoting, and there is nothing in `javascript:fetch(…)` to escape.
+That link is typed by one staff member and clicked by another, so it would have run on our origin in
+their session. All three venue sites now go through `safeHttpUrl` (utils.js), an http(s) allowlist.
+Seven tests pin it, including `data:` and protocol-relative.
 
-`Downloads/EsquerrApp Calendar UI mockups/design_handoff_calendar_tab` (README + `.dc.html` +
-screenshots). Option **2a**: week strips with a 96px gutter, cells that open on hover.
+### ⚠ Three dev pages were public and are not any more
 
-Departures from it, all deliberate and all the owner's call:
-
-- **Light, not dark.** 2a is a dark card in a light app. The one real translation decision: on dark a
-  match is the LIGHT surface — the odd one out. Inverting literally breaks played matches, which
-  carry win/draw/loss in their fill, so a fixture keeps a white ground and a **club-red edge**.
-- **Draws are grey** (`#E8E6E1` / `#7A736B`), where 2a specifies amber.
-- **No category tabs in the calendar's own bar** — `renderCategoryBar()` already draws one above
-  every `CATEGORY_PAGES` page.
-- **The placeholders stayed**, against the design, which gives an empty day only a `+ Add`.
-- The frozen position, the convocatòria dot and our kit were **folded back in**; 2a has no place for
-  any of them.
-
-`plannedRpe` (1–10) is new on `fa_training`, set in the New Training page and on the session detail,
-and it drives the intensity dot.
-
+`pitch-preview.html`, `pitch-dark-preview.html` and `pitch-light-preview.html` returned **200** on
+the live site while every other dev page 404'd. `_config.yml` excludes by **name**, so a new preview
+page is public until someone remembers that file — `scripts/build-www.js` catches them by pattern
+and always did, which is why the APK was never affected. Added by name.
 ---
 
 ## ⚠ The weekly AU figure has no colour band, on purpose
@@ -117,25 +119,44 @@ every round; it is the only thing that has caught these.
 
 ## NEXT SESSION
 
-Nothing is half-finished. The calendar is deployed and the owner is happy with it.
+Nothing is half-finished. v196 is deployed and the owner is happy with the training detail.
 
-### One thing never verified by eye
+### The owner's next item — player routing, and their home page
 
-**A day holding two or more PLAYED fixtures.** The neutral-white cell and the per-match coloured
-scores are proven by tests, but I do not know whether the demo club has such a day, so nobody has
-looked at it. If you want certainty, add a second fixture on a past date by hand and remove it after.
+**Players cannot reach a training properly.** From the Calendar and from the player Home, the route
+into `training-detail` is wrong. And the player home page shows trainings but **not other
+activities** — a team meal or a gym block is a `fa_training` row with `kind:'activity'`
+(`isActivity()` in utils.js), it rides the same blob and has the same call-ups and availability, so
+it should appear there too.
+
+Where to start:
+
+- `renderPage()` dispatches on `currentPage`; the split is at the calendar click handler, which
+  chooses `staff-training-detail` when `canEditPage('calendar')` and `training-detail` otherwise.
+  Check both entry points set `detailTrainingId` before navigating — it is module state, and a page
+  that navigates without setting it renders the previous session.
+- `renderTrainingDetail()` is the player-facing page. It was deliberately left untouched through the
+  whole v187–v196 rebuild, so it is still the pre-redesign layout.
+- The player home is `renderPlayerHome` / `renderWeekActivities`. Anything that aggregates LOAD must
+  keep using `trainingOnly()` — activities ride the same blob and a team dinner in the acute:chronic
+  ratio tells a coach his squad is overloaded because they ate.
 
 ### Known rough edges, none blocking
 
-- **The calendar has no jsdom coverage of its measurement.** `bindCalendar` measures each strip to
-  decide how far it opens (block heights differ by kind, so no constant works). The tests pin the
-  fallback height and the structure — that the open state and the measuring state share their rules —
-  but the measurement itself only runs in a browser.
+- **No jsdom coverage of anything that measures.** The calendar's strip heights and the read-only
+  board's scaling both only run in a browser. `material.test.js` executes the renderers over stubs,
+  which catches a mistyped identifier but not a layout mistake.
 - **`fa_matchday` is write-retired but not removed.** Its shard route, `SYNCED_KEYS` and
   `SEASON_KEYS` entries all stay; dropping a synced key is a separate, riskier change.
+- **Dead CSS from the redesign.** `.matchday-table`, `.std-donut*`, `.tg-config*` and friends have
+  no markup left (verified: 0 hits across `js/` and `index.html`), but `.tg-btn` **is** still used by
+  the injury severity picker and the `.std-donut` animation rule is shared with `.assistance-circle`.
+  Prune it in its own pass with the page in front of you, not by grep.
+- **The tree is committed CRLF.** `.gitattributes` says `eol=lf` but everything predates it. A
+  `git add --renormalize .` is the fix and deserves its own quiet commit — doing it inside a feature
+  commit turns a 5k-line diff into a 45k-line one.
 - The 2D board's own header was deferred by the owner and never revisited.
 - The APK has no 3D at all, by design.
-
 ---
 
 ## Deployment
@@ -318,6 +339,57 @@ node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additi
     Sanity check: the CLI should report tens of files, not thousands. **What going private does not
     buy**: the frontend. `js/app.js` and the CSS ship unminified to every browser whatever the repo
     setting.
+
+### The owner's roadmap *(given 2026-08-28)*
+
+Not ordered by priority except the first, which is next. Sizes are a first read, not estimates.
+
+**15. Player routing, and activities on the player home.** *(NEXT — see the top of this file.)*
+
+**Match and squad**
+
+16. **Past line-ups should show the substitutions.** Today the line-up and bench are the starting
+    state; the events already hold the subs (`fa_match_events`), so this is a read, not new data.
+17. **Coaches and fitness grade a player's training or match.** New per-player, per-session record —
+    the `trainingAvail`/`rpe` subcollections are the shape to copy, not a blob.
+18. **Coaches and fitness enter weight and height.** Fields on the user profile; note that
+    `roles`/`category` are server-owned and clients cannot write them, so check what a coach may
+    write to another player's doc before designing the form.
+19. **Fitness performance tests** — Squat Jump (both and single-leg), CMJ, Abalakov, Drop Jump.
+    A test has a date, a value and a unit; keep it one record per test so a new test is data, not a
+    schema change.
+20. **Players vote for the MVP.** Only the called-up squad, never for themselves, and the vote is
+    final once cast. ⚠ The "cannot change it" part has to be enforced in `firestore.rules`, not in
+    the UI — a client-side lock on a client-written document is decoration.
+21. **RPE hidden from players.** It is a coach's planning number; check every render path, not just
+    the obvious one.
+
+**Communication**
+
+22. **Simple messaging to players**, able to carry links and tactical boards. Push already exists
+    (`onPushQueueCreate`, `teams/{id}/pushQueue`) — the hard part is the thread model, not delivery.
+23. **Discipline code with fines and tracking.** Money in the app; decide early whether it records
+    or settles, because they are different products.
+24. **Carpooling for away games.** Offers, seats, who has a place.
+
+**Opponents and the federation**
+
+25. **Opponent's last five matches.** The FCF payload already carries last-5 form for every team in
+    the same response the standings come from — see the note in utils.js.
+26. **Search the FCF by player name.**
+
+**Tactical board**
+
+27. **The 9.15 m corner arc**, drawn outside the pitch. `BG.MARKS` is where the regulation
+    distances live; `board-markings-render.test.js` pins the rest.
+28. **Advertising boards around the pitch.**
+
+**Data**
+
+29. **Wire the Xweather free API.** The strip is already reading `tr.weather`
+    (`{cond, windMs, tempC}`) and rendering placeholders — this is the write side only. Wind stays
+    in **m/s** and is banded at render time; the band is a presentation choice, the number is the
+    fact.
 
 ---
 

@@ -7542,3 +7542,20 @@ eyebrow is 7pt in a dense 360px column and the colour is doing real work; on A4 
 decoration that has to be decoded. `.prn-par` is gone; `.stp-parallel` stays.
 
 Version triple → v196. Unit 2239, unchanged.
+
+### 2026-08-28 — Three dev pages were public (no version bump)
+
+`pitch-preview.html`, `pitch-dark-preview.html` and `pitch-light-preview.html` were returning **200**
+on the live site while every other dev page 404'd. Added to `_config.yml` by name.
+
+The lesson is in the shape of the two lists, not the omission. **`_config.yml` excludes by NAME;
+`scripts/build-www.js` excludes by PATTERN** (`/-preview\.html$/i`) — so the APK was never affected
+and never would be, while Pages leaks every new preview page until someone remembers that file. The
+comment beside the new entries says so.
+
+No version bump: nothing under `js/`, `css/` or `index.html` changed, and the triple guards those.
+
+HANDOFF.md rewritten for the v187→v196 session, and the owner's roadmap added to its **Parking lot**
+(items 15-29). CLAUDE.md now states that the parking lot is carried forward **verbatim** when
+HANDOFF is rewritten — "overwritten each session" applies to the session summary above it, not to a
+backlog accumulated over many sessions.
