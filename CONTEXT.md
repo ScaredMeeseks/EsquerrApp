@@ -7080,3 +7080,465 @@ used to render the board-name list, and now names both `renderStdPlanPanel` and
 `renderStdMaterialCard`.
 
 Unit 2106 → **2165**. Version triple → v187.
+
+### 2026-08-28 — Staff training detail rebuilt to the Claude Design handoff (v188)
+
+v187 shipped the session plan and material calculator as two cards bolted onto the existing page.
+Claude Design then redesigned the **whole screen** from that build's `training-plan-preview.html`.
+This is that redesign, implemented. High-fidelity: the handoff's colours, type sizes, tracking,
+rule weights and paddings are matched.
+
+#### One paper surface
+
+Six bordered `.card` boxes become one `#FBFAF7` page with hairline rules, a top bar, a `.std-main`
+column and a **392px white `.std-rail`** holding both the plan and Material. `border-radius: 0`
+everywhere except circles; **no shadows at all** — the only `box-shadow`s are 1px rings standing in
+for borders on colour swatches, because a border eats into a 15px disc and a white bib has to stay
+visible against white paper.
+
+Colours are literal rather than `var()`-ed. That is deliberate: the handoff is light-mode only, and
+gathering the values in one block gives a later dark theme one place to map instead of forty
+scattered `rgba()`s.
+
+`.dashboard-content` wraps every page in 2rem, so `.std-page` negates it to go full-bleed. The
+`:first-child` rule on the top margin is not decoration: the update and push banners render into the
+same container ahead of the page, and a blanket negative top margin would slide the page over them.
+
+#### The branching is now named, not drawn
+
+`.stp-rail-fork`, `.stp-rail-merge`, `.stp-lanes` and the `⑂` button are gone. A parallel block is
+an ordinary row with `border-left: 2px solid #FFD662` bled out to the rail's padding, the eyebrow
+**"Alhora, N grups"**, lanes lettered `A `/`B `, and one duration for the pair. The series-parallel
+*model* is unchanged — only its presentation. A coach reading a plan on the touchline needs the
+structure named, not diagrammed.
+
+**Drag-and-drop is gone with it.** It was not in the design, and inventing an affordance the design
+does not have would be worse than losing one; reordering now means delete and re-add. Flagged rather
+than quietly patched over.
+
+#### The plan gained a clock
+
+Blocks carry `mins` (default 15) and an optional `label` eyebrow. `blockTimes()` accumulates start
+times from `sessionWindow(tr).start` and reports where the plan **actually** ends, not where the
+slot does — a plan that overruns is a thing the coach needs to see. `_stpMins()` turns any
+non-positive or non-numeric duration into the default and caps at 240: a block of length 0 stacks
+two exercises on the same minute, and a negative one runs the plan backwards.
+
+#### Boards open in place
+
+An exercise title with a linked board *is* the click target — there is no separate view control, and
+the trailing `▣` is what marks which titles are clickable. Expanding renders the **real** read-only
+board through `tbRoBoardHtml` + `scaleRoBoards()`; `⤢ Ampliar` reopens it in a ~1000px overlay with
+the assigned teams as columns. Open/expanded state is transient module state — where a coach happened
+to be looking is not part of the session, and persisting it would reopen four boards on every visit.
+
+`stdRefreshPlan()` now calls `scaleRoBoards()` / `bindRoBoardAnimations()` / `hydrateRoBoards()`
+after swapping the panels: the read-only renderer sizes itself from its container, so a board that
+has just been opened must be scaled *after* it lands, not when the string was built.
+
+`bindStdPlanView()` is bound **above** the edit guard and for everyone. A fitness coach who may not
+edit the plan still needs to look at the board an exercise points at, and nothing in that function
+writes.
+
+#### Petos: derived, then overridden
+
+`plan.petos` is `null` until the coach touches a swatch, and `resolvePetos()` falls back to the
+boards' non-GK colours — so the automatic count that was asked for stays the default. The first edit
+copies the derived list onto the session and it becomes his. **`null` and `[]` are different
+states** and the whole split exists for it: `[]` means he removed every colour on purpose and the
+boards must not put them back. Quantity is still `colours − 1`.
+
+#### Team generation rewritten
+
+The old generator asked five questions — team count, per-team size, GK toggle, letter filter,
+mix/equal — then dealt straight round-robin, which hands team 1 the best player in *every* round;
+after four rounds that is a team of firsts against a team of fourths. `draftTeams()` asks nothing:
+one button, a **snake draft** (position rank → descending A/C → random tie-break, dealt round-robin
+with the direction reversed on every second round), and a 2–4 stepper afterwards for the coach who
+wanted three.
+
+Teams are now **persisted** as `plan.teams` (ids only — a team holding copies of player rows would
+strand a renamed player in last week's session forever). They have to be: they are assigned onto
+exercises via the chip strip and drawn inside board panels, which the old module-scoped
+`_generatedTeams` could not survive a re-render of.
+
+That rewrite also **fixes a live bug**: the old generate handler passed `t.date` where the function
+expected the session object, so every availability lookup missed and the pool silently fell back to
+the whole squad before lock, and to nobody after it.
+
+#### Encarregats: the design was argued with
+
+The prototype fills duty "from the available players in roster order" and shuffles blindly. That
+drops the entire point of the feature. The **controls** are the design's — a stepper, name chips
+with `×`, a die, "Tria a mà" — and the **selection** is still `dutyPool`'s lowest-count tier:
+`_stmFairOrder()` is the one function `+`, 🎲 and the manual picker all agree on. The picker greys
+anyone above the floor but does not disable them, which is where the old "mostra tots" checkbox's
+job went: the rule is advice made visible, never a lock, because a coach who insists knows something
+the counter does not.
+
+#### Removed
+
+`generateTrainingTeams`, `renderGeneratedTeams`, `bindGeneratedTeamsDnD`, `renderStdBoardsSection`,
+`_refreshStdBoards`, `_generatedTeams`/`_generatedTeamsId`, the board↔teams link/unlink delegated
+handlers, and `buildDetailDonut` (the page draws a stacked bar now). `linkedTeams` is still *read* by
+the player-facing `renderTrainingDetail` and preserved on re-link — that surface is untouched.
+
+⚠ **Dead CSS was left behind on purpose**: `.matchday-table`, `.std-attendance-*`, `.std-donut*`,
+`.std-load-*`, `.std-player-answer` and the `.tg-config*`/`.tg-header`/`.tg-teams-wrap` block have
+no markup any more (verified: 0 hits across `js/` and `index.html`). It is inert, and pruning ~120
+lines with shared selectors — `.tg-btn` *is* still used by the injury severity picker, and the
+`.std-donut` animation rule is shared with `.assistance-circle` — deserves its own pass with the page
+in front of you, not a blind grep at the end of a large refactor. **Follow-up.**
+
+#### Tests
+
+`test/material.test.js` is 86 cases now: the arithmetic and duty rules are unchanged and still pass
+untouched, plus `blockTimes`, `resolvePetos`, `draftTeams`, `stdAvailable`, and rewritten render
+tests that assert the *absence* of the v187 fork chrome as much as the presence of the new rail.
+`test/availability.test.js` needed its grab end-marker moved — it sliced up to `buildDetailDonut`,
+which no longer exists. `layout.test.js` and `training.test.js` were updated for the new markup.
+
+Unit 2165 → **2193**. Version triple → v188. `training-plan-preview.html` regenerated; its computed
+figures match the design mockup exactly (20 cons, 3 pilotes, 3 colors de petos, acaba 21:15).
+
+### 2026-08-28 — Six fixes to the v188 training detail (v189)
+
+Driving v188 surfaced six faults. Three were plain bugs, two were chrome that never got restyled,
+and one was a modelling mistake. None of this is a redesign; it is v188 finished properly.
+
+#### 1. One block = one time slot
+
+v188 nested two levels — a block held **lanes**, each a series — so "at the same time" could be
+said two different ways: `+ Bloc alhora` in the footer and `+ Afegir grup` inside a block. The
+coach had to work out which he meant, and reported exactly that.
+
+`block.lanes: [[ex,…],…]` is now `block.items: [ex,…]`, and **everything in a block runs at the
+same time**. Series is what a second block is for. `stdPlan()` migrates a v188 row by flattening
+its lanes, which is what the coach drawing it meant anyway; `items` wins if a row somehow carries
+both. Two controls remain: `+ Exercici` in the footer appends a BLOCK, the `+` inside a block
+appends an ITEM. `data-stp-branch`, `data-stp-lane-add` and `data-stp-lane-del` are gone, along
+with four i18n keys.
+
+`planMaterial` loses its innermost loop with them: **sum over a block's items, max across blocks**.
+The rule is unchanged — reused between blocks, needed at once inside one — it just has one fewer
+level to walk. Bibs still union across the whole session.
+
+⚠ `_stpExNote` prices a single exercise by running the same `planMaterial` over a one-item plan,
+and it still built that plan with `lanes`. Silently zero cones under every title. Caught by a test,
+not by hand.
+
+#### 2-3. The dialogs
+
+The picker used `.stm-sub` and `.stm-hint`, whose CSS the v188 rewrite had **deleted**, inside the
+app's rounded `.modal-card`. That is the whole of "very broken": unstyled headings in the wrong
+chrome. All three dialogs are now a flat `.stp-dialog` — square, hairline-ruled, no shadow — split
+head/body/foot so that **only the body scrolls** and the title and buttons stay reachable however
+long the list gets. That is also fix 3: the "Tria a mà" list ran off the bottom of the screen for a
+20-player squad with no way back to the buttons.
+
+Boards in the picker are a **list of names and tags**, not a grid of pitches. v188 drew a full
+read-only board per row, which is what made the dialog unusable — and a pitch at modal-column width
+tells a coach nothing the name does not. The board is one click away in the rail anyway.
+
+#### 4. The staff dropdown
+
+A **dead v187 rule** (`.std-staff-select { … appearance: auto }`) sat 1,250 lines below the v188 one
+and won on source order, so the browser drew its own arrow and inset shading on top of the fill.
+Deleted, with the rest of that block (`.std-attendance-table`, `.std-player-answer` — all v187
+markup that no longer exists). The pill stays, because the answer colour is the whole point of that
+column; what goes is the native chrome: `appearance:none` plus our own caret as a `background-image`,
+which needs no extra markup around the `<select>`. The two light states override the caret so a
+white arrow does not vanish into a near-white pill.
+
+#### 5. The generator's dead buttons
+
+`Esborra`, `± equips` and the assign chips all **wrote correctly and then changed nothing on
+screen**, which is indistinguishable from a dead button. `stdRefreshPlan()` re-rendered the plan
+panel and the material card; the teams block had no id and was never in the list. It is
+`#std-teams-block` now and refreshes with them, and the handlers moved into `bindStdTeams()` so
+they are re-bound on every targeted refresh like the plan's own.
+
+#### 6. The generator's missing options
+
+- **Letter filter**: `stdDraftPool` narrows by `stdTeamFilter`. Filtering the attendance table to B
+  and then being handed a split of A and B was the reported bug; the filter above the table is one
+  control governing both lists, asked once.
+- **Exclude GKs**: restored with the old rule — a player is dropped only when **every** listed
+  position is `GK`, so a `ST,GK` utility player still gets drafted.
+- **Mixed vs per position**: `draftTeams(pool, n, mode)`. `'mix'` is the snake draft; `'pos'` takes
+  contiguous slices of the same ranking, spreading the remainder one player at a time so 8 into 3
+  is 3/3/2 and not 2/2/4. Both live in `_stdTgOpts` — module state, like the old DOM-read controls,
+  so nothing new lands in the stored plan. Changing either re-deals immediately: a toggle that only
+  takes effect on the next press reads as broken.
+
+#### Tests
+
+2198 → **2207**. `material.test.js` moved to `items` (the max/sum numbers are re-derived, not
+copied), gained the v188→v189 migration cases, the two draft modes, and a new `stdDraftPool` block
+covering the letter filter and the pure-keeper rule. `layout.test.js`'s staff-select tests were
+rewritten: the old one matched `/background:/`, which `background-color:` does not satisfy, and its
+"not white" check split on the first `color:` — which is inside `background-color:`, so it was
+passing by luck.
+
+Version triple → v189. Preview regenerated; figures unchanged (20 cons, 3 pilotes, 3 colors, 21:15).
+
+### 2026-08-28 — Nine fixes from driving v189 (v190)
+
+#### The dropdowns are ours now (1, 2)
+
+Both dropdowns still read as "default" after v189 painted the pill, and the reason is worth writing
+down: **a native `<select>` can be styled shut but not open.** The popup list is drawn by the
+operating system and ignores every rule in this stylesheet, so the staff call and the planned
+intensity both opened into a stray Windows widget in a page made of hairlines.
+
+`stdSelect()` replaces both: a button and a div, so the list inherits the page like everything else.
+Deliberately not the app's existing `.ev-custom-select` — that one is rounded, uses
+`--primary-light`, and its bindings are wired to the match-events form's hidden inputs. Same idea,
+different clothes. `bindStdSelects(onPick)` binds them all and closes on outside click or Escape;
+the chosen value lives in `data-value`, so a handler reads it exactly like `select.value`.
+
+The staff call keeps its coloured pill (`.std-sel-pill`) — the colour is the point of that column —
+and the intensity keeps the stat row's 24px type with no box at all (`.std-sel-plain`).
+
+#### The plan (3, 4)
+
+`+ Exercici alhora` is just **`+ Exercici`**, left-aligned with the titles above it: being inside
+the block already says "at the same time", and spelling it out only invited the question. The
+`Tanca` link is gone from both the board panel and the peto picker — the thing that opened it closes
+it, and a second way to do the same thing is a second thing to read.
+
+#### Team generation (6, 7, 8)
+
+**Squad letters are their own control after all.** v189 had the generator follow the attendance
+filter, reasoning that one control should not be asked twice. Wrong: reading the whole squad and
+splitting only the Bs is a real thing to want, and one control could not say it. Multi-select chips;
+an empty set still falls back to the table's filter, so the default matches what the coach is
+looking at.
+
+Generated teams show the app's own **position discs** (`posCirclesHtmlGlobal`), one size down — at
+26px they set the row height and the column read as a list of badges with names attached.
+
+⚠ **The important one.** `ex.withTeams` was a boolean pointing at the single `plan.teams`, so
+re-drafting silently rewrote every exercise a split had already been attached to: set up the rondo,
+regenerate for the finishing game, and the rondo's teams changed underneath without a word. Each
+assignment is now a **deep copy** pinned to the exercise (`ex.teams`), with the bib colour resolved
+at the moment it was assigned — so repainting a bib afterwards changes what the next drill wears,
+not what was already decided. A chip whose exercise already holds a split is shown taken and does
+nothing; the way back is the `×` on the exercise, where the coach can see what he is discarding.
+`Esborra` now clears only the generator's own set, because the copies are separate decisions.
+
+#### Layout and detail (5, 9)
+
+The left column is capped at 760px — its table is done at ~620 and everything past that was empty
+paper — and the rail takes the surplus (`flex:1 1 460px; min-width:392px`), because a plan with open
+boards in it is the column that actually wants room. The "Tria a mà" list got `padding-right` so the
+turn count is not jammed against its scrollbar.
+
+#### Tests
+
+2209 → **2212**. The staff-select block in `layout.test.js` was rewritten against the new markup —
+its old assertions were all about `<select>` and `appearance:none`, which no longer exist — keeping
+both original invariants: the unset state must have a real background and a non-white text colour,
+and the placeholder must come first. New cases pin that the popup is ours (`.std-sel-menu` styled,
+hidden until `.std-sel-open`) and that each option carries the colour class it sets.
+`material.test.js` gained three cases for the snapshot rule: an exercise keeps its own ids when the
+generator holds different ones, the colour travels with the copy, and an empty or malformed list
+reads as `null` rather than `[]`.
+
+Version triple → v190. Preview regenerated (its stand-in table now renders real `stdSelect`s too);
+figures unchanged.
+
+### 2026-08-28 — Six more from driving v190 (v191)
+
+**Layout (1).** Two thirds to the squad, one third to the plan: `.std-main { flex:2 1 0 }` against
+`.std-rail { flex:1 1 0; min-width:360px }`. The floor stays because below ~360px the time gutter
+and an exercise title stop sharing a line.
+
+**Wording (2).** The material header is now **"Material mínim"** — it is what the boards add up to,
+the floor a coach must carry, not a claim that nothing else will be wanted.
+
+**The expanded board (3).** Board LEFT, teams RIGHT, side by side. Stacking pushed the squad list
+below the fold and put a scrollbar on the one thing a coach opens precisely so he can see all of it
+at once. The card is also pinned below the app header (`align-items:flex-start` + 72px top padding)
+— at `center` a tall card slid its own head up underneath it. It only widens to 1360px when there
+are teams to put beside the board.
+
+⚠ **Teams on a board-less exercise (4).** `_stpTeamLines` was rendered INSIDE the board panel, so a
+split assigned to a free-text exercise appeared nowhere at all — and with no × there was no way to
+take it off again either. The assignment is a fact about the exercise, not about its drawing, so the
+lines moved out of the panel and now show whether or not a board exists and whether or not it is
+open. Three tests pin it.
+
+**Two back arrows (5).** `t('btn.back')` already carries "← " and v188's topbar prefixed a second
+one. The literal is gone.
+
+**Weather (6).** A forecast strip beside the session title: sky icon, wind, temperature. Placeholder
+values for now (`STP_WEATHER_DEFAULT`) — the API is coming and this exists so there is somewhere for
+it to write. The shape is the one a forecast returns rather than the one that is easy to draw:
+
+```js
+tr.weather = { cond: 'sun'|'cloud'|'overcast'|'rain'|'storm'|'snow'|'fog',
+               windMs: <metres per second>, tempC: <degrees> }
+```
+
+Wind is **stored in m/s and banded for display**, not stored as a band — the band is a presentation
+choice, the number is the fact. `windBand()` uses the sailing thresholds a coach would recognise
+(1.5 / 5.5 / 10.8 m/s), and anything missing or unparseable reads as calm: whatever the API
+eventually sends, an absent value must not render as a gale. Pinned by tests.
+
+Unit 2212 → **2217**. Version triple → v191.
+
+### 2026-08-28 — Weather polish, a printable plan, linked venues (v192)
+
+**Weather (1, 2).** Icons up to 26px, and 💨 replaces the puffing-face 🌬️ — this is a reading of the
+wind, not a character blowing at the pitch.
+
+**Print the plan (3).** `window.print()` plus a print stylesheet, **not a PDF library**: the app has
+no build step and no bundler, a PDF writer is ~200KB of dependency, and every browser's print dialog
+already offers "Save as PDF". What that costs is control over pagination beyond `break-inside`,
+which for a one-page session plan is no cost at all.
+
+`renderStdPrintSheet()` builds its **own markup** rather than restyling the screen. Hiding the app's
+chrome rule by rule is how print stylesheets rot — one new panel and the printout grows a
+scrollbar's worth of nonsense — so `@media print` takes the blunt route: hide everything, then
+re-show one ancestor chain down to `.std-print`. Anything added to the page later is hidden by
+default rather than by remembering to add it to a list.
+
+The sheet carries what a coach walks onto the pitch with: title, date, place, the intensity /
+load / duration / weather row, the attendance split, the plan by time, then the material and who is
+carrying it. Two details worth keeping:
+
+- **The weather prints as words, not emoji** (`_prnWeather`). Emoji come out of most print drivers
+  as boxes.
+- **The attendance bar prints its counts underneath.** Segment widths are inline, but "background
+  graphics" is off by default in some print dialogs and the fills simply vanish; the numbers are
+  what survive that.
+
+**Linked venues (4).** One `locationHtml(row, opts)` for trainings, activities and matches — they
+all store the same `mapLink` and a coach standing outside the wrong pitch does not care which kind
+of row he tapped. Applied to the staff training detail, the player training detail, and the match
+detail.
+
+⚠ Routing the match page through it **closed a hole**: it was writing `m.mapLink` straight into an
+`href`, and `sanitize()` does not stop `javascript:` — it escapes the quoting, and there is nothing
+in `javascript:fetch(…)` to escape. The link is typed by one staff member and clicked by another, so
+it would run on our origin in that second person's session. Everything now goes through
+`safeHttpUrl` (utils.js), an allowlist of http(s). Seven tests pin it, including `data:` and
+protocol-relative.
+
+Unit 2217 → **2227**. Version triple → v192.
+
+### 2026-08-28 — The printout, properly (v193)
+
+v192's print sheet failed three ways at once and all three were the same root cause: **it was
+printing inside the app's layout.**
+
+- **Clipped to one page.** `.dashboard-layout { min-height:0 }` over a scrolling
+  `#dashboard-content` is exactly right on screen and exactly wrong on paper; the printout stopped
+  at the bottom of the viewport.
+- **The left pane on top.** `#view-dashboard` is a flex column, so hiding its children and
+  re-showing one ancestor chain leaked the main column back in above the sheet.
+- **No colour.** Browsers drop every background when printing unless told otherwise, which took the
+  colour off the attendance bar, the team dots and the peto swatches — the parts that are
+  colour-coded on purpose.
+
+Every fix for those is another `!important` in a media query nobody can test without a printer. So
+it prints in **its own window** now: `stdPrintPlan()` opens a blank document, writes a
+self-contained page and calls `print()` on it. A fresh document has no ancestors, no flex, no scroll
+container, and a stylesheet describing only the sheet. The `@media print` block is gone from
+`css/style.css` entirely — there is nothing left in the app to hide.
+
+Details worth keeping:
+
+- `print-color-adjust:exact` (and the `-webkit-` twin) is the line that puts the colour back.
+- `print()` fires on the child's `load`, not straight after `write()` — a window that has not laid
+  out prints blank pages. A 1.5s timeout is the backstop for a blocked webfont.
+- **STD_PRINT_CSS is a constant in app.js, not a file.** The print document is then self-contained:
+  it cannot be broken by a change to `style.css` and needs no second request the popup might race.
+- Colour earns its place rather than decorating: the bib swatches print beside the peto count
+  (*"3 petos"* alone sends a coach to the store twice), each team prints its own dot, and a parallel
+  block keeps the rail's yellow edge so sheet and screen agree.
+- The weather still prints as **words** and the attendance bar still prints its **counts** — the
+  colour is now a bonus on top of those, not a replacement for them.
+
+Four tests guard the way back, including one that asserts the sheet is **not** rendered into
+`renderStaffTrainingDetail` at all.
+
+Unit 2227 → **2231**. Version triple → v193.
+
+### 2026-08-28 — The printout carries the squad and the boards (v194)
+
+**Who is coming, at the top.** `_prnSquad()` lists the attending squad by the **effective** answer —
+a coach's override beats the player's own, because the sheet has to agree with the screen it was
+printed from. One flowing block of names rather than a column of rows: a 20-name list down the side
+of an A4 sheet is most of the page. Late players are **marked in place** rather than split into a
+second list — they are coming, and a separate heading for one name costs more room than the mark.
+Nobody coming prints nothing at all; an empty heading is not information.
+
+**The boards, inside their exercises.** This is the awkward one. The read-only renderer sizes its
+circles, numbers and cone borders in fixed px that are correct at ~814px wide; on screen
+`scaleRoBoards()` measures the container and shrinks them. That measuring needs a laid-out DOM and a
+ResizeObserver, and a document we have only just written has neither.
+
+So the board is rendered at its **natural 814px** — which is exactly the width the CSS fallback
+`var(--tb-ppm, 7.81px)` already assumes, 814/105m ≈ 7.75px per metre — and the whole thing is scaled
+with a CSS transform. Every proportion survives, and no script has to run in the print window. A
+transform does not affect layout, so the wrapper reserves the scaled height itself, computed from
+the same `BG.aspectPct` the on-screen board uses rather than assumed: a half board and a 60×40 pitch
+are different shapes.
+
+**Typography.** The print window now links `css/style.css` as well — the `.tb-*` rules the board is
+drawn with live there and there should not be a second copy — with `STD_PRINT_CSS` after it so the
+sheet's own rules still win. The Oswald link asks for the same weights `index.html` does, so the
+sheet is set in the app's face rather than falling back to Arial Narrow.
+
+⚠ `_prnCssHref()` resolves the stylesheet to an **absolute** URL. The print window is `about:blank`,
+which has no base to resolve a relative href against — `href="css/style.css"` there resolves to
+nothing and the boards come out unstyled.
+
+Five tests: the effective-answer rule, the late mark, the empty case, that the board wrapper
+reserves a height and scales, and that a board-less exercise gets no empty frame.
+
+Unit 2231 → **2236**. Version triple → v194.
+
+### 2026-08-28 — Why the PDF lost its face, and the squad grouped (v195)
+
+**The font.** "It loses the format once it converts to PDF" was one bug with a precise cause: the
+parent fired `print()` on the child window's **`load`** event, and `load` waits for stylesheets but
+**not for the font files those stylesheets go on to request.** So printing ran mid-swap and the PDF
+was frozen with Arial Narrow — nothing else about the sheet had changed, which is exactly why it
+looked like a conversion problem rather than a timing one.
+
+The print trigger now lives **inside the print document** (`STD_PRINT_BOOT`) rather than in the
+parent. `document.fonts.load()` asks for the four Oswald weights the sheet uses and resolves when
+they are usable; `fonts.ready` then waits for the layout to settle; a frame and 60ms after that
+absorbs the reflow. A 4s timeout is the backstop — a sheet in the fallback beats no sheet.
+
+Two smaller causes of the same complaint, fixed with it:
+
+- `body, body *` now carries the family. The app stylesheet is linked **ahead** of the sheet's own
+  and sets its own `body` font, and a `<table>` does not inherit `font-family` in every engine —
+  which is how the plan came out in a different face from the heading above it.
+- The time gutter gained `padding-right` and `vertical-align:top`; a block with no eyebrow had its
+  title butted straight against the clock ("22:35Corner Test").
+
+**The squad, grouped.** By squad letter, then by position within it, keepers first — via
+`posRankGlobal`, the same ranking the roster and the convocatòria sort by, so the printout and the
+app cannot drift apart. Each name carries its first position in small grey so the ordering is
+legible rather than merely present. Letterless players sort last. A single squad gets no letter
+heading at all: the "· 12" beside the title has already said it.
+
+Unit 2236 → **2239**. Version triple → v195.
+
+### 2026-08-28 — The parallel stripe leaves the printout (v196)
+
+The rail draws a yellow `#FFD662` edge down a parallel block, and v192 carried it onto the printed
+sheet for consistency. On paper it read as a **divider between sections** rather than a marker on
+one — which is a fair reading, because the sheet has no legend explaining a colour code and the
+eyebrow already says *"Alhora, 2 grups"* in full-size type right beside it.
+
+So the sheet names it and the screen colours it. Different media, different jobs: on screen the
+eyebrow is 7pt in a dense 360px column and the colour is doing real work; on A4 it is redundant
+decoration that has to be decoded. `.prn-par` is gone; `.stp-parallel` stays.
+
+Version triple → v196. Unit 2239, unchanged.

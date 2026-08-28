@@ -32,7 +32,10 @@ function load() {
      longer builds its own key, it asks readRecord(), and a stubbed copy
      here would be free to drift from the real one. */
   const logic = grab('  function recordKey(playerId, sess, kind)', '  async function handleRegister') +
-    grab('  let _availRaw = null;', '  function buildDetailDonut');
+    // v188 removed buildDetailDonut (the page now draws a stacked bar), which
+    // was this slice's end marker. The region boundary is the same; only the
+    // thing that happened to sit after it changed.
+    grab('  let _availRaw = null;', '  // #region Session plan');
   const store = {};
   let parses = 0;
   const localStorage = {

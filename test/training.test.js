@@ -952,15 +952,16 @@ describe('training — editing a saved session', () => {
           'the raw focus is blank on an activity');
     });
 
-    it('leaves out the four training-only sections', () => {
-      assert.ok(/isAct \? '' : renderStdPlanPanel\(/.test(code),
-          'the session plan is not gated');
-      assert.ok(/isAct \? '' : renderStdMaterialCard\(/.test(code),
-          'the material card is not gated');
-      assert.ok(code.includes('${(ro || isAct) ? \'\' : `'),
+    it('leaves out the training-only sections', () => {
+      // v188: the plan and material moved into one rail, and the tactical
+      // boards section is gone — boards now open inside the plan itself.
+      assert.ok(/isAct \? '' : \n?\s*`<aside class="std-rail">/.test(code) ||
+          /const rail = isAct \? '' :/.test(code),
+          'the rail (plan + material) is not gated');
+      assert.ok(/\$\{\(ro \|\| isAct\) \? '' : renderStdTeamsBlock\(/.test(code),
           'the team generator is not gated');
-      assert.ok(code.includes('${isAct ? \'\' : (() => {'),
-          'the boards section is not gated');
+      assert.ok(/isAct \? '' : `\s*<div class="std-stats">/.test(code),
+          'the stat row is not gated — an activity has no planned load');
     });
 
     it('offers the dialog it was created in', () => {

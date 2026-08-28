@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EsquerrApp — Pla d'entrenament i material (v187)</title>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<title>EsquerrApp — Pla d'entrenament i material (v188)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1725,151 +1725,579 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .tb-unlink-teams:hover { opacity:1; }
 
-/* ── Session plan: the exercise flow beside the attendance table ──
-   The connectors are CSS, not SVG. The structure is series-parallel and
-   only two deep, so a vertical rule between blocks and a horizontal rail
-   across a fork draws every shape the model can produce. */
-.std-attendance-row { display:flex; gap:1.2rem; align-items:flex-start; }
-.std-plan-panel { flex:0 0 320px; }
-.stp-flow { display:flex; flex-direction:column; align-items:center; }
-.stp-empty {
-  font-size:.86rem; color:var(--text-secondary); text-align:center; margin:.2rem 0 0;
+/* ══════════════════════════════════════════════════════════════
+   Staff training detail — the Claude Design handoff (v188)
+
+   One paper surface, not six cards: hairline rules and whitespace do the
+   separating that borders and shadows used to. Radius is 0 EVERYWHERE except
+   circles, and there are no shadows at all — the only box-shadows below are
+   1px rings standing in for borders on colour swatches, because a border
+   would eat into a 15px disc and a white bib has to stay visible against
+   white paper.
+
+   Colours are literal rather than var()-ed on purpose: the handoff is light
+   mode only, and the values are gathered here so a later dark theme has one
+   place to map instead of forty scattered rgba()s.
+   ────────────────────────────────────────────────────────────── */
+/* The design is a full-bleed page: its own 36px padding, and a rail that
+   reaches the right edge. `.dashboard-content` wraps it in 2rem, so the page
+   negates that. The `:first-child` rule is why the top is separate — the
+   update and push banners render into the same container ahead of this, and
+   a blanket negative top margin would slide the page over them. */
+.std-page { margin:0 -2rem -2rem; background:#FBFAF7; }
+.std-page:first-child { margin-top:-2rem; }
+
+.std-topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 36px; border-bottom:1px solid #E3DFD8;
+}
+.std-topbar-r { display:flex; align-items:center; gap:16px; }
+.std-back {
+  background:none; border:none; padding:0; cursor:pointer;
+  font-size:13px; color:#6B645E; font-family:inherit;
+}
+.std-back:hover { color:#2D2926; }
+
+.std-eyebrow {
+  font-size:11px; font-weight:500; letter-spacing:.16em;
+  text-transform:uppercase; color:#99928B;
+}
+.std-eyebrow-sm { font-size:10px; letter-spacing:.14em; }
+
+.std-body { display:flex; align-items:flex-start; }
+/* Two thirds to the squad, one third to the plan. The rail still has a floor
+   under it — below ~360px the time gutter and an exercise title stop fitting
+   on one line — but above that the table is the column with more to say. */
+.std-main { flex:2 1 0; min-width:0; padding:36px 32px 56px; }
+.std-rail {
+  flex:1 1 0; min-width:360px; align-self:stretch; background:#FFFFFF;
+  border-left:1px solid #E3DFD8; padding:36px 32px 56px;
 }
 
-/* The vertical run between blocks, with the controls sitting on it. */
-.stp-link {
-  position:relative; width:100%; min-height:26px;
-  display:flex; align-items:center; justify-content:center; gap:.3rem;
+.std-hero {
+  display:flex; flex-direction:column; gap:8px;
+  padding-bottom:26px; border-bottom:1px solid #E3DFD8;
 }
-.stp-link::before {
-  content:''; position:absolute; top:0; bottom:0; left:50%;
-  width:2px; margin-left:-1px; background:var(--border);
+.std-hero-row {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:24px; flex-wrap:wrap;
 }
-.stp-link-live { min-height:34px; }
+.std-title {
+  margin:0; font-size:38px; font-weight:400; line-height:1.1;
+  letter-spacing:-.01em; color:#2D2926;
+}
+.std-meta { font-size:14px; color:#6B645E; }
 
-.stp-add, .stp-branch {
-  position:relative; z-index:1;
-  width:24px; height:24px; border-radius:50%; padding:0;
-  border:2px solid var(--border); background:var(--bg-card, var(--bg));
-  color:var(--text-secondary); cursor:pointer;
-  font-size:.9rem; line-height:1; display:flex;
-  align-items:center; justify-content:center; transition:all .15s;
+/* The forecast, beside the title. Quiet on purpose: it is context for the
+   session, not a stat — a coach glances at it and moves on. */
+.std-wx {
+  display:flex; align-items:center; gap:16px; flex:none;
+  font-size:14px; color:#6B645E; white-space:nowrap;
 }
-.stp-add:hover, .stp-branch:hover {
-  border-color:var(--primary); color:var(--primary); transform:scale(1.1);
-}
-.stp-add-in { width:20px; height:20px; font-size:.78rem; margin:.25rem 0; }
+.std-wx-b { display:flex; align-items:center; gap:7px; }
+.std-wx-i { font-size:26px; line-height:1; }
+.std-wx-t { font-size:20px; color:#2D2926; font-variant-numeric:tabular-nums; }
 
-.stp-block { width:100%; position:relative; }
-.stp-lanes { display:flex; gap:.5rem; align-items:flex-start; }
-.stp-lane {
-  flex:1 1 0; min-width:0;
-  display:flex; flex-direction:column; align-items:center;
-  border-radius:var(--radius); padding:.15rem;
-}
-.stp-lane.stp-drop-on { background:color-mix(in srgb, var(--primary) 12%, transparent); }
+/* A place with a map behind it. Underlined on hover only — in the meta line
+   a permanently underlined venue competes with the title above it. */
+.std-place { color:inherit; text-decoration:none; border-bottom:1px dotted #99928B; }
+.std-place:hover { color:#BD162C; border-bottom-color:#BD162C; }
 
-/* The fork and merge rails of a parallel block. */
-.stp-parallel > .stp-rail {
-  height:12px; margin:0 12.5%; border:2px solid var(--border);
+.std-stats {
+  display:flex; gap:56px; flex-wrap:wrap;
+  padding:22px 0; border-bottom:1px solid #E3DFD8;
 }
-.stp-rail-fork  { border-bottom:none; border-radius:6px 6px 0 0; }
-.stp-rail-merge { border-top:none;    border-radius:0 0 6px 6px; }
-.stp-lane-add, .stp-lane-del {
-  display:block; margin:.3rem auto 0; padding:.15rem .5rem;
-  border:1px dashed var(--border); border-radius:var(--radius);
-  background:none; color:var(--text-secondary);
-  font-size:.72rem; cursor:pointer;
+.std-stat { display:flex; flex-direction:column; gap:3px; }
+.std-stat-v { font-size:24px; font-weight:400; line-height:1.2; }
+.std-stat-n { font-size:14px; color:#6B645E; margin-left:.35em; }
+.std-stat-hot { color:#BD162C; }
+/* The RPE picker is a real select rendered as text — no box, no rule. */
+.std-rpe {
+  font-family:inherit; font-size:24px; font-weight:400; line-height:1.2;
+  color:#2D2926; background:none; border:none; padding:0; cursor:pointer;
 }
-.stp-lane-add:hover, .stp-lane-del:hover { border-color:var(--primary); color:var(--primary); }
-.stp-lane-del { border-style:solid; }
 
-.stp-ex {
-  width:100%; box-sizing:border-box;
-  background:var(--bg); border:1px solid var(--border);
-  border-left:3px solid var(--text-secondary);
-  border-radius:var(--radius); padding:.4rem .5rem; cursor:grab;
+.std-attbar {
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:18px 0; border-bottom:1px solid #E3DFD8;
 }
-.stp-ex-board { border-left-color:var(--primary); }
-.stp-ex.stp-dragging { opacity:.4; }
-.stp-ex.stp-drop-on { border-top:2px solid var(--primary); }
-.stp-ex-head { display:flex; align-items:center; gap:.35rem; }
+.std-bar { display:flex; height:6px; flex:1; min-width:160px; overflow:hidden; }
+.std-bar span { display:block; height:100%; }
+.std-bar-key {
+  display:flex; gap:14px; flex-wrap:wrap;
+  font-size:12px; color:#6B645E; white-space:nowrap;
+}
+.std-key { display:flex; align-items:center; gap:5px; }
+.std-key-sq { width:7px; height:7px; flex:none; }
+
+.std-sec-head {
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:16px; padding:26px 0 10px;
+}
+.std-sec-head-strong { padding:0 0 14px; border-bottom:1px solid #2D2926; }
+.std-sec-r { display:flex; align-items:center; gap:16px; font-size:12px; }
+.std-sec-note { font-size:12px; color:#99928B; }
+.std-team-btn {
+  background:none; border:none; padding:0 0 1px; cursor:pointer;
+  font-family:inherit; font-size:12px; color:#6B645E;
+}
+.std-team-btn-on { color:#2D2926; border-bottom:1px solid #2D2926; }
+
+/* ── The attendance table ── */
+.std-table { width:100%; border-collapse:collapse; font-size:14px; }
+.std-table th {
+  text-align:left; font-size:10px; font-weight:500; letter-spacing:.12em;
+  text-transform:uppercase; color:#99928B; padding:0 8px 8px;
+  border-bottom:1px solid #2D2926; white-space:nowrap;
+}
+.std-table td { padding:9px 8px; border-bottom:1px solid #EDEAE4; }
+.std-table th:first-child, .std-table td:first-child { padding-left:0; }
+.std-table th:last-child, .std-table td:last-child { padding-right:0; }
+.std-table th.c, .std-table td.c { text-align:center; }
+.std-table th.r, .std-table td.r { text-align:right; }
+.std-td-name { white-space:nowrap; }
+.std-team-tag {
+  font-size:10px; color:#99928B; letter-spacing:.08em; margin-left:.4em;
+}
+.std-num { font-variant-numeric:tabular-nums; font-weight:600; font-size:13px; }
+.std-said { color:#6B645E; }
+/* The medical glyph reads bolder here than on the roster: in a page made of
+   hairlines it is the one thing a coach scans the column for. */
+.std-table .roster-status-icon {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:50%; font-size:13px; font-weight:700;
+}
+.std-table .roster-status-fit { background:#DCE9DC; color:#3F6B44; }
+.std-table .roster-status-doubt { background:#F6E4C4; color:#9A6614; }
+.std-table .roster-status-injured { background:#F2D2CE; color:#A63A32; }
+/* ── stdSelect: a dropdown that is actually ours ──
+   A native <select> can be styled shut but NOT open — the popup list is drawn
+   by the operating system and ignores every rule here. Both dropdowns on this
+   page opened into that list and read as stray OS widgets in a page made of
+   hairlines. So the list is a div, and it inherits the page like everything
+   else. `.std-sel-pill` is the staff call, `.std-sel-plain` the intensity. */
+.std-sel { position:relative; display:inline-block; text-align:left; }
+.std-sel-t {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:inherit; cursor:pointer; background:none;
+  border:1px solid transparent; color:inherit;
+}
+.std-sel-c { font-size:9px; line-height:1; opacity:.8; }
+.std-sel-menu {
+  display:none; position:absolute; z-index:40; right:0; top:calc(100% + 4px);
+  min-width:150px; max-height:280px; overflow-y:auto;
+  background:#FFFFFF; border:1px solid #2D2926;
+}
+.std-sel-open .std-sel-menu { display:block; }
+.std-sel-o {
+  display:block; width:100%; text-align:left; background:none; border:none;
+  border-bottom:1px solid #EDEAE4; cursor:pointer; font-family:inherit;
+  font-size:14px; color:#2D2926; padding:8px 12px; white-space:nowrap;
+}
+.std-sel-o:last-child { border-bottom:none; }
+.std-sel-o:hover { background:#F2F0EB; }
+.std-sel-o-on { font-weight:600; background:#F7F5F1; }
+
+/* The staff call keeps the app's coloured availability pill: it is the one
+   column a coach scans across, and the colour is the whole point of it. */
+.std-sel-pill .std-sel-t {
+  font-size:12px; font-weight:600; line-height:1;
+  padding:.35rem .6rem; border-radius:999px; color:#fff;
+}
+.std-sel-pill .std-sel-t.avail-yes     { background:#5C8F5E; border-color:#4A7A4C; }
+.std-sel-pill .std-sel-t.avail-late    { background:#D39A2F; border-color:#B07F1F; }
+.std-sel-pill .std-sel-t.avail-no      { background:#8A857F; border-color:#726D67; }
+.std-sel-pill .std-sel-t.avail-injured { background:#C0564C; border-color:#A2443B; }
+.std-sel-pill .std-sel-t.avail-na      { background:#D8D4CE; border-color:#C2BDB6; color:#5C5652; }
+/* No answer and no staff call. Without this the trigger inherits `color:#fff`
+   with no background — white on white, an apparently empty cell holding a
+   working control. */
+.std-sel-pill .std-sel-t.avail-unset {
+  background:#FFFFFF; border-color:#E3DFD8; color:#6B645E;
+}
+
+/* The planned intensity: the stat row's own 24px type, no box at all. */
+.std-sel-plain .std-sel-t {
+  font-size:24px; font-weight:400; line-height:1.2; padding:0; color:#2D2926;
+}
+.std-sel-plain .std-sel-c { font-size:12px; }
+.std-sel-plain .std-sel-menu { left:0; right:auto; }
+.std-drop-cell { width:24px; }
+.std-drop {
+  background:none; border:none; cursor:pointer; padding:0 2px;
+  font-size:15px; line-height:1; color:#C0564C; opacity:0;
+  transition:opacity .12s;
+}
+.std-table tr:hover .std-drop, .std-drop:focus { opacity:.75; }
+.std-drop:hover { opacity:1; }
+
+/* ── Shared text-button and stepper treatments ── */
+.stp-a {
+  background:none; border:none; padding:0; cursor:pointer;
+  font-family:inherit; font-size:13px; color:#BD162C;
+}
+.stp-a:hover { text-decoration:underline; }
+.stp-a-mute { color:#6B645E; }
+.stp-a-sm { font-size:12px; }
+.std-btn {
+  display:inline-flex; align-items:center; gap:8px; padding:7px 14px;
+  border:1px solid #2D2926; background:none; cursor:pointer;
+  font-family:inherit; font-size:13px; color:#2D2926; transition:all .12s;
+}
+.std-btn:hover { background:#2D2926; color:#FBFAF7; }
+.std-step { display:flex; align-items:center; gap:9px; }
+.std-step-b {
+  width:22px; height:22px; display:inline-flex; align-items:center;
+  justify-content:center; border:1px solid #E3DFD8; background:none;
+  color:#6B645E; cursor:pointer; font-family:inherit; font-size:14px;
+  line-height:1; padding:0;
+}
+.std-step-b:hover { border-color:#2D2926; color:#2D2926; }
+.std-step-n {
+  font-size:14px; min-width:14px; text-align:center;
+  font-variant-numeric:tabular-nums; color:#2D2926;
+}
+
+/* ── Team generation ── */
+.std-tg-bar {
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:16px 0 0;
+}
+.std-tg-ctl {
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  font-size:12px; color:#6B645E;
+}
+.std-tg-lbl { font-size:12px; color:#6B645E; }
+.std-tg-opts { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.std-tg-gk {
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; color:#6B645E; cursor:pointer; white-space:nowrap;
+}
+.std-tg-cols {
+  display:flex; gap:0; flex-wrap:wrap;
+  border-top:1px solid #2D2926; margin-top:18px;
+}
+.std-tg-col { flex:1 1 160px; min-width:0; padding:14px 18px 0 0; }
+.std-tg-head { display:flex; align-items:center; gap:8px; padding-bottom:8px; }
+.std-tg-name {
+  font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#6B645E;
+}
+.std-tg-count { font-size:12px; color:#99928B; margin-left:auto; }
+.std-tg-row {
+  display:flex; align-items:center; gap:8px;
+  font-size:14px; padding:4px 0; border-bottom:1px solid #EDEAE4;
+}
+.std-tg-pos { font-size:11px; color:#99928B; }
+/* The roster's own discs, a size down: at 26px they would set the row height
+   and the column would read as a list of badges with names attached. */
+.std-tg-row .pos-circle, .stp-big-row .pos-circle {
+  width:20px; height:20px; font-size:8px;
+}
+.std-tg-assign {
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:16px 0 0;
+}
+.std-chip {
+  font-size:13px; padding:5px 11px; cursor:pointer; font-family:inherit;
+  border:1px solid #E3DFD8; background:none; color:#2D2926;
+}
+.std-chip:hover { border-color:#2D2926; }
+.std-chip-on { background:#2D2926; color:#FBFAF7; border-color:#2D2926; }
+.std-chip-sq { min-width:30px; text-align:center; }
+/* An exercise that already holds a split. Not offered again: re-assigning
+   would silently overwrite a decision made earlier, and the way back is the
+   × on the exercise, where the coach can see what he is discarding. */
+.std-chip-taken {
+  color:#99928B; border-style:dashed; cursor:not-allowed;
+}
+.std-chip-taken:hover { border-color:#E3DFD8; }
+
+/* ── The plan rail ── */
+.std-plan-panel { display:block; }
+.stp-flow { display:flex; flex-direction:column; }
+.stp-empty { font-size:13px; color:#99928B; padding:16px 0; }
+.stp-block {
+  display:flex; gap:16px; padding:16px 0 14px; border-bottom:1px solid #EDEAE4;
+}
+/* The parallel block's edge rule is bled out to the rail's own padding, so
+   the whole row reads as one group rather than an indented paragraph. This
+   replaces the fork and merge rails entirely: the design says "alhora" in
+   words and letters the lanes, which is what a coach reads on the touchline. */
+.stp-parallel {
+  border-left:2px solid #FFD662; margin-left:-38px; padding-left:36px;
+}
+.stp-time { width:52px; flex:none; display:flex; flex-direction:column; gap:2px; }
+.stp-at { font-size:15px; font-variant-numeric:tabular-nums; }
+.stp-mins { font-size:11px; color:#99928B; }
+.stp-mins-in {
+  width:44px; font-family:inherit; font-size:11px; color:#99928B;
+  background:none; border:none; border-bottom:1px dotted #E3DFD8;
+  padding:0; -moz-appearance:textfield;
+}
+.stp-mins-in:focus { outline:none; border-bottom-color:#BD162C; color:#2D2926; }
+.stp-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.stp-eyebrow {
+  font-size:10px; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:#99928B;
+}
+.stp-lane { display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
+.stp-ex { display:flex; flex-direction:column; gap:3px; width:100%; }
+.stp-ex-head { display:flex; align-items:flex-start; gap:6px; }
 .stp-ex-title {
-  flex:1; min-width:0; font-size:.84rem; font-weight:600;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:15px; text-align:left; color:#2D2926;
+  display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
 }
-.stp-ex-desc {
-  font-size:.76rem; color:var(--text-secondary); margin-top:.2rem;
-  overflow-wrap:anywhere;
+.stp-ex-open {
+  background:none; border:none; border-bottom:1px solid #E3DFD8;
+  padding:0 0 1px; cursor:pointer; font-family:inherit;
 }
-.stp-tag {
-  font-size:.66rem; font-weight:700; text-transform:uppercase;
-  color:var(--primary); background:color-mix(in srgb, var(--primary) 14%, transparent);
-  border-radius:10px; padding:.05rem .35rem; flex-shrink:0;
-}
+.stp-ex-open:hover { color:#BD162C; border-bottom-color:#BD162C; }
+.stp-ex-open:hover .stp-ex-mark { color:#BD162C; }
+.stp-ex-mark { font-size:11px; color:#99928B; }
+.stp-lane-tag { color:#99928B; font-size:12px; letter-spacing:.1em; }
+.stp-ex-note { font-size:12px; color:#6B645E; }
+.stp-ex-desc { font-size:12px; color:#99928B; overflow-wrap:anywhere; }
 .stp-ex-del {
-  background:none; border:none; color:#e53935; cursor:pointer;
-  font-size:1rem; line-height:1; padding:0 2px; opacity:.55; flex-shrink:0;
+  background:none; border:none; cursor:pointer; padding:0 2px;
+  font-size:14px; line-height:1; color:#C0564C; opacity:0; margin-left:auto;
+  transition:opacity .12s;
 }
+.stp-ex:hover .stp-ex-del { opacity:.7; }
 .stp-ex-del:hover { opacity:1; }
+.stp-board { padding-top:8px; display:flex; flex-direction:column; gap:6px; }
+.stp-board-wrap { max-width:100%; }
+.stp-board-acts { display:flex; gap:14px; }
+.stp-board-acts .stp-a { font-size:12px; }
+.stp-team-lines { position:relative; padding-right:18px; }
+.stp-team-line {
+  display:flex; align-items:flex-start; gap:8px; font-size:12px; color:#2D2926;
+}
+.stp-team-line span:last-child { line-height:1.45; }
+/* The only way back from an assignment, sitting on the thing it removes. */
+.stp-team-x {
+  position:absolute; top:-2px; right:0;
+  background:none; border:none; cursor:pointer; padding:0 2px;
+  font-size:14px; line-height:1; color:#C0564C; opacity:.55;
+}
+.stp-team-x:hover { opacity:1; }
+.stp-dot, .stp-dot-sm {
+  border-radius:50%; flex:none; display:inline-block;
+  box-shadow:0 0 0 1px rgba(45,41,38,.22);
+}
+.stp-dot { width:13px; height:13px; }
+.stp-dot-sm { width:11px; height:11px; margin-top:3px; }
+.stp-foot {
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:14px 0 0;
+}
+.stp-ends {
+  margin-left:auto; font-size:12px; color:#99928B;
+  font-variant-numeric:tabular-nums;
+}
 
-/* ── The exercise picker ── */
-.stp-pick-modal { max-width:640px; width:92vw; max-height:86vh; overflow-y:auto; text-align:left; }
-.stp-pick-grid {
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
-  gap:.6rem; margin:.4rem 0 .2rem;
+/* ── The expanded board overlay ──
+   Board LEFT, teams RIGHT. Stacking them pushed the squad list below the fold
+   and put a scrollbar on the one thing a coach opens precisely so he can see
+   all of it at once. The generous top padding is not decoration either: at
+   `align-items:center` with a tall card the head slid up under the app's own
+   header, so the card is pinned below it and grows downward. */
+.stp-overlay {
+  position:fixed; inset:0; z-index:60; background:rgba(45,41,38,.55);
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:72px 40px 40px; overflow-y:auto;
 }
-.stp-pick-card {
-  border:1px solid var(--border); border-radius:var(--radius);
-  padding:.4rem; cursor:pointer; transition:border-color .15s;
+.stp-overlay-card {
+  width:min(1000px, 94vw); max-height:calc(100vh - 112px);
+  display:flex; flex-direction:column;
+  background:#FBFAF7; border:1px solid #2D2926; padding:22px;
 }
-.stp-pick-card:hover { border-color:var(--primary); }
-.stp-pick-name {
-  display:flex; align-items:center; gap:.35rem;
-  font-size:.84rem; font-weight:600; margin-bottom:.3rem;
+/* Wider only when there are teams to sit beside the board. */
+.stp-overlay-wide { width:min(1360px, 96vw); }
+.stp-overlay-head {
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:16px; padding-bottom:14px; flex:none;
 }
-.stp-pick-board { pointer-events:none; }
-.stp-free-desc { resize:vertical; width:100%; box-sizing:border-box; }
+.stp-overlay-title { font-size:22px; }
+.stp-overlay-body {
+  display:flex; gap:26px; align-items:flex-start;
+  flex:1 1 auto; min-height:0;
+}
+.stp-overlay-board { flex:1 1 auto; min-width:0; }
+.stp-big-cols {
+  display:flex; gap:0; flex-wrap:wrap;
+  flex:0 1 420px; min-width:0; max-height:100%; overflow-y:auto;
+}
+.stp-big-col { flex:1 1 160px; min-width:0; padding-right:22px; }
+.stp-big-colhead {
+  display:flex; align-items:center; gap:8px;
+  padding-bottom:6px; border-bottom:1px solid #2D2926;
+  font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#6B645E;
+}
+.stp-big-count { font-size:12px; color:#99928B; margin-left:auto; }
+.stp-big-row {
+  display:flex; align-items:center; gap:8px;
+  font-size:14px; padding:4px 0; border-bottom:1px solid #EDEAE4;
+}
+.stp-big-pos { font-size:11px; color:#99928B; }
+/* The in-block "+ Exercici" lines up with the exercise titles above it
+   rather than centring under them — it belongs to that list. */
+.stp-add-in { align-self:flex-start; }
 
-/* ── Material card ── */
-.stm-list { display:flex; flex-direction:column; gap:.1rem; }
+/* ── Dialogs ──
+   Square, hairline-ruled and flat, like the page behind them. They do NOT use
+   `.modal-card`: that is the app's rounded, shadowed chrome, and dropping the
+   new content into it is what made the v188 picker look broken.
+
+   The three-part head/body/foot split exists for one reason: the BODY is the
+   only part that scrolls, so the title and the actions stay reachable however
+   long the list gets. A 20-player squad ran off the bottom of the screen. */
+.stp-dialog {
+  display:flex; flex-direction:column;
+  width:min(560px, 92vw); max-height:86vh; margin:16px;
+  background:#FBFAF7; border:1px solid #2D2926; text-align:left;
+}
+.stp-dialog-head {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:16px 20px; border-bottom:1px solid #E3DFD8; flex:none;
+}
+.stp-dialog-body {
+  padding:16px 20px; overflow-y:auto; flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column; gap:10px;
+}
+.stp-dialog-foot {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:14px 20px; border-top:1px solid #E3DFD8; flex:none;
+}
+.stp-dialog-acts { display:flex; align-items:center; gap:18px; }
+.stp-dialog-or { padding-top:6px; }
+.stp-dialog-mins {
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; color:#6B645E;
+}
+.stp-field {
+  font-family:inherit; font-size:14px; color:#2D2926;
+  background:#FFFFFF; border:1px solid #E3DFD8; border-radius:0;
+  padding:8px 10px; width:100%; box-sizing:border-box;
+}
+.stp-field:focus { outline:none; border-color:#2D2926; }
+.stp-field-n { width:78px; text-align:center; }
+.stp-free-desc { resize:vertical; }
+/* Boards are a LIST of names, not a grid of pitches: v188 drew a full
+   read-only board per row and the dialog became unusable. The board itself is
+   one click away in the rail once the exercise exists. */
+.stp-pick-list {
+  display:flex; flex-direction:column;
+  max-height:38vh; overflow-y:auto;
+  border-top:1px solid #EDEAE4;
+}
+.stp-pick-row {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 2px; background:none; border:none;
+  border-bottom:1px solid #EDEAE4; cursor:pointer;
+  font-family:inherit; font-size:14px; text-align:left; color:#2D2926;
+}
+.stp-pick-row:hover { color:#BD162C; }
+.stp-pick-name { flex:1; min-width:0; }
+.stp-tag {
+  font-size:10px; font-weight:500; letter-spacing:.1em;
+  text-transform:uppercase; color:#99928B; flex:none;
+}
+
+/* ── Material rail ── */
+.std-material-card {
+  margin-top:34px; padding-top:14px; border-top:1px solid #2D2926;
+}
+.std-material-card .std-sec-head-strong { border-bottom:none; padding-bottom:6px; }
+.stm-list { display:flex; flex-direction:column; }
+/* Fixed HEIGHT, not padding. It is what keeps the peto swatches optically
+   centred against the rows above and below them. */
 .stm-row {
-  display:flex; align-items:center; gap:.5rem;
-  padding:.35rem .1rem; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px; height:38px;
+  border-bottom:1px solid #EDEAE4; position:relative;
 }
-.stm-row:last-child { border-bottom:none; }
-.stm-ico { width:1.3rem; text-align:center; flex-shrink:0; }
-.stm-lbl { flex:1; min-width:0; font-size:.88rem; display:flex; align-items:center; gap:.4rem; }
-.stm-qty { font-weight:700; font-size:1rem; color:var(--primary); }
+.stm-lbl { flex:1; min-width:0; font-size:14px; }
+.stm-lbl-tight { flex:none; }
+.stm-spacer { flex:1; }
+.stm-qty { font-size:17px; font-variant-numeric:tabular-nums; }
 .stm-x {
-  background:none; border:none; color:#e53935; cursor:pointer;
-  font-size:1rem; line-height:1; padding:0 3px; opacity:.55;
+  background:none; border:none; cursor:pointer; padding:0 2px;
+  font-size:13px; line-height:1; color:#99928B;
 }
-.stm-x:hover { opacity:1; }
-.stm-swatches { display:inline-flex; gap:.2rem; }
+.stm-x:hover { color:#BD162C; }
+.stm-swatches { display:flex; align-items:center; gap:5px; height:100%; }
 .stm-swatch {
-  width:14px; height:14px; border-radius:50%;
-  border:1px solid var(--border); display:inline-block;
+  width:15px; height:15px; flex:none; border-radius:50%; cursor:pointer;
+  border:none; padding:0; box-shadow:0 0 0 1px rgba(45,41,38,.22);
 }
-.stm-sub {
-  font-weight:700; font-size:.9rem; color:var(--primary);
-  margin:1rem 0 .4rem;
+.stm-swatch-on { box-shadow:0 0 0 2px #2D2926; }
+.stm-picker {
+  position:absolute; z-index:20; left:44px; top:34px;
+  background:#FFFFFF; border:1px solid #2D2926; padding:10px;
+  display:flex; flex-direction:column; gap:8px;
 }
-.stm-hint { font-size:.76rem; color:var(--text-secondary); margin:.3rem 0 0; }
-.stm-warn { color:#ff9800; }
-.stm-add-row { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
-.stm-add-row #stm-extra-label { flex:1 1 160px; min-width:0; }
-.stm-add-row #stm-extra-qty { width:72px; text-align:center; flex:0 0 auto; }
-.stm-duty-row {
-  display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; margin-bottom:.5rem;
+.stm-pal-row { display:flex; gap:7px; }
+.stm-pal {
+  width:20px; height:20px; border-radius:50%; cursor:pointer;
+  border:none; padding:0; box-shadow:0 0 0 1px rgba(45,41,38,.25);
 }
-.stm-duty-n, .stm-duty-all {
-  display:flex; align-items:center; gap:.35rem; font-size:.84rem;
+.stm-pal-on { box-shadow:0 0 0 2px #2D2926; }
+.stm-acts { display:flex; gap:18px; flex-wrap:wrap; padding:12px 0 0; }
+.stm-picker .stm-acts { padding:0; gap:14px; }
+.stm-picker .stp-a { font-size:12px; }
+.stm-warn {
+  display:flex; gap:8px; padding:10px 0 0; font-size:12px; color:#6B645E;
 }
-.stm-duty-n input { width:64px; text-align:center; }
-.stm-duty-slots { display:flex; gap:.4rem; flex-wrap:wrap; }
-.stm-duty-slots select { flex:1 1 180px; min-width:0; }
-.stm-duty-static { font-size:.88rem; }
+.stm-warn-i { color:#BD162C; }
+.stm-note { font-size:12px; color:#6B645E; padding:8px 0 0; }
+.stm-muted { font-size:13px; color:#99928B; }
+.stm-duty { margin-top:26px; padding-top:12px; border-top:1px solid #EDEAE4; }
+.stm-duty .std-sec-head { padding:0 0 10px; align-items:center; }
+.stm-duty-names {
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  font-size:14px; min-height:24px;
+}
+.stm-duty-chip { display:inline-flex; align-items:center; gap:7px; }
+.stm-duty-x {
+  background:none; border:none; cursor:pointer; padding:0;
+  font-size:11px; line-height:1; color:#99928B;
+}
+.stm-duty-x:hover { color:#BD162C; }
+/* Capped and scrollable. A squad of 20 ran off the bottom of the screen with
+   no way back to the buttons. The right padding keeps the turn count off the
+   scrollbar it would otherwise sit against. */
+.stm-pick-list {
+  display:flex; flex-direction:column;
+  max-height:46vh; overflow-y:auto;
+  border-top:1px solid #EDEAE4; padding-right:12px;
+}
+.stm-pick-row {
+  display:flex; align-items:center; gap:10px; padding:8px 0;
+  border:none; border-bottom:1px solid #EDEAE4; background:none;
+  cursor:pointer; font-family:inherit; font-size:14px;
+  text-align:left; color:#2D2926;
+}
+.stm-pick-check { width:16px; height:16px; flex:none; border:1px solid #99928B; }
+.stm-pick-on .stm-pick-check { background:#2D2926; border-color:#2D2926; }
+.stm-pick-name { flex:1; min-width:0; }
+.stm-pick-n { font-size:12px; color:#99928B; font-variant-numeric:tabular-nums; }
+/* Greyed, not disabled. A coach who insists knows something the counter does
+   not — the fairness rule is advice made visible, never a lock. */
+.stm-pick-off { color:#99928B; }
+.stm-pick-off .stm-pick-check { border-style:dashed; }
+
+@media (max-width: 900px) {
+  .std-body { flex-direction:column; }
+  /* The rail STACKS rather than hiding: a coach plans on his phone. */
+  .std-rail {
+    width:100%; border-left:none; border-top:1px solid #2D2926;
+    padding:26px 20px 48px;
+  }
+  .std-main { padding:26px 20px 32px; }
+  .std-topbar { padding:12px 20px; }
+  .std-title { font-size:30px; }
+  .std-stats { gap:28px; }
+  .stp-parallel { margin-left:-22px; padding-left:20px; }
+  .table-wrap { overflow-x:auto; }
+  .std-table { min-width:560px; }
+  .stp-overlay { padding:16px; }
+}
 
 /* Silhouette picker */
 .tb-sil-wrap { position:relative; flex-shrink:0; }
@@ -2834,32 +3262,6 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-top-scroll {
   max-height: 120px; overflow-y: auto;
 }
-.std-attendance-table { width: auto; max-width: 550px; }
-.std-attendance-table td { padding: .5rem .6rem; vertical-align: middle; }
-.std-player-answer {
-  display: inline-block; padding: .2rem .5rem; border-radius: var(--radius);
-  font-size: .72rem; font-weight: 600; opacity: .55;
-}
-.std-player-answer.avail-yes { background: #66bb6a; color: #fff; }
-.std-player-answer.avail-late { background: #ffa726; color: #fff; }
-.std-player-answer.avail-no { background: #78909c; color: #fff; }
-.std-player-answer.avail-injured { background: #ef5350; color: #fff; }
-.std-player-answer.avail-na { background: #d0d0d0; color: #666; }
-.std-staff-select {
-  padding: .3rem .5rem; font-size: .75rem; font-weight: 600;
-  border: 2px solid transparent; border-radius: var(--radius);
-  cursor: pointer; color: #fff; appearance: auto;
-}
-.std-staff-select.avail-yes { background: #66bb6a; border-color: #388e3c; }
-.std-staff-select.avail-late { background: #ffa726; border-color: #cc7a00; }
-.std-staff-select.avail-no { background: #78909c; border-color: #546e7a; }
-.std-staff-select.avail-injured { background: #ef5350; border-color: #c62828; }
-.std-staff-select.avail-na { background: #d0d0d0; border-color: #aaa; color: #666; }
-/* No answer and no staff call. Without this the select inherits the base
-   `color:#fff` with no class-supplied background — white on white, an
-   apparently empty cell holding a working control. */
-.std-staff-select.avail-unset { background: var(--card); border-color: var(--border); color: var(--text-secondary); }
-.std-staff-select option { background: #fff; color: #333; }
 tr[data-tidx] { transition: background .15s; }
 tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
@@ -3275,14 +3677,17 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .std-top-card { min-width: 140px; }
 
   /* ── Tables → scrollable & compact ── */
-  .std-attendance-table { max-width: 100%; display: block; overflow-x: auto; }
-  .std-attendance-row { flex-direction: column; }
-  /* The plan STACKS here rather than disappearing, unlike the board-name
-     list it replaced: a coach plans the session on his phone. */
-  .std-plan-panel { flex: 1 1 auto; width: 100%; }
-  .stm-duty-slots select { flex: 1 1 100%; }
+  /* `.dashboard-content` drops to `.75rem 1rem` in THIS breakpoint, so the
+     full-bleed negation has to follow it here and nowhere higher up. */
+  .std-page { margin: 0 -1rem -.75rem; }
+  .std-page:first-child { margin-top: -.75rem; }
   table { font-size: .78rem; }
   th, td { padding: .4rem .35rem; white-space: nowrap; }
+  /* The training-detail table sets its own sizes in the v188 block above —
+     this blanket rule would shrink its 10px headers to 7.8px. */
+  .std-table { font-size: 14px; }
+  .std-table th { font-size: 10px; padding: 0 8px 8px; }
+  .std-table td { padding: 9px 8px; white-space: normal; }
 
   /* ── Tactical board → full width + scale elements ── */
   .tb-field, .tb-field-readonly { max-width: 100%; }
@@ -6101,157 +6506,151 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 </style>
 <style>
 /* Mockup shell only — NOT part of the app. The real page renders inside
-   #content within the dashboard sidebar layout; this stands in for it. */
-body { padding: 0; }
+   #dashboard-content within the dashboard sidebar layout; this stands in for
+   it, including the 2rem padding .std-page is built to negate. */
+body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-serif; }
 .mock-note {
-  background: #2D2926; color: #e0ddd9; padding: .7rem 1.2rem;
-  font-size: .82rem; line-height: 1.5;
+  background:#2D2926; color:#e0ddd9; padding:.7rem 1.2rem;
+  font-size:.82rem; line-height:1.5;
 }
-.mock-note b { color: #FFD662; }
-.mock-page { max-width: 1180px; margin: 0 auto; padding: 1.5rem 1.2rem 4rem; }
+.mock-note b { color:#FFD662; }
+.mock-shell { padding:2rem; background:#FBFAF7; }
+/* The handoff calls the pitch artwork the one deliberately rough part; in the
+   app this is the real read-only board. */
+.mock-pitch {
+  height:190px; background:#2e7d32; color:rgba(255,255,255,.75);
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+  border:1px solid rgba(255,255,255,.9);
+}
 </style>
 </head>
 <body>
 <div class="mock-note">
-  <b>EsquerrApp v187 — staff training detail.</b>
-  The <b>session plan</b> panel (right of the attendance table) and the
-  <b>Material</b> card below it are rendered by the app's real functions and
-  real CSS. Everything else is stand-in context. Generated 2026-08-28.
-  Computed for this session: <b>20 cons</b>, <b>3 pilotes</b>,
-  <b>3 colors de petos</b> from 4 colours on 4 boards.
+  <b>EsquerrApp v188 — staff training detail, rebuilt to the Claude Design handoff.</b>
+  The <b>rail</b> (Pla d'entrenament + Material) and the <b>team block</b> are rendered by the
+  app's real functions and real CSS; the top bar, hero, stat row, attendance bar and table are
+  stand-in context. The pitch is a placeholder — in the app it is the real read-only board.
+  Generated 2026-08-28.
+  Computed: <b>20 cons</b>, <b>3 pilotes</b>,
+  <b>3 colors de petos</b> from 4 colours on 4 boards;
+  plan ends <b>21:15</b>.
 </div>
-<div class="mock-page">
+<div class="mock-shell">
 
-      <div class="detail-topbar">
-        <button class="btn btn-outline btn-small detail-back">← Enrere</button>
+      <div class="std-page">
+      <div class="std-topbar">
+        <button class="std-back">← Enrere</button>
+        <div class="std-topbar-r"><span class="std-eyebrow">Entrenament</span></div>
       </div>
-      <div class="detail-hero detail-hero-training">
-        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">Entrenament</span></div>
-        <h2 class="detail-title">Pressió alta i sortida de pilota</h2>
-        <div class="detail-subtitle">Dimarts, 1 de setembre de 2026 · 20:00 · Camp Municipal Joan Serrahima</div>
-      </div>
-      <div class="card std-load-card">
-        <div class="card-title">Intensitat prevista</div>
-        <div class="std-load-row">
-          <select class="reg-input std-planned-rpe"><option selected>7 · Alta</option></select>
-          <span class="std-load-au">630 UA</span>
+      <div class="std-body">
+      <div class="std-main">
+        <div class="std-hero">
+          <div class="std-hero-row">
+            <h1 class="std-title">Pressió alta i sortida de pilota</h1>
+            <div class="std-wx"><span class="std-wx-i" title="Alguns núvols">⛅</span><span class="std-wx-b" title="Vent"><span class="std-wx-i">💨</span>Brisa · 3.2 m/s</span><span class="std-wx-b std-wx-t">17°</span></div>
+          </div>
+          <div class="std-meta">Dimarts, 1 de setembre de 2026 · 20:00 · Camp Municipal Joan Serrahima</div>
         </div>
-        <p class="std-load-hint">La càrrega prevista de la sessió, en unitats arbitràries.</p>
-      </div>
-      <div class="card" style="margin-bottom:1.5rem;">
-        <div class="card-title">Resum d'assistència</div>
-        <div class="std-donut-wrap"><div class="std-donut" style="width:100px;height:100px;">
-      <svg width="100" height="100" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="44" fill="none" stroke="var(--border)" stroke-width="12"/>
-        <circle cx="50" cy="50" r="44" fill="none" stroke="#66bb6a" stroke-width="12"
-          stroke-dasharray="172.7875959474386 103.67255756846316" stroke-dashoffset="0"
-          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="Yes: 63%"><title>Yes: 63%</title></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#ffa726" stroke-width="12"
-          stroke-dasharray="34.55751918948772 241.90263432641405" stroke-dashoffset="-172.7875959474386"
-          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="Late: 13%"><title>Late: 13%</title></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#78909c" stroke-width="12"
-          stroke-dasharray="34.55751918948772 241.90263432641405" stroke-dashoffset="-207.34511513692632"
-          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="No: 13%"><title>No: 13%</title></circle><circle cx="50" cy="50" r="44" fill="none" stroke="#ef5350" stroke-width="12"
-          stroke-dasharray="34.55751918948772 241.90263432641405" stroke-dashoffset="-241.90263432641405"
-          style="--circ:276.46015351590177;cursor:pointer;pointer-events:stroke" transform="rotate(-90 50 50)" data-tooltip="Injured: 13%"><title>Injured: 13%</title></circle>
-      </svg>
-      <span class="std-donut-label">6/8</span>
-    </div>
-    <div class="std-donut-legend">
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#66bb6a"></span>Yes (5)</span>
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#ffa726"></span>Late (1)</span>
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#78909c"></span>No (1)</span>
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#ef5350"></span>Injured (1)</span>
-      
-    </div></div>
-      </div>
-      <div class="std-attendance-row">
-      <div class="card" style="flex:1;min-width:0;">
-        <div class="card-title">Assistència de jugadors</div>
-        <div class="roster-team-filter">
-          <button class="roster-team-btn std-team-btn roster-team-btn-active">All</button>
-          <button class="roster-team-btn std-team-btn">A</button>
-          <button class="roster-team-btn std-team-btn">B</button>
+        <div class="std-stats">
+          <div class="std-stat"><span class="std-eyebrow">Intensitat prevista</span><span class="std-stat-v"><div class="std-sel std-sel-plain" data-std-sel="rpe" data-value="8"><button type="button" class="std-sel-t "><span class="std-sel-l">8 · exigent</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">Sense definir</button><button type="button" class="std-sel-o" data-v="1">1 · suau</button><button type="button" class="std-sel-o" data-v="2">2 · suau</button><button type="button" class="std-sel-o" data-v="3">3 · suau</button><button type="button" class="std-sel-o" data-v="4">4 · suau</button><button type="button" class="std-sel-o" data-v="5">5 · moderat</button><button type="button" class="std-sel-o" data-v="6">6 · moderat</button><button type="button" class="std-sel-o" data-v="7">7 · moderat</button><button type="button" class="std-sel-o std-sel-o-on" data-v="8">8 · exigent</button><button type="button" class="std-sel-o" data-v="9">9 · exigent</button><button type="button" class="std-sel-o" data-v="10">10 · exigent</button></div></div></span></div>
+          <div class="std-stat"><span class="std-eyebrow">Càrrega</span><span class="std-stat-v"><span class="std-stat-hot">630</span><span class="std-stat-n">UA</span></span></div>
+          <div class="std-stat"><span class="std-eyebrow">Durada</span><span class="std-stat-v">75′<span class="std-stat-n">20:00 – 21:15</span></span></div>
         </div>
-        <div class="std-attendance-head"><button class="btn btn-small btn-outline">+ Jugador</button></div>
-        <div class="table-wrap"><table class="matchday-table std-attendance-table">
-          <thead><tr><th class="std-drop-cell"></th><th>Pos</th><th>Jugador</th><th class="center-cell roster-th-wrap">Estat Mèdic</th><th class="center-cell roster-th-wrap">Forma Física</th><th class="center-cell">A/C</th><th class="center-cell">Resposta jugador</th><th class="center-cell">Staff (editable)</th></tr></thead>
+        <div class="std-attbar"><div class="std-bar"><span style="width:62.5%;background:#7CA982"></span><span style="width:12.5%;background:#E3B341"></span><span style="width:12.5%;background:#A8A29B"></span><span style="width:12.5%;background:#C0564C"></span></div><div class="std-bar-key"><span class="std-key"><span class="std-key-sq" style="background:#7CA982"></span>Sí 5</span><span class="std-key"><span class="std-key-sq" style="background:#E3B341"></span>Tard 1</span><span class="std-key"><span class="std-key-sq" style="background:#A8A29B"></span>No 1</span><span class="std-key"><span class="std-key-sq" style="background:#C0564C"></span>Lesionat 1</span></div></div>
+        <div class="std-sec-head">
+          <span class="std-eyebrow">Assistència de jugadors</span>
+          <div class="std-sec-r">
+            <button class="std-team-btn std-team-btn-on">Tots</button>
+            <button class="std-team-btn">A</button>
+            <button class="std-team-btn">B</button>
+            <button class="stp-a">+ Jugador</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="std-table">
+          <thead><tr><th>Jugador</th><th>Pos</th><th class="c">Mèdic</th><th class="c">Forma</th><th class="r">A/C</th><th class="r">Jugador diu</th><th class="r">Staff</th><th class="std-drop-cell"></th></tr></thead>
           <tbody><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Aleix Ferrer<span class="std-team-tag">A</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-GK">GK</span></span></td>
-        <td><span class="roster-name-wrap">Aleix Ferrer<span class="conv-team-circle">A</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">1.05</td>
-        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5C8F5E"></span></td>
+        <td class="r std-num" style="color:#5C8F5E">1.05</td>
+        <td class="r std-said">Sí</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="yes"><button type="button" class="std-sel-t avail-yes"><span class="std-sel-l">Sí</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o std-sel-o-on" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Berta Puig<span class="std-team-tag">A</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-CB">CB</span><span class="pos-circle pos-LB">LB</span></span></td>
-        <td><span class="roster-name-wrap">Berta Puig<span class="conv-team-circle">A</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">0.92</td>
-        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5C8F5E"></span></td>
+        <td class="r std-num" style="color:#5C8F5E">0.92</td>
+        <td class="r std-said">Sí</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="yes"><button type="button" class="std-sel-t avail-yes"><span class="std-sel-l">Sí</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o std-sel-o-on" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Carles Roig<span class="std-team-tag">A</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-DM">DM</span><span class="pos-circle pos-OM">OM</span></span></td>
-        <td><span class="roster-name-wrap">Carles Roig<span class="conv-team-circle">A</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">1.18</td>
-        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5C8F5E"></span></td>
+        <td class="r std-num" style="color:#5C8F5E">1.18</td>
+        <td class="r std-said">Sí</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="yes"><button type="button" class="std-sel-t avail-yes"><span class="std-sel-l">Sí</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o std-sel-o-on" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">David Mas<span class="std-team-tag">A</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-ST">ST</span></span></td>
-        <td><span class="roster-name-wrap">David Mas<span class="conv-team-circle">A</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-doubt">?</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#ff9800"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#ff9800">1.44</td>
-        <td class="center-cell"><span class="std-player-answer avail-late">Tard</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-late"><option>—</option><option >Sí</option><option selected>Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-doubt">?</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D39A2F"></span></td>
+        <td class="r std-num" style="color:#D39A2F">1.44</td>
+        <td class="r std-said">Tard</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="late"><button type="button" class="std-sel-t avail-late"><span class="std-sel-l">Tard</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o" data-v="yes">Sí</button><button type="button" class="std-sel-o std-sel-o-on" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Enric Sala<span class="std-team-tag">B</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-RW">RW</span><span class="pos-circle pos-ST">ST</span></span></td>
-        <td><span class="roster-name-wrap">Enric Sala<span class="conv-team-circle">B</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#ff9800"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#ff9800">0.78</td>
-        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D39A2F"></span></td>
+        <td class="r std-num" style="color:#D39A2F">0.78</td>
+        <td class="r std-said">Sí</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="yes"><button type="button" class="std-sel-t avail-yes"><span class="std-sel-l">Sí</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o std-sel-o-on" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Ferran Oller<span class="std-team-tag">B</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-CB">CB</span></span></td>
-        <td><span class="roster-name-wrap">Ferran Oller<span class="conv-team-circle">B</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">1.01</td>
-        <td class="center-cell"><span class="std-player-answer avail-no">No</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-no"><option>—</option><option >Sí</option><option >Tard</option><option selected>No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5C8F5E"></span></td>
+        <td class="r std-num" style="color:#5C8F5E">1.01</td>
+        <td class="r std-said">No</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="no"><button type="button" class="std-sel-t avail-no"><span class="std-sel-l">No</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o std-sel-o-on" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Gerard Vila<span class="std-team-tag">B</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-LW">LW</span></span></td>
-        <td><span class="roster-name-wrap">Gerard Vila<span class="conv-team-circle">B</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-injured">✕</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#e53935"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#e53935">1.62</td>
-        <td class="center-cell"><span class="std-player-answer avail-injured">Lesionat</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-injured"><option>—</option><option >Sí</option><option >Tard</option><option >No</option><option selected>Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-injured">✕</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C0564C"></span></td>
+        <td class="r std-num" style="color:#C0564C">1.62</td>
+        <td class="r std-said">Lesionat</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="injured"><button type="button" class="std-sel-t avail-injured"><span class="std-sel-l">Lesionat</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o std-sel-o-on" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr><tr>
-        <td class="std-drop-cell"><button class="conv-remove std-drop" title="Treure">&times;</button></td>
+        <td class="std-td-name">Hugo Camps<span class="std-team-tag">B</span></td>
         <td><span class="conv-pos-circles"><span class="pos-circle pos-DM">DM</span></span></td>
-        <td><span class="roster-name-wrap">Hugo Camps<span class="conv-team-circle">B</span></span></td>
-        <td class="center-cell"><span class="roster-status-icon roster-status-fit">✓</span></td>
-        <td class="center-cell"><span class="rd-dot" style="background:#4caf50"></span></td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:#4caf50">0.88</td>
-        <td class="center-cell"><span class="std-player-answer avail-yes">Sí</span></td>
-        <td class="center-cell"><select class="std-staff-select avail-yes"><option>—</option><option selected>Sí</option><option >Tard</option><option >No</option><option >Lesionat</option><option >N/D</option></select></td>
+        <td class="c"><span class="roster-status-icon roster-status-fit">✓</span></td>
+        <td class="c"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5C8F5E"></span></td>
+        <td class="r std-num" style="color:#5C8F5E">0.88</td>
+        <td class="r std-said">Sí</td>
+        <td class="r"><div class="std-sel std-sel-pill" data-std-sel="staff" data-value="yes"><button type="button" class="std-sel-t avail-yes"><span class="std-sel-l">Sí</span><span class="std-sel-c">▾</span></button><div class="std-sel-menu"><button type="button" class="std-sel-o" data-v="">—</button><button type="button" class="std-sel-o std-sel-o-on" data-v="yes">Sí</button><button type="button" class="std-sel-o" data-v="late">Tard</button><button type="button" class="std-sel-o" data-v="no">No</button><button type="button" class="std-sel-o" data-v="injured">Lesionat</button><button type="button" class="std-sel-o" data-v="na">N/D</button></div></div></td>
+        <td class="std-drop-cell"><button class="std-drop" title="Treure">&times;</button></td>
       </tr></tbody>
         </table></div>
+        <section class="std-teams-block" id="std-teams-block"><div class="std-tg-bar"><button class="std-btn" id="std-tg-gen">Autogenera equips</button><div class="std-tg-opts"><button class="std-chip std-chip-sq" data-std-letter="A">A</button><button class="std-chip std-chip-sq" data-std-letter="B">B</button><button class="std-chip std-chip-on" data-std-mode="mix">Equips Mixtes</button><button class="std-chip" data-std-mode="pos">Per Posicions</button><label class="std-tg-gk"><input type="checkbox" id="std-tg-gk" checked> Incloure porter</label></div><div class="std-tg-ctl"><div class="std-step"><button class="std-step-b" data-std-tg="-1">−</button><span class="std-step-n">2</span><button class="std-step-b" data-std-tg="1">+</button><span class="std-tg-lbl">equips</span></div><button class="stp-a" id="std-tg-again">↻ Regenera</button><button class="stp-a stp-a-mute" id="std-tg-clear">Esborra</button></div></div><div class="std-tg-cols"><div class="std-tg-col"><div class="std-tg-head"><span class="stp-dot" style="background:#ffffff"></span><span class="std-tg-name">Equip 1</span><span class="std-tg-count">3</span></div><div class="std-tg-row"><span class="conv-pos-circles"><span class="pos-circle pos-GK">GK</span></span>Aleix Ferrer</div><div class="std-tg-row"><span class="conv-pos-circles"><span class="pos-circle pos-DM">DM</span></span>Hugo Camps</div><div class="std-tg-row"><span class="conv-pos-circles"><span class="pos-circle pos-RW">RW</span><span class="pos-circle pos-ST">ST</span></span>Enric Sala</div></div><div class="std-tg-col"><div class="std-tg-head"><span class="stp-dot" style="background:#e53935"></span><span class="std-tg-name">Equip 2</span><span class="std-tg-count">3</span></div><div class="std-tg-row"><span class="conv-pos-circles"><span class="pos-circle pos-CB">CB</span><span class="pos-circle pos-LB">LB</span></span>Berta Puig</div><div class="std-tg-row"><span class="conv-pos-circles"><span class="pos-circle pos-DM">DM</span><span class="pos-circle pos-OM">OM</span></span>Carles Roig</div><div class="std-tg-row"><span class="conv-pos-circles"><span class="pos-circle pos-ST">ST</span></span>David Mas</div></div></div><div class="std-tg-assign"><span class="std-eyebrow std-eyebrow-sm">Afegeix a l'exercici</span><button class="std-chip" data-std-assign="ex_tb_warm" title="">Escalfament + rondo 5v2</button><button class="std-chip" data-std-assign="ex_tb_press" title="">A · Pressió alta 6v6</button><button class="std-chip" data-std-assign="ex_tb_sortida" title="">B · Sortida de pilota 4+2</button><button class="std-chip" data-std-assign="ex_free" title="">Transicions 8v8 camp reduït</button><button class="std-chip std-chip-taken" data-std-assign="ex_tb_final" disabled title="Ja té equips — treu-los amb la creu per canviar-los">Partit 9v9 i tornada a la calma ✓</button></div></section>
       </div>
-      <div class="card std-plan-panel" id="std-plan-panel"><div class="card-title">Pla d'entrenament</div><div class="stp-flow"><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="0" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="0" title="Obrir en paral·lel">⑂</button></div><div class="stp-block"><div class="stp-lanes"><div class="stp-lane" data-stp-lane="0.0"><div class="stp-ex stp-ex-board" data-stp-ex="0.0.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Escalfament + rondo 5v2</span><button class="stp-ex-del" data-stp-del="0.0.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="0.0.1" title="Afegir exercici">+</button></div></div></div><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="1" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="1" title="Obrir en paral·lel">⑂</button></div><div class="stp-block stp-parallel"><div class="stp-rail stp-rail-fork"></div><div class="stp-lanes"><div class="stp-lane" data-stp-lane="1.0"><div class="stp-ex stp-ex-board" data-stp-ex="1.0.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Pressió alta 6v6</span><span class="stp-tag">Presión</span><button class="stp-ex-del" data-stp-del="1.0.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="1.0.1" title="Afegir exercici">+</button></div><div class="stp-lane" data-stp-lane="1.1"><div class="stp-ex stp-ex-board" data-stp-ex="1.1.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Sortida de pilota 4+2</span><span class="stp-tag">Salida</span><button class="stp-ex-del" data-stp-del="1.1.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="1.1.1" title="Afegir exercici">+</button></div></div><div class="stp-rail stp-rail-merge"></div><button class="stp-lane-add" data-stp-lane-add="1">+ carril</button></div><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="2" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="2" title="Obrir en paral·lel">⑂</button></div><div class="stp-block"><div class="stp-lanes"><div class="stp-lane" data-stp-lane="2.0"><div class="stp-ex stp-ex-board" data-stp-ex="2.0.0" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Partit final 8v8</span><button class="stp-ex-del" data-stp-del="2.0.0" title="Treure">&times;</button></div></div><button class="stp-add stp-add-in" data-stp-in="2.0.1" title="Afegir exercici">+</button><div class="stp-ex" data-stp-ex="2.0.1" draggable="true"><div class="stp-ex-head"><span class="stp-ex-title">Tornada a la calma</span><button class="stp-ex-del" data-stp-del="2.0.1" title="Treure">&times;</button></div><div class="stp-ex-desc">Estiraments i mobilitat, 8 minuts.</div></div><button class="stp-add stp-add-in" data-stp-in="2.0.2" title="Afegir exercici">+</button></div></div></div><div class="stp-link stp-link-live"><button class="stp-add" data-stp-add="3" title="Afegir exercici">+</button><button class="stp-branch" data-stp-branch="3" title="Obrir en paral·lel">⑂</button></div></div></div>
+      <aside class="std-rail">
+        <section class="std-plan-panel" id="std-plan-panel"><div class="std-sec-head std-sec-head-strong"><span class="std-eyebrow">Pla d'entrenament</span><span class="std-sec-r"><span class="std-sec-note">4 blocs · 5 exercicis</span><button class="stp-a" id="stp-print" title="Tria «Desa com a PDF» al diàleg d'impressió">🖨 Imprimir</button></span></div><div class="stp-flow"><div class="stp-block"><div class="stp-time"><span class="stp-at">20:00</span><input class="stp-mins-in" type="number" min="1" max="240" value="15" data-stp-mins="0" title="Minuts"></div><div class="stp-body"><div class="stp-eyebrow">Escalfament</div><div class="stp-ex" data-stp-ex="0.0"><div class="stp-ex-head"><button class="stp-ex-title stp-ex-open" data-stp-toggle="ex_tb_warm">Escalfament + rondo 5v2<span class="stp-ex-mark">▣</span></button><button class="stp-ex-del" data-stp-del="0.0" title="Treure">&times;</button></div><div class="stp-ex-note">12 cons, 2 pilotes</div></div><button class="stp-a stp-a-sm stp-add-in" data-stp-in="0.1">+ Exercici</button></div></div><div class="stp-block stp-parallel"><div class="stp-time"><span class="stp-at">20:15</span><input class="stp-mins-in" type="number" min="1" max="240" value="25" data-stp-mins="1" title="Minuts"></div><div class="stp-body"><div class="stp-eyebrow">Alhora, 2 grups</div><div class="stp-ex" data-stp-ex="1.0"><div class="stp-ex-head"><button class="stp-ex-title stp-ex-open" data-stp-toggle="ex_tb_press"><span class="stp-lane-tag">A </span>Pressió alta 6v6<span class="stp-ex-mark">▣</span></button><button class="stp-ex-del" data-stp-del="1.0" title="Treure">&times;</button></div><div class="stp-ex-note">Presión · 8 cons, 1 pilota, 1 peto</div></div><div class="stp-ex" data-stp-ex="1.1"><div class="stp-ex-head"><button class="stp-ex-title stp-ex-open" data-stp-toggle="ex_tb_sortida"><span class="stp-lane-tag">B </span>Sortida de pilota 4+2<span class="stp-ex-mark">▣</span></button><button class="stp-ex-del" data-stp-del="1.1" title="Treure">&times;</button></div><div class="stp-ex-note">Salida · 12 cons, 1 pilota</div></div><button class="stp-a stp-a-sm stp-add-in" data-stp-in="1.2">+ Exercici</button></div></div><div class="stp-block"><div class="stp-time"><span class="stp-at">20:40</span><input class="stp-mins-in" type="number" min="1" max="240" value="20" data-stp-mins="2" title="Minuts"></div><div class="stp-body"><div class="stp-eyebrow">Transició</div><div class="stp-ex" data-stp-ex="2.0"><div class="stp-ex-head"><span class="stp-ex-title stp-ex-plain">Transicions 8v8 camp reduït</span><button class="stp-ex-del" data-stp-del="2.0" title="Treure">&times;</button></div><div class="stp-ex-note">Sense pissarra · material a mà</div></div><button class="stp-a stp-a-sm stp-add-in" data-stp-in="2.1">+ Exercici</button></div></div><div class="stp-block"><div class="stp-time"><span class="stp-at">21:00</span><input class="stp-mins-in" type="number" min="1" max="240" value="15" data-stp-mins="3" title="Minuts"></div><div class="stp-body"><div class="stp-eyebrow">Final</div><div class="stp-ex" data-stp-ex="3.0"><div class="stp-ex-head"><button class="stp-ex-title stp-ex-open" data-stp-toggle="ex_tb_final">Partit 9v9 i tornada a la calma<span class="stp-ex-mark">▣</span></button><button class="stp-ex-del" data-stp-del="3.0" title="Treure">&times;</button></div><div class="stp-ex-note">6 cons, 3 pilotes, 1 peto</div><div class="stp-team-lines"><div class="stp-team-line"><span class="stp-dot-sm" style="background:#ffffff"></span><span>Aleix, Hugo, Enric</span></div><div class="stp-team-line"><span class="stp-dot-sm" style="background:#e53935"></span><span>Berta, Carles, David</span></div><button class="stp-team-x" data-stp-unassign="ex_tb_final" title="Treure">&times;</button></div></div><button class="stp-a stp-a-sm stp-add-in" data-stp-in="3.1">+ Exercici</button></div></div></div><div class="stp-foot"><button class="stp-a" data-stp-add="4">+ Exercici</button><span class="stp-ends">Acaba 21:15</span></div></section>
+        <section class="std-material-card" id="std-material-card"><div class="std-sec-head std-sec-head-strong"><span class="std-eyebrow">Material mínim</span><span class="std-sec-note">calculat de 4 pissarres</span></div><div class="stm-list"><div class="stm-row"><span class="stm-lbl">Cons</span><span class="stm-qty">20</span></div><div class="stm-row"><span class="stm-lbl">Pilotes</span><span class="stm-qty">3</span></div><div class="stm-row stm-row-petos"><span class="stm-lbl stm-lbl-tight">Petos</span><span class="stm-swatches"><button class="stm-swatch" data-stm-peto="0" title="Color del peto" style="background:#ffffff"></button><button class="stm-swatch" data-stm-peto="1" title="Color del peto" style="background:#e53935"></button><button class="stm-swatch" data-stm-peto="2" title="Color del peto" style="background:#1e88e5"></button><button class="stm-swatch" data-stm-peto="3" title="Color del peto" style="background:#43a047"></button></span><span class="stm-spacer"></span><span class="stm-qty">3</span></div><div class="stm-row"><span class="stm-lbl">Porteries petites</span><span class="stm-qty">2</span><button class="stm-x" data-stm-del="0" title="Treure">&times;</button></div></div><div class="stm-warn"><span class="stm-warn-i">▲</span>1 exercici(s) sense pissarra — afegeix-ne el material a mà</div><div class="stm-acts"><button class="stp-a" id="stm-peto-add">+ Color de peto</button><button class="stp-a" id="stm-extra-add">+ Altre material</button></div><div class="stm-note">Un equip sempre juga sense peto</div><div class="stm-duty"><div class="std-sec-head"><span class="std-eyebrow std-eyebrow-sm">Encarregats de material</span><div class="std-step"><button class="std-step-b" data-stm-duty="-1">−</button><span class="std-step-n">2</span><button class="std-step-b" data-stm-duty="1">+</button></div></div><div class="stm-duty-names"><span class="stm-duty-chip">Berta Puig<button class="stm-duty-x" data-stm-duty-del="0" title="Treure">&times;</button></span><span class="stm-duty-chip">Hugo Camps<button class="stm-duty-x" data-stm-duty-del="1" title="Treure">&times;</button></span></div><div class="stm-acts"><button class="stp-a" id="stm-duty-random">🎲 Aleatori</button><button class="stp-a stp-a-mute" id="stm-duty-pick">Tria a mà</button></div></div></section>
+      </aside>
       </div>
-      <div class="card std-material-card" id="std-material-card"><div class="card-title">Material</div><div class="stm-list"><div class="stm-row"><span class="stm-ico">🔺</span><span class="stm-lbl">Cons</span><span class="stm-qty">20</span></div><div class="stm-row"><span class="stm-ico">⚽</span><span class="stm-lbl">Pilotes</span><span class="stm-qty">3</span></div><div class="stm-row"><span class="stm-ico">🎽</span><span class="stm-lbl">Petos (colors) <span class="stm-swatches"><span class="stm-swatch" style="background:#ffffff;border-color:#cdcdcd"></span><span class="stm-swatch" style="background:#e53935;border-color:#b30703"></span><span class="stm-swatch" style="background:#1e88e5;border-color:#0056b3"></span><span class="stm-swatch" style="background:#43a047;border-color:#116e15"></span></span></span><span class="stm-qty">3</span></div><p class="stm-hint">Un equip sempre juga sense peto</p><div class="stm-row stm-row-extra"><span class="stm-ico">📦</span><span class="stm-lbl">Porteries petites</span><span class="stm-qty">2</span><button class="stm-x" data-stm-del="0" title="Treure">&times;</button></div></div><p class="stm-hint stm-warn">1 exercici(s) sense pissarra — afegeix-ne el material a mà</p><div class="stm-sub">Altre material</div><div class="stm-add-row"><input class="reg-input" id="stm-extra-label" maxlength="40" placeholder="Material"><input class="reg-input" id="stm-extra-qty" type="number" min="1" max="999" value="1" title="Quantitat"><button class="btn btn-small btn-outline" id="stm-extra-add">Afegir</button></div><div class="stm-duty"><div class="stm-sub">Encarregats de material</div><div class="stm-duty-row"><label class="stm-duty-n">Quants <input type="number" id="stm-duty-n" min="0" max="10" value="2"></label><button class="btn btn-small btn-outline" id="stm-duty-random">🎲 Aleatori</button><label class="stm-duty-all"><input type="checkbox" id="stm-duty-all"> Mostra tots</label></div><div class="stm-duty-slots"><select class="reg-input stm-duty-sel" data-slot="0"><option value="">— Tria un jugador —</option><option value="p1">Aleix Ferrer (0)</option><option value="p2">Berta Puig (0)</option><option value="p4">David Mas (0)</option><option value="p8">Hugo Camps (0)</option><option value="p3" selected>Carles Roig (2)</option></select><select class="reg-input stm-duty-sel" data-slot="1"><option value="">— Tria un jugador —</option><option value="p1">Aleix Ferrer (0)</option><option value="p2">Berta Puig (0)</option><option value="p4">David Mas (0)</option><option value="p8">Hugo Camps (0)</option><option value="p5" selected>Enric Sala (1)</option></select></div><p class="stm-hint">Només jugadors que assisteixen. Els qui ja n'han fet més torns queden bloquejats fins que la resta els atrapi.</p></div></div>
+      </div>
 </div>
 </body>
 </html>

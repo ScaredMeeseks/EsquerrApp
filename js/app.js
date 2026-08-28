@@ -588,7 +588,14 @@
     'std.planning':          { ca:'Planificació entrenament', es:'Planificación entrenamiento', en:'Training Plan' },
     'std.general_tag':       { ca:'General', es:'General', en:'General' },
     'std.all':               { ca:'Tots', es:'Todos', en:'All' },
-    'std.auto_gen':          { ca:'Generador automàtic d\'equips', es:'Generador automático de equipos', en:'Auto Generate Teams' },
+    'std.auto_gen':          { ca:'Autogenera equips', es:'Autogenera equipos', en:'Autogenerate teams' },
+    'std.load':              { ca:'Càrrega', es:'Carga', en:'Load' },
+    'std.duration':          { ca:'Durada', es:'Duración', en:'Duration' },
+    'std.teams_word':        { ca:'equips', es:'equipos', en:'teams' },
+    'std.regenerate':        { ca:'Regenera', es:'Regenera', en:'Regenerate' },
+    'std.clear':             { ca:'Esborra', es:'Borra', en:'Clear' },
+    'std.assign_to':         { ca:'Afegeix a l\'exercici', es:'Añade al ejercicio', en:'Add to exercise' },
+    'std.assigned_already':  { ca:'Ja té equips — treu-los amb la creu per canviar-los', es:'Ya tiene equipos — quítalos con la cruz para cambiarlos', en:'Already has teams — remove them with the cross to change them' },
     'std.configure':         { ca:'⚙️ Configurar', es:'⚙️ Configurar', en:'⚙️ Configure' },
     'std.num_teams':         { ca:'Nombre d\'equips', es:'Número de equipos', en:'Number of Teams' },
     'std.players_per_team':  { ca:'Jugadors per equip', es:'Jugadores por equipo', en:'Players per Team' },
@@ -615,12 +622,34 @@
     'plan.title':        { ca:'Pla d\'entrenament', es:'Plan de entrenamiento', en:'Session Plan' },
     'plan.empty':        { ca:'Encara no hi ha exercicis', es:'Aún no hay ejercicios', en:'No exercises yet' },
     'plan.add':          { ca:'Afegir exercici', es:'Añadir ejercicio', en:'Add exercise' },
-    'plan.branch':       { ca:'Obrir en paral·lel', es:'Abrir en paralelo', en:'Split into parallel' },
-    'plan.lane':         { ca:'carril', es:'carril', en:'lane' },
     'plan.parallel':     { ca:'En paral·lel', es:'En paralelo', en:'In parallel' },
     'plan.from_board':   { ca:'Des d\'una pissarra', es:'Desde una pizarra', en:'From a board' },
     'plan.no_boards':    { ca:'Cap pissarra vinculada a aquest entrenament', es:'Ninguna pizarra vinculada a este entrenamiento', en:'No boards linked to this training' },
     'plan.free':         { ca:'Exercici lliure', es:'Ejercicio libre', en:'Free exercise' },
+    'plan.exercise':     { ca:'Exercici', es:'Ejercicio', en:'Exercise' },
+    // The ONE way to make a block parallel — it says what it does, because
+    // "+ Bloc alhora" beside "+ Afegir grup" is what confused the coach.
+    'plan.add_here':     { ca:'Exercici alhora', es:'Ejercicio a la vez', en:'Exercise at the same time' },
+    'plan.parallel_n':   { ca:'Alhora, {n} grups', es:'A la vez, {n} grupos', en:'At the same time, {n} groups' },
+    'plan.mins':         { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'plan.ends':         { ca:'Acaba', es:'Acaba', en:'Ends' },
+    'plan.expand':       { ca:'Ampliar', es:'Ampliar', en:'Expand' },
+    'plan.close':        { ca:'Tanca', es:'Cerrar', en:'Close' },
+    'plan.board':        { ca:'Pissarra', es:'Pizarra', en:'Board' },
+    'plan.print':        { ca:'Imprimir', es:'Imprimir', en:'Print' },
+    'plan.print_hint':   { ca:'Tria «Desa com a PDF» al diàleg d\'impressió', es:'Elige «Guardar como PDF» en el diálogo de impresión', en:'Choose "Save as PDF" in the print dialog' },
+    'plan.print_blocked':{ ca:'El navegador ha bloquejat la finestra. Permet les finestres emergents per a aquest lloc.', es:'El navegador ha bloqueado la ventana. Permite las ventanas emergentes para este sitio.', en:'The browser blocked the window. Allow pop-ups for this site.' },
+    'plan.no_board':     { ca:'Sense pissarra · material a mà', es:'Sin pizarra · material a mano', en:'No board · equipment by hand' },
+    'plan.blk_1':        { ca:'1 bloc', es:'1 bloque', en:'1 block' },
+    'plan.blk_n':        { ca:'{n} blocs', es:'{n} bloques', en:'{n} blocks' },
+    'plan.ex_1':         { ca:'1 exercici', es:'1 ejercicio', en:'1 exercise' },
+    'plan.ex_n':         { ca:'{n} exercicis', es:'{n} ejercicios', en:'{n} exercises' },
+    'plan.n_cone':       { ca:'1 con', es:'1 cono', en:'1 cone' },
+    'plan.n_cones':      { ca:'{n} cons', es:'{n} conos', en:'{n} cones' },
+    'plan.n_ball':       { ca:'1 pilota', es:'1 balón', en:'1 ball' },
+    'plan.n_balls':      { ca:'{n} pilotes', es:'{n} balones', en:'{n} balls' },
+    'plan.n_peto':       { ca:'1 peto', es:'1 peto', en:'1 bib' },
+    'plan.n_petos':      { ca:'{n} petos', es:'{n} petos', en:'{n} bibs' },
     'plan.ex_title':     { ca:'Títol', es:'Título', en:'Title' },
     'plan.ex_desc':      { ca:'Descripció', es:'Descripción', en:'Description' },
     'plan.untitled':     { ca:'Sense títol', es:'Sin título', en:'Untitled' },
@@ -628,7 +657,23 @@
     'plan.remove':       { ca:'Treure', es:'Quitar', en:'Remove' },
 
     // ── Material ──
-    'mat.title':         { ca:'Material', es:'Material', en:'Equipment' },
+    // "Minimum": it is what the boards ADD UP to, the floor a coach must
+    // carry — not a claim that nothing else will be wanted.
+    'mat.title':         { ca:'Material mínim', es:'Material mínimo', en:'Minimum equipment' },
+
+    // ── Weather ──
+    'wx.wind':           { ca:'Vent', es:'Viento', en:'Wind' },
+    'wx.calm':           { ca:'Sense vent', es:'Sin viento', en:'No wind' },
+    'wx.breeze':         { ca:'Brisa', es:'Brisa', en:'Breeze' },
+    'wx.moderate':       { ca:'Moderat', es:'Moderado', en:'Moderate' },
+    'wx.strong':         { ca:'Fort', es:'Fuerte', en:'Strong' },
+    'wx.sun':            { ca:'Sol', es:'Sol', en:'Sunny' },
+    'wx.cloud':          { ca:'Alguns núvols', es:'Algunas nubes', en:'Partly cloudy' },
+    'wx.overcast':       { ca:'Ennuvolat', es:'Nublado', en:'Overcast' },
+    'wx.rain':           { ca:'Pluja', es:'Lluvia', en:'Rain' },
+    'wx.storm':          { ca:'Tempesta', es:'Tormenta', en:'Storm' },
+    'wx.snow':           { ca:'Neu', es:'Nieve', en:'Snow' },
+    'wx.fog':            { ca:'Boira', es:'Niebla', en:'Fog' },
     'mat.cones':         { ca:'Cons', es:'Conos', en:'Cones' },
     'mat.balls':         { ca:'Pilotes', es:'Balones', en:'Balls' },
     'mat.petos':         { ca:'Petos (colors)', es:'Petos (colores)', en:'Bibs (colours)' },
@@ -641,11 +686,16 @@
     'mat.extra_add':     { ca:'Afegir', es:'Añadir', en:'Add' },
     'mat.duty':          { ca:'Encarregats de material', es:'Encargados de material', en:'Equipment duty' },
     'mat.duty_n':        { ca:'Quants', es:'Cuántos', en:'How many' },
-    'mat.duty_pick':     { ca:'— Tria un jugador —', es:'— Elige un jugador —', en:'— Pick a player —' },
     'mat.duty_random':   { ca:'🎲 Aleatori', es:'🎲 Aleatorio', en:'🎲 Random' },
-    'mat.duty_show_all': { ca:'Mostra tots', es:'Mostrar todos', en:'Show all' },
     'mat.duty_hint':     { ca:'Només jugadors que assisteixen. Els qui ja n\'han fet més torns queden bloquejats fins que la resta els atrapi.', es:'Solo jugadores que asisten. Los que ya han hecho más turnos quedan bloqueados hasta que el resto les alcance.', en:'Attending players only. Those who have already done more turns are blocked until the rest catch up.' },
     'mat.duty_none':     { ca:'Cap jugador disponible', es:'Ningún jugador disponible', en:'No players available' },
+    'mat.duty_none_yet': { ca:'Ningú assignat', es:'Nadie asignado', en:'Nobody assigned' },
+    'mat.duty_manual':   { ca:'Tria a mà', es:'Elegir a mano', en:'Pick by hand' },
+    'mat.petos_short':   { ca:'Petos', es:'Petos', en:'Bibs' },
+    'mat.peto_colour':   { ca:'Color del peto', es:'Color del peto', en:'Bib colour' },
+    'mat.peto_add':      { ca:'Color de peto', es:'Color de peto', en:'Bib colour' },
+    'mat.peto_remove':   { ca:'Treu aquest color', es:'Quita este color', en:'Remove this colour' },
+    'mat.from_boards':   { ca:'calculat de {n} pissarres', es:'calculado de {n} pizarras', en:'computed from {n} boards' },
 
     // ── Staff Roster ──
     'roster.th_pos':    { ca:'Pos', es:'Pos', en:'Pos' },
@@ -1691,7 +1741,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 187;
+  const APP_VERSION = 196;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -8530,9 +8580,10 @@
     // Compute polygon arrowheads for all read-only boards now that they're in the DOM
     document.querySelectorAll('.tb-field-readonly .tb-arrows-svg').forEach(svg => refreshArrowheads(svg));
     document.querySelectorAll('.tb-ro-play').forEach(btn => {
-      /* This binds DOCUMENT-WIDE, and _refreshStdBoards() calls it again after
-         replacing only #std-boards-section — so every play button OUTSIDE that
-         section, whose node was never replaced, collected a second listener.
+      /* This binds DOCUMENT-WIDE, and the callers that replace one panel —
+         stdRefreshPlan() is the live one — call it again afterwards, so every
+         play button OUTSIDE that panel, whose node was never replaced,
+         collected a second listener.
          The handler is a toggle on `_roPlaying`, so one click then started the
          animation and immediately stopped it again: a brief flash of animated
          positions that reverts, with no error anywhere. Same leak and same fix
@@ -9851,9 +9902,11 @@
         : `<div class="detail-conv detail-conv-no"><span class="conv-grey-dot"></span> ${t('match_detail.conv_not_called')}</div>`;
     }
     const dateFormatted = m.date ? tDateLong(m.date) : '—';
-    const locationHtml = m.mapLink
-      ? `<a href="${sanitize(m.mapLink)}" target="_blank" rel="noopener" class="detail-map-link">📍 ${sanitize(m.location || '—')}</a>`
-      : `📍 ${sanitize(m.location || '—')}`;
+    /* Through the shared helper since v192, which routes the stored link
+       past safeHttpUrl. It used to go straight into the href: sanitize()
+       escapes the quoting but leaves `javascript:…` intact, and that link is
+       typed by one staff member and clicked by another. */
+    const matchPlace = locationHtml(m, { pin: true, cls: 'detail-map-link' });
 
     // Build called-up player list
     /* `isStaff` is entry-point-scoped, so a coach arriving from the PLAYER
@@ -10051,7 +10104,7 @@
         <div class="detail-meta">
           ${convSent ? `<span>🕐 ${t('match_detail.callup')} ${callupTime}</span>` : ''}
           <span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${t('match_detail.kickoff')} ${m.time || '—'}</span>
-          <span>${locationHtml}</span>
+          <span>${matchPlace}</span>
         </div>
         ${convHtml}
       </div>
@@ -10119,7 +10172,7 @@
       <div class="detail-grid">
         <div class="detail-card"><div class="detail-card-label">Time</div><div class="detail-card-value">${sanitize(tr.time || '—')}</div></div>
         <div class="detail-card"><div class="detail-card-label">${t('training.th_day')}</div><div class="detail-card-value">${tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : sanitize(tr.day || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">${t('training.th_location')}</div><div class="detail-card-value">${sanitize(tr.location || '—')}</div></div>
+        <div class="detail-card"><div class="detail-card-label">${t('training.th_location')}</div><div class="detail-card-value">${locationHtml(tr)}</div></div>
         <div class="detail-card"><div class="detail-card-label">Attendance</div><div class="detail-card-value">${assistHtml || '—'}</div></div>
       </div>
       ${(() => {
@@ -16957,112 +17010,7 @@
     return locked ? 'na' : 'yes';
   }
 
-  function buildDetailDonut(sess, players, locked) {
-    const total = players.length;
-    if (!total) return '';
-    const _ctxDetail = availContext();
-    let yes = 0, late = 0, no = 0, injured = 0, na = 0;
-    players.forEach(p => {
-      const v = getEffectiveAnswer(p.id, sess, locked, _ctxDetail);
-      if (v === 'yes') yes++;
-      else if (v === 'late') late++;
-      else if (v === 'no') no++;
-      else if (v === 'injured') injured++;
-      else na++;
-    });
-    const attending = yes + late;
-    const size = 100;
-    const stroke = 12;
-    const radius = (size - stroke) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const segments = [
-      { count: yes, color: '#66bb6a', label: 'Yes' },
-      { count: late, color: '#ffa726', label: 'Late' },
-      { count: no, color: '#78909c', label: 'No' },
-      { count: injured, color: '#ef5350', label: 'Injured' },
-      { count: na, color: '#d0d0d0', label: 'N/A' }
-    ];
-    let arcs = '';
-    let offset = 0;
-    segments.forEach(s => {
-      if (s.count > 0) {
-        const len = (s.count / total) * circumference;
-        const sPct = Math.round((s.count / total) * 100);
-        arcs += `<circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${s.color}" stroke-width="${stroke}"
-          stroke-dasharray="${len} ${circumference - len}" stroke-dashoffset="${-offset}"
-          style="--circ:${circumference};cursor:pointer;pointer-events:stroke" transform="rotate(-90 ${size/2} ${size/2})" data-tooltip="${s.label}: ${sPct}%"><title>${s.label}: ${sPct}%</title></circle>`;
-        offset += len;
-      }
-    });
-    return `<div class="std-donut" style="width:${size}px;height:${size}px;">
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="var(--border)" stroke-width="${stroke}"/>
-        ${arcs}
-      </svg>
-      <span class="std-donut-label">${attending}/${total}</span>
-    </div>
-    <div class="std-donut-legend">
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#66bb6a"></span>Yes (${yes})</span>
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#ffa726"></span>Late (${late})</span>
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#78909c"></span>No (${no})</span>
-      <span class="std-legend-item"><span class="std-legend-dot" style="background:#ef5350"></span>Injured (${injured})</span>
-      ${na ? `<span class="std-legend-item"><span class="std-legend-dot" style="background:#d0d0d0"></span>N/A (${na})</span>` : ''}
-    </div>`;
-  }
 
-  // ── Auto-generate teams state (ephemeral, not persisted) ──
-  let _generatedTeams = null;
-  /* Keyed by session id, not date: two squads training the same evening
-     would otherwise share one generated set of small-sided teams. */
-  let _generatedTeamsId = null;
-
-  // ── Render tactical boards section for staff training detail ──
-  /* Takes the session, not just its date. The storage bucket is still
-     keyed by date -- two squads share it -- but "have teams been generated"
-     is a question about THIS session. */
-  function renderStdBoardsSection(sess) {
-    const tdate = sess && sess.date;
-    const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-    const boards = trainingBoards[tdate] || [];
-    if (!boards.length) return '';
-    const hasTeams = _generatedTeams && String(_generatedTeamsId) === String(sess && sess.id);
-    const tagOrder = ['Presión', 'Salida', 'Estrategia'];
-    const grouped = {};
-    boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
-    const orderedTags = [];
-    tagOrder.forEach(tg => { if (grouped[tg]) orderedTags.push(tg); });
-    Object.keys(grouped).forEach(tg => { if (!orderedTags.includes(tg)) orderedTags.push(tg); });
-    return '<div class="card"><div class="card-title">Tactical Boards</div><div class="detail-boards-panel">' +
-      orderedTags.map(tag => {
-        const tagTitle = tag || 'General';
-        return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
-          grouped[tag].map(b => {
-            const boardHtml = tbRoBoardHtml(b, 'ro-std-');
-            let teamsBlock = '';
-            if (b.linkedTeams && b.linkedTeams.length) {
-              // Flattened across every linked team — see renderTrainingDetail.
-              const ltSpan = catSpanOf(b.linkedTeams.reduce(
-                  (acc, t2) => acc.concat(t2.players || []), []));
-              teamsBlock = '<div class="tb-linked-teams">' +
-                b.linkedTeams.map((tm, ti) => {
-                  const rows = tm.players.map(p => {
-                    const posArr = (p.position || '').split(',').map(s => s.trim()).filter(Boolean);
-                    const posHtml = posArr.length ? posArr.map(pos => '<span class="pos-circle pos-' + pos + '">' + pos + '</span>').join('') : '';
-                    const teamC = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-                    return '<div class="tb-lt-player">' + posHtml + ' <span>' + sanitize(p.name) + '</span>' + catBadgeHtmlGlobal(p, ltSpan) + teamC + '</div>';
-                  }).join('');
-                  return '<div class="tb-lt-team"><div class="tb-lt-team-title">Equip ' + (ti + 1) + ' <span class="tg-team-count">' + tm.players.length + '</span></div>' + rows + '</div>';
-                }).join('') +
-                (canEditPage('staff-training-detail')
-                  ? '<button class="tb-unlink-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" title="Remove teams">&times;</button>'
-                  : '') + '</div>';
-            } else if (hasTeams) {
-              teamsBlock = '<div class="tb-linked-teams-action"><button class="btn btn-small btn-orange tb-link-teams" data-board-key="' + sanitize(tbLinkedKey(b)) + '" data-tdate="' + tdate + '" data-tsid="' + sanitize(String((sess && sess.id) || '')) + '">📋 Afegir equips</button></div>';
-            }
-            return boardHtml + teamsBlock;
-          }).join('') + '</div>';
-      }).join('') + '</div></div>';
-  }
 
   // #region Session plan
   /* ── The session plan, and what it costs in equipment ────────────
@@ -17094,7 +17042,7 @@
       Math.random().toString(36).slice(2, 7);
   }
 
-  /** Fisher–Yates on a COPY. The one in generateTrainingTeams is local to it. */
+  /** Fisher–Yates on a COPY — callers pass lists they still need. */
   function _stpShuffle(arr) {
     const a = (arr || []).slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -17113,22 +17061,56 @@
    * duty list holding a number are all things that reach this function, and
    * none of them may reach the renderer.
    */
+  const STP_DEFAULT_MINS = 15;
+
+  function _stpMins(v) {
+    const n = parseInt(v, 10);
+    if (!isFinite(n) || n < 1) return STP_DEFAULT_MINS;
+    return Math.min(240, n);
+  }
+  /* The bib palette the picker offers. Seven, because that is what fits on
+     one row at 20px without wrapping, and it covers every kit a club owns. */
+  const STP_PALETTE = ['#ffffff', '#212529', '#e53935', '#1e88e5', '#43a047',
+    '#f9a825', '#8e24aa'];
+
   function stdPlan(tr) {
     const raw = (tr && tr.plan) || {};
     const blocks = (Array.isArray(raw.blocks) ? raw.blocks : [])
-      .filter(b => b && Array.isArray(b.lanes))
+      .filter(b => b && (Array.isArray(b.items) || Array.isArray(b.lanes)))
       .map(b => ({
         id: b.id || _planId('blk'),
-        lanes: b.lanes.filter(Array.isArray)
-          .map(lane => lane.filter(e => e && typeof e === 'object').map(e => ({
+        /* How long the block runs. Every start time in the rail is this
+           accumulated from the session's own start, so a missing OR nonsense
+           value has to become a real duration rather than 0 — a block of no
+           length silently stacks two exercises on the same minute, and a
+           negative one runs the plan backwards. Anything under a minute is
+           the default; anything over four hours is capped. */
+        mins: _stpMins(b.mins),
+        label: String(b.label || ''),   // optional eyebrow; '' renders nothing
+        /* A block is ONE time slot, and everything in it runs at the same
+           time. v188 nested a second level (lanes of series) so "at the same
+           time" could be said two different ways, and a coach had to work out
+           which button meant which. Series is what a second block is for.
+           A v188 row is migrated by flattening its lanes — which is what the
+           coach drawing it meant anyway. */
+        items: (Array.isArray(b.items) ? b.items
+          : b.lanes.filter(Array.isArray).reduce((a, l) => a.concat(l), []))
+          .filter(e => e && typeof e === 'object').map(e => ({
             id: e.id || _planId('ex'),
             boardId: String(e.boardId || ''),
             title: String(e.title || ''),
             desc: String(e.desc || ''),
-            tag: String(e.tag || '')
-          })))
+            tag: String(e.tag || ''),
+            /* A SNAPSHOT of the teams assigned here, not a pointer at
+               plan.teams. Pointing was a real bug: re-drafting the generator
+               silently rewrote every exercise a split had already been
+               attached to, so a coach who set up the rondo and then
+               regenerated for the finishing game lost the first one without
+               being told. Each assignment is now a copy and stands alone. */
+            teams: _stpTeamsList(e.teams)
+          }))
       }))
-      .filter(b => b.lanes.length);
+      .filter(b => b.items.length);
     const extra = (Array.isArray(raw.extra) ? raw.extra : [])
       .filter(x => x && String(x.label || '').trim())
       .map(x => ({
@@ -17139,7 +17121,159 @@
     const rawDuty = raw.duty || {};
     const ids = (Array.isArray(rawDuty.ids) ? rawDuty.ids : []).map(String);
     const n = Math.max(0, Math.min(10, parseInt(rawDuty.n, 10) || ids.length || 0));
-    return { blocks: blocks, extra: extra, duty: { n: n, ids: ids.slice(0, n) } };
+    /* NULL is not the empty list here, and the difference is the feature:
+       null means "nobody has touched the bibs, so show what the boards say",
+       while [] means the coach removed every colour and meant it. */
+    const petos = Array.isArray(raw.petos)
+      ? raw.petos.map(c => String(c || '').trim().toLowerCase()).filter(Boolean)
+      : null;
+    return {
+      blocks: blocks, extra: extra, duty: { n: n, ids: ids.slice(0, n) },
+      petos: petos, teams: _stpTeams(raw.teams)
+    };
+  }
+
+  /**
+   * The generated teams, normalised.
+   *
+   * These used to live in a module variable (`_generatedTeams`), which the
+   * redesign cannot use: teams are now assigned onto individual exercises and
+   * drawn inside board panels, and loose state does not survive the re-render
+   * that assigning one causes.
+   *
+   * Only IDS are stored. A team holding copies of player rows would strand a
+   * renamed or re-squadded player in last week's session forever.
+   */
+  function _stpTeams(raw) {
+    const groups = _stpTeamsList(raw && raw.groups);
+    return groups ? { n: groups.length, groups: groups } : null;
+  }
+
+  /**
+   * A list of teams, normalised — or null.
+   *
+   * Used for both the generator's live set and the copy pinned to an
+   * exercise. The colour travels WITH the copy: a coach who repaints a bib
+   * afterwards is changing what the next drill wears, not rewriting what he
+   * already decided for this one.
+   */
+  function _stpTeamsList(raw) {
+    if (!Array.isArray(raw) || !raw.length) return null;
+    const groups = raw.filter(g => g && Array.isArray(g.ids)).map((g, i) => ({
+      key: String(g.key || ('g' + i)),
+      name: String(g.name || ''),
+      color: String(g.color || ''),
+      ids: g.ids.map(String).filter(Boolean)
+    }));
+    return groups.length ? groups : null;
+  }
+
+  /**
+   * When each block starts, and when the session finishes.
+   *
+   * Wall-clock times, accumulated from the session's own start through each
+   * block's duration — so a coach who lengthens the warm-up sees every later
+   * exercise move, which is the entire point of showing times at all.
+   *
+   * Falls back to the session's window when a block runs past it: the rail
+   * reports what the plan actually adds up to, not what the slot allows. A
+   * plan that overruns is a thing the coach needs to SEE.
+   */
+  function blockTimes(tr, plan) {
+    const w = sessionWindow(tr);
+    const start = w ? w.start : 0;
+    let at = start;
+    const rows = (plan.blocks || []).map(function (b) {
+      const row = { at: at, mins: b.mins, label: minsToHHMM(at % 1440) };
+      at += b.mins;
+      return row;
+    });
+    return { rows: rows, start: start, end: at, endLabel: minsToHHMM(at % 1440) };
+  }
+
+  /**
+   * The bib colours in play: the coach's list once he has one, else the
+   * boards'.
+   *
+   * Deriving stays the default because it is the answer the coach asked for —
+   * "count the colours in the training" — and it is right until he wants
+   * something the boards cannot say. The first edit copies the derived list
+   * onto the session, and from then on it is his.
+   */
+  function resolvePetos(plan, mat) {
+    if (plan && Array.isArray(plan.petos)) return plan.petos;
+    return (mat && mat.colors) || [];
+  }
+
+  /* How the draft deals, and whether keepers are in it. Module state rather
+     than session data: the old generator read these off the DOM and lost them
+     on every render, so this is strictly better and adds nothing to the
+     stored plan. */
+  let _stdTgOpts = { mode: 'mix', gk: true, letters: null };
+
+  /**
+   * Split the available players into `n` teams.
+   *
+   * Both modes rank the pool the same way first — by position
+   * (`posRankGlobal`, the order the roster and the convocatòria already sort
+   * by), then by descending acute:chronic load, then a random tie-break so
+   * two runs over an unchanged squad do not always give the identical split.
+   * What differs is how that ranking is dealt out:
+   *
+   *   'mix' — a SNAKE draft: round-robin with the direction reversed on every
+   *           second round. That reversal is what makes it fair; straight
+   *           round-robin hands team 1 the best player in every single round,
+   *           and after four rounds that is a team of firsts against a team of
+   *           fourths. Each team ends up with a spread of positions.
+   *
+   *   'pos' — CONTIGUOUS slices, which is what the old "Per Posicions" did:
+   *           the keepers and defenders land together, the forwards together.
+   *           Deliberately unbalanced — it is for drilling a line, not for
+   *           playing a game.
+   */
+  function draftTeams(pool, n, mode) {
+    const count = Math.max(2, Math.min(4, parseInt(n, 10) || 2));
+    const ranked = (pool || []).slice().sort(function (a, b) {
+      return (a.rank - b.rank) || (b.ac - a.ac) || (Math.random() - 0.5);
+    });
+    const buckets = [];
+    for (let i = 0; i < count; i++) buckets.push([]);
+
+    if (mode === 'pos') {
+      /* Sizes first, so the remainder is spread one player at a time instead
+         of landing entirely on the last team. */
+      const base = Math.floor(ranked.length / count);
+      let extra = ranked.length % count;
+      let at = 0;
+      for (let i = 0; i < count; i++) {
+        const take = base + (extra > 0 ? 1 : 0);
+        if (extra > 0) extra--;
+        buckets[i] = ranked.slice(at, at + take).map(function (p) { return String(p.id); });
+        at += take;
+      }
+    } else {
+      ranked.forEach(function (p, i) {
+        const round = Math.floor(i / count);
+        const slot = i % count;
+        buckets[round % 2 === 0 ? slot : count - 1 - slot].push(String(p.id));
+      });
+    }
+
+    return {
+      n: count,
+      groups: buckets.map(function (ids, i) {
+        return { key: 'g' + i, name: t('std.team_prefix') + ' ' + (i + 1), ids: ids };
+      })
+    };
+  }
+
+  /** The players a draft or a duty pick may use: staff-called yes or late. */
+  function stdAvailable(tr, squad, locked) {
+    const ctx = availContext();
+    return (squad || []).filter(function (p) {
+      const eff = getEffectiveAnswer(p.id, tr, locked, ctx);
+      return eff === 'yes' || eff === 'late';
+    });
   }
 
   /**
@@ -17213,11 +17347,11 @@
    * What the session needs on the pitch, from the boards its exercises use.
    *
    * Countable objects — cones, balls — are REUSED by exercises that run one
-   * after another and NEEDED AT ONCE by exercises that run side by side, so
-   * the composition is a max down a series and a sum across parallel lanes:
+   * after another and NEEDED AT ONCE by exercises that run side by side. A
+   * block is one time slot, so everything in it is concurrent and blocks
+   * follow one another:
    *
-   *     need(lane)  = max over its exercises      // series → reuse
-   *     need(block) = sum over its lanes          // parallel → concurrent
+   *     need(block) = sum over its items          // parallel → concurrent
    *     need(plan)  = max over its blocks         // series → reuse
    *
    * Bibs do NOT follow that rule, deliberately. A bib colour is a SET taken
@@ -17236,23 +17370,19 @@
     let cones = 0, balls = 0, unknown = 0, priced = 0;
     ((plan && plan.blocks) || []).forEach(function (blk) {
       let bCones = 0, bBalls = 0;
-      (blk.lanes || []).forEach(function (lane) {
-        let lCones = 0, lBalls = 0;
-        (lane || []).forEach(function (ex) {
-          const b = (ex && ex.boardId) ? resolve(ex.boardId) : null;
-          if (!b) { unknown++; return; }
-          priced++;
-          lCones = Math.max(lCones, _stpCount(b.cones));
-          lBalls = Math.max(lBalls, _stpCount(b.balls));
-          _stpSideColors(b.positions, b.numbers, b.colors, b.teamColor, colors);
-          // showOpp false means the coach hid the opposition; their kit is
-          // then not on the pitch and must not be in the bib count. An
-          // absent flag is a legacy board and is included, as it renders.
-          if (b.showOpp !== false) {
-            _stpSideColors(b.oppPositions, b.oppNumbers, b.oppColors, b.oppColor, colors);
-          }
-        });
-        bCones += lCones; bBalls += lBalls;
+      (blk.items || []).forEach(function (ex) {
+        const b = (ex && ex.boardId) ? resolve(ex.boardId) : null;
+        if (!b) { unknown++; return; }
+        priced++;
+        bCones += _stpCount(b.cones);
+        bBalls += _stpCount(b.balls);
+        _stpSideColors(b.positions, b.numbers, b.colors, b.teamColor, colors);
+        // showOpp false means the coach hid the opposition; their kit is
+        // then not on the pitch and must not be in the bib count. An
+        // absent flag is a legacy board and is included, as it renders.
+        if (b.showOpp !== false) {
+          _stpSideColors(b.oppPositions, b.oppNumbers, b.oppColors, b.oppColor, colors);
+        }
       });
       cones = Math.max(cones, bCones);
       balls = Math.max(balls, bBalls);
@@ -17322,204 +17452,977 @@
 
   // ── Rendering the flow ──
 
-  function _stpConnector(index, ro) {
-    if (ro) return '<div class="stp-link"></div>';
-    return '<div class="stp-link stp-link-live">' +
-      '<button class="stp-add" data-stp-add="' + index + '" title="' +
-        sanitize(t('plan.add')) + '">+</button>' +
-      '<button class="stp-branch" data-stp-branch="' + index + '" title="' +
-        sanitize(t('plan.branch')) + '">⑂</button>' +
+  /* Which exercises have their board open, and which one is in the overlay.
+     Transient on purpose: where a coach happened to be looking is not part of
+     the session, and persisting it would reopen four boards on every visit. */
+  let _stpOpen = {};
+  let _stpBig = null;
+
+  /** "12 cons", "1 pilota" — the noun agrees with the number. */
+  function _stpN(n, oneKey, manyKey) {
+    return n === 1 ? t(oneKey) : t(manyKey).replace('{n}', n);
+  }
+
+  /**
+   * The one-line material note under an exercise title.
+   *
+   * Priced by running the SAME planMaterial over a plan of just this
+   * exercise, rather than a second counting routine that could disagree with
+   * the totals sitting directly below it.
+   */
+  function _stpExNote(ex, resolve) {
+    if (!ex.boardId) return t('plan.no_board');
+    const m = planMaterial({ blocks: [{ items: [ex] }] }, resolve);
+    if (m.unknown) return t('plan.board_missing');
+    const bits = [];
+    if (m.cones) bits.push(_stpN(m.cones, 'plan.n_cone', 'plan.n_cones'));
+    if (m.balls) bits.push(_stpN(m.balls, 'plan.n_ball', 'plan.n_balls'));
+    if (m.petos) bits.push(_stpN(m.petos, 'plan.n_peto', 'plan.n_petos'));
+    const mat = bits.join(', ');
+    if (ex.tag && mat) return ex.tag + ' · ' + mat;
+    return ex.tag || mat;
+  }
+
+  /** Colour dot + first names, one line per team pinned to this exercise. */
+  function _stpTeamLines(ex, squad, ro) {
+    if (!ex.teams) return '';
+    const byId = {};
+    (squad || []).forEach(function (p) { byId[String(p.id)] = p; });
+    const lines = ex.teams.map(function (g, i) {
+      const names = g.ids.map(function (id) {
+        const p = byId[id];
+        return p ? String(p.name || '').split(' ')[0] : '';
+      }).filter(Boolean).join(', ');
+      if (!names) return '';
+      const colour = g.color || STP_PALETTE[i % STP_PALETTE.length];
+      return '<div class="stp-team-line">' + _stpDot(colour, 'stp-dot-sm') +
+        '<span>' + sanitize(names) + '</span></div>';
+    }).join('');
+    if (!lines) return '';
+    const drop = ro ? '' :
+      '<button class="stp-team-x" data-stp-unassign="' + sanitize(ex.id) +
+        '" title="' + sanitize(t('plan.remove')) + '">&times;</button>';
+    return '<div class="stp-team-lines">' + lines + drop + '</div>';
+  }
+
+  /**
+   * A dropdown that is actually ours.
+   *
+   * A native <select> can be styled shut but NOT open: the popup list is
+   * drawn by the operating system and ignores every rule we write. Two
+   * controls on this page open into that list — the staff call and the
+   * planned intensity — and both looked like stray Windows widgets in a page
+   * made of hairlines. So the list is a div.
+   *
+   * Deliberately not the app's existing `.ev-custom-select`: that one is
+   * rounded, uses --primary-light, and its bindings are wired to the match
+   * events form's hidden inputs. Same idea, different clothes.
+   *
+   * `opts` = [{ value, label, cls }]. The chosen value lives in a data
+   * attribute on the root, so a handler reads it exactly like `select.value`.
+   */
+  function stdSelect(o) {
+    const cur = String(o.value == null ? '' : o.value);
+    const chosen = (o.options || []).find(function (x) {
+      return String(x.value) === cur;
+    }) || o.options[0] || { label: '', cls: '' };
+    const items = (o.options || []).map(function (x) {
+      const on = String(x.value) === cur ? ' std-sel-o-on' : '';
+      return '<button type="button" class="std-sel-o' + on + '" data-v="' +
+        sanitize(String(x.value)) + '">' + sanitize(x.label) + '</button>';
+    }).join('');
+    const attrs = Object.keys(o.data || {}).map(function (k) {
+      return ' data-' + k + '="' + sanitize(String(o.data[k])) + '"';
+    }).join('');
+    return '<div class="std-sel ' + (o.cls || '') + '" data-std-sel="' +
+        sanitize(o.kind || '') + '" data-value="' + sanitize(cur) + '"' + attrs + '>' +
+      '<button type="button" class="std-sel-t ' + (chosen.cls || '') + '">' +
+        '<span class="std-sel-l">' + sanitize(chosen.label) + '</span>' +
+        '<span class="std-sel-c">▾</span></button>' +
+      '<div class="std-sel-menu">' + items + '</div>' +
       '</div>';
   }
 
-  function _stpExCard(ex, path, ro, resolve) {
-    let title = ex.title;
-    let tag = ex.tag;
-    if (ex.boardId) {
-      const b = resolve(ex.boardId);
-      if (b && b.name) title = b.name;
-      if (!title) title = t('plan.board_missing');
+  /**
+   * Open, choose, close — for every stdSelect on the page.
+   *
+   * `onPick(root, value)` is called with the root element and the new value.
+   * Bound once per render; the document listener closes any open menu, which
+   * is why it is registered with a guard rather than every time.
+   */
+  function bindStdSelects(onPick) {
+    document.querySelectorAll('.std-sel').forEach(function (root) {
+      const trigger = root.querySelector('.std-sel-t');
+      if (!trigger) return;
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const wasOpen = root.classList.contains('std-sel-open');
+        document.querySelectorAll('.std-sel-open')
+          .forEach(function (n) { n.classList.remove('std-sel-open'); });
+        if (!wasOpen) root.classList.add('std-sel-open');
+      });
+      root.querySelectorAll('.std-sel-o').forEach(function (opt) {
+        opt.addEventListener('click', function (e) {
+          e.stopPropagation();
+          root.classList.remove('std-sel-open');
+          const v = opt.dataset.v;
+          if (v === root.dataset.value) return;   // nothing changed
+          root.dataset.value = v;
+          onPick(root, v);
+        });
+      });
+    });
+    if (!document._stdSelBound) {
+      document._stdSelBound = true;
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.std-sel-open')
+          .forEach(function (n) { n.classList.remove('std-sel-open'); });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.std-sel-open')
+          .forEach(function (n) { n.classList.remove('std-sel-open'); });
+      });
     }
-    if (!title) title = t('plan.untitled');
-    const tagHtml = tag ? '<span class="stp-tag">' + sanitize(tag) + '</span>' : '';
+  }
+
+  /**
+   * A place, linked to its map when there is one.
+   *
+   * One helper for trainings, activities and matches, because they all store
+   * the same `mapLink` field and a coach standing outside the wrong pitch
+   * does not care which kind of row he tapped.
+   *
+   * Through safeHttpUrl (utils.js): the link is typed by staff and stored, so
+   * `javascript:` in an href would run on our origin in another staff
+   * member's session. sanitize() does NOT stop that — it escapes the quoting,
+   * and there is nothing in `javascript:fetch(…)` to escape.
+   */
+  function locationHtml(row, opts) {
+    const o = opts || {};
+    const place = String((row && row.location) || '').trim();
+    const label = place || (o.dash === false ? '' : '—');
+    const url = safeHttpUrl(row && row.mapLink);
+    const pin = o.pin ? '📍 ' : '';
+    if (!url || !place) return pin + sanitize(label);
+    return '<a class="' + (o.cls || 'std-place') + '" href="' + sanitize(url) +
+      '" target="_blank" rel="noopener">' + pin + sanitize(label) + '</a>';
+  }
+
+  /* ── Weather ──────────────────────────────────────────────────
+     What the session is likely to be played in: sky, wind, temperature.
+
+     Placeholder values for now — a forecast API is coming, and this exists
+     so that when it lands there is somewhere for it to write. The shape is
+     the one a forecast returns, NOT the one that happens to be easy to draw:
+
+         tr.weather = { cond: 'sun'|'cloud'|'rain'|'storm'|'snow'|'fog',
+                        windMs: <metres per second>,
+                        tempC:  <degrees> }
+
+     Wind is stored in m/s and BANDED for display rather than stored as a
+     band, because the band is a presentation choice and the number is the
+     fact. The thresholds are the sailing ones a coach would recognise:
+     under 1.5 is still, under 5.5 a breeze, under 10.8 moderate, above that
+     strong enough to move a ball in flight. */
+  const STP_WEATHER_ICON = {
+    sun: '☀️', cloud: '⛅', overcast: '☁️', rain: '🌧️',
+    storm: '⛈️', snow: '🌨️', fog: '🌫️'
+  };
+
+  function windBand(ms) {
+    const v = Number(ms);
+    if (!isFinite(v) || v < 1.5) return 'calm';
+    if (v < 5.5) return 'breeze';
+    if (v < 10.8) return 'moderate';
+    return 'strong';
+  }
+
+  /**
+   * The forecast strip beside the session title.
+   *
+   * Returns '' for a session with no weather at all rather than a row of
+   * dashes: an empty forecast is not information, and the title line is not
+   * the place to say "we do not know yet".
+   */
+  function sessionWeatherHtml(tr) {
+    const w = (tr && tr.weather) || STP_WEATHER_DEFAULT;
+    if (!w) return '';
+    const icon = STP_WEATHER_ICON[w.cond] || STP_WEATHER_ICON.sun;
+    const band = windBand(w.windMs);
+    const ms = Number(w.windMs);
+    const windTxt = t('wx.' + band) +
+      (isFinite(ms) && ms >= 1.5 ? ' · ' + (Math.round(ms * 10) / 10) + ' m/s' : '');
+    const temp = isFinite(Number(w.tempC)) ? Math.round(Number(w.tempC)) + '°' : '';
+    return '<div class="std-wx">' +
+      '<span class="std-wx-i" title="' + sanitize(t('wx.' + w.cond) || '') + '">' +
+        icon + '</span>' +
+      '<span class="std-wx-b" title="' + sanitize(t('wx.wind')) + '">' +
+        // 💨, not the puffing face: this is a reading of the wind, not a
+        // character blowing at the pitch.
+        '<span class="std-wx-i">💨</span>' + sanitize(windTxt) + '</span>' +
+      (temp ? '<span class="std-wx-b std-wx-t">' + sanitize(temp) + '</span>' : '') +
+      '</div>';
+  }
+
+  /* Until the forecast API lands. A plausible evening rather than a blank:
+     the point of shipping it now is to see the strip in place. */
+  const STP_WEATHER_DEFAULT = { cond: 'cloud', windMs: 3.2, tempC: 17 };
+
+  /** A colour disc. A RING, not a border, so a white bib still reads. */
+  function _stpDot(fill, cls) {
+    const css = fillCss(fill);
+    return '<span class="' + (cls || 'stp-dot') + '" style="background:' +
+      sanitize(css.background) + '"></span>';
+  }
+
+  /**
+   * One exercise: the title, its material note, and its board when open.
+   *
+   * The TITLE is the click target when a board is linked — that is the whole
+   * navigation model here. There is no separate "view board" control, and the
+   * trailing ▣ is what tells a coach which titles are clickable.
+   */
+  function _stpExRow(ex, path, ro, resolve, ctx, lanePrefix) {
+    const board = ex.boardId ? resolve(ex.boardId) : null;
+    let title = (board && board.name) || ex.title;
+    if (!title) title = ex.boardId ? t('plan.board_missing') : t('plan.untitled');
+    const pre = lanePrefix
+      ? '<span class="stp-lane-tag">' + sanitize(lanePrefix) + '</span>' : '';
     const del = ro ? '' :
       '<button class="stp-ex-del" data-stp-del="' + path + '" title="' +
         sanitize(t('plan.remove')) + '">&times;</button>';
-    return '<div class="stp-ex' + (ex.boardId ? ' stp-ex-board' : '') +
-        '" data-stp-ex="' + path + '"' + (ro ? '' : ' draggable="true"') + '>' +
-      '<div class="stp-ex-head">' +
-        '<span class="stp-ex-title">' + sanitize(title) + '</span>' + tagHtml + del +
-      '</div>' +
-      (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
-      '</div>';
-  }
 
-  function _stpLane(lane, bi, li, ro, resolve, laneCount) {
-    const parts = [];
-    lane.forEach(function (ex, ei) {
-      parts.push(_stpExCard(ex, bi + '.' + li + '.' + ei, ro, resolve));
-      if (!ro) {
-        parts.push('<button class="stp-add stp-add-in" data-stp-in="' +
-          bi + '.' + li + '.' + (ei + 1) + '" title="' +
-          sanitize(t('plan.add')) + '">+</button>');
-      }
-    });
-    if (!lane.length && !ro) {
-      parts.push('<button class="stp-add stp-add-in" data-stp-in="' +
-        bi + '.' + li + '.0" title="' + sanitize(t('plan.add')) + '">+</button>');
-      // The empty lane a branch just created. Without this the only way out
-      // of a branch a coach changed his mind about is to empty the sibling.
-      if (laneCount > 1) {
-        parts.push('<button class="stp-lane-del" data-stp-lane-del="' +
-          bi + '.' + li + '" title="' + sanitize(t('plan.remove')) + '">&times;</button>');
-      }
+    const head = board
+      ? '<button class="stp-ex-title stp-ex-open" data-stp-toggle="' +
+          sanitize(ex.id) + '">' + pre + sanitize(title) +
+          '<span class="stp-ex-mark">▣</span></button>'
+      : '<span class="stp-ex-title stp-ex-plain">' + pre + sanitize(title) + '</span>';
+
+    let panel = '';
+    if (board && _stpOpen[ex.id]) {
+      const ref = ctx.refById[ex.boardId];
+      panel = '<div class="stp-board">' +
+        '<div class="stp-board-wrap">' +
+          (ref ? tbRoBoardHtml(ref, 'ro-stp-') : '') + '</div>' +
+        // No "Tanca": the title that opened it closes it, and a second way to
+        // do the same thing is a second thing to read.
+        '<div class="stp-board-acts">' +
+          '<button class="stp-a" data-stp-big="' + sanitize(ex.id) + '">⤢ ' +
+            sanitize(t('plan.expand')) + '</button>' +
+        '</div></div>';
     }
-    return '<div class="stp-lane" data-stp-lane="' + bi + '.' + li + '">' +
-      parts.join('') + '</div>';
+
+    /* The teams sit OUTSIDE the board panel, not inside it. They lived in
+       there while every assignable exercise was assumed to have a board — so
+       teams put on a free-text exercise rendered nowhere at all, and with no
+       × there was no way to take them off again either. An assignment is a
+       fact about the exercise, not about its drawing. */
+    return '<div class="stp-ex" data-stp-ex="' + path + '">' +
+      '<div class="stp-ex-head">' + head + del + '</div>' +
+      '<div class="stp-ex-note">' + sanitize(_stpExNote(ex, resolve)) + '</div>' +
+      (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
+      _stpTeamLines(ex, ctx.squad, ro) +
+      panel + '</div>';
   }
 
-  function _stpBlock(blk, bi, ro, resolve) {
-    const parallel = blk.lanes.length > 1;
-    const lanes = blk.lanes.map(function (lane, li) {
-      return _stpLane(lane, bi, li, ro, resolve, blk.lanes.length);
+  /**
+   * One block: a time gutter and a body.
+   *
+   * A block is one time slot. Two or more items in it ARE the parallel — it
+   * says "alhora, N grups" in words, letters them A/B, and carries one
+   * duration for the group. There is no second way to express that, which is
+   * the whole reason the nesting was collapsed: v188 had a "+ Bloc alhora"
+   * button beside a "+ Afegir grup" button and a coach had to work out which
+   * one he meant. The yellow edge rule is bled out to the rail's own padding
+   * so the whole row reads as one group.
+   */
+  function _stpBlockRow(blk, bi, time, ro, resolve, ctx) {
+    const parallel = blk.items.length > 1;
+    const eyebrow = parallel
+      ? t('plan.parallel_n').replace('{n}', blk.items.length)
+      : blk.label;
+
+    const rows = blk.items.map(function (ex, ii) {
+      const prefix = parallel ? String.fromCharCode(65 + ii) + ' ' : '';
+      return _stpExRow(ex, bi + '.' + ii, ro, resolve, ctx, prefix);
     }).join('');
-    const addLane = (parallel && !ro)
-      ? '<button class="stp-lane-add" data-stp-lane-add="' + bi + '">+ ' +
-        sanitize(t('plan.lane')) + '</button>'
-      : '';
+
+    /* The ONE way to make a block parallel: add a second exercise to it.
+       Just "+ Exercici" — being inside the block already says "at the same
+       time", and spelling it out only invited the question. */
+    const addIn = ro ? '' :
+      '<button class="stp-a stp-a-sm stp-add-in" data-stp-in="' + bi + '.' + blk.items.length +
+        '">+ ' + sanitize(t('plan.exercise')) + '</button>';
+
+    const mins = ro
+      ? '<span class="stp-mins">' + blk.mins + '′</span>'
+      : '<input class="stp-mins-in" type="number" min="1" max="240" value="' +
+        blk.mins + '" data-stp-mins="' + bi + '" title="' +
+        sanitize(t('plan.mins')) + '">';
+
     return '<div class="stp-block' + (parallel ? ' stp-parallel' : '') + '">' +
-      (parallel ? '<div class="stp-rail stp-rail-fork"></div>' : '') +
-      '<div class="stp-lanes">' + lanes + '</div>' +
-      (parallel ? '<div class="stp-rail stp-rail-merge"></div>' + addLane : '') +
-      '</div>';
+      '<div class="stp-time">' +
+        '<span class="stp-at">' + sanitize(time.label) + '</span>' + mins +
+      '</div>' +
+      '<div class="stp-body">' +
+        (eyebrow ? '<div class="stp-eyebrow">' + sanitize(eyebrow) + '</div>' : '') +
+        rows + addIn +
+      '</div></div>';
   }
 
-  function renderStdPlanPanel(tr, ro) {
+  function renderStdPlanPanel(tr, ro, squad) {
     const plan = stdPlan(tr);
     const resolve = stdBoardResolver(tr);
-    const parts = [];
-    parts.push(_stpConnector(0, ro));
-    plan.blocks.forEach(function (blk, bi) {
-      parts.push(_stpBlock(blk, bi, ro, resolve));
-      parts.push(_stpConnector(bi + 1, ro));
+    const refById = {};
+    stdSessionBoards(tr).forEach(function (r) {
+      if (r.boardId) refById[r.boardId] = r;
     });
-    const body = plan.blocks.length
-      ? '<div class="stp-flow">' + parts.join('') + '</div>'
-      : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>' +
-        '<div class="stp-flow">' + _stpConnector(0, ro) + '</div>';
-    return '<div class="card std-plan-panel" id="std-plan-panel">' +
-      '<div class="card-title">' + sanitize(t('plan.title')) + '</div>' +
-      body + '</div>';
+    const mat = planMaterial(plan, resolve);
+    const ctx = {
+      plan: plan, squad: squad || [], refById: refById,
+      petos: resolvePetos(plan, mat)
+    };
+    const times = blockTimes(tr, plan);
+    let exCount = 0;
+    plan.blocks.forEach(function (b) { exCount += b.items.length; });
+
+    const rows = plan.blocks.map(function (blk, bi) {
+      return _stpBlockRow(blk, bi, times.rows[bi], ro, resolve, ctx);
+    }).join('');
+
+    /* One footer button. "+ Bloc alhora" is gone: a parallel block is made by
+       adding a second exercise to a block, not by choosing a different kind
+       of block up front. */
+    const foot = ro ? '' :
+      '<button class="stp-a" data-stp-add="' + plan.blocks.length + '">+ ' +
+        sanitize(t('plan.exercise')) + '</button>';
+
+    return '<section class="std-plan-panel" id="std-plan-panel">' +
+      '<div class="std-sec-head std-sec-head-strong">' +
+        '<span class="std-eyebrow">' + sanitize(t('plan.title')) + '</span>' +
+        '<span class="std-sec-r">' +
+          '<span class="std-sec-note">' +
+            _stpN(plan.blocks.length, 'plan.blk_1', 'plan.blk_n') + ' · ' +
+            _stpN(exCount, 'plan.ex_1', 'plan.ex_n') + '</span>' +
+          (plan.blocks.length
+            ? '<button class="stp-a" id="stp-print" title="' +
+              sanitize(t('plan.print_hint')) + '">🖨 ' +
+              sanitize(t('plan.print')) + '</button>' : '') +
+        '</span>' +
+      '</div>' +
+      (plan.blocks.length ? '<div class="stp-flow">' + rows + '</div>'
+                          : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>') +
+      '<div class="stp-foot">' + foot +
+        '<span class="stp-ends">' + sanitize(t('plan.ends')) + ' ' +
+          sanitize(times.endLabel) + '</span>' +
+      '</div>' +
+      _stpOverlayHtml(tr, plan, ctx, resolve) +
+      '</section>';
+  }
+
+  /** The ⤢ Ampliar overlay: the same board, big, with its teams laid out. */
+  function _stpOverlayHtml(tr, plan, ctx, resolve) {
+    if (!_stpBig) return '';
+    let found = null;
+    plan.blocks.forEach(function (b) {
+      b.items.forEach(function (ex) { if (ex.id === _stpBig) found = ex; });
+    });
+    if (!found) return '';
+    const board = found.boardId ? resolve(found.boardId) : null;
+    const ref = ctx.refById[found.boardId];
+    const title = (board && board.name) || found.title || '';
+    const byId = {};
+    (ctx.squad || []).forEach(function (p) { byId[String(p.id)] = p; });
+    const cols = found.teams
+      ? found.teams.map(function (g, i) {
+        const colour = g.color || STP_PALETTE[i % STP_PALETTE.length];
+        const members = g.ids.map(function (id) {
+          const p = byId[id];
+          if (!p) return '';
+          return '<div class="stp-big-row"><span class="conv-pos-circles">' +
+            posCirclesHtmlGlobal(p) + '</span>' + sanitize(p.name) + '</div>';
+        }).join('');
+        return '<div class="stp-big-col"><div class="stp-big-colhead">' +
+          _stpDot(colour) + '<span>' + sanitize(g.name) + '</span>' +
+          '<span class="stp-big-count">' + g.ids.length + '</span></div>' +
+          members + '</div>';
+      }).join('') : '';
+    /* Board LEFT, teams RIGHT — side by side rather than stacked. Stacking
+       pushed the squad list below the fold and put a scrollbar on the one
+       thing a coach opens precisely so he can see all of it at once. */
+    return '<div class="stp-overlay" id="stp-overlay">' +
+      '<div class="stp-overlay-card' + (cols ? ' stp-overlay-wide' : '') + '">' +
+        '<div class="stp-overlay-head">' +
+          '<div><div class="std-eyebrow">' + sanitize(t('plan.board')) + '</div>' +
+          '<div class="stp-overlay-title">' + sanitize(title) + '</div></div>' +
+          '<button class="stp-a stp-a-mute" id="stp-big-close">' +
+            sanitize(t('plan.close')) + ' ✕</button>' +
+        '</div>' +
+        '<div class="stp-overlay-body">' +
+          '<div class="stp-overlay-board">' +
+            (ref ? tbRoBoardHtml(ref, 'ro-big-') : '') + '</div>' +
+          (cols ? '<div class="stp-big-cols">' + cols + '</div>' : '') +
+        '</div>' +
+      '</div></div>';
+  }
+
+  /**
+   * The plan as a sheet of paper.
+   *
+   * `window.print()` and hand-written CSS, not a PDF library: the app has no
+   * build step and no bundler, a PDF writer is ~200KB of dependency, and
+   * every browser's print dialog already offers "Save as PDF".
+   *
+   * It prints in its OWN WINDOW, not in this one. Printing in place was
+   * tried and failed three ways at once, all of them the same root cause —
+   * the sheet was still inside the app's layout:
+   *
+   *   · `.dashboard-layout { min-height:0 }` over a scrolling
+   *     `#dashboard-content` clips the printout to ONE PAGE, because that is
+   *     what those rules are for on screen;
+   *   · `#view-dashboard` is a flex column, so hiding its children and
+   *     re-showing one ancestor chain leaked the left pane back on top;
+   *   · and every fix is another `!important` in a media query nobody can
+   *     test without a printer.
+   *
+   * A fresh document has none of that: no ancestors, no flex, no scroll
+   * container, and a stylesheet that describes only the sheet.
+   */
+  function renderStdPrintSheet(tr, squad, locked) {
+    const plan = stdPlan(tr);
+    const resolve = stdBoardResolver(tr);
+    const refById = {};
+    stdSessionBoards(tr).forEach(function (r) {
+      if (r.boardId) refById[r.boardId] = r;
+    });
+    const mat = planMaterial(plan, resolve);
+    const petos = resolvePetos(plan, mat);
+    const times = blockTimes(tr, plan);
+    const win = sessionWindow(tr);
+    const au = sessionAU(tr, tr.plannedRpe);
+    const band = loadBand(tr.plannedRpe);
+
+    const rows = plan.blocks.map(function (blk, bi) {
+      const parallel = blk.items.length > 1;
+      const items = blk.items.map(function (ex, ii) {
+        const b = ex.boardId ? resolve(ex.boardId) : null;
+        const name = (b && b.name) || ex.title || t('plan.untitled');
+        const pre = parallel ? String.fromCharCode(65 + ii) + ' ' : '';
+        const teams = ex.teams ? ex.teams.map(function (g, gi) {
+          const names = g.ids.map(function (id) {
+            const p = (squad || []).find(function (x) { return String(x.id) === id; });
+            return p ? String(p.name || '').split(' ')[0] : '';
+          }).filter(Boolean).join(', ');
+          if (!names) return '';
+          // The bib colour, printed — it is how a coach matches the sheet to
+          // the pile of petos in his hand.
+          const colour = g.color || STP_PALETTE[gi % STP_PALETTE.length];
+          return '<div class="prn-teams"><span class="prn-dot" style="background:' +
+            sanitize(fillCss(colour).background) + '"></span><span>' +
+            sanitize(names) + '</span></div>';
+        }).join('') : '';
+        return '<div class="prn-ex">' +
+          '<div class="prn-ex-t">' + sanitize(pre + name) + '</div>' +
+          '<div class="prn-ex-n">' + sanitize(_stpExNote(ex, resolve)) + '</div>' +
+          (ex.desc ? '<div class="prn-ex-n">' + sanitize(ex.desc) + '</div>' : '') +
+          teams +
+          // The drill itself, where the drill is described. A plan that names
+          // a board and does not show it sends the coach back to his phone.
+          _prnBoardHtml(refById[ex.boardId]) + '</div>';
+      }).join('');
+      const eyebrow = parallel
+        ? t('plan.parallel_n').replace('{n}', blk.items.length)
+        : blk.label;
+      return '<tr>' +
+        '<td class="prn-time">' + sanitize(times.rows[bi].label) +
+          '<span class="prn-mins">' + blk.mins + '′</span></td>' +
+        /* No yellow edge here, unlike the rail. On screen the eyebrow is
+           small and the column is dense, so the colour does the work; on
+           paper it sits directly beside "Alhora, 2 grups" in full-size type
+           and the sheet carries no legend to explain a colour code — it read
+           as a divider between sections rather than a marker on one. */
+        '<td>' + (eyebrow ? '<div class="prn-eyebrow">' + sanitize(eyebrow) +
+          '</div>' : '') + items + '</td></tr>';
+    }).join('');
+
+    const matRows = [];
+    if (mat.cones) matRows.push([sanitize(t('mat.cones')), mat.cones]);
+    if (mat.balls) matRows.push([sanitize(t('mat.balls')), mat.balls]);
+    if (petos.length) {
+      // Which colours, not just how many: "3 petos" sends a coach to the
+      // store twice.
+      const swatches = petos.map(function (c) {
+        return '<span class="prn-dot" style="background:' +
+          sanitize(fillCss(c).background) + '"></span>';
+      }).join('');
+      matRows.push([sanitize(t('mat.petos_short')) +
+        ' <span class="prn-sw">' + swatches + '</span>',
+      Math.max(0, petos.length - 1)]);
+    }
+    plan.extra.forEach(function (x) { matRows.push([sanitize(x.label), x.qty]); });
+
+    const dutyNames = plan.duty.ids.filter(Boolean).map(function (id) {
+      const p = (squad || []).find(function (x) { return String(x.id) === String(id); });
+      return sanitize(p ? p.name : String(id));
+    }).join(', ');
+
+    const stat = function (label, value) {
+      return '<div class="prn-stat"><span>' + sanitize(label) + '</span><strong>' +
+        value + '</strong></div>';
+    };
+
+    return '<div class="std-print" id="std-print">' +
+      '<div class="prn-head">' +
+        '<h1>' + sanitize(activityTitleOf(tr, t('cal.training'))) + '</h1>' +
+        '<div class="prn-meta">' +
+          sanitize(tr.date ? tDateLong(tr.date) : '—') + ' · ' +
+          sanitize(tr.time || '—') + ' · ' +
+          sanitize(String(tr.location || '—')) + '</div>' +
+      '</div>' +
+      '<div class="prn-stats">' +
+        stat(t('training.th_planned_rpe'),
+          band ? tr.plannedRpe + ' · ' + sanitize(t('load.' + band)) : '—') +
+        stat(t('std.load'), au === null ? '—'
+          : '<span class="prn-hot">' + au + '</span> UA') +
+        stat(t('std.duration'), win ? (win.end - win.start) + '′' : '—') +
+        stat(t('wx.wind'), sanitize(_prnWeather(tr))) +
+      '</div>' +
+      _prnBar(tr, squad, locked) +
+      _prnSquad(tr, squad, locked) +
+      (rows ? '<table class="prn-plan">' + rows + '</table>'
+            : '<p class="prn-empty">' + sanitize(t('plan.empty')) + '</p>') +
+      '<div class="prn-foot">' +
+        '<div class="prn-mat">' +
+          '<div class="prn-h2">' + sanitize(t('mat.title')) + '</div>' +
+          // r[0] is ALREADY escaped above — the peto row carries swatch
+          // markup, so sanitizing here would print the tags.
+          (matRows.length ? matRows.map(function (r) {
+            return '<div class="prn-mat-r"><span>' + r[0] +
+              '</span><strong>' + r[1] + '</strong></div>';
+          }).join('') : '<div class="prn-mat-r">—</div>') +
+        '</div>' +
+        '<div class="prn-duty">' +
+          '<div class="prn-h2">' + sanitize(t('mat.duty')) + '</div>' +
+          '<div>' + (dutyNames || sanitize(t('mat.duty_none_yet'))) + '</div>' +
+          '<div class="prn-ends">' + sanitize(t('plan.ends')) + ' ' +
+            sanitize(times.endLabel) + '</div>' +
+        '</div>' +
+      '</div></div>';
+  }
+
+  /* The sheet's whole stylesheet. A constant rather than a file so the print
+     document is self-contained: it cannot be broken by a change to
+     style.css, and it needs no second request that a popup window might race.
+
+     `print-color-adjust:exact` is the line that matters. Without it browsers
+     drop every background when printing — which took the colour off the
+     attendance bar, the team dots and the peto swatches, i.e. exactly the
+     parts that are colour-coded on purpose. */
+  const STD_PRINT_CSS = [
+    '@page { size:A4 portrait; margin:13mm; }',
+    '* { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }',
+    'html,body { margin:0; padding:0; background:#fff; }',
+    /* The family is repeated on every element rather than left to inherit:
+       the app stylesheet is linked ahead of this one and sets its own
+       `body` font, and a <table> does not inherit font-family in every
+       engine — which is how the plan came out in a different face from the
+       heading above it. */
+    'body, body * { font-family:"Oswald","Arial Narrow",Arial,sans-serif; }',
+    'body { color:#2D2926; font-size:11pt; line-height:1.35; }',
+    '.prn-head { padding-bottom:6pt; border-bottom:1.5pt solid #2D2926; }',
+    '.prn-head h1 { margin:0; font-size:23pt; font-weight:400; line-height:1.1;',
+    '  letter-spacing:-.01em; }',
+    '.prn-meta { font-size:10pt; color:#6B645E; margin-top:3pt; }',
+    '.prn-stats { display:flex; gap:20pt; flex-wrap:wrap; padding:9pt 0;',
+    '  border-bottom:.5pt solid #E3DFD8; }',
+    '.prn-stat { display:flex; flex-direction:column; gap:1pt; }',
+    '.prn-stat span { font-size:7pt; letter-spacing:.14em; text-transform:uppercase;',
+    '  color:#99928B; }',
+    '.prn-stat strong { font-size:13pt; font-weight:500; }',
+    '.prn-hot { color:#BD162C; }',
+    '.prn-bar { display:flex; height:5pt; margin:9pt 0 3pt; overflow:hidden; }',
+    '.prn-bar span { display:block; height:100%; }',
+    '.prn-bar-key { display:flex; gap:12pt; flex-wrap:wrap; font-size:8.5pt;',
+    '  color:#6B645E; padding-bottom:9pt; }',
+    '.prn-key { display:flex; align-items:center; gap:4pt; }',
+    '.prn-sq { width:6pt; height:6pt; display:inline-block; }',
+    '.prn-plan { width:100%; border-collapse:collapse; margin-top:4pt; }',
+    '.prn-plan td { border-bottom:.5pt solid #E3DFD8; padding:7pt 0;',
+    '  vertical-align:top; break-inside:avoid; page-break-inside:avoid; }',
+    '.prn-time { width:56pt; padding-right:10pt; font-size:11.5pt;',
+    '  white-space:nowrap; vertical-align:top; }',
+    '.prn-mins { display:block; font-size:8pt; color:#99928B; }',
+    '.prn-eyebrow { font-size:7pt; letter-spacing:.14em; text-transform:uppercase;',
+    '  color:#99928B; padding-bottom:2pt; }',
+    '.prn-ex { padding-bottom:5pt; }',
+    '.prn-ex:last-child { padding-bottom:0; }',
+    '.prn-ex-t { font-size:12pt; }',
+    '.prn-ex-n { font-size:9pt; color:#6B645E; }',
+    '.prn-teams { display:flex; align-items:baseline; gap:5pt; font-size:9pt;',
+    '  padding-top:2pt; }',
+    '.prn-dot { width:7pt; height:7pt; border-radius:50%; display:inline-block;',
+    '  box-shadow:0 0 0 .5pt rgba(45,41,38,.35); flex:none; }',
+    '.prn-empty { font-size:10pt; color:#99928B; padding:10pt 0; }',
+    '.prn-foot { display:flex; gap:26pt; margin-top:12pt; padding-top:9pt;',
+    '  border-top:1.5pt solid #2D2926; break-inside:avoid; page-break-inside:avoid; }',
+    '.prn-mat,.prn-duty { flex:1; min-width:0; }',
+    '.prn-h2 { font-size:7pt; letter-spacing:.14em; text-transform:uppercase;',
+    '  color:#99928B; padding-bottom:4pt; }',
+    '.prn-mat-r { display:flex; justify-content:space-between; gap:10pt;',
+    '  font-size:10pt; border-bottom:.5pt solid #EDEAE4; padding:2.5pt 0; }',
+    '.prn-sw { display:inline-flex; gap:3pt; align-items:center; }',
+    '.prn-ends { font-size:9pt; color:#99928B; padding-top:5pt; }',
+    /* Who is coming, as one flowing block rather than a column of rows —
+       a 20-name list down the side of an A4 sheet is most of the page. */
+    '.prn-squad { padding:0 0 9pt; break-inside:avoid; page-break-inside:avoid; }',
+    '.prn-grp { display:flex; align-items:baseline; gap:7pt; padding:1.5pt 0; }',
+    '.prn-team { flex:none; width:12pt; font-size:9pt; font-weight:600;',
+    '  color:#2D2926; letter-spacing:.06em; }',
+    '.prn-nms { display:flex; flex-wrap:wrap; gap:1pt 9pt; font-size:9.5pt; }',
+    '.prn-nm { white-space:nowrap; }',
+    '.prn-pos { color:#99928B; font-size:7.5pt; }',
+    '.prn-late { color:#D39A2F; font-size:7.5pt; }',
+    /* The board, scaled bodily. See _prnBoardHtml: the wrapper reserves the
+       scaled height because a transform does not affect layout. */
+    '.prn-board { overflow:hidden; margin:4pt 0 2pt; break-inside:avoid;',
+    '  page-break-inside:avoid; }',
+    '.prn-board-in { transform-origin:top left; }',
+    '.prn-board-in .tb-field-readonly { max-width:none !important; width:814px !important;',
+    '  margin:0 !important; }',
+    '.prn-board-in .tb-ro-play, .prn-board-in .tb-ro-skeleton { display:none !important; }'
+  ].join('\n');
+
+  /**
+   * Open the sheet in its own window and hand it to the print dialog.
+   *
+   * `print()` is called on the child's own load event rather than straight
+   * after `write()`: a window that has not finished laying out prints blank
+   * pages, and the delay is invisible to the coach either way.
+   */
+  /* The script that fires the print dialog, INSIDE the print document.
+   *
+   * The parent used to do it on the child's `load` event, and the sheet came
+   * out in Arial Narrow: `load` waits for stylesheets but NOT for the font
+   * files those stylesheets go on to request, so print() ran mid-swap and the
+   * PDF was frozen with the fallback face. That is the whole of "it loses the
+   * format once it converts to PDF" — nothing else about the sheet changes.
+   *
+   * `document.fonts.load()` asks for the exact weights the sheet uses and
+   * resolves when they are usable; `fonts.ready` then waits for the layout to
+   * settle around them. The timeout is the backstop for a blocked or slow
+   * font host — a sheet in the fallback still beats no sheet at all. */
+  const STD_PRINT_BOOT = '<script>(function(){' +
+    'var fired=false;' +
+    'function go(){if(fired)return;fired=true;window.focus();window.print();}' +
+    'var d=document;' +
+    'if(d.fonts&&d.fonts.load){' +
+      'Promise.all([' +
+        "d.fonts.load('300 12pt Oswald')," +
+        "d.fonts.load('400 12pt Oswald')," +
+        "d.fonts.load('500 12pt Oswald')," +
+        "d.fonts.load('600 12pt Oswald')" +
+      '])' +
+      '.then(function(){return d.fonts.ready;})' +
+      // A frame after the faces land, so the reflow they cause is done.
+      '.then(function(){requestAnimationFrame(function(){setTimeout(go,60);});})' +
+      '.catch(go);' +
+    '}else{window.addEventListener("load",go);}' +
+    'setTimeout(go,4000);' +
+    '}());<\/script>';
+
+  /**
+   * An absolute URL to css/style.css.
+   *
+   * The print window is `about:blank`, which has no base to resolve a
+   * relative href against — `href="css/style.css"` there resolves to
+   * nothing and the boards come out unstyled.
+   */
+  function _prnCssHref() {
+    const link = document.querySelector('link[rel="stylesheet"][href*="style.css"]');
+    if (link && link.href) return link.href;
+    return new URL('css/style.css', document.baseURI).href;
+  }
+
+  function stdPrintPlan(tr, squad, locked) {
+    const w = window.open('', '_blank', 'width=900,height=1100');
+    if (!w) { _showPushToast(t('plan.print'), t('plan.print_blocked')); return; }
+    const doc =
+      '<!DOCTYPE html><html lang="' + sanitize(_lang) + '"><head>' +
+      '<meta charset="utf-8">' +
+      '<title>' + sanitize(activityTitleOf(tr, t('cal.training'))) + '</title>' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+      // The same weights index.html asks for, so the sheet is set in the
+      // face the app is set in rather than in Arial Narrow.
+      '<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">' +
+      /* The app's stylesheet, for the `.tb-*` rules the read-only board is
+         drawn with — there is no second copy of those and there should not
+         be. STD_PRINT_CSS comes AFTER it so the sheet's own rules win. */
+      '<link rel="stylesheet" href="' + sanitize(_prnCssHref()) + '">' +
+      '<style>' + STD_PRINT_CSS + '</style></head><body>' +
+      renderStdPrintSheet(tr, squad, locked) +
+      STD_PRINT_BOOT +
+      '</body></html>';
+    w.document.open();
+    w.document.write(doc);
+    w.document.close();
+  }
+
+  /**
+   * The board, on paper.
+   *
+   * The read-only renderer sizes its circles, numbers and cone borders in
+   * fixed px that are correct at ~814px wide — on screen `scaleRoBoards()`
+   * measures the container and shrinks them to match. That measuring needs a
+   * laid-out DOM and a ResizeObserver, neither of which exists in a document
+   * we have only just written.
+   *
+   * So the board is rendered at its natural width and the WHOLE THING is
+   * scaled with a CSS transform. Every proportion survives exactly, and no
+   * script has to run in the print window. A transform does not affect
+   * layout, so the wrapper reserves the scaled height itself — computed from
+   * the same BG.aspectPct the on-screen board uses, rather than assumed,
+   * because a half board and a 60x40 pitch are different shapes.
+   */
+  function _prnBoardHtml(ref) {
+    const b = ref ? tbResolveRef(ref) : null;
+    if (!b) return '';
+    const W = 814;      // the width the read-only sizes are drawn for
+    const K = 0.33;     // → ~270px, one column of an A4 sheet
+    const aspect = BG.aspectPct(b.pitch, b.boardType, false) / 100;
+    const h = Math.max(1, Math.round(W * aspect * K));
+    return '<div class="prn-board" style="height:' + h + 'px">' +
+      '<div class="prn-board-in" style="width:' + W + 'px;transform:scale(' + K + ')">' +
+        renderReadOnlyBoard(b, 'ro-prn-') +
+      '</div></div>';
+  }
+
+  /**
+   * Who is actually coming, as one compact block.
+   *
+   * The effective answer, so a coach's override beats the player's own — the
+   * sheet has to agree with the screen it was printed from. Late players are
+   * marked rather than split into a second list: they are coming, and a
+   * separate heading for one name costs more room than the mark does.
+   */
+  function _prnSquad(tr, players, locked) {
+    const ctx = availContext();
+    const coming = (players || []).map(function (p) {
+      const v = getEffectiveAnswer(p.id, tr, locked, ctx);
+      return (v === 'yes' || v === 'late') ? { p: p, late: v === 'late' } : null;
+    }).filter(Boolean);
+    if (!coming.length) return '';
+
+    /* Grouped by squad letter, then ordered by position within it — the
+       order a coach reads a team sheet in, keepers first. posRankGlobal is
+       the same ranking the roster and the convocatòria sort by, so the
+       printout and the app agree rather than each having their own idea. */
+    const byTeam = {};
+    coming.forEach(function (c) {
+      const k = String(c.p.team || '');
+      (byTeam[k] = byTeam[k] || []).push(c);
+    });
+    const letters = Object.keys(byTeam).sort(function (a, b) {
+      if (!a) return 1;          // the letterless go last, not first
+      if (!b) return -1;
+      return a.localeCompare(b);
+    });
+
+    const groups = letters.map(function (l) {
+      const rows = byTeam[l].slice().sort(function (a, b) {
+        return (posRankGlobal(a.p) - posRankGlobal(b.p)) ||
+          String(a.p.name).localeCompare(String(b.p.name));
+      }).map(function (c) {
+        const pos = String(c.p.position || '').split(',')[0].trim();
+        return '<span class="prn-nm">' + sanitize(c.p.name) +
+          (pos ? '<span class="prn-pos"> ' + sanitize(pos) + '</span>' : '') +
+          (c.late ? '<span class="prn-late"> ' + sanitize(t('avail.late')) + '</span>' : '') +
+          '</span>';
+      }).join('');
+      // A single unlettered squad gets no heading — "· 12" already said it.
+      const head = (l && letters.length > 1)
+        ? '<span class="prn-team">' + sanitize(l) + '</span>' : '';
+      return '<div class="prn-grp">' + head +
+        '<span class="prn-nms">' + rows + '</span></div>';
+    }).join('');
+
+    return '<div class="prn-squad">' +
+      '<div class="prn-h2">' + sanitize(t('std.player_attendance')) +
+        ' · ' + coming.length + '</div>' + groups + '</div>';
+  }
+
+  /** One line of weather for the sheet: no emoji, they print as boxes. */
+  function _prnWeather(tr) {
+    const w = (tr && tr.weather) || STP_WEATHER_DEFAULT;
+    if (!w) return '—';
+    const ms = Number(w.windMs);
+    const bits = [t('wx.' + w.cond) || ''];
+    bits.push(t('wx.' + windBand(ms)) +
+      (isFinite(ms) && ms >= 1.5 ? ' (' + (Math.round(ms * 10) / 10) + ' m/s)' : ''));
+    if (isFinite(Number(w.tempC))) bits.push(Math.round(Number(w.tempC)) + '°');
+    return bits.filter(Boolean).join(' · ');
+  }
+
+  /** The attendance bar, printable: a rule of segments plus its counts. */
+  function _prnBar(tr, players, locked) {
+    const total = (players || []).length;
+    if (!total) return '';
+    const ctx = availContext();
+    const n = { yes: 0, late: 0, no: 0, injured: 0, na: 0 };
+    players.forEach(function (p) {
+      const v = getEffectiveAnswer(p.id, tr, locked, ctx);
+      n[n[v] === undefined ? 'na' : v]++;
+    });
+    const segs = [
+      { k: 'yes', c: '#7CA982' }, { k: 'late', c: '#E3B341' },
+      { k: 'no', c: '#A8A29B' }, { k: 'injured', c: '#C0564C' },
+      { k: 'na', c: '#D8D4CE' }
+    ].filter(function (s) { return n[s.k]; });
+    return '<div class="prn-bar">' + segs.map(function (s) {
+      /* Inline width AND background: a browser printing "background graphics
+         off" drops the fill, and the segment widths are then the only thing
+         left carrying the split. Hence the counts spelled out below it. */
+      return '<span style="width:' + ((n[s.k] / total) * 100) +
+        '%;background:' + s.c + '"></span>';
+    }).join('') + '</div>' +
+      '<div class="prn-bar-key">' + segs.map(function (s) {
+        return '<span class="prn-key"><span class="prn-sq" style="background:' +
+          s.c + '"></span>' + sanitize(t('avail.' + s.k)) + ' ' + n[s.k] + '</span>';
+      }).join('') + '</div>';
   }
 
   // ── Rendering the material card ──
 
-  function _stpSwatch(fill) {
-    const css = fillCss(fill);
-    return '<span class="stm-swatch" style="background:' + sanitize(css.background) +
-      ';border-color:' + sanitize(css.borderColor) + '"></span>';
-  }
+  /* Which peto swatch has its colour picker open. Transient. */
+  let _stmPicker = null;
 
-  function _stmDutyHtml(tr, squad, locked, ro, showAll) {
+  /**
+   * Encarregats de material.
+   *
+   * The design fills this "from the available players in roster order" and
+   * shuffles blindly. That is not what was asked for, and it is the one place
+   * the prototype had to be argued with: the whole point of the feature is
+   * that the same two lads do not carry the cones every week. So the CONTROLS
+   * are the design's — a stepper, name chips, a die — and the SELECTION is
+   * still `dutyPool`'s lowest-count tier.
+   */
+  function _stmDutyHtml(tr, squad, locked, ro) {
     const plan = stdPlan(tr);
     const pool = dutyPool(tr, squad, locked);
-    if (ro) {
-      const names = plan.duty.ids.map(function (id) {
-        const row = pool.rows.find(function (r) { return r.id === String(id); });
-        return sanitize(row ? row.name : id);
-      });
-      return '<div class="stm-duty">' +
-        '<div class="stm-sub">' + sanitize(t('mat.duty')) + '</div>' +
-        (names.length ? '<div class="stm-duty-static">' + names.join(', ') + '</div>'
-                      : '<p class="stm-hint">' + sanitize(t('std.none')) + '</p>') +
-        '</div>';
-    }
-    const slots = [];
-    for (let i = 0; i < plan.duty.n; i++) {
-      const cur = String(plan.duty.ids[i] || '');
-      const opts = ['<option value="">' + sanitize(t('mat.duty_pick')) + '</option>'];
-      pool.rows.forEach(function (r) {
-        // Someone already holding another slot is not offered twice.
-        if (r.id !== cur && pool.chosen.has(r.id)) return;
-        const blocked = !showAll && r.n > pool.floor && r.id !== cur;
-        opts.push('<option value="' + sanitize(r.id) + '"' +
-          (r.id === cur ? ' selected' : '') + (blocked ? ' disabled' : '') + '>' +
-          sanitize(r.name) + ' (' + r.n + ')</option>');
-      });
-      slots.push('<select class="reg-input stm-duty-sel" data-slot="' + i + '">' +
-        opts.join('') + '</select>');
-    }
-    return '<div class="stm-duty">' +
-      '<div class="stm-sub">' + sanitize(t('mat.duty')) + '</div>' +
-      '<div class="stm-duty-row">' +
-        '<label class="stm-duty-n">' + sanitize(t('mat.duty_n')) +
-          ' <input type="number" id="stm-duty-n" min="0" max="10" value="' +
-          plan.duty.n + '"></label>' +
-        '<button class="btn btn-small btn-outline" id="stm-duty-random">' +
-          sanitize(t('mat.duty_random')) + '</button>' +
-        '<label class="stm-duty-all"><input type="checkbox" id="stm-duty-all"' +
-          (showAll ? ' checked' : '') + '> ' + sanitize(t('mat.duty_show_all')) +
-        '</label>' +
-      '</div>' +
-      (pool.rows.length
-        ? '<div class="stm-duty-slots">' + slots.join('') + '</div>'
-        : '<p class="stm-hint">' + sanitize(t('mat.duty_none')) + '</p>') +
-      '<p class="stm-hint">' + sanitize(t('mat.duty_hint')) + '</p>' +
+    const byId = {};
+    pool.rows.forEach(function (r) { byId[r.id] = r; });
+    const names = plan.duty.ids.filter(Boolean).map(function (id, i) {
+      const r = byId[String(id)];
+      const label = sanitize(r ? r.name : String(id));
+      return '<span class="stm-duty-chip">' + label +
+        (ro ? '' : '<button class="stm-duty-x" data-stm-duty-del="' + i +
+          '" title="' + sanitize(t('plan.remove')) + '">&times;</button>') +
+        '</span>';
+    }).join('');
+
+    const stepper = ro ? '' :
+      '<div class="std-step">' +
+        '<button class="std-step-b" data-stm-duty="-1">−</button>' +
+        '<span class="std-step-n">' + plan.duty.n + '</span>' +
+        '<button class="std-step-b" data-stm-duty="1">+</button>' +
       '</div>';
+
+    const acts = ro ? '' :
+      '<div class="stm-acts">' +
+        '<button class="stp-a" id="stm-duty-random">' +
+          sanitize(t('mat.duty_random')) + '</button>' +
+        '<button class="stp-a stp-a-mute" id="stm-duty-pick">' +
+          sanitize(t('mat.duty_manual')) + '</button>' +
+      '</div>';
+
+    return '<div class="stm-duty">' +
+      '<div class="std-sec-head">' +
+        '<span class="std-eyebrow std-eyebrow-sm">' + sanitize(t('mat.duty')) + '</span>' +
+        stepper +
+      '</div>' +
+      '<div class="stm-duty-names">' +
+        (names || '<span class="stm-muted">' + sanitize(t('mat.duty_none_yet')) + '</span>') +
+      '</div>' + acts + '</div>';
   }
 
-  /* The "mostra tots" override is a view preference, not session data: it
-     lets a coach hand the job to whoever he needs to for a reason the app
-     cannot know, without that choice outliving the afternoon. */
-  let _stmShowAll = false;
+  /** The anchored 7-colour picker for one peto swatch. */
+  function _stmPickerHtml(petos) {
+    if (_stmPicker === null) return '';
+    const cur = petos[_stmPicker];
+    const dots = STP_PALETTE.map(function (c) {
+      return '<button class="stm-pal' + (c === cur ? ' stm-pal-on' : '') +
+        '" data-stm-colour="' + sanitize(c) + '" style="background:' +
+        sanitize(c) + '"></button>';
+    }).join('');
+    // No "Tanca" here either — the swatch that opened it closes it.
+    return '<div class="stm-picker" id="stm-picker">' +
+      '<div class="std-eyebrow std-eyebrow-sm">' + sanitize(t('mat.peto_colour')) + '</div>' +
+      '<div class="stm-pal-row">' + dots + '</div>' +
+      '<div class="stm-acts">' +
+        '<button class="stp-a" id="stm-peto-del">' + sanitize(t('mat.peto_remove')) + '</button>' +
+      '</div></div>';
+  }
+
+  function _stmRow(label, qty, extraIdx, ro) {
+    return '<div class="stm-row">' +
+      '<span class="stm-lbl">' + sanitize(label) + '</span>' +
+      '<span class="stm-qty">' + qty + '</span>' +
+      (extraIdx === null || ro ? '' :
+        '<button class="stm-x" data-stm-del="' + extraIdx + '" title="' +
+        sanitize(t('plan.remove')) + '">&times;</button>') +
+      '</div>';
+  }
 
   function renderStdMaterialCard(tr, squad, locked, ro) {
     const plan = stdPlan(tr);
     const mat = planMaterial(plan, stdBoardResolver(tr));
+    const petos = resolvePetos(plan, mat);
     const rows = [];
-    if (mat.cones) {
-      rows.push('<div class="stm-row"><span class="stm-ico">🔺</span><span class="stm-lbl">' +
-        sanitize(t('mat.cones')) + '</span><span class="stm-qty">' + mat.cones + '</span></div>');
-    }
-    if (mat.balls) {
-      rows.push('<div class="stm-row"><span class="stm-ico">⚽</span><span class="stm-lbl">' +
-        sanitize(t('mat.balls')) + '</span><span class="stm-qty">' + mat.balls + '</span></div>');
-    }
-    if (mat.colors.length) {
-      rows.push('<div class="stm-row"><span class="stm-ico">🎽</span><span class="stm-lbl">' +
-        sanitize(t('mat.petos')) + ' <span class="stm-swatches">' +
-        mat.colors.map(_stpSwatch).join('') + '</span></span>' +
-        '<span class="stm-qty">' + mat.petos + '</span></div>' +
-        '<p class="stm-hint">' + sanitize(t('mat.petos_hint')) + '</p>');
-    }
+    if (mat.cones) rows.push(_stmRow(t('mat.cones'), mat.cones, null, ro));
+    if (mat.balls) rows.push(_stmRow(t('mat.balls'), mat.balls, null, ro));
+
+    // The petos row carries the swatch strip, so it cannot use _stmRow.
+    const swatches = petos.map(function (c, i) {
+      return '<button class="stm-swatch' + (_stmPicker === i ? ' stm-swatch-on' : '') +
+        '" data-stm-peto="' + i + '" title="' + sanitize(t('mat.peto_colour')) +
+        '" style="background:' + sanitize(fillCss(c).background) + '"></button>';
+    }).join('');
+    rows.push('<div class="stm-row stm-row-petos">' +
+      '<span class="stm-lbl stm-lbl-tight">' + sanitize(t('mat.petos_short')) + '</span>' +
+      '<span class="stm-swatches">' + swatches + '</span>' +
+      '<span class="stm-spacer"></span>' +
+      '<span class="stm-qty">' + Math.max(0, petos.length - 1) + '</span>' +
+      (ro ? '' : _stmPickerHtml(petos)) +
+      '</div>');
+
     plan.extra.forEach(function (x, i) {
-      rows.push('<div class="stm-row stm-row-extra"><span class="stm-ico">📦</span>' +
-        '<span class="stm-lbl">' + sanitize(x.label) + '</span>' +
-        '<span class="stm-qty">' + x.qty + '</span>' +
-        (ro ? '' : '<button class="stm-x" data-stm-del="' + i + '" title="' +
-          sanitize(t('plan.remove')) + '">&times;</button>') + '</div>');
+      rows.push(_stmRow(x.label, x.qty, i, ro));
     });
-    const unknownHint = mat.unknown
-      ? '<p class="stm-hint stm-warn">' +
-        sanitize(t('mat.unknown').replace('{n}', mat.unknown)) + '</p>'
+
+    const warn = mat.unknown
+      ? '<div class="stm-warn"><span class="stm-warn-i">▲</span>' +
+        sanitize(t('mat.unknown').replace('{n}', mat.unknown)) + '</div>'
       : '';
-    const addRow = ro ? '' :
-      '<div class="stm-add-row">' +
-        '<input class="reg-input" id="stm-extra-label" maxlength="40" placeholder="' +
-          sanitize(t('mat.extra_label')) + '">' +
-        '<input class="reg-input" id="stm-extra-qty" type="number" min="1" max="999" value="1" ' +
-          'title="' + sanitize(t('mat.qty')) + '">' +
-        '<button class="btn btn-small btn-outline" id="stm-extra-add">' +
-          sanitize(t('mat.extra_add')) + '</button>' +
+    const acts = ro ? '' :
+      '<div class="stm-acts">' +
+        '<button class="stp-a" id="stm-peto-add">+ ' +
+          sanitize(t('mat.peto_add')) + '</button>' +
+        '<button class="stp-a" id="stm-extra-add">+ ' +
+          sanitize(t('mat.extra')) + '</button>' +
       '</div>';
-    return '<div class="card std-material-card" id="std-material-card">' +
-      '<div class="card-title">' + sanitize(t('mat.title')) + '</div>' +
-      (rows.length ? '<div class="stm-list">' + rows.join('') + '</div>'
-                   : '<p class="stm-hint">' + sanitize(t('mat.nothing')) + '</p>') +
-      unknownHint +
-      '<div class="stm-sub">' + sanitize(t('mat.extra')) + '</div>' + addRow +
-      _stmDutyHtml(tr, squad, locked, ro, _stmShowAll) +
-      '</div>';
+
+    return '<section class="std-material-card" id="std-material-card">' +
+      '<div class="std-sec-head std-sec-head-strong">' +
+        '<span class="std-eyebrow">' + sanitize(t('mat.title')) + '</span>' +
+        '<span class="std-sec-note">' +
+          sanitize(t('mat.from_boards').replace('{n}', mat.priced)) + '</span>' +
+      '</div>' +
+      '<div class="stm-list">' + rows.join('') + '</div>' +
+      warn + acts +
+      '<div class="stm-note">' + sanitize(t('mat.petos_hint')) + '</div>' +
+      _stmDutyHtml(tr, squad, locked, ro) +
+      '</section>';
   }
 
   // ── Mutating the plan ──
@@ -17534,40 +18437,30 @@
    * Deliberately NOT renderPage: this page recomputes readiness for every
    * player in the squad, and clicking "+" is not a reason to pay for that.
    */
-  function _stpWrite(mutate, keepEmptyLanes) {
+  function _stpWrite(mutate) {
     const tr = _stpSession();
     if (!tr) return;
     const plan = stdPlan(tr);
     if (mutate(plan) === false) return;
-    // Branching deliberately creates an empty lane for the coach to fill —
-    // pruning it would undo the click that made it.
-    if (!keepEmptyLanes) _stpPrune(plan);
+    _stpPrune(plan);
     _ntPersistSession(tr.id, function (row) { row.plan = plan; });
     stdRefreshPlan();
   }
 
-  /** An empty lane that is not the only lane, and an empty block, both go. */
+  /** A block with nothing left in it goes. */
   function _stpPrune(plan) {
-    plan.blocks.forEach(function (blk) {
-      if (blk.lanes.length > 1) {
-        blk.lanes = blk.lanes.filter(function (l) { return l.length; });
-      }
-    });
-    plan.blocks = plan.blocks.filter(function (blk) {
-      return blk.lanes.some(function (l) { return l.length; });
-    });
+    plan.blocks = plan.blocks.filter(function (blk) { return blk.items.length; });
   }
 
+  /** `bi.ii` — a block and an item inside it. Two indices since v189. */
   function _stpPath(s) {
     const p = String(s || '').split('.').map(Number);
-    return (p.length === 3 && p.every(n => !isNaN(n))) ? p : null;
+    return (p.length === 2 && p.every(n => !isNaN(n))) ? p : null;
   }
 
   function _stpAt(plan, path) {
     const blk = plan.blocks[path[0]];
-    if (!blk) return null;
-    const lane = blk.lanes[path[1]];
-    return lane || null;
+    return blk ? blk.items : null;
   }
 
   // ── The exercise picker ──
@@ -17575,85 +18468,232 @@
   /**
    * Pick a board linked to this session, or write a free exercise.
    *
-   * The board previews are the read-only renderer the rest of the app uses,
-   * scaled by scaleRoBoards() — the same three-line recipe as the superadmin
-   * board catalogue. They live here and not on the flow cards on purpose:
-   * the panel beside the attendance table is 320px wide, and a board drawn
-   * at that size tells a coach nothing he cannot read from the name.
+   * Boards are a LIST of names and tags, not a grid of pitches. v188 drew a
+   * full read-only board per row and the dialog became unusable — and a
+   * pitch at modal-column width tells a coach nothing the name does not.
+   * The board is one click away in the rail once the exercise exists.
+   *
+   * `onPick(ex, mins)` — `mins` is only meaningful when the caller asked for
+   * it (a NEW block); an exercise joining an existing block runs for as long
+   * as that block does.
    */
-  function stdOpenExercisePicker(tr, onPick) {
+  function stdOpenExercisePicker(tr, onPick, opts) {
+    const o = opts || {};
+    const withMins = o.withMins !== false;
     const existing = document.getElementById('custom-modal-overlay');
     if (existing) existing.remove();
 
     const boards = stdSessionBoards(tr);
-    const cards = boards.map(function (b, i) {
+    const rows = boards.map(function (b, i) {
       const tag = b.tag ? '<span class="stp-tag">' + sanitize(b.tag) + '</span>' : '';
-      return '<div class="stp-pick-card" data-stp-pick="' + i + '">' +
-        '<div class="stp-pick-name">' + sanitize(b.name || '') + tag + '</div>' +
-        '<div class="stp-pick-board">' + tbRoBoardHtml(b, 'stp-pick-') + '</div>' +
-        '</div>';
+      return '<button class="stp-pick-row" data-stp-pick="' + i + '">' +
+        '<span class="stp-pick-name">' + sanitize(b.name || '') + '</span>' +
+        tag + '</button>';
     }).join('');
 
     const overlay = document.createElement('div');
     overlay.id = 'custom-modal-overlay';
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
-      '<div class="modal-card stp-pick-modal">' +
-        '<div class="modal-title">' + sanitize(t('plan.add')) + '</div>' +
-        '<div class="stm-sub">' + sanitize(t('plan.from_board')) + '</div>' +
-        (cards ? '<div class="stp-pick-grid">' + cards + '</div>'
-               : '<p class="stm-hint">' + sanitize(t('plan.no_boards')) + '</p>') +
-        '<div class="stm-sub">' + sanitize(t('plan.free')) + '</div>' +
-        '<input class="reg-input" id="stp-free-title" maxlength="60" placeholder="' +
-          sanitize(t('plan.ex_title')) + '">' +
-        '<textarea class="reg-input stp-free-desc" id="stp-free-desc" maxlength="200" ' +
-          'rows="2" placeholder="' + sanitize(t('plan.ex_desc')) + '"></textarea>' +
-        '<div class="modal-actions">' +
-          '<button class="btn btn-small btn-outline" id="stp-pick-cancel">' +
-            sanitize(t('common.cancel')) + '</button>' +
-          '<button class="btn btn-small btn-primary" id="stp-free-add" disabled>' +
-            sanitize(t('mat.extra_add')) + '</button>' +
+      '<div class="stp-dialog">' +
+        '<div class="stp-dialog-head">' +
+          '<span class="std-eyebrow">' + sanitize(t('plan.add')) + '</span>' +
+          '<button class="stp-a stp-a-mute" id="stp-pick-x">✕</button>' +
+        '</div>' +
+        '<div class="stp-dialog-body">' +
+          '<div class="std-eyebrow std-eyebrow-sm">' + sanitize(t('plan.from_board')) + '</div>' +
+          (rows ? '<div class="stp-pick-list">' + rows + '</div>'
+                : '<p class="stm-muted">' + sanitize(t('plan.no_boards')) + '</p>') +
+          '<div class="std-eyebrow std-eyebrow-sm stp-dialog-or">' +
+            sanitize(t('plan.free')) + '</div>' +
+          '<input class="stp-field" id="stp-free-title" maxlength="60" placeholder="' +
+            sanitize(t('plan.ex_title')) + '">' +
+          '<textarea class="stp-field stp-free-desc" id="stp-free-desc" maxlength="200" ' +
+            'rows="2" placeholder="' + sanitize(t('plan.ex_desc')) + '"></textarea>' +
+        '</div>' +
+        '<div class="stp-dialog-foot">' +
+          (withMins
+            ? '<label class="stp-dialog-mins">' + sanitize(t('plan.mins')) +
+              ' <input class="stp-field stp-field-n" id="stp-free-mins" type="number" ' +
+              'min="1" max="240" value="' + STP_DEFAULT_MINS + '"></label>'
+            : '<span></span>') +
+          '<div class="stp-dialog-acts">' +
+            '<button class="stp-a stp-a-mute" id="stp-pick-cancel">' +
+              sanitize(t('common.cancel')) + '</button>' +
+            '<button class="std-btn" id="stp-free-add" disabled>' +
+              sanitize(t('mat.extra_add')) + '</button>' +
+          '</div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
-    if (typeof scaleRoBoards === 'function') scaleRoBoards();
-    hydrateRoBoards();
 
     const close = () => {
       overlay.classList.remove('visible');
       setTimeout(() => overlay.remove(), 200);
     };
+    const minsOf = () => {
+      const el = overlay.querySelector('#stp-free-mins');
+      return el ? _stpMins(el.value) : STP_DEFAULT_MINS;
+    };
     overlay.querySelector('#stp-pick-cancel').addEventListener('click', close);
+    overlay.querySelector('#stp-pick-x').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-    overlay.querySelectorAll('[data-stp-pick]').forEach(function (card) {
-      card.addEventListener('click', function () {
-        const b = boards[Number(card.dataset.stpPick)];
+    overlay.querySelectorAll('[data-stp-pick]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        const b = boards[Number(row.dataset.stpPick)];
         if (!b) return;
+        const mins = minsOf();
         close();
         onPick({
           id: _planId('ex'), boardId: String(b.boardId || ''),
           title: String(b.name || ''), desc: '', tag: String(b.tag || '')
-        });
+        }, mins);
       });
     });
 
     const titleEl = overlay.querySelector('#stp-free-title');
     const descEl = overlay.querySelector('#stp-free-desc');
     const addEl = overlay.querySelector('#stp-free-add');
-    const sync = () => { addEl.disabled = !titleEl.value.trim(); };
-    titleEl.addEventListener('input', sync);
+    titleEl.addEventListener('input', function () {
+      addEl.disabled = !titleEl.value.trim();
+    });
     addEl.addEventListener('click', function () {
       const title = titleEl.value.trim();
       if (!title) return;
+      const mins = minsOf();
       close();
       onPick({
         id: _planId('ex'), boardId: '',
         title: title, desc: descEl.value.trim(), tag: ''
-      });
+      }, mins);
     });
     titleEl.focus();
+  }
+
+  /** "+ Altre material" — a label and a quantity. */
+  function stdOpenExtraDialog(onAdd) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="stp-dialog">' +
+        '<div class="stp-dialog-head">' +
+          '<span class="std-eyebrow">' + sanitize(t('mat.extra')) + '</span>' +
+          '<button class="stp-a stp-a-mute" id="stm-x-cancel">✕</button>' +
+        '</div>' +
+        '<div class="stp-dialog-body">' +
+          '<input class="stp-field" id="stm-x-label" maxlength="40" placeholder="' +
+            sanitize(t('mat.extra_label')) + '">' +
+          '<label class="stp-dialog-mins">' + sanitize(t('mat.qty')) +
+            ' <input class="stp-field stp-field-n" id="stm-x-qty" type="number" ' +
+            'min="1" max="999" value="1"></label>' +
+        '</div>' +
+        '<div class="stp-dialog-foot">' +
+          '<span></span>' +
+          '<div class="stp-dialog-acts">' +
+            '<button class="stp-a stp-a-mute" id="stm-x-cancel2">' +
+              sanitize(t('common.cancel')) + '</button>' +
+            '<button class="std-btn" id="stm-x-ok" disabled>' +
+              sanitize(t('mat.extra_add')) + '</button>' +
+          '</div>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    const labelEl = overlay.querySelector('#stm-x-label');
+    const qtyEl = overlay.querySelector('#stm-x-qty');
+    const okEl = overlay.querySelector('#stm-x-ok');
+    labelEl.addEventListener('input', function () {
+      okEl.disabled = !labelEl.value.trim();
+    });
+    overlay.querySelector('#stm-x-cancel').addEventListener('click', close);
+    overlay.querySelector('#stm-x-cancel2').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    okEl.addEventListener('click', function () {
+      const label = labelEl.value.trim();
+      if (!label) return;
+      close();
+      onAdd(label, Math.max(1, Math.min(999, parseInt(qtyEl.value, 10) || 1)));
+    });
+    labelEl.focus();
+  }
+
+  /**
+   * "Tria a mà" — pick the encarregats by hand.
+   *
+   * This is where the fairness rule becomes visible rather than merely
+   * enforced: every attending player is listed with how many turns he has
+   * already done, and anyone above the current floor is greyed. A coach can
+   * still see them, and see why they are not on offer.
+   */
+  function stdOpenDutyPicker(tr, onPick) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const plan = stdPlan(tr);
+    const pool = dutyPool(tr, calledPlayers(tr, getUsers()), isTrainingLocked(tr));
+    const picked = new Set(plan.duty.ids.filter(Boolean));
+    const rows = pool.rows.map(function (r) {
+      const blocked = r.n > pool.floor && !picked.has(r.id);
+      return '<button class="stm-pick-row' + (picked.has(r.id) ? ' stm-pick-on' : '') +
+        (blocked ? ' stm-pick-off' : '') + '" data-stm-pick="' + sanitize(r.id) + '">' +
+        '<span class="stm-pick-check"></span>' +
+        '<span class="stm-pick-name">' + sanitize(r.name) + '</span>' +
+        '<span class="stm-pick-n">' + r.n + '</span></button>';
+    }).join('');
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="stp-dialog">' +
+        '<div class="stp-dialog-head">' +
+          '<span class="std-eyebrow">' + sanitize(t('mat.duty')) + '</span>' +
+          '<button class="stp-a stp-a-mute" id="stm-p-x">✕</button>' +
+        '</div>' +
+        '<div class="stp-dialog-body">' +
+          '<p class="stm-note">' + sanitize(t('mat.duty_hint')) + '</p>' +
+          '<div class="stm-pick-list">' +
+            (rows || '<p class="stm-muted">' + sanitize(t('mat.duty_none')) + '</p>') +
+          '</div>' +
+        '</div>' +
+        '<div class="stp-dialog-foot">' +
+          '<span></span>' +
+          '<div class="stp-dialog-acts">' +
+            '<button class="stp-a stp-a-mute" id="stm-p-cancel">' +
+              sanitize(t('common.cancel')) + '</button>' +
+            '<button class="std-btn" id="stm-p-ok">' +
+              sanitize(t('common.confirm')) + '</button>' +
+          '</div>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    overlay.querySelectorAll('[data-stm-pick]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        // A greyed row is a statement, not a wall: the coach who insists
+        // knows something the counter does not.
+        const id = btn.dataset.stmPick;
+        if (picked.has(id)) picked.delete(id); else picked.add(id);
+        btn.classList.toggle('stm-pick-on', picked.has(id));
+      });
+    });
+    overlay.querySelector('#stm-p-cancel').addEventListener('click', close);
+    overlay.querySelector('#stm-p-x').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#stm-p-ok').addEventListener('click', function () {
+      close();
+      // Kept in pool order, so the list reads the same way it was offered.
+      onPick(pool.rows.map(r => r.id).filter(id => picked.has(id)));
+    });
   }
 
   // ── Targeted re-render + bindings ──
@@ -17662,21 +18702,31 @@
      a warm" path re-renders, finds it still missing and warms again. */
   const _stpWarmed = new Set();
 
-  /* The exercise being dragged, as its `bi.li.ei` path. */
-  let _stpDrag = null;
-
   function stdRefreshPlan() {
     const tr = _stpSession();
     if (!tr) return;
     const ro = !canEditPage('staff-training-detail');
+    const squad = calledPlayers(tr, getUsers());
     const panel = document.getElementById('std-plan-panel');
-    if (panel) panel.outerHTML = renderStdPlanPanel(tr, ro);
+    if (panel) panel.outerHTML = renderStdPlanPanel(tr, ro, squad);
     const card = document.getElementById('std-material-card');
     if (card) {
-      card.outerHTML = renderStdMaterialCard(
-        tr, calledPlayers(tr, getUsers()), isTrainingLocked(tr), ro);
+      card.outerHTML = renderStdMaterialCard(tr, squad, isTrainingLocked(tr), ro);
+    }
+    /* The teams block too. v188 left it out, so Esborra, the ± stepper and the
+       assign chips all wrote correctly and then changed nothing on screen —
+       which is indistinguishable from a dead button. */
+    const teams = document.getElementById('std-teams-block');
+    if (teams) {
+      teams.outerHTML = renderStdTeamsBlock(tr, squad, isTrainingLocked(tr));
     }
     bindStdPlan();
+    /* A board that has just been opened is new DOM, and the read-only
+       renderer sizes itself from its container — so it has to be scaled
+       AFTER it lands, not when the string was built. */
+    if (typeof scaleRoBoards === 'function') scaleRoBoards();
+    bindRoBoardAnimations();
+    hydrateRoBoards();
   }
 
   function bindStdPlan() {
@@ -17695,12 +18745,12 @@
        the head coach. */
     const resolve = stdBoardResolver(tr);
     const missing = [];
-    plan.blocks.forEach(b => b.lanes.forEach(l => l.forEach(function (ex) {
+    plan.blocks.forEach(b => b.items.forEach(function (ex) {
       if (ex.boardId && !resolve(ex.boardId) && !_stpWarmed.has(ex.boardId)) {
         _stpWarmed.add(ex.boardId);
         missing.push(ex.boardId);
       }
-    })));
+    }));
     if (missing.length && typeof TB !== 'undefined' && TB.warm) {
       // Promise.resolve, not .then directly: a TB.warm that returns nothing
       // would otherwise throw inside a binding pass and take the rest of the
@@ -17710,35 +18760,32 @@
         .catch(function () {});
     }
 
+    // Opening a board and printing change nothing but the view, so they are
+    // bound for the fitness coach and the delegate too.
+    bindStdPlanView();
+    const printBtn = document.getElementById('stp-print');
+    if (printBtn) {
+      printBtn.addEventListener('click', function () {
+        stdPrintPlan(tr, calledPlayers(tr, getUsers()), isTrainingLocked(tr));
+      });
+    }
+
     // Everything below mutates; a view-only sub-role has none of the
     // controls rendered in the first place.
     if (!canEditPage('staff-training-detail')) return;
 
-    // ── Adding exercises ──
+    /* Adding an exercise. TWO controls, not four:
+         the footer's "+ Exercici" appends a new BLOCK — the next thing in
+         time; the "+" inside a block appends an ITEM to it — something that
+         runs alongside what is already there. */
     document.querySelectorAll('[data-stp-add]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const at = Number(btn.dataset.stpAdd);
-        stdOpenExercisePicker(tr, function (ex) {
+        stdOpenExercisePicker(tr, function (ex, mins) {
           _stpWrite(function (p) {
             p.blocks.splice(Math.max(0, Math.min(at, p.blocks.length)), 0,
-              { id: _planId('blk'), lanes: [[ex]] });
+              { id: _planId('blk'), mins: mins, label: '', items: [ex] });
           });
-        });
-      });
-    });
-
-    /* Branching inserts a block with TWO lanes: the new exercise, and an
-       empty lane holding nothing but a "+". Merge needs no control at all —
-       a parallel block always rejoins at its bottom rail, which is the whole
-       reason the model is series-parallel and not a free graph. */
-    document.querySelectorAll('[data-stp-branch]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const at = Number(btn.dataset.stpBranch);
-        stdOpenExercisePicker(tr, function (ex) {
-          _stpWrite(function (p) {
-            p.blocks.splice(Math.max(0, Math.min(at, p.blocks.length)), 0,
-              { id: _planId('blk'), lanes: [[ex], []] });
-          }, true);
         });
       });
     });
@@ -17747,26 +18794,15 @@
       btn.addEventListener('click', function () {
         const path = _stpPath(btn.dataset.stpIn);
         if (!path) return;
+        // No minutes field here: the block it joins already has a duration,
+        // and everything in a block runs for the same length of time.
         stdOpenExercisePicker(tr, function (ex) {
           _stpWrite(function (p) {
-            const lane = _stpAt(p, path);
-            if (!lane) return false;
-            lane.splice(Math.max(0, Math.min(path[2], lane.length)), 0, ex);
+            const items = _stpAt(p, path);
+            if (!items) return false;
+            items.splice(Math.max(0, Math.min(path[1], items.length)), 0, ex);
           });
-        });
-      });
-    });
-
-    document.querySelectorAll('[data-stp-lane-add]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const bi = Number(btn.dataset.stpLaneAdd);
-        stdOpenExercisePicker(tr, function (ex) {
-          _stpWrite(function (p) {
-            const blk = p.blocks[bi];
-            if (!blk) return false;
-            blk.lanes.push([ex]);
-          });
-        });
+        }, { withMins: false });
       });
     });
 
@@ -17776,179 +18812,353 @@
         const path = _stpPath(btn.dataset.stpDel);
         if (!path) return;
         _stpWrite(function (p) {
-          const lane = _stpAt(p, path);
-          if (!lane) return false;
-          lane.splice(path[2], 1);
+          const items = _stpAt(p, path);
+          if (!items) return false;
+          items.splice(path[1], 1);
         });
       });
     });
 
-    document.querySelectorAll('[data-stp-lane-del]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const p2 = _stpPath(btn.dataset.stpLaneDel + '.0');
-        if (!p2) return;
+    // ── How long a block runs ──
+    document.querySelectorAll('[data-stp-mins]').forEach(function (input) {
+      input.addEventListener('change', function () {
+        const bi = Number(input.dataset.stpMins);
+        const mins = _stpMins(input.value);
         _stpWrite(function (p) {
-          const blk = p.blocks[p2[0]];
-          if (!blk || blk.lanes.length <= 1) return false;
-          blk.lanes.splice(p2[1], 1);
+          if (!p.blocks[bi]) return false;
+          p.blocks[bi].mins = mins;
         });
       });
     });
 
-    // ── Drag and drop between lanes ──
-    document.querySelectorAll('.stp-ex[draggable]').forEach(function (card) {
-      card.addEventListener('dragstart', function (e) {
-        _stpDrag = card.dataset.stpEx;
-        card.classList.add('stp-dragging');
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          // Firefox refuses to start a drag with an empty data transfer.
-          e.dataTransfer.setData('text/plain', _stpDrag);
-        }
-      });
-      card.addEventListener('dragend', function () {
-        _stpDrag = null;
-        card.classList.remove('stp-dragging');
-        document.querySelectorAll('.stp-drop-on')
-          .forEach(n => n.classList.remove('stp-drop-on'));
-      });
-      card.addEventListener('dragover', function (e) {
-        if (!_stpDrag) return;
-        e.preventDefault();
-        card.classList.add('stp-drop-on');
-      });
-      card.addEventListener('dragleave', function () {
-        card.classList.remove('stp-drop-on');
-      });
-      card.addEventListener('drop', function (e) {
-        e.preventDefault(); e.stopPropagation();
-        card.classList.remove('stp-drop-on');
-        _stpDrop(_stpPath(_stpDrag), _stpPath(card.dataset.stpEx));
-      });
-    });
-
-    document.querySelectorAll('.stp-lane').forEach(function (lane) {
-      lane.addEventListener('dragover', function (e) {
-        if (!_stpDrag) return;
-        e.preventDefault();
-        lane.classList.add('stp-drop-on');
-      });
-      lane.addEventListener('dragleave', function () {
-        lane.classList.remove('stp-drop-on');
-      });
-      lane.addEventListener('drop', function (e) {
-        e.preventDefault();
-        lane.classList.remove('stp-drop-on');
-        const to = _stpPath(lane.dataset.stpLane + '.999');
-        _stpDrop(_stpPath(_stpDrag), to);
+    // Take the teams off one exercise. The only way back from an assignment.
+    document.querySelectorAll('[data-stp-unassign]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = btn.dataset.stpUnassign;
+        _stpWrite(function (p) {
+          p.blocks.forEach(function (b) {
+            b.items.forEach(function (ex) { if (ex.id === id) ex.teams = null; });
+          });
+        });
       });
     });
 
     bindStdMaterial(tr);
+    bindStdTeams();
   }
 
   /**
-   * Move an exercise from one slot to another.
+   * The team generator's controls.
    *
-   * The source is removed BEFORE the target index is used, so an intra-lane
-   * move to a later slot has to step the target back by one — otherwise
-   * dragging a card one place down does nothing at all, which is exactly the
-   * kind of bug that reads as "drag and drop is broken".
+   * Bound HERE rather than in bindStaffTrainingDetail, so that every targeted
+   * refresh re-binds them along with the panels they sit beside. That is the
+   * whole of the "Esborra does nothing" bug: the handlers wrote correctly,
+   * stdRefreshPlan replaced the panels around them, and the block itself was
+   * never re-rendered — so the screen never moved.
    */
-  function _stpDrop(from, to) {
-    if (!from || !to) return;
-    if (from[0] === to[0] && from[1] === to[1] && from[2] === to[2]) return;
-    _stpWrite(function (p) {
-      const src = _stpAt(p, from);
-      const dst = _stpAt(p, to);
-      if (!src || !dst) return false;
-      const ex = src.splice(from[2], 1)[0];
-      if (!ex) return false;
-      let ti = to[2];
-      if (from[0] === to[0] && from[1] === to[1] && from[2] < ti) ti--;
-      dst.splice(Math.max(0, Math.min(ti, dst.length)), 0, ex);
-    });
-  }
+  function bindStdTeams() {
+    const gen = document.getElementById('std-tg-gen');
+    if (gen) gen.addEventListener('click', function () { _stdDraft(null); });
+    const again = document.getElementById('std-tg-again');
+    if (again) again.addEventListener('click', function () { _stdDraft(null); });
 
-  function bindStdMaterial(tr) {
-    const addBtn = document.getElementById('stm-extra-add');
-    if (addBtn) {
-      const labelEl = document.getElementById('stm-extra-label');
-      const qtyEl = document.getElementById('stm-extra-qty');
-      addBtn.addEventListener('click', function () {
-        const label = String(labelEl.value || '').trim();
-        if (!label) return;
-        const qty = Math.max(1, Math.min(999, parseInt(qtyEl.value, 10) || 1));
-        _stpWrite(function (p) {
-          p.extra.push({ id: _planId('mx'), label: label, qty: qty });
-        });
+    document.querySelectorAll('[data-std-tg]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _stdDraft(Number(btn.dataset.stdTg));
+      });
+    });
+
+    // Mixed vs by position, and whether keepers are in the pool. Changing
+    // either re-deals immediately when teams already exist — a toggle that
+    // only takes effect on the NEXT press reads as broken.
+    document.querySelectorAll('[data-std-mode]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _stdTgOpts.mode = btn.dataset.stdMode === 'pos' ? 'pos' : 'mix';
+        if (_stpPlanOf().teams) _stdDraft(null); else stdRefreshPlan();
+      });
+    });
+    const gk = document.getElementById('std-tg-gk');
+    if (gk) {
+      gk.addEventListener('change', function () {
+        _stdTgOpts.gk = gk.checked;
+        if (_stpPlanOf().teams) _stdDraft(null); else stdRefreshPlan();
       });
     }
 
+    // Which squads to split. Multi-select: A, B, both, any combination.
+    // An empty set means "whatever the attendance table is showing".
+    document.querySelectorAll('[data-std-letter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const l = btn.dataset.stdLetter;
+        if (!_stdTgOpts.letters) _stdTgOpts.letters = new Set();
+        if (_stdTgOpts.letters.has(l)) _stdTgOpts.letters.delete(l);
+        else _stdTgOpts.letters.add(l);
+        if (!_stdTgOpts.letters.size) _stdTgOpts.letters = null;
+        if (_stpPlanOf().teams) _stdDraft(null); else stdRefreshPlan();
+      });
+    });
+
+    const clear = document.getElementById('std-tg-clear');
+    if (clear) {
+      clear.addEventListener('click', function () {
+        /* Only the generator's own set. The copies already pinned to
+           exercises are separate decisions and survive — that is the whole
+           point of them being copies. Their × is on the exercise. */
+        _stpWrite(function (p) { p.teams = null; });
+      });
+    }
+
+    document.querySelectorAll('[data-std-assign]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const id = btn.dataset.stdAssign;
+        _stpWrite(function (p) {
+          if (!p.teams) return false;
+          let done = false;
+          p.blocks.forEach(function (b) {
+            b.items.forEach(function (ex) {
+              if (ex.id !== id || ex.teams) return;   // never overwrite
+              /* A deep COPY, with each team's colour resolved now. Re-drafting
+                 afterwards must not reach back into this exercise, and
+                 repainting a bib must not either. */
+              ex.teams = p.teams.groups.map(function (g, i) {
+                return {
+                  key: g.key, name: g.name,
+                  color: _stdPetoAt(p, i),
+                  ids: g.ids.slice()
+                };
+              });
+              done = true;
+            });
+          });
+          if (!done) return false;
+          // Opening the board is part of the same write, so one refresh
+          // shows both changes at once.
+          _stpOpen[id] = true;
+        });
+      });
+    });
+  }
+
+  /** The i-th bib colour as it stands right now, for pinning onto a copy. */
+  function _stdPetoAt(plan, i) {
+    const sess = _stpSession();
+    const petos = resolvePetos(plan,
+      planMaterial(plan, stdBoardResolver(sess || {})));
+    return petos[i] || STP_PALETTE[i % STP_PALETTE.length];
+  }
+
+  /** The current session's plan, or an empty one. */
+  function _stpPlanOf() {
+    const tr = _stpSession();
+    return tr ? stdPlan(tr) : { blocks: [], teams: null };
+  }
+
+  /**
+   * Opening and closing boards.
+   *
+   * Bound separately from the mutating handlers and called for EVERYONE: a
+   * fitness coach who may not edit the plan still needs to look at the board
+   * an exercise points at, and every control here changes only what is on
+   * screen. Nothing in this function writes to the session.
+   */
+  function bindStdPlanView() {
+    document.querySelectorAll('[data-stp-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = btn.dataset.stpToggle;
+        _stpOpen[id] = !_stpOpen[id];
+        stdRefreshPlan();
+      });
+    });
+    document.querySelectorAll('[data-stp-big]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _stpBig = btn.dataset.stpBig;
+        stdRefreshPlan();
+      });
+    });
+    const closeBig = document.getElementById('stp-big-close');
+    if (closeBig) {
+      closeBig.addEventListener('click', function () {
+        _stpBig = null;
+        stdRefreshPlan();
+      });
+    }
+    const overlay = document.getElementById('stp-overlay');
+    if (overlay) {
+      // Clicking the scrim closes, the same as every other overlay here.
+      overlay.addEventListener('click', function (e) {
+        if (e.target !== overlay) return;
+        _stpBig = null;
+        stdRefreshPlan();
+      });
+    }
+  }
+
+  /**
+   * The duty pool in fairness order: lowest count first, shuffled inside
+   * each tier so a tie does not always break the same way.
+   *
+   * This is the one function the duty stepper, the die and the manual picker
+   * all agree on. Whether a coach presses `+` or 🎲, the next name offered is
+   * from the tier that has carried the cones least often.
+   */
+  function _stmFairOrder(sess) {
+    const pool = dutyPool(sess, calledPlayers(sess, getUsers()),
+      isTrainingLocked(sess));
+    const byTier = {};
+    pool.rows.forEach(function (r) { (byTier[r.n] = byTier[r.n] || []).push(r.id); });
+    let order = [];
+    Object.keys(byTier).map(Number).sort(function (a, b) { return a - b; })
+      .forEach(function (n) { order = order.concat(_stpShuffle(byTier[n])); });
+    return { order: order, pool: pool };
+  }
+
+  function bindStdMaterial(tr) {
+    // ── Other material ──
+    const addBtn = document.getElementById('stm-extra-add');
+    if (addBtn) {
+      addBtn.addEventListener('click', function () {
+        stdOpenExtraDialog(function (label, qty) {
+          _stpWrite(function (p) {
+            p.extra.push({ id: _planId('mx'), label: label, qty: qty });
+          }, true);
+        });
+      });
+    }
     document.querySelectorAll('[data-stm-del]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const i = Number(btn.dataset.stmDel);
         _stpWrite(function (p) {
           if (!p.extra[i]) return false;
           p.extra.splice(i, 1);
-        });
+        }, true);
       });
     });
 
-    const nEl = document.getElementById('stm-duty-n');
-    if (nEl) {
-      nEl.addEventListener('change', function () {
-        const n = Math.max(0, Math.min(10, parseInt(nEl.value, 10) || 0));
-        _stpWrite(function (p) {
-          p.duty.n = n;
-          p.duty.ids = p.duty.ids.slice(0, n);
-        });
-      });
+    // ── Peto colours ──
+    /* The first edit COPIES the derived list onto the session. Until then
+       `plan.petos` is null and the swatches are whatever the boards say, so a
+       coach who redraws a drill sees the bibs follow. After it, the list is
+       his and the boards stop overruling him. */
+    function petosNow(p) {
+      if (Array.isArray(p.petos)) return p.petos.slice();
+      const sess = _stpSession();
+      return resolvePetos(p, planMaterial(p, stdBoardResolver(sess || tr))).slice();
     }
-
-    document.querySelectorAll('.stm-duty-sel').forEach(function (sel) {
-      sel.addEventListener('change', function () {
-        const slot = Number(sel.dataset.slot);
-        _stpWrite(function (p) {
-          const ids = p.duty.ids.slice();
-          while (ids.length < p.duty.n) ids.push('');
-          ids[slot] = String(sel.value || '');
-          // Blanks are kept in place, not compacted: slot 2 must not jump to
-          // slot 1 the moment a coach clears slot 1.
-          p.duty.ids = ids;
-        });
+    document.querySelectorAll('[data-stm-peto]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const i = Number(btn.dataset.stmPeto);
+        _stmPicker = (_stmPicker === i) ? null : i;
+        stdRefreshPlan();
       });
     });
-
-    const allEl = document.getElementById('stm-duty-all');
-    if (allEl) {
-      allEl.addEventListener('change', function () {
-        _stmShowAll = allEl.checked;
+    document.querySelectorAll('[data-stm-colour]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const colour = btn.dataset.stmColour;
+        const idx = _stmPicker;
+        if (idx === null) return;
+        _stpWrite(function (p) {
+          const list = petosNow(p);
+          if (idx >= list.length) return false;
+          list[idx] = colour;
+          p.petos = list;
+        }, true);
+        _stmPicker = null;
+        stdRefreshPlan();
+      });
+    });
+    const petoDel = document.getElementById('stm-peto-del');
+    if (petoDel) {
+      petoDel.addEventListener('click', function () {
+        const idx = _stmPicker;
+        if (idx === null) return;
+        _stpWrite(function (p) {
+          const list = petosNow(p);
+          if (idx >= list.length) return false;
+          list.splice(idx, 1);
+          p.petos = list;
+        }, true);
+        _stmPicker = null;
         stdRefreshPlan();
       });
     }
+    const petoAdd = document.getElementById('stm-peto-add');
+    if (petoAdd) {
+      petoAdd.addEventListener('click', function () {
+        let added = -1;
+        _stpWrite(function (p) {
+          const list = petosNow(p);
+          // The first palette colour not already in use, so "+ " twice never
+          // adds the same colour twice and leaves the coach to spot it.
+          const next = STP_PALETTE.find(function (c) { return list.indexOf(c) === -1; });
+          if (!next) return false;
+          list.push(next);
+          p.petos = list;
+          added = list.length - 1;
+        }, true);
+        if (added >= 0) { _stmPicker = added; stdRefreshPlan(); }
+      });
+    }
+
+    // ── Encarregats ──
+    document.querySelectorAll('[data-stm-duty]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const step = Number(btn.dataset.stmDuty);
+        const sess = _stpSession();
+        if (!sess) return;
+        const fair = _stmFairOrder(sess);
+        _stpWrite(function (p) {
+          const cap = Math.min(10, fair.pool.rows.length);
+          const n = Math.max(0, Math.min(cap, p.duty.n + step));
+          const ids = p.duty.ids.filter(Boolean).slice(0, n);
+          // Growing pulls the next FAIREST name that is not already on duty,
+          // not the next one in the roster: that is the whole rule.
+          fair.order.forEach(function (id) {
+            if (ids.length < n && ids.indexOf(id) === -1) ids.push(id);
+          });
+          p.duty.n = ids.length;
+          p.duty.ids = ids;
+        }, true);
+      });
+    });
+
+    document.querySelectorAll('[data-stm-duty-del]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const i = Number(btn.dataset.stmDutyDel);
+        _stpWrite(function (p) {
+          const ids = p.duty.ids.filter(Boolean);
+          if (!ids.length || i >= ids.length) return false;
+          ids.splice(i, 1);
+          p.duty.ids = ids;
+          p.duty.n = ids.length;
+        }, true);
+      });
+    });
 
     const rndBtn = document.getElementById('stm-duty-random');
     if (rndBtn) {
       rndBtn.addEventListener('click', function () {
         const sess = _stpSession();
         if (!sess) return;
-        const pool = dutyPool(sess, calledPlayers(sess, getUsers()),
-          isTrainingLocked(sess));
+        const fair = _stmFairOrder(sess);
         _stpWrite(function (p) {
-          /* Fill from the lowest tier up: shuffle within each count so the
-             same two names do not come out of a tie every week, and only
-             move to the next tier when the current one is exhausted. With
-             "mostra tots" on this still prefers the fairest choice — the
-             override is about who a coach MAY pick, not who the dice should. */
-          const byTier = {};
-          pool.rows.forEach(function (r) {
-            (byTier[r.n] = byTier[r.n] || []).push(r.id);
-          });
-          const tiers = Object.keys(byTier).map(Number).sort(function (a, b) { return a - b; });
-          let order = [];
-          tiers.forEach(function (n) { order = order.concat(_stpShuffle(byTier[n])); });
-          p.duty.ids = order.slice(0, p.duty.n);
+          p.duty.ids = fair.order.slice(0, p.duty.n);
+        }, true);
+      });
+    }
+
+    const pickBtn = document.getElementById('stm-duty-pick');
+    if (pickBtn) {
+      pickBtn.addEventListener('click', function () {
+        const sess = _stpSession();
+        if (!sess) return;
+        stdOpenDutyPicker(sess, function (ids) {
+          _stpWrite(function (p) {
+            p.duty.ids = ids;
+            p.duty.n = ids.length;
+          }, true);
         });
       });
     }
@@ -18487,10 +19697,12 @@
          without it a select with nothing selected displays its first entry,
          which made an unanswered player read as "Yes". Choosing it again
          clears the override rather than storing an empty answer. */
-      const dropdown = `<option value="" ${!effective ? 'selected' : ''}>—</option>` +
-        allOptions.map(o =>
-          `<option value="${o}" ${effective === o ? 'selected' : ''}>${labels[o]}</option>`
-        ).join('');
+      /* The placeholder is a real, selectable entry and must come first:
+         choosing it again clears the override rather than storing an empty
+         answer. Each option carries the colour class of the answer it sets,
+         so the pill recolours the moment it is picked. */
+      const staffOpts = [{ value: '', label: '—', cls: 'avail-unset' }].concat(
+        allOptions.map(o => ({ value: o, label: labels[o], cls: cls[o] })));
       const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
       const catBadge = catBadgeHtmlGlobal(p, catSpan);
 
@@ -18508,44 +19720,28 @@
       const acwrColor = !rd.hasData ? 'var(--text-secondary)' : (acwrVal >= 0.8 && acwrVal <= 1.3) ? '#4caf50' : (acwrVal > 1.5 || acwrVal < 0.7) ? '#e53935' : '#ff9800';
 
       const dropCell = squadEditable ?
-        `<td class="std-drop-cell"><button class="conv-remove std-drop" data-std-drop="${sanitize(String(p.id))}" title="${t('nt.drop')}">&times;</button></td>` : '';
+        `<td class="std-drop-cell"><button class="std-drop" data-std-drop="${sanitize(String(p.id))}" title="${t('nt.drop')}">&times;</button></td>` : '';
+      /* The medical glyph reads BOLDER here than on the roster — 13px/700 in
+         a muted disc. It is the one thing in the row a coach scans for. */
       return `<tr>
-        ${dropCell}
+        <td class="std-td-name">${sanitize(p.name)}${catBadge}${p.team ? `<span class="std-team-tag">${sanitize(p.team)}</span>` : ''}</td>
         <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
-        <td><span class="roster-name-wrap">${sanitize(p.name)}${catBadge}${teamCircle}</span></td>
-        <td class="center-cell">${statusIcon}</td>
-        <td class="center-cell">${readinessCellHtml(rd, fStatus === 'injured')}</td>
-        <td class="center-cell" style="font-weight:600;font-size:.82rem;color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
-        <td class="center-cell"><span class="std-player-answer ${playerCls}">${playerLabel}</span></td>
-        <td class="center-cell">
+        <td class="c">${statusIcon}</td>
+        <td class="c">${readinessCellHtml(rd, fStatus === 'injured')}</td>
+        <td class="r std-num" style="color:${acwrColor}">${rd.hasData ? acwrVal.toFixed(2) : '—'}</td>
+        <td class="r std-said">${playerLabel}</td>
+        <td class="r">
           ${ro
-            ? `<span class="std-player-answer ${effectiveCls}">${effectiveLabel}</span>`
-            : `<select class="std-staff-select ${effectiveCls}" data-player="${p.id}" data-sid="${sanitize(String(tr.id || ''))}">
-            ${dropdown}
-          </select>`}
+            ? `<span class="std-said">${effectiveLabel}</span>`
+            : stdSelect({
+              kind: 'staff', cls: 'std-sel-pill', value: effective || '',
+              options: staffOpts,
+              data: { player: String(p.id), sid: String(tr.id || '') }
+            })}
         </td>
+        ${dropCell}
       </tr>`;
     }).join('');
-
-    const donutHtml = buildDetailDonut(tr, players, locked);
-
-    // Count present players for default config
-    const presentPlayers = players.filter(p => {
-      const eff = getEffectiveAnswer(p.id, tr, locked);
-      return eff === 'yes' || eff === 'late';
-    });
-    const presentCount = presentPlayers.length;
-    const defaultPerTeam = Math.floor(presentCount / 2) || 1;
-
-    // Render previously generated teams if they exist for this date
-    let teamsHtml = '';
-    if (_generatedTeams && String(_generatedTeamsId) === String(tr.id)) {
-      // calledSquad, not the filtered `players`: the "+ Jugador" pool should
-      // offer anyone in the SESSION, including a guest from another
-      // category, regardless of which team the table above is filtered to.
-      // And the session object, not its date — see the generate handler.
-      teamsHtml = renderGeneratedTeams(_generatedTeams, calledSquad, tr, locked);
-    }
 
     /* An ACTIVITY opens this same page — it is a fa_training row, and the
        attendance table below is exactly what it needs. What it does not
@@ -18555,336 +19751,227 @@
        list of fields above instead. */
     const isAct = isActivity(tr);
     const heroTitle = sanitize(activityTitleOf(tr, t(isAct ? 'cal.activity' : 'cal.training')));
-    /* The planned load, and what it costs. Shown here rather than only on
-       the calendar because this is where a coach sets it — and the AU
-       figure beside the picker is what makes 7 mean something. */
+
+    /* The three figures across the top. `Convocats` was deliberately dropped:
+       everyone in the squad is always called to a training, so the number
+       carried no information the attendance bar below does not carry better. */
     const plannedBand = loadBand(tr.plannedRpe);
     const plannedLabel = plannedBand
       ? tr.plannedRpe + ' · ' + t('load.' + plannedBand)
       : t('training.rpe_unset');
     const plannedAu = sessionAU(tr, tr.plannedRpe);
-    const plannedAuLabel = plannedAu === null
-      ? '' : t('load.au').replace('{n}', plannedAu);
-    const actEdit = (isAct && !ro)
-      ? `<button class="btn btn-outline btn-small" id="std-edit-activity" data-act-id="${sanitize(String(tr.id))}">✏️ ${t('cal.edit')}</button>`
+    const win = sessionWindow(tr);
+    const durLabel = win
+      ? (win.end - win.start) + '′'
+      : '—';
+    const durRange = win
+      ? minsToHHMM(win.start) + ' – ' + minsToHHMM(win.end % 1440)
       : '';
+
+    const actEdit = (isAct && !ro)
+      ? `<button class="stp-a" id="std-edit-activity" data-act-id="${sanitize(String(tr.id))}">✏️ ${t('cal.edit')}</button>`
+      : '';
+
+    const stat = (label, value, note) =>
+      `<div class="std-stat"><span class="std-eyebrow">${sanitize(label)}</span>` +
+      `<span class="std-stat-v">${value}${note ? `<span class="std-stat-n">${sanitize(note)}</span>` : ''}</span></div>`;
+
+    const rail = isAct ? '' :
+      `<aside class="std-rail">
+        ${renderStdPlanPanel(tr, ro, calledSquad)}
+        ${renderStdMaterialCard(tr, calledSquad, locked, ro)}
+      </aside>`;
+
     return `
-      <div class="detail-topbar">
-        <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('calendar')}">${t('btn.back')}</button>
-        ${actEdit}
-      </div>
-      <div class="detail-hero detail-hero-training">
-        <div class="detail-hero-badge"><span class="badge ${isAct ? 'badge-yellow' : 'badge-green'}" style="font-size:.9rem;padding:.3rem .8rem;">${t(isAct ? 'cal.activity' : 'training.badge')}</span></div>
-        <h2 class="detail-title">${heroTitle}</h2>
-        <div class="detail-subtitle">${dateFormatted} · ${sanitize(tr.time || '—')} · ${sanitize(tr.location || '—')}</div>
-      </div>
-      ${isAct ? '' : `
-      <div class="card std-load-card">
-        <div class="card-title">${t('training.th_planned_rpe')}</div>
-        <div class="std-load-row">
-          ${ro
-            ? `<span class="std-load-static">${sanitize(plannedLabel)}</span>`
-            : `<select class="reg-input std-planned-rpe" data-sid="${sanitize(String(tr.id))}">${buildRpeOptions(tr.plannedRpe)}</select>`}
-          <span class="std-load-au">${sanitize(plannedAuLabel)}</span>
+      <div class="std-page">
+      <div class="std-topbar">
+        <button class="std-back detail-back" data-back="${backTarget('calendar')}">${t('btn.back')}</button>
+        <div class="std-topbar-r">${actEdit}
+          <span class="std-eyebrow">${t(isAct ? 'cal.activity' : 'training.badge')}</span>
         </div>
-        <p class="std-load-hint">${t('training.rpe_hint')}</p>
-      </div>`}
-      <div class="card" style="margin-bottom:1.5rem;">
-        <div class="card-title">${t('std.attendance_overview')}</div>
-        <div class="std-donut-wrap">${donutHtml}</div>
       </div>
-      <div class="std-attendance-row">
-      <div class="card" style="flex:1;min-width:0;">
-        <div class="card-title">${t('std.player_attendance')}</div>
-        ${(() => {
-          if (stdLettersForSlot.length <= 1) return '';
-          const btnAll = !stdTeamFilter ? ' roster-team-btn-active' : '';
-          const letterBtns = stdLettersForSlot.map(l => {
-            const ac = stdTeamFilter && stdTeamFilter.has(l) ? ' roster-team-btn-active' : '';
-            return '<button class="roster-team-btn std-team-btn' + ac + '" data-std-team="' + l + '">' + l + '</button>';
-          }).join('');
-          return '<div class="roster-team-filter"><button class="roster-team-btn std-team-btn' + btnAll + '" data-std-team="all">All</button>' + letterBtns + '</div>';
-        })()}
-        ${squadEditable ? `<div class="std-attendance-head"><button class="btn btn-small btn-outline" id="std-add-player">${t('nt.add_player')}</button></div>` : ''}
-        <div class="table-wrap"><table class="matchday-table std-attendance-table">
-          <thead><tr>${squadEditable ? '<th class="std-drop-cell"></th>' : ''}<th>${t('std.th_pos')}</th><th>${t('std.th_player')}</th><th class="center-cell roster-th-wrap">${t('std.th_status')}</th><th class="center-cell roster-th-wrap">${t('std.th_ready')}</th><th class="center-cell">${t('std.th_ac_ratio')}</th><th class="center-cell">${t('std.th_player_answer')}</th><th class="center-cell">${t('std.th_staff_editable')}</th></tr></thead>
+      <div class="std-body">
+      <div class="std-main">
+        <div class="std-hero">
+          <div class="std-hero-row">
+            <h1 class="std-title">${heroTitle}</h1>
+            ${isAct ? '' : sessionWeatherHtml(tr)}
+          </div>
+          <div class="std-meta">${dateFormatted} · ${sanitize(tr.time || '—')} · ${locationHtml(tr)}</div>
+        </div>
+        ${isAct ? '' : `
+        <div class="std-stats">
+          ${stat(t('training.th_planned_rpe'), ro
+            ? sanitize(plannedLabel)
+            : stdSelect({
+              kind: 'rpe', cls: 'std-sel-plain', value: tr.plannedRpe == null ? '' : tr.plannedRpe,
+              options: rpeSelectOptions(), data: { sid: String(tr.id) }
+            }))}
+          ${stat(t('std.load'), plannedAu === null
+            ? '—' : `<span class="std-stat-hot">${plannedAu}</span>`, plannedAu === null ? '' : 'UA')}
+          ${stat(t('std.duration'), sanitize(durLabel), durRange)}
+        </div>`}
+        <div class="std-attbar">${buildDetailBar(tr, players, locked)}</div>
+        <div class="std-sec-head">
+          <span class="std-eyebrow">${t('std.player_attendance')}</span>
+          <div class="std-sec-r">
+            ${(() => {
+              if (stdLettersForSlot.length <= 1) return '';
+              const btnAll = !stdTeamFilter ? ' std-team-btn-on' : '';
+              const letterBtns = stdLettersForSlot.map(l => {
+                const ac = stdTeamFilter && stdTeamFilter.has(l) ? ' std-team-btn-on' : '';
+                return '<button class="std-team-btn' + ac + '" data-std-team="' + l + '">' + l + '</button>';
+              }).join('');
+              return '<button class="std-team-btn' + btnAll + '" data-std-team="all">' + t('common.all') + '</button>' + letterBtns;
+            })()}
+            ${squadEditable ? `<button class="stp-a" id="std-add-player">${t('nt.add_player')}</button>` : ''}
+          </div>
+        </div>
+        <div class="table-wrap"><table class="std-table">
+          <thead><tr><th>${t('std.th_player')}</th><th>${t('std.th_pos')}</th><th class="c">${t('std.th_status')}</th><th class="c">${t('std.th_ready')}</th><th class="r">${t('std.th_ac_ratio')}</th><th class="r">${t('std.th_player_answer')}</th><th class="r">${t('std.th_staff_editable')}</th>${squadEditable ? '<th class="std-drop-cell"></th>' : ''}</tr></thead>
           <tbody>${playerRows}</tbody>
         </table></div>
+        ${(ro || isAct) ? '' : renderStdTeamsBlock(tr, calledSquad, locked)}
       </div>
-      ${isAct ? '' : renderStdPlanPanel(tr, ro)}
+      ${rail}
       </div>
-      ${isAct ? '' : renderStdMaterialCard(tr, calledSquad, locked, ro)}
-      ${(ro || isAct) ? '' : `
-      <div class="card">
-        <div class="tg-header">
-          <div class="card-title" style="margin-bottom:0;">Auto Generate Teams</div>
-          <button class="btn btn-outline btn-small" id="btn-tg-toggle">⚙️ Configure</button>
-        </div>
-        <div class="tg-config-panel" id="tg-config" hidden>
-          <div class="tg-config-row">
-            <div class="tg-config-field">
-              <label>${t('std.num_teams')}</label>
-              <input type="number" class="reg-input" id="tg-num-teams" value="2" min="2" max="10" style="width:70px;text-align:center;">
-            </div>
-            <div class="tg-config-field">
-              <label>${t('std.players_per_team')}</label>
-              <input type="number" class="reg-input" id="tg-per-team" value="${defaultPerTeam}" min="1" max="20" style="width:70px;text-align:center;">
-            </div>
-            <div class="tg-config-field">
-              <label>${t('std.include_gk')}</label>
-              <label class="tg-toggle-label"><input type="checkbox" id="tg-include-gk" checked> <span class="tg-toggle-text">${t('common.yes')}</span></label>
-            </div>
-            ${(() => {
-              // getCurrentCategory(), NOT _currentSession.category: `category`
-              // is a player's own squad field and is '' for staff, so a coach
-              // resolved to no category and got the fallback letters.
-              const tgLetters = getTeamLetters(getCurrentCategory());
-              if (tgLetters.length <= 1) return '';   // nothing to filter
-              return `<div class="tg-config-field">
-              <label>${t('std.team_filter')}</label>
-              <div class="tg-btn-group">
-                <button class="tg-btn tg-btn-active" data-tg-team="all">${t('common.all')}</button>
-                ${tgLetters.map(function(l) {
-                  return '<button class="tg-btn" data-tg-team="' + l + '">' + l + '</button>';
-                }).join('')}
-              </div>
-            </div>`;
-            })()}
-            <div class="tg-config-field">
-              <label>${t('std.distribution')}</label>
-              <div class="tg-btn-group">
-                <button class="tg-btn tg-btn-active" data-tg-mode="mix">${t('std.mix')}</button>
-                <button class="tg-btn" data-tg-mode="equal">${t('std.equal')}</button>
-              </div>
-            </div>
-          </div>
-          <div style="margin-top:.8rem;text-align:right;">
-            <button class="btn btn-primary btn-small" id="btn-tg-generate">${t('std.generate')}</button>
-          </div>
-        </div>
-        <div id="tg-teams-container">${teamsHtml}</div>
-      </div>`}
-      ${isAct ? '' : (() => {
-        return '<div id="std-boards-section">' + renderStdBoardsSection(tr) + '</div>';
-      })()}`;
-  }
-
-  // ── Team generation algorithm ──
-  function generateTrainingTeams(allPlayers, sess, locked, numTeams, perTeam, includeGK, teamFilter, mode) {
-    // 1. Filter to present players
-    let pool = allPlayers.filter(p => {
-      const eff = getEffectiveAnswer(p.id, sess, locked);
-      return eff === 'yes' || eff === 'late';
-    });
-    // 2. Apply club team filter
-    if (teamFilter && teamFilter !== 'all') pool = pool.filter(p => p.team === teamFilter);
-    // 3. Exclude GKs if toggled off
-    if (!includeGK) pool = pool.filter(p => {
-      const positions = (p.position || '').split(',').map(s => s.trim()).filter(Boolean);
-      return !positions.every(pos => pos === 'GK');
-    });
-
-    // 4. Categorize by position group.
-    //    Keyed off posRankGlobal(), the same ranking the roster and the
-    //    convocatòria sort by, rather than positions[0] — a player listed
-    //    "ST,CB" used to group as a forward here while sorting as a defender
-    //    everywhere else. One player, one position.
-    //    POS_ORDER = GK,CB,LB,RB,DM,OM,LW,RW,ST (js/utils.js).
-    function posGroup(player) {
-      const rank = posRankGlobal(player);
-      if (rank === 0) return 'GK';
-      if (rank === 1) return 'DEF_CB';
-      if (rank <= 3) return 'DEF_WB';
-      if (rank === 4) return 'MID_DM';
-      if (rank === 5) return 'MID_OM';
-      if (rank <= 8) return 'FWD';
-      return 'MID_OM'; // no recognised position
-    }
-    function posCategory(pg) {
-      if (pg === 'GK') return 'GK';
-      if (pg === 'DEF_CB' || pg === 'DEF_WB') return 'DEF';
-      if (pg === 'MID_DM' || pg === 'MID_OM') return 'MID';
-      return pg;
-    }
-
-    // Shuffle helper
-    function shuffle(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
-
-    const teams = Array.from({ length: numTeams }, () => []);
-
-    /* Index of the currently smallest team.
-       The old code called teams.sort() to find it, which REORDERS the array
-       in place — so "Equip 1…N" in renderGeneratedTeams reflected the last
-       size-sort rather than a stable identity, and groups appeared to
-       shuffle themselves between renders. */
-    function smallestTeam() {
-      let best = -1;
-      for (let i = 0; i < teams.length; i++) {
-        // perTeam is a hard cap, so a full group is not a candidate however
-        // small it is relative to the others.
-        if (teams[i].length >= perTeam) continue;
-        if (best === -1 || teams[i].length < teams[best].length) best = i;
-      }
-      return best;   // -1 when every group is full
-    }
-
-    /** Put a player in the emptiest group that still has room. */
-    function place(p) {
-      const i = smallestTeam();
-      if (i !== -1) teams[i].push(p);
-    }
-
-    /* Cap the pool BEFORE distributing.
-       Trimming afterwards with `while (team.length > perTeam) team.pop()`
-       popped the end of a position-ordered list, so the players dropped into
-       "No inclosos" were chosen by position rather than fairly — in both
-       modes it was reliably the forwards. Cutting a shuffled pool up front
-       makes exclusion positionally neutral. */
-    const capacity = numTeams * perTeam;
-    if (pool.length > capacity) {
-      // One keeper per group is reserved before the cut. Capping a plain
-      // shuffle can drop every keeper, which trades a positional bias for
-      // groups that have nobody in goal.
-      const isGK = p => posCategory(posGroup(p)) === 'GK';
-      const keepers = shuffle(pool.filter(isGK)).slice(0, numTeams);
-      const rest = shuffle(pool.filter(p => keepers.indexOf(p) === -1));
-      pool = keepers.concat(rest).slice(0, capacity);
-    }
-
-    const gks = shuffle(pool.filter(p => posCategory(posGroup(p)) === 'GK'));
-    const outfield = pool.filter(p => posCategory(posGroup(p)) !== 'GK');
-
-    // One keeper per group first, in both modes — however the outfielders are
-    // grouped, every group still needs somebody in goal.
-    gks.forEach((gk, i) => { if (i < numTeams) teams[i].push(gk); });
-    for (let i = numTeams; i < gks.length; i++) place(gks[i]);
-
-    if (mode === 'mix') {
-      // MIX — spread each positional bucket across every group, so each group
-      // gets a proportional slice of defenders, midfielders and forwards.
-      const groups = { DEF: [], MID: [], FWD: [] };
-      shuffle(outfield.slice()).forEach(p => {
-        const cat = posCategory(posGroup(p));
-        (groups[cat] || groups.MID).push(p);
-      });
-      ['DEF', 'MID', 'FWD'].forEach(g => { groups[g].forEach(place); });
-    } else {
-      /* EQUAL — group SIMILAR players together: sort by position rank and cut
-         into contiguous blocks. With two groups that puts defenders and
-         holding midfielders in one, attacking midfielders and forwards in the
-         other.
-
-         The old code sorted and then dealt `teams[i % numTeams]`, which
-         scatters adjacent (i.e. similar) players into DIFFERENT groups — the
-         exact opposite of both its own comment and the intent, and why Equal
-         behaved like a second Mix button. */
-      const posOrder = { GK: 0, DEF_CB: 1, DEF_WB: 2, MID_DM: 3, MID_OM: 4, FWD: 5 };
-      const sorted = outfield.slice().sort((a, b) =>
-        (posOrder[posGroup(a)] ?? 3) - (posOrder[posGroup(b)] ?? 3));
-
-      /* Each group takes a CONTIGUOUS slice, sized by what is left to place
-         and how many groups are still to fill, and never past `perTeam` —
-         the keepers are already seated, so a group holding a spare keeper has
-         one slot less for outfielders. Sizing off `sorted.length` alone
-         overfilled exactly those groups. */
-      let cut = 0;
-      for (let i = 0; i < numTeams && cut < sorted.length; i++) {
-        const room = Math.max(0, perTeam - teams[i].length);
-        const share = Math.ceil((sorted.length - cut) / (numTeams - i));
-        const size = Math.min(room, share);
-        sorted.slice(cut, cut + size).forEach(p => teams[i].push(p));
-        cut += size;
-      }
-      // Rounding can leave a straggler; give them to any group with room
-      // rather than silently dropping a player who was in the pool.
-      for (; cut < sorted.length; cut++) {
-        if (smallestTeam() === -1) break;
-        place(sorted[cut]);
-      }
-    }
-
-    return teams;
-  }
-
-  // ── Render generated teams ──
-  /**
-   * @param {Array} squad the SESSION'S squad — teams + guests - excluded —
-   *   never the whole club. The "+ Jugador" pool was showing every player in
-   *   the club, so a coach picking a substitute was offered squads that were
-   *   not training and, in a multi-category club, players they do not coach.
-   */
-  function renderGeneratedTeams(teams, squad, sess, locked) {
-    const allPlayers = squad;
-    // Build set of all assigned player IDs
-    const assignedIds = new Set();
-    teams.forEach(team => team.forEach(p => assignedIds.add(String(p.id))));
-    // Get present but unassigned players for the "+ Jugador" dropdown
-    const presentPool = allPlayers.filter(p => {
-      const eff = getEffectiveAnswer(p.id, sess, locked);
-      return (eff === 'yes' || eff === 'late') && !assignedIds.has(String(p.id));
-    });
-    /* Over the WHOLE squad, not per team card: the cards and the "no
-       inclosos" strip are one squad split up, and a guest dragged between
-       them must not gain or lose his badge on the way. */
-    const catSpan = catSpanOf(allPlayers);
-
-    const teamCards = teams.map((team, ti) => {
-      const playerRows = team.map(p => {
-        const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
-        return `<div class="tg-player-row" draggable="true" data-player-id="${p.id}">
-          <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${teamCircle}</span>
-          <span class="tg-player-num">#${sanitize(p.playerNumber || '—')}</span>
-          <button class="tg-remove-player" data-team-idx="${ti}" data-player-id="${p.id}" title="Remove">&times;</button>
-        </div>`;
-      }).join('');
-
-      const poolOptions = presentPool.map(p => {
-        const tc = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
-        return `<div class="tg-dd-option" data-pid="${p.id}">
-          <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${tc}</span>
-          <span class="tg-player-num">${sanitize(p.position || '—')}</span>
-        </div>`;
-      }).join('');
-
-      return `<div class="tg-team-card" data-team-idx="${ti}">
-        <div class="tg-team-title">Equip ${ti + 1} <span class="tg-team-count">${team.length}</span></div>
-        <div class="tg-team-players" data-team-idx="${ti}">
-          ${playerRows || '<p class="tg-empty-hint">No players</p>'}
-        </div>
-        <div class="tg-add-wrap">
-          <div class="tg-dd" data-team-idx="${ti}">
-            <input class="tg-dd-input" placeholder="+ Jugador" autocomplete="off">
-            <div class="tg-dd-list" hidden>${poolOptions}</div>
-          </div>
-        </div>
       </div>`;
+  }
+
+  /**
+   * The stacked attendance bar, and its legend.
+   *
+   * Replaces the donut on this page. Same five buckets and the same
+   * `getEffectiveAnswer` resolution — desaturated, because a 6px bar and a
+   * 7px square in a page made of hairlines must not shout.
+   */
+  function buildDetailBar(tr, players, locked) {
+    const total = players.length;
+    if (!total) return '';
+    const ctx = availContext();
+    const n = { yes: 0, late: 0, no: 0, injured: 0, na: 0 };
+    players.forEach(function (p) {
+      const v = getEffectiveAnswer(p.id, tr, locked, ctx);
+      n[n[v] === undefined ? 'na' : v]++;
+    });
+    const segs = [
+      { k: 'yes', c: '#7CA982' }, { k: 'late', c: '#E3B341' },
+      { k: 'no', c: '#A8A29B' }, { k: 'injured', c: '#C0564C' },
+      { k: 'na', c: '#D8D4CE' }
+    ].filter(function (s) { return n[s.k]; });
+    return '<div class="std-bar">' +
+      segs.map(function (s) {
+        return '<span style="width:' + ((n[s.k] / total) * 100) +
+          '%;background:' + s.c + '"></span>';
+      }).join('') + '</div>' +
+      '<div class="std-bar-key">' +
+      segs.map(function (s) {
+        return '<span class="std-key"><span class="std-key-sq" style="background:' +
+          s.c + '"></span>' + sanitize(t('avail.' + s.k)) + ' ' + n[s.k] + '</span>';
+      }).join('') + '</div>';
+  }
+
+  // ── Team generation ──
+  /*
+   * The old generator asked the coach for a team count, a per-team size, a GK
+   * toggle, a letter filter and a mix/equal mode, then dealt straight
+   * round-robin. Five questions before a split, and the split itself handed
+   * team 1 the best player in every round — after four rounds that is a team
+   * of firsts against a team of fourths.
+   *
+   * Now it asks nothing. One button, a snake draft (see draftTeams), and a
+   * 2–4 stepper afterwards for the coach who wanted three. The teams are
+   * PERSISTED on the session — they are assigned onto exercises and drawn
+   * inside board panels, which loose module state could not survive.
+   */
+  function renderStdTeamsBlock(tr, squad, locked) {
+    const plan = stdPlan(tr);
+    const mat = planMaterial(plan, stdBoardResolver(tr));
+    const petos = resolvePetos(plan, mat);
+    const byId = {};
+    (squad || []).forEach(function (p) { byId[String(p.id)] = p; });
+
+    /* Which squads to draft from is its own question after all. Following the
+       attendance filter sounded tidy, but a coach reads the whole list and
+       still splits only the Bs — one control was doing two jobs. Absent from
+       the set means "whatever the table is showing". */
+    const letters = trainingTeams(tr);
+    const letterChips = letters.length > 1
+      ? letters.map(function (l) {
+        const on = _stdTgOpts.letters && _stdTgOpts.letters.has(l);
+        return '<button class="std-chip std-chip-sq' + (on ? ' std-chip-on' : '') +
+          '" data-std-letter="' + sanitize(l) + '">' + sanitize(l) + '</button>';
+      }).join('')
+      : '';
+
+    const opts = '<div class="std-tg-opts">' +
+      letterChips +
+      '<button class="std-chip' + (_stdTgOpts.mode === 'mix' ? ' std-chip-on' : '') +
+        '" data-std-mode="mix">' + sanitize(t('std.mix')) + '</button>' +
+      '<button class="std-chip' + (_stdTgOpts.mode === 'pos' ? ' std-chip-on' : '') +
+        '" data-std-mode="pos">' + sanitize(t('std.equal')) + '</button>' +
+      '<label class="std-tg-gk"><input type="checkbox" id="std-tg-gk"' +
+        (_stdTgOpts.gk ? ' checked' : '') + '> ' + sanitize(t('std.include_gk')) +
+      '</label>' +
+      '</div>';
+
+    const bar = '<div class="std-tg-bar">' +
+      '<button class="std-btn" id="std-tg-gen">' + sanitize(t('std.auto_gen')) + '</button>' +
+      opts +
+      (plan.teams ? '<div class="std-tg-ctl">' +
+        '<div class="std-step">' +
+          '<button class="std-step-b" data-std-tg="-1">−</button>' +
+          '<span class="std-step-n">' + plan.teams.n + '</span>' +
+          '<button class="std-step-b" data-std-tg="1">+</button>' +
+          '<span class="std-tg-lbl">' + sanitize(t('std.teams_word')) + '</span>' +
+        '</div>' +
+        '<button class="stp-a" id="std-tg-again">↻ ' + sanitize(t('std.regenerate')) + '</button>' +
+        '<button class="stp-a stp-a-mute" id="std-tg-clear">' + sanitize(t('std.clear')) + '</button>' +
+      '</div>' : '') + '</div>';
+
+    const wrap = (inner) =>
+      '<section class="std-teams-block" id="std-teams-block">' + inner + '</section>';
+
+    if (!plan.teams) return wrap(bar);
+
+    const cols = plan.teams.groups.map(function (g, i) {
+      const colour = petos[i] || STP_PALETTE[i % STP_PALETTE.length];
+      const members = g.ids.map(function (id) {
+        const p = byId[id];
+        if (!p) return '';
+        // The app's own position discs, not a truncated first position —
+        // the same badges the roster and the attendance table above use.
+        return '<div class="std-tg-row"><span class="conv-pos-circles">' +
+          posCirclesHtmlGlobal(p) + '</span>' + sanitize(p.name) + '</div>';
+      }).join('');
+      return '<div class="std-tg-col"><div class="std-tg-head">' +
+        _stpDot(colour) + '<span class="std-tg-name">' + sanitize(g.name) + '</span>' +
+        '<span class="std-tg-count">' + g.ids.length + '</span></div>' + members + '</div>';
     }).join('');
 
-    // "No inclosos" section
-    let notIncludedHtml = '';
-    if (presentPool.length > 0) {
-      const niRows = presentPool.map(p => {
-        const teamCircle = p.team ? `<span class="conv-team-circle">${sanitize(p.team)}</span>` : '';
-        return `<span class="tg-ni-player" draggable="true" data-player-id="${p.id}">
-          <span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span>
-          <span class="tg-player-name"><span class="tg-player-name-text">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${teamCircle}</span>
-        </span>`;
-      }).join('');
-      notIncludedHtml = `<div class="tg-not-included">
-        <div class="tg-ni-title">No inclosos: <span class="tg-team-count">${presentPool.length}</span></div>
-        <div class="tg-ni-list">${niRows}</div>
-      </div>`;
-    }
+    /* One chip per exercise, and assigning COPIES the current split onto it.
+       A chip whose exercise already holds a split is shown as taken and does
+       nothing: re-assigning would silently overwrite a decision the coach
+       made earlier. The way back is the × on the exercise itself, which is
+       where he can see what he is throwing away. */
+    const chips = [];
+    plan.blocks.forEach(function (blk) {
+      const parallel = blk.items.length > 1;
+      blk.items.forEach(function (ex, ii) {
+        const pre = parallel ? String.fromCharCode(65 + ii) + ' · ' : '';
+        const label = ex.title || t('plan.untitled');
+        const taken = !!ex.teams;
+        chips.push('<button class="std-chip' + (taken ? ' std-chip-taken' : '') +
+          '" data-std-assign="' + sanitize(ex.id) + '"' + (taken ? ' disabled' : '') +
+          ' title="' + sanitize(taken ? t('std.assigned_already') : '') + '">' +
+          sanitize(pre + label) + (taken ? ' ✓' : '') + '</button>');
+      });
+    });
 
-    return `<div class="tg-teams-wrap">${teamCards}</div>${notIncludedHtml}`;
+    return wrap(bar + '<div class="std-tg-cols">' + cols + '</div>' +
+      (chips.length ? '<div class="std-tg-assign">' +
+        '<span class="std-eyebrow std-eyebrow-sm">' + sanitize(t('std.assign_to')) + '</span>' +
+        chips.join('') + '</div>' : ''));
   }
 
   let rosterTeamFilter = 'all';
@@ -19753,9 +20840,10 @@
    * a <text> would not inherit the page's font stack and would fall back to
    * the browser's default serif on the one element that must match.
    */
-  /* One arc per answer, in the palette four other donuts in this app already
-     use (renderPlayerHome, renderStaffPlayerStats, buildDetailDonut,
-     buildAvailDonut). A single arc could only say how many were coming; the
+  /* One arc per answer, in the palette the other donuts in this app already
+     use (renderPlayerHome, renderStaffPlayerStats, buildAvailDonut — the
+     training-detail donut became a stacked bar in v188). A single arc could
+     only say how many were coming; the
      question a coach actually has is who has NOT replied, and that is a
      colour rather than a number.
 
@@ -20347,6 +21435,15 @@
    * are named in the options, so a coach picking 7 can see which side of
    * the line it falls without consulting the key.
    */
+  /** The same 1-10 scale buildRpeOptions renders, as stdSelect options. */
+  function rpeSelectOptions() {
+    const out = [{ value: '', label: t('training.rpe_unset') }];
+    for (let n = 1; n <= 10; n++) {
+      out.push({ value: String(n), label: n + ' · ' + t('load.' + loadBand(n)) });
+    }
+    return out;
+  }
+
   function buildRpeOptions(selected) {
     var cur = (selected === undefined || selected === null || selected === '')
       ? '' : String(selected);
@@ -24198,17 +25295,33 @@
        forgot to set it beforehand still wants the week's load figure to be
        right, and the number is a statement about the session's design
        rather than a claim about who turned up. */
-    const rpeSel = document.querySelector('.std-planned-rpe');
-    if (rpeSel) {
-      rpeSel.addEventListener('change', function () {
-        const n = Number(rpeSel.value);
-        _ntPersistSession(rpeSel.dataset.sid, function (row) {
-          // A NUMBER or nothing — never the empty string a <select> gives.
+    /* Both dropdowns on this page are stdSelects, not <select>s — the native
+       popup list is drawn by the OS and cannot be styled, and it looked like
+       a stray Windows widget in a page made of hairlines. One binding serves
+       both; which one fired is the `data-std-sel` kind. */
+    bindStdSelects(function (root, value) {
+      if (root.dataset.stdSel === 'rpe') {
+        const n = Number(value);
+        _ntPersistSession(root.dataset.sid, function (row) {
+          // A NUMBER or nothing — never the empty string the placeholder gives.
           if (n >= 1 && n <= 10) row.plannedRpe = n; else delete row.plannedRpe;
         });
         renderPage(getSession());
-      });
-    }
+        return;
+      }
+      if (root.dataset.stdSel === 'staff') {
+        const sess = getTrainings().find(x => String(x.id) === String(root.dataset.sid));
+        if (!sess) return;
+        const key = recordKey(root.dataset.player, sess, 'avail');
+        const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
+        // Back to the placeholder means "no staff call", not an empty answer:
+        // delete, so the player's own answer shows through again.
+        if (value) overrides[key] = value;
+        else delete overrides[key];
+        localStorage.setItem('fa_training_staff_override', JSON.stringify(overrides));
+        renderPage(getSession());
+      }
+    });
 
     /* Squad edits on an ALREADY SAVED session. Every write goes through
        _ntPersistSession, which hands the mutation the row from the array it
@@ -24253,324 +25366,64 @@
       });
     });
 
-    document.querySelectorAll('.std-staff-select').forEach(sel => {
-      sel.addEventListener('change', () => {
-        const playerId = sel.dataset.player;
-        const sess = getTrainings().find(x => String(x.id) === String(sel.dataset.sid));
-        if (!sess) return;
-        const key = recordKey(playerId, sess, 'avail');
-        const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-        // Back to the placeholder means "no staff call", not an empty answer:
-        // delete, so the player's own answer shows through again.
-        if (sel.value) overrides[key] = sel.value;
-        else delete overrides[key];
-        localStorage.setItem('fa_training_staff_override', JSON.stringify(overrides));
-        renderPage(getSession());
-      });
-    });
-
-    // ── Auto Generate Teams ──
-    const toggleBtn = document.getElementById('btn-tg-toggle');
-    const configPanel = document.getElementById('tg-config');
-    if (toggleBtn && configPanel) {
-      toggleBtn.addEventListener('click', () => {
-        configPanel.hidden = !configPanel.hidden;
-        toggleBtn.textContent = configPanel.hidden ? '⚙️ Configure' : '⚙️ Hide';
-      });
-    }
-
-    // Team filter buttons (All / A / B)
-    document.querySelectorAll('[data-tg-team]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        btn.parentElement.querySelectorAll('.tg-btn').forEach(b => b.classList.remove('tg-btn-active'));
-        btn.classList.add('tg-btn-active');
-      });
-    });
-    // Distribution mode buttons (Mix / Equal)
-    document.querySelectorAll('[data-tg-mode]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        btn.parentElement.querySelectorAll('.tg-btn').forEach(b => b.classList.remove('tg-btn-active'));
-        btn.classList.add('tg-btn-active');
-      });
-    });
-
-    // Include GK toggle label update
-    const gkChk = document.getElementById('tg-include-gk');
-    if (gkChk) {
-      gkChk.addEventListener('change', () => {
-        const lbl = gkChk.parentElement.querySelector('.tg-toggle-text');
-        if (lbl) lbl.textContent = gkChk.checked ? 'Yes' : 'No';
-      });
-    }
-
-    // Update perTeam default when numTeams changes
-    const numTeamsInput = document.getElementById('tg-num-teams');
-    const perTeamInput = document.getElementById('tg-per-team');
-    if (numTeamsInput && perTeamInput) {
-      numTeamsInput.addEventListener('change', () => {
-        const training = getTrainings();
-        const t = training.find(x => String(x.id) === String(detailTrainingId));
-        if (!t) return;
-        // Squad, not club — this drives the suggested players-per-team, and
-        // dividing the whole club by two proposed a number nobody could fill.
-        const players = calledPlayers(t, getUsers());
-        const locked = isTrainingLocked(t);
-        const teamFilterBtn = document.querySelector('[data-tg-team].tg-btn-active');
-        const teamFilter = teamFilterBtn ? teamFilterBtn.dataset.tgTeam : 'all';
-        let pool = players.filter(p => {
-          const eff = getEffectiveAnswer(p.id, t, locked);
-          return eff === 'yes' || eff === 'late';
-        });
-        if (teamFilter && teamFilter !== 'all') pool = pool.filter(p => p.team === teamFilter);
-        const n = Math.max(2, parseInt(numTeamsInput.value) || 2);
-        perTeamInput.value = Math.floor(pool.length / n) || 1;
-      });
-    }
-
-    // Generate button
-    const genBtn = document.getElementById('btn-tg-generate');
-    if (genBtn) {
-      genBtn.addEventListener('click', () => {
-        const training = getTrainings();
-        const t = training.find(x => String(x.id) === String(detailTrainingId));
-        if (!t) return;
-        // The SESSION'S SQUAD, not the whole club. calledPlayers() resolves
-        // teams + guests - excluded, so a player borrowed from another
-        // category is included and a player from a squad that is not
-        // training is not. This list feeds both the generator and the
-        // "+ Jugador" pool, which was offering every player in the club.
-        const players = calledPlayers(t, getUsers());
-        const locked = isTrainingLocked(t);
-        const numTeams = Math.max(2, parseInt(document.getElementById('tg-num-teams').value) || 2);
-        const perTeam = Math.max(1, parseInt(document.getElementById('tg-per-team').value) || 5);
-        const includeGK = document.getElementById('tg-include-gk').checked;
-        const teamFilterBtn = document.querySelector('[data-tg-team].tg-btn-active');
-        const teamFilter = teamFilterBtn ? teamFilterBtn.dataset.tgTeam : 'all';
-        const modeBtn = document.querySelector('[data-tg-mode].tg-btn-active');
-        const mode = modeBtn ? modeBtn.dataset.tgMode : 'mix';
-
-        _generatedTeams = generateTrainingTeams(players, t.date, locked, numTeams, perTeam, includeGK, teamFilter, mode);
-        _generatedTeamsId = t.id;
-
-        const container = document.getElementById('tg-teams-container');
-        if (container) {
-          // The session object, not its date: getEffectiveAnswer keys on the
-          // session id since v71, and a date would send every lookup down
-          // the legacy fallback — which v71 deliberately restricts to a
-          // player's own squad, so a guest's answer would be read wrong.
-          container.innerHTML = renderGeneratedTeams(_generatedTeams, players, t, locked);
-          bindGeneratedTeamsDnD(players, t, locked);
-        }
-        _refreshStdBoards(t);
-      });
-    }
-
-    // Bind drag-and-drop if teams already rendered
-    if (_generatedTeams && String(_generatedTeamsId) === String(detailTrainingId)) {
-      const training = getTrainings();
-      const t = training.find(x => String(x.id) === String(detailTrainingId));
-      if (t) {
-        const players = calledPlayers(t, getUsers());
-        const locked = isTrainingLocked(t);
-        bindGeneratedTeamsDnD(players, t, locked);
-      }
-    }
   }
 
-  // ── Refresh the Tactical Boards section in staff training detail ──
   /**
-   * Takes the SESSION, like renderStdBoardsSection itself.
+   * Deal (or re-deal) the teams.
    *
-   * It used to take a date and pass it straight through, so
-   * `sess.date` was undefined, the board bucket lookup missed, and the whole
-   * Tactical Boards section BLANKED on every refresh — after generating
-   * teams, after linking or unlinking them — until a full page render put it
-   * back. `sess.id` was undefined too, so "have teams been generated for
-   * this session" always answered no and the "Afegir equips" button never
-   * appeared there.
+   * `step` is null to re-draft at the current size, or ±1 to change the team
+   * count and re-draft at the new one. Always a fresh draft: keeping the old
+   * split and only moving the surplus would leave the imbalance the count
+   * change was meant to fix.
    */
-  function _refreshStdBoards(sess) {
-    const section = document.getElementById('std-boards-section');
-    if (!section) return;
-    // Tolerate a bare date from the older call sites rather than blanking.
-    const resolved = (sess && typeof sess === 'object') ? sess :
-      getTrainings().find(x => x.date === sess) || null;
-    section.innerHTML = renderStdBoardsSection(resolved);
-    // Re-init read-only board scaling + animations
-    scaleRoBoards();
-    bindRoBoardAnimations();
-    hydrateRoBoards();
+  function _stdDraft(step) {
+    const sess = _stpSession();
+    if (!sess) return;
+    const squad = calledPlayers(sess, getUsers());
+    const locked = isTrainingLocked(sess);
+    const pool = stdDraftPool(sess, squad, locked);
+    if (!pool.length) return;
+    _stpWrite(function (p) {
+      const cur = p.teams ? p.teams.n : 2;
+      p.teams = draftTeams(pool, step === null ? cur : cur + step, _stdTgOpts.mode);
+    });
   }
 
-  // ── Drag-and-drop + add/remove for generated teams ──
-  function bindGeneratedTeamsDnD(allPlayers, sess, locked) {
-    let dragPlayerId = null;
-    let dragSourceTeamIdx = null;
-    let _droppedOnTeam = false;
-
-    function _rerender() {
-      const container = document.getElementById('tg-teams-container');
-      if (container) {
-        container.innerHTML = renderGeneratedTeams(_generatedTeams, allPlayers, sess, locked);
-        bindGeneratedTeamsDnD(allPlayers, sess, locked);
-      }
-      _refreshStdBoards(sess);
+  /**
+   * Who the draft may deal.
+   *
+   * Three filters, in the order a coach would apply them himself:
+   *
+   *  1. **Attending** — staff answer yes or late, via stdAvailable.
+   *  2. **Squad letters.** The generator's own chips when the coach has set
+   *     any; otherwise the attendance table's filter, so the default still
+   *     matches the list he is looking at. Two controls rather than one
+   *     because reading the whole squad and splitting only the Bs is a real
+   *     thing to want, and one control could not say it.
+   *  3. **Keepers**, when the toggle is off — and only PURE keepers. A player
+   *     listed "ST,GK" is an outfielder who can go in goal, and dropping him
+   *     from a small-sided game because of his second position was never the
+   *     intent. Same rule the old generator used.
+   */
+  function stdDraftPool(sess, squad, locked) {
+    let pool = stdAvailable(sess, squad, locked);
+    const letters = _stdTgOpts.letters || stdTeamFilter;
+    if (letters) {
+      pool = pool.filter(function (p) { return letters.has(p.team || ''); });
     }
-
-    document.querySelectorAll('.tg-player-row').forEach(row => {
-      row.addEventListener('dragstart', e => {
-        dragPlayerId = row.dataset.playerId;
-        dragSourceTeamIdx = Number(row.closest('.tg-team-players').dataset.teamIdx);
-        _droppedOnTeam = false;
-        row.classList.add('tg-dragging');
-        e.dataTransfer.effectAllowed = 'move';
+    if (!_stdTgOpts.gk) {
+      pool = pool.filter(function (p) {
+        const positions = String(p.position || '').split(',')
+          .map(function (s) { return s.trim(); }).filter(Boolean);
+        return !positions.length || !positions.every(function (x) { return x === 'GK'; });
       });
-      row.addEventListener('dragend', () => {
-        row.classList.remove('tg-dragging');
-        document.querySelectorAll('.tg-drop-active').forEach(el => el.classList.remove('tg-drop-active'));
-        // If not dropped on any team zone, remove player from source team (→ goes to "No inclosos")
-        if (!_droppedOnTeam && dragPlayerId != null && dragSourceTeamIdx != null) {
-          _generatedTeams[dragSourceTeamIdx] = _generatedTeams[dragSourceTeamIdx].filter(
-            p => String(p.id) !== String(dragPlayerId)
-          );
-          _rerender();
-        }
-        dragPlayerId = null;
-        dragSourceTeamIdx = null;
-      });
-    });
-
-    document.querySelectorAll('.tg-team-players').forEach(zone => {
-      zone.addEventListener('dragover', e => {
-        e.preventDefault();
-        zone.classList.add('tg-drop-active');
-      });
-      zone.addEventListener('dragleave', () => {
-        zone.classList.remove('tg-drop-active');
-      });
-      zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('tg-drop-active');
-        _droppedOnTeam = true;
-        const targetIdx = Number(zone.dataset.teamIdx);
-        if (dragPlayerId == null) return;
-        // If dragged from "No inclosos" (sentinel -1), just add to target
-        if (dragSourceTeamIdx === -1) {
-          const player = allPlayers.find(p => String(p.id) === String(dragPlayerId));
-          if (!player) return;
-          const alreadyAssigned = _generatedTeams.some(team => team.some(tp => String(tp.id) === String(player.id)));
-          if (!alreadyAssigned) _generatedTeams[targetIdx].push(player);
-          _rerender();
-          return;
-        }
-        if (dragSourceTeamIdx === targetIdx) return;
-        // Move player between teams
-        const sourceTeam = _generatedTeams[dragSourceTeamIdx];
-        const targetTeam = _generatedTeams[targetIdx];
-        const pIdx = sourceTeam.findIndex(p => String(p.id) === String(dragPlayerId));
-        if (pIdx === -1) return;
-        const [player] = sourceTeam.splice(pIdx, 1);
-        targetTeam.push(player);
-        _rerender();
-      });
-    });
-
-    // Remove player button (player goes to "No inclosos" automatically via re-render)
-    document.querySelectorAll('.tg-remove-player').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const ti = Number(btn.dataset.teamIdx);
-        const pid = btn.dataset.playerId;
-        _generatedTeams[ti] = _generatedTeams[ti].filter(p => String(p.id) !== String(pid));
-        _rerender();
-      });
-    });
-
-    // Add player — custom searchable dropdown
-    document.querySelectorAll('.tg-dd').forEach(dd => {
-      const input = dd.querySelector('.tg-dd-input');
-      const list = dd.querySelector('.tg-dd-list');
-      if (!input || !list) return;
-
-      input.addEventListener('focus', () => {
-        list.hidden = false;
-        filterDDOptions('');
-      });
-      input.addEventListener('input', () => {
-        list.hidden = false;
-        filterDDOptions(input.value);
-      });
-
-      function filterDDOptions(q) {
-        const term = q.toLowerCase().trim();
-        list.querySelectorAll('.tg-dd-option').forEach(opt => {
-          const name = (opt.querySelector('.tg-player-name-text') || {}).textContent || '';
-          opt.style.display = name.toLowerCase().includes(term) ? '' : 'none';
-        });
-      }
-
-      function addByName() {
-        const val = input.value.trim();
-        if (!val) return false;
-        const ti = Number(dd.dataset.teamIdx);
-        const term = val.toLowerCase();
-        // Try exact match first, then startsWith, then includes
-        let player = allPlayers.find(p => (p.name || '').toLowerCase() === term);
-        if (!player) player = allPlayers.find(p => (p.name || '').toLowerCase().startsWith(term));
-        if (!player) player = allPlayers.find(p => (p.name || '').toLowerCase().includes(term));
-        // If no match, create an ad-hoc entry so any name can be added
-        if (!player) {
-          player = { id: 'custom_' + Date.now(), name: val, position: '', team: '', playerNumber: '', roles: [] };
-        }
-        const alreadyAssigned = _generatedTeams.some(team => team.some(tp => String(tp.id) === String(player.id)));
-        if (alreadyAssigned) { input.value = ''; list.hidden = true; return false; }
-        _generatedTeams[ti].push(player);
-        _rerender();
-        return true;
-      }
-
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); addByName(); input.value = ''; list.hidden = true; }
-        if (e.key === 'Escape') { list.hidden = true; input.blur(); }
-      });
-
-      input.addEventListener('blur', () => {
-        // Try to add by name on blur, then close dropdown
-        setTimeout(() => {
-          addByName();
-          list.hidden = true;
-        }, 150);
-      });
-
-      list.querySelectorAll('.tg-dd-option').forEach(opt => {
-        opt.addEventListener('mousedown', e => {
-          e.preventDefault(); // prevent blur from firing
-          const pid = opt.dataset.pid;
-          const ti = Number(dd.dataset.teamIdx);
-          const player = allPlayers.find(p => String(p.id) === String(pid));
-          if (!player) return;
-          const alreadyAssigned = _generatedTeams.some(team => team.some(tp => String(tp.id) === String(player.id)));
-          if (alreadyAssigned) return;
-          _generatedTeams[ti].push(player);
-          _rerender();
-        });
-      });
-    });
-
-    // "No inclosos" drag into teams
-    document.querySelectorAll('.tg-ni-player[draggable]').forEach(chip => {
-      chip.addEventListener('dragstart', e => {
-        dragPlayerId = chip.dataset.playerId;
-        dragSourceTeamIdx = -1; // sentinel: from "no inclosos"
-        _droppedOnTeam = false;
-        chip.classList.add('tg-dragging');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      chip.addEventListener('dragend', () => {
-        chip.classList.remove('tg-dragging');
-        document.querySelectorAll('.tg-drop-active').forEach(el => el.classList.remove('tg-drop-active'));
-        dragPlayerId = null;
-        dragSourceTeamIdx = null;
-      });
+    }
+    return pool.map(function (p) {
+      const rd = computeReadiness(p.id);
+      return {
+        id: p.id, rank: posRankGlobal(p),
+        ac: (rd && rd.hasData && rd.acwr) ? rd.acwr : 1
+      };
     });
   }
 
@@ -28342,55 +29195,6 @@
       });
     })();
 
-    // ── Tactical board ↔ teams linking (delegated) ──
-    (function () {
-      const content = document.getElementById('dashboard-content');
-      if (!content) return;
-
-      content.addEventListener('click', e => {
-        // Bound once on #dashboard-content, so it outlives any render: a
-        // view-only sub-role has to be refused here too, not just have the
-        // buttons left out of renderStdBoardsSection.
-        if (!canEditPage('staff-training-detail')) return;
-        // "Afegir equips" button
-        const linkBtn = e.target.closest('.tb-link-teams');
-        if (linkBtn) {
-          const boardKey = linkBtn.dataset.boardKey;
-          const tdate = linkBtn.dataset.tdate;
-          // Compared by SESSION, not date: two squads share a date bucket.
-          if (!_generatedTeams || !_generatedTeamsId ||
-              String(_generatedTeamsId) !== String(linkBtn.dataset.tsid)) return;
-          const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-          const boards = trainingBoards[tdate];
-          if (!boards) return;
-          const board = tbFindLinked(boards, boardKey);
-          if (!board) return;
-          board.linkedTeams = _generatedTeams.map((team, ti) => ({
-            name: 'Equip ' + (ti + 1),
-            players: team.map(p => ({ id: p.id, name: p.name, position: p.position || '', team: p.team || '', playerNumber: p.playerNumber || '' }))
-          }));
-          localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
-          _refreshStdBoards(tdate);
-          return;
-        }
-
-        // "Remove teams" button
-        const unlinkBtn = e.target.closest('.tb-unlink-teams');
-        if (unlinkBtn) {
-          const boardKey = unlinkBtn.dataset.boardKey;
-          const tdate = unlinkBtn.dataset.tdate;
-          const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-          const boards = trainingBoards[tdate];
-          if (!boards) return;
-          const board = tbFindLinked(boards, boardKey);
-          if (!board) return;
-          delete board.linkedTeams;
-          localStorage.setItem('fa_tactic_training_boards', JSON.stringify(trainingBoards));
-          _refreshStdBoards(tdate);
-          return;
-        }
-      });
-    })();
 
     // Listen for Firebase Auth state changes (fires on page load + login/logout)
     auth.onAuthStateChanged(async (firebaseUser) => {

@@ -181,48 +181,87 @@ describe('layout — a tooltip outranks whatever triggered it', () => {
  *
  * It looked like an empty cell in a screenshot. It was not: the control
  * was there and working, but with no answer and no override `effectiveCls`
- * was '', so the select carried no colour class and fell back to the base
- * rule's `color: #fff` -- white text on a white card.
+ * was '', so it carried no colour class and fell back to `color: #fff` --
+ * white text on a white card.
  *
  * The rendering bug hid a worse one. Nothing was marked `selected`, and a
  * <select> with no selected option displays its FIRST one: every
  * unanswered player was silently showing "Yes".
+ *
+ * v189b: it is no longer a <select> at all. A native one can be styled shut
+ * but NOT open -- the popup list is drawn by the OS and ignores every rule
+ * we write, which is what still read as "default" after the pill was fixed.
+ * It is a stdSelect now: a button and a div. Both invariants above survive
+ * the change and are re-asserted against the new markup.
  * ------------------------------------------------------------------ */
 describe('training detail — the staff attendance select', () => {
   it('carries a colour class even with no answer', () => {
     assert.ok(appSrc.includes("effective ? cls[effective] : 'avail-unset'"),
         "'' means no class, which means the base color:#fff with no background");
-    assert.ok(css.includes('.std-staff-select.avail-unset'),
+    assert.ok(css.includes('.std-sel-pill .std-sel-t.avail-unset'),
         'the class has to actually style something');
   });
 
   it('gives that state a real background and a readable colour', () => {
-    const r = rule('.std-staff-select.avail-unset');
-    assert.ok(/background:/.test(r) && /color:/.test(r),
-        'both, or it inherits the white-on-white it is here to prevent');
-    assert.ok(!/#fff/.test(r.split('color:')[1] || ''),
-        'the text colour must not be white again');
+    const r = rule('.std-sel-pill .std-sel-t.avail-unset');
+    assert.ok(/background(-color)?\s*:/.test(r),
+        'a background, or it inherits the white-on-white it is here to prevent');
+    // The TEXT colour, not border-color or background-color — both of those
+    // end in "color:" and would satisfy a looser check while proving nothing.
+    const fg = /(^|[;{\s])color\s*:\s*([^;}]+)/.exec(r);
+    assert.ok(fg, 'and an explicit text colour');
+    assert.ok(!/#fff|#ffffff|white/i.test(fg[2]),
+        'the text colour must not be white again, got: ' + fg[2].trim());
+  });
+
+  it('is not a native select, so its open list is ours to style', () => {
+    assert.ok(!/<select class="std-staff-select/.test(appSrc),
+        'the native control is gone');
+    assert.ok(appSrc.includes("kind: 'staff', cls: 'std-sel-pill'"),
+        'and replaced by a stdSelect');
+    assert.ok(/\.std-sel-menu\s*\{/.test(css) && /\.std-sel-o\s*\{/.test(css),
+        'the popup and its rows have to be styled, or nothing was gained');
+  });
+
+  it('hides the popup until it is opened', () => {
+    assert.ok(/\.std-sel-menu\s*\{[^}]*display\s*:\s*none/.test(css),
+        'closed by default');
+    assert.ok(/\.std-sel-open\s+\.std-sel-menu\s*\{[^}]*display\s*:\s*block/.test(css),
+        'and shown only by the open class the trigger toggles');
   });
 
   it('opens with a placeholder, so nothing reads as an answer', () => {
-    assert.ok(/<option value="" \$\{!effective \? 'selected' : ''\}>/.test(appSrc),
-        'an unselected select shows its first option — that must be the placeholder');
-    const i = appSrc.indexOf('<option value="" ${!effective');
-    const j = appSrc.indexOf('allOptions.map(o =>', i);
-    assert.ok(i !== -1 && j !== -1 && i < j,
-        'the placeholder must come FIRST to be the fallback display');
+    assert.ok(appSrc.includes("[{ value: '', label: '—', cls: 'avail-unset' }].concat("),
+        'the placeholder must come FIRST and carry the unset colour');
+  });
+
+  it('every answer carries the colour that names it', () => {
+    // The option list sets the pill's class, so picking one recolours it.
+    assert.ok(appSrc.includes('allOptions.map(o => ({ value: o, label: labels[o], cls: cls[o] }))'),
+        'without cls the pill would keep the previous answer colour');
   });
 
   it('clears the override instead of storing an empty answer', () => {
-    assert.ok(/if \(sel\.value\) overrides\[key\] = sel\.value;\s+else delete overrides\[key\];/.test(appSrc),
+    assert.ok(/if \(value\) overrides\[key\] = value;\s+else delete overrides\[key\];/.test(appSrc),
         "overrides[key] = '' would read as a staff call that hides the player's own answer");
+  });
+
+  /* The planned-intensity picker opened into the same OS list. Same fix. */
+  it('the intensity picker is a stdSelect too', () => {
+    assert.ok(!/<select class="std-rpe/.test(appSrc), 'no native control left');
+    assert.ok(appSrc.includes("kind: 'rpe', cls: 'std-sel-plain'"));
+    assert.ok(/\.std-sel-plain \.std-sel-t\s*\{/.test(css),
+        'and it keeps the stat row type rather than a boxed control');
   });
 });
 
 describe('training detail — the remove button', () => {
-  it('leads the row in its own column', () => {
+  /* v188 moved the × to the END of the row and made it appear on hover: in a
+     page of hairlines a permanent red × in the leading column was the loudest
+     thing on screen, and it is the rarest action in the table. */
+  it('trails the row in its own column', () => {
     assert.ok(appSrc.includes('<td class="std-drop-cell">'),
-        'the × moved out of the name cell so every row lines up');
+        'the × has its own cell so every row lines up');
     assert.ok(css.includes('.std-drop-cell'));
   });
 
@@ -231,11 +270,20 @@ describe('training detail — the remove button', () => {
         'the extra <td> is conditional, so the <th> must be gated identically');
   });
 
+  it('is revealed by hovering the row, not painted on every one', () => {
+    assert.ok(/\.std-drop\s*\{[^}]*opacity:\s*0/.test(css),
+        'it starts invisible');
+    assert.ok(/\.std-table tr:hover \.std-drop/.test(css),
+        'and the row hover is what brings it back');
+    assert.ok(/\.std-drop:focus/.test(css),
+        'keyboard focus must reveal it too, or it is mouse-only');
+  });
+
   it('the Add button sits above the table it acts on', () => {
     const add = appSrc.indexOf('id="std-add-player"');
-    const table = appSrc.indexOf('<table class="matchday-table std-attendance-table">');
+    const table = appSrc.indexOf('<table class="std-table">');
     assert.ok(add !== -1 && table !== -1 && add < table,
-        'in a space-between card header it landed at the far right edge, ' +
+        'in a space-between header it landed at the far right edge, ' +
         'reading as unrelated to the list below it');
   });
 });
