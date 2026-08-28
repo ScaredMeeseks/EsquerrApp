@@ -1741,7 +1741,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 196;
+  const APP_VERSION = 197;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4809,7 +4809,13 @@
          pages narrows that to read-only throughout, which is the honest
          reading of "scheduling is not their job". */
       'calendar': 'view',
-      'staff-training-detail': 'view',
+      /* EDIT the session, but not the schedule. Owner's call, 2026-08-28:
+         "they should be able to see them, even edit scheduled trainings".
+         The two are different rights and the split is the honest one — this
+         role cannot create or move a session (`calendar: 'view'`,
+         `training-new: 'hidden'`), but once one is scheduled the squad, the
+         staff call, the plan and the material are its work. */
+      'staff-training-detail': 'edit',
       'training-new': 'hidden',
       'convocatoria': 'hidden',
       'tactics': 'hidden'
@@ -4823,7 +4829,9 @@
       /* EDIT, unlike the fitness coach: running the calendar is most of
          this role. It had `matchday` edit before, and the sessions it now
          also reaches are the half it was missing. */
-      'staff-training-detail': 'view',
+      // Same call as the fitness coach above, and this role already edits
+      // the calendar itself.
+      'staff-training-detail': 'edit',
       'training-new': 'hidden',
       'convocatoria': 'view',
       'medical': 'hidden',
@@ -4861,6 +4869,30 @@
      straight into a bounce. */
   function canAddTraining() {
     return canEditPage('calendar') && canViewPage('training-new');
+  }
+
+  /**
+   * Which training page this session should open.
+   *
+   * It used to be `canEditPage('calendar') ? staff : player`, which asked the
+   * wrong question twice and was wrong for everybody except a head coach:
+   *
+   *   · A PLAYER has no sub-role, so `staffAccess` falls through to 'edit'
+   *     and they were sent to the STAFF page — where the STAFF_PAGES guard in
+   *     renderPage bounced them to player-home. Clicking a training in the
+   *     calendar took them to their home screen.
+   *   · A FITNESS coach has `calendar: 'view'`, so they were sent to the
+   *     PLAYER page — the one page that shows none of the squad, the plan or
+   *     the material — despite being granted `staff-training-detail` outright.
+   *
+   * The right question is about the destination, not the calendar: are you
+   * staff, and may you see the staff page. Read-only is not this decision —
+   * the page's own `ro` flag handles that.
+   */
+  function trainingDetailPageFor(session) {
+    const roles = (session && session.roles) || [];
+    return (roles.indexOf('staff') !== -1 && canViewPage('staff-training-detail'))
+      ? 'staff-training-detail' : 'training-detail';
   }
 
   /* The staff-home shortcut attributes, or nothing when this sub-role may not
@@ -24335,7 +24367,7 @@
         if (touchFirstTap(el)) return;
         const id = el.dataset.calSession;
         detailTrainingId = id;
-        currentPage = canEditPage('calendar') ? 'staff-training-detail' : 'training-detail';
+        currentPage = trainingDetailPageFor(getSession());
         renderPage(getSession());
       });
     });

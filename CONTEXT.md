@@ -7559,3 +7559,33 @@ HANDOFF.md rewritten for the v187→v196 session, and the owner's roadmap added 
 (items 15-29). CLAUDE.md now states that the parking lot is carried forward **verbatim** when
 HANDOFF is rewritten — "overwritten each session" applies to the session summary above it, not to a
 backlog accumulated over many sessions.
+
+### 2026-08-28 — Clicking a training opened the wrong page for everyone but a head coach (v197)
+
+One line, two silent failures:
+
+```js
+currentPage = canEditPage('calendar') ? 'staff-training-detail' : 'training-detail';
+```
+
+It asked about the wrong page, and it asked about EDITING when the question is about seeing.
+
+- **A player** has no sub-role, so `staffAccess` finds no table and falls through to `'edit'`.
+  `canEditPage('calendar')` was therefore **true for players**, sending them to the STAFF page —
+  where the `STAFF_PAGES` guard in `renderPage` bounced them to `player-home`. Clicking a training
+  in the calendar took a player to their home screen, with no error anywhere.
+- **A fitness coach** has `calendar: 'view'`, so the same line sent them to the PLAYER page — the one
+  page that shows none of the squad, the plan or the material — even though the access table grants
+  them `staff-training-detail` outright.
+
+`trainingDetailPageFor(session)` asks about the destination instead: are you staff, and may you view
+the staff page. Read-only is not part of that decision — the page's own `ro` flag has always handled
+it. Seven tests, including the player-who-is-also-staff case.
+
+**And the sub-roles may now edit a scheduled session** (owner's call): `staff-training-detail` moves
+from `'view'` to `'edit'` for fitness and delegate. The two rights are genuinely different and the
+split is the honest one — neither role can create or move a session (`calendar`/`training-new` are
+unchanged), but once one is scheduled the squad, the staff call, the plan and the material are their
+work. `staff-roles.test.js` updated with the reason, not just the value.
+
+Unit 2239 → **2246**. Version triple → v197.

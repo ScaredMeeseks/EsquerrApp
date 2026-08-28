@@ -36,7 +36,8 @@ function makeGate(session) {
       '  const STAFF_ROLE_ACCESS = {',
       '  /* The page we were on before this one', 'js/app.js');
   const factory = new Function('getSession', 'sanitize', 't',
-      logic + '\n return {staffAccess, canViewPage, canEditPage, shomeLinkAttrs};');
+      logic + '\n return {staffAccess, canViewPage, canEditPage, ' +
+        'shomeLinkAttrs, trainingDetailPageFor};');
   return factory(() => session, (s) => String(s), (k) => k);
 }
 
@@ -97,7 +98,10 @@ describe('staff sub-roles', () => {
       assert.strictEqual(g.staffAccess('registrations'), 'view');
       assert.strictEqual(g.staffAccess('manage-roster'), 'view');
       assert.strictEqual(g.staffAccess('calendar'), 'view');
-      assert.strictEqual(g.staffAccess('staff-training-detail'), 'view');
+      /* EDIT since v197: this role cannot create or move a session, but once
+         one is scheduled the squad, the staff call, the plan and the material
+         are its work. Scheduling stays shut via calendar/training-new. */
+      assert.strictEqual(g.staffAccess('staff-training-detail'), 'edit');
       assert.strictEqual(g.staffAccess('convocatoria'), 'hidden');
       assert.strictEqual(g.staffAccess('tactics'), 'hidden');
       assert.strictEqual(g.staffAccess('training-new'), 'hidden');
@@ -110,7 +114,10 @@ describe('staff sub-roles', () => {
       assert.strictEqual(g.staffAccess('convocatoria'), 'view');
       assert.strictEqual(g.staffAccess('registrations'), 'view');
       assert.strictEqual(g.staffAccess('manage-roster'), 'view');
-      assert.strictEqual(g.staffAccess('staff-training-detail'), 'view');
+      /* EDIT since v197: this role cannot create or move a session, but once
+         one is scheduled the squad, the staff call, the plan and the material
+         are its work. Scheduling stays shut via calendar/training-new. */
+      assert.strictEqual(g.staffAccess('staff-training-detail'), 'edit');
       /* Still hidden, and it is what stops a delegate creating sessions:
          canAddTraining() gates the greyed placeholders and the add menu on
          this page, not on the calendar's own access. */
@@ -261,5 +268,57 @@ describe('staff sub-roles', () => {
       assert.deepStrictEqual(m.roles.slice().sort(), ['player', 'staff']);
       assert.strictEqual(m.staffRole, 'delegate');
     });
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Which training page a click opens.
+ *
+ * This routed on `canEditPage('calendar')` until v197 — the wrong question,
+ * about the wrong page, and wrong for everyone but a head coach. Both
+ * failures were silent: no error, just the wrong screen.
+ * ------------------------------------------------------------------ */
+describe('routing into a training', () => {
+  const page = (session) => makeGate(session).trainingDetailPageFor(session);
+
+  it('sends a PLAYER to the player page', () => {
+    /* staffAccess has no table for a player, so it falls through to 'edit'
+       and the old gate sent them to the STAFF page — where the STAFF_PAGES
+       guard in renderPage bounced them to player-home. Clicking a training
+       in the calendar took a player to their home screen. */
+    assert.strictEqual(page({roles: ['player']}), 'training-detail');
+  });
+
+  it('sends someone with no roles at all to the player page', () => {
+    assert.strictEqual(page({roles: []}), 'training-detail');
+    assert.strictEqual(page({}), 'training-detail');
+  });
+
+  it('sends a head coach to the staff page', () => {
+    assert.strictEqual(page(staff('coach')), 'staff-training-detail');
+  });
+
+  it('sends a FITNESS coach to the staff page, not the player one', () => {
+    // `calendar: 'view'` used to send this role to the player page — the one
+    // page showing none of the squad, the plan or the material — despite the
+    // table granting staff-training-detail outright.
+    assert.strictEqual(page(staff('fitness')), 'staff-training-detail');
+  });
+
+  it('sends a delegate to the staff page', () => {
+    assert.strictEqual(page(staff('delegate')), 'staff-training-detail');
+  });
+
+  it('respects a sub-role that has the staff page hidden', () => {
+    // No such role today, but the gate must read the table rather than
+    // assume every staff member may open it.
+    const g = makeGate({roles: ['staff'], staffRole: 'fitness'});
+    assert.strictEqual(g.canViewPage('convocatoria'), false,
+        'hidden really is hidden');
+  });
+
+  it('a player who is ALSO staff gets the staff page', () => {
+    assert.strictEqual(page({roles: ['player', 'staff'], staffRole: 'coach'}),
+        'staff-training-detail');
   });
 });
