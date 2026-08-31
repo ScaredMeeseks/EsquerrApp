@@ -40,7 +40,22 @@ function makeRenderers(opts) {
   const notes = opts.notes || {};
   const store = opts.store || {};
 
-  const logic = grab(appSrc,
+  /* The REAL predicate the notes card is gated on, sliced in rather than
+     stubbed — only `canEditPage` stays injected, so the sub-role half is a
+     knob while the staff half is the shipped rule.
+
+     Stubbing the whole thing would bake in the bug it exists to catch:
+     the notes card used to ask `canEditPage('staff-matchday')`, an id
+     absent from every sub-role table, and `staffAccess` resolves an
+     unknown id to 'edit' — so a fitness coach could edit a coach's notes.
+     A flat stub answers whatever the test tells it and never notices.
+     calendar-render.test.js uses the real isStaffViewer for exactly this
+     reason: stubbing it would have hidden v198 completely. */
+  const gate = grab(appSrc,
+      '  function isStaffViewer(session) {',
+      '  /* The staff-home shortcut attributes', 'js/app.js');
+
+  const logic = gate + grab(appSrc,
       '  /* ═══════════════════════════════════════════════════════════\n' +
       '     Coach match notes, and the anada/tornada briefing.',
       '  function renderMatchDetail()', 'js/app.js');

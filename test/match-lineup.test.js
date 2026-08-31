@@ -281,6 +281,73 @@ describe('matchPlayerMarks — the quiet cases', () => {
   });
 });
 
+/* convSentEntry — the write path the ghost starter came from.
+ *
+ * Merging over `prev` is what keeps a coach's line-up across a re-save;
+ * it also kept players that save had just dropped from the squad, so the
+ * stored entry claimed a starter who was no longer called up. The panel
+ * then counted him — `Titulars: 12/11` — while the renderer, which walks
+ * the CALLED-UP list, never reached him and drew eleven rows.
+ *
+ * Nested inside a bind function, so it comes out with its three
+ * dependencies stubbed: the kit blob, the club's kits, and the selected
+ * match id.
+ */
+function loadConvSentEntry(store) {
+  const src2 = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const i = src2.indexOf('    function convSentEntry(prev, list, videos) {');
+  assert.notStrictEqual(i, -1, 'convSentEntry not found in js/app.js');
+  const body = src2.slice(i, src2.indexOf('\n    }', i) + 6);
+  const localStorage = {getItem: (k) => (k in store ? store[k] : null)};
+  const clubKits = () => [{id: 'k1'}, {id: 'k2'}];
+  // eslint-disable-next-line no-new-func
+  return new Function('localStorage', 'clubKits', 'convSelectedMatchId', `
+    ${body}
+    return convSentEntry;`)(localStorage, clubKits, 'm1');
+}
+
+describe('convSentEntry — the XI follows the call-up', () => {
+  const build = loadConvSentEntry({});
+
+  it('drops a starter who is no longer called up', () => {
+    const next = build({players: ['a', 'b', 'c'], startingXI: ['a', 'b']},
+                       ['a', 'c'], []);
+    assert.deepStrictEqual(next.startingXI, ['a'],
+        'b left the squad and must leave the line-up with it');
+  });
+
+  it('keeps the line-up when nobody was dropped', () => {
+    /* The paired positive. Merging over `prev` is the fix for a
+       DIFFERENT bug — a fresh object literal used to throw the XI away on
+       every re-save — and this filter must not undo it. */
+    const next = build({players: ['a', 'b'], startingXI: ['a', 'b']},
+                       ['a', 'b'], []);
+    assert.deepStrictEqual(next.startingXI, ['a', 'b']);
+  });
+
+  it('compares ids as strings', () => {
+    // uids arrive as numbers from some seeders and strings from the DOM.
+    const next = build({players: [1, 2], startingXI: [1, 2]}, ['1'], []);
+    assert.deepStrictEqual(next.startingXI, [1]);
+  });
+
+  it('does not invent an empty line-up where there was none', () => {
+    /* `startingXI: []` is not the same as no startingXI:
+       computePlayerMatchStats reads the first as "a line-up with nobody
+       in it", which makes every called-up player a Suplent, and the
+       second as "no line-up recorded" — status '—'. */
+    const next = build({players: ['a', 'b']}, ['a'], []);
+    assert.ok(!('startingXI' in next),
+        'an entry with no line-up must stay that way');
+  });
+
+  it('leaves an entry that has no previous state alone', () => {
+    const next = build(null, ['a', 'b'], []);
+    assert.ok(!('startingXI' in next));
+    assert.deepStrictEqual(next.players, ['a', 'b']);
+  });
+});
+
 describe('the rule lives in one place', () => {
   const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 

@@ -37,7 +37,8 @@ function makeGate(session) {
       '  /* The page we were on before this one', 'js/app.js');
   const factory = new Function('getSession', 'sanitize', 't',
       logic + '\n return {staffAccess, canViewPage, canEditPage, ' +
-        'shomeLinkAttrs, trainingDetailPageFor};');
+        'shomeLinkAttrs, trainingDetailPageFor, isStaffViewer, ' +
+        'canEditMatchRecord};');
   return factory(() => session, (s) => String(s), (k) => k);
 }
 
@@ -320,5 +321,119 @@ describe('routing into a training', () => {
   it('a player who is ALSO staff gets the staff page', () => {
     assert.strictEqual(page({roles: ['player', 'staff'], staffRole: 'coach'}),
         'staff-training-detail');
+  });
+});
+
+/* ── Who may change the record of a match ──────────────────────────────
+ *
+ * Nobody could, from v186 until v202. `renderMatchDetail` gated every
+ * editing control on `detailMatchFrom === 'staff-matchday'`, and the page
+ * that set that value was folded into the calendar in v186 — its cards
+ * went with it, so nothing has emitted `data-go-staff-match` since. The
+ * condition was unreachable, so a coach saw no + Event button, no delete
+ * on a timeline row, no starter toggle and no Titulars counter.
+ *
+ * It stayed quiet because the DISPLAY of starters hangs off a separate
+ * `isPast` test: the panel went on looking alive while only the editing
+ * was gone.
+ */
+describe('canEditMatchRecord — events and the starting XI', () => {
+  const can = (session) => makeGate(session).canEditMatchRecord(session);
+
+  it('a head coach may', () => {
+    assert.strictEqual(can(staff('coach')), true);
+  });
+
+  it('a delegate may — keeping the match record is most of the role', () => {
+    assert.strictEqual(can(staff('delegate')), true);
+  });
+
+  it('a fitness coach may NOT', () => {
+    // Logging goals is not their job, and neither is picking the eleven.
+    assert.strictEqual(can(staff('fitness')), false);
+  });
+
+  it('a club lead may, sub-role or not', () => {
+    assert.strictEqual(can({roles: ['staff'], isTeamLead: true}), true);
+    assert.strictEqual(can({roles: ['staff'], isAdmin: true}), true);
+  });
+
+  it('a PLAYER may not — and canEditPage alone would say yes', () => {
+    /* The clause that carries this test. A player has no sub-role, so
+       `staffAccess` falls through to 'edit' and canEditPage('match-detail')
+       returns TRUE for them. Only the isStaffViewer half denies it.
+       This is v197 in miniature: a permission standing in for a question
+       it does not answer. */
+    const g = makeGate({roles: ['player']});
+    assert.strictEqual(g.canEditPage('match-detail'), true,
+        'the sub-role table cannot answer this on its own');
+    assert.strictEqual(g.canEditMatchRecord({roles: ['player']}), false,
+        'being staff is the first question');
+  });
+
+  it('a playing coach may — he is still staff', () => {
+    assert.strictEqual(can({roles: ['player', 'staff'], staffRole: 'coach'}), true);
+  });
+
+  it('each sub-role says so out loud rather than falling through', () => {
+    /* An id absent from a table resolves to 'edit'. That is exactly how a
+       fitness coach came to be able to edit a coach's match notes — the id
+       they were keyed on, 'staff-matchday', was in no table at all. Both
+       tables name 'match-detail' now so the silence cannot mean two
+       different things. */
+    const table = grab(appSrc, '  const STAFF_ROLE_ACCESS = {',
+        '  /**\n   * What this session may do', 'js/app.js');
+    const fitness = table.slice(table.indexOf('fitness:'), table.indexOf('delegate:'));
+    const delegate = table.slice(table.indexOf('delegate:'));
+    assert.ok(/'match-detail': 'view'/.test(fitness),
+        'fitness must be denied in writing');
+    assert.ok(/'match-detail': 'edit'/.test(delegate),
+        'delegate must be granted in writing');
+  });
+});
+
+describe('the dead staff-matchday route is gone', () => {
+  const bare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('nothing binds or emits data-go-staff-match', () => {
+    // A binder for markup that does not exist is a promise the app cannot
+    // keep — and this one gated every editing control on the match page.
+    assert.ok(!/go-staff-match/i.test(bare) && !/goStaffMatch/.test(bare),
+        'the dead binder must be removed, not left as a hook');
+  });
+
+  it("'staff-matchday' survives ONLY as a page alias", () => {
+    /* Old APKs bundle their own copy of app.js and go on sending the old id
+       in push deep links, so the alias has to stay. Nothing else may read
+       it: as a `===` it is never true, and as a `canEditPage` argument it
+       silently means 'edit'. */
+    const hits = bare.match(/'staff-matchday'/g) || [];
+    assert.strictEqual(hits.length, 1,
+        "expected one surviving mention, in PAGE_ALIASES; found " + hits.length);
+    const i = bare.indexOf("'staff-matchday'");
+    const aliases = bare.slice(bare.indexOf('const PAGE_ALIASES'),
+        bare.indexOf('const ADMIN_PAGES'));
+    assert.ok(aliases.indexOf("'staff-matchday'") !== -1 &&
+              i > bare.indexOf('const PAGE_ALIASES') && i < bare.indexOf('const ADMIN_PAGES'),
+        'the survivor must be the alias entry');
+  });
+
+  it('the match page asks the role, not the route', () => {
+    const render = bare.slice(bare.indexOf('function renderMatchDetail()'),
+        bare.indexOf('function buildCustomSelect'));
+    assert.ok(/const isStaff = canEditMatchRecord\(session\)/.test(render),
+        'the editing gate must be the predicate');
+    assert.ok(!/detailMatchFrom === /.test(render),
+        'no entry-point comparison may decide what a coach can do');
+  });
+
+  it('the match notes card is gated on the same predicate', () => {
+    /* The other half of the same rot, failing the opposite way:
+       `!canEditPage('staff-matchday')` resolved to !'edit' → false, so a
+       fitness coach could edit a coach's private notes. */
+    const notes = bare.slice(bare.indexOf('function mnNotesCardHtml'),
+        bare.indexOf('function mnLegBannerHtml'));
+    assert.ok(/canEditMatchRecord\(getSession\(\)\)/.test(notes),
+        'the notes card must use the predicate too');
   });
 });

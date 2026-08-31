@@ -1749,7 +1749,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 201;
+  const APP_VERSION = 202;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4966,6 +4966,13 @@
       'staff-training-detail': 'edit',
       'training-new': 'hidden',
       'convocatoria': 'hidden',
+      /* The match record — events and the starting XI. Logging goals and
+         cards is not this role's job, and neither is picking the eleven.
+         Written down rather than left to fall through: the ONLY reason a
+         fitness coach could edit match notes was that the id they were
+         keyed on was absent from this table, and an absent id means
+         'edit'. Silence here reads as a decision and is not one. */
+      'match-detail': 'view',
       'tactics': 'hidden'
       // medical, medical-detail, staff-player-stats and staff-notifications
       // are omitted: full access. The medical file is this role's whole job.
@@ -4982,6 +4989,11 @@
       'staff-training-detail': 'edit',
       'training-new': 'hidden',
       'convocatoria': 'view',
+      /* EDIT, unlike the fitness coach: keeping the match record — the
+         goals, the cards, the eleven who started — is most of what a
+         delegate is for. Reached by fall-through anyway; stated because
+         the fall-through is what went wrong last time. */
+      'match-detail': 'edit',
       'medical': 'hidden',
       'medical-detail': 'hidden',
       'tactics': 'hidden',
@@ -5061,6 +5073,33 @@
   function isStaffViewer(session) {
     const roles = (session && session.roles) || [];
     return roles.indexOf('staff') !== -1;
+  }
+
+  /**
+   * May this session change the RECORD of a match — its events, and the
+   * eleven who started it?
+   *
+   * This replaces `detailMatchFrom === 'staff-matchday'`, which asked
+   * where you had come from and had not been answerable since v186: the
+   * staff matchday page was folded into the month calendar, its cards
+   * went with it, and nothing has emitted `data-go-staff-match` since. So
+   * the condition was false for EVERY user on EVERY match — no + Event
+   * button, no ✕ on a timeline row, no starter toggle, no Titulars
+   * counter. Only the DISPLAY of starters survived, on a separate
+   * `isPast` test, which is why the panel went on looking alive.
+   *
+   * The entry point was never a real gate, only an accidental one. A
+   * coach opening a fixture from the calendar, from a player's list or
+   * from a push deep link is the same coach.
+   *
+   * BOTH clauses are load-bearing. A player has no sub-role, so
+   * `staffAccess` falls through to 'edit' and `canEditPage` alone would
+   * hand every player the buttons — the v197 bug exactly, and the reason
+   * isStaffViewer exists. Being staff is the first question; the sub-role
+   * table answers the second.
+   */
+  function canEditMatchRecord(session) {
+    return isStaffViewer(session) && canEditPage('match-detail');
   }
 
   /* The staff-home shortcut attributes, or nothing when this sub-role may not
@@ -10510,7 +10549,13 @@
    */
   function mnNotesCardHtml(m) {
     var note = MN.getOrBlank(m);
-    var ro = !canEditPage('staff-matchday');
+    /* The same dead page id, failing the other way round. `staffAccess`
+       returns `table[pageId] || 'edit'`, so an id absent from every table
+       resolves to 'edit' — and a fitness coach could edit a coach's match
+       notes, which the sub-role table exists to prevent. One dead id, two
+       opposite wrong answers, depending on whether the caller wanted a
+       `===` or a `!`. */
+    var ro = !canEditMatchRecord(getSession());
     var boards = staffAccess('tactics') === 'edit' ? mnBoardsEditHtml(m, note, ro) : '';
     var pre = mnPhaseHtml(m, note, 'pre', ro);
     var post = mnPhaseHtml(m, note, 'post', ro);
@@ -10727,12 +10772,13 @@
     const matchPlace = locationHtml(m, { pin: true, cls: 'detail-map-link' });
 
     // Build called-up player list
-    /* `isStaff` is entry-point-scoped, so a coach arriving from the PLAYER
-       list sees the page as a player does — right for the event-editing
-       controls. `showNotes` (above) is role-scoped instead: the notes are his
-       own working document, he should find them wherever he opened the match
-       from, and firestore.rules gates them by role rather than by route. */
-    const isStaff = detailMatchFrom === 'staff-matchday' && (session.roles || []).includes('staff');
+    /* ROLE-scoped, like `showNotes` above and for the same reason. It was
+       entry-point-scoped — `detailMatchFrom === 'staff-matchday'` — on the
+       theory that a coach arriving from the player list should see the page
+       as a player does. That page stopped existing in v186 and the value
+       became unreachable, so this was false for everyone, everywhere, and
+       nobody could log a goal or pick an eleven. See canEditMatchRecord. */
+    const isStaff = canEditMatchRecord(session);
     const isPast = m.date && m.time && new Date(m.date + 'T' + m.time + ':00') <= new Date();
     let calledHtml = '';
     if (convSent) {
@@ -10764,11 +10810,11 @@
         let rows;
         if (marks) {
           /* ⚠ INTERSECTED with the called-up list, not read straight off
-             startingXI. convSentEntry() overwrites `players` and never
-             re-filters the XI, so a player dropped from the call-up is
-             still in it — the flat list simply never drew him, and
-             grouping by XI would turn that into a ghost row under
-             Titulars. Same reason `Titulars: 12/11` is reachable today. */
+             startingXI. convSentEntry() filters the XI on save now, so
+             nothing NEW can carry a starter who is no longer called up —
+             but entries written before that fix still can, and this
+             renderer would turn one into a ghost row under Titulars.
+             Cheap, and it keeps the display honest about old data. */
           const starters = calledPlayers.filter(p =>
             startingXI.some(id => String(id) === String(p.id)));
           const bench = calledPlayers.filter(p =>
@@ -26598,6 +26644,27 @@
         players: list, videos: videos,
         shirtId: pick('shirtId'), shortsId: pick('shortsId'), socksId: pick('socksId')
       });
+      /* THE XI FOLLOWS THE CALL-UP OUT.
+         Merging over `prev` is what keeps a line-up across a re-save, but
+         it kept the WHOLE line-up — including players this save has just
+         dropped from the squad. The entry then claimed a starter who was
+         no longer called up: `Titulars: 12/11` with only eleven rows
+         drawn, because the renderer walks the called-up list and simply
+         never reached him.
+         Filtered here rather than in the renderer, so the stored entry
+         stops disagreeing with itself. The server does the same on member
+         deletion (functions/index.js, the scrubShards pass) — this is the
+         client-side half that was missing.
+
+         Only when there IS an XI. Writing `startingXI: []` onto an entry
+         that never had one would turn "no line-up recorded" into "a line-up
+         with nobody in it", and computePlayerMatchStats tells those apart:
+         the first is '—', the second makes every called-up player a
+         Suplent. */
+      if (Array.isArray(next.startingXI)) {
+        const called = new Set((list || []).map(String));
+        next.startingXI = next.startingXI.filter((id) => called.has(String(id)));
+      }
       delete next.jersey;
       delete next.socks;
       return next;
@@ -28726,16 +28793,14 @@
     // nothing leaves a placeholder behind in that case.
     hydrateRoBoards();
 
-    // Staff matchday card navigation
-    $$('[data-go-staff-match]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        if (e.target.closest('a')) return;
-        detailMatchId = Number(el.dataset.goStaffMatch);
-        detailMatchFrom = 'staff-matchday';
-        currentPage = 'match-detail';
-        renderPage(getSession());
-      });
-    });
+    /* The `[data-go-staff-match]` binder stood here until v202. It was the
+       only thing that ever set `detailMatchFrom = 'staff-matchday'`, and
+       nothing had emitted that attribute since v186 folded the staff
+       matchday page into the calendar — so it bound to no element, while
+       the value it existed to set gated every editing control on the match
+       page. Removed rather than left as a hook: a binder for markup that
+       does not exist is a promise the app cannot keep. The page id itself
+       stays in PAGE_ALIASES, where old APK deep links still need it. */
 
     /* Player actions: clamp Minutes inputs (digits only, per-card ceiling).
        `data-max` because a MATCH caps at 100 and a training does not — a
