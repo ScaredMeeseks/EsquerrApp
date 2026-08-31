@@ -472,6 +472,10 @@
     'ev.change':         { ca:'Canvi', es:'Cambio', en:'Substitution' },
     'ev.penal_miss':     { ca:'Penal fallat', es:'Penal fallado', en:'Missed penalty' },
     'ev.post':           { ca:'Pal', es:'Palo', en:'Post' },
+    'ev.assist':         { ca:'Assistència', es:'Asistencia', en:'Assist' },
+    'ev.yellow_second':  { ca:'Segona groga', es:'Segunda amarilla', en:'Second yellow' },
+    'ev.sub_on':         { ca:'Entra', es:'Entra', en:'On' },
+    'ev.sub_off':        { ca:'Surt', es:'Sale', en:'Off' },
     'ev.type_ph':        { ca:'Tipus…', es:'Tipo…', en:'Type…' },
     'ev.player_ph':      { ca:'Jugador…', es:'Jugador…', en:'Player…' },
     'ev.goal_type_ph':   { ca:'Tipus de gol…', es:'Tipo de gol…', en:'Goal type…' },
@@ -1745,7 +1749,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 200;
+  const APP_VERSION = 201;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2293,6 +2297,146 @@
       return false;
     }).length;
   }
+
+  /**
+   * Which booking is a player's first, second, third…
+   *
+   * Returns a Map from the EVENT OBJECT to its ordinal among that
+   * player's yellows, counted by minute. Keyed on the object rather than
+   * `ev.id` because the id is only guaranteed on events the add-form or
+   * the seeder wrote; every caller passes the same array, so identity is
+   * the safer key.
+   *
+   * ⚠ THIS USED TO BADGE THE WRONG CARD. The rule lived inside
+   * matchTimelineHtml, which walks its events sorted DESCENDING by
+   * minute and marked the one where a running count reached the total —
+   * on a descending walk that is the EARLIEST yellow, not the latest. A
+   * player booked at 30' and 70' had the "2" drawn on his 30' card, so
+   * the timeline said he was sent off before his first offence. Counted
+   * by ascending minute here, once, for both callers.
+   */
+  function yellowOrdinals(events) {
+    var byPlayer = {};
+    (events || []).forEach(function (e) {
+      if (!e || e.type !== 'yellow') return;
+      var key = e.side + '_' + (e.playerId || e.playerNumber || '');
+      (byPlayer[key] = byPlayer[key] || []).push(e);
+    });
+    var out = new Map();
+    Object.keys(byPlayer).forEach(function (k) {
+      byPlayer[k]
+        .slice()
+        .sort(function (a, b) { return parseEventMinute(a.minute) - parseEventMinute(b.minute); })
+        .forEach(function (e, i) { out.set(e, i + 1); });
+    });
+    return out;
+  }
+  /**
+   * Every mark OUR players earned in one match, by uid.
+   *
+   * The line-up and the timeline show the same events; this is the join
+   * the line-up was missing. Minutes rather than counts, because a team
+   * sheet prints the minute — "⚽ 23'" says more than "⚽ ×1".
+   *
+   * `ev.side` is POSITIONAL — 'home' or 'away', never "ours" — so the
+   * side we are is derived per match, the way every other consumer does
+   * it. Skipping that would put the opponent's bookings on our players.
+   *
+   * Own goals are deliberately their own list. They are a separate event
+   * type that credits the OTHER side (calcMatchScore), so folding them
+   * in would show a player who put one through his own net as having
+   * scored. `penal_fallat` and `pal` are left out: they feed no summary
+   * anywhere in the app, and a missed penalty on a team sheet is a call
+   * nobody has asked for.
+   */
+  function matchPlayerMarks(m, events) {
+    var ourSide = isOurTeam(m && m.home) ? 'home' : 'away';
+    var ords = yellowOrdinals(events);
+    var out = {};
+    function slot(id) {
+      if (!id) return null;
+      var k = String(id);
+      if (!out[k]) {
+        out[k] = {goals: [], ownGoals: [], assists: [],
+                  yellows: [], red: null, on: null, off: null};
+      }
+      return out[k];
+    }
+    (events || []).forEach(function (e) {
+      if (!e || e.side !== ourSide) return;
+      var min = e.minute || '';
+      if (e.type === 'change') {
+        var pin = slot(e.playerInId);
+        if (pin) pin.on = min;
+        var pout = slot(e.playerOutId);
+        if (pout) pout.off = min;
+        return;
+      }
+      var p = slot(e.playerId);
+      if (!p) return;
+      if (e.type === 'goal') {
+        p.goals.push(min);
+        if (e.goalDetail === 'assistencia' && e.assistPlayerId) {
+          var a = slot(e.assistPlayerId);
+          if (a) a.assists.push(min);
+        }
+      } else if (e.type === 'own_goal') {
+        p.ownGoals.push(min);
+      } else if (e.type === 'yellow') {
+        p.yellows.push({minute: min, ordinal: ords.get(e) || 1});
+      } else if (e.type === 'red') {
+        p.red = min;
+      }
+    });
+    return out;
+  }
+
+  /**
+   * One player's marks as a strip of icons.
+   *
+   * Built from getEventIcon so the team sheet and the timeline cannot
+   * draw the same event differently — it is the only icon source in the
+   * app and stays that way. Order is the order a match happens in:
+   * what he did, then his cards, then his substitution.
+   */
+  function matchMarksHtml(mk) {
+    if (!mk) return '';
+    var bits = [];
+    function mark(ev, label, ord) {
+      bits.push('<span class="pm-mark" title="' + sanitize(label) + '">' +
+        getEventIcon(ev, ord || 0) +
+        '<span class="pm-min">' + sanitize(formatEventMinute(ev.minute)) + '</span></span>');
+    }
+    mk.goals.forEach(function (min) {
+      mark({type: 'goal', minute: min}, t('ev.goal'));
+    });
+    mk.ownGoals.forEach(function (min) {
+      mark({type: 'own_goal', minute: min}, t('ev.own_goal'));
+    });
+    mk.assists.forEach(function (min) {
+      bits.push('<span class="pm-mark" title="' + sanitize(t('ev.assist')) + '">' +
+        '<img src="img/assist.png" class="ev-sub-img" alt="">' +
+        '<span class="pm-min">' + sanitize(formatEventMinute(min)) + '</span></span>');
+    });
+    mk.yellows.forEach(function (y) {
+      mark({type: 'yellow', minute: y.minute},
+        y.ordinal >= 2 ? t('ev.yellow_second') : t('ev.yellow'), y.ordinal);
+    });
+    if (mk.red) mark({type: 'red', minute: mk.red}, t('ev.red'));
+    /* The sub arrows are the one thing getEventIcon cannot give us: its
+       'change' icon is a single glyph for the whole swap, and a team
+       sheet needs to say which END of that swap this player was. */
+    if (mk.on) {
+      bits.push('<span class="pm-mark pm-on" title="' + sanitize(t('ev.sub_on')) + '">▲' +
+        '<span class="pm-min">' + sanitize(formatEventMinute(mk.on)) + '</span></span>');
+    }
+    if (mk.off) {
+      bits.push('<span class="pm-mark pm-off" title="' + sanitize(t('ev.sub_off')) + '">▼' +
+        '<span class="pm-min">' + sanitize(formatEventMinute(mk.off)) + '</span></span>');
+    }
+    return bits.length ? '<span class="pm-marks">' + bits.join('') + '</span>' : '';
+  }
+
   /* Resolve the display name for one slot of a match event (scorer, assister,
      player in/out). Order: live squad member → name snapshot → shirt number.
 
@@ -9811,28 +9955,19 @@
     const sorted = events.slice().sort(function(a, b) { return parseEventMinute(b.minute) - parseEventMinute(a.minute); });
     let timelineHtml = '';
     if (sorted.length) {
-      // Track yellow counts per player to detect 2nd yellow
-      const yellowCounts = {};
-      // First pass: count all yellows per player
-      events.forEach(function(e) {
-        if (e.type !== 'yellow') return;
-        var key = e.side + '_' + (e.playerId || e.playerNumber);
-        yellowCounts[key] = (yellowCounts[key] || 0) + 1;
-      });
-      // Second pass: track running count for rendering
-      const yellowSeen = {};
+      /* Which booking is a player's second is yellowOrdinals' business —
+         the line-up needs the same answer, and two copies of a rule this
+         fiddly is how the timeline and the team sheet come to disagree
+         about who was sent off.
+
+         It also fixes what was here: a running count taken over a list
+         sorted DESCENDING by minute reached the total on the EARLIEST
+         yellow, so a player booked at 30' and 70' had the "2" drawn on
+         his 30' card. */
+      const yellowOrd = yellowOrdinals(events);
 
       timelineHtml = '<div class="ev-timeline">' + sorted.map(function(ev) {
-        var key = ev.side + '_' + (ev.playerId || ev.playerNumber);
-        var ycForIcon = 0;
-        if (ev.type === 'yellow') {
-          yellowSeen[key] = (yellowSeen[key] || 0) + 1;
-          // Reverse order since sorted desc — 2nd yellow is the one with higher minute
-          // Actually we need ordinal among this player's yellows. Use total count.
-          ycForIcon = yellowCounts[key] >= 2 && yellowSeen[key] === yellowCounts[key] ? 2 : 1;
-        }
-
-        var icon = getEventIcon(ev, ycForIcon);
+        var icon = getEventIcon(ev, yellowOrd.get(ev) || 0);
         var name = getEventPlayerName(ev, users);
         var min = formatEventMinute(ev.minute);
 
@@ -10152,7 +10287,7 @@
    * A squad with no XI recorded falls through to one "Convocats" list rather
    * than an empty "Alineació" heading.
    */
-  function mnLineupChipsHtml(m, users) {
+  function mnLineupChipsHtml(m, users, events) {
     var sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     var entry = sentData[m.id];
     var ids = entry ? (Array.isArray(entry) ? entry : (entry.players || [])) : [];
@@ -10172,6 +10307,12 @@
     /* One column of players, top to bottom, goalkeeper first — `players` is
        already sorted by posRankGlobal and POS_ORDER starts at 'GK'. A team
        sheet is read down the spine of the team, not across a wrap. */
+    /* Same derivation the match page uses, on THIS leg's events — the
+       briefing shows the first leg inside the second, so the events have
+       to travel with the match rather than be looked up from whatever
+       page is open. */
+    var marks = (events && events.length) ? matchPlayerMarks(m, events) : null;
+
     function column(label, list, cls) {
       if (!list.length) return '';
       return '<div class="mn-squad-col">' +
@@ -10180,7 +10321,8 @@
         '<div class="mn-players">' + list.map(function (p) {
           return '<span class="mn-chip' + cls + '">' +
             '<span class="mn-chip-num">' + sanitize(p.playerNumber || '—') + '</span>' +
-            '<span class="mn-chip-name">' + sanitize(p.name) + '</span></span>';
+            '<span class="mn-chip-name">' + sanitize(p.name) + '</span>' +
+            (marks ? matchMarksHtml(marks[String(p.id)]) : '') + '</span>';
         }).join('') + '</div>' +
       '</div>';
     }
@@ -10226,7 +10368,8 @@
 
     var cols = [
       mnScoreBlockHtml(first) + matchTimelineHtml(first, events, users, false),
-      mnLineupChipsHtml(first, users),
+      // The FIRST leg's events, which is whose line-up this is.
+      mnLineupChipsHtml(first, users, events),
       (note ? mnTextRoHtml(note.pre && note.pre.text, t('mn.pre')) : '') +
         (note ? mnTextRoHtml(note.post && note.post.text, t('mn.post')) : '')
     ];
@@ -10600,15 +10743,44 @@
         const startingXI = getStartingXI(m.id);
         const starterCount = startingXI.length;
         const showStarterInfo = isStaff || isPast; // staff always, players only after kickoff
-        const rows = calledPlayers.map(p => {
+        /* Marks are drawn once the match has EVENTS, not once the clock
+           says it started. A fixture logged days later still reads
+           correctly, and a match that kicked off ten minutes ago does not
+           sprout an empty Titulars/Suplents split. */
+        const detailEvents = getMatchEvents(m.id);
+        const marks = detailEvents.length ? matchPlayerMarks(m, detailEvents) : null;
+        const playerRow = (p) => {
           const pid = String(p.id);
           const isStarter = startingXI.some(function(id) { return String(id) === pid; });
           const starterCls = (showStarterInfo && isStarter) ? ' detail-player-starter' : '';
+          /* The ★ is the ONLY thing that says "starter" in the flat list.
+             Once the rows are grouped under their own heading it would be
+             saying it twice, so it stays for the ungrouped case only. */
           const toggleBtn = isStaff
             ? `<button class="starter-toggle${isStarter ? ' starter-active' : ''}" data-player-id="${pid}" data-match-id="${m.id}" title="${isStarter ? 'Treure de titulars' : 'Afegir a titulars'}"></button>`
-            : (showStarterInfo && isStarter ? '<span class="starter-badge">★</span>' : '');
-          return `<div class="detail-player${starterCls}">${toggleBtn}<span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '—')}</span></div>`;
-        }).join('');
+            : (!marks && showStarterInfo && isStarter ? '<span class="starter-badge">★</span>' : '');
+          return `<div class="detail-player${starterCls}">${toggleBtn}<span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '—')}</span>${marks ? matchMarksHtml(marks[pid]) : ''}</div>`;
+        };
+        let rows;
+        if (marks) {
+          /* ⚠ INTERSECTED with the called-up list, not read straight off
+             startingXI. convSentEntry() overwrites `players` and never
+             re-filters the XI, so a player dropped from the call-up is
+             still in it — the flat list simply never drew him, and
+             grouping by XI would turn that into a ghost row under
+             Titulars. Same reason `Titulars: 12/11` is reachable today. */
+          const starters = calledPlayers.filter(p =>
+            startingXI.some(id => String(id) === String(p.id)));
+          const bench = calledPlayers.filter(p =>
+            !startingXI.some(id => String(id) === String(p.id)));
+          const group = (label, list) => list.length
+            ? `<div class="detail-lineup-group">${sanitize(label)} <span class="conv-count">${list.length}</span></div>` +
+              list.map(playerRow).join('')
+            : '';
+          rows = group(t('mn.lineup'), starters) + group(t('mn.subs'), bench);
+        } else {
+          rows = calledPlayers.map(playerRow).join('');
+        }
         let starterHeader = '';
         if (isStaff) {
           const warnCls = starterCount === 11 ? 'starter-count-ok' : (starterCount > 11 ? 'starter-count-over' : 'starter-count-under');

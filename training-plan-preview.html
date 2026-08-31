@@ -3654,6 +3654,48 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .detail-player:last-child { border-bottom: none; }
 .detail-player-name { flex: 1; font-weight: 600; }
 .detail-player-num { color: var(--text-secondary); font-size: .82rem; font-weight: 600; }
+
+/* ── A past line-up: Titulars / Suplents, and what each player did ──
+   The group heading is what says "starter" once the rows are grouped, so
+   the ★ badge stands down there — saying it twice in a list this narrow
+   is noise. `.detail-player-starter` was applied for a long time with no
+   rule anywhere; it finally has one. */
+.detail-lineup-group {
+  font-size: .72rem; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary);
+  margin: .9rem 0 .3rem; display: flex; align-items: center; gap: .4rem;
+}
+.detail-lineup-group:first-of-type { margin-top: .2rem; }
+.detail-player-starter .detail-player-name { color: var(--primary-dark); }
+
+/* The marks strip. `flex-wrap` because a busy player — goal, assist,
+   booking, subbed off — is four marks on a 220px panel, and wrapping
+   under the name beats an overflow nobody can scroll. */
+.pm-marks {
+  display: inline-flex; align-items: center; flex-wrap: wrap;
+  gap: .3rem; margin-left: auto;
+}
+.pm-mark {
+  display: inline-flex; align-items: center; gap: .1rem;
+  font-size: .7rem; color: var(--text-secondary); white-space: nowrap;
+}
+/* The event icons are sized for the timeline; a team-sheet row is
+   tighter, so they come down here rather than everywhere. */
+.pm-mark .ev-sub-img { width: 14px; height: 14px; }
+.pm-mark .ev-yellow-badge {
+  width: 9px; height: 9px; font-size: .4rem; top: -4px; right: -4px;
+}
+.pm-min { font-variant-numeric: tabular-nums; }
+/* Green on, red off — the two arrows are the only marks whose MEANING is
+   in the colour rather than the icon. */
+.pm-on { color: var(--success, #2e7d32); font-weight: 700; }
+.pm-off { color: var(--danger, #e53935); font-weight: 700; }
+
+/* Chip form, in the anada briefing. The chip is already a pill, so the
+   marks tuck inside it rather than trailing off the end. */
+.mn-chip .pm-marks { margin-left: .35rem; gap: .2rem; }
+.mn-chip .pm-mark { font-size: .65rem; }
+.mn-chip .pm-mark .ev-sub-img { width: 12px; height: 12px; }
 .detail-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1.2rem;
