@@ -827,6 +827,10 @@
     'tactics.new_board':     { ca:'Pissarra nova', es:'Pizarra nueva', en:'New board' },
     'tactics.view_2d':       { ca:'Vista 2D', es:'Vista 2D', en:'2D view' },
     'tactics.view_3d':       { ca:'Vista 3D', es:'Vista 3D', en:'3D view' },
+    'tactics.ro_3d':         { ca:'Veure en 3D', es:'Ver en 3D', en:'View in 3D' },
+    'tactics.ro_play':       { ca:'Reprodueix / pausa', es:'Reproducir / pausa', en:'Play / pause' },
+    'tactics.ro_stop':       { ca:'Atura i torna a l\'inici', es:'Parar y volver al inicio', en:'Stop and rewind' },
+    'tactics.ro_3d_close':   { ca:'Tanca la vista 3D', es:'Cerrar la vista 3D', en:'Close the 3D view' },
     'tactics.orientation':   { ca:'Orientació', es:'Orientación', en:'Orientation' },
     'tactics.select':        { ca:'Selecciona', es:'Seleccionar', en:'Select' },
     'tactics.number':        { ca:'Dorsal', es:'Dorsal', en:'Number' },
@@ -1741,7 +1745,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 199;
+  const APP_VERSION = 200;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6666,6 +6670,37 @@
 
   // ---- Read-only board helper (shared by match-detail & convocatòria) ----
   let _roBoardIdx = 0;
+  /* The payloads behind the read-only boards on screen, by field id.
+     JS-side rather than another `data-` attribute: the 3D overlay needs
+     the pitch, the board type and — for a board with only one frame —
+     the whole static state, and `data-frames` is already a serialised
+     copy of every drawing layer per frame, held twice over wherever the
+     inline row and the ⤢ overlay show the same board. One more
+     attribute of the same shape is weight nothing reads until a button
+     is pressed.
+
+     `_roBoardIdx` never resets, so this would grow for the life of the
+     tab. Pruned lazily against the DOM instead of on a timer — a render
+     is the only thing that can orphan an entry. */
+  let _roBoards = {};
+  /* Kept out of the prune: the ids minted most recently.
+
+     An entry is remembered while the HTML STRING is being built, which
+     is before any of it reaches the document — so "not in the DOM" is
+     true of every board in the batch currently being assembled, and a
+     prune that fired mid-batch would delete the very payloads about to
+     be inserted. Only ids older than this many are ever candidates. */
+  const RO_KEEP = 64;
+  function _roRemember(bid, board) {
+    _roBoards[bid] = board;
+    const keys = Object.keys(_roBoards);
+    if (keys.length <= 240) return;
+    keys.forEach(k => {
+      const n = parseInt(k.slice('ro-board-'.length), 10);
+      if (!(_roBoardIdx - n > RO_KEEP)) return;   // too new to judge
+      if (!document.getElementById(k)) delete _roBoards[k];
+    });
+  }
   /* ═══════════════════════════════════════════════════════════
      Field palettes — the ONE table, used by both views.
 
@@ -6837,10 +6872,35 @@
     return _webglOk;
   }
 
+  /** Running inside the Capacitor shell rather than a browser? */
+  function tbNativeShell() {
+    return typeof Capacitor !== 'undefined' &&
+        Capacitor.isNativePlatform && Capacitor.isNativePlatform();
+  }
+
+  /**
+   * Can this client show a 3D board AT ALL?
+   *
+   * Three conditions, and the third is the one that was missing. The APK
+   * bundles neither `vendor/three` nor `board3d.js` — build-www.js denies
+   * both, deliberately, because 733 KB of library on a phone that would
+   * never load it is dead weight. But an Android WebView passes the WebGL
+   * probe, so `clubFeature && tbWebglOk` said yes on a premium club's
+   * phone and the toggle appeared: pressing it rewrote the specifier
+   * against a `vendor/` that is not in the bundle and landed on
+   * "tactics.load_3d_failed".
+   *
+   * ONE predicate, used by the editor toggle, the hamburger entry and the
+   * read-only button alike — three copies of a three-clause condition is
+   * how the fourth copy comes to be missing a clause.
+   */
+  function tbCan3D() {
+    return clubFeature('board3d') && tbWebglOk() && !tbNativeShell();
+  }
+
   /** Is the 3D view the one showing? */
   function tbIs3D() {
-    return localStorage.getItem('fa_tactic_view_3d') === '1'
-        && clubFeature('board3d') && tbWebglOk();
+    return localStorage.getItem('fa_tactic_view_3d') === '1' && tbCan3D();
   }
 
   /**
@@ -7142,7 +7202,7 @@
            club without the premium feature has nothing to switch to,
            and an entry reading "2D" while you are already looking at
            2D is a button that appears to do nothing. */
-        ((clubFeature('board3d') && tbWebglOk())
+        (tbCan3D()
           ? entry('view', '<span class="tb-m-2d3d">' + (tbIs3D() ? '2D' : '3D') + '</span>',
               t(tbIs3D() ? 'tactics.view_2d' : 'tactics.view_3d'), false)
           : '') +
@@ -8019,10 +8079,14 @@
     }, 2600));
   }
 
+  /** The camera menu's listeners, as one thing that can be revoked. */
+  var _tb3dCamAbort = null;
+
   /** Tear down the 3D view. Safe to call when there is none. */
   function tbDestroy3D() {
     if (_tb3d) { try { _tb3d.destroy(); } catch (e) { /* already gone */ } }
     _tb3d = null;
+    if (_tb3dCamAbort) { _tb3dCamAbort.abort(); _tb3dCamAbort = null; }
     tbDrawSurface(false);
   }
 
@@ -8226,9 +8290,26 @@
     return _board3dMod;
   }
 
-  async function tbMount3D(hooks) {
-    if (!document.getElementById('tb-3d-wrap')) return;
+  /**
+   * Mount the 3D scene into #tb-3d-wrap.
+   *
+   * `providers` exists so a READ-ONLY board can be shown in 3D. The
+   * editor's state lives in the localStorage scratch keys, which is what
+   * every default below reads; a saved board's state lives in its own
+   * payload and has never been near localStorage. Widened rather than
+   * forked — two mount functions is two places for the options object to
+   * drift, and the options object is the whole contract with board3d.js.
+   * Editor callers pass nothing and are unchanged.
+   */
+  async function tbMount3D(hooks, providers) {
     hooks = hooks || {};
+    const P = providers || {};
+    /* NOT hardcoded any more, because `tbEditorOpen()` is literally
+       "does #tb-3d-wrap exist". A read-only overlay borrowing that id
+       would tell the training page it has a board editor on it, and
+       tbFit2DBoard / tbSize3DWindow / tbBindViewGestures all believe it. */
+    const wrapId = P.wrapId || 'tb-3d-wrap';
+    if (!document.getElementById(wrapId)) return;
     try {
       const mod = await tbLoad3D();
       /* RE-QUERY AFTER THE AWAIT. The module used to be a local file,
@@ -8240,7 +8321,7 @@
          the whole scene inside an orphan and left the live board
          sitting on "Carregant pissarra 3D" for ever, which is exactly
          what a first load looked like. */
-      const wrap = document.getElementById('tb-3d-wrap');
+      const wrap = document.getElementById(wrapId);
       if (!wrap) return;          // left the board while it loaded
       /* Remove only the loading message. innerHTML='' would take the
          reset button and the hint with it — they are siblings of the
@@ -8256,12 +8337,18 @@
         getTheme: tbThemeName,
         fillCss: fillCss,
         parseFill: parseFill,
-        getPitch: () => BS.readJson(localStorage, BS.KEYS.pitch, null),
+        getPitch: P.getPitch || (() => BS.readJson(localStorage, BS.KEYS.pitch, null)),
         /* ALWAYS the unrotated board. Orientation is a 2D affordance
            for a fixed camera; in 3D the camera orbits, so rotating the
            world as well would just mean two controls fighting. */
-        getBoardType: () => localStorage.getItem('fa_tactic_board_type') || 'full',
-        getState: tb3dState,
+        getBoardType: P.getBoardType ||
+            (() => localStorage.getItem('fa_tactic_board_type') || 'full'),
+        getState: P.getState || tb3dState,
+        /* The option board3d.js has always accepted and nothing ever
+           passed — "true for playback-only surfaces". It disables the
+           drag, select and context handlers inside the scene, which is
+           exactly right for a board nobody may edit from here. */
+        readOnly: !!P.readOnly,
         /* A 3D drag moves the 2D ELEMENT and then runs the editor's own
            save path. It used to write the scratch key directly, which
            looked right and lost the drag: autoSaveFrame() calls
@@ -8305,6 +8392,16 @@
       const cams = document.getElementById('tb-3d-cams');
       const camsBtn = document.getElementById('tb-cams-btn');
       if (cams && camsBtn) {
+        /* Every listener below hangs off ONE controller, aborted by
+           tbDestroy3D. The document-level one at the end used to outlive
+           its menu: the editor mounts once per visit and it barely
+           showed, but the read-only overlay mounts and tears down on
+           every press, and each dead handler kept its own `cams`. That
+           is the stale-closure trap the tb-ro-play double-binding taught,
+           arriving from the other direction. */
+        if (_tb3dCamAbort) _tb3dCamAbort.abort();
+        _tb3dCamAbort = new AbortController();
+        const sig = _tb3dCamAbort.signal;
         const openCams = (on) => {
           cams.classList.toggle('tb-cams-open', on);
           camsBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
@@ -8312,7 +8409,7 @@
         camsBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           openCams(!cams.classList.contains('tb-cams-open'));
-        });
+        }, {signal: sig});
         if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
           /* With a grace period, like the hamburger's. The container is
              transparent to the pointer so it stops eating the board,
@@ -8325,11 +8422,11 @@
           let camLeave = null;
           cams.addEventListener('pointerenter', () => {
             clearTimeout(camLeave); openCams(true);
-          });
+          }, {signal: sig});
           cams.addEventListener('pointerleave', () => {
             clearTimeout(camLeave);
             camLeave = setTimeout(() => openCams(false), 260);
-          });
+          }, {signal: sig});
         }
         cams.addEventListener('click', (e) => {
           const btn = e.target.closest('.tb-cam-btn');
@@ -8337,10 +8434,10 @@
           if (btn.dataset.cam === 'reset') _tb3d.resetCamera();
           else _tb3d.setPreset(btn.dataset.cam);
           openCams(false);          // "The icons disappear after click."
-        });
+        }, {signal: sig});
         document.addEventListener('pointerdown', (e) => {
           if (!cams.contains(e.target)) openCams(false);
-        });
+        }, {signal: sig});
       }
     } catch (err) {
       /* A failed import is the likeliest real-world failure — offline,
@@ -8352,7 +8449,7 @@
          that the module comes over the network, and writing the
          message into a detached element leaves the board claiming it
          is still loading. */
-      const live = document.getElementById('tb-3d-wrap');
+      const live = document.getElementById(wrapId);
       if (live) {
         live.innerHTML = '<div class="tb-3d-loading">' +
             sanitize(t('tactics.load_3d_failed')) + '</div>';
@@ -8451,8 +8548,27 @@
     return 'max-width:' + tbFieldWidthPx(pitch, boardType, vertical) + 'px;';
   }
 
-  function renderReadOnlyBoard(b, prefix) {
+  /**
+   * @param thin  When the drawing came from the session's fat copy rather
+   *              than the real payload, the ref it came from. The board is
+   *              drawn anyway — instantly, no placeholder flash — but marked
+   *              so hydrateRoBoards() comes back and replaces it with the
+   *              full thing. See tbRoBoardHtml for what the fat copy lacks.
+   * @param key   A STABLE identity for this board on this surface, surviving
+   *              a re-render. `_roBoardIdx` mints a fresh `ro-board-N` every
+   *              time, so the element id cannot answer "is this the same
+   *              board I was just playing?" — and stdRefreshPlan replaces the
+   *              whole panel on every exercise expand. Only callers that can
+   *              name the instance pass one; the rest go without and simply
+   *              do not survive a refresh, which is what they did before.
+   */
+  function renderReadOnlyBoard(b, prefix, thin, key) {
     const bid = 'ro-board-' + (++_roBoardIdx);
+    _roRemember(bid, b);
+    const thinAttr = thin ? ' data-ro-thin="' + sanitize(thin.boardId || '') +
+      '" data-ro-prefix="' + sanitize(prefix) +
+      '" data-ro-name="' + sanitize(thin.name || '') + '"' : '';
+    const keyAttr = key ? ' data-ro-key="' + sanitize(key) + '"' : '';
     let fCls = 'tb-field tb-field-readonly';
     if (b.boardType === 'half') fCls += ' tb-half';
     else if (b.boardType === 'area') fCls += ' tb-area';
@@ -8480,7 +8596,16 @@
     const roShowOpp = b.showOpp !== false;
     const srcOpp = ('oppPositions' in src) ? src.oppPositions : (b.oppPositions || null);
 
-    function buildCircles(pos, nums, colors, baseColor) {
+    /* `cls` is NOT decoration. The animation path writes
+       `tb-circle tb-circle-opp` for the opposition, and both
+       applyRoFrame and interpolateRo key on
+       `.tb-circle:not(.tb-circle-opp)` to tell the sides apart. The
+       static render used to stamp a bare `tb-circle` on BOTH, so that
+       selector matched all twenty-two and the two sides shared their
+       data-idx values. It happened to survive because applyRoFrame
+       rebuilds both sets before anything reads the map — a landmine,
+       not a design. */
+    function buildCircles(pos, nums, colors, baseColor, cls) {
       const GK_C = '#f5c842';
       return (pos || []).map((p, i) => {
         if (!p) return ''; // null = deleted circle slot
@@ -8488,14 +8613,14 @@
         const isGk = num === '1';
         // GK gold first, then the player's own fill, then the team's.
         const css = fillCss(isGk ? GK_C : ((colors && colors[i]) || baseColor));
-        return '<div class="tb-circle" data-idx="' + i + '" style="left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + css.background + ';border-color:' + css.borderColor + ';">' +
+        return '<div class="' + cls + '" data-idx="' + i + '" style="left:' + p[0] + '%;top:' + p[1] + '%;pointer-events:none;background:' + css.background + ';border-color:' + css.borderColor + ';">' +
           '<span class="tb-num" style="pointer-events:none;display:flex;align-items:center;justify-content:center;color:' + css.fg + ';text-shadow:' + (css.fgShadow || 'none') + ';">' + sanitize(num) + '</span></div>';
       }).join('');
     }
     const hasRealNums = function(arr) { return arr && arr.some(function(n) { return n; }); };
-    const circles = buildCircles(src.positions, (hasRealNums(b.numbers) ? b.numbers : src.numbers), src.colors, tc);
+    const circles = buildCircles(src.positions, (hasRealNums(b.numbers) ? b.numbers : src.numbers), src.colors, tc, 'tb-circle');
     const srcOppColors = ('oppColors' in src) ? src.oppColors : (b.oppColors || null);
-    const oppCircles = (roShowOpp && srcOpp) ? buildCircles(srcOpp, (hasRealNums(b.oppNumbers) ? b.oppNumbers : src.oppNumbers), srcOppColors, oc) : '';
+    const oppCircles = (roShowOpp && srcOpp) ? buildCircles(srcOpp, (hasRealNums(b.oppNumbers) ? b.oppNumbers : src.oppNumbers), srcOppColors, oc, 'tb-circle tb-circle-opp') : '';
     const srcBalls = src.balls || (src.ballPos ? [src.ballPos] : []);
     const ballHtml = srcBalls.map((bp,bi) => { if (!bp) return ''; return '<div class="tb-ball" data-idx="' + bi + '" style="left:' + bp[0] + '%;top:' + bp[1] + '%;pointer-events:none;"></div>'; }).join('');
     function buildSvgContent(arrows, rects, penLines, pfx) {
@@ -8511,7 +8636,28 @@
     const svgHtml = buildSvgContent(staticArrows, staticRects, staticPenLines, prefix + bid + '-');
     const staticTexts = ('texts' in b) ? b.texts : (src.texts || []);
     const textsHtml = staticTexts.map(t => { const c=t[3]||'#000000'; const o=t[4]!=null?t[4]:0.8; const w=t[5]?'width:'+t[5]+'px;':''; const h=t[6]?'height:'+t[6]+'px;':''; const fs=t[7]?'font-size:'+t[7]+'px;':''; return '<div class="tb-text-label" style="left:'+t[0]+'%;top:'+t[1]+'%;pointer-events:none;background:rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+parseInt(c.slice(5,7),16)+','+o+');color:'+textColorFor(c)+';'+w+h+fs+'">'+sanitize(t[2])+'</div>'; }).join('');
-    const playBtnH = hasFrames ? '<button class="tb-ro-play" data-ro-board="' + bid + '" title="Play animation"></button>' : '';
+    const playBtnH = hasFrames ? '<button class="tb-ro-play" data-ro-board="' + bid +
+      '" title="' + sanitize(t('tactics.ro_play')) + '"></button>' : '';
+    /* The stop, beside the pause rather than instead of it. Present in
+       the markup whenever there is an animation, but only VISIBLE once
+       one is running or paused — a stop on a board that is sitting on
+       frame 0 does nothing and only crowds the corner. `.tb-ro-live` on
+       the field is what reveals it. */
+    const stopBtnH = hasFrames ? '<button class="tb-ro-stop" data-ro-board="' + bid +
+      '" title="' + sanitize(t('tactics.ro_stop')) + '"></button>' : '';
+    /* Not gated on hasFrames: a single-frame board is a shape, and a
+       shape is worth walking around. Gated on tbCan3D() alone, so a
+       club without the feature — and every phone — renders no button
+       rather than one that explains itself. */
+    const view3dH = tbCan3D() ? '<button class="tb-ro-3d" data-ro-board="' + bid +
+      '" title="' + sanitize(t('tactics.ro_3d')) + '">3D</button>' : '';
+    /* ONE STRIP, laid out by flex, rather than three buttons each with
+       its own `right:` computed from the others' widths. The stop
+       appears and disappears with the animation, so any such offset
+       would have to be recomputed on every play and pause — and the 3D
+       puck would visibly jump sideways when it did. */
+    const ctlH = (playBtnH || stopBtnH || view3dH)
+      ? '<div class="tb-ro-ctl">' + view3dH + stopBtnH + playBtnH + '</div>' : '';
     // Merge base board rects/arrows/numbers into frames that lack them so shapes & numbers persist during animation
     // Numbers are shared across all frames — always prefer base board numbers (b.numbers)
     const baseNums = hasRealNums(b.numbers) ? b.numbers : null;
@@ -8530,16 +8676,22 @@
       arrows: ('arrows' in f) ? f.arrows : (b.arrows || []),
       texts: ('texts' in f) ? f.texts : (b.texts || []),
       penLines: ('penLines' in f) ? f.penLines : (b.penLines || []),
-      cones: ('cones' in f) ? f.cones : []
+      /* Falls back to the BOARD's cones, like every layer above it.
+         It used to fall back to `[]`, alone among the eight, so a board
+         whose cones were drawn on the base rather than captured into
+         each frame showed them until you pressed play and then lost
+         them — the static render draws `src.cones`, the animation drew
+         none. */
+      cones: ('cones' in f) ? f.cones : (b.cones || [])
     })) : [];
     const framesAttr = hasFrames ? " data-frames='" + sanitize(JSON.stringify(framesForAnim)).replace(/'/g, '&#39;') + "'" : '';
-    return '<div style="margin-bottom:1rem;"><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + (b.formation ? ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span>' : '') + '</div>' +
-      '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner" style="' +
+    return '<div style="margin-bottom:1rem;"' + thinAttr + '><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + (b.formation ? ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span>' : '') + '</div>' +
+      '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + keyAttr + ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner" style="' +
       /* Always horizontal: a read-only board never gets the .tb-vertical
          class, so it must not inherit the editor's orientation. */
       tbFieldInnerStyle(b.pitch, b.boardType, false) + '">' +
       tbMarkingsHtml(b.pitch, b.boardType, false) +
-      circles + oppCircles + ballHtml + svgHtml + textsHtml + playBtnH +
+      circles + oppCircles + ballHtml + svgHtml + textsHtml + ctlH +
       ((src.cones && src.cones.length) ? src.cones.map(c => '<div class="tb-cone" style="left:' + c[0] + '%;top:' + c[1] + '%;pointer-events:none;"></div>').join('') : '') +
       (b.silhouette ? '<img class="tb-silhouette" src="img/sil-' + b.silhouette + '.png" alt="" style="display:block;pointer-events:none;">' : '') +
       '</div></div></div>';
@@ -8558,6 +8710,24 @@
    * every entry has its own drawing, so nothing ever renders asynchronously
    * and the pages look exactly as they did. The placeholder path only comes
    * alive once the fat copy stops being written.
+   *
+   * ⚠ THE FAT COPY IS NOT THE WHOLE BOARD. tbSessionRef builds it with
+   * `delete fat.frames` and `delete fat.penLines` — an animation is the
+   * biggest thing a board carries and duplicating it into every session
+   * that links the board is what those deletes avoid. So case 2 draws a
+   * board with NO ANIMATION AND NO PEN STROKES, and nothing about it looks
+   * unfinished: the players are there, the arrows are there, and the ▶ is
+   * simply absent, because `frames.length > 1` is false.
+   *
+   * That is why playback appeared to be "broken everywhere". It was not the
+   * loop — a board whose payload happened to be cached played correctly.
+   * Every other board never offered the button at all, and because case 2
+   * returns something truthy, no placeholder was emitted and hydration
+   * never came back for it either.
+   *
+   * `thin` says which case answered, so the caller can draw the fat copy
+   * at once — no placeholder flash, the reason case 2 exists — and still
+   * ask for the real payload afterwards.
    */
   function tbResolveRef(ref) {
     if (!ref) return null;
@@ -8568,6 +8738,17 @@
     }
     if (ref.positions || ref.formation) return ref;
     return null;
+  }
+
+  /**
+   * Is this drawing the session's abridged copy rather than the real one?
+   *
+   * Only worth hydrating when there is an id to hydrate FROM. An entry
+   * written before references existed carries its whole drawing and has no
+   * boardId — that one is not thin, it is all there is.
+   */
+  function tbRefIsThin(ref, board) {
+    return !!(ref && ref.boardId && board === ref);
   }
 
   /**
@@ -8593,12 +8774,16 @@
   }
 
   /** One read-only board, or a placeholder to be filled in after render. */
-  function tbRoBoardHtml(ref, prefix) {
+  function tbRoBoardHtml(ref, prefix, key) {
     const board = tbResolveRef(ref);
-    if (board) return renderReadOnlyBoard(board, prefix);
+    if (board) {
+      return renderReadOnlyBoard(board, prefix,
+          tbRefIsThin(ref, board) ? ref : null, key);
+    }
     return '<div class="tb-ro-skeleton" data-ro-id="' + sanitize(ref.boardId || '') +
       '" data-ro-prefix="' + sanitize(prefix) + '" data-ro-name="' +
-      sanitize(ref.name || '') + '">' + sanitize(t('tactics.loading')) + '</div>';
+      sanitize(ref.name || '') + '" data-ro-key="' + sanitize(key || '') + '">' +
+      sanitize(t('tactics.loading')) + '</div>';
   }
 
   /**
@@ -8606,18 +8791,39 @@
    * boards rather than one per board.
    */
   async function hydrateRoBoards() {
-    const nodes = Array.from(document.querySelectorAll('.tb-ro-skeleton'));
+    /* TWO kinds of node, and the second is the one that was missing.
+
+       A `.tb-ro-skeleton` has nothing drawn yet. A `[data-ro-thin]` is
+       already a complete-looking board drawn from the session's abridged
+       copy — which carries no frames and no pen strokes, so it renders
+       without a ▶ and without the strokes, and looks finished. It was
+       never collected here, so it stayed that way for the life of the
+       page: that is why the play button was missing everywhere except on
+       a board whose payload some other screen had already cached. */
+    const skeletons = Array.from(document.querySelectorAll('.tb-ro-skeleton'));
+    const thin = Array.from(document.querySelectorAll('[data-ro-thin]'));
+    const nodes = skeletons.concat(thin);
     if (!nodes.length) return;
-    const ids = [...new Set(nodes.map(n => n.dataset.roId).filter(Boolean))];
+    const idOf = (n) => n.dataset.roId || n.dataset.roThin;
+    const ids = [...new Set(nodes.map(idOf).filter(Boolean))];
     if (!ids.length) return;
     await TB.warm(ids);
     let filled = 0;
     nodes.forEach(n => {
-      const board = TB.peek(n.dataset.roId);
+      const board = TB.peek(idOf(n));
       if (!board) return;
+      /* A thin node that is mid-playback must not be yanked out from
+         under the animation. It has no frames, so it cannot be playing —
+         but the board that REPLACES it can be re-rendered later by
+         stdRefreshPlan, and the loop already survives that. Guarding
+         here anyway would need the flag, which lives on the field. */
       const withName = Object.assign({}, board,
         n.dataset.roName ? {name: n.dataset.roName} : {});
-      n.outerHTML = renderReadOnlyBoard(withName, n.dataset.roPrefix || '');
+      /* The key rides through the swap. Losing it here would mean a
+         board that hydrated could no longer be matched across a panel
+         refresh — and hydration is exactly what happens first. */
+      n.outerHTML = renderReadOnlyBoard(withName, n.dataset.roPrefix || '',
+          null, n.dataset.roKey || '');
       filled++;
     });
     // Only the newly inserted nodes need binding, but bindRoBoardAnimations
@@ -8653,12 +8859,67 @@
         if (frames.length < 2) return;
         const tc = fieldEl.dataset.tc || '#ffffff';
         const oc = fieldEl.dataset.oc || '#e53935';
-        const prefix = fieldEl.dataset.prefix || '';
 
-        // If already playing, stop
-        if (fieldEl._roPlaying) { fieldEl._roPlaying = false; btn.classList.remove('playing'); return; }
+        /* PAUSE, not stop.
+           The puck used to reset the board to frame 0, which is the one
+           thing a coach explaining a drill never wants: the moment worth
+           talking about is the one on screen when you stopped. Pressing
+           it now freezes exactly there and the next press carries on from
+           the same point, mid-tween if that is where it was.
+
+           The pause has to be a callback left behind by the RUNNING
+           closure, not a branch here: `fIdx` and the frame's start time
+           live inside that closure, and this click is a different call
+           with no way to see them. */
+        if (fieldEl._roPlaying) {
+          if (fieldEl._roPause) fieldEl._roPause();
+          return;
+        }
+
+        /* MEASURED ONCE, not per tick.
+           `scaleRoField` used to be called at the tail of every
+           interpolation with `innerEl.offsetWidth` read inline — a
+           synchronous layout flush immediately after writing styles,
+           sixty times a second, followed by twenty-odd querySelectorAll
+           sweeps rewriting the width, height, border and font-size of
+           every circle, ball, cone, label, marking and SVG node on the
+           board. A tween MOVES things; it does not resize them. The
+           ResizeObserver in scaleRoBoards() already handles a board that
+           genuinely changes size, so nothing is lost by measuring here. */
+        const roW = innerEl.offsetWidth;
+
+        /* The handles, so stopping actually stops work.
+           `_roPlaying` is the user-facing toggle and stays; it is not a
+           cancel. Without these the pending RAF and the two timeouts run
+           to their next tick whatever the flag says. */
+        let roRaf = 0, roTimer = 0, roEndTimer = 0;
+        function roCancel() {
+          if (roRaf) cancelAnimationFrame(roRaf);
+          clearTimeout(roTimer);
+          clearTimeout(roEndTimer);
+          roRaf = roTimer = roEndTimer = 0;
+        }
+        /* Stop and show frame 0 again. Only ever called while the field
+           is still in the document — the detached path deliberately does
+           not come through here. */
+        function roStop() {
+          roCancel();
+          fieldEl._roPlaying = false;
+          /* A run that ENDED starts again from the top. Only an explicit
+             pause leaves a position behind; reaching the last frame, or
+             being stopped, clears it. */
+          fieldEl._roIdx = 0;
+          fieldEl._roElapsed = 0;
+          fieldEl._roPause = null;
+          btn.classList.remove('playing');
+          // Nothing left to stop, so the stop button goes away with it.
+          fieldEl.classList.remove('tb-ro-live');
+        }
+
         fieldEl._roPlaying = true;
         btn.classList.add('playing');
+        // There is now something to stop, so the stop button appears.
+        fieldEl.classList.add('tb-ro-live');
 
         // Apply a frame state to the read-only board
         function applyRoFrame(f) {
@@ -8774,8 +9035,10 @@
             div.style.cssText = 'left:' + c[0] + '%;top:' + c[1] + '%;pointer-events:none;';
             innerEl.appendChild(div);
           });
-          // Re-apply proportional sizing to new elements
-          scaleRoField(innerEl, innerEl.offsetWidth);
+          /* Re-apply proportional sizing to new elements. This one is
+             unconditional and stays so: applyRoFrame rebuilds the board
+             wholesale, so everything on it is new. */
+          scaleRoField(innerEl, roW);
         }
 
         /* lerp lived here too. BS.tweenTrack owns it now, so this
@@ -8783,6 +9046,11 @@
            between two frames means. */
         function interpolateRo(from, to, t) {
           const GK_C = '#f5c842';
+          /* Did this pass actually CREATE anything? Only then is a
+             restyle owed. Moving a circle changes `left`/`top`, which
+             needs no measurement; spawning one needs the scale factor
+             applied to a node that has never seen it. */
+          let roMade = false;
 
           // --- Team circles: match by stable array index ---
           const fromPos = from.positions || [];
@@ -8825,6 +9093,7 @@
               div.appendChild(span);
               innerEl.appendChild(div);
               circleMap[i] = div;
+              roMade = true;
               return;
             }
 
@@ -8866,6 +9135,7 @@
               div.appendChild(span);
               innerEl.appendChild(div);
               oppMap[i] = div;
+              roMade = true;
               return;
             }
 
@@ -8888,6 +9158,7 @@
               ball.style.cssText = 'pointer-events:none;';
               innerEl.appendChild(ball);
               roBallMap[bi] = ball;
+              roMade = true;
             }
             ball.style.left = pos[0] + '%';
             ball.style.top = pos[1] + '%';
@@ -8901,12 +9172,14 @@
             svg.setAttribute('viewBox', '0 0 100 100');
             svg.setAttribute('preserveAspectRatio', 'none');
             innerEl.appendChild(svg);
+            roMade = true;
           }
           if (svg) {
             const curArrows = svg.querySelectorAll('.tb-arrow');
             const arrKey = tArr.map(a => a.join(',')).join('|');
             const curArrKey = Array.from(curArrows).map(a => [a.getAttribute('x1'),a.getAttribute('y1'),a.getAttribute('x2'),a.getAttribute('y2')].join(',')).join('|');
             if (arrKey !== curArrKey) {
+              roMade = true;
               curArrows.forEach(a => a.remove());
               svg.querySelectorAll('.tb-arrowhead').forEach(p => p.remove());
               tArr.forEach(a => {
@@ -8928,6 +9201,7 @@
             const recKey = tR.map(r => r.join(',')).join('|');
             const curRecKey = Array.from(curRects).map(r => [r.getAttribute('x'),r.getAttribute('y'),r.getAttribute('width'),r.getAttribute('height')].join(',')).join('|');
             if (recKey !== curRecKey) {
+              roMade = true;
               curRects.forEach(r => r.remove());
               tR.forEach(r => {
                 const col = r[4] || '#ffffff';
@@ -8967,6 +9241,7 @@
               lbl.className = 'tb-text-label';
               lbl.style.pointerEvents = 'none';
               innerEl.appendChild(lbl);
+              roMade = true;
             }
             lbl.style.left = textTrack[i][0] + '%';
             lbl.style.top = textTrack[i][1] + '%';
@@ -8983,6 +9258,7 @@
             const penKey = tPen.map(p => p[0]).join('|');
             const curKey = Array.from(curPen).map(p => p.getAttribute('points')).join('|');
             if (penKey !== curKey) {
+              roMade = true;
               curPen.forEach(p => p.remove());
               tPen.forEach(p => {
                 const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
@@ -9000,6 +9276,7 @@
           const coneKey = tCones.map(c => c[0] + ',' + c[1]).join('|');
           const curConeKey = Array.from(curCones).map(c => parseFloat(c.style.left) + ',' + parseFloat(c.style.top)).join('|');
           if (coneKey !== curConeKey) {
+            roMade = true;
             curCones.forEach(c => c.remove());
             tCones.forEach(c => {
               const div = document.createElement('div');
@@ -9008,51 +9285,372 @@
               innerEl.appendChild(div);
             });
           }
-          // Re-scale newly created elements
-          scaleRoField(innerEl, innerEl.offsetWidth);
+          /* Re-scale ONLY if this pass created something. See roW above:
+             this used to run unconditionally on every tick and was the
+             single most expensive thing in the loop. */
+          if (roMade) scaleRoField(innerEl, roW);
         }
 
-        // Apply frame 0
-        applyRoFrame(frames[0]);
-        let fIdx = 0;
+        /* THE BOARD CAN BE REPLACED WHILE IT IS PLAYING, and that is the
+           bug this guard exists for.
+
+           `fieldEl` and its `_roPlaying` flag are resolved once, here, at
+           click time. stdRefreshPlan() rebuilds #std-plan-panel with
+           outerHTML — and every exercise expand, every ⤢ open and close,
+           and every material or duty edit goes through it. The field
+           element is then detached, but a detached node KEEPS its
+           expando: `_roPlaying` was still true, so the loop's only guard
+           never fired and it ran for ever, interpolating against an
+           orphan whose offsetWidth is 0, one leaked loop per board. The
+           user saw a board that played once and reset, because the
+           replacement mounted fresh at frame 0 under a new id.
+
+           `isConnected` is the honest question — is there still a board
+           to draw on — and it is asked FIRST, because on the detached
+           path there is nothing to reset and no button left to un-light.
+           Touching either is what kept the dead loop looking alive. */
+        function roDead() { return !fieldEl.isConnected; }
+
+        /* Published for the stop button, which lives in a different
+           handler and cannot see this closure. It only ever needs the
+           one thing: put frame 0 back on a board that is paused and so
+           has no running loop to do it. Safe to hand out — the stop is
+           only reachable once play has run, so this is always set by
+           the time anything calls it. */
+        fieldEl._roApply = applyRoFrame;
+
+        /* WHERE A PAUSE LEFT OFF, or the beginning.
+           Held on the element rather than in this closure, because the
+           closure ends with the click that started the run. The element
+           is also the right lifetime: stdRefreshPlan replacing the panel
+           throws the position away with the board it belonged to, which
+           is correct — that is a different board object now. */
+        let fIdx = fieldEl._roIdx || 0;
+        let resumeMs = fieldEl._roElapsed || 0;
+        if (fIdx >= frames.length - 1) { fIdx = 0; resumeMs = 0; }
+        fieldEl._roIdx = 0;
+        fieldEl._roElapsed = 0;
+
+        /* Only redraw from scratch when starting from the top. Resuming
+           must NOT applyRoFrame — that snaps to a frame boundary, which
+           is the pause undone. */
+        if (!fIdx && !resumeMs) applyRoFrame(frames[0]);
+
         function playNext() {
+          if (roDead()) { roCancel(); return; }
           if (!fieldEl._roPlaying || fIdx >= frames.length - 1) {
             applyRoFrame(frames[0]);
-            fieldEl._roPlaying = false;
-            btn.classList.remove('playing');
+            roStop();
             return;
           }
           const from = frames[fIdx];
           const to = frames[fIdx + 1];
           const dur = to.duration || 1000;
-          const startT = performance.now();
+          /* Wound back by however far into this frame the pause was, so
+             `now - startT` lands exactly where it stopped. */
+          const startT = performance.now() - Math.min(resumeMs, dur);
+          resumeMs = 0;
+          /* Reassigned every frame: a pause needs THIS frame's index and
+             THIS frame's start, and both change as the animation walks. */
+          fieldEl._roPause = function () {
+            roCancel();
+            fieldEl._roIdx = fIdx;
+            fieldEl._roElapsed = Math.min(performance.now() - startT, dur);
+            fieldEl._roPlaying = false;
+            btn.classList.remove('playing');
+            /* `tb-ro-live` STAYS. A paused board is exactly when the
+               stop is worth having — it is the only way back to the
+               start without watching the rest of the animation. */
+          };
           function animate(now) {
-            if (!fieldEl._roPlaying) { applyRoFrame(frames[0]); btn.classList.remove('playing'); return; }
+            roRaf = 0;
+            if (roDead()) { roCancel(); return; }
+            if (!fieldEl._roPlaying) { applyRoFrame(frames[0]); roStop(); return; }
             const t = Math.min((now - startT) / dur, 1);
             interpolateRo(from, to, t);
             if (t < 1) {
-              requestAnimationFrame(animate);
+              roRaf = requestAnimationFrame(animate);
             } else {
               fIdx++;
               if (fIdx < frames.length - 1) {
                 applyRoFrame(frames[fIdx]);
-                setTimeout(playNext, 0);
+                roTimer = setTimeout(playNext, 0);
               } else {
-                setTimeout(() => {
+                roEndTimer = setTimeout(() => {
+                  roEndTimer = 0;
+                  if (roDead()) { roCancel(); return; }
                   applyRoFrame(frames[0]);
-                  fieldEl._roPlaying = false;
-                  btn.classList.remove('playing');
+                  roStop();
                 }, 1000);
               }
             }
           }
-          requestAnimationFrame(animate);
+          roRaf = requestAnimationFrame(animate);
         }
-        setTimeout(playNext, 200);
+        /* No 200 ms lead-in when resuming — that pause was deliberate and
+           the coach is already talking. */
+        roTimer = setTimeout(playNext, (fIdx || resumeMs) ? 0 : 200);
       });
+    });
+    /* The stop: back to frame 0, whether the board is running or
+       paused. It cannot reach into the play handler's closure, and does
+       not need to — clearing the flags is enough. The running loop
+       reads `_roPlaying` on its next tick, sees it gone, and takes its
+       own reset path; a paused board has no loop to stop, so the reset
+       is done here. Both paths end on frame 0.
+
+       Same per-element guard as the others: stdRefreshPlan() re-binds
+       document-wide after replacing one panel. */
+    document.querySelectorAll('.tb-ro-stop').forEach(btn => {
+      if (btn._roStopBound) return;
+      btn._roStopBound = true;
+      btn.addEventListener('click', () => {
+        const fieldEl = document.getElementById(btn.dataset.roBoard);
+        if (!fieldEl) return;
+        const wasPaused = !fieldEl._roPlaying;
+        fieldEl._roPlaying = false;
+        fieldEl._roIdx = 0;
+        fieldEl._roElapsed = 0;
+        fieldEl._roPause = null;
+        fieldEl.classList.remove('tb-ro-live');
+        const playBtn = fieldEl.querySelector('.tb-ro-play');
+        if (playBtn) playBtn.classList.remove('playing');
+        /* A RUNNING board resets itself on its next tick. A PAUSED one
+           has no tick coming, so it is redrawn here — which is the
+           whole point of the button in that state. */
+        if (!wasPaused) return;
+        const innerEl = fieldEl.querySelector('.tb-field-inner');
+        if (!innerEl) return;
+        let frames = [];
+        try { frames = JSON.parse(fieldEl.dataset.frames || '[]'); } catch (e) { return; }
+        if (!frames.length) return;
+        if (fieldEl._roApply) fieldEl._roApply(frames[0]);
+      });
+    });
+    /* Same document-wide sweep and the same per-element guard as the
+       play button above, for the same reason: stdRefreshPlan() replaces
+       one panel and re-binds everything. */
+    document.querySelectorAll('.tb-ro-3d').forEach(btn => {
+      if (btn._ro3dBound) return;
+      btn._ro3dBound = true;
+      btn.addEventListener('click', () => tbRo3dOpen(btn.dataset.roBoard));
     });
     // Proportional scaling for RO boards (defer to ensure layout is computed)
     requestAnimationFrame(() => requestAnimationFrame(() => scaleRoBoards()));
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     The read-only board in 3D.
+
+     ONE instance at a time, in a full-screen overlay, rather than a
+     2D/3D toggle on each board in place. The training plan can show
+     six boards at once; six WebGL contexts and six copies of a 733 KB
+     module is not a view, it is a stall. The overlay also means the
+     scene is torn down the moment it is closed, so nothing keeps a
+     context alive behind a page the coach has moved on from.
+
+     The 3D module is fetched over a callable and gated server-side —
+     `tbCan3D()` decides whether the button exists at all, so by the
+     time anything here runs the club has the feature and the platform
+     can render it.
+     ═══════════════════════════════════════════════════════════ */
+  var _ro3dEl = null;      // the overlay, while it is up
+  var _ro3dStop = null;    // cancels a running animation
+  var _ro3dPause = null;   // freezes one where it stands, for a later resume
+
+  function tbRo3dOpen(bid) {
+    if (!bid || _ro3dEl) return;
+    const board = _roBoards[bid];
+    if (!board) return;
+    /* Refuse rather than fight. `_tb3d` is module-scoped and there is
+       exactly one, so opening this over a live editor would destroy the
+       editor's scene out from under it. The two never share a page
+       today; this is the assertion that keeps it that way. */
+    if (_tb3d || tbEditorOpen()) return;
+
+    /* The frames as the ANIMATION sees them — the merged copies the
+       field element already carries, not board.frames, so 3D and 2D
+       play exactly the same thing. Falls back to the board itself for a
+       single-frame board, which still gets a scene, just a still one. */
+    let frames = [];
+    const fieldEl = document.getElementById(bid);
+    if (fieldEl && fieldEl.dataset.frames) {
+      try { frames = JSON.parse(fieldEl.dataset.frames) || []; } catch (e) { frames = []; }
+    }
+    if (frames.length < 2) frames = [board];
+
+    let idx = 0;
+    const tc = board.teamColor || '#ffffff';
+    const oc = board.oppColor || '#e53935';
+
+    /* The same shape tb3dState() returns, read off a frame instead of
+       the editor's localStorage scratch keys. `prev` and `paths` are
+       what let the scene draw the trajectory INTO this frame, and a
+       path belongs to the frame it leads into — so frame 0 has neither,
+       which is right: nothing has moved yet. */
+    function ro3dState() {
+      const f = frames[idx] || {};
+      return {
+        positions: f.positions || null,
+        numbers: f.numbers || null,
+        colors: f.colors || null,
+        oppPositions: f.oppPositions || null,
+        oppNumbers: f.oppNumbers || null,
+        oppColors: f.oppColors || null,
+        balls: f.balls || (f.ballPos ? [f.ballPos] : []),
+        cones: f.cones || [],
+        arrows: f.arrows || [],
+        rects: f.rects || [],
+        texts: f.texts || [],
+        penLines: f.penLines || [],
+        showOpp: board.showOpp !== false,
+        teamColor: tc,
+        oppColor: oc,
+        prev: idx > 0 ? frames[idx - 1] : null,
+        paths: f.paths || null
+      };
+    }
+
+    const many = frames.length > 1;
+    const ov = document.createElement('div');
+    ov.className = 'ro3d-scrim';
+    ov.innerHTML =
+      '<div class="ro3d-box">' +
+        '<div class="ro3d-head">' +
+          '<span class="ro3d-name">' + sanitize(board.name || '') + '</span>' +
+          '<button class="ro3d-close" aria-label="' + sanitize(t('tactics.ro_3d_close')) + '">&times;</button>' +
+        '</div>' +
+        '<div class="ro3d-stage" id="tb-ro3d-wrap">' +
+          '<div class="tb-3d-loading">' + sanitize(t('tactics.loading_3d')) + '</div>' +
+          tbCamsHtml() +
+        '</div>' +
+        (many ? '<div class="ro3d-foot">' +
+            '<button class="ro3d-stop" title="' + sanitize(t('tactics.ro_stop')) + '"></button>' +
+            '<button class="ro3d-play" title="' + sanitize(t('tactics.ro_play')) + '"></button>' +
+          '</div>' : '') +
+      '</div>';
+    document.body.appendChild(ov);
+    _ro3dEl = ov;
+
+    const playBtn = ov.querySelector('.ro3d-play');
+    const stopBtn = ov.querySelector('.ro3d-stop');
+
+    function stopPlay() {
+      if (_ro3dStop) { _ro3dStop(); _ro3dStop = null; }
+      _ro3dPause = null;
+      pausedMs = 0;
+      idx = 0;                       // back to the first frame
+      if (playBtn) playBtn.classList.remove('playing');
+      if (stopBtn) stopBtn.classList.remove('live');
+      tbSetPlaying(false);
+      /* refreshObjects reads ro3dState(), which reads `idx` — so
+         clearing the index above is what actually puts frame 0 back on
+         the scene. Order matters here. */
+      if (_tb3d) _tb3d.refreshObjects();
+    }
+
+    function close() {
+      stopPlay();
+      tbDestroy3D();
+      if (_ro3dEl && _ro3dEl.parentNode) _ro3dEl.parentNode.removeChild(_ro3dEl);
+      _ro3dEl = null;
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    ov.querySelector('.ro3d-close').addEventListener('click', close);
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+
+    /* Where a pause left off, in the overlay's own scope — it is torn
+       down with the overlay, which is the right lifetime here. */
+    let pausedMs = 0;
+    if (playBtn) playBtn.addEventListener('click', () => {
+      if (_ro3dStop) {
+        /* PAUSE, matching the flat board. The scene keeps the positions
+           it holds; only the clock stops, so the players stay exactly
+           where the coach stopped them rather than snapping to a frame. */
+        if (_ro3dPause) _ro3dPause();
+        return;
+      }
+      playBtn.classList.add('playing');
+      if (stopBtn) stopBtn.classList.add('live');
+      ro3dPlay();
+    });
+    /* Stop: back to the first frame, from running or from paused.
+       stopPlay already does the whole job here — the overlay's scene is
+       rebuilt from `idx`, so clearing it and refreshing is the reset. */
+    if (stopBtn) stopBtn.addEventListener('click', () => stopPlay());
+
+    /* Playback drives the scene through tb3dTween — the SAME
+       BS.tweenTrack output the flat renderer consumes. Not BS.tweenFrame,
+       which has no caller anywhere and drops the `paths` argument: it
+       would draw straight lines where every other view curves. */
+    function ro3dPlay() {
+      let raf = 0, timer = 0, alive = true;
+      _ro3dStop = () => {
+        alive = false;
+        if (raf) cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+      tbSetPlaying(true);
+      /* Resume where the pause left it, or start over. A run that
+         finished cleared `pausedMs` and `idx` on its way out. */
+      if (idx >= frames.length - 1) { idx = 0; pausedMs = 0; }
+      if (_tb3d) _tb3d.refreshObjects();
+
+      function step() {
+        if (!alive || !_ro3dEl || !_tb3d) return;
+        if (idx >= frames.length - 1) { idx = 0; pausedMs = 0; stopPlay(); return; }
+        const from = frames[idx];
+        const to = frames[idx + 1];
+        const paths = to.paths || {};
+        const dur = to.duration || 1000;
+        const t0 = performance.now() - Math.min(pausedMs, dur);
+        pausedMs = 0;
+        /* Reassigned per frame, for the same reason the flat board's is:
+           a pause needs this frame's index and this frame's start. */
+        _ro3dPause = function () {
+          if (_ro3dStop) { _ro3dStop(); _ro3dStop = null; }
+          pausedMs = Math.min(performance.now() - t0, dur);
+          tbSetPlaying(false);
+          if (playBtn) playBtn.classList.remove('playing');
+        };
+        function tick(now) {
+          raf = 0;
+          if (!alive || !_ro3dEl || !_tb3d) return;
+          const t = Math.min((now - t0) / dur, 1);
+          tb3dTween('positions', BS.tweenTrack(from.positions || [], to.positions || [], t, paths.positions), paths.positions, t);
+          tb3dTween('oppPositions', BS.tweenTrack(from.oppPositions || [], to.oppPositions || [], t, paths.oppPositions), paths.oppPositions, t);
+          tb3dTween('balls', BS.tweenTrack(from.balls || [], to.balls || [], t, paths.balls), paths.balls, t);
+          if (t < 1) { raf = requestAnimationFrame(tick); return; }
+          idx++;
+          /* The scene is rebuilt BETWEEN frames, not during them —
+             setPosition moves meshes, and only a refresh picks up a
+             colour change, a new cone or a deleted slot. */
+          if (_tb3d) _tb3d.refreshObjects();
+          timer = setTimeout(step, 0);
+        }
+        raf = requestAnimationFrame(tick);
+      }
+      // No lead-in when resuming; the pause was the lead-in.
+      timer = setTimeout(step, (idx || pausedMs) ? 0 : 200);
+    }
+
+    /* `null` hooks, not an empty object literal.
+       Four suites find the EDITOR's mount by searching for the call
+       followed by an opening brace, then read backwards from it. An
+       empty object as the first argument contains that same text and,
+       sitting earlier in the file, stole the anchor from all four —
+       and this comment may not spell the sequence out either, or it
+       becomes the match itself. The mount defaults `hooks` already, and
+       a read-only board has none to give: nothing here moves a player. */
+    tbMount3D(null, {
+      wrapId: 'tb-ro3d-wrap',
+      readOnly: true,
+      getPitch: () => board.pitch || null,
+      getBoardType: () => board.boardType || 'full',
+      getState: ro3dState
+    });
   }
 
   /* Scale circles, ball, cones, text-labels, nums, play-btn, pitch markings
@@ -9125,7 +9723,32 @@
       play.style.setProperty('--play-tri-tb', playTriTB + 'px');
       play.style.setProperty('--play-tri-l', playTriL + 'px');
       play.style.setProperty('--play-tri-ml', playTriML + 'px');
+      /* The pause glyph: --play-bar-box is the whole thing, --play-bar-w
+         one stripe, and the gap between them is whatever is left. Its
+         own scale rather than reusing --play-tri-ml, which floors at 1px
+         — a 1px stripe beside a 1px gap is a smudge, not a pause. */
+      const barW = Math.max(2, 3 * s);
+      play.style.setProperty('--play-bar-w', barW + 'px');
+      play.style.setProperty('--play-bar-box', (barW * 3.5) + 'px');
     }
+    /* The other two pucks take the same diameter, and the strip's gap
+       scales with them. Nothing here computes an offset any more — the
+       flex row does that, which is what lets the stop appear and vanish
+       without the 3D puck moving. */
+    const stopBtn = inner.querySelector('.tb-ro-stop');
+    if (stopBtn) {
+      stopBtn.style.width = playS + 'px';
+      stopBtn.style.height = playS + 'px';
+      stopBtn.style.setProperty('--stop-sq', Math.max(6, 10 * s) + 'px');
+    }
+    const view3d = inner.querySelector('.tb-ro-3d');
+    if (view3d) {
+      view3d.style.width = playS + 'px';
+      view3d.style.height = playS + 'px';
+      view3d.style.setProperty('--ro3d-fs', Math.max(7, 11 * s) + 'px');
+    }
+    const ctl = inner.querySelector('.tb-ro-ctl');
+    if (ctl) ctl.style.setProperty('--ctl-gap', Math.max(3, 6 * s) + 'px');
     // Pitch markings — set individual sides to preserve 'none' sides from CSS
     const pw = pitchBdr + 'px';
     inner.querySelectorAll('.tb-halfway').forEach(e => { e.style.borderLeftWidth = pw; });
@@ -11795,7 +12418,7 @@
             </div>
           </div>
           <button class="tb-orient-btn" id="tb-orient" data-tooltip="Toggle orientation"${is3d ? ' style="display:none"' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
-          ${(clubFeature('board3d') && tbWebglOk()) ? `
+          ${tbCan3D() ? `
           <div class="tb-view-toggle" id="tb-view-toggle" data-tooltip="${t('tactics.view_hint')}">
             <button class="tb-view-btn${is3d ? '' : ' active'}" data-view="2d">2D</button>
             <button class="tb-view-btn${is3d ? ' active' : ''}" data-view="3d">3D</button>
@@ -11939,7 +12562,8 @@
         <div class="tb-frames-section">
           <div class="tb-frames-header">
             <span class="tb-frames-title">Frames</span>
-            <button class="btn btn-small tb-frame-play" id="tb-frame-play" title="Play animation"></button>
+            <button class="btn btn-small tb-frame-stop" id="tb-frame-stop" title="${t('tactics.ro_stop')}"></button>
+            <button class="btn btn-small tb-frame-play" id="tb-frame-play" title="${t('tactics.ro_play')}"></button>
           </div>
           <div class="tb-frames-strip" id="tb-frames-strip">
             <button class="tb-frame-add" id="tb-frame-add" title="Add frame">+</button>
@@ -15487,6 +16111,16 @@
        two agree from the first render, not from the first edit. */
     localStorage.setItem('fa_tactic_frame_idx', activeFrameIdx);
     let framePlaying = false;
+    /* A PAUSED animation, which is neither playing nor stopped.
+       `framePaused` matters beyond the button: the board is frozen
+       part-way through a tween, so what is on screen belongs to no frame
+       at all. autoSaveFrame() must not capture that — it would write
+       interpolated positions over the frame the coach paused on and
+       silently corrupt the animation. `framePlaying` already blocks it;
+       this blocks it for the same reason. */
+    let framePaused = false;
+    let framePauseFn = null;
+    let frameResumeIdx = 0, frameResumeMs = 0;
     tbSetPlaying(false);
 
     function syncNumbersAcrossFrames() {
@@ -15756,7 +16390,8 @@
     }
 
     function autoSaveFrame() {
-      if (activeFrameIdx >= 0 && activeFrameIdx < frames.length && !framePlaying) {
+      if (activeFrameIdx >= 0 && activeFrameIdx < frames.length &&
+          !framePlaying && !framePaused) {
         const existingDur = frames[activeFrameIdx].duration || 1000;
         /* Trajectories are not derived from the DOM — they come from
            dragging the curve handles — so a capture would wipe them.
@@ -15852,38 +16487,104 @@
 
     // Play animation: interpolates positions between frames
     const playBtn = document.getElementById('tb-frame-play');
+    const stopBtn = document.getElementById('tb-frame-stop');
+
+    /**
+     * Stop: back to frame 0, from running or from paused.
+     *
+     * A RUNNING loop resets itself — clearing framePlaying makes its
+     * next tick take the reset path it already has. A PAUSED board has
+     * no tick coming, so the reset happens here. Both end on frame 0
+     * with the strip and the arrowheads redrawn.
+     */
+    function frameStop() {
+      const wasPaused = framePaused;
+      framePlaying = false;
+      framePaused = false;
+      framePauseFn = null;
+      frameResumeIdx = 0; frameResumeMs = 0;
+      tbSetPlaying(false);
+      playBtn?.classList.remove('playing');
+      stopBtn?.classList.remove('live');
+      if (!wasPaused) return;
+      setActiveFrame(0);
+      applyFrameState(frames[0]);
+      refreshArrowheads(arrowsSvg);
+      renderFrameStrip();
+    }
+    stopBtn?.addEventListener('click', frameStop);
     playBtn?.addEventListener('click', () => {
-      if (framePlaying) { framePlaying = false;
-          tbSetPlaying(false); playBtn.classList.remove('playing'); return; }
+      /* PAUSE, matching the read-only boards. The board keeps the
+         half-tweened positions on screen and the next press carries on
+         from there. It used to drop straight back to frame 0. */
+      if (framePlaying) {
+        if (framePauseFn) framePauseFn();
+        return;
+      }
       if (frames.length < 2) return;
-      autoSaveFrame();
+      /* Only capture the board into the active frame when starting
+         fresh. Resuming from a pause would capture the interpolated
+         positions the pause froze — see `framePaused`. */
+      if (!framePaused) autoSaveFrame();
       framePlaying = true;
+      framePaused = false;
       playBtn.classList.add('playing');
+      if (stopBtn) stopBtn.classList.add('live');
       tbSetPlaying(true);
       deactivateDrawTools();
       clearSelection();
-      let fIdx = 0;
-      setActiveFrame(0);
-      applyFrameState(frames[0]);
-      renderFrameStrip();
+      let fIdx = frameResumeIdx || 0;
+      let resumeMs = frameResumeMs || 0;
+      if (fIdx >= frames.length - 1) { fIdx = 0; resumeMs = 0; }
+      frameResumeIdx = 0; frameResumeMs = 0;
+      /* Resuming must NOT reapply a frame — that snaps to the boundary,
+         which is exactly the pause undone. */
+      if (!fIdx && !resumeMs) {
+        setActiveFrame(0);
+        applyFrameState(frames[0]);
+        renderFrameStrip();
+      }
 
       function playNext() {
+        /* A timeout scheduled before the pause can still land after it.
+           The editor loop keeps no handles to cancel, so the guard is
+           the flag — and it has to come BEFORE the reset below, or a
+           pause between two frames resets the board anyway. */
+        if (framePaused) return;
         if (!framePlaying || fIdx >= frames.length - 1) {
           setActiveFrame(0);
           applyFrameState(frames[0]);
           refreshArrowheads(arrowsSvg);
           renderFrameStrip();
           framePlaying = false;
+          framePaused = false;
+          frameResumeIdx = 0; frameResumeMs = 0;
           tbSetPlaying(false);
           playBtn.classList.remove('playing');
+          stopBtn?.classList.remove('live');
           return;
         }
         const from = frames[fIdx];
         const to = frames[fIdx + 1];
         const dur = to.duration || 1000;
-        const startT = performance.now();
+        const startT = performance.now() - Math.min(resumeMs, dur);
+        resumeMs = 0;
+        /* Reassigned every frame: a pause needs THIS frame's index and
+           THIS frame's start time, and both move as the loop walks. */
+        framePauseFn = function () {
+          framePlaying = false;
+          framePaused = true;
+          frameResumeIdx = fIdx;
+          frameResumeMs = Math.min(performance.now() - startT, dur);
+          tbSetPlaying(false);
+          playBtn.classList.remove('playing');
+        };
 
         function animate(now) {
+          /* A pause stops the loop WITHOUT resetting — the reset below
+             is the stop path, and running it on a pause is what would
+             throw away the moment the coach stopped on. */
+          if (framePaused) return;
           if (!framePlaying) { setActiveFrame(0); applyFrameState(frames[0]); refreshArrowheads(arrowsSvg); renderFrameStrip(); playBtn.classList.remove('playing'); return; }
           const t = Math.min((now - startT) / dur, 1);
           interpolateAndApply(from, to, t);
@@ -15899,13 +16600,17 @@
               setTimeout(playNext, 0);
             } else {
               setTimeout(() => {
+                if (framePaused) return;   // paused during the end hold
                 setActiveFrame(0);
                 applyFrameState(frames[0]);
                 refreshArrowheads(arrowsSvg);
                 renderFrameStrip();
                 framePlaying = false;
-          tbSetPlaying(false);
+                framePaused = false;
+                frameResumeIdx = 0; frameResumeMs = 0;
+                tbSetPlaying(false);
                 playBtn.classList.remove('playing');
+                stopBtn?.classList.remove('live');
               }, 1000);
             }
           }
@@ -17756,7 +18461,10 @@
       const ref = ctx.refById[ex.boardId];
       panel = '<div class="stp-board">' +
         '<div class="stp-board-wrap">' +
-          (ref ? tbRoBoardHtml(ref, 'ro-stp-') : '') + '</div>' +
+          /* Keyed by the EXERCISE, which is what makes this board this
+             board across a stdRefreshPlan(). Two exercises may point at
+             the same drawing, so the board's own id would collide. */
+          (ref ? tbRoBoardHtml(ref, 'ro-stp-', 'stp:' + ex.id) : '') + '</div>' +
         // No "Tanca": the title that opened it closes it, and a second way to
         // do the same thing is a second thing to read.
         '<div class="stp-board-acts">' +
@@ -17913,7 +18621,10 @@
         '</div>' +
         '<div class="stp-overlay-body">' +
           '<div class="stp-overlay-board">' +
-            (ref ? tbRoBoardHtml(ref, 'ro-big-') : '') + '</div>' +
+            /* A DIFFERENT key from the inline row's, deliberately. Both
+               can be on screen for the same exercise at once, and they
+               are two boards playing independently. */
+            (ref ? tbRoBoardHtml(ref, 'ro-big-', 'big:' + found.id) : '') + '</div>' +
           (cols ? '<div class="stp-big-cols">' + cols + '</div>' : '') +
         '</div>' +
       '</div></div>';
@@ -18142,7 +18853,8 @@
     '.prn-board-in { transform-origin:top left; }',
     '.prn-board-in .tb-field-readonly { max-width:none !important; width:814px !important;',
     '  margin:0 !important; }',
-    '.prn-board-in .tb-ro-play, .prn-board-in .tb-ro-skeleton { display:none !important; }'
+    '.prn-board-in .tb-ro-play, .prn-board-in .tb-ro-3d,',
+    '.prn-board-in .tb-ro-skeleton { display:none !important; }'
   ].join('\n');
 
   /**
@@ -18754,11 +19466,60 @@
      a warm" path re-renders, finds it still missing and warms again. */
   const _stpWarmed = new Set();
 
+  /**
+   * Playback, across a panel that is about to be thrown away.
+   *
+   * Every exercise expand, every ⤢ open and close, and every material or
+   * duty edit rebuilds #std-plan-panel with outerHTML — so a board that
+   * was playing lost its animation to an action that had nothing to do
+   * with it. The loop survives that now (it stands down when its field
+   * leaves the document); this is the other half, putting it back.
+   *
+   * Matched on `data-ro-key`, not on the element id: `_roBoardIdx` mints
+   * a fresh `ro-board-N` on every render, so the id cannot say whether
+   * two elements are the same board.
+   */
+  function _stpSavePlayback() {
+    const out = [];
+    document.querySelectorAll('.tb-field-readonly[data-ro-key]').forEach(function (f) {
+      const playing = !!f._roPlaying;
+      const idx = f._roIdx || 0;
+      const ms = f._roElapsed || 0;
+      // Nothing to carry: never started, or finished and reset itself.
+      if (!playing && !idx && !ms) return;
+      out.push({key: f.dataset.roKey, playing: playing, idx: idx, ms: ms,
+                live: f.classList.contains('tb-ro-live')});
+    });
+    return out;
+  }
+
+  function _stpRestorePlayback(saved) {
+    if (!saved || !saved.length) return;
+    saved.forEach(function (s) {
+      const f = document.querySelector(
+          '.tb-field-readonly[data-ro-key="' + (window.CSS && CSS.escape
+              ? CSS.escape(s.key) : s.key) + '"]');
+      // The exercise may have been collapsed by the very click that refreshed.
+      if (!f) return;
+      f._roIdx = s.idx;
+      f._roElapsed = s.ms;
+      if (s.live) f.classList.add('tb-ro-live');
+      /* A board that was PLAYING is restarted through its own button, so
+         the resume path is the one the pause already uses — there is no
+         second copy of "carry on from here" to drift. A board that was
+         PAUSED keeps its position and waits, which is what a pause is. */
+      if (!s.playing) return;
+      const btn = f.querySelector('.tb-ro-play');
+      if (btn) btn.click();
+    });
+  }
+
   function stdRefreshPlan() {
     const tr = _stpSession();
     if (!tr) return;
     const ro = !canEditPage('staff-training-detail');
     const squad = calledPlayers(tr, getUsers());
+    const _play = _stpSavePlayback();
     const panel = document.getElementById('std-plan-panel');
     if (panel) panel.outerHTML = renderStdPlanPanel(tr, ro, squad);
     const card = document.getElementById('std-material-card');
@@ -18778,6 +19539,10 @@
        AFTER it lands, not when the string was built. */
     if (typeof scaleRoBoards === 'function') scaleRoBoards();
     bindRoBoardAnimations();
+    /* AFTER binding — restoring a playing board presses its button, and
+       an unbound button does nothing. Before hydrateRoBoards, which is
+       async and re-binds its own replacements. */
+    _stpRestorePlayback(_play);
     hydrateRoBoards();
   }
 

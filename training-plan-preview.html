@@ -1431,12 +1431,33 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   border-left:9px solid currentColor;
   margin-left:2px;
 }
+/* Pause bars, matching the read-only pucks. The editor's ▶ pauses now
+   too: it freezes the board part-way through a tween and the next press
+   carries on from there, rather than dropping back to frame 0.
+
+   Two background stripes rather than two borders — with the global
+   border-box reset at the top of this file, a 3px box with 3px borders
+   on both sides has no content between them and draws as ONE bar. */
 .tb-frame-play.playing::before {
-  width:8px; height:8px;
-  border:none;
-  background:currentColor;
-  border-radius:1px;
-  margin-left:0;
+  width:10px; height:10px;
+  border:none; border-radius:0; margin-left:0;
+  background-image:linear-gradient(currentColor,currentColor),
+                   linear-gradient(currentColor,currentColor);
+  background-size:3px 100%, 3px 100%;
+  background-position:left center, right center;
+  background-repeat:no-repeat;
+}
+/* The editor's stop, beside its play. Only while there is something to
+   stop — `live` goes on at play and stays through a pause. */
+.tb-frame-stop {
+  width:28px; height:28px; padding:0; font-size:0; border-radius:50%;
+  display:none; align-items:center; justify-content:center; line-height:1;
+  position:relative;
+}
+.tb-frame-stop.live { display:flex; }
+.tb-frame-stop::before {
+  content:''; display:block; width:8px; height:8px;
+  background:currentColor; border-radius:1px;
 }
 .tb-frames-strip {
   display:flex; align-items:center; gap:0; overflow-x:auto;
@@ -1482,15 +1503,28 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .tb-frame-item:hover .tb-frame-del { display:flex; }
 
+/* ── The read-only board's controls ────────────────────────────────
+   ONE strip, laid out by flex. Each puck used to carry its own
+   `right:` offset computed from the widths of the ones beside it,
+   which stops working the moment a button comes and goes: the stop
+   only exists while something is running, so the 3D puck would have
+   jumped sideways on every play and pause. */
+.tb-ro-ctl {
+  position:absolute; bottom:6px; right:6px; z-index:3;
+  display:flex; align-items:center; gap:6px;
+  /* Transparent to the pointer so it stops eating the board around the
+     buttons; the buttons themselves take it back. */
+  pointer-events:none;
+}
+.tb-ro-ctl > button { pointer-events:auto; }
+
 /* Read-only board play button */
 .tb-ro-play {
-  position:absolute; bottom:6px; right:6px; z-index:3;
   width:30px; height:30px; border-radius:50%;
   background:rgba(0,0,0,.55); color:#fff; border:none;
   font-size:0; cursor:pointer; display:flex;
   align-items:center; justify-content:center;
   transition:background .15s; line-height:1;
-  pointer-events:auto;
 }
 .tb-ro-play::before {
   content:''; display:block;
@@ -1500,14 +1534,57 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   border-left:10px solid #fff;
   margin-left:2px;
 }
+/* Two bars, not a square. The puck PAUSES — it freezes the board where
+   it stands and the next press carries on from there — and a stop
+   square promises a reset, which is now the separate button beside it.
+
+   TWO BACKGROUNDS, not two borders. The border version drew ONE bar:
+   the global reset at the top of this file puts every ::before in
+   border-box, so a 3px box with 3px borders on both sides has no
+   content left between them and the two collapse into a blob.
+   Backgrounds are laid out inside the box whatever the sizing mode. */
 .tb-ro-play.playing::before {
-  width:10px; height:10px;
-  border:none;
-  background:#fff;
-  border-radius:1px;
-  margin-left:0;
+  width:var(--play-bar-box, 11px); height:var(--play-tri-l, 11px);
+  border:none; border-radius:0; margin-left:0;
+  background-image:linear-gradient(#fff,#fff), linear-gradient(#fff,#fff);
+  background-size:var(--play-bar-w, 3px) 100%, var(--play-bar-w, 3px) 100%;
+  background-position:left center, right center;
+  background-repeat:no-repeat;
 }
 .tb-ro-play:hover { background:rgba(0,0,0,.75); }
+
+/* The stop. A plain square, and it means what the square always meant:
+   back to the first frame. Only on screen while there is something to
+   stop — see .tb-ro-live. */
+.tb-ro-stop {
+  width:30px; height:30px; border-radius:50%;
+  background:rgba(0,0,0,.55); color:#fff; border:none;
+  font-size:0; cursor:pointer; display:none;
+  align-items:center; justify-content:center;
+  transition:background .15s; line-height:1;
+}
+.tb-ro-stop::before {
+  content:''; display:block;
+  width:var(--stop-sq, 10px); height:var(--stop-sq, 10px);
+  background:#fff; border-radius:1px;
+}
+.tb-ro-stop:hover { background:rgba(0,0,0,.75); }
+/* Revealed by the field, which is what knows whether anything is
+   running — the button cannot see its own board's state. */
+.tb-ro-live .tb-ro-stop { display:flex; }
+
+/* Read-only board 3D button — same puck as the rest of the strip.
+   It is text, not an icon, for the reason the editor's toggle is: a
+   picture of "3D" is just the word drawn badly. */
+.tb-ro-3d {
+  width:30px; height:30px; border-radius:50%;
+  background:rgba(0,0,0,.55); color:#fff; border:none;
+  font-size:11px; font-weight:700; letter-spacing:.02em;
+  cursor:pointer; display:flex;
+  align-items:center; justify-content:center;
+  transition:background .15s; line-height:1;
+}
+.tb-ro-3d:hover { background:rgba(0,0,0,.75); }
 
 /* Add to match section */
 .tb-match-section { margin-top:1.2rem; padding-top:1rem; }
@@ -1589,10 +1666,18 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .tb-field-readonly .tb-pen-line[stroke-dasharray] {
   stroke-dasharray:6 4 !important;
 }
-.tb-field-readonly .tb-ro-play {
+/* The strip is what sits in the corner; the pucks inside it are laid
+   out by flex and carry no offsets of their own. */
+.tb-field-readonly .tb-ro-ctl {
   bottom:1%; right:1%;
-  pointer-events:auto; box-sizing:border-box;
+  gap:var(--ctl-gap, 6px);
 }
+.tb-field-readonly .tb-ro-play,
+.tb-field-readonly .tb-ro-stop,
+.tb-field-readonly .tb-ro-3d {
+  box-sizing:border-box;
+}
+.tb-field-readonly .tb-ro-3d { font-size:var(--ro3d-fs, 11px); }
 .tb-field-readonly .tb-ro-play::before {
   position:absolute;
   border-top-width:var(--play-tri-tb, 6px);
@@ -1600,9 +1685,21 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   border-left-width:var(--play-tri-l, 10px);
   margin-left:var(--play-tri-ml, 2px);
 }
+/* The scaled pause bars. Two background stripes, for the reason spelt
+   out on the unscaled rule: with the global border-box reset, borders
+   on a box this narrow leave no content between them and draw as one
+   bar. --play-bar-box is the whole glyph, --play-bar-w one stripe. */
 .tb-field-readonly .tb-ro-play.playing::before {
-  width:var(--play-tri-l, 10px); height:var(--play-tri-l, 10px);
+  width:var(--play-bar-box, 11px); height:var(--play-tri-l, 10px);
   border:none; margin-left:0;
+  background-image:linear-gradient(#fff,#fff), linear-gradient(#fff,#fff);
+  background-size:var(--play-bar-w, 3px) 100%, var(--play-bar-w, 3px) 100%;
+  background-position:left center, right center;
+  background-repeat:no-repeat;
+}
+.tb-field-readonly .tb-ro-stop::before {
+  position:absolute;
+  width:var(--stop-sq, 10px); height:var(--stop-sq, 10px);
 }
 .tb-field-readonly .tb-silhouette { opacity:.65; }
 
@@ -5082,6 +5179,63 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-size:1.1rem;cursor:pointer;color:var(--text-secondary);}
 .ab-modal-meta{color:var(--text-secondary);font-size:.82rem;margin-bottom:.6rem;}
 
+/* ── A read-only board, in 3D ──────────────────────────────────────
+   Full-screen and one at a time. The stage is where board3d.js mounts;
+   it needs a real height before the canvas is created, because the
+   renderer sizes itself from the container — a stage that is `auto`
+   tall gets a 0px canvas and an invisible scene.
+
+   z-index sits above .ab-modal's 1000: this can be opened from the
+   superadmin board browser, which is itself a modal. */
+.ro3d-scrim{position:fixed;inset:0;background:rgba(20,18,16,.82);z-index:1200;
+  display:flex;align-items:center;justify-content:center;padding:1rem;}
+.ro3d-box{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  width:100%;max-width:1100px;display:flex;flex-direction:column;overflow:hidden;}
+.ro3d-head{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;
+  border-bottom:1px solid var(--border,rgba(0,0,0,.1));}
+.ro3d-name{font-weight:600;font-size:.95rem;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ro3d-close{background:none;border:none;font-size:1.5rem;line-height:1;
+  cursor:pointer;color:var(--text-secondary);padding:0 .2rem;}
+.ro3d-stage{position:relative;width:100%;height:min(70vh,620px);
+  background:#2f4f2f;overflow:hidden;}
+.ro3d-stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none;}
+.ro3d-foot{display:flex;justify-content:center;align-items:center;gap:.6rem;
+  padding:.7rem;border-top:1px solid var(--border,rgba(0,0,0,.1));}
+/* The stop, beside the play/pause. Hidden until there is something to
+   stop, like the flat board's — `live` is added on play and stays
+   through a pause, which is exactly when it is most useful. */
+.ro3d-stop{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;
+  transition:background .15s;}
+.ro3d-stop.live{display:flex;}
+.ro3d-stop:hover{background:rgba(0,0,0,.78);}
+.ro3d-stop::before{content:'';display:block;width:13px;height:13px;
+  background:#fff;border-radius:1px;}
+/* Same puck as the flat board's, at a size that suits a footer rather
+   than a corner. The stop square is the same swap. */
+.ro3d-play{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;
+  transition:background .15s;}
+.ro3d-play:hover{background:rgba(0,0,0,.78);}
+.ro3d-play::before{content:'';display:block;width:0;height:0;
+  border-top:8px solid transparent;border-bottom:8px solid transparent;
+  border-left:13px solid #fff;margin-left:3px;}
+/* Pause bars, matching the flat board's puck — and drawn as two
+   background stripes for the same reason: the global border-box reset
+   makes a narrow box with borders on both sides collapse into one bar. */
+.ro3d-play.playing::before{width:14px;height:15px;
+  border:none;border-radius:0;margin-left:0;background:transparent;
+  background-image:linear-gradient(#fff,#fff),linear-gradient(#fff,#fff);
+  background-size:4px 100%,4px 100%;
+  background-position:left center,right center;
+  background-repeat:no-repeat;}
+@media (max-width:640px){
+  .ro3d-scrim{padding:0;}
+  .ro3d-box{max-width:none;height:100%;border-radius:0;}
+  .ro3d-stage{flex:1;height:auto;}
+}
+
 /* Editing a platform template in the ordinary board editor. Loud on
    purpose: the editor looks identical, and saving here writes to the
    library rather than to any club. */
@@ -6531,7 +6685,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   The <b>rail</b> (Pla d'entrenament + Material) and the <b>team block</b> are rendered by the
   app's real functions and real CSS; the top bar, hero, stat row, attendance bar and table are
   stand-in context. The pitch is a placeholder — in the app it is the real read-only board.
-  Generated 2026-08-28.
+  Generated 2026-08-31.
   Computed: <b>20 cons</b>, <b>3 pilotes</b>,
   <b>3 colors de petos</b> from 4 colours on 4 boards;
   plan ends <b>21:15</b>.

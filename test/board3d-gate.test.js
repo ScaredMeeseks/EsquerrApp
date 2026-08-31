@@ -207,7 +207,12 @@ describe('the client loads it through the callable', () => {
     const m = app.slice(app.indexOf('async function tbMount3D'),
         app.indexOf('function tbFieldInnerStyle'));
     const iLoad = m.indexOf('await tbLoad3D()');
-    const iQuery = m.indexOf("const wrap = document.getElementById('tb-3d-wrap')");
+    /* By VARIABLE, not by literal id. The read-only 3D overlay mounts
+       through the same function under its own wrapper id — it may not
+       borrow #tb-3d-wrap, because tbEditorOpen() is literally "does
+       that element exist" and three layout helpers believe it. What
+       this test is about is the ORDER, which is unchanged. */
+    const iQuery = m.indexOf('const wrap = document.getElementById(wrapId)');
     assert.ok(iLoad !== -1 && iQuery !== -1, 'the mount path was not found');
     assert.ok(iQuery > iLoad,
         'the wrapper must be looked up AFTER the await, not before');
@@ -217,7 +222,7 @@ describe('the client loads it through the callable', () => {
        message written into a detached element leaves the live board
        claiming it is still loading. */
     const cat = m.slice(m.indexOf('} catch (err)'));
-    assert.ok(/const live = document\.getElementById\('tb-3d-wrap'\)/.test(cat),
+    assert.ok(/const live = document\.getElementById\(wrapId\)/.test(cat),
         'the failure message must go to the live wrapper too');
   });
 

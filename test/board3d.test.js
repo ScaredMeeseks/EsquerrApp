@@ -191,9 +191,27 @@ describe('the premium gate', () => {
   it('gates both the toggle and the saved preference', () => {
     /* The stored preference alone must not open the view: a club
        whose premium lapses would otherwise keep the 3D board because
-       the flag is still in their localStorage. */
-    assert.ok(/fa_tactic_view_3d'\) === '1'\s*\n?\s*&& clubFeature\('board3d'\)/
+       the flag is still in their localStorage.
+
+       The three clauses moved behind `tbCan3D()` when the read-only
+       boards grew a 3D button — a fourth copy of the condition is a
+       fourth chance to omit a clause, and the APK clause had already
+       been omitted from all of them. What this test is about is that
+       the saved flag is re-checked AGAINST THE GATE, whatever the gate
+       is called; the gate's own contents are pinned just below. */
+    assert.ok(/fa_tactic_view_3d'\) === '1'\s*&&\s*tbCan3D\(\)/
         .test(appSrc), 'the saved preference must be re-checked against the gate');
+  });
+
+  it('the gate is the entitlement, WebGL, and not the phone', () => {
+    const fn = appSrc.slice(appSrc.indexOf('function tbCan3D'),
+        appSrc.indexOf('function tbIs3D'));
+    assert.ok(/clubFeature\('board3d'\)/.test(fn), 'entitlement not checked');
+    assert.ok(/tbWebglOk\(\)/.test(fn), 'WebGL not checked');
+    /* The APK bundles neither vendor/three nor board3d.js, but an
+       Android WebView passes the WebGL probe — so a premium club on the
+       phone saw the toggle and got "load failed". */
+    assert.ok(/!tbNativeShell\(\)/.test(fn), 'the native shell is not excluded');
   });
 });
 
@@ -766,7 +784,18 @@ describe('playback dressing', () => {
        drawn from module scope where `framePlaying` cannot be seen.
        One function tells both, so the pair cannot come apart — which
        is the same split that put the trajectory layer a frame behind. */
-    assert.strictEqual((a.match(/tbSetPlaying\(false\)/g) || []).length, 4);
+    /* SEVEN now, not four, and a PAUSE is one of them, as is the
+       explicit stop the editor and the overlay both grew.
+       The read-only 3D overlay added its own loop over a saved board's
+       frames, and both it and the editor gained a pause — which is an
+       exit from the running loop like any other, and wants the dressing
+       down for a better reason than the rest: a paused board is the one
+       a coach is pointing at, so the planned trajectories should be
+       back on screen while it is frozen.
+
+       A count, deliberately. The point of this assertion is that no
+       exit is missed, and a loose match would pass with one gone. */
+    assert.strictEqual((a.match(/tbSetPlaying\(false\)/g) || []).length, 7);
     assert.ok(/tbSetPlaying\(true\)/.test(a));
     /* And exactly one place still speaks to the scene directly.
        Comment-stripped: tbSetPlaying's own docstring names the call it

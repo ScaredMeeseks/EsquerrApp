@@ -119,12 +119,14 @@ describe('the 3D menu — what it offers', () => {
        side of this button. It used to be unconditional, which was
        harmless while the menu itself was premium-only and is not now
        that the flat board wears it. */
+    /* The condition itself lives in tbCan3D() now — see board3d.test.js
+       for what it contains. Three inline copies were three chances to
+       leave a clause out, and the clause about the APK had been left
+       out of every one of them. */
     const i = html.indexOf("entry('view'");
     const before = html.slice(0, i);
-    assert.ok(/clubFeature\('board3d'\) && tbWebglOk\(\)\s*\)?\s*$/
-        .test(before.trimEnd()) ||
-        /clubFeature\('board3d'\) && tbWebglOk\(\)[\s\S]{0,40}$/.test(before),
-        'the view entry must be gated on the premium feature and WebGL');
+    assert.ok(/tbCan3D\(\)[\s\S]{0,40}$/.test(before.trimEnd()),
+        'the view entry must be gated on tbCan3D()');
   });
 
   it('the view entry names where it GOES, not where you are', () => {
