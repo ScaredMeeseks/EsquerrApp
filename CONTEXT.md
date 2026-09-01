@@ -7651,3 +7651,146 @@ for three rules would cost more than the rules are worth; what is pinned is the 
 decision.
 
 Unit 2249 → **2253**. Version triple → v199.
+
+### 2026-09-01 — The weather strip stops being a placeholder (v207)
+
+⚠ The entries between v199 and v206 were never written up. This one is v207; the gap is real and is
+noted in HANDOFF.md rather than backfilled from memory.
+
+**The strip on the session page has been showing an invented evening to every coach since it
+shipped.** `STP_WEATHER_DEFAULT = {cond:'cloud', windMs:3.2, tempC:17}` was a deliberate placeholder
+— "a plausible evening rather than a blank: the point of shipping it now is to see the strip in
+place" — and `_prnWeather` printed the same invented evening onto the sheet a coach carries onto the
+pitch. Both fallbacks are gone. The shape the placeholder was holding open is unchanged, which is why
+this is a small diff: the comment above it described what a forecast returns, and a forecast now
+returns it.
+
+**Where the forecast comes from.** XWeather's `/forecasts/{lat},{lon}?filter=1hr`, fetched
+SERVER-side by `scheduledWeatherSync` (functions/index.js, beside the FCF sync because it is the same
+shape) and stamped straight onto the `fa_training` / `fa_matches` rows. Server-side for the three
+reasons the FCF sync is: one fetch serves a whole club instead of one per device, the credentials
+never reach a public GitHub Pages bundle, and a player with no write access to `fa_training` still
+sees what his coach sees. Nothing on the client fetches; the strip renders from the row, offline
+included.
+
+```js
+tr.weather = { cond, windMs, tempC, rainPct, at }
+```
+
+`cond`, `windMs` and `tempC` are the fields the strip already drew. `rainPct` and `at` are new and
+ADDITIVE — an old APK renders the strip exactly as it does today and simply shows no rain line.
+
+**Two rules, both requested, both easy to lose in a refactor:**
+
+1. **Nothing beyond 3 days is fetched.** The app says *"Previsió disponible 3 dies abans"* instead of
+   going blank, because a blank reads as broken. The boundary is inclusive on both sides —
+   `wxDue(3, 8)` fetches and `wxDaysOut(row) > 3` is what hides the strip — and a test pins them
+   agreeing, since they are two copies of one rule either side of the deploy boundary.
+2. **Once an event has STARTED it is never touched again, ever.** The last report before kick-off
+   becomes the record of what the session was played in. Same asymmetry `_kickedOff` weighs in
+   fcf.js, decided the same way: a wrong freeze loses an update, a wrong overwrite destroys a record.
+
+**`rainPct` is a share of the SESSION, not a probability.** This is the one thing here that is easy
+to get wrong and impossible to see afterwards. XWeather publishes `pop`, a probability per hour; the
+app promises *"es preveu pluja durant el 40% de l'entrenament"*. `summarise()` converts one into the
+other by weighting each hourly period by the MINUTES it overlaps the session — so an 18:00–19:30
+session whose first hour is wet is 67%, not the 50% a period count would give. An hour counts as wet
+at `pop >= WET_POP` (50), one named constant because the threshold is a judgement about what a coach
+should be warned of. Wind is the MAX across the window (the gust is what moves a ball), temperature
+the weighted mean, `cond` the most notable by `storm > snow > rain > fog > overcast > cloud > sun`.
+
+**Where the coordinates come from** — `coordsForRow()`, most specific first:
+
+1. **the row's own `mapLink`** — every FCF-imported fixture carries the federation's coordinates, so
+   an away game forecasts the away ground, and a coach can override one session by pasting a link.
+2. **the same ground NAME in any of the club's schedule links** — `placeKey()` folds accents, case and
+   punctuation, so "escola  industrial" finds "Escola Industrial".
+3. **this squad's own schedule link** — location blank or unrecognised, but we know where they train.
+4. **any configured ground** — the ordinary club, which has one.
+5. **`clubs/{id}.homeCoords`** — the explicit escape hatch, and nothing more than that.
+
+Steps 2–4 read `clubs/{id}.schedules['{cat}-{letter}'].training[i].link` and `.homeGame.link` — the
+SAME boxes the lead already fills in team setup, and the same links `trainingFromSlot()` copies onto
+every session it mints. That is the point of the design: a home session is located by the
+configuration the club already has, not by a second setting somebody has to remember. The index is
+built per club INSIDE the team loop, so one club's grounds can never resolve another's session.
+
+`homeCoords` survives only because a link can be unreadable. `TRAINING_DEFAULT_MAP` is a
+`share.google` short link, and those carry no coordinates at all — verified, not assumed: it 302s to
+`google.com/share.google?q=…`, a JS-driven page with no coordinate pair anywhere in the HTML, so no
+amount of redirect-following on our side would get them. Hence the amber `.ts-nocoord` warning on
+every schedule link box that parses to nothing, live as the lead types, mirroring `ts-fcf-stale`.
+Without it the failure is silent in the worst way: the link opens the right place when tapped and the
+forecast simply never appears.
+
+`parseCoordsInput` in js/app.js mirrors `coordsFromMapLink` in functions/weather.js, duplicated for
+the same reason `fcfGrupIdOf` is, and a test asserts the two agree on every link form.
+`homeCoords` is written through `setClubCategories` — the rules allow a lead only
+`fcfLinks`/`schedules` on the club doc, so there is NO `firestore.rules` change here.
+
+**Cadence** — `0 8-21 * * *` Europe/Madrid, nothing overnight. Inside the window: D-3 once at 08:00,
+D-2 every 4h, D-1 every 2h, on the day every run. The whole rule is `wxDue(daysOut, hour)` and
+nowhere else. What it saves is not API quota — one call covers a venue's whole 3-day window, so a
+single-venue club costs at most 14 calls/day however many sessions it has — it saves Firestore
+WRITES: every shard write re-fires `updateTeamDates` and re-renders the calendar on every open
+client. `weatherChanged()` compares at DISPLAY precision for the same reason, so a 0.04 m/s wobble is
+not a write.
+
+**Secrets.** First use of Cloud Functions secrets in this project: `XWEATHER_CLIENT_ID` /
+`XWEATHER_CLIENT_SECRET`, via `firebase functions:secrets:set`, declared with `defineSecret` and
+listed on the schedule's `secrets:`. `functions/.secret.local` is the emulator stand-in and is now
+gitignored. The emulator suite loads `index.js` fine without them — `.value()` is only called at
+runtime.
+
+**Two bugs the tests caught before deploy, both silent in production:**
+
+- `weatherPrimaryCoded`'s third field is NOT always a weather type. When nothing is expected XWeather
+  puts the CLOUD code there — `"::FW"` is "a few clouds and no weather", not an unknown type. Reading
+  it as a type alone turned every clear hour into `cloud`: wrong in the direction nobody notices,
+  because an overcast forecast for a sunny evening just looks pessimistic.
+- `Number(null)` is `0`, and `0` in `wxDue` means "today", which refreshes on every run. An event
+  whose date failed to parse would have been fetched hourly for ever. The emptiness check now comes
+  before the numeric one.
+
+Two more assertions were passing for the wrong reason and were rewritten after mutation testing: the
+MAX-wind test had the gust in the last period (where "max", "mean" and "last" all give the same
+answer), and the condition-precedence test had the notable hour last (where "most notable" and "last"
+agree). Both now put the interesting hour first, and a mirrored test keeps the other direction.
+
+`functions/weather.js` is new and PURE — no admin, no network, no clock beyond what a caller passes
+in — which is what lets `test/weather.test.js` run in `test:unit` with no emulator and no API key.
+Registered in `test:unit` and as `test:weather`.
+
+⚠ `test/material.test.js` slices `windBand` out of app.js with
+`grab('  function windBand(ms) {', '\n  /**\n   * The forecast strip')`. That comment opener is load
+bearing — anything inserted between the two markers ends up inside a `new Function`.
+
+Unit 2481 → **2560**. Functions suite unchanged at 71. Version triple → v207.
+
+**Verified in production, and what the first run taught.** The 19:00 run on 2026-09-01 logged
+`teams: 2, events: 1, venues: 1, stamped: 0, shards: 0` with `xwFetch failed … XWeather returned
+401`. Everything but the last hop was therefore proven at once — the multi-club sweep, the date
+window, the freeze, the cadence, and a coordinate (`41.373,2.168`) resolved out of a SCHEDULE LINK
+with no `homeCoords` anywhere. The 401 was a bad credential, and the containment worked exactly as
+intended: logged, nothing stamped, nothing written, other clubs unaffected.
+
+⚠ **XWeather returns `invalid_client` for every auth failure** — unknown id, wrong secret, both
+fake — so the API cannot tell you WHICH half is wrong. A differential probe of all four combinations
+returned byte-identical errors. Do not waste time trying to narrow it down from the response;
+re-copy both from the application page in the console.
+
+⚠ **`defineSecret` pins a function to a secret VERSION.** The deploy records
+`secretEnvironmentVariables: [{secret: …, version: "1"}]`, so setting a new value creates version 2
+and the running function keeps reading version 1 until it is redeployed. A new key that "still does
+not work" is this, nine times out of ten.
+
+**What the first successful call proved, beyond the key.** Every one of the 80 real hourly periods
+came back as `::OV`, `::FW`, `::BK`, `::CL` or `::SC` — a CLOUD code in the weather-type slot, and
+not one actual weather type among them. The `weatherPrimaryCoded` fix is therefore load-bearing for
+ordinary weather rather than an edge case: without it, 100% of forecasts would have said "cloud"
+whatever the sky was doing. `limit=80` was confirmed to reach 05 Sep 03:00, past the window with
+slack.
+
+⚠ **`rainPct` has never rendered from live data.** Barcelona's max `pop` across the whole 80-hour
+payload was 0, so the rain subtext — the one number a reader is most likely to misread as a
+probability — is covered by unit tests and by nothing else. It stays unproven until it rains.

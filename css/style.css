@@ -1882,10 +1882,39 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-wx {
   display:flex; align-items:center; gap:16px; flex:none;
   font-size:14px; color:#6B645E; white-space:nowrap;
+  /* The rain line wraps onto its own row beneath the strip rather than
+     stretching the hero: `flex-wrap` plus a full-width child, so the icon,
+     wind and temperature keep their single line at any width. */
+  flex-wrap:wrap; justify-content:flex-end;
 }
 .std-wx-b { display:flex; align-items:center; gap:7px; }
 .std-wx-i { font-size:26px; line-height:1; }
 .std-wx-t { font-size:20px; color:#2D2926; font-variant-numeric:tabular-nums; }
+/* Quieter still than the strip: a warning a coach should notice without it
+   competing with the session title. Blue rather than red — rain is a
+   condition to plan around, not an error. */
+.std-wx-rain {
+  flex-basis:100%; text-align:right;
+  font-size:12.5px; color:#3E6B99; white-space:normal;
+}
+/* Said instead of the strip, more than 3 days out. Deliberately plain: it is
+   the absence of a forecast, and dressing it up reads as one. */
+.std-wx-soon { flex:none; font-size:12.5px; color:#99928B; }
+
+/* A schedule link with no coordinates in it. Amber, not red: the link works
+   perfectly as a link — it just cannot produce a forecast, which is a thing
+   to fix rather than an error blocking the save. Mirrors .ts-fcf-stale. */
+.ts-nocoord {
+  border-color:#E8A33D !important;
+  background:#FFF8EC;
+}
+
+/* The same strip on the match page, which is a CENTRED card rather than the
+   session page's title row — so the alignment flips and it needs its own
+   breathing room under the kick-off line. */
+.detail-hero .std-wx { justify-content:center; margin-top:.8rem; }
+.detail-hero .std-wx-rain { text-align:center; }
+.detail-hero .std-wx-soon { margin-top:.7rem; }
 
 /* A place with a map behind it. Underlined on hover only — in the meta line
    a permanently underlined venue competes with the title above it. */

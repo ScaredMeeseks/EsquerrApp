@@ -17,3 +17,8 @@ www/
 
 # Rules-test deps (installed on demand)
 test/node_modules/
+
+# Cloud Functions secrets for the emulator (XWEATHER_CLIENT_ID/_SECRET).
+# The real values live in Secret Manager; this file is the local stand-in and
+# must never be committed — the repo is what the public frontend is built from.
+functions/.secret.local

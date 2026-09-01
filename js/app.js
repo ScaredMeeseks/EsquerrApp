@@ -818,6 +818,15 @@
     'wx.storm':          { ca:'Tempesta', es:'Tormenta', en:'Storm' },
     'wx.snow':           { ca:'Neu', es:'Nieve', en:'Snow' },
     'wx.fog':            { ca:'Boira', es:'Niebla', en:'Fog' },
+    /* The forecast reaches only 3 days out — see scheduledWeatherSync. Said
+       plainly rather than left blank, so a coach opening next Saturday's
+       fixture knows the forecast is coming and not that it is broken. */
+    'wx.too_far':        { ca:'Previsió disponible 3 dies abans', es:'Previsión disponible 3 días antes', en:'Forecast available 3 days before' },
+    /* A share of the SESSION, not a probability. The number is the part of
+       the session the forecast expects rain over — see summarise() in
+       functions/weather.js, which is where the two are kept apart. */
+    'wx.rain_share_training': { ca:'Es preveu pluja durant el {n}% de l\'entrenament', es:'Se prevé lluvia durante el {n}% del entrenamiento', en:'Rain expected for {n}% of the training' },
+    'wx.rain_share_match':    { ca:'Es preveu pluja durant el {n}% del partit', es:'Se prevé lluvia durante el {n}% del partido', en:'Rain expected for {n}% of the game' },
     'mat.cones':         { ca:'Cons', es:'Conos', en:'Cones' },
     'mat.balls':         { ca:'Pilotes', es:'Balones', en:'Balls' },
     'mat.petos':         { ca:'Petos (colors)', es:'Petos (colores)', en:'Bibs (colours)' },
@@ -1329,6 +1338,19 @@
     'rem.err_range':         { ca:'Les hores han de ser un nombre enter entre 1 i {max}.', es:'Las horas deben ser un número entero entre 1 y {max}.', en:'Hours must be a whole number between 1 and {max}.' },
     'rem.err_order':         { ca:'L\'avís s\'ha d\'enviar abans de tancar les respostes.', es:'El aviso debe enviarse antes de cerrar las respuestas.', en:'The reminder must go out before answers close.' },
     'rem.locked_at':         { ca:'Respostes tancades des de les {time}', es:'Respuestas cerradas desde las {time}', en:'Answers closed since {time}' },
+    /* The home ground, for the weather forecast. Named "Camp del club" and
+       not "Coordenades": a lead pastes a maps link here and never needs to
+       know the box is really two numbers. */
+    'club.home_coords':      { ca:'Camp del club (alternativa)', es:'Campo del club (alternativa)', en:'Club ground (fallback)' },
+    'club.home_coords_hint': { ca:'Només cal si cap enllaç dels horaris no porta coordenades. Normalment la previsió ja surt dels enllaços de dalt.', es:'Solo hace falta si ningún enlace de los horarios lleva coordenadas. Normalmente la previsión ya sale de los enlaces de arriba.', en:'Only needed if none of the schedule links carries coordinates. Normally the forecast comes from those links.' },
+    /* On the schedule link boxes. The failure it prevents is silent: a short
+       link opens the right place when tapped and simply never produces a
+       forecast, so nothing on screen would otherwise say why. */
+    'club.link_nocoord':     { ca:'Aquest enllaç no porta coordenades, així que no hi haurà previsió del temps. Obre\'l a Google Maps i copia l\'adreça llarga (ha de contenir @41.…,2.…).', es:'Este enlace no lleva coordenadas, así que no habrá previsión del tiempo. Ábrelo en Google Maps y copia la dirección larga (debe contener @41.…,2.…).', en:'This link carries no coordinates, so there will be no forecast. Open it in Google Maps and copy the long address (it must contain @41.…,2.…).' },
+    /* A share.google / goo.gl short link is the likely failure: it resolves
+       to a place only Google can look up, so the message says what to do
+       rather than only that something is wrong. */
+    'club.home_coords_err':  { ca:'No s\'han pogut llegir les coordenades. Obre l\'enllaç a Google Maps i copia\'n les coordenades (per exemple 41.3874, 2.1686).', es:'No se han podido leer las coordenadas. Abre el enlace en Google Maps y copia sus coordenadas (por ejemplo 41.3874, 2.1686).', en:'Could not read those coordinates. Open the link in Google Maps and copy the coordinates from it (for example 41.3874, 2.1686).' },
     'auth.staff_title':      { ca:'Staff per equip', es:'Staff por equipo', en:'Staff per Team' },
     'auth.staff_desc':       { ca:'Els correus que afegeixis aquí podran registrar-se com a staff d\'aquesta categoria.', es:'Los correos que añadas aquí podrán registrarse como staff de esta categoría.', en:'Addresses added here may register as staff for this category.' },
     'auth.staff_add':        { ca:'+ Staff', es:'+ Staff', en:'+ Staff' },
@@ -1889,7 +1911,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 206;
+  const APP_VERSION = 207;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3755,6 +3777,7 @@
     _refreshTeamSetupKits();
     // Club-wide, same reasoning: seeded once, never blown away by a toggle.
     _refreshTeamSetupReminders();
+    _refreshTeamSetupVenue();
     _refreshTeamSetupQuota();
     _bindTeamSetupEvents(container);
 
@@ -4152,6 +4175,88 @@
     lockEl.max = String(REMINDER_HOURS_MAX);
   }
 
+  /* ── The club's home ground, as coordinates ──────────────────
+     Mirrors coordsFromMapLink() in functions/weather.js. It has to be a
+     second copy: the functions deploy uploads functions/ alone and the
+     frontend never loads it, exactly as fcfGrupIdOf is duplicated for the
+     FCF links. If the two ever disagree the symptom is a link this box
+     accepts and the sync then cannot use — so keep the pattern list here in
+     step with the one over there.
+
+     Accepts what a lead actually has to hand: a pasted maps URL in any of
+     its three shapes, or the bare "lat, lon" that Google copies from a
+     right-click. Returns null for anything else, INCLUDING a share.google
+     short link — those are opaque ids only Google can resolve, so the lead
+     has to open one and copy the real coordinates out. */
+  function parseCoordsInput(v) {
+    var s = String(v || '').trim();
+    if (!s) return null;
+    var num = '(-?\\d{1,3}(?:\\.\\d+)?)';
+    var pats = [
+      new RegExp('^' + num + '\\s*,\\s*' + num + '$'),
+      new RegExp('[?&]query=' + num + '\\s*,\\s*' + num),
+      new RegExp('[?&]q=' + num + '\\s*,\\s*' + num),
+      new RegExp('@' + num + ',' + num),
+      new RegExp('!3d' + num + '!4d' + num)
+    ];
+    for (var i = 0; i < pats.length; i++) {
+      var m = pats[i].exec(s);
+      if (!m) continue;
+      var lat = parseFloat(m[1]);
+      var lon = parseFloat(m[2]);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      if (Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+      if (lat === 0 && lon === 0) continue;
+      return { lat: lat, lon: lon };
+    }
+    return null;
+  }
+
+  /**
+   * The class and tooltip for a schedule link box.
+   *
+   * A link is what tells the weather sync where a home session is played, and
+   * a `share.google` short link — which is what the app's own default is —
+   * carries no coordinates at all. Nothing about that is visible: the link
+   * still opens the right place when tapped, and the forecast just silently
+   * never appears. So the box says so, the way the stale-FCF-link warning
+   * does, rather than leaving the lead to wonder.
+   *
+   * An EMPTY box is not marked. A club that has not filled in its schedule
+   * is not doing anything wrong, and warning about it would put an amber
+   * outline on the whole section the first time it is opened.
+   */
+  function _linkCoordAttrs(link) {
+    var v = String(link || '').trim();
+    if (!v || parseCoordsInput(v)) return '';
+    return ' class="ts-nocoord" title="' + sanitize(t('club.link_nocoord')) + '"';
+  }
+
+  function _refreshTeamSetupVenue() {
+    var el = document.getElementById('ts-home-coords');
+    if (!el) return;
+    var c = (_clubConfig && _clubConfig.homeCoords) || null;
+    el.value = (c && isFinite(Number(c.lat)) && isFinite(Number(c.lon)))
+      ? Number(c.lat) + ', ' + Number(c.lon) : '';
+  }
+
+  /**
+   * `{lat, lon}`, `{}` to clear, or `{error}` when the box holds something
+   * unparseable.
+   *
+   * An empty box CLEARS rather than leaves alone: that is how a club that
+   * moved ground stops forecasting the old one, and there is no other
+   * control that could mean it.
+   */
+  function _collectVenueFromDom() {
+    var el = document.getElementById('ts-home-coords');
+    if (!el) return undefined;                  // section not on the page
+    var raw = el.value.trim();
+    if (!raw) return {};
+    var c = parseCoordsInput(raw);
+    return c || { error: t('club.home_coords_err') };
+  }
+
   /** null when the pair is unusable — the caller shows the reason. */
   function _collectRemindersFromDom() {
     var pushEl = document.getElementById('ts-rem-push');
@@ -4212,7 +4317,8 @@
         html += '<select data-home-day="' + schedKey + '">' + _selectedDayOptions(dayOptions, homeGame.day) + '</select>';
         html += '<select class="ts-time" data-home-time="' + schedKey + '">' + buildTimeOptions(homeGame.time || '') + '</select>';
         html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="Ubicació">';
-        html += '<input type="text" data-home-link="' + schedKey + '" value="' + sanitize(homeGame.link || '') + '" placeholder="Link">';
+        html += '<input type="text" data-home-link="' + schedKey + '"' + _linkCoordAttrs(homeGame.link) +
+          ' value="' + sanitize(homeGame.link || '') + '" placeholder="Link">';
         html += '</div>';
 
         html += '</div>';
@@ -4240,7 +4346,8 @@
       '<span class="ts-sched-dash">-</span>' +
       '<select class="ts-time" data-train-end="' + schedKey + '-' + idx + '">' + buildTimeOptions(t.endTime || '') + '</select>' +
       '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicació">' +
-      '<input type="text" data-train-link="' + schedKey + '-' + idx + '" value="' + sanitize(t.link || '') + '" placeholder="Link">' +
+      '<input type="text" data-train-link="' + schedKey + '-' + idx + '"' + _linkCoordAttrs(t.link) +
+        ' value="' + sanitize(t.link || '') + '" placeholder="Link">' +
       '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
       '</div>';
   }
@@ -4524,6 +4631,19 @@
           if (row) row.remove();
         }
       });
+      /* The coordinate warning, live. On `input` rather than on save: a lead
+         who pastes a short link finds out while the clipboard still holds
+         the right one, instead of on the next deploy's forecast not
+         appearing. Marking is idempotent, so this can run on every keystroke. */
+      schedSection.addEventListener('input', function (e) {
+        var el = e.target;
+        if (!el.matches || !el.matches('[data-train-link],[data-home-link]')) return;
+        var v = String(el.value || '').trim();
+        var bad = !!v && !parseCoordsInput(v);
+        el.classList.toggle('ts-nocoord', bad);
+        if (bad) el.title = t('club.link_nocoord');
+        else el.removeAttribute('title');
+      });
       /* Choosing a start fills an EMPTY end 90 minutes later. Replaces the
          digit-stripping HH:MM formatter that used to live here, which the
          selects made obsolete — a select cannot hold a malformed time.
@@ -4655,6 +4775,16 @@
       return;
     }
 
+    /* The home ground. Validated before the network like everything above it:
+       a link the parser cannot read has to be corrected here, not silently
+       dropped — the club would then look configured and get no forecast. */
+    var venue = _collectVenueFromDom();
+    if (venue && venue.error) {
+      errEl.textContent = venue.error;
+      errEl.hidden = false;
+      return;
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = t('auth.saving');
     try {
@@ -4667,6 +4797,9 @@
       var setCats = firebase.app().functions('us-central1').httpsCallable('setClubCategories');
       var catsPayload = { categories: categories, fcfLinks: fcfLinks, schedules: schedules };
       if (reminders) catsPayload.reminders = reminders;
+      // `{}` is meaningful — it clears the coordinates — so this is an
+      // undefined check, not a truthiness one.
+      if (venue !== undefined) catsPayload.homeCoords = venue;
       await setCats(catsPayload);
       /* Its own callable, and deliberately AFTER setCats: kits share no
          invariant with categories, and setClubCategories does quota
@@ -11147,6 +11280,11 @@
           <span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${t('match_detail.kickoff')} ${m.time || '—'}</span>
           <span>${matchPlace}</span>
         </div>
+        ${/* The same strip the session page draws, from the same field and the
+              same function. An AWAY fixture forecasts the away ground: its
+              mapLink carries the federation's coordinates, which
+              scheduledWeatherSync prefers over the club's own. */''}
+        ${sessionWeatherHtml(m, 'match')}
         ${convHtml}
       </div>
       ${oppKitsHtml}
@@ -18830,15 +18968,24 @@
   }
 
   /* ── Weather ──────────────────────────────────────────────────
-     What the session is likely to be played in: sky, wind, temperature.
+     What the session is likely to be played in: sky, wind, temperature, and
+     how much of it is expected to rain over.
 
-     Placeholder values for now — a forecast API is coming, and this exists
-     so that when it lands there is somewhere for it to write. The shape is
-     the one a forecast returns, NOT the one that happens to be easy to draw:
+     NOTHING here fetches. The forecast is written server-side by
+     scheduledWeatherSync (functions/index.js) straight onto the row, so it
+     arrives through the ordinary fa_training / fa_matches sync, renders
+     offline, and needs no API key on a client whose whole bundle is public:
 
-         tr.weather = { cond: 'sun'|'cloud'|'rain'|'storm'|'snow'|'fog',
-                        windMs: <metres per second>,
-                        tempC:  <degrees> }
+         tr.weather = { cond: 'sun'|'cloud'|'overcast'|'rain'|'storm'|'snow'|'fog',
+                        windMs:  <metres per second>,
+                        tempC:   <degrees>,
+                        rainPct: <% of the session it is expected to rain over>,
+                        at:      <ISO time the forecast was taken> }
+
+     `rainPct` is a share of the SESSION, not a probability of rain. The two
+     are easy to confuse and impossible to tell apart once they are on screen
+     — summarise() in functions/weather.js is where the conversion happens and
+     the only place it should.
 
      Wind is stored in m/s and BANDED for display rather than stored as a
      band, because the band is a presentation choice and the number is the
@@ -18861,19 +19008,48 @@
   /**
    * The forecast strip beside the session title.
    *
-   * Returns '' for a session with no weather at all rather than a row of
-   * dashes: an empty forecast is not information, and the title line is not
-   * the place to say "we do not know yet".
+   * `kind` is 'training' or 'match' and only chooses the wording of the rain
+   * line — ONE implementation for both pages, because a second copy for the
+   * fixture page is how the two would drift.
+   *
+   * Three outcomes, and which one you get depends on the CLOCK, not on
+   * whether data happens to be present:
+   *
+   *   more than 3 days out  →  "Previsió disponible 3 dies abans". The server
+   *                            does not fetch that far ahead; saying so is
+   *                            better than a blank a coach reads as broken.
+   *   within 3 days         →  the strip, or '' until the next run fills it.
+   *   already started       →  the strip, frozen. scheduledWeatherSync never
+   *                            touches a started event again, so this is the
+   *                            record of what the session was played in.
+   *
+   * Returns '' for an event with no forecast rather than a row of dashes: an
+   * empty forecast is not information, and the title line is not the place to
+   * say "we do not know yet".
    */
-  function sessionWeatherHtml(tr) {
-    const w = (tr && tr.weather) || STP_WEATHER_DEFAULT;
-    if (!w) return '';
+  function sessionWeatherHtml(tr, kind) {
+    const w = tr && tr.weather;
+    if (!w) {
+      /* Only ahead of the window is the absence explainable. A past session
+         with no forecast predates the feature, and there is nothing useful to
+         tell anyone about it. */
+      return wxDaysOut(tr) > 3
+        ? '<div class="std-wx-soon">' + sanitize(t('wx.too_far')) + '</div>' : '';
+    }
     const icon = STP_WEATHER_ICON[w.cond] || STP_WEATHER_ICON.sun;
     const band = windBand(w.windMs);
     const ms = Number(w.windMs);
     const windTxt = t('wx.' + band) +
       (isFinite(ms) && ms >= 1.5 ? ' · ' + (Math.round(ms * 10) / 10) + ' m/s' : '');
     const temp = isFinite(Number(w.tempC)) ? Math.round(Number(w.tempC)) + '°' : '';
+    const rain = Math.round(Number(w.rainPct));
+    /* Only when there is rain to warn about. A "0% de pluja" line is a
+       sentence a coach has to read to learn nothing. */
+    const rainTxt = (isFinite(rain) && rain > 0)
+      ? '<span class="std-wx-rain">' + sanitize(
+        t(kind === 'match' ? 'wx.rain_share_match' : 'wx.rain_share_training')
+          .replace('{n}', rain)) + '</span>'
+      : '';
     return '<div class="std-wx">' +
       '<span class="std-wx-i" title="' + sanitize(t('wx.' + w.cond) || '') + '">' +
         icon + '</span>' +
@@ -18882,12 +19058,30 @@
         // character blowing at the pitch.
         '<span class="std-wx-i">💨</span>' + sanitize(windTxt) + '</span>' +
       (temp ? '<span class="std-wx-b std-wx-t">' + sanitize(temp) + '</span>' : '') +
+      rainTxt +
       '</div>';
   }
 
-  /* Until the forecast API lands. A plausible evening rather than a blank:
-     the point of shipping it now is to see the strip in place. */
-  const STP_WEATHER_DEFAULT = { cond: 'cloud', windMs: 3.2, tempC: 17 };
+  /**
+   * Whole days from today to an event's date, or -1 when it has no usable one.
+   *
+   * Midday UTC on both sides so a DST change cannot round the gap to the
+   * wrong integer — the same trick dayGap() uses in functions/weather.js,
+   * which is the copy that decides what gets fetched. These two must agree on
+   * "3 days out" or the app promises a forecast the server never takes.
+   */
+  function wxDaysOut(row) {
+    const d = String((row && row.date) || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return -1;
+    const now = new Date();
+    const todayIso = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    const a = Date.parse(todayIso + 'T12:00:00Z');
+    const b = Date.parse(d + 'T12:00:00Z');
+    if (!isFinite(a) || !isFinite(b)) return -1;
+    return Math.round((b - a) / 86400000);
+  }
 
   /** A colour disc. A RING, not a border, so a white bib still reads. */
   function _stpDot(fill, cls) {
@@ -19481,13 +19675,19 @@
 
   /** One line of weather for the sheet: no emoji, they print as boxes. */
   function _prnWeather(tr) {
-    const w = (tr && tr.weather) || STP_WEATHER_DEFAULT;
+    const w = tr && tr.weather;
+    // A dash, never a stand-in forecast. This sheet is carried onto the
+    // pitch, and a printed page cannot be corrected once it is wrong.
     if (!w) return '—';
     const ms = Number(w.windMs);
     const bits = [t('wx.' + w.cond) || ''];
     bits.push(t('wx.' + windBand(ms)) +
       (isFinite(ms) && ms >= 1.5 ? ' (' + (Math.round(ms * 10) / 10) + ' m/s)' : ''));
     if (isFinite(Number(w.tempC))) bits.push(Math.round(Number(w.tempC)) + '°');
+    const rain = Math.round(Number(w.rainPct));
+    if (isFinite(rain) && rain > 0) {
+      bits.push(t('wx.rain_share_training').replace('{n}', rain));
+    }
     return bits.filter(Boolean).join(' · ');
   }
 
@@ -21082,7 +21282,7 @@
         <div class="std-hero">
           <div class="std-hero-row">
             <h1 class="std-title">${heroTitle}</h1>
-            ${isAct ? '' : sessionWeatherHtml(tr)}
+            ${isAct ? '' : sessionWeatherHtml(tr, 'training')}
           </div>
           <div class="std-meta">${dateFormatted} · ${sanitize(tr.time || '—')} · ${locationHtml(tr)}</div>
         </div>

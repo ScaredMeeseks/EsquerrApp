@@ -1526,6 +1526,215 @@ exports.scheduledFcfSync = onSchedule({
   logger.info("fcfSync done", {clubs, squads});
 });
 
+// ── 5c. scheduledWeatherSync — the forecast on every session ──
+//
+// What the pitch will be like: sky, wind, temperature, and how much of the
+// session it is expected to rain for. Stamped onto the fa_training and
+// fa_matches rows themselves, in the `weather` shape js/app.js has drawn
+// since v1xx — until now fed by a hardcoded placeholder that showed every
+// coach the same invented evening.
+//
+// SERVER-side for the same reason the FCF sync is: one fetch serves a whole
+// club instead of one per device, the API credentials never reach a public
+// GitHub Pages bundle, and a player with no write access to fa_training still
+// sees the forecast his coach sees.
+//
+// TWO RULES, both requested and both easy to lose in a refactor:
+//
+//   1. NOTHING more than 3 days out is fetched. The app says "available 3
+//      days before" instead, because a 10-day forecast for a football pitch
+//      is a number that changes every run and is wrong about rain.
+//   2. Once an event has STARTED it is never touched again, ever. The last
+//      report before kick-off becomes the historical record of what the
+//      session was played in. A wrong freeze loses an update; a wrong
+//      overwrite destroys a record — the same asymmetry _kickedOff weighs in
+//      fcf.js, decided the same way.
+//
+// The cadence inside those 3 days lives in wxDue() in functions/weather.js.
+
+const {defineSecret} = require("firebase-functions/params");
+const {
+  coordsOf, coordKey, scheduleCoordIndex, coordsForRow,
+  summarise, wxDue, dayGap, weatherChanged,
+} = require("./weather");
+
+/* Set with `firebase functions:secrets:set XWEATHER_CLIENT_ID` (and
+   …_SECRET). NOT in the repo and not in a config file: the frontend is a
+   public GitHub Pages site and the APK bundles a copy of it, so anything the
+   client could read is published. */
+const XW_ID = defineSecret("XWEATHER_CLIENT_ID");
+const XW_SECRET = defineSecret("XWEATHER_CLIENT_SECRET");
+
+const XW_API = "https://data.api.xweather.com/forecasts/";
+
+/**
+ * The hourly forecast for one coordinate, as XWeather's period array.
+ *
+ * `limit=80` is 80 hours — the 3-day window plus slack for a late kick-off on
+ * the third day. One call therefore covers EVERY event at that venue in the
+ * whole window, which is why the cadence in wxDue is about Firestore writes
+ * rather than about API quota.
+ *
+ * Returns [] on any failure, never throws: one bad coordinate must not stop
+ * the other clubs' forecasts, the same containment scheduledFcfSync has.
+ */
+async function xwFetchHourly(coords) {
+  const url = XW_API + coords.lat + "," + coords.lon +
+    "?filter=1hr&limit=80" +
+    "&client_id=" + encodeURIComponent(XW_ID.value()) +
+    "&client_secret=" + encodeURIComponent(XW_SECRET.value());
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("XWeather returned " + resp.status);
+    const json = await resp.json();
+    /* `success: false` comes back with HTTP 200 and an `error` object — an
+       invalid key looks exactly like a healthy response to resp.ok alone. */
+    if (!json || json.success !== true) {
+      throw new Error("XWeather error " +
+        JSON.stringify((json || {}).error || null));
+    }
+    const first = Array.isArray(json.response) ? json.response[0] : json.response;
+    return (first && Array.isArray(first.periods)) ? first.periods : [];
+  } catch (err) {
+    logger.error("xwFetch failed", {coords: coordKey(coords), err: String(err)});
+    return [];
+  }
+}
+
+/** The Madrid wall clock this run is reasoning about. */
+function madridNow(now) {
+  const date = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
+      .format(now);
+  const hour = Number(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid", hour: "2-digit", hour12: false,
+  }).format(now));
+  return {date, hour};
+}
+
+exports.scheduledWeatherSync = onSchedule({
+  /* Wall-clock cron in Madrid, like every other scheduler here — the App
+     Engine interval form drifts by each run's duration. 08–21 only: a
+     forecast refreshed at 03:00 is read by nobody. WX_HOUR_FROM/TO in
+     weather.js must agree with these bounds. */
+  schedule: "0 8-21 * * *",
+  timeZone: "Europe/Madrid",
+  region: "us-central1",
+  timeoutSeconds: 540,
+  secrets: [XW_ID, XW_SECRET],
+}, async () => {
+  const now = new Date();
+  const {date: today, hour} = madridNow(now);
+  const fmt = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"});
+  const dates = [0, 1, 2, 3].map((d) =>
+    fmt.format(new Date(now.getTime() + d * 24 * 36e5)));
+
+  /* The denormalised date arrays updateTeamDates maintains — no full
+     collection scan, exactly as the reminders do. Two queries because
+     Firestore cannot OR across fields; the ids are unioned. */
+  const [trainSnap, matchSnap] = await Promise.all([
+    db.collection("teams")
+        .where("trainingDates", "array-contains-any", dates).get(),
+    db.collection("teams")
+        .where("matchDates", "array-contains-any", dates).get(),
+  ]);
+  const teamIds = new Set();
+  trainSnap.docs.forEach((d) => teamIds.add(d.id));
+  matchSnap.docs.forEach((d) => teamIds.add(d.id));
+  if (!teamIds.size) return;
+
+  /* Every row this run owns, gathered across ALL clubs before a single fetch
+     goes out. Gathering first is what lets two clubs sharing a town — or a
+     club's own trainings and home fixtures — collapse onto one API call. */
+  const jobs = [];
+  const shards = new Map();          // ref.path → {ref, cat, rows, dirty}
+  const byCoord = new Map();         // coordKey → coords
+
+  for (const teamId of teamIds) {
+    try {
+      /* teams/{id} and clubs/{id} share an id. The club document is where
+         the lead's own maps links live — the schedule's `link` fields —
+         so a home session gets its coordinates from the configuration the
+         lead already filled in, not from a separate setting. */
+      const clubSnap = await db.collection("clubs").doc(teamId).get();
+      const club = clubSnap.data() || {};
+      const index = scheduleCoordIndex(club);
+      const home = coordsOf(club.homeCoords);
+      const byKey = await readDataShards(teamId, ["fa_training", "fa_matches"]);
+
+      for (const key of ["fa_training", "fa_matches"]) {
+        const kind = key === "fa_matches" ? "match" : "training";
+        for (const s of (byKey.get(key) || [])) {
+          const rows = parseDataDoc(s.snap, []);
+          if (!Array.isArray(rows) || !rows.length) continue;
+          let held = null;
+
+          rows.forEach((row) => {
+            if (!row || !dates.includes(String(row.date || ""))) return;
+            const startHhmm = String(row.time || "").split(" - ")[0].trim();
+            if (hhmmToMins(startHhmm) === null) return;
+            const start = parseMadridDate(row.date, startHhmm);
+            const end = activityEndsAt(row, kind);
+            if (!end || isNaN(start.getTime())) return;
+            /* THE FREEZE. Once it has started the last report stands for
+               ever — see the two rules at the top of this section. */
+            if (start.getTime() <= now.getTime()) return;
+            if (!wxDue(dayGap(today, row.date), hour)) return;
+
+            const coords = coordsForRow(row, index, home);
+            if (!coords) return;
+
+            if (!held) {
+              held = {ref: s.ref, cat: s.cat, rows: rows, dirty: false};
+              shards.set(s.ref.path, held);
+            }
+            byCoord.set(coordKey(coords), coords);
+            jobs.push({
+              shard: held, row: row, ck: coordKey(coords),
+              startMs: start.getTime(), endMs: end.getTime(),
+            });
+          });
+        }
+      }
+    } catch (err) {
+      // One club's unreadable data must not cost every other club its
+      // forecast — same containment as scheduledFcfSync.
+      logger.error("weatherSync gather failed", {teamId, err: String(err)});
+    }
+  }
+  if (!jobs.length) return;
+
+  const periodsBy = new Map();
+  for (const [ck, coords] of byCoord) {
+    periodsBy.set(ck, await xwFetchHourly(coords));
+  }
+
+  const at = now.toISOString();
+  let stamped = 0;
+  jobs.forEach((j) => {
+    const wx = summarise(periodsBy.get(j.ck), j.startMs, j.endMs);
+    if (!wx) return;
+    if (!weatherChanged(j.row.weather, wx)) return;
+    wx.at = at;
+    j.row.weather = wx;
+    j.shard.dirty = true;
+    stamped++;
+  });
+
+  let written = 0;
+  for (const s of shards.values()) {
+    if (!s.dirty) continue;
+    /* `category` is not decoration — the client queries
+       where('category','in',…) and the rules test the same field, so a shard
+       written without it is invisible to the entire app. */
+    await s.ref.set({v: JSON.stringify(s.rows), category: s.cat}, {merge: true});
+    written++;
+  }
+  logger.info("weatherSync done", {
+    hour, teams: teamIds.size, events: jobs.length,
+    venues: byCoord.size, stamped, shards: written,
+  });
+});
+
 /* ═══════════════════════════════════════════════════════════════════════
    The referee database
    ═══════════════════════════════════════════════════════════════════════
@@ -2632,6 +2841,37 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
     }
   }
 
+  /* The club's home ground, as coordinates. Everything the weather sync knows
+     about where a session is played comes from here or from an imported
+     fixture's mapLink — a training's `location` is free text ("Escola
+     Industrial") that no geocoder resolves.
+
+     Validated here rather than trusted, for the ordinary reason: the client
+     parses a pasted Google Maps URL, and a parse that half-worked would send
+     a longitude of NaN that Firestore stores happily and the sync then asks
+     XWeather about. An empty object CLEARS it — that is how a club stops
+     having a home ground, and it is why this is not simply `if (coords)`. */
+  if (data.homeCoords !== undefined && data.homeCoords !== null) {
+    const c = data.homeCoords;
+    if (typeof c !== "object" || Array.isArray(c)) {
+      throw new HttpsError("invalid-argument", "homeCoords no vàlid.");
+    }
+    for (const k of Object.keys(c)) {
+      if (k !== "lat" && k !== "lon") {
+        throw new HttpsError("invalid-argument", "homeCoords: camp desconegut " + k);
+      }
+    }
+    if (Object.keys(c).length) {
+      const lat = Number(c.lat);
+      const lon = Number(c.lon);
+      if (!isFinite(lat) || !isFinite(lon) ||
+          Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        throw new HttpsError("invalid-argument",
+            "Les coordenades del camp no són vàlides.");
+      }
+    }
+  }
+
   const payload = {categories};
   if (data.fcfLinks !== undefined) payload.fcfLinks = data.fcfLinks;
   if (data.schedules !== undefined) payload.schedules = data.schedules;
@@ -2640,6 +2880,14 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
       pushHours: Number(data.reminders.pushHours),
       lockHours: Number(data.reminders.lockHours),
     };
+  }
+  if (data.homeCoords !== undefined && data.homeCoords !== null) {
+    const c = data.homeCoords;
+    // Numbers, not whatever the client sent: "41.38" stored as a string is a
+    // value coordsOf() in weather.js would still parse, but it would be the
+    // one field on this document that is not the type it looks like.
+    payload.homeCoords = Object.keys(c).length
+      ? {lat: Number(c.lat), lon: Number(c.lon)} : null;
   }
   await clubRef.set(payload, {merge: true});
 
