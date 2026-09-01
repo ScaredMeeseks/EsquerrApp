@@ -7832,3 +7832,40 @@ run that selects nothing — it used to `return` early, so "no forecast anywhere
 all" looked exactly like a dead scheduler.
 
 Unit 2560 → **2570**. Version triple → v208.
+
+### 2026-09-02 — A moon after dark, and why the hourly flag was not enough (v209/v210)
+
+A 21:00 session in winter drew ☀️. Wrong in the way nobody reports as a bug — they just quietly
+stop trusting the strip.
+
+`night` is stored as its OWN flag, not a new `cond` value: a clear sky is the same fact at midnight
+as at noon and only the drawing differs, the same reasoning that stores `windMs` and bands it at
+render time. Only the two icons containing a sun are overridden (`sun` ☀️→🌙, `cloud` ⛅→☁️); rain,
+storm, snow, fog and overcast read the same at any hour and are deliberately absent from
+`STP_WEATHER_ICON_NIGHT` rather than duplicated. `weatherChanged()` includes `night`, since a flip
+changes the icon. A row written before the flag existed renders exactly as it did.
+
+⚠ **At night `cloud` and `overcast` both draw ☁️.** Unicode has no moon-behind-cloud emoji and two
+glyphs in a 26px slot looks worse than the collision costs. The `title` still distinguishes them.
+
+**XWeather's per-hour `isDay` was the obvious source and it is too coarse.** A 20:00–21:30 training
+against a 20:21 sunset counts the whole 20:00 hour as daylight: 60 minutes of "day" against 30 of
+night, and the strip draws a sun over a session played almost entirely in the dark. Evening
+trainings are MOST trainings, so that is the common case, not a corner — and it was caught only
+because the club's own Thursday session happened to be exactly it.
+
+So `nightOf()` prefers the real instant from the `/sunmoon` endpoint (`riseISO`/`setISO`), and the
+same session then reads 21 lit minutes against 69 dark. One extra request per venue per run, not per
+session — the endpoint takes `from`/`to`, so a single call covers the whole 3-day window. On any
+failure it falls back to the hourly tally, which is approximate but never absurd. Ties go to day: an
+exactly half-and-half session is a sunset, and a sun over a sunset is the more forgiving mistake.
+
+⚠ **Key the sunmoon map by the LOCAL date of `riseISO`**, not a UTC slice — east of Greenwich an
+evening reading would land on the wrong day.
+
+**Three tests were passing for the wrong reason** and a mutation run found each: a reversed
+`{riseMs, setMs}` yields zero lit minutes and therefore "night" either way, so the fallback test had
+to use DAY-ish hourly periods to tell the branches apart; and neither the hourly nor the sunset tie
+(`<` vs `<=`) was pinned at all. Both ties now have an exact 50/50 case.
+
+Unit 2580 → **2584**. Version triple → v210.

@@ -323,6 +323,45 @@ function overlapMins(period, startMs, endMs) {
   return hi > lo ? (hi - lo) / 60000 : 0;
 }
 
+/* ── Daylight ─────────────────────────────────────────────── */
+
+/**
+ * Is this session mostly after dark?
+ *
+ * TWO sources, and the difference matters more than it looks. XWeather's
+ * `isDay` is stamped per HOUR, so a 20:00–21:30 session against a 20:21
+ * sunset counts the whole 20:00 hour as daylight: 60 minutes of "day"
+ * against 30 of night, and the strip draws a sun over a session played
+ * almost entirely in the dark. Evening trainings are most trainings, so
+ * that is the common case, not a corner.
+ *
+ * `sun` — `{riseMs, setMs}` from the /sunmoon endpoint — gives the real
+ * instant, and the same session then reads 21 minutes of day against 69 of
+ * night. When it is absent (the call failed, or a caller has none) this
+ * falls back to the hourly tally, which is approximate but never absurd.
+ *
+ * Ties go to day: an exactly half-and-half session is a sunset, and a sun
+ * over a sunset is the more forgiving of the two mistakes.
+ *
+ * @param {number} startMs session start, epoch ms
+ * @param {number} endMs session end, epoch ms
+ * @param {?object} sun {riseMs, setMs} for the session's own date
+ * @param {number} dayMins daylight minutes from the hourly isDay tally
+ * @param {number} total overlapping minutes in total
+ * @return {boolean} true when it is mostly dark
+ */
+function nightOf(startMs, endMs, sun, dayMins, total) {
+  const rise = sun && Number(sun.riseMs);
+  const set = sun && Number(sun.setMs);
+  if (isFinite(rise) && isFinite(set) && set > rise) {
+    const lo = Math.max(rise, startMs);
+    const hi = Math.min(set, endMs);
+    const lit = hi > lo ? hi - lo : 0;
+    return lit * 2 < (endMs - startMs);
+  }
+  return dayMins * 2 < total;
+}
+
 /* ── The session's forecast ───────────────────────────────── */
 
 /**
@@ -345,7 +384,7 @@ function overlapMins(period, startMs, endMs) {
  * @param {number} endMs session end, epoch ms
  * @return {?object} the stored weather shape, minus `at`
  */
-function summarise(periods, startMs, endMs) {
+function summarise(periods, startMs, endMs, sun) {
   if (!Array.isArray(periods) || !(endMs > startMs)) return null;
   let total = 0;
   let wet = 0;
@@ -391,7 +430,7 @@ function summarise(periods, startMs, endMs) {
        same FACT at midnight as at noon, and only the drawing differs. Same
        reasoning as storing windMs and banding it at render time — the band
        is a presentation choice, the number is the fact. */
-    night: dayMins * 2 < total,
+    night: nightOf(startMs, endMs, sun, dayMins, total),
   };
   if (windMs !== null) out.windMs = Math.round(windMs * 10) / 10;
   if (tempMins) out.tempC = Math.round((tempSum / tempMins) * 10) / 10;
@@ -504,6 +543,7 @@ module.exports = {
   placeKey,
   scheduleCoordIndex,
   coordsForRow,
+  nightOf,
   wxCondOf,
   isWetPeriod,
   overlapMins,

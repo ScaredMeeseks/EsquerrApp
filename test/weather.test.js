@@ -523,6 +523,61 @@ describe('summarise — the session line', () => {
     assert.strictEqual(mostlyNight.night, true);
   });
 
+  it('uses the REAL sunset when /sunmoon supplied one', () => {
+    /* The case the hourly flag gets wrong, and the one that matters most:
+       a 20:00–21:30 training against a 20:21 sunset. Hour-granularity counts
+       the whole 20:00 hour as daylight — 60 day against 30 night — and draws
+       a sun over a session played almost entirely in the dark. */
+    const S20 = Date.parse('2026-09-03T20:00:00+02:00');
+    const E2130 = Date.parse('2026-09-03T21:30:00+02:00');
+    const sun = {
+      riseMs: Date.parse('2026-09-03T07:19:41+02:00'),
+      setMs: Date.parse('2026-09-03T20:21:41+02:00'),
+    };
+    const ps = [
+      {dateTimeISO: '2026-09-03T20:00:00+02:00', isDay: true, pop: 0,
+        weatherPrimaryCoded: '::CL', cloudsCoded: 'CL', windSpeedMPS: 2, tempC: 20},
+      {dateTimeISO: '2026-09-03T21:00:00+02:00', isDay: false, pop: 0,
+        weatherPrimaryCoded: '::CL', cloudsCoded: 'CL', windSpeedMPS: 2, tempC: 19},
+    ];
+    assert.strictEqual(wx.summarise(ps, S20, E2130).night, false,
+        'hourly isDay alone gets this wrong — that is the point');
+    assert.strictEqual(wx.summarise(ps, S20, E2130, sun).night, true,
+        '21 min of daylight against 69 of dark is a moon');
+  });
+
+  it('falls back to the hourly flag when /sunmoon gave nothing', () => {
+    // The call failed; approximate is better than losing the forecast.
+    const out = wx.summarise([
+      period('18', {isDay: false}),
+      period('19', {isDay: false}),
+    ], S, E, undefined);
+    assert.strictEqual(out.night, true);
+  });
+
+  it('ignores a malformed sun object and falls back, rather than trusting it', () => {
+    /* The hourly periods say DAY here, so a fallback gives false and a
+       blindly-trusted broken sun gives true (a reversed pair yields zero lit
+       minutes). Testing against night-ish periods would have both branches
+       agreeing and prove nothing — which a mutation run showed. */
+    const dayPeriods = [period('18', {isDay: true}), period('19', {isDay: true})];
+    [{riseMs: NaN, setMs: NaN}, {riseMs: 5, setMs: 1}, {}, null].forEach((sun) => {
+      assert.strictEqual(wx.summarise(dayPeriods, S, E, sun).night, false,
+          JSON.stringify(sun));
+    });
+  });
+
+  it('breaks an exact sunset tie towards DAY', () => {
+    /* 90-minute session, sunset exactly at the midpoint: 45 lit, 45 dark.
+       `<` versus `<=` is the whole decision and nothing else pins it. */
+    const sun = {
+      riseMs: Date.parse('2026-03-04T06:00:00Z'),
+      setMs: Date.parse('2026-03-04T18:45:00Z'),
+    };
+    const out = wx.summarise([period('18'), period('19')], S, E, sun);
+    assert.strictEqual(out.night, false);
+  });
+
   it('breaks an exact 50/50 tie towards DAY', () => {
     /* 18:30–19:30 straddles the two periods evenly — 30 minutes each — so
        `<` versus `<=` is the whole decision, and nothing else in the suite

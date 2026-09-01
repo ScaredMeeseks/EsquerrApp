@@ -1663,6 +1663,53 @@ async function resolveClubShortLinks(club, cache) {
   return out;
 }
 
+const XW_SUNMOON = "https://data.api.xweather.com/sunmoon/";
+
+/**
+ * Sunrise and sunset per date for one venue → Map("YYYY-MM-DD" → {riseMs, setMs}).
+ *
+ * ONE call covers the whole window — the endpoint takes from/to — so this is
+ * a single extra request per venue per run, not one per session.
+ *
+ * Worth that request because the hourly `isDay` flag is too coarse for the
+ * sessions this app is mostly about: a 20:00–21:30 training against a 20:21
+ * sunset reads as daylight on the hourly tally and draws a sun over a
+ * session played in the dark. See nightOf() in weather.js.
+ *
+ * Returns an empty Map on any failure, which makes nightOf fall back to the
+ * hourly flag rather than lose the forecast.
+ */
+async function xwFetchSunmoon(coords, fromDate, toDate) {
+  const out = new Map();
+  const url = XW_SUNMOON + coords.lat + "," + coords.lon +
+    "?from=" + fromDate + "&to=" + toDate +
+    "&client_id=" + encodeURIComponent(XW_ID.value()) +
+    "&client_secret=" + encodeURIComponent(XW_SECRET.value());
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("XWeather returned " + resp.status);
+    const json = await resp.json();
+    if (!json || json.success !== true) {
+      throw new Error("XWeather error " +
+        JSON.stringify((json || {}).error || null));
+    }
+    (Array.isArray(json.response) ? json.response : []).forEach((r) => {
+      const rise = Date.parse(String((r.sun || {}).riseISO || ""));
+      const set = Date.parse(String((r.sun || {}).setISO || ""));
+      if (!isFinite(rise) || !isFinite(set)) return;
+      /* Key by the LOCAL date of the sunrise, which is the date the session
+         rows carry — not a UTC slice, which would be a day out for an
+         evening reading east of Greenwich. */
+      const day = String((r.sun || {}).riseISO || "").slice(0, 10);
+      if (day) out.set(day, {riseMs: rise, setMs: set});
+    });
+  } catch (err) {
+    logger.warn("xwFetchSunmoon failed",
+        {coords: coordKey(coords), err: String(err)});
+  }
+  return out;
+}
+
 /** The Madrid wall clock this run is reasoning about. */
 function madridNow(now) {
   const date = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
@@ -1803,7 +1850,7 @@ exports.scheduledWeatherSync = onSchedule({
             }
             byCoord.set(coordKey(coords), coords);
             jobs.push({
-              shard: held, row: row, ck: coordKey(coords),
+              shard: held, row: row, ck: coordKey(coords), date: row.date,
               startMs: start.getTime(), endMs: end.getTime(),
             });
           }
@@ -1829,14 +1876,18 @@ exports.scheduledWeatherSync = onSchedule({
   }
 
   const periodsBy = new Map();
+  const sunBy = new Map();
   for (const [ck, coords] of byCoord) {
     periodsBy.set(ck, await xwFetchHourly(coords));
+    // One call per venue for the whole window, not one per session.
+    sunBy.set(ck, await xwFetchSunmoon(coords, dates[0], dates[dates.length - 1]));
   }
 
   const at = now.toISOString();
   let stamped = 0;
   jobs.forEach((j) => {
-    const wx = summarise(periodsBy.get(j.ck), j.startMs, j.endMs);
+    const sun = (sunBy.get(j.ck) || new Map()).get(j.date);
+    const wx = summarise(periodsBy.get(j.ck), j.startMs, j.endMs, sun);
     if (!wx) return;
     if (!weatherChanged(j.row.weather, wx)) return;
     wx.at = at;
