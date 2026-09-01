@@ -1889,7 +1889,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 205;
+  const APP_VERSION = 206;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -21526,6 +21526,44 @@
   var _plSel = null;          // selected player uid, or null
   var _plOffS = null, _plOffW = null, _plOffPS = null, _plOffPW = null;
 
+  /* Every chart drawn this render, so a drag can redraw ONE of them.
+
+     Scrolling a chart used to call renderPage() on every mousemove — the
+     whole page, table, rail and all, rebuilt per pixel-step of the drag.
+     It was unusable on the player rail, which is the biggest thing on the
+     page and was being thrown away and rebuilt tens of times a second
+     while the pointer was still down.
+
+     A chart is windowed (it shows `win` of `total` items), so scrolling
+     genuinely changes which marks exist and there is nothing to translate
+     — it has to be re-rendered. Only it, though: each entry keeps the
+     function and the data it was built from, so plRedrawCharts can
+     rebuild exactly the boxes bound to the offset that moved. */
+  var _plCharts = [];
+  var _plDragMoved = false;   // swallow the click that ends a drag
+
+  /**
+   * One chart, in a box that can be redrawn on its own.
+   *
+   * `key` is the offset it scrolls with — 'W' drives two charts, the
+   * weekly load and the A/C ratio, and they scroll together.
+   */
+  function plChartBox(key, fn, data) {
+    var id = 'pl-chart-' + _plCharts.length;
+    _plCharts.push({id: id, key: key, fn: fn, data: data});
+    return '<div class="pl-chart-box" id="' + id + '">' +
+      fn(data, plGetOff(key)) + '</div>';
+  }
+
+  /** Redraw the charts bound to one offset, and nothing else. */
+  function plRedrawCharts(key) {
+    _plCharts.forEach(function (c) {
+      if (c.key !== key) return;
+      var el = document.getElementById(c.id);
+      if (el) el.innerHTML = c.fn(c.data, plGetOff(key));
+    });
+  }
+
   const PL_ATT = [
     {key: 'yes', label: 'Sí', color: '#7CA982'},
     {key: 'late', label: 'Tard', color: '#E3B341'},
@@ -22236,8 +22274,8 @@
         '<span class="pl-ready-ac">A/C ' + (r.acwr > 0 ? r.acwr.toFixed(2) : '—') + '</span>' +
       '</div>' +
       '<div class="pl-metrics">' + metrics + '</div>' +
-      plRailRpeHtml(r.sessions, _plOffPS) +
-      plRailAcwrHtml(r.weeks, _plOffPW) +
+      plChartBox('PS', plRailRpeHtml, r.sessions) +
+      plChartBox('PW', plRailAcwrHtml, r.weeks) +
       plInjuryHtml(r) +
       plHistoryHtml(r) +
       '</aside>';
@@ -22246,6 +22284,9 @@
 
   /* ── The page ─────────────────────────────────────────────────── */
   function renderStaffRoster() {
+    // The boxes are rebuilt with the page; ids from the last render point
+    // at elements that no longer exist.
+    _plCharts = [];
     var users = getUsers();
     var curCat = getCurrentCategory();
     var players = users.filter(function (u) { return (u.roles || []).includes('player'); })
@@ -22344,9 +22385,9 @@
             '<span class="pl-fig-v">' + teamAc + '</span></div>' +
         '</div>' +
         '<div class="pl-charts">' +
-          plRpeChartHtml(teamSessions, _plOffS) +
-          plWeekChartHtml(teamWeeks, _plOffW) +
-          plAcwrChartHtml(teamWeeks, _plOffW) +
+          plChartBox('S', plRpeChartHtml, teamSessions) +
+          plChartBox('W', plWeekChartHtml, teamWeeks) +
+          plChartBox('W', plAcwrChartHtml, teamWeeks) +
         '</div>' +
         '<div class="pl-section-head">' +
           '<span class="pl-eyebrow">' + t('pl.players') + '</span>' + teamChips +
@@ -22411,22 +22452,35 @@
        fades the way every other tooltip in the app does — `hidden` sets
        `display:none`, which no transition can animate out of. */
     var hideTip = function () { tip.classList.remove('visible'); };
-    page.querySelectorAll('[data-pl-tip]').forEach(function (el) {
-      el.addEventListener('mouseenter', function () {
-        var d;
-        try { d = JSON.parse(el.dataset.plTip); } catch (e) { return; }
-        tip.innerHTML = '<div class="pl-tip-t">' + sanitize(d.t || '') + '</div>' +
-          (d.r || []).map(function (r) {
-            return '<div class="pl-tip-r"><span>' + sanitize(r.k || '') + '</span><span>' +
-              sanitize(r.v || '') + '</span></div>';
-          }).join('');
-        tip.classList.add('visible');
-        // The same anchor .ua-tooltip uses, so the two sit identically.
-        var rect = el.getBoundingClientRect();
-        tip.style.left = (rect.left + rect.width / 2) + 'px';
-        tip.style.top = (rect.top - 8) + 'px';
-      });
-      el.addEventListener('mouseleave', hideTip);
+    /* ⚠ DELEGATED, not bound per mark. Dragging a chart replaces its
+       marks, and handlers attached to the old ones go with them — the
+       tooltips would work until the first scroll and then be dead for
+       every bar the drag drew. `mouseover`/`mouseout` bubble, which is
+       exactly why they are used here and `mouseenter`/`mouseleave`,
+       which do not, are not. */
+    var showTip = function (el) {
+      var d;
+      try { d = JSON.parse(el.dataset.plTip); } catch (e) { return; }
+      tip.innerHTML = '<div class="pl-tip-t">' + sanitize(d.t || '') + '</div>' +
+        (d.r || []).map(function (r) {
+          return '<div class="pl-tip-r"><span>' + sanitize(r.k || '') + '</span><span>' +
+            sanitize(r.v || '') + '</span></div>';
+        }).join('');
+      tip.classList.add('visible');
+      // The same anchor .ua-tooltip uses, so the two sit identically.
+      var rect = el.getBoundingClientRect();
+      tip.style.left = (rect.left + rect.width / 2) + 'px';
+      tip.style.top = (rect.top - 8) + 'px';
+    };
+    page.addEventListener('mouseover', function (e) {
+      var el = e.target.closest && e.target.closest('[data-pl-tip]');
+      if (el) showTip(el);
+    });
+    page.addEventListener('mouseout', function (e) {
+      var el = e.target.closest && e.target.closest('[data-pl-tip]');
+      // Moving WITHIN one mark is not leaving it.
+      if (el && e.relatedTarget && el.contains(e.relatedTarget)) return;
+      if (el) hideTip();
     });
 
     // Row → rail. A second click on the same row closes it.
@@ -22449,8 +22503,16 @@
     var rail = document.getElementById('pl-rail');
     if (rail) rail.addEventListener('click', function (e) { e.stopPropagation(); });
     // A click anywhere else on the page closes the rail.
-    page.addEventListener('click', function () {
+    page.addEventListener('click', function (e) {
       if (_plSel === null) return;
+      /* ⚠ Not a click on a chart. The drag surface used to stop its own
+         clicks, but a drag REPLACES that element mid-gesture, so the
+         listener died with it and letting go over the chart shut the very
+         rail you were scrolling. Asked of the event instead of the
+         element, this survives any redraw. */
+      if (e.target.closest && e.target.closest('.pl-chart-box')) return;
+      // Releasing a drag outside the chart still ends in a click here.
+      if (_plDragMoved) { _plDragMoved = false; return; }
       _plSel = null; hideTip(); renderPage(getSession());
     });
 
@@ -22473,20 +22535,18 @@
           moved = true;
           plSetOff(k, v);
           hideTip();
-          renderPage(getSession());
+          // ONE chart, not the whole page — see plRedrawCharts.
+          plRedrawCharts(k);
         };
         var up = function () {
           window.removeEventListener('mousemove', move);
           window.removeEventListener('mouseup', up);
-          /* A drag that moved nothing is a click, and a click on the
-             plot area would otherwise fall through to the page handler
-             and shut the rail. */
-          if (moved) return;
+          // The click this release is about to raise belongs to the drag.
+          _plDragMoved = moved;
         };
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
       });
-      r.addEventListener('click', function (e) { e.stopPropagation(); });
     });
   }
 

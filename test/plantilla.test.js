@@ -408,8 +408,13 @@ describe('the player rail has no close button of its own', () => {
     const bind = grab('  function bindPlantilla', '  function plGetOff');
     assert.ok(/_plSel = \(_plSel === id\) \? null : id/.test(bind),
         'the row toggles its own selection');
-    assert.ok(/page\.addEventListener\('click', function \(\) \{[\s\S]{0,120}_plSel = null/
-        .test(bind), 'and a click anywhere else on the page closes it');
+    /* Loosened deliberately: the handler grew guards (a click on a chart,
+       and the click that ends a drag, must not close the rail) and a shape
+       match on its first line broke. That it CLOSES is proved by driving
+       it in plantilla-charts.test.js; what matters here is that the page
+       still has the only other way in. */
+    assert.ok(/page\.addEventListener\('click',[\s\S]{0,600}?_plSel = null/.test(bind),
+        'and a click anywhere else on the page closes it');
   });
 
   it('has no ✕, and nothing left bound to one', () => {

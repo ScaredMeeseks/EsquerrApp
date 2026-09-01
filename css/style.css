@@ -6989,6 +6989,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    look like every other tooltip in the app, not like the page it happens
    to be floating over. Only the two-column key/value body below is this
    page's, because that is content, not chrome. */
+/* The redraw unit: a drag rebuilds the contents of one of these rather
+   than the page. `display:contents` so wrapping a chart changes nothing
+   about how it lays out — the box is a handle, not a layer. */
+.pl-chart-box { display: contents; }
+
 .pl-tip {
   position: fixed; z-index: 10050; pointer-events: none;
   transform: translateX(-50%) translateY(-100%);
