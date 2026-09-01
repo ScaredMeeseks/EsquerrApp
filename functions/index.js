@@ -1649,6 +1649,21 @@ exports.scheduledWeatherSync = onSchedule({
   const shards = new Map();          // ref.path → {ref, cat, rows, dirty}
   const byCoord = new Map();         // coordKey → coords
 
+  /* WHY a row got no forecast, per club.
+     Without this the run says "events: 1" and nothing else, and a coach with
+     an empty strip has no way to tell a skipped row from a broken deploy —
+     which is the exact silent failure this feature is supposed to remove.
+     `noCoords` is the one that matters in practice: it means every maps link
+     that could have located the session is a short link or empty. */
+  const why = new Map();             // teamId → {inWindow, started, notDue, badTime, noCoords, taken}
+  const tally = (teamId, k) => {
+    if (!why.has(teamId)) {
+      why.set(teamId, {inWindow: 0, started: 0, notDue: 0, badTime: 0,
+        noCoords: 0, taken: 0});
+    }
+    why.get(teamId)[k]++;
+  };
+
   for (const teamId of teamIds) {
     try {
       /* teams/{id} and clubs/{id} share an id. The club document is where
@@ -1670,18 +1685,33 @@ exports.scheduledWeatherSync = onSchedule({
 
           rows.forEach((row) => {
             if (!row || !dates.includes(String(row.date || ""))) return;
+            tally(teamId, "inWindow");
             const startHhmm = String(row.time || "").split(" - ")[0].trim();
-            if (hhmmToMins(startHhmm) === null) return;
+            if (hhmmToMins(startHhmm) === null) {
+              tally(teamId, "badTime"); return;
+            }
             const start = parseMadridDate(row.date, startHhmm);
             const end = activityEndsAt(row, kind);
-            if (!end || isNaN(start.getTime())) return;
+            if (!end || isNaN(start.getTime())) {
+              tally(teamId, "badTime"); return;
+            }
             /* THE FREEZE. Once it has started the last report stands for
                ever — see the two rules at the top of this section. */
-            if (start.getTime() <= now.getTime()) return;
-            if (!wxDue(dayGap(today, row.date), hour)) return;
+            if (start.getTime() <= now.getTime()) {
+              tally(teamId, "started"); return;
+            }
+            if (!wxDue(dayGap(today, row.date), hour)) {
+              tally(teamId, "notDue"); return;
+            }
 
             const coords = coordsForRow(row, index, home);
-            if (!coords) return;
+            if (!coords) {
+              /* Every link that could have located this session is a short
+                 link or empty, and no homeCoords is set. The team-setup
+                 boxes go amber for exactly this. */
+              tally(teamId, "noCoords"); return;
+            }
+            tally(teamId, "taken");
 
             if (!held) {
               held = {ref: s.ref, cat: s.cat, rows: rows, dirty: false};
@@ -1701,7 +1731,18 @@ exports.scheduledWeatherSync = onSchedule({
       logger.error("weatherSync gather failed", {teamId, err: String(err)});
     }
   }
-  if (!jobs.length) return;
+  /* The per-club breakdown, ALWAYS — including on the run that selected
+     nothing, which used to return here silently. "No forecast anywhere and
+     no log line" is indistinguishable from a dead scheduler. */
+  for (const [teamId, w] of why) {
+    logger.info("weatherSync club", Object.assign({teamId}, w));
+  }
+  if (!jobs.length) {
+    logger.info("weatherSync done", {
+      hour, teams: teamIds.size, events: 0, venues: 0, stamped: 0, shards: 0,
+    });
+    return;
+  }
 
   const periodsBy = new Map();
   for (const [ck, coords] of byCoord) {
