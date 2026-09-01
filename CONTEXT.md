@@ -7794,3 +7794,41 @@ slack.
 ⚠ **`rainPct` has never rendered from live data.** Barcelona's max `pop` across the whole 80-hour
 payload was 0, so the rain subtext — the one number a reader is most likely to misread as a
 probability — is covered by unit tests and by nothing else. It stays unproven until it rains.
+
+### 2026-09-01 — Short maps links are the NORMAL case, not the exception (v208)
+
+The first real run located Esquerra's sessions and none of C.E. Sant Andreu del Palomar's:
+`inWindow: 6, noCoords: 4`. The cause was not a bug in the resolution chain — it was an assumption
+underneath it. **Every one of Sant Andreu's schedule links is a `maps.app.goo.gl` short link**,
+because that is what the Google Maps *app's* Share button produces. Esquerra happened to have full
+`google.com/maps/…` URLs. Telling leads to hand-copy the long address-bar URL was therefore asking
+the majority of users for the thing they are least likely to have.
+
+`maps.app.goo.gl` 302s straight to a long maps URL with `@lat,lon` in it — checked against Sant
+Andreu's own stored link, which resolved to `41.4288862, 2.1905122` (Narcís Sala). So one redirect
+hop, server-side, fixes the common case with no user action at all. `resolveShortLink()` in
+index.js does exactly that with `redirect: "manual"` — the Location HEADER, never the body — cached
+run-wide by URL so a club's nine identical links cost one request, and a null cached as hard as a
+hit so a dead link costs one request rather than one per row. It runs only AFTER the due/freeze
+gates, so no run pays a redirect for a session it was not going to forecast.
+
+⚠ **`share.google` is deliberately NOT in `SHORT_MAP_HOSTS`**, and must not be added. It redirects
+to `google.com/share.google?q=…`, a JS-driven page with no coordinate pair anywhere in the 92 KB of
+HTML — verified twice, once before building this and once after. Nothing short of a headless browser
+gets coordinates out of one, so it genuinely deserves the amber warning that `maps.app.goo.gl` no
+longer gets. The client mirrors the host list in `js/app.js` (`isResolvableShortLink`) and a test
+asserts the two lists and the two predicates agree, because a drift here means the app warns about a
+link the server handles perfectly well, or stays silent about one it cannot.
+
+After the fix, the same run logged `noCoords: 0` for both clubs — `teams: 2, events: 12, venues: 3,
+stamped: 4`. `stamped` is below `events` because `weatherChanged()` correctly skipped the seven rows
+written minutes earlier, which is the write-skip guard doing its job rather than a shortfall.
+
+**The diagnostic gap this exposed, and the real lesson.** The run had reported `events: 1` and
+nothing else, so an empty strip was indistinguishable from a broken deploy and the cause took a
+round of guessing to find. Each club now logs
+`{inWindow, started, notDue, badTime, noCoords, taken}`, and the summary line is emitted even on a
+run that selects nothing — it used to `return` early, so "no forecast anywhere and no log line at
+all" looked exactly like a dead scheduler.
+
+Unit 2560 → **2570**. Version triple → v208.

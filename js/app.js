@@ -1911,7 +1911,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 207;
+  const APP_VERSION = 208;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4228,8 +4228,25 @@
    */
   function _linkCoordAttrs(link) {
     var v = String(link || '').trim();
-    if (!v || parseCoordsInput(v)) return '';
+    if (!v || parseCoordsInput(v) || isResolvableShortLink(v)) return '';
     return ' class="ts-nocoord" title="' + sanitize(t('club.link_nocoord')) + '"';
+  }
+
+  /* Mirrors SHORT_MAP_HOSTS in functions/weather.js — the hosts the weather
+     sync can turn back into coordinates with one redirect. A link from these
+     must NOT be warned about: `maps.app.goo.gl` is what the Maps app's Share
+     button produces, so warning on it would put an amber box in front of
+     almost every lead for a problem the server already solves.
+
+     `share.google` is deliberately absent from both lists. It redirects to a
+     JS-driven page with no coordinates in the HTML, so it genuinely cannot be
+     resolved and genuinely deserves the warning. */
+  var SHORT_MAP_HOSTS = ['maps.app.goo.gl', 'goo.gl', 'g.co', 'maps.google.com'];
+
+  function isResolvableShortLink(v) {
+    var m = /^https?:\/\/([^/?#]+)/i.exec(String(v || '').trim());
+    if (!m) return false;
+    return SHORT_MAP_HOSTS.indexOf(m[1].toLowerCase().replace(/^www\./, '')) !== -1;
   }
 
   function _refreshTeamSetupVenue() {
@@ -4639,7 +4656,7 @@
         var el = e.target;
         if (!el.matches || !el.matches('[data-train-link],[data-home-link]')) return;
         var v = String(el.value || '').trim();
-        var bad = !!v && !parseCoordsInput(v);
+        var bad = !!v && !parseCoordsInput(v) && !isResolvableShortLink(v);
         el.classList.toggle('ts-nocoord', bad);
         if (bad) el.title = t('club.link_nocoord');
         else el.removeAttribute('title');

@@ -1555,6 +1555,7 @@ exports.scheduledFcfSync = onSchedule({
 const {defineSecret} = require("firebase-functions/params");
 const {
   coordsOf, coordKey, scheduleCoordIndex, coordsForRow,
+  coordsFromMapLink, isShortMapLink,
   summarise, wxDue, dayGap, weatherChanged,
 } = require("./weather");
 
@@ -1599,6 +1600,67 @@ async function xwFetchHourly(coords) {
     logger.error("xwFetch failed", {coords: coordKey(coords), err: String(err)});
     return [];
   }
+}
+
+/**
+ * The coordinates behind a Google Maps SHORT link, or null.
+ *
+ * `maps.app.goo.gl/…` is what the Maps app's Share button produces, so it is
+ * the link an ordinary lead actually pastes — the long `@lat,lon` address-bar
+ * URL is the exception. One 302 hop turns it back into the long form, which
+ * coordsFromMapLink() can then read. Without this a club that configured its
+ * ground perfectly sensibly gets no forecast at all and nothing says why.
+ *
+ * `redirect: "manual"` on purpose: we want the Location HEADER, not the page.
+ * Following through would download a megabyte of Maps HTML to learn the same
+ * thing, and `share.google` proves the body is not where the answer lives.
+ *
+ * `cache` is a run-wide Map(url → coords|null) — a club's nine schedule rows
+ * are usually the same ground nine times, and a null is cached as hard as a
+ * hit so a dead link costs one request per run rather than one per row.
+ */
+async function resolveShortLink(url, cache) {
+  const key = String(url || "").trim();
+  if (!key) return null;
+  if (cache.has(key)) return cache.get(key);
+  let out = null;
+  try {
+    const resp = await fetch(key, {redirect: "manual"});
+    const loc = resp.headers.get("location");
+    if (loc) out = coordsFromMapLink(loc);
+  } catch (err) {
+    logger.warn("resolveShortLink failed", {url: key, err: String(err)});
+  }
+  cache.set(key, out);
+  return out;
+}
+
+/**
+ * Every short link in a club's schedules, resolved into Map(url → coords).
+ *
+ * Bounded and cheap: a club has at most a handful of schedule rows, and the
+ * cache collapses the repeats. Only links coordsFromMapLink() could NOT read
+ * are fetched, so a club that pastes long URLs makes no network calls at all.
+ */
+async function resolveClubShortLinks(club, cache) {
+  const scheds = (club && club.schedules) || {};
+  const urls = new Set();
+  Object.keys(scheds).forEach((k) => {
+    const s = scheds[k] || {};
+    [].concat(Array.isArray(s.training) ? s.training : [],
+        s.homeGame ? [s.homeGame] : []).forEach((r) => {
+      const link = r && r.link;
+      if (link && !coordsFromMapLink(link) && isShortMapLink(link)) {
+        urls.add(String(link).trim());
+      }
+    });
+  });
+  const out = new Map();
+  for (const u of urls) {
+    const c = await resolveShortLink(u, cache);
+    if (c) out.set(u, c);
+  }
+  return out;
 }
 
 /** The Madrid wall clock this run is reasoning about. */
@@ -1655,6 +1717,9 @@ exports.scheduledWeatherSync = onSchedule({
      which is the exact silent failure this feature is supposed to remove.
      `noCoords` is the one that matters in practice: it means every maps link
      that could have located the session is a short link or empty. */
+  /* Short-link resolutions, shared across every club in the run — two clubs
+     at the same municipal ground pay for one redirect between them. */
+  const shortCache = new Map();      // url → coords|null
   const why = new Map();             // teamId → {inWindow, started, notDue, badTime, noCoords, taken}
   const tally = (teamId, k) => {
     if (!why.has(teamId)) {
@@ -1672,7 +1737,11 @@ exports.scheduledWeatherSync = onSchedule({
          lead already filled in, not from a separate setting. */
       const clubSnap = await db.collection("clubs").doc(teamId).get();
       const club = clubSnap.data() || {};
-      const index = scheduleCoordIndex(club);
+      /* Short links first: the index is built from the RESOLVED coordinates,
+         so a club whose every link came out of the Maps app's Share button
+         is located exactly like one that pasted long URLs. */
+      const resolved = await resolveClubShortLinks(club, shortCache);
+      const index = scheduleCoordIndex(club, resolved);
       const home = coordsOf(club.homeCoords);
       const byKey = await readDataShards(teamId, ["fa_training", "fa_matches"]);
 
@@ -1683,33 +1752,48 @@ exports.scheduledWeatherSync = onSchedule({
           if (!Array.isArray(rows) || !rows.length) continue;
           let held = null;
 
-          rows.forEach((row) => {
-            if (!row || !dates.includes(String(row.date || ""))) return;
+          /* for…of, not forEach: a row's OWN mapLink may be a short link
+             that needs a redirect hop, and forEach cannot await. */
+          for (const row of rows) {
+            if (!row || !dates.includes(String(row.date || ""))) continue;
             tally(teamId, "inWindow");
             const startHhmm = String(row.time || "").split(" - ")[0].trim();
             if (hhmmToMins(startHhmm) === null) {
-              tally(teamId, "badTime"); return;
+              tally(teamId, "badTime"); continue;
             }
             const start = parseMadridDate(row.date, startHhmm);
             const end = activityEndsAt(row, kind);
             if (!end || isNaN(start.getTime())) {
-              tally(teamId, "badTime"); return;
+              tally(teamId, "badTime"); continue;
             }
             /* THE FREEZE. Once it has started the last report stands for
                ever — see the two rules at the top of this section. */
             if (start.getTime() <= now.getTime()) {
-              tally(teamId, "started"); return;
+              tally(teamId, "started"); continue;
             }
             if (!wxDue(dayGap(today, row.date), hour)) {
-              tally(teamId, "notDue"); return;
+              tally(teamId, "notDue"); continue;
             }
 
-            const coords = coordsForRow(row, index, home);
+            /* The row's own link, if it is a short one, resolved on demand.
+               Deliberately AFTER the due/freeze gates so a run never pays a
+               redirect for a session it was not going to forecast anyway. */
+            let rowResolved = resolved;
+            const own = row.mapLink;
+            if (own && !coordsFromMapLink(own) && isShortMapLink(own)) {
+              const c = await resolveShortLink(own, shortCache);
+              if (c) {
+                rowResolved = new Map(resolved);
+                rowResolved.set(String(own).trim(), c);
+              }
+            }
+
+            const coords = coordsForRow(row, index, home, rowResolved);
             if (!coords) {
-              /* Every link that could have located this session is a short
-                 link or empty, and no homeCoords is set. The team-setup
-                 boxes go amber for exactly this. */
-              tally(teamId, "noCoords"); return;
+              /* Nothing could locate this session: no readable link on the
+                 row, none in the club's schedules, no homeCoords. The
+                 team-setup boxes go amber for exactly this. */
+              tally(teamId, "noCoords"); continue;
             }
             tally(teamId, "taken");
 
@@ -1722,7 +1806,7 @@ exports.scheduledWeatherSync = onSchedule({
               shard: held, row: row, ck: coordKey(coords),
               startMs: start.getTime(), endMs: end.getTime(),
             });
-          });
+          }
         }
       }
     } catch (err) {

@@ -83,6 +83,91 @@ describe('coordsFromMapLink — where is this played', () => {
   });
 });
 
+describe('isShortMapLink — worth a redirect hop?', () => {
+  it('accepts the shorteners the Maps app actually produces', () => {
+    /* maps.app.goo.gl is the Share button's output, so it is the link an
+       ordinary lead pastes. Treating it as unusable made the common case
+       the broken one. */
+    assert.strictEqual(wx.isShortMapLink('https://maps.app.goo.gl/abc123'), true);
+    assert.strictEqual(wx.isShortMapLink('https://goo.gl/maps/abc'), true);
+    assert.strictEqual(wx.isShortMapLink('https://g.co/kgs/abc'), true);
+  });
+
+  it('REFUSES share.google — verified unresolvable, not assumed', () => {
+    /* It 302s to google.com/share.google?q=…, a JS-driven page with no
+       coordinate pair in the HTML. A redirect hop would cost a request and
+       return nothing, and pretending otherwise would silence the warning
+       that is the only thing telling a lead to fix the link. */
+    assert.strictEqual(wx.isShortMapLink('https://share.google/pfbMOc661aRSNlynk'), false);
+  });
+
+  it('ignores anything that is not one of those hosts', () => {
+    assert.strictEqual(wx.isShortMapLink('https://example.com/x'), false);
+    assert.strictEqual(wx.isShortMapLink('Escola Industrial'), false);
+    assert.strictEqual(wx.isShortMapLink(''), false);
+    assert.strictEqual(wx.isShortMapLink(null), false);
+  });
+});
+
+describe('coordsFromLink — the resolved-short-link map', () => {
+  const SHORT = 'https://maps.app.goo.gl/abc123';
+  const resolved = new Map([[SHORT, {lat: 41.4288862, lon: 2.1905122}]]);
+
+  it('prefers coordinates already IN the url over the map', () => {
+    const long = 'https://www.google.com/maps/search/?api=1&query=41.38,2.16';
+    const r = new Map([[long, {lat: 1, lon: 1}]]);
+    assert.deepStrictEqual(wx.coordsFromLink(long, r), {lat: 41.38, lon: 2.16});
+  });
+
+  it('falls back to the resolved map for a short link', () => {
+    assert.deepStrictEqual(wx.coordsFromLink(SHORT, resolved),
+        {lat: 41.4288862, lon: 2.1905122});
+  });
+
+  it('is null for a short link nobody resolved', () => {
+    assert.strictEqual(wx.coordsFromLink(SHORT, new Map()), null);
+    assert.strictEqual(wx.coordsFromLink(SHORT, null), null);
+  });
+
+  it('feeds the schedule index, so a goo.gl club is located', () => {
+    /* The C.E. Sant Andreu case exactly: every schedule link a short one.
+       Before the redirect hop this club got noCoords on every session. */
+    const club = {schedules: {'amateur-A': {
+      training: [{day: 'tue', location: 'Narcís Sala', link: SHORT}],
+    }}};
+    const bare = wx.scheduleCoordIndex(club);
+    assert.strictEqual(bare.any, null, 'unresolved: nothing to index');
+    const idx = wx.scheduleCoordIndex(club, resolved);
+    assert.deepStrictEqual(idx.any, {lat: 41.4288862, lon: 2.1905122});
+    assert.deepStrictEqual(idx.place.get(wx.placeKey('Narcís Sala')),
+        {lat: 41.4288862, lon: 2.1905122});
+  });
+});
+
+describe('the two SHORT_MAP_HOSTS lists agree', () => {
+  it('js/app.js mirrors functions/weather.js', () => {
+    /* functions/ deploys alone so js/ cannot require it. If they drift, the
+       client warns amber about a link the server resolves perfectly well —
+       or stays silent about one it cannot. */
+    const code = grab('  var SHORT_MAP_HOSTS = [', '\n\n  function _refreshTeamSetupVenue');
+    const client = new Function(code + '\n return SHORT_MAP_HOSTS;')();
+    assert.deepStrictEqual(client.slice().sort(), wx.SHORT_MAP_HOSTS.slice().sort());
+  });
+
+  it('and so do the two predicates', () => {
+    const code = grab('  function isResolvableShortLink(v) {', '\n\n  function _refreshTeamSetupVenue');
+    const hosts = grab('  var SHORT_MAP_HOSTS = [', '\n\n  function isResolvableShortLink');
+    const isShort = new Function(hosts + '\n' + code +
+      '\n return isResolvableShortLink;')();
+    [
+      'https://maps.app.goo.gl/abc', 'https://goo.gl/maps/x', 'https://g.co/kgs/x',
+      'https://share.google/x', 'https://example.com/x', '', 'not a url',
+    ].forEach((u) => {
+      assert.strictEqual(isShort(u), wx.isShortMapLink(u), u);
+    });
+  });
+});
+
 describe('coordsOf — a club document is years old', () => {
   it('takes numbers', () => {
     assert.deepStrictEqual(wx.coordsOf({lat: 41.4, lon: 2.1}),
@@ -681,11 +766,12 @@ describe('parseCoordsInput mirrors coordsFromMapLink', () => {
 describe('_linkCoordAttrs — the lead finds out while pasting', () => {
   const code = grab('  function _linkCoordAttrs(link) {',
       '\n\n  function _refreshTeamSetupVenue');
-  const attrs = new Function('t', 'sanitize', 'parseCoordsInput',
+  const attrs = new Function('t', 'sanitize', 'parseCoordsInput', 'isResolvableShortLink',
       code + '\n return _linkCoordAttrs;')(
       (k) => k === 'club.link_nocoord' ? 'Aquest enllaç no porta coordenades' : k,
       sanitize,
-      (v) => wx.coordsFromMapLink(v));
+      (v) => wx.coordsFromMapLink(v),
+      (v) => wx.isShortMapLink(v));
 
   it('marks a link that carries no coordinates', () => {
     /* The exact case that prompted this: the app's own training default
@@ -698,6 +784,12 @@ describe('_linkCoordAttrs — the lead finds out while pasting', () => {
   it('leaves a usable link alone', () => {
     assert.strictEqual(
         attrs('https://www.google.com/maps/place/x/@41.3874,2.1686,17z'), '');
+  });
+
+  it('does NOT warn about a maps.app.goo.gl link the server can resolve', () => {
+    // Warning here would put an amber box in front of almost every lead for
+    // a problem that is already solved one redirect away.
+    assert.strictEqual(attrs('https://maps.app.goo.gl/abc123'), '');
   });
 
   it('leaves an EMPTY box alone', () => {

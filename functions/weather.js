@@ -98,6 +98,46 @@ function coordsFromMapLink(url) {
   return null;
 }
 
+/* Google's Maps SHORTENERS. `maps.app.goo.gl` is what the Maps app's own
+   Share button produces, so it is the link an ordinary person actually has
+   to paste — the long `@lat,lon` address bar URL is the exception, not the
+   rule. Each of these 302s straight to a full maps URL with coordinates in
+   it, so one redirect hop recovers them (see resolveShortLink in index.js).
+
+   `share.google` is NOT here and must not be added: it redirects to
+   `google.com/share.google?q=…`, a JS-driven page with no coordinate pair
+   anywhere in the HTML. Verified, not assumed. Nothing short of a headless
+   browser gets coordinates out of one. */
+const SHORT_MAP_HOSTS = ["maps.app.goo.gl", "goo.gl", "g.co", "maps.google.com"];
+
+/**
+ * Is this a link whose coordinates might be one redirect away?
+ *
+ * Only asked when coordsFromMapLink() has already returned null, so a
+ * `maps.google.com` URL that carries `@lat,lon` never reaches here — this is
+ * about deciding whether a network hop is worth making, nothing more.
+ */
+function isShortMapLink(url) {
+  const s = String(url === undefined || url === null ? "" : url).trim();
+  const m = /^https?:\/\/([^/?#]+)/i.exec(s);
+  if (!m) return false;
+  const host = m[1].toLowerCase().replace(/^www\./, "");
+  return SHORT_MAP_HOSTS.indexOf(host) !== -1;
+}
+
+/**
+ * Coordinates for a link, consulting a map of already-resolved short links.
+ *
+ * `resolved` is Map(url → {lat,lon}) built by the caller, which is where the
+ * network lives — everything in this file stays pure and testable.
+ */
+function coordsFromLink(url, resolved) {
+  const direct = coordsFromMapLink(url);
+  if (direct) return direct;
+  if (!resolved || !url) return null;
+  return resolved.get(String(url).trim()) || null;
+}
+
 /**
  * A `{lat, lon}` from whatever a club has stored, or null.
  *
@@ -156,7 +196,7 @@ function placeKey(s) {
  * is a short link yields an empty index, which is what `homeCoords` is the
  * last resort for.
  */
-function scheduleCoordIndex(club) {
+function scheduleCoordIndex(club, resolved) {
   const out = {place: new Map(), squad: new Map(), any: null};
   const scheds = (club && club.schedules) || {};
   Object.keys(scheds).forEach((key) => {
@@ -165,7 +205,7 @@ function scheduleCoordIndex(club) {
         Array.isArray(s.training) ? s.training : [],
         s.homeGame ? [s.homeGame] : []);
     rows.forEach((r) => {
-      const c = coordsFromMapLink(r && r.link);
+      const c = coordsFromLink(r && r.link, resolved);
       if (!c) return;
       const pk = placeKey(r.location);
       // First writer wins throughout: the schedule is ordered, and a second
@@ -199,9 +239,9 @@ function scheduleCoordIndex(club) {
  * @param {?object} home coordsOf(club.homeCoords)
  * @return {?object} {lat, lon}
  */
-function coordsForRow(row, index, home) {
+function coordsForRow(row, index, home, resolved) {
   const r = row || {};
-  const own = coordsFromMapLink(r.mapLink);
+  const own = coordsFromLink(r.mapLink, resolved);
   if (own) return own;
   const idx = index || {place: new Map(), squad: new Map(), any: null};
 
@@ -439,6 +479,9 @@ module.exports = {
   WX_HOUR_FROM,
   WX_HOUR_TO,
   coordsFromMapLink,
+  coordsFromLink,
+  isShortMapLink,
+  SHORT_MAP_HOSTS,
   coordsOf,
   coordKey,
   placeKey,
