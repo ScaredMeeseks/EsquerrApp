@@ -107,6 +107,104 @@ describe('plLabelRowHtml — the axis labels are HTML, not SVG text', () => {
   });
 });
 
+describe('the tooltips actually survive their own attribute', () => {
+  /* ⚠ THE BUG THIS EXISTS FOR. `sanitize()` is textContent in, innerHTML
+     out: it escapes &, < and > and leaves the DOUBLE QUOTE alone. That
+     is fine for the plain strings it is normally handed and fatal for a
+     JSON payload — `data-pl-tip="{"t":"Setmana S31",…}"` ends at the
+     first inner quote, JSON.parse threw on every hover, the handler
+     caught it and returned, and not one tooltip on the page ever
+     appeared. Nothing reached the console either. */
+  it('escapes the quotes JSON is made of', () => {
+    const body = grab('  function plHitTip', '  /** Team chart 1');
+    assert.ok(/replace\(\/"\/g, '&quot;'\)/.test(body),
+        'the payload must escape " — sanitize() does not');
+  });
+
+  it('a real payload round-trips through the attribute', () => {
+    /* Run it: build the attribute the way the page does, decode it the
+       way a browser does, and parse. A source check alone would not
+       notice a half-fix. */
+    const sanitize = (s) => String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // eslint-disable-next-line no-new-func
+    const plHitTip = new Function('sanitize',
+      grab('  function plHitTip', '  /** Team chart 1') +
+      '\n return plHitTip;')(sanitize);
+
+    const rows = [{k: 'Càrrega', v: '1200 UA'}, {k: 'A/C', v: '1.07'}];
+    const attr = plHitTip('Setmana S31 "A"', rows);
+    const m = /^ data-pl-tip="([^"]*)"$/.exec(attr);
+    assert.ok(m, 'the attribute must not be terminated by its own content');
+    const decoded = m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const back = JSON.parse(decoded);
+    assert.strictEqual(back.t, 'Setmana S31 "A"', 'a quote in the title survives');
+    assert.deepStrictEqual(back.r, rows, 'and every row comes back intact');
+  });
+
+  it('looks like every other tooltip in the app', () => {
+    /* Chrome, not page furniture: same ink, radius, shadow, arrow and
+       fade as .ua-tooltip. Only the key/value body is this page's. */
+    const ua = /\.ua-tooltip\s*\{([^}]*)\}/.exec(css)[1];
+    const pl = /\.pl-tip\s*\{([^}]*)\}/.exec(css);
+    assert.ok(pl, '.pl-tip has no rule');
+    ['border-radius', 'box-shadow', 'opacity', 'transition'].forEach(function (prop) {
+      assert.ok(new RegExp(prop + ':').test(pl[1]),
+          '.pl-tip is missing ' + prop + ', which .ua-tooltip has');
+    });
+    assert.ok(/\.pl-tip::after\s*\{[^}]*border-top-color/.test(css),
+        'it needs the same little arrow');
+    assert.ok(/z-index:\s*10050/.test(pl[1]) && /z-index:\s*10050/.test(ua),
+        'and must sit at the same layer');
+  });
+
+  it('the Prep cell carries exactly ONE tooltip', () => {
+    /* readinessCellHtml puts its own `data-tooltip` on the dot. Nested
+       inside a cell that already has `data-pl-tip`, that is two tooltip
+       attributes on one target — two panels drawn over each other the
+       moment anything reads the second. The reasons are not lost: they
+       move into the tip above, under the numbers they explain. */
+    const body = grab('  function plRosterTableHtml', '  /* ── The player rail');
+    assert.ok(/plStripTooltip\(readinessCellHtml\(/.test(body),
+        'the embedded cell must have its data-tooltip stripped');
+    assert.ok(/plReadinessReasons\(r\.rd/.test(body),
+        'and its words folded into the one tooltip');
+
+    // Run the stripper: an assertion about a regex is not one about a result.
+    // eslint-disable-next-line no-new-func
+    const strip = new Function(
+      grab('  function plStripTooltip', '  function readinessCellHtml') +
+      '\n return plStripTooltip;')();
+    const before = '<span class="readiness-dot" data-tooltip="A · B"></span>';
+    assert.strictEqual(strip(before), '<span class="readiness-dot"></span>');
+    assert.strictEqual(strip('<i></i>'), '<i></i>', 'markup without one is untouched');
+  });
+
+  it('the reason sentence has one definition, not two', () => {
+    /* plReadinessReasons was lifted OUT of readinessCellHtml so the cell
+       and any caller with its own tooltip say the same words. A copy
+       here would drift from the one every other page shows. */
+    const cell = grab('  function readinessCellHtml', '  /**');
+    assert.ok(/plReadinessReasons\(rd, injured\)/.test(cell),
+        'readinessCellHtml must use the shared helper');
+    assert.ok(!/rd\.reasons/.test(cell),
+        'and must not keep its own copy of the rule');
+  });
+
+  it('is shown by a class, so it can fade', () => {
+    /* `hidden` sets display:none, and no transition animates out of
+       that. The app's own tooltips use a .visible class. */
+    const bind = grab('  function bindPlantilla', '  function plGetOff');
+    assert.ok(/classList\.add\('visible'\)/.test(bind) &&
+              /classList\.remove\('visible'\)/.test(bind),
+        'show and hide must toggle .visible');
+    assert.ok(!/tip\.hidden/.test(bind), 'the hidden attribute must be gone');
+    assert.ok(/\.pl-tip\.visible\s*\{[^}]*opacity:\s*1/.test(css),
+        'and the class must be what reveals it');
+  });
+});
+
 describe('the A/C bands read the same as the numbers on them', () => {
   /* Five bands, not four. Under-load used to be one flat grey strip
      below 0.8, which put a player at 0.35 in the same place as one at
@@ -296,5 +394,46 @@ describe('style', () => {
        not hung below and right of it. */
     assert.ok(/\.pl-inj-dot\s*\{[^}]*transform:\s*translate\(-50%,\s*-50%\)/.test(css),
         'the injury dot must be centred on its percentage position');
+  });
+});
+
+describe('the player rail has no close button of its own', () => {
+  /* It had a "Tanca ✕" stacked above the donut, which forced the rail's
+     donut narrower than the team one over the table — two attendance
+     rings of different sizes, side by side down the page. The button was
+     also the third way to do the same thing. */
+
+  it('closes by the row that opened it, and by clicking away', () => {
+    // Both must survive, or removing the ✕ leaves the rail stuck open.
+    const bind = grab('  function bindPlantilla', '  function plGetOff');
+    assert.ok(/_plSel = \(_plSel === id\) \? null : id/.test(bind),
+        'the row toggles its own selection');
+    assert.ok(/page\.addEventListener\('click', function \(\) \{[\s\S]{0,120}_plSel = null/
+        .test(bind), 'and a click anywhere else on the page closes it');
+  });
+
+  it('has no ✕, and nothing left bound to one', () => {
+    const rail = grab('  function plRailHtml', '  function renderStaffRoster');
+    assert.ok(!/pl-close/.test(rail), 'the button is gone from the markup');
+    assert.ok(!/pl-close/.test(bare), 'and its binding with it');
+    assert.ok(!/pl-close/.test(css), 'and its styles');
+    assert.ok(!/'pl\.close'/.test(src), 'and the string it used');
+  });
+
+  it('draws its donut at the same size as the team one', () => {
+    /* The whole point of removing the button: the two rings are read
+       against each other, so a 68 beside an 84 reads as a different
+       measurement rather than the same one for one player. */
+    const rail = grab('  function plRailHtml', '  function renderStaffRoster');
+    // The team donut lives in renderStaffRoster, over the table.
+    const team = grab('  function renderStaffRoster', '  function bindPlantilla');
+    const sizeOf = (s) => {
+      const m = /plDonutHtml\([^,]+,\s*(\d+)\)/.exec(s);
+      assert.ok(m, 'no donut found');
+      return m[1];
+    };
+    assert.strictEqual(sizeOf(rail), sizeOf(team),
+        'the player donut and the team donut must be one size');
+    assert.strictEqual(sizeOf(rail), '84');
   });
 });

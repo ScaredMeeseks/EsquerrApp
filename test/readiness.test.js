@@ -32,7 +32,13 @@ const TIPS = {
 };
 
 function loadCell() {
-  const code = grab('  function readinessCellHtml(rd, injured)', '  function buildReadinessCard');
+  /* From plReadinessReasons down. The reason sentence was lifted out of
+     readinessCellHtml so a caller with its own tooltip can show the same
+     words rather than nest a second one inside it — the Plantilla table
+     does exactly that. Slicing the cell alone leaves the helper
+     undefined and every case in this file throws. */
+  const code = grab('  function plReadinessReasons(rd, injured)',
+      '  function buildReadinessCard');
   // eslint-disable-next-line no-new-func
   return new Function('t', 'sanitize', `${code}\nreturn readinessCellHtml;`)(
       (k) => TIPS[k] || k,

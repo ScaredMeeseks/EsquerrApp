@@ -211,6 +211,10 @@
     'cal.md_hint':        { ca:'Dies respecte del partit més proper', es:'Días respecto del partido más cercano', en:'Days from the nearest match' },
     'cal.edit_match':     { ca:'Editar partit', es:'Editar partido', en:'Edit match' },
     'cal.needs_opponent': { ca:'Cal indicar el rival.', es:'Hay que indicar el rival.', en:'The opponent is required.' },
+    'std.delete':         { ca:'Esborra', es:'Borrar', en:'Delete' },
+    'std.confirm_delete': { ca:"Segur que vols esborrar aquesta sessió? Les respostes de disponibilitat i els RPE dels jugadors s'esborraran amb ella, i deixarà d'enviar recordatoris.", es:"¿Seguro que quieres borrar esta sesión? Las respuestas de disponibilidad y los RPE de los jugadores se borrarán con ella, y dejará de enviar recordatorios.", en:"Delete this session? The players' availability answers and RPE entries go with it, and it stops sending reminders." },
+    'std.confirm_delete_act': { ca:"Segur que vols esborrar aquesta activitat? Les respostes de disponibilitat dels jugadors s'esborraran amb ella, i deixarà d'enviar recordatoris.", es:"¿Seguro que quieres borrar esta actividad? Las respuestas de disponibilidad de los jugadores se borrarán con ella, y dejará de enviar recordatorios.", en:"Delete this activity? The players' availability answers go with it, and it stops sending reminders." },
+    'std.deleted':        { ca:'Sessió esborrada', es:'Sesión borrada', en:'Session deleted' },
     'cal.confirm_delete_match': { ca:'Segur que vols esborrar aquest partit? La convocatòria, les notes i les alineacions se n\'aniran amb ell.', es:'¿Seguro que quieres borrar este partido? La convocatoria, las notas y las alineaciones se irán con él.', en:'Delete this match? Its call-up, notes and line-ups go with it.' },
     'cal.edit':           { ca:'Editar', es:'Editar', en:'Edit' },
     'cal.opp_kits':       { ca:'Equipació del rival', es:'Equipación del rival', en:'Opponent\'s kit' },
@@ -506,6 +510,60 @@
     'pl.zone_ok':        { ca:'Òptima', es:'Óptima', en:'Optimal' },
     'pl.zone_under':     { ca:'Subcàrrega', es:'Subcarga', en:'Under-load' },
     'pl.zone_under_high':{ ca:'Subcàrrega alta', es:'Subcarga alta', en:'Severe under-load' },
+    /* ── Registracions (staff registrations redesign) ──
+       `pos.*` are the full position names, used as the title on the
+       picker's circles — the two-letter code is what a coach reads at a
+       glance, the name is what settles which one LB is. */
+    'pos.GK':            { ca:'Porter', es:'Portero', en:'Goalkeeper' },
+    'pos.CB':            { ca:'Central', es:'Central', en:'Centre-back' },
+    'pos.LB':            { ca:'Lateral esquerre', es:'Lateral izquierdo', en:'Left-back' },
+    'pos.RB':            { ca:'Lateral dret', es:'Lateral derecho', en:'Right-back' },
+    'pos.DM':            { ca:'Migcampista defensiu', es:'Mediocentro defensivo', en:'Defensive midfielder' },
+    'pos.OM':            { ca:'Migcampista ofensiu', es:'Mediocentro ofensivo', en:'Attacking midfielder' },
+    'pos.LW':            { ca:'Extrem esquerre', es:'Extremo izquierdo', en:'Left winger' },
+    'pos.RW':            { ca:'Extrem dret', es:'Extremo derecho', en:'Right winger' },
+    'pos.ST':            { ca:'Davanter', es:'Delantero', en:'Striker' },
+    'reg2.intro':        { ca:'Escriu els correus per convidar gent al club. Assigna\'ls un rol, un equip, posició i dorsal per afegir-los al teu equip.', es:'Escribe los correos para invitar gente al club. Asígnales un rol, un equipo, posición y dorsal para añadirlos a tu equipo.', en:'Enter addresses to invite people to the club. Give them a role, a squad, a position and a number to add them to your team.' },
+    'reg2.fig_pending':  { ca:'Pendents de col·locar', es:'Pendientes de colocar', en:'Waiting to be placed' },
+    'reg2.fig_members':  { ca:'Membres actius', es:'Miembros activos', en:'Active members' },
+    'reg2.fig_invited':  { ca:'Convidats sense compte', es:'Invitados sin cuenta', en:'Invited, no account' },
+    'reg2.invited_title':{ ca:'Convidats · encara sense compte', es:'Invitados · aún sin cuenta', en:'Invited · no account yet' },
+    'reg2.wait_one':     { ca:'convidat espera registre · només aquests correus poden entrar amb el codi del club', es:'invitado espera registro · solo estos correos pueden entrar con el código del club', en:'invitee is waiting to register · only these addresses can join with the club code' },
+    'reg2.wait_many':    { ca:'convidats esperen registre · només aquests correus poden entrar amb el codi del club', es:'invitados esperan registro · solo estos correos pueden entrar con el código del club', en:'invitees are waiting to register · only these addresses can join with the club code' },
+    'reg2.players':      { ca:'Jugadors', es:'Jugadores', en:'Players' },
+    'reg2.staff':        { ca:'Staff', es:'Staff', en:'Staff' },
+    'reg2.player':       { ca:'Jugador', es:'Jugador', en:'Player' },
+    'reg2.staff_one':    { ca:'Staff', es:'Staff', en:'Staff' },
+    'reg2.email_ph':     { ca:'correu@exemple.com', es:'correo@ejemplo.com', en:'name@example.com' },
+    'reg2.add':          { ca:'Afegeix', es:'Añadir', en:'Add' },
+    'reg2.invited':      { ca:'Convidat', es:'Invitado', en:'Invited' },
+    'reg2.remove_invite':{ ca:'Treu de la llista', es:'Quitar de la lista', en:'Remove from the list' },
+    'reg2.pending_one':  { ca:'pendent', es:'pendiente', en:'pending' },
+    'reg2.pending_many': { ca:'pendents', es:'pendientes', en:'pending' },
+    'reg2.pending_title':{ ca:'Pendents de col·locar', es:'Pendientes de colocar', en:'Waiting to be placed' },
+    'reg2.pending_note': { ca:'Assigna rol, equip, posició i dorsal abans de col·locar', es:'Asigna rol, equipo, posición y dorsal antes de colocar', en:'Set role, squad, position and number before placing' },
+    'reg2.no_pending':   { ca:'Ningú pendent de col·locar. Els nous membres apareixeran aquí quan entrin amb el codi del club.', es:'Nadie pendiente de colocar. Los nuevos miembros aparecerán aquí cuando entren con el código del club.', en:'Nobody waiting. New members appear here once they join with the club code.' },
+    'reg2.on_list':      { ca:'A la llista', es:'En la lista', en:'On the list' },
+    'reg2.off_list':     { ca:'Fora de la llista', es:'Fuera de la lista', en:'Off the list' },
+    'reg2.place':        { ca:'Col·loca', es:'Colocar', en:'Place' },
+    'reg2.place_hint':   { ca:'Cal ser a la llista i tenir posició i dorsal', es:'Debe estar en la lista y tener posición y dorsal', en:'Needs to be on the list, with a position and a number' },
+    'reg2.reject':       { ca:'Rebutja', es:'Rechazar', en:'Reject' },
+    'reg2.members':      { ca:'Membres', es:'Miembros', en:'Members' },
+    'reg2.no_members':   { ca:'Cap membre amb aquest filtre.', es:'Ningún miembro con este filtro.', en:'No members match this filter.' },
+    'reg2.f_all':        { ca:'Tots', es:'Todos', en:'All' },
+    'reg2.f_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'reg2.f_staff':      { ca:'Staff', es:'Staff', en:'Staff' },
+    'reg2.f_nonum':      { ca:'Sense dorsal', es:'Sin dorsal', en:'No number' },
+    'reg2.dup_number':   { ca:'Aquest dorsal ja el porta algú d\'aquest equip', es:'Este dorsal ya lo lleva alguien de este equipo', en:'Somebody in this squad already wears this number' },
+    'reg2.role_needs_list': { ca:'Aquest correu no és a cap llista del club, així que no hi ha res per moure.', es:'Este correo no está en ninguna lista del club, así que no hay nada que mover.', en:'This address is on no club list, so there is nothing to move.' },
+    'reg2.th_applicant': { ca:'Sol·licitant', es:'Solicitante', en:'Applicant' },
+    'reg2.th_member':    { ca:'Membre', es:'Miembro', en:'Member' },
+    'reg2.th_role':      { ca:'Rol', es:'Rol', en:'Role' },
+    'reg2.th_team':      { ca:'Equip', es:'Equipo', en:'Squad' },
+    'reg2.th_pos':       { ca:'Posició', es:'Posición', en:'Position' },
+    'reg2.th_number':    { ca:'Dorsal', es:'Dorsal', en:'Number' },
+    'reg2.th_list':      { ca:'Llista', es:'Lista', en:'List' },
+    'reg2.th_actions':   { ca:'Accions', es:'Acciones', en:'Actions' },
     'pl.no_data':        { ca:'Sense dades', es:'Sin datos', en:'No data' },
     'pl.tip_rpe_avg':    { ca:'RPE mitjà', es:'RPE medio', en:'Mean RPE' },
     'pl.tip_duration':   { ca:'Durada', es:'Duración', en:'Duration' },
@@ -535,7 +593,6 @@
     'pl.risk':           { ca:'Risc', es:'Riesgo', en:'Risk' },
     'pl.player_card':    { ca:'Fitxa del jugador', es:'Ficha del jugador', en:'Player card' },
     'pl.team':           { ca:'Equip', es:'Equipo', en:'Team' },
-    'pl.close':          { ca:'Tanca', es:'Cerrar', en:'Close' },
     'pl.his_sessions':   { ca:'RPE de les seves sessions', es:'RPE de sus sesiones', en:'Their session RPE' },
     'pl.did_not_train':  { ca:'No entrena', es:'No entrena', en:'Did not train' },
     'pl.match_fatigue':  { ca:'Fatiga de partit', es:'Fatiga de partido', en:'Match fatigue' },
@@ -1832,7 +1889,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 203;
+  const APP_VERSION = 205;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -12142,7 +12199,15 @@
     return icon + readinessCellHtml(computeReadiness(p.id), status === 'injured');
   }
 
-  function readinessCellHtml(rd, injured) {
+  /**
+   * Why a readiness cell is the colour it is, as one sentence.
+   *
+   * Lifted out of readinessCellHtml so a caller that has its own tooltip
+   * can show the same words rather than nest a second one inside it —
+   * the Plantilla table does exactly that. One wording, two places to
+   * put it.
+   */
+  function plReadinessReasons(rd, injured) {
     const tips = [];
     if (injured) tips.push(t('readiness.injured_warning'));
     if (!rd.hasData) tips.push(t('readiness.no_data'));
@@ -12151,7 +12216,17 @@
     // it reads as a bug rather than as information.
     (rd.reasons || []).forEach((r) => tips.push(t('rd.' + r)));
     if (rd.hasData && rd.estimated) tips.push(t('rd.estimated'));
-    const tip = tips.length ? ` data-tooltip="${sanitize(tips.join(' · '))}"` : '';
+    return tips.join(' · ');
+  }
+
+  /** Drop a `data-tooltip` from markup that is going inside another tip. */
+  function plStripTooltip(html) {
+    return String(html).replace(/\sdata-tooltip="[^"]*"/g, '');
+  }
+
+  function readinessCellHtml(rd, injured) {
+    const tipText = plReadinessReasons(rd, injured);
+    const tip = tipText ? ` data-tooltip="${sanitize(tipText)}"` : '';
     // No data is grey and carries no number: a dash still occupies the
     // column as though it were a reading, and green actively misinforms.
     if (!rd.hasData) {
@@ -18632,14 +18707,67 @@
   }
 
   /**
-   * Open, choose, close — for every stdSelect on the page.
+   * Place an escaping menu against its trigger.
    *
-   * `onPick(root, value)` is called with the root element and the new value.
-   * Bound once per render; the document listener closes any open menu, which
-   * is why it is registered with a guard rather than every time.
+   * `.std-sel-esc` makes the menu `position:fixed` so it can float out of a
+   * wrapper with `overflow-x:auto` — nothing else escapes one, because a
+   * non-visible overflow-x clips the vertical axis too. Fixed means viewport
+   * coordinates, so nothing positions it but this. Same approach as
+   * showHoverTip().
+   *
+   * A no-op for a menu without the class: those are absolute and the browser
+   * already places them under the trigger.
    */
-  function bindStdSelects(onPick) {
+  function stdSelPlace(root, trigger) {
+    if (!root.classList.contains('std-sel-esc')) return;
+    const menu = root.querySelector('.std-sel-menu');
+    if (!menu) return;
+    const b = trigger.getBoundingClientRect();
+    // After .std-sel-open, or the menu is still display:none and every
+    // dimension measures 0.
+    const w = menu.offsetWidth;
+    const h = menu.offsetHeight;
+    const pad = 8;
+    const left = Math.max(pad, Math.min(b.left, window.innerWidth - w - pad));
+    const below = b.bottom + 4;
+    // Above the trigger when there is no room under it — but only if there is
+    // room up there, otherwise it would go off the top instead.
+    const top = (below + h > window.innerHeight - pad && b.top - 4 - h > pad)
+      ? b.top - 4 - h
+      : below;
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    menu.style.minWidth = Math.round(b.width) + 'px';
+  }
+
+  /** Shut every open stdSelect, wherever it is. */
+  function stdSelCloseAll() {
+    document.querySelectorAll('.std-sel-open')
+      .forEach(function (n) { n.classList.remove('std-sel-open'); });
+  }
+
+  /**
+   * Open, choose, close — for the stdSelects of the given KINDS.
+   *
+   * `kinds` is the `data-std-sel` value, or a list of them; `onPick(root,
+   * value)` gets the root element and the new value.
+   *
+   * ⚠ THE KINDS ARE NOT OPTIONAL, and this is why.
+   * This used to bind every `.std-sel` in the document. bindDynamicActions
+   * calls each page's binder on every render regardless of which page is on
+   * screen — bindStaffTrainingDetail() runs while Registracions is showing —
+   * so two callers both claimed the same triggers and each got a click
+   * listener. On a click the first opened the menu; the second, reading the
+   * class the first had just set, saw `wasOpen` as true and closed it again.
+   * The menu opened and shut within one event and the control looked dead.
+   *
+   * Naming the kinds makes ownership explicit: one listener per trigger,
+   * and a third caller cannot silently take over somebody else's control.
+   */
+  function bindStdSelects(kinds, onPick) {
+    const own = (Array.isArray(kinds) ? kinds : [kinds]).map(String);
     document.querySelectorAll('.std-sel').forEach(function (root) {
+      if (own.indexOf(String(root.dataset.stdSel || '')) === -1) return;
       const trigger = root.querySelector('.std-sel-t');
       if (!trigger) return;
       trigger.addEventListener('click', function (e) {
@@ -18647,7 +18775,10 @@
         const wasOpen = root.classList.contains('std-sel-open');
         document.querySelectorAll('.std-sel-open')
           .forEach(function (n) { n.classList.remove('std-sel-open'); });
-        if (!wasOpen) root.classList.add('std-sel-open');
+        if (!wasOpen) {
+          root.classList.add('std-sel-open');
+          stdSelPlace(root, trigger);
+        }
       });
       root.querySelectorAll('.std-sel-o').forEach(function (opt) {
         opt.addEventListener('click', function (e) {
@@ -18662,15 +18793,16 @@
     });
     if (!document._stdSelBound) {
       document._stdSelBound = true;
-      document.addEventListener('click', function () {
-        document.querySelectorAll('.std-sel-open')
-          .forEach(function (n) { n.classList.remove('std-sel-open'); });
-      });
+      document.addEventListener('click', stdSelCloseAll);
       document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Escape') return;
-        document.querySelectorAll('.std-sel-open')
-          .forEach(function (n) { n.classList.remove('std-sel-open'); });
+        if (e.key === 'Escape') stdSelCloseAll();
       });
+      /* An escaping menu is pinned to viewport coordinates, so it does not
+         follow its trigger when the pane underneath scrolls — the trap
+         hideHoverTip already closes on. Capture, because scroll does not
+         bubble out of an inner pane. */
+      window.addEventListener('scroll', stdSelCloseAll, true);
+      window.addEventListener('resize', stdSelCloseAll);
     }
   }
 
@@ -20919,6 +21051,13 @@
     const actEdit = (isAct && !ro)
       ? `<button class="stp-a" id="std-edit-activity" data-act-id="${sanitize(String(tr.id))}">✏️ ${t('cal.edit')}</button>`
       : '';
+    /* Deleting is the head coach's, like the squad and the staff call: `ro`
+       is the same flag those use, so a fitness coach or a delegate reads the
+       session and cannot remove it. A session and an activity are the same
+       row and delete the same way — only the warning differs, since an
+       activity carries no RPE. */
+    const delBtn = ro ? '' :
+      `<button class="stp-a stp-a-danger" id="std-delete">${t('std.delete')}</button>`;
 
     const stat = (label, value, note) =>
       `<div class="std-stat"><span class="std-eyebrow">${sanitize(label)}</span>` +
@@ -20934,7 +21073,7 @@
       <div class="std-page">
       <div class="std-topbar">
         <button class="std-back detail-back" data-back="${backTarget('calendar')}">${t('btn.back')}</button>
-        <div class="std-topbar-r">${actEdit}
+        <div class="std-topbar-r">${actEdit}${delBtn}
           <span class="std-eyebrow">${t(isAct ? 'cal.activity' : 'training.badge')}</span>
         </div>
       </div>
@@ -21518,8 +21657,25 @@
       '" data-pl-win="' + win + '" data-pl-total="' + total + '"></rect>';
   }
 
+  /**
+   * A tooltip payload, as an attribute.
+   *
+   * ⚠ `sanitize()` DOES NOT ESCAPE QUOTES. It is textContent in,
+   * innerHTML out — which escapes `&`, `<` and `>` and leaves `"`
+   * alone. Fine for the plain strings it is usually handed, fatal for
+   * JSON: `data-pl-tip="{"t":"Setmana S31",…}"` ends at the first inner
+   * quote, so every tooltip on this page carried a truncated attribute
+   * and JSON.parse threw the moment you hovered. Nothing reached the
+   * console either — the handler catches and returns — so the tips just
+   * never appeared.
+   *
+   * renderReadOnlyBoard met the same wall with `data-frames` and solved
+   * it by single-quoting the attribute and escaping `'`. Escaping the
+   * double quote is that same fix stated the other way round.
+   */
   function plHitTip(title, rows) {
-    return ' data-pl-tip="' + sanitize(JSON.stringify({t: title, r: rows})) + '"';
+    return ' data-pl-tip="' +
+      sanitize(JSON.stringify({t: title, r: rows})).replace(/"/g, '&quot;') + '"';
   }
 
   /** Team chart 1 — RPE per session. */
@@ -21804,6 +21960,11 @@
         {k: 'A/C', v: ac},
         {k: t('pl.estat'), v: r.ready >= 75 ? t('pl.opt') : r.ready >= 55 ? t('pl.watch') : t('pl.risk')}
       ];
+      /* Why the colour is what it is. readinessCellHtml would otherwise
+         say this in a tooltip of its own, on the dot inside this very
+         cell — the same words, a second panel. */
+      var why = plReadinessReasons(r.rd, r.status === 'injured');
+      if (why) readyRows.push({k: '', v: why});
       return '<tr class="pl-row' + (_plSel === r.id ? ' pl-row-sel' : '') +
         '" data-pl-player="' + sanitize(r.id) + '">' +
         /* The category badge as well as the team letter. The design's mock
@@ -21821,9 +21982,16 @@
            readinessCellHtml carries a rule this page must not lose: with
            no data behind it the cell is a grey dot and NO NUMBER, because
            a score nobody measured reads exactly like one that was. Every
-           other surface that shows readiness goes through it. */
+           other surface that shows readiness goes through it.
+
+           ⚠ Its `data-tooltip` is STRIPPED and its content folded into
+           the row above. Two tooltip attributes on one cell is two
+           tooltips waiting for a second reader, and a hover that draws
+           one panel over another is what it looked like. Nothing is
+           lost: `readinessReasons` puts the same sentence in the same
+           tip, under the numbers it explains. */
         '<td class="pl-r"><span class="pl-ready"' + plHitTip(r.name, readyRows) + '>' +
-          readinessCellHtml(r.rd, r.status === 'injured') + '</span></td>' +
+          plStripTooltip(readinessCellHtml(r.rd, r.status === 'injured')) + '</span></td>' +
         '<td class="pl-r pl-nums' + acCls + '"' + acStyle + '>' + ac + '</td>' +
         (wide ? '<td class="pl-td-spark">' + plSparkHtml(r.weeks) + '</td>' +
           '<td class="pl-r pl-nums">' + r.matches + '</td>' +
@@ -22052,10 +22220,14 @@
             '<span class="pl-pos pl-pos-sm">' + posCirclesHtmlGlobal(r.u) + '</span></div>' +
           '<div class="pl-rail-sub">' + (r.team ? t('pl.team') + ' ' + sanitize(r.team) : '') + '</div>' +
         '</div>' +
+        /* No "Tanca ✕": the row that opened the rail closes it, and so does
+           a click anywhere else on the page — the rule the colour swatch and
+           the board title already follow. Dropping it also frees the width
+           the button was reserving, so this donut is 84, the same size as the
+           team one above the table, instead of a smaller near-match. */
         '<div class="pl-rail-side">' +
-          '<button class="pl-close" id="pl-close">' + t('pl.close') + ' ✕</button>' +
           '<div class="pl-rail-donut">' + plDonutLegendHtml(r.att, true) +
-            plDonutHtml(r.att, 68) + '</div>' +
+            plDonutHtml(r.att, 84) + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="pl-ready-row">' +
@@ -22233,10 +22405,12 @@
       tip = document.createElement('div');
       tip.id = 'pl-tip';
       tip.className = 'pl-tip';
-      tip.hidden = true;
       document.body.appendChild(tip);
     }
-    var hideTip = function () { tip.hidden = true; };
+    /* Shown and hidden by a class, not the `hidden` attribute, so it
+       fades the way every other tooltip in the app does — `hidden` sets
+       `display:none`, which no transition can animate out of. */
+    var hideTip = function () { tip.classList.remove('visible'); };
     page.querySelectorAll('[data-pl-tip]').forEach(function (el) {
       el.addEventListener('mouseenter', function () {
         var d;
@@ -22246,10 +22420,11 @@
             return '<div class="pl-tip-r"><span>' + sanitize(r.k || '') + '</span><span>' +
               sanitize(r.v || '') + '</span></div>';
           }).join('');
-        tip.hidden = false;
+        tip.classList.add('visible');
+        // The same anchor .ua-tooltip uses, so the two sit identically.
         var rect = el.getBoundingClientRect();
         tip.style.left = (rect.left + rect.width / 2) + 'px';
-        tip.style.top = (rect.top - 10) + 'px';
+        tip.style.top = (rect.top - 8) + 'px';
       });
       el.addEventListener('mouseleave', hideTip);
     });
@@ -22269,11 +22444,8 @@
       });
     });
 
-    var close = document.getElementById('pl-close');
-    if (close) close.addEventListener('click', function (e) {
-      e.stopPropagation();
-      _plSel = null; hideTip(); renderPage(getSession());
-    });
+    /* The ✕ that stood here is gone — the row toggles the rail and the
+       page-level click below closes it, so nothing is unreachable. */
     var rail = document.getElementById('pl-rail');
     if (rail) rail.addEventListener('click', function (e) { e.stopPropagation(); });
     // A click anywhere else on the page closes the rail.
@@ -24109,454 +24281,804 @@
     return `<span class="reg-dot ${cls}" data-tip="${sanitize(tip)}"></span>`;
   }
 
-  function renderRegistrations() {
-    const users = getUsers();
-    const curCat = getCurrentCategory();
-    const enabledCats = getEnabledCategories();
-    const session = getSession();
-    // Only the lead may change roles — setRole rejects everyone else, and
-    // staff membership is driven by the club's staff email lists anyway.
-    const canEditRoles = !!(session && (session.isAdmin || session.isTeamLead));
-    /* A fitness coach or a delegate reads this page but does not run it:
-       squad assignment, pre-registration and the profile fields all stay the
-       head coach's. Every mutating control is left OUT of the markup rather
-       than disabled in CSS, and the delegated handlers refuse the same way —
-       one of the two alone is not a gate. */
-    const ro = !canEditPage('registrations');
-    // Two groups. Assigned = in a squad, and category-filtered like the rest
-    // of the app. Unassigned = in the club but in no squad: brand-new members
-    // nobody has placed yet, and anyone just taken off a team with "Treure de
-    // l'equip". They are NOT category-filtered — they have no category, so any
-    // coach can pick them up.
-    const assigned = users.filter(u => (u.category || '') &&
-      (!curCat || (u.category || '') === curCat));
-    const unassigned = users.filter(u => !(u.category || ''));
+  /* ═══════════════════════════════════════════════════════════
+     REGISTRACIONS — the staff registrations page, redesigned
+     (Claude Design handoff, 2026-09-01).
 
-    // Pre-registered addresses nobody has claimed yet are shown in the same
-    // table, with an orange dot. Without them an invited player is invisible
-    // until they sign up, and the dot would be meaningless — every row in a
-    // members table is registered by definition.
-    const heldEmails = {};
-    users.forEach(u => {
-      const em = normalizeEmail(u.email);
-      if (em) heldEmails[em] = true;
+     Ordered by the workflow it actually serves:
+
+       invite an address → the person registers → place them in a
+       squad with a rol, posició and dorsal → they are a member.
+
+     ⚠ THE HANDOFF DESCRIBES AN APPROVAL QUEUE THIS APP DOES NOT HAVE.
+     `joinClub` grants membership the moment someone signs up — role,
+     category and team all derived server-side from the roster list
+     their address was invited onto — so there is no "pending applicant"
+     to approve or reject. What there IS, and what the design's row is
+     shaped for, is the member nobody has PLACED yet: in the club, in no
+     squad. That is brand-new members and anyone taken off a team. So
+     "Sol·licituds pendents" is that group, and its action is Col·loca —
+     assign — rather than Aprova. Nothing here gates access, because
+     nothing here ever did.
+
+     ⚠ STAFF LISTS ARE THE LEAD'S. firestore.rules lets staff touch
+     `playerEmails` and nothing else, so the Staff invite chip and the
+     Rol chips are lead-only. Rendering them for a coach would offer a
+     write the server refuses.
+
+     The row markup deliberately keeps `data-uid`, `.reg-pos-chip`,
+     `.reg-number` and `.reg-team-circle`, because `autoSaveFromRow`
+     reads exactly those and is the one writer for a member's position,
+     number, squad and category. This is a redesign of the page, not of
+     how it saves.
+
+     The category is the exception: `.reg-cat-select` is gone, because a
+     native <select> cannot be styled open and the page now uses the
+     app's own stdSelect. `autoSaveFromRow` reads `data-value` off its
+     root instead — still one control, still one writer.
+     ═══════════════════════════════════════════════════════════ */
+
+  var _regKind = 'playerEmails';   // invite row: which list
+  var _regTeam = null;             // invite row: squad letter, null = first
+  var _regFilter = 'all';          // members filter
+  const REG_POS = ['GK', 'CB', 'LB', 'RB', 'DM', 'OM', 'LW', 'RW', 'ST'];
+  const REG_MAX_POS = 3;
+
+  /** Is this address on one of the club's lists at all? */
+  function regOnAllowlist(rosters, email) {
+    var em = normalizeEmail(email);
+    if (!em) return false;
+    return Object.keys(rosters).some(function (k) {
+      var r = rosters[k] || {};
+      return (r.playerEmails || []).concat(r.staffEmails || [])
+        .some(function (e) { return normalizeEmail(e) === em; });
     });
-    const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
-    /* Sub-role per staff address, read from the roster docs rather than from
-       the fa_users blob: the roster is where the lead sets it and where the
-       server re-derives it from, and fa_users carries it only for whoever
-       happened to log in on this device. Coach is the default, so only a
-       downgrade produces a badge. */
-    const staffSubRoles = {};
-    Object.keys(rosters).forEach(key => {
-      const map = (rosters[key] || {}).staffRoles || {};
-      Object.keys(map).forEach(em => { staffSubRoles[normalizeEmail(em)] = map[em]; });
+  }
+
+  /**
+   * Is this address on the club's STAFF list, its player list, or neither?
+   *
+   * `true` / `false` / `null` — and the null matters: an address on no
+   * list at all is detached, and the only thing that still knows what
+   * they were is their own `roles`.
+   *
+   * The lists are where a role comes from (onRosterWritten re-derives
+   * `roles` from them server-side), so they answer this question sooner
+   * and more truthfully than a member record waiting on a round trip.
+   */
+  function regIsStaffListed(rosters, email) {
+    var em = normalizeEmail(email);
+    if (!em) return null;
+    var on = function (field) {
+      return Object.keys(rosters).some(function (k) {
+        return ((rosters[k] || {})[field] || [])
+          .some(function (e) { return normalizeEmail(e) === em; });
+      });
+    };
+    if (on('staffEmails')) return true;
+    if (on('playerEmails')) return false;
+    return null;
+  }
+
+  /** Is this member staff? The lists first, their own roles as the fallback. */
+  function regStaffOf(rosters, u) {
+    var listed = regIsStaffListed(rosters, u.email);
+    return listed === null ? (u.roles || []).indexOf('staff') !== -1 : listed;
+  }
+
+  /**
+   * Invited addresses that have NO account yet.
+   *
+   * The rule the handoff calls out: an address drops off this list the
+   * moment that person exists as a user, whether they have been placed
+   * in a squad or not. Filtering on a `claimed` flag alone would leave
+   * somebody sitting under "waiting to register" after they had already
+   * registered — which is exactly the state the page exists to resolve.
+   */
+  function regInvited(rosters, users, curCat) {
+    var held = {};
+    users.forEach(function (u) {
+      var em = normalizeEmail(u.email);
+      if (em) held[em] = true;
     });
-    const pending = [];
-    Object.keys(rosters).forEach(key => {
-      const cat = key.slice(0, key.indexOf('-'));
-      const letter = key.slice(key.indexOf('-') + 1);
+    var out = [];
+    Object.keys(rosters).forEach(function (key) {
+      var cut = key.indexOf('-');
+      var cat = key.slice(0, cut), letter = key.slice(cut + 1);
       if (curCat && cat !== curCat) return;
-      ((rosters[key] || {}).playerEmails || []).forEach(raw => {
-        const em = normalizeEmail(raw);
-        if (!em || heldEmails[em]) return;
-        pending.push({ email: em, category: cat, team: letter, key: key });
+      ['playerEmails', 'staffEmails'].forEach(function (field) {
+        ((rosters[key] || {})[field] || []).forEach(function (raw) {
+          var em = normalizeEmail(raw);
+          if (!em || held[em]) return;
+          out.push({email: em, category: cat, team: letter, key: key, field: field});
+        });
       });
     });
-
-    let rows = assigned.map(u => {
-      const roles = u.roles || [];
-      let status = 'none';
-      if (roles.includes('player') && roles.includes('staff')) status = 'both';
-      else if (roles.includes('player')) status = 'player';
-      else if (roles.includes('staff')) status = 'staff';
-
-      const picHtml = u.profilePic
-        ? `<img src="${u.profilePic}" class="reg-avatar" alt="">`
-        : `<span class="reg-avatar reg-avatar-placeholder">${sanitize(u.name).charAt(0).toUpperCase()}</span>`;
-
-      const positions = (u.position || '').split(',').map(s => s.trim()).filter(Boolean);
-      const posOptions = ['GK','CB','LB','RB','DM','OM','LW','RW','ST'];
-      const posChips = posOptions
-        .filter(p => !ro || positions.includes(p))
-        .map(p => `<span class="reg-pos-chip${positions.includes(p) ? ' active' : ''}"${ro ? '' : ` data-pos="${p}"`}>${p}</span>`).join('');
-
-      const team = u.team || '';
-      const uCat = u.category || '';
-      const catOptions = enabledCats.length
-        ? enabledCats.map(function (k) { return '<option value="' + k + '"' + (uCat === k ? ' selected' : '') + '>' + CATEGORY_LABELS[k] + '</option>'; }).join('')
-        : '';
-      const catSelect = ro
-        ? '<span class="reg-status-flat">' + (CATEGORY_LABELS[uCat] || uCat || '—') + '</span>'
-        : (enabledCats.length
-          ? '<select class="reg-cat-select" data-uid="' + u.id + '"><option value=""' + (!uCat ? ' selected' : '') + '>—</option>' + catOptions + '</select>'
-          : '');
-
-      // Estat is a choice only for someone who is actually staff, and only the
-      // lead may make it — setRole rejects anyone else. A player's status
-      // follows from being on a player list, and someone whose only role is
-      // running the club has no meaningful option now that "Cap" is gone.
-      //
-      // Test for the lead ROLE, not for "has neither player nor staff": the
-      // second is also true of anyone whose roles are empty, and it labelled
-      // them Responsable del club. Empty roles fall through to the plain
-      // status label below, which reads "Cap" and is at least honest.
-      const isStaffRow = roles.includes('staff');
-      const isLeadRow = !roles.includes('player') && !isStaffRow &&
-        (roles.includes('lead') || u.isTeamLead === true);
-      const statusCell = isLeadRow
-        ? `<span class="reg-status-flat">${t('auth.role_lead')}</span>`
-        : (isStaffRow && canEditRoles
-          ? `<select class="reg-status-select" data-uid="${u.id}">
-              <option value="player" ${status === 'player' ? 'selected' : ''}>${t('reg.status_player')}</option>
-              <option value="staff" ${status === 'staff' ? 'selected' : ''}>${t('reg.status_staff')}</option>
-              <option value="both" ${status === 'both' ? 'selected' : ''}>${t('reg.status_both')}</option>
-            </select>`
-          : `<span class="reg-status-flat">${t('reg.status_' + status)}</span>`);
-
-      return `<tr data-uid="${u.id}">
-        <td class="reg-name-cell">${regDot(true)}${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
-        <td class="reg-email-cell">${sanitize(u.email || '')}</td>
-        <td>${statusCell}${(() => {
-          // The lead sets this in Config Club; here it is a label, so a coach
-          // can see who is a fitness coach or a delegate without going there.
-          if (!isStaffRow) return '';
-          const sub = staffSubRoles[normalizeEmail(u.email)];
-          return (sub && sub !== 'coach')
-            ? ` <span class="badge badge-grey">${t('staffrole.' + sub)}</span>` : '';
-        })()}</td>
-        <td>${catSelect}</td>
-        <td class="reg-team-cell">
-          ${getTeamLetters(u.category || '')
-            .filter(function(l) { return !ro || team === l; })
-            .map(function(l) {
-              var attrs = ro ? '' : ' data-uid="' + u.id + '" data-team="' + l + '"';
-              return '<span class="reg-team-circle' + (team === l ? ' active' : '') + '"' +
-                attrs + '>' + l + '</span>';
-            }).join('')}
-        </td>
-        <td class="reg-pos-cell">${posChips}</td>
-        <td>${ro
-          ? `<span class="reg-status-flat">${sanitize(String(u.playerNumber || '—'))}</span>`
-          : `<input type="text" inputmode="numeric" class="reg-input reg-number" data-uid="${u.id}" value="${u.playerNumber || ''}" placeholder="#" maxlength="2">`}</td>
-        <td class="reg-actions">
-          ${ro ? '' : (() => {
-            // "Leave the squad", not a delete: it detaches the member and
-            // keeps every record. Only offered when they are actually in a
-            // squad. Staff are appointed through the lead's staff email
-            // lists, which the rules put out of a coach's reach — so for a
-            // staff member only the lead sees the button.
-            const isStaffMember = roles.includes('staff');
-            if (!uCat && !team) return '';
-            if (isStaffMember && !canEditRoles) return '';
-            return `<button class="btn btn-small btn-outline btn-remove-reg" data-uid="${u.id}">${t('btn.leave_squad')}</button>`;
-          })()}
-        </td>
-      </tr>`;
-    }).join('');
-
-    // Invited but not signed up: no user document exists, so there is nothing
-    // to write a role, position or number to. Those cells are static; the only
-    // action is taking the address back off the list.
-    rows += pending.map(p => `<tr class="reg-row-pending" data-pending-email="${sanitize(p.email)}" data-pending-key="${sanitize(p.key)}">
-        <td class="reg-name-cell">${regDot(false)}<span class="reg-avatar reg-avatar-placeholder">?</span>
-          <span style="color:var(--text-secondary);font-style:italic;">${t('reg.pre_pending')}</span></td>
-        <td class="reg-email-cell">${sanitize(p.email)}</td>
-        <td><span class="reg-status-flat">${t('reg.status_player')}</span></td>
-        <td><span class="reg-status-flat">${CATEGORY_LABELS[p.category] || p.category}</span></td>
-        <td class="reg-team-cell"><span class="reg-team-circle active">${sanitize(p.team)}</span></td>
-        <td class="reg-pos-cell"></td>
-        <td></td>
-        <td class="reg-actions">
-          ${ro ? '' : `<button class="btn btn-small btn-outline btn-remove-pending"
-            data-pending-email="${sanitize(p.email)}" data-pending-key="${sanitize(p.key)}">${t('btn.leave_squad')}</button>`}
-        </td>
-      </tr>`).join('');
-
-    // Assigning is scoped to the categories this user may actually write a
-    // player list for — the rules reject anything else, so offering it would
-    // only produce a permission error. Lead and admin get the whole club.
-    const assignCats = getVisibleCategories();
-    const unassignedRows = unassigned.map(u => {
-      const picHtml = u.profilePic
-        ? `<img src="${u.profilePic}" class="reg-avatar" alt="">`
-        : `<span class="reg-avatar reg-avatar-placeholder">${sanitize(u.name).charAt(0).toUpperCase()}</span>`;
-      const prevCat = u.prevCategory || '';
-      const prevLabel = prevCat
-        ? (CATEGORY_LABELS[prevCat] || prevCat) + (u.prevTeam ? ' ' + sanitize(u.prevTeam) : '')
-        : '—';
-      // Default to where they came from when that category is still one of
-      // ours; it is the overwhelmingly likely destination.
-      const preselect = assignCats.indexOf(prevCat) !== -1 ? prevCat : (assignCats[0] || '');
-      const catOpts = assignCats.map(k =>
-        `<option value="${k}"${k === preselect ? ' selected' : ''}>${CATEGORY_LABELS[k] || k}</option>`).join('');
-      const letters = getTeamLetters(preselect);
-      const letterOpts = letters.map(l =>
-        `<option value="${l}"${l === (u.prevTeam || '') ? ' selected' : ''}>${l}</option>`).join('');
-      return `<tr data-uid="${u.id}">
-        <td class="reg-name-cell">${regDot(true)}${picHtml} <span>${sanitize(u.name)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</span></td>
-        <td class="reg-email-cell">${sanitize(u.email || '')}</td>
-        <td><span class="reg-status-flat">${prevLabel}</span></td>
-        <td class="reg-assign-cell">
-          ${ro ? `<span class="reg-status-flat">—</span>` : (assignCats.length ? `
-            <select class="reg-input reg-assign-cat" data-uid="${u.id}">${catOpts}</select>
-            <select class="reg-input reg-assign-team" data-uid="${u.id}">${letterOpts}</select>
-            <button class="btn btn-small btn-primary btn-assign" data-uid="${u.id}">${t('reg.assign')}</button>
-          ` : `<span class="reg-status-flat">${t('error.no_categories')}</span>`)}
-        </td>
-      </tr>`;
-    }).join('');
-
-    const unassignedCard = `
-      <div class="card">
-        <div class="card-title">${t('reg.unassigned')} (${unassigned.length})</div>
-        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
-          ${t('reg.unassigned_desc')}
-        </p>
-        ${unassigned.length ? `<div class="table-wrap"><table>
-          <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th><th>${t('reg.th_prev_team')}</th><th>${t('reg.th_assign')}</th></tr></thead>
-          <tbody>${unassignedRows}</tbody>
-        </table></div>` : `<p style="color:var(--text-secondary);font-size:.85rem;">${t('reg.unassigned_none')}</p>`}
-      </div>`;
-
-    return `
-      <h2 class="page-title">${t('page.registrations')}</h2>
-      ${ro ? viewOnlyBanner() : renderPreRegisteredPlayers()}
-      <div class="card">
-        <div class="card-title">${t('reg.assigned')} (${assigned.length + pending.length})</div>
-        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">
-          ${ro ? t('reg.view_desc') : t('reg.edit_desc')}
-        </p>
-        <div class="table-wrap"><table>
-          <thead><tr><th>${t('reg.th_name')}</th><th>${t('users.th_email')}</th><th>${t('reg.th_status')}</th><th>${t('reg.th_category')}</th><th style="text-align:center">${t('reg.th_team')}</th><th>${t('reg.th_position')}</th><th>${t('reg.th_number')}</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>
-      ${unassignedCard}`;
+    return out.sort(function (a, b) { return a.email.localeCompare(b.email); });
   }
 
-  /**
-   * The player email lists for the currently selected category — the gate that
-   * decides who may register onto these teams. One block per team letter.
-   * Registration is refused for any address not listed here, so this is where
-   * staff sign a new player up before the family ever opens the app.
-   */
-  function renderPreRegisteredPlayers() {
-    var cat = getCurrentCategory();
-    if (!cat) {
-      return `<div class="card">
-        <div class="card-title">${t('reg.pre_title')}</div>
-        <p style="color:var(--text-secondary);font-size:.85rem;">${t('reg.pre_no_cat')}</p>
-      </div>`;
+  /** One squad chip. `attr` carries whatever the binder needs. */
+  function regChip(label, on, attr, cls) {
+    return '<button class="reg2-chip' + (on ? ' reg2-chip-on' : '') +
+      (cls ? ' ' + cls : '') + '"' + (attr || '') + '>' + sanitize(label) + '</button>';
+  }
+
+  /* ── The invite row ────────────────────────────────────────── */
+  function regInviteHtml(letters, isLead, ro) {
+    if (ro) return '';
+    var team = _regTeam && letters.indexOf(_regTeam) !== -1 ? _regTeam : letters[0];
+    var squad = letters.map(function (l) {
+      return regChip(l, l === team, ' data-reg-team="' + sanitize(l) + '"');
+    }).join('');
+    /* Staff only for the lead: firestore.rules refuses `staffEmails`
+       from anyone else, so a coach offered the chip would fill in an
+       address, press Afegeix and get a permission error. */
+    var kinds = regChip(t('reg2.players'), _regKind === 'playerEmails',
+        ' data-reg-kind="playerEmails"') +
+      (isLead ? regChip(t('reg2.staff'), _regKind === 'staffEmails',
+        ' data-reg-kind="staffEmails"') : '');
+    return '<div class="reg2-invite">' +
+      '<input type="email" inputmode="email" autocomplete="off" id="reg2-email" ' +
+        'class="reg2-email" placeholder="' + sanitize(t('reg2.email_ph')) + '">' +
+      (letters.length > 1 ? '<span class="reg2-chipset">' + squad + '</span>' : '') +
+      '<span class="reg2-chipset">' + kinds + '</span>' +
+      '<button class="reg2-add" id="reg2-add" disabled>' + t('reg2.add') + '</button>' +
+      '</div><div id="reg2-msg" class="reg2-msg"></div>';
+  }
+
+  /* ── Invited, still without an account ─────────────────────── */
+  function regInvitedColsHtml(invited, ro) {
+    function col(field, title) {
+      var list = invited.filter(function (i) { return i.field === field; });
+      var rows = list.map(function (i) {
+        return '<div class="reg2-inv-row">' +
+          '<span class="reg2-inv-email" title="' + sanitize(i.email) + '">' +
+            sanitize(i.email) + '</span>' +
+          '<span class="reg2-inv-team">' + sanitize(i.team) + '</span>' +
+          '<span class="reg2-inv-state"><i class="reg2-bullet"></i>' + t('reg2.invited') + '</span>' +
+          (ro ? '' : '<button class="reg2-x" data-inv-email="' + sanitize(i.email) +
+            '" data-inv-key="' + sanitize(i.key) + '" data-inv-field="' + field +
+            '" title="' + sanitize(t('reg2.remove_invite')) + '">✕</button>') +
+          '</div>';
+      }).join('');
+      var n = list.length;
+      return '<div class="reg2-inv-col">' +
+        '<div class="reg2-inv-head"><span>' + title + '</span>' +
+          '<span class="reg2-inv-count">' + n + ' ' +
+          (n === 1 ? t('reg2.pending_one') : t('reg2.pending_many')) + '</span></div>' +
+        (rows || '<div class="reg2-inv-empty">—</div>') + '</div>';
     }
-    var letters = getTeamLetters(cat);
-    var opts = letters.map(function (l) {
-      return '<option value="' + l + '">' + CATEGORY_LABELS[cat] + ' ' + l + '</option>';
+    return '<div class="reg2-inv-cols">' +
+      col('playerEmails', t('reg2.players')) +
+      col('staffEmails', t('reg2.staff')) + '</div>';
+  }
+
+
+  /**
+   * The position cell: ALL NINE, in the row, always.
+   *
+   * The handoff drew a popover you opened per player. It went back to
+   * the row on the owner's call, and he was right — this is a page you
+   * work down, setting a position on one player after another, and a
+   * control you must open, aim at and dismiss for each of them turns
+   * nine clicks into twenty-seven. Seeing every position at once is
+   * also how you notice the squad has four centre-backs and no keeper.
+   *
+   * Read-only shows just the chosen ones; there is nothing to pick.
+   *
+   * The chips ARE `.reg-pos-chip[data-pos]`, which is what
+   * autoSaveFromRow collects on every save — this is a different
+   * arrangement of the same control, not a second one needing its own
+   * writer.
+   */
+  function regPosCellHtml(positions, ro) {
+    if (ro) {
+      if (!positions.length) return '<span class="reg2-dash">—</span>';
+      return '<span class="reg2-pos-view">' + positions.map(function (p) {
+        return '<span class="reg2-circle" style="background:' +
+          (POS_COLORS[p] || '#9e9e9e') + '">' + sanitize(p) + '</span>';
+      }).join('') + '</span>';
+    }
+    var chips = REG_POS.map(function (p) {
+      var on = positions.indexOf(p) !== -1;
+      /* At the cap the unchosen ones stop responding. The delegated
+         writer enforces the same limit and shows its own note; this
+         only makes the limit visible before you click. */
+      var full = !on && positions.length >= REG_MAX_POS;
+      return '<span class="reg-pos-chip reg2-pos-c' + (on ? ' active' : '') +
+        (full ? ' reg2-pos-full' : '') + '" data-pos="' + p +
+        '" style="background:' + (POS_COLORS[p] || '#9e9e9e') + '" title="' +
+        sanitize(t('pos.' + p)) + '">' + p + '</span>';
     }).join('');
-    return `<div class="card">
-      <div class="card-title">${t('reg.pre_title')}</div>
-      <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('reg.pre_desc')}</p>
-      <div class="reg-add-row">
-        <input type="email" inputmode="email" autocomplete="off" id="reg-add-email"
-          class="reg-input" placeholder="${t('auth.email_ph')}">
-        <select id="reg-add-team" class="reg-input">${opts}</select>
-        <button class="btn btn-primary btn-small" id="reg-add-btn">${t('reg.pre_add')}</button>
-      </div>
-      <div id="reg-add-msg" style="font-size:.83rem;margin-top:.5rem;"></div>
-    </div>`;
+    return '<div class="reg2-pos-cell">' + chips + '</div>';
+  }
+
+  /** The squad chips for one member's row. */
+  function regTeamCellHtml(uid, cat, team, ro) {
+    var letters = getTeamLetters(cat || '');
+    if (!letters.length) return '<span class="reg2-dash">—</span>';
+    return letters.filter(function (l) { return !ro || team === l; })
+      .map(function (l) {
+        /* ⚠ `.active` and NOTHING else says "selected" here.
+           The delegated writer on #dashboard-content owns this state: it
+           clears `.active` from every chip in the row, then sets it on
+           the one clicked. Painting `.reg2-chip-on` as well — as this
+           did — left the PREVIOUS chip filled after a click, because the
+           writer has never heard of that class and cannot take it off.
+           Both squads then read as selected at once while the record
+           held only the new one. One class, one owner. */
+        return '<span class="reg-team-circle reg2-chip' +
+          (team === l ? ' active' : '') +
+          '"' + (ro ? '' : ' data-uid="' + sanitize(uid) + '" data-team="' + l + '"') +
+          '>' + l + '</span>';
+      }).join('');
+  }
+
+  /** The dorsal field, red when the number is already worn in this squad. */
+  function regNumberHtml(uid, number, taken, ro) {
+    if (ro) return '<span class="reg2-dash">' + sanitize(String(number || '—')) + '</span>';
+    var dup = number && taken;
+    return '<input type="text" inputmode="numeric" maxlength="2" ' +
+      'class="reg-input reg-number reg2-num' + (dup ? ' reg2-num-dup' : '') + '" ' +
+      'data-uid="' + sanitize(uid) + '" value="' + sanitize(String(number || '')) + '" ' +
+      'placeholder="—"' + (dup ? ' title="' + sanitize(t('reg2.dup_number')) + '"' : '') + '>';
   }
 
   /**
-   * Add one address to a team's player list.
+   * Which dorsals are already worn, per squad.
    *
-   * Refuses an address already on ANY list in the club, or one already held by
-   * an assigned member — a duplicate would show as two rows for one person and,
+   * Keyed by category AND letter: the same number in the A team and the
+   * B team is two different shirts, and flagging that as a clash would
+   * be wrong in every club that runs two squads.
+   */
+  function regTakenNumbers(users) {
+    var out = {};
+    users.forEach(function (u) {
+      var n = String(u.playerNumber || '').trim();
+      if (!n) return;
+      var k = (u.category || '') + '|' + (u.team || '') + '|' + n;
+      (out[k] = out[k] || []).push(String(u.id));
+    });
+    return out;
+  }
+  function regIsTaken(taken, u) {
+    var n = String(u.playerNumber || '').trim();
+    if (!n) return false;
+    var k = (u.category || '') + '|' + (u.team || '') + '|' + n;
+    return (taken[k] || []).length > 1;
+  }
+
+  /* ── Sol·licituds pendents: in the club, in no squad ─────────── */
+  function regPendingTableHtml(rows, rosters, taken, isLead, ro) {
+    if (!rows.length) {
+      return '<p class="reg2-empty">' + t('reg2.no_pending') + '</p>';
+    }
+    var cats = getVisibleCategories();
+    var body = rows.map(function (u) {
+      var uid = String(u.id);
+      var roles = u.roles || [];
+      var isStaff = regStaffOf(rosters, u);
+      var positions = (u.position || '').split(',').map(function (s) { return s.trim(); })
+        .filter(Boolean);
+      var onList = regOnAllowlist(rosters, u.email);
+      /* Placeable when we know where to put them. A player also needs a
+         position and a dorsal — the two fields the squad list, the
+         convocatòria and every stats surface read. */
+      var cat = u.category || (cats[0] || '');
+      var ok = onList && (isStaff || (positions.length && String(u.playerNumber || '').trim()));
+      var rolCell = isLead && !ro
+        ? regChip(t('reg2.player'), !isStaff, ' data-rol-uid="' + uid + '" data-rol="player"') +
+          regChip(t('reg2.staff_one'), isStaff, ' data-rol-uid="' + uid + '" data-rol="staff"')
+        : '<span class="reg2-flat">' + (isStaff ? t('reg2.staff_one') : t('reg2.player')) + '</span>';
+      /* The app's own dropdown, not a fourth one and not a <select>.
+         stdSelect exists for exactly this — see its comment: a native
+         select can be styled shut but not open. `std-sel-esc` lets the
+         menu float out of `.reg2-wrap`, which is `overflow-x:auto` and
+         would otherwise clip it and grow a scrollbar around it. */
+      var catSel = ro || !cats.length ? '' : stdSelect({
+        kind: 'regcat', cls: 'std-sel-flat std-sel-esc', value: cat,
+        options: cats.map(function (k) {
+          return {value: k, label: CATEGORY_LABELS[k] || k};
+        }),
+        data: {uid: uid}
+      });
+      return '<tr data-uid="' + uid + '" class="reg2-row-new">' +
+        '<td class="reg2-td-who"><div class="reg2-name">' + sanitize(u.name || '') + '</div>' +
+          '<div class="reg2-sub">' + sanitize(u.email || '') + '</div></td>' +
+        '<td>' + rolCell + '</td>' +
+        '<td class="reg2-td-team">' + catSel +
+          '<span class="reg2-teams">' + regTeamCellHtml(uid, cat, u.team || '', ro) + '</span></td>' +
+        '<td>' + regPosCellHtml(positions, ro || isStaff) + '</td>' +
+        '<td class="reg2-c">' + regNumberHtml(uid, u.playerNumber, regIsTaken(taken, u), ro || isStaff) + '</td>' +
+        '<td><span class="reg2-state ' + (onList ? 'reg2-on' : 'reg2-off') + '">' +
+          '<i class="reg2-bullet"></i>' + (onList ? t('reg2.on_list') : t('reg2.off_list')) +
+          '</span></td>' +
+        '<td class="reg2-r">' + (ro ? '' :
+          '<button class="reg2-btn-ghost btn-remove-reg" data-uid="' + uid + '">' + t('reg2.reject') + '</button>' +
+          '<button class="reg2-btn' + (ok ? '' : ' reg2-btn-off') + '" data-place-uid="' + uid + '"' +
+            (ok ? '' : ' disabled title="' + sanitize(t('reg2.place_hint')) + '"') + '>' +
+            t('reg2.place') + '</button>') + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<div class="reg2-wrap"><table class="reg2-table reg2-table-pending"><thead><tr>' +
+      '<th class="reg2-th-first">' + t('reg2.th_applicant') + '</th>' +
+      '<th>' + t('reg2.th_role') + '</th><th>' + t('reg2.th_team') + '</th>' +
+      '<th>' + t('reg2.th_pos') + '</th><th class="reg2-c">' + t('reg2.th_number') + '</th>' +
+      '<th>' + t('reg2.th_list') + '</th><th class="reg2-r">' + t('reg2.th_actions') + '</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+
+  /* ── Membres ──────────────────────────────────────────────── */
+  function regMembersTableHtml(members, rosters, taken, canEditRoles, isLead, ro) {
+    var filters = [['all', t('reg2.f_all')], ['player', t('reg2.f_player')],
+                   ['staff', t('reg2.f_staff')], ['nonum', t('reg2.f_nonum')]];
+    var head = '<div class="reg2-sec-head"><span class="reg2-eyebrow">' + t('reg2.members') + '</span>' +
+      '<div class="reg2-filters">' + filters.map(function (f) {
+        return '<button class="reg2-f' + (_regFilter === f[0] ? ' reg2-f-on' : '') +
+          '" data-reg-filter="' + f[0] + '">' + f[1] + '</button>';
+      }).join('') + '</div></div>';
+
+    var shown = members.filter(function (u) {
+      var roles = u.roles || [];
+      if (_regFilter === 'player') return roles.indexOf('player') !== -1;
+      if (_regFilter === 'staff') return roles.indexOf('staff') !== -1;
+      if (_regFilter === 'nonum') {
+        return roles.indexOf('player') !== -1 && !String(u.playerNumber || '').trim();
+      }
+      return true;
+    });
+
+    if (!shown.length) {
+      return head + '<p class="reg2-empty">' + t('reg2.no_members') + '</p>';
+    }
+
+    var body = shown.map(function (u) {
+      var uid = String(u.id);
+      var roles = u.roles || [];
+      var isStaff = regStaffOf(rosters, u);
+      var isLeadRow = !roles.length ? false :
+        (roles.indexOf('player') === -1 && !isStaff &&
+         (roles.indexOf('lead') !== -1 || u.isTeamLead === true));
+      var positions = (u.position || '').split(',').map(function (s) { return s.trim(); })
+        .filter(Boolean);
+      /* The rol chips move the address between the club's lists, which
+         is where a role actually comes from — onRosterWritten re-derives
+         it server-side. Lead only: firestore.rules refuses `staffEmails`
+         from anyone else, and a chip that always failed would be worse
+         than a label. The lead's OWN row is never a chip: there is no
+         list that makes somebody the lead. */
+      var rolCell = (isLead && !ro && !isLeadRow)
+        ? '<span class="reg2-chipset">' +
+            regChip(t('reg2.player'), !isStaff, ' data-rol-uid="' + uid + '" data-rol="player"') +
+            regChip(t('reg2.staff_one'), isStaff, ' data-rol-uid="' + uid + '" data-rol="staff"') +
+          '</span>'
+        : (isLeadRow ? '<span class="reg2-flat">' + t('auth.role_lead') + '</span>'
+          : isStaff ? '<span class="reg2-role-staff">' + t('reg2.staff_one') + '</span>'
+          : '<span class="reg2-flat">' + t('reg2.player') + '</span>');
+      return '<tr data-uid="' + uid + '">' +
+        '<td class="reg2-td-who"><div class="reg2-name">' + sanitize(u.name || '') +
+          (u.isAdmin ? ' <span class="badge badge-red">admin</span>' : '') + '</div>' +
+          '<div class="reg2-sub">' + sanitize(u.email || '') + '</div></td>' +
+        '<td>' + rolCell + '</td>' +
+        '<td class="reg2-td-team">' + regTeamCellHtml(uid, u.category || '', u.team || '', ro) + '</td>' +
+        '<td>' + regPosCellHtml(positions, ro || isStaff) + '</td>' +
+        '<td class="reg2-c">' + regNumberHtml(uid, u.playerNumber, regIsTaken(taken, u), ro || isStaff) + '</td>' +
+        '<td class="reg2-r">' + (ro ? '' : (function () {
+          /* "Leave the squad", not a delete: it detaches the member and
+             keeps every record. Staff are appointed through the lead's
+             lists, which the rules put out of a coach's reach, so for a
+             staff member only the lead sees it. */
+          if (isStaff && !canEditRoles) return '';
+          return '<button class="reg2-btn-ghost btn-remove-reg" data-uid="' + uid + '">' +
+            t('btn.leave_squad') + '</button>';
+        })()) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    return head + '<div class="reg2-wrap"><table class="reg2-table"><thead><tr>' +
+      '<th class="reg2-th-first">' + t('reg2.th_member') + '</th>' +
+      '<th>' + t('reg2.th_role') + '</th><th>' + t('reg2.th_team') + '</th>' +
+      '<th>' + t('reg2.th_pos') + '</th><th class="reg2-c">' + t('reg2.th_number') + '</th>' +
+      '<th class="reg2-r">' + t('reg2.th_actions') + '</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+  /* ── The page ─────────────────────────────────────────────── */
+  function renderRegistrations() {
+    var users = getUsers();
+    var curCat = getCurrentCategory();
+    var session = getSession();
+    // Only the lead may change roles — setRole rejects everyone else, and
+    // staff membership is driven by the club's staff email lists anyway.
+    var canEditRoles = !!(session && (session.isAdmin || session.isTeamLead));
+    var isLead = canEditRoles;
+    /* A fitness coach or a delegate reads this page but does not run it.
+       Every mutating control is left OUT of the markup rather than
+       disabled in CSS, and the delegated handlers refuse the same way —
+       one of the two alone is not a gate. */
+    var ro = !canEditPage('registrations');
+    var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+
+    /* Placed members, category-filtered like the rest of the app, and
+       narrowed by the squad chips in the top bar. */
+    var members = users.filter(function (u) {
+      if (!(u.category || '')) return false;
+      if (curCat && (u.category || '') !== curCat) return false;
+      if (rosterTeamFilter !== 'all' && (u.team || '') !== rosterTeamFilter) return false;
+      return true;
+    }).sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+
+    /* In the club, in no squad. NOT category-filtered — they have no
+       category, so any coach can pick them up. */
+    var unplaced = users.filter(function (u) { return !(u.category || ''); })
+      .sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+
+    var invited = regInvited(rosters, users, curCat);
+    var taken = regTakenNumbers(users);
+    var letters = getTeamLetters(curCat);
+
+    var title = [t('page.registrations'),
+      curCat ? (CATEGORY_LABELS[curCat] || curCat) : '',
+      rosterTeamFilter !== 'all' ? rosterTeamFilter : ''].filter(Boolean).join(' · ');
+
+    var nInv = invited.length;
+    return '<div class="reg2-page" id="reg2-page">' +
+      '<div class="reg2-title-row">' +
+        '<h1 class="reg2-h1">' + sanitize(title) + '</h1>' +
+        '<div class="reg2-sub-line">' + t('reg2.intro') + '</div>' +
+      '</div>' +
+      '<div class="reg2-figures">' +
+        /* The figure labels get their own class. `.reg2-eyebrow` is the
+           SECTION heading now — bold, in the ink — and these are small
+           faint captions over a big number; the same class cannot be
+           both. */
+        '<div class="reg2-fig"><span class="reg2-fig-l">' + t('reg2.fig_pending') + '</span>' +
+          '<span class="reg2-fig-v' + (unplaced.length ? ' reg2-fig-hot' : '') + '">' +
+          unplaced.length + '</span></div>' +
+        '<div class="reg2-fig"><span class="reg2-fig-l">' + t('reg2.fig_members') + '</span>' +
+          '<span class="reg2-fig-v">' + members.length + '</span></div>' +
+        '<div class="reg2-fig"><span class="reg2-fig-l">' + t('reg2.fig_invited') + '</span>' +
+          '<span class="reg2-fig-v">' + nInv + '</span></div>' +
+      '</div>' +
+      (ro ? viewOnlyBanner() : '') +
+      '<div class="reg2-sec-head"><span class="reg2-eyebrow">' + t('reg2.invited_title') + '</span>' +
+        '<span class="reg2-note">' + nInv + ' ' +
+        (nInv === 1 ? t('reg2.wait_one') : t('reg2.wait_many')) + '</span></div>' +
+      regInviteHtml(letters, isLead, ro) +
+      regInvitedColsHtml(invited, ro) +
+      '<div class="reg2-sec-head reg2-sec-top"><span class="reg2-eyebrow">' +
+        t('reg2.pending_title') + '</span>' +
+        '<span class="reg2-note">' + t('reg2.pending_note') + '</span></div>' +
+      regPendingTableHtml(unplaced, rosters, taken, isLead, ro) +
+      regMembersTableHtml(members, rosters, taken, canEditRoles, isLead, ro) +
+      '</div>';
+  }
+
+
+  /**
+   * Add one address to a team's list.
+   *
+   * `field` is 'playerEmails' or 'staffEmails'. Refuses an address
+   * already on ANY list in the club, or one already held by a placed
+   * member — a duplicate would show as two rows for one person and,
    * worse, put them on two teams at once.
    */
-  async function addPreRegisteredPlayer() {
+  async function regAddInvite(email, key, field) {
     var session = getSession();
-    var msg = document.getElementById('reg-add-msg');
-    var inp = document.getElementById('reg-add-email');
-    var sel = document.getElementById('reg-add-team');
-    if (!session || !session.teamId || !inp || !sel) return;
-    var email = normalizeEmail(inp.value);
-    var cat = getCurrentCategory();
-    var key = cat + '-' + sel.value;
-    var show = function (text, colour) {
+    var msg = document.getElementById('reg2-msg');
+    var show = function (text, cls) {
       if (!msg) return;
-      msg.style.color = colour;
+      msg.className = 'reg2-msg ' + (cls || '');
       msg.textContent = text;
     };
-    if (!isValidEmail(email)) { show(t('error.invalid_email'), 'var(--danger)'); return; }
+    if (!session || !session.teamId) return;
+    var em = normalizeEmail(email);
+    if (!isValidEmail(em)) { show(t('error.invalid_email'), 'reg2-msg-bad'); return; }
 
     var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
-    var already = Object.keys(rosters).some(function (k) {
-      return ((rosters[k] && rosters[k].playerEmails) || [])
-        .some(function (e) { return normalizeEmail(e) === email; });
+    if (regOnAllowlist(rosters, em)) { show(t('error.duplicate_email'), 'reg2-msg-bad'); return; }
+    var held = getUsers().some(function (u) {
+      return normalizeEmail(u.email) === em && (u.category || '');
     });
-    if (already) { show(t('error.duplicate_email'), 'var(--danger)'); return; }
-    var taken = getUsers().some(function (u) {
-      return normalizeEmail(u.email) === email && (u.category || '');
-    });
-    if (taken) { show(t('reg.pre_already_member'), 'var(--danger)'); return; }
+    if (held) { show(t('reg.pre_already_member'), 'reg2-msg-bad'); return; }
 
-    var next = (((rosters[key] || {}).playerEmails) || []).concat([email]);
+    var next = (((rosters[key] || {})[field]) || []).concat([em]);
     try {
-      await saveRoster(session.teamId, key, 'playerEmails', next);
+      await saveRoster(session.teamId, key, field, next);
       if (!_clubConfig.rosters) _clubConfig.rosters = {};
-      if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
-      _clubConfig.rosters[key].playerEmails = next;
-      inp.value = '';
+      if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = {staffEmails: [], playerEmails: []};
+      _clubConfig.rosters[key][field] = next;
       renderPage(getSession());
     } catch (err) {
-      console.error('addPreRegisteredPlayer failed:', err);
+      console.error('regAddInvite failed:', err);
       show(err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'),
-        'var(--danger)');
+        'reg2-msg-bad');
     }
   }
 
-  /** Take one address off whichever team list holds it. */
-  async function removePreRegisteredPlayer(email, key) {
+  /** Take one address off the list that holds it. */
+  async function regRemoveInvite(email, key, field) {
     var session = getSession();
     var target = normalizeEmail(email);
     if (!session || !session.teamId || !target || !key) return;
     var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
-    var kept = (((rosters[key] || {}).playerEmails) || [])
+    var kept = (((rosters[key] || {})[field]) || [])
       .filter(function (e) { return normalizeEmail(e) !== target; });
     try {
-      await saveRoster(session.teamId, key, 'playerEmails', kept);
+      await saveRoster(session.teamId, key, field, kept);
       if (_clubConfig.rosters && _clubConfig.rosters[key]) {
-        _clubConfig.rosters[key].playerEmails = kept;
+        _clubConfig.rosters[key][field] = kept;
       }
       renderPage(getSession());
     } catch (err) {
-      console.error('removePreRegisteredPlayer failed:', err);
+      console.error('regRemoveInvite failed:', err);
       _showPushToast(t('save.sync_title'),
         err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
     }
   }
 
   /**
-   * Clear the squad assignment of a registered member, locally and in
-   * Firestore. Called whenever their address leaves a team's player list —
-   * from the ✕ on the pre-registered card or from "Treure de l'equip" — so
-   * both routes move the person into the Unassigned block at once instead of
-   * waiting on onRosterWritten to come back.
+   * Move one member's address between the club's player and staff lists.
    *
-   * Membership itself is untouched: they stay in the club, keep every record,
-   * and re-appear in a squad the moment a coach lists their address again.
+   * The lists are where a role comes FROM: onRosterWritten re-derives
+   * `roles` server-side from them, so writing setRole here instead would
+   * be overwritten the next time anybody touched a roster. Lead-only,
+   * because firestore.rules refuses `staffEmails` from anyone else.
    */
-  async function detachMemberByEmail(email) {
-    const target = normalizeEmail(email);
-    if (!target) return;
-    const users = getUsers();
-    const u = users.find(x => normalizeEmail(x.email) === target);
-    if (!u || (!u.category && !u.team)) return;
-    // Remember where they were so the Unassigned list can offer to put them
-    // back. onRosterWritten records the same thing server-side.
-    const patch = { category: '', team: '', prevCategory: u.category || '', prevTeam: u.team || '' };
-    u.prevCategory = patch.prevCategory;
-    u.prevTeam = patch.prevTeam;
-    u.category = '';
-    u.team = '';
-    saveUsers(users);
-    if (typeof u.id === 'string' && isNaN(Number(u.id))) {
-      try {
-        await db.collection('users').doc(u.id).set(patch, { merge: true });
-      } catch (err) {
-        console.error('detach failed:', err);
-        _showPushToast(t('save.sync_title'), t('save.error_perms'));
-      }
-    }
-    if (currentPage === 'registrations') renderPage(getSession());
-  }
-
-  /**
-   * Put an unassigned member into a squad: add their address to that team's
-   * player list (the gate that actually decides membership) and mirror the
-   * assignment locally so the row moves at once rather than waiting for
-   * onRosterWritten to come back.
-   *
-   * The category dropdown only offers categories this user may write to —
-   * the rules scope playerEmails edits to a coach's own categories, so
-   * anything else would fail on save.
-   */
-  async function assignMemberToTeam(uid, category, letter) {
-    const session = getSession();
-    if (!session || !session.teamId || !category || !letter) return;
-    const users = getUsers();
-    const u = users.find(x => String(x.id) === String(uid));
+  async function regSetRole(uid, want) {
+    var session = getSession();
+    if (!session || !session.teamId) return;
+    var u = getUsers().find(function (x) { return String(x.id) === String(uid); });
     if (!u) return;
-    const email = normalizeEmail(u.email);
-    const key = category + '-' + letter;
+    var em = normalizeEmail(u.email);
+    if (!em) return;
+    var rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    var from = want === 'staff' ? 'playerEmails' : 'staffEmails';
+    var to = want === 'staff' ? 'staffEmails' : 'playerEmails';
+    // The doc that currently holds them, so they land back on the same squad.
+    var key = Object.keys(rosters).find(function (k) {
+      return ((rosters[k] || {})[from] || [])
+        .some(function (e) { return normalizeEmail(e) === em; });
+    });
+    if (!key) {
+      /* Not on the list they are being moved off. Nothing to move, and
+         inventing a roster entry here would place them on a squad
+         nobody chose. */
+      _showPushToast(t('save.sync_title'), t('reg2.role_needs_list'));
+      return;
+    }
+    var kept = ((rosters[key][from]) || [])
+      .filter(function (e) { return normalizeEmail(e) !== em; });
+    var added = ((rosters[key][to]) || []).concat([em]);
     try {
-      if (email) {
-        const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
-        const list = ((rosters[key] || {}).playerEmails) || [];
-        if (!list.some(e => normalizeEmail(e) === email)) {
-          const next = list.concat([email]);
-          await saveRoster(session.teamId, key, 'playerEmails', next);
-          if (!_clubConfig.rosters) _clubConfig.rosters = {};
-          if (!_clubConfig.rosters[key]) _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
-          _clubConfig.rosters[key].playerEmails = next;
-        }
-      }
-      if (typeof uid === 'string' && isNaN(Number(uid))) {
-        await db.collection('users').doc(uid).set(
-          { category: category, team: letter }, { merge: true });
-      }
-      u.category = category;
-      u.team = letter;
-      // Being on a player list IS what makes someone a player, and
-      // onRosterWritten has just set that server-side. Mirror it locally or
-      // the row keeps whatever stale roles the blob held — db.js's reconcile
-      // only ever ADDS missing members, it never refreshes an existing one,
-      // so a stale empty array would otherwise persist indefinitely.
-      if (!(u.roles || []).includes('player')) {
-        u.roles = (u.roles || []).concat(['player']);
-      }
-      saveUsers(users);
+      await saveRosterFields(session.teamId, key, (function () {
+        var p = {}; p[from] = kept; p[to] = added; return p;
+      })());
+      rosters[key][from] = kept;
+      rosters[key][to] = added;
+      /* ⚠ NOTHING is written to the member's own record here, and that
+         is deliberate.
+
+         The chips used to be drawn from `roles`, which this write does
+         not touch — onRosterWritten re-derives those server-side — so
+         re-rendering redrew an identical row and the button looked
+         dead. The obvious patch was to set `roles` locally too. Don't:
+         `fa_users` is a SYNCED blob, and js/db.js's reconcile only ever
+         ADDS members it has not seen — it never refreshes the fields of
+         one already in the blob. A guess written here is therefore not
+         self-healing, and it would propagate to every other client as
+         though it were fact.
+         So the row reads the lists instead (regStaffOf), which is what
+         this function actually changed and what the server will derive
+         `roles` from anyway. The chip is then correct immediately
+         because it is reading the truth, not predicting it. */
       renderPage(getSession());
     } catch (err) {
-      console.error('assign failed:', err);
+      console.error('regSetRole failed:', err);
       _showPushToast(t('save.sync_title'),
         err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
     }
   }
 
-  // (savePlayerEmailList lived here — it read a whole team's list back out of
-  // the DOM on every blur. With the editable rows gone, addPreRegisteredPlayer
-  // and removePreRegisteredPlayer write the one address that changed instead.)
+  /**
+   * Write one Registracions row back — position, dorsal, squad, category.
+   *
+   * THE one writer for those four fields. It used to be a local inside the
+   * delegated-handler IIFE, which meant the only way to reach it was to fire
+   * a DOM event it happened to listen for. bindRegistrations needs it by name
+   * (the category picker is a div, so there is no `change` to dispatch), and
+   * a second writer beside it is exactly what this function exists to avoid.
+   */
+  function autoSaveFromRow(row) {
+    if (!row || !row.dataset.uid) return;
+    // The last line of defence for a view-only sub-role: every caller is
+    // gated above, so reaching here means one of them was missed.
+    if (!canEditPage('registrations')) return;
+    const uid = row.dataset.uid;
+    const selPos = Array.from(row.querySelectorAll('.reg-pos-chip.active')).map(c => c.dataset.pos);
+    const position = selPos.join(',');
+    const numEl = row.querySelector('.reg-number');
+    const playerNumber = numEl ? numEl.value.trim() : '';
 
-  // #region Archived Seasons Viewer
-  // ---------- Archived Seasons ----------
-  var _archivedSeasonLabel = '';
-  var _archiveData = null;
-  var _archiveTab = 'matches';
-  /* Attendance answers, {uid}_{date} -> value, fetched separately and only
-     when that tab is opened: a season holds one per player per session,
-     a few thousand documents, and three of the four tabs never touch them.
-     null means "not fetched yet", {} means "fetched and empty". */
-  var _archiveAvail = null;
-  var _archiveAvailLoading = false;
+    let users = getUsers();
+    const user = users.find(u => String(u.id) === String(uid));
+    if (!user) return;
 
-  // Load list of archived seasons from Firestore
-  async function loadArchivedSeasons(teamId) {
-    try {
-      var snap = await db.collection('teams').doc(teamId).collection('seasons').get();
-      var seasons = [];
-      snap.forEach(function(d) { seasons.push({ id: d.id, label: d.data().label || d.id, archivedAt: d.data().archivedAt, archivedBy: d.data().archivedBy }); });
-      // Sort by label descending
-      seasons.sort(function(a, b) { return b.label.localeCompare(a.label); });
-      return seasons;
-    } catch (e) { console.error('loadArchivedSeasons error:', e); return []; }
+    /* ⚠ ABSENT MEANS "LEAVE IT ALONE", NOT "CLEAR IT".
+       These two used to read `el ? el.value : ''`, so a row that
+       simply does not draw the control handed back an empty string
+       and the save wiped the field. On the Registracions redesign
+       the Membres table has no category select — it does not need
+       one — so changing a placed player's POSITION cleared his
+       category and dropped him straight back into "Pendents de
+       col·locar". The row above already treats a missing status
+       select this way; these two now match it. */
+    const catEl = row.querySelector('[data-std-sel="regcat"]');
+    const category = catEl ? catEl.dataset.value : (user.category || '');
+    const teamCells = row.querySelectorAll('.reg-team-circle');
+    const activeTeam = row.querySelector('.reg-team-circle.active');
+    const team = teamCells.length
+      ? (activeTeam ? activeTeam.dataset.team : '')
+      : (user.team || '');
+
+    // The status dropdown is lead-only (see renderRegistrations): the
+    // setRole function rejects role changes from anyone else, and for
+    // months that rejection was swallowed into a console.warn while the
+    // screen happily showed the new role. Absent = leave roles alone.
+    const statusEl = row.querySelector('.reg-status-select');
+    const rolesBefore = (user.roles || []).slice();
+    if (statusEl) {
+      const statusVal = statusEl.value;
+      // Keep "lead": it is server-derived from isTeamLead and dropping it
+      // locally would make the lead's own row flicker out of its role
+      // until the server put it back.
+      const keepLead = rolesBefore.includes('lead') ? ['lead'] : [];
+      if (statusVal === 'both') user.roles = ['player', 'staff'].concat(keepLead);
+      else if (statusVal === 'player') user.roles = ['player'].concat(keepLead);
+      else if (statusVal === 'staff') user.roles = ['staff'].concat(keepLead);
+    }
+
+    user.position = position;
+    user.playerNumber = playerNumber;
+    user.team = team;
+    user.category = category;
+    saveUsers(users);
+
+    // Sync key fields to Firestore user profile. Roles go through the
+    // setRole function so the member's Auth claims stay in sync.
+    if (typeof uid === 'string' && isNaN(Number(uid))) {
+      db.collection('users').doc(uid).set({
+        position: position, playerNumber: playerNumber,
+        team: team, category: category
+      }, { merge: true }).catch(console.error);
+
+      const rolesChanged = statusEl &&
+        (rolesBefore.length !== user.roles.length ||
+         rolesBefore.some((r, i) => r !== user.roles[i]));
+      if (rolesChanged) {
+        const revert = (err) => {
+          console.error('setRole failed:', err);
+          // Put the roster back the way the server actually has it,
+          // rather than leaving a role on screen that does not exist.
+          const list = getUsers();
+          const u2 = list.find(u => String(u.id) === String(uid));
+          if (u2) { u2.roles = rolesBefore; saveUsers(list); }
+          _showPushToast(t('save.sync_title'),
+            err && err.code === 'permission-denied' ?
+              t('error.role_change_denied') : t('save.error'));
+          if (currentPage === 'registrations') renderPage(getSession());
+        };
+        try {
+          const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
+          fn({ uid: uid, roles: user.roles }).catch(revert);
+        } catch (e) { revert(e); }
+      }
+    }
+
+    if (_currentSession && String(_currentSession.id) === String(uid)) {
+      _currentSession.roles = user.roles;
+      _currentSession.position = position;
+      _currentSession.playerNumber = playerNumber;
+      _currentSession.team = team;
+      _currentSession.category = category;
+    }
   }
 
-  /* One archive document → its value. Blob format is {v:"<json>"}; the
-     merge-shape keys store entries as top-level fields instead.
-     `category` is dropped with `_migrated`: it is the router's bookkeeping,
-     and leaving it in put a phantom "category" entry among the player ids
-     of every merge-shape map. */
+  /* ── Bindings ─────────────────────────────────────────────── */
+  function bindRegistrations() {
+    var page = document.getElementById('reg2-page');
+    if (!page) return;
+
+    var email = document.getElementById('reg2-email');
+    var addBtn = document.getElementById('reg2-add');
+    if (email && addBtn) {
+      /* The button is dead until the address is one. The design greys it
+         rather than hiding it, so the row still reads as "type here,
+         then press this". */
+      var sync = function () { addBtn.disabled = !isValidEmail(normalizeEmail(email.value)); };
+      email.addEventListener('input', sync);
+      sync();
+      var submit = function () {
+        if (addBtn.disabled) return;
+        var letters = getTeamLetters(getCurrentCategory());
+        var team = _regTeam && letters.indexOf(_regTeam) !== -1 ? _regTeam : letters[0];
+        if (!team) return;
+        regAddInvite(email.value, getCurrentCategory() + '-' + team, _regKind);
+      };
+      addBtn.addEventListener('click', submit);
+      email.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+    }
+
+    page.querySelectorAll('[data-reg-team]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        _regTeam = b.dataset.regTeam; renderPage(getSession());
+      });
+    });
+    page.querySelectorAll('[data-reg-kind]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        _regKind = b.dataset.regKind; renderPage(getSession());
+      });
+    });
+    page.querySelectorAll('[data-reg-filter]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        _regFilter = b.dataset.regFilter; renderPage(getSession());
+      });
+    });
+    page.querySelectorAll('[data-inv-email]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        regRemoveInvite(b.dataset.invEmail, b.dataset.invKey, b.dataset.invField);
+      });
+    });
+    page.querySelectorAll('[data-rol-uid]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        regSetRole(b.dataset.rolUid, b.dataset.rol);
+      });
+    });
+
+    /* The category picker: the app's shared stdSelect. onPick does what
+       the old delegated `change` branch did — the squad letters belong to
+       the category, so redraw them, save the row through the ONE writer,
+       and re-render so the trigger label follows. Same shape as the
+       callback on the New Training page. */
+    bindStdSelects('regcat', function (root, value) {
+      var row = root.closest('tr');
+      if (!row) return;
+      // No letter carries over to another category, so none is active —
+      // autoSaveFromRow reads that as a cleared squad, which is what a
+      // category change means.
+      var teamCell = row.querySelector('.reg2-teams');
+      if (teamCell) teamCell.innerHTML = regTeamCellHtml(row.dataset.uid, value, '', false);
+      autoSaveFromRow(row);
+      renderPage(getSession());
+    });
+
+    /* No picker to bind any more. The nine positions sit in the row and
+       the delegated handler on #dashboard-content toggles and saves them
+       — the same one the old page used. A popover would need opening,
+       closing, an outside-click guard and a rule about not swallowing
+       the save; none of that exists now because the control does not. */
+
+    // Place an unplaced member: the same write the members table uses.
+    page.querySelectorAll('[data-place-uid]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var row = b.closest('tr');
+        if (!row) return;
+        autoSaveFromRow(row);
+        renderPage(getSession());
+      });
+    });
+    /* Reject carries .btn-remove-reg, so it runs the SAME confirm-and-
+       detach the members table uses — there is one way to take somebody
+       off a squad and this is not a second. For an unplaced member the
+       roster step is skipped (no category, no team) and it simply
+       clears them, which is what rejecting means here. */
+  }
+
+
   function parseArchiveDoc(raw) {
     if (!raw) return null;
     if (raw.v !== undefined) {
@@ -26707,6 +27229,100 @@
   }
 
   /**
+   * The record ids in one player-submitted blob that belong to a session.
+   *
+   * `map` is a record cache keyed exactly as the Firestore doc ids are —
+   * `{playerId}_{sessionId}` for availability, `{playerId}_training_{sessionId}`
+   * for RPE — so the key IS the doc id and one pass gives both what to drop
+   * locally and what to delete on the server.
+   *
+   * Split at the FIRST underscore, and compare the whole remainder. The
+   * player id is everything before it — firestore.rules says so, since
+   * `owns(docId)` matches `uid + '(_.*)?'` — and a session id is
+   * `tr_1699…_a1b2`, underscores of its own included. So neither "after the
+   * last _" (which compares a fragment of the id) nor a bare `endsWith`
+   * (which matches any id ending the same way) is the test: the tail has to
+   * BE the id.
+   */
+  function trainingRecordKeys(map, sessionId, kind) {
+    var want = (kind === 'rpe' ? 'training_' : '') + String(sessionId);
+    return Object.keys(map || {}).filter(function (k) {
+      var cut = k.indexOf('_');
+      return cut > 0 && k.slice(cut + 1) === want;
+    });
+  }
+
+  /**
+   * Delete a session and everything answered about it.
+   *
+   * A session is not just its row: players answer availability, they submit an
+   * RPE afterwards, and a coach can overrule an answer. Dropping the row alone
+   * would leave all three orphaned — invisible, because every screen reaches
+   * them THROUGH the session, but still counted by the load and attendance
+   * figures, which walk the record blobs.
+   *
+   * ⚠ The record blobs are CACHES. Availability and RPE live in per-record
+   * Firestore collections (js/db.js RECORD_COLLECTIONS) and localStorage is
+   * rebuilt from their snapshots, so a purely local delete comes straight back
+   * on the next sync. Each one has to be deleted at the source; the local blob
+   * is rewritten too, only so the page redraws without waiting for the round
+   * trip. firestore.rules already lets staff delete these (`isStaffOf`).
+   *
+   * Not touched: any tactical board the session linked to. Boards are library
+   * items a session points at, and other sessions point at the same ones.
+   *
+   * Returns a promise that settles when the server has acknowledged.
+   */
+  function deleteTraining(id) {
+    var all = getTrainings();
+    var gone = all.find(function (x) { return String(x.id) === String(id); });
+    var rest = all.filter(function (x) { return String(x.id) !== String(id); });
+
+    var avail = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
+    var rpe = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
+    var over = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
+
+    var availKeys = trainingRecordKeys(avail, id, 'avail');
+    var rpeKeys = trainingRecordKeys(rpe, id, 'rpe');
+
+    /* THE DATE-KEYED RECORDS ARE AMBIGUOUS, so they go only when nothing is
+       left to claim them. A v43-era phone still writes `{player}_{date}`, and
+       readRecord() falls back to that key for ANY session on that date — so
+       with two sessions the same day, deleting them here would silently
+       un-answer the one that survives. When no session is left on that date,
+       the record can only have meant this one. */
+    var date = gone && gone.date;
+    var dateStillUsed = !!date && rest.some(function (x) { return x.date === date; });
+    if (date && !dateStillUsed) {
+      availKeys = availKeys.concat(trainingRecordKeys(avail, date, 'avail'));
+      rpeKeys = rpeKeys.concat(trainingRecordKeys(rpe, date, 'rpe'));
+    }
+
+    availKeys.forEach(function (k) { delete avail[k]; });
+    rpeKeys.forEach(function (k) { delete rpe[k]; });
+    // The override shares the availability key, by design — see recordKey().
+    trainingRecordKeys(over, id, 'avail').forEach(function (k) { delete over[k]; });
+
+    localStorage.setItem('fa_training_availability', JSON.stringify(avail));
+    localStorage.setItem('fa_player_rpe', JSON.stringify(rpe));
+
+    /* The row last: while it is still there, a snapshot landing mid-delete
+       redraws a session whose answers have gone rather than a page that has
+       lost its session. `updateTeamDates` recomputes the team's
+       `trainingDates` from this write, which is what stops the availability
+       and RPE reminders firing for a session that no longer exists — there is
+       no per-session job to cancel. */
+    return Promise.all(
+      availKeys.map(function (k) { return DB.removeRecord('trainingAvail', k); })
+        .concat(rpeKeys.map(function (k) { return DB.removeRecord('rpe', k); }))
+        .concat([
+          DB.setItemAcked('fa_training_staff_override', JSON.stringify(over)),
+          DB.setItemAcked('fa_training', JSON.stringify(rest))
+        ])
+    );
+  }
+
+  /**
    * Anything that is neither a session nor a fixture: a team meal, a gym
    * block, a club event.
    *
@@ -27266,6 +27882,28 @@
        dialog it was created in, not in a list of inputs above the squad.
        A session has no equivalent button: its fields are the calendar's,
        and its focus is edited on the row. */
+    const delBtn = document.getElementById('std-delete');
+    if (delBtn) {
+      delBtn.addEventListener('click', function () {
+        const tr = getTrainings().find(function (x) {
+          return String(x.id) === String(detailTrainingId);
+        });
+        if (!tr) return;
+        const isAct = tr.kind === 'activity';
+        if (!confirm(t(isAct ? 'std.confirm_delete_act' : 'std.confirm_delete'))) return;
+        /* Leave BEFORE the write lands: this page is about a session that is
+           about to stop existing, and re-rendering it would hit the
+           "not found" empty state. The calendar is where it came from. */
+        currentPage = 'calendar';
+        detailTrainingId = null;
+        deleteTraining(tr.id).catch(function () {
+          // The refusal is already toasted by the db-write-error listener.
+        });
+        _showPushToast(t('std.deleted'), sanitize(tr.title || tDateLong(tr.date || '')));
+        renderPage(getSession());
+      });
+    }
+
     const actEdit = document.getElementById('std-edit-activity');
     if (actEdit) {
       actEdit.addEventListener('click', function () {
@@ -27282,7 +27920,7 @@
        popup list is drawn by the OS and cannot be styled, and it looked like
        a stray Windows widget in a page made of hairlines. One binding serves
        both; which one fired is the `data-std-sel` kind. */
-    bindStdSelects(function (root, value) {
+    bindStdSelects(['rpe', 'staff'], function (root, value) {
       if (root.dataset.stdSel === 'rpe') {
         const n = Number(value);
         _ntPersistSession(root.dataset.sid, function (row) {
@@ -29639,6 +30277,10 @@
        is not on screen, like every other binder here. */
     bindPlantilla();
 
+    /* Registracions: the invite row, the squad and kind chips, the
+       members filter and the position picker. */
+    bindRegistrations();
+
     /* The `[data-go-staff-match]` binder stood here until v202. It was the
        only thing that ever set `detailMatchFrom = 'staff-matchday'`, and
        nothing had emitted that attribute since v186 folded the staff
@@ -30920,160 +31562,33 @@
       const content = document.getElementById('dashboard-content');
       if (!content) return;
 
-      function autoSaveFromRow(row) {
-        if (!row || !row.dataset.uid) return;
-        // The last line of defence for a view-only sub-role: every caller is
-        // gated above, so reaching here means one of them was missed.
-        if (!canEditPage('registrations')) return;
-        const uid = row.dataset.uid;
-        const selPos = Array.from(row.querySelectorAll('.reg-pos-chip.active')).map(c => c.dataset.pos);
-        const position = selPos.join(',');
-        const numEl = row.querySelector('.reg-number');
-        const playerNumber = numEl ? numEl.value.trim() : '';
-        const activeTeam = row.querySelector('.reg-team-circle.active');
-        const team = activeTeam ? activeTeam.dataset.team : '';
-        const catEl = row.querySelector('.reg-cat-select');
-        const category = catEl ? catEl.value : '';
+      /* The invite row, the ✕ on an invited address and the assign
+         button were delegated here, keyed on `#reg-add-btn`,
+         `.btn-remove-pending` and `.btn-assign`. The Registracions
+         redesign emits none of those — inviting is `#reg2-add`,
+         removing is `[data-inv-email]`, and placing an unplaced member
+         is `[data-place-uid]` — and they are bound per render in
+         bindRegistrations(), beside the state they read.
 
-        let users = getUsers();
-        const user = users.find(u => String(u.id) === String(uid));
-        if (!user) return;
-
-        // The status dropdown is lead-only (see renderRegistrations): the
-        // setRole function rejects role changes from anyone else, and for
-        // months that rejection was swallowed into a console.warn while the
-        // screen happily showed the new role. Absent = leave roles alone.
-        const statusEl = row.querySelector('.reg-status-select');
-        const rolesBefore = (user.roles || []).slice();
-        if (statusEl) {
-          const statusVal = statusEl.value;
-          // Keep "lead": it is server-derived from isTeamLead and dropping it
-          // locally would make the lead's own row flicker out of its role
-          // until the server put it back.
-          const keepLead = rolesBefore.includes('lead') ? ['lead'] : [];
-          if (statusVal === 'both') user.roles = ['player', 'staff'].concat(keepLead);
-          else if (statusVal === 'player') user.roles = ['player'].concat(keepLead);
-          else if (statusVal === 'staff') user.roles = ['staff'].concat(keepLead);
-        }
-
-        user.position = position;
-        user.playerNumber = playerNumber;
-        user.team = team;
-        user.category = category;
-        saveUsers(users);
-
-        // Sync key fields to Firestore user profile. Roles go through the
-        // setRole function so the member's Auth claims stay in sync.
-        if (typeof uid === 'string' && isNaN(Number(uid))) {
-          db.collection('users').doc(uid).set({
-            position: position, playerNumber: playerNumber,
-            team: team, category: category
-          }, { merge: true }).catch(console.error);
-
-          const rolesChanged = statusEl &&
-            (rolesBefore.length !== user.roles.length ||
-             rolesBefore.some((r, i) => r !== user.roles[i]));
-          if (rolesChanged) {
-            const revert = (err) => {
-              console.error('setRole failed:', err);
-              // Put the roster back the way the server actually has it,
-              // rather than leaving a role on screen that does not exist.
-              const list = getUsers();
-              const u2 = list.find(u => String(u.id) === String(uid));
-              if (u2) { u2.roles = rolesBefore; saveUsers(list); }
-              _showPushToast(t('save.sync_title'),
-                err && err.code === 'permission-denied' ?
-                  t('error.role_change_denied') : t('save.error'));
-              if (currentPage === 'registrations') renderPage(getSession());
-            };
-            try {
-              const fn = firebase.app().functions('us-central1').httpsCallable('setRole');
-              fn({ uid: uid, roles: user.roles }).catch(revert);
-            } catch (e) { revert(e); }
-          }
-        }
-
-        if (_currentSession && String(_currentSession.id) === String(uid)) {
-          _currentSession.roles = user.roles;
-          _currentSession.position = position;
-          _currentSession.playerNumber = playerNumber;
-          _currentSession.team = team;
-          _currentSession.category = category;
-        }
-      }
-
-      // ── Pre-registered player email lists ──
-      // Pre-registration: one address + one team letter + Add. The write is
-      // awaited and reported — a silently dropped one locks a real player out.
-      /* These listeners are bound once, on #dashboard-content, so they
-         outlive any single render — a sub-role that may only READ this page
-         has to be refused here as well as have the controls left out of the
-         markup. Cheap, and it is the layer that survives a stale DOM. */
-      content.addEventListener('click', e => {
-        if (!canEditPage('registrations')) return;
-        if (e.target.closest('#reg-add-btn')) {
-          addPreRegisteredPlayer();
-          return;
-        }
-        // Removing an invited address that nobody has claimed. Registered
-        // members use .btn-remove-reg, which also clears their assignment;
-        // here there is no user document, only the list entry.
-        const pendBtn = e.target.closest('.btn-remove-pending');
-        if (pendBtn) {
-          removePreRegisteredPlayer(pendBtn.dataset.pendingEmail, pendBtn.dataset.pendingKey);
-          return;
-        }
-        // Put an unassigned member back into a squad.
-        const assignBtn = e.target.closest('.btn-assign');
-        if (assignBtn) {
-          const row = assignBtn.closest('tr');
-          if (!row) return;
-          const catSel = row.querySelector('.reg-assign-cat');
-          const teamSel = row.querySelector('.reg-assign-team');
-          assignMemberToTeam(assignBtn.dataset.uid,
-            catSel ? catSel.value : '', teamSel ? teamSel.value : '');
-        }
-      });
-      content.addEventListener('keydown', e => {
-        if (!canEditPage('registrations')) return;
-        if (e.target.id === 'reg-add-email' && e.key === 'Enter') {
-          e.preventDefault();
-          addPreRegisteredPlayer();
-        }
-      });
+         Deleted rather than left behind: every selector matched
+         nothing, and the two helpers they called went with the markup.
+         What stays delegated below IS still live — the position chips,
+         the squad circles, the dorsal input and the category select —
+         because the redesign deliberately kept those class names so
+         that one writer did not have to change. */
       // A tooltip pinned to viewport coordinates does not follow its dot when
       // the pane scrolls underneath it.
       content.addEventListener('scroll', hideHoverTip, true);
 
-      // Status select or category select change
+      /* The STATUS select. The category picker used to be a <select>
+         here too, and this listener redrew the squad letters and saved
+         the row when it changed. It is a stdSelect now — a div, which
+         fires no `change` — so that work moved into the onPick callback
+         in bindRegistrations, next to the state it reads. */
       content.addEventListener('change', e => {
         if (!canEditPage('registrations')) return;
-        // Unassigned card: team letters belong to the chosen category, so the
-        // second dropdown has to follow the first.
-        if (e.target.classList.contains('reg-assign-cat')) {
-          const row = e.target.closest('tr');
-          const teamSel = row && row.querySelector('.reg-assign-team');
-          if (teamSel) {
-            teamSel.innerHTML = getTeamLetters(e.target.value)
-              .map(l => '<option value="' + l + '">' + l + '</option>').join('');
-          }
-          return;
-        }
         if (e.target.classList.contains('reg-status-select')) {
           autoSaveFromRow(e.target.closest('tr'));
-        }
-        if (e.target.classList.contains('reg-cat-select')) {
-          // Re-render team circles for the new category's letters
-          const row = e.target.closest('tr');
-          const uid = row.dataset.uid;
-          const newCat = e.target.value;
-          const teamCell = row.querySelector('.reg-team-cell');
-          if (teamCell) {
-            teamCell.innerHTML = getTeamLetters(newCat).map(function(l) {
-              return '<span class="reg-team-circle" data-uid="' + uid + '" data-team="' + l + '">' + l + '</span>';
-            }).join('');
-          }
-          autoSaveFromRow(row);
         }
       });
 

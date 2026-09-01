@@ -6956,12 +6956,25 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ── The shared tooltip ── */
+/* Shaped like .ua-tooltip, the app's own: same ink, same 8px radius,
+   same shadow, same arrow, same fade. The handoff drew a square-cornered
+   panel, but a tooltip is chrome rather than page furniture — it should
+   look like every other tooltip in the app, not like the page it happens
+   to be floating over. Only the two-column key/value body below is this
+   page's, because that is content, not chrome. */
 .pl-tip {
   position: fixed; z-index: 10050; pointer-events: none;
-  transform: translate(-50%, -100%);
-  background: #2D2926; color: #FBFAF7; padding: 8px 12px;
-  font-family: 'Oswald', 'Arial Narrow', sans-serif;
-  font-size: 12px; line-height: 1.6; white-space: nowrap;
+  transform: translateX(-50%) translateY(-100%);
+  background: #2D2926; color: #fff; padding: .5rem .85rem;
+  border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,.28);
+  font-size: .8rem; font-weight: 300; line-height: 1.5; white-space: nowrap;
+  opacity: 0; transition: opacity .15s ease;
+}
+.pl-tip.visible { opacity: 1; }
+.pl-tip::after {
+  content: ''; position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: #2D2926;
 }
 .pl-tip-t {
   font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
@@ -6984,6 +6997,272 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .pl-figures { gap: 28px; }
   .pl-title-row { flex-direction: column; align-items: flex-start; gap: 18px; }
   .pl-metrics { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REGISTRACIONS — the staff registrations page, redesigned.
+
+   Same surface as Plantilla: hairline rules instead of cards, no
+   shadows, no radius except on the circles. The tokens are literals
+   for the same reason they are there — this is a light page with its
+   own palette, and routing it through --card / --border would make it
+   follow the app theme, which is what the design does not want.
+   ═══════════════════════════════════════════════════════════════ */
+.reg2-page {
+  background: #FBFAF7; color: #2D2926;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
+}
+.reg2-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #99928B;
+}
+.reg2-title-row { padding-bottom: 26px; border-bottom: 1px solid #E3DFD8; }
+.reg2-h1 { margin: 0 0 8px; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
+.reg2-sub-line { font-size: 14px; color: #6B645E; max-width: 70ch; }
+
+/* ── On hairlines ──
+   The first draft drew one under the title, one under the figures, one
+   under the invite row and one over the pending section — four rules
+   inside the first 200px, before a single table had started. It read as
+   a form to fill in rather than a page to work through.
+
+   Only TWO kinds survive: the rule under the page title, which separates
+   the heading from the work, and the rules a table draws for itself
+   (the solid one under its headers, the light one between its rows).
+   Everything else is separated by space. */
+.reg2-figures {
+  display: flex; flex-wrap: wrap; gap: 56px;
+  padding: 22px 0 26px;
+}
+.reg2-fig { display: flex; flex-direction: column; gap: 3px; }
+.reg2-fig-v { font-size: 24px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.reg2-fig-hot { color: #BD162C; }
+
+.reg2-sec-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; padding: 30px 0 10px; flex-wrap: wrap;
+}
+.reg2-sec-top { padding-top: 44px; }
+.reg2-note { font-size: 12px; color: #6B645E; }
+.reg2-empty { font-size: 14px; color: #6B645E; padding: 4px 0 8px; }
+
+/* ── The invite row ── */
+.reg2-invite {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 6px 0 4px;
+}
+.reg2-email {
+  flex: 1; min-width: 240px; font: inherit; font-size: 14px; color: #2D2926;
+  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  padding: 6px 2px; outline: none;
+}
+.reg2-email:focus { border-bottom-color: #2D2926; }
+.reg2-email::placeholder { color: #99928B; }
+.reg2-chipset { display: inline-flex; gap: 6px; }
+.reg2-chip {
+  min-width: 26px; height: 26px; padding: 0 9px; font: inherit; font-size: 12px;
+  background: transparent; border: 1px solid #E3DFD8; color: #6B645E; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.reg2-chip:hover { border-color: #2D2926; color: #2D2926; }
+.reg2-chip-on { background: #2D2926; border-color: #2D2926; color: #FBFAF7; }
+.reg2-add {
+  height: 30px; padding: 0 16px; font: inherit; font-size: 13px;
+  background: #2D2926; color: #FBFAF7; border: none; cursor: pointer;
+}
+.reg2-add:disabled { background: #B7B1A8; cursor: default; }
+.reg2-msg { font-size: 13px; padding-top: 6px; min-height: 1em; color: #6B645E; }
+.reg2-msg-bad { color: #C0564C; }
+
+/* ── Invited, still without an account ── */
+.reg2-inv-cols {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px; padding: 18px 0 4px;
+}
+.reg2-inv-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #99928B;
+  padding-bottom: 8px; border-bottom: 1px solid #2D2926;
+}
+.reg2-inv-count { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.reg2-inv-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid #EDEAE4; font-size: 13px;
+}
+.reg2-inv-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reg2-inv-team {
+  min-width: 24px; height: 22px; padding: 0 7px; font-size: 12px; color: #6B645E;
+  border: 1px solid #E3DFD8; display: inline-flex; align-items: center; justify-content: center;
+}
+.reg2-inv-state { display: inline-flex; align-items: center; gap: 6px; color: #99928B; font-size: 12px; }
+.reg2-inv-empty { font-size: 13px; color: #99928B; padding: 9px 0; }
+.reg2-bullet { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
+.reg2-x {
+  font: inherit; font-size: 14px; background: none; border: none; cursor: pointer;
+  color: #99928B; padding: 0 2px; line-height: 1;
+}
+.reg2-x:hover { color: #C0564C; }
+
+/* ── Tables ── */
+.reg2-wrap { overflow-x: auto; max-width: 100%; }
+.reg2-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; }
+.reg2-table-pending { min-width: 940px; }
+.reg2-table th {
+  text-align: left; font-size: 10px; font-weight: 500; letter-spacing: .12em;
+  text-transform: uppercase; color: #99928B; padding: 0 8px 8px;
+  border-bottom: 1px solid #2D2926; white-space: nowrap;
+}
+.reg2-table td { padding: 9px 8px; border-bottom: 1px solid #EDEAE4; vertical-align: middle; }
+.reg2-table-pending td { padding: 11px 8px; }
+.reg2-th-first, .reg2-td-who { padding-left: 14px !important; }
+.reg2-table th.reg2-r, .reg2-table td.reg2-r { text-align: right; }
+.reg2-table th.reg2-c, .reg2-table td.reg2-c { text-align: center; }
+.reg2-name { white-space: nowrap; }
+.reg2-sub { font-size: 12px; color: #99928B; white-space: nowrap; }
+.reg2-muted { color: #6B645E; }
+.reg2-nums { font-variant-numeric: tabular-nums; }
+.reg2-flat { color: #6B645E; }
+.reg2-dash { color: #99928B; }
+.reg2-role-staff {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  background: #E4E9E4; color: #3F6B44; font-size: 12px;
+}
+.reg2-td-team { white-space: nowrap; }
+.reg2-td-team .reg2-teams { display: inline-flex; gap: 6px; margin-left: 8px; }
+/* A real control, not the browser's. `appearance:none` strips the OS
+   chrome; without the explicit arrow the field then has no affordance at
+   all and reads as text. */
+.reg2-sel {
+  font: inherit; font-size: 13px; color: #2D2926; background: transparent;
+  border: none; border-bottom: 1px solid #C9C3BB;
+  padding: 3px 20px 3px 2px; outline: none; cursor: pointer;
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6B645E 50%),
+    linear-gradient(135deg, #6B645E 50%, transparent 50%);
+  background-position: right 8px center, right 4px center;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.reg2-sel:focus { border-bottom-color: #2D2926; }
+.reg2-sel option { color: #2D2926; background: #FBFAF7; }
+
+/* ⚠ The squad chips reuse `.reg-team-circle` so the delegated auto-save
+   still finds them — which also drags in that rule's own look, and the
+   parts this one does not name go on applying. Two of them showed:
+   `width:24px` (my `min-width` does not override a `width`) crushed the
+   label, and `.reg-team-circle.active { width:32px; height:32px }` made
+   a chip GROW when it was picked, because the writer toggles `.active`
+   and knew nothing about this page's class.
+
+   So: name every property that rule sets, and style `.active` — the
+   class the writer actually uses — alongside this page's own. */
+.reg2-page .reg-team-circle,
+.reg2-page .reg-team-circle.active {
+  width: auto; min-width: 28px; height: 26px; padding: 0 9px; margin: 0;
+  font-size: 12px; font-weight: 500; line-height: 1;
+  border: 1px solid #E3DFD8; color: #6B645E; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 0; box-sizing: border-box;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.reg2-page .reg-team-circle:hover { border-color: #2D2926; color: #2D2926; }
+.reg2-page .reg-team-circle.reg2-chip-on,
+.reg2-page .reg-team-circle.active {
+  background: #2D2926; border-color: #2D2926; color: #FBFAF7;
+}
+
+.reg2-num {
+  width: 44px; font: inherit; font-size: 14px; text-align: center;
+  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  padding: 3px 2px; outline: none; font-variant-numeric: tabular-nums; color: #2D2926;
+}
+.reg2-num:focus { border-bottom-color: #2D2926; }
+/* A number already worn in this squad. Colour on BOTH the rule and the
+   digits: the rule alone is a hairline nobody notices. */
+.reg2-num-dup { color: #C0564C; border-bottom-color: #C0564C; }
+
+.reg2-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.reg2-on { color: #5C8F5E; }
+.reg2-off { color: #D39A2F; }
+
+.reg2-btn {
+  height: 28px; padding: 0 14px; font: inherit; font-size: 13px;
+  background: #2D2926; color: #FBFAF7; border: none; cursor: pointer; margin-left: 8px;
+}
+.reg2-btn-off { background: #B7B1A8; cursor: default; }
+.reg2-btn-ghost {
+  height: 28px; padding: 0 12px; font: inherit; font-size: 13px;
+  background: transparent; color: #6B645E; border: 1px solid #E3DFD8; cursor: pointer;
+}
+.reg2-btn-ghost:hover { color: #C0564C; border-color: #C0564C; }
+/* The members table's remove is text, not an outline: it sits at the end
+   of every row and a button there would fence the table in. */
+.reg2-table:not(.reg2-table-pending) .reg2-btn-ghost { border: none; padding: 0; }
+
+.reg2-filters { display: flex; gap: 16px; font-size: 12px; }
+.reg2-f {
+  font: inherit; font-size: 12px; background: none; border: none; cursor: pointer;
+  color: #6B645E; padding: 0 0 1px;
+}
+.reg2-f-on { color: #2D2926; border-bottom: 1px solid #2D2926; }
+
+/* ── Position cell and picker ── */
+.reg2-pos-cell { position: relative; display: inline-block; }
+.reg2-pos-click { cursor: pointer; }
+.reg2-pos-view { display: inline-flex; align-items: center; padding-right: 5px; }
+.reg2-circle {
+  width: 26px; height: 26px; flex: none; margin-right: -5px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: #fff;
+  border: 1.5px solid rgba(0,0,0,.2); box-sizing: border-box;
+}
+.reg2-assign { color: #BD162C; font-size: 13px; }
+@keyframes reg2PopIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.reg2-pop {
+  position: absolute; top: calc(100% - 6px); left: 8px; z-index: 20;
+  width: 230px; padding: 12px; background: #FBFAF7; border: 1px solid #E3DFD8;
+  animation: reg2PopIn .16s ease both;
+}
+.reg2-pop-t {
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: #99928B; padding-bottom: 8px;
+}
+.reg2-pop-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+/* ⚠ The picker circles ARE `.reg-pos-chip`, so the delegated auto-save
+   finds them — and so that rule's own properties keep applying to them.
+   Its `padding:.2rem .45rem` inside a fixed 30px box left about 11px for
+   the label, which is not enough for "GK": the text wrapped and the
+   circles came out ragged. Its `margin:1px` fought the grid gap, and its
+   `.active[data-pos="…"]` colour rules fight the inline fill.
+
+   Everything that rule sets is named again here. The inline `background`
+   stays the source of the colour — it is POS_COLORS, the one table the
+   whole app draws positions from. */
+.reg2-page .reg2-pos-c,
+.reg2-page .reg2-pos-c.active {
+  width: 30px; height: 30px; padding: 0; margin: 0;
+  border-radius: 50%; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; line-height: 1; color: #fff;
+  cursor: pointer; transition: opacity .12s ease, border-color .12s ease;
+  border: 1.5px solid rgba(0,0,0,.2); opacity: .32;
+}
+.reg2-page .reg2-pos-c.active { opacity: 1; border: 2px solid #2D2926; }
+.reg2-page .reg2-pos-c:hover { opacity: .7; }
+.reg2-page .reg2-pos-c.active:hover { opacity: 1; }
+.reg2-page .reg2-pos-full,
+.reg2-page .reg2-pos-full:hover { cursor: default; opacity: .14; }
+
+@keyframes reg2RowIn { from { opacity: 0; background: #F1EEE8; } to { opacity: 1; background: transparent; } }
+.reg2-row-new { animation: reg2RowIn .4s ease both; }
+
+@media (max-width: 900px) {
+  .reg2-page { margin: -1rem -.5rem; padding: 20px 16px 32px; }
+  .reg2-h1 { font-size: 28px; }
+  .reg2-figures { gap: 28px; }
+  .reg2-invite { gap: 8px; }
+  .reg2-email { min-width: 100%; }
 }
 
 </style>
