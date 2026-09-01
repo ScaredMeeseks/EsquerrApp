@@ -1911,7 +1911,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 208;
+  const APP_VERSION = 209;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -19014,6 +19014,30 @@
     storm: '⛈️', snow: '🌨️', fog: '🌫️'
   };
 
+  /* After dark. ONLY the two icons that contain a sun are overridden — a
+     clear night is a moon, and ⛅ (sun behind cloud) becomes a plain cloud.
+     Rain, storm, snow, fog and overcast carry no sun and read the same at
+     any hour, so they are deliberately absent rather than duplicated.
+
+     `night` comes from XWeather's per-hour isDay, which is computed against
+     the real sunrise/sunset for that ground on that date — so a 19:00
+     session is a sun in June and a moon in December without this app owning
+     an almanac.
+
+     ⚠ At night `cloud` and `overcast` both draw ☁️: Unicode has no
+     moon-behind-cloud emoji, and the alternatives (two glyphs in a 26px
+     slot) look worse than the collision costs. The title attribute still
+     says which it is. */
+  const STP_WEATHER_ICON_NIGHT = { sun: '🌙', cloud: '☁️' };
+
+  function wxIcon(w) {
+    const cond = (w && w.cond) || 'sun';
+    if (w && w.night && STP_WEATHER_ICON_NIGHT[cond]) {
+      return STP_WEATHER_ICON_NIGHT[cond];
+    }
+    return STP_WEATHER_ICON[cond] || STP_WEATHER_ICON.sun;
+  }
+
   function windBand(ms) {
     const v = Number(ms);
     if (!isFinite(v) || v < 1.5) return 'calm';
@@ -19053,7 +19077,7 @@
       return wxDaysOut(tr) > 3
         ? '<div class="std-wx-soon">' + sanitize(t('wx.too_far')) + '</div>' : '';
     }
-    const icon = STP_WEATHER_ICON[w.cond] || STP_WEATHER_ICON.sun;
+    const icon = wxIcon(w);
     const band = windBand(w.windMs);
     const ms = Number(w.windMs);
     const windTxt = t('wx.' + band) +

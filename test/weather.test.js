@@ -489,6 +489,58 @@ describe('summarise — the session line', () => {
     assert.strictEqual(out.cond, 'rain');
   });
 
+  it('is night when the session is mostly after sunset', () => {
+    /* XWeather stamps isDay per hour against the real sunset for that
+       ground on that date, so a 21:00 session is a moon in September and
+       this app owns no almanac. */
+    const out = wx.summarise([
+      period('18', {isDay: false}),
+      period('19', {isDay: false}),
+    ], S, E);
+    assert.strictEqual(out.night, true);
+  });
+
+  it('is day when the session is mostly before sunset', () => {
+    const out = wx.summarise([
+      period('18', {isDay: true}),
+      period('19', {isDay: true}),
+    ], S, E);
+    assert.strictEqual(out.night, false);
+  });
+
+  it('weights a session straddling sunset by MINUTES, and ties go to day', () => {
+    // 18:00 is day for 60 min, 19:00 is night for 30 → mostly day.
+    const mostlyDay = wx.summarise([
+      period('18', {isDay: true}),
+      period('19', {isDay: false}),
+    ], S, E);
+    assert.strictEqual(mostlyDay.night, false);
+    // Reversed: 60 min of night against 30 of day → night.
+    const mostlyNight = wx.summarise([
+      period('18', {isDay: false}),
+      period('19', {isDay: true}),
+    ], S, E);
+    assert.strictEqual(mostlyNight.night, true);
+  });
+
+  it('breaks an exact 50/50 tie towards DAY', () => {
+    /* 18:30–19:30 straddles the two periods evenly — 30 minutes each — so
+       `<` versus `<=` is the whole decision, and nothing else in the suite
+       distinguishes them. A mutation run found this gap. */
+    const half = Date.parse('2026-03-04T18:30:00Z');
+    const out = wx.summarise([
+      period('18', {isDay: true}),
+      period('19', {isDay: false}),
+    ], half, E);
+    assert.strictEqual(out.night, false);
+  });
+
+  it('counts a period with no isDay as day', () => {
+    // An older payload must not turn every session into midnight.
+    const out = wx.summarise([period('18'), period('19')], S, E);
+    assert.strictEqual(out.night, false);
+  });
+
   it('is null when nothing overlaps — never a zeroed forecast', () => {
     /* A {tempC: 0} written into a session would show a coach a plausible
        freezing evening he has no way to disbelieve. */
@@ -578,6 +630,8 @@ describe('weatherChanged — is this write worth a re-render', () => {
   });
   it('notices a change a user could see', () => {
     assert.strictEqual(weatherChangedFrom(base, {cond: 'rain'}), true);
+    // `night` picks the icon, so a flip is as visible as a cond change.
+    assert.strictEqual(weatherChangedFrom(base, {night: true}), true);
     assert.strictEqual(weatherChangedFrom(base, {windMs: 3.3}), true);
     assert.strictEqual(weatherChangedFrom(base, {tempC: 17.6}), true);
     assert.strictEqual(weatherChangedFrom(base, {rainPct: 40}), true);
@@ -627,6 +681,52 @@ describe('sessionWeatherHtml — what a coach actually sees', () => {
 
   const WX = {cond: 'rain', windMs: 6.1, tempC: 11, rainPct: 40,
     at: '2026-03-04T09:00:00.000Z'};
+
+  it('draws a MOON, not a sun, for a clear night session', () => {
+    /* The 21:00 winter training. A sun there is simply wrong, and it is the
+       kind of wrong nobody reports as a bug — they just stop trusting it. */
+    const clearNight = {cond: 'sun', windMs: 2, tempC: 9, rainPct: 0, night: true};
+    const html = render.sessionWeatherHtml(
+        {date: inDays(1), weather: clearNight}, 'training');
+    assert.ok(html.indexOf('🌙') !== -1, html);
+    assert.strictEqual(html.indexOf('☀️'), -1, 'no sun after dark');
+  });
+
+  it('drops the sun out of the partly-cloudy icon at night', () => {
+    // ⛅ is a sun behind a cloud, so it is wrong after dark for the same reason.
+    const cloudyNight = {cond: 'cloud', windMs: 2, tempC: 9, rainPct: 0, night: true};
+    const html = render.sessionWeatherHtml(
+        {date: inDays(1), weather: cloudyNight}, 'training');
+    assert.strictEqual(html.indexOf('⛅'), -1, 'no sun-behind-cloud after dark');
+    assert.ok(html.indexOf('☁️') !== -1, html);
+  });
+
+  it('keeps the sun by day', () => {
+    const clearDay = {cond: 'sun', windMs: 2, tempC: 24, rainPct: 0, night: false};
+    const html = render.sessionWeatherHtml(
+        {date: inDays(1), weather: clearDay}, 'training');
+    assert.ok(html.indexOf('☀️') !== -1, html);
+    assert.strictEqual(html.indexOf('🌙'), -1);
+  });
+
+  it('leaves the sunless icons alone after dark', () => {
+    // Rain, storm, snow, fog and overcast read the same at any hour, so they
+    // are deliberately absent from the night table rather than duplicated.
+    [['rain', '🌧️'], ['storm', '⛈️'], ['snow', '🌨️'], ['fog', '🌫️'],
+      ['overcast', '☁️']].forEach(([cond, glyph]) => {
+      const html = render.sessionWeatherHtml(
+          {date: inDays(1), weather: {cond, windMs: 2, tempC: 9, night: true}},
+          'training');
+      assert.ok(html.indexOf(glyph) !== -1, cond + ' -> ' + html);
+    });
+  });
+
+  it('falls back to the day icon for a row written before `night` existed', () => {
+    const legacy = {cond: 'sun', windMs: 2, tempC: 20};
+    const html = render.sessionWeatherHtml(
+        {date: inDays(1), weather: legacy}, 'training');
+    assert.ok(html.indexOf('☀️') !== -1, html);
+  });
 
   it('draws the strip for a session inside the window', () => {
     const html = render.sessionWeatherHtml(

@@ -351,6 +351,7 @@ function summarise(periods, startMs, endMs) {
   let wet = 0;
   let tempSum = 0;
   let tempMins = 0;
+  let dayMins = 0;
   let windMs = null;
   let condRank = WX_RANK.length;
 
@@ -359,6 +360,11 @@ function summarise(periods, startMs, endMs) {
     if (mins <= 0) return;
     total += mins;
     if (isWetPeriod(p)) wet += mins;
+    /* XWeather stamps isDay per hour against the real sunrise/sunset for
+       THAT location and date, so a 19:00 session is day in June and night in
+       December with no almanac of our own. Absent (an older payload) counts
+       as day, which is what the app did before this existed. */
+    if (p.isDay !== false) dayMins += mins;
 
     const rank = WX_RANK.indexOf(wxCondOf(p));
     if (rank !== -1 && rank < condRank) condRank = rank;
@@ -377,6 +383,15 @@ function summarise(periods, startMs, endMs) {
   const out = {
     cond: condRank < WX_RANK.length ? WX_RANK[condRank] : "cloud",
     rainPct: Math.round((wet / total) * 100),
+    /* Whichever the session is MOSTLY in, weighted by overlap like
+       everything else here, so one straddling sunset gets a single icon
+       rather than half of each. Ties go to day.
+
+       A separate flag rather than a `cond` of its own: a clear sky is the
+       same FACT at midnight as at noon, and only the drawing differs. Same
+       reasoning as storing windMs and banding it at render time — the band
+       is a presentation choice, the number is the fact. */
+    night: dayMins * 2 < total,
   };
   if (windMs !== null) out.windMs = Math.round(windMs * 10) / 10;
   if (tempMins) out.tempC = Math.round((tempSum / tempMins) * 10) / 10;
@@ -468,6 +483,8 @@ function weatherChanged(before, after) {
     return isFinite(n) ? n.toFixed(dp) : "";
   };
   return before.cond !== after.cond ||
+    // `night` picks the icon, so a flip is as visible as a cond change.
+    !!before.night !== !!after.night ||
     num(before.windMs, 1) !== num(after.windMs, 1) ||
     num(before.tempC, 0) !== num(after.tempC, 0) ||
     num(before.rainPct, 0) !== num(after.rainPct, 0);
