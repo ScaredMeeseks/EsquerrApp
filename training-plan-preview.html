@@ -6699,6 +6699,293 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .cal-weeks { padding: 8px 10px 14px; }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   PLANTILLA — the staff roster, redesigned.
+
+   A hairline layout: no cards, no shadows, no radius except on the
+   circles (positions, medical discs, readiness dots, donuts, result
+   discs). Sections are separated by 1px rules, not by boxes.
+
+   The tokens below are the design's, kept as literals rather than
+   mapped onto the app's CSS variables. That is deliberate: this page
+   is a light surface with its own palette, and routing it through
+   --card / --border would make it change colour with the app theme,
+   which is exactly what the design does not want.
+   ═══════════════════════════════════════════════════════════════ */
+.pl-page {
+  display: flex; align-items: flex-start; overflow-x: hidden;
+  background: #FBFAF7; color: #2D2926;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  margin: -1rem; min-height: calc(100vh - 120px);
+}
+.pl-main { flex: 1; min-width: 0; padding: 28px 30px 48px; }
+
+/* ── Title block ── */
+.pl-title-row {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid #E3DFD8;
+}
+.pl-title-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pl-h1 { margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
+.pl-sub { font-size: 14px; color: #6B645E; }
+.pl-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #99928B;
+}
+.pl-eyebrow-b { display: block; padding-bottom: 10px; }
+
+/* ── Attendance donut ── */
+.pl-att { display: flex; align-items: center; gap: 16px; flex: none; }
+.pl-att-col { display: flex; flex-direction: column; gap: 4px; }
+.pl-donut-legend { display: flex; flex-direction: column; gap: 2px; }
+.pl-donut-legend-right { align-items: flex-end; }
+.pl-legend-row {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; color: #6B645E; white-space: nowrap;
+}
+.pl-legend-n { color: #2D2926; }
+.pl-sw { width: 7px; height: 7px; flex: none; display: inline-block; }
+.pl-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.pl-rule { width: 10px; height: 1px; background: #8C857D; display: inline-block; }
+.pl-donut { position: relative; flex: none; }
+.pl-donut svg { display: block; }
+.pl-donut-pct {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; color: #2D2926;
+}
+.pl-rail-donut .pl-donut-pct { font-size: 15px; }
+
+/* ── Key figures ── */
+.pl-figures {
+  display: flex; flex-wrap: wrap; gap: 56px;
+  padding: 22px 0; border-bottom: 1px solid #E3DFD8;
+}
+.pl-fig { display: flex; flex-direction: column; gap: 3px; }
+.pl-fig-v { font-size: 24px; font-weight: 400; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.pl-fig-of { font-size: 14px; color: #6B645E; }
+.pl-fig-risk { color: #BD162C; }
+
+/* ── Charts ── */
+.pl-charts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px; padding: 26px 0 6px;
+}
+.pl-chart { display: flex; flex-direction: column; gap: 12px; }
+.pl-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pl-legend { display: flex; gap: 12px; font-size: 12px; color: #6B645E; }
+.pl-legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.pl-legend-sm { font-size: 11px; gap: 10px; }
+.pl-svg { display: block; max-width: 440px; width: 100%; }
+.pl-rail .pl-svg { max-width: none; }
+.pl-tick { font-size: 10px; fill: #99928B; }
+.pl-tick-sm { font-size: 9px; }
+.pl-hit { cursor: pointer; }
+.pl-drag { cursor: ew-resize; }
+/* The x-axis labels are HTML, mirroring the viewBox with flex — see
+   plLabelRowHtml. `overflow:hidden` on the cell keeps a long date from
+   pushing its neighbours out of alignment. */
+.pl-xlabels { display: flex; width: 100%; max-width: 440px; font-size: 9px; color: #99928B; }
+.pl-rail .pl-xlabels { max-width: none; }
+.pl-xlabels > span > span { flex: 1 0 0; text-align: center; overflow: hidden; }
+
+/* ── Section head + team chips ── */
+.pl-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; padding: 30px 0 10px;
+}
+.pl-chips { display: flex; gap: 6px; }
+.pl-chip {
+  min-width: 26px; height: 24px; padding: 0 7px; font: inherit; font-size: 12px;
+  background: transparent; border: 1px solid #E3DFD8; color: #6B645E; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pl-chip:hover { border-color: #2D2926; color: #2D2926; }
+.pl-chip-on { background: #2D2926; border-color: #2D2926; color: #FBFAF7; }
+
+/* ── Roster table ── */
+.pl-table-wrap { overflow-x: auto; max-width: 100%; }
+.pl-table { width: 100%; min-width: 1060px; font-size: 14px; border-collapse: collapse; }
+.pl-table-narrow .pl-table { min-width: 520px; }
+.pl-table th {
+  text-align: left; font-size: 10px; font-weight: 500; letter-spacing: .12em;
+  text-transform: uppercase; color: #99928B; padding: 0 8px 8px;
+  border-bottom: 1px solid #2D2926; white-space: nowrap;
+}
+.pl-table td { padding: 9px 8px; border-bottom: 1px solid #EDEAE4; }
+.pl-th-name, .pl-td-name { padding-left: 14px !important; }
+.pl-td-name { white-space: nowrap; }
+.pl-table th.pl-c, .pl-table td.pl-c { text-align: center; }
+.pl-table th.pl-r, .pl-table td.pl-r { text-align: right; }
+.pl-nums { font-variant-numeric: tabular-nums; }
+.pl-muted { color: #6B645E; }
+.pl-team-letter { font-size: 10px; color: #99928B; letter-spacing: .08em; }
+.pl-row { cursor: pointer; }
+.pl-row:hover { background: #F7F5F0; }
+.pl-row-sel, .pl-row-sel:hover { background: #F1EEE8; }
+.pl-empty { text-align: center; color: #99928B; padding: 2rem !important; }
+.pl-td-spark { padding: 5px 8px !important; }
+.pl-spark { display: block; }
+
+/* Position circles: the app's own colours, at this page's size. */
+.pl-pos { display: inline-flex; align-items: center; padding-right: 5px; }
+.pl-pos .conv-pos-circle {
+  width: 26px; height: 26px; flex: none; margin-right: -5px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: #fff;
+  border: 1.5px solid rgba(0,0,0,.2); box-sizing: border-box;
+}
+.pl-pos-sm .conv-pos-circle { width: 24px; height: 24px; }
+
+.pl-med {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  font-size: 13px; font-weight: 700; cursor: help;
+}
+.pl-med-fit { background: #DCE9DC; color: #3F6B44; }
+.pl-med-doubt { background: #F6E4C4; color: #9A6614; }
+.pl-med-inj { background: #F2D2CE; color: #A63A32; }
+
+/* The SHARED readiness cell, restyled here rather than reimplemented.
+   It carries a rule this page must not lose: with no data behind it the
+   cell is a grey dot and NO NUMBER, because a score nobody measured
+   reads exactly like one that was. Below is this page's palette laid
+   over the app's own green/orange/red classes. */
+.pl-ready {
+  display: inline-flex; align-items: center; justify-content: flex-end;
+  gap: 7px; cursor: help; font-variant-numeric: tabular-nums;
+}
+.pl-ready .readiness-cell { gap: 7px; }
+.pl-ready .readiness-dot { width: 8px; height: 8px; }
+.pl-ready .readiness-score { font-size: 14px; font-weight: 400; }
+.pl-ready .readiness-score-green { color: #5C8F5E; }
+.pl-ready .readiness-dot.readiness-green { background: #5C8F5E; }
+.pl-ready .readiness-score-orange { color: #D39A2F; }
+.pl-ready .readiness-dot.readiness-orange { background: #D39A2F; }
+.pl-ready .readiness-score-red { color: #C0564C; }
+.pl-ready .readiness-dot.readiness-red { background: #C0564C; }
+.pl-ready .readiness-dot.readiness-nodata { background: #C9C3BB; }
+.pl-tsnc { font-size: 13px; white-space: nowrap; }
+.pl-t { color: #5C8F5E; } .pl-s { color: #D39A2F; } .pl-sep { color: #99928B; }
+.pl-cards { white-space: nowrap; }
+.pl-card-pair {
+  display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px;
+  font-size: 13px; font-variant-numeric: tabular-nums; color: #6B645E;
+}
+.pl-card-pair > span { display: inline-flex; align-items: center; gap: 4px; }
+.pl-card { width: 9px; height: 12px; display: inline-block; }
+.pl-card-y { background: #E3B341; } .pl-card-r { background: #C0564C; }
+
+/* ── The detail rail ── */
+@keyframes plRailIn { from { transform: translateX(90px); opacity: 0; } to { transform: none; opacity: 1; } }
+.pl-rail {
+  width: 480px; flex: none; align-self: stretch; box-sizing: border-box;
+  border-left: 1px solid #E3DFD8; padding: 32px 30px 56px; background: #F6F4EF;
+  animation: plRailIn .44s cubic-bezier(.22,.7,.3,1) both;
+}
+.pl-rail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.pl-rail-id { min-width: 0; }
+.pl-rail-name-row { display: flex; align-items: center; gap: 10px; padding: 8px 0 4px; }
+.pl-rail-name { font-size: 26px; font-weight: 400; line-height: 1.15; }
+.pl-rail-sub { font-size: 13px; color: #6B645E; }
+.pl-rail-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.pl-close {
+  font: inherit; font-size: 13px; color: #6B645E; background: none; border: none;
+  cursor: pointer; padding: 0; white-space: nowrap;
+}
+.pl-close:hover { color: #2D2926; }
+.pl-rail-donut { display: flex; align-items: center; gap: 10px; }
+
+.pl-ready-row {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 20px 0 4px; margin-top: 18px; border-top: 1px solid #E3DFD8;
+}
+.pl-ready-big { font-size: 40px; font-weight: 300; line-height: 1; }
+.pl-ready-lbl { font-size: 13px; color: #6B645E; }
+.pl-ready-ac { margin-left: auto; font-size: 13px; color: #6B645E; }
+
+.pl-metrics {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px;
+  padding: 16px 0 20px; border-bottom: 1px solid #E3DFD8;
+}
+.pl-metric {
+  display: grid; grid-template-columns: 1fr 30px; gap: 5px 8px;
+  align-items: center; cursor: help;
+}
+.pl-metric-l { font-size: 12px; color: #6B645E; }
+.pl-metric-v { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.pl-track { grid-column: 1 / -1; display: block; height: 3px; background: #E3DFD8; }
+.pl-fill { display: block; height: 3px; }
+.pl-rail-block { padding: 20px 0 4px; }
+
+/* ── Active injury ── */
+@keyframes plInjuryBlink { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.5); } }
+.pl-inj {
+  display: flex; gap: 20px; align-items: flex-start;
+  padding: 22px 0; margin-top: 14px; border-top: 1px solid #E3DFD8;
+}
+.pl-inj-map { position: relative; width: 190px; flex: none; line-height: 0; }
+.pl-inj-map img { display: block; width: 100%; opacity: .75; }
+.pl-inj-dot {
+  position: absolute; width: 11px; height: 11px; border-radius: 50%;
+  background: #C0564C; box-shadow: 0 0 0 3px rgba(192,86,76,.28);
+  transform: translate(-50%, -50%);
+  animation: plInjuryBlink 1.4s ease-in-out infinite;
+}
+.pl-inj-text { flex: 1; min-width: 0; }
+.pl-inj-zone { font-size: 16px; padding-bottom: 6px; }
+.pl-inj-note { font-size: 13px; color: #6B645E; line-height: 1.55; }
+.pl-inj-rows { display: flex; flex-direction: column; gap: 5px; padding-top: 14px; font-size: 13px; color: #6B645E; }
+.pl-inj-row { display: flex; justify-content: space-between; border-bottom: 1px solid #EDEAE4; padding-bottom: 5px; }
+.pl-inj-row:last-child { border-bottom: none; padding-bottom: 0; }
+.pl-inj-v { color: #2D2926; }
+
+/* ── Match history ── */
+.pl-rail-hist { padding: 22px 0 0; margin-top: 14px; border-top: 1px solid #E3DFD8; }
+.pl-hist { width: 100%; font-size: 13px; border-collapse: collapse; }
+.pl-hist th {
+  text-align: left; font-size: 9px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; color: #99928B; padding: 0 6px 7px;
+  border-bottom: 1px solid #2D2926;
+}
+.pl-hist td { padding: 7px 6px; border-bottom: 1px solid #EDEAE4; white-space: nowrap; }
+.pl-hist th.pl-c, .pl-hist td.pl-c { text-align: center; }
+.pl-hist-st { font-size: 12px; }
+.pl-res {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 11px; font-weight: 600; color: #fff; cursor: help;
+}
+
+/* ── The shared tooltip ── */
+.pl-tip {
+  position: fixed; z-index: 10050; pointer-events: none;
+  transform: translate(-50%, -100%);
+  background: #2D2926; color: #FBFAF7; padding: 8px 12px;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-size: 12px; line-height: 1.6; white-space: nowrap;
+}
+.pl-tip-t {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: #A8A29B; padding-bottom: 2px;
+}
+.pl-tip-r { display: flex; justify-content: space-between; gap: 18px; }
+.pl-tip-r span:first-child { color: #C9C3BB; }
+
+/* ── Narrow screens ──
+   The rail is 480px of a 480px phone, so below the breakpoint it stops
+   being a rail and becomes the page: full width, under the table. */
+@media (max-width: 900px) {
+  .pl-page { flex-direction: column; margin: -1rem -.5rem; }
+  .pl-main { padding: 20px 16px 32px; width: 100%; box-sizing: border-box; }
+  .pl-rail {
+    width: 100%; border-left: none; border-top: 1px solid #E3DFD8;
+    padding: 24px 16px 40px; animation: none;
+  }
+  .pl-h1 { font-size: 28px; }
+  .pl-figures { gap: 28px; }
+  .pl-title-row { flex-direction: column; align-items: flex-start; gap: 18px; }
+  .pl-metrics { grid-template-columns: 1fr; }
+}
+
 </style>
 <style>
 /* Mockup shell only — NOT part of the app. The real page renders inside
@@ -6727,7 +7014,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   The <b>rail</b> (Pla d'entrenament + Material) and the <b>team block</b> are rendered by the
   app's real functions and real CSS; the top bar, hero, stat row, attendance bar and table are
   stand-in context. The pitch is a placeholder — in the app it is the real read-only board.
-  Generated 2026-08-31.
+  Generated 2026-09-01.
   Computed: <b>20 cons</b>, <b>3 pilotes</b>,
   <b>3 colors de petos</b> from 4 colours on 4 boards;
   plan ends <b>21:15</b>.

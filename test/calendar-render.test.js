@@ -912,22 +912,52 @@ describe('the top bar', () => {
   });
 
   it('offers letter chips only for a category that HAS more than one squad', () => {
-    const chips = (letters, cat) => {
+    /* ONE builder for both pages since v203. The calendar and the roster
+       differ only in which variable holds the active letter and which
+       attribute the binder reads; the "one squad is not a choice" rule
+       and the separator are shared, and were going to drift the moment
+       they were written twice. */
+    const chips = (letters, cat, active, attr) => {
       const stubs = {
-        currentPage: 'calendar', getCurrentCategory: () => cat,
-        getTeamLetters: () => letters, calTeamFilter: 'all',
+        getCurrentCategory: () => cat, getTeamLetters: () => letters,
         sanitize, t: (k) => k,
       };
       return new Function(...Object.keys(stubs),
-          grab('  function calLetterChipsHtml() {', '  /**\n   * Does this row belong') +
-          '\n return calLetterChipsHtml();')(...Object.values(stubs));
+          grab('  function catBarLettersHtml(active, attr) {',
+               '  /**\n   * Does this row belong') +
+          '\n return catBarLettersHtml(' + JSON.stringify(active) + ', ' +
+          JSON.stringify(attr) + ');')(...Object.values(stubs));
     };
-    assert.strictEqual(chips(['A'], 'amateur'), '', 'one squad is not a choice');
-    assert.strictEqual(chips(['A', 'B'], ''), '', '"Totes" has no letter set to offer');
-    const two = chips(['A', 'B'], 'amateur');
+    const cal = (l, c) => chips(l, c, 'all', 'data-cal-letter');
+    assert.strictEqual(cal(['A'], 'amateur'), '', 'one squad is not a choice');
+    assert.strictEqual(cal(['A', 'B'], ''), '', '"Totes" has no letter set to offer');
+    const two = cal(['A', 'B'], 'amateur');
     assert.ok(two.includes('data-cal-letter="A"') && two.includes('data-cal-letter="B"'));
     assert.ok(two.includes('data-cal-letter="all"'), 'no way back to every squad');
     assert.ok(two.includes('cat-bar-sep'), 'nothing separates them from the categories');
+
+    // The roster's chips, from the same builder, on its own attribute.
+    const ros = chips(['A', 'B'], 'amateur', 'B', 'data-roster-filter');
+    assert.ok(ros.includes('data-roster-filter="B"'), 'the roster gets its own attribute');
+    assert.ok(!ros.includes('data-cal-letter'), "and none of the calendar's");
+    /* The lit chip is whichever the CALLER named — that is the whole
+       reason `active` is a parameter and not a captured variable. */
+    const lit = ros.split('<button').filter((s) => s.includes('roster-team-btn-active'));
+    assert.strictEqual(lit.length, 1, 'exactly one chip is lit');
+    assert.ok(lit[0].includes('data-roster-filter="B"'), 'and it is the one passed in');
+  });
+
+  it('the roster bar drives the roster filter, the calendar its own', () => {
+    /* Two pages share the builder; they must not share the state. The
+       roster's top-bar chips and the chips beside its Jugadors heading
+       both read and write `rosterTeamFilter`, which is what keeps the
+       two sets in step without a second copy to synchronise. */
+    const bar = src.slice(src.indexOf('function renderCategoryBar'),
+        src.indexOf('// ---------- Club helpers'));
+    assert.ok(/catBarLettersHtml\(calTeamFilter, 'data-cal-letter'\)/.test(bar),
+        'the calendar keeps its own filter');
+    assert.ok(/catBarLettersHtml\(rosterTeamFilter, 'data-roster-filter'\)/.test(bar),
+        'the roster bar must drive rosterTeamFilter, not a third variable');
   });
 
   it('resets the letter when the category changes', () => {

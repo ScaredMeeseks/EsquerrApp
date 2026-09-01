@@ -476,6 +476,89 @@
     'ev.yellow_second':  { ca:'Segona groga', es:'Segunda amarilla', en:'Second yellow' },
     'ev.sub_on':         { ca:'Entra', es:'Entra', en:'On' },
     'ev.sub_off':        { ca:'Surt', es:'Sale', en:'Off' },
+    // ── Plantilla (staff roster redesign) ──
+    'pl.attendance':     { ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'pl.available':      { ca:'Disponibles', es:'Disponibles', en:'Available' },
+    'pl.at_risk':        { ca:'En risc', es:'En riesgo', en:'At risk' },
+    'pl.avg_ready':      { ca:'Preparació mitjana', es:'Preparación media', en:'Average readiness' },
+    'pl.team_acwr':      { ca:'A/C equip', es:'A/C equipo', en:'Team A/C' },
+    'pl.of':             { ca:'de', es:'de', en:'of' },
+    'pl.and':            { ca:'i', es:'y', en:'and' },
+    'pl.players':        { ca:'Jugadors', es:'Jugadores', en:'Players' },
+    'pl.players_l':      { ca:'jugadors', es:'jugadores', en:'players' },
+    'pl.sessions_l':     { ca:'sessions', es:'sesiones', en:'sessions' },
+    'pl.weeks_of_load':  { ca:'setmanes de càrrega', es:'semanas de carga', en:'weeks of load' },
+    'pl.rpe_per_session':{ ca:'RPE per sessió', es:'RPE por sesión', en:'RPE per session' },
+    'pl.weekly_load':    { ca:'Càrrega setmanal', es:'Carga semanal', en:'Weekly load' },
+    'pl.acwr':           { ca:'Càrrega aguda / crònica', es:'Carga aguda / crónica', en:'Acute / chronic load' },
+    'pl.legend_training':{ ca:'Entren.', es:'Entren.', en:'Training' },
+    'pl.legend_match':   { ca:'Partit', es:'Partido', en:'Match' },
+    'pl.training':       { ca:'Entrenament', es:'Entrenamiento', en:'Training' },
+    'pl.match':          { ca:'Partit', es:'Partido', en:'Match' },
+    'pl.peak':           { ca:'Pic', es:'Pico', en:'Peak' },
+    'pl.acute':          { ca:'Aguda', es:'Aguda', en:'Acute' },
+    'pl.chronic':        { ca:'Crònica', es:'Crónica', en:'Chronic' },
+    'pl.rolling':        { ca:'mitjana mòbil', es:'media móvil', en:'rolling mean' },
+    'pl.week':           { ca:'Setmana', es:'Semana', en:'Week' },
+    'pl.zone':           { ca:'Zona', es:'Zona', en:'Zone' },
+    'pl.zone_risk':      { ca:'Risc alt', es:'Riesgo alto', en:'High risk' },
+    'pl.zone_watch':     { ca:'Vigilar', es:'Vigilar', en:'Watch' },
+    'pl.zone_ok':        { ca:'Òptima', es:'Óptima', en:'Optimal' },
+    'pl.zone_under':     { ca:'Subcàrrega', es:'Subcarga', en:'Under-load' },
+    'pl.zone_under_high':{ ca:'Subcàrrega alta', es:'Subcarga alta', en:'Severe under-load' },
+    'pl.no_data':        { ca:'Sense dades', es:'Sin datos', en:'No data' },
+    'pl.tip_rpe_avg':    { ca:'RPE mitjà', es:'RPE medio', en:'Mean RPE' },
+    'pl.tip_duration':   { ca:'Durada', es:'Duración', en:'Duration' },
+    'pl.tip_load':       { ca:'Càrrega', es:'Carga', en:'Load' },
+    'pl.tip_absent':     { ca:'Absents', es:'Ausentes', en:'Absent' },
+    'pl.tip_sessions':   { ca:'Sessions', es:'Sesiones', en:'Sessions' },
+    'pl.th_player':      { ca:'Jugador', es:'Jugador', en:'Player' },
+    'pl.th_pos':         { ca:'Pos', es:'Pos', en:'Pos' },
+    'pl.th_med':         { ca:'Mèdic', es:'Médico', en:'Medical' },
+    'pl.th_ready':       { ca:'Prep.', es:'Prep.', en:'Ready' },
+    'pl.th_8w':          { ca:'8 setmanes', es:'8 semanas', en:'8 weeks' },
+    'pl.th_matches':     { ca:'Partits', es:'Partidos', en:'Matches' },
+    'pl.th_minutes':     { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'pl.th_goals':       { ca:'Gols', es:'Goles', en:'Goals' },
+    'pl.th_assists':     { ca:'Assist.', es:'Asist.', en:'Assists' },
+    'pl.th_cards':       { ca:'Targetes', es:'Tarjetas', en:'Cards' },
+    'pl.th_date':        { ca:'Data', es:'Fecha', en:'Date' },
+    'pl.th_match':       { ca:'Partit', es:'Partido', en:'Match' },
+    'pl.th_res':         { ca:'Res.', es:'Res.', en:'Res.' },
+    'pl.th_status':      { ca:'Estat', es:'Estado', en:'Status' },
+    'pl.estat':          { ca:'Estat', es:'Estado', en:'Status' },
+    'pl.med_fit':        { ca:'Apte', es:'Apto', en:'Fit' },
+    'pl.med_doubt':      { ca:'Dubte', es:'Duda', en:'Doubt' },
+    'pl.med_injured':    { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'pl.opt':            { ca:'Òptim', es:'Óptimo', en:'Optimal' },
+    'pl.watch':          { ca:'Vigilar', es:'Vigilar', en:'Watch' },
+    'pl.risk':           { ca:'Risc', es:'Riesgo', en:'Risk' },
+    'pl.player_card':    { ca:'Fitxa del jugador', es:'Ficha del jugador', en:'Player card' },
+    'pl.team':           { ca:'Equip', es:'Equipo', en:'Team' },
+    'pl.close':          { ca:'Tanca', es:'Cerrar', en:'Close' },
+    'pl.his_sessions':   { ca:'RPE de les seves sessions', es:'RPE de sus sesiones', en:'Their session RPE' },
+    'pl.did_not_train':  { ca:'No entrena', es:'No entrena', en:'Did not train' },
+    'pl.match_fatigue':  { ca:'Fatiga de partit', es:'Fatiga de partido', en:'Match fatigue' },
+    'pl.load_spike':     { ca:'Pic de càrrega', es:'Pico de carga', en:'Load spike' },
+    'pl.rpe_trend':      { ca:'Tendència RPE', es:'Tendencia RPE', en:'RPE trend' },
+    'pl.help_ratio':     { ca:'ACWR de les últimes 4 setmanes · pes 40%', es:'ACWR de las últimas 4 semanas · peso 40%', en:'ACWR over the last 4 weeks · weight 40%' },
+    'pl.help_fatigue':   { ca:'Minuts i recuperació de l\'últim partit · pes 25%', es:'Minutos y recuperación del último partido · peso 25%', en:'Minutes and recovery since the last match · weight 25%' },
+    'pl.help_spike':     { ca:'Variació d\'UA respecte la setmana anterior · pes 20%', es:'Variación de UA respecto la semana anterior · peso 20%', en:'AU change against the previous week · weight 20%' },
+    'pl.help_trend':     { ca:'Tendència de l\'RPE a 28 dies · pes 15%', es:'Tendencia del RPE a 28 días · peso 15%', en:'28-day RPE trend · weight 15%' },
+    'pl.value':          { ca:'Valor', es:'Valor', en:'Value' },
+    'pl.active_injury':  { ca:'Lesió activa', es:'Lesión activa', en:'Active injury' },
+    'pl.injury':         { ca:'Lesió', es:'Lesión', en:'Injury' },
+    'pl.since':          { ca:'Des de', es:'Desde', en:'Since' },
+    'pl.eta':            { ca:'Previsió', es:'Previsión', en:'Expected' },
+    'pl.missed':         { ca:'Sessions perdudes', es:'Sesiones perdidas', en:'Sessions missed' },
+    'pl.history':        { ca:'Historial de partits', es:'Historial de partidos', en:'Match history' },
+    'pl.starter':        { ca:'Titular', es:'Titular', en:'Starter' },
+    'pl.sub':            { ca:'Suplent', es:'Suplente', en:'Sub' },
+    'pl.not_called':     { ca:'No conv.', es:'No conv.', en:'Not called' },
+    'pl.result':         { ca:'Resultat', es:'Resultado', en:'Result' },
+    'pl.minutes':        { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'pl.home':           { ca:'casa', es:'casa', en:'home' },
+    'pl.away':           { ca:'fora', es:'fuera', en:'away' },
     'ev.type_ph':        { ca:'Tipus…', es:'Tipo…', en:'Type…' },
     'ev.player_ph':      { ca:'Jugador…', es:'Jugador…', en:'Player…' },
     'ev.goal_type_ph':   { ca:'Tipus de gol…', es:'Tipo de gol…', en:'Goal type…' },
@@ -1749,7 +1832,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 202;
+  const APP_VERSION = 203;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2006,10 +2089,18 @@
       btns += '<button class="cat-bar-btn' + (cur === k ? ' active' : '') + '" data-cat="' + k + '">' + CATEGORY_LABELS[k] + '</button>';
     });
     /* The squad letters, inline with the categories they belong to and
-       revealed as one is picked. Only for the calendar: this bar is shared
-       by every page in CATEGORY_PAGES, and the roster and the medical file
-       already have letter filters of their own. */
-    var extra = (currentPage === 'calendar') ? calLetterChipsHtml() : '';
+       revealed as one is picked.
+
+       Two pages, two different filters — the calendar's `calTeamFilter`
+       and the roster's `rosterTeamFilter`. The roster ALSO carries chips
+       beside its Jugadors heading, and the two sets stay in step for
+       free: both render from `rosterTeamFilter` and both write it, so
+       there is no second copy of the state to synchronise. The medical
+       file still has only its own filter and gets nothing here. */
+    var extra = currentPage === 'calendar'
+      ? catBarLettersHtml(calTeamFilter, 'data-cal-letter')
+      : currentPage === 'manage-roster'
+        ? catBarLettersHtml(rosterTeamFilter, 'data-roster-filter') : '';
     return '<div class="cat-bar">' + btns + extra + '</div>';
   }
 
@@ -11529,9 +11620,31 @@
     var isStale = daysSinceReal > STALE_AFTER_DAYS;
     var hasData = allWeeks.length >= 2 && realSessions.length >= 3 && !isStale;
 
+    /* The series the Plantilla page draws, handed back rather than
+       recomputed. `weekUA` and `sessions` are built above to SCORE the
+       player; the charts want the same numbers, and a second pass over
+       the same blobs would be both slower and free to disagree with the
+       score sitting beside it.
+
+       `chronic` is the trailing four-week mean, the same window the acwr
+       above uses — one definition of chronic load, not two. */
+    var weekSeries = allWeeks.map(function (w, i) {
+      var acute = weekUA[w] || 0;
+      var sum = 0, cnt = 0;
+      for (var j = i; j >= Math.max(0, i - 3); j--) { sum += weekUA[allWeeks[j]] || 0; cnt++; }
+      var chr = cnt ? sum / cnt : 0;
+      return {week: w, acute: Math.round(acute), chronic: Math.round(chr),
+              ratio: chr > 0 ? acute / chr : 0};
+    });
+
     return {
       score, color, acwr, loadRatioScore, matchFatigueScore, loadSpikeScore,
       rpeTrendScore, hasData: hasData, reasons: reasons,
+      weeks: weekSeries,
+      sessions: sessions.map(function (s) {
+        return {date: s.date, type: s.type, rpe: s.rpe, minutes: s.minutes,
+                real: !!s.real, estimated: !!s.estimated};
+      }),
       // True when some of the load above was borrowed from team-mates, so
       // the cell can say so rather than presenting an estimate as a reading.
       estimated: sessions.some(function (x) { return x.estimated; }),
@@ -21245,174 +21358,977 @@
   let medicalTeamFilter = 'all'; // 'all' | 'A' | 'B' | … — reset on category change
   let medicalPastExpanded = false;
 
-  function renderStaffRoster() {
-    const users = getUsers();
-    var curCat = getCurrentCategory();
-    const players = users.filter(u => (u.roles || []).includes('player'))
-      // Uncategorised players used to fall through into every category's
-      // roster. Registrations is where they get assigned; they don't belong
-      // in another category's squad list.
-      .filter(u => !curCat || (u.category || '') === curCat)
-      .filter(u => rosterTeamFilter === 'all' || (u.team || '') === rosterTeamFilter)
-      .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
-    const _fitCtx = fitnessContext();
-    const _msCtx = matchStatsContext();
-    // Only under the "Totes" tab can this list hold more than one category.
-    const catSpan = catSpanOf(players);
-    let rows = players.map(u => {
-      const derived = deriveFitnessStatus(u.id, false, _fitCtx);
-      const status = derived.fitnessStatus;
-      const injuryNote = derived.injuryNote || (status === 'doubt' ? 'Doubt' : status === 'injured' ? 'Injury' : '');
-      const pStats = computePlayerMatchStats(u.id, _msCtx);
-      const matches = pStats.totals.matches;
-      const minutes = pStats.totals.minutes;
-      const titulars = pStats.totals.titulars;
-      const goals = pStats.totals.goals;
-      const assists = pStats.totals.assists;
-      // Count suplents, NC, yellows, reds from matchRows
-      var suplents = 0, noConvocats = 0, totalYellows = 0, totalReds = 0;
-      pStats.matchRows.forEach(function(mr) {
-        if (mr.status === 'Suplent') suplents++;
-        else if (mr.status === 'NC') noConvocats++;
-        totalYellows += (mr.yellows || 0); totalReds += (mr.reds || 0);
-      });
-      var gcMatch = (matches > 0 && (goals + assists) > 0) ? ((goals + assists) / matches).toFixed(1) : '';
-      const rd = computeReadiness(u.id);
+  /* ═══════════════════════════════════════════════════════════
+     PLANTILLA — the staff roster, redesigned (Claude Design handoff,
+     "Plantilla (staff roster page redesign)", 2026-09-01).
 
-      let statusIcon = '';
-      if (status === 'fit') {
-        statusIcon = '<span class="roster-status-icon roster-status-fit">✓</span>';
-      } else if (status === 'doubt') {
-        statusIcon = `<span class="roster-status-icon roster-status-doubt" data-tooltip="${sanitize(injuryNote)}">?</span>`;
-      } else {
-        statusIcon = `<span class="roster-status-icon roster-status-injured" data-tooltip="${sanitize(injuryNote)}">✕</span>`;
-      }
+     Two states on one page. With nobody selected it is the squad:
+     three team charts over a wide table carrying every match statistic.
+     Select a player and the statistics columns collapse, a 480px rail
+     slides in from the right, and the page becomes about him — his own
+     load, his body map, his match history.
 
-      const pTeam = u.team || '';
-      const teamCircle = pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : '';
+     Everything here is drawn from what the app already computes:
+     computeReadiness for the score, its four components and the weekly
+     load series; computePlayerMatchStats for the match record;
+     deriveFitnessStatus for the medical disc; BODY_ZONES for the injury
+     dot. No new stored data, and no second opinion about any number
+     that appears elsewhere.
 
-      return `<tr>
-        <td class="roster-pos-col"><span class="conv-pos-circles">${posCirclesHtmlGlobal(u)}</span></td>
-        <td><a href="#" class="roster-player-link" data-player-id="${u.id}"><span class="roster-name-wrap">${sanitize(u.name)}${catBadgeHtmlGlobal(u, catSpan)}${teamCircle}</span></a></td>
-        <td class="center-cell">${statusIcon}</td>
-        <td class="center-cell">${readinessCellHtml(rd, status === 'injured')}</td>
-        <td class="center-cell roster-tsnc"><span class="roster-t">${titulars}</span>/<span class="roster-s">${suplents}</span>/<span class="roster-nc">${noConvocats}</span></td>
-        <td class="center-cell roster-num">${minutes}'</td>
-        <td class="center-cell roster-num">${goals || ''}</td>
-        <td class="center-cell roster-num">${assists || ''}</td>
-        <td class="center-cell roster-num">${totalYellows || ''}</td>
-        <td class="center-cell roster-num">${totalReds || ''}</td>
-        <td class="center-cell roster-num roster-gc">${gcMatch}</td>
-      </tr>`;
-    }).join('');
+     The charts are hand-built SVG, like every other chart in this app.
+     ═══════════════════════════════════════════════════════════ */
 
-    if (players.length === 0) {
-      rows = '<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);padding:2rem;">' + t('roster.no_players') + '</td></tr>';
-    }
+  /* Window sizes: how many points each chart shows out of the whole
+     season. The offsets live in module state so a drag survives the
+     re-render that follows it. `null` means "the most recent", which is
+     what a page should open on — a fixed number would be wrong on the
+     first week of a season and wrong again on the last. */
+  const PL_WIN = {s: 18, w: 12, ps: 10, pw: 8};
+  var _plSel = null;          // selected player uid, or null
+  var _plOffS = null, _plOffW = null, _plOffPS = null, _plOffPW = null;
 
-    const btnAll = rosterTeamFilter === 'all' ? ' roster-team-btn-active' : '';
-    var _rosterLetters = getTeamLetters(getCurrentCategory());
-    var rosterLetterBtns = _rosterLetters.map(function(l) {
-      var cls = rosterTeamFilter === l ? ' roster-team-btn-active' : '';
-      return '<button class="roster-team-btn' + cls + '" data-roster-filter="' + l + '">' + l + '</button>';
-    }).join('');
+  const PL_ATT = [
+    {key: 'yes', label: 'Sí', color: '#7CA982'},
+    {key: 'late', label: 'Tard', color: '#E3B341'},
+    {key: 'no', label: 'No', color: '#A8A29B'},
+    {key: 'injured', label: 'Lesionat', color: '#C0564C'}
+  ];
+  const PL_GREEN = '#5C8F5E', PL_AMBER = '#D39A2F', PL_RED = '#C0564C';
 
-    // --- Team aggregate charts ---
-    const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-    // trainingOnly: these charts are load and attendance rate. See getTrainings().
-    const trainingList = trainingOnly(getTrainings());
-    const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-    const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
-    const now = new Date();
-    const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    const seasonStart = seasonStartStr(now);
-    const playerUids = players.map(u => u.id);
-
-    const dateAgg = {};
-    playerUids.forEach(uid => {
-      trainingList.forEach(t => {
-        if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-        const entry = readRecord(rpeData, uid, t, 'rpe');
-        const avail = readRecord(staffOverrides, uid, t, 'avail') ||
-          readRecord(availData, uid, t, 'avail') || '';
-        const key = t.date + '|training|' + (t.focus || 'Training');
-        if (!dateAgg[key]) dateAgg[key] = { date: t.date, type: 'training', label: t.focus || 'Training', rpes: [], mins: [], skips: 0, injuries: 0, total: 0 };
-        dateAgg[key].total++;
-        if (avail === 'no') dateAgg[key].skips++;
-        if (avail === 'injured') dateAgg[key].injuries++;
-        if (entry && avail !== 'no' && avail !== 'injured') { dateAgg[key].rpes.push(entry.rpe); dateAgg[key].mins.push(entry.minutes); }
-      });
-      matchesList.forEach(m => {
-        if (!m.date || m.date < seasonStart || m.date > todayStr) return;
-        const entry = rpeData[uid + '_match_' + m.id];
-        const avail = matchAvailData[uid + '_' + m.id] || '';
-        const label = (m.home || '') + ' vs ' + (m.away || '');
-        const key = m.date + '|match|' + label;
-        if (!dateAgg[key]) dateAgg[key] = { date: m.date, type: 'match', label: label, rpes: [], mins: [], skips: 0, injuries: 0, total: 0 };
-        dateAgg[key].total++;
-        if (avail === 'no_disponible') dateAgg[key].skips++;
-        if (entry) { dateAgg[key].rpes.push(entry.rpe); dateAgg[key].mins.push(entry.minutes); }
-      });
-      Object.keys(rpeData).forEach(rkey => {
-        if (!rkey.startsWith(uid + '_extra_')) return;
-        const entry = rpeData[rkey];
-        if (!entry || !entry.date || entry.date < seasonStart || entry.date > todayStr) return;
-        const key = entry.date + '|extra|' + (entry.tag || 'Extra');
-        if (!dateAgg[key]) dateAgg[key] = { date: entry.date, type: 'extra', label: entry.tag || 'Extra', rpes: [], mins: [], skips: 0, injuries: 0, total: 0 };
-        dateAgg[key].total++;
-        if (entry.rpe != null) { dateAgg[key].rpes.push(entry.rpe); dateAgg[key].mins.push(entry.minutes); }
-      });
-    });
-    const teamSessions = Object.values(dateAgg).map(agg => {
-      const hasRpe = agg.rpes.length > 0;
-      const avgRpe = hasRpe ? agg.rpes.reduce((a, b) => a + b, 0) / agg.rpes.length : null;
-      const avgMin = hasRpe ? agg.mins.reduce((a, b) => a + b, 0) / agg.mins.length : null;
-      return {
-        date: agg.date, type: agg.type, label: agg.label,
-        rpe: avgRpe != null ? +avgRpe.toFixed(1) : null,
-        minutes: avgMin != null ? Math.round(avgMin) : null,
-        skipped: agg.skips > agg.total / 2,
-        injured: agg.injuries > agg.total / 2
-      };
-    }).sort((a, b) => a.date.localeCompare(b.date));
-    const teamCharts = buildChartsHtml(teamSessions, { teamView: true });
-
-    return `
-      <h2 class="page-title">${t('page.player_roster')}</h2>
-      ${_rosterLetters.length <= 1 ? '' : `<div class="roster-team-filter">
-        <button class="roster-team-btn${btnAll}" data-roster-filter="all">${t('common.all')}</button>
-        ${rosterLetterBtns}
-      </div>`}
-      <div class="card">
-        <div class="table-wrap"><table class="roster-table">
-          <thead><tr>
-            <th class="roster-pos-col">${t('roster.th_pos')}</th><th>${t('roster.th_name')}</th>
-            <th class="center-cell roster-th-wrap">${t('roster.th_status')}</th><th class="center-cell roster-th-wrap">${t('roster.th_ready')}</th>
-            <th class="center-cell" title="Titular / Suplent / NC" style="font-size:1rem;color:#f9a825;line-height:1;">★</th>
-            <th class="center-cell roster-icon-th"><img src="img/chrono.jpg" class="roster-icon-header" alt="min" title="Minutes"></th>
-            <th class="center-cell roster-icon-th"><img src="img/gol.png" class="roster-icon-header" alt="gol" title="Goals"></th>
-            <th class="center-cell roster-icon-th"><img src="img/assist.png" class="roster-icon-header" alt="assist" title="Assists"></th>
-            <th class="center-cell roster-icon-th"><img src="img/groga.png" class="roster-icon-header" alt="groga" title="Yellow cards"></th>
-            <th class="center-cell roster-icon-th"><img src="img/vermella.png" class="roster-icon-header" alt="vermella" title="Red cards"></th>
-            <th class="center-cell roster-gc-header" title="Goal Contributions per Match">GC/P</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>
-      <div class="roster-charts-row">
-        ${teamCharts.acwr}
-        ${teamCharts.rpe}
-      </div>
-      <div class="card">
-        ${teamCharts.uaWeek}
-      </div>`;
+  function plReadyColor(v) { return v >= 75 ? PL_GREEN : v >= 55 ? PL_AMBER : PL_RED; }
+  /* The five zones, and the ONE place they are defined.
+     Under-load used to collapse into a single amber below 0.8, which put
+     a player at 0.35 in the same band as one at 0.75. Detraining is its
+     own risk, so it mirrors the top of the scale: red past 1.5 and below
+     0.7, amber in the two margins either side of the green 0.8–1.3.
+     The chart bands are drawn from these same boundaries — if one moves,
+     both move. */
+  function plAcColor(v) {
+    if (v > 1.5 || v < 0.7) return PL_RED;
+    if (v > 1.3 || v < 0.8) return PL_AMBER;
+    return PL_GREEN;
+  }
+  function plZone(r) {
+    if (r > 1.5) return t('pl.zone_risk');
+    if (r > 1.3) return t('pl.zone_watch');
+    if (r >= 0.8) return t('pl.zone_ok');
+    if (r >= 0.7) return t('pl.zone_under');
+    return t('pl.zone_under_high');
+  }
+  /** Thousands separator, ca-ES. Minutes are the only four-digit number here. */
+  function plNum(n) { return Number(n || 0).toLocaleString('ca-ES'); }
+  /** d/m, from an ISO date. */
+  function plShortDate(iso) {
+    if (!iso) return '';
+    var p = String(iso).split('-');
+    return p.length === 3 ? (+p[2]) + '/' + (+p[1]) : iso;
   }
 
-  /* The jornada badge on an imported fixture, or ''.
-     Its presence is the visible answer to "where did this row come from",
-     and its ABSENCE is what tells a coach a friendly he typed is his own. */
+  /** Clamp a window offset; `null` means the most recent window. */
+  function plOff(off, total, win) {
+    var max = Math.max(0, total - win);
+    if (off === null || off === undefined) return max;
+    return Math.max(0, Math.min(max, off));
+  }
+
+  /* ── Attendance ────────────────────────────────────────────────
+     Counted from the sessions a player was actually CALLED to, the
+     same filter computeReadiness applies — otherwise a coach's roster
+     credits every player with every other category's absences. */
+  function plAttendance(u, ctx) {
+    var out = {yes: 0, late: 0, no: 0, injured: 0};
+    (ctx.trainings || []).forEach(function (tr) {
+      if (!tr.date || tr.date < ctx.seasonStart || tr.date > ctx.today) return;
+      if (!playerIsCalled(tr, u)) return;
+      var a = readRecord(ctx.staffOverrides, u.id, tr, 'avail') ||
+        readRecord(ctx.availData, u.id, tr, 'avail') || '';
+      if (a === 'injured') out.injured++;
+      else if (a === 'no') out.no++;
+      else if (a === 'late') out.late++;
+      else if (a === 'yes') out.yes++;
+    });
+    return out;
+  }
+
+  /** The attendance donut. `size` is the rendered px; the viewBox is fixed. */
+  function plDonutHtml(counts, size) {
+    var C = 2 * Math.PI * 26;
+    var vals = PL_ATT.map(function (a) { return counts[a.key] || 0; });
+    var total = vals.reduce(function (t2, v) { return t2 + v; }, 0);
+    var acc = 0;
+    var segs = vals.map(function (v, i) {
+      if (!total || !v) return '';
+      var len = (v / total) * C;
+      var s = '<circle cx="36" cy="36" r="26" fill="none" stroke="' + PL_ATT[i].color +
+        '" stroke-width="9" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) +
+        '" stroke-dashoffset="' + (-acc).toFixed(2) + '" transform="rotate(-90 36 36)"></circle>';
+      acc += len;
+      return s;
+    }).join('');
+    /* The centre percentage is an HTML span over the SVG, not <text>:
+       SVG text does not inherit the page's font metrics reliably across
+       the browsers this app runs in, and this number sits inside a ring
+       where a few pixels of drift is obvious. */
+    var pct = total ? Math.round((vals[0] + vals[1]) / total * 100) + '%' : '—';
+    return '<div class="pl-donut" style="width:' + size + 'px;height:' + size + 'px;">' +
+      '<svg viewBox="0 0 72 72" width="' + size + '" height="' + size + '">' +
+      '<circle cx="36" cy="36" r="26" fill="none" stroke="#E9E5DE" stroke-width="9"></circle>' +
+      segs + '</svg><span class="pl-donut-pct">' + pct + '</span></div>';
+  }
+
+  function plDonutLegendHtml(counts, right) {
+    return '<div class="pl-donut-legend' + (right ? ' pl-donut-legend-right' : '') + '">' +
+      PL_ATT.map(function (a) {
+        var sw = '<span class="pl-sw" style="background:' + a.color + '"></span>';
+        var txt = a.label + ' <span class="pl-legend-n">' + (counts[a.key] || 0) + '</span>';
+        return '<span class="pl-legend-row">' + (right ? txt + sw : sw + txt) + '</span>';
+      }).join('') + '</div>';
+  }
+
+
+  /* ── The charts ───────────────────────────────────────────────
+     One geometry, stated once. The team charts live in a 360×152
+     viewBox with a 40px gutter and a 314px plot; the rail's are
+     420×118 with a 26px gutter and a 388px plot. Everything else —
+     where an item sits, how a value becomes a y — is that arithmetic.
+
+     ⚠ X-AXIS LABELS ARE HTML, NOT <text>. The label row under each
+     chart mirrors the viewBox proportions with flex: a `flex:40 0 0`
+     gutter, a `flex:314 0 0` strip of equal cells, a `flex:6 0 0`
+     tail. The charts are responsive, and SVG text scales with the
+     viewBox — dates drawn inside would collide at one width and turn
+     illegible at another. Static ticks (0, 5, 10, 800…) stay as
+     <text>: they never change and they sit in the fixed gutter. */
+  const PL_GEO = {team: {gut: 40, plot: 314, tail: 6}, rail: {gut: 26, plot: 388, tail: 6}};
+
+  function plItemX(geo, n, i) { return geo.gut + (geo.plot / n) * (i + 0.5); }
+
+  function plLabelRowHtml(geo, labels) {
+    return '<div class="pl-xlabels">' +
+      '<span style="flex:' + geo.gut + ' 0 0"></span>' +
+      '<span style="flex:' + geo.plot + ' 0 0;display:flex">' +
+      labels.map(function (l) { return '<span>' + sanitize(l || '') + '</span>'; }).join('') +
+      '</span><span style="flex:' + geo.tail + ' 0 0"></span></div>';
+  }
+
+  /** The transparent drag surface. BEHIND the marks, so hover still works. */
+  function plDragRect(geo, key, win, total, y, h) {
+    return '<rect class="pl-drag" x="' + geo.gut + '" y="' + y + '" width="' + geo.plot +
+      '" height="' + h + '" fill="transparent" data-pl-drag="' + key +
+      '" data-pl-win="' + win + '" data-pl-total="' + total + '"></rect>';
+  }
+
+  function plHitTip(title, rows) {
+    return ' data-pl-tip="' + sanitize(JSON.stringify({t: title, r: rows})) + '"';
+  }
+
+  /** Team chart 1 — RPE per session. */
+  function plRpeChartHtml(all, off) {
+    var G = PL_GEO.team, win = PL_WIN.s;
+    var o = plOff(off, all.length, win);
+    var view = all.slice(o, o + win);
+    var n = view.length || 1;
+    var step = G.plot / n;
+    /* A faint column behind each match, so a Saturday reads as one
+       without decoding the dot colours. */
+    var cols = view.map(function (s, i) {
+      return s.type === 'match'
+        ? '<rect x="' + (G.gut + step * i).toFixed(1) + '" y="10" width="' + step.toFixed(1) +
+          '" height="118" fill="rgba(211,154,47,.07)"></rect>' : '';
+    }).join('');
+    var pts = view.map(function (s, i) {
+      return {x: plItemX(G, n, i), y: 128 - ((s.rpe || 0) / 10) * 118, s: s};
+    });
+    var path = pts.map(function (p, i) {
+      return (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+    }).join(' ');
+    var dots = pts.map(function (p) {
+      var col = p.s.type === 'match' ? PL_AMBER : '#7CA982';
+      var rows = [
+        {k: t('pl.tip_rpe_avg'), v: p.s.rpe != null ? p.s.rpe.toFixed(1) : '—'},
+        {k: t('pl.tip_duration'), v: p.s.minutes != null ? Math.round(p.s.minutes) + '′' : '—'},
+        {k: t('pl.tip_load'), v: (p.s.rpe != null && p.s.minutes != null)
+          ? plNum(Math.round(p.s.rpe * p.s.minutes)) + ' UA' : '—'},
+        {k: t('pl.tip_absent'), v: String(p.s.absent || 0)}
+      ];
+      var title = (p.s.type === 'match' ? t('pl.match') : t('pl.training')) +
+        ' · ' + plShortDate(p.s.date);
+      return '<circle class="pl-hit" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) +
+        '" r="8" fill="transparent"' + plHitTip(title, rows) + '></circle>' +
+        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.4" fill="' + col +
+        '" stroke="#FBFAF7" stroke-width="1.2" style="pointer-events:none"></circle>';
+    }).join('');
+    return '<div class="pl-chart">' +
+      '<div class="pl-chart-head"><span class="pl-eyebrow">' + t('pl.rpe_per_session') + '</span>' +
+      '<div class="pl-legend">' +
+        '<span><i class="pl-dot" style="background:#7CA982"></i>' + t('pl.legend_training') + '</span>' +
+        '<span><i class="pl-dot" style="background:' + PL_AMBER + '"></i>' + t('pl.legend_match') + '</span>' +
+      '</div></div>' +
+      '<svg viewBox="0 0 360 152" width="100%" preserveAspectRatio="xMidYMid meet" class="pl-svg">' +
+      '<line x1="40" y1="10" x2="354" y2="10" stroke="#EDEAE4"></line>' +
+      '<line x1="40" y1="69" x2="354" y2="69" stroke="#EDEAE4"></line>' +
+      '<text x="34" y="14" text-anchor="end" class="pl-tick">10</text>' +
+      '<text x="34" y="73" text-anchor="end" class="pl-tick">5</text>' +
+      cols +
+      '<line x1="40" y1="128" x2="354" y2="128" stroke="#C9C3BB"></line>' +
+      '<text x="34" y="132" text-anchor="end" class="pl-tick">0</text>' +
+      plDragRect(G, 'S', win, all.length, 10, 118) +
+      '<path d="' + path + '" fill="none" stroke="#8C857D" stroke-width="1.6" stroke-linejoin="round"></path>' +
+      dots + '</svg>' +
+      plLabelRowHtml(G, view.map(function (s, i) {
+        return i % 3 === 0 ? plShortDate(s.date) : '';
+      })) + '</div>';
+  }
+
+  /** Team chart 2 — weekly load. */
+  function plWeekChartHtml(all, off) {
+    var G = PL_GEO.team, win = PL_WIN.w, MAX = 2400;
+    var o = plOff(off, all.length, win);
+    var view = all.slice(o, o + win);
+    var n = view.length || 1;
+    var bars = view.map(function (w, i) {
+      var x = plItemX(G, n, i);
+      var h = Math.max(2, Math.min(118, (w.acute / MAX) * 118));
+      var rows = [
+        {k: t('pl.tip_load'), v: plNum(w.acute) + ' UA'},
+        {k: t('pl.tip_sessions'), v: String(w.sessions || 0)}
+      ];
+      return '<rect class="pl-hit" x="' + (x - 7).toFixed(1) + '" y="' + (128 - h).toFixed(1) +
+        '" width="14" height="' + h.toFixed(1) + '" fill="' +
+        (w.acute >= 1800 ? '#C9A29B' : '#B7B1A8') + '"' +
+        plHitTip(t('pl.week') + ' ' + w.label, rows) + '></rect>';
+    }).join('');
+    return '<div class="pl-chart">' +
+      '<div class="pl-chart-head"><span class="pl-eyebrow">' + t('pl.weekly_load') + '</span>' +
+      '<div class="pl-legend">' +
+        '<span><i class="pl-sw" style="background:#B7B1A8"></i>UA</span>' +
+        '<span><i class="pl-sw" style="background:#C9A29B"></i>' + t('pl.peak') + ' &ge; 1800</span>' +
+      '</div></div>' +
+      '<svg viewBox="0 0 360 152" width="100%" preserveAspectRatio="xMidYMid meet" class="pl-svg">' +
+      '<line x1="40" y1="10" x2="354" y2="10" stroke="#EDEAE4"></line>' +
+      '<line x1="40" y1="49.3" x2="354" y2="49.3" stroke="#EDEAE4"></line>' +
+      '<line x1="40" y1="88.7" x2="354" y2="88.7" stroke="#EDEAE4"></line>' +
+      '<text x="34" y="14" text-anchor="end" class="pl-tick">2400</text>' +
+      '<text x="34" y="53" text-anchor="end" class="pl-tick">1600</text>' +
+      '<text x="34" y="92" text-anchor="end" class="pl-tick">800</text>' +
+      '<line x1="40" y1="128" x2="354" y2="128" stroke="#C9C3BB"></line>' +
+      '<text x="34" y="132" text-anchor="end" class="pl-tick">0</text>' +
+      plDragRect(G, 'W', win, all.length, 10, 118) + bars + '</svg>' +
+      plLabelRowHtml(G, view.map(function (w) { return w.label; })) + '</div>';
+  }
+
+  /** Team chart 3 — acute / chronic, in two stacked regions. */
+  function plAcwrChartHtml(all, off) {
+    var G = PL_GEO.team, win = PL_WIN.w, MAX = 2400;
+    var o = plOff(off, all.length, win);
+    var view = all.slice(o, o + win);
+    var n = view.length || 1;
+    var pts = view.map(function (w, i) {
+      return {x: plItemX(G, n, i), y: 80 - Math.min(w.ratio, 2) / 2 * 70, w: w};
+    });
+    var path = pts.map(function (p, i) {
+      return (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+    }).join(' ');
+    var cols = pts.map(function (p) {
+      var ah = Math.max(2, Math.min(40, (p.w.acute / MAX) * 40));
+      var ch = Math.max(2, Math.min(40, (p.w.chronic / MAX) * 40));
+      return '<rect class="pl-hit" x="' + (p.x - 9).toFixed(1) + '" y="' + (128 - ah).toFixed(1) +
+        '" width="8" height="' + ah.toFixed(1) + '" fill="#DDA49E"' +
+        plHitTip(t('pl.week') + ' ' + p.w.label,
+          [{k: t('pl.acute'), v: plNum(p.w.acute) + ' UA'}, {k: '7 d', v: t('pl.rolling')}]) + '></rect>' +
+        '<rect class="pl-hit" x="' + (p.x + 1).toFixed(1) + '" y="' + (128 - ch).toFixed(1) +
+        '" width="8" height="' + ch.toFixed(1) + '" fill="#93A7BC"' +
+        plHitTip(t('pl.week') + ' ' + p.w.label,
+          [{k: t('pl.chronic'), v: plNum(p.w.chronic) + ' UA'}, {k: '28 d', v: t('pl.rolling')}]) + '></rect>';
+    }).join('');
+    var dots = pts.map(function (p) {
+      var rows = [
+        {k: 'A/C', v: p.w.ratio ? p.w.ratio.toFixed(2) : '—'},
+        {k: t('pl.acute'), v: plNum(p.w.acute) + ' UA'},
+        {k: t('pl.chronic'), v: plNum(p.w.chronic) + ' UA'},
+        {k: t('pl.zone'), v: plZone(p.w.ratio)}
+      ];
+      return '<circle class="pl-hit" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) +
+        '" r="8" fill="transparent"' + plHitTip(t('pl.week') + ' ' + p.w.label, rows) + '></circle>' +
+        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) +
+        '" r="2.8" fill="#8C857D" style="pointer-events:none"></circle>';
+    }).join('');
+    return '<div class="pl-chart">' +
+      '<div class="pl-chart-head"><span class="pl-eyebrow">' + t('pl.acwr') + '</span>' +
+      '<div class="pl-legend">' +
+        '<span><i class="pl-sw" style="background:#DDA49E"></i>' + t('pl.acute') + '</span>' +
+        '<span><i class="pl-sw" style="background:#93A7BC"></i>' + t('pl.chronic') + '</span>' +
+        '<span><i class="pl-rule"></i>A/C</span>' +
+      '</div></div>' +
+      '<svg viewBox="0 0 360 152" width="100%" preserveAspectRatio="xMidYMid meet" class="pl-svg">' +
+      /* The bands ARE the reading: a ratio means nothing without them.
+         Drawn first, with the line on top.
+
+         FIVE bands, not four. Under-load used to be one flat grey strip
+         below 0.8, which said a player at 0.35 was in the same place as
+         one at 0.75 — and neither was a warning. Detraining is its own
+         risk: below 0.7 is red, 0.7–0.8 amber, mirroring the amber and
+         red above the green. The boundaries are computed from the same
+         `80 - ratio/2*70` the ratio line uses, so a band edge is exactly
+         where the line crosses it. */
+      '<rect x="40" y="10" width="314" height="17.5" fill="#F4DAD6"></rect>' +
+      '<rect x="40" y="27.5" width="314" height="7" fill="#F6E9D2"></rect>' +
+      '<rect x="40" y="34.5" width="314" height="17.5" fill="#DCE4DC"></rect>' +
+      '<rect x="40" y="52" width="314" height="3.5" fill="#F6E9D2"></rect>' +
+      '<rect x="40" y="55.5" width="314" height="24.5" fill="#F4DAD6"></rect>' +
+      plDragRect(G, 'W', win, all.length, 10, 118) + cols +
+      '<line x1="40" y1="80" x2="354" y2="80" stroke="#C9C3BB"></line>' +
+      '<line x1="40" y1="128" x2="354" y2="128" stroke="#C9C3BB"></line>' +
+      '<text x="34" y="84" text-anchor="end" class="pl-tick">0</text>' +
+      '<text x="34" y="49" text-anchor="end" class="pl-tick">1.0</text>' +
+      '<text x="34" y="31" text-anchor="end" class="pl-tick">1.5</text>' +
+      '<text x="34" y="14" text-anchor="end" class="pl-tick">2.0</text>' +
+      '<text x="34" y="112" text-anchor="end" class="pl-tick pl-tick-sm">UA</text>' +
+      '<path d="' + path + '" fill="none" stroke="#8C857D" stroke-width="1.6" stroke-linejoin="round"></path>' +
+      dots + '</svg>' +
+      plLabelRowHtml(G, view.map(function (w) { return w.label; })) + '</div>';
+  }
+
+
+  /* ── Assembling one squad's numbers ────────────────────────────
+     One pass per player, sharing the two contexts the app already
+     builds for exactly this reason (fitnessContext / matchStatsContext
+     exist so a roster does not re-parse the same blobs per row). */
+  function plBuildRows(players, ctx) {
+    return players.map(function (u) {
+      var derived = deriveFitnessStatus(u.id, false, ctx.fit);
+      var st = derived.fitnessStatus;
+      var rd = computeReadiness(u.id);
+      var ps = computePlayerMatchStats(u.id, ctx.ms);
+      var sup = 0, nc = 0, yel = 0, red = 0, conceded = 0;
+      ps.matchRows.forEach(function (mr) {
+        if (mr.status === 'Suplent') sup++;
+        else if (mr.status === 'NC') nc++;
+        yel += (mr.yellows || 0); red += (mr.reds || 0);
+        /* Goals CONCEDED, from the scoreline of the matches he was in —
+           `isOwnTeam` says which end of the score is ours. */
+        if (mr.status === 'Titular' || mr.status === 'Suplent') {
+          conceded += mr.isOwnTeam ? (mr.awayScore || 0) : (mr.homeScore || 0);
+        }
+      });
+      var played = ps.totals.titulars + sup;
+      return {
+        u: u, id: String(u.id), name: u.name || '', team: u.team || '',
+        status: st, note: derived.injuryNote || '',
+        rd: rd, ready: rd.score, acwr: rd.acwr,
+        weeks: rd.weeks || [], sessions: rd.sessions || [],
+        matches: ps.totals.matches, minutes: ps.totals.minutes,
+        goals: ps.totals.goals, assists: ps.totals.assists,
+        titulars: ps.totals.titulars, suplents: sup, nc: nc,
+        yellows: yel, reds: red,
+        gcp: played > 0 ? (conceded / played).toFixed(2) : '',
+        matchRows: ps.matchRows,
+        att: plAttendance(u, ctx),
+        injury: ctx.injuries.find(function (i) {
+          return String(i.playerId) === String(u.id) && i.status === 'active';
+        }) || null
+      };
+    });
+  }
+
+  /** The team's weekly series: the squad's mean load, week by week. */
+  function plTeamWeeks(rows) {
+    var byWeek = {};
+    rows.forEach(function (r) {
+      r.weeks.forEach(function (w) {
+        if (!byWeek[w.week]) byWeek[w.week] = {week: w.week, acute: 0, chronic: 0, n: 0};
+        byWeek[w.week].acute += w.acute;
+        byWeek[w.week].chronic += w.chronic;
+        byWeek[w.week].n++;
+      });
+    });
+    return Object.keys(byWeek).map(Number).sort(function (a, b) { return a - b; })
+      .map(function (k) {
+        var w = byWeek[k];
+        /* The MEAN, not the sum. A squad total moves when someone is
+           injured, so two identical weeks would read differently — the
+           same call the weekly AU figure made in v189. */
+        var acute = Math.round(w.acute / w.n);
+        var chronic = Math.round(w.chronic / w.n);
+        return {label: 'S' + w.week, week: w.week, acute: acute, chronic: chronic,
+                ratio: chronic > 0 ? acute / chronic : 0, sessions: 0};
+      });
+  }
+
+  /* ── The roster table ─────────────────────────────────────────── */
+  function plSparkHtml(weeks) {
+    var last = weeks.slice(-8);
+    var top = last.reduce(function (m, w) { return Math.max(m, w.acute); }, 0) || 1;
+    var bars = last.map(function (w, i) {
+      var h = Math.max(1, (w.acute / top) * 20);
+      var col = !w.acute ? '#E3DFD8' : (w.acute > top * 0.9 ? PL_AMBER : '#B7B1A8');
+      return '<rect class="pl-hit" x="' + (i * 12) + '" y="' + (22 - h).toFixed(1) +
+        '" width="8" height="' + h.toFixed(1) + '" fill="' + col + '"' +
+        plHitTip(t('pl.week') + ' ' + w.label,
+          [{k: t('pl.tip_load'), v: w.acute ? plNum(w.acute) + ' UA' : t('pl.no_data')}]) + '></rect>';
+    }).join('');
+    return '<svg width="96" height="22" class="pl-spark">' + bars + '</svg>';
+  }
+
+  function plMedDiscHtml(r) {
+    var M = {fit: ['✓', 'pl-med-fit'], doubt: ['?', 'pl-med-doubt'], injured: ['✕', 'pl-med-inj']};
+    var m = M[r.status] || M.fit;
+    var label = r.status === 'fit' ? t('pl.med_fit')
+      : r.status === 'doubt' ? t('pl.med_doubt') : t('pl.med_injured');
+    var note = r.note ? (r.note.length > 52 ? r.note.slice(0, 52) + '…' : r.note) : '';
+    var rows = [{k: t('pl.estat'), v: label}];
+    if (note) rows.push({k: '', v: note});
+    return '<span class="pl-med ' + m[1] + '"' + plHitTip(r.name, rows) + '>' + m[0] + '</span>';
+  }
+
+  function plRosterTableHtml(rows, wide, catSpan) {
+    var th = function (label, cls) {
+      return '<th class="' + (cls || '') + '">' + label + '</th>';
+    };
+    var head = '<tr>' +
+      th(t('pl.th_player'), 'pl-th-name') + th(t('pl.th_pos')) +
+      th(t('pl.th_med'), 'pl-c') + th(t('pl.th_ready'), 'pl-r') + th('A/C', 'pl-r') +
+      (wide ? th(t('pl.th_8w')) + th(t('pl.th_matches'), 'pl-r') + th('GC / P', 'pl-r') +
+        th('T / S / NC', 'pl-c') : '') +
+      th(t('pl.th_minutes'), 'pl-r') +
+      (wide ? th(t('pl.th_goals'), 'pl-r') + th(t('pl.th_assists'), 'pl-r') +
+        th(t('pl.th_cards'), 'pl-r') : '') +
+      '</tr>';
+
+    var body = rows.map(function (r) {
+      var ac = r.acwr > 0 ? r.acwr.toFixed(2) : '—';
+      var acCls = r.acwr > 0 ? '' : ' pl-muted';
+      var acStyle = r.acwr > 0 ? ' style="color:' + plAcColor(r.acwr) + '"' : '';
+      var readyRows = [
+        {k: t('pl.th_ready'), v: r.ready + ' / 100'},
+        {k: 'A/C', v: ac},
+        {k: t('pl.estat'), v: r.ready >= 75 ? t('pl.opt') : r.ready >= 55 ? t('pl.watch') : t('pl.risk')}
+      ];
+      return '<tr class="pl-row' + (_plSel === r.id ? ' pl-row-sel' : '') +
+        '" data-pl-player="' + sanitize(r.id) + '">' +
+        /* The category badge as well as the team letter. The design's mock
+           is one category, so it shows only the letter — but under the
+           "Totes" tab this list holds several, and without the badge two
+           players called Marc from different squads are one row apart and
+           indistinguishable. catSpan is computed once per render, never
+           per row. */
+        '<td class="pl-td-name">' + sanitize(r.name) +
+          catBadgeHtmlGlobal(r.u, catSpan) +
+          (r.team ? ' <span class="pl-team-letter">' + sanitize(r.team) + '</span>' : '') + '</td>' +
+        '<td><span class="pl-pos">' + posCirclesHtmlGlobal(r.u) + '</span></td>' +
+        '<td class="pl-c">' + plMedDiscHtml(r) + '</td>' +
+        /* The SHARED cell, restyled — not a second one.
+           readinessCellHtml carries a rule this page must not lose: with
+           no data behind it the cell is a grey dot and NO NUMBER, because
+           a score nobody measured reads exactly like one that was. Every
+           other surface that shows readiness goes through it. */
+        '<td class="pl-r"><span class="pl-ready"' + plHitTip(r.name, readyRows) + '>' +
+          readinessCellHtml(r.rd, r.status === 'injured') + '</span></td>' +
+        '<td class="pl-r pl-nums' + acCls + '"' + acStyle + '>' + ac + '</td>' +
+        (wide ? '<td class="pl-td-spark">' + plSparkHtml(r.weeks) + '</td>' +
+          '<td class="pl-r pl-nums">' + r.matches + '</td>' +
+          '<td class="pl-r pl-nums pl-muted">' + (r.gcp || '—') + '</td>' +
+          '<td class="pl-c pl-nums pl-tsnc"><span class="pl-t">' + r.titulars +
+            '</span><span class="pl-sep"> / </span><span class="pl-s">' + r.suplents +
+            '</span><span class="pl-sep"> / ' + r.nc + '</span></td>' : '') +
+        '<td class="pl-r pl-nums pl-muted">' + plNum(r.minutes) + '′</td>' +
+        (wide ? '<td class="pl-r pl-nums">' + r.goals + '</td>' +
+          '<td class="pl-r pl-nums pl-muted">' + r.assists + '</td>' +
+          '<td class="pl-r pl-cards"><span class="pl-card-pair">' +
+            '<span><i class="pl-card pl-card-y"></i>' + r.yellows + '</span>' +
+            '<span><i class="pl-card pl-card-r"></i>' + r.reds + '</span></span></td>' : '') +
+        '</tr>';
+    }).join('');
+
+    if (!rows.length) {
+      body = '<tr><td colspan="14" class="pl-empty">' + t('roster.no_players') + '</td></tr>';
+    }
+    return '<div class="pl-table-wrap' + (wide ? '' : ' pl-table-narrow') + '">' +
+      '<table class="pl-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+
+  /* ── The player rail ──────────────────────────────────────────── */
+
+  /** The rail's own RPE chart, over this player's sessions. */
+  function plRailRpeHtml(sessions, off) {
+    var G = PL_GEO.rail, win = PL_WIN.ps;
+    var o = plOff(off, sessions.length, win);
+    var view = sessions.slice(o, o + win);
+    var n = view.length || 1;
+    var pts = view.map(function (s, i) {
+      var v = s.rpe == null ? 0 : s.rpe;
+      return {x: plItemX(G, n, i), y: 92 - (v / 10) * 80, s: s, v: v};
+    });
+    var path = pts.map(function (p, i) {
+      return (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+    }).join(' ');
+    var dots = pts.map(function (p) {
+      /* A session he did NOT train is a reading, not a gap: it sits on
+         zero in red, so a week off is visible as a week off rather than
+         as a line that quietly skips it. */
+      var col = p.s.rpe == null ? PL_RED : (p.s.type === 'match' ? PL_AMBER : '#7CA982');
+      var rows = [
+        {k: 'RPE', v: p.s.rpe != null ? p.s.rpe.toFixed(1) : t('pl.did_not_train')},
+        {k: t('pl.tip_load'), v: (p.s.rpe != null && p.s.minutes != null)
+          ? plNum(Math.round(p.s.rpe * p.s.minutes)) + ' UA' : '—'}
+      ];
+      var title = (p.s.type === 'match' ? t('pl.match') : t('pl.training')) +
+        ' · ' + plShortDate(p.s.date);
+      return '<circle class="pl-hit" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) +
+        '" r="9" fill="transparent"' + plHitTip(title, rows) + '></circle>' +
+        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.4" fill="' + col +
+        '" stroke="#F6F4EF" stroke-width="1.2" style="pointer-events:none"></circle>';
+    }).join('');
+    return '<div class="pl-rail-block">' +
+      '<div class="pl-eyebrow pl-eyebrow-b">' + t('pl.his_sessions') + '</div>' +
+      '<svg viewBox="0 0 420 118" width="100%" preserveAspectRatio="xMidYMid meet" class="pl-svg">' +
+      '<line x1="26" y1="12" x2="414" y2="12" stroke="#EDEAE4"></line>' +
+      '<line x1="26" y1="52" x2="414" y2="52" stroke="#EDEAE4"></line>' +
+      '<line x1="26" y1="92" x2="414" y2="92" stroke="#C9C3BB"></line>' +
+      '<text x="20" y="16" text-anchor="end" class="pl-tick pl-tick-sm">10</text>' +
+      '<text x="20" y="56" text-anchor="end" class="pl-tick pl-tick-sm">5</text>' +
+      '<text x="20" y="96" text-anchor="end" class="pl-tick pl-tick-sm">0</text>' +
+      plDragRect(G, 'PS', win, sessions.length, 12, 80) +
+      '<path d="' + path + '" fill="none" stroke="#8C857D" stroke-width="1.6" stroke-linejoin="round"></path>' +
+      dots + '</svg>' +
+      plLabelRowHtml(G, view.map(function (s, i) {
+        return i % 2 === 0 ? plShortDate(s.date) : '';
+      })) + '</div>';
+  }
+
+  /** The rail's acute/chronic chart. */
+  function plRailAcwrHtml(weeks, off) {
+    var G = PL_GEO.rail, win = PL_WIN.pw;
+    var o = plOff(off, weeks.length, win);
+    var view = weeks.slice(o, o + win);
+    var n = view.length || 1;
+    var max = weeks.reduce(function (m, w) { return Math.max(m, w.acute, w.chronic); }, 0) * 1.15 || 1;
+    var pts = view.map(function (w, i) {
+      return {x: plItemX(G, n, i), y: 70 - Math.min(w.ratio, 2) / 2 * 58, w: w};
+    });
+    var path = pts.map(function (p, i) {
+      return (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+    }).join(' ');
+    var cols = pts.map(function (p) {
+      var ah = Math.max(1, (p.w.acute / max) * 20);
+      var ch = Math.max(1, (p.w.chronic / max) * 20);
+      return '<rect class="pl-hit" x="' + (p.x - 9.5).toFixed(1) + '" y="' + (92 - ah).toFixed(1) +
+        '" width="9" height="' + ah.toFixed(1) + '" fill="#DDA49E"' +
+        plHitTip(p.w.label, [{k: t('pl.acute'), v: plNum(p.w.acute) + ' UA'}]) + '></rect>' +
+        '<rect class="pl-hit" x="' + (p.x + 0.5).toFixed(1) + '" y="' + (92 - ch).toFixed(1) +
+        '" width="9" height="' + ch.toFixed(1) + '" fill="#93A7BC"' +
+        plHitTip(p.w.label, [{k: t('pl.chronic'), v: plNum(p.w.chronic) + ' UA'}]) + '></rect>';
+    }).join('');
+    var dots = pts.map(function (p) {
+      return '<circle class="pl-hit" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) +
+        '" r="9" fill="transparent"' + plHitTip(p.w.label, [
+          {k: 'A/C', v: p.w.ratio ? p.w.ratio.toFixed(2) : '—'},
+          {k: t('pl.zone'), v: plZone(p.w.ratio)}
+        ]) + '></circle>' +
+        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) +
+        '" r="2.8" fill="#8C857D" style="pointer-events:none"></circle>';
+    }).join('');
+    return '<div class="pl-rail-block">' +
+      '<div class="pl-chart-head"><span class="pl-eyebrow">' + t('pl.acwr') + '</span>' +
+      '<div class="pl-legend pl-legend-sm">' +
+        '<span><i class="pl-sw" style="background:#DDA49E"></i>' + t('pl.acute') + '</span>' +
+        '<span><i class="pl-sw" style="background:#93A7BC"></i>' + t('pl.chronic') + '</span>' +
+      '</div></div>' +
+      '<svg viewBox="0 0 420 118" width="100%" preserveAspectRatio="xMidYMid meet" class="pl-svg">' +
+      /* The same five bands as the team chart, on this viewBox's scale —
+         `70 - ratio/2*58`. Amber 0.7–0.8, red below it: detraining is a
+         risk of its own and one flat grey strip said it was not. */
+      '<rect x="26" y="12" width="388" height="14.5" fill="#F4DAD6"></rect>' +
+      '<rect x="26" y="26.5" width="388" height="5.8" fill="#F6E9D2"></rect>' +
+      '<rect x="26" y="32.3" width="388" height="14.5" fill="#DCE4DC"></rect>' +
+      '<rect x="26" y="46.8" width="388" height="2.9" fill="#F6E9D2"></rect>' +
+      '<rect x="26" y="49.7" width="388" height="20.3" fill="#F4DAD6"></rect>' +
+      '<line x1="26" y1="70" x2="414" y2="70" stroke="#C9C3BB"></line>' +
+      plDragRect(G, 'PW', win, weeks.length, 12, 80) +
+      '<text x="20" y="16" text-anchor="end" class="pl-tick pl-tick-sm">2.0</text>' +
+      '<text x="20" y="49" text-anchor="end" class="pl-tick pl-tick-sm">1.0</text>' +
+      '<text x="20" y="74" text-anchor="end" class="pl-tick pl-tick-sm">0</text>' +
+      '<text x="20" y="94" text-anchor="end" class="pl-tick pl-tick-sm">UA</text>' +
+      cols +
+      '<line x1="26" y1="92" x2="414" y2="92" stroke="#C9C3BB"></line>' +
+      '<path d="' + path + '" fill="none" stroke="#8C857D" stroke-width="1.6" stroke-linejoin="round"></path>' +
+      dots + '</svg>' +
+      plLabelRowHtml(G, view.map(function (w) { return w.label; })) + '</div>';
+  }
+
+  /** The body map, with the injured zone's centroid as the pulsing dot. */
+  function plInjuryHtml(r) {
+    var inj = r.injury;
+    if (!inj) return '';
+    var dot = '';
+    if (inj.bodyZone != null && BODY_ZONES[inj.bodyZone]) {
+      var pairs = BODY_ZONES[inj.bodyZone].pts.split(/\s+/).map(function (p) {
+        return p.split(',').map(Number);
+      });
+      var cx = 0, cy = 0;
+      pairs.forEach(function (p) { cx += p[0]; cy += p[1]; });
+      /* BODY_ZONES points are already percentages of the image box, so
+         the centroid is the dot's position with no conversion. */
+      dot = '<span class="pl-inj-dot" style="left:' + (cx / pairs.length).toFixed(1) +
+        '%;top:' + (cy / pairs.length).toFixed(1) + '%"></span>';
+    }
+    var zone = inj.muscleGroup || inj.bodyZoneLabel || t('pl.injury');
+    if (inj.muscleSub) zone += ' (' + inj.muscleSub + ')';
+    var row = function (k, v) {
+      return '<div class="pl-inj-row"><span>' + k + '</span><span class="pl-inj-v">' +
+        sanitize(v) + '</span></div>';
+    };
+    return '<div class="pl-inj">' +
+      '<div class="pl-inj-map"><img src="img/cuerpos.png" alt="">' + dot + '</div>' +
+      '<div class="pl-inj-text">' +
+        '<div class="pl-eyebrow pl-eyebrow-b">' + t('pl.active_injury') + '</div>' +
+        '<div class="pl-inj-zone">' + sanitize(zone) + '</div>' +
+        (inj.description ? '<div class="pl-inj-note">' + sanitize(inj.description) + '</div>' : '') +
+        '<div class="pl-inj-rows">' +
+          row(t('pl.since'), inj.date ? tDateShort(inj.date) : '—') +
+          row(t('pl.eta'), inj.expectedReturn ? tDateShort(inj.expectedReturn) : '—') +
+          row(t('pl.missed'), String(r.att.injured) + ' ' + t('pl.sessions_l')) +
+        '</div>' +
+      '</div></div>';
+  }
+
+  function plHistoryHtml(r) {
+    var rows = r.matchRows.slice(0, 12).map(function (m) {
+      var res = m.resultLetter || '';
+      var col = res === 'V' ? PL_GREEN : res === 'E' ? '#8A8A8A' : res === 'D' ? PL_RED : '#C9C3BB';
+      var stCls = m.status === 'Titular' ? 'pl-t' : m.status === 'Suplent' ? 'pl-s' : 'pl-muted';
+      var stLbl = m.status === 'Titular' ? t('pl.starter')
+        : m.status === 'Suplent' ? t('pl.sub') : t('pl.not_called');
+      var rival = m.isOwnTeam ? m.away : m.home;
+      var mins = typeof m.minutes === 'number' ? m.minutes + '′' : '—';
+      var tipRows = [
+        {k: t('pl.result'), v: (m.homeScore != null ? m.homeScore + '-' + m.awayScore : '—') +
+          (m.isOwnTeam ? ' (' + t('pl.home') + ')' : ' (' + t('pl.away') + ')')},
+        {k: t('pl.minutes'), v: typeof m.minutes === 'number' ? m.minutes + '′' : t('pl.not_called')}
+      ];
+      return '<tr>' +
+        '<td class="pl-muted">' + sanitize(plShortDate(m.date)) + '</td>' +
+        '<td>' + (m.isOwnTeam ? '' : '@ ') + sanitize(rival || '') + '</td>' +
+        '<td class="pl-c">' + (res ? '<span class="pl-res" style="background:' + col + '"' +
+          plHitTip(sanitize(rival || '') + ' · ' + plShortDate(m.date), tipRows) + '>' + res + '</span>' : '') + '</td>' +
+        '<td class="' + stCls + ' pl-hist-st">' + stLbl + '</td>' +
+        '<td class="pl-c pl-nums">' + mins + '</td>' +
+        '<td class="pl-c pl-nums">' + (m.goals || '—') + '</td>' +
+        '<td class="pl-c pl-nums pl-muted">' + (m.assists || '—') + '</td>' +
+        '<td class="pl-c">' + (m.yellows ? '<i class="pl-card pl-card-y"></i>' : '') + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<div class="pl-rail-block pl-rail-hist">' +
+      '<div class="pl-eyebrow pl-eyebrow-b">' + t('pl.history') + '</div>' +
+      '<table class="pl-hist"><thead><tr>' +
+      '<th>' + t('pl.th_date') + '</th><th>' + t('pl.th_match') + '</th>' +
+      '<th class="pl-c">' + t('pl.th_res') + '</th><th>' + t('pl.th_status') + '</th>' +
+      '<th class="pl-c">Min</th><th class="pl-c">G</th><th class="pl-c">A</th><th class="pl-c">T</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function plRailHtml(r) {
+    var comps = [
+      [t('readiness.load_ratio'), r.rd.loadRatioScore, t('pl.help_ratio')],
+      [t('pl.match_fatigue'), r.rd.matchFatigueScore, t('pl.help_fatigue')],
+      [t('pl.load_spike'), r.rd.loadSpikeScore, t('pl.help_spike')],
+      [t('pl.rpe_trend'), r.rd.rpeTrendScore, t('pl.help_trend')]
+    ];
+    var metrics = comps.map(function (c) {
+      var v = Math.round(c[1] || 0);
+      return '<div class="pl-metric"' + plHitTip(c[0], [{k: '', v: c[2]}, {k: t('pl.value'), v: v + ' / 100'}]) + '>' +
+        '<span class="pl-metric-l">' + c[0] + '</span>' +
+        '<span class="pl-metric-v">' + v + '</span>' +
+        '<span class="pl-track"><span class="pl-fill" style="width:' + v + '%;background:' +
+        plReadyColor(v) + '"></span></span></div>';
+    }).join('');
+    var label = r.ready >= 75 ? t('pl.opt') : r.ready >= 55 ? t('pl.watch') : t('pl.risk');
+    return '<aside class="pl-rail" id="pl-rail">' +
+      '<div class="pl-rail-head">' +
+        '<div class="pl-rail-id">' +
+          '<div class="pl-eyebrow">' + t('pl.player_card') + '</div>' +
+          '<div class="pl-rail-name-row"><span class="pl-rail-name">' + sanitize(r.name) + '</span>' +
+            '<span class="pl-pos pl-pos-sm">' + posCirclesHtmlGlobal(r.u) + '</span></div>' +
+          '<div class="pl-rail-sub">' + (r.team ? t('pl.team') + ' ' + sanitize(r.team) : '') + '</div>' +
+        '</div>' +
+        '<div class="pl-rail-side">' +
+          '<button class="pl-close" id="pl-close">' + t('pl.close') + ' ✕</button>' +
+          '<div class="pl-rail-donut">' + plDonutLegendHtml(r.att, true) +
+            plDonutHtml(r.att, 68) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="pl-ready-row">' +
+        '<span class="pl-ready-big" style="color:' + plReadyColor(r.ready) + '">' + r.ready + '</span>' +
+        '<span class="pl-ready-lbl">' + label + '</span>' +
+        '<span class="pl-ready-ac">A/C ' + (r.acwr > 0 ? r.acwr.toFixed(2) : '—') + '</span>' +
+      '</div>' +
+      '<div class="pl-metrics">' + metrics + '</div>' +
+      plRailRpeHtml(r.sessions, _plOffPS) +
+      plRailAcwrHtml(r.weeks, _plOffPW) +
+      plInjuryHtml(r) +
+      plHistoryHtml(r) +
+      '</aside>';
+  }
+
+
+  /* ── The page ─────────────────────────────────────────────────── */
+  function renderStaffRoster() {
+    var users = getUsers();
+    var curCat = getCurrentCategory();
+    var players = users.filter(function (u) { return (u.roles || []).includes('player'); })
+      /* Uncategorised players used to fall through into every category's
+         roster. Registrations is where they get assigned; they do not
+         belong in another category's squad list. */
+      .filter(function (u) { return !curCat || (u.category || '') === curCat; })
+      .filter(function (u) { return rosterTeamFilter === 'all' || (u.team || '') === rosterTeamFilter; });
+
+    var now = new Date();
+    var ctx = {
+      fit: fitnessContext(),
+      ms: matchStatsContext(),
+      trainings: trainingOnly(getTrainings()),
+      availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
+      staffOverrides: JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}'),
+      injuries: getInjuries(),
+      today: localDateStr(now),
+      seasonStart: seasonStartStr(now)
+    };
+
+    var rows = plBuildRows(players, ctx);
+    /* Worst first. A roster is read to find who needs attention, and the
+       player who needs it is never the one at the top of the alphabet. */
+    rows.sort(function (a, b) { return a.ready - b.ready; });
+
+    /* The selection cannot outlive the list. Switching category or team
+       filter leaves _plSel pointing at somebody who is no longer on
+       screen, and the rail would go on describing him beside a table he
+       is not in. */
+    var sel = rows.find(function (r) { return r.id === _plSel; }) || null;
+    if (!sel) _plSel = null;
+
+    var teamWeeks = plTeamWeeks(rows);
+    var teamSessions = plTeamSessions(rows, ctx);
+
+    var nFit = rows.filter(function (r) { return r.status === 'fit'; }).length;
+    var nRisk = rows.filter(function (r) { return r.ready < 55 || r.acwr > 1.5; }).length;
+    var avgReady = rows.length
+      ? Math.round(rows.reduce(function (s, r) { return s + r.ready; }, 0) / rows.length) : 0;
+    var lastW = teamWeeks[teamWeeks.length - 1];
+    var teamAc = (lastW && lastW.ratio) ? lastW.ratio.toFixed(2) : '—';
+
+    var att = {yes: 0, late: 0, no: 0, injured: 0};
+    rows.forEach(function (r) {
+      Object.keys(att).forEach(function (k) { att[k] += r.att[k]; });
+    });
+
+    var letters = getTeamLetters(curCat);
+    var teamChips = letters.length <= 1 ? '' :
+      '<div class="pl-chips">' +
+      ['all'].concat(letters).map(function (l) {
+        var on = rosterTeamFilter === l ? ' pl-chip-on' : '';
+        return '<button class="pl-chip' + on + '" data-roster-filter="' + l + '">' +
+          (l === 'all' ? t('common.all') : l) + '</button>';
+      }).join('') + '</div>';
+
+    /* CATEGORY_LABELS, not the raw key. The key is the stored lowercase
+       id, so the 38px headline read "amateur A". The label table is also
+       where the accents live — 'alevi' displays as 'Aleví' — so an
+       uppercase-the-first-letter would still be wrong for two of the six
+       categories, as well as duplicating a table that already exists. */
+    var title = [curCat ? (CATEGORY_LABELS[curCat] || curCat) : t('common.all'),
+      rosterTeamFilter !== 'all' ? rosterTeamFilter : ''].filter(Boolean).join(' ');
+    /* The season label from its start date, not a stored field: the
+       season boundary lives in seasonStartStr and this must not be a
+       second opinion about when a season begins. */
+    var sy = Number(seasonStartStr(now).slice(0, 4));
+    var season = t('sc.season') + ' ' + sy + '-' + String(sy + 1).slice(2);
+
+    return '<div class="pl-page' + (sel ? ' pl-page-sel' : '') + '" id="pl-page">' +
+      '<div class="pl-main">' +
+        '<div class="pl-title-row">' +
+          '<div class="pl-title-col">' +
+            '<h1 class="pl-h1">' + sanitize(title) +
+              (season ? ' · ' + sanitize(season) : '') + '</h1>' +
+            '<div class="pl-sub">' + rows.length + ' ' + t('pl.players_l') + ' · ' +
+              teamSessions.length + ' ' + t('pl.sessions_l') + ' ' + t('pl.and') + ' ' +
+              teamWeeks.length + ' ' + t('pl.weeks_of_load') + '</div>' +
+          '</div>' +
+          '<div class="pl-att">' +
+            '<div class="pl-att-col"><span class="pl-eyebrow">' + t('pl.attendance') + '</span>' +
+              plDonutLegendHtml(att, false) + '</div>' +
+            plDonutHtml(att, 84) +
+          '</div>' +
+        '</div>' +
+        '<div class="pl-figures">' +
+          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.available') + '</span>' +
+            '<span class="pl-fig-v">' + nFit + ' <span class="pl-fig-of">' + t('pl.of') + ' ' +
+            rows.length + '</span></span></div>' +
+          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.at_risk') + '</span>' +
+            '<span class="pl-fig-v pl-fig-risk">' + nRisk + '</span></div>' +
+          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.avg_ready') + '</span>' +
+            '<span class="pl-fig-v">' + avgReady + '</span></div>' +
+          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.team_acwr') + '</span>' +
+            '<span class="pl-fig-v">' + teamAc + '</span></div>' +
+        '</div>' +
+        '<div class="pl-charts">' +
+          plRpeChartHtml(teamSessions, _plOffS) +
+          plWeekChartHtml(teamWeeks, _plOffW) +
+          plAcwrChartHtml(teamWeeks, _plOffW) +
+        '</div>' +
+        '<div class="pl-section-head">' +
+          '<span class="pl-eyebrow">' + t('pl.players') + '</span>' + teamChips +
+        '</div>' +
+        /* The span ONCE, over the whole list — never inside the row map.
+           Computed per row it is O(n²), and it would be computed over
+           whatever array happened to be in scope. */
+        plRosterTableHtml(rows, !sel, catSpanOf(players)) +
+      '</div>' +
+      (sel ? plRailHtml(sel) : '') +
+      '</div>';
+  }
+
+  /** The squad's session series: one point per session, averaged. */
+  function plTeamSessions(rows, ctx) {
+    var agg = {};
+    rows.forEach(function (r) {
+      r.sessions.forEach(function (s) {
+        if (s.rpe == null || s.minutes == null) return;
+        var key = s.date + '|' + s.type;
+        if (!agg[key]) agg[key] = {date: s.date, type: s.type, rpe: 0, minutes: 0, n: 0, absent: 0};
+        agg[key].rpe += s.rpe;
+        agg[key].minutes += s.minutes;
+        agg[key].n++;
+      });
+    });
+    /* Absences are counted from availability, not from a missing RPE: a
+       player who trained and simply never filed his RPE is present. */
+    rows.forEach(function (r) {
+      (ctx.trainings || []).forEach(function (tr) {
+        if (!tr.date || !playerIsCalled(tr, r.u)) return;
+        var a = readRecord(ctx.staffOverrides, r.u.id, tr, 'avail') ||
+          readRecord(ctx.availData, r.u.id, tr, 'avail') || '';
+        if (a !== 'no' && a !== 'injured') return;
+        var key = tr.date + '|training';
+        if (agg[key]) agg[key].absent++;
+      });
+    });
+    return Object.keys(agg).map(function (k) {
+      var a = agg[k];
+      return {date: a.date, type: a.type, absent: a.absent,
+              rpe: +(a.rpe / a.n).toFixed(1), minutes: Math.round(a.minutes / a.n)};
+    }).sort(function (a, b) { return a.date.localeCompare(b.date); });
+  }
+
+  /* ── Bindings ─────────────────────────────────────────────────── */
+  function bindPlantilla() {
+    var page = document.getElementById('pl-page');
+    if (!page) return;
+
+    /* One tooltip for the page, positioned from the trigger's own rect —
+       the same thing .ua-tooltip does elsewhere, and there is no reason
+       for a second implementation. */
+    var tip = document.getElementById('pl-tip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'pl-tip';
+      tip.className = 'pl-tip';
+      tip.hidden = true;
+      document.body.appendChild(tip);
+    }
+    var hideTip = function () { tip.hidden = true; };
+    page.querySelectorAll('[data-pl-tip]').forEach(function (el) {
+      el.addEventListener('mouseenter', function () {
+        var d;
+        try { d = JSON.parse(el.dataset.plTip); } catch (e) { return; }
+        tip.innerHTML = '<div class="pl-tip-t">' + sanitize(d.t || '') + '</div>' +
+          (d.r || []).map(function (r) {
+            return '<div class="pl-tip-r"><span>' + sanitize(r.k || '') + '</span><span>' +
+              sanitize(r.v || '') + '</span></div>';
+          }).join('');
+        tip.hidden = false;
+        var rect = el.getBoundingClientRect();
+        tip.style.left = (rect.left + rect.width / 2) + 'px';
+        tip.style.top = (rect.top - 10) + 'px';
+      });
+      el.addEventListener('mouseleave', hideTip);
+    });
+
+    // Row → rail. A second click on the same row closes it.
+    page.querySelectorAll('[data-pl-player]').forEach(function (tr) {
+      tr.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = tr.dataset.plPlayer;
+        _plSel = (_plSel === id) ? null : id;
+        /* The rail's own windows reset with the player. Carrying one
+           man's offset onto another's series is how a chart comes up
+           scrolled to a week he has no data for. */
+        _plOffPS = null; _plOffPW = null;
+        hideTip();
+        renderPage(getSession());
+      });
+    });
+
+    var close = document.getElementById('pl-close');
+    if (close) close.addEventListener('click', function (e) {
+      e.stopPropagation();
+      _plSel = null; hideTip(); renderPage(getSession());
+    });
+    var rail = document.getElementById('pl-rail');
+    if (rail) rail.addEventListener('click', function (e) { e.stopPropagation(); });
+    // A click anywhere else on the page closes the rail.
+    page.addEventListener('click', function () {
+      if (_plSel === null) return;
+      _plSel = null; hideTip(); renderPage(getSession());
+    });
+
+    /* Drag to scroll in time. The offset is recomputed from the pointer's
+       total travel rather than accumulated per move event, so a drag that
+       leaves the window and comes back does not lose its place. */
+    page.querySelectorAll('[data-pl-drag]').forEach(function (r) {
+      r.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        var k = r.dataset.plDrag;
+        var win = Number(r.dataset.plWin), total = Number(r.dataset.plTotal);
+        var stepPx = r.getBoundingClientRect().width / win;
+        var startX = e.clientX;
+        var start = plOff(plGetOff(k), total, win);
+        var moved = false;
+        var move = function (ev) {
+          var v = Math.max(0, Math.min(total - win,
+            start + Math.round((startX - ev.clientX) / stepPx)));
+          if (v === plGetOff(k)) return;
+          moved = true;
+          plSetOff(k, v);
+          hideTip();
+          renderPage(getSession());
+        };
+        var up = function () {
+          window.removeEventListener('mousemove', move);
+          window.removeEventListener('mouseup', up);
+          /* A drag that moved nothing is a click, and a click on the
+             plot area would otherwise fall through to the page handler
+             and shut the rail. */
+          if (moved) return;
+        };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+      });
+      r.addEventListener('click', function (e) { e.stopPropagation(); });
+    });
+  }
+
+  function plGetOff(k) {
+    return k === 'S' ? _plOffS : k === 'W' ? _plOffW : k === 'PS' ? _plOffPS : _plOffPW;
+  }
+  function plSetOff(k, v) {
+    if (k === 'S') _plOffS = v;
+    else if (k === 'W') _plOffW = v;
+    else if (k === 'PS') _plOffPS = v;
+    else _plOffPW = v;
+  }
+
+
   function mdFixtureTagHtml(m) {
     if (!m || !m.fcfActaId) return '';
     var label = m.fcfJornada ? 'J' + m.fcfJornada : 'FCF';
@@ -21654,21 +22570,27 @@
    * squad there is no choice to make. Chips reuse .roster-team-btn, which
    * is what the roster and medical filters are already built from.
    */
-  function calLetterChipsHtml() {
+  /**
+   * The squad-letter chips that sit in the category bar.
+   *
+   * ONE builder for the calendar and the roster. They differ only in
+   * which variable holds the active letter and which attribute the
+   * binder reads — everything else, including the "one squad needs no
+   * filter" rule, is the same and was going to drift the moment it was
+   * written twice.
+   */
+  function catBarLettersHtml(active, attr) {
     var cat = getCurrentCategory();
     if (!cat) return '';
     var letters = getTeamLetters(cat);
     if (letters.length <= 1) return '';
-    var html = '<span class="cat-bar-sep"></span>';
-    html += '<button class="roster-team-btn cat-bar-letter' +
-      (calTeamFilter === 'all' ? ' roster-team-btn-active' : '') +
-      '" data-cal-letter="all">' + sanitize(t('common.all')) + '</button>';
-    letters.forEach(function (l) {
-      html += '<button class="roster-team-btn cat-bar-letter' +
-        (calTeamFilter === l ? ' roster-team-btn-active' : '') +
-        '" data-cal-letter="' + sanitize(l) + '">' + sanitize(l) + '</button>';
-    });
-    return html;
+    var chip = function (val, label) {
+      return '<button class="roster-team-btn cat-bar-letter' +
+        (active === val ? ' roster-team-btn-active' : '') +
+        '" ' + attr + '="' + sanitize(val) + '">' + sanitize(label) + '</button>';
+    };
+    return '<span class="cat-bar-sep"></span>' + chip('all', t('common.all')) +
+      letters.map(function (l) { return chip(l, l); }).join('');
   }
 
   /**
@@ -28638,14 +29560,10 @@
     });
 
     // Roster player name click → staff player stats
-    $$('.roster-player-link').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        staffViewPlayerId = a.dataset.playerId;
-        currentPage = 'staff-player-stats';
-        renderPage(getSession());
-      });
-    });
+    /* The roster name link went with the Plantilla redesign: a row
+       click opens the detail rail in place now. staff-player-stats is
+       still reachable from the staff-home shortcuts, so nothing is
+       lost — the roster simply stopped being a route into it. */
 
     /* Training LIST team filter (single-select), same idiom as the roster
        and medical filters. The detail page's own filter below is a
@@ -28678,102 +29596,25 @@
       });
     });
 
-    // Roster team filter
-    $$('[data-roster-filter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Snapshot old chart elements keyed by x-position
-        const snapCharts = [];
-        $$('.roster-right .rpe-chart-svg').forEach(svg => {
-          const dotMap = {};
-          svg.querySelectorAll('.rpe-dot').forEach(c => {
-            const cx = +c.getAttribute('cx');
-            dotMap[cx] = { cx, cy: +c.getAttribute('cy') };
-          });
-          const lines = [];
-          svg.querySelectorAll('.rpe-line').forEach(p => lines.push(p.getAttribute('d')));
-          const barMap = {};
-          svg.querySelectorAll('.acwr-bar-acute, .acwr-bar-chronic').forEach(r => {
-            const x = +r.getAttribute('x');
-            barMap[x] = { y: +r.getAttribute('y'), h: +r.getAttribute('height') };
-          });
-          snapCharts.push({ dotMap, lines, barMap });
-        });
+    /* Roster team filter.
 
+       This was 97 lines of FLIP animation that snapshotted the dots of
+       the old roster's RPE charts and morphed them to their new
+       positions. The Plantilla redesign draws none of that markup, so
+       every selector in it matched nothing and the whole animation ran
+       over empty lists — a re-render with an elaborate no-op bolted to
+       it. Deleted rather than left: dead code that LOOKS like it
+       animates is worse than none, because the next person to touch
+       the charts will try to keep it working. */
+    $$('[data-roster-filter]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
         rosterTeamFilter = btn.dataset.rosterFilter;
-        $$('.roster-team-btn').forEach(b => b.classList.remove('roster-team-btn-active'));
-        btn.classList.add('roster-team-btn-active');
+        /* The selection does not survive the filter: the player it
+           names may not be in the new list, and plBuildRows drops a
+           rail whose player is gone anyway. */
+        _plSel = null;
         renderPage(getSession());
-
-        // FLIP-animate dots, lines, and bars to new positions
-        const DUR = 350;
-        const EASE = 'cubic-bezier(.4,0,.2,1)';
-        $$('.roster-right .rpe-chart-svg').forEach((svg, si) => {
-          const old = snapCharts[si];
-          if (!old) return;
-          // Dots – match by cx (same x = same date/week)
-          svg.querySelectorAll('.rpe-dot').forEach(c => {
-            const cx = +c.getAttribute('cx');
-            const prev = old.dotMap[cx];
-            if (!prev) return;
-            const dy = prev.cy - (+c.getAttribute('cy'));
-            if (dy === 0) return;
-            c.style.transform = 'translateY(' + dy + 'px)';
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              c.style.transition = 'transform ' + DUR + 'ms ' + EASE;
-              c.style.transform = '';
-              c.addEventListener('transitionend', () => { c.style.transition = ''; c.style.transform = ''; }, { once: true });
-            }));
-          });
-          // Lines – rebuild path each frame from interpolated dot positions
-          svg.querySelectorAll('.rpe-line').forEach(p => {
-            const newD = p.getAttribute('d');
-            // Extract data points: M start + C endpoints
-            const pts = [];
-            const mMatch = newD.match(/M\s*([\d.\-]+)[,\s]+([\d.\-]+)/);
-            if (mMatch) pts.push({ x: +mMatch[1], y: +mMatch[2] });
-            const cRe = /C\s*[\d.\-]+[,\s]+[\d.\-]+[,\s]+[\d.\-]+[,\s]+[\d.\-]+[,\s]+([\d.\-]+)[,\s]+([\d.\-]+)/g;
-            let cm;
-            while ((cm = cRe.exec(newD)) !== null) pts.push({ x: +cm[1], y: +cm[2] });
-            if (pts.length < 2) return;
-            // Find old Y for each point by matching closest x in dotMap
-            const dotXs = Object.keys(old.dotMap).map(Number);
-            function closestOldDot(px) {
-              let best = null, bestDist = Infinity;
-              for (let k = 0; k < dotXs.length; k++) {
-                const d = Math.abs(dotXs[k] - px);
-                if (d < bestDist) { bestDist = d; best = old.dotMap[dotXs[k]]; }
-              }
-              return bestDist < 2 ? best : null;
-            }
-            const deltas = pts.map(pt => {
-              const prev = closestOldDot(pt.x);
-              return prev ? prev.cy - pt.y : 0;
-            });
-            if (deltas.every(d => d === 0)) return;
-            const t0 = performance.now();
-            (function frame() {
-              let t = Math.min((performance.now() - t0) / DUR, 1);
-              t = 1 - Math.pow(1 - t, 3);
-              const interp = pts.map((pt, i) => ({ x: pt.x, y: pt.y + deltas[i] * (1 - t) }));
-              p.setAttribute('d', crSplinePath(interp));
-              if (t < 1) requestAnimationFrame(frame);
-            })();
-          });
-          // ACWR bars – match by x-position
-          svg.querySelectorAll('.acwr-bar-acute, .acwr-bar-chronic').forEach(r => {
-            const x = +r.getAttribute('x');
-            const prev = old.barMap[x];
-            if (!prev) return;
-            const dy = prev.y - (+r.getAttribute('y'));
-            if (dy === 0) return;
-            r.style.transform = 'translateY(' + dy + 'px)';
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              r.style.transition = 'transform ' + DUR + 'ms ' + EASE;
-              r.style.transform = '';
-              r.addEventListener('transitionend', () => { r.style.transition = ''; r.style.transform = ''; }, { once: true });
-            }));
-          });
-        });
       });
     });
 
@@ -28792,6 +29633,11 @@
     // A no-op while the dual-write fat copy is still being written, since
     // nothing leaves a placeholder behind in that case.
     hydrateRoBoards();
+
+    /* Plantilla: the row/rail selection, the four draggable chart
+       windows and the shared tooltip. Returns immediately when the page
+       is not on screen, like every other binder here. */
+    bindPlantilla();
 
     /* The `[data-go-staff-match]` binder stood here until v202. It was the
        only thing that ever set `detailMatchFrom = 'staff-matchday'`, and
