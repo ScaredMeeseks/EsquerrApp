@@ -51,7 +51,25 @@ fcmMessaging.onBackgroundMessage(payload => {
 // Handle notification click — open the app at the right page
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || './';
+  const d = event.notification.data || {};
+
+  /* Where to open when there is NO window to focus.
+
+     This used to be `data.url || './'`, so a cold-started PWA landed on the
+     app's home page and the page/matchId the notification carried were simply
+     thrown away — the tap looked broken. The deep link now travels as query
+     params that app.js reads at boot.
+
+     Built from the payload's own fields rather than from `data.url`, which is
+     deliberate: onPushQueueCreate strips `url` from client-queued pushes so a
+     coach cannot make a notification open an arbitrary site, and openWindow()
+     was the one place still willing to honour one if it ever arrived. These
+     params can only ever produce a same-origin URL. */
+  const qs = [];
+  if (d.page)    qs.push('pushPage='  + encodeURIComponent(d.page));
+  if (d.type)    qs.push('pushType='  + encodeURIComponent(d.type));
+  if (d.matchId) qs.push('pushMatch=' + encodeURIComponent(d.matchId));
+  const openUrl = './' + (qs.length ? '?' + qs.join('&') : '');
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
@@ -60,21 +78,21 @@ self.addEventListener('notificationclick', event => {
         if (client.url.includes('index.html') || client.url.endsWith('/')) {
           client.postMessage({
             type: 'PUSH_NAV',
-            url,
-            notifType: event.notification.data?.type,
-            page: event.notification.data?.page || '',
-            matchId: event.notification.data?.matchId || ''
+            url: openUrl,
+            notifType: d.type,
+            page: d.page || '',
+            matchId: d.matchId || ''
           });
           return client.focus();
         }
       }
       // Otherwise open new window
-      return self.clients.openWindow(url);
+      return self.clients.openWindow(openUrl);
     })
   );
 });
 
-const CACHE_NAME = 'esquerrapp-v210';
+const CACHE_NAME = 'esquerrapp-v211';
 
 const STATIC_ASSETS = [
   './',

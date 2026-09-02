@@ -1911,7 +1911,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 210;
+  const APP_VERSION = 211;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3635,6 +3635,70 @@
     _hideSplash();
   }
 
+  /**
+   * Where a tapped notification should land.
+   *
+   * Sets currentPage (and the detail-view state the target needs) and reports
+   * whether it recognised the notification at all. Rendering is the caller's
+   * job, because the two callers differ: the live listener re-renders
+   * immediately, while _drainPushNav() runs straight after navigate() has
+   * already painted.
+   *
+   * `d` is the notification's data payload: {type, page?, matchId?}.
+   */
+  function applyPushNav(d) {
+    if (!d) return false;
+    let target = '';
+
+    /* `type` is tested BEFORE `page` for the convocatòria, and only for it.
+       The coach's client queues `page: 'convocatoria'` — a STAFF page. Today
+       onPushQueueCreate drops `page` on the way out, so the type fallback is
+       what actually runs and players reach the match; but the client payload
+       still says it, every APK in the field still sends it, and the day that
+       field is forwarded every player who taps a call-up gets bounced to
+       fallbackPage() with no explanation. One branch closes that for good. */
+    if (d.type === 'convocatoria') {
+      if (d.matchId) {
+        detailMatchId = Number(d.matchId);
+        // Back has to go somewhere: without this it followed whatever detail
+        // view the player happened to open last, or nothing at all.
+        detailMatchFrom = 'player-home';
+        target = 'match-detail';
+      }
+    } else if (d.page) {
+      // The reminders name their own destination — 'player-actions' for RPE.
+      if (d.page === 'match-detail' && d.matchId) {
+        detailMatchId = Number(d.matchId);
+        detailMatchFrom = 'player-home';
+      }
+      target = d.page;
+    } else if (d.type === 'rpe_reminder') {
+      target = 'player-actions';
+    } else if (d.type === 'training_reminder' || d.type === 'match_avail_reminder') {
+      target = 'player-home';
+    }
+
+    if (!target) return false;
+    currentPage = target;
+    return true;
+  }
+
+  /**
+   * Replay a notification tap that had nowhere to go when it arrived.
+   *
+   * MUST be called after navigate(), never before: navigate() rebuilds the
+   * sidebar, and renderSidebar() resets currentPage to the first sidebar item
+   * whenever it is not one itself — which would throw away 'match-detail'.
+   */
+  function _drainPushNav() {
+    if (!_pendingPushNav) return;
+    const s = getSession();
+    if (!s || !s.profileSetupDone || !(s.roles || []).length) return;
+    const d = _pendingPushNav;
+    _pendingPushNav = null;
+    if (applyPushNav(d)) renderPage(s);
+  }
+
   // ---------- Join Club ----------
   async function handleJoinClub(e) {
     e.preventDefault();
@@ -5036,6 +5100,16 @@
   let _mdEditingId = null; // tracks which saved match is being edited inline
   let detailMatchId = null;
   let detailMatchFrom = null;
+  /* A notification tap that arrived before there was anywhere to send it.
+
+     Two things produce one: a native tap on a cold start, which fires while
+     onAuthStateChanged is still awaiting the profile and the club config; and
+     a PWA opened from a notification, where the deep link comes in as query
+     params on the URL before any of the app has run. Both used to be dropped
+     on the floor -- the push-navigate handler simply returned when
+     getSession() was null. Held here and replayed by _drainPushNav() once the
+     dashboard exists. */
+  let _pendingPushNav = null;
   /* Which session a detail view is showing, BY ID.
      It used to be the date, which two teams in a category can share -- so
      `find(x => x.date === ...)` returned whichever came first and both
@@ -31744,6 +31818,25 @@
   // #region Init & Bootstrap
   // ---------- Init ----------
   function init() {
+    /* A notification tapped with no window open.
+
+       sw.js cannot postMessage to a client that does not exist, so it opens
+       the app with the deep link on the URL instead. Read here, first thing,
+       because the auth handler can resolve before anything else in init()
+       finishes. The params are stripped straight away: leaving them on would
+       re-navigate on every refresh for the rest of the session. */
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get('pushPage') || q.get('pushType')) {
+        _pendingPushNav = {
+          page: q.get('pushPage') || '',
+          type: q.get('pushType') || '',
+          matchId: q.get('pushMatch') || ''
+        };
+        history.replaceState(null, '', location.pathname + location.hash);
+      }
+    } catch (e) { /* not worth failing boot over */ }
+
     // Apply saved language to HTML data-i18n elements
     document.documentElement.setAttribute('data-lang', _lang);
     applyI18nHtml();
@@ -32079,6 +32172,8 @@
       // may be showing an error we must not wipe. See _authFlowBusy.
       if (_authFlowBusy) return;
       navigate();
+      // The dashboard exists now, so a tap held from before it did can land.
+      _drainPushNav();
     });
 
     // Re-render current page when Firestore pushes remote changes —
@@ -32156,30 +32251,16 @@
 
     // Handle push deep-link navigation
     window.addEventListener('push-navigate', (e) => {
-      const type = e.detail.type;
-      const page = e.detail.page;
       const s = getSession();
-      if (!s) return;
-
-      // If the notification includes a specific page, use it directly
-      if (page) {
-        if (page === 'match-detail' && e.detail.matchId) {
-          detailMatchId = Number(e.detail.matchId);
-        }
-        currentPage = page;
-      } else {
-        // Fallback: map notification type to page
-        if (type === 'convocatoria') {
-          const matchId = e.detail.matchId;
-          if (matchId) { detailMatchId = Number(matchId); currentPage = 'match-detail'; }
-          else { currentPage = 'convocatoria'; }
-        } else if (type === 'training_reminder' || type === 'match_avail_reminder') {
-          currentPage = 'player-home';
-        } else if (type === 'rpe_reminder') {
-          currentPage = 'player-actions';
-        }
+      /* A tap can beat the session into existence — on a cold start the
+         native plugin replays the pending intent as soon as Push.init()
+         attaches the listener, while the auth handler is still awaiting the
+         profile. This used to `return` and the tap was lost. */
+      if (!s || !s.profileSetupDone || !(s.roles || []).length) {
+        _pendingPushNav = e.detail;
+        return;
       }
-      renderPage(s);
+      if (applyPushNav(e.detail)) renderPage(s);
     });
   }
 

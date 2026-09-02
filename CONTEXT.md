@@ -7869,3 +7869,49 @@ to use DAY-ish hourly periods to tell the branches apart; and neither the hourly
 (`<` vs `<=`) was pinned at all. Both ties now have an exact 50/50 case.
 
 Unit 2580 → **2584**. Version triple → v210.
+
+### 2026-09-02 — A tapped notification opens the screen it is about (v211)
+
+An RPE reminder should open the **Accions** tab; a convocatòria should open the **match detail** for
+that match (the player-facing call-up view — `convocatoria` itself is a staff page). The routing for
+both had existed since the push work landed, and the payloads already carried what it needed
+(`page: "player-actions"` on both RPE reminders; `type: "convocatoria"` + `matchId` out of
+`onPushQueueCreate`). **No Cloud Function changed.** What was missing was the delivery of the tap
+into that handler — in three different ways, none of them visible from the routing code:
+
+**1. A tap on a foreground notification did nothing at all.** `pushNotificationReceived` does not let
+FCM display the push; it re-schedules it as a **LocalNotification** carrying the payload in `extra`.
+A tap on that one is a `LocalNotifications` event, so `pushNotificationActionPerformed` never fired
+for it and nothing was listening for `localNotificationActionPerformed`. That is the single most
+common case in the field — the 23:00 RPE reminder arriving while the player has the app open — and
+it was the completely dead path. `js/push.js` now listens for it.
+
+**2. A PWA opened from a notification lost the deep link.** `sw.js` can only `postMessage` to a
+client that already exists; with no window open it fell through to `openWindow(data.url || './')`,
+and `url` is never set (`onPushQueueCreate` strips it deliberately). So the app opened at its home
+page and `page`/`matchId` were discarded. The link now travels as `?pushPage=&pushType=&pushMatch=`,
+read once in `init()` and stripped with `history.replaceState` so a refresh does not re-navigate.
+Built from those three fields rather than from `data.url`: the strip exists so a coach cannot make a
+notification open an arbitrary site, and `openWindow` was the one place still willing to honour one.
+
+**3. A tap that beat the session was dropped.** The handler opened `const s = getSession(); if (!s)
+return;` — and on a cold start the native plugin replays the pending intent as soon as `Push.init()`
+attaches the listener, while `onAuthStateChanged` is still awaiting the profile and the club config.
+It now buffers into `_pendingPushNav`, drained by `_drainPushNav()` immediately after `navigate()`.
+**After, not before**: `navigate()` → `renderDashboard` → `renderSidebar` resets `currentPage` to the
+first sidebar item whenever it is not one itself, which would throw away `match-detail`.
+
+The routing itself moved into `applyPushNav(d)` (one copy, two callers) with two changes.
+`type === 'convocatoria'` is now tested **before** the `page` branch: the coach's client queues
+`page: 'convocatoria'`, a STAFF page, and only the server's incidental stripping of `page` keeps
+players off it today — every APK in the field goes on sending that field, so the day it is forwarded
+every player tapping a call-up gets bounced to `fallbackPage()` with no explanation. And
+`detailMatchFrom` is set, so Back leads somewhere instead of following whatever detail view the
+player last opened.
+
+New `test/push-nav.test.js` (9 cases) lifts `applyPushNav` out of the source. **All nine passed first
+run, so a mutation pass checked them**: page-branch-first, a dropped `Number()` on the match id,
+`return true` for an unrecognised type, the old no-id-convocatoria-to-staff-page behaviour, an unset
+`detailMatchFrom`, and an RPE fallback pointing at the home page — six mutants, six killed.
+
+Unit 2584 → **2593**. Version triple → v211.

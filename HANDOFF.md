@@ -1,125 +1,153 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-08-28._
+_Rolling document, overwritten each session. Last updated: 2026-09-02._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
+> ⚠ **This file was eleven versions stale** when it was rewritten (it still described v199 and 2253
+> unit tests while the tree was at v210). The v200–v210 work — Plantilla, Registracions, the weather
+> strip, the sunset fix — is in CONTEXT.md and was never summarised here. If a section below reads
+> older than the code, believe CONTEXT.md and the source.
+
 ## Where things stand
 
-**Version triple is at 199** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 211** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2253** — `cd test && npm run test:unit` (~2 s) |
-| Rules tests | 164 — needs the emulator |
-| Functions tests | 71 — emulator |
+| Unit tests | **2593** — `cd test && npm run test:unit` (~8 s), all passing |
+| Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
+| Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
 Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
 
-`firestore.rules` and `storage.rules` were **not touched** this session — no rules deploy needed.
+`firestore.rules`, `storage.rules` and every deployed Cloud Function are **unchanged** — no rules
+deploy, no functions deploy. The only edit under `functions/` is the version constant in
+`check-deploy.js`, which is a diagnostic script, not a deployed function.
 
-**Deployed.** `main` is at the v199 commit and Pages serves it; verified by fetching the live
-`sw.js` and `js/app.js` rather than trusting the push output.
+**Pushed to `main` at v211.** Pages serves it and the APK CI build ran on the same push.
 
 ---
 
-## This session: v187 → v199. The staff training detail, twice — then three permission bugs.
+## This session: v211. A tapped notification opens the screen it is about.
 
-A session plan and material calculator were built (v187), then Claude Design redesigned the whole
-screen and it was rebuilt to that handoff (v188), then eight rounds of driving it.
+The owner's ask: an RPE reminder should open the **Accions** tab so the player can enter the score
+immediately, and a convocatòria should open the **match detail** for that match.
 
-**The feature.** Beside the attendance table there is now a session plan: blocks down a rail, each
-one a time slot, everything inside a block running at the same time. From the boards those exercises
-point at, the page computes what to carry — cones and balls **summed inside a block, maxed across
-blocks**, because equipment is reused between blocks and needed at once within one. Bibs
-deliberately do not follow that rule: a colour is a set taken out of the store, so the colours are
-unioned across the whole session and one is subtracted, one team always playing peto-less. Then
-**Encarregats de material**, which picks who carries it from the lowest duty-count tier so the same
-two lads do not do it every week.
+**The routing already existed and was not the problem.** `applyPushNav`'s ancestor had been sitting
+in the `push-navigate` listener since the original push work, and the payloads already carried what
+it needed — `page: "player-actions"` on both RPE reminders, `type: "convocatoria"` + `matchId` out
+of `onPushQueueCreate`. What was missing was the **delivery of the tap into that handler**, and it
+was missing in three unrelated ways, none of them visible from the routing code.
 
-Full detail is in CONTEXT.md under the v187–v196 entries. What matters here:
+### ⚠ 1. A tap on a foreground notification did nothing at all
 
-- **The data lives on the `fa_training` row** as `tr.plan` — no new synced key, no new shard route,
-  no new rules. A plan is intrinsic to one session.
-- **`plan.teams` is the generator's live set; `ex.teams` is a COPY** pinned to an exercise. That
-  distinction is the fix for the worst bug of the session: assignments used to be a pointer, so
-  re-drafting rewrote every exercise a split was already on, silently.
-- **`plan.petos` is `null` until the coach touches a swatch**, and `null` is not `[]` — null means
-  "the boards still speak for the bibs", `[]` means he removed every colour on purpose.
-- **The printout is its own window.** Printing in place was clipped to one page by the app's scroll
-  container, leaked the left pane on top of a flex layout, and dropped every background.
+This is the one that matters most, because it is the commonest case in the club: the 23:00 RPE
+reminder arriving while the player still has the app open.
 
-### ⚠ One security fix shipped with it
+`pushNotificationReceived` does **not** let FCM display the push. It re-schedules it as a
+**LocalNotification** carrying the payload in `extra`. A tap on that one is a `LocalNotifications`
+event — so `pushNotificationActionPerformed` never fired for it, and nothing anywhere was listening
+for `localNotificationActionPerformed`. Completely dead path. `js/push.js` now listens for it.
 
-The match detail page wrote a stored `mapLink` straight into an `href`. `sanitize()` does **not**
-stop `javascript:` — it escapes quoting, and there is nothing in `javascript:fetch(…)` to escape.
-That link is typed by one staff member and clicked by another, so it would have run on our origin in
-their session. All three venue sites now go through `safeHttpUrl` (utils.js), an http(s) allowlist.
-Seven tests pin it, including `data:` and protocol-relative.
+### 2. A PWA opened from a notification lost the deep link
 
-### ⚠ Three dev pages were public and are not any more
+`sw.js` can only `postMessage` to a client that already exists. With no window open it fell through
+to `openWindow(data.url || './')` — and `url` is never set, because `onPushQueueCreate` strips it
+deliberately. So the app opened on its home page and `page`/`matchId` were discarded.
 
-`pitch-preview.html`, `pitch-dark-preview.html` and `pitch-light-preview.html` returned **200** on
-the live site while every other dev page 404'd. `_config.yml` excludes by **name**, so a new preview
-page is public until someone remembers that file — `scripts/build-www.js` catches them by pattern
-and always did, which is why the APK was never affected. Added by name.
+The link now travels as `?pushPage=&pushType=&pushMatch=`, read once at the top of `init()` and
+stripped with `history.replaceState` so a refresh does not re-navigate. **Built from those three
+fields, never from `data.url`**: that strip exists so a coach cannot make a notification open an
+arbitrary site, and `openWindow` was the last place still willing to honour one if it arrived.
+
+### 3. A tap that beat the session was dropped
+
+The handler opened `const s = getSession(); if (!s) return;`. On a cold start the native plugin
+replays the pending intent as soon as `Push.init()` attaches the listener — which happens while
+`onAuthStateChanged` is still awaiting the profile and the club config. It now buffers into
+`_pendingPushNav`, drained by `_drainPushNav()` immediately after `navigate()`.
+
+⚠ **After `navigate()`, never before.** `navigate()` → `renderDashboard` → `renderSidebar` resets
+`currentPage` to the first sidebar item whenever it is not one itself — and `match-detail` is not a
+sidebar item, so draining early would silently throw the convocatòria route away.
+
+### One latent trap closed on the way past
+
+`applyPushNav` now tests `type === 'convocatoria'` **before** the `page` branch. The coach's client
+queues `page: 'convocatoria'` — a **staff** page. Only the server's incidental stripping of `page`
+keeps players off it today, and every APK in the field goes on sending that field. The day it is
+forwarded, every player tapping a call-up would be bounced to `fallbackPage()` with no explanation.
+
+`detailMatchFrom` is also set now, so Back leads somewhere instead of following whatever detail view
+the player happened to open last.
+
 ---
 
-## ⚠ The weekly AU figure has no colour band, on purpose
+## ⚠ TONIGHT'S TEST — what it can and cannot prove
 
-The handoff contradicts itself here and the contradiction matters. Its README says AU is
-"`RPE × minutes`, the same arithmetic the Readiness engine already uses". Its mock computes
-`plannedRpe * 12` — minutes = 12 — and shows weeks of 486–832 AU.
+The plan is to watch a real RPE reminder after tonight's training. Two things to know before reading
+the result:
 
-Costed properly, **one 90-minute session at RPE 7 is 630 AU**, and a week of two sessions and a match
-is **~1 900**. The mock's bands (`>650` amber, `>800` red) would paint **every real week red**.
+**The foreground fix only reaches a phone that installs the new APK.** Capacitor bundles a copy of
+the web assets, so `js/push.js` on the players' phones is whatever shipped with the build they have
+— and the club is on v43-era APKs (parking lot item 6). A player on an old APK will behave exactly
+as before, and that is not a failed fix. Test on a phone with the CI artifact from this push
+installed, or in the browser PWA, which updates itself.
 
-So the gutter prints the figure and no dot until real weeks say where the lines are. There is a test
-in `session-load.test.js` whose only job is to show why 650 could not survive contact with real data.
-**Do not add the band back from the handoff's numbers.**
+**A tap that works is only evidence for the path it took.** There are four: app open (the dead one),
+app backgrounded, app force-stopped, and the PWA. They fail independently and always have — that is
+the whole shape of this bug. If tonight's tap works, it proves the case it was in, not the others.
 
-Two other calls in the same place: the figure is **per player**, not summed over the squad — a squad
-total moves when someone is injured, so two identical weeks would read differently — and sessions
-that can be costed at neither an actual nor a planned RPE are **counted and flagged**, so a
-light-looking week is never actually an unrated one.
+The RPE reminder fires on the `*/30 * * * *` schedule after the session ends, so there is no need to
+trigger anything by hand — but if a faster loop is wanted, writing a doc into `teams/{id}/pushQueue`
+with `type`/`title`/`body`/`matchId` + `targetPlayers` makes `onPushQueueCreate` fan out at once.
 
 ---
 
 ## ⚠ Things that bit, and will bite again
 
+**The bug was never where the feature was.** Every line that decides where a notification goes was
+correct and had been for months; three separate delivery paths were dropping the tap before it got
+there. Reading the routing over and over would never have found it. **Follow the event from the OS
+inwards, not from the handler outwards.**
+
 **A Python round-trip truncated `js/app.js` to zero bytes.** The write raised
 `UnicodeEncodeError: surrogates not allowed`, but `io.open(p,'w')` had already truncated the file, so
 the exception left nothing. `node --check` passes on an empty file, which is how it briefly looked
-fine. Restored from a scratchpad copy. **Now a rule in CLAUDE.md**: use the editor for content edits
-of `app.js`; Python is for read-only inspection.
+fine. **Now a rule in CLAUDE.md**: use the editor for content edits of `app.js`; Python is for
+read-only inspection.
 
 **`replace(old, new, 1)` across 27k lines is a coin flip about which occurrence it hits.** Adding one
-gate landed it in `renderTrainingDetail` — the *player* page, which has no `isAct` — instead of the
-staff one. A ReferenceError inside `innerHTML`, so: a blank page for every player, a green suite, and
-a passing syntax check. Bound on the enclosing function.
+gate landed it in `renderTrainingDetail` — the *player* page — instead of the staff one. A
+ReferenceError inside `innerHTML`, so: a blank page for every player, a green suite, and a passing
+syntax check.
 
-**A source-scanning test matched its own comment THREE separate times this session.** The rule is
-already in this file's lessons and it kept happening anyway: **strip comments before scanning
-source**. The last one asserted `.dashboard-tight` was gone and found the note explaining why it went.
+**A source-scanning test matches its own comment.** The rule keeps being relearned: strip comments
+before scanning source.
 
-**Deleting 1003 lines silently swallowed six shared helpers** — `trainingLockAt`, `isTrainingLocked`,
-`availContext`, `getEffectiveAnswer`, `buildDetailDonut`, `computeStatus` all lived between two
-renderers, and `node --check` was perfectly happy. A crude scan for calls to functions that no longer
-exist caught it; nothing else would have until a coach opened a session.
+**Deleting a large block silently swallows shared helpers.** Six of them once lived between two
+renderers and `node --check` was perfectly happy. A crude scan for calls to functions that no longer
+exist is the only thing that catches it.
 
-**A test can be about a slightly different thing than its name.** After the six v183 fixes went in,
-**all 47 existing render tests still passed** — none covered anything that changed. Two mutations
-survived the first v182 pass, both because the assertion matched a sibling element. Mutation-test
-every round; it is the only thing that has caught these.
+**Nine assertions passed on the first run this session, so they were mutation-tested.** Six mutants,
+six killed — including the page-branch-first ordering, a dropped `Number()` on the match id, and the
+old no-id-convocatòria-to-the-staff-page behaviour. Mutation-testing is still the only thing that has
+ever caught an assertion passing for the wrong reason. `<scratchpad>/mutate.js` has the harness: it
+patches `js/app.js` in place, runs the suite, and restores the original from a string held in memory.
+⚠ **It restores by rewriting the file** — if it is ever interrupted mid-run, `git diff` first.
 
 ---
 
 ## NEXT SESSION
 
-Nothing is half-finished. v199 is deployed.
+**First: read the result of tonight's test** (see the section above for what it can prove). If the
+foreground tap still does nothing on a phone running the NEW APK, the next thing to check is whether
+`LocalNotifications` is actually registered in the Android shell — the listener is attached
+defensively (`if (LN)`), so a missing plugin fails silently rather than throwing.
 
 ### The owner's next item — the tactical boards' animation playback
 
@@ -129,40 +157,24 @@ diagnosed** — the pointers are in item 16, and the first job is to reproduce i
 write down which of four different bugs it is: does it not start, start and stop, play once, or
 drift. No test covers playback and none can from the unit suite; it is timers plus DOM.
 
-### Three permission bugs closed this session, and they rhymed
-
-v197, v198 and v199 were the same mistake three times: **a permission or a field standing in for a
-question it does not answer.**
-
-- `canEditPage('calendar')` chose which training PAGE to open. A player has no sub-role, so
-  `staffAccess` falls through to `'edit'` — so players were routed to the staff page and bounced
-  home by the `STAFF_PAGES` guard. A fitness coach, with `calendar:'view'`, got the player page.
-- The same call chose the calendar's training LIST, so a physio fell into the player path — which
-  returns only what the viewer is personally called to — and saw no trainings at all. The fixtures
-  showed only because that filter narrows on `session.category`/`team`, both empty for staff.
-- `t.focus || 'Entrenament'` labelled the player's week list, and an activity has `title`, not
-  `focus` — so every activity rendered as the word "Entrenament" under a training badge.
-
-`isStaffViewer(session)` and `trainingDetailPageFor(session)` are the honest predicates now.
-**Worth grepping `canEditPage(` and `.focus ||` for more of the same** — there is no reason to think
-these were the last two.
-
 ### Known rough edges, none blocking
 
+- **The push deep link has no automated coverage past `applyPushNav`.** The nine new tests pin where
+  a payload routes to. Nothing tests that the tap arrives — the LocalNotifications listener, the
+  service worker's query string, and the `_pendingPushNav` drain are all browser and OS behaviour.
+  Those three are exactly where the bugs were, and they are verified by hand or not at all.
+- **`_pendingPushNav` survives a login.** A player who taps a push, is asked to sign in, and then
+  lands on the right page is the intended behaviour — but the buffer is not cleared on the
+  `_authFlowBusy` path, so it drains on whatever auth event comes next. Harmless today; worth knowing.
 - **No jsdom coverage of anything that measures or animates.** The calendar's strip heights, the
-  read-only board's scaling and the board playback all only run in a browser. The render suites
-  execute the string builders over stubs, which catches a mistyped identifier and nothing about
-  layout or timing.
+  read-only board's scaling and the board playback only run in a browser.
 - **A test harness can bake in the bug it exists to catch.** `calendar-render.test.js` stubbed
-  `canEditPage: () => canEdit`, and stubbing `isStaffViewer` the same way would have hidden v198
-  completely. It uses the real rule.
+  `canEditPage: () => canEdit`, and stubbing `isStaffViewer` the same way would have hidden v198.
 - **`fa_matchday` is write-retired but not removed.** Its shard route, `SYNCED_KEYS` and
   `SEASON_KEYS` entries all stay; dropping a synced key is a separate, riskier change.
-- **Dead CSS from the redesign.** `.matchday-table`, `.std-donut*`, `.tg-config*` have no markup
-  left, but `.tg-btn` **is** still used by the injury severity picker and the `.std-donut` animation
-  rule is shared with `.assistance-circle`. Prune it in its own pass, not by grep.
 - **The tree is committed CRLF.** `.gitattributes` says `eol=lf` but everything predates it. A
   `git add --renormalize .` is the fix and deserves its own quiet commit.
+- **`mockup.html` sits untracked at the repo root.** Not from this session; left alone.
 - The 2D board's own header was deferred by the owner and never revisited.
 - The APK has no 3D at all, by design.
 
@@ -203,28 +215,30 @@ wrote twenty minutes ago, and a 404 also unregisters a worker already installed 
 `GET /__version` prints what is actually on disk. **Do not serve on 8080** — that is the Firestore
 emulator's port and it makes the whole rules suite fail with `501 Unsupported method ('PUT')`.
 
+⚠ **The dev server cannot test any of this session's work.** Two of the three fixes are the service
+worker and the Capacitor plugin; the dev server 404s `sw.js` on purpose and has no native shell.
+
 ---
 
 ## Tests
 
 ```
-2106 unit      cd test && npm run test:unit          (~2 s, no emulator)
+2593 unit      cd test && npm run test:unit          (~8 s, no emulator)
  164 rules     cd test && npm run test:rules         (emulator + Java)
   71 functions cd test && npm run test:functions     (emulator + Java)
 ```
 
 > **New test files must be added to `test:unit` / `test:functions` BY HAND.**
-> `suite-registry.test.js` fails if any suite on disk is unregistered — it caught
-> `session-load.test.js` this session, which is exactly what it is for.
+> `suite-registry.test.js` fails if any suite on disk is unregistered — which is exactly what it is
+> for, and it is why `push-nav.test.js` was registered in the same edit that created it.
 
 > **`npm test` (the full chain) flakes** — the functions suite fails with
 > `Cannot determine backend specification. Timeout after 10000` straight after the rules suite.
 > Export `FUNCTIONS_DISCOVERY_TIMEOUT=120`, or run the suites separately.
 
-New this session: `calendar.test.js` (60), `calendar-render.test.js` (76), `session-load.test.js` (30).
-The render suite is the one worth knowing about: there is no jsdom here and no browser automation, so
-`renderCalendar` would otherwise only ever be exercised by a human opening the app — and the failure
-mode of a missing helper is a ReferenceError inside `innerHTML`, a blank screen with a green suite.
+New this session: `push-nav.test.js` (9). It lifts `applyPushNav` out of `js/app.js` with the same
+`grab()` source-slicing the other app.js suites use — app.js is one IIFE and exports nothing, so
+this is the only coverage any of it can have.
 
 ---
 
@@ -431,21 +445,29 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 ## Lessons that keep repeating
 
+- **The bug is often not where the feature is.** This session's routing code was correct throughout;
+  three separate delivery paths were dropping the event before it reached it. Follow the event in
+  from the edge — the OS, the service worker, the plugin — not out from the handler.
 - **A mutation result is a claim about the TESTS, and only as good as the harness making it.**
   Restore by copy, and sync generated copies before running.
 - **A passing test can be about the wrong quantity.** Or about a sibling element — two mutations
-  survived this session because the assertion matched a `cal-x` on an inner line rather than the
-  wrapper it was named for.
-- **A test that greps source will match its own comment.** Three suites this session. Strip comments.
+  survived once because the assertion matched a `cal-x` on an inner line rather than the wrapper.
+- **A test that greps source will match its own comment.** Strip comments.
 - **Check the thing against a value it did not come from.** The v117 "our row is highlighted" check
   passed FCF's own club name in as the club name, so it proved nothing.
 - **An upstream field can be wrong, not just missing.** `played:"1515"` parses cleanly and is nonsense.
 - **A broken feed and an empty one must not look alike.** Every no-data path renders a reason.
+- **A silent `return` is a bug that leaves no trace.** `if (!s) return;` swallowed every cold-start
+  notification tap, and there was nothing to find afterwards — no error, no log, no wrong screen,
+  just the home page. Prefer buffering or logging to dropping.
 - **One definition, or it drifts.** `_syncFcfSquad` serves both the button and the cron;
-  `scheduleSlots` serves both the placeholders and the New Training page. And when two states must
-  agree — the calendar's open state and the state it is measured in — make them **share the rule**,
-  not merely match: they drifted the day they were written as two lists.
+  `scheduleSlots` serves both the placeholders and the New Training page; `applyPushNav` now serves
+  both the live tap and the replayed one. And when two states must agree, make them **share the
+  rule**, not merely match: they drifted the day they were written as two lists.
 - **An empty query result is not evidence of absence** — it is often the wrong query.
 - **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push output.
+- **An old APK is an old client.** A frontend fix is not live for the club until a build circulates,
+  and "it still does not work" from a phone is not evidence about the code until you know which
+  build that phone is running.
 - **`deploy.ps1` is Windows-only and Cloud Shell is not the local machine.**
 - **Two correct jobs can leave a gap between them.** Ship it, then go and look.

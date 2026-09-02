@@ -115,6 +115,24 @@ const Push = (() => {
       const type = data.type || 'general';
       _handleNavigation(type, data);
     });
+
+    /* Tap on a notification we re-showed ourselves.
+
+       The foreground handler above does NOT let FCM display the push — it
+       schedules a LocalNotification carrying the same payload in `extra`. A
+       tap on that one is a LocalNotifications event, not a PushNotifications
+       one, so `pushNotificationActionPerformed` never fires for it and the
+       deep link was dropped. Which meant the single most common case — the
+       23:00 RPE reminder arriving while the player has the app open — did
+       nothing at all when tapped. */
+    const LN = Capacitor.Plugins.LocalNotifications;
+    if (LN) {
+      LN.addListener('localNotificationActionPerformed', (action) => {
+        console.log('Push: local notification tapped', JSON.stringify(action));
+        const data = (action.notification && action.notification.extra) || {};
+        _handleNavigation(data.type || 'general', data);
+      });
+    }
   }
 
   let _registrationResolve = null;
