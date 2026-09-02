@@ -87,24 +87,53 @@ the player happened to open last.
 
 ---
 
-## ⚠ TONIGHT'S TEST — what it can and cannot prove
+## ⚠ THE TEST AFTER TRAINING (2026-09-02) — what it can and cannot prove
 
-The plan is to watch a real RPE reminder after tonight's training. Two things to know before reading
-the result:
+**Read this before reading the result.** The owner planned to watch a real RPE reminder after that
+evening's training. v211 is deployed, Pages serves it (verified by fetching the live `sw.js` and
+`js/app.js`, not by trusting the push output) and the APK CI run went green.
 
-**The foreground fix only reaches a phone that installs the new APK.** Capacitor bundles a copy of
-the web assets, so `js/push.js` on the players' phones is whatever shipped with the build they have
-— and the club is on v43-era APKs (parking lot item 6). A player on an old APK will behave exactly
-as before, and that is not a failed fix. Test on a phone with the CI artifact from this push
-installed, or in the browser PWA, which updates itself.
+### A tap proves only the path it took
 
-**A tap that works is only evidence for the path it took.** There are four: app open (the dead one),
-app backgrounded, app force-stopped, and the PWA. They fail independently and always have — that is
-the whole shape of this bug. If tonight's tap works, it proves the case it was in, not the others.
+There are **six** delivery paths, three per platform, and they fail independently — that is the
+entire shape of this bug. Which one was broken is **not the same on the two platforms**:
 
-The RPE reminder fires on the `*/30 * * * *` schedule after the session ends, so there is no need to
-trigger anything by hand — but if a faster loop is wanted, writing a doc into `teams/{id}/pushQueue`
-with `type`/`title`/`body`/`matchId` + `targetPlayers` makes `onPushQueueCreate` fan out at once.
+| Platform | State when the push arrives | Who handles the tap | Before v211 |
+|---|---|---|---|
+| APK | **open, on screen** | `localNotificationActionPerformed` | **DEAD — nothing listening** |
+| APK | backgrounded | `pushNotificationActionPerformed` | worked |
+| APK | force-stopped | same, replayed intent | worked, unless it beat the session |
+| PWA | open, on screen | `onMessage` → `Notification.onclick` | worked |
+| PWA | backgrounded, window alive | `notificationclick` → `postMessage` | worked |
+| PWA | **fully closed / swiped away** | `notificationclick` → `openWindow` | **BROKEN — link discarded** |
+
+So on the APK, leave it in the FOREGROUND; on the PWA, swipe it fully AWAY. A tap that works in any
+other state proves nothing that was not already true the day before.
+
+### Three preconditions that look like failures if missed
+
+**The APK fix only reaches a phone that installs the new build.** Capacitor bundles its own copy of
+the web assets, so `js/push.js` on a player's phone is whatever shipped with their build — and the
+club is on v43-era APKs (parking lot item 6). An old APK behaving exactly as before is an old
+client, not a failed fix.
+
+**The PWA must be opened once to pick up the new service worker.** `notificationclick` is handled by
+whichever worker is ACTIVE at click time, and that is still v210 until a launch installs v211.
+
+**The recipient list is the squad.** RPE reminders go to `squadForSession`/`squadForMatch`. An
+account that is not a player on that session gets nothing at all — that is the list, not the code.
+
+### iPhone: inconclusive by default
+
+iOS gives push **only** to a PWA added to the home screen from Safari itself (16.4+); the app already
+has `renderIosInstallBanner()` to explain exactly that, and Chrome/Firefox on iOS cannot install.
+Parking lot item 9 says web push on an iOS home-screen PWA has **never been tried here**, and
+`openWindow` from a notification has historically been patchy on iOS. **Treat an iPhone failure as
+inconclusive**, not as evidence about the fix, until someone has confirmed iOS gets a token at all.
+
+The reminder rides the `*/30 * * * *` schedule after the session ends, so nothing needs triggering by
+hand — but a doc written into `teams/{id}/pushQueue` with `type`/`title`/`body`/`matchId` +
+`targetPlayers` makes `onPushQueueCreate` fan out at once, which is the fast loop.
 
 ---
 
@@ -144,10 +173,18 @@ patches `js/app.js` in place, runs the suite, and restores the original from a s
 
 ## NEXT SESSION
 
-**First: read the result of tonight's test** (see the section above for what it can prove). If the
-foreground tap still does nothing on a phone running the NEW APK, the next thing to check is whether
-`LocalNotifications` is actually registered in the Android shell — the listener is attached
-defensively (`if (LN)`), so a missing plugin fails silently rather than throwing.
+**First: get the result of the 2026-09-02 push test** — and before drawing any conclusion from it,
+establish **which of the six paths in the table above was actually exercised**, on which platform,
+and which build that phone was running. Without those three facts the answer is not interpretable in
+either direction, and "it still doesn't work" from an unknown state is the likeliest thing to be
+handed back.
+
+If the foreground tap still does nothing on a phone running the NEW APK, check whether
+`LocalNotifications` is actually registered in the Android shell: the listener is attached
+defensively (`if (LN)`), so a missing plugin fails **silently** rather than throwing.
+`@capacitor/local-notifications` is in `package.json` and the foreground handler already calls
+`LocalNotifications.schedule()`, so the plugin is certainly present at runtime — but that call is
+also wrapped in `.catch()`, so neither half would have made a noise if it were not.
 
 ### The owner's next item — the tactical boards' animation playback
 

@@ -7915,3 +7915,18 @@ run, so a mutation pass checked them**: page-branch-first, a dropped `Number()` 
 `detailMatchFrom`, and an RPE fallback pointing at the home page — six mutants, six killed.
 
 Unit 2584 → **2593**. Version triple → v211.
+
+⚠ **The `history.replaceState` in `init()` is load-bearing twice over**, and only one reason is
+obvious. It stops a refresh re-navigating — that is the one the comment gives. The other: `sw.js`
+finds a window to focus with `client.url.includes('index.html') || client.url.endsWith('/')`, and a
+window opened at `./?pushPage=…` satisfies **neither**. Until the params are stripped that window is
+invisible to the match loop, so the next notification tapped would `openWindow` a SECOND copy of the
+app instead of focusing the one already open. Stripping puts the URL back to `…/EsquerrApp/`, which
+ends in `/` again. Anyone tempted to keep the params around for debugging should know that is what
+they would be turning on.
+
+**Which path was broken is not the same on the two platforms** — the single most useful fact for
+reading a bug report about this. On the APK the dead case was the app being **open** (the
+LocalNotifications re-show); on the PWA it was the app being **fully closed** (`openWindow`). The
+other four cases worked throughout. A report of "notifications still don't open the right screen" is
+therefore not actionable without the platform, the app's state, and the build number.
