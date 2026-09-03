@@ -7,11 +7,24 @@
 
        teams/{teamId}/matchNotes/{matchId}
          { matchId, category, team,
-           pre:  { text, updatedAt, updatedBy },
-           post: { text, updatedAt, updatedBy },
+           pre:  { text, updatedAt, updatedBy },   // the plan
+           live: { text, updatedAt, updatedBy },   // during the match
+           post: { text, updatedAt, updatedBy },   // the debrief
            videos: [ { id, title, url, comment, phase } ],
            boards: [ { boardId, name, tag } ],
            firstLegId, legDismissed }
+
+   `live` arrived with the v213 match-detail redesign, whose notes
+   block is three phases — PLA, DURANT EL PARTIT, DESPRÉS — where
+   this file had two. Nothing needs backfilling: a document written
+   before it simply has no `live` key, and every reader here already
+   treats a missing phase as an empty one.
+
+   PHASE is a closed set of three and `phaseKey()` below is the ONE
+   place that says so. It used to be written inline as
+   `phase === 'post' ? 'post' : 'pre'`, in two functions, which is a
+   spelling of "anything I do not recognise is the plan" — and with
+   a third phase that silently files the debrief under the plan.
 
    ── Why this is not another synced localStorage key ──
 
@@ -70,6 +83,21 @@
     return 'mv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   }
 
+  /** The three phases, in the order the match happens in. */
+  var PHASES = ['pre', 'live', 'post'];
+
+  /**
+   * One phase name, normalised — 'pre' for anything unrecognised.
+   *
+   * The default is the PLAN and not the debrief on purpose: a note filed
+   * against a phase this version does not know about is far more likely to
+   * be preparation than a verdict, and the plan is the phase a coach
+   * re-reads before writing anything else.
+   */
+  function phaseKey(p) {
+    return PHASES.indexOf(String(p)) === -1 ? 'pre' : String(p);
+  }
+
   /**
    * The shape a fresh note starts from.
    *
@@ -85,6 +113,7 @@
       category: (match && match.category) || '',
       team: (match && match.team) || '',
       pre: {text: '', updatedAt: null, updatedBy: ''},
+      live: {text: '', updatedAt: null, updatedBy: ''},
       post: {text: '', updatedAt: null, updatedBy: ''},
       videos: [],
       boards: [],
@@ -102,7 +131,11 @@
    */
   function isEmpty(n) {
     if (!n) return true;
-    return !(n.pre && n.pre.text) && !(n.post && n.post.text)
+    // Over PHASES, not over a hand-written pair: a phase added to that list
+    // and forgotten here makes a note with content look empty, and isEmpty
+    // is what decides whether the document is worth writing at all.
+    var hasText = PHASES.some(function (p) { return !!(n[p] && n[p].text); });
+    return !hasText
       && !(n.videos && n.videos.length) && !(n.boards && n.boards.length)
       && !n.firstLegId && !n.legDismissed;
   }
@@ -263,7 +296,7 @@
   /** Write one phase's text whole — see the deep-merge note on save(). */
   function saveText(match, phase, text) {
     var p = {};
-    p[phase === 'post' ? 'post' : 'pre'] = {
+    p[phaseKey(phase)] = {
       text: String(text || ''),
       updatedAt: new Date().toISOString(),
       updatedBy: _uid || ''
@@ -280,7 +313,7 @@
         title: String(v.title || ''),
         url: String(v.url || ''),
         comment: String(v.comment || ''),
-        phase: v.phase === 'post' ? 'post' : 'pre'
+        phase: phaseKey(v.phase)
       };
     })});
   }
@@ -328,6 +361,7 @@
   return {
     // pure
     keyOf: keyOf, blank: blank, isEmpty: isEmpty, newVideoId: newVideoId,
+    PHASES: PHASES, phaseKey: phaseKey,
     // runtime
     init: init, cleanup: cleanup, ready: ready,
     get: get, getOrBlank: getOrBlank, save: save,

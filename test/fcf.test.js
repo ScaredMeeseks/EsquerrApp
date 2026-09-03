@@ -258,3 +258,79 @@ describe('parseFcfClassificacio — which row is ours', () => {
     assert.ok(rows.every((r) => r.ours === false));
   });
 });
+
+/* The last five (parking-lot item 26).
+ *
+ * The `form` array has been arriving in the classificacio payload since the
+ * rebuild — the note at the head of the FCF section in js/utils.js has said
+ * so all along — and nothing parsed it. These run against the two REAL
+ * captured payloads, which is what makes the empty case trustworthy: it is
+ * not a hypothetical, it is what pre-season actually sends.
+ */
+describe('parseFcfForm — the rival\'s last five', () => {
+  it('reads five results per team from a finished season', () => {
+    const rows = U.parseFcfClassificacio(FINISHED, CLUB);
+    rows.forEach((r) => assert.strictEqual(r.form.length, 5,
+        r.club + ' has ' + r.form.length + ' results, not 5'));
+  });
+
+  it('maps the federation\'s G/E/P onto W/D/L', () => {
+    const seen = new Set();
+    U.parseFcfClassificacio(FINISHED, CLUB)
+        .forEach((r) => r.form.forEach((f) => seen.add(f.res)));
+    assert.deepStrictEqual([...seen].sort(), ['D', 'L', 'W']);
+  });
+
+  it('reads the result from THIS team\'s point of view', () => {
+    /* The row's own team, not the home side. The first row of the finished
+       fixture won 11-0 AWAY, and a naive reader would call that a loss. */
+    const top = U.parseFcfClassificacio(FINISHED, CLUB)[0];
+    const first = FINISHED.data[0].form[0];
+    const ourGoals = Number(first.away.goals);
+    const theirGoals = Number(first.home.goals);
+    assert.strictEqual(top.form[0].res, ourGoals > theirGoals ? 'W' : 'L',
+        'the result is being read from the wrong side of the fixture');
+  });
+
+  it('keeps the payload order — most recent first', () => {
+    const top = U.parseFcfClassificacio(FINISHED, CLUB)[0];
+    const dates = top.form.map((f) => f.date);
+    assert.deepStrictEqual(dates, dates.slice().sort().reverse(),
+        'the run must read left-to-right from the most recent match');
+    assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(dates[0]), dates[0]);
+  });
+
+  it('⚠ is EMPTY pre-season, for every team — not missing, not five blanks', () => {
+    /* This is the case the renderer must hide rather than draw. A season
+       that has not started and a proxy that is down must not look alike. */
+    const rows = U.parseFcfClassificacio(PRESEASON, CLUB);
+    assert.ok(rows.length, 'the pre-season fixture has no rows at all');
+    rows.forEach((r) => assert.deepStrictEqual(r.form, [], r.club));
+  });
+
+  it('DROPS an unrecognised letter rather than calling it a draw', () => {
+    // Inventing a result is worse than showing four squares.
+    const out = U.parseFcfForm([
+      {result: 'G', home: {name: 'A', goals: '2'}, away: {name: 'B', goals: '1'}},
+      {result: 'X', home: {name: 'A', goals: '0'}, away: {name: 'C', goals: '0'}},
+      {result: 'P', home: {name: 'D', goals: '3'}, away: {name: 'A', goals: '0'}}
+    ]);
+    assert.deepStrictEqual(out.map((f) => f.res), ['W', 'L']);
+  });
+
+  it('carries the fixture as a label for the hover title', () => {
+    const out = U.parseFcfForm(
+        [{result: 'E', date: '2026-05-16T00:00:00.000Z',
+          home: {name: 'ROSES, A.E.', goals: '1'},
+          away: {name: 'GRACIA, C.F.', goals: '1'}}]);
+    assert.strictEqual(out[0].label, 'ROSES, A.E. 1–1 GRACIA, C.F.');
+    assert.strictEqual(out[0].date, '2026-05-16');
+  });
+
+  it('survives a row with no form field at all', () => {
+    // An older cached payload, or a shape the federation changes again.
+    assert.deepStrictEqual(U.parseFcfForm(undefined), []);
+    assert.deepStrictEqual(U.parseFcfForm(null), []);
+    assert.deepStrictEqual(U.parseFcfForm('nonsense'), []);
+  });
+});

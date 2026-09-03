@@ -71,6 +71,12 @@ exclude:
   # carries invented player names — there is no reason for it to be a live
   # route. Regenerate with: node scripts/build-training-plan-preview.js . training-plan-preview.html
   - training-plan-preview.html
+  # The same, for the v212 match detail redesign. It renders the page twice —
+  # staff and player — so a reviewer can see for himself that the starting
+  # eleven is absent from the second one. Same reasons to keep it off Pages:
+  # the whole stylesheet inlined, and eighteen invented player names.
+  # Regenerate with: node scripts/build-partit-preview.js . partit-preview.html
+  - partit-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

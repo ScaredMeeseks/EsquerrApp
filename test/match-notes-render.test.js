@@ -21,6 +21,11 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const U = require(path.join(root, 'js', 'utils.js'));
+/* The REAL module, for its pure half. `PHASES` and `blank()` are what the
+   renderers loop over, and a hand-written stub of them is a second opinion
+   about how many phases there are — which is exactly what went wrong when
+   `live` was added in v213 and the briefing kept rendering two. */
+const RealMN = require(path.join(root, 'js', 'match-notes.js'));
 
 function grab(src, from, to, label) {
   const i = src.indexOf(from);
@@ -61,10 +66,10 @@ function makeRenderers(opts) {
       '  function renderMatchDetail()', 'js/app.js');
 
   const MN = {
+    PHASES: RealMN.PHASES,
+    phaseKey: RealMN.phaseKey,
     get: (id) => notes[String(id)] || null,
-    getOrBlank: (m) => notes[String(m && m.id)] ||
-      {pre: {text: ''}, post: {text: ''}, videos: [], boards: [],
-        firstLegId: null, legDismissed: false},
+    getOrBlank: (m) => notes[String(m && m.id)] || RealMN.blank(m),
     firstLegId: (id) => (notes[String(id)] || {}).firstLegId || null,
     legAnswered: (id) => {
       const n = notes[String(id)];
@@ -472,12 +477,31 @@ describe('mnBriefingHtml', () => {
 describe('mnNotesCardHtml', () => {
   const m = match({rival: 'Gràcia', at: 'home', date: '2026-11-23'});
 
-  it('renders both phases and the lock marker', () => {
+  it('renders EVERY phase and the lock marker', () => {
+    /* Over RealMN.PHASES, not a written-out pre/post pair. v213 added
+       `live` and this assertion is what would have caught the card going on
+       rendering two of three — the module would have had the phase, the
+       editor would have had no column for it, and nothing would have
+       errored. */
     const html = makeRenderers({matches: [m]}).mnNotesCardHtml(m);
     assert.ok(html.includes('mn-lock'), 'no staff-only marker');
-    assert.ok(html.includes('data-mn-phase="pre"'));
-    assert.ok(html.includes('data-mn-phase="post"'));
+    RealMN.PHASES.forEach((p) => {
+      assert.ok(html.includes('data-mn-phase="' + p + '"'),
+          'the notes card has no column for the ' + p + ' phase');
+    });
     assert.ok(html.includes('data-mn-match="' + m.id + '"'));
+  });
+
+  it('gives each phase its own placeholder, not the plan\'s three times', () => {
+    /* `t()` is stubbed to return the key here, so this is really "the
+       placeholder is derived from the phase" — which is the bit that was
+       an inline `phase === 'post' ? post_ph : pre_ph` and silently gave
+       DURANT EL PARTIT the plan's prompt. */
+    const html = makeRenderers({matches: [m]}).mnNotesCardHtml(m);
+    RealMN.PHASES.forEach((p) => {
+      assert.ok(html.includes('mn.' + p + '_ph'),
+          'the ' + p + ' box does not have its own placeholder');
+    });
   });
 
   it('hides the boards block from a sub-role that cannot open Pissarra', () => {

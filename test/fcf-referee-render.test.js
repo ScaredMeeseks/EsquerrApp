@@ -38,10 +38,27 @@ const BLOCK = grab(
     '  // #region Calendar');
 
 /* The match-detail card is a second block, further up the file — it renders
-   the same figures plus his history with this club. */
-const DETAIL = grab(
-    '  /* ── The referee, on the match detail page ─────',
-    '  function renderMatchDetail()');
+   the same figures plus his history with this club.
+
+   ⚠ It ends at the PARTIT banner, not at `function renderMatchDetail()`.
+   The v212 redesign put its own builders between the two, and slicing to the
+   renderer swept them in: "calls nothing that only exists in functions/" then
+   reported parseInt and isNaN as undeclared, which is a true statement about
+   a block this test is not about.
+
+   The cut is to the banner's COMMENT OPENER, found by walking back from the
+   title line — cutting at the title itself ends the slice inside an open
+   `/*`, and every `new Function` built from it dies with a bare
+   "Invalid or unexpected token". */
+const DETAIL = (() => {
+  const title = appSrc.indexOf('     PARTIT — the match detail screen, redesigned');
+  assert.notStrictEqual(title, -1, 'the PARTIT banner moved or was renamed');
+  const open = appSrc.lastIndexOf('/*', title);
+  const from = appSrc.indexOf('  /* ── The referee, on the match detail page ─────');
+  assert.notStrictEqual(from, -1, 'the referee detail block moved or was renamed');
+  assert.ok(open > from, 'the PARTIT banner must sit after the referee block');
+  return appSrc.slice(from, appSrc.lastIndexOf('\n', open) + 1);
+})();
 
 const sanitize = (s) => String(s === undefined || s === null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

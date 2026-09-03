@@ -365,10 +365,39 @@ describe('kits — the old hardcoded renderers are gone', () => {
   it('kitIconsHtml forwards the crest to the shirt', () => {
     const i = src.indexOf('function kitIconsHtml(');
     const body = src.slice(i, src.indexOf('\n  }', i));
-    assert.ok(/shirtSvg\(pieces\.shirt, badge\)/.test(body),
+    /* `badge\b` and not `badge\)`: a size argument was added after this
+       test. The rule it pins is that the crest still reaches the shirt,
+       which a trailing argument does not change. */
+    assert.ok(/shirtSvg\(pieces\.shirt, badge\b/.test(body),
         'the crest must reach shirtSvg');
     assert.ok(/'badge' in opts/.test(body),
         'absent and empty must be distinguishable');
+  });
+
+  it('kitIconsHtml forwards a SIZE to all three pieces', () => {
+    /* The size is the rendered size and must be passed, never set in CSS —
+       see the KIT_ICON_PX note. A caller that asks for 36 and silently gets
+       the 72px default draws a card-sized icon in a label/value row, which
+       is exactly what the match page's Uniforme row was doing. */
+    const i = src.indexOf('function kitIconsHtml(');
+    const body = src.slice(i, src.indexOf('\n  }', i));
+    assert.ok(/shirtSvg\(pieces\.shirt, badge, size\)/.test(body), 'shirt');
+    assert.ok(/shortsSvg\(pieces\.shorts, size\)/.test(body), 'shorts');
+    assert.ok(/kitSockSvg\(pieces\.socks, size\)/.test(body), 'socks');
+  });
+
+  it('the match page asks for sizes its two renderers can actually draw', () => {
+    /* Two constants, and they differ on purpose. shirtSvg lays up to NINE
+       bands across S/2, so S must be a multiple of 18; fcfShirtSvg's
+       patterns use four and eight, so its S must be a multiple of 16.
+       Splitting the difference to one number breaks one of them. */
+    const ours = /var PT_KIT_PX = (\d+);/.exec(src);
+    const theirs = /var PT_OPP_KIT_PX = (\d+);/.exec(src);
+    assert.ok(ours && theirs, 'the match-page kit sizes are gone');
+    assert.strictEqual(Number(ours[1]) % 18, 0,
+        'PT_KIT_PX must be a multiple of 18 — nine bands across S/2');
+    assert.strictEqual(Number(theirs[1]) % 16, 0,
+        'PT_OPP_KIT_PX must be a multiple of 16 — eight bands across S/2');
   });
 });
 

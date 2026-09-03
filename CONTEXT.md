@@ -7930,3 +7930,618 @@ reading a bug report about this. On the APK the dead case was the app being **op
 LocalNotifications re-show); on the PWA it was the app being **fully closed** (`openWindow`). The
 other four cases worked throughout. A report of "notifications still don't open the right screen" is
 therefore not actionable without the platform, the app's state, and the build number.
+
+### 2026-09-02 — Partit, phase 1: the page becomes bands (v212)
+
+The fourth Claude Design handoff, after Calendari (`.cal-*`), Pla d'entrenament (`.std-*`),
+Plantilla (`.pl-*`) and Registracions (`.reg2-*`). Source:
+`Baixades/EsquerrApp Match UI/design_handoff_partit/`. It is the biggest of the four — three
+layouts (staff 1400px, player desktop 1000px, player mobile 390px) over eight blocks — so it is
+being landed in **three releases**, and this is the first: the shell, the layout, the scoreboard,
+the facts column, the call-up and the boards. The events timeline and the inline event form are
+v213; the anada detail, the board playback overlay and the rival's last five are v214.
+
+`renderMatchDetail` was ~320 lines of stacked `.detail-*` cards. It is now a composition of five
+`pt*` builders over horizontal bands: top bar, scoreboard, anada, context (three columns), play
+(two columns).
+
+**⚠ TWO DEPARTURES FROM THE HANDOFF.** The precedent for arguing with a design in writing is the
+Plantilla entry above, and both of these are of that kind.
+
+1. **The classes are `pt-`, not the `md-` the handoff asks for.** `md-` already names four
+   unrelated things in `css/style.css` — the matchday cards, the referee record, the kit cells and
+   the calendar datepicker — across five clusters, plus dead rules from the `staff-matchday` page
+   removed in v186. Every other page in this series got a clean prefix and this one needs it more
+   than any of them.
+2. **The Convocats rows carry no per-player marks strip.** The design's row is
+   star · dorsal · name+letter · discs, because Esdeveniments now sits *beside* the call-up in the
+   same band instead of far below it. That also retires the old rule that the Titulars/Suplents
+   split appeared only once the match HAD events: the split is now gated on `showXI`, which is the
+   clock for a player and always true for staff, because the design's rule is that the list "flips
+   to the grouped view at kick-off". `test/match-lineup.test.js` carries a ⚠ saying exactly this
+   where the two old assertions used to be — they were deleted on purpose, not because they broke.
+
+**The one rule that must not be got wrong.** A player never sees the starting eleven before
+kick-off. `ptCallupHtml` makes that decision **once**, in `showXI`, and `test/partit.test.js`
+asserts it three ways: no star markup, no Titulars/Banqueta heading, and — the strongest form —
+that the four rendered row class attributes are *indistinguishable* once the viewer's own-row
+highlight is removed. Two of those four players are in the XI. `test/match-lineup.test.js`
+additionally pins that `showXI` is read in exactly **two** places, because the star, the sub-heads
+and the grouping are three separate ways the eleven could leak and they must not be able to
+disagree.
+
+**Two bugs fixed in passing, both found by reading the code the redesign replaced.**
+
+- The call-up list **and every linked board** sat behind `convSent`. A coach who had attached three
+  boards to a fixture whose convocatòria he had not yet sent saw none of them — on the page whose
+  job is to show him what he prepared. The call-up keeps the gate (an unsent call-up really is
+  nothing to show); the boards never needed it. `ptBoardsHtml` does not mention `convSent`, and a
+  test asserts the gate is gone rather than merely bypassed.
+- `renderMatchDetail` returned the literal English **`'Match not found'`** on a Catalan-only app,
+  while `match_detail.not_found` had been sitting unused in the i18n table since it was added. The
+  header of the call-up list was likewise a literal `'Called Up'`. Nine `match_detail.*` keys were
+  declared and never used; the block that replaced them is `pt.*`, in all three languages, and a
+  test walks every `t('pt.…')` in the source and fails on a key missing any of ca/es/en.
+
+**The ★ handler now re-renders.** It was the only handler on this page that patched the DOM in
+place — toggle a class on the button and the row, rewrite the counter's `innerHTML`. That worked
+while the list was flat. Grouping means a star *moves a row between two lists* and can empty or
+create a whole group, which four property writes cannot express.
+
+**The `.card` bridge.** The referee record, the coach notes and the events list still emit `.card`
+wrappers; they are restyled in v213/v214. Until then `.pt-page .card` strips the background, the
+border, the radius and the shadow, so a card dropped into a paper band does not draw a white box in
+the middle of a surface whose whole idiom is that it has none. **Delete that rule, not the markup,
+when the last block inside `.pt-page` stops emitting one.** A test pins all four declarations.
+
+**`matchScoreboardHtml` now has no caller** — the scoreboard moved to the top of the page as its own
+band, and the anada briefing renders the first leg through `mnScoreBlockHtml`, not through it. Left
+in place rather than deleted, alongside the `.ev-scoreboard` CSS and every other `.detail-*` rule:
+the v214 anada work reads the same shape, and pruning shared selectors deserves its own pass with
+the page in front of you, not a blind grep in the middle of a layout change.
+
+**Two things a reader will want to know about the data.**
+
+- The scoreboard's eyebrow uses **`m.fcfJornada`**, not `m.jornada` — there is no such field — and
+  the squad's `CATEGORY_LABELS` entry stands in for the division name the design shows, because
+  fixtures carry no competition name either. A friendly has neither and the eyebrow is omitted
+  rather than reading "Jornada undefined".
+- `ptRivalStanding` gets points from the standings cache the Calendari already fills
+  (`_leagueCache`), matched on the federation id when the fixture has one and on the exact name when
+  it does not — the same certainty ladder `fcfLookup` uses. It does **not** fall back to the name
+  once a fixture has an id: an id is a claim of certainty, and a near-match would be a worse answer
+  than the position frozen on the fixture. The **last-5 run beside it is v214** and is not yet
+  built; `js/utils.js:528` says the form arrives in the same payload, but `parseFcfClassificacio`
+  drops it and nothing in the tree renders a W-D-L guide today.
+
+**New: `test/partit.test.js`** (42 cases), registered by hand in `test/package.json` under both
+`test:unit` and `test:partit`. Most of it runs the real builders through `new Function` over stubs;
+the band geometry is pinned as CSS properties. Four assertions were mutation-tested and all four
+killed their mutant: `showXI` forced true, the starters read off the stored XI instead of the
+called-up list, the lock line deleted, and the `.pt-you` strip re-gated on `!isStaff` instead of on
+the player role — that last one failed **both** of the banner's tests, including the one written for
+exactly that bug.
+
+⚠ **Two tests in other files were passing for the wrong reason and now cannot.**
+`match-notes.test.js` sliced the call-up banner between `let convHtml` and `const dateFormatted`.
+Both markers are gone, so `indexOf` returned −1, `slice(-1, -1)` returned `''`, and the assertion
+passed against an empty string. It is anchored on the `.pt-you` strip now and asserts the slice was
+found at all. `fcf-referee-render.test.js` sliced the referee block up to
+`function renderMatchDetail()`, which swept in every new `pt*` builder — its
+"calls nothing that only exists in functions/" check then reported `parseInt` and `isNaN`, a true
+statement about a block that test is not about. It now cuts at the PARTIT banner's **comment
+opener**, found by walking back from the title line: cutting at the title itself ends the slice
+inside an open `/*`, and every `new Function` built from it dies with a bare
+"Invalid or unexpected token".
+
+**New: `scripts/build-partit-preview.js`** → `partit-preview.html`, on the model of
+`build-training-plan-preview.js`. It renders the page **twice**, staff and player-before-kick-off,
+so a reviewer can see for himself that the eleven is absent from the second — and it *asserts* that
+before writing the file, so a regression breaks the build rather than shipping a mockup that quietly
+shows the wrong thing. Added to `_config.yml` by name; the `-preview.html` suffix already keeps it
+out of the APK.
+
+Unit 2593 → **2635**. Version triple → v212. No rules and no functions deploy: the only edit under
+`functions/` is the version constant in `check-deploy.js`, which is a diagnostic script.
+
+⚠ **Not yet verified in a browser.** There is no headless browser on this machine — `jsdom` has no
+layout engine — so the band geometry, the 1100px stacking and the 390px scoreboard are pinned as
+CSS properties and nothing more. `partit-preview.html` is the thing to open, and the app itself
+after that: staff on a future / mid / past fixture, a player on the same future fixture, the same
+player after kick-off, and a `fitness` staff member, who should see no star and no `+ Event`.
+
+### 2026-09-02 — Partit, phase 2: the timeline, the form, and one dropdown (v213)
+
+Phase 2 of three. The events band and the coach's notes; the anada detail, the board playback
+overlay and the rival's last five are v214.
+
+**The timeline is a 4-column grid** — ours, the minute, theirs, the ✕ — and it fixed two bugs on the
+way. The old rows keyed on `ev.side === 'home'`, so **at an away ground our own goals were drawn
+down the right-hand column, under the rival's name.** Sides are `ours` and `theirs` now. It also
+sorts EARLIEST first: the old one sorted descending, which is right for a feed and wrong for
+something called a timeline.
+
+**⚠ `ptOurSide(m)` — "which side are we" was not as simple as it looked.** *(The owner asked for
+this one to be checked; it was right for the ordinary case and wrong for a real one.)* Every call
+site spelled it inline as `isOurTeam(m.home) ? 'home' : 'away'`. That expression **never tests the
+away side**: it assumes that if home is not us, away must be. `isOurTeam` is a strict `===` against
+the configured club name, so a fixture whose home field carries the federation's spelling —
+`L'ESQUERRA DE L'EIXAMPLE, F.C.` against a config reading `L'Esquerra de l'Eixample` — matches
+**neither** side, and the expression confidently answered `'away'`. At our own ground, with the
+whole Esdeveniments column mirrored and nothing on screen to say so.
+
+`ptOurSide` asks about both sides and falls back to `'home'`, so an unrecognisable fixture at least
+reads in the order the scoreboard above it prints the names. It is deliberately **not** made lenient
+with `sameClubName`: `js/utils.js:948` records why exact equality is the rule here — it is what keeps
+this and the scoreboard from disagreeing about which side is ours on one screen, and a club that
+renames mid-season should lose the answer rather than be handed a wrong one. All four `pt*` call
+sites go through it, the submit handler included, where getting it wrong would have written the
+rival's shirt number into `playerId`.
+
+⚠ **`computePlayerStats` (js/app.js ~2766) still has the old inline form.** Left alone on purpose:
+it is outside this redesign, reached by a different path, and changing what a stats denominator
+counts in the middle of a layout change is how a quiet wrong number ships. **It deserves its own
+pass** — the same expression is there, with the same blind spot.
+
+The preview now renders the fixture a **third** time, away, with the same five events and their
+sides mirrored, and **asserts our column is still on the left before writing the file**. A static
+mockup of one home fixture could not show this, which is exactly why it was worth asking about.
+
+`matchTimelineHtml` is untouched and still serves the anada briefing — two layouts, because the
+design gives the first leg a different one (minute, icon, name, crest, no columns). They share
+`getEventIcon`, `resolveEventName` and `yellowOrdinals`, which are the rules that would hurt if they
+drifted; v214 replaces the second one.
+
+**The form is inline, chip-driven, and holds its state in one object.** `_evForm` is
+`{matchId, side, type, min, who, second, goalType}` and every handler is "record one field, redraw".
+The old form kept its answer in hidden inputs and drove a progressive disclosure with **synthetic
+`change` events**, which is why it needed a `resetCustomSelect` that had to clear three controls in
+the right order.
+
+⚠ `_evForm.min` is captured on `input`, not read at submit time. Picking a player re-renders, and a
+minute left sitting in the DOM would be discarded by the redraw — the coach types 63, chooses the
+scorer, and the minute silently empties. `matchId` is on the object for the same class of reason:
+without it, opening a second fixture would show a half-filled form addressed to the first.
+
+**⚠ A THIRD DEPARTURE FROM THE HANDOFF, and this one is a real conflict.** The design's form is
+type / minute / player / assist and nothing else. But `computePlayerStats` builds a `goalBreakdown`
+— penalties, direct free kicks, open play — off `ev.goalType`, and it is on the player's own stats
+page today. Dropping the input would not have removed that statistic; it would have left it
+**silently recording every new goal as open play**, which is worse than losing it visibly. So a goal
+of OURS gets one extra chip row, `TIPUS DE GOL`, in the design's own chip idiom — the design already
+has a conditional field for Gol, so this is inside its grammar. The rival's goals do not get one:
+their scorer is a shirt number and nothing here knows how it went in.
+
+`goalDetail` is now derived rather than asked for. Picking an assister sets
+`goalDetail: 'assistencia'` and `assistPlayerId` together; leaving it empty sets `'individual'`.
+The old form made the coach answer "assistència or individual?" and *then* pick the player, which is
+the same question twice.
+
+**One dropdown in the app, at last.** `.ev-custom-select` — the fourth bespoke dropdown, rounded, on
+`--primary-light`, wired to its own hidden inputs — is **deleted**, along with `buildCustomSelect`,
+`buildEvTypeDropdown`, `buildOurEventForm`, `buildOppEventForm`, `resetCustomSelect` and ~200 lines
+of handlers. The form's pickers are `stdSelect` now, bound with **named kinds** (`evwho`,
+`evsecond`) because binding every `.std-sel` in the document is a documented past bug: two page
+binders claimed one trigger and the menu opened and shut inside a single click. `stdSelect`'s own
+comment used to say "deliberately not `.ev-custom-select`"; it now says it is the only one left.
+
+**The coach's notes have three phases** — PLA / DURANT EL PARTIT / DESPRÉS — where `js/match-notes.js`
+had two. `live` is new. **No backfill and no rules deploy**: `firestore.rules` does not whitelist
+fields on `matchNotes`, and a document written before this simply has no `live` key, which every
+reader already treats as an empty phase.
+
+⚠ The thing that made this more than a field addition: **both writers spelled the phase test inline
+as `phase === 'post' ? 'post' : 'pre'`** — which is a way of saying "anything I do not recognise is
+the plan", and would have filed every DURANT EL PARTIT note under PLA without erroring. There is now
+one `MN.PHASES` and one `MN.phaseKey()`, and `blank()`, `isEmpty()`, `saveText()`, `saveVideos()`,
+`mnPhaseHtml`, `mnNotesCardHtml` and `mnBriefingHtml` all go through them. The briefing in particular
+would otherwise have gone on rendering two of three for ever, silently. The fallback is the **plan**
+and not the debrief on purpose: an unrecognised phase is far likelier to be preparation than a
+verdict. `mn.pre` / `mn.post` were reworded to match the design ("Pla" / "Després") so the three read
+as one sequence.
+
+⚠ **`test/match-notes-render.test.js` now requires the real `js/match-notes.js`** for its pure half
+rather than hand-writing an `MN` stub. The stub's `getOrBlank` returned a literal
+`{pre, post, videos, boards, …}` — a second opinion about how many phases exist, and exactly what
+would have let the card go on rendering two of them with every test green. Its "renders both phases"
+assertion is now "renders EVERY phase", looping `RealMN.PHASES`.
+
+**⚠ Two bugs the tests found only after being made honest.**
+
+- **A substitution has no `playerId`.** It carries `playerInId`/`playerOutId`, so
+  `getEventPlayerName` — which reads `playerId` — resolved every sub in the new timeline to a bare
+  **`?`**. The old layout never noticed because it overwrote the name for a change with both halves
+  of the swap; this one puts one name on the row and the other underneath, so it has to choose.
+  `ptEventName` now does, and the row belongs to the player coming ON. The test that should have
+  caught it asserted only the detail line and passed against the `?`; it names both now.
+- **The name stubs disagreed with the shipped function.** `resolveEventName` renders an unknown
+  player as `#9`; the stub in `partit.test.js` rendered `Núm. 9`, so an assertion about the rival's
+  name was checking the stub. The real resolvers are sliced in now.
+
+**A fourth, small deviation from the handoff**, arising from that: the rival reads **`#9`**, not the
+design's `Núm. 9`. `resolveEventName` is one shared formatter used by this timeline, the anada
+briefing, the team-sheet marks and the player stats; forking it for a label would put two spellings
+of the same rival on two halves of one screen.
+
+**Tests.** `test/partit.test.js` 42 → **73**: the timeline's ours/theirs rule (including the away
+fixture the old code got wrong), the ordering, the assist and substitution detail lines, the absence
+of a detail line on a card (the design shows "Joc perillós" — there is no reason field in this app
+and inventing one would put a control on screen that writes nowhere), and the form's conditional
+fields. `match-notes.test.js` gained the phase set and the plan-fallback.
+
+Nine mutants, nine killed: sides keyed on `home` again, the sort reversed, the goal-type row shown
+for the rival, `ptSecondField` returning `'assist'` for everything, `phaseKey` without its
+whitelist, `isEmpty` back to a hand-written pre/post pair, the notes card rendering
+`['pre','post']` instead of `MN.PHASES`, and the substitution name back through
+`getEventPlayerName`, and `ptOurSide` back to the fall-through. Unit 2635 → **2672**.
+
+`scripts/build-partit-preview.js` now renders the timeline and the form for real — with the form
+**open on a goal**, because the chips and the hairline pickers are the whole subject of this round
+and a closed form shows none of them — and slices in the real `stdSelect` rather than faking it,
+which would have hidden the consolidation the round is about. Only the referee record is still
+stand-in context there.
+
+Version triple → v213. Still no rules and no functions deploy. Still not verified in a browser, for
+the same reason: `partit-preview.html`, then the app.
+
+### 2026-09-02 — Partit, phase 3: the last five, the board overlay, and two stale backlog items (v214)
+
+The last of three. It turned out to be **smaller than planned, because two of its four items were
+already done** and the backlog had not been told.
+
+**⚠ PARKING-LOT ITEM 16 IS FIXED, AND HAS BEEN FOR A WHILE.** The plan was to reproduce the broken
+tactical-board playback before building an overlay on top of it. It does not need reproducing:
+`test/ro-playback.test.js` opens by naming **six** defects and the two that mattered — the
+per-tick `scaleRoField` relayout, and the RAF loop guarding on a `_roPlaying` expando that a
+detached node keeps. Both fixes are in the source (`roDead()` guards on `isConnected`; the width is
+measured once at click time and passed down) and 41 assertions pin them. **The parking-lot entry is
+stale — tick it off.**
+
+**⚠ PARKING-LOT ITEM 17 IS ALSO ALREADY DELIVERED.** "Past line-ups should show the substitutions":
+`mnLineupChipsHtml` has been drawing on/off marks through `matchPlayerMarks` since the briefing was
+written. Nothing to build; the v214 anada work would only have restyled it.
+
+**Item 26, the rival's last five, was real — and needed no new request.** `js/utils.js:528` has said
+since the FCF rebuild that form arrives in the classificacio payload; nobody had looked. It does:
+every row carries `form`, five entries, most recent first, `result` as `G`/`E`/`P` **from that row's
+own point of view**. Verified against both captured payloads rather than a live call —
+`test/fixtures/fcf-finished.json` (sixteen rows, five each) and `fcf-preseason.json`.
+
+`parseFcfForm` maps to `W`/`D`/`L` rather than passing the Catalan letters through, because the
+strip is translated and **`P` is the letter for a WIN in English**. An unrecognised letter is
+**dropped**, not defaulted: the federation inventing a sixth letter should cost a square, not put a
+wrong result on a coach's screen.
+
+⚠ **Pre-season every row's `form` is `[]`** — all sixteen, in the captured payload. `ptFormRunHtml`
+renders **nothing at all** for an empty run. Five blank squares would read as a broken feed, and a
+season that has not started must not look like a proxy that is down.
+
+**The board overlay**, and one thing it deliberately does not have. Cards now carry the board's name
+and tag, staff get a ✕ that unlinks, and clicking one opens the board big on a scrim. Everything
+follows `_abPreview`, the app's worked example: render → `scaleRoBoards()` → `bindRoBoardAnimations()`.
+Only the scrim closes it — `e.target === overlay`, because anything looser shuts the panel the
+moment the coach presses ▶.
+
+⚠ **NO FRAME PILLS, and the handoff asks for them.** `applyRoFrame` — the only thing in the app that
+puts a chosen frame on a board — is a **closure inside `bindRoBoardAnimations`**, which is the
+function item 16 was about and which 41 source assertions pin. Pills would mean lifting it out of
+that closure or writing a second frame applier. The first is a refactor of the most recently
+repaired code in the file and does not belong inside a layout change; the second is the
+one-definition mistake these three rounds have spent their time undoing. The board's own ▶ / ⏸
+comes with it and works. A test asserts the pills are absent, so adding them later is a deliberate
+act.
+
+⚠ **Unlinking is by INDEX here, and by `b.name` everywhere else in the file.** The old key orphans
+the link the moment a board is renamed, and two boards sharing a name unlink each other. The new
+cards address the array position, which is unambiguous within the one list being edited, and the
+handler re-reads the blob before splicing rather than closing over a stale copy. **The other call
+sites still use the name** — they are outside this screen and deserve their own pass.
+
+**Not built: the `+ Vincula una pissarra` tile.** Linking a board to a match already has a home in
+the Pissarra editor, and a second entry point needs a board picker; flagged rather than half-built.
+The **anada block** keeps the existing briefing markup — it is functionally complete (see item 17)
+and only the restyle is outstanding.
+
+`test/partit.test.js` 73 → **87**; `fcf.test.js` gained eight for the form parser. Unit 2672 →
+**2695**. Four more mutants killed: `P` mapped to a draw, the empty run drawn as five draws, and the
+two from the home/away fix above.
+
+⚠ **The class-scan test had a false positive worth knowing about.** `\bpt-…` finds a word boundary
+after the hyphen in `data-pt-unlink`, so it reported a DATA ATTRIBUTE as a class with no CSS rule.
+It uses a lookbehind now.
+
+Version triple → v214. No rules and no functions deploy. **Still not verified in a browser** — same
+reason throughout: no headless browser on this machine.
+
+⚠ **The event icons were replaced with `.png` versions during this session (not by this work), and
+three references still pointed at the old `.jpg`.** `getEventIcon` and the new type chips would have
+drawn a broken image for every substitution — but the serious one is `sw.js`: `STATIC_ASSETS` still
+listed `./img/sub-home.jpg` and `./img/sub-away.jpg`, and **`cache.addAll()` rejects the entire
+batch if any single request 404s.** A stale name there does not cost one icon; it fails the service
+worker install and takes the whole precache with it. All three now say `.png`, and every `img/` path
+referenced from `js/` and `sw.js` was checked against the directory.
+
+### 2026-09-02 — Partit: three corrections from real fixtures (v215)
+
+The owner opened old demo games and reported three things. All three were real, and the first is a
+correction to something v213 got confidently wrong.
+
+**⚠ 1. THE TIMELINE FOLLOWS THE SCOREBOARD. v213 HAD IT BACKWARDS.**
+
+v213 read the handoff's "our events on the left" literally, found the old code keying on
+`ev.side === 'home'`, called that a bug and "fixed" it to ours-always-left. Against real fixtures
+that is wrong: the scoreboard directly above prints `home — away`, so at an away ground the timeline
+stacked our column under the rival's name and the two halves of one screen disagreed about which
+side was which.
+
+Columns are HOME and AWAY again — which is what the pre-redesign code did. An away fixture swaps
+sides, and that is the point: our events are always on the side the scoreboard prints us on.
+`.pt-ev-ours` / `.pt-ev-theirs` are now `.pt-ev-home` / `.pt-ev-away`, because the class names were
+asserting the thing that was wrong.
+
+`ptOurSide` **stays** and is still right — it decides ours/theirs for the event FORM, where the data
+genuinely differs: our squad is a player list, theirs is a shirt-number box. That is a question
+about whose squad the app knows, not about which way round to draw a row. Its own bug (never testing
+the away side, so a name mismatch silently answered `'away'`) was real and remains fixed.
+
+The lesson, and it is the expensive one: **the handoff describes a screen, not a data model.**
+"Our events on the left" is true of the mockup because the mockup is a home fixture. Reading it as a
+rule about ownership rather than about position produced a change that passed every test — including
+four I wrote specifically for it — and was still wrong in the app. The preview generator's away page
+now asserts the corrected direction.
+
+**2. The anada block and 3. the notes editor were never restyled.** Both keep their own markup
+inside `.pt-page` — `mnLegBannerHtml`, `mnBriefingHtml`, `mnNotesCardHtml` — and v212 only
+neutralised the `.card` shell around them, so they still read as panels from the old app. They are
+restyled now by **scoped CSS**, not rewritten:
+
+- the notes phases become the design's editable lines — eyebrow label, 14px text on a
+  `1px dotted #C9C3BB` underline that goes solid on focus, prompt in `#99928B`;
+- the briefing's `<summary>` becomes an eyebrow on a `1px solid #2D2926` rule, its grid gets the
+  44px columns, and its `.ev-*` timeline gets the same hairline rows as everything else.
+
+Restyled rather than re-emitted **because those renderers are wired to real save paths** —
+`.mn-text` blurs into `MN.saveText`, the video rows into `MN.saveVideos`, the `<details>` into a
+remembered localStorage preference. Rewriting the markup to change how it looks is how those get
+quietly cut. Every rule is scoped under `.pt-page`, so the Calendari's copy of the same leg banner
+is untouched, and tests pin both the scoping and the class/attribute hooks the save handlers read.
+
+⚠ **This is CSS-only, so it needs the version bump to be visible**: the service worker serves the
+old stylesheet until `CACHE_NAME` changes. Triple → v215.
+
+Unit 2695 → **2698**.
+
+### 2026-09-02 — Partit: the anada built, the score centred, the board cards fixed (v216)
+
+Four things reported from real demo fixtures. One of them was a bug I shipped, and it had been
+invisible to a suite of ninety tests for a reason worth writing down.
+
+**⚠ 1. `<button>` INSIDE `<button>` — the board cards.**
+
+v214 wrapped each linked-board thumbnail in `<button class="pt-board-open">`. `renderReadOnlyBoard`
+emits its own `<button class="tb-ro-play">`, `.tb-ro-stop` and `.tb-ro-3d` inside it. **Nested
+buttons are invalid HTML**: the parser closes the outer one the moment it meets the inner, so the
+DOM the browser builds is not the DOM the markup describes. That is the whole of the owner's report
+— the ✕ was parsed out of the card and never appeared, one tap on 3D ran two handlers (the 3D view
+*and* the overlay), and ▶ on a thumbnail could not reach its own listener.
+
+The card is a `<div>` carrying `data-pt-board`, and its click handler ignores anything inside
+`.tb-ro-ctl` — the board's own control strip — so ▶ and 3D keep their clicks.
+
+**The lesson: parse the markup, do not match it.** Every existing test for that grid asserted on the
+*string* `ptBoardsHtml` returns, where the nesting is invisible because the string is exactly what
+was written. Only a parser shows it. `test/partit.test.js` now parses with jsdom.
+
+⚠ **And the first version of that new test passed against the bug.**
+`root.querySelectorAll('button button')` comes back **empty** for the broken markup — because jsdom
+has already *rescued* it by closing the outer button early. It reports success for the very input it
+exists to catch. What is wrong is the markup the browser is handed, so the assertion scans the
+string for button nesting depth and the DOM checks pin the card structure separately.
+
+**2. The score now sits on the band's centre line.** `.pt-sb-row` was `flex; justify-content:center`,
+which centres the row's *content* — with two club names of different length that puts the score
+wherever their difference leaves it, visibly off the axis of the eyebrow above. It is a grid,
+`1fr auto auto auto 1fr`: the flanks are equal by definition and both crests are 64px, so the score
+lands on the true centre whatever the clubs are called. The ≤700px rule goes back to flex, where
+everything is centred anyway.
+
+**3. The anada block is real now — `ptAnadaHtml`.** v212 kept `mnBriefingHtml`'s markup and v215
+tried to restyle it into the design. That could not work and I should have seen it sooner: the
+briefing has **no minutes column, no team badges and no collapse row**, and CSS does not reorganise
+a layout. The block is built: header row with the fixture-order score badge, then three columns —
+the team sheet with minutes, the events with a crest and no team names, and the board — with
+`NOTES D'AQUELL PARTIT` under the events.
+
+- **Minutes come from `playerMatchMinutesKnown`, which returns null or a NUMBER.** A substitute who
+  never came on shows `—` and greys; a recorded **0 shows as `0'`**. Treating them alike is the bug
+  that helper exists to prevent, and the first version of the test could not tell them apart because
+  no fixture player had 0. It does now.
+- **The formation is derived and omitted when it cannot be known** — not eleven players, an
+  unrecognised position, or not exactly one goalkeeper, and the heading is just `ALINEACIÓ`. A
+  formation is a claim about how the team set up; a wrong one is worse than none.
+- The badge reads **home–away**, coloured by *our* result via the existing `mnOutcome` — the same
+  correction the timeline needed in v215, for the same reason: it sits between the two club names.
+- The `<details>` keeps `.mn-brief`, so the existing toggle handler goes on writing
+  `MN_BRIEF_COLLAPSED` and a coach's remembered choice survives the rewrite. The dismiss button
+  reuses `.mn-leg-dismiss`, already wired to `MN.dismissLeg`.
+- The 🔒 Privat / 📣 Enviat media split is **kept**, folded into the board column, on the owner's
+  call — it is not in the design but it is shipped and useful.
+
+The v215 `.pt-page .mn-brief*` rules are **deleted**; they existed only to restyle markup that no
+longer renders, and a test now fails if they come back. The `.pt-page .mn-*` **notes** rules stay —
+that block is still the old markup by design.
+
+⚠ **`mnBriefingHtml` now has no caller**, along with `mnScoreBlockHtml`, `mnLineupChipsHtml` and
+`fitMnScoreNames` reached only through it. `test/match-notes-render.test.js` still exercises them, so
+they are not dead weight in the suite — but they are dead in the app. **Left for a deliberate pruning
+pass**, not deleted in the middle of a layout change.
+
+**4. The 3D button is hidden on thumbnails only** (`.pt-boards .tb-ro-3d`), kept in the overlay where
+there is room. Not removed from the markup: `tbCan3D()` decides whether the club has the feature, and
+that is not a stylesheet's decision to second-guess. The overlay's `scaleRoBoards()` and
+`bindRoBoardAnimations()` moved into a `requestAnimationFrame`, so the board is measured against a
+laid-out panel rather than one mid-transition.
+
+**Two preview-fixture bugs found while adding the anada to the mockup**, both of which would have
+shown the reviewer something untrue: `calcMatchScore`'s stub counted every event as a goal, so a
+fixture with two bookings displayed a scoreline two goals higher than it was; and the squad's
+positions cycled through a nine-item list, giving two goalkeepers, so `ptFormation` correctly refused
+to name a shape and the heading looked broken. The stub counts goals now (own goals to the other
+side) and the squad is a real 4-3-3.
+
+Unit 2702 → **2718**. Three mutants killed: the `—`/`0` collapse, the badge in ours-first order, and
+the formation without its goalkeeper guard. Version triple → v216.
+
+⚠ **Still not verified in a browser** — no headless browser here. `partit-preview.html` now renders
+the anada expanded on the staff page, which is the block the owner's screenshot was of.
+
+### 2026-09-02 — Partit: five corrections from using the event form (v217)
+
+**⚠ 1. A PENALTY COULD BE GIVEN AN ASSIST, and the record kept it.**
+
+`ptSecondField` offered the ASSISTÈNCIA picker for every goal, not only an open-play one. Penalties
+and direct free kicks are restarts; nobody assists them. That is not merely clutter — whatever was
+chosen there went to `assistPlayerId`, and `computePlayerStats` counts that field, so a player could
+carry an assist on a penalty for the rest of the season.
+
+Two halves to the fix, and the second is the one that would have been missed: the rule now takes the
+goal type, **and picking a non-open-play type clears `second`**. Without that, choosing an assister
+and *then* switching to Penal leaves the name in the form's state — the field disappears from the
+screen, so nothing shows it, and the submit still writes it. **An invisible assist.** The submit
+handler asks `ptSecondField` too rather than testing `second` alone, so the form and the write share
+one rule instead of having two that can disagree.
+
+**2. The player dropdown ran off the page.** `.pt-sel` menus were absolutely positioned, so an
+eighteen-player squad opened a list taller than the space beneath the trigger: it grew the page
+instead of floating over it and the bottom of the squad could not be reached. They carry
+**`.std-sel-esc`** now — the existing mechanism that makes the menu `position:fixed` and lets
+`stdSelPlace` flip it above the trigger when there is no room below. That logic only ever runs for
+that class, which is why it was not helping. `overflow-y:auto` under the 236px cap makes a long list
+scroll inside the menu.
+
+**3. The board picker was the app's last native `<select>`.** A native popup is drawn by the
+operating system and ignores every rule we write, so on a page made of hairlines it opened as a stray
+system widget. It is a `stdSelect` now, kind `mnboard`, also `.std-sel-esc`. The Add button reads
+`root.dataset.value` — the attribute `bindStdSelects` writes — exactly as it read `select.value`.
+**There is now no `<select>` left in the match screens at all.**
+
+**4. Collapsing the anada hid the result.** The score row sat below the `<summary>`, so shutting the
+block left the eyebrow saying there *had been* a first leg without saying how it went — the one thing
+a coach collapses it down to. The date, both club names and the badge are inside the `<summary>` now;
+only the three columns fold away. The `Veure/Tanca el detall` toggle moved onto that row.
+
+**5. The referee section vanished when no referee was appointed.** `mdRefDetailHtml` returns `''`
+before the federation publishes one, and the whole third of the context band went with it, so the
+page looked as though it had lost a section. The heading is built first and the empty case says
+**"Encara no hi ha àrbitre designat per aquest partit"**. A fixture with no referee yet is a normal
+state before the weekend, and an absent block and an unappointed referee must not look alike.
+
+⚠ **A test stub hid a real assertion, for the third time in this redesign.** The `stdSelect` stub in
+`test/partit.test.js` returned kind/value/count and **threw `cls` away**, so a test asserting the menu
+is viewport-aware failed against the stub rather than the code. A stub that drops an argument cannot
+answer questions about that argument. It carries `cls` now. (The earlier two: `resolveEventName`
+rendering `Núm. 9` where the app renders `#9`, and `tbRoBoardHtml` not escaping.)
+
+Unit 2718 → **2725**. Two mutants killed: the assist offered for every goal type, and the referee
+column allowed to come back empty. Version triple → v217.
+
+### 2026-09-02 — Partit: two removals, one restyle, one proposal (v218)
+
+**1. The anada's two links are gone**, on the owner's instruction: `Obre la fitxa del partit` and
+`No és l'anada d'aquest partit`, with their handler, their strings and their CSS.
+
+⚠ **What went with the second one.** It was the only way to REJECT a first leg from this page.
+`mnLegBannerHtml` offers one too, but only while the suggestion is UNANSWERED — `mnLegSuggestion`
+returns null once a coach has accepted it, and when both fixtures carry an `fcfActaId` the pairing is
+certain and no banner ever appears. **A wrongly linked first leg now has no undo anywhere in the
+app.** `MN.dismissLeg` is untouched and still exported, so restoring the affordance is one button; a
+test asserts the links are absent so their removal reads as a decision rather than an accident.
+
+**2. The pissarra picker and its Afegir are in the page's idiom.** The button was still
+`.btn.btn-outline.btn-small` — rounded, shadowed — which made it the last such control on the screen.
+It and the picker are now one hairline row scoped under `.pt-page`.
+
+**3. PROPOSED, NOT WIRED: the fixture dialog.** `calModal` is still the old `.modal-card` — rounded,
+shadowed, centred text, with native `<select>`s inside for category, squad letter and kick-off time.
+(So the v217 claim that no `<select>` remains in the match screens was true of the page and **not** of
+the dialog it opens.)
+
+It is **not** rewritten yet, deliberately. `calModal` is shared by three dialogs — edit match, add
+match, add activity — and the last two belong to the Calendari, so the change lands well beyond this
+screen; and the match dialog is the one control here that WRITES FIXTURES. The owner offered a mockup
+and it was worth taking: `partit-preview.html` now ends with a `PROPOSED` section showing the dialog
+in the paper idiom over the scrim it would really open on — eyebrow labels, hairline fields,
+`stdSelect` for the three selects, home/away as chips, `Desa` filled, `Cancel·la` a link, and
+`Elimina el partit` pushed to the far edge so it is never the button beside Save.
+
+⚠ That mockup is the **only hand-written markup** in the preview generator; everything else is sliced
+from `js/app.js`. If the proposal is accepted it goes and the real function is sliced in like the
+rest; if it is rejected, the `.pt-dlg-*` CSS goes with it. Both are marked in place.
+
+Unit 2725 → **2724** (the two removed-link assertions became one). Version triple → v218.
+
+### 2026-09-03 — Partit: the rival's kit, and the fixture dialog in the paper idiom (v219/v220)
+
+**1. "Uniforme del rival" in the facts column — and a size bug it uncovered.**
+
+The rival's two strips were a `.card.md-oppkits` block of their own further down the page: the one
+place a coach never looked. They are a facts row now, directly under our own kit, which is where a
+clash is actually noticed. That also disposes of an invalid nesting — `mdKitCellHtml` builds a
+`<td>` for the Calendari's table and this page dropped one into a `<div>`, which only worked because
+browsers unwrap an orphan cell.
+
+⚠ **Our own kit in that row was rendering at 72px.** `kitIconsHtml` took no size, so it always used
+`KIT_ICON_PX` — a card-sized icon in a label/value row. The markup it replaced had pinned it to 30px
+**in CSS**, which the codebase forbids for exactly the reason it documents: every band boundary is
+arithmetic against the rendered size, and scaling afterwards turns bands of one width into bands of
+several. `kitIconsHtml` takes `opts.size` now and passes it to all three pieces.
+
+**Two constants, and they differ on purpose:**
+
+| | | |
+|---|---|---|
+| `PT_KIT_PX` | **36** | ours, via `shirtSvg`. Up to NINE bands across `S/2`, so S must be a multiple of **18**. |
+| `PT_OPP_KIT_PX` | **32** | the rival's, via `fcfShirtSvg`. `FCF_FILL_PATTERNS` uses four and eight, so S must be a multiple of **16**. |
+
+Four pixels apart, reading as the same size, each the nearest correct number for its own renderer.
+**Do not tidy them to one value** — a test asserts both moduli.
+
+ⓘ While here: `mdKitCellHtml`'s comment says "MD_KIT_PX is 32" and the constant is **48**. The
+reasoning holds for 48 (torso 24 divides by 4 and 8), so only the comment is stale. Left alone —
+it is the Calendari's, not this screen's.
+
+**2. Two anada links removed** on the owner's instruction, with the ⚠ recorded in v218: rejecting a
+wrongly linked first leg now has no route anywhere once the suggestion has been answered.
+
+**3. The pissarra picker and its Afegir** are in the page's idiom — the button was the last
+`.btn.btn-outline` on the screen.
+
+**4. The fixture dialog is the paper dialog now (v220).** The owner approved the mockup, so
+`calModal` was rewritten: `.pt-dlg` instead of `.modal-card`, eyebrow labels, hairline fields,
+home/away as chips, `Desa` filled, `Cancel·la` a link, and the delete pushed to the far edge of the
+actions row — it used to be the last control in the BODY, a red button one row above Save on a
+dialog whose other button removes a fixture for the whole club.
+
+⚠ **Three native `<select>`s became stdSelects**, and this is where a silent break lived: a stdSelect
+root has **no `.value`**. A missed call site does not throw — it files a fixture under an empty
+category or with a blank kick-off. All four reads moved to `dataset.value` (`calPickedSquad`'s two,
+the match dialog's `kickoff`, the activity dialog's start and end), and
+`test/calendar-render.test.js` counts the time reads and fails if any one still says `.value`.
+
+⚠ **The dialog binds its own pickers.** `bindDynamicActions` runs after a render; this markup is
+injected straight into `document.body` with no render behind it, so an unbound picker draws
+perfectly and never opens. `bindStdSelects(['calcat','calletter','caltime'])` is called inside
+`calModal`, and changing the CATEGORY clears a squad letter that no longer exists in it rather than
+rebuilding the dialog and discarding what has been typed.
+
+The hand-written mockup is **gone from the preview generator** — it was the only hand-written markup
+in that file, and now that the dialog is real a duplicate would drift. Its own comment said so.
+
+Unit 2725 → **2736**. Six mutants killed across the two rounds: bad kit-size constant, size not
+passed, kick-off read reverted to `.value`, squad read reverted, and the pickers left unbound.
+Version triple → **v220**.
+
+⚠ **Not deployed.** Still unverified in a browser — no headless browser here. `partit-preview.html`
+covers the page; the dialog now only exists in the app, so it needs opening there: Editar on a
+fixture, the category and time pickers, Desa, and the Calendari's add-match and add-activity, which
+share the same shell.

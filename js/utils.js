@@ -586,6 +586,10 @@ function parseFcfClassificacio(json, clubName) {
       f: parseInt(r.goalsFor, 10) || 0,
       c: parseInt(r.goalsAgainst, 10) || 0,
       badge: (!logo || logo.indexOf('escutbase') !== -1) ? '' : FCF_BADGE_BASE + logo,
+      /* The last five, from THIS team's point of view. Parking-lot item 26,
+         and it needed no new request: the array was in this payload the
+         whole time (see the section note above) and was simply dropped. */
+      form: parseFcfForm(r.form),
       /* The promotion/relegation stripe. `promociones` came back empty for
          every group sampled after the rebuild, so there is nothing to colour
          — but the field and both renderers' `r.zone` branches stay, so it
@@ -600,6 +604,49 @@ function parseFcfClassificacio(json, clubName) {
       ours: ours && sameClubName(team.name, clubName)
     };
   });
+}
+
+/* The federation's letters for a result, from the row team's point of view:
+   Guanyat, Empatat, Perdut. Mapped to machine tokens rather than kept as
+   Catalan, because the strip that draws them is translated and `P` would be
+   the letter for a WIN in English. */
+const FCF_RESULT = {G: 'W', E: 'D', P: 'L'};
+
+/**
+ * A team's recent results, most recent first — the `form` array that has
+ * been arriving in the classificacio payload all along (see the note at the
+ * head of this section) and that nothing parsed until v214.
+ *
+ * → [{res: 'W'|'D'|'L', date: 'YYYY-MM-DD', label: 'A 1–0 B'}]
+ *
+ * ⚠ EMPTY IS A REAL ANSWER, not a failure. Pre-season every row carries
+ * `form: []`, because no match has been played — verified against
+ * test/fixtures/fcf-preseason.json, where all sixteen are empty, and
+ * against fcf-finished.json, where all sixteen have exactly five. The
+ * caller must hide the strip rather than draw five blank squares: a feed
+ * that is not there and a season that has not started must not look alike.
+ *
+ * An unrecognised letter is DROPPED rather than defaulted. Defaulting it to
+ * a draw would invent a result, and the federation inventing a sixth letter
+ * should cost us a square, not put a wrong one on a coach's screen.
+ */
+function parseFcfForm(form) {
+  if (!Array.isArray(form)) return [];
+  return form.map(function (f) {
+    const res = FCF_RESULT[String((f && f.result) || '').toUpperCase()];
+    if (!res) return null;
+    const h = (f && f.home) || {};
+    const a = (f && f.away) || {};
+    return {
+      res: res,
+      date: String((f && f.date) || '').slice(0, 10),
+      /* For the hover title. Per-MATCH goals, so the concatenation bug that
+         ruins `played`/`won`/`drawn`/`lost` does not apply: there are no two
+         halves to glue together. */
+      label: String(h.name || '').trim() + ' ' + String(h.goals || '0') +
+        '–' + String(a.goals || '0') + ' ' + String(a.name || '').trim()
+    };
+  }).filter(Boolean);
 }
 
 /** An absolute crest URL from FCF's filename, or ''. */
@@ -1656,6 +1703,9 @@ if (typeof module !== 'undefined' && module.exports) {
     // only place the "played is two numbers glued together" trap is handled.
     fcfGrupId,
     parseFcfClassificacio,
+    // Exported separately as well: the last-five strip is worth testing on
+    // its own, empty pre-season array and unknown letters included.
+    parseFcfForm,
     FCF_BADGE_BASE,
     // The rival's kit. fcfShirtFill is where FCF's pattern vocabulary meets
     // the app's fill encoding, and the only place that mapping exists.

@@ -443,10 +443,16 @@
     // Staff-only strings: no player's client ever renders any of these.
     'mn.title':          { ca:'Notes del cos tècnic', es:'Notas del cuerpo técnico', en:'Coaching notes' },
     'mn.staff_only':     { ca:'Només visible per al cos tècnic', es:'Solo visible para el cuerpo técnico', en:'Visible to staff only' },
-    'mn.pre':            { ca:'Abans del partit', es:'Antes del partido', en:'Before the match' },
-    'mn.post':           { ca:'Després del partit', es:'Después del partido', en:'After the match' },
+    /* The three phases, worded as the v213 handoff has them — PLA /
+       DURANT EL PARTIT / DESPRÉS — rather than the old "Abans del partit"
+       / "Després del partit". `mn.live` is the new one; the other two were
+       reworded so the set reads as one sequence. */
+    'mn.pre':            { ca:'Pla', es:'Plan', en:'Plan' },
+    'mn.live':           { ca:'Durant el partit', es:'Durante el partido', en:'During the match' },
+    'mn.post':           { ca:'Després', es:'Después', en:'After' },
     'mn.pre_ph':         { ca:'Pla de partit, rival, consignes…', es:'Plan de partido, rival, consignas…', en:'Match plan, opponent, instructions…' },
-    'mn.post_ph':        { ca:'Què ha passat, què cal corregir…', es:'Qué ha pasado, qué corregir…', en:'What happened, what to fix…' },
+    'mn.live_ph':        { ca:'Què està passant, què cal ajustar…', es:'Qué está pasando, qué ajustar…', en:'What is happening, what to adjust…' },
+    'mn.post_ph':        { ca:'Escriu la valoració quan acabi el partit…', es:'Escribe la valoración cuando acabe el partido…', en:'Write the review when the match ends…' },
     'mn.videos':         { ca:'🎬 Vídeos', es:'🎬 Vídeos', en:'🎬 Videos' },
     'mn.add_video':      { ca:'+ Afegir enllaç de vídeo', es:'+ Añadir enlace de vídeo', en:'+ Add video link' },
     'mn.boards':         { ca:'Pissarres', es:'Pizarras', en:'Boards' },
@@ -480,6 +486,82 @@
     'ev.yellow_second':  { ca:'Segona groga', es:'Segunda amarilla', en:'Second yellow' },
     'ev.sub_on':         { ca:'Entra', es:'Entra', en:'On' },
     'ev.sub_off':        { ca:'Surt', es:'Sale', en:'Off' },
+
+    /* ── Partit (match detail redesign) ──
+       `pt.` and not `match_detail.` because the two coexist: the old keys
+       still name the strings the legacy `.detail-*` markup uses elsewhere
+       (the Calendari's call-up banner among them), and reusing a key whose
+       wording the redesign changes would silently reword those too. */
+    'pt.eyebrow':        { ca:'Partit', es:'Partido', en:'Match' },
+    'pt.back_calendar':  { ca:'Calendari', es:'Calendario', en:'Calendar' },
+    'pt.jornada':        { ca:'Jornada', es:'Jornada', en:'Matchday' },
+    'pt.today':          { ca:'El partit d\'avui', es:'El partido de hoy', en:'Today\'s match' },
+    'pt.f_callup':       { ca:'Convocatòria', es:'Convocatoria', en:'Call-up' },
+    'pt.f_kit':          { ca:'Uniforme', es:'Uniforme', en:'Kit' },
+    'pt.kit_word':       { ca:'equipació', es:'equipación', en:'kit' },
+    'pt.f_kit_opp':      { ca:'Uniforme del rival', es:'Uniforme del rival', en:'Opponent\'s kit' },
+    'pt.f_called':       { ca:'Convocats', es:'Convocados', en:'Called up' },
+    'pt.f_rival':        { ca:'Rival', es:'Rival', en:'Opponent' },
+    'pt.pts':            { ca:'pts', es:'pts', en:'pts' },
+    'pt.referee':        { ca:'L\'àrbitre', es:'El árbitro', en:'The referee' },
+    'pt.no_referee':     { ca:'Encara no hi ha àrbitre designat per aquest partit.', es:'Todavía no hay árbitro designado para este partido.', en:'No referee has been appointed for this match yet.' },
+    'pt.boards':         { ca:'Pissarres vinculades', es:'Pizarras vinculadas', en:'Linked boards' },
+    'pt.boards_n':       { ca:'vinculades', es:'vinculadas', en:'linked' },
+    'pt.board_of_match': { ca:'Pissarra del partit', es:'Pizarra del partido', en:'Match board' },
+    // ── Anada (the first leg, in full) ──
+    'pt.lineup':         { ca:'Alineació', es:'Alineación', en:'Line-up' },
+    'pt.subs':           { ca:'Suplents', es:'Suplentes', en:'Subs' },
+    'pt.leg_notes':      { ca:'Notes d\'aquell partit', es:'Notas de aquel partido', en:'Notes from that match' },
+    'pt.leg_board':      { ca:'Pissarra de l\'anada', es:'Pizarra de la ida', en:'First-leg board' },
+    'pt.leg_detected':   { ca:'detectada pel rival i el camp', es:'detectada por el rival y el campo', en:'detected by opponent and venue' },
+    'pt.no_board':       { ca:'Cap pissarra d\'aquell partit.', es:'Ninguna pizarra de aquel partido.', en:'No board from that match.' },
+    'pt.board_unreadable': { ca:'No s\'ha pogut llegir la pissarra.', es:'No se ha podido leer la pizarra.', en:'The board could not be read.' },
+    'pt.unlink':         { ca:'Desvincula del partit', es:'Desvincula del partido', en:'Unlink from the match' },
+    'pt.unlink_ask':     { ca:'Vols desvincular «{n}» d\'aquest partit? La pissarra no s\'esborra.', es:'¿Quieres desvincular «{n}» de este partido? La pizarra no se borra.', en:'Unlink “{n}” from this match? The board itself is not deleted.' },
+    'pt.notes':          { ca:'Notes del cos tècnic', es:'Notas del cuerpo técnico', en:'Coaching notes' },
+    'pt.staff_only':     { ca:'només staff', es:'solo staff', en:'staff only' },
+    'pt.events':         { ca:'Esdeveniments', es:'Eventos', en:'Events' },
+    'pt.events_n':       { ca:'registrats', es:'registrados', en:'recorded' },
+    'pt.callup':         { ca:'Convocats', es:'Convocados', en:'Called up' },
+    'pt.titulars':       { ca:'Titulars', es:'Titulares', en:'Starters' },
+    'pt.bench':          { ca:'Banqueta', es:'Banquillo', en:'Bench' },
+    'pt.starters_n':     { ca:'Titulars', es:'Titulares', en:'Starters' },
+    /* The one hard rule of the player screen. It is a promise about WHEN,
+       not an apology for hiding something, so it names the moment. */
+    'pt.xi_locked':      { ca:'L\'onze inicial es publica a l\'hora del partit.', es:'El once inicial se publica a la hora del partido.', en:'The starting eleven is published at kick-off.' },
+    'pt.you_called':     { ca:'Ets convocat', es:'Estás convocado', en:'You are called up' },
+    'pt.you_not_called': { ca:'No convocat', es:'No convocado', en:'Not called up' },
+    'pt.sent':           { ca:'Enviada', es:'Enviada', en:'Sent' },
+    'pt.at_ground':      { ca:'al camp', es:'en el campo', en:'at the ground' },
+    'pt.rival':          { ca:'El rival', es:'El rival', en:'The opponent' },
+    /* One letter per square in the last-five run. Translated, which is why
+       parseFcfForm maps the federation's G/E/P to W/D/L rather than passing
+       the Catalan through: `P` is the letter for a WIN in English. */
+    'pt.res_w':          { ca:'V', es:'V', en:'W' },
+    'pt.res_d':          { ca:'E', es:'E', en:'D' },
+    'pt.res_l':          { ca:'D', es:'D', en:'L' },
+    'pt.form_caption':   { ca:'Últims 5 partits del rival, el més recent primer.', es:'Últimos 5 partidos del rival, el más reciente primero.', en:'The opponent\'s last 5, most recent first.' },
+    'pt.no_events':      { ca:'Encara no hi ha cap esdeveniment.', es:'Todavía no hay ningún evento.', en:'No events yet.' },
+    'pt.add_event':      { ca:'+ Event', es:'+ Evento', en:'+ Event' },
+    'pt.new_event':      { ca:'Nou esdeveniment', es:'Nuevo evento', en:'New event' },
+    'pt.close':          { ca:'Tanca', es:'Cierra', en:'Close' },
+    'pt.f_type':         { ca:'Tipus', es:'Tipo', en:'Type' },
+    'pt.f_goal_type':    { ca:'Tipus de gol', es:'Tipo de gol', en:'Goal type' },
+    'pt.f_minute':       { ca:'Minut', es:'Minuto', en:'Minute' },
+    'pt.f_player':       { ca:'Jugador', es:'Jugador', en:'Player' },
+    'pt.f_number':       { ca:'Núm.', es:'Núm.', en:'No.' },
+    'pt.f_assist':       { ca:'Assistència', es:'Asistencia', en:'Assist' },
+    'pt.f_in':           { ca:'Entra', es:'Entra', en:'On' },
+    'pt.f_out':          { ca:'Surt', es:'Sale', en:'Off' },
+    'pt.pick_player':    { ca:'Tria un jugador', es:'Elige un jugador', en:'Pick a player' },
+    'pt.none':           { ca:'Cap', es:'Ninguna', en:'None' },
+    'pt.submit_event':   { ca:'Afegeix al partit', es:'Añade al partido', en:'Add to the match' },
+    'pt.cancel':         { ca:'Cancel·la', es:'Cancela', en:'Cancel' },
+    'pt.assist_by':      { ca:'Assistència', es:'Asistencia', en:'Assist' },
+    'pt.off_for':        { ca:'Surt', es:'Sale', en:'Off' },
+    'pt.no_callup':      { ca:'La convocatòria encara no s\'ha enviat.', es:'La convocatoria aún no se ha enviado.', en:'The call-up has not been sent yet.' },
+    'pt.not_found':      { ca:'Partit no trobat', es:'Partido no encontrado', en:'Match not found' },
+
     // ── Plantilla (staff roster redesign) ──
     'pl.attendance':     { ca:'Assistència', es:'Asistencia', en:'Attendance' },
     'pl.available':      { ca:'Disponibles', es:'Disponibles', en:'Available' },
@@ -1911,7 +1993,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 211;
+  const APP_VERSION = 220;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2634,7 +2716,7 @@
         if (yellowCount >= 2) return '<span class="ev-icon ev-icon-yellow ev-yellow-second"><span class="ev-yellow-badge">2</span><img src="img/groga.png" class="ev-sub-img" alt="groga"></span>';
         return '<span class="ev-icon ev-icon-yellow"><img src="img/groga.png" class="ev-sub-img" alt="groga"></span>';
       case 'red': return '<span class="ev-icon ev-icon-red"><img src="img/vermella.png" class="ev-sub-img" alt="vermella"></span>';
-      case 'change': return '<span class="ev-icon ev-icon-change"><img src="img/sub-' + ev.side + '.jpg" class="ev-sub-img" alt="sub"></span>';
+      case 'change': return '<span class="ev-icon ev-icon-change"><img src="img/sub-' + ev.side + '.png" class="ev-sub-img" alt="sub"></span>';
       case 'penal_fallat': return '<span class="ev-icon ev-icon-penal-miss"><img src="img/penal%20fallat.png" class="ev-sub-img" alt="penal fallat"></span>';
       case 'pal': return '<span class="ev-icon ev-icon-post"><img src="img/pal.png" class="ev-sub-img" alt="pal"></span>';
       default: return '';
@@ -10781,8 +10863,11 @@
       mnScoreBlockHtml(first) + matchTimelineHtml(first, events, users, false),
       // The FIRST leg's events, which is whose line-up this is.
       mnLineupChipsHtml(first, users, events),
-      (note ? mnTextRoHtml(note.pre && note.pre.text, t('mn.pre')) : '') +
-        (note ? mnTextRoHtml(note.post && note.post.text, t('mn.post')) : '')
+      /* Every phase, from MN's own list — the briefing showed pre and post
+         and would have gone on silently omitting `live` for ever. */
+      (note ? MN.PHASES.map(function (p) {
+        return mnTextRoHtml(note[p] && note[p].text, t('mn.' + p));
+      }).join('') : '')
     ];
 
     var media =
@@ -10861,24 +10946,28 @@
     }).join('');
   }
 
+  /* Through MN.phaseKey, never a local `=== 'post' ? … : 'pre'`. Three
+     phases now, and the inline form of that test reads "anything I do not
+     recognise is the plan" — which files DURANT EL PARTIT under PLA. */
   function mnPhaseHtml(m, note, phase, ro) {
-    var block = (phase === 'post' ? note.post : note.pre) || {};
+    var key = MN.phaseKey(phase);
+    var block = note[key] || {};
     var vids = (note.videos || []).filter(function (v) {
-      return (v.phase === 'post' ? 'post' : 'pre') === phase;
+      return MN.phaseKey(v.phase) === key;
     });
-    var title = phase === 'post' ? t('mn.post') : t('mn.pre');
+    var title = t('mn.' + key);
     if (ro) {
       var roBody = mnTextRoHtml(block.text, title) + mnVideosRoHtml(vids, t('mn.videos'));
       return roBody || '';
     }
-    return '<div class="mn-phase" data-mn-phase="' + phase + '">' +
+    return '<div class="mn-phase" data-mn-phase="' + key + '">' +
       '<div class="mn-group-title">' + title + '</div>' +
-      '<textarea class="reg-input mn-text" data-mn-phase="' + phase + '" rows="4" placeholder="' +
-        (phase === 'post' ? t('mn.post_ph') : t('mn.pre_ph')) + '">' +
+      '<textarea class="reg-input mn-text" data-mn-phase="' + key + '" rows="4" placeholder="' +
+        t('mn.' + key + '_ph') + '">' +
         sanitize(block.text || '') + '</textarea>' +
-      '<div class="mn-video-list" data-mn-phase="' + phase + '">' +
-        mnVideoRowsHtml(vids, phase) + '</div>' +
-      '<button class="btn btn-outline btn-small mn-video-add" data-mn-phase="' + phase + '">' +
+      '<div class="mn-video-list" data-mn-phase="' + key + '">' +
+        mnVideoRowsHtml(vids, key) + '</div>' +
+      '<button class="btn btn-outline btn-small mn-video-add" data-mn-phase="' + key + '">' +
         t('mn.add_video') + '</button>' +
     '</div>';
   }
@@ -10889,10 +10978,16 @@
   function mnBoardsEditHtml(m, note, ro) {
     var list = note.boards || [];
     if (ro) return mnBoardsRoHtml(list, t('mn.boards'), 'mne-');
+    /* ⚠ Was the app's LAST native `<select>`. A native popup is drawn by the
+       operating system and ignores every rule we write, so on a page made of
+       hairlines it opened as a stray Windows widget — which is what the owner
+       saw. `stdSelect` is the app's own control and the one with a jsdom test
+       behind it; `.std-sel-esc` places the menu against the viewport so a long
+       board library does not run off the bottom of the page. */
     var opts = (typeof TB !== 'undefined' && TB.ready() ? TB.library() : [])
       .map(function (b) {
-        return '<option value="' + sanitize(b.id) + '">' + sanitize(b.name || '—') + '</option>';
-      }).join('');
+        return {value: String(b.id), label: String(b.name || '—')};
+      });
     var chips = list.map(function (b, i) {
       return '<span class="mn-board-chip">' + sanitize(b.name || b.boardId) +
         '<button class="mn-board-remove" data-mn-idx="' + i + '" title="' +
@@ -10902,10 +10997,12 @@
       '<div class="mn-group-title">' + t('mn.boards') + '</div>' +
       '<div class="mn-hint">' + t('mn.boards_private') + '</div>' +
       '<div class="mn-board-chips">' + chips + '</div>' +
-      (opts
-        ? '<div class="mn-board-picker"><select class="reg-input" id="mn-board-select">' +
-            '<option value="">' + t('mn.pick_board') + '</option>' + opts + '</select>' +
-            '<button class="btn btn-outline btn-small" id="mn-board-add">' + t('mn.add_board') + '</button></div>'
+      (opts.length
+        ? '<div class="mn-board-picker">' +
+            stdSelect({kind: 'mnboard', cls: 'std-sel-esc', value: '',
+              options: [{value: '', label: t('mn.pick_board')}].concat(opts)}) +
+            '<button class="btn btn-outline btn-small" id="mn-board-add">' +
+              t('mn.add_board') + '</button></div>'
         : '<div class="mn-hint">' + t('mn.no_boards') + '</div>') +
       mnBoardsRoHtml(list, '', 'mne-') +
     '</div>';
@@ -10929,13 +11026,15 @@
        `===` or a `!`. */
     var ro = !canEditMatchRecord(getSession());
     var boards = staffAccess('tactics') === 'edit' ? mnBoardsEditHtml(m, note, ro) : '';
-    var pre = mnPhaseHtml(m, note, 'pre', ro);
-    var post = mnPhaseHtml(m, note, 'post', ro);
-    if (ro && !pre && !post && !boards) return '';
+    /* Over MN.PHASES rather than a hand-written pre/post pair: the phases
+       are that module's list, and a page that names them itself is a
+       second opinion about how many there are. */
+    var phases = MN.PHASES.map(function (p) { return mnPhaseHtml(m, note, p, ro); });
+    if (ro && !phases.some(Boolean) && !boards) return '';
     return '<div class="card mn-card" data-mn-match="' + sanitize(String(m.id)) + '">' +
       '<div class="card-title">' + t('mn.title') +
         '<span class="mn-lock" title="' + t('mn.staff_only') + '">🔒</span></div>' +
-      pre + post + boards +
+      phases.join('') + boards +
     '</div>';
   }
 
@@ -11101,10 +11200,918 @@
       '</ul></div>';
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     PARTIT — the match detail screen, redesigned (v212).
+
+     One paper surface in horizontal bands rather than a stack of
+     cards: top bar, scoreboard, anada, context (three columns),
+     play (two columns). The staff and player screens are the SAME
+     builders with a `mode`, not two renderers — the difference
+     between them is which blocks are asked for and one hard rule
+     about the starting eleven (ptCallupHtml), and two renderers
+     would drift on that rule the day one of them was edited.
+
+     Classes are `.pt-*` and not the handoff's `.md-*`: `md-` already
+     names the matchday cards, the referee record, the kit cells and
+     the calendar datepicker across five separate clusters of CSS.
+     Recorded in CONTEXT.md as a departure from the design.
+     ═══════════════════════════════════════════════════════════ */
+
+  /**
+   * Which side of this fixture is US — 'home' or 'away'.
+   *
+   * ⚠ IT ASKS ABOUT BOTH SIDES. Every call site used to be the inline
+   * `isOurTeam(m.home) ? 'home' : 'away'`, which does not test the away
+   * side at all: it assumes that if the home name is not ours, the away
+   * one must be. When NEITHER matches — `isOurTeam` is a strict `===` on
+   * the configured club name, so an FCF import spelled
+   * "L'ESQUERRA DE L'EIXAMPLE, F.C." against a config reading
+   * "L'Esquerra de l'Eixample" is enough — it silently answered 'away',
+   * and the whole Esdeveniments column flipped: our goals drawn under the
+   * rival's name, at our own ground, with nothing on screen to say so.
+   *
+   * Deliberately NOT made lenient with sameClubName. utils.js `ourSideOf`
+   * records why: exact equality is what keeps this and the scoreboard from
+   * disagreeing about which side is ours on the same screen, and a club
+   * that renames mid-season should lose the answer rather than be given a
+   * wrong one. What changes here is only that "neither" stops being
+   * mistaken for "away".
+   *
+   * The fallback is 'home' so an unrecognisable fixture still reads
+   * left-to-right in the order the scoreboard above it prints the names.
+   */
+  function ptOurSide(m) {
+    if (!m) return 'home';
+    if (isOurTeam(m.home)) return 'home';
+    if (isOurTeam(m.away)) return 'away';
+    return 'home';
+  }
+
+  /** A section eyebrow with an optional right-hand note. */
+  function ptHead(title, note) {
+    return '<div class="pt-sec-head"><span class="pt-eyebrow">' + title + '</span>' +
+      (note ? '<span class="pt-sec-note">' + note + '</span>' : '') + '</div>';
+  }
+
+  /**
+   * One side's crest, falling back to a monogram disc.
+   *
+   * `matchSideBadgeHtml` renders NOTHING without a badge, which is right
+   * for a fixture row and wrong for a 64px scoreboard: the gap reads as a
+   * broken image rather than as a club we have no crest for. The handoff
+   * draws a monogram in that slot, so a friendly against a club in neither
+   * the club config nor the FCF group still balances.
+   */
+  function ptCrestHtml(m, side) {
+    var url = isOurTeam(m[side]) ? clubBadgeUrl() : (m.opponentBadge || '');
+    if (url) {
+      return '<img src="' + sanitize(safeHttpUrl(url)) + '" class="pt-crest" alt="" ' +
+        'onerror="this.style.display=\'none\'">';
+    }
+    var initials = String(m[side] || '').replace(/[^\p{L}\p{N} ]/gu, ' ')
+      .trim().split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); })
+      .join('').toUpperCase();
+    return '<span class="pt-crest pt-crest-mono">' + sanitize(initials) + '</span>';
+  }
+
+  /**
+   * The rival's league standing as `4t · 41 pts`, or ''.
+   *
+   * Points come from the standings cache the Calendari already fills
+   * (`_leagueCache`), matched on the federation id when the fixture has one
+   * and on the exact name when it does not — the same certainty ladder
+   * `fcfLookup` uses, and for the same reason. `m.opponentPos` is the
+   * position frozen at kick-off and is the fallback, so a past fixture
+   * keeps reading as it did on the day rather than as the table stands now.
+   */
+  function ptRivalRow(m) {
+    var rivalName = opponentOf(m, getClubName());
+    var rows = _leagueCache['league-' + (m.category || '') + '-' + (m.team || '')] || [];
+    var id = String(m.opponentTeamId || '');
+    var needle = String(rivalName || '').trim().toLowerCase();
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (id && String(r.teamId || '') === id) return r;
+      if (!id && String(r.rawName || r.club || '').trim().toLowerCase() === needle) return r;
+    }
+    return null;
+  }
+
+  function ptRivalStanding(m) {
+    var row = ptRivalRow(m);
+    var pos = leaguePosLabel(row ? row.pos : m.opponentPos, _lang);
+    if (!pos) return '';
+    /* Position without points is still worth showing — a past fixture has
+       the frozen position and no cached row behind it. */
+    return row ? (pos + ' · ' + row.pts + ' ' + t('pt.pts')) : pos;
+  }
+
+  /**
+   * The rival's last five, most recent first.
+   *
+   * ⚠ Renders NOTHING for an empty run rather than five blank squares.
+   * Pre-season every team's `form` is `[]` — no match has been played — and
+   * a strip of empty boxes reads as a broken feed. A season that has not
+   * started and a proxy that is down must not look alike.
+   *
+   * Each square carries the fixture in its `title`, because a coach's next
+   * question after "they have lost four" is always "to whom".
+   */
+  function ptFormRunHtml(form) {
+    if (!form || !form.length) return '';
+    return '<div class="pt-form">' +
+      form.map(function (f) {
+        return '<span class="pt-form-b pt-form-' + f.res.toLowerCase() + '" title="' +
+          sanitize(f.date + ' · ' + f.label) + '">' +
+          t('pt.res_' + f.res.toLowerCase()) + '</span>';
+      }).join('') +
+    '</div><div class="pt-form-cap">' + t('pt.form_caption') + '</div>';
+  }
+
+  /* ── Kit sizes in the facts column ──
+     Both are the RENDERED size, passed as an argument. The two numbers
+     differ because the two renderers have different arithmetic, and
+     splitting the difference would break one of them:
+
+       PT_KIT_PX = 36   our own kit, via shirtSvg. The striped span is S/2
+                        and up to NINE bands must be whole pixels, so S has
+                        to be a multiple of 18. 36 is the smallest that
+                        reads at a label/value row's scale; 72 (the default)
+                        is a card-sized icon and was what this row was
+                        drawing before.
+       PT_OPP_KIT_PX = 32   the rival's, via fcfShirtSvg. FCF_FILL_PATTERNS
+                        uses FOUR and EIGHT bands, so the torso — S/2 —
+                        must divide by 8, which makes S a multiple of 16.
+
+     36 and 32 are four pixels apart and read as the same size; each is the
+     nearest correct number for its own renderer. Do NOT "tidy" them to one
+     value, and do not scale either in CSS — see the KIT_ICON_PX note. */
+  var PT_KIT_PX = 36;
+  var PT_OPP_KIT_PX = 32;
+
+  /**
+   * The rival's two strips, or '' when the fixture carries neither.
+   *
+   * ⚠ Not `mdKitCellHtml`, which returns a `<td>` — it is built for the
+   * Calendari's table and dropping one into a `<div>` is the invalid nesting
+   * this redesign already had to unpick once with the board cards. Same
+   * renderers, same passed size, a `<span>` around them.
+   */
+  function ptOppKitsHtml(m) {
+    var out = [
+      {kit: m.opponentKit, label: t('cal.opp_kit_1')},
+      {kit: m.opponentKitAway, label: t('cal.opp_kit_2')}
+    ].map(function (k) {
+      var pieces = fcfKitPieces(k.kit);
+      if (!pieces) return '';
+      return '<span class="pt-oppkit" title="' + sanitize(k.label) + '">' +
+        '<span class="kit-icons">' +
+          fcfShirtSvg(pieces, m.opponentBadge || '', PT_OPP_KIT_PX) +
+          shortsSvg(pieces.shorts, PT_OPP_KIT_PX) +
+          kitSockSvg(pieces.socks, PT_OPP_KIT_PX) +
+        '</span></span>';
+    }).filter(Boolean).join('');
+    return out ? '<span class="pt-oppkits">' + out + '</span>' : '';
+  }
+
+  /** One label/value row of the facts column. */
+  function ptFactHtml(label, value) {
+    return '<div class="pt-fact"><span class="pt-fact-l">' + label +
+      '</span><span class="pt-fact-v">' + value + '</span></div>';
+  }
+
+  /**
+   * `El partit d'avui` — the fixture's own facts, plus the forecast.
+   *
+   * Every row is omitted when it has nothing to say rather than printed
+   * with an em dash: four rows of `—` is a page telling the coach it does
+   * not know anything, which is exactly the impression an empty fixture
+   * should not give before a convocatòria exists.
+   */
+  function ptFactsHtml(m, ctx) {
+    var rows = '';
+    if (ctx.convSent && ctx.callupTime && ctx.callupTime !== '—') {
+      rows += ptFactHtml(t('pt.f_callup'), sanitize(ctx.callupTime));
+    }
+    if (ctx.sentPieces) {
+      rows += ptFactHtml(t('pt.f_kit'),
+        '<span class="pt-kit">' +
+          kitIconsHtml(ctx.sentPieces, {shorts: false, size: PT_KIT_PX}) +
+        '</span>' +
+        '<span class="pt-kit-label">' + sanitize(ctx.kitLabel || '') + '</span>');
+    }
+    /* The rival's strips, from the FCF import. They were a `.card.md-oppkits`
+       block of their own further down the page — the one place a coach never
+       looked — and they belong beside our own kit, which is where a clash is
+       actually noticed. */
+    var oppKits = ptOppKitsHtml(m);
+    if (oppKits) rows += ptFactHtml(t('pt.f_kit_opp'), oppKits);
+    if (ctx.convSent) {
+      rows += ptFactHtml(t('pt.f_called'), ctx.sentPlayers.length);
+    }
+    var standing = ptRivalStanding(m);
+    if (standing) rows += ptFactHtml(t('pt.f_rival'), sanitize(standing));
+    if (!rows) return '';
+    /* The last-five run hangs under the facts rather than inside the Rival
+       row: five squares plus their caption is a block, and squeezing it
+       into a label/value row is what made the first draft's rows uneven. */
+    var run = ptFormRunHtml((ptRivalRow(m) || {}).form);
+    return '<div class="pt-facts">' + rows + '</div>' + run;
+  }
+
+  /**
+   * The scoreboard band.
+   *
+   * There is deliberately NO live/EN JOC badge — the score itself carries
+   * the state, and a badge that says "in play" is a claim the app cannot
+   * back up: nothing here knows the match has actually kicked off, only
+   * that its clock time has passed.
+   *
+   * Before there is anything to show, the slot holds the kick-off time
+   * instead of `0 - 0`, which would be a result the app invented.
+   */
+  function ptScoreboardHtml(m, events, hasResult) {
+    var sc = hasResult ? calcMatchScore(events) : null;
+    var middle = sc
+      ? '<span class="pt-score">' + sc.home + ' – ' + sc.away + '</span>'
+      : '<span class="pt-kickoff">' + sanitize(m.time || '—') + '</span>';
+
+    /* `fcfJornada` is the federation's matchday number and is the only
+       competition fact a fixture carries — there is no `competition`
+       field, so the squad's category label stands in for the division
+       name the handoff shows. A friendly has neither and the eyebrow is
+       simply omitted rather than reading "Jornada undefined". */
+    var jornada = [m.fcfJornada ? t('pt.jornada') + ' ' + sanitize(String(m.fcfJornada)) : '',
+      sanitize(CATEGORY_LABELS[m.category] || m.category || '')]
+      .filter(Boolean).join(' · ');
+
+    return '<div class="pt-sb-band">' +
+      (jornada ? '<div class="pt-sb-eyebrow">' + jornada + '</div>' : '') +
+      '<div class="pt-sb-row">' +
+        '<span class="pt-sb-team pt-sb-team-l">' + sanitize(m.home) + '</span>' +
+        ptCrestHtml(m, 'home') + middle + ptCrestHtml(m, 'away') +
+        '<span class="pt-sb-team pt-sb-team-r">' + sanitize(m.away) + '</span>' +
+      '</div>' +
+      '<div class="pt-sb-meta">' +
+        (m.date ? '<span>' + tDateLong(m.date) + '</span>' : '') +
+        (m.time ? '<span>' + sanitize(m.time) + '</span>' : '') +
+        '<span>' + locationHtml(m, {pin: false, cls: 'pt-map-link'}) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /**
+   * The called-up list.
+   *
+   * ⚠ THE ONE HARD RULE OF THE PLAYER SCREEN. A player never sees the
+   * starting eleven before kick-off: the list renders ordered by dorsal,
+   * with no stars and no Titulars/Banqueta split, under a line saying when
+   * it will be published. At kick-off it flips to the grouped view.
+   *
+   * `showXI` is the whole of that decision and there is exactly one of it,
+   * because the star, the sub-heads and the grouping are three separate
+   * places the eleven could leak and they must not be able to disagree.
+   */
+  function ptCallupHtml(m, ctx) {
+    if (!ctx.convSent) {
+      return ptHead(t('pt.callup')) +
+        '<div class="pt-empty">' + t('pt.no_callup') + '</div>';
+    }
+    var users = getUsers();
+    var called = ctx.sentPlayers
+      .map(function (id) { return users.find(function (u) { return String(u.id) === String(id); }); })
+      .filter(Boolean);
+    if (!called.length) {
+      return ptHead(t('pt.callup')) +
+        '<div class="pt-empty">' + t('pt.no_callup') + '</div>';
+    }
+
+    var showXI = ctx.isStaff || ctx.isPast;
+    var xi = getStartingXI(m.id);
+    var isStarter = function (p) {
+      return xi.some(function (id) { return String(id) === String(p.id); });
+    };
+
+    /* Dorsal order for the flat list — it is the order a team sheet is
+       read in, and it is the one ordering that says nothing about who
+       starts. The grouped view keeps the positional order it always had. */
+    var byDorsal = called.slice().sort(function (a, b) {
+      var na = parseInt(a.playerNumber, 10), nb = parseInt(b.playerNumber, 10);
+      if (isNaN(na) && isNaN(nb)) return String(a.name || '').localeCompare(String(b.name || ''));
+      if (isNaN(na)) return 1;
+      if (isNaN(nb)) return -1;
+      return na - nb;
+    });
+
+    var row = function (p) {
+      var pid = String(p.id);
+      var star = ctx.isStaff
+        ? '<button class="pt-star' + (isStarter(p) ? ' pt-star-on' : '') +
+            '" data-player-id="' + sanitize(pid) + '" data-match-id="' + sanitize(String(m.id)) +
+            '" title="' + t(isStarter(p) ? 'match_detail.starter_remove' : 'match_detail.starter_add') +
+            '">★</button>'
+        : '';
+      var mine = (ctx.isPlayerViewer && String(ctx.sessionId) === pid) ? ' pt-row-mine' : '';
+      return '<div class="pt-cu-row' + mine + '">' + star +
+        '<span class="pt-dorsal">' + sanitize(p.playerNumber || '') + '</span>' +
+        '<span class="pt-cu-name">' + sanitize(p.name) +
+          (p.team ? '<span class="pt-squad">' + sanitize(p.team) + '</span>' : '') + '</span>' +
+        '<span class="pt-discs">' + posCirclesHtmlGlobal(p) + '</span>' +
+      '</div>';
+    };
+
+    var body;
+    if (showXI) {
+      var byPos = called.slice().sort(function (a, b) { return posRankGlobal(a) - posRankGlobal(b); });
+      /* ⚠ INTERSECTED with the called-up list rather than read straight off
+         startingXI: entries written before convSentEntry() started filtering
+         the XI on save can still name a player who is no longer called up,
+         and that would render as a ghost row under Titulars. */
+      var starters = byPos.filter(isStarter);
+      var bench = byPos.filter(function (p) { return !isStarter(p); });
+      var group = function (label, list) {
+        return list.length
+          ? '<div class="pt-cu-group">' + label + '</div>' + list.map(row).join('')
+          : '';
+      };
+      body = group(t('pt.titulars'), starters) + group(t('pt.bench'), bench);
+    } else {
+      body = '<div class="pt-locked">🔒 ' + t('pt.xi_locked') + '</div>' +
+        byDorsal.map(row).join('');
+    }
+
+    var note = '';
+    if (ctx.isStaff) {
+      var n = xi.length;
+      note = '<span class="pt-starters' + (n === 11 ? ' pt-starters-ok' : ' pt-starters-off') + '">' +
+        t('pt.starters_n') + ' ' + n + ' / 11</span>';
+    }
+    return ptHead(t('pt.callup') + ' · ' + called.length, note) +
+      '<div class="pt-cu-list">' + body + '</div>';
+  }
+
+  /**
+   * The boards linked to this match.
+   *
+   * ⚠ NOT gated on the convocatòria having been sent. It used to be — the
+   * whole block, call-up and boards together, sat behind `convSent` — so a
+   * coach who had attached three boards to a fixture he had not yet sent
+   * saw none of them, on the page whose job is to show him what he
+   * prepared. The call-up keeps the gate because an unsent call-up really
+   * is nothing to show; the boards never needed it.
+   */
+  function ptBoardsHtml(m, staff) {
+    var matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+    var boards = matchBoards[m.id] || [];
+    if (!boards.length) return '';
+    return ptHead(t('pt.boards'), boards.length + ' ' + t('pt.boards_n')) +
+      '<div class="pt-boards">' +
+        boards.map(function (b, i) {
+          /* ⚠ The ✕ carries the INDEX, not the name. Boards are unlinked by
+             `b.name` everywhere else in this file (see tbRoBoardHtml's
+             callers and the board-deletion sweep), which orphans the link
+             the moment a coach renames a board — and two boards with the
+             same name unlink each other. The index is unambiguous within
+             the one array being edited. */
+          var x = staff
+            ? '<button class="pt-board-x" data-pt-unlink="' + i + '" title="' +
+              t('pt.unlink') + '">✕</button>'
+            : '';
+          /* ⚠ THE CARD IS A DIV AND CARRIES THE OPEN TARGET ITSELF.
+             v214 wrapped the thumbnail in `<button class="pt-board-open">`.
+             renderReadOnlyBoard emits its own `<button class="tb-ro-play">`,
+             `.tb-ro-stop` and `.tb-ro-3d` inside it — and NESTED BUTTONS ARE
+             INVALID HTML: the parser closes the outer one the moment it meets
+             the inner, so the DOM was never what the markup said. One click
+             ran two handlers (the 3D view AND the overlay), and the ✕ was
+             parsed out of the card, which is why it never appeared at all.
+
+             The click handler ignores anything inside `.tb-ro-ctl`, so the
+             board's own ▶ and 3D keep their own clicks. */
+          return '<div class="pt-board" data-pt-board="' + i + '">' +
+            '<div class="pt-board-thumb">' + tbRoBoardHtml(b, 'ro1-') + '</div>' + x +
+            '<div class="pt-board-name">' + sanitize(b.name || '') + '</div>' +
+            (b.tag ? '<div class="pt-board-meta">' + sanitize(b.tag) + '</div>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>';
+  }
+
+  /* ── Anada: the first leg, in full ───────────────────────────
+     Replaces mnBriefingHtml on this page. That block had the right
+     DATA and the wrong shape — no minutes, no team badges, no
+     collapse row — and no amount of CSS reorganises a layout.
+
+     It keeps `MN_BRIEF_COLLAPSED` and the `.mn-brief` class on the
+     <details>, so the existing toggle handler goes on remembering
+     the coach's choice and a preference set before this change
+     still applies. */
+
+  /**
+   * `4-3-3` from the eleven's positions, or '' when it cannot be known.
+   *
+   * Derived, never guessed: an XI that is not eleven players, or one with a
+   * position missing, returns '' and the heading simply reads `ALINEACIÓ`.
+   * A formation is a claim about how the team set up, and printing a wrong
+   * one is worse than printing none.
+   */
+  function ptFormation(players) {
+    if (!players || players.length !== 11) return '';
+    var band = {CB: 'd', LB: 'd', RB: 'd', DM: 'm', OM: 'm',
+      LW: 'f', RW: 'f', ST: 'f'};
+    var n = {d: 0, m: 0, f: 0};
+    var keepers = 0;
+    for (var i = 0; i < players.length; i++) {
+      var pos = String(players[i].position || '').split(',')[0].trim();
+      if (pos === 'GK') { keepers++; continue; }
+      var b = band[pos];
+      if (!b) return '';            // a position we cannot place
+      n[b]++;
+    }
+    if (keepers !== 1) return '';    // not a shape we can name
+    return n.d + '-' + n.m + '-' + n.f;
+  }
+
+  /** One line of the first leg's team sheet. */
+  function ptLegRowHtml(p, marks, minutes) {
+    var out = (minutes === null);
+    return '<div class="pt-leg-row' + (out ? ' pt-leg-row-unused' : '') + '">' +
+      '<span class="pt-discs">' + posCirclesHtmlGlobal(p) + '</span>' +
+      '<span class="pt-dorsal">' + sanitize(p.playerNumber || '') + '</span>' +
+      '<span class="pt-leg-name">' + sanitize(p.name) + '</span>' +
+      '<span class="pt-leg-marks">' + (marks ? matchMarksHtml(marks) : '') + '</span>' +
+      '<span class="pt-leg-min">' + (out ? '—' : minutes + '\'') + '</span>' +
+    '</div>';
+  }
+
+  function ptAnadaHtml(m, allMatches) {
+    var first = mnLinkedFirstLeg(m, allMatches);
+    if (!first) return '';
+
+    var users = getUsers();
+    var events = getMatchEvents(first.id);
+    var sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    var entry = sentData[first.id];
+    var called = (entry ? (Array.isArray(entry) ? entry : (entry.players || [])) : [])
+      .map(function (id) {
+        return users.find(function (u) { return String(u.id) === String(id); });
+      }).filter(Boolean);
+    var xi = getStartingXI(first.id, sentData);
+    var isXI = function (p) {
+      return xi.some(function (id) { return String(id) === String(p.id); });
+    };
+    var byPos = called.slice().sort(function (a, b) {
+      return posRankGlobal(a) - posRankGlobal(b);
+    });
+    var starters = byPos.filter(isXI);
+    var bench = byPos.filter(function (p) { return !isXI(p); });
+    var marks = events.length ? matchPlayerMarks(first, events) : null;
+
+    // ── Header ──
+    var sc = calcMatchScore(events);
+    var out = mnOutcome(first);
+    /* Home–away order, not ours-first: the badge sits between the two club
+       names, so it reads with them. Same rule the timeline was corrected to
+       in v215. The COLOUR is still from our point of view — that is what a
+       coach is scanning for — and mnOutcome already decides it. */
+    var badge = '<span class="pt-leg-score pt-leg-' + out + '">' +
+      sc.home + ' – ' + sc.away + '</span>';
+    var venue = isOurTeam(first.home) ? t('mn.at_home') : t('mn.at_away');
+
+    // ── Column 1: the team sheet ──
+    var formation = ptFormation(starters);
+    var sheet = ptHead(t('pt.lineup') + (formation ? ' · ' + formation : '')) +
+      starters.map(function (p) {
+        return ptLegRowHtml(p, marks && marks[String(p.id)],
+            playerMatchMinutesKnown(p.id, first.id));
+      }).join('') +
+      (bench.length
+        ? '<div class="pt-cu-group">' + t('pt.subs') + '</div>' +
+          bench.map(function (p) {
+            return ptLegRowHtml(p, marks && marks[String(p.id)],
+                playerMatchMinutesKnown(p.id, first.id));
+          }).join('')
+        : '');
+
+    // ── Column 2: the events of that day, and the notes ──
+    var firstOurSide = ptOurSide(first);
+    var evList = events.length
+      ? '<div class="pt-leg-evs">' + events.slice().sort(function (a, b) {
+        return parseEventMinute(a.minute) - parseEventMinute(b.minute);
+      }).map(function (ev) {
+        /* The crest says whose it was — the design drops the team NAMES
+           here, because both are already in the header a few lines up. */
+        return '<div class="pt-leg-ev">' +
+          '<span class="pt-leg-ev-min">' + formatEventMinute(ev.minute) + '</span>' +
+          '<span class="pt-ev-icon">' + getEventIcon(ev, 0) + '</span>' +
+          '<span class="pt-leg-ev-name">' + ptEventName(ev, users) + '</span>' +
+          '<span class="pt-leg-ev-crest">' +
+            ptCrestHtml(first, ev.side === firstOurSide ? firstOurSide :
+              (firstOurSide === 'home' ? 'away' : 'home')) +
+          '</span>' +
+        '</div>';
+      }).join('') + '</div>'
+      : '<div class="pt-empty">' + t('pt.no_events') + '</div>';
+
+    var note = MN.get(first.id);
+    var notesHtml = '';
+    if (note) {
+      var lines = MN.PHASES.map(function (ph) {
+        return (note[ph] && note[ph].text)
+          ? '<p class="pt-leg-note">' + sanitize(note[ph].text) + '</p>' : '';
+      }).join('');
+      if (lines) notesHtml = ptHead(t('pt.leg_notes')) + lines;
+    }
+
+    // ── Column 3: the board, and the way out ──
+    var boards = mnSentBoards(first);
+    var media = mnMediaColHtml(t('mn.media_private'),
+        note ? note.videos : [], note ? note.boards : [], 'ptla-') +
+      mnMediaColHtml(t('mn.media_sent'), mnSentVideos(first), boards, 'ptls-');
+
+    var pissarra = ptHead(t('pt.leg_board')) +
+      /* ⚠ NO "Obre la fitxa del partit" and NO "No és l'anada d'aquest
+         partit" — both removed on the owner's instruction (v218).
+
+         Worth knowing what went with the second: it was the only way to
+         REJECT a first leg from this page. `mnLegBannerHtml` still offers
+         one, but only while the suggestion is UNANSWERED —
+         `mnLegSuggestion` returns null once a coach has accepted it, and
+         when both fixtures carry an fcfActaId the pairing is certain and no
+         banner ever appears. So a wrongly linked leg now has no undo
+         anywhere. `MN.dismissLeg` is untouched and still exported, so
+         restoring the affordance is one button. */
+      (media || '<div class="pt-empty">' + t('pt.no_board') + '</div>');
+
+    /* `.mn-brief` stays on the <details> so the existing toggle handler
+       keeps writing MN_BRIEF_COLLAPSED — the coach's remembered choice
+       survives this rewrite. */
+    var open = localStorage.getItem(MN_BRIEF_COLLAPSED) === '1' ? '' : ' open';
+    /* ⚠ THE RESULT LIVES IN THE <summary>, not in the body.
+       It was below it, so collapsing the block hid the one thing a coach
+       collapses it down TO — the eyebrow alone said "there was a first leg"
+       without saying how it went. Everything inside <summary> stays on
+       screen when the block is shut; only the three columns fold away. */
+    return '<details class="mn-brief pt-anada"' + open + '>' +
+      '<summary class="pt-anada-head">' +
+        '<span class="pt-anada-lead">' +
+          '<span class="pt-eyebrow">' + t('mn.first_leg') + '</span>' +
+          '<span class="pt-anada-note">' + t('pt.leg_detected') + '</span>' +
+        '</span>' +
+        '<span class="pt-anada-row">' +
+          '<span class="pt-anada-when">' + tDateShort(first.date) + ' · ' +
+            sanitize(venue) + '</span>' +
+          '<span class="pt-anada-team">' + sanitize(first.home) + '</span>' +
+          badge +
+          '<span class="pt-anada-team">' + sanitize(first.away) + '</span>' +
+        '</span>' +
+      '</summary>' +
+      '<div class="pt-anada-cols">' +
+        '<div class="pt-col">' + sheet + '</div>' +
+        '<div class="pt-col">' + ptHead(t('pt.events')) + evList + notesHtml + '</div>' +
+        '<div class="pt-col">' + pissarra + '</div>' +
+      '</div>' +
+    '</details>';
+  }
+
+  /**
+   * One linked board, big, in an overlay.
+   *
+   * ⚠ NO FRAME PILLS, and the handoff asks for them. `applyRoFrame` — the
+   * only thing in the app that puts a given frame on a board — is a CLOSURE
+   * inside `bindRoBoardAnimations`, which is the function parking-lot item
+   * 16 was about and which `test/ro-playback.test.js` pins with 41 source
+   * assertions. Pills would mean either lifting it out of that closure or
+   * writing a second frame applier; the first is a refactor of the most
+   * recently repaired code in the file and does not belong inside a layout
+   * change, and the second is the "one definition or it drifts" mistake
+   * this redesign has spent three rounds undoing. The board's own
+   * ▶ / ⏸ control comes with it and works. Recorded in CONTEXT.md.
+   *
+   * Everything else follows `_abPreview`, which is the app's worked example
+   * of a read-only board in a modal: render, scale, then bind.
+   */
+  async function ptOpenBoard(m, idx) {
+    var matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+    var ref = (matchBoards[m.id] || [])[idx];
+    if (!ref) return;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay pt-ov';
+    overlay.innerHTML = '<div class="pt-ov-card">' +
+      '<div class="pt-ov-head">' +
+        '<div><span class="pt-eyebrow">' + t('pt.board_of_match') + '</span>' +
+          '<div class="pt-ov-name">' + sanitize(ref.name || '') + '</div></div>' +
+        '<button class="pt-ov-close">' + t('pt.close') + ' ✕</button>' +
+      '</div>' +
+      '<div class="pt-ov-body"><div class="pt-empty">' + t('common.loading') + '</div></div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add('visible'); });
+
+    var close = function () {
+      overlay.classList.remove('visible');
+      setTimeout(function () { overlay.remove(); }, 200);
+    };
+    overlay.querySelector('.pt-ov-close').addEventListener('click', close);
+    /* Only the scrim closes it. `e.target === overlay` is the whole of that
+       rule — a click on the panel has the panel as its target and bubbles
+       to here, so testing anything looser shuts the overlay every time the
+       coach presses ▶. */
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key !== 'Escape') return;
+      document.removeEventListener('keydown', esc);
+      close();
+    });
+
+    var payload = null;
+    try { payload = await TB.get(ref.boardId || ref.id); } catch (e) { payload = null; }
+    var body = overlay.querySelector('.pt-ov-body');
+    if (!body) return;   // closed while the read was in flight
+    if (!payload) {
+      body.innerHTML = '<div class="pt-empty">' + t('pt.board_unreadable') + '</div>';
+      return;
+    }
+    body.innerHTML = renderReadOnlyBoard(
+        Object.assign({}, payload, {name: ref.name}), 'ptov-');
+    /* ⚠ On the NEXT frame, not now. scaleRoBoards measures `offsetWidth`,
+       and the panel is still mid-opacity-transition at this point — the
+       board would be sized against a width the layout has not settled on.
+       bindRoBoardAnimations goes with it so ▶ is bound to a board that has
+       already been given its size. */
+    requestAnimationFrame(function () {
+      if (!overlay.isConnected) return;
+      if (typeof scaleRoBoards === 'function') scaleRoBoards();
+      bindRoBoardAnimations();
+    });
+  }
+
+  /* ── Esdeveniments ────────────────────────────────────────────
+     The timeline and the inline form that writes to it (v213).
+
+     The form's transient state lives HERE rather than in the DOM.
+     The old one kept it in hidden inputs and drove the disclosure
+     with synthetic `change` events, which is why it needed a
+     `resetCustomSelect` that had to remember to clear three things
+     in the right order. Holding the answer in one object and
+     re-rendering means the form has exactly one description of
+     itself, and "which fields does Canvi show" is a branch in a
+     builder rather than four `hidden` flags set from four places.
+
+     `matchId` is part of it because the state outlives a render but
+     must NOT outlive the fixture: without it, opening a second
+     match would show a half-filled form addressed to the first. */
+  let _evForm = null;
+
+  /**
+   * The event types, in the order the design lays the chips out.
+   *
+   * The icon paths are `getEventIcon`'s, not a second list of them —
+   * the chip and the timeline row must draw the same event the same
+   * way, and the double-yellow overlap is already that function's
+   * business.
+   */
+  function ptEventTypes(side) {
+    return [
+      {v: 'goal', label: t('ev.goal'), icon: 'img/gol.png'},
+      {v: 'own_goal', label: t('ev.own_goal'), icon: 'img/gol-propia.png'},
+      {v: 'yellow', label: t('ev.yellow'), icon: 'img/groga.png'},
+      {v: 'red', label: t('ev.red'), icon: 'img/vermella.png'},
+      {v: 'change', label: t('ev.change'), icon: 'img/sub-' + side + '.png'},
+      {v: 'penal_fallat', label: t('ev.penal_miss'), icon: 'img/penal%20fallat.png'},
+      {v: 'pal', label: t('ev.post'), icon: 'img/pal.png'}
+    ];
+  }
+
+  /**
+   * The second field a type needs, or '' when it needs none.
+   *
+   * ⚠ ONLY AN OPEN-PLAY GOAL TAKES AN ASSIST. A penalty and a direct free
+   * kick are restarts — nobody assists them — and the first version offered
+   * the picker for all three. That is not merely clutter: whatever was
+   * chosen there was written to `assistPlayerId`, and computePlayerStats
+   * counts that field, so a player could be credited with an assist on a
+   * penalty for the rest of the season.
+   *
+   * The default is open play because that is what the chip row pre-selects;
+   * a goal with no `goalType` is an open-play goal.
+   */
+  function ptSecondField(type, goalType) {
+    if (type === 'goal') {
+      return (goalType || 'jugada_oberta') === 'jugada_oberta' ? 'assist' : '';
+    }
+    if (type === 'change') return 'out';
+    return '';
+  }
+
+  /**
+   * Whose name the row is in.
+   *
+   * ⚠ A SUBSTITUTION HAS NO `playerId`. It carries playerInId/playerOutId,
+   * so `getEventPlayerName` — which reads playerId — resolves it to a bare
+   * `?`. The old timeline never noticed because it overwrote the name for
+   * a change with both halves of the swap; this layout puts one name on the
+   * row and the other in the detail line, so it has to say which.
+   *
+   * The row belongs to the player coming ON, and the one going off is the
+   * detail. That is the design's choice and it is the right way round: the
+   * minute a substitution is looked up for is the minute somebody entered.
+   */
+  function ptEventName(ev, users) {
+    if (ev.type === 'change') {
+      return resolveEventName(ev.playerInId, ev.playerInName, ev.playerInNumber, users);
+    }
+    return getEventPlayerName(ev, users);
+  }
+
+  /**
+   * One event's supporting line: who assisted, or who came off.
+   *
+   * ⚠ A card has NO detail line. The design shows "Joc perillós" and
+   * "Protestar" under the opponent's bookings, but a reason is not a
+   * field this app has ever stored — inventing an empty one would put
+   * a control on screen that writes nowhere.
+   */
+  function ptEventDetail(ev, users) {
+    if (ev.type === 'goal' && ev.goalDetail === 'assistencia' && ev.assistPlayerId) {
+      return t('pt.assist_by') + ' ' +
+        resolveEventName(ev.assistPlayerId, ev.assistPlayerName, null, users);
+    }
+    if (ev.type === 'change') {
+      return t('pt.off_for') + ' ' +
+        resolveEventName(ev.playerOutId, ev.playerOutName, ev.playerOutNumber, users);
+    }
+    return '';
+  }
+
+  /**
+   * The timeline: a 4-column grid, HOME on the left, AWAY on the right.
+   *
+   * ⚠ IT FOLLOWS THE SCOREBOARD, NOT WHICH SIDE IS OURS — and that is a
+   * deliberate reversal of what v213 shipped, asked for by the owner after
+   * seeing it the other way round. The handoff says "our events on the
+   * left", and v213 built exactly that; but the scoreboard directly above
+   * prints `home — away`, so on an away fixture an always-ours-left
+   * timeline stacked our column under the rival's name. Two halves of one
+   * screen disagreeing about which side is which is worse than the column
+   * moving between fixtures, and a coach reads this against the scoreline
+   * immediately above it.
+   *
+   * `ptOurSide` still decides ours/theirs where the DATA depends on it —
+   * the event form, which offers a player list for us and a shirt-number
+   * box for them. That is a question about whose squad the app knows, not
+   * about which way round to draw a row.
+   *
+   * `matchTimelineHtml` is left alone and still serves the anada briefing.
+   * Two layouts, because the design gives the first leg a different one
+   * (minute, icon, name, crest — no columns); they share `getEventIcon`,
+   * `resolveEventName` and `yellowOrdinals`, which are the rules that would
+   * actually hurt if they drifted.
+   */
+  function ptTimelineHtml(m, events, users, staff) {
+    if (!events.length) return '<div class="pt-empty">' + t('pt.no_events') + '</div>';
+    const yellowOrd = yellowOrdinals(events);
+    const sorted = events.slice().sort(function (a, b) {
+      return parseEventMinute(a.minute) - parseEventMinute(b.minute);
+    });
+
+    return '<div class="pt-ev-list">' + sorted.map(function (ev) {
+      const atHome = ev.side === 'home';
+      const detail = ptEventDetail(ev, users);
+      const cell =
+        '<span class="pt-ev-txt">' +
+          '<span class="pt-ev-name">' + ptEventName(ev, users) + '</span>' +
+          (detail ? '<span class="pt-ev-detail">' + detail + '</span>' : '') +
+        '</span>' +
+        '<span class="pt-ev-icon">' + getEventIcon(ev, yellowOrd.get(ev) || 0) + '</span>';
+      const x = staff
+        ? '<button class="pt-ev-x" data-ev-id="' + sanitize(String(ev.id)) +
+          '" title="' + t('match_detail.event_delete') + '">✕</button>'
+        : '';
+      return '<div class="pt-ev-row">' +
+        '<div class="pt-ev-cell pt-ev-home">' + (atHome ? cell : '') + '</div>' +
+        '<div class="pt-ev-min">' + formatEventMinute(ev.minute) + '</div>' +
+        '<div class="pt-ev-cell pt-ev-away">' + (atHome ? '' : cell) + '</div>' +
+        '<div class="pt-ev-xcell">' + x + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * The inline form, under the timeline, for one side.
+   *
+   * ⚠ THE GOAL-TYPE ROW IS NOT IN THE HANDOFF. The design's form is
+   * type / minute / player / assist and nothing else — but `goalBreakdown`
+   * (js/app.js, computePlayerStats) counts penalties, direct free kicks and
+   * open play from `ev.goalType`, and it is on the player's own stats page
+   * today. Dropping the input would not remove that statistic; it would
+   * leave it silently recording every new goal as open play, which is worse
+   * than losing it visibly. So Gol gets one extra chip row, in the design's
+   * own chip idiom, and the design's ASSISTÈNCIA field keeps its place
+   * beside it. Recorded in CONTEXT.md.
+   */
+  function ptEventFormHtml(m, users) {
+    const f = _evForm;
+    const ourSide = ptOurSide(m);
+    const ours = f.side === ourSide;
+    const teamName = f.side === 'home' ? m.home : m.away;
+    const second = ptSecondField(f.type, f.goalType);
+
+    const chips = ptEventTypes(f.side).map(function (o) {
+      return '<button class="pt-chip' + (f.type === o.v ? ' pt-chip-on' : '') +
+        '" data-ev-type="' + o.v + '">' +
+        '<img src="' + o.icon + '" class="pt-chip-i" alt="">' +
+        '<span>' + o.label + '</span></button>';
+    }).join('');
+
+    /* Only the called-up squad can be picked. A goal by somebody who was
+       not in the convocatòria is a data-entry mistake, not a case to
+       support — and the list would otherwise be the whole club. */
+    const playerOpts = [{value: '', label: t('pt.pick_player')}].concat(
+      users.map(function (p) {
+        return {value: String(p.id),
+          label: p.name + (p.playerNumber ? ' · ' + p.playerNumber : '')};
+      }));
+
+    const picker = function (kind, value, opts) {
+      /* ⚠ `.std-sel-esc`, so the menu is FIXED and placed by stdSelPlace
+         against the viewport. Without it the menu is absolute: an eighteen-
+         player squad opens a list taller than the space under the trigger,
+         which grew the page instead of floating over it and left the coach
+         unable to scroll to the bottom of his own list. stdSelPlace already
+         flips it above the trigger when there is no room below — that logic
+         only runs for this class. */
+      return ours
+        ? stdSelect({kind: kind, cls: 'pt-sel std-sel-esc', value: value,
+          options: opts})
+        : '<input type="text" class="pt-ev-num" data-ev-field="' +
+            (kind === 'evwho' ? 'who' : 'second') + '" value="' + sanitize(value) +
+            '" maxlength="3" placeholder="' + t('pt.f_number') + '">';
+    };
+
+    const fields = f.type
+      ? '<div class="pt-ev-fields">' +
+          '<label class="pt-field"><span class="pt-eyebrow">' + t('pt.f_minute') + '</span>' +
+            '<input type="text" class="pt-ev-min-in" value="' + sanitize(f.min) +
+              '" maxlength="5" inputmode="numeric"></label>' +
+          '<label class="pt-field pt-field-wide"><span class="pt-eyebrow">' +
+            t(f.type === 'change' ? 'pt.f_in' : 'pt.f_player') + '</span>' +
+            picker('evwho', f.who, playerOpts) + '</label>' +
+          (second
+            ? '<label class="pt-field pt-field-wide"><span class="pt-eyebrow">' +
+                t(second === 'assist' ? 'pt.f_assist' : 'pt.f_out') + '</span>' +
+                picker('evsecond', f.second,
+                    [{value: '', label: t('pt.none')}].concat(playerOpts.slice(1))) +
+              '</label>'
+            : '') +
+        '</div>'
+      : '';
+
+    /* Only for a goal, and only for ours: the rival's goals are recorded
+       by shirt number and nothing on this page knows how theirs was
+       scored. */
+    const goalKind = (f.type === 'goal' && ours)
+      ? '<div class="pt-ev-group"><span class="pt-eyebrow">' + t('pt.f_goal_type') + '</span>' +
+          '<div class="pt-chips">' +
+            [{v: 'jugada_oberta', l: t('ev.goal_jugada')},
+              {v: 'penal', l: t('ev.goal_penal')},
+              {v: 'falta_directa', l: t('ev.goal_falta')}].map(function (o) {
+              return '<button class="pt-chip' +
+                ((f.goalType || 'jugada_oberta') === o.v ? ' pt-chip-on' : '') +
+                '" data-ev-goaltype="' + o.v + '">' + o.l + '</button>';
+            }).join('') +
+          '</div></div>'
+      : '';
+
+    return '<div class="pt-ev-form">' +
+      '<div class="pt-ev-form-head">' +
+        '<span class="pt-eyebrow">' + t('pt.new_event') + ' · ' + sanitize(teamName) + '</span>' +
+        /* `.pt-ev-cancel` carries both the look and the handler, so the
+           head's ✕ and the foot's Cancel·la are the same control twice. A
+           separate `.pt-ev-close` class would be a second name for it with
+           nothing behind it. */
+        '<button class="pt-ev-cancel">' + t('pt.close') + ' ✕</button>' +
+      '</div>' +
+      '<div class="pt-ev-group"><span class="pt-eyebrow">' + t('pt.f_type') + '</span>' +
+        '<div class="pt-chips">' + chips + '</div></div>' +
+      goalKind + fields +
+      '<div class="pt-ev-actions">' +
+        '<button class="pt-ev-submit"' + (f.type ? '' : ' disabled') + '>' +
+          t('pt.submit_event') + '</button>' +
+        '<button class="pt-ev-cancel">' + t('pt.cancel') + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderMatchDetail() {
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const m = matches.find(x => x.id === detailMatchId);
-    if (!m) return '<div class="empty-state"><div class="empty-icon">⚽</div><p>Match not found</p></div>';
+    /* Was the literal English 'Match not found', on a Catalan-only app.
+       `match_detail.not_found` had been sitting in the table unused since
+       the key was added. */
+    if (!m) return '<div class="empty-state"><div class="empty-icon">⚽</div><p>' +
+      t('pt.not_found') + '</p></div>';
     const session = getSession();
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const sentEntry = sentData[m.id];
@@ -11126,24 +12133,14 @@
        answer. Only accounts with no player role lose the banner. */
     const isPlayerViewer = (session.roles || []).includes('player');
 
-    let convHtml = '';
-    if (convSent && isPlayerViewer) {
-      // Shorts dropped: .detail-uniform-inline svg is pinned at 30px and
-      // three icons is 90px inside a one-line banner.
-      const uniformIcons = sentPieces
-        ? `<span class="detail-uniform-inline">${kitIconsHtml(sentPieces, {shorts: false})}</span>` : '';
-      convHtml = convIncluded
-        ? `<div class="detail-conv detail-conv-yes"><span class="conv-blink-dot"></span> ${t('match_detail.conv_available')} ${uniformIcons}</div>`
-        : `<div class="detail-conv detail-conv-no"><span class="conv-grey-dot"></span> ${t('match_detail.conv_not_called')}</div>`;
-    }
-    const dateFormatted = m.date ? tDateLong(m.date) : '—';
-    /* Through the shared helper since v192, which routes the stored link
-       past safeHttpUrl. It used to go straight into the href: sanitize()
-       escapes the quoting but leaves `javascript:…` intact, and that link is
-       typed by one staff member and clicked by another. */
-    const matchPlace = locationHtml(m, { pin: true, cls: 'detail-map-link' });
+    /* `convIncluded` is still the whole of "am I in?", but the banner it
+       used to build is now the `.pt-you` strip under the scoreboard, and
+       the kick-off/date/place line it sat beside is ptScoreboardHtml's meta
+       row. The map link goes through `locationHtml` there, which routes the
+       stored URL past safeHttpUrl — sanitize() escapes the quoting but
+       leaves `javascript:…` intact, and that link is typed by one staff
+       member and clicked by another. */
 
-    // Build called-up player list
     /* ROLE-scoped, like `showNotes` above and for the same reason. It was
        entry-point-scoped — `detailMatchFrom === 'staff-matchday'` — on the
        theory that a coach arriving from the player list should see the page
@@ -11152,188 +12149,67 @@
        nobody could log a goal or pick an eleven. See canEditMatchRecord. */
     const isStaff = canEditMatchRecord(session);
     const isPast = m.date && m.time && new Date(m.date + 'T' + m.time + ':00') <= new Date();
-    let calledHtml = '';
-    if (convSent) {
-      const users = getUsers();
-      const calledPlayers = sentPlayers.map(id => users.find(u => String(u.id) === String(id))).filter(Boolean)
-        .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
-      if (calledPlayers.length) {
-        const startingXI = getStartingXI(m.id);
-        const starterCount = startingXI.length;
-        const showStarterInfo = isStaff || isPast; // staff always, players only after kickoff
-        /* Marks are drawn once the match has EVENTS, not once the clock
-           says it started. A fixture logged days later still reads
-           correctly, and a match that kicked off ten minutes ago does not
-           sprout an empty Titulars/Suplents split. */
-        const detailEvents = getMatchEvents(m.id);
-        const marks = detailEvents.length ? matchPlayerMarks(m, detailEvents) : null;
-        const playerRow = (p) => {
-          const pid = String(p.id);
-          const isStarter = startingXI.some(function(id) { return String(id) === pid; });
-          const starterCls = (showStarterInfo && isStarter) ? ' detail-player-starter' : '';
-          /* The ★ is the ONLY thing that says "starter" in the flat list.
-             Once the rows are grouped under their own heading it would be
-             saying it twice, so it stays for the ungrouped case only. */
-          const toggleBtn = isStaff
-            ? `<button class="starter-toggle${isStarter ? ' starter-active' : ''}" data-player-id="${pid}" data-match-id="${m.id}" title="${isStarter ? 'Treure de titulars' : 'Afegir a titulars'}"></button>`
-            : (!marks && showStarterInfo && isStarter ? '<span class="starter-badge">★</span>' : '');
-          return `<div class="detail-player${starterCls}">${toggleBtn}<span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span><span class="detail-player-name">${sanitize(p.name)}</span><span class="detail-player-num">#${sanitize(p.playerNumber || '—')}</span>${marks ? matchMarksHtml(marks[pid]) : ''}</div>`;
-        };
-        let rows;
-        if (marks) {
-          /* ⚠ INTERSECTED with the called-up list, not read straight off
-             startingXI. convSentEntry() filters the XI on save now, so
-             nothing NEW can carry a starter who is no longer called up —
-             but entries written before that fix still can, and this
-             renderer would turn one into a ghost row under Titulars.
-             Cheap, and it keeps the display honest about old data. */
-          const starters = calledPlayers.filter(p =>
-            startingXI.some(id => String(id) === String(p.id)));
-          const bench = calledPlayers.filter(p =>
-            !startingXI.some(id => String(id) === String(p.id)));
-          const group = (label, list) => list.length
-            ? `<div class="detail-lineup-group">${sanitize(label)} <span class="conv-count">${list.length}</span></div>` +
-              list.map(playerRow).join('')
-            : '';
-          rows = group(t('mn.lineup'), starters) + group(t('mn.subs'), bench);
-        } else {
-          rows = calledPlayers.map(playerRow).join('');
-        }
-        let starterHeader = '';
-        if (isStaff) {
-          const warnCls = starterCount === 11 ? 'starter-count-ok' : (starterCount > 11 ? 'starter-count-over' : 'starter-count-under');
-          const warnIcon = starterCount !== 11 ? ' <span class="starter-emoji">⚠️</span>' : ' <span class="starter-emoji">✅</span>';
-          starterHeader = `<div class="starter-counter ${warnCls}">Titulars: <strong>${starterCount}/11</strong>${warnIcon}</div>`;
-        }
-        calledHtml = `<div class="detail-callup-panel"><div class="detail-callup-header">Called Up <span class="conv-count">${calledPlayers.length}</span></div>${starterHeader}${rows}</div>`;
-      }
-    }
 
     const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
     const callupTime = convCallupData[m.id] || m.callupTime || '—';
 
     const backPage = detailMatchFrom || backTarget('player-matchday');
 
-    // Past match: events system (replaces old Resultat + Gols)
+    /* The events band renders ALWAYS, not only for a past fixture.
+       The handoff's rule: before kick-off the page shows an empty timeline
+       and no score, and afterwards the `+ Event` buttons are the only thing
+       that changes state. A section that appears out of nowhere at kick-off
+       is a page that looks broken beforehand — the coach cannot tell an
+       empty timeline from a missing one.
+
+       ⚠ The scoreboard moved OUT of this band and into ptScoreboardHtml at
+       the top of the page, where the design puts it. That leaves
+       `matchScoreboardHtml` (~10392) with no caller — the anada briefing
+       renders the first leg through `mnScoreBlockHtml`, not through it.
+       Left in place rather than deleted, alongside the `.ev-scoreboard`
+       CSS: the v214 anada work reads the same shape, and pruning it here
+       would be a blind deletion in the middle of a layout change. */
+    const events = getMatchEvents(m.id);
     let eventsHtml = '';
-    if (isPast) {
-      const events = getMatchEvents(m.id);
+    {
       const users = getUsers();
-      const ourSide = isOurTeam(m.home) ? 'home' : 'away';
-      const oppSide = ourSide === 'home' ? 'away' : 'home';
+      const ourSide = ptOurSide(m);
 
-      // ── Scoreboard ──
-      const scoreboardHtml = matchScoreboardHtml(m, events);
+      /* The form is addressed to ONE fixture. Left over from another match
+         it would be a half-filled form pointing at the wrong events blob —
+         and `+ Event` is the one control on this page that writes. */
+      if (_evForm && String(_evForm.matchId) !== String(m.id)) _evForm = null;
 
-      // ── + Event buttons (staff only) ──
+      // ── + Event buttons (staff only, once the clock has passed) ──
       let addEventHtml = '';
-      if (isStaff) {
-        const calledIds = convSent ? sentPlayers : [];
-        const calledUsers = calledIds.map(function(id) { return users.find(function(u) { return String(u.id) === String(id); }); }).filter(Boolean)
-          .sort(function(a, b) { return posRankGlobal(a) - posRankGlobal(b); });
-        const playerOptsData = calledUsers.map(function(p) {
-          return { value: String(p.id), label: sanitize(p.name) + ' #' + sanitize(p.playerNumber || '—') };
-        });
-
-        addEventHtml = '<div class="ev-add-row">' +
-          '<div class="ev-add-col">' +
-            '<button class="btn btn-primary btn-small ev-add-btn" data-ev-side="home">+ Event</button>' +
-            '<div class="ev-form" id="ev-form-home" hidden>' +
-              (ourSide === 'home' ? buildOurEventForm('home', playerOptsData) : buildOppEventForm('home')) +
-            '</div>' +
-          '</div>' +
-          '<div class="ev-add-col">' +
-            '<button class="btn btn-primary btn-small ev-add-btn" data-ev-side="away">+ Event</button>' +
-            '<div class="ev-form" id="ev-form-away" hidden>' +
-              (ourSide === 'away' ? buildOurEventForm('away', playerOptsData) : buildOppEventForm('away')) +
-            '</div>' +
-          '</div>' +
+      if (isStaff && isPast) {
+        const label = function (side) {
+          return t('pt.add_event') + ' · ' +
+            sanitize(String(side === 'home' ? m.home : m.away).split(',')[0]);
+        };
+        addEventHtml = '<div class="pt-ev-add">' +
+          ['home', 'away'].map(function (side) {
+            const mine = side === ourSide ? ' pt-ev-add-ours' : '';
+            const on = (_evForm && _evForm.side === side) ? ' pt-ev-add-on' : '';
+            return '<button class="pt-ev-add-btn' + mine + on +
+              '" data-ev-side="' + side + '">' + label(side) + '</button>';
+          }).join('') +
         '</div>';
       }
 
-      // ── Event timeline ──
-      const timelineHtml = matchTimelineHtml(m, events, users, isStaff);
+      /* Only the called-up squad is offered. A goal by somebody who was not
+         in the convocatòria is a data-entry mistake, not a case to support,
+         and the alternative list is the whole club. */
+      const calledUsers = (convSent ? sentPlayers : [])
+        .map(function (id) { return users.find(function (u) { return String(u.id) === String(id); }); })
+        .filter(Boolean)
+        .sort(function (a, b) { return posRankGlobal(a) - posRankGlobal(b); });
 
-      eventsHtml = '<div class="card ev-card"><div class="card-title">' + t('match_detail.events') + '</div>' +
-        scoreboardHtml + addEventHtml + timelineHtml + '</div>';
-    }
-
-    // Generic custom dropdown builder (text-only options)
-    function buildCustomSelect(cls, side, placeholder, optsArr) {
-      var optHtml = optsArr.map(function(o) {
-        return '<div class="ev-cs-option" data-value="' + o.value + '">' + o.label + '</div>';
-      }).join('');
-      return '<div class="ev-custom-select" data-ev-side="' + side + '">' +
-        '<div class="ev-cs-trigger"><span class="ev-cs-label">' + placeholder + '</span><span class="ev-cs-arrow"></span></div>' +
-        '<div class="ev-cs-options">' + optHtml + '</div>' +
-        '<input type="hidden" class="ev-cs-value ' + cls + '" data-ev-side="' + side + '" data-placeholder="' + placeholder + '" value="">' +
-      '</div>';
-    }
-
-    function buildEvTypeDropdown(side) {
-      var opts = [
-        { value: 'goal', label: t('ev.goal'), icon: 'img/gol.png' },
-        { value: 'own_goal', label: t('ev.own_goal'), icon: 'img/gol-propia.png' },
-        { value: 'yellow', label: t('ev.yellow'), icon: 'img/groga.png' },
-        { value: 'red', label: t('ev.red'), icon: 'img/vermella.png' },
-        { value: 'change', label: t('ev.change'), icon: 'img/sub-' + side + '.jpg' },
-        { value: 'penal_fallat', label: t('ev.penal_miss'), icon: 'img/penal%20fallat.png' },
-        { value: 'pal', label: t('ev.post'), icon: 'img/pal.png' }
-      ];
-      var optHtml = opts.map(function(o) {
-        return '<div class="ev-cs-option" data-value="' + o.value + '"><img src="' + o.icon + '" class="ev-cs-icon" alt="">' + o.label + '</div>';
-      }).join('');
-      return '<div class="ev-custom-select" data-ev-side="' + side + '">' +
-        '<div class="ev-cs-trigger"><span class="ev-cs-label">' + t('ev.type_ph') + '</span><span class="ev-cs-arrow"></span></div>' +
-        '<div class="ev-cs-options">' + optHtml + '</div>' +
-        '<input type="hidden" class="ev-cs-value ev-type-select" data-ev-side="' + side + '" data-placeholder="' + t('ev.type_ph') + '" value="">' +
-      '</div>';
-    }
-
-    function buildOurEventForm(side, playerData) {
-      var goalTypeOpts = [
-        { value: 'penal', label: t('ev.goal_penal') },
-        { value: 'falta_directa', label: t('ev.goal_falta') },
-        { value: 'jugada_oberta', label: t('ev.goal_jugada') }
-      ];
-      var goalDetailOpts = [
-        { value: 'assistencia', label: t('ev.assist') },
-        { value: 'individual', label: t('ev.individual') }
-      ];
-      return '<div class="ev-form-inner">' +
-        buildEvTypeDropdown(side) +
-        buildCustomSelect('ev-player-select', side, t('ev.player_ph'), playerData) +
-        '<div class="ev-goal-fields" data-ev-side="' + side + '" hidden>' +
-          buildCustomSelect('ev-goal-type', side, t('ev.goal_type_ph'), goalTypeOpts) +
-          '<div class="ev-jugada-fields" data-ev-side="' + side + '" hidden>' +
-            buildCustomSelect('ev-goal-detail', side, t('ev.detail_ph'), goalDetailOpts) +
-            buildCustomSelect('ev-assist-select', side, t('ev.assist_ph'), playerData) +
-          '</div>' +
-        '</div>' +
-        '<div class="ev-change-fields" data-ev-side="' + side + '" hidden>' +
-          buildCustomSelect('ev-player-out', side, t('ev.sub_out_ph'), playerData) +
-          buildCustomSelect('ev-player-in', side, t('ev.sub_in_ph'), playerData) +
-        '</div>' +
-        '<div class="ev-confirm-row" data-ev-side="' + side + '" hidden>' +
-          '<input type="text" class="reg-input ev-minute" data-ev-side="' + side + '" placeholder="' + t('ev.minute_ph') + '" maxlength="5" style="width:65px;text-align:center;">' +
-          '<button class="btn btn-primary btn-small ev-submit" data-ev-side="' + side + '">' + t('ev.add') + '</button>' +
-        '</div>' +
-      '</div>';
-    }
-
-    function buildOppEventForm(side) {
-      return '<div class="ev-form-inner">' +
-        buildEvTypeDropdown(side) +
-        '<input type="text" class="reg-input ev-opp-number" data-ev-side="' + side + '" placeholder="#" maxlength="3" style="width:50px;text-align:center;">' +
-        '<div class="ev-change-fields" data-ev-side="' + side + '" hidden>' +
-          '<input type="text" class="reg-input ev-opp-out" data-ev-side="' + side + '" placeholder="' + t('ev.opp_out') + '" maxlength="3" style="width:55px;text-align:center;">' +
-          '<input type="text" class="reg-input ev-opp-in" data-ev-side="' + side + '" placeholder="' + t('ev.opp_in') + '" maxlength="3" style="width:55px;text-align:center;">' +
-        '</div>' +
-        '<div class="ev-confirm-row" data-ev-side="' + side + '" hidden>' +
-          '<input type="text" class="reg-input ev-minute" data-ev-side="' + side + '" placeholder="' + t('ev.minute_ph') + '" maxlength="5" style="width:65px;text-align:center;">' +
-          '<button class="btn btn-primary btn-small ev-submit" data-ev-side="' + side + '">Afegir</button>' +
-        '</div>' +
-      '</div>';
+      eventsHtml = ptHead(t('pt.events'),
+          events.length ? (events.length + ' ' + t('pt.events_n')) : '') +
+        ptTimelineHtml(m, events, users, isStaff) +
+        addEventHtml +
+        (isStaff && isPast && _evForm ? ptEventFormHtml(m, calledUsers) : '');
     }
 
     /* The rival's two strips, imported from the FCF. They used to be two
@@ -11341,14 +12217,12 @@
        looked at them; here they sit next to the fixture they belong to,
        which is where a clash with our own kit is actually noticed.
        `mdKitCellHtml` renders nothing for a kit we do not have. */
-    const oppKitsHtml = (m.opponentKit || m.opponentKitAway) ? `
-      <div class="card md-oppkits">
-        <div class="card-title">${t('cal.opp_kits')}</div>
-        <div class="md-oppkits-row">
-          ${mdKitCellHtml(m.opponentKit, 'cal.opp_kit_1', m.opponentBadge)}
-          ${mdKitCellHtml(m.opponentKitAway, 'cal.opp_kit_2', m.opponentBadge)}
-        </div>
-      </div>` : '';
+    /* The rival's strips moved INTO the facts column as a
+       "Uniforme del rival" row (ptOppKitsHtml) — beside our own kit, which
+       is where a clash is actually noticed, instead of a card of their own
+       further down. That also disposes of the `<td>` this used to drop into
+       a `<div>`: mdKitCellHtml builds a table cell for the Calendari, and
+       browsers only made it work by unwrapping the orphan. */
     /* Editing a fixture moved here with the Calendari table it used to live
        in. It is the only way left to correct a hand-typed kick-off or drop
        a friendly that was cancelled, so it is not optional polish. */
@@ -11356,74 +12230,128 @@
       ? `<button class="btn btn-outline btn-small md-edit-fixture" data-match-id="${sanitize(String(m.id))}">✏️ ${t('cal.edit')}</button>`
       : '';
 
-    return `
-      <div class="detail-topbar">
-        <button class="btn btn-outline btn-small detail-back" data-back="${backPage}">${t('btn.back')}</button>
-        ${editBtn}
-      </div>
-      ${showNotes ? mnBriefingHtml(m, matches) : ''}
-      <div class="detail-hero detail-hero-match">
-        <div class="detail-hero-badge"><span class="badge badge-yellow" style="font-size:.9rem;padding:.3rem .8rem;">${t('match_detail.badge')}</span></div>
-        <h2 class="detail-title">${matchLabel(m)}</h2>
-        <div class="detail-subtitle">${dateFormatted}</div>
-        <div class="detail-meta">
-          ${convSent ? `<span>🕐 ${t('match_detail.callup')} ${callupTime}</span>` : ''}
-          <span><img src="img/whistle.png" class="kickoff-icon" alt=""> ${t('match_detail.kickoff')} ${m.time || '—'}</span>
-          <span>${matchPlace}</span>
-        </div>
-        ${/* The same strip the session page draws, from the same field and the
-              same function. An AWAY fixture forecasts the away ground: its
-              mapLink carries the federation's coordinates, which
-              scheduledWeatherSync prefers over the club's own. */''}
-        ${sessionWeatherHtml(m, 'match')}
-        ${convHtml}
-      </div>
-      ${oppKitsHtml}
-      ${showNotes ? mnLegBannerHtml(m, matches) : ''}
-      ${mdRefDetailHtml(m, matches)}
-      ${eventsHtml}
-      ${showNotes ? mnNotesCardHtml(m) : ''}
-      ${(() => {
-        if (!convSent) return calledHtml;
-        const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
-        const boards = matchBoards[m.id] || [];
-        // Group boards by tag
-        const tagOrder = ['Presión', 'Salida', 'Estrategia'];
-        const grouped = {};
-        boards.forEach(b => {
-          const t = b.tag || '';
-          if (!grouped[t]) grouped[t] = [];
-          grouped[t].push(b);
-        });
-        // Build ordered tag keys: specified order first, then remaining
-        const orderedTags = [];
-        tagOrder.forEach(t => { if (grouped[t]) orderedTags.push(t); });
-        Object.keys(grouped).forEach(t => { if (!orderedTags.includes(t)) orderedTags.push(t); });
+    /* The convocatòria's own video links. They used to be a pseudo-group
+       inside the boards panel titled with a hardcoded English '🎬 Videos';
+       here they are their own block under the boards, which is what the
+       design's third column has room for. The anchor and its data attribute
+       are unchanged, so the delegated `.detail-video-link` handler — and its
+       central safeHttpUrl guard — still owns the click. */
+    const sentVids = (sentEntry && sentEntry.videos) ? sentEntry.videos : [];
+    const videosHtml = sentVids.length
+      ? ptHead(t('mn.videos')) + '<div class="pt-videos">' +
+          sentVids.map(v =>
+            '<div class="pt-video"><a href="#" class="detail-video-link" data-video-url="' +
+              sanitize(v.url) + '">' + sanitize(v.title || 'Video') + '</a>' +
+            (v.comment ? '<div class="pt-video-note">' +
+              sanitize(v.comment).replace(/\n/g, '<br>') + '</div>' : '') +
+            '</div>').join('') +
+        '</div>'
+      : '';
 
-        // Video links + per-video comments section
-        const sentVids = sentEntry && sentEntry.videos ? sentEntry.videos : [];
-        let videosGroupHtml = '';
-        if (sentVids.length) {
-          const vidItems = sentVids.map(v => {
-            const commentHtml = v.comment ? '<div class="detail-comments">' + sanitize(v.comment).replace(/\n/g, '<br>') + '</div>' : '';
-            return '<div class="detail-video-item"><a href="#" class="detail-video-link" data-video-url="' + sanitize(v.url) + '">' + sanitize(v.title || 'Video') + '</a>' + commentHtml + '</div>';
-          }).join('');
-          videosGroupHtml = '<div class="detail-board-group"><div class="detail-board-group-title">🎬 Videos</div>' + vidItems + '</div>';
-        }
+    /* ── The context band's three columns ──
+       Each is omitted when empty rather than left as a blank third of the
+       page: with the hairlines gone there is nothing to show a reader that
+       an empty column is a column at all. */
+    /* The kit's NAME, which resolveKitPieces deliberately does not return —
+       it hands back resolved colour values so its three callers stay blind
+       to which era the record was written in. Only era 3 stores an id, so
+       only era 3 can be named; an older convocatòria draws its icons with
+       no label rather than being given one it never had. */
+    const shirtKit = (sentEntry && !Array.isArray(sentEntry) && sentEntry.shirtId)
+      ? clubKits().find(k => k && k.id === sentEntry.shirtId) : null;
+    const ctx = {
+      convSent, sentPlayers, sentPieces, callupTime, isStaff, isPast,
+      isPlayerViewer, sessionId: session.id,
+      kitLabel: shirtKit ? (shirtKit.label + ' ' + t('pt.kit_word')) : ''
+    };
 
-        let boardsHtml = '';
-        if (boards.length || sentVids.length) {
-          boardsHtml = '<div class="detail-boards-panel">' + videosGroupHtml +
-            orderedTags.map(tag => {
-              const tagTitle = tag || 'General';
-              return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
-                grouped[tag].map(b => tbRoBoardHtml(b, 'ro1-')).join('') + '</div>';
-            }).join('') + '</div>';
-        }
+    /* Players get the referee's NAME and nothing else — never his record.
+       mdRefereeFor is the same lookup the staff card opens with, so the two
+       cannot disagree about who is refereeing. */
+    /* ⚠ THE COLUMN IS ALWAYS THERE, even with no referee.
+       `mdRefDetailHtml` returns '' when the federation has not published an
+       appointment, so the whole third of the band vanished and the page
+       looked like it had lost a section. A fixture with no referee yet is a
+       normal state before the weekend, and saying so is the answer — an
+       absent block and an unappointed referee must not look alike.
 
-        if (!calledHtml && !boardsHtml) return '';
-        return '<div class="detail-match-layout">' + calledHtml + boardsHtml + '</div>';
-      })()}`;
+       `mdRefereeFor` is the same lookup the staff card opens with, so the
+       two cannot disagree about whether there is one. */
+    const ref = mdRefereeFor(m);
+    let refHtml = ptHead(t('pt.referee'));
+    if (!ref) {
+      refHtml += '<div class="pt-empty">' + t('pt.no_referee') + '</div>';
+    } else if (isStaff) {
+      /* The card brings its own heading, so the eyebrow above would say it
+         twice. Staff get the record; a player gets the name and no more. */
+      refHtml = mdRefDetailHtml(m, matches) ||
+        ptHead(t('pt.referee')) +
+        '<div class="pt-ref-name">' + sanitize(ref.names[0]) + '</div>';
+    } else {
+      refHtml += '<div class="pt-ref-name">' + sanitize(ref.names[0]) + '</div>';
+    }
+
+    const colToday = ptFactsHtml(m, ctx) +
+      /* The same strip the session page draws, from the same field and the
+         same function. An AWAY fixture forecasts the away ground: its
+         mapLink carries the federation's coordinates, which
+         scheduledWeatherSync prefers over the club's own. */
+      sessionWeatherHtml(m, 'match');
+    const colBoards = ptBoardsHtml(m, isStaff) + videosHtml +
+      (showNotes ? mnNotesCardHtml(m) : '');
+
+    const contextCols = [
+      colToday ? ptHead(t('pt.today')) + colToday : '',
+      refHtml,
+      colBoards
+    ].filter(Boolean);
+
+    return '<div class="pt-page" id="pt-page">' +
+      '<div class="pt-topbar">' +
+        /* `.detail-back` is the handler hook and stays; `.pt-back` carries
+           the look. No `.btn` — the design's back link is a link. */
+        '<button class="pt-back detail-back" data-back="' + backPage + '">← ' +
+          t('pt.back_calendar') + '</button>' +
+        '<span class="pt-topbar-right">' +
+          '<span class="pt-eyebrow">' + t('pt.eyebrow') +
+            (m.team ? ' · ' + sanitize(m.team) : '') + '</span>' +
+          editBtn +
+        '</span>' +
+      '</div>' +
+
+      ptScoreboardHtml(m, events, isPast || events.length > 0) +
+
+      /* The player's own answer to "am I in?", kept as its own strip
+         directly under the result the way the design has it — it is the
+         first thing a player opens this page for. */
+      (convSent && isPlayerViewer
+        ? '<div class="pt-you' + (convIncluded ? '' : ' pt-you-no') + '">' +
+            '<span>' + t(convIncluded ? 'pt.you_called' : 'pt.you_not_called') + '</span>' +
+            (convIncluded && callupTime !== '—'
+              ? '<span class="pt-you-meta">' + t('pt.f_callup') + ' ' + sanitize(callupTime) +
+                ' ' + t('pt.at_ground') + '</span>' : '') +
+          '</div>'
+        : '') +
+
+      /* v212 renders the EXISTING anada blocks in the anada band's slot.
+         The design's expanded first-leg detail is v214; until then the
+         briefing and the suggestion banner keep working exactly as they
+         did, in the place the redesign gives them. */
+      (showNotes ? '<div class="pt-band">' +
+        mnLegBannerHtml(m, matches) + ptAnadaHtml(m, matches) + '</div>' : '') +
+
+      (contextCols.length
+        ? '<div class="pt-band pt-context">' +
+            contextCols.map(c => '<div class="pt-col">' + c + '</div>').join('') +
+          '</div>'
+        : '') +
+
+
+      '<div class="pt-band pt-play">' +
+        '<div class="pt-col">' + eventsHtml + '</div>' +
+        '<div class="pt-col">' + ptCallupHtml(m, ctx) + '</div>' +
+      '</div>' +
+    '</div>';
   }
 
   function renderTrainingDetail() {
@@ -18906,9 +19834,11 @@
    * planned intensity — and both looked like stray Windows widgets in a page
    * made of hairlines. So the list is a div.
    *
-   * Deliberately not the app's existing `.ev-custom-select`: that one is
-   * rounded, uses --primary-light, and its bindings are wired to the match
-   * events form's hidden inputs. Same idea, different clothes.
+   * There used to be a second one of these — `.ev-custom-select`, in the
+   * match events form, rounded, on --primary-light, wired to its own hidden
+   * inputs. v213 deleted it and moved that form onto this control, so this
+   * is now the only dropdown in the app and the only one with a jsdom test
+   * behind it (test/std-select.test.js). Keep it that way.
    *
    * `opts` = [{ value, label, cls }]. The chosen value lives in a data
    * attribute on the root, so a handler reads it exactly like `select.value`.
@@ -23933,6 +24863,28 @@
   }
 
   /**
+   * The same 96 quarter-hours as a stdSelect, for the paper dialogs.
+   *
+   * ⚠ `.std-sel-esc` is not optional here. Ninety-six options is a menu far
+   * taller than the dialog; fixed positioning plus the max-height cap is
+   * what makes it scroll inside itself instead of running off the page.
+   * `cls` is the hook the caller queries the control back by — `cal-f-time`
+   * for a start, `cal-f-end` for an end. It goes on the ROOT, and the
+   * caller reads `dataset.value`, not `.value`.
+   */
+  function calTimeSelect(selected, cls) {
+    const opts = [{value: '', label: '--:--'}];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        const val = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        opts.push({value: val, label: val});
+      }
+    }
+    return stdSelect({kind: 'caltime', cls: (cls || 'cal-f-time') + ' std-sel-esc',
+      value: selected || '', options: opts});
+  }
+
+  /**
    * The planned-RPE picker: 1-10, or blank.
    *
    * Blank is the default and stays a real answer. The calendar's intensity
@@ -24237,10 +25189,22 @@
     // `opts.badge` overrides the crest baked into the shirt. Only the
     // Calendari passes it, and only because the kits there are the RIVAL's.
     const badge = opts && 'badge' in opts ? opts.badge : undefined;
+    /* ⚠ `opts.size` is the RENDERED size, passed DOWN — never set in CSS.
+       See the KIT_ICON_PX note above: every band boundary is arithmetic
+       against this number, and scaling the result afterwards is what made
+       bands of one width render at several.
+
+       Keep it a MULTIPLE OF 18: the striped span is S/2, and nine bands —
+       the maximum — are whole pixels only then. Omitting it gives 72, which
+       is right for a card and four times too tall for a label/value row.
+       That is what the match page's Uniforme row was doing: it had inherited
+       a 30px CSS pin from the markup it replaced, and dropping the CSS left
+       the default. */
+    const size = (opts && opts.size) || undefined;
     return '<span class="kit-icons">' +
-      shirtSvg(pieces.shirt, badge) +
-      (withShorts ? shortsSvg(pieces.shorts) : '') +
-      kitSockSvg(pieces.socks) +
+      shirtSvg(pieces.shirt, badge, size) +
+      (withShorts ? shortsSvg(pieces.shorts, size) : '') +
+      kitSockSvg(pieces.socks, size) +
       '</span>';
   }
 
@@ -27366,27 +28330,55 @@
    * validation message stays on screen next to the field it is about
    * instead of arriving as a toast over a dialog that has already gone.
    */
-  function calModal(title, bodyHtml, onSubmit) {
+  /** One labelled field of a paper dialog: eyebrow above, control below. */
+  function calField(label, control, cls) {
+    return '<div class="pt-dlg-f ' + (cls || '') + '">' +
+      '<span class="pt-eyebrow">' + sanitize(label) + '</span>' + control + '</div>';
+  }
+
+  /**
+   * `destructive` is rendered in the ACTIONS row, at the far edge.
+   *
+   * It used to be the last control in the body, directly under the last
+   * text field and directly above Desa — a red button one row from Save,
+   * on a dialog whose other button deletes a fixture for the whole club.
+   * `margin-left:auto` puts the width of the dialog between them.
+   */
+  function calModal(title, bodyHtml, onSubmit, destructive) {
     const existing = document.getElementById('custom-modal-overlay');
     if (existing) existing.remove();
     const overlay = document.createElement('div');
     overlay.id = 'custom-modal-overlay';
     overlay.className = 'modal-overlay';
+    /* The paper idiom, not `.modal-card` — no radius, no shadow, no centred
+       text. Shared by THREE dialogs (edit match, add match, add activity),
+       and the last two are the Calendari's, which is the same design
+       language, so this lands on all three deliberately.
+
+       ⚠ Every hook the callers depend on is unchanged: `[data-cal-cancel]`,
+       `[data-cal-ok]`, `.cal-form-err` (which `card.fail` writes into) and
+       the `.cal-f-*` field classes they query out of the returned card.
+       Only the shell around them changed. */
     overlay.innerHTML =
-      '<div class="modal-card cal-form-modal">' +
-        '<div class="modal-title">' + title + '</div>' +
-        '<div class="cal-form">' + bodyHtml + '</div>' +
-        '<p class="cal-form-err" hidden></p>' +
-        '<div class="modal-actions">' +
-          '<button class="btn btn-small btn-outline" data-cal-cancel>' +
-            sanitize(t('common.cancel')) + '</button>' +
-          '<button class="btn btn-small btn-primary" data-cal-ok>' +
+      '<div class="pt-dlg cal-form-modal">' +
+        '<div class="pt-dlg-head">' +
+          '<div class="pt-dlg-title">' + title + '</div>' +
+          '<button class="pt-ov-close" data-cal-cancel>' +
+            sanitize(t('pt.close')) + ' ✕</button>' +
+        '</div>' +
+        '<div class="cal-form pt-dlg-body">' + bodyHtml + '</div>' +
+        '<p class="cal-form-err pt-dlg-err" hidden></p>' +
+        '<div class="pt-dlg-actions">' +
+          '<button class="pt-dlg-save" data-cal-ok>' +
             sanitize(t('btn.save')) + '</button>' +
+          '<button class="pt-dlg-cancel" data-cal-cancel>' +
+            sanitize(t('common.cancel')) + '</button>' +
+          (destructive || '') +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
     requestAnimationFrame(function () { overlay.classList.add('visible'); });
-    const card = overlay.querySelector('.modal-card');
+    const card = overlay.querySelector('.pt-dlg');
     const close = function () {
       overlay.classList.remove('visible');
       setTimeout(function () { overlay.remove(); }, 200);
@@ -27404,39 +28396,82 @@
     card.querySelectorAll('.md-datepicker').forEach(function (inp) {
       inp.addEventListener('click', function () { openDatePicker(inp); });
     });
+    /* ⚠ The dialog's stdSelects must be bound HERE. bindDynamicActions runs
+       after a render; this markup is injected straight into the body and no
+       render follows it, so without this the category, squad and time
+       pickers draw correctly and simply never open. Named kinds, as always. */
+    bindStdSelects(['calcat', 'calletter', 'caltime'], function (root) {
+      /* Changing the CATEGORY changes which squad letters exist, and the
+         letter control was built from the old list. Rebuilding the dialog
+         would discard everything already typed, so the now-impossible letter
+         is cleared instead and calPickedSquad falls back to the category's
+         only letter, or to none. */
+      if (root.dataset.stdSel !== 'calcat') return;
+      const letEl = card.querySelector('.cal-f-letter');
+      if (letEl && getTeamLetters(root.dataset.value)
+          .indexOf(letEl.dataset.value) === -1) {
+        letEl.dataset.value = '';
+        const lbl = letEl.querySelector('.std-sel-l');
+        if (lbl) lbl.textContent = '—';
+      }
+    });
+    /* The home/away chips are labels wrapped around radios: the input still
+       holds the answer and the submit still reads `:checked`. This only
+       moves the lit class so the chip agrees with the input. */
+    card.querySelectorAll('.cal-f-radio input').forEach(function (input) {
+      input.addEventListener('change', function () {
+        card.querySelectorAll('.cal-f-radio').forEach(function (l) {
+          l.classList.toggle('pt-chip-on', l.contains(input) && input.checked);
+        });
+      });
+    });
     return card;
   }
 
   /** The squad chips shared by both dialogs; '' when there is no choice. */
   function calSquadPickerHtml(selCat, selLetter) {
     const cats = getVisibleCategories();
+    /* stdSelect, not `<select>`. A native popup is drawn by the operating
+       system and ignores every rule we write, so in a paper dialog it
+       opened as a stray system widget. `.std-sel-esc` places the menu
+       against the viewport so a club with many categories does not get a
+       list running off the bottom.
+
+       The `.cal-f-cat` / `.cal-f-letter` classes stay on the ROOT, because
+       calPickedSquad finds the control by them; it reads `dataset.value`
+       now instead of `.value`. */
     const catSel = cats.length > 1
-      ? '<label>' + sanitize(t('nt.category')) + '<select class="reg-input cal-f-cat">' +
-        cats.map(function (c) {
-          return '<option value="' + sanitize(c) + '"' + (c === selCat ? ' selected' : '') +
-            '>' + sanitize(CATEGORY_LABELS[c] || c) + '</option>';
-        }).join('') + '</select></label>'
+      ? '<div class="pt-dlg-f"><span class="pt-eyebrow">' + sanitize(t('nt.category')) +
+        '</span>' + stdSelect({kind: 'calcat', cls: 'cal-f-cat std-sel-esc',
+          value: selCat,
+          options: cats.map(function (c) {
+            return {value: c, label: CATEGORY_LABELS[c] || c};
+          })}) + '</div>'
       : '';
     const letters = getTeamLetters(selCat);
     const letSel = letters.length > 1
-      ? '<label>' + sanitize(t('nt.team')) + '<select class="reg-input cal-f-letter">' +
-        letters.map(function (l) {
-          return '<option value="' + sanitize(l) + '"' + (l === selLetter ? ' selected' : '') +
-            '>' + sanitize(l) + '</option>';
-        }).join('') + '</select></label>'
+      ? '<div class="pt-dlg-f"><span class="pt-eyebrow">' + sanitize(t('nt.team')) +
+        '</span>' + stdSelect({kind: 'calletter', cls: 'cal-f-letter std-sel-esc',
+          value: selLetter,
+          options: letters.map(function (l) { return {value: l, label: l}; })}) +
+        '</div>'
       : '';
-    return catSel + letSel;
+    return (catSel || letSel) ? '<div class="pt-dlg-row">' + catSel + letSel + '</div>' : '';
   }
 
   function calPickedSquad(card) {
     const catEl = card.querySelector('.cal-f-cat');
     const letEl = card.querySelector('.cal-f-letter');
-    const cat = catEl ? catEl.value : (getCurrentCategory() || getVisibleCategories()[0] || '');
+    /* `dataset.value` — these are stdSelects now, and a stdSelect root has
+       no `.value`. Reading the old property returns undefined, which would
+       have filed every fixture under an empty category. */
+    const cat = catEl ? catEl.dataset.value
+      : (getCurrentCategory() || getVisibleCategories()[0] || '');
     const letters = getTeamLetters(cat);
     /* One letter means there is no choice to make and no control is drawn,
        so the row still has to carry it — a session with a blank letter is
        "every squad in the category", which is a different thing. */
-    const letter = letEl ? letEl.value : (letters.length === 1 ? letters[0] : '');
+    const letter = letEl ? letEl.dataset.value : (letters.length === 1 ? letters[0] : '');
     return { cat: cat, letter: letter };
   }
 
@@ -27468,32 +28503,41 @@
        merge rule lets a coach own are editable here, and editing one is
        exactly what stops the nightly sync writing it again. */
     const body =
-      (cur && cur.fcfActaId ? '<p class="cal-form-note">' + sanitize(t('cal.from_fcf')) + '</p>' : '') +
-      '<div class="cal-f-row">' +
-        '<label class="cal-f-radio"><input type="radio" name="cal-ha" value="home"' +
-          (wasHome ? ' checked' : '') + '> 🏠 ' + sanitize(t('cal.home_game')) + '</label>' +
-        '<label class="cal-f-radio"><input type="radio" name="cal-ha" value="away"' +
-          (wasHome ? '' : ' checked') + '> ✈️ ' + sanitize(t('cal.away_game')) + '</label>' +
-      '</div>' +
+      (cur && cur.fcfActaId
+        ? '<p class="cal-form-note pt-dlg-note">' + sanitize(t('cal.from_fcf')) + '</p>' : '') +
+      /* Chips, and the radio inputs are still inside them — the submit reads
+         `input[name="cal-ha"]:checked`, and swapping that for a data
+         attribute would be a second source of truth for the same answer.
+         The input is hidden by CSS; the label is the chip. */
+      calField(t('cal.home_game') + ' / ' + t('cal.away_game'),
+          '<div class="pt-chips cal-f-row">' +
+            '<label class="pt-chip cal-f-radio' + (wasHome ? ' pt-chip-on' : '') + '">' +
+              '<input type="radio" name="cal-ha" value="home"' +
+              (wasHome ? ' checked' : '') + '> 🏠 ' + sanitize(t('cal.home_game')) + '</label>' +
+            '<label class="pt-chip cal-f-radio' + (wasHome ? '' : ' pt-chip-on') + '">' +
+              '<input type="radio" name="cal-ha" value="away"' +
+              (wasHome ? '' : ' checked') + '> ✈️ ' + sanitize(t('cal.away_game')) + '</label>' +
+          '</div>') +
       calSquadPickerHtml(cat, letter) +
-      '<label>' + sanitize(t('cal.th_opponent')) +
-        opponentInputHtml('cal-new', cur ? (wasHome ? cur.away : cur.home) : '') + '</label>' +
-      '<label>' + sanitize(t('training.th_date')) +
-        '<input type="text" class="reg-input md-datepicker cal-f-date" data-display-dmy' +
-        ' data-date-iso="' + sanitize(iso) + '" value="' + sanitize(tDateDMY(iso)) +
-        '" readonly></label>' +
-      '<label>' + sanitize(t('nt.start')) +
-        '<select class="reg-input cal-f-time">' +
-        buildTimeOptions(val(cur && cur.time, homeGame.time)) + '</select></label>' +
-      '<label>' + sanitize(t('training.th_location')) +
-        '<input class="reg-input cal-f-loc" value="' +
-        sanitize(val(cur && cur.location, homeGame.location)) + '"></label>' +
-      '<label>' + sanitize(t('training.th_link')) +
-        '<input class="reg-input cal-f-map" value="' +
-        sanitize(val(cur && cur.mapLink, homeGame.link)) + '"></label>' +
-      (cur ? '<button class="btn btn-small btn-danger cal-f-delete">' +
-        sanitize(t('btn.delete')) + '</button>' : '');
+      calField(t('cal.th_opponent'),
+          opponentInputHtml('cal-new', cur ? (wasHome ? cur.away : cur.home) : '')) +
+      '<div class="pt-dlg-row">' +
+        calField(t('training.th_date'),
+            '<input type="text" class="pt-dlg-in md-datepicker cal-f-date" data-display-dmy' +
+            ' data-date-iso="' + sanitize(iso) + '" value="' + sanitize(tDateDMY(iso)) +
+            '" readonly>') +
+        calField(t('nt.start'), calTimeSelect(val(cur && cur.time, homeGame.time))) +
+      '</div>' +
+      calField(t('training.th_location'),
+          '<input class="pt-dlg-in cal-f-loc" value="' +
+          sanitize(val(cur && cur.location, homeGame.location)) + '">') +
+      calField(t('training.th_link'),
+          '<input class="pt-dlg-in cal-f-map" value="' +
+          sanitize(val(cur && cur.mapLink, homeGame.link)) + '">');
 
+    const delBtn = cur
+      ? '<button class="pt-dlg-del cal-f-delete">' + sanitize(t('btn.delete')) + '</button>'
+      : '';
     const card = calModal(sanitize(t(cur ? 'cal.edit_match' : 'cal.add_match')), body, function (c) {
       const opp = c.querySelector('.md-opponent').value.trim();
       if (!opp) { c.fail(t('cal.needs_opponent')); return false; }
@@ -27503,7 +28547,8 @@
       const home = c.querySelector('input[name="cal-ha"]:checked').value === 'home';
       const g = {
         homeAway: home ? 'home' : 'away', opponent: opp, date: dISO,
-        kickoff: c.querySelector('.cal-f-time').value,
+        // dataset.value — the time picker is a stdSelect now, not a <select>.
+        kickoff: c.querySelector('.cal-f-time').dataset.value,
         location: c.querySelector('.cal-f-loc').value.trim(),
         mapLink: c.querySelector('.cal-f-map').value.trim(),
         team: sq.letter, category: sq.cat, squadLetter: sq.letter
@@ -27511,7 +28556,7 @@
       if (cur) calUpdateMatch(cur.id, g); else calCommitMatch(g);
       renderPage(getSession());
       return true;
-    });
+    }, delBtn);
 
     const del = card.querySelector('.cal-f-delete');
     if (del) {
@@ -27716,25 +28761,31 @@
     const letter = (existing && (existing.teams || [])[0]) ||
       (letters.length === 1 ? letters[0] : '');
     const iso = (existing && existing.date) || date;
+    /* The same paper fields as the fixture dialog — this shares calModal, so
+       leaving it on `<label>` + `.reg-input` would have put two different
+       form idioms behind one shell. */
     const body =
-      '<label>' + sanitize(t('act.title')) +
-        '<input class="reg-input cal-f-name" value="' + sanitize((existing && existing.title) || '') +
-        '" placeholder="' + sanitize(t('act.title_ph')) + '"></label>' +
+      calField(t('act.title'),
+          '<input class="pt-dlg-in cal-f-name" value="' +
+          sanitize((existing && existing.title) || '') + '" placeholder="' +
+          sanitize(t('act.title_ph')) + '">') +
       calSquadPickerHtml(cat, letter) +
-      '<label>' + sanitize(t('training.th_date')) +
-        '<input type="text" class="reg-input md-datepicker cal-f-date" data-display-dmy' +
-        ' data-date-iso="' + sanitize(iso) + '" value="' + sanitize(tDateDMY(iso)) +
-        '" readonly></label>' +
-      '<label>' + sanitize(t('nt.start')) +
-        '<select class="reg-input cal-f-time">' +
-        buildTimeOptions((existing && existing.time) || '') + '</select></label>' +
-      '<label>' + sanitize(t('nt.end')) +
-        '<select class="reg-input cal-f-end">' +
-        buildTimeOptions((existing && existing.endTime) || '') + '</select></label>' +
-      '<label>' + sanitize(t('act.place')) +
-        '<input class="reg-input cal-f-loc" value="' + sanitize((existing && existing.location) || '') + '"></label>' +
-      '<label>' + sanitize(t('training.th_link')) +
-        '<input class="reg-input cal-f-map" value="' + sanitize((existing && existing.mapLink) || '') + '"></label>';
+      '<div class="pt-dlg-row">' +
+        calField(t('training.th_date'),
+            '<input type="text" class="pt-dlg-in md-datepicker cal-f-date" data-display-dmy' +
+            ' data-date-iso="' + sanitize(iso) + '" value="' + sanitize(tDateDMY(iso)) +
+            '" readonly>') +
+        calField(t('nt.start'), calTimeSelect((existing && existing.time) || '',
+            'cal-f-time')) +
+        calField(t('nt.end'), calTimeSelect((existing && existing.endTime) || '',
+            'cal-f-end')) +
+      '</div>' +
+      calField(t('act.place'),
+          '<input class="pt-dlg-in cal-f-loc" value="' +
+          sanitize((existing && existing.location) || '') + '">') +
+      calField(t('training.th_link'),
+          '<input class="pt-dlg-in cal-f-map" value="' +
+          sanitize((existing && existing.mapLink) || '') + '">');
 
     calModal(sanitize(t(existing ? 'act.edit' : 'act.new')), body, function (c) {
       const name = c.querySelector('.cal-f-name').value.trim();
@@ -27742,13 +28793,13 @@
       const dISO = c.querySelector('.cal-f-date').dataset.dateIso || '';
       if (!dISO) { c.fail(t('act.needs_date')); return false; }
       const sq = calPickedSquad(c);
-      const start = c.querySelector('.cal-f-time').value;
+      const start = c.querySelector('.cal-f-time').dataset.value;
       const fields = {
         title: name, date: dISO, day: tDay(new Date(dISO + 'T12:00:00').getDay()),
         time: start,
         // Same rule as a session: never blank when a start is known, or the
         // clash arithmetic and the card disagree about what is happening.
-        endTime: c.querySelector('.cal-f-end').value || defaultEndTime(start),
+        endTime: c.querySelector('.cal-f-end').dataset.value || defaultEndTime(start),
         location: c.querySelector('.cal-f-loc').value.trim(),
         mapLink: c.querySelector('.cal-f-map').value.trim(),
         category: sq.cat, teams: sq.letter ? [sq.letter] : []
@@ -31187,13 +32238,19 @@
       });
     });
 
+    /* The board picker is a stdSelect now, not a native <select>. Its chosen
+       value lives in `data-value` on the root — bindStdSelects writes it —
+       so the Add button reads it exactly as it read `select.value`. Named
+       kind, never the bare selector: two binders claiming one trigger is a
+       documented past bug. */
+    bindStdSelects('mnboard', function () { /* the Add button commits it */ });
     var mnBoardAdd = document.getElementById('mn-board-add');
     if (mnBoardAdd) {
       mnBoardAdd.addEventListener('click', function () {
         var m = mnCardMatch(mnBoardAdd);
-        var sel = document.getElementById('mn-board-select');
-        if (!m || !sel || !sel.value) return;
-        var meta = TB.meta(sel.value);
+        var sel = document.querySelector('[data-std-sel="mnboard"]');
+        if (!m || !sel || !sel.dataset.value) return;
+        var meta = TB.meta(sel.dataset.value);
         if (!meta) return;
         var list = ((MN.get(m.id) || {}).boards || []).slice();
         if (list.some(function (b) { return b.boardId === meta.id; })) return;
@@ -31249,210 +32306,195 @@
       });
     });
 
-    // ── Match Events bindings ──
-    // Toggle "+ Event" inline form
-    $$('.ev-add-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
+    /* ── Match Events bindings (v213) ──────────────────────────
+       The form keeps its answer in `_evForm` and re-renders, so every
+       handler here is "record one field, redraw". The old ones drove a
+       progressive disclosure through hidden inputs and synthetic `change`
+       events, which is why they needed a resetCustomSelect that had to
+       clear three controls in the right order.
+
+       ⚠ `_evForm.min` is captured on `input`, not read at submit time.
+       Picking a player re-renders the form, and a minute still sitting in
+       the DOM would be thrown away by the redraw — the coach types 63,
+       chooses the scorer, and the minute silently empties. */
+    $$('.pt-ev-add-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
         var side = btn.dataset.evSide;
-        var form = document.getElementById('ev-form-' + side);
-        if (form) form.hidden = !form.hidden;
+        // Clicking the open side's button closes it — the button is the
+        // control that opened it, so it is the one to shut it.
+        _evForm = (_evForm && _evForm.side === side) ? null : {
+          matchId: detailMatchId, side: side,
+          type: '', min: '', who: '', second: '', goalType: 'jugada_oberta'
+        };
+        renderPage(getSession());
       });
     });
 
-    // Event type custom dropdown interactions
-    $$('.ev-cs-trigger').forEach(function(trigger) {
-      trigger.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var wrap = trigger.closest('.ev-custom-select');
-        var wasOpen = wrap.classList.contains('open');
-        // Close all other custom selects
-        $$('.ev-custom-select.open').forEach(function(w) { w.classList.remove('open'); });
-        if (!wasOpen) {
-          wrap.classList.add('open');
-          // Position the options panel with fixed positioning
-          var opts = wrap.querySelector('.ev-cs-options');
-          var rect = trigger.getBoundingClientRect();
-          opts.style.left = rect.left + 'px';
-          opts.style.width = rect.width + 'px';
-          // Check if dropdown fits below, otherwise show above
-          var spaceBelow = window.innerHeight - rect.bottom;
-          if (spaceBelow < 200 && rect.top > spaceBelow) {
-            opts.style.top = 'auto';
-            opts.style.bottom = (window.innerHeight - rect.top) + 'px';
-          } else {
-            opts.style.top = rect.bottom + 'px';
-            opts.style.bottom = 'auto';
-          }
-        }
-      });
-    });
-    $$('.ev-cs-option').forEach(function(opt) {
-      opt.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var wrap = opt.closest('.ev-custom-select');
-        var value = opt.dataset.value;
-        var label = opt.textContent.trim();
-        var icon = opt.querySelector('.ev-cs-icon');
-        var iconSrc = icon ? icon.src : '';
-        // Update trigger label
-        var triggerLabel = wrap.querySelector('.ev-cs-label');
-        if (iconSrc) {
-          triggerLabel.innerHTML = '<img src="' + iconSrc + '" class="ev-cs-icon" alt="">' + sanitize(label);
-        } else {
-          triggerLabel.textContent = label;
-        }
-        // Mark selected
-        wrap.querySelectorAll('.ev-cs-option').forEach(function(o) { o.classList.remove('selected'); });
-        opt.classList.add('selected');
-        // Set hidden input & dispatch change
-        var hidden = wrap.querySelector('.ev-cs-value');
-        hidden.value = value;
-        wrap.classList.remove('open');
-        hidden.dispatchEvent(new Event('change'));
-      });
-    });
-    // Close custom dropdown on outside click
-    document.addEventListener('click', function() {
-      $$('.ev-custom-select.open').forEach(function(w) { w.classList.remove('open'); });
-    });
-
-    // Helper: reset a custom select back to placeholder
-    function resetCustomSelect(hiddenInput) {
-      if (!hiddenInput) return;
-      hiddenInput.value = '';
-      var wrap = hiddenInput.closest('.ev-custom-select');
-      if (!wrap) return;
-      var triggerLabel = wrap.querySelector('.ev-cs-label');
-      if (triggerLabel) triggerLabel.textContent = hiddenInput.dataset.placeholder || '…';
-      wrap.querySelectorAll('.ev-cs-option').forEach(function(o) { o.classList.remove('selected'); });
-    }
-
-    // Event type dropdown → show/hide conditional fields progressively
-    $$('input.ev-type-select').forEach(function(sel) {
-      sel.addEventListener('change', function() {
-        var side = sel.dataset.evSide;
-        var goalFields = document.querySelector('.ev-goal-fields[data-ev-side="' + side + '"]');
-        var changeFields = document.querySelector('.ev-change-fields[data-ev-side="' + side + '"]');
-        var confirmRow = document.querySelector('.ev-confirm-row[data-ev-side="' + side + '"]');
-        var playerInput = document.querySelector('input.ev-player-select[data-ev-side="' + side + '"]');
-        var oppNum = document.querySelector('.ev-opp-number[data-ev-side="' + side + '"]');
-        if (goalFields) goalFields.hidden = (sel.value !== 'goal');
-        if (changeFields) changeFields.hidden = (sel.value !== 'change');
-        if (confirmRow) confirmRow.hidden = !sel.value;
-        // Hide player dropdown wrapper for 'change'
-        if (playerInput) {
-          var pw = playerInput.closest('.ev-custom-select');
-          if (pw) pw.hidden = (sel.value === 'change');
-        }
-        if (oppNum) oppNum.hidden = (sel.value === 'change');
-        // Reset sub-fields
-        if (goalFields) {
-          var gt = goalFields.querySelector('input.ev-goal-type');
-          if (gt) { resetCustomSelect(gt); gt.dispatchEvent(new Event('change')); }
-        }
+    $$('.pt-chip[data-ev-type]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!_evForm) return;
+        /* The second field belongs to the type. Keeping `second` across a
+           type change would file the assist you picked for a goal as the
+           player who came off a substitution. */
+        _evForm.type = btn.dataset.evType;
+        _evForm.second = '';
+        renderPage(getSession());
       });
     });
 
-    // Goal type dropdown → show jugada oberta fields
-    $$('input.ev-goal-type').forEach(function(sel) {
-      sel.addEventListener('change', function() {
-        var side = sel.dataset.evSide;
-        var jugada = document.querySelector('.ev-jugada-fields[data-ev-side="' + side + '"]');
-        if (jugada) jugada.hidden = (sel.value !== 'jugada_oberta');
-        // Reset detail
-        var det = jugada && jugada.querySelector('input.ev-goal-detail');
-        if (det) { resetCustomSelect(det); det.dispatchEvent(new Event('change')); }
+    $$('.pt-chip[data-ev-goaltype]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!_evForm) return;
+        _evForm.goalType = btn.dataset.evGoaltype;
+        /* ⚠ Clear the assist when the goal stops being open play. Without
+           this, picking an assister and THEN switching to Penal leaves the
+           name in `second` — the field disappears from the form, so nothing
+           on screen shows it, and the submit still writes it to
+           assistPlayerId. An invisible assist on a penalty. */
+        if (ptSecondField('goal', _evForm.goalType) !== 'assist') _evForm.second = '';
+        renderPage(getSession());
       });
     });
 
-    // Goal detail dropdown → show assist picker
-    $$('input.ev-goal-detail').forEach(function(sel) {
-      sel.addEventListener('change', function() {
-        var side = sel.dataset.evSide;
-        var assistInput = document.querySelector('input.ev-assist-select[data-ev-side="' + side + '"]');
-        if (assistInput) {
-          var aw = assistInput.closest('.ev-custom-select');
-          if (aw) aw.hidden = (sel.value !== 'assistencia');
-        }
+    $$('.pt-ev-min-in').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        if (_evForm) _evForm.min = inp.value;
       });
     });
 
-    // Submit event
-    $$('.ev-submit').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var side = btn.dataset.evSide;
-        var form = document.getElementById('ev-form-' + side);
-        if (!form) return;
-        var typeSel = form.querySelector('input.ev-type-select[data-ev-side="' + side + '"]');
-        var type = typeSel ? typeSel.value : '';
-        if (!type) return;
-        var minInput = form.querySelector('.ev-minute[data-ev-side="' + side + '"]');
-        var minute = minInput ? minInput.value.trim() : '';
+    // The opponent's side has no squad to pick from, so it is a number box.
+    $$('.pt-ev-num').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        if (!_evForm) return;
+        _evForm[inp.dataset.evField === 'who' ? 'who' : 'second'] = inp.value;
+      });
+    });
+
+    /* Named kinds, never the bare selector: bindDynamicActions runs every
+       page's binder on every render, and two callers claiming one trigger
+       is what made the control open and shut inside a single click. */
+    bindStdSelects(['evwho', 'evsecond'], function (root, value) {
+      if (!_evForm) return;
+      _evForm[root.dataset.stdSel === 'evwho' ? 'who' : 'second'] = value;
+      renderPage(getSession());
+    });
+
+    $$('.pt-ev-cancel').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _evForm = null;
+        renderPage(getSession());
+      });
+    });
+
+    $$('.pt-ev-submit').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var f = _evForm;
+        if (!f || !f.type) return;
+        var m = (JSON.parse(localStorage.getItem('fa_matches') || '[]'))
+          .find(function (x) { return x.id === detailMatchId; });
+        if (!m) return;
+        // The same predicate the form was DRAWN with, or a fixture whose
+        // name matches neither side saves the rival's number into playerId.
+        var ours = f.side === ptOurSide(m);
+
+        /* Nothing is added without a player or a number. The old form
+           returned silently here too; what is new is that the button is
+           disabled until a type is chosen, so the only silent refusal left
+           is the one the coach can see the empty field for. */
+        if (!String(f.who || '').trim()) return;
+        if (f.type === 'change' && !String(f.second || '').trim()) return;
 
         var ev = {
           id: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-          side: side,
-          type: type,
-          minute: minute
+          side: f.side,
+          type: f.type,
+          minute: String(f.min || '').trim()
         };
 
-        // Our team form
-        var playerSel = form.querySelector('input.ev-player-select[data-ev-side="' + side + '"]');
-        if (playerSel) {
-          if (type !== 'change') {
-            ev.playerId = playerSel.value;
-            if (!ev.playerId) return;
-          }
-          if (type === 'goal') {
-            var gtSel = form.querySelector('input.ev-goal-type[data-ev-side="' + side + '"]');
-            ev.goalType = gtSel ? gtSel.value : '';
-            if (ev.goalType === 'jugada_oberta') {
-              var detSel = form.querySelector('input.ev-goal-detail[data-ev-side="' + side + '"]');
-              ev.goalDetail = detSel ? detSel.value : '';
-              if (ev.goalDetail === 'assistencia') {
-                var astSel = form.querySelector('input.ev-assist-select[data-ev-side="' + side + '"]');
-                ev.assistPlayerId = astSel ? astSel.value : '';
-              }
-            }
-          }
-          if (type === 'change') {
-            var outSel = form.querySelector('input.ev-player-out[data-ev-side="' + side + '"]');
-            var inSel = form.querySelector('input.ev-player-in[data-ev-side="' + side + '"]');
-            ev.playerOutId = outSel ? outSel.value : '';
-            ev.playerInId = inSel ? inSel.value : '';
-            if (!ev.playerOutId || !ev.playerInId) return;
-          }
+        /* Ours are stored by player id, theirs by shirt number — the two
+           fields `resolveEventName` already knows how to fall back through.
+           The rival's squad is not in the app and never will be. */
+        var who = String(f.who).trim();
+        var second = String(f.second || '').trim();
+        if (f.type === 'change') {
+          if (ours) { ev.playerInId = who; ev.playerOutId = second; }
+          else { ev.playerInNumber = who; ev.playerOutNumber = second; }
+        } else if (ours) {
+          ev.playerId = who;
+        } else {
+          ev.playerNumber = who;
         }
 
-        // Opponent form
-        var oppNum = form.querySelector('.ev-opp-number[data-ev-side="' + side + '"]');
-        if (oppNum) {
-          if (type !== 'change') {
-            ev.playerNumber = oppNum.value.trim();
-          }
-          // Change sub-fields (opponent)
-          if (type === 'change') {
-            var oppOut = form.querySelector('.ev-opp-out[data-ev-side="' + side + '"]');
-            var oppIn = form.querySelector('.ev-opp-in[data-ev-side="' + side + '"]');
-            ev.playerOutNumber = oppOut ? oppOut.value.trim() : '';
-            ev.playerInNumber = oppIn ? oppIn.value.trim() : '';
+        if (f.type === 'goal' && ours) {
+          ev.goalType = f.goalType || 'jugada_oberta';
+          /* goalDetail exists so the timeline knows whether to print an
+             assist, and computePlayerStats counts an assist off
+             assistPlayerId. Both are written together or neither is.
+
+             ⚠ Gated on ptSecondField, the SAME rule that decides whether the
+             picker is on screen — so a penalty cannot carry an assist even
+             if `second` survived from an earlier choice. One rule, asked in
+             both places, rather than two that can disagree. */
+          if (second && ptSecondField('goal', ev.goalType) === 'assist') {
+            ev.goalDetail = 'assistencia';
+            ev.assistPlayerId = second;
+          } else {
+            ev.goalDetail = 'individual';
           }
         }
 
         var events = getMatchEvents(detailMatchId);
         events.push(ev);
         saveMatchEvents(detailMatchId, events);
+        _evForm = null;
         renderPage(getSession());
       });
     });
 
+    // ── Linked boards ──
+    $$('.pt-board[data-pt-board]').forEach(function (card) {
+      card.addEventListener('click', function (e) {
+        /* The board draws its OWN ▶ / ⏸ / 3D strip inside this card. Those
+           clicks belong to it, and swallowing them here is what made the
+           thumbnail impossible to play and made one tap on 3D open two
+           things at once. The ✕ stops its own propagation separately. */
+        if (e.target.closest && e.target.closest('.tb-ro-ctl')) return;
+        if (e.target.closest && e.target.closest('[data-pt-unlink]')) return;
+        var m = (JSON.parse(localStorage.getItem('fa_matches') || '[]'))
+          .find(function (x) { return x.id === detailMatchId; });
+        if (m) ptOpenBoard(m, Number(card.dataset.ptBoard));
+      });
+    });
+
+    $$('[data-pt-unlink]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();   // the card underneath opens the overlay
+        var idx = Number(btn.dataset.ptUnlink);
+        var all = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+        var list = all[detailMatchId] || [];
+        var ref = list[idx];
+        if (!ref) return;
+        showTbConfirm(t('pt.unlink'),
+            t('pt.unlink_ask').replace('{n}', ref.name || ''), function () {
+              /* Spliced by INDEX. The rest of the file removes a linked
+                 board by matching `b.name`, which unlinks the wrong one
+                 when two share a name and none at all after a rename. */
+              var fresh = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+              if (!Array.isArray(fresh[detailMatchId])) return;
+              fresh[detailMatchId].splice(idx, 1);
+              localStorage.setItem('fa_tactic_match_boards', JSON.stringify(fresh));
+              renderPage(getSession());
+            });
+      });
+    });
+
     // Delete event
-    $$('.ev-delete').forEach(function(btn) {
+    $$('.pt-ev-x').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var evId = btn.dataset.evId;
         var events = getMatchEvents(detailMatchId);
-        events = events.filter(function(ev) { return ev.id !== evId; });
+        events = events.filter(function(ev) { return String(ev.id) !== String(evId); });
         saveMatchEvents(detailMatchId, events);
         renderPage(getSession());
       });
@@ -31497,7 +32539,17 @@
     });
 
     // Starting XI toggle (DOM-only update, no full re-render)
-    $$('.starter-toggle').forEach(function(btn) {
+    /* The ★ that moves a player between Titulars and Banqueta.
+       It used to patch the DOM in place — toggle a class on the button and
+       the row, then rewrite the counter's innerHTML — and it was the only
+       handler on this page that did. That worked while the list was flat.
+       The redesign groups the rows under TITULARS and BANQUETA sub-heads,
+       so a star now MOVES a row between two lists and can empty or create a
+       whole group; patching four properties cannot express that. It
+       re-renders like every other handler here, and the counter, the
+       grouping and the button's own title come back from the one renderer
+       that decides them instead of from a second copy of the same rules. */
+    $$('.pt-star').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var pid = btn.dataset.playerId;
@@ -31507,25 +32559,13 @@
         if (idx !== -1) {
           xi.splice(idx, 1);
         } else {
+          // Eleven is eleven. Silently refusing the twelfth is the same
+          // answer the counter is already giving in red.
           if (xi.length >= 11) return;
           xi.push(pid);
         }
         saveStartingXI(mid, xi);
-        // Update DOM directly instead of re-rendering
-        var isNowStarter = idx === -1;
-        btn.classList.toggle('starter-active', isNowStarter);
-        btn.title = isNowStarter ? 'Treure de titulars' : 'Afegir a titulars';
-        var row = btn.closest('.detail-player');
-        if (row) row.classList.toggle('detail-player-starter', isNowStarter);
-        // Update counter
-        var counter = document.querySelector('.starter-counter');
-        if (counter) {
-          var newCount = xi.length;
-          var warnCls = newCount === 11 ? 'starter-count-ok' : (newCount > 11 ? 'starter-count-over' : 'starter-count-under');
-          var warnIcon = newCount !== 11 ? ' <span class="starter-emoji">⚠️</span>' : ' <span class="starter-emoji">✅</span>';
-          counter.className = 'starter-counter ' + warnCls;
-          counter.innerHTML = 'Titulars: <strong>' + newCount + '/11</strong>' + warnIcon;
-        }
+        renderPage(getSession());
       });
     });
 

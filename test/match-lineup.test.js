@@ -397,23 +397,57 @@ describe('the rule lives in one place', () => {
     /* convSentEntry() overwrites `players` and never re-filters the XI,
        so a player dropped from the call-up is still in it. The flat list
        simply never drew him; grouping by XI would turn that into a ghost
-       row. Same reason `Titulars: 12/11` is reachable. */
-    const i = bare.indexOf('const starters = calledPlayers.filter');
-    assert.notStrictEqual(i, -1,
-        'starters must be filtered FROM calledPlayers, not read off startingXI');
-    const body = bare.slice(i, i + 400);
-    assert.ok(/const bench = calledPlayers\.filter/.test(body),
-        'and the bench likewise');
+       row. Same reason `Titulars: 12/11` is reachable.
+
+       v212 moved this into ptCallupHtml and expressed it as a predicate
+       over the called-up list rather than two inline filters. The rule is
+       the same one: both groups are built from `called`, never from the
+       stored XI. */
+    const body = fn('ptCallupHtml');
+    assert.ok(/var starters = byPos\.filter\(isStarter\)/.test(body),
+        'starters must be filtered FROM the called-up list, not read off startingXI');
+    assert.ok(/var bench = byPos\.filter\(function \(p\) \{ return !isStarter\(p\); \}\)/
+        .test(body), 'and the bench likewise');
+    assert.ok(/var byPos = called\.slice\(\)/.test(body),
+        'both groups must derive from `called`');
   });
 
-  it('marks appear on events, not on the clock', () => {
-    /* A fixture logged days later still reads correctly, and a match that
-       kicked off ten minutes ago does not sprout an empty split. */
-    const i = bare.indexOf('const detailEvents = getMatchEvents(m.id);');
-    assert.notStrictEqual(i, -1, 'the called-up block must read the events');
-    const body = bare.slice(i, i + 220);
-    assert.ok(/detailEvents\.length \? matchPlayerMarks/.test(body),
-        'the split must be gated on there being events');
+  /* ⚠ WHAT REPLACED "marks appear on events, not on the clock".
+   *
+   * That test pinned two things at once: that the call-up rows carried the
+   * per-player marks strip, and that the Titulars/Suplents split appeared
+   * only once the match HAD events rather than once its clock had passed.
+   *
+   * The v212 redesign drops both, deliberately. The design's Convocats
+   * block is star · dorsal · name · discs with no marks column, because
+   * Esdeveniments now sits beside it in the same band instead of far below
+   * it — and the split is gated on `showXI`, which is the clock for a
+   * player and always true for staff, because the design's rule is that
+   * the list "flips to the grouped view at kick-off".
+   *
+   * So the old rule is gone on purpose and this is the rule that took its
+   * place. It is the more important of the two: it is the one thing on the
+   * player screen that must not leak.
+   */
+  it('a player never sees the eleven before kick-off, and one place decides', () => {
+    const body = fn('ptCallupHtml');
+    assert.ok(/var showXI = ctx\.isStaff \|\| ctx\.isPast;/.test(body),
+        'showXI must be the single decision about revealing the eleven');
+    // Exactly one place may branch on it, or the star, the sub-heads and
+    // the grouping can disagree about what is public.
+    assert.strictEqual((body.match(/showXI/g) || []).length, 2,
+        'showXI is read in more than one place — the eleven can leak from ' +
+        'whichever branch is edited alone');
+    // The locked branch renders the promise about WHEN, and no grouping.
+    const locked = body.slice(body.indexOf('} else {'));
+    assert.ok(/pt\.xi_locked/.test(locked),
+        'the locked list must say when the eleven is published');
+    assert.ok(!/pt-cu-group/.test(locked),
+        'the locked list must not emit a Titulars/Banqueta heading');
+    // The star is staff-only, independently of showXI — a past match is
+    // grouped for a player but must still not be editable by one.
+    assert.ok(/var star = ctx\.isStaff/.test(body),
+        'the star must be gated on being staff, not on the eleven being visible');
   });
 
   it('the briefing chips are given their own leg’s events', () => {

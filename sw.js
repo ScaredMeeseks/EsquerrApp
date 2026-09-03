@@ -92,7 +92,7 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-const CACHE_NAME = 'esquerrapp-v211';
+const CACHE_NAME = 'esquerrapp-v220';
 
 const STATIC_ASSETS = [
   './',
@@ -125,8 +125,12 @@ const STATIC_ASSETS = [
   './img/assist.png',
   './img/pal.png',
   './img/penal%20fallat.png',
-  './img/sub-home.jpg',
-  './img/sub-away.jpg',
+  /* .png since the icons were redrawn. ⚠ These two were still listed as
+     .jpg after the files were replaced, and `cache.addAll()` rejects the
+     WHOLE batch if any one request 404s — so a stale name here does not
+     cost one icon, it costs the entire precache and the install with it. */
+  './img/sub-home.png',
+  './img/sub-away.png',
 ];
 
 // Install: pre-cache static assets

@@ -61,8 +61,11 @@ describe('MN.blank', () => {
 
   it('starts empty in every slot', () => {
     const b = MN.blank(m);
-    assert.strictEqual(b.pre.text, '');
-    assert.strictEqual(b.post.text, '');
+    // Over PHASES, so a fourth phase cannot be added and left unblanked.
+    MN.PHASES.forEach((p) => {
+      assert.ok(b[p], p + ' has no slot in a blank note');
+      assert.strictEqual(b[p].text, '', p + ' does not start empty');
+    });
     assert.deepStrictEqual(b.videos, []);
     assert.deepStrictEqual(b.boards, []);
     assert.strictEqual(b.firstLegId, null);
@@ -73,6 +76,55 @@ describe('MN.blank', () => {
     const b = MN.blank(null);
     assert.strictEqual(b.category, '');
     assert.deepStrictEqual(b.videos, []);
+  });
+});
+
+/* The three phases (v213).
+ *
+ * The match-detail redesign's notes block is PLA / DURANT EL PARTIT /
+ * DESPRÉS, where this module had two phases and both writers spelled the
+ * test inline as `phase === 'post' ? 'post' : 'pre'` — which is a way of
+ * saying "anything I do not recognise is the plan", and would have filed
+ * every DURANT EL PARTIT note under PLA without erroring.
+ *
+ * ⚠ No backfill and no rules change: firestore.rules does not whitelist
+ * fields on matchNotes, and a document written before v213 simply has no
+ * `live` key, which every reader already treats as an empty phase.
+ */
+describe('MN.PHASES / phaseKey — three phases, one list', () => {
+  it('is the match in order: plan, during, after', () => {
+    assert.deepStrictEqual(MN.PHASES, ['pre', 'live', 'post']);
+  });
+
+  it('passes each known phase through untouched', () => {
+    MN.PHASES.forEach((p) => assert.strictEqual(MN.phaseKey(p), p));
+  });
+
+  it('falls back to the PLAN, not to the debrief', () => {
+    /* The default matters: a note filed against a phase this version does
+       not know is far likelier to be preparation than a verdict. */
+    ['', null, undefined, 'nonsense', 'during', 0].forEach((v) => {
+      assert.strictEqual(MN.phaseKey(v), 'pre', JSON.stringify(v));
+    });
+  });
+
+  it('a video is filed under a known phase or under the plan', () => {
+    // saveVideos coerces through the same helper, so a video cannot end up
+    // in a phase the editor has no column for.
+    assert.strictEqual(MN.phaseKey('live'), 'live');
+    assert.strictEqual(MN.phaseKey('halftime'), 'pre');
+  });
+
+  it('isEmpty counts text in ANY phase, including live', () => {
+    /* isEmpty decides whether the document is worth writing at all, so a
+       phase it does not know about is a note that silently never saves. */
+    const m = {id: 1, category: 'amateur', team: 'A'};
+    MN.PHASES.forEach((p) => {
+      const n = MN.blank(m);
+      n[p] = {text: 'x'};
+      assert.strictEqual(MN.isEmpty(n), false,
+          'text in ' + p + ' must make the note worth writing');
+    });
   });
 });
 
@@ -291,12 +343,23 @@ describe('the video click handler is the guard, not the render site', () => {
  * one-line thing that is easy to "simplify" back into a bug.
  */
 describe('the call-up banner is for players, not for staff', () => {
+  /* v212 moved the banner. It was `.detail-conv`, built into a `let convHtml`
+     above the hero; it is now the `.pt-you` strip under the scoreboard, built
+     inline in the return. The CONDITION is what these tests are about and it
+     did not change — but both of them named the old shape, and one of them
+     sliced between two markers that no longer exist, which made
+     `slice(-1, -1)` return '' and the assertion pass against nothing. Anchored
+     on the strip itself now, so a slice that finds nothing fails loudly. */
+  const at = appSrc.indexOf("'<div class=\"pt-you'");
+  const block = appSrc.slice(Math.max(0, at - 400), at + 600);
+
   it('is gated on having the PLAYER role', () => {
     /* It used to render for anyone the convocatòria had been sent for,
        which meant every coach opening any match was told "No convocat" —
        an answer to a question he had not asked, since a coach is never on
        his own call-up list. */
-    assert.ok(/if \(convSent && isPlayerViewer\)/.test(appSrc),
+    assert.notStrictEqual(at, -1, 'the .pt-you strip was not found at all');
+    assert.ok(/convSent && isPlayerViewer/.test(block),
         'the call-up banner is no longer gated on the player role');
     assert.ok(/const isPlayerViewer = \(session\.roles \|\| \[\]\)\.includes\('player'\)/
         .test(appSrc), 'isPlayerViewer is not derived from the session roles');
@@ -304,9 +367,8 @@ describe('the call-up banner is for players, not for staff', () => {
 
   it('is NOT gated on "not staff" — a playing coach is both', () => {
     // For him "am I called up?" is a real question with a real answer.
-    const at = appSrc.indexOf('let convHtml');
-    const block = appSrc.slice(at, appSrc.indexOf('const dateFormatted', at));
-    assert.ok(!/!\s*showNotes/.test(block),
+    assert.notStrictEqual(at, -1, 'the .pt-you strip was not found at all');
+    assert.ok(!/!\s*showNotes/.test(block) && !/!\s*isStaff/.test(block),
         'the banner is gated on NOT being staff, which also hides it from ' +
         'a playing coach');
   });

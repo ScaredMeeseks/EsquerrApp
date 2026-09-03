@@ -1060,3 +1060,80 @@ describe('the stranded drafts from the old Calendari', () => {
         .includes('cal-drafts'));
   });
 });
+
+/* The fixture dialog, after v219 moved it into the paper idiom.
+ *
+ * Source assertions: calModal injects straight into document.body and there
+ * is no jsdom in this suite. What matters is not how it looks but that the
+ * WRITE PATHS still read the controls they were rewired to — three native
+ * `<select>`s became stdSelects, and a stdSelect root has no `.value`, so a
+ * missed call site does not throw, it files a fixture under an empty
+ * category or with a blank kick-off.
+ */
+describe('the fixture dialog reads the controls it now renders', () => {
+  const src = fs.readFileSync(
+      path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const slice = (from, to) => {
+    const i = bare.indexOf(from);
+    assert.notStrictEqual(i, -1, 'marker moved: ' + from);
+    const j = bare.indexOf(to, i);
+    return bare.slice(i, j === -1 ? bare.length : j);
+  };
+
+  it('has no native <select> left in either dialog', () => {
+    /* A native popup is drawn by the operating system and ignores every rule
+       we write; in a paper dialog it opened as a stray system widget. */
+    const body = slice('function calSquadPickerHtml',
+        'function calOpenActivityModal');
+    assert.ok(!/<select/.test(body), 'a <select> is back: ' + body);
+  });
+
+  it('reads the squad from dataset.value, not .value', () => {
+    const body = slice('function calPickedSquad', 'function calOpenMatchModal');
+    assert.ok(/catEl\.dataset\.value/.test(body), 'category');
+    assert.ok(/letEl\.dataset\.value/.test(body), 'squad letter');
+    assert.ok(!/catEl\.value|letEl\.value/.test(body),
+        'a stdSelect root has no .value — this would read undefined');
+  });
+
+  it('reads every kick-off from dataset.value, in BOTH dialogs', () => {
+    /* Three call sites: the match dialog's kickoff, and the activity
+       dialog's start and end. Missing one is a blank time on a saved row. */
+    const reads = bare.match(/\.cal-f-(time|end)'\)\.\w+/g) || [];
+    assert.strictEqual(reads.length, 3, 'expected three time reads: ' + reads);
+    reads.forEach((r) => assert.ok(/dataset$/.test(r),
+        r + ' still reads .value from a control that has none'));
+  });
+
+  it('binds the dialog\'s own selects, which no render will bind for it', () => {
+    /* bindDynamicActions runs after a render; this markup is injected into
+       the body with no render behind it, so an unbound picker draws
+       correctly and never opens. */
+    const body = slice('function calModal', 'function calSquadPickerHtml');
+    assert.ok(/bindStdSelects\(\['calcat', 'calletter', 'caltime'\]/.test(body),
+        'the dialog does not bind its own pickers: ' + body);
+  });
+
+  it('keeps every hook the callers query out of the returned card', () => {
+    const body = slice('function calModal', 'function calSquadPickerHtml');
+    ['data-cal-cancel', 'data-cal-ok', 'cal-form-err'].forEach((h) => {
+      assert.ok(body.indexOf(h) !== -1, 'the dialog lost ' + h);
+    });
+    assert.ok(/querySelector\('\.pt-dlg'\)/.test(body),
+        'the returned card must be the panel the fields are inside');
+  });
+
+  it('puts the destructive action in the ACTIONS row, away from Save', () => {
+    /* It used to be the last control in the body — a red delete one row
+       above Desa, on a dialog whose other button removes a fixture for the
+       whole club. */
+    const body = slice('function calModal', 'function calSquadPickerHtml');
+    assert.ok(/pt-dlg-actions/.test(body) && /destructive/.test(body), body);
+    const match = slice('function calOpenMatchModal', 'function calDeleteMatch');
+    assert.ok(/pt-dlg-del cal-f-delete/.test(match),
+        'the delete button is not in the paper idiom');
+    assert.ok(/\}, delBtn\);/.test(match),
+        'the delete button is not passed to the actions row');
+  });
+});
