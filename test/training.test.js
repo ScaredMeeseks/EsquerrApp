@@ -1238,3 +1238,74 @@ describe('the player week list and activities', () => {
         'resolved before `t` is shadowed, or it throws at render time');
   });
 });
+
+/* The Add-Player modal, after v222 put it in the paper idiom.
+ *
+ * One function, two callers: the new-session page and the squad edit on an
+ * already-saved session. Source and CSS assertions — it appends to
+ * document.body and this suite has no jsdom — but each pins something whose
+ * absence is silent rather than loud.
+ */
+describe('the Add-Player modal', () => {
+  const src = fs.readFileSync(
+      path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  const css = fs.readFileSync(
+      path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const bareCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  /* ⚠ COMMENT-STRIPPED. The block is heavily commented and names its own
+     hooks in prose; counting `nt-pick-cancel` over the raw source matched
+     the comment explaining it as well as the two buttons and the binding.
+     "A test that greps source will match its own comment" is written down
+     three times in this repo and it caught this one too. */
+  const body = (() => {
+    const bare = src.replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+    const i = bare.indexOf('function _ntOpenPicker');
+    return bare.slice(i, bare.indexOf('\n  function ', i + 10));
+  })();
+
+  it('⚠ lets [hidden] beat its own display rule', () => {
+    /* THE TRAP THIS EXISTS FOR. The search filters by setting
+       `card.hidden`, and any `display` rule of ours outranks the browser's
+       built-in `[hidden]{display:none}`. There is no global [hidden] rule
+       in this stylesheet, so a card given `display:flex` and no guard stays
+       on screen — and the search box looks completely dead. */
+    assert.ok(/\.nt-pick-card\[hidden\][^{]*\{[^}]*display:\s*none\s*!important/
+        .test(bareCss),
+    'the picker cards have a display rule with no [hidden] guard — ' +
+        'the search filter will appear to do nothing');
+  });
+
+  it('styles the class the handler actually toggles', () => {
+    // `nt-dd-on`, not `selected`. Getting this wrong is a checkbox that
+    // never fills in, with nothing in the console.
+    assert.ok(/classList\.toggle\('nt-dd-on'/.test(body), 'the handler moved');
+    assert.ok(/\.nt-dd-on \.nt-dd-check/.test(bareCss),
+        'nothing styles the checked state the handler sets');
+  });
+
+  it('does not draw the tick twice', () => {
+    /* The handler writes '✓' into the box as textContent. A ::after
+       carrying its own would render two. */
+    assert.ok(/\.nt-dd-check'\)\.textContent/.test(body), 'the tick moved');
+    const i = bareCss.indexOf('.nt-pick-modal .nt-dd-check');
+    assert.ok(!/::after/.test(bareCss.slice(i, i + 400)),
+        'the checkbox has a ::after as well as the written tick');
+  });
+
+  it('⚠ binds BOTH ways out, by class and not by id', () => {
+    /* The paper shell has a ✕ in the head and Cancel·la in the actions.
+       They cannot share an id, and `querySelector('#…')` would have bound
+       the first and left the other dead. */
+    assert.strictEqual((body.match(/nt-pick-cancel/g) || []).length, 3,
+        'expected two buttons and one binding, all by class');
+    assert.ok(/querySelectorAll\('\.nt-pick-cancel'\)/.test(body), body);
+    assert.ok(!/querySelector\('#nt-pick-cancel'\)/.test(body),
+        'an id binding is back — one of the two exits will be dead');
+  });
+
+  it('keeps every hook its handlers select by', () => {
+    ['nt-pick-card', 'data-nt-pick', 'nt-pick-search', 'nt-pick-add']
+        .forEach((h) => assert.ok(body.indexOf(h) !== -1, 'lost ' + h));
+  });
+});

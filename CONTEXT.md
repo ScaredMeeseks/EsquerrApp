@@ -8581,3 +8581,39 @@ reverted to `.value`, and the RPE range guard dropped.
 not touched; it is the next thing on this page if it matters.
 
 Unit 2736 → **2740**. Version triple → v221. Still **not pushed**.
+
+### 2026-09-03 — "Desar (1)", and the Add-Player modal (v222)
+
+**1. `Desar (1)` — the owner asked what the 1 was, which is the answer.** It is how many SESSIONS the
+button will create: a team with two slots on the same weekday drafts both at once, and the count is
+the only thing that says so. But the common case is one, so the commonest reading of the button was
+a number with nothing to compare it to. It appears only when it is greater than one now.
+
+**2. The Add-Player modal is the paper shell.** ONE function, `_ntOpenPicker`, serves both callers —
+the new-session page and the squad edit on an already-saved session — so it changed in both places
+at once, which is what the owner asked for. Wider than the form dialogs (760px) because its job is a
+comparison: position, name, squad, category and both status columns side by side.
+
+⚠ **Two traps in restyling it, both silent, both caught by writing the CSS against the real
+handlers rather than against the markup.**
+
+- **`[hidden]` loses to a `display` rule.** The search filters by setting `card.hidden`, and giving
+  the cards `display:flex` outranks the browser's built-in `[hidden]{display:none}`. There is no
+  global `[hidden]` rule in this stylesheet — every case is guarded where its display rule is
+  written — so without `.nt-pick-card[hidden]{display:none!important}` the search box would have
+  looked completely dead. The Registracions block records the last time this bit.
+- **The selected class is `nt-dd-on`, not `.selected`**, and the ✓ is written into the box as
+  `textContent` by the click handler. Styling `.selected` would have been a checkbox that never
+  fills; adding a `::after` tick as well would have drawn two.
+
+There are two ways out now — the ✕ in the head and Cancel·la in the actions — so they share a
+**class**: they cannot share an id, and `querySelector('#…')` would have bound the first and left
+the other dead.
+
+ⓘ The test that pins the two exits counts on **comment-stripped** source. The first version counted
+over the raw file and matched the doc comment naming the hook as well as the buttons — the same
+"a test that greps source will match its own comment" that is written down three times in this repo.
+The doc comment was itself stale (it still said `#nt-pick-cancel`) and is fixed.
+
+Two mutants killed: the `[hidden]` guard removed, and the cancel binding put back on an id.
+Unit 2740 → **2745**. Version triple → v222. Still **not pushed**.

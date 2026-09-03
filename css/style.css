@@ -8022,6 +8022,48 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #nt-page .conv-remove:hover { color: #BD162C; }
 #nt-page .nt-warn { color: #D39A2F; font-size: 13px; }
 
+/* ── The Add-Player modal ──
+   One function, two callers: the new-session page and the squad edit on
+   an already-saved session. It is wider than the form dialogs because
+   its job is a comparison — position, name, squad, category and both
+   status columns, side by side. */
+.pt-dlg.nt-pick-modal { width: min(760px, 94vw); }
+.nt-pick-modal .nt-pick-search { margin: 14px 0 4px; }
+.nt-pick-modal .nt-pick-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0 24px; max-height: 52vh; overflow-y: auto; padding: 6px 0 14px;
+}
+.nt-pick-modal .nt-pick-card {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  padding: 8px 0; border-bottom: 1px solid #EDEAE4;
+  background: transparent; border-radius: 0; box-shadow: none;
+}
+/* ⚠ REQUIRED, and not defensive. The search filters by setting
+   `card.hidden`, and a `display` rule of ours outranks the browser's
+   built-in `[hidden]{display:none}` — without this the search box would
+   look completely dead. There is no global [hidden] rule in this file;
+   every case is handled where the display rule is written, and the note
+   at the Registracions block records the last time this bit. */
+.nt-pick-modal .nt-pick-card[hidden] { display: none !important; }
+.nt-pick-modal .nt-pick-card:hover { background: #F6F4F0; }
+/* A box, not a tick: it is a multi-select, so it has to read as
+   empty-or-filled before anything is chosen. The ✓ is written into the
+   box as TEXT by the click handler — `.nt-dd-check` is centred here
+   rather than given a ::after, or the two would both draw one. */
+.nt-pick-modal .nt-dd-check {
+  width: 16px; height: 16px; flex: none; border: 1px solid #C9C3BB;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; line-height: 1; color: #FBFAF7;
+}
+/* `nt-dd-on` is the class the handler toggles — not `.selected`. */
+.nt-pick-modal .nt-dd-on .nt-dd-check {
+  background: #2D2926; border-color: #2D2926;
+}
+.nt-pick-modal .conv-name { font-size: 14px; }
+.nt-pick-modal .conv-num, .nt-pick-modal .nt-cat-tag {
+  font-size: 11.5px; color: #99928B;
+}
+
 /* ── Responsive ──
    Below ~1100px the context band's three columns stack and the
    play band becomes one, which is the 2c layout in the handoff.

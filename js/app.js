@@ -1993,7 +1993,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 221;
+  const APP_VERSION = 222;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -21874,7 +21874,13 @@
         <div class="pt-band">${teamBar}</div>
         ${_ntTeam ? blocks : `<div class="pt-band"><div class="pt-empty">${t('nt.pick_team_first')}</div></div>`}
         <div class="pt-band pt-dlg-actions nt-actions">
-          <button class="pt-dlg-save" id="nt-save"${_ntTeam && _ntDrafts.length ? '' : ' disabled'}>${t('nt.save')}${_ntDrafts.length ? ' (' + _ntDrafts.length + ')' : ''}</button>
+          ${/* The count is how many SESSIONS this creates — a team with two
+                slots on the same weekday drafts both at once. It used to
+                show for one as well, so the commonest case read "Desar (1)"
+                and invited the question of what the 1 meant. Shown only
+                when it says something the single block above the button
+                does not already. */''}
+          <button class="pt-dlg-save" id="nt-save"${_ntTeam && _ntDrafts.length ? '' : ' disabled'}>${t('nt.save')}${_ntDrafts.length > 1 ? ' (' + _ntDrafts.length + ')' : ''}</button>
           <button class="pt-dlg-cancel" id="nt-cancel">${t('common.cancel')}</button>
         </div>
       </div>`;
@@ -21935,14 +21941,26 @@
     const overlay = document.createElement('div');
     overlay.id = 'custom-modal-overlay';
     overlay.className = 'modal-overlay';
+    /* The paper shell. ONE function serves both callers — the new-session
+       page and the squad edit on an already-saved session — so this is the
+       Add-Player modal everywhere it appears.
+
+       ⚠ Every hook below is unchanged: `.nt-pick-card` + `data-nt-pick`,
+       `.nt-pick-search` and `#nt-pick-add`. The handlers under this markup
+       select, filter and commit through them. The one that DID change is
+       cancel: there are two ways out now — the ✕ in the head and Cancel·la
+       in the actions — so they share a class instead of an id. */
     overlay.innerHTML = `
-      <div class="modal-card nt-pick-modal">
-        <div class="modal-title">${t('nt.add_player')}</div>
-        <input class="reg-input nt-pick-search" placeholder="${t('nt.search')}" autocomplete="off">
-        <div class="nt-pick-grid">${rows || `<p class="nt-hint">${t('nt.nobody_left')}</p>`}</div>
-        <div class="modal-actions">
-          <button class="btn btn-small btn-outline" id="nt-pick-cancel">${t('common.cancel')}</button>
-          <button class="btn btn-small btn-primary" id="nt-pick-add" disabled>${t('nt.add_selected')}</button>
+      <div class="pt-dlg nt-pick-modal">
+        <div class="pt-dlg-head">
+          <div class="pt-dlg-title">${t('nt.add_player')}</div>
+          <button class="pt-ov-close nt-pick-cancel">${t('pt.close')} ✕</button>
+        </div>
+        <input class="pt-dlg-in nt-pick-search" placeholder="${t('nt.search')}" autocomplete="off">
+        <div class="nt-pick-grid">${rows || `<div class="pt-empty">${t('nt.nobody_left')}</div>`}</div>
+        <div class="pt-dlg-actions">
+          <button class="pt-dlg-save" id="nt-pick-add" disabled>${t('nt.add_selected')}</button>
+          <button class="pt-dlg-cancel nt-pick-cancel">${t('common.cancel')}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -21978,7 +21996,11 @@
     });
     search.focus();
 
-    overlay.querySelector('#nt-pick-cancel').addEventListener('click', close);
+    /* TWO ways out now — the ✕ in the head and Cancel·la in the actions —
+       so they share a class rather than an id. querySelector on an id would
+       have bound the first and left the other dead. */
+    overlay.querySelectorAll('.nt-pick-cancel')
+        .forEach((b) => b.addEventListener('click', close));
     // Clicking the backdrop cancels, the same as every other overlay here.
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
