@@ -247,24 +247,39 @@ describe('kits — the old hardcoded renderers are gone', () => {
         'era-2 keys must not linger beside the new ids');
   });
 
+  /* ⚠ THE SELECTOR CHANGED IN v227, THE RULE DID NOT. The Convocatòria
+     redesign replaced the `.conv-kit-opt` swatch buttons with three hairline
+     dropdowns, so the handler keys off `[data-cv-kit]` and reads the garment
+     from `data-cv-field`. What is pinned is what was always pinned: ONE
+     handler for all three garments, keyed by the option's own field, because
+     two near-identical copies is how a third garment becomes a third copy. */
   it('binds all three garment rows with one handler', () => {
-    // Two near-identical copies is how a third garment would have become a
-    // third copy. The handler keys off the button's own data-field.
     assert.strictEqual((src.match(/conv-jersey-opt|conv-socks-opt/g) || []).length, 0);
-    // Exactly one BINDING. (The handler also re-queries to clear the row it
-    // was clicked in, so a bare selector count would be 2 and prove nothing.)
-    const binds = src.match(/querySelectorAll\('\.conv-kit-opt'\)\.forEach\(btn/g) || [];
+    const binds = src.match(/querySelectorAll\('\[data-cv-kit\]'\)\.forEach\(/g) || [];
     assert.strictEqual(binds.length, 1, 'one handler for all three rows');
+    const i = src.indexOf("querySelectorAll('[data-cv-kit]').forEach(");
+    const body = src.slice(i, src.indexOf('\n    });', i));
+    assert.ok(/opt\.dataset\.cvField/.test(body) && /opt\.dataset\.cvKit/.test(body),
+        'the handler must read the garment off the option, not off a literal');
   });
 
-  it('clears only the row it was clicked in', () => {
-    /* Scoped to `btn.closest('.uniform-toggle')`. A document-wide clear
-       would deselect the shirt when the coach picks the socks — the pieces
-       are independently selectable by decision. */
-    const i = src.indexOf("querySelectorAll('.conv-kit-opt').forEach(btn");
+  /* The old handler cleared the row it was clicked in, scoped to
+     `.uniform-toggle`, because it patched classes in place — a document-wide
+     clear would have deselected the shirt when the coach picked the socks.
+     The dropdowns re-render instead, so the whole class of bug is gone
+     rather than guarded: which option is active is decided by the stored
+     draft on the way out and there is nothing left to deselect. This test is
+     the note saying the guard went on purpose — the RULE it protected,
+     that the three pieces stay independently selectable, is asserted here
+     directly instead. */
+  it('keeps the garments independently selectable', () => {
+    const i = src.indexOf("querySelectorAll('[data-cv-kit]').forEach(");
     const body = src.slice(i, src.indexOf('\n    });', i));
-    assert.ok(/closest\('\.uniform-toggle'\)/.test(body),
-        'deselection must be scoped to one garment row');
+    assert.ok(
+        /data\[convSelectedMatchId\]\[opt\.dataset\.cvField\] = opt\.dataset\.cvKit;/.test(body),
+        'picking one garment must write only that garment');
+    assert.strictEqual((body.match(/= \{\};/g) || []).length, 1,
+        'the only reset is creating the match entry, never clearing the draft');
   });
 
   it('leaves the sleeves plain on VERTICAL stripes only', () => {

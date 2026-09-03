@@ -111,7 +111,15 @@ describe('app.js — readiness cell wiring', () => {
        playerStatusHtml() — which is itself the shared path for the match
        call-up AND the New Training page. playerStatusHtml used to be a
        local inside renderConvocatoria; lifting it out is what stops those
-       two screens disagreeing about what "doubt" looks like. */
+       two screens disagreeing about what "doubt" looks like.
+
+       ⚠ The v227 Convocatòria redesign shipped its first cut WITHOUT the
+       glyph — the availability text carries Lesionat and Dubte off the same
+       `deriveFitnessStatus`, so it read as a duplicate — and the owner asked
+       for it back. It is not a duplicate: the text says whether he is
+       PLAYABLE and is driven by an answer the player gave; the glyph and
+       score say how well he is LOADED. Both screens go through here again,
+       which is why this is ≥2 and not ≥1. */
     const uses = (src.match(/(?<!function )readinessCellHtml\(/g) || []).length;
     assert.strictEqual(uses, 3, 'roster, training detail, playerStatusHtml');
 

@@ -77,6 +77,13 @@ exclude:
   # the whole stylesheet inlined, and eighteen invented player names.
   # Regenerate with: node scripts/build-partit-preview.js . partit-preview.html
   - partit-preview.html
+  # The same, for the v227 Convocatòria redesign. It renders the page four
+  # times — staff, menus open, over the 18-man limit, and read-only — so a
+  # reviewer can see the states a single screenshot cannot. Same reasons to
+  # keep it off Pages: the whole stylesheet inlined, and eighteen invented
+  # player names.
+  # Regenerate with: node scripts/build-convocatoria-preview.js . convocatoria-preview.html
+  - convocatoria-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

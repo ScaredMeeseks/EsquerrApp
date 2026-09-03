@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 224** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 227** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2750** — `cd test && npm run test:unit` (~9 s), all passing |
+| Unit tests | **2828** — `cd test && npm run test:unit` (~10 s), all passing |
 | Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
@@ -25,7 +25,78 @@ deploy, no functions deploy. The only edit under `functions/` is the version con
 
 ---
 
-## This session: v212–v224. Partit, the fourth design handoff — and four rounds of the owner
+## This session: v227. Convocatòria, the sixth design handoff.
+
+The staff call-up tab rebuilt to `Baixades/EsquerrApp Convocatòria UI/design_handoff_convocatoria/`.
+It was the last staff screen in the old idiom and sat one click from the redesigned Partit page.
+**Per-version detail is in CONTEXT.md**; this is what a reader needs before touching it again.
+
+**What shipped.** `renderConvocatoria` is `cv-` builders over one paper surface in bands: title,
+three controls (fixture · citation · kit), two lists, Pissarres, vídeos, footer. `bindConvocatoria`
+is rewritten around one `place()`. New `test/convocatoria.test.js` (74 tests, 14 driving the real
+binder in jsdom) and `scripts/build-convocatoria-preview.js`. Unit 2754 → 2828.
+
+**The bug inside the repaint.** `fa_convocatoria[matchId]` IS the acta order, and the old render
+sorted it away with `posRank` on the way out — so **dragging a player between two others did nothing,
+every time, and had never worked**. Anything that reorders the Convocats list must go through
+`place(id, targetId, toCalled)` and nothing may sort that array on the way to the screen.
+
+**Two gaps filled**: a `+ Vincula una pissarra` picker (boards could only be attached from the
+tactics editor before), and `safeHttpUrl` on the video rows, which had no validation at all.
+
+**Four things the owner asked for before it shipped**, all detailed in CONTEXT.md: the fitness
+glyph and readiness score are back in the row (through the shared `playerStatusHtml`, so this screen
+and New Training cannot disagree); **no circle behind a crest** in the fixture picker — the real
+badge is an `<img>` and the monogram's ground is squared off, the same lesson as v226; the picker
+offers **only the visible/selected categories**, which is what `getCurrentCategory()`'s `''` has
+always meant and what `!curCat || …` never implemented; and fixtures are sorted **soonest first**,
+which also makes the default selection the next one.
+
+### ⚠ Five departures from the handoff, all deliberate
+
+Each is argued in CONTEXT.md and each has a test that dies if it is "fixed" back.
+
+1. **Classes are `cv-`, not `.conv-`** — six other surfaces still draw with the `.conv-` family.
+   Borrowed families (`.conv-pos-circle`, `.cat-badge`, `.pt-crest`) are scoped under `.cv-page`.
+2. **No `Tard` availability state** — nothing in the app produces one.
+3. **Unsend kept, `Buida-ho tot` dropped.**
+4. **Drop-on-row inserts in Convocats only** — Disponibles has nowhere to store an order.
+5. **The board thumbnail expands** rather than drawing a live 34×24 pitch.
+
+### Traps worth knowing before editing THIS screen
+
+- **The fixture picker is not gated on `ro`.** It is the only control that is not: which match you
+  are looking at is view state, not a write, and a delegate needs it. Gating the whole page on `ro`
+  is the easy way to lose it.
+- **The three control groups share one baseline** via `align-items: stretch` plus `margin-top: auto`
+  on each group's own control. The citation group's rule is carried by the **pills** — which is why
+  the read-only variant needs `cv-time-ruled`, or the middle column has nothing on the line.
+- **Menu open state lives in the DOM, not in the render.** The page re-renders on every drop; a
+  menu whose openness the render read back would reopen itself mid-drop.
+- **`cvMenu` is the page's only dropdown** — fixture, three kits, boards. `stdSelect` cannot serve
+  here: it renders text labels only, and two of these toggles carry images.
+- **String-builder tests cannot see geometry.** Two real defects this session — the fixture
+  dropdown laying its two lines side by side, and the missing read-only rule — were found by
+  screenshotting `convocatoria-preview.html` in headless Chrome, with 46 assertions green.
+- **jsdom swallows exceptions thrown inside listeners.** A handler that dies on a missing stub looks
+  exactly like one that decided to do nothing. The wired tests drain a window `error` collector;
+  keep doing that.
+
+### Left undone, deliberately
+
+- **The board thumbnail is the designed placeholder**, not a live board. Clicking the row opens the
+  real `tbRoBoardHtml` beneath it. A real thumbnail means rendering a pitch at 34×24 and waiting on
+  `hydrateRoBoards`.
+- **The readiness palette is a third copy** of the same values, after `.std-table` and
+  `.pl-ready`. Each paper page scopes its own; that is the convention, not an oversight.
+- **The kit dropdowns show the KIT's name** ("1a equipació"), where the design shows garment names
+  ("Pantalons negres"). The app's model has one label per kit, not per garment.
+- **`.conv-player`, `.conv-list`, `.conv-count` and friends are still in the old idiom.** They are
+  the New Training squad list and four other surfaces; repainting them is its own piece of work.
+
+---
+
+## Prior session: v212–v226. Partit, the fourth design handoff — and four rounds of the owner
 ## finding what the tests could not.
 
 The match detail screen, redesigned to `Baixades/EsquerrApp Match UI/design_handoff_partit/`, plus
@@ -54,11 +125,11 @@ Add-Player modal are all in the paper idiom. New `test/partit.test.js`; unit 259
    `[data-tooltip]` badges were both invisible to overlays injected into `document.body`. It bit
    three times before being fixed by delegation.
 
-**All four were green the whole time.** The suite is 2750 assertions and none of them could see a
+**All four were green the whole time.** The suite was 2750 assertions and none of them could see a
 column on the wrong side, an invalid nesting the parser silently repairs, a losing CSS override, or
 a listener that was never attached.
 
-### Traps worth knowing before editing these screens
+### Traps worth knowing before editing the Partit screens
 
 - **Kit sizes are ARGUMENTS, never CSS.** `PT_KIT_PX` is 36 (multiple of 18: nine bands across S/2);
   `PT_OPP_KIT_PX` is 32 (multiple of 16: the FCF's four and eight). They differ on purpose. Do not
@@ -72,7 +143,7 @@ a listener that was never attached.
 - **A player never sees the starting eleven before kick-off.** `ptCallupHtml`'s `showXI` is the one
   decision; `test/match-lineup.test.js` pins that it is read in exactly two places.
 
-### Left undone, deliberately
+### Left undone from that session, deliberately
 
 - `mnBriefingHtml`, `mnScoreBlockHtml`, `mnLineupChipsHtml` and `fitMnScoreNames` have **no caller**
   since the anada was rebuilt. Still covered by tests, dead in the app — they want a pruning pass,

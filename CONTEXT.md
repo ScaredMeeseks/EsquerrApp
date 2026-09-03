@@ -8749,3 +8749,143 @@ box, which is the state v225's fallback existed to prevent.
 Unit 2753 → **2754**; the v225 pair became a BARE-crest test and a 404-restores-both test. Three
 mutants killed: the modifier dropped from the container, the class reset dropped from the `onerror`,
 and the `display: none` rule deleted. Version triple → v226.
+
+### 2026-09-03 — Convocatòria, the sixth design handoff (v227)
+
+Source: `Baixades/EsquerrApp Convocatòria UI/design_handoff_convocatoria/`. The last staff screen
+still in the old idiom, and it sits one click from the redesigned Partit page. `renderConvocatoria`
+was three stacked `.card`s — a boxed dropdown, a native `<select>` of 96 citation times, SVG kit
+toggles and two bordered panels. It is now `cv*` builders over one paper surface in bands, in the
+series after Calendari (`.cal-`), Pla d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions
+(`.reg2-`) and Partit (`.pt-`).
+
+**The feature inside the repaint, and the bug it fixes.** `fa_convocatoria[matchId]` is an array of
+player ids and it IS the acta order. The old render piped it through `.sort(posRank)` on the way
+out, so **every reordering the drag code performed was thrown away before it reached the screen** —
+dragging a player between two others appeared to do nothing, every time. Nor was there a code path
+that could have expressed it: the binder held four separate copies of "push, or filter out". There
+is now one `place(id, targetId, toCalled)` — one splice plus one membership update — behind the
+drag, the drop-on-row, the double-click, the →/✕ glyph and the phone tap alike.
+
+**Two more things that were simply missing.** Boards could only be attached from the tactics editor,
+so a coach preparing a call-up had to leave the page to link one; there is now a
+`+ Vincula una pissarra` picker writing the same `tbSessionRef(entry, {})` the editor writes, with
+the same no-`category` rule. And the video rows had **no URL validation at all** while the
+match-notes rows beside them have had `safeHttpUrl` and `.mn-video-bad` for a refused scheme all
+along; a bad link is now refused at the input, while the coach still has the clipboard.
+
+**⚠ FIVE DEPARTURES FROM THE HANDOFF.** The precedent for arguing with a design in writing is the
+Plantilla and Partit entries above.
+
+1. **The classes are `cv-`, and the README asks to keep `.conv-`.** Those are not this tab's private
+   vocabulary: `.conv-player`, `.conv-pos-circles`, `.conv-team-circle`, `.conv-name-wrap`,
+   `.conv-status`, `.conv-count` and `.conv-remove` are drawn by **six other surfaces** — the New
+   Training squad list, Les meves estadístiques, the season-history rows, the standings team grid,
+   the matchday sent-dot and the player activity tags. Repainting them to the paper language would
+   have silently repainted five pages nobody asked about. Three families are borrowed and scoped
+   under `.cv-page` instead — `.conv-pos-circle` at 24px, `.cat-badge`, `.pt-crest` at 40/34px —
+   which is the arrangement `.pt-page .mn-*` already uses.
+2. **No `Tard` state.** The design lists six and the app can produce five: `fa_match_availability`
+   holds `disponible`, `no_disponible` or nothing, and the medical record holds fit/doubt/injured.
+   A sixth would be a colour that never appears. The column merges the two sources with **fitness
+   winning** — a player who answered "disponible" on Tuesday and tore a hamstring on Thursday reads
+   Lesionat, which is the failure a single availability column exists to prevent.
+3. **Unsend is kept**; `Buida-ho tot` is not. The design's footer is two buttons and reads "Reenvia"
+   when sent. Retracting a published call-up is a real recovery path, so the primary still flips to
+   `Desenvia`, as the page did before. Clearing all eighteen is one drag from redoable.
+4. **Drop-on-row inserts in Convocats only.** Disponibles is sorted by position on every render and
+   has nowhere to store an order, so an insertion point there would be a line the app forgets the
+   moment it redraws. Dropping anywhere in that column un-convokes, as designed.
+5. **The board thumbnail expands.** The README asks for the real read-only board at 34×24; a pitch
+   that size is not readable and `tbRoBoardHtml` hydrates asynchronously. The page this replaced
+   rendered the boards in full, and deleting them outright would have cost the coach the review of
+   what he attached — so the designed hairline box stays and **clicking the row opens the real board
+   beneath it**.
+
+**ONE dropdown, not five.** The fixture picker, the three kit pickers and the board picker are the
+same hairline menu: one `cvMenu()` builder and one delegated handler keyed on `data-cv-menu`.
+`stdSelect` was the first instinct and cannot serve — it renders **text labels only**, and two of
+these toggles carry a 40px crest pair and a 44px kit swatch. Open state lives in the DOM, not in a
+variable the render reads back, because this page re-renders on every drop and a menu whose openness
+survived that would reopen itself mid-drop.
+
+**The one control that stays live for a delegate** is the fixture picker: which match you are
+LOOKING at is view state, not a write. That was true of the page before the redesign and is the
+easiest thing to lose by gating the whole page on `ro`. A test asserts it, and the mutant that gates
+it dies.
+
+**Two things the owner would have found before the tests did**, caught by screenshotting the
+preview in headless Chrome: the fixture dropdown's rows laid the fixture and its date SIDE BY SIDE
+(the option is a flex row and nothing wrapped the two lines in a `.cv-mt` column), and the
+delegate's citation group had **no rule under it** — the pills carry that rule down to the shared
+baseline and a delegate has no pills, so the middle of the three columns was the only one with
+nothing on the line. `cv-time-ruled` and `cv-page-ro` (which also drops the drag grips a delegate
+cannot use) are the fixes. ⚠ **String-builder tests cannot see either of these.** They are geometry,
+and the only thing that renders geometry is a renderer.
+
+**Dead CSS removed.** 35 `.conv-*` classes and the whole `.uniform-*` family — the kit swatch
+buttons had no other consumer — plus `--conv-ctl-h` and four orphaned comment blocks. Found by
+scanning every `.conv-` selector in the stylesheet against every JS and HTML file; a block goes only
+if EVERY selector in it names a dead class and names no live one.
+
+**Two existing suites were rewritten, not deleted.** `kits.test.js` pinned the kit handler by
+`.conv-kit-opt` and by a `.uniform-toggle`-scoped deselect; the selector is now `[data-cv-kit]` and
+the deselect is gone because the dropdowns re-render rather than patching classes in place — the
+RULE (one handler for all three garments, the three pieces independently selectable) is asserted
+directly instead. `readiness.test.js` asserted `playerStatusHtml` had ≥2 callers, "the call-up and
+New Training"; the call-up now draws availability as text off the same `deriveFitnessStatus`, so it
+has one, and what survives is that it stays module-level. Both carry a ⚠ saying so.
+
+`scripts/build-convocatoria-preview.js` renders the page **four** times — staff, three menus open,
+nineteen convoked, delegate — over the real builders, the real Catalan strings and the real kit
+SVGs, and refuses to write the file if the four did not come out different. Excluded from Pages
+(`_config.yml`) and from the APK by the `-preview.html` pattern.
+
+New `test/convocatoria.test.js`: 60 tests, 14 of them driving the real `bindConvocatoria` in jsdom.
+⚠ **jsdom SWALLOWS an exception thrown inside a listener** — it reports it on the window and carries
+on, so a handler that dies on a global the stubs forgot looks exactly like a handler that decided to
+do nothing. That is not hypothetical: `safeHttpUrl` was missing from the stub list and "a bad url is
+not stored" passed for the wrong reason. Every wired test now drains a window `error` collector.
+
+**Four things the owner asked for before it shipped**, all in v227.
+
+1. **The fitness status is back in the row.** The first cut left it out: the availability column
+   already resolves `deriveFitnessStatus` and renders Lesionat and Dubte off it, so the ✓/?/✕ glyph
+   read as a duplicate. It is not one. The **text** says whether he is PLAYABLE and is driven by an
+   answer the player gave; the **glyph and score** say how well he is LOADED, and nobody answers a
+   question to produce them. It goes through the shared `playerStatusHtml`, so the call-up and the
+   New Training squad list cannot disagree about what "doubt" looks like — the rule
+   `readiness.test.js` has always pinned, and which the first cut broke down to one caller.
+   ⚠ Its palette is a **third** copy of the paper readiness values, after `.std-table` and
+   `.pl-ready`. Deliberate: each page scopes its own, which is what lets the roster keep 28px pastel
+   discs while three paper pages draw 22–24px muted ones. On a phone the score is dropped and the
+   glyph kept — the medical status is what a coach scans a narrow row for.
+
+2. **No circle behind a crest in the fixture picker.** A real badge is an `<img>` and never had one;
+   the MONOGRAM that stands in for a club we have no badge for carries a disc everywhere else,
+   because lettering needs a ground. Here it does not — the design draws a plain rectangular slot,
+   and a filled circle beside a bare crest makes the two clubs in one row read as two different
+   kinds of thing. The ground stays, squared off. This is the same lesson as v226's "the crest, out
+   of its circle", applied one control further on. The preview now carries a shield-shaped data-URI
+   badge on one side and the monogram on the other, so the contrast is visible rather than asserted.
+
+3. **The picker offers only the filtered categories.** `getCurrentCategory()` returns `''` for
+   Totes and **its own doc comment says that means "all VISIBLE categories"** — but the
+   `!curCat || …` idiom every page uses reads it as "all categories, full stop". For a coach scoped
+   to one category the two are the same answer and it never showed; for a coach holding two of the
+   club's four, Totes offered fixtures from the other two, which no squad of his can be convoked
+   for. The picker filters to the allowed SET, and the player pool follows the same rule — convoking
+   a player from a category whose fixtures the picker will not offer is a call-up that can never be
+   sent. ⚠ **An uncategorised fixture is kept regardless.** It belongs to no squad, and it is a
+   shape the app still produces: a lead creating a fixture on Totes stamps
+   `category: getCurrentCategory()`, which is `''`. A strict filter would make those unreachable
+   rather than merely unfiltered.
+
+4. **Soonest first.** `fa_matches` is a blob in insertion order, so the list came back in whatever
+   order fixtures were created or imported. It now sorts on `date + 'T' + time`, which also makes
+   the default selection the next fixture rather than an arbitrary one. A fixture with no kickoff
+   sorts **last**, behind a `'9999'` sentinel — an empty date would otherwise put a TBC fixture at
+   the top of the list.
+
+Unit 2754 → **2828**. 39 mutants killed across three batches, including one for each of the five
+departures above and one for each of the four requests. Version triple → v227.

@@ -75,8 +75,6 @@
     'btn.back':        { ca:'← Enrere', es:'← Atrás', en:'← Back' },
     'btn.submit':      { ca:'Enviar', es:'Enviar', en:'Submit' },
     'btn.send':        { ca:'Enviar', es:'Enviar', en:'Send' },
-    'btn.unsend':      { ca:'Retirar', es:'Retirar', en:'Unsend' },
-    'btn.clear_all':   { ca:'Esborrar tot', es:'Borrar todo', en:'Clear All' },
     'btn.add':         { ca:'Afegir', es:'Añadir', en:'Add' },
     'btn.remove':      { ca:'Treure', es:'Quitar', en:'Remove' },
     'btn.leave_squad': { ca:'Treure de l\'equip', es:'Quitar del equipo', en:'Remove from squad' },
@@ -736,17 +734,55 @@
        hardcoded kits, were never actually called (the buttons used raw
        `title="White"` attributes), and a kit's name is now club-entered
        data — so it goes through sanitize(), never through t(). */
-    'conv.available':       { ca:'Jugadors disponibles', es:'Jugadores disponibles', en:'Available Players' },
     'conv.called_up':       { ca:'Convocats', es:'Convocados', en:'Called Up' },
-    'conv.no_players':      { ca:'Cap jugador disponible', es:'Sin jugadores disponibles', en:'No players available' },
-    'conv.drag_desktop':    { ca:'Arrossega jugadors aquí', es:'Arrastra jugadores aquí', en:'Drag players here' },
-    'conv.drag_mobile':     { ca:'Prem els jugadors per afegir-los', es:'Pulsa los jugadores para añadirlos', en:'Press players to add them' },
-    'conv.tactical_board':  { ca:'Pissarra tàctica', es:'Pizarra táctica', en:'Tactical Board' },
     'conv.video_links':     { ca:'Enllaços de vídeo', es:'Enlaces de vídeo', en:'Video Links' },
     'conv.video_title_ph':  { ca:'Títol', es:'Título', en:'Title' },
     'conv.video_url_ph':    { ca:'Enganxa URL', es:'Pega URL', en:'Paste URL' },
     'conv.video_comment_ph':{ ca:'Comentaris per aquest vídeo...', es:'Comentarios para este vídeo...', en:'Comments for this video...' },
-    'conv.add_video':       { ca:'+ Afegir vídeo', es:'+ Añadir vídeo', en:'+ Add Video Link' },
+
+    /* ── Convocatòria, redesigned (v227) ──
+       A `cv.` block rather than more `conv.` keys: the two families are the
+       staff tab before and after the handoff, and keeping them apart is what
+       lets the leftovers be found and deleted later. Every key needs all
+       three languages — t() returns the key itself on a miss, so a gap ships
+       as a raw `cv.foo` on screen. */
+    'cv.intro':          { ca:'Arrossega els jugadors de Disponibles a Convocats. Afegeix les pissarres i els vídeos que han de veure abans del partit.', es:'Arrastra los jugadores de Disponibles a Convocados. Añade las pizarras y los vídeos que deben ver antes del partido.', en:'Drag players from Available to Called up. Add the boards and videos they should watch before the match.' },
+    'cv.available':      { ca:'Disponibles', es:'Disponibles', en:'Available' },
+    'cv.avail_hint':     { ca:'Doble clic o fletxa per convocar', es:'Doble clic o flecha para convocar', en:'Double-click or arrow to call up' },
+    'cv.acta_order':     { ca:'Ordre de l\'acta', es:'Orden del acta', en:'Team-sheet order' },
+    'cv.max_acta':       { ca:'Màxim 18 a l\'acta', es:'Máximo 18 en el acta', en:'18 max on the team sheet' },
+    'cv.call_up':        { ca:'Convoca', es:'Convocar', en:'Call up' },
+    'cv.drop_out':       { ca:'Treu de la convocatòria', es:'Quitar de la convocatoria', en:'Remove from the call-up' },
+    'cv.all_called':     { ca:'Tots els jugadors disponibles estan convocats.', es:'Todos los jugadores disponibles están convocados.', en:'Every available player is called up.' },
+    'cv.drag_here':      { ca:'Arrossega un jugador aquí per convocar-lo.', es:'Arrastra un jugador aquí para convocarlo.', en:'Drag a player here to call them up.' },
+    'cv.none_called':    { ca:'Encara no hi ha ningú convocat.', es:'Todavía no hay nadie convocado.', en:'Nobody is called up yet.' },
+    'cv.no_matches':     { ca:'Cap partit pendent', es:'Ningún partido pendiente', en:'No upcoming matches' },
+    'cv.st_disp':        { ca:'Disponible', es:'Disponible', en:'Available' },
+    'cv.st_doubt':       { ca:'Dubte', es:'Duda', en:'Doubt' },
+    'cv.st_injured':     { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'cv.st_nodisp':      { ca:'No disponible', es:'No disponible', en:'Unavailable' },
+    'cv.st_none':        { ca:'Sense resposta', es:'Sin respuesta', en:'No answer' },
+    'cv.time_before':    { ca:'abans', es:'antes', en:'before' },
+    'cv.time_after':     { ca:'Després de l\'inici', es:'Después del inicio', en:'After kick-off' },
+    'cv.time_bad':       { ca:'Format hh:mm', es:'Formato hh:mm', en:'Format hh:mm' },
+    'cv.boards':         { ca:'Pissarres', es:'Pizarras', en:'Boards' },
+    'cv.boards_note':    { ca:'Els convocats les veuen a la fitxa del partit', es:'Los convocados las ven en la ficha del partido', en:'Called-up players see them on the match page' },
+    'cv.link_board':     { ca:'Vincula una pissarra', es:'Vincula una pizarra', en:'Link a board' },
+    'cv.unlink':         { ca:'Desvincula', es:'Desvincular', en:'Unlink' },
+    'cv.no_boards':      { ca:'Cap pissarra vinculada a aquest partit.', es:'Ninguna pizarra vinculada a este partido.', en:'No board linked to this match.' },
+    'cv.all_linked':     { ca:'Ja has vinculat totes les pissarres.', es:'Ya has vinculado todas las pizarras.', en:'Every board is already linked.' },
+    'cv.frame':          { ca:'frame', es:'frame', en:'frame' },
+    'cv.frames':         { ca:'frames', es:'frames', en:'frames' },
+    'cv.animated':       { ca:'animació', es:'animación', en:'animated' },
+    'cv.videos_note':    { ca:'YouTube, Vimeo o Drive', es:'YouTube, Vimeo o Drive', en:'YouTube, Vimeo or Drive' },
+    'cv.video_note_ph':  { ca:'Comentari per als jugadors', es:'Comentario para los jugadores', en:'Note for the players' },
+    'cv.add':            { ca:'Afegeix', es:'Añadir', en:'Add' },
+    'cv.foot_draft':     { ca:'Esborrany · no s\'ha enviat encara', es:'Borrador · todavía no se ha enviado', en:'Draft · not sent yet' },
+    'cv.foot_sent':      { ca:'Enviada a {n} jugadors · citació {t}', es:'Enviada a {n} jugadores · citación {t}', en:'Sent to {n} players · call-up {t}' },
+    'cv.foot_changes':   { ca:'Enviada, però hi ha canvis sense desar', es:'Enviada, pero hay cambios sin guardar', en:'Sent, but there are unsaved changes' },
+    'cv.save_draft':     { ca:'Desa l\'esborrany', es:'Guardar el borrador', en:'Save draft' },
+    'cv.send':           { ca:'Envia la convocatòria', es:'Enviar la convocatoria', en:'Send the call-up' },
+    'cv.unsend':         { ca:'Desenvia la convocatòria', es:'Retirar la convocatoria', en:'Unsend the call-up' },
 
     // ── Set Calendar ──
     'cal.new_game':       { ca:'Nou partit', es:'Nuevo partido', en:'New Game' },
@@ -1993,7 +2029,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 226;
+  const APP_VERSION = 227;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -25311,6 +25347,180 @@
       '<span class="md-fcf-tick" title="' + sanitize(t('fcf.opponent_matched')) + '" hidden>✓</span>';
   }
 
+  /* ---------- Convocatòria, redesigned (v227) ----------
+
+     The sixth Claude Design handoff, after Calendari (`.cal-`), Pla
+     d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`)
+     and Partit (`.pt-`). Source: `Baixades/EsquerrApp Convocatòria UI/`.
+     One paper surface in bands, hairlines instead of cards, no radius, no
+     shadow, red used sparingly. Colours are literals, not `var()`s — the
+     same choice the five blocks before it made, for the same reason: the
+     design is light-mode only and a later dark theme maps them.
+
+     ⚠ THE CLASSES ARE `cv-`, AND THE README ASKS FOR `.conv-`.
+     `.conv-player`, `.conv-pos-circles`, `.conv-team-circle`,
+     `.conv-name-wrap`, `.conv-status`, `.conv-count` and `.conv-remove` are
+     not this tab's private vocabulary: they are used by SIX other surfaces
+     — the new-training squad list, Les meves estadístiques, the
+     season-history rows, the standings team grid, the matchday sent-dot and
+     the player activity tags. Repainting them to the paper language would
+     silently repaint five pages nobody asked about. Borrowed families are
+     scoped under `.cv-page` instead, exactly as `.pt-page .mn-*` already
+     is. `posCirclesHtmlGlobal` still emits `.conv-pos-circle`, and the size
+     override for it lives under `.cv-page`.
+  */
+
+  /** `hh:mm` → minutes, or null. The one parser; every time on this page
+      goes through it, so "what counts as a valid citation time" is one
+      answer rather than three regexes that disagree at the edges. */
+  function cvMins(s) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(s == null ? '' : s).trim());
+    if (!m) return null;
+    const h = Number(m[1]), mm = Number(m[2]);
+    return (h < 24 && mm < 60) ? h * 60 + mm : null;
+  }
+
+  /**
+   * The four citation pills, DERIVED from the kickoff.
+   *
+   * 105/90/75/60 minutes before it, not a fixed list — a 20:00 kickoff and a
+   * 12:30 one have nothing useful in common, and the old control offered the
+   * same 96 options to both.
+   *
+   * Wrapped through 24 h rather than clamped at zero: a 00:30 kickoff cites
+   * at 22:45 the evening before, and a pill reading `0:00` would be a time
+   * nobody meant.
+   */
+  function cvQuickTimes(kickoff) {
+    const k = cvMins(kickoff);
+    if (k == null) return [];
+    return [105, 90, 75, 60].map(function (d) {
+      const v = ((k - d) % 1440 + 1440) % 1440;
+      return String(Math.floor(v / 60)).padStart(2, '0') + ':' +
+        String(v % 60).padStart(2, '0');
+    });
+  }
+
+  /**
+   * `1 h 15 min abans`, or why the field is red.
+   *
+   * The gap also wraps, so a citation the evening before a lunchtime kickoff
+   * reads as the ~14 h it is. Past twelve hours it stops being a gap and
+   * starts being a mistake — that is the case the design calls "després de
+   * l'inici", and it covers both a citation entered after kick-off and one
+   * a day out.
+   */
+  function cvDelta(callTime, kickoff) {
+    if (cvMins(callTime) == null) return t('cv.time_bad');
+    const a = cvMins(callTime), b = cvMins(kickoff);
+    if (b == null) return '';
+    const d = ((b - a) % 1440 + 1440) % 1440;
+    if (!d || d > 720) return t('cv.time_after');
+    const h = Math.floor(d / 60), mm = d % 60;
+    return (h ? h + ' h ' : '') + (mm ? mm + ' min ' : '') + t('cv.time_before');
+  }
+
+  /**
+   * One line of text saying whether this player can play.
+   *
+   * The design asks for a single column; the app keeps the answer in TWO
+   * places — `fa_match_availability` (what the player said about this
+   * fixture) and the derived fitness status (what the medical record says).
+   *
+   * FITNESS WINS. A player who answered "disponible" on Tuesday and tore a
+   * hamstring on Thursday is Lesionat, and a coach reading "Disponible"
+   * under those circumstances is the failure this column exists to prevent.
+   *
+   * ⚠ NO `Tard`. The design lists it as a sixth state and nothing in the app
+   * can produce one: `fa_match_availability` holds `disponible`,
+   * `no_disponible` or nothing at all. Rendering a state no player can send
+   * would be a colour that never appears.
+   *
+   * `blocked` is the old `.conv-player-unavailable` intent, widened from
+   * "said no" to "said no OR is injured" — an injured player could be
+   * dragged into the acta before this.
+   */
+  function cvAvailability(p, maStatus, ctx) {
+    const fit = deriveFitnessStatus(p.id, false, ctx).fitnessStatus;
+    if (fit === 'injured') return {key: 'inj', label: t('cv.st_injured'), blocked: true};
+    if (fit === 'doubt') return {key: 'doubt', label: t('cv.st_doubt'), blocked: false};
+    if (maStatus === 'no_disponible') return {key: 'no', label: t('cv.st_nodisp'), blocked: true};
+    if (maStatus === 'disponible') return {key: 'yes', label: t('cv.st_disp'), blocked: false};
+    return {key: 'none', label: t('cv.st_none'), blocked: false};
+  }
+
+  /**
+   * The page's ONE dropdown.
+   *
+   * Five hairline menus live on this screen — the fixture picker, three kit
+   * pickers and the board picker — and they differ only in what sits in the
+   * toggle and in the rows. `stdSelect` is the app's existing control and
+   * was the first instinct, but it renders TEXT labels only, and two of
+   * these toggles carry a 40px crest pair and a 44px kit swatch. So: one
+   * builder and one delegated handler, and a fifth near-identical dropdown
+   * never gets written.
+   *
+   * Open state lives in the DOM (`hidden` on the menu), not in a variable
+   * the render reads back: this page re-renders on every drag, and a menu
+   * whose openness survived that would reopen itself mid-drop.
+   */
+  function cvMenu(id, toggleHtml, rowsHtml, opts) {
+    opts = opts || {};
+    if (opts.ro) {
+      return '<div class="cv-menu cv-menu-ro' + (opts.cls ? ' ' + opts.cls : '') + '">' +
+        '<div class="cv-menu-t">' + toggleHtml + '</div></div>';
+    }
+    return '<div class="cv-menu' + (opts.cls ? ' ' + opts.cls : '') +
+        '" data-cv-menu="' + sanitize(id) + '">' +
+      '<button type="button" class="cv-menu-t">' + toggleHtml +
+        '<span class="cv-caret">▾</span></button>' +
+      '<div class="cv-menu-m" hidden>' + rowsHtml + '</div></div>';
+  }
+
+  /**
+   * One player, in either column.
+   *
+   * `⠿ · dorsal · cercle d'equip · nom · inicial de categoria ·
+   * disponibilitat · discs · acció` — the SAME row in both lists, because
+   * they are two halves of one pool and a row that changed shape as it
+   * crossed would make a drag hard to follow.
+   */
+  function cvRowHtml(p, o) {
+    const av = o.avail;
+    const drag = !o.ro && !av.blocked;
+    return '<div class="cv-row' + (av.blocked ? ' cv-row-off' : '') +
+        '" data-id="' + sanitize(String(p.id)) + '" draggable="' + (drag ? 'true' : 'false') + '">' +
+      '<span class="cv-handle" aria-hidden="true">⠿</span>' +
+      '<span class="cv-num">' + sanitize(p.playerNumber || '—') + '</span>' +
+      '<span class="cv-who">' +
+        (p.team ? '<span class="cv-team">' + sanitize(p.team) + '</span>' : '') +
+        '<span class="cv-name">' + sanitize(p.name) + '</span>' +
+        catBadgeHtmlGlobal(p, o.catSpan) +
+      '</span>' +
+      '<span class="cv-state cv-state-' + av.key + '">' + sanitize(av.label) + '</span>' +
+      /* The medical glyph and the readiness score, through the SHARED
+         `playerStatusHtml` — the same path the New Training squad list uses,
+         which is what stops the two screens disagreeing about what "doubt"
+         looks like. It is not a second opinion about the availability text
+         beside it: that column says whether he is playable, this one says
+         how well he is loaded, and only the first of the two is derived
+         from an answer the player gave. Restyled to the paper palette under
+         `.cv-page`, never resized here. */
+      '<span class="cv-fit">' + playerStatusHtml(p, o.ctx) + '</span>' +
+      '<span class="cv-pos">' + posCirclesHtmlGlobal(p) + '</span>' +
+      (o.ro || (av.blocked && !o.inCalled) ? '<span class="cv-act cv-act-off"></span>'
+        : '<button type="button" class="cv-act" data-cv-move="' + sanitize(String(p.id)) +
+          '" title="' + sanitize(o.actTitle) + '">' + o.act + '</button>') +
+      '</div>';
+  }
+
+  /** A band eyebrow with the note the design puts on its right. */
+  function cvHead(title, note, noteCls) {
+    return '<div class="cv-sec-head"><span class="cv-eyebrow">' + title + '</span>' +
+      (note ? '<span class="cv-sec-note' + (noteCls ? ' ' + noteCls : '') + '">' +
+        note + '</span>' : '') + '</div>';
+  }
+
   function renderConvocatoria() {
     /* A delegate reads the call-up — they need to know who is coming and in
        which kit — but the squad, the kit and the send are the coach's call.
@@ -25319,12 +25529,38 @@
     var ro = !canEditPage('convocatoria');
     var allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     var curCat = getCurrentCategory();
-    var matches = curCat ? allMatches.filter(function(m) { return !m.category || m.category === curCat; }) : allMatches;
+    /* '' from getCurrentCategory() means "all VISIBLE categories", and the
+       `!curCat ||` idiom every other page uses reads it as "all categories,
+       full stop". The two are the same answer for a coach scoped to one
+       category — getCurrentCategory() never returns '' for him — but not for
+       a coach who holds two of the club's four: on Totes he was offered
+       fixtures from the other two, which no squad of his can be convoked
+       for. The picker filters to the allowed SET instead.
+
+       A fixture with no category at all is kept regardless. It belongs to no
+       squad, and it is a shape the app still produces — a lead creating a
+       fixture on Totes stamps `category: getCurrentCategory()`, which is ''
+       — so a strict filter would make those fixtures unreachable rather than
+       merely unfiltered. */
+    var allowedCats = curCat ? [curCat] : getVisibleCategories();
+    var matches = allMatches.filter(function (m) {
+      return !m.category || allowedCats.indexOf(m.category) !== -1;
+    });
     var now = new Date();
     const upcoming = matches.filter(function(m) {
       if (!m.date || !m.time) return m.status === 'upcoming';
       var kickoff = new Date(m.date + 'T' + m.time + ':00');
       return kickoff > now;
+    /* Soonest first — the fixture a coach is picking is almost always the
+       next one, and it is now both the top row and the default selection
+       below. `fa_matches` is a blob in insertion order, so before this the
+       list came back in whatever order the fixtures were created or
+       imported. A fixture missing a date or time sorts last rather than
+       to the top, which is where an empty string would put it. */
+    }).sort(function (a, b) {
+      var ka = (a.date && a.time) ? a.date + 'T' + a.time : '9999';
+      var kb = (b.date && b.time) ? b.date + 'T' + b.time : '9999';
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
     });
     if (convSelectedMatchId === null && upcoming.length) convSelectedMatchId = upcoming[0].id;
     // If the selected match has already started, deselect it
@@ -25334,32 +25570,16 @@
     const selected = matches.find(m => m.id === convSelectedMatchId) || null;
     const users = getUsers();
     var playersAll = users.filter(u => (u.roles || []).includes('player'));
-    var players = curCat ? playersAll.filter(function(p) { return !p.category || p.category === curCat; }) : playersAll;
+    // Same rule as the fixtures above, for the same reason: convoking a
+    // player from a category whose fixtures the picker will not offer is a
+    // call-up that can never be sent.
+    var players = playersAll.filter(function (p) {
+      return !p.category || allowedCats.indexOf(p.category) !== -1;
+    });
     const allConvRaw = JSON.parse(localStorage.getItem('fa_convocatoria') || '{}');
     const allConv = Array.isArray(allConvRaw) ? {} : allConvRaw;
     const saved = convSelectedMatchId ? (allConv[convSelectedMatchId] || []) : [];
     const _convFitCtx = fitnessContext();
-    const convStatus = (p) => playerStatusHtml(p, _convFitCtx);
-
-    const POS_ORDER = ['GK','CB','LB','RB','DM','OM','LW','RW','ST'];
-    function posRank(p) {
-      return posRankGlobal(p);
-    }
-    function posCirclesHtml(p) {
-      return posCirclesHtmlGlobal(p);
-    }
-
-    const matchOptions = upcoming.length
-      ? upcoming.map(m => {
-          const active = m.id === convSelectedMatchId ? ' conv-match-option-active' : '';
-          const teamLetter = m.team ? ` (${sanitize(m.team)})` : '';
-          const homeName = isOurTeam(m.home) ? getClubName() + teamLetter : sanitize(m.home);
-          const awayName = isOurTeam(m.away) ? getClubName() + teamLetter : sanitize(m.away);
-          const dateObj = m.date ? new Date(m.date + 'T12:00:00') : null;
-          const dateFmt = dateObj ? tDateShort(m.date) : '';
-          return `<div class="conv-match-option${active}" data-mid="${m.id}"><div class="conv-match-teams">${homeName} vs ${awayName}</div><div class="conv-match-date">${dateFmt}<span class="conv-match-time">${m.time || ''}</span></div></div>`;
-        }).join('')
-      : '<div class="conv-match-empty">No upcoming matches</div>';
 
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const sentEntry = convSelectedMatchId && sentData[convSelectedMatchId] ? sentData[convSelectedMatchId] : null;
@@ -25374,60 +25594,68 @@
        dragged across. */
     const catSpan = catSpanOf(players);
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
-    const available = players.filter(p => !calledIds.has(String(p.id))).sort((a, b) => posRank(a) - posRank(b));
-    const called = saved.map(id => players.find(p => String(p.id) === String(id))).filter(Boolean).sort((a, b) => posRank(a) - posRank(b));
+    const availOf = (p) => cvAvailability(
+        p, matchAvailData[p.id + '_' + convSelectedMatchId] || null, _convFitCtx);
 
-    const availableHtml = available.length
-      ? available.map(p => {
-          const maKey = p.id + '_' + convSelectedMatchId;
-          const maStatus = matchAvailData[maKey] || null;
-          const isNoDisp = maStatus === 'no_disponible';
-          const dragAttr = (isNoDisp || ro) ? 'draggable="false"' : 'draggable="true"';
-          const greyClass = isNoDisp ? ' conv-player-unavailable' : '';
-          const maTag = maStatus === 'disponible' ? '<span class="conv-ma-tag conv-ma-disp">Disponible</span>'
-            : maStatus === 'no_disponible' ? '<span class="conv-ma-tag conv-ma-nodisp">No Disponible</span>'
-            : '<span class="conv-ma-tag conv-ma-pending">—</span>';
-          const pTeam = p.team || '';
-          return `<div class="conv-player${greyClass}" ${dragAttr} data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span>${maTag}<span class="conv-status">${convStatus(p)}</span></div>`;
-        }).join('')
-      : '<p class="conv-empty-hint">No players available</p>';
+    /* Disponibles keeps the positional sort. Convocats does NOT, and that is
+       the feature: `fa_convocatoria[matchId]` IS the acta order — the order
+       the coach dragged the rows into — and the render this replaced sorted
+       it away with posRank on the way out. Dragging a player between two
+       others therefore appeared to do nothing, every time. */
+    const available = players.filter(p => !calledIds.has(String(p.id)))
+      .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
+    const called = saved.map(id => players.find(p => String(p.id) === String(id))).filter(Boolean);
 
+    const availHtml = available.length
+      ? available.map(p => cvRowHtml(p, {
+          avail: availOf(p), catSpan: catSpan, ro: ro, inCalled: false, ctx: _convFitCtx,
+          act: '→', actTitle: t('cv.call_up')
+        })).join('')
+      : '<div class="cv-empty">' + t('cv.all_called') + '</div>';
     const calledHtml = called.length
-      ? called.map(p => { const pTeam = p.team || ''; return `<div class="conv-player conv-called" draggable="${ro ? 'false' : 'true'}" data-id="${p.id}"><span class="conv-pos-circles">${posCirclesHtml(p)}</span><span class="conv-name-wrap"><span class="conv-name">${sanitize(p.name)}</span>${catBadgeHtmlGlobal(p, catSpan)}${pTeam ? `<span class="conv-team-circle">${sanitize(pTeam)}</span>` : ''}</span><span class="conv-num">#${sanitize(p.playerNumber || '—')}</span><span class="conv-status">${convStatus(p)}</span>${ro ? '' : `<button class="conv-remove" data-id="${p.id}" title="Remove">&times;</button>`}</div>`; }).join('')
-      : '<p class="conv-drop-hint"><span class="conv-hint-desktop">' + t('conv.drag_desktop') + '</span><span class="conv-hint-mobile">' + t('conv.drag_mobile') + '</span></p>';
+      ? called.map(p => cvRowHtml(p, {
+          avail: availOf(p), catSpan: catSpan, ro: ro, inCalled: true, ctx: _convFitCtx,
+          act: '✕', actTitle: t('cv.drop_out')
+        })).join('')
+      : '<div class="cv-empty">' + (ro ? t('cv.none_called') : t('cv.drag_here')) + '</div>';
 
-    /* Equipació: one row PER GARMENT, each offering that piece from every
-       kit the lead defined. The pieces stay independently selectable by
-       decision — a coach can still send the 1a shirt with the 2a socks, as
-       the two old toggles allowed — but now only from pieces the club owns.
-
-       The draft (fa_convocatoria_uniform) is device-local and unsynced, so
-       there is nothing historical to migrate here: an old {jersey,socks}
-       draft simply falls through to the first kit. */
-    const kits = clubKits();
-    const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
-    const draft = (convSelectedMatchId && uniformData[convSelectedMatchId]) || {};
-    /* Clamped to an id that still EXISTS. A draft naming a deleted kit must
-       not leave every button inactive — which is exactly what the four
-       separate literal comparisons this replaced would have done. */
-    const pickedId = (field) => {
-      const want = draft[field];
-      return kits.some((k) => k.id === want) ? want : kits[0].id;
+    /* ---- Tria el partit ---- */
+    const mTeams = (m) => {
+      const teamLetter = m.team ? ' (' + sanitize(m.team) + ')' : '';
+      const home = isOurTeam(m.home) ? sanitize(getClubName()) + teamLetter : sanitize(m.home);
+      const away = isOurTeam(m.away) ? sanitize(getClubName()) + teamLetter : sanitize(m.away);
+      return ptCrestHtml(m, 'home') +
+        '<span class="cv-teams">' + home + ' — ' + away + '</span>' +
+        ptCrestHtml(m, 'away');
     };
-    const curShirt = pickedId('shirtId');
-    const curShorts = pickedId('shortsId');
-    const curSocks = pickedId('socksId');
-    /* Read-only shows the CHOSEN piece only, as a static swatch. A delegate
-       has to know which kit to take; offering the alternatives as buttons
-       that do nothing would only look broken. */
-    const kitRow = (field, cur, draw) => kits
-      .filter((k) => !ro || k.id === cur)
-      .map((k) => ro
-        ? `<span class="uniform-opt uniform-opt-active" title="${sanitize(k.label || '')}">${draw(k)}</span>`
-        : `<button type="button" class="uniform-opt conv-kit-opt${k.id === cur ? ' uniform-opt-active' : ''}"` +
-          ` data-field="${field}" data-kit="${sanitize(k.id)}" title="${sanitize(k.label || '')}">` +
-          draw(k) + '</button>').join('');
+    /* `fcfJornada` is the only competition fact a fixture carries, and a
+       friendly has none — the segment is dropped rather than reading
+       "Jornada undefined", the same rule ptScoreboard follows. */
+    const mWhen = (m) => [
+      m.date ? tDateShort(m.date) : '', m.time || '',
+      ptOurSide(m) === 'home' ? t('mn.at_home') : t('mn.at_away'),
+      m.fcfJornada ? t('pt.jornada') + ' ' + sanitize(String(m.fcfJornada)) : ''
+    ].filter(Boolean).join(' · ');
 
+    const matchToggle = selected
+      ? '<span class="cv-mt"><span class="cv-mt-row">' + mTeams(selected) + '</span>' +
+        '<span class="cv-mt-when">' + mWhen(selected) + '</span></span>'
+      : '<span class="cv-mt"><span class="cv-mt-none">' + t('conv.select_match') + '</span></span>';
+    const matchRows = upcoming.length
+      ? upcoming.map(m => '<div class="cv-menu-o' +
+          (m.id === convSelectedMatchId ? ' cv-menu-o-on' : '') +
+          '" data-cv-match="' + sanitize(String(m.id)) + '">' +
+          /* The same two-line block as the toggle, wrapped in its own .cv-mt
+             column. Without the wrapper the option's flex row laid the
+             fixture and its date SIDE BY SIDE, which is not what the design
+             draws and is not what the toggle above does. */
+          '<span class="cv-mt">' +
+            '<span class="cv-mt-row cv-mt-row-s">' + mTeams(m) + '</span>' +
+            '<span class="cv-mt-when">' + mWhen(m) + '</span>' +
+          '</span></div>').join('')
+      : '<div class="cv-menu-empty">' + t('cv.no_matches') + '</div>';
+
+    /* ---- Hora de citació ---- */
     // Default callup: 1h30 before kickoff, rounded down to 15min
     const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
     let callupDefault = '';
@@ -25452,96 +25680,215 @@
         }
       }
     }
+    const kickoff = selected ? (selected.time || '') : '';
+    const timeBad = !!callupDefault && cvMins(callupDefault) == null;
+    const timeHtml = ro
+      /* `cv-time-ruled` because a delegate gets no pills, and the pills are
+         what carry this group's black rule down to the shared baseline. The
+         value takes the rule instead, or the middle of the three columns
+         would be the only one with nothing underneath it. */
+      ? '<div class="cv-time-v cv-time-ruled"><span class="cv-time-ro">' +
+          sanitize(callupDefault || '—') + '</span></div>'
+      : '<div class="cv-time-v">' +
+          '<input type="text" id="cv-time" class="cv-time-i' + (timeBad ? ' cv-bad' : '') +
+            '" value="' + sanitize(callupDefault) + '" placeholder="hh:mm" maxlength="5" ' +
+            'inputmode="numeric" autocomplete="off">' +
+          '<span class="cv-time-d' + (timeBad ? ' cv-bad' : '') + '" id="cv-time-delta">' +
+            sanitize(cvDelta(callupDefault, kickoff)) + '</span>' +
+        '</div>' +
+        '<div class="cv-pills">' + cvQuickTimes(kickoff).map(x =>
+          '<button type="button" class="cv-pill' + (x === callupDefault ? ' cv-pill-on' : '') +
+          '" data-cv-time="' + x + '">' + x + '</button>').join('') + '</div>';
 
-    return `
-      <h2 class="page-title">${t('page.convocatoria')}</h2>
-      ${ro ? viewOnlyBanner() : ''}
-      <div class="card" style="margin-bottom:1.5rem;">
-        <div class="conv-top-row">
-          <div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;">${t('conv.choose_match')}</div>
-            <div class="conv-match-selector" id="conv-match-selector">
-              <div class="conv-match-toggle" id="conv-match-toggle">
-                ${selected ? `<div class="conv-match-toggle-info"><div class="conv-match-teams" title="${sanitize(selected.home + ' vs ' + selected.away)}">${sanitize(selected.home)}${selected.team && isOurTeam(selected.home) ? ' (' + sanitize(selected.team) + ')' : ''} vs ${sanitize(selected.away)}${selected.team && isOurTeam(selected.away) ? ' (' + sanitize(selected.team) + ')' : ''}</div><div class="conv-match-date">${selected.date ? tDateShort(selected.date) : ''}<span class="conv-match-time">${selected.time || ''}</span></div></div>` : '<span style="color:var(--text-secondary)">' + t('conv.select_match') + '</span>'}
-                <span class="conv-match-chevron"></span>
-              </div>
-              <div class="conv-match-dropdown" id="conv-match-dropdown" hidden>${matchOptions}</div>
-            </div>
-          </div>
-          ${selected ? `<div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;">${t('conv.callup_time')}</div>
-            ${ro
-              ? `<span class="reg-status-flat">${sanitize(callupDefault || '—')}</span>`
-              : `<select class="conv-callup-select" id="conv-callup-time">${buildTimeOptions(callupDefault)}</select>`}
-          </div>
-          <div class="conv-top-group">
-            <div class="card-title" style="margin-bottom:.5rem;">${t('conv.uniform')}</div>
-            <div class="conv-uniform-row">
-              <div class="conv-uniform-group">
-                <span class="conv-uniform-label">${t('conv.jersey')}</span>
-                <div class="uniform-toggle">${kitRow('shirtId', curShirt, (k) => shirtSvg(k.shirt))}</div>
-              </div>
-              <div class="conv-uniform-group">
-                <span class="conv-uniform-label">${t('conv.shorts')}</span>
-                <div class="uniform-toggle">${kitRow('shortsId', curShorts, (k) => shortsSvg(k.shorts))}</div>
-              </div>
-              <div class="conv-uniform-group">
-                <span class="conv-uniform-label">${t('conv.socks')}</span>
-                <div class="uniform-toggle">${kitRow('socksId', curSocks, (k) => kitSockSvg(k.socks))}</div>
-              </div>
-            </div>
-          </div>` : ''}
-        </div>
-      </div>
-      <div class="conv-layout">
-        <div class="conv-panel">
-          <div class="conv-panel-header">${t('conv.available')} <span class="conv-count" id="conv-avail-count">${available.length}</span></div>
-          <div class="conv-list" id="conv-available">${availableHtml}</div>
-        </div>
-        <div class="conv-panel conv-panel-called">
-          <div class="conv-panel-header">${t('conv.called_up')} <span class="conv-count" id="conv-called-count">${called.length}</span></div>
-          <div class="conv-list conv-drop-zone" id="conv-called">${calledHtml}</div>
-          ${ro ? '' : `<div class="conv-actions">
-            <button class="btn btn-small" id="btn-conv-clear" style="background:#9e9e9e;color:#fff;border:none;">${t('btn.clear_all')}</button>
-            <button class="btn btn-outline btn-small" id="btn-conv-save">${t('btn.save')}</button>
-            <button class="btn ${isSent && !hasChanges ? 'btn-danger' : 'btn-primary'} btn-small" id="btn-conv-send">${isSent && !hasChanges ? t('btn.unsend') : t('btn.send')}</button>
-          </div>`}
-        </div>
-      </div>
-      ${(() => {
-        if (!convSelectedMatchId) return '';
-        const matchBoards = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
-        const boards = matchBoards[convSelectedMatchId] || [];
-        if (!boards.length) return '';
-        return '<div class="card"><div class="card-title">' + t('conv.tactical_board') + '</div>' +
-          boards.map(b => tbRoBoardHtml(b, 'ro2-')).join('') + '</div>';
-      })()}
-      ${(() => {
-        if (!convSelectedMatchId) return '';
-        const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
-        const videos = vData[convSelectedMatchId] || [];
-        // Read-only: the links as links, and nothing at all when there are none.
-        if (ro) {
-          if (!videos.length) return '';
-          return '<div class="card"><div class="card-title">' + t('conv.video_links') + '</div>' +
-            videos.map(v => '<div class="conv-video-row">' +
-              (v.url
-                ? '<a href="' + sanitize(v.url) + '" target="_blank" rel="noopener">' + sanitize(v.title || v.url) + '</a>'
-                : '<span>' + sanitize(v.title || '') + '</span>') + '</div>' +
-              (v.comment ? '<p style="color:var(--text-secondary);font-size:.85rem;margin:.2rem 0 .6rem;">' + sanitize(v.comment) + '</p>' : '')
-            ).join('') + '</div>';
-        }
-        const rows = videos.map((v, i) => '<div class="conv-video-row" data-video-idx="' + i + '">' +
-          '<input type="text" class="reg-input conv-video-title" value="' + sanitize(v.title) + '" placeholder="' + t('conv.video_title_ph') + '" style="flex:1;min-width:80px;">' +
-          '<input type="text" class="reg-input conv-video-url" value="' + sanitize(v.url) + '" placeholder="' + t('conv.video_url_ph') + '" style="flex:2;min-width:140px;">' +
-          '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">✕</button></div>' +
-          (v.title ? '<textarea class="reg-input conv-video-comment" data-video-idx="' + i + '" rows="2" placeholder="' + t('conv.video_comment_ph') + '" style="width:100%;resize:vertical;min-height:40px;margin-bottom:.6rem;">' + sanitize(v.comment || '') + '</textarea>' : '')).join('');
-        return '<div class="card">' +
-          '<div class="card-title">' + t('conv.video_links') + '</div>' +
-          '<div id="conv-video-list">' + rows + '</div>' +
-          '<button class="btn btn-outline btn-small" id="btn-conv-add-video" style="margin-top:.5rem;">' + t('conv.add_video') + '</button>' +
-          '</div>';
-      })()}`;
+    /* ---- Equipació ----
+       One row PER GARMENT, each offering that piece from every kit the lead
+       defined. The pieces stay independently selectable by decision — a
+       coach can still send the 1a shirt with the 2a socks — but now only
+       from pieces the club owns. */
+    const kits = clubKits();
+    const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
+    const draft = (convSelectedMatchId && uniformData[convSelectedMatchId]) || {};
+    /* Clamped to an id that still EXISTS. A draft naming a deleted kit must
+       not leave the toggle blank. */
+    const pickedId = (field) => {
+      const want = draft[field];
+      return kits.some((k) => k.id === want) ? want : kits[0].id;
+    };
+    const kitMenu = (field, label, draw) => {
+      const cur = pickedId(field);
+      const sel = kits.find((k) => k.id === cur) || kits[0];
+      const face = (k) => '<span class="cv-kit-img">' + draw(k) + '</span>' +
+        '<span class="cv-kit-name">' + sanitize(k.label || '') + '</span>';
+      const rows = kits.map((k) => '<div class="cv-menu-o' +
+        (k.id === cur ? ' cv-menu-o-on' : '') + '" data-cv-kit="' + sanitize(k.id) +
+        '" data-cv-field="' + field + '">' + face(k) + '</div>').join('');
+      return '<div class="cv-kit"><span class="cv-kit-l">' + label + '</span>' +
+        cvMenu('kit-' + field, face(sel), rows, {ro: ro}) + '</div>';
+    };
+
+    /* ---- Pissarres ----
+       ⚠ THE THUMBNAIL EXPANDS; the README asks for the real read-only board
+       drawn at 34×24. A pitch that size is not readable, and tbRoBoardHtml
+       hydrates asynchronously. The page this replaces rendered the boards in
+       full, and deleting them outright would cost the coach the review of
+       what he attached — so the designed hairline box stays and CLICKING the
+       row opens the real board beneath it. */
+    const boardsBand = (function () {
+      if (!convSelectedMatchId) return '';
+      const mb = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+      const linked = mb[convSelectedMatchId] || [];
+      const libReady = typeof TB !== 'undefined' && TB.ready();
+      const metaLine = (b) => {
+        const m = (libReady && b.boardId) ? TB.meta(b.boardId) : null;
+        if (!m) return '';
+        const n = m.frameCount || 1;
+        return [n + ' ' + (n === 1 ? t('cv.frame') : t('cv.frames')),
+          m.hasFrames ? t('cv.animated') : ''].filter(Boolean).join(' · ');
+      };
+      const rows = linked.map(function (b, i) {
+        const key = tbLinkedKey(b);
+        return '<div class="cv-board" data-cv-board="' + sanitize(key) + '" data-cv-bi="' + i + '">' +
+            '<span class="cv-board-th"></span>' +
+            '<span class="cv-board-n">' + sanitize(b.name || b.boardId || '') + '</span>' +
+            '<span class="cv-board-m">' + sanitize(metaLine(b)) + '</span>' +
+            (ro ? '<span class="cv-act cv-act-off"></span>'
+              : '<button type="button" class="cv-act" data-cv-unlink="' + sanitize(key) +
+                '" title="' + sanitize(t('cv.unlink')) + '">✕</button>') +
+          '</div>' +
+          '<div class="cv-board-open" data-cv-bopen="' + i + '" hidden></div>';
+      }).join('');
+      /* Options are the club library minus what is already linked. Matching
+         by boardId, never by name: two categories can hold boards of the
+         same name, which is the defect tbLinkedKey exists to have fixed. */
+      const linkedIds = new Set(linked.map(b => b.boardId).filter(Boolean));
+      const opts = (libReady ? TB.library() : []).filter(b => !linkedIds.has(b.id));
+      const picker = ro ? '' :
+        '<div class="cv-board-add" data-cv-menu="boards">' +
+          '<button type="button" class="cv-link">+ ' + t('cv.link_board') + '</button>' +
+          '<div class="cv-menu-m cv-menu-m-l" hidden>' +
+            (opts.length
+              ? opts.map(b => '<div class="cv-menu-o" data-cv-link="' + sanitize(b.id) + '">' +
+                  '<span class="cv-menu-o-n">' + sanitize(b.name || '—') + '</span>' +
+                  '<span class="cv-menu-o-m">' + sanitize(
+                    (b.frameCount || 1) + ' ' +
+                    ((b.frameCount || 1) === 1 ? t('cv.frame') : t('cv.frames'))) + '</span></div>').join('')
+              : '<div class="cv-menu-empty">' + t('cv.all_linked') + '</div>') +
+          '</div>' +
+          (linked.length ? '' : '<span class="cv-none">' + t('cv.no_boards') + '</span>') +
+        '</div>';
+      if (ro && !linked.length) return '';
+      return '<div class="cv-band">' +
+        cvHead(t('cv.boards') + ' · ' + linked.length, t('cv.boards_note')) +
+        rows + picker + '</div>';
+    })();
+
+    /* ---- Enllaços de vídeo ----
+       URL + comentari per fila, as the design has it. The Title input is
+       gone; the stored `title` is not — the player-facing views use it as
+       the link text, so new rows store the URL there. safeHttpUrl gates the
+       link: this page had NO validation at all, while the match-notes rows
+       beside it have had `.mn-video-bad` for a refused scheme all along. */
+    const videosBand = (function () {
+      if (!convSelectedMatchId) return '';
+      const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
+      const videos = vData[convSelectedMatchId] || [];
+      if (ro && !videos.length) return '';
+      const rows = videos.map(function (v, i) {
+        const safe = safeHttpUrl(v.url);
+        const label = safe
+          ? '<a class="cv-video-u" href="' + sanitize(safe) + '" target="_blank" rel="noopener">' +
+            sanitize(v.url) + '</a>'
+          : '<span class="cv-video-u mn-video-bad">' + sanitize(v.url || v.title || '') + '</span>';
+        return '<div class="cv-video">' +
+          '<span class="cv-video-i">▶</span>' +
+          '<span class="cv-video-c">' + label +
+            (v.comment ? '<span class="cv-video-n">' + sanitize(v.comment) + '</span>' : '') +
+          '</span>' +
+          (ro ? '<span class="cv-act cv-act-off"></span>'
+            : '<button type="button" class="cv-act" data-cv-vrm="' + i + '" title="' +
+              sanitize(t('btn.delete')) + '">✕</button>') +
+        '</div>';
+      }).join('');
+      const add = ro ? '' :
+        '<div class="cv-video-add">' +
+          '<input type="text" id="cv-vurl" class="cv-input" placeholder="https://" autocomplete="off">' +
+          '<input type="text" id="cv-vnote" class="cv-input" placeholder="' +
+            sanitize(t('cv.video_note_ph')) + '" autocomplete="off">' +
+          '<button type="button" class="cv-link" id="cv-vadd">+ ' + t('cv.add') + '</button>' +
+        '</div>';
+      return '<div class="cv-band">' +
+        cvHead(t('conv.video_links') + ' · ' + videos.length, t('cv.videos_note')) +
+        rows + add + '</div>';
+    })();
+
+    /* ---- Footer ----
+       ⚠ UNSEND IS KEPT and the design has no button for it — it flips the
+       primary, the way the page did before. Retracting a published call-up
+       is a real recovery path; `Buida-ho tot` is not, and is gone. */
+    const statusLine = !convSelectedMatchId ? ''
+      : isSent
+        ? (hasChanges ? t('cv.foot_changes')
+          : t('cv.foot_sent').replace('{n}', String(sentPlayers.length))
+              .replace('{t}', sanitize(callupDefault || '—')))
+        : t('cv.foot_draft');
+    const footer = ro || !convSelectedMatchId ? '' :
+      '<div class="cv-foot">' +
+        '<span class="cv-foot-s">' + statusLine + '</span>' +
+        '<div class="cv-foot-b">' +
+          '<button type="button" class="cv-btn" id="btn-conv-save">' + t('cv.save_draft') + '</button>' +
+          '<button type="button" class="cv-btn cv-btn-p" id="btn-conv-send"' +
+            (isSent && !hasChanges ? ' data-cv-unsend="1"' : '') + '>' +
+            (isSent && !hasChanges ? t('cv.unsend') : t('cv.send')) + '</button>' +
+        '</div>' +
+      '</div>';
+
+    const overLimit = called.length > 18;
+    return '<div class="cv-page' + (ro ? ' cv-page-ro' : '') + '" id="cv-page">' +
+      (ro ? viewOnlyBanner() : '') +
+      '<div class="cv-head">' +
+        '<div class="cv-head-l">' +
+          '<h1 class="cv-h1">' + t('page.convocatoria') + '</h1>' +
+          '<div class="cv-sub">' + t('cv.intro') + '</div>' +
+        '</div>' +
+        '<div class="cv-head-r">' +
+          '<span class="cv-eyebrow">' + t('conv.called_up') + '</span>' +
+          '<span class="cv-big' + (overLimit ? ' cv-over' : '') + '">' + called.length + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cv-controls">' +
+        '<div class="cv-ctl cv-ctl-match">' +
+          '<span class="cv-eyebrow">' + t('conv.choose_match') + '</span>' +
+          /* NOT gated on `ro`, and it is the only control here that is not:
+             which fixture you are looking at is view state, not a write, and
+             a delegate reading the call-up has to be able to change it. */
+          cvMenu('match', matchToggle, matchRows, {}) +
+        '</div>' +
+        '<div class="cv-ctl cv-ctl-time">' +
+          '<span class="cv-eyebrow">' + t('conv.callup_time') + '</span>' + timeHtml +
+        '</div>' +
+        '<div class="cv-ctl cv-ctl-kit">' +
+          '<span class="cv-eyebrow">' + t('conv.uniform') + '</span>' +
+          '<div class="cv-kits">' +
+            kitMenu('shirtId', t('conv.jersey'), (k) => shirtSvg(k.shirt, undefined, 44)) +
+            kitMenu('shortsId', t('conv.shorts'), (k) => shortsSvg(k.shorts, 44)) +
+            kitMenu('socksId', t('conv.socks'), (k) => kitSockSvg(k.socks, 44)) +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cv-lists">' +
+        '<div class="cv-col" id="cv-avail" data-cv-zone="avail">' +
+          cvHead(t('cv.available') + ' · ' + available.length, ro ? '' : t('cv.avail_hint')) +
+          availHtml +
+        '</div>' +
+        '<div class="cv-col" id="cv-called" data-cv-zone="called">' +
+          cvHead(t('conv.called_up') + ' · ' + called.length,
+              overLimit ? t('cv.max_acta') : t('cv.acta_order'),
+              overLimit ? 'cv-over' : '') +
+          calledHtml +
+        '</div>' +
+      '</div>' +
+      boardsBand + videosBand + footer +
+      '</div>';
   }
 
   function renderAdminUsers() {
@@ -29628,35 +29975,97 @@
     });
   }
 
-  // ---------- Convocatòria drag-and-drop ----------
+  // ---------- Convocatòria: drag-and-drop, menus, bands ----------
+  /**
+   * ONE order model for the whole page.
+   *
+   * `fa_convocatoria[matchId]` is an array of player ids and it IS the acta
+   * order. Every path that changes the squad — a drag between columns, a
+   * drag onto a row, a double-click, the →/✕ glyph, a tap on a phone — goes
+   * through `place()`, which is one splice plus one membership update. The
+   * page this replaced had four separate copies of "push, or filter out",
+   * which is why reordering within Convocats was never possible: there was
+   * no code path that could express it.
+   */
   function bindConvocatoria() {
-    const availEl = document.getElementById('conv-available');
-    const calledEl = document.getElementById('conv-called');
-    if (!availEl || !calledEl) return;
+    const page = document.getElementById('cv-page');
+    if (!page) return;
 
-    // Match selector (custom dropdown)
-    const toggle = document.getElementById('conv-match-toggle');
-    const dropdown = document.getElementById('conv-match-dropdown');
-    if (toggle && dropdown) {
-      toggle.addEventListener('click', () => {
-        dropdown.hidden = !dropdown.hidden;
-        toggle.classList.toggle('conv-match-toggle-open', !dropdown.hidden);
+    /* The fixture picker is view state and stays live for everyone; the
+       delegate reads the call-up and changes none of it. Bound before the
+       read-only return, and it is the only thing that is. */
+    const ro = !canEditPage('convocatoria');
+
+    /* One handler for all five hairline menus — the fixture picker, three
+       kit pickers, the board picker. Opening one closes the others; a click
+       anywhere else closes whichever is open. */
+    function closeMenus(except) {
+      page.querySelectorAll('[data-cv-menu] .cv-menu-m').forEach(function (m) {
+        if (m !== except) m.hidden = true;
       });
-      dropdown.querySelectorAll('.conv-match-option').forEach(opt => {
-        opt.addEventListener('click', () => {
-          convSelectedMatchId = Number(opt.dataset.mid) || null;
-          renderPage(getSession());
-        });
+      page.querySelectorAll('[data-cv-menu]').forEach(function (r) {
+        r.classList.toggle('cv-menu-open',
+            !!(r.querySelector('.cv-menu-m') && !r.querySelector('.cv-menu-m').hidden));
       });
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('#conv-match-selector')) { dropdown.hidden = true; toggle.classList.remove('conv-match-toggle-open'); }
+    }
+    page.addEventListener('click', function (e) {
+      const root = e.target.closest('[data-cv-menu]');
+      if (!root) { closeMenus(null); return; }
+      const menu = root.querySelector('.cv-menu-m');
+      if (!menu) return;
+      // A click on a ROW is the pick, handled below; only the toggle toggles.
+      if (e.target.closest('.cv-menu-m')) return;
+      const wasOpen = !menu.hidden;
+      closeMenus(null);
+      menu.hidden = wasOpen;
+      root.classList.toggle('cv-menu-open', !menu.hidden);
+    });
+    /* `_cvDocClose` guards against a second listener per render: this binder
+       runs after every re-render and the page re-renders on every drop. */
+    if (!document._cvDocClose) {
+      document._cvDocClose = true;
+      document.addEventListener('click', function (e) {
+        const p = document.getElementById('cv-page');
+        if (p && !e.target.closest('#cv-page')) {
+          p.querySelectorAll('.cv-menu-m').forEach(function (m) { m.hidden = true; });
+          p.querySelectorAll('.cv-menu-open').forEach(function (r) {
+            r.classList.remove('cv-menu-open');
+          });
+        }
       });
     }
 
-    /* The match selector above is view state and stays live for everyone.
-       Everything below writes the squad, the kit, the call-up time or the
-       push — a delegate reads all of it and changes none of it. */
-    if (!canEditPage('convocatoria')) return;
+    page.querySelectorAll('[data-cv-match]').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        convSelectedMatchId = Number(opt.dataset.cvMatch) || null;
+        renderPage(getSession());
+      });
+    });
+
+    /* A linked board opens in place. The full read-only board is built on
+       first open and left in the DOM afterwards, so a second click is a
+       toggle and not a re-render; hydrateRoBoards() fills whatever the
+       registry had not cached yet. */
+    page.querySelectorAll('[data-cv-board]').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('[data-cv-unlink]')) return;
+        const open = page.querySelector('[data-cv-bopen="' + row.dataset.cvBi + '"]');
+        if (!open) return;
+        if (!open.dataset.cvFilled) {
+          const mb = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+          const list = mb[convSelectedMatchId] || [];
+          const b = tbFindLinked(list, row.dataset.cvBoard);
+          if (!b) return;
+          open.innerHTML = tbRoBoardHtml(b, 'cvb' + row.dataset.cvBi + '-');
+          open.dataset.cvFilled = '1';
+          hydrateRoBoards();
+        }
+        open.hidden = !open.hidden;
+        row.classList.toggle('cv-board-on', !open.hidden);
+      });
+    });
+
+    if (ro) return;
 
     function getConvKey() { return convSelectedMatchId ? String(convSelectedMatchId) : null; }
     function getConvAll() {
@@ -29677,98 +30086,251 @@
       localStorage.setItem('fa_convocatoria', JSON.stringify(all));
     }
 
+    /**
+     * Move one player, and re-render.
+     *
+     * `toCalled` false removes him from the acta; true inserts him. With a
+     * `targetId` he lands AT that row's index — which is what makes the
+     * Convocats list an order the coach controls rather than a set. The
+     * splice runs on the called list only: Disponibles is sorted by position
+     * on every render and has nowhere to store an order, so an insertion
+     * point there would be a line the app forgets the moment it redraws.
+     */
+    function place(id, targetId, toCalled) {
+      if (!convSelectedMatchId) return;
+      let list = getSaved().map(String).filter(function (x) { return x !== String(id); });
+      if (toCalled) {
+        const at = targetId == null ? -1 : list.indexOf(String(targetId));
+        list.splice(at < 0 ? list.length : at, 0, String(id));
+      }
+      setSaved(list);
+      renderPage(getSession());
+    }
+
+    const avail = document.getElementById('cv-avail');
+    const calledEl = document.getElementById('cv-called');
+    if (!avail || !calledEl) return;
+
+    /* The drag id is held HERE as well as on the dataTransfer. Android's
+       WebView hands back an empty dataTransfer on dragover, so a drop that
+       trusted it alone could not know what was being dragged until it was
+       too late to draw the insertion line. */
     let dragId = null;
 
-    function handleDragStart(e) {
-      dragId = e.currentTarget.dataset.id;
-      e.currentTarget.classList.add('conv-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', dragId);
-    }
-    function handleDragEnd(e) {
-      e.currentTarget.classList.remove('conv-dragging');
-    }
+    page.querySelectorAll('.cv-row').forEach(function (row) {
+      const id = row.dataset.id;
+      const inCalled = !!row.closest('#cv-called');
 
-    availEl.querySelectorAll('.conv-player').forEach(el => {
-      el.addEventListener('dragstart', handleDragStart);
-      el.addEventListener('dragend', handleDragEnd);
-    });
-    calledEl.querySelectorAll('.conv-player').forEach(el => {
-      el.addEventListener('dragstart', handleDragStart);
-      el.addEventListener('dragend', handleDragEnd);
-    });
-
-    // Tap-to-move for touch devices (drag-and-drop doesn't work on mobile)
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isTouchDevice) {
-      availEl.querySelectorAll('.conv-player:not(.conv-player-unavailable)').forEach(el => {
-        el.addEventListener('click', () => {
-          const id = el.dataset.id;
-          const saved = getSaved();
-          if (!saved.includes(id)) { saved.push(id); setSaved(saved); }
-          renderPage(getSession());
-        });
+      row.addEventListener('dragstart', function (e) {
+        dragId = id;
+        row.classList.add('cv-dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', id); } catch (err) { /* IE-era hosts */ }
+        }
       });
-      calledEl.querySelectorAll('.conv-player').forEach(el => {
-        el.addEventListener('click', (e) => {
-          if (e.target.closest('.conv-remove')) return; // let × button handle it
-          const id = el.dataset.id;
-          let saved = getSaved();
-          saved = saved.filter(sid => String(sid) !== String(id));
-          setSaved(saved);
-          renderPage(getSession());
+      row.addEventListener('dragend', function () {
+        dragId = null;
+        page.querySelectorAll('.cv-dragging, .cv-over, .cv-zone-on')
+          .forEach(function (n) { n.classList.remove('cv-dragging', 'cv-over', 'cv-zone-on'); });
+      });
+      row.addEventListener('dragover', function (e) {
+        if (!inCalled || dragId === null || dragId === id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        calledEl.classList.remove('cv-zone-on');
+        page.querySelectorAll('.cv-over').forEach(function (n) { n.classList.remove('cv-over'); });
+        row.classList.add('cv-over');
+      });
+      row.addEventListener('dragleave', function () { row.classList.remove('cv-over'); });
+      row.addEventListener('drop', function (e) {
+        if (!inCalled || dragId === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (dragId !== id) place(dragId, id, true);
+        dragId = null;
+      });
+
+      /* Double-click on the desktop, a single tap on a phone: the row is the
+         control where there is no drag to be had. `ontouchstart` rather than
+         a width query, because a touchscreen laptop should get both. */
+      row.addEventListener('dblclick', function () { place(id, null, !inCalled); });
+      if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        row.addEventListener('click', function (e) {
+          if (e.target.closest('[data-cv-move]')) return;
+          if (row.classList.contains('cv-row-off') && !inCalled) return;
+          place(id, null, !inCalled);
         });
+      }
+    });
+
+    page.querySelectorAll('[data-cv-move]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        place(btn.dataset.cvMove, null, !btn.closest('#cv-called'));
+      });
+    });
+
+    [[avail, false], [calledEl, true]].forEach(function (pair) {
+      const el = pair[0], toCalled = pair[1];
+      el.addEventListener('dragover', function (e) {
+        if (dragId === null) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        el.classList.add('cv-zone-on');
+      });
+      el.addEventListener('dragleave', function (e) {
+        if (!el.contains(e.relatedTarget)) el.classList.remove('cv-zone-on');
+      });
+      el.addEventListener('drop', function (e) {
+        e.preventDefault();
+        el.classList.remove('cv-zone-on');
+        if (dragId === null) return;
+        place(dragId, null, toCalled);
+        dragId = null;
+      });
+    });
+
+    /* ---- Hora de citació ----
+       A malformed value writes NOTHING. The note says why and the field
+       turns red; the stored time is left as it was, so closing the page
+       mid-typo cannot lose a citation the coach already set. */
+    const timeEl = document.getElementById('cv-time');
+    const deltaEl = document.getElementById('cv-time-delta');
+    const kickoff = (function () {
+      const ms = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+      const m = ms.find(function (x) { return String(x.id) === String(convSelectedMatchId); });
+      return m ? (m.time || '') : '';
+    })();
+    function writeCallup(v) {
+      if (!convSelectedMatchId || cvMins(v) == null) return;
+      const data = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
+      data[convSelectedMatchId] = v;
+      localStorage.setItem('fa_convocatoria_callup', JSON.stringify(data));
+      // Mirrored onto the fixture, which is what the Partit page reads.
+      const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+      const m = matches.find(function (x) { return x.id === convSelectedMatchId; });
+      if (m) {
+        m.callupTime = v;
+        localStorage.setItem('fa_matches', JSON.stringify(matches));
+      }
+    }
+    if (timeEl) {
+      timeEl.addEventListener('input', function () {
+        const ok = cvMins(timeEl.value) != null;
+        timeEl.classList.toggle('cv-bad', !ok);
+        if (deltaEl) {
+          deltaEl.textContent = cvDelta(timeEl.value, kickoff);
+          deltaEl.classList.toggle('cv-bad', !ok);
+        }
+        if (ok) {
+          writeCallup(timeEl.value);
+          page.querySelectorAll('[data-cv-time]').forEach(function (b) {
+            b.classList.toggle('cv-pill-on', b.dataset.cvTime === timeEl.value);
+          });
+        }
       });
     }
-
-    // Drop on called list → add player
-    calledEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; calledEl.classList.add('conv-drop-active'); });
-    calledEl.addEventListener('dragleave', () => calledEl.classList.remove('conv-drop-active'));
-    calledEl.addEventListener('drop', e => {
-      e.preventDefault();
-      calledEl.classList.remove('conv-drop-active');
-      if (!dragId) return;
-      const saved = getSaved();
-      if (!saved.includes(dragId)) { saved.push(dragId); setSaved(saved); }
-      dragId = null;
-      renderPage(getSession());
-    });
-
-    // Drop on available list → remove player
-    availEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; availEl.classList.add('conv-drop-active'); });
-    availEl.addEventListener('dragleave', () => availEl.classList.remove('conv-drop-active'));
-    availEl.addEventListener('drop', e => {
-      e.preventDefault();
-      availEl.classList.remove('conv-drop-active');
-      if (!dragId) return;
-      let saved = getSaved();
-      saved = saved.filter(id => String(id) !== String(dragId));
-      setSaved(saved);
-      dragId = null;
-      renderPage(getSession());
-    });
-
-    // Remove button (×)
-    calledEl.querySelectorAll('.conv-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        let saved = getSaved();
-        saved = saved.filter(sid => String(sid) !== String(id));
-        setSaved(saved);
+    page.querySelectorAll('[data-cv-time]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        writeCallup(btn.dataset.cvTime);
         renderPage(getSession());
       });
     });
 
-    // Save button
-    const saveBtn = document.getElementById('btn-conv-save');
-    const clearBtn = document.getElementById('btn-conv-clear');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
+    /* ---- Equipació ----
+       ONE handler for all three garments, keyed by the option's own
+       data-field. The two hand-written copies this replaced differed only in
+       which literal they stored. */
+    page.querySelectorAll('[data-cv-kit]').forEach(function (opt) {
+      opt.addEventListener('click', function () {
         if (!convSelectedMatchId) return;
-        setSaved([]);
+        const data = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
+        if (!data[convSelectedMatchId]) data[convSelectedMatchId] = {};
+        data[convSelectedMatchId][opt.dataset.cvField] = opt.dataset.cvKit;
+        localStorage.setItem('fa_convocatoria_uniform', JSON.stringify(data));
         renderPage(getSession());
       });
+    });
+
+    /* ---- Pissarres ----
+       Linking writes the same `tbSessionRef(entry, {})` the tactics editor
+       writes, including its no-`category` rule: a match board is routed by
+       joining the map key through fa_matches, so a stamp here would be a
+       second source of truth. */
+    page.querySelectorAll('[data-cv-link]').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        if (!convSelectedMatchId || typeof TB === 'undefined') return;
+        const entry = TB.meta(opt.dataset.cvLink);
+        if (!entry) return;
+        const mb = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+        const mid = convSelectedMatchId;
+        if (!mb[mid]) mb[mid] = [];
+        if (!mb[mid].some(function (b) { return b.boardId === entry.id; })) {
+          mb[mid].push(tbSessionRef(entry, {}));
+          localStorage.setItem('fa_tactic_match_boards', JSON.stringify(mb));
+        }
+        renderPage(getSession());
+      });
+    });
+    page.querySelectorAll('[data-cv-unlink]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!convSelectedMatchId) return;
+        const mb = JSON.parse(localStorage.getItem('fa_tactic_match_boards') || '{}');
+        const list = mb[convSelectedMatchId] || [];
+        const gone = tbFindLinked(list, btn.dataset.cvUnlink);
+        if (!gone) return;
+        mb[convSelectedMatchId] = list.filter(function (b) { return b !== gone; });
+        if (!mb[convSelectedMatchId].length) delete mb[convSelectedMatchId];
+        localStorage.setItem('fa_tactic_match_boards', JSON.stringify(mb));
+        renderPage(getSession());
+      });
+    });
+
+    /* ---- Enllaços de vídeo ----
+       `title` is still written — the player-facing views use it as the link
+       text and there is no input for it any more, so it takes the URL. */
+    function getVideos() {
+      const all = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
+      return all[convSelectedMatchId] || [];
     }
+    function setVideos(list) {
+      const all = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
+      all[convSelectedMatchId] = list;
+      localStorage.setItem('fa_convocatoria_videos', JSON.stringify(all));
+      renderPage(getSession());
+    }
+    const addBtn = document.getElementById('cv-vadd');
+    if (addBtn) {
+      const urlEl = document.getElementById('cv-vurl');
+      const noteEl = document.getElementById('cv-vnote');
+      const add = function () {
+        const url = (urlEl.value || '').trim();
+        if (!url) return;
+        /* Refused here rather than stored and struck through on the way out:
+           a link the coach can see is broken while he still has the
+           clipboard is one he can fix. */
+        if (!safeHttpUrl(url)) { urlEl.classList.add('cv-bad'); return; }
+        setVideos(getVideos().concat([{
+          title: url, url: url, comment: (noteEl.value || '').trim()
+        }]));
+      };
+      addBtn.addEventListener('click', add);
+      urlEl.addEventListener('input', function () { urlEl.classList.remove('cv-bad'); });
+      [urlEl, noteEl].forEach(function (el) {
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); add(); }
+        });
+      });
+    }
+    page.querySelectorAll('[data-cv-vrm]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const i = Number(btn.dataset.cvVrm);
+        setVideos(getVideos().filter(function (_, j) { return j !== i; }));
+      });
+    });
+
     /* One builder for both writers.
        They were two identical object LITERALS, which silently dropped
        `startingXI` — saveStartingXI() bolts that onto the existing entry, so
@@ -29810,175 +30372,72 @@
       return next;
     }
 
+    const saveBtn = document.getElementById('btn-conv-save');
     if (saveBtn) {
-      saveBtn.addEventListener('click', () => {
-        // If already sent, auto-update the sent data too
+      saveBtn.addEventListener('click', function () {
+        /* The squad is already in localStorage — every move wrote it. What
+           this button still does is push an ALREADY SENT call-up back out to
+           the entry the players read, so a coach who swapped a name after
+           sending does not have to re-send to correct it. */
         const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
-        if (convSelectedMatchId && sentData[convSelectedMatchId]) {
-          const calledEls = document.querySelectorAll('#conv-called .conv-player');
-          const list = Array.from(calledEls).map(el => el.dataset.id);
-          if (list.length) {
-            setSaved(list);
-            const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
-            const videos = vData[convSelectedMatchId] || [];
-            sentData[convSelectedMatchId] = convSentEntry(
-                sentData[convSelectedMatchId], list, videos);
-            localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
-          }
+        const list = getSaved();
+        if (convSelectedMatchId && sentData[convSelectedMatchId] && list.length) {
+          sentData[convSelectedMatchId] = convSentEntry(
+              sentData[convSelectedMatchId], list, getVideos());
+          localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
         }
+        const orig = saveBtn.textContent;
         saveBtn.textContent = t('misc.saved');
-        saveBtn.classList.remove('btn-outline');
-        saveBtn.classList.add('btn-accent');
-        setTimeout(() => {
-          saveBtn.textContent = t('btn.save');
-          saveBtn.classList.add('btn-outline');
-          saveBtn.classList.remove('btn-accent');
+        saveBtn.classList.add('cv-btn-ok');
+        setTimeout(function () {
+          saveBtn.textContent = orig;
+          saveBtn.classList.remove('cv-btn-ok');
         }, 1200);
       });
     }
 
-    // Send / Unsend toggle button
     const sendBtn = document.getElementById('btn-conv-send');
     if (sendBtn) {
-      sendBtn.addEventListener('click', () => {
+      sendBtn.addEventListener('click', function () {
         if (!convSelectedMatchId) return;
         const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
-        const isUnsend = sendBtn.classList.contains('btn-danger');
-        if (isUnsend) {
-          // Unsend
+        if (sendBtn.dataset.cvUnsend) {
           delete sentData[convSelectedMatchId];
           localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
-        } else {
-          // Auto-save then send
-          const calledEls = document.querySelectorAll('#conv-called .conv-player');
-          const list = Array.from(calledEls).map(el => el.dataset.id);
-          if (!list.length) return;
-          setSaved(list);
-          const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
-          const videos = vData[convSelectedMatchId] || [];
-          sentData[convSelectedMatchId] = convSentEntry(
-              sentData[convSelectedMatchId], list, videos);
-          localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
-
-          // Push notification to called-up players
-          const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-          const matchObj = matches.find(m => String(m.id) === String(convSelectedMatchId));
-          const matchLabel = matchObj ? (matchObj.home + ' vs ' + matchObj.away) : 'Proper partit';
-          const teamId = _currentSession && _currentSession.teamId && _currentSession.teamId !== 'none' ? _currentSession.teamId : null;
-          if (!teamId) { console.warn('No valid teamId for push'); }
-          // Map roster IDs to Firebase UIDs (skip seeded/fake users with numeric IDs)
-          const allUsers = getUsers();
-          const targetUids = list.map(pid => {
-            const u = allUsers.find(x => String(x.id) === String(pid));
-            if (!u) return null;
-            // Only include real Firebase Auth users (string UIDs, not numeric seed IDs)
-            const id = String(u.id);
-            return (id && isNaN(Number(id))) ? id : null;
-          }).filter(Boolean);
-          Push.sendToPlayers(teamId, targetUids, {
-            type: 'convocatoria',
-            title: '\u26BD Convocatòria publicada!',
-            body: matchLabel + (matchObj && matchObj.date ? ' · ' + matchObj.date : ''),
-            page: 'convocatoria',
-            matchId: String(convSelectedMatchId)
-          });
+          renderPage(getSession());
+          return;
         }
+        const list = getSaved();
+        if (!list.length) return;
+        sentData[convSelectedMatchId] = convSentEntry(
+            sentData[convSelectedMatchId], list, getVideos());
+        localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
+
+        // Push notification to called-up players
+        const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+        const matchObj = matches.find(m => String(m.id) === String(convSelectedMatchId));
+        const matchLabel = matchObj ? (matchObj.home + ' vs ' + matchObj.away) : 'Proper partit';
+        const teamId = _currentSession && _currentSession.teamId && _currentSession.teamId !== 'none' ? _currentSession.teamId : null;
+        if (!teamId) { console.warn('No valid teamId for push'); }
+        // Map roster IDs to Firebase UIDs (skip seeded/fake users with numeric IDs)
+        const allUsers = getUsers();
+        const targetUids = list.map(pid => {
+          const u = allUsers.find(x => String(x.id) === String(pid));
+          if (!u) return null;
+          // Only include real Firebase Auth users (string UIDs, not numeric seed IDs)
+          const id = String(u.id);
+          return (id && isNaN(Number(id))) ? id : null;
+        }).filter(Boolean);
+        Push.sendToPlayers(teamId, targetUids, {
+          type: 'convocatoria',
+          title: '⚽ Convocatòria publicada!',
+          body: matchLabel + (matchObj && matchObj.date ? ' · ' + matchObj.date : ''),
+          page: 'convocatoria',
+          matchId: String(convSelectedMatchId)
+        });
         renderPage(getSession());
       });
     }
-
-    /* Equipació bindings — ONE handler for all three rows, keyed by the
-       button's own data-field. The two hand-written copies this replaced
-       differed only in which literal they stored, which is precisely how a
-       third garment would have become a third near-identical copy.
-       Deselecting is scoped to the clicked row, so choosing a shirt does not
-       clear the socks. */
-    document.querySelectorAll('.conv-kit-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const row = btn.closest('.uniform-toggle');
-        if (row) row.querySelectorAll('.conv-kit-opt')
-            .forEach(b => b.classList.remove('uniform-opt-active'));
-        btn.classList.add('uniform-opt-active');
-        if (!convSelectedMatchId) return;
-        const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
-        if (!uniformData[convSelectedMatchId]) uniformData[convSelectedMatchId] = {};
-        uniformData[convSelectedMatchId][btn.dataset.field] = btn.dataset.kit;
-        localStorage.setItem('fa_convocatoria_uniform', JSON.stringify(uniformData));
-      });
-    });
-
-    // Call-up time binding
-    const callupSel = document.getElementById('conv-callup-time');
-    if (callupSel) {
-      callupSel.addEventListener('change', () => {
-        if (!convSelectedMatchId) return;
-        // Save to dedicated convocatòria callup storage
-        const convCallupData = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
-        convCallupData[convSelectedMatchId] = callupSel.value;
-        localStorage.setItem('fa_convocatoria_callup', JSON.stringify(convCallupData));
-        // Also update fa_matches for display in match detail
-        const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-        const m = matches.find(x => x.id === convSelectedMatchId);
-        if (m) {
-          m.callupTime = callupSel.value;
-          localStorage.setItem('fa_matches', JSON.stringify(matches));
-        }
-      });
-    }
-
-    // Video links bindings
-    function saveConvVideos() {
-      if (!convSelectedMatchId) return;
-      const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
-      const rows = document.querySelectorAll('.conv-video-row');
-      const videos = [];
-      rows.forEach((row, i) => {
-        const title = row.querySelector('.conv-video-title').value.trim();
-        const url = row.querySelector('.conv-video-url').value.trim();
-        const commentEl = document.querySelector('.conv-video-comment[data-video-idx="' + i + '"]');
-        const comment = commentEl ? commentEl.value.trim() : '';
-        if (title || url) videos.push({ title: title || 'Video', url, comment });
-      });
-      vData[convSelectedMatchId] = videos;
-      localStorage.setItem('fa_convocatoria_videos', JSON.stringify(vData));
-      // Re-render to show/hide comment textareas when title changes
-      renderPage(getSession());
-    }
-    const addVideoBtn = document.getElementById('btn-conv-add-video');
-    if (addVideoBtn) {
-      addVideoBtn.addEventListener('click', () => {
-        const list = document.getElementById('conv-video-list');
-        if (!list) return;
-        const idx = list.querySelectorAll('.conv-video-row').length;
-        const row = document.createElement('div');
-        row.className = 'conv-video-row';
-        row.dataset.videoIdx = idx;
-        row.innerHTML = '<input type="text" class="reg-input conv-video-title" value="" placeholder="Title" style="flex:1;min-width:80px;">' +
-          '<input type="text" class="reg-input conv-video-url" value="" placeholder="Paste URL" style="flex:2;min-width:140px;">' +
-          '<button class="btn btn-small conv-video-remove" style="background:#c62828;color:#fff;border:none;padding:.2rem .5rem;">✕</button>';
-        list.appendChild(row);
-        row.querySelector('.conv-video-title').addEventListener('blur', saveConvVideos);
-        row.querySelector('.conv-video-url').addEventListener('blur', saveConvVideos);
-        row.querySelector('.conv-video-remove').addEventListener('click', () => { row.remove(); saveConvVideos(); });
-      });
-    }
-    document.querySelectorAll('.conv-video-row').forEach(row => {
-      row.querySelector('.conv-video-title')?.addEventListener('blur', saveConvVideos);
-      row.querySelector('.conv-video-url')?.addEventListener('blur', saveConvVideos);
-      row.querySelector('.conv-video-remove')?.addEventListener('click', () => { row.remove(); saveConvVideos(); });
-    });
-    // Per-video comment textareas auto-save
-    document.querySelectorAll('.conv-video-comment').forEach(ta => {
-      ta.addEventListener('blur', () => {
-        if (!convSelectedMatchId) return;
-        const vData = JSON.parse(localStorage.getItem('fa_convocatoria_videos') || '{}');
-        const videos = vData[convSelectedMatchId] || [];
-        const idx = Number(ta.dataset.videoIdx);
-        if (videos[idx]) { videos[idx].comment = ta.value.trim(); }
-        vData[convSelectedMatchId] = videos;
-        localStorage.setItem('fa_convocatoria_videos', JSON.stringify(vData));
-      });
-    });
   }
 
   // #endregion Matchday, Calendar & Convocatòria
