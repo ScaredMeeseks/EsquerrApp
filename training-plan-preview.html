@@ -1890,10 +1890,39 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-wx {
   display:flex; align-items:center; gap:16px; flex:none;
   font-size:14px; color:#6B645E; white-space:nowrap;
+  /* The rain line wraps onto its own row beneath the strip rather than
+     stretching the hero: `flex-wrap` plus a full-width child, so the icon,
+     wind and temperature keep their single line at any width. */
+  flex-wrap:wrap; justify-content:flex-end;
 }
 .std-wx-b { display:flex; align-items:center; gap:7px; }
 .std-wx-i { font-size:26px; line-height:1; }
 .std-wx-t { font-size:20px; color:#2D2926; font-variant-numeric:tabular-nums; }
+/* Quieter still than the strip: a warning a coach should notice without it
+   competing with the session title. Blue rather than red — rain is a
+   condition to plan around, not an error. */
+.std-wx-rain {
+  flex-basis:100%; text-align:right;
+  font-size:12.5px; color:#3E6B99; white-space:normal;
+}
+/* Said instead of the strip, more than 3 days out. Deliberately plain: it is
+   the absence of a forecast, and dressing it up reads as one. */
+.std-wx-soon { flex:none; font-size:12.5px; color:#99928B; }
+
+/* A schedule link with no coordinates in it. Amber, not red: the link works
+   perfectly as a link — it just cannot produce a forecast, which is a thing
+   to fix rather than an error blocking the save. Mirrors .ts-fcf-stale. */
+.ts-nocoord {
+  border-color:#E8A33D !important;
+  background:#FFF8EC;
+}
+
+/* The same strip on the match page, which is a CENTRED card rather than the
+   session page's title row — so the alignment flips and it needs its own
+   breathing room under the kick-off line. */
+.detail-hero .std-wx { justify-content:center; margin-top:.8rem; }
+.detail-hero .std-wx-rain { text-align:center; }
+.detail-hero .std-wx-soon { margin-top:.7rem; }
 
 /* A place with a map behind it. Underlined on hover only — in the meta line
    a permanently underlined venue competes with the title above it. */
@@ -1995,6 +2024,39 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-sel-o:hover { background:#F2F0EB; }
 .std-sel-o-on { font-weight:600; background:#F7F5F1; }
 
+/* ── .std-sel-esc: a menu that escapes a clipping table ──
+   `.std-sel-menu` is absolute, so inside a wrapper with `overflow-x:auto`
+   (.table-wrap, .reg2-wrap, .pl-table-wrap) it is clipped — and because a
+   non-visible overflow-x forces overflow-y to `auto` as well, opening one
+   grows the wrapper and puts a scrollbar on the whole section rather than
+   floating over it.
+   Same answer as .ua-tooltip: `fixed`, placed from a getBoundingClientRect()
+   by bindStdSelects. Opt in with this class; the two original callers are
+   not in a scrolling box and do not need it.
+   ⚠ ONLY `position` and `z-index` here. Whether the menu is shown stays with
+   `.std-sel-menu{display:none}` + `.std-sel-open .std-sel-menu{display:block}`
+   — a CLASS. Setting `display` on this selector would be the same mistake
+   that made a `hidden`-toggled menu permanently visible. */
+/* `right:0` and `top:calc(100% + 4px)` come from the base rule and are meant
+   for an ABSOLUTE menu inside `.std-sel`. Left in place on a fixed box they
+   resolve against the viewport, and `left` + `right` together stretch the
+   panel from the trigger to the right-hand edge of the screen. stdSelPlace
+   owns left and top; these two have to get out of its way. */
+.std-sel-esc .std-sel-menu { position:fixed; z-index:1200; right:auto; bottom:auto; }
+
+/* The Registracions vocabulary: 13px on a hairline, no box.
+   (.std-sel-plain is the stat row's 24px, .std-sel-pill the availability pill.) */
+.std-sel-flat .std-sel-t {
+  font-size:13px; line-height:1.4; color:#2D2926; padding:3px 2px;
+  border:none; border-bottom:1px solid #C9C3BB; border-radius:0;
+  white-space:nowrap; transition:border-color .12s ease;
+}
+.std-sel-flat .std-sel-t:hover,
+.std-sel-flat.std-sel-open .std-sel-t { border-bottom-color:#2D2926; }
+.std-sel-flat .std-sel-c { font-size:8px; color:#6B645E; }
+.std-sel-flat .std-sel-menu { min-width:0; }
+.std-sel-flat .std-sel-o { font-size:13px; padding:6px 12px; }
+
 /* The staff call keeps the app's coloured availability pill: it is the one
    column a coach scans across, and the colour is the whole point of it. */
 .std-sel-pill .std-sel-t {
@@ -2036,6 +2098,11 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-a:hover { text-decoration:underline; }
 .stp-a-mute { color:#6B645E; }
 .stp-a-sm { font-size:12px; }
+/* Destructive, so quiet until you go for it. `.stp-a` is already the club
+   red, which would make Esborra shout at least as loud as Edita beside it —
+   the one action in the bar you do not want a coach reaching for first. */
+.stp-a-danger { color:#6B645E; }
+.stp-a-danger:hover { color:#BD162C; }
 .std-btn {
   display:inline-flex; align-items:center; gap:8px; padding:7px 14px;
   border:1px solid #2D2926; background:none; cursor:pointer;
@@ -3526,7 +3593,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   0%, 70% { opacity: 1; }
   100% { opacity: 0; }
 }
-.reg-team-cell { text-align: center; white-space: nowrap; }
+/* `.reg-team-cell` went with the old registrations page: the redesign
+   puts the chips in `.reg2-teams`. Its only other mention was a
+   querySelector that had been silently matching nothing. */
 .reg-team-circle {
   width: 24px; height: 24px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
@@ -6594,10 +6663,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .cal-pos { font-size: .66rem; font-weight: 700; color: var(--text-secondary); flex: 0 0 auto; }
 .cal-crest {
+  position: relative;
   width: 22px; height: 22px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%; background: var(--text); color: var(--bg);
   font-size: .6rem; font-weight: 700; letter-spacing: .02em;
+}
+/* The rival's real crest, laid OVER the monogram disc rather than beside it:
+   files.fcf.cat 404s on its own schedule, and the inline `onerror` hiding a
+   broken image then uncovers the initials instead of leaving a hole.
+   `contain` because federation badges are every aspect ratio there is, and
+   the club ground rather than the disc's ink behind them because they are
+   transparent PNGs drawn in their own dark colours. */
+.cal-crest-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: contain;
+  border-radius: 50%; background: var(--bg);
 }
 .cal-kick { font-size: .7rem; color: var(--text-secondary); gap: 8px; }
 .cal-kick b { font-weight: 600; color: var(--text); }
@@ -6887,11 +6968,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-rail-name { font-size: 26px; font-weight: 400; line-height: 1.15; }
 .pl-rail-sub { font-size: 13px; color: #6B645E; }
 .pl-rail-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
-.pl-close {
-  font: inherit; font-size: 13px; color: #6B645E; background: none; border: none;
-  cursor: pointer; padding: 0; white-space: nowrap;
-}
-.pl-close:hover { color: #2D2926; }
 .pl-rail-donut { display: flex; align-items: center; gap: 10px; }
 
 .pl-ready-row {
@@ -6962,6 +7038,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    look like every other tooltip in the app, not like the page it happens
    to be floating over. Only the two-column key/value body below is this
    page's, because that is content, not chrome. */
+/* The redraw unit: a drag rebuilds the contents of one of these rather
+   than the page. `display:contents` so wrapping a chart changes nothing
+   about how it lays out — the box is a handle, not a layer. */
+.pl-chart-box { display: contents; }
+
 .pl-tip {
   position: fixed; z-index: 10050; pointer-events: none;
   transform: translateX(-50%) translateY(-100%);
@@ -7013,8 +7094,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
   margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
 }
+/* The section subtitles carry the page's structure — Convidats,
+   Pendents de col·locar, Membres — so they are set in the ink, not the
+   faint grey the smaller eyebrows use. With the hairlines thinned out
+   they are the only thing left saying where one section ends. */
 .reg2-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #99928B;
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-weight: 600; color: #2D2926;
+}
+/* A caption over a big number, not a section heading. Same size band,
+   the opposite weight and colour — one class could not be both. */
+.reg2-fig-l {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  font-weight: 400; color: #99928B;
 }
 .reg2-title-row { padding-bottom: 26px; border-bottom: 1px solid #E3DFD8; }
 .reg2-h1 { margin: 0 0 8px; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
@@ -7129,23 +7221,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .reg2-td-team { white-space: nowrap; }
 .reg2-td-team .reg2-teams { display: inline-flex; gap: 6px; margin-left: 8px; }
-/* A real control, not the browser's. `appearance:none` strips the OS
-   chrome; without the explicit arrow the field then has no affordance at
-   all and reads as text. */
-.reg2-sel {
-  font: inherit; font-size: 13px; color: #2D2926; background: transparent;
-  border: none; border-bottom: 1px solid #C9C3BB;
-  padding: 3px 20px 3px 2px; outline: none; cursor: pointer;
-  -webkit-appearance: none; -moz-appearance: none; appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, #6B645E 50%),
-    linear-gradient(135deg, #6B645E 50%, transparent 50%);
-  background-position: right 8px center, right 4px center;
-  background-size: 4px 4px, 4px 4px;
-  background-repeat: no-repeat;
-}
-.reg2-sel:focus { border-bottom-color: #2D2926; }
-.reg2-sel option { color: #2D2926; background: #FBFAF7; }
+/* The category picker is the app's shared stdSelect — see regPendingTableHtml.
+   It was briefly a bespoke control here, which is how this page ended up with
+   a menu whose `hidden` property did nothing: a `display:flex` on the menu
+   outranks the browser's `[hidden]{display:none}`, so every one of them was
+   permanently on screen. stdSelect toggles a CLASS and cannot hit that. */
 
 /* ⚠ The squad chips reuse `.reg-team-circle` so the delegated auto-save
    still finds them — which also drags in that rule's own look, and the
@@ -7167,7 +7247,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
 .reg2-page .reg-team-circle:hover { border-color: #2D2926; color: #2D2926; }
-.reg2-page .reg-team-circle.reg2-chip-on,
+/* ⚠ `.active` ONLY — see regTeamCellHtml. The delegated writer clears
+   `.active` from the row and sets it on the chip clicked; it cannot
+   remove `.reg2-chip-on`, so styling that here left the previous chip
+   filled and the row showed two selected squads at once. */
 .reg2-page .reg-team-circle.active {
   background: #2D2926; border-color: #2D2926; color: #FBFAF7;
 }
@@ -7208,8 +7291,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-f-on { color: #2D2926; border-bottom: 1px solid #2D2926; }
 
 /* ── Position cell and picker ── */
-.reg2-pos-cell { position: relative; display: inline-block; }
-.reg2-pos-click { cursor: pointer; }
+/* All nine positions, in the row. The popover this replaced needed
+   opening, aiming at and dismissing for every player on a page you work
+   straight down — and it hid the one thing worth seeing at a glance,
+   which is the shape of the whole squad. */
+.reg2-pos-cell { display: flex; flex-wrap: wrap; gap: 4px; max-width: 300px; }
 .reg2-pos-view { display: inline-flex; align-items: center; padding-right: 5px; }
 .reg2-circle {
   width: 26px; height: 26px; flex: none; margin-right: -5px; border-radius: 50%;
@@ -7217,18 +7303,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-size: 10px; font-weight: 600; color: #fff;
   border: 1.5px solid rgba(0,0,0,.2); box-sizing: border-box;
 }
-.reg2-assign { color: #BD162C; font-size: 13px; }
-@keyframes reg2PopIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-.reg2-pop {
-  position: absolute; top: calc(100% - 6px); left: 8px; z-index: 20;
-  width: 230px; padding: 12px; background: #FBFAF7; border: 1px solid #E3DFD8;
-  animation: reg2PopIn .16s ease both;
-}
-.reg2-pop-t {
-  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
-  color: #99928B; padding-bottom: 8px;
-}
-.reg2-pop-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 /* ⚠ The picker circles ARE `.reg-pos-chip`, so the delegated auto-save
    finds them — and so that rule's own properties keep applying to them.
    Its `padding:.2rem .45rem` inside a fixed 30px box left about 11px for
@@ -7241,12 +7315,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    whole app draws positions from. */
 .reg2-page .reg2-pos-c,
 .reg2-page .reg2-pos-c.active {
-  width: 30px; height: 30px; padding: 0; margin: 0;
+  width: 26px; height: 26px; padding: 0; margin: 0;
   border-radius: 50%; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 600; line-height: 1; color: #fff;
   cursor: pointer; transition: opacity .12s ease, border-color .12s ease;
-  border: 1.5px solid rgba(0,0,0,.2); opacity: .32;
+  border: 1.5px solid rgba(0,0,0,.2); opacity: .28;
 }
 .reg2-page .reg2-pos-c.active { opacity: 1; border: 2px solid #2D2926; }
 .reg2-page .reg2-pos-c:hover { opacity: .7; }
@@ -7263,6 +7337,828 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .reg2-figures { gap: 28px; }
   .reg2-invite { gap: 8px; }
   .reg2-email { min-width: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PARTIT — the match detail screen, redesigned.
+
+   The fourth page in this language, and the first laid out in
+   horizontal BANDS rather than a column: top bar, scoreboard,
+   anada, context (three columns), play (two). The bands are what
+   let the staff screen hold six blocks without any of them
+   becoming a card — a rule and a change of background do the work
+   a border used to.
+
+   Prefixed `pt-` and not `md-`, which the handoff asked for: `md-`
+   already names the matchday cards, the referee record, the kit
+   cells and the calendar datepicker, in five separate clusters of
+   this file. Recorded in CONTEXT.md as a departure.
+
+   Literal colours again, for the same reason as Plantilla and
+   Registracions: this is a light surface with its own palette, and
+   routing it through --card / --border would make it follow the
+   app theme, which is exactly what the design does not want.
+   ═══════════════════════════════════════════════════════════════ */
+.pt-page {
+  background: #FBFAF7; color: #2D2926;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  margin: -1rem; min-height: calc(100vh - 120px);
+}
+
+/* ── The card bridge ──
+   The referee record, the coach notes and the events list still
+   emit `.card` wrappers; they are restyled block by block over
+   v213 and v214. Until then a card dropped into a paper band would
+   draw a white box with a radius and a shadow in the middle of a
+   surface whose whole idiom is that it has none. This neutralises
+   the shell without touching the shared `.card` rule that forty
+   other pages depend on.
+
+   ⚠ Delete this rule, not the `.card` markup, when the last block
+   inside .pt-page stops emitting one. */
+.pt-page .card {
+  background: transparent; border: none; border-radius: 0;
+  box-shadow: none; padding: 0; margin: 0;
+}
+.pt-page .card-title {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-weight: 500; color: #99928B; padding: 0 0 8px; border: none;
+}
+
+.pt-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-weight: 500; color: #99928B;
+}
+.pt-sec-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; padding: 0 0 10px; border-bottom: 1px solid #2D2926; margin-bottom: 10px;
+}
+.pt-sec-note { font-size: 12px; color: #99928B; }
+.pt-empty { font-size: 13.5px; color: #99928B; padding: 10px 0; }
+
+/* ── Top bar ── */
+.pt-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 12px 36px; border-bottom: 1px solid #E3DFD8;
+}
+.pt-topbar-right { display: inline-flex; align-items: center; gap: 14px; }
+.pt-back {
+  font: inherit; font-size: 13px; color: #6B645E;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.pt-back:hover { color: #BD162C; }
+
+/* ── Scoreboard band ──
+   The one band on white. It is the only thing on the page that is
+   not paper, which is what makes it read as the headline without
+   needing a box drawn round it. */
+.pt-sb-band {
+  background: #FFFFFF; text-align: center;
+  padding: 38px 36px 30px; border-bottom: 1px solid #E3DFD8;
+}
+.pt-sb-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: #99928B; padding-bottom: 18px;
+}
+/* ⚠ A GRID, so the score sits on the BAND's centre line.
+   It was `flex; justify-content:center`, which centres the row's
+   CONTENT — and with two club names of different length that puts
+   the score wherever their difference leaves it, visibly off the
+   axis of the eyebrow above it. The two `1fr` flanks are equal by
+   definition and both crests are 64px, so the score lands on the
+   true centre whatever the clubs are called. */
+.pt-sb-row {
+  display: grid; grid-template-columns: 1fr auto auto auto 1fr;
+  align-items: center; gap: 36px;
+}
+.pt-sb-team { font-size: 30px; font-weight: 400; line-height: 1.1; }
+.pt-sb-team-l { text-align: right; }
+.pt-sb-team-r { text-align: left; }
+.pt-crest { width: 64px; height: 64px; object-fit: contain; flex: none; }
+/* The monogram that stands in for a club we have no crest for. A
+   disc, because the crests it sits between are round — a square
+   here reads as a broken image rather than as a placeholder. */
+.pt-crest-mono {
+  border-radius: 50%; background: #EDEAE4; color: #6B645E;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 17px; letter-spacing: .04em;
+}
+.pt-score {
+  font-size: 46px; color: #BD162C; font-variant-numeric: tabular-nums;
+  line-height: 1; white-space: nowrap;
+}
+/* Same slot, same weight, in the ink rather than the red: before
+   kick-off this is a fact about the calendar, not a result. */
+.pt-kickoff {
+  font-size: 38px; color: #2D2926; font-variant-numeric: tabular-nums;
+  line-height: 1; white-space: nowrap;
+}
+.pt-sb-meta {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  font-size: 14px; color: #6B645E; padding-top: 20px;
+}
+.pt-sb-meta > span:not(:first-child)::before { content: '· '; color: #C9C3BB; }
+.pt-map-link { color: #BD162C; }
+
+/* ── "Ets convocat" ── */
+.pt-you {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  background: #F6F2E9; padding: 12px 36px; font-size: 15px;
+  border-bottom: 1px solid #E3DFD8;
+}
+.pt-you-no { color: #6B645E; }
+.pt-you-meta { font-size: 13px; color: #6B645E; }
+
+/* ── Bands ── */
+.pt-band { padding: 30px 36px; border-bottom: 1px solid #E3DFD8; }
+.pt-band:last-child { border-bottom: none; }
+.pt-context { display: grid; grid-template-columns: 320px 1fr 1fr; gap: 44px; align-items: start; }
+.pt-play { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+.pt-col { min-width: 0; }
+
+/* ── El partit d'avui ── */
+.pt-facts { padding-bottom: 18px; }
+.pt-fact {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 9px 0; border-bottom: 1px solid #EDEAE4;
+}
+.pt-fact-l { font-size: 13px; color: #6B645E; }
+.pt-fact-v {
+  font-size: 17px; text-align: right;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+/* ⚠ NO width/height here, on purpose. The kit SVGs are drawn at the size
+   they are given (PT_KIT_PX / PT_OPP_KIT_PX) because every band boundary is
+   arithmetic against it — a CSS resize turns bands of one width into bands
+   of several. If they are the wrong size, change the constant. */
+.pt-kit { display: inline-flex; align-items: center; }
+.pt-kit-label { font-size: 13px; color: #6B645E; }
+.pt-oppkits { display: inline-flex; align-items: center; gap: 10px; }
+.pt-oppkit { display: inline-flex; align-items: center; }
+/* The facts rows are a label against a value; two kits make the value the
+   tallest thing in the column, so the row breathes rather than crushing
+   the label against them. */
+.pt-fact:has(.pt-oppkits), .pt-fact:has(.pt-kit) { padding: 6px 0; }
+
+.pt-ref-name { font-size: 22px; text-transform: uppercase; line-height: 1.2; }
+
+/* ── The rival's last five ──
+   Squares and not circles: the position discs on this page are
+   circles and mean a player, and two round things meaning
+   different kinds of thing is the one collision the design's
+   otherwise flat vocabulary cannot absorb. */
+.pt-form { display: flex; gap: 3px; padding: 12px 0 5px; }
+.pt-form-b {
+  width: 18px; height: 18px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #FFFFFF; cursor: default;
+}
+.pt-form-w { background: #5C8F5E; }
+.pt-form-d { background: #A8A29B; }
+.pt-form-l { background: #C0564C; }
+.pt-form-cap { font-size: 11.5px; color: #99928B; }
+
+/* ── Boards and videos ── */
+.pt-boards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 18px;
+}
+.pt-board { min-width: 0; position: relative; cursor: pointer; }
+.pt-board-thumb { position: relative; }
+.pt-board-name { font-size: 14px; padding-top: 6px; }
+.pt-board-meta { font-size: 11.5px; color: #99928B; }
+/* Over the thumbnail's top-right corner, on the scrim the board's own
+   colours guarantee contrast against. */
+/* Above the board's own control strip, which also lives in the
+   thumbnail's top corner — without the z-index the ✕ is drawn but
+   unclickable, which looks exactly like it not being there. */
+.pt-board-x {
+  position: absolute; top: 0; right: 0; width: 20px; height: 20px; z-index: 3;
+  font: inherit; font-size: 12px; line-height: 1; cursor: pointer;
+  border: none; background: rgba(45, 41, 38, .72); color: #FBFAF7;
+}
+.pt-board-x:hover { background: #BD162C; }
+/* ── The 3D puck on a 170px card ──
+   It is half the width of the thumbnail and the design has no such
+   control on the grid. Hidden HERE ONLY: the overlay keeps it, and
+   so does every other board in the app. Not removed from the
+   markup — tbCan3D() decides whether the club has the feature at
+   all, and that decision is not this stylesheet's to second-guess. */
+.pt-boards .tb-ro-3d { display: none; }
+
+/* ── The board overlay ── */
+.pt-ov { align-items: flex-start; }
+.pt-ov-card {
+  width: min(1000px, 92vw); margin: 5vh auto; padding: 22px;
+  background: #FBFAF7; color: #2D2926; border: 1px solid #2D2926; border-radius: 0;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  max-height: 90vh; overflow-y: auto;
+}
+.pt-ov-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; padding-bottom: 16px;
+}
+.pt-ov-name { font-size: 22px; line-height: 1.2; padding-top: 4px; }
+.pt-ov-close {
+  font: inherit; font-size: 13.5px; background: none; border: none;
+  padding: 0; cursor: pointer; color: #6B645E; flex: none;
+}
+.pt-ov-close:hover { color: #BD162C; }
+/* The board fills the panel. scaleRoBoards measures this width to size the
+   pitch, so it must not be narrower than the panel's content box. */
+.pt-ov-body { width: 100%; min-width: 0; }
+.pt-videos { padding-top: 4px; }
+.pt-video { padding: 8px 0; border-bottom: 1px solid #EDEAE4; font-size: 14px; }
+.pt-video-note { font-size: 11.5px; color: #99928B; padding-top: 3px; }
+
+/* ── Convocats ── */
+.pt-cu-list { display: flex; flex-direction: column; }
+.pt-cu-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid #EDEAE4;
+}
+/* The viewer's own row, on the player screen. The same highlight
+   the "ets convocat" strip uses, so the two read as one answer. */
+.pt-row-mine { background: #F6F2E9; }
+.pt-cu-group {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: #99928B; padding: 18px 0 6px;
+}
+.pt-cu-group:first-child { padding-top: 4px; }
+.pt-dorsal {
+  min-width: 24px; font-size: 14px; color: #6B645E;
+  font-variant-numeric: tabular-nums; text-align: right; flex: none;
+}
+.pt-cu-name { flex: 1; min-width: 0; font-size: 14.5px; }
+.pt-squad {
+  font-size: 10px; letter-spacing: .08em; color: #99928B; padding-left: 7px;
+  text-transform: uppercase;
+}
+.pt-discs { display: inline-flex; flex: none; }
+/* The discs overlap by design; posCirclesHtmlGlobal emits one span
+   per position and a player can hold two. */
+.pt-discs .conv-pos-circle + .conv-pos-circle { margin-left: -5px; }
+.pt-star {
+  font: inherit; font-size: 20px; line-height: 1; background: none; border: none;
+  padding: 0; cursor: pointer; color: #DED9D1; flex: none;
+}
+.pt-star-on { color: #f9a825; }
+.pt-starters { font-size: 12px; }
+.pt-starters-ok { color: #3F6B44; }
+.pt-starters-off { color: #BD162C; }
+/* The promise about the eleven. Not styled as a warning — it is
+   not one — but it must not be skimmable either, so it keeps the
+   ink and a rule under it. */
+.pt-locked {
+  font-size: 13px; color: #6B645E; padding: 6px 0 12px;
+  border-bottom: 1px solid #EDEAE4;
+}
+
+/* ── Esdeveniments (v213) ──
+   Four columns: ours, the minute, theirs, and the ✕. The minute
+   is the axis, so it is the fixed one and both name columns give
+   way around it. Ours reads right-to-left into the centre and
+   theirs left-to-right, which is what makes a glance down the
+   middle read as a clock. */
+.pt-ev-list { display: flex; flex-direction: column; }
+.pt-ev-row {
+  display: grid; grid-template-columns: 1fr 52px 1fr 18px;
+  align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid #EDEAE4;
+}
+.pt-ev-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pt-ev-home { justify-content: flex-end; text-align: right; }
+.pt-ev-away { flex-direction: row-reverse; justify-content: flex-end; text-align: left; }
+.pt-ev-txt { display: flex; flex-direction: column; min-width: 0; }
+.pt-ev-name { font-size: 14px; color: #2D2926; }
+.pt-ev-detail { font-size: 11.5px; color: #99928B; }
+.pt-ev-icon { flex: none; display: inline-flex; align-items: center; }
+.pt-ev-icon img { width: 17px; height: 19px; object-fit: contain; }
+.pt-ev-min {
+  font-size: 12.5px; color: #6B645E; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pt-ev-xcell { display: flex; justify-content: flex-end; }
+.pt-ev-x {
+  font: inherit; font-size: 13px; line-height: 1; background: none; border: none;
+  padding: 0; cursor: pointer; color: #C9C3BB;
+}
+.pt-ev-x:hover { color: #BD162C; }
+
+/* ── + Event ── */
+.pt-ev-add { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 16px; }
+.pt-ev-add-btn {
+  font: inherit; font-size: 13.5px; padding: 9px 12px; cursor: pointer;
+  background: transparent; border: 1px solid #E3DFD8; color: #6B645E;
+}
+/* Ours is the one a coach reaches for; theirs is a hairline. */
+.pt-ev-add-btn.pt-ev-add-ours { border-color: #2D2926; color: #2D2926; }
+.pt-ev-add-btn:hover, .pt-ev-add-btn.pt-ev-add-on {
+  background: #2D2926; border-color: #2D2926; color: #FBFAF7;
+}
+
+/* ── The inline form ──
+   Under the timeline, opened by the button above it, with a
+   strong rule on top so it reads as attached to the ✚ that
+   opened it rather than as a panel that appeared. */
+.pt-ev-form { border-top: 1px solid #2D2926; margin-top: 16px; padding-top: 14px; }
+.pt-ev-form-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; padding-bottom: 14px;
+}
+.pt-ev-group { padding-bottom: 14px; }
+.pt-ev-group .pt-eyebrow { display: block; padding-bottom: 7px; }
+.pt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The selected chip is OUTLINE ONLY. A filled one would be the
+   fourth filled thing in a page with no fills, and next to the
+   filled submit button it reads as a second action. */
+.pt-chip {
+  font: inherit; font-size: 12.5px; padding: 5px 10px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid #E3DFD8; color: #6B645E;
+}
+.pt-chip:hover { border-color: #2D2926; color: #2D2926; }
+.pt-chip-on { border-color: #2D2926; color: #2D2926; }
+.pt-chip-i { width: 17px; height: 19px; object-fit: contain; flex: none; }
+
+.pt-ev-fields { display: flex; flex-wrap: wrap; gap: 18px; padding-bottom: 16px; }
+.pt-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pt-field-wide { flex: 1 1 190px; }
+.pt-ev-min-in, .pt-ev-num {
+  width: 74px; font: inherit; font-size: 14px; color: #2D2926;
+  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  padding: 5px 2px; outline: none; font-variant-numeric: tabular-nums;
+}
+.pt-ev-min-in:focus, .pt-ev-num:focus { border-bottom-color: #2D2926; }
+.pt-ev-min-in::placeholder, .pt-ev-num::placeholder { color: #99928B; }
+/* The shared stdSelect, stripped of its pill to match the hairline
+   fields beside it. */
+.pt-sel { width: 100%; }
+.pt-sel .std-sel-t {
+  width: 100%; justify-content: space-between;
+  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
+  background: transparent; padding: 5px 2px; font-size: 14px; color: #2D2926;
+}
+/* `overflow-y:auto` with the cap is what makes a long squad scrollable
+   INSIDE the menu instead of running off the bottom of the viewport. */
+.pt-sel .std-sel-menu {
+  border: 1px solid #2D2926; border-radius: 0;
+  max-height: 236px; overflow-y: auto;
+}
+
+.pt-ev-actions { display: flex; align-items: center; gap: 16px; }
+.pt-ev-submit {
+  font: inherit; font-size: 13.5px; padding: 9px 18px; cursor: pointer;
+  background: #2D2926; color: #FBFAF7; border: none;
+}
+.pt-ev-submit:hover { background: #BD162C; }
+.pt-ev-submit:disabled { background: #B7B1A8; cursor: default; }
+.pt-ev-cancel {
+  font: inherit; font-size: 13.5px; background: none; border: none;
+  padding: 0; cursor: pointer; color: #6B645E;
+}
+.pt-ev-cancel:hover { color: #BD162C; }
+
+/* ═══════════════════════════════════════════════════════════════
+   The two blocks that keep their own MARKUP inside .pt-page:
+   the coach's notes, and the anada briefing.
+
+   Restyled here rather than rewritten. Both renderers are wired
+   to real save paths — `.mn-text` blurs into MN.saveText, the
+   video rows into MN.saveVideos, the briefing's <details> into a
+   remembered localStorage preference — and re-emitting that
+   markup only to change how it LOOKS is how those get quietly
+   cut. Everything is scoped under .pt-page, so the Calendari's
+   copy of the same leg banner is untouched.
+
+   ⚠ If either block is rewritten in `pt-` markup later, delete
+   the matching section here rather than leaving it to fight the
+   new rules.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Notes del cos tècnic ── */
+.pt-page .mn-lock { font-size: 11px; padding-left: 6px; }
+.pt-page .mn-phase { padding: 12px 0; border-bottom: 1px solid #EDEAE4; }
+.pt-page .mn-phase:last-of-type { border-bottom: none; }
+.pt-page .mn-group-title {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 500; color: #99928B; padding-bottom: 6px; border: none;
+}
+/* The design's editable line: a dotted rule under live text, and
+   the prompt in the faint grey, so an empty phase reads as an
+   invitation rather than as a filled-in field. It stays a
+   <textarea> because `.value` on blur is what the save handler
+   reads. */
+.pt-page .mn-text {
+  width: 100%; font: inherit; font-size: 14px; line-height: 1.5; color: #2D2926;
+  background: transparent; border: none; border-bottom: 1px dotted #C9C3BB;
+  border-radius: 0; padding: 2px 0 5px; resize: vertical; min-height: 2.6em;
+  outline: none; box-shadow: none;
+}
+.pt-page .mn-text:focus { border-bottom-color: #2D2926; border-bottom-style: solid; }
+.pt-page .mn-text::placeholder { color: #99928B; }
+.pt-page .mn-video-list { padding-top: 8px; }
+.pt-page .mn-video-row {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+}
+.pt-page .mn-video-row .reg-input {
+  font: inherit; font-size: 13px; color: #2D2926; background: transparent;
+  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
+  padding: 4px 2px; outline: none; box-shadow: none;
+}
+.pt-page .mn-video-row .reg-input:focus { border-bottom-color: #2D2926; }
+.pt-page .mn-video-remove {
+  font: inherit; font-size: 13px; background: none; border: none;
+  padding: 0 2px; cursor: pointer; color: #C9C3BB; box-shadow: none;
+}
+.pt-page .mn-video-remove:hover { color: #BD162C; }
+/* `+ Vídeo` reads as a link, not a button — the only filled
+   control on this page is the one that commits an event. */
+.pt-page .mn-video-add {
+  font: inherit; font-size: 13px; background: none; border: none;
+  padding: 6px 0 0; cursor: pointer; color: #BD162C; box-shadow: none;
+}
+.pt-page .mn-video-add:hover { color: #2D2926; }
+.pt-page .mn-boards-edit { padding-top: 12px; }
+/* The picker and its Afegir on one line, the button in the page's own
+   hairline idiom rather than the rounded `.btn.btn-outline` it inherits —
+   which was the last rounded, shadowed control left on this screen. */
+.pt-page .mn-board-picker {
+  display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+  padding-top: 10px;
+}
+.pt-page .mn-board-picker .std-sel { flex: 1 1 180px; min-width: 0; }
+.pt-page .mn-board-picker .std-sel-t {
+  width: 100%; justify-content: space-between;
+  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
+  background: transparent; padding: 5px 2px; font-size: 14px; color: #2D2926;
+}
+.pt-page .mn-board-picker .std-sel-menu {
+  border: 1px solid #2D2926; border-radius: 0;
+  max-height: 236px; overflow-y: auto;
+}
+.pt-page #mn-board-add {
+  flex: none; font: inherit; font-size: 13px; padding: 7px 14px;
+  background: transparent; border: 1px solid #2D2926; border-radius: 0;
+  color: #2D2926; box-shadow: none; cursor: pointer;
+}
+.pt-page #mn-board-add:hover { background: #2D2926; color: #FBFAF7; }
+.pt-page .mn-board-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pt-page .mn-board-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; padding: 4px 8px; border: 1px solid #E3DFD8;
+  border-radius: 0; background: transparent; color: #2D2926;
+}
+.pt-page .mn-hint { font-size: 11.5px; color: #99928B; padding-bottom: 4px; }
+
+/* ── Anada: the suggestion banner and the briefing ── */
+.pt-page .mn-leg-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  background: #F6F2E9; border: none; border-radius: 0; box-shadow: none;
+  padding: 12px 14px; margin: 0 0 18px; font-size: 14px;
+}
+.pt-page .mn-leg-text { display: flex; flex-direction: column; gap: 3px; }
+.pt-page .mn-leg-detail { font-size: 12.5px; color: #6B645E; }
+.pt-page .mn-leg-actions { display: flex; gap: 12px; align-items: center; }
+.pt-page .mn-leg-banner .btn {
+  border-radius: 0; box-shadow: none; font-size: 13px; padding: 7px 14px;
+}
+
+/* ── The anada block (ptAnadaHtml) ──
+   v215 tried to restyle mnBriefingHtml's markup into this and
+   could not: that block has no minutes column, no team badges and
+   no collapse row, and CSS does not reorganise a layout. Those
+   rules are gone; this styles the real thing. `.mn-brief` is still
+   on the <details> so the remembered-collapse handler keeps
+   working, and that is the only reason it is here. */
+.pt-anada {
+  background: transparent; border: none; border-radius: 0;
+  box-shadow: none; padding: 0; margin: 0;
+}
+/* The whole summary is the collapsed state, so it holds the result as
+   well as the label — see the note in ptAnadaHtml. */
+.pt-anada-head {
+  display: flex; flex-direction: column; gap: 10px;
+  cursor: pointer; list-style: none;
+  padding: 0 0 12px; border-bottom: 1px solid #E3DFD8;
+}
+.pt-anada-head::-webkit-details-marker { display: none; }
+.pt-anada-lead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.pt-anada-note { font-size: 11.5px; color: #99928B; }
+/* The toggle word lives on the summary as generated content, so
+   there is one control and no second element to keep in step. */
+/* On the RESULT row, not on the summary: the summary is a column now,
+   so a pseudo-element there would be a third line under the score
+   instead of the link at the end of it. */
+.pt-anada-row::after {
+  content: 'Veure el detall ▾'; font-size: 13px; color: #BD162C;
+  flex: none; margin-left: auto;
+}
+.pt-anada[open] .pt-anada-row::after { content: 'Tanca el detall ▴'; }
+.pt-anada-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.pt-anada-when {
+  font-size: 12.5px; color: #6B645E; font-variant-numeric: tabular-nums;
+}
+.pt-anada-team { font-size: 15px; }
+.pt-leg-score {
+  font-size: 15px; color: #FFFFFF; padding: 3px 10px; flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.pt-leg-win { background: #5C8F5E; }
+.pt-leg-draw { background: #A8A29B; }
+.pt-leg-loss { background: #C0564C; }
+.pt-leg-none { background: #C9C3BB; }
+.pt-anada-cols {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 44px; align-items: start; padding-top: 22px;
+}
+
+/* The team sheet. The minutes column is the point of it — it is
+   what says who actually played, and it is right-aligned and
+   tabular so the eye runs down it. */
+.pt-leg-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+}
+.pt-leg-name { flex: 1; min-width: 0; font-size: 14.5px; }
+.pt-leg-marks { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.pt-leg-min {
+  width: 40px; flex: none; text-align: right; font-size: 13px; color: #6B645E;
+  font-variant-numeric: tabular-nums;
+}
+/* A substitute who never came on: `—` and greyed, so the bench
+   reads as "these were available" and not as "these played 0". */
+.pt-leg-row-unused { color: #99928B; }
+.pt-leg-row-unused .pt-leg-name { color: #99928B; }
+
+.pt-leg-evs { display: flex; flex-direction: column; }
+.pt-leg-ev {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+}
+.pt-leg-ev-min {
+  width: 34px; flex: none; font-size: 12.5px; color: #6B645E;
+  font-variant-numeric: tabular-nums;
+}
+.pt-leg-ev-name { flex: 1; min-width: 0; font-size: 14px; }
+.pt-leg-ev-crest { flex: none; display: inline-flex; }
+.pt-leg-ev-crest .pt-crest { width: 18px; height: 18px; }
+.pt-leg-ev-crest .pt-crest-mono { font-size: 8px; letter-spacing: 0; }
+.pt-leg-note { font-size: 13.5px; line-height: 1.5; margin: 0 0 8px; }
+.pt-leg-note:last-child { color: #6B645E; }
+
+.pt-anada .mn-media-col { min-width: 0; padding-bottom: 12px; }
+.pt-anada .mn-media-title {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: #99928B; padding-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   The fixture dialog, in the paper idiom. Wired in v220, after the
+   owner approved the mockup that used to live in the preview.
+
+   `calModal` is shared by THREE dialogs — edit match, add match,
+   add activity — and the last two are the Calendari's, which is the
+   same paper language, so this lands on all three by design.
+
+   ⚠ The controls inside are stdSelects now, not `<select>`s, and
+   their callers read `dataset.value`. `.cal-f-cat`, `.cal-f-letter`,
+   `.cal-f-time` and `.cal-f-end` are the hooks those reads use, and
+   they sit on the stdSelect ROOT — a root has no `.value`, so a
+   missed call site reads undefined rather than throwing.
+   ═══════════════════════════════════════════════════════════════ */
+.pt-dlg {
+  width: min(560px, 92vw); background: #FBFAF7; color: #2D2926;
+  border: 1px solid #2D2926; border-radius: 0; box-shadow: none;
+  padding: 22px 24px 20px; text-align: left;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  max-height: 90vh; overflow-y: auto;
+}
+.pt-dlg-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #E3DFD8;
+}
+.pt-dlg-title { font-size: 22px; line-height: 1.2; }
+.pt-dlg-note { font-size: 12px; color: #99928B; padding: 12px 0 0; }
+.pt-dlg-body { display: flex; flex-direction: column; gap: 14px; padding: 16px 0 18px; }
+.pt-dlg-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pt-dlg-row { display: flex; gap: 18px; flex-wrap: wrap; }
+.pt-dlg-row .pt-dlg-f { flex: 1 1 160px; }
+/* The same hairline field as the event form — one input idiom on
+   the whole screen, dialog included. */
+.pt-dlg-in {
+  width: 100%; font: inherit; font-size: 14px; color: #2D2926;
+  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  border-radius: 0; padding: 5px 2px; outline: none; box-shadow: none;
+}
+.pt-dlg-in:focus { border-bottom-color: #2D2926; }
+.pt-dlg-in::placeholder { color: #99928B; }
+.pt-dlg .std-sel-t {
+  width: 100%; justify-content: space-between;
+  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
+  background: transparent; padding: 5px 2px; font-size: 14px; color: #2D2926;
+}
+.pt-dlg .std-sel-menu {
+  border: 1px solid #2D2926; border-radius: 0; max-height: 236px; overflow-y: auto;
+}
+.pt-dlg-err { font-size: 13px; color: #C0564C; min-height: 1em; }
+.pt-dlg-actions { display: flex; align-items: center; gap: 16px; padding-top: 4px; }
+.pt-dlg-save {
+  font: inherit; font-size: 13.5px; padding: 9px 18px; cursor: pointer;
+  background: #2D2926; color: #FBFAF7; border: none; border-radius: 0;
+}
+.pt-dlg-save:hover { background: #BD162C; }
+.pt-dlg-cancel, .pt-dlg-del {
+  font: inherit; font-size: 13.5px; background: none; border: none;
+  padding: 0; cursor: pointer; box-shadow: none;
+}
+.pt-dlg-cancel { color: #6B645E; }
+/* Destructive, and pushed to the far edge so it is never the button
+   next to Desa. */
+.pt-dlg-del { color: #BD162C; margin-left: auto; }
+.pt-dlg-cancel:hover, .pt-dlg-del:hover { text-decoration: underline; }
+/* The home/away chips are labels around radios — the input still carries
+   the answer, so it is hidden rather than removed. */
+.pt-dlg .cal-f-radio input { position: absolute; opacity: 0; pointer-events: none; }
+.pt-dlg .cal-f-radio { cursor: pointer; }
+/* The opponent box is a text input + datalist, deliberately (a friendly
+   against a club outside the group must stay typeable). Give it the same
+   hairline as every other field. */
+.pt-dlg .md-opponent, .pt-dlg .reg-input {
+  width: 100%; font: inherit; font-size: 14px; color: #2D2926;
+  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  border-radius: 0; padding: 5px 2px; outline: none; box-shadow: none;
+}
+.pt-dlg .md-opponent:focus, .pt-dlg .reg-input:focus { border-bottom-color: #2D2926; }
+/* The dialog's own datepicker popup must clear the panel it opens over. */
+.pt-dlg .md-datepicker { cursor: pointer; }
+
+/* ── The "what are we adding?" chooser ──
+   Three equal hairline rows, not three pills: they are the same kind
+   of choice and one of them is not more likely than the others. */
+.cal-add-choices { display: flex; flex-direction: column; gap: 10px; padding: 18px 0; }
+.pt-add-choice {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  font: inherit; font-size: 14.5px; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid #E3DFD8; border-radius: 0;
+  color: #2D2926; padding: 12px 14px; box-shadow: none;
+}
+.pt-add-choice:hover { border-color: #2D2926; background: #F1EEE8; }
+.pt-add-choice .cal-icon { width: 20px; height: 20px; flex: none; }
+
+/* ── Nou entrenament ──
+   The page a coach lands on from the Calendari's chooser. It keeps its
+   own markup and its own save path (`.nt-f` → _ntDrafts); this puts it
+   in the same idiom as the screen that sent them here. */
+#nt-page .nt-fields {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px; padding: 4px 0 18px;
+}
+#nt-page .nt-pick-row { padding-top: 4px; }
+#nt-page .nt-draft { padding-top: 22px; }
+#nt-page .nt-squad { display: flex; flex-direction: column; }
+#nt-page .conv-player {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+  background: transparent; border-radius: 0; box-shadow: none;
+}
+#nt-page .nt-add-btn {
+  font: inherit; font-size: 13px; background: none; border: none;
+  padding: 10px 0 0; cursor: pointer; color: #BD162C; box-shadow: none;
+}
+#nt-page .nt-add-btn:hover { color: #2D2926; }
+#nt-page .nt-actions { border-bottom: none; }
+#nt-page .conv-remove {
+  font: inherit; font-size: 13px; background: none; border: none;
+  padding: 0 2px; cursor: pointer; color: #C9C3BB; box-shadow: none;
+}
+#nt-page .conv-remove:hover { color: #BD162C; }
+#nt-page .nt-warn { color: #D39A2F; font-size: 13px; }
+
+/* ── The Add-Player modal ──
+   One function, two callers: the new-session page and the squad edit on
+   an already-saved session. It is wider than the form dialogs because
+   its job is a comparison — position, name, squad, category and both
+   status columns, side by side. */
+.pt-dlg.nt-pick-modal { width: min(880px, 94vw); padding: 26px 28px 22px; }
+.nt-pick-modal .nt-pick-search { margin: 18px 0 6px; }
+/* ⚠ 340px, not 260. The row carries a position disc, a name, a squad
+   circle, a category tag, a dorsal and two status glyphs; at 260 the name
+   was the only thing that could give, so every second player wrapped onto
+   two lines. The column gap is wide enough that two lists read as two
+   lists rather than as one four-column table. */
+.nt-pick-modal .nt-pick-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 0 36px; max-height: 52vh; overflow-y: auto; padding: 10px 0 18px;
+}
+/* ⚠ `border: none` and not `border-bottom`. The base `.nt-pick-card` sets
+   a 1.5px border on ALL FOUR sides plus a radius and a card background —
+   overriding only the bottom left every row drawn as a rounded box, which
+   is what the grid looked like. Kill the whole border, then draw the one
+   hairline this idiom uses. */
+.nt-pick-modal .nt-pick-card {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  padding: 9px 4px; border: none; border-bottom: 1px solid #EDEAE4;
+  background: transparent; border-radius: 0; box-shadow: none;
+  transition: none;
+}
+/* ⚠ REQUIRED, and not defensive. The search filters by setting
+   `card.hidden`, and a `display` rule of ours outranks the browser's
+   built-in `[hidden]{display:none}` — without this the search box would
+   look completely dead. There is no global [hidden] rule in this file;
+   every case is handled where the display rule is written, and the note
+   at the Registracions block records the last time this bit. */
+.nt-pick-modal .nt-pick-card[hidden] { display: none !important; }
+.nt-pick-modal .nt-pick-card:hover { background: #F6F4F0; }
+/* A box, not a tick: it is a multi-select, so it has to read as
+   empty-or-filled before anything is chosen. The ✓ is written into the
+   box as TEXT by the click handler — `.nt-dd-check` is centred here
+   rather than given a ::after, or the two would both draw one. */
+.nt-pick-modal .nt-dd-check {
+  width: 16px; height: 16px; flex: none; border: 1px solid #C9C3BB;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; line-height: 1; color: #FBFAF7;
+}
+/* `nt-dd-on` is the class the handler toggles — not `.selected`.
+   ⚠ The base rule paints a selected row `--danger-light` with a red
+   border. Both are overridden: a chosen row is the highlight this design
+   uses everywhere else, and the filled box is what says it is chosen. */
+.nt-pick-modal .nt-pick-card.nt-dd-on {
+  background: #F6F2E9; border-bottom-color: #E3DFD8;
+}
+.nt-pick-modal .nt-dd-on .nt-dd-check {
+  background: #2D2926; border-color: #2D2926;
+}
+.nt-pick-modal .conv-name { font-size: 14px; }
+.nt-pick-modal .conv-num { font-size: 12px; color: #99928B; }
+/* The category tag was a filled grey pill — the loudest thing in a row
+   whose point is the name. Small caps in the eyebrow grey, no chip. */
+.nt-pick-modal .nt-cat-tag {
+  background: transparent; border-radius: 0; padding: 0; margin-left: 6px;
+  font-size: 10px; font-weight: 500; letter-spacing: .08em; color: #99928B;
+}
+/* Same for the squad letter: a hairline circle rather than a filled one. */
+.nt-pick-modal .conv-team-circle {
+  background: transparent; color: #6B645E; border: 1px solid #E3DFD8;
+  font-size: 10px;
+}
+/* The medical glyph keeps its colour — that is the information — but
+   loses the tinted pill it sat in. */
+.nt-pick-modal .roster-status-icon {
+  background: transparent; border: none; box-shadow: none;
+  width: auto; min-width: 14px; height: auto; padding: 0; font-size: 13px;
+}
+/* The name takes the slack and ellipses rather than wrapping: a row that
+   grows to two lines breaks the alignment of every column to its right,
+   which is the thing this list is FOR — comparing players down it. */
+.nt-pick-modal .conv-name-wrap {
+  min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 2px;
+}
+.nt-pick-modal .conv-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nt-pick-modal .nt-status { gap: 8px; padding-left: 4px; }
+/* Room for the scrollbar, so the right-hand column's status glyphs are
+   not sitting underneath it. */
+.nt-pick-modal .nt-pick-grid { padding-right: 6px; }
+
+/* ── Responsive ──
+   Below ~1100px the context band's three columns stack and the
+   play band becomes one, which is the 2c layout in the handoff.
+   The scoreboard's team names wrap onto their own lines before
+   that, because two 30px names either side of a 46px score is the
+   first thing to run out of room. */
+@media (max-width: 1100px) {
+  .pt-context { grid-template-columns: 1fr; gap: 32px; }
+  .pt-play { grid-template-columns: 1fr; gap: 32px; }
+}
+@media (max-width: 700px) {
+  .pt-page { margin: -1rem -.5rem; }
+  .pt-topbar { padding: 12px 16px; }
+  .pt-sb-band { padding: 24px 16px 20px; }
+  .pt-sb-row { gap: 14px; }
+  /* Back to flex for the narrow layout: crests and score keep the
+     default order 0 and stay on the first line, and both names take
+     order 2 with a full-width basis so they stack underneath in DOM
+     order — home, then away. This is the 2c arrangement, and it is
+     why the names are separate elements rather than one "A vs B"
+     string. The grid above is what centres the score on the wide
+     layout; here everything is centred anyway. */
+  .pt-sb-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; }
+  .pt-sb-team { font-size: 20px; flex: 1 1 100%; text-align: center; order: 2; }
+  .pt-crest { width: 44px; height: 44px; }
+  .pt-crest-mono { font-size: 13px; }
+  .pt-score { font-size: 34px; }
+  .pt-kickoff { font-size: 28px; }
+  .pt-you { padding: 10px 16px; }
+  .pt-band { padding: 22px 16px; }
 }
 
 </style>
@@ -7293,7 +8189,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   The <b>rail</b> (Pla d'entrenament + Material) and the <b>team block</b> are rendered by the
   app's real functions and real CSS; the top bar, hero, stat row, attendance bar and table are
   stand-in context. The pitch is a placeholder — in the app it is the real read-only board.
-  Generated 2026-09-01.
+  Generated 2026-09-03.
   Computed: <b>20 cons</b>, <b>3 pilotes</b>,
   <b>3 colors de petos</b> from 4 colours on 4 boards;
   plan ends <b>21:15</b>.

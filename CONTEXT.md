@@ -8680,3 +8680,48 @@ width — rather than the old identifier. The rule it protects (viewport coordin
 ones, because `.roster-tooltip` is `position: fixed`) is unchanged.
 
 Unit 2748 → **2750**. Version triple → v224.
+
+### 2026-09-03 — The opponents' badges the Calendari already had (v225)
+
+The owner reported the rival crests showing on the Partit detail but not in the Calendari. They were
+not missing data. `calMatchBlockHtml` drew a two-letter monogram for **every** fixture, under a
+comment asserting that "no real crest images exist in the repo or in the FCF import — the federation
+publishes a logo filename for the STANDINGS, which is a different surface".
+
+That was true when it was written and had not been true for a long time. `functions/fcf.js` fills
+`opponentBadge` on every imported fixture, `fcfLookup` fills it from the opponent picker, and both
+`matchSideBadgeHtml` and `ptCrestHtml` on the Partit detail have been reading it. The calendar was
+the only surface that had not been told.
+
+⚠ **A comment that explains why something is absent goes stale silently.** Nothing fails when the
+premise stops holding — the monogram kept rendering, correctly, for a year. Worth preferring "reads
+X, falls back to Y" over "there is no X" wherever the claim is about the wider system rather than
+about the function.
+
+The image is laid **over** the monogram disc, not beside it: `.cal-crest` gains
+`position: relative` and `.cal-crest-img` is `position: absolute; inset: 0`. files.fcf.cat is
+someone else's host and 404s on its own schedule, so the inline `onerror="this.style.display='none'"`
+— the same one the league table and the Partit detail use — then uncovers the initials rather than
+leaving a hole. `object-fit: contain` because federation badges come in every aspect ratio, on
+`var(--bg)` rather than the disc's ink because they are transparent PNGs drawn in their own dark
+colours.
+
+`safeHttpUrl` gates the URL here as everywhere else. A `javascript:` value in an `<img src>` does not
+execute, so this is not the sink that matters — but the value reaches other sinks, one gate is the
+convention, and a test pins it.
+
+ⓘ **`training-plan-preview.html` was ~950 lines of CSS behind `css/style.css`** — the weather strip,
+`.std-wx-rain`, `.std-wx-soon` and `.ts-nocoord` had all landed since it was last built. Regenerating
+swept that in. It also exposed that the committed file's weather strip **could not have come from the
+build script**: `sessionWeatherHtml` reads `tr.weather` and the script's mock session never had one,
+so it had been hand-fed once and the next rebuild would have dropped it without a word. The mock now
+carries a `weather` stub. Its `date` cannot rescue it — fixed, so the artifact does not churn on
+every rebuild, which means the session is in the past on any day but the one it was written, and a
+past session with no forecast renders nothing at all, not even the "3 days before" line.
+
+ⓘ `mockup.html` also inlines the stylesheet and is also stale, but it is **untracked** and is not in
+`_config.yml`'s exclude list — committing it would publish a live route carrying the whole stylesheet
+and invented player names. Left alone.
+
+Unit 2750 → **2753**. Three tests, all mutation-checked: reverting the render fails two, dropping the
+`safeHttpUrl` gate fails the third. Version triple → v225.

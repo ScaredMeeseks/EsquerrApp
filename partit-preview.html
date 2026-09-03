@@ -6665,10 +6665,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .cal-pos { font-size: .66rem; font-weight: 700; color: var(--text-secondary); flex: 0 0 auto; }
 .cal-crest {
+  position: relative;
   width: 22px; height: 22px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%; background: var(--text); color: var(--bg);
   font-size: .6rem; font-weight: 700; letter-spacing: .02em;
+}
+/* The rival's real crest, laid OVER the monogram disc rather than beside it:
+   files.fcf.cat 404s on its own schedule, and the inline `onerror` hiding a
+   broken image then uncovers the initials instead of leaving a hole.
+   `contain` because federation badges are every aspect ratio there is, and
+   the club ground rather than the disc's ink behind them because they are
+   transparent PNGs drawn in their own dark colours. */
+.cal-crest-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: contain;
+  border-radius: 50%; background: var(--bg);
 }
 .cal-kick { font-size: .7rem; color: var(--text-secondary); gap: 8px; }
 .cal-kick b { font-weight: 600; color: var(--text); }

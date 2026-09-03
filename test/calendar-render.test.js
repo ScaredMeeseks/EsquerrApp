@@ -377,6 +377,52 @@ describe('the match block', () => {
         '.cal-opp still grows, so the crest will float to the margin');
   });
 
+  it('draws the rival\'s real crest when the fixture carries one', () => {
+    /* The Partit detail has drawn `opponentBadge` since the FCF import
+       started filling it; the calendar ignored it and showed a monogram for
+       every fixture, including the league ones the federation publishes a
+       badge for. */
+    const cell = cellOf(make({matches: [M({
+      opponentBadge: 'https://files.fcf.cat/escudos/clubes/escudos/x.png',
+    })]})(null, '2026-03'), '2026-03-07');
+    assert.ok(cell.includes('src="https://files.fcf.cat/escudos/clubes/escudos/x.png"'),
+        'the calendar is still showing a monogram for a fixture with a badge');
+    assert.ok(/class="cal-crest-img"/.test(cell), 'the crest image has no class to style');
+    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    assert.ok(/\.cal-crest-img\s*\{/.test(css), '.cal-crest-img is unstyled');
+  });
+
+  it('keeps the monogram UNDER the crest, so a 404 uncovers it', () => {
+    /* files.fcf.cat is someone else\'s host. The inline onerror hides the
+       image, which is only a fix if the initials are still behind it —
+       absolutely positioned over the disc, not rendered in its place. */
+    const cell = cellOf(make({matches: [M({
+      opponentBadge: 'https://files.fcf.cat/escudos/clubes/escudos/x.png',
+    })]})(null, '2026-03'), '2026-03-07');
+    assert.ok(/onerror="this\.style\.display=&quot;?'?none/.test(cell) ||
+        cell.includes('onerror="this.style.display=\'none\'"'),
+    'a broken crest will sit there as a broken-image icon');
+    assert.ok(/class="cal-crest">.*IS<\/span>/s.test(cell),
+        'the initials are gone, so a 404 leaves a hole');
+    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    assert.ok(/\.cal-crest\s*\{[^}]*position:\s*relative/.test(css),
+        '.cal-crest is not a positioning context, so the image will not cover it');
+    assert.ok(/\.cal-crest-img\s*\{[^}]*position:\s*absolute/.test(css),
+        'the crest image sits BESIDE the monogram instead of over it');
+  });
+
+  it('falls back to the monogram, and refuses a non-http badge', () => {
+    const bare = cellOf(make({matches: [M()]})(null, '2026-03'), '2026-03-07');
+    assert.ok(!bare.includes('cal-crest-img'), 'an image with no badge to show');
+    assert.ok(bare.includes('>IS</span>'), 'no monogram for a fixture without a badge');
+    /* `javascript:` in an <img src> does not run, but the same value reaches
+       other sinks; safeHttpUrl is the one gate and it belongs here too. */
+    const bad = cellOf(make({matches: [M({opponentBadge: 'javascript:alert(1)'})]})(null, '2026-03'),
+        '2026-03-07');
+    assert.ok(!bad.includes('javascript:'), 'a non-http badge reached the markup');
+    assert.ok(bad.includes('>IS</span>'), 'a rejected badge lost the monogram too');
+  });
+
   it('the FROZEN league position, in Catalan', () => {
     assert.ok(make({matches: [M({opponentPos: 4})]})(null, '2026-03').includes('>4t</span>'));
     assert.ok(!make({matches: [M()]})(null, '2026-03').includes('cal-pos'),

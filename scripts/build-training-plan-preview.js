@@ -141,9 +141,24 @@ const HISTORY = [
   { id: 'h2', category: 'cadet', plan: { duty: { n: 1, ids: ['p3'] } } }
 ];
 
+/* `weather` is a STUB, and it has to be one.
+ *
+ * sessionWeatherHtml reads `tr.weather`, which the app fills from the
+ * forecast function — nothing here fetches it, so without this the strip
+ * renders as an empty string and the preview quietly loses a piece of the
+ * design it exists to show. The committed file HAD the strip and the script
+ * could not have produced it, so it was hand-fed once and the next rebuild
+ * would have dropped it silently. These are the values that were in it.
+ *
+ * The `date` cannot save us: it is fixed so the artifact does not churn on
+ * every rebuild, which means the session is in the past on any day but the
+ * one it was written, and a past session with no forecast renders nothing at
+ * all — not even the "3 days before" line.
+ */
 const TR = {
   id: 'now', date: '2026-09-01', time: '20:00', endTime: '21:15',
-  category: 'cadet', teams: ['A', 'B'], plannedRpe: 7, plan: PLAN
+  category: 'cadet', teams: ['A', 'B'], plannedRpe: 7, plan: PLAN,
+  weather: { cond: 'cloud', windMs: 3.2, tempC: 17, rainPct: 0 }
 };
 
 // The Catalan strings, lifted from _i18n so the mockup reads as the app reads.
