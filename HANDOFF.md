@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 228** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 229** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2836** — `cd test && npm run test:unit` (~10 s), all passing |
+| Unit tests | **2845** — `cd test && npm run test:unit` (~10 s), all passing |
 | Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
@@ -25,8 +25,18 @@ deploy, no functions deploy. The only edit under `functions/` is the version con
 
 ---
 
-## This session: v227–v228. Convocatòria, the sixth design handoff — and the palette
+## This session: v227–v229. Convocatòria, the sixth design handoff — and the palette
 ## behind all six of them.
+
+**v229 — the squad letter on the Convocatòria's category bar.** Through `catBarLettersHtml`, the
+same chips the Calendari and Plantilla draw; `convTeamFilter` is the fourth per-page filter and is
+reset with the category like the other three.
+
+⚠ **It narrows the fixture dropdown and Disponibles ONLY — never Convocats.** A filter is a way of
+looking; the acta is a decision already taken, and the send reads `fa_convocatoria` rather than the
+screen, so a filtered-away player would go out anyway. Convocats therefore reads the whole pool,
+which also keeps a cross-category call-up on the sheet. `catSpan` follows: it is computed over the
+rows RENDERED, not the pool, or a squad reads as badged in one column and unbadged in the other.
 
 **v228 — the paper palette is one thing now.** The six redesigned pages carried the design
 system's colours as raw hexes **552 times**; they are 23 `--pp-*` custom properties at the top of

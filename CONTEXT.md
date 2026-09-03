@@ -8947,3 +8947,49 @@ A test pins that it stays an alias.
 
 Unit 2828 → **2836**; 8 new tests, 4 mutants killed (a pasted literal, a drifted token value, the
 alias becoming a literal, a deleted token). Version triple → v228.
+
+### 2026-09-04 — The squad letter on the Convocatòria, and what a filter may not touch (v229)
+
+The category bar on this page offered categories and no letters, so a coach of an A and a B squad
+had one list of fixtures and one pool of players for both. It now carries the letters, through
+`catBarLettersHtml` — the same chips the Calendari and the Plantilla already draw, switched on
+`currentPage`, with `convTeamFilter` as the fourth of these per-page filters after
+`medicalTeamFilter`, `rosterTeamFilter` and `calTeamFilter`. No new control was written; the third
+branch of an existing ternary was.
+
+Like the other three it is **reset whenever the category changes**, because letters are defined per
+category and a stale `B` under a category that has no B filters everything away with no control on
+screen saying why. Belt and braces: `convLetter` is read as null unless a category is actually
+chosen, since `catBarLettersHtml` draws no chips on Totes — so a filter that somehow survived still
+cannot hide rows invisibly. A test pins both halves.
+
+**A row with NO letter survives every letter**, which is `calInFilter`'s rule for the calendar
+applied here: an unassigned player and a fixture with no `team` belong to every squad.
+
+⚠ **THE FILTER DOES NOT TOUCH CONVOCATS, and that was the owner's instruction.** It narrows the
+fixture dropdown and Disponibles only. The reasoning is worth keeping: a filter is a way of looking,
+and the acta is a decision already taken. A coach who narrows to B must not watch the players he
+convoked vanish from the sheet he is about to send — and the send reads `fa_convocatoria`, not the
+screen, so **they would go out regardless**. A list that disagrees with what it sends is worse than
+no list at all.
+
+That makes Convocats read the WHOLE pool rather than the filtered one, which also fixes the
+category case: a juvenil player convoked for an amateur fixture is legitimate — it is parking-lot
+item 4 — and he stays on the acta whichever chip is lit. `playersAll` is not a wider read than
+`players`: `getUsers()` only ever holds the shards this session downloaded, so this can surface a
+player the FILTER hides, never one the coach may not see.
+
+One consequence worth spelling out: `catSpan` is now computed over the rows actually **rendered**
+(`available.concat(called)`) rather than over the pool. Convocats can hold a player from outside the
+filter, and a category letter that appears in one column has to be drawn in the other, or the same
+squad reads as badged on the left and unbadged on the right.
+
+ⓘ **A stub that returns a constant cannot answer a question about its input.** `catSpanOf` was
+stubbed `() => false` in convocatoria.test.js, which made the badge assertion above unfalsifiable —
+it is now the real four-line implementation. Same lesson as the `safeHttpUrl` stub in v227, and the
+second time in three days.
+
+Unit 2836 → **2845**; 9 tests, 8 mutants killed — the filter reaching the acta, Convocats
+category-filtered again, either list ignoring the letter, an unassigned row being filtered out, a
+stale letter surviving Totes, catSpan going back to the pool, and the chips not being reset with the
+category. Version triple → v229.

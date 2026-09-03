@@ -67,6 +67,7 @@ let FITNESS = {};
 let LIBRARY = [];
 let CUR_CAT = '';
 let VISIBLE_CATS = ['amateur'];
+let LETTER = 'all';
 
 /* Stubs return something DISTINCTIVE rather than '': a stub returning the
    empty string makes "the builder rendered nothing" and "the builder
@@ -82,6 +83,7 @@ function build(selectedId) {
       'isOurTeam', 'getClubName', 'ptCrestHtml', 'ptOurSide', 'tDateShort',
       'clubKits', 'shirtSvg', 'shortsSvg', 'kitSockSvg', 'safeHttpUrl',
       'viewOnlyBanner', 'TB', 'tbLinkedKey', 'convSelectedMatchId',
+      'convTeamFilter',
       BLOCK + '\n return {renderConvocatoria, cvMins, cvQuickTimes, cvDelta,' +
         ' cvAvailability, cvMenu, cvRowHtml, cvHead};')(
       (k) => k,
@@ -97,7 +99,11 @@ function build(selectedId) {
       // Echoes the status AND that a context was passed, so a test can tell
       // "the shared path ran" from "something rendered a glyph of its own".
       (p, ctx) => '[FIT:' + (FITNESS[p.id] || 'fit') + ':' + (ctx ? 'ctx' : 'NOCTX') + ']',
-      () => false,
+      /* catSpanOf, for real rather than a constant. Which rows it is given
+         is the thing under test once Convocats can hold a player from
+         outside the filter, and a stub returning false could not tell a
+         right answer from a wrong one. */
+      (rows) => new Set((rows || []).map((r) => r.category).filter(Boolean)).size > 1,
       (p, span) => (span ? '[CAT:' + (p.category || '') + ']' : ''),
       (p) => (p.rank || 0),
       (p) => '[DISC:' + (p.position || '') + ']',
@@ -118,7 +124,8 @@ function build(selectedId) {
       {ready: () => true, library: () => LIBRARY,
         meta: (id) => LIBRARY.find((b) => b.id === id) || null},
       (b) => (b.boardId ? 'id:' + b.boardId : 'name:' + (b.name || '')),
-      selectedId === undefined ? 1 : selectedId);
+      selectedId === undefined ? 1 : selectedId,
+      LETTER);
   return api;
 }
 
@@ -139,6 +146,7 @@ function reset() {
   FITNESS = {};
   CUR_CAT = '';
   VISIBLE_CATS = ['amateur'];
+  LETTER = 'all';
   USERS = squad();
   LIBRARY = [{id: 'b1', name: 'Pressió alta 4-3-3', frameCount: 4, hasFrames: true},
     {id: 'b2', name: 'Córner defensiu', frameCount: 1, hasFrames: false}];
@@ -825,6 +833,113 @@ describe('Convocatòria — the fixture picker', () => {
     assert.ok(!html.includes('data-id="p1"'),
         'a juvenil player is convocable for a fixture the picker will not offer');
     assert.ok(html.includes('data-id="p2"'));
+  });
+});
+
+describe('Convocatòria — the squad-letter filter', () => {
+  beforeEach(() => {
+    reset();
+    CUR_CAT = 'amateur';
+    VISIBLE_CATS = ['amateur', 'juvenil'];
+    STORE.fa_matches = JSON.stringify([
+      {id: 1, home: 'US', away: 'A', date: '2099-10-05', time: '20:00',
+        status: 'upcoming', category: 'amateur', team: 'A'},
+      {id: 2, home: 'US', away: 'B', date: '2099-10-06', time: '20:00',
+        status: 'upcoming', category: 'amateur', team: 'B'},
+      // No letter: belongs to every squad, the rule calInFilter encodes.
+      {id: 3, home: 'US', away: 'C', date: '2099-10-07', time: '20:00',
+        status: 'upcoming', category: 'amateur'}
+    ]);
+    USERS = [
+      {id: 'a1', name: 'A One', roles: ['player'], playerNumber: '1', position: 'GK', team: 'A', category: 'amateur'},
+      {id: 'b1', name: 'B One', roles: ['player'], playerNumber: '2', position: 'CB', team: 'B', category: 'amateur'},
+      {id: 'n1', name: 'No Letter', roles: ['player'], playerNumber: '3', position: 'DM', category: 'amateur'},
+      {id: 'j1', name: 'Juvenil One', roles: ['player'], playerNumber: '4', position: 'ST', team: 'A', category: 'juvenil'}
+    ];
+  });
+  const shown = (html) =>
+    [...html.matchAll(/data-cv-match="(\d+)"/g)].map((m) => Number(m[1]));
+
+  it('offers every squad\'s fixture with no letter chosen', () => {
+    assert.deepStrictEqual(shown(build(1).renderConvocatoria()), [1, 2, 3]);
+  });
+
+  it('narrows the fixtures to the chosen letter', () => {
+    LETTER = 'B';
+    assert.deepStrictEqual(shown(build(2).renderConvocatoria()), [2, 3],
+        'a B fixture and the unassigned one, never the A fixture');
+  });
+
+  it('narrows Disponibles to the chosen letter', () => {
+    LETTER = 'B';
+    const ids = idsIn(build(2).renderConvocatoria(), 'cv-avail');
+    assert.ok(ids.includes('b1'), 'the B player is missing');
+    assert.ok(ids.includes('n1'), 'a player with no letter belongs to every squad');
+    assert.ok(!ids.includes('a1'), 'the A player survived the B filter');
+  });
+
+  /* ⚠ THE RULE THIS FILTER MUST NOT BREAK. A filter is a way of looking;
+     the acta is a decision already taken. A coach who narrows to B must not
+     watch the players he convoked vanish from the sheet he is about to
+     send — and the send reads `fa_convocatoria`, not the screen, so they
+     would go out anyway. A list that disagrees with what it sends is worse
+     than no list. */
+  it('does NOT touch Convocats', () => {
+    STORE.fa_convocatoria = JSON.stringify({2: ['a1', 'b1', 'n1']});
+    LETTER = 'B';
+    const html = build(2).renderConvocatoria();
+    assert.deepStrictEqual(idsIn(html, 'cv-called'), ['a1', 'b1', 'n1'],
+        'the filter reached the acta');
+    // …and none of them come back in Disponibles as well.
+    assert.deepStrictEqual(idsIn(html, 'cv-avail'), []);
+  });
+
+  /* The cross-category call-up is the case that makes the rule bite: a
+     juvenil player convoked for an amateur fixture is legitimate, and the
+     category filter must not drop him from the acta either. */
+  it('keeps a convoked player from another category', () => {
+    STORE.fa_convocatoria = JSON.stringify({1: ['j1', 'a1']});
+    const html = build(1).renderConvocatoria();
+    assert.deepStrictEqual(idsIn(html, 'cv-called'), ['j1', 'a1']);
+    assert.ok(!idsIn(html, 'cv-avail').includes('j1'),
+        'he is on the acta, so he is not also available');
+  });
+
+  it('badges the category on both sides once the acta crosses one', () => {
+    // catSpan is computed over the RENDERED rows: a category that appears
+    // in one column has to be drawn in the other.
+    STORE.fa_convocatoria = JSON.stringify({1: ['j1']});
+    const html = build(1).renderConvocatoria();
+    assert.ok(html.includes('[CAT:juvenil]'), 'the convoked juvenil is unbadged');
+    assert.ok(html.includes('[CAT:amateur]'), 'the amateur rows lost their badge');
+  });
+
+  /* Letters are per category and catBarLettersHtml draws no chips on Totes,
+     so a filter left over from a previous category would hide rows with no
+     control on screen to explain why. */
+  it('ignores a stale letter when no category is chosen', () => {
+    CUR_CAT = '';
+    LETTER = 'B';
+    const html = build(1).renderConvocatoria();
+    assert.deepStrictEqual(shown(html), [1, 2, 3], 'a stale letter filtered Totes');
+    assert.ok(idsIn(html, 'cv-avail').includes('a1'));
+  });
+
+  it('is drawn by the shared category-bar chips, not a second control', () => {
+    assert.ok(/currentPage === 'convocatoria'\s*\?\s*catBarLettersHtml\(convTeamFilter, 'data-conv-letter'\)/
+        .test(bare), 'the chips are not the ones the calendar and roster use');
+    assert.ok(/convTeamFilter = btn\.dataset\.convLetter \|\| 'all';/.test(bare),
+        'nothing writes the filter');
+  });
+
+  /* Every one of these is reset when the category changes, because a letter
+     belongs to a category. Missing one is a filter that silently persists. */
+  it('resets with the category, like the other three', () => {
+    const i = bare.indexOf("var want = btn.dataset.cat || '';");
+    const body = bare.slice(i, bare.indexOf('renderPage', i));
+    ['medicalTeamFilter', 'rosterTeamFilter', 'calTeamFilter', 'convTeamFilter']
+        .forEach((v) => assert.ok(new RegExp(v + " = 'all';").test(body),
+            v + ' survives a category change'));
   });
 });
 

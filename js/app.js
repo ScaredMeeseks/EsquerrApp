@@ -2029,7 +2029,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 228;
+  const APP_VERSION = 229;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2297,7 +2297,9 @@
     var extra = currentPage === 'calendar'
       ? catBarLettersHtml(calTeamFilter, 'data-cal-letter')
       : currentPage === 'manage-roster'
-        ? catBarLettersHtml(rosterTeamFilter, 'data-roster-filter') : '';
+        ? catBarLettersHtml(rosterTeamFilter, 'data-roster-filter')
+        : currentPage === 'convocatoria'
+          ? catBarLettersHtml(convTeamFilter, 'data-conv-letter') : '';
     return '<div class="cat-bar">' + btns + extra + '</div>';
   }
 
@@ -5215,6 +5217,12 @@
   let _pctAnimatedPage = '';
   let _donutAnimatedPage = '';
   let convSelectedMatchId = null;
+  /* The squad letter on the Convocatòria's category bar. The fourth of
+     these — after medicalTeamFilter, rosterTeamFilter and calTeamFilter —
+     and like all of them it is reset whenever the CATEGORY changes: letters
+     are defined per category, and a stale 'B' under a category with no B
+     would filter everything away with no visible control saying why. */
+  let convTeamFilter = 'all';
   let _mdEditingId = null; // tracks which saved match is being edited inline
   let detailMatchId = null;
   let detailMatchFrom = null;
@@ -25543,8 +25551,20 @@
        — so a strict filter would make those fixtures unreachable rather than
        merely unfiltered. */
     var allowedCats = curCat ? [curCat] : getVisibleCategories();
+    /* The squad letter beside the categories. Only meaningful once a
+       category is chosen — letters are defined per category, and
+       catBarLettersHtml draws no chips on Totes — so a filter left over
+       from a previous category is read as 'all' rather than quietly hiding
+       everything with no control on screen to explain it.
+
+       A row with NO letter belongs to every squad, the rule calInFilter
+       already encodes for the calendar. A B-team fixture and an
+       unassigned player both have to survive the 'B' chip. */
+    var convLetter = (curCat && convTeamFilter !== 'all') ? convTeamFilter : null;
+    var inLetter = function (l) { return !convLetter || !l || l === convLetter; };
     var matches = allMatches.filter(function (m) {
-      return !m.category || allowedCats.indexOf(m.category) !== -1;
+      return (!m.category || allowedCats.indexOf(m.category) !== -1) &&
+        inLetter(m.team);
     });
     var now = new Date();
     const upcoming = matches.filter(function(m) {
@@ -25588,11 +25608,6 @@
     const hasChanges = isSent && JSON.stringify(saved) !== JSON.stringify(sentPlayers);
 
     const calledIds = new Set(saved.map(String));
-    /* ONE span for BOTH panes, computed over the whole pool rather than per
-       pane: `available` and `called` are two halves of one list, and deciding
-       separately would badge one column and not the other as players are
-       dragged across. */
-    const catSpan = catSpanOf(players);
     const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
     const availOf = (p) => cvAvailability(
         p, matchAvailData[p.id + '_' + convSelectedMatchId] || null, _convFitCtx);
@@ -25602,9 +25617,32 @@
        the coach dragged the rows into — and the render this replaced sorted
        it away with posRank on the way out. Dragging a player between two
        others therefore appeared to do nothing, every time. */
-    const available = players.filter(p => !calledIds.has(String(p.id)))
+    const available = players
+      .filter(p => !calledIds.has(String(p.id)) && inLetter(p.team))
       .sort((a, b) => posRankGlobal(a) - posRankGlobal(b));
-    const called = saved.map(id => players.find(p => String(p.id) === String(id))).filter(Boolean);
+    /* ⚠ CONVOCATS IGNORES THE FILTER, and reads the WHOLE pool rather than
+       the filtered one. A filter is a way of looking; the acta is a
+       decision already taken, and a coach who narrows to B must not watch
+       the players he convoked disappear from the sheet he is about to send.
+       The cross-category call-up is exactly the case that makes this bite:
+       a juvenil player convoked for an amateur fixture is legitimate, and
+       he belongs on the acta whichever chip is lit.
+
+       `playersAll` is not a wider read than `players` — getUsers() only ever
+       holds the shards this session downloaded, so this can surface a
+       player the filter hides, never one the coach may not see. */
+    const called = saved
+      .map(id => playersAll.find(p => String(p.id) === String(id)))
+      .filter(Boolean);
+
+    /* ONE span for BOTH panes, computed over the rows actually RENDERED
+       rather than over the pool: `available` and `called` are two halves of
+       one list, and deciding separately would badge one column and not the
+       other as players are dragged across. Over the rendered rows and not
+       `players`, because Convocats can now hold a player from outside the
+       filter — and a category letter that appears in one column has to be
+       drawn in both. */
+    const catSpan = catSpanOf(available.concat(called));
 
     const availHtml = available.length
       ? available.map(p => cvRowHtml(p, {
@@ -32128,6 +32166,7 @@
         medicalTeamFilter = 'all';
         rosterTeamFilter = 'all';
         calTeamFilter = 'all';
+        convTeamFilter = 'all';
         stdTeamFilter = null;
         trainingTeamFilter = null;
         renderPage(getSession());
@@ -32141,6 +32180,16 @@
     $$('[data-cal-letter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         calTeamFilter = btn.dataset.calLetter || 'all';
+        renderPage(getSession());
+      });
+    });
+
+    /* The same chips on the Convocatòria, and bound here for the same
+       reason: they are part of the category bar, which renderPage builds,
+       so bindConvocatoria never sees them. */
+    $$('[data-conv-letter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        convTeamFilter = btn.dataset.convLetter || 'all';
         renderPage(getSession());
       });
     });
