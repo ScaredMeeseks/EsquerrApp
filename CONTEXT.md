@@ -8647,3 +8647,36 @@ tinted chip it sat in.
 
 Two mutants killed: the `border: none` reverted to `border-bottom` alone, and the selected-row
 override removed. Unit 2745 → **2748**. Version triple → v223. Still **not pushed**.
+
+### 2026-09-03 — The fitness tooltips, and a hole a dozen overlays shared (v224)
+
+The owner reported the fitness badges in the Add-Player modal doing nothing on hover. They were not
+styled wrong — **they were never bound.**
+
+⚠ **`$$('[data-tooltip]')` inside `bindDynamicActions` can only ever see what the last RENDER drew.**
+Every overlay in this file is injected straight into `document.body` with no render behind it, and
+there are a dozen of them. So the badges in the Add-Player modal, the board overlay and both cal
+dialogs had no listeners at all — silently, because a missing hover handler throws nothing and logs
+nothing.
+
+This is the **third** time this exact shape has bitten in this redesign: `bindStdSelects` had to be
+called inside `calModal` for the same reason, and again inside `bindTrainingNew`. The pattern is
+worth naming: **a binder that loops over the document belongs to the render; anything injected
+outside a render is invisible to it.**
+
+Fixed by delegation rather than by a third call site. `bindTooltips()` is now one `mouseover` /
+`mousemove` / `mouseout` trio on the document, guarded by `document._tipBound` so it wires once —
+the same answer `showHoverTip` already used for `[data-tip]`. A per-overlay
+`bindTooltips(overlay)` would have worked today and been forgotten by the next overlay somebody
+adds; this cannot be.
+
+⚠ **`mouseover`/`mouseout`, not `mouseenter`/`mouseleave`** — the latter do not bubble, so they
+cannot be delegated at all. A test pins that, because getting it wrong is a listener that never
+fires and, again, says nothing.
+
+ⓘ `test/layout.test.js` pinned the literal `e.clientX - tooltipEl.offsetWidth / 2`; the placement is
+a `place(e, el)` helper now, so the assertion matches the RULE — clientX against the element's own
+width — rather than the old identifier. The rule it protects (viewport coordinates, never document
+ones, because `.roster-tooltip` is `position: fixed`) is unchanged.
+
+Unit 2748 → **2750**. Version triple → v224.

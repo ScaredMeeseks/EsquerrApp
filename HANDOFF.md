@@ -1,24 +1,19 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-02._
+_Rolling document, overwritten each session. Last updated: 2026-09-03._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
-> ⚠ **This file was eleven versions stale** when it was rewritten (it still described v199 and 2253
-> unit tests while the tree was at v210). The v200–v210 work — Plantilla, Registracions, the weather
-> strip, the sunset fix — is in CONTEXT.md and was never summarised here. If a section below reads
-> older than the code, believe CONTEXT.md and the source.
-
 ## Where things stand
 
-**Version triple is at 211** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 224** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2593** — `cd test && npm run test:unit` (~8 s), all passing |
+| Unit tests | **2750** — `cd test && npm run test:unit` (~9 s), all passing |
 | Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
@@ -28,335 +23,69 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 deploy, no functions deploy. The only edit under `functions/` is the version constant in
 `check-deploy.js`, which is a diagnostic script, not a deployed function.
 
-**Pushed to `main` at v211.** Pages serves it and the APK CI build ran on the same push.
-
 ---
 
-## This session: v211. A tapped notification opens the screen it is about.
-
-The owner's ask: an RPE reminder should open the **Accions** tab so the player can enter the score
-immediately, and a convocatòria should open the **match detail** for that match.
-
-**The routing already existed and was not the problem.** `applyPushNav`'s ancestor had been sitting
-in the `push-navigate` listener since the original push work, and the payloads already carried what
-it needed — `page: "player-actions"` on both RPE reminders, `type: "convocatoria"` + `matchId` out
-of `onPushQueueCreate`. What was missing was the **delivery of the tap into that handler**, and it
-was missing in three unrelated ways, none of them visible from the routing code.
-
-### ⚠ 1. A tap on a foreground notification did nothing at all
-
-This is the one that matters most, because it is the commonest case in the club: the 23:00 RPE
-reminder arriving while the player still has the app open.
-
-`pushNotificationReceived` does **not** let FCM display the push. It re-schedules it as a
-**LocalNotification** carrying the payload in `extra`. A tap on that one is a `LocalNotifications`
-event — so `pushNotificationActionPerformed` never fired for it, and nothing anywhere was listening
-for `localNotificationActionPerformed`. Completely dead path. `js/push.js` now listens for it.
-
-### 2. A PWA opened from a notification lost the deep link
-
-`sw.js` can only `postMessage` to a client that already exists. With no window open it fell through
-to `openWindow(data.url || './')` — and `url` is never set, because `onPushQueueCreate` strips it
-deliberately. So the app opened on its home page and `page`/`matchId` were discarded.
-
-The link now travels as `?pushPage=&pushType=&pushMatch=`, read once at the top of `init()` and
-stripped with `history.replaceState` so a refresh does not re-navigate. **Built from those three
-fields, never from `data.url`**: that strip exists so a coach cannot make a notification open an
-arbitrary site, and `openWindow` was the last place still willing to honour one if it arrived.
-
-### 3. A tap that beat the session was dropped
-
-The handler opened `const s = getSession(); if (!s) return;`. On a cold start the native plugin
-replays the pending intent as soon as `Push.init()` attaches the listener — which happens while
-`onAuthStateChanged` is still awaiting the profile and the club config. It now buffers into
-`_pendingPushNav`, drained by `_drainPushNav()` immediately after `navigate()`.
-
-⚠ **After `navigate()`, never before.** `navigate()` → `renderDashboard` → `renderSidebar` resets
-`currentPage` to the first sidebar item whenever it is not one itself — and `match-detail` is not a
-sidebar item, so draining early would silently throw the convocatòria route away.
-
-### One latent trap closed on the way past
-
-`applyPushNav` now tests `type === 'convocatoria'` **before** the `page` branch. The coach's client
-queues `page: 'convocatoria'` — a **staff** page. Only the server's incidental stripping of `page`
-keeps players off it today, and every APK in the field goes on sending that field. The day it is
-forwarded, every player tapping a call-up would be bounced to `fallbackPage()` with no explanation.
-
-`detailMatchFrom` is also set now, so Back leads somewhere instead of following whatever detail view
-the player happened to open last.
-
----
-
-## ⚠ THE TEST AFTER TRAINING (2026-09-02) — what it can and cannot prove
-
-**Read this before reading the result.** The owner planned to watch a real RPE reminder after that
-evening's training. v211 is deployed, Pages serves it (verified by fetching the live `sw.js` and
-`js/app.js`, not by trusting the push output) and the APK CI run went green.
-
-### A tap proves only the path it took
-
-There are **six** delivery paths, three per platform, and they fail independently — that is the
-entire shape of this bug. Which one was broken is **not the same on the two platforms**:
-
-| Platform | State when the push arrives | Who handles the tap | Before v211 |
-|---|---|---|---|
-| APK | **open, on screen** | `localNotificationActionPerformed` | **DEAD — nothing listening** |
-| APK | backgrounded | `pushNotificationActionPerformed` | worked |
-| APK | force-stopped | same, replayed intent | worked, unless it beat the session |
-| PWA | open, on screen | `onMessage` → `Notification.onclick` | worked |
-| PWA | backgrounded, window alive | `notificationclick` → `postMessage` | worked |
-| PWA | **fully closed / swiped away** | `notificationclick` → `openWindow` | **BROKEN — link discarded** |
-
-So on the APK, leave it in the FOREGROUND; on the PWA, swipe it fully AWAY. A tap that works in any
-other state proves nothing that was not already true the day before.
-
-### Three preconditions that look like failures if missed
-
-**The APK fix only reaches a phone that installs the new build.** Capacitor bundles its own copy of
-the web assets, so `js/push.js` on a player's phone is whatever shipped with their build — and the
-club is on v43-era APKs (parking lot item 6). An old APK behaving exactly as before is an old
-client, not a failed fix.
-
-**The PWA must be opened once to pick up the new service worker.** `notificationclick` is handled by
-whichever worker is ACTIVE at click time, and that is still v210 until a launch installs v211.
-
-**The recipient list is the squad.** RPE reminders go to `squadForSession`/`squadForMatch`. An
-account that is not a player on that session gets nothing at all — that is the list, not the code.
-
-### iPhone: inconclusive by default
-
-iOS gives push **only** to a PWA added to the home screen from Safari itself (16.4+); the app already
-has `renderIosInstallBanner()` to explain exactly that, and Chrome/Firefox on iOS cannot install.
-Parking lot item 9 says web push on an iOS home-screen PWA has **never been tried here**, and
-`openWindow` from a notification has historically been patchy on iOS. **Treat an iPhone failure as
-inconclusive**, not as evidence about the fix, until someone has confirmed iOS gets a token at all.
-
-The reminder rides the `*/30 * * * *` schedule after the session ends, so nothing needs triggering by
-hand — but a doc written into `teams/{id}/pushQueue` with `type`/`title`/`body`/`matchId` +
-`targetPlayers` makes `onPushQueueCreate` fan out at once, which is the fast loop.
-
----
-
-## ⚠ Things that bit, and will bite again
-
-**The bug was never where the feature was.** Every line that decides where a notification goes was
-correct and had been for months; three separate delivery paths were dropping the tap before it got
-there. Reading the routing over and over would never have found it. **Follow the event from the OS
-inwards, not from the handler outwards.**
-
-**A Python round-trip truncated `js/app.js` to zero bytes.** The write raised
-`UnicodeEncodeError: surrogates not allowed`, but `io.open(p,'w')` had already truncated the file, so
-the exception left nothing. `node --check` passes on an empty file, which is how it briefly looked
-fine. **Now a rule in CLAUDE.md**: use the editor for content edits of `app.js`; Python is for
-read-only inspection.
-
-**`replace(old, new, 1)` across 27k lines is a coin flip about which occurrence it hits.** Adding one
-gate landed it in `renderTrainingDetail` — the *player* page — instead of the staff one. A
-ReferenceError inside `innerHTML`, so: a blank page for every player, a green suite, and a passing
-syntax check.
-
-**A source-scanning test matches its own comment.** The rule keeps being relearned: strip comments
-before scanning source.
-
-**Deleting a large block silently swallows shared helpers.** Six of them once lived between two
-renderers and `node --check` was perfectly happy. A crude scan for calls to functions that no longer
-exist is the only thing that catches it.
-
-**Nine assertions passed on the first run this session, so they were mutation-tested.** Six mutants,
-six killed — including the page-branch-first ordering, a dropped `Number()` on the match id, and the
-old no-id-convocatòria-to-the-staff-page behaviour. Mutation-testing is still the only thing that has
-ever caught an assertion passing for the wrong reason. `<scratchpad>/mutate.js` has the harness: it
-patches `js/app.js` in place, runs the suite, and restores the original from a string held in memory.
-⚠ **It restores by rewriting the file** — if it is ever interrupted mid-run, `git diff` first.
-
----
-
-## NEXT SESSION
-
-**First: get the result of the 2026-09-02 push test** — and before drawing any conclusion from it,
-establish **which of the six paths in the table above was actually exercised**, on which platform,
-and which build that phone was running. Without those three facts the answer is not interpretable in
-either direction, and "it still doesn't work" from an unknown state is the likeliest thing to be
-handed back.
-
-If the foreground tap still does nothing on a phone running the NEW APK, check whether
-`LocalNotifications` is actually registered in the Android shell: the listener is attached
-defensively (`if (LN)`), so a missing plugin fails **silently** rather than throwing.
-`@capacitor/local-notifications` is in `package.json` and the foreground handler already calls
-`LocalNotifications.schedule()`, so the plugin is certainly present at runtime — but that call is
-also wrapped in `.catch()`, so neither half would have made a noise if it were not.
-
-### The owner's next item — the tactical boards' animation playback
-
-**⚠ Parking lot item 16, and the owner called it important.** A board with more than one frame
-renders a `▶` and is supposed to tween between them; it does not play properly. **Nothing has been
-diagnosed** — the pointers are in item 16, and the first job is to reproduce it in a browser and
-write down which of four different bugs it is: does it not start, start and stop, play once, or
-drift. No test covers playback and none can from the unit suite; it is timers plus DOM.
-
-### Known rough edges, none blocking
-
-- **The push deep link has no automated coverage past `applyPushNav`.** The nine new tests pin where
-  a payload routes to. Nothing tests that the tap arrives — the LocalNotifications listener, the
-  service worker's query string, and the `_pendingPushNav` drain are all browser and OS behaviour.
-  Those three are exactly where the bugs were, and they are verified by hand or not at all.
-- **`_pendingPushNav` survives a login.** A player who taps a push, is asked to sign in, and then
-  lands on the right page is the intended behaviour — but the buffer is not cleared on the
-  `_authFlowBusy` path, so it drains on whatever auth event comes next. Harmless today; worth knowing.
-- **No jsdom coverage of anything that measures or animates.** The calendar's strip heights, the
-  read-only board's scaling and the board playback only run in a browser.
-- **A test harness can bake in the bug it exists to catch.** `calendar-render.test.js` stubbed
-  `canEditPage: () => canEdit`, and stubbing `isStaffViewer` the same way would have hidden v198.
-- **`fa_matchday` is write-retired but not removed.** Its shard route, `SYNCED_KEYS` and
-  `SEASON_KEYS` entries all stay; dropping a synced key is a separate, riskier change.
-- **The tree is committed CRLF.** `.gitattributes` says `eol=lf` but everything predates it. A
-  `git add --renormalize .` is the fix and deserves its own quiet commit.
-- **`mockup.html` sits untracked at the repo root.** Not from this session; left alone.
-- The 2D board's own header was deferred by the owner and never revisited.
-- The APK has no 3D at all, by design.
-
----
-
-## Deployment
-
-Frontend: **push to `main`** (GitHub Pages, plus the APK CI build). Rules/functions: `.\deploy.ps1`.
-
-⚠ **`js/board3d.js` is NOT part of the frontend deploy** — it is the premium feature, excluded from
-Pages (`_config.yml`) and from the APK mirror. It reaches the browser only through the `getBoard3d`
-callable, which reads `functions/private/board3d.js`. **A change to it needs `.\deploy.ps1 functions`,
-not a push.** This bit once (v179).
-
-```powershell
-cd c:\DATA\CLAUDE\EsquerrApp
-.\deploy.ps1 rules -DryRun    # validate without releasing
-.\deploy.ps1 rules            # firestore + storage rules
-.\deploy.ps1 functions        # cloud functions  (-Install to npm install first)
-```
-
-**Accounts are per-directory.** `administracion@mov-ment.com` owns Movment and cannot see
-`esquerrapp`; `firebase login:use <email>` binds an account to the current directory.
-
-**`Cannot find module '@firebase/app'`, every function failing its health check** — not broken code.
-`functions/package-lock.json` is gitignored; a local deploy uploads whatever lock is on disk and
-Cloud Build runs `npm ci` against it. `deploy.ps1` refuses to start if the lock exists; move it aside.
-
-**When the CLI and the API disagree, believe the API.** A functions deploy has printed
-`Deploy failed (exit 2)` and then `No changes detected` on retry, reading as though nothing shipped.
-It had — the Functions API showed the new revision and all functions ACTIVE.
-
-### A local dev server
-
-`node <scratch>/esquerrapp-dev-server.js` → http://localhost:8081. Serves the working tree off disk
-with caching disabled and **deliberately 404s `sw.js`** (cache-first would serve you the code you
-wrote twenty minutes ago, and a 404 also unregisters a worker already installed on that origin).
-`GET /__version` prints what is actually on disk. **Do not serve on 8080** — that is the Firestore
-emulator's port and it makes the whole rules suite fail with `501 Unsupported method ('PUT')`.
-
-⚠ **The dev server cannot test any of this session's work.** Two of the three fixes are the service
-worker and the Capacitor plugin; the dev server 404s `sw.js` on purpose and has no native shell.
-
----
-
-## Tests
-
-```
-2593 unit      cd test && npm run test:unit          (~8 s, no emulator)
- 164 rules     cd test && npm run test:rules         (emulator + Java)
-  71 functions cd test && npm run test:functions     (emulator + Java)
-```
-
-> **New test files must be added to `test:unit` / `test:functions` BY HAND.**
-> `suite-registry.test.js` fails if any suite on disk is unregistered — which is exactly what it is
-> for, and it is why `push-nav.test.js` was registered in the same edit that created it.
-
-> **`npm test` (the full chain) flakes** — the functions suite fails with
-> `Cannot determine backend specification. Timeout after 10000` straight after the rules suite.
-> Export `FUNCTIONS_DISCOVERY_TIMEOUT=120`, or run the suites separately.
-
-New this session: `push-nav.test.js` (9). It lifts `applyPushNav` out of `js/app.js` with the same
-`grab()` source-slicing the other app.js suites use — app.js is one IIFE and exports nothing, so
-this is the only coverage any of it can have.
-
----
-
-## How the FCF fixture import works
-
-Full writeup in CONTEXT.md. The parts most likely to bite:
-
-**The refresh button and the 06:00 job are two callers of ONE function** (`_syncFcfSquad`). Do not add
-a client-side importer for either; that is how they would drift.
-
-**The merge rule is the whole feature**: a field is the federation's for as long as it still equals
-`fcfSnapshot`. Edit a kick-off and the sync stops touching it — for ever, and only that field.
-
-> ⚠ **A fixture withdrawn by the FCF is MARKED, never deleted.** Call-ups, coach notes, availability
-> answers and lineups all hang off the match id. An empty response is an outage, not a cancelled
-> season, and is ignored.
-
-**Imported fixtures take the acta number as their id** (~4e6, three orders below the `Date.now()` ids
-the manual path mints, so they cannot collide). A double import is idempotent.
-
-**`opponentPos` is NOT in `FCF_OWNED`** — that list is about which fields a coach's edit takes
-ownership of, and a league position is never coach-editable. It is gated on kick-off instead, and
-never deleted: a rival who drops out of the standings must not erase what we recorded about games
-already played against them.
-
-### The FCF API
-
-Base `https://www.fcf.cat/api/competition/`. No key, no auth. An internal Next.js route set found by
-reading their JS chunks, not a published contract.
-
-> ⚠ **Numeric fields are home and away CONCATENATED as strings** in `classificacio`
-> (`played:"1515"` = 30) and in `goleadores` (`goles`). `points`, `position`, `goalsFor`,
-> `goalsAgainst` and `coefficient` are clean — which is why `parseFcfPositions` can read `position`
-> directly.
-
----
-
-## Reading production without a browser
-
-ADC from firebase-tools' stored refresh token — no service-account key needed.
-`~/.config/configstore/firebase-tools.json` → `additionalAccounts[]` (marna96@gmail.com). Write
-`{type:"authorized_user", client_id, client_secret, refresh_token}` to a scratch file, point
-`GOOGLE_APPLICATION_CREDENTIALS` at it. **Never print the token; delete after.**
-
-> ⚠ **Take the token from `additionalAccounts[]`, NOT from the top-level `tokens`.** That file holds
-> several accounts: `tokens` is whichever was primary — here `administracion@mov-ment.com`, the
-> **Movment** account — while `activeAccounts` maps this directory to `marna96@gmail.com`. The
-> Movment token is in a reauth state, so exchanging it fails with `400 invalid_grant`, which reads as
-> a broken script rather than the wrong account.
-
-- **A scratch script must live inside `functions/`**, or `require("firebase-admin")` cannot resolve.
-- **`teams/{id}` is keyed by CLUB id.** There is no `clubId` field on a team doc — a
-  `where("clubId","==",…)` query returns empty, which reads as "no teams" rather than "wrong query".
-
-The same refresh token exchanges at `oauth2.googleapis.com/token` for a `cloud-platform` token,
-which reaches Cloud Scheduler (the only way to see a cron's REAL schedule), Cloud Functions v2 (a new
-revision is the proof a deploy took), Firestore REST (the ADMIN surface, not gated by
-`firestore.rules`) and Firebase Rules (read the live ruleset back).
-
-## Clubs in production
-
-- `nDLJCpJfDvFHs8MnwtzW` — **Esquerra de l'Eixample F.C.**, lead `marna96@gmail.com`, `amateur` only.
-  FCF group for 2026-27 is **grupId 58161881** (Quarta Catalana, Grup 10), FCF team id **35410**.
-- `Tm96gel58VSQvxgynf45` — **demo club** ("C.E. Sant Andreu del Palomar"), join code `9CA4RR`,
-  `coach@demo.esquerrapp.app` / `DemoEsquerra2026!`. 3 teams / 77 members, 102 matches.
-  **It goes stale**: `hasData` expires at `STALE_AFTER_DAYS = 10`.
-- `lly4GkUxIpBkSgZvzldT` — F.C.Barcelona test club.
-
-### ⚠ Never run `seed-demo-club.js --apply` at the demo club
-
-`apply()` builds a club from nothing. Pointed at the populated demo club it destroys it three ways,
-silently: it rewrites the whole `categories` map, **replaces** data shards with a bare `set()`, and
-resets all 77 Auth passwords. Guarded by neither the `demoSeed` stamp nor `PROTECTED_CLUBS`.
-
-```bash
-node functions/seed-demo-club.js --verify --club Tm96gel58VSQvxgynf45   # read-only
-node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45         # dry run
-node functions/topup-demo-season.js --club Tm96gel58VSQvxgynf45 --apply # additive only
-```
-
-**Do not run `cleanup-seed.js`** — it keys on pre-Phase-1 numeric uids.
+## This session: v212–v224. Partit, the fourth design handoff — and four rounds of the owner
+## finding what the tests could not.
+
+The match detail screen, redesigned to `Baixades/EsquerrApp Match UI/design_handoff_partit/`, plus
+everything the owner found once it was in front of him. **Per-version detail is in CONTEXT.md**;
+this is what a reader needs to know before touching it again.
+
+**What shipped.** `renderMatchDetail` is `pt-` builders over horizontal bands. One dropdown in the
+app (`stdSelect`) — `.ev-custom-select` and every native `<select>` on these screens are gone. The
+anada block, the events timeline and its inline form, the linked-board overlay, the rival's last
+five, the rival's kit. The fixture dialog, the Calendari's add chooser, Nou entrenament and the
+Add-Player modal are all in the paper idiom. New `test/partit.test.js`; unit 2593 → 2750.
+
+### ⚠ The four things the owner had to tell me, and the pattern under them
+
+1. **The timeline followed the wrong axis.** v213 read the handoff's "our events on the left"
+   literally. The scoreboard above prints `home — away`, so at an away ground our column sat under
+   the rival's name. **The handoff describes a screen, not a data model** — its mockup is a home
+   fixture, and "our events on the left" is a fact about that picture, not a rule about ownership.
+2. **Nested `<button>`s.** The board thumbnails were wrapped in a button and contain their own.
+   Invalid HTML, so one click ran two handlers and the ✕ was parsed out of the card. **Every test
+   matched the markup STRING**, where the nesting is invisible; only a parser shows it.
+3. **`border-bottom` does not override `border`.** The Add-Player restyle sat on base rules still in
+   the stylesheet, and left every row drawn as a box. **The question is never "does my declaration
+   say the right thing" but "does it beat the one underneath".**
+4. **Binders that loop over the document belong to the render.** `bindStdSelects` and the
+   `[data-tooltip]` badges were both invisible to overlays injected into `document.body`. It bit
+   three times before being fixed by delegation.
+
+**All four were green the whole time.** The suite is 2750 assertions and none of them could see a
+column on the wrong side, an invalid nesting the parser silently repairs, a losing CSS override, or
+a listener that was never attached.
+
+### Traps worth knowing before editing these screens
+
+- **Kit sizes are ARGUMENTS, never CSS.** `PT_KIT_PX` is 36 (multiple of 18: nine bands across S/2);
+  `PT_OPP_KIT_PX` is 32 (multiple of 16: the FCF's four and eight). They differ on purpose. Do not
+  tidy them to one value, and do not resize a kit in a stylesheet.
+- **A `stdSelect` root has no `.value`** — it carries `dataset.value` and fires no `change`. A missed
+  call site does not throw; it files a fixture under an empty category or stops a field saving.
+- **There is no global `[hidden]{display:none}`** in `css/style.css`. Anything given a `display` rule
+  that is also hidden from JS needs its own `[hidden]` guard, or the filter looks dead.
+- **`playerMatchMinutesKnown` returns null OR a number**, and 0 is a number. `—` and `0'` are
+  different answers.
+- **A player never sees the starting eleven before kick-off.** `ptCallupHtml`'s `showXI` is the one
+  decision; `test/match-lineup.test.js` pins that it is read in exactly two places.
+
+### Left undone, deliberately
+
+- `mnBriefingHtml`, `mnScoreBlockHtml`, `mnLineupChipsHtml` and `fitMnScoreNames` have **no caller**
+  since the anada was rebuilt. Still covered by tests, dead in the app — they want a pruning pass,
+  not a deletion in the middle of a layout change.
+- **Rejecting a wrongly linked first leg has no route** once the suggestion has been answered: the
+  owner asked for both anada links removed, and the banner only shows while unanswered.
+  `MN.dismissLeg` is untouched, so restoring it is one button.
+- The board overlay has **no frame pills**. `applyRoFrame` is a closure inside
+  `bindRoBoardAnimations`, which `test/ro-playback.test.js` pins with 41 assertions; pills mean
+  lifting it out first. A test asserts they are absent so adding them is deliberate.
+- `computePlayerStats` still uses the old inline `isOurTeam(m.home) ? 'home' : 'away'`, which never
+  tests the away side. Same blind spot `ptOurSide` fixed; outside this redesign.
+- `mdKitCellHtml`'s comment says `MD_KIT_PX is 32`; the constant is 48. Only the comment is wrong.
 
 ---
 
@@ -411,7 +140,7 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
     field standing in for a question it does not answer. **Worth grepping `canEditPage(` and
     `.focus ||` for more of the same.**
 
-**16. ⚠ IMPORTANT — the tactical boards' animation playback is broken.** *(owner, 2026-08-28)*
+**16. ~~⚠ IMPORTANT — the tactical boards' animation playback is broken.~~** ✅ **FIXED, and this entry was stale.** *(owner, 2026-08-28; found already done in v214.)* `test/ro-playback.test.js` opens by naming SIX defects and the two that mattered — the per-tick `scaleRoField` relayout, and the RAF loop guarding on a `_roPlaying` expando that a detached node keeps. Both fixes are in the source (`roDead()` guards on `isConnected`; the width is measured once at click time) and 41 assertions pin them. The pointers below are kept only because they are still an accurate map of that code.
     A board with more than one frame renders a `▶` and is supposed to tween between them; it does
     not play properly. Nothing about it has been diagnosed yet, so treat the pointers below as where
     to look, not as the cause:
@@ -435,8 +164,9 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 **Match and squad**
 
-17. **Past line-ups should show the substitutions.** Today the line-up and bench are the starting
-    state; the events already hold the subs (`fa_match_events`), so this is a read, not new data.
+17. **Past line-ups should show the substitutions.** ✅ **Already done — discovered in v214, not
+    built.** `mnLineupChipsHtml` has drawn on/off marks through `matchPlayerMarks` since the
+    briefing was written, and the v216 anada block shows them with minutes beside them.
 18. **Coaches and fitness grade a player's training or match.** New per-player, per-session record —
     the `trainingAvail`/`rpe` subcollections are the shape to copy, not a blob.
 19. **Coaches and fitness enter weight and height.** Fields on the user profile; note that
@@ -461,8 +191,11 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 **Opponents and the federation**
 
-26. **Opponent's last five matches.** The FCF payload already carries last-5 form for every team in
-    the same response the standings come from — see the note in utils.js.
+26. **Opponent's last five matches.** ✅ **Done — v214.** The note was right: `form` was in the
+    classificacio payload all along, five entries, most recent first, G/E/P from that row's own
+    point of view. `parseFcfForm` maps to W/D/L (P is the letter for a WIN in English) and drops an
+    unknown letter rather than inventing a draw. ⚠ Pre-season every row's `form` is `[]`, so the
+    strip renders nothing rather than five blanks.
 27. **Search the FCF by player name.**
 
 **Tactical board**

@@ -1993,7 +1993,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 223;
+  const APP_VERSION = 224;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -25573,6 +25573,66 @@
    * because these dots live inside .table-wrap — whose overflow-x:auto makes
    * the vertical axis clip too, truncating anything that escapes the row.
    */
+  /**
+   * The `[data-tooltip]` badges, wired ONCE on the document.
+   *
+   * ⚠ WHY DELEGATED, AND NOT A LOOP. This used to be
+   * `$$('[data-tooltip]').forEach(…)` inside bindDynamicActions, which runs
+   * after a RENDER. Every overlay in this file is injected straight into
+   * `document.body` with no render behind it — there are a dozen of them —
+   * so their badges were never bound and simply did nothing. The
+   * Add-Player modal's fitness and readiness glyphs are the case the owner
+   * hit; the board overlay and both cal dialogs had the same hole.
+   *
+   * Delegation fixes all of them at once and cannot be forgotten by the
+   * next overlay somebody adds, which a per-site `bindTooltips(overlay)`
+   * call could. It is the same answer `showHoverTip` already uses for
+   * `[data-tip]`, one listener on the document.
+   *
+   * `mouseover`/`mouseout`, not `mouseenter`/`mouseleave`: the latter do
+   * not bubble, so they cannot be delegated at all.
+   */
+  function bindTooltips() {
+    if (document._tipBound) return;
+    document._tipBound = true;
+    let tooltipEl = null;
+    const tip = () => {
+      if (!tooltipEl || !tooltipEl.isConnected) {
+        tooltipEl = document.getElementById('roster-tooltip');
+      }
+      if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'roster-tooltip';
+        tooltipEl.className = 'roster-tooltip';
+        document.body.appendChild(tooltipEl);
+      }
+      return tooltipEl;
+    };
+    const place = (e, el) => {
+      // client*, not page*: .roster-tooltip is position:fixed, so it is
+      // placed against the viewport. See the rule in style.css.
+      el.style.left = e.clientX - el.offsetWidth / 2 + 'px';
+      el.style.top = e.clientY - el.offsetHeight - 12 + 'px';
+    };
+    document.addEventListener('mouseover', (e) => {
+      const icon = e.target.closest && e.target.closest('[data-tooltip]');
+      if (!icon) return;
+      const el = tip();
+      el.textContent = icon.getAttribute('data-tooltip');
+      el.classList.add('visible');
+      place(e, el);
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!tooltipEl || !tooltipEl.classList.contains('visible')) return;
+      const icon = e.target.closest && e.target.closest('[data-tooltip]');
+      if (icon) place(e, tooltipEl);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const icon = e.target.closest && e.target.closest('[data-tooltip]');
+      if (icon && tooltipEl) tooltipEl.classList.remove('visible');
+    });
+  }
+
   function showHoverTip(el, text) {
     if (!text) return;
     let tt = document.getElementById('ua-tooltip');
@@ -32645,31 +32705,10 @@
       });
     });
 
-    // Roster tooltips (JS-based)
-    let tooltipEl = document.getElementById('roster-tooltip');
-    if (!tooltipEl) {
-      tooltipEl = document.createElement('div');
-      tooltipEl.id = 'roster-tooltip';
-      tooltipEl.className = 'roster-tooltip';
-      document.body.appendChild(tooltipEl);
-    }
-    $$('[data-tooltip]').forEach(icon => {
-      // client*, not page*: .roster-tooltip is position:fixed, so it is
-      // placed against the viewport. See the rule in style.css.
-      icon.addEventListener('mouseenter', (e) => {
-        tooltipEl.textContent = icon.getAttribute('data-tooltip');
-        tooltipEl.classList.add('visible');
-        tooltipEl.style.left = e.clientX - tooltipEl.offsetWidth / 2 + 'px';
-        tooltipEl.style.top = e.clientY - tooltipEl.offsetHeight - 12 + 'px';
-      });
-      icon.addEventListener('mousemove', (e) => {
-        tooltipEl.style.left = e.clientX - tooltipEl.offsetWidth / 2 + 'px';
-        tooltipEl.style.top = e.clientY - tooltipEl.offsetHeight - 12 + 'px';
-      });
-      icon.addEventListener('mouseleave', () => {
-        tooltipEl.classList.remove('visible');
-      });
-    });
+    /* Roster tooltips. Delegated and once-only, so the badges inside every
+       overlay injected without a render — the Add-Player modal above all —
+       work too. Calling it here keeps it wired from the first render. */
+    bindTooltips();
 
     // Staff: remove player from registrations
     // Staff: take a member out of the squad. NOT a delete — this is the

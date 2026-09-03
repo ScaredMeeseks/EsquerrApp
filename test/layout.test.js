@@ -107,8 +107,37 @@ describe('layout — the body-level tooltip', () => {
   });
 
   it('follows the mouse in client coordinates', () => {
-    assert.ok(appSrc.includes('e.clientX - tooltipEl.offsetWidth / 2'),
+    /* Named the element `tooltipEl` when the placement was inline; it is a
+       `place(e, el)` helper now that the binding is delegated. The RULE is
+       clientX against the element's own width, whatever the element is
+       called — pinning the old identifier only pinned the old shape. */
+    assert.ok(/e\.clientX - \w+\.offsetWidth \/ 2/.test(appSrc),
         'the mouse-follow site must read clientX');
+  });
+
+  /* ⚠ The badges live inside overlays that are injected into document.body
+     with NO render behind them — a dozen of them in this file. A loop over
+     `[data-tooltip]` inside bindDynamicActions can only ever see what the
+     last render produced, so every one of those overlays had dead badges
+     until this was delegated. That is the bug the owner reported on the
+     Add-Player modal. */
+  it('is delegated on the document, not looped over at render time', () => {
+    const i = appSrc.indexOf('function bindTooltips');
+    assert.notStrictEqual(i, -1, 'bindTooltips is gone');
+    const body = appSrc.slice(i, appSrc.indexOf('\n  function ', i + 10));
+    assert.ok(/document\.addEventListener\('mouseover'/.test(body),
+        'the badges must be delegated, or an injected overlay has none');
+    assert.ok(!/querySelectorAll\('\[data-tooltip\]'\)/.test(body),
+        'a querySelectorAll loop only sees what the last render drew');
+  });
+
+  it('delegates with events that BUBBLE', () => {
+    // mouseenter/mouseleave do not bubble, so they cannot be delegated —
+    // using them would leave the listener never firing at all.
+    const i = appSrc.indexOf('function bindTooltips');
+    const body = appSrc.slice(i, appSrc.indexOf('\n  function ', i + 10));
+    assert.ok(!/document\.addEventListener\('mouse(enter|leave)'/.test(body),
+        'mouseenter/mouseleave do not bubble and cannot be delegated');
   });
 });
 
