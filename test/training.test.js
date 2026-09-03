@@ -1308,4 +1308,48 @@ describe('the Add-Player modal', () => {
     ['nt-pick-card', 'data-nt-pick', 'nt-pick-search', 'nt-pick-add']
         .forEach((h) => assert.ok(body.indexOf(h) !== -1, 'lost ' + h));
   });
+
+  /* ⚠ THE BUG THIS BLOCK IS REALLY ABOUT.
+   *
+   * The picker's base rules were written for the old card look and are
+   * still in the stylesheet, above the paper ones: a 1.5px border on all
+   * four sides with a radius and a card background, and a red-on-pink
+   * selected state. The first paper version overrode `border-bottom`
+   * only, so every row kept the other three sides and the grid rendered
+   * as a page of little boxes — which is what the owner saw.
+   *
+   * Each pair below is "a base declaration the modal must beat" and "the
+   * property that beats it". Shorthand-vs-longhand is the whole trap:
+   * `border-bottom` does not override `border`.
+   */
+  const decl = (sel, prop) => {
+    const i = bareCss.indexOf(sel);
+    if (i === -1) return null;
+    const block = bareCss.slice(bareCss.indexOf('{', i), bareCss.indexOf('}', i));
+    const m = new RegExp(prop + '\\s*:\\s*([^;]+)').exec(block);
+    return m ? m[1].trim() : null;
+  };
+
+  it('kills the whole inherited border, not just one side', () => {
+    assert.strictEqual(decl('.nt-pick-modal .nt-pick-card', 'border'), 'none',
+        'the base rule borders all four sides — overriding border-bottom ' +
+        'alone leaves every row drawn as a box');
+  });
+
+  it('overrides the pink selected state, not only the checkbox', () => {
+    /* The base sets background AND border-color on `.nt-dd-on`. Styling
+       only the little check box leaves the row itself red-on-pink. */
+    assert.ok(/\.nt-pick-modal \.nt-pick-card\.nt-dd-on/.test(bareCss),
+        'the selected ROW is not restyled, only its checkbox');
+    assert.strictEqual(
+        decl('.nt-pick-modal .nt-pick-card.nt-dd-on', 'background'), '#F6F2E9');
+  });
+
+  it('flattens the chips the row is not about', () => {
+    // The category tag and squad circle were filled pills — louder than
+    // the name, which is what the row is for.
+    assert.strictEqual(decl('.nt-pick-modal .nt-cat-tag', 'background'), 'transparent');
+    assert.strictEqual(
+        decl('.nt-pick-modal .conv-team-circle', 'background'), 'transparent');
+  });
 });

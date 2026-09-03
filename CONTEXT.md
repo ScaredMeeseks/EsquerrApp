@@ -8617,3 +8617,33 @@ The doc comment was itself stale (it still said `#nt-pick-cancel`) and is fixed.
 
 Two mutants killed: the `[hidden]` guard removed, and the cancel binding put back on an id.
 Unit 2740 → **2745**. Version triple → v222. Still **not pushed**.
+
+### 2026-09-03 — The Add-Player modal: shorthand beats longhand (v223)
+
+The owner sent a screenshot: every row drawn as a little rounded box, nothing breathing, the chips
+louder than the names. **The v222 restyle had not actually overridden the rules it was replacing.**
+
+⚠ **`border-bottom` does not override `border`.** The base `.nt-pick-card` (written for the old card
+look, still in the file above the paper rules) sets `border: 1.5px solid var(--border)` on all four
+sides, plus a radius and a card background. The paper rule set `border-bottom` — so the other three
+sides survived, and the grid rendered as a page of boxes. The fix is `border: none` first, then the
+one hairline. Same class of miss on the selected state: `.nt-dd-on` gets `--danger-light` and a red
+border from the base rule, and v222 styled only the little check box, so a chosen row stayed
+red-on-pink.
+
+**The lesson, and it is not "look harder":** when a restyle sits on top of rules that are still in
+the file, the question is never "does my declaration say the right thing" but "does it BEAT the one
+underneath". A shorthand beats a longhand; a longhand does not beat a shorthand. `test/training.test.js`
+now reads the declared value out of each override and compares it to what the base sets, which is a
+check that survives someone adding a rule between them.
+
+Also from the screenshot: the grid's 260px minimum was too narrow for a row carrying a disc, a name,
+a squad circle, a category tag, a dorsal and two status glyphs — the name was the only thing that
+could give, so every second one wrapped. 340px, a 36px column gap, and the name ellipses rather than
+wrapping, because a row that grows to two lines breaks the alignment of every column right of it —
+and comparing players down those columns is what the list is for. The category tag and squad letter
+lost their filled pills; the medical glyph keeps its colour, which is the information, and loses the
+tinted chip it sat in.
+
+Two mutants killed: the `border: none` reverted to `border-bottom` alone, and the selected-row
+override removed. Unit 2745 → **2748**. Version triple → v223. Still **not pushed**.

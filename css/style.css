@@ -8027,16 +8027,27 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    an already-saved session. It is wider than the form dialogs because
    its job is a comparison — position, name, squad, category and both
    status columns, side by side. */
-.pt-dlg.nt-pick-modal { width: min(760px, 94vw); }
-.nt-pick-modal .nt-pick-search { margin: 14px 0 4px; }
+.pt-dlg.nt-pick-modal { width: min(880px, 94vw); padding: 26px 28px 22px; }
+.nt-pick-modal .nt-pick-search { margin: 18px 0 6px; }
+/* ⚠ 340px, not 260. The row carries a position disc, a name, a squad
+   circle, a category tag, a dorsal and two status glyphs; at 260 the name
+   was the only thing that could give, so every second player wrapped onto
+   two lines. The column gap is wide enough that two lists read as two
+   lists rather than as one four-column table. */
 .nt-pick-modal .nt-pick-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 0 24px; max-height: 52vh; overflow-y: auto; padding: 6px 0 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 0 36px; max-height: 52vh; overflow-y: auto; padding: 10px 0 18px;
 }
+/* ⚠ `border: none` and not `border-bottom`. The base `.nt-pick-card` sets
+   a 1.5px border on ALL FOUR sides plus a radius and a card background —
+   overriding only the bottom left every row drawn as a rounded box, which
+   is what the grid looked like. Kill the whole border, then draw the one
+   hairline this idiom uses. */
 .nt-pick-modal .nt-pick-card {
   display: flex; align-items: center; gap: 10px; cursor: pointer;
-  padding: 8px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 9px 4px; border: none; border-bottom: 1px solid #EDEAE4;
   background: transparent; border-radius: 0; box-shadow: none;
+  transition: none;
 }
 /* ⚠ REQUIRED, and not defensive. The search filters by setting
    `card.hidden`, and a `display` rule of ours outranks the browser's
@@ -8055,14 +8066,48 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 11px; line-height: 1; color: #FBFAF7;
 }
-/* `nt-dd-on` is the class the handler toggles — not `.selected`. */
+/* `nt-dd-on` is the class the handler toggles — not `.selected`.
+   ⚠ The base rule paints a selected row `--danger-light` with a red
+   border. Both are overridden: a chosen row is the highlight this design
+   uses everywhere else, and the filled box is what says it is chosen. */
+.nt-pick-modal .nt-pick-card.nt-dd-on {
+  background: #F6F2E9; border-bottom-color: #E3DFD8;
+}
 .nt-pick-modal .nt-dd-on .nt-dd-check {
   background: #2D2926; border-color: #2D2926;
 }
 .nt-pick-modal .conv-name { font-size: 14px; }
-.nt-pick-modal .conv-num, .nt-pick-modal .nt-cat-tag {
-  font-size: 11.5px; color: #99928B;
+.nt-pick-modal .conv-num { font-size: 12px; color: #99928B; }
+/* The category tag was a filled grey pill — the loudest thing in a row
+   whose point is the name. Small caps in the eyebrow grey, no chip. */
+.nt-pick-modal .nt-cat-tag {
+  background: transparent; border-radius: 0; padding: 0; margin-left: 6px;
+  font-size: 10px; font-weight: 500; letter-spacing: .08em; color: #99928B;
 }
+/* Same for the squad letter: a hairline circle rather than a filled one. */
+.nt-pick-modal .conv-team-circle {
+  background: transparent; color: #6B645E; border: 1px solid #E3DFD8;
+  font-size: 10px;
+}
+/* The medical glyph keeps its colour — that is the information — but
+   loses the tinted pill it sat in. */
+.nt-pick-modal .roster-status-icon {
+  background: transparent; border: none; box-shadow: none;
+  width: auto; min-width: 14px; height: auto; padding: 0; font-size: 13px;
+}
+/* The name takes the slack and ellipses rather than wrapping: a row that
+   grows to two lines breaks the alignment of every column to its right,
+   which is the thing this list is FOR — comparing players down it. */
+.nt-pick-modal .conv-name-wrap {
+  min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 2px;
+}
+.nt-pick-modal .conv-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nt-pick-modal .nt-status { gap: 8px; padding-left: 4px; }
+/* Room for the scrollbar, so the right-hand column's status glyphs are
+   not sitting underneath it. */
+.nt-pick-modal .nt-pick-grid { padding-right: 6px; }
 
 /* ── Responsive ──
    Below ~1100px the context band's three columns stack and the
