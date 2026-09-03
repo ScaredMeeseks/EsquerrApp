@@ -214,6 +214,7 @@ function render(opts) {
       'isOurTeam', 'getClubName', 'ptCrestHtml', 'ptOurSide', 'tDateShort',
       'clubKits', 'shirtSvg', 'shortsSvg', 'kitSockSvg', 'safeHttpUrl',
       'viewOnlyBanner', 'TB', 'tbLinkedKey', 'convSelectedMatchId',
+      'convTeamFilter',
       BLOCK + '\n return renderConvocatoria;')(
       (k) => (STRINGS[k] !== undefined ? STRINGS[k] : k),
       esc,
@@ -277,7 +278,14 @@ function render(opts) {
       {ready: () => true, library: () => LIBRARY,
         meta: (id) => LIBRARY.find((b) => b.id === id) || null},
       (b) => (b.boardId ? 'id:' + b.boardId : 'name:' + (b.name || '')),
-      1);
+      1,
+      /* Passed even though this preview never sets a category, and so never
+         reaches it: `convLetter` reads `curCat && convTeamFilter !== 'all'`,
+         and a falsy curCat short-circuits before the identifier is
+         evaluated. That is luck, not design — the first fixture here with a
+         category would throw a bare ReferenceError, and the assertions
+         below would report it as "no player rows rendered". */
+      'all');
   return R();
 }
 

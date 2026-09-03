@@ -78,6 +78,28 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
   **Do not set `server.url` to make the shell load the live site.** It would end staleness instantly but loading a whole app from a remote URL is a reliable App Store rejection (guideline 4.2), and Play + App Store are on the roadmap.
 - **One-off scripts in `functions/` rot.** They are written against the data model of the day and are not exercised by anything. `backfill-claims.js` still wrote pre-Phase-4 claims months later and would have stripped `cats` from every user. **Read one before running it**, and prefer a dry-run/`--apply` gate on anything that writes.
 - New user-facing strings in Catalan.
+- **The six staff screens are one paper design system** — Calendari (`.cal-`), Pla d'entrenament
+  (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`).
+  Each owns its prefix and its own sizes; the COLOURS are shared as the `--pp-*` custom properties
+  at the top of `css/style.css`. **Never write a paper colour as a literal** — `test/paper-palette.test.js`
+  fails on a loose hex and names the token. `--pp-*` is deliberately separate from `--primary`/`--text`,
+  which are the app chrome's palette. A new rule that borrows another page's class family must be
+  SCOPED under its own page root (`.pt-page .mn-*`, `.cv-page .conv-pos-circle`), or it repaints
+  every other surface that uses it.
+- **In tests, read the stylesheet with `readCss()` from `test/read-css.js`**, never `fs.readFileSync`.
+  It resolves `--pp-*` back to literals, so a colour assertion tests the colour and not the token
+  name — a token pointed at the wrong value would pass an assertion written against `var(--pp-tint)`.
+- **`app.js` is tested by slicing it.** `grab(from, to)` cuts a named block out of the source and
+  runs it through `new Function` over stubs. Two traps, each of which has already cost a round of
+  false confidence: a **stub that returns a constant** cannot answer a question about its input
+  (`() => false` for `catSpanOf`, `(u) => u` for `safeHttpUrl` — slice the real one in where it is
+  small and pure), and **jsdom swallows exceptions thrown inside listeners**, so a handler that dies
+  on a forgotten stub looks exactly like one that did nothing. Drain a window `error` collector in
+  any test that dispatches events.
+- **String-builder tests cannot see geometry.** Two real v227 defects — a dropdown laying its two
+  lines side by side, and a control with no rule on the shared baseline — were found by rendering
+  `*-preview.html` in headless Chrome with 46 assertions green. Regenerate the preview and look at
+  it before calling a redesign done.
 - **Be concise.** Answer what was asked and stop. The owner steers the big picture and too much detail buries it. Surface a detail only when it changes a decision — a real risk, a choice that needs making, or something that contradicts the request. Findings go in CONTEXT.md/HANDOFF.md, not in the reply.
 - Dates are ISO `YYYY-MM-DD` strings; Cloud Functions use `Europe/Madrid`.
 - Normalize line endings to LF before committing (`.gitattributes` enforces it, but verify diffs aren't CRLF-noisy).

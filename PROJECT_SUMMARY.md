@@ -1,6 +1,6 @@
 # EsquerrApp — Project Summary
 
-_Reference overview of what the app is and how it is put together. Per-change history lives in CONTEXT.md; current state and open items in HANDOFF.md; working rules for this repo in CLAUDE.md. Last reviewed 2026-08-03 (v45, post-Phase-5)._
+_Reference overview of what the app is and how it is put together. Per-change history lives in CONTEXT.md; current state and open items in HANDOFF.md; working rules for this repo in CLAUDE.md. Last reviewed 2026-09-04 (v229)._
 
 ## Overview
 
@@ -69,6 +69,8 @@ EsquerrApp/
 6. **Claims-only authorization.** `teamId`, `role` and `cats` are Firebase Auth custom claims set by the functions; rules read them directly with no per-request document lookups.
 
 7. **Firestore offline persistence** is enabled (`synchronizeTabs: true`), so the app works without internet.
+
+8. **The staff screens are one paper design system.** Six pages — Calendari (`.cal-`), Pla d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`) and Convocatòria (`.cv-`) — were rebuilt from Claude Design handoffs into a single idiom: one surface in horizontal bands, hairlines instead of cards, Oswald, no radius, no shadow, red used sparingly. Each page owns its own class prefix and its own sizes; only the **colours** are shared, as the `--pp-*` custom properties at the top of `css/style.css`. That separation is deliberate — the pages disagree on sizes on purpose (`.std-table` draws the medical glyph at 24px, `.cv-page` at 22px) and agreed on colour by accident until v228 made it structural. `--pp-*` is also a **second axis from `--primary`/`--text`**, which are the app chrome's palette; the paper pages were built not to inherit it.
 
 ---
 
@@ -216,15 +218,24 @@ Green (≥75, optimal ACWR, 0 risk flags), Red (<55, ACWR >1.5, or ≥2 flags), 
 
 ## Testing (`test/`, dev-only)
 
-**143 passing**: 42 unit + 87 rules + 14 functions.
+**~3080 passing**: 2845 unit + 164 rules + 71 functions. Run `npm run test:unit` for the current figure; the number here goes stale within a session or two.
 
 | Suite | Command | Needs |
 |---|---|---|
-| `shard.test.js`, `router.test.js` | `npm run test:unit` | Nothing — pure Node against an in-memory Firestore fake, ~1s |
-| `rules.test.js` | `npm run test:rules` | Firestore emulator (Java) |
-| `functions.test.js`, `wipe.test.js` | `npm run test:functions` | Firestore + Functions emulators |
+| ~68 unit files | `npm run test:unit` | Nothing — pure Node, ~10s |
+| `rules.test.js` | `npm run test:rules` | Firestore emulator (Java 21) |
+| `functions.test.js` and four others | `npm run test:functions` | Firestore + Functions emulators |
 
-Everything runs against the fake project `demo-esquerrapp` — no credentials, no production data. `app.js` has no automated coverage; changes there are verified by hand.
+Everything runs against the fake project `demo-esquerrapp` — no credentials, no production data.
+
+**`app.js` is covered, indirectly and on purpose.** It is a 34k-line IIFE that exports nothing, so a suite slices a named block out of the source with a `grab(from, to)` helper and runs it for real through `new Function` over stubs — see `test/partit.test.js` or `test/convocatoria.test.js`. Two rules that have each cost a round of false confidence:
+
+- **A stub that returns a constant cannot answer a question about its input.** A `() => false` or a `(u) => u` in place of a real gate makes the assertion above it unfalsifiable. Slice the real function in where it is small and pure.
+- **jsdom swallows an exception thrown inside a listener.** A handler that dies on a missing stub looks exactly like one that decided to do nothing; drain a window `error` collector in any test that dispatches events.
+
+**Read the stylesheet through `test/read-css.js`, never `fs.readFileSync`.** It resolves the `--pp-*` palette back to literals, so a colour assertion keeps testing the colour rather than the token name. `test/paper-palette.test.js` fails on any raw palette hex left loose in the stylesheet.
+
+`test/suite-registry.test.js` fails if a suite on disk is named by no npm script — a test nobody runs looks exactly like a test that passes.
 
 ---
 

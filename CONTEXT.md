@@ -8993,3 +8993,19 @@ Unit 2836 → **2845**; 9 tests, 8 mutants killed — the filter reaching the ac
 category-filtered again, either list ignoring the letter, an unassigned row being filtered out, a
 stale letter surviving Totes, catSpan going back to the pool, and the chips not being reset with the
 category. Version triple → v229.
+
+ⓘ **Session close (no version bump).** `build-convocatoria-preview.js` was passing 25 of the 26
+identifiers `renderConvocatoria` reads, and ran anyway: `convLetter` is
+`curCat && convTeamFilter !== 'all'`, and the preview's `getCurrentCategory` stub returns `''`, so
+the missing identifier was short-circuited before it was ever evaluated. Luck, not design — the
+first fixture given a category would have thrown a bare ReferenceError, and the builder's own
+assertions would have reported it as *"no player rows rendered"*. Now passed explicitly, with a
+comment saying why it looks unnecessary.
+
+`PROJECT_SUMMARY.md` was reviewed for the first time since v45. Its Testing section claimed **143
+passing** against a real ~3080, and *"app.js has no automated coverage"* — which stopped being true
+around v182. Both replaced, along with the `grab()` convention, the two stub traps this month has
+produced (a constant-returning stub, jsdom swallowing listener exceptions) and the `read-css.js`
+rule. The paper design system is now design decision 8 rather than something only CONTEXT.md knows.
+`CLAUDE.md` gained the same four rules in short form, because that is the file a new session
+actually reads.

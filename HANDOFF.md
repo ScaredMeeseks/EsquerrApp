@@ -60,7 +60,7 @@ It was the last staff screen in the old idiom and sat one click from the redesig
 **What shipped.** `renderConvocatoria` is `cv-` builders over one paper surface in bands: title,
 three controls (fixture · citation · kit), two lists, Pissarres, vídeos, footer. `bindConvocatoria`
 is rewritten around one `place()`. New `test/convocatoria.test.js` (74 tests, 14 driving the real
-binder in jsdom) and `scripts/build-convocatoria-preview.js`. Unit 2754 → 2828.
+binder in jsdom) and `scripts/build-convocatoria-preview.js`. Unit 2754 → 2845 across v227–v229.
 
 **The bug inside the repaint.** `fa_convocatoria[matchId]` IS the acta order, and the old render
 sorted it away with `posRank` on the way out — so **dragging a player between two others did nothing,
@@ -70,13 +70,19 @@ every time, and had never worked**. Anything that reorders the Convocats list mu
 **Two gaps filled**: a `+ Vincula una pissarra` picker (boards could only be attached from the
 tactics editor before), and `safeHttpUrl` on the video rows, which had no validation at all.
 
-**Four things the owner asked for before it shipped**, all detailed in CONTEXT.md: the fitness
-glyph and readiness score are back in the row (through the shared `playerStatusHtml`, so this screen
-and New Training cannot disagree); **no circle behind a crest** in the fixture picker — the real
-badge is an `<img>` and the monogram's ground is squared off, the same lesson as v226; the picker
-offers **only the visible/selected categories**, which is what `getCurrentCategory()`'s `''` has
-always meant and what `!curCat || …` never implemented; and fixtures are sorted **soonest first**,
-which also makes the default selection the next one.
+**Five things the owner asked for on review**, all detailed in CONTEXT.md: the fitness glyph and
+readiness score are back in the row (through the shared `playerStatusHtml`, so this screen and New
+Training cannot disagree); **no circle behind a crest** in the fixture picker — the real badge is an
+`<img>` and the monogram's ground is squared off, the same lesson as v226; the picker offers **only
+the visible/selected categories**, which is what `getCurrentCategory()`'s `''` has always meant and
+what `!curCat || …` never implemented; fixtures are sorted **soonest first**, which also makes the
+default selection the next one; and the category bar carries the **squad letters** (v229).
+
+⚠ **The three review rounds all found things 46–74 green assertions could not.** Two were geometry
+(a dropdown laying its two lines side by side, a control with no rule on the shared baseline),
+found by screenshotting the preview; three were judgement — a column left out because it looked
+like a duplicate, a filter that meant less than its own doc comment said, an arbitrary sort order
+nobody had ever named. **Regenerate the preview and look at it before calling a redesign done.**
 
 ### ⚠ Five departures from the handoff, all deliberate
 
@@ -200,8 +206,11 @@ a listener that was never attached.
    coach-entered events. The referee index does store the federation's `gh`/`ga` per acta, so their
    result is already on the device if that decision is ever taken.
 3. **Neither week strip re-renders on a timer.** Pre-existing.
-4. **The cross-category call-up** — within a category it works; across them the picker filters to the
-   coach's category and a player never downloads the other shard.
+4. **The cross-category call-up** — still open, but narrower since v229. A player already convoked
+   from another category now STAYS on the acta whatever the filter says, and is badged on both
+   sides. What remains is the way in: the picker offers only the visible categories, and a coach
+   never downloads the other category's shard, so he cannot convoke someone he cannot see. That is
+   a data-scope problem (`cats` claim, `DB.setScope`), not a UI one.
 5. **Fill in `privacy.html`** — blocks both stores, no code dependency.
 6. **The APK** — phones are on v43-era. Set `clubs/…​.minAppVersion` only once a current APK is
    actually installed.
