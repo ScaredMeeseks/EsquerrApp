@@ -25,9 +25,9 @@ const fs = require('fs');
 const path = require('path');
 
 const U = require(path.join(__dirname, '..', 'js', 'utils.js'));
+const {readCss} = require('./read-css');
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-const css = fs.readFileSync(
-    path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const css = readCss();
 
 const P = (category) => ({id: 'p', name: 'X', category: category});
 

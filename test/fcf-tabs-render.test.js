@@ -19,6 +19,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const F = require(path.join(root, 'js', 'utils.js'));
+const {readCss} = require('./read-css');
 
 const SANCIONS = JSON.parse(fs.readFileSync(
     path.join(__dirname, 'fixtures', 'fcf-sancions.json'), 'utf8'));
@@ -499,7 +500,7 @@ describe('the markup these tabs emit is actually styled', () => {
      A renderer test cannot catch that: the HTML was perfect. So this checks
      the other half — every class the tabs emit for LAYOUT has a rule in the
      stylesheet. */
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const css = readCss();
 
   const NEEDS_STYLE = [
     'sc-dd', 'sc-dd-btn', 'sc-dd-panel', 'sc-dd-opt', 'sc-dd-tools',

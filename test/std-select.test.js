@@ -22,9 +22,10 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const {readCss} = require('./read-css');
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const css = readCss();
 
 function grab(from, to) {
   const i = src.indexOf(from);

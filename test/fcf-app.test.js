@@ -22,6 +22,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const U = require(path.join(root, 'js', 'utils.js'));
+const {readCss} = require('./read-css');
 
 function grab(src, from, to, label) {
   const i = src.indexOf(from);
@@ -259,7 +260,7 @@ describe('our own club, in capitals like every rival', () => {
   });
 
   it('the stylesheet is what does it', () => {
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.md-our-club\s*\{[^}]*text-transform:\s*uppercase/.test(css),
         '.md-our-club does not uppercase anything');
   });

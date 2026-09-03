@@ -14,11 +14,12 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {readCss} = require('./read-css');
 
 const root = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const swSrc = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-const cssSrc = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const cssSrc = readCss();
 
 function grab(from, to) {
   const i = appSrc.indexOf(from);

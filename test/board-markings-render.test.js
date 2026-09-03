@@ -17,6 +17,7 @@ const ROOT = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 const BG = require('../js/board-geom.js');
 const BS = require('../js/board-state.js');
+const {readCss} = require('./read-css');
 
 function grab(src, from, to, label) {
   const i = src.indexOf(from);
@@ -329,7 +330,7 @@ describe('field looks', () => {
   });
 
   it('the stylesheet consumes the variables with a green fallback', () => {
-    const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/background:var\(--tb-turf, #2e7d32\)/.test(css), 'turf not themed');
     assert.ok(/rgba\(var\(--tb-line-rgb, 255,255,255\), \.55\)/.test(css),
         'the halfway line is not themed');

@@ -31,10 +31,11 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {readCss} = require('./read-css');
 
 const ROOT = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
-const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+const css = readCss();
 const bare = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const cssBare = css.replace(/\/\*[\s\S]*?\*\//g, '');
 

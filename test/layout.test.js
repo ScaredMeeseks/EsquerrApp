@@ -25,8 +25,9 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {readCss} = require('./read-css');
 
-const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const css = readCss();
 const appSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
 /** The declarations of one rule, by its selector. */

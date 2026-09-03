@@ -19,10 +19,11 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {readCss} = require('./read-css');
 
 const ROOT = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
-const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+const css = readCss();
 /* Comments discuss the very ids and classes under test. */
 const bare = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 /* And the stylesheet's comments do the same, at length. This one was

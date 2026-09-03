@@ -57,6 +57,57 @@ a:hover { text-decoration: underline; }
 .view { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
 .view[hidden] { display: none !important; }
 
+
+/* ===== The paper palette =====
+
+   The six redesigned pages — Calendari, Pla d'entrenament, Plantilla,
+   Registracions, Partit and Convocatòria — are one design system, and
+   until v228 each of them carried its own copy of these colours as raw
+   hexes. 552 literals across six blocks: a palette change meant finding
+   every copy, and a seventh page meant copying them again. Every paper
+   block's own comment already promised this — "every colour is a literal
+   so a later dark theme can map it" — and this is the mapping.
+
+   ⚠ DELIBERATELY SEPARATE FROM --primary/--text ABOVE, which hold two of
+   the same values today. Those are the app CHROME's palette — the
+   sidebar, the cards, the auth screens — and the paper pages were built
+   not to inherit it. Collapsing the two axes is a decision about whether
+   the app has one theme or two, not a tidy-up; make it deliberately or
+   not at all.
+
+   Sizes are NOT here. .std-table draws the medical glyph at 24px and
+   .cv-page at 22px, .pl-ready scores at 14px and .cv-page at 13px, and
+   .nt-pick-modal strips the pill entirely. Those differences are the
+   pages disagreeing on purpose; only the colours were ever one thing. */
+:root {
+  --pp-paper: #FBFAF7;
+  --pp-desk: #E9E6E0;
+  --pp-ink: #2D2926;
+  --pp-ink-2: #6B645E;
+  --pp-ink-3: #99928B;
+  --pp-rule: #E3DFD8;
+  --pp-rule-2: #EDEAE4;
+  --pp-rule-3: #DED9D1;
+  --pp-rule-4: #C9C3BB;
+  --pp-red: #BD162C;
+  --pp-red-dark: #9E1224;
+  --pp-green: #3F6B44;
+  --pp-amber: #B07B00;
+  --pp-tint: #F6F2E9;
+  --pp-ok: #5C8F5E;
+  --pp-warn: #D39A2F;
+  --pp-bad: #C0564C;
+  --pp-med-fit-bg: #DCE9DC;
+  /* One value, two roles. The alias keeps the medical trio reading as a
+     trio without asserting that a fit glyph and a headline share a colour
+     by anything but coincidence. */
+  --pp-med-fit-ink: var(--pp-green);
+  --pp-med-doubt-bg: #F6E4C4;
+  --pp-med-doubt-ink: #9A6614;
+  --pp-med-inj-bg: #F2D2CE;
+  --pp-med-inj-ink: #A63A32;
+}
+
 /* ===== Buttons ===== */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -71,7 +122,7 @@ a:hover { text-decoration: underline; }
 .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
 .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 .btn-danger { background: var(--danger); color: #fff; }
-.btn-accent { background: var(--accent); color: #2D2926; }
+.btn-accent { background: var(--accent); color: var(--pp-ink); }
 .btn-accent:hover { background: #f0c830; }
 .btn-orange { background: #fb8c00; color: #fff; }
 .btn-orange:hover { background: #e65100; }
@@ -98,7 +149,7 @@ a:hover { text-decoration: underline; }
   display: flex; align-items: center; justify-content: center;
   flex: 1 0 auto; padding: 2rem;
   min-height: 100vh; min-height: 100dvh;
-  background: linear-gradient(135deg, #2D2926 0%, #BD162C 100%);
+  background: linear-gradient(135deg, var(--pp-ink) 0%, var(--pp-red) 100%);
 }
 .auth-card {
   background: var(--card);
@@ -146,7 +197,7 @@ a:hover { text-decoration: underline; }
 .roles-container {
   flex: 1; display: flex; flex-direction: column; align-items: center;
   padding: 3rem 2rem;
-  background: linear-gradient(135deg, #2D2926 0%, #BD162C 100%);
+  background: linear-gradient(135deg, var(--pp-ink) 0%, var(--pp-red) 100%);
 }
 .roles-header { text-align: center; color: #fff; margin-bottom: 2.5rem; }
 .roles-header h1 { font-size: 2rem; }
@@ -204,7 +255,7 @@ a:hover { text-decoration: underline; }
 .nav-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
 .nav-badges { display: none; }
 .nav-badge {
-  background: var(--accent); color: #2D2926;
+  background: var(--accent); color: var(--pp-ink);
   padding: .15rem .6rem; border-radius: 20px;
   font-size: .75rem; font-weight: 700; text-transform: uppercase;
 }
@@ -369,7 +420,7 @@ a:hover { text-decoration: underline; }
    BELOW #push-toast-container (99999), which stays on top of everything.
    Anyone adding a new overlay: stay under 10050 or tooltips vanish. */
 .ua-tooltip {
-  position:fixed; background:#2D2926; color:#fff;
+  position:fixed; background:var(--pp-ink); color:#fff;
   padding:.5rem .85rem; border-radius:8px;
   font-size:.8rem; font-weight:300; line-height:1.5;
   white-space:nowrap; z-index:10050;
@@ -381,7 +432,7 @@ a:hover { text-decoration: underline; }
 .ua-tooltip::after {
   content:''; position:absolute; top:100%; left:50%;
   transform:translateX(-50%);
-  border:6px solid transparent; border-top-color:#2D2926;
+  border:6px solid transparent; border-top-color:var(--pp-ink);
 }
 
 .card {
@@ -1843,23 +1894,23 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    negates that. The `:first-child` rule is why the top is separate — the
    update and push banners render into the same container ahead of this, and
    a blanket negative top margin would slide the page over them. */
-.std-page { margin:0 -2rem -2rem; background:#FBFAF7; }
+.std-page { margin:0 -2rem -2rem; background:var(--pp-paper); }
 .std-page:first-child { margin-top:-2rem; }
 
 .std-topbar {
   display:flex; align-items:center; justify-content:space-between;
-  padding:14px 36px; border-bottom:1px solid #E3DFD8;
+  padding:14px 36px; border-bottom:1px solid var(--pp-rule);
 }
 .std-topbar-r { display:flex; align-items:center; gap:16px; }
 .std-back {
   background:none; border:none; padding:0; cursor:pointer;
-  font-size:13px; color:#6B645E; font-family:inherit;
+  font-size:13px; color:var(--pp-ink-2); font-family:inherit;
 }
-.std-back:hover { color:#2D2926; }
+.std-back:hover { color:var(--pp-ink); }
 
 .std-eyebrow {
   font-size:11px; font-weight:500; letter-spacing:.16em;
-  text-transform:uppercase; color:#99928B;
+  text-transform:uppercase; color:var(--pp-ink-3);
 }
 .std-eyebrow-sm { font-size:10px; letter-spacing:.14em; }
 
@@ -1870,12 +1921,12 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-main { flex:2 1 0; min-width:0; padding:36px 32px 56px; }
 .std-rail {
   flex:1 1 0; min-width:360px; align-self:stretch; background:#FFFFFF;
-  border-left:1px solid #E3DFD8; padding:36px 32px 56px;
+  border-left:1px solid var(--pp-rule); padding:36px 32px 56px;
 }
 
 .std-hero {
   display:flex; flex-direction:column; gap:8px;
-  padding-bottom:26px; border-bottom:1px solid #E3DFD8;
+  padding-bottom:26px; border-bottom:1px solid var(--pp-rule);
 }
 .std-hero-row {
   display:flex; align-items:center; justify-content:space-between;
@@ -1883,15 +1934,15 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .std-title {
   margin:0; font-size:38px; font-weight:400; line-height:1.1;
-  letter-spacing:-.01em; color:#2D2926;
+  letter-spacing:-.01em; color:var(--pp-ink);
 }
-.std-meta { font-size:14px; color:#6B645E; }
+.std-meta { font-size:14px; color:var(--pp-ink-2); }
 
 /* The forecast, beside the title. Quiet on purpose: it is context for the
    session, not a stat — a coach glances at it and moves on. */
 .std-wx {
   display:flex; align-items:center; gap:16px; flex:none;
-  font-size:14px; color:#6B645E; white-space:nowrap;
+  font-size:14px; color:var(--pp-ink-2); white-space:nowrap;
   /* The rain line wraps onto its own row beneath the strip rather than
      stretching the hero: `flex-wrap` plus a full-width child, so the icon,
      wind and temperature keep their single line at any width. */
@@ -1899,7 +1950,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .std-wx-b { display:flex; align-items:center; gap:7px; }
 .std-wx-i { font-size:26px; line-height:1; }
-.std-wx-t { font-size:20px; color:#2D2926; font-variant-numeric:tabular-nums; }
+.std-wx-t { font-size:20px; color:var(--pp-ink); font-variant-numeric:tabular-nums; }
 /* Quieter still than the strip: a warning a coach should notice without it
    competing with the session title. Blue rather than red — rain is a
    condition to plan around, not an error. */
@@ -1909,7 +1960,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 /* Said instead of the strip, more than 3 days out. Deliberately plain: it is
    the absence of a forecast, and dressing it up reads as one. */
-.std-wx-soon { flex:none; font-size:12.5px; color:#99928B; }
+.std-wx-soon { flex:none; font-size:12.5px; color:var(--pp-ink-3); }
 
 /* A schedule link with no coordinates in it. Amber, not red: the link works
    perfectly as a link — it just cannot produce a forecast, which is a thing
@@ -1928,32 +1979,32 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 
 /* A place with a map behind it. Underlined on hover only — in the meta line
    a permanently underlined venue competes with the title above it. */
-.std-place { color:inherit; text-decoration:none; border-bottom:1px dotted #99928B; }
-.std-place:hover { color:#BD162C; border-bottom-color:#BD162C; }
+.std-place { color:inherit; text-decoration:none; border-bottom:1px dotted var(--pp-ink-3); }
+.std-place:hover { color:var(--pp-red); border-bottom-color:var(--pp-red); }
 
 .std-stats {
   display:flex; gap:56px; flex-wrap:wrap;
-  padding:22px 0; border-bottom:1px solid #E3DFD8;
+  padding:22px 0; border-bottom:1px solid var(--pp-rule);
 }
 .std-stat { display:flex; flex-direction:column; gap:3px; }
 .std-stat-v { font-size:24px; font-weight:400; line-height:1.2; }
-.std-stat-n { font-size:14px; color:#6B645E; margin-left:.35em; }
-.std-stat-hot { color:#BD162C; }
+.std-stat-n { font-size:14px; color:var(--pp-ink-2); margin-left:.35em; }
+.std-stat-hot { color:var(--pp-red); }
 /* The RPE picker is a real select rendered as text — no box, no rule. */
 .std-rpe {
   font-family:inherit; font-size:24px; font-weight:400; line-height:1.2;
-  color:#2D2926; background:none; border:none; padding:0; cursor:pointer;
+  color:var(--pp-ink); background:none; border:none; padding:0; cursor:pointer;
 }
 
 .std-attbar {
   display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  padding:18px 0; border-bottom:1px solid #E3DFD8;
+  padding:18px 0; border-bottom:1px solid var(--pp-rule);
 }
 .std-bar { display:flex; height:6px; flex:1; min-width:160px; overflow:hidden; }
 .std-bar span { display:block; height:100%; }
 .std-bar-key {
   display:flex; gap:14px; flex-wrap:wrap;
-  font-size:12px; color:#6B645E; white-space:nowrap;
+  font-size:12px; color:var(--pp-ink-2); white-space:nowrap;
 }
 .std-key { display:flex; align-items:center; gap:5px; }
 .std-key-sq { width:7px; height:7px; flex:none; }
@@ -1962,42 +2013,42 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   display:flex; align-items:baseline; justify-content:space-between;
   gap:16px; padding:26px 0 10px;
 }
-.std-sec-head-strong { padding:0 0 14px; border-bottom:1px solid #2D2926; }
+.std-sec-head-strong { padding:0 0 14px; border-bottom:1px solid var(--pp-ink); }
 .std-sec-r { display:flex; align-items:center; gap:16px; font-size:12px; }
-.std-sec-note { font-size:12px; color:#99928B; }
+.std-sec-note { font-size:12px; color:var(--pp-ink-3); }
 .std-team-btn {
   background:none; border:none; padding:0 0 1px; cursor:pointer;
-  font-family:inherit; font-size:12px; color:#6B645E;
+  font-family:inherit; font-size:12px; color:var(--pp-ink-2);
 }
-.std-team-btn-on { color:#2D2926; border-bottom:1px solid #2D2926; }
+.std-team-btn-on { color:var(--pp-ink); border-bottom:1px solid var(--pp-ink); }
 
 /* ── The attendance table ── */
 .std-table { width:100%; border-collapse:collapse; font-size:14px; }
 .std-table th {
   text-align:left; font-size:10px; font-weight:500; letter-spacing:.12em;
-  text-transform:uppercase; color:#99928B; padding:0 8px 8px;
-  border-bottom:1px solid #2D2926; white-space:nowrap;
+  text-transform:uppercase; color:var(--pp-ink-3); padding:0 8px 8px;
+  border-bottom:1px solid var(--pp-ink); white-space:nowrap;
 }
-.std-table td { padding:9px 8px; border-bottom:1px solid #EDEAE4; }
+.std-table td { padding:9px 8px; border-bottom:1px solid var(--pp-rule-2); }
 .std-table th:first-child, .std-table td:first-child { padding-left:0; }
 .std-table th:last-child, .std-table td:last-child { padding-right:0; }
 .std-table th.c, .std-table td.c { text-align:center; }
 .std-table th.r, .std-table td.r { text-align:right; }
 .std-td-name { white-space:nowrap; }
 .std-team-tag {
-  font-size:10px; color:#99928B; letter-spacing:.08em; margin-left:.4em;
+  font-size:10px; color:var(--pp-ink-3); letter-spacing:.08em; margin-left:.4em;
 }
 .std-num { font-variant-numeric:tabular-nums; font-weight:600; font-size:13px; }
-.std-said { color:#6B645E; }
+.std-said { color:var(--pp-ink-2); }
 /* The medical glyph reads bolder here than on the roster: in a page made of
    hairlines it is the one thing a coach scans the column for. */
 .std-table .roster-status-icon {
   display:inline-flex; align-items:center; justify-content:center;
   width:24px; height:24px; border-radius:50%; font-size:13px; font-weight:700;
 }
-.std-table .roster-status-fit { background:#DCE9DC; color:#3F6B44; }
-.std-table .roster-status-doubt { background:#F6E4C4; color:#9A6614; }
-.std-table .roster-status-injured { background:#F2D2CE; color:#A63A32; }
+.std-table .roster-status-fit { background:var(--pp-med-fit-bg); color:var(--pp-med-fit-ink); }
+.std-table .roster-status-doubt { background:var(--pp-med-doubt-bg); color:var(--pp-med-doubt-ink); }
+.std-table .roster-status-injured { background:var(--pp-med-inj-bg); color:var(--pp-med-inj-ink); }
 /* ── stdSelect: a dropdown that is actually ours ──
    A native <select> can be styled shut but NOT open — the popup list is drawn
    by the operating system and ignores every rule here. Both dropdowns on this
@@ -2014,13 +2065,13 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-sel-menu {
   display:none; position:absolute; z-index:40; right:0; top:calc(100% + 4px);
   min-width:150px; max-height:280px; overflow-y:auto;
-  background:#FFFFFF; border:1px solid #2D2926;
+  background:#FFFFFF; border:1px solid var(--pp-ink);
 }
 .std-sel-open .std-sel-menu { display:block; }
 .std-sel-o {
   display:block; width:100%; text-align:left; background:none; border:none;
-  border-bottom:1px solid #EDEAE4; cursor:pointer; font-family:inherit;
-  font-size:14px; color:#2D2926; padding:8px 12px; white-space:nowrap;
+  border-bottom:1px solid var(--pp-rule-2); cursor:pointer; font-family:inherit;
+  font-size:14px; color:var(--pp-ink); padding:8px 12px; white-space:nowrap;
 }
 .std-sel-o:last-child { border-bottom:none; }
 .std-sel-o:hover { background:#F2F0EB; }
@@ -2049,13 +2100,13 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 /* The Registracions vocabulary: 13px on a hairline, no box.
    (.std-sel-plain is the stat row's 24px, .std-sel-pill the availability pill.) */
 .std-sel-flat .std-sel-t {
-  font-size:13px; line-height:1.4; color:#2D2926; padding:3px 2px;
-  border:none; border-bottom:1px solid #C9C3BB; border-radius:0;
+  font-size:13px; line-height:1.4; color:var(--pp-ink); padding:3px 2px;
+  border:none; border-bottom:1px solid var(--pp-rule-4); border-radius:0;
   white-space:nowrap; transition:border-color .12s ease;
 }
 .std-sel-flat .std-sel-t:hover,
-.std-sel-flat.std-sel-open .std-sel-t { border-bottom-color:#2D2926; }
-.std-sel-flat .std-sel-c { font-size:8px; color:#6B645E; }
+.std-sel-flat.std-sel-open .std-sel-t { border-bottom-color:var(--pp-ink); }
+.std-sel-flat .std-sel-c { font-size:8px; color:var(--pp-ink-2); }
 .std-sel-flat .std-sel-menu { min-width:0; }
 .std-sel-flat .std-sel-o { font-size:13px; padding:6px 12px; }
 
@@ -2065,28 +2116,28 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   font-size:12px; font-weight:600; line-height:1;
   padding:.35rem .6rem; border-radius:999px; color:#fff;
 }
-.std-sel-pill .std-sel-t.avail-yes     { background:#5C8F5E; border-color:#4A7A4C; }
-.std-sel-pill .std-sel-t.avail-late    { background:#D39A2F; border-color:#B07F1F; }
+.std-sel-pill .std-sel-t.avail-yes     { background:var(--pp-ok); border-color:#4A7A4C; }
+.std-sel-pill .std-sel-t.avail-late    { background:var(--pp-warn); border-color:#B07F1F; }
 .std-sel-pill .std-sel-t.avail-no      { background:#8A857F; border-color:#726D67; }
-.std-sel-pill .std-sel-t.avail-injured { background:#C0564C; border-color:#A2443B; }
+.std-sel-pill .std-sel-t.avail-injured { background:var(--pp-bad); border-color:#A2443B; }
 .std-sel-pill .std-sel-t.avail-na      { background:#D8D4CE; border-color:#C2BDB6; color:#5C5652; }
 /* No answer and no staff call. Without this the trigger inherits `color:#fff`
    with no background — white on white, an apparently empty cell holding a
    working control. */
 .std-sel-pill .std-sel-t.avail-unset {
-  background:#FFFFFF; border-color:#E3DFD8; color:#6B645E;
+  background:#FFFFFF; border-color:var(--pp-rule); color:var(--pp-ink-2);
 }
 
 /* The planned intensity: the stat row's own 24px type, no box at all. */
 .std-sel-plain .std-sel-t {
-  font-size:24px; font-weight:400; line-height:1.2; padding:0; color:#2D2926;
+  font-size:24px; font-weight:400; line-height:1.2; padding:0; color:var(--pp-ink);
 }
 .std-sel-plain .std-sel-c { font-size:12px; }
 .std-sel-plain .std-sel-menu { left:0; right:auto; }
 .std-drop-cell { width:24px; }
 .std-drop {
   background:none; border:none; cursor:pointer; padding:0 2px;
-  font-size:15px; line-height:1; color:#C0564C; opacity:0;
+  font-size:15px; line-height:1; color:var(--pp-bad); opacity:0;
   transition:opacity .12s;
 }
 .std-table tr:hover .std-drop, .std-drop:focus { opacity:.75; }
@@ -2095,33 +2146,33 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 /* ── Shared text-button and stepper treatments ── */
 .stp-a {
   background:none; border:none; padding:0; cursor:pointer;
-  font-family:inherit; font-size:13px; color:#BD162C;
+  font-family:inherit; font-size:13px; color:var(--pp-red);
 }
 .stp-a:hover { text-decoration:underline; }
-.stp-a-mute { color:#6B645E; }
+.stp-a-mute { color:var(--pp-ink-2); }
 .stp-a-sm { font-size:12px; }
 /* Destructive, so quiet until you go for it. `.stp-a` is already the club
    red, which would make Esborra shout at least as loud as Edita beside it —
    the one action in the bar you do not want a coach reaching for first. */
-.stp-a-danger { color:#6B645E; }
-.stp-a-danger:hover { color:#BD162C; }
+.stp-a-danger { color:var(--pp-ink-2); }
+.stp-a-danger:hover { color:var(--pp-red); }
 .std-btn {
   display:inline-flex; align-items:center; gap:8px; padding:7px 14px;
-  border:1px solid #2D2926; background:none; cursor:pointer;
-  font-family:inherit; font-size:13px; color:#2D2926; transition:all .12s;
+  border:1px solid var(--pp-ink); background:none; cursor:pointer;
+  font-family:inherit; font-size:13px; color:var(--pp-ink); transition:all .12s;
 }
-.std-btn:hover { background:#2D2926; color:#FBFAF7; }
+.std-btn:hover { background:var(--pp-ink); color:var(--pp-paper); }
 .std-step { display:flex; align-items:center; gap:9px; }
 .std-step-b {
   width:22px; height:22px; display:inline-flex; align-items:center;
-  justify-content:center; border:1px solid #E3DFD8; background:none;
-  color:#6B645E; cursor:pointer; font-family:inherit; font-size:14px;
+  justify-content:center; border:1px solid var(--pp-rule); background:none;
+  color:var(--pp-ink-2); cursor:pointer; font-family:inherit; font-size:14px;
   line-height:1; padding:0;
 }
-.std-step-b:hover { border-color:#2D2926; color:#2D2926; }
+.std-step-b:hover { border-color:var(--pp-ink); color:var(--pp-ink); }
 .std-step-n {
   font-size:14px; min-width:14px; text-align:center;
-  font-variant-numeric:tabular-nums; color:#2D2926;
+  font-variant-numeric:tabular-nums; color:var(--pp-ink);
 }
 
 /* ── Team generation ── */
@@ -2130,29 +2181,29 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .std-tg-ctl {
   display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-  font-size:12px; color:#6B645E;
+  font-size:12px; color:var(--pp-ink-2);
 }
-.std-tg-lbl { font-size:12px; color:#6B645E; }
+.std-tg-lbl { font-size:12px; color:var(--pp-ink-2); }
 .std-tg-opts { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .std-tg-gk {
   display:flex; align-items:center; gap:6px;
-  font-size:12px; color:#6B645E; cursor:pointer; white-space:nowrap;
+  font-size:12px; color:var(--pp-ink-2); cursor:pointer; white-space:nowrap;
 }
 .std-tg-cols {
   display:flex; gap:0; flex-wrap:wrap;
-  border-top:1px solid #2D2926; margin-top:18px;
+  border-top:1px solid var(--pp-ink); margin-top:18px;
 }
 .std-tg-col { flex:1 1 160px; min-width:0; padding:14px 18px 0 0; }
 .std-tg-head { display:flex; align-items:center; gap:8px; padding-bottom:8px; }
 .std-tg-name {
-  font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#6B645E;
+  font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--pp-ink-2);
 }
-.std-tg-count { font-size:12px; color:#99928B; margin-left:auto; }
+.std-tg-count { font-size:12px; color:var(--pp-ink-3); margin-left:auto; }
 .std-tg-row {
   display:flex; align-items:center; gap:8px;
-  font-size:14px; padding:4px 0; border-bottom:1px solid #EDEAE4;
+  font-size:14px; padding:4px 0; border-bottom:1px solid var(--pp-rule-2);
 }
-.std-tg-pos { font-size:11px; color:#99928B; }
+.std-tg-pos { font-size:11px; color:var(--pp-ink-3); }
 /* The roster's own discs, a size down: at 26px they would set the row height
    and the column would read as a list of badges with names attached. */
 .std-tg-row .pos-circle, .stp-big-row .pos-circle {
@@ -2163,25 +2214,25 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .std-chip {
   font-size:13px; padding:5px 11px; cursor:pointer; font-family:inherit;
-  border:1px solid #E3DFD8; background:none; color:#2D2926;
+  border:1px solid var(--pp-rule); background:none; color:var(--pp-ink);
 }
-.std-chip:hover { border-color:#2D2926; }
-.std-chip-on { background:#2D2926; color:#FBFAF7; border-color:#2D2926; }
+.std-chip:hover { border-color:var(--pp-ink); }
+.std-chip-on { background:var(--pp-ink); color:var(--pp-paper); border-color:var(--pp-ink); }
 .std-chip-sq { min-width:30px; text-align:center; }
 /* An exercise that already holds a split. Not offered again: re-assigning
    would silently overwrite a decision made earlier, and the way back is the
    × on the exercise, where the coach can see what he is discarding. */
 .std-chip-taken {
-  color:#99928B; border-style:dashed; cursor:not-allowed;
+  color:var(--pp-ink-3); border-style:dashed; cursor:not-allowed;
 }
-.std-chip-taken:hover { border-color:#E3DFD8; }
+.std-chip-taken:hover { border-color:var(--pp-rule); }
 
 /* ── The plan rail ── */
 .std-plan-panel { display:block; }
 .stp-flow { display:flex; flex-direction:column; }
-.stp-empty { font-size:13px; color:#99928B; padding:16px 0; }
+.stp-empty { font-size:13px; color:var(--pp-ink-3); padding:16px 0; }
 .stp-block {
-  display:flex; gap:16px; padding:16px 0 14px; border-bottom:1px solid #EDEAE4;
+  display:flex; gap:16px; padding:16px 0 14px; border-bottom:1px solid var(--pp-rule-2);
 }
 /* The parallel block's edge rule is bled out to the rail's own padding, so
    the whole row reads as one group rather than an indented paragraph. This
@@ -2192,38 +2243,38 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .stp-time { width:52px; flex:none; display:flex; flex-direction:column; gap:2px; }
 .stp-at { font-size:15px; font-variant-numeric:tabular-nums; }
-.stp-mins { font-size:11px; color:#99928B; }
+.stp-mins { font-size:11px; color:var(--pp-ink-3); }
 .stp-mins-in {
-  width:44px; font-family:inherit; font-size:11px; color:#99928B;
-  background:none; border:none; border-bottom:1px dotted #E3DFD8;
+  width:44px; font-family:inherit; font-size:11px; color:var(--pp-ink-3);
+  background:none; border:none; border-bottom:1px dotted var(--pp-rule);
   padding:0; -moz-appearance:textfield;
 }
-.stp-mins-in:focus { outline:none; border-bottom-color:#BD162C; color:#2D2926; }
+.stp-mins-in:focus { outline:none; border-bottom-color:var(--pp-red); color:var(--pp-ink); }
 .stp-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
 .stp-eyebrow {
   font-size:10px; font-weight:500; letter-spacing:.14em;
-  text-transform:uppercase; color:#99928B;
+  text-transform:uppercase; color:var(--pp-ink-3);
 }
 .stp-lane { display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
 .stp-ex { display:flex; flex-direction:column; gap:3px; width:100%; }
 .stp-ex-head { display:flex; align-items:flex-start; gap:6px; }
 .stp-ex-title {
-  font-size:15px; text-align:left; color:#2D2926;
+  font-size:15px; text-align:left; color:var(--pp-ink);
   display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
 }
 .stp-ex-open {
-  background:none; border:none; border-bottom:1px solid #E3DFD8;
+  background:none; border:none; border-bottom:1px solid var(--pp-rule);
   padding:0 0 1px; cursor:pointer; font-family:inherit;
 }
-.stp-ex-open:hover { color:#BD162C; border-bottom-color:#BD162C; }
-.stp-ex-open:hover .stp-ex-mark { color:#BD162C; }
-.stp-ex-mark { font-size:11px; color:#99928B; }
-.stp-lane-tag { color:#99928B; font-size:12px; letter-spacing:.1em; }
-.stp-ex-note { font-size:12px; color:#6B645E; }
-.stp-ex-desc { font-size:12px; color:#99928B; overflow-wrap:anywhere; }
+.stp-ex-open:hover { color:var(--pp-red); border-bottom-color:var(--pp-red); }
+.stp-ex-open:hover .stp-ex-mark { color:var(--pp-red); }
+.stp-ex-mark { font-size:11px; color:var(--pp-ink-3); }
+.stp-lane-tag { color:var(--pp-ink-3); font-size:12px; letter-spacing:.1em; }
+.stp-ex-note { font-size:12px; color:var(--pp-ink-2); }
+.stp-ex-desc { font-size:12px; color:var(--pp-ink-3); overflow-wrap:anywhere; }
 .stp-ex-del {
   background:none; border:none; cursor:pointer; padding:0 2px;
-  font-size:14px; line-height:1; color:#C0564C; opacity:0; margin-left:auto;
+  font-size:14px; line-height:1; color:var(--pp-bad); opacity:0; margin-left:auto;
   transition:opacity .12s;
 }
 .stp-ex:hover .stp-ex-del { opacity:.7; }
@@ -2234,14 +2285,14 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-board-acts .stp-a { font-size:12px; }
 .stp-team-lines { position:relative; padding-right:18px; }
 .stp-team-line {
-  display:flex; align-items:flex-start; gap:8px; font-size:12px; color:#2D2926;
+  display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--pp-ink);
 }
 .stp-team-line span:last-child { line-height:1.45; }
 /* The only way back from an assignment, sitting on the thing it removes. */
 .stp-team-x {
   position:absolute; top:-2px; right:0;
   background:none; border:none; cursor:pointer; padding:0 2px;
-  font-size:14px; line-height:1; color:#C0564C; opacity:.55;
+  font-size:14px; line-height:1; color:var(--pp-bad); opacity:.55;
 }
 .stp-team-x:hover { opacity:1; }
 .stp-dot, .stp-dot-sm {
@@ -2254,7 +2305,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:14px 0 0;
 }
 .stp-ends {
-  margin-left:auto; font-size:12px; color:#99928B;
+  margin-left:auto; font-size:12px; color:var(--pp-ink-3);
   font-variant-numeric:tabular-nums;
 }
 
@@ -2272,7 +2323,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-overlay-card {
   width:min(1000px, 94vw); max-height:calc(100vh - 112px);
   display:flex; flex-direction:column;
-  background:#FBFAF7; border:1px solid #2D2926; padding:22px;
+  background:var(--pp-paper); border:1px solid var(--pp-ink); padding:22px;
 }
 /* Wider only when there are teams to sit beside the board. */
 .stp-overlay-wide { width:min(1360px, 96vw); }
@@ -2293,15 +2344,15 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-big-col { flex:1 1 160px; min-width:0; padding-right:22px; }
 .stp-big-colhead {
   display:flex; align-items:center; gap:8px;
-  padding-bottom:6px; border-bottom:1px solid #2D2926;
-  font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#6B645E;
+  padding-bottom:6px; border-bottom:1px solid var(--pp-ink);
+  font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--pp-ink-2);
 }
-.stp-big-count { font-size:12px; color:#99928B; margin-left:auto; }
+.stp-big-count { font-size:12px; color:var(--pp-ink-3); margin-left:auto; }
 .stp-big-row {
   display:flex; align-items:center; gap:8px;
-  font-size:14px; padding:4px 0; border-bottom:1px solid #EDEAE4;
+  font-size:14px; padding:4px 0; border-bottom:1px solid var(--pp-rule-2);
 }
-.stp-big-pos { font-size:11px; color:#99928B; }
+.stp-big-pos { font-size:11px; color:var(--pp-ink-3); }
 /* The in-block "+ Exercici" lines up with the exercise titles above it
    rather than centring under them — it belongs to that list. */
 .stp-add-in { align-self:flex-start; }
@@ -2317,11 +2368,11 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-dialog {
   display:flex; flex-direction:column;
   width:min(560px, 92vw); max-height:86vh; margin:16px;
-  background:#FBFAF7; border:1px solid #2D2926; text-align:left;
+  background:var(--pp-paper); border:1px solid var(--pp-ink); text-align:left;
 }
 .stp-dialog-head {
   display:flex; align-items:center; justify-content:space-between;
-  gap:16px; padding:16px 20px; border-bottom:1px solid #E3DFD8; flex:none;
+  gap:16px; padding:16px 20px; border-bottom:1px solid var(--pp-rule); flex:none;
 }
 .stp-dialog-body {
   padding:16px 20px; overflow-y:auto; flex:1 1 auto; min-height:0;
@@ -2329,20 +2380,20 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .stp-dialog-foot {
   display:flex; align-items:center; justify-content:space-between;
-  gap:16px; padding:14px 20px; border-top:1px solid #E3DFD8; flex:none;
+  gap:16px; padding:14px 20px; border-top:1px solid var(--pp-rule); flex:none;
 }
 .stp-dialog-acts { display:flex; align-items:center; gap:18px; }
 .stp-dialog-or { padding-top:6px; }
 .stp-dialog-mins {
   display:flex; align-items:center; gap:8px;
-  font-size:12px; color:#6B645E;
+  font-size:12px; color:var(--pp-ink-2);
 }
 .stp-field {
-  font-family:inherit; font-size:14px; color:#2D2926;
-  background:#FFFFFF; border:1px solid #E3DFD8; border-radius:0;
+  font-family:inherit; font-size:14px; color:var(--pp-ink);
+  background:#FFFFFF; border:1px solid var(--pp-rule); border-radius:0;
   padding:8px 10px; width:100%; box-sizing:border-box;
 }
-.stp-field:focus { outline:none; border-color:#2D2926; }
+.stp-field:focus { outline:none; border-color:var(--pp-ink); }
 .stp-field-n { width:78px; text-align:center; }
 .stp-free-desc { resize:vertical; }
 /* Boards are a LIST of names, not a grid of pitches: v188 drew a full
@@ -2351,24 +2402,24 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-pick-list {
   display:flex; flex-direction:column;
   max-height:38vh; overflow-y:auto;
-  border-top:1px solid #EDEAE4;
+  border-top:1px solid var(--pp-rule-2);
 }
 .stp-pick-row {
   display:flex; align-items:center; gap:10px;
   padding:10px 2px; background:none; border:none;
-  border-bottom:1px solid #EDEAE4; cursor:pointer;
-  font-family:inherit; font-size:14px; text-align:left; color:#2D2926;
+  border-bottom:1px solid var(--pp-rule-2); cursor:pointer;
+  font-family:inherit; font-size:14px; text-align:left; color:var(--pp-ink);
 }
-.stp-pick-row:hover { color:#BD162C; }
+.stp-pick-row:hover { color:var(--pp-red); }
 .stp-pick-name { flex:1; min-width:0; }
 .stp-tag {
   font-size:10px; font-weight:500; letter-spacing:.1em;
-  text-transform:uppercase; color:#99928B; flex:none;
+  text-transform:uppercase; color:var(--pp-ink-3); flex:none;
 }
 
 /* ── Material rail ── */
 .std-material-card {
-  margin-top:34px; padding-top:14px; border-top:1px solid #2D2926;
+  margin-top:34px; padding-top:14px; border-top:1px solid var(--pp-ink);
 }
 .std-material-card .std-sec-head-strong { border-bottom:none; padding-bottom:6px; }
 .stm-list { display:flex; flex-direction:column; }
@@ -2376,7 +2427,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    centred against the rows above and below them. */
 .stm-row {
   display:flex; align-items:center; gap:10px; height:38px;
-  border-bottom:1px solid #EDEAE4; position:relative;
+  border-bottom:1px solid var(--pp-rule-2); position:relative;
 }
 .stm-lbl { flex:1; min-width:0; font-size:14px; }
 .stm-lbl-tight { flex:none; }
@@ -2384,18 +2435,18 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stm-qty { font-size:17px; font-variant-numeric:tabular-nums; }
 .stm-x {
   background:none; border:none; cursor:pointer; padding:0 2px;
-  font-size:13px; line-height:1; color:#99928B;
+  font-size:13px; line-height:1; color:var(--pp-ink-3);
 }
-.stm-x:hover { color:#BD162C; }
+.stm-x:hover { color:var(--pp-red); }
 .stm-swatches { display:flex; align-items:center; gap:5px; height:100%; }
 .stm-swatch {
   width:15px; height:15px; flex:none; border-radius:50%; cursor:pointer;
   border:none; padding:0; box-shadow:0 0 0 1px rgba(45,41,38,.22);
 }
-.stm-swatch-on { box-shadow:0 0 0 2px #2D2926; }
+.stm-swatch-on { box-shadow:0 0 0 2px var(--pp-ink); }
 .stm-picker {
   position:absolute; z-index:20; left:44px; top:34px;
-  background:#FFFFFF; border:1px solid #2D2926; padding:10px;
+  background:#FFFFFF; border:1px solid var(--pp-ink); padding:10px;
   display:flex; flex-direction:column; gap:8px;
 }
 .stm-pal-row { display:flex; gap:7px; }
@@ -2403,17 +2454,17 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   width:20px; height:20px; border-radius:50%; cursor:pointer;
   border:none; padding:0; box-shadow:0 0 0 1px rgba(45,41,38,.25);
 }
-.stm-pal-on { box-shadow:0 0 0 2px #2D2926; }
+.stm-pal-on { box-shadow:0 0 0 2px var(--pp-ink); }
 .stm-acts { display:flex; gap:18px; flex-wrap:wrap; padding:12px 0 0; }
 .stm-picker .stm-acts { padding:0; gap:14px; }
 .stm-picker .stp-a { font-size:12px; }
 .stm-warn {
-  display:flex; gap:8px; padding:10px 0 0; font-size:12px; color:#6B645E;
+  display:flex; gap:8px; padding:10px 0 0; font-size:12px; color:var(--pp-ink-2);
 }
-.stm-warn-i { color:#BD162C; }
-.stm-note { font-size:12px; color:#6B645E; padding:8px 0 0; }
-.stm-muted { font-size:13px; color:#99928B; }
-.stm-duty { margin-top:26px; padding-top:12px; border-top:1px solid #EDEAE4; }
+.stm-warn-i { color:var(--pp-red); }
+.stm-note { font-size:12px; color:var(--pp-ink-2); padding:8px 0 0; }
+.stm-muted { font-size:13px; color:var(--pp-ink-3); }
+.stm-duty { margin-top:26px; padding-top:12px; border-top:1px solid var(--pp-rule-2); }
 .stm-duty .std-sec-head { padding:0 0 10px; align-items:center; }
 .stm-duty-names {
   display:flex; flex-wrap:wrap; align-items:center; gap:8px;
@@ -2422,37 +2473,37 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stm-duty-chip { display:inline-flex; align-items:center; gap:7px; }
 .stm-duty-x {
   background:none; border:none; cursor:pointer; padding:0;
-  font-size:11px; line-height:1; color:#99928B;
+  font-size:11px; line-height:1; color:var(--pp-ink-3);
 }
-.stm-duty-x:hover { color:#BD162C; }
+.stm-duty-x:hover { color:var(--pp-red); }
 /* Capped and scrollable. A squad of 20 ran off the bottom of the screen with
    no way back to the buttons. The right padding keeps the turn count off the
    scrollbar it would otherwise sit against. */
 .stm-pick-list {
   display:flex; flex-direction:column;
   max-height:46vh; overflow-y:auto;
-  border-top:1px solid #EDEAE4; padding-right:12px;
+  border-top:1px solid var(--pp-rule-2); padding-right:12px;
 }
 .stm-pick-row {
   display:flex; align-items:center; gap:10px; padding:8px 0;
-  border:none; border-bottom:1px solid #EDEAE4; background:none;
+  border:none; border-bottom:1px solid var(--pp-rule-2); background:none;
   cursor:pointer; font-family:inherit; font-size:14px;
-  text-align:left; color:#2D2926;
+  text-align:left; color:var(--pp-ink);
 }
-.stm-pick-check { width:16px; height:16px; flex:none; border:1px solid #99928B; }
-.stm-pick-on .stm-pick-check { background:#2D2926; border-color:#2D2926; }
+.stm-pick-check { width:16px; height:16px; flex:none; border:1px solid var(--pp-ink-3); }
+.stm-pick-on .stm-pick-check { background:var(--pp-ink); border-color:var(--pp-ink); }
 .stm-pick-name { flex:1; min-width:0; }
-.stm-pick-n { font-size:12px; color:#99928B; font-variant-numeric:tabular-nums; }
+.stm-pick-n { font-size:12px; color:var(--pp-ink-3); font-variant-numeric:tabular-nums; }
 /* Greyed, not disabled. A coach who insists knows something the counter does
    not — the fairness rule is advice made visible, never a lock. */
-.stm-pick-off { color:#99928B; }
+.stm-pick-off { color:var(--pp-ink-3); }
 .stm-pick-off .stm-pick-check { border-style:dashed; }
 
 @media (max-width: 900px) {
   .std-body { flex-direction:column; }
   /* The rail STACKS rather than hiding: a coach plans on his phone. */
   .std-rail {
-    width:100%; border-left:none; border-top:1px solid #2D2926;
+    width:100%; border-left:none; border-top:1px solid var(--pp-ink);
     padding:26px 20px 48px;
   }
   .std-main { padding:26px 20px 32px; }
@@ -3312,7 +3363,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    top WITHOUT window.scrollY added. */
 .roster-tooltip {
   position: fixed;
-  background: #2D2926; color: #fff;
+  background: var(--pp-ink); color: #fff;
   padding: .55rem 1rem; border-radius: 8px;
   font-size: .82rem; font-weight: 300;
   /* Same 10050 as .ua-tooltip, and for the same reason — it had the
@@ -3329,7 +3380,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   position: absolute; top: 100%; left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: #2D2926;
+  border-top-color: var(--pp-ink);
 }
 
 .readiness-dot {
@@ -3640,7 +3691,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
      property is invalid at computed-value time, so background fell back to
      `transparent` — white text on whatever was behind it, which is why every
      toast has been unreadable. --sidebar-bg is the app's dark surface. */
-  background: var(--sidebar-bg, #2D2926);
+  background: var(--sidebar-bg, var(--pp-ink));
   color: #fff;
   padding: .75rem 1rem;
   border-radius: 10px;
@@ -4182,7 +4233,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .tg-btn:not(:last-child) { border-right:1px solid var(--border); }
 .tg-btn-active {
-  background:var(--primary, #BD162C); color:#fff;
+  background:var(--primary, var(--pp-red)); color:#fff;
 }
 .tg-teams-wrap {
   display:flex; flex-wrap:wrap; gap:1rem; margin-top:1rem;
@@ -4199,14 +4250,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-radius:8px 8px 0 0;
 }
 .tg-team-count {
-  background:var(--primary, #BD162C); color:#fff; font-size:.7rem;
+  background:var(--primary, var(--pp-red)); color:#fff; font-size:.7rem;
   padding:.15rem .45rem; border-radius:10px; font-weight:700;
 }
 .tg-team-players {
   min-height:60px; padding:.4rem;
 }
 .tg-team-players.tg-drop-active {
-  background:rgba(189,22,44,.06); border:2px dashed var(--primary, #BD162C);
+  background:rgba(189,22,44,.06); border:2px dashed var(--primary, var(--pp-red));
   border-radius:0 0 8px 8px;
 }
 .tg-player-row {
@@ -4425,7 +4476,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .med-filter-btn:hover { border-color:var(--primary-light); color:var(--text); }
 .med-filter-active {
-  background:var(--primary, #BD162C); color:#fff; border-color:var(--primary, #BD162C);
+  background:var(--primary, var(--pp-red)); color:#fff; border-color:var(--primary, var(--pp-red));
 }
 .med-player-grid {
   display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:.6rem;
@@ -6368,7 +6419,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Grey, not the amber 2a specifies. A draw is the absence of a result;
    colouring it warm put it in the same family as a training. */
 .cal-k-draw    { --cal-fill: #E8E6E1; --cal-stroke: #7A736B; }
-.cal-k-loss    { --cal-fill: #F7DADD; --cal-stroke: #BD162C; }
+.cal-k-loss    { --cal-fill: #F7DADD; --cal-stroke: var(--pp-red); }
 .cal-cell-out  { --cal-fill: #EFEDE8; --cal-stroke: #E5E1DB; }
 .cal-cell-out .cal-dh, .cal-cell-out .cal-b-ttl { color: var(--text-secondary); }
 
@@ -6406,7 +6457,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .cal-b-win  .cal-b-res { color: #1F7A44; }
 .cal-b-draw .cal-b-res { color: #7A736B; }
-.cal-b-loss .cal-b-res { color: #BD162C; }
+.cal-b-loss .cal-b-res { color: var(--pp-red); }
 .cal-more {
   margin-left: auto; flex: 0 0 auto;
   font-size: .62rem; font-weight: 600;
@@ -6624,7 +6675,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    ═══════════════════════════════════════════════════════════════ */
 .pl-page {
   display: flex; align-items: flex-start; overflow-x: hidden;
-  background: #FBFAF7; color: #2D2926;
+  background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
   margin: -1rem; min-height: calc(100vh - 120px);
 }
@@ -6633,13 +6684,13 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* ── Title block ── */
 .pl-title-row {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid #E3DFD8;
+  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule);
 }
 .pl-title-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .pl-h1 { margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
-.pl-sub { font-size: 14px; color: #6B645E; }
+.pl-sub { font-size: 14px; color: var(--pp-ink-2); }
 .pl-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #99928B;
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3);
 }
 .pl-eyebrow-b { display: block; padding-bottom: 10px; }
 
@@ -6650,9 +6701,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-donut-legend-right { align-items: flex-end; }
 .pl-legend-row {
   display: flex; align-items: center; gap: 7px;
-  font-size: 12px; color: #6B645E; white-space: nowrap;
+  font-size: 12px; color: var(--pp-ink-2); white-space: nowrap;
 }
-.pl-legend-n { color: #2D2926; }
+.pl-legend-n { color: var(--pp-ink); }
 .pl-sw { width: 7px; height: 7px; flex: none; display: inline-block; }
 .pl-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
 .pl-rule { width: 10px; height: 1px; background: #8C857D; display: inline-block; }
@@ -6660,19 +6711,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-donut svg { display: block; }
 .pl-donut-pct {
   position: absolute; inset: 0; display: flex; align-items: center;
-  justify-content: center; font-size: 18px; color: #2D2926;
+  justify-content: center; font-size: 18px; color: var(--pp-ink);
 }
 .pl-rail-donut .pl-donut-pct { font-size: 15px; }
 
 /* ── Key figures ── */
 .pl-figures {
   display: flex; flex-wrap: wrap; gap: 56px;
-  padding: 22px 0; border-bottom: 1px solid #E3DFD8;
+  padding: 22px 0; border-bottom: 1px solid var(--pp-rule);
 }
 .pl-fig { display: flex; flex-direction: column; gap: 3px; }
 .pl-fig-v { font-size: 24px; font-weight: 400; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.pl-fig-of { font-size: 14px; color: #6B645E; }
-.pl-fig-risk { color: #BD162C; }
+.pl-fig-of { font-size: 14px; color: var(--pp-ink-2); }
+.pl-fig-risk { color: var(--pp-red); }
 
 /* ── Charts ── */
 .pl-charts {
@@ -6681,19 +6732,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .pl-chart { display: flex; flex-direction: column; gap: 12px; }
 .pl-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.pl-legend { display: flex; gap: 12px; font-size: 12px; color: #6B645E; }
+.pl-legend { display: flex; gap: 12px; font-size: 12px; color: var(--pp-ink-2); }
 .pl-legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .pl-legend-sm { font-size: 11px; gap: 10px; }
 .pl-svg { display: block; max-width: 440px; width: 100%; }
 .pl-rail .pl-svg { max-width: none; }
-.pl-tick { font-size: 10px; fill: #99928B; }
+.pl-tick { font-size: 10px; fill: var(--pp-ink-3); }
 .pl-tick-sm { font-size: 9px; }
 .pl-hit { cursor: pointer; }
 .pl-drag { cursor: ew-resize; }
 /* The x-axis labels are HTML, mirroring the viewBox with flex — see
    plLabelRowHtml. `overflow:hidden` on the cell keeps a long date from
    pushing its neighbours out of alignment. */
-.pl-xlabels { display: flex; width: 100%; max-width: 440px; font-size: 9px; color: #99928B; }
+.pl-xlabels { display: flex; width: 100%; max-width: 440px; font-size: 9px; color: var(--pp-ink-3); }
 .pl-rail .pl-xlabels { max-width: none; }
 .pl-xlabels > span > span { flex: 1 0 0; text-align: center; overflow: hidden; }
 
@@ -6705,11 +6756,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-chips { display: flex; gap: 6px; }
 .pl-chip {
   min-width: 26px; height: 24px; padding: 0 7px; font: inherit; font-size: 12px;
-  background: transparent; border: 1px solid #E3DFD8; color: #6B645E; cursor: pointer;
+  background: transparent; border: 1px solid var(--pp-rule); color: var(--pp-ink-2); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
 }
-.pl-chip:hover { border-color: #2D2926; color: #2D2926; }
-.pl-chip-on { background: #2D2926; border-color: #2D2926; color: #FBFAF7; }
+.pl-chip:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.pl-chip-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
 
 /* ── Roster table ── */
 .pl-table-wrap { overflow-x: auto; max-width: 100%; }
@@ -6717,21 +6768,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-table-narrow .pl-table { min-width: 520px; }
 .pl-table th {
   text-align: left; font-size: 10px; font-weight: 500; letter-spacing: .12em;
-  text-transform: uppercase; color: #99928B; padding: 0 8px 8px;
-  border-bottom: 1px solid #2D2926; white-space: nowrap;
+  text-transform: uppercase; color: var(--pp-ink-3); padding: 0 8px 8px;
+  border-bottom: 1px solid var(--pp-ink); white-space: nowrap;
 }
-.pl-table td { padding: 9px 8px; border-bottom: 1px solid #EDEAE4; }
+.pl-table td { padding: 9px 8px; border-bottom: 1px solid var(--pp-rule-2); }
 .pl-th-name, .pl-td-name { padding-left: 14px !important; }
 .pl-td-name { white-space: nowrap; }
 .pl-table th.pl-c, .pl-table td.pl-c { text-align: center; }
 .pl-table th.pl-r, .pl-table td.pl-r { text-align: right; }
 .pl-nums { font-variant-numeric: tabular-nums; }
-.pl-muted { color: #6B645E; }
-.pl-team-letter { font-size: 10px; color: #99928B; letter-spacing: .08em; }
+.pl-muted { color: var(--pp-ink-2); }
+.pl-team-letter { font-size: 10px; color: var(--pp-ink-3); letter-spacing: .08em; }
 .pl-row { cursor: pointer; }
 .pl-row:hover { background: #F7F5F0; }
 .pl-row-sel, .pl-row-sel:hover { background: #F1EEE8; }
-.pl-empty { text-align: center; color: #99928B; padding: 2rem !important; }
+.pl-empty { text-align: center; color: var(--pp-ink-3); padding: 2rem !important; }
 .pl-td-spark { padding: 5px 8px !important; }
 .pl-spark { display: block; }
 
@@ -6750,9 +6801,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   width: 24px; height: 24px; border-radius: 50%;
   font-size: 13px; font-weight: 700; cursor: help;
 }
-.pl-med-fit { background: #DCE9DC; color: #3F6B44; }
-.pl-med-doubt { background: #F6E4C4; color: #9A6614; }
-.pl-med-inj { background: #F2D2CE; color: #A63A32; }
+.pl-med-fit { background: var(--pp-med-fit-bg); color: var(--pp-med-fit-ink); }
+.pl-med-doubt { background: var(--pp-med-doubt-bg); color: var(--pp-med-doubt-ink); }
+.pl-med-inj { background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); }
 
 /* The SHARED readiness cell, restyled here rather than reimplemented.
    It carries a rule this page must not lose: with no data behind it the
@@ -6766,58 +6817,58 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-ready .readiness-cell { gap: 7px; }
 .pl-ready .readiness-dot { width: 8px; height: 8px; }
 .pl-ready .readiness-score { font-size: 14px; font-weight: 400; }
-.pl-ready .readiness-score-green { color: #5C8F5E; }
-.pl-ready .readiness-dot.readiness-green { background: #5C8F5E; }
-.pl-ready .readiness-score-orange { color: #D39A2F; }
-.pl-ready .readiness-dot.readiness-orange { background: #D39A2F; }
-.pl-ready .readiness-score-red { color: #C0564C; }
-.pl-ready .readiness-dot.readiness-red { background: #C0564C; }
-.pl-ready .readiness-dot.readiness-nodata { background: #C9C3BB; }
+.pl-ready .readiness-score-green { color: var(--pp-ok); }
+.pl-ready .readiness-dot.readiness-green { background: var(--pp-ok); }
+.pl-ready .readiness-score-orange { color: var(--pp-warn); }
+.pl-ready .readiness-dot.readiness-orange { background: var(--pp-warn); }
+.pl-ready .readiness-score-red { color: var(--pp-bad); }
+.pl-ready .readiness-dot.readiness-red { background: var(--pp-bad); }
+.pl-ready .readiness-dot.readiness-nodata { background: var(--pp-rule-4); }
 .pl-tsnc { font-size: 13px; white-space: nowrap; }
-.pl-t { color: #5C8F5E; } .pl-s { color: #D39A2F; } .pl-sep { color: #99928B; }
+.pl-t { color: var(--pp-ok); } .pl-s { color: var(--pp-warn); } .pl-sep { color: var(--pp-ink-3); }
 .pl-cards { white-space: nowrap; }
 .pl-card-pair {
   display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px;
-  font-size: 13px; font-variant-numeric: tabular-nums; color: #6B645E;
+  font-size: 13px; font-variant-numeric: tabular-nums; color: var(--pp-ink-2);
 }
 .pl-card-pair > span { display: inline-flex; align-items: center; gap: 4px; }
 .pl-card { width: 9px; height: 12px; display: inline-block; }
-.pl-card-y { background: #E3B341; } .pl-card-r { background: #C0564C; }
+.pl-card-y { background: #E3B341; } .pl-card-r { background: var(--pp-bad); }
 
 /* ── The detail rail ── */
 @keyframes plRailIn { from { transform: translateX(90px); opacity: 0; } to { transform: none; opacity: 1; } }
 .pl-rail {
   width: 480px; flex: none; align-self: stretch; box-sizing: border-box;
-  border-left: 1px solid #E3DFD8; padding: 32px 30px 56px; background: #F6F4EF;
+  border-left: 1px solid var(--pp-rule); padding: 32px 30px 56px; background: #F6F4EF;
   animation: plRailIn .44s cubic-bezier(.22,.7,.3,1) both;
 }
 .pl-rail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .pl-rail-id { min-width: 0; }
 .pl-rail-name-row { display: flex; align-items: center; gap: 10px; padding: 8px 0 4px; }
 .pl-rail-name { font-size: 26px; font-weight: 400; line-height: 1.15; }
-.pl-rail-sub { font-size: 13px; color: #6B645E; }
+.pl-rail-sub { font-size: 13px; color: var(--pp-ink-2); }
 .pl-rail-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
 .pl-rail-donut { display: flex; align-items: center; gap: 10px; }
 
 .pl-ready-row {
   display: flex; align-items: baseline; gap: 12px;
-  padding: 20px 0 4px; margin-top: 18px; border-top: 1px solid #E3DFD8;
+  padding: 20px 0 4px; margin-top: 18px; border-top: 1px solid var(--pp-rule);
 }
 .pl-ready-big { font-size: 40px; font-weight: 300; line-height: 1; }
-.pl-ready-lbl { font-size: 13px; color: #6B645E; }
-.pl-ready-ac { margin-left: auto; font-size: 13px; color: #6B645E; }
+.pl-ready-lbl { font-size: 13px; color: var(--pp-ink-2); }
+.pl-ready-ac { margin-left: auto; font-size: 13px; color: var(--pp-ink-2); }
 
 .pl-metrics {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px;
-  padding: 16px 0 20px; border-bottom: 1px solid #E3DFD8;
+  padding: 16px 0 20px; border-bottom: 1px solid var(--pp-rule);
 }
 .pl-metric {
   display: grid; grid-template-columns: 1fr 30px; gap: 5px 8px;
   align-items: center; cursor: help;
 }
-.pl-metric-l { font-size: 12px; color: #6B645E; }
+.pl-metric-l { font-size: 12px; color: var(--pp-ink-2); }
 .pl-metric-v { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
-.pl-track { grid-column: 1 / -1; display: block; height: 3px; background: #E3DFD8; }
+.pl-track { grid-column: 1 / -1; display: block; height: 3px; background: var(--pp-rule); }
 .pl-fill { display: block; height: 3px; }
 .pl-rail-block { padding: 20px 0 4px; }
 
@@ -6825,33 +6876,33 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 @keyframes plInjuryBlink { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.5); } }
 .pl-inj {
   display: flex; gap: 20px; align-items: flex-start;
-  padding: 22px 0; margin-top: 14px; border-top: 1px solid #E3DFD8;
+  padding: 22px 0; margin-top: 14px; border-top: 1px solid var(--pp-rule);
 }
 .pl-inj-map { position: relative; width: 190px; flex: none; line-height: 0; }
 .pl-inj-map img { display: block; width: 100%; opacity: .75; }
 .pl-inj-dot {
   position: absolute; width: 11px; height: 11px; border-radius: 50%;
-  background: #C0564C; box-shadow: 0 0 0 3px rgba(192,86,76,.28);
+  background: var(--pp-bad); box-shadow: 0 0 0 3px rgba(192,86,76,.28);
   transform: translate(-50%, -50%);
   animation: plInjuryBlink 1.4s ease-in-out infinite;
 }
 .pl-inj-text { flex: 1; min-width: 0; }
 .pl-inj-zone { font-size: 16px; padding-bottom: 6px; }
-.pl-inj-note { font-size: 13px; color: #6B645E; line-height: 1.55; }
-.pl-inj-rows { display: flex; flex-direction: column; gap: 5px; padding-top: 14px; font-size: 13px; color: #6B645E; }
-.pl-inj-row { display: flex; justify-content: space-between; border-bottom: 1px solid #EDEAE4; padding-bottom: 5px; }
+.pl-inj-note { font-size: 13px; color: var(--pp-ink-2); line-height: 1.55; }
+.pl-inj-rows { display: flex; flex-direction: column; gap: 5px; padding-top: 14px; font-size: 13px; color: var(--pp-ink-2); }
+.pl-inj-row { display: flex; justify-content: space-between; border-bottom: 1px solid var(--pp-rule-2); padding-bottom: 5px; }
 .pl-inj-row:last-child { border-bottom: none; padding-bottom: 0; }
-.pl-inj-v { color: #2D2926; }
+.pl-inj-v { color: var(--pp-ink); }
 
 /* ── Match history ── */
-.pl-rail-hist { padding: 22px 0 0; margin-top: 14px; border-top: 1px solid #E3DFD8; }
+.pl-rail-hist { padding: 22px 0 0; margin-top: 14px; border-top: 1px solid var(--pp-rule); }
 .pl-hist { width: 100%; font-size: 13px; border-collapse: collapse; }
 .pl-hist th {
   text-align: left; font-size: 9px; font-weight: 500; letter-spacing: .1em;
-  text-transform: uppercase; color: #99928B; padding: 0 6px 7px;
-  border-bottom: 1px solid #2D2926;
+  text-transform: uppercase; color: var(--pp-ink-3); padding: 0 6px 7px;
+  border-bottom: 1px solid var(--pp-ink);
 }
-.pl-hist td { padding: 7px 6px; border-bottom: 1px solid #EDEAE4; white-space: nowrap; }
+.pl-hist td { padding: 7px 6px; border-bottom: 1px solid var(--pp-rule-2); white-space: nowrap; }
 .pl-hist th.pl-c, .pl-hist td.pl-c { text-align: center; }
 .pl-hist-st { font-size: 12px; }
 .pl-res {
@@ -6875,7 +6926,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-tip {
   position: fixed; z-index: 10050; pointer-events: none;
   transform: translateX(-50%) translateY(-100%);
-  background: #2D2926; color: #fff; padding: .5rem .85rem;
+  background: var(--pp-ink); color: #fff; padding: .5rem .85rem;
   border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,.28);
   font-size: .8rem; font-weight: 300; line-height: 1.5; white-space: nowrap;
   opacity: 0; transition: opacity .15s ease;
@@ -6884,14 +6935,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-tip::after {
   content: ''; position: absolute; top: 100%; left: 50%;
   transform: translateX(-50%);
-  border: 6px solid transparent; border-top-color: #2D2926;
+  border: 6px solid transparent; border-top-color: var(--pp-ink);
 }
 .pl-tip-t {
   font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
   color: #A8A29B; padding-bottom: 2px;
 }
 .pl-tip-r { display: flex; justify-content: space-between; gap: 18px; }
-.pl-tip-r span:first-child { color: #C9C3BB; }
+.pl-tip-r span:first-child { color: var(--pp-rule-4); }
 
 /* ── Narrow screens ──
    The rail is 480px of a 480px phone, so below the breakpoint it stops
@@ -6900,7 +6951,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .pl-page { flex-direction: column; margin: -1rem -.5rem; }
   .pl-main { padding: 20px 16px 32px; width: 100%; box-sizing: border-box; }
   .pl-rail {
-    width: 100%; border-left: none; border-top: 1px solid #E3DFD8;
+    width: 100%; border-left: none; border-top: 1px solid var(--pp-rule);
     padding: 24px 16px 40px; animation: none;
   }
   .pl-h1 { font-size: 28px; }
@@ -6919,7 +6970,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    follow the app theme, which is what the design does not want.
    ═══════════════════════════════════════════════════════════════ */
 .reg2-page {
-  background: #FBFAF7; color: #2D2926;
+  background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
   margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
 }
@@ -6929,17 +6980,17 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    they are the only thing left saying where one section ends. */
 .reg2-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 600; color: #2D2926;
+  font-weight: 600; color: var(--pp-ink);
 }
 /* A caption over a big number, not a section heading. Same size band,
    the opposite weight and colour — one class could not be both. */
 .reg2-fig-l {
   font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 400; color: #99928B;
+  font-weight: 400; color: var(--pp-ink-3);
 }
-.reg2-title-row { padding-bottom: 26px; border-bottom: 1px solid #E3DFD8; }
+.reg2-title-row { padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule); }
 .reg2-h1 { margin: 0 0 8px; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
-.reg2-sub-line { font-size: 14px; color: #6B645E; max-width: 70ch; }
+.reg2-sub-line { font-size: 14px; color: var(--pp-ink-2); max-width: 70ch; }
 
 /* ── On hairlines ──
    The first draft drew one under the title, one under the figures, one
@@ -6957,15 +7008,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .reg2-fig { display: flex; flex-direction: column; gap: 3px; }
 .reg2-fig-v { font-size: 24px; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.reg2-fig-hot { color: #BD162C; }
+.reg2-fig-hot { color: var(--pp-red); }
 
 .reg2-sec-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 16px; padding: 30px 0 10px; flex-wrap: wrap;
 }
 .reg2-sec-top { padding-top: 44px; }
-.reg2-note { font-size: 12px; color: #6B645E; }
-.reg2-empty { font-size: 14px; color: #6B645E; padding: 4px 0 8px; }
+.reg2-note { font-size: 12px; color: var(--pp-ink-2); }
+.reg2-empty { font-size: 14px; color: var(--pp-ink-2); padding: 4px 0 8px; }
 
 /* ── The invite row ── */
 .reg2-invite {
@@ -6973,27 +7024,27 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   padding: 6px 0 4px;
 }
 .reg2-email {
-  flex: 1; min-width: 240px; font: inherit; font-size: 14px; color: #2D2926;
-  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  flex: 1; min-width: 240px; font: inherit; font-size: 14px; color: var(--pp-ink);
+  background: transparent; border: none; border-bottom: 1px solid var(--pp-rule-4);
   padding: 6px 2px; outline: none;
 }
-.reg2-email:focus { border-bottom-color: #2D2926; }
-.reg2-email::placeholder { color: #99928B; }
+.reg2-email:focus { border-bottom-color: var(--pp-ink); }
+.reg2-email::placeholder { color: var(--pp-ink-3); }
 .reg2-chipset { display: inline-flex; gap: 6px; }
 .reg2-chip {
   min-width: 26px; height: 26px; padding: 0 9px; font: inherit; font-size: 12px;
-  background: transparent; border: 1px solid #E3DFD8; color: #6B645E; cursor: pointer;
+  background: transparent; border: 1px solid var(--pp-rule); color: var(--pp-ink-2); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
 }
-.reg2-chip:hover { border-color: #2D2926; color: #2D2926; }
-.reg2-chip-on { background: #2D2926; border-color: #2D2926; color: #FBFAF7; }
+.reg2-chip:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.reg2-chip-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
 .reg2-add {
   height: 30px; padding: 0 16px; font: inherit; font-size: 13px;
-  background: #2D2926; color: #FBFAF7; border: none; cursor: pointer;
+  background: var(--pp-ink); color: var(--pp-paper); border: none; cursor: pointer;
 }
 .reg2-add:disabled { background: #B7B1A8; cursor: default; }
-.reg2-msg { font-size: 13px; padding-top: 6px; min-height: 1em; color: #6B645E; }
-.reg2-msg-bad { color: #C0564C; }
+.reg2-msg { font-size: 13px; padding-top: 6px; min-height: 1em; color: var(--pp-ink-2); }
+.reg2-msg-bad { color: var(--pp-bad); }
 
 /* ── Invited, still without an account ── */
 .reg2-inv-cols {
@@ -7002,27 +7053,27 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .reg2-inv-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #99928B;
-  padding-bottom: 8px; border-bottom: 1px solid #2D2926;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--pp-ink-3);
+  padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
 }
 .reg2-inv-count { text-transform: none; letter-spacing: 0; font-size: 12px; }
 .reg2-inv-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 0; border-bottom: 1px solid #EDEAE4; font-size: 13px;
+  padding: 9px 0; border-bottom: 1px solid var(--pp-rule-2); font-size: 13px;
 }
 .reg2-inv-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reg2-inv-team {
-  min-width: 24px; height: 22px; padding: 0 7px; font-size: 12px; color: #6B645E;
-  border: 1px solid #E3DFD8; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 22px; padding: 0 7px; font-size: 12px; color: var(--pp-ink-2);
+  border: 1px solid var(--pp-rule); display: inline-flex; align-items: center; justify-content: center;
 }
-.reg2-inv-state { display: inline-flex; align-items: center; gap: 6px; color: #99928B; font-size: 12px; }
-.reg2-inv-empty { font-size: 13px; color: #99928B; padding: 9px 0; }
+.reg2-inv-state { display: inline-flex; align-items: center; gap: 6px; color: var(--pp-ink-3); font-size: 12px; }
+.reg2-inv-empty { font-size: 13px; color: var(--pp-ink-3); padding: 9px 0; }
 .reg2-bullet { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
 .reg2-x {
   font: inherit; font-size: 14px; background: none; border: none; cursor: pointer;
-  color: #99928B; padding: 0 2px; line-height: 1;
+  color: var(--pp-ink-3); padding: 0 2px; line-height: 1;
 }
-.reg2-x:hover { color: #C0564C; }
+.reg2-x:hover { color: var(--pp-bad); }
 
 /* ── Tables ── */
 .reg2-wrap { overflow-x: auto; max-width: 100%; }
@@ -7030,23 +7081,23 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-table-pending { min-width: 940px; }
 .reg2-table th {
   text-align: left; font-size: 10px; font-weight: 500; letter-spacing: .12em;
-  text-transform: uppercase; color: #99928B; padding: 0 8px 8px;
-  border-bottom: 1px solid #2D2926; white-space: nowrap;
+  text-transform: uppercase; color: var(--pp-ink-3); padding: 0 8px 8px;
+  border-bottom: 1px solid var(--pp-ink); white-space: nowrap;
 }
-.reg2-table td { padding: 9px 8px; border-bottom: 1px solid #EDEAE4; vertical-align: middle; }
+.reg2-table td { padding: 9px 8px; border-bottom: 1px solid var(--pp-rule-2); vertical-align: middle; }
 .reg2-table-pending td { padding: 11px 8px; }
 .reg2-th-first, .reg2-td-who { padding-left: 14px !important; }
 .reg2-table th.reg2-r, .reg2-table td.reg2-r { text-align: right; }
 .reg2-table th.reg2-c, .reg2-table td.reg2-c { text-align: center; }
 .reg2-name { white-space: nowrap; }
-.reg2-sub { font-size: 12px; color: #99928B; white-space: nowrap; }
-.reg2-muted { color: #6B645E; }
+.reg2-sub { font-size: 12px; color: var(--pp-ink-3); white-space: nowrap; }
+.reg2-muted { color: var(--pp-ink-2); }
 .reg2-nums { font-variant-numeric: tabular-nums; }
-.reg2-flat { color: #6B645E; }
-.reg2-dash { color: #99928B; }
+.reg2-flat { color: var(--pp-ink-2); }
+.reg2-dash { color: var(--pp-ink-3); }
 .reg2-role-staff {
   display: inline-flex; align-items: center; padding: 2px 8px;
-  background: #E4E9E4; color: #3F6B44; font-size: 12px;
+  background: #E4E9E4; color: var(--pp-green); font-size: 12px;
 }
 .reg2-td-team { white-space: nowrap; }
 .reg2-td-team .reg2-teams { display: inline-flex; gap: 6px; margin-left: 8px; }
@@ -7070,44 +7121,44 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-page .reg-team-circle.active {
   width: auto; min-width: 28px; height: 26px; padding: 0 9px; margin: 0;
   font-size: 12px; font-weight: 500; line-height: 1;
-  border: 1px solid #E3DFD8; color: #6B645E; background: transparent;
+  border: 1px solid var(--pp-rule); color: var(--pp-ink-2); background: transparent;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer; border-radius: 0; box-sizing: border-box;
   transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
-.reg2-page .reg-team-circle:hover { border-color: #2D2926; color: #2D2926; }
+.reg2-page .reg-team-circle:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
 /* ⚠ `.active` ONLY — see regTeamCellHtml. The delegated writer clears
    `.active` from the row and sets it on the chip clicked; it cannot
    remove `.reg2-chip-on`, so styling that here left the previous chip
    filled and the row showed two selected squads at once. */
 .reg2-page .reg-team-circle.active {
-  background: #2D2926; border-color: #2D2926; color: #FBFAF7;
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
 }
 
 .reg2-num {
   width: 44px; font: inherit; font-size: 14px; text-align: center;
-  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
-  padding: 3px 2px; outline: none; font-variant-numeric: tabular-nums; color: #2D2926;
+  background: transparent; border: none; border-bottom: 1px solid var(--pp-rule-4);
+  padding: 3px 2px; outline: none; font-variant-numeric: tabular-nums; color: var(--pp-ink);
 }
-.reg2-num:focus { border-bottom-color: #2D2926; }
+.reg2-num:focus { border-bottom-color: var(--pp-ink); }
 /* A number already worn in this squad. Colour on BOTH the rule and the
    digits: the rule alone is a hairline nobody notices. */
-.reg2-num-dup { color: #C0564C; border-bottom-color: #C0564C; }
+.reg2-num-dup { color: var(--pp-bad); border-bottom-color: var(--pp-bad); }
 
 .reg2-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
-.reg2-on { color: #5C8F5E; }
-.reg2-off { color: #D39A2F; }
+.reg2-on { color: var(--pp-ok); }
+.reg2-off { color: var(--pp-warn); }
 
 .reg2-btn {
   height: 28px; padding: 0 14px; font: inherit; font-size: 13px;
-  background: #2D2926; color: #FBFAF7; border: none; cursor: pointer; margin-left: 8px;
+  background: var(--pp-ink); color: var(--pp-paper); border: none; cursor: pointer; margin-left: 8px;
 }
 .reg2-btn-off { background: #B7B1A8; cursor: default; }
 .reg2-btn-ghost {
   height: 28px; padding: 0 12px; font: inherit; font-size: 13px;
-  background: transparent; color: #6B645E; border: 1px solid #E3DFD8; cursor: pointer;
+  background: transparent; color: var(--pp-ink-2); border: 1px solid var(--pp-rule); cursor: pointer;
 }
-.reg2-btn-ghost:hover { color: #C0564C; border-color: #C0564C; }
+.reg2-btn-ghost:hover { color: var(--pp-bad); border-color: var(--pp-bad); }
 /* The members table's remove is text, not an outline: it sits at the end
    of every row and a button there would fence the table in. */
 .reg2-table:not(.reg2-table-pending) .reg2-btn-ghost { border: none; padding: 0; }
@@ -7115,9 +7166,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-filters { display: flex; gap: 16px; font-size: 12px; }
 .reg2-f {
   font: inherit; font-size: 12px; background: none; border: none; cursor: pointer;
-  color: #6B645E; padding: 0 0 1px;
+  color: var(--pp-ink-2); padding: 0 0 1px;
 }
-.reg2-f-on { color: #2D2926; border-bottom: 1px solid #2D2926; }
+.reg2-f-on { color: var(--pp-ink); border-bottom: 1px solid var(--pp-ink); }
 
 /* ── Position cell and picker ── */
 /* All nine positions, in the row. The popover this replaced needed
@@ -7151,7 +7202,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   cursor: pointer; transition: opacity .12s ease, border-color .12s ease;
   border: 1.5px solid rgba(0,0,0,.2); opacity: .28;
 }
-.reg2-page .reg2-pos-c.active { opacity: 1; border: 2px solid #2D2926; }
+.reg2-page .reg2-pos-c.active { opacity: 1; border: 2px solid var(--pp-ink); }
 .reg2-page .reg2-pos-c:hover { opacity: .7; }
 .reg2-page .reg2-pos-c.active:hover { opacity: 1; }
 .reg2-page .reg2-pos-full,
@@ -7189,7 +7240,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    app theme, which is exactly what the design does not want.
    ═══════════════════════════════════════════════════════════════ */
 .pt-page {
-  background: #FBFAF7; color: #2D2926;
+  background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
   margin: -1rem; min-height: calc(100vh - 120px);
 }
@@ -7211,31 +7262,31 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .pt-page .card-title {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 500; color: #99928B; padding: 0 0 8px; border: none;
+  font-weight: 500; color: var(--pp-ink-3); padding: 0 0 8px; border: none;
 }
 
 .pt-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 500; color: #99928B;
+  font-weight: 500; color: var(--pp-ink-3);
 }
 .pt-sec-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 16px; padding: 0 0 10px; border-bottom: 1px solid #2D2926; margin-bottom: 10px;
+  gap: 16px; padding: 0 0 10px; border-bottom: 1px solid var(--pp-ink); margin-bottom: 10px;
 }
-.pt-sec-note { font-size: 12px; color: #99928B; }
-.pt-empty { font-size: 13.5px; color: #99928B; padding: 10px 0; }
+.pt-sec-note { font-size: 12px; color: var(--pp-ink-3); }
+.pt-empty { font-size: 13.5px; color: var(--pp-ink-3); padding: 10px 0; }
 
 /* ── Top bar ── */
 .pt-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 12px 36px; border-bottom: 1px solid #E3DFD8;
+  gap: 16px; padding: 12px 36px; border-bottom: 1px solid var(--pp-rule);
 }
 .pt-topbar-right { display: inline-flex; align-items: center; gap: 14px; }
 .pt-back {
-  font: inherit; font-size: 13px; color: #6B645E;
+  font: inherit; font-size: 13px; color: var(--pp-ink-2);
   background: none; border: none; padding: 0; cursor: pointer;
 }
-.pt-back:hover { color: #BD162C; }
+.pt-back:hover { color: var(--pp-red); }
 
 /* ── Scoreboard band ──
    The one band on white. It is the only thing on the page that is
@@ -7243,11 +7294,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    needing a box drawn round it. */
 .pt-sb-band {
   background: #FFFFFF; text-align: center;
-  padding: 38px 36px 30px; border-bottom: 1px solid #E3DFD8;
+  padding: 38px 36px 30px; border-bottom: 1px solid var(--pp-rule);
 }
 .pt-sb-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: #99928B; padding-bottom: 18px;
+  color: var(--pp-ink-3); padding-bottom: 18px;
 }
 /* ⚠ A GRID, so the score sits on the BAND's centre line.
    It was `flex; justify-content:center`, which centres the row's
@@ -7268,39 +7319,39 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    disc, because the crests it sits between are round — a square
    here reads as a broken image rather than as a placeholder. */
 .pt-crest-mono {
-  border-radius: 50%; background: #EDEAE4; color: #6B645E;
+  border-radius: 50%; background: var(--pp-rule-2); color: var(--pp-ink-2);
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 17px; letter-spacing: .04em;
 }
 .pt-score {
-  font-size: 46px; color: #BD162C; font-variant-numeric: tabular-nums;
+  font-size: 46px; color: var(--pp-red); font-variant-numeric: tabular-nums;
   line-height: 1; white-space: nowrap;
 }
 /* Same slot, same weight, in the ink rather than the red: before
    kick-off this is a fact about the calendar, not a result. */
 .pt-kickoff {
-  font-size: 38px; color: #2D2926; font-variant-numeric: tabular-nums;
+  font-size: 38px; color: var(--pp-ink); font-variant-numeric: tabular-nums;
   line-height: 1; white-space: nowrap;
 }
 .pt-sb-meta {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
-  font-size: 14px; color: #6B645E; padding-top: 20px;
+  font-size: 14px; color: var(--pp-ink-2); padding-top: 20px;
 }
-.pt-sb-meta > span:not(:first-child)::before { content: '· '; color: #C9C3BB; }
-.pt-map-link { color: #BD162C; }
+.pt-sb-meta > span:not(:first-child)::before { content: '· '; color: var(--pp-rule-4); }
+.pt-map-link { color: var(--pp-red); }
 
 /* ── "Ets convocat" ── */
 .pt-you {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 16px; flex-wrap: wrap;
-  background: #F6F2E9; padding: 12px 36px; font-size: 15px;
-  border-bottom: 1px solid #E3DFD8;
+  background: var(--pp-tint); padding: 12px 36px; font-size: 15px;
+  border-bottom: 1px solid var(--pp-rule);
 }
-.pt-you-no { color: #6B645E; }
-.pt-you-meta { font-size: 13px; color: #6B645E; }
+.pt-you-no { color: var(--pp-ink-2); }
+.pt-you-meta { font-size: 13px; color: var(--pp-ink-2); }
 
 /* ── Bands ── */
-.pt-band { padding: 30px 36px; border-bottom: 1px solid #E3DFD8; }
+.pt-band { padding: 30px 36px; border-bottom: 1px solid var(--pp-rule); }
 .pt-band:last-child { border-bottom: none; }
 .pt-context { display: grid; grid-template-columns: 320px 1fr 1fr; gap: 44px; align-items: start; }
 .pt-play { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
@@ -7310,9 +7361,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-facts { padding-bottom: 18px; }
 .pt-fact {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 14px; padding: 9px 0; border-bottom: 1px solid #EDEAE4;
+  gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
-.pt-fact-l { font-size: 13px; color: #6B645E; }
+.pt-fact-l { font-size: 13px; color: var(--pp-ink-2); }
 .pt-fact-v {
   font-size: 17px; text-align: right;
   display: inline-flex; align-items: center; gap: 8px;
@@ -7322,7 +7373,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    arithmetic against it — a CSS resize turns bands of one width into bands
    of several. If they are the wrong size, change the constant. */
 .pt-kit { display: inline-flex; align-items: center; }
-.pt-kit-label { font-size: 13px; color: #6B645E; }
+.pt-kit-label { font-size: 13px; color: var(--pp-ink-2); }
 .pt-oppkits { display: inline-flex; align-items: center; gap: 10px; }
 .pt-oppkit { display: inline-flex; align-items: center; }
 /* The facts rows are a label against a value; two kits make the value the
@@ -7343,10 +7394,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 10px; color: #FFFFFF; cursor: default;
 }
-.pt-form-w { background: #5C8F5E; }
+.pt-form-w { background: var(--pp-ok); }
 .pt-form-d { background: #A8A29B; }
-.pt-form-l { background: #C0564C; }
-.pt-form-cap { font-size: 11.5px; color: #99928B; }
+.pt-form-l { background: var(--pp-bad); }
+.pt-form-cap { font-size: 11.5px; color: var(--pp-ink-3); }
 
 /* ── Boards and videos ── */
 .pt-boards {
@@ -7355,7 +7406,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-board { min-width: 0; position: relative; cursor: pointer; }
 .pt-board-thumb { position: relative; }
 .pt-board-name { font-size: 14px; padding-top: 6px; }
-.pt-board-meta { font-size: 11.5px; color: #99928B; }
+.pt-board-meta { font-size: 11.5px; color: var(--pp-ink-3); }
 /* Over the thumbnail's top-right corner, on the scrim the board's own
    colours guarantee contrast against. */
 /* Above the board's own control strip, which also lives in the
@@ -7364,9 +7415,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-board-x {
   position: absolute; top: 0; right: 0; width: 20px; height: 20px; z-index: 3;
   font: inherit; font-size: 12px; line-height: 1; cursor: pointer;
-  border: none; background: rgba(45, 41, 38, .72); color: #FBFAF7;
+  border: none; background: rgba(45, 41, 38, .72); color: var(--pp-paper);
 }
-.pt-board-x:hover { background: #BD162C; }
+.pt-board-x:hover { background: var(--pp-red); }
 /* ── The 3D puck on a 170px card ──
    It is half the width of the thumbnail and the design has no such
    control on the grid. Hidden HERE ONLY: the overlay keeps it, and
@@ -7379,7 +7430,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-ov { align-items: flex-start; }
 .pt-ov-card {
   width: min(1000px, 92vw); margin: 5vh auto; padding: 22px;
-  background: #FBFAF7; color: #2D2926; border: 1px solid #2D2926; border-radius: 0;
+  background: var(--pp-paper); color: var(--pp-ink); border: 1px solid var(--pp-ink); border-radius: 0;
   font-family: 'Oswald', 'Arial Narrow', sans-serif;
   max-height: 90vh; overflow-y: auto;
 }
@@ -7390,37 +7441,37 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-ov-name { font-size: 22px; line-height: 1.2; padding-top: 4px; }
 .pt-ov-close {
   font: inherit; font-size: 13.5px; background: none; border: none;
-  padding: 0; cursor: pointer; color: #6B645E; flex: none;
+  padding: 0; cursor: pointer; color: var(--pp-ink-2); flex: none;
 }
-.pt-ov-close:hover { color: #BD162C; }
+.pt-ov-close:hover { color: var(--pp-red); }
 /* The board fills the panel. scaleRoBoards measures this width to size the
    pitch, so it must not be narrower than the panel's content box. */
 .pt-ov-body { width: 100%; min-width: 0; }
 .pt-videos { padding-top: 4px; }
-.pt-video { padding: 8px 0; border-bottom: 1px solid #EDEAE4; font-size: 14px; }
-.pt-video-note { font-size: 11.5px; color: #99928B; padding-top: 3px; }
+.pt-video { padding: 8px 0; border-bottom: 1px solid var(--pp-rule-2); font-size: 14px; }
+.pt-video-note { font-size: 11.5px; color: var(--pp-ink-3); padding-top: 3px; }
 
 /* ── Convocats ── */
 .pt-cu-list { display: flex; flex-direction: column; }
 .pt-cu-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 8px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 8px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
 /* The viewer's own row, on the player screen. The same highlight
    the "ets convocat" strip uses, so the two read as one answer. */
-.pt-row-mine { background: #F6F2E9; }
+.pt-row-mine { background: var(--pp-tint); }
 .pt-cu-group {
   font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
-  color: #99928B; padding: 18px 0 6px;
+  color: var(--pp-ink-3); padding: 18px 0 6px;
 }
 .pt-cu-group:first-child { padding-top: 4px; }
 .pt-dorsal {
-  min-width: 24px; font-size: 14px; color: #6B645E;
+  min-width: 24px; font-size: 14px; color: var(--pp-ink-2);
   font-variant-numeric: tabular-nums; text-align: right; flex: none;
 }
 .pt-cu-name { flex: 1; min-width: 0; font-size: 14.5px; }
 .pt-squad {
-  font-size: 10px; letter-spacing: .08em; color: #99928B; padding-left: 7px;
+  font-size: 10px; letter-spacing: .08em; color: var(--pp-ink-3); padding-left: 7px;
   text-transform: uppercase;
 }
 .pt-discs { display: inline-flex; flex: none; }
@@ -7429,18 +7480,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-discs .conv-pos-circle + .conv-pos-circle { margin-left: -5px; }
 .pt-star {
   font: inherit; font-size: 20px; line-height: 1; background: none; border: none;
-  padding: 0; cursor: pointer; color: #DED9D1; flex: none;
+  padding: 0; cursor: pointer; color: var(--pp-rule-3); flex: none;
 }
 .pt-star-on { color: #f9a825; }
 .pt-starters { font-size: 12px; }
-.pt-starters-ok { color: #3F6B44; }
-.pt-starters-off { color: #BD162C; }
+.pt-starters-ok { color: var(--pp-green); }
+.pt-starters-off { color: var(--pp-red); }
 /* The promise about the eleven. Not styled as a warning — it is
    not one — but it must not be skimmable either, so it keeps the
    ink and a rule under it. */
 .pt-locked {
-  font-size: 13px; color: #6B645E; padding: 6px 0 12px;
-  border-bottom: 1px solid #EDEAE4;
+  font-size: 13px; color: var(--pp-ink-2); padding: 6px 0 12px;
+  border-bottom: 1px solid var(--pp-rule-2);
 }
 
 /* ── Esdeveniments (v213) ──
@@ -7453,44 +7504,44 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-ev-row {
   display: grid; grid-template-columns: 1fr 52px 1fr 18px;
   align-items: center; gap: 10px;
-  padding: 9px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 9px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
 .pt-ev-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pt-ev-home { justify-content: flex-end; text-align: right; }
 .pt-ev-away { flex-direction: row-reverse; justify-content: flex-end; text-align: left; }
 .pt-ev-txt { display: flex; flex-direction: column; min-width: 0; }
-.pt-ev-name { font-size: 14px; color: #2D2926; }
-.pt-ev-detail { font-size: 11.5px; color: #99928B; }
+.pt-ev-name { font-size: 14px; color: var(--pp-ink); }
+.pt-ev-detail { font-size: 11.5px; color: var(--pp-ink-3); }
 .pt-ev-icon { flex: none; display: inline-flex; align-items: center; }
 .pt-ev-icon img { width: 17px; height: 19px; object-fit: contain; }
 .pt-ev-min {
-  font-size: 12.5px; color: #6B645E; text-align: center;
+  font-size: 12.5px; color: var(--pp-ink-2); text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .pt-ev-xcell { display: flex; justify-content: flex-end; }
 .pt-ev-x {
   font: inherit; font-size: 13px; line-height: 1; background: none; border: none;
-  padding: 0; cursor: pointer; color: #C9C3BB;
+  padding: 0; cursor: pointer; color: var(--pp-rule-4);
 }
-.pt-ev-x:hover { color: #BD162C; }
+.pt-ev-x:hover { color: var(--pp-red); }
 
 /* ── + Event ── */
 .pt-ev-add { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 16px; }
 .pt-ev-add-btn {
   font: inherit; font-size: 13.5px; padding: 9px 12px; cursor: pointer;
-  background: transparent; border: 1px solid #E3DFD8; color: #6B645E;
+  background: transparent; border: 1px solid var(--pp-rule); color: var(--pp-ink-2);
 }
 /* Ours is the one a coach reaches for; theirs is a hairline. */
-.pt-ev-add-btn.pt-ev-add-ours { border-color: #2D2926; color: #2D2926; }
+.pt-ev-add-btn.pt-ev-add-ours { border-color: var(--pp-ink); color: var(--pp-ink); }
 .pt-ev-add-btn:hover, .pt-ev-add-btn.pt-ev-add-on {
-  background: #2D2926; border-color: #2D2926; color: #FBFAF7;
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
 }
 
 /* ── The inline form ──
    Under the timeline, opened by the button above it, with a
    strong rule on top so it reads as attached to the ✚ that
    opened it rather than as a panel that appeared. */
-.pt-ev-form { border-top: 1px solid #2D2926; margin-top: 16px; padding-top: 14px; }
+.pt-ev-form { border-top: 1px solid var(--pp-ink); margin-top: 16px; padding-top: 14px; }
 .pt-ev-form-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; padding-bottom: 14px;
@@ -7504,49 +7555,49 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-chip {
   font: inherit; font-size: 12.5px; padding: 5px 10px; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px;
-  background: transparent; border: 1px solid #E3DFD8; color: #6B645E;
+  background: transparent; border: 1px solid var(--pp-rule); color: var(--pp-ink-2);
 }
-.pt-chip:hover { border-color: #2D2926; color: #2D2926; }
-.pt-chip-on { border-color: #2D2926; color: #2D2926; }
+.pt-chip:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.pt-chip-on { border-color: var(--pp-ink); color: var(--pp-ink); }
 .pt-chip-i { width: 17px; height: 19px; object-fit: contain; flex: none; }
 
 .pt-ev-fields { display: flex; flex-wrap: wrap; gap: 18px; padding-bottom: 16px; }
 .pt-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .pt-field-wide { flex: 1 1 190px; }
 .pt-ev-min-in, .pt-ev-num {
-  width: 74px; font: inherit; font-size: 14px; color: #2D2926;
-  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  width: 74px; font: inherit; font-size: 14px; color: var(--pp-ink);
+  background: transparent; border: none; border-bottom: 1px solid var(--pp-rule-4);
   padding: 5px 2px; outline: none; font-variant-numeric: tabular-nums;
 }
-.pt-ev-min-in:focus, .pt-ev-num:focus { border-bottom-color: #2D2926; }
-.pt-ev-min-in::placeholder, .pt-ev-num::placeholder { color: #99928B; }
+.pt-ev-min-in:focus, .pt-ev-num:focus { border-bottom-color: var(--pp-ink); }
+.pt-ev-min-in::placeholder, .pt-ev-num::placeholder { color: var(--pp-ink-3); }
 /* The shared stdSelect, stripped of its pill to match the hairline
    fields beside it. */
 .pt-sel { width: 100%; }
 .pt-sel .std-sel-t {
   width: 100%; justify-content: space-between;
-  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
-  background: transparent; padding: 5px 2px; font-size: 14px; color: #2D2926;
+  border: none; border-bottom: 1px solid var(--pp-rule-4); border-radius: 0;
+  background: transparent; padding: 5px 2px; font-size: 14px; color: var(--pp-ink);
 }
 /* `overflow-y:auto` with the cap is what makes a long squad scrollable
    INSIDE the menu instead of running off the bottom of the viewport. */
 .pt-sel .std-sel-menu {
-  border: 1px solid #2D2926; border-radius: 0;
+  border: 1px solid var(--pp-ink); border-radius: 0;
   max-height: 236px; overflow-y: auto;
 }
 
 .pt-ev-actions { display: flex; align-items: center; gap: 16px; }
 .pt-ev-submit {
   font: inherit; font-size: 13.5px; padding: 9px 18px; cursor: pointer;
-  background: #2D2926; color: #FBFAF7; border: none;
+  background: var(--pp-ink); color: var(--pp-paper); border: none;
 }
-.pt-ev-submit:hover { background: #BD162C; }
+.pt-ev-submit:hover { background: var(--pp-red); }
 .pt-ev-submit:disabled { background: #B7B1A8; cursor: default; }
 .pt-ev-cancel {
   font: inherit; font-size: 13.5px; background: none; border: none;
-  padding: 0; cursor: pointer; color: #6B645E;
+  padding: 0; cursor: pointer; color: var(--pp-ink-2);
 }
-.pt-ev-cancel:hover { color: #BD162C; }
+.pt-ev-cancel:hover { color: var(--pp-red); }
 
 /* ═══════════════════════════════════════════════════════════════
    The two blocks that keep their own MARKUP inside .pt-page:
@@ -7567,11 +7618,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 /* ── Notes del cos tècnic ── */
 .pt-page .mn-lock { font-size: 11px; padding-left: 6px; }
-.pt-page .mn-phase { padding: 12px 0; border-bottom: 1px solid #EDEAE4; }
+.pt-page .mn-phase { padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2); }
 .pt-page .mn-phase:last-of-type { border-bottom: none; }
 .pt-page .mn-group-title {
   font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
-  font-weight: 500; color: #99928B; padding-bottom: 6px; border: none;
+  font-weight: 500; color: var(--pp-ink-3); padding-bottom: 6px; border: none;
 }
 /* The design's editable line: a dotted rule under live text, and
    the prompt in the faint grey, so an empty phase reads as an
@@ -7579,36 +7630,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    <textarea> because `.value` on blur is what the save handler
    reads. */
 .pt-page .mn-text {
-  width: 100%; font: inherit; font-size: 14px; line-height: 1.5; color: #2D2926;
-  background: transparent; border: none; border-bottom: 1px dotted #C9C3BB;
+  width: 100%; font: inherit; font-size: 14px; line-height: 1.5; color: var(--pp-ink);
+  background: transparent; border: none; border-bottom: 1px dotted var(--pp-rule-4);
   border-radius: 0; padding: 2px 0 5px; resize: vertical; min-height: 2.6em;
   outline: none; box-shadow: none;
 }
-.pt-page .mn-text:focus { border-bottom-color: #2D2926; border-bottom-style: solid; }
-.pt-page .mn-text::placeholder { color: #99928B; }
+.pt-page .mn-text:focus { border-bottom-color: var(--pp-ink); border-bottom-style: solid; }
+.pt-page .mn-text::placeholder { color: var(--pp-ink-3); }
 .pt-page .mn-video-list { padding-top: 8px; }
 .pt-page .mn-video-row {
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 7px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
 .pt-page .mn-video-row .reg-input {
-  font: inherit; font-size: 13px; color: #2D2926; background: transparent;
-  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
+  font: inherit; font-size: 13px; color: var(--pp-ink); background: transparent;
+  border: none; border-bottom: 1px solid var(--pp-rule-4); border-radius: 0;
   padding: 4px 2px; outline: none; box-shadow: none;
 }
-.pt-page .mn-video-row .reg-input:focus { border-bottom-color: #2D2926; }
+.pt-page .mn-video-row .reg-input:focus { border-bottom-color: var(--pp-ink); }
 .pt-page .mn-video-remove {
   font: inherit; font-size: 13px; background: none; border: none;
-  padding: 0 2px; cursor: pointer; color: #C9C3BB; box-shadow: none;
+  padding: 0 2px; cursor: pointer; color: var(--pp-rule-4); box-shadow: none;
 }
-.pt-page .mn-video-remove:hover { color: #BD162C; }
+.pt-page .mn-video-remove:hover { color: var(--pp-red); }
 /* `+ Vídeo` reads as a link, not a button — the only filled
    control on this page is the one that commits an event. */
 .pt-page .mn-video-add {
   font: inherit; font-size: 13px; background: none; border: none;
-  padding: 6px 0 0; cursor: pointer; color: #BD162C; box-shadow: none;
+  padding: 6px 0 0; cursor: pointer; color: var(--pp-red); box-shadow: none;
 }
-.pt-page .mn-video-add:hover { color: #2D2926; }
+.pt-page .mn-video-add:hover { color: var(--pp-ink); }
 .pt-page .mn-boards-edit { padding-top: 12px; }
 /* The picker and its Afegir on one line, the button in the page's own
    hairline idiom rather than the rounded `.btn.btn-outline` it inherits —
@@ -7620,36 +7671,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-page .mn-board-picker .std-sel { flex: 1 1 180px; min-width: 0; }
 .pt-page .mn-board-picker .std-sel-t {
   width: 100%; justify-content: space-between;
-  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
-  background: transparent; padding: 5px 2px; font-size: 14px; color: #2D2926;
+  border: none; border-bottom: 1px solid var(--pp-rule-4); border-radius: 0;
+  background: transparent; padding: 5px 2px; font-size: 14px; color: var(--pp-ink);
 }
 .pt-page .mn-board-picker .std-sel-menu {
-  border: 1px solid #2D2926; border-radius: 0;
+  border: 1px solid var(--pp-ink); border-radius: 0;
   max-height: 236px; overflow-y: auto;
 }
 .pt-page #mn-board-add {
   flex: none; font: inherit; font-size: 13px; padding: 7px 14px;
-  background: transparent; border: 1px solid #2D2926; border-radius: 0;
-  color: #2D2926; box-shadow: none; cursor: pointer;
+  background: transparent; border: 1px solid var(--pp-ink); border-radius: 0;
+  color: var(--pp-ink); box-shadow: none; cursor: pointer;
 }
-.pt-page #mn-board-add:hover { background: #2D2926; color: #FBFAF7; }
+.pt-page #mn-board-add:hover { background: var(--pp-ink); color: var(--pp-paper); }
 .pt-page .mn-board-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .pt-page .mn-board-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12.5px; padding: 4px 8px; border: 1px solid #E3DFD8;
-  border-radius: 0; background: transparent; color: #2D2926;
+  font-size: 12.5px; padding: 4px 8px; border: 1px solid var(--pp-rule);
+  border-radius: 0; background: transparent; color: var(--pp-ink);
 }
-.pt-page .mn-hint { font-size: 11.5px; color: #99928B; padding-bottom: 4px; }
+.pt-page .mn-hint { font-size: 11.5px; color: var(--pp-ink-3); padding-bottom: 4px; }
 
 /* ── Anada: the suggestion banner and the briefing ── */
 .pt-page .mn-leg-banner {
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; flex-wrap: wrap;
-  background: #F6F2E9; border: none; border-radius: 0; box-shadow: none;
+  background: var(--pp-tint); border: none; border-radius: 0; box-shadow: none;
   padding: 12px 14px; margin: 0 0 18px; font-size: 14px;
 }
 .pt-page .mn-leg-text { display: flex; flex-direction: column; gap: 3px; }
-.pt-page .mn-leg-detail { font-size: 12.5px; color: #6B645E; }
+.pt-page .mn-leg-detail { font-size: 12.5px; color: var(--pp-ink-2); }
 .pt-page .mn-leg-actions { display: flex; gap: 12px; align-items: center; }
 .pt-page .mn-leg-banner .btn {
   border-radius: 0; box-shadow: none; font-size: 13px; padding: 7px 14px;
@@ -7671,21 +7722,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-anada-head {
   display: flex; flex-direction: column; gap: 10px;
   cursor: pointer; list-style: none;
-  padding: 0 0 12px; border-bottom: 1px solid #E3DFD8;
+  padding: 0 0 12px; border-bottom: 1px solid var(--pp-rule);
 }
 .pt-anada-head::-webkit-details-marker { display: none; }
 .pt-anada-lead {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 16px; flex-wrap: wrap;
 }
-.pt-anada-note { font-size: 11.5px; color: #99928B; }
+.pt-anada-note { font-size: 11.5px; color: var(--pp-ink-3); }
 /* The toggle word lives on the summary as generated content, so
    there is one control and no second element to keep in step. */
 /* On the RESULT row, not on the summary: the summary is a column now,
    so a pseudo-element there would be a third line under the score
    instead of the link at the end of it. */
 .pt-anada-row::after {
-  content: 'Veure el detall ▾'; font-size: 13px; color: #BD162C;
+  content: 'Veure el detall ▾'; font-size: 13px; color: var(--pp-red);
   flex: none; margin-left: auto;
 }
 .pt-anada[open] .pt-anada-row::after { content: 'Tanca el detall ▴'; }
@@ -7693,17 +7744,17 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
 }
 .pt-anada-when {
-  font-size: 12.5px; color: #6B645E; font-variant-numeric: tabular-nums;
+  font-size: 12.5px; color: var(--pp-ink-2); font-variant-numeric: tabular-nums;
 }
 .pt-anada-team { font-size: 15px; }
 .pt-leg-score {
   font-size: 15px; color: #FFFFFF; padding: 3px 10px; flex: none;
   font-variant-numeric: tabular-nums;
 }
-.pt-leg-win { background: #5C8F5E; }
+.pt-leg-win { background: var(--pp-ok); }
 .pt-leg-draw { background: #A8A29B; }
-.pt-leg-loss { background: #C0564C; }
-.pt-leg-none { background: #C9C3BB; }
+.pt-leg-loss { background: var(--pp-bad); }
+.pt-leg-none { background: var(--pp-rule-4); }
 .pt-anada-cols {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 44px; align-items: start; padding-top: 22px;
@@ -7714,26 +7765,26 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    tabular so the eye runs down it. */
 .pt-leg-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 7px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
 .pt-leg-name { flex: 1; min-width: 0; font-size: 14.5px; }
 .pt-leg-marks { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .pt-leg-min {
-  width: 40px; flex: none; text-align: right; font-size: 13px; color: #6B645E;
+  width: 40px; flex: none; text-align: right; font-size: 13px; color: var(--pp-ink-2);
   font-variant-numeric: tabular-nums;
 }
 /* A substitute who never came on: `—` and greyed, so the bench
    reads as "these were available" and not as "these played 0". */
-.pt-leg-row-unused { color: #99928B; }
-.pt-leg-row-unused .pt-leg-name { color: #99928B; }
+.pt-leg-row-unused { color: var(--pp-ink-3); }
+.pt-leg-row-unused .pt-leg-name { color: var(--pp-ink-3); }
 
 .pt-leg-evs { display: flex; flex-direction: column; }
 .pt-leg-ev {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 7px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
 .pt-leg-ev-min {
-  width: 34px; flex: none; font-size: 12.5px; color: #6B645E;
+  width: 34px; flex: none; font-size: 12.5px; color: var(--pp-ink-2);
   font-variant-numeric: tabular-nums;
 }
 .pt-leg-ev-name { flex: 1; min-width: 0; font-size: 14px; }
@@ -7741,12 +7792,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-leg-ev-crest .pt-crest { width: 18px; height: 18px; }
 .pt-leg-ev-crest .pt-crest-mono { font-size: 8px; letter-spacing: 0; }
 .pt-leg-note { font-size: 13.5px; line-height: 1.5; margin: 0 0 8px; }
-.pt-leg-note:last-child { color: #6B645E; }
+.pt-leg-note:last-child { color: var(--pp-ink-2); }
 
 .pt-anada .mn-media-col { min-width: 0; padding-bottom: 12px; }
 .pt-anada .mn-media-title {
   font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
-  color: #99928B; padding-bottom: 8px;
+  color: var(--pp-ink-3); padding-bottom: 8px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -7764,18 +7815,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    missed call site reads undefined rather than throwing.
    ═══════════════════════════════════════════════════════════════ */
 .pt-dlg {
-  width: min(560px, 92vw); background: #FBFAF7; color: #2D2926;
-  border: 1px solid #2D2926; border-radius: 0; box-shadow: none;
+  width: min(560px, 92vw); background: var(--pp-paper); color: var(--pp-ink);
+  border: 1px solid var(--pp-ink); border-radius: 0; box-shadow: none;
   padding: 22px 24px 20px; text-align: left;
   font-family: 'Oswald', 'Arial Narrow', sans-serif;
   max-height: 90vh; overflow-y: auto;
 }
 .pt-dlg-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #E3DFD8;
+  gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--pp-rule);
 }
 .pt-dlg-title { font-size: 22px; line-height: 1.2; }
-.pt-dlg-note { font-size: 12px; color: #99928B; padding: 12px 0 0; }
+.pt-dlg-note { font-size: 12px; color: var(--pp-ink-3); padding: 12px 0 0; }
 .pt-dlg-body { display: flex; flex-direction: column; gap: 14px; padding: 16px 0 18px; }
 .pt-dlg-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .pt-dlg-row { display: flex; gap: 18px; flex-wrap: wrap; }
@@ -7783,35 +7834,35 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* The same hairline field as the event form — one input idiom on
    the whole screen, dialog included. */
 .pt-dlg-in {
-  width: 100%; font: inherit; font-size: 14px; color: #2D2926;
-  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  width: 100%; font: inherit; font-size: 14px; color: var(--pp-ink);
+  background: transparent; border: none; border-bottom: 1px solid var(--pp-rule-4);
   border-radius: 0; padding: 5px 2px; outline: none; box-shadow: none;
 }
-.pt-dlg-in:focus { border-bottom-color: #2D2926; }
-.pt-dlg-in::placeholder { color: #99928B; }
+.pt-dlg-in:focus { border-bottom-color: var(--pp-ink); }
+.pt-dlg-in::placeholder { color: var(--pp-ink-3); }
 .pt-dlg .std-sel-t {
   width: 100%; justify-content: space-between;
-  border: none; border-bottom: 1px solid #C9C3BB; border-radius: 0;
-  background: transparent; padding: 5px 2px; font-size: 14px; color: #2D2926;
+  border: none; border-bottom: 1px solid var(--pp-rule-4); border-radius: 0;
+  background: transparent; padding: 5px 2px; font-size: 14px; color: var(--pp-ink);
 }
 .pt-dlg .std-sel-menu {
-  border: 1px solid #2D2926; border-radius: 0; max-height: 236px; overflow-y: auto;
+  border: 1px solid var(--pp-ink); border-radius: 0; max-height: 236px; overflow-y: auto;
 }
-.pt-dlg-err { font-size: 13px; color: #C0564C; min-height: 1em; }
+.pt-dlg-err { font-size: 13px; color: var(--pp-bad); min-height: 1em; }
 .pt-dlg-actions { display: flex; align-items: center; gap: 16px; padding-top: 4px; }
 .pt-dlg-save {
   font: inherit; font-size: 13.5px; padding: 9px 18px; cursor: pointer;
-  background: #2D2926; color: #FBFAF7; border: none; border-radius: 0;
+  background: var(--pp-ink); color: var(--pp-paper); border: none; border-radius: 0;
 }
-.pt-dlg-save:hover { background: #BD162C; }
+.pt-dlg-save:hover { background: var(--pp-red); }
 .pt-dlg-cancel, .pt-dlg-del {
   font: inherit; font-size: 13.5px; background: none; border: none;
   padding: 0; cursor: pointer; box-shadow: none;
 }
-.pt-dlg-cancel { color: #6B645E; }
+.pt-dlg-cancel { color: var(--pp-ink-2); }
 /* Destructive, and pushed to the far edge so it is never the button
    next to Desa. */
-.pt-dlg-del { color: #BD162C; margin-left: auto; }
+.pt-dlg-del { color: var(--pp-red); margin-left: auto; }
 .pt-dlg-cancel:hover, .pt-dlg-del:hover { text-decoration: underline; }
 /* The home/away chips are labels around radios — the input still carries
    the answer, so it is hidden rather than removed. */
@@ -7821,11 +7872,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    against a club outside the group must stay typeable). Give it the same
    hairline as every other field. */
 .pt-dlg .md-opponent, .pt-dlg .reg-input {
-  width: 100%; font: inherit; font-size: 14px; color: #2D2926;
-  background: transparent; border: none; border-bottom: 1px solid #C9C3BB;
+  width: 100%; font: inherit; font-size: 14px; color: var(--pp-ink);
+  background: transparent; border: none; border-bottom: 1px solid var(--pp-rule-4);
   border-radius: 0; padding: 5px 2px; outline: none; box-shadow: none;
 }
-.pt-dlg .md-opponent:focus, .pt-dlg .reg-input:focus { border-bottom-color: #2D2926; }
+.pt-dlg .md-opponent:focus, .pt-dlg .reg-input:focus { border-bottom-color: var(--pp-ink); }
 /* The dialog's own datepicker popup must clear the panel it opens over. */
 .pt-dlg .md-datepicker { cursor: pointer; }
 
@@ -7836,10 +7887,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-add-choice {
   display: flex; align-items: center; gap: 10px; width: 100%;
   font: inherit; font-size: 14.5px; text-align: left; cursor: pointer;
-  background: transparent; border: 1px solid #E3DFD8; border-radius: 0;
-  color: #2D2926; padding: 12px 14px; box-shadow: none;
+  background: transparent; border: 1px solid var(--pp-rule); border-radius: 0;
+  color: var(--pp-ink); padding: 12px 14px; box-shadow: none;
 }
-.pt-add-choice:hover { border-color: #2D2926; background: #F1EEE8; }
+.pt-add-choice:hover { border-color: var(--pp-ink); background: #F1EEE8; }
 .pt-add-choice .cal-icon { width: 20px; height: 20px; flex: none; }
 
 /* ── Nou entrenament ──
@@ -7855,21 +7906,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 #nt-page .nt-squad { display: flex; flex-direction: column; }
 #nt-page .conv-player {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 7px 0; border-bottom: 1px solid var(--pp-rule-2);
   background: transparent; border-radius: 0; box-shadow: none;
 }
 #nt-page .nt-add-btn {
   font: inherit; font-size: 13px; background: none; border: none;
-  padding: 10px 0 0; cursor: pointer; color: #BD162C; box-shadow: none;
+  padding: 10px 0 0; cursor: pointer; color: var(--pp-red); box-shadow: none;
 }
-#nt-page .nt-add-btn:hover { color: #2D2926; }
+#nt-page .nt-add-btn:hover { color: var(--pp-ink); }
 #nt-page .nt-actions { border-bottom: none; }
 #nt-page .conv-remove {
   font: inherit; font-size: 13px; background: none; border: none;
-  padding: 0 2px; cursor: pointer; color: #C9C3BB; box-shadow: none;
+  padding: 0 2px; cursor: pointer; color: var(--pp-rule-4); box-shadow: none;
 }
-#nt-page .conv-remove:hover { color: #BD162C; }
-#nt-page .nt-warn { color: #D39A2F; font-size: 13px; }
+#nt-page .conv-remove:hover { color: var(--pp-red); }
+#nt-page .nt-warn { color: var(--pp-warn); font-size: 13px; }
 
 /* ── The Add-Player modal ──
    One function, two callers: the new-session page and the squad edit on
@@ -7894,7 +7945,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    hairline this idiom uses. */
 .nt-pick-modal .nt-pick-card {
   display: flex; align-items: center; gap: 10px; cursor: pointer;
-  padding: 9px 4px; border: none; border-bottom: 1px solid #EDEAE4;
+  padding: 9px 4px; border: none; border-bottom: 1px solid var(--pp-rule-2);
   background: transparent; border-radius: 0; box-shadow: none;
   transition: none;
 }
@@ -7911,31 +7962,31 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    box as TEXT by the click handler — `.nt-dd-check` is centred here
    rather than given a ::after, or the two would both draw one. */
 .nt-pick-modal .nt-dd-check {
-  width: 16px; height: 16px; flex: none; border: 1px solid #C9C3BB;
+  width: 16px; height: 16px; flex: none; border: 1px solid var(--pp-rule-4);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 11px; line-height: 1; color: #FBFAF7;
+  font-size: 11px; line-height: 1; color: var(--pp-paper);
 }
 /* `nt-dd-on` is the class the handler toggles — not `.selected`.
    ⚠ The base rule paints a selected row `--danger-light` with a red
    border. Both are overridden: a chosen row is the highlight this design
    uses everywhere else, and the filled box is what says it is chosen. */
 .nt-pick-modal .nt-pick-card.nt-dd-on {
-  background: #F6F2E9; border-bottom-color: #E3DFD8;
+  background: var(--pp-tint); border-bottom-color: var(--pp-rule);
 }
 .nt-pick-modal .nt-dd-on .nt-dd-check {
-  background: #2D2926; border-color: #2D2926;
+  background: var(--pp-ink); border-color: var(--pp-ink);
 }
 .nt-pick-modal .conv-name { font-size: 14px; }
-.nt-pick-modal .conv-num { font-size: 12px; color: #99928B; }
+.nt-pick-modal .conv-num { font-size: 12px; color: var(--pp-ink-3); }
 /* The category tag was a filled grey pill — the loudest thing in a row
    whose point is the name. Small caps in the eyebrow grey, no chip. */
 .nt-pick-modal .nt-cat-tag {
   background: transparent; border-radius: 0; padding: 0; margin-left: 6px;
-  font-size: 10px; font-weight: 500; letter-spacing: .08em; color: #99928B;
+  font-size: 10px; font-weight: 500; letter-spacing: .08em; color: var(--pp-ink-3);
 }
 /* Same for the squad letter: a hairline circle rather than a filled one. */
 .nt-pick-modal .conv-team-circle {
-  background: transparent; color: #6B645E; border: 1px solid #E3DFD8;
+  background: transparent; color: var(--pp-ink-2); border: 1px solid var(--pp-rule);
   font-size: 10px;
 }
 /* The medical glyph keeps its colour — that is the information — but
@@ -7996,9 +8047,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    and .pt-. Same rules: one surface, hairlines instead of cards, no radius,
    no shadow, red only for actions and for over-limit.
 
-   Colours are LITERALS, not var()s — the design is light-mode only and every
-   value here is the one a later dark theme will map. Same choice the five
-   blocks before this one made.
+   Colours come from the `--pp-*` palette at the top of this file. They were
+   literals here until v228, as they were in the five blocks before this one
+   — and that is exactly what the palette block replaced: six copies of the
+   same twenty-two values, which is six places to miss when one changes.
 
    ⚠ EVERY RULE IS SCOPED UNDER .cv-page. Three families are borrowed rather
    than reimplemented — .conv-pos-circle (from posCirclesHtmlGlobal),
@@ -8007,44 +8059,43 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    without touching the Plantilla table or the Partit scoreboard, and it is
    the arrangement .pt-page .mn-* already uses.
 
-   tokens: paper #FBFAF7 · ink #2D2926 · ink-2 #6B645E · ink-3 #99928B
-           rule #E3DFD8 · rule-2 #EDEAE4 · rule-3 #DED9D1
-           red #BD162C · red-dark #9E1224 · green #3F6B44 · amber #B07B00
-           tint #F6F2E9 */
+   The handoff's token names map to the palette one for one: paper, ink,
+   ink-2, ink-3, rule, rule-2, rule-3, red, red-dark, green, amber and tint
+   are all `--pp-` prefixed. */
 .cv-page {
-  background: #FBFAF7; color: #2D2926;
+  background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
   margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
 }
 
 .cv-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: #99928B;
+  color: var(--pp-ink-3);
 }
 .cv-sec-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 14px; padding-bottom: 8px; border-bottom: 1px solid #2D2926;
+  gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
 }
-.cv-sec-note { font-size: 12px; color: #6B645E; }
-.cv-over { color: #BD162C; }
+.cv-sec-note { font-size: 12px; color: var(--pp-ink-2); }
+.cv-over { color: var(--pp-red); }
 
 /* ---- title band ---- */
 .cv-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid #E3DFD8;
+  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule);
 }
 .cv-head-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .cv-h1 {
   margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1;
   letter-spacing: -.01em;
 }
-.cv-sub { font-size: 14px; color: #6B645E; }
+.cv-sub { font-size: 14px; color: var(--pp-ink-2); }
 .cv-head-r {
   display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
   flex-shrink: 0;
 }
-.cv-big { font-size: 32px; line-height: 1; color: #3F6B44; }
-.cv-big.cv-over { color: #BD162C; }
+.cv-big { font-size: 32px; line-height: 1; color: var(--pp-green); }
+.cv-big.cv-over { color: var(--pp-red); }
 
 /* ---- controls row ----
    align-items:stretch plus margin-top:auto on each group's own control is
@@ -8053,7 +8104,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    push their underline down to meet it. */
 .cv-controls {
   display: flex; flex-wrap: wrap; align-items: stretch; gap: 48px;
-  padding: 24px 0; border-bottom: 1px solid #E3DFD8;
+  padding: 24px 0; border-bottom: 1px solid var(--pp-rule);
 }
 .cv-ctl { display: flex; flex-direction: column; gap: 7px; }
 .cv-ctl-match { flex: 1 1 340px; min-width: 260px; }
@@ -8065,27 +8116,27 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-menu-t {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   width: 100%; margin-top: auto; padding: 9px 0 8px;
-  background: none; border: none; border-bottom: 1px solid #2D2926;
+  background: none; border: none; border-bottom: 1px solid var(--pp-ink);
   font: inherit; color: inherit; text-align: left; cursor: pointer;
 }
 .cv-menu-ro .cv-menu-t { cursor: default; }
-.cv-caret { font-size: 10px; color: #99928B; flex-shrink: 0; }
+.cv-caret { font-size: 10px; color: var(--pp-ink-3); flex-shrink: 0; }
 .cv-menu-m {
   position: absolute; top: 100%; left: 0; right: 0; z-index: 40;
-  background: #FBFAF7; border: 1px solid #2D2926;
+  background: var(--pp-paper); border: 1px solid var(--pp-ink);
   max-height: 320px; overflow-y: auto;
 }
 .cv-menu-m-l { right: auto; min-width: 300px; }
 .cv-menu-o {
   display: flex; align-items: center; gap: 9px;
-  padding: 7px 12px; border-bottom: 1px solid #EDEAE4; cursor: pointer;
+  padding: 7px 12px; border-bottom: 1px solid var(--pp-rule-2); cursor: pointer;
 }
 .cv-menu-o:last-child { border-bottom: none; }
 .cv-menu-o:hover { background: #F1EEE8; }
-.cv-menu-o-on { background: #F6F2E9; }
+.cv-menu-o-on { background: var(--pp-tint); }
 .cv-menu-o-n { flex: 1; min-width: 0; font-size: 14px; }
-.cv-menu-o-m { font-size: 11.5px; color: #99928B; }
-.cv-menu-empty { padding: 12px; font-size: 12.5px; color: #99928B; }
+.cv-menu-o-m { font-size: 11.5px; color: var(--pp-ink-3); }
+.cv-menu-empty { padding: 12px; font-size: 12.5px; color: var(--pp-ink-3); }
 
 /* ---- Tria el partit ---- */
 .cv-mt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
@@ -8093,8 +8144,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-teams {
   font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.cv-mt-when { font-size: 12px; color: #6B645E; }
-.cv-mt-none { font-size: 15px; color: #99928B; }
+.cv-mt-when { font-size: 12px; color: var(--pp-ink-2); }
+.cv-mt-none { font-size: 15px; color: var(--pp-ink-3); }
 .cv-page .cv-mt-row .pt-crest { width: 40px; height: 40px; }
 /* ⚠ NO CIRCLE ANYWHERE IN THIS CONTROL. A real crest is an <img> and was
    never in one; the MONOGRAM that stands in for a club we have no badge for
@@ -8114,36 +8165,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-time-i {
   width: 62px; padding: 0; border: none; background: transparent;
   font: inherit; font-size: 17px; font-variant-numeric: tabular-nums;
-  color: #2D2926;
+  color: var(--pp-ink);
 }
 .cv-time-i:focus { outline: none; }
 .cv-time-ro { font-size: 17px; font-variant-numeric: tabular-nums; }
 /* The delegate's citation value carries the rule the pills carry for a
    coach — see the note in renderConvocatoria. */
 .cv-time-ruled {
-  margin-top: auto; padding-bottom: 8px; border-bottom: 1px solid #2D2926;
+  margin-top: auto; padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
 }
-.cv-time-d { font-size: 12px; color: #99928B; }
-.cv-bad, .cv-time-i.cv-bad { color: #BD162C; }
-.cv-input.cv-bad { border-bottom-color: #BD162C; }
+.cv-time-d { font-size: 12px; color: var(--pp-ink-3); }
+.cv-bad, .cv-time-i.cv-bad { color: var(--pp-red); }
+.cv-input.cv-bad { border-bottom-color: var(--pp-red); }
 /* The rule sits under the PILLS, not under the field — that is what lines
    this group up with its two neighbours. */
 .cv-pills {
   display: flex; gap: 6px; margin-top: auto; padding: 4px 0 8px;
-  border-bottom: 1px solid #2D2926;
+  border-bottom: 1px solid var(--pp-ink);
 }
 .cv-pill {
   padding: 3px 8px; font: inherit; font-size: 12px; background: none;
-  border: 1px solid #E3DFD8; color: #99928B; cursor: pointer;
+  border: 1px solid var(--pp-rule); color: var(--pp-ink-3); cursor: pointer;
   font-variant-numeric: tabular-nums;
 }
-.cv-pill:hover { border-color: #2D2926; }
-.cv-pill-on { border-color: #2D2926; color: #2D2926; }
+.cv-pill:hover { border-color: var(--pp-ink); }
+.cv-pill-on { border-color: var(--pp-ink); color: var(--pp-ink); }
 
 /* ---- Equipació ---- */
 .cv-kits { display: flex; align-items: stretch; gap: 20px; flex: 1; padding-top: 2px; }
 .cv-kit { flex: 1 1 0; min-width: 120px; display: flex; flex-direction: column; gap: 5px; }
-.cv-kit-l { font-size: 11px; color: #6B645E; }
+.cv-kit-l { font-size: 11px; color: var(--pp-ink-2); }
 .cv-kit .cv-menu { display: flex; flex-direction: column; flex: 1; }
 .cv-kit .cv-menu-t { padding: 5px 0 6px; gap: 9px; }
 .cv-kit-img {
@@ -8159,10 +8210,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* ---- the two lists ---- */
 .cv-lists { display: flex; flex-wrap: wrap; gap: 44px; padding: 30px 0 0; }
 .cv-col { flex: 1 1 420px; min-width: 320px; display: flex; flex-direction: column; }
-.cv-zone-on { background: #F6F2E9; }
+.cv-zone-on { background: var(--pp-tint); }
 .cv-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 8px 0; border-bottom: 1px solid #EDEAE4; cursor: grab;
+  padding: 8px 0; border-bottom: 1px solid var(--pp-rule-2); cursor: grab;
 }
 /* 45%, not display:none. An injured player still has to be VISIBLE in the
    pool — a coach who cannot see that his striker is out learns it from the
@@ -8171,7 +8222,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-dragging { opacity: .35; }
 /* The insertion point. inset so it draws INSIDE the row's own box and does
    not shift the two rows either side of it by 2px as the pointer moves. */
-.cv-over { box-shadow: inset 0 2px 0 0 #BD162C; }
+.cv-over { box-shadow: inset 0 2px 0 0 var(--pp-red); }
 .cv-handle {
   width: 12px; text-align: center; font-size: 12px; color: #C9C3BA;
   user-select: none; flex-shrink: 0;
@@ -8182,23 +8233,23 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-page-ro .cv-handle { display: none; }
 .cv-page-ro .cv-row { cursor: default; }
 .cv-num {
-  width: 24px; text-align: right; font-size: 14px; color: #6B645E;
+  width: 24px; text-align: right; font-size: 14px; color: var(--pp-ink-2);
   font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
 .cv-who { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
 .cv-team {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #2D2926;
-  background: #EDEAE4; font-size: 10px; color: #2D2926; flex-shrink: 0;
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--pp-ink);
+  background: var(--pp-rule-2); font-size: 10px; color: var(--pp-ink); flex-shrink: 0;
 }
 .cv-name { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cv-page .cat-badge { font-size: 12px; font-weight: 400; color: #99928B; margin-left: 0; }
+.cv-page .cat-badge { font-size: 12px; font-weight: 400; color: var(--pp-ink-3); margin-left: 0; }
 .cv-state { font-size: 11.5px; white-space: nowrap; }
-.cv-state-yes { color: #3F6B44; }
-.cv-state-doubt { color: #B07B00; }
-.cv-state-inj { color: #BD162C; }
-.cv-state-no { color: #6B645E; }
-.cv-state-none { color: #99928B; }
+.cv-state-yes { color: var(--pp-green); }
+.cv-state-doubt { color: var(--pp-amber); }
+.cv-state-inj { color: var(--pp-red); }
+.cv-state-no { color: var(--pp-ink-2); }
+.cv-state-none { color: var(--pp-ink-3); }
 /* ---- fitness ----
    The shared `.roster-status-icon` and `.readiness-*` classes, in this
    page's palette. A third copy of these values (after `.std-table` and
@@ -8212,19 +8263,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-page .roster-status-icon {
   width: 22px; height: 22px; font-size: 12px; font-weight: 700;
 }
-.cv-page .roster-status-fit { background: #DCE9DC; color: #3F6B44; }
-.cv-page .roster-status-doubt { background: #F6E4C4; color: #9A6614; }
-.cv-page .roster-status-injured { background: #F2D2CE; color: #A63A32; }
+.cv-page .roster-status-fit { background: var(--pp-med-fit-bg); color: var(--pp-med-fit-ink); }
+.cv-page .roster-status-doubt { background: var(--pp-med-doubt-bg); color: var(--pp-med-doubt-ink); }
+.cv-page .roster-status-injured { background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); }
 .cv-page .readiness-cell { gap: 6px; }
 .cv-page .readiness-dot { width: 8px; height: 8px; }
 .cv-page .readiness-score { font-size: 13px; font-weight: 400; }
-.cv-page .readiness-score-green { color: #5C8F5E; }
-.cv-page .readiness-dot.readiness-green { background: #5C8F5E; }
-.cv-page .readiness-score-orange { color: #D39A2F; }
-.cv-page .readiness-dot.readiness-orange { background: #D39A2F; }
-.cv-page .readiness-score-red { color: #C0564C; }
-.cv-page .readiness-dot.readiness-red { background: #C0564C; }
-.cv-page .readiness-dot.readiness-nodata { background: #C9C3BB; }
+.cv-page .readiness-score-green { color: var(--pp-ok); }
+.cv-page .readiness-dot.readiness-green { background: var(--pp-ok); }
+.cv-page .readiness-score-orange { color: var(--pp-warn); }
+.cv-page .readiness-dot.readiness-orange { background: var(--pp-warn); }
+.cv-page .readiness-score-red { color: var(--pp-bad); }
+.cv-page .readiness-dot.readiness-red { background: var(--pp-bad); }
+.cv-page .readiness-dot.readiness-nodata { background: var(--pp-rule-4); }
 
 .cv-pos { display: flex; align-items: center; width: 56px; justify-content: flex-end; flex-shrink: 0; }
 .cv-page .conv-pos-circle {
@@ -8233,66 +8284,66 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .cv-act {
   width: 18px; flex-shrink: 0; text-align: center; font: inherit; font-size: 13px;
-  background: none; border: none; padding: 0; color: #99928B; cursor: pointer;
+  background: none; border: none; padding: 0; color: var(--pp-ink-3); cursor: pointer;
 }
-.cv-act:hover { color: #BD162C; }
+.cv-act:hover { color: var(--pp-red); }
 .cv-act-off { display: inline-block; cursor: default; }
-.cv-empty { padding: 22px 0; font-size: 13px; color: #99928B; text-align: center; }
+.cv-empty { padding: 22px 0; font-size: 13px; color: var(--pp-ink-3); text-align: center; }
 
 /* ---- Pissarres + vídeos ---- */
 .cv-band { display: flex; flex-direction: column; padding-top: 40px; }
 .cv-board, .cv-video {
   display: flex; align-items: center; gap: 14px;
-  padding: 10px 0; border-bottom: 1px solid #EDEAE4;
+  padding: 10px 0; border-bottom: 1px solid var(--pp-rule-2);
 }
 .cv-board { cursor: pointer; }
 .cv-board-th {
-  width: 34px; height: 24px; border: 1px solid #DED9D1; background: #F1EEE7;
+  width: 34px; height: 24px; border: 1px solid var(--pp-rule-3); background: #F1EEE7;
   flex-shrink: 0;
 }
-.cv-board-on .cv-board-th { border-color: #2D2926; }
+.cv-board-on .cv-board-th { border-color: var(--pp-ink); }
 .cv-board-n { flex: 1; min-width: 0; font-size: 14.5px; }
-.cv-board-m { font-size: 11.5px; color: #99928B; }
-.cv-board-open { padding: 12px 0 16px; border-bottom: 1px solid #EDEAE4; }
+.cv-board-m { font-size: 11.5px; color: var(--pp-ink-3); }
+.cv-board-open { padding: 12px 0 16px; border-bottom: 1px solid var(--pp-rule-2); }
 .cv-board-add { display: flex; align-items: center; gap: 16px; padding: 12px 0; position: relative; }
 .cv-link {
-  font: inherit; font-size: 13px; color: #BD162C; background: none; border: none;
+  font: inherit; font-size: 13px; color: var(--pp-red); background: none; border: none;
   padding: 0; cursor: pointer; white-space: nowrap;
 }
 .cv-link:hover { text-decoration: underline; }
-.cv-none { font-size: 12px; color: #99928B; }
-.cv-video-i { width: 34px; flex-shrink: 0; font-size: 12px; color: #99928B; }
+.cv-none { font-size: 12px; color: var(--pp-ink-3); }
+.cv-video-i { width: 34px; flex-shrink: 0; font-size: 12px; color: var(--pp-ink-3); }
 .cv-video-c { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cv-video-u {
-  font-size: 14.5px; color: #BD162C; text-decoration: none;
+  font-size: 14.5px; color: var(--pp-red); text-decoration: none;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .cv-video-u:hover { text-decoration: underline; }
-.cv-video-n { font-size: 12px; color: #6B645E; }
+.cv-video-n { font-size: 12px; color: var(--pp-ink-2); }
 .cv-video-add { display: flex; align-items: center; gap: 14px; padding: 12px 0; }
 .cv-input {
   flex: 1 1 240px; min-width: 0; padding: 6px 0; background: transparent;
-  border: none; border-bottom: 1px solid #DED9D1; font: inherit; font-size: 14px;
-  color: #2D2926;
+  border: none; border-bottom: 1px solid var(--pp-rule-3); font: inherit; font-size: 14px;
+  color: var(--pp-ink);
 }
-.cv-input:focus { outline: none; border-bottom-color: #2D2926; }
-.cv-input::placeholder { color: #99928B; }
+.cv-input:focus { outline: none; border-bottom-color: var(--pp-ink); }
+.cv-input::placeholder { color: var(--pp-ink-3); }
 
 /* ---- footer ---- */
 .cv-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
-  padding-top: 32px; margin-top: 12px; border-top: 1px solid #E3DFD8;
+  padding-top: 32px; margin-top: 12px; border-top: 1px solid var(--pp-rule);
 }
-.cv-foot-s { font-size: 12.5px; color: #6B645E; }
+.cv-foot-s { font-size: 12.5px; color: var(--pp-ink-2); }
 .cv-foot-b { display: flex; gap: 12px; }
 .cv-btn {
   padding: 9px 18px; font: inherit; font-size: 13px; cursor: pointer;
-  background: none; border: 1px solid #DED9D1; color: #6B645E;
+  background: none; border: 1px solid var(--pp-rule-3); color: var(--pp-ink-2);
 }
-.cv-btn:hover { border-color: #2D2926; color: #2D2926; }
-.cv-btn-p { background: #BD162C; border-color: #BD162C; color: #FBFAF7; }
-.cv-btn-p:hover { background: #9E1224; border-color: #9E1224; color: #FBFAF7; }
-.cv-btn-ok { border-color: #3F6B44; color: #3F6B44; }
+.cv-btn:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.cv-btn-p { background: var(--pp-red); border-color: var(--pp-red); color: var(--pp-paper); }
+.cv-btn-p:hover { background: var(--pp-red-dark); border-color: var(--pp-red-dark); color: var(--pp-paper); }
+.cv-btn-ok { border-color: var(--pp-green); color: var(--pp-green); }
 
 /* ---- narrow ----
    The design is 1720px and says nothing about a phone, but staff run this

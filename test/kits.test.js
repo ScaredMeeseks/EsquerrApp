@@ -13,6 +13,7 @@
  */
 const assert = require('assert');
 const U = require('../js/utils.js');
+const {readCss} = require('./read-css');
 
 const KITS = [
   {id: 'k1', label: '1a', shirt: '#ffffff', shorts: '#000000', socks: 's|h|6|#ffffff|#222222'},
@@ -430,8 +431,7 @@ describe('kits — nine bands land on whole pixels', () => {
   const fs = require('fs');
   const path = require('path');
   const app = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-  const css = fs.readFileSync(
-      path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const css = readCss();
   const VIEW = 64;
 
   const box = (name) => {

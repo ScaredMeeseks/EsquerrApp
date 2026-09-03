@@ -16,13 +16,14 @@
  * about those two failures never being possible again.
  */
 const assert = require('assert');
+const {readCss} = require('./read-css');
 const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const utilsSrc = fs.readFileSync(path.join(root, 'js', 'utils.js'), 'utf8');
-const cssSrc = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const cssSrc = readCss();
 const U = require(path.join(root, 'js', 'utils.js'));
 
 function grab(from, to) {

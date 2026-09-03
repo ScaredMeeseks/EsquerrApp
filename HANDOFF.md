@@ -1,19 +1,19 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-03._
+_Rolling document, overwritten each session. Last updated: 2026-09-04._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 227** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 228** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2828** — `cd test && npm run test:unit` (~10 s), all passing |
+| Unit tests | **2836** — `cd test && npm run test:unit` (~10 s), all passing |
 | Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
@@ -25,7 +25,23 @@ deploy, no functions deploy. The only edit under `functions/` is the version con
 
 ---
 
-## This session: v227. Convocatòria, the sixth design handoff.
+## This session: v227–v228. Convocatòria, the sixth design handoff — and the palette
+## behind all six of them.
+
+**v228 — the paper palette is one thing now.** The six redesigned pages carried the design
+system's colours as raw hexes **552 times**; they are 23 `--pp-*` custom properties at the top of
+`css/style.css`, and every page keeps its own classes and sizes. Nothing renders differently —
+proved by resolving every token back to its literal and diffing the file byte for byte, then by
+rendering all three preview pages before and after and comparing pixel by pixel.
+
+⚠ **Two things to know before touching colours again.** `--pp-*` is deliberately a SECOND axis
+from `--primary`/`--text`, which hold two of the same values: those are the app chrome's palette
+and the paper pages were built not to inherit it. And **every test reads the stylesheet through
+`test/read-css.js`**, which resolves the tokens — so a colour assertion still tests the colour, not
+the token name. `test/paper-palette.test.js` fails on any loose literal and names the token to use;
+without it, a pasted hex renders identically and nothing notices.
+
+## v227. Convocatòria, the sixth design handoff.
 
 The staff call-up tab rebuilt to `Baixades/EsquerrApp Convocatòria UI/design_handoff_convocatoria/`.
 It was the last staff screen in the old idiom and sat one click from the redesigned Partit page.

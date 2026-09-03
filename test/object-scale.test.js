@@ -17,7 +17,8 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const BG = require(path.join(ROOT, 'js', 'board-geom.js'));
-const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+const {readCss} = require('./read-css');
+const css = readCss();
 const b3 = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
 
 /** The metre figure a CSS rule asks for, out of its calc(). */

@@ -8889,3 +8889,61 @@ not stored" passed for the wrong reason. Every wired test now drains a window `e
 
 Unit 2754 → **2828**. 39 mutants killed across three batches, including one for each of the five
 departures above and one for each of the four requests. Version triple → v227.
+
+### 2026-09-04 — The paper palette becomes one thing (v228)
+
+The v227 entry above closes on a note that the readiness colours were now a **third** copy, after
+`.std-table` and `.pl-ready`. The owner asked whether to share them. Counting first turned out to
+matter more than the answer did.
+
+**It was not three copies of one class, and it was not about efficiency.** Two separate families
+were being restyled — the medical glyph (`roster-status-*`, by `.std-table` at 24px and `.cv-page`
+at 22px) and the readiness cell (`readiness-*`, by `.pl-ready` at 14px and `.cv-page` at 13px). The
+COLOURS matched; the SIZES differed on purpose, and a single shared class would have had to force
+one size on all of them — the one part that genuinely belongs per page. (`.nt-pick-modal` strips the
+pill entirely, which is a third treatment and proof that divergence is wanted.)
+
+**And those thirteen lines were 2% of the problem.** Across the six redesigned pages the design
+system's colours appeared as raw hexes **552 times**: `#2D2926` 147 of them, `#99928B` 81,
+`#E3DFD8` 45, `#C9C3BB` 20. A palette change meant finding every copy in six blocks; a seventh page
+meant copying them again. So the fix belongs at the palette layer, not the class layer.
+
+Twenty-three `--pp-*` custom properties at the top of `css/style.css`; 548 literals substituted;
+every page keeps its own classes and its own sizes. Every paper block's comment had already promised
+this — *"every colour is a literal so a later dark theme can map it"* — and this is that mapping.
+
+⚠ **DELIBERATELY A SECOND AXIS, not folded into `--primary`/`--text`.** Those hold two of the same
+values today (`#BD162C`, `#2D2926`) and it is tempting to collapse them. They are the app CHROME's
+palette — sidebar, cards, auth screens — and the paper pages were built not to inherit it. Whether
+this app has one theme or two is a decision, not a tidy-up; the comment on the palette block says so
+where somebody will read it.
+
+**The refactor is invisible, so it was proved twice.** The substitution script resolves every
+`var(--pp-*)` back to its literal and asserts the result is the original file byte for byte —
+mechanical proof there is no colour change anywhere. Then all three preview pages were rendered in
+headless Chrome before and after and compared pixel by pixel: identical, all three.
+
+⚠ **THE INTERESTING PART WAS THE TEST SUITE.** Seven tests broke at once, all of them asserting on
+raw hexes (`assert.ok(css.includes('background: #F6F2E9'))`). Both obvious fixes are wrong:
+rewriting each to look for `var(--pp-tint)` tests the NAME and stops testing the colour — a token
+pointed at the wrong value would pass every one of them — and fixing only the seven leaves two kinds
+of stylesheet in one suite, so the next colour assertion lands in whichever file its author happened
+to open. Instead `test/read-css.js` returns the stylesheet with the palette resolved, and **all 24
+files that read the stylesheet go through it** (41 read sites). Not one assertion was rewritten, and
+the count came back at exactly 2828 — which is itself the evidence the resolver is faithful.
+
+**The guard is the point.** A refactor whose whole merit is invisible has nothing to stop the next
+person pasting `#2D2926` into a new rule: the app renders identically and no other test notices.
+`test/paper-palette.test.js` scans the stylesheet — minus comments, minus the block that DEFINES the
+palette — and fails on any loose literal, naming the token to use. Its expected values are spelled
+out in the test rather than read from the file, because a test that takes both sides of the
+comparison from the same source asserts nothing. Two known exceptions are pinned rather than hidden:
+the app chrome's own `:root`, and one `rgba(192,86,76,.28)` where an alpha is needed and a hex token
+cannot carry one.
+
+`--pp-med-fit-ink` is an alias for `--pp-green` rather than a second literal: one value, two roles,
+and the alias keeps the medical trio reading as a trio without letting the two drift apart silently.
+A test pins that it stays an alias.
+
+Unit 2828 → **2836**; 8 new tests, 4 mutants killed (a pasted literal, a drifted token value, the
+alias becoming a literal, a deleted token). Version triple → v228.

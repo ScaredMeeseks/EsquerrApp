@@ -22,6 +22,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const src = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 const U = require(path.join(root, 'js', 'utils.js'));
+const {readCss} = require('./read-css');
 
 function grab(from, to) {
   const i = src.indexOf(from);
@@ -215,7 +216,7 @@ describe('the calendar renders at all', () => {
        above the grid was the same seven words repeated six times. */
     const html = make({})(null, '2026-03');
     assert.ok(!/class="cal-dows?"/.test(html), 'the weekday header is back');
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(!/\.cal-dows?\s*[{,]/.test(css), '.cal-dow(s) is still styled');
   });
 
@@ -372,7 +373,7 @@ describe('the match block', () => {
     const pos = cell.indexOf('cal-pos');
     assert.ok(name < crest, 'the crest is before the name');
     assert.ok(crest < pos, 'the position comes between the name and the crest');
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.cal-opp\s*\{[^}]*flex:\s*0 1 auto/.test(css),
         '.cal-opp still grows, so the crest will float to the margin');
   });
@@ -388,7 +389,7 @@ describe('the match block', () => {
     assert.ok(cell.includes('src="https://files.fcf.cat/escudos/clubes/escudos/x.png"'),
         'the calendar is still showing a monogram for a fixture with a badge');
     assert.ok(/class="cal-crest-img"/.test(cell), 'the crest image has no class to style');
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.cal-crest-img\s*\{/.test(css), '.cal-crest-img is unstyled');
   });
 
@@ -402,7 +403,7 @@ describe('the match block', () => {
     })]})(null, '2026-03'), '2026-03-07');
     assert.ok(/class="cal-crest cal-crest-plain"/.test(cell),
         'the badge is still sitting in the monogram disc');
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.cal-crest-plain\s*\{[^}]*background:\s*none/.test(css),
         '.cal-crest-plain leaves the disc\'s ground behind the badge');
     assert.ok(/\.cal-crest-plain\s*\{[^}]*border-radius:\s*0/.test(css),
@@ -424,7 +425,7 @@ describe('the match block', () => {
         'a 404 leaves an empty box: the disc and the initials never come back');
     assert.ok(/<span class="cal-crest-txt">IS<\/span>/.test(cell),
         'there are no initials to come back to');
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.cal-crest\s*\{[^}]*position:\s*relative/.test(css),
         '.cal-crest is not a positioning context, so the image will not fill it');
     assert.ok(/\.cal-crest-img\s*\{[^}]*position:\s*absolute/.test(css),
@@ -583,7 +584,7 @@ describe('collapsed cells hold whole rows', () => {
   });
 
   it('the stylesheet actually hides it, and shows it on an open strip', () => {
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.cal-x\s*\{[^}]*display:\s*none/.test(css), '.cal-x does not hide anything');
     assert.ok(/\.cal-week:hover\s+\.cal-x/.test(css), 'hover does not reveal it');
     assert.ok(/\.cal-week-open\s+\.cal-x/.test(css), 'touch has no way to reveal it');
@@ -635,7 +636,7 @@ describe('collapsed cells hold whole rows', () => {
     assert.ok(/_calResizeBound/.test(bind),
         'the resize listener is unguarded and will stack up per render');
 
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(/\.cal-week-measure \.cal-cell\s*\{[^}]*height:\s*auto/.test(css),
         'the measuring state does not open the cells');
     assert.ok(/\.cal-week-measure \.cal-x\s*\{[^}]*display:\s*block/.test(css),
@@ -645,7 +646,7 @@ describe('collapsed cells hold whole rows', () => {
   it('NEVER puts a scrollbar in a cell', () => {
     /* A scrollbar inside an 80px cell is worse than anything it could
        rescue. The rule is: the measurement is right, or the cell clips. */
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     const open = /\.cal-week:hover \.cal-cell[^{]*\{([^}]*)\}/.exec(css);
     assert.ok(open, 'the open-cell rule is gone');
     assert.ok(!/overflow/.test(open[1]),
@@ -660,7 +661,7 @@ describe('collapsed cells hold whole rows', () => {
 
        Both declarations are shared rules naming the two selectors
        together — the only version of this that cannot drift apart again. */
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8')
+    const css = readCss()
         .replace(/\/\*[\s\S]*?\*\//g, ' ');
 
     /* Anchored on `.cal-b-ttl`, not on the declaration: the stylesheet has
@@ -966,7 +967,7 @@ describe('the top bar', () => {
     /* Comments stripped from BOTH — the note explaining why the class was
        removed names it, and an unstripped scan finds that instead of a
        rule. The standing trap in this repo. */
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8')
+    const css = readCss()
         .replace(/\/\*[\s\S]*?\*\//g, ' ');
     const js = src.replace(/\/\*[\s\S]*?\*\//g, ' ')
         .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
@@ -1051,14 +1052,14 @@ describe('the top bar', () => {
     assert.ok(!html.includes('cal-card'), 'the frame is still there');
     assert.ok(html.indexOf('cal-bar') < html.indexOf('cal-weeks'),
         'the bar should now open the page');
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     assert.ok(!/\.cal-card\s*\{/.test(css), '.cal-card is still styled');
     assert.ok(/\.cal-month\s*\{[^}]*font-size:\s*1\.5rem/.test(css),
         'the month label did not take the heading size');
   });
 
   it('separates weeks with a rule, not a box', () => {
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8')
+    const css = readCss()
         .replace(/\/\*[\s\S]*?\*\//g, ' ');
     const wk = /\.cal-week\s*\{([^}]*)\}/.exec(css);
     assert.ok(wk, '.cal-week is gone');
@@ -1073,7 +1074,7 @@ describe('the top bar', () => {
   });
 
   it('gives the month arrows no box, and the week number weight', () => {
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8')
+    const css = readCss()
         .replace(/\/\*[\s\S]*?\*\//g, ' ');
     const arrow = /\.cal-arrow\s*\{([^}]*)\}/.exec(css);
     assert.ok(arrow, '.cal-arrow is gone');
@@ -1091,7 +1092,7 @@ describe('the top bar', () => {
   it('draws are GREY, not the amber the handoff specifies', () => {
     // The one place the design and the owner disagree. Fill and scoreline
     // both, or a grey cell would carry an amber number.
-    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    const css = readCss();
     const draw = /\.cal-k-draw\s*\{([^}]*)\}/.exec(css);
     assert.ok(draw, '.cal-k-draw is gone');
     assert.ok(!/B0781A|F4EDDC/.test(draw[1]), 'the amber draw is still there: ' + draw[1]);

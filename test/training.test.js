@@ -21,6 +21,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {readCss} = require('./read-css');
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 
@@ -1249,8 +1250,7 @@ describe('the player week list and activities', () => {
 describe('the Add-Player modal', () => {
   const src = fs.readFileSync(
       path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-  const css = fs.readFileSync(
-      path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const css = readCss();
   const bareCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
   /* ⚠ COMMENT-STRIPPED. The block is heavily commented and names its own
      hooks in prose; counting `nt-pick-cancel` over the raw source matched

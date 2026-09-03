@@ -22,6 +22,7 @@ const fs = require('fs');
 const path = require('path');
 
 const F = require(path.join(__dirname, '..', 'functions', 'fcf.js'));
+const {readCss} = require('./read-css');
 
 const fixture = (n) => JSON.parse(
     fs.readFileSync(path.join(__dirname, 'fixtures', n), 'utf8'));
@@ -290,7 +291,7 @@ describe('fcfShirtFill / fcfKitPieces — the rival\'s shirt', () => {
        Two things had to hold, and this pins both: the icons are drawn at the
        size they are shown, and that size divides by the stripe counts. */
     const app = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+    const css = readCss();
     const MD_KIT_PX = Number((app.match(/var MD_KIT_PX = (\d+);/) || [])[1]);
 
     it('the Calendari states its own render size', () => {

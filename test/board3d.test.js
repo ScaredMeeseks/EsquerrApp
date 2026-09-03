@@ -15,6 +15,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {readCss} = require('./read-css');
 
 const ROOT = path.join(__dirname, '..');
 const src = fs.readFileSync(path.join(ROOT, 'js', 'board3d.js'), 'utf8');
@@ -231,7 +232,7 @@ describe('the page stays still while orbiting', () => {
   const fs2 = require('fs');
   const p2 = require('path');
   const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
-  const css = fs2.readFileSync(p2.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const css = readCss();
   const wrap = css.slice(css.indexOf('.tb-3d-wrap {'), css.indexOf('.tb-3d-loading'));
 
   it('registers wheel non-passively, or preventDefault does nothing', () => {
@@ -260,7 +261,7 @@ describe('the page stays still while orbiting', () => {
 describe('the 3D surface is bigger than the 2D one', () => {
   const fs2 = require('fs');
   const p2 = require('path');
-  const css = fs2.readFileSync(p2.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const css = readCss();
   const s3 = fs2.readFileSync(p2.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
 
   it('fills the content area, with no negative margins to do it', () => {
@@ -1775,7 +1776,7 @@ describe('selection and delete in 3D', () => {
 describe('the draw lock', () => {
   const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const appBare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+  const cssSrc = readCss();
 
   it('reuses the 2D drawing code rather than raycasting onto the turf', () => {
     /* The point of the whole design. If board3d ever grows its own
@@ -2161,7 +2162,7 @@ describe('the draw lock gives the camera back', () => {
  * the app actually renders, not against a list written from memory.
  */
 describe('the drawing overlay hides the 3D scene\'s own marks', () => {
-  const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+  const cssSrc = readCss();
   const appSrc2 = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 
   /** Every class tbMarkingsHtml can emit, read from the function. */

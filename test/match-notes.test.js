@@ -19,6 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const MN = require(path.join(__dirname, '..', 'js', 'match-notes.js'));
+const {readCss} = require('./read-css');
 const root = path.join(__dirname, '..');
 const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
 const dbSrc = fs.readFileSync(path.join(root, 'js', 'db.js'), 'utf8');
@@ -429,7 +430,7 @@ describe('fitMnScoreNames — wiring and the measurement trap', () => {
 });
 
 describe('the briefing has ONE definition of its title size', () => {
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const css = readCss();
 
   it('both the header and the club names read --mn-title-size', () => {
     assert.ok(/--mn-title-size:\s*[\d.]+rem/.test(css), 'the token is not defined');
@@ -443,7 +444,7 @@ describe('the briefing has ONE definition of its title size', () => {
 });
 
 describe('boards use the space they are given', () => {
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const css = readCss();
 
   it('are wrapped in a grid, not stacked down one column', () => {
     assert.ok(/'<div class="mn-boards">'/.test(appSrc),
