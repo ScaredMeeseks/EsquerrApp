@@ -9009,3 +9009,17 @@ produced (a constant-returning stub, jsdom swallowing listener exceptions) and t
 rule. The paper design system is now design decision 8 rather than something only CONTEXT.md knows.
 `CLAUDE.md` gained the same four rules in short form, because that is the file a new session
 actually reads.
+
+⚠ **Parking-lot item 4 had been describing a working feature as a missing one.** The entry said the
+cross-category call-up did not work "across categories" because "a player never downloads the other
+shard". Traced rather than trusted: it **works today** for anyone whose remit covers both squads —
+a coach with two `staffCategories` on Totes, or any lead — and a scratch case against the real
+render returns `Disponibles: ["a1","j1"]` for an amateur fixture. The coach who cannot is the one
+the club never made staff of that category, and for him the refusal is `firestore.rules` doing its
+job (`resource.data.category in request.auth.token.cats`), not a gap: `fa_users` is sharded per
+category and those names are not on his device. Making it possible means widening his `cats` claim,
+which widens medical-record access with it — club policy, not a fix. The entry now says so.
+
+The lesson is the one v225 already recorded in different words: **a note explaining why something
+is absent goes stale silently**, and this one was inherited and repeated twice in one session
+before anybody read the code under it.

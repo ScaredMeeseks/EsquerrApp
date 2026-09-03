@@ -206,11 +206,23 @@ a listener that was never attached.
    coach-entered events. The referee index does store the federation's `gh`/`ga` per acta, so their
    result is already on the device if that decision is ever taken.
 3. **Neither week strip re-renders on a timer.** Pre-existing.
-4. **The cross-category call-up** — still open, but narrower since v229. A player already convoked
-   from another category now STAYS on the acta whatever the filter says, and is badged on both
-   sides. What remains is the way in: the picker offers only the visible categories, and a coach
-   never downloads the other category's shard, so he cannot convoke someone he cannot see. That is
-   a data-scope problem (`cats` claim, `DB.setScope`), not a UI one.
+4. **The cross-category call-up — mostly NOT open, and the wording here was misleading for a
+   long time.** It **works today** for anyone whose remit covers both squads: a coach with
+   `staffCategories: ['amateur','juvenil']` on "Totes", or any lead or admin, sees both squads in
+   Disponibles and can drag a juvenil player onto an amateur fixture's acta. Verified against the
+   real render, not inferred. Since v229 that player also STAYS on the acta whatever the filter
+   says, and is badged on both sides.
+
+   The only person who cannot is a coach the club has **not** made staff of that category — and for
+   him it is the correct answer, not a defect. `staffCategories` is written server-side from the
+   club's rosters, `getVisibleCategories()` intersects it with the enabled list, `DB.setScope` turns
+   that into `where('category','in',…)`, and `firestore.rules` would REFUSE the read anyway
+   (`resource.data.category in request.auth.token.cats`). `fa_users` is sharded per category, so the
+   other squad's names are not on his device at all. That is Phase 5 working: before it, one
+   club-wide blob per key let any coach read every squad's medical records.
+
+   ⚠ So "let him convoke outside his categories" is not a fix, it is **widening his `cats` claim** —
+   which widens medical-record access with it. Club policy, not a bug.
 5. **Fill in `privacy.html`** — blocks both stores, no code dependency.
 6. **The APK** — phones are on v43-era. Set `clubs/…​.minAppVersion` only once a current APK is
    actually installed.
