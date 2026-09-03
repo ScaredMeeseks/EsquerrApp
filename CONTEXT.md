@@ -8545,3 +8545,39 @@ Version triple → **v220**.
 covers the page; the dialog now only exists in the app, so it needs opening there: Editar on a
 fixture, the category and time pickers, Desa, and the Calendari's add-match and add-activity, which
 share the same shell.
+
+### 2026-09-03 — Calendari: the add chooser and Nou entrenament (v221)
+
+Two more the owner found before the push.
+
+**1. The "what are we adding?" chooser** (`calOpenAddMenu`) was still `.modal-card` with three
+`.btn.btn-outline`. It is the paper shell now, and the three choices are equal hairline rows rather
+than pills — they are the same kind of choice and none is likelier than the others. Built by hand
+rather than routed through `calModal`: this dialog has no form, no error line and no Desa, and
+passing an empty body only to reuse the wrapper would leave all three in the markup with nothing
+in them.
+
+**2. Nou entrenament.** ⓘ The team filter the owner asked for **was already there** — category
+select plus letter chips, in `teamBar`. What was wrong was the format: the page was cards,
+`.reg-input` and three native `<select>`s, reached straight from a chooser that had just been
+restyled. It is a `.pt-page` now, with the same fields as the dialogs.
+
+⚠ **The three selects — start, end, planned RPE — became stdSelects, and this is a save path.**
+`.nt-f` fields commit into `_ntDrafts` on `change`; a stdSelect root is a `<div>` with **no `.value`
+and no `change` event**. Left alone they would have kept looking right and silently stopped saving.
+
+The commit is now one function, `ntCommit(el)`, reached from both kinds of control — the text inputs
+through their existing `change`/`input` listeners, the three pickers through
+`bindStdSelects('ntfield', …)`. Writing the rule twice is how the two would come to disagree about
+the trap that rule exists for: **an empty planned RPE must be DELETED, never stored as `""`**, or it
+rides every shard to the end of the season meaning the same as its own absence.
+
+`test/training.test.js` grew a stdSelect path: its harness captures the `bindStdSelects` callback and
+drives the same commit rule from a fake root, because nothing else in the suite would notice these
+three fields failing — the control would still look correct. Two mutants killed: the dataset read
+reverted to `.value`, and the RPE range guard dropped.
+
+ⓘ `_ntOpenPicker` — the Add-Player modal on that page — is **still the old format**. Not mentioned,
+not touched; it is the next thing on this page if it matters.
+
+Unit 2736 → **2740**. Version triple → v221. Still **not pushed**.

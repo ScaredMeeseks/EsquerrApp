@@ -1993,7 +1993,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 220;
+  const APP_VERSION = 221;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -21801,24 +21801,29 @@
     const users = getUsers();
     const fitCtx = fitnessContext();
 
+    /* WHICH TEAM comes first, and it is the page's own band rather than a
+       card — a coach lands here from the Calendari's chooser without having
+       said who the session is for, and that question has to be answered
+       before the drafts below it mean anything. */
     const chip = (val, label, on) =>
-      `<button class="roster-team-btn nt-team-btn${on ? ' roster-team-btn-active' : ''}" data-nt-team="${val}">${label}</button>`;
-    const catOptions = cats.map(c =>
-      `<option value="${c}"${c === cat ? ' selected' : ''}>${sanitize(CATEGORY_LABELS[c] || c)}</option>`).join('');
-    const teamBar = `
-      <div class="card">
-        <div class="card-title">${t('nt.which_team')}</div>
-        <p class="nt-hint">${t('nt.which_team_hint')}</p>
-        <div class="nt-pick-row">
-          <label class="nt-pick-cat">${t('nt.category')}
-            <select class="reg-input" id="nt-cat">${catOptions}</select></label>
-          ${letters.length > 1 ? `<div class="nt-pick-letters">
-            <span class="nt-pick-label">${t('nt.team')}</span>
-            <div class="roster-team-filter" style="margin-bottom:0;">
-              ${letters.map(l => chip(l, l, _ntTeam === l)).join('')}
-            </div></div>` : ''}
-        </div>
-      </div>`;
+      `<button class="pt-chip nt-team-btn${on ? ' pt-chip-on' : ''}" data-nt-team="${val}">${label}</button>`;
+    const teamBar =
+      ptHead(t('nt.which_team'), t('nt.which_team_hint')) +
+      '<div class="pt-dlg-row nt-pick-row">' +
+        (cats.length > 1
+          ? '<div class="pt-dlg-f"><span class="pt-eyebrow">' + sanitize(t('nt.category')) +
+            '</span>' + stdSelect({kind: 'ntcat', cls: 'nt-cat std-sel-esc', value: cat,
+              options: cats.map(function (c) {
+                return {value: c, label: CATEGORY_LABELS[c] || c};
+              })}) + '</div>'
+          : '') +
+        (letters.length > 1
+          ? '<div class="pt-dlg-f"><span class="pt-eyebrow">' + sanitize(t('nt.team')) +
+            '</span><div class="pt-chips">' +
+            letters.map(function (l) { return chip(l, l, _ntTeam === l); }).join('') +
+            '</div></div>'
+          : '') +
+      '</div>';
 
     const blocks = _ntDrafts.map((d, i) => {
       const squad = calledPlayers(d, users);
@@ -21831,40 +21836,68 @@
 
       const picker = `<button class="btn btn-small btn-outline nt-add-btn" data-nt-open="${i}">${t('nt.add_player')}</button>`;
 
+      /* `nt-f` stays on every control — it is what bindTrainingNew binds and
+         what carries `data-nt-f` — but the three that were `<select>`s are
+         stdSelects now, and the commit reads `dataset.value` off those. See
+         ntFieldValue. */
       const dmy = d.date ? tDateDMY(d.date) : '';
-      return `<div class="card nt-draft" data-nt-i="${i}">
-        <div class="card-title">${sanitize(CATEGORY_LABELS[cat] || cat)} ${trainingTeams(d).join(' + ')}</div>
+      const ntSel = (field, value, options) =>
+        stdSelect({kind: 'ntfield', cls: 'nt-f std-sel-esc', value: String(value == null ? '' : value),
+          options: options, data: {'nt-f': field, 'nt-i': i}});
+      return `<div class="pt-band nt-draft" data-nt-i="${i}">
+        ${ptHead(sanitize(CATEGORY_LABELS[cat] || cat) + ' ' + trainingTeams(d).join(' + '))}
         <div class="nt-fields">
-          <label>${t('training.th_date')}
-            <input type="text" class="reg-input nt-f md-datepicker" data-display-dmy data-nt-f="date" data-nt-i="${i}" data-date-iso="${sanitize(d.date)}" value="${sanitize(dmy)}" placeholder="dd/mm/yyyy" readonly></label>
-          <label>${t('nt.start')}
-            <select class="reg-input nt-f" data-nt-f="time" data-nt-i="${i}">${buildTimeOptions(d.time)}</select></label>
-          <label>${t('nt.end')}
-            <select class="reg-input nt-f" data-nt-f="endTime" data-nt-i="${i}">${buildTimeOptions(d.endTime)}</select></label>
-          <label>${t('training.th_focus')}
-            <input class="reg-input nt-f" data-nt-f="focus" data-nt-i="${i}" value="${sanitize(d.focus)}" placeholder="${t('training.focus_ph')}"></label>
-          <label>${t('training.th_planned_rpe')}
-            <select class="reg-input nt-f" data-nt-f="plannedRpe" data-nt-i="${i}">${buildRpeOptions(d.plannedRpe)}</select></label>
-          <label>${t('training.th_location')}
-            <input class="reg-input nt-f" data-nt-f="location" data-nt-i="${i}" value="${sanitize(d.location)}" placeholder="${t('training.location_ph')}"></label>
-          <label>${t('training.th_link')}
-            <input class="reg-input nt-f" data-nt-f="mapLink" data-nt-i="${i}" value="${sanitize(d.mapLink)}" placeholder="${t('training.maplink_ph')}"></label>
+          ${calField(t('training.th_date'),
+            `<input type="text" class="pt-dlg-in nt-f md-datepicker" data-display-dmy data-nt-f="date" data-nt-i="${i}" data-date-iso="${sanitize(d.date)}" value="${sanitize(dmy)}" placeholder="dd/mm/yyyy" readonly>`)}
+          ${calField(t('nt.start'), ntSel('time', d.time, ntTimeOptions()))}
+          ${calField(t('nt.end'), ntSel('endTime', d.endTime, ntTimeOptions()))}
+          ${calField(t('training.th_focus'),
+            `<input class="pt-dlg-in nt-f" data-nt-f="focus" data-nt-i="${i}" value="${sanitize(d.focus)}" placeholder="${t('training.focus_ph')}">`)}
+          ${calField(t('training.th_planned_rpe'), ntSel('plannedRpe', d.plannedRpe, ntRpeOptions()))}
+          ${calField(t('training.th_location'),
+            `<input class="pt-dlg-in nt-f" data-nt-f="location" data-nt-i="${i}" value="${sanitize(d.location)}" placeholder="${t('training.location_ph')}">`)}
+          ${calField(t('training.th_link'),
+            `<input class="pt-dlg-in nt-f" data-nt-f="mapLink" data-nt-i="${i}" value="${sanitize(d.mapLink)}" placeholder="${t('training.maplink_ph')}">`)}
         </div>
-        <div class="conv-panel-header nt-squad-header">${t('nt.called')} <span class="conv-count">${squad.length}</span></div>
-        <div class="conv-list nt-squad">${rows || `<p class="nt-hint">${t('nt.nobody')}</p>`}</div>
+        ${ptHead(t('nt.called') + ' · ' + squad.length)}
+        <div class="conv-list nt-squad">${rows || `<div class="pt-empty">${t('nt.nobody')}</div>`}</div>
         ${picker}
       </div>`;
     }).join('');
 
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="calendar">${t('btn.back')}</button>
-      <h2 class="page-title">${t('nt.title')}</h2>
-      ${teamBar}
-      ${_ntTeam ? blocks : `<div class="card"><p class="nt-hint">${t('nt.pick_team_first')}</p></div>`}
-      <div class="nt-actions">
-        <button class="btn btn-outline" id="nt-cancel">${t('common.cancel')}</button>
-        <button class="btn btn-primary" id="nt-save"${_ntTeam && _ntDrafts.length ? '' : ' disabled'}>${t('nt.save')}${_ntDrafts.length ? ' (' + _ntDrafts.length + ')' : ''}</button>
+      <div class="pt-page" id="nt-page">
+        <div class="pt-topbar">
+          <button class="pt-back detail-back" data-back="calendar">← ${t('pt.back_calendar')}</button>
+          <span class="pt-topbar-right"><span class="pt-eyebrow">${t('nt.title')}</span></span>
+        </div>
+        <div class="pt-band">${teamBar}</div>
+        ${_ntTeam ? blocks : `<div class="pt-band"><div class="pt-empty">${t('nt.pick_team_first')}</div></div>`}
+        <div class="pt-band pt-dlg-actions nt-actions">
+          <button class="pt-dlg-save" id="nt-save"${_ntTeam && _ntDrafts.length ? '' : ' disabled'}>${t('nt.save')}${_ntDrafts.length ? ' (' + _ntDrafts.length + ')' : ''}</button>
+          <button class="pt-dlg-cancel" id="nt-cancel">${t('common.cancel')}</button>
+        </div>
       </div>`;
+  }
+
+  /* The two option lists the draft fields need, as stdSelect options. The
+     `<option>` builders they replace (buildTimeOptions, buildRpeOptions) are
+     still used by nothing else on this page but are left alone — other
+     callers exist. */
+  function ntTimeOptions() {
+    const out = [{value: '', label: '--:--'}];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        const v = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        out.push({value: v, label: v});
+      }
+    }
+    return out;
+  }
+  function ntRpeOptions() {
+    const out = [{value: '', label: '—'}];
+    for (let n = 1; n <= 10; n++) out.push({value: String(n), label: String(n)});
+    return out;
   }
 
   /**
@@ -21971,19 +22004,6 @@
   function bindTrainingNew() {
     const rerender = () => renderPage(getSession());
 
-    const catSel = $('#nt-cat');
-    if (catSel) {
-      catSel.addEventListener('change', () => {
-        // A different category has different letters; the old choice cannot
-        // survive it, so the coach picks again (or it auto-picks if there
-        // is only one).
-        _ntCat = catSel.value;
-        _ntTeam = null;
-        _ntSeed();
-        rerender();
-      });
-    }
-
     // Which teams get a session. Re-seeds from their schedules, because the
     // proposed times ARE the teams' own — changing the teams changes them.
     $$('[data-nt-team]').forEach(btn => {
@@ -21997,22 +22017,48 @@
     });
 
     // Field edits write straight to the draft — nothing is persisted yet.
+    /* ONE commit rule, two kinds of control. The text inputs still carry
+       `.value`; the time, end and planned-RPE fields are stdSelects now and
+       a stdSelect root has none — it carries `dataset.value`. Writing the
+       rule twice is how the two would come to disagree about what an empty
+       planned RPE means. */
+    const ntCommit = (el) => {
+      const d = _ntDrafts[Number(el.dataset.ntI)];
+      if (!d) return;
+      const f = el.dataset.ntF;
+      const raw = ('value' in el && el.tagName !== 'DIV') ? el.value : el.dataset.value;
+      if (f === 'plannedRpe') {
+        /* A NUMBER or nothing at all. An empty choice hands back '', and a
+           persisted `plannedRpe: ""` would ride every shard from here to
+           the end of the season meaning the same as its own absence. */
+        const n = Number(raw);
+        if (n >= 1 && n <= 10) d.plannedRpe = n; else delete d.plannedRpe;
+        return;
+      }
+      d[f] = (f === 'date') ? (el.dataset.dateIso || d.date) : raw;
+      if (f === 'date') d.day = d.date ? tDay(new Date(d.date + 'T12:00:00').getDay()) : d.day;
+    };
+
+    /* The stdSelect fields: bound by kind, and the pick commits through the
+       same rule. Without this they draw and never open — bindDynamicActions
+       binds by page, and this page's binder is the one place that knows
+       these exist. */
+    bindStdSelects('ntfield', function (root) { ntCommit(root); rerender(); });
+    bindStdSelects('ntcat', function (root) {
+      // A different category has different letters; the old choice cannot
+      // survive it, so the coach picks again (or it auto-picks if there
+      // is only one).
+      _ntCat = root.dataset.value;
+      _ntTeam = null;
+      _ntSeed();
+      rerender();
+    });
+
     $$('.nt-f').forEach(el => {
-      const commit = () => {
-        const d = _ntDrafts[Number(el.dataset.ntI)];
-        if (!d) return;
-        const f = el.dataset.ntF;
-        if (f === 'plannedRpe') {
-          /* A NUMBER or nothing at all. A <select> hands back '', and a
-             persisted `plannedRpe: ""` would ride every shard from here to
-             the end of the season meaning the same as its own absence. */
-          const n = Number(el.value);
-          if (n >= 1 && n <= 10) d.plannedRpe = n; else delete d.plannedRpe;
-          return;
-        }
-        d[f] = (f === 'date') ? (el.dataset.dateIso || d.date) : el.value;
-        if (f === 'date') d.day = d.date ? tDay(new Date(d.date + 'T12:00:00').getDay()) : d.day;
-      };
+      // The stdSelects carry `.nt-f` too, but they commit through the
+      // binding above — a `change` listener on a div would never fire.
+      if (el.classList.contains('std-sel')) return;
+      const commit = () => ntCommit(el);
       el.addEventListener('change', () => { commit(); rerender(); });
       if (el.tagName === 'INPUT' && el.type === 'text') {
         /* The date field MUST be included. It is readonly and written
@@ -28277,19 +28323,27 @@
     overlay.id = 'custom-modal-overlay';
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
-      '<div class="modal-card cal-add-modal">' +
-        '<div class="modal-title">' + sanitize(tDateLong(date)) + '</div>' +
+      /* The same paper shell as calModal, hand-built rather than routed
+         through it: this dialog has no form, no error line and no Desa, and
+         passing an empty body only to reuse the wrapper would leave all
+         three in the markup with nothing in them. */
+      '<div class="pt-dlg cal-add-modal">' +
+        '<div class="pt-dlg-head">' +
+          '<div class="pt-dlg-title">' + sanitize(tDateLong(date)) + '</div>' +
+          '<button class="pt-ov-close" data-cal-cancel>' +
+            sanitize(t('pt.close')) + ' ✕</button>' +
+        '</div>' +
         '<div class="cal-add-choices">' +
-          (canAddTraining() ? '<button class="btn btn-outline" data-cal-new="training">' +
+          (canAddTraining() ? '<button class="pt-add-choice" data-cal-new="training">' +
             '<img src="img/icon-cone.svg" class="cal-icon" alt="">' +
             sanitize(t('cal.add_training')) + '</button>' : '') +
-          '<button class="btn btn-outline" data-cal-new="match">⚽ ' +
+          '<button class="pt-add-choice" data-cal-new="match">⚽ ' +
             sanitize(t('cal.add_match')) + '</button>' +
-          '<button class="btn btn-outline" data-cal-new="activity">📌 ' +
+          '<button class="pt-add-choice" data-cal-new="activity">📌 ' +
             sanitize(t('cal.add_activity')) + '</button>' +
         '</div>' +
-        '<div class="modal-actions">' +
-          '<button class="btn btn-small btn-outline" data-cal-cancel>' +
+        '<div class="pt-dlg-actions">' +
+          '<button class="pt-dlg-cancel" data-cal-cancel>' +
             sanitize(t('common.cancel')) + '</button>' +
         '</div>' +
       '</div>';

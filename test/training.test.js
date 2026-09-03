@@ -1006,15 +1006,26 @@ describe('new-session date field', () => {
     };
   }
 
-  /** Run the real binding block from bindTrainingNew over fake fields. */
+  /** Run the real binding block from bindTrainingNew over fake fields.
+   *
+   * `bindStdSelects` is stubbed and its callbacks are CAPTURED. Three of the
+   * draft fields — start, end and planned RPE — are stdSelects now, and they
+   * commit through that callback rather than through a `change` listener.
+   * Handing the callback back is what lets the tests drive the same commit
+   * rule from both kinds of control, which is the point of there being one.
+   */
   function bind(els, drafts) {
     const code = grab('    // Field edits write straight to the draft',
         "\n    $$('[data-nt-drop]')");
     let renders = 0;
+    const picked = {};
     // eslint-disable-next-line no-new-func
-    new Function('$$', '_ntDrafts', 'tDay', 'rerender', code)(
-        () => els, drafts, (i) => DAYS[i], () => { renders++; });
-    return () => renders;
+    new Function('$$', '_ntDrafts', 'tDay', 'rerender', 'bindStdSelects', code)(
+        () => els, drafts, (i) => DAYS[i], () => { renders++; },
+        (kind, fn) => { picked[kind] = fn; });
+    const count = () => renders;
+    count.pick = (root) => picked.ntfield && picked.ntfield(root);
+    return count;
   }
 
   /** What renderDP() does to the input it was opened on. */
@@ -1069,6 +1080,49 @@ describe('new-session date field', () => {
         assert.ok(dp.includes('dpInput.dataset.dateIso = iso'),
             'and the ISO date lives in the dataset, not the visible value');
       });
+
+  /* The three fields that became stdSelects.
+   *
+   * ⚠ A stdSelect root is a <div>: it has no `.value` and fires no `change`.
+   * Nothing else in this suite would catch a break here — the field would
+   * simply stop saving, silently, with the control still looking right.
+   */
+  const stdRoot = (field, value) => fakeEl({
+    tagName: 'DIV', classes: ['std-sel', 'nt-f'],
+    dataset: { ntF: field, ntI: '0', value: value }
+  });
+
+  it('a picked TIME reaches the draft through the same commit rule', () => {
+    const draft = { date: '2026-08-25', time: '18:00' };
+    const renders = bind([stdRoot('time', '19:30')], [draft]);
+    renders.pick(stdRoot('time', '19:30'));
+    assert.strictEqual(draft.time, '19:30',
+        'the start time never reached the draft — a stdSelect has no .value');
+  });
+
+  it('a planned RPE is stored as a NUMBER', () => {
+    const draft = { date: '2026-08-25' };
+    const renders = bind([], [draft]);
+    renders.pick(stdRoot('plannedRpe', '7'));
+    assert.strictEqual(draft.plannedRpe, 7, 'not the string "7"');
+  });
+
+  it('⚠ an EMPTY planned RPE is deleted, never persisted as ""', () => {
+    /* A stored `plannedRpe: ""` would ride every shard to the end of the
+       season meaning the same as its own absence. The rule predates the
+       stdSelect; this is the same rule reached by the new path. */
+    const draft = { date: '2026-08-25', plannedRpe: 7 };
+    const renders = bind([], [draft]);
+    renders.pick(stdRoot('plannedRpe', ''));
+    assert.ok(!('plannedRpe' in draft), 'an empty RPE must be removed');
+  });
+
+  it('an out-of-range RPE is refused rather than clamped', () => {
+    const draft = { date: '2026-08-25', plannedRpe: 7 };
+    const renders = bind([], [draft]);
+    renders.pick(stdRoot('plannedRpe', '11'));
+    assert.ok(!('plannedRpe' in draft), draft.plannedRpe + ' was accepted');
+  });
 });
 
 /* ------------------------------------------------------------------ *

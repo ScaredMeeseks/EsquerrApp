@@ -7911,13 +7911,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PROPOSED — the fixture dialog in the paper idiom.
-   ⚠ NOT WIRED UP YET. These rules exist so partit-preview.html can
-   show the owner what `calModal` would look like before the dialog
-   that WRITES FIXTURES is touched. `calModal` is shared with the
-   Calendari (add match, add activity), which is the same paper
-   language, so this would land on three dialogs at once.
-   Delete this block if the proposal is rejected.
+   The fixture dialog, in the paper idiom. Wired in v220, after the
+   owner approved the mockup that used to live in the preview.
+
+   `calModal` is shared by THREE dialogs — edit match, add match,
+   add activity — and the last two are the Calendari's, which is the
+   same paper language, so this lands on all three by design.
+
+   ⚠ The controls inside are stdSelects now, not `<select>`s, and
+   their callers read `dataset.value`. `.cal-f-cat`, `.cal-f-letter`,
+   `.cal-f-time` and `.cal-f-end` are the hooks those reads use, and
+   they sit on the stdSelect ROOT — a root has no `.value`, so a
+   missed call site reads undefined rather than throwing.
    ═══════════════════════════════════════════════════════════════ */
 .pt-dlg {
   width: min(560px, 92vw); background: #FBFAF7; color: #2D2926;
@@ -7984,6 +7989,48 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-dlg .md-opponent:focus, .pt-dlg .reg-input:focus { border-bottom-color: #2D2926; }
 /* The dialog's own datepicker popup must clear the panel it opens over. */
 .pt-dlg .md-datepicker { cursor: pointer; }
+
+/* ── The "what are we adding?" chooser ──
+   Three equal hairline rows, not three pills: they are the same kind
+   of choice and one of them is not more likely than the others. */
+.cal-add-choices { display: flex; flex-direction: column; gap: 10px; padding: 18px 0; }
+.pt-add-choice {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  font: inherit; font-size: 14.5px; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid #E3DFD8; border-radius: 0;
+  color: #2D2926; padding: 12px 14px; box-shadow: none;
+}
+.pt-add-choice:hover { border-color: #2D2926; background: #F1EEE8; }
+.pt-add-choice .cal-icon { width: 20px; height: 20px; flex: none; }
+
+/* ── Nou entrenament ──
+   The page a coach lands on from the Calendari's chooser. It keeps its
+   own markup and its own save path (`.nt-f` → _ntDrafts); this puts it
+   in the same idiom as the screen that sent them here. */
+#nt-page .nt-fields {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px; padding: 4px 0 18px;
+}
+#nt-page .nt-pick-row { padding-top: 4px; }
+#nt-page .nt-draft { padding-top: 22px; }
+#nt-page .nt-squad { display: flex; flex-direction: column; }
+#nt-page .conv-player {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid #EDEAE4;
+  background: transparent; border-radius: 0; box-shadow: none;
+}
+#nt-page .nt-add-btn {
+  font: inherit; font-size: 13px; background: none; border: none;
+  padding: 10px 0 0; cursor: pointer; color: #BD162C; box-shadow: none;
+}
+#nt-page .nt-add-btn:hover { color: #2D2926; }
+#nt-page .nt-actions { border-bottom: none; }
+#nt-page .conv-remove {
+  font: inherit; font-size: 13px; background: none; border: none;
+  padding: 0 2px; cursor: pointer; color: #C9C3BB; box-shadow: none;
+}
+#nt-page .conv-remove:hover { color: #BD162C; }
+#nt-page .nt-warn { color: #D39A2F; font-size: 13px; }
 
 /* ── Responsive ──
    Below ~1100px the context band's three columns stack and the
