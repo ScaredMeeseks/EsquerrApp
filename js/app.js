@@ -1993,7 +1993,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 225;
+  const APP_VERSION = 226;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24454,19 +24454,27 @@
        picker for anything typed exactly — and this block used to ignore it
        on the strength of a comment claiming no crest images existed.
 
-       The image sits INSIDE the monogram disc rather than beside it, so a
-       404 from files.fcf.cat (someone else's host, on its own schedule)
-       uncovers the initials instead of leaving a hole: `display:none` on the
-       absolutely-positioned img reveals what was under it all along.
+       A REAL crest is drawn bare — no disc, no ground behind it. Clubs
+       design their badges with their own outline, and a coloured circle
+       around one reads as a second, wrong crest. The disc belongs to the
+       MONOGRAM, which needs something to be lettering on.
+
+       So the image sits inside the same box but `cal-crest-plain` takes the
+       disc away and hides the initials, and the `onerror` puts both back by
+       resetting the class — files.fcf.cat is someone else's host and 404s on
+       its own schedule, and the fallback has to survive that without
+       leaving a hole. Hiding the initials matters rather than just covering
+       them: federation badges are transparent PNGs, and letters showing
+       through the gaps is worse than either state on its own.
 
        It sits against the NAME rather than out at the margin: a badge
        floated to the right edge belongs to the cell instead of to the club
        it is for, and at this size the two read as unrelated. */
     var badge = m.opponentBadge ? safeHttpUrl(m.opponentBadge) : '';
-    var crest = '<span class="cal-crest">' +
+    var crest = '<span class="cal-crest' + (badge ? ' cal-crest-plain' : '') + '">' +
       (badge ? '<img src="' + sanitize(badge) + '" class="cal-crest-img" alt="" ' +
-        'onerror="this.style.display=\'none\'">' : '') +
-      sanitize(calInitials(rival)) + '</span>';
+        'onerror="this.style.display=\'none\';this.parentNode.className=\'cal-crest\'">' : '') +
+      '<span class="cal-crest-txt">' + sanitize(calInitials(rival)) + '</span></span>';
     /* `tail` is the score on a played fixture and nothing on an upcoming
        one — the only thing the two name rows differ by. */
     var headWith = function (tail) {

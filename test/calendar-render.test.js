@@ -392,34 +392,58 @@ describe('the match block', () => {
     assert.ok(/\.cal-crest-img\s*\{/.test(css), '.cal-crest-img is unstyled');
   });
 
-  it('keeps the monogram UNDER the crest, so a 404 uncovers it', () => {
-    /* files.fcf.cat is someone else\'s host. The inline onerror hides the
-       image, which is only a fix if the initials are still behind it —
-       absolutely positioned over the disc, not rendered in its place. */
+  it('draws a real crest BARE — no disc, no initials showing through', () => {
+    /* A club's badge carries its own outline, so a filled circle around one
+       reads as a second, wrong crest. And federation badges are transparent
+       PNGs: initials merely COVERED would show through the gaps, so they
+       have to be hidden, not painted over. */
     const cell = cellOf(make({matches: [M({
       opponentBadge: 'https://files.fcf.cat/escudos/clubes/escudos/x.png',
     })]})(null, '2026-03'), '2026-03-07');
-    assert.ok(/onerror="this\.style\.display=&quot;?'?none/.test(cell) ||
-        cell.includes('onerror="this.style.display=\'none\'"'),
-    'a broken crest will sit there as a broken-image icon');
-    assert.ok(/class="cal-crest">.*IS<\/span>/s.test(cell),
-        'the initials are gone, so a 404 leaves a hole');
+    assert.ok(/class="cal-crest cal-crest-plain"/.test(cell),
+        'the badge is still sitting in the monogram disc');
+    const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+    assert.ok(/\.cal-crest-plain\s*\{[^}]*background:\s*none/.test(css),
+        '.cal-crest-plain leaves the disc\'s ground behind the badge');
+    assert.ok(/\.cal-crest-plain\s*\{[^}]*border-radius:\s*0/.test(css),
+        '.cal-crest-plain still rounds the badge into a circle');
+    assert.ok(/\.cal-crest-plain\s+\.cal-crest-txt\s*\{[^}]*display:\s*none/.test(css),
+        'the initials are only covered, so they show through a transparent badge');
+  });
+
+  it('a 404 puts the disc AND the initials back', () => {
+    /* files.fcf.cat is someone else's host. The inline onerror hides the
+       image, which is only a fix if it also undoes cal-crest-plain — hiding
+       the image alone would leave a bare, empty 22px box. */
+    const cell = cellOf(make({matches: [M({
+      opponentBadge: 'https://files.fcf.cat/escudos/clubes/escudos/x.png',
+    })]})(null, '2026-03'), '2026-03-07');
+    assert.ok(cell.includes('this.style.display=\'none\''),
+        'a broken crest will sit there as a broken-image icon');
+    assert.ok(cell.includes('this.parentNode.className=\'cal-crest\''),
+        'a 404 leaves an empty box: the disc and the initials never come back');
+    assert.ok(/<span class="cal-crest-txt">IS<\/span>/.test(cell),
+        'there are no initials to come back to');
     const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
     assert.ok(/\.cal-crest\s*\{[^}]*position:\s*relative/.test(css),
-        '.cal-crest is not a positioning context, so the image will not cover it');
+        '.cal-crest is not a positioning context, so the image will not fill it');
     assert.ok(/\.cal-crest-img\s*\{[^}]*position:\s*absolute/.test(css),
-        'the crest image sits BESIDE the monogram instead of over it');
+        'the crest image sits BESIDE the monogram instead of in its box');
   });
 
   it('falls back to the monogram, and refuses a non-http badge', () => {
     const bare = cellOf(make({matches: [M()]})(null, '2026-03'), '2026-03-07');
     assert.ok(!bare.includes('cal-crest-img'), 'an image with no badge to show');
+    assert.ok(!bare.includes('cal-crest-plain'),
+        'the monogram lost its disc, so the initials are bare text');
     assert.ok(bare.includes('>IS</span>'), 'no monogram for a fixture without a badge');
     /* `javascript:` in an <img src> does not run, but the same value reaches
        other sinks; safeHttpUrl is the one gate and it belongs here too. */
     const bad = cellOf(make({matches: [M({opponentBadge: 'javascript:alert(1)'})]})(null, '2026-03'),
         '2026-03-07');
     assert.ok(!bad.includes('javascript:'), 'a non-http badge reached the markup');
+    assert.ok(!bad.includes('cal-crest-plain'),
+        'a rejected badge still stripped the disc, leaving bare initials');
     assert.ok(bad.includes('>IS</span>'), 'a rejected badge lost the monogram too');
   });
 

@@ -8725,3 +8725,27 @@ and invented player names. Left alone.
 
 Unit 2750 → **2753**. Three tests, all mutation-checked: reverting the render fails two, dropping the
 `safeHttpUrl` gate fails the third. Version triple → v225.
+
+### 2026-09-03 — The crest, out of its circle (v226)
+
+Follow-up to v225 on the owner's read: the badge should be **the badge**, not a badge inside a disc.
+A club designs its crest with its own outline, so a filled circle around one reads as a second,
+wrong crest sitting behind the real one.
+
+The disc still belongs to the MONOGRAM, which needs a ground to be lettering on — so this is a
+per-fixture switch, not a deletion. `cal-crest-plain` on the container drops `background` and
+`border-radius`; `.cal-crest-img` no longer paints a ground of its own.
+
+⚠ **Covering the initials is not the same as hiding them.** Federation badges are transparent PNGs,
+and the v225 arrangement left `IS` sitting under one — legible through the gaps in a crest's
+outline, in `var(--bg)` against whatever the cell's fill happens to be. The initials moved into
+`.cal-crest-txt` so `cal-crest-plain` can `display: none` them outright.
+
+That makes the 404 path do more work than hiding the image: the inline handler is now
+`this.style.display='none';this.parentNode.className='cal-crest'` — resetting the class restores the
+disc AND unhides the initials together. Hiding the image alone would have left a bare, empty 22px
+box, which is the state v225's fallback existed to prevent.
+
+Unit 2753 → **2754**; the v225 pair became a BARE-crest test and a 404-restores-both test. Three
+mutants killed: the modifier dropped from the container, the class reset dropped from the `onerror`,
+and the `display: none` rule deleted. Version triple → v226.

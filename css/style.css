@@ -6661,16 +6661,19 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-radius: 50%; background: var(--text); color: var(--bg);
   font-size: .6rem; font-weight: 700; letter-spacing: .02em;
 }
-/* The rival's real crest, laid OVER the monogram disc rather than beside it:
-   files.fcf.cat 404s on its own schedule, and the inline `onerror` hiding a
-   broken image then uncovers the initials instead of leaving a hole.
-   `contain` because federation badges are every aspect ratio there is, and
-   the club ground rather than the disc's ink behind them because they are
-   transparent PNGs drawn in their own dark colours. */
+/* With a real crest there is no disc: a club's badge carries its own
+   outline, and a filled circle around one reads as a second, wrong crest.
+   The disc belongs to the monogram, which needs a ground to be lettering on.
+   The initials are HIDDEN rather than merely covered — federation badges are
+   transparent PNGs, and letters showing through the gaps is worse than
+   either state alone. The inline `onerror` resets the class, so a 404 from
+   files.fcf.cat brings the disc and the initials back together. */
+.cal-crest-plain { background: none; border-radius: 0; }
+.cal-crest-plain .cal-crest-txt { display: none; }
+/* `contain` because federation badges come in every aspect ratio there is. */
 .cal-crest-img {
   position: absolute; inset: 0;
   width: 100%; height: 100%; object-fit: contain;
-  border-radius: 50%; background: var(--bg);
 }
 .cal-kick { font-size: .7rem; color: var(--text-secondary); gap: 8px; }
 .cal-kick b { font-weight: 600; color: var(--text); }
