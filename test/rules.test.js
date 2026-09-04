@@ -257,6 +257,47 @@ describe("Staff updates of members", () => {
     await assertFails(asA().doc("users/" + A)
         .update({prevCategory: "amateur", prevTeam: "A"}));
   });
+  /* Phone and agent joined the staff allowlist in v231. The Registracions
+     page writes both, and the write is a SINGLE merge covering position,
+     dorsal, squad and these two — so if the rules refuse one key the whole
+     save is refused and the coach's other edits vanish with it. */
+  it("staff CAN set a member's phone and agent", async () => {
+    await assertSucceeds(asStaffA().doc("users/" + A)
+        .update({phone: "+34600000000", agent: "Gestió Esportiva SL"}));
+  });
+  it("staff CAN write them in the same merge as the registration fields", async () => {
+    // The shape autoSaveFromRow actually sends. Passing the two keys alone
+    // would not prove the real call is allowed.
+    await assertSucceeds(asStaffA().doc("users/" + A).update({
+      position: "FW", playerNumber: "9", team: "A", category: "amateur",
+      phone: "+34600000001", agent: "Nova Agència"
+    }));
+  });
+  it("a member CAN set their OWN phone (profile setup does this)", async () => {
+    await assertSucceeds(asA().doc("users/" + A).update({phone: "+34600000002"}));
+  });
+  /* ⚠ THE POINT OF WIDENING AN ALLOWLIST IS WHAT IT STILL REFUSES.
+     The three above only prove the list grew. */
+  it("a non-staff teammate CANNOT set someone else's phone or agent", async () => {
+    await assertFails(asA().doc("users/" + A2).update({phone: "+34600000003"}));
+    await assertFails(asA().doc("users/" + A2).update({agent: "Whoever"}));
+  });
+  it("staff of ANOTHER club still cannot touch them", async () => {
+    // Defined here rather than reused: the asStaffB helper lives inside a
+    // later describe and is not in scope.
+    const otherClubStaff = db("uidStaffOther",
+        {teamId: "teamB", role: "staff", email: "sb@x.com", cats: ["cadet"]});
+    await assertFails(otherClubStaff.doc("users/" + A).update({agent: "Wrong club"}));
+    await assertFails(otherClubStaff.doc("users/" + A).update({phone: "+34600000005"}));
+  });
+  it("phone and agent did not become a way in for anything else", async () => {
+    // A write that smuggles a privilege flag alongside an allowed key must
+    // still fail as a whole.
+    await assertFails(asStaffA().doc("users/" + A)
+        .update({agent: "X", isTeamLead: true}));
+    await assertFails(asStaffA().doc("users/" + A)
+        .update({phone: "+34600000004", roles: ["staff"]}));
+  });
   it("staff CANNOT delete a member outright", async () => {
     await assertFails(asStaffA().doc("users/" + A).delete());
   });

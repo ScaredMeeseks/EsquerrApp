@@ -341,6 +341,21 @@ describe('the page reuses what the app already computes', () => {
     assert.ok(!/\.map\([^)]*catSpanOf/.test(page), 'never inside a row loop');
   });
 
+  it('the name cell carries the player photo (v231)', () => {
+    /* Added beside the badge, not instead of it, and BEFORE the name.
+       ⚠ It must stay a sibling in the inline flow: this cell is
+       `white-space: nowrap` with no flex, and wrapping it would collapse the
+       `margin-left` that catBadgeHtmlGlobal relies on for all its spacing. */
+    const body = grab('  function plRosterTableHtml', '  /* ── The player rail');
+    const cell = body.slice(body.indexOf('pl-td-name'));
+    const av = cell.indexOf('avatarHtmlGlobal(r.u');
+    const name = cell.indexOf('sanitize(r.name)');
+    assert.ok(av !== -1, 'the roster row shows no faces');
+    assert.ok(av < name, 'the photo must precede the name');
+    assert.ok(/catBadgeHtmlGlobal\(r\.u, catSpan\)/.test(cell),
+        'the badge was displaced by the photo');
+  });
+
   it('the squad load is a MEAN, not a sum', () => {
     /* A squad total moves when somebody is injured, so two identical
        weeks would read differently — the same call the weekly AU figure

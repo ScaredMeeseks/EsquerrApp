@@ -7,22 +7,25 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 230** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 231** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2897** — `cd test && npm run test:unit` (~10 s), all passing |
-| Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
+| Unit tests | **2924** — `cd test && npm run test:unit` (~10 s), all passing |
+| Rules tests | **170** — re-run and passing; `firestore.rules` CHANGED and was deployed |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
 Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
 
-`firestore.rules`, `storage.rules` and every deployed Cloud Function are **unchanged** — no rules
-deploy, no functions deploy. The only edit under `functions/` is the version constant in
-`check-deploy.js`, which is a diagnostic script, not a deployed function. The frontend shipped by
-pushing `main`.
+⚠ **`firestore.rules` CHANGED this session and WAS DEPLOYED** (`.\deploy.ps1 rules`, released to
+`esquerrapp`) — `phone` and `agent` joined the staff allowlist on `users/{uid}`. Rules went out
+BEFORE the frontend push, because the other order leaves a window where the new input is on screen
+and every save it makes is refused. `storage.rules` is unchanged (the deploy re-releases it
+together; it reported "already up to date"). No functions deploy — the only edit under `functions/`
+is the version constant in `check-deploy.js`, a diagnostic script. The frontend shipped by pushing
+`main`.
 
 ⚠ **Not yet driven by hand.** The owner is testing v230 after the deploy. The path worth clicking
 first is **clearing an answer** — tapping the chosen pill a second time — because it deletes both
@@ -189,6 +192,13 @@ moment that comment was deleted. They anchor on `const INI_SEGS = [` now.
     bypassing the server-side validation in `setClubCategories`. Delete once a v55+ APK circulates.
 12. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
     orphaned shards when a category is emptied; `backfill-training-teams.js` has no `preflight()`.
+12b. **A failed profile-photo upload poisons `fa_users`.** *(found v231, not fixed.)* The upload
+    falls back to a `FileReader` data URI of up to 2 MB, and `setSession` persists it verbatim to
+    `users/{uid}` **and** to the synced `fa_users` blob — a Firestore document with a **1 MB
+    limit**. One failed upload by one player can therefore break `fa_users` syncing for the whole
+    club, and the symptom would look nothing like its cause. The fix is to drop the fallback (an
+    upload that failed should say so) or downscale to a thumbnail before encoding. The two fallback
+    sites are `js/app.js` ~32820 (the Inici hero) and ~5210 (profile setup).
 13. **Follow-ball has no button any more.** The CODE is untouched (`setFollowBall`, `isFollowingBall`,
     the `followBall` flag); only the button is gone. Bringing it back is one entry in `tbCamsHtml()`
     and one branch in the click handler — but it is the only camera control that holds STATE, so it

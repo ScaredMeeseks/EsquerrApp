@@ -1110,6 +1110,42 @@ function posCirclesHtmlGlobal(p) {
   }).join('');
 }
 
+/**
+ * A person's face, or their initial when there is no photo (v231).
+ *
+ * ⚠ THE FALLBACK IS LOAD-BEARING, not a nicety. `js/db.js`'s users→`fa_users`
+ * reconcile only ADDS members it has never seen and never refreshes a row it
+ * already has, so a team-mate's photo reaches this device only once THEY next
+ * sign in and their own client writes their row back into the synced blob.
+ * Rows with an empty `profilePic` are the normal case, not an error.
+ *
+ * ⚠ `profilePic` is an OPAQUE src string. It is normally a Firebase Storage
+ * download URL, but a failed upload falls back to a `data:` URI, so nothing
+ * here may assume `http`. It is sanitized because it lands in an attribute —
+ * three of the five hand-rolled copies this replaces did not do that.
+ *
+ * Geometry lives on `cls`, the fill on `cls + '-ph'`, which is the two-class
+ * idiom `.player-overview-pic` / `.player-overview-pic-placeholder` already
+ * uses: one size definition, and the placeholder cannot drift from the photo.
+ *
+ * @param {{name?:string, profilePic?:string}} u
+ * @param {string} cls Base class; the placeholder gets `${cls}-ph` as well.
+ */
+function avatarHtmlGlobal(u, cls) {
+  const base = sanitize(cls || 'avatar');
+  const pic = (u && u.profilePic) || '';
+  if (pic) {
+    /* onerror rather than a URL check: a Storage token can expire and a
+       data: URI can be truncated, and a broken image icon in a table reads
+       as a fault in the app. Hiding it leaves the row clean. */
+    return '<img class="' + base + '" src="' + sanitize(pic) + '" alt="" ' +
+      'onerror="this.style.display=&quot;none&quot;">';
+  }
+  // One letter, which is what every existing call site in this app uses.
+  const initial = sanitize(String((u && u.name) || '').trim()).charAt(0).toUpperCase();
+  return '<span class="' + base + ' ' + base + '-ph">' + (initial || '?') + '</span>';
+}
+
 // ---------- Color Utilities ----------
 function lightenHex(hex, amt) {
   hex = hex.replace('#','');

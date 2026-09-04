@@ -706,6 +706,10 @@
     'reg2.role_needs_list': { ca:'Aquest correu no és a cap llista del club, així que no hi ha res per moure.', es:'Este correo no está en ninguna lista del club, así que no hay nada que mover.', en:'This address is on no club list, so there is nothing to move.' },
     'reg2.th_applicant': { ca:'Sol·licitant', es:'Solicitante', en:'Applicant' },
     'reg2.th_member':    { ca:'Membre', es:'Miembro', en:'Member' },
+    'reg2.th_agent':     { ca:'Agent/Agència', es:'Agente/Agencia', en:'Agent/Agency' },
+    'reg2.ph_agent':     { ca:'—', es:'—', en:'—' },
+    'reg2.save_failed_t':{ ca:'No s\'ha desat', es:'No se ha guardado', en:'Not saved' },
+    'reg2.save_failed_b':{ ca:'El servidor ha rebutjat el canvi. Recarrega la pàgina per veure què hi ha desat.', es:'El servidor ha rechazado el cambio. Recarga la página para ver qué hay guardado.', en:'The server refused the change. Reload to see what is actually saved.' },
     'reg2.th_role':      { ca:'Rol', es:'Rol', en:'Role' },
     'reg2.th_team':      { ca:'Equip', es:'Equipo', en:'Squad' },
     'reg2.th_pos':       { ca:'Posició', es:'Posición', en:'Position' },
@@ -1548,6 +1552,8 @@
     'auth.display_name':     { ca:'Nom', es:'Nombre', en:'Display Name' },
     'auth.display_name_ph':  { ca:'El teu nom', es:'Tu nombre', en:'Your name' },
     'auth.dob':              { ca:'Data de naixement', es:'Fecha de nacimiento', en:'Date of Birth' },
+    'auth.phone':            { ca:'Telèfon', es:'Teléfono', en:'Phone' },
+    'auth.phone_ph':         { ca:'+34 600 000 000', es:'+34 600 000 000', en:'+34 600 000 000' },
     'auth.continue':         { ca:'Continuar', es:'Continuar', en:'Continue' },
     'auth.roles_title':      { ca:'Tria el teu rol', es:'Elige tu rol', en:'Choose Your Role' },
     'auth.roles_subtitle':   { ca:'Selecciona com vols fer servir EsquerrApp', es:'Selecciona cómo quieres usar EsquerrApp', en:'Select how you want to use EsquerrApp' },
@@ -2113,7 +2119,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 230;
+  const APP_VERSION = 231;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3598,6 +3604,10 @@
         playerNumber: '',
         profilePic: '',
         dob: '',
+        // Seeded empty so the field EXISTS. `phone` is filled at profile
+        // setup by the member; `agent` only ever by staff on Registracions.
+        phone: '',
+        agent: '',
         profileSetupDone: false
       };
       await db.collection('users').doc(uid).set(profileFields, { merge: true });
@@ -3685,7 +3695,7 @@
         // Fallback: create profile if missing. roles/category/team are
         // server-owned (joinClub derives them from the club roster lists) and
         // rules reject them on create — the user is routed to join-club next.
-        const seed = { id: uid, name: '', email, position: '', playerNumber: '', profilePic: '', dob: '', profileSetupDone: false };
+        const seed = { id: uid, name: '', email, position: '', playerNumber: '', profilePic: '', dob: '', phone: '', agent: '', profileSetupDone: false };
         await db.collection('users').doc(uid).set(seed);
         user = Object.assign({ roles: [], category: '', team: '' }, seed);
       }
@@ -3707,6 +3717,8 @@
       if (!user.position) user.position = '';
       if (!user.playerNumber) user.playerNumber = '';
       if (!user.profilePic) user.profilePic = '';
+      if (typeof user.phone !== 'string') user.phone = '';
+      if (typeof user.agent !== 'string') user.agent = '';
       // Update localStorage for compat
       let users = getUsers();
       users = users.filter(u => String(u.id) !== String(uid) && u.email !== email);
@@ -5215,9 +5227,17 @@
 
     const dobInput = $('#setup-dob');
     const dob = dobInput.dataset.dateIso || dobInput.value || '';
+    /* Phone (v231). Guarded with `?.` because the element is new: an APK
+       built before this ships still runs the old index.html against a newer
+       app.js from Pages, and a hard `$('#setup-phone').value` would throw
+       there — taking the whole setup form with it and stranding the member
+       on this screen with no way past. */
+    const phoneEl = $('#setup-phone');
+    const phone = phoneEl ? phoneEl.value.trim() : (session.phone || '');
     session.name = name;
     session.profilePic = picSrc;
     session.dob = dob;
+    session.phone = phone;
     session.profileSetupDone = true;
     // Persist to Firestore + localStorage (handled by setSession)
     setSession(session);
@@ -23839,7 +23859,11 @@
            players called Marc from different squads are one row apart and
            indistinguishable. catSpan is computed once per render, never
            per row. */
-        '<td class="pl-td-name">' + sanitize(r.name) +
+        /* The face goes BEFORE the name and outside catBadgeHtmlGlobal's
+           reach. This cell is inline flow with white-space:nowrap — wrapping
+           it in a flex box would collapse the badge's own margin-left, which
+           is the whole of its spacing. Alignment is by vertical-align. */
+        '<td class="pl-td-name">' + avatarHtmlGlobal(r.u, 'pp-av') + sanitize(r.name) +
           catBadgeHtmlGlobal(r.u, catSpan) +
           (r.team ? ' <span class="pl-team-letter">' + sanitize(r.team) + '</span>' : '') + '</td>' +
         '<td><span class="pl-pos">' + posCirclesHtmlGlobal(r.u) + '</span></td>' +
@@ -26890,6 +26914,42 @@
   }
 
   /* ── Sol·licituds pendents: in the club, in no squad ─────────── */
+  /** The face + name + contact cell, shared by both tables (v231).
+   *
+   *  The two tables drew this identically and separately; a phone and an
+   *  avatar would have been the third and fourth thing to keep in step by
+   *  hand, so it is one builder now.
+   *
+   *  ⚠ The separator is emitted WITH the phone, never before it. A `|` that
+   *  survives an empty phone is a dangling mark on every row of a club that
+   *  has not collected numbers yet — which is every club until they do. */
+  function regWhoCellHtml(u, extra) {
+    var phone = String(u.phone || '').trim();
+    var contact = sanitize(u.email || '') +
+      (phone ? '<span class="reg2-sep">|</span>' + sanitize(phone) : '');
+    return '<td class="reg2-td-who">' +
+      '<div class="reg2-name">' + avatarHtmlGlobal(u, 'pp-av') +
+        sanitize(u.name || '') + (extra || '') + '</div>' +
+      '<div class="reg2-sub">' + contact + '</div></td>';
+  }
+
+  /** The agent / agency field. Read-only pages get the value as text, not a
+   *  disabled input — a greyed box invites a click that does nothing. */
+  function regAgentCellHtml(uid, agent, ro) {
+    var v = String(agent || '');
+    if (ro) {
+      return '<td>' + (v ? sanitize(v) : '<span class="reg2-dash">—</span>') + '</td>';
+    }
+    /* `title` carries the whole thing: the field is 130px and an agency name
+       is often longer, and an input truncates mid-word at rest with nothing
+       to say it has done so. Hovering is then the only way to read it back
+       without clicking into the field. */
+    return '<td><input type="text" class="reg2-agent reg-agent" data-uid="' +
+      sanitize(String(uid)) + '" value="' + sanitize(v) +
+      '" title="' + sanitize(v) +
+      '" placeholder="' + sanitize(t('reg2.ph_agent')) + '" maxlength="60"></td>';
+  }
+
   function regPendingTableHtml(rows, rosters, taken, isLead, ro) {
     if (!rows.length) {
       return '<p class="reg2-empty">' + t('reg2.no_pending') + '</p>';
@@ -26924,8 +26984,8 @@
         data: {uid: uid}
       });
       return '<tr data-uid="' + uid + '" class="reg2-row-new">' +
-        '<td class="reg2-td-who"><div class="reg2-name">' + sanitize(u.name || '') + '</div>' +
-          '<div class="reg2-sub">' + sanitize(u.email || '') + '</div></td>' +
+        regWhoCellHtml(u) +
+        regAgentCellHtml(uid, u.agent, ro) +
         '<td>' + rolCell + '</td>' +
         '<td class="reg2-td-team">' + catSel +
           '<span class="reg2-teams">' + regTeamCellHtml(uid, cat, u.team || '', ro) + '</span></td>' +
@@ -26943,6 +27003,7 @@
     }).join('');
     return '<div class="reg2-wrap"><table class="reg2-table reg2-table-pending"><thead><tr>' +
       '<th class="reg2-th-first">' + t('reg2.th_applicant') + '</th>' +
+      '<th>' + t('reg2.th_agent') + '</th>' +
       '<th>' + t('reg2.th_role') + '</th><th>' + t('reg2.th_team') + '</th>' +
       '<th>' + t('reg2.th_pos') + '</th><th class="reg2-c">' + t('reg2.th_number') + '</th>' +
       '<th>' + t('reg2.th_list') + '</th><th class="reg2-r">' + t('reg2.th_actions') + '</th>' +
@@ -26998,9 +27059,8 @@
           : isStaff ? '<span class="reg2-role-staff">' + t('reg2.staff_one') + '</span>'
           : '<span class="reg2-flat">' + t('reg2.player') + '</span>');
       return '<tr data-uid="' + uid + '">' +
-        '<td class="reg2-td-who"><div class="reg2-name">' + sanitize(u.name || '') +
-          (u.isAdmin ? ' <span class="badge badge-red">admin</span>' : '') + '</div>' +
-          '<div class="reg2-sub">' + sanitize(u.email || '') + '</div></td>' +
+        regWhoCellHtml(u, u.isAdmin ? ' <span class="badge badge-red">admin</span>' : '') +
+        regAgentCellHtml(uid, u.agent, ro) +
         '<td>' + rolCell + '</td>' +
         '<td class="reg2-td-team">' + regTeamCellHtml(uid, u.category || '', u.team || '', ro) + '</td>' +
         '<td>' + regPosCellHtml(positions, ro || isStaff) + '</td>' +
@@ -27019,6 +27079,7 @@
 
     return head + '<div class="reg2-wrap"><table class="reg2-table"><thead><tr>' +
       '<th class="reg2-th-first">' + t('reg2.th_member') + '</th>' +
+      '<th>' + t('reg2.th_agent') + '</th>' +
       '<th>' + t('reg2.th_role') + '</th><th>' + t('reg2.th_team') + '</th>' +
       '<th>' + t('reg2.th_pos') + '</th><th class="reg2-c">' + t('reg2.th_number') + '</th>' +
       '<th class="reg2-r">' + t('reg2.th_actions') + '</th>' +
@@ -27262,6 +27323,10 @@
     const team = teamCells.length
       ? (activeTeam ? activeTeam.dataset.team : '')
       : (user.team || '');
+    // Same rule for the agent. A read-only row renders it as text, not a
+    // disabled input, so `.reg-agent` is genuinely absent there.
+    const agentEl = row.querySelector('.reg-agent');
+    const agent = agentEl ? agentEl.value.trim() : (user.agent || '');
 
     // The status dropdown is lead-only (see renderRegistrations): the
     // setRole function rejects role changes from anyone else, and for
@@ -27284,15 +27349,29 @@
     user.playerNumber = playerNumber;
     user.team = team;
     user.category = category;
+    user.agent = agent;
     saveUsers(users);
 
     // Sync key fields to Firestore user profile. Roles go through the
     // setRole function so the member's Auth claims stay in sync.
     if (typeof uid === 'string' && isNaN(Number(uid))) {
+      /* ⚠ `agent` is only writable here because firestore.rules names it in
+         the staff allowlist for users/{uid}. If the rules are ever behind the
+         frontend, this whole merge is refused — not just the agent key — so
+         the position and dorsal edits in the same call vanish too.
+
+         It used to end in a bare `.catch(console.error)`, which is the worst
+         possible ending: the local blob has already been written by
+         saveUsers() above, so the screen shows the new value while the server
+         has none of it, and the edit reappears undone on the next device. Say
+         so instead. */
       db.collection('users').doc(uid).set({
         position: position, playerNumber: playerNumber,
-        team: team, category: category
-      }, { merge: true }).catch(console.error);
+        team: team, category: category, agent: agent
+      }, { merge: true }).catch((err) => {
+        console.error('registration save rejected:', err);
+        _showPushToast(t('reg2.save_failed_t'), t('reg2.save_failed_b'));
+      });
 
       const rolesChanged = statusEl &&
         (rolesBefore.length !== user.roles.length ||
@@ -34210,6 +34289,20 @@
           autoSaveFromRow(e.target.closest('tr'));
         }
       });
+
+      /* Agent / agency (v231) — on BLUR, deliberately not on `input`.
+         The dorsal above saves per keystroke, which is tolerable for two
+         digits and would be one Firestore write per character of an agency
+         name. Blur is the rule this codebase already states for free text:
+         "one write per edit, not per keystroke".
+         `blur` does not bubble, so this listens in the CAPTURE phase — the
+         third argument is load-bearing, not a style choice. */
+      content.addEventListener('blur', e => {
+        if (!canEditPage('registrations')) return;
+        if (e.target.classList && e.target.classList.contains('reg-agent')) {
+          autoSaveFromRow(e.target.closest('tr'));
+        }
+      }, true);
 
       // Team circle + position chip clicks
       content.addEventListener('click', e => {

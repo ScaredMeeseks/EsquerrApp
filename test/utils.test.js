@@ -191,3 +191,102 @@ describe('sanitize()', () => {
     assert.deepStrictEqual(JSON.parse(d.querySelector('div').dataset.j), obj);
   });
 });
+
+/* ------------------------------------------------------------------
+ * avatarHtmlGlobal() — the shared face-or-initial (v231).
+ *
+ * Replaces five hand-rolled copies. Sliced and run over jsdom because it
+ * calls sanitize(), which needs a document.
+ *
+ * ⚠ The initials branch is the COMMON case, not the fallback: js/db.js's
+ * users→fa_users reconcile never refreshes a row it already has, so a
+ * team-mate's photo only reaches this device once they next sign in.
+ * ------------------------------------------------------------------ */
+describe('avatarHtmlGlobal()', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { JSDOM } = require('jsdom');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'utils.js'), 'utf8');
+  const dom = new JSDOM('<!doctype html><body></body>');
+
+  function slice(from, to) {
+    const i = src.indexOf(from);
+    const j = src.indexOf(to, i);
+    assert.ok(i !== -1 && j !== -1, 'marker moved in js/utils.js: ' + from);
+    return src.slice(i, j);
+  }
+  /* Two slices: the helper sits several hundred lines ABOVE sanitize() in
+     the file, so one span cannot contain both. Function declarations hoist,
+     so the order they are concatenated in does not matter.
+     The real sanitize goes in rather than a stub — a stub returning its
+     input cannot answer a question about escaping, which is half of what
+     this function does. */
+  const avatarHtmlGlobal = new Function('document',
+      slice('function avatarHtmlGlobal(u, cls) {', '// ---------- Color Utilities') +
+      slice('function sanitize(str) {', '// ---------- Tactical Formations') +
+      '\nreturn avatarHtmlGlobal;')(dom.window.document);
+
+  it('renders the photo when there is one', () => {
+    const html = avatarHtmlGlobal({ name: 'Marc', profilePic: 'https://x/y.jpg' }, 'pp-av');
+    assert.ok(html.startsWith('<img'), html);
+    assert.ok(html.includes('src="https://x/y.jpg"'), html);
+    assert.ok(html.includes('class="pp-av"'), html);
+  });
+
+  it('passes a data: URI through — profilePic is not always a URL', () => {
+    /* A failed Storage upload falls back to a data URI, so anything that
+       assumes `http` renders a broken image for exactly the people whose
+       upload went wrong. */
+    const uri = 'data:image/png;base64,iVBORw0KGgo=';
+    assert.ok(avatarHtmlGlobal({ name: 'M', profilePic: uri }, 'pp-av').includes(uri));
+  });
+
+  it('falls back to ONE initial, with the placeholder modifier', () => {
+    const html = avatarHtmlGlobal({ name: 'marc rovira' }, 'pp-av');
+    assert.ok(html.startsWith('<span'), html);
+    assert.ok(html.includes('class="pp-av pp-av-ph"'), html);
+    assert.ok(html.includes('>M<'), html);
+  });
+
+  it('never emits src="undefined" for a user with no picture', () => {
+    ['', undefined, null].forEach((v) => {
+      const html = avatarHtmlGlobal({ name: 'Marc', profilePic: v }, 'pp-av');
+      assert.ok(!html.includes('undefined'), String(v) + ' → ' + html);
+      assert.ok(!html.includes('<img'), String(v) + ' → ' + html);
+    });
+  });
+
+  it('survives a user with no name at all', () => {
+    // An invited member who has not finished setup has an empty name.
+    const html = avatarHtmlGlobal({}, 'pp-av');
+    assert.ok(html.includes('>?<'), html);
+    assert.ok(!html.includes('undefined'), html);
+  });
+
+  it('escapes a hostile name and a hostile src', () => {
+    /* ⚠ Asserted against the PARSED DOM, not the string. The correct output
+       for a hostile src is `src="&quot; onload=&quot;alert(1)"` — which does
+       contain the text ` onload=` inside the value while being perfectly
+       safe. A string test for that substring fails on correct code, which is
+       what the first version of this test did. The real question is whether
+       an attribute got created, so ask the parser. */
+    const html = avatarHtmlGlobal(
+        { name: '<img src=x onerror=alert(1)>', profilePic: '" onload="alert(1)' }, 'pp-av');
+    const el = new JSDOM('<!doctype html><body>' + html).window.document.body.firstElementChild;
+    assert.strictEqual(el.getAttribute('onload'), null, 'a handler attribute was created');
+    assert.strictEqual(el.getAttribute('src'), '" onload="alert(1)',
+        'the value did not survive intact inside the attribute');
+
+    const ph = avatarHtmlGlobal({ name: '<img src=x onerror=alert(1)>' }, 'pp-av');
+    const phDoc = new JSDOM('<!doctype html><body>' + ph).window.document;
+    assert.strictEqual(phDoc.querySelectorAll('img').length, 0,
+        'the name was injected as markup');
+  });
+
+  it('the placeholder class is the photo class plus a suffix', () => {
+    /* Geometry is defined once on the base class. If the placeholder ever
+       gets its own independent class the two drift out of round. */
+    const ph = avatarHtmlGlobal({ name: 'A' }, 'zz');
+    assert.ok(ph.includes('class="zz zz-ph"'), ph);
+  });
+});

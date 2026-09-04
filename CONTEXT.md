@@ -9131,3 +9131,92 @@ byte-for-byte afterwards. Unit 2845 -> 2897.
 `firestore.rules`, `storage.rules`, `js/db.js`, `js/shard.js` and every deployed Cloud Function are
 untouched — no rules deploy, no functions deploy. The only edit under `functions/` is the version
 constant in `check-deploy.js`.
+
+### 2026-09-04 — v231. Faces, a phone number, and Agent/Agència
+
+Four owner requests after seeing v230 in the browser. Two of them cross a security boundary, which
+makes this the first change in a long while that needed a **rules deploy** as well as a push.
+
+**1. The Inici hero photo is a circle now.** The handoff drew a square drop target with a 1px
+border; in practice people upload avatars that are already circles on transparent corners, and the
+border then reads as a stray box around someone's head. `border-radius: 50%`, border dropped,
+background kept — it is the chip the initial sits on when there is no photo.
+
+⚠ Worth recording because it cost a search: **nothing in the stylesheet ever made that `<img>`
+round.** A sweep of every `border-radius: 50%` and every `img` selector found no match. The circle
+in the owner's screenshot was their own PNG.
+
+**2. One avatar helper, three call sites.** `avatarHtmlGlobal(u, cls)` in `js/utils.js`, beside
+`posCirclesHtmlGlobal` and `catBadgeHtmlGlobal`. It replaces five hand-rolled copies of the same
+img-or-initial, two of which had dead CSS behind them (`.reg-avatar`, `.birthday-avatar` — written
+for designs that were superseded before they ever rendered). Geometry on `.pp-av`, fill on
+`.pp-av-ph`: the two-class idiom `.player-overview-pic` already used, so the placeholder cannot
+drift out of round with the photo. Called from the Plantilla name cell and both Registracions
+tables; `r.u.profilePic` and `u.profilePic` were already in scope, so no plumbing changed.
+
+⚠ **The initials branch is the COMMON case, not a fallback.** `js/db.js:576-578` only ADDS members
+it has never seen to `fa_users` and never refreshes a row it already has, so a team-mate's photo
+reaches your device only once THEY next sign in and their own client writes their row back into the
+synced blob. Rows with no face are normal and not a defect to chase.
+
+⚠ **`profilePic` is an opaque src string.** Normally a Storage download URL, but a failed upload
+falls back to a `data:` URI, so nothing may assume `http`. The helper sanitizes it — three of the
+five copies it replaces did not, and it lands in an attribute.
+
+**3. Phone.** Asked for at profile setup (`#setup-phone`, required), which is the step every new
+member passes through. No rules change was needed for that half: the self-update branch is a
+*deny*-list and `phone` is not on it.
+
+⚠ Every member who existed before v231 has `profileSetupDone: true` and **will never see that form
+again**, so their number can only ever come from staff typing it in. That is why `phone` is in the
+staff allowlist below as well as being self-writable — without it the column would have stayed
+empty for the whole squad for ever. It shows in `.reg2-sub` beside the email, and the separator is
+emitted WITH the phone, never before it: a `|` that survives an empty phone is a dangling mark on
+every row of every club that has not collected numbers yet.
+
+**4. Agent/Agència** — a new column 2 in both Registracions tables, pushing Rol to 3. The page's
+first per-member free-text field. It commits on **blur**, deliberately not on `input`: the dorsal
+beside it saves per keystroke, which is tolerable for two digits and would be one Firestore write
+per character of an agency name.
+⚠ `blur` does not bubble, so the delegated listener is in the **capture phase** — the third
+argument to `addEventListener` is load-bearing, not a style choice, and without it the field
+silently saves nothing.
+A read-only page renders it as text, not a disabled input: a greyed box invites a click that does
+nothing, and — more to the point — `.reg-agent` being genuinely absent is what makes
+`autoSaveFromRow`'s "leave it alone" branch fire instead of writing an empty string.
+
+**`firestore.rules` — deployed, not just edited.** `phone` and `agent` joined the eight-key staff
+allowlist on `users/{uid}`. `.\deploy.ps1 rules` was run BEFORE the frontend push, because the other
+order leaves a window where the input is on screen and every save it makes is refused.
+
+⚠ **And the refusal used to be silent.** `autoSaveFromRow`'s merge-set ended in a bare
+`.catch(console.error)`. `saveUsers()` has already run by then, so the screen shows the new value
+while the server has none of it, and the edit reappears undone on the next device. It raises a
+toast now. Note the merge is a SINGLE call covering position, dorsal, squad, category and these two
+— so a rules mismatch on one key refuses the coach's other edits with it, which is why the rules
+suite asserts the real call shape and not just the two keys alone.
+
+**Tests.** Unit 2897 → 2924; rules 164 → 170. The six new rules cases are half permissions and half
+refusals: a non-staff team-mate still cannot set someone else's phone or agent, staff of another
+club cannot either, and a write smuggling `isTeamLead` alongside an allowed key still fails whole —
+widening an allowlist is only worth testing for what it still refuses.
+
+**Mutation-tested**: 22 deliberate breaks (both allowlist keys removed, blur→input, the capture
+flag dropped, absent-input clearing the field, the separator ungated, the toast reverted, the
+column moved after Rol, the avatar unrounded, the placeholder given its own geometry, the name
+cells made flex), all 22 turn the suite red, tree restored byte-for-byte.
+
+⚠ Two of the new assertions were **wrong before they were right**, both found by mutation and both
+the same shape — a string test standing in for a real question. One asserted ` onload=` was absent
+from the avatar's output, which correct code fails: `src="&quot; onload=&quot;…"` is properly
+escaped and still contains that text. It asks the parser now. The other measured column order by
+`indexOf('rolCell')` over the whole function and found the variable's DECLARATION, which sits above
+the markup; it measures inside the returned row now.
+
+**Looked at, not just asserted**: the Registracions tables and the Plantilla name cell were
+rendered in headless Chrome from the real builders. That caught a long agency name truncating at
+rest with nothing to say so — it carries a `title` now.
+
+**Not in scope, still open:** a failed photo upload falls back to a data URI of up to 2 MB, which
+`setSession` bakes into `users/{uid}` AND the synced `fa_users` blob — a document with a 1 MB
+limit. One failed upload can break `fa_users` syncing for the whole club. Pre-existing.

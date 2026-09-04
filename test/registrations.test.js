@@ -173,7 +173,10 @@ function fakeRow(uid, has) {
     '[data-std-sel="regcat"]': has.category === undefined ? null
         : {dataset: {value: has.category}},
     '.reg-status-select': has.status === undefined ? null : el(has.status),
-    '.reg-team-circle.active': has.team ? el('', {team: has.team}) : null
+    '.reg-team-circle.active': has.team ? el('', {team: has.team}) : null,
+    // v231. A read-only row renders the agent as TEXT, not a disabled input,
+    // so its absence here is the real read-only case and not a contrivance.
+    '.reg-agent': has.agent === undefined ? null : el(has.agent)
   };
   return {
     dataset: {uid: String(uid)},
@@ -241,6 +244,41 @@ describe('a save may not clear what the row never showed', () => {
     assert.strictEqual(u.team, 'B');
     assert.strictEqual(u.playerNumber, '5');
     assert.strictEqual(u.position, 'DFC,MC');
+  });
+
+  /* ── the agent field joins the same rule (v231) ──
+     It is the page's first per-member free-text control, and it is drawn
+     only when the coach may edit. A read-only row, or any future row that
+     omits it, must not silently wipe an agency somebody typed in. */
+  const AGENTED = [{
+    id: 7, name: 'Pau', roles: ['player'], category: 'amateur', team: 'A',
+    position: 'POR', playerNumber: '1', agent: 'Gestió Esportiva SL'
+  }];
+
+  it('keeps the agent when the row draws no agent input', () => {
+    const u = runSave(fakeRow(7, {positions: ['DFC'], number: '1'}), AGENTED);
+    assert.strictEqual(u.agent, 'Gestió Esportiva SL',
+        'a read-only row wiped an agency it never showed');
+  });
+
+  it('writes the agent the row does show', () => {
+    const u = runSave(
+        fakeRow(7, {positions: ['POR'], number: '1', agent: 'Nova Agència'}), AGENTED);
+    assert.strictEqual(u.agent, 'Nova Agència');
+  });
+
+  it('trims it, so a stray space is not a different agency', () => {
+    const u = runSave(
+        fakeRow(7, {positions: ['POR'], number: '1', agent: '  Nova  '}), AGENTED);
+    assert.strictEqual(u.agent, 'Nova');
+  });
+
+  it('lets a coach clear the agent deliberately', () => {
+    // Empty input present = "this player has no agent any more", which must
+    // reach the record. Contrast with the absent-input case above.
+    const u = runSave(
+        fakeRow(7, {positions: ['POR'], number: '1', agent: ''}), AGENTED);
+    assert.strictEqual(u.agent, '');
   });
 });
 
@@ -697,5 +735,163 @@ describe('the category picker is the app\'s dropdown, not a fourth one', () => {
       assert.ok(at > prev, name + ' must come after the step before it');
       return at;
     }, -1);
+  });
+});
+
+/* ── Agent/Agència, the phone, and the faces (v231) ──────────────────
+ *
+ * Source-and-CSS assertions, like the rest of this suite. What each pins is
+ * something whose absence is silent: a column that saves nothing, a `|` with
+ * nothing after it, or an avatar that only ever renders a broken image.
+ */
+describe('the agent column, the phone and the avatars', () => {
+  /* ⚠ grabBare() strips comments, so every marker here must be CODE. The
+     first version of this block ended PENDING at the comment banner
+     '/* ── Membres', which grabBare had already deleted. */
+  const WHO = grabBare('  function regWhoCellHtml', '  function regAgentCellHtml');
+  const AGENT = grabBare('  function regAgentCellHtml', '  function regPendingTableHtml');
+  const PENDING = grabBare('  function regPendingTableHtml', '  function regMembersTableHtml');
+  const MEMBERS = grabBare('  function regMembersTableHtml', '  function renderRegistrations');
+  // grab(), not grabBare(): this one's end marker IS a comment banner, and
+  // it is what the existing runSave() helper above already slices with.
+  const SAVE = grab('  function autoSaveFromRow(row) {', '  /* ── Bindings');
+
+  it('BOTH tables draw the agent column, between the name and the rol', () => {
+    /* ⚠ Measured inside the RETURNED ROW, not the whole function. `rolCell`
+       is a variable declared well above the markup, so searching the
+       function body finds its declaration and reports the columns in the
+       wrong order — which is how the first version of this failed on
+       correct code. */
+    [['pending', PENDING], ['members', MEMBERS]].forEach(([which, body]) => {
+      const row = body.slice(body.indexOf("'<tr"));
+      const who = row.indexOf('regWhoCellHtml');
+      const agent = row.indexOf('regAgentCellHtml');
+      const rol = row.indexOf('rolCell');
+      assert.ok(who !== -1 && agent !== -1 && rol !== -1, which + ' is missing a cell');
+      assert.ok(who < agent && agent < rol,
+          which + ': the agent column is not between the member and the rol');
+    });
+  });
+
+  it('both header rows gained the column, or the cells shift under the wrong titles', () => {
+    [['pending', PENDING], ['members', MEMBERS]].forEach(([which, src]) => {
+      assert.ok(src.includes("t('reg2.th_agent')"), which + ' header missing');
+    });
+  });
+
+  it('the agent input carries the class the binder looks for', () => {
+    assert.ok(/class="reg2-agent reg-agent"/.test(AGENT), AGENT);
+    assert.ok(/data-uid="/.test(AGENT), 'the row cannot be identified');
+  });
+
+  it('a read-only page renders the agent as TEXT, not a disabled input', () => {
+    /* A greyed-out box invites a click that does nothing. It also matters to
+       autoSaveFromRow: `.reg-agent` being genuinely absent is what makes the
+       "leave it alone" branch fire instead of writing an empty string. */
+    const ro = AGENT.slice(AGENT.indexOf('if (ro)'), AGENT.indexOf('<td><input'));
+    assert.ok(!ro.includes('<input'), ro);
+    assert.ok(ro.includes('reg2-dash'), 'an empty read-only agent shows nothing at all');
+  });
+
+  it('the agent commits on BLUR, never on input', () => {
+    /* The dorsal beside it saves per keystroke — one Firestore write per
+       character, tolerable for two digits and not for an agency name. And
+       `blur` does not bubble, so the listener MUST be in the capture phase
+       or it silently never fires. */
+    const i = src.indexOf("content.addEventListener('blur'");
+    assert.ok(i !== -1, 'the blur listener is gone — the field saves nothing');
+    const block = src.slice(i, src.indexOf('}, true);', i) + 10);
+    assert.ok(block.includes('reg-agent'), block);
+    assert.ok(/\}, true\);/.test(block),
+        'not in the capture phase: blur does not bubble, so this never fires');
+    const inputStart = src.indexOf("content.addEventListener('input'");
+    const inputBlock = src.slice(inputStart, i);
+    assert.ok(!inputBlock.includes('reg-agent'), 'the agent saves on every keystroke');
+  });
+
+  it('the phone sits beside the email, and its separator dies with it', () => {
+    /* A `|` emitted before the phone survives an empty one, which is a
+       dangling mark on every row of every club that has not collected
+       numbers yet — that is, all of them until they do. */
+    assert.ok(WHO.includes('reg2-sep'), WHO);
+    const sep = WHO.indexOf('reg2-sep');
+    const cond = WHO.lastIndexOf('phone ?', sep);
+    assert.ok(cond !== -1 && cond < sep,
+        'the separator is not gated on the phone being there');
+  });
+
+  it('both name cells draw a face', () => {
+    assert.ok(WHO.includes('avatarHtmlGlobal(u,'), WHO);
+    [['pending', PENDING], ['members', MEMBERS]].forEach(([which, s]) => {
+      assert.ok(s.includes('regWhoCellHtml'), which + ' does not use the shared cell');
+    });
+  });
+
+  it('the save writes the agent through BOTH paths', () => {
+    /* saveUsers() reaches the synced fa_users shard, which is what makes it
+       visible on another coach's device; the users/{uid} write is what makes
+       it survive a blob rebuild. One without the other half-applies it. */
+    assert.ok(/user\.agent = agent;/.test(SAVE), 'not written to the local blob');
+    assert.ok(/agent: agent/.test(SAVE), 'not written to the user document');
+  });
+
+  it('the rejected-write toast is there, so a refused save cannot be silent', () => {
+    /* saveUsers() has already run by then, so the screen shows the new value
+       while the server has none of it. It used to end in a bare
+       `.catch(console.error)` — invisible to the coach, and the edit
+       reappears undone on the next device. */
+    assert.ok(!/merge: true \}\)\.catch\(console\.error\)/.test(SAVE),
+        'the bare console.error catch is back');
+    assert.ok(SAVE.includes('reg2.save_failed_t'), SAVE.slice(-800));
+  });
+
+  it('the Firestore write stays inside the string-uid guard', () => {
+    // runSave() above injects no `db`; an unconditional call would throw in
+    // every one of those tests rather than in production.
+    const guard = SAVE.indexOf("typeof uid === 'string'");
+    const write = SAVE.indexOf("db.collection('users')");
+    assert.ok(guard !== -1 && write !== -1 && guard < write, 'the guard moved');
+  });
+
+  it('the tables were widened for the new column', () => {
+    // Otherwise the row squashes instead of the wrapper scrolling.
+    const m = /\.reg2-table\s*\{[^}]*min-width:\s*(\d+)px/.exec(css);
+    assert.ok(m, 'the table rule moved');
+    assert.ok(Number(m[1]) >= 1000, 'still at the pre-agent width: ' + m[1]);
+  });
+
+  it('the avatar is round, and its placeholder shares the geometry', () => {
+    const av = /\.pp-av\s*\{([^}]*)\}/.exec(css);
+    assert.ok(av, 'the avatar rule is gone');
+    assert.ok(/border-radius:\s*50%/.test(av[1]), av[1]);
+    assert.ok(/width:\s*26px/.test(av[1]), 'not the position-circle size: ' + av[1]);
+    const ph = /\.pp-av-ph\s*\{([^}]*)\}/.exec(css);
+    assert.ok(ph, 'the placeholder rule is gone');
+    // ⚠ Anchored to a property START. An unanchored `height:` also matches
+    // `line-height:`, which the placeholder legitimately sets.
+    assert.ok(!/(^|;)\s*(width|height|border-radius)\s*:/.test(ph[1]),
+        'the placeholder redefines geometry instead of inheriting it: ' + ph[1]);
+  });
+
+  it('the name cells align by baseline, not by flex', () => {
+    /* Wrapping these cells in a flex box collapses the margin-left that
+       catBadgeHtmlGlobal relies on for all of its spacing — the badge would
+       sit flush against the name on every roster row. */
+    assert.ok(/\.reg2-name,\s*\.pl-td-name\s*\{[^}]*white-space:\s*nowrap/.test(css),
+        'the nowrap rule is gone');
+    assert.ok(/\.reg2-name > \*,\s*\.pl-td-name > \*\s*\{[^}]*vertical-align:\s*middle/.test(css),
+        'the vertical-align rule the inline-flow cells depend on is gone');
+  });
+
+  it('the staff rules allowlist actually permits what the page writes', () => {
+    /* The page writing a field the server refuses is the worst shape this
+       change can take: saveUsers() has already painted it locally, so it
+       looks saved until another device disagrees. */
+    const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+    const staff = rules.slice(rules.indexOf('isStaffOf(resource.data.teamId)'));
+    const list = staff.slice(0, staff.indexOf(']'));
+    ['phone', 'agent', 'position', 'playerNumber', 'team', 'category']
+        .forEach((k) => assert.ok(list.includes("'" + k + "'"),
+            k + ' is written by the page but not allowed by firestore.rules'));
   });
 });

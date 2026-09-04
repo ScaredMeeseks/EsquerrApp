@@ -602,6 +602,19 @@ describe('Inici — the .ini- block', () => {
         'unscoped borrowed rule repaints another page: ' + l.trim()));
   });
 
+  it('the hero photo slot is a circle with no frame around it (v231)', () => {
+    /* The handoff drew a square drop target with a 1px border. In practice
+       people upload avatars that are already circles on transparent corners,
+       and the border then reads as a stray box drawn around someone's head.
+       The background stays — it is the chip the initial sits on when there
+       is no photo. */
+    const m = /\.ini-photo\s*\{([^}]*)\}/.exec(INICSS);
+    assert.ok(m, 'the photo rule is gone');
+    assert.ok(/border-radius:\s*50%/.test(m[1]), m[1]);
+    assert.ok(!/(^|;)\s*border\s*:/.test(m[1]), 'the square frame is back: ' + m[1]);
+    assert.ok(/background:/.test(m[1]), 'the initials lost the chip behind them');
+  });
+
   it('gives the phone a 44px answer target', () => {
     /* A mis-tapped availability answer is a wrong answer sent to the coach.
        ⚠ Asked of the PILL rule, not of the phone block: `.ini-conv-btn` is

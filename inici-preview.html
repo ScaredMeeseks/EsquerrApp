@@ -7076,8 +7076,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 /* ── Tables ── */
 .reg2-wrap { overflow-x: auto; max-width: 100%; }
-.reg2-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; }
-.reg2-table-pending { min-width: 940px; }
+/* +150px on each since v231: the Agent column and the 26px face beside every
+   name. The wrapper scrolls horizontally rather than letting the row squash. */
+.reg2-table { width: 100%; min-width: 1010px; border-collapse: collapse; font-size: 14px; }
+.reg2-table-pending { min-width: 1090px; }
 .reg2-table th {
   text-align: left; font-size: 10px; font-weight: 500; letter-spacing: .12em;
   text-transform: uppercase; color: var(--pp-ink-3); padding: 0 8px 8px;
@@ -7088,8 +7090,30 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-th-first, .reg2-td-who { padding-left: 14px !important; }
 .reg2-table th.reg2-r, .reg2-table td.reg2-r { text-align: right; }
 .reg2-table th.reg2-c, .reg2-table td.reg2-c { text-align: center; }
-.reg2-name { white-space: nowrap; }
+/* The face beside a name (v231). One geometry, two fills: `.pp-av` sizes it
+   and `.pp-av-ph` only paints the initials variant, so the placeholder can
+   never drift out of round with the photo. Named for the palette rather than
+   the page because Plantilla and Registracions both draw it.
+   26px matches `.conv-pos-circle`, so a face sits on the same optical line as
+   the position circles one column over. */
+.pp-av {
+  width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
+  flex: 0 0 26px; vertical-align: middle; margin-right: 8px;
+  background: var(--pp-rule-2); border: 1px solid var(--pp-rule);
+}
+.pp-av-ph {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--pp-ink-2); line-height: 1;
+}
+/* ⚠ These two cells are inline-flow with `white-space: nowrap`, NOT flex.
+   A flex wrapper here would zero out the `margin-left` that
+   catBadgeHtmlGlobal() relies on, so the avatar aligns by baseline instead. */
+.reg2-name, .pl-td-name { white-space: nowrap; }
+.reg2-name > *, .pl-td-name > * { vertical-align: middle; }
 .reg2-sub { font-size: 12px; color: var(--pp-ink-3); white-space: nowrap; }
+/* The separator between email and phone. A span rather than a literal `|` in
+   the string so it can be dropped with the phone when there is none. */
+.reg2-sep { color: var(--pp-rule-4); padding: 0 5px; }
 .reg2-muted { color: var(--pp-ink-2); }
 .reg2-nums { font-variant-numeric: tabular-nums; }
 .reg2-flat { color: var(--pp-ink-2); }
@@ -7143,6 +7167,20 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* A number already worn in this squad. Colour on BOTH the rule and the
    digits: the rule alone is a hairline nobody notices. */
 .reg2-num-dup { color: var(--pp-bad); border-bottom-color: var(--pp-bad); }
+
+/* Agent / agency (v231) — the page's first per-member free-text field. Same
+   borderless idiom as the dorsal so the row still reads as one line of paper
+   rather than a form; wider, because a name is not two digits.
+   ⚠ It commits on BLUR, not on input. `.reg2-num` beside it saves on every
+   keystroke, which is one Firestore write per character — tolerable for two
+   digits and not for an agency name. */
+.reg2-agent {
+  width: 130px; max-width: 100%; font: inherit; font-size: 14px;
+  background: transparent; border: none; border-bottom: 1px solid var(--pp-rule-4);
+  padding: 3px 2px; outline: none; color: var(--pp-ink);
+}
+.reg2-agent:focus { border-bottom-color: var(--pp-ink); }
+.reg2-agent::placeholder { color: var(--pp-rule-4); }
 
 .reg2-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
 .reg2-on { color: var(--pp-ok); }
@@ -8418,9 +8456,16 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-bottom: 1px solid var(--pp-rule);
 }
 .ini-hero-id { display: flex; align-items: stretch; gap: 24px; min-width: 0; }
+/* ⚠ The one round thing on a page whose rule is "no radius except circles" —
+   and it IS a circle, so it belongs to the exception rather than breaking the
+   rule. The handoff drew a square drop target with a 1px border; in practice
+   people upload avatars that are already circles on transparent corners, and
+   the border then reads as a stray box drawn around someone's head. The
+   background stays: with a photo it is invisible, and without one it is the
+   chip the initial sits on. */
 .ini-photo {
-  width: 96px; height: 96px; flex: 0 0 96px;
-  background: var(--pp-rule-2); border: 1px solid var(--pp-rule);
+  width: 96px; height: 96px; flex: 0 0 96px; border-radius: 50%;
+  background: var(--pp-rule-2);
   object-fit: cover; display: flex; align-items: center; justify-content: center;
   font-size: 34px; color: var(--pp-ink-3); overflow: hidden; padding: 0;
 }

@@ -260,6 +260,15 @@
             <label for="setup-dob" data-i18n="auth.dob">Date of Birth</label>
             <input type="text" id="setup-dob" class="md-datepicker" data-display-dmy data-allow-past data-typeable placeholder="dd/mm/yyyy" style="cursor:pointer;" required>
           </div>
+          <!-- Phone (v231). This step is the one every new member passes
+               through, which is why it sits here rather than on the register
+               form. NOTE existing members already have profileSetupDone and
+               never see this again — their number is typed in by staff on
+               Registracions. -->
+          <div class="form-group">
+            <label for="setup-phone" data-i18n="auth.phone">Phone</label>
+            <input type="tel" id="setup-phone" data-i18n="auth.phone_ph" placeholder="+34 600 000 000" autocomplete="tel" maxlength="24" required>
+          </div>
           <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.continue">Continue</button>
         </form>
       </div>

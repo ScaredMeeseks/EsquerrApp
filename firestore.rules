@@ -72,10 +72,17 @@ service cloud.firestore {
         // so the Unassigned list can show where to put them back. Staff-owned
         // like the assignment itself; not self-writable, or a player could
         // fake a history.
+        // `phone` and `agent` joined this list in v231. Both are squad admin
+        // a coach fills in on Registracions: the agent is only ever known to
+        // the club, and the phone is here because every member who existed
+        // before v231 has profileSetupDone and will never be shown the form
+        // that now asks for one — without this their number could only ever
+        // be blank. Note `phone` is ALSO self-writable (the self branch above
+        // is a deny-list), which is how a new member supplies their own.
         || (resource.data.teamId != null && isStaffOf(resource.data.teamId)
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['position', 'playerNumber', 'team', 'category',
-                           'prevCategory', 'prevTeam',
+                           'prevCategory', 'prevTeam', 'phone', 'agent',
                            'fitnessStatus', 'injuryNote']))
       );
       allow delete: if isSuperUser();
