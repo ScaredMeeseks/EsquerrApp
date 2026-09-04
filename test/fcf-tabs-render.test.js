@@ -114,10 +114,15 @@ describe('every helper these tabs call exists IN THE BROWSER', () => {
         } catch (e) { return ''; }
       }).join('\n');
 
+  /* ⚠ The end marker is the INICI banner, not `function renderPlayerHome()`.
+     v230 put the Inici helpers between the two, and they are not part of
+     these tabs — sweeping them in made the call scan below read the string
+     `var(--pp-ok)` inside a donut's inline style as a call to a global
+     named `var`. The bound has to name what actually follows this region. */
   const tabsBlock = grab(appSrc,
       '  /* ═══════════════════════════════════════════════════════════\n' +
       '     Sancions and Top Scorers',
-      '  function renderPlayerHome()');
+      '     INICI — the two landing pages');
 
   it('the FCF helpers are declared in a file the browser loads', () => {
     ['parseFcfSanctions', 'parseFcfScorers', 'bansForJornada',

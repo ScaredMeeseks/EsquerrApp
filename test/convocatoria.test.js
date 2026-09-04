@@ -53,8 +53,19 @@ const BIND = grab('  // ---------- Convocatòria: drag-and-drop, menus, bands',
     '  // #endregion Matchday, Calendar & Convocatòria');
 
 /* The `cv-` block sliced out of the stylesheet, so a rule from some other
-   page cannot answer a question asked about this one. */
-const CVCSS = css.slice(css.indexOf('/* ===== Convocatòria, redesigned (v227)'));
+   page cannot answer a question asked about this one.
+
+   ⚠ The end bound is not decoration. Until v230 this was an open-ended
+   slice that worked only because `cv-` happened to be the LAST block in
+   style.css; the moment Inici was appended after it, every `.ini-` rule
+   fell inside CVCSS and could satisfy a question asked about Convocatòria.
+   A colour assertion would have gone on passing while the rule it named
+   was gone. If a later page is appended, this bound must name it. */
+const CVSTART = css.indexOf('/* ===== Convocatòria, redesigned (v227)');
+const CVEND = css.indexOf('/* ===== Inici, redesigned (v230)', CVSTART);
+assert.ok(CVSTART !== -1, 'the cv- block banner is gone from css/style.css');
+assert.ok(CVEND !== -1, 'the ini- banner that bounds the cv- block is gone');
+const CVCSS = css.slice(CVSTART, CVEND);
 
 const sanitize = (s) => String(s === undefined || s === null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

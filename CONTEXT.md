@@ -9023,3 +9023,111 @@ which widens medical-record access with it — club policy, not a fix. The entry
 The lesson is the one v225 already recorded in different words: **a note explaining why something
 is absent goes stale silently**, and this one was inherited and repeated twice in one session
 before anybody read the code under it.
+
+### 2026-09-04 — v230. Inici: the two landing pages, and the page attendance is answered on
+
+The seventh Claude Design handoff (`Baixades/EsquerrApp Home UI/design_handoff_inici/`), and the
+first that is not a staff screen. One `.ini-` block dresses BOTH landing pages: the player's
+(`player-home`, sidebar label now "Inici" in all three languages) and the coach's (`staff-home`).
+
+**⚠ The thing that made this different from the six before it.** `renderWeekActivities` is the
+app's primary answering surface — Accions carries match availability only — so a "format change"
+here is a change to the control players use to tell their coach whether they are coming. The
+handlers in `bindDynamicActions()` bind BY NAME (`.avail-btns[data-avail-sid]`,
+`.avail-btn[data-avail]`, `.avail-chosen`, and the `.mavail-*` pair). A renamed class does not
+throw and does not log: the pill stops saving, and the coach's sheet goes on reading "available"
+because `getEffectiveAnswer()` counts a silent player as a yes. There is no louder failure
+available.
+
+So the pills keep every attribute and the write path was not touched — `ackSaveRecord` →
+`DB.submit` into `trainingAvail`/`matchAvail`, `recordKey`, the body-map picker, the lock rule, the
+staff notification. What changed is markup and CSS, and `test/inici.test.js` renders the real
+builders, mounts the real handlers over the result in jsdom, and asserts the write that comes out.
+
+**One deliberate simplification.** The old markup was a single `.avail-chosen.avail-default` badge
+that grew four buttons on click, and the save logic was therefore written twice — once bound, once
+injected inline beside the expanded buttons. The handoff shows all four pills always visible, so
+the expand step is gone and there is one writer again (~50 lines of duplicated save logic removed).
+
+**Default-Yes stays visible, deliberately.** The handoff draws an unanswered session as four empty
+outlines. `getEffectiveAnswer()` counts no-answer AS yes and every coach-facing figure relies on
+it, so four empty outlines would tell the player nobody knows while the coach's sheet already had
+them down as available. Unanswered renders the `Sí` pill as ASSUMED (pale, `ini-assumed`) instead,
+and the honest half is the section head's pending count — which is computed from RAW records, the
+one place the two views are allowed to differ.
+
+**Staff-home is read-only and the suite pins it that way.** It renders zero `data-avail`/
+`data-mavail` attributes; a coach answering for a player is the staff override on the session page,
+where it is recorded as an override. Its counts read raw for the same reason `renderStaffWeek`
+always did.
+
+Other decisions: `N absències avisades` counts answers of value `no` (the app has no
+justified-absence concept and inventing one would be a figure with nothing behind it); every active
+FCF league is stacked in the rail and the per-league eye is retired (`fa_hidden_leagues` was never a
+synced key, so a table hidden on the phone was still there on the laptop and nothing said why);
+`Fora de combat` + `Watch list` merge into one `LESIONATS I RISC` block, red dot for an open injury
+and amber for a load flag, with `outIds` still keeping a player out of both.
+
+**New/changed:** `.ini-` block in `css/style.css`; nine `--pp-*` tokens (`--pp-ok-dark`,
+`--pp-warn-dark`, `--pp-neutral`, `--pp-neutral-dark`, `--pp-bad-dark`, `--pp-input-line`,
+`--pp-ink-4`, `--pp-ok-bg`, `--pp-ok-line`) with the existing literals at `.std-sel-pill` and
+`.pt-leg-draw` converted — proved inert by resolving every token back to its literal and diffing
+the stylesheet byte for byte against HEAD, the v228 method; `iniDonutHtml` (one builder for the
+88px player hero, the 76px staff hero and the 44px per-session ring, replacing the fourth copy of
+that SVG construction); `tv(key, vars)` for `{n}` placeholders; `iniAttr()`; `iniTeamFilter` as the
+fifth per-page squad-letter filter; `scripts/build-inici-preview.js`; `test/inici.test.js`;
+six `sanitize()` tests in `test/utils.test.js`.
+
+**⚠ Two traps this cost a round on, both worth knowing before touching it again.**
+
+1. **`sanitize()` did not escape quotes — fixed in `sanitize()` itself, app-wide.** It was
+   `textContent` → `innerHTML`, i.e. the browser's own escaping: `&`, `<` and `>`. Complete for
+   text between tags, silently incomplete inside a double-quoted attribute, because the quote is
+   what ends an attribute and no `<` is needed to break out of one:
+
+       data-x="${sanitize(v)}"   with v = `" onclick="alert(1)`
+       →  <div data-x="" onclick="alert(1)">
+
+   `app.js` emits ~4,760 attributes and **30** build one this way. Most carry app-generated ids and
+   ISO dates, but a handful carry typed text — a coach's injury note (`data-tooltip`), a session's
+   focus/location/map link and a lead's email (`value=`), a player's own name (`data-name`). So it
+   was reachable, though only by someone already inside the club, which is why it is recorded as
+   low severity rather than urgent. It also broke a plain form field with no malice at all: a
+   location typed as `Camp "El Nou"` truncated its own `value=""`.
+
+   ⚠ **The fix was made global rather than per-page, and that was only safe because escaping the
+   quote is invisible wherever the old behaviour was already correct.** Between tags `&quot;`
+   RENDERS as `"`; read back off an attribute (`dataset`, `getAttribute`) the browser decodes it,
+   so the two places that put JSON in an attribute and parse it back — `data-frames` on a tactical
+   board, `data-pl-tip` on the Plantilla chart — still parse. Both are pinned in
+   `test/utils.test.js`, along with the ordering trap: `&` is escaped FIRST by `textContent` and
+   the quote replaces run after, so the `&` inside `&quot;` survives. Reverse them and every quote
+   ships as the literal text `&amp;quot;`.
+
+   The three existing `sanitize(x).replace(/"/g,'&quot;')` sites became no-ops rather than
+   double-escaping, because `&quot;` contains no literal quote for the second replace to find.
+   `iniAttr()`, which Inici carried for one version, is gone — one escaper is the point.
+2. **`--window-size` does not set the layout viewport below ~485 CSS px on this machine.** Headless
+   Chrome clamps the window, lays out at 485 and crops the bitmap to what was asked for, so a
+   `--window-size=390` screenshot shows a page apparently overflowing its phone breakpoint. It is
+   neither an overflow nor the phone layout, and it cost a round of chasing a defect that was not
+   there. `Emulation.setDeviceMetricsOverride` over the DevTools protocol gives a real 390px
+   viewport (node 22+ has a built-in `WebSocket`, nothing to install), and the probe prints
+   `document.documentElement.clientWidth` back so a run cannot lie about its width.
+
+**What the preview caught that 43 green assertions did not**, which is the third time this has
+happened and the reason the step exists: `order: 3` on `.ini-ev-txt` at the phone breakpoint put
+the `Convocatòria` button BEFORE the "N sense resposta" it belongs to, so the count read as the
+next row's. `order` is a property of the container's children and the two cases sharing
+`.ini-ev-right` — a session's donut-plus-text, and an unsent match's text-plus-button — have
+different children. Both defects are now pinned as the shapes they are rather than as pixel values.
+
+**Mutation-tested**: 19 deliberate breaks (renamed attributes, an unscoped borrowed rule, a
+presentation-attribute `var()`, a dropped KEY_PAGES entry, a missing Spanish string, the two
+geometry regressions, and both halves of the sanitize fix — dropping the quote escape, and doing
+the ampersand last so it double-encodes its own), all 19 turn the suite red, tree restored
+byte-for-byte afterwards. Unit 2845 -> 2897.
+
+`firestore.rules`, `storage.rules`, `js/db.js`, `js/shard.js` and every deployed Cloud Function are
+untouched — no rules deploy, no functions deploy. The only edit under `functions/` is the version
+constant in `check-deploy.js`.

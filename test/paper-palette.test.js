@@ -30,6 +30,16 @@ const EXPECTED = {
   'pp-red': '#BD162C', 'pp-red-dark': '#9E1224',
   'pp-green': '#3F6B44', 'pp-amber': '#B07B00', 'pp-tint': '#F6F2E9',
   'pp-ok': '#5C8F5E', 'pp-warn': '#D39A2F', 'pp-bad': '#C0564C',
+  /* The dark edge of each availability colour, plus the two greys and the
+     input line that go with them (v230, Inici). Each is one shade from a
+     token that already existed — warn-dark is not --pp-amber, bad-dark is
+     not --pp-med-inj-ink, input-line is not --pp-rule-4 — so they are
+     spelled out here for the same reason the rest are. */
+  'pp-ok-dark': '#4A7A4C', 'pp-warn-dark': '#B07F1F',
+  'pp-neutral': '#8A857F', 'pp-neutral-dark': '#726D67',
+  'pp-bad-dark': '#A2443B', 'pp-input-line': '#C2BDB6',
+  'pp-ink-4': '#A8A29B',
+  'pp-ok-bg': '#EAF1EA', 'pp-ok-line': '#CBDDCB',
   'pp-med-fit-bg': '#DCE9DC', 'pp-med-fit-ink': '#3F6B44',
   'pp-med-doubt-bg': '#F6E4C4', 'pp-med-doubt-ink': '#9A6614',
   'pp-med-inj-bg': '#F2D2CE', 'pp-med-inj-ink': '#A63A32'

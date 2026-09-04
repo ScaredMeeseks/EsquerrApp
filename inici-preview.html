@@ -1,4 +1,10 @@
-/* ===== Reset & Base ===== */
+<!doctype html>
+<html lang="ca"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EsquerrApp · Inici (v230) — preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>/* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 button, input, select, textarea { font-family: inherit; }
 
@@ -8789,3 +8795,663 @@ a.ini-ev-name, .ini-ev-name-link {
   .ini-conv-btn { height: 44px; min-width: 0; flex: 0 1 auto; }
   .ini-tbl-box, .ini-chase-box { max-height: 210px; }
 }
+</style>
+<style>
+  html, body { margin:0; padding:0; background:#E9E6E0; }
+  .pv-wrap { display:flex; flex-direction:column; gap:40px; padding:24px 0; }
+  .pv-cap { font:12px/1.4 'Oswald','Arial Narrow',sans-serif; letter-spacing:.16em;
+            text-transform:uppercase; color:#6B645E; padding:0 24px 10px; }
+  /* The dashboard's own 1rem padding, which .ini-page's margin:-1rem breaks
+     out of. Without it the hero band stops short of the edge here and
+     nowhere else, and the preview lies about the one thing it is for. */
+  .pv-frame { background:#FBFAF7; padding:1rem; border-top:1px solid #C9C3BB;
+              border-bottom:1px solid #C9C3BB; }
+  /* .ini-page fills the viewport in the app, which is right there and is
+     five screens of blank paper between boards here. Preview chrome only —
+     nothing else in this stylesheet touches the page under test. */
+  .pv-frame .ini-page { min-height:0; }
+</style>
+</head><body><div class="pv-wrap">
+<section class="pv-board" id="pv-player-open"><div class="pv-cap">Jugador · res respost</div><div class="pv-frame">
+      <div class="ini-page ini-player">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-photo" id="po-pic-change" style="cursor:pointer" title="Canviar foto">M</div>
+            <div class="ini-idcol">
+              <span class="ini-eyebrow">Bon dia</span>
+              <div class="ini-name-row">
+                <h1 class="ini-name">Marc Rovira</h1>
+                <span class="ini-dorsal">1</span>
+              </div>
+              <div class="ini-pos-row"><span class="conv-pos-circle" style="background:#f9a825">GK</span>
+                <span class="ini-club">U.E. Esquerra · Amateur A</span>
+              </div>
+            </div>
+          </div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-stats">
+            <div class="ini-stat"><span class="ini-eyebrow">Partits</span><span class="ini-stat-v">6</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Minuts</span><span class="ini-stat-v">412</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Gols</span><span class="ini-stat-v">3</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Assist.</span><span class="ini-stat-v">2</span></div>
+          </div>
+          <div class="ini-hero-att">
+            <div class="ini-donut" style="width:88px;height:88px"><svg width="88" height="88" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.4" stroke-dasharray="100.00 0.00" stroke-dashoffset="0.00"><title>Sí: 4</title></circle></svg><span class="ini-donut-c" style="font-size:19px">100%</span></div>
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">Assistència</span>
+              <span>4 de 4 sessions</span>
+              <span>0 absències avisades</span>
+            </div>
+          </div>
+        </div>
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">Les properes dues setmanes</span>
+              <span class="ini-pending">7 respostes pendents</span>
+            </div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t1">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t1"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-training="t2">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t2"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-match="101">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">20:00 · Casa · Jornada 3 · Camp Municipal</div>
+        </div>
+        <div class="mavail-btns" data-mavail-match="101"><button type="button" class="mavail-btn mavail-disp" data-mavail="disponible" title="Disponible">Disponible</button><button type="button" class="mavail-btn mavail-nodisp" data-mavail="no_disponible" title="No Disponible">No Disponible</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-training="t3">
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-bar ini-bar-activity"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
+          <div class="ini-ev-meta">14:00 · Can Punyetes</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t3"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t4">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Transicions</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t4"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-training="t5">
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t5"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-match="102">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">18:30 · Fora · Jornada 4 · Bon Pastor</div>
+        </div>
+        <div class="mavail-btns" data-mavail-match="102"><button type="button" class="mavail-btn mavail-disp" data-mavail="disponible" title="Disponible">Disponible</button><button type="button" class="mavail-btn mavail-nodisp" data-mavail="no_disponible" title="No Disponible">No Disponible</button></div>
+      </div></div>
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">El meu estat</span></div>
+              <div class="ini-kv"><span class="ini-kv-k">Estat físic</span><span class="ini-kv-v ini-v-ok">En forma</span></div><div class="ini-kv"><span class="ini-kv-k">Convocatòries</span><span class="ini-kv-v ini-num">0 de 0</span></div><div class="ini-kv"><span class="ini-kv-k">Targetes</span><span class="ini-kv-v ">2 grogues</span></div>
+            </div>
+            <div class="ini-block league-snippet"><div class="ini-block-head"><span class="ini-eyebrow">Classificació</span><span class="ini-eyebrow">Amateur A</span></div><div class="ini-tbl-box league-scroll" id="league-amateur-A"><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">1</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Vallcarca</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+9</span><span class="ini-tbl-pt">14</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">2</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Poblenou</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+7</span><span class="ini-tbl-pt">12</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">3</span><span class="ini-tbl-badge">SA</span><span class="ini-tbl-name">Sauleda, A.D.</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+5</span><span class="ini-tbl-pt">11</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">4</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Sant Andreu</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+3</span><span class="ini-tbl-pt">10</span></div><div class="ini-tbl-row league-row ini-tbl-ours league-ours"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">5</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Esquerra</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+2</span><span class="ini-tbl-pt">9</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">6</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Gràcia</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">0</span><span class="ini-tbl-pt">8</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">7</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Horta</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-1</span><span class="ini-tbl-pt">7</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">8</span><span class="ini-tbl-badge">AD</span><span class="ini-tbl-name">A.D. Guinardó</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-3</span><span class="ini-tbl-pt">6</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">9</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Clot</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-5</span><span class="ini-tbl-pt">5</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">10</span><span class="ini-tbl-badge">UD</span><span class="ini-tbl-name">U.D. Sants</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-7</span><span class="ini-tbl-pt">4</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">11</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Besòs</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-9</span><span class="ini-tbl-pt">3</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">12</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Trinitat</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-12</span><span class="ini-tbl-pt">1</span></div></div></div>
+          </aside>
+        </div>
+      </div></div></section>
+<section class="pv-board" id="pv-player-mixed"><div class="pv-cap">Jugador · respostes, convocatòria enviada, sessió tancada</div><div class="pv-frame">
+      <div class="ini-page ini-player">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-photo" id="po-pic-change" style="cursor:pointer" title="Canviar foto">M</div>
+            <div class="ini-idcol">
+              <span class="ini-eyebrow">Bon dia</span>
+              <div class="ini-name-row">
+                <h1 class="ini-name">Marc Rovira</h1>
+                <span class="ini-dorsal">1</span>
+              </div>
+              <div class="ini-pos-row"><span class="conv-pos-circle" style="background:#f9a825">GK</span>
+                <span class="ini-club">U.E. Esquerra · Amateur A</span>
+              </div>
+            </div>
+          </div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-stats">
+            <div class="ini-stat"><span class="ini-eyebrow">Partits</span><span class="ini-stat-v">6</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Minuts</span><span class="ini-stat-v">412</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Gols</span><span class="ini-stat-v">3</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Assist.</span><span class="ini-stat-v">2</span></div>
+          </div>
+          <div class="ini-hero-att">
+            <div class="ini-donut" style="width:88px;height:88px"><svg width="88" height="88" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="0.00"><title>Sí: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-25.00"><title>Tard: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-50.00"><title>No: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-75.00"><title>Lesionat: 1</title></circle></svg><span class="ini-donut-c" style="font-size:19px">50%</span></div>
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">Assistència</span>
+              <span>2 de 4 sessions</span>
+              <span>1 absències avisades</span>
+            </div>
+          </div>
+        </div>
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">Les properes dues setmanes</span>
+              <span class="ini-pending">1 resposta pendent</span>
+            </div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t1">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t1"><button type="button" class="avail-chosen avail-yes" data-avail-sid="t1" title="Sí">Sí</button><button type="button" class="avail-btn avail-late ini-muted" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no ini-muted" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured ini-muted" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-training="t2">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-pills ini-pills-locked" title="Respostes tancades a les 15:30"><span class="ini-pill avail-yes ini-muted">Sí</span><span class="ini-pill avail-late ini-on">Tard</span><span class="ini-pill avail-no ini-muted">No</span><span class="ini-pill avail-injured ini-muted">Lesionat</span></div>
+      </div><div class="ini-ev ini-ev-link" data-go-match="101">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">20:00 · Casa · Jornada 3 · Camp Municipal · citació 18:15<span class="ini-sent" data-conv-link data-conv-match="101"><span class="ini-sent-dot"></span>Convocatòria enviada</span></div>
+        </div>
+        
+      </div><div class="ini-ev ini-ev-link" data-go-training="t3">
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-bar ini-bar-activity"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
+          <div class="ini-ev-meta">14:00 · Can Punyetes</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t3"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t4">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Transicions</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t4"><button type="button" class="avail-btn avail-yes ini-muted" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late ini-muted" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-chosen avail-no" data-avail-sid="t4" title="No">No</button><button type="button" class="avail-btn avail-injured ini-muted" data-avail="injured" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-training="t5">
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="avail-btns" data-avail-sid="t5"><button type="button" class="avail-btn avail-yes ini-muted" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late ini-muted" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no ini-muted" data-avail="no" title="No">No</button><button type="button" class="avail-chosen avail-injured" data-avail-sid="t5" title="Lesionat">Lesionat</button></div>
+      </div><div class="ini-ev ini-ev-link" data-go-match="102">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">18:30 · Fora · Jornada 4 · Bon Pastor · citació 16:45</div>
+        </div>
+        <div class="mavail-btns" data-mavail-match="102"><button type="button" class="mavail-chosen mavail-disp" data-mavail-match="102" title="Disponible">Disponible</button><button type="button" class="mavail-btn mavail-nodisp ini-muted" data-mavail="no_disponible" title="No Disponible">No Disponible</button></div>
+      </div></div>
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">El meu estat</span></div>
+              <div class="ini-kv"><span class="ini-kv-k">Estat físic</span><span class="ini-kv-v ini-v-ok">Molèstia isquio dret</span></div><div class="ini-kv"><span class="ini-kv-k">Convocatòries</span><span class="ini-kv-v ini-num">1 de 1</span></div><div class="ini-kv"><span class="ini-kv-k">Citació pròxim partit</span><span class="ini-kv-v ini-num">18:15</span></div><div class="ini-kv"><span class="ini-kv-k">Targetes</span><span class="ini-kv-v ">2 grogues</span></div>
+            </div>
+            <div class="ini-block league-snippet"><div class="ini-block-head"><span class="ini-eyebrow">Classificació</span><span class="ini-eyebrow">Amateur A</span></div><div class="ini-tbl-box league-scroll" id="league-amateur-A"><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">1</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Vallcarca</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+9</span><span class="ini-tbl-pt">14</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">2</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Poblenou</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+7</span><span class="ini-tbl-pt">12</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">3</span><span class="ini-tbl-badge">SA</span><span class="ini-tbl-name">Sauleda, A.D.</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+5</span><span class="ini-tbl-pt">11</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">4</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Sant Andreu</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+3</span><span class="ini-tbl-pt">10</span></div><div class="ini-tbl-row league-row ini-tbl-ours league-ours"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">5</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Esquerra</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+2</span><span class="ini-tbl-pt">9</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">6</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Gràcia</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">0</span><span class="ini-tbl-pt">8</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">7</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Horta</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-1</span><span class="ini-tbl-pt">7</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">8</span><span class="ini-tbl-badge">AD</span><span class="ini-tbl-name">A.D. Guinardó</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-3</span><span class="ini-tbl-pt">6</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">9</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Clot</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-5</span><span class="ini-tbl-pt">5</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">10</span><span class="ini-tbl-badge">UD</span><span class="ini-tbl-name">U.D. Sants</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-7</span><span class="ini-tbl-pt">4</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">11</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Besòs</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-9</span><span class="ini-tbl-pt">3</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">12</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Trinitat</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-12</span><span class="ini-tbl-pt">1</span></div></div></div>
+          </aside>
+        </div>
+      </div></div></section>
+<section class="pv-board" id="pv-player-empty"><div class="pv-cap">Jugador · quinzena buida</div><div class="pv-frame">
+      <div class="ini-page ini-player">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-photo" id="po-pic-change" style="cursor:pointer" title="Canviar foto">M</div>
+            <div class="ini-idcol">
+              <span class="ini-eyebrow">Bon dia</span>
+              <div class="ini-name-row">
+                <h1 class="ini-name">Marc Rovira</h1>
+                <span class="ini-dorsal">1</span>
+              </div>
+              <div class="ini-pos-row"><span class="conv-pos-circle" style="background:#f9a825">GK</span>
+                <span class="ini-club">U.E. Esquerra · Amateur A</span>
+              </div>
+            </div>
+          </div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-stats">
+            <div class="ini-stat"><span class="ini-eyebrow">Partits</span><span class="ini-stat-v">6</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Minuts</span><span class="ini-stat-v">412</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Gols</span><span class="ini-stat-v">3</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">Assist.</span><span class="ini-stat-v">2</span></div>
+          </div>
+          <div class="ini-hero-att">
+            <div class="ini-donut" style="width:88px;height:88px"><svg width="88" height="88" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/></svg><span class="ini-donut-c" style="font-size:19px">0%</span></div>
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">Assistència</span>
+              <span>0 de 0 sessions</span>
+              <span>0 absències avisades</span>
+            </div>
+          </div>
+        </div>
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">Les properes dues setmanes</span>
+              
+            </div>
+            <div class="ini-empty">Res programat aquestes dues setmanes.</div>
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">El meu estat</span></div>
+              <div class="ini-kv"><span class="ini-kv-k">Estat físic</span><span class="ini-kv-v ini-v-ok">En forma</span></div><div class="ini-kv"><span class="ini-kv-k">Convocatòries</span><span class="ini-kv-v ini-num">0 de 0</span></div><div class="ini-kv"><span class="ini-kv-k">Targetes</span><span class="ini-kv-v ">2 grogues</span></div>
+            </div>
+            <div class="ini-block league-snippet"><div class="ini-block-head"><span class="ini-eyebrow">Classificació</span><span class="ini-eyebrow">Amateur A</span></div><div class="ini-tbl-box league-scroll" id="league-amateur-A"><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">1</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Vallcarca</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+9</span><span class="ini-tbl-pt">14</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">2</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Poblenou</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+7</span><span class="ini-tbl-pt">12</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">3</span><span class="ini-tbl-badge">SA</span><span class="ini-tbl-name">Sauleda, A.D.</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+5</span><span class="ini-tbl-pt">11</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">4</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Sant Andreu</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+3</span><span class="ini-tbl-pt">10</span></div><div class="ini-tbl-row league-row ini-tbl-ours league-ours"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">5</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Esquerra</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+2</span><span class="ini-tbl-pt">9</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">6</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Gràcia</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">0</span><span class="ini-tbl-pt">8</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">7</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Horta</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-1</span><span class="ini-tbl-pt">7</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">8</span><span class="ini-tbl-badge">AD</span><span class="ini-tbl-name">A.D. Guinardó</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-3</span><span class="ini-tbl-pt">6</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">9</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Clot</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-5</span><span class="ini-tbl-pt">5</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">10</span><span class="ini-tbl-badge">UD</span><span class="ini-tbl-name">U.D. Sants</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-7</span><span class="ini-tbl-pt">4</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">11</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Besòs</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-9</span><span class="ini-tbl-pt">3</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">12</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Trinitat</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-12</span><span class="ini-tbl-pt">1</span></div></div></div>
+          </aside>
+        </div>
+      </div></div></section>
+<section class="pv-board" id="pv-staff-default"><div class="pv-cap">Staff · convocatòria pendent</div><div class="pv-frame">
+      <div class="ini-page ini-staff">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-idcol">
+              <h1 class="ini-h1">Amateur</h1>
+              <span class="ini-club">22 jugadors a la plantilla · dl 31 ago</span>
+            </div>
+          </div>
+          <div class="ini-counters" style="margin-left:auto">
+            <div class="ini-count"><span class="ini-eyebrow">Sense resposta</span>
+              <span class="ini-count-v ini-c-bad">22</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">Convocatòries pendents</span>
+              <span class="ini-count-v ini-c-warn">2</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">Lesionats</span>
+              <span class="ini-count-v ini-c-inj">2</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">ACWR equip</span>
+              <span class="ini-count-v">1.18</span></div>
+          </div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-hero-att">
+            <div class="ini-donut" style="width:76px;height:76px"><svg width="76" height="76" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:17px">55%</span></div>
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">Assistència de temporada</span>
+              <span>12 de 22 assistències</span>
+              <span>1 sessions · 0 partits</span>
+            </div>
+          </div>
+        </div>
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">Les properes dues setmanes</span>
+              <span class="ini-sec-note">Disponibilitat sobre 22 convocables</span>
+            </div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t1">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t2">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="101"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">20:00 · Casa · Jornada 3 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+            <div class="ini-ev-txt"><span class="ini-ev-missing">22 sense resposta</span></div>
+            <button type="button" class="ini-conv-btn" data-shome-link="convocatoria" data-shome-id="101">Convocatòria</button>
+          </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-bar ini-bar-activity"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t3">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
+          <div class="ini-ev-meta">14:00 · Can Punyetes</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t4">Transicions</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t5">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="102">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">18:30 · Fora · Jornada 4 · Bon Pastor</div>
+        </div>
+        <div class="ini-ev-right">
+            <div class="ini-ev-txt"><span class="ini-ev-missing">22 sense resposta</span></div>
+            <button type="button" class="ini-conv-btn" data-shome-link="convocatoria" data-shome-id="102">Convocatòria</button>
+          </div>
+      </div></div>
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">Sense resposta al pròxim partit</span>
+                <span class="ini-eyebrow">22 · ds 5 set</span></div>
+              <div class="ini-chase-box"><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u1">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Marc Rovira</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u2">
+                    <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Guillem Ferrer</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u3">
+                    <span class="conv-pos-circle" style="background:#1e88e5">LB</span><span class="ini-chase-name">Nil Camps</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u4">
+                    <span class="conv-pos-circle" style="background:#43a047">DM</span><span class="ini-chase-name">Àlex Prat</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u5">
+                    <span class="conv-pos-circle" style="background:#43a047">OM</span><span class="ini-chase-name">Roger Sala</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u6">
+                    <span class="conv-pos-circle" style="background:#e53935">RW</span><span class="ini-chase-name">Ivan Bosch</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u7">
+                    <span class="conv-pos-circle" style="background:#e53935">ST</span><span class="ini-chase-name">Pau Ventura</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u8">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Jordi Miquel</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u9">
+                    <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Oriol Tena</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u10">
+                    <span class="conv-pos-circle" style="background:#1e88e5">LB</span><span class="ini-chase-name">Biel Costa</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u11">
+                    <span class="conv-pos-circle" style="background:#43a047">DM</span><span class="ini-chase-name">Arnau Solé</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u12">
+                    <span class="conv-pos-circle" style="background:#43a047">OM</span><span class="ini-chase-name">Pol Ribas</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u13">
+                    <span class="conv-pos-circle" style="background:#e53935">RW</span><span class="ini-chase-name">Genís Mas</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u14">
+                    <span class="conv-pos-circle" style="background:#e53935">ST</span><span class="ini-chase-name">Quim Vidal</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u15">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Ferran Bou</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u16">
+                    <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Aleix Duran</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u17">
+                    <span class="conv-pos-circle" style="background:#1e88e5">LB</span><span class="ini-chase-name">Roc Puig</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u18">
+                    <span class="conv-pos-circle" style="background:#43a047">DM</span><span class="ini-chase-name">Nau Serra</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u19">
+                    <span class="conv-pos-circle" style="background:#43a047">OM</span><span class="ini-chase-name">Èric Lloret</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u20">
+                    <span class="conv-pos-circle" style="background:#e53935">RW</span><span class="ini-chase-name">Jan Torres</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u21">
+                    <span class="conv-pos-circle" style="background:#e53935">ST</span><span class="ini-chase-name">Bru Camps</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u22">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Ot Fabra</span></div></div>
+            </div>
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">Lesionats i risc</span>
+                <span class="ini-eyebrow">2 · 2</span></div>
+              <div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u8">
+          <span class="ini-risk-dot ini-dot-inj"></span>
+          <span class="ini-risk-name">Jordi Miquel</span>
+          <span class="ini-risk-note">Turmell · dt 8 set</span>
+          <span class="ini-risk-v ini-v-bad">—</span>
+        </div><div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u7">
+          <span class="ini-risk-dot ini-dot-inj"></span>
+          <span class="ini-risk-name">Pau Ventura</span>
+          <span class="ini-risk-note">Isquiotibial · dl 14 set</span>
+          <span class="ini-risk-v ini-v-bad">—</span>
+        </div><div class="ini-risk-row" data-shome-link="staff-player-stats" data-shome-id="u1">
+          <span class="ini-risk-dot ini-dot-risk"></span>
+          <span class="ini-risk-name">Marc Rovira</span>
+          <span class="ini-risk-note">ACWR alt</span>
+          <span class="ini-risk-v ini-v-warn">1.62</span>
+        </div><div class="ini-risk-row" data-shome-link="staff-player-stats" data-shome-id="u10">
+          <span class="ini-risk-dot ini-dot-risk"></span>
+          <span class="ini-risk-name">Biel Costa</span>
+          <span class="ini-risk-note">Càrrega a vigilar</span>
+          <span class="ini-risk-v ini-v-warn">1.48</span>
+        </div>
+            </div>
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">Càrrega de l'equip</span>
+                <span class="ini-eyebrow">Últimes 4 setmanes</span></div>
+              <div class="ini-load"><div class="ini-load-col"><span class="ini-load-v">1848</span><span class="ini-load-bar ini-load-1" style="height:56px"></span><span class="ini-load-lbl">S-3</span></div><div class="ini-load-col"><span class="ini-load-v">2112</span><span class="ini-load-bar ini-load-1" style="height:65px"></span><span class="ini-load-lbl">S-2</span></div><div class="ini-load-col"><span class="ini-load-v">2332</span><span class="ini-load-bar ini-load-2" style="height:71px"></span><span class="ini-load-lbl">S-1</span></div><div class="ini-load-col"><span class="ini-load-v">2618</span><span class="ini-load-bar ini-load-3" style="height:80px"></span><span class="ini-load-lbl">Ara</span></div></div><div class="ini-kv"><span class="ini-kv-k">Aguda / crònica</span><span class="ini-kv-v ini-num ">1.18</span></div>
+            </div>
+            <div class="ini-block league-snippet"><div class="ini-block-head"><span class="ini-eyebrow">Classificació</span><span class="ini-eyebrow">Amateur A</span></div><div class="ini-tbl-box league-scroll" id="league-amateur-A"><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">1</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Vallcarca</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+9</span><span class="ini-tbl-pt">14</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">2</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Poblenou</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+7</span><span class="ini-tbl-pt">12</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">3</span><span class="ini-tbl-badge">SA</span><span class="ini-tbl-name">Sauleda, A.D.</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+5</span><span class="ini-tbl-pt">11</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">4</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Sant Andreu</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+3</span><span class="ini-tbl-pt">10</span></div><div class="ini-tbl-row league-row ini-tbl-ours league-ours"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">5</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Esquerra</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+2</span><span class="ini-tbl-pt">9</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">6</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Gràcia</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">0</span><span class="ini-tbl-pt">8</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">7</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Horta</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-1</span><span class="ini-tbl-pt">7</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">8</span><span class="ini-tbl-badge">AD</span><span class="ini-tbl-name">A.D. Guinardó</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-3</span><span class="ini-tbl-pt">6</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">9</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Clot</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-5</span><span class="ini-tbl-pt">5</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">10</span><span class="ini-tbl-badge">UD</span><span class="ini-tbl-name">U.D. Sants</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-7</span><span class="ini-tbl-pt">4</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">11</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Besòs</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-9</span><span class="ini-tbl-pt">3</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">12</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Trinitat</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-12</span><span class="ini-tbl-pt">1</span></div></div></div>
+          </aside>
+        </div>
+      </div></div></section>
+<section class="pv-board" id="pv-staff-sent"><div class="pv-cap">Staff · convocatòria enviada</div><div class="pv-frame">
+      <div class="ini-page ini-staff">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-idcol">
+              <h1 class="ini-h1">Amateur</h1>
+              <span class="ini-club">22 jugadors a la plantilla · dl 31 ago</span>
+            </div>
+          </div>
+          <div class="ini-counters" style="margin-left:auto">
+            <div class="ini-count"><span class="ini-eyebrow">Sense resposta</span>
+              <span class="ini-count-v ini-c-bad">22</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">Convocatòries pendents</span>
+              <span class="ini-count-v ini-c-warn">1</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">Lesionats</span>
+              <span class="ini-count-v ini-c-inj">2</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">ACWR equip</span>
+              <span class="ini-count-v">1.18</span></div>
+          </div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-hero-att">
+            <div class="ini-donut" style="width:76px;height:76px"><svg width="76" height="76" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:17px">55%</span></div>
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">Assistència de temporada</span>
+              <span>12 de 22 assistències</span>
+              <span>1 sessions · 0 partits</span>
+            </div>
+          </div>
+        </div>
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">Les properes dues setmanes</span>
+              <span class="ini-sec-note">Disponibilitat sobre 22 convocables</span>
+            </div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t1">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t2">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="101"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">20:00 · Casa · Jornada 3 · Camp Municipal<span class="ini-sent" data-conv-link data-conv-match="101"><span class="ini-sent-dot"></span>Convocatòria enviada</span></div>
+        </div>
+        <div class="ini-ev-right">
+            <div class="ini-ev-slot"><span class="ini-conv-n">18</span>
+              <span class="ini-conv-lbl">Conv.</span></div>
+            <div class="ini-ev-txt"><span class="ini-ev-counts">convocats</span></div>
+          </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-bar ini-bar-activity"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t3">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
+          <div class="ini-ev-meta">14:00 · Can Punyetes</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t4">Transicions</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-bar ini-bar-training"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t5">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
+          <div class="ini-ev-meta">19:30 · Camp Municipal</div>
+        </div>
+        <div class="ini-ev-right">
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
+            <span class="ini-ev-missing">4 sense resposta</span>
+          </div>
+        </div>
+      </div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-bar ini-bar-match"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="102">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
+          <div class="ini-ev-meta">18:30 · Fora · Jornada 4 · Bon Pastor</div>
+        </div>
+        <div class="ini-ev-right">
+            <div class="ini-ev-txt"><span class="ini-ev-missing">22 sense resposta</span></div>
+            <button type="button" class="ini-conv-btn" data-shome-link="convocatoria" data-shome-id="102">Convocatòria</button>
+          </div>
+      </div></div>
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">Sense resposta al pròxim partit</span>
+                <span class="ini-eyebrow">22 · ds 5 set</span></div>
+              <div class="ini-chase-box"><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u1">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Marc Rovira</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u2">
+                    <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Guillem Ferrer</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u3">
+                    <span class="conv-pos-circle" style="background:#1e88e5">LB</span><span class="ini-chase-name">Nil Camps</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u4">
+                    <span class="conv-pos-circle" style="background:#43a047">DM</span><span class="ini-chase-name">Àlex Prat</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u5">
+                    <span class="conv-pos-circle" style="background:#43a047">OM</span><span class="ini-chase-name">Roger Sala</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u6">
+                    <span class="conv-pos-circle" style="background:#e53935">RW</span><span class="ini-chase-name">Ivan Bosch</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u7">
+                    <span class="conv-pos-circle" style="background:#e53935">ST</span><span class="ini-chase-name">Pau Ventura</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u8">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Jordi Miquel</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u9">
+                    <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Oriol Tena</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u10">
+                    <span class="conv-pos-circle" style="background:#1e88e5">LB</span><span class="ini-chase-name">Biel Costa</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u11">
+                    <span class="conv-pos-circle" style="background:#43a047">DM</span><span class="ini-chase-name">Arnau Solé</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u12">
+                    <span class="conv-pos-circle" style="background:#43a047">OM</span><span class="ini-chase-name">Pol Ribas</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u13">
+                    <span class="conv-pos-circle" style="background:#e53935">RW</span><span class="ini-chase-name">Genís Mas</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u14">
+                    <span class="conv-pos-circle" style="background:#e53935">ST</span><span class="ini-chase-name">Quim Vidal</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u15">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Ferran Bou</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u16">
+                    <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Aleix Duran</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u17">
+                    <span class="conv-pos-circle" style="background:#1e88e5">LB</span><span class="ini-chase-name">Roc Puig</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u18">
+                    <span class="conv-pos-circle" style="background:#43a047">DM</span><span class="ini-chase-name">Nau Serra</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u19">
+                    <span class="conv-pos-circle" style="background:#43a047">OM</span><span class="ini-chase-name">Èric Lloret</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u20">
+                    <span class="conv-pos-circle" style="background:#e53935">RW</span><span class="ini-chase-name">Jan Torres</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u21">
+                    <span class="conv-pos-circle" style="background:#e53935">ST</span><span class="ini-chase-name">Bru Camps</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u22">
+                    <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Ot Fabra</span></div></div>
+            </div>
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">Lesionats i risc</span>
+                <span class="ini-eyebrow">2 · 2</span></div>
+              <div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u8">
+          <span class="ini-risk-dot ini-dot-inj"></span>
+          <span class="ini-risk-name">Jordi Miquel</span>
+          <span class="ini-risk-note">Turmell · dt 8 set</span>
+          <span class="ini-risk-v ini-v-bad">—</span>
+        </div><div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u7">
+          <span class="ini-risk-dot ini-dot-inj"></span>
+          <span class="ini-risk-name">Pau Ventura</span>
+          <span class="ini-risk-note">Isquiotibial · dl 14 set</span>
+          <span class="ini-risk-v ini-v-bad">—</span>
+        </div><div class="ini-risk-row" data-shome-link="staff-player-stats" data-shome-id="u1">
+          <span class="ini-risk-dot ini-dot-risk"></span>
+          <span class="ini-risk-name">Marc Rovira</span>
+          <span class="ini-risk-note">ACWR alt</span>
+          <span class="ini-risk-v ini-v-warn">1.62</span>
+        </div><div class="ini-risk-row" data-shome-link="staff-player-stats" data-shome-id="u10">
+          <span class="ini-risk-dot ini-dot-risk"></span>
+          <span class="ini-risk-name">Biel Costa</span>
+          <span class="ini-risk-note">Càrrega a vigilar</span>
+          <span class="ini-risk-v ini-v-warn">1.48</span>
+        </div>
+            </div>
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">Càrrega de l'equip</span>
+                <span class="ini-eyebrow">Últimes 4 setmanes</span></div>
+              <div class="ini-load"><div class="ini-load-col"><span class="ini-load-v">1848</span><span class="ini-load-bar ini-load-1" style="height:56px"></span><span class="ini-load-lbl">S-3</span></div><div class="ini-load-col"><span class="ini-load-v">2112</span><span class="ini-load-bar ini-load-1" style="height:65px"></span><span class="ini-load-lbl">S-2</span></div><div class="ini-load-col"><span class="ini-load-v">2332</span><span class="ini-load-bar ini-load-2" style="height:71px"></span><span class="ini-load-lbl">S-1</span></div><div class="ini-load-col"><span class="ini-load-v">2618</span><span class="ini-load-bar ini-load-3" style="height:80px"></span><span class="ini-load-lbl">Ara</span></div></div><div class="ini-kv"><span class="ini-kv-k">Aguda / crònica</span><span class="ini-kv-v ini-num ">1.18</span></div>
+            </div>
+            <div class="ini-block league-snippet"><div class="ini-block-head"><span class="ini-eyebrow">Classificació</span><span class="ini-eyebrow">Amateur A</span></div><div class="ini-tbl-box league-scroll" id="league-amateur-A"><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">1</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Vallcarca</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+9</span><span class="ini-tbl-pt">14</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">2</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Poblenou</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+7</span><span class="ini-tbl-pt">12</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">3</span><span class="ini-tbl-badge">SA</span><span class="ini-tbl-name">Sauleda, A.D.</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+5</span><span class="ini-tbl-pt">11</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">4</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Sant Andreu</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+3</span><span class="ini-tbl-pt">10</span></div><div class="ini-tbl-row league-row ini-tbl-ours league-ours"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">5</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Esquerra</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">+2</span><span class="ini-tbl-pt">9</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">6</span><span class="ini-tbl-badge">UE</span><span class="ini-tbl-name">U.E. Gràcia</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">0</span><span class="ini-tbl-pt">8</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">7</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Horta</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-1</span><span class="ini-tbl-pt">7</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">8</span><span class="ini-tbl-badge">AD</span><span class="ini-tbl-name">A.D. Guinardó</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-3</span><span class="ini-tbl-pt">6</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">9</span><span class="ini-tbl-badge">CE</span><span class="ini-tbl-name">C.E. Clot</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-5</span><span class="ini-tbl-pt">5</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">10</span><span class="ini-tbl-badge">UD</span><span class="ini-tbl-name">U.D. Sants</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-7</span><span class="ini-tbl-pt">4</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">11</span><span class="ini-tbl-badge">CF</span><span class="ini-tbl-name">C.F. Besòs</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-9</span><span class="ini-tbl-pt">3</span></div><div class="ini-tbl-row league-row"><span class="ini-tbl-zone"></span><span class="ini-tbl-pos">12</span><span class="ini-tbl-badge">AE</span><span class="ini-tbl-name">A.E. Trinitat</span><span class="ini-tbl-pj">6</span><span class="ini-tbl-gd">-12</span><span class="ini-tbl-pt">1</span></div></div></div>
+          </aside>
+        </div>
+      </div></div></section>
+</div></body></html>

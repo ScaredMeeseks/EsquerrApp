@@ -1,6 +1,6 @@
 # EsquerrApp — Project Summary
 
-_Reference overview of what the app is and how it is put together. Per-change history lives in CONTEXT.md; current state and open items in HANDOFF.md; working rules for this repo in CLAUDE.md. Last reviewed 2026-09-04 (v229)._
+_Reference overview of what the app is and how it is put together. Per-change history lives in CONTEXT.md; current state and open items in HANDOFF.md; working rules for this repo in CLAUDE.md. Last reviewed 2026-09-04 (v230)._
 
 ## Overview
 
@@ -70,7 +70,7 @@ EsquerrApp/
 
 7. **Firestore offline persistence** is enabled (`synchronizeTabs: true`), so the app works without internet.
 
-8. **The staff screens are one paper design system.** Six pages — Calendari (`.cal-`), Pla d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`) and Convocatòria (`.cv-`) — were rebuilt from Claude Design handoffs into a single idiom: one surface in horizontal bands, hairlines instead of cards, Oswald, no radius, no shadow, red used sparingly. Each page owns its own class prefix and its own sizes; only the **colours** are shared, as the `--pp-*` custom properties at the top of `css/style.css`. That separation is deliberate — the pages disagree on sizes on purpose (`.std-table` draws the medical glyph at 24px, `.cv-page` at 22px) and agreed on colour by accident until v228 made it structural. `--pp-*` is also a **second axis from `--primary`/`--text`**, which are the app chrome's palette; the paper pages were built not to inherit it.
+8. **The screens are one paper design system.** Seven pages — Calendari (`.cal-`), Pla d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`) and Inici (`.ini-`) — were rebuilt from Claude Design handoffs into a single idiom: one surface in horizontal bands, hairlines instead of cards, Oswald, no radius, no shadow, red used sparingly. Each page owns its own class prefix and its own sizes; only the **colours** are shared, as the `--pp-*` custom properties at the top of `css/style.css`. That separation is deliberate — the pages disagree on sizes on purpose (`.std-table` draws the medical glyph at 24px, `.cv-page` at 22px) and agreed on colour by accident until v228 made it structural. `--pp-*` is also a **second axis from `--primary`/`--text`**, which are the app chrome's palette; the paper pages were built not to inherit it. Inici (v230) is the first that is not staff-only — one block dresses both landing pages — and the first that re-dresses **borrowed** classes: the availability pills stay `.avail-*`/`.mavail-*` because `bindDynamicActions()` binds them by name, and every rule for them is scoped under `.ini-page` so the Accions page is not repainted with them.
 
 ---
 
@@ -151,7 +151,7 @@ Membership is **not self-assignable**: `roles`, `category`, `team` and `staffCat
 
 | Page | Description |
 |---|---|
-| **Overview** | Player card, position circles, team badge, attendance donut, live league standings (FCF), this/next week's activities |
+| **Inici** | Identity, season figures, attendance donut; the next two weeks with the availability answer inline on every session, activity and match; physical state, call-ups, meet time and cards; live league standings (FCF). **This is the app's primary answering surface** — Accions carries match availability only |
 | **Training Schedule** | Upcoming and past sessions with date, time, focus, location |
 | **My Stats** | Goals, assists, matches, attendance donut, injury history with body map, Readiness Score, RPE / UA / ACWR charts |
 | **Matchday** | Matches with scores and convocatòria status |
@@ -163,6 +163,7 @@ Membership is **not self-assignable**: `roles`, `category`, `team` and `staffCat
 
 | Page | Description |
 |---|---|
+| **Inici** | Squad scope (category + letter), four counters and the season attendance donut; the next two weeks with a per-session availability donut and each call-up's state; who has not answered the next match; injured and at-risk; four-week team load; standings. **Read-only — it renders no answer control and writes nothing**, so a coach cannot answer for a player from it (the staff override on the session page is the supported way) |
 | **Registrations** | Pending applicants and members: roles, squad, position, number |
 | **Manage roster** | Roster table with fitness, readiness, matches, minutes; team-aggregate RPE/UA/ACWR. Player detail shows the same stats, injury history and body map the player sees |
 | **Training Sessions** | Sessions with per-player availability, attendance donut, RPE summary; staff can override an answer |

@@ -369,9 +369,13 @@ describe('an empty standings table always says why', () => {
      rendered as an empty <tbody> and read as "the season has not started". */
   const F = makeFcf({clubConfig: CONFIG});
 
-  it('renders a message row spanning the whole table', () => {
+  /* The standings stopped being a <table> in v230 — it is `.ini-tbl-*` divs
+     in the Inici rail now, so the message is a div too. What matters is
+     unchanged and is what this asserts: a league with nothing in it says
+     WHY, rather than rendering as an empty division. */
+  it('renders a message in place of the rows', () => {
     const html = F.leagueMessageHtml('some reason');
-    assert.ok(/<td colspan="7"/.test(html), html);
+    assert.ok(/class="league-msg/.test(html), html);
     assert.ok(html.includes('some reason'));
   });
 

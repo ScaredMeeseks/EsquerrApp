@@ -78,8 +78,15 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
   **Do not set `server.url` to make the shell load the live site.** It would end staleness instantly but loading a whole app from a remote URL is a reliable App Store rejection (guideline 4.2), and Play + App Store are on the roadmap.
 - **One-off scripts in `functions/` rot.** They are written against the data model of the day and are not exercised by anything. `backfill-claims.js` still wrote pre-Phase-4 claims months later and would have stripped `cats` from every user. **Read one before running it**, and prefer a dry-run/`--apply` gate on anything that writes.
 - New user-facing strings in Catalan.
-- **The six staff screens are one paper design system** — Calendari (`.cal-`), Pla d'entrenament
-  (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`).
+- **Seven screens are one paper design system** — Calendari (`.cal-`), Pla d'entrenament
+  (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`)
+  and, since v230, Inici (`.ini-`) — which is the first that is not staff-only: one block dresses
+  BOTH landing pages, the player's and the coach's.
+  ⚠ **Inici re-dresses the app's availability controls** (`.avail-*`, `.mavail-*`) rather than
+  renaming them, because `bindDynamicActions()` binds those classes and attributes BY NAME. A
+  rename there does not throw and does not log — the pill stops saving, and the coach's sheet goes
+  on reading "available" because `getEffectiveAnswer()` counts a silent player as a yes.
+  `test/inici.test.js` runs the real handlers over the real markup for exactly that reason.
   Each owns its prefix and its own sizes; the COLOURS are shared as the `--pp-*` custom properties
   at the top of `css/style.css`. **Never write a paper colour as a literal** — `test/paper-palette.test.js`
   fails on a loose hex and names the token. `--pp-*` is deliberately separate from `--primary`/`--text`,
@@ -98,8 +105,15 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
   any test that dispatches events.
 - **String-builder tests cannot see geometry.** Two real v227 defects — a dropdown laying its two
   lines side by side, and a control with no rule on the shared baseline — were found by rendering
-  `*-preview.html` in headless Chrome with 46 assertions green. Regenerate the preview and look at
-  it before calling a redesign done.
+  `*-preview.html` in headless Chrome with 46 assertions green. v230 found a third the same way
+  (a `Convocatòria` button ordered before the count it belonged to) with 43 green. Regenerate the
+  preview and look at it before calling a redesign done.
+  ⚠ **`--window-size` does not set the layout viewport below ~485 CSS px on this machine.** Headless
+  Chrome clamps the window, lays the page out at 485 and crops the bitmap to whatever was asked
+  for — so a `--window-size=390` shot looks like a page overflowing its phone breakpoint and is
+  neither the overflow nor the phone. Use `Emulation.setDeviceMetricsOverride` over the DevTools
+  protocol (node 22+ has a built-in `WebSocket`, so there is nothing to install) and have the probe
+  print `document.documentElement.clientWidth` back, so a run cannot silently lie about its width.
 - **Be concise.** Answer what was asked and stop. The owner steers the big picture and too much detail buries it. Surface a detail only when it changes a decision — a real risk, a choice that needs making, or something that contradicts the request. Findings go in CONTEXT.md/HANDOFF.md, not in the reply.
 - Dates are ISO `YYYY-MM-DD` strings; Cloud Functions use `Europe/Madrid`.
 - Normalize line endings to LF before committing (`.gitattributes` enforces it, but verify diffs aren't CRLF-noisy).

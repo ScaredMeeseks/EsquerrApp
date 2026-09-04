@@ -1561,10 +1561,37 @@ function crSplinePath(pts, tension) {
 }
 
 // ---------- Sanitize (XSS-safe) ----------
+/**
+ * Escape a value for injection into HTML — between tags OR inside a
+ * double-quoted attribute.
+ *
+ * ⚠ THE QUOTES ARE NOT DECORATION (v230). This used to be the two lines
+ * below on their own: textContent in, innerHTML out, which is the browser's
+ * own escaping and covers `&`, `<` and `>`. That is complete for text
+ * BETWEEN TAGS and silently incomplete inside an attribute, because the
+ * quote is what ends an attribute — no `<` is needed:
+ *
+ *     data-x="${sanitize(v)}"   with v = `" onclick="alert(1)`
+ *     →  <div data-x="" onclick="alert(1)">
+ *
+ * The app emitted ~30 attributes this way. Most carry app-generated ids, but
+ * a handful carry typed text — a coach's injury note, a session's focus and
+ * location, a player's own name — so it was reachable, if only by someone
+ * already inside the club. It also broke a plain form field: a location
+ * typed as `Camp "El Nou"` truncated its own `value=""`.
+ *
+ * Escaping the quote is invisible everywhere it was already correct: between
+ * tags `&quot;` RENDERS as `"`, and read back off an attribute (`dataset.x`,
+ * `getAttribute`) the browser decodes it, so JSON round-tripped through an
+ * attribute still parses. Both are pinned in test/utils.test.js.
+ *
+ * `&` first (textContent does it), then the quotes — the `&` in `&quot;`
+ * must not be escaped again. That is why the replaces come after.
+ */
 function sanitize(str) {
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ---------- Tactical Formations ----------

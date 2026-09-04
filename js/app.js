@@ -13,7 +13,9 @@
   var _i18n = {
     // ── Sidebar ──
     'sidebar.section_player':  { ca:'Jugador', es:'Jugador', en:'Player' },
-    'sidebar.player_home':     { ca:'Resum', es:'Resumen', en:'Overview' },
+    // Both landing pages are called Inici since v230. The page IDs are still
+    // `player-home` and `staff-home` — deep links and old APKs route on those.
+    'sidebar.player_home':     { ca:'Inici', es:'Inicio', en:'Home' },
     'sidebar.staff_home':      { ca:'Inici', es:'Inicio', en:'Home' },
     'sidebar.training':        { ca:'Sessions d\'entrenament', es:'Sesiones de entrenamiento', en:'Training Sessions' },
     'sidebar.my_stats':        { ca:'Les meves estadístiques', es:'Mis estadísticas', en:'My Stats' },
@@ -359,6 +361,72 @@
     'home.next_week':     { ca:'Setmana vinent', es:'Próxima semana', en:'Next Week' },
     'home.change_photo':  { ca:'Canviar foto', es:'Cambiar foto', en:'Change photo' },
     'home.age_suffix':    { ca:'anys', es:'años', en:'years' },
+
+    /* ── Inici, the two landing pages (v230) ──
+       t() returns the KEY on a miss, so a typo here ships as a literal
+       `ini.foo` on the first screen anyone sees. All three languages, always. */
+    'ini.greeting':       { ca:'Bon dia', es:'Buenos días', en:'Good morning' },
+    'ini.next_two_weeks': { ca:'Les properes dues setmanes', es:'Las próximas dos semanas', en:'The next two weeks' },
+    'ini.this_week':      { ca:'Aquesta setmana', es:'Esta semana', en:'This week' },
+    'ini.next_week':      { ca:'Setmana següent', es:'Semana siguiente', en:'Next week' },
+    'ini.pending_one':    { ca:'1 resposta pendent', es:'1 respuesta pendiente', en:'1 answer outstanding' },
+    'ini.pending_n':      { ca:'{n} respostes pendents', es:'{n} respuestas pendientes', en:'{n} answers outstanding' },
+    'ini.all_answered':   { ca:'Tot respost', es:'Todo respondido', en:'All answered' },
+    'ini.nothing':        { ca:'Res programat aquestes dues setmanes.', es:'Nada programado estas dos semanas.', en:'Nothing scheduled for these two weeks.' },
+    'ini.matches':        { ca:'Partits', es:'Partidos', en:'Matches' },
+    'ini.minutes':        { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'ini.goals':          { ca:'Gols', es:'Goles', en:'Goals' },
+    'ini.assists':        { ca:'Assist.', es:'Asist.', en:'Assists' },
+    'ini.attendance':     { ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'ini.sessions_of':    { ca:'{a} de {b} sessions', es:'{a} de {b} sesiones', en:'{a} of {b} sessions' },
+    /* Not "justificades". The app has no concept of a justified absence —
+       this is the count of players who answered No, which is the nearest
+       true statement the data supports. */
+    'ini.absences':       { ca:'{n} absències avisades', es:'{n} ausencias avisadas', en:'{n} absences given notice' },
+    'ini.my_state':       { ca:'El meu estat', es:'Mi estado', en:'My state' },
+    'ini.phys_state':     { ca:'Estat físic', es:'Estado físico', en:'Physical state' },
+    'ini.callups':        { ca:'Convocatòries', es:'Convocatorias', en:'Call-ups' },
+    'ini.callup_time':    { ca:'Citació pròxim partit', es:'Citación próximo partido', en:'Next match meet time' },
+    'ini.cards':          { ca:'Targetes', es:'Tarjetas', en:'Cards' },
+    'ini.cards_y':        { ca:'{n} grogues', es:'{n} amarillas', en:'{n} yellow' },
+    'ini.cards_yr':       { ca:'{y} grogues · {r} vermelles', es:'{y} amarillas · {r} rojas', en:'{y} yellow · {r} red' },
+    'ini.cards_none':     { ca:'Cap', es:'Ninguna', en:'None' },
+    'ini.standings':      { ca:'Classificació', es:'Clasificación', en:'Standings' },
+    'ini.promotion':      { ca:'Ascens', es:'Ascenso', en:'Promotion' },
+    'ini.relegation':     { ca:'Descens', es:'Descenso', en:'Relegation' },
+    'ini.no_leagues':     { ca:'Cap enllaç de classificació configurat per aquesta categoria.', es:'Ningún enlace de clasificación configurado para esta categoría.', en:'No standings link configured for this category.' },
+    'ini.of':             { ca:'de', es:'de', en:'of' },
+    'ini.fit':            { ca:'En forma', es:'En forma', en:'Fit' },
+    'ini.home_leg':       { ca:'Casa', es:'Casa', en:'Home' },
+    'ini.away_leg':       { ca:'Fora', es:'Fuera', en:'Away' },
+    'ini.meet_at':        { ca:'citació', es:'citación', en:'meet' },
+    /* Staff side */
+    'ini.squad_size':     { ca:'{n} jugadors a la plantilla', es:'{n} jugadores en la plantilla', en:'{n} players in the squad' },
+    'ini.no_answer':      { ca:'Sense resposta', es:'Sin respuesta', en:'No answer' },
+    'ini.conv_pending':   { ca:'Convocatòries pendents', es:'Convocatorias pendientes', en:'Call-ups pending' },
+    'ini.injured':        { ca:'Lesionats', es:'Lesionados', en:'Injured' },
+    'ini.acwr_team':      { ca:'ACWR equip', es:'ACWR equipo', en:'Team ACWR' },
+    'ini.season_att':     { ca:'Assistència de temporada', es:'Asistencia de temporada', en:'Season attendance' },
+    'ini.att_of':         { ca:'{a} de {b} assistències', es:'{a} de {b} asistencias', en:'{a} of {b} attendances' },
+    'ini.sess_matches':   { ca:'{s} sessions · {m} partits', es:'{s} sesiones · {m} partidos', en:'{s} sessions · {m} matches' },
+    'ini.avail_over':     { ca:'Disponibilitat sobre {n} convocables', es:'Disponibilidad sobre {n} convocables', en:'Availability out of {n} selectable' },
+    'ini.counts':         { ca:'{y} sí · {l} tard · {n} no · {i} lesionat', es:'{y} sí · {l} tarde · {n} no · {i} lesionado', en:'{y} yes · {l} late · {n} no · {i} injured' },
+    'ini.n_missing':      { ca:'{n} sense resposta', es:'{n} sin respuesta', en:'{n} have not answered' },
+    'ini.all_replied':    { ca:'Tots han respost', es:'Todos han respondido', en:'Everyone has answered' },
+    'ini.convocats':      { ca:'convocats', es:'convocados', en:'called up' },
+    'ini.conv_short':     { ca:'Conv.', es:'Conv.', en:'Conv.' },
+    'ini.convocatoria':   { ca:'Convocatòria', es:'Convocatoria', en:'Call-up' },
+    'ini.chase':          { ca:'Sense resposta al pròxim partit', es:'Sin respuesta al próximo partido', en:'No answer for the next match' },
+    'ini.chase_none':     { ca:'Tothom ha respost el pròxim partit.', es:'Todos han respondido al próximo partido.', en:'Everyone has answered the next match.' },
+    'ini.no_next_match':  { ca:'Cap partit programat.', es:'Ningún partido programado.', en:'No match scheduled.' },
+    'ini.risk':           { ca:'Lesionats i risc', es:'Lesionados y riesgo', en:'Injured and at risk' },
+    'ini.risk_none':      { ca:'Ningú lesionat ni en risc de càrrega.', es:'Nadie lesionado ni en riesgo de carga.', en:'Nobody injured or at load risk.' },
+    'ini.team_load':      { ca:'Càrrega de l\'equip', es:'Carga del equipo', en:'Team load' },
+    'ini.last_4_weeks':   { ca:'Últimes 4 setmanes', es:'Últimas 4 semanas', en:'Last 4 weeks' },
+    'ini.acute_chronic':  { ca:'Aguda / crònica', es:'Aguda / crónica', en:'Acute / chronic' },
+    'ini.now':            { ca:'Ara', es:'Ahora', en:'Now' },
+    'ini.no_load':        { ca:'Encara no hi ha prou dades de càrrega.', es:'Todavía no hay suficientes datos de carga.', en:'Not enough load data yet.' },
+    'ini.acwr_high':      { ca:'ACWR alt', es:'ACWR alto', en:'ACWR high' },
 
     // ── Staff Home ──
     'shome.title':           { ca:'Resum del cos tècnic', es:'Resumen del cuerpo técnico', en:'Staff overview' },
@@ -1590,6 +1658,22 @@
     return entry[_lang] || entry.ca || key;
   }
 
+  /** t() with `{name}` placeholders filled in.
+   *
+   *  The strings that carry a figure were being assembled by hand at the call
+   *  site — `t('x') + ' ' + n` — which puts the number in the same place in
+   *  every language whether or not that is where the language puts it. A
+   *  placeholder lets `ca` say "3 absències avisades" and `en` "3 absences
+   *  given notice" from one call. Values are inserted verbatim: pass a number
+   *  or something already sanitized, exactly as with t(). */
+  function tv(key, vars) {
+    var s = t(key);
+    if (!vars) return s;
+    return s.replace(/\{(\w+)\}/g, function (m, name) {
+      return Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : m;
+    });
+  }
+
   function setLang(lang) {
     _lang = lang;
     localStorage.setItem('fa_lang', lang);
@@ -2029,7 +2113,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 229;
+  const APP_VERSION = 230;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2299,7 +2383,9 @@
       : currentPage === 'manage-roster'
         ? catBarLettersHtml(rosterTeamFilter, 'data-roster-filter')
         : currentPage === 'convocatoria'
-          ? catBarLettersHtml(convTeamFilter, 'data-conv-letter') : '';
+          ? catBarLettersHtml(convTeamFilter, 'data-conv-letter')
+          : currentPage === 'staff-home'
+            ? catBarLettersHtml(iniTeamFilter, 'data-ini-letter') : '';
     return '<div class="cat-bar">' + btns + extra + '</div>';
   }
 
@@ -5223,6 +5309,11 @@
      are defined per category, and a stale 'B' under a category with no B
      would filter everything away with no visible control saying why. */
   let convTeamFilter = 'all';
+  /* The squad letter on the staff Inici's category bar (v230). The fifth of
+     these, and reset with the category like the other four for the same
+     reason: a stale 'B' under a category with no B filters the whole page
+     away with no visible control saying why. */
+  let iniTeamFilter = 'all';
   let _mdEditingId = null; // tracks which saved match is being edited inline
   let detailMatchId = null;
   let detailMatchFrom = null;
@@ -6284,25 +6375,55 @@
      a working one looked identical on screen — an empty table reads as "the
      season has not started". A feed that is broken must SAY so. */
   function leagueMessageHtml(msg) {
-    return '<tr><td colspan="7" class="league-msg">' + sanitize(msg) + '</td></tr>';
+    return '<div class="league-msg ini-tbl-none">' + sanitize(msg) + '</div>';
+  }
+
+  /* One standings row, in the Inici paper idiom (v230). Divs rather than a
+     <tr>, because the table markup could not carry the design's zone stripe
+     and the two builders below drew the same seven cells twice.
+
+     ⚠ The goal difference is COMPUTED here (f − c) and is not a field. The
+     federation publishes goals for and against; every other column is theirs
+     verbatim. `zone` comes back empty from every group sampled since the
+     2026 rebuild, so the stripe is rendered transparent rather than derived
+     from the position — guessing which places promote would be inventing a
+     league rule the payload does not state. */
+  function iniLeagueRowHtml(r) {
+    var gd = (Number(r.f) || 0) - (Number(r.c) || 0);
+    var gdTxt = (gd > 0 ? '+' : '') + gd;
+    var badgeInner = r.badge
+      ? '<img src="' + sanitize(r.badge) + '" alt="" onerror="this.style.display=\'none\'">'
+      : sanitize(clubMonogram(r.club));
+    return '<div class="ini-tbl-row league-row' + (r.ours ? ' ini-tbl-ours league-ours' : '') + '">' +
+      '<span class="ini-tbl-zone' + (r.zone ? '' : '') + '"' + (r.zone ? ' style="background:' + sanitize(r.zone) + '"' : '') + '></span>' +
+      '<span class="ini-tbl-pos">' + sanitize(String(r.pos)) + '</span>' +
+      '<span class="ini-tbl-badge">' + badgeInner + '</span>' +
+      '<span class="ini-tbl-name">' + sanitize(r.club) + '</span>' +
+      '<span class="ini-tbl-pj">' + sanitize(String(r.j)) + '</span>' +
+      '<span class="ini-tbl-gd">' + sanitize(gdTxt) + '</span>' +
+      '<span class="ini-tbl-pt">' + sanitize(String(r.pts)) + '</span>' +
+      '</div>';
+  }
+
+  /* Two initials for a club with no crest, the same treatment the rival badge
+     in an event row gets. Not a hash or an id — a reader recognises "CV" for
+     C.F. Vallcarca and nothing recognises a colour. */
+  function clubMonogram(name) {
+    var words = String(name || '').replace(/[.,]/g, ' ').split(/\s+/).filter(Boolean);
+    if (!words.length) return '?';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
   }
 
   function applyLeagueRows(container, rows) {
     if (rows.length === 0) return;
-    var tbody = '';
-    rows.forEach(function(r) {
-      var cls = r.ours ? ' class="league-ours"' : '';
-      var badgeHtml = r.badge ? '<img src="' + r.badge + '" class="league-badge" onerror="this.style.display=\'none\'">' : '';
-      var zoneBar = r.zone ? '<span class="league-zone" style="background:' + r.zone + '"></span>' : '';
-      tbody += '<tr' + cls + '><td class="league-pos-cell">' + zoneBar + r.pos + '</td><td class="league-badge-cell">' + badgeHtml + '</td><td class="league-club">' + sanitize(r.club) + '</td><td><strong>' + r.pts + '</strong></td><td>' + r.j + '</td><td>' + r.f + '</td><td>' + r.c + '</td></tr>';
-    });
-    container.querySelector('tbody').innerHTML = tbody;
+    container.innerHTML = rows.map(iniLeagueRowHtml).join('');
     requestAnimationFrame(function() { scrollLeagueToCentre(); });
   }
 
   function _leagueMsgInto(id, msg) {
     var el = document.getElementById(id);
-    if (el) el.querySelector('tbody').innerHTML = leagueMessageHtml(msg);
+    if (el) el.innerHTML = leagueMessageHtml(msg);
   }
 
   function refreshLeagueTables() {
@@ -6356,36 +6477,37 @@
     }
   }
 
+  /* One standings block for the Inici rail. Every active league for the
+     current category gets one — a club running a cup alongside the league
+     has two, and both belong on the page.
+
+     The per-league eye that hid a table went with the redesign (v230): it
+     wrote `fa_hidden_leagues` on the device only, so a coach who hid a table
+     on his phone still saw it on the laptop, and the rail is short enough now
+     that hiding a block buys nothing. */
   function buildLeagueSnippet(title, rows, snippetId) {
     // Use cached live data if available, otherwise fall back to hardcoded rows
     var useRows = _leagueCache[snippetId] || rows;
-    var hidden = _getHiddenLeagues();
-    var isHidden = hidden.indexOf(snippetId) !== -1;
-    var eyeIcon = isHidden ? '👁️‍🗨️' : '👁️';
-    var eyeTitle = isHidden ? 'Mostrar classificació' : 'Amagar classificació';
-    var html = '<div class="league-snippet card' + (isHidden ? ' league-hidden' : '') + '">';
-    html += '<div class="card-title" style="font-size:.82rem;' + (isHidden ? 'margin-bottom:0;' : 'margin-bottom:.5rem;') + 'display:flex;align-items:center;justify-content:space-between;">⚽ ' + sanitize(title) + '<button class="league-toggle-btn" data-league-id="' + snippetId + '" title="' + eyeTitle + '" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 .2rem;opacity:.5;">' + eyeIcon + '</button></div>';
-    html += '<div class="league-scroll" id="' + snippetId + '"' + (isHidden ? ' style="display:none"' : '') + '><table class="league-tbl"><thead><tr><th>P</th><th></th><th>Club</th><th>Pts</th><th>J</th><th>F</th><th>C</th></tr></thead><tbody>';
+    var anyZone = useRows.some(function (r) { return !!r.zone; });
+    var html = '<div class="ini-block league-snippet">';
+    html += '<div class="ini-block-head"><span class="ini-eyebrow">' + t('ini.standings') + '</span>' +
+      '<span class="ini-eyebrow">' + sanitize(title) + '</span></div>';
+    html += '<div class="ini-tbl-box league-scroll" id="' + sanitize(snippetId) + '">';
     /* First paint of a league nobody has loaded yet. refreshLeagueTables()
        overwrites this the moment the fetch lands — or replaces it with the
        reason it did not. */
     if (!useRows.length) html += leagueMessageHtml(t('fcf.loading'));
-    useRows.forEach(function(r) {
-      var cls = r.ours ? ' class="league-ours"' : '';
-      var badge = r.badge ? '<img src="' + r.badge + '" class="league-badge" onerror="this.style.display=\'none\'">' : '';
-      var zoneBar = r.zone ? '<span class="league-zone" style="background:' + r.zone + '"></span>' : '';
-      html += '<tr' + cls + '><td class="league-pos-cell">' + zoneBar + r.pos + '</td><td class="league-badge-cell">' + badge + '</td><td class="league-club">' + sanitize(r.club) + '</td><td><strong>' + r.pts + '</strong></td><td>' + r.j + '</td><td>' + r.f + '</td><td>' + r.c + '</td></tr>';
-    });
-    html += '</tbody></table></div>';
+    html += useRows.map(iniLeagueRowHtml).join('');
+    html += '</div>';
+    /* Only when the federation actually publishes the zones. A legend for
+       stripes that are never drawn is a promise the table does not keep. */
+    if (anyZone) {
+      html += '<div class="ini-tbl-leg">' +
+        '<span><i class="ini-leg-bar ini-zone-up"></i>' + t('ini.promotion') + '</span>' +
+        '<span><i class="ini-leg-bar ini-zone-down"></i>' + t('ini.relegation') + '</span></div>';
+    }
     html += '</div>';
     return html;
-  }
-
-  function _getHiddenLeagues() {
-    try { return JSON.parse(localStorage.getItem('fa_hidden_leagues') || '[]'); } catch (e) { return []; }
-  }
-  function _setHiddenLeagues(arr) {
-    localStorage.setItem('fa_hidden_leagues', JSON.stringify(arr));
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -7144,36 +7266,145 @@
     });
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     INICI — the two landing pages, rebuilt to the Claude Design handoff
+     "EsquerrApp Home UI" (2026-09-03). Seventh in the paper series after
+     .cal-, .std-, .pl-, .reg2-, .pt- and .cv-, and the first that dresses
+     a PLAYER's screen as well as a coach's.
+
+     ⚠ THIS IS THE PAGE PLAYERS ANSWER ATTENDANCE ON. renderWeekActivities()
+     below is the app's primary answering surface — the Accions page carries
+     match availability only. The redesign is markup and CSS: every answer
+     control keeps the exact attributes bindDynamicActions() binds by name
+     (`.avail-btns[data-avail-sid]` / `.avail-btn[data-avail]` /
+     `.avail-chosen` and the `.mavail-*` pair), and not one line of
+     ackSaveRecord, the injury picker or the lock rule was touched. If you
+     rename one of those attributes here, the button goes quiet — it does not
+     throw, it does not log, it simply stops saving, and the coach's sheet
+     goes on looking answered because getEffectiveAnswer() defaults to yes.
+
+     What DID change in the interaction: the four pills are always visible.
+     The old badge expanded into buttons on click and the save handler was
+     therefore written twice — once bound, once injected inline beside the
+     expanded buttons. There is nothing to expand now, so there is one
+     writer again.
+     ═══════════════════════════════════════════════════════════ */
+
+  /* `iniAttr()` lived here for one version. It was sanitize() plus a quote
+     escape, because sanitize() did not escape quotes and the pills put a
+     session id inside `data-avail-sid="…"` — where a stray quote is not only
+     an injection but a SILENT write failure, since a malformed attribute
+     means the handler never matches and nothing says so.
+     v230 fixed sanitize() itself instead (js/utils.js), so the whole app is
+     covered rather than this page, and a second escaper would now be a
+     second thing to keep in step. */
+
+  /* The availability ring, in the order the handoff draws it. Segment
+     colours are given as inline `style` rather than a `stroke` attribute:
+     a presentation attribute does not resolve var(), so `stroke="var(…)"`
+     silently paints black. */
+  const INI_SEGS = [
+    { k: 'yes',     css: 'var(--pp-ok)' },
+    { k: 'late',    css: 'var(--pp-warn)' },
+    { k: 'no',      css: 'var(--pp-neutral)' },
+    { k: 'injured', css: 'var(--pp-bad)' }
+  ];
+
+  /** `{yes, late, no, injured}` counts → the donut's segment list, in the
+   *  handoff's order. Three donuts on two pages take the same four numbers;
+   *  writing the array out at each of them is three places for the order to
+   *  drift, and the order is what decides which arc sits where. */
+  function iniAvailSegs(n) {
+    return INI_SEGS.map(s => ({ n: n[s.k] || 0, css: s.css, label: t('avail.' + s.k) }));
+  }
+
+  /** One donut, three sizes (88px player hero, 76px staff hero, 44px per
+   *  session). `r` is chosen so the circumference is 100 and a segment's
+   *  dash length IS its percentage — the arithmetic the handoff specifies.
+   *  The uncovered remainder of the track is the no-answer share, which is
+   *  why nothing is drawn for it.
+   *  @param {Array<{n:number,css:string,label:string}>} segs
+   *  @param {{size?:number,stroke?:number,centre?:string,centreSize?:number}} [opts]
+   */
+  function iniDonutHtml(segs, opts) {
+    opts = opts || {};
+    const size = opts.size || 88;
+    const stroke = opts.stroke || 3.4;
+    const R = 15.9155;   // 2πR === 100
+    const total = segs.reduce((s, x) => s + (Number(x.n) || 0), 0);
+    let arcs = '', off = 0;
+    if (total > 0) {
+      segs.forEach(s => {
+        const n = Number(s.n) || 0;
+        if (n <= 0) return;
+        const len = (n / total) * 100;
+        arcs += '<circle cx="18" cy="18" r="' + R + '" fill="none"' +
+          ' style="stroke:' + s.css + '" stroke-width="' + stroke + '"' +
+          ' stroke-dasharray="' + len.toFixed(2) + ' ' + (100 - len).toFixed(2) + '"' +
+          ' stroke-dashoffset="' + (-off).toFixed(2) + '">' +
+          '<title>' + sanitize((s.label || '') + ': ' + n) + '</title></circle>';
+        off += len;
+      });
+    }
+    return '<div class="ini-donut" style="width:' + size + 'px;height:' + size + 'px">' +
+      '<svg width="' + size + '" height="' + size + '" viewBox="0 0 36 36" aria-hidden="true">' +
+      '<circle cx="18" cy="18" r="' + R + '" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="' + stroke + '"/>' +
+      arcs + '</svg>' +
+      '<span class="ini-donut-c" style="font-size:' + (opts.centreSize || 19) + 'px">' +
+      (opts.centre == null ? '' : opts.centre) + '</span></div>';
+  }
+
+  /** The weekday-over-day-number stack that opens every event row. */
+  function iniDateStackHtml(dateISO) {
+    if (!dateISO) return '<div class="ini-date"></div>';
+    const d = new Date(dateISO + 'T12:00:00');
+    return '<div class="ini-date"><span class="ini-dow">' + sanitize(tDay(d.getDay())) +
+      '</span><span class="ini-day">' + d.getDate() + '</span></div>';
+  }
+
+  /** Our crest for our side of a fixture, a monogram disc for the rival.
+   *  The handoff is explicit that opponent crests are discs and not images:
+   *  the club has no rival crest library, and a broken <img> beside a
+   *  fixture reads as a fault in the app rather than a missing asset. */
+  function iniSideBadgeHtml(name) {
+    if (isOurTeam(name)) {
+      return '<img class="ini-crest" src="' + sanitize(clubBadgeUrl()) + '" alt="" ' +
+        'onerror="this.style.display=\'none\'">';
+    }
+    return '<span class="ini-mono">' + sanitize(clubMonogram(name)) + '</span>';
+  }
+
+  /** The blinking "call-up sent" tag, shared by both pages.
+   *  `data-conv-link` is the existing binder's hook — it navigates to the
+   *  match detail — so the tag keeps working without a handler of its own. */
+  function iniSentTagHtml(matchId) {
+    return '<span class="ini-sent" data-conv-link data-conv-match="' + sanitize(String(matchId)) + '">' +
+      '<span class="ini-sent-dot"></span>' + t('shome.conv_sent') + '</span>';
+  }
+
+  /** Monday–Sunday label for a week offset, e.g. "31 ago – 6 set". */
+  function iniWeekRange(offset) {
+    const b = getWeekBounds(offset);
+    const a = new Date(b.start + 'T12:00:00'), z = new Date(b.end + 'T12:00:00');
+    const m1 = tMonth(a.getMonth()), m2 = tMonth(z.getMonth());
+    return a.getMonth() === z.getMonth()
+      ? a.getDate() + ' – ' + z.getDate() + ' ' + m2
+      : a.getDate() + ' ' + m1 + ' – ' + z.getDate() + ' ' + m2;
+  }
+
   function renderPlayerHome() {
     const session = getSession();
     const picHtml = session.profilePic
-      ? `<img src="${session.profilePic}" alt="Profile" class="player-overview-pic">`
-      : `<div class="player-overview-pic player-overview-pic-placeholder">${sanitize(session.name).charAt(0).toUpperCase()}</div>`;
+      ? `<img src="${sanitize(session.profilePic)}" alt="">`
+      : sanitize(session.name).charAt(0).toUpperCase();
 
     const users = getUsers();
     const userRecord = users.find(u => u.id === session.id);
     const team = (userRecord && userRecord.team) || session.team || '';
-    const teamBadge = team
-      ? `<span class="po-team-badge">${sanitize(team)}</span>`
-      : '';
-
-    const positions = ((userRecord && userRecord.position) || session.position || '').split(',').map(s => s.trim()).filter(Boolean);
-    const layoutCls = positions.length === 3 ? 'po-pos-tri' : positions.length === 2 ? 'po-pos-duo' : 'po-pos-one';
-    const posCircles = positions.map(p => {
-      const bg = POS_COLORS[p] || '#9e9e9e';
-      return `<span class="po-pos-circle" style="background:${bg}">${sanitize(p)}</span>`;
-    }).join('');
-
-    const number = session.playerNumber || '—';
-    const dob = (userRecord && userRecord.dob) || session.dob || '';
-    let ageLabel = '';
-    if (dob) {
-      const bd = new Date(dob + 'T12:00:00');
-      const today = new Date();
-      let age = today.getFullYear() - bd.getFullYear();
-      if (today.getMonth() < bd.getMonth() || (today.getMonth() === bd.getMonth() && today.getDate() < bd.getDate())) age--;
-      ageLabel = ` <span style="color:var(--text-secondary);font-weight:400;font-size:.85em;">(${age} anys)</span>`;
-    }
+    const cat = (userRecord && userRecord.category) || session.category || '';
+    const scopeLabel = ((CATEGORY_LABELS[cat] || cat) + (team ? ' ' + team : '')).trim();
+    const posCircles = posCirclesHtmlGlobal(userRecord || { position: session.position || '' });
+    const number = session.playerNumber || (userRecord && userRecord.playerNumber) || '';
 
     // Build per-player attendance donut
     /* Only the sessions this player is actually called to. This used to read
@@ -7198,72 +7429,122 @@
       else pNa++;
     });
     const pTotal = pYes + pLate + pNo + pInj + pNa;
-    let attendDonutHtml = '';
-    if (pTotal > 0) {
-      const dSize = 130, dStroke = 20, dRadius = (dSize - dStroke) / 2;
-      const dCirc = 2 * Math.PI * dRadius;
-      const dSegs = [
-        { count: pYes, color: '#66bb6a', label: 'Yes' },
-        { count: pLate, color: '#ffa726', label: 'Late' },
-        { count: pNo, color: '#78909c', label: 'No' },
-        { count: pInj, color: '#ef5350', label: 'Injured' },
-        { count: pNa, color: '#d0d0d0', label: 'N/A' }
-      ];
-      let dArcs = '', dOff = 0;
-      dSegs.forEach(s => {
-        if (s.count > 0) {
-          const len = (s.count / pTotal) * dCirc;
-          const sPct = Math.round((s.count / pTotal) * 100);
-          dArcs += `<circle cx="${dSize/2}" cy="${dSize/2}" r="${dRadius}" fill="none" stroke="${s.color}" stroke-width="${dStroke}"
-            stroke-dasharray="${len} ${dCirc - len}" stroke-dashoffset="${-dOff}"
-            style="--circ:${dCirc};cursor:pointer;pointer-events:stroke" transform="rotate(-90 ${dSize/2} ${dSize/2})" data-tooltip="${s.label}: ${sPct}%"><title>${s.label}: ${sPct}%</title></circle>`;
-          dOff += len;
-        }
-      });
-      const attendPct = Math.round(((pYes + pLate) / pTotal) * 100);
-      attendDonutHtml = `<div class="po-attendance">
-        <div class="assistance-circle" style="width:${dSize}px;height:${dSize}px;">
-          <svg width="${dSize}" height="${dSize}" viewBox="0 0 ${dSize} ${dSize}">
-            <circle cx="${dSize/2}" cy="${dSize/2}" r="${dRadius}" fill="none" stroke="var(--border)" stroke-width="${dStroke}"/>
-            ${dArcs}
-          </svg>
-          <span class="assistance-pct po-pct-counter" data-target="${attendPct}" style="font-size:1.3rem;font-weight:800;">0%</span>
-        </div>
-        <span class="po-attendance-label">${t('home.attendance')}</span>
-      </div>`;
+    const attendPct = pTotal ? Math.round(((pYes + pLate) / pTotal) * 100) : 0;
+    const attended = pYes + pLate;
+    const donutHtml = iniDonutHtml(
+        iniAvailSegs({ yes: pYes, late: pLate, no: pNo, injured: pInj }),
+        { size: 88, stroke: 3.4, centre: attendPct + '%', centreSize: 19 });
+
+    /* Season figures. computePlayerMatchStats() is the app's one answer to
+       "how many, how long, how many goals" — my-stats and the Plantilla
+       table read the same function, so the hero cannot disagree with the
+       page a player checks it against. */
+    const pms = computePlayerMatchStats(session.id);
+    const tot = pms.totals;
+    const cardsY = pms.matchRows.reduce((s, r) => s + (r.yellows || 0), 0);
+    const cardsR = pms.matchRows.reduce((s, r) => s + (r.reds || 0), 0);
+
+    // ── El meu estat ──
+    const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
+    const fit = (userRecord && userRecord.fitnessStatus) || 'fit';
+    const physTxt = injNotes[session.id] || (userRecord && userRecord.injuryNote) || '';
+    const physCls = fit === 'injured' ? 'ini-v-bad' : fit === 'doubt' ? 'ini-v-warn' : 'ini-v-ok';
+    const physLabel = physTxt ? sanitize(physTxt) : t('ini.fit');
+
+    const sentAll = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    let convTotal = 0, convIn = 0;
+    Object.keys(sentAll).forEach(mid => {
+      const e = sentAll[mid];
+      const ids = Array.isArray(e) ? e : (e && e.players) || [];
+      if (!ids.length) return;
+      convTotal++;
+      if (ids.some(id => String(id) === String(session.id))) convIn++;
+    });
+
+    /* Citació for the next fixture the player is called to. `undefined` is
+       the honest answer when the coach has not set one — an empty row beats
+       a kick-off time relabelled as a meet time. */
+    const callups = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
+    const allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+    const todayISO = localDateStr(new Date());
+    const nextMatch = allMatches
+        .filter(m => m.date && m.date >= todayISO)
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))[0];
+    const citacio = nextMatch ? (callups[nextMatch.id] || '') : '';
+
+    const cardsTxt = (cardsY || cardsR)
+      ? (cardsR ? tv('ini.cards_yr', { y: cardsY, r: cardsR }) : tv('ini.cards_y', { n: cardsY }))
+      : t('ini.cards_none');
+
+    const stateRows =
+      kvRow(t('ini.phys_state'), physLabel, physCls) +
+      kvRow(t('ini.callups'), convIn + ' ' + t('ini.of') + ' ' + convTotal, 'ini-num') +
+      (citacio ? kvRow(t('ini.callup_time'), sanitize(citacio), 'ini-num') : '') +
+      kvRow(t('ini.cards'), cardsTxt, '');
+
+    function kvRow(k, v, cls) {
+      return '<div class="ini-kv"><span class="ini-kv-k">' + k + '</span>' +
+        '<span class="ini-kv-v ' + (cls || '') + '">' + v + '</span></div>';
     }
 
+    const leagues = getActiveFcfLeagues();
+    const standings = leagues.length
+      ? leagues.map(l => buildLeagueSnippet(l.title, _leagueCache[l.id] || [], l.id)).join('')
+      : (session && (session.isTeamLead || session.isAdmin)
+        ? '<div class="ini-block"><div class="ini-block-head"><span class="ini-eyebrow">' +
+          t('ini.standings') + '</span></div><div class="ini-tbl-none">' + t('ini.no_leagues') + '</div></div>'
+        : '');
+
+    const weeks = renderPlayerWeeks();
+
     return `
-      <h2 class="page-title">${sanitize(session.name)} <span style="color:var(--text-secondary);font-weight:600;">#${sanitize(String(number))}</span>${ageLabel}</h2>
-      <div class="player-overview-card">
-        <div class="player-overview-left">
-          <div class="po-pic-wrap" id="po-pic-change" style="cursor:pointer" title="${t('home.change_photo')}">
-            ${picHtml}
-            ${teamBadge}
+      <div class="ini-page ini-player">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-photo" id="po-pic-change" style="cursor:pointer" title="${t('home.change_photo')}">${picHtml}</div>
+            <div class="ini-idcol">
+              <span class="ini-eyebrow">${t('ini.greeting')}</span>
+              <div class="ini-name-row">
+                <h1 class="ini-name">${sanitize(session.name)}</h1>
+                ${number ? `<span class="ini-dorsal">${sanitize(String(number))}</span>` : ''}
+              </div>
+              <div class="ini-pos-row">${posCircles}
+                <span class="ini-club">${sanitize(getClubName())}${scopeLabel ? ' · ' + sanitize(scopeLabel) : ''}</span>
+              </div>
+            </div>
           </div>
-          <div class="po-pos-wrap ${layoutCls}">${posCircles}</div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-stats">
+            <div class="ini-stat"><span class="ini-eyebrow">${t('ini.matches')}</span><span class="ini-stat-v">${tot.matches}</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">${t('ini.minutes')}</span><span class="ini-stat-v">${tot.minutes}</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">${t('ini.goals')}</span><span class="ini-stat-v">${tot.goals}</span></div>
+            <div class="ini-stat"><span class="ini-eyebrow">${t('ini.assists')}</span><span class="ini-stat-v">${tot.assists}</span></div>
+          </div>
+          <div class="ini-hero-att">
+            ${donutHtml}
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">${t('ini.attendance')}</span>
+              <span>${tv('ini.sessions_of', { a: attended, b: pTotal })}</span>
+              <span>${tv('ini.absences', { n: pNo })}</span>
+            </div>
+          </div>
         </div>
-        ${attendDonutHtml}
-      </div>
-      <div class="league-tables-row">
-        ${(function() {
-          var leagues = getActiveFcfLeagues();
-          if (!leagues.length && session && (session.isTeamLead || session.isAdmin)) {
-            return '<div class="card" style="color:var(--text-secondary);font-size:.9rem;">Configura els enllaços de classificació FCF a l\'apartat de configuració del club per veure les classificacions aquí.</div>';
-          }
-          return leagues.map(function(league) {
-            var cached = _leagueCache[league.id] || [];
-            return buildLeagueSnippet(league.title, cached, league.id);
-          }).join('');
-        })()}
-      </div>
-      <div class="card">
-        <div class="card-title">${t('home.this_week')}</div>
-        ${renderWeekActivities(0)}
-      </div>
-      <div class="card">
-        <div class="card-title">${t('home.next_week')}</div>
-        ${renderWeekActivities(1)}
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">${t('ini.next_two_weeks')}</span>
+              ${weeks.pendingHtml}
+            </div>
+            ${weeks.html}
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">${t('ini.my_state')}</span></div>
+              ${stateRows}
+            </div>
+            ${standings}
+          </aside>
+        </div>
       </div>`;
   }
 
@@ -22633,8 +22914,11 @@
      Everything here is read-only and links elsewhere; nothing on this page
      writes, so it can be rebuilt on any sync without losing input. */
 
-  /** Fit-for-purpose week list for staff: counts, not personal answers. */
-  function renderStaffWeek(weekOffset, players) {
+  /** Fit-for-purpose week list for staff: counts, not personal answers.
+   *  @param {string|null} [letter] The squad chip, or null under "Totes".
+   *    A row with no `team` of its own survives every letter — an
+   *    unassigned session belongs to the category, not to nobody. */
+  function renderStaffWeek(weekOffset, players, letter) {
     const { start, end } = getWeekBounds(weekOffset);
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const training = getTrainings();
@@ -22658,8 +22942,10 @@
           return !done || now < done;
         })
         .filter(tr => !curCat || (tr.category || '') === curCat)
+        .filter(tr => !letter || !tr.team || tr.team === letter)
         .forEach(tr => {
-          let available = 0; let answered = 0;
+          const n = { yes: 0, late: 0, no: 0, injured: 0 };
+          let answered = 0;
           players.forEach(p => {
             const k = recordKey(p.id, tr, 'avail');
             // The staff override wins, exactly as getEffectiveAnswer() has it —
@@ -22668,13 +22954,14 @@
             const v = overrides[k] || availData[k] || '';
             if (!v) return;
             answered++;
-            if (v === 'yes' || v === 'late') available++;
+            if (n[v] !== undefined) n[v]++;
           });
           rows.push({
-            kind: 'training', date: tr.date, time: tr.time || '',
-            label: sanitize(tr.focus || t('activity.badge_training')),
+            kind: isActivity(tr) ? 'activity' : 'training',
+            date: tr.date, time: tr.time || '',
+            label: sanitize(activityTitleOf(tr, t('activity.badge_training'))),
             place: sanitize(tr.location || ''),
-            answered, available, total: players.length,
+            n, answered, available: n.yes + n.late, total: players.length,
             link: 'staff-training-detail', linkId: tr.id,
           });
         });
@@ -22689,6 +22976,7 @@
           return !done || now < done;
         })
         .filter(m => !curCat || (m.category || '') === curCat)
+        .filter(m => !letter || !m.team || m.team === letter)
         .forEach(m => {
           const sent = sentData[m.id];
           const called = sent && Array.isArray(sent.players) ? sent.players.length : 0;
@@ -22699,77 +22987,116 @@
             answered++;
             if (v === 'disponible') available++;
           });
+          const bits = [sanitize(m.time || '')];
+          bits.push(isOurTeam(m.home) ? t('ini.home_leg') : t('ini.away_leg'));
+          if (m.fcfJornada) bits.push(t('pt.jornada') + ' ' + sanitize(String(m.fcfJornada)));
+          if (m.location) bits.push(sanitize(m.location));
           rows.push({
             kind: 'match', date: m.date, time: m.time || '',
             label: matchLabel(m), place: sanitize(m.location || ''),
+            meta: bits.filter(Boolean).join(' · '),
+            home: m.home || '', away: m.away || '',
             answered, available, total: players.length, called,
-            convSent: !!sent, link: 'match-detail', linkId: m.id,
+            convSent: !!sent, link: 'match-detail', linkId: m.id, matchId: m.id,
           });
         });
 
-    if (!rows.length) {
-      return '<p style="color:var(--text-secondary)">' + t('activity.no_activities') + '</p>';
-    }
+    if (!rows.length) return { html: '', count: 0 };
     rows.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-    return rows.map(r => {
-      const badge = r.kind === 'match'
-        ? '<span class="badge badge-yellow">' + t('activity.badge_match') + '</span>'
-        : '<span class="badge badge-green">' + t('activity.badge_training') + '</span>';
+    const html = rows.map(r => {
       const waiting = r.total - r.answered;
-      // Before anyone has replied, "0 available" is technically true and
-      // reads as alarming. Show only what is actually known.
-      const counts = (r.answered
-        ? `<span class="shome-count shome-count-ok">${r.available} ${t('shome.available')}</span>`
-        : '') +
-        (waiting > 0 ? `<span class="shome-count shome-count-wait">${waiting} ${t('shome.awaiting')}</span>` : '');
-      const conv = r.kind === 'match'
-        ? (r.convSent
-          ? `<span class="shome-tag shome-tag-done">${t('shome.conv_sent')} · ${r.called}</span>`
-          : `<span class="shome-tag shome-tag-todo">${t('shome.conv_pending')}</span>`)
-        : '';
-      return `<div class="shome-row"${shomeLinkAttrs(r.link, r.linkId)}>
-        <div class="shome-row-head">${badge}<span class="shome-when">${tDayDDMM(r.date)} · ${sanitize(r.time)}</span>${conv}</div>
-        <div class="shome-row-label">${r.label}</div>
-        <div class="shome-row-meta">${r.place ? r.place + ' · ' : ''}${counts}</div>
+      const missing = waiting > 0
+        ? `<span class="ini-ev-missing">${tv('ini.n_missing', { n: waiting })}</span>`
+        : `<span class="ini-ev-complete">${t('ini.all_replied')}</span>`;
+
+      let right;
+      if (r.kind === 'match') {
+        if (r.convSent) {
+          /* The call-up is out: the squad figure takes the donut's slot so
+             it lines up with the rings above and below, and the blinking tag
+             on the meta line carries the state. That swap IS the model —
+             there is no third arrangement. */
+          right = `<div class="ini-ev-right">
+            <div class="ini-ev-slot"><span class="ini-conv-n">${r.called}</span>
+              <span class="ini-conv-lbl">${t('ini.conv_short')}</span></div>
+            <div class="ini-ev-txt"><span class="ini-ev-counts">${t('ini.convocats')}</span></div>
+          </div>`;
+        } else {
+          right = `<div class="ini-ev-right">
+            <div class="ini-ev-txt">${missing}</div>
+            ${canEditPage('convocatoria')
+    ? `<button type="button" class="ini-conv-btn"${shomeLinkAttrs('convocatoria', r.matchId)}>${t('ini.convocatoria')}</button>`
+    : ''}
+          </div>`;
+        }
+      } else {
+        const donut = iniDonutHtml(iniAvailSegs(r.n),
+            { size: 44, stroke: 3.6, centre: String(r.n.yes), centreSize: 13 });
+        right = `<div class="ini-ev-right">
+          <div class="ini-ev-slot">${donut}</div>
+          <div class="ini-ev-txt">
+            <span class="ini-ev-counts">${tv('ini.counts', { y: r.n.yes, l: r.n.late, n: r.n.no, i: r.n.injured })}</span>
+            ${missing}
+          </div>
+        </div>`;
+      }
+
+      const barCls = r.kind === 'match' ? 'ini-bar-match'
+        : r.kind === 'activity' ? 'ini-bar-activity' : 'ini-bar-training';
+      const kindWord = r.kind === 'match' ? t('activity.badge_match')
+        : r.kind === 'activity' ? t('cal.activity') : t('activity.badge_training');
+      /* Opening a session or a match is clicking its NAME, not a button.
+         The row itself is not the link — the Convocatòria button lives in it
+         and a row-wide handler would swallow that click. */
+      const nameLink = `<span class="ini-ev-name ini-ev-name-link"${shomeLinkAttrs(r.link, r.linkId)}>${r.label}</span>`;
+      const titleHtml = r.kind === 'match'
+        ? `${iniSideBadgeHtml(r.home)}${nameLink}${iniSideBadgeHtml(r.away)}`
+        : nameLink;
+      const sentTag = (r.kind === 'match' && r.convSent) ? iniSentTagHtml(r.matchId) : '';
+      const meta = r.kind === 'match' ? r.meta
+        : [sanitize(r.time), r.place].filter(Boolean).join(' · ');
+
+      return `<div class="ini-ev">
+        ${iniDateStackHtml(r.date)}
+        <div class="ini-bar ${barCls}"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t">${titleHtml}<span class="ini-kind">${kindWord}</span></div>
+          <div class="ini-ev-meta">${meta}${sentTag}</div>
+        </div>
+        ${right}
       </div>`;
     }).join('');
+    return { html, count: rows.length };
   }
 
   function renderStaffHome(session) {
     const users = getUsers();
     const curCat = getCurrentCategory();
+    /* The squad letter, only when a category is actually picked. Under
+       "Totes" there is no letter set to narrow by — B means a different
+       squad in every category — so the chips are not rendered and this
+       stays null, exactly as the Convocatòria's filter does. */
+    const catLetter = (curCat && iniTeamFilter !== 'all') ? iniTeamFilter : null;
     const players = users.filter(u => (u.roles || []).includes('player'))
         // Same rule the roster uses: an uncategorised player belongs to
         // Registrations, not to somebody else's squad.
-        .filter(u => !curCat || (u.category || '') === curCat);
+        .filter(u => !curCat || (u.category || '') === curCat)
+        .filter(u => !catLetter || !u.team || u.team === catLetter);
+
+    /* computeReadiness is the most expensive call on this page and used to
+       be made THREE times per player — once for the watch list, once for the
+       underloaded list, once more would have been the team load. Once each,
+       into a Map, and every block below reads from it. */
+    const readiness = new Map(players.map(p => [String(p.id), computeReadiness(p.id)]));
 
     // ── Out of action ──
     const injuries = JSON.parse(localStorage.getItem('fa_injuries') || '[]');
     const byId = new Map(players.map(p => [String(p.id), p]));
-    const today = localDateStr(new Date());
-    const inAWeek = localDateStr(new Date(Date.now() + 7 * 86400000));
     const out = injuries
         .filter(i => i.status === 'active' || i.status === 'recovering')
         .filter(i => byId.has(String(i.playerId)))
         .sort((a, b) => (a.expectedReturn || '9999').localeCompare(b.expectedReturn || '9999'));
-
-    const outHtml = out.length ? out.map(i => {
-      const p = byId.get(String(i.playerId));
-      const ret = i.expectedReturn || '';
-      let tag;
-      if (!ret) tag = `<span class="shome-tag">${t('shome.no_return_date')}</span>`;
-      else if (ret < today) tag = `<span class="shome-tag shome-tag-todo">${t('shome.overdue')} · ${tDayDDMM(ret)}</span>`;
-      else if (ret <= inAWeek) tag = `<span class="shome-tag shome-tag-soon">${t('shome.returning_soon')} · ${tDayDDMM(ret)}</span>`;
-      else tag = `<span class="shome-tag">${t('shome.expected_return')} · ${tDayDDMM(ret)}</span>`;
-      const what = sanitize(i.muscleGroup || '') + (i.muscleSub ? ' (' + sanitize(i.muscleSub) + ')' : '');
-      const dot = i.status === 'active' ? 'roster-status-injured' : 'roster-status-doubt';
-      return `<div class="shome-row"${shomeLinkAttrs('medical-detail', i.playerId)}>
-        <div class="shome-row-head"><span class="roster-status-icon ${dot}">${i.status === 'active' ? '✕' : '?'}</span>
-          <span class="shome-row-label">${sanitize(p.name)}</span>${tag}</div>
-        <div class="shome-row-meta">${what}${i.description ? ' – ' + sanitize(i.description) : ''}</div>
-      </div>`;
-    }).join('') : `<p style="color:var(--text-secondary)">${t('shome.none_out')}</p>`;
 
     // ── Load watch ──
     // Readiness is load-only and says nothing about injuries, so anyone
@@ -22777,74 +23104,218 @@
     const outIds = new Set(out.map(i => String(i.playerId)));
     const watch = players
         .filter(p => !outIds.has(String(p.id)))
-        .map(p => ({ p, rd: computeReadiness(p.id) }))
+        .map(p => ({ p, rd: readiness.get(String(p.id)) }))
         .filter(x => x.rd.hasData && (x.rd.color === 'red' || x.rd.color === 'orange'))
         .sort((a, b) => (a.rd.color === b.rd.color ? a.rd.score - b.rd.score : (a.rd.color === 'red' ? -1 : 1)));
 
     /* Show only the worst few. The classifier flags orange generously — on
        the demo squad it lights up 16 of 25 — and a list that long is a wall,
-       not a warning. The card's badge still carries the true total. */
+       not a warning. The head's count still carries the true total. */
     const WATCH_LIMIT = 6;
     const watchShown = watch.slice(0, WATCH_LIMIT);
-    const watchMore = watch.length - watchShown.length;
 
-    const watchHtml = watch.length ? watchShown.map(({ p, rd }) => `
-      <div class="shome-row"${shomeLinkAttrs('staff-player-stats', p.id)}>
-        <div class="shome-row-head">
-          <span class="readiness-dot readiness-${rd.color}"></span>
-          <span class="shome-row-label">${sanitize(p.name)}</span>
-          <span class="shome-score">${rd.score}</span>
-        </div>
-        <div class="shome-row-meta">${posCirclesHtmlGlobal(p)}</div>
-      </div>`).join('') + (watchMore > 0
-      ? `<p class="shome-more"${shomeLinkAttrs('manage-roster', '')}>+${watchMore} ${t('shome.more')}</p>`
-      : '') : `<p style="color:var(--text-secondary)">${t('shome.none_watch')}</p>`;
+    /* ── LESIONATS I RISC ──
+       One list where there used to be two cards. "Fora de combat" and the
+       "Watch list" answer the same question at two severities — who cannot
+       be picked, and who should not be pushed — and a coach reads them
+       together or not at all. The dot carries the severity: red is an open
+       injury from fa_injuries, amber is a load flag from computeReadiness.
+       ⚠ A player already listed as injured is NOT repeated with a load dot;
+       `outIds` above is what keeps them out of the second pass. */
+    const riskRows = out.map(i => {
+      const p = byId.get(String(i.playerId));
+      const what = sanitize(i.muscleGroup || '') + (i.muscleSub ? ' (' + sanitize(i.muscleSub) + ')' : '');
+      const ret = i.expectedReturn ? ' · ' + tDayDDMM(i.expectedReturn) : '';
+      return { dot: 'ini-dot-inj', name: p ? p.name : '', note: what + ret,
+        // An injury has no ratio to show; a dash says so without pretending.
+        val: '—', cls: 'ini-v-bad', link: 'medical-detail', id: i.playerId };
+    }).concat(watchShown.map(({ p, rd }) => ({
+      dot: 'ini-dot-risk', name: p.name,
+      note: rd.acwr >= 1.5 ? t('ini.acwr_high') : t('shome.watch_list'),
+      val: rd.acwr ? rd.acwr.toFixed(2) : '—', cls: 'ini-v-warn',
+      link: 'staff-player-stats', id: p.id
+    })));
 
-    /* Low load, listed apart from the risk dot. A high-ACWR player needs
-       protecting today; these need building up over weeks. Same card,
-       because it is still a load question — but never the same list. */
-    const under = players
-        .filter(p => !outIds.has(String(p.id)))
-        .map(p => ({ p, rd: computeReadiness(p.id) }))
-        .filter(x => x.rd.underloaded)
-        .sort((a, b) => a.rd.acwr - b.rd.acwr)
-        .slice(0, WATCH_LIMIT);
+    const riskHtml = riskRows.length
+      ? riskRows.map(r => `<div class="ini-risk-row"${shomeLinkAttrs(r.link, r.id)}>
+          <span class="ini-risk-dot ${r.dot}"></span>
+          <span class="ini-risk-name">${sanitize(r.name)}</span>
+          <span class="ini-risk-note">${r.note}</span>
+          <span class="ini-risk-v ${r.cls}">${r.val}</span>
+        </div>`).join('')
+      : `<div class="ini-tbl-none">${t('ini.risk_none')}</div>`;
 
-    const underHtml = under.length ? `
-      <div class="shome-subhead">${t('shome.underloaded')}
-        <span class="shome-badge">${under.length}</span>
-        <span class="shome-subhint">${t('shome.underloaded_hint')}</span>
-      </div>` + under.map(({ p, rd }) => `
-      <div class="shome-row"${shomeLinkAttrs('staff-player-stats', p.id)}>
-        <div class="shome-row-head">
-          <span class="readiness-dot readiness-nodata"></span>
-          <span class="shome-row-label">${sanitize(p.name)}</span>
-          <span class="shome-score">${rd.acwr.toFixed(2)}</span>
-        </div>
-        <div class="shome-row-meta">${posCirclesHtmlGlobal(p)}</div>
-      </div>`).join('') : '';
+    // ── The four counters and the season donut ──
+    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
+    const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
+    const matchAvail = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
+    const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    const allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
+    const nowD = new Date();
+    const todayISO = localDateStr(nowD);
+
+    /* The next fixture this squad plays, which scopes the chase list and the
+       "Sense resposta" counter. Not "the next fixture in the club" — a
+       coach filtered to Amateur A is asking about Amateur A. */
+    const nextMatch = allMatches
+        .filter(m => m.date && m.date >= todayISO)
+        .filter(m => !curCat || (m.category || '') === curCat)
+        .filter(m => !catLetter || !m.team || m.team === catLetter)
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))[0] || null;
+    const chase = nextMatch
+      ? players.filter(p => !matchAvail[p.id + '_' + nextMatch.id])
+      : [];
+
+    const convPending = allMatches
+        .filter(m => m.date && m.date >= todayISO)
+        .filter(m => !curCat || (m.category || '') === curCat)
+        .filter(m => !catLetter || !m.team || m.team === catLetter)
+        .filter(m => {
+          const e = sentData[m.id];
+          const ids = e ? (Array.isArray(e) ? e : (e.players || [])) : [];
+          return !ids.length;
+        }).length;
+
+    /* Season attendance for THIS squad, computed rather than stored — the
+       same pass renderStaffWeek makes per session, over the whole season.
+       Read raw, like every other staff figure: a silent player is not an
+       attendance. */
+    const seasonTrainings = trainingOnly(getTrainings())
+        .filter(tr => !curCat || (tr.category || '') === curCat)
+        .filter(tr => !catLetter || !tr.team || tr.team === catLetter)
+        .filter(tr => tr.date && tr.date <= todayISO);
+    let sYes = 0, sLate = 0, sNo = 0, sInj = 0, sSlots = 0;
+    seasonTrainings.forEach(tr => {
+      players.forEach(p => {
+        sSlots++;
+        const k = recordKey(p.id, tr, 'avail');
+        const v = overrides[k] || availData[k] || '';
+        if (v === 'yes') sYes++;
+        else if (v === 'late') sLate++;
+        else if (v === 'no') sNo++;
+        else if (v === 'injured') sInj++;
+      });
+    });
+    const seasonMatches = allMatches
+        .filter(m => !curCat || (m.category || '') === curCat)
+        .filter(m => !catLetter || !m.team || m.team === catLetter)
+        .filter(m => m.date && m.date <= todayISO).length;
+    const attended = sYes + sLate;
+    const seasonPct = sSlots ? Math.round((attended / sSlots) * 100) : 0;
+
+    /* ── Team load ──
+       Summed from the per-player series computeReadiness already produced
+       for the watch list, so the page asks the engine once per player and
+       not twice. `acute` is that week's UA; `chronic` is the trailing
+       four-week mean, which is where the team ratio comes from. */
+    const weekTotals = {};
+    players.forEach(p => {
+      const rd = readiness.get(String(p.id));
+      if (!rd || !rd.weeks) return;
+      rd.weeks.forEach(w => { weekTotals[w.week] = (weekTotals[w.week] || 0) + (w.acute || 0); });
+    });
+    const weekKeys = Object.keys(weekTotals).sort().slice(-4);
+    const loadVals = weekKeys.map(k => Math.round(weekTotals[k]));
+    const teamChronic = loadVals.length ? loadVals.reduce((a, b) => a + b, 0) / loadVals.length : 0;
+    const teamAcwr = teamChronic > 0 ? (loadVals[loadVals.length - 1] / teamChronic) : 0;
+    const loadMax = Math.max.apply(null, loadVals.concat([1]));
+    const loadLabels = ['S-3', 'S-2', 'S-1', t('ini.now')];
+    const loadHtml = loadVals.length
+      ? '<div class="ini-load">' + loadVals.map((v, i) => {
+        const h = Math.max(8, Math.round((v / loadMax) * 80));
+        const last = i === loadVals.length - 1;
+        const cls = last ? 'ini-load-3' : i >= loadVals.length - 2 ? 'ini-load-2' : 'ini-load-1';
+        const lbl = loadLabels[loadLabels.length - loadVals.length + i] || '';
+        return '<div class="ini-load-col"><span class="ini-load-v">' + v + '</span>' +
+          '<span class="ini-load-bar ' + cls + '" style="height:' + h + 'px"></span>' +
+          '<span class="ini-load-lbl">' + sanitize(lbl) + '</span></div>';
+      }).join('') + '</div>' +
+        '<div class="ini-kv"><span class="ini-kv-k">' + t('ini.acute_chronic') + '</span>' +
+        '<span class="ini-kv-v ini-num ' + (teamAcwr > 1.3 ? 'ini-v-warn' : '') + '">' +
+        (teamAcwr ? teamAcwr.toFixed(2) : '—') + '</span></div>'
+      : '<div class="ini-tbl-none">' + t('ini.no_load') + '</div>';
+
+    const w0 = renderStaffWeek(0, players, catLetter);
+    const w1 = renderStaffWeek(1, players, catLetter);
+    const weekBlock = (offset, labelKey, wk) => wk.count
+      ? '<div class="ini-week"><div class="ini-week-head">' +
+        '<span class="ini-week-l">' + t(labelKey) + '</span>' +
+        '<span class="ini-week-r">' + sanitize(iniWeekRange(offset)) + '</span></div>' +
+        wk.html + '</div>'
+      : '';
+    const weeksHtml = (w0.count || w1.count)
+      ? weekBlock(0, 'ini.this_week', w0) + weekBlock(1, 'ini.next_week', w1)
+      : '<div class="ini-empty">' + t('ini.nothing') + '</div>';
+
+    const scopeLabel = curCat
+      ? (CATEGORY_LABELS[curCat] || curCat) + (catLetter && catLetter !== 'all' ? ' ' + catLetter : '')
+      : t('common.all');
+
+    const leagues = getActiveFcfLeagues();
+    const standings = leagues
+        .map(l => buildLeagueSnippet(l.title, _leagueCache[l.id] || [], l.id)).join('');
 
     return `
-      <h2 class="page-title">${t('shome.title')}
-        <span style="color:var(--text-secondary);font-weight:600;font-size:.7em;">${players.length} ${t('shome.squad_size')}</span>
-      </h2>
-      <div class="card">
-        <div class="card-title">${t('home.this_week')}</div>
-        ${renderStaffWeek(0, players)}
-      </div>
-      <div class="card">
-        <div class="card-title">${t('home.next_week')}</div>
-        ${renderStaffWeek(1, players)}
-      </div>
-      <div class="shome-split">
-        <div class="card">
-          <div class="card-title">${t('shome.out_of_action')} ${out.length ? '<span class="shome-badge">' + out.length + '</span>' : ''}</div>
-          ${outHtml}
+      <div class="ini-page ini-staff">
+        <div class="ini-hero">
+          <div class="ini-hero-id">
+            <div class="ini-idcol">
+              <h1 class="ini-h1">${sanitize(scopeLabel)}</h1>
+              <span class="ini-club">${tv('ini.squad_size', { n: players.length })} · ${tDayDDMM(todayISO)}</span>
+            </div>
+          </div>
+          <div class="ini-counters" style="margin-left:auto">
+            <div class="ini-count"><span class="ini-eyebrow">${t('ini.no_answer')}</span>
+              <span class="ini-count-v ini-c-bad">${chase.length}</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">${t('ini.conv_pending')}</span>
+              <span class="ini-count-v ini-c-warn">${convPending}</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">${t('ini.injured')}</span>
+              <span class="ini-count-v ini-c-inj">${out.length}</span></div>
+            <div class="ini-count"><span class="ini-eyebrow">${t('ini.acwr_team')}</span>
+              <span class="ini-count-v">${teamAcwr ? teamAcwr.toFixed(2) : '—'}</span></div>
+          </div>
+          <div class="ini-hero-rule"></div>
+          <div class="ini-hero-att">
+            ${iniDonutHtml(iniAvailSegs({ yes: sYes, late: sLate, no: sNo, injured: sInj }),
+    { size: 76, stroke: 3.6, centre: seasonPct + '%', centreSize: 17 })}
+            <div class="ini-att-leg">
+              <span class="ini-eyebrow">${t('ini.season_att')}</span>
+              <span>${tv('ini.att_of', { a: attended, b: sSlots })}</span>
+              <span>${tv('ini.sess_matches', { s: seasonTrainings.length, m: seasonMatches })}</span>
+            </div>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-title">${t('shome.watch_list')} ${watch.length ? '<span class="shome-badge">' + watch.length + '</span>' : ''}</div>
-          ${watchHtml}
-          ${underHtml}
+        <div class="ini-body">
+          <div class="ini-main">
+            <div class="ini-sec-head">
+              <span class="ini-eyebrow">${t('ini.next_two_weeks')}</span>
+              <span class="ini-sec-note">${tv('ini.avail_over', { n: players.length })}</span>
+            </div>
+            ${weeksHtml}
+          </div>
+          <aside class="ini-rail">
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">${t('ini.chase')}</span>
+                <span class="ini-eyebrow">${nextMatch ? chase.length + ' · ' + tDayDDMM(nextMatch.date) : ''}</span></div>
+              ${nextMatch
+    ? (chase.length
+      ? '<div class="ini-chase-box">' + chase.map(p => `<div class="ini-chase-row"${shomeLinkAttrs('staff-player-stats', p.id)}>
+                    ${posCirclesHtmlGlobal(p)}<span class="ini-chase-name">${sanitize(p.name)}</span></div>`).join('') + '</div>'
+      : `<div class="ini-tbl-none">${t('ini.chase_none')}</div>`)
+    : `<div class="ini-tbl-none">${t('ini.no_next_match')}</div>`}
+            </div>
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">${t('ini.risk')}</span>
+                <span class="ini-eyebrow">${out.length} · ${watch.length}</span></div>
+              ${riskHtml}
+            </div>
+            <div class="ini-block">
+              <div class="ini-block-head"><span class="ini-eyebrow">${t('ini.team_load')}</span>
+                <span class="ini-eyebrow">${t('ini.last_4_weeks')}</span></div>
+              ${loadHtml}
+            </div>
+            ${standings}
+          </aside>
         </div>
       </div>`;
   }
@@ -28387,8 +28858,20 @@
       // activity object is built in one place and rendered in another, and
       // the three eras of this field belong in the resolver, not in both.
       const sentPieces = resolveKitPieces(sentEntry, clubKits());
-      const dayName = m.date ? tDay(new Date(m.date + 'T12:00:00').getDay()) : '';
-      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, label: matchLabel(m), detail: `${dayName} · ${m.time} · ${sanitize(m.location || '')}`, convSent, convIncluded, sentPieces });
+      /* The meta line the handoff specifies: time, home or away, the round,
+         and the meet time when the coach has set one. The weekday moved to
+         the date stack that opens the row, so repeating it here would say
+         the same thing twice. */
+      const bits = [sanitize(m.time || '')];
+      bits.push(isOurTeam(m.home) ? t('ini.home_leg') : t('ini.away_leg'));
+      if (m.fcfJornada) bits.push(t('pt.jornada') + ' ' + sanitize(String(m.fcfJornada)));
+      if (m.location) bits.push(sanitize(m.location));
+      const callupMap = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
+      if (callupMap[m.id]) bits.push(t('ini.meet_at') + ' ' + sanitize(callupMap[m.id]));
+      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time,
+        home: m.home || '', away: m.away || '',
+        label: matchLabel(m), detail: bits.filter(Boolean).join(' · '),
+        convSent, convIncluded, sentPieces });
     });
     const todayStr = localDateStr(now);
     const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -28423,10 +28906,13 @@
          t('…') here would call the session object. The fallback label is
          resolved above the loop for exactly that reason. */
       // tId addresses the session; tDate is only the label's date.
+      // The weekday moved to the date stack that opens the row (v230), so it
+      // is no longer repeated in the meta line beside it.
+      void dayName;
       activities.push({ type: act ? 'activity' : 'training', tId: t.id, tDate: t.date,
         date: t.date, time: t.time,
         label: sanitize(activityTitleOf(t, _wkTrainingWord)),
-        detail: `${dayName} · ${t.time} · ${sanitize(t.location)}` });
+        detail: [sanitize(t.time || ''), sanitize(t.location || '')].filter(Boolean).join(' · ') });
     });
     // Birthdays this week (skip self)
     const users = getUsers();
@@ -28445,44 +28931,13 @@
       }
     });
     activities.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || '').localeCompare(b.time || ''));
-    if (!activities.length) return '<p style="color:var(--text-secondary)">' + t('activity.no_activities') + '</p>';
+    if (!activities.length) return { html: '', pending: 0, count: 0 };
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    return activities.map(a => {
-      const badge = a.type === 'match'
-        ? '<span class="badge badge-yellow">' + t('activity.badge_match') + '</span>'
-        : a.type === 'activity'
-          ? '<span class="badge badge-grey">' + _wkActivityWord + '</span>'
-          : '<span class="badge badge-green">' + t('activity.badge_training') + '</span>';
-      let convTag = '';
-      let uniformIcons = '';
-      if (a.convSent) {
-        if (a.sentPieces) {
-          // Shorts dropped — .activity-uniform svg is pinned at 30px.
-          uniformIcons = `<span class="activity-uniform">${kitIconsHtml(a.sentPieces, {shorts: false})}</span>`;
-        }
-        convTag = a.convIncluded
-          ? '<span class="conv-available-tag" data-conv-link data-conv-match="' + a.id + '" style="cursor:pointer"><span class="conv-blink-dot"></span> ' + t('activity.conv_available') + '</span>'
-          : '<span class="conv-not-called-tag"><span class="conv-grey-dot"></span> ' + t('activity.conv_not_called') + '</span>';
-      }
-      // Match availability buttons (only when conv NOT sent)
-      let matchAvailHtml = '';
-      if (a.type === 'match' && !a.convSent) {
-        const maData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
-        const maKey = session.id + '_' + a.id;
-        const maChosen = maData[maKey] || null;
-        if (maChosen) {
-          const maLabels = { disponible: t('avail.disponible'), no_disponible: t('avail.no_disponible') };
-          const maCls = { disponible: 'mavail-disp', no_disponible: 'mavail-nodisp' };
-          matchAvailHtml = `<span class="mavail-chosen ${maCls[maChosen]}" data-mavail-match="${a.id}">${maLabels[maChosen]}</span>`;
-        } else {
-          matchAvailHtml = `<div class="mavail-btns" data-mavail-match="${a.id}">
-            <button class="mavail-btn mavail-disp" data-mavail="disponible">${t('avail.disponible')}</button>
-            <button class="mavail-btn mavail-nodisp" data-mavail="no_disponible">${t('avail.no_disponible')}</button>
-          </div>`;
-        }
-      }
-      /* Availability, for sessions AND activities. An activity rides the
-         same fa_training blob precisely so it inherits the call-ups, the
+    const maData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
+    let pending = 0;
+    const html = activities.map(a => {
+      /* Answers, for sessions AND activities. An activity rides the same
+         fa_training blob precisely so it inherits the call-ups, the
          availability records and the T-4h reminder — a club dinner nobody
          can answer for is the one thing it must not become. */
       let availHtml = '';
@@ -28490,34 +28945,138 @@
         const tObj = training.find(tr => String(tr.id) === String(a.tId));
         const tLocked = tObj ? isTrainingLocked(tObj) : false;
         const stored = readRecord(availData, session.id, tObj, 'avail');
-        if (tLocked) {
-          const chosen = stored || 'na';
-          const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
-          const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
-          // The tooltip closes the loop with the push, which named this
-          // exact time — a badge that just stops responding is a bug to
-          // the player who was told he could still change it.
-          availHtml = `<span class="avail-chosen ${cls[chosen]}" title="${sanitize(trainingLockedTitle(tObj))}">${labels[chosen]}</span>`;
-        } else if (stored) {
-          const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
-          const cls = { yes: 'avail-yes', late: 'avail-late', no: 'avail-no', injured: 'avail-injured', na: 'avail-na' };
-          availHtml = `<span class="avail-chosen ${cls[stored]}" data-avail-sid="${sanitize(String(a.tId || ''))}">${labels[stored]}</span>`;
-        } else {
-          // Default to Yes badge (clickable to expand buttons)
-          availHtml = `<span class="avail-chosen avail-yes avail-default" data-avail-sid="${sanitize(String(a.tId || ''))}">${t('avail.yes')}</span>`;
-        }
+        if (!stored && !tLocked) pending++;
+        availHtml = iniAvailPillsHtml(a.tId, tObj, stored, tLocked);
+      }
+      // Match answers only while the call-up is still open. Once it is sent
+      // the squad is decided and the question no longer applies.
+      let matchAvailHtml = '';
+      if (a.type === 'match' && !a.convSent) {
+        const maChosen = maData[session.id + '_' + a.id] || null;
+        if (!maChosen) pending++;
+        matchAvailHtml = iniMatchPillsHtml(a.id, maChosen);
       }
       if (a.type === 'birthday') {
         const picHtml = a.pic
-          ? `<img src="${a.pic}" alt="" class="birthday-avatar">`
-          : `<span class="birthday-avatar birthday-avatar-placeholder">${a.initial}</span>`;
-        return `<div class="activity-item"><span class="badge badge-birthday">${t('activity.badge_birthday')}</span><div class="activity-info"><div class="activity-label">${a.label}</div><div class="activity-detail">${a.detail}</div></div>${picHtml}</div>`;
+          ? `<img src="${sanitize(a.pic)}" alt="" class="ini-crest" style="border-radius:50%">`
+          : `<span class="ini-mono">${a.initial}</span>`;
+        return `<div class="ini-ev">${iniDateStackHtml(a.date)}<div class="ini-bar ini-bar-activity"></div>
+          <div class="ini-ev-mid"><div class="ini-ev-t">${picHtml}<span class="ini-ev-name">${a.label}</span>
+          <span class="ini-kind">${t('activity.badge_birthday')}</span></div>
+          <div class="ini-ev-meta">${a.detail}</div></div></div>`;
       }
-      const dataAttr = a.type === 'match'
-        ? `data-go-match="${a.id}"`
+      const isMatch = a.type === 'match';
+      const kindWord = isMatch ? t('activity.badge_match')
+        : a.type === 'activity' ? _wkActivityWord : t('activity.badge_training');
+      const barCls = isMatch ? 'ini-bar-match' : a.type === 'activity' ? 'ini-bar-activity' : 'ini-bar-training';
+      const dataAttr = isMatch
+        ? `data-go-match="${sanitize(String(a.id))}"`
         : `data-go-training="${sanitize(String(a.tId || ''))}"`;
-      return `<div class="activity-item activity-item-link" ${dataAttr}>${badge}<div class="activity-info"><div class="activity-label">${a.label}</div><div class="activity-detail">${a.detail}</div></div>${convTag}${uniformIcons}${availHtml}${matchAvailHtml}</div>`;
+      const titleHtml = isMatch
+        ? `${iniSideBadgeHtml(a.home)}<span class="ini-ev-name ini-ev-name-link">${a.label}</span>${iniSideBadgeHtml(a.away)}`
+        : `<span class="ini-ev-name ini-ev-name-link">${a.label}</span>`;
+      /* The kit went with the redesign's meta line: it was three shirt icons
+         beside a fixture, and it is on the match detail the call-up tag
+         already links to. */
+      const sentTag = a.convSent
+        ? (a.convIncluded ? iniSentTagHtml(a.id)
+          : `<span class="ini-sent" style="background:var(--pp-rule-2);border-color:var(--pp-rule);color:var(--pp-ink-2)">${t('activity.conv_not_called')}</span>`)
+        : '';
+      return `<div class="ini-ev ini-ev-link" ${dataAttr}>
+        ${iniDateStackHtml(a.date)}
+        <div class="ini-bar ${barCls}"></div>
+        <div class="ini-ev-mid">
+          <div class="ini-ev-t">${titleHtml}<span class="ini-kind">${kindWord}</span></div>
+          <div class="ini-ev-meta">${a.detail}${sentTag}</div>
+        </div>
+        ${availHtml}${matchAvailHtml}
+      </div>`;
     }).join('');
+    return { html, pending, count: activities.length };
+  }
+
+  /** The four training pills.
+   *
+   *  ⚠ EVERY ATTRIBUTE HERE IS A BINDING CONTRACT, not styling. `.avail-btn`
+   *  with `data-avail`, inside `.avail-btns` carrying `data-avail-sid`, is
+   *  what the save handler in bindDynamicActions() looks for; `.avail-chosen`
+   *  with `data-avail-sid` is what the un-answer handler looks for. Rename
+   *  one and the pill goes silently inert — no error, no log, and the coach's
+   *  sheet still reads "available" because that is the default.
+   *
+   *  Three states:
+   *   · locked   — spans, no data attributes at all, so no handler can match
+   *   · answered — the choice is `.avail-chosen` (tap again to clear), the
+   *                other three stay `.avail-btn` so changing it is one tap
+   *   · open     — four `.avail-btn`, with `Sí` shown as ASSUMED rather than
+   *                chosen, because getEffectiveAnswer() already counts a
+   *                silent player as available and the pills must not say
+   *                otherwise
+   */
+  function iniAvailPillsHtml(sid, tObj, stored, locked) {
+    const id = sanitize(String(sid === undefined || sid === null ? '' : sid));
+    const L = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured') };
+    const order = ['yes', 'late', 'no', 'injured'];
+    if (locked) {
+      const chosen = stored || 'yes';
+      const title = tObj ? sanitize(trainingLockedTitle(tObj)) : '';
+      return '<div class="ini-pills ini-pills-locked" title="' + title + '">' +
+        order.map(k => '<span class="ini-pill avail-' + k +
+          (k === chosen ? ' ini-on' : ' ini-muted') + '">' + L[k] + '</span>').join('') +
+        '</div>';
+    }
+    return '<div class="avail-btns" data-avail-sid="' + id + '">' +
+      order.map(k => {
+        if (stored && k === stored) {
+          return '<button type="button" class="avail-chosen avail-' + k + '" data-avail-sid="' + id +
+            '" title="' + sanitize(L[k]) + '">' + L[k] + '</button>';
+        }
+        const extra = stored ? ' ini-muted' : (k === 'yes' ? ' ini-assumed' : '');
+        return '<button type="button" class="avail-btn avail-' + k + extra +
+          '" data-avail="' + k + '" title="' + sanitize(L[k]) + '">' + L[k] + '</button>';
+      }).join('') + '</div>';
+  }
+
+  /** The two match pills. Same contract as above, `.mavail-*` names. */
+  function iniMatchPillsHtml(matchId, chosen) {
+    const id = sanitize(matchId);
+    const L = { disponible: t('avail.disponible'), no_disponible: t('avail.no_disponible') };
+    const cls = { disponible: 'mavail-disp', no_disponible: 'mavail-nodisp' };
+    return '<div class="mavail-btns" data-mavail-match="' + id + '">' +
+      ['disponible', 'no_disponible'].map(k => {
+        if (chosen === k) {
+          return '<button type="button" class="mavail-chosen ' + cls[k] + '" data-mavail-match="' + id +
+            '" title="' + sanitize(L[k]) + '">' + L[k] + '</button>';
+        }
+        return '<button type="button" class="mavail-btn ' + cls[k] + (chosen ? ' ini-muted' : '') +
+          '" data-mavail="' + k + '" title="' + sanitize(L[k]) + '">' + L[k] + '</button>';
+      }).join('') + '</div>';
+  }
+
+  /** Both weeks, plus the honest pending count for the section head.
+   *
+   *  The count is over RAW records — a player with no answer is counted as
+   *  outstanding even though getEffectiveAnswer() reports them available.
+   *  That is the one place the two views are allowed to differ, and it is
+   *  the half that tells the truth to the person who can fix it. */
+  function renderPlayerWeeks() {
+    const w0 = renderWeekActivities(0);
+    const w1 = renderWeekActivities(1);
+    const pending = w0.pending + w1.pending;
+    const pendingHtml = pending === 0
+      ? '<span class="ini-alldone">' + t('ini.all_answered') + '</span>'
+      : '<span class="ini-pending">' +
+        (pending === 1 ? t('ini.pending_one') : tv('ini.pending_n', { n: pending })) + '</span>';
+    if (!w0.count && !w1.count) {
+      return { pendingHtml: '', html: '<div class="ini-empty">' + t('ini.nothing') + '</div>' };
+    }
+    const block = (offset, labelKey, week) => week.count
+      ? '<div class="ini-week"><div class="ini-week-head">' +
+        '<span class="ini-week-l">' + t(labelKey) + '</span>' +
+        '<span class="ini-week-r">' + sanitize(iniWeekRange(offset)) + '</span></div>' +
+        week.html + '</div>'
+      : '';
+    return { pendingHtml, html: block(0, 'ini.this_week', w0) + block(1, 'ini.next_week', w1) };
   }
 
   // sanitize → utils.js
@@ -32167,6 +32726,7 @@
         rosterTeamFilter = 'all';
         calTeamFilter = 'all';
         convTeamFilter = 'all';
+        iniTeamFilter = 'all';
         stdTeamFilter = null;
         trainingTeamFilter = null;
         renderPage(getSession());
@@ -32190,6 +32750,14 @@
     $$('[data-conv-letter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         convTeamFilter = btn.dataset.convLetter || 'all';
+        renderPage(getSession());
+      });
+    });
+
+    // The same chips on the staff Inici, and for the same reason.
+    $$('[data-ini-letter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        iniTeamFilter = btn.dataset.iniLetter || 'all';
         renderPage(getSession());
       });
     });
@@ -32280,6 +32848,10 @@
         else if (to === 'match-detail') detailMatchId = Number(id);
         else if (to === 'medical-detail') medicalDetailPlayerId = id;
         else if (to === 'staff-player-stats') staffViewPlayerId = id;
+        /* The Inici "Convocatòria" button (v230). Arriving with no id would
+           land on whatever fixture the page had last selected, which is the
+           one thing a button labelled with a specific match must not do. */
+        else if (to === 'convocatoria') convSelectedMatchId = Number(id);
         currentPage = to;
         renderPage(getSession());
       });
@@ -32686,51 +33258,30 @@
         });
       });
     });
-    // Click chosen badge to re-open options
+    /* Click the chosen pill to clear the answer.
+     *
+     * ⚠ THE SECOND COPY OF THE SAVE LOGIC LIVED HERE UNTIL v230, and it is
+     * worth knowing why so it does not come back. The old markup drew an
+     * unanswered session as ONE badge — `.avail-chosen.avail-default` — that
+     * grew four buttons on click. Those buttons were injected after
+     * bindDynamicActions() had already run, so they had to be bound on the
+     * spot, which meant a duplicate of the whole save path: the record key,
+     * the fitness derivation, the staff notification, the ackSaveRecord
+     * call. Two copies of a write path drift, and this pair already had:
+     * the inline one never cleared `fa_injury_notes` when a player answered
+     * something other than `injured`.
+     *
+     * The Inici redesign draws all four pills up front, so there is nothing
+     * to expand and nothing to bind late. The `.avail-btn` handler above is
+     * the only writer. If a future design goes back to an expanding control,
+     * re-render the row instead of injecting into it — renderPage() rebinds
+     * everything and costs one frame. */
     $$('.avail-chosen').forEach(badge => {
       badge.addEventListener('click', (e) => {
         e.stopPropagation();
         const sid = badge.dataset.availSid;
         const sess = getTrainings().find(x => String(x.id) === String(sid));
         if (!sess) return;
-        const date = sess.date;
-        // Default badge: expand to buttons inline
-        if (badge.classList.contains('avail-default')) {
-          const parent = badge.parentElement;
-          const btnsHtml = `<div class="avail-btns" data-avail-sid="${sanitize(String(sid))}">
-            <button class="avail-btn avail-yes" data-avail="yes">${t('avail.yes')}</button>
-            <button class="avail-btn avail-late" data-avail="late">${t('avail.late')}</button>
-            <button class="avail-btn avail-no" data-avail="no">${t('avail.no')}</button>
-            <button class="avail-btn avail-injured" data-avail="injured">${t('avail.injured')}</button>
-          </div>`;
-          badge.insertAdjacentHTML('afterend', btnsHtml);
-          badge.remove();
-          // Bind click handlers on newly inserted buttons
-          const newBtns = parent.querySelectorAll('.avail-btns[data-avail-sid="' + sid + '"] .avail-btn');
-          newBtns.forEach(btn => {
-            btn.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              const val = btn.dataset.avail;
-              const btnsWrap = btn.closest('.avail-btns');
-              if (val === 'injured') { showBodyMapPicker(btnsWrap, sid); return; }
-              const session = getSession();
-              const key = recordKey(session.id, sess, 'avail');
-              const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-              availData[key] = val;
-              deriveFitnessStatus(session.id);
-              const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
-              addStaffNotification({ type: 'training_avail', playerName: session ? session.name : '?', detail: answerMap[val] || val, activity: (sess.focus ? sess.focus : 'Training') + ' (' + date + ')' });
-              // Re-render only once the server has acknowledged (or the write is queued)
-              ackSaveRecord('trainingAvail', key,
-                { uid: session.id, sessionId: sess.id, date: date, value: val },
-                'fa_training_availability', JSON.stringify(availData), btn).then(() => {
-                renderPage(getSession());
-                updateActionsBadge();
-              });
-            });
-          });
-          return;
-        }
         const session = getSession();
         const key = recordKey(session.id, sess, 'avail');
         const legacyKey = legacyRecordKey(session.id, sess, 'avail');
@@ -33470,26 +34021,11 @@
           });
           return;
         }
-        // Player: toggle league table visibility (in-place, no full re-render)
-        const toggleBtn = e.target.closest('.league-toggle-btn');
-        if (toggleBtn) {
-          const lid = toggleBtn.dataset.leagueId;
-          var hidden = _getHiddenLeagues();
-          var idx = hidden.indexOf(lid);
-          if (idx !== -1) hidden.splice(idx, 1);
-          else hidden.push(lid);
-          _setHiddenLeagues(hidden);
-          const card = toggleBtn.closest('.league-snippet');
-          if (!card) return;
-          const nowHidden = idx === -1; // was not hidden, now it is
-          card.classList.toggle('league-hidden', nowHidden);
-          const titleEl = card.querySelector('.card-title');
-          if (titleEl) titleEl.style.marginBottom = nowHidden ? '0' : '.5rem';
-          toggleBtn.textContent = nowHidden ? '👁️\u200D🗨️' : '👁️';
-          toggleBtn.title = nowHidden ? 'Mostrar classificació' : 'Amagar classificació';
-          const scroll = card.querySelector('.league-scroll');
-          if (scroll) scroll.style.display = nowHidden ? 'none' : '';
-        }
+        /* The per-league eye lived here until v230. It hid a standings table
+           by writing `fa_hidden_leagues`, which was never a synced key — the
+           preference stayed on one device, so a table hidden on the phone was
+           still there on the laptop and nothing said why. The Inici rail bounds
+           the tables in a scroll box instead, so there is nothing to hide. */
       });
     }
   }
@@ -33876,9 +34412,14 @@
       fa_injuries: ['staff-home', 'player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
       fa_training_staff_override: ['staff-home', 'player-home', 'calendar', 'training-detail', 'staff-training-detail'],
       fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],
-      fa_convocatoria_callup: ['calendar', 'convocatoria', 'match-detail'],
-      fa_match_goals: ['calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
-      fa_match_events: ['player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
+      /* Both Inici pages read these three since v230: the player's meet time
+         and card count, and the staff row's fixture meta. A key a page reads
+         but is not listed for does NOT re-render it — the coach setting the
+         citació on his laptop would leave the player's phone showing the old
+         one until they navigated away and back. */
+      fa_convocatoria_callup: ['staff-home', 'player-home', 'calendar', 'convocatoria', 'match-detail'],
+      fa_match_goals: ['player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
+      fa_match_events: ['staff-home', 'player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_tactic_saved: ['tactics'],
       fa_tactic_match_boards: ['tactics', 'match-detail', 'convocatoria'],
       fa_tactic_training_boards: ['tactics', 'training-detail', 'staff-training-detail'],

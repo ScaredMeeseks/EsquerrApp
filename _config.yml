@@ -84,6 +84,13 @@ exclude:
   # player names.
   # Regenerate with: node scripts/build-convocatoria-preview.js . convocatoria-preview.html
   - convocatoria-preview.html
+  # The same, for the v230 Inici redesign — the two landing pages. It renders
+  # five states, and is meant to be looked at at BOTH 1440px and 390px: the
+  # media queries key off the viewport, so one screenshot only ever shows one
+  # of the two layouts the handoff specifies. Same reasons to keep it off
+  # Pages: the whole stylesheet inlined, and twenty-two invented player names.
+  # Regenerate with: node scripts/build-inici-preview.js . inici-preview.html
+  - inici-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 229** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 230** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2845** — `cd test && npm run test:unit` (~10 s), all passing |
+| Unit tests | **2897** — `cd test && npm run test:unit` (~10 s), all passing |
 | Rules tests | 164 — **not re-run this session**; `firestore.rules` was not touched |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
@@ -21,174 +21,128 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 
 `firestore.rules`, `storage.rules` and every deployed Cloud Function are **unchanged** — no rules
 deploy, no functions deploy. The only edit under `functions/` is the version constant in
-`check-deploy.js`, which is a diagnostic script, not a deployed function.
+`check-deploy.js`, which is a diagnostic script, not a deployed function. The frontend shipped by
+pushing `main`.
+
+⚠ **Not yet driven by hand.** The owner is testing v230 after the deploy. The path worth clicking
+first is **clearing an answer** — tapping the chosen pill a second time — because it deletes both
+the new `uid_sessionId` record and the legacy `uid_date` one, and it is the branch with the least
+coverage upstream of this change.
 
 ---
 
-## This session: v227–v229. Convocatòria, the sixth design handoff — and the palette
-## behind all six of them.
+## This session: v230. Inici — the two landing pages, and the page attendance is
+## answered on.
 
-**v229 — the squad letter on the Convocatòria's category bar.** Through `catBarLettersHtml`, the
-same chips the Calendari and Plantilla draw; `convTeamFilter` is the fourth per-page filter and is
-reset with the category like the other three.
-
-⚠ **It narrows the fixture dropdown and Disponibles ONLY — never Convocats.** A filter is a way of
-looking; the acta is a decision already taken, and the send reads `fa_convocatoria` rather than the
-screen, so a filtered-away player would go out anyway. Convocats therefore reads the whole pool,
-which also keeps a cross-category call-up on the sheet. `catSpan` follows: it is computed over the
-rows RENDERED, not the pool, or a squad reads as badged in one column and unbadged in the other.
-
-**v228 — the paper palette is one thing now.** The six redesigned pages carried the design
-system's colours as raw hexes **552 times**; they are 23 `--pp-*` custom properties at the top of
-`css/style.css`, and every page keeps its own classes and sizes. Nothing renders differently —
-proved by resolving every token back to its literal and diffing the file byte for byte, then by
-rendering all three preview pages before and after and comparing pixel by pixel.
-
-⚠ **Two things to know before touching colours again.** `--pp-*` is deliberately a SECOND axis
-from `--primary`/`--text`, which hold two of the same values: those are the app chrome's palette
-and the paper pages were built not to inherit it. And **every test reads the stylesheet through
-`test/read-css.js`**, which resolves the tokens — so a colour assertion still tests the colour, not
-the token name. `test/paper-palette.test.js` fails on any loose literal and names the token to use;
-without it, a pasted hex renders identically and nothing notices.
-
-## v227. Convocatòria, the sixth design handoff.
-
-The staff call-up tab rebuilt to `Baixades/EsquerrApp Convocatòria UI/design_handoff_convocatoria/`.
-It was the last staff screen in the old idiom and sat one click from the redesigned Partit page.
+The seventh Claude Design handoff (`Baixades/EsquerrApp Home UI/design_handoff_inici/`), and the
+first that is not a staff screen: one `.ini-` block dresses BOTH landing pages, the player's
+(`player-home`, sidebar label now "Inici") and the coach's (`staff-home`).
 **Per-version detail is in CONTEXT.md**; this is what a reader needs before touching it again.
 
-**What shipped.** `renderConvocatoria` is `cv-` builders over one paper surface in bands: title,
-three controls (fixture · citation · kit), two lists, Pissarres, vídeos, footer. `bindConvocatoria`
-is rewritten around one `place()`. New `test/convocatoria.test.js` (74 tests, 14 driving the real
-binder in jsdom) and `scripts/build-convocatoria-preview.js`. Unit 2754 → 2845 across v227–v229.
+### The thing that made this different from the six before it
 
-**The bug inside the repaint.** `fa_convocatoria[matchId]` IS the acta order, and the old render
-sorted it away with `posRank` on the way out — so **dragging a player between two others did nothing,
-every time, and had never worked**. Anything that reorders the Convocats list must go through
-`place(id, targetId, toCalled)` and nothing may sort that array on the way to the screen.
+`renderWeekActivities` is the app's **primary answering surface** — the Accions page carries match
+availability only. So a "format change" here is a change to the control players use to tell their
+coach whether they are coming.
 
-**Two gaps filled**: a `+ Vincula una pissarra` picker (boards could only be attached from the
-tactics editor before), and `safeHttpUrl` on the video rows, which had no validation at all.
+The handlers in `bindDynamicActions()` bind **by name**: `.avail-btns[data-avail-sid]`,
+`.avail-btn[data-avail]`, `.avail-chosen`, and the `.mavail-*` pair. Rename one and it does not
+throw and does not log — the pill stops saving, and the coach's sheet goes on reading "available"
+because `getEffectiveAnswer()` counts a silent player as a yes. **There is no louder failure
+available**, which is why `test/inici.test.js` renders the real builders, mounts the real handlers
+over the result in jsdom, and asserts the write that comes out rather than asserting the markup.
 
-**Five things the owner asked for on review**, all detailed in CONTEXT.md: the fitness glyph and
-readiness score are back in the row (through the shared `playerStatusHtml`, so this screen and New
-Training cannot disagree); **no circle behind a crest** in the fixture picker — the real badge is an
-`<img>` and the monogram's ground is squared off, the same lesson as v226; the picker offers **only
-the visible/selected categories**, which is what `getCurrentCategory()`'s `''` has always meant and
-what `!curCat || …` never implemented; fixtures are sorted **soonest first**, which also makes the
-default selection the next one; and the category bar carries the **squad letters** (v229).
+The write path itself was not touched: `ackSaveRecord` → `DB.submit`, `recordKey`, the body-map
+picker, the lock rule, the staff notification.
 
-⚠ **The three review rounds all found things 46–74 green assertions could not.** Two were geometry
-(a dropdown laying its two lines side by side, a control with no rule on the shared baseline),
-found by screenshotting the preview; three were judgement — a column left out because it looked
-like a duplicate, a filter that meant less than its own doc comment said, an arbitrary sort order
-nobody had ever named. **Regenerate the preview and look at it before calling a redesign done.**
+### What shipped
 
-### ⚠ Five departures from the handoff, all deliberate
+`renderPlayerHome` and `renderStaffHome` rebuilt as `ini-` builders over one paper surface;
+`renderWeekActivities` and `renderStaffWeek` return `{html, pending, count}` instead of a string.
+New `test/inici.test.js` (44 tests, 12 driving the real binder in jsdom), six `sanitize()` tests in
+`test/utils.test.js`, and `scripts/build-inici-preview.js`. Unit 2845 → 2897.
 
-Each is argued in CONTEXT.md and each has a test that dies if it is "fixed" back.
+**One deliberate simplification.** The old markup was a single `.avail-chosen.avail-default` badge
+that grew four buttons on click; because those buttons were injected *after* `bindDynamicActions()`
+had run, they had to be bound on the spot — a duplicate of the whole save path. The two copies had
+already drifted: the inline one never cleared `fa_injury_notes`, so a player who reported an injury
+and then answered "Sí" stayed flagged injured on the coach's roster. All four pills are visible up
+front now, so there is one writer. ⚠ If a future design wants an expanding control again,
+**re-render the row** — `renderPage()` rebinds everything and costs one frame — rather than
+injecting into it.
 
-1. **Classes are `cv-`, not `.conv-`** — six other surfaces still draw with the `.conv-` family.
-   Borrowed families (`.conv-pos-circle`, `.cat-badge`, `.pt-crest`) are scoped under `.cv-page`.
-2. **No `Tard` availability state** — nothing in the app produces one.
-3. **Unsend kept, `Buida-ho tot` dropped.**
-4. **Drop-on-row inserts in Convocats only** — Disponibles has nowhere to store an order.
-5. **The board thumbnail expands** rather than drawing a live 34×24 pitch.
+### Two decisions worth not re-litigating
 
-### Traps worth knowing before editing THIS screen
+**Default-Yes stays visible.** The handoff draws an unanswered session as four empty outlines.
+`getEffectiveAnswer()` counts no-answer AS yes and every coach-facing figure relies on it, so four
+empty outlines would tell the player nobody knows while the coach's sheet already had them down as
+available. Unanswered renders `Sí` as ASSUMED (`ini-assumed`, pale) instead. The honest half is the
+section head's pending count, computed from **raw** records — the one place the two views are
+allowed to differ, and it is the half that tells the truth to the person who can fix it.
 
-- **The fixture picker is not gated on `ro`.** It is the only control that is not: which match you
-  are looking at is view state, not a write, and a delegate needs it. Gating the whole page on `ro`
-  is the easy way to lose it.
-- **The three control groups share one baseline** via `align-items: stretch` plus `margin-top: auto`
-  on each group's own control. The citation group's rule is carried by the **pills** — which is why
-  the read-only variant needs `cv-time-ruled`, or the middle column has nothing on the line.
-- **Menu open state lives in the DOM, not in the render.** The page re-renders on every drop; a
-  menu whose openness the render read back would reopen itself mid-drop.
-- **`cvMenu` is the page's only dropdown** — fixture, three kits, boards. `stdSelect` cannot serve
-  here: it renders text labels only, and two of these toggles carry images.
-- **String-builder tests cannot see geometry.** Two real defects this session — the fixture
-  dropdown laying its two lines side by side, and the missing read-only rule — were found by
-  screenshotting `convocatoria-preview.html` in headless Chrome, with 46 assertions green.
-- **jsdom swallows exceptions thrown inside listeners.** A handler that dies on a missing stub looks
-  exactly like one that decided to do nothing. The wired tests drain a window `error` collector;
-  keep doing that.
+**Staff Inici renders no answer control and writes nothing**, and the suite asserts it emits zero
+`data-avail`/`data-mavail` attributes. A coach answering *for* a player is the staff override on
+the session page, where it is recorded as an override.
 
-### Left undone, deliberately
+Smaller ones: `N absències avisades` counts answers of value `no` (the app has no justified-absence
+concept, and inventing one would be a figure with nothing behind it); every active FCF league is
+stacked in the rail and the per-league eye is retired (`fa_hidden_leagues` was never a synced key,
+so a table hidden on the phone was still there on the laptop and nothing said why); `Fora de
+combat` + `Watch list` merged into one `LESIONATS I RISC` block.
 
-- **The board thumbnail is the designed placeholder**, not a live board. Clicking the row opens the
-  real `tbRoBoardHtml` beneath it. A real thumbnail means rendering a pitch at 34×24 and waiting on
-  `hydrateRoBoards`.
-- **The readiness palette is a third copy** of the same values, after `.std-table` and
-  `.pl-ready`. Each paper page scopes its own; that is the convention, not an oversight.
-- **The kit dropdowns show the KIT's name** ("1a equipació"), where the design shows garment names
-  ("Pantalons negres"). The app's model has one label per kit, not per garment.
-- **`.conv-player`, `.conv-list`, `.conv-count` and friends are still in the old idiom.** They are
-  the New Training squad list and four other surfaces; repainting them is its own piece of work.
+### `sanitize()` now escapes quotes — app-wide, not just here
 
----
+It was `textContent` → `innerHTML`: `&`, `<`, `>`. Complete between tags, silently incomplete
+inside a double-quoted attribute, because the quote is what ends an attribute and no `<` is needed
+to break out of one. `app.js` builds 30 attributes through `sanitize()`; most carry app-generated
+ids, but a handful carry typed text (a coach's injury note, a session's focus and location, a
+player's own name). Reachable only from inside the club, so low severity — but it also broke a
+plain form field with no malice: a location typed as `Camp "El Nou"` truncated its own `value=""`.
 
-## Prior session: v212–v226. Partit, the fourth design handoff — and four rounds of the owner
-## finding what the tests could not.
+⚠ **It was safe to fix globally only because the escaping is invisible where the old behaviour was
+already correct**: between tags `&quot;` RENDERS as `"`, and read back off an attribute the browser
+decodes it, so the two places that put JSON in an attribute and parse it back (`data-frames` on a
+tactical board, `data-pl-tip` on the Plantilla chart) still parse. Both are pinned in
+`test/utils.test.js`, with the ordering trap: `&` is escaped FIRST by `textContent`, quotes after,
+or every quote ships as the literal text `&amp;quot;`.
 
-The match detail screen, redesigned to `Baixades/EsquerrApp Match UI/design_handoff_partit/`, plus
-everything the owner found once it was in front of him. **Per-version detail is in CONTEXT.md**;
-this is what a reader needs to know before touching it again.
+### Two traps for whoever is here next
 
-**What shipped.** `renderMatchDetail` is `pt-` builders over horizontal bands. One dropdown in the
-app (`stdSelect`) — `.ev-custom-select` and every native `<select>` on these screens are gone. The
-anada block, the events timeline and its inline form, the linked-board overlay, the rival's last
-five, the rival's kit. The fixture dialog, the Calendari's add chooser, Nou entrenament and the
-Add-Player modal are all in the paper idiom. New `test/partit.test.js`; unit 2593 → 2750.
+**The preview is not optional, and `--window-size` lies.** 43 assertions were green when the 390px
+render showed the `Convocatòria` button sitting *before* the "N sense resposta" it belongs to, so
+the count read as the next row's — `order` is a property of a container's children, and the two
+cases sharing `.ini-ev-right` (a session's donut-plus-text, an unsent match's text-plus-button)
+have different children. Third time the render step has earned itself.
 
-### ⚠ The four things the owner had to tell me, and the pattern under them
+⚠ And headless Chrome on this machine **clamps its window to ~485 CSS px**, lays the page out at
+485 and crops the bitmap to whatever width was asked for — so a `--window-size=390` shot looks like
+a page overflowing its phone breakpoint and is neither the overflow nor the phone. That cost a
+round of chasing a defect that was not there. Use `Emulation.setDeviceMetricsOverride` over the
+DevTools protocol (node 22+ has a built-in `WebSocket`, nothing to install) and have the probe
+print `document.documentElement.clientWidth` back, so a run cannot silently lie about its width.
 
-1. **The timeline followed the wrong axis.** v213 read the handoff's "our events on the left"
-   literally. The scoreboard above prints `home — away`, so at an away ground our column sat under
-   the rival's name. **The handoff describes a screen, not a data model** — its mockup is a home
-   fixture, and "our events on the left" is a fact about that picture, not a rule about ownership.
-2. **Nested `<button>`s.** The board thumbnails were wrapped in a button and contain their own.
-   Invalid HTML, so one click ran two handlers and the ✕ was parsed out of the card. **Every test
-   matched the markup STRING**, where the nesting is invisible; only a parser shows it.
-3. **`border-bottom` does not override `border`.** The Add-Player restyle sat on base rules still in
-   the stylesheet, and left every row drawn as a box. **The question is never "does my declaration
-   say the right thing" but "does it beat the one underneath".**
-4. **Binders that loop over the document belong to the render.** `bindStdSelects` and the
-   `[data-tooltip]` badges were both invisible to overlays injected into `document.body`. It bit
-   three times before being fixed by delegation.
+**Anchor a slice on a declaration, not on the comment above it.** Both `test/inici.test.js` and
+`scripts/build-inici-preview.js` sliced the Inici block from a doc comment, and both broke the
+moment that comment was deleted. They anchor on `const INI_SEGS = [` now.
 
-**All four were green the whole time.** The suite was 2750 assertions and none of them could see a
-column on the wrong side, an invalid nesting the parser silently repairs, a losing CSS override, or
-a listener that was never attached.
+### Where the seams are, if something looks wrong
 
-### Traps worth knowing before editing the Partit screens
-
-- **Kit sizes are ARGUMENTS, never CSS.** `PT_KIT_PX` is 36 (multiple of 18: nine bands across S/2);
-  `PT_OPP_KIT_PX` is 32 (multiple of 16: the FCF's four and eight). They differ on purpose. Do not
-  tidy them to one value, and do not resize a kit in a stylesheet.
-- **A `stdSelect` root has no `.value`** — it carries `dataset.value` and fires no `change`. A missed
-  call site does not throw; it files a fixture under an empty category or stops a field saving.
-- **There is no global `[hidden]{display:none}`** in `css/style.css`. Anything given a `display` rule
-  that is also hidden from JS needs its own `[hidden]` guard, or the filter looks dead.
-- **`playerMatchMinutesKnown` returns null OR a number**, and 0 is a number. `—` and `0'` are
-  different answers.
-- **A player never sees the starting eleven before kick-off.** `ptCallupHtml`'s `showXI` is the one
-  decision; `test/match-lineup.test.js` pins that it is read in exactly two places.
-
-### Left undone from that session, deliberately
-
-- `mnBriefingHtml`, `mnScoreBlockHtml`, `mnLineupChipsHtml` and `fitMnScoreNames` have **no caller**
-  since the anada was rebuilt. Still covered by tests, dead in the app — they want a pruning pass,
-  not a deletion in the middle of a layout change.
-- **Rejecting a wrongly linked first leg has no route** once the suggestion has been answered: the
-  owner asked for both anada links removed, and the banner only shows while unanswered.
-  `MN.dismissLeg` is untouched, so restoring it is one button.
-- The board overlay has **no frame pills**. `applyRoFrame` is a closure inside
-  `bindRoBoardAnimations`, which `test/ro-playback.test.js` pins with 41 assertions; pills mean
-  lifting it out first. A test asserts they are absent so adding them is deliberate.
-- `computePlayerStats` still uses the old inline `isOurTeam(m.home) ? 'home' : 'away'`, which never
-  tests the away side. Same blind spot `ptOurSide` fixed; outside this redesign.
-- `mdKitCellHtml`'s comment says `MD_KIT_PX is 32`; the constant is 48. Only the comment is wrong.
+- `test/convocatoria.test.js` sliced the stylesheet with an **open-ended** `css.slice()` that worked
+  only because `.cv-` was the last block in the file. Appending `.ini-` put every Inici rule inside
+  `CVCSS`, where it could satisfy a question asked about Convocatòria. It has an end bound now —
+  **if an eighth page is appended, that bound must name it.**
+- `test/fcf-tabs-render.test.js` grabs the FCF tabs region and scans it for calls to undeclared
+  globals. Its end marker was `function renderPlayerHome()`, which swept the new Inici helpers in
+  and read the string `var(--pp-ok)` inside a donut's inline style as a call to a global named
+  `var`. It ends at the INICI banner now.
+- Nine `--pp-*` tokens were added and the matching literals at `.std-sel-pill` and `.pt-leg-draw`
+  converted. Proved inert by resolving every token back to its literal and diffing the stylesheet
+  byte for byte against HEAD — the v228 method. ⚠ Three of the nine are one shade from a token that
+  already existed: `--pp-warn-dark` is **not** `--pp-amber`, `--pp-bad-dark` is **not**
+  `--pp-med-inj-ink`, `--pp-input-line` is **not** `--pp-rule-4`.
+- 19 deliberate mutations (renamed attributes, an unscoped borrowed rule, a presentation-attribute
+  `var()`, a dropped `KEY_PAGES` entry, a missing Spanish string, both geometry regressions, both
+  halves of the sanitize fix) all turn the suite red, tree restored byte-for-byte afterwards.
 
 ---
 

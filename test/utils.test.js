@@ -113,3 +113,81 @@ describe('utils.js — season boundary', () => {
     });
   });
 });
+
+/* ------------------------------------------------------------------
+ * sanitize() — the app's ONE escaper, and the quotes it did not escape.
+ *
+ * It is not exported (it needs a DOM), so it is sliced out and run over
+ * jsdom, the same way every other test that needs it does.
+ *
+ * ⚠ WHAT THIS IS GUARDING. Until v230 sanitize() was textContent in,
+ * innerHTML out — the browser's own escaping, which covers `&`, `<` and `>`.
+ * Complete between tags; silently incomplete inside an attribute, because
+ * the quote is what ends an attribute and no `<` is needed to break out of
+ * one. ~30 attributes in app.js are built this way.
+ *
+ * The two tests that matter most are the LAST two: the reason this was safe
+ * to change at all is that escaping the quote is invisible everywhere the
+ * old behaviour was already correct.
+ * ------------------------------------------------------------------ */
+describe('sanitize()', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { JSDOM } = require('jsdom');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'utils.js'), 'utf8');
+  const i = src.indexOf('function sanitize(str) {');
+  const j = src.indexOf('\n}', i) + 2;
+  assert.ok(i !== -1, 'sanitize() moved in js/utils.js');
+  const dom = new JSDOM('<!doctype html><body></body>');
+  // eslint-disable-next-line no-new-func
+  const sanitize = new Function('document',
+      src.slice(i, j) + '\nreturn sanitize;')(dom.window.document);
+
+  it('escapes the three the browser escapes', () => {
+    assert.strictEqual(sanitize('&'), '&amp;');
+    assert.strictEqual(sanitize('<script>'), '&lt;script&gt;');
+  });
+
+  it('escapes BOTH quotes, which is the whole point', () => {
+    assert.strictEqual(sanitize('"'), '&quot;');
+    assert.strictEqual(sanitize("'"), '&#39;');
+  });
+
+  it('does not double-escape the ampersand it introduces', () => {
+    // `&` is escaped by textContent FIRST; the quote replaces run after, so
+    // the `&` inside `&quot;` must survive as a bare `&`. Reversing the
+    // order yields `&amp;quot;`, which renders as literal text.
+    assert.strictEqual(sanitize('a"b'), 'a&quot;b');
+    assert.strictEqual(sanitize('&"'), '&amp;&quot;');
+  });
+
+  it('closes the attribute break-out', () => {
+    const evil = '" onclick="alert(1)';
+    const html = '<div data-x="' + sanitize(evil) + '"></div>';
+    const d = new JSDOM('<!doctype html><body>' + html).window.document;
+    const el = d.querySelector('div');
+    assert.strictEqual(el.getAttribute('onclick'), null,
+        'the value broke out of its attribute and opened a handler');
+    assert.strictEqual(el.dataset.x, evil, 'the value did not survive intact');
+  });
+
+  it('is invisible between tags — &quot; RENDERS as a quote', () => {
+    /* The reason this change was safe to make globally. A location typed as
+       `Camp "El Nou"` must still read that way on screen. */
+    const d = new JSDOM('<!doctype html><body><span>' +
+      sanitize('Camp "El Nou"') + '</span>').window.document;
+    assert.strictEqual(d.querySelector('span').textContent, 'Camp "El Nou"');
+  });
+
+  it('still round-trips JSON through an attribute', () => {
+    /* Two places put JSON in an attribute and parse it back —
+       `data-frames` on a tactical board and `data-pl-tip` on the Plantilla
+       chart. The browser decodes entities when reading an attribute, so the
+       escaping is undone on the way out and JSON.parse still works. If that
+       were not true this change would have broken board playback. */
+    const obj = { t: 'Marc "Rovi" Rovira', r: [1, 2], q: "it's" };
+    const html = '<div data-j="' + sanitize(JSON.stringify(obj)) + '"></div>';
+    const d = new JSDOM('<!doctype html><body>' + html).window.document;
+    assert.deepStrictEqual(JSON.parse(d.querySelector('div').dataset.j), obj);
+  });
+});
