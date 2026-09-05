@@ -96,9 +96,10 @@ function loadHelpers(over) {
     ${HELPERS}
     ${DOCS}
     return { md2SevIdx, md2SevLabel, md2SevCls, md2Days, md2MissedSessions,
-             md2ZoneText, md2MuscleText, md2ZoneKey, md2OriginText,
+             md2ZoneText, md2MuscleText, md2ZoneKey, md2ZoneIdx, md2OriginText,
              md2FileCount, md2Head, md2Act, md2StatusPill,
              md2DocKind, md2DocSize, md2UploadDoc, md2DocRowsHtml,
+             md2DeleteDoc, md2DocHint,
              MD2_SEV, MD2_DOC_MAX, MD2_DOC_ACCEPT, MD2_PLAYER_SEES_DIAGNOSIS };
   `)(...Object.values(api));
 }
@@ -228,13 +229,26 @@ describe('Mèdic — the figures the page prints', () => {
             { id: 'p1' }, trs), 1);
   });
 
-  /* ⚠ Both sides of a pair carry the same LABEL and different indices. The
-     season map counts by label, or one thigh lights and its twin does not on
-     a map whose whole job is "where". */
-  it('keys a season tally on the label, so both sides of a pair are one zone', () => {
+  /* ⚠ THE SIDE. Both halves of a pair carry the same LABEL and different
+     indices, and v234 matched on the label everywhere — so one torn right
+     hamstring painted BOTH thighs, on the picker, on the season map and on
+     the page a physio reads before a reassessment. The index has been in
+     `fa_injuries.bodyZone` since the beginning; only the render ignored it.
+     Fixed in v235. These two are the guard. */
+  it('tells the two sides of a pair apart', () => {
     const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
     const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
     assert.notStrictEqual(left, right, 'the fixture assumes a left/right pair');
+    assert.notStrictEqual(H.md2ZoneIdx({ bodyZone: left }), H.md2ZoneIdx({ bodyZone: right }));
+    assert.strictEqual(H.md2ZoneIdx({ bodyZone: left }), left);
+    assert.strictEqual(H.md2ZoneIdx({}), null, 'a record with no zone claimed one');
+  });
+
+  /* The label survives for ONE job: naming a zone in prose, where the side
+     genuinely does not belong — "Zona més tocada: Isquiotibials". */
+  it('still shares a label between the sides, for text that names a zone', () => {
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
     assert.strictEqual(H.md2ZoneKey({ bodyZone: left }), H.md2ZoneKey({ bodyZone: right }));
   });
 
@@ -411,6 +425,63 @@ describe('Mèdic — the documents', () => {
     const docs = [{ name: 'a.pdf', size: 10, kind: 'PDF' }];
     assert.ok(H.md2DocRowsHtml(docs, true).includes('data-md2-doc="0"'));
     assert.ok(!H.md2DocRowsHtml(docs, false).includes('data-md2-doc'));
+  });
+
+  /* The cap was enforced in two places from the start and printed in
+     neither, so the only way to find it was to hit it. It is built from the
+     constant, so the words cannot drift from the check. */
+  it('says the size limit out loud, from the same constant it enforces', () => {
+    const hint = H.md2DocHint();
+    assert.ok(hint.includes('10'), 'the hint does not name the cap: ' + hint);
+    assert.ok(hint.includes('md2.max_size'), 'the cap is hardcoded, not built from MD2_DOC_MAX');
+    assert.strictEqual(H.MD2_DOC_MAX, 10 * 1024 * 1024);
+  });
+
+  /* ⚠ THE FILE HAS TO GO WITH THE ROW. v234 only spliced the array, which
+     left the object in Storage with nothing pointing at it — an orphan
+     nobody could see and nobody could remove, because the array being
+     rewritten held the only copy of its path. */
+  it('deletes the object from Storage, not only the row', async () => {
+    let deleted = '';
+    const H2 = loadHelpers({
+      storage: { ref: (p) => ({ delete: () => { deleted = p; return Promise.resolve(); } }) },
+    });
+    const gone = await H2.md2DeleteDoc({ name: 'a.pdf', path: 'medical/c1/amateur/i1/a.pdf' });
+    assert.strictEqual(deleted, 'medical/c1/amateur/i1/a.pdf');
+    assert.strictEqual(gone, true);
+  });
+
+  it('rejects on a failed delete, so the caller can leave the row alone', async () => {
+    const H2 = loadHelpers({
+      storage: { ref: () => ({ delete: () => Promise.reject(new Error('denied')) }) },
+    });
+    let threw = null;
+    await H2.md2DeleteDoc({ name: 'a.pdf', path: 'x/y' }).catch((e) => { threw = e; });
+    assert.ok(threw, 'a refused delete resolved as if it had worked');
+  });
+
+  /* A file stored before the `path` field existed cannot be found in
+     Storage. It comes off the record — leaving it there would be a row
+     pointing at nothing — and the caller is told, rather than a silent
+     success that implies the object is gone. */
+  it('drops a pathless file from the record and reports it as an orphan', async () => {
+    const H2 = loadHelpers({
+      storage: { ref: () => { throw new Error('must not be called'); } },
+    });
+    assert.strictEqual(await H2.md2DeleteDoc({ name: 'old.pdf' }), false);
+  });
+
+  it('wires both delete paths through that one helper', () => {
+    // The sheet's × and the file page's ×. Neither may splice on its own.
+    const sheet = bare.slice(bare.indexOf("const rm = e.target.closest('[data-md2-doc]')"),
+        bare.indexOf("const rm = e.target.closest('[data-md2-doc]')") + 700);
+    assert.ok(/md2DeleteDoc\(/.test(sheet), 'the sheet still removes the row only');
+    assert.ok(/confirm\(/.test(sheet), 'a permanent delete with no confirmation');
+    const bindBody = bare.slice(bare.indexOf('function bindMedicalDetail()'),
+        bare.indexOf('function bindMyStatsInjuryPopup'));
+    assert.ok(/md2-btn-deldoc/.test(bindBody), 'the file page has no delete');
+    assert.ok(/md2DeleteDoc\([\s\S]{0,400}updateInjury\(/.test(bindBody),
+        'the record is rewritten before Storage — that orphans the file on a failure');
   });
 });
 
@@ -638,6 +709,24 @@ describe('El meu autoreport — every field is optional', () => {
     assert.strictEqual(all[0].confirmedBy, 'staff9');
   });
 
+  /* ⚠ THE REPORTED BUG, ON THE SCREEN IT WAS REPORTED FROM. Picking one
+     thigh filled both, because the fill matched on the zone LABEL and every
+     paired zone appears twice in BODY_ZONES. A player choosing his right
+     hamstring was shown a body with both hamstrings red. */
+  it('fills the polygon the player picked and no other', () => {
+    const m = mountReport();
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
+    assert.notStrictEqual(left, right, 'the fixture assumes a left/right pair');
+    m.click('[data-md2-zone="' + left + '"]');
+    const polys = [...m.sheet.querySelectorAll('polygon')];
+    const lit = polys.filter((p) => /var\(--pp-bad-rgb\)/.test(p.getAttribute('fill')));
+    assert.strictEqual(lit.length, 1, 'the twin polygon lit up too');
+    assert.strictEqual(lit[0].dataset.md2Zone, String(left));
+    assert.ok(!/var\(--pp-bad-rgb\)/.test(polys[right].getAttribute('fill')),
+        'the other leg was painted');
+  });
+
   it('keeps what the player typed across a body-map pick', () => {
     const m = mountReport();
     m.sheet.querySelector('#md2-how').value = 'M\'he girat i he notat un cop';
@@ -645,6 +734,94 @@ describe('El meu autoreport — every field is optional', () => {
     m.click('[data-md2-zone="' + quad + '"]');
     assert.strictEqual(m.sheet.querySelector('#md2-how').value,
         'M\'he girat i he notat un cop', 'the repaint ate the only sentence');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The staff logger (screen 1c). It carries its own copy of the picker, so
+// fixing the self-report's fill proves nothing about this one.
+// ═══════════════════════════════════════════════════════════════════════════
+const LOGGER = grab('  const MD2_DOC_MAX =', '  // ---------- Medical Bind ----------');
+
+function mountLogger() {
+  const dom = new JSDOM('<!doctype html><body></body>', {
+    runScripts: 'outside-only', pretendToBeVisual: true });
+  const win = dom.window;
+  const doc = win.document;
+  const errors = [];
+  win.addEventListener('error', (e) => errors.push(e.error || e.message));
+  const H = loadHelpers();
+
+  const api = {
+    document: doc,
+    localStorage: { getItem: () => null, setItem: () => {} },
+    t: (k) => k, tv: (k, v) => k + ':' + JSON.stringify(v),
+    localDateStr: () => '2026-09-05',
+    getSession: () => ({ id: 's1', name: 'Nil Ferrer', teamId: 'c1' }),
+    getUsers: () => [{ id: 'p1', name: 'Gerard Vila', playerNumber: 11,
+      roles: ['player'], category: 'amateur', team: 'A' }],
+    saveUsers: () => {}, getInjuries: () => [], addInjury: (i) => i,
+    updateInjury: () => {}, getCurrentCategory: () => 'amateur',
+    medicalTeamFilter: 'all', addStaffNotification: () => {},
+    renderPage: () => {}, openDatePicker: () => {}, closeDatePicker: () => {},
+    alert: () => {}, confirm: () => true, storage: { ref: () => ({}) },
+    BODY_ZONES: utils.BODY_ZONES, GROUP_SUBS: utils.GROUP_SUBS,
+    bodyMapHtml: utils.bodyMapHtml, zoneLabelCa: utils.zoneLabelCa,
+    groupLabelCa: utils.groupLabelCa, muscleLabelCa: utils.muscleLabelCa,
+    md2SevLabel: H.md2SevLabel, MD2_SEV: H.MD2_SEV,
+    Promise, JSON, Object, String, Number, Array, Math, Date,
+  };
+  // eslint-disable-next-line no-new-func
+  const fns = new Function(...Object.keys(api), `
+    ${SANITIZE_SRC}
+    ${LOGGER}
+    return { showStaffInjuryLogger };
+  `)(...Object.values(api));
+  fns.showStaffInjuryLogger('p1');
+  const sheet = doc.querySelector('.md2-sheet');
+  assert.ok(sheet, 'the logger did not open');
+  return {
+    sheet, errors,
+    click(sel) {
+      const el = sheet.querySelector(sel);
+      assert.ok(el, 'nothing matched ' + sel + ' — the markup contract moved');
+      el.dispatchEvent(new win.Event('click', { bubbles: true }));
+      assert.deepStrictEqual(errors, [], 'a handler threw: ' + errors.join(', '));
+    },
+  };
+}
+
+describe('Registrar lesió — the staff picker', () => {
+  /* ⚠ The same bug, the same fix, a second copy of the code. The logger's
+     taxonomy panel is rebuilt independently of the player's sheet, so this
+     assertion is not redundant with the one above it — a mutation of either
+     block leaves the other passing. */
+  it('fills the polygon the physio picked and no other', () => {
+    const m = mountLogger();
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
+    m.click('[data-md2-zone="' + left + '"]');
+    const polys = [...m.sheet.querySelectorAll('polygon')];
+    const lit = polys.filter((p) => /var\(--pp-bad-rgb\)/.test(p.getAttribute('fill')));
+    assert.strictEqual(lit.length, 1, 'the twin polygon lit up too');
+    assert.strictEqual(lit[0].dataset.md2Zone, String(left));
+    assert.ok(!/var\(--pp-bad-rgb\)/.test(polys[right].getAttribute('fill')));
+  });
+
+  it('names the picked zone and offers that zone\'s groups', () => {
+    const m = mountLogger();
+    const quad = utils.BODY_ZONES.findIndex((z) => z.label === 'Quad');
+    m.click('[data-md2-zone="' + quad + '"]');
+    assert.strictEqual(m.sheet.querySelector('.md2-zone-v').textContent, 'Quàdriceps');
+    const groups = [...m.sheet.querySelectorAll('[data-md2-act="group"]')]
+        .map((b) => b.dataset.md2Val);
+    assert.deepStrictEqual(groups, ['Quadriceps', 'Adductors']);
+  });
+
+  it('prints the size cap on the documents field', () => {
+    const m = mountLogger();
+    assert.ok(/md2\.max_size/.test(m.sheet.innerHTML),
+        'the upload field does not say how big a file may be');
   });
 });
 
@@ -769,6 +946,9 @@ function page(opts) {
     tv: (k, v) => k + ':' + JSON.stringify(v),
     Date, JSON, Math, Object, String, Number, Array,
     getUsers: () => opts.squad || SQUAD,
+    getVisibleCategories: () => ['amateur'],
+    getPlayerInjuries: (uid) => (opts.injuries || []).filter((i) => i.playerId === uid),
+    medicalDetailPlayerId: opts.playerId || 'p1',
     getTrainings: () => [],
     getInjuries: () => opts.injuries || [],
     getCurrentCategory: () => 'amateur',
@@ -804,7 +984,7 @@ function page(opts) {
     ${SANITIZE_SRC}
     ${HELPERS}
     ${PAGE}
-    return renderMedical();
+    return ${opts.which || 'renderMedical'}();
   `)(...Object.values(env));
   const d = new JSDOM('<!doctype html><body>' + html + '</body>').window.document;
   return { html, doc: d, $: (s) => d.querySelectorAll(s) };
@@ -814,6 +994,12 @@ function open(id, pid, over) {
   return Object.assign({ id, playerId: pid, status: 'active', bodyZone: HAM,
     muscleGroup: 'Hamstrings', muscleSub: 'Biceps Femoris', severity: 'moderate',
     startDate: '2026-08-20', confirmedBy: 's1', docs: [] }, over || {});
+}
+
+/** renderMedicalDetail() over the same stubs — it is in the same slice. */
+function detail(opts) {
+  const p = page(Object.assign({ which: 'renderMedicalDetail' }, opts || {}));
+  return p;
 }
 
 describe('Mèdic — the dashboard, rendered', () => {
@@ -900,6 +1086,96 @@ describe('Mèdic — the dashboard, rendered', () => {
     assert.deepStrictEqual(pairs[3], ['md2.season_inj', 'md2.season_inj_s']);
     // The first two are short enough already and repeat themselves.
     assert.strictEqual(pairs[0][0], pairs[0][1]);
+  });
+
+  /** How many polygons carry a red fill — the question every map bug here
+      is really about. */
+  const filled = (html) => (html.match(/fill="rgba\(var\(--pp-bad-rgb\)/g) || []).length;
+
+  /* ⚠ THE BUG THIS SECTION EXISTS FOR. One injury, one polygon. v234 filled
+     every polygon sharing the label, so a right hamstring lit the left one
+     too — on the season map, on the picker and on the medical file. */
+  it('paints one polygon per injury on the season map, not both sides', () => {
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const p = page({ injuries: [
+      open('a', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-25' }),
+    ] });
+    assert.strictEqual(filled(p.html), 1, 'the twin polygon was painted too');
+  });
+
+  it('keeps the two sides on their own tallies', () => {
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
+    const p = page({ injuries: [
+      open('a', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-25' }),
+      open('b', 'p2', { status: 'resolved', bodyZone: right, endDate: '2026-08-26' }),
+    ] });
+    // Two polygons, each at n=1 — .12 + 1*.19 = .31. NOT two at n=2 (.50).
+    const alphas = (p.html.match(/fill="rgba\(var\(--pp-bad-rgb\),([\d.]+)\)"/g) || []);
+    assert.strictEqual(alphas.length, 2);
+    alphas.forEach((a) => assert.ok(a.includes('0.31'),
+        'a side was counted twice: ' + a));
+  });
+
+  /* A recurrence is the same zone AND the same side. One tear in each
+     hamstring is two injuries, not a repeat — and calling it one puts a
+     warning band on a player who does not have that history. */
+  it('does not call the other leg a recurrence', () => {
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
+    const both = page({ injuries: [
+      open('a', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-25' }),
+      open('b', 'p1', { status: 'resolved', bodyZone: right, endDate: '2026-08-28' }),
+    ] });
+    assert.ok(both.html.includes('md2.n_of_m:{"n":0,"m":2}'), 'the other leg counted as a repeat');
+    const same = page({ injuries: [
+      open('a', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-25' }),
+      open('b', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-28' }),
+    ] });
+    assert.ok(same.html.includes('md2.n_of_m:{"n":1,"m":2}'), 'a real recurrence was missed');
+  });
+
+  /* The medical file is the page a physio reads before a reassessment, and
+     the worst place in the app to paint a healthy limb in the same red as
+     the torn one. The marker was always on the exact zone; only the fill
+     under it spilled onto the twin. */
+  it('paints the injured side only on the player medical file', () => {
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
+    const d = detail({ playerId: 'p1', injuries: [open('a', 'p1', { bodyZone: left })] });
+    const polys = [...d.doc.querySelectorAll('polygon')];
+    const lit = polys.filter((p) => /var\(--pp-bad-rgb\)/.test(p.getAttribute('fill')));
+    assert.strictEqual(lit.length, 1, 'the healthy leg was painted as injured');
+    assert.ok(!/var\(--pp-bad-rgb\)/.test(polys[right].getAttribute('fill')));
+    // And the marker sits on that zone, as it always did.
+    assert.strictEqual(d.$('.md2-map-dot').length, 1);
+  });
+
+  it('does not raise the recurrence band for one tear in each leg', () => {
+    const left = utils.BODY_ZONES.findIndex((z) => z.label === 'Hamstring');
+    const right = utils.BODY_ZONES.map((z) => z.label).lastIndexOf('Hamstring');
+    const both = detail({ playerId: 'p1', injuries: [
+      open('a', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-25' }),
+      open('b', 'p1', { bodyZone: right }),
+    ] });
+    assert.strictEqual(both.$('.md2-band').length, 0, 'the other leg raised a false alarm');
+    const same = detail({ playerId: 'p1', injuries: [
+      open('a', 'p1', { status: 'resolved', bodyZone: left, endDate: '2026-08-25' }),
+      open('b', 'p1', { bodyZone: left }),
+    ] });
+    assert.strictEqual(same.$('.md2-band').length, 1, 'a real recurrence went unflagged');
+    // And it names the zone in Catalan from the INDEX, not from a label key.
+    assert.ok(same.html.includes('Isquiotibials'), 'the band names a raw index');
+  });
+
+  it('offers a delete on every document row, and not to a view-only member', () => {
+    const withDoc = [open('a', 'p1', { docs: [
+      { name: 'eco.pdf', size: 10, kind: 'PDF', path: 'medical/c/amateur/a/eco.pdf' }] })];
+    const rw = detail({ playerId: 'p1', injuries: withDoc });
+    assert.strictEqual(rw.$('.md2-btn-deldoc').length, 1);
+    assert.strictEqual(rw.$('.md2-btn-deldoc')[0].dataset.docPath, 'medical/c/amateur/a/eco.pdf');
+    const ro = detail({ playerId: 'p1', injuries: withDoc, readonly: true });
+    assert.strictEqual(ro.$('.md2-btn-deldoc').length, 0, 'a view-only member can delete a report');
   });
 
   it('answers an empty page rather than rendering nothing', () => {

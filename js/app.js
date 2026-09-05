@@ -1449,6 +1449,11 @@
     'md2.f_notes':        { ca:'Notes mèdiques', es:'Notas médicas', en:'Medical notes' },
     'md2.f_docs':         { ca:'Informes i proves', es:'Informes y pruebas', en:'Reports and scans' },
     'md2.f_docs_hint':    { ca:'· pdf, word, imatge', es:'· pdf, word, imagen', en:'· pdf, word, image' },
+    'md2.max_size':       { ca:'màxim {n} MB', es:'máximo {n} MB', en:'{n} MB max' },
+    'md2.max_size_note':  { ca:'Cada fitxer pot ocupar fins a {n} MB.', es:'Cada archivo puede ocupar hasta {n} MB.', en:'Each file may be up to {n} MB.' },
+    'md2.del_doc':        { ca:'Esborrar «{name}»? El fitxer s\'elimina definitivament.', es:'¿Borrar «{name}»? El archivo se elimina definitivamente.', en:'Delete “{name}”? The file is removed permanently.' },
+    'md2.del_failed':     { ca:'No s\'ha pogut esborrar el fitxer. No s\'ha tocat res.', es:'No se ha podido borrar el archivo. No se ha tocado nada.', en:'The file could not be deleted. Nothing was changed.' },
+    'md2.del_orphan':     { ca:'El fitxer no es troba a l\'emmagatzematge. S\'ha tret de la fitxa.', es:'El archivo no está en el almacenamiento. Se ha quitado de la ficha.', en:'The file is not in storage. It was removed from the record.' },
     'md2.drop':           { ca:'↑ Arrossega els informes aquí o tria un fitxer', es:'↑ Arrastra los informes aquí o elige un archivo', en:'↑ Drop reports here or choose a file' },
     'md2.save':           { ca:'Desar la fitxa', es:'Guardar la ficha', en:'Save record' },
     'md2.cancel':         { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
@@ -2293,7 +2298,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 234;
+  const APP_VERSION = 235;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -31729,13 +31734,17 @@
       const z = BODY_ZONES[st.zone];
       const groups = z ? (z.groups || []) : [];
       const subs = GROUP_SUBS[st.group] || [];
+      /* ⚠ THE PICKED POLYGON, NOT EVERY POLYGON SHARING ITS LABEL. Each zone
+         appears twice in BODY_ZONES, once per side; matching on the label
+         filled both legs and told the player he had hurt a limb he had not
+         touched. See md2ZoneIdx(). */
       return bodyMapHtml({
         interactive: true, which: 'rep', opacity: 0.38,
-        fill: function (_i, zz) {
-          return z && zz.label === z.label ? 'rgba(var(--pp-bad-rgb),.55)' : 'rgba(255,255,255,0)';
+        fill: function (i) {
+          return i === st.zone ? 'rgba(var(--pp-bad-rgb),.55)' : 'rgba(255,255,255,0)';
         },
-        stroke: function (_i, zz) {
-          return z && zz.label === z.label ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.16)';
+        stroke: function (i) {
+          return i === st.zone ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.16)';
         }
       }) +
         '<div class="md2-map-cap"><span>' + t('md2.front') + '</span><span>' + t('md2.back_view') + '</span></div>' +
@@ -31924,11 +31933,28 @@
   }
   function md2MuscleText(inj) { return inj ? muscleLabelCa(inj.muscleSub) : ''; }
 
-  /** The zone label a season tally is keyed on — the English label, so both
-      sides of a pair count as one zone. */
+  /** The zone label, for text that NAMES a zone — "Zona més tocada". Both
+   *  sides of a pair share a label, which is right for a name: nobody wants
+   *  to read "Isquiotibials (dret)" as the answer to "where does the squad
+   *  keep getting hurt", and BODY_ZONES carries no side in the label anyway.
+   *
+   *  ⚠ NOT FOR ANYTHING DRAWN ON THE BODY. Use md2ZoneIdx() there. */
   function md2ZoneKey(inj) {
     if (inj && inj.bodyZone != null && BODY_ZONES[inj.bodyZone]) return BODY_ZONES[inj.bodyZone].label;
     return inj && (inj.bodyZoneLabel || inj.muscleGroup) || '';
+  }
+
+  /** The exact polygon, which is what every map on this page paints.
+   *
+   *  ⚠ MATCH BY INDEX, NEVER BY LABEL. BODY_ZONES holds each zone twice,
+   *  once per side, and both copies share a label — so a label match fills
+   *  BOTH legs. v234 shipped that, following the prototype, and it is simply
+   *  wrong: a player with a torn right hamstring does not have a torn left
+   *  one, and a map that says he does is worse than no map. The index is
+   *  what `fa_injuries.bodyZone` has always stored, so the side was never
+   *  lost — only ignored at render time. Fixed in v235. */
+  function md2ZoneIdx(inj) {
+    return (inj && inj.bodyZone != null && BODY_ZONES[inj.bodyZone]) ? inj.bodyZone : null;
   }
 
   /** `Partit · Sants`, `Entrenament`, or a dash for a record written before
@@ -32265,17 +32291,25 @@
   function md2RailHtml(seasonInjuries, players, statusMap, todayStr, fitCount) {
     let heatHtml = '';
     if (MD2_SHOW_HEATMAP) {
+      /* ⚠ TALLIED PER POLYGON, NOT PER LABEL. Three right hamstrings and one
+         left is three on one thigh and one on the other; a label tally
+         painted both at four and claimed injuries that never happened. The
+         LABEL tally below is separate and is only used to NAME the most-hit
+         zone, where the side genuinely does not belong. */
       const counts = {};
+      const byLabel = {};
       seasonInjuries.forEach(function (i) {
+        const idx = md2ZoneIdx(i);
+        if (idx != null) counts[idx] = (counts[idx] || 0) + 1;
         const k = md2ZoneKey(i);
-        if (k) counts[k] = (counts[k] || 0) + 1;
+        if (k) byLabel[k] = (byLabel[k] || 0) + 1;
       });
       const max = Math.max(0, ...Object.values(counts));
       const map = bodyMapHtml({
         opacity: 0.34,
         strokeWidth: '0.25',
-        fill: function (_i, z) {
-          const n = counts[z.label] || 0;
+        fill: function (i) {
+          const n = counts[i] || 0;
           /* The handoff's formula, kept exactly: .12 + n*.19 tops out at .88
              for four injuries, which is what the legend bar's .9 end matches.
              A zone nobody hurt is transparent, not the palest red — "none"
@@ -32283,8 +32317,8 @@
           return n ? 'rgba(var(--pp-bad-rgb),' + (0.12 + n * 0.19).toFixed(2) + ')'
             : 'rgba(255,255,255,0)';
         },
-        stroke: function (_i, z) {
-          return (counts[z.label] || 0) ? 'rgba(var(--pp-bad-rgb),.5)' : 'rgba(45,41,38,.12)';
+        stroke: function (i) {
+          return (counts[i] || 0) ? 'rgba(var(--pp-bad-rgb),.5)' : 'rgba(45,41,38,.12)';
         }
       });
 
@@ -32293,19 +32327,25 @@
       const meanDays = resolved.length
         ? Math.round(resolved.reduce((n, i) => n + md2Days(i.startDate, i.endDate || todayStr), 0) / resolved.length)
         : 0;
-      /* A recurrence is the SECOND and later injury to one zone for one
+      /* A recurrence is the SECOND and later injury to the SAME zone for one
          player inside the season — so three injuries to the same hamstring
          count as two recidives, not three. Sorted by start date so "second"
-         means second in time and not second in the array. */
+         means second in time and not second in the array.
+         ⚠ Same zone means the same SIDE: tearing the other hamstring is a new
+         injury, not a recurrence of this one, and calling it one would put a
+         warning band on a player who does not have that history. */
       const seen = {};
       let recur = 0;
       seasonInjuries.slice().sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))
         .forEach(function (i) {
-          const k = String(i.playerId) + '|' + md2ZoneKey(i);
+          const idx = md2ZoneIdx(i);
+          if (idx == null) return;
+          const k = String(i.playerId) + '|' + idx;
           if (seen[k]) recur++;
           seen[k] = true;
         });
-      const topZone = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+      // Named, not drawn — so the LABEL tally is the right one here.
+      const topZone = Object.keys(byLabel).sort((a, b) => byLabel[b] - byLabel[a])[0];
 
       heatHtml = '<section class="md2-block">' +
         md2Head(t('md2.heat'), tv('md2.heat_note', { n: seasonInjuries.length })) +
@@ -32391,35 +32431,43 @@
 
     /* ⚠ Recurrence is counted BY ZONE across the season, not by muscle group.
        Two hamstring tears three months apart are the fact the physio needs;
-       "Hamstrings" as a group would also collect a cramp and a contusion. */
+       "Hamstrings" as a group would also collect a cramp and a contusion.
+       ⚠ And by the same SIDE — the polygon, not the label. The other
+       hamstring is a new injury, and a band saying "2 lesions a
+       Isquiotibials" over one tear each side is a false alarm. */
     const zoneCounts = {};
     seasonInj.forEach(function (i) {
-      const k = md2ZoneKey(i);
-      if (k) zoneCounts[k] = (zoneCounts[k] || 0) + 1;
+      const idx = md2ZoneIdx(i);
+      if (idx != null) zoneCounts[idx] = (zoneCounts[idx] || 0) + 1;
     });
     const repeat = Object.keys(zoneCounts).filter(k => zoneCounts[k] >= 2)
       .sort((a, b) => zoneCounts[b] - zoneCounts[a])[0];
 
     // ---- Localització: history heat plus a marker on the open injury ----
+    /* ⚠ Per polygon, so the map shows the side that was actually hurt. This
+       is the page a physio reads before a reassessment; painting the healthy
+       limb in the same red as the torn one is the worst place in the app to
+       do it. The marker was always on the exact zone — only the FILL under
+       it spilled onto the twin. */
     const histCounts = {};
     allInj.forEach(function (i) {
-      const k = md2ZoneKey(i);
-      if (k) histCounts[k] = (histCounts[k] || 0) + 1;
+      const idx = md2ZoneIdx(i);
+      if (idx != null) histCounts[idx] = (histCounts[idx] || 0) + 1;
     });
-    const curLabel = current ? md2ZoneKey(current) : '';
-    const marker = current && current.bodyZone != null ? bodyZoneCentroid(current.bodyZone) : null;
+    const curIdx = md2ZoneIdx(current);
+    const marker = curIdx != null ? bodyZoneCentroid(curIdx) : null;
     const mapHtml = bodyMapHtml({
       opacity: 0.40,
       marker: marker,
-      fill: function (_i, z) {
-        if (curLabel && z.label === curLabel) return 'rgba(var(--pp-bad-rgb),.45)';
-        const n = histCounts[z.label] || 0;
+      fill: function (i) {
+        if (curIdx != null && i === curIdx) return 'rgba(var(--pp-bad-rgb),.45)';
+        const n = histCounts[i] || 0;
         return n ? 'rgba(var(--pp-bad-rgb),' + Math.min(0.34, 0.1 + n * 0.08).toFixed(2) + ')'
           : 'rgba(255,255,255,0)';
       },
-      stroke: function (_i, z) {
-        if (curLabel && z.label === curLabel) return 'var(--pp-med-inj-ink)';
-        return (histCounts[z.label] || 0) ? 'rgba(var(--pp-bad-rgb),.4)' : 'rgba(45,41,38,.14)';
+      stroke: function (i) {
+        if (curIdx != null && i === curIdx) return 'var(--pp-med-inj-ink)';
+        return (histCounts[i] || 0) ? 'rgba(var(--pp-bad-rgb),.4)' : 'rgba(45,41,38,.14)';
       }
     });
 
@@ -32473,6 +32521,11 @@
         '<span class="md2-frow-by">' + sanitize(d.by || '') + '</span>' +
         '<span class="md2-frow-date md2-num">' + (d.date ? tDateDayMonth(d.date) : '') + '</span>' +
         '<span class="md2-frow-size md2-num">' + md2DocSize(d.size) + '</span>' +
+        /* Deleting a report was only possible from inside the injury sheet,
+           which meant reopening the whole form to take one file off. The row
+           itself is where a physio looks at it, so it is where the × goes. */
+        (ro ? '' : '<button type="button" class="md2-doc-x md2-btn-deldoc" data-inj-id="' +
+          sanitize(d.injId) + '" data-doc-path="' + sanitize(d.path || '') + '">×</button>') +
       '</div>';
     }).join('');
 
@@ -32483,7 +32536,8 @@
           sanitize(current.id) + '">' + t('md2.add_doc') + '</button>') +
       '</div>' +
       (docRows || '<div class="md2-empty">' + t('md2.no_docs') + '</div>') +
-      '<div class="md2-foot-note">' + t('md2.doc_privacy') + '</div>' +
+      '<div class="md2-foot-note">' + t('md2.doc_privacy') + ' ' +
+        tv('md2.max_size_note', { n: Math.round(MD2_DOC_MAX / 1048576) }) + '</div>' +
     '</section>';
 
     // ---- Historial de lesions ----
@@ -32519,7 +32573,9 @@
         '</div>' +
       '</div>' +
       (repeat ? '<div class="md2-band"><span class="md2-dot"></span>' +
-        tv('md2.recur_band', { n: zoneCounts[repeat], zone: sanitize(ZONE_CA[repeat] || repeat) }) +
+        /* `repeat` is a polygon INDEX now, not a label — zoneLabelCa() takes
+           the index and gives the Catalan name of the zone it belongs to. */
+        tv('md2.recur_band', { n: zoneCounts[repeat], zone: sanitize(zoneLabelCa(Number(repeat))) }) +
         '</div>' : '') +
       '<div class="md2-body">' +
         '<aside class="md2-loc">' + md2Head(t('md2.location')) + mapHtml + '</aside>' +
@@ -32589,6 +32645,29 @@
     const n = Number(bytes) || 0;
     return n >= 1024 * 1024 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB'
       : Math.max(1, Math.round(n / 1024)) + ' kB';
+  }
+  /** The cap, said out loud. It was enforced in two places from the start —
+      md2UploadDoc() and storage.rules — and printed in neither, so the only
+      way to find it was to hit it. The label carries it now, built from the
+      constant so the words cannot drift from the check. */
+  function md2DocHint() {
+    return t('md2.f_docs_hint') + ' · ' +
+      tv('md2.max_size', { n: Math.round(MD2_DOC_MAX / 1048576) });
+  }
+
+  /** Take a report off a record: out of Storage AND out of `fa_injuries`.
+   *
+   *  ⚠ STORAGE FIRST, THE RECORD SECOND. The other order can leave a file
+   *  nobody can reach and nobody can delete — it is out of the array that
+   *  names its path, so no screen will ever offer to remove it again. This
+   *  way a failed delete leaves the row exactly where it was and says so.
+   *
+   *  ⚠ A file with no `path` predates this field. It cannot be deleted from
+   *  Storage because nothing knows where it is, so it is dropped from the
+   *  record only, and the caller is told. */
+  function md2DeleteDoc(doc) {
+    if (!doc || !doc.path) return Promise.resolve(false);
+    return storage.ref(doc.path).delete().then(function () { return true; });
   }
   /** Upload one report. Resolves to the doc record, or rejects — the caller
       must show the failure and store nothing. */
@@ -32694,13 +32773,15 @@
       const groups = z ? (z.groups || []) : [];
       const subs = GROUP_SUBS[st.group] || [];
       return '<div class="md2-map-col">' +
+          /* ⚠ The picked polygon only — see md2ZoneIdx(). Matching on the
+             label filled both sides of every paired zone. */
           bodyMapHtml({
             interactive: true, which: 'log', opacity: 0.38,
-            fill: function (_i, zz) {
-              return z && zz.label === z.label ? 'rgba(var(--pp-bad-rgb),.55)' : 'rgba(255,255,255,0)';
+            fill: function (i) {
+              return i === st.zone ? 'rgba(var(--pp-bad-rgb),.55)' : 'rgba(255,255,255,0)';
             },
-            stroke: function (_i, zz) {
-              return z && zz.label === z.label ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.16)';
+            stroke: function (i) {
+              return i === st.zone ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.16)';
             }
           }) +
           '<div class="md2-map-cap"><span>' + t('md2.front') + '</span><span>' + t('md2.back_view') + '</span></div>' +
@@ -32765,7 +32846,7 @@
           }).join('') + '</div>') +
         field(t('md2.f_notes'), '', '<textarea class="md2-ta" id="md2-notes" maxlength="600">' +
           sanitize(editing ? (editing.notes || editing.description || '') : '') + '</textarea>') +
-        field(t('md2.f_docs'), t('md2.f_docs_hint'), '<div id="md2-docs">' + docsHtml() + '</div>') +
+        field(t('md2.f_docs'), md2DocHint(), '<div id="md2-docs">' + docsHtml() + '</div>') +
       '</div>' +
       '<div class="md2-sheet-foot">' +
         '<button type="button" class="md2-cta md2-cta-wide" id="md2-save">' + t('md2.save') + '</button>' +
@@ -32822,11 +32903,24 @@
       }
       const rm = e.target.closest('[data-md2-doc]');
       if (rm) {
-        /* Removed from the RECORD, not from Storage. A file the physio
-           un-attaches by mistake is still there; a delete would need its own
-           confirmation and the rules allow it separately. */
-        st.docs.splice(parseInt(rm.dataset.md2Doc, 10), 1);
-        repaintDocs();
+        /* ⚠ THE FILE GOES TOO. Until v235 this only spliced the array, which
+           left the object in Storage with nothing left pointing at it — an
+           orphan nobody could see and nobody could remove, because the only
+           record of its path had just been thrown away. It is a real delete
+           now, so it asks first, and the row survives a failure. */
+        const idx = parseInt(rm.dataset.md2Doc, 10);
+        const doc = st.docs[idx];
+        if (!doc) return;
+        if (!confirm(tv('md2.del_doc', { name: doc.name }))) return;
+        rm.classList.add('md2-busy');
+        md2DeleteDoc(doc).then(function (gone) {
+          st.docs.splice(idx, 1);
+          repaintDocs();
+          if (!gone) alert(t('md2.del_orphan'));
+        }).catch(function () {
+          rm.classList.remove('md2-busy');
+          alert(t('md2.del_failed'));
+        });
       }
     });
 
@@ -33083,6 +33177,33 @@
       btn.addEventListener('click', () => {
         const inj = getInjuries().find(i => i.id === btn.dataset.injId);
         showStaffInjuryLogger(inj ? inj.playerId : null, btn.dataset.injId);
+      });
+    });
+
+    /* Taking a report off, from the row it is on. Storage first, then the
+       record — the other order orphans the file, because the array being
+       rewritten is the only thing that knows its path. A failed delete
+       changes nothing and says so. */
+    page.querySelectorAll('.md2-btn-deldoc').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inj = getInjuries().find(i => i.id === btn.dataset.injId);
+        if (!inj) return;
+        const path = btn.dataset.docPath;
+        const doc = (inj.docs || []).find(d => (d.path || '') === path);
+        if (!doc) return;
+        if (!confirm(tv('md2.del_doc', { name: doc.name }))) return;
+        btn.classList.add('md2-busy');
+        md2DeleteDoc(doc).then(function (gone) {
+          const live = getInjuries().find(i => i.id === inj.id);
+          updateInjury(inj.id, {
+            docs: (live.docs || []).filter(d => (d.path || '') !== path),
+          });
+          if (!gone) alert(t('md2.del_orphan'));
+          renderPage(getSession());
+        }).catch(function () {
+          btn.classList.remove('md2-busy');
+          alert(t('md2.del_failed'));
+        });
       });
     });
 

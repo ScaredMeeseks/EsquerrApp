@@ -9463,3 +9463,54 @@ by the `-preview.html` pattern, but that only covers the APK mirror — Pages re
 nothing else, which is how a preview shipped live once. This one matters more than the other four: it
 renders invented but entirely plausible medical records, and a page of that shape at a public URL is
 worth nobody's second glance to work out.
+
+### 2026-09-05b — Both legs, a missing cap, and an orphaned file (v235)
+
+Three fixes on the owner's first pass over v234.
+
+**1. Picking one leg marked both.** ⚠ **The bug, and it was mine.** `BODY_ZONES` holds every paired
+zone TWICE, once per side, and both copies share a `label`. v234 matched the fill on the label — the
+prototype's behaviour, and the exploration flagged it as a decision I then made wrongly — so a player
+choosing his right hamstring was shown a body with both hamstrings red, and so was the physio reading
+the file. The index has been in `fa_injuries.bodyZone` since the feature was written; **the side was
+never lost, only ignored at render time.** New `md2ZoneIdx()`; five sites moved to it — the player's
+picker, the staff picker, the season heat map, the medical file's location map, and the recurrence
+count. `md2ZoneKey()` survives for the ONE job where the side genuinely does not belong: naming a
+zone in prose ("Zona més tocada: Isquiotibials").
+
+Two consequences worth stating, because both change a number on screen:
+- The season map now tallies **per polygon**. Three right hamstrings and one left is three on one
+  thigh and one on the other, where before it painted both at four and claimed injuries that had
+  never happened.
+- A recurrence is the same zone **and the same side**. Tearing the other hamstring is a new injury,
+  and counting it as a repeat put a warning band on a player with no such history.
+
+**2. The size cap was enforced twice and printed nowhere.** 10 MB, in `md2UploadDoc()` and in
+`storage.rules` since v234 — but the only way to discover it was to hit it. `md2DocHint()` builds the
+label from `MD2_DOC_MAX`, so the words cannot drift from the check, and the file page's footnote says
+it too. The limit itself is unchanged: a phone photo is 3-8 MB and a scan PDF rarely more.
+
+**3. Removing a report left the file behind.** ⚠ The sheet's `×` only spliced the array — and the
+array held the only copy of the object's path, so the file stayed in Storage as an **orphan nobody
+could see and nobody could remove**. `md2DeleteDoc()` does a real delete now, and the file page grew
+its own `×` per row, which is where a physio actually looks at a report. ⚠ **Storage first, the
+record second**: the other order orphans the file whenever the delete fails, and a failure now leaves
+the row exactly where it was and says so. A file with no `path` predates the field — it comes off the
+record and the caller is told, rather than a silent success implying the object is gone.
+`storage.rules` already allowed the delete (v234 split it out from create/update), so **no rules
+deploy is needed for this one**.
+
+**Tests.** 3017 → 3033; `medical.test.js` 68 → 85.
+
+⚠ **The mutation harness let a bug hide, and this is the lesson.** The first round on these fixes
+reported two survivors, one of them the very bug the owner had reported. Two causes, both worth
+remembering:
+- **The assertions covered the season map and not the pickers.** Testing one render site says
+  nothing about the four others that do the same thing next to it.
+- **The harness used `String.replace(from, to)`, which replaces the FIRST occurrence only.** The
+  logger carries its own copy of the picker, so a mutation aimed at "the picker fill" only ever
+  damaged the player's sheet and left the staff one intact — the surviving copy passed the suite and
+  the mutation was scored as killed for the wrong reason. It splits and joins on every occurrence
+  now. **A duplicated block can hide behind its twin in a mutation run.**
+
+After both fixes: 10 mutations, no survivors — including one aimed at each copy of the picker.
