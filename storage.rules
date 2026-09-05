@@ -31,5 +31,50 @@ service firebase.storage {
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
+
+    // ── Medical reports and scans (v234) ────────────────────────────────
+    //
+    // The most sensitive data in the app: a physio's ecography, a hospital
+    // report, a photo of a scan. `Informes i proves` on the injury sheet.
+    //
+    // ⚠ THE CATEGORY IS IN THE PATH BECAUSE A STORAGE RULE CANNOT READ
+    // FIRESTORE. There is nothing here to look the injury up in, so the
+    // only thing the `cats` claim can be tested against is a path segment.
+    // A file written under the wrong category would be readable by the
+    // wrong coaches and invisible to the right ones — the client builds
+    // this path from the PLAYER's category for that reason.
+    //
+    // ⚠ STAFF ONLY, INCLUDING READ. The player never sees these; the app
+    // says so on the screen, and this is what makes it true rather than a
+    // promise the UI keeps. `role in ['staff','lead']` mirrors isStaffOf()
+    // in firestore.rules, and the `cats` test mirrors the category scoping
+    // on teams/{teamId}/data — a coach reads only his own squads.
+    //
+    // ⚠ delete IS SPLIT OUT, for the same reason it is on profilePics:
+    // `request.resource` is null on a delete, so a size or contentType
+    // check in the same rule errors out and denies it. That once meant
+    // nobody could delete a profile picture at all, not even its owner.
+    match /medical/{teamId}/{category}/{injuryId}/{fileName} {
+      function isMedStaff() {
+        return request.auth != null
+               && request.auth.token.teamId == teamId
+               && request.auth.token.role in ['staff', 'lead']
+               && category in request.auth.token.cats;
+      }
+      allow read: if isMedStaff()
+                  || request.auth.token.email == 'marna96@gmail.com';
+      allow create, update: if isMedStaff()
+                   && request.resource.size < 10 * 1024 * 1024
+                   // pdf, Word (both the 1997 and the OOXML type), or an
+                   // image. Anything else is refused rather than stored and
+                   // hoped about.
+                   && (request.resource.contentType.matches('image/.*')
+                       || request.resource.contentType == 'application/pdf'
+                       || request.resource.contentType == 'application/msword'
+                       || request.resource.contentType ==
+                          'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      allow delete: if isMedStaff()
+                    || request.auth.token.email == 'marna96@gmail.com';
+    }
   }
 }

@@ -1379,6 +1379,118 @@
     'injury_log.status':     { ca:'Estat', es:'Estado', en:'Status' },
     'injury_log.end_date':   { ca:'Data de fi', es:'Fecha de fin', en:'End Date' },
 
+    // ── Mèdic, the eighth design handoff (v234) ──
+    // The `.md2-` page, its logger, the player's self-report sheet and the
+    // player's own view. `medical.*` above still serves the parts that were
+    // not redrawn (the derived status vocabulary, the edit modal).
+    'md2.title':          { ca:'Mèdic', es:'Médico', en:'Medical' },
+    'md2.subline':        { ca:'{scope} · {n} jugadors · {date}', es:'{scope} · {n} jugadores · {date}', en:'{scope} · {n} players · {date}' },
+    'md2.injured':        { ca:'Lesionats', es:'Lesionados', en:'Injured' },
+    'md2.recovering':     { ca:'Recuperant', es:'Recuperando', en:'Recovering' },
+    'md2.days_lost':      { ca:'Dies perduts', es:'Días perdidos', en:'Days lost' },
+    'md2.days_lost_s':    { ca:'Dies', es:'Días', en:'Days' },
+    'md2.season_inj':     { ca:'Lesions temporada', es:'Lesiones temporada', en:'Season injuries' },
+    'md2.season_inj_s':   { ca:'Temporada', es:'Temporada', en:'Season' },
+    'md2.meta_line':      { ca:'Des de {since} · alta {eta} · {n} sessions', es:'Desde {since} · alta {eta} · {n} sesiones', en:'Since {since} · back {eta} · {n} sessions' },
+    'md2.log':            { ca:'+ Registrar lesió', es:'+ Registrar lesión', en:'+ Log injury' },
+    'md2.pending':        { ca:'Autoreports pendents', es:'Autoinformes pendientes', en:'Pending self-reports' },
+    'md2.pending_note':   { ca:'{n} per revisar', es:'{n} por revisar', en:'{n} to review' },
+    'md2.register':       { ca:'Registrar', es:'Registrar', en:'Log it' },
+    'md2.discard':        { ca:'Descartar', es:'Descartar', en:'Discard' },
+    'md2.blank_report':   { ca:'Sense detall — només ha marcat Lesionat', es:'Sin detalle — solo ha marcado Lesionado', en:'No detail — only marked Injured' },
+    'md2.active':         { ca:'Lesions actives', es:'Lesiones activas', en:'Active injuries' },
+    'md2.active_note':    { ca:'{inj} lesionats · {rec} recuperant', es:'{inj} lesionados · {rec} recuperando', en:'{inj} injured · {rec} recovering' },
+    'md2.discharge':      { ca:'Alta mèdica', es:'Alta médica', en:'Discharge' },
+    'md2.edit':           { ca:'Editar', es:'Editar', en:'Edit' },
+    'md2.since':          { ca:'Des de', es:'Desde', en:'Since' },
+    'md2.eta':            { ca:'Previsió d\'alta', es:'Previsión de alta', en:'Expected return' },
+    'md2.missed':         { ca:'Sessions perdudes', es:'Sesiones perdidas', en:'Sessions missed' },
+    'md2.origin':         { ca:'Origen', es:'Origen', en:'Origin' },
+    'md2.reports':        { ca:'Informes', es:'Informes', en:'Reports' },
+    'md2.none':           { ca:'Cap', es:'Ninguno', en:'None' },
+    'md2.files_n':        { ca:'{n} fitxers', es:'{n} archivos', en:'{n} files' },
+    'md2.files_1':        { ca:'1 fitxer', es:'1 archivo', en:'1 file' },
+    'md2.origin_training':{ ca:'Entrenament', es:'Entrenamiento', en:'Training' },
+    'md2.origin_match':   { ca:'Partit', es:'Partido', en:'Match' },
+    'md2.origin_other':   { ca:'Fora de l\'equip', es:'Fuera del equipo', en:'Outside' },
+    'md2.closed':         { ca:'Lesions tancades · temporada', es:'Lesiones cerradas · temporada', en:'Closed injuries · season' },
+    'md2.closed_note':    { ca:'{n} fitxes · {d} dies', es:'{n} fichas · {d} días', en:'{n} records · {d} days' },
+    'md2.th_player':      { ca:'Jugador', es:'Jugador', en:'Player' },
+    'md2.th_zone':        { ca:'Zona · estructura', es:'Zona · estructura', en:'Zone · structure' },
+    'md2.th_sev':         { ca:'Gravetat', es:'Gravedad', en:'Severity' },
+    'md2.th_period':      { ca:'Període', es:'Periodo', en:'Period' },
+    'md2.th_days':        { ca:'Dies', es:'Días', en:'Days' },
+    'md2.heat':           { ca:'Mapa de la temporada', es:'Mapa de la temporada', en:'Season map' },
+    'md2.heat_note':      { ca:'{n} lesions', es:'{n} lesiones', en:'{n} injuries' },
+    'md2.avg':            { ca:'Mitjana per lesió', es:'Media por lesión', en:'Mean per injury' },
+    'md2.recur':          { ca:'Recidives', es:'Recidivas', en:'Recurrences' },
+    'md2.hot_zone':       { ca:'Zona més tocada', es:'Zona más tocada', en:'Most hit zone' },
+    'md2.squad':          { ca:'Estat de la plantilla', es:'Estado de la plantilla', en:'Squad state' },
+    'md2.squad_note':     { ca:'{f} aptes de {n}', es:'{f} aptos de {n}', en:'{f} fit of {n}' },
+    'md2.st_fit':         { ca:'Apte', es:'Apto', en:'Fit' },
+    'md2.st_rec':         { ca:'Recuperant', es:'Recuperando', en:'Recovering' },
+    'md2.st_inj':         { ca:'Lesionat', es:'Lesionado', en:'Injured' },
+    'md2.days_n':         { ca:'{n} dies', es:'{n} días', en:'{n} days' },
+    'md2.n_of_m':         { ca:'{n} de {m}', es:'{n} de {m}', en:'{n} of {m}' },
+    'md2.ongoing':        { ca:'en curs', es:'en curso', en:'ongoing' },
+    'md2.no_pending':     { ca:'Cap autoreport per revisar', es:'Ningún autoinforme por revisar', en:'No self-reports to review' },
+    'md2.no_active':      { ca:'Cap lesió activa', es:'Sin lesiones activas', en:'No active injuries' },
+    'md2.no_closed':      { ca:'Cap lesió tancada aquesta temporada', es:'Sin lesiones cerradas esta temporada', en:'No closed injuries this season' },
+    // Logger (1c)
+    'md2.log_title':      { ca:'Registrar lesió', es:'Registrar lesión', en:'Log injury' },
+    'md2.f_player':       { ca:'Jugador', es:'Jugador', en:'Player' },
+    'md2.f_zone':         { ca:'Zona', es:'Zona', en:'Zone' },
+    'md2.no_zone':        { ca:'Cap zona seleccionada', es:'Ninguna zona seleccionada', en:'No zone selected' },
+    'md2.f_group':        { ca:'Grup muscular', es:'Grupo muscular', en:'Muscle group' },
+    'md2.f_muscle':       { ca:'Múscul o estructura', es:'Músculo o estructura', en:'Muscle or structure' },
+    'md2.f_sev':          { ca:'Gravetat', es:'Gravedad', en:'Severity' },
+    'md2.front':          { ca:'Davant', es:'Delante', en:'Front' },
+    'md2.back_view':      { ca:'Darrere', es:'Detrás', en:'Back' },
+    'md2.f_notes':        { ca:'Notes mèdiques', es:'Notas médicas', en:'Medical notes' },
+    'md2.f_docs':         { ca:'Informes i proves', es:'Informes y pruebas', en:'Reports and scans' },
+    'md2.f_docs_hint':    { ca:'· pdf, word, imatge', es:'· pdf, word, imagen', en:'· pdf, word, image' },
+    'md2.drop':           { ca:'↑ Arrossega els informes aquí o tria un fitxer', es:'↑ Arrastra los informes aquí o elige un archivo', en:'↑ Drop reports here or choose a file' },
+    'md2.save':           { ca:'Desar la fitxa', es:'Guardar la ficha', en:'Save record' },
+    'md2.cancel':         { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
+    'md2.pick_player':    { ca:'Selecciona un jugador', es:'Selecciona un jugador', en:'Choose a player' },
+    'md2.pick_zone':      { ca:'Toca el mapa per triar la zona', es:'Toca el mapa para elegir la zona', en:'Tap the map to pick the zone' },
+    'md2.upload_failed':  { ca:'No s\'ha pogut pujar el fitxer. No s\'ha desat res.', es:'No se ha podido subir el archivo. No se ha guardado nada.', en:'The file could not be uploaded. Nothing was saved.' },
+    'md2.too_big':        { ca:'El fitxer supera els 10 MB.', es:'El archivo supera los 10 MB.', en:'The file is over 10 MB.' },
+    'md2.bad_type':       { ca:'Només pdf, word o imatge.', es:'Solo pdf, word o imagen.', en:'Only pdf, word or image.' },
+    // Self-report (1d)
+    'md2.rep_title':      { ca:'On et fa mal?', es:'¿Dónde te duele?', en:'Where does it hurt?' },
+    'md2.rep_sub':        { ca:'Has marcat Lesionat a {ev}. Ajuda l\'staff a fer-ne el seguiment: pots deixar-ho en blanc i enviar-ho igualment.', es:'Has marcado Lesionado en {ev}. Ayuda al staff a hacer el seguimiento: puedes dejarlo en blanco y enviarlo igualmente.', en:'You marked Injured at {ev}. Help the staff follow it up — you can leave it blank and send it anyway.' },
+    'md2.optional':       { ca:'· opcional', es:'· opcional', en:'· optional' },
+    'md2.how':            { ca:'Com ha passat', es:'Cómo ha pasado', en:'How it happened' },
+    'md2.how_ph':         { ca:'Escriu-ho aquí si vols…', es:'Escríbelo aquí si quieres…', en:'Write it here if you like…' },
+    'md2.send':           { ca:'Enviar', es:'Enviar', en:'Send' },
+    'md2.skip':           { ca:'Ometre', es:'Omitir', en:'Skip' },
+    'md2.rep_foot':       { ca:'Marcaràs Lesionat encara que ho ometis.', es:'Marcarás Lesionado aunque lo omitas.', en:'You will be marked Injured even if you skip this.' },
+    'md2.rep_event':      { ca:'la sessió', es:'la sesión', en:'the session' },
+    // Player medical file (1e)
+    'md2.back':           { ca:'← Mèdic', es:'← Médico', en:'← Medical' },
+    'md2.days_off':       { ca:'Dies de baixa', es:'Días de baja', en:'Days out' },
+    'md2.recur_band':     { ca:'{n} lesions a {zone} aquesta temporada.', es:'{n} lesiones en {zone} esta temporada.', en:'{n} injuries to {zone} this season.' },
+    'md2.location':       { ca:'Localització', es:'Localización', en:'Location' },
+    'md2.active_one':     { ca:'Lesió activa', es:'Lesión activa', en:'Active injury' },
+    'md2.logged_by':      { ca:'Registrat per', es:'Registrado por', en:'Logged by' },
+    'md2.edit_file':      { ca:'Editar la fitxa', es:'Editar la ficha', en:'Edit record' },
+    'md2.add_doc':        { ca:'+ Afegir document', es:'+ Añadir documento', en:'+ Add document' },
+    'md2.doc_privacy':    { ca:'Només l\'staff mèdic i els entrenadors de la categoria hi tenen accés. El jugador no veu aquests documents.', es:'Solo el staff médico y los entrenadores de la categoría tienen acceso. El jugador no ve estos documentos.', en:'Only medical staff and the category\'s coaches have access. The player never sees these.' },
+    'md2.no_docs':        { ca:'Cap document', es:'Ningún documento', en:'No documents' },
+    'md2.history':        { ca:'Historial de lesions', es:'Historial de lesiones', en:'Injury history' },
+    'md2.history_note':   { ca:'{n} fitxes des de {y}', es:'{n} fichas desde {y}', en:'{n} records since {y}' },
+    'md2.no_history':     { ca:'Cap lesió registrada', es:'Sin lesiones registradas', en:'No injuries on record' },
+    // The player's own view (1f)
+    'md2.my_state':       { ca:'El meu estat', es:'Mi estado', en:'My status' },
+    'md2.my_sub':         { ca:'L\'staff fa el seguiment de la teva lesió. Parla amb el fisio per als detalls.', es:'El staff hace el seguimiento de tu lesión. Habla con el fisio para los detalles.', en:'The staff are following your injury. Talk to the physio for the details.' },
+    'md2.my_eta':         { ca:'Alta prevista', es:'Alta prevista', en:'Expected back' },
+    'md2.my_sessions':    { ca:'Sessions', es:'Sesiones', en:'Sessions' },
+    'md2.my_history':     { ca:'El meu historial', es:'Mi historial', en:'My history' },
+    'md2.my_fit':         { ca:'Cap lesió activa', es:'Sin lesiones activas', en:'No active injury' },
+    'md2.privacy_zone':   { ca:'El jugador veu la zona i les dates. Ni la gravetat, ni el múscul, ni les notes de l\'staff surten de la fitxa.', es:'El jugador ve la zona y las fechas. Ni la gravedad, ni el músculo, ni las notas del staff salen de la ficha.', en:'The player sees the zone and the dates. Not the severity, the muscle, or the staff notes.' },
+    'md2.privacy_sev':    { ca:'El jugador veu la zona, la gravetat i les dates. Les notes de l\'staff i els documents no surten de la fitxa.', es:'El jugador ve la zona, la gravedad y las fechas. Las notas del staff y los documentos no salen de la ficha.', en:'The player sees the zone, the severity and the dates. Staff notes and documents stay hidden.' },
+
     // ── Notifications ──
     'notif.all':         { ca:'Totes les notificacions', es:'Todas las notificaciones', en:'All Notifications' },
     'notif.no_notif':    { ca:'Cap notificació.', es:'Sin notificaciones.', en:'No notifications yet.' },
@@ -2181,7 +2293,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 233;
+  const APP_VERSION = 234;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2444,8 +2556,12 @@
        and the roster's `rosterTeamFilter`. The roster ALSO carries chips
        beside its Jugadors heading, and the two sets stay in step for
        free: both render from `rosterTeamFilter` and both write it, so
-       there is no second copy of the state to synchronise. The medical
-       file still has only its own filter and gets nothing here. */
+       there is no second copy of the state to synchronise.
+
+       Mèdic joined them at v234. It used to draw its own chip row inside
+       the page, in the roster's borrowed `.roster-team-filter` markup, and
+       the redesign had no band left to hang it from — the handoff draws
+       exactly this bar above the hero. One filter, one place. */
     var extra = currentPage === 'calendar'
       ? catBarLettersHtml(calTeamFilter, 'data-cal-letter')
       : currentPage === 'manage-roster'
@@ -2453,7 +2569,9 @@
         : currentPage === 'convocatoria'
           ? catBarLettersHtml(convTeamFilter, 'data-conv-letter')
           : currentPage === 'staff-home'
-            ? catBarLettersHtml(iniTeamFilter, 'data-ini-letter') : '';
+            ? catBarLettersHtml(iniTeamFilter, 'data-ini-letter')
+            : currentPage === 'medical'
+              ? catBarLettersHtml(medicalTeamFilter, 'data-med-team') : '';
     return '<div class="cat-bar">' + btns + extra + '</div>';
   }
 
@@ -13727,65 +13845,88 @@
      Shared by "My stats" (the player's own) and the staff view of a player
      reached from Manage roster — same markup, so bindMyStatsInjuryPopup()
      wires the hover popup on either page. */
-  function buildInjuryHistoryHtml(uid) {
-    const now = new Date();
-    const playerInjuries = getPlayerInjuries(uid)
-      .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+  /** The injury block on My stats and on the staff's player detail — screen
+   *  1f of the Mèdic handoff, re-dressed in place rather than given a page of
+   *  its own. One template, two audiences, and the difference between them is
+   *  the whole point of the screen.
+   *
+   *  ⚠ THE PRIVACY RULE IS ENFORCED HERE, BY NOT BUILDING THE STRING.
+   *  A player sees the ZONE and the DATES. Not the muscle, not the severity,
+   *  not the staff's notes, not the documents. It is done by omission and not
+   *  by a CSS class or a `hidden` attribute, because both of those ship the
+   *  diagnosis to the browser and hide it — and this is medical data on a
+   *  phone the player owns. `MD2_PLAYER_SEES_DIAGNOSIS` widens it to zone +
+   *  severity + dates if a club ever asks; notes and files stay out in both
+   *  modes and there is no flag for them.
+   *
+   *  Staff (`forPlayer: false`) keep the full row — zone · muscle, severity,
+   *  and the hover body map — which is what the roster's player detail has
+   *  shown since v45.
+   *
+   *  @param uid
+   *  @param opts {forPlayer:boolean} */
+  function buildInjuryHistoryHtml(uid, opts) {
+    const forPlayer = !!(opts && opts.forPlayer);
+    const injs = getPlayerInjuries(uid)
+      .sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')));
+    const open = injs.find(i => i.status === 'active') || injs.find(i => i.status === 'recovering');
 
-    let injuryListHtml = '';
-    if (playerInjuries.length === 0) {
-      injuryListHtml = '<div style="padding:.8rem;color:var(--text-secondary);font-size:.85rem;">' + t('stats.no_injuries') + '</div>';
-    } else {
-      injuryListHtml = playerInjuries.map(inj => {
-        const startD = new Date(inj.startDate + 'T12:00:00');
-        const endD = inj.endDate ? new Date(inj.endDate + 'T12:00:00') : now;
-        const days = Math.max(1, Math.floor((endD - startD) / 86400000) + 1);
-        const startStr = tDateDayMonth(inj.startDate);
-        const endStr = inj.status === 'resolved' ? (inj.endDate ? tDateDayMonth(inj.endDate) : '?') : t('stats.present');
-        const durationStr = inj.status !== 'resolved' ? (days + ' days so far') : (days === 1 ? '1 day' : days + ' days');
-        const note = inj.muscleGroup ? (inj.muscleGroup + (inj.muscleSub ? ' (' + inj.muscleSub + ')' : '')) : 'Injury';
-        const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
-        const statusColors = { active: '#ef5350', recovering: '#f9a825', resolved: '#66bb6a' };
-        const statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (statusColors[inj.status] || '#999') + ';margin-right:6px;"></span>';
-        const sevDot = '<span class="med-severity-badge med-severity-sm" style="background:' + (sevColors[inj.severity] || '#999') + ';margin-left:6px;">' + (inj.severity || '') + '</span>';
-        return `<div class="mystats-inj-row" data-zone-idx="${inj.bodyZone != null ? inj.bodyZone : ''}" style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.82rem;cursor:help;">
-          <div style="display:flex;align-items:center;">${statusDot}<span>${sanitize(note)}</span>${sevDot}</div>
-          <div style="text-align:right;color:var(--text-secondary);font-size:.75rem;">${startStr} – ${endStr}<br><strong>${durationStr}</strong></div>
-        </div>`;
-      }).join('');
-    }
+    const rows = injs.map(function (inj) {
+      const openRow = inj.status !== 'resolved';
+      const days = md2Days(inj.startDate, inj.endDate);
+      const period = tDateDMY(inj.startDate) + ' – ' +
+        (inj.endDate ? tDateDMY(inj.endDate) : t('md2.ongoing'));
+      const what = forPlayer
+        ? md2ZoneText(inj)
+        : [md2ZoneText(inj), md2MuscleText(inj)].filter(Boolean).join(' · ');
+      const sev = (!forPlayer || MD2_PLAYER_SEES_DIAGNOSIS) && md2SevCls(inj.severity)
+        ? '<span class="md2-mine-sev ' + md2SevCls(inj.severity) + '-ink">' + md2SevLabel(inj.severity) + '</span>'
+        : '';
+      return '<div class="md2-mine-row mystats-inj-row" data-zone-idx="' +
+          (inj.bodyZone != null ? inj.bodyZone : '') + '">' +
+        '<span class="md2-dot md2-dot-' + (openRow ? 'inj' : 'off') + '"></span>' +
+        '<span class="md2-mine-what"><span class="md2-mine-zone">' + sanitize(what) + '</span>' +
+          '<span class="md2-mine-period md2-num">' + period + '</span></span>' +
+        sev +
+        '<span class="md2-mine-days md2-num">' + tv('md2.days_n', { n: days }) + '</span>' +
+      '</div>';
+    }).join('');
 
-    // Body map SVG with a blinking dot on the current injury zone
-    const activePlayerInj = playerInjuries.find(inj => inj.status === 'active');
-    const currentZoneIdx = activePlayerInj ? activePlayerInj.bodyZone : null;
-    let bodyMapHtml = '';
-    if (activePlayerInj && currentZoneIdx != null && BODY_ZONES[currentZoneIdx]) {
-      const zone = BODY_ZONES[currentZoneIdx];
-      // Compute centroid of the polygon
-      const pairs = zone.pts.split(/\s+/).map(p => p.split(',').map(Number));
-      let cx = 0, cy = 0;
-      pairs.forEach(([x, y]) => { cx += x; cy += y; });
-      cx = (cx / pairs.length).toFixed(1);
-      cy = (cy / pairs.length).toFixed(1);
-      bodyMapHtml = `<div class="mystats-body-map">
-        <div style="position:relative;display:inline-block;line-height:0;">
-          <img src="img/cuerpos.png" style="display:block;height:180px;pointer-events:none;" />
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;">
-            <polygon points="${zone.pts}" fill="rgba(239,83,80,.25)" stroke="#ef5350" stroke-width=".5"/>
-            <circle cx="${cx}" cy="${cy}" r="1.8" class="mystats-injury-dot"/>
-          </svg>
-        </div>
-      </div>`;
-    }
+    /* The hero the handoff draws above the list: the current state in one
+       line. A fit player gets the same band with nothing alarming in it,
+       rather than the block disappearing — "no active injury" is an answer. */
+    const statusHtml = open
+      ? '<div class="md2-mine-hero">' +
+          '<span class="md2-mine-tag"><span class="md2-dot md2-dot-' +
+            (open.status === 'active' ? 'inj' : 'rec') + '"></span>' +
+            (open.status === 'active' ? t('md2.st_inj') : t('md2.st_rec')) + '</span>' +
+          '<span class="md2-mine-h">' + sanitize(md2ZoneText(open)) + '</span>' +
+          (forPlayer ? '<p class="md2-mine-sub">' + t('md2.my_sub') + '</p>' : '') +
+          '<div class="md2-mine-stats">' +
+            '<div class="md2-stat"><span class="md2-eyebrow md2-eyebrow-s">' + t('md2.since') +
+              '</span><span class="md2-stat-v">' + tDateDayMonth(open.startDate) + '</span></div>' +
+            '<div class="md2-stat"><span class="md2-eyebrow md2-eyebrow-s">' + t('md2.my_eta') +
+              '</span><span class="md2-stat-v">' +
+              (open.expectedReturn ? tDateDayMonth(open.expectedReturn) : '—') + '</span></div>' +
+            '<div class="md2-stat"><span class="md2-eyebrow md2-eyebrow-s">' + t('md2.my_sessions') +
+              '</span><span class="md2-stat-v">' +
+              md2MissedSessions(open, getUsers().find(u => String(u.id) === String(uid)), getTrainings()) +
+              '</span></div>' +
+          '</div>' +
+        '</div>'
+      : '<div class="md2-mine-hero md2-mine-fit">' +
+          '<span class="md2-mine-tag"><span class="md2-dot md2-dot-fit"></span>' + t('md2.st_fit') + '</span>' +
+          '<span class="md2-mine-h">' + t('md2.my_fit') + '</span>' +
+        '</div>';
 
-    return `
-      <div class="mystats-injury-row" style="margin-top:1rem;">
-        <div class="card mystats-injury-card">
-          <div class="card-title" style="margin-bottom:.4rem;font-size:.85rem;">${t('stats.injury_history')}</div>
-          ${injuryListHtml}
-        </div>
-        ${bodyMapHtml}
-      </div>`;
+    return '<section class="md2-mine">' + statusHtml +
+      md2Head(forPlayer ? t('md2.my_history') : t('md2.history')) +
+      (rows || '<div class="md2-empty">' + t('md2.no_history') + '</div>') +
+      (forPlayer
+        ? '<p class="md2-foot-note">' +
+            (MD2_PLAYER_SEES_DIAGNOSIS ? t('md2.privacy_sev') : t('md2.privacy_zone')) + '</p>'
+        : '') +
+      '</section>';
   }
 
   /**
@@ -14052,7 +14193,7 @@
         ${attendDonutHtml}
       </div>
       ${matchTableHtml}
-      ${buildInjuryHistoryHtml(uid)}
+      ${buildInjuryHistoryHtml(uid, { forPlayer: true })}
       ${readinessHtml}
       ${acwrHtml}
       ${chartHtml}
@@ -23472,9 +23613,13 @@
   }
 
   let medicalDetailPlayerId = null;
-  let medicalFilter = 'all';
-  let medicalTeamFilter = 'all'; // 'all' | 'A' | 'B' | … — reset on category change
-  let medicalPastExpanded = false;
+  /* 'all' | 'A' | 'B' | … — reset on category change, in the .cat-bar handler
+     beside the other four squad filters since v234. The status filter that
+     used to sit next to it (all / injured / recovering / fit) is gone: the
+     handoff's rail lists all 22 players with their state, which is the same
+     answer without a control to set wrong. */
+  let medicalTeamFilter = 'all';
+  let medicalPastExpanded = true;
 
   /* ═══════════════════════════════════════════════════════════
      PLANTILLA — the staff roster, redesigned (Claude Design handoff,
@@ -31425,1248 +31570,1424 @@
     }
   }
 
-  // ---------- Medical body map popup ----------
-  function bindMedicalBodyPopup() {
-    let popup = document.getElementById('medical-body-popup');
-    if (popup) popup.remove();
-    popup = document.createElement('div');
-    popup.id = 'medical-body-popup';
-    popup.className = 'medical-body-popup';
-    // Build image + SVG overlay
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'position:relative;display:inline-block;line-height:0;';
-    var img = document.createElement('img');
-    img.src = 'img/cuerpos.png'; img.alt = 'Body map';
-    img.style.cssText = 'display:block;width:300px;height:auto;border-radius:8px;';
-    wrap.appendChild(img);
-    var svgNS = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.setAttribute('preserveAspectRatio', 'none');
-    svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
-    BODY_ZONES.forEach(function(z) {
-      var poly = document.createElementNS(svgNS, 'polygon');
-      poly.setAttribute('points', z.pts);
-      poly.style.cssText = 'fill:transparent;stroke:transparent;transition:fill .2s,stroke .2s;';
-      // Tag each polygon with its group names for matching
-      poly.dataset.groups = z.groups.join('|');
-      svg.appendChild(poly);
-    });
-    wrap.appendChild(svg);
-    popup.appendChild(wrap);
-    document.body.appendChild(popup);
-
-    const OFFSET = 16;
-    const activeInjuries = getActiveInjuries();
-    const injZoneByPlayer = {};
-    activeInjuries.forEach(inj => { if (inj.bodyZone != null) injZoneByPlayer[inj.playerId] = inj.bodyZone; });
-    // Fallback to fa_injury_zone for players without fa_injuries records
-    const zoneMapFallback = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
-    document.querySelectorAll('.medical-injury').forEach(el => {
-      el.addEventListener('mouseenter', e => {
-        var playerId = el.closest('.medical-row') ? el.closest('.medical-row').dataset.playerId : null;
-        var zIdx = playerId != null ? (injZoneByPlayer[playerId] != null ? injZoneByPlayer[playerId] : zoneMapFallback[playerId]) : null;
-        // Highlight only the specific zone that was selected
-        svg.querySelectorAll('polygon').forEach(function(poly, i) {
-          if (zIdx != null && i === zIdx) {
-            poly.style.fill = 'rgba(239,83,80,.4)';
-            poly.style.stroke = '#ef5350';
-            poly.style.strokeWidth = '.6';
-          } else {
-            poly.style.fill = 'transparent';
-            poly.style.stroke = 'transparent';
-          }
-        });
-        popup.classList.add('visible');
-        positionPopup(e);
-      });
-      el.addEventListener('mousemove', positionPopup);
-      el.addEventListener('mouseleave', () => {
-        popup.classList.remove('visible');
-        svg.querySelectorAll('polygon').forEach(function(poly) {
-          poly.style.fill = 'transparent';
-          poly.style.stroke = 'transparent';
-        });
-      });
-    });
-    function positionPopup(e) {
-      const pw = popup.offsetWidth || 316;
-      const ph = popup.offsetHeight || 420;
-      let x = e.clientX + OFFSET;
-      let y = e.clientY - ph / 2;
-      if (x + pw > window.innerWidth - 8) x = e.clientX - pw - OFFSET;
-      if (y < 8) y = 8;
-      if (y + ph > window.innerHeight - 8) y = window.innerHeight - ph - 8;
-      popup.style.left = x + 'px';
-      popup.style.top = y + 'px';
-    }
-  }
+  /* The dashboard hover popup was DELETED at v234, not ported.
+     It hung off `.medical-injury` inside `.medical-row` — the closed-injury
+     rows of the old page — and the redesign has no such row: the zone is
+     printed in the table and drawn on the season map, so a hover that
+     reproduced it added nothing and could not be reached on a phone at all.
+     bindMyStatsInjuryPopup() is the one that survives; it hangs off
+     `.mystats-inj-row`, which the player's own history still carries. */
 
   // ---------- Shared muscle data ----------
   // BODY_REGIONS, GROUP_SUBS → utils.js
 
-  // Shared commit helper for injury pickers
-  function commitInjuryNote(sid, musclePath, desc, zoneIdx) {
+  /* ---------- The player's self-report (screen 1d) ----------
+
+     ⚠ EVERY FIELD IS OPTIONAL AND A BLANK SUBMISSION IS VALID. That is the
+     whole design: the player has already said he is injured, and this sheet
+     only enriches it. `zone: -1`, `group: ''`, `muscle: ''`, `sev: ''` all
+     mean "left blank", and a blank submission still creates the pending row
+     on Mèdic — in italic, reading "Sense detall — només ha marcat Lesionat",
+     which is a physio's cue to go and ask.
+
+     ⚠ THE × CLOSES THE SHEET THE WAY `Ometre` DOES, and that is deliberate.
+     The footnote on the screen promises "Marcaràs Lesionat encara que ho
+     ometis", so a sheet that dropped the answer on close would make the
+     screen lie. Before v234 the answer was written only at the END of this
+     flow, so a player who tapped Lesionat and dismissed the picker was
+     recorded as nothing at all — and `getEffectiveAnswer()` counts a silent
+     player as AVAILABLE, so the coach's sheet had him down as fit. */
+
+  /** Write the `injured` answer and the self-reported record. `sel` may be
+      entirely empty; every field is guarded separately. */
+  function commitInjuryNote(sid, sel) {
     const session = getSession();
     const sess = getTrainings().find(x => String(x.id) === String(sid));
     if (!sess) return;
     const date = sess.date;
-    const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
-    const note = musclePath + (desc ? ' – ' + desc : '');
+    const s = sel || {};
+    const zoneIdx = (s.zone != null && s.zone >= 0) ? s.zone : null;
+    const zLabel = zoneIdx != null && BODY_ZONES[zoneIdx] ? BODY_ZONES[zoneIdx].label : '';
+    const group = s.group || '';
+    const muscle = s.muscle || '';
+    const how = (s.how || '').trim();
+
+    /* The human-readable line the older surfaces read out of
+       `fa_injury_notes`. Built from the Catalan labels because it is shown,
+       never matched; the record below keeps the English keys. */
+    const parts = [];
+    if (zoneIdx != null) parts.push(zoneLabelCa(zoneIdx));
+    if (muscle) parts.push(muscleLabelCa(muscle));
+    else if (group) parts.push(groupLabelCa(group));
+    const note = parts.join(' · ') + (how ? (parts.length ? ' – ' : '') + how : '');
+
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const key = recordKey(session.id, sess, 'avail');
     availData[key] = 'injured';
     ackSaveRecord('trainingAvail', key,
       { uid: session.id, sessionId: sess.id, date: date, value: 'injured' },
       'fa_training_availability', JSON.stringify(availData), null);
-    injNotes[session.id] = note;
+
+    const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
+    if (note) injNotes[session.id] = note; else delete injNotes[session.id];
     ackSave('fa_injury_notes', JSON.stringify(injNotes), null);
-    // Store which body zone polygon was selected
+
     if (zoneIdx != null) {
       const zoneMap = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
       zoneMap[session.id] = zoneIdx;
       ackSave('fa_injury_zone', JSON.stringify(zoneMap), null);
     }
+
     const users = getUsers();
-    const u = users.find(x => x.id === session.id);
+    const u = users.find(x => String(x.id) === String(session.id));
     if (u) { u.fitnessStatus = 'injured'; u.injuryNote = note; saveUsers(users); }
-    // Also create / update fa_injuries record
-    const parenMatch = musclePath.match(/^(.+?)\s*\((.+?)\)$/);
-    let mGroup = '', mSub = '';
-    if (parenMatch) { mSub = parenMatch[1].trim(); mGroup = parenMatch[2].trim(); }
-    else { mGroup = musclePath; }
-    const zLabel = zoneIdx != null && BODY_ZONES[zoneIdx] ? BODY_ZONES[zoneIdx].label : '';
-    // Check if player already has an active injury
+
+    /* One open record per player, as before: a second report enriches the
+       first rather than opening a duplicate beside it. `confirmedBy` is NOT
+       cleared on a re-report — once staff have looked at a record, a player
+       adding detail to it must not send it back to the pending list. */
     const injuries = getInjuries();
-    const existing = injuries.find(inj => inj.playerId === session.id && inj.status === 'active');
+    const existing = injuries.find(i => String(i.playerId) === String(session.id) && i.status === 'active');
+    const fields = {
+      bodyZone: zoneIdx,
+      bodyZoneLabel: zLabel,
+      /* Deliberately allowed to be BLANK here, unlike the staff logger where
+         it falls back to the zone. A blank record is what makes the pending
+         row render in italic as "Sense detall — només ha marcat Lesionat",
+         and filling it in with a plausible-looking fallback would hide the
+         one thing the physio has to know: nobody has described this yet. */
+      muscleGroup: group,
+      muscleSub: muscle,
+      severity: s.sev || '',
+      description: how,
+      origin: 'training',
+      originLabel: sess.focus || '',
+      selfReported: true
+    };
     if (existing) {
-      existing.bodyZone = zoneIdx; existing.bodyZoneLabel = zLabel;
-      existing.muscleGroup = mGroup || zLabel || 'Injury';
-      existing.muscleSub = mSub; existing.description = desc || '';
+      Object.assign(existing, fields);
       saveInjuries(injuries);
     } else {
-      addInjury({
+      addInjury(Object.assign({
         playerId: session.id,
-        bodyZone: zoneIdx, bodyZoneLabel: zLabel,
-        muscleGroup: mGroup || zLabel || 'Injury',
-        muscleSub: mSub, description: desc || '',
-        severity: 'moderate', status: 'active',
-        startDate: date, expectedReturn: null, endDate: null,
-        createdBy: session.id, notes: ''
-      });
+        status: 'active',
+        startDate: date,
+        expectedReturn: null,
+        endDate: null,
+        createdBy: session.id,
+        createdByName: session.name || '',
+        notes: '',
+        docs: []
+      }, fields));
     }
-    const training = getTrainings();
-    const tObj = training.find(t => t.date === date);
+
     addStaffNotification({
       type: 'training_avail',
+      uid: session.id,
       playerName: session.name || '?',
-      detail: 'Injured – ' + note,
-      activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
+      detail: 'Injured' + (note ? ' – ' + note : ''),
+      activity: (sess.focus || 'Training') + ' (' + date + ')'
     });
     renderPage(session);
     updateActionsBadge();
   }
 
-  // ---------- Body zone polygons ----------
-  // BODY_ZONES → utils.js
+  /** The full-screen sheet the `Lesionat` answer opens (screen 1d).
+   *
+   *  Touch targets are bigger than the staff logger's — 32px chips, 44px
+   *  severity segments, 46px buttons — because this is the one medical
+   *  screen answered on a phone, in a changing room, by someone who has just
+   *  pulled something. */
+  function showInjurySelfReport(btnsWrap, sid) {
+    const sess = getTrainings().find(x => String(x.id) === String(sid));
+    const st = { zone: -1, group: '', muscle: '', sev: '', how: '' };
 
-  // ---------- Interactive body map picker ----------
-  function showBodyMapPicker(btnsWrap, sid) {
-    // Build overlay
-    var overlay = document.createElement('div');
-    overlay.className = 'body-map-overlay';
-    var modal = document.createElement('div');
-    modal.className = 'body-map-modal';
-    modal.innerHTML = '<div class="body-map-header"><span>🏥 Select injured area</span>' +
-      '<button class="body-map-close">&times;</button></div>';
+    const overlay = document.createElement('div');
+    overlay.className = 'md2-sheet-full';
+    const sheet = document.createElement('div');
+    sheet.className = 'md2-rep';
+    overlay.appendChild(sheet);
+    if (btnsWrap) btnsWrap.style.display = 'none';
 
-    // Image container with SVG polygon overlay
-    var container = document.createElement('div');
-    container.className = 'body-map-container';
-    // Inner wrapper so SVG sits exactly on top of the image
-    var imgWrap = document.createElement('div');
-    imgWrap.className = 'body-map-img-wrap';
-    var img = document.createElement('img');
-    img.src = 'img/cuerpos.png'; img.className = 'body-map-img'; img.draggable = false;
-    imgWrap.appendChild(img);
+    const evLabel = sess
+      ? t('md2.origin_training') + ' · ' + tDateDayMonth(sess.date)
+      : t('md2.rep_event');
 
-    var svgNS = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.setAttribute('preserveAspectRatio', 'none');
-    svg.classList.add('body-map-svg');
+    function field(label, body) {
+      return '<div class="md2-field"><span class="md2-eyebrow">' + label +
+        '<span class="md2-hint"> ' + t('md2.optional') + '</span></span>' + body + '</div>';
+    }
+    function chips(list, act) {
+      return '<div class="md2-chips">' + list.map(function (c) {
+        return '<button type="button" class="md2-chip-btn md2-chip-lg' + (c.on ? ' md2-on' : '') +
+          '" data-md2-act="' + act + '" data-md2-val="' + sanitize(c.value) + '">' +
+          sanitize(c.label) + '</button>';
+      }).join('') + '</div>';
+    }
 
-    var tip = document.createElement('div');
-    tip.className = 'body-zone-tip';
+    function pickerHtml() {
+      const z = BODY_ZONES[st.zone];
+      const groups = z ? (z.groups || []) : [];
+      const subs = GROUP_SUBS[st.group] || [];
+      return bodyMapHtml({
+        interactive: true, which: 'rep', opacity: 0.38,
+        fill: function (_i, zz) {
+          return z && zz.label === z.label ? 'rgba(var(--pp-bad-rgb),.55)' : 'rgba(255,255,255,0)';
+        },
+        stroke: function (_i, zz) {
+          return z && zz.label === z.label ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.16)';
+        }
+      }) +
+        '<div class="md2-map-cap"><span>' + t('md2.front') + '</span><span>' + t('md2.back_view') + '</span></div>' +
+        '<div class="md2-zone-line">' +
+          '<span class="md2-eyebrow">' + t('md2.f_zone') + '</span>' +
+          '<span class="md2-zone-v' + (z ? '' : ' md2-muted') + '">' +
+            (z ? sanitize(zoneLabelCa(st.zone)) : t('md2.no_zone')) + '</span>' +
+        '</div>' +
+        field(t('md2.f_group'), chips(groups.map(function (g) {
+          return { value: g, label: groupLabelCa(g), on: st.group === g };
+        }), 'group')) +
+        field(t('md2.f_muscle'), chips(subs.map(function (m) {
+          return { value: m, label: muscleLabelCa(m), on: st.muscle === m };
+        }), 'muscle')) +
+        field(t('md2.f_sev'), '<div class="md2-segs md2-segs-lg">' + MD2_SEV.map(function (s, i) {
+          return '<button type="button" class="md2-seg' + (st.sev === s ? ' md2-on md2-sev-' + (i + 1) : '') +
+            '" data-md2-act="sev" data-md2-val="' + s + '">' + md2SevLabel(s) + '</button>';
+        }).join('') + '</div>');
+    }
 
-    BODY_ZONES.forEach(function (z, i) {
-      var poly = document.createElementNS(svgNS, 'polygon');
-      poly.setAttribute('points', z.pts);
-      poly.dataset.idx = i;
-      poly.classList.add('body-zone-poly');
-      poly.addEventListener('mouseenter', function () { tip.textContent = z.label; tip.style.display = 'block'; });
-      poly.addEventListener('mousemove', function (e) {
-        var r = imgWrap.getBoundingClientRect();
-        tip.style.left = (e.clientX - r.left + 12) + 'px';
-        tip.style.top = (e.clientY - r.top - 28) + 'px';
-      });
-      poly.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
-      svg.appendChild(poly);
-    });
-    imgWrap.appendChild(svg);
-    imgWrap.appendChild(tip);
-    container.appendChild(imgWrap);
-    modal.appendChild(container);
+    sheet.innerHTML =
+      '<div class="md2-rep-head">' +
+        '<div class="md2-rep-title-row">' +
+          '<span class="md2-rep-title">' + t('md2.rep_title') + '</span>' +
+          '<button type="button" class="md2-x" id="md2-rep-x">×</button>' +
+        '</div>' +
+        '<p class="md2-rep-sub">' + tv('md2.rep_sub', { ev: sanitize(evLabel) }) + '</p>' +
+      '</div>' +
+      '<div class="md2-rep-body" id="md2-rep-body">' + pickerHtml() +
+        field(t('md2.how'), '<textarea class="md2-ta" id="md2-how" maxlength="300" placeholder="' +
+          t('md2.how_ph') + '"></textarea>') +
+      '</div>' +
+      '<div class="md2-rep-foot">' +
+        '<div class="md2-rep-acts">' +
+          '<button type="button" class="md2-cta md2-cta-send" id="md2-send">' + t('md2.send') + '</button>' +
+          '<button type="button" class="md2-ghost" id="md2-skip">' + t('md2.skip') + '</button>' +
+        '</div>' +
+        '<p class="md2-rep-note">' + t('md2.rep_foot') + '</p>' +
+      '</div>';
 
-    // Choice panel (hidden initially)
-    var choicePanel = document.createElement('div');
-    choicePanel.className = 'body-map-choice';
-    choicePanel.style.display = 'none';
-    modal.appendChild(choicePanel);
-
-    overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // Close
-    function closeOverlay() { overlay.remove(); btnsWrap.style.display = ''; }
-    modal.querySelector('.body-map-close').addEventListener('click', closeOverlay);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeOverlay(); });
-    function onEsc(e) { if (e.key === 'Escape') { closeOverlay(); document.removeEventListener('keydown', onEsc); } }
-    document.addEventListener('keydown', onEsc);
-    btnsWrap.style.display = 'none';
+    /* Only the picker half is rebuilt on a pick, so `Com ha passat` keeps
+       what has been typed into it. It lives outside `#md2-rep-body`'s
+       repainted slice for exactly that reason — read it back, repaint, put
+       it back is one bug away from losing a player's only sentence. */
+    function repaint() {
+      const how = sheet.querySelector('#md2-how');
+      st.how = how ? how.value : st.how;
+      sheet.querySelector('#md2-rep-body').innerHTML = pickerHtml() +
+        field(t('md2.how'), '<textarea class="md2-ta" id="md2-how" maxlength="300" placeholder="' +
+          t('md2.how_ph') + '">' + sanitize(st.how) + '</textarea>');
+    }
 
-    // Zone interaction (click to select, click again to deselect)
-    var activePoly = null;
-    svg.querySelectorAll('.body-zone-poly').forEach(function (poly) {
-      poly.addEventListener('click', function () {
-        if (activePoly === poly) {
-          // Deselect
-          poly.classList.remove('body-zone-active');
-          activePoly = null;
-          choicePanel.style.display = 'none';
-          choicePanel.innerHTML = '';
-          return;
-        }
-        if (activePoly) activePoly.classList.remove('body-zone-active');
-        poly.classList.add('body-zone-active');
-        activePoly = poly;
-        var z = BODY_ZONES[parseInt(poly.dataset.idx)];
-        buildChoicePanel(z.groups);
-      });
+    function submit() {
+      const how = sheet.querySelector('#md2-how');
+      st.how = how ? how.value : st.how;
+      overlay.remove();
+      if (btnsWrap) btnsWrap.style.display = '';
+      commitInjuryNote(sid, st);
+    }
+
+    sheet.addEventListener('click', function (e) {
+      const poly = e.target.closest('[data-md2-zone]');
+      if (poly) {
+        const i = parseInt(poly.dataset.md2Zone, 10);
+        const z = BODY_ZONES[i];
+        // A second tap on the picked zone clears it — blank stays reachable.
+        if (st.zone === i) { st.zone = -1; st.group = ''; st.muscle = ''; }
+        else { st.zone = i; st.group = (z.groups || [])[0] || ''; st.muscle = ''; }
+        repaint();
+        return;
+      }
+      const btn = e.target.closest('[data-md2-act]');
+      if (!btn) return;
+      const act = btn.dataset.md2Act, val = btn.dataset.md2Val;
+      if (act === 'group') { st.group = st.group === val ? '' : val; st.muscle = ''; repaint(); }
+      else if (act === 'muscle') { st.muscle = st.muscle === val ? '' : val; repaint(); }
+      else if (act === 'sev') { st.sev = st.sev === val ? '' : val; repaint(); }
     });
 
-    function buildChoicePanel(groups) {
-      choicePanel.style.display = '';
-      var html = '<div class="body-map-choice-row">';
-      // Group selector
-      if (groups.length > 1) {
-        html += '<select class="body-map-group-sel">';
-        groups.forEach(function (g) { html += '<option value="' + sanitize(g) + '">' + sanitize(g) + '</option>'; });
-        html += '</select>';
-      } else {
-        html += '<span class="body-map-group-label">' + sanitize(groups[0]) + '</span>';
+    sheet.querySelector('#md2-send').addEventListener('click', submit);
+    sheet.querySelector('#md2-skip').addEventListener('click', submit);
+    sheet.querySelector('#md2-rep-x').addEventListener('click', submit);
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape' && document.body.contains(overlay)) {
+        document.removeEventListener('keydown', onEsc);
+        submit();
       }
-      // Sub-muscle dropdown
-      html += '<select class="body-map-sub-sel"><option value="">— General —</option>';
-      (GROUP_SUBS[groups[0]] || []).forEach(function (s) {
-        html += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>';
-      });
-      html += '</select>';
-      // Description + OK
-      html += '<input type="text" class="body-map-desc" placeholder="Describe injury…" maxlength="120">';
-      html += '<button class="body-map-ok">OK</button>';
-      html += '</div>';
-      choicePanel.innerHTML = html;
-
-      // Update sub-muscles when group changes
-      var groupSel = choicePanel.querySelector('.body-map-group-sel');
-      var subSel = choicePanel.querySelector('.body-map-sub-sel');
-      if (groupSel) {
-        groupSel.addEventListener('change', function () {
-          var g = groupSel.value;
-          var opts = '<option value="">— General —</option>';
-          (GROUP_SUBS[g] || []).forEach(function (s) {
-            opts += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>';
-          });
-          subSel.innerHTML = opts;
-        });
-      }
-      // Commit
-      function doCommit() {
-        var group = groupSel ? groupSel.value : choicePanel.querySelector('.body-map-group-label').textContent;
-        var sub = subSel.value;
-        var desc = choicePanel.querySelector('.body-map-desc').value.trim();
-        var musclePath = sub ? (sub + ' (' + group + ')') : group;
-        var zoneIdx = activePoly ? parseInt(activePoly.dataset.idx) : null;
-        overlay.remove();
-        commitInjuryNote(sid, musclePath, desc, zoneIdx);
-      }
-      choicePanel.querySelector('.body-map-ok').addEventListener('click', doCommit);
-      choicePanel.querySelector('.body-map-desc').addEventListener('keydown', function (e) { if (e.key === 'Enter') doCommit(); });
-      choicePanel.querySelector('.body-map-desc').focus();
-    }
+    });
   }
 
   // #endregion Notifications & Body Map
 
   // #region Medical
-  // ---------- Medical ----------
-  let _medicalFilterState = 'all'; // synced to medicalFilter
+  /* ===== Mèdic, redesigned (v234) =====
+
+     The eighth Claude Design handoff, and the last staff page that was still
+     a grid of bordered cards. Same rules as the seven before it: one surface
+     in horizontal bands, hairlines instead of cards, no radius except
+     circles, no shadow, red only for actions and for what is missing. Every
+     colour is a `--pp-*` token; test/paper-palette.test.js fails on a literal
+     and names the one to use.
+
+     The page answers three questions, and the layout is those three:
+
+       · WHO HAS REPORTED SOMETHING NOBODY HAS LOOKED AT — `Autoreports
+         pendents`, on a dashed rule because the record does not exist yet.
+         Before this the same players were dashed cards appended AFTER the
+         real injuries, where a physio scanning the list found them last.
+       · WHO IS OUT AND UNTIL WHEN — `Lesions actives`.
+       · WHERE THE SQUAD KEEPS GETTING HURT — the season heat map, moved out
+         of an analytics block at the foot of the page into the rail, beside
+         the squad's live state.
+
+     ⚠ THE MONTHLY BAR CHART AND THE INJURY-PRONE TABLE ARE GONE, on purpose.
+     Both were English-only, both were read off demo data, and the handoff
+     replaces them with the three figures underneath the heat map — mean days
+     per injury, recurrences, most-hit zone — which is the same question
+     answered in a line instead of a chart.
+
+     ⚠ ZONES ARE COUNTED BY LABEL, NOT BY INDEX. BODY_ZONES holds each zone
+     twice, once per side, so counting by index paints one thigh and leaves
+     its twin blank on a map whose whole job is "where". The stored value is
+     still the index — only the tally is by label. */
+
+  /* The handoff ships three editor props. Two are settled here and the third
+     is club policy: `playerSeesDiagnosis` widens the player's own view from
+     zone + dates to zone + severity + dates. It is a constant rather than a
+     club setting because no club has asked, and a setting nobody sets is a
+     branch nobody tests. Staff notes and documents stay hidden either way. */
+  const MD2_SHOW_HEATMAP = true;
+  const MD2_PLAYER_SEES_DIAGNOSIS = false;
+
+  /* Severity is stored as it always was — `minor` / `moderate` / `severe` —
+     and rendered through the existing `medical.severity_*` strings. The
+     handoff's second scale (Grau 1/2/3) is a relabelling of the same three
+     and is not wired: it would have to be a club setting, and the stored
+     value must not move whichever label a club picks. */
+  const MD2_SEV = ['minor', 'moderate', 'severe'];
+  function md2SevIdx(s) { return MD2_SEV.indexOf(s); }
+  function md2SevLabel(s) {
+    return md2SevIdx(s) === -1 ? '' : t('medical.severity_' + s);
+  }
+  /** `md2-sev-1|2|3`, or '' for a record with no severity (a self-report may
+      legitimately have none — see the sheet). */
+  function md2SevCls(s) {
+    const i = md2SevIdx(s);
+    return i === -1 ? '' : 'md2-sev-' + (i + 1);
+  }
+
+  /** Inclusive day count, the way every other duration on this page counts:
+      a one-day injury is 1, not 0. */
+  function md2Days(fromISO, toISO) {
+    if (!fromISO) return 0;
+    const s = new Date(fromISO + 'T12:00:00');
+    const e = new Date((toISO || localDateStr(new Date())) + 'T12:00:00');
+    return Math.max(1, Math.floor((e - s) / 86400000) + 1);
+  }
+
+  /** Sessions the player was called to while the injury was open.
+   *
+   *  DERIVED, never stored. A stored count would be wrong the moment a coach
+   *  added a session inside the window, and the answer is one pass over
+   *  `fa_training` through the same `playerIsCalled` the attendance figures
+   *  use — so the two can never disagree about which sessions existed. */
+  function md2MissedSessions(inj, p, trainings) {
+    if (!inj || !inj.startDate || !p) return 0;
+    const end = inj.endDate || localDateStr(new Date());
+    let n = 0;
+    (trainings || []).forEach(function (tr) {
+      if (!tr.date || tr.date < inj.startDate || tr.date > end) return;
+      if (!playerIsCalled(tr, p)) return;
+      n++;
+    });
+    return n;
+  }
+
+  /** The zone in Catalan. Falls back to the muscle GROUP for the records
+      written before the body map existed, which carry a group and no zone. */
+  function md2ZoneText(inj) {
+    if (!inj) return '';
+    if (inj.bodyZone != null && BODY_ZONES[inj.bodyZone]) return zoneLabelCa(inj.bodyZone);
+    if (inj.bodyZoneLabel) return ZONE_CA[inj.bodyZoneLabel] || inj.bodyZoneLabel;
+    return groupLabelCa(inj.muscleGroup) || t('fitness.injury');
+  }
+  function md2MuscleText(inj) { return inj ? muscleLabelCa(inj.muscleSub) : ''; }
+
+  /** The zone label a season tally is keyed on — the English label, so both
+      sides of a pair count as one zone. */
+  function md2ZoneKey(inj) {
+    if (inj && inj.bodyZone != null && BODY_ZONES[inj.bodyZone]) return BODY_ZONES[inj.bodyZone].label;
+    return inj && (inj.bodyZoneLabel || inj.muscleGroup) || '';
+  }
+
+  /** `Partit · Sants`, `Entrenament`, or a dash for a record written before
+      the field existed. An absent origin is unknown, not "outside". */
+  function md2OriginText(inj) {
+    if (!inj || !inj.origin) return '—';
+    const base = t('md2.origin_' + inj.origin);
+    return inj.originLabel ? base + ' · ' + inj.originLabel : base;
+  }
+
+  /** The status pill: an 8px dot plus an uppercase word, in one colour.
+      `Lesionat` pulses, `Recuperant` does not — the animation says "now". */
+  function md2StatusPill(status) {
+    const inj = status === 'active';
+    return '<span class="md2-pill ' + (inj ? 'md2-pill-inj' : 'md2-pill-rec') + '">' +
+      '<span class="md2-dot"></span>' + (inj ? t('md2.st_inj') : t('md2.st_rec')) + '</span>';
+  }
+
+  /** A section head: the eyebrow on the left, its count on the right. One
+      helper so the eight heads on this page cannot drift apart. */
+  function md2Head(label, note, noteCls) {
+    return '<div class="md2-sec-head"><span class="md2-eyebrow">' + label + '</span>' +
+      (note ? '<span class="md2-sec-note' + (noteCls ? ' ' + noteCls : '') + '">' + note + '</span>' : '') +
+      '</div>';
+  }
+
+  /** An action that a view-only staff member must not be able to press.
+      Rendered as an inert span rather than a disabled button so it reads as
+      information, exactly as `.cv-act-off` does on Convocatòria. */
+  function md2Act(ro, cls, attrs, label) {
+    return ro
+      ? '<span class="md2-act md2-act-off">' + label + '</span>'
+      : '<button type="button" class="md2-act ' + cls + '"' + attrs + '>' + label + '</button>';
+  }
+
+  function md2FileCount(inj) {
+    const n = ((inj && inj.docs) || []).length;
+    if (!n) return '<span class="md2-muted">' + t('md2.none') + '</span>';
+    return n === 1 ? t('md2.files_1') : tv('md2.files_n', { n: n });
+  }
 
   function renderMedical() {
+    const ro = !canEditPage('medical');
     const users = getUsers();
-    // Scope to the selected category. Medical is the most sensitive page in
-    // the app and used to show every injured player in the club to any staff
-    // member; injuries carry no category of their own, so they are filtered
-    // through the player they belong to.
+    /* Scope to the selected category and squad letter. Medical is the most
+       sensitive page in the app; injuries carry no category of their own, so
+       they are filtered through the player they belong to. */
     const curCat = getCurrentCategory();
+    const letter = (curCat && medicalTeamFilter !== 'all') ? medicalTeamFilter : null;
     const players = users.filter(u => (u.roles || []).includes('player')
       && (!curCat || (u.category || '') === curCat)
-      && (medicalTeamFilter === 'all' || (u.team || '') === medicalTeamFilter));
+      && (!letter || (u.team || '') === letter));
     const inScope = {};
     players.forEach(p => { inScope[String(p.id)] = true; });
-    /* Computed over the page's whole scope, not per card list: the squad
-       grid, the active-injury cards and the past-injury rows are four views
-       of the same players, and badging them independently would mark a
-       player in one list and not in another on the same screen. */
+    const byId = {};
+    players.forEach(p => { byId[String(p.id)] = p; });
+    /* Computed over the page's whole scope, not per list: the pending rows,
+       the active injuries and the closed table are three views of the same
+       players, and badging them independently would mark a player in one
+       list and not in another on the same screen. */
     const catSpan = catSpanOf(players);
-    // Always filter through the in-scope players — an injury has no category
-    // or team of its own. (This used to short-circuit on `!curCat`, which let
-    // the whole club's injuries through whenever "Totes" was selected and
-    // made the team filter below a no-op for the lead.)
+    /* Always filter through the in-scope players. (This used to short-circuit
+       on `!curCat`, which let the whole club's injuries through whenever
+       "Totes" was selected and made the squad filter a no-op for the lead.) */
     const injuries = getInjuries().filter(i => inScope[String(i.playerId)]);
     const now = new Date();
     const todayStr = localDateStr(now);
     const seasonStart = seasonStartStr(now);
-    // The season window is for HISTORY only — season totals, average recovery,
-    // past injuries, analytics. "Currently active" is a statement about now,
-    // so an unresolved injury that started before 15 August still belongs in
-    // the list; excluding it was one reason these counters disagreed with
-    // "Estat físic de l'equip", which never applied the window.
+    const trainings = getTrainings();
+    /* The season window is for HISTORY only. "Currently active" is a
+       statement about now, so an unresolved injury that started before 15
+       August still belongs in the list; excluding it was one reason these
+       counters used to disagree with the squad's own state. */
     const seasonInjuries = injuries.filter(i => i.startDate >= seasonStart);
 
-    const activeInj = injuries.filter(i => i.status === 'active');
+    /* A self-report is a record the PLAYER wrote that no staff member has
+       confirmed. It is not a status: a confirmed record can still be active,
+       and a pending one already marks its player injured. */
+    const pendingInj = injuries.filter(i => i.selfReported && !i.confirmedBy &&
+      i.status !== 'resolved');
+    const pendingIds = {};
+    pendingInj.forEach(i => { pendingIds[String(i.playerId)] = true; });
+
+    const activeInj = injuries.filter(i => i.status === 'active' && !pendingIds[String(i.playerId)]);
     const recoveringInj = injuries.filter(i => i.status === 'recovering');
     const resolvedInj = seasonInjuries.filter(i => i.status === 'resolved');
 
-    // Avg recovery time (resolved injuries only)
-    let avgRecovery = 0;
-    if (resolvedInj.length) {
-      const totalDays = resolvedInj.reduce((sum, inj) => {
-        const s = new Date(inj.startDate + 'T12:00:00');
-        const e = new Date((inj.endDate || todayStr) + 'T12:00:00');
-        return sum + Math.max(1, Math.floor((e - s) / 86400000) + 1);
-      }, 0);
-      avgRecovery = Math.round(totalDays / resolvedInj.length);
-    }
-
-    // Build player status map
-    const playerStatusMap = {};
-    const playerNoteMap = {};
-    const _medFitCtx = fitnessContext();
+    const statusMap = {};
+    const noteMap = {};
+    const fitCtx = fitnessContext();
     players.forEach(p => {
-      const d = deriveFitnessStatus(p.id, false, _medFitCtx);
-      playerStatusMap[p.id] = d.fitnessStatus;
-      playerNoteMap[p.id] = d.injuryNote || '';
+      const d = deriveFitnessStatus(p.id, false, fitCtx);
+      statusMap[p.id] = d.fitnessStatus;
+      noteMap[p.id] = d.injuryNote || '';
     });
 
-    // Players whose training-availability answers mark them injured/doubt but
-    // who have no unresolved record in fa_injuries. They counted in the tiles
-    // above yet appeared nowhere in the list below — the other half of why the
-    // numbers disagreed. Surfaced so staff can see who still needs logging.
-    const loggedPlayerIds = {};
-    [].concat(activeInj, recoveringInj)
-      .forEach(i => { loggedPlayerIds[String(i.playerId)] = true; });
-    const selfReported = players.filter(p =>
-      (playerStatusMap[p.id] === 'injured' || playerStatusMap[p.id] === 'doubt') &&
-      !loggedPlayerIds[String(p.id)]);
+    /* The second half of `Autoreports pendents`, and the older half: a player
+       whose availability answer says `injured` with no record at all. He is
+       what the italic "Sense detall" row is. The two halves are one list on
+       purpose — a physio asks "who have I not looked at", not "who filled the
+       form in". */
+    const loggedIds = {};
+    [].concat(activeInj, recoveringInj, pendingInj)
+      .forEach(i => { loggedIds[String(i.playerId)] = true; });
+    const bareReports = players.filter(p =>
+      (statusMap[p.id] === 'injured' || statusMap[p.id] === 'doubt') && !loggedIds[String(p.id)]);
 
-    // Squad grid
-    const filter = medicalFilter;
-    const filteredPlayers = players.filter(p => {
-      if (filter === 'all') return true;
-      return playerStatusMap[p.id] === filter || (filter === 'recovering' && playerStatusMap[p.id] === 'doubt');
-    }).sort((a, b) => {
-      const order = { injured: 0, doubt: 1, fit: 2 };
-      const diff = (order[playerStatusMap[a.id]] ?? 2) - (order[playerStatusMap[b.id]] ?? 2);
-      return diff !== 0 ? diff : posRankGlobal(a) - posRankGlobal(b);
+    // ---- hero counters ----
+    const injCount = players.filter(p => statusMap[p.id] === 'injured').length;
+    const recCount = players.filter(p => statusMap[p.id] === 'doubt').length;
+    const fitCount = players.filter(p => statusMap[p.id] === 'fit').length;
+    const daysLost = seasonInjuries.reduce((n, i) => n + md2Days(i.startDate, i.endDate || todayStr), 0);
+
+    const scopeLabel = (curCat ? CATEGORY_LABELS[curCat] || curCat : t('cat.all')) +
+      (letter ? ' ' + letter : '');
+
+    // ---- Autoreports pendents ----
+    const pendingRows = pendingInj.map(inj => {
+      const p = byId[String(inj.playerId)];
+      if (!p) return '';
+      /* ⚠ Read the RAW fields, not md2ZoneText(). That helper falls back to
+         the muscle group and then to the word "Lesió" so no card is ever
+         blank, which is right everywhere else and wrong here: the italic
+         "Sense detall" row exists precisely to say that the player described
+         nothing, and a fallback would dress an empty report as a described
+         one. Blank means blank. */
+      const bits = [
+        inj.bodyZone != null ? zoneLabelCa(inj.bodyZone) : '',
+        inj.muscleSub ? muscleLabelCa(inj.muscleSub) : (inj.muscleGroup ? groupLabelCa(inj.muscleGroup) : ''),
+        md2SevLabel(inj.severity)
+      ].filter(Boolean);
+      const detail = bits.length
+        ? sanitize(bits.join(' · '))
+        : '<span class="md2-blank">' + t('md2.blank_report') + '</span>';
+      return md2PendingRow(p, catSpan, detail, md2WhenText(inj), inj.id, ro);
+    }).join('') + bareReports.map(p => {
+      const note = noteMap[p.id];
+      const detail = note ? sanitize(note)
+        : '<span class="md2-blank">' + t('md2.blank_report') + '</span>';
+      return md2PendingRow(p, catSpan, detail, '', '', ro);
+    }).join('');
+    const pendingCount = pendingInj.length + bareReports.length;
+
+    // ---- Lesions actives ----
+    /* ⚠ STATUS FIRST, THEN DATE. Sorting on the date alone interleaves the
+       two statuses — a `Recuperant` at the top of a list headed "3 lesionats
+       · 2 recuperant" — and the physio's question is who is OUT before it is
+       who has been out longest. Found by rendering the preview with the
+       whole suite green; no string assertion can see an order. */
+    const openInj = [].concat(activeInj, recoveringInj).sort((a, b) => {
+      const rank = (i) => (i.status === 'active' ? 0 : 1);
+      return rank(a) - rank(b) ||
+        String(a.startDate).localeCompare(String(b.startDate));
     });
-
-    const gridHtml = filteredPlayers.map(p => {
-      const st = playerStatusMap[p.id];
-      const posHtml = posCirclesHtmlGlobal(p);
-      const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-      const catBadge = catBadgeHtmlGlobal(p, catSpan);
-      let borderColor = '#43a047'; // fit green
-      let statusLabel = t('medical.status_fit');
-      let statusClass = 'fit';
-      let injExcerpt = '';
-      if (st === 'injured') {
-        borderColor = '#e53935'; statusLabel = t('medical.status_injured'); statusClass = 'injured';
-        const pInj = activeInj.find(i => i.playerId === p.id);
-        if (pInj) {
-          const days = Math.max(0, Math.floor((now - new Date(pInj.startDate + 'T12:00:00')) / 86400000));
-          injExcerpt = '<div class="med-card-injury">' + sanitize(pInj.muscleGroup || t('fitness.injury')) + ' · ' + days + 'd</div>';
-        }
-      } else if (st === 'doubt') {
-        borderColor = '#f9a825'; statusLabel = t('medical.status_recovering'); statusClass = 'recovering';
-        const pInj = recoveringInj.find(i => i.playerId === p.id);
-        if (pInj) injExcerpt = '<div class="med-card-injury" style="color:#f9a825;">' + sanitize(pInj.muscleGroup || t('medical.recovering')) + '</div>';
-      }
-      // No logged record (self-reported through availability): fall back to
-      // the derived note so the card never shows a status with no explanation.
-      if (!injExcerpt && st !== 'fit' && playerNoteMap[p.id]) {
-        injExcerpt = '<div class="med-card-injury" style="opacity:.75;font-style:italic;">' +
-          sanitize(playerNoteMap[p.id]) + '</div>';
-      }
-      return '<div class="med-player-card" data-player-id="' + p.id + '" style="border-left:4px solid ' + borderColor + ';">' +
-        '<div class="med-card-top">' +
-          '<span class="conv-pos-circles">' + posHtml + '</span>' +
-          '<span class="med-card-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
-          '<span class="med-status-dot med-status-' + statusClass + '" title="' + statusLabel + '"></span>' +
+    const activeRows = openInj.map(inj => {
+      const p = byId[String(inj.playerId)];
+      if (!p) return '';
+      const zone = md2ZoneText(inj);
+      const muscle = md2MuscleText(inj);
+      const sevCls = md2SevCls(inj.severity);
+      const missed = md2MissedSessions(inj, p, trainings);
+      const stat = function (label, value, cls) {
+        return '<div class="md2-stat"><span class="md2-eyebrow md2-eyebrow-s">' + label +
+          '</span><span class="md2-stat-v' + (cls ? ' ' + cls : '') + '">' + value + '</span></div>';
+      };
+      return '<div class="md2-inj" data-injury-id="' + sanitize(inj.id) + '">' +
+        '<div class="md2-inj-top">' +
+          '<a href="#" class="md2-inj-name" data-md2-player="' + sanitize(String(p.id)) + '">' +
+            sanitize(p.name) + '</a>' +
+          '<span class="conv-pos-circles md2-pos">' + posCirclesHtmlGlobal(p) + '</span>' +
+          catBadgeHtmlGlobal(p, catSpan) +
+          md2StatusPill(inj.status) +
+          '<span class="md2-spacer"></span>' +
+          md2Act(ro, 'md2-act-ok md2-btn-discharge', ' data-inj-id="' + sanitize(inj.id) + '"', t('md2.discharge')) +
+          md2Act(ro, 'md2-act-plain md2-btn-edit', ' data-inj-id="' + sanitize(inj.id) + '"', t('md2.edit')) +
         '</div>' +
-        injExcerpt +
+        '<div class="md2-inj-what">' +
+          '<span class="md2-inj-zone">' + sanitize(zone) + '</span>' +
+          (muscle ? '<span class="md2-sep"></span><span class="md2-inj-muscle">' + sanitize(muscle) + '</span>' : '') +
+          (sevCls ? '<span class="md2-sev ' + sevCls + '">' + md2SevLabel(inj.severity) + '</span>' : '') +
+        '</div>' +
+        (inj.notes || inj.description
+          ? '<div class="md2-inj-note">' + sanitize(inj.notes || inj.description) + '</div>' : '') +
+        '<div class="md2-inj-stats">' +
+          stat(t('md2.since'), tDateDayMonth(inj.startDate)) +
+          stat(t('md2.eta'), inj.expectedReturn ? tDateDayMonth(inj.expectedReturn) : '—') +
+          stat(t('md2.missed'), String(missed)) +
+          stat(t('md2.origin'), sanitize(md2OriginText(inj))) +
+          stat(t('md2.reports'), md2FileCount(inj)) +
+        '</div>' +
+        /* The same five facts as one line, for the phone. Rendered always
+           and shown by the breakpoint rather than branched on a width in
+           JS — a render that asks how wide the window is answers once and
+           is wrong after the next rotation. */
+        '<div class="md2-inj-meta">' + tv('md2.meta_line', {
+          since: tDateDayMonth(inj.startDate),
+          eta: inj.expectedReturn ? tDateDayMonth(inj.expectedReturn) : '—',
+          n: missed,
+        }) + '</div>' +
       '</div>';
     }).join('');
 
-    // Active injuries cards
-    let activeHtml = '';
-    if (!activeInj.length && !recoveringInj.length && !selfReported.length) {
-      activeHtml = '<div class="empty-state" style="padding:1.5rem;"><div class="empty-icon">💪</div><p>' + t('medical.no_active') + '</p></div>';
-    } else {
-      const combined = [...activeInj, ...recoveringInj].sort((a, b) => {
-        const da = Math.floor((now - new Date(a.startDate + 'T12:00:00')) / 86400000);
-        const db2 = Math.floor((now - new Date(b.startDate + 'T12:00:00')) / 86400000);
-        return db2 - da;
-      });
-      activeHtml = combined.map(inj => {
-        const p = players.find(x => x.id === inj.playerId);
-        if (!p) return '';
-        const posHtml = posCirclesHtmlGlobal(p);
-        const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-        const catBadge = catBadgeHtmlGlobal(p, catSpan);
-        const days = Math.max(0, Math.floor((now - new Date(inj.startDate + 'T12:00:00')) / 86400000));
-        const durationStr = days === 0 ? t('medical.today') : days === 1 ? '1 day' : days + ' days';
-        const sinceStr = tDateDayMonth(inj.startDate);
-        const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
-        const sevColor = sevColors[inj.severity] || '#999';
-        const sevLabel = inj.severity ? inj.severity.charAt(0).toUpperCase() + inj.severity.slice(1) : 'Unknown';
-        let returnHtml = '';
-        if (inj.expectedReturn) {
-          const retD = new Date(inj.expectedReturn + 'T12:00:00');
-          const retDays = Math.max(0, Math.ceil((retD - now) / 86400000));
-          returnHtml = '<span class="med-return-badge">' + (retDays <= 0 ? t('medical.due_back') : '~' + retDays + t('medical.days_to_return')) + '</span>';
-        }
-        const statusBadge = inj.status === 'recovering'
-          ? '<span class="med-severity-badge" style="background:#f9a825;color:#333;">' + t('medical.recovering') + '</span>'
-          : '<span class="med-severity-badge" style="background:' + sevColor + ';">' + sanitize(sevLabel) + '</span>';
-        const zoneLabel = inj.muscleGroup ? sanitize(inj.muscleGroup) + (inj.muscleSub ? ' (' + sanitize(inj.muscleSub) + ')' : '') : 'Unknown area';
-        return '<div class="med-injury-card" data-player-id="' + p.id + '" data-injury-id="' + inj.id + '">' +
-          '<div class="med-inj-card-top">' +
-            '<div class="med-inj-player">' +
-              '<span class="conv-pos-circles">' + posHtml + '</span>' +
-              '<span class="med-card-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
-            '</div>' +
-            statusBadge +
-          '</div>' +
-          '<div class="med-inj-body">' +
-            '<div class="med-inj-zone">' + zoneLabel + '</div>' +
-            (inj.description ? '<div class="med-inj-desc">' + sanitize(inj.description) + '</div>' : '') +
-          '</div>' +
-          '<div class="med-inj-footer">' +
-            '<div class="med-inj-duration"><span class="medical-since">' + t('medical.since') + ' ' + sinceStr + '</span><span class="medical-days">' + durationStr + '</span></div>' +
-            returnHtml +
-            '<div class="med-inj-actions">' +
-              (inj.status === 'active' ? '<button class="btn btn-small med-btn-recover" data-inj-id="' + inj.id + '">' + t('medical.mark_recovering') + '</button>' : '') +
-              '<button class="btn btn-small med-btn-resolve" data-inj-id="' + inj.id + '">' + t('medical.mark_resolved') + '</button>' +
-              '<button class="btn btn-small btn-ghost med-btn-edit" data-inj-id="' + inj.id + '">' + t('common.edit') + '</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
+    // ---- Lesions tancades ----
+    const pastSorted = resolvedInj.slice().sort((a, b) =>
+      String(b.endDate || b.startDate).localeCompare(String(a.endDate || a.startDate)));
+    const pastDays = pastSorted.reduce((n, i) => n + md2Days(i.startDate, i.endDate), 0);
+    const pastRows = pastSorted.map(inj => {
+      const p = byId[String(inj.playerId)];
+      if (!p) return '';
+      const what = [md2ZoneText(inj), md2MuscleText(inj)].filter(Boolean).join(' · ');
+      const days = md2Days(inj.startDate, inj.endDate);
+      return '<tr data-md2-player="' + sanitize(String(p.id)) + '">' +
+        '<td class="md2-td-who">' + sanitize(p.name) + '</td>' +
+        '<td>' + sanitize(what) + '</td>' +
+        '<td class="md2-td-sev' + (md2SevCls(inj.severity) ? ' ' + md2SevCls(inj.severity) + '-ink' : '') +
+          '">' + md2SevLabel(inj.severity) + '</td>' +
+        '<td class="md2-num">' + tDateDayMonth(inj.startDate) + ' – ' +
+          (inj.endDate ? tDateDayMonth(inj.endDate) : '?') + '</td>' +
+        '<td class="md2-num md2-td-days">' + days + '</td>' +
+      '</tr>';
+    }).join('');
 
-      // Self-reported, not yet logged. Lighter cards, listed after the real
-      // records, each offering to open the logger with the player preselected.
-      activeHtml += selfReported.map(p => {
-        const st = playerStatusMap[p.id];
-        const posHtml = posCirclesHtmlGlobal(p);
-        const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-        const catBadge = catBadgeHtmlGlobal(p, catSpan);
-        const badgeColor = st === 'injured' ? '#e53935' : '#f9a825';
-        const badgeText = st === 'injured' ? t('medical.injured') : t('medical.recovering');
-        const note = playerNoteMap[p.id];
-        return '<div class="med-injury-card med-injury-unlogged" data-player-id="' + p.id + '">' +
-          '<div class="med-inj-card-top">' +
-            '<div class="med-inj-player">' +
-              '<span class="conv-pos-circles">' + posHtml + '</span>' +
-              '<span class="med-card-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
-            '</div>' +
-            '<span class="med-severity-badge" style="background:' + badgeColor + (st === 'doubt' ? ';color:#333' : '') + ';">' + badgeText + '</span>' +
-          '</div>' +
-          '<div class="med-inj-body">' +
-            '<div class="med-inj-zone">' + t('medical.self_reported') + '</div>' +
-            (note ? '<div class="med-inj-desc">' + sanitize(note) + '</div>' : '') +
-          '</div>' +
-          '<div class="med-inj-footer">' +
-            '<div class="med-inj-duration"><span class="medical-since">' + t('medical.not_logged') + '</span></div>' +
-            '<div class="med-inj-actions">' +
-              '<button class="btn btn-small med-btn-log-for" data-player-id="' + p.id + '">' + t('medical.log_injury').replace(/^\+\s*/, '') + '</button>' +
-              '<button class="btn btn-small btn-ghost med-btn-dismiss" data-player-id="' + p.id + '" title="' + t('medical.discard') + '">✕</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
+    // ---- the rail ----
+    const railHtml = md2RailHtml(seasonInjuries, players, statusMap, todayStr, fitCount);
 
-    // Past injuries
-    const pastSorted = resolvedInj.sort((a, b) => (b.endDate || b.startDate).localeCompare(a.endDate || a.startDate));
-    let pastHtml = '';
-    if (!pastSorted.length) {
-      pastHtml = '<div class="empty-state" style="padding:1rem;"><div class="empty-icon">✅</div><p>' + t('medical.no_past') + '</p></div>';
-    } else {
-      pastHtml = pastSorted.map(inj => {
-        const p = players.find(x => x.id === inj.playerId);
-        if (!p) return '';
-        const posHtml = posCirclesHtmlGlobal(p);
-        const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-        const catBadge = catBadgeHtmlGlobal(p, catSpan);
-        const startStr = tDateDayMonth(inj.startDate);
-        const endStr = inj.endDate ? tDateDayMonth(inj.endDate) : '?';
-        const s = new Date(inj.startDate + 'T12:00:00');
-        const e = new Date((inj.endDate || todayStr) + 'T12:00:00');
-        const days = Math.max(1, Math.floor((e - s) / 86400000) + 1);
-        const durationStr = days === 1 ? '1 day' : days + ' days';
-        const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
-        return '<div class="medical-row med-past-row" data-player-id="' + p.id + '">' +
-          '<div class="medical-player">' +
-            '<span class="conv-pos-circles">' + posHtml + '</span>' +
-            '<span class="medical-name">' + sanitize(p.name) + catBadge + teamCircle + '</span>' +
-          '</div>' +
-          '<div class="medical-injury"><span class="med-severity-dot" style="background:' + (sevColors[inj.severity] || '#999') + ';"></span>' + sanitize(inj.muscleGroup || 'Injury') + '</div>' +
-          '<div class="medical-duration">' +
-            '<span class="medical-since">' + startStr + ' – ' + endStr + '</span>' +
-            '<span class="medical-days">' + durationStr + '</span>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
+    const empty = function (msg) { return '<div class="md2-empty">' + msg + '</div>'; };
 
-    // Analytics
-    const analyticsHtml = renderInjuryAnalytics(seasonInjuries, players, todayStr);
-
-    const fitCount = players.filter(p => playerStatusMap[p.id] === 'fit').length;
-    const injCount = players.filter(p => playerStatusMap[p.id] === 'injured').length;
-    const recCount = players.filter(p => playerStatusMap[p.id] === 'doubt').length;
-
-    // Team-letter filter, same single-select idiom and styles as the roster
-    // page. Scopes the whole page (counters, grid, injuries, analytics), not
-    // just the grid, so it sits above the status filter row. Hidden when the
-    // category has only one team, exactly like the training-detail variant.
-    const _medLetters = getTeamLetters(curCat);
-    const medTeamBar = _medLetters.length <= 1 ? '' :
-      '<div class="roster-team-filter" style="margin-bottom:.6rem;">' +
-        '<button class="roster-team-btn' + (medicalTeamFilter === 'all' ? ' roster-team-btn-active' : '') +
-          '" data-med-team="all">' + t('common.all') + '</button>' +
-        _medLetters.map(function (l) {
-          return '<button class="roster-team-btn' + (medicalTeamFilter === l ? ' roster-team-btn-active' : '') +
-            '" data-med-team="' + l + '">' + l + '</button>';
-        }).join('') +
-      '</div>';
-
-    return '<div class="med-header"><h2 class="page-title">' + t('page.medical') + '</h2>' +
-      '<button class="btn btn-orange med-log-btn" id="med-log-injury">' + t('medical.log_injury') + '</button></div>' +
-      '<div class="medical-stats-row">' +
-        '<div class="card medical-stat-card med-stat-red"><div class="medical-stat-value">' + injCount + '</div><div class="medical-stat-label">' + t('medical.injured') + '</div></div>' +
-        '<div class="card medical-stat-card med-stat-amber"><div class="medical-stat-value">' + recCount + '</div><div class="medical-stat-label">' + t('medical.recovering') + '</div></div>' +
-        '<div class="card medical-stat-card"><div class="medical-stat-value">' + seasonInjuries.length + '</div><div class="medical-stat-label">' + t('medical.total_season') + '</div></div>' +
-        '<div class="card medical-stat-card"><div class="medical-stat-value">' + avgRecovery + '<span style="font-size:.9rem;font-weight:400;">d</span></div><div class="medical-stat-label">' + t('medical.avg_recovery') + '</div></div>' +
-      '</div>' +
-      '<div class="card">' +
-        '<div class="card-title" style="margin-bottom:.8rem;">' + t('medical.squad_fitness') + '</div>' +
-        medTeamBar +
-        '<div class="med-filter-row">' +
-          '<button class="med-filter-btn' + (filter === 'all' ? ' med-filter-active' : '') + '" data-med-filter="all">' + t('medical.filter_all') + ' (' + players.length + ')</button>' +
-          '<button class="med-filter-btn' + (filter === 'injured' ? ' med-filter-active' : '') + '" data-med-filter="injured">' + t('medical.filter_injured') + ' (' + injCount + ')</button>' +
-          '<button class="med-filter-btn' + (filter === 'recovering' ? ' med-filter-active' : '') + '" data-med-filter="recovering">' + t('medical.filter_recovering') + ' (' + recCount + ')</button>' +
-          '<button class="med-filter-btn' + (filter === 'fit' ? ' med-filter-active' : '') + '" data-med-filter="fit">' + t('medical.filter_fit') + ' (' + fitCount + ')</button>' +
+    return '<div class="md2-page' + (ro ? ' md2-page-ro' : '') + '" id="md2-page">' +
+      (ro ? viewOnlyBanner() : '') +
+      '<div class="md2-hero">' +
+        '<div class="md2-hero-id">' +
+          '<h1 class="md2-h1">' + t('md2.title') + '</h1>' +
+          '<span class="md2-sub">' + tv('md2.subline', {
+            scope: sanitize(scopeLabel), n: players.length, date: tDateLong(todayStr)
+          }) + '</span>' +
         '</div>' +
-        '<div class="med-player-grid">' + gridHtml + '</div>' +
-      '</div>' +
-      '<div class="card">' +
-        '<div class="card-title" style="margin-bottom:.8rem;">' + t('medical.active') + '</div>' +
-        activeHtml +
-      '</div>' +
-      '<div class="card med-past-card">' +
-        '<div class="card-title med-past-title" id="med-past-toggle" style="cursor:pointer;margin-bottom:0;">' +
-          t('medical.past') + ' (' + resolvedInj.length + ') <span class="med-past-arrow">' + (medicalPastExpanded ? '▲' : '▼') + '</span>' +
+        '<div class="md2-counters">' +
+          md2Counter(t('md2.injured'), injCount, 'md2-c-inj') +
+          md2Counter(t('md2.recovering'), recCount, 'md2-c-rec') +
+          md2Counter(t('md2.days_lost'), daysLost, '', t('md2.days_lost_s')) +
+          md2Counter(t('md2.season_inj'), seasonInjuries.length, '', t('md2.season_inj_s')) +
         '</div>' +
-        '<div class="med-past-body" style="' + (medicalPastExpanded ? '' : 'display:none;') + '">' + pastHtml + '</div>' +
+        (ro ? '' : '<button type="button" class="md2-cta" id="md2-log">' + t('md2.log') + '</button>') +
       '</div>' +
-      analyticsHtml;
+      '<div class="md2-body">' +
+        '<div class="md2-main">' +
+          '<section class="md2-block">' +
+            md2Head(t('md2.pending'),
+              pendingCount ? tv('md2.pending_note', { n: pendingCount }) : '', 'md2-note-red') +
+            (pendingRows || empty(t('md2.no_pending'))) +
+          '</section>' +
+          '<section class="md2-block">' +
+            md2Head(t('md2.active'), openInj.length
+              ? tv('md2.active_note', { inj: activeInj.length, rec: recoveringInj.length }) : '') +
+            (activeRows || empty(t('md2.no_active'))) +
+          '</section>' +
+          '<section class="md2-block">' +
+            '<div class="md2-sec-head md2-sec-toggle" id="md2-past-toggle">' +
+              '<span class="md2-eyebrow">' + t('md2.closed') + ' ' +
+                '<span class="md2-arrow">' + (medicalPastExpanded ? '▴' : '▾') + '</span></span>' +
+              '<span class="md2-sec-note">' +
+                tv('md2.closed_note', { n: pastSorted.length, d: pastDays }) + '</span>' +
+            '</div>' +
+            (medicalPastExpanded
+              ? (pastRows
+                ? '<table class="md2-tbl"><thead><tr>' +
+                    '<th class="md2-th-player">' + t('md2.th_player') + '</th>' +
+                    '<th>' + t('md2.th_zone') + '</th>' +
+                    '<th class="md2-th-sev">' + t('md2.th_sev') + '</th>' +
+                    '<th class="md2-th-period">' + t('md2.th_period') + '</th>' +
+                    '<th class="md2-th-days">' + t('md2.th_days') + '</th>' +
+                  '</tr></thead><tbody>' + pastRows + '</tbody></table>'
+                : empty(t('md2.no_closed')))
+              : '') +
+          '</section>' +
+        '</div>' +
+        '<aside class="md2-rail">' + railHtml + '</aside>' +
+      '</div>' +
+    '</div>';
   }
 
-  // ---------- Injury Analytics ----------
-  function renderInjuryAnalytics(injuries, players, todayStr) {
-    if (!injuries.length) return '';
-    const now = new Date();
+  /** A hero counter. `short` is the phone's label, and both are rendered:
+   *  the breakpoint picks one. Branching on a width in JS would answer the
+   *  question once and be wrong after the next rotation, and the long labels
+   *  ("Lesions temporada") wrap to two lines in a 390px quarter-column while
+   *  their neighbours do not. */
+  function md2Counter(label, value, cls, short) {
+    return '<div class="md2-count">' +
+      '<span class="md2-eyebrow md2-lbl-l">' + label + '</span>' +
+      '<span class="md2-eyebrow md2-lbl-s">' + (short || label) + '</span>' +
+      '<span class="md2-count-v ' + cls + '">' + value + '</span></div>';
+  }
 
-    // Body zone frequency
-    const zoneCounts = {};
-    injuries.forEach(inj => {
-      const z = inj.bodyZone;
-      if (z != null) zoneCounts[z] = (zoneCounts[z] || 0) + 1;
-    });
-    const maxZoneCount = Math.max(1, ...Object.values(zoneCounts));
-
-    // Build mini body map heatmap SVG
-    let heatPolys = '';
-    BODY_ZONES.forEach((z, i) => {
-      const count = zoneCounts[i] || 0;
-      if (!count) {
-        heatPolys += '<polygon points="' + z.pts + '" fill="transparent" stroke="transparent"/>';
-      } else {
-        const intensity = Math.min(1, count / maxZoneCount);
-        const r = Math.round(239 * intensity + 67 * (1 - intensity));
-        const g = Math.round(83 * intensity + 160 * (1 - intensity));
-        const b = Math.round(80 * intensity + 80 * (1 - intensity));
-        heatPolys += '<polygon points="' + z.pts + '" fill="rgba(' + r + ',' + g + ',' + b + ',' + (0.15 + 0.45 * intensity) + ')" stroke="rgba(' + r + ',' + g + ',' + b + ',.7)" stroke-width=".4">' +
-          '<title>' + sanitize(z.label) + ': ' + count + ' injuries</title></polygon>';
-      }
-    });
-
-    const heatMapHtml = '<div class="med-analytics-heatmap">' +
-      '<div style="position:relative;display:inline-block;line-height:0;width:100%;max-width:320px;">' +
-        '<img src="img/cuerpos.png" style="display:block;width:100%;border-radius:8px;pointer-events:none;">' +
-        '<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;">' +
-        heatPolys + '</svg>' +
+  /** One pending row. Both halves of the list — a self-report record and a
+      bare `injured` answer — render identically, because to the physio they
+      are the same job. `injId` is empty for the bare half; `Registrar` then
+      opens the logger on the player with nothing prefilled. */
+  function md2PendingRow(p, catSpan, detailHtml, whenText, injId, ro) {
+    return '<div class="md2-pend" data-player-id="' + sanitize(String(p.id)) + '"' +
+      (injId ? ' data-injury-id="' + sanitize(injId) + '"' : '') + '>' +
+      '<div class="md2-pend-who">' +
+        '<span class="md2-pend-name">' + sanitize(p.name) + '</span>' +
+        '<span class="conv-pos-circles md2-pos md2-pos-s">' + posCirclesHtmlGlobal(p) + '</span>' +
+        catBadgeHtmlGlobal(p, catSpan) +
+      '</div>' +
+      '<div class="md2-pend-what">' +
+        '<div class="md2-pend-detail">' + detailHtml + '</div>' +
+        (whenText ? '<div class="md2-pend-when">' + sanitize(whenText) + '</div>' : '') +
+      '</div>' +
+      '<div class="md2-pend-acts">' +
+        md2Act(ro, 'md2-act-red md2-btn-confirm', ' data-player-id="' + sanitize(String(p.id)) + '"' +
+          (injId ? ' data-inj-id="' + sanitize(injId) + '"' : ''), t('md2.register')) +
+        md2Act(ro, 'md2-act-plain md2-btn-dismiss', ' data-player-id="' + sanitize(String(p.id)) + '"' +
+          (injId ? ' data-inj-id="' + sanitize(injId) + '"' : ''), t('md2.discard')) +
       '</div>' +
     '</div>';
+  }
 
-    // Monthly bar chart (SVG) — match body image height (220px)
-    const monthCounts = new Array(12).fill(0);
-    injuries.forEach(inj => {
-      const m = parseInt(inj.startDate.slice(5, 7), 10) - 1;
-      monthCounts[m]++;
-    });
-    const maxMonth = Math.max(1, ...monthCounts);
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const barW = 44, gap = 12, chartH = 380, padTop = 32, padBot = 34, padLeft = 38;
-    const svgW = padLeft + 12 * (barW + gap) + gap;
-    const barArea = chartH - padTop - padBot;
-    // Y-axis ticks
-    const yTicks = [];
-    if (maxMonth <= 5) {
-      for (let t = 0; t <= maxMonth; t++) yTicks.push(t);
-    } else {
-      const step = Math.ceil(maxMonth / 4);
-      for (let t = 0; t <= maxMonth; t += step) yTicks.push(t);
-      if (yTicks[yTicks.length - 1] < maxMonth) yTicks.push(maxMonth);
+  /** "Entrenament de dijous · fa 2 h" — where the report came from and how
+      long it has been waiting. Both halves are best-effort: a record written
+      before the origin field existed says only when. */
+  function md2WhenText(inj) {
+    const bits = [];
+    if (inj.origin) bits.push(md2OriginText(inj));
+    if (inj.startDate) bits.push(tDateDayMonth(inj.startDate));
+    return bits.join(' · ');
+  }
+
+  /** The rail: the season map, the three figures under it, and the squad.
+   *
+   *  ⚠ The heat map is the one body map on the page with NO click handler and
+   *  no hover. It is a picture of a season, not a control, and giving it the
+   *  picker's affordances invited a physio to try to log an injury from it. */
+  function md2RailHtml(seasonInjuries, players, statusMap, todayStr, fitCount) {
+    let heatHtml = '';
+    if (MD2_SHOW_HEATMAP) {
+      const counts = {};
+      seasonInjuries.forEach(function (i) {
+        const k = md2ZoneKey(i);
+        if (k) counts[k] = (counts[k] || 0) + 1;
+      });
+      const max = Math.max(0, ...Object.values(counts));
+      const map = bodyMapHtml({
+        opacity: 0.34,
+        strokeWidth: '0.25',
+        fill: function (_i, z) {
+          const n = counts[z.label] || 0;
+          /* The handoff's formula, kept exactly: .12 + n*.19 tops out at .88
+             for four injuries, which is what the legend bar's .9 end matches.
+             A zone nobody hurt is transparent, not the palest red — "none"
+             and "one" must not look like neighbours. */
+          return n ? 'rgba(var(--pp-bad-rgb),' + (0.12 + n * 0.19).toFixed(2) + ')'
+            : 'rgba(255,255,255,0)';
+        },
+        stroke: function (_i, z) {
+          return (counts[z.label] || 0) ? 'rgba(var(--pp-bad-rgb),.5)' : 'rgba(45,41,38,.12)';
+        }
+      });
+
+      // The three figures the handoff puts under the map.
+      const resolved = seasonInjuries.filter(i => i.status === 'resolved');
+      const meanDays = resolved.length
+        ? Math.round(resolved.reduce((n, i) => n + md2Days(i.startDate, i.endDate || todayStr), 0) / resolved.length)
+        : 0;
+      /* A recurrence is the SECOND and later injury to one zone for one
+         player inside the season — so three injuries to the same hamstring
+         count as two recidives, not three. Sorted by start date so "second"
+         means second in time and not second in the array. */
+      const seen = {};
+      let recur = 0;
+      seasonInjuries.slice().sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))
+        .forEach(function (i) {
+          const k = String(i.playerId) + '|' + md2ZoneKey(i);
+          if (seen[k]) recur++;
+          seen[k] = true;
+        });
+      const topZone = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+
+      heatHtml = '<section class="md2-block">' +
+        md2Head(t('md2.heat'), tv('md2.heat_note', { n: seasonInjuries.length })) +
+        map +
+        '<div class="md2-legend">' +
+          '<span class="md2-legend-k">' + t('md2.none') + '</span>' +
+          '<span class="md2-legend-bar"></span>' +
+          '<span class="md2-legend-k">' + tv('md2.heat_note', { n: max }) + '</span>' +
+        '</div>' +
+        '<div class="md2-figs">' +
+          md2Fig(t('md2.avg'), tv('md2.days_n', { n: meanDays })) +
+          md2Fig(t('md2.recur'), tv('md2.n_of_m', { n: recur, m: seasonInjuries.length })) +
+          md2Fig(t('md2.hot_zone'), topZone ? sanitize(ZONE_CA[topZone] || topZone) : '—') +
+        '</div>' +
+      '</section>';
     }
-    let axisHtml = '';
-    yTicks.forEach(t => {
-      const y = chartH - padBot - (t / maxMonth) * barArea;
-      axisHtml += '<line x1="' + padLeft + '" y1="' + y + '" x2="' + (svgW - gap) + '" y2="' + y + '" stroke="var(--border)" stroke-width=".5" stroke-dasharray="3,3"/>';
-      axisHtml += '<text x="' + (padLeft - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="13" fill="var(--text-secondary)">' + t + '</text>';
-    });
-    let barsHtml = axisHtml;
-    monthCounts.forEach((c, i) => {
-      const x = padLeft + gap + i * (barW + gap);
-      const h = c > 0 ? Math.max(4, (c / maxMonth) * barArea) : 0;
-      const y = chartH - padBot - h;
-      const color = c === 0 ? 'transparent' : (c >= maxMonth * 0.7 ? '#e53935' : c >= maxMonth * 0.4 ? '#f9a825' : '#43a047');
-      barsHtml += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" rx="4" fill="' + color + '"/>';
-      if (c > 0) barsHtml += '<text x="' + (x + barW / 2) + '" y="' + (y - 6) + '" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)">' + c + '</text>';
-      barsHtml += '<text x="' + (x + barW / 2) + '" y="' + (chartH - 8) + '" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-secondary)">' + monthNames[i] + '</text>';
-    });
-    const monthChartHtml = '<svg viewBox="0 0 ' + svgW + ' ' + chartH + '" preserveAspectRatio="xMidYMid meet" style="width:100%;">' + barsHtml + '</svg>';
 
-    // Injury-prone table
-    const playerInjCount = {};
-    const playerDaysOut = {};
-    const playerTopZone = {};
-    injuries.forEach(inj => {
-      const pid = inj.playerId;
-      playerInjCount[pid] = (playerInjCount[pid] || 0) + 1;
-      const s = new Date(inj.startDate + 'T12:00:00');
-      const e = new Date((inj.endDate || todayStr) + 'T12:00:00');
-      playerDaysOut[pid] = (playerDaysOut[pid] || 0) + Math.max(1, Math.floor((e - s) / 86400000) + 1);
-      const zone = inj.muscleGroup || 'Unknown';
-      if (!playerTopZone[pid]) playerTopZone[pid] = {};
-      playerTopZone[pid][zone] = (playerTopZone[pid][zone] || 0) + 1;
-    });
-    const proneList = Object.entries(playerInjCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([pid, count]) => {
-        const p = players.find(x => x.id === pid);
-        const name = p ? sanitize(p.name) : 'Unknown';
-        const days = playerDaysOut[pid] || 0;
-        const zones = playerTopZone[pid] || {};
-        const topZone = Object.entries(zones).sort((a, b) => b[1] - a[1])[0];
-        return '<tr><td>' + name + '</td><td>' + count + '</td><td>' + days + 'd</td><td>' + (topZone ? sanitize(topZone[0]) : '—') + '</td></tr>';
-      }).join('');
+    const rank = { injured: 0, doubt: 1, fit: 2 };
+    const squadRows = players.slice().sort(function (a, b) {
+      const d = (rank[statusMap[a.id]] ?? 2) - (rank[statusMap[b.id]] ?? 2);
+      return d !== 0 ? d : posRankGlobal(a) - posRankGlobal(b);
+    }).map(function (p) {
+      const st = statusMap[p.id];
+      const cls = st === 'injured' ? 'inj' : st === 'doubt' ? 'rec' : 'fit';
+      const label = st === 'injured' ? t('md2.st_inj') : st === 'doubt' ? t('md2.st_rec') : t('md2.st_fit');
+      return '<div class="md2-sq md2-sq-' + cls + '" data-md2-player="' + sanitize(String(p.id)) + '">' +
+        '<span class="md2-dot md2-dot-' + cls + '"></span>' +
+        '<span class="md2-sq-name">' + sanitize(p.name) + '</span>' +
+        '<span class="md2-sq-st">' + label + '</span>' +
+      '</div>';
+    }).join('');
 
-    // Most common zone & severity
-    const zoneFreq = {};
-    const sevFreq = { minor: 0, moderate: 0, severe: 0 };
-    injuries.forEach(inj => {
-      const z = inj.muscleGroup || 'Unknown';
-      zoneFreq[z] = (zoneFreq[z] || 0) + 1;
-      if (inj.severity) sevFreq[inj.severity]++;
-    });
-    const topZoneEntry = Object.entries(zoneFreq).sort((a, b) => b[1] - a[1])[0];
-    const topSev = Object.entries(sevFreq).sort((a, b) => b[1] - a[1])[0];
+    return heatHtml +
+      '<section class="md2-block">' +
+        md2Head(t('md2.squad'), tv('md2.squad_note', { f: fitCount, n: players.length })) +
+        '<div class="md2-sq-box">' + squadRows + '</div>' +
+      '</section>';
+  }
 
-    return '<div class="card"><div class="card-title" style="margin-bottom:.8rem;">📊 Injury Analytics</div>' +
-      '<div class="med-analytics-grid">' +
-        '<div class="med-analytics-section">' +
-          '<div class="med-analytics-subtitle">Body Zone Heatmap</div>' +
-          heatMapHtml +
-        '</div>' +
-        '<div class="med-analytics-section">' +
-          '<div class="med-analytics-subtitle">Injuries by Month</div>' +
-          monthChartHtml +
-        '</div>' +
-      '</div>' +
-      (proneList ? '<div class="med-analytics-section" style="margin-top:1rem;">' +
-        '<div class="med-analytics-subtitle">Injury-Prone Players</div>' +
-        '<table class="med-prone-table"><thead><tr><th>Player</th><th>Injuries</th><th>Days Out</th><th>Most Affected</th></tr></thead><tbody>' + proneList + '</tbody></table>' +
-      '</div>' : '') +
-      '<div class="med-season-summary">' +
-        '<div class="med-summary-item"><span class="med-summary-label">Most Common Area</span><span class="med-summary-val">' + (topZoneEntry ? sanitize(topZoneEntry[0]) + ' (' + topZoneEntry[1] + ')' : '—') + '</span></div>' +
-        '<div class="med-summary-item"><span class="med-summary-label">Most Common Severity</span><span class="med-summary-val">' + (topSev ? topSev[0].charAt(0).toUpperCase() + topSev[0].slice(1) + ' (' + topSev[1] + ')' : '—') + '</span></div>' +
-      '</div>' +
-    '</div>';
+  function md2Fig(label, value) {
+    return '<div class="md2-fig"><span class="md2-eyebrow">' + label + '</span>' +
+      '<span class="md2-fig-v">' + value + '</span></div>';
   }
 
   // ---------- Medical Detail ----------
+  /** The player's medical file (screen 1e) — the staff view, everything on it.
+   *
+   *  ⚠ Reached by drill-down, so a STALE id must not expose another
+   *  category's record. The guard below is the only thing between a coach and
+   *  a squad he cannot otherwise see; it was added the day the pages were
+   *  scoped and it stays. */
   function renderMedicalDetail() {
+    const ro = !canEditPage('medical');
     const users = getUsers();
     const p = users.find(x => String(x.id) === String(medicalDetailPlayerId));
     if (!p) return '<div class="empty-state"><p>' + t('common.player_not_found') + '</p></div>';
-    // Reached by drill-down, but a stale id must not expose another
-    // category's medical record.
     const visible = getVisibleCategories();
     if (p.category && visible.length && visible.indexOf(p.category) === -1) {
       return '<div class="empty-state"><div class="empty-icon">🔒</div><p>' +
         t('error.no_categories') + '</p></div>';
     }
+
     const now = new Date();
-    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    const todayStr = localDateStr(now);
+    const seasonStart = seasonStartStr(now);
+    const trainings = getTrainings();
     const derived = deriveFitnessStatus(p.id, false);
-    const posHtml = posCirclesHtmlGlobal(p);
-    const teamCircle = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-    const allInj = getPlayerInjuries(p.id).sort((a, b) => b.startDate.localeCompare(a.startDate));
-    const activeInj = allInj.find(i => i.status === 'active');
-    const recoveringInj = allInj.find(i => i.status === 'recovering');
-    const currentInj = activeInj || recoveringInj;
+    const allInj = getPlayerInjuries(p.id).slice()
+      .sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
+    const current = allInj.find(i => i.status === 'active') || allInj.find(i => i.status === 'recovering');
+    const seasonInj = allInj.filter(i => i.startDate >= seasonStart);
 
-    // Status badge
-    let statusHtml = '';
-    if (derived.fitnessStatus === 'injured') statusHtml = '<span class="med-detail-status" style="background:#e53935;">' + t('medical.status_injured') + '</span>';
-    else if (derived.fitnessStatus === 'doubt') statusHtml = '<span class="med-detail-status" style="background:#f9a825;color:#333;">' + t('medical.status_recovering') + '</span>';
-    else statusHtml = '<span class="med-detail-status" style="background:#43a047;">' + t('medical.status_fit') + '</span>';
+    const daysOff = current
+      ? md2Days(current.startDate, null)
+      : seasonInj.reduce((n, i) => n + md2Days(i.startDate, i.endDate || todayStr), 0);
+    const missed = current ? md2MissedSessions(current, p, trainings)
+      : seasonInj.reduce((n, i) => n + md2MissedSessions(i, p, trainings), 0);
 
-    // Current injury card
-    let currentInjHtml = '';
-    if (currentInj) {
-      const days = Math.max(0, Math.floor((now - new Date(currentInj.startDate + 'T12:00:00')) / 86400000));
-      const sinceStr = tDateDMY(currentInj.startDate);
-      const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
-      const sevColor = sevColors[currentInj.severity] || '#999';
-      let returnHtml = '';
-      if (currentInj.expectedReturn) {
-        const retD = new Date(currentInj.expectedReturn + 'T12:00:00');
-        const retDays = Math.max(0, Math.ceil((retD - now) / 86400000));
-        returnHtml = '<div class="med-detail-return">' + t('med_detail.expected') + ' ' + tDateDayMonth(currentInj.expectedReturn) + (retDays > 0 ? ' (~' + retDays + ' days)' : ' (due)') + '</div>';
-      }
-      currentInjHtml = '<div class="card med-current-card">' +
-        '<div class="card-title" style="margin-bottom:.6rem;">' + t('med_detail.current') + '</div>' +
-        '<div class="med-detail-inj-info">' +
-          '<span class="med-severity-badge" style="background:' + sevColor + ';">' + (currentInj.severity || 'Unknown').charAt(0).toUpperCase() + (currentInj.severity || 'unknown').slice(1) + '</span>' +
-          '<span class="med-detail-zone">' + sanitize(currentInj.muscleGroup || 'Unknown') + (currentInj.muscleSub ? ' (' + sanitize(currentInj.muscleSub) + ')' : '') + '</span>' +
-        '</div>' +
-        (currentInj.description ? '<div class="med-detail-desc">' + sanitize(currentInj.description) + '</div>' : '') +
-        '<div class="med-detail-timing">Since ' + sinceStr + ' · ' + (days === 0 ? 'Today' : days + ' days') + '</div>' +
-        returnHtml +
-        (currentInj.notes ? '<div class="med-detail-notes">' + sanitize(currentInj.notes) + '</div>' : '') +
-        '<div class="med-inj-actions" style="margin-top:.6rem;">' +
-          (currentInj.status === 'active' ? '<button class="btn btn-small med-btn-recover" data-inj-id="' + currentInj.id + '">' + t('medical.mark_recovering') + '</button>' : '') +
-          '<button class="btn btn-small med-btn-resolve" data-inj-id="' + currentInj.id + '">' + t('medical.mark_resolved') + '</button>' +
-          '<button class="btn btn-small btn-ghost med-btn-edit" data-inj-id="' + currentInj.id + '">' + t('common.edit') + '</button>' +
-        '</div>' +
-      '</div>';
-    }
+    const statusCls = derived.fitnessStatus === 'injured' ? 'inj'
+      : derived.fitnessStatus === 'doubt' ? 'rec' : 'fit';
+    const statusLabel = derived.fitnessStatus === 'injured' ? t('md2.st_inj')
+      : derived.fitnessStatus === 'doubt' ? t('md2.st_rec') : t('md2.st_fit');
 
-    // Body map with history heat
+    /* ⚠ Recurrence is counted BY ZONE across the season, not by muscle group.
+       Two hamstring tears three months apart are the fact the physio needs;
+       "Hamstrings" as a group would also collect a cramp and a contusion. */
     const zoneCounts = {};
-    allInj.forEach(inj => { if (inj.bodyZone != null) zoneCounts[inj.bodyZone] = (zoneCounts[inj.bodyZone] || 0) + 1; });
-    const maxZ = Math.max(1, ...Object.values(zoneCounts));
-    let bodyPolys = '';
-    BODY_ZONES.forEach((z, i) => {
-      const count = zoneCounts[i] || 0;
-      const isCurrent = currentInj && currentInj.bodyZone === i;
-      if (!count && !isCurrent) {
-        bodyPolys += '<polygon points="' + z.pts + '" fill="transparent" stroke="transparent"/>';
-      } else {
-        const intensity = Math.min(1, count / maxZ);
-        bodyPolys += '<polygon points="' + z.pts + '" fill="rgba(239,83,80,' + (0.1 + 0.4 * intensity) + ')" stroke="rgba(239,83,80,.7)" stroke-width=".4">' +
-          '<title>' + sanitize(z.label) + ': ' + count + ' injuries</title></polygon>';
-        if (isCurrent) {
-          const pairs = z.pts.split(/\s+/).map(pp => pp.split(',').map(Number));
-          let cx = 0, cy = 0;
-          pairs.forEach(([x, y]) => { cx += x; cy += y; });
-          cx = (cx / pairs.length).toFixed(1);
-          cy = (cy / pairs.length).toFixed(1);
-          bodyPolys += '<circle cx="' + cx + '" cy="' + cy + '" r="1.8" class="mystats-injury-dot"/>';
-        }
+    seasonInj.forEach(function (i) {
+      const k = md2ZoneKey(i);
+      if (k) zoneCounts[k] = (zoneCounts[k] || 0) + 1;
+    });
+    const repeat = Object.keys(zoneCounts).filter(k => zoneCounts[k] >= 2)
+      .sort((a, b) => zoneCounts[b] - zoneCounts[a])[0];
+
+    // ---- Localització: history heat plus a marker on the open injury ----
+    const histCounts = {};
+    allInj.forEach(function (i) {
+      const k = md2ZoneKey(i);
+      if (k) histCounts[k] = (histCounts[k] || 0) + 1;
+    });
+    const curLabel = current ? md2ZoneKey(current) : '';
+    const marker = current && current.bodyZone != null ? bodyZoneCentroid(current.bodyZone) : null;
+    const mapHtml = bodyMapHtml({
+      opacity: 0.40,
+      marker: marker,
+      fill: function (_i, z) {
+        if (curLabel && z.label === curLabel) return 'rgba(var(--pp-bad-rgb),.45)';
+        const n = histCounts[z.label] || 0;
+        return n ? 'rgba(var(--pp-bad-rgb),' + Math.min(0.34, 0.1 + n * 0.08).toFixed(2) + ')'
+          : 'rgba(255,255,255,0)';
+      },
+      stroke: function (_i, z) {
+        if (curLabel && z.label === curLabel) return 'var(--pp-med-inj-ink)';
+        return (histCounts[z.label] || 0) ? 'rgba(var(--pp-bad-rgb),.4)' : 'rgba(45,41,38,.14)';
       }
     });
 
-    const bodyMapHtml = '<div class="med-detail-body-map">' +
-      '<div style="position:relative;display:inline-block;line-height:0;">' +
-        '<img src="img/cuerpos.png" style="display:block;height:260px;border-radius:8px;pointer-events:none;">' +
-        '<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;">' +
-        bodyPolys + '</svg>' +
+    // ---- Lesió activa ----
+    let currentHtml = '';
+    if (current) {
+      const zone = md2ZoneText(current);
+      const muscle = md2MuscleText(current);
+      const sevCls = md2SevCls(current.severity);
+      const stat = function (label, value) {
+        return '<div class="md2-stat"><span class="md2-eyebrow md2-eyebrow-s">' + label +
+          '</span><span class="md2-stat-v md2-stat-v-l">' + value + '</span></div>';
+      };
+      currentHtml = '<section class="md2-block">' +
+        md2Head(t('md2.active_one')) +
+        '<div class="md2-file-what">' +
+          '<span class="md2-file-zone">' + sanitize(zone) + '</span>' +
+          (muscle ? '<span class="md2-sep"></span><span class="md2-file-muscle">' + sanitize(muscle) + '</span>' : '') +
+          (sevCls ? '<span class="md2-sev ' + sevCls + '">' + md2SevLabel(current.severity) + '</span>' : '') +
+        '</div>' +
+        ((current.notes || current.description)
+          ? '<div class="md2-file-note">' + sanitize(current.notes || current.description) + '</div>' : '') +
+        '<div class="md2-file-stats">' +
+          stat(t('md2.since'), tDateDMY(current.startDate)) +
+          stat(t('md2.eta'), current.expectedReturn ? tDateDMY(current.expectedReturn) : '—') +
+          stat(t('md2.origin'), sanitize(md2OriginText(current))) +
+          stat(t('md2.logged_by'), sanitize(current.createdByName || '—')) +
+        '</div>' +
+        '<div class="md2-file-acts">' +
+          md2Act(ro, 'md2-act-ok md2-btn-discharge', ' data-inj-id="' + sanitize(current.id) + '"', t('md2.discharge')) +
+          md2Act(ro, 'md2-act-plain md2-btn-edit', ' data-inj-id="' + sanitize(current.id) + '"', t('md2.edit_file')) +
+        '</div>' +
+      '</section>';
+    }
+
+    // ---- Informes i proves ----
+    /* Every document the player's records carry, newest first, each labelled
+       with the injury it belongs to only through its own row — the files ARE
+       the injury's, and this is the one place they are gathered. */
+    const docs = [];
+    allInj.forEach(function (i) {
+      (i.docs || []).forEach(function (d) { docs.push(Object.assign({ injId: i.id }, d)); });
+    });
+    docs.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const docRows = docs.map(function (d) {
+      const kind = md2DocKind(d.name);
+      return '<div class="md2-frow">' +
+        '<span class="md2-chip md2-chip-l ' + kind.cls + '">' + sanitize(d.kind || kind.ext) + '</span>' +
+        '<a class="md2-frow-name" href="' + sanitize(safeHttpUrl(d.url) || '#') +
+          '" target="_blank" rel="noopener noreferrer">' + sanitize(d.name) + '</a>' +
+        '<span class="md2-frow-by">' + sanitize(d.by || '') + '</span>' +
+        '<span class="md2-frow-date md2-num">' + (d.date ? tDateDayMonth(d.date) : '') + '</span>' +
+        '<span class="md2-frow-size md2-num">' + md2DocSize(d.size) + '</span>' +
+      '</div>';
+    }).join('');
+
+    const docsHtml = '<section class="md2-block">' +
+      '<div class="md2-sec-head"><span class="md2-eyebrow">' + t('md2.f_docs') + '</span>' +
+        (ro || !current ? '' :
+          '<button type="button" class="md2-act md2-act-link md2-btn-adddoc" data-inj-id="' +
+          sanitize(current.id) + '">' + t('md2.add_doc') + '</button>') +
+      '</div>' +
+      (docRows || '<div class="md2-empty">' + t('md2.no_docs') + '</div>') +
+      '<div class="md2-foot-note">' + t('md2.doc_privacy') + '</div>' +
+    '</section>';
+
+    // ---- Historial de lesions ----
+    const histRows = allInj.map(function (i) {
+      const open = i.status !== 'resolved';
+      const what = [md2ZoneText(i), md2MuscleText(i)].filter(Boolean).join(' · ');
+      const days = md2Days(i.startDate, i.endDate);
+      return '<div class="md2-hrow">' +
+        '<span class="md2-dot md2-dot-' + (open ? 'inj' : 'off') + '"></span>' +
+        '<span class="md2-hrow-what">' + sanitize(what) + '</span>' +
+        '<span class="md2-hrow-sev' + (md2SevCls(i.severity) ? ' ' + md2SevCls(i.severity) + '-ink' : '') +
+          '">' + md2SevLabel(i.severity) + '</span>' +
+        '<span class="md2-hrow-period md2-num">' + tDateDMY(i.startDate) + ' – ' +
+          (i.endDate ? tDateDMY(i.endDate) : t('md2.ongoing')) + '</span>' +
+        '<span class="md2-hrow-days md2-num">' + days + '</span>' +
+      '</div>';
+    }).join('');
+    const firstYear = allInj.length ? String(allInj[allInj.length - 1].startDate).slice(0, 4) : '';
+
+    return '<div class="md2-page md2-file' + (ro ? ' md2-page-ro' : '') + '" id="md2-page">' +
+      '<div class="md2-backbar"><a href="#" class="md2-back" id="md2-back">' + t('md2.back') + '</a></div>' +
+      '<div class="md2-fhead">' +
+        '<div class="md2-fhead-id">' +
+          '<h1 class="md2-h1">' + sanitize(p.name) + '</h1>' +
+          '<span class="conv-pos-circles md2-pos md2-pos-l">' + posCirclesHtmlGlobal(p) + '</span>' +
+          (p.playerNumber ? '<span class="md2-dorsal md2-num">' + sanitize(String(p.playerNumber)) + '</span>' : '') +
+          '<span class="md2-tag md2-tag-' + statusCls + '"><span class="md2-dot"></span>' + statusLabel + '</span>' +
+        '</div>' +
+        '<div class="md2-counters md2-counters-s">' +
+          md2Counter(t('md2.days_off'), daysOff, '') +
+          md2Counter(t('md2.missed'), missed, '') +
+          md2Counter(t('md2.season_inj'), seasonInj.length, '') +
+        '</div>' +
+      '</div>' +
+      (repeat ? '<div class="md2-band"><span class="md2-dot"></span>' +
+        tv('md2.recur_band', { n: zoneCounts[repeat], zone: sanitize(ZONE_CA[repeat] || repeat) }) +
+        '</div>' : '') +
+      '<div class="md2-body">' +
+        '<aside class="md2-loc">' + md2Head(t('md2.location')) + mapHtml + '</aside>' +
+        '<div class="md2-main">' +
+          currentHtml +
+          docsHtml +
+          '<section class="md2-block">' +
+            md2Head(t('md2.history'), allInj.length
+              ? tv('md2.history_note', { n: allInj.length, y: firstYear }) : '') +
+            (histRows || '<div class="md2-empty">' + t('md2.no_history') + '</div>') +
+          '</section>' +
+        '</div>' +
       '</div>' +
     '</div>';
-
-    // Recurring injury alerts
-    let recurringHtml = '';
-    const zoneInjCounts = {};
-    allInj.forEach(inj => {
-      const zone = inj.muscleGroup || 'Unknown';
-      zoneInjCounts[zone] = (zoneInjCounts[zone] || 0) + 1;
-    });
-    const recurring = Object.entries(zoneInjCounts).filter(([, c]) => c >= 2);
-    if (recurring.length) {
-      recurringHtml = '<div class="med-recurring-alert">' +
-        recurring.map(([zone, c]) => t('med_detail.recurring') + ' ' + sanitize(zone) + ' (' + c + ' ' + t('med_detail.injuries_count') + ')').join('<br>') +
-      '</div>';
-    }
-
-    // Full timeline
-    let timelineHtml = '';
-    if (!allInj.length) {
-      timelineHtml = '<div class="empty-state" style="padding:1rem;"><p>' + t('med_detail.no_history') + '</p></div>';
-    } else {
-      timelineHtml = allInj.map(inj => {
-        const sevColors = { minor: '#43a047', moderate: '#f9a825', severe: '#e53935' };
-        const statusColors = { active: '#e53935', recovering: '#f9a825', resolved: '#43a047' };
-        const startStr = tDateDayMonth(inj.startDate);
-        const endStr = inj.endDate ? tDateDayMonth(inj.endDate) : t('stats.present');
-        const s = new Date(inj.startDate + 'T12:00:00');
-        const e = inj.endDate ? new Date(inj.endDate + 'T12:00:00') : now;
-        const days = Math.max(1, Math.floor((e - s) / 86400000) + 1);
-        return '<div class="med-timeline-row">' +
-          '<span class="med-severity-dot" style="background:' + (statusColors[inj.status] || '#999') + ';"></span>' +
-          '<div class="med-timeline-info">' +
-            '<span class="med-timeline-zone">' + sanitize(inj.muscleGroup || 'Injury') + (inj.muscleSub ? ' (' + sanitize(inj.muscleSub) + ')' : '') + '</span>' +
-            '<span class="med-severity-badge med-severity-sm" style="background:' + (sevColors[inj.severity] || '#999') + ';">' + (inj.severity || 'unknown') + '</span>' +
-          '</div>' +
-          '<div class="med-timeline-dates">' + startStr + ' – ' + endStr + ' · ' + days + 'd</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    return '<div class="med-detail-back" id="med-back">' + t('med_detail.back') + '</div>' +
-      '<div class="med-detail-header">' +
-        '<div class="med-detail-player">' +
-          '<span class="conv-pos-circles">' + posHtml + '</span>' +
-          '<span class="med-detail-name">' + sanitize(p.name) + teamCircle + '</span>' +
-          statusHtml +
-        '</div>' +
-      '</div>' +
-      currentInjHtml +
-      recurringHtml +
-      '<div class="med-detail-columns">' +
-        '<div class="card med-detail-map-card">' +
-          '<div class="card-title" style="margin-bottom:.6rem;">' + t('med_detail.injury_map') + '</div>' +
-          bodyMapHtml +
-        '</div>' +
-        '<div class="card med-detail-timeline-card">' +
-          '<div class="card-title" style="margin-bottom:.6rem;">' + t('med_detail.timeline') + ' (' + allInj.length + ')</div>' +
-          timelineHtml +
-        '</div>' +
-      '</div>';
   }
 
   // ---------- Staff Injury Logger ----------
-  function showStaffInjuryLogger(preselectedPlayerId) {
+  /* ---------- Informes i proves: the injury's own documents ----------
+
+     ⚠ DOCUMENTS BELONG TO THE INJURY, NOT TO THE PLAYER. The upload lives
+     inside the injury form and the path carries the injury id, so closing a
+     record keeps its own scans with it instead of pooling every report a
+     player ever had into one folder.
+
+     ⚠ The path carries the CATEGORY, and it has to: storage.rules cannot
+     read Firestore to find out whose record this is, so the only thing it
+     can test the `cats` claim against is a path segment. A file uploaded
+     under the wrong category would be readable by the wrong coaches and
+     invisible to the right ones.
+
+     ⚠ NO DATA-URI FALLBACK, EVER. A failed upload says so and stores
+     nothing. Parking-lot 12b: the profile-photo path fell back to a
+     FileReader data URI, which `saveUsers` then carried into the synced
+     `fa_users` blob — a Firestore document capped at 1 MB — and one failed
+     upload could stop a whole club syncing weeks later. The same shape of
+     mistake here would put a 10 MB PDF inside `fa_injuries`. */
+  const MD2_DOC_MAX = 10 * 1024 * 1024;
+  const MD2_DOC_KINDS = {
+    pdf: { ext: 'PDF', cls: 'md2-chip-pdf' },
+    doc: { ext: 'DOC', cls: 'md2-chip-doc' },
+    docx: { ext: 'DOCX', cls: 'md2-chip-doc' },
+    jpg: { ext: 'JPG', cls: 'md2-chip-img' },
+    jpeg: { ext: 'JPG', cls: 'md2-chip-img' },
+    png: { ext: 'PNG', cls: 'md2-chip-img' },
+    heic: { ext: 'HEIC', cls: 'md2-chip-img' },
+    webp: { ext: 'WEBP', cls: 'md2-chip-img' }
+  };
+  /* The file picker offers exactly what md2UploadDoc will accept, built from
+     the same table so the two cannot drift.
+
+     ⚠ NOT the `image` MIME glob. Several suites strip block comments from
+     js/app.js with a naive non-greedy regex before asking questions of the
+     source, and a slash-star inside a string opens a comment that the
+     stripper then closes at the next genuine terminator — swallowing
+     whatever lies between. Two more of those globs moved the swallowed
+     region over the category-bar reset block and took a passing Convocatòria
+     assertion down with it. An explicit extension list is also the more
+     honest picker: it offers exactly what the upload will accept.
+     (And yes, writing the terminator out inside THIS comment ends it early —
+     which is how the trap was found the second time.) */
+  const MD2_DOC_ACCEPT = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.heic,.webp';
+  function md2DocKind(name) {
+    const ext = String(name || '').split('.').pop().toLowerCase();
+    return MD2_DOC_KINDS[ext] || { ext: (ext || '?').slice(0, 4).toUpperCase(), cls: 'md2-chip-doc' };
+  }
+  function md2DocSize(bytes) {
+    const n = Number(bytes) || 0;
+    return n >= 1024 * 1024 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB'
+      : Math.max(1, Math.round(n / 1024)) + ' kB';
+  }
+  /** Upload one report. Resolves to the doc record, or rejects — the caller
+      must show the failure and store nothing. */
+  function md2UploadDoc(file, category, injuryId) {
+    const s = getSession();
+    const kind = md2DocKind(file.name);
+    if (!MD2_DOC_KINDS[String(file.name).split('.').pop().toLowerCase()]) {
+      return Promise.reject(new Error(t('md2.bad_type')));
+    }
+    if (file.size > MD2_DOC_MAX) return Promise.reject(new Error(t('md2.too_big')));
+    const safe = String(file.name).replace(/[^\w.\- ]+/g, '_').slice(-80);
+    const path = 'medical/' + s.teamId + '/' + (category || 'none') + '/' + injuryId +
+      '/' + Date.now() + '_' + safe;
+    const ref = storage.ref(path);
+    return ref.put(file).then(function () { return ref.getDownloadURL(); })
+      .then(function (url) {
+        return {
+          name: file.name, size: file.size, kind: kind.ext, path: path, url: url,
+          by: s.name || '', date: localDateStr(new Date())
+        };
+      });
+  }
+  function md2DocRowsHtml(docs, removable) {
+    return (docs || []).map(function (d, i) {
+      const kind = md2DocKind(d.name);
+      return '<div class="md2-doc">' +
+        '<span class="md2-chip ' + kind.cls + '">' + sanitize(d.kind || kind.ext) + '</span>' +
+        '<span class="md2-doc-name">' + sanitize(d.name) + '</span>' +
+        '<span class="md2-doc-size md2-num">' + md2DocSize(d.size) + '</span>' +
+        (removable ? '<button type="button" class="md2-doc-x" data-md2-doc="' + i + '">×</button>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  /** The staff logger (screen 1c) — and, since v234, the whole editor.
+   *
+   *  ⚠ IT REPLACED showEditInjuryModal(). There used to be two sheets: this
+   *  one to create a record and a second, smaller one to change it, which
+   *  meant every field existed twice and the two drifted (the edit sheet had
+   *  a status and no body map; this one had a body map and no status). One
+   *  form now, opened empty to create and with an id to edit, and `Estat` is
+   *  the field the edit sheet contributed.
+   *
+   *  `Estat` is the one control here the handoff does not draw. It has to be
+   *  somewhere: the page renders `Recuperant` as a status and `Alta mèdica`
+   *  only ever resolves, so without it a player could enter recovery and
+   *  never be marked as being in it.
+   *
+   *  @param preselectedPlayerId  from `Registrar` on a pending row
+   *  @param injuryId             edit this record instead of creating one */
+  function showStaffInjuryLogger(preselectedPlayerId, injuryId) {
     const users = getUsers();
-    // Scope to the same squad the medical page is showing. This dropdown used
-    // to list every player in the club regardless of category or team, which
-    // let a coach log an injury against someone they cannot otherwise see.
-    const _logCat = getCurrentCategory();
+    /* Scope to the same squad the page is showing. This dropdown used to list
+       every player in the club regardless of category or team, which let a
+       coach log an injury against someone they cannot otherwise see. */
+    const cat = getCurrentCategory();
     const players = users.filter(u => (u.roles || []).includes('player')
-      && (!_logCat || (u.category || '') === _logCat)
+      && (!cat || (u.category || '') === cat)
       && (medicalTeamFilter === 'all' || (u.team || '') === medicalTeamFilter))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    const now = new Date();
-    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    const todayStr = localDateStr(new Date());
+    const editing = injuryId ? getInjuries().find(i => i.id === injuryId) : null;
+
+    /* The id is minted BEFORE the record is saved, because a document is
+       uploaded the moment it is chosen and its path has to name the injury
+       it belongs to. addInjury() keeps an id it is handed. */
+    const recId = editing ? editing.id : String(Date.now()) + '_' + Math.random().toString(36).slice(2, 6);
+
+    const st = {
+      playerId: editing ? editing.playerId : (preselectedPlayerId || ''),
+      zone: editing && editing.bodyZone != null ? editing.bodyZone : -1,
+      group: editing ? (editing.muscleGroup || '') : '',
+      muscle: editing ? (editing.muscleSub || '') : '',
+      sev: editing ? (editing.severity || '') : 'moderate',
+      status: editing ? (editing.status || 'active') : 'active',
+      origin: editing ? (editing.origin || '') : '',
+      docs: editing ? (editing.docs || []).slice() : []
+    };
 
     const overlay = document.createElement('div');
-    overlay.className = 'body-map-overlay';
-    const modal = document.createElement('div');
-    modal.className = 'body-map-modal med-logger-modal';
-    modal.innerHTML = '<div class="body-map-header"><span>🏥 Log Injury</span><button class="body-map-close">&times;</button></div>';
+    overlay.className = 'md2-scrim';
+    const sheet = document.createElement('div');
+    sheet.className = 'md2-sheet';
+    overlay.appendChild(sheet);
 
-    // Scrollable content
-    const content = document.createElement('div');
-    content.className = 'med-logger-content';
-
-    // Player selector
-    const playerSection = document.createElement('div');
-    playerSection.className = 'med-logger-field';
-    playerSection.innerHTML = '<label>Player</label><select class="med-logger-select" id="med-log-player">' +
-      '<option value="">Select player…</option>' +
-      players.map(p => '<option value="' + p.id + '"' + (p.id === preselectedPlayerId ? ' selected' : '') + '>' + sanitize(p.name) + '</option>').join('') +
-    '</select>';
-    content.appendChild(playerSection);
-
-    // Body map
-    const mapSection = document.createElement('div');
-    mapSection.className = 'med-logger-field';
-    mapSection.innerHTML = '<label>Injured Area (tap body map)</label>';
-    const imgWrap = document.createElement('div');
-    imgWrap.className = 'body-map-img-wrap';
-    imgWrap.style.cssText = 'cursor:pointer;';
-    const img = document.createElement('img');
-    img.src = 'img/cuerpos.png'; img.className = 'body-map-img'; img.draggable = false;
-    img.style.height = '50vh';
-    imgWrap.appendChild(img);
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.setAttribute('preserveAspectRatio', 'none');
-    svg.classList.add('body-map-svg');
-    const tip = document.createElement('div');
-    tip.className = 'body-zone-tip';
-    BODY_ZONES.forEach((z, i) => {
-      const poly = document.createElementNS(svgNS, 'polygon');
-      poly.setAttribute('points', z.pts);
-      poly.dataset.idx = i;
-      poly.classList.add('body-zone-poly');
-      poly.addEventListener('mouseenter', () => { tip.textContent = z.label; tip.style.display = 'block'; });
-      poly.addEventListener('mousemove', e => {
-        const r = imgWrap.getBoundingClientRect();
-        tip.style.left = (e.clientX - r.left + 12) + 'px';
-        tip.style.top = (e.clientY - r.top - 28) + 'px';
-      });
-      poly.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
-      svg.appendChild(poly);
-    });
-    imgWrap.appendChild(svg);
-    imgWrap.appendChild(tip);
-    mapSection.appendChild(imgWrap);
-    content.appendChild(mapSection);
-
-    // Choice panel (appears after zone click)
-    const choicePanel = document.createElement('div');
-    choicePanel.className = 'med-logger-field med-logger-choice';
-    choicePanel.style.display = 'none';
-    content.appendChild(choicePanel);
-
-    // Severity
-    const sevSection = document.createElement('div');
-    sevSection.className = 'med-logger-field';
-    sevSection.innerHTML = '<label>Severity</label>' +
-      '<div class="tg-btn-group med-sev-group">' +
-        '<button class="tg-btn" data-sev="minor">Minor</button>' +
-        '<button class="tg-btn tg-btn-active" data-sev="moderate">Moderate</button>' +
-        '<button class="tg-btn" data-sev="severe">Severe</button>' +
-      '</div>';
-    content.appendChild(sevSection);
-
-    // Dates
-    const dateSection = document.createElement('div');
-    dateSection.className = 'med-logger-field med-logger-dates';
-    const todayDMY = todayStr.split('-').reverse().join('/');
-    dateSection.innerHTML = '<div><label>Start Date</label><input type="text" class="med-logger-input md-datepicker" data-display-dmy data-allow-past id="med-log-start" data-date-iso="' + todayStr + '" value="' + todayDMY + '" placeholder="dd/mm/yyyy" readonly></div>' +
-      '<div><label>Expected Return</label><input type="text" class="med-logger-input md-datepicker" data-display-dmy data-allow-past id="med-log-return" data-date-iso="" value="" placeholder="dd/mm/yyyy" readonly></div>';
-    content.appendChild(dateSection);
-
-    // Notes
-    const notesSection = document.createElement('div');
-    notesSection.className = 'med-logger-field';
-    notesSection.innerHTML = '<label>Notes</label><textarea class="med-logger-textarea" id="med-log-notes" rows="2" placeholder="Additional notes…" maxlength="300"></textarea>';
-    content.appendChild(notesSection);
-
-    // Save button
-    const saveSection = document.createElement('div');
-    saveSection.className = 'med-logger-field';
-    saveSection.innerHTML = '<button class="btn btn-orange med-logger-save" id="med-log-save">Save Injury</button>';
-    content.appendChild(saveSection);
-
-    modal.appendChild(content);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    // Close
-    function closeOverlay() { overlay.remove(); closeDatePicker(); }
-    modal.querySelector('.body-map-close').addEventListener('click', closeOverlay);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
-    document.addEventListener('keydown', function onEsc(e) {
-      if (e.key === 'Escape') { closeOverlay(); document.removeEventListener('keydown', onEsc); }
-    });
-
-    // Bind custom datepicker
-    modal.querySelectorAll('.md-datepicker').forEach(inp => {
-      inp.addEventListener('click', () => openDatePicker(inp));
-    });
-
-    // Zone interaction
-    let activePoly = null;
-    let selectedGroup = '', selectedSub = '';
-    svg.querySelectorAll('.body-zone-poly').forEach(poly => {
-      poly.addEventListener('click', () => {
-        if (activePoly === poly) {
-          poly.classList.remove('body-zone-active');
-          activePoly = null;
-          choicePanel.style.display = 'none';
-          choicePanel.innerHTML = '';
-          return;
-        }
-        if (activePoly) activePoly.classList.remove('body-zone-active');
-        poly.classList.add('body-zone-active');
-        activePoly = poly;
-        const z = BODY_ZONES[parseInt(poly.dataset.idx)];
-        buildLoggerChoice(z.groups);
-      });
-    });
-
-    function buildLoggerChoice(groups) {
-      choicePanel.style.display = '';
-      let html = '<div class="body-map-choice-row">';
-      if (groups.length > 1) {
-        html += '<select class="body-map-group-sel">';
-        groups.forEach(g => { html += '<option value="' + sanitize(g) + '">' + sanitize(g) + '</option>'; });
-        html += '</select>';
-      } else {
-        html += '<span class="body-map-group-label">' + sanitize(groups[0]) + '</span>';
-      }
-      html += '<select class="body-map-sub-sel"><option value="">— General —</option>';
-      (GROUP_SUBS[groups[0]] || []).forEach(s => { html += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>'; });
-      html += '</select>';
-      html += '<input type="text" class="body-map-desc" placeholder="Describe injury…" maxlength="120">';
-      html += '</div>';
-      choicePanel.innerHTML = html;
-      selectedGroup = groups[0];
-      selectedSub = '';
-      const groupSel = choicePanel.querySelector('.body-map-group-sel');
-      const subSel = choicePanel.querySelector('.body-map-sub-sel');
-      if (groupSel) {
-        groupSel.addEventListener('change', () => {
-          selectedGroup = groupSel.value;
-          let opts = '<option value="">— General —</option>';
-          (GROUP_SUBS[selectedGroup] || []).forEach(s => { opts += '<option value="' + sanitize(s) + '">' + sanitize(s) + '</option>'; });
-          subSel.innerHTML = opts;
-        });
-      }
-      if (subSel) subSel.addEventListener('change', () => { selectedSub = subSel.value; });
+    function field(label, hint, body) {
+      return '<div class="md2-field"><span class="md2-eyebrow">' + label +
+        (hint ? '<span class="md2-hint"> ' + hint + '</span>' : '') + '</span>' + body + '</div>';
+    }
+    function chips(list, act) {
+      return '<div class="md2-chips">' + list.map(function (c) {
+        return '<button type="button" class="md2-chip-btn' + (c.on ? ' md2-on' : '') +
+          '" data-md2-act="' + act + '" data-md2-val="' + sanitize(c.value) + '">' +
+          sanitize(c.label) + '</button>';
+      }).join('') + '</div>';
     }
 
-    // Severity buttons
-    let selectedSeverity = 'moderate';
-    sevSection.querySelectorAll('.tg-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        sevSection.querySelectorAll('.tg-btn').forEach(b => b.classList.remove('tg-btn-active'));
-        btn.classList.add('tg-btn-active');
-        selectedSeverity = btn.dataset.sev;
+    /** The half of the sheet a body-map pick changes: the map, the zone
+        name, and the three chip rows under it. Re-rendered on its own so a
+        pick cannot scroll the sheet or drop what is typed in the notes. */
+    function taxonomyHtml() {
+      const z = BODY_ZONES[st.zone];
+      const groups = z ? (z.groups || []) : [];
+      const subs = GROUP_SUBS[st.group] || [];
+      return '<div class="md2-map-col">' +
+          bodyMapHtml({
+            interactive: true, which: 'log', opacity: 0.38,
+            fill: function (_i, zz) {
+              return z && zz.label === z.label ? 'rgba(var(--pp-bad-rgb),.55)' : 'rgba(255,255,255,0)';
+            },
+            stroke: function (_i, zz) {
+              return z && zz.label === z.label ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.16)';
+            }
+          }) +
+          '<div class="md2-map-cap"><span>' + t('md2.front') + '</span><span>' + t('md2.back_view') + '</span></div>' +
+        '</div>' +
+        '<div class="md2-form-col">' +
+          field(t('md2.f_zone'), '', '<div class="md2-zone-v' + (z ? '' : ' md2-muted') + '">' +
+            (z ? sanitize(zoneLabelCa(st.zone)) : t('md2.no_zone')) + '</div>') +
+          field(t('md2.f_group'), '', chips(groups.map(function (g) {
+            return { value: g, label: groupLabelCa(g), on: st.group === g };
+          }), 'group')) +
+          field(t('md2.f_muscle'), '', chips(subs.map(function (m) {
+            return { value: m, label: muscleLabelCa(m), on: st.muscle === m };
+          }), 'muscle')) +
+          field(t('md2.f_sev'), '', '<div class="md2-segs">' + MD2_SEV.map(function (s, i) {
+            return '<button type="button" class="md2-seg' + (st.sev === s ? ' md2-on md2-sev-' + (i + 1) : '') +
+              '" data-md2-act="sev" data-md2-val="' + s + '">' + md2SevLabel(s) + '</button>';
+          }).join('') + '</div>') +
+        '</div>';
+    }
+
+    function docsHtml() {
+      return md2DocRowsHtml(st.docs, true) +
+        '<button type="button" class="md2-drop" id="md2-drop">' + t('md2.drop') + '</button>';
+    }
+
+    sheet.innerHTML =
+      '<div class="md2-sheet-head">' +
+        '<span class="md2-sheet-title">' + t('md2.log_title') + '</span>' +
+        '<button type="button" class="md2-x" id="md2-close">×</button>' +
+      '</div>' +
+      '<div class="md2-sheet-body">' +
+        field(t('md2.f_player'), '',
+          '<select class="md2-in" id="md2-player"' + (editing ? ' disabled' : '') + '>' +
+            '<option value="">' + t('md2.pick_player') + '</option>' +
+            players.map(function (p) {
+              return '<option value="' + sanitize(String(p.id)) + '"' +
+                (String(p.id) === String(st.playerId) ? ' selected' : '') + '>' +
+                sanitize(p.name) + (p.playerNumber ? ' · ' + sanitize(String(p.playerNumber)) : '') +
+                '</option>';
+            }).join('') +
+          '</select>') +
+        '<div class="md2-form-row" id="md2-tax">' + taxonomyHtml() + '</div>' +
+        '<div class="md2-dates">' +
+          field(t('md2.since'), '', '<input type="text" class="md2-in md-datepicker" data-display-dmy data-allow-past id="md2-start" data-date-iso="' +
+            (editing && editing.startDate ? editing.startDate : todayStr) + '" value="' +
+            ((editing && editing.startDate ? editing.startDate : todayStr).split('-').reverse().join('/')) +
+            '" placeholder="dd/mm/yyyy" readonly>') +
+          field(t('md2.eta'), '', '<input type="text" class="md2-in md-datepicker" data-display-dmy data-allow-past id="md2-eta" data-date-iso="' +
+            (editing && editing.expectedReturn ? editing.expectedReturn : '') + '" value="' +
+            (editing && editing.expectedReturn ? editing.expectedReturn.split('-').reverse().join('/') : '') +
+            '" placeholder="dd/mm/yyyy" readonly>') +
+        '</div>' +
+        field(t('md2.origin'), '', '<div class="md2-segs">' +
+          ['training', 'match', 'outside'].map(function (o) {
+            return '<button type="button" class="md2-seg' + (st.origin === o ? ' md2-on' : '') +
+              '" data-md2-act="origin" data-md2-val="' + o + '">' + t('md2.origin_' + o) + '</button>';
+          }).join('') + '</div>') +
+        field(t('injury_log.status'), '', '<div class="md2-segs">' +
+          [['active', t('md2.st_inj')], ['recovering', t('md2.st_rec')]].map(function (p) {
+            return '<button type="button" class="md2-seg' + (st.status === p[0] ? ' md2-on' : '') +
+              '" data-md2-act="status" data-md2-val="' + p[0] + '">' + p[1] + '</button>';
+          }).join('') + '</div>') +
+        field(t('md2.f_notes'), '', '<textarea class="md2-ta" id="md2-notes" maxlength="600">' +
+          sanitize(editing ? (editing.notes || editing.description || '') : '') + '</textarea>') +
+        field(t('md2.f_docs'), t('md2.f_docs_hint'), '<div id="md2-docs">' + docsHtml() + '</div>') +
+      '</div>' +
+      '<div class="md2-sheet-foot">' +
+        '<button type="button" class="md2-cta md2-cta-wide" id="md2-save">' + t('md2.save') + '</button>' +
+        '<button type="button" class="md2-ghost" id="md2-cancel">' + t('md2.cancel') + '</button>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    function close() { overlay.remove(); closeDatePicker(); }
+    function bindDates() {
+      sheet.querySelectorAll('.md-datepicker').forEach(function (inp) {
+        inp.addEventListener('click', function () { openDatePicker(inp); });
       });
+    }
+    bindDates();
+    sheet.querySelector('#md2-close').addEventListener('click', close);
+    sheet.querySelector('#md2-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
     });
 
-    // Save
-    document.getElementById('med-log-save').addEventListener('click', () => {
-      const playerId = document.getElementById('med-log-player').value;
-      if (!playerId) { alert(t('alert.select_player')); return; }
-      const startDate = document.getElementById('med-log-start').dataset.dateIso || todayStr;
-      const expectedReturn = document.getElementById('med-log-return').dataset.dateIso || null;
-      const notes = document.getElementById('med-log-notes').value.trim();
-      const zoneIdx = activePoly ? parseInt(activePoly.dataset.idx) : null;
-      const zLabel = zoneIdx != null && BODY_ZONES[zoneIdx] ? BODY_ZONES[zoneIdx].label : '';
-      const descEl = choicePanel.querySelector('.body-map-desc');
-      const desc = descEl ? descEl.value.trim() : '';
-      const groupLabelEl = choicePanel.querySelector('.body-map-group-label');
-      const groupSelEl = choicePanel.querySelector('.body-map-group-sel');
-      const subSelEl = choicePanel.querySelector('.body-map-sub-sel');
-      const mGroup = groupSelEl ? groupSelEl.value : (groupLabelEl ? groupLabelEl.textContent : zLabel || 'Injury');
-      const mSub = subSelEl ? subSelEl.value : '';
+    function repaintTaxonomy() {
+      sheet.querySelector('#md2-tax').innerHTML = taxonomyHtml();
+    }
+    function repaintDocs() {
+      sheet.querySelector('#md2-docs').innerHTML = docsHtml();
+    }
 
-      // Check if player already has an active injury
-      const injuries = getInjuries();
-      const existing = injuries.find(inj => inj.playerId === playerId && inj.status === 'active');
-      if (existing) {
-        if (!confirm(t('confirm.existing_injury'))) return;
+    /* One delegated listener for every pick. The prototype hung a closure on
+       each polygon and each chip; a closure cannot survive innerHTML, and
+       this half of the sheet is rebuilt on every pick. */
+    sheet.addEventListener('click', function (e) {
+      const poly = e.target.closest('[data-md2-zone]');
+      if (poly) {
+        const i = parseInt(poly.dataset.md2Zone, 10);
+        const z = BODY_ZONES[i];
+        st.zone = i;
+        st.group = (z.groups || [])[0] || '';
+        st.muscle = '';
+        repaintTaxonomy();
+        return;
+      }
+      const btn = e.target.closest('[data-md2-act]');
+      if (btn) {
+        const act = btn.dataset.md2Act;
+        const val = btn.dataset.md2Val;
+        if (act === 'group') { st.group = st.group === val ? '' : val; st.muscle = ''; repaintTaxonomy(); }
+        else if (act === 'muscle') { st.muscle = st.muscle === val ? '' : val; repaintTaxonomy(); }
+        else if (act === 'sev') { st.sev = st.sev === val ? '' : val; repaintTaxonomy(); }
+        else if (act === 'origin') { st.origin = st.origin === val ? '' : val; md2Toggle(sheet, 'origin', st.origin); }
+        else if (act === 'status') { st.status = val; md2Toggle(sheet, 'status', st.status); }
+        return;
+      }
+      const rm = e.target.closest('[data-md2-doc]');
+      if (rm) {
+        /* Removed from the RECORD, not from Storage. A file the physio
+           un-attaches by mistake is still there; a delete would need its own
+           confirmation and the rules allow it separately. */
+        st.docs.splice(parseInt(rm.dataset.md2Doc, 10), 1);
+        repaintDocs();
+      }
+    });
+
+    /* The drop zone is a file picker. Uploading happens NOW, not on save, so
+       the record never holds a promise and a failure is visible while the
+       sheet is still open. */
+    sheet.addEventListener('click', function (e) {
+      if (!e.target.closest('#md2-drop')) return;
+      const pid = sheet.querySelector('#md2-player').value;
+      const p = players.find(function (x) { return String(x.id) === String(pid); });
+      if (!pid) { alert(t('md2.pick_player')); return; }
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = MD2_DOC_ACCEPT;
+      inp.onchange = function () {
+        const file = inp.files && inp.files[0];
+        if (!file) return;
+        const drop = sheet.querySelector('#md2-drop');
+        if (drop) drop.classList.add('md2-busy');
+        md2UploadDoc(file, (p && p.category) || cat || 'none', recId).then(function (doc) {
+          st.docs.push(doc);
+          repaintDocs();
+        }).catch(function (err) {
+          if (drop) drop.classList.remove('md2-busy');
+          alert(err && err.message ? err.message : t('md2.upload_failed'));
+        });
+      };
+      inp.click();
+    });
+
+    sheet.querySelector('#md2-save').addEventListener('click', function () {
+      const playerId = sheet.querySelector('#md2-player').value || st.playerId;
+      if (!playerId) { alert(t('md2.pick_player')); return; }
+      const startDate = sheet.querySelector('#md2-start').dataset.dateIso || todayStr;
+      const expectedReturn = sheet.querySelector('#md2-eta').dataset.dateIso || null;
+      const notes = sheet.querySelector('#md2-notes').value.trim();
+      const z = BODY_ZONES[st.zone];
+      const u = getUsers().find(function (x) { return String(x.id) === String(playerId); });
+      const s = getSession();
+
+      const fields = {
+        playerId: playerId,
+        bodyZone: st.zone >= 0 ? st.zone : null,
+        bodyZoneLabel: z ? z.label : '',
+        /* muscleGroup has never been allowed to be blank: half the app reads
+           it as the injury's name. The zone stands in when no group is set. */
+        muscleGroup: st.group || (z ? z.label : '') || t('fitness.injury'),
+        muscleSub: st.muscle || '',
+        severity: st.sev || '',
+        status: st.status,
+        startDate: startDate,
+        expectedReturn: expectedReturn,
+        origin: st.origin || '',
+        notes: notes,
+        docs: st.docs,
+        /* Staff confirmed it, whichever way the record started. This is what
+           takes a row out of `Autoreports pendents`. */
+        selfReported: editing ? !!editing.selfReported : false,
+        confirmedBy: s.id,
+        createdByName: editing && editing.createdByName ? editing.createdByName : (s.name || '')
+      };
+
+      if (editing) {
+        updateInjury(editing.id, fields);
+      } else {
+        const clash = getInjuries().find(function (i) {
+          return String(i.playerId) === String(playerId) && i.status === 'active';
+        });
+        if (clash && !confirm(t('confirm.existing_injury'))) return;
+        addInjury(Object.assign({
+          id: recId, description: '', endDate: null, createdBy: s.id
+        }, fields));
       }
 
-      const inj = addInjury({
-        playerId, bodyZone: zoneIdx, bodyZoneLabel: zLabel,
-        muscleGroup: mGroup || 'Injury', muscleSub: mSub,
-        description: desc, severity: selectedSeverity,
-        status: 'active', startDate,
-        expectedReturn, endDate: null,
-        createdBy: getSession().id, notes
-      });
-
-      // Update user fitness status
-      const usrs = getUsers();
-      const u = usrs.find(x => x.id === playerId);
-      if (u) { u.fitnessStatus = 'injured'; u.injuryNote = mGroup + (mSub ? ' (' + mSub + ')' : '') + (desc ? ' – ' + desc : ''); saveUsers(usrs); }
-      // Also update fa_injury_notes & zone for backwards compat
+      /* The two legacy per-player caches. Still written because surfaces the
+         redesign did not touch read them directly — see the note above
+         clearStaleInjuryCaches(). */
+      const label = groupLabelCa(fields.muscleGroup) +
+        (fields.muscleSub ? ' (' + muscleLabelCa(fields.muscleSub) + ')' : '');
+      if (u) {
+        const usrs = getUsers();
+        const uu = usrs.find(function (x) { return String(x.id) === String(playerId); });
+        if (uu) {
+          uu.fitnessStatus = st.status === 'recovering' ? 'doubt' : 'injured';
+          uu.injuryNote = label;
+          saveUsers(usrs);
+        }
+      }
       const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
-      injNotes[playerId] = mGroup + (mSub ? ' (' + mSub + ')' : '') + (desc ? ' – ' + desc : '');
+      injNotes[playerId] = label;
       localStorage.setItem('fa_injury_notes', JSON.stringify(injNotes));
-      if (zoneIdx != null) {
+      if (st.zone >= 0) {
         const zm = JSON.parse(localStorage.getItem('fa_injury_zone') || '{}');
-        zm[playerId] = zoneIdx;
+        zm[playerId] = st.zone;
         localStorage.setItem('fa_injury_zone', JSON.stringify(zm));
       }
 
-      addStaffNotification({
-        type: 'training_avail',
-        uid: u ? u.id : '',
-        playerName: u ? u.name : '?',
-        detail: 'Injured – ' + (mGroup || 'Injury'),
-        activity: 'Staff logged injury'
-      });
+      if (!editing) {
+        addStaffNotification({
+          type: 'training_avail',
+          uid: u ? u.id : '',
+          playerName: u ? u.name : '?',
+          detail: 'Injured – ' + fields.muscleGroup,
+          activity: 'Staff logged injury'
+        });
+      }
 
-      closeOverlay();
+      close();
       renderPage(getSession());
     });
   }
 
-  // ---------- Edit Injury Modal ----------
-  function showEditInjuryModal(injuryId) {
-    const injuries = getInjuries();
-    const inj = injuries.find(i => i.id === injuryId);
-    if (!inj) return;
-    const users = getUsers();
-    const player = users.find(u => u.id === inj.playerId);
-
-    const overlay = document.createElement('div');
-    overlay.className = 'body-map-overlay';
-    const modal = document.createElement('div');
-    modal.className = 'body-map-modal med-edit-modal';
-    modal.innerHTML = '<div class="body-map-header"><span>✏️ Edit Injury' + (player ? ' — ' + sanitize(player.name) : '') + '</span><button class="body-map-close">&times;</button></div>';
-
-    const content = document.createElement('div');
-    content.className = 'med-logger-content';
-
-    // Severity
-    content.innerHTML = '<div class="med-logger-field"><label>Severity</label>' +
-      '<div class="tg-btn-group med-sev-group">' +
-        '<button class="tg-btn' + (inj.severity === 'minor' ? ' tg-btn-active' : '') + '" data-sev="minor">Minor</button>' +
-        '<button class="tg-btn' + (inj.severity === 'moderate' ? ' tg-btn-active' : '') + '" data-sev="moderate">Moderate</button>' +
-        '<button class="tg-btn' + (inj.severity === 'severe' ? ' tg-btn-active' : '') + '" data-sev="severe">Severe</button>' +
-      '</div></div>' +
-      '<div class="med-logger-field"><label>Status</label>' +
-      '<div class="tg-btn-group">' +
-        '<button class="tg-btn' + (inj.status === 'active' ? ' tg-btn-active' : '') + '" data-status="active">Active</button>' +
-        '<button class="tg-btn' + (inj.status === 'recovering' ? ' tg-btn-active' : '') + '" data-status="recovering">Recovering</button>' +
-        '<button class="tg-btn' + (inj.status === 'resolved' ? ' tg-btn-active' : '') + '" data-status="resolved">Resolved</button>' +
-      '</div></div>' +
-      '<div class="med-logger-field med-logger-dates">' +
-        '<div><label>Start Date</label><input type="text" class="med-logger-input md-datepicker" data-display-dmy data-allow-past id="med-edit-start" data-date-iso="' + sanitize(inj.startDate || '') + '" value="' + (inj.startDate ? inj.startDate.split('-').reverse().join('/') : '') + '" placeholder="dd/mm/yyyy" readonly></div>' +
-        '<div><label>Expected Return</label><input type="text" class="med-logger-input md-datepicker" data-display-dmy data-allow-past id="med-edit-return" data-date-iso="' + sanitize(inj.expectedReturn || '') + '" value="' + (inj.expectedReturn ? inj.expectedReturn.split('-').reverse().join('/') : '') + '" placeholder="dd/mm/yyyy" readonly></div>' +
-        '<div><label>End Date</label><input type="text" class="med-logger-input md-datepicker" data-display-dmy data-allow-past id="med-edit-end" data-date-iso="' + sanitize(inj.endDate || '') + '" value="' + (inj.endDate ? inj.endDate.split('-').reverse().join('/') : '') + '" placeholder="dd/mm/yyyy" readonly></div>' +
-      '</div>' +
-      '<div class="med-logger-field"><label>Notes</label><textarea class="med-logger-textarea" id="med-edit-notes" rows="2" maxlength="300">' + sanitize(inj.notes || '') + '</textarea></div>' +
-      '<div class="med-logger-field"><button class="btn btn-orange med-logger-save" id="med-edit-save">Save Changes</button></div>';
-
-    modal.appendChild(content);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    function closeOverlay() { overlay.remove(); closeDatePicker(); }
-    modal.querySelector('.body-map-close').addEventListener('click', closeOverlay);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
-
-    // Bind custom datepicker
-    modal.querySelectorAll('.md-datepicker').forEach(inp => {
-      inp.addEventListener('click', () => openDatePicker(inp));
-    });
-
-    let editSev = inj.severity || 'moderate';
-    let editStatus = inj.status || 'active';
-    content.querySelectorAll('.med-sev-group .tg-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        content.querySelectorAll('.med-sev-group .tg-btn').forEach(b => b.classList.remove('tg-btn-active'));
-        btn.classList.add('tg-btn-active');
-        editSev = btn.dataset.sev;
-      });
-    });
-    content.querySelectorAll('[data-status]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        content.querySelectorAll('[data-status]').forEach(b => b.classList.remove('tg-btn-active'));
-        btn.classList.add('tg-btn-active');
-        editStatus = btn.dataset.status;
-      });
-    });
-
-    document.getElementById('med-edit-save').addEventListener('click', () => {
-      const now2 = new Date();
-      const todayStr2 = now2.getFullYear() + '-' + String(now2.getMonth() + 1).padStart(2, '0') + '-' + String(now2.getDate()).padStart(2, '0');
-      const changes = {
-        severity: editSev,
-        status: editStatus,
-        startDate: document.getElementById('med-edit-start').dataset.dateIso || inj.startDate,
-        expectedReturn: document.getElementById('med-edit-return').dataset.dateIso || null,
-        endDate: editStatus === 'resolved' ? (document.getElementById('med-edit-end').dataset.dateIso || todayStr2) : (document.getElementById('med-edit-end').dataset.dateIso || null),
-        notes: document.getElementById('med-edit-notes').value.trim()
-      };
-      updateInjury(injuryId, changes);
-      // Update player fitness status — and drop the legacy note/zone caches
-      // if this was the last open injury, exactly as the Resolve button does.
-      if (player) afterInjuryChange(player.id);
-      closeOverlay();
-      renderPage(getSession());
+  /** Move the lit class inside one segment row without rebuilding it — the
+      row is not part of the taxonomy repaint and rebuilding the sheet would
+      lose the notes. */
+  function md2Toggle(root, act, value) {
+    root.querySelectorAll('[data-md2-act="' + act + '"]').forEach(function (b) {
+      b.classList.toggle('md2-on', b.dataset.md2Val === value);
     });
   }
 
   // ---------- Medical Bind ----------
+  /* ⚠ Gated on the page root, like bindConvocatoria(). Everything below is
+     scoped to `#md2-page`, so a stray `.md2-*` class elsewhere cannot be
+     bound by accident and this is a cheap no-op on every other page.
+
+     The squad-letter chips are NOT here: since v234 they live on the shared
+     `.cat-bar`, which renderPage() builds OUTSIDE the page root, and they are
+     bound beside the other four in bindDynamicActions(). */
   function bindMedical() {
-    bindMedicalBodyPopup();
+    const page = document.getElementById('md2-page');
+    if (!page) return;
+    const ro = !canEditPage('medical');
 
-    // Log injury button
-    const logBtn = document.getElementById('med-log-injury');
-    if (logBtn) logBtn.addEventListener('click', () => showStaffInjuryLogger());
+    const logBtn = document.getElementById('md2-log');
+    if (logBtn && !ro) logBtn.addEventListener('click', () => showStaffInjuryLogger());
 
-    // Filter buttons
-    document.querySelectorAll('[data-med-filter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        medicalFilter = btn.dataset.medFilter;
-        renderPage(getSession());
-      });
-    });
-
-    // Team-letter filter
-    document.querySelectorAll('[data-med-team]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        medicalTeamFilter = btn.dataset.medTeam;
-        renderPage(getSession());
-      });
-    });
-
-    // "Log injury" on a self-reported player who has no record yet
-    document.querySelectorAll('.med-btn-log-for').forEach(btn => {
+    /* `Registrar` — open the logger on this player. When the row came from a
+       self-report RECORD the id travels with it, so the logger edits that
+       record rather than creating a second one beside it; the bare half of
+       the list has no record to carry and opens the logger empty. */
+    if (!ro) page.querySelectorAll('.md2-btn-confirm').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        showStaffInjuryLogger(btn.dataset.playerId);
+        showStaffInjuryLogger(btn.dataset.playerId, btn.dataset.injId || null);
       });
     });
 
-    // Discard a self-report that isn't a real injury. Records the date of the
-    // player's latest answer rather than rewriting the answer itself, so his
-    // attendance history is untouched and a later report re-raises the flag.
-    document.querySelectorAll('.med-btn-dismiss').forEach(btn => {
+    /* `Descartar` — this was not an injury. Records the date of the player's
+       latest answer rather than rewriting the answer itself, so his
+       attendance history is untouched and a report on a LATER date raises the
+       flag again by itself. Since v234 it also resolves the self-reported
+       record, which is the row the physio is actually looking at; leaving it
+       open would dismiss the flag and keep the row. */
+    if (!ro) page.querySelectorAll('.md2-btn-dismiss').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const uid = btn.dataset.playerId;
         if (!confirm(t('confirm.discard_injury'))) return;
         const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-        const training = getTrainings();
-        const answeredDates = training
+        const answeredDates = getTrainings()
           .filter(tr => tr.date && readRecord(availData, uid, tr, 'avail'))
           .map(tr => tr.date).sort();
         const upTo = answeredDates.length ? answeredDates[answeredDates.length - 1] : localDateStr(new Date());
@@ -32679,44 +33000,15 @@
           delete injNotes[uid];
           localStorage.setItem('fa_injury_notes', JSON.stringify(injNotes));
         }
+        if (btn.dataset.injId) resolveInjury(btn.dataset.injId);
         deriveFitnessStatus(uid, true);
         renderPage(getSession());
       });
     });
 
-    // Player card clicks → medical detail
-    document.querySelectorAll('.med-player-card').forEach(card => {
-      card.addEventListener('click', () => {
-        medicalDetailPlayerId = card.dataset.playerId;
-        currentPage = 'medical-detail';
-        renderPage(getSession());
-      });
-    });
-
-    // Injury card player clicks → medical detail
-    document.querySelectorAll('.med-injury-card').forEach(card => {
-      card.addEventListener('click', e => {
-        if (e.target.closest('button')) return; // don't navigate when clicking action buttons
-        medicalDetailPlayerId = card.dataset.playerId;
-        currentPage = 'medical-detail';
-        renderPage(getSession());
-      });
-    });
-
-    // Mark recovering
-    document.querySelectorAll('.med-btn-recover').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const id = btn.dataset.injId;
-        updateInjury(id, { status: 'recovering' });
-        const inj = getInjuries().find(i => i.id === id);
-        if (inj) afterInjuryChange(inj.playerId);
-        renderPage(getSession());
-      });
-    });
-
-    // Mark resolved
-    document.querySelectorAll('.med-btn-resolve').forEach(btn => {
+    // `Alta mèdica` — the injury closes, joins Lesions tancades, and the
+    // player's derived status returns to Apte.
+    if (!ro) page.querySelectorAll('.md2-btn-discharge').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         resolveInjury(btn.dataset.injId);
@@ -32726,51 +33018,59 @@
       });
     });
 
-    // Edit
-    document.querySelectorAll('.med-btn-edit').forEach(btn => {
+    // `Editar` opens the SAME sheet the injury was logged in, on this record.
+    if (!ro) page.querySelectorAll('.md2-btn-edit').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        showEditInjuryModal(btn.dataset.injId);
+        const inj = getInjuries().find(i => i.id === btn.dataset.injId);
+        showStaffInjuryLogger(inj ? inj.playerId : null, btn.dataset.injId);
       });
     });
 
-    // Past injuries toggle
-    const pastToggle = document.getElementById('med-past-toggle');
+    // Anything carrying a player id opens that player's medical file.
+    page.querySelectorAll('[data-md2-player]').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('button')) return;
+        e.preventDefault();
+        medicalDetailPlayerId = el.dataset.md2Player;
+        currentPage = 'medical-detail';
+        renderPage(getSession());
+      });
+    });
+
+    /* The closed-injuries head is the click target, arrow included. It
+       re-renders rather than toggling `display`, because the table is not in
+       the DOM at all while the section is shut — the handoff's own reason for
+       collapsing it is that a season of rows is a long page. */
+    const pastToggle = document.getElementById('md2-past-toggle');
     if (pastToggle) {
       pastToggle.addEventListener('click', () => {
         medicalPastExpanded = !medicalPastExpanded;
-        const body = pastToggle.closest('.med-past-card').querySelector('.med-past-body');
-        const arrow = pastToggle.querySelector('.med-past-arrow');
-        if (body) body.style.display = medicalPastExpanded ? '' : 'none';
-        if (arrow) arrow.textContent = medicalPastExpanded ? '▲' : '▼';
+        renderPage(getSession());
       });
     }
   }
 
   // ---------- Medical Detail Bind ----------
   function bindMedicalDetail() {
-    // Back button
-    const backBtn = document.getElementById('med-back');
+    const page = document.getElementById('md2-page');
+    if (!page) return;
+    const ro = !canEditPage('medical');
+
+    const backBtn = document.getElementById('md2-back');
     if (backBtn) {
       // Captured at bind time, while _prevPage still holds the page that
       // opened this record — by click time another render may have moved on.
       const to = backTarget('medical');
-      backBtn.addEventListener('click', () => {
+      backBtn.addEventListener('click', e => {
+        e.preventDefault();
         currentPage = to;
         renderPage(getSession());
       });
     }
+    if (ro) return;
 
-    // Action buttons
-    document.querySelectorAll('.med-btn-recover').forEach(btn => {
-      btn.addEventListener('click', () => {
-        updateInjury(btn.dataset.injId, { status: 'recovering' });
-        const inj = getInjuries().find(i => i.id === btn.dataset.injId);
-        if (inj) afterInjuryChange(inj.playerId);
-        renderPage(getSession());
-      });
-    });
-    document.querySelectorAll('.med-btn-resolve').forEach(btn => {
+    page.querySelectorAll('.md2-btn-discharge').forEach(btn => {
       btn.addEventListener('click', () => {
         resolveInjury(btn.dataset.injId);
         const inj = getInjuries().find(i => i.id === btn.dataset.injId);
@@ -32778,9 +33078,40 @@
         renderPage(getSession());
       });
     });
-    document.querySelectorAll('.med-btn-edit').forEach(btn => {
+
+    page.querySelectorAll('.md2-btn-edit').forEach(btn => {
       btn.addEventListener('click', () => {
-        showEditInjuryModal(btn.dataset.injId);
+        const inj = getInjuries().find(i => i.id === btn.dataset.injId);
+        showStaffInjuryLogger(inj ? inj.playerId : null, btn.dataset.injId);
+      });
+    });
+
+    /* `+ Afegir document` attaches straight to the open record rather than
+       opening the whole sheet to add one file. Same upload, same rules, same
+       failure behaviour: it says so and stores nothing. */
+    page.querySelectorAll('.md2-btn-adddoc').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inj = getInjuries().find(i => i.id === btn.dataset.injId);
+        if (!inj) return;
+        const p = getUsers().find(x => String(x.id) === String(inj.playerId));
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = MD2_DOC_ACCEPT;
+        inp.onchange = function () {
+          const file = inp.files && inp.files[0];
+          if (!file) return;
+          btn.classList.add('md2-busy');
+          md2UploadDoc(file, (p && p.category) || getCurrentCategory() || 'none', inj.id)
+            .then(function (doc) {
+              updateInjury(inj.id, { docs: (getInjuries().find(i => i.id === inj.id).docs || []).concat([doc]) });
+              renderPage(getSession());
+            })
+            .catch(function (err) {
+              btn.classList.remove('md2-busy');
+              alert(err && err.message ? err.message : t('md2.upload_failed'));
+            });
+        };
+        inp.click();
       });
     });
   }
@@ -32978,6 +33309,16 @@
     $$('[data-ini-letter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         iniTeamFilter = btn.dataset.iniLetter || 'all';
+        renderPage(getSession());
+      });
+    });
+
+    /* And on Mèdic since v234. `data-med-team` is the attribute the page's
+       own chip row used before the redesign moved it onto this bar, kept so
+       nothing that reads it by name had to change. */
+    $$('[data-med-team]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        medicalTeamFilter = btn.dataset.medTeam || 'all';
         renderPage(getSession());
       });
     });
@@ -33440,7 +33781,7 @@
         if (!sess) return;
         const date = sess.date;
         if (val === 'injured') {
-          showBodyMapPicker(btnsWrap, sid);
+          showInjurySelfReport(btnsWrap, sid);
           return;
         }
         const session = getSession();
@@ -34634,16 +34975,19 @@
     // conservatively re-render every page. Badges refresh either way.
     // Debounced to avoid flicker; skips pages with active editing.
     const KEY_PAGES = {
-      fa_training_availability: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical'],
+      fa_training_availability: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'manage-roster', 'medical', 'medical-detail'],
       fa_match_availability: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],
       fa_player_rpe: ['staff-home', 'player-home', 'player-actions', 'my-stats', 'staff-player-stats', 'manage-roster', 'staff-training-detail'],
-      fa_training: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats'],
+      /* Mèdic joined this one at v234: `Sessions perdudes` is DERIVED from
+         fa_training at render time rather than stored, so a coach adding a
+         session inside an injury's window has to repaint the figure. */
+      fa_training: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'staff-player-stats', 'medical', 'medical-detail'],
       fa_matches: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_matchday: ['player-home', 'calendar'],
       fa_staff_notifications: ['staff-notifications'],
       fa_injury_notes: ['player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'training-detail', 'staff-training-detail'],
       fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
-      fa_injury_zone: ['my-stats', 'medical', 'medical-detail'],
+      fa_injury_zone: ['my-stats', 'staff-player-stats', 'medical', 'medical-detail'],
       fa_injuries: ['staff-home', 'player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
       fa_training_staff_override: ['staff-home', 'player-home', 'calendar', 'training-detail', 'staff-training-detail'],
       fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],

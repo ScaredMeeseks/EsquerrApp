@@ -46,20 +46,29 @@ function grab(from, to) {
 }
 
 /* The `.ini-` block on its own, so a rule from another paper page cannot
-   answer a question asked about this one. Inici is currently last in the
-   stylesheet; if a page is ever appended after it, this needs an end bound
-   the way test/convocatoria.test.js:57 now has one. */
+   answer a question asked about this one.
+
+   ⚠ THE END BOUND IS NOT DECORATION, and this file predicted its own bug:
+   until v234 the slice ran to the END OF FILE and worked only because Inici
+   happened to be last in the stylesheet. Mèdic was appended after it, and
+   every `.md2-` rule fell inside INICSS where the palette guard below would
+   have read them as Inici's. Exactly what test/convocatoria.test.js:57 had
+   to fix when Inici was appended after IT. If a ninth page lands after
+   Mèdic, this bound must name it instead. */
 const INICSTART = css.indexOf('/* ===== Inici, redesigned (v230)');
 assert.ok(INICSTART !== -1, 'the ini- block banner is gone from css/style.css');
+const INIEND = css.indexOf('/* ===== Mèdic, redesigned (v234)', INICSTART);
+assert.ok(INIEND !== -1, 'the md2- block banner is gone — this slice has no end bound again');
 /* ⚠ TWO COPIES, AND THE DIFFERENCE MATTERS. `readCss()` resolves every
    `var(--pp-*)` back to its literal, which is what makes a colour assertion
    test the COLOUR rather than the token name. But it also means the resolved
    copy is full of hexes by construction, so "is anything hardcoded here"
    can only be asked of the RAW file. Asking it of the resolved one produces
    a list of forty violations that are not violations. */
-const INICSS = css.slice(INICSTART).replace(/\/\*[\s\S]*?\*\//g, '');
+const INICSS = css.slice(INICSTART, INIEND).replace(/\/\*[\s\S]*?\*\//g, '');
 const rawCss = readCssRaw();
-const INIRAW = rawCss.slice(rawCss.indexOf('/* ===== Inici, redesigned (v230)'))
+const RAWSTART = rawCss.indexOf('/* ===== Inici, redesigned (v230)');
+const INIRAW = rawCss.slice(RAWSTART, rawCss.indexOf('/* ===== Mèdic, redesigned (v234)', RAWSTART))
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
 // ── the real sanitize(), which needs a document ───────────────────────────
@@ -153,7 +162,7 @@ function mountHandlers(bodyHtml, opts) {
     saveUsers: () => {},
     deriveFitnessStatus: () => {},
     addStaffNotification: (n) => calls.notify.push(n),
-    showBodyMapPicker: (wrap, sid) => calls.bodyMap.push({ wrap, sid }),
+    showInjurySelfReport: (wrap, sid) => calls.bodyMap.push({ wrap, sid }),
     ackSaveRecord: (coll, key, data) => {
       calls.save.push({ coll, key, data });
       return Promise.resolve();
@@ -286,10 +295,15 @@ describe('Inici — the real handlers over the real markup', () => {
     });
   });
 
-  it('`Lesionat` opens the body map and saves NOTHING yet', () => {
-    /* The zone is part of the answer. Saving `injured` before the player has
-       said where would file an injury with no location, and the picker's
-       commit is what writes it. */
+  it('`Lesionat` opens the self-report sheet and saves NOTHING yet', () => {
+    /* The sheet owns the write, and since v234 it makes it whichever way the
+       player leaves — Enviar, Ometre, the ×, or Escape all call
+       commitInjuryNote(). So "nothing yet" here is about THIS handler, not
+       about the flow: the answer is recorded a moment later and cannot be
+       lost, which is the fix the sheet exists to carry. Before v234 only the
+       commit button wrote, and dismissing the picker dropped the answer
+       silently — into getEffectiveAnswer(), which reads a silent player as
+       available. */
     const m = mountHandlers(B.iniAvailPillsHtml('t7', SESS, '', false),
         { trainings: [SESS] });
     m.click('[data-avail="injured"]');

@@ -1721,6 +1721,137 @@ const BODY_ZONES = [
   {pts:'78.7,87.8 79.3,88.2 80,88.7 80.8,88.6 81.4,88 81.9,87.5 82.1,88.4 82.3,89.1 82.3,89.8 82.2,90.6 82.8,90.9 83.4,91.5 84.4,92.2 85.3,92.5 85.8,92.9 85.2,93.3 84.5,93.4 84,93.8 83.2,93.8 82,93.6 81.2,94.1 80.4,94.4 79.6,94.4 78.4,94.2 78.1,93.1 78.2,91.9 78.4,90.9 78.3,89.5 78.4,88.6', label:'Ankle', groups:['Ankle']}
 ];
 
+/* ---------- The taxonomy in Catalan (v234) ----------
+
+   ⚠ DISPLAY ONLY. What is STORED stays the English key and the zone INDEX —
+   `fa_injuries.bodyZone` is an index into BODY_ZONES, `muscleGroup` and
+   `muscleSub` are the English strings above, and `fa_injury_zone` is the same
+   index again. Translating at the storage layer instead would make every
+   record written before today unreadable and every record written after it
+   unmatchable against BODY_REGIONS.
+
+   The lookups all fall back to the key (`ZONE_CA[k] || k`), so a zone added
+   to BODY_ZONES without a line here renders in English rather than blank.
+   That fallback is the reason these can be incomplete safely — but they are
+   NOT incomplete: every one of the 18 zone labels, all 16 groups and all 55
+   sub-structures has a line. The eighth design handoff shipped 41 of the 55;
+   the other 14 (TFL, the pectoral pair, the two rotator-cuff muscles, the
+   biceps and triceps heads, the forearm three) were showing in English on
+   the player's own self-report picker and are filled in here. */
+const ZONE_CA = {
+  'Shoulder': 'Espatlla', 'Chest': 'Pit', 'Abs': 'Abdomen', 'Oblique': 'Oblics',
+  'Bicep': 'Bíceps', 'Forearm': 'Avantbraç', 'Hip / Groin': 'Maluc / engonal',
+  'Quad': 'Quàdriceps', 'Knee': 'Genoll', 'Shin / Calf': 'Tíbia / bessons',
+  'Ankle': 'Turmell', 'Upper Back': 'Esquena alta', 'Lat': 'Dorsal',
+  'Lower Back': 'Lumbars', 'Tricep': 'Tríceps', 'Glute': 'Gluti',
+  'Hamstring': 'Isquiotibials', 'Calf': 'Bessons'
+};
+
+const GROUP_CA = {
+  'Quadriceps': 'Quàdriceps', 'Hamstrings': 'Isquiotibials', 'Adductors': 'Adductors',
+  'Calves': 'Bessons', 'Glutes': 'Glutis', 'Hip Flexors': 'Flexors del maluc',
+  'Knee': 'Genoll', 'Ankle': 'Turmell', 'Groin': 'Engonal', 'Chest': 'Pit',
+  'Back': 'Esquena', 'Abdominals': 'Abdominals', 'Shoulders': 'Espatlla',
+  'Biceps': 'Bíceps', 'Triceps': 'Tríceps', 'Forearm': 'Avantbraç'
+};
+
+const MUSCLE_CA = {
+  'Rectus Femoris': 'Recte femoral', 'Vastus Lateralis': 'Vast lateral',
+  'Vastus Medialis': 'Vast medial', 'Vastus Intermedius': 'Vast intermedi',
+  'Biceps Femoris': 'Bíceps femoral', 'Semitendinosus': 'Semitendinós',
+  'Semimembranosus': 'Semimembranós', 'Adductor Longus': 'Adductor llarg',
+  'Adductor Magnus': 'Adductor major', 'Adductor Brevis': 'Adductor curt',
+  'Gracilis': 'Gràcil', 'Pectineus': 'Pectini', 'Gastrocnemius': 'Gastrocnemi',
+  'Soleus': 'Soli', 'Tibialis Anterior': 'Tibial anterior',
+  'Gluteus Maximus': 'Gluti major', 'Gluteus Medius': 'Gluti mitjà',
+  'Gluteus Minimus': 'Gluti menor', 'Iliopsoas': 'Iliopsoes', 'Sartorius': 'Sartori',
+  'TFL': 'Tensor de la fàscia lata',
+  'ACL': 'LCA', 'MCL': 'LLI', 'LCL': 'LLE', 'PCL': 'LCP', 'Meniscus': 'Menisc',
+  'Patellar Tendon': 'Tendó rotulià', 'Lateral Ligament': 'Lligament lateral extern',
+  'Medial Ligament': 'Lligament lateral intern', 'Achilles Tendon': "Tendó d'Aquil·les",
+  'Peroneal Tendons': 'Tendons peroneals', 'Inguinal': 'Inguinal',
+  'Pubic Symphysis': 'Símfisi púbica', 'Erector Spinae': 'Erector espinal',
+  'Latissimus Dorsi': 'Dorsal ample', 'Trapezius': 'Trapezi', 'Rhomboids': 'Romboides',
+  'Rectus Abdominis': 'Recte abdominal', 'Obliques': 'Oblics',
+  'Transverse Abdominis': 'Transvers abdominal', 'Deltoid': 'Deltoide',
+  'Rotator Cuff': 'Manegot dels rotadors',
+  'Pectoralis Major': 'Pectoral major', 'Pectoralis Minor': 'Pectoral menor',
+  'Supraspinatus': 'Supraespinós', 'Infraspinatus': 'Infraespinós',
+  'Biceps Long Head': 'Bíceps, porció llarga',
+  'Biceps Short Head': 'Bíceps, porció curta', 'Brachialis': 'Braquial anterior',
+  'Triceps Long Head': 'Tríceps, porció llarga',
+  'Triceps Lateral Head': 'Tríceps, porció lateral',
+  'Triceps Medial Head': 'Tríceps, porció medial',
+  'Wrist Flexors': 'Flexors del canell', 'Wrist Extensors': 'Extensors del canell',
+  'Brachioradialis': 'Braquiradial'
+};
+
+function zoneLabelCa(i) {
+  const z = BODY_ZONES[i];
+  return z ? (ZONE_CA[z.label] || z.label) : '';
+}
+function groupLabelCa(g) { return g ? (GROUP_CA[g] || g) : ''; }
+function muscleLabelCa(m) { return m ? (MUSCLE_CA[m] || m) : ''; }
+
+/** The centroid of a zone's polygon, as percentages of the image box.
+ *
+ *  BODY_ZONES points are ALREADY percentages, so this is the dot's position
+ *  with no conversion — which is the whole reason the overlay is drawn on a
+ *  `viewBox="0 0 100 100" preserveAspectRatio="none"` over the image's exact
+ *  rect. `plInjuryHtml` did this arithmetic inline; both callers now share it
+ *  so the Plantilla rail's dot and the medical file's cannot drift apart. */
+function bodyZoneCentroid(i) {
+  const z = BODY_ZONES[i];
+  if (!z) return null;
+  const pairs = z.pts.split(/\s+/).map((p) => p.split(',').map(Number));
+  let cx = 0, cy = 0;
+  pairs.forEach((p) => { cx += p[0]; cy += p[1]; });
+  return { left: +(cx / pairs.length).toFixed(1), top: +(cy / pairs.length).toFixed(1) };
+}
+
+/** The front/back diagram with an SVG zone overlay. One builder, seven users.
+ *
+ *  ⚠ THE WRAPPER HOLDS THE IMAGE, THE OVERLAY AND NOTHING THAT TAKES SPACE.
+ *  The svg is `inset:0; width:100%; height:100%` over a `position:relative`
+ *  box, so anything in that box with a height of its own — a caption, a
+ *  padding, a heading — stretches the overlay and every polygon slides off
+ *  the body. Captions go OUTSIDE, which is why this returns the wrapper and
+ *  the caller adds `Davant / Darrere` after it. The marker span is exempt:
+ *  it is absolutely positioned and contributes no height.
+ *
+ *  ⚠ `fill` is emitted as a PRESENTATION ATTRIBUTE, never as inline style.
+ *  A stylesheet rule beats a presentation attribute and loses to an inline
+ *  one, and `.md2-map-live polygon:hover` is the whole hover behaviour of
+ *  both pickers. Moving the fill into `style=""` would need `!important` to
+ *  undo, which is how the hover silently stops working.
+ *
+ *  ⚠ An unpicked polygon is `rgba(255,255,255,0)`, NOT `fill="none"`.
+ *  `none` removes the shape from hit-testing, so the map would look right
+ *  and answer no clicks at all.
+ *
+ *  opts: {fill, stroke, strokeWidth, interactive, which, marker, opacity, cls}
+ *  `fill`/`stroke` are called with (index, zone). */
+function bodyMapHtml(opts) {
+  const o = opts || {};
+  const fill = o.fill || (() => 'rgba(255,255,255,0)');
+  const stroke = o.stroke || (() => 'rgba(45,41,38,.16)');
+  const sw = o.strokeWidth || '0.3';
+  const which = o.which || 'log';
+  const polys = BODY_ZONES.map((z, i) =>
+    '<polygon points="' + z.pts + '" fill="' + fill(i, z) + '" stroke="' + stroke(i, z) +
+    '" stroke-width="' + sw + '"' +
+    (o.interactive ? ' data-md2-zone="' + i + '" data-md2-which="' + which + '"' : '') +
+    '></polygon>').join('');
+  const marker = o.marker
+    ? '<span class="md2-map-dot" style="left:' + o.marker.left + '%;top:' + o.marker.top + '%"></span>'
+    : '';
+  return '<div class="md2-map' + (o.interactive ? ' md2-map-live' : '') +
+    (o.cls ? ' ' + o.cls : '') + '">' +
+    '<img src="img/cuerpos.png" alt="" style="opacity:' + (o.opacity || 0.38) + '">' +
+    '<svg viewBox="0 0 100 100" preserveAspectRatio="none">' + polys + '</svg>' +
+    marker + '</div>';
+}
+
 /* ---------- Node export (tests only) ----------
    This file stays a plain classic script: app.js reads every one of the
    above as a global, so wrapping it in a UMD closure the way shard.js is
@@ -1808,6 +1939,11 @@ if (typeof module !== 'undefined' && module.exports) {
     catSpanOf,
     catBadgeHtmlGlobal,
     POS_ORDER,
+    /* Exported since v234 so scripts/build-medical-preview.js draws the
+       position discs with the REAL colours and the real builder. A preview
+       that reproduces them locally is a preview of itself. */
+    POS_COLORS,
+    posCirclesHtmlGlobal,
     // Exported so the briefing tests can assert the squad really is ordered
     // goalkeeper-first, against the REAL ranking rather than a stub that
     // would pass whatever order it was handed.
@@ -1820,6 +1956,19 @@ if (typeof module !== 'undefined' && module.exports) {
     BODY_ZONES,
     BODY_REGIONS,
     GROUP_SUBS,
+    // The taxonomy in Catalan, and the one body-map builder the seven render
+    // sites were collapsed into (v234). Exported because the label maps must
+    // be asserted COMPLETE against BODY_ZONES/GROUP_SUBS — the `|| key`
+    // fallback means a missing line renders in English and breaks nothing,
+    // which is exactly why nothing would notice it.
+    ZONE_CA,
+    GROUP_CA,
+    MUSCLE_CA,
+    zoneLabelCa,
+    groupLabelCa,
+    muscleLabelCa,
+    bodyZoneCentroid,
+    bodyMapHtml,
     // Circle fills. Exported for tests — paintCircle needs a DOM and is not
     // among them; fillCss is the part worth pinning.
     parseFill,

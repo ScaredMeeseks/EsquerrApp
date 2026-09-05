@@ -42,7 +42,15 @@ const EXPECTED = {
   'pp-ok-bg': '#EAF1EA', 'pp-ok-line': '#CBDDCB',
   'pp-med-fit-bg': '#DCE9DC', 'pp-med-fit-ink': '#3F6B44',
   'pp-med-doubt-bg': '#F6E4C4', 'pp-med-doubt-ink': '#9A6614',
-  'pp-med-inj-bg': '#F2D2CE', 'pp-med-inj-ink': '#A63A32'
+  'pp-med-inj-bg': '#F2D2CE', 'pp-med-inj-ink': '#A63A32',
+  /* Mèdic (v234). --pp-bad-rgb is a TRIPLE, not a colour: the heat map fades
+     one zone through five alphas and three more call sites need a fourth, so
+     the rgb lives in the token and the alpha at the call site. It is listed
+     here like the rest, which also makes the loose-literal scan below hunt
+     for `192,86,76` written out by hand. */
+  'pp-bad-rgb': '192,86,76',
+  'pp-warn-ink': '#7A5210',
+  'pp-doc-bg': '#D9E3EF', 'pp-doc-ink': '#33587D'
 };
 
 /** The stylesheet minus comments and minus the block that DEFINES the
@@ -96,13 +104,21 @@ describe('the paper palette — nothing carries a copy', () => {
   });
 
   /* Not caught by the hex scan: #C0564C written as rgba() for an alpha.
-     Left as one literal on purpose — a token cannot carry the alpha — but
-     recorded here so it is a known exception rather than a missed one. */
-  it('has exactly one rgba spelling of a palette colour', () => {
-    const n = (bodyOfStylesheet().match(/rgba\(192,\s*86,\s*76/g) || []).length;
-    assert.strictEqual(n, 1,
-        'a second rgba() copy of --pp-bad appeared; if alpha is needed in ' +
-        'more than one place, the palette should carry the rgb triple');
+     Until v234 there was exactly one, in .pl-inj-dot, and this test said so
+     while promising that a SECOND one should turn the triple into a token.
+     Mèdic needed eight, so the triple is --pp-bad-rgb now and the count is
+     zero: every alpha goes through `rgba(var(--pp-bad-rgb), a)`. */
+  it('has no hand-written rgba spelling of a palette colour', () => {
+    const n = (bodyOfStylesheet().match(/rgba\(\s*192,\s*86,\s*76/g) || []).length;
+    assert.strictEqual(n, 0,
+        'a literal rgba() copy of --pp-bad appeared; use rgba(var(--pp-bad-rgb), a)');
+  });
+
+  /* The token is only worth having if it is READ. A rule that resolved the
+     triple by hand would pass the scan above and defeat the point. */
+  it('routes every --pp-bad alpha through the triple', () => {
+    const n = (bodyOfStylesheet().match(/rgba\(var\(--pp-bad-rgb\)/g) || []).length;
+    assert.ok(n >= 4, 'the rgb triple is defined but barely used: ' + n);
   });
 });
 

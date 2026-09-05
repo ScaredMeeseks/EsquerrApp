@@ -190,7 +190,12 @@ describe('layout — a tooltip outranks whatever triggered it', () => {
 
   it('sits above every overlay that can contain one', () => {
     const tip = zOf('.ua-tooltip');
-    ['.modal-overlay', '.body-map-overlay', '.dp-popup'].forEach((sel) => {
+    /* `.body-map-overlay` was the injury logger's scrim until v234, when the
+       Mèdic redesign replaced it with `.md2-scrim` and the full-screen
+       `.md2-sheet-full` the player answers on. Both are listed: the point of
+       this test is that NO overlay a tooltip can appear inside outranks it,
+       so the list has to name every overlay there is. */
+    ['.modal-overlay', '.md2-scrim', '.md2-sheet-full', '.dp-popup'].forEach((sel) => {
       assert.ok(tip > zOf(sel), `.ua-tooltip must outrank ${sel}`);
     });
   });

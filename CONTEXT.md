@@ -9326,3 +9326,140 @@ that markup was EMITTED rather than that it had any effect.**
 This is the third round in a row where the mutation pass found assertions that passed for the wrong
 reason. The pattern each time: a test that greps for a string the code happens to contain, standing
 in for a question about behaviour.
+
+### 2026-09-05 — Mèdic rebuilt to the eighth design handoff (v234)
+
+`Baixades/EsquerrApp Medical UI/design_handoff_medical/` — six screens, and the last staff page
+still wearing bordered cards. `.md2-` joins `.cal-` `.std-` `.pl-` `.reg2-` `.pt-` `.cv-` `.ini-`.
+
+**It is not only a repaint.** The old page answered "who is injured" and answered the other two
+questions badly: self-reports were dashed cards appended AFTER the real injuries, where a physio
+scanning the list found them last, and the season heat map was buried in an English-only analytics
+block at the foot of the page. Now: pending self-reports FIRST, then open injuries, then the closed
+table; the map and the squad's live state in a 400px rail.
+
+**The three sources of truth are still three, and that is deliberate here.** `fa_injuries` is the
+record, `fa_injury_notes`/`fa_injury_zone` are the pre-`fa_injuries` per-player caches, and the
+availability answer is the third. This version did not retire the caches — surfaces the redesign
+does not touch still read them — but it did make the SEAM visible: a self-report is now a record
+with `selfReported: true` and no `confirmedBy`, so "nobody has looked at this yet" is a fact about
+the data instead of a gap between two lists. The older half survives beside it: an `injured`
+availability answer with no record at all, which is the italic "Sense detall" row.
+
+**`fa_injuries` gained five additive fields** — `origin`/`originLabel`, `createdByName`,
+`selfReported`, `confirmedBy`, `docs[]`. No key changes, no rules change, no shard change: old
+records read `undefined` for each, which is the correct answer for each. `Sessions perdudes` is
+**derived** from `fa_training` through the same `playerIsCalled` the attendance figures use — a
+stored count is wrong the moment a coach adds a session inside the window.
+
+**Documents, and the Storage path that makes them private.**
+`medical/{teamId}/{category}/{injuryId}/{fileName}`. Documents belong to the INJURY, not the player,
+so a closed record keeps its own scans. ⚠ The category is in the PATH because a Storage rule cannot
+read Firestore — a path segment is the only thing the `cats` claim can be tested against, which is
+why the client builds it from the *player's* category. Read is staff-only too, not "any signed-in
+user" as `profilePics` is: the app tells the player his files are private and this is what makes
+that true rather than a promise the UI keeps. `delete` is split out from `create, update` for the
+reason `profilePics` already records — `request.resource` is null on a delete, so a size check in
+the same rule errors out and denies it. **The rules must be deployed BEFORE the frontend push**
+(`.\deploy.ps1 rules`), or every upload the new UI offers is refused; that is the v231 lesson.
+
+⚠ **No data-URI fallback anywhere.** Parking-lot 12b was a 2 MB base64 photo reaching a synced blob
+capped at 1 MB; the same shape here is a 10 MB PDF inside `fa_injuries`. A failed upload says so and
+stores nothing, and `medical.test.js` asserts that `FileReader`, `readAsDataURL` and `data:` appear
+nowhere in the upload path.
+
+**The player's self-report replaced the body-map picker, and fixed a silent data loss on the way.**
+Every field is optional and a blank submission is valid — that is the screen's whole point. ⚠ And
+the × now submits, exactly as `Ometre` does: the footnote on screen promises *Marcaràs Lesionat
+encara que ho ometis*, and before v234 the answer was written only at the END of the flow, so a
+player who tapped Lesionat and dismissed the picker was recorded as **nothing at all** —
+`getEffectiveAnswer()` reads a silent player as AVAILABLE, so the coach's sheet had him down as fit.
+Escape does the same.
+
+**The privacy rule is enforced by not building the string.** On My stats the player sees the ZONE
+and the DATES; not the muscle, not the severity, not the notes, not the documents. Hiding them with
+a class or `hidden` would ship the diagnosis to a phone the player owns and then hope.
+`MD2_PLAYER_SEES_DIAGNOSIS` widens it to zone + severity + dates for a club that asks; notes and
+files stay out in both modes and there is no flag for them. `buildInjuryHistoryHtml(uid, opts)` takes
+`forPlayer` — staff keep the full row, which is what the roster's player detail has shown since v45.
+
+**One body-map builder replaced seven.** `bodyMapHtml(opts)` in `js/utils.js`, plus
+`bodyZoneCentroid()` (the arithmetic `plInjuryHtml` did inline). Three traps are pinned in its banner
+and in the suite: the wrapper holds the image, the overlay and the marker and **nothing with a height
+of its own** (a caption inside it stretches the svg and the polygons slide off the body); an unpicked
+polygon is `rgba(255,255,255,0)` and **never `fill:none`**, which would remove it from hit-testing so
+the map looked right and answered no clicks at all; and the fill is a **presentation attribute**,
+because a stylesheet `:hover` rule beats an attribute and loses to an inline style.
+
+⚠ **Zones are tallied by LABEL, not by index.** `BODY_ZONES` holds each zone twice, once per side, so
+counting by index paints one thigh and leaves its twin blank on a map whose whole job is "where". The
+stored value is still the index.
+
+**The taxonomy is Catalan now.** `ZONE_CA` (18), `GROUP_CA` (16) and `MUSCLE_CA` (55) in
+`js/utils.js`, complete against `BODY_ZONES` and `GROUP_SUBS` — the handoff shipped 41 of the 55 and
+the other 14 were rendering in English on the player's own picker. **Display only**: the stored value
+stays the English key and the zone index.
+
+**The squad filter moved onto the shared `.cat-bar`**, joining calendar, roster, Convocatòria and
+Inici. `data-med-team` kept its name; the in-page `.roster-team-filter` copy is gone. The status
+filter (all/injured/recovering/fit) went with it — the rail lists all 22 players and their state,
+which is the same answer without a control to set wrong.
+
+**`showEditInjuryModal` was deleted.** There were two sheets — one to create a record, one to change
+it — so every field existed twice and the two had drifted: the edit sheet had a status and no body
+map, the logger a body map and no status. One form now, opened empty to create and with an id to
+edit. `Estat` is the field the edit sheet contributed and the one control the handoff does not draw;
+without it a player could enter recovery and never be marked as being in it.
+
+**Palette.** Four new tokens: `--pp-bad-rgb` (a TRIPLE, not a colour — eight call sites need
+`rgba(bad, a)` and a token cannot carry an alpha; `paper-palette.test.js` asked for exactly this the
+day it pinned the single hand-written spelling at one), `--pp-warn-ink`, `--pp-doc-bg`,
+`--pp-doc-ink`. ⚠ **Two handoff colours were deliberately mapped onto tokens that already exist** —
+hover red `#A01124` to `--pp-red-dark` (`#9E1224`), the dashed pending rule `#D6D0C8` to
+`--pp-rule-3` (`#DED9D1`). Two hex digits apart and indistinguishable on screen; adding a neighbour
+for each is the precise duplication v228 spent a version removing.
+
+⚠ **`test/inici.test.js` sliced the stylesheet to the END OF FILE** and said so in its own comment,
+correct only while Inici was last. Appending `.md2-` after it put every new rule inside INICSS, where
+its palette guard would have read them as Inici's. It has an end bound naming the Mèdic banner now —
+the same fix `test/convocatoria.test.js` needed when Inici was appended after IT. A ninth page will
+need it again.
+
+⚠ **The image MIME glob in a string breaks the comment strippers.** Several suites strip block
+comments from `js/app.js` with a naive non-greedy regex before asking questions of the source, and
+the slash-star inside that glob opens a comment the stripper closes at the next real terminator —
+swallowing whatever lies between. Two more of those in the new file pickers moved the swallowed
+region over the category-bar reset block and took a passing Convocatòria assertion down with it,
+which read as "Mèdic broke Convocatòria". `MD2_DOC_ACCEPT` is an explicit extension list, which is
+also the more honest picker: it offers exactly what the upload will accept.
+
+**Three defects the PREVIEW found with the suite already green**, which is the third time this has
+happened and the whole reason `scripts/build-medical-preview.js` exists:
+- **`Lesions actives` was sorted by date alone**, so a `Recuperant` headed a list captioned
+  "3 lesionats · 2 recuperant". Status first, then date.
+- **The closed-injury table was unreadable at 390px** — six columns collided, "Moderada" running into
+  "14 jul". The handoff's phone screen has no closed section and no heat map; both are dropped at the
+  breakpoint and both stay reachable through the player's file.
+- **The five-stat row wrapped into a mess on the phone.** It is replaced there by the handoff's
+  one-line summary. Both are rendered and the breakpoint chooses — a render that asks how wide the
+  window is answers once and is wrong after the next rotation. Same for the two counter labels.
+
+⚠ **The phone list drops `Alta mèdica` and `Editar`, and the capability does not go with them**: the
+name is the link to the player's file and both actions live on it, at 44px. Wrapping them onto their
+own line instead put two buttons between a player's name and the injury they were about. `order:` is
+not the alternative — that is what put a button before its own count on Inici.
+
+**Tests.** Unit 2947 → 3017. New `test/medical.test.js`, 68 assertions, registered in `test:unit` and
+as `test:medical`. **25 mutations across two rounds, one survivor, fixed.** A 26th case came from the
+preview rather than a mutation: a flex segment carrying a long label pushed straight out of the
+560px sheet, because a flex item does not shrink below its content by default — no scrollbar, no
+warning, just a control hanging out of the dialog. `min-width: 0` plus an ellipsis fixes it and an
+assertion now pins it. The survivor was the
+usual shape: the CSS half of the counter-label swap was asserted and the MARKUP half was not, so a
+renderer that stopped emitting the short label left those rules pointing at nothing and passed.
+
+**`_config.yml` names `medical-preview.html` explicitly.** `scripts/build-www.js` excludes previews
+by the `-preview.html` pattern, but that only covers the APK mirror — Pages reads `_config.yml` and
+nothing else, which is how a preview shipped live once. This one matters more than the other four: it
+renders invented but entirely plausible medical records, and a page of that shape at a public URL is
+worth nobody's second glance to work out.

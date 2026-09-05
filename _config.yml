@@ -91,6 +91,18 @@ exclude:
   # Pages: the whole stylesheet inlined, and twenty-two invented player names.
   # Regenerate with: node scripts/build-inici-preview.js . inici-preview.html
   - inici-preview.html
+  # And for the v234 Mèdic redesign. This one is the most important of the
+  # five to keep OFF Pages: it renders invented but entirely plausible
+  # MEDICAL records — named players with diagnoses, severities, physio notes
+  # and attached-report filenames. Nothing in it is real, and it must not be
+  # published anyway, because a page of that shape at a public URL is worth
+  # nobody's second glance to work out.
+  # ⚠ THIS LIST IS BY NAME. `scripts/build-www.js` excludes previews by the
+  # `-preview.html` pattern, but that only covers the APK mirror — Pages
+  # reads this file and nothing else, which is how a preview shipped live
+  # once. A new preview needs a line here or it is public.
+  # Regenerate with: node scripts/build-medical-preview.js . medical-preview.html
+  - medical-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:
