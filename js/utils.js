@@ -1130,20 +1130,26 @@ function posCirclesHtmlGlobal(p) {
  *
  * @param {{name?:string, profilePic?:string}} u
  * @param {string} cls Base class; the placeholder gets `${cls}-ph` as well.
+ * @param {string} [extra] Size or context modifier, added to BOTH variants.
+ *   ⚠ Passed separately rather than as `cls + ' ' + mod`, because the
+ *   placeholder suffix is derived from `cls`: a two-class string there would
+ *   produce `pp-av pp-av-lg pp-av pp-av-lg-ph` — the base class twice and a
+ *   `-ph` rule that does not exist.
  */
-function avatarHtmlGlobal(u, cls) {
+function avatarHtmlGlobal(u, cls, extra) {
   const base = sanitize(cls || 'avatar');
+  const mod = extra ? ' ' + sanitize(extra) : '';
   const pic = (u && u.profilePic) || '';
   if (pic) {
     /* onerror rather than a URL check: a Storage token can expire and a
        data: URI can be truncated, and a broken image icon in a table reads
        as a fault in the app. Hiding it leaves the row clean. */
-    return '<img class="' + base + '" src="' + sanitize(pic) + '" alt="" ' +
+    return '<img class="' + base + mod + '" src="' + sanitize(pic) + '" alt="" ' +
       'onerror="this.style.display=&quot;none&quot;">';
   }
   // One letter, which is what every existing call site in this app uses.
   const initial = sanitize(String((u && u.name) || '').trim()).charAt(0).toUpperCase();
-  return '<span class="' + base + ' ' + base + '-ph">' + (initial || '?') + '</span>';
+  return '<span class="' + base + ' ' + base + '-ph' + mod + '">' + (initial || '?') + '</span>';
 }
 
 // ---------- Color Utilities ----------

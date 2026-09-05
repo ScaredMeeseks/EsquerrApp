@@ -9285,3 +9285,44 @@ assertion about it is source-level and the resize itself had never executed. Run
 over a 3000×2000 JPEG it returns **256×171, image/jpeg**, with aspect preserved; a 64px image, an
 SVG and a non-image all pass through untouched. Source assertions alone would not have caught a
 canvas call in the wrong order.
+
+### 2026-09-05 — v233. The face on Registracions, at the size of the row
+
+Owner's note after seeing v231 live: the avatar could be larger, with the name and email aligned
+beside it rather than stacked under it.
+
+**The change.** `.reg2-td-who` was two block lines — name, then email — with a 26px avatar inline
+inside the first. Inline, it could only ever be as tall as ONE line of text. It is now a flex row:
+the face beside a column holding both lines, so it takes the height of both. 40px, which is most of
+the row. A 40px face reads as a person; a 26px one reads as punctuation.
+
+⚠ **Flex is safe in THIS cell and is still not safe in `.pl-td-name`.** Nothing in the Registracions
+cell depends on `catBadgeHtmlGlobal`'s `margin-left`, which a flex container collapses; the
+Plantilla name cell does, and it is a single line anyway, so it keeps baseline alignment and its
+26px face. `registrations.test.js` now asserts the Plantilla cell is NOT made flex, so the two do
+not get "tidied" into agreement later.
+
+**`avatarHtmlGlobal(u, cls, extra)` gained a third argument.** The size modifier could not simply be
+appended to `cls`: the placeholder suffix is derived from it, so `'pp-av pp-av-lg'` would have
+produced `pp-av pp-av-lg pp-av pp-av-lg-ph` — the base class twice and a `-ph` rule that does not
+exist. The modifier is applied to both variants separately. `.pp-av-lg` sets size only; radius and
+`object-fit` stay on `.pp-av`, so the large variant cannot drift out of round with the small one.
+
+**Row height** goes from ~44px to ~62px (Sol·licituds) and ~58px (Membres). Accepted deliberately —
+the owner asked for the face to take up almost all the row.
+
+**Tests.** Unit 2943 → 2947. 7 mutations, all red.
+
+⚠ **Three of the first assertions survived mutation, and all three were the same mistake: asserting
+that markup was EMITTED rather than that it had any effect.**
+- The flex wrapper test checked the class appeared in the HTML. Changing the rule to
+  `display: block` left the markup identical and the face back above the text, and it passed.
+  It reads the resolved CSS now.
+- Nothing at all covered the new `extra` argument, so dropping it from either branch of
+  `avatarHtmlGlobal` was silent — the avatar still rendered, just at the wrong size. Both branches
+  are pinned now, along with the no-modifier case (no trailing space, no stray `undefined` in the
+  class list).
+
+This is the third round in a row where the mutation pass found assertions that passed for the wrong
+reason. The pattern each time: a test that greps for a string the code happens to contain, standing
+in for a question about behaviour.

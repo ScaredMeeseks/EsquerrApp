@@ -7,14 +7,14 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 232** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 233** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2943** — `cd test && npm run test:unit` (~10 s), all passing |
-| Rules tests | 170 — **not re-run since v231**; `firestore.rules` was not touched this time |
+| Unit tests | **2947** — `cd test && npm run test:unit` (~10 s), all passing |
+| Rules tests | 170 — **not re-run since v231**; `firestore.rules` has not been touched since |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
 Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
@@ -26,7 +26,7 @@ and every save it makes is refused. Nothing since v231 has touched rules, storag
 deployed function; the only edit under `functions/` is the version constant in `check-deploy.js`, a
 diagnostic script. The frontend ships by pushing `main`.
 
-⚠ **Not yet driven by hand.** The owner is testing v230–v232 after the deploys. Two paths are worth
+⚠ **Not yet driven by hand.** The owner is testing v230–v233 after the deploys. Two paths are worth
 clicking first:
 - **Clearing an attendance answer** (tapping the chosen pill a second time) — it deletes both the
   new `uid_sessionId` record and the legacy `uid_date` one, and it is the branch with the least
@@ -35,6 +35,21 @@ clicking first:
   upload must show the "photo not uploaded" toast and store nothing at all.
 
 ---
+
+## v233. The face on Registracions, at the size of the row.
+
+`.reg2-td-who` was two block lines with a 26px avatar inline inside the first, so the face could
+only ever be as tall as ONE of them. It is a flex row now: the face beside a column holding the
+name and the email, at 40px — most of the row's height.
+
+⚠ **Flex is safe in that cell and is STILL not safe in `.pl-td-name`.** Nothing in the Registracions
+cell depends on `catBadgeHtmlGlobal`'s `margin-left`, which a flex container collapses; the
+Plantilla name cell does, and it is one line anyway. `registrations.test.js` asserts the Plantilla
+cell is not made flex, so nobody "tidies" the two into agreement later.
+
+⚠ `avatarHtmlGlobal(u, cls, extra)` takes the size modifier as a THIRD argument. Appending it to
+`cls` would produce `pp-av pp-av-lg pp-av pp-av-lg-ph` — the placeholder suffix is derived from
+`cls`. Row height went 44px → ~62px, accepted deliberately.
 
 ## v232. The 2 MB profile photo that could stop a club syncing.
 

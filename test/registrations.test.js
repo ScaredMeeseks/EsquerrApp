@@ -820,6 +820,36 @@ describe('the agent column, the phone and the avatars', () => {
         'the separator is not gated on the phone being there');
   });
 
+  it('the face is a SIBLING of the two text lines, not inside the first', () => {
+    /* v233. Inline inside `.reg2-name` it could only ever be as tall as one
+       line of text. Beside the stacked name+email it takes the height of
+       both, which is most of the row. */
+    const av = WHO.indexOf('avatarHtmlGlobal(u,');
+    const txt = WHO.indexOf('reg2-who-txt');
+    const name = WHO.indexOf('reg2-name');
+    assert.ok(av !== -1 && txt !== -1, WHO);
+    assert.ok(av < txt && txt < name,
+        'the avatar is back inside the name line, so it cannot span the row');
+    assert.ok(/reg2-who"/.test(WHO), 'the flex row wrapper is gone');
+    /* And the wrapper has to actually BE a row. Asserting only that the
+       class is emitted let `display:block` through — the markup was right
+       and the face went back to sitting above the text. */
+    const who = /\.reg2-who\s*\{([^}]*)\}/.exec(css);
+    assert.ok(who, 'the .reg2-who rule is gone');
+    assert.ok(/display:\s*flex/.test(who[1]), who[1]);
+    assert.ok(/align-items:\s*center/.test(who[1]), 'the face is not centred on the text');
+  });
+
+  it('the enlarged face keeps ONE geometry definition', () => {
+    // The modifier sets size; the base still owns radius and object-fit, so
+    // the large variant cannot drift out of round with the small one.
+    const lg = /\.pp-av-lg\s*\{([^}]*)\}/.exec(css);
+    assert.ok(lg, 'the size modifier is gone');
+    assert.ok(/width:\s*40px/.test(lg[1]), lg[1]);
+    assert.ok(!/border-radius/.test(lg[1]),
+        'the modifier redefines the radius instead of inheriting it: ' + lg[1]);
+  });
+
   it('both name cells draw a face', () => {
     assert.ok(WHO.includes('avatarHtmlGlobal(u,'), WHO);
     [['pending', PENDING], ['members', MEMBERS]].forEach(([which, s]) => {
@@ -879,8 +909,14 @@ describe('the agent column, the phone and the avatars', () => {
        sit flush against the name on every roster row. */
     assert.ok(/\.reg2-name,\s*\.pl-td-name\s*\{[^}]*white-space:\s*nowrap/.test(css),
         'the nowrap rule is gone');
-    assert.ok(/\.reg2-name > \*,\s*\.pl-td-name > \*\s*\{[^}]*vertical-align:\s*middle/.test(css),
-        'the vertical-align rule the inline-flow cells depend on is gone');
+    /* Plantilla only since v233: the Registracions cell became a flex row so
+       the face could span both text lines, and nothing in IT depends on the
+       badge margin. The Plantilla cell still does, so it keeps baseline
+       alignment and must never be made flex. */
+    assert.ok(/\.pl-td-name > \*\s*\{[^}]*vertical-align:\s*middle/.test(css),
+        'the vertical-align rule the Plantilla inline-flow cell depends on is gone');
+    assert.ok(!/\.pl-td-name\s*\{[^}]*display:\s*flex/.test(css),
+        'the Plantilla name cell was made flex — that collapses the badge margin');
   });
 
   it('the staff rules allowlist actually permits what the page writes', () => {

@@ -2181,7 +2181,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 232;
+  const APP_VERSION = 233;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -27058,10 +27058,20 @@
     var phone = String(u.phone || '').trim();
     var contact = sanitize(u.email || '') +
       (phone ? '<span class="reg2-sep">|</span>' + sanitize(phone) : '');
-    return '<td class="reg2-td-who">' +
-      '<div class="reg2-name">' + avatarHtmlGlobal(u, 'pp-av') +
-        sanitize(u.name || '') + (extra || '') + '</div>' +
-      '<div class="reg2-sub">' + contact + '</div></td>';
+    /* The face is a flex sibling of the two text lines, not an inline run
+       inside the first of them (v233). Inline, it could only ever be as tall
+       as one line of text; beside them it takes the height of both, which is
+       most of the row — a 40px face reads as a person and a 26px one reads
+       as punctuation.
+       ⚠ Flex is safe HERE and is not in the Plantilla name cell: nothing in
+       this cell relies on `catBadgeHtmlGlobal`'s margin-left, which a flex
+       container would collapse. */
+    return '<td class="reg2-td-who"><div class="reg2-who">' +
+      avatarHtmlGlobal(u, 'pp-av', 'pp-av-lg') +
+      '<div class="reg2-who-txt">' +
+        '<div class="reg2-name">' + sanitize(u.name || '') + (extra || '') + '</div>' +
+        '<div class="reg2-sub">' + contact + '</div>' +
+      '</div></div></td>';
   }
 
   /** The agent / agency field. Read-only pages get the value as text, not a

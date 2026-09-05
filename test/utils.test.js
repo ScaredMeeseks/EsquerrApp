@@ -222,7 +222,7 @@ describe('avatarHtmlGlobal()', () => {
      input cannot answer a question about escaping, which is half of what
      this function does. */
   const avatarHtmlGlobal = new Function('document',
-      slice('function avatarHtmlGlobal(u, cls) {', '// ---------- Color Utilities') +
+      slice('function avatarHtmlGlobal(u, cls, extra) {', '// ---------- Color Utilities') +
       slice('function sanitize(str) {', '// ---------- Tactical Formations') +
       '\nreturn avatarHtmlGlobal;')(dom.window.document);
 
@@ -281,6 +281,24 @@ describe('avatarHtmlGlobal()', () => {
     const phDoc = new JSDOM('<!doctype html><body>' + ph).window.document;
     assert.strictEqual(phDoc.querySelectorAll('img').length, 0,
         'the name was injected as markup');
+  });
+
+  it('the size modifier reaches BOTH variants', () => {
+    /* Passed as a third argument, not appended to `cls`: the placeholder
+       suffix is derived from `cls`, so a two-class string there produces
+       `zz big zz big-ph` — the base twice and a rule that does not exist.
+       Without this test, dropping `mod` from either branch is silent: the
+       markup still renders, just at the wrong size. */
+    const img = avatarHtmlGlobal({name: 'A', profilePic: 'https://x/y.jpg'}, 'zz', 'big');
+    assert.ok(/class="zz big"/.test(img), img);
+    const ph = avatarHtmlGlobal({name: 'A'}, 'zz', 'big');
+    assert.ok(/class="zz zz-ph big"/.test(ph), ph);
+  });
+
+  it('omits the modifier cleanly when there is none', () => {
+    // No trailing space, no stray `undefined` in the class list.
+    assert.ok(/class="zz"/.test(avatarHtmlGlobal({name: 'A', profilePic: 'x'}, 'zz')));
+    assert.ok(/class="zz zz-ph"/.test(avatarHtmlGlobal({name: 'A'}, 'zz')));
   });
 
   it('the placeholder class is the photo class plus a suffix', () => {
