@@ -1,40 +1,67 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-04._
+_Rolling document, overwritten each session. Last updated: 2026-09-05._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 231** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 232** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2924** — `cd test && npm run test:unit` (~10 s), all passing |
-| Rules tests | **170** — re-run and passing; `firestore.rules` CHANGED and was deployed |
+| Unit tests | **2943** — `cd test && npm run test:unit` (~10 s), all passing |
+| Rules tests | 170 — **not re-run since v231**; `firestore.rules` was not touched this time |
 | Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
 
 Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
 
-⚠ **`firestore.rules` CHANGED this session and WAS DEPLOYED** (`.\deploy.ps1 rules`, released to
+`firestore.rules` was changed and **deployed at v231** (`.\deploy.ps1 rules`, released to
 `esquerrapp`) — `phone` and `agent` joined the staff allowlist on `users/{uid}`. Rules went out
-BEFORE the frontend push, because the other order leaves a window where the new input is on screen
-and every save it makes is refused. `storage.rules` is unchanged (the deploy re-releases it
-together; it reported "already up to date"). No functions deploy — the only edit under `functions/`
-is the version constant in `check-deploy.js`, a diagnostic script. The frontend shipped by pushing
-`main`.
+BEFORE that frontend push, because the other order leaves a window where the new input is on screen
+and every save it makes is refused. Nothing since v231 has touched rules, storage rules or any
+deployed function; the only edit under `functions/` is the version constant in `check-deploy.js`, a
+diagnostic script. The frontend ships by pushing `main`.
 
-⚠ **Not yet driven by hand.** The owner is testing v230 after the deploy. The path worth clicking
-first is **clearing an answer** — tapping the chosen pill a second time — because it deletes both
-the new `uid_sessionId` record and the legacy `uid_date` one, and it is the branch with the least
-coverage upstream of this change.
+⚠ **Not yet driven by hand.** The owner is testing v230–v232 after the deploys. Two paths are worth
+clicking first:
+- **Clearing an attendance answer** (tapping the chosen pill a second time) — it deletes both the
+  new `uid_sessionId` record and the legacy `uid_date` one, and it is the branch with the least
+  coverage upstream of the v230 rebuild.
+- **Setting a profile photo** (v232) — it is downscaled to 256px before upload now, and a FAILED
+  upload must show the "photo not uploaded" toast and store nothing at all.
 
 ---
 
-## This session: v230. Inici — the two landing pages, and the page attendance is
+## v232. The 2 MB profile photo that could stop a club syncing.
+
+Parking-lot 12b, found while adding faces in v231. Both upload paths fell back to a `FileReader`
+data URI of up to 2 MB when Storage threw, and `setSession()` persisted it into `users/{uid}` AND
+the synced `fa_users` blob — a document capped at 1 MB. One player's failed upload could stop
+`fa_users` syncing for the whole club, weeks later, with nothing connecting symptom to cause.
+Three layers now: `iniShrinkImage()` downscales to 256px first and **fails open** (an old WebView
+without `toBlob` must still be able to set a photo); a failed upload says so and stores nothing;
+and `stripHeavyPics()` in `saveUsers()` refuses to carry an oversized value into the blob, which
+also repairs one already poisoned. `setSession()` guards the personal document the same way.
+`test/profile-pic.test.js`, 19 cases. **Detail in CONTEXT.md.**
+
+## v231. Faces, a phone number and Agent/Agència.
+
+Avatars on Plantilla and both Registracions tables via one `avatarHtmlGlobal()` in `js/utils.js`
+(it replaced five hand-rolled copies); a required phone at profile setup, shown beside the email;
+an editable Agent/Agència column; and the Inici hero photo made circular. `phone` and `agent`
+joined the staff rules allowlist — the rules deploy above. **Detail in CONTEXT.md.**
+
+⚠ **The initials branch of `avatarHtmlGlobal` is the COMMON case, not a fallback.** `js/db.js`
+never refreshes an `fa_users` row it already has, so a team-mate's photo arrives only once they
+next sign in. Rows without a face are normal.
+
+---
+
+## v230. Inici — the two landing pages, and the page attendance is
 ## answered on.
 
 The seventh Claude Design handoff (`Baixades/EsquerrApp Home UI/design_handoff_inici/`), and the
@@ -192,13 +219,15 @@ moment that comment was deleted. They anchor on `const INI_SEGS = [` now.
     bypassing the server-side validation in `setClubCategories`. Delete once a v55+ APK circulates.
 12. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
     orphaned shards when a category is emptied; `backfill-training-teams.js` has no `preflight()`.
-12b. **A failed profile-photo upload poisons `fa_users`.** *(found v231, not fixed.)* The upload
-    falls back to a `FileReader` data URI of up to 2 MB, and `setSession` persists it verbatim to
-    `users/{uid}` **and** to the synced `fa_users` blob — a Firestore document with a **1 MB
-    limit**. One failed upload by one player can therefore break `fa_users` syncing for the whole
-    club, and the symptom would look nothing like its cause. The fix is to drop the fallback (an
-    upload that failed should say so) or downscale to a thumbnail before encoding. The two fallback
-    sites are `js/app.js` ~32820 (the Inici hero) and ~5210 (profile setup).
+12b. **A failed profile-photo upload poisoned `fa_users`.** ✅ **Fixed — v232.** Both upload paths
+    fell back to a `FileReader` data URI of up to 2 MB, which `setSession` persisted into
+    `users/{uid}` and the synced `fa_users` blob — a document capped at 1 MB, so one failed upload
+    could stop `fa_users` syncing for the whole club. Three layers now: every upload is downscaled
+    to 256px first (`iniShrinkImage`, which fails OPEN so it can never be the reason a photo cannot
+    be set); a failed upload says so and stores nothing; and `stripHeavyPics()` in `saveUsers()`
+    refuses to carry an oversized value into the blob at all — which also REPAIRS one already
+    poisoned in production. `setSession` guards the personal document the same way. See CONTEXT.md
+    (v232) and `test/profile-pic.test.js`.
 13. **Follow-ball has no button any more.** The CODE is untouched (`setFollowBall`, `isFollowingBall`,
     the `followBall` flag); only the button is gone. Bringing it back is one entry in `tbCamsHtml()`
     and one branch in the click handler — but it is the only camera control that holds STATE, so it

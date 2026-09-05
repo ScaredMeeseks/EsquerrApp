@@ -9220,3 +9220,68 @@ rest with nothing to say so — it carries a `title` now.
 **Not in scope, still open:** a failed photo upload falls back to a data URI of up to 2 MB, which
 `setSession` bakes into `users/{uid}` AND the synced `fa_users` blob — a document with a 1 MB
 limit. One failed upload can break `fa_users` syncing for the whole club. Pre-existing.
+
+### 2026-09-05 — v232. The 2 MB profile photo that could stop a club syncing
+
+Parking-lot item 12b, found while adding faces to the tables in v231 and fixed here.
+
+**The failure.** `profilePic` is normally a Firebase Storage download URL, about 200 bytes. When the
+upload threw — offline, a rules rejection, a quota — both upload paths fell back to reading the
+whole file back through `FileReader` as a `data:` URI (up to 2 MB, ~2.7 MB once base64 expands it)
+and persisting THAT. `setSession()` then wrote it to `users/{uid}` **and** into `fa_users`.
+
+`fa_users` is a synced blob mirrored into `teams/{id}/data/fa_users__{cat}`, and a Firestore
+document is capped at **1 MB**. So one player's failed upload could push that shard over the limit
+and stop `fa_users` syncing **for the whole club** — every roster, medical, registrations and
+convocatòria surface reads it. ⚠ The symptom would have been a squad that quietly stopped updating,
+weeks after one person's photo failed to upload, with nothing on screen connecting the two. That
+distance between cause and symptom is why it got its own suite rather than a line in another.
+
+**Three layers, because one was not enough.**
+
+1. **Downscale before upload.** New `iniShrinkImage(file, max)` — canvas to 256px on the longest
+   edge, JPEG q0.82. An avatar renders at 96px at most (26px in a table) and phones hand over 3-4 MB
+   originals, so this was paying for pixels nobody can see. ⚠ It fails **open**: an old WebView with
+   no `toBlob`, an image the decoder rejects, anything thrown — all resolve to the ORIGINAL file.
+   Shrinking is an optimisation and must never be the reason somebody cannot set a photo, and the
+   APK is exactly where old WebViews live. It also refuses to return a result BIGGER than its input,
+   which re-encoding an already-optimised JPEG can produce.
+   ⚠ The extension follows the bytes: a re-encoded file is stored `.jpg`, or a PNG's object would
+   have held JPEG content under a `.png` name.
+2. **No data-URI fallback anywhere.** A failed upload now says so (`pic.failed_t`/`_b`) and leaves
+   `profilePic` alone. ⚠ In profile setup it does NOT return early — the name, dob and phone are the
+   point of that screen, and throwing there would strand a new member on it over an avatar. The
+   setup preview still uses a data URI, but on `_previewSrc` (an expando) rather than
+   `dataset.src`, because `dataset.src` was what the persist path read back.
+3. **The funnel refuses to carry one.** `stripHeavyPics()` in `saveUsers()` — the single writer into
+   `fa_users` — blanks any `profilePic` longer than `MAX_PIC_SRC` (1024 chars; a real Storage URL
+   with its token is ~180). `setSession()` applies the same guard to the personal document, where an
+   oversized value does not merely waste space: it exceeds the 1 MB cap, so the write FAILS and
+   takes the name, dob and phone in the same merge with it.
+
+⚠ **Layer 3 repairs as well as prevents,** which is why it strips rather than warning. A `data:`
+value in that blob is by definition the residue of a failed upload; it is not the only copy of
+anything that reached Storage, and leaving it keeps the club's sync broken. Dropping it renders that
+person as their initial — which is exactly what `avatarHtmlGlobal()` is for — and their next
+successful upload replaces it properly. It returns the SAME array when there is nothing to repair,
+so the common path does not churn objects on every render, and it never rewrites a row it had no
+business touching (the blob is club-wide and written whole — a guard that rebuilt everyone's rows
+would be the same class of bug it exists to prevent).
+
+**Not the same thing:** `_splash_badge` also stores a data URI, and correctly. That key is
+device-local (`_`-prefixed, not in `SYNCED_KEYS`), so it never reaches Firestore.
+
+**Tests.** New `test/profile-pic.test.js`, 19 cases. Unit 2924 → 2943. 15 deliberate mutations, all
+red — including both fallbacks restored, the cap moved in either direction, the guard rewriting rows
+it should not, shrinking failing closed, and a leaked object URL.
+
+⚠ **And one assertion was too loose, caught by mutation:** "revokes the object URL on every path"
+counted revoke sites and required `>= 3`. There are four, so deleting the one on the `onerror`
+path — the likeliest leak, since it is the path a broken image takes — still passed. It asserts each
+path individually now.
+
+⚠ **`iniShrinkImage` was driven for real, not just grepped.** jsdom has no canvas, so every
+assertion about it is source-level and the resize itself had never executed. Run in headless Chrome
+over a 3000×2000 JPEG it returns **256×171, image/jpeg**, with aspect preserved; a 64px image, an
+SVG and a non-image all pass through untouched. Source assertions alone would not have caught a
+canvas call in the wrong order.

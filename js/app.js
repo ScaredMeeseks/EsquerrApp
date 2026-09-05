@@ -1446,6 +1446,8 @@
 
     // ── Confirm / Alert Messages ──
     'alert.image_too_large':  { ca:'La imatge ha de ser inferior a 2 MB.', es:'La imagen debe ser inferior a 2 MB.', en:'Image must be under 2 MB.' },
+    'pic.failed_t':           { ca:'No s\'ha pujat la foto', es:'No se ha subido la foto', en:'Photo not uploaded' },
+    'pic.failed_b':           { ca:'La foto no s\'ha pogut pujar i no s\'ha desat. Comprova la connexió i torna-ho a provar.', es:'La foto no se ha podido subir y no se ha guardado. Comprueba la conexión e inténtalo de nuevo.', en:'The photo could not be uploaded and was not saved. Check your connection and try again.' },
     'alert.select_role':      { ca:'Selecciona almenys un rol.', es:'Selecciona al menos un rol.', en:'Please select at least one role.' },
     'alert.board_name_exists':{ ca:'Ja existeix una pissarra amb aquest nom.', es:'Ya existe una pizarra con ese nombre.', en:'A board with this name already exists.' },
     'alert.select_training':  { ca:'Selecciona un entrenament.', es:'Selecciona un entrenamiento.', en:'Please select a training.' },
@@ -1764,8 +1766,59 @@
     return _usersCache;
   }
   function invalidateUsersCache() { _usersCache = null; }
+
+  /* ── The `data:` profile picture, and why it may never be persisted ──
+     (v232)
+
+     `profilePic` is normally a Firebase Storage download URL: ~200 bytes.
+     When the upload failed, the old code fell back to a `FileReader` data
+     URI of the WHOLE file — up to 2 MB, ~2.7 MB once base64 has expanded it
+     — and setSession() then wrote that verbatim into `users/{uid}` AND into
+     `fa_users`.
+
+     `fa_users` is a SYNCED blob mirrored into `teams/{id}/data/fa_users__{cat}`,
+     and a Firestore document is capped at 1 MB. So one player's failed
+     upload could push that shard over the limit and stop `fa_users` syncing
+     FOR THE WHOLE CLUB — every roster, medical and convocatòria surface
+     reads it, and the symptom (a squad that silently stops updating) looks
+     nothing like the cause (one person's photo did not upload weeks ago).
+
+     Three layers now stop it, and this is the last of them:
+       1. every upload is downscaled first (iniShrinkImage below), so what
+          reaches Storage is ~20 KB rather than megabytes;
+       2. a failed upload SAYS SO and leaves profilePic alone, instead of
+          quietly hoarding the bytes;
+       3. this — the single funnel into `fa_users` refuses to carry a `data:`
+          URI at all.
+
+     ⚠ Layer 3 also REPAIRS a blob already poisoned in production, which is
+     why it strips rather than merely warning: a `data:` value there is by
+     definition the residue of a failed upload, it is not the only copy of
+     anything that ever reached Storage, and leaving it in place keeps the
+     club's sync broken. Dropping it makes that person render as their
+     initial — exactly what avatarHtmlGlobal() exists for — and the next
+     successful upload replaces it properly. */
+  const MAX_PIC_SRC = 1024; // a Storage URL is ~200 chars; nothing legitimate is longer
+
+  function stripHeavyPics(users) {
+    let stripped = 0;
+    const out = users.map((u) => {
+      const p = u && u.profilePic;
+      if (typeof p === 'string' && p.length > MAX_PIC_SRC) {
+        stripped++;
+        return Object.assign({}, u, {profilePic: ''});
+      }
+      return u;
+    });
+    if (stripped) {
+      console.warn('fa_users: dropped ' + stripped +
+        ' oversized profilePic value(s) — a failed upload had been stored inline');
+    }
+    return stripped ? out : users;
+  }
+
   function saveUsers(users) {
-    localStorage.setItem('fa_users', JSON.stringify(users));
+    localStorage.setItem('fa_users', JSON.stringify(stripHeavyPics(users)));
     invalidateUsersCache();
   }
   // localDateStr → utils.js
@@ -2038,6 +2091,15 @@
         roles, category, team, staffCategories, staffRole,
         ...profile
       } = user;
+      /* The same guard saveUsers() applies to the shared blob, applied to
+         the personal document (v232). A `data:` profilePic here is ~2.7 MB
+         of base64 against a 1 MB document cap, so the write does not merely
+         waste space — it FAILS, taking the name, dob and phone in the same
+         merge down with it. Sending the field empty is what keeps the rest
+         of the profile saveable. */
+      if (typeof profile.profilePic === 'string' && profile.profilePic.length > MAX_PIC_SRC) {
+        profile.profilePic = '';
+      }
       db.collection('users').doc(auth.currentUser.uid).set(profile, { merge: true }).catch(console.error);
       // Also update localStorage for compat with roster/availability code
       let users = getUsers();
@@ -2119,7 +2181,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 231;
+  const APP_VERSION = 232;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -5180,6 +5242,63 @@
     }
   }
 
+  /* Downscale a chosen photo before it is uploaded (v232).
+   *
+   * An avatar is rendered at 96px at its very largest (26px in a table), and
+   * phones hand over 3-4 MB originals. Sending that to Storage costs the
+   * player's data, the club's quota and every viewer's bandwidth for pixels
+   * nobody can see. 256px square at q0.82 lands around 15-25 KB.
+   *
+   * Falls back to the ORIGINAL FILE if anything here fails — an old WebView
+   * with no `toBlob`, an image the decoder rejects. Shrinking is an
+   * optimisation, and it must never be the reason somebody cannot set a
+   * photo at all.
+   *
+   * @param {File} file
+   * @param {number} [max] longest edge, px
+   * @returns {Promise<Blob|File>}
+   */
+  function iniShrinkImage(file, max) {
+    const MAX = max || 256;
+    return new Promise((resolve) => {
+      try {
+        if (!file || !/^image\//.test(file.type) || /svg/.test(file.type)) {
+          return resolve(file);
+        }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = function () {
+          try {
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            // Never UPSCALE a small photo: it would add bytes for no pixels.
+            if (scale >= 1 && file.size <= 200 * 1024) {
+              URL.revokeObjectURL(url);
+              return resolve(file);
+            }
+            const w = Math.max(1, Math.round(img.width * scale));
+            const h = Math.max(1, Math.round(img.height * scale));
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+            if (!c.toBlob) return resolve(file);
+            c.toBlob(function (blob) {
+              // A "smaller" result that is bigger is not smaller. Happens
+              // with an already-optimised JPEG re-encoded at a lower size.
+              resolve(blob && blob.size < file.size ? blob : file);
+            }, 'image/jpeg', 0.82);
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            resolve(file);
+          }
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+      } catch (err) { resolve(file); }
+    });
+  }
+
   function handleProfilePicChange(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -5194,7 +5313,12 @@
     reader.onload = function (ev) {
       const dataUrl = ev.target.result;
       preview.innerHTML = `<img src="${dataUrl}" alt="Profile">`;
-      preview.dataset.src = dataUrl;
+      /* ⚠ PREVIEW ONLY, and it is deliberately NOT `dataset.src` any more.
+         It used to be, and handleProfileSetup() then persisted that data URI
+         whenever the upload failed — up to 2.7 MB of base64 into the synced
+         `fa_users` blob, which is capped at 1 MB for the whole club. The
+         bytes stay on this element, in this tab, and are never saved. */
+      preview._previewSrc = dataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -5208,21 +5332,28 @@
     const preview = $('#profile-pic-preview');
     let picSrc = session.profilePic || '';
 
-    // Upload profile pic to Firebase Storage if a new file was selected
+    /* Upload the photo to Storage, downscaled first.
+       ⚠ NO DATA-URI FALLBACK (v232). It used to keep the raw base64 when the
+       upload failed, and setSession() persisted that into the club-wide
+       `fa_users` blob — see the note on stripHeavyPics(). A failed upload
+       now leaves the photo unchanged and says so; the rest of setup still
+       goes through, so nobody is stuck on this screen over an avatar. */
     if (preview._pendingFile && auth.currentUser) {
       try {
-        const ext = preview._pendingFile.name.split('.').pop() || 'jpg';
+        const blob = await iniShrinkImage(preview._pendingFile);
+        // Always .jpg: iniShrinkImage re-encodes as JPEG, and keeping the
+        // original extension would have written a PNG's bytes to a .png
+        // object that is actually a JPEG.
+        const ext = blob === preview._pendingFile
+          ? (preview._pendingFile.name.split('.').pop() || 'jpg') : 'jpg';
         const ref = storage.ref('profilePics/' + auth.currentUser.uid + '.' + ext);
-        await ref.put(preview._pendingFile);
+        await ref.put(blob);
         picSrc = await ref.getDownloadURL();
         preview._pendingFile = null;
       } catch (err) {
         console.error('Profile pic upload failed:', err);
-        // Fall back to dataURL if upload fails
-        picSrc = preview.dataset.src || picSrc;
+        _showPushToast(t('pic.failed_t'), t('pic.failed_b'));
       }
-    } else if (preview.dataset.src) {
-      picSrc = preview.dataset.src;
     }
 
     const dobInput = $('#setup-dob');
@@ -32884,22 +33015,23 @@
           const session = getSession();
           if (!session || !auth.currentUser) return;
           try {
-            const ext = file.name.split('.').pop() || 'jpg';
+            const blob = await iniShrinkImage(file);
+            // Always .jpg when it was re-encoded — see handleProfileSetup.
+            const ext = blob === file ? (file.name.split('.').pop() || 'jpg') : 'jpg';
             const ref = storage.ref('profilePics/' + auth.currentUser.uid + '.' + ext);
-            await ref.put(file);
+            await ref.put(blob);
             session.profilePic = await ref.getDownloadURL();
             setSession(session);
             renderPage(session);
           } catch (err) {
+            /* ⚠ NO DATA-URI FALLBACK (v232). This used to read the whole
+               file back as base64 and hand it to setSession(), which wrote
+               it into `users/{uid}` AND the club-wide `fa_users` blob — a
+               Firestore document capped at 1 MB. One player's failed upload
+               could stop `fa_users` syncing for everybody, and nothing on
+               screen would have connected the two. Say it failed instead. */
             console.error('Profile pic upload failed:', err);
-            // Fallback to dataURL
-            const reader = new FileReader();
-            reader.onload = ev => {
-              session.profilePic = ev.target.result;
-              setSession(session);
-              renderPage(session);
-            };
-            reader.readAsDataURL(file);
+            _showPushToast(t('pic.failed_t'), t('pic.failed_b'));
           }
         };
         inp.click();
