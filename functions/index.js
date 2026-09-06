@@ -3751,7 +3751,10 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
       // query on it rather than matching the {uid}_… doc-id prefix. ──
       if (teamId) {
         done.records = 0;
-        for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+        // playerMetrics joins the list in v236. Nothing to scrub for
+        // fa_metric_catalog here: a catalogue row is a squad's definition
+        // and carries no uid, so a member deletion has no claim on it.
+        for (const coll of ["trainingAvail", "matchAvail", "rpe", "playerMetrics"]) {
           const snap = await db.collection("teams").doc(teamId)
               .collection(coll).where("uid", "==", uid).get();
           let batch = db.batch();
@@ -4137,6 +4140,12 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       }
       await scrubShards(shards, "fa_matchday",
           dropRows((g) => String(g.team || "") === letter));
+      /* The squad's metric definitions. Filtered by the `team` LETTER, like
+         fa_matchday above and unlike everything uid-keyed — a catalogue row
+         belongs to a squad, not to a person. The measurements taken against
+         those definitions are deleted separately, with their players. */
+      await scrubShards(shards, "fa_metric_catalog",
+          dropRows((m) => String(m.team || "") === letter));
 
       // Match-joined maps, across ALL shards: a row can sit anywhere.
       for (const key of ["fa_match_events", "fa_match_goals",
@@ -4162,11 +4171,17 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       // rather than matching the {uid}_… doc-id prefix.
       const teamRef = db.collection("teams").doc(clubId);
       for (const c of chunk10(teamUids)) {
-        for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+        for (const coll of ["trainingAvail", "matchAvail", "rpe", "playerMetrics"]) {
           records += await deleteByQuery(
               teamRef.collection(coll).where("uid", "in", c));
         }
       }
+      /* ⚠ A player who ALREADY MOVED to another squad keeps his metrics, and
+         that is correct rather than an oversight: he is not in `teamUids`,
+         so the query above never reaches him. "Measurements persist across
+         team changes" and "deleting a squad deletes its members' data" only
+         look contradictory until you notice deleteTeam removes the members
+         too — the ones it deletes are the ones whose metrics go. */
       // A player from ANOTHER team who answered availability for one of this
       // team's matches: the record belongs to a fixture that no longer exists.
       for (const c of chunk10(deletedMatchIds)) {

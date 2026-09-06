@@ -72,6 +72,15 @@
     // whole category instead.
     fa_staff_notifications:    { shape: 'array', by: 'field', field: 'category', id: 'id', sort: byTimestampDesc },
     fa_tactic_saved:           { shape: 'array', by: 'field', field: 'category', id: 'id' },
+    /* The metric CATALOGUE — a squad's list of what it measures (v236).
+       Stamped, not joined: a definition belongs to the squad that made it
+       and does NOT follow anyone. The measurements are the opposite and are
+       not here at all — they live in the `playerMetrics` record collection,
+       carrying no category precisely so a promoted player keeps his history.
+       ⚠ The squad LETTER is a plain `team` field filtered in the UI, not a
+       shard: SEP splits `key__cat`, _absorbDoc rejects any cat outside
+       ORDER, and the custom claims carry categories and nothing else. */
+    fa_metric_catalog:         { shape: 'array', by: 'field', field: 'category', id: 'id' },
 
     // Keyed by training DATE, which two categories can share — so the
     // bucket is split by the entry's own stamp, not by its key.

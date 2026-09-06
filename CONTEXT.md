@@ -9514,3 +9514,112 @@ remembering:
   now. **A duplicated block can hide behind its twin in a mutation run.**
 
 After both fixes: 10 mutations, no survivors — including one aimed at each copy of the picker.
+
+### 2026-09-07 — Player metrics: weight, height and fitness tests (v236)
+
+Parking-lot items **19** and **20**, which turn out to be one feature with two default rows. A coach
+or fitness coach opens Plantilla → player detail and presses **Afegir mètrica** under the acute/
+chronic chart; Plantilla itself grows an expandable **Mètriques** section for the whole squad.
+
+**Two stores, because the owner's two rules pull opposite ways.** A measurement follows the PLAYER
+across seasons and squads; a definition belongs to the SQUAD that made it.
+
+- **Measurements** → the `playerMetrics` record collection, `{uid, metricId, slug, name, unit,
+  value, date}`. ⚠ **No `category` field, and that absence IS the feature**: there is no shard to
+  move, so `onMemberCategoryChanged` has nothing to do, and `archiveSeason` — which only touches
+  `SEASON_KEYS` and its own enumerated record list — leaves it alone at the rollover. Being in
+  neither destructive list is the whole of "kept across seasons"; there was no code to write.
+- **The catalogue** → `fa_metric_catalog`, a category-sharded `data/` key of the CUSTOM metrics a
+  squad has invented. ⚠ The squad **letter cannot be a shard** — `SEP` splits `key__cat`,
+  `_absorbDoc` rejects any cat outside `ORDER`, and the claims carry categories only — so it is a
+  plain field and the letter scoping is a UI filter, not a boundary.
+
+⚠ **The design that looked obvious would have broken the main requirement, and silently.** Seeding
+Weight and Height as ordinary catalogue rows per squad gives cadet's Pes a *different id* from
+juvenil's Pes, so a promoted player's weight history splits into two disjoint series with the same
+name — and because a juvenil coach cannot read `fa_metric_catalog__cadet` at all, the older half
+would render as a bare number with no label and no unit. Promotion at the rollover is the normal
+path for every youth player, not a corner case. Three changes fix it, and all three are load-bearing:
+
+1. **Weight and Height are reserved constants** (`PLM_BUILTIN`), ids `weight`/`height`, units fixed
+   in code. They are not catalogue rows at all — which also deletes the seed-on-first-use write and
+   the race where two coaches open Plantilla in the same second.
+2. **A custom metric carries a `slug`**, and the chart groups a player's history by slug rather than
+   by `metricId`. Two squads that both invented "CMJ" read as one series.
+3. **`name` and `unit` are denormalised onto every measurement.** A record is self-describing, so an
+   unreadable definition costs nothing.
+
+**Permissions: a new `player-metrics` right.** ⚠ The **fitness** sub-role has
+`manage-roster: 'view'` and always did, so the one role whose job this is could not edit Plantilla,
+while an ordinary coach could. Gating on `manage-roster` would lock out the physio; flipping it to
+`'edit'` would hand them every field on the roster. `player-metrics` is a right, not a page:
+`fitness: 'edit'`, `delegate: 'hidden'`, and a coach falls through to `'edit'` — which is the wanted
+answer, so the fall-through is correct here rather than merely unexamined.
+
+**The rules deviate from the collection they copy, deliberately.** `trainingAvail`, `matchAvail` and
+`rpe` are all `allow read: if sameTeam(teamId)` — readable by **every player** — which the archive
+comment calls a standing backlog item rather than a decision. RPE is a self-reported effort score;
+a squad's body weights on minors are not. `playerMetrics` is `isStaffOf` for read as well as write.
+⚠ And there is **no `allow update` rule at all**: "delete, not edit" is enforceable here for free,
+and a client-side lock on a client-written document is decoration. Eight new emulator tests pin
+both. The catalogue needed **no** rules change — `data/{key}` already covers it.
+
+⚠ **What staff-only read still does not buy: per-category scoping.** The record carries no category,
+so any staff member of the club reads every squad's numbers. Narrowing it means stamping a category,
+which re-introduces exactly the freezing the design exists to avoid. The compartment was traded for
+the continuity, knowingly.
+
+**A true time axis — the first in the file.** Every other `.pl-` chart is an evenly spaced index
+(`plItemX` over a window of N), because RPE is per-session and load is per-week, so a column *is* a
+step. Measurements are not: a squad weighed in August and again in March would have those two
+columns drawn side by side, saying the weight changed in a week. Owner's call, cost known:
+`plItemX`, `plLabelRowHtml` and `plDragRect` all assume item counts, so none is reused, and
+drag-scroll goes with them.
+
+Three things that needed writing rather than reusing, each found by rendering it:
+
+- ⚠ **The y ticks are NOT rounded.** They were at first, and three round ticks force a step of at
+  least half the span — a squad weighing 68–89 kg was drawn on a 60–100 axis with every line
+  squashed into the middle third. The trend the chart exists to show, flattened to fit a tidier
+  number. `plmNiceTicks` pads the true range by 8% instead.
+- ⚠ **Hover-to-highlight is class-driven, not `:hover`.** The pure-CSS version needs no state and
+  survives any redraw, and it was wrong the moment two lines crossed: each carries a 12px
+  transparent hit stroke, so the pointer is inside both and `:hover` fires for both. Driven with a
+  real pointer over twelve lines, **two** stood out. A delegated `mouseover` gets the single topmost
+  element as `e.target`, which is the tie-break CSS cannot express.
+- ⚠ **A gap is bridged, not zeroed.** `plRailRpeHtml` drops an untrained session to zero on purpose
+  — "a week off is a reading" — but a player who was not weighed in March did not weigh nothing.
+
+**Three more traps, all pre-existing and all newly reachable:**
+
+- ⚠ `page.addEventListener('click')` on Plantilla closes the rail, and the new section sits in
+  `.pl-main` like the roster table. Without an exemption every tick of a "show on chart" box would
+  toggle the box AND shut the rail. Asked of the **event**, not bound to an element, for the reason
+  written at the chart guard beside it.
+- ⚠ The add form is a modal on `document.body`, not a panel in the page. `manage-roster` is in
+  `KEY_PAGES` for five keys and is **not** among the four pages exempted from the sync repaint, so
+  a colleague filing an RPE would have wiped a half-typed form 500 ms later.
+- ⚠ `RECORD_COLLECTIONS` is iterated for every session, so a staff-only collection would have every
+  player's device open a listener the rules refuse — a permanent console error on every phone in the
+  club, for a subscription that can never return a row. Hence `staffOnly: true` and the `_isStaff`
+  gate, resolved from the token claims so `db.js` still knows nothing about the app.
+
+**The `.plm-` CSS sits INSIDE the Plantilla region**, not at the foot of the file: `medical.test.js`
+slices `.md2-` to end-of-file, so anything appended after that banner is read as Mèdic's. The same
+trap took Inici down when Mèdic was appended after it, two versions ago.
+
+**Tests.** Unit 3033 → 3075; rules 170 → **178**. New `test/metrics.test.js` (42), registered in
+`test:unit` and as `test:metrics`. **22 mutations, four survivors, all four fixed** — and every one
+of the four was the same shape, an assertion about the wrong quantity:
+- the rules slice was cut at the first `}`, which is the one inside `{docId}`, so `head` was four
+  words long and every assertion under it passed on an empty string;
+- the "is it denormalised" test read a FIXTURE that already carried `name` and `unit`, so it said
+  nothing about the mapping that puts them there — it drives `db.js`'s own `toEntry` now;
+- the built-in-id test compared two `metricsForSquad()` calls, which cannot catch a generated id
+  because `PLM_BUILTIN` is a const evaluated once and both calls return the same object;
+- and an **unbounded** `showAddMetric` slice ran to the end of the file, so a `btn.disabled = true`
+  a thousand lines away kept a mutation of this function's own alive.
+
+Also corrected while here: **parking-lot item 30 (Xweather) has been done since v208–v210** —
+`functions/weather.js`, `scheduledWeatherSync`, and the two `XWEATHER_*` secrets. The entry was
+about twenty-five versions stale.

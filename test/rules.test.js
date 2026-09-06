@@ -549,6 +549,63 @@ describe("Per-record ownership", () => {
   });
 });
 
+/* ── Player metrics (v236) ────────────────────────────────────────────
+   Weight, height and fitness tests. Staff-entered, staff-read.
+
+   ⚠ THE READ IS THE POINT OF THIS BLOCK. The three collections above are
+   `sameTeam` — any club member, players included — which the archive
+   comment calls a standing backlog item rather than a decision. A squad's
+   body weights are not availability, so this one deviates from the
+   collection it copies its SHAPE from, and these tests are what stops
+   somebody "tidying" it back into line with its neighbours. */
+describe("Player metrics are staff-only, and cannot be edited", () => {
+  // Defined here rather than reused: the other asStaffB lives inside a
+  // later describe and is out of scope, the same note as further up.
+  const asOtherClubStaff = () =>
+    db("uidStaffB", {teamId: "teamB", role: "staff", email: "sb@x.com", cats: ["cadet"]});
+  const met = (uid) => "teams/teamA/playerMetrics/" + uid + "_weight_2026-02-02_ab12";
+  const row = (uid) => ({uid, metricId: "weight", slug: "weight",
+    name: "Pes", unit: "kg", value: 74.5, date: "2026-02-02"});
+
+  it("staff CAN create a measurement", async () => {
+    await assertSucceeds(asStaffA().doc(met(A)).set(row(A)));
+  });
+  it("staff CAN read one", async () => {
+    await assertSucceeds(asStaffA().doc(met(A)).get());
+  });
+  it("a PLAYER cannot read his own — there is no player-facing view", async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await c.firestore().doc(met(A)).set(row(A));
+    });
+    await assertFails(asA().doc(met(A)).get());
+  });
+  it("a player cannot read a teammate's weight", async () => {
+    await assertFails(asA().doc(met(A2)).get());
+  });
+  it("a player cannot write one for himself", async () => {
+    await assertFails(asA().doc(met(A)).set(row(A)));
+  });
+  it("another club's staff cannot read them", async () => {
+    await assertFails(asOtherClubStaff().doc(met(A)).get());
+  });
+  /* "Delete, not edit" is a rule here rather than a habit: a measurement is
+     a fact at a date, and a client-side lock on a client-written document is
+     decoration. */
+  it("even staff cannot UPDATE one — a wrong entry is deleted and re-added", async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await c.firestore().doc(met(A)).set(row(A));
+    });
+    await assertFails(asStaffA().doc(met(A)).update({value: 80}));
+    await assertFails(asStaffA().doc(met(A)).set({value: 80}, {merge: true}));
+  });
+  it("staff CAN delete one", async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await c.firestore().doc(met(A)).set(row(A));
+    });
+    await assertSucceeds(asStaffA().doc(met(A)).delete());
+  });
+});
+
 describe("Clubs, codes, join-attempts", () => {
   /* The club document is the superadmin's. `maxTeams` is a commercial limit
      and `categories` is what it limits, so a lead can write neither — both

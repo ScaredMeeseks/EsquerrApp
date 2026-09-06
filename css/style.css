@@ -6546,6 +6546,114 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    flex, for the reason above — its avatar aligns by baseline instead. */
 .reg2-name, .pl-td-name { white-space: nowrap; }
 .pl-td-name > * { vertical-align: middle; }
+/* ===== Player metrics — weight, height, fitness tests (v236) =====
+
+   Plantilla's own, so `.plm-` sits inside the `.pl-` region rather than at
+   the foot of the file. ⚠ That placement is load-bearing:
+   test/medical.test.js slices the `.md2-` block from its banner to the END
+   OF FILE, so anything appended after it is read as Mèdic's and would trip
+   that suite's no-loose-hex and borrowed-class scans. The same trap took
+   Inici down when Mèdic was appended after it. */
+
+.plm-block { padding-top: 6px; }
+.plm-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 10px;
+}
+.plm-head .pl-eyebrow { margin-right: auto; }
+.plm-pick { min-width: 130px; }
+.plm-pick-wide { width: 100%; }
+.plm-segs { flex: none; width: 150px; }
+.plm-segs .md2-seg { height: 26px; font-size: 11px; }
+.plm-empty { padding: 14px 0; font-size: 13px; color: var(--pp-ink-3); }
+.plm-add {
+  display: block; width: 100%; margin-top: 12px; height: 30px;
+  border: 1px solid var(--pp-input-line); background: none;
+  font: inherit; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pp-ink-2); cursor: pointer; border-radius: 0;
+}
+.plm-add:hover { border-color: var(--pp-red); color: var(--pp-red); }
+
+/* ── the chart ── */
+.plm-chart { position: relative; }
+/* ⚠ .pl-svg is capped at 440px and only un-capped inside the rail, so the
+   page-level squad chart would otherwise draw at 440px in a full-width
+   section. */
+.plm-svg { max-width: none; }
+.plm-xlabels {
+  position: relative; height: 15px; margin-top: 2px;
+  font-size: 10px; color: var(--pp-ink-3);
+}
+.plm-xlab {
+  position: absolute; transform: translateX(-50%); white-space: nowrap;
+}
+
+/* ⚠ CLASS-DRIVEN, NOT `:hover`, AND THE REASON IS TWO LINES AT A CROSSING.
+   The first version was pure CSS — `.plm-lines:hover .plm-line {opacity:.12}`
+   then `.plm-line:hover {opacity:1}` — which needs no state and survives any
+   redraw, and it was wrong the moment two players' lines crossed: each line
+   carries a 12px transparent hit stroke, so at a crossing the pointer is
+   inside BOTH and `:hover` fires for both. Driven with a real pointer over
+   twelve lines, two stood out, not one.
+
+   A delegated `mouseover` gets the single topmost element as `e.target`,
+   which is exactly the tie-break CSS cannot express. The redraw worry that
+   argued for `:hover` does not apply here: these charts carry no drag
+   surface, so nothing redraws them in place — and a full render rebinds. */
+.plm-line { transition: opacity .12s; }
+.plm-lines.plm-hot .plm-line { opacity: .12; }
+.plm-lines.plm-hot .plm-line.plm-on { opacity: 1; }
+/* The visible stroke is 1.6px and only receives events ON the stroke, which
+   is unhittable in practice — this is its transparent twin. */
+.plm-line-hit { cursor: pointer; }
+
+/* ── the rail's table ── */
+.plm-tbl { margin-top: 4px; }
+.plm-td-date { color: var(--pp-ink-2); }
+.plm-unit { font-size: 11px; color: var(--pp-ink-3); }
+.plm-del {
+  border: none; background: none; font: inherit; font-size: 15px;
+  color: var(--pp-ink-3); cursor: pointer; padding: 0 2px; line-height: 1;
+}
+.plm-del:hover { color: var(--pp-red); }
+.plm-del:disabled { opacity: .4; cursor: default; }
+
+/* ── the squad section ── */
+.plm-sec-head { cursor: pointer; }
+.plm-arrow { color: var(--pp-ink-3); }
+.plm-sec-note { font-size: 13px; color: var(--pp-ink-2); }
+.plm-sec { padding-bottom: 12px; }
+.plm-sec .plm-head { padding-top: 4px; }
+.plm-sec-empty { padding: 12px 0 20px; }
+.plm-squad-tbl { min-width: 0; margin-top: 14px; }
+/* A deselected player: dimmed, and sorted to the bottom by the renderer —
+   the row is not hidden, because taking him off the chart is not the same
+   as saying he has no numbers. */
+.plm-off { opacity: .42; }
+.plm-tick {
+  width: 22px; height: 22px; border: 1px solid var(--pp-input-line);
+  background: none; font: inherit; font-size: 12px; line-height: 1;
+  color: var(--pp-ink); cursor: pointer; border-radius: 0; padding: 0;
+}
+.plm-tick-on {
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
+}
+
+/* ── the add sheet ── */
+.plm-sheet { width: 460px; }
+.plm-who { font-size: 19px; }
+.plm-note { margin: 0; font-size: 12px; color: var(--pp-ink-3); line-height: 1.5; }
+.plm-val-row { display: flex; align-items: center; gap: 10px; }
+.plm-val-row .md2-in { flex: 1; min-width: 0; }
+.plm-unit-echo { font-size: 14px; color: var(--pp-ink-3); flex: none; min-width: 24px; }
+
+@media (max-width: 900px) {
+  .plm-head { gap: 8px; }
+  .plm-segs { width: 128px; }
+  .plm-squad-tbl { font-size: 13px; }
+}
+
+
 .reg2-sub { font-size: 12px; color: var(--pp-ink-3); white-space: nowrap; }
 /* The separator between email and phone. A span rather than a literal `|` in
    the string so it can be dropped with the phone when there is none. */

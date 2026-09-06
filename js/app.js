@@ -768,6 +768,49 @@
     'pl.minutes':        { ca:'Minuts', es:'Minutos', en:'Minutes' },
     'pl.home':           { ca:'casa', es:'casa', en:'home' },
     'pl.away':           { ca:'fora', es:'fuera', en:'away' },
+
+    // ── Player metrics (v236) ──
+    // `plm.weight` / `plm.height` are the two reserved built-in metrics —
+    // their ids ARE these key suffixes, which is what makes them translate
+    // while a coach's own metric shows the words he typed.
+    'plm.weight':        { ca:'Pes', es:'Peso', en:'Weight' },
+    'plm.height':        { ca:'Alçada', es:'Altura', en:'Height' },
+    'plm.section':       { ca:'Mètriques', es:'Métricas', en:'Metrics' },
+    'plm.add':           { ca:'+ Afegir mètrica', es:'+ Añadir métrica', en:'+ Add metric' },
+    'plm.add_title':     { ca:'Afegir una mesura', es:'Añadir una medida', en:'Add a measurement' },
+    'plm.metric':        { ca:'Mètrica', es:'Métrica', en:'Metric' },
+    'plm.new_metric':    { ca:'Nova mètrica…', es:'Nueva métrica…', en:'New metric…' },
+    'plm.new_name':      { ca:'Nom de la mètrica', es:'Nombre de la métrica', en:'Metric name' },
+    'plm.new_name_ph':   { ca:'p. ex. CMJ', es:'p. ej. CMJ', en:'e.g. CMJ' },
+    'plm.unit':          { ca:'Unitat', es:'Unidad', en:'Unit' },
+    'plm.unit_ph':       { ca:'cm, kg, s…', es:'cm, kg, s…', en:'cm, kg, s…' },
+    'plm.value':         { ca:'Valor', es:'Valor', en:'Value' },
+    'plm.date':          { ca:'Data', es:'Fecha', en:'Date' },
+    'plm.save':          { ca:'Desar la mesura', es:'Guardar la medida', en:'Save measurement' },
+    'plm.cancel':        { ca:'Cancel·lar', es:'Cancelar', en:'Cancel' },
+    'plm.chart':         { ca:'Gràfic', es:'Gráfico', en:'Chart' },
+    'plm.table':         { ca:'Taula', es:'Tabla', en:'Table' },
+    'plm.none':          { ca:'Cap mesura encara', es:'Ninguna medida todavía', en:'No measurements yet' },
+    'plm.none_metric':   { ca:'Cap mesura d\'aquesta mètrica', es:'Ninguna medida de esta métrica', en:'No measurements of this metric' },
+    'plm.pick_metric':   { ca:'Tria una mètrica', es:'Elige una métrica', en:'Choose a metric' },
+    'plm.need_value':    { ca:'Escriu un valor', es:'Escribe un valor', en:'Enter a value' },
+    'plm.need_name':     { ca:'Posa un nom a la mètrica', es:'Pon un nombre a la métrica', en:'Name the metric' },
+    'plm.dup_name':      { ca:'Aquesta mètrica ja existeix en aquest equip', es:'Esta métrica ya existe en este equipo', en:'That metric already exists in this squad' },
+    // ⚠ Shown when a new metric cannot be created because the page is on
+    // "Totes" or on all letters. A definition belongs to one squad, and a
+    // row saved with no category lands in the club-wide `__none` shard.
+    'plm.need_squad':    { ca:'Tria una categoria i un equip per crear una mètrica nova', es:'Elige una categoría y un equipo para crear una métrica nueva', en:'Choose a category and a squad to create a new metric' },
+    'plm.readings':      { ca:'{n} mesures', es:'{n} medidas', en:'{n} readings' },
+    'plm.reading_1':     { ca:'1 mesura', es:'1 medida', en:'1 reading' },
+    'plm.delete_q':      { ca:'Esborrar aquesta mesura?', es:'¿Borrar esta medida?', en:'Delete this measurement?' },
+    'plm.del_failed':    { ca:'No s\'ha pogut esborrar. No s\'ha tocat res.', es:'No se ha podido borrar. No se ha tocado nada.', en:'Could not delete. Nothing was changed.' },
+    'plm.save_failed':   { ca:'No s\'ha pogut desar la mesura.', es:'No se ha podido guardar la medida.', en:'Could not save the measurement.' },
+    'plm.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'plm.th_latest':     { ca:'Última', es:'Última', en:'Latest' },
+    'plm.th_when':       { ca:'Data', es:'Fecha', en:'Date' },
+    'plm.th_n':          { ca:'Mesures', es:'Medidas', en:'Readings' },
+    'plm.show':          { ca:'Mostrar al gràfic', es:'Mostrar en el gráfico', en:'Show on chart' },
+    'plm.no_metrics':    { ca:'Aquest equip encara no mesura res', es:'Este equipo todavía no mide nada', en:'This squad measures nothing yet' },
     'ev.type_ph':        { ca:'Tipus…', es:'Tipo…', en:'Type…' },
     'ev.player_ph':      { ca:'Jugador…', es:'Jugador…', en:'Player…' },
     'ev.goal_type_ph':   { ca:'Tipus de gol…', es:'Tipo de gol…', en:'Goal type…' },
@@ -2044,6 +2087,94 @@
     return { fitnessStatus: status, injuryNote: note, standDownUpTo: standDownUpTo };
   }
 
+  /* ---------- Player metrics (v236) ----------
+
+     Two stores, because the owner's two rules pull opposite ways: a
+     measurement follows the PLAYER across squads and seasons, a definition
+     belongs to the SQUAD that made it.
+
+       · `playerMetrics`  — a record collection. No `category` field, which
+         is exactly what makes a promoted player's history follow him: there
+         is no shard to move, so onMemberCategoryChanged has nothing to do,
+         and archiveSeason (which only touches SEASON_KEYS and its own
+         enumerated record list) leaves it alone at the rollover.
+       · `fa_metric_catalog` — a category-sharded data/ key holding the
+         CUSTOM metrics a squad has invented. The letter is a plain field.
+
+     ⚠ WEIGHT AND HEIGHT ARE NOT CATALOGUE ROWS. They are the two constants
+     below, with ids reserved club-wide. Seeding them per squad — the obvious
+     design, and the one this started as — gives cadet's Pes a different id
+     from juvenil's Pes, so a promoted player's weight history splits into
+     two disjoint series; and since a juvenil coach cannot read
+     `fa_metric_catalog__cadet` at all (the rules scope data/ reads by the
+     `cats` claim), the older half would render as a number with no name and
+     no unit. Reserved ids also delete the seed-on-first-use write and the
+     race where two coaches open Plantilla in the same second. */
+  const PLM_BUILTIN = [
+    { id: 'weight', slug: 'weight', unit: 'kg', builtin: true },
+    { id: 'height', slug: 'height', unit: 'cm', builtin: true }
+  ];
+
+  /** A metric's display name. Built-ins are translated; a custom one is the
+      coach's own words and is shown as typed. */
+  function plmName(m) {
+    return m.builtin ? t('plm.' + m.id) : (m.name || '');
+  }
+
+  /** Normalised, accent-stripped key for grouping.
+
+      ⚠ This is what lets a player's history survive the move. Amateur A's
+      "CMJ" and Juvenil A's "CMJ" are different catalogue rows with different
+      ids — they must be, because a definition belongs to its squad — but to
+      the player they are one measurement taken twice, so the CHART groups by
+      slug rather than by id. */
+  function plmSlug(name) {
+    return String(name || '')
+      /* ̀-ͯ as escapes, not as literal combining marks: those are
+         invisible in an editor and the first thing a well-meaning reformat
+         eats. */
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  function getMetricCatalog() {
+    try { return JSON.parse(localStorage.getItem('fa_metric_catalog') || '[]'); }
+    catch (e) { return []; }
+  }
+  function saveMetricCatalog(arr) {
+    return ackSave('fa_metric_catalog', JSON.stringify(arr), null);
+  }
+
+  /** What THIS squad may measure: the two built-ins plus its own inventions.
+      Filtered by category AND letter — a definition does not cross either. */
+  function metricsForSquad(cat, letter) {
+    const custom = getMetricCatalog().filter(function (m) {
+      return String(m.category || '') === String(cat || '')
+        && String(m.team || '') === String(letter || '');
+    });
+    return PLM_BUILTIN.concat(custom);
+  }
+
+  /** Every measurement, as an array. The record listener keeps this keyed by
+      document id, which is what a delete needs. */
+  function getPlayerMetrics() {
+    let obj;
+    try { obj = JSON.parse(localStorage.getItem('fa_player_metrics') || '{}'); }
+    catch (e) { obj = {}; }
+    return Object.keys(obj).map(function (docId) {
+      return Object.assign({ docId: docId }, obj[docId]);
+    });
+  }
+
+  /** One player's readings for one metric, oldest first — grouped by SLUG,
+      so a measurement taken under another squad's definition still counts. */
+  function playerMetricSeries(uid, slug, all) {
+    return (all || getPlayerMetrics())
+      .filter(function (r) { return String(r.uid) === String(uid) && r.slug === slug; })
+      .sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+  }
+
   // ---------- Injury helpers ----------
   function getInjuries() { return JSON.parse(localStorage.getItem('fa_injuries') || '[]'); }
   function saveInjuries(arr) { localStorage.setItem('fa_injuries', JSON.stringify(arr)); }
@@ -2298,7 +2429,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 235;
+  const APP_VERSION = 236;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -5836,7 +5967,16 @@
          keyed on was absent from this table, and an absent id means
          'edit'. Silence here reads as a decision and is not one. */
       'match-detail': 'view',
-      'tactics': 'hidden'
+      'tactics': 'hidden',
+      /* ⚠ EDIT, while `manage-roster` above stays 'view' — and the inversion
+         is the point, not an oversight. Entering a player's weight or his
+         CMJ is this role's job; changing his dorsal, his position or his
+         agent is not. `player-metrics` is not a page: it is a right, read by
+         canEditPage() from the metrics controls on Plantilla, so the fitness
+         coach can write those and nothing else on a page he otherwise only
+         reads. Flipping `manage-roster` to 'edit' instead would have handed
+         him every field on the roster to fix one. */
+      'player-metrics': 'edit'
       // medical, medical-detail, staff-player-stats and staff-notifications
       // are omitted: full access. The medical file is this role's whole job.
     },
@@ -5860,7 +6000,15 @@
       'medical': 'hidden',
       'medical-detail': 'hidden',
       'tactics': 'hidden',
-      'staff-notifications': 'hidden'
+      'staff-notifications': 'hidden',
+      /* Measuring players is not what a delegate is for, and this role
+         already has medical hidden. Stated rather than left silent, because
+         silence in this table means 'edit'.
+         ⚠ A plain coach has no table at all and therefore falls through to
+         'edit' here — which is the wanted answer ("the coach or fitness
+         coaches should be able to add"), so the fall-through is correct for
+         once rather than merely unexamined. */
+      'player-metrics': 'hidden'
       // calendar and staff-player-stats: full access.
     }
   };
@@ -23197,6 +23345,19 @@
   }
 
   let rosterTeamFilter = 'all';
+  /* ── Player metrics (v236) ──
+     Which metric each of the two views is showing, and how. Module vars
+     beside the other Plantilla state, so a re-render restores them.
+     ⚠ `_plmOut` holds who is EXCLUDED from the squad chart, not who is in.
+     A player signed this morning then appears by default, and switching
+     category leaves stale uids in the Set that simply stop matching —
+     the inverse would empty the chart on every filter change. */
+  let _plmRailMetric = null;
+  let _plmRailMode = 'chart';
+  let _plmOpen = false;
+  let _plmSecMetric = null;
+  let _plmSecMode = 'chart';
+  let _plmOut = new Set();
   let stdTeamFilter = null; // null = all, Set of letters = multi-select
   // Which team's sessions the staff training LIST shows. null = all of them.
   let trainingTeamFilter = null;
@@ -24296,6 +24457,523 @@
       plLabelRowHtml(G, view.map(function (w) { return w.label; })) + '</div>';
   }
 
+  /* ---------- Metric charts (v236) ----------
+
+     ⚠ A TRUE TIME AXIS, and it is the only chart in this file that has one.
+     Every other `.pl-` chart is an evenly spaced index — `plItemX` over a
+     window of N items — because RPE and load are per-session and per-week,
+     so every column IS one step. Measurements are not: a squad might weigh
+     everyone in August and again in March, and drawing those two columns
+     side by side would say the weight changed in a week. The owner's call,
+     with the cost known: plItemX, plLabelRowHtml and plDragRect all assume
+     item counts, so none of the three is reused here.
+
+     Drag-scroll goes with them. A season of fitness tests is a handful of
+     points and the whole span fits; if weight is ever taken weekly for
+     years, the follow-up is a date-range window, not a column window. */
+  const PLM_GEO = {
+    rail: { w: 420, h: 118, gut: 30, plot: 384, top: 12, bot: 92 },
+    page: { w: 900, h: 300, gut: 46, plot: 838, top: 16, bot: 250 }
+  };
+
+  /** The three y-axis values: a little below the lowest reading, the middle,
+   *  a little above the highest.
+   *
+   *  ⚠ Every other chart here hard-codes its ticks as literal text, and can:
+   *  RPE is always 0–10 and ACWR always 0–2. A metric has no such range —
+   *  weight is 40–110 kg, height 150–200 cm, a CMJ 20–50 — so the axis has
+   *  to be computed or it is decoration.
+   *
+   *  ⚠ THE TICKS ARE NOT ROUNDED, and that is the second attempt. Rounding
+   *  them to 10s put a squad weighing 68–89 kg on a 60–100 axis, with every
+   *  line squashed into the middle third of the plot — the trend this chart
+   *  exists to show, flattened to fit a tidier number. Three round ticks
+   *  cannot do better: they force a step of at least half the span, so the
+   *  axis is always up to twice the range of the data. A padded true range
+   *  uses the whole height, and plmNum keeps the labels to one decimal. */
+  function plmNiceTicks(min, max) {
+    const lo0 = Number(min), hi0 = Number(max);
+    if (!isFinite(lo0) || !isFinite(hi0) || !(hi0 > lo0)) {
+      /* One reading, or several that agree. A zero-height axis divides by
+         zero and draws every point on the floor; pad it so the single dot
+         sits in the middle of a readable band. */
+      const v = isFinite(hi0) ? hi0 : 0;
+      const pad = Math.max(1, Math.abs(v) * 0.1);
+      return [v - pad, v, v + pad];
+    }
+    const pad = (hi0 - lo0) * 0.08;
+    const lo = lo0 - pad, hi = hi0 + pad;
+    return [lo, (lo + hi) / 2, hi];
+  }
+
+  /** Trim a tick or a value to something a person reads. */
+  function plmNum(v) {
+    const n = Number(v);
+    if (!isFinite(n)) return '—';
+    return (Math.round(n * 10) / 10).toString().replace('.', ',');
+  }
+
+  function plmDayMs(iso) { return Date.parse(String(iso) + 'T12:00:00'); }
+
+  /**
+   * One chart, one to twenty-two lines.
+   *
+   * The rail passes a single series; the squad section passes one per
+   * selected player. They are the same drawing, which is why there is one
+   * function — the rail's chart and the section's cannot drift.
+   *
+   * ⚠ EVERY LINE IS THE SAME NEUTRAL. There is no twenty-colour palette in
+   * this design system and inventing one would fight paper-palette.test.js.
+   * Hover is the identification mechanism, which is what was asked for.
+   *
+   * @param series [{ uid, label, points:[{date, value}] }]
+   */
+  function plmChartHtml(series, unit, geoKey) {
+    const G = PLM_GEO[geoKey] || PLM_GEO.rail;
+    const all = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { all.push(p); }); });
+    if (!all.length) return '';
+
+    const ts = all.map(function (p) { return plmDayMs(p.date); });
+    const tMin = Math.min.apply(null, ts), tMax = Math.max.apply(null, ts);
+    const vals = all.map(function (p) { return Number(p.value); });
+    const ticks = plmNiceTicks(Math.min.apply(null, vals), Math.max.apply(null, vals));
+    const span = ticks[2] - ticks[0];
+
+    /* One day, or several readings on one day: centre them rather than
+       dividing by zero and drawing the whole series on the left edge. */
+    const x = function (iso) {
+      if (tMax === tMin) return G.gut + G.plot / 2;
+      return G.gut + (plmDayMs(iso) - tMin) / (tMax - tMin) * G.plot;
+    };
+    const y = function (v) {
+      return G.bot - ((Number(v) - ticks[0]) / span) * (G.bot - G.top);
+    };
+
+    const grid = ticks.map(function (tv, i) {
+      const yy = y(tv).toFixed(1);
+      return '<line x1="' + G.gut + '" y1="' + yy + '" x2="' + (G.gut + G.plot) +
+        '" y2="' + yy + '" stroke="' + (i === 0 ? '#C9C3BB' : '#EDEAE4') + '"></line>' +
+        '<text x="' + (G.gut - 6) + '" y="' + (Number(yy) + 4) +
+        '" text-anchor="end" class="pl-tick pl-tick-sm">' + plmNum(tv) + '</text>';
+    }).join('');
+
+    const lines = series.map(function (s) {
+      const pts = s.points.slice().sort(function (a, b) {
+        return String(a.date).localeCompare(String(b.date));
+      }).map(function (p) {
+        return { x: x(p.date), y: y(p.value), p: p };
+      });
+      /* ⚠ Bridged, never zeroed. plRailRpeHtml deliberately drops a session
+         nobody trained to zero in red — "a week off is a reading" — but that
+         is reasoning about RPE. A player who was not weighed in March did
+         not weigh nothing; the line joins the readings he does have and the
+         dots show which points are real. */
+      const d = pts.map(function (q, i) {
+        return (i ? 'L' : 'M') + q.x.toFixed(1) + ' ' + q.y.toFixed(1);
+      }).join(' ');
+      const dots = pts.map(function (q) {
+        const title = s.label + ' · ' + plShortDate(q.p.date);
+        const rows = [{ k: q.p.name || '', v: plmNum(q.p.value) + (unit ? ' ' + unit : '') }];
+        return '<circle class="pl-hit" cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
+          '" r="9" fill="transparent"' + plHitTip(title, rows) + '></circle>' +
+          '<circle cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
+          '" r="3.4" fill="#8C857D" stroke="#F6F4EF" stroke-width="1.2"' +
+          ' style="pointer-events:none"></circle>';
+      }).join('');
+      /* ⚠ The visible stroke is 1.6px and only receives events ON the
+         stroke, which is unhittable in practice — hence the transparent fat
+         twin in front of it. Both live in the same <g>, which is what the
+         hover rules key off. */
+      return '<g class="plm-line" data-plm-line="' + sanitize(String(s.uid)) + '">' +
+        (pts.length > 1
+          ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="12"' +
+            ' stroke-linejoin="round" class="plm-line-hit"></path>' +
+            '<path d="' + d + '" fill="none" stroke="#8C857D" stroke-width="1.6"' +
+            ' stroke-linejoin="round" style="pointer-events:none"></path>'
+          : '') +
+        dots + '</g>';
+    }).join('');
+
+    // Four dates across the span, placed at their own x — not one label per
+    // reading, which collides the moment two are a day apart.
+    const nLab = tMax === tMin ? 1 : 4;
+    let labels = '';
+    for (let i = 0; i < nLab; i++) {
+      const t = nLab === 1 ? tMin : tMin + (tMax - tMin) * (i / (nLab - 1));
+      const iso = localDateStr(new Date(t));
+      const pc = ((x(iso) / G.w) * 100).toFixed(2);
+      labels += '<span class="plm-xlab" style="left:' + pc + '%">' + plShortDate(iso) + '</span>';
+    }
+
+    return '<div class="plm-chart">' +
+      '<svg viewBox="0 0 ' + G.w + ' ' + G.h + '" width="100%"' +
+      ' preserveAspectRatio="xMidYMid meet" class="pl-svg plm-svg">' +
+      grid + '<g class="plm-lines">' + lines + '</g></svg>' +
+      '<div class="plm-xlabels">' + labels + '</div></div>';
+  }
+
+  /* ---------- Metrics: the two views and the form (v236) ---------- */
+
+  /** Everything this player can be shown, and where each came from.
+   *
+   *  ⚠ The union of the SQUAD's metrics and the slugs he already has. A
+   *  player promoted juvenil → amateur keeps his juvenil CMJ readings, and
+   *  amateur does not define CMJ — his history has to be offered anyway or
+   *  the promise that it follows him is not kept. `own:false` marks those:
+   *  they can be read, but a new reading needs the squad to define the
+   *  metric first, because a definition belongs to its squad. */
+  function plmOptionsFor(uid, cat, letter, all) {
+    const seen = {};
+    const out = [];
+    metricsForSquad(cat, letter).forEach(function (m) {
+      if (seen[m.slug]) return;
+      seen[m.slug] = true;
+      out.push({ slug: m.slug, name: plmName(m), unit: m.unit || '', own: true });
+    });
+    if (uid) {
+      (all || getPlayerMetrics()).forEach(function (r) {
+        if (String(r.uid) !== String(uid) || !r.slug || seen[r.slug]) return;
+        seen[r.slug] = true;
+        out.push({ slug: r.slug, name: r.name || r.slug, unit: r.unit || '', own: false });
+      });
+    }
+    return out;
+  }
+
+  function plmSegs(mode, kind) {
+    return '<div class="md2-segs plm-segs">' +
+      [['chart', t('plm.chart')], ['table', t('plm.table')]].map(function (p) {
+        return '<button type="button" class="md2-seg' + (mode === p[0] ? ' md2-on' : '') +
+          '" data-plm-mode="' + kind + '" data-plm-val="' + p[0] + '">' + p[1] + '</button>';
+      }).join('') + '</div>';
+  }
+
+  /** The rail's metric block — under the acute/chronic chart. */
+  function plmRailHtml(r) {
+    const ro = !canEditPage('player-metrics');
+    const cat = getCurrentCategory();
+    const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+    const all = getPlayerMetrics();
+    const opts = plmOptionsFor(r.id, cat, letter, all);
+    if (!opts.length) return '';
+
+    // Default to the first metric he actually has readings for, so opening a
+    // player shows data rather than an empty Weight chart.
+    let slug = _plmRailMetric;
+    if (!opts.some(function (o) { return o.slug === slug; })) {
+      const withData = opts.find(function (o) {
+        return playerMetricSeries(r.id, o.slug, all).length;
+      });
+      slug = (withData || opts[0]).slug;
+    }
+    const opt = opts.find(function (o) { return o.slug === slug; });
+    const rows = playerMetricSeries(r.id, slug, all);
+
+    const picker = stdSelect({
+      value: slug, kind: 'plmrail', cls: 'plm-pick',
+      options: opts.map(function (o) { return { value: o.slug, label: o.name }; })
+    });
+
+    let body;
+    if (!rows.length) {
+      body = '<div class="plm-empty">' + t('plm.none_metric') + '</div>';
+    } else if (_plmRailMode === 'table') {
+      body = '<table class="pl-hist plm-tbl"><tbody>' + rows.slice().reverse().map(function (m) {
+        return '<tr>' +
+          '<td class="plm-td-date">' + plShortDate(m.date) + '</td>' +
+          '<td class="pl-r pl-nums">' + plmNum(m.value) +
+            (opt && opt.unit ? ' <span class="plm-unit">' + sanitize(opt.unit) + '</span>' : '') + '</td>' +
+          (ro ? '<td></td>'
+              : '<td class="pl-r"><button type="button" class="plm-del"' +
+                ' data-plm-del="' + sanitize(m.docId) + '">×</button></td>') +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+    } else {
+      body = plmChartHtml([{ uid: r.id, label: r.name, points: rows }],
+          opt ? opt.unit : '', 'rail');
+    }
+
+    return '<div class="pl-rail-block plm-block">' +
+      '<div class="plm-head">' +
+        '<span class="pl-eyebrow pl-eyebrow-b">' + t('plm.section') + '</span>' +
+        picker + plmSegs(_plmRailMode, 'rail') +
+      '</div>' + body +
+      (ro ? '' : '<button type="button" class="plm-add" data-plm-add="' +
+        sanitize(String(r.id)) + '">' + t('plm.add') + '</button>') +
+      '</div>';
+  }
+
+  /** The squad-wide section under the roster table. */
+  function plmSectionHtml(players, catSpan) {
+    const cat = getCurrentCategory();
+    const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+    const all = getPlayerMetrics();
+    const inSquad = {};
+    players.forEach(function (p) { inSquad[String(p.id)] = p; });
+
+    /* Metrics this squad defines, plus any slug its current players carry
+       from elsewhere — the same union the rail uses, for the same reason. */
+    const seen = {};
+    const opts = [];
+    metricsForSquad(cat, letter).forEach(function (m) {
+      seen[m.slug] = true;
+      opts.push({ slug: m.slug, name: plmName(m), unit: m.unit || '' });
+    });
+    all.forEach(function (r) {
+      if (!inSquad[String(r.uid)] || !r.slug || seen[r.slug]) return;
+      seen[r.slug] = true;
+      opts.push({ slug: r.slug, name: r.name || r.slug, unit: r.unit || '' });
+    });
+
+    const head = '<div class="pl-section-head plm-sec-head" id="plm-toggle">' +
+      '<span class="pl-eyebrow">' + t('plm.section') + ' ' +
+        '<span class="plm-arrow">' + (_plmOpen ? '▴' : '▾') + '</span></span>' +
+      /* Named only while SHUT. Open, the picker immediately below says the
+         same word, and two labels for one choice read as two controls. */
+      (!_plmOpen && opts.length
+        ? '<span class="plm-sec-note">' + sanitize((opts.find(function (o) {
+            return o.slug === _plmSecMetric;
+          }) || opts[0]).name) + '</span>'
+        : '') +
+      '</div>';
+    if (!_plmOpen) return head;
+    if (!opts.length) {
+      return head + '<div class="plm-empty plm-sec-empty">' + t('plm.no_metrics') + '</div>';
+    }
+
+    let slug = _plmSecMetric;
+    if (!opts.some(function (o) { return o.slug === slug; })) slug = opts[0].slug;
+    const opt = opts.find(function (o) { return o.slug === slug; });
+
+    const rowsFor = {};
+    players.forEach(function (p) {
+      rowsFor[String(p.id)] = playerMetricSeries(p.id, slug, all);
+    });
+    const withData = players.filter(function (p) { return rowsFor[String(p.id)].length; });
+
+    const picker = stdSelect({
+      value: slug, kind: 'plmsec', cls: 'plm-pick',
+      options: opts.map(function (o) { return { value: o.slug, label: o.name }; })
+    });
+
+    /* ⚠ The Set holds who is OUT, not who is in. A player signed this
+       morning then shows by default, and switching category does not empty
+       the chart because the uids in it simply stop matching. */
+    const shown = withData.filter(function (p) { return !_plmOut.has(String(p.id)); });
+
+    let body;
+    if (!withData.length) {
+      body = '<div class="plm-empty">' + t('plm.none_metric') + '</div>';
+    } else if (_plmSecMode === 'table') {
+      body = '';
+    } else {
+      body = plmChartHtml(shown.map(function (p) {
+        return { uid: p.id, label: p.name, points: rowsFor[String(p.id)] };
+      }), opt ? opt.unit : '', 'page');
+    }
+
+    /* The table is always drawn: in `table` mode it IS the view, and in
+       `chart` mode it is the control that picks the lines. Deselected rows
+       dim and sink, which is the whole reason the sort is here rather than
+       in a comparator over the roster. */
+    const ranked = withData.slice().sort(function (a, b) {
+      const ao = _plmOut.has(String(a.id)) ? 1 : 0;
+      const bo = _plmOut.has(String(b.id)) ? 1 : 0;
+      if (ao !== bo) return ao - bo;
+      const av = rowsFor[String(a.id)].slice(-1)[0];
+      const bv = rowsFor[String(b.id)].slice(-1)[0];
+      return Number(bv.value) - Number(av.value);
+    });
+    const tbl = !withData.length ? '' :
+      '<table class="pl-table plm-squad-tbl"><thead><tr>' +
+        '<th>' + t('plm.th_player') + '</th>' +
+        '<th class="pl-r">' + t('plm.th_latest') + '</th>' +
+        '<th>' + t('plm.th_when') + '</th>' +
+        '<th class="pl-r">' + t('plm.th_n') + '</th>' +
+        '<th class="pl-c">' + t('plm.show') + '</th>' +
+      '</tr></thead><tbody>' + ranked.map(function (p) {
+        const rs = rowsFor[String(p.id)];
+        const last = rs[rs.length - 1];
+        const off = _plmOut.has(String(p.id));
+        return '<tr class="plm-row' + (off ? ' plm-off' : '') + '">' +
+          '<td>' + sanitize(p.name) + catBadgeHtmlGlobal(p, catSpan) + '</td>' +
+          '<td class="pl-r pl-nums">' + plmNum(last.value) +
+            (opt && opt.unit ? ' <span class="plm-unit">' + sanitize(opt.unit) + '</span>' : '') + '</td>' +
+          '<td>' + plShortDate(last.date) + '</td>' +
+          '<td class="pl-r pl-nums">' + rs.length + '</td>' +
+          '<td class="pl-c"><button type="button" class="plm-tick' + (off ? '' : ' plm-tick-on') +
+            '" data-plm-toggle="' + sanitize(String(p.id)) + '">' +
+            (off ? '' : '✓') + '</button></td>' +
+        '</tr>';
+      }).join('') + '</tbody></table>';
+
+    return head +
+      '<div class="plm-sec" id="plm-sec">' +
+        '<div class="plm-head">' + picker + plmSegs(_plmSecMode, 'sec') + '</div>' +
+        body + tbl +
+      '</div>';
+  }
+
+  /**
+   * The add-a-measurement sheet.
+   *
+   * ⚠ Lives on document.body, not inside #dashboard-content, and that is
+   * load-bearing rather than stylistic: `manage-roster` is listed in
+   * KEY_PAGES for five keys and is NOT one of the four pages exempted from
+   * the sync repaint, so a colleague filing an RPE re-renders this page
+   * 500 ms later. A form inside the page would be wiped mid-typing.
+   */
+  function showAddMetric(playerId) {
+    if (!canEditPage('player-metrics')) return;
+    const p = getUsers().find(function (u) { return String(u.id) === String(playerId); });
+    if (!p) return;
+    const cat = getCurrentCategory();
+    const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+    const squad = metricsForSquad(cat, letter);
+    /* ⚠ A definition needs a squad to belong to. On "Totes", or with no
+       letter picked, getCurrentCategory() is '' and the row would be routed
+       to the `__none` shard — which firestore.rules makes readable by every
+       member of the club, players included. Adding a MEASUREMENT is still
+       fine here: a measurement carries no category at all. */
+    const canCreate = !!(cat && letter);
+    const st = { slug: squad.length ? squad[0].slug : '__new', busy: false };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'md2-scrim';
+    const sheet = document.createElement('div');
+    sheet.className = 'md2-sheet plm-sheet';
+    overlay.appendChild(sheet);
+
+    function field(label, body) {
+      return '<div class="md2-field"><span class="md2-eyebrow">' + label + '</span>' + body + '</div>';
+    }
+    const today = localDateStr(new Date());
+
+    function optionsHtml() {
+      const list = squad.map(function (m) {
+        return { value: m.slug, label: plmName(m) + (m.unit ? ' · ' + m.unit : '') };
+      });
+      if (canCreate) list.push({ value: '__new', label: t('plm.new_metric') });
+      return stdSelect({ value: st.slug, kind: 'plmnew', cls: 'plm-pick-wide', options: list });
+    }
+
+    function repaint() {
+      const isNew = st.slug === '__new';
+      sheet.querySelector('#plm-newbits').innerHTML = !isNew ? '' :
+        field(t('plm.new_name'), '<input type="text" class="md2-in" id="plm-name" maxlength="40"' +
+          ' placeholder="' + t('plm.new_name_ph') + '">') +
+        field(t('plm.unit'), '<input type="text" class="md2-in" id="plm-unit" maxlength="8"' +
+          ' placeholder="' + t('plm.unit_ph') + '">');
+      const cur = squad.find(function (m) { return m.slug === st.slug; });
+      const u = sheet.querySelector('#plm-unit-echo');
+      if (u) u.textContent = (!isNew && cur && cur.unit) ? cur.unit : '';
+    }
+
+    sheet.innerHTML =
+      '<div class="md2-sheet-head">' +
+        '<span class="md2-sheet-title">' + t('plm.add_title') + '</span>' +
+        '<button type="button" class="md2-x" id="plm-x">×</button>' +
+      '</div>' +
+      '<div class="md2-sheet-body">' +
+        '<div class="plm-who">' + sanitize(p.name) + '</div>' +
+        field(t('plm.metric'), optionsHtml()) +
+        '<div id="plm-newbits"></div>' +
+        (canCreate ? '' : '<p class="plm-note">' + t('plm.need_squad') + '</p>') +
+        field(t('plm.value'), '<div class="plm-val-row">' +
+          '<input type="number" step="any" inputmode="decimal" class="md2-in" id="plm-value">' +
+          '<span class="plm-unit-echo" id="plm-unit-echo"></span></div>') +
+        field(t('plm.date'), '<input type="text" class="md2-in md-datepicker" data-display-dmy' +
+          ' data-allow-past id="plm-date" data-date-iso="' + today + '" value="' +
+          today.split('-').reverse().join('/') + '" placeholder="dd/mm/yyyy" readonly>') +
+      '</div>' +
+      '<div class="md2-sheet-foot">' +
+        '<button type="button" class="md2-cta md2-cta-wide" id="plm-save">' + t('plm.save') + '</button>' +
+        '<button type="button" class="md2-ghost" id="plm-cancel">' + t('plm.cancel') + '</button>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+    repaint();
+
+    function close() { overlay.remove(); closeDatePicker(); }
+    sheet.querySelector('#plm-x').addEventListener('click', close);
+    sheet.querySelector('#plm-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+    });
+    sheet.querySelectorAll('.md-datepicker').forEach(function (inp) {
+      inp.addEventListener('click', function () { openDatePicker(inp); });
+    });
+    bindStdSelects('plmnew', function (root, v) { st.slug = v; repaint(); });
+
+    sheet.querySelector('#plm-save').addEventListener('click', function () {
+      if (st.busy) return;
+      const valEl = sheet.querySelector('#plm-value');
+      const value = Number(String(valEl.value).replace(',', '.'));
+      if (!valEl.value.trim() || !isFinite(value)) { alert(t('plm.need_value')); return; }
+      const date = sheet.querySelector('#plm-date').dataset.dateIso || today;
+
+      let metric = squad.find(function (m) { return m.slug === st.slug; });
+      let catalog = null;
+      if (st.slug === '__new') {
+        const name = String(sheet.querySelector('#plm-name').value || '').trim();
+        if (!name) { alert(t('plm.need_name')); return; }
+        const slug = plmSlug(name);
+        if (!slug) { alert(t('plm.need_name')); return; }
+        if (squad.some(function (m) { return m.slug === slug; })) {
+          alert(t('plm.dup_name')); return;
+        }
+        metric = {
+          id: 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          slug: slug, name: name,
+          unit: String(sheet.querySelector('#plm-unit').value || '').trim(),
+          category: cat, team: letter
+        };
+        catalog = getMetricCatalog().concat([metric]);
+      }
+      if (!metric) { alert(t('plm.pick_metric')); return; }
+
+      /* ⚠ The random tail is not decoration. DB.submit writes with
+         {merge:true}, so two readings that shared a document id would not
+         collide — the second would quietly merge over the first, with no
+         error and no toast, and the first would vanish from the cache too.
+         A player can jump twice in one session. */
+      const docId = String(playerId) + '_' + metric.id + '_' + date + '_' +
+        Math.random().toString(36).slice(2, 6);
+      /* name and unit are DENORMALISED on purpose — see js/db.js. The
+         catalogue row that defines them is sharded per category and a future
+         coach may not be able to read it. */
+      const rec = {
+        uid: String(playerId), metricId: metric.id, slug: metric.slug,
+        name: plmName(metric), unit: metric.unit || '',
+        value: value, date: date
+      };
+      const cache = JSON.parse(localStorage.getItem('fa_player_metrics') || '{}');
+      cache[docId] = { uid: rec.uid, metricId: rec.metricId, slug: rec.slug,
+        name: rec.name, unit: rec.unit, value: rec.value, date: rec.date };
+
+      const btn = this;
+      st.busy = true;                     // a random id means a double tap
+      btn.disabled = true;                // would create two rows, not one
+      const first = catalog ? saveMetricCatalog(catalog) : Promise.resolve();
+      first.then(function () {
+        return ackSaveRecord('playerMetrics', docId, rec,
+            'fa_player_metrics', JSON.stringify(cache), null);
+      }).then(function () {
+        _plmRailMetric = metric.slug;
+        close();
+        renderPage(getSession());
+      }).catch(function () {
+        // Give the button back: a refused write must be retryable, not a
+        // dead sheet the coach has to close and refill.
+        st.busy = false;
+        btn.disabled = false;
+        alert(t('plm.save_failed'));
+      });
+    });
+  }
+
   /** The body map, with the injured zone's centroid as the pulsing dot. */
   function plInjuryHtml(r) {
     var inj = r.injury;
@@ -24409,6 +25087,7 @@
       '<div class="pl-metrics">' + metrics + '</div>' +
       plChartBox('PS', plRailRpeHtml, r.sessions) +
       plChartBox('PW', plRailAcwrHtml, r.weeks) +
+      plmRailHtml(r) +
       plInjuryHtml(r) +
       plHistoryHtml(r) +
       '</aside>';
@@ -24529,6 +25208,7 @@
            Computed per row it is O(n²), and it would be computed over
            whatever array happened to be in scope. */
         plRosterTableHtml(rows, !sel, catSpanOf(players)) +
+        plmSectionHtml(players, catSpanOf(players)) +
       '</div>' +
       (sel ? plRailHtml(sel) : '') +
       '</div>';
@@ -24632,7 +25312,19 @@
     });
 
     /* The ✕ that stood here is gone — the row toggles the rail and the
-       page-level click below closes it, so nothing is unreachable. */
+       page-level click below closes it, so nothing is unreachable.
+
+       ⚠ TWO THINGS ARE EXEMPT FROM THAT CLOSE, and both are asked of the
+       EVENT rather than bound to an element, because a redraw replaces the
+       element and takes its listener with it:
+         · a click on a chart (the drag surface), and
+         · a click in the squad Metrics section (v236).
+       The second sits in `.pl-main` like the roster table, so without the
+       exemption every tick of a "show on chart" box would toggle the box AND
+       shut the rail AND re-render — the rail disappearing as a side effect
+       of a control that has nothing to do with it. Both exemptions are
+       narrow on purpose: a plain click on the page must still close the
+       rail, which three assertions in plantilla-charts.test.js pin. */
     var rail = document.getElementById('pl-rail');
     if (rail) rail.addEventListener('click', function (e) { e.stopPropagation(); });
     // A click anywhere else on the page closes the rail.
@@ -24644,9 +25336,84 @@
          rail you were scrolling. Asked of the event instead of the
          element, this survives any redraw. */
       if (e.target.closest && e.target.closest('.pl-chart-box')) return;
+      // Nor a click in the Metrics section — see the note above.
+      if (e.target.closest && e.target.closest('.plm-sec, .plm-sec-head')) return;
       // Releasing a drag outside the chart still ends in a click here.
       if (_plDragMoved) { _plDragMoved = false; return; }
       _plSel = null; hideTip(); renderPage(getSession());
+    });
+
+    /* ── Metrics (v236) ── */
+    var plmToggle = document.getElementById('plm-toggle');
+    if (plmToggle) {
+      plmToggle.addEventListener('click', function () {
+        _plmOpen = !_plmOpen;
+        renderPage(getSession());
+      });
+    }
+    page.querySelectorAll('[data-plm-mode]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (b.dataset.plmMode === 'rail') _plmRailMode = b.dataset.plmVal;
+        else _plmSecMode = b.dataset.plmVal;
+        renderPage(getSession());
+      });
+    });
+    page.querySelectorAll('[data-plm-toggle]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = String(b.dataset.plmToggle);
+        if (_plmOut.has(id)) _plmOut.delete(id); else _plmOut.add(id);
+        renderPage(getSession());
+      });
+    });
+    if (canEditPage('player-metrics')) {
+      page.querySelectorAll('[data-plm-add]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          showAddMetric(b.dataset.plmAdd);
+        });
+      });
+      page.querySelectorAll('[data-plm-del]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!confirm(t('plm.delete_q'))) return;
+          var docId = b.dataset.plmDel;
+          var cache = JSON.parse(localStorage.getItem('fa_player_metrics') || '{}');
+          delete cache[docId];
+          b.disabled = true;
+          ackRemoveRecord('playerMetrics', docId,
+              'fa_player_metrics', JSON.stringify(cache), null)
+            .then(function () { renderPage(getSession()); })
+            .catch(function () { b.disabled = false; alert(t('plm.del_failed')); });
+        });
+      });
+    }
+    /* One line stands out, the rest dim. `e.target` is the single topmost
+       element under the pointer, which is the tie-break a `:hover` rule
+       cannot make: every line carries a fat transparent hit stroke, so at a
+       crossing the pointer is geometrically inside two of them at once and
+       CSS would light both. Verified with a real pointer over twelve. */
+    page.querySelectorAll('.plm-lines').forEach(function (g) {
+      g.addEventListener('mouseover', function (e) {
+        var line = e.target.closest && e.target.closest('.plm-line');
+        if (!line) return;
+        g.classList.add('plm-hot');
+        g.querySelectorAll('.plm-line').forEach(function (n) {
+          n.classList.toggle('plm-on', n === line);
+        });
+      });
+      g.addEventListener('mouseleave', function () {
+        g.classList.remove('plm-hot');
+        g.querySelectorAll('.plm-on').forEach(function (n) {
+          n.classList.remove('plm-on');
+        });
+      });
+    });
+    bindStdSelects(['plmrail', 'plmsec'], function (root, v) {
+      if (root.dataset.stdSel === 'plmrail') _plmRailMetric = v;
+      else _plmSecMetric = v;
+      renderPage(getSession());
     });
 
     /* Drag to scroll in time. The offset is recomputed from the pointer's
@@ -35120,6 +35887,12 @@
       fa_convocatoria_callup: ['staff-home', 'player-home', 'calendar', 'convocatoria', 'match-detail'],
       fa_match_goals: ['player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_match_events: ['staff-home', 'player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
+      /* Both halves of the metrics feature, and only Plantilla draws either.
+         The measurements arrive through the record listener, which dispatches
+         on `cfg.lsKey` — so the localStorage key goes here, not the
+         collection name. */
+      fa_player_metrics: ['manage-roster'],
+      fa_metric_catalog: ['manage-roster'],
       fa_tactic_saved: ['tactics'],
       fa_tactic_match_boards: ['tactics', 'match-detail', 'convocatoria'],
       fa_tactic_training_boards: ['tactics', 'training-detail', 'staff-training-detail'],

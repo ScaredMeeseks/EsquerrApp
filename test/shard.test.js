@@ -230,6 +230,14 @@ describe('shard.js — round trips', () => {
       fa_staff_notifications: [{ id: 'n1', timestamp: '2026-08-02T10:00:00Z', category: 'cadet' },
                                { id: 'n2', timestamp: '2026-08-01T10:00:00Z', category: '' }],
       fa_tactic_saved: [{ id: 'b1', category: 'cadet', name: 'A' }],
+      /* ⚠ One categorised row and one WITHOUT, deliberately: an uncategorised
+         catalogue row is routed to `__none`, which firestore.rules makes
+         readable by every member of the club INCLUDING PLAYERS. The round
+         trip only exercises that path if a fixture takes it. The UI refuses
+         to create one (a metric needs a concrete category and letter); this
+         proves the router still carries it losslessly if one ever exists. */
+      fa_metric_catalog: [{ id: 'm1', category: 'cadet', team: 'A', name: 'CMJ', unit: 'cm' },
+                          { id: 'm2', category: '', team: 'A', name: 'X', unit: '' }],
       fa_injuries: [{ id: 'i1', playerId: 'p1' }, { id: 'i2', playerId: 'p3' }],
       fa_injury_notes: { p1: 'a', p3: 'b' },
       fa_injury_zone: { p1: 3 },

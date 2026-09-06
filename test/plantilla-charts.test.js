@@ -47,13 +47,22 @@ function mount(html) {
     grab('  function bindPlantilla', '  function plGetOff') +
     grab('  function plGetOff', '  /* ── The page');
 
+  /* The metrics controls (v236) live in bindPlantilla too, so the slice
+     above now reaches for their globals. Stubbed rather than sliced in:
+     what is under test here is the DRAG and the rail, and a metrics stub
+     cannot answer a question about either. `canEditPage` says yes so the
+     write-bearing binders are exercised rather than skipped. */
   // eslint-disable-next-line no-new-func
   const api = new win.Function('document', 'window', 'sanitize', 'renderPage', 'getSession',
+    'canEditPage', 'showAddMetric', 'ackRemoveRecord', 'bindStdSelects', 't',
+    'confirm', 'alert', 'localStorage',
     code + '\n return {plChartBox, plRedrawCharts, plRedraws: () => _plCharts,' +
     ' bindPlantilla, plGetOff, plSetOff, sel: (v) => { if (v !== undefined) _plSel = v; return _plSel; },' +
     ' resetCharts: () => { _plCharts = []; }};')(
       win.document, win, (s) => String(s == null ? '' : s),
-      () => { renders.push(1); }, () => ({id: 'u1'}));
+      () => { renders.push(1); }, () => ({id: 'u1'}),
+      () => true, () => {}, () => Promise.resolve(), () => {}, (k) => k,
+      () => true, () => {}, {getItem: () => null, setItem: () => {}});
 
   /* `key` is what the drag surface carries — the OFFSET it scrolls, not
      the chart's name. Emitting the name instead made every drag address an

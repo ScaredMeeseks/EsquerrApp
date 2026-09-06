@@ -64,6 +64,11 @@ const DB = (function () {
     'fa_tactic_training_boards',
     'fa_injuries',
     'fa_match_events',
+    /* The metric CATALOGUE — which metrics a squad measures, not the
+       measurements themselves. Those are per-record in `playerMetrics`
+       below, deliberately: a catalogue entry belongs to one squad and a
+       measurement belongs to a player for as long as he is at the club. */
+    'fa_metric_catalog',
   ]);
 
   /* Keys that use per-field Firestore merges instead of blob replacement.
@@ -105,6 +110,32 @@ const DB = (function () {
            what the date fallback is for. */
         return { rpe: d.rpe, minutes: d.minutes, ua: d.ua, tag: d.tag,
           date: d.date, sessionId: d.sessionId };
+      }
+    },
+    /* Player measurements — weight, height, jump tests (v236).
+       ⚠ STAFF-WRITTEN, unlike the three above, and the only reason it is a
+       record collection rather than a data/ key is the SHAPE, not the
+       author: a record carries no `category`, so a player promoted between
+       squads keeps his history without anything having to move it. A
+       category-sharded blob would strand it with his old coach the way
+       injuries would if they were stamped (js/shard.js:57).
+       It is also why the rollover leaves it alone — archiveSeason only
+       touches SEASON_KEYS and its own enumerated record list. */
+    playerMetrics: {
+      lsKey: 'fa_player_metrics',
+      /* ⚠ Staff read the rules refuse to a player, so the listener is not
+         opened for one at all — see the _isStaff gate in init(). */
+      staffOnly: true,
+      /* ⚠ EVERY field, not a subset like `rpe` above. `name` and `unit` are
+         DENORMALISED onto the record on purpose: the catalogue that defines
+         them is sharded per category, so a coach cannot read the shard a
+         promoted player's older measurements were defined in. Without these
+         two, his history would render as a value with no label and no unit —
+         which is the requirement ("his history stays visible") quietly not
+         being met. */
+      toEntry: function (d) {
+        return { uid: d.uid, metricId: d.metricId, slug: d.slug,
+          name: d.name, unit: d.unit, value: d.value, date: d.date };
       }
     }
   };
@@ -603,10 +634,29 @@ const DB = (function () {
     // existing read paths keep working unchanged. init() waits for the
     // first snapshot of each collection (cache or server) so the first
     // render already sees availability/RPE.
+    /* Whether this session may read the staff-only collections. Read from
+       the token claims rather than from app.js, so db.js keeps knowing
+       nothing about the app.
+       ⚠ Without this, EVERY player's device opens a listener on
+       `playerMetrics`, is refused by the rules, and logs a permission error
+       on every single load — a permanent red line in the console of every
+       phone in the club, for a subscription that can never return a row. */
+    var _isStaff = false;
+    try {
+      var _tok = auth.currentUser && (await auth.currentUser.getIdTokenResult());
+      var _role = _tok && _tok.claims && _tok.claims.role;
+      _isStaff = _role === 'staff' || _role === 'lead';
+    } catch (e) {
+      /* No claims yet (a session mid-refresh). Assume NOT staff: the cost is
+         a metrics list that fills on the next load, against a guaranteed
+         permission error now. */
+    }
+
     var _recordSeen = {};
     var firstSnaps = [];
     Object.keys(RECORD_COLLECTIONS).forEach(function (coll) {
       var cfg = RECORD_COLLECTIONS[coll];
+      if (cfg.staffOnly && !_isStaff) return;
       var resolveFirst;
       firstSnaps.push(new Promise(function (res) { resolveFirst = res; }));
       var unsub = db.collection('teams').doc(_teamId).collection(coll)

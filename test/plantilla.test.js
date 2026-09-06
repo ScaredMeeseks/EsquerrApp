@@ -424,13 +424,23 @@ describe('the player rail has no close button of its own', () => {
     const bind = grab('  function bindPlantilla', '  function plGetOff');
     assert.ok(/_plSel = \(_plSel === id\) \? null : id/.test(bind),
         'the row toggles its own selection');
-    /* Loosened deliberately: the handler grew guards (a click on a chart,
-       and the click that ends a drag, must not close the rail) and a shape
-       match on its first line broke. That it CLOSES is proved by driving
-       it in plantilla-charts.test.js; what matters here is that the page
-       still has the only other way in. */
-    assert.ok(/page\.addEventListener\('click',[\s\S]{0,600}?_plSel = null/.test(bind),
+    /* Loosened deliberately, twice now: the handler grew guards (a click on
+       a chart, the click that ends a drag, and since v236 a click in the
+       Metrics section) and a shape match on its first line broke. That it
+       CLOSES is proved by driving it in plantilla-charts.test.js; what
+       matters here is that the page still has the only other way in.
+
+       ⚠ A character budget is a poor proxy for "the close is still there" —
+       it fails on a comment and passes on a broken guard. So the budget is
+       generous and the GUARDS are named instead: each one is an early
+       return, and an early return that stops matching is a rail that closes
+       when it should not. Add a guard, add it here. */
+    assert.ok(/page\.addEventListener\('click',[\s\S]{0,1200}?_plSel = null/.test(bind),
         'and a click anywhere else on the page closes it');
+    ['.pl-chart-box', '.plm-sec'].forEach((sel) => {
+      assert.ok(new RegExp('closest\\(\'[^\']*' + sel.replace('.', '\\.') + '[^\']*\'\\)').test(bind),
+          sel + ' no longer exempt from the close — that control now shuts the rail');
+    });
   });
 
   it('has no ✕, and nothing left bound to one', () => {

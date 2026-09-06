@@ -157,6 +157,43 @@ service cloud.firestore {
           || (sameTeam(teamId) && owns(docId));
       }
 
+      /* ── Player metrics — weight, height, jump tests (v236) ──
+         Staff-entered measurements: {uid, metricId, name, unit, value, date}.
+
+         ⚠ THE READ IS STAFF-ONLY, UNLIKE THE THREE BLOCKS ABOVE, AND THAT IS
+         DELIBERATE. Those are `sameTeam` — readable by every member of the
+         club, players included — and the note further down at the archive
+         block calls that a standing backlog item rather than a decision
+         anyone defends. RPE is a self-reported effort score for a session
+         that already happened; weight and height on minors is body data, and
+         this file treats a minor's PII as its sharpest boundary everywhere
+         else. There is no player-facing view of these, so `sameTeam` would
+         buy nothing and cost a console-readable table of every teammate's
+         weight.
+
+         ⚠ NO `update` RULE, ON PURPOSE: an entry can be added or removed but
+         never revised. A measurement is a fact at a date. Enforcing it here
+         rather than in the UI is the difference between a rule and a
+         convention — a client-side lock on a client-written document is
+         decoration.
+
+         ⚠ NO `category` FIELD, so nothing here is category-scoped: any staff
+         member of the club reads every squad's numbers. That absence is what
+         makes a promoted player's history follow him — there is no shard to
+         move and nothing for onMemberCategoryChanged to do. Scoping it would
+         mean stamping a category, which freezes the record in the squad it
+         was measured in and hides the history from the coach who now needs
+         it. The compartment was traded for the continuity, knowingly.
+
+         `owns()` is not referenced: no player writes or reads these. The
+         `{uid}_…` doc-id prefix is kept for debuggability and for the day a
+         player-entered variant is wanted, and is NOT load-bearing — both
+         server cleanup paths query the `uid` FIELD. */
+      match /playerMetrics/{docId} {
+        allow read: if isSuperUser() || isStaffOf(teamId);
+        allow create, delete: if isSuperUser() || isStaffOf(teamId);
+      }
+
       /* ── Coach match notes — the staff's own working document ──
          One doc per match: the pre-match plan, the post-match debrief, video
          LINKS, references to tactical boards, and the anada/tornada link.

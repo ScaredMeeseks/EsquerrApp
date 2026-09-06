@@ -295,12 +295,23 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
     briefing was written, and the v216 anada block shows them with minutes beside them.
 18. **Coaches and fitness grade a player's training or match.** New per-player, per-session record —
     the `trainingAvail`/`rpe` subcollections are the shape to copy, not a blob.
-19. **Coaches and fitness enter weight and height.** Fields on the user profile; note that
-    `roles`/`category` are server-owned and clients cannot write them, so check what a coach may
-    write to another player's doc before designing the form.
+19. **Coaches and fitness enter weight and height.** ✅ **Done — v236, together with 20.** They are
+    NOT fields on the user profile as this entry proposed: they are two reserved rows in the metric
+    store, so weight over a season is a chart like any other and the two behave identically to a
+    coach's own metric. The note about `roles`/`category` being server-owned still stands and is
+    why nothing here touches the user doc at all.
 20. **Fitness performance tests** — Squat Jump (both and single-leg), CMJ, Abalakov, Drop Jump.
-    A test has a date, a value and a unit; keep it one record per test so a new test is data, not a
-    schema change.
+    ✅ **Done — v236.** The note was right on both counts: one record per test, and a new test is
+    data rather than a schema change — a coach types a name and a unit and it exists. Plantilla →
+    player detail to add and to chart one player; an expandable **Mètriques** section on Plantilla
+    for the whole squad, one line per player with hover-to-highlight.
+    ⚠ **Measurements follow the PLAYER and definitions belong to the SQUAD**, which is why they are
+    two stores and not one — see CONTEXT.md (v236). The catalogue is category-sharded; the
+    measurements carry no category at all, which is what makes a promoted player keep his history
+    and what makes the season rollover a no-op.
+    ⚠ A new **`player-metrics`** right in `STAFF_ROLE_ACCESS`: the fitness coach has
+    `manage-roster: 'view'`, so gating on the page would have locked out the one role whose job
+    this is.
 21. **Players vote for the MVP.** Only the called-up squad, never for themselves, and the vote is
     final once cast. ⚠ The "cannot change it" part has to be enforced in `firestore.rules`, not in
     the UI — a client-side lock on a client-written document is decoration.
@@ -332,10 +343,11 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 **Data**
 
-30. **Wire the Xweather free API.** The strip is already reading `tr.weather`
-    (`{cond, windMs, tempC}`) and rendering placeholders — this is the write side only. Wind stays
-    in **m/s** and is banded at render time; the band is a presentation choice, the number is the
-    fact.
+30. **Wire the Xweather free API.** ✅ **Done — v208–v210, and this entry was ~25 versions stale.**
+    `functions/weather.js` (`summarise`, `wxDue`, `nightOf`), the `scheduledWeatherSync` job, the
+    `XWEATHER_CLIENT_ID`/`XWEATHER_CLIENT_SECRET` secrets and the sunmoon call for a real sunset
+    rather than the hourly `isDay` flag. Wind is still in **m/s**, banded at render time, as this
+    note asked. Spotted 2026-09-07 while picking the next item off the list.
 
 ---
 
