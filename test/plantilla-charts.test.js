@@ -55,14 +55,14 @@ function mount(html) {
   // eslint-disable-next-line no-new-func
   const api = new win.Function('document', 'window', 'sanitize', 'renderPage', 'getSession',
     'canEditPage', 'showAddMetric', 'ackRemoveRecord', 'bindStdSelects', 't',
-    'confirm', 'alert', 'localStorage',
+    'confirm', 'alert', 'localStorage', 'bindPlmControls',
     code + '\n return {plChartBox, plRedrawCharts, plRedraws: () => _plCharts,' +
     ' bindPlantilla, plGetOff, plSetOff, sel: (v) => { if (v !== undefined) _plSel = v; return _plSel; },' +
     ' resetCharts: () => { _plCharts = []; }};')(
       win.document, win, (s) => String(s == null ? '' : s),
       () => { renders.push(1); }, () => ({id: 'u1'}),
       () => true, () => {}, () => Promise.resolve(), () => {}, (k) => k,
-      () => true, () => {}, {getItem: () => null, setItem: () => {}});
+      () => true, () => {}, {getItem: () => null, setItem: () => {}}, () => {});
 
   /* `key` is what the drag surface carries — the OFFSET it scrolls, not
      the chart's name. Emitting the name instead made every drag address an

@@ -485,6 +485,24 @@ describe('metrics — the writes', () => {
         'nothing tells the user why they cannot create one');
   });
 
+  /* ⚠ THE SQUAD COMES FROM THE PLAYER. Reading the page filters meant that
+     on "Totes", or with the letter chips on "all" — which is how the page
+     opens — `cat` and `letter` were empty, `canCreate` was false, and the
+     "Nova mètrica…" option silently vanished: the sheet offered only the two
+     built-ins and there was no way to create anything. The man in front of
+     you is in exactly one squad whatever the filter says. */
+  it('takes the squad from the player, so a filter cannot hide the create option', () => {
+    const head = add.slice(0, add.indexOf('const overlay'));
+    assert.ok(/const cat = p\.category \|\|/.test(head),
+        'the category comes from the page filter, not the player');
+    assert.ok(/const letter = p\.team \|\|/.test(head),
+        'the letter comes from the page filter, not the player');
+    // The rail's own list has to agree, or the picker and the sheet differ.
+    const rail = grab('  function plmRailHtml(r)', '  /** The squad-wide section');
+    assert.ok(/u\.category \|\| getCurrentCategory\(\)/.test(rail));
+    assert.ok(/u\.team \|\|/.test(rail));
+  });
+
   it('refuses a duplicate name inside the same squad', () => {
     assert.ok(/plm\.dup_name/.test(add));
   });
@@ -517,7 +535,7 @@ describe('metrics — the stylesheet', () => {
     assert.ok(/\.plm-lines\.plm-hot \.plm-line\.plm-on\s*\{[^}]*opacity:\s*1/.test(PLMCSS));
     assert.ok(!/\.plm-line:hover/.test(PLMCSS),
         'a :hover rule is back — two crossing lines will both light up');
-    const bind = grab('  function bindPlantilla', '  function plGetOff');
+    const bind = grab('  function bindPlmControls', '  /** Repaint the metrics views');
     assert.ok(/closest\('\.plm-line'\)/.test(bind), 'nothing picks the topmost line');
     assert.ok(/classList\.toggle\('plm-on'/.test(bind));
   });
@@ -558,6 +576,70 @@ describe('metrics — the page wiring', () => {
     const bind = grab('  function bindPlantilla', '  function plGetOff');
     assert.ok(/closest\('\.plm-sec, \.plm-sec-head'\)/.test(bind),
         'ticking a player would toggle the box AND shut the rail');
+  });
+
+  /* ⚠ Choosing a VIEW of numbers already on screen must not rebuild the
+     page. It did: flipping chart↔table in the rail called renderPage(),
+     which rebuilt the roster, the three team charts and the player detail
+     around the toggle — for a choice that changed neither. */
+  it('repaints in place rather than re-rendering the player detail', () => {
+    const bind = grab('  function bindPlmControls', '  /** Repaint the metrics views');
+    ['data-plm-mode', 'data-plm-toggle'].forEach((hook) => {
+      const i = bind.indexOf(hook);
+      assert.ok(i > 0, hook + ' is not bound');
+      const handler = bind.slice(i, bind.indexOf('});', i));
+      assert.ok(/plmRefresh\(\)/.test(handler), hook + ' still rebuilds the page');
+      assert.ok(!/renderPage\(/.test(handler), hook + ' still calls renderPage');
+    });
+    // Picking a metric is the same kind of choice.
+    const sel = bind.slice(bind.indexOf('bindStdSelects('));
+    assert.ok(/plmRefresh\(\)/.test(sel) && !/renderPage\(/.test(sel));
+    /* Opening the section IS a renderPage — it changes how much of the page
+       exists, not just what one block draws. */
+    const toggle = bind.slice(bind.indexOf('plm-toggle'), bind.indexOf('data-plm-mode'));
+    assert.ok(/renderPage\(/.test(toggle), 'the collapse must still re-render');
+  });
+
+  /* ⚠ Both containers are replaced together even when one changed, because
+     bindStdSelects binds by kind across the document with no double-bind
+     guard — re-binding after replacing only one would give the other's
+     picker a second listener, and two listeners on one trigger is the bug
+     where the first opens the menu and the second shuts it again. */
+  it('replaces both metric containers before re-binding', () => {
+    const fn = grab('  function plmRefresh()', '  /**\n   * The add-a-measurement sheet.');
+    assert.ok(/plm-rail/.test(fn) && /plm-sec/.test(fn), 'one of the two is not refreshed');
+    assert.ok(fn.lastIndexOf('bindPlmControls') > fn.lastIndexOf('plm-sec'),
+        'the re-bind happens before the containers are replaced');
+  });
+
+  /* ⚠ stdSelect closes on a document-level click, and the rail stops every
+     click from reaching the document — so a menu opened inside the rail
+     could only be dismissed by picking from it or pressing Escape. */
+  /* ⚠ Comment-stripped, both of them. The rail handler's own comment says
+     the words "stopPropagation" and "stdSelCloseAll", so an ordering test
+     over the raw source measures the prose and not the code — the trap this
+     repo has written down as "a test that greps source will match its own
+     comment". */
+  const nc = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('lets a click in the rail close an open dropdown', () => {
+    const bind = nc(grab('  function bindPlantilla', '  function plGetOff'));
+    const h = bind.slice(bind.indexOf("rail.addEventListener('click'"));
+    const close = h.indexOf('stdSelCloseAll()');
+    const stop = h.indexOf('stopPropagation');
+    assert.ok(close > 0, 'the rail swallows the click that would close a dropdown');
+    assert.ok(stop > 0 && close < stop,
+        'the click is stopped before the menu is closed, so it never closes');
+  });
+
+  it('puts the metric picker on its own row under the title', () => {
+    const ui = nc(grab('  function plmRailHtml(r)', '  /** The squad-wide section'));
+    const ret = ui.slice(ui.indexOf('return \'<div class="pl-rail-block'));
+    const title = ret.indexOf('plm.section');
+    const pickrow = ret.indexOf('plm-pickrow');
+    assert.ok(title > 0 && pickrow > title, 'the picker is not below the title');
+    assert.ok(!/picker/.test(ret.slice(title, pickrow)),
+        'the picker is still on the title row');
   });
 
   it('uses the app\'s one dropdown rather than a fourth of its own', () => {

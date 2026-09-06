@@ -6556,13 +6556,36 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    Inici down when Mèdic was appended after it. */
 
 .plm-block { padding-top: 6px; }
+/* The title and the chart/table switch share a line; the metric picker gets
+   its own beneath, because it is the choice the rest of the block is about
+   and reads as a heading for it rather than as a third control in a row. */
 .plm-head {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 .plm-head .pl-eyebrow { margin-right: auto; }
-.plm-pick { min-width: 130px; }
-.plm-pick-wide { width: 100%; }
+.plm-pickrow { padding-bottom: 10px; }
+.plm-pick { min-width: 150px; }
+.plm-pick-wide { width: 100%; display: block; }
+/* ⚠ `.std-sel-menu` is `right: 0` by default, which is right for a menu
+   hanging off a narrow trigger in a table and wrong for one under a
+   full-width control: it pinned the list to the far right of the sheet
+   instead of dropping under the box. Left-aligned, and at least as wide as
+   what opened it. */
+.plm-pick .std-sel-menu,
+.plm-pickrow .std-sel-menu,
+.plm-pick-wide .std-sel-menu { left: 0; right: auto; min-width: 100%; }
+/* `.std-sel-t` is a transparent-bordered inline trigger by default, which
+   is right beside a table cell and wrong beside the boxed Valor and Data
+   inputs in the sheet — it read as a caption rather than as a control. */
+.plm-pick-wide .std-sel-t {
+  width: 100%; height: 38px; padding: 0 12px; justify-content: space-between;
+  border-color: var(--pp-input-line); background: var(--pp-paper); font-size: 15px;
+}
+.plm-pickrow .std-sel-t {
+  height: 30px; padding: 0 10px; border-color: var(--pp-input-line);
+  background: var(--pp-paper); font-size: 14px;
+}
 .plm-segs { flex: none; width: 150px; }
 .plm-segs .md2-seg { height: 26px; font-size: 11px; }
 .plm-empty { padding: 14px 0; font-size: 13px; color: var(--pp-ink-3); }
@@ -6640,12 +6663,30 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ── the add sheet ── */
-.plm-sheet { width: 460px; }
-.plm-who { font-size: 19px; }
+/* Centred, unlike the injury logger's scrim, which is top-aligned because
+   that form is taller than most screens. This one is four lines.
+   ⚠ `.md2-scrim.plm-scrim`, not `.plm-scrim` — the `.md2-` block is LATER in
+   this stylesheet, so at equal specificity its `align-items: flex-start`
+   wins and the sheet silently stays pinned to the top. That is the price of
+   keeping `.plm-` inside the Plantilla region, which it has to be. */
+.md2-scrim.plm-scrim { align-items: center; }
+.plm-sheet { width: 420px; }
+.plm-sheet .md2-sheet-body { gap: 16px; padding: 20px 22px; }
+.plm-sheet .md2-sheet-foot { padding: 0 22px 20px; }
+.plm-who { font-size: 19px; display: flex; align-items: baseline; gap: 8px; }
+.plm-who-sq {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
 .plm-note { margin: 0; font-size: 12px; color: var(--pp-ink-3); line-height: 1.5; }
-.plm-val-row { display: flex; align-items: center; gap: 10px; }
+/* Value and date side by side — two short fields that had a line each. */
+.plm-row2 { display: flex; gap: 14px; }
+.plm-row2 .md2-field { flex: 1; min-width: 0; }
+.plm-val-row { display: flex; align-items: center; gap: 8px; }
 .plm-val-row .md2-in { flex: 1; min-width: 0; }
-.plm-unit-echo { font-size: 14px; color: var(--pp-ink-3); flex: none; min-width: 24px; }
+.plm-unit-echo { font-size: 14px; color: var(--pp-ink-3); flex: none; min-width: 20px; }
+#plm-newbits:empty { display: none; }
+#plm-newbits { display: flex; flex-direction: column; gap: 16px; }
 
 @media (max-width: 900px) {
   .plm-head { gap: 8px; }

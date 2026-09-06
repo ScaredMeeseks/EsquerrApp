@@ -2429,7 +2429,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 236;
+  const APP_VERSION = 237;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24649,11 +24649,19 @@
       }).join('') + '</div>';
   }
 
-  /** The rail's metric block — under the acute/chronic chart. */
+  /** The rail's metric block — under the acute/chronic chart.
+   *
+   *  ⚠ The squad comes from the PLAYER, not from the page filter. A metric
+   *  belongs to one category and one letter, and the coach looking at Gerard
+   *  Vila is looking at a man who is in exactly one — whatever the filter
+   *  above happens to say. Reading the filter instead meant that on "Totes",
+   *  or with the letter chips on "all", there was no squad to attach a new
+   *  metric to and the create option silently disappeared. */
   function plmRailHtml(r) {
     const ro = !canEditPage('player-metrics');
-    const cat = getCurrentCategory();
-    const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+    const u = getUsers().find(function (x) { return String(x.id) === String(r.id); }) || {};
+    const cat = u.category || getCurrentCategory();
+    const letter = u.team || (rosterTeamFilter === 'all' ? '' : rosterTeamFilter);
     const all = getPlayerMetrics();
     const opts = plmOptionsFor(r.id, cat, letter, all);
     if (!opts.length) return '';
@@ -24694,11 +24702,14 @@
           opt ? opt.unit : '', 'rail');
     }
 
-    return '<div class="pl-rail-block plm-block">' +
+    return '<div class="pl-rail-block plm-block" id="plm-rail">' +
       '<div class="plm-head">' +
         '<span class="pl-eyebrow pl-eyebrow-b">' + t('plm.section') + '</span>' +
-        picker + plmSegs(_plmRailMode, 'rail') +
-      '</div>' + body +
+        plmSegs(_plmRailMode, 'rail') +
+      '</div>' +
+      // The picker sits UNDER the title: it is what the block is about, not
+      // a third control competing with it on one line.
+      '<div class="plm-pickrow">' + picker + '</div>' + body +
       (ro ? '' : '<button type="button" class="plm-add" data-plm-add="' +
         sanitize(String(r.id)) + '">' + t('plm.add') + '</button>') +
       '</div>';
@@ -24810,9 +24821,152 @@
 
     return head +
       '<div class="plm-sec" id="plm-sec">' +
-        '<div class="plm-head">' + picker + plmSegs(_plmSecMode, 'sec') + '</div>' +
+        '<div class="plm-head"><span class="pl-eyebrow">' +
+          sanitize(opt ? opt.name : '') + '</span>' + plmSegs(_plmSecMode, 'sec') + '</div>' +
+        '<div class="plm-pickrow">' + picker + '</div>' +
         body + tbl +
       '</div>';
+  }
+
+  /**
+   * Every metrics control on Plantilla, bound over `root`.
+   *
+   * Lifted out of bindPlantilla so plmRefresh() can call it again after
+   * replacing the two containers in place. ⚠ It must therefore be safe to
+   * call twice on a page — which it is only because every element it binds
+   * has just been REPLACED. Binding the same node twice is the bug
+   * bindStdSelects' own comment describes: the first listener opens the
+   * menu, the second reads the class the first set and shuts it again, and
+   * the control looks dead.
+   */
+  function bindPlmControls(root) {
+    const page = root || document.getElementById('pl-page');
+    if (!page) return;
+
+    const plmToggle = document.getElementById('plm-toggle');
+    /* The section collapsing DOES go through renderPage: opening it changes
+       how much of the page exists, not just what one block draws. */
+    if (plmToggle) {
+      plmToggle.addEventListener('click', function () {
+        _plmOpen = !_plmOpen;
+        renderPage(getSession());
+      });
+    }
+
+    /* ⚠ Chart↔table repaints in place. It used to call renderPage(), which
+       rebuilt the roster, the three team charts and the whole player rail —
+       so flipping a toggle inside the rail visibly re-rendered the player
+       detail around it, when nothing about the player had changed. The same
+       goes for picking a metric and for taking a player off the chart:
+       all three choose a VIEW of numbers that are already loaded. */
+    page.querySelectorAll('[data-plm-mode]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (b.dataset.plmMode === 'rail') _plmRailMode = b.dataset.plmVal;
+        else _plmSecMode = b.dataset.plmVal;
+        plmRefresh();
+      });
+    });
+    page.querySelectorAll('[data-plm-toggle]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = String(b.dataset.plmToggle);
+        if (_plmOut.has(id)) _plmOut.delete(id); else _plmOut.add(id);
+        plmRefresh();
+      });
+    });
+
+    if (canEditPage('player-metrics')) {
+      page.querySelectorAll('[data-plm-add]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          showAddMetric(b.dataset.plmAdd);
+        });
+      });
+      page.querySelectorAll('[data-plm-del]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!confirm(t('plm.delete_q'))) return;
+          const docId = b.dataset.plmDel;
+          const cache = JSON.parse(localStorage.getItem('fa_player_metrics') || '{}');
+          delete cache[docId];
+          b.disabled = true;
+          ackRemoveRecord('playerMetrics', docId,
+              'fa_player_metrics', JSON.stringify(cache), null)
+            .then(function () { plmRefresh(); })
+            .catch(function () { b.disabled = false; alert(t('plm.del_failed')); });
+        });
+      });
+    }
+
+    /* One line stands out, the rest dim. `e.target` is the single topmost
+       element under the pointer, which is the tie-break a `:hover` rule
+       cannot make: every line carries a fat transparent hit stroke, so at a
+       crossing the pointer is geometrically inside two of them at once and
+       CSS would light both. Verified with a real pointer over twelve. */
+    page.querySelectorAll('.plm-lines').forEach(function (g) {
+      g.addEventListener('mouseover', function (e) {
+        const line = e.target.closest && e.target.closest('.plm-line');
+        if (!line) return;
+        g.classList.add('plm-hot');
+        g.querySelectorAll('.plm-line').forEach(function (n) {
+          n.classList.toggle('plm-on', n === line);
+        });
+      });
+      g.addEventListener('mouseleave', function () {
+        g.classList.remove('plm-hot');
+        g.querySelectorAll('.plm-on').forEach(function (n) {
+          n.classList.remove('plm-on');
+        });
+      });
+    });
+
+    bindStdSelects(['plmrail', 'plmsec'], function (rootEl, v) {
+      if (rootEl.dataset.stdSel === 'plmrail') _plmRailMetric = v;
+      else _plmSecMetric = v;
+      plmRefresh();
+    });
+  }
+
+  /** Repaint the metrics views in place, without rebuilding the page.
+   *
+   *  ⚠ Switching chart↔table used to go through renderPage(), which rebuilt
+   *  the roster, the three team charts and the whole player rail — so
+   *  flipping a toggle in the rail visibly re-rendered the player detail
+   *  around it. Nothing about the player changed; only which of two views of
+   *  the same numbers is drawn.
+   *
+   *  ⚠ BOTH containers are replaced together even when only one changed, and
+   *  that is deliberate: bindStdSelects binds by KIND across the document
+   *  with no double-bind guard, so re-binding after replacing only one would
+   *  give the other's picker a second listener — and two listeners on one
+   *  trigger is the bug its own comment describes, where the first opens the
+   *  menu and the second reads the class it just set and shuts it again. */
+  function plmRefresh() {
+    const page = document.getElementById('pl-page');
+    if (!page) return;
+    const rail = document.getElementById('plm-rail');
+    if (rail && _plSel) {
+      /* plmRailHtml needs only the id and the name, so the user document is
+         enough — no need to rebuild plBuildRows and the context behind it
+         to redraw a chart of numbers that did not change. */
+      const u = getUsers().find(function (x) { return String(x.id) === String(_plSel); });
+      if (u) {
+        const next = plmRailHtml({ id: u.id, name: u.name });
+        // An empty string means the block should not be there at all.
+        if (next) rail.outerHTML = next; else rail.remove();
+      }
+    }
+    const sec = document.getElementById('plm-sec');
+    if (sec) {
+      const players = plScopedPlayers();
+      const next = plmSectionHtml(players, catSpanOf(players));
+      const wrap = document.createElement('div');
+      wrap.innerHTML = next;
+      const fresh = wrap.querySelector('#plm-sec');
+      if (fresh) sec.replaceWith(fresh); else sec.remove();
+    }
+    bindPlmControls(page);
   }
 
   /**
@@ -24828,19 +24982,29 @@
     if (!canEditPage('player-metrics')) return;
     const p = getUsers().find(function (u) { return String(u.id) === String(playerId); });
     if (!p) return;
-    const cat = getCurrentCategory();
-    const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+    /* ⚠ THE SQUAD COMES FROM THE PLAYER, not from the page filters.
+       Reading `getCurrentCategory()` and `rosterTeamFilter` meant that on
+       "Totes", or with the letter chips on "all" — which is how the page
+       opens — there was no squad to attach a definition to, so the "new
+       metric" option silently vanished and the sheet offered only Pes and
+       Alçada. The man in front of you is in exactly one category and one
+       squad whatever the filter says, and that is the squad his new metric
+       belongs to. */
+    const cat = p.category || getCurrentCategory();
+    const letter = p.team || (rosterTeamFilter === 'all' ? '' : rosterTeamFilter);
     const squad = metricsForSquad(cat, letter);
-    /* ⚠ A definition needs a squad to belong to. On "Totes", or with no
-       letter picked, getCurrentCategory() is '' and the row would be routed
-       to the `__none` shard — which firestore.rules makes readable by every
-       member of the club, players included. Adding a MEASUREMENT is still
-       fine here: a measurement carries no category at all. */
+    /* A definition still needs BOTH. An unassigned player has neither, and a
+       row saved with no category is routed to the `__none` shard — which
+       firestore.rules makes readable by every member of the club, players
+       included. Adding a MEASUREMENT is always fine: it carries no category
+       at all, which is what lets it follow him. */
     const canCreate = !!(cat && letter);
     const st = { slug: squad.length ? squad[0].slug : '__new', busy: false };
 
     const overlay = document.createElement('div');
-    overlay.className = 'md2-scrim';
+    // `plm-scrim` centres it. The md2 scrim is top-aligned because the injury
+    // logger is taller than most screens; this form is four lines.
+    overlay.className = 'md2-scrim plm-scrim';
     const sheet = document.createElement('div');
     sheet.className = 'md2-sheet plm-sheet';
     overlay.appendChild(sheet);
@@ -24876,16 +25040,23 @@
         '<button type="button" class="md2-x" id="plm-x">×</button>' +
       '</div>' +
       '<div class="md2-sheet-body">' +
-        '<div class="plm-who">' + sanitize(p.name) + '</div>' +
+        '<div class="plm-who">' + sanitize(p.name) +
+          (letter ? '<span class="plm-who-sq">' +
+            sanitize((cat ? (CATEGORY_LABELS[cat] || cat) + ' ' : '') + letter) +
+            '</span>' : '') + '</div>' +
         field(t('plm.metric'), optionsHtml()) +
         '<div id="plm-newbits"></div>' +
         (canCreate ? '' : '<p class="plm-note">' + t('plm.need_squad') + '</p>') +
-        field(t('plm.value'), '<div class="plm-val-row">' +
-          '<input type="number" step="any" inputmode="decimal" class="md2-in" id="plm-value">' +
-          '<span class="plm-unit-echo" id="plm-unit-echo"></span></div>') +
-        field(t('plm.date'), '<input type="text" class="md2-in md-datepicker" data-display-dmy' +
-          ' data-allow-past id="plm-date" data-date-iso="' + today + '" value="' +
-          today.split('-').reverse().join('/') + '" placeholder="dd/mm/yyyy" readonly>') +
+        // Value and date on one row: two short fields, and the sheet is a
+        // four-line form that had been stretched down a page of its own.
+        '<div class="plm-row2">' +
+          field(t('plm.value'), '<div class="plm-val-row">' +
+            '<input type="number" step="any" inputmode="decimal" class="md2-in" id="plm-value">' +
+            '<span class="plm-unit-echo" id="plm-unit-echo"></span></div>') +
+          field(t('plm.date'), '<input type="text" class="md2-in md-datepicker" data-display-dmy' +
+            ' data-allow-past id="plm-date" data-date-iso="' + today + '" value="' +
+            today.split('-').reverse().join('/') + '" placeholder="dd/mm/yyyy" readonly>') +
+        '</div>' +
       '</div>' +
       '<div class="md2-sheet-foot">' +
         '<button type="button" class="md2-cta md2-cta-wide" id="plm-save">' + t('plm.save') + '</button>' +
@@ -25095,18 +25266,27 @@
 
 
   /* ── The page ─────────────────────────────────────────────────── */
-  function renderStaffRoster() {
-    // The boxes are rebuilt with the page; ids from the last render point
-    // at elements that no longer exist.
-    _plCharts = [];
-    var users = getUsers();
+  /** The squad the roster is showing: category filter, then letter filter.
+   *
+   *  Extracted so plmRefresh() can rebuild the metrics section against the
+   *  same list without re-running plBuildRows and the whole context behind
+   *  it. One definition, so a filter change cannot reach one and not the
+   *  other. */
+  function plScopedPlayers() {
     var curCat = getCurrentCategory();
-    var players = users.filter(function (u) { return (u.roles || []).includes('player'); })
+    return getUsers().filter(function (u) { return (u.roles || []).includes('player'); })
       /* Uncategorised players used to fall through into every category's
          roster. Registrations is where they get assigned; they do not
          belong in another category's squad list. */
       .filter(function (u) { return !curCat || (u.category || '') === curCat; })
       .filter(function (u) { return rosterTeamFilter === 'all' || (u.team || '') === rosterTeamFilter; });
+  }
+
+  function renderStaffRoster() {
+    // The boxes are rebuilt with the page; ids from the last render point
+    // at elements that no longer exist.
+    _plCharts = [];
+    var players = plScopedPlayers();
 
     var now = new Date();
     var ctx = {
@@ -25326,7 +25506,16 @@
        narrow on purpose: a plain click on the page must still close the
        rail, which three assertions in plantilla-charts.test.js pin. */
     var rail = document.getElementById('pl-rail');
-    if (rail) rail.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (rail) rail.addEventListener('click', function (e) {
+      /* ⚠ Close any open dropdown BEFORE swallowing the click. stdSelect's
+         "click anywhere else to close" listener is on `document`, and this
+         stopPropagation is what stopped it ever hearing about a click inside
+         the rail — so a menu opened in here could only be closed by picking
+         from it or by pressing Escape. The trigger and the options stop
+         their own clicks, so anything reaching here is genuinely outside. */
+      stdSelCloseAll();
+      e.stopPropagation();
+    });
     // A click anywhere else on the page closes the rail.
     page.addEventListener('click', function (e) {
       if (_plSel === null) return;
@@ -25343,78 +25532,7 @@
       _plSel = null; hideTip(); renderPage(getSession());
     });
 
-    /* ── Metrics (v236) ── */
-    var plmToggle = document.getElementById('plm-toggle');
-    if (plmToggle) {
-      plmToggle.addEventListener('click', function () {
-        _plmOpen = !_plmOpen;
-        renderPage(getSession());
-      });
-    }
-    page.querySelectorAll('[data-plm-mode]').forEach(function (b) {
-      b.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (b.dataset.plmMode === 'rail') _plmRailMode = b.dataset.plmVal;
-        else _plmSecMode = b.dataset.plmVal;
-        renderPage(getSession());
-      });
-    });
-    page.querySelectorAll('[data-plm-toggle]').forEach(function (b) {
-      b.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var id = String(b.dataset.plmToggle);
-        if (_plmOut.has(id)) _plmOut.delete(id); else _plmOut.add(id);
-        renderPage(getSession());
-      });
-    });
-    if (canEditPage('player-metrics')) {
-      page.querySelectorAll('[data-plm-add]').forEach(function (b) {
-        b.addEventListener('click', function (e) {
-          e.stopPropagation();
-          showAddMetric(b.dataset.plmAdd);
-        });
-      });
-      page.querySelectorAll('[data-plm-del]').forEach(function (b) {
-        b.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (!confirm(t('plm.delete_q'))) return;
-          var docId = b.dataset.plmDel;
-          var cache = JSON.parse(localStorage.getItem('fa_player_metrics') || '{}');
-          delete cache[docId];
-          b.disabled = true;
-          ackRemoveRecord('playerMetrics', docId,
-              'fa_player_metrics', JSON.stringify(cache), null)
-            .then(function () { renderPage(getSession()); })
-            .catch(function () { b.disabled = false; alert(t('plm.del_failed')); });
-        });
-      });
-    }
-    /* One line stands out, the rest dim. `e.target` is the single topmost
-       element under the pointer, which is the tie-break a `:hover` rule
-       cannot make: every line carries a fat transparent hit stroke, so at a
-       crossing the pointer is geometrically inside two of them at once and
-       CSS would light both. Verified with a real pointer over twelve. */
-    page.querySelectorAll('.plm-lines').forEach(function (g) {
-      g.addEventListener('mouseover', function (e) {
-        var line = e.target.closest && e.target.closest('.plm-line');
-        if (!line) return;
-        g.classList.add('plm-hot');
-        g.querySelectorAll('.plm-line').forEach(function (n) {
-          n.classList.toggle('plm-on', n === line);
-        });
-      });
-      g.addEventListener('mouseleave', function () {
-        g.classList.remove('plm-hot');
-        g.querySelectorAll('.plm-on').forEach(function (n) {
-          n.classList.remove('plm-on');
-        });
-      });
-    });
-    bindStdSelects(['plmrail', 'plmsec'], function (root, v) {
-      if (root.dataset.stdSel === 'plmrail') _plmRailMetric = v;
-      else _plmSecMetric = v;
-      renderPage(getSession());
-    });
+    bindPlmControls(page);
 
     /* Drag to scroll in time. The offset is recomputed from the pointer's
        total travel rather than accumulated per move event, so a drag that

@@ -9623,3 +9623,52 @@ of the four was the same shape, an assertion about the wrong quantity:
 Also corrected while here: **parking-lot item 30 (Xweather) has been done since v208–v210** —
 `functions/weather.js`, `scheduledWeatherSync`, and the two `XWEATHER_*` secrets. The entry was
 about twenty-five versions stale.
+
+### 2026-09-07 — Metrics: four fixes from the first look at v236 (v237)
+
+The owner used the feature and found four things. All four are UI; **nothing in `firestore.rules`,
+`storage.rules` or `functions/` changed, so this version needs no rules deploy** — push only.
+
+**1. The picker moved below the title.** `plmRailHtml` and `plmSectionHtml` now emit the eyebrow and
+the GRÀFIC/TAULA toggle on a `.plm-head` row and the metric picker on its own `.plm-pickrow`
+beneath, instead of crowding all three onto one line.
+
+**2. Clicking outside the dropdown closes it.** The rail swallows every click it receives
+(`stopPropagation`, so the page-level handler cannot shut the rail from inside it) — and that same
+swallow was eating the click that `stdSelect`'s document-level close handler needs. The rail's
+handler now calls `stdSelCloseAll()` **before** `e.stopPropagation()`. Ordering is the whole fix, so
+there is a test on it; it strips comments first, because the first version found the word
+`stopPropagation` in the comment that explains the ordering and passed without the code.
+
+**3. Switching chart↔table no longer re-renders the player detail.** The three metric controls used
+`renderPage(getSession())`, the house pattern — which rebuilds Plantilla, and with it the open
+player rail, so the rail visibly flickered and scroll position jumped on a control that changes
+nothing but a view mode. Extracted `bindPlmControls(root)` out of `bindPlantilla` and added
+`plmRefresh()`, which replaces `#plm-rail` and `#plm-sec` in place and re-binds just those. Mode
+toggle, metric pick and player in/out selection all call it.
+
+⚠ **Section collapse still calls `renderPage` deliberately.** The collapsed section is not in the
+DOM at all (the `.md2-sec-toggle` idiom), so there is no node for `plmRefresh` to swap; and the
+roster list above it reflows when the section opens. A partial refresh there would be the wrong
+tool, not a missed optimisation.
+
+**4. A new metric can actually be created now.** `showAddMetric` derived the category and squad
+letter from the **page filters** — so on "Totes" (`getCurrentCategory()` returns `''`) with the team
+filter on `all`, the create path was correctly refused by the `__none` guard from v236 and the
+"Nova mètrica…" option never appeared. But the page filter is not the fact that matters: **the
+player is.** Both the sheet and `plmRailHtml` now read `p.category` and `p.team` off the player
+whose detail is open, falling back to the filters only when the player carries neither. The v236
+guard is untouched and still refuses a metric with no concrete squad — it simply is no longer asked
+to judge a question the player's own record already answers.
+
+Also in the sheet: the dropdown menu was escaping to the right because `.std-sel-menu` is
+right-anchored by default (it was built for a compact toolbar); overridden to `left:0; min-width:100%`
+inside `.plm-pick`. Value and date share one `.plm-row2`. And the sheet is centred —
+⚠ `.plm-scrim` alone did **not** work: `.md2-scrim { align-items: flex-start }` is later in the
+stylesheet and wins at equal specificity. It is `.md2-scrim.plm-scrim`.
+
+**Tests.** Unit 3075 → **3080** (5 new in `test/metrics.test.js`, 42 → 47). Targeted mutation round
+of 8 aimed at exactly the four fixes — **all 8 killed, no survivors.** Verified by rendering as
+well as by assertion: the sheet was driven with `getCurrentCategory() => ''` and
+`rosterTeamFilter: 'all'` — the reported broken case — and it offered `["Pes · kg", "Alçada · cm",
+"Nova mètrica…"]`.
