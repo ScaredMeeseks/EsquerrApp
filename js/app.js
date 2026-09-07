@@ -806,9 +806,6 @@
     'plm.del_failed':    { ca:'No s\'ha pogut esborrar. No s\'ha tocat res.', es:'No se ha podido borrar. No se ha tocado nada.', en:'Could not delete. Nothing was changed.' },
     'plm.save_failed':   { ca:'No s\'ha pogut desar la mesura.', es:'No se ha podido guardar la medida.', en:'Could not save the measurement.' },
     'plm.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
-    'plm.th_latest':     { ca:'Última', es:'Última', en:'Latest' },
-    'plm.th_when':       { ca:'Data', es:'Fecha', en:'Date' },
-    'plm.th_n':          { ca:'Mesures', es:'Medidas', en:'Readings' },
     'plm.show':          { ca:'Mostrar al gràfic', es:'Mostrar en el gráfico', en:'Show on chart' },
     'plm.no_metrics':    { ca:'Aquest equip encara no mesura res', es:'Este equipo todavía no mide nada', en:'This squad measures nothing yet' },
     'ev.type_ph':        { ca:'Tipus…', es:'Tipo…', en:'Type…' },
@@ -2429,7 +2426,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 239;
+  const APP_VERSION = 240;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24855,39 +24852,75 @@
       const bv = rowsFor[String(b.id)].slice(-1)[0];
       return Number(bv.value) - Number(av.value);
     });
+    /* One column per DATE anybody was measured on — the union across the
+       whole squad, not per player, so a column line up vertically and two
+       players measured the same morning sit in the same column. Ascending,
+       because a history is read left to right. */
+    const dateSet = {};
+    withData.forEach(function (p) {
+      rowsFor[String(p.id)].forEach(function (r) { dateSet[r.date] = true; });
+    });
+    const dates = Object.keys(dateSet).sort();
+
+    /* ⚠ Keyed by date, and the value is an ARRAY. A player can be measured
+       twice in one day — that is the whole reason the record id carries a
+       random tail — so a cell that took the last reading would silently drop
+       the first, in a view whose entire job is to show every reading. */
+    const cells = {};
+    withData.forEach(function (p) {
+      const m = {};
+      rowsFor[String(p.id)].forEach(function (r) {
+        (m[r.date] = m[r.date] || []).push(r.value);
+      });
+      cells[String(p.id)] = m;
+    });
+
     const tbl = !withData.length ? '' :
+      /* ⚠ The scroll box is a DIV around the table, not overflow on the
+         table itself: a sticky first column positions against the nearest
+         scrolling ancestor, and `overflow` on the table would make the
+         table its own scroller and the sticky cell would never move. */
+      '<div class="plm-tblwrap" data-plm-drag>' +
       '<table class="pl-table plm-squad-tbl"><thead><tr>' +
-        '<th>' + t('plm.th_player') + '</th>' +
-        '<th class="pl-r">' + t('plm.th_latest') + '</th>' +
-        '<th>' + t('plm.th_when') + '</th>' +
-        '<th class="pl-r">' + t('plm.th_n') + '</th>' +
-        '<th class="pl-c">' + t('plm.show') + '</th>' +
+        '<th class="plm-stick">' + t('plm.th_player') + '</th>' +
+        dates.map(function (d) {
+          return '<th class="pl-r plm-dth">' + plShortDate(d) + '</th>';
+        }).join('') +
       '</tr></thead><tbody>' + ranked.map(function (p) {
-        const rs = rowsFor[String(p.id)];
-        const last = rs[rs.length - 1];
         const off = _plmOut.has(String(p.id));
+        const m = cells[String(p.id)];
         return '<tr class="plm-row' + (off ? ' plm-off' : '') + '">' +
-          /* The swatch IS the legend: the chart has no key of its own, so
-             the colour has to be readable beside the name it belongs to.
+          /* Name, swatch and tick all live in the STICKY column. A wide
+             table scrolls the dates away, and a tick box that scrolled off
+             with them would leave no way to put a player back on the chart
+             without scrolling home first.
+             The swatch IS the legend: the chart carries no key of its own.
              Drawn even for a player who is off the chart — his row is what
-             he is turned back on from, and a legend that appeared only for
-             the lines already drawn would be no help choosing. */
-          '<td>' + plmSwatchHtml(si[String(p.id)]) +
-            sanitize(p.name) + catBadgeHtmlGlobal(p, catSpan) + '</td>' +
-          '<td class="pl-r pl-nums">' + plmNum(last.value) +
-            (opt && opt.unit ? ' <span class="plm-unit">' + sanitize(opt.unit) + '</span>' : '') + '</td>' +
-          '<td>' + plShortDate(last.date) + '</td>' +
-          '<td class="pl-r pl-nums">' + rs.length + '</td>' +
-          '<td class="pl-c"><button type="button" class="plm-tick' + (off ? '' : ' plm-tick-on') +
+             he is turned back on from. */
+          '<td class="plm-stick"><button type="button" class="plm-tick' +
+            (off ? '' : ' plm-tick-on') + '" title="' + t('plm.show') +
             '" data-plm-toggle="' + sanitize(String(p.id)) + '">' +
-            (off ? '' : '✓') + '</button></td>' +
+            (off ? '' : '✓') + '</button>' +
+            plmSwatchHtml(si[String(p.id)]) +
+            sanitize(p.name) + catBadgeHtmlGlobal(p, catSpan) + '</td>' +
+          dates.map(function (d) {
+            const vs = m[d];
+            if (!vs) return '<td class="pl-r plm-nil">·</td>';
+            return '<td class="pl-r pl-nums">' +
+              vs.map(plmNum).join('<span class="plm-alsosep"> · </span>') + '</td>';
+          }).join('') +
         '</tr>';
-      }).join('') + '</tbody></table>';
+      }).join('') + '</tbody></table></div>';
 
     return wrap(
       '<div class="plm-sec" id="plm-sec">' +
+        /* The unit belongs to the METRIC, so it is said once here rather
+           than repeated in every cell of a table that is now mostly cells.
+           It is the same in both views, which is where it should be. */
         '<div class="plm-head"><span class="pl-eyebrow">' +
-          sanitize(opt ? opt.name : '') + '</span>' + plmSegs(_plmSecMode, 'sec') + '</div>' +
+          sanitize(opt ? opt.name : '') +
+          (opt && opt.unit ? ' <span class="plm-unit">' + sanitize(opt.unit) + '</span>' : '') +
+          '</span>' + plmSegs(_plmSecMode, 'sec') + '</div>' +
         '<div class="plm-pickrow">' + picker + '</div>' +
         body + tbl +
       '</div>');
@@ -24990,6 +25023,42 @@
       });
     });
 
+    /* Drag the wide table sideways, as well as scrolling it. One column per
+       measurement date runs off the right of the page within a season, and
+       a coach comparing February with May should not have to find a
+       scrollbar to do it.
+       ⚠ Nothing here re-renders: it moves scrollLeft and that is all. The
+       chart is NOT dragged — it fits its whole span into the plot by
+       construction, so there is nothing off-screen to drag to. */
+    page.querySelectorAll('[data-plm-drag]').forEach(function (box) {
+      box.addEventListener('mousedown', function (e) {
+        // Let a click on the tick be a click; only the surface drags.
+        if (e.target.closest && e.target.closest('button')) return;
+        e.preventDefault();
+        const startX = e.clientX;
+        const startL = box.scrollLeft;
+        let moved = false;
+        const move = function (ev) {
+          const next = startL - (ev.clientX - startX);
+          if (Math.abs(ev.clientX - startX) > 3) moved = true;
+          box.scrollLeft = next;
+        };
+        const up = function () {
+          window.removeEventListener('mousemove', move);
+          window.removeEventListener('mouseup', up);
+          /* ⚠ The release raises a click, and that click would reach the
+             page handler and shut the player rail. The chart drag has the
+             same problem and solves it with this same flag. */
+          _plDragMoved = moved;
+        };
+        box.classList.add('plm-dragging');
+        const done = function () { box.classList.remove('plm-dragging'); };
+        window.addEventListener('mouseup', done, { once: true });
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+      });
+    });
+
     bindStdSelects(['plmrail', 'plmsec'], function (rootEl, v) {
       if (rootEl.dataset.stdSel === 'plmrail') _plmRailMetric = v;
       else _plmSecMetric = v;
@@ -25033,12 +25102,22 @@
        there, so open, shut and metric-change are one code path. */
     const sec = document.getElementById('plm-secwrap');
     if (sec) {
+      /* ⚠ Carry the table's horizontal scroll across the swap. Ticking a
+         player off rebuilds the table, and without this the view snaps back
+         to the first date — so a coach comparing May with June loses his
+         place every time he changes which lines are drawn. */
+      const old = sec.querySelector('[data-plm-drag]');
+      const keepL = old ? old.scrollLeft : 0;
       const players = plScopedPlayers();
       const next = plmSectionHtml(players, catSpanOf(players));
       const holder = document.createElement('div');
       holder.innerHTML = next;
       const fresh = holder.querySelector('#plm-secwrap');
-      if (fresh) sec.replaceWith(fresh); else sec.remove();
+      if (fresh) {
+        sec.replaceWith(fresh);
+        const box = fresh.querySelector('[data-plm-drag]');
+        if (box && keepL) box.scrollLeft = keepL;
+      } else { sec.remove(); }
     }
     bindPlmControls(page);
   }

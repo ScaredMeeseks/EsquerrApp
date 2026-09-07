@@ -893,3 +893,295 @@ describe('metrics — expanding the section leaves the player detail alone', () 
         'plmRefresh looks for the open body, so the collapsed section cannot be refreshed');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+/* The squad TABLE: one row per player, one column per measurement date.
+ *
+ * It used to be a summary — latest, when, how many — which is a different
+ * question from the one the view is for. Every assertion below is about the
+ * matrix being complete and aligned, because a table of numbers that quietly
+ * drops one reading is worse than no table: nothing on screen says so.
+ */
+describe('metrics — the squad table is a matrix of dates', () => {
+  const SECTION = grab('  function plmSectionHtml(players, catSpan) {',
+      '  /**\n   * Every metrics control on Plantilla');
+  const dom = new JSDOM('<!doctype html><body></body>');
+
+  function render(players, readings, over) {
+    const api = Object.assign({
+      document: dom.window.document,
+      getCurrentCategory: () => 'amateur',
+      rosterTeamFilter: 'A',
+      getPlayerMetrics: () => [],
+      metricsForSquad: () => [{ id: 'weight', slug: 'weight', unit: 'kg', builtin: true }],
+      plmName: () => 'Pes',
+      playerMetricSeries: (uid) => (readings[String(uid)] || []),
+      stdSelect: () => '<i class="std-sel"></i>',
+      plmSegs: () => '<i class="segs"></i>',
+      t: (k) => k,
+      catBadgeHtmlGlobal: () => '',
+      plShortDate: (s) => s.slice(8) + '/' + s.slice(5, 7),
+      plHitTip: () => '',
+      localDateStr: (d) => d.toISOString().slice(0, 10),
+      _plmOpen: true, _plmSecMetric: 'weight', _plmSecMode: 'table',
+      _plmOut: new Set(),
+      JSON, Object, String, Number, Array, Math, Date, Set,
+    }, over || {});
+    // eslint-disable-next-line no-new-func
+    const html = new Function(...Object.keys(api), `
+      ${SANITIZE_SRC}
+      ${CHART}
+      ${SECTION}
+      return plmSectionHtml(arguments[arguments.length - 1], 1);
+    `)(...Object.values(api), players);
+    const host = dom.window.document.createElement('div');
+    host.innerHTML = html;
+    return host;
+  }
+
+  /* Two players measured on overlapping but different days, and one of them
+     weighed TWICE on the same morning. */
+  const PLAYERS = [{ id: 'p1', name: 'Gerard' }, { id: 'p2', name: 'Marc' }];
+  const READ = {
+    p1: [{ date: '2026-02-03', value: 71 }, { date: '2026-03-10', value: 72.4 },
+      { date: '2026-03-10', value: 72.9 }],
+    p2: [{ date: '2026-02-03', value: 80 }, { date: '2026-04-01', value: 79.2 }],
+  };
+  const headers = (h) => [...h.querySelectorAll('thead th')].map((x) => x.textContent.trim());
+  const rowOf = (h, uid) => h.querySelector('[data-plm-toggle="' + uid + '"]').closest('tr');
+  const cellsOf = (h, uid) => [...rowOf(h, uid).querySelectorAll('td')]
+      .slice(1).map((td) => td.textContent.trim());
+
+  it('heads every column with a date, and drops the summary columns', () => {
+    const hd = headers(render(PLAYERS, READ));
+    assert.strictEqual(hd.length, 4, 'expected the name column plus three dates: ' + hd);
+    assert.deepStrictEqual(hd.slice(1), ['03/02', '10/03', '01/04'],
+        'the date columns are wrong or out of order');
+    ['th_n', 'th_latest', 'th_when'].forEach((k) => {
+      assert.ok(!hd.some((x) => x.includes(k)), k + ' is still a column');
+    });
+  });
+
+  it('gives every player the same columns, so the grid lines up', () => {
+    const h = render(PLAYERS, READ);
+    const n = headers(h).length - 1;
+    PLAYERS.forEach((p) => assert.strictEqual(cellsOf(h, p.id).length, n,
+        p.id + ' has a different number of cells from the header'));
+  });
+
+  it('marks a date a player was not measured on, rather than leaving a hole', () => {
+    const h = render(PLAYERS, READ);
+    // Gerard has nothing on 01/04; Marc has nothing on 10/03.
+    assert.deepStrictEqual(cellsOf(h, 'p1').map((c) => c === '·'), [false, false, true]);
+    assert.deepStrictEqual(cellsOf(h, 'p2').map((c) => c === '·'), [false, true, false]);
+  });
+
+  /* ⚠ Two readings on ONE day is the case the record id carries a random
+     tail for. A cell that took the last one would drop the first silently,
+     in the one view whose entire job is to show every reading. */
+  it('shows BOTH readings when a player was measured twice in a day', () => {
+    const h = render(PLAYERS, READ);
+    const cell = cellsOf(h, 'p1')[1];
+    assert.ok(/72,4/.test(cell) && /72,9/.test(cell),
+        'a same-day reading was dropped: ' + cell);
+  });
+
+  it('says the unit once, not in every cell', () => {
+    const h = render(PLAYERS, READ);
+    assert.strictEqual(h.querySelectorAll('.plm-unit').length, 1,
+        'the unit is repeated per cell, or lost entirely');
+    assert.ok(/kg/.test(h.querySelector('.plm-unit').textContent));
+  });
+
+  it('keeps the name, the swatch and the tick in the sticky column', () => {
+    const h = render(PLAYERS, READ);
+    const first = rowOf(h, 'p1').querySelector('td');
+    assert.ok(first.classList.contains('plm-stick'), 'the first column does not stick');
+    assert.ok(first.querySelector('.plm-sw'), 'the legend swatch scrolled away with the dates');
+    assert.ok(first.querySelector('[data-plm-toggle]'),
+        'the tick scrolled away, so a player cannot be put back on the chart');
+  });
+
+  it('puts the table in a scroll box that can also be dragged', () => {
+    const h = render(PLAYERS, READ);
+    const box = h.querySelector('[data-plm-drag]');
+    assert.ok(box, 'the table has no drag surface');
+    assert.ok(box.classList.contains('plm-tblwrap'));
+    assert.ok(box.querySelector('table'), 'the drag surface does not contain the table');
+    /* ⚠ The overflow must be on the box, not the table: a sticky cell
+       positions against its nearest scrolling ancestor, so a scrolling
+       table would pin the column to the table and it would never move. */
+    assert.ok(/\.plm-tblwrap\s*\{[^}]*overflow-x:\s*auto/.test(PLMCSS),
+        'the scroll box does not scroll');
+    assert.ok(!/\.plm-squad-tbl\s*\{[^}]*overflow/.test(PLMCSS),
+        'the table scrolls itself, which breaks the sticky column');
+  });
+
+  it('still shows the table in chart mode, as the line picker', () => {
+    const h = render(PLAYERS, READ, { _plmSecMode: 'chart' });
+    assert.ok(h.querySelector('[data-plm-drag] table'), 'the picker table vanished');
+    assert.ok(h.querySelector('.plm-chart'), 'the chart vanished');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe('metrics — dragging the table moves it and nothing else', () => {
+  const BIND = grab('  function bindPlmControls(root) {', '  /** Repaint the metrics');
+
+  /** Bind the real handlers over a table box, and report what got called. */
+  function mount(html) {
+    const dom = new JSDOM('<!doctype html><body><div id="pl-page">' + html + '</div></body>');
+    const doc = dom.window.document;
+    const calls = { renderPage: 0, plmRefresh: 0 };
+    const api = {
+      document: doc, window: dom.window,
+      canEditPage: () => false,
+      showAddMetric: () => {}, confirm: () => false, alert: () => {},
+      ackRemoveRecord: () => Promise.resolve(),
+      localStorage: { getItem: () => null },
+      t: (k) => k,
+      bindStdSelects: () => {},
+      renderPage: () => { calls.renderPage++; },
+      plmRefresh: () => { calls.plmRefresh++; },
+      getSession: () => ({}),
+      _plmOpen: false, _plmRailMode: 'chart', _plmSecMode: 'table',
+      _plmRailMetric: '', _plmSecMetric: '', _plmOut: new Set(),
+      _plDragMoved: false,
+      JSON, Object, String, Number, Array, Math, Date, Set, Promise,
+    };
+    // eslint-disable-next-line no-new-func
+    new Function(...Object.keys(api), BIND + '\nbindPlmControls(document.getElementById("pl-page"));')(
+        ...Object.values(api));
+    return { dom, doc, calls };
+  }
+
+  /** jsdom does no layout, so scrollLeft is inert — record what is written
+      to it instead. That is the logic under test either way. */
+  function traced(el) {
+    let v = 0;
+    Object.defineProperty(el, 'scrollLeft', {
+      get: () => v, set: (n) => { v = n; }, configurable: true,
+    });
+    return () => v;
+  }
+  const at = (win, el, type, x) => el.dispatchEvent(
+      new win.MouseEvent(type, { clientX: x, bubbles: true, cancelable: true }));
+  const atWin = (win, type, x) => win.dispatchEvent(
+      new win.MouseEvent(type, { clientX: x, bubbles: true }));
+
+  const HTML = '<div class="plm-tblwrap" data-plm-drag><table><tbody><tr>' +
+    '<td><button data-plm-toggle="p1">x</button></td><td>70</td>' +
+    '</tr></tbody></table></div>';
+
+  it('pans the box by exactly how far the pointer moved', () => {
+    const { dom, doc } = mount(HTML);
+    const box = doc.querySelector('[data-plm-drag]');
+    const read = traced(box);
+    box.scrollLeft = 100;
+    at(dom.window, box, 'mousedown', 400);
+    atWin(dom.window, 'mousemove', 340);   // dragged 60px left
+    assert.strictEqual(read(), 160, 'the table did not follow the pointer');
+    atWin(dom.window, 'mousemove', 430);   // now 30px right of the start
+    assert.strictEqual(read(), 70,
+        'the offset accumulated per move instead of being measured from the start');
+    atWin(dom.window, 'mouseup', 430);
+  });
+
+  /* ⚠ The whole point of the in-place repaint. A drag that re-rendered would
+     rebuild the page — and any open player detail — sixty times a second. */
+  it('re-renders nothing at all while dragging', () => {
+    const { dom, doc, calls } = mount(HTML);
+    const box = doc.querySelector('[data-plm-drag]');
+    traced(box);
+    at(dom.window, box, 'mousedown', 300);
+    for (let x = 300; x > 200; x -= 10) atWin(dom.window, 'mousemove', x);
+    atWin(dom.window, 'mouseup', 200);
+    assert.strictEqual(calls.renderPage, 0, 'a drag rebuilt the page');
+    assert.strictEqual(calls.plmRefresh, 0, 'a drag repainted the section');
+  });
+
+  it('lets a click on the tick be a click, not a drag', () => {
+    const { dom, doc } = mount(HTML);
+    const box = doc.querySelector('[data-plm-drag]');
+    const read = traced(box);
+    const btn = doc.querySelector('[data-plm-toggle]');
+    const ev = new dom.window.MouseEvent('mousedown',
+        { clientX: 400, bubbles: true, cancelable: true });
+    btn.dispatchEvent(ev);
+    assert.ok(!ev.defaultPrevented, 'the drag swallowed a press on the tick box');
+    atWin(dom.window, 'mousemove', 300);
+    assert.strictEqual(read(), 0, 'pressing the tick started a drag');
+  });
+
+  it('suppresses the click a real drag ends with', () => {
+    /* Letting go raises a click that reaches the page handler, and that
+       handler closes the player rail. The chart drag sets the same flag. */
+    const nc = BIND.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const drag = nc.slice(nc.indexOf('[data-plm-drag]'));
+    assert.ok(/_plDragMoved = moved;/.test(drag),
+        'a drag that ends over the table will shut the player rail');
+  });
+
+  it('carries the scroll position across an in-place repaint', () => {
+    /* Ticking a player off rebuilds the table, and without this the view
+       snaps back to the first date every time the drawn set changes.
+       ⚠ RUN, not read. The first version of this test asserted that
+       plmRefresh mentions scrollLeft and that the mention comes before
+       replaceWith — both of which stayed true when the line that actually
+       restores it was deleted. A mutation caught that. */
+    const REFRESH = grab('  function plmRefresh() {',
+        '  /**\n   * The add-a-measurement sheet');
+    const dom = new JSDOM('<!doctype html><body><div id="pl-page">' +
+      '<div id="plm-secwrap"><div class="plm-tblwrap" data-plm-drag>old</div></div>' +
+      '</div></body>');
+    const doc = dom.window.document;
+    const oldBox = doc.querySelector('[data-plm-drag]');
+    let v = 340;
+    Object.defineProperty(oldBox, 'scrollLeft',
+        { get: () => v, set: (n) => { v = n; }, configurable: true });
+
+    /* The replacement is a real node, and its scrollLeft is traced the same
+       way — jsdom does no layout, so this is the only way to see the write. */
+    let restored = null;
+    const holderPatch = (el) => {
+      const box = el.querySelector('[data-plm-drag]');
+      if (box) {
+        Object.defineProperty(box, 'scrollLeft',
+            { get: () => restored || 0, set: (n) => { restored = n; }, configurable: true });
+      }
+    };
+    const api = {
+      document: doc,
+      getUsers: () => [],
+      _plSel: null,
+      plmRailHtml: () => '',
+      plScopedPlayers: () => [],
+      catSpanOf: () => 1,
+      plmSectionHtml: () => '<div id="plm-secwrap">' +
+        '<div class="plm-tblwrap" data-plm-drag>new</div></div>',
+      bindPlmControls: () => {},
+      __patch: holderPatch,
+      JSON, Object, String, Number, Array, Math, Date, Set,
+    };
+    /* Hook the freshly parsed node before plmRefresh writes to it. The
+       builder stub is called first, so patching from createElement's result
+       is not possible — patch on the next querySelector instead. */
+    const origCreate = doc.createElement.bind(doc);
+    doc.createElement = function (tag) {
+      const el = origCreate(tag);
+      if (tag === 'div') {
+        const oldSet = Object.getOwnPropertyDescriptor(
+            dom.window.Element.prototype, 'innerHTML').set;
+        Object.defineProperty(el, 'innerHTML', {
+          set: (h) => { oldSet.call(el, h); holderPatch(el); }, configurable: true,
+        });
+      }
+      return el;
+    };
+    // eslint-disable-next-line no-new-func
+    new Function(...Object.keys(api), REFRESH + '\nplmRefresh();')(...Object.values(api));
+
+    assert.strictEqual(restored, 340,
+        'the table jumped back to the first date after the repaint');
+  });
+});

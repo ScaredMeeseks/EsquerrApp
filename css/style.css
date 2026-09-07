@@ -6670,6 +6670,43 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .plm-sec .plm-head { padding-top: 4px; }
 .plm-sec-empty { padding: 12px 0 20px; }
 .plm-squad-tbl { min-width: 0; margin-top: 14px; }
+/* ── the squad table: one column per measurement date ──
+   A season of weekly weights is forty columns, so the table scrolls inside
+   its own box rather than widening the page. ⚠ The overflow is on the DIV,
+   never on the table: a sticky cell positions against its nearest scrolling
+   ancestor, and making the table its own scroller would freeze the sticky
+   column in place instead of pinning it. */
+.plm-tblwrap {
+  overflow-x: auto; overflow-y: hidden;
+  /* The pointer says the surface can be dragged before anyone tries it. */
+  cursor: grab;
+}
+.plm-tblwrap.plm-dragging { cursor: grabbing; user-select: none; }
+.plm-tblwrap .plm-squad-tbl { width: auto; min-width: 100%; }
+/* The name, its swatch and its tick box ride along: the dates scroll away
+   and there would otherwise be no way to tell which row is whose, nor to
+   put a player back on the chart without scrolling home first. */
+.plm-stick {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--pp-paper); white-space: nowrap;
+  /* A rule down the right edge, so the frozen column reads as frozen once
+     the dates start sliding under it. ⚠ box-shadow rather than
+     border-right: the table is border-collapse:collapse, where a border on
+     a sticky cell is the one thing browsers still disagree about. */
+  box-shadow: 1px 0 0 var(--pp-rule);
+}
+.plm-squad-tbl thead .plm-stick { z-index: 2; }
+/* A dimmed row keeps a paper ground under its sticky cell — without this
+   the scrolled columns show through the one part of the row that does not
+   move, which reads as a rendering fault rather than as "deselected". */
+.plm-row.plm-off .plm-stick { background: var(--pp-paper); }
+.plm-stick .plm-tick { margin-right: 8px; vertical-align: middle; }
+.plm-dth { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* A date this player was not measured on. A dot, not a zero and not a
+   blank: zero is a value he never had, and an empty cell reads as a
+   rendering gap rather than as "no reading". */
+.plm-nil { color: var(--pp-ink-4); }
+.plm-alsosep { color: var(--pp-ink-4); }
 /* A deselected player: dimmed, and sorted to the bottom by the renderer —
    the row is not hidden, because taking him off the chart is not the same
    as saying he has no numbers. */

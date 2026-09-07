@@ -9757,3 +9757,48 @@ without the constant hands out `var(--pp-series-11)`, which resolves to nothing 
 table rank both look completely reasonable in a diff.
 
 No rules or functions change; push only.
+
+### 2026-09-07 — The squad table becomes a matrix (v240)
+
+The Mètriques table was a SUMMARY — latest value, when, how many readings — which answers a
+different question from the one the view exists for. It is now a matrix: one row per player, one
+column per measurement date, every reading in its cell.
+
+- **Columns are the union of dates across the whole squad**, not per player, so two players measured
+  the same morning share a column and the grid lines up. Ascending, because a history reads left to
+  right.
+- ⚠ **A cell holds an ARRAY of values, not one.** A player can be weighed twice in a day — that is
+  what the random tail on the record id is for — and a cell taking the last reading would drop the
+  first silently, in the one view whose whole job is to show every reading.
+- A date a player was not measured on gets `·`, not a blank and not a zero. Zero is a value he never
+  had; a blank reads as a rendering fault.
+- **Mesures, Última and Data are gone**, and their i18n keys with them. The first two are the last
+  filled cell of the matrix, so keeping them would have printed the same number twice.
+- The unit is said **once**, next to the metric name in the section head, rather than in every cell
+  of a table that is now mostly cells. It is the same in both views, which is where it belongs.
+
+**Scrolling and dragging.** A season of weekly weights is forty columns, so the table lives in a
+`.plm-tblwrap` scroll box that can also be dragged sideways — the pointer is `grab`/`grabbing`, and
+a press that starts on the tick box is left alone so a click stays a click. ⚠ The drag moves
+`scrollLeft` and nothing else: no re-render, so an open player detail is untouched, which is the
+same property the rest of the metrics controls have had since v237. The release sets `_plDragMoved`,
+because otherwise the click it raises reaches the page handler and shuts the rail — the chart drag
+solves this the same way.
+
+⚠ **The overflow is on the DIV, never on the table.** A sticky cell positions against its nearest
+scrolling ancestor, so a table that scrolled itself would pin the column to the table and it would
+never move. The name, the legend swatch and the tick box all ride in that sticky column: the dates
+scroll away, and a tick that went with them would leave no way to put a player back on the chart
+without scrolling home first.
+
+⚠ **`plmRefresh` carries `scrollLeft` across the swap.** Ticking a player off rebuilds the table,
+and without this the view snaps back to the first date every time the drawn set changes.
+
+**Tests.** Unit 3095 → **3108**. 18 mutations, **one survivor, fixed** — and it is worth recording
+what it was, because it is the same shape as the v238 regression. The scroll-restore test asserted
+that `plmRefresh` *mentions* `scrollLeft` and that the mention comes before `replaceWith`. Both
+stayed true when the line that actually restores it was deleted. It runs `plmRefresh` for real now,
+over a traced `scrollLeft` (jsdom does no layout, so a write is the only observable), and three
+mutations of that one line all die.
+
+No rules or functions change; push only.

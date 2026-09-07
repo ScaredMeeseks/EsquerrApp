@@ -92,7 +92,7 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-const CACHE_NAME = 'esquerrapp-v239';
+const CACHE_NAME = 'esquerrapp-v240';
 
 const STATIC_ASSETS = [
   './',
