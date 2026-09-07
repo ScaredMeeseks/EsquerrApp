@@ -9854,3 +9854,29 @@ the native-shell test asserted source ORDER, which stayed true when the check mo
 and it now runs `plmSaveCsv` and asserts that no link is clicked.
 
 No rules or functions change; push only.
+
+### 2026-09-07 — The download button becomes an arrow (v242)
+
+The export said **EXCEL** in a box of its own shape. It is now the usual arrow-onto-a-line, in the
+**same box as one GRÀFIC/TAULA segment** — 26px tall, and half the 150px segmented control less its
+7px gap. The two sit at opposite edges of the block, one row under the other, and a button a few
+pixels off in either dimension reads as a different kind of control rather than as one of a set.
+
+⚠ **An icon button needs a name.** `title` and `aria-label` both carry `plm.export`, and the `<svg>`
+is `aria-hidden` so a screen reader announces the label rather than the drawing as well. The string
+changed with the button — it is no longer a visible label but the accessible name and the toast's
+title, so it says *Baixa la taula* rather than *Excel*.
+
+⚠ **The narrow breakpoint moves both.** `.plm-segs` already shrank to 128px there; `.plm-xls` now
+shrinks to 60px alongside it. Left alone it would have been the widest thing on the row at exactly
+the width where the row is tightest.
+
+The markup moved into `plmDlBtnHtml(slug)` rather than sitting inline in the section builder, so
+there is one definition of the button.
+
+**Tests.** Unit 3124 → **3128**. One test pins `.plm-xls`'s height to `.plm-segs .md2-seg`'s and its
+width to the segment arithmetic — ⚠ two rules in two files that have to move together, with nothing
+else in the suite that would notice if one moved alone. 9 mutations, all killed, including both
+dimensions and the dropped narrow-screen rule.
+
+No rules or functions change; push only.

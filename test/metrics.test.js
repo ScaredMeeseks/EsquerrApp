@@ -1363,7 +1363,8 @@ describe('metrics — the export is wired to the button', () => {
   it('draws the button only when there is something to download', () => {
     const sec = grab('  function plmSectionHtml(players, catSpan) {',
         '  /**\n   * Every metrics control on Plantilla');
-    assert.ok(/withData\.length\s*\n?\s*\?[\s\S]{0,120}data-plm-export/.test(sec),
+    // The markup moved into plmDlBtnHtml; the GUARD is what this pins.
+    assert.ok(/withData\.length\s*\?\s*plmDlBtnHtml\(/.test(sec),
         'the export button is offered for an empty table');
   });
 
@@ -1426,5 +1427,62 @@ describe('metrics — the export is wired to the button', () => {
     assert.ok(/revokeObjectURL/.test(save), 'the blob url leaks for the life of the page');
     assert.ok(/setTimeout\([\s\S]{0,80}revokeObjectURL/.test(save),
         'revoking synchronously cancels the download in some browsers');
+  });
+});
+
+describe('metrics — the download button is a button like the others', () => {
+  /* ⚠ Two rules in two files that have to move together, with nothing else
+     that would notice if one moved alone. The download button and the
+     GRAFIC/TAULA segments sit at the two edges of the block, one under the
+     other; a few pixels apart they stop reading as the same set of
+     controls. */
+  it('is the same box as one GRAFIC/TAULA segment', () => {
+    const heightOf = (re, what) => {
+      const m = re.exec(PLMCSS);
+      assert.ok(m, 'no height rule for ' + what);
+      return Number(m[1]);
+    };
+    const seg = heightOf(/\.plm-segs \.md2-seg \{[^}]*height: (\d+)px/, '.plm-segs .md2-seg');
+    const btn = heightOf(/\.plm-xls \{[^}]*height: (\d+)px/, '.plm-xls');
+    assert.strictEqual(btn, seg,
+        'the download button is a different height from the view toggle');
+
+    // Half the segmented control, less the 7px gap between its two halves.
+    const cw = /\.plm-segs \{[^}]*width: (\d+)px/.exec(PLMCSS);
+    const bw = /\.plm-xls \{[^}]*width: (\d+)px/.exec(PLMCSS);
+    assert.ok(cw && bw, 'the widths are no longer stated in the plm block');
+    assert.strictEqual(Number(bw[1]), Math.floor((Number(cw[1]) - 7) / 2),
+        'the download button is not one segment wide');
+  });
+
+  it('shrinks with the segments on a narrow screen', () => {
+    /* The one size where the row is tightest. If only the segments shrink,
+       the button is suddenly the widest thing on the line. */
+    const mq = PLMCSS.slice(PLMCSS.indexOf('.plm-segs { width: 128px'));
+    assert.ok(/\.plm-xls \{ width: (\d+)px/.test(mq),
+        'the button keeps its wide-screen width when the segments shrink');
+  });
+
+  it('is an arrow with an accessible name, not the word Excel', () => {
+    const fn = grab('  function plmDlBtnHtml(slug) {', '  /** Hand a text file');
+    assert.ok(/<svg/.test(fn), 'the button is still a text label');
+    assert.ok(!/Excel/i.test(fn), 'the button still says Excel');
+    assert.ok(!/t\('plm\.export'\) \+ '<\/button>/.test(fn), 'a label is still rendered');
+    /* An icon with no name is unreadable to a screen reader and
+       unguessable to everybody else. */
+    assert.ok(fn.includes('aria-label="'), 'the icon button has no accessible name');
+    assert.ok(fn.includes('title="'), 'no tooltip');
+    assert.ok(fn.includes('aria-hidden="true"'),
+        'the drawing is announced as well as the label');
+    // The arrow: a shaft, a head, and the line it lands on.
+    assert.strictEqual((fn.match(/<path /g) || []).length, 3,
+        'the download glyph is not the usual arrow-onto-a-line');
+  });
+
+  it('renders the arrow into the section, once', () => {
+    const sec = grab('  function plmSectionHtml(players, catSpan) {',
+        '  /**\n   * Every metrics control on Plantilla');
+    assert.ok(/plmDlBtnHtml\(slug\)/.test(sec),
+        'the section builds its own button instead of using the one helper');
   });
 });

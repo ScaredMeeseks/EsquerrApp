@@ -806,7 +806,9 @@
     'plm.del_failed':    { ca:'No s\'ha pogut esborrar. No s\'ha tocat res.', es:'No se ha podido borrar. No se ha tocado nada.', en:'Could not delete. Nothing was changed.' },
     'plm.save_failed':   { ca:'No s\'ha pogut desar la mesura.', es:'No se ha podido guardar la medida.', en:'Could not save the measurement.' },
     'plm.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
-    'plm.export':        { ca:'Excel', es:'Excel', en:'Excel' },
+    /* The button is an arrow, so this string is now its accessible name and
+       the title of the toast — not a label anybody reads on screen. */
+    'plm.export':        { ca:'Baixa la taula', es:'Descargar la tabla', en:'Download table' },
     'plm.export_web':    { ca:'Obre l\'app al navegador per baixar el fitxer.', es:'Abre la app en el navegador para descargar el archivo.', en:'Open the app in a browser to download the file.' },
     'plm.show':          { ca:'Mostrar al gràfic', es:'Mostrar en el gráfico', en:'Show on chart' },
     'plm.no_metrics':    { ca:'Aquest equip encara no mesura res', es:'Este equipo todavía no mide nada', en:'This squad measures nothing yet' },
@@ -2428,7 +2430,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 241;
+  const APP_VERSION = 242;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24889,6 +24891,26 @@
     return '﻿' + lines.join('\r\n') + '\r\n';
   }
 
+  /**
+   * The download button: the usual arrow-onto-a-line, no words.
+   *
+   * ⚠ The icon is the ONLY thing on it, so `title` and `aria-label` carry
+   * the name — an icon button with neither is unreadable to a screen reader
+   * and unguessable to anyone else. `aria-hidden` on the svg stops the
+   * reader announcing the drawing as well as the label.
+   */
+  function plmDlBtnHtml(slug) {
+    return '<button type="button" class="plm-xls" data-plm-export="' +
+      sanitize(slug) + '" title="' + t('plm.export') +
+      '" aria-label="' + t('plm.export') + '">' +
+      '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"' +
+      ' focusable="false" fill="none" stroke="currentColor" stroke-width="1.5"' +
+      ' stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M8 2.5v7"></path><path d="M4.8 6.6L8 9.8l3.2-3.2"></path>' +
+      '<path d="M3 13h10"></path></svg>' +
+      '</button>';
+  }
+
   /** Hand a text file to the browser. */
   function plmSaveCsv(text, filename) {
     /* ⚠ The Capacitor WebView has no download handler wired up, so a blob
@@ -25043,10 +25065,7 @@
            metric — because that is exactly what it downloads. Only when
            there is something to download. */
         '<div class="plm-pickrow plm-pickrow-x">' + picker +
-          (withData.length
-            ? '<button type="button" class="plm-xls" data-plm-export="' +
-              sanitize(slug) + '">' + t('plm.export') + '</button>'
-            : '') +
+          (withData.length ? plmDlBtnHtml(slug) : '') +
         '</div>' +
         body + tbl +
       '</div>');

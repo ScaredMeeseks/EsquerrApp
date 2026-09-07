@@ -6589,10 +6589,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* The picker on the left, the export opposite it: one row that says which
    metric, and the button that downloads exactly that. */
 .plm-pickrow-x { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* ⚠ The SAME BOX as one GRÀFIC/TAULA segment, deliberately: 26px tall like
+   `.plm-segs .md2-seg` above, and half of the 150px control less its 7px
+   gap. The two sit one under the other on the left and right of the block,
+   and a download button a few pixels off reads as a different kind of
+   control rather than as the third member of the same set.
+   A test pins the height to the segment's, because these are two rules that
+   have to move together and nothing else would notice. */
 .plm-xls {
+  width: 71px; height: 26px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--pp-input-line); background: var(--pp-paper);
-  font: inherit; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--pp-ink-2); padding: 7px 14px; cursor: pointer; white-space: nowrap;
+  color: var(--pp-ink-2); cursor: pointer; border-radius: 0;
 }
 .plm-xls:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
 .plm-pick { min-width: 150px; }
@@ -6771,7 +6779,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 @media (max-width: 900px) {
   .plm-head { gap: 8px; }
+  /* Both together, or the download button stops matching a segment on the
+     one screen size where the row is tightest. */
   .plm-segs { width: 128px; }
+  .plm-xls { width: 60px; }
   .plm-squad-tbl { font-size: 13px; }
 }
 
