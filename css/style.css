@@ -6586,6 +6586,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .plm-head .pl-eyebrow { margin-right: auto; }
 .plm-pickrow { padding-bottom: 10px; }
+/* The picker on the left, the export opposite it: one row that says which
+   metric, and the button that downloads exactly that. */
+.plm-pickrow-x { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.plm-xls {
+  border: 1px solid var(--pp-input-line); background: var(--pp-paper);
+  font: inherit; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--pp-ink-2); padding: 7px 14px; cursor: pointer; white-space: nowrap;
+}
+.plm-xls:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
 .plm-pick { min-width: 150px; }
 .plm-pick-wide { width: 100%; display: block; }
 /* ⚠ `.std-sel-menu` is `right: 0` by default, which is right for a menu

@@ -806,6 +806,8 @@
     'plm.del_failed':    { ca:'No s\'ha pogut esborrar. No s\'ha tocat res.', es:'No se ha podido borrar. No se ha tocado nada.', en:'Could not delete. Nothing was changed.' },
     'plm.save_failed':   { ca:'No s\'ha pogut desar la mesura.', es:'No se ha podido guardar la medida.', en:'Could not save the measurement.' },
     'plm.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'plm.export':        { ca:'Excel', es:'Excel', en:'Excel' },
+    'plm.export_web':    { ca:'Obre l\'app al navegador per baixar el fitxer.', es:'Abre la app en el navegador para descargar el archivo.', en:'Open the app in a browser to download the file.' },
     'plm.show':          { ca:'Mostrar al gràfic', es:'Mostrar en el gráfico', en:'Show on chart' },
     'plm.no_metrics':    { ca:'Aquest equip encara no mesura res', es:'Este equipo todavía no mide nada', en:'This squad measures nothing yet' },
     'ev.type_ph':        { ca:'Tipus…', es:'Tipo…', en:'Type…' },
@@ -2426,7 +2428,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 240;
+  const APP_VERSION = 241;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24750,6 +24752,163 @@
   }
 
   /** The squad-wide section under the roster table. */
+  /**
+   * The squad's readings for one metric, shaped for both the table and the
+   * export.
+   *
+   * ⚠ ONE definition, used by the renderer and by the CSV writer. They were
+   * always going to be the same grid, and two copies of "which dates are
+   * columns, which values are in a cell, which order the rows go in" is two
+   * copies that can disagree — with the disagreement visible only to whoever
+   * opens the file and compares it with the screen.
+   *
+   * @returns { rowsFor, withData, si, dates, cells, ranked }
+   */
+  function plmMatrix(players, slug, all) {
+    const rowsFor = {};
+    players.forEach(function (p) {
+      rowsFor[String(p.id)] = playerMetricSeries(p.id, slug, all);
+    });
+    const withData = players.filter(function (p) { return rowsFor[String(p.id)].length; });
+
+    /* ⚠ A player's colour is fixed by his position in the WHOLE squad, in id
+       order — not by his position in the drawn set and not by the table's
+       ranking. Both of those move: ticking one player off would recolour
+       everyone below him, and the table sorts by latest value, so a player
+       who gained a kilo would swap colours with the man above him. Neither
+       is a thing a legend is allowed to do. */
+    const si = {};
+    withData.slice().sort(function (a, b) {
+      return String(a.id).localeCompare(String(b.id));
+    }).forEach(function (p, i) { si[String(p.id)] = i; });
+
+    /* One column per DATE anybody was measured on — the union across the
+       whole squad, not per player, so columns line up vertically and two
+       players measured the same morning sit in the same one. Ascending,
+       because a history is read left to right. */
+    const dateSet = {};
+    withData.forEach(function (p) {
+      rowsFor[String(p.id)].forEach(function (r) { dateSet[r.date] = true; });
+    });
+    const dates = Object.keys(dateSet).sort();
+
+    /* ⚠ Keyed by date, and the value is an ARRAY. A player can be measured
+       twice in one day — that is the whole reason the record id carries a
+       random tail — so a cell that took the last reading would silently drop
+       the first, in a view whose entire job is to show every reading. */
+    const cells = {};
+    withData.forEach(function (p) {
+      const m = {};
+      rowsFor[String(p.id)].forEach(function (r) {
+        (m[r.date] = m[r.date] || []).push(r.value);
+      });
+      cells[String(p.id)] = m;
+    });
+
+    /* Deselected rows dim and sink; the rest are worst-to-best by the latest
+       reading. The sort is here rather than in a comparator over the roster
+       because the export wants the same order the screen shows. */
+    const ranked = withData.slice().sort(function (a, b) {
+      const ao = _plmOut.has(String(a.id)) ? 1 : 0;
+      const bo = _plmOut.has(String(b.id)) ? 1 : 0;
+      if (ao !== bo) return ao - bo;
+      const av = rowsFor[String(a.id)].slice(-1)[0];
+      const bv = rowsFor[String(b.id)].slice(-1)[0];
+      return Number(bv.value) - Number(av.value);
+    });
+
+    return { rowsFor: rowsFor, withData: withData, si: si,
+      dates: dates, cells: cells, ranked: ranked };
+  }
+
+  /**
+   * The squad grid as a spreadsheet, ready for Excel.
+   *
+   * ⚠ CSV, not .xlsx. A real xlsx is a ZIP archive — deflate streams, a
+   * central directory, four XML parts and a CRC32 per entry — and this app
+   * has no build step and no libraries, so it would mean hand-rolling a zip
+   * writer to carry a table of numbers. Excel opens this by double-click.
+   *
+   * ⚠ Three things make it open CLEANLY rather than as one mangled column:
+   *
+   *  · a UTF-8 BOM, without which Excel reads the file as the system
+   *    codepage and "Pau Gonzàlez" arrives as "Pau GonzÃ lez";
+   *  · a leading `sep=` line, which is an Excel-specific hint that overrides
+   *    whatever list separator the user's locale wants. Other tools show it
+   *    as a stray first row, and that is the trade this button is named for;
+   *  · a separator and a decimal mark that MATCH EACH OTHER and follow the
+   *    app's language. A comma decimal with a comma separator would split
+   *    every value in half, and `72,4` in an English Excel is not a number
+   *    at all — it is text, and text does not chart.
+   */
+  function plmCsv(m, players, opt) {
+    const es = _lang !== 'en';
+    const sep = es ? ';' : ',';
+    const dec = es ? ',' : '.';
+    const by = {};
+    players.forEach(function (p) { by[String(p.id)] = p; });
+
+    const cell = function (v) {
+      const s = String(v == null ? '' : v);
+      /* Quote when the text could otherwise end the field or the row. The
+         doubled quote is the CSV escape for a quote. */
+      return /[";\n\r,]/.test(s) ? '"' + s.split('"').join('""') + '"' : s;
+    };
+    /* ⚠ The STORED value, not the rounded one. The table rounds to one
+       decimal so a column of weights reads cleanly, but a spreadsheet is
+       where someone does arithmetic on these numbers, and an export that
+       quietly loses precision is the kind of thing nobody discovers until
+       the totals disagree. */
+    const num = function (v) {
+      const n = Number(v);
+      if (!isFinite(n)) return '';
+      return String(n).replace('.', dec);
+    };
+
+    const lines = [];
+    lines.push('sep=' + sep);
+    lines.push([cell(t('plm.th_player'))].concat(m.dates.map(cell)).join(sep));
+    m.ranked.forEach(function (p) {
+      const c = m.cells[String(p.id)] || {};
+      const row = [cell((by[String(p.id)] || p).name)];
+      m.dates.forEach(function (d) {
+        /* Two readings in one day go in one cell, space-separated. Excel
+           reads that as text, which is the honest answer: it is two
+           numbers, and inventing a second column for a case that happens
+           to one player on one day would leave the other rows ragged. */
+        row.push(c[d] ? c[d].map(num).join(' ') : '');
+      });
+      lines.push(row.join(sep));
+    });
+    /* The unit is a property of the whole sheet, so it goes in the file NAME
+       and in one trailing note — not into every cell, where it would turn a
+       column of numbers into a column of text. */
+    lines.push('');
+    lines.push(cell(opt.name + (opt.unit ? ' (' + opt.unit + ')' : '')));
+    // \r\n: Excel's own line ending, and the one every CSV reader accepts.
+    return '﻿' + lines.join('\r\n') + '\r\n';
+  }
+
+  /** Hand a text file to the browser. */
+  function plmSaveCsv(text, filename) {
+    /* ⚠ The Capacitor WebView has no download handler wired up, so a blob
+       link there does nothing at all — silently. Say so instead, rather than
+       shipping a button that looks broken on a phone. */
+    if (tbNativeShell()) { _showPushToast(t('plm.export'), t('plm.export_web')); return false; }
+    const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    /* In the document, because Firefox ignores a click on a detached link. */
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Freed on a turn of the loop: revoking synchronously cancels the save.
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    return true;
+  }
+
   function plmSectionHtml(players, catSpan) {
     const cat = getCurrentCategory();
     const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
@@ -24801,11 +24960,10 @@
     if (!opts.some(function (o) { return o.slug === slug; })) slug = opts[0].slug;
     const opt = opts.find(function (o) { return o.slug === slug; });
 
-    const rowsFor = {};
-    players.forEach(function (p) {
-      rowsFor[String(p.id)] = playerMetricSeries(p.id, slug, all);
-    });
-    const withData = players.filter(function (p) { return rowsFor[String(p.id)].length; });
+    // The grid, shared verbatim with the CSV export — see plmMatrix.
+    const M = plmMatrix(players, slug, all);
+    const rowsFor = M.rowsFor, withData = M.withData, si = M.si;
+    const dates = M.dates, cells = M.cells, ranked = M.ranked;
 
     const picker = stdSelect({
       value: slug, kind: 'plmsec', cls: 'plm-pick',
@@ -24817,16 +24975,6 @@
        the chart because the uids in it simply stop matching. */
     const shown = withData.filter(function (p) { return !_plmOut.has(String(p.id)); });
 
-    /* ⚠ A player's colour is fixed by his position in the WHOLE squad, in id
-       order — not by his position in the drawn set and not by the table's
-       ranking. Both of those move: ticking one player off would recolour
-       everyone below him, and the table sorts by latest value, so a player
-       who gained a kilo would swap colours with the man above him. Neither
-       is a thing a legend is allowed to do. */
-    const si = {};
-    withData.slice().sort(function (a, b) {
-      return String(a.id).localeCompare(String(b.id));
-    }).forEach(function (p, i) { si[String(p.id)] = i; });
 
     let body;
     if (!withData.length) {
@@ -24844,36 +24992,6 @@
        `chart` mode it is the control that picks the lines. Deselected rows
        dim and sink, which is the whole reason the sort is here rather than
        in a comparator over the roster. */
-    const ranked = withData.slice().sort(function (a, b) {
-      const ao = _plmOut.has(String(a.id)) ? 1 : 0;
-      const bo = _plmOut.has(String(b.id)) ? 1 : 0;
-      if (ao !== bo) return ao - bo;
-      const av = rowsFor[String(a.id)].slice(-1)[0];
-      const bv = rowsFor[String(b.id)].slice(-1)[0];
-      return Number(bv.value) - Number(av.value);
-    });
-    /* One column per DATE anybody was measured on — the union across the
-       whole squad, not per player, so a column line up vertically and two
-       players measured the same morning sit in the same column. Ascending,
-       because a history is read left to right. */
-    const dateSet = {};
-    withData.forEach(function (p) {
-      rowsFor[String(p.id)].forEach(function (r) { dateSet[r.date] = true; });
-    });
-    const dates = Object.keys(dateSet).sort();
-
-    /* ⚠ Keyed by date, and the value is an ARRAY. A player can be measured
-       twice in one day — that is the whole reason the record id carries a
-       random tail — so a cell that took the last reading would silently drop
-       the first, in a view whose entire job is to show every reading. */
-    const cells = {};
-    withData.forEach(function (p) {
-      const m = {};
-      rowsFor[String(p.id)].forEach(function (r) {
-        (m[r.date] = m[r.date] || []).push(r.value);
-      });
-      cells[String(p.id)] = m;
-    });
 
     const tbl = !withData.length ? '' :
       /* ⚠ The scroll box is a DIV around the table, not overflow on the
@@ -24921,7 +25039,15 @@
           sanitize(opt ? opt.name : '') +
           (opt && opt.unit ? ' <span class="plm-unit">' + sanitize(opt.unit) + '</span>' : '') +
           '</span>' + plmSegs(_plmSecMode, 'sec') + '</div>' +
-        '<div class="plm-pickrow">' + picker + '</div>' +
+        /* The export sits opposite the picker, on the row that says WHICH
+           metric — because that is exactly what it downloads. Only when
+           there is something to download. */
+        '<div class="plm-pickrow plm-pickrow-x">' + picker +
+          (withData.length
+            ? '<button type="button" class="plm-xls" data-plm-export="' +
+              sanitize(slug) + '">' + t('plm.export') + '</button>'
+            : '') +
+        '</div>' +
         body + tbl +
       '</div>');
   }
@@ -25020,6 +25146,40 @@
         g.querySelectorAll('.plm-on').forEach(function (n) {
           n.classList.remove('plm-on');
         });
+      });
+    });
+
+    /* Download the metric on screen as a spreadsheet.
+       ⚠ The grid is rebuilt through plmMatrix — the same function the table
+       renders from — rather than scraped out of the DOM. Scraping would
+       export the `·` placeholders, the legend swatches and the localised
+       thousands separators, and it would go wrong silently the first time
+       the markup changed. */
+    page.querySelectorAll('[data-plm-export]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const slug = String(b.dataset.plmExport);
+        const players = plScopedPlayers();
+        const all = getPlayerMetrics();
+        const m = plmMatrix(players, slug, all);
+        if (!m.ranked.length) return;
+        const cat = getCurrentCategory();
+        const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+        /* The squad's own definition first, so the sheet is labelled with
+           the name and unit on screen. A slug the squad does not define —
+           a promoted player's old test — has neither, and falls back to
+           what was denormalised onto the record, which is the whole reason
+           that denormalisation exists. */
+        const def = metricsForSquad(cat, letter).find(function (x) {
+          return x.slug === slug;
+        });
+        const first = m.rowsFor[String(m.ranked[0].id)][0] || {};
+        const opt = def
+          ? { slug: slug, name: plmName(def), unit: def.unit || '' }
+          : { slug: slug, name: first.name || slug, unit: first.unit || '' };
+        const stamp = [opt.name, cat, letter, localDateStr(new Date())]
+            .filter(Boolean).join('-');
+        plmSaveCsv(plmCsv(m, players, opt), plmSlug(stamp) + '.csv');
       });
     });
 

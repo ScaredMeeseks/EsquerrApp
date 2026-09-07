@@ -9802,3 +9802,55 @@ over a traced `scrollLeft` (jsdom does no layout, so a write is the only observa
 mutations of that one line all die.
 
 No rules or functions change; push only.
+
+### 2026-09-07 — Download the metric table (v241)
+
+An **Excel** button on the Mètriques pick row downloads the metric on screen.
+
+⚠ **CSV, not .xlsx, and that is a decision rather than a shortcut.** A real xlsx is a ZIP archive —
+deflate streams, a central directory, four XML parts and a CRC32 per entry. This app has no build
+step and no libraries, so shipping one means hand-rolling a zip writer to carry a table of numbers.
+Excel opens this by double-click; the button is named for what it is for.
+
+Three things make it open *cleanly* rather than as one mangled column, and none of them is visible
+on screen — the person who finds out is whoever opens the file:
+
+- a **UTF-8 BOM**, without which Excel reads the file in the system codepage and `Gonzàlez` arrives
+  as `GonzÃ lez`;
+- a leading **`sep=` line**, Excel's own hint, which overrides whatever list separator the user's
+  locale wants. Other tools show it as a stray first row — that is the trade;
+- ⚠ a separator and a decimal mark that **match each other** and follow `_lang`: `;` with `,` for
+  ca/es, `,` with `.` for en. A comma decimal under a comma separator splits every reading in half,
+  and the file looks plausible until someone adds a column up.
+
+Also: names are quoted when they contain the separator or a quote (`Puig; Marc` would otherwise
+shift its whole row one place right, silently); a date with no reading is an **empty cell**, not the
+screen's `·` and not a zero; both of a day's two readings go in the one cell; headers are **ISO
+dates**, because a spreadsheet sorts and subtracts them and `dd/mm` has no year; and the unit is
+named once at the foot rather than appended to every value, which would make each column text.
+
+⚠ **The export writes the STORED value, not the rounded one.** `plmNum` rounds to one decimal so a
+column reads cleanly; a spreadsheet is where the arithmetic happens, and precision lost there is
+found only when totals disagree. (`Math.round(n*100)/100` was the first draft and
+`board-state.test.js` refused it — correctly, and the right fix was not to round at all.)
+
+**`plmMatrix(players, slug, all)` is new, and the point of it**: the grid the table renders and the
+grid the CSV writes are ONE function. They were always going to be the same thing, and two copies of
+"which dates are columns, which values are in a cell, which order the rows go in" is two copies that
+can disagree — with the disagreement visible only to whoever compares the file with the screen. The
+click handler rebuilds through it rather than scraping the DOM, which would have exported the `·`
+placeholders and the legend swatches and would have broken silently on the next markup change.
+
+⚠ **The Capacitor WebView has no download handler**, so a blob link there does nothing at all — no
+error, no file. `plmSaveCsv` detects the native shell and says so in a toast instead. Wiring a real
+save on Android needs `@capacitor/filesystem` and an APK rebuild; parking-lot material, not a
+silent failure.
+
+**Tests.** Unit 3108 → **3124**. Every export assertion GENERATES a file and parses it back the way
+a spreadsheet would, including a name carrying `;` and a name carrying `"`. 22 mutations, **21
+killed**; the survivor is a genuine equivalent — constructing the Blob before the native check has
+no observable effect, since nothing is clicked either way. One earlier survivor was fixed properly:
+the native-shell test asserted source ORDER, which stayed true when the check moved below the Blob,
+and it now runs `plmSaveCsv` and asserts that no link is clicked.
+
+No rules or functions change; push only.

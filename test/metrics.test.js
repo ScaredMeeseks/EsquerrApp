@@ -669,7 +669,11 @@ describe('metrics — the page wiring', () => {
  * worth catching, because every colour still looks correct on its own.
  */
 describe('metrics — one colour per player, and a legend that agrees', () => {
-  const SECTION = grab('  function plmSectionHtml(players, catSpan) {',
+  /* ⚠ From plmMatrix, not plmSectionHtml: the grid the table draws
+     and the grid the CSV writes are ONE function now, so a slice that
+     started below it would leave the builder calling something the
+     harness does not have. */
+  const SECTION = grab('  function plmMatrix(players, slug, all) {',
       '  /**\n   * Every metrics control on Plantilla');
 
   const dom = new JSDOM('<!doctype html><body></body>');
@@ -903,7 +907,11 @@ describe('metrics — expanding the section leaves the player detail alone', () 
  * drops one reading is worse than no table: nothing on screen says so.
  */
 describe('metrics — the squad table is a matrix of dates', () => {
-  const SECTION = grab('  function plmSectionHtml(players, catSpan) {',
+  /* ⚠ From plmMatrix, not plmSectionHtml: the grid the table draws
+     and the grid the CSV writes are ONE function now, so a slice that
+     started below it would leave the builder calling something the
+     harness does not have. */
+  const SECTION = grab('  function plmMatrix(players, slug, all) {',
       '  /**\n   * Every metrics control on Plantilla');
   const dom = new JSDOM('<!doctype html><body></body>');
 
@@ -1183,5 +1191,240 @@ describe('metrics — dragging the table moves it and nothing else', () => {
 
     assert.strictEqual(restored, 340,
         'the table jumped back to the first date after the repaint');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+/* The Excel export.
+ *
+ * ⚠ Every assertion here GENERATES a file and reads it back as a
+ * spreadsheet would. A CSV writer is exactly the kind of code that looks
+ * right in a diff and arrives as one mangled column, and none of the ways it
+ * goes wrong — a BOM missing, a decimal mark that collides with the
+ * separator, an unquoted name containing the separator — is visible on
+ * screen. The person who finds out is the one who opened the file.
+ */
+describe('metrics — the Excel export', () => {
+  const EXPORT = grab('  function plmCsv(m, players, opt) {',
+      '  function plmSectionHtml(players, catSpan) {');
+  const MATRIX = grab('  function plmMatrix(players, slug, all) {',
+      '  /**\n   * The squad grid as a spreadsheet');
+
+  function build(players, readings, lang, out) {
+    const api = {
+      _lang: lang || 'ca',
+      t: (k) => ({ 'plm.th_player': 'Jugador' }[k] || k),
+      playerMetricSeries: (uid) => (readings[String(uid)] || []),
+      _plmOut: out || new Set(),
+      JSON, Object, String, Number, Array, Math, Date, Set, isFinite,
+    };
+    // eslint-disable-next-line no-new-func
+    return new Function(...Object.keys(api), `
+      ${MATRIX}
+      ${EXPORT}
+      const players = arguments[arguments.length - 2];
+      const opt = arguments[arguments.length - 1];
+      return plmCsv(plmMatrix(players, 'weight', []), players, opt);
+    `)(...Object.values(api), players, { slug: 'weight', name: 'Pes', unit: 'kg' });
+  }
+
+  const PLAYERS = [{ id: 'p1', name: 'Gerard Vila' },
+    { id: 'p2', name: 'Puig; Marc' }, { id: 'p3', name: 'Aleix "Nil" Serra' }];
+  const READ = {
+    p1: [{ date: '2026-02-03', value: 71 }, { date: '2026-03-10', value: 72.45 }],
+    p2: [{ date: '2026-02-03', value: 80 }],
+    p3: [{ date: '2026-03-10', value: 66.5 }, { date: '2026-03-10', value: 67 }],
+  };
+
+  /** Parse one CSV line the way a spreadsheet does. */
+  const split = (line, sep) => {
+    const out = []; let cur = ''; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') { q = false; }
+        else { cur += ch; }
+      } else if (ch === '"') { q = true; }
+      else if (ch === sep) { out.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    out.push(cur);
+    return out;
+  };
+  const rows = (csv, sep) => csv.replace(/^﻿/, '').split('\r\n')
+      .slice(1)            // the sep= hint
+      .filter((l) => l !== '')
+      .map((l) => split(l, sep));
+
+  it('starts with a BOM, or Excel mangles every accent', () => {
+    /* Without it Excel reads the file as the system codepage and
+       "Gonzàlez" arrives as "GonzÃ lez". Nothing warns; it just looks
+       like the club spells its players' names wrong. */
+    assert.strictEqual(build(PLAYERS, READ).charCodeAt(0), 0xFEFF);
+  });
+
+  it('tells Excel which separator to use, so it lands in columns', () => {
+    assert.ok(build(PLAYERS, READ).replace(/^﻿/, '').startsWith('sep=;\r\n'),
+        'no sep= hint: a Catalan Excel will open this as one column');
+    assert.ok(build(PLAYERS, READ, 'en').replace(/^﻿/, '').startsWith('sep=,\r\n'));
+  });
+
+  /* ⚠ THE ONE THAT MATTERS. A comma decimal with a comma separator splits
+     every reading in half, and the file looks plausible until someone tries
+     to add a column up. */
+  it('never lets the decimal mark collide with the separator', () => {
+    [['ca', ';', ','], ['es', ';', ','], ['en', ',', '.']].forEach(([lang, sep, dec]) => {
+      const csv = build(PLAYERS, READ, lang);
+      assert.ok(csv.includes('sep=' + sep), lang + ': wrong separator');
+      assert.notStrictEqual(sep, dec, lang + ': the decimal mark IS the separator');
+      const r = rows(csv, sep);
+      const gerard = r.find((x) => x[0] === 'Gerard Vila');
+      assert.ok(gerard.includes('72' + dec + '45'),
+          lang + ': the decimal came out as ' + JSON.stringify(gerard));
+    });
+  });
+
+  it('keeps every row the same width as the header', () => {
+    const r = rows(build(PLAYERS, READ), ';');
+    const w = r[0].length;
+    assert.strictEqual(w, 3, 'expected the name column plus two dates');
+    r.slice(0, 4).forEach((x) => assert.strictEqual(x.length, w,
+        'a row is a different width from the header: ' + JSON.stringify(x)));
+  });
+
+  it('quotes a name that contains the separator or a quote', () => {
+    /* "Puig; Marc" unquoted would become two columns and push that whole
+       row one place right, silently. */
+    const r = rows(build(PLAYERS, READ), ';');
+    assert.ok(r.some((x) => x[0] === 'Puig; Marc'), 'a separator in a name split the row');
+    assert.ok(r.some((x) => x[0] === 'Aleix "Nil" Serra'), 'a quote in a name was not escaped');
+  });
+
+  it('carries both of a day\'s two readings into the one cell', () => {
+    const r = rows(build(PLAYERS, READ), ';');
+    const aleix = r.find((x) => x[0] === 'Aleix "Nil" Serra');
+    assert.ok(/66,5/.test(aleix.join('|')) && /67/.test(aleix.join('|')),
+        'a same-day reading was dropped from the export: ' + JSON.stringify(aleix));
+  });
+
+  it('leaves a missing reading EMPTY, not a dot and not a zero', () => {
+    /* The screen shows `·` so the eye can see the gap. A spreadsheet must
+       get a blank: a dot is text in a numeric column, and a zero is a
+       weight the player never had. */
+    const r = rows(build(PLAYERS, READ), ';');
+    const marc = r.find((x) => x[0] === 'Puig; Marc');
+    assert.deepStrictEqual(marc, ['Puig; Marc', '80', ''],
+        'a gap came out as something other than an empty cell');
+  });
+
+  it('exports the STORED value, not the rounded one the table shows', () => {
+    /* plmNum rounds to one decimal so a column reads cleanly. A spreadsheet
+       is where the arithmetic happens; losing a digit there is found only
+       when the totals disagree. */
+    const r = rows(build([{ id: 'p1', name: 'A' }],
+        { p1: [{ date: '2026-01-01', value: 72.456 }] }), ';');
+    assert.ok(r.some((x) => x.includes('72,456')),
+        'the export rounded: ' + JSON.stringify(r));
+  });
+
+  it('uses ISO dates as headers, not the screen\'s dd/mm', () => {
+    // A spreadsheet sorts and subtracts these; dd/mm without a year cannot.
+    const r = rows(build(PLAYERS, READ), ';');
+    assert.deepStrictEqual(r[0], ['Jugador', '2026-02-03', '2026-03-10']);
+  });
+
+  it('names the metric and its unit once, at the foot', () => {
+    const csv = build(PLAYERS, READ);
+    assert.ok(/Pes \(kg\)/.test(csv), 'the sheet does not say what it measures');
+    assert.strictEqual((csv.match(/kg/g) || []).length, 1,
+        'the unit is repeated per cell, which makes every column text');
+  });
+
+  it('rows in the order the screen shows, deselected last', () => {
+    const csv = build(PLAYERS, READ, 'ca', new Set(['p1']));
+    const names = rows(csv, ';').slice(1).map((x) => x[0]);
+    assert.strictEqual(names[names.length - 2], 'Gerard Vila',
+        'a deselected player did not sink to the bottom as he does on screen');
+  });
+});
+
+describe('metrics — the export is wired to the button', () => {
+  it('rebuilds the grid through plmMatrix rather than scraping the DOM', () => {
+    const bind = grab('  function bindPlmControls(root) {', '  /** Repaint the metrics');
+    const nc = bind.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const h = nc.slice(nc.indexOf('[data-plm-export]'), nc.indexOf('[data-plm-drag]'));
+    assert.ok(/plmMatrix\(/.test(h), 'the export scrapes the table instead of rebuilding it');
+    assert.ok(/plmCsv\(/.test(h) && /plmSaveCsv\(/.test(h));
+    assert.ok(!/querySelectorAll\('tr'\)|textContent/.test(h),
+        'the export reads the rendered markup, which will drift from the data');
+  });
+
+  it('draws the button only when there is something to download', () => {
+    const sec = grab('  function plmSectionHtml(players, catSpan) {',
+        '  /**\n   * Every metrics control on Plantilla');
+    assert.ok(/withData\.length\s*\n?\s*\?[\s\S]{0,120}data-plm-export/.test(sec),
+        'the export button is offered for an empty table');
+  });
+
+  /* ⚠ The Capacitor WebView has no download handler, so a blob link there
+     does nothing AT ALL — no error, no file. A button that silently fails
+     is worse than one that explains itself. */
+  /** Run the real plmSaveCsv and report what it did. */
+  function save(native) {
+    const dom = new JSDOM('<!doctype html><body></body>');
+    const seen = { clicks: 0, name: null, toast: 0, revoked: 0 };
+    const doc = dom.window.document;
+    const api = {
+      document: doc,
+      tbNativeShell: () => native,
+      _showPushToast: () => { seen.toast++; },
+      t: (k) => k,
+      Blob: function () { return {}; },
+      URL: { createObjectURL: () => 'blob:x',
+        revokeObjectURL: () => { seen.revoked++; } },
+      setTimeout: (fn) => { fn(); },
+      JSON, Object, String, Number, Array, Math, Date,
+    };
+    const origCreate = doc.createElement.bind(doc);
+    doc.createElement = function (tag) {
+      const el = origCreate(tag);
+      if (tag === 'a') {
+        el.click = function () { seen.clicks++; seen.name = el.getAttribute('download'); };
+      }
+      return el;
+    };
+    const SAVE = grab('  function plmSaveCsv(text, filename) {', '  function plmSectionHtml');
+    // eslint-disable-next-line no-new-func
+    seen.ret = new Function(...Object.keys(api),
+        SAVE + '\nreturn plmSaveCsv("a;b", "pes.csv");')(...Object.values(api));
+    return seen;
+  }
+
+  /* ⚠ The Capacitor WebView has no download handler, so a blob link there
+     does nothing AT ALL — no error, no file. A button that silently fails is
+     worse than one that explains itself.
+     ⚠ RUN, not read: the first version asserted that the shell check appears
+     before createObjectURL in the source, which stayed true when the check
+     was moved below the Blob. What matters is that nothing is clicked. */
+  it('says so on the phone instead of failing silently', () => {
+    const s = save(true);
+    assert.strictEqual(s.clicks, 0, 'the phone got a link that does nothing');
+    assert.strictEqual(s.toast, 1, 'nothing told the user why no file arrived');
+    assert.strictEqual(s.ret, false);
+  });
+
+  it('saves under the given name in a browser', () => {
+    const s = save(false);
+    assert.strictEqual(s.clicks, 1, 'no download was started');
+    assert.strictEqual(s.name, 'pes.csv', 'the file was saved unnamed');
+    assert.strictEqual(s.ret, true);
+  });
+
+  it('frees the blob url, but not before the save has started', () => {
+    const save = grab('  function plmSaveCsv(text, filename) {', '  function plmSectionHtml');
+    assert.ok(/revokeObjectURL/.test(save), 'the blob url leaks for the life of the page');
+    assert.ok(/setTimeout\([\s\S]{0,80}revokeObjectURL/.test(save),
+        'revoking synchronously cancels the download in some browsers');
   });
 });
