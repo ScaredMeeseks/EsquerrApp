@@ -465,7 +465,9 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   font-size:.82rem; line-height:1.5;
 }
 .mock-note b { color:#FFD662; }
-.mock-shell { padding:1rem; background:#FBFAF7; }
+/* 2rem: .dashboard-content's real padding, not the -1rem the page pulled
+   before v246. See the note in build-convocatoria-preview.js. */
+.mock-shell { padding:2rem; background:#FBFAF7; }
 .mock-label {
   background:#FBFAF7; color:#99928B; padding:1.4rem 1.2rem .2rem;
   font-size:11px; letter-spacing:.16em; text-transform:uppercase;

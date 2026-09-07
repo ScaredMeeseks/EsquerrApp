@@ -186,6 +186,14 @@
     'cal.refresh_failed': { ca:'No s\'ha pogut actualitzar el calendari.', es:'No se ha podido actualizar el calendario.', en:'Could not refresh the calendar.' },
     'cal.from_fcf':       { ca:'Partit oficial, importat de la FCF', es:'Partido oficial, importado de la FCF', en:'Official fixture, imported from the FCF' },
     /* ── The month grid ── */
+    /* The page's own name, back in v247 now that every paper page opens
+       with the same band. `nav.calendar` is the sidebar item and is not
+       reused here on purpose: a sidebar label and a page title are free to
+       diverge, and tying them means one cannot be reworded without the
+       other moving too. */
+    'cal.title':          { ca:'Calendari', es:'Calendario', en:'Calendar' },
+    'cal.scope_1':        { ca:'activitat aquest mes', es:'actividad este mes', en:'activity this month' },
+    'cal.scope_n':        { ca:'activitats aquest mes', es:'actividades este mes', en:'activities this month' },
     'cal.today':          { ca:'Avui', es:'Hoy', en:'Today' },
     'cal.prev_month':     { ca:'Mes anterior', es:'Mes anterior', en:'Previous month' },
     'cal.next_month':     { ca:'Mes següent', es:'Mes siguiente', en:'Next month' },
@@ -478,6 +486,44 @@
     'actions.rpe_tooltip':   { ca:'Esforç percebut (0–10)', es:'Esfuerzo percibido (0–10)', en:'Rate of Perceived Exertion (0–10)' },
     'actions.minutes':       { ca:'Minuts', es:'Minutos', en:'Minutes' },
     'actions.availability':  { ca:'Disponibilitat?', es:'¿Disponibilidad?', en:'Availability?' },
+
+    // ── Accions, redesigned (v245) ──
+    'ac.todo_n':        { ca:'{n} coses per fer', es:'{n} cosas por hacer', en:'{n} things to do' },
+    'ac.rpe_pending':   { ca:'RPE pendent', es:'RPE pendiente', en:'RPE pending' },
+    'ac.extras_week':   { ca:'Extres aquesta setmana', es:'Extras esta semana', en:'Extras this week' },
+    'ac.extra_load':    { ca:'Càrrega extra', es:'Carga extra', en:'Extra load' },
+    'ac.pending':       { ca:'Pendent de tu', es:'Pendiente de ti', en:'Waiting on you' },
+    'ac.n_pending':     { ca:'{n} pendents', es:'{n} pendientes', en:'{n} pending' },
+    'ac.min':           { ca:'min', es:'min', en:'min' },
+    'ac.min_played':    { ca:'minuts jugats', es:'minutos jugados', en:'minutes played' },
+    'ac.scale_low':     { ca:'Molt suau', es:'Muy suave', en:'Very easy' },
+    'ac.scale_mid':     { ca:'Moderat', es:'Moderado', en:'Moderate' },
+    'ac.scale_high':    { ca:'Màxim', es:'Máximo', en:'Maximal' },
+    'ac.save':          { ca:'Desa', es:'Guardar', en:'Save' },
+    'ac.saved':         { ca:'RPE desat', es:'RPE guardado', en:'RPE saved' },
+    'ac.change':        { ca:'Canviar', es:'Cambiar', en:'Change' },
+    'ac.all_clear':     { ca:'Res pendent. Tot l\'RPE de la setmana està desat.', es:'Nada pendiente. Todo el RPE de la semana está guardado.', en:'Nothing pending. Every RPE this week is saved.' },
+    'ac.only_attended': { ca:'Només es demana l\'RPE de les sessions i els partits on has assistit. La resta no apareix aquí.', es:'Solo se pide el RPE de las sesiones y los partidos a los que has asistido. El resto no aparece aquí.', en:'You are only asked for the RPE of sessions and matches you attended. Nothing else appears here.' },
+    'ac.log_extra':     { ca:'Registrar entrenament extra', es:'Registrar entrenamiento extra', en:'Log extra training' },
+    'ac.outside':       { ca:'Fora de l\'equip', es:'Fuera del equipo', en:'Outside the team' },
+    'ac.date':          { ca:'Data', es:'Fecha', en:'Date' },
+    'ac.today':         { ca:'Avui', es:'Hoy', en:'Today' },
+    'ac.calendar':      { ca:'Calendari', es:'Calendario', en:'Calendar' },
+    'ac.type':          { ca:'Tipus', es:'Tipo', en:'Type' },
+    'ac.effort':        { ca:'Esforç percebut', es:'Esfuerzo percibido', en:'Perceived effort' },
+    'ac.pick_effort':   { ca:'Tria l\'esforç per registrar', es:'Elige el esfuerzo para registrar', en:'Pick an effort to log it' },
+    'ac.register':      { ca:'Registrar', es:'Registrar', en:'Log it' },
+    'ac.extras_logged': { ca:'Extres registrats', es:'Extras registrados', en:'Extras logged' },
+    'ac.n_month':       { ca:'{n} aquest mes', es:'{n} este mes', en:'{n} this month' },
+    'ac.no_extras':     { ca:'Cap extra registrat encara.', es:'Ningún extra registrado todavía.', en:'No extras logged yet.' },
+    'ac.extra':         { ca:'Extra', es:'Extra', en:'Extra' },
+    'ac.future_day':    { ca:'No pots registrar una sessió que encara no ha passat.', es:'No puedes registrar una sesión que todavía no ha ocurrido.', en:'You cannot log a session that has not happened yet.' },
+    // The three kinds of extra. The STORED value is the key, so these follow
+    // the interface language; records written before v245 hold an English
+    // word and keep rendering it — see extraTagLabel().
+    'extra.gym':        { ca:'Gimnàs', es:'Gimnasio', en:'Gym' },
+    'extra.run':        { ca:'Córrer', es:'Correr', en:'Running' },
+    'extra.ball':       { ca:'Pilota', es:'Balón', en:'Ball work' },
 
     // ── Matches / Matchday ──
     'matches.upcoming':     { ca:'Propers partits', es:'Próximos partidos', en:'Upcoming Matches' },
@@ -869,6 +915,8 @@
     'cv.max_acta':       { ca:'Màxim 18 a l\'acta', es:'Máximo 18 en el acta', en:'18 max on the team sheet' },
     'cv.call_up':        { ca:'Convoca', es:'Convocar', en:'Call up' },
     'cv.drop_out':       { ca:'Treu de la convocatòria', es:'Quitar de la convocatoria', en:'Remove from the call-up' },
+    'cv.fig_available':  { ca:'Disponibles', es:'Disponibles', en:'Available' },
+    'cv.fig_noreply':    { ca:'Sense resposta', es:'Sin respuesta', en:'No reply' },
     'cv.all_called':     { ca:'Tots els jugadors disponibles estan convocats.', es:'Todos los jugadores disponibles están convocados.', en:'Every available player is called up.' },
     'cv.drag_here':      { ca:'Arrossega un jugador aquí per convocar-lo.', es:'Arrastra un jugador aquí para convocarlo.', en:'Drag a player here to call them up.' },
     'cv.none_called':    { ca:'Encara no hi ha ningú convocat.', es:'Todavía no hay nadie convocado.', en:'Nobody is called up yet.' },
@@ -1603,6 +1651,48 @@
     'notif.train_avail': { ca:'Disp. Entrenament', es:'Disp. Entrenamiento', en:'Training Avail' },
     'notif.match_avail': { ca:'Disp. Partit', es:'Disp. Partido', en:'Match Avail' },
 
+    /* ── Notificacions, redesigned (v245) ──
+       ⚠ The five `notif.*` labels above were DEAD before this: typeBadge()
+       hardcoded English strings and hex colours and never called t(), so the
+       page shipped "Training Avail" in every language. The badge reads `nf.b_*`
+       now, which is one label per BADGE — five types collapse to five badges,
+       and the availability pair is one word coloured by the answer. */
+    'nf.b_avail':        { ca:'Disponibilitat', es:'Disponibilidad', en:'Availability' },
+    'nf.b_rpe':          { ca:'RPE', es:'RPE', en:'RPE' },
+    'nf.b_injury':       { ca:'Lesió', es:'Lesión', en:'Injury' },
+    'nf.b_extra':        { ca:'Extra', es:'Extra', en:'Extra' },
+    'nf.b_registration': { ca:'Registre', es:'Registro', en:'Registration' },
+    'nf.self_report':    { ca:'Autoreport', es:'Autoreporte', en:'Self-report' },
+    'nf.staff_logged':   { ca:'Registrat pel cos tècnic', es:'Registrado por el cuerpo técnico', en:'Logged by staff' },
+    'nf.rpe_changed':    { ca:'Canviat ·', es:'Cambiado ·', en:'Changed ·' },
+    /* ⚠ "S'ha unit", not "sol·licitud pendent d'aprovació" — which is what the
+       handoff's sample row says. Joining this app is NOT a request: joinClub
+       validates the code against the club's roster email lists and grants
+       membership on the spot. A row promising an approval step the coach does
+       not have would be a lie about the product. */
+    'nf.reg_joined':     { ca:'S\'ha unit al club', es:'Se ha unido al club', en:'Joined the club' },
+    'nf.unread':         { ca:'Sense llegir', es:'Sin leer', en:'Unread' },
+    'nf.unread_only':    { ca:'Només sense llegir', es:'Solo sin leer', en:'Unread only' },
+    'nf.mark_all':       { ca:'Marca-ho tot com llegit', es:'Marcarlo todo como leído', en:'Mark everything read' },
+    'nf.mark_all_s':     { ca:'Marca-ho tot', es:'Marcarlo todo', en:'Mark all' },
+    'nf.activity':       { ca:'Activitat dels jugadors', es:'Actividad de los jugadores', en:'Player activity' },
+    'nf.hero':           { ca:'{n} sense llegir · accions dels jugadors de {scope}', es:'{n} sin leer · acciones de los jugadores de {scope}', en:'{n} unread · what the {scope} players did' },
+    'nf.hero_read':      { ca:'Tot llegit · accions dels jugadors de {scope}', es:'Todo leído · acciones de los jugadores de {scope}', en:'All read · what the {scope} players did' },
+    'nf.hero_phone':     { ca:'{a} sense llegir · {b} en total', es:'{a} sin leer · {b} en total', en:'{a} unread · {b} in total' },
+    'nf.hero_phone_read':{ ca:'Tot llegit', es:'Todo leído', en:'All read' },
+    'nf.count_line':     { ca:'{n} accions · les més recents primer', es:'{n} acciones · las más recientes primero', en:'{n} actions · most recent first' },
+    'nf.count_unread':   { ca:'{a} sense llegir de {b}', es:'{a} sin leer de {b}', en:'{a} unread of {b}' },
+    'nf.empty_unread':   { ca:'Res sense llegir a {scope}.', es:'Nada sin leer en {scope}.', en:'Nothing unread in {scope}.' },
+    'nf.empty_all':      { ca:'Cap acció registrada a {scope}.', es:'Ninguna acción registrada en {scope}.', en:'No actions recorded in {scope}.' },
+    'nf.footnote':       { ca:'El registre guarda les 200 últimes accions. Les més antigues es descarten.', es:'El registro guarda las 200 últimas acciones. Las más antiguas se descartan.', en:'The log keeps the last 200 actions. Older ones are dropped.' },
+    'nf.footnote_s':     { ca:'Les 200 últimes accions.', es:'Las 200 últimas acciones.', en:'The last 200 actions.' },
+    'nf.today':          { ca:'Avui', es:'Hoy', en:'Today' },
+    'nf.by_squad':       { ca:'Sense llegir per equip', es:'Sin leer por equipo', en:'Unread by squad' },
+    'nf.your_squads':    { ca:'Els teus equips', es:'Tus equipos', en:'Your squads' },
+    'nf.just_now':       { ca:'ara mateix', es:'ahora mismo', en:'just now' },
+    'nf.ago_min':        { ca:'fa {n} min', es:'hace {n} min', en:'{n} min ago' },
+    'nf.ago_h':          { ca:'fa {n} h', es:'hace {n} h', en:'{n} h ago' },
+    'nf.yesterday':      { ca:'ahir', es:'ayer', en:'yesterday' },
 
 
     // ── Settings ──
@@ -2484,7 +2574,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 244;
+  const APP_VERSION = 247;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2625,6 +2715,26 @@
      category won every time. See getCurrentCategory(). */
   var _viewCategory = null;
 
+  /* The squad letter, alongside the category and following it between pages
+     (v247). `'all'` means every squad of the current category; anything else
+     is a letter.
+
+     ⚠ ONE VARIABLE, SIX PAGES. Calendari, Plantilla, Convocatòria, Inici,
+     Mèdic and Notificacions each kept their own — `calTeamFilter`,
+     `rosterTeamFilter` and four more — and every one of them was justified
+     in its own comment only as "the same as the others". Nothing defended the
+     split, and two comments in this file argue the opposite way:
+     renderCategoryBar praises the case where one variable feeds two controls,
+     and renderCalendar says outright that "two controls for one piece of
+     state is how they end up disagreeing". Registracions had already gone
+     wrong from it — it READ the roster's letter while drawing no chip of its
+     own, so a squad picked on Plantilla silently filtered a different page.
+
+     ⚠ `stdTeamFilter` is NOT one of these and stays separate: it is a `Set`
+     for multi-select and it answers a different question — which squads a
+     training session is FOR, not which squad the viewer is looking at. */
+  var _viewSquad = 'all';
+
   /**
    * The categories this user is allowed to look at.
    *
@@ -2732,6 +2842,35 @@
     return '';
   }
 
+  /**
+   * The squad letter on screen — `'all'`, or one of the current category's
+   * letters.
+   *
+   * ⚠ IT CLAMPS ON READ, and that is the point of having a getter at all.
+   * Squad letters are per-category, so a 'B' chosen under amateur must not
+   * survive into a category that has no B: it would filter the whole page
+   * away with no lit control saying why. That used to be handled by resetting
+   * six variables in the category-bar click handler — which covered only the
+   * one path that goes through the bar, and left two holes it could not:
+   * `catBarLettersHtml` never validated the value it was asked to light, and
+   * `_clubConfig` loads async, so any render before it resolves sees the
+   * `['A']` fallback and can strand a letter. Clamping here closes both, and
+   * no write site has to remember anything.
+   */
+  function getCurrentSquad() {
+    if (_viewSquad === 'all') return 'all';
+    var cat = getCurrentCategory();
+    if (!cat) return 'all';   // "Totes" has no single squad list to pick from
+    return getTeamLetters(cat).indexOf(_viewSquad) === -1 ? 'all' : _viewSquad;
+  }
+
+  /** The squad as a FILTER VALUE: the letter, or null for "do not narrow".
+   *  Three pages had written `(curCat && x !== 'all') ? x : null` by hand. */
+  function currentSquadOrNull() {
+    var sq = getCurrentSquad();
+    return (getCurrentCategory() && sq !== 'all') ? sq : null;
+  }
+
   function renderCategoryBar() {
     var cats = getVisibleCategories();
     if (cats.length <= 1) return '';
@@ -2743,27 +2882,21 @@
     /* The squad letters, inline with the categories they belong to and
        revealed as one is picked.
 
-       Two pages, two different filters — the calendar's `calTeamFilter`
-       and the roster's `rosterTeamFilter`. The roster ALSO carries chips
-       beside its Jugadors heading, and the two sets stay in step for
-       free: both render from `rosterTeamFilter` and both write it, so
-       there is no second copy of the state to synchronise.
+       ⚠ ONE CALL, EVERY PAGE (v247). This was a six-armed ternary, one arm
+       per page, each reading that page's own filter variable — and a page
+       missing from the ternary got no chips at all. Registracions was:
+       it read the roster's letter and printed it in its own heading while
+       offering no control to change it, so a squad picked on Plantilla
+       silently narrowed a different page. `player-home`, `player-actions`
+       and `sancions` were missing too; they now get the chips like the rest,
+       which is what "the bar is above every page in CATEGORY_PAGES" was
+       always supposed to mean.
 
-       Mèdic joined them at v234. It used to draw its own chip row inside
-       the page, in the roster's borrowed `.roster-team-filter` markup, and
-       the redesign had no band left to hang it from — the handoff draws
-       exactly this bar above the hero. One filter, one place. */
-    var extra = currentPage === 'calendar'
-      ? catBarLettersHtml(calTeamFilter, 'data-cal-letter')
-      : currentPage === 'manage-roster'
-        ? catBarLettersHtml(rosterTeamFilter, 'data-roster-filter')
-        : currentPage === 'convocatoria'
-          ? catBarLettersHtml(convTeamFilter, 'data-conv-letter')
-          : currentPage === 'staff-home'
-            ? catBarLettersHtml(iniTeamFilter, 'data-ini-letter')
-            : currentPage === 'medical'
-              ? catBarLettersHtml(medicalTeamFilter, 'data-med-team') : '';
-    return '<div class="cat-bar">' + btns + extra + '</div>';
+       "One filter, one place" was already the stated principle here when
+       Mèdic's own chip row was deleted at v234. It just took until v247 to
+       apply it to the state as well as to the markup. */
+    return '<div class="cat-bar">' + btns +
+      catBarLettersHtml(getCurrentSquad(), 'data-squad-letter') + '</div>';
   }
 
   // ---------- Club helpers ----------
@@ -4009,6 +4142,23 @@
       saveUsers(users);
       // Sync team data between localStorage and Firestore
       if (club) await DB.init(club.clubId, getVisibleCategories());
+      /* Tell the coaching staff somebody joined (v245). Until now this was
+         the one thing a member could do that raised no notification at all:
+         a new name simply appeared on the roster, and the person who has to
+         give them a squad and a number found out by noticing.
+         ⚠ AFTER DB.init, not before — addStaffNotification writes into the
+         club-wide blob, and until the sync layer is pointed at this club the
+         write has nowhere to go. */
+      if (club) {
+        addStaffNotification({
+          type: 'registration',
+          uid: uid,
+          playerName: newUser.name || email,
+          detail: t('nf.reg_joined'),
+          activity: (newUser.roles || []).join(', ') || '',
+          page: 'registrations'
+        });
+      }
       e.target.reset();
       errEl.hidden = true;
       _authFlowBusy = false;
@@ -5763,17 +5913,13 @@
   let _pctAnimatedPage = '';
   let _donutAnimatedPage = '';
   let convSelectedMatchId = null;
-  /* The squad letter on the Convocatòria's category bar. The fourth of
-     these — after medicalTeamFilter, rosterTeamFilter and calTeamFilter —
-     and like all of them it is reset whenever the CATEGORY changes: letters
-     are defined per category, and a stale 'B' under a category with no B
-     would filter everything away with no visible control saying why. */
-  let convTeamFilter = 'all';
-  /* The squad letter on the staff Inici's category bar (v230). The fifth of
-     these, and reset with the category like the other four for the same
-     reason: a stale 'B' under a category with no B filters the whole page
-     away with no visible control saying why. */
-  let iniTeamFilter = 'all';
+  /* Convocatòria, Inici and Notificacions each kept their own squad letter
+     here, and Calendari, Plantilla and Mèdic kept three more elsewhere.
+     ⚠ THEY ARE ONE VARIABLE SINCE v247 — `_viewSquad`, beside
+     `_viewCategory`, read through getCurrentSquad(). See the note there.
+     `notifUnreadOnly` is a VIEW, not a filter on what may be SEEN — it does
+     not touch inMyNotifScope() or the sidebar badge, so it stays per-page. */
+  let notifUnreadOnly = false;
   let _mdEditingId = null; // tracks which saved match is being edited inline
   let detailMatchId = null;
   let detailMatchFrom = null;
@@ -6121,6 +6267,37 @@
   }
 
   /**
+   * Point `currentPage` at a detail page AND set the page-state variable that
+   * page reads for its subject. Does NOT render — the caller does that, so it
+   * can bail on a refusal without a wasted repaint.
+   *
+   * ⚠ ONE MAPPING, NOT TWO. Each detail page keeps its own module-level id
+   * (`detailTrainingId`, `detailMatchId`, …) and renders whatever it holds, so
+   * a link that navigates without setting one lands on the row that happened
+   * to be opened last — which looks like the app showing the wrong record
+   * rather than the link being wrong. Staff-home's shortcuts (v230) and the
+   * Notificacions feed (v245) both come through here for that reason.
+   *
+   * @returns {boolean} false when the viewer may not open the target, in
+   *   which case nothing was changed. `canViewPage` is the gate: staff-home is
+   *   visible to every sub-role but its shortcuts are not, and a delegate may
+   *   not open medical-detail.
+   */
+  function goToDetail(to, id) {
+    if (!to || !canViewPage(to)) return false;
+    if (to === 'staff-training-detail') detailTrainingId = id;
+    else if (to === 'match-detail') detailMatchId = Number(id);
+    else if (to === 'medical-detail') medicalDetailPlayerId = id;
+    else if (to === 'staff-player-stats') staffViewPlayerId = id;
+    /* The Inici "Convocatòria" button (v230). Arriving with no id would
+       land on whatever fixture the page had last selected, which is the
+       one thing a button labelled with a specific match must not do. */
+    else if (to === 'convocatoria') convSelectedMatchId = Number(id);
+    currentPage = to;
+    return true;
+  }
+
+  /**
    * Does this session read the club's schedule, or only their own?
    *
    * `canEditPage(...)` was standing in for this in several places and is not
@@ -6376,7 +6553,7 @@
       // which squad it was drawn for, and hiding two thirds of it behind a
       // filter they did not set is how a library stops being one. Search
       // narrows it instead, across name, coach and category together.
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions']);
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions', 'staff-notifications']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + renderPushBanner() +
         renderIosInstallBanner() + catBar + fn(session);
@@ -6451,6 +6628,8 @@
     if (currentPage === 'medical') bindMedical();
     if (currentPage === 'medical-detail') bindMedicalDetail();
     if (currentPage === 'my-stats' || currentPage === 'staff-player-stats') bindMyStatsInjuryPopup();
+    bindAccions();
+    bindNotifications();
 
     // Scroll RPE and UA charts to the right (most recent) by default
     content.querySelectorAll('.rpe-chart-scroll').forEach(el => { el.scrollLeft = el.scrollWidth; });
@@ -6477,170 +6656,339 @@
   // #region Player Pages & Actions
   // POS_COLORS, POS_ORDER, posRankGlobal, posCirclesHtmlGlobal → utils.js
 
-  function getPendingActionCount() {
-    const session = getSession();
-    if (!session) return 0;
-    const now = new Date();
+  /* ── Accions, redesigned (v245) ──────────────────────────────────
+     A task inbox, not a form page. The only things on it are the sessions
+     and matches the player ATTENDED and has not rated yet, plus the ones
+     they rated recently enough to still correct.
+
+     ⚠ AVAILABILITY IS NOT HERE ANY MORE. It used to carry match-availability
+     cards as well, which meant two pages asking the same question with two
+     different controls. Inici owns it — it draws the same `.mavail-*` pair
+     with a `.mavail-chosen` state that can be changed, which this page never
+     had. Nothing was lost by deleting the cards; the `.mavail-*` NAMES are
+     load-bearing in bindDynamicActions() and are untouched. */
+
+  /** How long after an activity a player may still correct their RPE.
+   *
+   *  ⚠ THE FIRST AND ONLY DEADLINE ON AN RPE. Before v245 answering was
+   *  one-way: the card vanished the moment a record existed and there was no
+   *  surface anywhere to see the number again, let alone change it — unlike
+   *  availability, which has had click-to-clear all along.
+   *
+   *  One day, not "for ever" and not "today only". The reminder fires at the
+   *  activity's own end, so a player answering it at 23:40 would have twenty
+   *  minutes to notice a typo; a week would mean the acute:chronic figure a
+   *  coach planned against last Tuesday can still change on Sunday. */
+  const RPE_EDIT_DAYS = 1;
+
+  /** End of the RPE window for an activity, as a timestamp. Local midnight
+   *  boundaries: built from the parts, never from Date.parse, which reads a
+   *  bare `YYYY-MM-DD` as UTC and would move the deadline by the offset. */
+  function rpeEditableUntil(dateStr) {
+    const p = String(dateStr || '').split('-');
+    if (p.length !== 3) return 0;
+    // Start of the day AFTER the last editable one, minus a millisecond.
+    return new Date(+p[0], +p[1] - 1, +p[2] + RPE_EDIT_DAYS + 1).getTime() - 1;
+  }
+  /** @param {string} dateStr the activity's date. @param {Date} [now] */
+  function rpeEditable(dateStr, now) {
+    const until = rpeEditableUntil(dateStr);
+    return !!until && (now || new Date()).getTime() <= until;
+  }
+
+  /* The three kinds of extra a player can log. The stored value is the KEY,
+     so the label follows the interface language — but records written before
+     v245 hold `Running`/`Cycling`/`Gym`/`Swimming` and must keep rendering as
+     what they say rather than as a missing translation. */
+  const AC_EXTRA_TAGS = ['gym', 'run', 'ball'];
+  function extraTagLabel(tag) {
+    if (!tag) return '';
+    return AC_EXTRA_TAGS.indexOf(tag) === -1 ? String(tag) : t('extra.' + tag);
+  }
+
+  /** Which band of the RPE ramp a value falls in: 1-3 easy, 4-6 moderate,
+      7-8 hard, 9-10 maximal. Returns the class suffix, not a colour — the
+      colours are `--pp-*` tokens and live in the stylesheet. */
+  function acRpeBand(rpe) {
+    const n = Number(rpe);
+    if (!isFinite(n) || n <= 0) return '';
+    if (n <= 3) return 'ok';
+    if (n <= 6) return 'warn';
+    if (n <= 8) return 'bad';
+    return 'red';
+  }
+
+  /** The rival's name — the player knows which side they were on. */
+  function acRival(m) {
+    return isOurTeam(m.home) ? (m.away || '') : (m.home || '');
+  }
+
+  /* How far back the page looks. Training had this bound and matches did
+     NOT, so an unanswered friendly from August sat on the page for ever
+     while the hero counted it as something to do today. */
+  const AC_RECENT = 5;
+
+  /**
+   * Everything the Accions page and its sidebar badge are built from.
+   *
+   * ⚠ ONE MODEL, TWO CONSUMERS. `getPendingActionCount()` used to keep its
+   * own copy of these filters for the badge, with a comment saying the two
+   * must agree — which is not a mechanism. They cannot disagree now.
+   *
+   * @param {Object} session @param {Date} [nowArg] injectable for tests
+   */
+  function playerActionModel(session, nowArg) {
+    const now = nowArg || new Date();
+    if (!session) return { rows: [], pending: 0, extras: [], extrasWeek: 0, loadWeek: 0 };
+
     /* Only the sessions this player is actually called to. This used to read
        the WHOLE club's calendar with no filter at all -- a juvenil player's
        page listed amateur sessions and let him answer availability for them
        -- and it is the same helper that makes a guest see the session he was
-       borrowed for. Narrowing and the new feature are one change.
+       borrowed for.
 
-       trainingOnly: this list becomes the RPE prompt, and nobody rates the
+       trainingOnly: this list is the RPE prompt, and nobody rates the
        exertion of a team dinner. */
     const training = playerTrainings(session, trainingOnly(getTrainings()));
     const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
     const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
     const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-    const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
-    const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
-    const completedTraining = training.filter(t => {
-      const done = sessionEndsAt(t);
-      return !!done && now >= done;
-    }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
-    const pt = completedTraining.filter(t => {
-      const eff = readRecord(staffOverrides, session.id, t, 'avail') ||
-        readRecord(availData, session.id, t, 'avail') || '';
-      if (eff === 'no' || eff === 'injured') return false;
-      return !readRecord(rpeData, session.id, t, 'rpe');
-    }).length;
-    const pm = matches.filter(m => {
-      const done = matchEndsAt(m);
-      if (!done || now < done) return false;
-      return !rpeData[session.id + '_match_' + m.id];
-    }).length;
-    const todayStr = now.toISOString().slice(0, 10);
-    const ma = matches.filter(m => {
-      if (!m.date) return false;
-      if (m.date < todayStr) return false;
-      if (sentData[m.id]) return false;
-      return !matchAvailData[session.id + '_' + m.id];
-    }).length;
-    return pt + pm + ma;
+
+    const rows = [];
+
+    training
+      .filter(tr => { const d = sessionEndsAt(tr); return !!d && now >= d; })
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+      .slice(0, AC_RECENT)
+      .forEach(tr => {
+        /* Someone who told the club they were not coming, or was hurt, is not
+           asked what it felt like. The staff override wins over the player's
+           own answer, as everywhere else. */
+        const eff = readRecord(staffOverrides, session.id, tr, 'avail') ||
+          readRecord(availData, session.id, tr, 'avail') || '';
+        if (eff === 'no' || eff === 'injured') return;
+        const rec = readRecord(rpeData, session.id, tr, 'rpe');
+        if (rec && !rpeEditable(tr.date, now)) return;
+        rows.push({
+          kind: 'training', id: String(tr.id),
+          key: recordKey(session.id, tr, 'rpe'),
+          date: tr.date, time: tr.time || '',
+          title: tr.focus || t('activity.badge_training'),
+          place: tr.location || '',
+          /* Pre-filled with the session's own length — the coach set an
+             endTime, so asking the player to work it out again is a step
+             with no information in it. Still editable: he may have left
+             early. On a match it is derived from the starting XI and the
+             substitutions, and is NULL when there is no line-up to derive
+             from rather than a guess. */
+          minutes: rec ? rec.minutes : sessionMinutes(tr),
+          minutesMax: ACTION_MINUTES_MAX,
+          rpe: rec ? rec.rpe : null
+        });
+      });
+
+    matches
+      .filter(m => { const d = matchEndsAt(m); return !!d && now >= d; })
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+      .slice(0, AC_RECENT)
+      .forEach(m => {
+        const key = session.id + '_match_' + m.id;
+        const rec = rpeData[key];
+        if (rec && !rpeEditable(m.date, now)) return;
+        rows.push({
+          kind: 'match', id: String(m.id), key,
+          date: m.date, time: m.time || '',
+          title: acRival(m), place: '',
+          minutes: rec ? rec.minutes : playerMatchMinutesKnown(session.id, m.id),
+          minutesMax: MATCH_MINUTES_MAX,
+          rpe: rec ? rec.rpe : null
+        });
+      });
+
+    /* ⚠ UNANSWERED FIRST, then by date. The section is called "Pendent de
+       tu": a row that is already answered sitting at the top of it, because
+       it happens to be the most recent, contradicts the heading. Within each
+       group the newest is first, which is what the handoff draws. */
+    rows.sort((a, b) => (a.rpe == null ? 0 : 1) - (b.rpe == null ? 0 : 1) ||
+      (b.date || '').localeCompare(a.date || ''));
+
+    /* The extras the player logged. ⚠ These were READ into a variable and
+       never rendered — `#extra-training-list` shipped empty and was only ever
+       filled at runtime by the Add button, so a logged extra disappeared on
+       the next render and the page said the player had done none. */
+    const extras = Object.keys(rpeData)
+      .filter(k => k.indexOf(session.id + '_extra_') === 0)
+      .map(k => Object.assign({ key: k }, rpeData[k]))
+      .filter(e => e && e.date)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+    /* "This week" is the SEASON week, the same boundary the load engine
+       aggregates on — so the figure in the hero and the bar on the coach's
+       chart can never be about different weeks. */
+    const wk = getSeasonWeek(localDateStr(now));
+    const thisWeek = extras.filter(e => getSeasonWeek(e.date) === wk);
+
+    return {
+      rows,
+      pending: rows.filter(r => r.rpe == null).length,
+      extras,
+      extrasWeek: thisWeek.length,
+      loadWeek: thisWeek.reduce((s, e) => s + (Number(e.minutes) || 0), 0)
+    };
+  }
+
+  function getPendingActionCount() {
+    return playerActionModel(getSession()).pending;
+  }
+
+  /** The 1-10 answer strip. Ten cells on the wide frame, a scroll wheel on
+      the phone — SAME MARKUP, the breakpoint chooses which reading of it is
+      drawn, so the two cannot offer different values. */
+  function acRpeStrip(row) {
+    let cells = '';
+    for (let i = 1; i <= 10; i++) {
+      const on = Number(row.rpe) === i;
+      cells += '<button type="button" class="ac-cell' + (on ? ' ac-cell-on ac-band-' + acRpeBand(i) : '') +
+        '" data-ac-rpe="' + i + '">' + i + '</button>';
+    }
+    /* ⚠ THE SCALE IS A CHILD OF THE STRIP'S COLUMN, not its sibling. As two
+       siblings inside the row's flex, `space-between` had nothing to spread
+       across — the caption sized itself to its own text and rendered
+       "MOLT SUAUMODERATMÀXIM" as one word beside the cells. */
+    return '<div class="ac-answer-col">' +
+      '<div class="ac-strip' + (row.rpe == null ? '' : ' ac-strip-set') +
+        '" data-ac-key="' + sanitize(row.key) + '">' + cells + '</div>' +
+      '<div class="ac-scale">' +
+        '<span>' + sanitize(t('ac.scale_low')) + '</span>' +
+        '<span>' + sanitize(t('ac.scale_mid')) + '</span>' +
+        '<span>' + sanitize(t('ac.scale_high')) + '</span>' +
+      '</div></div>';
+  }
+
+  /** One pending or recently-answered activity. */
+  function acRowHtml(row, editing) {
+    const answered = row.rpe != null && !editing;
+    const band = acRpeBand(row.rpe);
+    const meta = '<span class="ac-time">' + sanitize(row.time) + '</span>' +
+      '<input type="text" inputmode="numeric" class="reg-input ac-min action-minutes" maxlength="3"' +
+        ' data-max="' + row.minutesMax + '" value="' + (row.minutes == null ? '' : row.minutes) + '"' +
+        ' aria-label="' + sanitize(t('actions.minutes')) + '">' +
+      '<span class="ac-meta-t">' + sanitize(row.kind === 'match' ? t('ac.min_played') : t('ac.min')) + '</span>' +
+      (row.place ? '<span class="ac-meta-t">· ' + sanitize(row.place) + '</span>' : '');
+
+    return '<div class="ac-row' + (answered ? ' ac-row-done' : '') + '"' +
+        ' data-action-type="' + row.kind + '" data-action-key="' + sanitize(row.key) + '"' +
+        ' data-ac-title="' + sanitize(row.title) + '" data-ac-when="' + sanitize(row.date) + '">' +
+      '<span class="ac-date"><span class="ac-dow">' + sanitize(tDayShort(new Date(row.date + 'T12:00:00').getDay())) +
+        '</span><span class="ac-dd ac-num">' + sanitize(String(Number(row.date.slice(8, 10)))) + '</span></span>' +
+      '<span class="ac-bar ac-bar-' + row.kind + '"></span>' +
+      '<span class="ac-body">' +
+        '<span class="ac-title-row"><span class="ac-title">' + sanitize(row.title) + '</span>' +
+          '<span class="ac-kind">' + sanitize(row.kind === 'match' ? t('activity.badge_match') : t('activity.badge_training')) + '</span></span>' +
+        '<span class="ac-meta">' + meta + '</span>' +
+      '</span>' +
+      (answered
+        ? '<span class="ac-done">' +
+            '<span class="ac-done-l">' + sanitize(t('ac.saved')) + '</span>' +
+            '<span class="ac-done-v ac-band-' + band + ' ac-num">' + sanitize(String(row.rpe)) + '</span>' +
+            '<button type="button" class="ac-change" data-ac-change="' + sanitize(row.key) + '">' +
+              sanitize(t('ac.change')) + '</button>' +
+          '</span>'
+        : '<span class="ac-answer">' + acRpeStrip(row) +
+            '<button type="button" class="ac-save" data-ac-save="' + sanitize(row.key) + '">' +
+              sanitize(t('ac.save')) + '</button></span>') +
+    '</div>';
+  }
+
+  function acExtrasHtml(extras) {
+    if (!extras.length) return '<p class="ac-empty-s">' + sanitize(t('ac.no_extras')) + '</p>';
+    return extras.map(e =>
+      '<div class="ac-ex-row">' +
+        '<span class="ac-ex-what"><span class="ac-ex-tag">' + sanitize(extraTagLabel(e.tag)) + '</span>' +
+          '<span class="ac-ex-meta ac-num">' + sanitize(tDayDDMM(e.date)) + ' · ' +
+            sanitize(String(e.minutes || 0)) + ' min</span></span>' +
+        '<span class="ac-ex-l">' + sanitize(t('ac.extra')) + '</span>' +
+        '<span class="ac-ex-rpe ac-band-' + acRpeBand(e.rpe) + ' ac-num">' + sanitize(String(e.rpe)) + '</span>' +
+      '</div>').join('');
+  }
+
+  /** The Entrenament extra form — the rail on the wide frame, a bottom sheet
+      on the phone. One builder; `.ac-sheet` is the phone's wrapper. */
+  function acExtraFormHtml() {
+    const today = localDateStr(new Date());
+    return '<div class="ac-form" id="ac-extra-form">' +
+      '<div class="ac-f-row">' +
+        '<label class="ac-f"><span class="ac-lbl">' + sanitize(t('ac.date')) + '</span>' +
+          '<span class="ac-date-pick"><span class="ac-date-txt" id="ac-date-txt">' +
+            sanitize(t('ac.today') + ', ' + tDateLong(today)) + '</span>' +
+            '<input type="hidden" id="ac-date" value="' + today + '">' +
+            '<button type="button" class="ac-cal-btn" id="ac-cal-btn">' + sanitize(t('ac.calendar')) + '</button>' +
+          '</span></label>' +
+        '<label class="ac-f ac-f-min"><span class="ac-lbl">' + sanitize(t('actions.minutes')) + '</span>' +
+          '<input type="text" inputmode="numeric" class="reg-input ac-min-x" id="ac-x-min" maxlength="3" value="60"></label>' +
+      '</div>' +
+      '<div class="ac-cal" id="ac-cal" hidden></div>' +
+      '<div class="ac-f"><span class="ac-lbl">' + sanitize(t('ac.type')) + '</span>' +
+        '<span class="ac-pills">' + AC_EXTRA_TAGS.map((tag, i) =>
+          '<button type="button" class="ac-pill' + (i === 0 ? ' ac-pill-on' : '') +
+            '" data-ac-tag="' + tag + '">' + sanitize(t('extra.' + tag)) + '</button>').join('') +
+      '</span></div>' +
+      '<div class="ac-f"><span class="ac-lbl">' + sanitize(t('ac.effort')) + '</span>' +
+        acRpeStrip({ key: '__extra__', rpe: null }) + '</div>' +
+      '<button type="button" class="ac-submit" id="ac-x-submit" disabled>' +
+        sanitize(t('ac.pick_effort')) + '</button>' +
+    '</div>';
   }
 
   function renderPlayerActions() {
     const session = getSession();
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    /* Only the sessions this player is actually called to. This used to read
-       the WHOLE club's calendar with no filter at all -- a juvenil player's
-       page listed amateur sessions and let him answer availability for them
-       -- and it is the same helper that makes a guest see the session he was
-       borrowed for. Narrowing and the new feature are one change.
+    const model = playerActionModel(session, now);
 
-       trainingOnly: this list becomes the RPE prompt, and nobody rates the
-       exertion of a team dinner. Must agree with getPendingActionCount
-       above, or the badge counts a card the page does not render. */
-    const training = playerTrainings(session, trainingOnly(getTrainings()));
-    const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-    const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
-    const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
+    const rowsHtml = model.rows.length
+      ? model.rows.map(r => acRowHtml(r, false)).join('')
+      : '<div class="ac-clear"><span class="ac-clear-dot"></span>' +
+          '<span>' + sanitize(t('ac.all_clear')) + '</span></div>';
 
-    /* Pending training: the last 5 sessions that have ENDED.
-       This asked for start + 90 min flat, which is now the fallback inside
-       sessionWindow rather than the rule. It has to agree with the server:
-       scheduledRpeReminder pushes "log your RPE" at the session's end, and
-       a 30-minute session would otherwise be chased an hour before the app
-       offered anywhere to answer. */
-    const completedTraining = training.filter(t => {
-      const done = sessionEndsAt(t);
-      return !!done && now >= done;
-    }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
-
-    const pendingTraining = completedTraining.filter(t => {
-      const eff = readRecord(staffOverrides, session.id, t, 'avail') ||
-        readRecord(availData, session.id, t, 'avail') || '';
-      if (eff === 'no' || eff === 'injured') return false;
-      return !readRecord(rpeData, session.id, t, 'rpe');
-    });
-
-    // Pending matches: DEFAULT_MATCH_MINS (2h) after kick-off
-    const pendingMatches = matches.filter(m => {
-      const readyAt = matchEndsAt(m);
-      if (!readyAt || now < readyAt) return false;
-      const key = session.id + '_match_' + m.id;
-      return !rpeData[key];
-    });
-
-    // Pending match availability: future, conv not sent, no answer yet
-    const pendingMatchAvail = matches.filter(m => {
-      if (!m.date) return false;
-      if (m.date < todayStr) return false;
-      if (sentData[m.id]) return false;
-      return !matchAvailData[session.id + '_' + m.id];
-    }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-
-    // Extra trainings already logged
-    const extras = Object.keys(rpeData)
-      .filter(k => k.startsWith(session.id + '_extra_'))
-      .map(k => rpeData[k]);
-
-    let pendingHtml = '';
-    pendingTraining.forEach(tr => {
-      /* Pre-filled with the session's own length — the coach set an
-         endTime, so asking the player to work it out again is a step with
-         no information in it. Still editable: he may have left early. */
-      const trMins = sessionMinutes(tr);
-      pendingHtml += `<div class="action-card" data-action-type="training" data-action-key="${sanitize(recordKey(session.id, tr, 'rpe'))}">
-        <div class="action-header"><span class="badge badge-green">${t('activity.badge_training')}</span><span class="action-date">${tDayDDMM(tr.date)} · ${tr.time}</span></div>
-        <div class="action-label">${sanitize(tr.focus || t('activity.badge_training'))}</div>
-        <div class="action-form">
-          <div class="action-field"><label data-tooltip="${t('actions.rpe_tooltip')}">${t('actions.rpe')}</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3" data-max="${ACTION_MINUTES_MAX}" value="${trMins == null ? '' : trMins}"></div>
-          <button class="btn btn-primary btn-small action-submit">${t('btn.submit')}</button>
-        </div>
-      </div>`;
-    });
-    pendingMatches.forEach(m => {
-      /* Minutes played, derived from the starting XI and the substitution
-         events — the club already records them, so the player should not
-         be retyping what the coach entered. NULL (blank) when there is no
-         line-up to derive from; see playerMatchMinutesKnown. */
-      const mMins = playerMatchMinutesKnown(session.id, m.id);
-      pendingHtml += `<div class="action-card" data-action-type="match" data-action-key="${session.id}_match_${m.id}">
-        <div class="action-header"><span class="badge badge-yellow">${t('activity.badge_match')}</span><span class="action-date">${tDayDDMM(m.date)} · ${m.time}</span></div>
-        <div class="action-label">${matchLabel(m)}</div>
-        <div class="action-form">
-          <div class="action-field"><label data-tooltip="${t('actions.rpe_tooltip')}">${t('actions.rpe')}</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-          <div class="action-field"><label>${t('actions.minutes')}</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3" data-max="${MATCH_MINUTES_MAX}" value="${mMins == null ? '' : mMins}"></div>
-          <button class="btn btn-primary btn-small action-submit">${t('btn.submit')}</button>
-        </div>
-      </div>`;
-    });
-
-    // Availability cards for matches
-    pendingMatchAvail.forEach(m => {
-      pendingHtml += `<div class="action-card action-avail-card" data-avail-type="match" data-mavail-match="${m.id}">
-        <div class="action-header"><span class="badge badge-yellow">${t('activity.badge_match')}</span><span class="action-date">${tDayDDMM(m.date)} · ${m.time || ''}</span></div>
-        <div class="action-label">${matchLabel(m)}</div>
-        <div class="action-avail-prompt">${t('actions.availability')}</div>
-        <div class="mavail-btns" data-mavail-match="${m.id}">
-          <button class="mavail-btn mavail-disp" data-mavail="disponible">${t('avail.disponible')}</button>
-          <button class="mavail-btn mavail-nodisp" data-mavail="no_disponible">${t('avail.no_disponible')}</button>
-        </div>
-      </div>`;
-    });
-
-    if (!pendingHtml) pendingHtml = '<p style="color:var(--text-secondary)">' + t('actions.no_pending') + '</p>';
-    const pendingCount = pendingTraining.length + pendingMatches.length + pendingMatchAvail.length;
-
-    return `
-      <h2 class="page-title">${t('page.actions')}</h2>
-      <div class="card">
-        <div class="card-title">${t('actions.pending')}${pendingCount ? ' (' + pendingCount + ')' : ''}</div>
-        ${pendingHtml}
-      </div>
-      <div class="card">
-        <div class="card-title">${t('actions.extra_training')}</div>
-        <div id="extra-training-list"></div>
-        <button class="btn btn-outline btn-small" id="btn-add-extra" style="margin-top:.75rem;">${t('actions.add_extra')}</button>
-      </div>`;
+    return '<div class="ac-page" id="ac-page">' +
+      '<div class="ac-hero">' +
+        '<div class="ac-hero-l">' +
+          '<h1 class="ac-h1">' + sanitize(t('page.actions')) + '</h1>' +
+          '<span class="ac-hero-sub">' +
+            sanitize(tv('ac.todo_n', { n: model.pending }) + ' · ' + tDateLong(localDateStr(now))) +
+          '</span>' +
+        '</div>' +
+        '<div class="ac-figs">' +
+          '<div class="ac-fig"><span class="ac-lbl">' + sanitize(t('ac.rpe_pending')) + '</span>' +
+            '<span class="ac-fig-v ac-num ' + (model.pending ? 'ac-v-red' : 'ac-v-ok') + '">' +
+              model.pending + '</span></div>' +
+          '<div class="ac-fig"><span class="ac-lbl">' + sanitize(t('ac.extras_week')) + '</span>' +
+            '<span class="ac-fig-v ac-num">' + model.extrasWeek + '</span></div>' +
+          '<div class="ac-fig ac-fig-load"><span class="ac-lbl">' + sanitize(t('ac.extra_load')) + '</span>' +
+            '<span class="ac-fig-v ac-num">' + model.loadWeek + '</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ac-body">' +
+        '<div class="ac-main">' +
+          '<div class="ac-sec"><span class="ac-sec-l">' + sanitize(t('ac.pending')) + '</span>' +
+            '<span class="ac-sec-r' + (model.pending ? ' ac-v-red' : '') + '">' +
+              sanitize(tv('ac.n_pending', { n: model.pending })) + '</span></div>' +
+          rowsHtml +
+          '<p class="ac-note">' + sanitize(t('ac.only_attended')) + '</p>' +
+          '<button type="button" class="ac-sheet-open" id="ac-sheet-open">' +
+            sanitize(t('ac.log_extra')) + '</button>' +
+        '</div>' +
+        '<div class="ac-rail">' +
+          '<div class="ac-sec"><span class="ac-sec-l">' + sanitize(t('actions.extra_training')) + '</span>' +
+            '<span class="ac-sec-r">' + sanitize(t('ac.outside')) + '</span></div>' +
+          acExtraFormHtml() +
+          '<div class="ac-sec ac-sec-2"><span class="ac-sec-l">' + sanitize(t('ac.extras_logged')) + '</span>' +
+            '<span class="ac-sec-r">' + sanitize(tv('ac.n_month', { n: model.extras.length })) + '</span></div>' +
+          '<div class="ac-ex-list">' + acExtrasHtml(model.extras) + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }
 
   // #endregion Player Pages & Actions
@@ -23618,7 +23966,6 @@
         chips.join('') + '</div>' : ''));
   }
 
-  let rosterTeamFilter = 'all';
   /* ── Player metrics (v236) ──
      Which metric each of the two views is showing, and how. Module vars
      beside the other Plantilla state, so a re-render restores them.
@@ -23632,9 +23979,13 @@
   let _plmSecMetric = null;
   let _plmSecMode = 'chart';
   let _plmOut = new Set();
+  /* ⚠ NOT one of the six that became `_viewSquad` at v247. This is a
+     multi-select `Set`, and it answers a different question: which squads a
+     training session is FOR, not which squad the viewer is looking at. */
   let stdTeamFilter = null; // null = all, Set of letters = multi-select
-  // Which team's sessions the staff training LIST shows. null = all of them.
-  let trainingTeamFilter = null;
+  /* `trainingTeamFilter` was here. It was written twice and READ NOWHERE —
+     dead since whatever read it was last rewritten — so v247 deleted it
+     rather than carrying it into the shared variable. */
   let staffViewPlayerId = null;
   /* ── Staff home ─────────────────────────────────────────────
      The coach's landing page. Deliberately NOT renderWeekActivities():
@@ -23809,7 +24160,7 @@
        "Totes" there is no letter set to narrow by — B means a different
        squad in every category — so the chips are not rendered and this
        stays null, exactly as the Convocatòria's filter does. */
-    const catLetter = (curCat && iniTeamFilter !== 'all') ? iniTeamFilter : null;
+    const catLetter = currentSquadOrNull();
     const players = users.filter(u => (u.roles || []).includes('player'))
         // Same rule the roster uses: an uncategorised player belongs to
         // Registrations, not to somebody else's squad.
@@ -24058,7 +24409,7 @@
      used to sit next to it (all / injured / recovering / fit) is gone: the
      handoff's rail lists all 22 players with their state, which is the same
      answer without a control to set wrong. */
-  let medicalTeamFilter = 'all';
+  /* `medicalTeamFilter` was here; it is `_viewSquad` since v247. */
   let medicalPastExpanded = true;
 
   /* ═══════════════════════════════════════════════════════════
@@ -24972,7 +25323,7 @@
     const ro = !canEditPage('player-metrics');
     const u = getUsers().find(function (x) { return String(x.id) === String(r.id); }) || {};
     const cat = u.category || getCurrentCategory();
-    const letter = u.team || (rosterTeamFilter === 'all' ? '' : rosterTeamFilter);
+    const letter = u.team || ((currentSquadOrNull() || ''));
     const all = getPlayerMetrics();
     const opts = plmOptionsFor(r.id, cat, letter, all);
     if (!opts.length) return '';
@@ -25206,7 +25557,7 @@
 
   function plmSectionHtml(players, catSpan) {
     const cat = getCurrentCategory();
-    const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+    const letter = (currentSquadOrNull() || '');
     const all = getPlayerMetrics();
     const inSquad = {};
     players.forEach(function (p) { inSquad[String(p.id)] = p; });
@@ -25456,7 +25807,7 @@
         const m = plmMatrix(players, slug, all);
         if (!m.ranked.length) return;
         const cat = getCurrentCategory();
-        const letter = rosterTeamFilter === 'all' ? '' : rosterTeamFilter;
+        const letter = (currentSquadOrNull() || '');
         /* The squad's own definition first, so the sheet is labelled with
            the name and unit on screen. A slug the squad does not define —
            a promoted player's old test — has neither, and falls back to
@@ -25596,7 +25947,7 @@
        squad whatever the filter says, and that is the squad his new metric
        belongs to. */
     const cat = p.category || getCurrentCategory();
-    const letter = p.team || (rosterTeamFilter === 'all' ? '' : rosterTeamFilter);
+    const letter = p.team || ((currentSquadOrNull() || ''));
     const squad = metricsForSquad(cat, letter);
     /* A definition still needs BOTH. An unassigned player has neither, and a
        row saved with no category is routed to the `__none` shard — which
@@ -25884,7 +26235,7 @@
          roster. Registrations is where they get assigned; they do not
          belong in another category's squad list. */
       .filter(function (u) { return !curCat || (u.category || '') === curCat; })
-      .filter(function (u) { return rosterTeamFilter === 'all' || (u.team || '') === rosterTeamFilter; });
+      .filter(function (u) { return !currentSquadOrNull() || (u.team || '') === currentSquadOrNull(); });
   }
 
   function renderStaffRoster() {
@@ -25942,7 +26293,7 @@
     var teamChips = letters.length <= 1 ? '' :
       '<div class="pl-chips">' +
       ['all'].concat(letters).map(function (l) {
-        var on = rosterTeamFilter === l ? ' pl-chip-on' : '';
+        var on = getCurrentSquad() === l ? ' pl-chip-on' : '';
         return '<button class="pl-chip' + on + '" data-roster-filter="' + l + '">' +
           (l === 'all' ? t('common.all') : l) + '</button>';
       }).join('') + '</div>';
@@ -25953,7 +26304,7 @@
        uppercase-the-first-letter would still be wrong for two of the six
        categories, as well as duplicating a table that already exists. */
     var title = [curCat ? (CATEGORY_LABELS[curCat] || curCat) : t('common.all'),
-      rosterTeamFilter !== 'all' ? rosterTeamFilter : ''].filter(Boolean).join(' ');
+      (currentSquadOrNull() || '')].filter(Boolean).join(' ');
     /* The season label from its start date, not a stored field: the
        season boundary lives in seasonStartStr and this must not be a
        second opinion about when a season begins. */
@@ -25970,23 +26321,52 @@
               teamSessions.length + ' ' + t('pl.sessions_l') + ' ' + t('pl.and') + ' ' +
               teamWeeks.length + ' ' + t('pl.weeks_of_load') + '</div>' +
           '</div>' +
+          /* ⚠ The four figures live INSIDE the band now (v247), on its right,
+             where every other paper page puts them. They used to be their own
+             block below it, `.pl-figures`, with its own rule under them —
+             which is the same content one row lower and one rule richer. */
+          '<div class="pl-figures">' +
+            '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.available') + '</span>' +
+              '<span class="pl-fig-v">' + nFit + ' <span class="pl-fig-of">' + t('pl.of') + ' ' +
+              rows.length + '</span></span></div>' +
+            '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.at_risk') + '</span>' +
+              '<span class="pl-fig-v pl-fig-risk">' + nRisk + '</span></div>' +
+            '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.avg_ready') + '</span>' +
+              '<span class="pl-fig-v">' + avgReady + '</span></div>' +
+            '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.team_acwr') + '</span>' +
+              '<span class="pl-fig-v">' + teamAc + '</span></div>' +
+          '</div>' +
+          /* ⚠ The attendance donut is the band's last figure (v247.3). It was
+             the first thing under the band, alone on a row of its own that
+             held nothing else — a 84px ring and four legend lines using a
+             full-width strip to say what the four numbers beside it say in
+             the same breath. It is the same question the other figures answer
+             ("how is the squad, right now"), so it belongs in the same row.
+
+             It stays its own element rather than becoming a fifth `.pl-fig`:
+             a figure is an eyebrow over one number, and this is an eyebrow
+             over a legend and a ring. `.pl-att` already declared `flex: none`
+             and `align-items: center`, which is exactly what a band member
+             needs — the only thing it gains is the bottom alignment the row
+             gives it.
+
+             ⚠ 56px HERE, 84 IN THE RAIL, and the difference is the point.
+             At 84 the ring made this band 145px against every other paper
+             page's 125 — which undoes the one-height ask the band was built
+             for in the first place. The rail is a column with nothing to
+             match, so it keeps the larger ring. The legend goes 2×2 in the
+             band for the same reason; four stacked rows are 78px on their
+             own. */
           '<div class="pl-att">' +
             '<div class="pl-att-col"><span class="pl-eyebrow">' + t('pl.attendance') + '</span>' +
               plDonutLegendHtml(att, false) + '</div>' +
-            plDonutHtml(att, 84) +
+            plDonutHtml(att, 56) +
           '</div>' +
         '</div>' +
-        '<div class="pl-figures">' +
-          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.available') + '</span>' +
-            '<span class="pl-fig-v">' + nFit + ' <span class="pl-fig-of">' + t('pl.of') + ' ' +
-            rows.length + '</span></span></div>' +
-          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.at_risk') + '</span>' +
-            '<span class="pl-fig-v pl-fig-risk">' + nRisk + '</span></div>' +
-          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.avg_ready') + '</span>' +
-            '<span class="pl-fig-v">' + avgReady + '</span></div>' +
-          '<div class="pl-fig"><span class="pl-eyebrow">' + t('pl.team_acwr') + '</span>' +
-            '<span class="pl-fig-v">' + teamAc + '</span></div>' +
-        '</div>' +
+        /* ⚠ `.pl-body` wraps EVERYTHING under the band, not just the donut,
+           and it is what carries the 40px inset — `.pl-main` used to, which
+           is what stopped the band reaching the page's edges (v247.2). */
+        '<div class="pl-body">' +
         '<div class="pl-charts">' +
           plChartBox('S', plRpeChartHtml, teamSessions) +
           plChartBox('W', plWeekChartHtml, teamWeeks) +
@@ -26000,6 +26380,7 @@
            whatever array happened to be in scope. */
         plRosterTableHtml(rows, !sel, catSpanOf(players)) +
         plmSectionHtml(players, catSpanOf(players)) +
+        '</div>' +
       '</div>' +
       (sel ? plRailHtml(sel) : '') +
       '</div>';
@@ -26419,11 +26800,10 @@
 
   function calReset() { calMonth = null; }
 
-  /* Which squad of the chosen category the calendar is showing, or 'all'.
-     Reset whenever the category changes — a letter means nothing in a
-     category that does not have it. The cat-bar handler does that, beside
-     the two filters that already needed the same treatment. */
-  let calTeamFilter = 'all';
+  /* `calTeamFilter` was here. Its comment said "reset whenever the category
+     changes — a letter means nothing in a category that does not have it",
+     which is exactly what getCurrentSquad() now does for every page at once,
+     by clamping on READ rather than by remembering to reset on write. */
 
   /**
    * The squad chips, for the category bar.
@@ -26465,9 +26845,9 @@
    * `team` wrapped, or nothing.
    */
   function calInFilter(letters) {
-    if (calTeamFilter === 'all') return true;
+    if (getCurrentSquad() === 'all') return true;
     var own = (letters || []).filter(Boolean);
-    return !own.length || own.indexOf(calTeamFilter) !== -1;
+    return !own.length || own.indexOf(getCurrentSquad()) !== -1;
   }
 
   /* The resize listener outlives any one render, so its guard and its
@@ -27226,30 +27606,72 @@
        them: the app already renders a category bar above every page in
        CATEGORY_PAGES, and two controls for one piece of state is how they
        end up disagreeing. */
-    /* NO page title and NO card around it.
 
-       "Calendari" was a heading over a page that fills the whole pane and
-       is already named twice — by the lit sidebar item and by the category
-       bar above it — and the white frame was a border drawn around
-       something with nothing beside it. Between them they cost a heading's
-       line, its 1.5rem margin, and a border's padding on all four sides.
-       The month label is the heading now.
+    /* ⚠ v247: THE PAGE HAS A TITLE AGAIN.
 
-       The bar keeps its bottom rule, which was doing the separating all
-       along; the card was only ever holding it. */
+       It had none since v221, and the comment that stood here argued the
+       trade honestly: "Calendari" was a heading over a page that fills the
+       pane and is already named by the lit sidebar item, so the month label
+       was made the heading and the line was saved. What changed is the rest
+       of the app — every other paper page now opens with the same white
+       band, and a Calendari that started cold on a filter strip was the one
+       page whose top did not match. A heading that costs a line is worth it
+       when eight siblings pay the same line; it was not when it was alone.
+
+       The card stays gone. That half of the old comment is untouched: the
+       band's bottom rule does the separating, and no frame is drawn around
+       a page with nothing beside it.
+
+       The scope line is the same sentence Plantilla's band carries —
+       CATEGORY_LABELS for the accents and the capital, then the squad if
+       one is picked — followed by what the month actually holds. Ghost
+       slots are NOT counted: they are the placeholders for a training
+       nobody has confirmed yet, so counting them would promise activities
+       that do not exist. */
+    const scopeName = [curCat ? (CATEGORY_LABELS[curCat] || curCat) : t('common.all'),
+      (currentSquadOrNull() || '')].filter(Boolean).join(' ');
+    const nAct = dates.reduce(function (n, d) {
+      if (d.slice(0, 7) !== monthPrefix) return n;
+      return n + (byDate[d] || []).filter(function (b) { return b.kind !== 'ghost'; }).length;
+    }, 0);
+    /* The count OUTSIDE the t() call, the way `.pl-sub` already builds its
+       line — not a `{n}` inside the phrase. It reads the same in all three
+       languages, and it keeps the number a number rather than something only
+       a lookup can produce. */
+    const scope = sanitize(scopeName) + ' · ' + nAct + ' ' +
+      sanitize(t(nAct === 1 ? 'cal.scope_1' : 'cal.scope_n'));
+
+    /* ⚠ The two banners stay OUTSIDE `.cal-page`. The root's `:first-child`
+       arm pulls a different top margin when nothing precedes it, and a
+       banner tucked inside would both lose its own bleed and make the arm
+       mis-fire on the page it is supposed to sit above. */
     return (ctx.canEdit ? '' : viewOnlyBanner()) +
       calDraftsBannerHtml(ctx) +
-      '<div class="cal-bar">' +
-        '<div class="cal-bar-l">' +
-          '<button class="cal-arrow" data-cal-shift="-1" title="' + sanitize(t('cal.prev_month')) + '">‹</button>' +
-          '<span class="cal-month">' + sanitize(tMonth(v.m)) + ' ' + v.y + '</span>' +
-          '<button class="cal-arrow" data-cal-shift="1" title="' + sanitize(t('cal.next_month')) + '">›</button>' +
-          '<button class="btn btn-outline btn-small" id="btn-cal-today">' + sanitize(t('cal.today')) + '</button>' +
-          loadLegend +
+      '<div class="cal-page">' +
+        '<div class="cal-hero">' +
+          '<div class="cal-hero-l">' +
+            '<h1 class="cal-h1">' + sanitize(t('cal.title')) + '</h1>' +
+            '<div class="cal-sub">' + scope + '</div>' +
+          '</div>' +
+          /* The month navigator is this band's right-hand side — the slot
+             every other page fills with figures. It is the one control the
+             page cannot be read without, so it goes where the eye already
+             goes for the page's numbers. */
+          '<div class="cal-hero-r">' +
+            '<button class="cal-arrow" data-cal-shift="-1" title="' + sanitize(t('cal.prev_month')) + '">‹</button>' +
+            '<span class="cal-month">' + sanitize(tMonth(v.m)) + ' ' + v.y + '</span>' +
+            '<button class="cal-arrow" data-cal-shift="1" title="' + sanitize(t('cal.next_month')) + '">›</button>' +
+            '<button class="btn btn-outline btn-small" id="btn-cal-today">' + sanitize(t('cal.today')) + '</button>' +
+          '</div>' +
         '</div>' +
-        '<div class="cal-bar-r">' + kindLegend + refreshBtn + '</div>' +
-      '</div>' +
-      '<div class="cal-weeks">' + weeks + '</div>';
+        /* What is left of the old bar is the two legends and the refresh —
+           a thin strip under the band, which is what they were always for. */
+        '<div class="cal-bar">' +
+          '<div class="cal-bar-l">' + loadLegend + kindLegend + '</div>' +
+          '<div class="cal-bar-r">' + refreshBtn + '</div>' +
+        '</div>' +
+        '<div class="cal-weeks">' + weeks + '</div>' +
+      '</div>';
   }
 
   // #endregion Calendar
@@ -27834,7 +28256,7 @@
        A row with NO letter belongs to every squad, the rule calInFilter
        already encodes for the calendar. A B-team fixture and an
        unassigned player both have to survive the 'B' chip. */
-    var convLetter = (curCat && convTeamFilter !== 'all') ? convTeamFilter : null;
+    var convLetter = currentSquadOrNull();
     var inLetter = function (l) { return !convLetter || !l || l === convLetter; };
     var matches = allMatches.filter(function (m) {
       return (!m.category || allowedCats.indexOf(m.category) !== -1) &&
@@ -28155,18 +28577,36 @@
       '</div>';
 
     const overLimit = called.length > 18;
+    /* Nobody has answered yet — the same `available` rows the list draws, so
+       the figure cannot drift from what is on screen under it. */
+    const nNoReply = available.filter((p) => availOf(p).key === 'none').length;
     return '<div class="cv-page' + (ro ? ' cv-page-ro' : '') + '" id="cv-page">' +
-      (ro ? viewOnlyBanner() : '') +
+      /* ⚠ The banner moved BELOW the band at v247.2. It used to open the page,
+         above the title — which was fine while the root held the inset and
+         nothing bled, and is not now: a full-bleed white band under a banner
+         reads as the banner belonging to the page above it. */
       '<div class="cv-head">' +
         '<div class="cv-head-l">' +
           '<h1 class="cv-h1">' + t('page.convocatoria') + '</h1>' +
           '<div class="cv-sub">' + t('cv.intro') + '</div>' +
         '</div>' +
+        /* ⚠ Three figures now, in a row, like every other paper page's band
+           (v247). Convocats was alone here in a stacked column. Disponibles
+           and Sense resposta are counted off the same `available` list the
+           column below renders, so the band and the list cannot disagree. */
         '<div class="cv-head-r">' +
-          '<span class="cv-eyebrow">' + t('conv.called_up') + '</span>' +
-          '<span class="cv-big' + (overLimit ? ' cv-over' : '') + '">' + called.length + '</span>' +
+          '<div class="cv-fig"><span class="cv-eyebrow">' + t('conv.called_up') + '</span>' +
+            '<span class="cv-big' + (overLimit ? ' cv-over' : '') + '">' + called.length + '</span></div>' +
+          '<div class="cv-fig"><span class="cv-eyebrow">' + t('cv.fig_available') + '</span>' +
+            '<span class="cv-fig-v">' + available.length + '</span></div>' +
+          '<div class="cv-fig"><span class="cv-eyebrow">' + t('cv.fig_noreply') + '</span>' +
+            '<span class="cv-fig-v">' + nNoReply + '</span></div>' +
         '</div>' +
       '</div>' +
+      /* ⚠ The wrapper carries the 40px, never `.cv-page` — a root holding the
+         inset is what stopped the band reaching the page's edges. */
+      '<div class="cv-body">' +
+      (ro ? viewOnlyBanner() : '') +
       '<div class="cv-controls">' +
         '<div class="cv-ctl cv-ctl-match">' +
           '<span class="cv-eyebrow">' + t('conv.choose_match') + '</span>' +
@@ -28200,6 +28640,7 @@
         '</div>' +
       '</div>' +
       boardsBand + videosBand + footer +
+      '</div>' +
       '</div>';
   }
 
@@ -28530,6 +28971,14 @@
       var cut = key.indexOf('-');
       var cat = key.slice(0, cut), letter = key.slice(cut + 1);
       if (curCat && cat !== curCat) return;
+      /* ⚠ And by the squad, which it never did. The letter was parsed out of
+         the key and stamped onto every row, and then not used — so with a
+         squad chosen, "membres actius" narrowed and "convidats sense compte"
+         did not, and the two figures side by side were counting different
+         populations. The chips only reached this page at v247; before that
+         nobody could see the disagreement. */
+      var sq = currentSquadOrNull();
+      if (sq && letter !== sq) return;
       ['playerEmails', 'staffEmails'].forEach(function (field) {
         ((rosters[key] || {})[field] || []).forEach(function (raw) {
           var em = normalizeEmail(raw);
@@ -28896,7 +29345,7 @@
     var members = users.filter(function (u) {
       if (!(u.category || '')) return false;
       if (curCat && (u.category || '') !== curCat) return false;
-      if (rosterTeamFilter !== 'all' && (u.team || '') !== rosterTeamFilter) return false;
+      if (currentSquadOrNull() && (u.team || '') !== currentSquadOrNull()) return false;
       return true;
     }).sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
 
@@ -28911,15 +29360,20 @@
 
     var title = [t('page.registrations'),
       curCat ? (CATEGORY_LABELS[curCat] || curCat) : '',
-      rosterTeamFilter !== 'all' ? rosterTeamFilter : ''].filter(Boolean).join(' · ');
+      (currentSquadOrNull() || '')].filter(Boolean).join(' · ');
 
     var nInv = invited.length;
     return '<div class="reg2-page" id="reg2-page">' +
       '<div class="reg2-title-row">' +
-        '<h1 class="reg2-h1">' + sanitize(title) + '</h1>' +
-        '<div class="reg2-sub-line">' + t('reg2.intro') + '</div>' +
-      '</div>' +
-      '<div class="reg2-figures">' +
+        /* ⚠ Title and figures are ONE band since v247 — the three counts sit
+           on its right like every other paper page, not in a strip below it.
+           The column wrapper is new: the h1 and the intro line need to stack
+           against the figures rather than beside them. */
+        '<div class="reg2-title-col">' +
+          '<h1 class="reg2-h1">' + sanitize(title) + '</h1>' +
+          '<div class="reg2-sub-line">' + t('reg2.intro') + '</div>' +
+        '</div>' +
+        '<div class="reg2-figures">' +
         /* The figure labels get their own class. `.reg2-eyebrow` is the
            SECTION heading now — bold, in the ink — and these are small
            faint captions over a big number; the same class cannot be
@@ -28931,18 +29385,24 @@
           '<span class="reg2-fig-v">' + members.length + '</span></div>' +
         '<div class="reg2-fig"><span class="reg2-fig-l">' + t('reg2.fig_invited') + '</span>' +
           '<span class="reg2-fig-v">' + nInv + '</span></div>' +
+        '</div>' +
       '</div>' +
-      (ro ? viewOnlyBanner() : '') +
-      '<div class="reg2-sec-head"><span class="reg2-eyebrow">' + t('reg2.invited_title') + '</span>' +
-        '<span class="reg2-note">' + nInv + ' ' +
-        (nInv === 1 ? t('reg2.wait_one') : t('reg2.wait_many')) + '</span></div>' +
-      regInviteHtml(letters, isLead, ro) +
-      regInvitedColsHtml(invited, ro) +
-      '<div class="reg2-sec-head reg2-sec-top"><span class="reg2-eyebrow">' +
-        t('reg2.pending_title') + '</span>' +
-        '<span class="reg2-note">' + t('reg2.pending_note') + '</span></div>' +
-      regPendingTableHtml(unplaced, rosters, taken, isLead, ro) +
-      regMembersTableHtml(members, rosters, taken, canEditRoles, isLead, ro) +
+      /* ⚠ Everything below the band is wrapped, and the wrapper carries the
+         40px — never `.reg2-page`. A root holding the inset is what stopped
+         the band reaching the page's edges (v247.2). */
+      '<div class="reg2-body">' +
+        (ro ? viewOnlyBanner() : '') +
+        '<div class="reg2-sec-head"><span class="reg2-eyebrow">' + t('reg2.invited_title') + '</span>' +
+          '<span class="reg2-note">' + nInv + ' ' +
+          (nInv === 1 ? t('reg2.wait_one') : t('reg2.wait_many')) + '</span></div>' +
+        regInviteHtml(letters, isLead, ro) +
+        regInvitedColsHtml(invited, ro) +
+        '<div class="reg2-sec-head reg2-sec-top"><span class="reg2-eyebrow">' +
+          t('reg2.pending_title') + '</span>' +
+          '<span class="reg2-note">' + t('reg2.pending_note') + '</span></div>' +
+        regPendingTableHtml(unplaced, rosters, taken, isLead, ro) +
+        regMembersTableHtml(members, rosters, taken, canEditRoles, isLead, ro) +
+      '</div>' +
       '</div>';
   }
 
@@ -33007,6 +33467,11 @@
   function saveStaffNotifications(list) {
     localStorage.setItem('fa_staff_notifications', JSON.stringify(list));
   }
+  /* The five things the v245 feed needs that a pre-v245 record does not have.
+     All five are OPTIONAL on read — see nfRow() and inMyNotifScope(). A record
+     written before this existed stays visible, unbadged by answer and
+     unlinked, which is the same contract `category` has had since it was
+     added. Hiding them would silently swallow real history. */
   function addStaffNotification(notif) {
     const list = getStaffNotifications();
     // Stamp who the notification is about so staff pages can scope by
@@ -33022,8 +33487,21 @@
       type: notif.type,
       uid: uid || '',
       category: (subject && subject.category) || '',
+      /* The squad letter, read off the subject exactly as the category is.
+         It is what the A/B filter and the per-squad rail count; without it a
+         row can only ever be filtered to its category. */
+      team: (subject && subject.team) || '',
       playerName: notif.playerName,
       detail: notif.detail,
+      /* The answer as a VALUE, so the Disponibilitat badge is coloured from
+         it rather than by parsing `detail` — which is a stored English
+         sentence and differs between the five writers. */
+      answer: notif.answer || '',
+      /* Where the action happened. `page` is a currentPage id and `pageId`
+         the row it belongs to, so opening a notification lands on the thing
+         it is about instead of the top of a list. */
+      page: notif.page || '',
+      pageId: notif.pageId == null ? '' : String(notif.pageId),
       activity: notif.activity,
       timestamp: new Date().toISOString(),
       read: false
@@ -33173,12 +33651,19 @@
       }, fields));
     }
 
+    /* ⚠ `injury`, not `training_avail`. A self-report used to be filed as an
+       availability answer whose `detail` happened to start with "Injured",
+       so the coach's feed badged the most urgent thing on it as the same kind
+       of event as "arribo tard". It is its own type since v245, and it points
+       at Mèdic, where the record it just created lives. */
     addStaffNotification({
-      type: 'training_avail',
+      type: 'injury',
       uid: session.id,
       playerName: session.name || '?',
-      detail: 'Injured' + (note ? ' – ' + note : ''),
-      activity: (sess.focus || 'Training') + ' (' + date + ')'
+      detail: t('nf.self_report') + (note ? ' · ' + note : ''),
+      activity: (sess.focus || t('activity.badge_training')) + ' (' + date + ')',
+      page: 'medical-detail',
+      pageId: session.id
     });
     renderPage(session);
     updateActionsBadge();
@@ -33490,7 +33975,7 @@
        sensitive page in the app; injuries carry no category of their own, so
        they are filtered through the player they belong to. */
     const curCat = getCurrentCategory();
-    const letter = (curCat && medicalTeamFilter !== 'all') ? medicalTeamFilter : null;
+    const letter = currentSquadOrNull();
     const players = users.filter(u => (u.roles || []).includes('player')
       && (!curCat || (u.category || '') === curCat)
       && (!letter || (u.team || '') === letter));
@@ -34213,7 +34698,7 @@
     const cat = getCurrentCategory();
     const players = users.filter(u => (u.roles || []).includes('player')
       && (!cat || (u.category || '') === cat)
-      && (medicalTeamFilter === 'all' || (u.team || '') === medicalTeamFilter))
+      && (!currentSquadOrNull() || (u.team || '') === currentSquadOrNull()))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const todayStr = localDateStr(new Date());
     const editing = injuryId ? getInjuries().find(i => i.id === injuryId) : null;
@@ -34507,11 +34992,13 @@
 
       if (!editing) {
         addStaffNotification({
-          type: 'training_avail',
+          type: 'injury',
           uid: u ? u.id : '',
           playerName: u ? u.name : '?',
-          detail: 'Injured – ' + fields.muscleGroup,
-          activity: 'Staff logged injury'
+          detail: groupLabelCa(fields.muscleGroup) || fields.muscleGroup,
+          activity: t('nf.staff_logged'),
+          page: 'medical-detail',
+          pageId: playerId
         });
       }
 
@@ -34725,6 +35212,232 @@
   }
 
   // ---------- My Stats Injury Hover Popup ----------
+  /* ── Accions binds (v245) ────────────────────────────────────────
+     ⚠ Gated on the page root, like bindMedical() and bindConvocatoria().
+     Everything below is scoped to `#ac-page`, so a stray `.ac-*` class
+     elsewhere cannot be bound by accident and this is a cheap no-op on every
+     other page.
+
+     The RPE strip and the phone's scroll wheel are ONE control: same markup,
+     same `.ac-cell-on`, and the breakpoint decides which reading of it is
+     painted. There is no second value to keep in step. */
+  function bindAccions() {
+    const page = document.getElementById('ac-page');
+    if (!page) return;
+
+    // Pick a value; picking the chosen one again clears it.
+    page.querySelectorAll('.ac-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const strip = cell.closest('.ac-strip');
+        const was = cell.classList.contains('ac-cell-on');
+        strip.classList.remove('ac-strip-err');
+        strip.querySelectorAll('.ac-cell').forEach(c => {
+          c.className = 'ac-cell';
+        });
+        strip.classList.toggle('ac-strip-set', !was);
+        if (!was) cell.className = 'ac-cell ac-cell-on ac-band-' + acRpeBand(cell.dataset.acRpe);
+        acSyncExtraSubmit();
+      });
+    });
+
+    /* ⚠ THE WHEEL EATS ITS OWN SCROLL. Without preventDefault the page moves
+       under the finger while the value changes, and on a phone that reads as
+       the app losing your place; without stopPropagation an ancestor scroller
+       does the same one level up. `passive: false` is required or
+       preventDefault is ignored. */
+    page.querySelectorAll('.ac-strip').forEach(strip => {
+      strip.addEventListener('wheel', (ev) => {
+        if (!window.matchMedia || !window.matchMedia('(max-width: 700px)').matches) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const cells = [].slice.call(strip.querySelectorAll('.ac-cell'));
+        const at = cells.findIndex(c => c.classList.contains('ac-cell-on'));
+        const next = Math.max(0, Math.min(cells.length - 1,
+            (at === -1 ? 0 : at) + (ev.deltaY > 0 ? 1 : -1)));
+        if (cells[next] && next !== at) cells[next].click();
+      }, { passive: false });
+    });
+
+    // `Canviar` — put the strip back, pre-filled with what was saved.
+    page.querySelectorAll('[data-ac-change]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('.ac-row');
+        const model = playerActionModel(getSession());
+        const r = model.rows.find(x => x.key === btn.dataset.acChange);
+        if (!r) return;
+        row.outerHTML = acRowHtml(r, true);
+        // Re-bind: the row that carried the listeners has been replaced.
+        bindAccions();
+      });
+    });
+
+    // The extra form's type pills.
+    page.querySelectorAll('[data-ac-tag]').forEach(pill => {
+      pill.addEventListener('click', () => {
+        page.querySelectorAll('[data-ac-tag]').forEach(p => p.classList.remove('ac-pill-on'));
+        pill.classList.add('ac-pill-on');
+      });
+    });
+
+    const xMin = document.getElementById('ac-x-min');
+    if (xMin) {
+      xMin.addEventListener('input', () => {
+        xMin.value = xMin.value.replace(/[^0-9]/g, '');
+        const v = parseInt(xMin.value, 10);
+        if (!isNaN(v) && v > ACTION_MINUTES_MAX) xMin.value = ACTION_MINUTES_MAX;
+        xMin.classList.remove('input-error');
+        acSyncExtraSubmit();
+      });
+    }
+
+    const calBtn = document.getElementById('ac-cal-btn');
+    if (calBtn) {
+      calBtn.addEventListener('click', () => {
+        const box = document.getElementById('ac-cal');
+        if (!box) return;
+        if (box.hidden) { acRenderCal(acCalMonth || localDateStr(new Date()).slice(0, 7)); }
+        box.hidden = !box.hidden;
+      });
+    }
+
+    const sheetBtn = document.getElementById('ac-sheet-open');
+    if (sheetBtn) {
+      sheetBtn.addEventListener('click', () => {
+        page.classList.toggle('ac-sheet-on');
+      });
+    }
+
+    acSyncExtraSubmit();
+  }
+
+  /** The submit button says what it is waiting for, and is disabled until it
+      has it — rather than accepting a click and failing silently. */
+  function acSyncExtraSubmit() {
+    const btn = document.getElementById('ac-x-submit');
+    if (!btn) return;
+    const form = document.getElementById('ac-extra-form');
+    const has = !!(form && form.querySelector('.ac-strip[data-ac-key="__extra__"] .ac-cell-on'));
+    btn.disabled = !has;
+    btn.textContent = has ? t('ac.register') : t('ac.pick_effort');
+  }
+
+  let acCalMonth = '';
+  /** The inline month grid. Monday first, today outlined, the selection
+   *  filled — and ⚠ EVERY FUTURE DAY DISABLED, with the forward arrow greyed
+   *  at the current month. A player cannot have trained tomorrow, and an RPE
+   *  dated forward would sit in the acute window as load nobody did. */
+  function acRenderCal(ym) {
+    const box = document.getElementById('ac-cal');
+    if (!box) return;
+    acCalMonth = ym;
+    const y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7));
+    const today = localDateStr(new Date());
+    const chosen = (document.getElementById('ac-date') || {}).value || '';
+    const first = new Date(y, m - 1, 1);
+    const lead = (first.getDay() + 6) % 7;           // Monday-first
+    const days = new Date(y, m, 0).getDate();
+    const atNow = ym >= today.slice(0, 7);
+
+    let cells = '';
+    for (let i = 0; i < lead; i++) cells += '<span class="ac-c-pad"></span>';
+    for (let d = 1; d <= days; d++) {
+      const iso = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const future = iso > today;
+      cells += '<button type="button" class="ac-c' +
+        (iso === today ? ' ac-c-today' : '') + (iso === chosen ? ' ac-c-on' : '') + '"' +
+        (future ? ' disabled' : ' data-ac-day="' + iso + '"') + '>' + d + '</button>';
+    }
+    box.innerHTML = '<div class="ac-cal-head">' +
+        '<button type="button" class="ac-cal-nav" data-ac-mon="-1">‹</button>' +
+        '<span class="ac-cal-t">' + sanitize(t('month.' + (m - 1)) + ' ' + y) + '</span>' +
+        '<button type="button" class="ac-cal-nav" data-ac-mon="1"' + (atNow ? ' disabled' : '') + '>›</button>' +
+      '</div><div class="ac-cal-grid">' + cells + '</div>';
+
+    box.querySelectorAll('[data-ac-day]').forEach(b => {
+      b.addEventListener('click', () => {
+        const iso = b.dataset.acDay;
+        document.getElementById('ac-date').value = iso;
+        document.getElementById('ac-date-txt').textContent =
+          (iso === today ? t('ac.today') + ', ' : '') + tDateLong(iso);
+        box.hidden = true;
+      });
+    });
+    box.querySelectorAll('[data-ac-mon]').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.disabled) return;
+        const d = new Date(y, m - 1 + Number(b.dataset.acMon), 1);
+        acRenderCal(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+      });
+    });
+  }
+
+  /* ── Notificacions binds (v245) ──────────────────────────────────
+     ⚠ Gated on `#nf-page` for the same reason as bindAccions().
+     ⚠ Every write goes back over the FULL list. The blob is club-wide and
+     saved whole, so writing the filtered array deletes every other
+     category's entries — which is the bug the old mark-all-on-render was
+     careful to avoid and this must stay careful about. */
+  function bindNotifications() {
+    const page = document.getElementById('nf-page');
+    if (!page) return;
+
+    function markRead(ids) {
+      if (!ids.length) return;
+      const all = getStaffNotifications();
+      const want = new Set(ids);
+      let moved = false;
+      all.forEach(n => { if (want.has(n.id) && !n.read) { n.read = true; moved = true; } });
+      if (!moved) return;
+      saveStaffNotifications(all);
+      updateStaffNotifBadge();
+    }
+
+    page.querySelectorAll('.nf-row-go').forEach(row => {
+      row.addEventListener('click', () => {
+        markRead([row.dataset.nfId]);
+        if (!goToDetail(row.dataset.nfPage, row.dataset.nfPid)) {
+          // Read, but nowhere to send them: repaint so the row loses its bar.
+          renderPage(getSession());
+          return;
+        }
+        renderPage(getSession());
+      });
+    });
+
+    const toggle = document.getElementById('nf-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        notifUnreadOnly = !notifUnreadOnly;
+        renderPage(getSession());
+      });
+    }
+
+    const markAll = document.getElementById('nf-mark-all');
+    if (markAll) {
+      markAll.addEventListener('click', () => {
+        if (markAll.disabled) return;
+        /* Only what the filter is pointed at. "Marca-ho tot" on Amateur A
+           must not silently clear Juvenil B, which the coach has not looked
+           at — the rail beside it is there to say those are still waiting. */
+        const cat = getCurrentCategory();
+        markRead(getStaffNotifications()
+            .filter(inMyNotifScope)
+            .filter(n => (!cat || !n.category || n.category === cat) && nfInLetter(n, getCurrentSquad()))
+            .filter(n => !n.read)
+            .map(n => n.id));
+        renderPage(getSession());
+      });
+    }
+
+    page.querySelectorAll('[data-nf-squad]').forEach(row => {
+      row.addEventListener('click', () => {
+        _viewCategory = row.dataset.nfSquad;
+        _viewSquad = row.dataset.nfLetter || 'all';
+        renderPage(getSession());
+      });
+    });
+  }
+
   function bindMyStatsInjuryPopup() {
     let popup = document.getElementById('mystats-body-popup');
     if (popup) popup.remove();
@@ -34801,67 +35514,198 @@
     }
   }
 
+  /* ── Notificacions, redesigned (v245) ────────────────────────────
+     A read-only feed of what the players did, scoped by the SAME category +
+     squad-letter filter as every other staff page — the shared `.cat-bar`.
+
+     ⚠ OPENING THE PAGE NO LONGER MARKS EVERYTHING READ. It used to, as a
+     side effect of rendering, which meant there was no way to leave a row
+     for later and the sidebar badge zeroed itself the moment anyone glanced
+     at the page. A row is marked read when it is OPENED now, and there is a
+     bulk action for the rest. That is what makes the unread count mean
+     something.
+
+     ⚠ EVERY WRITE GOES BACK OVER THE FULL LIST, never the filtered one. The
+     blob is club-wide and saved whole, so writing the visible array would
+     delete every other category's entries. */
+
+  /* One badge per kind of thing that happened. Five stored types collapse to
+     five badges — the two availability types are one word, coloured by the
+     ANSWER rather than by which page it was given on, because "no disponible"
+     and "arribo tard" are what a coach is scanning for, not the distinction
+     between a match and a session. Colour is a class, never a literal: the
+     values are `--pp-*` tokens in the stylesheet. */
+  const NF_BADGE = {
+    training_avail: { key: 'nf.b_avail', cls: 'nf-b-avail' },
+    match_avail:    { key: 'nf.b_avail', cls: 'nf-b-avail' },
+    training_rpe:   { key: 'nf.b_rpe', cls: 'nf-b-rpe' },
+    match_rpe:      { key: 'nf.b_rpe', cls: 'nf-b-rpe' },
+    injury:         { key: 'nf.b_injury', cls: 'nf-b-injury' },
+    extra_training: { key: 'nf.b_extra', cls: 'nf-b-extra' },
+    registration:   { key: 'nf.b_registration', cls: 'nf-b-reg' }
+  };
+  /* The availability badge's colour, from the stored answer. ⚠ From
+     `n.answer`, NOT from `n.detail`: detail is a sentence, it is stored in
+     whatever language the app was in when it was written, and the five
+     writers phrase it differently. A record from before v245 has no answer
+     and gets the neutral grey rather than a guess. */
+  const NF_ANSWER_CLS = {
+    yes: 'nf-a-ok', disponible: 'nf-a-ok',
+    late: 'nf-a-warn',
+    no: 'nf-a-off', no_disponible: 'nf-a-off', injured: 'nf-a-bad'
+  };
+
+  function nfBadgeHtml(n) {
+    const b = NF_BADGE[n.type];
+    if (!b) return '<span class="nf-badge nf-b-other">' + sanitize(n.type || '?') + '</span>';
+    const answer = (b.cls === 'nf-b-avail' && NF_ANSWER_CLS[n.answer]) || '';
+    return '<span class="nf-badge ' + b.cls + (answer ? ' ' + answer : '') + '">' +
+      sanitize(t(b.key)) + '</span>';
+  }
+
+  /** `fa 12 min`, `fa 3 h`, `ahir 22:10`, then the date. Relative while it is
+      still today, because "fa 12 min" is the thing a coach acts on. */
+  function nfTime(iso, nowArg) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const now = nowArg || new Date();
+    const mins = Math.floor((now.getTime() - d.getTime()) / 60000);
+    const hhmm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    if (mins < 1) return t('nf.just_now');
+    if (mins < 60) return tv('nf.ago_min', { n: mins });
+    if (localDateStr(d) === localDateStr(now)) return tv('nf.ago_h', { n: Math.floor(mins / 60) });
+    const yest = new Date(now.getTime() - 86400000);
+    if (localDateStr(d) === localDateStr(yest)) return t('nf.yesterday') + ' ' + hhmm;
+    return tDayDDMM(localDateStr(d)) + ' ' + hhmm;
+  }
+
+  /** Is this record in the squad the filter is pointed at?
+   *  ⚠ A record with no `team` (everything written before v245) passes every
+   *  letter filter rather than vanishing from all of them — the same contract
+   *  a missing `category` has had in inMyNotifScope() since it was added. */
+  function nfInLetter(n, letter) {
+    return !letter || letter === 'all' || !n.team || String(n.team) === String(letter);
+  }
+
   function renderStaffNotifications() {
     const all = getStaffNotifications();
-    const notifs = all.filter(inMyNotifScope);
-    // Track which are unread before marking
-    const unreadIds = new Set(notifs.filter(n => !n.read).map(n => n.id));
+    const now = new Date();
+    const cat = getCurrentCategory();
+    const scopeName = (cat ? (CATEGORY_LABELS[cat] || cat) : t('cat.all')) +
+      (getCurrentSquad() !== 'all' ? ' ' + getCurrentSquad() : '');
 
-    function fmtTs(iso) {
-      if (!iso) return '';
-      const d = new Date(iso);
-      const day = tDayShort(d.getDay()) + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
-      const time = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-      return day + ' ' + time;
-    }
-    function typeBadge(type) {
-      const map = {
-        'training_rpe': { label: 'Training RPE', bg: '#43a047' },
-        'match_rpe': { label: 'Match RPE', bg: '#f9a825', color: '#333' },
-        'extra_training': { label: 'Extra Training', bg: '#78909c' },
-        'training_avail': { label: 'Training Avail', bg: '#1e88e5' },
-        'match_avail': { label: 'Match Avail', bg: '#e53935' }
-      };
-      const m = map[type] || { label: type, bg: '#999' };
-      return `<span class="notif-type-badge" style="background:${m.bg};${m.color ? 'color:'+m.color : ''}">${sanitize(m.label)}</span>`;
-    }
+    /* Two filters, deliberately separate. `inMyNotifScope` is about what this
+       staff member is ALLOWED to see and drives the sidebar badge, so it must
+       not move when the bar is clicked; the category and letter below are the
+       view. */
+    const mine = all.filter(inMyNotifScope);
+    const inScope = mine.filter(n =>
+      (!cat || !n.category || n.category === cat) && nfInLetter(n, getCurrentSquad()));
 
-    let rows = '';
-    if (!notifs.length) {
-      rows = '<p style="color:var(--text-secondary);padding:1rem 0;">' + t('notif.no_notif') + '</p>';
-    } else {
-      notifs.forEach(n => {
-        const isNew = unreadIds.has(n.id);
-        rows += `<div class="notif-row${isNew ? ' notif-new' : ''}">
-          <div class="notif-row-top">
-            ${typeBadge(n.type)}
-            <span class="notif-player">${sanitize(n.playerName || '?')}</span>
-            <span class="notif-time">${fmtTs(n.timestamp)}</span>
-          </div>
-          <div class="notif-row-detail">${sanitize(n.activity || '')}${n.detail ? ' — ' + sanitize(n.detail) : ''}</div>
-        </div>`;
-      });
-    }
+    const unread = inScope.filter(n => !n.read).length;
+    const visible = notifUnreadOnly ? inScope.filter(n => !n.read) : inScope;
 
-    const html = `<h2 class="page-title">${t('page.notifications')}</h2>
-      <div class="card">
-        <div class="notif-header">
-          <span class="card-title" style="margin-bottom:0;">${t('notif.all')}</span>
-          ${notifs.length ? '<button class="btn btn-small btn-outline" id="btn-clear-notifs">Clear All</button>' : ''}
-        </div>
-        ${rows}
-      </div>`;
+    const rows = visible.map(n => {
+      const canOpen = n.page && canViewPage(n.page);
+      return '<' + (canOpen ? 'button type="button"' : 'div') +
+          ' class="nf-row' + (n.read ? '' : ' nf-row-new') + (canOpen ? ' nf-row-go' : '') + '"' +
+          ' data-nf-id="' + sanitize(n.id) + '"' +
+          (canOpen ? ' data-nf-page="' + sanitize(n.page) + '" data-nf-pid="' + sanitize(n.pageId || '') + '"' : '') + '>' +
+        '<span class="nf-bar"></span>' +
+        nfBadgeHtml(n) +
+        '<span class="nf-pos" style="background:' +
+          (POS_COLORS[nfPosOf(n)] || 'var(--pp-neutral)') + '">' + sanitize(nfPosOf(n)) + '</span>' +
+        '<span class="nf-name">' + sanitize(n.playerName || '?') + '</span>' +
+        '<span class="nf-detail">' + sanitize([n.detail, n.activity].filter(Boolean).join(' · ')) + '</span>' +
+        '<span class="nf-time ac-num">' + sanitize(nfTime(n.timestamp, now)) + '</span>' +
+      '</' + (canOpen ? 'button' : 'div') + '>';
+    }).join('');
 
-    // Mark as read after building HTML — only the ones actually shown, and
-    // written back over the FULL list (this blob is club-wide and saved
-    // whole, so writing the filtered array would delete everyone else's).
-    if (unreadIds.size) {
-      all.forEach(n => { if (unreadIds.has(n.id)) n.read = true; });
-      saveStaffNotifications(all);
-      updateStaffNotifBadge();
-    }
+    /* Counts by badge, today only — the rail answers "what has happened
+       today", not "what is in the log". */
+    const today = localDateStr(now);
+    const counts = {};
+    inScope.forEach(n => {
+      if (localDateStr(new Date(n.timestamp)) !== today) return;
+      const b = NF_BADGE[n.type];
+      if (b) counts[b.key] = (counts[b.key] || 0) + 1;
+    });
+    const byType = ['nf.b_avail', 'nf.b_rpe', 'nf.b_injury', 'nf.b_extra', 'nf.b_registration']
+      .filter(k => counts[k])
+      .map(k => '<div class="nf-t-row"><span class="nf-dot nf-dot-' +
+        k.slice(5) + '"></span><span class="nf-t-l">' + sanitize(t(k)) +
+        '</span><span class="nf-t-n ac-num">' + counts[k] + '</span></div>').join('');
 
-    return html;
+    /* Unread per squad, over everything this member may see — so a coach can
+       tell that the OTHER squad is the one waiting on them. */
+    const squads = [];
+    getVisibleCategories().forEach(c => {
+      getTeamLetters(c).forEach(l => squads.push({ cat: c, letter: l }));
+    });
+    const bySquad = squads.map(s => {
+      const n = mine.filter(x => !x.read && x.category === s.cat && nfInLetter(x, s.letter)).length;
+      const on = s.cat === cat && s.letter === getCurrentSquad();
+      const label = (CATEGORY_LABELS[s.cat] || s.cat) + ' ' + s.letter;
+      return '<button type="button" class="nf-s-row' + (on ? ' nf-s-on' : '') +
+        '" data-nf-squad="' + sanitize(s.cat) + '" data-nf-letter="' + sanitize(s.letter) + '">' +
+        '<span class="nf-s-l">' + sanitize(label) + '</span>' +
+        '<span class="nf-s-n ac-num' + (n ? ' nf-s-unread' : '') + '">' + n + '</span></button>';
+    }).join('');
+
+    return '<div class="nf-page" id="nf-page">' +
+      '<div class="nf-hero">' +
+        '<div class="nf-hero-l">' +
+          '<h1 class="nf-h1">' + sanitize(t('page.notifications')) + '</h1>' +
+          '<span class="nf-hero-sub">' + sanitize(unread
+            ? tv('nf.hero', { n: unread, scope: scopeName })
+            : tv('nf.hero_read', { scope: scopeName })) + '</span>' +
+        '</div>' +
+        '<div class="nf-hero-r">' +
+          '<div class="nf-fig"><span class="ac-lbl">' + sanitize(t('nf.unread')) + '</span>' +
+            '<span class="nf-fig-v ac-num ' + (unread ? 'ac-v-red' : 'ac-v-ok') + '">' + unread + '</span></div>' +
+          '<span class="nf-vrule"></span>' +
+          '<div class="nf-acts">' +
+            '<button type="button" class="nf-toggle' + (notifUnreadOnly ? ' nf-toggle-on' : '') +
+              '" id="nf-toggle">' + sanitize(t('nf.unread_only')) + '</button>' +
+            '<button type="button" class="nf-mark" id="nf-mark-all"' + (unread ? '' : ' disabled') + '>' +
+              '<span class="nf-mark-l">' + sanitize(t('nf.mark_all')) + '</span>' +
+              '<span class="nf-mark-s">' + sanitize(t('nf.mark_all_s')) + '</span></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="nf-body">' +
+        '<div class="nf-main">' +
+          '<div class="ac-sec"><span class="ac-sec-l">' + sanitize(t('nf.activity')) + '</span>' +
+            '<span class="ac-sec-r">' + sanitize(notifUnreadOnly
+              ? tv('nf.count_unread', { a: visible.length, b: inScope.length })
+              : tv('nf.count_line', { n: inScope.length })) + '</span></div>' +
+          (rows || '<div class="ac-clear"><span class="ac-clear-dot"></span><span>' +
+            sanitize(tv(notifUnreadOnly ? 'nf.empty_unread' : 'nf.empty_all', { scope: scopeName })) +
+            '</span></div>') +
+          '<p class="ac-note">' + sanitize(t('nf.footnote')) + '</p>' +
+        '</div>' +
+        '<div class="nf-rail">' +
+          '<div class="ac-sec"><span class="ac-sec-l">' + sanitize(t('nf.today')) + '</span>' +
+            '<span class="ac-sec-r">' + sanitize(scopeName) + '</span></div>' +
+          (byType || '<p class="ac-empty-s">' + sanitize(t('nf.footnote_s')) + '</p>') +
+          '<div class="ac-sec ac-sec-2"><span class="ac-sec-l">' + sanitize(t('nf.by_squad')) + '</span>' +
+            '<span class="ac-sec-r">' + sanitize(t('nf.your_squads')) + '</span></div>' +
+          bySquad +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /** The position circle beside a name. The feed stores who a row is ABOUT
+      (`uid`), so the disc comes from the roster rather than being frozen into
+      the record — a player who changes position is drawn correctly in their
+      own history. Blank for a record with no uid. */
+  function nfPosOf(n) {
+    if (!n.uid) return '';
+    const u = getUsers().find(x => String(x.id) === String(n.uid));
+    const first = ((u && u.position) || '').split(',')[0].trim();
+    return first;
   }
 
   // #endregion Medical
@@ -34879,54 +35723,28 @@
         // not "tidy" this into a falsy check; see _viewCategory.
         var want = btn.dataset.cat || '';
         _viewCategory = (want && getVisibleCategories().indexOf(want) === -1) ? '' : want;
-        // Team letters are per-category, so a letter selected under the old
-        // category must not silently persist into one that may not have it.
-        medicalTeamFilter = 'all';
-        rosterTeamFilter = 'all';
-        calTeamFilter = 'all';
-        convTeamFilter = 'all';
-        iniTeamFilter = 'all';
+        /* ⚠ NO LETTER RESET HERE ANY MORE. This used to zero six variables,
+           because "a letter selected under the old category must not silently
+           persist into one that may not have it" — true, but this was only
+           the path that goes THROUGH the bar. getCurrentSquad() clamps on
+           read instead, which covers every path and also the two this never
+           did: a chip lit for a letter the category does not have, and a
+           render before `_clubConfig` resolves.
+           `stdTeamFilter` is a different question and keeps its own reset. */
         stdTeamFilter = null;
-        trainingTeamFilter = null;
         renderPage(getSession());
       });
     });
 
-    /* The squad chips that sit beside the categories on the calendar. Bound
-       here rather than in bindCalendar because they are part of the
-       category bar, which renderPage builds — bindCalendar only ever sees
-       what renderCalendar returned. */
-    $$('[data-cal-letter]').forEach(function (btn) {
+    /* The squad chips beside the categories. ONE binder for every page since
+       v247 — there were six, one per page, each five identical lines writing
+       its own variable, and any page missing from the set got no chips at
+       all. Bound here rather than in each page's own binder because the
+       chips are part of the category bar, which renderPage() builds: a page
+       binder only ever sees what that page's renderer returned. */
+    $$('[data-squad-letter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        calTeamFilter = btn.dataset.calLetter || 'all';
-        renderPage(getSession());
-      });
-    });
-
-    /* The same chips on the Convocatòria, and bound here for the same
-       reason: they are part of the category bar, which renderPage builds,
-       so bindConvocatoria never sees them. */
-    $$('[data-conv-letter]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        convTeamFilter = btn.dataset.convLetter || 'all';
-        renderPage(getSession());
-      });
-    });
-
-    // The same chips on the staff Inici, and for the same reason.
-    $$('[data-ini-letter]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        iniTeamFilter = btn.dataset.iniLetter || 'all';
-        renderPage(getSession());
-      });
-    });
-
-    /* And on Mèdic since v234. `data-med-team` is the attribute the page's
-       own chip row used before the redesign moved it onto this bar, kept so
-       nothing that reads it by name had to change. */
-    $$('[data-med-team]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        medicalTeamFilter = btn.dataset.medTeam || 'all';
+        _viewSquad = btn.dataset.squadLetter || 'all';
         renderPage(getSession());
       });
     });
@@ -35013,16 +35831,7 @@
         // the Out-of-action rows point at medical-detail, which a delegate may
         // not open. shomeLinkAttrs() already leaves the attribute off those
         // rows; this is the guard for anything that slips through.
-        if (!canViewPage(to)) return;
-        if (to === 'staff-training-detail') detailTrainingId = id;
-        else if (to === 'match-detail') detailMatchId = Number(id);
-        else if (to === 'medical-detail') medicalDetailPlayerId = id;
-        else if (to === 'staff-player-stats') staffViewPlayerId = id;
-        /* The Inici "Convocatòria" button (v230). Arriving with no id would
-           land on whatever fixture the page had last selected, which is the
-           one thing a button labelled with a specific match must not do. */
-        else if (to === 'convocatoria') convSelectedMatchId = Number(id);
-        currentPage = to;
+        if (!goToDetail(to, id)) return;
         renderPage(getSession());
       });
     });
@@ -35033,16 +35842,10 @@
        still reachable from the staff-home shortcuts, so nothing is
        lost — the roster simply stopped being a route into it. */
 
-    /* Training LIST team filter (single-select), same idiom as the roster
-       and medical filters. The detail page's own filter below is a
-       multi-select Set because there it narrows a squad, not a calendar. */
-    $$('[data-tr-team]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const val = btn.dataset.trTeam;
-        trainingTeamFilter = (val === 'all') ? null : val;
-        renderPage(getSession());
-      });
-    });
+    /* The training LIST team filter was here. It wrote `trainingTeamFilter`,
+       which NOTHING read — so the control re-rendered the page and changed
+       nothing at all. Both are deleted at v247 rather than wired up: a
+       control that looks like it filters and does not is worse than none. */
 
     // Training detail team filter (multi-select)
     $$('[data-std-team]').forEach(btn => {
@@ -35077,7 +35880,7 @@
     $$('[data-roster-filter]').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        rosterTeamFilter = btn.dataset.rosterFilter;
+        _viewSquad = btn.dataset.rosterFilter || 'all';
         /* The selection does not survive the filter: the player it
            names may not be in the new list, and plBuildRows drops a
            rail whose player is gone anyway. */
@@ -35146,14 +35949,21 @@
     });
 
     // Player actions: RPE submit
-    $$('.action-submit').forEach(btn => {
+    $$('.ac-save').forEach(btn => {
       btn.addEventListener('click', () => {
-        const card = btn.closest('.action-card');
-        const rpeInput = card.querySelector('.action-rpe');
+        const card = btn.closest('.ac-row');
+        /* The answer is a STRIP, not a text box: the chosen cell is the
+           value. Reading it back off the DOM rather than off a variable is
+           deliberate — the row is re-rendered on every sync, and a value
+           held in a closure would survive a repaint that cleared the cell
+           the player is looking at. */
+        const chosen = card.querySelector('.ac-cell-on');
         const minInput = card.querySelector('.action-minutes');
-        const rpe = parseInt(rpeInput.value, 10);
+        const rpe = chosen ? parseInt(chosen.dataset.acRpe, 10) : NaN;
         const minutes = parseInt(minInput.value, 10);
-        if (isNaN(rpe) || rpe < 0 || rpe > 10) { rpeInput.classList.add('input-error'); return; }
+        if (isNaN(rpe) || rpe < 1 || rpe > 10) {
+          card.querySelector('.ac-strip').classList.add('ac-strip-err'); return;
+        }
         /* The ceiling again at submit, not only on `input`. A value the
            form PRE-FILLED never fires an input event, and neither does an
            autofill — so the clamp above cannot be the only check. */
@@ -35184,17 +35994,29 @@
         }
         if (!activityDate) { const n = new Date(); activityDate = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0'); }
         const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
+        const wasAnswered = !!rpeData[key];
         rpeData[key] = { rpe, minutes, ua, tag, date: activityDate, sessionId };
         // Staff notification
         const session = getSession();
-        const actLabel = card.querySelector('.action-label');
-        const actDate = card.querySelector('.action-date');
-        const actText = (actLabel ? actLabel.textContent : '') + (actDate ? ' · ' + actDate.textContent : '');
+        /* The coach's feed line, from the row's OWN data rather than scraped
+           out of its rendered text. Scraping meant the notification changed
+           shape whenever the markup did, silently — and it did, twice. */
+        const actText = (card.dataset.acTitle || '') +
+          (card.dataset.acWhen ? ' (' + card.dataset.acWhen + ')' : '');
+        /* An EDIT files a second notification rather than amending the first
+           (v245). The coach's feed is a log of what happened, and "he said 7
+           and then said 5" is the thing worth seeing — silently rewriting the
+           row would leave the feed agreeing with the load engine while
+           telling nobody the number moved. `nfWasAnswered` is captured before
+           the write, so the wording is right for both cases. */
         addStaffNotification({
           type: tag === 'match' ? 'match_rpe' : 'training_rpe',
           playerName: session ? session.name : '?',
-          detail: 'RPE ' + rpe + ' · ' + minutes + ' min',
-          activity: actText
+          detail: (wasAnswered ? t('nf.rpe_changed') + ' ' : '') +
+            'RPE ' + rpe + ' · ' + minutes + ' min',
+          activity: actText,
+          page: tag === 'match' ? 'match-detail' : 'staff-training-detail',
+          pageId: tag === 'match' ? (key.split('_match_')[1] || '') : sessionId
         });
         // Re-render only once the server has acknowledged (or the write is queued)
         ackSaveRecord('rpe', key,
@@ -35206,96 +36028,52 @@
       });
     });
 
-    // Player actions: Add extra training
-    const addExtraBtn = document.getElementById('btn-add-extra');
-    if (addExtraBtn) {
-      addExtraBtn.addEventListener('click', () => {
-        const list = document.getElementById('extra-training-list');
-        if (!list) return;
-        const id = Date.now();
-        const html = `<div class="action-card" data-extra-id="${id}">
-          <div class="action-header"><span class="badge" style="background:#78909c;color:#fff;">Extra</span>
-            <select class="reg-input action-extra-tag" style="width:auto;font-size:.82rem;">
-              <option value="Running">Running</option>
-              <option value="Cycling">Cycling</option>
-              <option value="Gym">Gym</option>
-              <option value="Swimming">Swimming</option>
-            </select>
-          </div>
-          <div class="action-form">
-            <div class="action-field"><label>Date</label><input type="text" class="reg-input action-extra-date md-datepicker" data-display-dmy data-allow-past placeholder="dd/mm/yyyy" readonly style="width:120px;cursor:pointer;"></div>
-            <div class="action-field"><label data-tooltip="Rate of Perceived Exertion (0–10)">RPE</label><input type="text" inputmode="numeric" class="reg-input action-rpe" maxlength="2"></div>
-            <div class="action-field"><label>Minutes</label><input type="text" inputmode="numeric" class="reg-input action-minutes" maxlength="3"></div>
-            <button class="btn btn-primary btn-small action-extra-submit">Submit</button>
-          </div>
-        </div>`;
-        list.insertAdjacentHTML('beforeend', html);
-        const card = list.querySelector('[data-extra-id="' + id + '"]');
-        // Bind date picker
-        card.querySelector('.action-extra-date').addEventListener('click', function() { openDatePicker(this); });
-        // Bind tooltip on RPE label
-        card.querySelectorAll('[data-tooltip]').forEach(el => {
-          el.addEventListener('mouseenter', () => {
-            const tip = document.getElementById('roster-tooltip');
-            if (!tip) return;
-            tip.textContent = el.getAttribute('data-tooltip');
-            tip.classList.add('visible');
-            // Viewport coordinates: .roster-tooltip is position:fixed.
-            const rect = el.getBoundingClientRect();
-            tip.style.left = rect.left + rect.width / 2 - tip.offsetWidth / 2 + 'px';
-            tip.style.top = rect.top - tip.offsetHeight - 10 + 'px';
-          });
-          el.addEventListener('mouseleave', () => {
-            const tip = document.getElementById('roster-tooltip');
-            if (tip) tip.classList.remove('visible');
-          });
+    /* Player actions: log an extra training.
+       ⚠ The form is PART OF THE PAGE now, not injected on a button press. The
+       old one built a card at runtime into `#extra-training-list`, which is
+       also why every extra a player logged disappeared on the next render:
+       the list was only ever filled by that handler, and the variable holding
+       the saved extras was read and never used. */
+    const xSubmit = document.getElementById('ac-x-submit');
+    if (xSubmit) {
+      xSubmit.addEventListener('click', () => {
+        const form = document.getElementById('ac-extra-form');
+        const chosen = form.querySelector('.ac-strip[data-ac-key="__extra__"] .ac-cell-on');
+        const minInput = document.getElementById('ac-x-min');
+        const dateVal = (document.getElementById('ac-date') || {}).value || '';
+        const rpe = chosen ? parseInt(chosen.dataset.acRpe, 10) : NaN;
+        const minutes = parseInt(minInput.value, 10);
+        if (!dateVal) return;
+        if (isNaN(rpe) || rpe < 1 || rpe > 10) return;
+        if (isNaN(minutes) || minutes <= 0 || minutes > ACTION_MINUTES_MAX) {
+          minInput.classList.add('input-error'); return;
+        }
+        /* ⚠ A future date is refused here as well as being unclickable in the
+           picker. The grid is the only way to set it today, but the value
+           lives in a hidden input and this is the gate that means something:
+           an RPE for a session that has not happened is not a mistake the
+           load engine can recover from. */
+        if (dateVal > localDateStr(new Date())) return;
+        const tagBtn = form.querySelector('.ac-pill-on');
+        const tag = tagBtn ? tagBtn.dataset.acTag : AC_EXTRA_TAGS[0];
+        const session = getSession();
+        const key = session.id + '_extra_' + Date.now();
+        const ua = rpe * minutes;
+        const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
+        rpeData[key] = { rpe, minutes, ua, tag, date: dateVal };
+        addStaffNotification({
+          type: 'extra_training',
+          playerName: session ? session.name : '?',
+          detail: extraTagLabel(tag) + ' ' + minutes + ' min · RPE ' + rpe,
+          activity: extraTagLabel(tag) + ' (' + dateVal + ')',
+          /* An extra is not attached to anything on the calendar, so the
+             coach's landing place is the player, not a session. */
+          page: 'staff-player-stats',
+          pageId: session ? session.id : ''
         });
-        // Clamp RPE 0-10
-        const rpeInp = card.querySelector('.action-rpe');
-        rpeInp.addEventListener('input', function() {
-          this.value = this.value.replace(/[^0-9]/g, '');
-          const v = parseInt(this.value, 10);
-          if (!isNaN(v) && v > 10) this.value = 10;
-        });
-        rpeInp.addEventListener('blur', function() {
-          const v = parseInt(this.value, 10);
-          if (!isNaN(v)) { if (v < 0) this.value = 0; if (v > 10) this.value = 10; }
-        });
-        // Clamp Minutes (digits only, max 300)
-        const minInp = card.querySelector('.action-minutes');
-        minInp.addEventListener('input', function() {
-          this.value = this.value.replace(/[^0-9]/g, '');
-          const v = parseInt(this.value, 10);
-          if (!isNaN(v) && v > 300) this.value = 300;
-        });
-        // Bind submit
-        card.querySelector('.action-extra-submit').addEventListener('click', () => {
-          const rpeInput = card.querySelector('.action-rpe');
-          const minInput = card.querySelector('.action-minutes');
-          const dateInput = card.querySelector('.action-extra-date');
-          const rpe = parseInt(rpeInput.value, 10);
-          const minutes = parseInt(minInput.value, 10);
-          const dateVal = dateInput.dataset.dateIso || dateInput.value;
-          if (!dateVal) { dateInput.classList.add('input-error'); return; }
-          if (isNaN(rpe) || rpe < 0 || rpe > 10) { rpeInput.classList.add('input-error'); return; }
-          if (isNaN(minutes) || minutes < 0) { minInput.classList.add('input-error'); return; }
-          const tag = card.querySelector('.action-extra-tag').value;
-          const session = getSession();
-          const key = session.id + '_extra_' + id;
-          const ua = rpe * minutes;
-          const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
-          rpeData[key] = { rpe, minutes, ua, tag, date: dateVal };
-          addStaffNotification({
-            type: 'extra_training',
-            playerName: session ? session.name : '?',
-            detail: 'RPE ' + rpe + ' · ' + minutes + ' min',
-            activity: tag + ' (' + dateVal + ')'
-          });
-          const extraBtn = card.querySelector('.action-extra-submit');
-          ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: dateVal },
-            'fa_player_rpe', JSON.stringify(rpeData), extraBtn).then(() => {
-            renderPage(session);
-          });
+        ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: dateVal },
+          'fa_player_rpe', JSON.stringify(rpeData), xSubmit).then(() => {
+          renderPage(session);
         });
       });
     }
@@ -35342,8 +36120,14 @@
         addStaffNotification({
           type: 'match_avail',
           playerName: session ? session.name : '?',
-          detail: btn.dataset.mavail === 'disponible' ? 'Disponible' : 'No Disponible',
-          activity: matchObj ? (matchObj.home + ' vs ' + matchObj.away + (matchObj.date ? ' · ' + matchObj.date : '')) : 'Match'
+          detail: t('avail.' + btn.dataset.mavail),
+          /* The answer as a value. The badge is coloured from THIS, not from
+             `detail` — which is a stored sentence and would have to be parsed,
+             in whatever language it was written in at the time. */
+          answer: btn.dataset.mavail,
+          activity: matchObj ? (matchObj.home + ' vs ' + matchObj.away + (matchObj.date ? ' · ' + matchObj.date : '')) : t('activity.badge_match'),
+          page: 'match-detail',
+          pageId: matchId
         });
         // Re-render only once the server has acknowledged (or the write is queued)
         ackSaveRecord('matchAvail', key, { uid: session.id, matchId: String(matchId), value: btn.dataset.mavail },
@@ -35411,12 +36195,14 @@
         deriveFitnessStatus(session.id);
         // Staff notification
         const tObj = sess;
-        const answerMap = { yes: 'Yes', late: 'Late', no: 'No' };
         addStaffNotification({
           type: 'training_avail',
           playerName: session ? session.name : '?',
-          detail: answerMap[val] || val,
-          activity: (tObj && tObj.focus ? tObj.focus : 'Training') + ' (' + date + ')'
+          detail: t('avail.' + val),
+          answer: val,
+          activity: (tObj && tObj.focus ? tObj.focus : t('activity.badge_training')) + ' (' + date + ')',
+          page: 'staff-training-detail',
+          pageId: sid
         });
         // Re-render only once the server has acknowledged (or the write is queued)
         // sessionId AND date as fields: the schedulers query on date.
@@ -35479,17 +36265,11 @@
       });
     });
 
-    // Clear all staff notifications
-    const clearNotifsBtn = document.getElementById('btn-clear-notifs');
-    if (clearNotifsBtn) {
-      clearNotifsBtn.addEventListener('click', () => {
-        // Clear only what this coach can see — the blob is club-wide and
-        // written whole, so an unfiltered [] wipes other categories too.
-        saveStaffNotifications(getStaffNotifications().filter(n => !inMyNotifScope(n)));
-        updateStaffNotifBadge();
-        renderPage(getSession());
-      });
-    }
+    /* `Clear All` is gone (v245). It DELETED the rows rather than marking
+       them read, which is a different and worse thing: the feed is the only
+       record that an answer was ever given, and a coach reaching for "I have
+       dealt with these" was destroying the log. `Marca-ho tot com llegit` in
+       bindNotifications() is what that button was reaching for. */
 
     // UA/RPE chart tooltips
     $$('[data-ua-tip]').forEach(el => {

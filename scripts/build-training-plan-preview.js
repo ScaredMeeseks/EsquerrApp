@@ -198,7 +198,12 @@ const code = grab("  const STP_GK_FILL = '#f5c842';", '  // #endregion Session p
      STD_AVAIL_COLORS, which is declared just above it (v243), and slicing
      under the declaration left the bar throwing a ReferenceError. */
   grab('  /* The five attendance colours', '  // ── Team generation ──') +
-  grab('  function renderStdTeamsBlock(tr, squad, locked) {', '  let rosterTeamFilter');
+  /* ⚠ v247: the end marker was `  let rosterTeamFilter`, and that variable is
+     gone — it was one of the six per-page letter filters that became a single
+     `_viewSquad`. The Player-metrics banner is the next thing in the file and
+     is a heading rather than a declaration, so it will not move out from under
+     this slice the next time a variable is retired. */
+  grab('  function renderStdTeamsBlock(tr, squad, locked) {', '  /* ── Player metrics (v236) ──');
 
 const R = new Function(
     'sanitize', 't', 'fillCss', 'canEditPage', 'getTrainings', 'getUsers',

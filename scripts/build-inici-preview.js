@@ -231,9 +231,13 @@ function render(which, data) {
     clubBadgeUrl: () => BADGE,
     isOurTeam: (n) => n === CLUB,
     getCurrentCategory: () => 'amateur',
-    // The squad chip the category bar writes. Held outside the render in the
-    // app; 'all' is what a coach who has not picked a letter sees.
-    iniTeamFilter: 'all',
+    /* The squad chip the category bar writes. Held outside the render in the
+       app — one `_viewSquad` since v247, shared by every page, read through
+       these two. 'all' is what a coach who has not picked a letter sees, and
+       `currentSquadOrNull` is the "no category, or no letter → no filter"
+       guard each page used to spell out for itself. */
+    getCurrentSquad: () => 'all',
+    currentSquadOrNull: () => null,
     CATEGORY_LABELS: { amateur: 'Amateur', juvenil: 'Juvenil', cadet: 'Cadet' },
     posCirclesHtmlGlobal: (p) => String(p.position || '').split(',')
         .map((s) => s.trim()).filter(Boolean).map((pos) => {
@@ -361,7 +365,9 @@ const CHROME = `
   /* The dashboard's own 1rem padding, which .ini-page's margin:-1rem breaks
      out of. Without it the hero band stops short of the edge here and
      nowhere else, and the preview lies about the one thing it is for. */
-  .pv-frame { background:#FBFAF7; padding:1rem; border-top:1px solid #C9C3BB;
+  /* 2rem: .dashboard-content's real padding, not the -1rem the page pulled
+     before v246. See the note in build-convocatoria-preview.js. */
+  .pv-frame { background:#FBFAF7; padding:2rem; border-top:1px solid #C9C3BB;
               border-bottom:1px solid #C9C3BB; }
   /* .ini-page fills the viewport in the app, which is right there and is
      five screens of blank paper between boards here. Preview chrome only —

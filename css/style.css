@@ -399,6 +399,211 @@ a:hover { text-decoration: underline; }
   min-width: 0; /* Allow flex child to shrink below content size */
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   HOW A PAPER PAGE SITS IN THE DASHBOARD (v246)
+   ═══════════════════════════════════════════════════════════════════
+   ⚠ ONE RULE FOR ALL OF THEM, AND IT LIVES HERE — beside the container it
+   negates, not inside any page's own block. Every one of those blocks is
+   sliced from its banner to the next one by a test suite, so a rule naming
+   ten pages would be read as whichever page's region it happened to land in.
+
+   The problem it replaces: the roots had drifted into two camps. `.ms-`,
+   `.ac-`, `.nf-` and `.std-` pulled -2rem and bled to both edges; `.ini-`,
+   `.reg2-`, `.cv-`, `.pl-`, `.md2-` and `.pt-` pulled -1rem and left a 16px
+   grey band down each side — under a `.cat-bar` that bleeds the full 32px, so
+   the bar was visibly wider than the page beneath it.
+
+   ⚠ AND THE TOP IS NOT THE SAME NUMBER AS THE SIDES. `.cat-bar` and the page
+   root are ADJACENT SIBLINGS: `.dashboard-content` is a block formatting
+   context so nothing collapses through it, but the bar's `margin-bottom` and
+   the root's `margin-top` collapse against each other to
+   `max(positive) + min(negative)`. The bar leaves 1rem. A root pulling -2rem
+   therefore climbed 16px OVER the bar, covering its `border-bottom` — and
+   because the two share `--pp-paper` that did not read as an overlap, it read
+   as the filter bar being 16px shorter on those pages than on the others.
+   Three different bar heights across nine pages, all from this one sum.
+
+   So: -1rem on top, which cancels the 1rem left by whatever precedes us —
+   the cat-bar, or one of the three banners, which carry the same 1rem.
+   -2rem on the sides and bottom, which is the container's padding.
+
+   The `:first-child` arm is why the top is separate, and `.std-page` has
+   carried this comment since v188: with nothing above it the page pulls the
+   whole 2rem and reaches the top of the pane. A blanket -2rem top is what
+   slides a page over a banner. */
+.std-page,
+.pl-page,
+.reg2-page,
+.pt-page,
+.cv-page,
+.ini-page,
+.md2-page,
+.ms-page,
+.ac-page,
+.nf-page,
+.cal-page {
+  margin: -1rem -2rem -2rem;
+}
+.std-page:first-child,
+.pl-page:first-child,
+.reg2-page:first-child,
+.pt-page:first-child,
+.cv-page:first-child,
+.ini-page:first-child,
+.md2-page:first-child,
+.ms-page:first-child,
+.ac-page:first-child,
+.nf-page:first-child,
+.cal-page:first-child {
+  margin-top: -2rem;
+}
+
+/* ⚠ AT 600px, WHICH IS WHERE `.dashboard-content` CHANGES — not at any page's
+   own 700 or 900, which are about columns folding. Four roots used to put
+   their bleed in those blocks, so between 600 and their own breakpoint they
+   negated a padding that had not moved yet. */
+@media (max-width: 600px) {
+  .std-page,
+  .pl-page,
+  .reg2-page,
+  .pt-page,
+  .cv-page,
+  .ini-page,
+  .md2-page,
+  .ms-page,
+  .ac-page,
+  .nf-page,
+  .cal-page {
+    margin: -1rem -1rem -.75rem;
+  }
+  .std-page:first-child,
+  .pl-page:first-child,
+  .reg2-page:first-child,
+  .pt-page:first-child,
+  .cv-page:first-child,
+  .ini-page:first-child,
+  .md2-page:first-child,
+  .ms-page:first-child,
+  .ac-page:first-child,
+  .nf-page:first-child,
+  .cal-page:first-child {
+    margin-top: -.75rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE HEADER BAND EVERY PAPER PAGE OPENS WITH (v247)
+   ═══════════════════════════════════════════════════════════════════
+   ⚠ HERE FOR THE SAME REASON AS THE GEOMETRY ABOVE — every page block is
+   sliced from its banner to the next by a suite, so a rule naming nine pages
+   would be read as whichever region it landed in.
+
+   `.ac-hero, .nf-hero` was already a shared pair; this extends it rather than
+   adding a fourth copy of the same three declarations. What it replaces:
+   Mèdic, Notificacions, Accions, Inici and Les meves estadístiques each had a
+   white band, while Plantilla, Registracions and Convocatòria had a bare flex
+   row with a bottom rule — same content, no ground under it. And the bottom
+   padding disagreed between them, 26px against 30px.
+
+   ⚠ The TITLE came in three sizes: 36px on the five, 38px on the other four.
+   One size now. `.ini-name` and `.ms-name` stay at 34px/lh 1 and are NOT in
+   this list — those are a person's name under an eyebrow, not a page title. */
+.md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
+.pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-rule);
+}
+.md2-h1, .nf-h1, .ac-h1, .ini-h1,
+.pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 {
+  margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1;
+  letter-spacing: -.01em; color: var(--pp-ink);
+}
+
+/* ⚠ THE INSET GOES ON THE BODY WRAPPER, NEVER ON THE PAGE ROOT.
+   ═══════════════════════════════════════════════════════════════
+   This is the other half of the band, and v247 shipped without it.
+
+   A band that is `background:#FFFFFF` edge to edge cannot be edge to edge if
+   its ancestor is holding 40px of padding: the white stops 40px short on both
+   sides and the paper shows through beside it. Plantilla, Registracions and
+   Convocatòria carried `padding: 28px 40px 48px` on `.pl-main`, `.reg2-page`
+   and `.cv-page` — the roots themselves — so all three kept the grey band down
+   each side that v246 was supposed to have removed, while Mèdic, Inici,
+   Notificacions and Calendari, which never had root padding, looked right.
+   The owner reported exactly that split.
+
+   So the root carries the bleed and NOTHING else, and one wrapper inside it
+   carries the inset. `.ini-body`, `.md2-body`, `.ms-body`, `.ac-body` and
+   `.nf-body` were already this shape and are folded in here rather than
+   keeping four more copies of the same two values; `.pl-body`, `.reg2-body`
+   and `.cv-body` are new (`.pl-body` existed as a bare wrapper around the
+   attendance donut and now wraps the whole body).
+
+   ⚠ The step-down is at 700 — the BAND's breakpoint — not at the 900 those
+   three pages used. A body that narrows before the band above it does is the
+   text stepping 24px left of its own title for 200px of width. */
+.ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+.pl-body, .reg2-body, .cv-body { padding: 32px 40px 56px; }
+/* The left column of the band: title over one line of scope. */
+.ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l {
+  display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
+}
+.md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+  font-size: 14px; color: var(--pp-ink-2);
+}
+
+/* ⚠ ONE CAPTION ATOM, NOT SEVEN. `.ac-lbl`, `.ms-lbl`, `.reg2-fig-l`,
+   `.md2-eyebrow`, `.ini-eyebrow`, `.cv-eyebrow` and `.pl-eyebrow` were seven
+   rules with the same four declarations between them — the 10px and the 11px
+   variants differing only by a pixel nobody chose. Two sizes, named for what
+   they label: a figure, or a section.
+   ⚠ `.reg2-eyebrow` is NOT one of them and keeps its own rule: it is a
+   section HEADING in ink at weight 600, and its own comment says so. */
+.ac-lbl, .ms-lbl, .reg2-fig-l,
+.md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-weight: 400; color: var(--pp-ink-3);
+}
+/* The figures on the band's right.
+   ⚠ Calendari is NOT here: its band's right-hand side is the month
+   navigator, not a figure row. It is in the hero and title lists above,
+   and in neither of these two. */
+.ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r {
+  display: flex; align-items: flex-end; gap: 36px; flex: none;
+}
+.ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat, .pl-fig,
+.cv-fig, .reg2-title-col {
+  display: flex; flex-direction: column; gap: 4px;
+}
+/* `.reg2-title-col` is the title's own stack, not a figure — same three
+   declarations, one more gap. */
+.reg2-title-col { gap: 8px; min-width: 0; margin-right: auto; }
+
+.ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
+.pl-fig-v, .cv-fig-v, .cv-big {
+  font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
+  .pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+    flex-wrap: wrap; gap: 16px; padding: 14px 20px 16px;
+  }
+  /* ⚠ `.pl-h1`, `.reg2-h1`, `.cv-h1` and `.std-title` had NO phone override
+     at all — 38px of title on a 390px screen. */
+  .md2-h1, .nf-h1, .ac-h1, .ini-h1,
+  .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
+  .ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+  .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
+  .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
+  .cv-head-r { gap: 0; width: 100%; }
+  .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat,
+  .pl-fig { flex: 1 1 0; min-width: 0; }
+  .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
+  .pl-fig-v, .cv-fig-v, .cv-big { font-size: 24px; }
+}
+
 /* ===== Dashboard Cards & Widgets ===== */
 .page-title { font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--primary-dark); }
 
@@ -835,32 +1040,11 @@ tr:hover td { background: #f7f8fa; }
 .md-card-map { color: var(--primary); text-decoration: none; font-weight: 600; font-size: .82rem; }
 .md-card-map:hover { text-decoration: underline; }
 
-/* Player Actions */
-.action-card {
-  border: 1.5px solid var(--border); border-radius: 10px;
-  padding: .8rem 1rem; margin-bottom: .75rem;
-}
-.action-header { display: flex; align-items: center; gap: .6rem; margin-bottom: .3rem; }
-.action-date { font-size: .82rem; color: var(--text-secondary); }
-.action-label { font-weight: 600; font-size: .9rem; margin-bottom: .5rem; }
-.action-form { display: flex; align-items: flex-end; gap: .6rem; flex-wrap: wrap; }
-.action-field { display: flex; flex-direction: column; gap: .2rem; }
-.action-field label { font-size: .75rem; color: var(--text-secondary); font-weight: 600; }
-.action-field .reg-input { width: 60px; text-align: center; padding: .25rem .3rem; }
-.action-avail-prompt { font-size: .82rem; color: var(--text-secondary); font-weight: 600; margin-bottom: .4rem; }
-.action-info { cursor: help; color: var(--text-secondary); font-size: .7rem; }
-.action-extra-tag { font-family: inherit; }
-
-/* ===== Staff Notifications ===== */
-.notif-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-.notif-row { border-bottom:1px solid var(--border); padding:.7rem; }
-.notif-row:last-child { border-bottom:none; }
-.notif-row-top { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
-.notif-type-badge { display:inline-block; font-size:.72rem; font-weight:400; color:#fff; padding:.15rem .55rem; border-radius:6px; white-space:nowrap; }
-.notif-player { font-weight:600; font-size:.88rem; }
-.notif-time { font-size:.78rem; color:var(--text-secondary); margin-left:auto; white-space:nowrap; }
-.notif-row-detail { font-size:.82rem; color:var(--text-secondary); margin-top:.25rem; }
-.notif-new { background:rgba(251,140,0,.18); border-radius:8px; margin-left:-.5rem; margin-right:-.5rem; padding-left:.5rem; padding-right:.5rem; }
+/* `.action-*` and `.notif-*` were HERE. Both pages were rebuilt in the paper
+   idiom at v245 — `.ac-` and `.nf-`, at the foot of this file — and neither
+   old block had a single rule anything else read. The one thing worth
+   recording: `.notif-new` was `rgba(251,140,0,.18)`, a loose orange that
+   predates the palette; the unread wash is `--pp-tint` now. */
 
 /* ===== Tactical Board (Coach) ===== */
 .tb-controls { display:flex; align-items:center; gap:.8rem; margin-bottom:1rem; flex-wrap:wrap; }
@@ -1946,8 +2130,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    negates that. The `:first-child` rule is why the top is separate — the
    update and push banners render into the same container ahead of this, and
    a blanket negative top margin would slide the page over them. */
-.std-page { margin:0 -2rem -2rem; background:var(--pp-paper); }
-.std-page:first-child { margin-top:-2rem; }
+.std-page { background:var(--pp-paper); }   /* margin: the shared rule near .dashboard-content */
 
 .std-topbar {
   display:flex; align-items:center; justify-content:space-between;
@@ -1991,10 +2174,6 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-hero-row {
   display:flex; align-items:center; justify-content:space-between;
   gap:24px; flex-wrap:wrap;
-}
-.std-title {
-  margin:0; font-size:38px; font-weight:400; line-height:1.1;
-  letter-spacing:-.01em; color:var(--pp-ink);
 }
 .std-meta { font-size:14px; color:var(--pp-ink-2); }
 
@@ -3858,8 +4037,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* ── Tables → scrollable & compact ── */
   /* `.dashboard-content` drops to `.75rem 1rem` in THIS breakpoint, so the
      full-bleed negation has to follow it here and nowhere higher up. */
-  .std-page { margin: 0 -1rem -.75rem; }
-  .std-page:first-child { margin-top: -.75rem; }
   table { font-size: .78rem; }
   th, td { padding: .4rem .35rem; white-space: nowrap; }
   /* The training-detail table sets its own sizes in the v188 block above —
@@ -3908,10 +4085,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .roster-right .card { padding: .75rem; }
   .rpe-y-text { font-size: 9px; }
 
-  /* ── Action cards (availability, RPE) ── */
-  .action-card { padding: .6rem .7rem; }
-  .action-header { flex-wrap: wrap; gap: .3rem; }
-  .action-label { font-size: .85rem; word-break: break-word; }
+  /* ── Availability pills ── */
   .avail-btns, .mavail-btns { flex-wrap: wrap; margin-left: 0; gap: .3rem; }
   .avail-btn, .mavail-btn { padding: .3rem .5rem; font-size: .72rem; }
 
@@ -3945,8 +4119,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .activity-item .conv-not-called-tag {
     order: 2; width: 100%; margin-top: .2rem;
   }
-  .action-form { gap: .4rem; }
-  .action-field .reg-input { width: 50px; }
 
   /* ── Buttons → compact ── */
   .btn { padding: .45rem .8rem; font-size: .82rem; }
@@ -3980,7 +4152,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .roles-grid { grid-template-columns: 1fr; }
 
   /* ── Prevent overflow on all card types ── */
-  .card, .stat-card, .detail-card, .player-overview-card, .action-card {
+  .card, .stat-card, .detail-card, .player-overview-card {
     max-width: 100%; overflow-wrap: break-word; word-break: break-word;
   }
 
@@ -4277,15 +4449,61 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .medical-body-popup img { display:block; width:300px; height:auto; border-radius:8px; }
 
 /* ── Category Bar ── */
-.cat-bar{display:flex;gap:.35rem;padding:.7rem .8rem;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;margin:-2rem -2rem 1rem -2rem;}
-@media(max-width:500px){.cat-bar{margin:-0.75rem -0.75rem 1rem -0.75rem;}}
-.cat-bar-btn{padding:.3rem .7rem;border-radius:20px;border:1.5px solid var(--border);background:none;font-size:.82rem;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:.2s;}
+/* ⚠ THE SAME TWO-RULE SHAPE AS THE PAGE ROOTS, AND FOR THE SAME REASON. The
+   bar used to carry a blanket `margin-top:-2rem`, and the three banners
+   (`.upd-banner`, update/push/iOS) render into this container AHEAD of it
+   with a `margin-bottom:1rem` and no top margin — so the bar climbed 16px
+   over whichever one was showing and clipped its border and amber ground.
+   Unguarded on all ten CATEGORY_PAGES until v246.
+   ⚠ And the breakpoint is 600, not the 500 it used to be: `.dashboard-content`
+   changes at 600, so between 501 and 600 the bar was negating 2rem of padding
+   that had already become 1rem and overshooting 16px each side into
+   `overflow-x:hidden`. */
+.cat-bar{display:flex;align-items:center;gap:0;padding:.6rem 1.4rem;background:var(--pp-paper);border-bottom:1px solid var(--pp-rule);overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2rem 1rem;font-family:'Oswald','Arial Narrow',sans-serif;}
+.cat-bar:first-child{margin-top:-2rem;}
+@media(max-width:600px){
+  .cat-bar{margin:0 -1rem 1rem;}
+  .cat-bar:first-child{margin-top:-.75rem;}
+}
+/* ⚠ REPAINTED FOR THE PAPER PAGES (v245). This bar is drawn OUTSIDE the page
+   root by renderPage(), so it cannot be scoped under one — and it sits above
+   nine pages, eight of which are now paper: it was the last strip of app
+   chrome (red pills, 20px radius, 600 weight) left on top of them.
+   ⚠ `sancions` is the one page under it that is NOT redesigned. It is
+   deliberately left wearing this bar rather than given an exception: two
+   different filter bars on one app is the seam this closes, and a paper strip
+   above an old page reads better than the reverse.
+   The BEHAVIOUR is untouched — bindDynamicActions() binds `.cat-bar-btn`,
+   `[data-*-letter]` and `.cat-bar-letter` by name. */
+.cat-bar-btn{
+  padding:.25rem 0;margin-right:.9rem;border:none;border-bottom:1px solid transparent;
+  border-radius:0;background:none;font-size:.85rem;font-weight:400;
+  color:var(--pp-ink-2);cursor:pointer;white-space:nowrap;transition:.15s;
+}
 /* The squad chips the calendar adds after the categories. A rule between
    them, so the row does not read as one flat list of unrelated choices. */
-.cat-bar-sep{flex:0 0 auto;align-self:stretch;width:1px;background:var(--border);margin:0 .35rem;}
-.cat-bar .cat-bar-letter{padding:.3rem .75rem;min-width:2.2rem;}
-.cat-bar-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
-.cat-bar-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+.cat-bar-sep{flex:0 0 auto;align-self:center;width:1px;height:16px;background:var(--pp-rule);margin:0 .6rem;}
+.cat-bar-btn.active{border-bottom-color:var(--pp-ink);color:var(--pp-ink);}
+.cat-bar-btn:hover:not(.active){color:var(--pp-ink);}
+/* The squad letters are BOXES, not tabs — a different kind of choice from the
+   category, and the handoff draws the distinction that way. */
+.cat-bar .cat-bar-letter{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:26px;height:24px;padding:0 7px;margin-right:6px;
+  border:1px solid var(--pp-rule);border-radius:0;background:none;
+  font-size:.78rem;font-weight:400;color:var(--pp-ink-2);
+}
+/* ⚠ `.roster-team-btn-active`, NOT `.active`. catBarLettersHtml() marks the
+   chosen chip with the roster's class (js/app.js, `chip()`), and v245 styled
+   `.active` — a selector nothing ever carries. The old `#424242` fill did not
+   show either: `.roster-team-btn-active` is (0,1,0) and the rule above is
+   (0,2,0), so the lit chip came out pixel-identical to an unlit one on all six
+   pages that draw them. The compound below is (0,3,0) and reaches it.
+   ⚠ Do not "tidy" this by renaming the class in the JS: the same class dresses
+   the roster's own chip row outside this bar, and calendar-render.test.js
+   counts lit chips by it. */
+.cat-bar .cat-bar-letter.roster-team-btn-active{background:var(--pp-ink);border-color:var(--pp-ink);color:var(--pp-paper);}
+.cat-bar .cat-bar-letter:hover:not(.roster-team-btn-active){border-color:var(--pp-ink);color:var(--pp-ink);}
 
 /* ── Team Setup Wizard ── */
 .ts-cat-row{display:flex;align-items:center;gap:.6rem;padding:.7rem .5rem;border-bottom:1px solid var(--border);}
@@ -5731,52 +5949,81 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 /* There is no card. The page fills the pane, so a frame around it was a
    border with nothing on the far side — and it cost padding on all four
-   edges plus the heading above it. The bar's own bottom rule was doing
-   the separating all along.
+   edges plus the heading above it. The band's bottom rule does the
+   separating; the card was only ever holding it.
 
-   The width is reclaimed by pulling THESE TWO BLOCKS out, not by trimming
-   `.dashboard-content`. Trimming the page's padding was tried and reverted:
-   `.cat-bar` bleeds edge-to-edge with `margin:-2rem`, sized to cancel that
-   exact padding, so cutting it left the filter bar overshooting by the
-   difference and clipped against `overflow-x:hidden`. Anything else on the
-   page that bleeds would have broken the same way. `2rem − 1.25rem` leaves
-   the same .75rem of gutter, and touches nothing shared. */
-.cal-bar, .cal-weeks { margin-left: -1.25rem; margin-right: -1.25rem; }
+   ⚠ v247: THE BLEED IS ON A PAGE ROOT NOW, like every other paper page.
 
-/* ── Top bar ─────────────────────────────────────────────── */
+   It used to be two `margin-left/right: -2rem` pulls on `.cal-bar` and
+   `.cal-weeks` individually, because Calendari had no root to hang it on —
+   and a `margin-top: -1rem` on the bar as well, to make up for the one the
+   roots take. `.cal-page` (app.js, renderCalendar) replaces all four
+   declarations with membership of the shared geometry rule near
+   `.dashboard-content`, which is also where the 600px step now comes from.
+
+   What the old comment insisted on still holds and is why the root bleeds
+   rather than `.dashboard-content` being trimmed: `.cat-bar` bleeds
+   edge-to-edge with `margin:-2rem`, sized to cancel that exact padding, so
+   cutting the container leaves the filter bar overshooting by the difference
+   and clipping against `overflow-x:hidden`.
+
+   ⚠ The banners stay OUTSIDE the root — see renderCalendar. */
+.cal-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+
+/* ── The header band ─────────────────────────────────────────
+   `.cal-hero` itself is in the shared band rule up near `.dashboard-content`
+   — white ground, 34/40/26, one bottom rule, title at 36px — so all that is
+   left here is the one thing this band does differently: its right-hand side
+   is a month navigator where the others carry figures. */
+.cal-hero-r { display: flex; align-items: center; gap: 8px; flex: none; }
+
+/* ── The legend strip, under the band ────────────────────────
+   The two legends and the refresh are what is left of the old top bar once
+   the month nav moved up into the band. They are reference, not control, so
+   they read as a caption strip rather than as a toolbar: no white ground of
+   its own, and the 40px inset the grid below it takes. */
 .cal-bar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 24px; flex-wrap: wrap;
-  padding: 0 2px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 40px;
+  border-bottom: 1px solid var(--pp-rule);
 }
-.cal-bar-l, .cal-bar-r { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-/* Bare glyphs, in the club's red. The 30x30 box STAYS as the hit area —
-   a lone chevron is a small target on a phone — it just stops being
-   painted. `:focus-visible` gets its own ring, because the border that
-   used to show focus is what went. */
+.cal-bar-l, .cal-bar-r { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+/* Bare glyphs. The 30x30 box STAYS as the hit area — a lone chevron is a
+   small target on a phone — it just stops being painted. `:focus-visible`
+   gets its own ring, because the border that used to show focus is what
+   went.
+   ⚠ v247: ink, not the club's red. In the band the arrows sit beside a
+   36px ink title, and two reds shouting from the same white strip made the
+   navigator read as an alert rather than as a control. */
 .cal-arrow {
   width: 30px; height: 30px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
   font-size: 1.4rem; line-height: 1; cursor: pointer;
   background: none; border: 0; padding: 0;
-  color: var(--primary); font-weight: 600;
+  color: var(--pp-ink); font-weight: 600;
   transition: transform .12s ease, font-weight .12s ease;
 }
 .cal-arrow:hover { font-weight: 800; transform: scale(1.15); }
 .cal-arrow:focus-visible {
-  outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px;
+  outline: 2px solid var(--pp-ink); outline-offset: 2px; border-radius: 6px;
 }
-/* The page's heading now that the h2 is gone, so it takes the h2's size.
-   Fixed width, so the arrows do not shuffle between "Maig" and "Setembre". */
+/* Not the page's heading any more — `.cal-h1` is, since v247 — but it keeps
+   the h2's size, because it is still the thing that says which month you are
+   looking at and it now has a 36px title to hold its own against.
+   ⚠ Keep `min-width`: it is what stops the arrows shuffling between "Maig"
+   and "Setembre". */
 .cal-month {
   font-size: 1.5rem; font-weight: 600; letter-spacing: .01em;
-  min-width: 9rem; text-align: center; color: var(--primary-dark);
+  min-width: 9rem; text-align: center; color: var(--pp-ink);
 }
 
 .cal-legend { display: flex; align-items: center; gap: 11px; }
 .cal-legend-load {
-  padding-left: 16px; border-left: 1px solid var(--border);
+  padding-right: 16px; border-right: 1px solid var(--border);
 }
 .cal-legend-h {
   font-size: .68rem; font-weight: 600; letter-spacing: .1em;
@@ -5810,7 +6057,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
    No `gap` either: the padding on each strip is the spacing now. With a
    gap the rules would float between rows instead of sitting on them. */
-.cal-weeks { display: flex; flex-direction: column; padding: 4px 2px 16px; }
+/* ⚠ v247: 40px of inset, the same the band takes, which is the owner's "more
+   left/right margins". The full bleed stays on the PAPER — `.cal-page` still
+   reaches both edges of the pane — it is the content that comes in, so the
+   grid's first and last columns line up with the title above them instead of
+   running out past it. */
+.cal-weeks { display: flex; flex-direction: column; padding: 4px 40px 16px; }
 .cal-week {
   display: flex; gap: 12px; align-items: stretch;
   padding: 12px 4px;
@@ -6122,10 +6374,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    becomes one week per screen-width block: the month is still a stack of
    weeks, just a taller one. */
 @media (max-width: 900px) {
-  /* `.dashboard-content` is down to `.75rem 1rem` by 600px, so the -1.25rem
-     pull above would overshoot the pane and clip — the same mistake that
-     removing `.dashboard-tight` was meant to end, one breakpoint down. */
-  .cal-bar, .cal-weeks { margin-left: 0; margin-right: 0; }
   .cal-week { flex-direction: column; gap: 8px; }
   .cal-gutter {
     width: auto; flex-direction: row; align-items: baseline; gap: 8px;
@@ -6138,12 +6386,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
      an expanded-only row would never be reachable. */
   .cal-add { opacity: 1; }
 }
+/* ⚠ 700, which is where the SHARED BAND folds to its 20px — not 900 and not
+   560. The strip and the grid take their inset from the band above them, so
+   they have to step down on the band's breakpoint or the three left edges
+   stop agreeing for a whole 140px of width. */
+@media (max-width: 700px) {
+  .cal-bar { padding: 12px 20px; }
+  .cal-weeks { padding: 4px 20px 16px; }
+  .cal-hero-r { gap: 4px; }
+}
 @media (max-width: 560px) {
   .cal-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cal-bar { gap: 10px; padding: 12px 14px; }
-  .cal-legend-load { padding-left: 0; border-left: 0; }
+  .cal-legend-load { padding-right: 0; border-right: 0; }
   .cal-month { min-width: 6.5rem; font-size: 1.1rem; }
-  .cal-weeks { padding: 8px 10px 14px; }
+  .cal-weeks { padding: 8px 14px 14px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -6163,26 +6420,26 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display: flex; align-items: flex-start; overflow-x: hidden;
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
-.pl-main { flex: 1; min-width: 0; padding: 28px 30px 48px; }
+/* 40px, the inset every paper page uses — see the note on `.cv-page`. */
+.pl-main { flex: 1; min-width: 0; }
 
 /* ── Title block ── */
-.pl-title-row {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule);
-}
-.pl-title-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.pl-h1 { margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
-.pl-sub { font-size: 14px; color: var(--pp-ink-2); }
-.pl-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3);
-}
 .pl-eyebrow-b { display: block; padding-bottom: 10px; }
 
 /* ── Attendance donut ── */
 .pl-att { display: flex; align-items: center; gap: 16px; flex: none; }
 .pl-att-col { display: flex; flex-direction: column; gap: 4px; }
+/* ⚠ IN THE BAND the legend is 2×2, and it is scoped to `.pl-title-row` on
+   purpose: `plDonutLegendHtml` also draws the player rail's legend, which is
+   a column with the room for four stacked rows and must not be re-flowed
+   from here. Four rows are 78px, which would make this band the one that is
+   20px taller than the other ten — the exact thing the shared band exists to
+   stop. Two columns are 32px, under the title block's own 64. */
+.pl-title-row .pl-donut-legend {
+  display: grid; grid-template-columns: auto auto; gap: 2px 16px;
+}
 .pl-donut-legend { display: flex; flex-direction: column; gap: 2px; }
 .pl-donut-legend-right { align-items: flex-end; }
 .pl-legend-row {
@@ -6202,10 +6459,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-rail-donut .pl-donut-pct { font-size: 15px; }
 
 /* ── Key figures ── */
-.pl-figures {
-  display: flex; flex-wrap: wrap; gap: 56px;
-  padding: 22px 0; border-bottom: 1px solid var(--pp-rule);
-}
+.pl-figures { flex-wrap: wrap; }
 .pl-fig { display: flex; flex-direction: column; gap: 3px; }
 .pl-fig-v { font-size: 24px; font-weight: 400; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .pl-fig-of { font-size: 14px; color: var(--pp-ink-2); }
@@ -6434,8 +6688,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    The rail is 480px of a 480px phone, so below the breakpoint it stops
    being a rail and becomes the page: full width, under the table. */
 @media (max-width: 900px) {
-  .pl-page { flex-direction: column; margin: -1rem -.5rem; }
-  .pl-main { padding: 20px 16px 32px; width: 100%; box-sizing: border-box; }
+  /* Columns fold here; the BLEED is at 600, where the container changes. */
+  .pl-page { flex-direction: column; }
+  .pl-main { width: 100%; box-sizing: border-box; }
   .pl-rail {
     width: 100%; border-left: none; border-top: 1px solid var(--pp-rule);
     padding: 24px 16px 40px; animation: none;
@@ -6458,7 +6713,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
+  /* ⚠ NO PADDING. The inset moved to the body wrapper at v247.2 — see the
+     shared rule near `.dashboard-content`. It was 30px here until v246, then
+     40px, and both were on the ROOT, which is what stopped the header band
+     reaching the page's edges and left the grey stripe down each side. */
+  min-height: calc(100vh - 120px);
 }
 /* The section subtitles carry the page's structure — Convidats,
    Pendents de col·locar, Membres — so they are set in the ink, not the
@@ -6470,13 +6729,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 /* A caption over a big number, not a section heading. Same size band,
    the opposite weight and colour — one class could not be both. */
-.reg2-fig-l {
-  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 400; color: var(--pp-ink-3);
-}
-.reg2-title-row { padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule); }
-.reg2-h1 { margin: 0 0 8px; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
-.reg2-sub-line { font-size: 14px; color: var(--pp-ink-2); max-width: 70ch; }
+.reg2-sub-line { max-width: 70ch; }
 
 /* ── On hairlines ──
    The first draft drew one under the title, one under the figures, one
@@ -6488,12 +6741,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    the heading from the work, and the rules a table draws for itself
    (the solid one under its headers, the light one between its rows).
    Everything else is separated by space. */
-.reg2-figures {
-  display: flex; flex-wrap: wrap; gap: 56px;
-  padding: 22px 0 26px;
-}
-.reg2-fig { display: flex; flex-direction: column; gap: 3px; }
-.reg2-fig-v { font-size: 24px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.reg2-figures { flex-wrap: wrap; }
 .reg2-fig-hot { color: var(--pp-red); }
 
 .reg2-sec-head {
@@ -6965,7 +7213,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-row-new { animation: reg2RowIn .4s ease both; }
 
 @media (max-width: 900px) {
-  .reg2-page { margin: -1rem -.5rem; padding: 20px 16px 32px; }
   .reg2-h1 { font-size: 28px; }
   .reg2-figures { gap: 28px; }
   .reg2-invite { gap: 8px; }
@@ -6995,7 +7242,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
 
 /* ── The card bridge ──
@@ -7773,7 +8020,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .pt-play { grid-template-columns: 1fr; gap: 32px; }
 }
 @media (max-width: 700px) {
-  .pt-page { margin: -1rem -.5rem; }
   .pt-topbar { padding: 12px 16px; }
   .pt-sb-band { padding: 24px 16px 20px; }
   .pt-sb-row { gap: 14px; }
@@ -7818,13 +8064,13 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
+  /* ⚠ NO PADDING. The inset moved to the body wrapper at v247.2 — see the
+     shared rule near `.dashboard-content`. It was 30px here until v246, then
+     40px, and both were on the ROOT, which is what stopped the header band
+     reaching the page's edges and left the grey stripe down each side. */
+  min-height: calc(100vh - 120px);
 }
 
-.cv-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--pp-ink-3);
-}
 .cv-sec-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
@@ -7833,21 +8079,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-over { color: var(--pp-red); }
 
 /* ---- title band ---- */
-.cv-head {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule);
-}
-.cv-head-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.cv-h1 {
-  margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1;
-  letter-spacing: -.01em;
-}
-.cv-sub { font-size: 14px; color: var(--pp-ink-2); }
-.cv-head-r {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
-  flex-shrink: 0;
-}
-.cv-big { font-size: 32px; line-height: 1; color: var(--pp-green); }
+.cv-head-r { flex-shrink: 0; }
+/* Size from the shared figure rule; only the GREEN is Convocatòria's. */
+.cv-big { color: var(--pp-green); }
 .cv-big.cv-over { color: var(--pp-red); }
 
 /* ---- controls row ----
@@ -8104,7 +8338,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    touch drag is not what happens on a phone; a tap is, and bindConvocatoria
    binds one), and the three controls stop trying to share a baseline. */
 @media (max-width: 900px) {
-  .cv-page { margin: -1rem -.5rem; padding: 20px 16px 32px; }
   .cv-h1 { font-size: 28px; }
   .cv-controls { gap: 22px; padding: 18px 0; }
   .cv-ctl, .cv-ctl-match, .cv-ctl-kit { flex: 1 1 100%; min-width: 0; }
@@ -8157,20 +8390,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ini-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
-}
-.ini-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--pp-ink-3);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
 .ini-num { font-variant-numeric: tabular-nums; }
 
 /* ---- hero band ---- */
-.ini-hero {
-  display: flex; align-items: stretch; gap: 44px;
-  padding: 34px 40px 30px; background: #FFFFFF;
-  border-bottom: 1px solid var(--pp-rule);
-}
 .ini-hero-id { display: flex; align-items: stretch; gap: 24px; min-width: 0; }
 /* ⚠ The one round thing on a page whose rule is "no radius except circles" —
    and it IS a circle, so it belongs to the exception rather than breaking the
@@ -8209,10 +8433,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ini-hero-rule { width: 1px; background: var(--pp-rule-2); flex: 0 0 1px; }
 
 .ini-stats { display: flex; align-items: center; gap: 40px; }
-.ini-stat { display: flex; flex-direction: column; gap: 6px; }
-.ini-stat-v {
-  font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
-}
 .ini-hero-att { margin-left: auto; display: flex; align-items: center; gap: 16px; }
 .ini-att-leg { display: flex; flex-direction: column; gap: 5px; }
 .ini-att-leg span { font-size: 13px; color: var(--pp-ink-2); }
@@ -8228,7 +8448,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ---- body ---- */
-.ini-body { display: flex; gap: 44px; padding: 32px 40px 56px; align-items: flex-start; }
+.ini-body { display: flex; gap: 44px; align-items: flex-start; }
 .ini-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
 .ini-rail { flex: 0 0 372px; display: flex; flex-direction: column; gap: 34px; }
 
@@ -8427,7 +8647,6 @@ a.ini-ev-name, .ini-ev-name-link {
    a row of counters that do not share a baseline reads as four unrelated
    numbers. Found by rendering the preview at 390px; no string assertion can
    see it. */
-.ini-counters { display: flex; align-items: flex-end; gap: 40px; }
 .ini-count { display: flex; flex-direction: column; gap: 6px; }
 .ini-count-v { font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
 .ini-c-bad { color: var(--pp-red); }
@@ -8522,7 +8741,7 @@ a.ini-ev-name, .ini-ev-name-link {
   .ini-stats { gap: 26px; width: 100%; justify-content: flex-end; }
   .ini-stat-v { font-size: 23px; }
   .ini-hero-att { width: 100%; gap: 12px; }
-  .ini-body { padding: 20px 20px 40px; gap: 26px; }
+  .ini-body { gap: 26px; }
   .ini-h1 { font-size: 26px; }
 
   .ini-counters { gap: 0; width: 100%; }
@@ -8586,10 +8805,6 @@ a.ini-ev-name, .ini-ev-name-link {
    are. Unscoped, it would repaint every other page that uses it. */
 
 /* ── atoms, deliberately global (see the note above) ── */
-.md2-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--pp-ink-3);
-}
 .md2-eyebrow-s { font-size: 9px; letter-spacing: .16em; }
 .md2-hint { color: var(--pp-input-line); }
 .md2-num { font-variant-numeric: tabular-nums; }
@@ -8708,7 +8923,7 @@ a.ini-ev-name, .ini-ev-name-link {
 .md2-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
 .md2-page a { color: inherit; text-decoration: none; }
 .md2-page .conv-pos-circle {
@@ -8726,30 +8941,16 @@ a.ini-ev-name, .ini-ev-name-link {
 .md2-pos-s .conv-pos-circle { width: 22px; height: 22px; font-size: 9px; margin-right: -4px !important; }
 .md2-pos-l .conv-pos-circle { width: 28px; height: 28px; font-size: 11px; }
 
-.md2-hero {
-  display: flex; align-items: flex-end; gap: 36px;
-  padding: 34px 40px 26px; background: #FFFFFF;
-  border-bottom: 1px solid var(--pp-rule);
-}
-.md2-hero-id { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto; }
-.md2-h1 {
-  margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1;
-  letter-spacing: -.01em;
-}
-.md2-sub { font-size: 14px; color: var(--pp-ink-2); }
 /* ⚠ flex-END, not centre. The four labels are different lengths and the
    longest wraps on a narrow window; centring then lifts its figure half a
    line above the other three and the row stops reading as one row. */
-.md2-counters { display: flex; align-items: flex-end; gap: 36px; }
 .md2-counters-s { gap: 36px; }
-.md2-count { display: flex; flex-direction: column; gap: 6px; }
-.md2-count-v { font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
 .md2-counters-s .md2-count-v { font-size: 28px; }
 .md2-c-inj { color: var(--pp-bad); }
 .md2-c-rec { color: var(--pp-warn); }
 
 .md2-body {
-  display: flex; align-items: flex-start; gap: 44px; padding: 32px 40px 56px;
+  display: flex; align-items: flex-start; gap: 44px;
 }
 .md2-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 34px; }
 .md2-rail { width: 400px; flex: none; display: flex; flex-direction: column; gap: 34px; }
@@ -9100,7 +9301,7 @@ a.ini-ev-name, .ini-ev-name-link {
   .md2-count .md2-eyebrow { font-size: 9px; letter-spacing: .14em; }
   .md2-count-v, .md2-counters-s .md2-count-v { font-size: 23px; }
   .md2-cta { width: 100%; height: 44px; }
-  .md2-body { padding: 20px 20px 40px; gap: 28px; }
+  .md2-body { gap: 28px; }
   .md2-backbar, .md2-fhead, .md2-band { padding-left: 20px; padding-right: 20px; }
   /* The pending row stacks: name and time on one line, what they reported
      under it, then the two buttons at a real touch size. */
@@ -9177,15 +9378,9 @@ a.ini-ev-name, .ini-ev-name-link {
   /* -2rem, not the -1rem `.md2-page` and `.ini-page` use: the handoff runs
      the white identity band to both edges of the frame, so this one is full
      bleed against `.dashboard-content`'s 2rem. See the 600px block below. */
-  margin: -2rem; min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
 .ms-num, .ms-fig-v { font-variant-numeric: tabular-nums; }
-.ms-lbl {
-  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--pp-ink-3);
-}
-.ms-fig { display: flex; flex-direction: column; gap: 3px; }
-.ms-fig-v { font-size: 30px; line-height: 1; }
 .ms-fig-s .ms-fig-v { font-size: 24px; }
 .ms-vrule { width: 1px; background: var(--pp-rule-2); flex: none; }
 .ms-vrule-s { height: 44px; align-self: center; }
@@ -9194,14 +9389,17 @@ a.ini-ev-name, .ini-ev-name-link {
 .ms-l-sm { display: none; }
 
 /* ── 1. Identity band ── */
-.ms-id {
-  display: flex; align-items: stretch; gap: 44px;
-  padding: 34px 40px 30px; background: #FFFFFF;
-  border-bottom: 1px solid var(--pp-rule);
-}
 .ms-id-who { display: flex; align-items: center; gap: 22px; min-width: 0; }
-.ms-face, .ms-face-ph {
-  display: block; width: 96px; height: 96px; flex: none; object-fit: cover;
+/* One geometry, two fills — the `.pp-av` idiom (v231, css line ~6586), which
+   is why avatarHtmlGlobal() takes its modifier as a SEPARATE argument. The
+   base class carries the size and the round, `-ph` only paints the initials,
+   so a placeholder can never drift out of round with a photo.
+   ⚠ The handoff draws this square, in the paper idiom's no-radius rule. It is
+   round on the owner's call: a face is the one thing on these pages that is a
+   person rather than a document, and every other face in the app is round. */
+.ms-face {
+  display: block; width: 96px; height: 96px; flex: none;
+  border-radius: 50%; object-fit: cover;
   background: var(--pp-rule-2); border: 1px solid var(--pp-rule);
 }
 .ms-face-ph {
@@ -9255,7 +9453,7 @@ a.ini-ev-name, .ini-ev-name-link {
 .ms-fig-cards { display: none; }
 
 /* ── 3. Body ── */
-.ms-body { display: flex; align-items: flex-start; gap: 44px; padding: 32px 40px 56px; }
+.ms-body { display: flex; align-items: flex-start; gap: 44px; }
 .ms-main { flex: 1 1 0; min-width: 0; }
 .ms-rail { width: 320px; flex: none; }
 
@@ -9383,7 +9581,10 @@ a.ini-ev-name, .ini-ev-name-link {
     border-bottom: none;
   }
   .ms-id-who { gap: 14px; }
-  .ms-face, .ms-face-ph { width: 56px; height: 56px; }
+  /* Size only. The round is inherited from the base class, the way
+     `.pp-av-lg` inherits it — restating geometry here is how the two
+     variants drift apart. */
+  .ms-face { width: 56px; height: 56px; }
   .ms-face-ph { font-size: 22px; }
   .ms-name { font-size: 24px; }
   .ms-dorsal { font-size: 16px; }
@@ -9418,7 +9619,7 @@ a.ini-ev-name, .ini-ev-name-link {
   .ms-prep-nums { gap: 0; padding-top: 16px; }
   .ms-prep-nums .ms-fig { flex: 1 1 0; min-width: 0; }
   .ms-fig-cards { display: flex; }
-  .ms-body { padding: 20px 20px 40px; gap: 22px; }
+  .ms-body { gap: 22px; }
   /* One row markup per frame; this is where the choice is made. */
   .ms-head, .ms-rows { display: none; }
   .ms-prows { display: block; }
@@ -9435,5 +9636,488 @@ a.ini-ev-name, .ini-ev-name-link {
    nowhere else. Putting it in the 700 block leaves a 100px band where the
    identity band is pulled 2rem wider than its container. */
 @media (max-width: 600px) {
-  .ms-page { margin: -.75rem -1rem; }
+  /* margin: the shared rule near .dashboard-content, which has the 600px
+     arm too. This block is kept so ms.test.js's slice still finds a 600
+     section for the page. */
+  .ms-page { min-height: calc(100vh - 90px); }
+}
+
+/* ===== Accions, redesigned (v245) =====
+
+   The eleventh page in the paper system, and the one a player touches most:
+   a task inbox for the RPE of sessions and matches they actually attended.
+
+   ⚠ THE ANSWER STRIP AND THE PHONE'S SCROLL WHEEL ARE ONE CONTROL. Same ten
+   cells, same `.ac-cell-on`; this block decides which reading of them is
+   painted. There is no second value and no second builder, so the two frames
+   cannot offer different answers — which is exactly what two controls over
+   one field did on the pre-v227 dropdown.
+
+   ⚠ `.ac-num`, `.ac-lbl`, `.ac-sec*`, `.ac-clear`, `.ac-note`, `.ac-empty-s`
+   and `.ac-band-*` are deliberately shared with `.nf-` below. They are the
+   vocabulary of the two pages in this handoff, not Accions' private
+   property, and a `.nf-` copy of them would be five more literals to keep in
+   step. Everything else here is `.ac-` and page-private. */
+
+.ac-page, .nf-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+.ac-num { font-variant-numeric: tabular-nums; }
+
+/* The RPE ramp: 1-3 easy, 4-6 moderate, 7-8 hard, 9-10 maximal. One set of
+   four, used by the strip, the saved figure and the extras list. */
+.ac-band-ok { color: var(--pp-ok); }
+.ac-band-warn { color: var(--pp-warn); }
+.ac-band-bad { color: var(--pp-bad); }
+.ac-band-red { color: var(--pp-red); }
+.ac-v-red { color: var(--pp-red); }
+.ac-v-ok { color: var(--pp-ok); }
+
+/* Section head. ⚠ THE FIXED 18px LINE-HEIGHT IS LOAD-BEARING: the main
+   column's head and the rail's sit in different columns, and only a fixed
+   line box makes their two underlines land on one line. */
+.ac-sec {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; line-height: 18px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--pp-ink);
+}
+.ac-sec-2 { margin-top: 34px; }
+.ac-sec-l {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ac-sec-r { font-size: 13px; color: var(--pp-ink-2); }
+.ac-note { margin: 18px 0 0; font-size: 12px; color: var(--pp-ink-3); line-height: 1.6; }
+.ac-empty-s { margin: 14px 0 0; font-size: 13px; color: var(--pp-ink-3); }
+.ac-clear { display: flex; align-items: center; gap: 12px; padding: 24px 0 6px; font-size: 17px; }
+.ac-clear-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pp-ok); flex: none; }
+
+/* ── Hero ── */
+.ac-hero, .nf-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-rule);
+}
+.ac-h1, .nf-h1 {
+  margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em;
+}
+
+/* ── Body ── */
+.ac-body, .nf-body { display: flex; align-items: flex-start; gap: 44px; }
+.ac-main, .nf-main { flex: 1 1 0; min-width: 0; }
+/* ⚠ BOTH RAILS ARE SIZED HERE, above the media queries that fold them.
+   `.nf-rail` was declared in its own block further down — after the 1100px
+   override — so the override lost the cascade and the rail stayed 372px at
+   390px, pushing the page 2px wider than the phone. Source order is the only
+   thing separating those two rules; equal specificity does the rest. */
+.ac-rail, .nf-rail { width: 372px; flex: none; }
+
+/* ── A pending or recently-answered activity ── */
+.ac-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 15px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.ac-date {
+  width: 46px; flex: none; display: flex; flex-direction: column;
+  align-items: center; gap: 1px;
+}
+.ac-dow { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--pp-ink-3); }
+.ac-dd { font-size: 24px; line-height: 1; }
+/* The accent bar. Ink for a session, red for a match — the one place on this
+   page red means "this is the one that counts", not "this is wrong". */
+.ac-bar { width: 3px; align-self: stretch; flex: none; }
+.ac-bar-training { background: var(--pp-ink); }
+.ac-bar-match { background: var(--pp-red); }
+.ac-body-col, .ac-body > .ac-main > .ac-row > .ac-body { min-width: 0; }
+.ac-row > .ac-body {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px;
+  padding: 0; background: none;
+}
+.ac-title-row { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.ac-title { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-kind {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3); flex: none;
+}
+.ac-meta { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--pp-ink-2); }
+.ac-time { font-variant-numeric: tabular-nums; }
+.ac-meta-t { color: var(--pp-ink-2); }
+/* The minutes are editable in place — a player may have left early, and the
+   correction belongs beside the number it corrects, not in a second form. */
+.ac-min {
+  width: 46px; height: 26px; padding: 0 4px; text-align: center;
+  font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
+  color: var(--pp-ink); background: none; border: 1px solid var(--pp-input-line);
+  border-radius: 0;
+}
+.ac-min:focus { outline: none; border-color: var(--pp-ink); }
+
+/* ── The answer ── */
+.ac-answer { display: flex; align-items: flex-start; gap: 14px; flex: none; }
+/* The strip and its captions are ONE column. As two siblings of the row they
+   were sized to their own text and `space-between` had nothing to spread. */
+.ac-answer-col { display: flex; flex-direction: column; flex: none; }
+.ac-strip { display: flex; gap: 4px; }
+.ac-cell {
+  width: 34px; height: 34px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
+  color: var(--pp-ink); background: none;
+  border: 1px solid var(--pp-input-line); border-radius: 0; cursor: pointer;
+}
+.ac-cell:hover { border-color: var(--pp-ink); }
+/* Choosing FILLS the chosen cell in its ramp colour and dims the rest — the
+   scale stays as the context that makes a 7 mean something.
+   ⚠ SPECIFICITY IS THE WHOLE RULE HERE, and getting it wrong is what shipped
+   in v245: the dim below is (0,2,0) and it outranked both `.ac-cell-on` and
+   the `.ac-band-*` the JS puts on the chosen cell, which are (0,1,0) each. So
+   `border-color: currentColor` resolved to the dim grey and the ramp colour
+   never rendered at all — every cell, chosen included, came out grey.
+   The fill is a two-class compound, (0,2,0), which ties with the dim and wins
+   on source order; the white text is (0,3,0) and beats it outright.
+   ⚠ `.ac-band-*` CANNOT be repurposed to mean "background": it is the text
+   colour of `.ac-done-v` and `.ac-ex-rpe` as well. */
+.ac-strip-set .ac-cell { color: var(--pp-ink-4); border-color: var(--pp-rule-2); }
+.ac-strip-set .ac-cell-on { color: #FFFFFF; font-size: 16px; }
+.ac-cell-on.ac-band-ok   { background: var(--pp-ok);   border-color: var(--pp-ok); }
+.ac-cell-on.ac-band-warn { background: var(--pp-warn); border-color: var(--pp-warn); }
+.ac-cell-on.ac-band-bad  { background: var(--pp-bad);  border-color: var(--pp-bad); }
+.ac-cell-on.ac-band-red  { background: var(--pp-red);  border-color: var(--pp-red); }
+.ac-strip-err .ac-cell { border-color: var(--pp-red); }
+.ac-scale {
+  display: flex; justify-content: space-between; padding-top: 6px;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ac-save {
+  height: 34px; padding: 0 16px; flex: none; font-family: inherit; font-size: 13px;
+  color: var(--pp-ink); background: none;
+  border: 1px solid var(--pp-ink); border-radius: 0; cursor: pointer;
+}
+.ac-save:hover { background: var(--pp-ink); color: var(--pp-paper); }
+
+/* ── An answered row ── */
+.ac-done { display: flex; align-items: center; gap: 12px; flex: none; }
+.ac-done-l { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); }
+.ac-done-v { font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.ac-change {
+  font-family: inherit; font-size: 13px; color: var(--pp-ink-2);
+  background: none; border: none; padding: 0; cursor: pointer;
+  border-bottom: 1px solid var(--pp-rule-4);
+}
+.ac-change:hover { color: var(--pp-red); border-bottom-color: var(--pp-red); }
+
+/* ── The extra-training form ── */
+.ac-form { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; }
+.ac-f-row { display: flex; gap: 20px; }
+.ac-f { display: flex; flex-direction: column; gap: 5px; flex: 1 1 0; min-width: 0; }
+.ac-f-min { flex: 0 0 90px; }
+.ac-date-pick {
+  display: flex; align-items: baseline; gap: 10px;
+  border-bottom: 1px solid var(--pp-input-line); padding-bottom: 4px;
+}
+.ac-date-txt { flex: 1 1 0; min-width: 0; font-size: 14px; }
+.ac-cal-btn {
+  font-family: inherit; font-size: 12px; color: var(--pp-ink-3);
+  background: none; border: none; padding: 0; cursor: pointer; flex: none;
+}
+.ac-cal-btn:hover { color: var(--pp-ink); }
+.ac-min-x {
+  width: 100%; height: 26px; padding: 0 4px; font-family: inherit; font-size: 14px;
+  font-variant-numeric: tabular-nums; color: var(--pp-ink); background: none;
+  border: none; border-bottom: 1px solid var(--pp-input-line); border-radius: 0;
+}
+.ac-min-x:focus { outline: none; border-bottom-color: var(--pp-ink); }
+.ac-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.ac-pill {
+  height: 30px; padding: 0 14px; font-family: inherit; font-size: 13px;
+  color: var(--pp-ink-2); background: none;
+  border: 1px solid var(--pp-rule); border-radius: 0; cursor: pointer;
+}
+.ac-pill-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+.ac-submit {
+  height: 44px; width: 100%; font-family: inherit; font-size: 14px;
+  color: var(--pp-ink-2); background: none;
+  border: 1px solid var(--pp-rule); border-radius: 0; cursor: pointer;
+}
+.ac-submit:not(:disabled) { color: var(--pp-paper); background: var(--pp-ink); border-color: var(--pp-ink); }
+.ac-submit:disabled { cursor: default; }
+
+/* ── The inline month grid ──
+   ⚠ Future days are DISABLED, not hidden. A greyed 12th says "not that one";
+   a missing 12th says the calendar is broken. */
+.ac-cal { border: 1px solid var(--pp-rule); padding: 10px; }
+.ac-cal-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; }
+.ac-cal-t { font-size: 13px; }
+.ac-cal-nav {
+  width: 24px; height: 24px; font-family: inherit; font-size: 15px;
+  color: var(--pp-ink); background: none; border: none; cursor: pointer;
+}
+.ac-cal-nav:disabled { color: var(--pp-rule-4); cursor: default; }
+.ac-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ac-c, .ac-c-pad {
+  height: 32px; display: flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+  color: var(--pp-ink); background: none; border: 1px solid transparent;
+  border-radius: 0; cursor: pointer;
+}
+.ac-c:hover:not(:disabled) { border-color: var(--pp-rule-4); }
+.ac-c-today { border-color: var(--pp-ink); }
+.ac-c-on { background: var(--pp-ink); color: var(--pp-paper); border-color: var(--pp-ink); }
+.ac-c:disabled { color: var(--pp-rule-4); cursor: default; }
+
+/* ── Extras logged ── */
+.ac-ex-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.ac-ex-what { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ac-ex-tag { font-size: 15px; }
+.ac-ex-meta { font-size: 12px; color: var(--pp-ink-3); }
+.ac-ex-l { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); flex: none; }
+.ac-ex-rpe { font-size: 15px; flex: none; font-variant-numeric: tabular-nums; }
+
+/* The phone's sheet trigger; desktop has the form in the rail already. */
+.ac-sheet-open { display: none; }
+
+/* ── responsive ──
+   1100 folds the rail under the column; 700 is the phone, which is what the
+   APK is. The same two steps `.md2-`, `.ini-`, `.pt-` and `.ms-` use. */
+@media (max-width: 1100px) {
+  .ac-hero, .nf-hero { flex-wrap: wrap; gap: 24px; }
+  .ac-body, .nf-body { flex-direction: column; gap: 34px; }
+  .ac-rail, .nf-rail { width: 100%; flex: 1 1 auto; }
+}
+@media (max-width: 700px) {
+  .ac-hero { padding: 14px 20px 16px; }
+  .ac-h1, .nf-h1 { font-size: 26px; }
+  .ac-hero-sub { font-size: 12px; }
+  .ac-figs { gap: 0; width: 100%; }
+  .ac-fig { flex: 1 1 0; min-width: 0; }
+  .ac-fig-v { font-size: 24px; }
+  /* Two of the three hero figures are a coach's framing of the week; the
+     handoff's phone frame keeps only the one a player is being asked about. */
+  .ac-figs .ac-fig:not(:first-child) { display: none; }
+  /* ⚠ The one exception to the shared inset, and it is deliberate: the
+     handoff's phone frame opens 4px tighter here. Top only. */
+  .ac-body { padding-top: 16px; gap: 22px; }
+  .ac-sec-l { font-size: 10px; }
+  .ac-row { flex-wrap: wrap; gap: 12px; padding: 14px 0; }
+  .ac-title { font-size: 16px; }
+  .ac-kind { display: none; }
+  /* ⚠ THE WHEEL. Ten cells do not fit in 390px, so the strip becomes a
+     96px window scrolling its own column — the same ten buttons, the same
+     `.ac-cell-on`. `scroll-snap` keeps a value centred; the handler in
+     bindAccions() eats the wheel event so the PAGE does not move with it. */
+  /* The wheel and Desa sit BESIDE the session, on one line — which is what
+     the handoff draws and what stops a three-row list becoming nine. */
+  .ac-answer { gap: 10px; flex: none; }
+  .ac-answer-col { flex-direction: row; }
+  /* ⚠ The two hairlines mark the CENTRE slot, not the ends of the box: they
+     are what says "this row is the value". 32px items in a 96px window puts
+     that slot at 32-64px, so the rules are painted there rather than on the
+     border, which would only outline the control. */
+  .ac-strip {
+    flex-direction: column; width: 48px; height: 96px; gap: 0;
+    overflow-y: auto; scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    background-image: linear-gradient(var(--pp-rule-4), var(--pp-rule-4)),
+                      linear-gradient(var(--pp-rule-4), var(--pp-rule-4));
+    background-size: 100% 1px, 100% 1px;
+    background-position: 0 32px, 0 63px;
+    background-repeat: no-repeat;
+    background-attachment: local, local;
+  }
+  .ac-cell { width: 48px; height: 32px; border: none; scroll-snap-align: center; }
+  .ac-cell:hover { border: none; }
+  .ac-strip-set .ac-cell { border: none; }
+  /* ⚠ THE WHEEL DOES NOT FILL. The handoff draws the selected value "centred
+     between two hairlines in its ramp colour" — a filled 48×32 block in a
+     scroll column reads as a button, not as the value the wheel has landed
+     on, and the hairlines above and below already say which slot is chosen.
+     So the ramp goes back on the TEXT here and the background is cleared. */
+  .ac-cell-on { border: none; font-size: 20px; }
+  .ac-strip-set .ac-cell-on { border: none; }
+  /* ⚠ `.ac-strip-set` prefixed, so these are (0,3,0) and can actually beat
+     the base rule's white text. Without it they are (0,2,0), the white wins,
+     and the chosen value is white on nothing — invisible. */
+  .ac-strip-set .ac-cell-on.ac-band-ok   { background: none; color: var(--pp-ok); }
+  .ac-strip-set .ac-cell-on.ac-band-warn { background: none; color: var(--pp-warn); }
+  .ac-strip-set .ac-cell-on.ac-band-bad  { background: none; color: var(--pp-bad); }
+  .ac-strip-set .ac-cell-on.ac-band-red  { background: none; color: var(--pp-red); }
+  .ac-scale { display: none; }
+  .ac-save { width: 46px; height: 96px; padding: 0; }
+  .ac-done { width: 100%; justify-content: flex-end; }
+  .ac-done-l { display: none; }
+  /* The form moves into a sheet the button opens. The rail's list stays —
+     the head and its count are what the handoff keeps on the phone. */
+  .ac-sheet-open {
+    display: block; width: 100%; height: 48px; margin: 18px 0 4px;
+    font-family: inherit; font-size: 15px; color: var(--pp-paper);
+    background: var(--pp-ink); border: none; border-radius: 0; cursor: pointer;
+  }
+  .ac-rail .ac-form { display: none; }
+  /* With the form in a sheet, the rail's first head has nothing under it —
+     a section label over a gap reads as content that failed to load. */
+  .ac-rail > .ac-sec:first-child { display: none; }
+  .ac-rail .ac-sec-2 { margin-top: 0; }
+  .ac-page.ac-sheet-on .ac-rail .ac-form {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    padding: 20px; background: #FFFFFF; border-top: 1px solid var(--pp-rule);
+    box-shadow: 0 -8px 32px rgba(45, 41, 38, .18);
+  }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-strip { flex-direction: row; width: auto; height: auto; overflow: visible; }
+  /* The sheet's strip is a ROW again, so it fills like the desktop one —
+     `:not(.ac-cell-on)` keeps this from painting a grey border over the fill. */
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell { width: 30px; height: 34px; }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell:not(.ac-cell-on) { border: 1px solid var(--pp-input-line); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-strip-set .ac-cell-on { color: #FFFFFF; }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-ok   { background: var(--pp-ok); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-warn { background: var(--pp-warn); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-bad  { background: var(--pp-bad); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-red  { background: var(--pp-red); }
+  .ac-ex-l { display: none; }
+}
+
+/* ===== Notificacions, redesigned (v245) =====
+
+   The twelfth page, and the coach's half of the same handoff. A read-only
+   feed of what the players did, scoped by the shared `.cat-bar` above it.
+
+   ⚠ THE COLUMN WIDTHS ARE THE POINT. Badge 116px, name 172px, both fixed:
+   the rows are read by scanning DOWN one column, and a badge that resizes
+   itself to its word turns that column into a ragged edge.
+
+   ⚠ THIS BLOCK IS NOW LAST IN THE FILE. test/ms.test.js sliced `.ms-` to EOF
+   and has an end bound naming the `.ac-` banner now; test/accions.test.js is
+   bounded by THIS banner, and test/notificacions.test.js runs to the end. A
+   thirteenth page needs the same treatment. */
+
+.nf-hero-r { display: flex; align-items: center; gap: 40px; flex: none; }
+.nf-vrule { width: 1px; align-self: stretch; background: var(--pp-rule-2); }
+.nf-acts { display: flex; align-items: center; gap: 14px; }
+.nf-toggle {
+  height: 28px; padding: 0 11px; font-family: inherit; font-size: 12px;
+  color: var(--pp-ink-2); background: none;
+  border: 1px solid var(--pp-rule); border-radius: 0; cursor: pointer;
+}
+.nf-toggle-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+.nf-mark {
+  font-family: inherit; font-size: 13px; color: var(--pp-ink-2);
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.nf-mark:hover:not(:disabled) { color: var(--pp-red); }
+/* Greyed rather than hidden: a button that vanishes when there is nothing to
+   do makes the page look different for no stated reason. */
+.nf-mark:disabled { color: var(--pp-input-line); cursor: default; }
+.nf-mark-s { display: none; }
+
+/* ── A row ── */
+.nf-row {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 13px 12px 13px 0; box-sizing: border-box; text-align: left;
+  font-family: inherit; font-size: 15px; color: var(--pp-ink);
+  background: none; border: none; border-bottom: 1px solid var(--pp-rule-2);
+}
+.nf-row-go { cursor: pointer; }
+.nf-row-go:hover { background: #FFFFFF; }
+/* Unread carries BOTH a wash and a bar. The bar alone is 3px of red that a
+   quick scan misses; the wash alone disappears against the raised band on a
+   phone. Either one failing still leaves the other. */
+.nf-row-new { background: var(--pp-tint); }
+.nf-bar { width: 3px; align-self: stretch; flex: none; background: transparent; }
+.nf-row-new .nf-bar { background: var(--pp-red); }
+.nf-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 116px; height: 20px; padding: 0 8px; box-sizing: border-box; flex: none;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  white-space: nowrap; color: #FFFFFF; background: var(--pp-neutral);
+}
+.nf-b-rpe { background: var(--pp-ink); }
+.nf-b-injury { background: var(--pp-bad); }
+.nf-b-extra { background: var(--pp-ink-4); }
+.nf-b-reg { background: var(--pp-ink-2); }
+.nf-b-other { background: var(--pp-ink-3); }
+/* The availability badge is coloured by the ANSWER. A record from before
+   v245 has none and keeps the neutral grey rather than being guessed at. */
+.nf-b-avail { background: var(--pp-neutral); }
+.nf-a-ok { background: var(--pp-ok); }
+.nf-a-warn { background: var(--pp-warn); }
+.nf-a-off { background: var(--pp-neutral); }
+.nf-a-bad { background: var(--pp-bad); }
+.nf-pos {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  font-size: 9px; color: #FFFFFF;
+}
+.nf-name { width: 172px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nf-detail {
+  flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--pp-ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nf-time { font-size: 12px; color: var(--pp-ink-3); white-space: nowrap; flex: none; }
+
+/* ── Rail ── */
+.nf-t-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.nf-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--pp-ink-3); }
+.nf-dot-b_avail { background: var(--pp-ok); }
+.nf-dot-b_rpe { background: var(--pp-ink); }
+.nf-dot-b_injury { background: var(--pp-bad); }
+.nf-dot-b_extra { background: var(--pp-ink-4); }
+.nf-dot-b_registration { background: var(--pp-ink-2); }
+.nf-t-l { flex: 1 1 0; font-size: 13px; color: var(--pp-ink-2); }
+.nf-t-n { font-size: 15px; font-variant-numeric: tabular-nums; }
+/* ⚠ 14px of INNER padding, and the full column width. The wash has to reach
+   the ends of the rule above and below it or the row reads as a floating
+   card; the text must not touch those ends either. */
+.nf-s-row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 14px; box-sizing: border-box; text-align: left;
+  font-family: inherit; font-size: 15px; color: var(--pp-ink);
+  background: none; border: none; border-bottom: 1px solid var(--pp-rule-2);
+  cursor: pointer;
+}
+.nf-s-on { background: var(--pp-tint); }
+.nf-s-on .nf-s-l { color: var(--pp-red); }
+.nf-s-l { flex: 1 1 0; min-width: 0; }
+.nf-s-n { font-size: 15px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums; }
+.nf-s-unread { color: var(--pp-red); }
+
+@media (max-width: 700px) {
+  .nf-hero { padding: 14px 20px; }
+  .nf-hero-r { gap: 0; }
+  .nf-fig { align-items: flex-end; }
+  .nf-fig-v { font-size: 23px; }
+  .nf-vrule { display: none; }
+  /* The toggle and the bulk action get their own bar under the hero, which
+     is what the handoff draws — three controls on the hero row at 390px
+     leaves the title nowhere to go.
+     ⚠ BY WRAPPING, NOT BY `position:absolute`. The first attempt pulled this
+     out of flow with a `margin-top:96px` and paid for it with a matching
+     `padding-top` on `.nf-body`; two magic numbers holding each other up, and
+     `.nf-hero` is not a positioned ancestor, so it escaped to the viewport. */
+  .nf-hero { flex-wrap: wrap; }
+  .nf-hero-r { flex: 1 1 100%; }
+  .nf-acts {
+    flex: 1 0 100%; margin: 10px -20px -14px; padding: 10px 20px;
+    box-sizing: border-box; border-top: 1px solid var(--pp-rule-2);
+  }
+  .nf-mark { margin-left: auto; }
+  .nf-mark-l { display: none; }
+  .nf-mark-s { display: inline; }
+  .nf-body { padding: 16px 20px 40px; gap: 22px; }
+  /* Badge and name on line one, the detail on its own line below. */
+  .nf-row { flex-wrap: wrap; gap: 10px; padding: 12px 8px 12px 0; }
+  .nf-badge { width: auto; height: 18px; padding: 0 6px; font-size: 9px; letter-spacing: .1em; }
+  .nf-name { width: auto; flex: 1 1 auto; font-size: 14px; }
+  /* ⚠ The indent is PADDING, not a margin. `flex-basis:100%` plus a 35px
+     margin is 100% + 35px, which is how a row two pixels wider than the phone
+     came to drag the whole page sideways. */
+  .nf-detail { flex: 1 0 100%; padding-left: 35px; box-sizing: border-box; white-space: normal; }
+  .nf-time { font-size: 11px; }
 }

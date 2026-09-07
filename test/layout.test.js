@@ -330,3 +330,215 @@ describe('training detail — the remove button', () => {
         'reading as unrelated to the list below it');
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * How a paper page sits in the dashboard (v246).
+ *
+ * Ten page roots, one rule, and it lives beside `.dashboard-content` rather
+ * than inside any page's own block — every one of those blocks is sliced from
+ * its banner to the next by a suite, so a rule naming ten pages would be read
+ * as belonging to whichever region it landed in.
+ *
+ * WHAT WENT WRONG WITHOUT IT, and what these assertions are really about:
+ *
+ *  1. The roots had drifted into two camps — four pulled -2rem and bled to
+ *     both edges, six pulled -1rem and left a 16px grey band down each side,
+ *     under a `.cat-bar` that bleeds the full 32px. A visible step where the
+ *     bar met the page, on six of nine pages.
+ *  2. ⚠ THE TOP IS NOT THE SIDES. The bar and the root are ADJACENT SIBLINGS
+ *     and their margins collapse to `max(positive) + min(negative)`. The bar
+ *     leaves 1rem, so a -2rem root climbed 16px OVER it and covered its
+ *     `border-bottom`. Both share `--pp-paper`, so that read not as an overlap
+ *     but as the filter bar being SHORTER on those pages — three different bar
+ *     heights across nine pages, all from one sum.
+ *  3. The three banners carry the same 1rem and no top margin, so the same
+ *     arithmetic applied to them: the bar rode over whichever was showing.
+ *     `.std-page` was the only root that had ever guarded this.
+ *  4. Four roots pinned their bleed to their own 700/900 breakpoint — about
+ *     columns folding — while `.dashboard-content` changes at 600.
+ *
+ * ⚠ ONE TEST, NOT ONE PER SUITE. Ten copies of a geometry assertion is how
+ * ten copies of the geometry got there in the first place.
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe('the paper pages sit in the dashboard the same way', () => {
+  /* ⚠ v247: eleven. `.cal-page` did not exist — Calendari pulled the bleed on
+     `.cal-bar` and `.cal-weeks` individually, plus a `margin-top:-1rem` on the
+     bar to stand in for the one a root would have taken. Three declarations
+     doing what membership of this list does. */
+  const ROOTS = ['.std-page', '.pl-page', '.reg2-page', '.pt-page', '.cv-page',
+    '.ini-page', '.md2-page', '.ms-page', '.ac-page', '.nf-page', '.cal-page'];
+  /* Comment-stripped: the block above names every selector and every value,
+     and an unstripped scan would find the prose instead of the rule. The
+     standing trap in this repo. */
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  /** The declaration block of the first rule whose selector list contains
+      `sel` and which sets `margin`, searched from `from`. */
+  function marginRuleFor(sel, from) {
+    const re = new RegExp('([^{}]*' + esc(sel) + '[^{}]*)\\{([^}]*margin[^}]*)\\}', 'g');
+    re.lastIndex = from || 0;
+    const m = re.exec(bare);
+    return m && { selectors: m[1], body: m[2] };
+  }
+
+  it('gives every root the same bleed, in ONE rule', () => {
+    const r = marginRuleFor('.ms-page');
+    assert.ok(r, 'no shared margin rule names .ms-page at all');
+    ROOTS.forEach((sel) => assert.ok(r.selectors.includes(sel),
+        sel + ' is not in the shared bleed rule — it will keep its own geometry'));
+    assert.ok(/margin:\s*-1rem\s+-2rem\s+-2rem/.test(r.body),
+        'the bleed is not -1rem top / -2rem sides and bottom: ' + r.body.trim());
+  });
+
+  /* ⚠ -1rem, not -2rem. It cancels the 1rem that the cat-bar and the banners
+     each leave below themselves, so the page sits FLUSH under whichever one
+     precedes it. -2rem is the overlap that hid the bar's bottom rule. */
+  it('cancels exactly the 1rem that the cat-bar and the banners leave', () => {
+    assert.ok(/\.cat-bar\{[^}]*margin:\s*0\s+-2rem\s+1rem/.test(bare),
+        'the cat-bar no longer leaves the 1rem the roots are cancelling');
+    assert.ok(/\.upd-banner\s*\{[^}]*margin-bottom:\s*1rem/.test(bare),
+        'the banners no longer leave the 1rem the roots are cancelling');
+  });
+
+  /* Nothing above us: pull the whole 2rem and reach the top of the pane. A
+     blanket -2rem top is what slides a page over a banner. */
+  it('gives every root a :first-child arm', () => {
+    const m = /([^{}]*\.ms-page:first-child[^{}]*)\{([^}]*margin-top[^}]*)\}/.exec(bare);
+    assert.ok(m, 'the :first-child arm is gone');
+    ROOTS.forEach((sel) => assert.ok(m[1].includes(sel + ':first-child'),
+        sel + ' has no :first-child arm — it will sit 1rem down with nothing above it'));
+    assert.ok(/margin-top:\s*-2rem/.test(m[2]));
+  });
+
+  /* ⚠ The bar needs the same guard, and did not have it: a blanket -2rem top
+     is why it clipped an update banner on all ten CATEGORY_PAGES. */
+  it('guards the cat-bar against the banners the same way', () => {
+    assert.ok(/\.cat-bar:first-child\{[^}]*margin-top:\s*-2rem/.test(bare),
+        'the cat-bar has no :first-child arm');
+    assert.ok(!/\.cat-bar\{[^}]*margin:\s*-2rem/.test(bare),
+        'the cat-bar has a blanket negative top margin again; it will ride over a banner');
+  });
+
+  /* ⚠ 600 is where `.dashboard-content` goes from 2rem to `.75rem 1rem`. A
+     page's own 700 or 900 is about columns folding and is the wrong hook: a
+     bleed pinned there negates a padding that has not moved yet. */
+  it('follows the container down at 600, not at any page breakpoint', () => {
+    const at600 = bare.slice(bare.indexOf('@media (max-width: 600px)'));
+    const r = marginRuleFor('.ms-page', bare.indexOf('@media (max-width: 600px)'));
+    assert.ok(r && ROOTS.every((sel) => r.selectors.includes(sel)),
+        'the 600px arm does not cover every root');
+    assert.ok(/margin:\s*-1rem\s+-1rem\s+-\.75rem/.test(r.body),
+        'the 600px bleed does not match .dashboard-content\'s .75rem 1rem: ' + r.body.trim());
+    assert.ok(/\.cat-bar\{[^}]*margin:\s*0\s+-1rem\s+1rem/.test(at600),
+        'the cat-bar does not follow the container down to 1rem');
+  });
+
+  it('leaves no per-page margin behind to outrank the shared rule', () => {
+    /* A local `.cv-page { margin: … }` would win on source order for that one
+       page and put the band back on it alone — which is exactly how the two
+       camps formed. `background` and `padding` are each page's own business.
+       ⚠ The test is not "no rule mentions this root" — the SHARED rules do,
+       and they are the point. It is "every margin-declaring rule that mentions
+       a root mentions ALL of them", which only the shared pair can satisfy. */
+    const re = /([^{}]*)\{([^}]*)\}/g;
+    let m;
+    while ((m = re.exec(bare))) {
+      if (!/margin\s*:|margin-top\s*:/.test(m[2])) continue;
+      /* ⚠ The root must END its compound — `,`, `:first-child`, or the end of
+         the list. `.reg2-page .reg-team-circle` is a DESCENDANT and is that
+         page's own business; matching it made this fire on every block. */
+      const named = ROOTS.filter((sel) =>
+        new RegExp('(^|[,\\s])' + esc(sel) + '(:first-child)?\\s*(,|$)').test(m[1]));
+      if (!named.length) continue;
+      assert.strictEqual(named.length, ROOTS.length,
+          'a margin rule names only ' + named.join(', ') +
+          ' — that page keeps its own geometry: ' + m[1].trim().slice(0, 120));
+    }
+  });
+
+  /* ⚠ v247.2 MOVED THIS, and the move is the point.
+
+     It used to check `.reg2-page`, `.cv-page` and `.pl-main` — the ROOTS — for
+     `padding: 28px 40px 48px`. That is where the inset was, and it is why the
+     owner still saw a grey stripe down each side of those three pages after
+     v247: a header band painted edge to edge cannot reach an edge its ancestor
+     is holding 40px away from. Mèdic, Inici, Notificacions and Calendari have
+     no root padding and looked right, which is exactly the split reported.
+
+     So the root carries the bleed and nothing else, and one body wrapper per
+     page carries the inset. Same question — one inset everywhere — asked of
+     the element that should answer it. */
+  const BODIES = ['.ini-body', '.md2-body', '.ms-body', '.ac-body', '.nf-body',
+    '.pl-body', '.reg2-body', '.cv-body'];
+
+  it('insets every paper page\'s content by the same 40px', () => {
+    const r = /([^{}]*\.cv-body[^{}]*)\{([^}]*padding[^}]*)\}/.exec(bare);
+    assert.ok(r, 'no shared inset rule names .cv-body at all');
+    BODIES.forEach((sel) => assert.ok(r[1].includes(sel),
+        sel + ' is not in the shared inset rule — that page keeps its own'));
+    assert.ok(/padding:\s*32px\s+40px\s+56px/.test(r[2]),
+        'the inset is not 40px on the sides: ' + r[2].trim());
+  });
+
+  /* ⚠ THE DEFECT ITSELF. A root that sets padding puts the grey stripe back on
+     that page alone, and it is invisible in a diff — the page still looks
+     "inset", just inset one level too high, with the band inset with it. */
+  it('leaves no padding on a page ROOT to hold the band off the edge', () => {
+    const re = /([^{}]*)\{([^}]*)\}/g;
+    let m;
+    while ((m = re.exec(bare))) {
+      if (!/padding\s*:|padding-left\s*:|padding-right\s*:/.test(m[2])) continue;
+      ROOTS.forEach((sel) => {
+        if (!new RegExp('(^|[,\\s])' + esc(sel) + '(:first-child)?\\s*(,|$)').test(m[1])) return;
+        assert.fail(sel + ' pads the root, so its header band stops short of the ' +
+            'page edge: ' + m[1].trim().slice(0, 80) + ' { ' + m[2].trim().slice(0, 60));
+      });
+    }
+  });
+
+  /* The body has to narrow when the BAND does, or the text steps 24px left of
+     its own title. The three pages fixed here used 900, which is 200px of
+     width with the two disagreeing. */
+  it('steps every body down on the band\'s breakpoint, not its own', () => {
+    const at700 = bare.slice(bare.indexOf('@media (max-width: 700px)'));
+    const r = /([^{}]*\.cv-body[^{}]*)\{([^}]*padding[^}]*)\}/.exec(at700);
+    assert.ok(r, 'the 700px arm does not name .cv-body');
+    BODIES.forEach((sel) => assert.ok(r[1].includes(sel),
+        sel + ' does not follow the band down at 700'));
+    assert.ok(/padding:\s*20px\s+20px\s+40px/.test(r[2]),
+        'the phone inset does not match the band\'s 20px: ' + r[2].trim());
+  });
+
+  it('leaves the old root inset nowhere in the sheet', () => {
+    ['.reg2-page', '.cv-page', '.pl-main'].forEach((sel) => {
+      const m = new RegExp(esc(sel) + '\\s*\\{[^}]*padding:').exec(bare);
+      assert.ok(!m, sel + ' has its own padding again — the grey stripe is back');
+    });
+    /* ⚠ Calendari's two blocks state the same 40px with a different vertical
+       pair, so they cannot go through the loop above. This is the owner's
+       "more left/right margins" ask, and it is the number the band it sits
+       under uses — three left edges that have to agree. */
+    [['.cal-bar', '12px'], ['.cal-weeks', '4px']].forEach((p) => {
+      const m = new RegExp(esc(p[0]) + '\\s*\\{[^}]*padding:\\s*' + p[1] + '\\s+(\\d+)px')
+          .exec(bare);
+      assert.ok(m, p[0] + ' no longer sets the inset this test is about');
+      assert.strictEqual(m[1], '40', p[0] + ' insets by ' + m[1] + 'px, not 40');
+    });
+  });
+
+  /* ⚠ v247: the band, the legend strip and the grid take their inset from one
+     number, and they have to step down together. The band folds at 700; if
+     the other two step at 600 or at Calendari's own 560, their left edges
+     disagree with the title above them for a whole band of widths. */
+  it('steps Calendari\'s strip and grid down on the BAND\'s breakpoint', () => {
+    const at700 = bare.slice(bare.indexOf('@media (max-width: 700px)'));
+    assert.ok(/\.cal-bar\s*\{[^}]*padding:\s*12px\s+20px/.test(at700),
+        'the legend strip does not follow the band down to 20px at 700');
+    assert.ok(/\.cal-weeks\s*\{[^}]*padding:\s*4px\s+20px/.test(at700),
+        'the month grid does not follow the band down to 20px at 700');
+    assert.ok(/\.cal-hero\b[^{}]*\{[^}]*padding:\s*14px\s+20px/.test(at700),
+        'the band itself no longer folds to 20px at 700, so the number to match moved');
+  });
+});

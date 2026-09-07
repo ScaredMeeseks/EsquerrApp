@@ -41,14 +41,17 @@ function grab(from, to) {
   return src.slice(i, j);
 }
 
-/* The `.ms-` block on its own. It is currently LAST in the stylesheet, so
-   this slice runs to the end — the shape that broke test/convocatoria.test.js,
-   then test/inici.test.js, then test/medical.test.js in turn. If an eleventh
-   paper page is appended after this one, give this an end bound naming it. */
+/* The `.ms-` block on its own. It USED to run to the end of the stylesheet —
+   the shape that broke test/convocatoria.test.js, then test/inici.test.js,
+   then test/medical.test.js in turn. Accions (v245) was appended after it, so
+   this now has the end bound the comment here asked for. */
 const MSBANNER = '/* ===== Les meves estadístiques, redesigned (v244)';
+const ACBANNER = '/* ===== Accions, redesigned (v245)';
 const MSSTART = css.indexOf(MSBANNER);
 assert.ok(MSSTART !== -1, 'the ms- block banner is gone from css/style.css');
-const MSCSS = css.slice(MSSTART).replace(/\/\*[\s\S]*?\*\//g, '');
+const MSEND = css.indexOf(ACBANNER, MSSTART);
+assert.ok(MSEND !== -1, 'the .ac- banner that bounds this slice is gone');
+const MSCSS = css.slice(MSSTART, MSEND).replace(/\/\*[\s\S]*?\*\//g, '');
 
 const SANITIZE_SRC = utilsSrc.slice(
     utilsSrc.indexOf('function sanitize(str) {'),
@@ -482,19 +485,16 @@ describe('Les meves estadístiques — the stylesheet', () => {
     });
   });
 
-  /* ⚠ FOLLOWS `.dashboard-content`, WHICH CHANGES AT 600 AND NOT AT 700.
-     The page's own breakpoint is 700; the container's padding drops at 600.
-     Cancelling it in the 700 block leaves a 100px band where the identity
-     band is pulled 2rem wider than the box it sits in. */
-  it('cancels the container padding at the width the container changes', () => {
-    const at600 = MSCSS.slice(MSCSS.indexOf('@media (max-width: 600px)'));
-    assert.ok(at600.includes('.ms-page'), 'the full-bleed negation is not at 600');
-    assert.ok(/margin:\s*-\.75rem\s+-1rem/.test(at600),
-        'the negation does not match .dashboard-content\'s .75rem 1rem');
-    const at700 = MSCSS.slice(MSCSS.indexOf('@media (max-width: 700px)'),
-        MSCSS.indexOf('@media (max-width: 600px)'));
-    assert.ok(!/\.ms-page\s*\{[^}]*margin/.test(at700),
-        'the negation is in the 700 block, where the container has not changed');
+  /* ⚠ The full-bleed negation is NOT in this block any more. It was one of
+     ten copies of the same rule, and they had drifted into two camps — see
+     test/layout.test.js, which owns it now for all ten roots at once. What
+     stays here is that this block declares no margin of its own, because a
+     local one would silently outrank the shared rule for this page only. */
+  it('leaves the page geometry to the shared rule', () => {
+    /* ⚠ `\s*\{`, not `[^{]*\{` — the latter happily crosses a `}` and finds a
+       margin in some later rule entirely. */
+    assert.ok(!/\.ms-page\s*\{[^}]*margin\s*:/.test(MSCSS),
+        'the .ms- block set its own root margin again; layout.test.js owns it');
   });
 
   it('picks ONE row markup per frame instead of reordering a shared one', () => {
@@ -518,6 +518,26 @@ describe('Les meves estadístiques — the stylesheet', () => {
      swatches are matched at their resolved value here, and the token spelling
      is checked against the RAW stylesheet, which is where the loose-literal
      scan in paper-palette.test.js would otherwise be the only guard. */
+  /* ⚠ ONE GEOMETRY, TWO FILLS — the `.pp-av` idiom. avatarHtmlGlobal() emits
+     `class="ms-face ms-face-ph"` for the placeholder and `class="ms-face"` for
+     a photo, so the size and the round belong on the BASE class alone. A
+     `-ph` that restates them is how a placeholder comes to be a different
+     shape from the photo it stands in for, which is the whole reason that
+     helper takes its modifier as a separate argument. */
+  it('rounds the face on the base class, and only there', () => {
+    const base = MSCSS.slice(MSCSS.indexOf('.ms-face {'), MSCSS.indexOf('.ms-face-ph {'));
+    assert.ok(/border-radius:\s*50%/.test(base), 'the face is square again');
+    assert.ok(/width:\s*96px/.test(base), 'the base class lost its size');
+    const ph = MSCSS.slice(MSCSS.indexOf('.ms-face-ph {'));
+    const phBody = ph.slice(0, ph.indexOf('}'));
+    assert.ok(!/border-radius|width:|height:/.test(phBody),
+        'the placeholder restates geometry and can now drift out of round');
+    // The narrow override resizes; it must not re-declare the round either.
+    const narrow = MSCSS.slice(MSCSS.indexOf('@media (max-width: 700px)'));
+    assert.ok(!/\.ms-face-ph\s*\{[^}]*width/.test(narrow),
+        'the narrow override sizes the placeholder separately from the photo');
+  });
+
   it('routes every injury alpha through the --pp-bad triple', () => {
     assert.ok(MSCSS.includes('rgba(192,86,76, .5)'), 'the 2+ swatch moved');
     assert.ok(MSCSS.includes('rgba(192,86,76, .22)'), 'the 1 swatch moved');

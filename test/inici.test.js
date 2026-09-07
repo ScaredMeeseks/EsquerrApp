@@ -148,7 +148,7 @@ function mountHandlers(bodyHtml, opts) {
   const handlers = grab('    // Match availability buttons\n    $$(\'.mavail-btn\')',
       '    $$(\'[data-go-training]\').forEach(el => {') +
     grab('    // Training availability buttons\n    $$(\'.avail-btn\')',
-        '    // Clear all staff notifications');
+        '    // UA/RPE chart tooltips');
 
   const session = { id: 'u1', name: 'Marc Rovira' };
   const trainings = opts.trainings || [];
@@ -382,7 +382,7 @@ describe('Inici — the real handlers over the real markup', () => {
        an injury and then said "Sí" stayed flagged injured on the coach's
        roster. Counting the calls is what keeps a second copy from returning. */
     const binder = grab('    // Training availability buttons\n    $$(\'.avail-btn\')',
-        '    // Clear all staff notifications')
+        '    // UA/RPE chart tooltips')
         .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     assert.strictEqual((binder.match(/ackSaveRecord\('trainingAvail'/g) || []).length, 1,
         'a second copy of the training save path is back');
@@ -562,11 +562,15 @@ describe('Inici — wiring', () => {
     });
   });
 
-  it('the squad-letter filter is reset with the category, like the other four', () => {
-    // A stale 'B' under a category with no B filters the whole page away with
-    // no visible control saying why.
-    const reset = bare.slice(bare.indexOf('convTeamFilter = \'all\';', bare.indexOf('data-cat')));
-    assert.ok(/iniTeamFilter = 'all'/.test(reset.slice(0, 400)), reset.slice(0, 400));
+  /* ⚠ v247: `iniTeamFilter` and its five siblings became one `_viewSquad`,
+     and the reset-on-category-change became a clamp on READ. The rule this
+     test is about has not changed — a stale 'B' under a category with no B
+     filters the whole page away with no visible control saying why — it is
+     just enforced once for every page instead of six times for six. */
+  it('clamps a stale squad letter rather than filtering the page away', () => {
+    assert.ok(/getTeamLetters\(cat\)\.indexOf\(_viewSquad\) === -1 \? 'all'/.test(bare),
+        'getCurrentSquad no longer clamps');
+    assert.ok(!/iniTeamFilter/.test(bare), 'Inici kept a private copy again');
   });
 
   it('the eye that hid a standings table is gone, and so is its key', () => {
@@ -650,9 +654,13 @@ describe('Inici — the .ini- block', () => {
     /* "Convocatòries pendents" wraps to two lines on a phone. Centred, its
        figure then sits half a line above the other three and the row reads
        as four unrelated numbers. */
-    const rule = INICSS.slice(INICSS.indexOf('.ini-counters {'));
-    assert.ok(/align-items:\s*flex-end/.test(rule.slice(0, 120)),
-        'the counters are centred: ' + rule.slice(0, 120));
+    /* ⚠ v247: `.ini-counters` is one selector in the shared figure-row rule,
+       so this looks at the whole stylesheet rather than at the `.ini-` slice.
+       The RULE is unchanged and is still what this is about. */
+    const m = /[^{}]*\.ini-counters[^{}]*\{([^}]*)\}/.exec(css);
+    assert.ok(m, '.ini-counters has no rule');
+    assert.ok(/align-items:\s*flex-end/.test(m[1]),
+        'the counters are centred: ' + m[1]);
   });
 
   it('the Convocatòria button never precedes the count it belongs to', () => {
@@ -688,7 +696,12 @@ describe('Inici — the .ini- block', () => {
   it('paints the page and the hero, so neither inherits the app chrome', () => {
     // Resolved, so this tests the colour and not the token's spelling.
     assert.ok(/\.ini-page\s*\{[^}]*background:\s*#FBFAF7/.test(INICSS), INICSS.slice(0, 300));
-    assert.ok(/\.ini-hero\s*\{[^}]*background:\s*#FFFFFF/.test(INICSS));
+    /* ⚠ The hero's white moved OUT of this region at v247 — one band rule for
+       nine pages, up beside the geometry. Asserting it inside `INICSS` would
+       now be asserting where the declaration lives, not that Inici's hero is
+       white, which is the thing that matters. */
+    assert.ok(/[^{}]*\.ini-hero[^{}]*\{[^}]*background:\s*#FFFFFF/.test(css),
+        'the Inici hero is no longer painted white');
   });
 
   it('the old standings table rules are gone from the whole sheet', () => {

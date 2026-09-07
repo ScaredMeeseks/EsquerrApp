@@ -214,7 +214,7 @@ function render(opts) {
       'isOurTeam', 'getClubName', 'ptCrestHtml', 'ptOurSide', 'tDateShort',
       'clubKits', 'shirtSvg', 'shortsSvg', 'kitSockSvg', 'safeHttpUrl',
       'viewOnlyBanner', 'TB', 'tbLinkedKey', 'convSelectedMatchId',
-      'convTeamFilter',
+      'currentSquadOrNull',
       BLOCK + '\n return renderConvocatoria;')(
       (k) => (STRINGS[k] !== undefined ? STRINGS[k] : k),
       esc,
@@ -279,13 +279,18 @@ function render(opts) {
         meta: (id) => LIBRARY.find((b) => b.id === id) || null},
       (b) => (b.boardId ? 'id:' + b.boardId : 'name:' + (b.name || '')),
       1,
-      /* Passed even though this preview never sets a category, and so never
-         reaches it: `convLetter` reads `curCat && convTeamFilter !== 'all'`,
-         and a falsy curCat short-circuits before the identifier is
-         evaluated. That is luck, not design — the first fixture here with a
-         category would throw a bare ReferenceError, and the assertions
-         below would report it as "no player rows rendered". */
-      'all');
+      /* ⚠ v247: the six per-page letter variables became one `_viewSquad`,
+         read through `currentSquadOrNull()`, which already folds in the
+         "no category → no letter" guard each page used to repeat. So this is
+         a FUNCTION now, not the string 'all'.
+
+         And it is called unconditionally, which is the improvement: the old
+         `convTeamFilter` was reached only when a category was set, so this
+         preview's own comment recorded that passing it was luck — the first
+         fixture here with a category would have thrown a bare ReferenceError
+         and the assertions below would have reported it as "no player rows
+         rendered". There is no such hole left to fall into. */
+      () => null);
   return R();
 }
 
@@ -334,7 +339,14 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   font-size:.82rem; line-height:1.5;
 }
 .mock-note b { color:#FFD662; }
-.mock-shell { padding:1rem; background:#FBFAF7; }
+/* 2rem, which is what .dashboard-content actually is. It was 1rem here, sized
+   to the -1rem the page pulled before v246 — so the moment the page went
+   full-bleed the mockup reported a 16px overflow the real app does not have.
+   A shell that does not match the container makes every geometry check on it
+   a lie, in whichever direction.
+   ⚠ NO BACKTICKS IN THIS BLOCK: it is inside a JS template literal, and one
+   would end the string. */
+.mock-shell { padding:2rem; background:#FBFAF7; }
 /* .cv-page fills the viewport in the app, where it is the only page on
    screen. Four of them stacked would each be a screenful tall. */
 .mock-shell .cv-page { min-height:0; }

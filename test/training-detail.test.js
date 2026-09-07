@@ -384,7 +384,11 @@ describe('the pieces it leans on', () => {
        sliced by position and a rule appended after the file's last block is
        read as that page's. */
     assert.ok(at > css.indexOf('.std-table {'), '.std-ans is above its block');
-    assert.ok(at < css.indexOf('.pl-page'), '.std-ans is outside .std-');
+    /* ⚠ `.pl-page {` with its brace, not the bare name. Since v246 the ten
+       paper roots share one geometry rule up beside `.dashboard-content`, so
+       the bare `.pl-page` first appears in a selector LIST near the top of the
+       file — above `.std-ans` — and this bound inverted. */
+    assert.ok(at < css.indexOf('.pl-page {'), '.std-ans is outside .std-');
     const rule = css.slice(at, css.indexOf('}', at));
     assert.ok(/inline-flex/.test(rule), 'the dot and the word must share a line');
   });

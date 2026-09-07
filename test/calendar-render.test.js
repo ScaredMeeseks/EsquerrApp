@@ -150,6 +150,11 @@ function make(o) {
     tMonth: (i) => 'M' + i,
     tMonthShort: (i) => 'm' + i,
     viewOnlyBanner: () => '<div class="view-only">READONLY</div>',
+    /* v247: the six per-page letter variables became one `_viewSquad`, read
+       through getCurrentSquad(). The harness sets `_squad` below rather than
+       assigning a page variable that no longer exists. */
+    getCurrentSquad: () => _squad,
+    currentSquadOrNull: () => (_squad === 'all' ? null : _squad),
     Date: class extends Date {
       constructor(...a) { return a.length ? new Date(...a) : new Date(TODAY + 'T12:00:00'); }
       static now() { return new Date(TODAY + 'T12:00:00').getTime(); }
@@ -161,16 +166,18 @@ function make(o) {
      calInFilter undefined at render time — a ReferenceError inside
      innerHTML, which is a blank page. Takes `let calMonth` with it, so the
      harness no longer declares its own. */
+  let _squad = 'all';
   const fn = new Function(...Object.keys(stubs), `
     ${grab('  let calMonth = null;', '  // ── The blocks inside a day ─')}
     ${code}
-    return function (session, month, letter) {
+    return function (session, month) {
       calMonth = month || null;
-      calTeamFilter = letter || 'all';
       return renderCalendar(session);
     };`)(...Object.values(stubs));
-  return (session, month, letter) =>
-    fn(session || {id: 'coach', roles: ['staff']}, month, letter);
+  return (session, month, letter) => {
+    _squad = letter || 'all';
+    return fn(session || {id: 'coach', roles: ['staff']}, month);
+  };
 }
 
 const T = (over) => Object.assign(
@@ -973,13 +980,25 @@ describe('the top bar', () => {
         .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
     assert.ok(!/dashboard-tight/.test(css), '.dashboard-tight is back');
     assert.ok(!/dashboard-tight/.test(js), 'renderPage still toggles it');
-    assert.ok(/\.cal-bar,\s*\.cal-weeks\s*\{[^}]*margin-left:\s*-1\.25rem/.test(css),
+    /* ⚠ v247: the pull moved from these two blocks onto `.cal-page`, the root
+       renderCalendar now wraps them in — so the -2rem is asserted here only as
+       "Calendari still reclaims its width somewhere", and WHICH rule carries
+       it, at which breakpoint, is `layout.test.js`'s shared geometry test for
+       all eleven roots. Asserting the old two-block form here would pin
+       Calendari to a geometry the other ten no longer use, which is the whole
+       thing v246 and v247 were undoing.
+
+       What this test is actually about is the sentence at the top: the width
+       comes from the page, NEVER from trimming `.dashboard-content`. That is
+       `.dashboard-tight`, and it is still gone. */
+    assert.ok(/\.cal-page\b/.test(css), '.cal-page has no rule; the root is gone');
+    assert.ok(/[^{}]*\.cal-page[^{}]*\{[^}]*margin:\s*-1rem\s+-2rem/.test(css),
         'the calendar no longer reclaims any width');
-    // And it must be undone where the page padding shrinks, or it overshoots
-    // again one breakpoint down.
-    const narrow = css.slice(css.indexOf('@media (max-width: 900px)'));
-    assert.ok(/\.cal-bar,\s*\.cal-weeks\s*\{[^}]*margin-left:\s*0/.test(narrow),
-        'the negative margin survives into the narrow layout');
+    /* And it must not have grown a second, local pull beside the shared one:
+       two rules setting the same margin is how the roots drifted into two
+       camps before v246. */
+    assert.ok(!/\.cal-bar[^{}]*\{[^}]*margin-left:/.test(css),
+        '.cal-bar has its own bleed again, beside the root\'s');
   });
 
   it('offers letter chips only for a category that HAS more than one squad', () => {
@@ -1018,44 +1037,126 @@ describe('the top bar', () => {
     assert.ok(lit[0].includes('data-roster-filter="B"'), 'and it is the one passed in');
   });
 
-  it('the roster bar drives the roster filter, the calendar its own', () => {
-    /* Two pages share the builder; they must not share the state. The
-       roster's top-bar chips and the chips beside its Jugadors heading
-       both read and write `rosterTeamFilter`, which is what keeps the
-       two sets in step without a second copy to synchronise. */
+  /* ⚠ THIS ASSERTED THE OPPOSITE UNTIL v247. It was titled "the roster bar
+     drives the roster filter, the calendar its own" and its comment read
+     "Two pages share the builder; they must not share the state."
+
+     Nothing in the source ever defended that. renderCategoryBar's own
+     comment praised the case where ONE variable feeds two controls;
+     renderCalendar says outright that "two controls for one piece of state
+     is how they end up disagreeing"; and Registracions had already gone
+     wrong from the split — it read the roster's letter while drawing no chip
+     of its own. The six variables are one `_viewSquad` now, and the owner
+     asked for exactly that. Reversed deliberately, not by accident. */
+  it('drives every page from ONE squad selection', () => {
     const bar = src.slice(src.indexOf('function renderCategoryBar'),
         src.indexOf('// ---------- Club helpers'));
-    assert.ok(/catBarLettersHtml\(calTeamFilter, 'data-cal-letter'\)/.test(bar),
-        'the calendar keeps its own filter');
-    assert.ok(/catBarLettersHtml\(rosterTeamFilter, 'data-roster-filter'\)/.test(bar),
-        'the roster bar must drive rosterTeamFilter, not a third variable');
+    assert.ok(/catBarLettersHtml\(getCurrentSquad\(\), 'data-squad-letter'\)/.test(bar),
+        'the bar is not reading the shared selection');
+    /* Comment-stripped: the notes recording that these variables WERE here
+       name every one of them, and an unstripped scan finds the prose. */
+    const noComments = src.replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, '');
+    ['calTeamFilter', 'rosterTeamFilter', 'convTeamFilter', 'iniTeamFilter',
+      'medicalTeamFilter', 'notifTeamFilter', 'trainingTeamFilter'].forEach((v) => {
+      assert.ok(!new RegExp('\\b' + v + '\\s*=').test(noComments),
+          v + ' is back; the selection has split again');
+    });
+    /* ⚠ stdTeamFilter is NOT one of them: a multi-select Set answering
+       "which squads is this session FOR", not "what am I looking at". */
+    assert.ok(/let stdTeamFilter = null;/.test(src), 'stdTeamFilter went with them');
   });
 
-  it('resets the letter when the category changes', () => {
-    /* A letter means nothing in a category that does not have it. The
-       cat-bar handler already did this for the roster and medical
-       filters; the calendar's has to sit with them. */
+  it('clamps a letter the current category does not have', () => {
+    /* A letter means nothing in a category that does not have it. This used
+       to be an eight-line reset in the cat-bar handler, which covered only
+       the path THROUGH the bar; getCurrentSquad() clamps on read, so it also
+       covers a chip lit for a stale letter and a render before _clubConfig
+       resolves — the two holes the reset never did. */
+    const fn = src.slice(src.indexOf('function getCurrentSquad()'),
+        src.indexOf('function currentSquadOrNull()'));
+    assert.ok(/getTeamLetters\(cat\)\.indexOf\(_viewSquad\) === -1 \? 'all'/.test(fn),
+        'the clamp is gone; a stale letter empties the page with no lit control');
     const handler = src.slice(src.indexOf("$$('.cat-bar-btn')"),
-        src.indexOf("$$('[data-cal-letter]')"));
-    assert.ok(/calTeamFilter = 'all'/.test(handler),
-        'the calendar letter survives a category change');
-    assert.ok(/rosterTeamFilter = 'all'/.test(handler),
-        'expected it beside the filters that already do this');
+        src.indexOf("$$('[data-squad-letter]')"));
+    assert.ok(!/TeamFilter = 'all'/.test(handler),
+        'the old per-page reset came back beside the clamp');
   });
 
-  it('has no page heading and no card around it', () => {
-    /* "Calendari" was a heading over a page that fills the pane and is
-       already named by the lit sidebar item; the frame was a border with
-       nothing on the far side. The month label is the heading now. */
+  /* ⚠ v247 REVERSES HALF OF THIS TEST, DELIBERATELY.
+
+     It was 'has no page heading and no card around it'. The heading half is
+     gone: from v221 to v246 this asserted that Calendari had NO title, on the
+     argument that the page fills the pane and is already named by the lit
+     sidebar item. That argument was sound while Calendari was alone in making
+     it — it is not now that all ten of its siblings open with the same white
+     band, because the saving is one line and the cost is the one page whose
+     top does not match. The owner asked for the band by name.
+
+     The CARD half is untouched and still asserted: there is no frame, and the
+     band's bottom rule does the separating. */
+  it('opens with the shared band, and still has no card around it', () => {
     const html = make({})(null, '2026-03');
-    assert.ok(!html.includes('page-title'), 'the h2 is still there');
+    assert.ok(!html.includes('page-title'), 'the old h2 is back');
     assert.ok(!html.includes('cal-card'), 'the frame is still there');
+    assert.ok(/<h1 class="cal-h1">/.test(html), 'the page has no title again');
+    assert.ok(html.indexOf('cal-hero') < html.indexOf('cal-bar'),
+        'the band does not open the page');
     assert.ok(html.indexOf('cal-bar') < html.indexOf('cal-weeks'),
-        'the bar should now open the page');
+        'the legend strip does not sit between the band and the grid');
     const css = readCss();
     assert.ok(!/\.cal-card\s*\{/.test(css), '.cal-card is still styled');
+    /* The month label keeps the size it took as the heading — it now has a
+       36px title beside it to hold its own against. */
     assert.ok(/\.cal-month\s*\{[^}]*font-size:\s*1\.5rem/.test(css),
-        'the month label did not take the heading size');
+        'the month label lost the heading size');
+    /* ⚠ The two banners render BEFORE the root, never inside it: the root's
+       `:first-child` arm pulls a different top margin, and a banner tucked in
+       would make it mis-fire on the very page it sits above. */
+    const ro = make({ role: 'player' })(null, '2026-03');
+    assert.ok(ro.indexOf('view-only') !== -1, 'the read-only fixture stopped being read-only');
+    assert.ok(ro.indexOf('view-only') < ro.indexOf('cal-page'),
+        'the view-only banner is inside the root, where the :first-child arm mis-fires');
+  });
+
+  /* The month nav is the band's right-hand side, where every other paper page
+     puts its figures — and it goes in ink. Two reds on one white strip (the
+     arrows and the club colour) read as an alert, not as a control. */
+  it('puts the month navigator in the band, in ink', () => {
+    const html = make({})(null, '2026-03');
+    const hero = html.slice(html.indexOf('cal-hero'), html.indexOf('cal-bar'));
+    ['data-cal-shift="-1"', 'cal-month', 'data-cal-shift="1"', 'btn-cal-today']
+        .forEach((s) => assert.ok(hero.includes(s), s + ' is not in the band'));
+    /* The arrows' own colour is asserted by "gives the month arrows no box",
+       below, which owns `.cal-arrow`'s declarations.
+       ⚠ `readCss()` expands every `--pp-*` back to its literal, so the ink is
+       matched as the colour a browser paints and not as the token's name — a
+       token pointed at the wrong value would pass the name. */
+    const css = readCss().replace(/\/\*[\s\S]*?\*\//g, ' ');
+    assert.ok(/\.cal-month\s*\{[^}]*color:\s*#2D2926/.test(css),
+        'the month label is not ink');
+  });
+
+  /* Ghost slots are the placeholder for a training nobody has confirmed. The
+     scope line promises what the month HOLDS, so counting them would promise
+     activities that do not exist. */
+  it('counts the month\'s activities for the scope line, but not the ghosts', () => {
+    /* ⚠ AN EXACT NUMBER, not `n <= something`. The first version of this
+       compared the count against a scan of the rendered blocks, and both
+       sides moved together when the filter was removed — it passed with the
+       ghosts counted, which is the one thing it exists to catch.
+
+       CLUB trains Tuesdays and Thursdays, so March 2026 is full of ghost
+       slots; two real sessions are put on two of them. Three is what the
+       month HOLDS. Counting the placeholders gives a number in the teens. */
+    const html = make({trainings: [T({date: '2026-03-10'}), T({id: 'tr_2', date: '2026-03-12'})],
+      matches: [M()]})(null, '2026-03');
+    assert.ok(html.includes('data-cal-ghost'), 'the fixture grew no ghosts to exclude');
+    const m = /<div class="cal-sub">([^<]*)<\/div>/.exec(html);
+    assert.ok(m, 'the band carries no scope line');
+    const n = Number((/·\s*(\d+)\s/.exec(m[1]) || [])[1]);
+    assert.strictEqual(n, 3,
+        'the scope line counts ' + n + ', not the month\'s 3 real activities: ' + m[1]);
   });
 
   it('separates weeks with a rule, not a box', () => {
@@ -1079,7 +1180,10 @@ describe('the top bar', () => {
     const arrow = /\.cal-arrow\s*\{([^}]*)\}/.exec(css);
     assert.ok(arrow, '.cal-arrow is gone');
     assert.ok(/border:\s*0/.test(arrow[1]), 'the arrows still have a box');
-    assert.ok(/color:\s*var\(--primary\)/.test(arrow[1]), 'the arrows are not red');
+    /* ⚠ v247: ink, not the club's red. The arrows moved up into the white
+       band beside a 36px ink title, and two reds shouting from one white
+       strip read as an alert rather than as a control. */
+    assert.ok(/color:\s*#2D2926/.test(arrow[1]), 'the arrows are not ink');
     assert.ok(/width:\s*30px/.test(arrow[1]), 'the hit area shrank to the glyph');
     assert.ok(/\.cal-arrow:hover\s*\{[^}]*font-weight:\s*800/.test(css),
         'the arrows do not bolden on hover');

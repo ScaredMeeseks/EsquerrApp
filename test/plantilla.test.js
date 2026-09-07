@@ -451,21 +451,60 @@ describe('the player rail has no close button of its own', () => {
     assert.ok(!/'pl\.close'/.test(src), 'and the string it used');
   });
 
-  it('draws its donut at the same size as the team one', () => {
-    /* The whole point of removing the button: the two rings are read
-       against each other, so a 68 beside an 84 reads as a different
-       measurement rather than the same one for one player. */
+  /* ⚠ v247.3 REVERSES THE EQUALITY THIS TEST WAS BUILT ON, and the reason is
+     that its premise moved out from under it.
+
+     It read: "the two rings are read against each other, so a 68 beside an 84
+     reads as a different measurement rather than the same one for one player."
+     That was true of ADJACENCY — the team ring used to sit directly over the
+     roster table, inches from the rail that opens beside that same table, so
+     the eye did compare them. The team ring is in the header BAND now, above
+     the charts and some 500px up the page; the two are never on the same line
+     and the comparison the equality protected is not one a reader can make.
+
+     What replaces it is the constraint that actually binds: the band's ring
+     may not make Plantilla's band taller than every other paper page's. At 84
+     it did — 145px against 125 — which is the one-height ask the shared band
+     exists for. So the band's ring is sized to the band and the rail keeps 84,
+     and BOTH numbers are pinned here so neither drifts by accident. */
+  it('sizes the band\'s ring to the band, and leaves the rail\'s alone', () => {
     const rail = grab('  function plRailHtml', '  function renderStaffRoster');
-    // The team donut lives in renderStaffRoster, over the table.
     const team = grab('  function renderStaffRoster', '  function bindPlantilla');
     const sizeOf = (s) => {
       const m = /plDonutHtml\([^,]+,\s*(\d+)\)/.exec(s);
       assert.ok(m, 'no donut found');
       return m[1];
     };
-    assert.strictEqual(sizeOf(rail), sizeOf(team),
-        'the player donut and the team donut must be one size');
-    assert.strictEqual(sizeOf(rail), '84');
+    assert.strictEqual(sizeOf(rail), '84', 'the rail\'s ring changed size');
+    assert.strictEqual(sizeOf(team), '56',
+        'the band\'s ring is ' + sizeOf(team) + ' — at 84 it makes this band ' +
+        'the one that is 20px taller than the other ten');
+  });
+
+  /* The donut is a member of the BAND, not the first thing under it. It used
+     to have a row of its own that held nothing else — a ring and four legend
+     lines taking a full-width strip to say what the four figures beside them
+     say in the same breath. */
+  it('puts the attendance ring inside the band, after the figures', () => {
+    const team = grab('  function renderStaffRoster', '  function bindPlantilla');
+    const band = team.slice(team.indexOf('pl-title-row'), team.indexOf('pl-body'));
+    assert.ok(band.includes('pl-att'), '.pl-att is no longer inside the band');
+    assert.ok(band.indexOf('pl-figures') < band.indexOf('pl-att'),
+        'the ring precedes the four figures it belongs beside');
+    const body = team.slice(team.indexOf('pl-body'));
+    assert.ok(!body.includes('"pl-att"'), '.pl-att is drawn a second time in the body');
+  });
+
+  /* ⚠ Scoped to `.pl-title-row`. `plDonutLegendHtml` also draws the rail's
+     legend, which is a column with room for four stacked rows; re-flowing it
+     from here would be reaching into another surface to fix this one. */
+  it('flows the band\'s legend 2×2, and only the band\'s', () => {
+    const m = /\.pl-title-row\s+\.pl-donut-legend\s*\{([^}]*)\}/.exec(css);
+    assert.ok(m, 'the band legend has no rule — four stacked rows are 78px');
+    assert.ok(/grid-template-columns:\s*auto\s+auto/.test(m[1]),
+        'the band legend is not two columns: ' + m[1].trim());
+    assert.ok(!/^\s*\.pl-donut-legend\s*\{[^}]*grid/m.test(css),
+        'the unscoped legend rule was made a grid — that re-flows the rail too');
   });
 });
 
@@ -503,7 +542,8 @@ describe('renderStaffRoster — it runs', () => {
       {id: 'p9', roles: ['player'], category: 'cadet', team: 'B'}
     ],
     getCurrentCategory: () => 'amateur',
-    rosterTeamFilter: 'all',
+    getCurrentSquad: () => 'all',
+    currentSquadOrNull: () => null,
     fitnessContext: () => ({}),
     matchStatsContext: () => ({}),
     trainingOnly: (x) => x,
@@ -570,7 +610,7 @@ describe('renderStaffRoster — it runs', () => {
        it is worth one direct check that both filters still bite. */
     let seen = null;
     run({plBuildRows: (p) => { seen = p; return []; },
-      rosterTeamFilter: 'B'});
+      getCurrentSquad: () => 'B', currentSquadOrNull: () => 'B'});
     assert.deepStrictEqual(seen.map((u) => u.id), ['p2'],
         'the letter filter or the player-role filter stopped working');
   });

@@ -121,6 +121,49 @@ a:hover { text-decoration: underline; }
   --pp-med-doubt-ink: #9A6614;
   --pp-med-inj-bg: #F2D2CE;
   --pp-med-inj-ink: #A63A32;
+  /* Mèdic, the eighth handoff (v234).
+
+     --pp-bad-rgb is the triple, not a colour: the season heat map fades one
+     zone through five alphas, and the polygon hover, the picked polygon and
+     the injury marker's halo each need another. A token cannot carry an
+     alpha, so the rgb goes in the token and the alpha at the call site —
+     which is what paper-palette.test.js asked for the day it pinned the
+     single rgba() spelling of --pp-bad at exactly one.
+
+     ⚠ TWO HANDOFF COLOURS ARE DELIBERATELY NOT HERE. The handoff draws the
+     red button's hover as #A01124 and the pending row's dashed rule as
+     #D6D0C8; those are --pp-red-dark (#9E1224) and --pp-rule-3 (#DED9D1),
+     two hex digits away and indistinguishable on screen. Adding a second
+     near-identical token for each is the precise duplication v228 spent a
+     version removing. If a later eye decides the difference is real, move
+     the existing token — do not add a neighbour to it. */
+  --pp-bad-rgb: 192,86,76;
+  --pp-warn-ink: #7A5210;
+  /* The DOCX file chip. The PDF chip is the injured pair and the image chip
+     the fit pair; only Word's blue is new. */
+  --pp-doc-bg: #D9E3EF;
+  --pp-doc-ink: #33587D;
+  /* The SERIES ramp (v239). The metrics chart draws one line per player and
+     a squad is twenty-two of them, so this is the one place the design
+     system needs colours that mean "a different player" rather than "good"
+     or "bad". Ten hues at even spacing round the wheel, all mid-dark so they
+     read on #FBFAF7 paper, and all deliberately UNEQUAL to any token above:
+     an alias would make two entries claim the same hex in the palette
+     guard's loose-literal scan, and a near-copy of --pp-red would say
+     "danger" on a chart where nothing is wrong.
+     ⚠ Ten for up to twenty-two players, so the eleventh line repeats the
+     first hue — dashed, and its legend swatch hollow, which is what keeps
+     the pair apart. */
+  --pp-series-1: #A8262F;
+  --pp-series-2: #C1662A;
+  --pp-series-3: #8F6B12;
+  --pp-series-4: #5F7A24;
+  --pp-series-5: #2E6B4F;
+  --pp-series-6: #1C7C86;
+  --pp-series-7: #2F5E96;
+  --pp-series-8: #4B4B9B;
+  --pp-series-9: #7A4189;
+  --pp-series-10: #9B3168;
 }
 
 /* ===== Buttons ===== */
@@ -360,6 +403,211 @@ a:hover { text-decoration: underline; }
   flex: 1; padding: 2rem;
   overflow-y: auto; overflow-x: hidden;
   min-width: 0; /* Allow flex child to shrink below content size */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOW A PAPER PAGE SITS IN THE DASHBOARD (v246)
+   ═══════════════════════════════════════════════════════════════════
+   ⚠ ONE RULE FOR ALL OF THEM, AND IT LIVES HERE — beside the container it
+   negates, not inside any page's own block. Every one of those blocks is
+   sliced from its banner to the next one by a test suite, so a rule naming
+   ten pages would be read as whichever page's region it happened to land in.
+
+   The problem it replaces: the roots had drifted into two camps. `.ms-`,
+   `.ac-`, `.nf-` and `.std-` pulled -2rem and bled to both edges; `.ini-`,
+   `.reg2-`, `.cv-`, `.pl-`, `.md2-` and `.pt-` pulled -1rem and left a 16px
+   grey band down each side — under a `.cat-bar` that bleeds the full 32px, so
+   the bar was visibly wider than the page beneath it.
+
+   ⚠ AND THE TOP IS NOT THE SAME NUMBER AS THE SIDES. `.cat-bar` and the page
+   root are ADJACENT SIBLINGS: `.dashboard-content` is a block formatting
+   context so nothing collapses through it, but the bar's `margin-bottom` and
+   the root's `margin-top` collapse against each other to
+   `max(positive) + min(negative)`. The bar leaves 1rem. A root pulling -2rem
+   therefore climbed 16px OVER the bar, covering its `border-bottom` — and
+   because the two share `--pp-paper` that did not read as an overlap, it read
+   as the filter bar being 16px shorter on those pages than on the others.
+   Three different bar heights across nine pages, all from this one sum.
+
+   So: -1rem on top, which cancels the 1rem left by whatever precedes us —
+   the cat-bar, or one of the three banners, which carry the same 1rem.
+   -2rem on the sides and bottom, which is the container's padding.
+
+   The `:first-child` arm is why the top is separate, and `.std-page` has
+   carried this comment since v188: with nothing above it the page pulls the
+   whole 2rem and reaches the top of the pane. A blanket -2rem top is what
+   slides a page over a banner. */
+.std-page,
+.pl-page,
+.reg2-page,
+.pt-page,
+.cv-page,
+.ini-page,
+.md2-page,
+.ms-page,
+.ac-page,
+.nf-page,
+.cal-page {
+  margin: -1rem -2rem -2rem;
+}
+.std-page:first-child,
+.pl-page:first-child,
+.reg2-page:first-child,
+.pt-page:first-child,
+.cv-page:first-child,
+.ini-page:first-child,
+.md2-page:first-child,
+.ms-page:first-child,
+.ac-page:first-child,
+.nf-page:first-child,
+.cal-page:first-child {
+  margin-top: -2rem;
+}
+
+/* ⚠ AT 600px, WHICH IS WHERE `.dashboard-content` CHANGES — not at any page's
+   own 700 or 900, which are about columns folding. Four roots used to put
+   their bleed in those blocks, so between 600 and their own breakpoint they
+   negated a padding that had not moved yet. */
+@media (max-width: 600px) {
+  .std-page,
+  .pl-page,
+  .reg2-page,
+  .pt-page,
+  .cv-page,
+  .ini-page,
+  .md2-page,
+  .ms-page,
+  .ac-page,
+  .nf-page,
+  .cal-page {
+    margin: -1rem -1rem -.75rem;
+  }
+  .std-page:first-child,
+  .pl-page:first-child,
+  .reg2-page:first-child,
+  .pt-page:first-child,
+  .cv-page:first-child,
+  .ini-page:first-child,
+  .md2-page:first-child,
+  .ms-page:first-child,
+  .ac-page:first-child,
+  .nf-page:first-child,
+  .cal-page:first-child {
+    margin-top: -.75rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE HEADER BAND EVERY PAPER PAGE OPENS WITH (v247)
+   ═══════════════════════════════════════════════════════════════════
+   ⚠ HERE FOR THE SAME REASON AS THE GEOMETRY ABOVE — every page block is
+   sliced from its banner to the next by a suite, so a rule naming nine pages
+   would be read as whichever region it landed in.
+
+   `.ac-hero, .nf-hero` was already a shared pair; this extends it rather than
+   adding a fourth copy of the same three declarations. What it replaces:
+   Mèdic, Notificacions, Accions, Inici and Les meves estadístiques each had a
+   white band, while Plantilla, Registracions and Convocatòria had a bare flex
+   row with a bottom rule — same content, no ground under it. And the bottom
+   padding disagreed between them, 26px against 30px.
+
+   ⚠ The TITLE came in three sizes: 36px on the five, 38px on the other four.
+   One size now. `.ini-name` and `.ms-name` stay at 34px/lh 1 and are NOT in
+   this list — those are a person's name under an eyebrow, not a page title. */
+.md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
+.pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-rule);
+}
+.md2-h1, .nf-h1, .ac-h1, .ini-h1,
+.pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 {
+  margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1;
+  letter-spacing: -.01em; color: var(--pp-ink);
+}
+
+/* ⚠ THE INSET GOES ON THE BODY WRAPPER, NEVER ON THE PAGE ROOT.
+   ═══════════════════════════════════════════════════════════════
+   This is the other half of the band, and v247 shipped without it.
+
+   A band that is `background:#FFFFFF` edge to edge cannot be edge to edge if
+   its ancestor is holding 40px of padding: the white stops 40px short on both
+   sides and the paper shows through beside it. Plantilla, Registracions and
+   Convocatòria carried `padding: 28px 40px 48px` on `.pl-main`, `.reg2-page`
+   and `.cv-page` — the roots themselves — so all three kept the grey band down
+   each side that v246 was supposed to have removed, while Mèdic, Inici,
+   Notificacions and Calendari, which never had root padding, looked right.
+   The owner reported exactly that split.
+
+   So the root carries the bleed and NOTHING else, and one wrapper inside it
+   carries the inset. `.ini-body`, `.md2-body`, `.ms-body`, `.ac-body` and
+   `.nf-body` were already this shape and are folded in here rather than
+   keeping four more copies of the same two values; `.pl-body`, `.reg2-body`
+   and `.cv-body` are new (`.pl-body` existed as a bare wrapper around the
+   attendance donut and now wraps the whole body).
+
+   ⚠ The step-down is at 700 — the BAND's breakpoint — not at the 900 those
+   three pages used. A body that narrows before the band above it does is the
+   text stepping 24px left of its own title for 200px of width. */
+.ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+.pl-body, .reg2-body, .cv-body { padding: 32px 40px 56px; }
+/* The left column of the band: title over one line of scope. */
+.ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l {
+  display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
+}
+.md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+  font-size: 14px; color: var(--pp-ink-2);
+}
+
+/* ⚠ ONE CAPTION ATOM, NOT SEVEN. `.ac-lbl`, `.ms-lbl`, `.reg2-fig-l`,
+   `.md2-eyebrow`, `.ini-eyebrow`, `.cv-eyebrow` and `.pl-eyebrow` were seven
+   rules with the same four declarations between them — the 10px and the 11px
+   variants differing only by a pixel nobody chose. Two sizes, named for what
+   they label: a figure, or a section.
+   ⚠ `.reg2-eyebrow` is NOT one of them and keeps its own rule: it is a
+   section HEADING in ink at weight 600, and its own comment says so. */
+.ac-lbl, .ms-lbl, .reg2-fig-l,
+.md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-weight: 400; color: var(--pp-ink-3);
+}
+/* The figures on the band's right.
+   ⚠ Calendari is NOT here: its band's right-hand side is the month
+   navigator, not a figure row. It is in the hero and title lists above,
+   and in neither of these two. */
+.ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r {
+  display: flex; align-items: flex-end; gap: 36px; flex: none;
+}
+.ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat, .pl-fig,
+.cv-fig, .reg2-title-col {
+  display: flex; flex-direction: column; gap: 4px;
+}
+/* `.reg2-title-col` is the title's own stack, not a figure — same three
+   declarations, one more gap. */
+.reg2-title-col { gap: 8px; min-width: 0; margin-right: auto; }
+
+.ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
+.pl-fig-v, .cv-fig-v, .cv-big {
+  font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
+  .pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+    flex-wrap: wrap; gap: 16px; padding: 14px 20px 16px;
+  }
+  /* ⚠ `.pl-h1`, `.reg2-h1`, `.cv-h1` and `.std-title` had NO phone override
+     at all — 38px of title on a 390px screen. */
+  .md2-h1, .nf-h1, .ac-h1, .ini-h1,
+  .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
+  .ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+  .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
+  .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
+  .cv-head-r { gap: 0; width: 100%; }
+  .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat,
+  .pl-fig { flex: 1 1 0; min-width: 0; }
+  .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
+  .pl-fig-v, .cv-fig-v, .cv-big { font-size: 24px; }
 }
 
 /* ===== Dashboard Cards & Widgets ===== */
@@ -798,32 +1046,11 @@ tr:hover td { background: #f7f8fa; }
 .md-card-map { color: var(--primary); text-decoration: none; font-weight: 600; font-size: .82rem; }
 .md-card-map:hover { text-decoration: underline; }
 
-/* Player Actions */
-.action-card {
-  border: 1.5px solid var(--border); border-radius: 10px;
-  padding: .8rem 1rem; margin-bottom: .75rem;
-}
-.action-header { display: flex; align-items: center; gap: .6rem; margin-bottom: .3rem; }
-.action-date { font-size: .82rem; color: var(--text-secondary); }
-.action-label { font-weight: 600; font-size: .9rem; margin-bottom: .5rem; }
-.action-form { display: flex; align-items: flex-end; gap: .6rem; flex-wrap: wrap; }
-.action-field { display: flex; flex-direction: column; gap: .2rem; }
-.action-field label { font-size: .75rem; color: var(--text-secondary); font-weight: 600; }
-.action-field .reg-input { width: 60px; text-align: center; padding: .25rem .3rem; }
-.action-avail-prompt { font-size: .82rem; color: var(--text-secondary); font-weight: 600; margin-bottom: .4rem; }
-.action-info { cursor: help; color: var(--text-secondary); font-size: .7rem; }
-.action-extra-tag { font-family: inherit; }
-
-/* ===== Staff Notifications ===== */
-.notif-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-.notif-row { border-bottom:1px solid var(--border); padding:.7rem; }
-.notif-row:last-child { border-bottom:none; }
-.notif-row-top { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
-.notif-type-badge { display:inline-block; font-size:.72rem; font-weight:400; color:#fff; padding:.15rem .55rem; border-radius:6px; white-space:nowrap; }
-.notif-player { font-weight:600; font-size:.88rem; }
-.notif-time { font-size:.78rem; color:var(--text-secondary); margin-left:auto; white-space:nowrap; }
-.notif-row-detail { font-size:.82rem; color:var(--text-secondary); margin-top:.25rem; }
-.notif-new { background:rgba(251,140,0,.18); border-radius:8px; margin-left:-.5rem; margin-right:-.5rem; padding-left:.5rem; padding-right:.5rem; }
+/* `.action-*` and `.notif-*` were HERE. Both pages were rebuilt in the paper
+   idiom at v245 — `.ac-` and `.nf-`, at the foot of this file — and neither
+   old block had a single rule anything else read. The one thing worth
+   recording: `.notif-new` was `rgba(251,140,0,.18)`, a loose orange that
+   predates the palette; the unread wash is `--pp-tint` now. */
 
 /* ===== Tactical Board (Coach) ===== */
 .tb-controls { display:flex; align-items:center; gap:.8rem; margin-bottom:1rem; flex-wrap:wrap; }
@@ -1909,8 +2136,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    negates that. The `:first-child` rule is why the top is separate — the
    update and push banners render into the same container ahead of this, and
    a blanket negative top margin would slide the page over them. */
-.std-page { margin:0 -2rem -2rem; background:var(--pp-paper); }
-.std-page:first-child { margin-top:-2rem; }
+.std-page { background:var(--pp-paper); }   /* margin: the shared rule near .dashboard-content */
 
 .std-topbar {
   display:flex; align-items:center; justify-content:space-between;
@@ -1934,6 +2160,14 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
    under it — below ~360px the time gutter and an exercise title stop fitting
    on one line — but above that the table is the column with more to say. */
 .std-main { flex:2 1 0; min-width:0; padding:36px 32px 56px; }
+/* The player's page has no rail, so this column would otherwise take the whole
+   1440 — and its table has three columns rather than eight. Measured at that
+   width the answer ended up ~840px from the position discs it belongs to, a
+   row you have to track across an empty sheet to read. 960px is not a round
+   number: it is exactly what `flex:2` against the rail's `flex:1` gives the
+   coach's column at the same width, so the two pages set the same measure
+   and the attendance bar and table below are the same size on both. */
+.std-main-solo { max-width:960px; }
 .std-rail {
   flex:1 1 0; min-width:360px; align-self:stretch; background:#FFFFFF;
   border-left:1px solid var(--pp-rule); padding:36px 32px 56px;
@@ -1946,10 +2180,6 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-hero-row {
   display:flex; align-items:center; justify-content:space-between;
   gap:24px; flex-wrap:wrap;
-}
-.std-title {
-  margin:0; font-size:38px; font-weight:400; line-height:1.1;
-  letter-spacing:-.01em; color:var(--pp-ink);
 }
 .std-meta { font-size:14px; color:var(--pp-ink-2); }
 
@@ -2055,6 +2285,15 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .std-num { font-variant-numeric:tabular-nums; font-weight:600; font-size:13px; }
 .std-said { color:var(--pp-ink-2); }
+/* The player page's answer column: the legend's square, then the word. Read
+   only — a player is looking at who is coming, not editing it — so it is
+   deliberately NOT the staff pill. The square is painted inline from
+   STD_AVAIL_COLORS in app.js, which is the same table the bar above reads,
+   so the row and the segment it belongs to cannot drift apart. */
+.std-ans {
+  display:inline-flex; align-items:center; gap:7px;
+  color:var(--pp-ink-2); white-space:nowrap;
+}
 /* The medical glyph reads bolder here than on the roster: in a page made of
    hairlines it is the one thing a coach scans the column for. */
 .std-table .roster-status-icon {
@@ -2521,13 +2760,35 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
     width:100%; border-left:none; border-top:1px solid var(--pp-ink);
     padding:26px 20px 48px;
   }
-  .std-main { padding:26px 20px 32px; }
+  /* ⚠ `width:100%` is not decoration — it is what stops the page scrolling
+     sideways on a phone. `.std-body` is `align-items:flex-start`, so once it
+     stacks the column the cross axis is shrink-TO-FIT rather than stretch,
+     and `.std-main` sized itself to the table's `min-width:560px` below.
+     `.table-wrap` then had nothing to scroll inside: at 390px the document
+     was 592px wide and the whole page slid, hero and all. The rail has said
+     `width:100%` for exactly this reason since v188; the main column was
+     simply missed, and no string-builder test can see it. */
+  .std-main { width:100%; padding:26px 20px 32px; }
   .std-topbar { padding:12px 20px; }
   .std-title { font-size:30px; }
+  /* The forecast drops BELOW the title instead of sitting beside it. It is
+     `flex:none` and `nowrap` on a wide screen, which is right there and is
+     392px of unshrinkable strip on a phone — wider than the hero it sits in,
+     so the whole page scrolled sideways by the difference. Full-width and
+     left-aligned, its own `flex-wrap` then breaks it between icon, wind and
+     temperature rather than through "6.4 m/s". `.detail-hero .std-wx` is
+     more specific and keeps the fixture page's strip centred. */
+  .std-wx { flex:1 1 100%; min-width:0; justify-content:flex-start; }
+  .std-wx-rain { text-align:left; }
   .std-stats { gap:28px; }
   .stp-parallel { margin-left:-22px; padding-left:20px; }
   .table-wrap { overflow-x:auto; }
   .std-table { min-width:560px; }
+  /* …but not the player's, which has three columns rather than eight. 560px
+     pushed Resposta off a 390px screen and behind a horizontal scroll — and
+     the answer is the whole reason a player opened the page. Keyed off the
+     solo modifier so the coach's table keeps the floor it needs. */
+  .std-main-solo .std-table { min-width:0; }
   .stp-overlay { padding:16px; }
 }
 
@@ -3782,8 +4043,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* ── Tables → scrollable & compact ── */
   /* `.dashboard-content` drops to `.75rem 1rem` in THIS breakpoint, so the
      full-bleed negation has to follow it here and nowhere higher up. */
-  .std-page { margin: 0 -1rem -.75rem; }
-  .std-page:first-child { margin-top: -.75rem; }
   table { font-size: .78rem; }
   th, td { padding: .4rem .35rem; white-space: nowrap; }
   /* The training-detail table sets its own sizes in the v188 block above —
@@ -3832,10 +4091,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .roster-right .card { padding: .75rem; }
   .rpe-y-text { font-size: 9px; }
 
-  /* ── Action cards (availability, RPE) ── */
-  .action-card { padding: .6rem .7rem; }
-  .action-header { flex-wrap: wrap; gap: .3rem; }
-  .action-label { font-size: .85rem; word-break: break-word; }
+  /* ── Availability pills ── */
   .avail-btns, .mavail-btns { flex-wrap: wrap; margin-left: 0; gap: .3rem; }
   .avail-btn, .mavail-btn { padding: .3rem .5rem; font-size: .72rem; }
 
@@ -3869,8 +4125,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .activity-item .conv-not-called-tag {
     order: 2; width: 100%; margin-top: .2rem;
   }
-  .action-form { gap: .4rem; }
-  .action-field .reg-input { width: 50px; }
 
   /* ── Buttons → compact ── */
   .btn { padding: .45rem .8rem; font-size: .82rem; }
@@ -3904,7 +4158,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .roles-grid { grid-template-columns: 1fr; }
 
   /* ── Prevent overflow on all card types ── */
-  .card, .stat-card, .detail-card, .player-overview-card, .action-card {
+  .card, .stat-card, .detail-card, .player-overview-card {
     max-width: 100%; overflow-wrap: break-word; word-break: break-word;
   }
 
@@ -4181,175 +4435,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .mn-leg-actions { justify-content:flex-end; }
 }
 
-/* ===== Medical page ===== */
-.medical-stats-row {
-  display:flex; gap:1rem; margin-bottom:1.2rem; flex-wrap:wrap;
-}
-.medical-stat-card {
-  flex:1; min-width:110px; text-align:center; padding:1.2rem 1rem;
-}
-.medical-stat-value {
-  font-size:2.2rem; font-weight:800; color:var(--primary-dark); line-height:1;
-}
-.medical-stat-label {
-  font-size:.82rem; color:var(--text-secondary); margin-top:.4rem; font-weight:600;
-}
-.med-stat-red .medical-stat-value { color:#e53935; }
-.med-stat-amber .medical-stat-value { color:#f9a825; }
-.medical-row {
-  display:flex; align-items:center; gap:1rem; padding:.7rem .5rem;
-  border-bottom:1px solid var(--border); flex-wrap:wrap;
-}
-.medical-row:last-child { border-bottom:none; }
-
-/* ── Auto Generate Teams ── */
-.tg-header {
-  display:flex; align-items:center; justify-content:space-between; margin-bottom:.8rem;
-}
-.tg-config-panel {
-  background:var(--bg-secondary, #f8f8f8); border-radius:8px; padding:1rem; margin-bottom:1rem;
-}
-.tg-config-row {
-  display:flex; flex-wrap:wrap; gap:1rem 1.5rem; align-items:flex-end;
-}
-.tg-config-field {
-  display:flex; flex-direction:column; gap:.3rem;
-}
-.tg-config-field > label {
-  font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
-  color:var(--text-secondary);
-}
-.tg-toggle-label {
-  display:flex; align-items:center; gap:.4rem; font-size:.85rem; font-weight:600; cursor:pointer;
-}
-.tg-btn-group {
-  display:flex; border:1px solid var(--border); border-radius:6px; overflow:hidden;
-}
-.tg-btn {
-  padding:.35rem .7rem; font-size:.8rem; font-weight:600; border:none;
-  background:transparent; cursor:pointer; color:var(--text-secondary);
-  transition:background .15s, color .15s;
-}
-.tg-btn:not(:last-child) { border-right:1px solid var(--border); }
-.tg-btn-active {
-  background:var(--primary, var(--pp-red)); color:#fff;
-}
-.tg-teams-wrap {
-  display:flex; flex-wrap:wrap; gap:1rem; margin-top:1rem;
-}
-.tg-team-card {
-  flex:1 1 200px; min-width:180px; max-width:400px;
-  border:2px solid var(--border); border-radius:10px;
-  background:var(--bg, #fff); overflow:visible;
-}
-.tg-team-title {
-  font-weight:700; font-size:.9rem; padding:.6rem .8rem;
-  background:var(--bg-secondary, #f5f5f5); border-bottom:1px solid var(--border);
-  display:flex; align-items:center; justify-content:space-between;
-  border-radius:8px 8px 0 0;
-}
-.tg-team-count {
-  background:var(--primary, var(--pp-red)); color:#fff; font-size:.7rem;
-  padding:.15rem .45rem; border-radius:10px; font-weight:700;
-}
-.tg-team-players {
-  min-height:60px; padding:.4rem;
-}
-.tg-team-players.tg-drop-active {
-  background:rgba(189,22,44,.06); border:2px dashed var(--primary, var(--pp-red));
-  border-radius:0 0 8px 8px;
-}
-.tg-player-row {
-  display:flex; align-items:center; gap:.5rem; padding:.4rem .5rem;
-  border-radius:6px; cursor:grab; transition:background .15s, opacity .15s;
-  border-bottom:1px solid var(--border);
-}
-.tg-player-row:last-child { border-bottom:none; }
-.tg-player-row:hover { background:rgba(0,0,0,.03); }
-.tg-player-row.tg-dragging { opacity:.4; }
-.tg-player-name {
-  flex:1; font-size:.82rem; font-weight:600; display:inline-flex; align-items:center; gap:.35rem;
-  min-width:0;
-}
-.tg-player-name-text {
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.tg-player-num {
-  font-size:.75rem; color:var(--text-secondary); font-weight:600; white-space:nowrap;
-}
-.tg-remove-player {
-  background:none; border:none; color:#c62828; cursor:pointer; font-size:1rem;
-  padding:0 .2rem; line-height:1; opacity:.6; flex-shrink:0;
-}
-.tg-remove-player:hover { opacity:1; }
-.tg-add-wrap { padding:.4rem; }
-/* Custom searchable dropdown */
-.tg-dd { position:relative; }
-.tg-dd-input {
-  width:100%; font-size:.82rem; padding:.45rem .6rem; box-sizing:border-box;
-  border:2px solid var(--border); border-radius:var(--radius);
-  background:var(--card); font-family:inherit; transition:border-color .2s;
-  color:var(--text);
-}
-.tg-dd-input:focus {
-  outline:none; border-color:var(--primary-light);
-}
-.tg-dd-input::placeholder {
-  color:var(--text-secondary); opacity:.7;
-}
-.tg-dd-list {
-  position:absolute; left:0; right:0; top:100%; z-index:50;
-  max-height:180px; overflow-y:auto;
-  background:var(--card); border:2px solid var(--border); border-top:none;
-  border-radius:0 0 var(--radius) var(--radius);
-  box-shadow:0 4px 12px rgba(0,0,0,.1);
-}
-.tg-dd-option {
-  display:flex; align-items:center; gap:.4rem;
-  padding:.4rem .6rem; cursor:pointer; font-size:.82rem;
-  transition:background .12s;
-}
-.tg-dd-option:hover {
-  background:var(--bg-secondary, #f5f5f5);
-}
-.tg-dd-option .tg-player-num {
-  margin-left:auto; font-size:.72rem; color:var(--text-secondary);
-}
-.tg-empty-hint {
-  color:var(--text-secondary); font-size:.8rem; text-align:center; padding:.8rem 0;
-}
-/* No inclosos */
-.tg-not-included {
-  margin-top:1rem; border:1px dashed var(--border); border-radius:8px;
-  padding:.6rem .8rem; background:var(--bg-secondary, #f8f8f8);
-}
-.tg-ni-title {
-  font-weight:700; font-size:.82rem; margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;
-}
-.tg-ni-list {
-  display:flex; flex-wrap:wrap; gap:.5rem;
-}
-.tg-ni-player {
-  display:inline-flex; align-items:center; gap:.3rem;
-  background:var(--bg, #fff); border:1px solid var(--border); border-radius:6px;
-  padding:.25rem .5rem; font-size:.8rem; cursor:grab; transition:opacity .15s;
-}
-.tg-ni-player.tg-dragging { opacity:.4; }
-@media (max-width:600px) {
-  .tg-config-row { flex-direction:column; }
-  .tg-teams-wrap { flex-direction:column; }
-  .tg-team-card { max-width:100%; }
-}
-.medical-player {
-  display:flex; align-items:center; gap:.5rem; min-width:180px; flex:1;
-}
-.medical-name { font-weight:600; font-size:.92rem; }
-.medical-injury {
-  flex:2; font-size:.88rem; color:var(--danger); font-weight:500;
-  min-width:140px; cursor:help;
-}
-
-/* Body map popup on injury hover */
+/* ===== The injury hover body map =====
+   All that survives of the pre-v234 Medical stylesheet. The page itself is
+   the .md2- block at the foot of this file; this popup is bound by
+   bindMyStatsInjuryPopup() over .mystats-inj-row, which the player's own
+   injury history still carries. Its twin on the dashboard was deleted with
+   the markup it hung off. */
 .medical-body-popup {
   position:fixed; z-index:9999; pointer-events:none;
   background:rgba(20,20,30,.22);
@@ -4363,442 +4454,62 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .medical-body-popup.visible { opacity:1; }
 .medical-body-popup img { display:block; width:300px; height:auto; border-radius:8px; }
 
-/* ===== Interactive Body Map Picker ===== */
-.body-map-overlay {
-  position:fixed; inset:0; z-index:10000;
-  background:rgba(0,0,0,.35);
-  backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
-  display:flex; align-items:center; justify-content:center;
-}
-.body-map-modal {
-  background:rgba(20,20,30,.22);
-  backdrop-filter:blur(4px) saturate(1.2);
-  -webkit-backdrop-filter:blur(4px) saturate(1.2);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:14px; padding:.5rem;
-  box-shadow:0 12px 48px rgba(0,0,0,.55);
-  max-height:96vh; display:flex; flex-direction:column; overflow:hidden;
-}
-.body-map-header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:.3rem .6rem; font-weight:600; font-size:.85rem; color:rgba(255,255,255,.8);
-}
-.body-map-close {
-  background:none; border:none; font-size:1.3rem; cursor:pointer;
-  color:rgba(255,255,255,.5); padding:0 .3rem; line-height:1;
-}
-.body-map-close:hover { color:#ef5350; }
-.body-map-container {
-  flex:1 1 auto; overflow:auto;
-  display:flex; align-items:center; justify-content:center;
-}
-.body-map-img-wrap {
-  position:relative; display:inline-block; line-height:0;
-}
-.body-map-img {
-  display:block; height:70vh;
-  user-select:none; pointer-events:none;
-}
-/* SVG polygon overlay — covers exactly the rendered image */
-.body-map-svg {
-  position:absolute; top:0; left:0; width:100%; height:100%;
-}
-.body-zone-poly {
-  fill:transparent; stroke:transparent; stroke-width:.4;
-  cursor:pointer; transition:fill .15s, stroke .15s;
-}
-.body-zone-poly:hover {
-  fill:rgba(239,83,80,.2); stroke:rgba(239,83,80,.6);
-}
-.body-zone-poly.body-zone-active {
-  fill:rgba(239,83,80,.35); stroke:#ef5350; stroke-width:.6;
-}
-/* Floating tooltip */
-.body-zone-tip {
-  position:absolute; display:none; pointer-events:none; z-index:10;
-  background:rgba(0,0,0,.85); color:#fff; font-size:.75rem; font-weight:600;
-  padding:6px 14px; border-radius:5px; white-space:nowrap; line-height:1.3;
-}
-/* Choice panel below image */
-.body-map-choice {
-  padding:.4rem .6rem; border-top:1px solid rgba(255,255,255,.1);
-}
-.body-map-choice-row {
-  display:flex; flex-wrap:wrap; gap:6px; align-items:center;
-}
-.body-map-group-sel, .body-map-sub-sel {
-  padding:.3rem .5rem; font-size:.8rem;
-  border:1.5px solid rgba(255,255,255,.15); border-radius:var(--radius,6px);
-  background:rgba(0,0,0,.3); color:#fff;
-}
-.body-map-group-label {
-  font-weight:600; font-size:.85rem; color:#ef5350;
-  padding:.3rem .5rem;
-}
-.body-map-desc {
-  flex:1 1 120px; min-width:100px;
-  padding:.3rem .5rem; font-size:.8rem;
-  border:1.5px solid rgba(255,255,255,.15); border-radius:var(--radius,6px);
-  background:rgba(0,0,0,.3); color:#fff;
-}
-.body-map-ok {
-  padding:.35rem .7rem; font-size:.78rem; font-weight:600;
-  background:#ef5350; color:#fff; border:2px solid #c62828;
-  border-radius:var(--radius,6px); cursor:pointer;
-}
-.body-map-ok:hover { background:#c62828; }
-
-.medical-duration {
-  display:flex; flex-direction:column; align-items:flex-end; min-width:120px;
-}
-.medical-since {
-  font-size:.78rem; color:var(--text-secondary);
-}
-.medical-days {
-  font-size:.95rem; font-weight:700; color:var(--text);
-}
-
-/* ── Medical Dashboard (New) ── */
-.med-header {
-  display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
-}
-.med-log-btn {
-  white-space:nowrap; font-size:.85rem; padding:.5rem 1.2rem;
-}
-.med-filter-row {
-  display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.8rem;
-}
-.med-filter-btn {
-  padding:.35rem .75rem; font-size:.8rem; font-weight:600; border:1.5px solid var(--border);
-  border-radius:6px; background:transparent; cursor:pointer; color:var(--text-secondary);
-  transition:all .15s;
-}
-.med-filter-btn:hover { border-color:var(--primary-light); color:var(--text); }
-.med-filter-active {
-  background:var(--primary, var(--pp-red)); color:#fff; border-color:var(--primary, var(--pp-red));
-}
-.med-player-grid {
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:.6rem;
-}
-.med-player-card {
-  padding:.6rem .8rem; border-radius:8px; cursor:pointer;
-  background:var(--card); border:1px solid var(--border);
-  transition:box-shadow .15s, transform .1s;
-}
-.med-player-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); transform:translateY(-1px); }
-.med-card-top {
-  display:flex; align-items:center; gap:.4rem;
-}
-.med-card-name {
-  font-weight:600; font-size:.88rem; flex:1; min-width:0;
-  display:inline-flex; align-items:center; gap:.3rem;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-/* The shared .conv-pos-circles reserves a fixed 68px for up to three
-   position circles and right-aligns them, which keeps columns lined up in
-   list views. In these cards there is no column to align to, so a player
-   with one position wasted ~45px and pushed the name into an ellipsis.
-   Shrink to content and pack left. */
-.med-card-top .conv-pos-circles,
-.med-inj-player .conv-pos-circles {
-  width:auto; justify-content:flex-start;
-}
-.med-card-injury {
-  font-size:.78rem; color:#e53935; margin-top:.2rem; font-weight:500;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.med-status-dot {
-  width:10px; height:10px; border-radius:50%; flex-shrink:0;
-}
-.med-status-fit { background:#43a047; }
-.med-status-injured { background:#e53935; animation:medPulse 1.5s infinite; }
-.med-status-recovering { background:#f9a825; }
-@keyframes medPulse {
-  0%, 100% { opacity:1; }
-  50% { opacity:.4; }
-}
-
-/* Active injury cards */
-.med-injury-card {
-  padding:.8rem; border-radius:10px; border:1px solid var(--border);
-  background:var(--card); margin-bottom:.6rem; cursor:pointer;
-  transition:box-shadow .15s;
-}
-.med-injury-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
-/* Player self-reported an injury through availability but staff have not
-   logged a record yet — lighter, dashed, so it reads as "needs following up"
-   rather than as a real injury file. */
-.med-injury-card.med-injury-unlogged {
-  border-style:dashed; background:transparent; opacity:.85;
-}
-.med-injury-card.med-injury-unlogged .med-inj-zone {
-  font-style:italic; color:var(--text-secondary);
-}
-.med-inj-card-top {
-  display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:.4rem;
-}
-.med-inj-player {
-  display:flex; align-items:center; gap:.4rem; min-width:0;
-}
-.med-severity-badge {
-  display:inline-block; padding:.2rem .55rem; border-radius:4px;
-  font-size:.72rem; font-weight:700; color:#fff; text-transform:uppercase; letter-spacing:.03em;
-  white-space:nowrap; flex-shrink:0;
-}
-.med-severity-sm { font-size:.65rem; padding:.15rem .4rem; }
-.med-severity-dot {
-  display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; flex-shrink:0;
-}
-.med-inj-body { margin-bottom:.4rem; }
-.med-inj-zone { font-weight:600; font-size:.88rem; }
-.med-inj-desc { font-size:.82rem; color:var(--text-secondary); margin-top:.15rem; }
-.med-inj-footer {
-  display:flex; align-items:center; gap:.8rem; flex-wrap:wrap;
-}
-.med-inj-duration {
-  display:flex; flex-direction:column;
-}
-.med-return-badge {
-  font-size:.75rem; font-weight:600; color:#1e88e5;
-  background:rgba(30,136,229,.08); padding:.2rem .5rem; border-radius:4px;
-}
-.med-inj-actions {
-  display:flex; gap:.4rem; margin-left:auto; flex-wrap:wrap;
-}
-.med-btn-recover { background:#f9a825 !important; color:#333 !important; }
-.med-btn-resolve { background:#43a047 !important; }
-.btn-ghost {
-  background:transparent !important; border:1.5px solid var(--border) !important;
-  color:var(--text) !important;
-}
-.btn-ghost:hover { border-color:var(--primary-light) !important; }
-
-/* Past injuries collapsible */
-.med-past-card .card-title { user-select:none; }
-.med-past-arrow { font-size:.7rem; margin-left:.3rem; }
-.med-past-row { opacity:.75; }
-
-/* Analytics */
-.med-analytics-grid {
-  display:grid; grid-template-columns:2fr 3fr; gap:.5rem; align-items:stretch;
-}
-.med-analytics-section { display:flex; flex-direction:column; }
-.med-analytics-section svg { width:100%; flex:1; }
-.med-analytics-section:last-child { padding-top:1.2rem; padding-bottom:.3rem; }
-.med-analytics-heatmap {
-  text-align:center;
-}
-.med-analytics-heatmap img { height:auto; width:100%; max-width:320px; }
-.med-analytics-subtitle {
-  font-weight:700; font-size:.82rem; text-transform:uppercase; letter-spacing:.03em;
-  color:var(--text-secondary); margin-bottom:.6rem;
-}
-.med-prone-table {
-  width:100%; border-collapse:collapse; font-size:.82rem;
-}
-.med-prone-table th {
-  text-align:left; padding:.4rem .6rem; font-weight:700; font-size:.75rem;
-  text-transform:uppercase; letter-spacing:.03em; color:var(--text-secondary);
-  border-bottom:2px solid var(--border);
-}
-.med-prone-table td {
-  padding:.4rem .6rem; border-bottom:1px solid var(--border);
-}
-.med-season-summary {
-  display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:1rem;
-  padding-top:.8rem; border-top:1px solid var(--border);
-}
-.med-summary-item {
-  display:flex; flex-direction:column; gap:.15rem;
-}
-.med-summary-label {
-  font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
-  color:var(--text-secondary);
-}
-.med-summary-val {
-  font-size:.9rem; font-weight:600;
-}
-
-/* Medical Detail */
-.med-detail-back {
-  display:inline-block; font-weight:600; font-size:.88rem; color:var(--primary);
-  cursor:pointer; margin-bottom:.8rem; padding:.3rem 0;
-}
-.med-detail-back:hover { text-decoration:underline; }
-.med-detail-header {
-  margin-bottom:1rem;
-}
-.med-detail-player {
-  display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
-}
-.med-detail-name {
-  font-size:1.3rem; font-weight:800; display:inline-flex; align-items:center; gap:.3rem;
-}
-.med-detail-status {
-  display:inline-block; padding:.25rem .65rem; border-radius:4px;
-  font-size:.75rem; font-weight:700; color:#fff; text-transform:uppercase;
-}
-.med-current-card {
-  border-left:4px solid #e53935;
-}
-.med-detail-inj-info {
-  display:flex; align-items:center; gap:.5rem; margin-bottom:.3rem;
-}
-.med-detail-zone { font-weight:600; font-size:.92rem; }
-.med-detail-desc { font-size:.85rem; color:var(--text-secondary); margin-bottom:.2rem; }
-.med-detail-timing { font-size:.82rem; color:var(--text-secondary); }
-.med-detail-return { font-size:.82rem; color:#1e88e5; font-weight:600; margin-top:.2rem; }
-.med-detail-notes {
-  font-size:.82rem; color:var(--text-secondary); margin-top:.3rem;
-  padding:.4rem .6rem; background:var(--bg-secondary); border-radius:6px;
-}
-.med-recurring-alert {
-  background:rgba(249,168,37,.1); border:1.5px solid #f9a825;
-  border-radius:8px; padding:.6rem .8rem; margin-bottom:1rem;
-  font-size:.85rem; font-weight:600; color:#e65100;
-}
-.med-detail-columns {
-  display:grid; grid-template-columns:auto 1fr; gap:1rem; align-items:start;
-}
-.med-detail-map-card { text-align:center; }
-.med-detail-body-map { margin-top:.3rem; }
-.med-timeline-row {
-  display:flex; align-items:center; gap:.5rem; padding:.5rem 0;
-  border-bottom:1px solid var(--border); font-size:.85rem;
-}
-.med-timeline-row:last-child { border-bottom:none; }
-.med-timeline-info {
-  display:flex; align-items:center; gap:.4rem; flex:1; min-width:0;
-}
-.med-timeline-zone { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.med-timeline-dates {
-  font-size:.78rem; color:var(--text-secondary); white-space:nowrap;
-}
-
-/* Staff Injury Logger */
-.med-logger-modal {
-  max-width:480px; width:95vw;
-  background:var(--card, #fff);
-  border:1px solid var(--border);
-  backdrop-filter:none; -webkit-backdrop-filter:none;
-  color:var(--text);
-}
-.med-logger-modal .body-map-header {
-  color:var(--text); border-bottom:1px solid var(--border);
-}
-.med-logger-modal .body-map-close {
-  color:var(--text-secondary);
-}
-.med-logger-modal .body-map-close:hover { color:#e53935; }
-.med-logger-content {
-  flex:1 1 auto; overflow-y:auto; padding:.6rem; max-height:80vh;
-}
-.med-logger-field {
-  margin-bottom:.8rem;
-}
-.med-logger-field > label {
-  display:block; font-size:.75rem; font-weight:700; text-transform:uppercase;
-  letter-spacing:.03em; color:var(--text-secondary); margin-bottom:.3rem;
-}
-.med-logger-modal .tg-btn-group {
-  width:100%;
-}
-.med-logger-modal .tg-btn-group .tg-btn {
-  flex:1; text-align:center;
-}
-.med-logger-select, .med-logger-input {
-  width:100%; padding:.45rem .6rem; font-size:.85rem;
-  border:2px solid var(--border); border-radius:var(--radius);
-  background:var(--card); color:var(--text); font-family:inherit;
-  box-sizing:border-box;
-  appearance:none; -webkit-appearance:none; -moz-appearance:none;
-  line-height:1.4; cursor:pointer; transition:border-color .2s, box-shadow .2s;
-}
-.med-logger-input[type="text"][readonly] {
-  cursor:pointer; background:var(--bg, #f8f8f8);
-}
-.med-logger-input[type="text"][readonly]:hover {
-  border-color:var(--primary-light);
-}
-.med-logger-select:focus, .med-logger-input:focus {
-  outline:none; border-color:var(--primary-light);
-}
-.med-logger-textarea {
-  width:100%; padding:.45rem .6rem; font-size:.85rem;
-  border:2px solid var(--border); border-radius:var(--radius);
-  background:var(--card); color:var(--text); font-family:inherit;
-  resize:vertical; box-sizing:border-box;
-}
-.med-logger-textarea:focus { outline:none; border-color:var(--primary-light); }
-.med-logger-dates {
-  display:flex; gap:.8rem; flex-wrap:wrap;
-}
-.med-logger-dates > div { flex:1; min-width:130px; }
-.med-logger-dates > div > label {
-  display:block; font-size:.75rem; font-weight:700; text-transform:uppercase;
-  letter-spacing:.03em; color:var(--text-secondary); margin-bottom:.3rem;
-}
-.med-logger-save {
-  width:100%; padding:.55rem; font-size:.9rem; font-weight:700;
-}
-.med-edit-modal { max-width:420px; width:90vw; }
-.med-edit-modal,
-.med-edit-modal .med-logger-content {
-  background:var(--card, #fff);
-  border:1px solid var(--border);
-  border-radius:14px;
-  color:var(--text);
-  color-scheme:light;
-}
-.med-edit-modal .med-logger-input,
-.med-edit-modal .med-logger-textarea,
-.med-edit-modal .med-logger-select {
-  color-scheme:light;
-  background:var(--bg, #fff);
-  color:var(--text);
-}
-.med-edit-modal .med-logger-field > label {
-  color:var(--text-secondary);
-}
-.med-edit-modal .body-map-header {
-  color:var(--text); border-bottom:1px solid var(--border);
-}
-.med-edit-modal .body-map-close {
-  color:var(--text-secondary);
-}
-.med-edit-modal .body-map-close:hover { color:#e53935; }
-.med-edit-modal .med-logger-content { border:none; border-radius:0; }
-.med-edit-modal .tg-btn-group {
-  width:100%;
-}
-.med-edit-modal .tg-btn-group .tg-btn {
-  flex:1; text-align:center;
-}
-.med-sev-group { margin-top:.3rem; }
-
-@media (max-width:600px) {
-  .medical-stats-row { flex-direction:row; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem; }
-  .medical-stat-card { min-width:calc(50% - .5rem); margin-bottom:0; }
-  .medical-row { flex-direction:column; align-items:flex-start; gap:.4rem; }
-  .medical-duration { align-items:flex-start; }
-  .med-player-grid { grid-template-columns:1fr; }
-  .med-analytics-grid { grid-template-columns:1fr; }
-  .med-detail-columns { grid-template-columns:1fr; }
-  .med-inj-footer { flex-direction:column; align-items:flex-start; }
-  .med-inj-actions { margin-left:0; }
-  .med-header { flex-direction:column; align-items:flex-start; margin-bottom:1rem; }
-}
-
 /* ── Category Bar ── */
-.cat-bar{display:flex;gap:.35rem;padding:.7rem .8rem;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;margin:-2rem -2rem 1rem -2rem;}
-@media(max-width:500px){.cat-bar{margin:-0.75rem -0.75rem 1rem -0.75rem;}}
-.cat-bar-btn{padding:.3rem .7rem;border-radius:20px;border:1.5px solid var(--border);background:none;font-size:.82rem;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:.2s;}
+/* ⚠ THE SAME TWO-RULE SHAPE AS THE PAGE ROOTS, AND FOR THE SAME REASON. The
+   bar used to carry a blanket `margin-top:-2rem`, and the three banners
+   (`.upd-banner`, update/push/iOS) render into this container AHEAD of it
+   with a `margin-bottom:1rem` and no top margin — so the bar climbed 16px
+   over whichever one was showing and clipped its border and amber ground.
+   Unguarded on all ten CATEGORY_PAGES until v246.
+   ⚠ And the breakpoint is 600, not the 500 it used to be: `.dashboard-content`
+   changes at 600, so between 501 and 600 the bar was negating 2rem of padding
+   that had already become 1rem and overshooting 16px each side into
+   `overflow-x:hidden`. */
+.cat-bar{display:flex;align-items:center;gap:0;padding:.6rem 1.4rem;background:var(--pp-paper);border-bottom:1px solid var(--pp-rule);overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2rem 1rem;font-family:'Oswald','Arial Narrow',sans-serif;}
+.cat-bar:first-child{margin-top:-2rem;}
+@media(max-width:600px){
+  .cat-bar{margin:0 -1rem 1rem;}
+  .cat-bar:first-child{margin-top:-.75rem;}
+}
+/* ⚠ REPAINTED FOR THE PAPER PAGES (v245). This bar is drawn OUTSIDE the page
+   root by renderPage(), so it cannot be scoped under one — and it sits above
+   nine pages, eight of which are now paper: it was the last strip of app
+   chrome (red pills, 20px radius, 600 weight) left on top of them.
+   ⚠ `sancions` is the one page under it that is NOT redesigned. It is
+   deliberately left wearing this bar rather than given an exception: two
+   different filter bars on one app is the seam this closes, and a paper strip
+   above an old page reads better than the reverse.
+   The BEHAVIOUR is untouched — bindDynamicActions() binds `.cat-bar-btn`,
+   `[data-*-letter]` and `.cat-bar-letter` by name. */
+.cat-bar-btn{
+  padding:.25rem 0;margin-right:.9rem;border:none;border-bottom:1px solid transparent;
+  border-radius:0;background:none;font-size:.85rem;font-weight:400;
+  color:var(--pp-ink-2);cursor:pointer;white-space:nowrap;transition:.15s;
+}
 /* The squad chips the calendar adds after the categories. A rule between
    them, so the row does not read as one flat list of unrelated choices. */
-.cat-bar-sep{flex:0 0 auto;align-self:stretch;width:1px;background:var(--border);margin:0 .35rem;}
-.cat-bar .cat-bar-letter{padding:.3rem .75rem;min-width:2.2rem;}
-.cat-bar-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
-.cat-bar-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+.cat-bar-sep{flex:0 0 auto;align-self:center;width:1px;height:16px;background:var(--pp-rule);margin:0 .6rem;}
+.cat-bar-btn.active{border-bottom-color:var(--pp-ink);color:var(--pp-ink);}
+.cat-bar-btn:hover:not(.active){color:var(--pp-ink);}
+/* The squad letters are BOXES, not tabs — a different kind of choice from the
+   category, and the handoff draws the distinction that way. */
+.cat-bar .cat-bar-letter{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:26px;height:24px;padding:0 7px;margin-right:6px;
+  border:1px solid var(--pp-rule);border-radius:0;background:none;
+  font-size:.78rem;font-weight:400;color:var(--pp-ink-2);
+}
+/* ⚠ `.roster-team-btn-active`, NOT `.active`. catBarLettersHtml() marks the
+   chosen chip with the roster's class (js/app.js, `chip()`), and v245 styled
+   `.active` — a selector nothing ever carries. The old `#424242` fill did not
+   show either: `.roster-team-btn-active` is (0,1,0) and the rule above is
+   (0,2,0), so the lit chip came out pixel-identical to an unlit one on all six
+   pages that draw them. The compound below is (0,3,0) and reaches it.
+   ⚠ Do not "tidy" this by renaming the class in the JS: the same class dresses
+   the roster's own chip row outside this bar, and calendar-render.test.js
+   counts lit chips by it. */
+.cat-bar .cat-bar-letter.roster-team-btn-active{background:var(--pp-ink);border-color:var(--pp-ink);color:var(--pp-paper);}
+.cat-bar .cat-bar-letter:hover:not(.roster-team-btn-active){border-color:var(--pp-ink);color:var(--pp-ink);}
 
 /* ── Team Setup Wizard ── */
 .ts-cat-row{display:flex;align-items:center;gap:.6rem;padding:.7rem .5rem;border-bottom:1px solid var(--border);}
@@ -6244,52 +5955,81 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
 /* There is no card. The page fills the pane, so a frame around it was a
    border with nothing on the far side — and it cost padding on all four
-   edges plus the heading above it. The bar's own bottom rule was doing
-   the separating all along.
+   edges plus the heading above it. The band's bottom rule does the
+   separating; the card was only ever holding it.
 
-   The width is reclaimed by pulling THESE TWO BLOCKS out, not by trimming
-   `.dashboard-content`. Trimming the page's padding was tried and reverted:
-   `.cat-bar` bleeds edge-to-edge with `margin:-2rem`, sized to cancel that
-   exact padding, so cutting it left the filter bar overshooting by the
-   difference and clipped against `overflow-x:hidden`. Anything else on the
-   page that bleeds would have broken the same way. `2rem − 1.25rem` leaves
-   the same .75rem of gutter, and touches nothing shared. */
-.cal-bar, .cal-weeks { margin-left: -1.25rem; margin-right: -1.25rem; }
+   ⚠ v247: THE BLEED IS ON A PAGE ROOT NOW, like every other paper page.
 
-/* ── Top bar ─────────────────────────────────────────────── */
+   It used to be two `margin-left/right: -2rem` pulls on `.cal-bar` and
+   `.cal-weeks` individually, because Calendari had no root to hang it on —
+   and a `margin-top: -1rem` on the bar as well, to make up for the one the
+   roots take. `.cal-page` (app.js, renderCalendar) replaces all four
+   declarations with membership of the shared geometry rule near
+   `.dashboard-content`, which is also where the 600px step now comes from.
+
+   What the old comment insisted on still holds and is why the root bleeds
+   rather than `.dashboard-content` being trimmed: `.cat-bar` bleeds
+   edge-to-edge with `margin:-2rem`, sized to cancel that exact padding, so
+   cutting the container leaves the filter bar overshooting by the difference
+   and clipping against `overflow-x:hidden`.
+
+   ⚠ The banners stay OUTSIDE the root — see renderCalendar. */
+.cal-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+
+/* ── The header band ─────────────────────────────────────────
+   `.cal-hero` itself is in the shared band rule up near `.dashboard-content`
+   — white ground, 34/40/26, one bottom rule, title at 36px — so all that is
+   left here is the one thing this band does differently: its right-hand side
+   is a month navigator where the others carry figures. */
+.cal-hero-r { display: flex; align-items: center; gap: 8px; flex: none; }
+
+/* ── The legend strip, under the band ────────────────────────
+   The two legends and the refresh are what is left of the old top bar once
+   the month nav moved up into the band. They are reference, not control, so
+   they read as a caption strip rather than as a toolbar: no white ground of
+   its own, and the 40px inset the grid below it takes. */
 .cal-bar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 24px; flex-wrap: wrap;
-  padding: 0 2px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 40px;
+  border-bottom: 1px solid var(--pp-rule);
 }
-.cal-bar-l, .cal-bar-r { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-/* Bare glyphs, in the club's red. The 30x30 box STAYS as the hit area —
-   a lone chevron is a small target on a phone — it just stops being
-   painted. `:focus-visible` gets its own ring, because the border that
-   used to show focus is what went. */
+.cal-bar-l, .cal-bar-r { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+/* Bare glyphs. The 30x30 box STAYS as the hit area — a lone chevron is a
+   small target on a phone — it just stops being painted. `:focus-visible`
+   gets its own ring, because the border that used to show focus is what
+   went.
+   ⚠ v247: ink, not the club's red. In the band the arrows sit beside a
+   36px ink title, and two reds shouting from the same white strip made the
+   navigator read as an alert rather than as a control. */
 .cal-arrow {
   width: 30px; height: 30px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
   font-size: 1.4rem; line-height: 1; cursor: pointer;
   background: none; border: 0; padding: 0;
-  color: var(--primary); font-weight: 600;
+  color: var(--pp-ink); font-weight: 600;
   transition: transform .12s ease, font-weight .12s ease;
 }
 .cal-arrow:hover { font-weight: 800; transform: scale(1.15); }
 .cal-arrow:focus-visible {
-  outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px;
+  outline: 2px solid var(--pp-ink); outline-offset: 2px; border-radius: 6px;
 }
-/* The page's heading now that the h2 is gone, so it takes the h2's size.
-   Fixed width, so the arrows do not shuffle between "Maig" and "Setembre". */
+/* Not the page's heading any more — `.cal-h1` is, since v247 — but it keeps
+   the h2's size, because it is still the thing that says which month you are
+   looking at and it now has a 36px title to hold its own against.
+   ⚠ Keep `min-width`: it is what stops the arrows shuffling between "Maig"
+   and "Setembre". */
 .cal-month {
   font-size: 1.5rem; font-weight: 600; letter-spacing: .01em;
-  min-width: 9rem; text-align: center; color: var(--primary-dark);
+  min-width: 9rem; text-align: center; color: var(--pp-ink);
 }
 
 .cal-legend { display: flex; align-items: center; gap: 11px; }
 .cal-legend-load {
-  padding-left: 16px; border-left: 1px solid var(--border);
+  padding-right: 16px; border-right: 1px solid var(--border);
 }
 .cal-legend-h {
   font-size: .68rem; font-weight: 600; letter-spacing: .1em;
@@ -6323,7 +6063,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 
    No `gap` either: the padding on each strip is the spacing now. With a
    gap the rules would float between rows instead of sitting on them. */
-.cal-weeks { display: flex; flex-direction: column; padding: 4px 2px 16px; }
+/* ⚠ v247: 40px of inset, the same the band takes, which is the owner's "more
+   left/right margins". The full bleed stays on the PAPER — `.cal-page` still
+   reaches both edges of the pane — it is the content that comes in, so the
+   grid's first and last columns line up with the title above them instead of
+   running out past it. */
+.cal-weeks { display: flex; flex-direction: column; padding: 4px 40px 16px; }
 .cal-week {
   display: flex; gap: 12px; align-items: stretch;
   padding: 12px 4px;
@@ -6635,10 +6380,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    becomes one week per screen-width block: the month is still a stack of
    weeks, just a taller one. */
 @media (max-width: 900px) {
-  /* `.dashboard-content` is down to `.75rem 1rem` by 600px, so the -1.25rem
-     pull above would overshoot the pane and clip — the same mistake that
-     removing `.dashboard-tight` was meant to end, one breakpoint down. */
-  .cal-bar, .cal-weeks { margin-left: 0; margin-right: 0; }
   .cal-week { flex-direction: column; gap: 8px; }
   .cal-gutter {
     width: auto; flex-direction: row; align-items: baseline; gap: 8px;
@@ -6651,12 +6392,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
      an expanded-only row would never be reachable. */
   .cal-add { opacity: 1; }
 }
+/* ⚠ 700, which is where the SHARED BAND folds to its 20px — not 900 and not
+   560. The strip and the grid take their inset from the band above them, so
+   they have to step down on the band's breakpoint or the three left edges
+   stop agreeing for a whole 140px of width. */
+@media (max-width: 700px) {
+  .cal-bar { padding: 12px 20px; }
+  .cal-weeks { padding: 4px 20px 16px; }
+  .cal-hero-r { gap: 4px; }
+}
 @media (max-width: 560px) {
   .cal-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cal-bar { gap: 10px; padding: 12px 14px; }
-  .cal-legend-load { padding-left: 0; border-left: 0; }
+  .cal-legend-load { padding-right: 0; border-right: 0; }
   .cal-month { min-width: 6.5rem; font-size: 1.1rem; }
-  .cal-weeks { padding: 8px 10px 14px; }
+  .cal-weeks { padding: 8px 14px 14px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -6676,21 +6426,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display: flex; align-items: flex-start; overflow-x: hidden;
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
-.pl-main { flex: 1; min-width: 0; padding: 28px 30px 48px; }
+/* 40px, the inset every paper page uses — see the note on `.cv-page`. */
+.pl-main { flex: 1; min-width: 0; }
 
 /* ── Title block ── */
-.pl-title-row {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule);
-}
-.pl-title-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.pl-h1 { margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
-.pl-sub { font-size: 14px; color: var(--pp-ink-2); }
-.pl-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3);
-}
 .pl-eyebrow-b { display: block; padding-bottom: 10px; }
 
 /* ── Attendance donut ── */
@@ -6715,10 +6456,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-rail-donut .pl-donut-pct { font-size: 15px; }
 
 /* ── Key figures ── */
-.pl-figures {
-  display: flex; flex-wrap: wrap; gap: 56px;
-  padding: 22px 0; border-bottom: 1px solid var(--pp-rule);
-}
+.pl-figures { flex-wrap: wrap; }
 .pl-fig { display: flex; flex-direction: column; gap: 3px; }
 .pl-fig-v { font-size: 24px; font-weight: 400; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .pl-fig-of { font-size: 14px; color: var(--pp-ink-2); }
@@ -6881,7 +6619,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-inj-map img { display: block; width: 100%; opacity: .75; }
 .pl-inj-dot {
   position: absolute; width: 11px; height: 11px; border-radius: 50%;
-  background: var(--pp-bad); box-shadow: 0 0 0 3px rgba(192,86,76,.28);
+  background: var(--pp-bad); box-shadow: 0 0 0 3px rgba(var(--pp-bad-rgb),.28);
   transform: translate(-50%, -50%);
   animation: plInjuryBlink 1.4s ease-in-out infinite;
 }
@@ -6947,8 +6685,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    The rail is 480px of a 480px phone, so below the breakpoint it stops
    being a rail and becomes the page: full width, under the table. */
 @media (max-width: 900px) {
-  .pl-page { flex-direction: column; margin: -1rem -.5rem; }
-  .pl-main { padding: 20px 16px 32px; width: 100%; box-sizing: border-box; }
+  /* Columns fold here; the BLEED is at 600, where the container changes. */
+  .pl-page { flex-direction: column; }
+  .pl-main { width: 100%; box-sizing: border-box; }
   .pl-rail {
     width: 100%; border-left: none; border-top: 1px solid var(--pp-rule);
     padding: 24px 16px 40px; animation: none;
@@ -6971,7 +6710,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
+  /* ⚠ NO PADDING. The inset moved to the body wrapper at v247.2 — see the
+     shared rule near `.dashboard-content`. It was 30px here until v246, then
+     40px, and both were on the ROOT, which is what stopped the header band
+     reaching the page's edges and left the grey stripe down each side. */
+  min-height: calc(100vh - 120px);
 }
 /* The section subtitles carry the page's structure — Convidats,
    Pendents de col·locar, Membres — so they are set in the ink, not the
@@ -6983,13 +6726,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 /* A caption over a big number, not a section heading. Same size band,
    the opposite weight and colour — one class could not be both. */
-.reg2-fig-l {
-  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 400; color: var(--pp-ink-3);
-}
-.reg2-title-row { padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule); }
-.reg2-h1 { margin: 0 0 8px; font-size: 38px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
-.reg2-sub-line { font-size: 14px; color: var(--pp-ink-2); max-width: 70ch; }
+.reg2-sub-line { max-width: 70ch; }
 
 /* ── On hairlines ──
    The first draft drew one under the title, one under the figures, one
@@ -7001,12 +6738,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    the heading from the work, and the rules a table draws for itself
    (the solid one under its headers, the light one between its rows).
    Everything else is separated by space. */
-.reg2-figures {
-  display: flex; flex-wrap: wrap; gap: 56px;
-  padding: 22px 0 26px;
-}
-.reg2-fig { display: flex; flex-direction: column; gap: 3px; }
-.reg2-fig-v { font-size: 24px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.reg2-figures { flex-wrap: wrap; }
 .reg2-fig-hot { color: var(--pp-red); }
 
 .reg2-sec-head {
@@ -7105,11 +6837,240 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 11px; color: var(--pp-ink-2); line-height: 1;
 }
-/* ⚠ These two cells are inline-flow with `white-space: nowrap`, NOT flex.
-   A flex wrapper here would zero out the `margin-left` that
-   catBadgeHtmlGlobal() relies on, so the avatar aligns by baseline instead. */
+/* The larger face on Registracions (v233). The row is two lines of text —
+   name over email — so an INLINE avatar could only ever be as tall as one of
+   them. Beside them it takes the height of both, which is most of the row: a
+   40px face reads as a person, a 26px one reads as punctuation.
+   ⚠ Flex is safe here and is NOT safe in `.pl-td-name`: nothing in this cell
+   depends on catBadgeHtmlGlobal's margin-left, which flex would collapse. */
+.reg2-who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.reg2-who-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pp-av-lg { width: 40px; height: 40px; flex: 0 0 40px; margin-right: 0; font-size: 15px; }
+
+/* ⚠ The Plantilla name cell is inline-flow with `white-space: nowrap`, NOT
+   flex, for the reason above — its avatar aligns by baseline instead. */
 .reg2-name, .pl-td-name { white-space: nowrap; }
-.reg2-name > *, .pl-td-name > * { vertical-align: middle; }
+.pl-td-name > * { vertical-align: middle; }
+/* ===== Player metrics — weight, height, fitness tests (v236) =====
+
+   Plantilla's own, so `.plm-` sits inside the `.pl-` region rather than at
+   the foot of the file. ⚠ That placement is load-bearing:
+   test/medical.test.js slices the `.md2-` block from its banner to the END
+   OF FILE, so anything appended after it is read as Mèdic's and would trip
+   that suite's no-loose-hex and borrowed-class scans. The same trap took
+   Inici down when Mèdic was appended after it. */
+
+.plm-block { padding-top: 6px; }
+/* The title and the chart/table switch share a line; the metric picker gets
+   its own beneath, because it is the choice the rest of the block is about
+   and reads as a heading for it rather than as a third control in a row. */
+.plm-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 8px;
+}
+.plm-head .pl-eyebrow { margin-right: auto; }
+.plm-pickrow { padding-bottom: 10px; }
+/* The picker on the left, the export opposite it: one row that says which
+   metric, and the button that downloads exactly that. */
+.plm-pickrow-x { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* ⚠ The SAME BOX as one GRÀFIC/TAULA segment, deliberately: 26px tall like
+   `.plm-segs .md2-seg` above, and half of the 150px control less its 7px
+   gap. The two sit one under the other on the left and right of the block,
+   and a download button a few pixels off reads as a different kind of
+   control rather than as the third member of the same set.
+   A test pins the height to the segment's, because these are two rules that
+   have to move together and nothing else would notice. */
+.plm-xls {
+  width: 71px; height: 26px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--pp-input-line); background: var(--pp-paper);
+  color: var(--pp-ink-2); cursor: pointer; border-radius: 0;
+}
+.plm-xls:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.plm-pick { min-width: 150px; }
+.plm-pick-wide { width: 100%; display: block; }
+/* ⚠ `.std-sel-menu` is `right: 0` by default, which is right for a menu
+   hanging off a narrow trigger in a table and wrong for one under a
+   full-width control: it pinned the list to the far right of the sheet
+   instead of dropping under the box. Left-aligned, and at least as wide as
+   what opened it. */
+.plm-pick .std-sel-menu,
+.plm-pickrow .std-sel-menu,
+.plm-pick-wide .std-sel-menu { left: 0; right: auto; min-width: 100%; }
+/* `.std-sel-t` is a transparent-bordered inline trigger by default, which
+   is right beside a table cell and wrong beside the boxed Valor and Data
+   inputs in the sheet — it read as a caption rather than as a control. */
+.plm-pick-wide .std-sel-t {
+  width: 100%; height: 38px; padding: 0 12px; justify-content: space-between;
+  border-color: var(--pp-input-line); background: var(--pp-paper); font-size: 15px;
+}
+.plm-pickrow .std-sel-t {
+  height: 30px; padding: 0 10px; border-color: var(--pp-input-line);
+  background: var(--pp-paper); font-size: 14px;
+}
+.plm-segs { flex: none; width: 150px; }
+.plm-segs .md2-seg { height: 26px; font-size: 11px; }
+.plm-empty { padding: 14px 0; font-size: 13px; color: var(--pp-ink-3); }
+.plm-add {
+  display: block; width: 100%; margin-top: 12px; height: 30px;
+  border: 1px solid var(--pp-input-line); background: none;
+  font: inherit; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pp-ink-2); cursor: pointer; border-radius: 0;
+}
+.plm-add:hover { border-color: var(--pp-red); color: var(--pp-red); }
+
+/* ── the chart ── */
+.plm-chart { position: relative; }
+/* ⚠ .pl-svg is capped at 440px and only un-capped inside the rail, so the
+   page-level squad chart would otherwise draw at 440px in a full-width
+   section. */
+.plm-svg { max-width: none; }
+.plm-xlabels {
+  position: relative; height: 15px; margin-top: 2px;
+  font-size: 10px; color: var(--pp-ink-3);
+}
+.plm-xlab {
+  position: absolute; transform: translateX(-50%); white-space: nowrap;
+}
+
+/* ⚠ CLASS-DRIVEN, NOT `:hover`, AND THE REASON IS TWO LINES AT A CROSSING.
+   The first version was pure CSS — `.plm-lines:hover .plm-line {opacity:.12}`
+   then `.plm-line:hover {opacity:1}` — which needs no state and survives any
+   redraw, and it was wrong the moment two players' lines crossed: each line
+   carries a 12px transparent hit stroke, so at a crossing the pointer is
+   inside BOTH and `:hover` fires for both. Driven with a real pointer over
+   twelve lines, two stood out, not one.
+
+   A delegated `mouseover` gets the single topmost element as `e.target`,
+   which is exactly the tie-break CSS cannot express. The redraw worry that
+   argued for `:hover` does not apply here: these charts carry no drag
+   surface, so nothing redraws them in place — and a full render rebinds. */
+.plm-line { transition: opacity .12s; }
+.plm-lines.plm-hot .plm-line { opacity: .12; }
+.plm-lines.plm-hot .plm-line.plm-on { opacity: 1; }
+/* The visible stroke is 1.6px and only receives events ON the stroke, which
+   is unhittable in practice — this is its transparent twin. */
+.plm-line-hit { cursor: pointer; }
+
+/* ── the rail's table ── */
+.plm-tbl { margin-top: 4px; }
+.plm-td-date { color: var(--pp-ink-2); }
+.plm-unit { font-size: 11px; color: var(--pp-ink-3); }
+.plm-del {
+  border: none; background: none; font: inherit; font-size: 15px;
+  color: var(--pp-ink-3); cursor: pointer; padding: 0 2px; line-height: 1;
+}
+.plm-del:hover { color: var(--pp-red); }
+.plm-del:disabled { opacity: .4; cursor: default; }
+
+/* ── the squad section ── */
+.plm-sec-head { cursor: pointer; }
+.plm-arrow { color: var(--pp-ink-3); }
+.plm-sec-note { font-size: 13px; color: var(--pp-ink-2); }
+.plm-sec { padding-bottom: 12px; }
+.plm-sec .plm-head { padding-top: 4px; }
+.plm-sec-empty { padding: 12px 0 20px; }
+.plm-squad-tbl { min-width: 0; margin-top: 14px; }
+/* ── the squad table: one column per measurement date ──
+   A season of weekly weights is forty columns, so the table scrolls inside
+   its own box rather than widening the page. ⚠ The overflow is on the DIV,
+   never on the table: a sticky cell positions against its nearest scrolling
+   ancestor, and making the table its own scroller would freeze the sticky
+   column in place instead of pinning it. */
+.plm-tblwrap {
+  overflow-x: auto; overflow-y: hidden;
+  /* The pointer says the surface can be dragged before anyone tries it. */
+  cursor: grab;
+}
+.plm-tblwrap.plm-dragging { cursor: grabbing; user-select: none; }
+.plm-tblwrap .plm-squad-tbl { width: auto; min-width: 100%; }
+/* The name, its swatch and its tick box ride along: the dates scroll away
+   and there would otherwise be no way to tell which row is whose, nor to
+   put a player back on the chart without scrolling home first. */
+.plm-stick {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--pp-paper); white-space: nowrap;
+  /* A rule down the right edge, so the frozen column reads as frozen once
+     the dates start sliding under it. ⚠ box-shadow rather than
+     border-right: the table is border-collapse:collapse, where a border on
+     a sticky cell is the one thing browsers still disagree about. */
+  box-shadow: 1px 0 0 var(--pp-rule);
+}
+.plm-squad-tbl thead .plm-stick { z-index: 2; }
+/* A dimmed row keeps a paper ground under its sticky cell — without this
+   the scrolled columns show through the one part of the row that does not
+   move, which reads as a rendering fault rather than as "deselected". */
+.plm-row.plm-off .plm-stick { background: var(--pp-paper); }
+.plm-stick .plm-tick { margin-right: 8px; vertical-align: middle; }
+.plm-dth { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* A date this player was not measured on. A dot, not a zero and not a
+   blank: zero is a value he never had, and an empty cell reads as a
+   rendering gap rather than as "no reading". */
+.plm-nil { color: var(--pp-ink-4); }
+.plm-alsosep { color: var(--pp-ink-4); }
+/* A deselected player: dimmed, and sorted to the bottom by the renderer —
+   the row is not hidden, because taking him off the chart is not the same
+   as saying he has no numbers. */
+.plm-off { opacity: .42; }
+/* The legend swatch, beside the player's name. The chart carries no key of
+   its own, so this is the only thing that says which line is whose.
+   ⚠ A second-lap player (the eleventh onwards) gets the SAME hue back, so
+   his line is dashed and his swatch hollow — the ring is what tells the two
+   apart, and it has to be drawn from the same helper as the stroke or the
+   legend starts lying. */
+.plm-sw {
+  display: inline-block; width: 10px; height: 10px; margin-right: 7px;
+  vertical-align: baseline; border-radius: 50%;
+  /* border-box so the hollow variant below stays the same 10px as the
+     filled one — a legend whose dots are two sizes reads as two things. */
+  box-sizing: border-box;
+}
+.plm-sw-lap { background: none; border: 2px solid var(--pp-ink-3); }
+.plm-tick {
+  width: 22px; height: 22px; border: 1px solid var(--pp-input-line);
+  background: none; font: inherit; font-size: 12px; line-height: 1;
+  color: var(--pp-ink); cursor: pointer; border-radius: 0; padding: 0;
+}
+.plm-tick-on {
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
+}
+
+/* ── the add sheet ── */
+/* Centred, unlike the injury logger's scrim, which is top-aligned because
+   that form is taller than most screens. This one is four lines.
+   ⚠ `.md2-scrim.plm-scrim`, not `.plm-scrim` — the `.md2-` block is LATER in
+   this stylesheet, so at equal specificity its `align-items: flex-start`
+   wins and the sheet silently stays pinned to the top. That is the price of
+   keeping `.plm-` inside the Plantilla region, which it has to be. */
+.md2-scrim.plm-scrim { align-items: center; }
+.plm-sheet { width: 420px; }
+.plm-sheet .md2-sheet-body { gap: 16px; padding: 20px 22px; }
+.plm-sheet .md2-sheet-foot { padding: 0 22px 20px; }
+.plm-who { font-size: 19px; display: flex; align-items: baseline; gap: 8px; }
+.plm-who-sq {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.plm-note { margin: 0; font-size: 12px; color: var(--pp-ink-3); line-height: 1.5; }
+/* Value and date side by side — two short fields that had a line each. */
+.plm-row2 { display: flex; gap: 14px; }
+.plm-row2 .md2-field { flex: 1; min-width: 0; }
+.plm-val-row { display: flex; align-items: center; gap: 8px; }
+.plm-val-row .md2-in { flex: 1; min-width: 0; }
+.plm-unit-echo { font-size: 14px; color: var(--pp-ink-3); flex: none; min-width: 20px; }
+#plm-newbits:empty { display: none; }
+#plm-newbits { display: flex; flex-direction: column; gap: 16px; }
+
+@media (max-width: 900px) {
+  .plm-head { gap: 8px; }
+  /* Both together, or the download button stops matching a segment on the
+     one screen size where the row is tightest. */
+  .plm-segs { width: 128px; }
+  .plm-xls { width: 60px; }
+  .plm-squad-tbl { font-size: 13px; }
+}
+
+
 .reg2-sub { font-size: 12px; color: var(--pp-ink-3); white-space: nowrap; }
 /* The separator between email and phone. A span rather than a literal `|` in
    the string so it can be dropped with the phone when there is none. */
@@ -7249,7 +7210,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .reg2-row-new { animation: reg2RowIn .4s ease both; }
 
 @media (max-width: 900px) {
-  .reg2-page { margin: -1rem -.5rem; padding: 20px 16px 32px; }
   .reg2-h1 { font-size: 28px; }
   .reg2-figures { gap: 28px; }
   .reg2-invite { gap: 8px; }
@@ -7279,7 +7239,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pt-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
 
 /* ── The card bridge ──
@@ -8057,7 +8017,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .pt-play { grid-template-columns: 1fr; gap: 32px; }
 }
 @media (max-width: 700px) {
-  .pt-page { margin: -1rem -.5rem; }
   .pt-topbar { padding: 12px 16px; }
   .pt-sb-band { padding: 24px 16px 20px; }
   .pt-sb-row { gap: 14px; }
@@ -8102,13 +8061,13 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; padding: 28px 30px 48px; min-height: calc(100vh - 120px);
+  /* ⚠ NO PADDING. The inset moved to the body wrapper at v247.2 — see the
+     shared rule near `.dashboard-content`. It was 30px here until v246, then
+     40px, and both were on the ROOT, which is what stopped the header band
+     reaching the page's edges and left the grey stripe down each side. */
+  min-height: calc(100vh - 120px);
 }
 
-.cv-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--pp-ink-3);
-}
 .cv-sec-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
@@ -8117,21 +8076,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cv-over { color: var(--pp-red); }
 
 /* ---- title band ---- */
-.cv-head {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 32px; padding-bottom: 26px; border-bottom: 1px solid var(--pp-rule);
-}
-.cv-head-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.cv-h1 {
-  margin: 0; font-size: 38px; font-weight: 400; line-height: 1.1;
-  letter-spacing: -.01em;
-}
-.cv-sub { font-size: 14px; color: var(--pp-ink-2); }
-.cv-head-r {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
-  flex-shrink: 0;
-}
-.cv-big { font-size: 32px; line-height: 1; color: var(--pp-green); }
+.cv-head-r { flex-shrink: 0; }
+/* Size from the shared figure rule; only the GREEN is Convocatòria's. */
+.cv-big { color: var(--pp-green); }
 .cv-big.cv-over { color: var(--pp-red); }
 
 /* ---- controls row ----
@@ -8388,7 +8335,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    touch drag is not what happens on a phone; a tap is, and bindConvocatoria
    binds one), and the three controls stop trying to share a baseline. */
 @media (max-width: 900px) {
-  .cv-page { margin: -1rem -.5rem; padding: 20px 16px 32px; }
   .cv-h1 { font-size: 28px; }
   .cv-controls { gap: 22px; padding: 18px 0; }
   .cv-ctl, .cv-ctl-match, .cv-ctl-kit { flex: 1 1 100%; min-width: 0; }
@@ -8441,20 +8387,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ini-page {
   background: var(--pp-paper); color: var(--pp-ink);
   font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
-  margin: -1rem; min-height: calc(100vh - 120px);
-}
-.ini-eyebrow {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--pp-ink-3);
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
 }
 .ini-num { font-variant-numeric: tabular-nums; }
 
 /* ---- hero band ---- */
-.ini-hero {
-  display: flex; align-items: stretch; gap: 44px;
-  padding: 34px 40px 30px; background: #FFFFFF;
-  border-bottom: 1px solid var(--pp-rule);
-}
 .ini-hero-id { display: flex; align-items: stretch; gap: 24px; min-width: 0; }
 /* ⚠ The one round thing on a page whose rule is "no radius except circles" —
    and it IS a circle, so it belongs to the exception rather than breaking the
@@ -8493,10 +8430,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ini-hero-rule { width: 1px; background: var(--pp-rule-2); flex: 0 0 1px; }
 
 .ini-stats { display: flex; align-items: center; gap: 40px; }
-.ini-stat { display: flex; flex-direction: column; gap: 6px; }
-.ini-stat-v {
-  font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
-}
 .ini-hero-att { margin-left: auto; display: flex; align-items: center; gap: 16px; }
 .ini-att-leg { display: flex; flex-direction: column; gap: 5px; }
 .ini-att-leg span { font-size: 13px; color: var(--pp-ink-2); }
@@ -8512,7 +8445,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ---- body ---- */
-.ini-body { display: flex; gap: 44px; padding: 32px 40px 56px; align-items: flex-start; }
+.ini-body { display: flex; gap: 44px; align-items: flex-start; }
 .ini-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
 .ini-rail { flex: 0 0 372px; display: flex; flex-direction: column; gap: 34px; }
 
@@ -8711,7 +8644,6 @@ a.ini-ev-name, .ini-ev-name-link {
    a row of counters that do not share a baseline reads as four unrelated
    numbers. Found by rendering the preview at 390px; no string assertion can
    see it. */
-.ini-counters { display: flex; align-items: flex-end; gap: 40px; }
 .ini-count { display: flex; flex-direction: column; gap: 6px; }
 .ini-count-v { font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
 .ini-c-bad { color: var(--pp-red); }
@@ -8806,7 +8738,7 @@ a.ini-ev-name, .ini-ev-name-link {
   .ini-stats { gap: 26px; width: 100%; justify-content: flex-end; }
   .ini-stat-v { font-size: 23px; }
   .ini-hero-att { width: 100%; gap: 12px; }
-  .ini-body { padding: 20px 20px 40px; gap: 26px; }
+  .ini-body { gap: 26px; }
   .ini-h1 { font-size: 26px; }
 
   .ini-counters { gap: 0; width: 100%; }
@@ -8840,6 +8772,1352 @@ a.ini-ev-name, .ini-ev-name-link {
   .ini-conv-btn { height: 44px; min-width: 0; flex: 0 1 auto; }
   .ini-tbl-box, .ini-chase-box { max-height: 210px; }
 }
+
+/* ===== Mèdic, redesigned (v234) =====
+
+   The eighth Claude Design handoff, and the last staff page still wearing
+   cards: `.cal-`, `.std-`, `.pl-`, `.reg2-`, `.pt-`, `.cv-`, `.ini-` and now
+   `.md2-`. Same rules as the seven before it — one surface in horizontal
+   bands, hairlines instead of cards, no radius except circles, no shadow, red
+   only for actions and for what is missing. Every colour is a `--pp-*` token;
+   test/paper-palette.test.js fails on a literal and names the one to use.
+
+   ⚠ THIS BLOCK IS AFTER `.ini-` AND THAT MATTERS TO A TEST. Until v234
+   test/inici.test.js sliced the stylesheet from the Inici banner to the END
+   OF FILE, which was correct only because Inici happened to be last. It now
+   has an end bound naming this banner, the way test/convocatoria.test.js
+   gained one when Inici was appended after IT. If a ninth page lands after
+   this one, test/medical.test.js needs the same treatment.
+
+   ⚠ `.md2-mine-*` IS THE ONE FAMILY NOT UNDER `.md2-page`. It dresses the
+   injury block inside My stats and inside the staff's player detail, which
+   are app-chrome pages, so it and the shared atoms it leans on
+   (`.md2-eyebrow`, `.md2-dot`, `.md2-sev-*`, `.md2-stat`, `.md2-empty`,
+   `.md2-sec-head`, `.md2-num`, `.md2-foot-note`) are deliberately global.
+   Everything with a layout of its own stays scoped.
+
+   ⚠ THE BORROWED CLASSES ARE SCOPED. `.conv-pos-circle` belongs to
+   Convocatòria and is drawn at three sizes here; every rule for it is under
+   `.md2-page`, exactly as `.ini-page .conv-pos-circle` and `.pt-page .mn-*`
+   are. Unscoped, it would repaint every other page that uses it. */
+
+/* ── atoms, deliberately global (see the note above) ── */
+.md2-eyebrow-s { font-size: 9px; letter-spacing: .16em; }
+.md2-hint { color: var(--pp-input-line); }
+.md2-num { font-variant-numeric: tabular-nums; }
+.md2-muted { color: var(--pp-ink-3); }
+.md2-sep {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--pp-input-line); flex: none;
+}
+.md2-sec-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.md2-sec-note { font-size: 13px; color: var(--pp-ink-2); }
+.md2-note-red { color: var(--pp-red); }
+.md2-empty { padding: 18px 0; font-size: 14px; color: var(--pp-ink-3); }
+.md2-foot-note {
+  margin: 0; padding-top: 12px; font-size: 12px; color: var(--pp-ink-3);
+  line-height: 1.5;
+}
+
+/* The status dot. `medPulse` says NOW: an open injury pulses and a closed one
+   does not, which is the only difference between the two greys of a history
+   list read at arm's length. */
+@keyframes medPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.md2-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--pp-ink-3); }
+.md2-dot-inj { background: var(--pp-bad); animation: medPulse 1.6s ease-in-out infinite; }
+.md2-dot-rec { background: var(--pp-warn); }
+.md2-dot-fit { background: var(--pp-ok); }
+.md2-dot-off { background: var(--pp-input-line); }
+
+/* Severity, as a chip and as ink. Three steps and no fourth: a record with no
+   severity draws nothing rather than a grey "unknown" chip, because on the
+   pending rows an absent severity is information. */
+.md2-sev {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase; flex: none;
+}
+.md2-sev-1 { background: var(--pp-rule-2); color: var(--pp-ink-2); }
+.md2-sev-2 { background: var(--pp-med-doubt-bg); color: var(--pp-med-doubt-ink); }
+.md2-sev-3 { background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); }
+.md2-sev-1-ink { color: var(--pp-ink-2); }
+.md2-sev-2-ink { color: var(--pp-med-doubt-ink); }
+.md2-sev-3-ink { color: var(--pp-med-inj-ink); }
+
+.md2-stat { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.md2-stat-v { font-size: 14px; font-variant-numeric: tabular-nums; }
+.md2-stat-v-l { font-size: 16px; }
+
+/* ── the body map, shared by four surfaces ──
+   The wrapper is `position:relative` and holds the image, the overlay and
+   the marker, all of which are either the box itself or absolutely
+   positioned. Anything else in here with a height stretches the svg and the
+   polygons drift off the body — which is why the Davant/Darrere captions are
+   a SIBLING and not a child. */
+.md2-map { position: relative; width: 100%; line-height: 0; }
+.md2-map img { display: block; width: 100%; filter: grayscale(1); }
+.md2-map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Only the two pickers take clicks. The season map and the file's location
+   map are pictures — a hover that invited a click there would be a lie. */
+.md2-map polygon { pointer-events: none; }
+.md2-map-live polygon { pointer-events: auto; cursor: pointer; }
+/* ⚠ This wins over the polygon's `fill` PRESENTATION ATTRIBUTE and would
+   lose to an inline `style="fill:…"`. bodyMapHtml() emits the attribute for
+   that reason; moving it into a style attribute breaks hover silently. */
+.md2-map-live polygon:hover { fill: rgba(var(--pp-bad-rgb), .28); }
+.md2-map-cap {
+  display: flex; justify-content: space-between; padding-top: 6px;
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--pp-ink-3); line-height: 1.2;
+}
+/* The marker on the open injury. Same animation as the Plantilla rail's dot,
+   deliberately: they mark the same thing in two places. */
+.md2-map-dot {
+  position: absolute; width: 11px; height: 11px; border-radius: 50%;
+  margin: -5px 0 0 -5px; background: var(--pp-bad);
+  box-shadow: 0 0 0 3px rgba(var(--pp-bad-rgb), .28);
+  animation: plInjuryBlink 1.4s ease-in-out infinite;
+}
+
+/* ── actions ── */
+.md2-act {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 28px; padding: 0 12px; border: 1px solid transparent;
+  background: none; font: inherit; font-size: 12px; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; flex: none;
+}
+.md2-act-ok { border-color: var(--pp-ok); color: var(--pp-ok); }
+.md2-act-ok:hover { background: var(--pp-ok); color: #FFFFFF; }
+.md2-act-red { border-color: var(--pp-red); color: var(--pp-red); }
+.md2-act-red:hover { background: var(--pp-red); color: #FFFFFF; }
+.md2-act-plain { color: var(--pp-ink-3); padding: 0 6px; }
+.md2-act-plain:hover { color: var(--pp-ink); }
+.md2-act-link { color: var(--pp-red); padding: 0; height: auto; }
+.md2-act-link:hover { color: var(--pp-red-dark); }
+/* A view-only staff member gets the word without the affordance. Not a
+   disabled button: a greyed control invites a click that will not come. */
+.md2-act-off { color: var(--pp-input-line); cursor: default; }
+.md2-cta {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 34px; padding: 0 18px; border: none; background: var(--pp-red);
+  color: #FFFFFF; font: inherit; font-size: 13px; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; flex: none;
+}
+.md2-cta:hover { background: var(--pp-red-dark); }
+.md2-cta-wide { flex: 1; height: 40px; }
+.md2-cta-send { background: var(--pp-bad); }
+.md2-cta-send:hover { background: var(--pp-bad-dark); }
+.md2-ghost {
+  height: 40px; width: 120px; border: 1px solid var(--pp-input-line);
+  background: none; font: inherit; font-size: 13px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--pp-ink-2); cursor: pointer; flex: none;
+}
+.md2-ghost:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+
+/* ── the page ── */
+.md2-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+.md2-page a { color: inherit; text-decoration: none; }
+.md2-page .conv-pos-circle {
+  width: 24px; height: 24px; border-radius: 50%; font-size: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #FFFFFF; flex: 0 0 auto; border: 1.5px solid rgba(0,0,0,.2);
+}
+/* The circles OVERLAP, and the shared `.conv-pos-circles` reserves a
+   68px column so list views line up. There is no column to line up to here,
+   so a one-position player would waste 45px of the name's width. */
+.md2-page .conv-pos-circles {
+  display: inline-flex; width: auto; justify-content: flex-start; flex: none;
+}
+.md2-page .conv-pos-circles .conv-pos-circle { margin-right: -5px; }
+.md2-pos-s .conv-pos-circle { width: 22px; height: 22px; font-size: 9px; margin-right: -4px !important; }
+.md2-pos-l .conv-pos-circle { width: 28px; height: 28px; font-size: 11px; }
+
+/* ⚠ flex-END, not centre. The four labels are different lengths and the
+   longest wraps on a narrow window; centring then lifts its figure half a
+   line above the other three and the row stops reading as one row. */
+.md2-counters-s { gap: 36px; }
+.md2-counters-s .md2-count-v { font-size: 28px; }
+.md2-c-inj { color: var(--pp-bad); }
+.md2-c-rec { color: var(--pp-warn); }
+
+.md2-body {
+  display: flex; align-items: flex-start; gap: 44px;
+}
+.md2-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 34px; }
+.md2-rail { width: 400px; flex: none; display: flex; flex-direction: column; gap: 34px; }
+.md2-block { min-width: 0; }
+.md2-sec-toggle { cursor: pointer; }
+.md2-arrow { color: var(--pp-ink-3); }
+
+/* ── Autoreports pendents ──
+   Dashed, because the record does not exist yet. It is the one row on the
+   page drawn in a different line style and it is the first thing on it. */
+.md2-pend {
+  display: flex; align-items: center; gap: 18px;
+  padding: 16px 0; border-bottom: 1px dashed var(--pp-rule-3);
+}
+.md2-pend-who { width: 210px; flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.md2-pend-name { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md2-pend-what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.md2-pend-detail { font-size: 15px; }
+.md2-blank { color: var(--pp-ink-3); font-style: italic; }
+.md2-pend-when { font-size: 12px; color: var(--pp-ink-3); }
+.md2-pend-acts { display: flex; align-items: center; gap: 10px; flex: none; }
+
+/* ── Lesions actives ── */
+.md2-inj {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 20px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.md2-inj-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.md2-inj-name { font-size: 19px; cursor: pointer; }
+.md2-inj-name:hover { color: var(--pp-red); }
+.md2-spacer { flex: 1; }
+.md2-pill {
+  display: inline-flex; align-items: center; gap: 7px; margin-left: 6px;
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+}
+.md2-pill-inj { color: var(--pp-bad); }
+.md2-pill-rec { color: var(--pp-warn); }
+/* The pill's own dot follows the pill, not the generic dot colour. */
+.md2-pill-inj .md2-dot { background: var(--pp-bad); animation: medPulse 1.6s ease-in-out infinite; }
+.md2-pill-rec .md2-dot { background: var(--pp-warn); animation: none; }
+.md2-inj-what { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.md2-inj-zone { font-size: 16px; }
+.md2-inj-muscle { font-size: 15px; color: var(--pp-ink-2); }
+.md2-inj-note {
+  font-size: 13px; color: var(--pp-ink-2); line-height: 1.55; max-width: 720px;
+}
+.md2-inj-stats { display: flex; gap: 34px; flex-wrap: wrap; }
+/* The same five facts as one line. Desktop shows the grid, the phone shows
+   this — both are always rendered and the breakpoint picks. */
+.md2-inj-meta { display: none; font-size: 12px; color: var(--pp-ink-3); }
+.md2-lbl-s { display: none; }
+
+/* ── Lesions tancades ── */
+.md2-tbl { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
+.md2-tbl th {
+  padding: 12px 0 8px; text-align: left; font-weight: 400;
+  font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.md2-tbl td { padding: 11px 0; border-top: 1px solid var(--pp-rule-2); color: var(--pp-ink-2); }
+.md2-tbl tbody tr { cursor: pointer; }
+.md2-tbl tbody tr:hover .md2-td-who { color: var(--pp-red); }
+.md2-th-player, .md2-td-who { width: 180px; color: var(--pp-ink); }
+.md2-th-sev { width: 96px; }
+.md2-th-period { width: 150px; }
+.md2-th-days, .md2-td-days { width: 56px; text-align: right; }
+.md2-tbl .md2-num { font-variant-numeric: tabular-nums; }
+
+/* ── the rail ── */
+.md2-legend {
+  display: flex; align-items: center; gap: 10px; padding-top: 12px;
+  font-size: 11px; color: var(--pp-ink-3);
+}
+.md2-legend-k { flex: none; }
+.md2-legend-bar {
+  flex: 1 1 0; height: 8px;
+  background: linear-gradient(90deg, rgba(var(--pp-bad-rgb), .08), rgba(var(--pp-bad-rgb), .9));
+}
+.md2-figs {
+  display: flex; gap: 26px; flex-wrap: wrap;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--pp-rule-2);
+}
+.md2-fig { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.md2-fig-v { font-size: 17px; font-variant-numeric: tabular-nums; }
+.md2-sq-box { max-height: 352px; overflow-y: auto; }
+.md2-sq {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--pp-rule-2); cursor: pointer;
+}
+.md2-sq-name {
+  flex: 1; min-width: 0; font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.md2-sq-st { font-size: 12px; flex: none; }
+.md2-sq-inj .md2-sq-st { color: var(--pp-bad); }
+.md2-sq-rec .md2-sq-st { color: var(--pp-warn); }
+.md2-sq-fit .md2-sq-st { color: var(--pp-ok); }
+
+/* ── the player's medical file (1e) ── */
+.md2-backbar { padding: 16px 40px 0; }
+.md2-back { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-red); }
+.md2-back:hover { color: var(--pp-red-dark); }
+.md2-fhead {
+  display: flex; align-items: flex-end; gap: 36px; flex-wrap: wrap;
+  padding: 18px 40px 26px; border-bottom: 1px solid var(--pp-rule);
+}
+.md2-fhead-id { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
+.md2-dorsal { font-size: 20px; color: var(--pp-ink-3); }
+.md2-tag {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px;
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+}
+.md2-tag-inj { background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); }
+.md2-tag-inj .md2-dot { background: var(--pp-med-inj-ink); animation: medPulse 1.6s ease-in-out infinite; }
+.md2-tag-rec { background: var(--pp-med-doubt-bg); color: var(--pp-med-doubt-ink); }
+.md2-tag-rec .md2-dot { background: var(--pp-med-doubt-ink); }
+.md2-tag-fit { background: var(--pp-med-fit-bg); color: var(--pp-med-fit-ink); }
+.md2-tag-fit .md2-dot { background: var(--pp-med-fit-ink); }
+/* Shown only when the same zone has gone twice in one season. A band, not a
+   card: it is a fact about the page, not an item on it. */
+.md2-band {
+  display: flex; align-items: center; gap: 10px; padding: 14px 40px;
+  background: var(--pp-med-doubt-bg); color: var(--pp-warn-ink); font-size: 14px;
+  border-bottom: 1px solid var(--pp-rule);
+}
+.md2-band .md2-dot { background: var(--pp-med-doubt-ink); }
+.md2-loc { width: 300px; flex: none; }
+.md2-loc .md2-map { margin-top: 16px; }
+.md2-file-what { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 18px; }
+.md2-file-zone { font-size: 22px; }
+.md2-file-muscle { font-size: 16px; color: var(--pp-ink-2); }
+.md2-file-note {
+  font-size: 14px; color: var(--pp-ink-2); line-height: 1.6;
+  max-width: 760px; padding-top: 12px;
+}
+.md2-file-stats { display: flex; gap: 40px; flex-wrap: wrap; padding-top: 18px; }
+.md2-file-acts { display: flex; gap: 12px; padding-top: 22px; }
+.md2-file-acts .md2-act { height: 32px; }
+.md2-frow {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.md2-frow-name {
+  flex: 1; min-width: 0; font-size: 15px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.md2-frow-name:hover { color: var(--pp-red); }
+.md2-frow-by { width: 150px; flex: none; font-size: 13px; color: var(--pp-ink-2); }
+.md2-frow-date { width: 96px; flex: none; font-size: 13px; color: var(--pp-ink-2); }
+.md2-frow-size { width: 66px; flex: none; text-align: right; font-size: 13px; color: var(--pp-ink-3); }
+.md2-hrow {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2); font-size: 14px;
+}
+.md2-hrow-what { flex: 1; min-width: 0; }
+.md2-hrow-sev { width: 110px; flex: none; font-size: 13px; }
+.md2-hrow-period { width: 190px; flex: none; font-size: 13px; color: var(--pp-ink-2); }
+.md2-hrow-days { width: 70px; flex: none; text-align: right; }
+
+/* ── file chips ── */
+.md2-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 22px; flex: none;
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+}
+.md2-chip-l { width: 38px; height: 24px; }
+.md2-chip-pdf { background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); }
+.md2-chip-doc { background: var(--pp-doc-bg); color: var(--pp-doc-ink); }
+.md2-chip-img { background: var(--pp-med-fit-bg); color: var(--pp-green); }
+
+/* ── the sheets (1c, 1d) ── */
+.md2-scrim {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(45, 41, 38, .38);
+  display: flex; align-items: flex-start; justify-content: center;
+  overflow-y: auto; padding: 40px 20px;
+}
+.md2-sheet {
+  width: 560px; max-width: 100%; background: var(--pp-paper);
+  color: var(--pp-ink); font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-size: 15px;
+}
+.md2-sheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px; border-bottom: 1px solid var(--pp-rule);
+}
+.md2-sheet-title { font-size: 20px; }
+.md2-x {
+  border: none; background: none; font: inherit; font-size: 20px;
+  color: var(--pp-ink-3); cursor: pointer; line-height: 1; padding: 0 4px;
+}
+.md2-x:hover { color: var(--pp-red); }
+.md2-sheet-body { display: flex; flex-direction: column; gap: 22px; padding: 24px; }
+.md2-sheet-foot { display: flex; gap: 12px; padding: 0 24px 24px; }
+.md2-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.md2-in {
+  height: 38px; padding: 0 12px; border: 1px solid var(--pp-input-line);
+  background: var(--pp-paper); font: inherit; font-size: 15px; color: var(--pp-ink);
+  border-radius: 0; width: 100%; box-sizing: border-box;
+}
+.md2-in:disabled { color: var(--pp-ink-2); }
+.md2-ta {
+  min-height: 74px; padding: 10px 12px; border: 1px solid var(--pp-input-line);
+  background: var(--pp-paper); font: inherit; font-size: 14px;
+  color: var(--pp-ink-2); line-height: 1.55; border-radius: 0;
+  width: 100%; box-sizing: border-box; resize: vertical;
+}
+.md2-form-row { display: flex; gap: 24px; align-items: flex-start; }
+.md2-map-col { width: 230px; flex: none; }
+.md2-form-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.md2-zone-v { font-size: 20px; }
+.md2-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.md2-chip-btn {
+  height: 28px; padding: 0 11px; border: 1px solid var(--pp-input-line);
+  background: none; font: inherit; font-size: 13px; color: var(--pp-ink-2);
+  cursor: pointer; border-radius: 0;
+}
+.md2-chip-btn:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.md2-chip-btn.md2-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+.md2-segs { display: flex; gap: 7px; }
+/* ⚠ `min-width: 0` is load-bearing, not tidying. A flex item will not shrink
+   below its content by default, so three equal segments carrying a long
+   label push straight through the right edge of a 560px sheet — there is no
+   scrollbar and no warning, the sheet simply has a control hanging out of
+   it. Seen with an untranslated key standing in for `Moderada`; a language
+   with longer words gets there honestly. */
+.md2-seg {
+  flex: 1 1 0; min-width: 0; height: 32px;
+  border: 1px solid var(--pp-input-line); background: none;
+  font: inherit; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pp-ink-2); cursor: pointer; border-radius: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.md2-seg:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.md2-seg.md2-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+/* A picked severity takes the severity's own colours rather than the ink,
+   so the form says the same thing the list will. */
+.md2-seg.md2-on.md2-sev-1 { background: var(--pp-rule-2); border-color: var(--pp-ink-2); color: var(--pp-ink-2); }
+.md2-seg.md2-on.md2-sev-2 { background: var(--pp-med-doubt-bg); border-color: var(--pp-med-doubt-ink); color: var(--pp-med-doubt-ink); }
+.md2-seg.md2-on.md2-sev-3 { background: var(--pp-med-inj-bg); border-color: var(--pp-med-inj-ink); color: var(--pp-med-inj-ink); }
+.md2-dates { display: flex; gap: 16px; }
+.md2-dates .md2-field { flex: 1; }
+.md2-doc {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.md2-doc-name {
+  flex: 1; min-width: 0; font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.md2-doc-size { font-size: 12px; color: var(--pp-ink-3); flex: none; }
+.md2-doc-x {
+  border: none; background: none; font: inherit; color: var(--pp-ink-3);
+  cursor: pointer; padding: 0 2px;
+}
+.md2-doc-x:hover { color: var(--pp-red); }
+.md2-drop {
+  width: 100%; height: 56px; margin-top: 8px;
+  border: 1px dashed var(--pp-input-line); background: none;
+  font: inherit; font-size: 14px; color: var(--pp-ink-2); cursor: pointer;
+  border-radius: 0;
+}
+.md2-drop:hover { border-color: var(--pp-red); color: var(--pp-red); }
+.md2-busy { opacity: .5; pointer-events: none; }
+
+/* ── the player's self-report (1d) ── */
+.md2-sheet-full {
+  position: fixed; inset: 0; z-index: 10000; background: var(--pp-paper);
+  overflow-y: auto;
+}
+.md2-rep {
+  display: flex; flex-direction: column; min-height: 100%;
+  color: var(--pp-ink); font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-size: 15px;
+}
+.md2-rep-head { padding: 14px 22px 14px; border-bottom: 1px solid var(--pp-rule); }
+.md2-rep-title-row { display: flex; align-items: center; justify-content: space-between; }
+.md2-rep-title { font-size: 21px; }
+.md2-rep-sub { margin: 8px 0 0; font-size: 13px; color: var(--pp-ink-2); line-height: 1.5; }
+.md2-rep-body { display: flex; flex-direction: column; gap: 20px; padding: 18px 22px 22px; }
+.md2-zone-line {
+  display: flex; align-items: baseline; gap: 12px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--pp-rule-2);
+}
+.md2-zone-line .md2-zone-v { font-size: 19px; }
+/* ⚠ Bigger than the staff logger's, deliberately. This is the one medical
+   screen answered on a phone, in a changing room, by someone who has just
+   pulled something — 32/44/46px, not 28/32/34. */
+.md2-chip-lg { height: 32px; padding: 0 12px; }
+.md2-segs-lg .md2-seg { height: 44px; }
+.md2-rep-foot { margin-top: auto; padding: 4px 22px 24px; }
+.md2-rep-acts { display: flex; gap: 10px; }
+.md2-rep-acts .md2-cta { flex: 1; height: 46px; }
+.md2-rep-acts .md2-ghost { width: 110px; height: 46px; }
+.md2-rep-note {
+  margin: 14px 0 0; text-align: center; font-size: 12px; color: var(--pp-ink-3);
+}
+
+/* ── El meu estat (1f), inside My stats and the staff player detail ── */
+.md2-mine {
+  margin-top: 1rem; padding: 0; background: var(--pp-paper);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; color: var(--pp-ink);
+}
+.md2-mine-hero {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 18px 20px 22px; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-rule);
+}
+.md2-mine-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-med-inj-ink);
+}
+.md2-mine-fit .md2-mine-tag { color: var(--pp-green); }
+.md2-mine-h { font-size: 28px; line-height: 1.1; }
+.md2-mine-sub { margin: 0; font-size: 14px; color: var(--pp-ink-2); line-height: 1.5; }
+.md2-mine-stats { display: flex; gap: 34px; flex-wrap: wrap; padding-top: 6px; }
+.md2-mine .md2-sec-head { margin: 0 20px; padding-top: 20px; }
+.md2-mine-row {
+  display: flex; align-items: center; gap: 12px; margin: 0 20px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2); cursor: help;
+}
+.md2-mine-what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.md2-mine-zone { font-size: 15px; }
+.md2-mine-period { font-size: 12px; color: var(--pp-ink-3); }
+.md2-mine-sev { font-size: 13px; flex: none; }
+.md2-mine-days { font-size: 14px; flex: none; }
+.md2-mine .md2-foot-note { padding: 22px 20px 24px; }
+.md2-mine .md2-empty { padding: 18px 20px; }
+
+/* ── responsive ──
+   1100 folds the rail under the column; 700 is the phone, which is what the
+   APK is. Two steps, the same two `.ini-` and `.pt-` use. */
+@media (max-width: 1100px) {
+  .md2-body { flex-direction: column; gap: 34px; }
+  .md2-rail, .md2-loc { width: 100%; flex: 1 1 auto; }
+  .md2-loc .md2-map { max-width: 340px; }
+  .md2-hero { flex-wrap: wrap; gap: 24px; }
+}
+@media (max-width: 700px) {
+  /* ⚠ NO `order:` ANYWHERE IN THIS BLOCK. On Inici an `order:3` put a button
+     before the count it belonged to, because order is a property of the
+     container's children and the two cases have different children. */
+  .md2-hero { padding: 20px 20px 18px; gap: 16px; flex-direction: column; align-items: stretch; }
+  .md2-h1 { font-size: 28px; }
+  .md2-counters, .md2-counters-s { gap: 0; width: 100%; }
+  .md2-count { flex: 1 1 0; min-width: 0; }
+  .md2-count .md2-eyebrow { font-size: 9px; letter-spacing: .14em; }
+  .md2-count-v, .md2-counters-s .md2-count-v { font-size: 23px; }
+  .md2-cta { width: 100%; height: 44px; }
+  .md2-body { gap: 28px; }
+  .md2-backbar, .md2-fhead, .md2-band { padding-left: 20px; padding-right: 20px; }
+  /* The pending row stacks: name and time on one line, what they reported
+     under it, then the two buttons at a real touch size. */
+  .md2-pend { flex-direction: column; align-items: stretch; gap: 7px; padding: 12px 0; }
+  .md2-pend-who { width: auto; }
+  .md2-pend-acts .md2-act { flex: 1; height: 34px; }
+  /* The five-stat grid becomes the one-line summary the handoff's phone
+     screen draws. Neither is built twice; the breakpoint chooses. */
+  .md2-inj-stats { display: none; }
+  .md2-inj-meta { display: block; }
+  .md2-inj-note { max-width: none; }
+  .md2-lbl-l { display: none; }
+  .md2-lbl-s { display: inline; }
+  /* ⚠ NO ACTIONS ON THE PHONE LIST, as the handoff draws it — and the
+     capability is NOT lost with them: the name is the link to the player's
+     file, and `Alta mèdica` and `Editar la fitxa` are both on it. Wrapping
+     them onto their own line instead put two buttons between a player's
+     name and the injury they are about, which reads as a header for the
+     wrong thing. (Reordering the row is not the alternative: `order:` is
+     what put a button before its own count on Inici.) */
+  .md2-inj-top .md2-act { display: none; }
+  .md2-spacer { display: none; }
+  /* The heat map and the closed-injury table are desktop reading, and the
+     handoff's phone screen has neither. Six columns in 390px collided —
+     "Moderada" ran into "14 jul" — which is not a table, it is a smear. */
+  .md2-rail .md2-block:first-child { display: none; }
+  .md2-main .md2-block:last-child { display: none; }
+  .md2-form-row { flex-direction: column; }
+  .md2-map-col { width: 100%; max-width: 320px; align-self: center; }
+  .md2-sheet-foot { flex-direction: column; }
+  .md2-ghost { width: 100%; }
+  .md2-fhead-id { gap: 8px; }
+  .md2-fhead .md2-h1 { font-size: 26px; }
+  /* The file page keeps its actions — it is where a phone discharges an
+     injury, since the list above drops them — so they get a real target. */
+  .md2-file-acts { gap: 10px; }
+  .md2-file-acts .md2-act { flex: 1; height: 44px; }
+  .md2-frow-by, .md2-frow-date { display: none; }
+  .md2-hrow { flex-wrap: wrap; }
+  .md2-hrow-period { width: auto; }
+  .md2-hrow-sev { width: auto; }
+}
+
+/* ===== Les meves estadístiques, redesigned (v244) =====
+
+   The tenth Claude Design handoff and the last PLAYER page still wearing
+   cards: `.cal-`, `.std-`, `.pl-`, `.reg2-`, `.pt-`, `.cv-`, `.ini-`,
+   `.md2-`, `.plm-` and now `.ms-`. Same rules as the nine before it — one
+   surface in horizontal bands, hairlines instead of cards, no radius except
+   circles, no shadow, red used sparingly. Every colour is a `--pp-*` token;
+   test/paper-palette.test.js fails on a literal and names the one to use.
+
+   ⚠ THIS BLOCK IS NOW LAST, AND THAT MATTERS TO A TEST. test/medical.test.js
+   sliced the stylesheet from the Mèdic banner to the END OF FILE, which was
+   correct only while `.md2-` happened to be last; it has an end bound naming
+   this banner now, the way test/inici.test.js gained one when Mèdic was
+   appended after IT, and test/convocatoria.test.js before that. If an
+   eleventh page lands after this one, test/ms.test.js needs the same
+   treatment — its slice runs to EOF today.
+
+   ⚠ THE BORROWED CLASSES ARE SCOPED. `.conv-pos-circle`/`.conv-pos-circles`
+   belong to Convocatòria and `.md2-mine-*`/`.md2-map` to Mèdic; the rules
+   that resize them for this page are under `.ms-page`, exactly as
+   `.ini-page .conv-pos-circle` and `.pt-page .mn-*` are. Unscoped, they
+   would repaint the pages those families were written for.
+
+   ⚠ NO RPE AND NO MVP HERE EITHER — see the block comment on
+   renderPlayerStats in js/app.js for why. There is deliberately no chart
+   rule and no star rule in this block to make either easy to add back. */
+
+.ms-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  /* -2rem, not the -1rem `.md2-page` and `.ini-page` use: the handoff runs
+     the white identity band to both edges of the frame, so this one is full
+     bleed against `.dashboard-content`'s 2rem. See the 600px block below. */
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+.ms-num, .ms-fig-v { font-variant-numeric: tabular-nums; }
+.ms-fig-s .ms-fig-v { font-size: 24px; }
+.ms-vrule { width: 1px; background: var(--pp-rule-2); flex: none; }
+.ms-vrule-s { height: 44px; align-self: center; }
+/* The long label on the wide frame, the short one on the phone. Neither
+   figure is built twice; the breakpoint chooses, the way `.md2-lbl-l` does. */
+.ms-l-sm { display: none; }
+
+/* ── 1. Identity band ── */
+.ms-id-who { display: flex; align-items: center; gap: 22px; min-width: 0; }
+/* One geometry, two fills — the `.pp-av` idiom (v231, css line ~6586), which
+   is why avatarHtmlGlobal() takes its modifier as a SEPARATE argument. The
+   base class carries the size and the round, `-ph` only paints the initials,
+   so a placeholder can never drift out of round with a photo.
+   ⚠ The handoff draws this square, in the paper idiom's no-radius rule. It is
+   round on the owner's call: a face is the one thing on these pages that is a
+   person rather than a document, and every other face in the app is round. */
+.ms-face {
+  display: block; width: 96px; height: 96px; flex: none;
+  border-radius: 50%; object-fit: cover;
+  background: var(--pp-rule-2); border: 1px solid var(--pp-rule);
+}
+.ms-face-ph {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; color: var(--pp-ink-3);
+}
+.ms-id-col { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.ms-eyebrow {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ms-name-row { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.ms-name { font-size: 34px; line-height: 1; letter-spacing: -.01em; }
+.ms-dorsal { font-size: 22px; color: var(--pp-ink-3); }
+.ms-id-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ms-id-season { font-size: 13px; color: var(--pp-ink-2); }
+.ms-page .conv-pos-circles { width: auto; justify-content: flex-start; }
+.ms-page .conv-pos-circle {
+  width: 24px; height: 24px; font-size: 10px; margin-right: 4px;
+}
+.ms-figs { display: flex; align-items: center; gap: 36px; }
+.ms-attend { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+.ms-attend-txt { display: flex; flex-direction: column; gap: 4px; }
+.ms-attend-l { font-size: 13px; color: var(--pp-ink-2); }
+
+/* ── 2. Preparació band ──
+   The score, the ratio and the days — the three DERIVED values. The four
+   Readiness components and their weights are not on this page and have no
+   rule here; the sentence replaces them. */
+.ms-prep {
+  display: flex; align-items: center; gap: 44px;
+  padding: 22px 40px; border-bottom: 1px solid var(--pp-rule);
+}
+.ms-prep-score { display: flex; align-items: baseline; gap: 14px; flex: none; }
+.ms-prep-v {
+  font-size: 40px; line-height: 1; font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+.ms-prep-green { color: var(--pp-ok); }
+.ms-prep-orange { color: var(--pp-warn); }
+.ms-prep-red { color: var(--pp-red); }
+.ms-prep-none { color: var(--pp-input-line); }
+.ms-prep-band { font-size: 14px; color: var(--pp-ink-2); }
+.ms-prep-help {
+  margin: 0; font-size: 14px; color: var(--pp-ink-2);
+  line-height: 1.6; max-width: 640px;
+}
+.ms-prep-nums { display: flex; gap: 36px; margin-left: auto; flex: none; }
+/* Targetes is a PHONE figure. The wide frame carries the card column in the
+   table, where a player can see which match each one came from. */
+.ms-fig-cards { display: none; }
+
+/* ── 3. Body ── */
+.ms-body { display: flex; align-items: flex-start; gap: 44px; }
+.ms-main { flex: 1 1 0; min-width: 0; }
+.ms-rail { width: 320px; flex: none; }
+
+.ms-sec {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.ms-sec-l, .ms-sec-solo {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ms-sec-r { font-size: 13px; color: var(--pp-ink-2); }
+.ms-sec-solo {
+  display: block; padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.ms-empty { margin: 0; padding: 22px 0; font-size: 14px; color: var(--pp-ink-3); }
+
+/* ── Partit a partit: the wide table ── */
+.ms-head, .ms-row {
+  display: flex; align-items: center; gap: 16px;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+.ms-head {
+  padding: 11px 0 9px; font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--pp-ink-3);
+}
+.ms-row { padding: 13px 0; }
+.ms-c-date { width: 78px; flex: none; font-size: 13px; color: var(--pp-ink-2); }
+.ms-c-rival { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.ms-c-res { width: 96px; flex: none; display: flex; align-items: center; gap: 8px; }
+.ms-c-min { width: 64px; flex: none; text-align: right; font-size: 15px; }
+.ms-c-g { width: 44px; flex: none; text-align: right; font-size: 15px; }
+.ms-c-a { width: 56px; flex: none; text-align: right; font-size: 15px; }
+.ms-c-cards {
+  width: 68px; flex: none; display: flex; align-items: center;
+  justify-content: flex-end; gap: 4px;
+}
+.ms-head .ms-c-min, .ms-head .ms-c-g, .ms-head .ms-c-a { font-size: 10px; }
+.ms-rival { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-venue {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3); flex: none;
+}
+.ms-score { font-size: 14px; }
+.ms-res {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; flex: none; font-size: 11px;
+}
+/* The win tag is the medical `fit` pair, not a second near-identical green.
+   The handoff draws #DCE8DC on #3F6B41; --pp-med-fit-bg / --pp-med-fit-ink
+   are one shade off each, which is invisible on an 18px square and is one
+   fewer pair of tokens to keep in step. */
+.ms-res-v { background: var(--pp-med-fit-bg); color: var(--pp-med-fit-ink); }
+.ms-res-e { background: var(--pp-rule-2); color: var(--pp-ink-2); }
+.ms-res-d { background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); }
+.ms-nil { color: var(--pp-input-line); }
+.ms-card { display: block; width: 11px; height: 15px; object-fit: contain; }
+
+/* ── Partit a partit: the phone card ──
+   Built alongside the table, not instead of it; see msMatchRows(). */
+.ms-prows { display: none; }
+.ms-prow {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.ms-pm-top { display: flex; align-items: center; gap: 9px; }
+.ms-pm-top .ms-rival { font-size: 15px; flex: 1 1 0; min-width: 0; }
+.ms-pm-top .ms-res { width: 17px; height: 17px; font-size: 10px; }
+.ms-pm-top .ms-score { flex: none; }
+.ms-pm-meta {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-size: 12px; color: var(--pp-ink-2);
+}
+.ms-pm-date { width: 44px; flex: none; color: var(--pp-ink-3); }
+.ms-pm-cards { display: flex; align-items: center; gap: 4px; }
+.ms-pm-cards .ms-card { width: 10px; height: 13px; }
+
+/* ── El meu estat: the season body map ──
+   `.md2-map` is Mèdic's, reached through utils.bodyMapHtml(); only its
+   measure is set here, and only under this page's root. */
+.ms-map-box { padding: 14px 0 4px; }
+.ms-page .ms-map { width: 100%; }
+.ms-map-key {
+  display: flex; gap: 16px; padding-top: 10px;
+  font-size: 12px; color: var(--pp-ink-2);
+}
+.ms-key { display: flex; align-items: center; gap: 6px; }
+.ms-key i { width: 9px; height: 9px; flex: none; }
+.ms-key-2 { background: rgba(var(--pp-bad-rgb), .5); }
+.ms-key-1 { background: rgba(var(--pp-bad-rgb), .22); }
+
+/* ── El meu historial ──
+   buildInjuryHistoryHtml() renders it, in `.md2-mine-*`, and its call is what
+   keeps the player to the ZONE and the dates. What is overridden here is
+   measure only: the rail is 320px, and Mèdic's 28px hero was written for a
+   full-width page. */
+.ms-page .md2-mine { margin-top: 0; background: transparent; }
+.ms-page .md2-mine-hero {
+  padding: 12px 0 2px; background: transparent; border-bottom: none;
+}
+.ms-page .md2-mine-h { font-size: 15px; line-height: 1.4; }
+.ms-page .md2-mine-sub { font-size: 13px; }
+.ms-page .md2-mine-stats { gap: 22px; }
+.ms-page .md2-mine .md2-sec-head { margin: 0; padding-top: 26px; }
+.ms-page .md2-mine-row { margin: 0; }
+.ms-page .md2-mine .md2-foot-note { padding: 14px 0 0; }
+.ms-page .md2-mine .md2-empty { padding: 16px 0; }
+
+/* ── responsive ──
+   1100 folds the rail under the column; 700 is the phone, which is what the
+   APK is. The same two steps `.md2-`, `.ini-` and `.pt-` use. */
+@media (max-width: 1100px) {
+  .ms-id { flex-wrap: wrap; gap: 28px; }
+  .ms-vrule { display: none; }
+  .ms-attend { margin-left: 0; }
+  .ms-prep { flex-wrap: wrap; gap: 24px; }
+  .ms-prep-nums { margin-left: 0; }
+  .ms-body { flex-direction: column; gap: 34px; }
+  .ms-rail { width: 100%; flex: 1 1 auto; }
+  .ms-page .ms-map { max-width: 320px; }
+}
+@media (max-width: 700px) {
+  .ms-id {
+    display: block; padding: 14px 20px 0; background: var(--pp-paper);
+    border-bottom: none;
+  }
+  .ms-id-who { gap: 14px; }
+  /* Size only. The round is inherited from the base class, the way
+     `.pp-av-lg` inherits it — restating geometry here is how the two
+     variants drift apart. */
+  .ms-face { width: 56px; height: 56px; }
+  .ms-face-ph { font-size: 22px; }
+  .ms-name { font-size: 24px; }
+  .ms-dorsal { font-size: 16px; }
+  .ms-id-season { font-size: 12px; }
+  /* Six figures in a 3-wide grid, which is the handoff's phone frame — and
+     the same metric set as the wide one, nothing dropped. */
+  .ms-figs {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px 12px; padding-top: 20px;
+  }
+  .ms-lbl { font-size: 9px; letter-spacing: .14em; }
+  .ms-fig-v { font-size: 24px; }
+  .ms-fig-s .ms-fig-v { font-size: 20px; }
+  .ms-l-lg { display: none; }
+  .ms-l-sm { display: inline; }
+  /* The attendance donut and the Preparació score share one raised band, and
+     the three ratios sit under it — the handoff's blocks 4 and 5. */
+  /* The raised band bleeds to both edges, which is what makes it read as a
+     band rather than a card — the negative margin cancels `.ms-id`'s 20px. */
+  .ms-attend {
+    margin: 18px -20px 0; padding: 16px 20px; background: #FFFFFF;
+    border-top: 1px solid var(--pp-rule); border-bottom: 1px solid var(--pp-rule);
+  }
+  .ms-attend .ini-donut { width: 62px !important; height: 62px !important; }
+  .ms-attend .ini-donut svg { width: 62px; height: 62px; }
+  .ms-attend .ini-donut-c { font-size: 14px !important; }
+  .ms-attend-txt { flex: 1 1 0; min-width: 0; }
+  .ms-prep { display: block; padding: 16px 20px; }
+  .ms-prep-score { justify-content: flex-start; }
+  .ms-prep-v { font-size: 28px; }
+  .ms-prep-help { margin-top: 8px; font-size: 13px; }
+  .ms-prep-nums { gap: 0; padding-top: 16px; }
+  .ms-prep-nums .ms-fig { flex: 1 1 0; min-width: 0; }
+  .ms-fig-cards { display: flex; }
+  .ms-body { gap: 22px; }
+  /* One row markup per frame; this is where the choice is made. */
+  .ms-head, .ms-rows { display: none; }
+  .ms-prows { display: block; }
+  .ms-sec-l, .ms-sec-solo { font-size: 10px; }
+  .ms-sec-r { font-size: 12px; }
+  .ms-page .md2-mine-row { padding: 11px 0; }
+  .ms-page .md2-mine-zone { font-size: 14px; }
+  .ms-page .ms-map { max-width: 200px; }
+}
+/* ⚠ THE FULL-BLEED NEGATION FOLLOWS `.dashboard-content`, WHICH CHANGES AT
+   600 AND NOT AT 700. The page's own breakpoint is 700 — that is about how
+   many columns fit — but the container's padding drops from `2rem` to
+   `.75rem 1rem` at 600, so the margin that cancels it has to move there and
+   nowhere else. Putting it in the 700 block leaves a 100px band where the
+   identity band is pulled 2rem wider than its container. */
+@media (max-width: 600px) {
+  /* margin: the shared rule near .dashboard-content, which has the 600px
+     arm too. This block is kept so ms.test.js's slice still finds a 600
+     section for the page. */
+  .ms-page { min-height: calc(100vh - 90px); }
+}
+
+/* ===== Accions, redesigned (v245) =====
+
+   The eleventh page in the paper system, and the one a player touches most:
+   a task inbox for the RPE of sessions and matches they actually attended.
+
+   ⚠ THE ANSWER STRIP AND THE PHONE'S SCROLL WHEEL ARE ONE CONTROL. Same ten
+   cells, same `.ac-cell-on`; this block decides which reading of them is
+   painted. There is no second value and no second builder, so the two frames
+   cannot offer different answers — which is exactly what two controls over
+   one field did on the pre-v227 dropdown.
+
+   ⚠ `.ac-num`, `.ac-lbl`, `.ac-sec*`, `.ac-clear`, `.ac-note`, `.ac-empty-s`
+   and `.ac-band-*` are deliberately shared with `.nf-` below. They are the
+   vocabulary of the two pages in this handoff, not Accions' private
+   property, and a `.nf-` copy of them would be five more literals to keep in
+   step. Everything else here is `.ac-` and page-private. */
+
+.ac-page, .nf-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+.ac-num { font-variant-numeric: tabular-nums; }
+
+/* The RPE ramp: 1-3 easy, 4-6 moderate, 7-8 hard, 9-10 maximal. One set of
+   four, used by the strip, the saved figure and the extras list. */
+.ac-band-ok { color: var(--pp-ok); }
+.ac-band-warn { color: var(--pp-warn); }
+.ac-band-bad { color: var(--pp-bad); }
+.ac-band-red { color: var(--pp-red); }
+.ac-v-red { color: var(--pp-red); }
+.ac-v-ok { color: var(--pp-ok); }
+
+/* Section head. ⚠ THE FIXED 18px LINE-HEIGHT IS LOAD-BEARING: the main
+   column's head and the rail's sit in different columns, and only a fixed
+   line box makes their two underlines land on one line. */
+.ac-sec {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; line-height: 18px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--pp-ink);
+}
+.ac-sec-2 { margin-top: 34px; }
+.ac-sec-l {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ac-sec-r { font-size: 13px; color: var(--pp-ink-2); }
+.ac-note { margin: 18px 0 0; font-size: 12px; color: var(--pp-ink-3); line-height: 1.6; }
+.ac-empty-s { margin: 14px 0 0; font-size: 13px; color: var(--pp-ink-3); }
+.ac-clear { display: flex; align-items: center; gap: 12px; padding: 24px 0 6px; font-size: 17px; }
+.ac-clear-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pp-ok); flex: none; }
+
+/* ── Hero ── */
+.ac-hero, .nf-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-rule);
+}
+.ac-h1, .nf-h1 {
+  margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em;
+}
+
+/* ── Body ── */
+.ac-body, .nf-body { display: flex; align-items: flex-start; gap: 44px; }
+.ac-main, .nf-main { flex: 1 1 0; min-width: 0; }
+/* ⚠ BOTH RAILS ARE SIZED HERE, above the media queries that fold them.
+   `.nf-rail` was declared in its own block further down — after the 1100px
+   override — so the override lost the cascade and the rail stayed 372px at
+   390px, pushing the page 2px wider than the phone. Source order is the only
+   thing separating those two rules; equal specificity does the rest. */
+.ac-rail, .nf-rail { width: 372px; flex: none; }
+
+/* ── A pending or recently-answered activity ── */
+.ac-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 15px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.ac-date {
+  width: 46px; flex: none; display: flex; flex-direction: column;
+  align-items: center; gap: 1px;
+}
+.ac-dow { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--pp-ink-3); }
+.ac-dd { font-size: 24px; line-height: 1; }
+/* The accent bar. Ink for a session, red for a match — the one place on this
+   page red means "this is the one that counts", not "this is wrong". */
+.ac-bar { width: 3px; align-self: stretch; flex: none; }
+.ac-bar-training { background: var(--pp-ink); }
+.ac-bar-match { background: var(--pp-red); }
+.ac-body-col, .ac-body > .ac-main > .ac-row > .ac-body { min-width: 0; }
+.ac-row > .ac-body {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px;
+  padding: 0; background: none;
+}
+.ac-title-row { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.ac-title { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-kind {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3); flex: none;
+}
+.ac-meta { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--pp-ink-2); }
+.ac-time { font-variant-numeric: tabular-nums; }
+.ac-meta-t { color: var(--pp-ink-2); }
+/* The minutes are editable in place — a player may have left early, and the
+   correction belongs beside the number it corrects, not in a second form. */
+.ac-min {
+  width: 46px; height: 26px; padding: 0 4px; text-align: center;
+  font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
+  color: var(--pp-ink); background: none; border: 1px solid var(--pp-input-line);
+  border-radius: 0;
+}
+.ac-min:focus { outline: none; border-color: var(--pp-ink); }
+
+/* ── The answer ── */
+.ac-answer { display: flex; align-items: flex-start; gap: 14px; flex: none; }
+/* The strip and its captions are ONE column. As two siblings of the row they
+   were sized to their own text and `space-between` had nothing to spread. */
+.ac-answer-col { display: flex; flex-direction: column; flex: none; }
+.ac-strip { display: flex; gap: 4px; }
+.ac-cell {
+  width: 34px; height: 34px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
+  color: var(--pp-ink); background: none;
+  border: 1px solid var(--pp-input-line); border-radius: 0; cursor: pointer;
+}
+.ac-cell:hover { border-color: var(--pp-ink); }
+/* Choosing FILLS the chosen cell in its ramp colour and dims the rest — the
+   scale stays as the context that makes a 7 mean something.
+   ⚠ SPECIFICITY IS THE WHOLE RULE HERE, and getting it wrong is what shipped
+   in v245: the dim below is (0,2,0) and it outranked both `.ac-cell-on` and
+   the `.ac-band-*` the JS puts on the chosen cell, which are (0,1,0) each. So
+   `border-color: currentColor` resolved to the dim grey and the ramp colour
+   never rendered at all — every cell, chosen included, came out grey.
+   The fill is a two-class compound, (0,2,0), which ties with the dim and wins
+   on source order; the white text is (0,3,0) and beats it outright.
+   ⚠ `.ac-band-*` CANNOT be repurposed to mean "background": it is the text
+   colour of `.ac-done-v` and `.ac-ex-rpe` as well. */
+.ac-strip-set .ac-cell { color: var(--pp-ink-4); border-color: var(--pp-rule-2); }
+.ac-strip-set .ac-cell-on { color: #FFFFFF; font-size: 16px; }
+.ac-cell-on.ac-band-ok   { background: var(--pp-ok);   border-color: var(--pp-ok); }
+.ac-cell-on.ac-band-warn { background: var(--pp-warn); border-color: var(--pp-warn); }
+.ac-cell-on.ac-band-bad  { background: var(--pp-bad);  border-color: var(--pp-bad); }
+.ac-cell-on.ac-band-red  { background: var(--pp-red);  border-color: var(--pp-red); }
+.ac-strip-err .ac-cell { border-color: var(--pp-red); }
+.ac-scale {
+  display: flex; justify-content: space-between; padding-top: 6px;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ac-save {
+  height: 34px; padding: 0 16px; flex: none; font-family: inherit; font-size: 13px;
+  color: var(--pp-ink); background: none;
+  border: 1px solid var(--pp-ink); border-radius: 0; cursor: pointer;
+}
+.ac-save:hover { background: var(--pp-ink); color: var(--pp-paper); }
+
+/* ── An answered row ── */
+.ac-done { display: flex; align-items: center; gap: 12px; flex: none; }
+.ac-done-l { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); }
+.ac-done-v { font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.ac-change {
+  font-family: inherit; font-size: 13px; color: var(--pp-ink-2);
+  background: none; border: none; padding: 0; cursor: pointer;
+  border-bottom: 1px solid var(--pp-rule-4);
+}
+.ac-change:hover { color: var(--pp-red); border-bottom-color: var(--pp-red); }
+
+/* ── The extra-training form ── */
+.ac-form { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; }
+.ac-f-row { display: flex; gap: 20px; }
+.ac-f { display: flex; flex-direction: column; gap: 5px; flex: 1 1 0; min-width: 0; }
+.ac-f-min { flex: 0 0 90px; }
+.ac-date-pick {
+  display: flex; align-items: baseline; gap: 10px;
+  border-bottom: 1px solid var(--pp-input-line); padding-bottom: 4px;
+}
+.ac-date-txt { flex: 1 1 0; min-width: 0; font-size: 14px; }
+.ac-cal-btn {
+  font-family: inherit; font-size: 12px; color: var(--pp-ink-3);
+  background: none; border: none; padding: 0; cursor: pointer; flex: none;
+}
+.ac-cal-btn:hover { color: var(--pp-ink); }
+.ac-min-x {
+  width: 100%; height: 26px; padding: 0 4px; font-family: inherit; font-size: 14px;
+  font-variant-numeric: tabular-nums; color: var(--pp-ink); background: none;
+  border: none; border-bottom: 1px solid var(--pp-input-line); border-radius: 0;
+}
+.ac-min-x:focus { outline: none; border-bottom-color: var(--pp-ink); }
+.ac-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.ac-pill {
+  height: 30px; padding: 0 14px; font-family: inherit; font-size: 13px;
+  color: var(--pp-ink-2); background: none;
+  border: 1px solid var(--pp-rule); border-radius: 0; cursor: pointer;
+}
+.ac-pill-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+.ac-submit {
+  height: 44px; width: 100%; font-family: inherit; font-size: 14px;
+  color: var(--pp-ink-2); background: none;
+  border: 1px solid var(--pp-rule); border-radius: 0; cursor: pointer;
+}
+.ac-submit:not(:disabled) { color: var(--pp-paper); background: var(--pp-ink); border-color: var(--pp-ink); }
+.ac-submit:disabled { cursor: default; }
+
+/* ── The inline month grid ──
+   ⚠ Future days are DISABLED, not hidden. A greyed 12th says "not that one";
+   a missing 12th says the calendar is broken. */
+.ac-cal { border: 1px solid var(--pp-rule); padding: 10px; }
+.ac-cal-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; }
+.ac-cal-t { font-size: 13px; }
+.ac-cal-nav {
+  width: 24px; height: 24px; font-family: inherit; font-size: 15px;
+  color: var(--pp-ink); background: none; border: none; cursor: pointer;
+}
+.ac-cal-nav:disabled { color: var(--pp-rule-4); cursor: default; }
+.ac-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ac-c, .ac-c-pad {
+  height: 32px; display: flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+  color: var(--pp-ink); background: none; border: 1px solid transparent;
+  border-radius: 0; cursor: pointer;
+}
+.ac-c:hover:not(:disabled) { border-color: var(--pp-rule-4); }
+.ac-c-today { border-color: var(--pp-ink); }
+.ac-c-on { background: var(--pp-ink); color: var(--pp-paper); border-color: var(--pp-ink); }
+.ac-c:disabled { color: var(--pp-rule-4); cursor: default; }
+
+/* ── Extras logged ── */
+.ac-ex-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.ac-ex-what { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ac-ex-tag { font-size: 15px; }
+.ac-ex-meta { font-size: 12px; color: var(--pp-ink-3); }
+.ac-ex-l { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); flex: none; }
+.ac-ex-rpe { font-size: 15px; flex: none; font-variant-numeric: tabular-nums; }
+
+/* The phone's sheet trigger; desktop has the form in the rail already. */
+.ac-sheet-open { display: none; }
+
+/* ── responsive ──
+   1100 folds the rail under the column; 700 is the phone, which is what the
+   APK is. The same two steps `.md2-`, `.ini-`, `.pt-` and `.ms-` use. */
+@media (max-width: 1100px) {
+  .ac-hero, .nf-hero { flex-wrap: wrap; gap: 24px; }
+  .ac-body, .nf-body { flex-direction: column; gap: 34px; }
+  .ac-rail, .nf-rail { width: 100%; flex: 1 1 auto; }
+}
+@media (max-width: 700px) {
+  .ac-hero { padding: 14px 20px 16px; }
+  .ac-h1, .nf-h1 { font-size: 26px; }
+  .ac-hero-sub { font-size: 12px; }
+  .ac-figs { gap: 0; width: 100%; }
+  .ac-fig { flex: 1 1 0; min-width: 0; }
+  .ac-fig-v { font-size: 24px; }
+  /* Two of the three hero figures are a coach's framing of the week; the
+     handoff's phone frame keeps only the one a player is being asked about. */
+  .ac-figs .ac-fig:not(:first-child) { display: none; }
+  /* ⚠ The one exception to the shared inset, and it is deliberate: the
+     handoff's phone frame opens 4px tighter here. Top only. */
+  .ac-body { padding-top: 16px; gap: 22px; }
+  .ac-sec-l { font-size: 10px; }
+  .ac-row { flex-wrap: wrap; gap: 12px; padding: 14px 0; }
+  .ac-title { font-size: 16px; }
+  .ac-kind { display: none; }
+  /* ⚠ THE WHEEL. Ten cells do not fit in 390px, so the strip becomes a
+     96px window scrolling its own column — the same ten buttons, the same
+     `.ac-cell-on`. `scroll-snap` keeps a value centred; the handler in
+     bindAccions() eats the wheel event so the PAGE does not move with it. */
+  /* The wheel and Desa sit BESIDE the session, on one line — which is what
+     the handoff draws and what stops a three-row list becoming nine. */
+  .ac-answer { gap: 10px; flex: none; }
+  .ac-answer-col { flex-direction: row; }
+  /* ⚠ The two hairlines mark the CENTRE slot, not the ends of the box: they
+     are what says "this row is the value". 32px items in a 96px window puts
+     that slot at 32-64px, so the rules are painted there rather than on the
+     border, which would only outline the control. */
+  .ac-strip {
+    flex-direction: column; width: 48px; height: 96px; gap: 0;
+    overflow-y: auto; scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    background-image: linear-gradient(var(--pp-rule-4), var(--pp-rule-4)),
+                      linear-gradient(var(--pp-rule-4), var(--pp-rule-4));
+    background-size: 100% 1px, 100% 1px;
+    background-position: 0 32px, 0 63px;
+    background-repeat: no-repeat;
+    background-attachment: local, local;
+  }
+  .ac-cell { width: 48px; height: 32px; border: none; scroll-snap-align: center; }
+  .ac-cell:hover { border: none; }
+  .ac-strip-set .ac-cell { border: none; }
+  /* ⚠ THE WHEEL DOES NOT FILL. The handoff draws the selected value "centred
+     between two hairlines in its ramp colour" — a filled 48×32 block in a
+     scroll column reads as a button, not as the value the wheel has landed
+     on, and the hairlines above and below already say which slot is chosen.
+     So the ramp goes back on the TEXT here and the background is cleared. */
+  .ac-cell-on { border: none; font-size: 20px; }
+  .ac-strip-set .ac-cell-on { border: none; }
+  /* ⚠ `.ac-strip-set` prefixed, so these are (0,3,0) and can actually beat
+     the base rule's white text. Without it they are (0,2,0), the white wins,
+     and the chosen value is white on nothing — invisible. */
+  .ac-strip-set .ac-cell-on.ac-band-ok   { background: none; color: var(--pp-ok); }
+  .ac-strip-set .ac-cell-on.ac-band-warn { background: none; color: var(--pp-warn); }
+  .ac-strip-set .ac-cell-on.ac-band-bad  { background: none; color: var(--pp-bad); }
+  .ac-strip-set .ac-cell-on.ac-band-red  { background: none; color: var(--pp-red); }
+  .ac-scale { display: none; }
+  .ac-save { width: 46px; height: 96px; padding: 0; }
+  .ac-done { width: 100%; justify-content: flex-end; }
+  .ac-done-l { display: none; }
+  /* The form moves into a sheet the button opens. The rail's list stays —
+     the head and its count are what the handoff keeps on the phone. */
+  .ac-sheet-open {
+    display: block; width: 100%; height: 48px; margin: 18px 0 4px;
+    font-family: inherit; font-size: 15px; color: var(--pp-paper);
+    background: var(--pp-ink); border: none; border-radius: 0; cursor: pointer;
+  }
+  .ac-rail .ac-form { display: none; }
+  /* With the form in a sheet, the rail's first head has nothing under it —
+     a section label over a gap reads as content that failed to load. */
+  .ac-rail > .ac-sec:first-child { display: none; }
+  .ac-rail .ac-sec-2 { margin-top: 0; }
+  .ac-page.ac-sheet-on .ac-rail .ac-form {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    padding: 20px; background: #FFFFFF; border-top: 1px solid var(--pp-rule);
+    box-shadow: 0 -8px 32px rgba(45, 41, 38, .18);
+  }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-strip { flex-direction: row; width: auto; height: auto; overflow: visible; }
+  /* The sheet's strip is a ROW again, so it fills like the desktop one —
+     `:not(.ac-cell-on)` keeps this from painting a grey border over the fill. */
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell { width: 30px; height: 34px; }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell:not(.ac-cell-on) { border: 1px solid var(--pp-input-line); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-strip-set .ac-cell-on { color: #FFFFFF; }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-ok   { background: var(--pp-ok); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-warn { background: var(--pp-warn); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-bad  { background: var(--pp-bad); }
+  .ac-page.ac-sheet-on .ac-rail .ac-form .ac-cell-on.ac-band-red  { background: var(--pp-red); }
+  .ac-ex-l { display: none; }
+}
+
+/* ===== Notificacions, redesigned (v245) =====
+
+   The twelfth page, and the coach's half of the same handoff. A read-only
+   feed of what the players did, scoped by the shared `.cat-bar` above it.
+
+   ⚠ THE COLUMN WIDTHS ARE THE POINT. Badge 116px, name 172px, both fixed:
+   the rows are read by scanning DOWN one column, and a badge that resizes
+   itself to its word turns that column into a ragged edge.
+
+   ⚠ THIS BLOCK IS NOW LAST IN THE FILE. test/ms.test.js sliced `.ms-` to EOF
+   and has an end bound naming the `.ac-` banner now; test/accions.test.js is
+   bounded by THIS banner, and test/notificacions.test.js runs to the end. A
+   thirteenth page needs the same treatment. */
+
+.nf-hero-r { display: flex; align-items: center; gap: 40px; flex: none; }
+.nf-vrule { width: 1px; align-self: stretch; background: var(--pp-rule-2); }
+.nf-acts { display: flex; align-items: center; gap: 14px; }
+.nf-toggle {
+  height: 28px; padding: 0 11px; font-family: inherit; font-size: 12px;
+  color: var(--pp-ink-2); background: none;
+  border: 1px solid var(--pp-rule); border-radius: 0; cursor: pointer;
+}
+.nf-toggle-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+.nf-mark {
+  font-family: inherit; font-size: 13px; color: var(--pp-ink-2);
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.nf-mark:hover:not(:disabled) { color: var(--pp-red); }
+/* Greyed rather than hidden: a button that vanishes when there is nothing to
+   do makes the page look different for no stated reason. */
+.nf-mark:disabled { color: var(--pp-input-line); cursor: default; }
+.nf-mark-s { display: none; }
+
+/* ── A row ── */
+.nf-row {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 13px 12px 13px 0; box-sizing: border-box; text-align: left;
+  font-family: inherit; font-size: 15px; color: var(--pp-ink);
+  background: none; border: none; border-bottom: 1px solid var(--pp-rule-2);
+}
+.nf-row-go { cursor: pointer; }
+.nf-row-go:hover { background: #FFFFFF; }
+/* Unread carries BOTH a wash and a bar. The bar alone is 3px of red that a
+   quick scan misses; the wash alone disappears against the raised band on a
+   phone. Either one failing still leaves the other. */
+.nf-row-new { background: var(--pp-tint); }
+.nf-bar { width: 3px; align-self: stretch; flex: none; background: transparent; }
+.nf-row-new .nf-bar { background: var(--pp-red); }
+.nf-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 116px; height: 20px; padding: 0 8px; box-sizing: border-box; flex: none;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  white-space: nowrap; color: #FFFFFF; background: var(--pp-neutral);
+}
+.nf-b-rpe { background: var(--pp-ink); }
+.nf-b-injury { background: var(--pp-bad); }
+.nf-b-extra { background: var(--pp-ink-4); }
+.nf-b-reg { background: var(--pp-ink-2); }
+.nf-b-other { background: var(--pp-ink-3); }
+/* The availability badge is coloured by the ANSWER. A record from before
+   v245 has none and keeps the neutral grey rather than being guessed at. */
+.nf-b-avail { background: var(--pp-neutral); }
+.nf-a-ok { background: var(--pp-ok); }
+.nf-a-warn { background: var(--pp-warn); }
+.nf-a-off { background: var(--pp-neutral); }
+.nf-a-bad { background: var(--pp-bad); }
+.nf-pos {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  font-size: 9px; color: #FFFFFF;
+}
+.nf-name { width: 172px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nf-detail {
+  flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--pp-ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nf-time { font-size: 12px; color: var(--pp-ink-3); white-space: nowrap; flex: none; }
+
+/* ── Rail ── */
+.nf-t-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.nf-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--pp-ink-3); }
+.nf-dot-b_avail { background: var(--pp-ok); }
+.nf-dot-b_rpe { background: var(--pp-ink); }
+.nf-dot-b_injury { background: var(--pp-bad); }
+.nf-dot-b_extra { background: var(--pp-ink-4); }
+.nf-dot-b_registration { background: var(--pp-ink-2); }
+.nf-t-l { flex: 1 1 0; font-size: 13px; color: var(--pp-ink-2); }
+.nf-t-n { font-size: 15px; font-variant-numeric: tabular-nums; }
+/* ⚠ 14px of INNER padding, and the full column width. The wash has to reach
+   the ends of the rule above and below it or the row reads as a floating
+   card; the text must not touch those ends either. */
+.nf-s-row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 14px; box-sizing: border-box; text-align: left;
+  font-family: inherit; font-size: 15px; color: var(--pp-ink);
+  background: none; border: none; border-bottom: 1px solid var(--pp-rule-2);
+  cursor: pointer;
+}
+.nf-s-on { background: var(--pp-tint); }
+.nf-s-on .nf-s-l { color: var(--pp-red); }
+.nf-s-l { flex: 1 1 0; min-width: 0; }
+.nf-s-n { font-size: 15px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums; }
+.nf-s-unread { color: var(--pp-red); }
+
+@media (max-width: 700px) {
+  .nf-hero { padding: 14px 20px; }
+  .nf-hero-r { gap: 0; }
+  .nf-fig { align-items: flex-end; }
+  .nf-fig-v { font-size: 23px; }
+  .nf-vrule { display: none; }
+  /* The toggle and the bulk action get their own bar under the hero, which
+     is what the handoff draws — three controls on the hero row at 390px
+     leaves the title nowhere to go.
+     ⚠ BY WRAPPING, NOT BY `position:absolute`. The first attempt pulled this
+     out of flow with a `margin-top:96px` and paid for it with a matching
+     `padding-top` on `.nf-body`; two magic numbers holding each other up, and
+     `.nf-hero` is not a positioned ancestor, so it escaped to the viewport. */
+  .nf-hero { flex-wrap: wrap; }
+  .nf-hero-r { flex: 1 1 100%; }
+  .nf-acts {
+    flex: 1 0 100%; margin: 10px -20px -14px; padding: 10px 20px;
+    box-sizing: border-box; border-top: 1px solid var(--pp-rule-2);
+  }
+  .nf-mark { margin-left: auto; }
+  .nf-mark-l { display: none; }
+  .nf-mark-s { display: inline; }
+  .nf-body { padding: 16px 20px 40px; gap: 22px; }
+  /* Badge and name on line one, the detail on its own line below. */
+  .nf-row { flex-wrap: wrap; gap: 10px; padding: 12px 8px 12px 0; }
+  .nf-badge { width: auto; height: 18px; padding: 0 6px; font-size: 9px; letter-spacing: .1em; }
+  .nf-name { width: auto; flex: 1 1 auto; font-size: 14px; }
+  /* ⚠ The indent is PADDING, not a margin. `flex-basis:100%` plus a 35px
+     margin is 100% + 35px, which is how a row two pixels wider than the phone
+     came to drag the whole page sideways. */
+  .nf-detail { flex: 1 0 100%; padding-left: 35px; box-sizing: border-box; white-space: normal; }
+  .nf-time { font-size: 11px; }
+}
 </style>
 <style>
   html, body { margin:0; padding:0; background:#E9E6E0; }
@@ -8849,7 +10127,9 @@ a.ini-ev-name, .ini-ev-name-link {
   /* The dashboard's own 1rem padding, which .ini-page's margin:-1rem breaks
      out of. Without it the hero band stops short of the edge here and
      nowhere else, and the preview lies about the one thing it is for. */
-  .pv-frame { background:#FBFAF7; padding:1rem; border-top:1px solid #C9C3BB;
+  /* 2rem: .dashboard-content's real padding, not the -1rem the page pulled
+     before v246. See the note in build-convocatoria-preview.js. */
+  .pv-frame { background:#FBFAF7; padding:2rem; border-top:1px solid #C9C3BB;
               border-bottom:1px solid #C9C3BB; }
   /* .ini-page fills the viewport in the app, which is right there and is
      five screens of blank paper between boards here. Preview chrome only —
@@ -8895,8 +10175,8 @@ a.ini-ev-name, .ini-ev-name-link {
               <span class="ini-eyebrow">Les properes dues setmanes</span>
               <span class="ini-pending">7 respostes pendents</span>
             </div>
-            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t1">
-        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t1">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">7</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
@@ -8904,7 +10184,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t1"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-training="t2">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
@@ -8912,7 +10192,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t2"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-match="101">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
@@ -8920,15 +10200,15 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="mavail-btns" data-mavail-match="101"><button type="button" class="mavail-btn mavail-disp" data-mavail="disponible" title="Disponible">Disponible</button><button type="button" class="mavail-btn mavail-nodisp" data-mavail="no_disponible" title="No Disponible">No Disponible</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-training="t3">
-        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">13</span></div>
         <div class="ini-bar ini-bar-activity"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
           <div class="ini-ev-meta">14:00 · Can Punyetes</div>
         </div>
         <div class="avail-btns" data-avail-sid="t3"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
-      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t4">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">14 – 20 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t4">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">16</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Transicions</span><span class="ini-kind">Entrenament</span></div>
@@ -8936,7 +10216,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t4"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-training="t5">
-        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">18</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
@@ -8944,7 +10224,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t5"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-match="102">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">19</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
@@ -9000,8 +10280,8 @@ a.ini-ev-name, .ini-ev-name-link {
               <span class="ini-eyebrow">Les properes dues setmanes</span>
               <span class="ini-pending">1 resposta pendent</span>
             </div>
-            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t1">
-        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t1">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">7</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
@@ -9009,7 +10289,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t1"><button type="button" class="avail-chosen avail-yes" data-avail-sid="t1" title="Sí">Sí</button><button type="button" class="avail-btn avail-late ini-muted" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no ini-muted" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured ini-muted" data-avail="injured" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-training="t2">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
@@ -9017,7 +10297,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="ini-pills ini-pills-locked" title="Respostes tancades a les 15:30"><span class="ini-pill avail-yes ini-muted">Sí</span><span class="ini-pill avail-late ini-on">Tard</span><span class="ini-pill avail-no ini-muted">No</span><span class="ini-pill avail-injured ini-muted">Lesionat</span></div>
       </div><div class="ini-ev ini-ev-link" data-go-match="101">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
@@ -9025,15 +10305,15 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         
       </div><div class="ini-ev ini-ev-link" data-go-training="t3">
-        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">13</span></div>
         <div class="ini-bar ini-bar-activity"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
           <div class="ini-ev-meta">14:00 · Can Punyetes</div>
         </div>
         <div class="avail-btns" data-avail-sid="t3"><button type="button" class="avail-btn avail-yes ini-assumed" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no" data-avail="no" title="No">No</button><button type="button" class="avail-btn avail-injured" data-avail="injured" title="Lesionat">Lesionat</button></div>
-      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t4">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">14 – 20 set</span></div><div class="ini-ev ini-ev-link" data-go-training="t4">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">16</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Transicions</span><span class="ini-kind">Entrenament</span></div>
@@ -9041,7 +10321,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t4"><button type="button" class="avail-btn avail-yes ini-muted" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late ini-muted" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-chosen avail-no" data-avail-sid="t4" title="No">No</button><button type="button" class="avail-btn avail-injured ini-muted" data-avail="injured" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-training="t5">
-        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">18</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
@@ -9049,7 +10329,7 @@ a.ini-ev-name, .ini-ev-name-link {
         </div>
         <div class="avail-btns" data-avail-sid="t5"><button type="button" class="avail-btn avail-yes ini-muted" data-avail="yes" title="Sí">Sí</button><button type="button" class="avail-btn avail-late ini-muted" data-avail="late" title="Tard">Tard</button><button type="button" class="avail-btn avail-no ini-muted" data-avail="no" title="No">No</button><button type="button" class="avail-chosen avail-injured" data-avail-sid="t5" title="Lesionat">Lesionat</button></div>
       </div><div class="ini-ev ini-ev-link" data-go-match="102">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">19</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
@@ -9122,7 +10402,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-hero-id">
             <div class="ini-idcol">
               <h1 class="ini-h1">Amateur</h1>
-              <span class="ini-club">22 jugadors a la plantilla · dl 31 ago</span>
+              <span class="ini-club">22 jugadors a la plantilla · dl 7 set</span>
             </div>
           </div>
           <div class="ini-counters" style="margin-left:auto">
@@ -9151,8 +10431,8 @@ a.ini-ev-name, .ini-ev-name-link {
               <span class="ini-eyebrow">Les properes dues setmanes</span>
               <span class="ini-sec-note">Disponibilitat sobre 22 convocables</span>
             </div>
-            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">7</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t1">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
@@ -9166,7 +10446,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t2">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
@@ -9180,7 +10460,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="101"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
@@ -9191,7 +10471,7 @@ a.ini-ev-name, .ini-ev-name-link {
             <button type="button" class="ini-conv-btn" data-shome-link="convocatoria" data-shome-id="101">Convocatòria</button>
           </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">13</span></div>
         <div class="ini-bar ini-bar-activity"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t3">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
@@ -9204,8 +10484,8 @@ a.ini-ev-name, .ini-ev-name-link {
             <span class="ini-ev-missing">4 sense resposta</span>
           </div>
         </div>
-      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">14 – 20 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">16</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t4">Transicions</span><span class="ini-kind">Entrenament</span></div>
@@ -9219,7 +10499,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">18</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t5">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
@@ -9233,7 +10513,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">19</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="102">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
@@ -9248,7 +10528,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <aside class="ini-rail">
             <div class="ini-block">
               <div class="ini-block-head"><span class="ini-eyebrow">Sense resposta al pròxim partit</span>
-                <span class="ini-eyebrow">22 · ds 5 set</span></div>
+                <span class="ini-eyebrow">22 · ds 12 set</span></div>
               <div class="ini-chase-box"><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u1">
                     <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Marc Rovira</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u2">
                     <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Guillem Ferrer</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u3">
@@ -9279,12 +10559,12 @@ a.ini-ev-name, .ini-ev-name-link {
               <div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u8">
           <span class="ini-risk-dot ini-dot-inj"></span>
           <span class="ini-risk-name">Jordi Miquel</span>
-          <span class="ini-risk-note">Turmell · dt 8 set</span>
+          <span class="ini-risk-note">Turmell · dt 15 set</span>
           <span class="ini-risk-v ini-v-bad">—</span>
         </div><div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u7">
           <span class="ini-risk-dot ini-dot-inj"></span>
           <span class="ini-risk-name">Pau Ventura</span>
-          <span class="ini-risk-note">Isquiotibial · dl 14 set</span>
+          <span class="ini-risk-note">Isquiotibial · dl 21 set</span>
           <span class="ini-risk-v ini-v-bad">—</span>
         </div><div class="ini-risk-row" data-shome-link="staff-player-stats" data-shome-id="u1">
           <span class="ini-risk-dot ini-dot-risk"></span>
@@ -9313,7 +10593,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-hero-id">
             <div class="ini-idcol">
               <h1 class="ini-h1">Amateur</h1>
-              <span class="ini-club">22 jugadors a la plantilla · dl 31 ago</span>
+              <span class="ini-club">22 jugadors a la plantilla · dl 7 set</span>
             </div>
           </div>
           <div class="ini-counters" style="margin-left:auto">
@@ -9342,8 +10622,8 @@ a.ini-ev-name, .ini-ev-name-link {
               <span class="ini-eyebrow">Les properes dues setmanes</span>
               <span class="ini-sec-note">Disponibilitat sobre 22 convocables</span>
             </div>
-            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">31 ago – 6 set</span></div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">31</span></div>
+            <div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Aquesta setmana</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dl</span><span class="ini-day">7</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t1">Possessió + rondos</span><span class="ini-kind">Entrenament</span></div>
@@ -9357,7 +10637,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">2</span></div>
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t2">Pressing + finalització</span><span class="ini-kind">Entrenament</span></div>
@@ -9371,7 +10651,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">5</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="101"><span class="md-our-club">U.E. Esquerra</span> — C.F. Vallcarca</span><span class="ini-mono">CF</span><span class="ini-kind">Partit</span></div>
@@ -9383,7 +10663,7 @@ a.ini-ev-name, .ini-ev-name-link {
             <div class="ini-ev-txt"><span class="ini-ev-counts">convocats</span></div>
           </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">6</span></div>
+        <div class="ini-date"><span class="ini-dow">dg</span><span class="ini-day">13</span></div>
         <div class="ini-bar ini-bar-activity"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t3">Dinar d&#39;equip</span><span class="ini-kind">Activitat</span></div>
@@ -9396,8 +10676,8 @@ a.ini-ev-name, .ini-ev-name-link {
             <span class="ini-ev-missing">4 sense resposta</span>
           </div>
         </div>
-      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">7 – 13 set</span></div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">9</span></div>
+      </div></div><div class="ini-week"><div class="ini-week-head"><span class="ini-week-l">Setmana següent</span><span class="ini-week-r">14 – 20 set</span></div><div class="ini-ev">
+        <div class="ini-date"><span class="ini-dow">dc</span><span class="ini-day">16</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t4">Transicions</span><span class="ini-kind">Entrenament</span></div>
@@ -9411,7 +10691,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">11</span></div>
+        <div class="ini-date"><span class="ini-dow">dv</span><span class="ini-day">18</span></div>
         <div class="ini-bar ini-bar-training"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-ev-name ini-ev-name-link" data-shome-link="staff-training-detail" data-shome-id="t5">Activació + estratègia</span><span class="ini-kind">Entrenament</span></div>
@@ -9425,7 +10705,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
         </div>
       </div><div class="ini-ev">
-        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">12</span></div>
+        <div class="ini-date"><span class="ini-dow">ds</span><span class="ini-day">19</span></div>
         <div class="ini-bar ini-bar-match"></div>
         <div class="ini-ev-mid">
           <div class="ini-ev-t"><span class="ini-mono">CE</span><span class="ini-ev-name ini-ev-name-link" data-shome-link="match-detail" data-shome-id="102">C.E. Sant Andreu — <span class="md-our-club">U.E. Esquerra</span></span><img class="ini-crest" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2222%22%20font-size%3D%2213%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EUE%3C%2Ftext%3E%3C%2Fsvg%3E" alt="" onerror="this.style.display='none'"><span class="ini-kind">Partit</span></div>
@@ -9440,7 +10720,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <aside class="ini-rail">
             <div class="ini-block">
               <div class="ini-block-head"><span class="ini-eyebrow">Sense resposta al pròxim partit</span>
-                <span class="ini-eyebrow">22 · ds 5 set</span></div>
+                <span class="ini-eyebrow">22 · ds 12 set</span></div>
               <div class="ini-chase-box"><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u1">
                     <span class="conv-pos-circle" style="background:#f9a825">GK</span><span class="ini-chase-name">Marc Rovira</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u2">
                     <span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="ini-chase-name">Guillem Ferrer</span></div><div class="ini-chase-row" data-shome-link="staff-player-stats" data-shome-id="u3">
@@ -9471,12 +10751,12 @@ a.ini-ev-name, .ini-ev-name-link {
               <div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u8">
           <span class="ini-risk-dot ini-dot-inj"></span>
           <span class="ini-risk-name">Jordi Miquel</span>
-          <span class="ini-risk-note">Turmell · dt 8 set</span>
+          <span class="ini-risk-note">Turmell · dt 15 set</span>
           <span class="ini-risk-v ini-v-bad">—</span>
         </div><div class="ini-risk-row" data-shome-link="medical-detail" data-shome-id="u7">
           <span class="ini-risk-dot ini-dot-inj"></span>
           <span class="ini-risk-name">Pau Ventura</span>
-          <span class="ini-risk-note">Isquiotibial · dl 14 set</span>
+          <span class="ini-risk-note">Isquiotibial · dl 21 set</span>
           <span class="ini-risk-v ini-v-bad">—</span>
         </div><div class="ini-risk-row" data-shome-link="staff-player-stats" data-shome-id="u1">
           <span class="ini-risk-dot ini-dot-risk"></span>

@@ -121,6 +121,18 @@ exclude:
   # medical record even when every value in it is made up.
   # Regenerate with: node scripts/build-ms-preview.js . ms-preview.html
   - ms-preview.html
+  # And the two halves of the v245 handoff. Accions renders the page with work
+  # to do and with everything answered; Notificacions renders the feed, the
+  # unread-only view and the all-read one. Both freeze the clock, because the
+  # RPE edit window and the relative timestamps would otherwise make every
+  # regeneration a different file. Off Pages for the usual two reasons — the
+  # whole stylesheet inlined, and invented player names — and, for the feed, a
+  # third: it lists a named player's self-reported injury, which is the shape
+  # of a medical record even when the record is made up.
+  # Regenerate with: node scripts/build-accions-preview.js . accions-preview.html
+  #                  node scripts/build-notificacions-preview.js . notificacions-preview.html
+  - accions-preview.html
+  - notificacions-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

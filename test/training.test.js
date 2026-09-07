@@ -690,9 +690,12 @@ describe('training — the staff badge and the coach\'s week', () => {
     /* The push now arrives at the session's end. If the app still waited
        start + 90 min to offer the form, a 30-minute session would be
        chased an hour before there was anywhere to answer. */
-    const body = grab('    const completedTraining = training.filter(t => {',
-        '    const pt = completedTraining.filter(t => {');
-    assert.ok(body.includes('sessionEndsAt(t)'));
+    /* v245 folded the two copies of this filter — the page's and the
+       badge's — into playerActionModel(), so the slice moved with them. */
+    const body = grab('  function playerActionModel(session, nowArg) {',
+        '  function getPendingActionCount() {');
+    assert.ok(body.includes('sessionEndsAt(tr)'), 'the training gate moved');
+    assert.ok(body.includes('matchEndsAt(m)'), 'the match gate moved');
     assert.ok(!body.includes('90 * 60 * 1000'));
   });
 });
@@ -1154,18 +1157,23 @@ describe('training — the RPE form defaults', () => {
     assert.strictEqual(H.sessionMinutes(null), null);
   });
 
-  it('the training card is pre-filled with that length', () => {
-    const body = grab('    pendingTraining.forEach(tr => {', '    pendingMatches.forEach(m => {');
-    assert.ok(body.includes('const trMins = sessionMinutes(tr);'));
-    assert.ok(body.includes("value=\"${trMins == null ? '' : trMins}\""),
+  /* v245 moved these out of two card templates and into one row model —
+     the pre-fill is a field on the row now, not a string in a builder. */
+  it('the training row is pre-filled with that length', () => {
+    const body = grab('  function playerActionModel(session, nowArg) {',
+        '  function getPendingActionCount() {');
+    assert.ok(body.includes('minutes: rec ? rec.minutes : sessionMinutes(tr)'),
+        'the training pre-fill is gone');
+    const row = grab('  function acRowHtml(row, editing) {', '  function acExtrasHtml(');
+    assert.ok(row.includes("row.minutes == null ? '' : row.minutes"),
         'null must render an empty box, not the string "null"');
   });
 
-  it('the match card is pre-filled from the recorded minutes', () => {
-    const body = grab('    pendingMatches.forEach(m => {', '    // Availability cards for matches');
+  it('the match row is pre-filled from the recorded minutes', () => {
+    const body = grab('  function playerActionModel(session, nowArg) {',
+        '  function getPendingActionCount() {');
     assert.ok(body.includes('playerMatchMinutesKnown(session.id, m.id)'),
         'the club records substitutions; the player should not retype them');
-    assert.ok(body.includes("value=\"${mMins == null ? '' : mMins}\""));
   });
 
   it('a match caps at 100 minutes, a training does not', () => {
@@ -1174,14 +1182,18 @@ describe('training — the RPE form defaults', () => {
     assert.ok(capMatch && capAny);
     assert.strictEqual(capMatch[1], '100', '90 plus added time');
     assert.strictEqual(capAny[1], '300');
-    const matchCard = grab('    pendingMatches.forEach(m => {', '    // Availability cards for matches');
-    assert.ok(matchCard.includes('data-max="${MATCH_MINUTES_MAX}"'));
+    const body = grab('  function playerActionModel(session, nowArg) {',
+        '  function getPendingActionCount() {');
+    assert.ok(body.includes('minutesMax: MATCH_MINUTES_MAX'), 'the match cap is gone');
+    assert.ok(body.includes('minutesMax: ACTION_MINUTES_MAX'), 'the training cap is gone');
+    const row = grab('  function acRowHtml(row, editing) {', '  function acExtrasHtml(');
+    assert.ok(row.includes("data-max=\"' + row.minutesMax"), 'the cap never reaches the input');
   });
 
   it('the cap is enforced at SUBMIT, not only while typing', () => {
     /* A pre-filled value fires no `input` event, and neither does an
        autofill, so the keystroke clamp cannot be the only check. */
-    const body = grab('    $$(\'.action-submit\').forEach(btn => {', '        const key = card.dataset.actionKey;');
+    const body = grab('    $$(\'.ac-save\').forEach(btn => {', '        const key = card.dataset.actionKey;');
     assert.ok(body.includes('minutes > minCap'));
     assert.ok(body.includes('Number(minInput.dataset.max) || ACTION_MINUTES_MAX'));
   });

@@ -683,7 +683,8 @@ describe('metrics — one colour per player, and a legend that agrees', () => {
     const api = Object.assign({
       document: dom.window.document,
       getCurrentCategory: () => 'amateur',
-      rosterTeamFilter: 'A',
+      getCurrentSquad: () => 'A',
+      currentSquadOrNull: () => 'A',
       getPlayerMetrics: () => [],
       metricsForSquad: () => [{ id: 'weight', slug: 'weight', unit: 'kg', builtin: true }],
       plmName: () => 'Pes',
@@ -919,7 +920,8 @@ describe('metrics — the squad table is a matrix of dates', () => {
     const api = Object.assign({
       document: dom.window.document,
       getCurrentCategory: () => 'amateur',
-      rosterTeamFilter: 'A',
+      getCurrentSquad: () => 'A',
+      currentSquadOrNull: () => 'A',
       getPlayerMetrics: () => [],
       metricsForSquad: () => [{ id: 'weight', slug: 'weight', unit: 'kg', builtin: true }],
       plmName: () => 'Pes',

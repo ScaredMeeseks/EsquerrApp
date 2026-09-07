@@ -94,7 +94,7 @@ function build(selectedId) {
       'isOurTeam', 'getClubName', 'ptCrestHtml', 'ptOurSide', 'tDateShort',
       'clubKits', 'shirtSvg', 'shortsSvg', 'kitSockSvg', 'safeHttpUrl',
       'viewOnlyBanner', 'TB', 'tbLinkedKey', 'convSelectedMatchId',
-      'convTeamFilter',
+      'getCurrentSquad', 'currentSquadOrNull',
       BLOCK + '\n return {renderConvocatoria, cvMins, cvQuickTimes, cvDelta,' +
         ' cvAvailability, cvMenu, cvRowHtml, cvHead};')(
       (k) => k,
@@ -136,7 +136,16 @@ function build(selectedId) {
         meta: (id) => LIBRARY.find((b) => b.id === id) || null},
       (b) => (b.boardId ? 'id:' + b.boardId : 'name:' + (b.name || '')),
       selectedId === undefined ? 1 : selectedId,
-      LETTER);
+      /* v247: `convTeamFilter` became the shared `_viewSquad`, read through
+         these two. `LETTER` is still the harness's knob — it just arrives as
+         a getter now, which is also how the page reads it.
+         ⚠ MIRROR THE REAL CLAMP, both of them: getCurrentSquad() returns
+         'all' when there is no single category to take letters from, and
+         currentSquadOrNull() folds that into null. A stub that just echoed
+         LETTER let a stale 'B' filter "Totes" — the exact case the test
+         above is about. */
+      () => (CUR_CAT ? LETTER : 'all'),
+      () => (CUR_CAT && LETTER !== 'all' ? LETTER : null));
   return api;
 }
 
@@ -936,21 +945,24 @@ describe('Convocatòria — the squad-letter filter', () => {
     assert.ok(idsIn(html, 'cv-avail').includes('a1'));
   });
 
+  /* ⚠ v247: the six per-page letter variables are ONE `_viewSquad`, read
+     through getCurrentSquad(), and the bar makes one unconditional call
+     instead of a six-armed ternary. What each page's suite still owns is
+     that it uses the shared control and keeps no private copy. */
   it('is drawn by the shared category-bar chips, not a second control', () => {
-    assert.ok(/currentPage === 'convocatoria'\s*\?\s*catBarLettersHtml\(convTeamFilter, 'data-conv-letter'\)/
-        .test(bare), 'the chips are not the ones the calendar and roster use');
-    assert.ok(/convTeamFilter = btn\.dataset\.convLetter \|\| 'all';/.test(bare),
-        'nothing writes the filter');
+    assert.ok(/catBarLettersHtml\(getCurrentSquad\(\), 'data-squad-letter'\)/.test(bare),
+        'the bar is not reading the shared selection');
+    assert.ok(/_viewSquad = btn\.dataset\.squadLetter \|\| 'all';/.test(bare),
+        'nothing writes the shared selection');
   });
 
-  /* Every one of these is reset when the category changes, because a letter
-     belongs to a category. Missing one is a filter that silently persists. */
-  it('resets with the category, like the other three', () => {
-    const i = bare.indexOf("var want = btn.dataset.cat || '';");
-    const body = bare.slice(i, bare.indexOf('renderPage', i));
-    ['medicalTeamFilter', 'rosterTeamFilter', 'calTeamFilter', 'convTeamFilter']
-        .forEach((v) => assert.ok(new RegExp(v + " = 'all';").test(body),
-            v + ' survives a category change'));
+  /* A letter belongs to a category, so one chosen under amateur must not
+     survive into a category with no such squad. That was six resets in the
+     cat-bar handler; it is one clamp on READ now, which also covers the
+     paths the reset never reached. */
+  it('clamps a stale letter instead of resetting six variables', () => {
+    assert.ok(/getTeamLetters\(cat\)\.indexOf\(_viewSquad\) === -1 \? 'all'/.test(bare),
+        'getCurrentSquad no longer clamps');
   });
 });
 

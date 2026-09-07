@@ -245,7 +245,9 @@ function render(which, opts) {
     getPlayerInjuries: (uid) => injuries.filter((i) => i.playerId === uid),
     getCurrentCategory: () => 'amateur',
     getVisibleCategories: () => ['amateur'],
-    medicalTeamFilter: 'A',
+    /* v247: one `_viewSquad` for every page, read through these two. */
+    getCurrentSquad: () => 'A',
+    currentSquadOrNull: () => 'A',
     medicalDetailPlayerId: opts.playerId || 'p1',
     medicalPastExpanded: true,
     canEditPage: () => !opts.readonly,
@@ -343,7 +345,9 @@ const CHROME = `
   /* The dashboard's own 1rem padding, which .md2-page's margin:-1rem breaks
      out of. Without it the hero band stops short of the edge here and
      nowhere else, and the preview lies about the one thing it is for. */
-  .pv-frame { background:#FBFAF7; padding:1rem; border-top:1px solid #C9C3BB;
+  /* 2rem: .dashboard-content's real padding, not the -1rem the page pulled
+     before v246. See the note in build-convocatoria-preview.js. */
+  .pv-frame { background:#FBFAF7; padding:2rem; border-top:1px solid #C9C3BB;
               border-bottom:1px solid #C9C3BB; }
   /* .md2-page fills the viewport in the app, which is right there and is
      five screens of blank paper between boards here. Preview chrome only. */

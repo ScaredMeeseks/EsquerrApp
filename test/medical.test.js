@@ -325,22 +325,26 @@ describe('Mèdic — a view-only staff member gets the word, not the button', ()
 });
 
 describe('Mèdic — the squad filter moved onto the shared bar', () => {
-  it('is drawn by the same chips as the other four', () => {
-    assert.ok(/currentPage === 'medical'\s*\?\s*catBarLettersHtml\(medicalTeamFilter, 'data-med-team'\)/
-        .test(bare), 'Mèdic still draws its own chip row');
-    assert.ok(/medicalTeamFilter = btn\.dataset\.medTeam \|\| 'all';/.test(bare),
-        'nothing writes the filter');
+  /* ⚠ v247: the six per-page letter variables are ONE `_viewSquad`, read
+     through getCurrentSquad(), and the bar makes one unconditional call
+     instead of a six-armed ternary. What each page's suite still owns is
+     that it uses the shared control and keeps no private copy. */
+  it('is drawn by the shared category-bar chips, not a second control', () => {
+    assert.ok(/catBarLettersHtml\(getCurrentSquad\(\), 'data-squad-letter'\)/.test(bare),
+        'the bar is not reading the shared selection');
+    assert.ok(/_viewSquad = btn\.dataset\.squadLetter \|\| 'all';/.test(bare),
+        'nothing writes the shared selection');
   });
+
 
   it('left no second copy of the control behind', () => {
     assert.ok(!/roster-team-filter/.test(bare.slice(bare.indexOf('function renderMedical()'),
         bare.indexOf('function md2Counter'))), 'the in-page chip row survived');
   });
 
-  it('resets with the category, because a letter belongs to one', () => {
-    const i = bare.indexOf("var want = btn.dataset.cat || '';");
-    const body = bare.slice(i, bare.indexOf('renderPage', i));
-    assert.ok(/medicalTeamFilter = 'all';/.test(body));
+  it('clamps a stale letter instead of resetting six variables', () => {
+    assert.ok(/getTeamLetters\(cat\)\.indexOf\(_viewSquad\) === -1 \? 'all'/.test(bare),
+        'getCurrentSquad no longer clamps');
   });
 });
 
@@ -767,7 +771,8 @@ function mountLogger() {
       roles: ['player'], category: 'amateur', team: 'A' }],
     saveUsers: () => {}, getInjuries: () => [], addInjury: (i) => i,
     updateInjury: () => {}, getCurrentCategory: () => 'amateur',
-    medicalTeamFilter: 'all', addStaffNotification: () => {},
+    getCurrentSquad: () => 'all', currentSquadOrNull: () => null,
+    addStaffNotification: () => {},
     renderPage: () => {}, openDatePicker: () => {}, closeDatePicker: () => {},
     alert: () => {}, confirm: () => true, storage: { ref: () => ({}) },
     BODY_ZONES: utils.BODY_ZONES, GROUP_SUBS: utils.GROUP_SUBS,
@@ -961,7 +966,8 @@ function page(opts) {
     getTrainings: () => [],
     getInjuries: () => opts.injuries || [],
     getCurrentCategory: () => 'amateur',
-    medicalTeamFilter: 'all',
+    getCurrentSquad: () => 'all',
+    currentSquadOrNull: () => null,
     medicalPastExpanded: true,
     canEditPage: () => !opts.readonly,
     viewOnlyBanner: () => '<div class="view-only-banner"></div>',
@@ -1236,7 +1242,12 @@ describe('Mèdic — the stylesheet', () => {
   });
 
   it('bottom-aligns the counters, so a wrapped label keeps the baseline', () => {
-    const m = /\.md2-counters\s*\{([^}]*)\}/.exec(MDCSS);
+    /* ⚠ v247: `.md2-counters` is now one selector in the shared figure-row
+       rule, which lives outside the `.md2-` slice. Asserting inside `MDCSS`
+       would be asserting where the declaration lives; the thing that matters
+       is that Mèdic's counters bottom-align, so this looks at the whole
+       stylesheet. */
+    const m = /[^{}]*\.md2-counters[^{}]*\{([^}]*)\}/.exec(css);
     assert.ok(m, '.md2-counters has no rule');
     assert.ok(/align-items:\s*flex-end/.test(m[1]),
         'centred counters lift a wrapped label\'s figure off the shared baseline');

@@ -48,9 +48,15 @@ const API = (function () {
   const code = grab('  function regOnAllowlist', '  /** One squad chip') +
     grab('  function regTakenNumbers', '  /* ── Sol·licituds pendents');
   // eslint-disable-next-line no-new-func
-  return new Function('normalizeEmail',
+  /* `currentSquadOrNull` since v247: regInvited filters by squad as well as
+     by category now. It parsed the letter out of the roster key and then
+     ignored it, so "convidats sense compte" was the one figure on the page
+     that did NOT move with the chips — invisible until the chips reached
+     Registracions in the same version. `null` = no squad chosen, which is
+     what every case below is about. */
+  return new Function('normalizeEmail', 'currentSquadOrNull',
     code + '\n return {regOnAllowlist, regInvited, regTakenNumbers, regIsTaken};')(
-      (v) => String(v || '').trim().toLowerCase());
+      (v) => String(v || '').trim().toLowerCase(), () => null);
 })();
 
 const ROSTERS = {
@@ -412,10 +418,24 @@ describe('the controls do not inherit the old page\'s look', () => {
   /** The declarations of one rule. `sel` is a REGEX SOURCE, already
       escaped by the caller — a selector list needs `,\s*` between its
       parts, which an escaper would turn into a literal comma. */
+  /* ⚠ Matches a selector wherever it sits in a LIST, not only when it stands
+     alone before the brace. Since v247 several of these atoms are shared —
+     `.reg2-fig-l` is one name among seven in one rule up in the neutral
+     region — and an anchored match reports "has no rule" for something that
+     is styled perfectly well. */
   function rule(sel) {
-    const m = new RegExp(sel + '\\s*\\{([^}]*)\\}').exec(css);
-    assert.ok(m, sel + ' has no rule');
-    return m[1];
+    /* ⚠ The selector must END its compound — `,`, `{`, or a pseudo — and the
+       match must be the enclosing rule's own body. Since v247 several of
+       these atoms are shared, so `.reg2-fig-l` is one name among seven in one
+       rule up in the neutral region; anchoring on `sel\s*{` reports "has no
+       rule" for something styled perfectly well, and a bare `[^{}]*{` runs
+       past the comma into a NEIGHBOURING rule's body. */
+    const re = /([^{}]*)\{([^}]*)\}/g;
+    const ends = new RegExp(sel + '(?=\\s*[,{:]|\\s*$)');
+    let m;
+    while ((m = re.exec(css))) if (ends.test(m[1])) return m[2];
+    assert.ok(false, sel + ' has no rule');
+    return '';
   }
 
   it('a selected squad chip fills in rather than growing', () => {
@@ -585,7 +605,9 @@ describe('the page is not a grid of rules', () => {
        read as a form to fill in rather than a page to work through.
        Space separates the sections now; a rule means "a table starts
        here" or "the heading ends here", and nothing else. */
-    const figures = /\.reg2-figures\s*\{([^}]*)\}/.exec(css)[1];
+    /* ⚠ `.reg2-figures` moved INTO the band at v247 — same content, one row
+       up — so what this asserts is unchanged: no rule of its own under it. */
+    const figures = /\.reg2-figures[^{}]*\{([^}]*)\}/.exec(css)[1];
     assert.ok(!/border/.test(figures), 'the key figures need no rule under them');
     const invite = /\.reg2-invite\s*\{([^}]*)\}/.exec(css)[1];
     assert.ok(!/border/.test(invite), 'nor the invite row');
@@ -593,7 +615,9 @@ describe('the page is not a grid of rules', () => {
     assert.ok(!/border/.test(top), 'nor the section above the pending table');
     assert.ok(/padding-top/.test(top), 'space does that job instead');
     // The two that stay.
-    assert.ok(/\.reg2-title-row\s*\{[^}]*border-bottom/.test(css),
+    /* The title's rule is the shared header band since v247 — it is one
+       selector in a list, so match it inside one. */
+    assert.ok(/\.reg2-title-row[^{}]*\{[^}]*border-bottom/.test(css),
         'the title keeps its rule');
     assert.ok(/\.reg2-table th\s*\{[^}]*border-bottom/.test(css),
         'and a table its header rule');
