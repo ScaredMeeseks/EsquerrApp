@@ -311,7 +311,8 @@ describe('metrics — the chart', () => {
   const C = new Function(...Object.keys(api), `
     ${SANITIZE_SRC}
     ${CHART}
-    return { plmChartHtml, plmNiceTicks, plmNum, PLM_GEO };
+    return { plmChartHtml, plmNiceTicks, plmNum, PLM_GEO,
+      plmSeries, plmSwatchHtml, PLM_SERIES_N };
   `)(...Object.values(api));
 
   const S = (uid, pts) => ({ uid, label: 'P' + uid, points: pts });
@@ -574,7 +575,10 @@ describe('metrics — the page wiring', () => {
 
   it('exempts the Metrics section from the click that closes the rail', () => {
     const bind = grab('  function bindPlantilla', '  function plGetOff');
-    assert.ok(/closest\('\.plm-sec, \.plm-sec-head'\)/.test(bind),
+    /* The WRAPPER, which is the whole section — head, body, and the gap
+       between them. It used to name the two inner classes, and that list
+       would have to grow with every element added to the section. */
+    assert.ok(/closest\('\.plm-secwrap'\)/.test(bind),
         'ticking a player would toggle the box AND shut the rail');
   });
 
@@ -652,5 +656,240 @@ describe('metrics — the page wiring', () => {
     const ui = bare.slice(bare.indexOf('function plmRailHtml'), end);
     assert.ok(/stdSelect\(/.test(ui));
     assert.ok(!/<select/.test(ui), 'a native select cannot be styled open');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+/* The squad chart's colours, and the legend that has to agree with them.
+ *
+ * ⚠ Both halves are RENDERED here, from the same builder the page calls, and
+ * the assertions compare one against the other. A test that read the palette
+ * out of the source twice would agree with itself no matter which way the
+ * legend pointed — and a legend pointing the wrong way is exactly the bug
+ * worth catching, because every colour still looks correct on its own.
+ */
+describe('metrics — one colour per player, and a legend that agrees', () => {
+  const SECTION = grab('  function plmSectionHtml(players, catSpan) {',
+      '  /**\n   * Every metrics control on Plantilla');
+
+  const dom = new JSDOM('<!doctype html><body></body>');
+
+  /** Render the section for `players`, each with the given readings. */
+  function render(players, readings, over) {
+    const api = Object.assign({
+      document: dom.window.document,
+      getCurrentCategory: () => 'amateur',
+      rosterTeamFilter: 'A',
+      getPlayerMetrics: () => [],
+      metricsForSquad: () => [{ id: 'weight', slug: 'weight', unit: 'kg', builtin: true }],
+      plmName: () => 'Pes',
+      playerMetricSeries: (uid) => (readings[String(uid)] || []),
+      stdSelect: () => '<i class="std-sel"></i>',
+      plmSegs: () => '<i class="segs"></i>',
+      t: (k) => k,
+      catBadgeHtmlGlobal: () => '',
+      plShortDate: (s) => s.slice(8) + '/' + s.slice(5, 7),
+      plHitTip: () => '',
+      localDateStr: (d) => d.toISOString().slice(0, 10),
+      _plmOpen: true, _plmSecMetric: 'weight', _plmSecMode: 'chart',
+      _plmOut: new Set(),
+      JSON, Object, String, Number, Array, Math, Date, Set,
+    }, over || {});
+    // eslint-disable-next-line no-new-func
+    const html = new Function(...Object.keys(api), `
+      ${SANITIZE_SRC}
+      ${CHART}
+      ${SECTION}
+      return plmSectionHtml(arguments[arguments.length - 1], 1);
+    `)(...Object.values(api), players);
+    const host = dom.window.document.createElement('div');
+    host.innerHTML = html;
+    return host;
+  }
+
+  const pts = (n) => [{ date: '2026-0' + n + '-01', value: 70 + n },
+    { date: '2026-0' + (n + 1) + '-01', value: 72 + n }];
+
+  const squad = (n) => {
+    const ps = [], rs = {};
+    for (let i = 0; i < n; i++) {
+      /* Ids in an order that is NOT the insertion order, so a colour scheme
+         quietly depending on getUsers() ordering shows up here. */
+      const id = 'p' + String(n - i).padStart(2, '0');
+      ps.push({ id: id, name: 'Player ' + id });
+      rs[id] = pts((i % 4) + 1);
+    }
+    return { ps, rs };
+  };
+
+  /** The stroke colour of each drawn line, by uid. */
+  const strokes = (host) => {
+    const out = {};
+    host.querySelectorAll('.plm-line').forEach((g) => {
+      const p = g.querySelector('path[style*="stroke"]');
+      if (p) out[g.dataset.plmLine] = /stroke:\s*([^;"]+)/.exec(p.getAttribute('style'))[1].trim();
+    });
+    return out;
+  };
+  /** The legend swatch colour of each table row, by uid. */
+  const swatches = (host) => {
+    const out = {};
+    host.querySelectorAll('.plm-row').forEach((tr) => {
+      const sw = tr.querySelector('.plm-sw');
+      const btn = tr.querySelector('[data-plm-toggle]');
+      out[btn.dataset.plmToggle] =
+        /(?:background|border-color):\s*([^;"]+)/.exec(sw.getAttribute('style'))[1].trim();
+    });
+    return out;
+  };
+
+  it('draws each player in a different colour', () => {
+    const { ps, rs } = squad(6);
+    const s = strokes(render(ps, rs));
+    assert.strictEqual(Object.keys(s).length, 6, 'not every player was drawn');
+    assert.strictEqual(new Set(Object.values(s)).size, 6,
+        'two players share a colour inside the ramp: ' + JSON.stringify(s));
+    Object.values(s).forEach((v) => assert.ok(/^var\(--pp-series-\d+\)$/.test(v),
+        'a line is drawn in a loose colour rather than a palette token: ' + v));
+  });
+
+  it('gives the legend swatch the SAME colour as the line', () => {
+    const { ps, rs } = squad(6);
+    const host = render(ps, rs);
+    assert.deepStrictEqual(swatches(host), strokes(host),
+        'the legend points at the wrong lines');
+  });
+
+  it('shows a swatch for a player who is OFF the chart too', () => {
+    /* His row is what he is turned back on from. A legend that only covered
+       the drawn lines would be no use for choosing. */
+    const { ps, rs } = squad(4);
+    const host = render(ps, rs, { _plmOut: new Set(['p01']) });
+    assert.strictEqual(Object.keys(strokes(host)).length, 3, 'he was still drawn');
+    assert.ok(swatches(host).p01, 'his row lost its swatch when he came off the chart');
+  });
+
+  /* ⚠ THE PROPERTY THAT MAKES A LEGEND USABLE. Both the drawn set and the
+     table's order move under the user's hands — ticking a player off, or one
+     player gaining a kilo and overtaking another in the value sort. Neither
+     may repaint anybody. Indexing colours by position in either list is the
+     natural way to write this, and it is wrong. */
+  it('keeps a colour when other players are toggled off', () => {
+    const { ps, rs } = squad(6);
+    const before = strokes(render(ps, rs));
+    const after = strokes(render(ps, rs, { _plmOut: new Set(['p06', 'p03']) }));
+    Object.keys(after).forEach((uid) => {
+      assert.strictEqual(after[uid], before[uid],
+          uid + ' changed colour because somebody else was deselected');
+    });
+  });
+
+  it('keeps a colour when the values re-rank the table', () => {
+    const { ps, rs } = squad(5);
+    const before = strokes(render(ps, rs));
+    // p01 leapfrogs everyone; nothing about anyone's identity changed.
+    const bumped = Object.assign({}, rs, { p01: [{ date: '2026-01-01', value: 999 }] });
+    const after = strokes(render(ps, bumped));
+    Object.keys(before).forEach((uid) => {
+      if (uid === 'p01') return;
+      assert.strictEqual(after[uid], before[uid],
+          uid + ' changed colour because the table re-sorted');
+    });
+  });
+
+  /* Ten hues, and a squad can be twenty-two. */
+  it('marks the second lap so a repeated hue is still one glance apart', () => {
+    const { ps, rs } = squad(13);
+    const host = render(ps, rs);
+    const s = strokes(host);
+    const ids = Object.keys(s).sort();
+    // The eleventh player in id order comes back round to the first hue.
+    assert.strictEqual(s[ids[10]], s[ids[0]], 'the ramp did not wrap as expected');
+    const first = host.querySelector('[data-plm-line="' + ids[0] + '"] path[style*="stroke"]');
+    const lap = host.querySelector('[data-plm-line="' + ids[10] + '"] path[style*="stroke"]');
+    assert.ok(!first.getAttribute('stroke-dasharray'), 'a first-lap line is dashed');
+    assert.ok(lap.getAttribute('stroke-dasharray'),
+        'the repeated hue is drawn identically to the one it repeats');
+    const swOf = (uid) => host.querySelector('[data-plm-toggle="' + uid + '"]')
+        .closest('tr').querySelector('.plm-sw');
+    assert.ok(!swOf(ids[0]).classList.contains('plm-sw-lap'));
+    assert.ok(swOf(ids[10]).classList.contains('plm-sw-lap'),
+        'the swatch does not distinguish the repeat, so the legend is ambiguous');
+  });
+
+  it('leaves the rail single line the neutral, not series 1', () => {
+    /* One player, one line: a colour there would be a distinction with
+       nothing to distinguish, and it would read as a category. */
+    const dom2 = new JSDOM('<!doctype html><body></body>');
+    const api = {
+      document: dom2.window.document, t: (k) => k,
+      localDateStr: (d) => d.toISOString().slice(0, 10),
+      plShortDate: (s) => s, plHitTip: () => '',
+      JSON, Object, String, Number, Array, Math, Date,
+    };
+    // eslint-disable-next-line no-new-func
+    const C = new Function(...Object.keys(api),
+        `${SANITIZE_SRC}\n${CHART}\nreturn plmChartHtml;`)(...Object.values(api));
+    const html = C([{ uid: 'p1', label: 'P', points: pts(1) }], 'kg', 'rail');
+    assert.ok(!/--pp-series/.test(html), 'the rail chart took a series colour');
+    assert.ok(/stroke:#8C857D/.test(html), 'the rail line lost the neutral');
+  });
+
+  it('has as many hues in the stylesheet as the code thinks', () => {
+    /* The count lives in js/app.js and the values in css/style.css. If the
+       ramp is trimmed and the constant is not, plmSeries hands out
+       var(--pp-series-11), which resolves to nothing and renders BLACK. */
+    const dom3 = new JSDOM('<!doctype html><body></body>');
+    const api = { document: dom3.window.document, t: (k) => k,
+      localDateStr: () => '2026-01-01', plShortDate: (s) => s, plHitTip: () => '',
+      JSON, Object, String, Number, Array, Math, Date };
+    // eslint-disable-next-line no-new-func
+    const N = new Function(...Object.keys(api),
+        `${SANITIZE_SRC}\n${CHART}\nreturn PLM_SERIES_N;`)(...Object.values(api));
+    const defined = (readCssRaw().match(/--pp-series-\d+\s*:/g) || []).length;
+    assert.strictEqual(defined, N,
+        'PLM_SERIES_N is ' + N + ' but the stylesheet defines ' + defined);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe('metrics — expanding the section leaves the player detail alone', () => {
+  /* ⚠ The last of the metrics controls that still rebuilt the page. The
+     others were fixed in v237; this one was left because the section BODY
+     does not exist while the section is shut, so plmRefresh had nothing to
+     replace. The fix is a wrapper that is always there. */
+  it('emits the wrapper open AND shut, so there is always a node to swap', () => {
+    const sec = grab('  function plmSectionHtml(players, catSpan) {',
+        '  /**\n   * Every metrics control on Plantilla');
+    const nc = sec.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(/id="plm-secwrap"/.test(nc), 'the section has no stable container');
+    /* All THREE exits go through it — collapsed, no-metrics, and open.
+       ⚠ Counted rather than matched line by line: the three sit at three
+       different indents (one inline after `if`, one inside a block, one at
+       the top), and a `return` regex loose enough to catch all three also
+       catches the returns inside .find() and .map() callbacks. */
+    assert.strictEqual((nc.match(/return wrap\(/g) || []).length, 3,
+        'an exit from the section builder skips the wrapper');
+    assert.ok(!/return head\b/.test(nc),
+        'the collapsed case returns the bare head again — that is the original bug');
+  });
+
+  it('toggles the section with plmRefresh, not renderPage', () => {
+    const bind = grab('  function bindPlmControls(root) {', '  /** Repaint the metrics');
+    const nc = bind.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const toggle = nc.slice(nc.indexOf("getElementById('plm-toggle')"),
+        nc.indexOf('[data-plm-mode]'));
+    assert.ok(toggle.length > 40, 'the toggle handler slice is empty');
+    assert.ok(/plmRefresh\(\)/.test(toggle),
+        'expanding the section still rebuilds the whole page');
+    assert.ok(!/renderPage/.test(toggle),
+        'expanding the section still tears down any open player detail');
+  });
+
+  it('refreshes the WRAPPER, not the body that vanishes when shut', () => {
+    const fn = grab('  function plmRefresh() {', '  /**\n   * The add-a-measurement sheet');
+    const nc = fn.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(/getElementById\('plm-secwrap'\)/.test(nc),
+        'plmRefresh looks for the open body, so the collapsed section cannot be refreshed');
   });
 });

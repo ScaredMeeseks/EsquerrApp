@@ -9708,3 +9708,52 @@ him and deleting the player-role filter changed nothing. The coach is in B now, 
 cadet in B too so the category filter also has something of its own to exclude. 9/9 after.
 
 No rules or functions change; push only.
+
+### 2026-09-07 — A colour per player, and the last control that rebuilt the page (v239)
+
+**1. Expanding Mètriques no longer re-renders an open player detail.**
+
+This was the one metrics control v237 deliberately left on `renderPage()`, and the note explaining
+why was correct about the constraint and wrong about the conclusion: the section BODY does not exist
+while the section is shut, so `plmRefresh` had no node to swap. The answer was not to re-render the
+page — it was to give the section a container that exists in both states. `plmSectionHtml` now wraps
+every one of its three exits (collapsed, no-metrics, open) in `#plm-secwrap`, `plmRefresh` keys off
+that instead of `#plm-sec`, and the toggle is an in-place repaint like everything else.
+
+The rail-close exemption moved to `.plm-secwrap` too, replacing the `.plm-sec, .plm-sec-head` pair —
+one clause that covers the whole section instead of a list that grows with it.
+
+**2. One colour per player on the squad chart, with the table as its legend.**
+
+v236 drew every line in the same neutral and the comment said why: *"there is no twenty-colour
+palette in this design system and inventing one would fight paper-palette.test.js."* That was a
+reason to add the palette properly, not to go without — so `--pp-series-1..10` are in the palette
+block now, ten hues at even spacing, all mid-dark for cream paper and all deliberately **unequal to
+any existing token**. ⚠ Not aliases: the palette guard's loose-literal scan reports a hex together
+with the key name it belongs to, so two keys sharing one value would produce two report lines for
+one hex and break the test that pins the allowed list.
+
+`plmSeries(i)` owns the stroke and `plmSwatchHtml(i)` the legend dot, and the swatch is drawn from
+the same helper as the line so the two cannot drift. A squad is up to twenty-two and the ramp is
+ten, so ⚠ the eleventh line comes back to the first hue **dashed, with a hollow swatch** — a repeat
+stays one glance apart.
+
+⚠ **A player's colour is fixed by his position in the whole squad, in id order.** Both of the
+obvious alternatives are wrong in a way that only shows up in use: indexing by position in the
+DRAWN set repaints everybody when one player is ticked off, and indexing by the table's order
+repaints two players when one of them gains a kilo, because that table sorts by latest value.
+
+The rail keeps the neutral. One player, one line — a colour there is a distinction with nothing to
+distinguish, and on this palette it would read as a status.
+
+**Tests.** Unit 3084 → **3095**. The colour tests RENDER both halves from the real builder and
+compare them against each other: a test that read the palette out of the source twice would agree
+with itself no matter which way the legend pointed, and a legend pointing at the wrong lines is
+precisely the failure worth catching, because every colour still looks right on its own. One test
+pins `PLM_SERIES_N` against the count of `--pp-series-N` in the stylesheet — trimming the ramp
+without the constant hands out `var(--pp-series-11)`, which resolves to nothing and renders black.
+
+14 mutations, **all killed**. Two were worth the round: colouring by drawn position and colouring by
+table rank both look completely reasonable in a diff.
+
+No rules or functions change; push only.

@@ -50,7 +50,15 @@ const EXPECTED = {
      for `192,86,76` written out by hand. */
   'pp-bad-rgb': '192,86,76',
   'pp-warn-ink': '#7A5210',
-  'pp-doc-bg': '#D9E3EF', 'pp-doc-ink': '#33587D'
+  'pp-doc-bg': '#D9E3EF', 'pp-doc-ink': '#33587D',
+  /* The series ramp (v239) — one line per player on the metrics chart. Ten
+     hues, none of them equal to a token above: aliasing --pp-red would put
+     two keys on one hex and the loose-literal scan below reports the hex
+     with its key name, so the duplicate would break it. */
+  'pp-series-1': '#A8262F', 'pp-series-2': '#C1662A', 'pp-series-3': '#8F6B12',
+  'pp-series-4': '#5F7A24', 'pp-series-5': '#2E6B4F', 'pp-series-6': '#1C7C86',
+  'pp-series-7': '#2F5E96', 'pp-series-8': '#4B4B9B', 'pp-series-9': '#7A4189',
+  'pp-series-10': '#9B3168'
 };
 
 /** The stylesheet minus comments and minus the block that DEFINES the

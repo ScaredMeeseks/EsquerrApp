@@ -2429,7 +2429,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 238;
+  const APP_VERSION = 239;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24515,6 +24515,39 @@
 
   function plmDayMs(iso) { return Date.parse(String(iso) + 'T12:00:00'); }
 
+  /** How many hues the series ramp has. Must match --pp-series-N in the
+      palette block; paper-palette.test.js owns the values, this owns the
+      count, and a test pins the two together. */
+  const PLM_SERIES_N = 10;
+
+  /**
+   * The stroke for series `i`, and the legend swatch that has to match it.
+   *
+   * ⚠ A squad is up to twenty-two players and the ramp is ten, so the
+   * eleventh line comes back round to the first hue. It is DASHED on the
+   * second lap, and its swatch hollow rather than filled — so a repeat is
+   * still one glance apart, which a colour alone would not give. Above
+   * twenty the pairs return, and at that point the chart is unreadable for
+   * reasons no palette fixes; the tick boxes are the answer there.
+   */
+  function plmSeries(i) {
+    const n = Number(i);
+    if (!isFinite(n) || n < 0) return { css: '#8C857D', dash: '', lap: 0 };
+    return {
+      css: 'var(--pp-series-' + (n % PLM_SERIES_N + 1) + ')',
+      dash: n >= PLM_SERIES_N ? '5 3' : '',
+      lap: n >= PLM_SERIES_N ? 1 : 0
+    };
+  }
+
+  /** The legend dot beside a player's name, drawn from the same helper as
+      his line so the two cannot disagree. */
+  function plmSwatchHtml(i) {
+    const s = plmSeries(i);
+    return '<span class="plm-sw' + (s.lap ? ' plm-sw-lap' : '') +
+      '" style="' + (s.lap ? 'border-color:' : 'background:') + s.css + '"></span>';
+  }
+
   /**
    * One chart, one to twenty-two lines.
    *
@@ -24522,11 +24555,11 @@
    * selected player. They are the same drawing, which is why there is one
    * function — the rail's chart and the section's cannot drift.
    *
-   * ⚠ EVERY LINE IS THE SAME NEUTRAL. There is no twenty-colour palette in
-   * this design system and inventing one would fight paper-palette.test.js.
-   * Hover is the identification mechanism, which is what was asked for.
+   * A series may carry a colour INDEX (`si`). Lines without one are drawn in
+   * the old neutral, which is what the rail wants: one player, one line, and
+   * a colour there would be a distinction with nothing to distinguish.
    *
-   * @param series [{ uid, label, points:[{date, value}] }]
+   * @param series [{ uid, label, si, points:[{date, value}] }]
    */
   function plmChartHtml(series, unit, geoKey) {
     const G = PLM_GEO[geoKey] || PLM_GEO.rail;
@@ -24559,6 +24592,8 @@
     }).join('');
 
     const lines = series.map(function (s) {
+      // No index means the neutral, which is the rail's single line.
+      const col = plmSeries(s.si == null ? -1 : s.si);
       const pts = s.points.slice().sort(function (a, b) {
         return String(a.date).localeCompare(String(b.date));
       }).map(function (p) {
@@ -24578,8 +24613,8 @@
         return '<circle class="pl-hit" cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
           '" r="9" fill="transparent"' + plHitTip(title, rows) + '></circle>' +
           '<circle cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
-          '" r="3.4" fill="#8C857D" stroke="#F6F4EF" stroke-width="1.2"' +
-          ' style="pointer-events:none"></circle>';
+          '" r="3.4" stroke="#F6F4EF" stroke-width="1.2"' +
+          ' style="pointer-events:none;fill:' + col.css + '"></circle>';
       }).join('');
       /* ⚠ The visible stroke is 1.6px and only receives events ON the
          stroke, which is unhittable in practice — hence the transparent fat
@@ -24589,8 +24624,10 @@
         (pts.length > 1
           ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="12"' +
             ' stroke-linejoin="round" class="plm-line-hit"></path>' +
-            '<path d="' + d + '" fill="none" stroke="#8C857D" stroke-width="1.6"' +
-            ' stroke-linejoin="round" style="pointer-events:none"></path>'
+            '<path d="' + d + '" fill="none" stroke-width="1.6"' +
+            (col.dash ? ' stroke-dasharray="' + col.dash + '"' : '') +
+            ' stroke-linejoin="round" style="pointer-events:none;stroke:' +
+            col.css + '"></path>'
           : '') +
         dots + '</g>';
     }).join('');
@@ -24748,9 +24785,19 @@
           }) || opts[0]).name) + '</span>'
         : '') +
       '</div>';
-    if (!_plmOpen) return head;
+    /* ⚠ ONE container that is always in the DOM, open or shut. Collapsing
+       used to go through renderPage() because the body does not exist while
+       the section is closed, so there was no node for plmRefresh to swap —
+       and rebuilding the page tore down and redrew any player detail that
+       happened to be open, which is exactly what the toggle must not touch.
+       With a wrapper that always exists, expanding is the same in-place
+       replacement as every other metrics control. */
+    const wrap = function (inner) {
+      return '<div class="plm-secwrap" id="plm-secwrap">' + head + inner + '</div>';
+    };
+    if (!_plmOpen) return wrap('');
     if (!opts.length) {
-      return head + '<div class="plm-empty plm-sec-empty">' + t('plm.no_metrics') + '</div>';
+      return wrap('<div class="plm-empty plm-sec-empty">' + t('plm.no_metrics') + '</div>');
     }
 
     let slug = _plmSecMetric;
@@ -24773,6 +24820,17 @@
        the chart because the uids in it simply stop matching. */
     const shown = withData.filter(function (p) { return !_plmOut.has(String(p.id)); });
 
+    /* ⚠ A player's colour is fixed by his position in the WHOLE squad, in id
+       order — not by his position in the drawn set and not by the table's
+       ranking. Both of those move: ticking one player off would recolour
+       everyone below him, and the table sorts by latest value, so a player
+       who gained a kilo would swap colours with the man above him. Neither
+       is a thing a legend is allowed to do. */
+    const si = {};
+    withData.slice().sort(function (a, b) {
+      return String(a.id).localeCompare(String(b.id));
+    }).forEach(function (p, i) { si[String(p.id)] = i; });
+
     let body;
     if (!withData.length) {
       body = '<div class="plm-empty">' + t('plm.none_metric') + '</div>';
@@ -24780,7 +24838,8 @@
       body = '';
     } else {
       body = plmChartHtml(shown.map(function (p) {
-        return { uid: p.id, label: p.name, points: rowsFor[String(p.id)] };
+        return { uid: p.id, label: p.name, si: si[String(p.id)],
+          points: rowsFor[String(p.id)] };
       }), opt ? opt.unit : '', 'page');
     }
 
@@ -24808,7 +24867,13 @@
         const last = rs[rs.length - 1];
         const off = _plmOut.has(String(p.id));
         return '<tr class="plm-row' + (off ? ' plm-off' : '') + '">' +
-          '<td>' + sanitize(p.name) + catBadgeHtmlGlobal(p, catSpan) + '</td>' +
+          /* The swatch IS the legend: the chart has no key of its own, so
+             the colour has to be readable beside the name it belongs to.
+             Drawn even for a player who is off the chart — his row is what
+             he is turned back on from, and a legend that appeared only for
+             the lines already drawn would be no help choosing. */
+          '<td>' + plmSwatchHtml(si[String(p.id)]) +
+            sanitize(p.name) + catBadgeHtmlGlobal(p, catSpan) + '</td>' +
           '<td class="pl-r pl-nums">' + plmNum(last.value) +
             (opt && opt.unit ? ' <span class="plm-unit">' + sanitize(opt.unit) + '</span>' : '') + '</td>' +
           '<td>' + plShortDate(last.date) + '</td>' +
@@ -24819,13 +24884,13 @@
         '</tr>';
       }).join('') + '</tbody></table>';
 
-    return head +
+    return wrap(
       '<div class="plm-sec" id="plm-sec">' +
         '<div class="plm-head"><span class="pl-eyebrow">' +
           sanitize(opt ? opt.name : '') + '</span>' + plmSegs(_plmSecMode, 'sec') + '</div>' +
         '<div class="plm-pickrow">' + picker + '</div>' +
         body + tbl +
-      '</div>';
+      '</div>');
   }
 
   /**
@@ -24844,12 +24909,16 @@
     if (!page) return;
 
     const plmToggle = document.getElementById('plm-toggle');
-    /* The section collapsing DOES go through renderPage: opening it changes
-       how much of the page exists, not just what one block draws. */
+    /* ⚠ Expanding repaints in place like every other metrics control. It
+       used to call renderPage() — the section body does not exist while the
+       section is shut, so there was nothing to swap — and that rebuilt the
+       whole page including any open player detail, which is not what
+       "expand the section below" should do. plmSectionHtml now always emits
+       #plm-secwrap, open or shut, so there is a stable node to replace. */
     if (plmToggle) {
       plmToggle.addEventListener('click', function () {
         _plmOpen = !_plmOpen;
-        renderPage(getSession());
+        plmRefresh();
       });
     }
 
@@ -24957,13 +25026,18 @@
         if (next) rail.outerHTML = next; else rail.remove();
       }
     }
-    const sec = document.getElementById('plm-sec');
+    /* ⚠ The WRAPPER, not #plm-sec. #plm-sec is the open body and is absent
+       while the section is collapsed, so keying off it meant the expand
+       toggle had nothing to replace — which is why it used to re-render the
+       whole page and take the player detail with it. The wrapper is always
+       there, so open, shut and metric-change are one code path. */
+    const sec = document.getElementById('plm-secwrap');
     if (sec) {
       const players = plScopedPlayers();
       const next = plmSectionHtml(players, catSpanOf(players));
-      const wrap = document.createElement('div');
-      wrap.innerHTML = next;
-      const fresh = wrap.querySelector('#plm-sec');
+      const holder = document.createElement('div');
+      holder.innerHTML = next;
+      const fresh = holder.querySelector('#plm-secwrap');
       if (fresh) sec.replaceWith(fresh); else sec.remove();
     }
     bindPlmControls(page);
@@ -25531,8 +25605,10 @@
          rail you were scrolling. Asked of the event instead of the
          element, this survives any redraw. */
       if (e.target.closest && e.target.closest('.pl-chart-box')) return;
-      // Nor a click in the Metrics section — see the note above.
-      if (e.target.closest && e.target.closest('.plm-sec, .plm-sec-head')) return;
+      /* Nor a click in the Metrics section — see the note above. The
+         WRAPPER, so the head, the body and anything later added between
+         them are covered by one clause rather than a growing list. */
+      if (e.target.closest && e.target.closest('.plm-secwrap')) return;
       // Releasing a drag outside the chart still ends in a click here.
       if (_plDragMoved) { _plDragMoved = false; return; }
       _plSel = null; hideTip(); renderPage(getSession());

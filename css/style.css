@@ -137,6 +137,27 @@ a:hover { text-decoration: underline; }
      the fit pair; only Word's blue is new. */
   --pp-doc-bg: #D9E3EF;
   --pp-doc-ink: #33587D;
+  /* The SERIES ramp (v239). The metrics chart draws one line per player and
+     a squad is twenty-two of them, so this is the one place the design
+     system needs colours that mean "a different player" rather than "good"
+     or "bad". Ten hues at even spacing round the wheel, all mid-dark so they
+     read on #FBFAF7 paper, and all deliberately UNEQUAL to any token above:
+     an alias would make two entries claim the same hex in the palette
+     guard's loose-literal scan, and a near-copy of --pp-red would say
+     "danger" on a chart where nothing is wrong.
+     ⚠ Ten for up to twenty-two players, so the eleventh line repeats the
+     first hue — dashed, and its legend swatch hollow, which is what keeps
+     the pair apart. */
+  --pp-series-1: #A8262F;
+  --pp-series-2: #C1662A;
+  --pp-series-3: #8F6B12;
+  --pp-series-4: #5F7A24;
+  --pp-series-5: #2E6B4F;
+  --pp-series-6: #1C7C86;
+  --pp-series-7: #2F5E96;
+  --pp-series-8: #4B4B9B;
+  --pp-series-9: #7A4189;
+  --pp-series-10: #9B3168;
 }
 
 /* ===== Buttons ===== */
@@ -6653,6 +6674,20 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    the row is not hidden, because taking him off the chart is not the same
    as saying he has no numbers. */
 .plm-off { opacity: .42; }
+/* The legend swatch, beside the player's name. The chart carries no key of
+   its own, so this is the only thing that says which line is whose.
+   ⚠ A second-lap player (the eleventh onwards) gets the SAME hue back, so
+   his line is dashed and his swatch hollow — the ring is what tells the two
+   apart, and it has to be drawn from the same helper as the stroke or the
+   legend starts lying. */
+.plm-sw {
+  display: inline-block; width: 10px; height: 10px; margin-right: 7px;
+  vertical-align: baseline; border-radius: 50%;
+  /* border-box so the hollow variant below stays the same 10px as the
+     filled one — a legend whose dots are two sizes reads as two things. */
+  box-sizing: border-box;
+}
+.plm-sw-lap { background: none; border: 2px solid var(--pp-ink-3); }
 .plm-tick {
   width: 22px; height: 22px; border: 1px solid var(--pp-input-line);
   background: none; font: inherit; font-size: 12px; line-height: 1;
