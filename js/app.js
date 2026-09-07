@@ -2429,7 +2429,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 237;
+  const APP_VERSION = 238;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -25287,6 +25287,12 @@
     // at elements that no longer exist.
     _plCharts = [];
     var players = plScopedPlayers();
+    /* ⚠ Still needed HERE, even though plScopedPlayers reads it too: the
+       team chips and the headline below are about the category the page is
+       showing, not about which players it picked. v237 moved the filtering
+       out and took this declaration with it, and `var` is function-scoped —
+       so the two uses further down threw and Plantilla rendered nothing. */
+    var curCat = getCurrentCategory();
 
     var now = new Date();
     var ctx = {

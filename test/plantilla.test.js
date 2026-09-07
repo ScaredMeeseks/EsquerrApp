@@ -468,3 +468,110 @@ describe('the player rail has no close button of its own', () => {
     assert.strictEqual(sizeOf(rail), '84');
   });
 });
+
+/* ── The page actually runs ───────────────────────────────────────────
+ *
+ * Every other assertion in this file reads renderStaffRoster as TEXT.
+ * That is how v237 shipped a Plantilla that painted nothing: lifting the
+ * filtering out into plScopedPlayers took `var curCat` with it, `var` is
+ * function-scoped, and the two uses left behind threw a ReferenceError
+ * before the function could return a single character. 3080 green
+ * assertions, none of which had ever CALLED it.
+ *
+ * So call it. Every collaborator is a stub and nothing else is — an
+ * identifier the function expects to have declared for itself is not in
+ * the parameter list, so losing one throws here instead of on a phone.
+ */
+describe('renderStaffRoster — it runs', () => {
+  const CODE = grab('  function plScopedPlayers() {',
+      "  /** The squad's session series");
+
+  /* Deliberately NOT parameters: curCat, players, rows, ctx and the rest
+     of the function's own locals. Adding one to this list to make a
+     failure go away would delete the only thing this test does. */
+  const STUBS = {
+    getUsers: () => [
+      {id: 'p1', roles: ['player'], category: 'amateur', team: 'A'},
+      {id: 'p2', roles: ['player'], category: 'amateur', team: 'B'},
+      /* ⚠ In squad B, the same squad the scoping test asks for. With this
+         coach in A the letter filter excluded him on its own, so dropping
+         the player-role filter altogether changed nothing and the test
+         passed for the wrong reason — a mutation caught exactly that. */
+      {id: 's1', roles: ['coach'], category: 'amateur', team: 'B'},
+      /* And one in another category, so the category filter has something
+         of its own to exclude. */
+      {id: 'p9', roles: ['player'], category: 'cadet', team: 'B'}
+    ],
+    getCurrentCategory: () => 'amateur',
+    rosterTeamFilter: 'all',
+    fitnessContext: () => ({}),
+    matchStatsContext: () => ({}),
+    trainingOnly: (x) => x,
+    getTrainings: () => [],
+    getInjuries: () => [],
+    localStorage: {getItem: () => null},
+    localDateStr: () => '2026-09-07',
+    seasonStartStr: () => '2026-07-01',
+    plBuildRows: (players) => players.map((p, i) => ({
+      id: p.id, ready: 70 + i, status: 'fit', acwr: 1.1,
+      att: {yes: 3, late: 1, no: 0, injured: 0}
+    })),
+    plTeamWeeks: () => [{ratio: 1.12}],
+    plTeamSessions: () => [{}, {}],
+    getTeamLetters: () => ['A', 'B'],
+    t: (k) => k,
+    CATEGORY_LABELS: {amateur: 'Amateur'},
+    sanitize: String,
+    plDonutLegendHtml: () => '<legend>',
+    plDonutHtml: () => '<donut>',
+    plChartBox: () => '<box>',
+    plRpeChartHtml: () => '', plWeekChartHtml: () => '', plAcwrChartHtml: () => '',
+    plRosterTableHtml: () => '<table>',
+    catSpanOf: () => 1,
+    plmSectionHtml: () => '<plm>',
+    plRailHtml: () => '<rail>',
+    _plCharts: [], _plSel: null,
+    Math, JSON, Object, String, Number, Date
+  };
+
+  const run = (over) => {
+    const api = Object.assign({}, STUBS, over || {});
+    // eslint-disable-next-line no-new-func
+    return new Function(...Object.keys(api),
+        CODE + '\nreturn renderStaffRoster();')(...Object.values(api));
+  };
+
+  it('returns the page instead of throwing', () => {
+    const html = run();
+    assert.ok(html.includes('id="pl-page"'), 'no page came back');
+    assert.ok(html.includes('<table>'), 'the roster table is missing');
+    assert.ok(html.includes('<plm>'), 'the metrics section is missing');
+  });
+
+  it('still knows the category AFTER the filtering moved out', () => {
+    /* The exact regression. plScopedPlayers reads the category to pick
+       players; the headline and the team chips read it to say which
+       squad is on screen. Two uses, one of which was left undeclared. */
+    const html = run();
+    assert.ok(html.includes('Amateur'),
+        'the headline lost the category label');
+    assert.ok(html.includes('data-roster-filter="A"'),
+        'the team chips lost the category they enumerate letters for');
+  });
+
+  it('renders the rail when a player is selected', () => {
+    const html = run({_plSel: 'p1'});
+    assert.ok(html.includes('<rail>'), 'no rail for the selected player');
+    assert.ok(html.includes('pl-page-sel'), 'the page did not go into rail layout');
+  });
+
+  it('scopes the roster by category and by letter', () => {
+    /* plScopedPlayers is the single definition of "who is on screen", so
+       it is worth one direct check that both filters still bite. */
+    let seen = null;
+    run({plBuildRows: (p) => { seen = p; return []; },
+      rosterTeamFilter: 'B'});
+    assert.deepStrictEqual(seen.map((u) => u.id), ['p2'],
+        'the letter filter or the player-role filter stopped working');
+  });
+});

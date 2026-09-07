@@ -9672,3 +9672,39 @@ of 8 aimed at exactly the four fixes — **all 8 killed, no survivors.** Verifie
 well as by assertion: the sheet was driven with `getCurrentCategory() => ''` and
 `rosterTeamFilter: 'all'` — the reported broken case — and it offered `["Pes · kg", "Alçada · cm",
 "Nova mètrica…"]`.
+
+### 2026-09-07 — Plantilla painted nothing (v238)
+
+**A one-line regression in v237, and the reason 3080 tests did not see it.**
+
+v237's third fix lifted the roster's filtering out of `renderStaffRoster` into a new
+`plScopedPlayers()`, so `plmRefresh()` could rebuild the metrics section against the same list. The
+extraction moved `var curCat = getCurrentCategory();` along with the filter that used it — but two
+things further down `renderStaffRoster` still read `curCat`: `getTeamLetters(curCat)` for the team
+chips, and the headline. `var` is function-scoped, so those became a **ReferenceError thrown before
+the function returned a single character**. Plantilla rendered nothing at all.
+
+`curCat` is declared in both places now, with a note saying why the duplication is correct:
+`plScopedPlayers` reads the category to decide *who is on screen*, `renderStaffRoster` reads it to
+say *which squad the page is showing*. Same value, two questions.
+
+⚠ **The real failure is the test suite, not the missing line.** Every one of this file's 30
+assertions about Plantilla read `renderStaffRoster` as **text** — `grab()` the source, regex it,
+assert on the string. Not one had ever *called* it, so a function that throws on its fifth line
+scored exactly as green as a working one. `node --check` cannot see it either: it is valid syntax.
+
+New `describe('renderStaffRoster — it runs')` in `test/plantilla.test.js` executes the real function
+over stubs. The discipline that makes it work is in the stub list: **every collaborator is stubbed
+and nothing else is**, so any identifier the function is supposed to declare for itself is absent
+from the parameter list and throws here instead of on a phone. A comment says so, because the
+tempting fix for a future failure is to add the name to the stubs, which would delete the only thing
+the test does.
+
+Confirmed by putting the bug back: 4 failing, `ReferenceError: curCat is not defined`.
+
+**Tests.** Unit 3080 → **3084**. Nine mutations, one survivor, fixed: the roster-scoping test had a
+non-player fixture in squad A while the test filtered to squad B, so the *letter* filter excluded
+him and deleting the player-role filter changed nothing. The coach is in B now, and there is a
+cadet in B too so the category filter also has something of its own to exclude. 9/9 after.
+
+No rules or functions change; push only.
