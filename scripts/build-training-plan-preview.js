@@ -194,7 +194,10 @@ function sessionWindow(row) {
    calls stdPlan, planMaterial, resolvePetos and _stpDot — all of which live in
    the region above it. */
 const code = grab("  const STP_GK_FILL = '#f5c842';", '  // #endregion Session plan') +
-  grab('  function buildDetailBar(tr, players, locked) {', '  // ── Team generation ──') +
+  /* From the COLOUR TABLE, not from the function: buildDetailBar reads
+     STD_AVAIL_COLORS, which is declared just above it (v243), and slicing
+     under the declaration left the bar throwing a ReferenceError. */
+  grab('  /* The five attendance colours', '  // ── Team generation ──') +
   grab('  function renderStdTeamsBlock(tr, squad, locked) {', '  let rosterTeamFilter');
 
 const R = new Function(

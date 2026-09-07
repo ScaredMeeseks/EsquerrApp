@@ -9880,3 +9880,79 @@ else in the suite that would notice if one moved alone. 9 mutations, all killed,
 dimensions and the dropped narrow-screen rule.
 
 No rules or functions change; push only.
+
+### 2026-09-07 — The player's training page, rebuilt on the coach's (v243)
+
+Opening a training gave a player the **old `.detail-*` card layout**: a green badge, a title, four
+cards (Time / Dia / Lloc / Attendance), and — under them — **the coach's tactical boards**, every
+Presión and Salida drill with its linked teams. The coach's page had been the `.std-` paper design
+since v188. Two designs for one screen, and the wrong one carried the more sensitive content.
+
+It is now the same page as `renderStaffTrainingDetail`: same topbar, same hero, same attendance bar,
+same table, same classes. What differs is **what is on it** — the title, the forecast, and who is
+coming, and nothing else.
+
+Everything the coach's page carries beyond those three is gone, each for its own reason: the planned
+RPE, the load in UA and the duration are his **dosing decision**; the plan and material rail is his
+**preparation**; the team generator is a split he **has not announced**; and the readiness, A/C and
+medical columns are a **judgement about a team-mate's body** that no player should read off another
+player's row. The tactical boards went with them.
+
+⚠ **Nothing on the page writes.** There is no handler to bind, so a `firestore-sync` can rebuild it
+under the player at any moment. Availability is still answered on Inici and the calendar.
+
+The squad comes from `calledPlayers(tr, getUsers())` — the same helper the coach's page uses, not
+"everyone in the category". Two pages that built the list differently would disagree about the same
+session, and the player's copy is the one nobody would check. The answer shown is
+`getEffectiveAnswer()`, staff override included, because that is what the bar above it counts; a
+table disagreeing with the bar beside it reads as a bug in one of the two.
+
+`STD_AVAIL_COLORS` is new: the five desaturated attendance colours, previously a literal list inside
+`buildDetailBar`. `stdAvailDot()` and the bar now read the one table, so a row and its segment cannot
+drift. They stay in JS rather than the stylesheet because both paint them inline, and a copy in CSS
+would be five loose literals for `paper-palette.test.js` to find.
+⚠ `scripts/build-training-plan-preview.js` sliced `buildDetailBar` **from the function**, which is
+now below the declaration — the slice had to widen or the coach's preview threw a ReferenceError.
+
+`buildAssistanceCircle()` is deleted: its only caller was the old page. The `.assistance-circle`
+CLASS is still live — My Stats and the player actions sheet build that markup themselves.
+
+**Three geometry defects, none of them visible in a string.** Found by rendering
+`player-training-preview.html` in headless Chrome at 1440 and 390 (`Emulation.setDeviceMetricsOverride`,
+not `--window-size`):
+
+1. **The column had no rail to share the width with**, so at 1440 the three-column table stretched to
+   1376px and the answer sat ~840px from the position discs. New `.std-main-solo` caps it at 960px —
+   not a round number, but exactly what `flex:2` against the rail's `flex:1` gives the coach's column,
+   so both pages set the same measure.
+2. ⚠ **`.std-body` is `align-items:flex-start`**, so once it stacks below 900px the cross axis is
+   shrink-TO-FIT, and `.std-main` sized itself to the table's `min-width:560px`. At 390px the document
+   was 592px wide and the *whole page* slid sideways, hero and all. `.std-rail` has said `width:100%`
+   since v188; `.std-main` was simply missed. **This was live on the coach's page too** and is fixed
+   for both. `.table-wrap`'s `overflow-x:auto` had nothing to scroll until now.
+3. **The forecast is `flex:none` and `nowrap`** — 392px of unshrinkable strip in a 318px hero row, the
+   second half of the sideways scroll. Below 900px it now drops under the title, full width and
+   left-aligned, and wraps between icon, wind and temperature rather than through "6.4 m/s".
+   `.detail-hero .std-wx` is more specific and keeps the fixture page's strip centred.
+
+`.std-main-solo .std-table { min-width:0 }` undoes the coach's 560px floor on this page: three columns
+do not need it, and 560px pushed **Resposta** behind a horizontal scroll — the one thing a player
+opened the page for.
+
+**Tests.** Unit 3128 → **3160**. New `test/training-detail.test.js` (29): it **calls**
+`renderTrainingDetail` over stubs rather than reading it, with `calledPlayers`, `getEffectiveAnswer`,
+`buildDetailBar` and `stdAvailDot` sliced in real; asserts the shell, the forecast's three outcomes,
+the squad list and its order, the bar and the table agreeing count for count, and — six tests — that
+every leak is absent from the OUTPUT, not merely from the source. Four more pin the geometry rules,
+which read like tidying and are not. 18 mutations, all killed.
+⚠ `test/layout.test.js` had `appSrc.indexOf('<table class="std-table">')` searching the WHOLE file to
+check the coach's + Jugador button sits above his table. The player's page now carries the same class
+~10,000 lines earlier, so `indexOf` compared his button against her table and called the order wrong.
+Neither page had moved. It is scoped to `renderStaffTrainingDetail` now.
+
+New i18n `std.th_answer` (ca/es/en) — not `std.th_player_answer`, which reads "Resposta jugador"
+because it sits beside the staff's override, and there is no override column here.
+New `scripts/build-player-training-preview.js`; `player-training-preview.html` added to `_config.yml`
+(⚠ that list is BY NAME — `build-www.js` catches previews by pattern, Pages does not).
+
+No rules or functions change; push only.

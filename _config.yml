@@ -103,6 +103,15 @@ exclude:
   # once. A new preview needs a line here or it is public.
   # Regenerate with: node scripts/build-medical-preview.js . medical-preview.html
   - medical-preview.html
+  # And for the v243 player training page. Unlike the others in this list the
+  # WHOLE page is the app — renderTrainingDetail() is sliced out and called,
+  # not approximated — which is what makes it worth keeping: the assertions in
+  # test/training-detail.test.js read a string, and a string cannot show that
+  # the forecast overflowed the hero at 390px. Look at it at BOTH 1440px and
+  # 390px; the media queries key off the viewport. Off Pages for the usual two
+  # reasons: the whole stylesheet inlined, and fourteen invented player names.
+  # Regenerate with: node scripts/build-player-training-preview.js . player-training-preview.html
+  - player-training-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

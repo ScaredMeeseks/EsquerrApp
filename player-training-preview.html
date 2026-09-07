@@ -1,3 +1,11 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EsquerrApp — Entrenament, vista jugador (v243)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 button, input, select, textarea { font-family: inherit; }
@@ -9143,3 +9151,114 @@ a.ini-ev-name, .ini-ev-name-link {
   .md2-hrow-period { width: auto; }
   .md2-hrow-sev { width: auto; }
 }
+
+</style>
+<style>
+/* Mockup shell only — NOT part of the app. The real page renders inside
+   #dashboard-content within the dashboard sidebar layout; this stands in for
+   it, including the 2rem padding .std-page is built to negate. */
+body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-serif; }
+.mock-note {
+  background:#2D2926; color:#e0ddd9; padding:.7rem 1.2rem;
+  font-size:.82rem; line-height:1.5;
+}
+.mock-note b { color:#FFD662; }
+.mock-shell { padding:2rem; background:#FBFAF7; }
+</style>
+</head>
+<body>
+<div class="mock-note">
+  <b>EsquerrApp v243 — the training page as a PLAYER sees it.</b>
+  The whole page is rendered by the app's real <code>renderTrainingDetail()</code>
+  and its real CSS; only the surrounding grey shell is a stand-in for the
+  dashboard. Three things and no more: the title, the forecast, and who is
+  coming. Generated 2026-09-07.
+</div>
+<div class="mock-shell">
+
+      <div class="std-page">
+      <div class="std-topbar">
+        <button class="std-back detail-back" data-back="player-home">← Enrere</button>
+        <div class="std-topbar-r">
+          <span class="std-eyebrow">Entrenament</span>
+        </div>
+      </div>
+      <div class="std-body">
+      <div class="std-main std-main-solo">
+        <div class="std-hero">
+          <div class="std-hero-row">
+            <h1 class="std-title">Pressió alta i sortida de pilota</h1>
+            <div class="std-wx"><span class="std-wx-i" title="Pluja">🌧️</span><span class="std-wx-b" title="Vent"><span class="std-wx-i">💨</span>Moderat · 6.4 m/s</span><span class="std-wx-b std-wx-t">14°</span><span class="std-wx-rain">Pluja durant un 45% de la sessió</span></div>
+          </div>
+          <div class="std-meta">dimarts, 1 de setembre · 19:30 - 21:00 · <a class="std-place" href="https://maps.example/x" target="_blank" rel="noopener">Camp Municipal de l'Esquerra</a></div>
+        </div>
+        <div class="std-attbar"><div class="std-bar"><span style="width:57.14285714285714%;background:#7CA982"></span><span style="width:14.285714285714285%;background:#E3B341"></span><span style="width:14.285714285714285%;background:#A8A29B"></span><span style="width:14.285714285714285%;background:#C0564C"></span></div><div class="std-bar-key"><span class="std-key"><span class="std-key-sq" style="background:#7CA982"></span>Sí 8</span><span class="std-key"><span class="std-key-sq" style="background:#E3B341"></span>Tard 2</span><span class="std-key"><span class="std-key-sq" style="background:#A8A29B"></span>No 2</span><span class="std-key"><span class="std-key-sq" style="background:#C0564C"></span>Lesionat 2</span></div></div>
+        <div class="std-sec-head">
+          <span class="std-eyebrow">Assistència de jugadors</span>
+        </div>
+        <div class="table-wrap"><table class="std-table">
+          <thead><tr><th>Jugador</th><th>Pos</th><th class="r">Resposta</th></tr></thead>
+          <tbody><tr>
+        <td class="std-td-name">Nil Bosch<span class="std-team-tag">B</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#f9a825">GK</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#E3B341"></span>Tard</span></td>
+      </tr><tr>
+        <td class="std-td-name">Pau Roca<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#f9a825">GK</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Èric Sanz<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#1e88e5">CB</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Marc Puig<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#1e88e5">CB</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Roger Pons<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#1e88e5">CB</span><span class="conv-pos-circle" style="background:#43a047">DM</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Iván Torres<span class="std-team-tag">B</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#1e88e5">LB</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#A8A29B"></span>No</span></td>
+      </tr><tr>
+        <td class="std-td-name">Adrià Camps<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#1e88e5">RB</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Joan Serra<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#43a047">DM</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#C0564C"></span>Lesionat</span></td>
+      </tr><tr>
+        <td class="std-td-name">Ferran Solé<span class="std-team-tag">B</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#43a047">OM</span><span class="conv-pos-circle" style="background:#e53935">RW</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#C0564C"></span>Lesionat</span></td>
+      </tr><tr>
+        <td class="std-td-name">Guillem Roig<span class="std-team-tag">B</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#43a047">OM</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#E3B341"></span>Tard</span></td>
+      </tr><tr>
+        <td class="std-td-name">Pol Ferrer<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#e53935">LW</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Biel Mas<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#e53935">RW</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Aleix Vila<span class="std-team-tag">A</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#e53935">ST</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#7CA982"></span>Sí</span></td>
+      </tr><tr>
+        <td class="std-td-name">Òscar Ruiz<span class="std-team-tag">B</span></td>
+        <td><span class="conv-pos-circles"><span class="conv-pos-circle" style="background:#e53935">ST</span></span></td>
+        <td class="r"><span class="std-ans"><span class="std-key-sq" style="background:#A8A29B"></span>No</span></td>
+      </tr></tbody>
+        </table></div>
+      </div>
+      </div>
+      </div>
+</div>
+</body>
+</html>

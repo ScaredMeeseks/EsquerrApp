@@ -962,6 +962,11 @@
     'std.th_ready':      { ca:'Forma Física', es:'Forma Física', en:'Fitness' },
     'std.th_ac_ratio':   { ca:'A/C', es:'A/C', en:'A/C Ratio' },
     'std.th_player_answer':  { ca:'Resposta jugador', es:'Respuesta jugador', en:'Player Answer' },
+    /* The player page's single answer column. Not `std.th_player_answer`:
+       that one is headed "Resposta jugador" because it sits beside the
+       staff's override, and there is no override column here to tell it
+       apart from. */
+    'std.th_answer':     { ca:'Resposta', es:'Respuesta', en:'Answer' },
     'std.th_staff_editable': { ca:'Staff (editable)', es:'Staff (editable)', en:'Staff (editable)' },
     'std.planning':          { ca:'Planificació entrenament', es:'Planificación entrenamiento', en:'Training Plan' },
     'std.general_tag':       { ca:'General', es:'General', en:'General' },
@@ -2430,7 +2435,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 242;
+  const APP_VERSION = 243;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -13102,65 +13107,96 @@
     '</div>';
   }
 
+  /**
+   * The session, as a PLAYER sees it.
+   *
+   * The same page as the coach's — `.std-` paper, the same topbar, hero,
+   * attendance bar and table — because a club has one training page and two
+   * audiences, not two designs. What differs is what is ON it. A player gets
+   * three things: the title, the forecast, and who is coming.
+   *
+   * Everything else that lives on `renderStaffTrainingDetail` is deliberately
+   * absent, and each for its own reason: the planned RPE, the load in UA and
+   * the duration are the coach's dosing decision; the plan and material rail
+   * is his preparation; the team generator is a split he has not announced
+   * yet; and the readiness, ACWR and medical columns are a judgement about a
+   * team-mate's body that no player should be reading off another's row. The
+   * tactical boards went with them — they were on the old version of this
+   * page, and a player scrolling the coach's Presión drills the night before
+   * is exactly what "only the title, weather and attendance" rules out.
+   *
+   * ⚠ Nothing here writes. There is no handler to bind, and a firestore sync
+   * may rebuild the page under the player at any moment with nothing to lose.
+   * Availability is answered on Inici and the calendar, not on this page.
+   */
   function renderTrainingDetail() {
     const training = getTrainings();
     const tr = training.find(x => String(x.id) === String(detailTrainingId));
-    if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>Training not found</p></div>';
+    if (!tr) return '<div class="empty-state"><div class="empty-icon">🏋️</div><p>' + t('training.not_found') + '</p></div>';
+
+    const isAct = isActivity(tr);
+    const heroTitle = sanitize(activityTitleOf(tr, t(isAct ? 'cal.activity' : 'cal.training')));
     const dateFormatted = tr.date ? tDateLong(tr.date) : '—';
-    const assistHtml = tr.assistance != null ? buildAssistanceCircle(tr.assistance) : '';
+
+    /* The squad is DERIVED from the session — its teams, plus guests, minus
+       exclusions — through the same helper the coach's page uses. Not
+       "everyone in the category": if the two pages built the list differently
+       they would disagree about the same session, and the player's copy is
+       the one nobody would check. */
+    const players = calledPlayers(tr, getUsers());
+    const catSpan = catSpanOf(players);
+    const locked = isTrainingLocked(tr);
+    const ctx = availContext();
+    const labels = { yes: t('avail.yes'), late: t('avail.late'), no: t('avail.no'), injured: t('avail.injured'), na: t('avail.na') };
+
+    /* Position first, then name — the order a squad list reads in, and the
+       same ranking the roster and the convocatòria sort by. The coach's table
+       keeps roster order because he edits it; this one is only read. */
+    const playerRows = players.slice().sort(function (a, b) {
+      return (posRankGlobal(a) - posRankGlobal(b)) ||
+        String(a.name || '').localeCompare(String(b.name || ''));
+    }).map(function (p) {
+      /* getEffectiveAnswer, NOT the raw answer: it is what the bar above
+         counts, and a table disagreeing with the bar beside it would be read
+         as a bug in one of the two. The staff override wins here for the same
+         reason it wins there — it is the answer that stands. */
+      const ans = getEffectiveAnswer(p.id, tr, locked, ctx);
+      const key = labels[ans] ? ans : 'na';
+      return `<tr>
+        <td class="std-td-name">${sanitize(p.name)}${catBadgeHtmlGlobal(p, catSpan)}${p.team ? `<span class="std-team-tag">${sanitize(p.team)}</span>` : ''}</td>
+        <td><span class="conv-pos-circles">${posCirclesHtmlGlobal(p)}</span></td>
+        <td class="r"><span class="std-ans">${stdAvailDot(key)}${sanitize(labels[key])}</span></td>
+      </tr>`;
+    }).join('');
+
     return `
-      <button class="btn btn-outline btn-small detail-back" data-back="${backTarget('player-home')}">${t('btn.back')}</button>
-      <div class="detail-hero detail-hero-training">
-        <div class="detail-hero-badge"><span class="badge badge-green" style="font-size:.9rem;padding:.3rem .8rem;">${t('training.badge')}</span></div>
-        <h2 class="detail-title">${sanitize(tr.focus)}</h2>
-        <div class="detail-subtitle">${dateFormatted}</div>
+      <div class="std-page">
+      <div class="std-topbar">
+        <button class="std-back detail-back" data-back="${backTarget('player-home')}">${t('btn.back')}</button>
+        <div class="std-topbar-r">
+          <span class="std-eyebrow">${t(isAct ? 'cal.activity' : 'training.badge')}</span>
+        </div>
       </div>
-      <div class="detail-grid">
-        <div class="detail-card"><div class="detail-card-label">Time</div><div class="detail-card-value">${sanitize(tr.time || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">${t('training.th_day')}</div><div class="detail-card-value">${tr.date ? tDay(new Date(tr.date + 'T12:00:00').getDay()) : sanitize(tr.day || '—')}</div></div>
-        <div class="detail-card"><div class="detail-card-label">${t('training.th_location')}</div><div class="detail-card-value">${locationHtml(tr)}</div></div>
-        <div class="detail-card"><div class="detail-card-label">Attendance</div><div class="detail-card-value">${assistHtml || '—'}</div></div>
+      <div class="std-body">
+      <div class="std-main std-main-solo">
+        <div class="std-hero">
+          <div class="std-hero-row">
+            <h1 class="std-title">${heroTitle}</h1>
+            ${isAct ? '' : sessionWeatherHtml(tr, 'training')}
+          </div>
+          <div class="std-meta">${dateFormatted} · ${sanitize(tr.time || '—')} · ${locationHtml(tr)}</div>
+        </div>
+        <div class="std-attbar">${buildDetailBar(tr, players, locked)}</div>
+        <div class="std-sec-head">
+          <span class="std-eyebrow">${t('std.player_attendance')}</span>
+        </div>
+        <div class="table-wrap"><table class="std-table">
+          <thead><tr><th>${t('std.th_player')}</th><th>${t('std.th_pos')}</th><th class="r">${t('std.th_answer')}</th></tr></thead>
+          <tbody>${playerRows}</tbody>
+        </table></div>
       </div>
-      ${(() => {
-        // An activity has no session plan. Same rule as the staff page.
-        if (isActivity(tr)) return '';
-        const trainingBoards = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
-        const boards = trainingBoards[tr.date] || [];
-        if (!boards.length) return '';
-        const tagOrder = ['Presión', 'Salida', 'Estrategia'];
-        const grouped = {};
-        boards.forEach(b => { const tg = b.tag || ''; if (!grouped[tg]) grouped[tg] = []; grouped[tg].push(b); });
-        const orderedTags = [];
-        tagOrder.forEach(tg => { if (grouped[tg]) orderedTags.push(tg); });
-        Object.keys(grouped).forEach(tg => { if (!orderedTags.includes(tg)) orderedTags.push(tg); });
-        return '<div class="card"><div class="card-title">Tactical Boards</div><div class="detail-boards-panel">' +
-          orderedTags.map(tag => {
-            const tagTitle = tag || 'General';
-            return '<div class="detail-board-group"><div class="detail-board-group-title">' + sanitize(tagTitle) + '</div>' +
-              grouped[tag].map(b => {
-                const boardHtml = tbRoBoardHtml(b, 'ro-ptd-');
-                let teamsBlock = '';
-                if (b.linkedTeams && b.linkedTeams.length) {
-                  // Flattened across every linked team: a snapshot split into
-                  // two cards is still one squad, and deciding per card would
-                  // badge team 1 and not team 2.
-                  const ltSpan = catSpanOf(b.linkedTeams.reduce(
-                      (acc, t2) => acc.concat(t2.players || []), []));
-                  teamsBlock = '<div class="tb-linked-teams">' +
-                    b.linkedTeams.map((tm, ti) => {
-                      const rows = tm.players.map(p => {
-                        const posArr = (p.position || '').split(',').map(s => s.trim()).filter(Boolean);
-                        const posHtml = posArr.length ? posArr.map(pos => '<span class="pos-circle pos-' + pos + '">' + pos + '</span>').join('') : '';
-                        const teamC = p.team ? '<span class="conv-team-circle">' + sanitize(p.team) + '</span>' : '';
-                        return '<div class="tb-lt-player">' + posHtml + ' <span>' + sanitize(p.name) + '</span>' + catBadgeHtmlGlobal(p, ltSpan) + teamC + '</div>';
-                      }).join('');
-                      return '<div class="tb-lt-team"><div class="tb-lt-team-title">Equip ' + (ti + 1) + ' <span class="tg-team-count">' + tm.players.length + '</span></div>' + rows + '</div>';
-                    }).join('') + '</div>';
-                }
-                return boardHtml + teamsBlock;
-              }).join('') + '</div>';
-          }).join('') + '</div></div>';
-      })()}`;
+      </div>
+      </div>`;
   }
 
   // getSeasonWeek → utils.js
@@ -23209,6 +23245,21 @@
       </div>`;
   }
 
+  /* The five attendance colours, in the one place that owns them.
+     Desaturated on purpose: a 6px bar and a 7px square in a page made of
+     hairlines must not shout, which is why these are NOT the --pp-ok /
+     --pp-warn / --pp-bad the pills use.
+
+     They live in JS rather than in style.css because they are painted
+     inline — a width and a colour computed per segment — and a second copy
+     in the stylesheet would be five loose literals for the palette guard to
+     find and two places to change the legend. Both the bar and the player
+     page's answer column read them from here. */
+  const STD_AVAIL_COLORS = {
+    yes: '#7CA982', late: '#E3B341', no: '#A8A29B',
+    injured: '#C0564C', na: '#D8D4CE'
+  };
+
   /**
    * The stacked attendance bar, and its legend.
    *
@@ -23225,11 +23276,9 @@
       const v = getEffectiveAnswer(p.id, tr, locked, ctx);
       n[n[v] === undefined ? 'na' : v]++;
     });
-    const segs = [
-      { k: 'yes', c: '#7CA982' }, { k: 'late', c: '#E3B341' },
-      { k: 'no', c: '#A8A29B' }, { k: 'injured', c: '#C0564C' },
-      { k: 'na', c: '#D8D4CE' }
-    ].filter(function (s) { return n[s.k]; });
+    const segs = ['yes', 'late', 'no', 'injured', 'na']
+      .map(function (k) { return { k: k, c: STD_AVAIL_COLORS[k] }; })
+      .filter(function (s) { return n[s.k]; });
     return '<div class="std-bar">' +
       segs.map(function (s) {
         return '<span style="width:' + ((n[s.k] / total) * 100) +
@@ -23240,6 +23289,13 @@
         return '<span class="std-key"><span class="std-key-sq" style="background:' +
           s.c + '"></span>' + sanitize(t('avail.' + s.k)) + ' ' + n[s.k] + '</span>';
       }).join('') + '</div>';
+  }
+
+  /** One answer, as the legend's square. Same colour as its bar segment,
+   *  from the same table, so a row and the bar above it cannot drift. */
+  function stdAvailDot(k) {
+    return '<span class="std-key-sq" style="background:' +
+      (STD_AVAIL_COLORS[k] || STD_AVAIL_COLORS.na) + '"></span>';
   }
 
   // ── Team generation ──
@@ -30698,23 +30754,12 @@
     return h + ' vs ' + a;
   }
 
-  function buildAssistanceCircle(pct) {
-    const size = 40;
-    const stroke = 5;
-    const radius = (size - stroke) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (pct / 100) * circumference;
-    const color = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--accent)' : 'var(--danger)';
-    return `<div class="assistance-circle" title="${pct}%">
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="var(--border)" stroke-width="${stroke}"/>
-        <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}"
-          stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
-          style="--circ:${circumference}" stroke-linecap="round" transform="rotate(-90 ${size/2} ${size/2})"/>
-      </svg>
-      <span class="assistance-pct">${pct}%</span>
-    </div>`;
-  }
+  /* buildAssistanceCircle() lived here. Its only caller was the old player
+     training page, which drew `tr.assistance` — a stored percentage — as a
+     40px donut. The page is now the coach's `.std-` layout and counts the
+     squad's live answers instead, so the helper had no callers left. The
+     `.assistance-circle` CLASS is still very much alive: My Stats and the
+     player actions sheet build that markup themselves. */
 
   /**
    * @param {string} trainingDate

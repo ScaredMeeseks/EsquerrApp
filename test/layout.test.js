@@ -315,8 +315,16 @@ describe('training detail — the remove button', () => {
   });
 
   it('the Add button sits above the table it acts on', () => {
-    const add = appSrc.indexOf('id="std-add-player"');
-    const table = appSrc.indexOf('<table class="std-table">');
+    /* Scoped to renderStaffTrainingDetail. Searching the whole file broke in
+       v243, when the player's page picked up the same `.std-table` some
+       10,000 lines EARLIER — `indexOf` then compared the coach's button
+       against the player's table and called the order wrong. Neither page
+       had moved. */
+    const from = appSrc.indexOf('  function renderStaffTrainingDetail');
+    const page = appSrc.slice(from, appSrc.indexOf('  function buildDetailBar', from));
+    assert.notStrictEqual(from, -1, 'the coach page is not where it was');
+    const add = page.indexOf('id="std-add-player"');
+    const table = page.indexOf('<table class="std-table">');
     assert.ok(add !== -1 && table !== -1 && add < table,
         'in a space-between header it landed at the far right edge, ' +
         'reading as unrelated to the list below it');
