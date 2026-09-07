@@ -1,193 +1,166 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-05._
+_Rolling document, overwritten each session. Last updated: 2026-09-07._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 233** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 242** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **2947** — `cd test && npm run test:unit` (~10 s), all passing |
-| Rules tests | 170 — **not re-run since v231**; `firestore.rules` has not been touched since |
-| Functions tests | 71 — **not re-run this session**; `functions/` logic was not touched |
+| Unit tests | **3128** — `cd test && npm run test:unit` (~12 s), all passing |
+| Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
+| Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
 Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
 
-`firestore.rules` was changed and **deployed at v231** (`.\deploy.ps1 rules`, released to
-`esquerrapp`) — `phone` and `agent` joined the staff allowlist on `users/{uid}`. Rules went out
-BEFORE that frontend push, because the other order leaves a window where the new input is on screen
-and every save it makes is refused. Nothing since v231 has touched rules, storage rules or any
-deployed function; the only edit under `functions/` is the version constant in `check-deploy.js`, a
-diagnostic script. The frontend ships by pushing `main`.
+**Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
+session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
+collection). Both went out BEFORE the matching frontend push, because the other order leaves a
+window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v242 changed
+neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
-⚠ **Not yet driven by hand.** The owner is testing v230–v233 after the deploys. Two paths are worth
-clicking first:
-- **Clearing an attendance answer** (tapping the chosen pill a second time) — it deletes both the
-  new `uid_sessionId` record and the legacy `uid_date` one, and it is the branch with the least
-  coverage upstream of the v230 rebuild.
-- **Setting a profile photo** (v232) — it is downscaled to 256px before upload now, and a FAILED
-  upload must show the "photo not uploaded" toast and store nothing at all.
+⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
+real app. Worth trying first, in this order:
 
----
-
-## v233. The face on Registracions, at the size of the row.
-
-`.reg2-td-who` was two block lines with a 26px avatar inline inside the first, so the face could
-only ever be as tall as ONE of them. It is a flex row now: the face beside a column holding the
-name and the email, at 40px — most of the row's height.
-
-⚠ **Flex is safe in that cell and is STILL not safe in `.pl-td-name`.** Nothing in the Registracions
-cell depends on `catBadgeHtmlGlobal`'s `margin-left`, which a flex container collapses; the
-Plantilla name cell does, and it is one line anyway. `registrations.test.js` asserts the Plantilla
-cell is not made flex, so nobody "tidies" the two into agreement later.
-
-⚠ `avatarHtmlGlobal(u, cls, extra)` takes the size modifier as a THIRD argument. Appending it to
-`cls` would produce `pp-av pp-av-lg pp-av pp-av-lg-ph` — the placeholder suffix is derived from
-`cls`. Row height went 44px → ~62px, accepted deliberately.
-
-## v232. The 2 MB profile photo that could stop a club syncing.
-
-Parking-lot 12b, found while adding faces in v231. Both upload paths fell back to a `FileReader`
-data URI of up to 2 MB when Storage threw, and `setSession()` persisted it into `users/{uid}` AND
-the synced `fa_users` blob — a document capped at 1 MB. One player's failed upload could stop
-`fa_users` syncing for the whole club, weeks later, with nothing connecting symptom to cause.
-Three layers now: `iniShrinkImage()` downscales to 256px first and **fails open** (an old WebView
-without `toBlob` must still be able to set a photo); a failed upload says so and stores nothing;
-and `stripHeavyPics()` in `saveUsers()` refuses to carry an oversized value into the blob, which
-also repairs one already poisoned. `setSession()` guards the personal document the same way.
-`test/profile-pic.test.js`, 19 cases. **Detail in CONTEXT.md.**
-
-## v231. Faces, a phone number and Agent/Agència.
-
-Avatars on Plantilla and both Registracions tables via one `avatarHtmlGlobal()` in `js/utils.js`
-(it replaced five hand-rolled copies); a required phone at profile setup, shown beside the email;
-an editable Agent/Agència column; and the Inici hero photo made circular. `phone` and `agent`
-joined the staff rules allowlist — the rules deploy above. **Detail in CONTEXT.md.**
-
-⚠ **The initials branch of `avatarHtmlGlobal` is the COMMON case, not a fallback.** `js/db.js`
-never refreshes an `fa_users` row it already has, so a team-mate's photo arrives only once they
-next sign in. Rows without a face are normal.
+- **Mètriques end to end** — add a measurement, create a custom metric, delete an entry, flip
+  chart↔table, tick players in and out, drag the table sideways, download it. Confirm a **fitness**
+  account can do all of it and a **delegate** sees no controls at all.
+- **The Excel download on a phone.** It deliberately does NOT download in the Android app — see
+  parking lot 31. Confirm it shows the toast rather than doing nothing.
+- **Mèdic documents** (v234–v235) — attach a file, exceed the size cap, and delete one; a delete
+  must remove the Storage object as well as the Firestore row.
+- **Body-map symmetry** (v235) — an injury on the right leg must light the right leg only.
 
 ---
 
-## v230. Inici — the two landing pages, and the page attendance is
-## answered on.
+## The session in order — v234 to v242
 
-The seventh Claude Design handoff (`Baixades/EsquerrApp Home UI/design_handoff_inici/`), and the
-first that is not a staff screen: one `.ini-` block dresses BOTH landing pages, the player's
-(`player-home`, sidebar label now "Inici") and the coach's (`staff-home`).
-**Per-version detail is in CONTEXT.md**; this is what a reader needs before touching it again.
+### v234. Mèdic, rebuilt to the eighth design handoff.
 
-### The thing that made this different from the six before it
+Six screens in the `.md2-` prefix, plus a documents bucket on `storage.rules`
+(`medical/{teamId}/{category}/{injuryId}/{fileName}`). `test/medical.test.js` is new, 68 assertions.
 
-`renderWeekActivities` is the app's **primary answering surface** — the Accions page carries match
-availability only. So a "format change" here is a change to the control players use to tell their
-coach whether they are coming.
+⚠ **`medical.test.js` slices `.md2-` to the END of the stylesheet**, so anything appended after that
+banner is read as Mèdic's and trips its scans. New CSS goes inside its own page's region, not at the
+foot of the file. This is the same trap that took Inici down when Mèdic was appended after it.
 
-The handlers in `bindDynamicActions()` bind **by name**: `.avail-btns[data-avail-sid]`,
-`.avail-btn[data-avail]`, `.avail-chosen`, and the `.mavail-*` pair. Rename one and it does not
-throw and does not log — the pill stops saving, and the coach's sheet goes on reading "available"
-because `getEffectiveAnswer()` counts a silent player as a yes. **There is no louder failure
-available**, which is why `test/inici.test.js` renders the real builders, mounts the real handlers
-over the result in jsdom, and asserts the write that comes out rather than asserting the markup.
+⚠ Two comment hazards found here and worth remembering: a comment containing `*/` closed a block
+early (caught by `node --check`), and `image/*` **inside a string** opened a phantom comment in the
+naive strippers several suites use — it swallowed a whole block and took a passing Convocatòria
+assertion with it. It is `MD2_DOC_ACCEPT` spelled out by extension now.
 
-The write path itself was not touched: `ackSaveRecord` → `DB.submit`, `recordKey`, the body-map
-picker, the lock rule, the staff notification.
+### v235. Both legs, a missing cap, and an orphaned file.
 
-### What shipped
+Three owner-reported fixes. The one worth recording: **selecting a body region lit the symmetrical
+muscle too.** I matched zone fills by **label**, and `BODY_ZONES` holds each zone twice — once per
+side — under the same label, so one injury lit both legs. `md2ZoneIdx()` matches by index now, at
+five render sites. ⚠ **My own defect, introduced by following the prototype's markup rather than the
+data behind it.**
 
-`renderPlayerHome` and `renderStaffHome` rebuilt as `ini-` builders over one paper surface;
-`renderWeekActivities` and `renderStaffWeek` return `{html, pending, count}` instead of a string.
-New `test/inici.test.js` (44 tests, 12 driving the real binder in jsdom), six `sanitize()` tests in
-`test/utils.test.js`, and `scripts/build-inici-preview.js`. Unit 2845 → 2897.
+Also: a maximum document size, and removing a file now deletes the Storage object and the Firestore
+row rather than only the row.
 
-**One deliberate simplification.** The old markup was a single `.avail-chosen.avail-default` badge
-that grew four buttons on click; because those buttons were injected *after* `bindDynamicActions()`
-had run, they had to be bound on the spot — a duplicate of the whole save path. The two copies had
-already drifted: the inline one never cleared `fa_injury_notes`, so a player who reported an injury
-and then answered "Sí" stayed flagged injured on the coach's roster. All four pills are visible up
-front now, so there is one writer. ⚠ If a future design wants an expanding control again,
-**re-render the row** — `renderPage()` rebinds everything and costs one frame — rather than
-injecting into it.
+### v236. Player metrics — parking lot 19 and 20, which are one feature.
 
-### Two decisions worth not re-litigating
+Weight, height and fitness tests. Plantilla → player detail to add and chart one player; an
+expandable **Mètriques** section for the whole squad.
 
-**Default-Yes stays visible.** The handoff draws an unanswered session as four empty outlines.
-`getEffectiveAnswer()` counts no-answer AS yes and every coach-facing figure relies on it, so four
-empty outlines would tell the player nobody knows while the coach's sheet already had them down as
-available. Unanswered renders `Sí` as ASSUMED (`ini-assumed`, pale) instead. The honest half is the
-section head's pending count, computed from **raw** records — the one place the two views are
-allowed to differ, and it is the half that tells the truth to the person who can fix it.
+⚠ **Two stores that behave in opposite ways, and that is the design, not an accident:**
 
-**Staff Inici renders no answer control and writes nothing**, and the suite asserts it emits zero
-`data-avail`/`data-mavail` attributes. A coach answering *for* a player is the staff override on
-the session page, where it is recorded as an override.
+- a **measurement** is a record in `teams/{id}/playerMetrics/{docId}` carrying **no category at
+  all** — which is what makes it follow a promoted player and what makes the season rollover a
+  no-op, since `archiveSeason` only destroys what is named in `SEASON_KEYS` or the archive record
+  loop, and this is in neither;
+- a **definition** is a row in `fa_metric_catalog`, category-sharded, so a metric belongs to the
+  squad that invented it.
 
-Smaller ones: `N absències avisades` counts answers of value `no` (the app has no justified-absence
-concept, and inventing one would be a figure with nothing behind it); every active FCF league is
-stacked in the rail and the per-league eye is retired (`fa_hidden_leagues` was never a synced key,
-so a table hidden on the phone was still there on the laptop and nothing said why); `Fora de
-combat` + `Watch list` merged into one `LESIONATS I RISC` block.
+⚠ A design review caught the first version splitting a promoted player's history in two — cadet's
+"Pes" and juvenil's "Pes" being different rows with different ids. Three things fix it: weight and
+height are **reserved constants in code**, not catalogue rows; a custom metric carries an
+accent-stripped **slug** and the UI groups by slug; and `name`/`unit` are **denormalised onto every
+measurement**, so a record is self-describing even when its definition is in a shard the reader
+cannot open.
 
-### `sanitize()` now escapes quotes — app-wide, not just here
+⚠ A new **`player-metrics`** right in `STAFF_ROLE_ACCESS`. The fitness coach has
+`manage-roster: 'view'`, so gating on the page would have locked out the one role whose job this is.
 
-It was `textContent` → `innerHTML`: `&`, `<`, `>`. Complete between tags, silently incomplete
-inside a double-quoted attribute, because the quote is what ends an attribute and no `<` is needed
-to break out of one. `app.js` builds 30 attributes through `sanitize()`; most carry app-generated
-ids, but a handful carry typed text (a coach's injury note, a session's focus and location, a
-player's own name). Reachable only from inside the club, so low severity — but it also broke a
-plain form field with no malice: a location typed as `Camp "El Nou"` truncated its own `value=""`.
+⚠ Read access is **staff-only**, stricter than the `sameTeam` precedent of the collections beside
+it, and there is **no `allow update`** — "delete, not edit" was a product decision and it is free to
+enforce in the rules. Known limit, stated rather than buried: any staff member of the club can read
+every squad's numbers, because the record carries no category for a rule to test.
 
-⚠ **It was safe to fix globally only because the escaping is invisible where the old behaviour was
-already correct**: between tags `&quot;` RENDERS as `"`, and read back off an attribute the browser
-decodes it, so the two places that put JSON in an attribute and parse it back (`data-frames` on a
-tactical board, `data-pl-tip` on the Plantilla chart) still parse. Both are pinned in
-`test/utils.test.js`, with the ordering trap: `&` is escaped FIRST by `textContent`, quotes after,
-or every quote ships as the literal text `&amp;quot;`.
+### v237. Four fixes from the owner's first use.
 
-### Two traps for whoever is here next
+Picker below the title; outside-click closes the dropdown; chart↔table stops re-rendering the player
+detail (`bindPlmControls` + `plmRefresh`); and a new metric can actually be created — `showAddMetric`
+was reading the squad off the **page filters**, so on "Totes" the `__none` guard correctly refused
+and the option vanished. It reads `p.category`/`p.team` off the **player** now.
 
-**The preview is not optional, and `--window-size` lies.** 43 assertions were green when the 390px
-render showed the `Convocatòria` button sitting *before* the "N sense resposta" it belongs to, so
-the count read as the next row's — `order` is a property of a container's children, and the two
-cases sharing `.ini-ev-right` (a session's donut-plus-text, an unsent match's text-plus-button)
-have different children. Third time the render step has earned itself.
+### v238. ⚠ Plantilla rendered nothing — and 3080 tests said it was fine.
 
-⚠ And headless Chrome on this machine **clamps its window to ~485 CSS px**, lays the page out at
-485 and crops the bitmap to whatever width was asked for — so a `--window-size=390` shot looks like
-a page overflowing its phone breakpoint and is neither the overflow nor the phone. That cost a
-round of chasing a defect that was not there. Use `Emulation.setDeviceMetricsOverride` over the
-DevTools protocol (node 22+ has a built-in `WebSocket`, nothing to install) and have the probe
-print `document.documentElement.clientWidth` back, so a run cannot silently lie about its width.
+v237's extraction of `plScopedPlayers()` took `var curCat` out of `renderStaffRoster` along with the
+filter that used it, leaving two uses behind. `var` is function-scoped, so both threw a
+`ReferenceError` **before the function returned a single character**. The page painted nothing.
 
-**Anchor a slice on a declaration, not on the comment above it.** Both `test/inici.test.js` and
-`scripts/build-inici-preview.js` sliced the Inici block from a doc comment, and both broke the
-moment that comment was deleted. They anchor on `const INI_SEGS = [` now.
+⚠ **The real failure was the suite.** All 30 Plantilla assertions read `renderStaffRoster` as
+**text** — grab the source, regex it. Not one had ever *called* it, so a function throwing on its
+fifth line scored exactly as green as a working one, and `node --check` cannot see it because it is
+valid syntax. There is now a `renderStaffRoster — it runs` block that executes the real function
+over stubs, with **every collaborator stubbed and nothing else**, so an identifier the function
+should declare for itself throws in the test instead of on a phone.
 
-### Where the seams are, if something looks wrong
+### v239. A colour per player, and the last control that rebuilt the page.
 
-- `test/convocatoria.test.js` sliced the stylesheet with an **open-ended** `css.slice()` that worked
-  only because `.cv-` was the last block in the file. Appending `.ini-` put every Inici rule inside
-  `CVCSS`, where it could satisfy a question asked about Convocatòria. It has an end bound now —
-  **if an eighth page is appended, that bound must name it.**
-- `test/fcf-tabs-render.test.js` grabs the FCF tabs region and scans it for calls to undeclared
-  globals. Its end marker was `function renderPlayerHome()`, which swept the new Inici helpers in
-  and read the string `var(--pp-ok)` inside a donut's inline style as a call to a global named
-  `var`. It ends at the INICI banner now.
-- Nine `--pp-*` tokens were added and the matching literals at `.std-sel-pill` and `.pt-leg-draw`
-  converted. Proved inert by resolving every token back to its literal and diffing the stylesheet
-  byte for byte against HEAD — the v228 method. ⚠ Three of the nine are one shade from a token that
-  already existed: `--pp-warn-dark` is **not** `--pp-amber`, `--pp-bad-dark` is **not**
-  `--pp-med-inj-ink`, `--pp-input-line` is **not** `--pp-rule-4`.
-- 19 deliberate mutations (renamed attributes, an unscoped borrowed rule, a presentation-attribute
-  `var()`, a dropped `KEY_PAGES` entry, a missing Spanish string, both geometry regressions, both
-  halves of the sanitize fix) all turn the suite red, tree restored byte-for-byte afterwards.
+`--pp-series-1..10` join the palette. ⚠ Not aliases of existing tokens: the palette guard reports a
+hex **with the key name it belongs to**, so two keys sharing one value produce two report lines for
+one hex and break the allowed list.
+
+⚠ **A player's colour comes from his position in the whole squad, in id order.** Indexing by the
+drawn set repaints everybody when one player is ticked off; indexing by the table repaints two when
+one gains a kilo, because that table sorts by latest value. Both look reasonable in a diff; both
+were mutations that round killed. Ten hues for up to twenty-two players, so the eleventh line
+repeats the first **dashed, with a hollow swatch**.
+
+Expanding the section stopped re-rendering too: `plmSectionHtml` always emits `#plm-secwrap`, open
+or shut, so there is a stable node for `plmRefresh` to swap.
+
+### v240. The squad table becomes a matrix.
+
+One row per player, one column per measurement date. ⚠ A cell holds an **array** — a player can be
+weighed twice in a day, which is what the random tail on the record id is for. Columns are the union
+of dates across the whole squad so the grid lines up; a missing reading is `·`, not a blank and not
+a zero.
+
+Scroll box with drag-to-pan. ⚠ The overflow is on the **div, never the table**: a sticky cell
+positions against its nearest scrolling ancestor, so a self-scrolling table would pin the frozen
+column to the table and it would never move. Name, swatch and tick all ride in that sticky column.
+
+### v241. Download the metric table.
+
+⚠ **CSV, not .xlsx, and that is a decision.** A real xlsx is a ZIP archive — deflate streams, a
+central directory, four XML parts, a CRC32 per entry — and this app has no build step and no
+libraries.
+
+Three things make it open cleanly, none of them visible on screen: a **UTF-8 BOM** (or Excel reads
+the system codepage and accented names arrive mojibaked), a leading **`sep=` line** overriding the
+locale's list separator, and ⚠ a separator and decimal mark that **match each other** and follow
+`_lang` — `;` with `,` for ca/es, `,` with `.` for en. A comma decimal under a comma separator
+splits every reading in half and the file still looks plausible.
+
+`plmMatrix()` is new and is the point: the grid the table renders and the grid the CSV writes are
+**one function**. The export rebuilds through it rather than scraping the DOM.
+
+### v242. The download button becomes an arrow.
+
+Same box as one GRÀFIC/TAULA segment — 26px tall, half the 150px control less its 7px gap — with
+`title`/`aria-label` carrying the name and the `<svg>` `aria-hidden`. ⚠ The narrow breakpoint moves
+**both**: `.plm-segs` already shrank there, and `.plm-xls` now shrinks with it.
 
 ---
 
@@ -349,29 +322,73 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
     rather than the hourly `isDay` flag. Wind is still in **m/s**, banded at render time, as this
     note asked. Spotted 2026-09-07 while picking the next item off the list.
 
+
+31. **The Excel download does nothing in the Android app** — and says so rather than failing
+    silently. *(v241)* The Capacitor WebView has no download handler wired up, so a blob link there
+    produces no error and no file; `plmSaveCsv` detects the native shell and shows a toast pointing
+    at the browser instead. Wiring a real save means `@capacitor/filesystem` (plus `@capacitor/share`
+    if the file should go anywhere but app storage), a `cap sync` and a new APK — so it is gated on
+    item 6 like everything else that needs a build. Only two Capacitor plugins are installed today:
+    local-notifications and push-notifications.
+
+32. **Metrics: the squad letter is a UI filter, not a boundary.** *(v236)* `fa_metric_catalog` shards
+    by CATEGORY — the letter cannot be a shard, because `Shard.SEP` splits `key__cat`, `_absorbDoc`
+    rejects any cat outside `Shard.ORDER`, and the claims carry categories only. So a juvenil coach
+    cannot read amateur's catalogue at all, but within one category an Amateur B coach can see
+    Amateur A's rows in the raw data even though the UI hides them. That satisfies "not across the
+    club" and stops short of "not across the letter". ⚠ Related and deliberate: **every staff member
+    of the club can read every squad's measurements**, because the record carries no category for a
+    rule to test — which is exactly what makes a promoted player's history follow him. Narrowing one
+    breaks the other.
+
+33. **Metrics charts have no drag-to-scroll**, unlike the RPE and ACWR charts beside them. The whole
+    date span is drawn into the plot by construction, so there is nothing off-screen to drag to. If
+    a squad ever has years of weekly weights, the answer is a date-range window — and then
+    `plDragRect`, which windows by item INDEX, does not fit a continuous time axis and would need
+    writing again.
+
+34. **Editing a measurement is deliberately impossible.** *(v236)* "Delete, not edit" was the
+    owner's call and `firestore.rules` has no `allow update` on `playerMetrics` to match. If that is
+    ever revisited, the rule has to change with the UI — a client-side lock on a client-written
+    document is decoration.
+
 ---
 
 ## Lessons that keep repeating
 
-- **The bug is often not where the feature is.** This session's routing code was correct throughout;
-  three separate delivery paths were dropping the event before it reached it. Follow the event in
-  from the edge — the OS, the service worker, the plugin — not out from the handler.
+- ⚠ **A test that reads the source is not a test that the code RUNS.** v238 is the whole lesson in
+  one line: `renderStaffRoster` threw a `ReferenceError` on its fifth line and 3080 green assertions
+  had nothing to say, because every one of them regexed the function instead of calling it. For each
+  page builder keep one test that simply runs it over stubs — and stub the collaborators and
+  **nothing else**, so a variable the function should declare for itself throws in the test. The
+  same shape recurred twice more in the same session at a smaller scale: a scroll-restore test that
+  asserted the code *mentions* `scrollLeft` (true after the restoring line was deleted), and a
+  native-shell test that asserted source ORDER (true after the check moved). Both were found by
+  mutation, not by reading.
+- **The bug is often not where the feature is.** Follow the event in from the edge — the OS, the
+  service worker, the plugin — not out from the handler.
 - **A mutation result is a claim about the TESTS, and only as good as the harness making it.**
   Restore by copy, and sync generated copies before running.
-- **A passing test can be about the wrong quantity.** Or about a sibling element — two mutations
-  survived once because the assertion matched a `cal-x` on an inner line rather than the wrapper.
+- **A passing test can be about the wrong quantity.** Or about a sibling element. v239's
+  roster-scoping test put its non-player fixture in squad A while filtering to squad B, so the
+  *letter* filter excluded him and deleting the player-role filter changed nothing at all.
 - **A test that greps source will match its own comment.** Strip comments.
 - **Check the thing against a value it did not come from.** The v117 "our row is highlighted" check
   passed FCF's own club name in as the club name, so it proved nothing.
+- ⚠ **When two views must agree, give them one function — not two that match.** v241's export and
+  the table on screen are both `plmMatrix()`, because "which dates are columns, which values are in
+  a cell, which order the rows go in" written twice is two things that can drift, with the drift
+  visible only to whoever compares the file with the screen. Same rule as `_syncFcfSquad` serving
+  both the button and the cron, and `scheduleSlots` serving both the placeholders and the New
+  Training page: **share the rule, do not merely match.**
+- ⚠ **Extracting a function can strand the variables it took with it.** `var` is function-scoped, so
+  lifting a block out silently removes declarations the rest of the function still reads. `node
+  --check` sees nothing; it is valid syntax. After any extraction, grep the remains for every name
+  the moved block declared.
 - **An upstream field can be wrong, not just missing.** `played:"1515"` parses cleanly and is nonsense.
 - **A broken feed and an empty one must not look alike.** Every no-data path renders a reason.
-- **A silent `return` is a bug that leaves no trace.** `if (!s) return;` swallowed every cold-start
-  notification tap, and there was nothing to find afterwards — no error, no log, no wrong screen,
-  just the home page. Prefer buffering or logging to dropping.
-- **One definition, or it drifts.** `_syncFcfSquad` serves both the button and the cron;
-  `scheduleSlots` serves both the placeholders and the New Training page; `applyPushNav` now serves
-  both the live tap and the replayed one. And when two states must agree, make them **share the
-  rule**, not merely match: they drifted the day they were written as two lists.
+- **A silent `return` is a bug that leaves no trace.** Prefer buffering or logging to dropping. The
+  same instinct is why the Excel button explains itself on Android instead of quietly doing nothing.
 - **An empty query result is not evidence of absence** — it is often the wrong query.
 - **Check the artefact, not the operation** — `curl` the served `sw.js`, not the push output.
 - **An old APK is an old client.** A frontend fix is not live for the club until a build circulates,

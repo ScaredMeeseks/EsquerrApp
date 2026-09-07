@@ -1,6 +1,6 @@
 # EsquerrApp — Project Summary
 
-_Reference overview of what the app is and how it is put together. Per-change history lives in CONTEXT.md; current state and open items in HANDOFF.md; working rules for this repo in CLAUDE.md. Last reviewed 2026-09-04 (v230)._
+_Reference overview of what the app is and how it is put together. Per-change history lives in CONTEXT.md; current state and open items in HANDOFF.md; working rules for this repo in CLAUDE.md. Last reviewed 2026-09-07 (v242)._
 
 ## Overview
 
@@ -42,9 +42,9 @@ EsquerrApp/
 │   ├── shard.js            # Per-category routing table + pure partition/merge
 │   ├── db.js               # Firestore ↔ localStorage sync layer (the router)
 │   ├── push.js             # FCM token management + foreground notifications
-│   └── app.js              # Main application logic (~16,300 lines)
+│   └── app.js              # Main application logic (~36,400 lines)
 ├── functions/
-│   ├── index.js            # Cloud Functions (13 triggers/callables)
+│   ├── index.js            # Cloud Functions (27 triggers/callables)
 │   ├── wipe-team-data.js   # One-off scripts live here so they resolve
 │   ├── backfill-*.js       #   functions/node_modules — see CLAUDE.md
 │   └── package.json
@@ -70,7 +70,7 @@ EsquerrApp/
 
 7. **Firestore offline persistence** is enabled (`synchronizeTabs: true`), so the app works without internet.
 
-8. **The screens are one paper design system.** Seven pages — Calendari (`.cal-`), Pla d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`) and Inici (`.ini-`) — were rebuilt from Claude Design handoffs into a single idiom: one surface in horizontal bands, hairlines instead of cards, Oswald, no radius, no shadow, red used sparingly. Each page owns its own class prefix and its own sizes; only the **colours** are shared, as the `--pp-*` custom properties at the top of `css/style.css`. That separation is deliberate — the pages disagree on sizes on purpose (`.std-table` draws the medical glyph at 24px, `.cv-page` at 22px) and agreed on colour by accident until v228 made it structural. `--pp-*` is also a **second axis from `--primary`/`--text`**, which are the app chrome's palette; the paper pages were built not to inherit it. Inici (v230) is the first that is not staff-only — one block dresses both landing pages — and the first that re-dresses **borrowed** classes: the availability pills stay `.avail-*`/`.mavail-*` because `bindDynamicActions()` binds them by name, and every rule for them is scoped under `.ini-page` so the Accions page is not repainted with them.
+8. **The screens are one paper design system.** Nine pages — Calendari (`.cal-`), Pla d'entrenament (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`), Inici (`.ini-`), Mèdic (`.md2-`, v234) and the player-metrics block inside Plantilla (`.plm-`, v236) — were rebuilt from Claude Design handoffs into a single idiom: one surface in horizontal bands, hairlines instead of cards, Oswald, no radius, no shadow, red used sparingly. Each page owns its own class prefix and its own sizes; only the **colours** are shared, as the `--pp-*` custom properties at the top of `css/style.css`. That separation is deliberate — the pages disagree on sizes on purpose (`.std-table` draws the medical glyph at 24px, `.cv-page` at 22px) and agreed on colour by accident until v228 made it structural. `--pp-*` is also a **second axis from `--primary`/`--text`**, which are the app chrome's palette; the paper pages were built not to inherit it. Inici (v230) is the first that is not staff-only — one block dresses both landing pages — and the first that re-dresses **borrowed** classes: the availability pills stay `.avail-*`/`.mavail-*` because `bindDynamicActions()` binds them by name, and every rule for them is scoped under `.ini-page` so the Accions page is not repainted with them. ⚠ **Where a block SITS in `css/style.css` is load-bearing**, because several suites bound their slice by the next banner: `medical.test.js` reads `.md2-` to the end of the file, so `.plm-` lives inside the Plantilla region rather than at the foot. Appending a new page after an existing one has broken the older page’s suite twice — Inici when Mèdic was appended after it, and nearly Mèdic when the metrics block was.
 
 ---
 
@@ -98,6 +98,8 @@ teams/{teamId}                     # teamId === clubId
   ├── trainingAvail/{uid}_{date}   # per-record player answers
   ├── matchAvail/{uid}_{matchId}
   ├── rpe/{uid}_{type}_{ref}
+  ├── matchNotes/{docId}           # coach’s per-match notes
+  ├── playerMetrics/{docId}        # weight, height, fitness tests — NO category, on purpose
   ├── pushQueue/{docId}            # outbound push requests
   └── seasons/{label}/…            # archived season copies of the above
 ```
@@ -106,7 +108,7 @@ Custom claims: `{ teamId, role: 'player'|'staff'|'lead', cats: ['amateur', …] 
 
 ### Synced keys (localStorage blob ⇄ sharded Firestore documents)
 
-All 17 are routed by `js/shard.js`; five different rules decide a row's category (a field on the row, a uid joined through `fa_users`, a matchId joined through `fa_matches`, and so on). Rows belonging to no squad go to a `__none` shard, readable club-wide.
+All 22 are routed by `js/shard.js`; five different rules decide a row's category (a field on the row, a uid joined through `fa_users`, a matchId joined through `fa_matches`, and so on). Rows belonging to no squad go to a `__none` shard, readable club-wide.
 
 | Key | Description |
 |---|---|
@@ -127,8 +129,9 @@ All 17 are routed by `js/shard.js`; five different rules decide a row's category
 | `fa_tactic_saved` | Saved tactical boards |
 | `fa_tactic_match_boards` | Boards linked to a match |
 | `fa_tactic_training_boards` | Boards linked to a training date |
+| `fa_metric_catalog` | The metrics a squad measures — the DEFINITIONS only. Weight and height are reserved constants in code and are not rows here. Sharded by category; the squad letter is a plain field, so it is a UI filter and not a boundary |
 
-`fa_standings`, `fa_news` and `fa_player_stats` were removed — nothing ever wrote them. Standings come live from the FCF proxy; player stats are computed from `fa_matches` + `fa_match_events`. Training/match availability and RPE are **not** in this list: they are per-record collections.
+`fa_standings`, `fa_news` and `fa_player_stats` were removed — nothing ever wrote them. Standings come live from the FCF proxy; player stats are computed from `fa_matches` + `fa_match_events`. Training/match availability, RPE, match notes and player metrics are **not** in this list: they are per-record collections. ⚠ `playerMetrics` carries **no category at all**, which is deliberate — it is what makes a promoted player’s history follow him and what makes the season rollover a no-op, since `archiveSeason` only destroys what is named in `SEASON_KEYS` or its record loop and this is in neither.
 
 ---
 
@@ -169,7 +172,8 @@ Membership is **not self-assignable**: `roles`, `category`, `team` and `staffCat
 | **Training Sessions** | Sessions with per-player availability, attendance donut, RPE summary; staff can override an answer |
 | **Set Calendar** | Add/edit matches (home/away, squad, date, opponent, location, kick-off) |
 | **Convocatòria** | Drag-and-drop squad selection with positions, fitness, readiness and availability; uniform, call-up time, attached boards and videos; send/unsend |
-| **Medical** | Currently injured, season totals, per-player injury detail with body zone, history |
+| **Medical** | Currently injured, season totals, per-player injury detail with body zone and history, and attached documents (v234) |
+| **Metrics** | Weight, height and fitness tests (v236–v242). On a player’s detail: add a measurement, invent a metric, and chart or tabulate his history. On Plantilla: an expandable **Mètriques** section for the whole squad — one coloured line per player with the table below as its legend and line picker, a date-by-date matrix that scrolls and drags, and a CSV download. Gated on its own `player-metrics` right, because the fitness coach has only `view` on the roster |
 | **Tactical Board** | Pitch editor: formations, board types, draggable players, arrows, shapes, pen, text, cones, silhouettes, **multi-frame animation**, save/load, link to a match or training |
 | **Notifications** | Feed of player actions with unread badge |
 

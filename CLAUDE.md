@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. Automated tests live in `test/`: the Firestore rules suite, unit tests for `js/shard.js` and `js/db.js`, and an emulator suite that drives the real Cloud Functions triggers (see the safety net below). There is no coverage of `app.js`, so changes there are verified by hand. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
+EsquerrApp — football club management PWA (players, staff, club admins/team leads, superadmin). Vanilla HTML/CSS/JS single-page app, **no build step and no framework**. Automated tests live in `test/`: the Firestore rules suite, unit tests for `js/shard.js` and `js/db.js`, and an emulator suite that drives the real Cloud Functions triggers (see the safety net below). `app.js` has no *direct* harness — it is one 36k-line IIFE — but a large and growing part of it is covered by slicing function blocks out of the source with `grab()` and running them over stubs, which is described below. ⚠ **Slicing is not the same as running the page**: a builder that throws on its fifth line passes every assertion that only reads its text, and `node --check` cannot see it either because it is valid syntax. That shipped a Plantilla page that rendered nothing, past 3080 green tests (v238). For each page builder keep one test that CALLS it. Firebase backend (Auth, Firestore, Storage, FCM, Cloud Functions v2). Capacitor wraps the same code as an Android app. UI language is Catalan (with some English).
 
 - Firebase project: `esquerrapp` · Superadmin: `marna96@gmail.com`
 - Frontend hosting: **GitHub Pages from `main`** — pushing to `main` deploys the site AND triggers the Android APK CI build (`.github/workflows/build-android.yml`).
@@ -78,10 +78,15 @@ Push fan-out (`onPushQueueCreate`), scheduled reminders (training T-4h hourly ch
   **Do not set `server.url` to make the shell load the live site.** It would end staleness instantly but loading a whole app from a remote URL is a reliable App Store rejection (guideline 4.2), and Play + App Store are on the roadmap.
 - **One-off scripts in `functions/` rot.** They are written against the data model of the day and are not exercised by anything. `backfill-claims.js` still wrote pre-Phase-4 claims months later and would have stripped `cats` from every user. **Read one before running it**, and prefer a dry-run/`--apply` gate on anything that writes.
 - New user-facing strings in Catalan.
-- **Seven screens are one paper design system** — Calendari (`.cal-`), Pla d'entrenament
-  (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`)
-  and, since v230, Inici (`.ini-`) — which is the first that is not staff-only: one block dresses
-  BOTH landing pages, the player's and the coach's.
+- **Nine screens are one paper design system** — Calendari (`.cal-`), Pla d'entrenament
+  (`.std-`), Plantilla (`.pl-`), Registracions (`.reg2-`), Partit (`.pt-`), Convocatòria (`.cv-`),
+  Inici (`.ini-`, v230) — the first that is not staff-only: one block dresses BOTH landing pages,
+  the player's and the coach's — Mèdic (`.md2-`, v234), and the player-metrics block (`.plm-`,
+  v236) which lives inside Plantilla rather than owning a page.
+  ⚠ **Where a block SITS in `css/style.css` is load-bearing.** Several suites bound their slice by
+  the NEXT banner, so `medical.test.js` reads `.md2-` to the end of the file: anything appended
+  after it is read as Mèdic's and trips its scans. `.plm-` therefore sits inside the Plantilla
+  region. Appending a new page after an existing one has broken the older page's suite twice.
   ⚠ **Inici re-dresses the app's availability controls** (`.avail-*`, `.mavail-*`) rather than
   renaming them, because `bindDynamicActions()` binds those classes and attributes BY NAME. A
   rename there does not throw and does not log — the pill stops saving, and the coach's sheet goes
