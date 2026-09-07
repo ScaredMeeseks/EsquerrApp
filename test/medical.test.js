@@ -52,15 +52,20 @@ function grab(from, to) {
   return src.slice(i, j);
 }
 
-/* The `.md2-` block on its own. It is currently LAST in the stylesheet, so
-   this slice runs to the end — and that is exactly the shape that broke
-   test/convocatoria.test.js and then test/inici.test.js in turn. If a ninth
-   paper page is appended after Mèdic, give this an end bound naming it. */
+/* The `.md2-` block on its own. It USED to run to the end of the stylesheet,
+   which was correct only while Mèdic happened to be last — exactly the shape
+   that broke test/convocatoria.test.js and then test/inici.test.js in turn.
+   Les meves estadístiques (v244) was appended after it, so this now has the
+   end bound the comment above it asked for. */
+const MSBANNER = '/* ===== Les meves estadístiques, redesigned (v244)';
 const MDSTART = css.indexOf('/* ===== Mèdic, redesigned (v234)');
 assert.ok(MDSTART !== -1, 'the md2- block banner is gone from css/style.css');
-const MDCSS = css.slice(MDSTART).replace(/\/\*[\s\S]*?\*\//g, '');
+const MDEND = css.indexOf(MSBANNER, MDSTART);
+assert.ok(MDEND !== -1, 'the .ms- banner that bounds this slice is gone');
+const MDCSS = css.slice(MDSTART, MDEND).replace(/\/\*[\s\S]*?\*\//g, '');
 const rawCss = readCssRaw();
-const MDRAW = rawCss.slice(rawCss.indexOf('/* ===== Mèdic, redesigned (v234)'))
+const MDRAWSTART = rawCss.indexOf('/* ===== Mèdic, redesigned (v234)');
+const MDRAW = rawCss.slice(MDRAWSTART, rawCss.indexOf(MSBANNER, MDRAWSTART))
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
 const SANITIZE_SRC = utilsSrc.slice(
@@ -912,7 +917,11 @@ describe('El meu estat — the player sees the zone and the dates', () => {
   });
 
   it('is wired for the player on My stats and for staff on the detail page', () => {
-    assert.ok(/buildInjuryHistoryHtml\(uid, \{ forPlayer: true \}\)/.test(bare),
+    /* The FLAG is what this asserts, not the exact argument list: v244 added
+       an optional `mapHtml` slot so Les meves estadístiques can put its season
+       body map between the state and the history. `[,}]` keeps a bare
+       `forPlayer: truthy-something` from passing. */
+    assert.ok(/buildInjuryHistoryHtml\(uid, \{ forPlayer: true[,}]/.test(bare),
         'the player call site lost its flag — the diagnosis is now shipped');
     // Two CALL sites — the declaration itself matches the same name.
     assert.strictEqual(

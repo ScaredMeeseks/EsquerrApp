@@ -112,6 +112,15 @@ exclude:
   # reasons: the whole stylesheet inlined, and fourteen invented player names.
   # Regenerate with: node scripts/build-player-training-preview.js . player-training-preview.html
   - player-training-preview.html
+  # And for the v244 Les meves estadístiques redesign. Like the one above, the
+  # WHOLE page is the app — renderPlayerStats() is sliced out and called — and
+  # it renders twice, with and without enough load data, because the no-data
+  # frame is the one nobody thinks to look at. Look at it at BOTH 1440px and
+  # 390px. Off Pages for the usual reasons and one more: it draws a body map
+  # of invented injuries against a named player, which is the shape of a
+  # medical record even when every value in it is made up.
+  # Regenerate with: node scripts/build-ms-preview.js . ms-preview.html
+  - ms-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:

@@ -9956,3 +9956,105 @@ New `scripts/build-player-training-preview.js`; `player-training-preview.html` a
 (⚠ that list is BY NAME — `build-www.js` catches previews by pattern, Pages does not).
 
 No rules or functions change; push only.
+
+### 2026-09-07 — Les meves estadístiques, the tenth paper page (v244)
+
+The player's own stats page was the last screen still wearing `.card` and `.mystats-*`: five centred
+figures, a five-segment donut, a twelve-column match table — and under the player's own injury
+history, **three load charts**. RPE per session, UA per week and ACWR, on the screen a player opens
+about themselves. It is `.ms-` now, from the tenth Claude Design handoff, after `.cal-` `.std-`
+`.pl-` `.reg2-` `.pt-` `.cv-` `.ini-` `.md2-` and `.plm-`.
+
+**The page is the two product decisions the handoff bakes in, not a restyle.**
+
+1. ⚠ **No RPE, anywhere.** Roadmap 22. Not a session RPE, not a weekly-load chart, and not the four
+   Readiness components — `loadRatioScore`, `matchFatigueScore`, `loadSpikeScore`, `rpeTrendScore` —
+   which are the coach's dosing weights. What a player gets is the DERIVED trio off
+   `computeReadiness()`: the **Preparació** score, the **aguda/crònica** ratio and the **dies des del
+   darrer partit**, plus a sentence that explains the score in words *instead of* the components.
+   The ~70 lines that collected `fa_player_rpe` into a `sessions` array and the `buildChartsHtml()` /
+   `buildReadinessCard()` calls are gone from this page and untouched on `renderStaffPlayerStats`,
+   which is where they belong.
+2. ⚠ **No MVP.** The handoff draws a gold star on matches a player was voted MVP of and an MVP season
+   figure. Teammate voting is roadmap 21 and does not exist; "the vote is final" has to be enforced
+   in `firestore.rules`, not in the UI. The handoff says both simply do not render without it, so
+   neither is built — a star wired to a stand-in signal (top scorer, say) would look exactly right
+   and mean something else. `test/ms.test.js` fails if either comes back.
+
+**`renderStaffPlayerStats` is deliberately untouched**, and so is the `.mystats-*` block at
+css/style.css 417 that dresses it.
+
+**Reused rather than rebuilt.** `computePlayerMatchStats()` already returns every per-match field the
+handoff's table wants (`resultLetter`, `minutes`, `yellows`, `reds`, `goals`, `assists`);
+`buildInjuryHistoryHtml(uid, {forPlayer:true})` already renders the whole right rail, in `.md2-mine-*`,
+and IS the privacy rule; `utils.bodyMapHtml()` is the handoff's map markup exactly;
+`iniDonutHtml()` is its donut (`r=15.9155` so the circumference is 100, `stroke-width:3.4`, track
+`--pp-rule-2`) at `size:88` / `62`. New in `js/app.js`: `msFig`, `msZoneCounts`, `msBodyMapHtml`,
+`msNil`, `msCardsHtml`, `msMatchRows`, `msBandWord`, `msTeamMatchdays`.
+
+⚠ `buildInjuryHistoryHtml` gained one optional `opts.mapHtml` slot between the state and the history,
+which is where the handoff draws the season body map. Staff pass nothing and get a byte-identical
+block. `test/medical.test.js`'s call-site assertion was widened from the exact argument list to
+`{ forPlayer: true[,}]` — it is the FLAG it exists to protect, not the arity.
+
+⚠ **The body map counts by INDEX.** `BODY_ZONES` holds every zone twice, once per side, under one
+label — and the handoff's own sample script does `counts[z.label]`, which is the v235 defect
+verbatim: one torn hamstring lighting both legs. `msZoneCounts()` goes through `md2ZoneIdx()`, and
+the suite's fixture puts a hamstring on one side only so the mirror polygon can be asserted empty.
+
+⚠ **`msTeamMatchdays()` does NOT bound itself to the season**, though `seasonStartStr()` was the
+obvious thing to reach for. `computePlayerMatchStats()` counts every past match with no season
+bound, so a season-scoped denominator put `Partits 6` next to `3 jornades disputades` in the first
+preview — two different measurements reading as a bug. (That the totals are unbounded at all is older
+than this page and shared with the staff view; scoping them is a change to both.)
+
+⚠ **Two markups per match, not one reordered by CSS.** `.ms-row` is the seven-column table and
+`.ms-prow` the phone's two-line card whose first line LEADS with the result tag; the breakpoint hides
+one. Both come out of `msMatchRows()` from the same row object, so they cannot disagree. `order:` on
+a shared row is what put a Convocatòria button in front of its own count in v230, and the suite fails
+on any `order:` in the block.
+
+**Attendance** is `(yes + late) / answered`, and a session nobody answered is excluded from the
+denominator rather than counted as an absence. `absències justificades` is the `injured` count.
+⚠ `fa_training_staff_override` was missing `my-stats`/`staff-player-stats` from the `firestore-sync`
+page map — a coach marking a session injured left the player's percentage stale until they navigated.
+Pre-existing; fixed here because this page now leads with the figure.
+
+**Palette: no new tokens.** Every colour resolved to one that exists. The one substitution worth
+recording: the handoff's **win tag** is `#DCE8DC` on `#3F6B41`, one shade off `--pp-med-fit-bg`
+(`#DCE9DC`) and `--pp-green` (`#3F6B44`). `.ms-res-v` aliases the medical fit pair — the difference is
+invisible on an 18px square, and two tokens one hex apart are exactly the drift
+`paper-palette.test.js` exists to prevent.
+
+⚠ **`.ms-` is now LAST in the stylesheet**, so `test/medical.test.js` finally got the end bound its
+own comment asked for in v234 (`MDSTART` → the `.ms-` banner, for both the resolved and the raw
+slice). `test/ms.test.js` slices to EOF and carries the same warning for an eleventh page.
+Borrowed families are scoped under `.ms-page`: `.conv-pos-circle`, `.md2-mine-*`, `.ini-donut`.
+
+⚠ **The full-bleed negation lives in a `600px` block, not the page's own `700px` one.** The page
+breaks at 700 (how many columns fit); `.dashboard-content`'s padding drops from `2rem` to
+`.75rem 1rem` at **600**. Cancelling it at 700 leaves a 100px band where the white identity band is
+pulled 2rem wider than the box it sits in. Verified at 650.
+
+**Two deliberate departures from the handoff's phone frame**, both in the same direction: its frame
+folds Preparació into the attendance band and drops the explanatory sentence, and sets the body map
+118px wide *beside* the historial. Here Preparació keeps its own band **with the sentence** — the
+sentence is the thing that exists instead of the hidden components, and hiding it on the phone means
+most players never read it — and the map stacks above the historial at 200px, because 118px of body
+map on a phone is not a diagram.
+
+**Tests.** Unit 3160 → **3197**. New `test/ms.test.js` (37), registered in `test:unit` and as
+`test:ms`: it **calls** `renderPlayerStats` over stubs — v238's lesson — and asserts the absent
+things against the OUTPUT rather than the source (no RPE in either frame, no component score, no MVP,
+`rd.*` reads limited to exactly the five derived fields), the one-sided body map, the em-dash for a
+zero, the venue tag from `isOurTeam`, the no-data Preparació, and the stylesheet's scoping,
+breakpoint and win-tag rules. Five mutations, all killed: label-matching the body map, an RPE figure
+put back, the em-dash removed, the bleed moved to the 700 block, and the venue tag swapped.
+
+New `scripts/build-ms-preview.js` → `ms-preview.html`, rendering the page twice (with and without
+load data). It asserts the no-RPE and no-MVP rules itself, so the mockup cannot be the artefact that
+quietly shows one. Added to `_config.yml` (⚠ BY NAME). Looked at in headless Chrome at 1440, 650 and
+390 via `Emulation.setDeviceMetricsOverride` with `clientWidth` printed back — no horizontal overflow
+at any of the three.
+
+No rules or functions change; push only.

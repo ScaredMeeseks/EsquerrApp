@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 242** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 244** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3128** — `cd test && npm run test:unit` (~12 s), all passing |
+| Unit tests | **3197** — `cd test && npm run test:unit` (~13 s), all passing |
 | Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
 | Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
@@ -22,12 +22,15 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 **Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
 session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
 collection). Both went out BEFORE the matching frontend push, because the other order leaves a
-window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v242 changed
+window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v244 changed
 neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
 ⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
 real app. Worth trying first, in this order:
 
+- **Les meves estadístiques** (v244) as a **player** account. Two things a test cannot check: that
+  the figures agree with the match history the same account can see, and that **no RPE number is
+  anywhere on the page** — that is the product decision, not a detail.
 - **Mètriques end to end** — add a measurement, create a custom metric, delete an entry, flip
   chart↔table, tick players in and out, drag the table sideways, download it. Confirm a **fitness**
   account can do all of it and a **delegate** sees no controls at all.
@@ -35,11 +38,12 @@ real app. Worth trying first, in this order:
   parking lot 31. Confirm it shows the toast rather than doing nothing.
 - **Mèdic documents** (v234–v235) — attach a file, exceed the size cap, and delete one; a delete
   must remove the Storage object as well as the Firestore row.
-- **Body-map symmetry** (v235) — an injury on the right leg must light the right leg only.
+- **Body-map symmetry** (v235, and again on the season map in v244) — an injury on the right leg
+  must light the right leg only.
 
 ---
 
-## The session in order — v234 to v242
+## The session in order — v234 to v244
 
 ### v234. Mèdic, rebuilt to the eighth design handoff.
 
@@ -161,6 +165,47 @@ splits every reading in half and the file still looks plausible.
 Same box as one GRÀFIC/TAULA segment — 26px tall, half the 150px control less its 7px gap — with
 `title`/`aria-label` carrying the name and the `<svg>` `aria-hidden`. ⚠ The narrow breakpoint moves
 **both**: `.plm-segs` already shrank there, and `.plm-xls` now shrinks with it.
+
+### v243. The player's training page, rebuilt on the coach's.
+
+Opening a training gave a player the old `.detail-*` cards — and, under them, **the coach's tactical
+boards**. It is `renderStaffTrainingDetail`'s `.std-` page now, carrying three things and no more:
+the title, the forecast, and who is coming. The planned RPE, the load in UA, the plan and material
+rail, the team generator and the readiness/A-C/medical columns are all his, not hers.
+
+Three geometry defects found by rendering `player-training-preview.html` in headless Chrome at 1440
+and 390 — one of them (`.std-main` sizing itself to the table's `min-width` and sliding the whole
+page sideways below 900px) had been **live on the coach's page since v188**. New
+`test/training-detail.test.js` (32), which CALLS the renderer.
+
+### v244. Les meves estadístiques, the tenth paper page.
+
+The player's own stats page, `.ms-`, from the tenth design handoff — and the last screen still
+wearing `.card`. It is the two product decisions the handoff bakes in, not a restyle:
+
+- ⚠ **No RPE anywhere** (roadmap 22) — not a session figure, not a weekly-load chart, and not the
+  four Readiness components, which are the coach's dosing weights. The player gets the derived trio:
+  the **Preparació** score, the **aguda/crònica** ratio and the **dies des del darrer partit**, plus
+  a sentence that explains the score *instead of* exposing the components. `buildChartsHtml()` and
+  `buildReadinessCard()` are untouched and still on `renderStaffPlayerStats`, where they belong.
+- ⚠ **No MVP** (roadmap 21) — the handoff's gold star is drawn against teammate voting, which does
+  not exist. Nothing is built for it rather than wiring the star to a stand-in signal, which would
+  look right and mean something else.
+
+`renderStaffPlayerStats` and the `.mystats-*` block are deliberately untouched. Most of the page was
+already in the repo: `computePlayerMatchStats`, `buildInjuryHistoryHtml(uid,{forPlayer:true})` (which
+IS the zone-only privacy rule), `utils.bodyMapHtml` and `iniDonutHtml`.
+
+⚠ **`.ms-` is now last in the stylesheet**, so `test/medical.test.js` finally got the end bound its
+own v234 comment asked for. `test/ms.test.js` slices to EOF and carries the same warning forward.
+⚠ **The body map counts zones by INDEX** — the handoff's sample script does `counts[z.label]`, which
+is the v235 both-legs defect verbatim.
+⚠ **The full-bleed negation sits in a 600px block, not the page's own 700px one**, because
+`.dashboard-content`'s padding changes at 600 and the page's columns change at 700.
+
+Unit 3160 → **3197**; new `test/ms.test.js` (37), five mutations killed. New
+`scripts/build-ms-preview.js`; `ms-preview.html` added to `_config.yml` (⚠ that list is BY NAME).
+Looked at at 1440, 650 and 390 — no horizontal overflow at any of them.
 
 ---
 

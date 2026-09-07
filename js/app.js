@@ -1146,6 +1146,55 @@
     'stats.day_1':         { ca:'1 dia', es:'1 día', en:'1 day' },
     'stats.days_n':        { ca:'dies', es:'días', en:'days' },
 
+    // ── Les meves estadístiques, redesigned (v244) ──
+    // Its own set rather than a reuse of `stats.*`: the handoff abbreviates
+    // the column heads to fit the widths it specifies ('Assist.', not
+    // 'Assistències'), and the staff page still wants the long words.
+    'ms.matches':      { ca:'Partits', es:'Partidos', en:'Matches' },
+    'ms.minutes':      { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'ms.goals':        { ca:'Gols', es:'Goles', en:'Goals' },
+    'ms.assists':      { ca:'Assist.', es:'Asist.', en:'Assists' },
+    'ms.titular':      { ca:'Titular', es:'Titular', en:'Starter' },
+    'ms.jornades':     { ca:'{n} jornades disputades', es:'{n} jornadas disputadas', en:'{n} matchdays played' },
+    'ms.attendance':   { ca:'Assistència', es:'Asistencia', en:'Attendance' },
+    'ms.sessions_of':  { ca:'{a} de {b} sessions', es:'{a} de {b} sesiones', en:'{a} of {b} sessions' },
+    'ms.absences':     { ca:'{n} absències justificades', es:'{n} ausencias justificadas', en:'{n} excused absences' },
+    'ms.no_sessions':  { ca:'Cap sessió registrada', es:'Sin sesiones registradas', en:'No sessions recorded' },
+    'ms.prep':         { ca:'Preparació', es:'Preparación', en:'Readiness' },
+    /* The band in one word. It replaces the four Readiness components and
+       their weights, which are the coach's dosing decision and are NOT on
+       this page — see the RPE rule in the block comment on renderPlayerStats. */
+    'ms.band_good':    { ca:'Bon estat', es:'Buen estado', en:'Good shape' },
+    'ms.band_mid':     { ca:'Vigila la càrrega', es:'Vigila la carga', en:'Watch your load' },
+    'ms.band_low':     { ca:'Càrrega alta', es:'Carga alta', en:'Load is high' },
+    'ms.prep_help':    {
+      ca:'La preparació combina la teva càrrega recent, els minuts del darrer partit i els dies de recuperació. Verd vol dir que pots competir sense limitacions.',
+      es:'La preparación combina tu carga reciente, los minutos del último partido y los días de recuperación. Verde significa que puedes competir sin limitaciones.',
+      en:'Readiness combines your recent load, the minutes of your last match and your recovery days. Green means you can compete without limits.' },
+    'ms.prep_none':    {
+      ca:'Encara no hi ha prou sessions registrades per calcular-la.',
+      es:'Todavía no hay suficientes sesiones registradas para calcularla.',
+      en:'Not enough sessions recorded yet to work it out.' },
+    'ms.acwr':         { ca:'Aguda / crònica', es:'Aguda / crónica', en:'Acute / chronic' },
+    'ms.since_match':  { ca:'Dies des del darrer partit', es:'Días desde el último partido', en:'Days since last match' },
+    'ms.rest':         { ca:'Dies de descans', es:'Días de descanso', en:'Rest days' },
+    'ms.cards':        { ca:'Targetes', es:'Tarjetas', en:'Cards' },
+    'ms.per_match':    { ca:'Partit a partit', es:'Partido a partido', en:'Match by match' },
+    'ms.summary':      { ca:'{min} minuts · {g} gols · {a} assistències', es:'{min} minutos · {g} goles · {a} asistencias', en:'{min} minutes · {g} goals · {a} assists' },
+    'ms.n_matches':    { ca:'{n} partits', es:'{n} partidos', en:'{n} matches' },
+    'ms.th_date':      { ca:'Data', es:'Fecha', en:'Date' },
+    'ms.th_rival':     { ca:'Rival', es:'Rival', en:'Opponent' },
+    'ms.th_res':       { ca:'Resultat', es:'Resultado', en:'Result' },
+    'ms.th_min':       { ca:'Min', es:'Min', en:'Min' },
+    'ms.home':         { ca:'Casa', es:'Casa', en:'Home' },
+    'ms.away':         { ca:'Fora', es:'Fuera', en:'Away' },
+    'ms.no_matches':   { ca:'Encara no has disputat cap partit aquesta temporada.', es:'Todavía no has disputado ningún partido esta temporada.', en:'You have not played a match this season yet.' },
+    'ms.estat':        { ca:'El meu estat', es:'Mi estado', en:'My condition' },
+    'ms.map_2':        { ca:'2 lesions o més', es:'2 lesiones o más', en:'2 injuries or more' },
+    'ms.map_1':        { ca:'1 lesió', es:'1 lesión', en:'1 injury' },
+    'ms.yellow':       { ca:'Targeta groga', es:'Tarjeta amarilla', en:'Yellow card' },
+    'ms.red':          { ca:'Targeta vermella', es:'Tarjeta roja', en:'Red card' },
+
     // ── Match History ──
     'mh.title':      { ca:'Historial de partits', es:'Historial de partidos', en:'Match History' },
     'mh.th_date':    { ca:'Data', es:'Fecha', en:'Date' },
@@ -2435,7 +2484,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 243;
+  const APP_VERSION = 244;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -14109,7 +14158,13 @@
           '<span class="md2-mine-h">' + t('md2.my_fit') + '</span>' +
         '</div>';
 
+    /* A slot between the state and the history, for a caller that has
+       something to say about the whole season rather than one injury.
+       Les meves estadístiques puts its body map here, which is where the
+       handoff draws it; the staff detail page passes nothing and is
+       byte-identical to before. */
     return '<section class="md2-mine">' + statusHtml +
+      ((opts && opts.mapHtml) || '') +
       md2Head(forPlayer ? t('md2.my_history') : t('md2.history')) +
       (rows || '<div class="md2-empty">' + t('md2.no_history') + '</div>') +
       (forPlayer
@@ -14231,163 +14286,325 @@
     </div>`;
   }
 
+  /* ── Les meves estadístiques, redesigned (v244) ────────────────────
+     The tenth paper page, in the `.ms-` prefix, after `.cal-` `.std-` `.pl-`
+     `.reg2-` `.pt-` `.cv-` `.ini-` `.md2-` and `.plm-`. It answers what a
+     player asks about themselves: what have I done this season, how did each
+     match go, am I fit, and where have I been hurt.
+
+     ⚠ NO RPE ANYWHERE ON THIS PAGE, AND NO WEEKLY-LOAD CHART. An RPE is the
+     coach's dosing number and the four Readiness components are his judgement
+     about a body; neither is a thing a player should read off their own
+     screen (owner's roadmap, 22). What a player gets is the DERIVED trio —
+     the Preparació score, the acute/chronic ratio and the days since the last
+     match. buildChartsHtml() still builds all three charts, for
+     renderStaffPlayerStats, which is the page they belong on.
+     test/ms.test.js scans the rendered HTML for every one of them, because
+     this is the one thing a later edit could put back with nothing else
+     misbehaving to give it away.
+
+     ⚠ NO MVP. The handoff draws a gold star on the matches a player was
+     voted MVP of, and an MVP season figure. Teammate voting does not exist
+     (roadmap 21, and "the vote is final" has to be enforced in
+     firestore.rules — a client-side lock on a client-written document is
+     decoration). The handoff is explicit that both simply do not render
+     without it, so neither is built: a star wired to some other signal would
+     say something the star does not mean. */
+
+  /** One label over one figure — the unit every band on this page counts in. */
+  function msFig(label, value, cls) {
+    return '<div class="ms-fig' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="ms-lbl">' + sanitize(label) + '</span>' +
+      '<span class="ms-fig-v">' + sanitize(String(value)) + '</span></div>';
+  }
+
+  /** How many injuries this player has had per BODY ZONE INDEX.
+   *
+   *  ⚠ BY INDEX, NEVER BY LABEL — see md2ZoneIdx(). BODY_ZONES holds every
+   *  zone twice, once per side, under one shared label, so counting by label
+   *  paints a right-hamstring tear onto the left leg as well. v234 shipped
+   *  exactly that by following the prototype's markup instead of the data
+   *  behind it, and the handoff's sample script does the same thing. */
+  function msZoneCounts(injuries) {
+    var counts = {};
+    (injuries || []).forEach(function (inj) {
+      var idx = md2ZoneIdx(inj);
+      if (idx == null) return;
+      counts[idx] = (counts[idx] || 0) + 1;
+    });
+    return counts;
+  }
+
+  /** The season body map: every zone this player has hurt, shaded by how
+   *  often. Deliberately NOT interactive — the hover popup over the history
+   *  rows underneath is what answers "which one was that", and two live maps
+   *  on one rail would compete for the same question. */
+  function msBodyMapHtml(injuries) {
+    var counts = msZoneCounts(injuries);
+    if (!Object.keys(counts).length) return '';
+    return '<div class="ms-map-box">' +
+      bodyMapHtml({
+        cls: 'ms-map',
+        fill: function (i) {
+          var n = counts[i] || 0;
+          return n >= 2 ? 'rgba(var(--pp-bad-rgb), .5)'
+            : n === 1 ? 'rgba(var(--pp-bad-rgb), .22)'
+              : 'rgba(255,255,255,0)';
+        },
+        stroke: function (i) {
+          return counts[i] ? 'var(--pp-med-inj-ink)' : 'rgba(45,41,38,.14)';
+        },
+      }) +
+      '<div class="ms-map-key">' +
+        '<span class="ms-key"><i class="ms-key-2"></i>' + sanitize(t('ms.map_2')) + '</span>' +
+        '<span class="ms-key"><i class="ms-key-1"></i>' + sanitize(t('ms.map_1')) + '</span>' +
+      '</div></div>';
+  }
+
+  /** A figure, or an em-dash when it is zero. A blank cell reads as "not
+      recorded", which is a different statement from "none". */
+  function msNil(n) {
+    return n ? sanitize(String(n)) : '<span class="ms-nil">—</span>';
+  }
+
+  /** The cards a row earned, as the real assets the rest of the app uses. */
+  function msCardsHtml(r) {
+    var h = '';
+    var i;
+    for (i = 0; i < (r.yellows || 0); i++) {
+      h += '<img class="ms-card" src="img/groga.png" alt="' + sanitize(t('ms.yellow')) + '">';
+    }
+    for (i = 0; i < (r.reds || 0); i++) {
+      h += '<img class="ms-card" src="img/vermella.png" alt="' + sanitize(t('ms.red')) + '">';
+    }
+    return h || '<span class="ms-nil">—</span>';
+  }
+
+  var MS_RES_CLS = { V: 'ms-res-v', E: 'ms-res-e', D: 'ms-res-d' };
+
+  /** One match, twice: the desktop table row and the phone's two-line card.
+   *
+   *  ⚠ TWO MARKUPS ON PURPOSE, not one row reordered by CSS. The two frames
+   *  in the handoff are genuinely different objects — a seven-column table
+   *  and a stacked card whose first line leads with the result tag — and
+   *  `order:` on a shared row is what put a Convocatòria button in front of
+   *  the count it belonged to in v230. The breakpoint hides one of the two;
+   *  both are built from the same row object, so they cannot disagree. */
+  function msMatchRows(rows) {
+    var wide = '', narrow = '';
+    (rows || []).forEach(function (r) {
+      var homeIsOurs = isOurTeam(r.home);
+      var rival = homeIsOurs ? r.away : r.home;
+      var venue = homeIsOurs ? t('ms.home') : t('ms.away');
+      var min = (typeof r.minutes === 'number') ? r.minutes + "'" : String(r.minutes);
+      var score = r.homeScore + '-' + r.awayScore;
+      var tag = '<span class="ms-res ' + (MS_RES_CLS[r.resultLetter] || 'ms-res-e') + '">' +
+        sanitize(r.resultLetter) + '</span>';
+      var date = tDateDayMonth(r.date);
+
+      wide += '<div class="ms-row">' +
+        '<span class="ms-c-date ms-num">' + sanitize(date) + '</span>' +
+        '<span class="ms-c-rival"><span class="ms-rival">' + sanitize(rival) + '</span>' +
+          '<span class="ms-venue">' + sanitize(venue) + '</span></span>' +
+        '<span class="ms-c-res">' + tag +
+          '<span class="ms-score ms-num">' + sanitize(score) + '</span></span>' +
+        '<span class="ms-c-min ms-num">' + sanitize(min) + '</span>' +
+        '<span class="ms-c-g ms-num">' + msNil(r.goals) + '</span>' +
+        '<span class="ms-c-a ms-num">' + msNil(r.assists) + '</span>' +
+        '<span class="ms-c-cards">' + msCardsHtml(r) + '</span>' +
+      '</div>';
+
+      /* The phone's meta line draws a figure only when it is non-zero —
+         `1 G`, `1 A`, a card — rather than an em-dash per empty column. Six
+         dashes under every quiet match is noise, and the table above is
+         where a player goes to compare rows. */
+      var meta = '<span class="ms-pm-date">' + sanitize(date) + '</span>' +
+        '<span>' + sanitize(venue) + '</span>' +
+        '<span>' + sanitize(min) + '</span>' +
+        (r.goals ? '<span>' + sanitize(String(r.goals)) + ' G</span>' : '') +
+        (r.assists ? '<span>' + sanitize(String(r.assists)) + ' A</span>' : '') +
+        ((r.yellows || r.reds) ? '<span class="ms-pm-cards">' + msCardsHtml(r) + '</span>' : '');
+
+      narrow += '<div class="ms-prow">' +
+        '<span class="ms-pm-top">' + tag +
+          '<span class="ms-rival">' + sanitize(rival) + '</span>' +
+          '<span class="ms-score ms-num">' + sanitize(score) + '</span></span>' +
+        '<span class="ms-pm-meta ms-num">' + meta + '</span>' +
+      '</div>';
+    });
+    return '<div class="ms-rows">' + wide + '</div>' +
+      '<div class="ms-prows">' + narrow + '</div>';
+  }
+
+  /** The band word, and the sentence that explains the score in words
+      INSTEAD of exposing the four components and their weights. */
+  function msBandWord(rd) {
+    if (!rd || !rd.hasData) return '';
+    return rd.color === 'green' ? t('ms.band_good')
+      : rd.color === 'red' ? t('ms.band_low') : t('ms.band_mid');
+  }
+
+  /** How many matchdays the player's own squad has played, which is the
+   *  denominator their `Partits` figure sits against.
+   *
+   *  ⚠ THE SAME WINDOW computePlayerMatchStats() USES — every match with a
+   *  date and a time that has already kicked off — and deliberately NOT
+   *  `>= seasonStartStr()`. The totals beside this figure carry no season
+   *  bound, so a season-scoped denominator would put `Partits 6` next to
+   *  `3 jornades disputades` and make the page look broken when it is only
+   *  measuring two different things. (That the totals are unbounded at all is
+   *  older than this page and is shared with the staff view; scoping them is
+   *  a change to both, not to this line.) */
+  function msTeamMatchdays(user, matches) {
+    var now = new Date();
+    var team = (user && user.team) || '';
+    var n = 0;
+    (matches || []).forEach(function (m) {
+      if (!m.date || !m.time) return;
+      if (new Date(m.date + 'T' + m.time + ':00') > now) return;
+      if (team && (m.team || '') !== team) return;
+      n++;
+    });
+    return n;
+  }
+
   function renderPlayerStats() {
     const session = getSession();
-    // Compute live stats from match events
-    const computed = session ? computePlayerMatchStats(session.id) : { totals: { goals: 0, assists: 0, matches: 0, minutes: 0 }, matchRows: [] };
-    const ct = computed.totals;
-    const matchTableHtml = buildMatchHistoryTable(computed.matchRows);
-
-    // --- RPE line chart (since season start) ---
-    const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');
     const uid = session ? session.id : '';
     const now = new Date();
-    // trainingOnly: these charts are load and attendance rate. See getTrainings().
-    const trainingList = trainingOnly(getTrainings());
-    const matchesList = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const staffOverrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
-    const matchAvailData = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
 
-    const todayStr = localDateStr(now);
+    const ctx = matchStatsContext();
+    const computed = session
+      ? computePlayerMatchStats(uid, ctx)
+      : { totals: { goals: 0, assists: 0, matches: 0, minutes: 0, titulars: 0 }, matchRows: [] };
+    const ct = computed.totals;
 
-    // Season start: Aug 15 of current season year
-    const seasonStart = seasonStartStr(now);
-
-    // Collect all sessions (training + matches) since season start, sorted by date
-    const sessions = [];
-    trainingList.forEach(t => {
-      if (!t.date || t.date < seasonStart || t.date > todayStr) return;
-      const avail = readRecord(staffOverrides, uid, t, 'avail') ||
-        readRecord(availData, uid, t, 'avail') || '';
-      const excluded = avail === 'no' || avail === 'injured';
-      const entry = excluded ? null : readRecord(rpeData, uid, t, 'rpe');
-      sessions.push({
-        date: t.date,
-        type: 'training',
-        label: t.focus || 'Training',
-        rpe: entry ? entry.rpe : null,
-        minutes: entry ? entry.minutes : null,
-        skipped: avail === 'no',
-        injured: avail === 'injured'
-      });
-    });
-    matchesList.forEach(m => {
-      if (!m.date || m.date < seasonStart || m.date > todayStr) return;
-      const rpeKey = uid + '_match_' + m.id;
-      const maKey = uid + '_' + m.id;
-      const avail = matchAvailData[maKey] || '';
-      const entry = rpeData[rpeKey];
-      sessions.push({
-        date: m.date,
-        type: 'match',
-        label: (m.home || '') + ' vs ' + (m.away || ''),
-        rpe: entry ? entry.rpe : null,
-        minutes: entry ? entry.minutes : null,
-        skipped: avail === 'no_disponible',
-        injured: false
-      });
-    });
-    // Extra training sessions
-    Object.keys(rpeData).forEach(key => {
-      if (!key.startsWith(uid + '_extra_')) return;
-      const entry = rpeData[key];
-      if (!entry || !entry.date || entry.date < seasonStart || entry.date > todayStr) return;
-      sessions.push({
-        date: entry.date,
-        type: 'extra',
-        label: entry.tag || 'Extra',
-        rpe: entry.rpe,
-        minutes: entry.minutes,
-        skipped: false,
-        injured: false
-      });
-    });
-    sessions.sort((a, b) => a.date.localeCompare(b.date));
-
-    const charts = buildChartsHtml(sessions);
-    const acwrHtml = charts.acwr, chartHtml = charts.rpe, uaWeekHtml = charts.uaWeek;
-    const rd = computeReadiness(uid);
-    const readinessHtml = buildReadinessCard(rd);
-
-    // Position circles
     const users = getUsers();
-    const myUser = users.find(u => u.id === uid);
-    const posHtml = myUser ? posCirclesHtmlGlobal(myUser) : '';
+    const myUser = users.find(u => String(u.id) === String(uid)) || { name: session ? session.name : '' };
+    const sy = Number(seasonStartStr(now).slice(0, 4));
+    const seasonTxt = t('sc.season') + ' ' + sy + '-' + String(sy + 1).slice(2);
+    const jornades = msTeamMatchdays(myUser, ctx.matches);
 
-    // Attendance donut (reuse same logic as Player Overview)
-    let pYes = 0, pLate = 0, pNo = 0, pInj = 0, pNa = 0;
+    /* Attendance. The denominator is the sessions this player ANSWERED (or
+       that staff answered for them); a session nobody answered is not an
+       absence, and counting it as one would make a quiet week look like a
+       missed one. `justified` is the injured answer — the one absence the
+       club has already accepted. */
+    const trainingList = trainingOnly(getTrainings());
     const _ctxStats = availContext();
-    trainingList.forEach(t => {
-      if (!t.date) return;
-      const locked = isTrainingLocked(t);
-      const v = getEffectiveAnswer(uid, t, locked, _ctxStats);
+    let pYes = 0, pLate = 0, pNo = 0, pInj = 0;
+    trainingList.forEach(tr => {
+      if (!tr.date) return;
+      const v = getEffectiveAnswer(uid, tr, isTrainingLocked(tr), _ctxStats);
       if (v === 'yes') pYes++;
       else if (v === 'late') pLate++;
       else if (v === 'no') pNo++;
       else if (v === 'injured') pInj++;
-      else pNa++;
     });
-    const pTotal = pYes + pLate + pNo + pInj + pNa;
-    let attendDonutHtml = '';
-    if (pTotal > 0) {
-      const dSize = 100, dStroke = 16, dRadius = (dSize - dStroke) / 2;
-      const dCirc = 2 * Math.PI * dRadius;
-      const dSegs = [
-        { count: pYes, color: '#66bb6a', label: t('avail.yes') },
-        { count: pLate, color: '#ffa726', label: t('avail.late') },
-        { count: pNo, color: '#78909c', label: t('avail.no') },
-        { count: pInj, color: '#ef5350', label: t('avail.injured') },
-        { count: pNa, color: '#d0d0d0', label: t('avail.na') }
-      ];
-      let dArcs = '', dOff = 0;
-      dSegs.forEach(s => {
-        if (s.count > 0) {
-          const len = (s.count / pTotal) * dCirc;
-          const sPct = Math.round((s.count / pTotal) * 100);
-          dArcs += `<circle cx="${dSize/2}" cy="${dSize/2}" r="${dRadius}" fill="none" stroke="${s.color}" stroke-width="${dStroke}"
-            stroke-dasharray="${len} ${dCirc - len}" stroke-dashoffset="${-dOff}"
-            style="--circ:${dCirc};cursor:pointer;pointer-events:stroke" transform="rotate(-90 ${dSize/2} ${dSize/2})" data-tooltip="${s.label}: ${sPct}%"><title>${s.label}: ${sPct}%</title></circle>`;
-          dOff += len;
-        }
-      });
-      const attendPct = Math.round(((pYes + pLate) / pTotal) * 100);
-      attendDonutHtml = `<div style="display:flex;flex-direction:column;align-items:center;gap:.3rem;">
-        <div class="assistance-circle" style="width:${dSize}px;height:${dSize}px;">
-          <svg width="${dSize}" height="${dSize}" viewBox="0 0 ${dSize} ${dSize}">
-            <circle cx="${dSize/2}" cy="${dSize/2}" r="${dRadius}" fill="none" stroke="var(--border)" stroke-width="${dStroke}"/>
-            ${dArcs}
-          </svg>
-          <span class="assistance-pct po-pct-counter" data-target="${attendPct}" style="font-size:1.1rem;font-weight:800;">0%</span>
-        </div>
-        <span style="font-size:.65rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;">Attendance</span>
-      </div>`;
-    }
+    const answered = pYes + pLate + pNo + pInj;
+    const attendPct = answered ? Math.round(((pYes + pLate) / answered) * 100) : 0;
+    const donutHtml = iniDonutHtml(
+        [{ n: pYes + pLate, css: 'var(--pp-ok)', label: t('ms.attendance') }],
+        { size: 88, stroke: 3.4, centre: attendPct + '%', centreSize: 19 });
 
-    // Injury history + body map → buildInjuryHistoryHtml, shared with the
-    // staff view of the same player.
+    /* Readiness: the SCORE, the ratio and the days — and nothing else off the
+       object. rd.loadRatioScore and its three siblings stay where they are. */
+    const rd = computeReadiness(uid);
+    const band = msBandWord(rd);
+    const prepVal = rd.hasData ? String(rd.score) : '—';
+    const prepCls = rd.hasData ? ' ms-prep-' + rd.color : ' ms-prep-none';
+    const acwrVal = (rd.hasData && rd.acwr) ? rd.acwr.toFixed(2) : '—';
+    const restVal = rd.matchDaysSince == null ? '—' : String(rd.matchDaysSince);
+    const cardTotal = computed.matchRows.reduce((s, r) => s + (r.yellows || 0) + (r.reds || 0), 0);
+
+    const injuries = getPlayerInjuries(uid);
+    const posHtml = posCirclesHtmlGlobal(myUser);
+
+    const figures =
+      msFig(t('ms.matches'), ct.matches) +
+      msFig(t('ms.minutes'), ct.minutes) +
+      msFig(t('ms.goals'), ct.goals) +
+      msFig(t('ms.assists'), ct.assists) +
+      msFig(t('ms.titular'), ct.titulars);
+
+    const summary = tv('ms.summary', { min: ct.minutes, g: ct.goals, a: ct.assists });
 
     return `
-      <h2 class="page-title">${t('page.my_stats')}</h2>
-      <div class="card mystats-summary">
-        <div class="mystats-summary-left">
-          <div class="mystats-pos-row"><span class="conv-pos-circles">${posHtml}</span></div>
-          <div class="mystats-nums">
-            <div class="mystats-num"><span class="mystats-num-val">${ct.goals}</span><span class="mystats-num-lbl">${t('stats.goals')}</span></div>
-            <div class="mystats-num"><span class="mystats-num-val">${ct.assists}</span><span class="mystats-num-lbl">${t('stats.assists')}</span></div>
-            <div class="mystats-num"><span class="mystats-num-val">${ct.matches}</span><span class="mystats-num-lbl">${t('stats.matches')}</span></div>
-            <div class="mystats-num"><span class="mystats-num-val">${ct.titulars}</span><span class="mystats-num-lbl">${t('stats.titular')}</span></div>
-            <div class="mystats-num"><span class="mystats-num-val">${ct.minutes}</span><span class="mystats-num-lbl">${t('stats.minutes')}</span></div>
+      <div class="ms-page" id="ms-page">
+        <div class="ms-id">
+          <div class="ms-id-who">
+            ${avatarHtmlGlobal(myUser, 'ms-face')}
+            <div class="ms-id-col">
+              <span class="ms-eyebrow">${sanitize(t('page.my_stats'))}</span>
+              <span class="ms-name-row">
+                <span class="ms-name">${sanitize(myUser.name || '')}</span>
+                ${myUser.playerNumber ? `<span class="ms-dorsal ms-num">${sanitize(String(myUser.playerNumber))}</span>` : ''}
+              </span>
+              <span class="ms-id-meta">
+                <span class="conv-pos-circles">${posHtml}</span>
+                <span class="ms-id-season">${sanitize(seasonTxt)}${jornades ? ' · ' + sanitize(tv('ms.jornades', { n: jornades })) : ''}</span>
+              </span>
+            </div>
+          </div>
+          <span class="ms-vrule"></span>
+          <div class="ms-figs">${figures}</div>
+          <div class="ms-attend">
+            ${donutHtml}
+            <div class="ms-attend-txt">
+              <span class="ms-lbl">${sanitize(t('ms.attendance'))}</span>
+              ${answered
+                ? `<span class="ms-attend-l">${sanitize(tv('ms.sessions_of', { a: pYes + pLate, b: answered }))}</span>
+                   <span class="ms-attend-l">${sanitize(tv('ms.absences', { n: pInj }))}</span>`
+                : `<span class="ms-attend-l">${sanitize(t('ms.no_sessions'))}</span>`}
+            </div>
           </div>
         </div>
-        ${attendDonutHtml}
-      </div>
-      ${matchTableHtml}
-      ${buildInjuryHistoryHtml(uid, { forPlayer: true })}
-      ${readinessHtml}
-      ${acwrHtml}
-      ${chartHtml}
-      ${uaWeekHtml}`;
+
+        <div class="ms-prep">
+          <div class="ms-prep-score">
+            <span class="ms-fig">
+              <span class="ms-lbl">${sanitize(t('ms.prep'))}</span>
+              <span class="ms-prep-v${prepCls} ms-num">${sanitize(prepVal)}</span>
+            </span>
+            ${band ? `<span class="ms-prep-band">${sanitize(band)}</span>` : ''}
+          </div>
+          <span class="ms-vrule ms-vrule-s"></span>
+          <p class="ms-prep-help">${sanitize(rd.hasData ? t('ms.prep_help') : t('ms.prep_none'))}</p>
+          <div class="ms-prep-nums">
+            ${msFig(t('ms.acwr'), acwrVal, 'ms-fig-s')}
+            <div class="ms-fig ms-fig-s">
+              <span class="ms-lbl"><span class="ms-l-lg">${sanitize(t('ms.since_match'))}</span><span class="ms-l-sm">${sanitize(t('ms.rest'))}</span></span>
+              <span class="ms-fig-v ms-num">${sanitize(restVal)}</span>
+            </div>
+            ${msFig(t('ms.cards'), cardTotal, 'ms-fig-s ms-fig-cards')}
+          </div>
+        </div>
+
+        <div class="ms-body">
+          <div class="ms-main">
+            <div class="ms-sec">
+              <span class="ms-sec-l">${sanitize(t('ms.per_match'))}</span>
+              <span class="ms-sec-r">${sanitize(computed.matchRows.length ? summary : tv('ms.n_matches', { n: 0 }))}</span>
+            </div>
+            ${computed.matchRows.length ? `<div class="ms-head">
+              <span class="ms-c-date">${sanitize(t('ms.th_date'))}</span>
+              <span class="ms-c-rival">${sanitize(t('ms.th_rival'))}</span>
+              <span class="ms-c-res">${sanitize(t('ms.th_res'))}</span>
+              <span class="ms-c-min">${sanitize(t('ms.th_min'))}</span>
+              <span class="ms-c-g">${sanitize(t('ms.goals'))}</span>
+              <span class="ms-c-a">${sanitize(t('ms.assists'))}</span>
+              <span class="ms-c-cards">${sanitize(t('ms.cards'))}</span>
+            </div>` : ''}
+            ${computed.matchRows.length
+              ? msMatchRows(computed.matchRows)
+              : `<p class="ms-empty">${sanitize(t('ms.no_matches'))}</p>`}
+          </div>
+          <div class="ms-rail">
+            <span class="ms-sec-solo">${sanitize(t('ms.estat'))}</span>
+            ${buildInjuryHistoryHtml(uid, { forPlayer: true, mapHtml: msBodyMapHtml(injuries) })}
+          </div>
+        </div>
+      </div>`;
   }
 
   function renderStaffPlayerStats() {
@@ -36380,7 +36597,11 @@
       fa_injury_dismissed: ['medical', 'medical-detail', 'manage-roster', 'staff-training-detail'],
       fa_injury_zone: ['my-stats', 'staff-player-stats', 'medical', 'medical-detail'],
       fa_injuries: ['staff-home', 'player-home', 'my-stats', 'medical', 'medical-detail', 'manage-roster', 'staff-training-detail', 'staff-player-stats'],
-      fa_training_staff_override: ['staff-home', 'player-home', 'calendar', 'training-detail', 'staff-training-detail'],
+      /* my-stats and staff-player-stats read this through getEffectiveAnswer()
+         for the attendance donut, and were missing from the list — a coach
+         marking a session as injured left the player's percentage stale until
+         the next navigation. */
+      fa_training_staff_override: ['staff-home', 'player-home', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'staff-player-stats'],
       fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],
       /* Both Inici pages read these three since v230: the player's meet time
          and card count, and the staff row's fixture meta. A key a page reads
