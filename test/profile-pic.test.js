@@ -244,3 +244,64 @@ describe('iniShrinkImage — an optimisation that may never block a photo', () =
     paths.forEach(([re, which]) => assert.ok(re.test(BLOCK), which + ' leaks the object URL'));
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE PERSON IS TOLD, RATHER THAN LEFT WITH AN INVISIBLE PHOTO (v249)
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ The guards above are correct and they are also silent. A pre-v232 failed
+   upload leaves a `data:` URI on the personal document: it renders wherever
+   the SESSION is read — this person's own profile, the nav avatar — and
+   stripHeavyPics drops it from the club-wide blob every roster surface reads.
+   The photo is therefore visible to exactly one person, with nothing on
+   screen connecting the two halves, and no sync fix can reach it because the
+   bytes are the residue of an upload that never completed. Reported by the
+   owner as "he is only showing it in his profile".
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('the oversized photo says so, instead of silently vanishing', () => {
+  const strings = src.slice(src.indexOf("'pic.stale_t'"), src.indexOf("'pic.stale_b'") + 400);
+
+  it('has the prompt in all three languages', () => {
+    ['pic.stale_t', 'pic.stale_b'].forEach((k) => {
+      assert.ok(src.includes("'" + k + "'"), k + ' is missing');
+    });
+    ['ca:', 'es:', 'en:'].forEach((lang) =>
+      assert.ok(strings.includes(lang), 'the prompt has no ' + lang + ' string'));
+  });
+
+  it('fires on the SESSION\'s own value, not on whoever is looking', () => {
+    /* stripHeavyPics runs on every device and repairs everybody's row; the
+       prompt must reach the one person who can act on it. */
+    /* Anchored on the GUARD, not on the first mention of the latch — that is
+       the declaration, hundreds of lines above, and slicing from it read a
+       region the check is not in. */
+    const at = src.indexOf('if (!_stalePicWarned');
+    assert.ok(at !== -1, 'the guard is gone');
+    const guard = src.slice(at, at + 400);
+    assert.ok(/session\.profilePic/.test(guard),
+        'the prompt is not keyed on the viewer\'s own photo');
+    assert.ok(/MAX_PIC_SRC/.test(guard),
+        'the prompt uses its own size rule instead of the one that does the stripping');
+  });
+
+  /* ⚠ renderPage runs on every category change, every firestore-sync callback
+     and every language switch. A prompt without a latch is a toast storm. */
+  it('shows once per session, not once per render', () => {
+    assert.ok(/let _stalePicWarned = false;/.test(src), 'there is no latch');
+    const guard = src.slice(src.indexOf('if (!_stalePicWarned'),
+        src.indexOf('if (!_stalePicWarned') + 400);
+    assert.ok(guard.indexOf('_stalePicWarned = true;') !== -1,
+        'the latch is never set, so the toast repeats on every render');
+    assert.ok(guard.indexOf('_stalePicWarned = true;') < guard.indexOf('_showPushToast'),
+        'the latch is set after the toast — an early return would repeat it');
+  });
+
+  it('says what to DO, not just that something is wrong', () => {
+    /* The one action that fixes it is re-uploading; a message that only
+       reports the fault leaves the person exactly where they started. */
+    const i = src.indexOf("'pic.stale_b'");
+    const ca = src.slice(src.indexOf("ca:'", i) + 4, src.indexOf("', es:", i));
+    assert.ok(ca.length > 20, 'no Catalan body: ' + ca);
+    assert.ok(/torna a pujar|torna-la a pujar|torna a pujar-la/i.test(ca),
+        'the message does not ask for a re-upload: ' + ca);
+  });
+});

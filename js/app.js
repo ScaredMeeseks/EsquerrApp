@@ -1757,6 +1757,14 @@
     'alert.image_too_large':  { ca:'La imatge ha de ser inferior a 2 MB.', es:'La imagen debe ser inferior a 2 MB.', en:'Image must be under 2 MB.' },
     'pic.failed_t':           { ca:'No s\'ha pujat la foto', es:'No se ha subido la foto', en:'Photo not uploaded' },
     'pic.failed_b':           { ca:'La foto no s\'ha pogut pujar i no s\'ha desat. Comprova la connexió i torna-ho a provar.', es:'La foto no se ha podido subir y no se ha guardado. Comprueba la conexión e inténtalo de nuevo.', en:'The photo could not be uploaded and was not saved. Check your connection and try again.' },
+    /* ⚠ The residue of a failed upload from before v232: a `data:` URI on the
+       personal document. It renders on this person's OWN profile and is
+       stripped from the club-wide roster blob by stripHeavyPics — deliberately,
+       because one such value could stop `fa_users` syncing for everybody. The
+       effect is that the photo shows to them and to nobody else, with nothing
+       on screen connecting the two. Only re-uploading fixes it, so say so. */
+    'pic.stale_t':            { ca:'Torna a pujar la teva foto', es:'Vuelve a subir tu foto', en:'Re-upload your photo' },
+    'pic.stale_b':            { ca:'La teva foto no es va desar bé i només la veus tu. Torna a pujar-la perquè la vegi tot l\'equip.', es:'Tu foto no se guardó bien y solo la ves tú. Vuelve a subirla para que la vea todo el equipo.', en:'Your photo was not saved properly and only you can see it. Upload it again so the whole team can.' },
     'alert.select_role':      { ca:'Selecciona almenys un rol.', es:'Selecciona al menos un rol.', en:'Please select at least one role.' },
     'alert.board_name_exists':{ ca:'Ja existeix una pissarra amb aquest nom.', es:'Ya existe una pizarra con ese nombre.', en:'A board with this name already exists.' },
     'alert.select_training':  { ca:'Selecciona un entrenament.', es:'Selecciona un entrenamiento.', en:'Please select a training.' },
@@ -2108,6 +2116,9 @@
      initial — exactly what avatarHtmlGlobal() exists for — and the next
      successful upload replaces it properly. */
   const MAX_PIC_SRC = 1024; // a Storage URL is ~200 chars; nothing legitimate is longer
+  /* One prompt per session — see the check in renderPage(). Not per render:
+     that function runs on every sync callback and every category change. */
+  let _stalePicWarned = false;
 
   function stripHeavyPics(users) {
     let stripped = 0;
@@ -2578,7 +2589,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 248;
+  const APP_VERSION = 249;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6438,6 +6449,25 @@
        every path in and out of the editor to tidy up after itself. */
     if (tbEditingTemplateId() && !session.isAdmin) tbClearEditor();
 
+    /* ⚠ "Your photo shows to you and to nobody else." (v249)
+
+       A pre-v232 failed upload left a `data:` URI on the personal document.
+       It renders wherever the SESSION is read — this person's own profile,
+       the nav avatar — and `stripHeavyPics` drops it from the club-wide
+       `fa_users` blob every roster surface reads, deliberately, because one
+       such value could stop that blob syncing for the whole club. So the
+       photo is visible to exactly one person, and nothing on screen connects
+       the two halves. No sync fix reaches this: the bytes are the residue of
+       an upload that never completed. Only re-uploading fixes it, so say so.
+
+       ⚠ ONCE per session, not per render — renderPage runs on every category
+       change, every sync callback and every language switch. */
+    if (!_stalePicWarned && typeof session.profilePic === 'string' &&
+        session.profilePic.length > MAX_PIC_SRC) {
+      _stalePicWarned = true;
+      _showPushToast(t('pic.stale_t'), t('pic.stale_b'));
+    }
+
     /* Retired page ids, resolved BEFORE the role gates — an old APK's push
        deep link names a page that no longer exists, and bouncing it to the
        home screen would read as a broken notification. */
@@ -8233,16 +8263,44 @@
       '</span><span class="ini-day">' + d.getDate() + '</span></div>';
   }
 
-  /** Our crest for our side of a fixture, a monogram disc for the rival.
-   *  The handoff is explicit that opponent crests are discs and not images:
-   *  the club has no rival crest library, and a broken <img> beside a
-   *  fixture reads as a fault in the app rather than a missing asset. */
-  function iniSideBadgeHtml(name) {
+  /** Our crest for our side of a fixture, the rival's when we have one, a
+   *  monogram disc when we do not.
+   *
+   *  ⚠ THE SECOND ARGUMENT IS THE WHOLE POINT (v249). This took a NAME and
+   *  nothing else, under a comment saying "the club has no rival crest
+   *  library" — so Inici drew a monogram for every opponent while Calendari
+   *  and Convocatòria drew the real badge beside it. The library exists:
+   *  `opponentBadge` is filled by the FCF import for every league fixture
+   *  and by the opponent picker for anything typed exactly.
+   *
+   *  Calendari's own comment records making exactly this mistake and
+   *  correcting it — "this block used to ignore it on the strength of a
+   *  comment claiming no crest images existed". Inici was the last page
+   *  still believing that comment, which is why it is now deleted rather
+   *  than softened: a stale claim about the data is what kept this broken,
+   *  and leaving it hedged would leave the next reader the same trap.
+   *
+   *  ⚠ `safeHttpUrl` and the `onerror` both stay: files.fcf.cat is someone
+   *  else's host and 404s on its own schedule, and a broken image beside a
+   *  fixture reads as a fault in the app. The fallback is the monogram the
+   *  slot would have held anyway.
+   *  @param {string} name the side's club name
+   *  @param {string} [badge] the rival's crest URL, when the fixture has one
+   */
+  function iniSideBadgeHtml(name, badge) {
     if (isOurTeam(name)) {
       return '<img class="ini-crest" src="' + sanitize(clubBadgeUrl()) + '" alt="" ' +
         'onerror="this.style.display=\'none\'">';
     }
-    return '<span class="ini-mono">' + sanitize(clubMonogram(name)) + '</span>';
+    var url = badge ? safeHttpUrl(badge) : '';
+    var mono = '<span class="ini-mono">' + sanitize(clubMonogram(name)) + '</span>';
+    if (!url) return mono;
+    /* The monogram is the fallback, so it ships WITH the image and the
+       onerror swaps them — rather than the image vanishing and leaving a
+       hole where a club used to be. */
+    return '<img class="ini-crest" src="' + sanitize(url) + '" alt="" ' +
+      'onerror="this.outerHTML=this.getAttribute(\'data-fb\')" ' +
+      'data-fb="' + sanitize(mono) + '">';
   }
 
   /** The blinking "call-up sent" tag, shared by both pages.
@@ -24137,6 +24195,10 @@
             label: matchLabel(m), place: sanitize(m.location || ''),
             meta: bits.filter(Boolean).join(' · '),
             home: m.home || '', away: m.away || '',
+            /* ⚠ Carried so `iniSideBadgeHtml` can draw the real crest (v249).
+               The row had `home`/`away` and dropped this, so the badge could
+               not reach the renderer however it was written. */
+            oppBadge: m.opponentBadge || '',
             answered, available, total: players.length, called,
             convSent: !!sent, link: 'match-detail', linkId: m.id, matchId: m.id,
           });
@@ -24195,7 +24257,7 @@
          and a row-wide handler would swallow that click. */
       const nameLink = `<span class="ini-ev-name ini-ev-name-link"${shomeLinkAttrs(r.link, r.linkId)}>${r.label}</span>`;
       const titleHtml = r.kind === 'match'
-        ? `${iniSideBadgeHtml(r.home)}${nameLink}${iniSideBadgeHtml(r.away)}`
+        ? `${iniSideBadgeHtml(r.home, r.oppBadge)}${nameLink}${iniSideBadgeHtml(r.away, r.oppBadge)}`
         : nameLink;
       const sentTag = (r.kind === 'match' && r.convSent) ? iniSentTagHtml(r.matchId) : '';
       const meta = r.kind === 'match' ? r.meta
@@ -31268,6 +31330,8 @@
       if (callupMap[m.id]) bits.push(t('ini.meet_at') + ' ' + sanitize(callupMap[m.id]));
       activities.push({ type: 'match', id: m.id, date: m.date, time: m.time,
         home: m.home || '', away: m.away || '',
+        // ⚠ See the staff row above: without this the crest cannot reach the badge helper.
+        oppBadge: m.opponentBadge || '',
         label: matchLabel(m), detail: bits.filter(Boolean).join(' · '),
         convSent, convIncluded, sentPieces });
     });
@@ -31371,7 +31435,7 @@
         ? `data-go-match="${sanitize(String(a.id))}"`
         : `data-go-training="${sanitize(String(a.tId || ''))}"`;
       const titleHtml = isMatch
-        ? `${iniSideBadgeHtml(a.home)}<span class="ini-ev-name ini-ev-name-link">${a.label}</span>${iniSideBadgeHtml(a.away)}`
+        ? `${iniSideBadgeHtml(a.home, a.oppBadge)}<span class="ini-ev-name ini-ev-name-link">${a.label}</span>${iniSideBadgeHtml(a.away, a.oppBadge)}`
         : `<span class="ini-ev-name ini-ev-name-link">${a.label}</span>`;
       /* The kit went with the redesign's meta line: it was three shirt icons
          beside a fixture, and it is on the match detail the call-up tag

@@ -526,6 +526,40 @@ describe('the player rail has no close button of its own', () => {
     assert.ok(!/^\s*\.pl-donut-legend\s*\{[^}]*grid/m.test(css),
         'the unscoped legend rule was made a grid — that re-flows the rail too');
   });
+
+  /* ⚠ v249: THE "ASSISTÈNCIA" LABEL SAT 5px ABOVE THE OTHER FOUR, and it took
+     two rules to put it back on their line. Both were measured, not reasoned:
+     removing either moves the eyebrow in headless Chrome.
+
+     1. `.pl-att` is `align-items: center`, so its label column was centred
+        against the 56px ring while `.pl-figures` beside it hung from the
+        bottom. Two alignments in one row — that was the 5px.
+     2. Both stacks are `eyebrow + gap + <box>`, so their eyebrows only line
+        up while the boxes are the same height. A figure's box is
+        `.pl-fig-v`, 30px. The legend's was whatever two rows of 12px text
+        came to — 30px by luck. Pinned, it survives a font change; unpinned,
+        a 17px legend drops the eyebrow 12px. */
+  it('hangs the attendance block from the same edge as the figures', () => {
+    const m = /\.pl-title-row\s+\.pl-att\s*\{([^}]*)\}/.exec(css);
+    assert.ok(m, 'the band no longer overrides .pl-att\'s alignment');
+    assert.ok(/align-items:\s*flex-end/.test(m[1]),
+        'the attendance block is centred again, so its label rides high: ' + m[1].trim());
+    /* ⚠ Scoped. The rail's donut block still wants its label beside the ring. */
+    const bare = /^\s*\.pl-att\s*\{([^}]*)\}/m.exec(css);
+    assert.ok(bare && /align-items:\s*center/.test(bare[1]),
+        'the unscoped .pl-att was changed instead — that re-aligns the rail too');
+  });
+
+  it('gives the band legend a figure-sized box, so the eyebrows stay level', () => {
+    const m = /\.pl-title-row\s+\.pl-donut-legend\s*\{([^}]*)\}/.exec(css);
+    assert.ok(m && /height:\s*30px/.test(m[1]),
+        'the legend is free to be any height, so its eyebrow drifts off the line');
+    /* 30px because that is what a figure's value box is. Read it rather than
+       repeating it: if the shared figure rule changes, this must fail. */
+    const fig = /[^{}]*\.pl-fig-v[^{}]*\{([^}]*)\}/.exec(css);
+    assert.ok(fig && /font-size:\s*30px/.test(fig[1]),
+        'the figure value is no longer 30px, so the legend box no longer matches it');
+  });
 });
 
 /* ── The page actually runs ───────────────────────────────────────────

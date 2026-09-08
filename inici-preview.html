@@ -6462,7 +6462,20 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    stop. Two columns are 32px, under the title block's own 64. */
 .pl-title-row .pl-donut-legend {
   display: grid; grid-template-columns: auto auto; gap: 2px 16px;
+  /* ⚠ AND IT IS A FIGURE'S VALUE BOX, 30px — which is what puts the
+     "Assistència" eyebrow on the same line as the other four.
+     `.pl-fig` is `eyebrow + gap + .pl-fig-v`, and `.pl-fig-v` is 30px. Give
+     the legend that same 30px and the two stacks are identical heights, so
+     bottom-aligning them in the band lands their eyebrows on one line. Left
+     to its own content the legend was ~32px and the label rode 2px high —
+     and it rode 6px high before that, because `.pl-att` CENTRED it against
+     the ring while the figures beside it hung from the bottom. */
+  height: 30px; align-content: center;
 }
+/* The other half of that: hang from the same edge as `.pl-figures` rather
+   than centring on the ring. Scoped, because the rail's donut block still
+   wants its label beside the ring. */
+.pl-title-row .pl-att { align-items: flex-end; }
 .pl-donut-legend { display: flex; flex-direction: column; gap: 2px; }
 .pl-donut-legend-right { align-items: flex-end; }
 .pl-legend-row {
@@ -6485,9 +6498,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 
 /* ── Key figures ── */
+/* ⚠ `.pl-fig` and `.pl-fig-v` WERE REDECLARED HERE, at 24px and gap:3, and
+   they are in the v247 shared rules up near `.dashboard-content` at 30px and
+   gap:4. Same specificity, this one later — so it won, and Plantilla's
+   figures were 24px while the other nine bands were 30px. The v247 note
+   claims "four copies of the 30px value became one"; this copy survived the
+   consolidation and quietly beat the rule that replaced it. Deleted: the
+   shared rule is the one that should have been in force all along.
+   `.pl-fig-of` and `.pl-fig-risk` stay — those are genuinely page-local. */
 .pl-figures { flex-wrap: wrap; }
-.pl-fig { display: flex; flex-direction: column; gap: 3px; }
-.pl-fig-v { font-size: 24px; font-weight: 400; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .pl-fig-of { font-size: 14px; color: var(--pp-ink-2); }
 .pl-fig-risk { color: var(--pp-red); }
 

@@ -241,6 +241,50 @@ const DB = (function () {
     return !!_scope && _scope.indexOf(cat) !== -1;
   }
 
+  /* ── What a personal document may refresh in the shared roster blob ──
+     (v249)
+
+     THE PROBLEM. `fa_users` is the roster blob every surface reads — Plantilla,
+     Convocatòria, Mèdic, Les meves estadístiques. The reconcile below used to
+     only ADD to it: a row already present was skipped forever, and there is no
+     `onSnapshot` on `users/` either. So a change to a personal document was
+     invisible to everybody else — a new profile photo, a corrected name, a new
+     dorsal — unless that person's own device happened to rewrite the whole
+     blob through setSession(), and that write reached everyone. Reported as
+     "his photo only shows on his own profile", which is exactly the shape of
+     it: his device reads the personal doc, every other page reads this blob.
+
+     ⚠ WHY AN ALLOWLIST AND NOT Object.assign. A row here carries fields the
+     personal document does NOT own: `roles`, `category`, `team`,
+     `staffCategories`, `staffRole`, `isTeamLead`, `teamId`. Those are decided
+     server-side by joinClub / onRosterWritten / setRole, and app.js STRIPS
+     them from the client's own write to `users/{uid}` for exactly that reason.
+     Copying the document over the row would let a stale or mid-write document
+     silently demote somebody — a coach losing `staffCategories` sees empty
+     pages everywhere and nothing says why. So: the profile fields, by name,
+     and nothing else ever.
+
+     ⚠ It returns the SAME object when nothing changed, so the caller can tell
+     a real change from a no-op and skip the write. A reconcile that rewrites
+     the blob on every boot is a sync storm dressed as a refresh. */
+  var PROFILE_FIELDS = ['name', 'profilePic', 'dob', 'phone',
+    'position', 'playerNumber', 'agent', 'email'];
+
+  function _mergeProfile(row, doc) {
+    var next = null;
+    for (var i = 0; i < PROFILE_FIELDS.length; i++) {
+      var k = PROFILE_FIELDS[i];
+      /* `undefined` means the document does not carry the field at all — a
+         member who has never opened profile setup. That is not "clear it";
+         only a value actually present may overwrite one already here. */
+      if (doc[k] === undefined) continue;
+      if (row[k] === doc[k]) continue;
+      if (!next) next = JSON.parse(JSON.stringify(row));
+      next[k] = doc[k];
+    }
+    return next || row;
+  }
+
   /** The data/ collection query — narrowed to the scope from Stage C on. */
   function _dataQuery(teamDocRef) {
     var coll = teamDocRef.collection('data');
@@ -601,24 +645,32 @@ const DB = (function () {
       var allUserDocs = allSnap.docs;
       if (allUserDocs.length) {
         var faUsers = JSON.parse(_origGetItem('fa_users') || '[]');
-        var existingIds = {};
-        faUsers.forEach(function (u) { existingIds[String(u.id)] = true; });
+        var byId = {};
+        faUsers.forEach(function (u, i) { byId[String(u.id)] = i; });
         var added = 0;
+        var changed = 0;
         allUserDocs.forEach(function (d) {
           var uid = d.id;
-          if (existingIds[uid]) return;
           var data = d.data();
           // The users/ query is team-scoped, not category-scoped, so it can
           // return members of shards this client never downloaded. Adding
           // one would route the blob to a shard we cannot write, and the
           // whole reconcile would be refused. No-op until Stage C.
+          // ⚠ It guards the UPDATE too: touching a row whose shard is not in
+          // scope routes the same refused write.
           if (!_inScope(data.category || Shard.NONE)) return;
-          data.id = uid;
-          faUsers.push(data);
-          existingIds[uid] = true;
-          added++;
+          var at = byId[uid];
+          if (at === undefined) {
+            data.id = uid;
+            faUsers.push(data);
+            byId[uid] = faUsers.length - 1;
+            added++;
+            return;
+          }
+          var next = _mergeProfile(faUsers[at], data);
+          if (next !== faUsers[at]) { faUsers[at] = next; changed++; }
         });
-        if (added) {
+        if (added || changed) {
           var merged = JSON.stringify(faUsers);
           _origSetItem('fa_users', merged);
           _routeWrite('fa_users', merged).catch(function () { /* surfaced via db-write-error */ });
@@ -845,6 +897,13 @@ const DB = (function () {
        blobs. Sharing the mapping is the point: a second copy is how the
        archived view and the live view start disagreeing about what an
        attendance answer looks like. */
-    RECORD_COLLECTIONS: RECORD_COLLECTIONS
+    RECORD_COLLECTIONS: RECORD_COLLECTIONS,
+    /* ⚠ Exported ONLY so the suite can call it directly. The reconcile that
+       uses it lives inside a 300-line `async init()` behind a Firestore
+       query, and a merge rule that decides which fields a personal document
+       may overwrite in the club-wide roster blob is worth testing on its own
+       terms — a server-owned field slipping into PROFILE_FIELDS silently
+       demotes people, and that must fail here rather than in production. */
+    _mergeProfile: _mergeProfile, _PROFILE_FIELDS: PROFILE_FIELDS
   };
 })();

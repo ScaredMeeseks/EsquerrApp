@@ -528,6 +528,54 @@ describe('the paper pages sit in the dashboard the same way', () => {
     });
   });
 
+  /* ⚠ v249: A PAGE MAY NOT REDECLARE A SHARED BAND ATOM AND QUIETLY WIN.
+     `.pl-fig` and `.pl-fig-v` were in the v247 shared rules at 30px/gap:4 AND
+     redeclared in Plantilla's own block at 24px/gap:3. Same specificity, the
+     page's copy later in the file — so it won, and Plantilla's figures were
+     24px while the other nine bands were 30px. The v247 note claims the four
+     copies of that value became one; this copy survived the consolidation and
+     has been beating the rule that replaced it ever since.
+
+     Nothing failed. That is the point: a consolidation that leaves the old
+     copy behind looks exactly like one that worked, and the shared rule is
+     then a comment rather than a rule. */
+  it('lets no page redeclare a shared band atom later in the sheet', () => {
+    /* The atoms, and the property each shared rule is ABOUT. A page may still
+       set anything else on them — `.pl-fig-of`'s size, `.pl-fig-risk`'s
+       colour — it may just not restate the one thing that is shared. */
+    const ATOMS = [
+      ['.pl-fig-v', 'font-size'], ['.cv-fig-v', 'font-size'],
+      ['.ini-stat-v', 'font-size'], ['.md2-count-v', 'font-size'],
+      ['.reg2-fig-v', 'font-size'], ['.ms-fig-v', 'font-size'],
+      ['.ac-fig-v', 'font-size'], ['.nf-fig-v', 'font-size'],
+      ['.pl-eyebrow', 'font-size'], ['.cv-eyebrow', 'font-size'],
+      ['.md2-eyebrow', 'font-size'], ['.ini-eyebrow', 'font-size'],
+    ];
+    /* Rules OUTSIDE any @media: a phone override is a deliberate second
+       value and is not what this is about. */
+    const top = bare.replace(/@media[^{]*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, ' ');
+    ATOMS.forEach(([sel, prop]) => {
+      const re = new RegExp('([^{}]*)\\{([^}]*)\\}', 'g');
+      const owners = [];
+      let m;
+      while ((m = re.exec(top))) {
+        /* ⚠ THE WHOLE COMPOUND, not "appears somewhere in the list".
+           `.md2-counters-s .md2-count-v` is a DESCENDANT — (0,2,0), a
+           deliberate small-counter variant that outranks the shared rule on
+           purpose and says so by its shape. A bare `.md2-count-v` is the
+           thing this is about: equal specificity, winning on source order,
+           invisible. Matching the substring conflated the two. */
+        const bare = m[1].split(',').some((part) => part.trim() === sel);
+        if (!bare) continue;
+        if (!new RegExp(prop + '\\s*:').test(m[2])) continue;
+        owners.push(m[1].trim().slice(0, 70));
+      }
+      assert.ok(owners.length <= 1,
+          sel + ' gets its ' + prop + ' from ' + owners.length + ' rules; the later ' +
+          'one silently wins and the shared rule becomes a comment: ' + owners.join(' | '));
+    });
+  });
+
   /* ⚠ v247.4: a band is one line of title over one line of scope, and the
      scope line has to STAY one line. Registres' intro ran to two sentences,
      wrapped, and made that band the tallest of the ten — the exact thing the

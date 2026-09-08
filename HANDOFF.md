@@ -1,19 +1,19 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-08._
+_Rolling document, overwritten each session. Last updated: 2026-09-09._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 248** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 249** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3297** — `cd test && npm run test:unit` (~13 s), all passing |
+| Unit tests | **3319** — `cd test && npm run test:unit` (~13 s), all passing |
 | Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
 | Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
@@ -22,7 +22,7 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 **Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
 session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
 collection). Both went out BEFORE the matching frontend push, because the other order leaves a
-window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v248 changed
+window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v249 changed
 neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
 ⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
@@ -63,7 +63,7 @@ real app. Worth trying first, in this order:
 
 ---
 
-## The session in order — v234 to v248
+## The session in order — v234 to v249
 
 ### v234. Mèdic, rebuilt to the eighth design handoff.
 
@@ -412,6 +412,36 @@ looked like it covered. ⚠ **The runnable Plantilla harness earned its keep aga
 red on `ReferenceError: HERO_DONUT` the moment the constant landed. ⚠ **And one of my mutations
 silently failed to apply**, making a live assertion look dead; re-run with an assert on the
 replacement, it killed. Unit 3289 → **3297**; five mutations confirmed.
+
+### v249. A photo that never syncs, a misaligned eyebrow, a badge Inici threw away.
+
+⚠ **`fa_users` never learned anything new about a person.** Reported as "his photo only shows on
+his own profile" — his profile reads the personal document, every roster surface reads the blob, and
+the reconcile in js/db.js was **add-only, once at init, with no `onSnapshot` on `users/`**. A row
+already in the blob was frozen for good, so **every** change to a personal document was invisible to
+everyone else: a rename, a new dorsal, a corrected position. It updates through `_mergeProfile` now.
+⚠ **An allowlist, never `Object.assign`** — a row also carries `roles`, `category`, `team`,
+`staffCategories`, `staffRole`, `isTeamLead`, all server-owned and all *stripped* from the client's
+own write to `users/{uid}`; copying a document over a row silently demotes people. ⚠ It returns the
+same object on a no-op, so booting does not rewrite the blob (and route a write) every time.
+
+⚠ **A second cause no sync fix reaches**: a pre-v232 failed upload is a `data:` URI, kept on the
+personal document and dropped from the shared blob by `stripHeavyPics` — by design. That person's
+photo is visible to them alone and the only signal was a `console.warn`. `renderPage` now prompts
+them to re-upload, latched so it fires once and not on every sync callback.
+
+**Plantilla's "Assistència" eyebrow sat 5px high**: `.pl-att` centred its label against the ring
+while the figures beside it hung from the bottom. ⚠ **And a defect of mine** — `.pl-fig`/`.pl-fig-v`
+were in the v247 shared rules AND redeclared afterwards at 24px, so Plantilla's figures were 24px
+where the other nine bands were 30px, and the v247 note claims that copy was collapsed. Deleted;
+`layout.test.js` now guards the whole class of it. All five eyebrows measured level at a 125px band.
+
+**Inici drew a monogram where Calendari drew the real crest.** `iniSideBadgeHtml(name)` took only a
+name, under a comment saying "the club has no rival crest library". ⚠ **Calendari's own comment
+records making the identical mistake and fixing it** — Inici was the last page still believing the
+stale one, so it is deleted rather than softened. Both row builders now carry `oppBadge`.
+
+Unit 3297 → **3319**; fifteen mutations killed, each asserted to have actually applied.
 
 ---
 

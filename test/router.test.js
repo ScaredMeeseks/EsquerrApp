@@ -393,3 +393,147 @@ describe('db.js router — per-field merge keys', () => {
     assert.strictEqual(doc.category, 'cadet');
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE PROFILE MERGE — what a personal document may refresh in the roster blob
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ THE DEFECT THIS EXISTS FOR (v249). `fa_users` is the blob every roster
+   surface reads. The reconcile in init() only ever ADDED to it — a row already
+   present was skipped forever — and there is no `onSnapshot` on `users/`. So a
+   change to a personal document was invisible to everyone else: a new photo, a
+   corrected name, a new dorsal. Reported as "his photo only shows on his own
+   profile", which is precisely the shape of it — his own device reads the
+   personal document, every other page reads this blob.
+
+   ⚠ AND WHY IT IS AN ALLOWLIST. A row here carries fields the personal
+   document does not own — roles, category, team, staffCategories, staffRole,
+   isTeamLead, teamId — decided server-side and deliberately STRIPPED from the
+   client's own write to users/{uid}. Copying a document over a row would let a
+   stale or mid-write one silently demote somebody, and a coach who loses
+   `staffCategories` sees empty pages with nothing to explain them.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('db.js — the profile merge', () => {
+  const {DB} = bootstrap();
+  const merge = DB._mergeProfile;
+
+  it('refreshes a photo that the roster blob had missed', () => {
+    const row = {id: 'p1', name: 'Barrufet', profilePic: '', roles: ['player']};
+    const out = merge(row, {name: 'Barrufet', profilePic: 'https://x/pic.jpg'});
+    assert.strictEqual(out.profilePic, 'https://x/pic.jpg');
+  });
+
+  /* ⚠ THE ONE THAT MATTERS MOST. Every server-owned field must survive a
+     document that does not carry it — which is every document written by a
+     client, because app.js strips them on the way out. */
+  it('never lets a personal document touch a server-owned field', () => {
+    const row = {
+      id: 'p1', name: 'Old', roles: ['staff'], category: 'amateur', team: 'A',
+      staffCategories: ['amateur', 'juvenil'], staffRole: 'fitness',
+      isTeamLead: true, teamId: 'club1',
+    };
+    // A hostile-shaped document: it claims all of them, and none may land.
+    const out = merge(row, {
+      name: 'New', roles: [], category: '', team: '', staffCategories: [],
+      staffRole: 'coach', isTeamLead: false, teamId: 'other',
+    });
+    assert.strictEqual(out.name, 'New', 'the profile field did not refresh');
+    assert.deepStrictEqual(out.roles, ['staff'], 'roles were overwritten');
+    assert.strictEqual(out.category, 'amateur', 'category was overwritten');
+    assert.strictEqual(out.team, 'A', 'team was overwritten');
+    assert.deepStrictEqual(out.staffCategories, ['amateur', 'juvenil'],
+        'staffCategories were overwritten — this coach now sees empty pages');
+    assert.strictEqual(out.staffRole, 'fitness', 'staffRole was overwritten');
+    assert.strictEqual(out.isTeamLead, true, 'isTeamLead was overwritten');
+    assert.strictEqual(out.teamId, 'club1', 'teamId was overwritten');
+  });
+
+  it('names no server-owned field in the allowlist', () => {
+    ['roles', 'category', 'team', 'staffCategories', 'staffRole',
+      'isTeamLead', 'teamId', 'isAdmin', 'password'].forEach((k) =>
+      assert.ok(DB._PROFILE_FIELDS.indexOf(k) === -1,
+          k + ' is in PROFILE_FIELDS; a personal document can now overwrite it'));
+  });
+
+  /* ⚠ A reconcile that rewrites the blob every boot is a sync storm dressed
+     as a refresh. The caller skips the write on identity, so this must be the
+     SAME object and not an equal copy. */
+  it('returns the very same row when nothing changed', () => {
+    const row = {id: 'p1', name: 'Barrufet', profilePic: 'https://x/pic.jpg'};
+    assert.strictEqual(merge(row, {name: 'Barrufet', profilePic: 'https://x/pic.jpg'}), row);
+  });
+
+  it('does not mutate the row it was given', () => {
+    const row = {id: 'p1', name: 'Old'};
+    const out = merge(row, {name: 'New'});
+    assert.strictEqual(row.name, 'Old', 'the input row was mutated in place');
+    assert.strictEqual(out.name, 'New');
+  });
+
+  /* ⚠ A member who has never opened profile setup has no `name` on their
+     document at all. Absent is not "clear it" — treating the two alike wipes
+     a name the roster lists put there. */
+  it('leaves a field the document does not carry alone', () => {
+    const row = {id: 'p1', name: 'Barrufet', dob: '1998-04-02'};
+    const out = merge(row, {profilePic: 'https://x/pic.jpg'});
+    assert.strictEqual(out.name, 'Barrufet', 'an absent field cleared a real value');
+    assert.strictEqual(out.dob, '1998-04-02');
+  });
+
+  /* An empty string IS a value: clearing a phone number must propagate. */
+  it('lets a document clear a field it does carry', () => {
+    const out = merge({id: 'p1', phone: '600123123'}, {phone: ''});
+    assert.strictEqual(out.phone, '');
+  });
+});
+
+/* ⚠ The merge above is only worth anything if the reconcile CALLS it. These
+   drive the real `init()` against the fake backend, because "the pure function
+   is right" and "the page shows the photo" are two different claims and this
+   repo has shipped the first while failing the second. */
+describe('db.js — the users reconcile refreshes, it does not only add', () => {
+  const usersOf = (localStorage) => JSON.parse(localStorage.getItem('fa_users') || '[]');
+
+  /** A club with one player already in the blob and in users/. */
+  function seedMember(store, blobPic, docPic) {
+    store.seed('teams/' + TEAM, {name: TEAM});
+    store.seed(DATA + '/fa_users__cadet', {
+      category: 'cadet',
+      v: JSON.stringify([{id: 'p1', name: 'Barrufet', category: 'cadet',
+        team: 'A', roles: ['player'], profilePic: blobPic}]),
+    });
+    store.seed('users/p1', {teamId: TEAM, name: 'Barrufet', category: 'cadet',
+      profilePic: docPic});
+  }
+
+  it('picks up a photo the blob never had', async () => {
+    const {DB, store, localStorage} = bootstrap();
+    seedMember(store, '', 'https://x/barrufet.jpg');
+    await DB.init(TEAM, ALL_CATS);
+    const p1 = usersOf(localStorage).find((u) => u.id === 'p1');
+    assert.ok(p1, 'the member vanished from the blob');
+    assert.strictEqual(p1.profilePic, 'https://x/barrufet.jpg',
+        'the reconcile skipped an existing row again — this is the reported bug');
+  });
+
+  it('keeps the server-owned fields the personal document does not carry', async () => {
+    const {DB, store, localStorage} = bootstrap();
+    seedMember(store, '', 'https://x/barrufet.jpg');
+    await DB.init(TEAM, ALL_CATS);
+    const p1 = usersOf(localStorage).find((u) => u.id === 'p1');
+    assert.deepStrictEqual(p1.roles, ['player'], 'roles were lost in the refresh');
+    assert.strictEqual(p1.team, 'A', 'the squad letter was lost in the refresh');
+  });
+
+  /* ⚠ Booting must not rewrite the blob when nothing moved. The write is
+     routed to Firestore, so a needless one is a write per member per boot. */
+  it('writes nothing when every row already matches', async () => {
+    const {DB, store, localStorage} = bootstrap();
+    seedMember(store, 'https://x/barrufet.jpg', 'https://x/barrufet.jpg');
+    const before = store.read(DATA + '/fa_users__cadet').v;
+    await DB.init(TEAM, ALL_CATS);
+    assert.strictEqual(store.read(DATA + '/fa_users__cadet').v, before,
+        'the reconcile rewrote an unchanged blob');
+    assert.strictEqual(usersOf(localStorage).find((u) => u.id === 'p1').profilePic,
+        'https://x/barrufet.jpg');
+  });
+});

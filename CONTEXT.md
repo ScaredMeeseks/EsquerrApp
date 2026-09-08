@@ -10574,3 +10574,98 @@ the constant's banner, a declaration rather than a paragraph about one.
 looked like a gap in the tests. Re-run with an assert on the replacement, it killed. Five mutations
 confirmed: `HERO_DONUT` back to 88, the no-answer segment forced to zero, either centre size back to
 a literal, and the scope line allowed to wrap.
+
+### 2026-09-09 — A photo that never syncs, a misaligned eyebrow, a badge Inici threw away (v249)
+
+Three owner reports off v248. They looked like three small UI faults; two were not.
+
+**1. ⚠ THE ROSTER BLOB NEVER LEARNED ANYTHING NEW ABOUT A PERSON.**
+
+Reported as "barrufet's photo only shows on his own profile". Not a render bug — every surface
+already uses one helper, `avatarHtmlGlobal(u, …)`, reading `u.profilePic`. The split is the SOURCE:
+his profile and the nav avatar read `getSession()` — the personal document — while Plantilla
+(`plBuildRows`) and Les meves estadístiques both read `getUsers()` → the `fa_users` blob.
+
+And the reconcile that fills that blob (js/db.js) did `if (existingIds[uid]) return;` — **add-only,
+run once at init, with no `onSnapshot` on `users/` anywhere.** A row already in the blob was frozen
+for good. So this was never about one photo: **every change to a personal document was invisible to
+everyone else** — a renamed player, a corrected position, a new dorsal — unless that person's own
+device happened to rewrite the whole blob through `setSession()` and that write reached everybody.
+
+The reconcile now UPDATES through a new pure function, `_mergeProfile(row, doc)`:
+
+```js
+var PROFILE_FIELDS = ['name','profilePic','dob','phone','position','playerNumber','agent','email'];
+```
+
+⚠ **AN ALLOWLIST, NEVER `Object.assign`.** A row in `fa_users` also carries `roles`, `category`,
+`team`, `staffCategories`, `staffRole`, `isTeamLead`, `teamId` — decided server-side by
+joinClub/onRosterWritten/setRole, and **stripped from the client's own write** to `users/{uid}` at
+app.js's `setSession` for exactly that reason. Copying a document over a row would let a stale or
+mid-write one silently demote somebody, and a coach who loses `staffCategories` sees empty pages
+everywhere with nothing to explain them. A test drives a hostile-shaped document that claims all
+seven and asserts none of them lands.
+
+⚠ It returns the **same object** when nothing changed, and the caller counts `changed` beside
+`added` — a reconcile that rewrites the blob on every boot is a sync storm dressed as a refresh,
+and the write is routed to Firestore. Asserted by identity, not by deep-equality.
+⚠ `_inScope` now guards the UPDATE as well as the ADD: touching a row whose shard is out of scope
+routes the same refused write the original comment was written about.
+
+**2. ⚠ A SECOND CAUSE NO SYNC FIX CAN REACH, and it is now visible.** If the photo is a pre-v232
+FAILED upload it is a giant `data:` URI: it lives on the personal document (so that one person sees
+it) and `stripHeavyPics` drops it from the shared blob — correctly, because one such value could
+once stop `fa_users` syncing for the whole club. The effect is a photo visible to exactly one
+person with nothing on screen connecting the two halves, and the only signal was a `console.warn`.
+`renderPage` now checks the SESSION's own value against the same `MAX_PIC_SRC` that does the
+stripping and prompts that person to re-upload. ⚠ Latched: `renderPage` runs on every sync
+callback, category change and language switch, so an unlatched toast is a storm.
+
+**3. Plantilla's "Assistència" label sat 5px above the other four.** `.pl-att` is
+`align-items: center`, so its label column was centred against the 56px ring while `.pl-figures`
+beside it hung from the bottom — two alignments in one row. Both stacks are `eyebrow + gap + box`,
+so the eyebrows only line up while the boxes match: a figure's box is `.pl-fig-v` at 30px, the
+legend's was whatever two rows of 12px text came to. Both fixed and **both measured** — headless
+`getBoundingClientRect` on all five eyebrows, which now read `52,52,52,52,52` against a band still
+at 125px. Reverting the centring puts the last one back to 47; a 17px legend font drops it to 40
+without the box and holds at 52 with it.
+
+⚠ **AND A DEFECT OF MY OWN.** `.pl-fig` and `.pl-fig-v` are in the v247 shared rules at 30px/gap:4
+**and were redeclared** in Plantilla's own block at 24px/gap:3 — same specificity, the page's copy
+later in the file, so it won. Plantilla's figures have been 24px while the other nine bands were
+30px, and the v247 entry claims "four copies of the 30px value became one". This copy survived the
+consolidation and quietly beat the rule that replaced it. Nothing failed, which is the point: a
+consolidation that leaves the old copy behind looks exactly like one that worked. Deleted, and
+`layout.test.js` now has a general guard — **no page may redeclare a shared band atom later in the
+sheet**. ⚠ It matches the WHOLE compound: `.md2-counters-s .md2-count-v` is a descendant at (0,2,0),
+a deliberate variant that says so by its shape, and the first version of the guard conflated it
+with a bare redeclaration.
+
+**4. Inici drew a monogram where Calendari drew the real crest.** The field is `m.opponentBadge`.
+`iniSideBadgeHtml(name)` took **only a name**, so it could not reach the badge however it was
+written — under a doc comment reading *"the club has no rival crest library"*. ⚠ That comment was
+stale, and **Calendari's own comment records making the identical mistake and correcting it**:
+*"this block used to ignore it on the strength of a comment claiming no crest images existed."*
+Inici was the last page still believing it. The comment is deleted rather than softened — a stale
+claim about the data is what kept this broken for two pages and a hedge would leave the next reader
+the same trap.
+
+`iniSideBadgeHtml(name, badge)` now takes the URL, through `safeHttpUrl` like both working pages.
+⚠ The monogram travels WITH the image in `data-fb` and the `onerror` swaps it in: files.fcf.cat is
+someone else's host and 404s on its own schedule, and a vanished image leaves a hole where a club
+should be. Both row builders carry `oppBadge`; ⚠ they had `home` and `away` and dropped this, so
+the crest could never have reached the renderer — a test asserts the carry, not just the render.
+
+**Tests.** 3297 → **3319**. ⚠ The harness passes the **real** `safeHttpUrl`, not a stub: it is the
+guard keeping a `javascript:` URL out of an `<img src>` now that the crest comes from a federation
+import, and a stub is free to drift and pass this suite while the app ships the hole.
+
+Fifteen mutations killed across the four fixes, **each one asserted to have actually applied** —
+the previous round had a silent `str.replace` no-op make a live assertion look dead, and two
+mutations in this round were caught not applying by that same assert.
+
+⚠ **A test caught a real distinction I had got wrong**, rather than me catching it: the first
+version of the shared-atom guard failed on `.md2-counters-s .md2-count-v`, which is a deliberate
+variant and not the defect.
+
+No rules or functions change; push only.

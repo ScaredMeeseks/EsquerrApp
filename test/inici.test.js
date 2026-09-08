@@ -28,6 +28,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 const { readCss, readCssRaw } = require('./read-css');
 
+const utils = require('../js/utils.js');
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const utilsSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'utils.js'), 'utf8');
 const css = readCss();
@@ -94,8 +95,14 @@ function loadBuilders() {
   const block = grab('  const INI_SEGS = [', '  function renderPlayerHome() {') +
     grab('  /** The four training pills.', '  /** Both weeks, plus the honest pending count');
   // eslint-disable-next-line no-new-func
+  /* ⚠ The REAL `safeHttpUrl`, not a stub. It is the guard that keeps a
+     `javascript:` URL out of an <img src> now that the rival crest is a URL
+     from someone else's server (v249) — a stubbed one is free to drift from
+     the rule the rest of the app relies on, and would pass this suite while
+     the app shipped the hole. */
   return new Function('document', 't', 'trainingLockedTitle', 'tDay',
-      'isOurTeam', 'clubBadgeUrl', 'getWeekBounds', 'tMonth', 'clubMonogram', `
+      'isOurTeam', 'clubBadgeUrl', 'getWeekBounds', 'tMonth', 'clubMonogram',
+      'safeHttpUrl', `
     ${SANITIZE_SRC}
     ${block}
     return { iniAvailPillsHtml, iniMatchPillsHtml, iniDonutHtml, iniAvailSegs,
@@ -108,7 +115,8 @@ function loadBuilders() {
     () => 'img/logo-192.png',
     () => ({ start: '2026-08-31', end: '2026-09-06' }),
     (m) => ['gen', 'feb', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'des'][m],
-    (name) => String(name || '?').slice(0, 2).toUpperCase());
+    (name) => String(name || '?').slice(0, 2).toUpperCase(),
+    utils.safeHttpUrl);
 }
 
 /**
@@ -521,12 +529,69 @@ describe('Inici — the availability donut', () => {
 describe('Inici — the event row furniture', () => {
   const B = loadBuilders();
 
-  it('our side gets the crest, the rival gets a monogram disc', () => {
-    /* Deliberate: the club has no rival crest library, and a broken <img>
-       beside a fixture reads as a fault in the app. */
+  /* ⚠ v249 CHANGES HALF OF THIS, and the half it changes was never a
+     decision — it was a stale fact. The comment read "the club has no rival
+     crest library"; `opponentBadge` has been filled by the FCF import for
+     every league fixture since long before this test was written, and
+     Calendari and Convocatòria both draw it. Inici was the last page still
+     acting on the old claim, so a rival showed a monogram here and its real
+     badge one page over.
+
+     The half that stands: with NO badge the rival still gets the monogram
+     disc, because a hole where a club should be reads as a fault. */
+  it('our side gets the crest; a rival with no badge gets a monogram disc', () => {
     assert.ok(B.iniSideBadgeHtml('U.E. Esquerra').includes('<img'));
     assert.ok(!B.iniSideBadgeHtml('C.F. Vallcarca').includes('<img'));
     assert.ok(B.iniSideBadgeHtml('C.F. Vallcarca').includes('ini-mono'));
+  });
+
+  it('draws the rival\'s real crest when the fixture carries one', () => {
+    const h = B.iniSideBadgeHtml('C.F. Vallcarca', 'https://files.fcf.cat/escuts/1234.png');
+    assert.ok(h.includes('<img'), 'the badge is still a monogram: ' + h);
+    assert.ok(h.includes('files.fcf.cat/escuts/1234.png'), h);
+  });
+
+  /* ⚠ files.fcf.cat is someone else's host and 404s on its own schedule, so
+     the monogram travels WITH the image rather than the image simply
+     vanishing and leaving a gap where a club used to be. */
+  it('falls back to the monogram when the crest fails to load', () => {
+    const h = B.iniSideBadgeHtml('C.F. Vallcarca', 'https://files.fcf.cat/x.png');
+    assert.ok(/onerror=/.test(h), 'a dead crest URL leaves a hole: ' + h);
+    assert.ok(/data-fb="[^"]*ini-mono/.test(h),
+        'the fallback carries no monogram to swap in: ' + h);
+  });
+
+  /* ⚠ The URL comes from a federation import, so it goes through the same
+     guard every other external URL in this app does. A stub would have let
+     this pass while the app shipped the hole — the harness passes the REAL
+     `safeHttpUrl`. */
+  it('will not put a javascript: URL in an img src', () => {
+    const h = B.iniSideBadgeHtml('C.F. Vallcarca', 'javascript:alert(1)');
+    assert.ok(!/javascript:/i.test(h), h);
+    assert.ok(h.includes('ini-mono'), 'a refused URL should leave the monogram: ' + h);
+  });
+
+  /* Passing the same badge for both sides is how Convocatòria's `ptCrestHtml`
+     works too: `isOurTeam` short-circuits before the badge is looked at, so
+     our crest can never be replaced by the opponent's. */
+  it('never lets the rival badge overwrite our own crest', () => {
+    const h = B.iniSideBadgeHtml('U.E. Esquerra', 'https://files.fcf.cat/escuts/1234.png');
+    assert.ok(!h.includes('files.fcf.cat'), 'our side drew the rival\'s badge: ' + h);
+    assert.ok(h.includes('logo-192.png'), h);
+  });
+
+  /* ⚠ The badge has to REACH the helper. Both Inici row builders copied
+     `home` and `away` and dropped `opponentBadge`, so no amount of fixing
+     the renderer would have shown a crest. */
+  it('carries the opponent badge from the match onto both Inici rows', () => {
+    ['home: m.home', 'oppBadge: m.opponentBadge'].forEach((frag) => {
+      const n = (bare.match(new RegExp(frag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+      assert.ok(n >= 2, frag + ' appears ' + n + ' times; both Inici rows need it');
+    });
+    assert.ok(/iniSideBadgeHtml\(r\.home,\s*r\.oppBadge\)/.test(bare),
+        'the staff row does not pass the badge');
+    assert.ok(/iniSideBadgeHtml\(a\.home,\s*a\.oppBadge\)/.test(bare),
+        'the player row does not pass the badge');
   });
 
   it('the sent tag carries the binder hook that opens the match', () => {
