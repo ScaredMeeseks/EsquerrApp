@@ -49,3 +49,177 @@ describe('the suite registry', () => {
     assert.ok(registered.has('suite-registry.test.js'));
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   A STUB MAY ONLY STAND IN FOR SOMETHING THAT EXISTS
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ THE OUTAGE THIS EXISTS FOR (v250 → v251). `fcfBadgeById` was written
+   calling `getMatches()` — a function that exists NOWHERE in this app; every
+   other site reads `localStorage.getItem('fa_matches')` directly. It shipped,
+   the ReferenceError landed inside a render, and because `renderDashboard()`
+   runs BEFORE `_hideSplash()` the app never got past its loading screen. Not
+   a broken page: no app at all.
+
+   Three separate green signals said it was fine, and all three were the same
+   mistake. `test/inici.test.js`, `test/fcf-app.test.js` and
+   `scripts/build-inici-preview.js` each named `getMatches` in a `new Function`
+   parameter list. `new Function` binds ANY identifier you name, so stubbing an
+   invention manufactures a scope the app does not have: the test proves the
+   code runs THERE and guarantees nothing about whether it runs HERE.
+
+   ⚠ This is the inverse of the v238 lesson and strictly nastier. v238 was "a
+   test that reads the source is not a test that the code RUNS", and the answer
+   was to run it over stubs. This is "code that runs over stubs is not code
+   that runs in the app" — and the guard is that every stub must name something
+   the app actually has.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('every stub names something the app actually has', () => {
+  const ROOT = path.join(__dirname, '..');
+
+  /** Every source a harness could legitimately be standing in for. */
+  function sources() {
+    const out = [];
+    ['js', 'functions', 'scripts'].forEach((dir) => {
+      const d = path.join(ROOT, dir);
+      let names = [];
+      try { names = fs.readdirSync(d); } catch (e) { return; }
+      names.filter((f) => /\.js$/.test(f)).forEach((f) => {
+        out.push(fs.readFileSync(path.join(d, f), 'utf8'));
+      });
+    });
+    /* ⚠ COMMENTS STRIPPED. The standing trap in this repo, and it bit this
+       very test: the comment in js/app.js explaining the v250 outage writes
+       `getMatches()` in prose, so an unstripped scan read the name as
+       DECLARED and reported the app as having it. A name mentioned only in a
+       paragraph about how it does not exist must not count as existing. */
+    return out.join('\n')
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, ' ');
+  }
+
+  /* Deliberately generous — this asks whether a name exists AT ALL, not where.
+     A false accusation would be worse than a miss: it would push the next
+     author into deleting a stub that is standing in for something real. */
+  function declaredIn(src) {
+    const names = new Set();
+    [
+      /(?:^|[\s;{(])(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g,
+      /(?:^|[\s;{(])(?:var|let|const)\s+([A-Za-z_$][\w$]*)/g,
+      /([A-Za-z_$][\w$]*)\s*:\s*(?:async\s+)?function/g,
+      /([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function|\()/g,
+      /([A-Za-z_$][\w$]*)\s*\(/g,
+      /* ⚠ Two more shapes, both found by this guard's own first run:
+         `var TB_ZOOM_MIN = 0.5, TB_ZOOM_MAX = 6;` declares a second name after
+         a comma, and the module globals `BG`, `BS`, `TB`, `MN` are only ever
+         SEEN as `BG.MARKS` — never declared in a file this scans, because
+         board-geom.js and its siblings assign them to `window`. Both are real
+         and a stub for either is legitimate. */
+      /,\s*([A-Za-z_$][\w$]*)\s*=/g,
+      /([A-Za-z_$][\w$]*)\s*\./g,
+      /* The UMD tail every module here ends with: `else root.BG = api;`. That
+         is the only place `BG`, `BS`, `TB` and `MN` are ever named as
+         themselves, so without this the four module globals read as
+         inventions. */
+      /\.\s*([A-Za-z_$][\w$]*)\s*=[^=]/g,
+    ].forEach((re) => {
+      let m;
+      while ((m = re.exec(src))) names.add(m[1]);
+    });
+    return names;
+  }
+
+  /* Host globals a harness may hand in. They cannot be found by scanning app
+     code because they are not app code — and each one is a real thing, which
+     is the whole point of the list. */
+  const GLOBALS = new Set(['Math', 'JSON', 'Object', 'String', 'Number', 'Array',
+    'Date', 'Set', 'Map', 'WeakMap', 'Promise', 'Error', 'Boolean', 'RegExp',
+    'Symbol', 'Proxy', 'Reflect', 'BigInt', 'document', 'window', 'localStorage',
+    'sessionStorage', 'console', 'fetch', 'setTimeout', 'clearTimeout',
+    'setInterval', 'clearInterval', 'requestAnimationFrame',
+    'cancelAnimationFrame', 'navigator', 'location', 'history', 'screen',
+    'alert', 'confirm', 'prompt', 'URL', 'URLSearchParams', 'Blob', 'File',
+    'FileReader', 'Image', 'Event', 'CustomEvent', 'globalThis', 'caches',
+    'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURIComponent',
+    'decodeURIComponent', 'btoa', 'atob', 'structuredClone', 'Intl',
+    'TextEncoder', 'TextDecoder', 'crypto', 'performance', 'AbortController',
+    'WebSocket', 'XMLHttpRequest', 'FormData', 'Headers', 'Request', 'Response',
+    'getComputedStyle', 'matchMedia', 'IntersectionObserver', 'ResizeObserver',
+    'MutationObserver', 'HTMLElement', 'Node', 'NodeList', 'DOMParser',
+    'requestIdleCallback', 'process', 'Buffer', 'require', 'module', 'exports',
+    '__dirname', '__filename', 'assert', 'THREE', 'gl', 'firebase']);
+
+  /** The parameter names of every `new Function(...)` in a file. */
+  function stubNames(text) {
+    const found = [];
+    let i = 0;
+    while ((i = text.indexOf('new Function(', i)) !== -1) {
+      let p = i + 'new Function('.length;
+      for (;;) {
+        /* Consecutive `'ident',` only. The body follows as a template literal
+           or a concatenation, and the moment the shape stops matching we are
+           past the parameter list — which is what stops ordinary strings in
+           the body being read as stub names. */
+        const m = /^\s*'([A-Za-z_$][\w$]*)'\s*,/.exec(text.slice(p, p + 120));
+        if (!m) break;
+        found.push(m[1]);
+        p += m[0].length;
+      }
+      i = p;
+    }
+    return found;
+  }
+
+  /* ⚠ ONE ALLOWANCE, AND IT IS NOT THE v250 SHAPE. `_esc` is a parameter the
+     Convocatòria builder invents for ITSELF and immediately binds onto the
+     app's real name — `sanitize = _esc;` on the next line. It is a harness
+     alias, not a claim that the app has an `_esc`, and the thing it stands in
+     for (`sanitize`) does exist. The v250 defect was the opposite: a stub
+     named after a function the app CALLS and does not have. Kept to one
+     entry, named, with the reason — an allowance list that grows silently is
+     how this guard would rot into decoration. */
+  const ALIASES = new Set(['_esc']);
+
+  function offencesIn(dir, files) {
+    const declared = declaredIn(sources());
+    const out = [];
+    files.forEach((f) => {
+      const text = fs.readFileSync(path.join(dir, f), 'utf8');
+      stubNames(text).forEach((name) => {
+        if (GLOBALS.has(name) || declared.has(name) || ALIASES.has(name)) return;
+        out.push(f + ' stubs `' + name + '`');
+      });
+    });
+    return out;
+  }
+
+  it('no harness stubs a function the app does not declare', () => {
+    const files = fs.readdirSync(__dirname).filter((f) => /\.test\.js$/.test(f));
+    const offences = offencesIn(__dirname, files);
+    assert.deepStrictEqual(offences, [],
+        'a stub names something that exists nowhere in js/, functions/ or ' +
+        'scripts/. `new Function` binds whatever you name, so the suite would ' +
+        'pass over code that throws ReferenceError in the app:\n  ' +
+        offences.join('\n  '));
+  });
+
+  /* ⚠ The preview builders run the same slices through the same `new Function`
+     and invent a scope the same way — `build-inici-preview.js` stubbed
+     `getMatches` too, and "the mockup built" was read as evidence. */
+  it('no preview builder stubs a function the app does not declare', () => {
+    const dir = path.join(ROOT, 'scripts');
+    const files = fs.readdirSync(dir).filter((f) => /\.js$/.test(f));
+    const offences = offencesIn(dir, files);
+    assert.deepStrictEqual(offences, [], offences.join('\n  '));
+  });
+
+  /* ⚠ AND THE GUARD MUST BE ABLE TO SEE ONE. A scanner looking for a shape
+     nobody writes passes for the wrong reason, which is the failure mode this
+     whole block is about. Fed the exact line v250 shipped. */
+  it('would have caught the v250 outage', () => {
+    const sample = 'const f = new Function(\'getMatches\', \'Object\', `body`);';
+    assert.deepStrictEqual(stubNames(sample), ['getMatches', 'Object'],
+        'the parameter-list scanner no longer reads a stub list');
+    assert.ok(!declaredIn(sources()).has('getMatches'),
+        '`getMatches` exists in the app now — this probe needs another name');
+  });
+});

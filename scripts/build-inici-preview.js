@@ -292,14 +292,12 @@ function render(which, data) {
     JSON,
     Math,
     Date: PreviewDate,
-    /* ⚠ v250. `withFixtureBadges` builds its teamId→crest map LAZILY, only
-       when a standings row actually arrives with no badge — and every row in
-       this preview's fixture has one, so the call never fires and the mockup
-       built without this. That is a landmine, not a pass: the first fixture
-       with a logo-less club would have thrown ReferenceError inside
-       innerHTML, which is a blank page. Stubbed empty, which is also the
-       honest state here — this preview has no fixtures to borrow from. */
-    getMatches: () => [],
+    /* ⚠ v251: NO `getMatches` STUB. There was one for exactly one version,
+       and it is what let v250 ship: `fcfBadgeById` called a function that
+       exists nowhere in the app, this builder named it here, and "the mockup
+       built" was read as evidence. It reads `fa_matches` off localStorage now
+       like every other site, and this preview's localStorage stub answers
+       that key — so the builder exercises the real path or fails loudly. */
     Object,
     String,
     Number,

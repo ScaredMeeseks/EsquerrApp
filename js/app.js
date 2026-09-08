@@ -2589,7 +2589,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 250;
+  const APP_VERSION = 251;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7271,9 +7271,19 @@
      our own group, so a table for a group we have no fixtures in is
      unchanged and still falls back to the monogram. That is the honest
      limit of this source, not a bug to chase. */
+  /* ⚠ `fa_matches` READ THE WAY EVERY OTHER SITE READS IT. v250 shipped this
+     calling `getMatches()`, a function that does not exist anywhere in this
+     app — I invented the name, and the ReferenceError landed inside a render,
+     which left the splash screen up forever. Nothing in the suite caught it
+     because BOTH harnesses and the preview builder stubbed `getMatches` in
+     their parameter lists: a `new Function` harness accepts any identifier you
+     name, so stubbing a collaborator that does not exist manufactures a green
+     test for code that cannot run. See v251. */
   function fcfBadgeById() {
     var out = {};
-    (getMatches() || []).forEach(function (m) {
+    var matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]') || []; } catch (e) {}
+    matches.forEach(function (m) {
       var id = String(m.opponentTeamId || '');
       if (id && m.opponentBadge && !out[id]) out[id] = m.opponentBadge;
     });

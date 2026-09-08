@@ -60,19 +60,22 @@ function makeFcf(opts) {
       'localStorage', '_clubConfig', 'getCurrentCategory', 'CATEGORY_LABELS',
       'getClubName', 'sanitize', 't', 'getTeamLetters', 'document', 'fetch',
       'parseFcfClassificacio', 'fcfGrupId', 'requestAnimationFrame',
-      /* ⚠ v250: the standings table borrows a crest from our own fixtures
-         for the clubs the federation's classificació omits one for, so
-         buildLeagueSnippet reaches the match list now. Default empty — a
-         test that wants the borrow passes `opts.matches`. */
-      'getMatches',
+
       region + '\n' + inputFn +
       '\n return {getActiveFcfLeagues, fcfTeamsFor, fcfLookup,' +
         ' fcfMatchFields, leagueMessageHtml, buildLeagueSnippet,' +
         ' opponentInputHtml, fetchFcfGroup, mdRowSquad};');
 
   const api = factory(
-      {getItem: (k) => (k in store ? store[k] : null),
-        setItem: (k, v) => { store[k] = v; }},
+      /* ⚠ v250/v251: `fa_matches` comes through the REAL store, because the
+         standings borrow a crest from our own fixtures and the app reads that
+         blob directly. It was a `getMatches` stub for one version — a name
+         that exists nowhere in the app — and naming it here bound the
+         invention and made this suite green over code that threw. */
+      {getItem: (k) => (k === 'fa_matches'
+        ? JSON.stringify(opts.matches || [])
+        : (k in store ? store[k] : null)),
+      setItem: (k, v) => { store[k] = v; }},
       opts.clubConfig || null,
       () => opts.currentCategory || '',
       {amateur: 'Amateur', juvenil: 'Juvenil'},
@@ -91,7 +94,6 @@ function makeFcf(opts) {
       U.parseFcfClassificacio,
       U.fcfGrupId,
       (f) => f,
-      () => opts.matches || [],
   );
   api._fetched = fetched;
   api._store = store;

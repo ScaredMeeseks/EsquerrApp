@@ -861,13 +861,26 @@ describe('Inici — the .ini- block', () => {
    the builder as text, which is how v238 shipped a page that painted nothing.
    ═══════════════════════════════════════════════════════════════════════════ */
 describe('Inici — the standings borrow a crest from our own fixtures', () => {
-  /** The two real helpers, over a `getMatches` stub and nothing else. */
+  /** The two real helpers, over the real `fa_matches` blob and nothing else.
+   *
+   *  ⚠ `localStorage`, NOT a `getMatches` stub. v250 shipped `fcfBadgeById`
+   *  calling `getMatches()` — a function that exists NOWHERE in this app — and
+   *  this harness named `getMatches` in its parameter list, so `new Function`
+   *  dutifully bound the invented name and every assertion below passed over
+   *  code that threw a ReferenceError in production. It threw inside a render,
+   *  so the splash screen never lifted and the app would not start.
+   *
+   *  The rule this cost: **a stub may only stand in for something that exists.**
+   *  A `new Function` harness accepts any identifier you care to name, which
+   *  makes it the one kind of test that can prove a function runs while
+   *  guaranteeing nothing about whether it runs in the app. */
   function load(matches) {
     const code = grab('  function fcfBadgeById() {', '  function iniLeagueRowHtml(r) {');
     // eslint-disable-next-line no-new-func
-    return new Function('getMatches', 'Object', 'String',
+    return new Function('localStorage', 'Object', 'String', 'JSON',
         code + '\n return { fcfBadgeById, withFixtureBadges };')(
-        () => matches, Object, String);
+        {getItem: (k) => (k === 'fa_matches' ? JSON.stringify(matches) : null)},
+        Object, String, JSON);
   }
 
   const FIXTURES = [
