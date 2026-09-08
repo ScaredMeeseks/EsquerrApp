@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 249** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 250** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3319** — `cd test && npm run test:unit` (~13 s), all passing |
+| Unit tests | **3331** — `cd test && npm run test:unit` (~13 s), all passing |
 | Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
 | Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
@@ -22,7 +22,7 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 **Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
 session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
 collection). Both went out BEFORE the matching frontend push, because the other order leaves a
-window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v249 changed
+window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v250 changed
 neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
 ⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
@@ -63,7 +63,7 @@ real app. Worth trying first, in this order:
 
 ---
 
-## The session in order — v234 to v249
+## The session in order — v234 to v250
 
 ### v234. Mèdic, rebuilt to the eighth design handoff.
 
@@ -442,6 +442,34 @@ records making the identical mistake and fixing it** — Inici was the last page
 stale one, so it is deleted rather than softened. Both row builders now carry `oppBadge`.
 
 Unit 3297 → **3319**; fifteen mutations killed, each asserted to have actually applied.
+
+### v250. The crest the classificació omits.
+
+Asked, not reported: "how come some clubs have the crest in some places but not in the
+classificació?" ⚠ **The federation disagrees with itself.** Sampled live on group 58161881:
+`/competition/partidos` carries `ESCUDO_*` for all sixteen clubs; `/competition/classificacio`
+returns `team.logo: null` for four of them — Inspire Soccer, San Lorenzo, Barcelona City, Besos
+Baron de Viver. Nothing in the app was inconsistent: `fcfBadgeUrl` and `fcfBadgeOf` are
+byte-identical, same base and same `escutbase` filter. The two payloads differ.
+
+`withFixtureBadges(rows)` fills an empty standings badge from our own fixtures, which carry
+`opponentTeamId` beside `opponentBadge`. ⚠ **On the federation ID, never the name** — these payloads
+are free text ("OLYMPIA - VIARO ,C.E A") and `normTeamName` exists because they do not compare
+cleanly; a name match would put another club's badge on a row, which is worse than initials.
+⚠ Returns NEW rows: they come from the persisted league cache, and writing a derived badge back
+would store a crest the federation never sent for that endpoint. ⚠ Honest limit: our fixtures cover
+our own group, so other groups still fall back to the monogram.
+
+⚠ **`test/fixtures/fcf-preseason.json` no longer matches the live payload** — captured before those
+clubs lost their logo, so every row carries one and it cannot produce the case. Left alone (a dozen
+assertions are calibrated on it); the null is injected inside the new test where it is visible.
+
+⚠ **Two runnable harnesses caught the new dependency** — `fcf-app.test.js` and the Inici preview
+builder both went red on `getMatches`. ⚠ **And the preview then passed for the wrong reason**: the
+map is lazy and every row in its fixture has a badge, so the call never fired — the first logo-less
+club would have thrown inside `innerHTML`. Stubbed explicitly.
+
+Unit 3319 → **3331**; eight mutations killed.
 
 ---
 

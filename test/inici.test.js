@@ -843,3 +843,100 @@ describe('Inici — the .ini- block', () => {
         .forEach((c) => assert.ok(!bareCss.includes(c), c + ' is dead CSS'));
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE CREST THE STANDINGS PAYLOAD FORGOT (v250)
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ THE FEDERATION DISAGREES WITH ITSELF, and this is the evidence, sampled
+   live on group 58161881 while writing it: `/competition/partidos` carries
+   ESCUDO_CASA / ESCUDO_FUERA for all sixteen clubs in the group, and
+   `/competition/classificacio` returns `team.logo: null` for four of them —
+   Inspire Soccer, San Lorenzo Catalunya, Barcelona City, Besos Baron de Viver.
+   Same clubs, same group, same season. So a club showed its badge on a fixture
+   and two initials in the table one page over, and nothing in this app was
+   inconsistent: both URL builders are byte-identical and apply the same
+   `escutbase` placeholder filter. The two payloads are what differ.
+
+   ⚠ CALLED, NOT GREPPED. Every other standings assertion in this file reads
+   the builder as text, which is how v238 shipped a page that painted nothing.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('Inici — the standings borrow a crest from our own fixtures', () => {
+  /** The two real helpers, over a `getMatches` stub and nothing else. */
+  function load(matches) {
+    const code = grab('  function fcfBadgeById() {', '  function iniLeagueRowHtml(r) {');
+    // eslint-disable-next-line no-new-func
+    return new Function('getMatches', 'Object', 'String',
+        code + '\n return { fcfBadgeById, withFixtureBadges };')(
+        () => matches, Object, String);
+  }
+
+  const FIXTURES = [
+    {opponentTeamId: '9001', opponentBadge: 'https://files.fcf.cat/e/inspire.png'},
+    {opponentTeamId: '9002', opponentBadge: ''},          // a club with no crest anywhere
+    {opponentTeamId: '', opponentBadge: 'https://x/orphan.png'}, // no id: unusable
+  ];
+
+  it('fills the badge the classificació omitted', () => {
+    const B = load(FIXTURES);
+    const [row] = B.withFixtureBadges([{club: 'INSPIRE SOCCER,F.C. A', teamId: '9001', badge: ''}]);
+    assert.strictEqual(row.badge, 'https://files.fcf.cat/e/inspire.png');
+  });
+
+  /* ⚠ ON THE ID, NEVER ON THE NAME. These payloads carry the federation's own
+     free text — "OLYMPIA - VIARO ,C.E A" — and `normTeamName` exists because
+     they do not compare cleanly. Matching on a name to decide which crest to
+     draw would put another club's badge on a row, which is worse than the
+     initials it replaces. */
+  it('will not match a club by name', () => {
+    const B = load([{opponentTeamId: '9999', opponentBadge: 'https://x/other.png',
+      opponentName: 'INSPIRE SOCCER,F.C. A'}]);
+    const [row] = B.withFixtureBadges([{club: 'INSPIRE SOCCER,F.C. A', teamId: '9001', badge: ''}]);
+    assert.strictEqual(row.badge, '', 'a name match put another club\'s crest on the row');
+  });
+
+  it('leaves a row that already has its own badge alone', () => {
+    const B = load([{opponentTeamId: '9001', opponentBadge: 'https://x/wrong.png'}]);
+    const [row] = B.withFixtureBadges([{teamId: '9001', badge: 'https://x/right.png'}]);
+    assert.strictEqual(row.badge, 'https://x/right.png', 'the fixture badge overwrote a real one');
+  });
+
+  /* ⚠ Our fixtures only cover our own group, so a table for a group we have
+     no fixtures in is unchanged. That is this source's honest limit — it must
+     degrade to the monogram, not to a wrong crest or a crash. */
+  it('leaves a club we have never played as it found it', () => {
+    const B = load(FIXTURES);
+    const [row] = B.withFixtureBadges([{club: 'SOMEBODY ELSE', teamId: '7777', badge: ''}]);
+    assert.strictEqual(row.badge, '');
+  });
+
+  it('survives fixtures with no id and no badge', () => {
+    const B = load(FIXTURES);
+    assert.deepStrictEqual(B.fcfBadgeById(), {'9001': 'https://files.fcf.cat/e/inspire.png'},
+        'an idless or badgeless fixture got into the map');
+  });
+
+  /* ⚠ The rows come straight out of the league cache, which is persisted.
+     Writing a derived badge back into it would store, for that endpoint, a
+     crest the federation never sent — and it would outlive the fixtures it
+     was borrowed from. */
+  it('does not write the borrowed badge back into the cached row', () => {
+    const B = load(FIXTURES);
+    const cached = {club: 'INSPIRE SOCCER,F.C. A', teamId: '9001', badge: ''};
+    const [row] = B.withFixtureBadges([cached]);
+    assert.strictEqual(cached.badge, '', 'the league cache was mutated in place');
+    assert.notStrictEqual(row, cached, 'the same object was handed back');
+  });
+
+  it('is applied at BOTH places the table is drawn', () => {
+    const uses = (bare.match(/withFixtureBadges\(/g) || []).length;
+    assert.ok(uses >= 3, 'withFixtureBadges is called ' + (uses - 1) +
+        ' times; the live refresh and the first paint both draw this table');
+    assert.ok(!/[^s]\brows\.map\(iniLeagueRowHtml\)/.test(bare),
+        'one of the two call sites still maps the raw rows');
+  });
+
+  it('handles an empty table without building the map at all', () => {
+    const B = load(FIXTURES);
+    assert.deepStrictEqual(B.withFixtureBadges([]), []);
+  });
+});

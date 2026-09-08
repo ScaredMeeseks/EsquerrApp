@@ -177,7 +177,13 @@ const STANDINGS = [
 const HELPERS = grab('  const INI_SEGS = [', '  function renderPlayerHome() {');
 const PLAYER = grab('  function renderPlayerHome() {', '  // #endregion FCF League Scraper');
 const WEEKS = grab('  function getWeekBounds(offset) {', '  // sanitize → utils.js');
-const LEAGUE = grab('  function iniLeagueRowHtml(r) {', '  function applyLeagueRows(container, rows)') +
+/* ⚠ v250: the two crest-fallback helpers come WITH the row builder — the
+   standings table borrows a badge from our own fixtures for the clubs the
+   federation's classificació omits one for, so `buildLeagueSnippet` calls
+   `withFixtureBadges` now. Bounded on the banner above them rather than on
+   the function, so the pair cannot drift out of this slice one at a time. */
+const LEAGUE = grab('  /* ── The crest the standings payload forgot ──',
+    '  function applyLeagueRows(container, rows)') +
   grab('  function buildLeagueSnippet(title, rows, snippetId) {',
       '  /* ═══════════════════════════════════════════════════════════\n' +
       '     Sancions and Top Scorers');
@@ -286,6 +292,14 @@ function render(which, data) {
     JSON,
     Math,
     Date: PreviewDate,
+    /* ⚠ v250. `withFixtureBadges` builds its teamId→crest map LAZILY, only
+       when a standings row actually arrives with no badge — and every row in
+       this preview's fixture has one, so the call never fires and the mockup
+       built without this. That is a landmine, not a pass: the first fixture
+       with a logo-less club would have thrown ReferenceError inside
+       innerHTML, which is a blank page. Stubbed empty, which is also the
+       honest state here — this preview has no fixtures to borrow from. */
+    getMatches: () => [],
     Object,
     String,
     Number,

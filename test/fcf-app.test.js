@@ -60,6 +60,11 @@ function makeFcf(opts) {
       'localStorage', '_clubConfig', 'getCurrentCategory', 'CATEGORY_LABELS',
       'getClubName', 'sanitize', 't', 'getTeamLetters', 'document', 'fetch',
       'parseFcfClassificacio', 'fcfGrupId', 'requestAnimationFrame',
+      /* ⚠ v250: the standings table borrows a crest from our own fixtures
+         for the clubs the federation's classificació omits one for, so
+         buildLeagueSnippet reaches the match list now. Default empty — a
+         test that wants the borrow passes `opts.matches`. */
+      'getMatches',
       region + '\n' + inputFn +
       '\n return {getActiveFcfLeagues, fcfTeamsFor, fcfLookup,' +
         ' fcfMatchFields, leagueMessageHtml, buildLeagueSnippet,' +
@@ -86,6 +91,7 @@ function makeFcf(opts) {
       U.parseFcfClassificacio,
       U.fcfGrupId,
       (f) => f,
+      () => opts.matches || [],
   );
   api._fetched = fetched;
   api._store = store;
@@ -406,5 +412,82 @@ describe('fetchFcfGroup — what actually goes over the wire', () => {
     assert.strictEqual(F._fetched.length, 1);
     assert.ok(!F._fetched[0].includes('fcf.cat'), F._fetched[0]);
     assert.ok(F._fetched[0].includes('grupId=58161881'), F._fetched[0]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE CREST THE CLASSIFICACIÓ OMITS (v250)
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ THE FEDERATION DISAGREES WITH ITSELF. Sampled live on group 58161881
+   while this was written: `/competition/partidos` carries ESCUDO_CASA /
+   ESCUDO_FUERA for all sixteen clubs, and `/competition/classificacio`
+   returns `team.logo: null` for four of them — Inspire Soccer, San Lorenzo
+   Catalunya, Barcelona City, Besos Baron de Viver. Reported by the owner as
+   a club whose badge appears on a fixture and not in the table.
+
+   ⚠ AND `fixtures/fcf-preseason.json` HAS NO SUCH ROW. It was captured before
+   those clubs lost their logo, so every row in it carries one and the fixture
+   can no longer produce the case the app now has to handle. It is left alone
+   — a dozen other assertions are calibrated on it — and the null is injected
+   here, where it is visible, rather than edited into the shared fixture where
+   it would silently change what those assertions are about.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('the standings borrow a crest from our own fixtures', () => {
+  /** PRESEASON with one club's logo nulled, the way the live payload sends it. */
+  function withNullLogo(name) {
+    const copy = JSON.parse(JSON.stringify(PRESEASON));
+    // The payload is `{data: [...], promociones: [...]}`, not a bare array.
+    const row = copy.data.find((r) => (r.team || {}).name === name);
+    assert.ok(row, 'the fixture no longer holds ' + name);
+    row.team.logo = null;
+    return {rows: copy, teamId: String(row.team.teamId)};
+  }
+
+  const TARGET = 'CAN BUXERES, F.C.';
+
+  it('draws the crest our fixtures know for a club the table has none for', () => {
+    const {rows, teamId} = withNullLogo(TARGET);
+    const parsed = U.parseFcfClassificacio(rows, CLUB);
+    const bare = parsed.find((r) => String(r.teamId) === teamId);
+    assert.strictEqual(bare.badge, '', 'the parser invented a badge from a null logo');
+
+    const F = makeFcf({matches: [
+      {opponentTeamId: teamId, opponentBadge: 'https://files.fcf.cat/e/buxeres.png'},
+    ]});
+    const html = F.buildLeagueSnippet('Amateur A', parsed, 'league-amateur-A');
+    assert.ok(html.includes('https://files.fcf.cat/e/buxeres.png'),
+        'the table still shows initials for a club whose crest we have');
+  });
+
+  it('falls back to the monogram when no fixture knows the club either', () => {
+    const {rows, teamId} = withNullLogo(TARGET);
+    const parsed = U.parseFcfClassificacio(rows, CLUB);
+    const F = makeFcf({matches: []});
+    const html = F.buildLeagueSnippet('Amateur A', parsed, 'league-amateur-A');
+    assert.ok(!html.includes('files.fcf.cat/e/'), 'a crest appeared from nowhere');
+    assert.ok(html.includes('ini-tbl-badge'), 'the badge slot vanished entirely');
+    assert.ok(teamId, teamId);
+  });
+
+  /* ⚠ Matched on the federation id, never on the name. The names in these
+     payloads are the federation's own free text and do not compare cleanly —
+     putting another club's badge on a row is worse than the initials. */
+  it('does not borrow a crest across clubs', () => {
+    const {rows} = withNullLogo(TARGET);
+    const parsed = U.parseFcfClassificacio(rows, CLUB);
+    const F = makeFcf({matches: [
+      {opponentTeamId: '99999999', opponentBadge: 'https://files.fcf.cat/e/somebody.png'},
+    ]});
+    const html = F.buildLeagueSnippet('Amateur A', parsed, 'league-amateur-A');
+    assert.ok(!html.includes('somebody.png'), 'another club\'s crest landed on the row');
+  });
+
+  it('leaves every club the classificació DID send a logo for untouched', () => {
+    const parsed = U.parseFcfClassificacio(PRESEASON, CLUB);
+    const F = makeFcf({matches: [
+      {opponentTeamId: String(parsed[0].teamId), opponentBadge: 'https://x/wrong.png'},
+    ]});
+    const html = F.buildLeagueSnippet('Amateur A', parsed, 'league-amateur-A');
+    assert.ok(!html.includes('wrong.png'), 'a fixture badge overwrote the table\'s own');
   });
 });

@@ -2589,7 +2589,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 249;
+  const APP_VERSION = 250;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7247,6 +7247,54 @@
      2026 rebuild, so the stripe is rendered transparent rather than derived
      from the position — guessing which places promote would be inventing a
      league rule the payload does not state. */
+  /* ── The crest the standings payload forgot ──────────────────
+     (v250)
+
+     ⚠ THE FEDERATION PUBLISHES A CLUB'S CREST IN ONE ENDPOINT AND OMITS IT
+     FROM THE OTHER. Sampled live on group 58161881: `/competition/partidos`
+     carries `ESCUDO_CASA`/`ESCUDO_FUERA` for all sixteen clubs, while
+     `/competition/classificacio` returns `team.logo: null` for four of them
+     — Inspire Soccer, San Lorenzo Catalunya, Barcelona City and Besos Baron
+     de Viver. Same clubs, same group, same season. So a club showed its
+     badge on a fixture and two initials in the table one page over, and
+     nothing in this app was inconsistent: the two payloads are.
+
+     The fixtures we already sync carry `opponentTeamId` beside
+     `opponentBadge`, and the standings row carries the same federation
+     `teamId`. So the gap is filled on the ID — never on the name. Names in
+     these payloads are the federation's own free text ("OLYMPIA - VIARO ,C.E
+     A"), and `normTeamName` exists precisely because they do not compare
+     cleanly; matching on one to decide which crest to draw would put another
+     club's badge on a row, which is worse than the initials it replaces.
+
+     ⚠ IT CAN ONLY FILL CLUBS WE HAVE PLAYED OR WILL PLAY. Our fixtures cover
+     our own group, so a table for a group we have no fixtures in is
+     unchanged and still falls back to the monogram. That is the honest
+     limit of this source, not a bug to chase. */
+  function fcfBadgeById() {
+    var out = {};
+    (getMatches() || []).forEach(function (m) {
+      var id = String(m.opponentTeamId || '');
+      if (id && m.opponentBadge && !out[id]) out[id] = m.opponentBadge;
+    });
+    return out;
+  }
+
+  /** Standings rows with an empty badge filled from our fixtures, by teamId. */
+  function withFixtureBadges(rows) {
+    if (!rows || !rows.length) return rows || [];
+    var byId = null;   // built once, and only if a row actually needs it
+    return rows.map(function (r) {
+      if (r.badge || !r.teamId) return r;
+      if (!byId) byId = fcfBadgeById();
+      var found = byId[String(r.teamId)];
+      // A NEW row: these come straight out of the league cache, and writing
+      // a derived value back into it would persist a badge the federation
+      // never sent for that endpoint.
+      return found ? Object.assign({}, r, {badge: found}) : r;
+    });
+  }
+
   function iniLeagueRowHtml(r) {
     var gd = (Number(r.f) || 0) - (Number(r.c) || 0);
     var gdTxt = (gd > 0 ? '+' : '') + gd;
@@ -7276,7 +7324,7 @@
 
   function applyLeagueRows(container, rows) {
     if (rows.length === 0) return;
-    container.innerHTML = rows.map(iniLeagueRowHtml).join('');
+    container.innerHTML = withFixtureBadges(rows).map(iniLeagueRowHtml).join('');
     requestAnimationFrame(function() { scrollLeagueToCentre(); });
   }
 
@@ -7356,7 +7404,7 @@
        overwrites this the moment the fetch lands — or replaces it with the
        reason it did not. */
     if (!useRows.length) html += leagueMessageHtml(t('fcf.loading'));
-    html += useRows.map(iniLeagueRowHtml).join('');
+    html += withFixtureBadges(useRows).map(iniLeagueRowHtml).join('');
     html += '</div>';
     /* Only when the federation actually publishes the zones. A legend for
        stripes that are never drawn is a promise the table does not keep. */

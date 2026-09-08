@@ -10669,3 +10669,60 @@ version of the shared-atom guard failed on `.md2-counters-s .md2-count-v`, which
 variant and not the defect.
 
 No rules or functions change; push only.
+
+### 2026-09-09 — The crest the classificació omits (v250)
+
+The owner: "how come some clubs (like inspire soccer) have the crest in some places but not in the
+classificació?" Investigated before answering, and the answer is evidence, not reasoning.
+
+⚠ **THE FEDERATION DISAGREES WITH ITSELF.** Sampled live on group 58161881:
+
+| club | `/competition/partidos` `ESCUDO_*` | `/competition/classificacio` `team.logo` |
+|---|---|---|
+| INSPIRE SOCCER,F.C. A | `00100_0001026730_Logo_Medium.png` | **`null`** |
+| SAN LORENZO CATALUNYA A | `00100_0000895508_sanlorenzo_200.png` | **`null`** |
+| BARCELONA CITY FOOTBALL CLUB A | `00100_0001030389_6650_200.png` | **`null`** |
+| BESOS BARON DE VIVER A | `00100_0000740544_besosbaron_200x200.png` | **`null`** |
+| the other twelve | present | present |
+
+Four of sixteen. Nothing in this app was inconsistent: `functions/fcf.js`'s `fcfBadgeUrl` and
+`js/utils.js`'s `fcfBadgeOf` are **byte-identical** — same `FCF_BADGE_BASE`, same `escutbase`
+placeholder filter — and each faithfully reports the field it is given. The two payloads differ.
+
+**The fix borrows from the endpoint that does have it.** Every synced fixture carries
+`opponentTeamId` beside `opponentBadge` (functions/fcf.js:132), and a standings row carries the
+same federation `teamId`. `withFixtureBadges(rows)` fills an empty badge from that map.
+
+⚠ **ON THE ID, NEVER ON THE NAME.** These payloads carry the federation's own free text —
+"OLYMPIA - VIARO ,C.E A" — and `normTeamName` exists precisely because they do not compare
+cleanly. Matching a name to decide which crest to draw would put another club's badge on a row,
+which is worse than the initials it replaces. Asserted with a fixture whose names match and whose
+ids do not.
+
+⚠ **It returns NEW rows.** They come straight out of `fa_league_cache_v2`, which is persisted;
+writing a derived badge back would store, for that endpoint, a crest the federation never sent —
+and it would outlive the fixture it was borrowed from.
+⚠ **The map is built lazily**, only when a row actually lacks a badge, and only from fixtures that
+have BOTH an id and a badge.
+⚠ **The honest limit, stated rather than buried:** our fixtures cover our own group, so a table for
+a group we have no fixtures in is unchanged and still falls back to the monogram.
+
+**Tests.** 3319 → **3331**, in two layers: the helpers CALLED over a `getMatches` stub
+(`inici.test.js`), and the real `buildLeagueSnippet` rendering a crest into actual HTML
+(`fcf-app.test.js`). Eight mutations killed, each asserted to have applied.
+
+⚠ **`test/fixtures/fcf-preseason.json` NO LONGER MATCHES THE LIVE PAYLOAD.** It was captured before
+those four clubs lost their logo, so every row in it carries one and it cannot produce the case the
+app now handles. It is left alone — a dozen assertions are calibrated on it — and the null is
+injected inside the new test where it is visible, rather than edited into the shared fixture where
+it would silently change what those other assertions are about. Worth knowing before trusting it
+for anything else.
+
+⚠ **Two runnable harnesses caught the new dependency**, which is the v238 lesson working twice in
+one change: `fcf-app.test.js` went red with `ReferenceError: getMatches is not defined` the moment
+`buildLeagueSnippet` reached for it, and `build-inici-preview.js` did the same at build time.
+⚠ **And the Inici preview then "passed" for the wrong reason** — the map is lazy and every row in
+its fixture has a badge, so the call never fired. That is a landmine, not a pass: the first
+logo-less club would have thrown inside `innerHTML`, which is a blank page. Stubbed explicitly.
+
+No rules or functions change; push only.
