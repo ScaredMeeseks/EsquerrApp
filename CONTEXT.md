@@ -10513,3 +10513,64 @@ to 125 exactly:
 band, and the legend rule deleted. Measured at 1440 (band 125px, ring inset 40px from the right edge
 like every other band member), 650 and 390, where the block wraps to its own line under the four
 figures with no overflow.
+
+### 2026-09-08 — Four owner reports on the rings and the bands (v247, follow-up 3)
+
+**1. ⚠ THE RING DISAGREED WITH THE NUMBER IN ITS MIDDLE.** The owner: *"in Inici the number is 1%
+yet the donut is all green."* Exactly right, and it had been true since the page was built.
+
+`iniDonutHtml` drew each arc against the sum of the four ANSWERS. The percentage printed in the
+centre was computed against the SLOTS — every player × every session, answered or not. So a squad
+that had answered once out of ninety got "1%" inside a ring that was 100% green.
+
+⚠ **The docstring described the fix it never had**: *"the uncovered remainder of the track is the
+no-answer share, which is why nothing is drawn for it."* Nothing ever put the unanswered slots in a
+denominator, so there was no remainder to leave uncovered. A comment asserting behaviour that no
+line of code produces is worse than no comment: it reads as a decision.
+
+`iniAvailSegs(n, slots)` takes the denominator now and turns the difference into a **fifth segment**
+in `--pp-rule-4` — deliberately lighter than `--pp-neutral`, which is the grey of a deliberate "No".
+A no-answer is a fact about the squad, not an absence of one, so it is drawn. All four call sites
+pass the denominator they already had to hand: `pTotal`, `sSlots`, `r.total`.
+
+⚠ **My-stats had the same bug in a simpler form** and the owner did not report it, because it is a
+third page. Its ring was a single green segment — always the whole circle — beside a centre that
+said 86%. It has a second, grey arc now. Shipping a known-identical defect because nobody named it
+is not a smaller change, it is the same change left half done.
+
+**2. One ring size for every header band.** `HERO_DONUT = 56`. Inici drew 88 on the player hero and
+76 on the staff hero, my-stats 88, Plantilla 56 — four numbers for one figure, and the owner saw two
+of them side by side. ⚠ NOT the 44px per-session ring inside an Inici row, and not Plantilla's
+player rail at 84: a different figure in a different place, each with its own test saying so.
+⚠ `.ms-attend`'s 62px phone override is deleted — it existed to bring an 88px ring down on a phone
+and would now UPSCALE a 56px one, so the phone would show a bigger ring than the desktop.
+
+**3. The centre number overflowed its ring.** `100%` at a fixed 18px in a hole that is .6 × the
+ring — fine at the 84px it was written for, wider than the 56px band ring. Both builders derive it
+now: `Math.round(size * 0.215)`, which lands back on the 18 and 19 the big rings already used, so
+nothing else moves. ⚠ `.pl-rail-donut .pl-donut-pct { font-size: 15px }` was a THIRD value for the
+same number and goes with it.
+
+**4. Registres' band was taller because its subtitle wrapped.** The intro ran to two sentences; it
+is one now. ⚠ **But a string is not a guarantee** — `ca`, `es` and `en` are three different lengths
+and the next edit is a fourth — so the shared scope-line rule is `nowrap` + `ellipsis` +
+`min-width: 0` (without which a flex child refuses to shrink and the ellipsis never engages). It
+wraps again below 700, where there is no neighbouring band to match and truncating a sentence would
+cost information for nothing. Both bands measure **125px**.
+
+**Tests.** 3290 → **3297**. ⚠ **`inici.test.js` had a test that documented the bug.** It was called
+*"leaves the no-answer share as bare track rather than drawing it"*, with a comment about "4 of a
+squad of 22". Its ASSERTION was about the builder — one segment in, one arc out — and is unchanged.
+Its COMMENT told a story the code never implemented. A test whose assertion and whose comment are
+about different things stays green through exactly the defect it appears to cover.
+
+⚠ **The runnable Plantilla harness earned its keep again**: `HERO_DONUT` is declared beside
+`INI_SEGS`, so four `renderStaffRoster` cases went red with `ReferenceError` the moment the constant
+was introduced — the v238 lesson, working. The ms harness and `build-ms-preview.js` both sliced on
+`/** One donut, three sizes`, a docstring that is now wrong and was rewritten; both are repointed at
+the constant's banner, a declaration rather than a paragraph about one.
+
+⚠ **A mutation of mine silently failed to apply** — a `str.replace` with no match — and the survivor
+looked like a gap in the tests. Re-run with an assert on the replacement, it killed. Five mutations
+confirmed: `HERO_DONUT` back to 88, the no-answer segment forced to zero, either centre size back to
+a literal, and the scope line allowed to wrap.

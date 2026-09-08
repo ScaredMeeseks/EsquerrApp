@@ -98,8 +98,8 @@ function loadBuilders() {
       'isOurTeam', 'clubBadgeUrl', 'getWeekBounds', 'tMonth', 'clubMonogram', `
     ${SANITIZE_SRC}
     ${block}
-    return { iniAvailPillsHtml, iniMatchPillsHtml, iniDonutHtml,
-             iniDateStackHtml, iniSideBadgeHtml, iniSentTagHtml };`)(
+    return { iniAvailPillsHtml, iniMatchPillsHtml, iniDonutHtml, iniAvailSegs,
+             iniDateStackHtml, iniSideBadgeHtml, iniSentTagHtml, HERO_DONUT };`)(
     dom.window.document,
     (k) => k,
     () => 'Respostes tancades a les 15:30',
@@ -418,11 +418,80 @@ describe('Inici — the availability donut', () => {
     assert.ok(html.includes('stroke-dashoffset="-50.00"'), html);
   });
 
-  it('leaves the no-answer share as bare track rather than drawing it', () => {
-    // 4 of a squad of 22 answered: the ring is 4/4 of what was answered and
-    // the rest of the circle is the track. Nothing invents a fifth segment.
-    const html = B.iniDonutHtml([{ n: 4, css: 'a', label: 'y' }], {});
+  /* ⚠ v247.4 REWRITES THIS TEST, and the old one is worth reading first.
+     It was 'leaves the no-answer share as bare track rather than drawing it',
+     with the comment: "4 of a squad of 22 answered: the ring is 4/4 of what
+     was answered and the rest of the circle is the track."
+
+     The ASSERTION was about the builder — one segment in, one arc out — and
+     that contract is unchanged and still asserted below. The COMMENT told a
+     story about a squad of 22 that the code never implemented: nothing ever
+     put 22 in a denominator, so there was no bare track to leave. The ring
+     was 4/4 green while the centre said 18%, which is what the owner saw.
+     A test whose assertion and whose comment are about different things will
+     stay green through exactly this. */
+  it('draws one arc per segment, and nothing for an empty one', () => {
+    const html = B.iniDonutHtml([{ n: 4, css: 'a', label: 'y' },
+      { n: 0, css: 'b', label: 'n' }], {});
     assert.strictEqual((html.match(/stroke-dasharray/g) || []).length, 1, html);
+  });
+
+  /* The denominator belongs to `iniAvailSegs`, which is the only place that
+     knows a slot can go unanswered. THIS is what makes the ring agree with
+     the number printed inside it. */
+  it('turns the unanswered slots into a fifth, grey segment', () => {
+    const segs = B.iniAvailSegs({ yes: 1, late: 0, no: 0, injured: 0 }, 90);
+    assert.strictEqual(segs.length, 5, 'there is no no-answer segment');
+    assert.strictEqual(segs[4].n, 89, 'the no-answer share is not 90 − 1');
+    assert.ok(/rule-4/.test(segs[4].css),
+        'the no-answer share is not the light grey: ' + segs[4].css);
+    /* And the ring that comes out must be 1/90 green, not 1/1. */
+    const html = B.iniDonutHtml(segs, {});
+    assert.ok(html.includes('stroke-dasharray="1.11 98.89"'),
+        'the answered share is not 1/90 of the ring: ' + html);
+  });
+
+  it('draws no grey when every slot is answered', () => {
+    const segs = B.iniAvailSegs({ yes: 3, late: 1, no: 1, injured: 1 }, 6);
+    assert.strictEqual(segs[4].n, 0, 'a fully answered squad still shows grey');
+  });
+
+  /* ⚠ Omitting `slots` is the old behaviour and must stay available: a caller
+     with no unanswered slots to speak of should not be forced to invent one.
+     It must NOT silently mean "everything is unanswered". */
+  it('adds no grey at all when no denominator is given', () => {
+    const segs = B.iniAvailSegs({ yes: 1, late: 0, no: 0, injured: 0 });
+    assert.strictEqual(segs[4].n, 0, 'a missing denominator invented a grey share');
+  });
+
+  it('never lets a bad denominator produce a negative arc', () => {
+    // More answers than slots should clamp, not draw backwards.
+    const segs = B.iniAvailSegs({ yes: 9, late: 0, no: 0, injured: 0 }, 4);
+    assert.strictEqual(segs[4].n, 0, 'the no-answer share went negative');
+  });
+
+  /* One size for the ring in a page's header band. Inici drew 88 and 76 while
+     Plantilla drew 56; the owner saw two of the three side by side. */
+  it('shares one hero ring size with Plantilla', () => {
+    assert.strictEqual(B.HERO_DONUT, 56, 'the shared hero ring changed size');
+    /* Both heroes, and the whole file between them — a hardcoded 76 or 88
+       beside an `iniDonutHtml` call anywhere is the drift this guards. */
+    const calls = bare.split('iniDonutHtml(').slice(1)
+        .map((s) => s.slice(0, 220))
+        /* ⚠ The 44px per-session ring inside an Inici row is NOT a hero and
+           keeps its own size; it is excluded by value, not by position. */
+        .filter((s) => !/size:\s*44\b/.test(s));
+    calls.forEach((s) => assert.ok(!/size:\s*(88|76)\b/.test(s),
+        'a hero still hardcodes its own ring size: ' + s.slice(0, 90)));
+  });
+
+  /* The centre number is derived from the ring unless a caller overrides it —
+     a fixed size outlives the ring it was written for. */
+  it('sizes the centre number from the ring', () => {
+    const small = B.iniDonutHtml([{ n: 1, css: 'a', label: 'y' }], { size: 56 });
+    const big = B.iniDonutHtml([{ n: 1, css: 'a', label: 'y' }], { size: 88 });
+    assert.ok(small.includes('font-size:12px'), small.slice(-160));
+    assert.ok(big.includes('font-size:19px'), big.slice(-160));
   });
 
   it('an all-zero donut is a bare track, not a division by zero', () => {

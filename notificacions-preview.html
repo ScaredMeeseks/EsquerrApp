@@ -557,8 +557,18 @@ a:hover { text-decoration: underline; }
 .ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l {
   display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
 }
+/* ⚠ ONE LINE, AND IT IS THE BAND'S HEIGHT THAT DEPENDS ON IT. Registres'
+   intro ran to two sentences, wrapped, and made that band the tallest of the
+   ten — which is the whole thing the shared band exists to prevent. The string
+   is shortened too, but a string is not a guarantee: `ca`, `es` and `en` are
+   three different lengths and a future edit is a fourth. So the line cannot
+   wrap, and a scope line long enough to need it is telling the reader
+   something the page below it should be telling them instead.
+   ⚠ `min-width: 0` is required — without it a flex child refuses to shrink
+   below its content and the ellipsis never engages. */
 .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
   font-size: 14px; color: var(--pp-ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
 
 /* ⚠ ONE CAPTION ATOM, NOT SEVEN. `.ac-lbl`, `.ms-lbl`, `.reg2-fig-l`,
@@ -604,6 +614,13 @@ a:hover { text-decoration: underline; }
   .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
   .ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
   .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
+  /* ⚠ The scope line WRAPS again on a phone. One-line-with-ellipsis exists to
+     keep ten bands the same height beside each other; on a 390px screen you
+     see one band at a time and there is no height to match, so truncating a
+     sentence there would cost information and buy nothing. */
+  .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+    white-space: normal; overflow: visible;
+  }
   .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
   .cv-head-r { gap: 0; width: 100%; }
   .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat,
@@ -6439,6 +6456,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* ── Attendance donut ── */
 .pl-att { display: flex; align-items: center; gap: 16px; flex: none; }
 .pl-att-col { display: flex; flex-direction: column; gap: 4px; }
+/* ⚠ IN THE BAND the legend is 2×2, and it is scoped to `.pl-title-row` on
+   purpose: `plDonutLegendHtml` also draws the player rail's legend, which is
+   a column with the room for four stacked rows and must not be re-flowed
+   from here. Four rows are 78px, which would make this band the one that is
+   20px taller than the other ten — the exact thing the shared band exists to
+   stop. Two columns are 32px, under the title block's own 64. */
+.pl-title-row .pl-donut-legend {
+  display: grid; grid-template-columns: auto auto; gap: 2px 16px;
+}
 .pl-donut-legend { display: flex; flex-direction: column; gap: 2px; }
 .pl-donut-legend-right { align-items: flex-end; }
 .pl-legend-row {
@@ -6451,11 +6477,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-rule { width: 10px; height: 1px; background: #8C857D; display: inline-block; }
 .pl-donut { position: relative; flex: none; }
 .pl-donut svg { display: block; }
+/* ⚠ NO `font-size` HERE. It is set inline from the ring's own size — see
+   `plDonutHtml`. A fixed 18px was right for the 84px ring it was written
+   against and overflowed the 56px one in the header band. `.pl-rail-donut`
+   carried a third value (15px) for the same number and went with it. */
 .pl-donut-pct {
   position: absolute; inset: 0; display: flex; align-items: center;
-  justify-content: center; font-size: 18px; color: var(--pp-ink);
+  justify-content: center; color: var(--pp-ink);
 }
-.pl-rail-donut .pl-donut-pct { font-size: 15px; }
 
 /* ── Key figures ── */
 .pl-figures { flex-wrap: wrap; }
@@ -9607,9 +9636,9 @@ a.ini-ev-name, .ini-ev-name-link {
     margin: 18px -20px 0; padding: 16px 20px; background: #FFFFFF;
     border-top: 1px solid var(--pp-rule); border-bottom: 1px solid var(--pp-rule);
   }
-  .ms-attend .ini-donut { width: 62px !important; height: 62px !important; }
-  .ms-attend .ini-donut svg { width: 62px; height: 62px; }
-  .ms-attend .ini-donut-c { font-size: 14px !important; }
+  /* ⚠ The 62px phone override is gone (v247.4). It existed to bring an 88px
+     ring down on a phone; the band ring is 56 everywhere now, so the override
+     would UPSCALE it — a phone showing a bigger ring than the desktop. */
   .ms-attend-txt { flex: 1 1 0; min-width: 0; }
   .ms-prep { display: block; padding: 16px 20px; }
   .ms-prep-score { justify-content: flex-start; }
@@ -10138,7 +10167,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   which renderPage draws outside the page root and is not part of this mockup.
   The last two rows are <b>pre-v245 records</b> — no squad letter, no answer,
   no link — and must stay visible and unbadged rather than disappearing.
-  Clock frozen at 2 Sep 2026. Generated 2026-09-07.
+  Clock frozen at 2 Sep 2026. Generated 2026-09-08.
 </div>
 <div class="mock-h">1 · sis sense llegir</div>
 <div class="mock-shell"><div class="nf-page" id="nf-page"><div class="nf-hero"><div class="nf-hero-l"><h1 class="nf-h1">Notificacions</h1><span class="nf-hero-sub">6 sense llegir · accions dels jugadors de Amateur A</span></div><div class="nf-hero-r"><div class="nf-fig"><span class="ac-lbl">Sense llegir</span><span class="nf-fig-v ac-num ac-v-red">6</span></div><span class="nf-vrule"></span><div class="nf-acts"><button type="button" class="nf-toggle" id="nf-toggle">Només sense llegir</button><button type="button" class="nf-mark" id="nf-mark-all"><span class="nf-mark-l">Marca-ho tot com llegit</span><span class="nf-mark-s">Marca-ho tot</span></button></div></div></div><div class="nf-body"><div class="nf-main"><div class="ac-sec"><span class="ac-sec-l">Activitat dels jugadors</span><span class="ac-sec-r">9 accions · les més recents primer</span></div><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n1" data-nf-page="medical-detail" data-nf-pid="u1"><span class="nf-bar"></span><span class="nf-badge nf-b-injury">Lesió</span><span class="nf-pos" style="background:#1e88e5">CB</span><span class="nf-name">Marc Puig</span><span class="nf-detail">Autoreport · isquiotibial dret · Sessió de força (2026-09-02)</span><span class="nf-time ac-num">fa 12 min</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n2" data-nf-page="match-detail" data-nf-pid="m1"><span class="nf-bar"></span><span class="nf-badge nf-b-avail nf-a-off">Disponibilitat</span><span class="nf-pos" style="background:#e53935">ST</span><span class="nf-name">Guillem Roca</span><span class="nf-detail">No Disponible · CE L'Esquerra vs CF Vilassar de Mar · 2026-09-12</span><span class="nf-time ac-num">fa 34 min</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n3" data-nf-page="staff-training-detail" data-nf-pid="t2"><span class="nf-bar"></span><span class="nf-badge nf-b-rpe">RPE</span><span class="nf-pos" style="background:#43a047">DM</span><span class="nf-name">Nil Ferrer</span><span class="nf-detail">RPE 9 · 75 min · Sessió tàctica (2026-09-02)</span><span class="nf-time ac-num">fa 1 h</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n4" data-nf-page="staff-player-stats" data-nf-pid="u4"><span class="nf-bar"></span><span class="nf-badge nf-b-extra">Extra</span><span class="nf-pos" style="background:#1e88e5">RB</span><span class="nf-name">Àlex Camps</span><span class="nf-detail">Gimnàs 60 min · RPE 6 · Gimnàs (2026-09-01)</span><span class="nf-time ac-num">fa 2 h</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n5" data-nf-page="staff-training-detail" data-nf-pid="t4"><span class="nf-bar"></span><span class="nf-badge nf-b-avail nf-a-warn">Disponibilitat</span><span class="nf-pos" style="background:#e53935">LW</span><span class="nf-name">Pau Serra</span><span class="nf-detail">Tard · Sessió de força (2026-09-03)</span><span class="nf-time ac-num">fa 3 h</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n6" data-nf-page="staff-training-detail" data-nf-pid="t4"><span class="nf-bar"></span><span class="nf-badge nf-b-avail nf-a-ok">Disponibilitat</span><span class="nf-pos" style="background:#f9a825">GK</span><span class="nf-name">Oriol Mas</span><span class="nf-detail">Sí · Sessió tàctica (2026-09-03)</span><span class="nf-time ac-num">fa 4 h</span></button><button type="button" class="nf-row nf-row-go" data-nf-id="n7" data-nf-page="match-detail" data-nf-pid="m0"><span class="nf-bar"></span><span class="nf-badge nf-b-rpe">RPE</span><span class="nf-pos" style="background:#43a047">OM</span><span class="nf-name">Ivan Soler</span><span class="nf-detail">Canviat · RPE 4 · 62 min · CF Sants (2026-08-30)</span><span class="nf-time ac-num">ahir 22:10</span></button><div class="nf-row" data-nf-id="n8"><span class="nf-bar"></span><span class="nf-badge nf-b-reg">Registre</span><span class="nf-pos" style="background:#1e88e5">CB</span><span class="nf-name">Ibrahim Diallo</span><span class="nf-detail">Sol·licitud d'alta pendent d'aprovació · dorsal 14</span><span class="nf-time ac-num">ahir 21:40</span></div><div class="nf-row" data-nf-id="n9"><span class="nf-bar"></span><span class="nf-badge nf-b-avail">Disponibilitat</span><span class="nf-pos" style="background:#1e88e5">LB</span><span class="nf-name">Jordi Vidal</span><span class="nf-detail">No · Sessió de resistència (2026-08-28)</span><span class="nf-time ac-num">ahir 19:10</span></div><p class="ac-note">El registre guarda les 200 últimes accions. Les més antigues es descarten.</p></div><div class="nf-rail"><div class="ac-sec"><span class="ac-sec-l">Avui</span><span class="ac-sec-r">Amateur A</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-avail"></span><span class="nf-t-l">Disponibilitat</span><span class="nf-t-n ac-num">3</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-rpe"></span><span class="nf-t-l">RPE</span><span class="nf-t-n ac-num">1</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-injury"></span><span class="nf-t-l">Lesió</span><span class="nf-t-n ac-num">1</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-extra"></span><span class="nf-t-l">Extra</span><span class="nf-t-n ac-num">1</span></div><div class="ac-sec ac-sec-2"><span class="ac-sec-l">Sense llegir per equip</span><span class="ac-sec-r">Els teus equips</span></div><button type="button" class="nf-s-row nf-s-on" data-nf-squad="amateur" data-nf-letter="A"><span class="nf-s-l">Amateur A</span><span class="nf-s-n ac-num nf-s-unread">6</span></button><button type="button" class="nf-s-row" data-nf-squad="amateur" data-nf-letter="B"><span class="nf-s-l">Amateur B</span><span class="nf-s-n ac-num">0</span></button></div></div></div></div>

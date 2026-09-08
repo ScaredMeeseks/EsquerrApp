@@ -191,7 +191,7 @@ function renderWith(rd) {
   // eslint-disable-next-line no-new-func
   return new Function(...Object.keys(stubs), `
     ${grab('  const MD2_SHOW_HEATMAP = true;', '  function renderMedical() {')}
-    ${grab('  /** One donut, three sizes', '  /** The weekday-over-day-number stack')}
+    ${grab('  /* ONE SIZE for the ring', '  /** The weekday-over-day-number stack')}
     ${grab('  function buildInjuryHistoryHtml(uid, opts) {', '  /**\n   * The Ready cell')}
     ${grab('  /* ── Les meves estadístiques, redesigned (v244)', '  function renderStaffPlayerStats() {')}
     return renderPlayerStats;`)(...Object.values(stubs))();

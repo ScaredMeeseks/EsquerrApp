@@ -555,8 +555,18 @@ a:hover { text-decoration: underline; }
 .ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l {
   display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
 }
+/* ⚠ ONE LINE, AND IT IS THE BAND'S HEIGHT THAT DEPENDS ON IT. Registres'
+   intro ran to two sentences, wrapped, and made that band the tallest of the
+   ten — which is the whole thing the shared band exists to prevent. The string
+   is shortened too, but a string is not a guarantee: `ca`, `es` and `en` are
+   three different lengths and a future edit is a fourth. So the line cannot
+   wrap, and a scope line long enough to need it is telling the reader
+   something the page below it should be telling them instead.
+   ⚠ `min-width: 0` is required — without it a flex child refuses to shrink
+   below its content and the ellipsis never engages. */
 .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
   font-size: 14px; color: var(--pp-ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
 
 /* ⚠ ONE CAPTION ATOM, NOT SEVEN. `.ac-lbl`, `.ms-lbl`, `.reg2-fig-l`,
@@ -602,6 +612,13 @@ a:hover { text-decoration: underline; }
   .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
   .ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
   .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
+  /* ⚠ The scope line WRAPS again on a phone. One-line-with-ellipsis exists to
+     keep ten bands the same height beside each other; on a 390px screen you
+     see one band at a time and there is no height to match, so truncating a
+     sentence there would cost information and buy nothing. */
+  .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+    white-space: normal; overflow: visible;
+  }
   .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
   .cv-head-r { gap: 0; width: 100%; }
   .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat,
@@ -6437,6 +6454,15 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* ── Attendance donut ── */
 .pl-att { display: flex; align-items: center; gap: 16px; flex: none; }
 .pl-att-col { display: flex; flex-direction: column; gap: 4px; }
+/* ⚠ IN THE BAND the legend is 2×2, and it is scoped to `.pl-title-row` on
+   purpose: `plDonutLegendHtml` also draws the player rail's legend, which is
+   a column with the room for four stacked rows and must not be re-flowed
+   from here. Four rows are 78px, which would make this band the one that is
+   20px taller than the other ten — the exact thing the shared band exists to
+   stop. Two columns are 32px, under the title block's own 64. */
+.pl-title-row .pl-donut-legend {
+  display: grid; grid-template-columns: auto auto; gap: 2px 16px;
+}
 .pl-donut-legend { display: flex; flex-direction: column; gap: 2px; }
 .pl-donut-legend-right { align-items: flex-end; }
 .pl-legend-row {
@@ -6449,11 +6475,14 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .pl-rule { width: 10px; height: 1px; background: #8C857D; display: inline-block; }
 .pl-donut { position: relative; flex: none; }
 .pl-donut svg { display: block; }
+/* ⚠ NO `font-size` HERE. It is set inline from the ring's own size — see
+   `plDonutHtml`. A fixed 18px was right for the 84px ring it was written
+   against and overflowed the 56px one in the header band. `.pl-rail-donut`
+   carried a third value (15px) for the same number and went with it. */
 .pl-donut-pct {
   position: absolute; inset: 0; display: flex; align-items: center;
-  justify-content: center; font-size: 18px; color: var(--pp-ink);
+  justify-content: center; color: var(--pp-ink);
 }
-.pl-rail-donut .pl-donut-pct { font-size: 15px; }
 
 /* ── Key figures ── */
 .pl-figures { flex-wrap: wrap; }
@@ -9605,9 +9634,9 @@ a.ini-ev-name, .ini-ev-name-link {
     margin: 18px -20px 0; padding: 16px 20px; background: #FFFFFF;
     border-top: 1px solid var(--pp-rule); border-bottom: 1px solid var(--pp-rule);
   }
-  .ms-attend .ini-donut { width: 62px !important; height: 62px !important; }
-  .ms-attend .ini-donut svg { width: 62px; height: 62px; }
-  .ms-attend .ini-donut-c { font-size: 14px !important; }
+  /* ⚠ The 62px phone override is gone (v247.4). It existed to bring an 88px
+     ring down on a phone; the band ring is 56 everywhere now, so the override
+     would UPSCALE it — a phone showing a bigger ring than the desktop. */
   .ms-attend-txt { flex: 1 1 0; min-width: 0; }
   .ms-prep { display: block; padding: 16px 20px; }
   .ms-prep-score { justify-content: flex-start; }
@@ -10161,7 +10190,7 @@ a.ini-ev-name, .ini-ev-name-link {
             <div class="ini-stat"><span class="ini-eyebrow">Assist.</span><span class="ini-stat-v">2</span></div>
           </div>
           <div class="ini-hero-att">
-            <div class="ini-donut" style="width:88px;height:88px"><svg width="88" height="88" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.4" stroke-dasharray="100.00 0.00" stroke-dashoffset="0.00"><title>Sí: 4</title></circle></svg><span class="ini-donut-c" style="font-size:19px">100%</span></div>
+            <div class="ini-donut" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.4" stroke-dasharray="100.00 0.00" stroke-dashoffset="0.00"><title>Sí: 4</title></circle></svg><span class="ini-donut-c" style="font-size:12px">100%</span></div>
             <div class="ini-att-leg">
               <span class="ini-eyebrow">Assistència</span>
               <span>4 de 4 sessions</span>
@@ -10266,7 +10295,7 @@ a.ini-ev-name, .ini-ev-name-link {
             <div class="ini-stat"><span class="ini-eyebrow">Assist.</span><span class="ini-stat-v">2</span></div>
           </div>
           <div class="ini-hero-att">
-            <div class="ini-donut" style="width:88px;height:88px"><svg width="88" height="88" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="0.00"><title>Sí: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-25.00"><title>Tard: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-50.00"><title>No: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-75.00"><title>Lesionat: 1</title></circle></svg><span class="ini-donut-c" style="font-size:19px">50%</span></div>
+            <div class="ini-donut" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="0.00"><title>Sí: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-25.00"><title>Tard: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-50.00"><title>No: 1</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.4" stroke-dasharray="25.00 75.00" stroke-dashoffset="-75.00"><title>Lesionat: 1</title></circle></svg><span class="ini-donut-c" style="font-size:12px">50%</span></div>
             <div class="ini-att-leg">
               <span class="ini-eyebrow">Assistència</span>
               <span>2 de 4 sessions</span>
@@ -10371,7 +10400,7 @@ a.ini-ev-name, .ini-ev-name-link {
             <div class="ini-stat"><span class="ini-eyebrow">Assist.</span><span class="ini-stat-v">2</span></div>
           </div>
           <div class="ini-hero-att">
-            <div class="ini-donut" style="width:88px;height:88px"><svg width="88" height="88" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/></svg><span class="ini-donut-c" style="font-size:19px">0%</span></div>
+            <div class="ini-donut" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.4"/></svg><span class="ini-donut-c" style="font-size:12px">0%</span></div>
             <div class="ini-att-leg">
               <span class="ini-eyebrow">Assistència</span>
               <span>0 de 0 sessions</span>
@@ -10417,7 +10446,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
           <div class="ini-hero-rule"></div>
           <div class="ini-hero-att">
-            <div class="ini-donut" style="width:76px;height:76px"><svg width="76" height="76" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:17px">55%</span></div>
+            <div class="ini-donut" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:12px">55%</span></div>
             <div class="ini-att-leg">
               <span class="ini-eyebrow">Assistència de temporada</span>
               <span>12 de 22 assistències</span>
@@ -10439,7 +10468,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10453,7 +10482,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10478,7 +10507,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">14:00 · Can Punyetes</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10492,7 +10521,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10506,7 +10535,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10608,7 +10637,7 @@ a.ini-ev-name, .ini-ev-name-link {
           </div>
           <div class="ini-hero-rule"></div>
           <div class="ini-hero-att">
-            <div class="ini-donut" style="width:76px;height:76px"><svg width="76" height="76" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:17px">55%</span></div>
+            <div class="ini-donut" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:12px">55%</span></div>
             <div class="ini-att-leg">
               <span class="ini-eyebrow">Assistència de temporada</span>
               <span>12 de 22 assistències</span>
@@ -10630,7 +10659,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10644,7 +10673,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10670,7 +10699,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">14:00 · Can Punyetes</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10684,7 +10713,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>
@@ -10698,7 +10727,7 @@ a.ini-ev-name, .ini-ev-name-link {
           <div class="ini-ev-meta">19:30 · Camp Municipal</div>
         </div>
         <div class="ini-ev-right">
-          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="50.00 50.00" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-50.00"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-66.67"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="16.67 83.33" stroke-dashoffset="-83.33"><title>Lesionat: 3</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
+          <div class="ini-ev-slot"><div class="ini-donut" style="width:44px;height:44px"><svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="3.6"/><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-ok)" stroke-width="3.6" stroke-dasharray="40.91 59.09" stroke-dashoffset="0.00"><title>Sí: 9</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-warn)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-40.91"><title>Tard: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-neutral)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-54.55"><title>No: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-bad)" stroke-width="3.6" stroke-dasharray="13.64 86.36" stroke-dashoffset="-68.18"><title>Lesionat: 3</title></circle><circle cx="18" cy="18" r="15.9155" fill="none" style="stroke:var(--pp-rule-4)" stroke-width="3.6" stroke-dasharray="18.18 81.82" stroke-dashoffset="-81.82"><title>Sense resposta: 4</title></circle></svg><span class="ini-donut-c" style="font-size:13px">9</span></div></div>
           <div class="ini-ev-txt">
             <span class="ini-ev-counts">9 sí · 3 tard · 3 no · 3 lesionat</span>
             <span class="ini-ev-missing">4 sense resposta</span>

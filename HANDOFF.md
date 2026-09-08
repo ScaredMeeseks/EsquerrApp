@@ -1,19 +1,19 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-07._
+_Rolling document, overwritten each session. Last updated: 2026-09-08._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 247** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 248** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3289** — `cd test && npm run test:unit` (~13 s), all passing |
+| Unit tests | **3297** — `cd test && npm run test:unit` (~13 s), all passing |
 | Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
 | Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
@@ -22,7 +22,7 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 **Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
 session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
 collection). Both went out BEFORE the matching frontend push, because the other order leaves a
-window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v247 changed
+window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v248 changed
 neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
 ⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
@@ -63,7 +63,7 @@ real app. Worth trying first, in this order:
 
 ---
 
-## The session in order — v234 to v247
+## The session in order — v234 to v248
 
 ### v234. Mèdic, rebuilt to the eighth design handoff.
 
@@ -386,6 +386,32 @@ reasoning was adjacency — the team ring used to sit directly over the roster t
 rail beside that same table. The team ring is in the header band now, ~500px up the page; the two
 are never on one line. Both sizes are pinned so neither drifts. Unit 3287 → **3289**; three more
 mutations killed.
+
+**Follow-up 3: four owner reports on the rings and the bands.**
+
+⚠ **The availability ring disagreed with the number in its own middle, and had since the page was
+built.** *"In Inici the number is 1% yet the donut is all green."* The arcs were drawn against the
+sum of the four ANSWERS; the centre percentage against the SLOTS — every player × every session. One
+answer in ninety gave "1%" inside a full green ring. ⚠ **The docstring described the fix it never
+had** ("the uncovered remainder of the track is the no-answer share"): nothing ever put the
+unanswered slots in a denominator. `iniAvailSegs(n, slots)` now turns the difference into a fifth,
+grey segment (`--pp-rule-4`, lighter than the `--pp-neutral` of a deliberate "No"). ⚠ **My-stats had
+the same bug** — a lone green arc is always the whole ring — and was fixed with it, unreported.
+
+**One ring size for every header band**: `HERO_DONUT = 56`. It was 88, 76, 88 and 56 across four
+bands. ⚠ Not the 44px per-session ring in an Inici row, nor Plantilla's rail at 84. `.ms-attend`'s
+62px phone override is deleted — it would now UPSCALE the ring on a phone.
+
+**The centre number is derived from the ring** (`size * 0.215`); a fixed 18px overflowed the 56px
+hole. **Registres' subtitle is one sentence**, and the shared scope-line rule is `nowrap` +
+`ellipsis` + `min-width: 0` so no future string can push a band taller — wrapping again below 700.
+
+⚠ **`inici.test.js` contained a test that documented the bug**: its assertion was about the builder,
+its comment told a squad-of-22 story the code never implemented. Green through exactly the defect it
+looked like it covered. ⚠ **The runnable Plantilla harness earned its keep again** — four cases went
+red on `ReferenceError: HERO_DONUT` the moment the constant landed. ⚠ **And one of my mutations
+silently failed to apply**, making a live assertion look dead; re-run with an assert on the
+replacement, it killed. Unit 3289 → **3297**; five mutations confirmed.
 
 ---
 

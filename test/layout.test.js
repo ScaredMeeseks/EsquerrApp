@@ -528,6 +528,31 @@ describe('the paper pages sit in the dashboard the same way', () => {
     });
   });
 
+  /* ⚠ v247.4: a band is one line of title over one line of scope, and the
+     scope line has to STAY one line. Registres' intro ran to two sentences,
+     wrapped, and made that band the tallest of the ten — the exact thing the
+     shared band exists to prevent. Shortening the string fixed that instance;
+     this fixes the class, because `ca`, `es` and `en` are three different
+     lengths and the next edit is a fourth. */
+  it('will not let a scope line wrap and push its band taller', () => {
+    const r = /([^{}]*\.reg2-sub-line[^{}]*)\{([^}]*)\}/.exec(bare);
+    assert.ok(r, 'the shared scope-line rule is gone');
+    ['.md2-sub', '.ac-hero-sub', '.pl-sub', '.cv-sub', '.cal-sub'].forEach((sel) =>
+      assert.ok(r[1].includes(sel), sel + ' is not in the shared scope-line rule'));
+    assert.ok(/white-space:\s*nowrap/.test(r[2]), 'the scope line can wrap again');
+    assert.ok(/text-overflow:\s*ellipsis/.test(r[2]),
+        'a long line is clipped with no sign that it was clipped');
+    /* ⚠ Without this a flex child refuses to shrink below its content and the
+       ellipsis never engages — the line overflows instead. */
+    assert.ok(/min-width:\s*0/.test(r[2]), 'the ellipsis will never engage');
+    /* And it wraps again on a phone, where there is no neighbouring band to
+       match and truncating a sentence would cost information for nothing. */
+    const at700 = bare.slice(bare.indexOf('@media (max-width: 700px)'));
+    const p = /([^{}]*\.reg2-sub-line[^{}]*)\{([^}]*)\}/.exec(at700);
+    assert.ok(p && /white-space:\s*normal/.test(p[2]),
+        'the scope line is still truncated on a phone');
+  });
+
   /* ⚠ v247: the band, the legend strip and the grid take their inset from one
      number, and they have to step down together. The band folds at 700; if
      the other two step at 600 or at Calendari's own 560, their left edges

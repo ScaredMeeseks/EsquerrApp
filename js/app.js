@@ -717,7 +717,11 @@
     'pos.LW':            { ca:'Extrem esquerre', es:'Extremo izquierdo', en:'Left winger' },
     'pos.RW':            { ca:'Extrem dret', es:'Extremo derecho', en:'Right winger' },
     'pos.ST':            { ca:'Davanter', es:'Delantero', en:'Striker' },
-    'reg2.intro':        { ca:'Escriu els correus per convidar gent al club. Assigna\'ls un rol, un equip, posició i dorsal per afegir-los al teu equip.', es:'Escribe los correos para invitar gente al club. Asígnales un rol, un equipo, posición y dorsal para añadirlos a tu equipo.', en:'Enter addresses to invite people to the club. Give them a role, a squad, a position and a number to add them to your team.' },
+    /* ⚠ ONE LINE. It ran to two sentences and wrapped, which made Registres
+       the tallest band of the ten — a scope line, not a paragraph. What the
+       long version added was the list of fields (rol, equip, posició, dorsal),
+       and every one of those is a labelled column on the page below it. */
+    'reg2.intro':        { ca:'Convida gent al club pel seu correu i assigna\'ls un equip.', es:'Invita gente al club por su correo y asígnales un equipo.', en:'Invite people to the club by email and give them a squad.' },
     'reg2.fig_pending':  { ca:'Pendents de col·locar', es:'Pendientes de colocar', en:'Waiting to be placed' },
     'reg2.fig_members':  { ca:'Membres actius', es:'Miembros activos', en:'Active members' },
     'reg2.fig_invited':  { ca:'Convidats sense compte', es:'Invitados sin cuenta', en:'Invited, no account' },
@@ -2574,7 +2578,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 247;
+  const APP_VERSION = 248;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -8132,22 +8136,58 @@
     { k: 'yes',     css: 'var(--pp-ok)' },
     { k: 'late',    css: 'var(--pp-warn)' },
     { k: 'no',      css: 'var(--pp-neutral)' },
-    { k: 'injured', css: 'var(--pp-bad)' }
+    { k: 'injured', css: 'var(--pp-bad)' },
+    /* ⚠ THE FIFTH SEGMENT, and it is why the ring used to disagree with its
+       own centre number. Until v247.4 the arcs were drawn against the sum of
+       the four ANSWERS while the percentage was computed against the SLOTS —
+       every player × every session — so a squad that had answered once out of
+       ninety showed "1%" inside a ring that was 100% green. The docstring
+       below claimed the uncovered track was the no-answer share; nothing ever
+       put it in the denominator, so there was no uncovered track to see.
+
+       A no-answer is a fact about the squad, not an absence of one, so it is
+       drawn rather than left as bare track: `--pp-rule-4`, deliberately
+       LIGHTER than `--pp-neutral`, which is the grey of a deliberate "No". */
+    { k: 'na',      css: 'var(--pp-rule-4)' }
   ];
 
   /** `{yes, late, no, injured}` counts → the donut's segment list, in the
    *  handoff's order. Three donuts on two pages take the same four numbers;
    *  writing the array out at each of them is three places for the order to
    *  drift, and the order is what decides which arc sits where. */
-  function iniAvailSegs(n) {
-    return INI_SEGS.map(s => ({ n: n[s.k] || 0, css: s.css, label: t('avail.' + s.k) }));
+  /* ⚠ `slots` is the DENOMINATOR — every player × every session, answered or
+     not — and passing it is what makes the ring agree with the percentage
+     printed in its middle. Omit it and the no-answer segment is zero, which
+     is the old behaviour and is right only where there is no such thing as an
+     unanswered slot. */
+  function iniAvailSegs(n, slots) {
+    var answered = (n.yes || 0) + (n.late || 0) + (n.no || 0) + (n.injured || 0);
+    var na = slots == null ? 0 : Math.max(0, slots - answered);
+    return INI_SEGS.map(s => ({
+      n: s.k === 'na' ? na : (n[s.k] || 0),
+      css: s.css,
+      label: t(s.k === 'na' ? 'ini.no_answer' : 'avail.' + s.k)
+    }));
   }
 
-  /** One donut, three sizes (88px player hero, 76px staff hero, 44px per
-   *  session). `r` is chosen so the circumference is 100 and a segment's
-   *  dash length IS its percentage — the arithmetic the handoff specifies.
-   *  The uncovered remainder of the track is the no-answer share, which is
-   *  why nothing is drawn for it.
+  /* ONE SIZE for the ring that sits in a page's header band, on every page
+     that has one. Inici drew 88 on the player hero and 76 on the staff hero;
+     Plantilla drew 56, sized to keep its band level with the other ten. Three
+     numbers for one figure, and the owner saw two of them side by side.
+     ⚠ NOT the 44px per-session ring inside an Inici row, and not the player
+     rail's 84 on Plantilla — those are a different figure in a different
+     place, and both have their own tests saying so. */
+  const HERO_DONUT = 56;
+
+  /** One donut, two sizes: HERO_DONUT in a page's header band, 44px for the
+   *  per-session ring inside an Inici row. `r` is chosen so the circumference
+   *  is 100 and a segment's dash length IS its percentage — the arithmetic the
+   *  handoff specifies.
+   *  ⚠ The no-answer share is a SEGMENT, drawn in grey by `iniAvailSegs`.
+   *  This docstring used to say it was "the uncovered remainder of the track,
+   *  which is why nothing is drawn for it" — but nothing ever put the
+   *  unanswered slots in the denominator, so there was no remainder to leave
+   *  and the ring came out full while its centre said 1%.
    *  @param {Array<{n:number,css:string,label:string}>} segs
    *  @param {{size?:number,stroke?:number,centre?:string,centreSize?:number}} [opts]
    */
@@ -8175,7 +8215,13 @@
       '<svg width="' + size + '" height="' + size + '" viewBox="0 0 36 36" aria-hidden="true">' +
       '<circle cx="18" cy="18" r="' + R + '" fill="none" style="stroke:var(--pp-rule-2)" stroke-width="' + stroke + '"/>' +
       arcs + '</svg>' +
-      '<span class="ini-donut-c" style="font-size:' + (opts.centreSize || 19) + 'px">' +
+      /* ⚠ DERIVED FROM THE RING, not a fixed 19. The hole is .79 × the ring
+         (2r − stroke, over the 36 viewBox), so a number sized for an 88px
+         ring spills straight out of a 56px one — which is what "100%" did on
+         Plantilla. .215 lands on the 19 the 88px ring already used, so the
+         big rings are unchanged. Callers may still override. */
+      '<span class="ini-donut-c" style="font-size:' +
+      (opts.centreSize || Math.round(size * 0.215)) + 'px">' +
       (opts.centre == null ? '' : opts.centre) + '</span></div>';
   }
 
@@ -8256,9 +8302,12 @@
     const pTotal = pYes + pLate + pNo + pInj + pNa;
     const attendPct = pTotal ? Math.round(((pYes + pLate) / pTotal) * 100) : 0;
     const attended = pYes + pLate;
+    /* ⚠ `pTotal` — which counts the sessions this player never answered — is
+       the same denominator `attendPct` uses two lines up. Passing anything
+       else is how the ring and the number in its middle disagreed. */
     const donutHtml = iniDonutHtml(
-        iniAvailSegs({ yes: pYes, late: pLate, no: pNo, injured: pInj }),
-        { size: 88, stroke: 3.4, centre: attendPct + '%', centreSize: 19 });
+        iniAvailSegs({ yes: pYes, late: pLate, no: pNo, injured: pInj }, pTotal),
+        { size: HERO_DONUT, stroke: 3.4, centre: attendPct + '%' });
 
     /* Season figures. computePlayerMatchStats() is the app's one answer to
        "how many, how long, how many goals" — my-stats and the Plantilla
@@ -14851,9 +14900,18 @@
     });
     const answered = pYes + pLate + pNo + pInj;
     const attendPct = answered ? Math.round(((pYes + pLate) / answered) * 100) : 0;
+    /* ⚠ TWO segments, not one. A lone green arc is always the whole ring, so
+       this drew a full circle at any attendance above zero while the centre
+       said 43% — the same disagreement Inici's heroes had (v247.4). The second
+       segment is the sessions this player did not attend, and it is what makes
+       the green a share of something. Not `iniAvailSegs`: my-stats deliberately
+       shows attendance against sessions, never the yes/late/no/injured
+       breakdown, so its two arcs are its own. */
     const donutHtml = iniDonutHtml(
-        [{ n: pYes + pLate, css: 'var(--pp-ok)', label: t('ms.attendance') }],
-        { size: 88, stroke: 3.4, centre: attendPct + '%', centreSize: 19 });
+        [{ n: pYes + pLate, css: 'var(--pp-ok)', label: t('ms.attendance') },
+          { n: Math.max(0, answered - (pYes + pLate)), css: 'var(--pp-rule-4)',
+            label: t('ini.no_answer') }],
+        { size: HERO_DONUT, stroke: 3.4, centre: attendPct + '%' });
 
     /* Readiness: the SCORE, the ratio and the days — and nothing else off the
        object. rd.loadRatioScore and its three siblings stay where they are. */
@@ -24114,7 +24172,10 @@
           </div>`;
         }
       } else {
-        const donut = iniDonutHtml(iniAvailSegs(r.n),
+        /* `r.total` is the squad, `r.answered` the part of it that replied —
+           the two `waiting` is computed from just above. The ring takes the
+           squad, so the grey it leaves IS that `waiting` figure. */
+        const donut = iniDonutHtml(iniAvailSegs(r.n, r.total),
             { size: 44, stroke: 3.6, centre: String(r.n.yes), centreSize: 13 });
         right = `<div class="ini-ev-right">
           <div class="ini-ev-slot">${donut}</div>
@@ -24359,8 +24420,8 @@
           </div>
           <div class="ini-hero-rule"></div>
           <div class="ini-hero-att">
-            ${iniDonutHtml(iniAvailSegs({ yes: sYes, late: sLate, no: sNo, injured: sInj }),
-    { size: 76, stroke: 3.6, centre: seasonPct + '%', centreSize: 17 })}
+            ${iniDonutHtml(iniAvailSegs({ yes: sYes, late: sLate, no: sNo, injured: sInj }, sSlots),
+    { size: HERO_DONUT, stroke: 3.6, centre: seasonPct + '%' })}
             <div class="ini-att-leg">
               <span class="ini-eyebrow">${t('ini.season_att')}</span>
               <span>${tv('ini.att_of', { a: attended, b: sSlots })}</span>
@@ -24562,10 +24623,19 @@
        the browsers this app runs in, and this number sits inside a ring
        where a few pixels of drift is obvious. */
     var pct = total ? Math.round((vals[0] + vals[1]) / total * 100) + '%' : '—';
+    /* ⚠ THE CENTRE IS SIZED FROM THE RING. It was a fixed 18px in the
+       stylesheet, which was right for the 84px ring it was written against
+       and spilled straight out of the 56px one the header band uses — the
+       owner saw "100%" wider than the hole it sits in. The hole is
+       (2r − stroke)/72 × size = .6 × size, so .215 leaves room for four
+       glyphs at every size this is drawn at, and lands back on 18 at 84.
+       ⚠ Inline, so it beats `.pl-rail-donut .pl-donut-pct`, whose 15px was
+       a third value for the same number and is deleted with this. */
     return '<div class="pl-donut" style="width:' + size + 'px;height:' + size + 'px;">' +
       '<svg viewBox="0 0 72 72" width="' + size + '" height="' + size + '">' +
       '<circle cx="36" cy="36" r="26" fill="none" stroke="#E9E5DE" stroke-width="9"></circle>' +
-      segs + '</svg><span class="pl-donut-pct">' + pct + '</span></div>';
+      segs + '</svg><span class="pl-donut-pct" style="font-size:' +
+      Math.round(size * 0.215) + 'px">' + pct + '</span></div>';
   }
 
   function plDonutLegendHtml(counts, right) {
@@ -26360,7 +26430,7 @@
           '<div class="pl-att">' +
             '<div class="pl-att-col"><span class="pl-eyebrow">' + t('pl.attendance') + '</span>' +
               plDonutLegendHtml(att, false) + '</div>' +
-            plDonutHtml(att, 56) +
+            plDonutHtml(att, HERO_DONUT) +
           '</div>' +
         '</div>' +
         /* ⚠ `.pl-body` wraps EVERYTHING under the band, not just the donut,

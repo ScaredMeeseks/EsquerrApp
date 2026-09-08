@@ -154,7 +154,7 @@ function render(over) {
   return new Function(...Object.keys(api), `
     ${SANITIZE_SRC}
     ${grab('  const MD2_SHOW_HEATMAP = true;', '  function renderMedical() {')}
-    ${grab('  /** One donut, three sizes', '  /** The weekday-over-day-number stack')}
+    ${grab('  /* ONE SIZE for the ring', '  /** The weekday-over-day-number stack')}
     ${grab('  function buildInjuryHistoryHtml(uid, opts) {', '  /**\n   * The Ready cell')}
     ${grab('  /* ── Les meves estadístiques, redesigned (v244)', '  function renderStaffPlayerStats() {')}
     return renderPlayerStats();`)(...Object.values(api));
@@ -474,8 +474,19 @@ describe('Les meves estadístiques — the stylesheet', () => {
 
   it('scopes every class it borrows under its own root', () => {
     /* ⚠ Unscoped, these repaint Convocatòria and Mèdic. The rule the other
-       eight blocks follow: a borrowed family lives under this page's root. */
-    ['conv-pos-circle', 'md2-mine', 'ini-donut'].forEach((cls) => {
+       eight blocks follow: a borrowed family lives under this page's root.
+
+       ⚠ v247.4: `.ini-donut` LEFT this list, and not because the guard was
+       inconvenient. My-stats used to restyle it — a 62px phone override, to
+       bring an 88px ring down on a small screen. The band ring is one size
+       (`HERO_DONUT`, 56) on every page now, so that override would UPSCALE it
+       and the phone would show a bigger ring than the desktop. It is deleted,
+       so there is nothing here to scope. The two that remain are still
+       restyled here and still have to be scoped; the count below is what
+       stops this test quietly becoming vacuous if they go the same way. */
+    const BORROWED = ['conv-pos-circle', 'md2-mine'];
+    assert.ok(BORROWED.length, 'nothing is borrowed any more — retire this test rather than empty it');
+    BORROWED.forEach((cls) => {
       const uses = MSCSS.match(new RegExp('^[^\\n{]*\\.' + cls + '[^\\n{]*\\{', 'gm')) || [];
       assert.ok(uses.length, '.' + cls + ' is no longer styled here at all');
       uses.forEach((sel) => {
@@ -483,6 +494,12 @@ describe('Les meves estadístiques — the stylesheet', () => {
             'unscoped borrowed selector, it will repaint another page: ' + sel.trim());
       });
     });
+    /* And whatever it borrows in future must arrive scoped too — this catches
+       a new unscoped `.ini-` or `.conv-` rule that nobody added to the list. */
+    const stray = (MSCSS.match(/^[^\n{]*\.(ini|conv|md2|pl)-[^\n{]*\{/gm) || [])
+        .filter((sel) => !/\.ms-page|\.ms-attend|\.ms-pm-|\.ms-row/.test(sel));
+    assert.deepStrictEqual(stray, [],
+        'an unscoped borrowed rule repaints another page: ' + stray.join(' | '));
   });
 
   /* ⚠ The full-bleed negation is NOT in this block any more. It was one of

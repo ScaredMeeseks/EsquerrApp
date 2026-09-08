@@ -471,14 +471,34 @@ describe('the player rail has no close button of its own', () => {
     const rail = grab('  function plRailHtml', '  function renderStaffRoster');
     const team = grab('  function renderStaffRoster', '  function bindPlantilla');
     const sizeOf = (s) => {
-      const m = /plDonutHtml\([^,]+,\s*(\d+)\)/.exec(s);
+      const m = /plDonutHtml\([^,]+,\s*(\w+)\)/.exec(s);
       assert.ok(m, 'no donut found');
       return m[1];
     };
     assert.strictEqual(sizeOf(rail), '84', 'the rail\'s ring changed size');
-    assert.strictEqual(sizeOf(team), '56',
-        'the band\'s ring is ' + sizeOf(team) + ' — at 84 it makes this band ' +
-        'the one that is 20px taller than the other ten');
+    /* ⚠ v247.4: the band's ring is the SHARED constant, not a literal — Inici
+       drew this same figure at 88 and 76 while Plantilla drew 56, and the
+       owner saw two of the three side by side. A literal here would let them
+       drift apart again silently. */
+    assert.strictEqual(sizeOf(team), 'HERO_DONUT',
+        'the band\'s ring is a literal again — it will drift from Inici\'s');
+    const m = /const HERO_DONUT = (\d+);/.exec(bare);
+    assert.ok(m, 'HERO_DONUT is gone');
+    assert.strictEqual(m[1], '56',
+        'the shared ring is ' + m[1] + ' — at 76+ Plantilla\'s band is taller ' +
+        'than every other paper page\'s');
+  });
+
+  /* ⚠ The centre number is sized FROM the ring, not fixed in the stylesheet.
+     At a fixed 18px "100%" was wider than the 56px ring's hole. */
+  it('scales the centre percentage with the ring', () => {
+    const fn = grab('  function plDonutHtml', '  function plDonutLegendHtml');
+    assert.ok(/font-size:'\s*\+\s*Math\.round\(size \* 0?\.215\)/.test(fn),
+        'the centre number no longer scales with the ring');
+    assert.ok(!/\.pl-donut-pct\s*\{[^}]*font-size/.test(css),
+        'a fixed font-size is back on .pl-donut-pct; it will outlive the ring it was sized for');
+    assert.ok(!/\.pl-rail-donut\s+\.pl-donut-pct/.test(css),
+        'the rail carries a third value for the same number again');
   });
 
   /* The donut is a member of the BAND, not the first thing under it. It used
@@ -570,6 +590,11 @@ describe('renderStaffRoster — it runs', () => {
     catSpanOf: () => 1,
     plmSectionHtml: () => '<plm>',
     plRailHtml: () => '<rail>',
+    /* ⚠ A real module-scope collaborator, declared beside `INI_SEGS` because
+       Inici's heroes draw the same ring — so it is stubbed, like every other
+       collaborator, and NOT one of the function's own locals. Its VALUE is
+       asserted against the source above, not taken from here. */
+    HERO_DONUT: 56,
     _plCharts: [], _plSel: null,
     Math, JSON, Object, String, Number, Date
   };
