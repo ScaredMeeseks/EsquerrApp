@@ -2337,6 +2337,19 @@
 
   // ---------- Injury helpers ----------
   function getInjuries() { return JSON.parse(localStorage.getItem('fa_injuries') || '[]'); }
+
+  /* ⚠ THIS DID NOT EXIST UNTIL v252, AND ITS ABSENCE COST AN OUTAGE.
+     `getUsers`, `getTrainings`, `getInjuries` and `getMatchEvents` are all
+     right here, so `getMatches` is the obvious name to reach for — and it was
+     the one that was not there. v250 called it, the ReferenceError landed
+     inside a render, and the app never got past its loading screen.
+
+     31 sites still spell `JSON.parse(localStorage.getItem('fa_matches')…)`
+     out by hand. They are not migrated here — that is 31 chances to fat-finger
+     a hot path for no behaviour change — but the NAME now exists and does the
+     right thing, so the next person who reaches for it is right instead of
+     wrong. Migrating the rest is parking-lot 35. */
+  function getMatches() { return JSON.parse(localStorage.getItem('fa_matches') || '[]'); }
   function saveInjuries(arr) { localStorage.setItem('fa_injuries', JSON.stringify(arr)); }
   function getActiveInjuries() { return getInjuries().filter(i => i.status === 'active'); }
   function getRecoveringInjuries() { return getInjuries().filter(i => i.status === 'recovering'); }
@@ -2589,7 +2602,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 251;
+  const APP_VERSION = 252;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3592,6 +3605,9 @@
         date: m.date,
         home: m.home || '',
         away: m.away || '',
+        /* ⚠ Carried so the match table can draw the rival's crest (v252).
+           Same field Calendari, Convocatòria and Inici draw from. */
+        opponentBadge: m.opponentBadge || '',
         homeScore: homeScore,
         awayScore: awayScore,
         resultLetter: resultLetter,
@@ -7281,9 +7297,7 @@
      test for code that cannot run. See v251. */
   function fcfBadgeById() {
     var out = {};
-    var matches = [];
-    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]') || []; } catch (e) {}
-    matches.forEach(function (m) {
+    (getMatches() || []).forEach(function (m) {
       var id = String(m.opponentTeamId || '');
       if (id && m.opponentBadge && !out[id]) out[id] = m.opponentBadge;
     });
@@ -7308,13 +7322,25 @@
   function iniLeagueRowHtml(r) {
     var gd = (Number(r.f) || 0) - (Number(r.c) || 0);
     var gdTxt = (gd > 0 ? '+' : '') + gd;
-    var badgeInner = r.badge
-      ? '<img src="' + sanitize(r.badge) + '" alt="" onerror="this.style.display=\'none\'">'
-      : sanitize(clubMonogram(r.club));
+    /* ⚠ The disc goes with the MONOGRAM, not with a real crest (v252) — see
+       `.ini-tbl-badge-plain`. Built exactly like the Calendari's
+       `.cal-crest`: the initials are ALWAYS in the markup and the `-plain`
+       class hides them, so the `onerror` can bring the disc and the letters
+       back together by resetting one class. files.fcf.cat 404s on its own
+       schedule, and a crest that fails to load has to leave the initials on
+       their ground rather than a hole. Hidden rather than merely covered —
+       federation badges are transparent PNGs, and letters showing through the
+       gaps is worse than either state alone. */
+    var badgeInner = (r.badge
+      ? '<img src="' + sanitize(r.badge) + '" alt="" ' +
+        'onerror="this.parentNode.className=\'ini-tbl-badge\';this.style.display=\'none\'">'
+      : '') +
+      '<span class="ini-tbl-badge-txt">' + sanitize(clubMonogram(r.club)) + '</span>';
     return '<div class="ini-tbl-row league-row' + (r.ours ? ' ini-tbl-ours league-ours' : '') + '">' +
       '<span class="ini-tbl-zone' + (r.zone ? '' : '') + '"' + (r.zone ? ' style="background:' + sanitize(r.zone) + '"' : '') + '></span>' +
       '<span class="ini-tbl-pos">' + sanitize(String(r.pos)) + '</span>' +
-      '<span class="ini-tbl-badge">' + badgeInner + '</span>' +
+      '<span class="ini-tbl-badge' + (r.badge ? ' ini-tbl-badge-plain' : '') +
+        '">' + badgeInner + '</span>' +
       '<span class="ini-tbl-name">' + sanitize(r.club) + '</span>' +
       '<span class="ini-tbl-pj">' + sanitize(String(r.j)) + '</span>' +
       '<span class="ini-tbl-gd">' + sanitize(gdTxt) + '</span>' +
@@ -14908,7 +14934,21 @@
     (rows || []).forEach(function (r) {
       var homeIsOurs = isOurTeam(r.home);
       var rival = homeIsOurs ? r.away : r.home;
-      var venue = homeIsOurs ? t('ms.home') : t('ms.away');
+      /* ⚠ AN ICON, NOT THE WORD (v252). "Casa"/"Fora" was two more words of
+         uppercase micro-type in a row that already carries six figures, and
+         the same fact is one glyph everywhere else in the app — Calendari's
+         `.cal-ha` has drawn 🏠/✈️ since it was built. `title` keeps the word
+         for anyone hovering, and for a screen reader. */
+      var venueWord = homeIsOurs ? t('ms.home') : t('ms.away');
+      var venue = '<span class="ms-venue' + (homeIsOurs ? ' ms-venue-h' : ' ms-venue-a') +
+        '" title="' + sanitize(venueWord) + '">' +
+        (homeIsOurs ? '🏠' : '✈️') + '</span>';
+      /* The rival's crest, bare — a club's badge carries its own outline, so
+         no disc. The monogram is the fallback and it keeps its ground. */
+      var crest = r.opponentBadge
+        ? '<img class="ms-crest" src="' + sanitize(safeHttpUrl(r.opponentBadge)) +
+          '" alt="" onerror="this.style.display=\'none\'">'
+        : '<span class="ms-crest ms-crest-mono">' + sanitize(clubMonogram(rival)) + '</span>';
       var min = (typeof r.minutes === 'number') ? r.minutes + "'" : String(r.minutes);
       var score = r.homeScore + '-' + r.awayScore;
       var tag = '<span class="ms-res ' + (MS_RES_CLS[r.resultLetter] || 'ms-res-e') + '">' +
@@ -14917,8 +14957,8 @@
 
       wide += '<div class="ms-row">' +
         '<span class="ms-c-date ms-num">' + sanitize(date) + '</span>' +
-        '<span class="ms-c-rival"><span class="ms-rival">' + sanitize(rival) + '</span>' +
-          '<span class="ms-venue">' + sanitize(venue) + '</span></span>' +
+        '<span class="ms-c-rival">' + crest +
+          '<span class="ms-rival">' + sanitize(rival) + '</span>' + venue + '</span>' +
         '<span class="ms-c-res">' + tag +
           '<span class="ms-score ms-num">' + sanitize(score) + '</span></span>' +
         '<span class="ms-c-min ms-num">' + sanitize(min) + '</span>' +
@@ -14932,7 +14972,7 @@
          dashes under every quiet match is noise, and the table above is
          where a player goes to compare rows. */
       var meta = '<span class="ms-pm-date">' + sanitize(date) + '</span>' +
-        '<span>' + sanitize(venue) + '</span>' +
+        venue +
         '<span>' + sanitize(min) + '</span>' +
         (r.goals ? '<span>' + sanitize(String(r.goals)) + ' G</span>' : '') +
         (r.assists ? '<span>' + sanitize(String(r.assists)) + ' A</span>' : '') +

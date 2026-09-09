@@ -192,6 +192,11 @@ function renderWith(rd) {
   return new Function(...Object.keys(stubs), `
     ${grab('  const MD2_SHOW_HEATMAP = true;', '  function renderMedical() {')}
     ${grab('  /* ONE SIZE for the ring', '  /** The weekday-over-day-number stack')}
+    /* ⚠ v252: the match table draws the rival's crest, so it needs the
+       monogram fallback. SLICED IN, not stubbed — the real one decides which
+       two letters a crestless club shows, and a stub returning a constant
+       could not answer a question about its input. */
+    ${grab('  function clubMonogram(name) {', '  function applyLeagueRows(')}
     ${grab('  function buildInjuryHistoryHtml(uid, opts) {', '  /**\n   * The Ready cell')}
     ${grab('  /* ── Les meves estadístiques, redesigned (v244)', '  function renderStaffPlayerStats() {')}
     return renderPlayerStats;`)(...Object.values(stubs))();

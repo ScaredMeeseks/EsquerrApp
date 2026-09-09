@@ -10726,3 +10726,66 @@ its fixture has a badge, so the call never fired. That is a landmine, not a pass
 logo-less club would have thrown inside `innerHTML`, which is a blank page. Stubbed explicitly.
 
 No rules or functions change; push only.
+
+### 2026-09-09 — Bare crests, one header type, a venue glyph — and the accessor that should have existed (v252)
+
+**The architecture question, answered honestly.** The owner asked whether the v251 fix was sound.
+The fix itself was — it read `fa_matches` exactly as every other site does. But the *architecture
+around it* was the defect, and the fix left it in place: **`getUsers`, `getTrainings`,
+`getInjuries` and `getMatchEvents` all exist side by side, and `getMatches` did not.** That is
+precisely why reaching for the name was a trap, and why v250 took the app down. The accessor exists
+now, beside its four siblings. ⚠ The other **31** raw reads are NOT migrated — that is 31 chances to
+fat-finger a hot path for no behaviour change, and the trap is gone either way — but the name is
+right for whoever reaches for it next. Parking-lot 35.
+
+⚠ **And the guard from v251 immediately told me it had done its job.** Its probe asserted
+`getMatches` does not exist; adding the accessor made that self-check fail, correctly refusing to
+let itself quietly become a test of nothing. The probe is a name nobody would ever add now, with an
+assertion that keeps it that way. All three harnesses stub `getMatches` again — and that is now
+CORRECT, which is the whole distinction the guard exists to police.
+
+**1. A real crest is drawn bare, in the classificació.** Every badge sat in a filled disc. A club
+designs its badge with its own outline, and a circle round one reads as a second, wrong crest.
+`.ini-tbl-badge-plain` drops the disc for a real crest and keeps it for the MONOGRAM, which needs
+something to be lettering on. ⚠ The initials ship WITH the image and the class hides them, so the
+`onerror` brings disc and letters back together in one assignment — files.fcf.cat 404s on its own
+schedule, and hidden rather than merely covered because federation badges are transparent PNGs.
+Exactly the treatment `.cal-crest-plain` has given the Calendari since it was built; this table
+simply never got it, because until v250 nearly every row here was initials anyway.
+
+**2. Les meves estadístiques — the match table.**
+
+- **The rival's crest, left of the name.** `opponentBadge` carried onto the row object;
+  `safeHttpUrl` on the way out, monogram fallback, no disc.
+- ⚠ **ONE HEADER TYPE, and the fix is where the sizes live.** `.ms-c-date` set `font-size: 13px`
+  *on itself*, so it applied to the HEADER cell too — "DATA" rendered 3px larger than "RIVAL" and
+  "RESULTAT" beside it, which is what the owner saw. Three other columns had already been patched
+  round it with a `.ms-head .ms-c-min, …` exception list: **the exception list was the symptom.**
+  The header owns its type, the row owns its type (`.ms-row .ms-c-*`), and no column declares a
+  size that outlives the context it was written for. The exception list is deleted with it.
+- **🏠 / ✈️ instead of "Casa"/"Fora"**, on the table and the phone card both, `title` carrying the
+  word. Two more words of uppercase micro-type in a row already holding six figures, and the same
+  fact is one glyph everywhere else in the app.
+
+⚠ **AND A COMMENT I HAD TO CORRECT BEFORE SHIPPING.** I wrote that `line-height: 1` was "what
+actually sits the glyph on the row's centre line". Measured, it is not: removing it moves the glyph
+**0.0px**. `align-items: center` does the centring — verified at 0.0px from the centre of the name.
+What `line-height: 1` really does is shrink the glyph's own box from **20px to 13px**, so an emoji's
+generous line box can never become the floor of a shorter row. Defensive, not corrective. Both the
+comment and the assertion now say the thing each declaration actually does — a comment that credits
+the wrong mechanism is how the next reader deletes the right line.
+
+**Tests.** 3334 → **3344**. ⚠ **Two of my new assertions were defanged and mutation caught both**:
+the `javascript:`-URL test passed `matches` to a harness that reads `rows` (so the hostile URL never
+reached the renderer, and bypassing `safeHttpUrl` in the app left it green), and there was no
+assertion at all that the standings emit `-plain`. Both sharpened, then re-mutated and killed.
+⚠ **The comment-matching trap fired a third time in one day** — a CSS assertion read the comment
+quoting the exception list it had just replaced. This file already strips comments at the top; the
+new block now uses that slice.
+
+⚠ **Three runnable harnesses caught the new collaborators** (`clubMonogram`, `safeHttpUrl`) the
+moment the table reached for them — the v238 lesson working, and the right outcome, because unlike
+`getMatches` both of those exist. The real `safeHttpUrl` and the real `clubMonogram` are passed, not
+stubs: one is a security guard and the other answers a question about its input.
+
+No rules or functions change; push only.

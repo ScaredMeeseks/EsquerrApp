@@ -216,10 +216,18 @@ describe('every stub names something the app actually has', () => {
      nobody writes passes for the wrong reason, which is the failure mode this
      whole block is about. Fed the exact line v250 shipped. */
   it('would have caught the v250 outage', () => {
-    const sample = 'const f = new Function(\'getMatches\', \'Object\', `body`);';
-    assert.deepStrictEqual(stubNames(sample), ['getMatches', 'Object'],
+    /* ⚠ THE PROBE NAME IS NO LONGER `getMatches`, AND THE GUARD IS WHAT TOLD
+       ME SO. v252 added that accessor — its absence beside `getUsers` and
+       `getTrainings` was the whole trap — and this test's own self-check
+       started failing, correctly refusing to let itself quietly become a test
+       of nothing. The name below is one nobody would ever add, and the
+       assertion under it keeps checking that stays true. */
+    const PROBE = 'zzNotAFunctionThisAppWillEverHave';
+    const sample = 'const f = new Function(\'' + PROBE + '\', \'Object\', `body`);';
+    assert.deepStrictEqual(stubNames(sample), [PROBE, 'Object'],
         'the parameter-list scanner no longer reads a stub list');
-    assert.ok(!declaredIn(sources()).has('getMatches'),
-        '`getMatches` exists in the app now — this probe needs another name');
+    assert.ok(!declaredIn(sources()).has(PROBE),
+        PROBE + ' exists in the app now — this probe needs another name');
+    assert.ok(!GLOBALS.has(PROBE), 'the probe name was allowlisted');
   });
 });

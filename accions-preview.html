@@ -8665,6 +8665,19 @@ a.ini-ev-name, .ini-ev-name-link {
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 9px; color: var(--pp-ink-2); overflow: hidden;
 }
+/* ⚠ A REAL CREST IS DRAWN BARE — no disc, no ring, no ground (v252). A club
+   designs its badge with its own outline, and a filled circle around one
+   reads as a second, wrong crest. The disc belongs to the MONOGRAM, which
+   needs something to be lettering on, so it stays for the clubs whose crest
+   the federation does not publish.
+
+   Exactly the treatment `.cal-crest-plain` already gives the Calendari's
+   rival badge, and the same reasoning — this table simply never got it,
+   because until v250 almost every row here was initials anyway. */
+.ini-tbl-badge-plain {
+  background: none; border: 0; border-radius: 0; overflow: visible;
+}
+.ini-tbl-badge-plain .ini-tbl-badge-txt { display: none; }
 .ini-tbl-badge img { width: 100%; height: 100%; object-fit: contain; }
 .ini-tbl-name {
   flex: 1 1 auto; min-width: 0; font-size: 14px;
@@ -9528,21 +9541,59 @@ a.ini-ev-name, .ini-ev-name-link {
   text-transform: uppercase; color: var(--pp-ink-3);
 }
 .ms-row { padding: 13px 0; }
-.ms-c-date { width: 78px; flex: none; font-size: 13px; color: var(--pp-ink-2); }
+/* ⚠ THE COLUMN SIZES BELONG TO THE ROW, NOT TO THE COLUMN (v252).
+   `.ms-c-date` set `font-size: 13px` on itself, so it applied to the HEADER
+   cell too — "DATA" rendered at 13px beside "RIVAL" and "RESULTAT" at the
+   header's own 10px, which is what the owner saw. Three other columns were
+   already patched round it by `.ms-head .ms-c-min, …{font-size:10px}`: a
+   growing list of exceptions is the symptom, not the fix.
+
+   So the header owns its type (its own rule below), the row owns its type
+   (`.ms-row .ms-c-*`), and no column declares a size that outlives the
+   context it was written for. The exception list is deleted with it. */
+.ms-c-date { width: 78px; flex: none; }
 .ms-c-rival { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .ms-c-res { width: 96px; flex: none; display: flex; align-items: center; gap: 8px; }
-.ms-c-min { width: 64px; flex: none; text-align: right; font-size: 15px; }
-.ms-c-g { width: 44px; flex: none; text-align: right; font-size: 15px; }
-.ms-c-a { width: 56px; flex: none; text-align: right; font-size: 15px; }
+.ms-c-min { width: 64px; flex: none; text-align: right; }
+.ms-c-g { width: 44px; flex: none; text-align: right; }
+.ms-c-a { width: 56px; flex: none; text-align: right; }
 .ms-c-cards {
   width: 68px; flex: none; display: flex; align-items: center;
   justify-content: flex-end; gap: 4px;
 }
-.ms-head .ms-c-min, .ms-head .ms-c-g, .ms-head .ms-c-a { font-size: 10px; }
+/* The row's own type, in one place. `.ms-head` sets the header's 10px for
+   every cell it holds, so there is nothing left to patch round. */
+.ms-row .ms-c-date { font-size: 13px; color: var(--pp-ink-2); }
+.ms-row .ms-c-min, .ms-row .ms-c-g, .ms-row .ms-c-a { font-size: 15px; }
 .ms-rival { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ⚠ The venue is a GLYPH now, not the word "Casa"/"Fora" (v252), so the
+   uppercase micro-type it used to need is gone.
+
+   TWO declarations, doing TWO different things — measured, because the first
+   version of this comment credited one of them with the other's job:
+     · `align-items: center` is what centres it. Measured at 0.0px from the
+       centre of the name beside it, and removing it is the only thing that
+       moves the glyph.
+     · `line-height: 1` does NOT move it. What it does is shrink the glyph's
+       own box from 20px to 13px — an emoji carries a generous line box — so
+       that box can never become the floor of a row that would otherwise be
+       shorter. Defensive, not corrective. */
 .ms-venue {
-  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--pp-ink-3); flex: none;
+  flex: none; font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* The rival's crest, bare. Sized to the row's cap height, not to the disc it
+   is not drawn in. `contain` because federation badges come in every aspect
+   ratio there is. */
+.ms-crest {
+  width: 20px; height: 20px; flex: none; object-fit: contain;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* The disc belongs to the MONOGRAM — see `.cal-crest-plain` and
+   `.ini-tbl-badge-plain`, which say the same thing on their own pages. */
+.ms-crest-mono {
+  border-radius: 50%; background: var(--pp-rule-2); border: 1px solid var(--pp-rule);
+  font-size: 8px; color: var(--pp-ink-2); letter-spacing: 0;
 }
 .ms-score { font-size: 14px; }
 .ms-res {
@@ -10186,7 +10237,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   here any more — Inici owns it. The last row is inside its RPE edit window
   (until 23:59 the day after) and so carries <b>Canviar</b>; a session from six
   days ago is gone. Clock frozen at 2 Sep 2026.
-  Generated 2026-09-08.
+  Generated 2026-09-09.
 </div>
 <div class="mock-h">1 · dues coses per fer, i una encara editable</div>
 <div class="mock-shell"><div class="ac-page" id="ac-page"><div class="ac-hero"><div class="ac-hero-l"><h1 class="ac-h1">Accions</h1><span class="ac-hero-sub">2 coses per fer · dimecres 2 de setembre</span></div><div class="ac-figs"><div class="ac-fig"><span class="ac-lbl">RPE pendent</span><span class="ac-fig-v ac-num ac-v-red">2</span></div><div class="ac-fig"><span class="ac-lbl">Extres aquesta setmana</span><span class="ac-fig-v ac-num">1</span></div><div class="ac-fig ac-fig-load"><span class="ac-lbl">Càrrega extra</span><span class="ac-fig-v ac-num">55</span></div></div></div><div class="ac-body"><div class="ac-main"><div class="ac-sec"><span class="ac-sec-l">Pendent de tu</span><span class="ac-sec-r ac-v-red">2 pendents</span></div><div class="ac-row" data-action-type="match" data-action-key="p1_match_m1" data-ac-title="CF Vilassar de Mar" data-ac-when="2026-09-01"><span class="ac-date"><span class="ac-dow">dt</span><span class="ac-dd ac-num">1</span></span><span class="ac-bar ac-bar-match"></span><span class="ac-body"><span class="ac-title-row"><span class="ac-title">CF Vilassar de Mar</span><span class="ac-kind">Partit</span></span><span class="ac-meta"><span class="ac-time">12:15</span><input type="text" inputmode="numeric" class="reg-input ac-min action-minutes" maxlength="3" data-max="100" value="78" aria-label="Minuts"><span class="ac-meta-t">minuts jugats</span></span></span><span class="ac-answer"><div class="ac-answer-col"><div class="ac-strip" data-ac-key="p1_match_m1"><button type="button" class="ac-cell" data-ac-rpe="1">1</button><button type="button" class="ac-cell" data-ac-rpe="2">2</button><button type="button" class="ac-cell" data-ac-rpe="3">3</button><button type="button" class="ac-cell" data-ac-rpe="4">4</button><button type="button" class="ac-cell" data-ac-rpe="5">5</button><button type="button" class="ac-cell" data-ac-rpe="6">6</button><button type="button" class="ac-cell" data-ac-rpe="7">7</button><button type="button" class="ac-cell" data-ac-rpe="8">8</button><button type="button" class="ac-cell" data-ac-rpe="9">9</button><button type="button" class="ac-cell" data-ac-rpe="10">10</button></div><div class="ac-scale"><span>Molt suau</span><span>Moderat</span><span>Màxim</span></div></div><button type="button" class="ac-save" data-ac-save="p1_match_m1">Desa</button></span></div><div class="ac-row" data-action-type="training" data-action-key="p1_training_t1" data-ac-title="Sessió de força" data-ac-when="2026-08-31"><span class="ac-date"><span class="ac-dow">dl</span><span class="ac-dd ac-num">31</span></span><span class="ac-bar ac-bar-training"></span><span class="ac-body"><span class="ac-title-row"><span class="ac-title">Sessió de força</span><span class="ac-kind">Entrenament</span></span><span class="ac-meta"><span class="ac-time">19:30</span><input type="text" inputmode="numeric" class="reg-input ac-min action-minutes" maxlength="3" data-max="300" value="90" aria-label="Minuts"><span class="ac-meta-t">min</span><span class="ac-meta-t">· Camp Municipal</span></span></span><span class="ac-answer"><div class="ac-answer-col"><div class="ac-strip" data-ac-key="p1_training_t1"><button type="button" class="ac-cell" data-ac-rpe="1">1</button><button type="button" class="ac-cell" data-ac-rpe="2">2</button><button type="button" class="ac-cell" data-ac-rpe="3">3</button><button type="button" class="ac-cell" data-ac-rpe="4">4</button><button type="button" class="ac-cell" data-ac-rpe="5">5</button><button type="button" class="ac-cell" data-ac-rpe="6">6</button><button type="button" class="ac-cell" data-ac-rpe="7">7</button><button type="button" class="ac-cell" data-ac-rpe="8">8</button><button type="button" class="ac-cell" data-ac-rpe="9">9</button><button type="button" class="ac-cell" data-ac-rpe="10">10</button></div><div class="ac-scale"><span>Molt suau</span><span>Moderat</span><span>Màxim</span></div></div><button type="button" class="ac-save" data-ac-save="p1_training_t1">Desa</button></span></div><div class="ac-row ac-row-done" data-action-type="training" data-action-key="p1_training_t2" data-ac-title="Sessió tàctica" data-ac-when="2026-09-01"><span class="ac-date"><span class="ac-dow">dt</span><span class="ac-dd ac-num">1</span></span><span class="ac-bar ac-bar-training"></span><span class="ac-body"><span class="ac-title-row"><span class="ac-title">Sessió tàctica</span><span class="ac-kind">Entrenament</span></span><span class="ac-meta"><span class="ac-time">20:00</span><input type="text" inputmode="numeric" class="reg-input ac-min action-minutes" maxlength="3" data-max="300" value="75" aria-label="Minuts"><span class="ac-meta-t">min</span><span class="ac-meta-t">· Joc de posició</span></span></span><span class="ac-done"><span class="ac-done-l">RPE desat</span><span class="ac-done-v ac-band-bad ac-num">7</span><button type="button" class="ac-change" data-ac-change="p1_training_t2">Canviar</button></span></div><p class="ac-note">Només es demana l'RPE de les sessions i els partits on has assistit. La resta no apareix aquí.</p><button type="button" class="ac-sheet-open" id="ac-sheet-open">Registrar entrenament extra</button></div><div class="ac-rail"><div class="ac-sec"><span class="ac-sec-l">Entrenament extra</span><span class="ac-sec-r">Fora de l'equip</span></div><div class="ac-form" id="ac-extra-form"><div class="ac-f-row"><label class="ac-f"><span class="ac-lbl">Data</span><span class="ac-date-pick"><span class="ac-date-txt" id="ac-date-txt">Avui, dimecres 2 de setembre</span><input type="hidden" id="ac-date" value="2026-09-02"><button type="button" class="ac-cal-btn" id="ac-cal-btn">Calendari</button></span></label><label class="ac-f ac-f-min"><span class="ac-lbl">Minuts</span><input type="text" inputmode="numeric" class="reg-input ac-min-x" id="ac-x-min" maxlength="3" value="60"></label></div><div class="ac-cal" id="ac-cal" hidden></div><div class="ac-f"><span class="ac-lbl">Tipus</span><span class="ac-pills"><button type="button" class="ac-pill ac-pill-on" data-ac-tag="gym">Gimnàs</button><button type="button" class="ac-pill" data-ac-tag="run">Córrer</button><button type="button" class="ac-pill" data-ac-tag="ball">Pilota</button></span></div><div class="ac-f"><span class="ac-lbl">Esforç percebut</span><div class="ac-answer-col"><div class="ac-strip" data-ac-key="__extra__"><button type="button" class="ac-cell" data-ac-rpe="1">1</button><button type="button" class="ac-cell" data-ac-rpe="2">2</button><button type="button" class="ac-cell" data-ac-rpe="3">3</button><button type="button" class="ac-cell" data-ac-rpe="4">4</button><button type="button" class="ac-cell" data-ac-rpe="5">5</button><button type="button" class="ac-cell" data-ac-rpe="6">6</button><button type="button" class="ac-cell" data-ac-rpe="7">7</button><button type="button" class="ac-cell" data-ac-rpe="8">8</button><button type="button" class="ac-cell" data-ac-rpe="9">9</button><button type="button" class="ac-cell" data-ac-rpe="10">10</button></div><div class="ac-scale"><span>Molt suau</span><span>Moderat</span><span>Màxim</span></div></div></div><button type="button" class="ac-submit" id="ac-x-submit" disabled>Tria l'esforç per registrar</button></div><div class="ac-sec ac-sec-2"><span class="ac-sec-l">Extres registrats</span><span class="ac-sec-r">3 aquest mes</span></div><div class="ac-ex-list"><div class="ac-ex-row"><span class="ac-ex-what"><span class="ac-ex-tag">Gimnàs</span><span class="ac-ex-meta ac-num">31/08 · 55 min</span></span><span class="ac-ex-l">Extra</span><span class="ac-ex-rpe ac-band-warn ac-num">6</span></div><div class="ac-ex-row"><span class="ac-ex-what"><span class="ac-ex-tag">Córrer</span><span class="ac-ex-meta ac-num">29/08 · 40 min</span></span><span class="ac-ex-l">Extra</span><span class="ac-ex-rpe ac-band-warn ac-num">5</span></div><div class="ac-ex-row"><span class="ac-ex-what"><span class="ac-ex-tag">Gimnàs</span><span class="ac-ex-meta ac-num">27/08 · 60 min</span></span><span class="ac-ex-l">Extra</span><span class="ac-ex-rpe ac-band-bad ac-num">7</span></div></div></div></div></div></div>

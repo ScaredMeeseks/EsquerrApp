@@ -8665,6 +8665,19 @@ a.ini-ev-name, .ini-ev-name-link {
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 9px; color: var(--pp-ink-2); overflow: hidden;
 }
+/* ⚠ A REAL CREST IS DRAWN BARE — no disc, no ring, no ground (v252). A club
+   designs its badge with its own outline, and a filled circle around one
+   reads as a second, wrong crest. The disc belongs to the MONOGRAM, which
+   needs something to be lettering on, so it stays for the clubs whose crest
+   the federation does not publish.
+
+   Exactly the treatment `.cal-crest-plain` already gives the Calendari's
+   rival badge, and the same reasoning — this table simply never got it,
+   because until v250 almost every row here was initials anyway. */
+.ini-tbl-badge-plain {
+  background: none; border: 0; border-radius: 0; overflow: visible;
+}
+.ini-tbl-badge-plain .ini-tbl-badge-txt { display: none; }
 .ini-tbl-badge img { width: 100%; height: 100%; object-fit: contain; }
 .ini-tbl-name {
   flex: 1 1 auto; min-width: 0; font-size: 14px;
@@ -9528,21 +9541,59 @@ a.ini-ev-name, .ini-ev-name-link {
   text-transform: uppercase; color: var(--pp-ink-3);
 }
 .ms-row { padding: 13px 0; }
-.ms-c-date { width: 78px; flex: none; font-size: 13px; color: var(--pp-ink-2); }
+/* ⚠ THE COLUMN SIZES BELONG TO THE ROW, NOT TO THE COLUMN (v252).
+   `.ms-c-date` set `font-size: 13px` on itself, so it applied to the HEADER
+   cell too — "DATA" rendered at 13px beside "RIVAL" and "RESULTAT" at the
+   header's own 10px, which is what the owner saw. Three other columns were
+   already patched round it by `.ms-head .ms-c-min, …{font-size:10px}`: a
+   growing list of exceptions is the symptom, not the fix.
+
+   So the header owns its type (its own rule below), the row owns its type
+   (`.ms-row .ms-c-*`), and no column declares a size that outlives the
+   context it was written for. The exception list is deleted with it. */
+.ms-c-date { width: 78px; flex: none; }
 .ms-c-rival { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .ms-c-res { width: 96px; flex: none; display: flex; align-items: center; gap: 8px; }
-.ms-c-min { width: 64px; flex: none; text-align: right; font-size: 15px; }
-.ms-c-g { width: 44px; flex: none; text-align: right; font-size: 15px; }
-.ms-c-a { width: 56px; flex: none; text-align: right; font-size: 15px; }
+.ms-c-min { width: 64px; flex: none; text-align: right; }
+.ms-c-g { width: 44px; flex: none; text-align: right; }
+.ms-c-a { width: 56px; flex: none; text-align: right; }
 .ms-c-cards {
   width: 68px; flex: none; display: flex; align-items: center;
   justify-content: flex-end; gap: 4px;
 }
-.ms-head .ms-c-min, .ms-head .ms-c-g, .ms-head .ms-c-a { font-size: 10px; }
+/* The row's own type, in one place. `.ms-head` sets the header's 10px for
+   every cell it holds, so there is nothing left to patch round. */
+.ms-row .ms-c-date { font-size: 13px; color: var(--pp-ink-2); }
+.ms-row .ms-c-min, .ms-row .ms-c-g, .ms-row .ms-c-a { font-size: 15px; }
 .ms-rival { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ⚠ The venue is a GLYPH now, not the word "Casa"/"Fora" (v252), so the
+   uppercase micro-type it used to need is gone.
+
+   TWO declarations, doing TWO different things — measured, because the first
+   version of this comment credited one of them with the other's job:
+     · `align-items: center` is what centres it. Measured at 0.0px from the
+       centre of the name beside it, and removing it is the only thing that
+       moves the glyph.
+     · `line-height: 1` does NOT move it. What it does is shrink the glyph's
+       own box from 20px to 13px — an emoji carries a generous line box — so
+       that box can never become the floor of a row that would otherwise be
+       shorter. Defensive, not corrective. */
 .ms-venue {
-  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--pp-ink-3); flex: none;
+  flex: none; font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* The rival's crest, bare. Sized to the row's cap height, not to the disc it
+   is not drawn in. `contain` because federation badges come in every aspect
+   ratio there is. */
+.ms-crest {
+  width: 20px; height: 20px; flex: none; object-fit: contain;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* The disc belongs to the MONOGRAM — see `.cal-crest-plain` and
+   `.ini-tbl-badge-plain`, which say the same thing on their own pages. */
+.ms-crest-mono {
+  border-radius: 50%; background: var(--pp-rule-2); border: 1px solid var(--pp-rule);
+  font-size: 8px; color: var(--pp-ink-2); letter-spacing: 0;
 }
 .ms-score { font-size: 14px; }
 .ms-res {
@@ -10186,7 +10237,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   which renderPage draws outside the page root and is not part of this mockup.
   The last two rows are <b>pre-v245 records</b> — no squad letter, no answer,
   no link — and must stay visible and unbadged rather than disappearing.
-  Clock frozen at 2 Sep 2026. Generated 2026-09-08.
+  Clock frozen at 2 Sep 2026. Generated 2026-09-09.
 </div>
 <div class="mock-h">1 · sis sense llegir</div>
 <div class="mock-shell"><div class="nf-page" id="nf-page"><div class="nf-hero"><div class="nf-hero-l"><h1 class="nf-h1">Notificacions</h1><span class="nf-hero-sub">6 sense llegir · accions dels jugadors de Amateur A</span></div><div class="nf-hero-r"><div class="nf-fig"><span class="ac-lbl">Sense llegir</span><span class="nf-fig-v ac-num ac-v-red">6</span></div><span class="nf-vrule"></span><div class="nf-acts"><button type="button" class="nf-toggle" id="nf-toggle">Només sense llegir</button><button type="button" class="nf-mark" id="nf-mark-all"><span class="nf-mark-l">Marca-ho tot com llegit</span><span class="nf-mark-s">Marca-ho tot</span></button></div></div></div><div class="nf-body"><div class="nf-main"><div class="ac-sec"><span class="ac-sec-l">Activitat dels jugadors</span><span class="ac-sec-r">9 accions · les més recents primer</span></div><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n1" data-nf-page="medical-detail" data-nf-pid="u1"><span class="nf-bar"></span><span class="nf-badge nf-b-injury">Lesió</span><span class="nf-pos" style="background:#1e88e5">CB</span><span class="nf-name">Marc Puig</span><span class="nf-detail">Autoreport · isquiotibial dret · Sessió de força (2026-09-02)</span><span class="nf-time ac-num">fa 12 min</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n2" data-nf-page="match-detail" data-nf-pid="m1"><span class="nf-bar"></span><span class="nf-badge nf-b-avail nf-a-off">Disponibilitat</span><span class="nf-pos" style="background:#e53935">ST</span><span class="nf-name">Guillem Roca</span><span class="nf-detail">No Disponible · CE L'Esquerra vs CF Vilassar de Mar · 2026-09-12</span><span class="nf-time ac-num">fa 34 min</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n3" data-nf-page="staff-training-detail" data-nf-pid="t2"><span class="nf-bar"></span><span class="nf-badge nf-b-rpe">RPE</span><span class="nf-pos" style="background:#43a047">DM</span><span class="nf-name">Nil Ferrer</span><span class="nf-detail">RPE 9 · 75 min · Sessió tàctica (2026-09-02)</span><span class="nf-time ac-num">fa 1 h</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n4" data-nf-page="staff-player-stats" data-nf-pid="u4"><span class="nf-bar"></span><span class="nf-badge nf-b-extra">Extra</span><span class="nf-pos" style="background:#1e88e5">RB</span><span class="nf-name">Àlex Camps</span><span class="nf-detail">Gimnàs 60 min · RPE 6 · Gimnàs (2026-09-01)</span><span class="nf-time ac-num">fa 2 h</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n5" data-nf-page="staff-training-detail" data-nf-pid="t4"><span class="nf-bar"></span><span class="nf-badge nf-b-avail nf-a-warn">Disponibilitat</span><span class="nf-pos" style="background:#e53935">LW</span><span class="nf-name">Pau Serra</span><span class="nf-detail">Tard · Sessió de força (2026-09-03)</span><span class="nf-time ac-num">fa 3 h</span></button><button type="button" class="nf-row nf-row-new nf-row-go" data-nf-id="n6" data-nf-page="staff-training-detail" data-nf-pid="t4"><span class="nf-bar"></span><span class="nf-badge nf-b-avail nf-a-ok">Disponibilitat</span><span class="nf-pos" style="background:#f9a825">GK</span><span class="nf-name">Oriol Mas</span><span class="nf-detail">Sí · Sessió tàctica (2026-09-03)</span><span class="nf-time ac-num">fa 4 h</span></button><button type="button" class="nf-row nf-row-go" data-nf-id="n7" data-nf-page="match-detail" data-nf-pid="m0"><span class="nf-bar"></span><span class="nf-badge nf-b-rpe">RPE</span><span class="nf-pos" style="background:#43a047">OM</span><span class="nf-name">Ivan Soler</span><span class="nf-detail">Canviat · RPE 4 · 62 min · CF Sants (2026-08-30)</span><span class="nf-time ac-num">ahir 22:10</span></button><div class="nf-row" data-nf-id="n8"><span class="nf-bar"></span><span class="nf-badge nf-b-reg">Registre</span><span class="nf-pos" style="background:#1e88e5">CB</span><span class="nf-name">Ibrahim Diallo</span><span class="nf-detail">Sol·licitud d'alta pendent d'aprovació · dorsal 14</span><span class="nf-time ac-num">ahir 21:40</span></div><div class="nf-row" data-nf-id="n9"><span class="nf-bar"></span><span class="nf-badge nf-b-avail">Disponibilitat</span><span class="nf-pos" style="background:#1e88e5">LB</span><span class="nf-name">Jordi Vidal</span><span class="nf-detail">No · Sessió de resistència (2026-08-28)</span><span class="nf-time ac-num">ahir 19:10</span></div><p class="ac-note">El registre guarda les 200 últimes accions. Les més antigues es descarten.</p></div><div class="nf-rail"><div class="ac-sec"><span class="ac-sec-l">Avui</span><span class="ac-sec-r">Amateur A</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-avail"></span><span class="nf-t-l">Disponibilitat</span><span class="nf-t-n ac-num">3</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-rpe"></span><span class="nf-t-l">RPE</span><span class="nf-t-n ac-num">1</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-injury"></span><span class="nf-t-l">Lesió</span><span class="nf-t-n ac-num">1</span></div><div class="nf-t-row"><span class="nf-dot nf-dot-extra"></span><span class="nf-t-l">Extra</span><span class="nf-t-n ac-num">1</span></div><div class="ac-sec ac-sec-2"><span class="ac-sec-l">Sense llegir per equip</span><span class="ac-sec-r">Els teus equips</span></div><button type="button" class="nf-s-row nf-s-on" data-nf-squad="amateur" data-nf-letter="A"><span class="nf-s-l">Amateur A</span><span class="nf-s-n ac-num nf-s-unread">6</span></button><button type="button" class="nf-s-row" data-nf-squad="amateur" data-nf-letter="B"><span class="nf-s-l">Amateur B</span><span class="nf-s-n ac-num">0</span></button></div></div></div></div>

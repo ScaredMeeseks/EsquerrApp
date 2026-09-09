@@ -149,6 +149,18 @@ function render(over) {
     tv: (k, v) => k + ':' + JSON.stringify(v),
     tDateDayMonth: (d) => 'dm(' + d + ')',
     tDateDMY: (d) => 'dmy(' + d + ')',
+    /* ⚠ v252: the match table draws the rival's crest, so it reaches for two
+       more collaborators — and BOTH are passed REAL rather than stubbed.
+       `safeHttpUrl` is the guard keeping a `javascript:` URL out of an
+       `<img src>` when the URL comes from a federation import; `clubMonogram`
+       decides the two letters a crestless club falls back to, and a stub
+       returning a constant could not answer a question about its input.
+       (Both exist in the app — unlike v250's `getMatches`, which is why that
+       one was a hole and these are not; see suite-registry.test.js.) */
+    safeHttpUrl: utils.safeHttpUrl,
+    clubMonogram: new Function(
+        grab('  function clubMonogram(name) {', '  function applyLeagueRows(') +
+        '\n return clubMonogram;')(),
   }, o.stubs || {});
   // eslint-disable-next-line no-new-func
   return new Function(...Object.keys(api), `
@@ -561,5 +573,130 @@ describe('Les meves estadístiques — the stylesheet', () => {
     const rawMs = readCssRaw().slice(readCssRaw().indexOf(MSBANNER));
     assert.ok(!/rgba\(\s*192,\s*86,\s*76/.test(rawMs),
         'a literal rgba() copy of --pp-bad appeared in the .ms- block');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE MATCH TABLE — crest, one header type, and a venue glyph (v252)
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('Les meves estadístiques — the match table', () => {
+  it('draws the rival\'s crest to the left of the name', () => {
+    const html = render();
+    /* From the ROWS, not from the whole page — the first `ms-c-rival` in the
+       document is the HEADER cell, which has no crest and should not. */
+    const rows = html.slice(html.indexOf('ms-rows'));
+    const row = rows.slice(rows.indexOf('ms-c-rival'), rows.indexOf('ms-c-rival') + 400);
+    assert.ok(row.includes('ms-crest'), 'no crest in the rival column: ' + row);
+    assert.ok(row.indexOf('ms-crest') < row.indexOf('ms-rival'),
+        'the crest is drawn after the name it belongs to');
+  });
+
+  /* A club with no crest keeps its monogram, and the monogram keeps its disc —
+     two bare letters with no ground read as a rendering fault. Same call the
+     Calendari and the standings table make. */
+  it('falls back to a monogram disc when the fixture carries no crest', () => {
+    const html = render();
+    assert.ok(html.includes('ms-crest-mono'), 'no monogram fallback at all');
+  });
+
+  /* ⚠ The URL comes from a federation import, so it goes through the same
+     guard as every other external URL. The harness passes the REAL
+     safeHttpUrl, so a stub cannot drift away from the rule. */
+  it('will not put a javascript: URL in the crest', () => {
+    /* ⚠ `rows`, not `matches`. The first version passed `matches`, which this
+       harness never reads — `computePlayerMatchStats` is stubbed and returns
+       `o.rows || ROWS` — so the hostile URL never reached the renderer and the
+       assertion passed over code that would have shipped it. Caught by
+       mutation: bypassing `safeHttpUrl` in the app left this green. */
+    const html = render({ rows: [Object.assign({}, ROWS[0],
+      { opponentBadge: 'javascript:alert(1)' })] });
+    assert.ok(/ms-crest/.test(html), 'the fixture drew no crest at all');
+    assert.ok(!/javascript:/i.test(html), 'a javascript: URL reached the markup');
+  });
+
+  it('does draw a crest the guard accepts', () => {
+    // The other half: proof the fixture above is refused for its SCHEME and
+    // not because this path simply never draws anything.
+    const html = render({ rows: [Object.assign({}, ROWS[0],
+      { opponentBadge: 'https://files.fcf.cat/e/x.png' })] });
+    assert.ok(html.includes('files.fcf.cat/e/x.png'), 'a good crest URL was dropped too');
+  });
+
+  /* ⚠ THE HEADER TYPE COMES FROM THE HEADER (v252). `.ms-c-date` used to set
+     `font-size:13px` on itself, so "DATA" rendered 3px larger than "RIVAL"
+     and "RESULTAT" beside it — the owner's report. Three other columns were
+     already patched round it with a `.ms-head .ms-c-*` exception list, which
+     is the symptom rather than the fix. */
+  it('gives every header cell one size', () => {
+    /* ⚠ MSCSS, the COMMENT-STRIPPED slice. The comment above these rules
+       quotes the exception list it replaced — `.ms-head .ms-c-min, …` — and a
+       scan of the raw stylesheet reads that prose as the rule still being
+       there. Third time this trap has fired today; it is why this file
+       strips comments at the top. */
+    const cols = ['.ms-c-date', '.ms-c-min', '.ms-c-g', '.ms-c-a'];
+    cols.forEach((sel) => {
+      const m = new RegExp('^\\s*' + sel.replace('.', '\\.') +
+          '\\s*\\{([^}]*)\\}', 'm').exec(MSCSS);
+      assert.ok(m, sel + ' has no rule');
+      assert.ok(!/font-size/.test(m[1]),
+          sel + ' sets its own font-size, so it applies to the HEADER cell too ' +
+          'and that column\'s label is a different size from the rest: ' + m[1].trim());
+    });
+    const head = /\.ms-head\s*\{([^}]*)\}/.exec(MSCSS);
+    assert.ok(head && /font-size:\s*10px/.test(head[1]),
+        'the header no longer states the one size its cells take');
+  });
+
+  it('keeps the row\'s own sizes, on the row', () => {
+    assert.ok(/\.ms-row\s+\.ms-c-date\s*\{[^}]*font-size:\s*13px/.test(MSCSS),
+        'the date lost its larger size in the ROW, where it belonged');
+    assert.ok(/\.ms-row\s+\.ms-c-min[^{]*\{[^}]*font-size:\s*15px/.test(MSCSS),
+        'the figure columns lost their size in the row');
+    assert.ok(!/\.ms-head\s+\.ms-c-/.test(MSCSS),
+        'the header exception list is back — patching round a column that ' +
+        'declares the wrong thing is how this broke');
+  });
+
+  /* ⚠ A GLYPH, NOT THE WORD. "Casa"/"Fora" was two more words of uppercase
+     micro-type in a row already carrying six figures, and the same fact is
+     one glyph everywhere else in the app. */
+  it('shows the venue as a house or a plane, not as a word', () => {
+    const html = render();
+    assert.ok(/🏠|✈️/.test(html), 'neither venue glyph is drawn');
+    const cell = html.slice(html.indexOf('ms-venue'), html.indexOf('ms-venue') + 200);
+    assert.ok(/title="/.test(cell),
+        'the glyph carries no title, so the word is lost to a screen reader');
+  });
+
+  /* ⚠ TWO DECLARATIONS, TWO JOBS — and the first version of this test credited
+     one with the other's work. Measured in headless Chrome rather than
+     reasoned about:
+       · `align-items: center` is what CENTRES the glyph — 0.0px from the
+         centre of the name beside it, and removing it is the only thing that
+         moves the glyph at all.
+       · `line-height: 1` does NOT move it. It shrinks the glyph's own box
+         from 20px to 13px, so an emoji's generous line box can never become
+         the floor of a row that would otherwise be shorter. Defensive, not
+         corrective.
+     Both are asserted, each for the thing it actually does. */
+  it('sits the venue glyph on the row\'s centre line', () => {
+    const m = /\.ms-venue\s*\{([^}]*)\}/.exec(MSCSS);
+    assert.ok(m, '.ms-venue has no rule');
+    assert.ok(/align-items:\s*center/.test(m[1]),
+        'nothing centres the glyph against the name: ' + m[1].trim());
+    assert.ok(/display:\s*inline-flex|display:\s*flex/.test(m[1]),
+        'align-items has no flex container to act in: ' + m[1].trim());
+    assert.ok(/line-height:\s*1\b/.test(m[1]),
+        'the glyph keeps a 20px line box that can set the row height');
+    assert.ok(!/text-transform:\s*uppercase/.test(m[1]),
+        'the word\'s uppercase micro-type is still on a glyph');
+  });
+
+  /* The phone card shows the same fact the same way — it used to print the
+     word there too, and two spellings of one thing is how they drift. */
+  it('uses the same glyph on the phone card', () => {
+    const html = render();
+    const phone = html.slice(html.indexOf('ms-prows'));
+    assert.ok(/🏠|✈️/.test(phone), 'the phone card still spells the venue out');
   });
 });

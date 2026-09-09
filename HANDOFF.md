@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 250** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 252** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3331** — `cd test && npm run test:unit` (~13 s), all passing |
+| Unit tests | **3344** — `cd test && npm run test:unit` (~13 s), all passing |
 | Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
 | Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
@@ -22,7 +22,7 @@ Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in 
 **Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
 session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
 collection). Both went out BEFORE the matching frontend push, because the other order leaves a
-window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v250 changed
+window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v252 changed
 neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
 ⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
@@ -63,7 +63,7 @@ real app. Worth trying first, in this order:
 
 ---
 
-## The session in order — v234 to v250
+## The session in order — v234 to v252
 
 ### v234. Mèdic, rebuilt to the eighth design handoff.
 
@@ -471,9 +471,97 @@ club would have thrown inside `innerHTML`. Stubbed explicitly.
 
 Unit 3319 → **3331**; eight mutations killed.
 
+### v251. The loading-screen hang: `getMatches` never existed.
+
+⚠ v250 shipped `fcfBadgeById` calling `getMatches()` — a function that exists NOWHERE in this app.
+The ReferenceError landed inside a render, and `renderDashboard()` runs BEFORE `_hideSplash()`, so
+the app never started. ⚠ **Three green signals, all the same mistake**: two harnesses and a preview
+builder each named `getMatches` in a `new Function` parameter list, and `new Function` binds any
+identifier you name. **Code that runs over stubs is not code that runs in the app** — the inverse of
+v238 and nastier. New guard in `suite-registry.test.js`: every stub must name something the app
+declares. Its own first runs taught it two things — `root.BG = api` is the only place the module
+globals are named, and comments must be stripped, because the comment explaining this outage writes
+`getMatches()` in prose.
+
+### v252. Bare crests, one header type, a venue glyph — and the missing accessor.
+
+**The architecture answer.** The v251 fix was correct; the architecture around it was the defect.
+⚠ `getUsers`, `getTrainings`, `getInjuries` and `getMatchEvents` all exist and `getMatches` did
+not — which is exactly why reaching for it was a trap. Added. The other 31 raw reads are parking-lot
+35, not migrated: the trap is gone either way. ⚠ **The v251 guard then failed its own probe**,
+correctly refusing to become a test of nothing once the name existed.
+
+**Classificació**: a real crest is drawn bare — the disc belongs to the monogram
+(`.ini-tbl-badge-plain`, the same call `.cal-crest-plain` makes). **Les meves estadístiques**: the
+rival's crest left of the name; 🏠/✈️ instead of "Casa"/"Fora"; and ⚠ **one header type** —
+`.ms-c-date` set its own 13px so it hit the HEADER cell too, and three columns had been patched
+round it with a `.ms-head .ms-c-*` exception list. The list was the symptom; sizes now live on the
+row and the header owns its own.
+
+⚠ **A comment I had to correct before shipping**: I credited `line-height: 1` with centring the
+glyph. Measured, it moves it 0.0px — `align-items: center` does that. What it really does is shrink
+the glyph's box 20px → 13px so an emoji cannot set a row's floor. ⚠ **Two of my new assertions were
+defanged and mutation caught both.** Unit 3334 → **3344**.
+
 ---
 
 ## Parking lot
+
+### ⚠ NEXT SESSION STARTS HERE — the attendance donuts *(owner, 2026-09-09)*
+
+**Do this first, before anything else.** Two faults, and they are probably one
+cause: whatever counts a session as "attended" is being asked the question in
+three places and answering differently.
+
+**(a) A session should not count until it has STARTED.** Future sessions are
+being included in both the render and the percentage, so a squad that has
+answered nothing for next Tuesday is already carrying it as a miss (or a
+yes — establish which, that is the first thing to measure). Attendance is a
+record of what happened; a session in the future has not happened. ⚠ The
+boundary is the session's START, not its date — a training at 21:00 today has
+not been attended at 10:00 today. `sessionEndsAt`/`sessionWindow` already
+exist and may or may not be the right hook; check before adding a fourth
+opinion about when a session is live.
+
+**(b) Inici, Les meves estadístiques and the player detail disagree** about one
+player's attendance. Three surfaces, three numbers, same player.
+
+⚠ **Find the shared rule before fixing any of the three.** The repo's own
+standing lesson applies exactly here — *"when two views must agree, give them
+one function, not two that match"* (`plmMatrix`, `_syncFcfSquad`,
+`scheduleSlots`). Three call sites computing attendance separately is the
+disease; making them agree by patching each is treating the symptom, and they
+will drift again by the next release.
+
+Known starting points, none of them verified as the cause:
+- Inici's staff hero counts `sSlots` as every player × every session in
+  `seasonTrainings`, filtered on `tr.date <= todayISO` — a DATE test, which is
+  suspect for (a).
+- Inici's player hero counts `pTotal` from `getEffectiveAnswer` over
+  `training`, with a `pNa` bucket.
+- Les meves estadístiques counts `answered` from `getEffectiveAnswer` over
+  `trainingOnly(getTrainings())` and has NO date filter at all — which alone
+  would explain (a) and part of (b).
+- ⚠ `getEffectiveAnswer` **counts a silent player as a yes** (see the banner in
+  `test/inici.test.js`). Whether that is right for a *future* session is the
+  crux of (a), and it is a product decision, not a bug to quietly flip.
+- v247.4 gave the rings a real denominator (`iniAvailSegs(n, slots)`), so the
+  ring and its centre number now agree *within* a page. That work is what made
+  the disagreement *between* pages visible; it did not cause it.
+
+**Ask the owner which number is the RIGHT one before making the other two
+match it.** "Sessions so far this season, of those the player was called to"
+and "every session on the calendar" are different questions and the answer
+decides the fix.
+
+35. **`fa_matches` is read raw in 31 places.** *(v252)* `getUsers`,
+    `getTrainings`, `getInjuries` and `getMatchEvents` all exist; `getMatches`
+    did not until v252, which is exactly why reaching for it was a trap and how
+    v250 took the app down. The accessor exists now and the new code uses it,
+    but the other 31 sites still spell the parse out by hand. Migrating them is
+    mechanical and low value on its own — the trap is gone either way — so it is
+    here rather than done.
+
 
 0. **The FCF's broken goal figures — deliberately NOT corrected.** `goles` is the home and away
    tallies concatenated as strings. Across 160 teams, 32% publish more scorer-goals than the team

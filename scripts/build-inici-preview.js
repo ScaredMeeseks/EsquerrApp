@@ -292,12 +292,15 @@ function render(which, data) {
     JSON,
     Math,
     Date: PreviewDate,
-    /* ⚠ v251: NO `getMatches` STUB. There was one for exactly one version,
-       and it is what let v250 ship: `fcfBadgeById` called a function that
-       exists nowhere in the app, this builder named it here, and "the mockup
-       built" was read as evidence. It reads `fa_matches` off localStorage now
-       like every other site, and this preview's localStorage stub answers
-       that key — so the builder exercises the real path or fails loudly. */
+    /* ⚠ THE STUB IS BACK, AND THIS TIME IT NAMES SOMETHING REAL. There was
+       one at v250 for a `getMatches` the app did not have, and this builder
+       naming it is part of why that shipped — "the mockup built" was read as
+       evidence. v252 added the accessor beside `getUsers`/`getTrainings`,
+       whose absence was the trap. Empty is also the honest state here: this
+       preview has no FCF fixtures to borrow a crest from.
+       `test/suite-registry.test.js` now fails on a stub for a name the app
+       does not declare, in this directory as well as in test/. */
+    getMatches: () => [],
     Object,
     String,
     Number,

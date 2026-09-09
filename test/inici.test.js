@@ -877,10 +877,16 @@ describe('Inici — the standings borrow a crest from our own fixtures', () => {
   function load(matches) {
     const code = grab('  function fcfBadgeById() {', '  function iniLeagueRowHtml(r) {');
     // eslint-disable-next-line no-new-func
-    return new Function('localStorage', 'Object', 'String', 'JSON',
+    /* ⚠ `getMatches` is stubbed again — and this time that is CORRECT, which
+       is the whole distinction. v250 named it here when the app had no such
+       function, so `new Function` bound an invention and the suite went green
+       over code that threw. v252 ADDED the accessor: it sits beside
+       `getUsers`, `getTrainings` and `getInjuries`, and its absence was what
+       made reaching for the name a trap. The stub now stands in for something
+       real, and `suite-registry.test.js` is what tells the two cases apart. */
+    return new Function('getMatches', 'Object', 'String',
         code + '\n return { fcfBadgeById, withFixtureBadges };')(
-        {getItem: (k) => (k === 'fa_matches' ? JSON.stringify(matches) : null)},
-        Object, String, JSON);
+        () => matches, Object, String);
   }
 
   const FIXTURES = [
@@ -938,6 +944,27 @@ describe('Inici — the standings borrow a crest from our own fixtures', () => {
     const [row] = B.withFixtureBadges([cached]);
     assert.strictEqual(cached.badge, '', 'the league cache was mutated in place');
     assert.notStrictEqual(row, cached, 'the same object was handed back');
+  });
+
+  /* ⚠ A REAL CREST IS DRAWN BARE — no disc, no ring (v252). A club designs
+     its badge with its own outline, and a filled circle around one reads as a
+     second, wrong crest. The disc belongs to the MONOGRAM, which needs
+     something to be lettering on, so a crestless club keeps it. Exactly the
+     call `.cal-crest-plain` already makes on the Calendari. */
+  it('drops the disc for a real crest and keeps it for a monogram', () => {
+    const row = grab('  function iniLeagueRowHtml(r) {', '  function clubMonogram(name)');
+    assert.ok(/ini-tbl-badge-plain/.test(row),
+        'every badge is drawn in a disc again, the real crests included');
+    assert.ok(/r\.badge \?/.test(row), 'the disc is no longer conditional on having a crest');
+    /* The initials ship WITH the image and the `-plain` class hides them, so
+       the onerror can bring disc and letters back together — files.fcf.cat
+       404s on its own schedule and a dead crest must not leave a hole. */
+    assert.ok(/ini-tbl-badge-txt/.test(row), 'the monogram is not in the markup to fall back to');
+    assert.ok(/onerror=/.test(row), 'a 404 leaves an empty slot');
+    assert.ok(/\.ini-tbl-badge-plain\s*\{[^}]*background:\s*none/.test(bareCss),
+        'the -plain modifier does not actually remove the disc');
+    assert.ok(/\.ini-tbl-badge-plain\s+\.ini-tbl-badge-txt\s*\{[^}]*display:\s*none/.test(bareCss),
+        'the initials show through a transparent federation PNG');
   });
 
   it('is applied at BOTH places the table is drawn', () => {
