@@ -11027,3 +11027,107 @@ bound it before appending an eleventh page.**
 `.\deploy.ps1 functions` as well as the push to `main`.** The frontend is harmless before the
 functions ship — an unnamed field is dropped, not refused — but the club ground will keep
 showing the parsed pair until they do. No rules change.
+
+### 2026-09-10 — Gestió d'usuaris, and three functions that were not there (v255)
+
+Round 2 of the admin-tab redesigns. Pissarres is round 3 and is untouched.
+
+⚠ **THREE FUNCTIONS WERE DELETED BY ONE COMMIT AND NOBODY NOTICED FOR NINE DAYS.**
+`90812ff` — the v237 Registracions redesign — removed `detachMemberByEmail`,
+`loadArchivedSeasons` and `assignMemberToTeam`. Found only because this round's plan said to
+*reuse* the first of them and it was not there.
+
+- **`detachMemberByEmail`** — Registracions' "Treu de l'equip". The ReferenceError lands
+  inside the handler's try/catch, which reports `save.error_perms`, so it blamed **permissions**
+  while the roster write on the line above had already succeeded. Half-done and misattributed.
+- **`loadArchivedSeasons`** — worse. Called from `renderArchivedSeasons()` directly, and
+  `renderPage()` puts no try/catch around a renderer, so **Temporades arxivades threw
+  mid-render and never appeared.** Exactly the v250 shape. Contained only because
+  `currentPage` is not persisted, so a reload could not land back on it and stall the boot
+  behind the splash.
+- **`assignMemberToTeam`** — the odd one out: its only caller was deleted *with* it, so it
+  left no dangling reference and was a missing capability rather than a live throw. It is back
+  because `regSetRole` deliberately refuses to place someone who is on no list, so without it
+  there was no way to give an unassigned member a squad — the people this page exists for.
+
+⚠ **THE GUARD FOR THE CLASS, and why the existing one could not catch it.**
+`test/suite-registry.test.js` already had *every stub names something the app actually has* —
+the v250 lesson. That scan's `declaredIn()` counts `name(` as a declaration, deliberately
+generous so it never falsely accuses a legitimate stub, which makes a call indistinguishable
+from a definition. The new **strict twin** — *the app only calls functions that exist* — strips
+STRING LITERALS as well as comments (the i18n table is full of Catalan containing brackets:
+76 false positives without that) and counts only real declaration and parameter forms. It runs
+at **zero** candidates and was verified to name exactly those two when they are renamed away.
+
+**`assignMemberToTeam` came back changed, twice over.** The original always wrote
+`playerEmails`, which would have demoted a coach to a player simply by giving them a squad —
+it reads the current side with `regStaffOf` now. And it takes a moved member **off their
+previous squad's list**, which the original never did: a move is two writes, the roster IS the
+membership gate, so moving A→B left them holding A's permissions. It also no longer mirrors
+`roles` into `fa_users`. The original defended that mirror (reconcile never refreshes an
+existing member, so the row would show stale roles) but `regSetRole` settled the question the
+other way and its reasoning supersedes: a row should READ the lists rather than predict what
+the server will derive, because one guess written locally is not self-healing.
+
+**The page.** `renderAdminUsers()` rebuilt as the `.gu-` paper table: hero with Membres /
+Staff / Sense equip, search, four filter chips, and a seven-column grid whose head and rows
+share ONE template so they cannot drift. The circle carries the position for a player and a
+role glyph for staff — ★ for a coach, a **drawn** dumbbell for the fitness coach (no glyph in
+the fallback stack can be relied on), 📁 for the delegate.
+
+⚠ **The squad filter NARROWS this page; it never hides the unsquadded.** Staff and the club
+lead carry no squad at all, so a filter that dropped every non-matching row would hide exactly
+the people a lead opens this page for. It defaults to Tots, and "Jugadors" means *not staff* —
+which keeps someone who has registered but has no roles yet from falling out of three filters
+of four. This reverses the old note that this was "the one list that is NEVER filtered".
+
+**Two controls are deliberately read-only, and the footnote says where they live.**
+The **dorsal** (the squad sheet is Registracions) and the **staff sub-role** (set on the roster
+in Configuració › Staff — there is no per-person writer, only the bulk save, whose
+`FieldValue.delete()` demotion logic exists because a `{merge:true}` map write can only ADD
+keys). **The club lead is a badge**, not a dropdown: `firestore.rules` lets only the superadmin
+write `clubs/{id}.leadEmail`, so offering it would be a control that silently fails for the
+person most likely to try it. The stale comment in `onClubLeadChanged` claiming the rules also
+allowed the current lead is corrected — that stopped being true when the update allowlist was
+narrowed to `['fcfLinks','schedules']`.
+
+**A defect found by LOOKING, not by any assertion.** The delegate's circle rendered as an empty
+white disc: `filter: brightness(0) invert(1)` was on `.gu-circle`, and `filter` includes the
+background, so it bleached the grey fill along with the glyph. It sits on the glyph now.
+⚠ The preview's own assertion then failed — it had pinned the inline style rather than the
+outcome, so it was demanding the bug back. It asserts the wrapper and the *absence* of a filter
+on the circle instead.
+
+**Two fixes from the owner's pass on the running app, neither visible in a mockup.**
+
+⚠ **The selected filter chip's label vanished under the cursor.** `.gu-chip:hover` is 0,2,0 and
+`.gu-chip-on` was 0,1,0, so hovering the chip you had just clicked repainted its text
+near-black on its near-black fill. Both classes were on the element exactly as intended — the
+same specificity family as v254's over-quota team count. Fixed with
+`:hover:not(.gu-chip-on)` plus a hover of the selected chip's own.
+
+⚠ **The team filter was missing entirely, and the shared category bar could not provide it.**
+`users` had been opted into `CATEGORY_PAGES`, but `renderCategoryBar()` returns `''` outright
+for a club with one category and `catBarLettersHtml()` returns `''` until a category is picked
+— so a single-category club got no team filter at all and a multi-category one got none until
+it narrowed. Reverted the opt-in; the page draws its own flat squad chips instead, one per
+`{cat}-{letter}` plus Tots, which behave the same whatever the club looks like. They keep the
+same rule as before: narrowing to a squad never hides someone who has no squad, because staff
+and the lead usually have none.
+⚠ Removing the opt-in orphaned the `getCurrentCategory`/`currentSquadOrNull` stubs in the test
+and preview harnesses, whose `cat`/`letter` options would then have driven nothing — every
+filtering assertion would have passed vacuously. Both now drive `_guSquad` directly.
+
+**Tests.** 3427 → **3464**. New `test/gestio-usuaris.test.js` (37), registered in `test:unit`
+and as `test:gu`; it CALLS the builder and runs the real `assignMemberToTeam` over recording
+stubs. New `scripts/build-gestio-usuaris-preview.js` → `gestio-usuaris-preview.html`, listed in
+`_config.yml` — off Pages for the sharpest reason on that list: it is a **member directory**,
+names against addresses against roles.
+⚠ `test/configuracio.test.js` gained an end bound in the same change — `.cfg-` was last and
+sliced to EOF. **`.gu-` is now last; bound it before appending an eleventh page.**
+⚠ One of my own expectations was wrong, not the code: the "Jugadors" filter returns the
+unplaced member too, and that is the behaviour this page wants.
+**Mutation-tested, 15 mutants, 14 killed + 1 deliberate no-op control.**
+
+No rules change. `functions/index.js` gets only a comment correction and the version constant,
+so this is **push-only** — but run `test:functions` anyway, as the repo rule says.

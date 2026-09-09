@@ -3491,9 +3491,14 @@ exports.onRosterWritten = onDocumentWritten({
 // changed. A trigger rather than a callable so the club doc and the user
 // records can never drift apart, whatever route the change came in by.
 //
-// Only the superuser can edit the club doc's leadEmail in practice (the rules
-// also allow the current lead, but the UI is superadmin-only) — a club that
-// could demote itself to a mistyped address would be unrecoverable.
+// ⚠ Only the superuser can edit leadEmail, in the RULES and not merely in the
+// UI. This comment used to say the rules also allowed the current lead and
+// that only the interface stopped them; that stopped being true when the
+// clubs/{clubId} update allowlist was narrowed to ['fcfLinks','schedules'].
+// The distinction matters: a club that could demote itself to a mistyped
+// address would be unrecoverable, and it is the rule — not the screen — that
+// prevents it. Gestió d'usuaris (v255) therefore renders the lead as a badge
+// rather than offering a control a lead could never actually use.
 exports.onClubLeadChanged = onDocumentWritten({
   document: "clubs/{clubId}",
   region: "us-central1",

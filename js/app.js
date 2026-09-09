@@ -1704,6 +1704,25 @@
     'settings.cat_no_club':  { ca:'No estàs vinculat a cap club. Contacta l\'administrador.', es:'No estás vinculado a ningún club. Contacta al administrador.', en:'You are not linked to any club. Contact the administrator.' },
     'settings.cat_edit_btn': { ca:'Editar categories', es:'Editar categorías', en:'Edit categories' },
     'settings.club_mgmt':   { ca:'Gestió de clubs', es:'Gestión de clubes', en:'Club Management' },
+    // ── Gestió d'usuaris, redesigned (v255) ──
+    'gu.sub':             { ca:'{n} persones al club · {staff} del cos tècnic', es:'{n} personas en el club · {staff} del cuerpo técnico', en:'{n} people in the club · {staff} staff' },
+    'gu.f_members':       { ca:'Membres', es:'Miembros', en:'Members' },
+    'gu.f_staff':         { ca:'Staff', es:'Staff', en:'Staff' },
+    'gu.f_players':       { ca:'Jugadors', es:'Jugadores', en:'Players' },
+    'gu.f_nosquad':       { ca:'Sense equip', es:'Sin equipo', en:'No squad' },
+    'gu.f_all':           { ca:'Tots', es:'Todos', en:'All' },
+    'gu.no_squad':        { ca:'Sense equip', es:'Sin equipo', en:'No squad' },
+    'gu.th_squad':        { ca:'Equip', es:'Equipo', en:'Squad' },
+    'gu.th_dorsal':       { ca:'Dors.', es:'Dors.', en:'No.' },
+    'gu.erase':           { ca:'Esborra', es:'Borra', en:'Erase' },
+    'gu.search_ph':       { ca:'Cerca per nom o correu', es:'Busca por nombre o correo', en:'Search by name or email' },
+    'gu.note':            { ca:'Els rols i els equips es guarden al moment · els permisos triguen uns segons a propagar-se', es:'Los roles y los equipos se guardan al momento · los permisos tardan unos segundos en propagarse', en:'Roles and squads save immediately · permissions take a few seconds to propagate' },
+    /* The dorsal is read-only HERE on purpose: this page is about who is on
+       the platform, the squad sheet is Registracions. Saying so stops the
+       next reader filing the missing control as a bug. */
+    'gu.foot':            { ca:'El dorsal, la posició i l\'agent es canvien a Registracions. El tipus de staff, a Configuració › Staff.', es:'El dorsal, la posición y el agente se cambian en Registros. El tipo de staff, en Configuración › Staff.', en:'Shirt number, position and agent are changed on Registrations. The staff type, on Settings › Staff.' },
+    'gu.empty':           { ca:'Cap persona amb aquest filtre.', es:'Ninguna persona con este filtro.', en:'Nobody matches this filter.' },
+
     // ── Configuració, the one-page club settings (v254) ──
     'cfg.tab_club':       { ca:'Club', es:'Club', en:'Club' },
     'cfg.tab_cats':       { ca:'Categories', es:'Categorías', en:'Categories' },
@@ -2662,7 +2681,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 254;
+  const APP_VERSION = 255;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7065,6 +7084,13 @@
       // which squad it was drawn for, and hiding two thirds of it behind a
       // filter they did not set is how a library stops being one. Search
       // narrows it instead, across name, coach and category together.
+      /* ⚠ `users` is NOT here, and that was tried. The shared bar cannot be
+         this page's squad filter: renderCategoryBar() returns '' outright
+         when the club has one category, and catBarLettersHtml() returns ''
+         until a category is picked — so a single-category club got no team
+         filter at all, and a multi-category one got none until it narrowed.
+         Gestió d'usuaris draws its own flat squad chips instead, one per
+         {cat}-{letter}, which work the same whatever the club looks like. */
       var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions', 'staff-notifications']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + renderPushBanner() +
@@ -29339,44 +29365,215 @@
       '</div>';
   }
 
-  function renderAdminUsers() {
-    const users = getUsers();
-    const session = getSession();
-    // Roles are read-only here. The Player/Staff toggles that used to live in
-    // this column only ever rewrote the local roster blob — they never called
-    // setRole, so the badge changed and the person's real permissions did not.
-    // Roles come from the email lists now: staff in "Configura el teu club",
-    // players in the pre-registered list on Registrations.
-    /* The one list that is NEVER category-filtered, so it is the surface the
-       badge helps most. Staff and the lead carry no category and get none. */
-    const catSpan = catSpanOf(users);
-    let rows = users.map(u => {
-      const roleLabels = {
-        player: t('common.player'), staff: t('common.staff'), lead: t('auth.role_lead'),
-      };
-      const rolesDisplay = (u.roles || []).length
-        ? (u.roles || []).map(r => `<span class="badge badge-green">${roleLabels[r] || r}</span>`).join(' ')
-        : '<span class="badge badge-yellow">' + t('reg.status_none') + '</span>';
+  /* ── Gestió d'usuaris ────────────────────────────────────────────────
+     Who is on the club's platform and what they may do. Deliberately NOT
+     Registracions, which is the squad sheet: dorsal, position, agent and
+     the pending-request queue live there and the dorsal here is read-only.
 
-      return `<tr>
-        <td>${sanitize(u.name)}${catBadgeHtmlGlobal(u, catSpan)}${u.isAdmin ? ' <span class="badge badge-red">admin</span>' : ''}</td>
-        <td>${sanitize(u.email)}</td>
-        <td>${rolesDisplay}</td>
-        <td class="user-actions">
-          ${u.id !== session.id && !u.isAdmin ? `<button class="btn btn-small btn-danger btn-delete-user" data-uid="${u.id}">${t('btn.delete')}</button>` : ''}
-        </td>
-      </tr>`;
+     ⚠ Roles move through the ROSTER EMAIL LISTS, never through this blob.
+     The Player/Staff toggles that used to live in this column rewrote
+     `roles` in the local `fa_users` blob and never called setRole, so the
+     badge changed and the person's real permissions did not. Worse, the lie
+     did not self-heal: js/db.js's reconcile only ever ADDS members it has
+     not seen and never refreshes one already in the blob. The row therefore
+     READS the lists (`regStaffOf`) rather than predicting what the server
+     will derive, which is also why it is correct the instant regSetRole
+     returns. The grave marker is in bindDynamicActions. */
+
+  /** Which role chip is active: all | player | staff | nosquad. */
+  var _guFilter = 'all';
+  /** The search box's text, kept across re-renders. */
+  var _guQuery = '';
+  /** The squad chip: a `{cat}-{letter}` key, or '' for every squad. */
+  var _guSquad = '';
+
+  /** `{glyph, fill, size}` for a member's circle, or null for a player. */
+  function guRoleGlyph(u, isStaff, isLead) {
+    if (isLead) return { glyph: '★', fill: 'var(--pp-red)', size: '13px' };
+    if (!isStaff) return null;
+    if (u.staffRole === 'fitness') return { dumbbell: true, fill: 'var(--pp-ink-2)' };
+    if (u.staffRole === 'delegate') {
+      // Emoji ignore `color`; the filter forces any glyph to solid white.
+      return { glyph: '📁', fill: 'var(--pp-neutral)', size: '11px', invert: true };
+    }
+    return { glyph: '★', fill: 'var(--pp-ink)', size: '13px' };
+  }
+
+  /** The 22px circle: position abbreviation for a player, role glyph for staff. */
+  function guCircleHtml(u, isStaff, isLead) {
+    var g = guRoleGlyph(u, isStaff, isLead);
+    if (!g) {
+      var pos = String(u.position || '').split(',')[0].trim();
+      var fill = POS_COLORS[pos] || 'var(--pp-ink-4)';
+      return '<span class="gu-circle" style="background:' + fill + ';font-size:9px">' +
+        sanitize(pos || '·') + '</span>';
+    }
+    if (g.dumbbell) {
+      /* Drawn, not a glyph: there is no dumbbell character the fallback
+         stack can be relied on for. Two bars and a crossbar. */
+      return '<span class="gu-circle" style="background:' + g.fill + '">' +
+        '<span class="gu-db"><i></i><b></b><i></i></span></span>';
+    }
+    /* ⚠ The invert goes on the GLYPH, never on the circle. `filter` applies
+       to the whole element including its background, so putting it on the
+       circle turned the grey fill white too and the delegate's row showed an
+       empty white disc. Emoji ignore `color`, which is why the folder needs
+       forcing to white at all. */
+    var inner = g.invert
+      ? '<span class="gu-inv">' + g.glyph + '</span>'
+      : g.glyph;
+    return '<span class="gu-circle" style="background:' + g.fill + ';font-size:' +
+      g.size + '">' + inner + '</span>';
+  }
+
+  /** The squad label for a member, or '' when they have none. */
+  function guSquadLabel(u) {
+    if (!u.category || !u.team) return '';
+    return (CATEGORY_LABELS[u.category] || u.category) + ' ' + u.team;
+  }
+
+  /** Every `{cat}-{letter}` this club has, as `[value, label]`. */
+  function guSquadOptions() {
+    var out = [];
+    CATEGORY_ORDER.forEach(function (cat) {
+      var c = (_clubConfig && _clubConfig.categories && _clubConfig.categories[cat]) || null;
+      if (!c || !c.enabled) return;
+      (c.letters && c.letters.length ? c.letters : ['A']).forEach(function (l) {
+        out.push([cat + '-' + l, (CATEGORY_LABELS[cat] || cat) + ' ' + l]);
+      });
+    });
+    return out;
+  }
+
+  function renderAdminUsers() {
+    const session = getSession();
+    const users = getUsers();
+    const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    const leadEmail = normalizeEmail((_clubConfig && _clubConfig.leadEmail) || '');
+    /* Computed ONCE per render, never per row — test/cat-badge.test.js
+       asserts exactly that. Over the whole club, not the filtered view: the
+       badge answers "which squad is this person in", and hiding it because
+       the current filter happens to show one category would be wrong. */
+    const catSpan = catSpanOf(users);
+
+    const q = _guQuery.trim().toLowerCase();
+
+    const decorated = users.map(function (u) {
+      const isLead = !!u.isTeamLead ||
+        (!!leadEmail && normalizeEmail(u.email) === leadEmail);
+      return { u: u, isLead: isLead, isStaff: !isLead && regStaffOf(rosters, u) };
+    });
+
+    const shown = decorated.filter(function (d) {
+      const u = d.u;
+      if (_guFilter === 'nosquad') { if (u.category && u.team) return false; }
+      else {
+        /* ⚠ The squad chip NARROWS; it never hides someone who has no squad
+           at all. Staff and the club lead frequently have none, and this is
+           the page that has to reach them — a filter that dropped them would
+           hide exactly the people a lead opens it for. */
+        if (_guSquad && u.category && u.team &&
+            (u.category + '-' + u.team) !== _guSquad) return false;
+        if (_guFilter === 'player' && (d.isStaff || d.isLead)) return false;
+        if (_guFilter === 'staff' && !d.isStaff && !d.isLead) return false;
+      }
+      if (!q) return true;
+      return (u.name || '').toLowerCase().indexOf(q) >= 0 ||
+        (u.email || '').toLowerCase().indexOf(q) >= 0;
+    });
+
+    const nStaff = decorated.filter(function (d) { return d.isStaff || d.isLead; }).length;
+    const nNoSquad = decorated.filter(function (d) {
+      return !d.u.category || !d.u.team;
+    }).length;
+
+    const squadOpts = guSquadOptions();
+    const filters = [['all', t('gu.f_all')], ['player', t('gu.f_players')],
+      ['staff', t('gu.f_staff')], ['nosquad', t('gu.f_nosquad')]];
+
+    const rows = shown.map(function (d) {
+      const u = d.u;
+      const squad = guSquadLabel(u);
+      const canErase = String(u.id) !== String(session.id) && !u.isAdmin && !d.isLead;
+      const roleCell = d.isLead
+        /* Read-only: firestore.rules lets only the superadmin write
+           clubs/{id}.leadEmail, so a dropdown here would silently fail for
+           the very person most likely to try it. Changed in Configuració. */
+        ? '<span class="gu-lead-badge">' + t('auth.role_lead') + '</span>'
+        : '<select class="gu-role" data-gu-role="' + sanitize(String(u.id)) + '">' +
+            '<option value="player"' + (d.isStaff ? '' : ' selected') + '>' + t('common.player') + '</option>' +
+            '<option value="staff"' + (d.isStaff ? ' selected' : '') + '>' + t('common.staff') + '</option>' +
+          '</select>' +
+          (d.isStaff ? '<span class="gu-subrole">' + t('staffrole.' + (u.staffRole || 'coach')) + '</span>' : '');
+
+      return '<div class="gu-row' + (squad ? '' : ' gu-row-nosquad') + '">' +
+        guCircleHtml(u, d.isStaff, d.isLead) +
+        '<span class="gu-name">' + sanitize(u.name || '') +
+          catBadgeHtmlGlobal(u, catSpan) + '</span>' +
+        '<span class="gu-email">' + sanitize(u.email || '') + '</span>' +
+        '<span class="gu-role-cell">' + roleCell + '</span>' +
+        '<span class="gu-squad-cell">' +
+          '<select class="gu-squad" data-gu-squad="' + sanitize(String(u.id)) + '">' +
+            '<option value=""' + (squad ? '' : ' selected') + '>' + t('gu.no_squad') + '</option>' +
+            squadOpts.map(function (o) {
+              const sel = (u.category + '-' + u.team) === o[0] ? ' selected' : '';
+              return '<option value="' + o[0] + '"' + sel + '>' + o[1] + '</option>';
+            }).join('') +
+          '</select></span>' +
+        '<span class="gu-dorsal">' + (u.playerNumber ? sanitize(String(u.playerNumber)) : '—') + '</span>' +
+        '<span class="gu-actions">' +
+          (squad ? '<button class="gu-link btn-remove-squad" data-uid="' + sanitize(String(u.id)) + '">' +
+            t('btn.leave_squad') + '</button>' : '') +
+          (canErase ? '<button class="gu-link gu-danger btn-delete-user" data-uid="' +
+            sanitize(String(u.id)) + '">' + t('gu.erase') + '</button>' : '') +
+        '</span></div>';
     }).join('');
-    return `
-      <h2 class="page-title">${t('page.manage_users')}</h2>
-      <div class="card">
-        <div class="card-title">${t('users.all_users')}</div>
-        <p style="color:var(--text-secondary);font-size:.85rem;margin-bottom:1rem;">${t('users.delete_desc')}</p>
-        <div class="table-wrap"><table>
-          <thead><tr><th>${t('users.th_name')}</th><th>${t('users.th_email')}</th><th>${t('users.th_roles')}</th><th>${t('users.th_actions')}</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>`;
+
+    return '<div class="gu-page">' +
+      '<div class="gu-hero"><div class="gu-hero-l">' +
+        '<h1 class="gu-h1">' + t('page.manage_users') + '</h1>' +
+        '<div class="gu-sub">' + t('gu.sub')
+          .replace('{n}', decorated.length).replace('{staff}', nStaff) + '</div></div>' +
+        '<div class="gu-figs">' +
+          '<div class="gu-fig"><span class="gu-fig-l">' + t('gu.f_members') + '</span>' +
+            '<span class="gu-fig-v">' + decorated.length + '</span></div>' +
+          '<div class="gu-fig"><span class="gu-fig-l">' + t('gu.f_staff') + '</span>' +
+            '<span class="gu-fig-v">' + nStaff + '</span></div>' +
+          '<div class="gu-fig"><span class="gu-fig-l">' + t('gu.f_nosquad') + '</span>' +
+            '<span class="gu-fig-v' + (nNoSquad ? ' gu-bad' : '') + '">' + nNoSquad + '</span></div>' +
+        '</div></div>' +
+      '<div class="gu-note">' + t('gu.note') + '</div>' +
+      '<div class="gu-body">' +
+        /* The squad filter, one flat chip per {cat}-{letter}. Its own control
+           rather than the shared category bar — see the note on
+           CATEGORY_PAGES for why that bar cannot serve this page. */
+        (squadOpts.length > 1 ? '<div class="gu-squads">' +
+          '<button class="gu-chip' + (_guSquad ? '' : ' gu-chip-on') +
+            '" data-gu-squad-filter="">' + t('gu.f_all') + '</button>' +
+          squadOpts.map(function (o) {
+            return '<button class="gu-chip' + (_guSquad === o[0] ? ' gu-chip-on' : '') +
+              '" data-gu-squad-filter="' + o[0] + '">' + o[1] + '</button>';
+          }).join('') + '</div>' : '') +
+        '<div class="gu-tools">' +
+          '<input type="text" id="gu-search" class="reg-input gu-search" placeholder="' +
+            t('gu.search_ph') + '" value="' + sanitize(_guQuery) + '">' +
+          '<div class="gu-chips">' + filters.map(function (f) {
+            return '<button class="gu-chip' + (_guFilter === f[0] ? ' gu-chip-on' : '') +
+              '" data-gu-filter="' + f[0] + '">' + f[1] + '</button>';
+          }).join('') + '</div>' +
+        '</div>' +
+        '<div class="gu-head">' +
+          '<span class="gu-h-circle"></span>' +
+          '<span class="gu-h-name">' + t('users.th_name') + '</span>' +
+          '<span class="gu-h-email">' + t('users.th_email') + '</span>' +
+          '<span class="gu-h-role">' + t('users.th_roles') + '</span>' +
+          '<span class="gu-h-squad">' + t('gu.th_squad') + '</span>' +
+          '<span class="gu-h-dorsal">' + t('gu.th_dorsal') + '</span>' +
+          '<span class="gu-h-actions">' + t('users.th_actions') + '</span>' +
+        '</div>' +
+        (rows || '<p class="gu-empty">' + t('gu.empty') + '</p>') +
+        '<p class="gu-foot">' + t('gu.foot') + '</p>' +
+      '</div></div>';
   }
 
   /**
@@ -30172,6 +30369,179 @@
    * be overwritten the next time anybody touched a roster. Lead-only,
    * because firestore.rules refuses `staffEmails` from anyone else.
    */
+  /**
+   * Take a member out of their squad, keeping everything else.
+   *
+   * NOT a delete: club membership, availability, RPE, injuries and stats are
+   * all untouched, so adding the same address back restores the lot. The
+   * previous squad is remembered so the unassigned list can offer to put
+   * them back — `onRosterWritten` records the same thing server-side.
+   *
+   * ⚠ RESTORED IN v254. The v237 Registracions redesign (90812ff) deleted
+   * this definition and left its one call site behind, so "Treu de l'equip"
+   * threw a ReferenceError for nine days. It was invisible because the throw
+   * lands inside the handler's try/catch, which reports it as
+   * `save.error_perms` — a permissions problem — while the roster write on
+   * the line above had already succeeded. Half-done, and blamed on the wrong
+   * thing. The guard for the class is in test/suite-registry.test.js.
+   */
+  async function detachMemberByEmail(email) {
+    const target = normalizeEmail(email);
+    if (!target) return;
+    const users = getUsers();
+    const u = users.find(x => normalizeEmail(x.email) === target);
+    if (!u || (!u.category && !u.team)) return;
+    const patch = {
+      category: '', team: '',
+      prevCategory: u.category || '', prevTeam: u.team || ''
+    };
+    u.prevCategory = patch.prevCategory;
+    u.prevTeam = patch.prevTeam;
+    u.category = '';
+    u.team = '';
+    saveUsers(users);
+    /* A numeric id is a legacy local-only member with no users/{uid} doc.
+       Writing `category` here is also what fires onMemberCategoryChanged,
+       which reshards their rows out of the category they just left. */
+    if (typeof u.id === 'string' && isNaN(Number(u.id))) {
+      try {
+        await db.collection('users').doc(u.id).set(patch, { merge: true });
+      } catch (err) {
+        console.error('detach failed:', err);
+        _showPushToast(t('save.sync_title'), t('save.error_perms'));
+      }
+    }
+  }
+
+  /**
+   * Put a member into a squad by adding their address to that team's list.
+   *
+   * The roster list is the gate that actually decides membership;
+   * `users/{uid}.{category,team}` is the assignment, and writing `category`
+   * is what fires `onMemberCategoryChanged` → `reshardMember`.
+   *
+   * ⚠ RESTORED IN v254 — the third function 90812ff deleted. Unlike the other
+   * two it took its only caller with it, so it left no dangling reference and
+   * `test/suite-registry.test.js`'s scan could not see it. It is back because
+   * `regSetRole` deliberately REFUSES to place someone who is on no list (it
+   * will not invent a roster entry), so without this there is no way to give
+   * an unassigned member a squad.
+   *
+   * ⚠ Two changes from the deleted original:
+   *
+   *  1. It adds to `staffEmails` for a staff member, not always
+   *     `playerEmails`. The original assumed player, which would have
+   *     demoted a coach to a player on being given a squad.
+   *  2. It no longer mirrors `roles` into the `fa_users` blob. The original
+   *     did, arguing that reconcile never refreshes an existing member so the
+   *     row would keep stale roles — true, but `regSetRole` settled this the
+   *     other way and its reasoning supersedes: a row should READ the lists
+   *     (`regStaffOf`) rather than predict what the server will derive. One
+   *     guess written locally is not self-healing and propagates as fact.
+   */
+  async function assignMemberToTeam(uid, category, letter) {
+    const session = getSession();
+    if (!session || !session.teamId || !category || !letter) return;
+    const users = getUsers();
+    const u = users.find(x => String(x.id) === String(uid));
+    if (!u) return;
+    const email = normalizeEmail(u.email);
+    const key = category + '-' + letter;
+    const rosters = (_clubConfig && _clubConfig.rosters) ? _clubConfig.rosters : {};
+    // Which list they belong on, read from where they already are.
+    const field = regStaffOf(rosters, u) ? 'staffEmails' : 'playerEmails';
+    const prevKey = (u.category || '') + '-' + (u.team || '');
+    if (prevKey === key) return;
+    try {
+      if (email) {
+        /* ⚠ OFF THE OLD LIST FIRST. A move is two writes, and the original
+           only did the second — so moving a player from Amateur A to B left
+           them on A's list, where the roster IS the membership gate. They
+           would have kept A's permissions and reappeared there on the next
+           server re-derive. */
+        if (u.category && u.team && rosters[prevKey]) {
+          for (const f of ['playerEmails', 'staffEmails']) {
+            const cur = rosters[prevKey][f] || [];
+            const kept = cur.filter(e => normalizeEmail(e) !== email);
+            if (kept.length !== cur.length) {
+              await saveRoster(session.teamId, prevKey, f, kept);
+              rosters[prevKey][f] = kept;
+            }
+          }
+        }
+        const list = ((rosters[key] || {})[field]) || [];
+        if (!list.some(e => normalizeEmail(e) === email)) {
+          const next = list.concat([email]);
+          await saveRoster(session.teamId, key, field, next);
+          if (!_clubConfig.rosters) _clubConfig.rosters = {};
+          if (!_clubConfig.rosters[key]) {
+            _clubConfig.rosters[key] = { staffEmails: [], playerEmails: [] };
+          }
+          _clubConfig.rosters[key][field] = next;
+        }
+      }
+      // A numeric id is a legacy local-only member with no users/{uid} doc.
+      if (typeof uid === 'string' && isNaN(Number(uid))) {
+        await db.collection('users').doc(uid).set(
+          { category: category, team: letter }, { merge: true });
+      }
+      u.category = category;
+      u.team = letter;
+      saveUsers(users);
+      renderPage(getSession());
+    } catch (err) {
+      console.error('assign failed:', err);
+      _showPushToast(t('save.sync_title'),
+        err && err.code === 'permission-denied' ? t('save.error_perms') : t('save.error'));
+    }
+  }
+
+  /**
+   * Take a member out of their squad, with the confirmation.
+   *
+   * The same two steps as Registracions' "Treu de l'equip", in the same
+   * order and for the same reason: off the roster list FIRST, because the
+   * list is the gate that decides membership, then clear the assignment.
+   * NOT a delete — the account, availability, RPE, injuries and stats all
+   * stay, so adding the address back restores everything.
+   */
+  function guRemoveFromSquad(uid) {
+    const user = getUsers().find(u => String(u.id) === String(uid));
+    if (!user) return;
+    showModal(
+      t('confirm.leave_squad_title'),
+      t('confirm.leave_squad_msg').replace('{name}', user.name || ''),
+      async () => {
+        const session = getSession();
+        const email = normalizeEmail(user.email);
+        const key = (user.category || '') + '-' + (user.team || '');
+        try {
+          if (session && session.teamId && email && user.category && user.team) {
+            const roster = (_clubConfig && _clubConfig.rosters &&
+              _clubConfig.rosters[key]) || { staffEmails: [], playerEmails: [] };
+            // Both lists: a coach is on staffEmails, a player on playerEmails,
+            // and the caller does not have to know which.
+            for (const f of ['playerEmails', 'staffEmails']) {
+              const cur = roster[f] || [];
+              const kept = cur.filter(e => normalizeEmail(e) !== email);
+              if (kept.length !== cur.length) {
+                await saveRoster(session.teamId, key, f, kept);
+                roster[f] = kept;
+              }
+            }
+            if (_clubConfig && _clubConfig.rosters) _clubConfig.rosters[key] = roster;
+          }
+          await detachMemberByEmail(email || user.email);
+          renderPage(getSession());
+        } catch (err) {
+          console.error('leave squad failed:', err);
+          _showPushToast(t('save.sync_title'), t('save.error_perms'));
+        }
+      },
+      { confirmLabel: t('btn.leave_squad'), danger: false }
+    );
+  }
+
   async function regSetRole(uid, want) {
     var session = getSession();
     if (!session || !session.teamId) return;
@@ -30613,6 +30983,33 @@
 
     result.sort(function(a, b) { return b.pct - a.pct; });
     return { players: result, totalTrainings: pastTrainings.length };
+  }
+
+  /**
+   * The club's archived seasons, newest first.
+   *
+   * ⚠ RESTORED IN v254, deleted by the same commit as detachMemberByEmail
+   * (90812ff) with its call site left behind. This one is the worse of the
+   * two: it is called from renderArchivedSeasons() directly, not from inside
+   * a handler, and renderPage() puts no try/catch around the renderer — so
+   * opening Temporades arxivades threw a ReferenceError mid-render and the
+   * page simply never appeared. Exactly the v250 shape. It stayed contained
+   * only because `currentPage` is not persisted, so a reload could not land
+   * back on it and stall the boot behind the splash.
+   */
+  async function loadArchivedSeasons(teamId) {
+    try {
+      var snap = await db.collection('teams').doc(teamId).collection('seasons').get();
+      var seasons = [];
+      snap.forEach(function (d) {
+        seasons.push({
+          id: d.id, label: d.data().label || d.id,
+          archivedAt: d.data().archivedAt, archivedBy: d.data().archivedBy
+        });
+      });
+      seasons.sort(function (a, b) { return b.label.localeCompare(a.label); });
+      return seasons;
+    } catch (e) { console.error('loadArchivedSeasons error:', e); return []; }
   }
 
   // Render archived seasons list page
@@ -37678,6 +38075,58 @@
       btn.addEventListener('click', () => {
         showDeleteMemberModal(btn.dataset.uid);
       });
+    });
+
+    /* ── Gestió d'usuaris ──────────────────────────────────────────────
+       The category and squad chips above this page are NOT bound here —
+       they are part of the category bar, which renderPage() builds outside
+       the page root, and their binders already live further up this
+       function. Only what renderAdminUsers() itself emitted is wired here. */
+    $$('[data-gu-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _guFilter = btn.dataset.guFilter;
+        renderPage(getSession());
+      });
+    });
+    $$('[data-gu-squad-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _guSquad = btn.dataset.guSquadFilter;
+        /* Picking a squad while "Sense equip" is showing would produce an
+           empty list every time: that chip means "no squad at all". */
+        if (_guSquad && _guFilter === 'nosquad') _guFilter = 'all';
+        renderPage(getSession());
+      });
+    });
+    const guSearch = $('#gu-search');
+    if (guSearch) {
+      /* Re-render on input, and put the caret back. The value lives in a
+         module var precisely so a re-render does not empty the box. */
+      guSearch.addEventListener('input', () => {
+        _guQuery = guSearch.value;
+        const at = guSearch.selectionStart;
+        renderPage(getSession());
+        const again = $('#gu-search');
+        if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) {} }
+      });
+    }
+    /* ⚠ Role goes through regSetRole — the roster email lists — and NEVER
+       writes `roles` into fa_users. See the note above renderAdminUsers. */
+    $$('[data-gu-role]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        regSetRole(sel.dataset.guRole, sel.value);
+      });
+    });
+    $$('[data-gu-squad]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const uid = sel.dataset.guSquad;
+        const val = sel.value;
+        if (!val) { guRemoveFromSquad(uid); return; }
+        const cut = val.lastIndexOf('-');
+        assignMemberToTeam(uid, val.slice(0, cut), val.slice(cut + 1));
+      });
+    });
+    $$('.btn-remove-squad').forEach(btn => {
+      btn.addEventListener('click', () => guRemoveFromSquad(btn.dataset.uid));
     });
 
     /* Configuració. The page emits the setup containers empty; this fills

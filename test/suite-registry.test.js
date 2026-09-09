@@ -231,3 +231,139 @@ describe('every stub names something the app actually has', () => {
     assert.ok(!GLOBALS.has(PROBE), 'the probe name was allowlisted');
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AND THE OTHER DIRECTION: THE APP MAY ONLY CALL WHAT EXISTS
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ TWO LIVE BUGS THIS FOUND (v254). Commit 90812ff — the v237 Registracions
+   redesign — deleted `detachMemberByEmail` and `loadArchivedSeasons` and left
+   BOTH of their call sites behind. They were broken for nine days:
+
+     · "Treu de l'equip" threw inside the handler's try/catch, which reports
+       it as `save.error_perms` — so it blamed permissions while the roster
+       write on the line above had already gone through. Half-done, and
+       misattributed.
+     · `loadArchivedSeasons` is worse: it is called from renderArchivedSeasons()
+       directly, and renderPage() puts no try/catch around a renderer, so
+       Temporades arxivades threw mid-render and the page never appeared.
+       Exactly the v250 shape, contained only because `currentPage` is not
+       persisted and a reload could not land back on it.
+
+   ⚠ THE GUARD ABOVE CANNOT CATCH THIS, and that is not an oversight in it.
+   `declaredIn()` counts `name(` as a declaration — deliberately generous,
+   because a false accusation there would push someone into deleting a stub
+   that stands in for something real. That generosity makes a call
+   indistinguishable from a definition, so the scan below is the strict twin:
+   it strips strings as well as comments (an i18n value with a `(` in it reads
+   as a call otherwise) and counts ONLY real declaration and parameter forms.
+
+   It runs at zero candidates. If it ever reports one, the answer is almost
+   never to widen the allowlist.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('the app only calls functions that exist', () => {
+  const ROOT = path.join(__dirname, '..');
+  const NAME = /^[A-Za-z_$][\w$]*$/;
+
+  /* ⚠ STRINGS GO TOO, not just comments. The i18n table is full of Catalan
+     that happens to contain a bracket — `correus (correos` and the like — and
+     without this they read as calls to undeclared functions. That noise is
+     what made the first draft of this scan unusable at 76 candidates. */
+  function strip(s) {
+    return s
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, ' ')
+        .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+        .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
+        .replace(/`(?:[^`\\]|\\.)*`/g, '``');
+  }
+
+  const read = (f) => {
+    try { return strip(fs.readFileSync(path.join(ROOT, 'js', f), 'utf8')); }
+    catch (e) { return ''; }
+  };
+  const app = read('app.js');
+  /* Every script index.html loads before app.js, plus board3d which reaches
+     the browser through the getBoard3d callable. */
+  const libs = ['utils.js', 'db.js', 'shard.js', 'push.js', 'boards.js',
+    'board-geom.js', 'board-state.js', 'board3d.js', 'firebase-config.js']
+      .map(read).join('\n');
+
+  function declared() {
+    const names = new Set();
+    [
+      /(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g,
+      /(?:var|let|const)\s+([A-Za-z_$][\w$]*)/g,
+      /,\s*([A-Za-z_$][\w$]*)\s*=/g,
+      /([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function|\()/g,
+      /([A-Za-z_$][\w$]*)\s*:\s*(?:async\s+)?function/g,
+      /(?:^|[^\w$)])([A-Za-z_$][\w$]*)\s*=>/g,
+    ].forEach((re) => [app, libs].forEach((src) => {
+      let m; re.lastIndex = 0;
+      while ((m = re.exec(src))) names.add(m[1]);
+    }));
+    // Parameter lists: a callback named `onPick` is declared by being a
+    // parameter, and nothing else in the file will ever declare it.
+    [/function[^(]*\(([^)]*)\)/g, /\(([^()]*)\)\s*=>/g].forEach((re) =>
+      [app, libs].forEach((src) => {
+        let m; re.lastIndex = 0;
+        while ((m = re.exec(src))) {
+          String(m[1]).split(',').forEach((p) => {
+            const n = p.trim().replace(/[=:].*$/, '').replace(/[{}[\].]/g, '').trim();
+            if (NAME.test(n)) names.add(n);
+          });
+        }
+      }));
+    return names;
+  }
+
+  const KEYWORDS = new Set(('if for while switch catch return typeof function new await do ' +
+    'else delete void in of case throw yield super this var let const async import export ' +
+    'instanceof').split(' '));
+  /* Browser globals node does not have. Anything added here must be a real
+     platform API — this list is not the place to silence a missing function. */
+  const BROWSER = new Set(('requestAnimationFrame cancelAnimationFrame FileReader Image alert ' +
+    'confirm prompt MutationObserver IntersectionObserver ResizeObserver fetch setTimeout ' +
+    'setInterval clearTimeout clearInterval Blob FormData URL Notification WebSocket atob btoa ' +
+    'structuredClone queueMicrotask getComputedStyle matchMedia scrollTo print CustomEvent ' +
+    'Event MouseEvent XMLHttpRequest AbortController Audio DOMParser').split(' '));
+  /* CSS functions written inside style strings that survive stripping — they
+     appear in template literals whose `${}` holes keep them out of the blanks. */
+  const CSSFN = new Set(('rgba rgb hsl hsla calc rotate translate translateX translateY ' +
+    'translateZ scale scaleX scaleY url matrix skew perspective blur brightness invert ' +
+    'cubic-bezier steps clamp minmax repeat polygon inset circle ellipse counter attr ' +
+    'env').split(' '));
+
+  it('calls nothing it has not declared', () => {
+    const decl = declared();
+    const called = new Set();
+    const re = /(?:^|[^\w$.])([A-Za-z_$][\w$]*)\s*\(/g;
+    let m;
+    while ((m = re.exec(app))) called.add(m[1]);
+    const missing = [...called].filter((n) =>
+      !decl.has(n) && !KEYWORDS.has(n) && !BROWSER.has(n) &&
+      !CSSFN.has(n) && !(n in globalThis));
+    assert.deepStrictEqual(missing, [],
+        'js/app.js calls these, and nothing declares them — a ReferenceError ' +
+        'wherever the line runs: ' + missing.join(', '));
+  });
+
+  it('would have caught the two v254 deletions', () => {
+    // The probe: pretend both definitions were renamed away, exactly as
+    // 90812ff left them, and confirm the scan names them.
+    const broken = app
+        .replace('async function detachMemberByEmail', 'async function detachRenamedAway')
+        .replace('async function loadArchivedSeasons', 'async function loadRenamedAway');
+    assert.notStrictEqual(broken, app, 'neither definition is where this probe expects');
+    const decl = new Set();
+    [/(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g].forEach((re) => {
+      let m; re.lastIndex = 0;
+      while ((m = re.exec(broken))) decl.add(m[1]);
+    });
+    assert.ok(!decl.has('detachMemberByEmail') && !decl.has('loadArchivedSeasons'),
+        'the probe did not actually remove the declarations');
+    assert.ok(/[^\w$.]detachMemberByEmail\s*\(/.test(broken),
+        'the call site this guard exists for is gone');
+    assert.ok(/[^\w$.]loadArchivedSeasons\s*\(/.test(broken),
+        'the call site this guard exists for is gone');
+  });
+});

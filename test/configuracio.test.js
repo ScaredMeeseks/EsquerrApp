@@ -568,11 +568,18 @@ describe('Configuració — the reuse that makes it safe', () => {
 
 describe('Configuració — the stylesheet', () => {
   const BANNER = 'CONFIGURACIÓ, redesigned (v254)';
+  /* ⚠ BOUNDED AT BOTH ENDS since v255, when `.gu-` was appended after this
+     block. An unbounded slice reads the next page's rules as this one's and
+     every scan below then fails on a selector Configuració never had — the
+     shape that has broken five suites in turn now. If a page is appended
+     after `.gu-`, bound THAT block the same way before you add it. */
+  const END = 'GESTIÓ D\'USUARIS, redesigned (v255)';
   const start = css.indexOf(BANNER);
-  /* Last in the file, so this slice runs to the end. If a page is appended
-     after this one, bound this slice by ITS banner first — an unbounded
-     slice has broken four suites in turn. */
-  const block = css.slice(start).replace(/\/\*[\s\S]*?\*\//g, '');
+  const stop = css.indexOf(END, start);
+  assert.ok(start !== -1, 'the cfg- block banner is gone from css/style.css');
+  assert.ok(stop !== -1,
+      'the gu- block banner that bounds the cfg- slice is gone from css/style.css');
+  const block = css.slice(start, stop).replace(/\/\*[\s\S]*?\*\//g, '');
 
   it('has its own block, at the end of the file', () => {
     assert.ok(start !== -1, 'the cfg- banner is gone from css/style.css');

@@ -142,6 +142,13 @@ exclude:
   # header of the script.
   # Regenerate with: node scripts/build-configuracio-preview.js . configuracio-preview.html
   - configuracio-preview.html
+  # And for the v255 Gestió d'usuaris redesign. Off Pages for the sharpest
+  # reason on this list: it is a MEMBER DIRECTORY — thirteen names against
+  # thirteen email addresses, plus who holds which role in the club. Invented,
+  # but that is exactly the shape of a contact list, and a page of it at a
+  # public URL is worth nobody's second glance to work out.
+  # Regenerate with: node scripts/build-gestio-usuaris-preview.js . gestio-usuaris-preview.html
+  - gestio-usuaris-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:
