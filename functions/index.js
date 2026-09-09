@@ -3048,8 +3048,26 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
     }
   }
 
+  /* The raw text the lead pasted for the club's ground, kept so the box can
+     show it back instead of the pair it parsed to. Presentational ONLY —
+     nothing reads it but that input, and `homeCoords` above stays the single
+     source for the weather sync. Validated all the same: it is a string the
+     client supplies and this document is read by every member of the club.
+     '' clears it, matching the empty-box-clears rule on the coordinates. */
+  if (data.homeLink !== undefined && data.homeLink !== null) {
+    if (typeof data.homeLink !== "string") {
+      throw new HttpsError("invalid-argument", "homeLink no vàlid.");
+    }
+    if (data.homeLink.length > 500) {
+      throw new HttpsError("invalid-argument", "homeLink massa llarg.");
+    }
+  }
+
   const payload = {categories};
   if (data.fcfLinks !== undefined) payload.fcfLinks = data.fcfLinks;
+  if (data.homeLink !== undefined && data.homeLink !== null) {
+    payload.homeLink = data.homeLink.trim();
+  }
   if (data.schedules !== undefined) payload.schedules = data.schedules;
   if (data.reminders !== undefined) {
     payload.reminders = {

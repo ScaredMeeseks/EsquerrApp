@@ -10789,3 +10789,241 @@ moment the table reached for them — the v238 lesson working, and the right out
 stubs: one is a security guard and the other answers a question about its input.
 
 No rules or functions change; push only.
+
+### 2026-09-09 — Configuració becomes one page (v254)
+
+Round 1 of the three admin-tab redesigns in
+`Baixades\EsquerrApp Configuracio UI\design_handoff_admin_tabs`. Gestió d'usuaris and
+Pissarres are rounds 2 and 3 and are **not** touched here.
+
+**The shape it had.** `renderAdminSettings()` was four `.card` blocks whose first button
+opened a SEPARATE full-screen wizard, `#view-team-setup` — and that wizard was where every
+real control lived. Two screens for one job, and the tenth paper page still in old chrome.
+
+**The shape it has.** One `.cfg-` page: filter bar, hero with the quota figure, a seven-tab
+strip (Club · Categories · Horaris i avisos · Equipacions · Llistes · Temporades ·
+**Clubs · superadmin**), a 340px rail carrying the club's state and what is still unset, and
+one save bar. `#view-team-setup` survives as the **forced-onboarding shell only**.
+
+**The reuse is the whole design.** `_tsSectionsHtml(variant)` builds the section shells once
+and both screens mount it, so every `_refreshTeamSetup*()`, every `_collect*FromDom()`,
+`_bindTeamSetupEvents()` and `_handleSaveTeamSetup()` drive the new page **unchanged**. No
+second set of collectors was written. The section markup left `index.html` for the same
+reason — two copies of every id is two things to keep in step.
+
+⚠ **That reuse created the hazard this round is really about.** A hidden view is still in the
+document, so both screens' ids can exist at once and `document.getElementById('ts-rem-push')`
+returns whichever comes first in source order — the onboarding card. `_collectRemindersFromDom`
+feeds `setClubCategories`, which pushes to every player in the club, so reading the hidden
+screen would hand the server stale values and silently revert the lead's edit. Every lookup
+in the region now goes through **`_tsEl` / `_tsAll`**, scoped to `_tsRootEl` — set by whichever
+screen mounted — and `showTeamSetup()` clears `#dashboard-content` first so the ids stay
+unique. The two mount-point lookups (`#ts-card`, `#dashboard-content`) are deliberately still
+document-wide; they are outside the root being scoped to.
+
+⚠ **Every panel renders; only one is VISIBLE.** `_handleSaveTeamSetup` collects from the DOM
+and an absent section reads as **empty**, not as "leave alone" — so rendering one tab at a
+time would let a save from Equipacions wipe every squad's schedule. Visibility is a class on
+the root (`data-cfg-active`), and **switching tab never re-renders**: half the panels hold
+unsaved input.
+
+**The mockup was wrong about one thing, and the copy had to change.** It promised
+*"Desactivar una categoria no esborra res: les dades queden guardades i tornen si la
+reactives."* `rosterKeysOf()` skips a disabled category, so unticking one **is** a removal, and
+`setClubCategories` refuses removals precisely because a dropped letter orphans its matches,
+medical history and roster doc while `joinClub` goes on registering people onto it. The
+footnote now says the data goes and points at the confirmed delete flow.
+
+**Three more deviations, all because the server says so.** The club **name** and the
+**responsable** are rendered read-only for a lead — `firestore.rules` lets a lead write only
+`fcfLinks` and `schedules` on the club doc, so drawing them as inputs would be a control that
+silently fails. The **crest editor** is superadmin-only for the same reason. And the join
+**code is not shown to a lead at all**: `clubCodes` is `allow read, write: if isSuperUser()`,
+and it is the credential that gets a stranger into the club.
+
+**Clubs · superadmin.** `_loadClubList()` re-emitted as the paper table, plus `town` (new
+field, superadmin-write-only by the existing rule) and a **members count** — one `count()`
+aggregation per club, never a list query, each wrapped so one club's failure leaves the rest
+of the table intact. *Estat Activa/Suspesa* was **dropped rather than drawn**: nothing
+suspends a club, and the control would have been a lie. The *Pla* pill row was dropped too —
+there is no plan field, so `Bàsic` and `Complet` would be indistinguishable on reload; the two
+real levers (`features.board3d`, `maxTeams`) stay as themselves.
+
+**Dead code removed.** The voluntary "edit categories" entry was the only caller that passed
+`{cancellable:true}`, so `_tsCancellable`, `_leaveTeamSetup()` and `#btn-back-team-setup` are
+gone and `showTeamSetup()` takes no arguments. `quota.test.js` asserted "exactly one call site
+may pass cancellable"; it now asserts **none** may, plus that the three symbols stay deleted —
+the invariant got stricter, not weaker. Three i18n keys that had been dead since they were
+written (`settings.loading`, `settings.no_clubs`, `settings.error_loading`) are now used, and
+`ts.back` was deleted.
+
+**Four defects found by LOOKING, none of which a string assertion could see.**
+1. `.cfg-nav-list[hidden]` — `[hidden]{display:none}` is a **user-agent** rule and the author
+   `display:flex` beat it, so the phone section list sat permanently open and the toggle did
+   nothing. jsdom does not apply `[hidden]` at all, so a DOM test would have agreed it was
+   hidden. Found in a 390px screenshot.
+2. The over-quota club's team count stayed grey: `.cfg-cl-teams` is declared after `.cfg-bad`
+   at the same specificity. Both classes were on the element exactly as intended.
+3. The rail took 340px beside a ten-column table of *other* clubs and clipped the action
+   column off the edge — it now hides on that tab, where it answers nobody's question.
+4. `.reg-input` is content-sized, so the create-club boxes came out narrower than their own
+   placeholders.
+
+**Preview.** `scripts/build-configuracio-preview.js` → `configuracio-preview.html`, listed in
+`_config.yml` (by NAME — that list is how a preview shipped live once). ⚠ **It is the only
+builder that needs a DOM.** Configuració is the first paper page that is a *form*:
+`renderConfiguracio()` returns every section container EMPTY and `_tsMount()` fills them, so a
+string-only harness would render a page of empty panels and report success. It runs the real
+builders in jsdom (from `test/node_modules`), fakes just enough Firestore for the real
+`_loadClubList()` to build its table, and **reflects live input values back into attributes
+before serialising** — the kit editor sets `.value` as a property, so without that step the
+mockup showed every kit name blank and invited a fix for a bug that was not there.
+
+⚠ **THE FIRST CUT DRESSED THE FRAME AND LEFT THE CONTENTS.** Owner's words: "loads of
+formatting that you've left like the original". Correct. The bar, hero, tabs, rail and save
+bar were paper; everything *inside* them was still the team-setup builders' CHROME — iOS pill
+toggles, 50%-radius letter chips, grey rounded `.ts-sched-block` cards, rounded `.reg-input`
+boxes, `--primary` red, `--border` grey. Sharing the builders re-uses their STYLING too, and
+that half of the job was not done.
+
+The fix is a **re-dress block, scoped under `.cfg-page`**, at the end of the `.cfg-` region:
+square everything (`border-radius: 0`), 1px `--pp-rule` on `--pp-paper`, ink instead of
+primary, caption-style sub-heads, flat rows with `--pp-rule-2` dividers instead of cards. The
+pill toggle becomes a 22px checkbox with a DRAWN tick (a `✓` glyph sits differently in every
+font the fallback stack might reach). `appearance:none` on the selects needs an arrow drawn
+back, or a select reads as a text box that will not accept typing. The board's
+`.tb-color-pick` is squared here too — its `::-webkit-` and `::-moz-` pseudo-elements carry
+their own radius and have to be squared separately.
+
+⚠ **Scoping is the whole safety of that block.** These are borrowed class families: unscoped,
+the re-dress would repaint the tactics board's colour picker and the onboarding card. A test
+asserts no rule in the block starts at `.ts-`/`.tb-`/`.reg-`, and another that the block never
+reaches for `--primary`/`--border`/`--card`/`--bg`. The onboarding card KEEPS the chrome look
+on purpose — it is an auth card beside four others that share it.
+
+One markup change was unavoidable: the add-team control was a bare `+`, which reads fine as a
+circle among circles on the card and as nothing at all in a row of squares. It now carries a
+`.ts-letter-add-l` label, shown on the page and hidden on the card — one markup, two dressings.
+⚠ That broke `quota.test.js`'s `an enabled row offers exactly one "+"`, which counted the
+SUBSTRING `ts-letter-add` and so found two. It counts `class="ts-letter-add"` now; the old form
+would have missed a real second button just as easily.
+
+**Owner's third pass — and one real bug underneath it.** The identity strip above the hero is
+gone (it repeated the club name, the responsable and the season, all of which the page says
+below); the two "only the superadmin can change this" hints are gone (the read-only rendering
+already says it); the crest lost its frame and ground (a badge is usually a transparent PNG
+with its own outline, and a box read as a competing edge — the EMPTY state keeps a dashed hint
+or there is nothing to click); **Llistes → Staff** and its footnote removed; the category tick
+is centred by a translate rather than hand-tuned offsets, the quota counter's stray section gap
+is pulled in, the muted "+ Afegir equip" is `--pp-ink-2` so it reads as *unavailable because
+the quota is full* rather than as decoration, and "+ Equipació" gained air above it.
+
+**Camp del club takes a link.** `parseCoordsInput` already read Maps URLs (`@lat,lon`,
+`!3d!4d`, `?q=`), so this is a placeholder and a live hint under the box: the resolved
+coordinates in green, or grey "Enganxa un enllaç de Google Maps" when empty. ⚠ The case it
+exists for is the **short link**: `share.google/…` — what Google's share sheet hands you, and
+what the app's own default schedule link is — resolves server-side and carries no coordinates
+at all, so it was indistinguishable from a typo and only failed at save with an error nobody
+could act on. Empty is grey, not red: clearing the box deliberately clears the ground.
+
+⚠ **THE KIT MIXING THE OWNER REPORTED WAS REAL, and it was never a storage problem.** Kits live
+in `clubs/{clubId}.kits`, written by `setClubKits`, and **nowhere else — never in
+localStorage** — so nothing leaked at the device level. The vector was
+`_refreshTeamSetupKits`: it reads `typed = _collectKitsFromDom()` and prefers it over the
+stored kits, which is correct only while the DOM belongs to the SAME club. Until v254 that
+container was a static node in `index.html` that nothing ever emptied, so opening the setup
+screen after a club switch — creating a club as the superadmin re-points `_clubConfig` with no
+reload — found the previous club's kit blocks still sitting there, preferred them, and saved
+them onto the new club. Rebuilding the container on every mount already closes it; a
+`data-kit-club` stamp on the container now makes the guarantee explicit rather than
+incidental, and two tests pin both halves of the rule (a club switch discards typed values, a
+same-club re-render keeps them).
+
+**The shirt's sleeve-to-sleeve seam is removed** (`shirtWrap`, so every shirt in the app, not
+just this screen): at y=20 it ran the full width and read as a band across the chest, which is
+actively misleading on a hooped kit where a band is the thing being drawn. **The shorts keep
+theirs** — there that line is the waistband, and it is the only thing distinguishing them from
+a plain rectangle.
+
+**Fourth pass.** *Camp del club* loses its "(alternativa)", its section note and its explainer
+paragraph — it is no longer the fallback those described, because **the schedule links now
+default to it**: `_venueLinkDefault()` builds a `?q=lat,lon` Maps URL (a URL, not a bare pair —
+the box is a LINK and has to be tappable, and `parseCoordsInput` reads that form back) and
+every empty link box gets it. ⚠ Only rows read from the STORED config are defaulted, never
+rows read back from the DOM: this section re-renders on every category toggle, and defaulting
+a typed row would put the link straight back after the lead cleared it, making the box
+impossible to empty. Existing links are never overwritten — the mutant that overwrote the
+HOME-GAME one survived the first test, which only covered a training row; the two are built by
+different code a hundred lines apart.
+
+⚠ **`_buildTrainingRow`'s session parameter was named `t`, shadowing the i18n function for the
+whole body** — which is why both of its placeholders were hardcoded Catalan while every other
+string in the file goes through `t()`. Renamed to `sess`, which is what makes "Nom de
+l'ubicació" translatable at all.
+
+**The crest link was never styled, and overriding its colour could not fix it.** It carries
+`club-badge-edit` because that is what `changeClubBadge`'s handler binds to, and that class was
+written for the 28px `<img>` crest in the clubs table — so it was handing a text link
+`width:28px`, `height:28px`, `object-fit:contain`, a 4px radius and a hover outline. The rule
+now resets the box, not just the colour.
+
+⚠ **A raw i18n key reached the mockup for the second time** (`sched.place_ph`, after `day.*`):
+the preview parses the app's own string table with a prefix whitelist, and a new prefix is
+invisible to it. The builder now fails outright on ANY bare key in any rendered frame, rather
+than relying on a named list someone has to remember to extend. A new frame was added too —
+the superadmin's Club tab, the only place the crest editor renders, which is why that control
+went three rounds without being looked at.
+
+**Fifth pass — and the first change in this run that needs a FUNCTIONS DEPLOY.**
+
+⚠ **The save toast said the wrong thing.** It reused `quota.saved` — *"Límit d'equips
+actualitzat"* — which is one specific superadmin action, so editing a link and saving told the
+lead their team limit had changed. New `cfg.saved`.
+
+⚠ **"The link reverts to the coordinates" was real, and it was the data model, not the local
+server.** `clubs/{clubId}` stored `homeCoords: {lat, lon}` and **never the URL**, so a save
+repainted the box from the pair it had parsed — the field silently replaced what the lead typed
+with what the app understood. Fixed by storing the raw text as **`homeLink`**, shown in the box
+in preference to the pair, with the resolved coordinates staying in the green hint below.
+`homeCoords` is still the ONLY thing the weather sync reads; `homeLink` is presentational.
+
+⚠ **`setClubCategories` builds its payload field by field from a known set, so a client sending
+a field the server does not name is not rejected — it is silently DROPPED.** The frontend alone
+would therefore have changed nothing while appearing to save. **`.\deploy.ps1 functions` is
+required**, and the frontend is harmless before it (the field is ignored, not refused), so
+either order is safe — but the behaviour does not appear until functions ship. New
+`test/club-venue.test.js` (7, emulator) drives the real callable: the link stored beside the
+coordinates, coordinates coerced to numbers, both cleared together by an empty box, and
+`undefined` still meaning "section not on screen" rather than "clear it". Its length and type
+guards were mutation-checked against the emulator.
+
+⚠ **A test was checking an element that no longer existed.** `never renders a join code for a
+lead` read `.cfg-bar`; when that band was removed the assertion went on passing against
+nothing. It reads the whole page now. A gate on a credential has to be checked everywhere it
+could appear, not where it happened to appear once.
+
+**Tests.** 3377 → **3425**, plus the functions suite 71 → **78**. New
+`test/configuracio.test.js` (48), registered in `test:unit` and as `test:config`, and
+`test/club-venue.test.js` in `test:functions` and as `test:clubvenue`. It CALLS and MOUNTS the builder — the v238 lesson — and covers the
+save-wipe hazard tab by tab, the role gating, the read-only identity, the rail, and the
+onboarding card a brand-new club is forced into.
+⚠ **The strongest test is behavioural, and the source-text one it replaced was a false
+comfort**: mutating `_tsEl` back to `document.getElementById` **survived** the grep. The
+replacement mounts both screens in one document, sets different reminder hours in each, and
+asserts the collector reads the visible one.
+⚠ **The comment-matching trap fired twice more.** Two slices were bounded on `//` markers that
+`bare` (comment-stripped source) has removed, so they ran to EOF and failed on bugs that were
+not there; and my own app.js comment explaining that `_leaveTeamSetup` is gone read as a use of
+it. Both now bound on code, not prose.
+**Mutation-tested, 22 mutants, 0 survivors** (after sharpening the scoping test and widening
+the link-overwrite one to cover the home-game row).
+
+⚠ **`test/notificacions.test.js` gained an end bound in the same change.** `.nf-` was last in
+the stylesheet and its slice ran to EOF; `.cfg-` is appended after it, so without the bound the
+new block would be read as Notificacions' and trip its scans. **`.cfg-` is now the last block —
+bound it before appending an eleventh page.**
+
+⚠ **NOT push-only: `setClubCategories` gained the `homeLink` field, so this needs
+`.\deploy.ps1 functions` as well as the push to `main`.** The frontend is harmless before the
+functions ship — an unnamed field is dropped, not refused — but the club ground will keep
+showing the parsed pair until they do. No rules change.

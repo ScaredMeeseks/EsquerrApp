@@ -95,7 +95,6 @@
 
     // ── Team quota (commercial limit set by the superadmin) ──
     'quota.title':       { ca:"Límit d'equips assolit", es:'Límite de equipos alcanzado', en:'Team limit reached' },
-    'ts.back':           { ca:'Tornar sense desar', es:'Volver sin guardar', en:'Back without saving' },
     'ts.add_team':       { ca:'Afegir equip', es:'Añadir equipo', en:'Add team' },
     'quota.add_blocked': { ca:"Per afegir un equip extra contacta amb l'administrador o elimina un dels equips actuals. Eliminar un equip comportarà la pèrdua de les dades.",
                            es:'Para añadir un equipo extra contacta con el administrador o elimina uno de los equipos actuales. Eliminar un equipo conllevará la pérdida de los datos.',
@@ -1705,6 +1704,61 @@
     'settings.cat_no_club':  { ca:'No estàs vinculat a cap club. Contacta l\'administrador.', es:'No estás vinculado a ningún club. Contacta al administrador.', en:'You are not linked to any club. Contact the administrator.' },
     'settings.cat_edit_btn': { ca:'Editar categories', es:'Editar categorías', en:'Edit categories' },
     'settings.club_mgmt':   { ca:'Gestió de clubs', es:'Gestión de clubes', en:'Club Management' },
+    // ── Configuració, the one-page club settings (v254) ──
+    'cfg.tab_club':       { ca:'Club', es:'Club', en:'Club' },
+    'cfg.tab_cats':       { ca:'Categories', es:'Categorías', en:'Categories' },
+    'cfg.tab_horaris':    { ca:'Horaris i avisos', es:'Horarios y avisos', en:'Schedules & reminders' },
+    'cfg.tab_kits':       { ca:'Equipacions', es:'Equipaciones', en:'Kits' },
+    'cfg.tab_llistes':    { ca:'Staff', es:'Staff', en:'Staff' },
+    'cfg.tab_temporades': { ca:'Temporades', es:'Temporadas', en:'Seasons' },
+    'cfg.tab_clubs':      { ca:'Clubs · superadmin', es:'Clubes · superadmin', en:'Clubs · superadmin' },
+    'cfg.lead':           { ca:'Responsable', es:'Responsable', en:'Club lead' },
+    'cfg.hero_sub':       { ca:'{teams} equips · {kits} equipacions', es:'{teams} equipos · {kits} equipaciones', en:'{teams} teams · {kits} kits' },
+    'cfg.identity':       { ca:'Identitat del club', es:'Identidad del club', en:'Club identity' },
+    'cfg.identity_note':  { ca:'L\'escut surt a la portada, a la convocatòria i a la fitxa del partit', es:'El escudo sale en la portada, en la convocatoria y en la ficha del partido', en:'The crest appears on the home page, the squad sheet and the match page' },
+    'cfg.crest':          { ca:'Escut', es:'Escudo', en:'Crest' },
+    'cfg.crest_edit':     { ca:'Canvia l\'escut', es:'Cambia el escudo', en:'Change crest' },
+    'cfg.unset':          { ca:'sense definir', es:'sin definir', en:'not set' },
+    'cfg.cats_note':      { ca:'Una lletra és un equip', es:'Una letra es un equipo', en:'One letter is one team' },
+    /* The mockup promised that unticking a category kept its data. It does
+       not: rosterKeysOf() skips a disabled category, so unticking one is a
+       REMOVAL, and setClubCategories refuses removals precisely because a
+       dropped letter orphans its matches, medical history and roster doc
+       while joinClub goes on registering people onto it. The copy says so. */
+    'cfg.cats_foot':      { ca:'Treure un equip o desactivar una categoria esborra els seus partits, entrenaments i historial: es fa des del botó de l\'última lletra, amb confirmació.', es:'Quitar un equipo o desactivar una categoría borra sus partidos, entrenamientos e historial: se hace desde el botón de la última letra, con confirmación.', en:'Removing a team or disabling a category deletes its matches, trainings and history: do it from the last letter\'s button, with confirmation.' },
+    'cfg.fcf_title':      { ca:'Enllaços classificació FCF', es:'Enlaces clasificación FCF', en:'FCF league links' },
+    'cfg.fcf_note':       { ca:'Opcional · sense enllaç no surt la taula', es:'Opcional · sin enlace no sale la tabla', en:'Optional · no link, no standings table' },
+    'cfg.sched_note':     { ca:'Cada sessió té el seu dia, la seva hora i el seu lloc', es:'Cada sesión tiene su día, su hora y su lugar', en:'Every session carries its own day, time and place' },
+    'cfg.rem_note':       { ca:'Qui no diu res compta com a assistent', es:'Quien no dice nada cuenta como asistente', en:'Silence counts as attending' },
+    'cfg.staff_note':     { ca:'Entren amb el rol i la categoria ja posats', es:'Entran con el rol y la categoría ya puestos', en:'They join with their role and category already set' },
+    'cfg.kits_note':      { ca:'Fins a tres · els mateixos dissenys que surten a la convocatòria', es:'Hasta tres · los mismos diseños que salen en la convocatoria', en:'Up to three · the same designs used on the squad sheet' },
+    'cfg.seasons_note':   { ca:'Només lectura', es:'Solo lectura', en:'Read-only' },
+    'cfg.new_season_title':{ ca:'Arxiva la {season} i comença de zero', es:'Archiva la {season} y empieza de cero', en:'Archive {season} and start fresh' },
+    'cfg.superadmin':     { ca:'Superadmin', es:'Superadmin', en:'Superadmin' },
+    'cfg.clubs_title':    { ca:'Gestió de clubs', es:'Gestión de clubes', en:'Club management' },
+    'cfg.code':           { ca:'Codi', es:'Código', en:'Code' },
+    'cfg.town':           { ca:'Població', es:'Población', en:'Town' },
+    'cfg.teams':          { ca:'Equips', es:'Equipos', en:'Teams' },
+    'cfg.members':        { ca:'Membres', es:'Miembros', en:'Members' },
+    'cfg.since':          { ca:'des de', es:'desde', en:'since' },
+    'cfg.copy_code':      { ca:'Copiar codi', es:'Copiar código', en:'Copy code' },
+    'cfg.new_club_sub':   { ca:'Neix buit, amb el responsable i el codi de registre ja posats.', es:'Nace vacío, con el responsable y el código de registro ya puestos.', en:'It starts empty, with its lead and join code already set.' },
+    'cfg.create_club':    { ca:'Crea el club', es:'Crea el club', en:'Create the club' },
+    'cfg.create_club_hint':{ ca:'Cal el nom i el correu del responsable.', es:'Hacen falta el nombre y el correo del responsable.', en:'The name and the lead\'s address are required.' },
+    'cfg.club_created':   { ca:'Club creat! Codi:', es:'¡Club creado! Código:', en:'Club created. Code:' },
+    'cfg.rail_title':     { ca:'Estat del club', es:'Estado del club', en:'Club status' },
+    'cfg.rail_teams':     { ca:'Equips actius', es:'Equipos activos', en:'Active teams' },
+    'cfg.rail_cats':      { ca:'Categories', es:'Categorías', en:'Categories' },
+    'cfg.rail_staff':     { ca:'Correus del cos tècnic', es:'Correos del cuerpo técnico', en:'Staff addresses' },
+    'cfg.rail_reminders': { ca:'Avisos', es:'Avisos', en:'Reminders' },
+    'cfg.rail_kits':      { ca:'Equipacions', es:'Equipaciones', en:'Kits' },
+    'cfg.todo_title':     { ca:'Per acabar de muntar', es:'Para acabar de montar', en:'Still to set up' },
+    'cfg.todo_nosess':    { ca:'{teams}: cap sessió fixada, els entrenaments nous surten sense hora ni lloc.', es:'{teams}: ninguna sesión fijada, los entrenamientos nuevos salen sin hora ni lugar.', en:'{teams}: no session set, so new trainings come out with no time or place.' },
+    'cfg.todo_nofcf':     { ca:'{teams}: sense enllaç de classificació FCF.', es:'{teams}: sin enlace de clasificación FCF.', en:'{teams}: no FCF standings link.' },
+    'cfg.todo_none':      { ca:'Tot a punt.', es:'Todo a punto.', en:'All set.' },
+    'cfg.save':           { ca:'Desa els canvis', es:'Guarda los cambios', en:'Save changes' },
+    'cfg.save_note':      { ca:'Els permisos triguen uns segons a propagar-se', es:'Los permisos tardan unos segundos en propagarse', en:'Permissions take a few seconds to propagate' },
+    'cfg.saved':          { ca:'Configuració desada.', es:'Configuración guardada.', en:'Settings saved.' },
     'settings.loading':      { ca:'Carregant clubs…', es:'Cargando clubes…', en:'Loading clubs…' },
     'settings.no_clubs':     { ca:'Cap club creat encara.', es:'Ningún club creado todavía.', en:'No clubs created yet.' },
     'settings.error_loading':{ ca:'Error carregant clubs.', es:'Error cargando clubes.', en:'Error loading clubs.' },
@@ -1850,8 +1904,7 @@
     /* The home ground, for the weather forecast. Named "Camp del club" and
        not "Coordenades": a lead pastes a maps link here and never needs to
        know the box is really two numbers. */
-    'club.home_coords':      { ca:'Camp del club (alternativa)', es:'Campo del club (alternativa)', en:'Club ground (fallback)' },
-    'club.home_coords_hint': { ca:'Només cal si cap enllaç dels horaris no porta coordenades. Normalment la previsió ja surt dels enllaços de dalt.', es:'Solo hace falta si ningún enlace de los horarios lleva coordenadas. Normalmente la previsión ya sale de los enlaces de arriba.', en:'Only needed if none of the schedule links carries coordinates. Normally the forecast comes from those links.' },
+    'club.home_coords':      { ca:'Camp del club', es:'Campo del club', en:'Club ground' },
     /* On the schedule link boxes. The failure it prevents is silent: a short
        link opens the right place when tapped and simply never produces a
        forecast, so nothing on screen would otherwise say why. */
@@ -1860,6 +1913,13 @@
        to a place only Google can look up, so the message says what to do
        rather than only that something is wrong. */
     'club.home_coords_err':  { ca:'No s\'han pogut llegir les coordenades. Obre l\'enllaç a Google Maps i copia\'n les coordenades (per exemple 41.3874, 2.1686).', es:'No se han podido leer las coordenadas. Abre el enlace en Google Maps y copia sus coordenadas (por ejemplo 41.3874, 2.1686).', en:'Could not read those coordinates. Open the link in Google Maps and copy the coordinates from it (for example 41.3874, 2.1686).' },
+    'club.home_coords_ph':   { ca:'Enganxa un enllaç de Google Maps', es:'Pega un enlace de Google Maps', en:'Paste a Google Maps link' },
+    'sched.place_ph':        { ca:'Nom de l\'ubicació', es:'Nombre de la ubicación', en:'Place name' },
+    'club.home_coords_none': { ca:'Enganxa un enllaç de Google Maps', es:'Pega un enlace de Google Maps', en:'Paste a Google Maps link' },
+    /* ⚠ Names the SHORT link, because that is the case this message exists
+       for: `share.google/…` resolves server-side when tapped and carries no
+       coordinates, so it is indistinguishable from a typo unless we say so. */
+    'club.home_coords_short':{ ca:'Aquest enllaç no porta coordenades. Obre\'l a Google Maps i copia l\'adreça sencera de la barra del navegador.', es:'Este enlace no lleva coordenadas. Ábrelo en Google Maps y copia la dirección entera de la barra del navegador.', en:'That link carries no coordinates. Open it in Google Maps and copy the full address from the browser bar.' },
     'auth.staff_title':      { ca:'Staff per equip', es:'Staff por equipo', en:'Staff per Team' },
     'auth.staff_desc':       { ca:'Els correus que afegeixis aquí podran registrar-se com a staff d\'aquesta categoria.', es:'Los correos que añadas aquí podrán registrarse como staff de esta categoría.', en:'Addresses added here may register as staff for this category.' },
     'auth.staff_add':        { ca:'+ Staff', es:'+ Staff', en:'+ Staff' },
@@ -2602,7 +2662,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 253;
+  const APP_VERSION = 254;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -2969,7 +3029,14 @@
     return code;
   }
 
-  async function createClub(name, leadEmail, badgeFile) {
+  /**
+   * @param {Object} [opts] `{town, maxTeams}` from the Configuració form.
+   *   Both are superadmin-only fields — firestore.rules refuses `maxTeams`
+   *   from any client but the superuser, and this whole path is behind that
+   *   rule already. `town` is presentational; `maxTeams` is the commercial
+   *   allowance, so it is floored at 1 the way clubMaxTeams() reads it.
+   */
+  async function createClub(name, leadEmail, badgeFile, opts) {
     // Generate unique code (codes live in clubCodes/{CODE}, superuser-created)
     let code, exists = true;
     while (exists) {
@@ -3003,6 +3070,8 @@
         benjami:  { enabled: false, letters: ['A'] }
       },
       fcfLinks: {},
+      town: ((opts && opts.town) || '').trim().slice(0, 60),
+      maxTeams: Math.max(1, Math.floor(Number(opts && opts.maxTeams) || 1)),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     await clubRef.set(clubData);
@@ -4643,9 +4712,14 @@
       else cls += ' ts-letter-chip-fixed';
       return '<span class="' + cls + '" data-letter="' + l + '" data-cat="' + catKey + '">' + l + '</span>';
     }).join('');
-    // No "+" until the category is on — there is nothing to add a team to.
+    /* No "+" until the category is on — there is nothing to add a team to.
+       The label beside it is hidden on the onboarding card, where the control
+       is a circular "+" among circular chips and reads fine; on the
+       Configuració page it sits in a row of squares where a bare "+" is just
+       a mark. Same button, same handler, same data-cat. */
     return chips + (enabled ?
-      '<button class="ts-letter-add" data-cat="' + catKey + '" title="' + t('ts.add_team') + '">+</button>' : '');
+      '<button class="ts-letter-add" data-cat="' + catKey + '" title="' + t('ts.add_team') + '">+' +
+      '<span class="ts-letter-add-l">' + t('ts.add_team') + '</span></button>' : '');
   }
 
   /* Repaint one row's chips in place. Repainting the whole container would
@@ -4655,30 +4729,198 @@
     if (el) el.innerHTML = _letterChipsHtml(row.dataset.cat, letters, enabled);
   }
 
+  /* ── Where the setup sections are mounted ────────────────────────────
+     Since v254 the SAME sections render in two places: the onboarding card
+     (#view-team-setup) and the Configuració page inside #dashboard-content.
+     Only one is ever visible, but a hidden view is still in the document —
+     so a document-wide getElementById('ts-rem-push') would find whichever
+     comes first in source order and silently read, or write, the screen
+     nobody is looking at. `_collectRemindersFromDom` reading the wrong one
+     would push the club's reminder hours back to their old values on save.
+
+     Every lookup in this region therefore goes through _tsEl / _tsAll, which
+     scope to whichever root is currently mounted. The mounters set it:
+     showTeamSetup() to the onboarding card, the Configuració binder to the
+     page. `isConnected` is the guard that matters — a page re-render throws
+     the old node away, and a stale root would leave every section inert. */
+  var _tsRootEl = null;
+  function _tsSetRoot(el) { _tsRootEl = el || null; }
+  function _tsRoot() {
+    return (_tsRootEl && _tsRootEl.isConnected) ? _tsRootEl : document;
+  }
+  function _tsEl(id) { return _tsRoot().querySelector('#' + id); }
+  function _tsAll(sel) { return _tsRoot().querySelectorAll(sel); }
+
+  /* ── The setup sections, in ONE place ────────────────────────────────
+     These containers used to be static markup in index.html. They are built
+     here instead because two screens now mount them — the onboarding card
+     and the Configuració page — and a second copy in index.html would be a
+     second thing to keep in step with every refresher and collector above.
+
+     Only the SHELLS live here. Everything inside them is still filled by
+     _refreshTeamSetup*(), so the ids below are the contract those functions
+     read; renaming one here silently empties a section. */
+
+  function _tsSecHead(label, note) {
+    return '<div class="cfg-sec">' +
+      '<span class="cfg-sec-l">' + label + '</span>' +
+      (note ? '<span class="cfg-sec-n">' + note + '</span>' : '') +
+      '</div>';
+  }
+
+  /** The reminder-hours pair. Club-wide, so never hidden by a category. */
+  function _tsSecReminders() {
+    var row = function (id, labelKey, val) {
+      return '<div class="ts-rem-row">' +
+        '<label class="ts-rem-label" for="' + id + '">' + t(labelKey) + '</label>' +
+        '<input type="number" id="' + id + '" class="ts-rem-input" min="1" max="72" step="1" value="' + val + '">' +
+        '<span class="ts-rem-unit">' + t('rem.hours_before') + '</span>' +
+        '</div>';
+    };
+    return '<div id="team-setup-reminders">' +
+      row('ts-rem-push', 'rem.push_hours', 4) +
+      row('ts-rem-lock', 'rem.lock_hours', 3) +
+      '</div>';
+  }
+
   /**
-   * @param {Object} [opts] `{cancellable:true}` from the Settings entry only.
-   *   The two forced entries — over quota, and a lead with no enabled
-   *   category — must stay inescapable: escaping the first defeats the gate,
-   *   and behind the second there is no configured club to go back to.
-   *   Reset on EVERY call: deleteTeam re-enters through navigate(), and a
-   *   stale flag there would let an over-quota lead walk away.
+   * @param {'onboarding'|'page'} v Which screen is mounting them.
+   *   'onboarding' keeps the auth-card headings and the save/back buttons.
+   *   'page' wraps each section in a `.cfg-panel` the tab strip switches
+   *   between, and leaves the save bar to renderConfiguracio().
+   * @param {Object} [extra] 'page' only: panel id → extra HTML. `club` is
+   *   prepended to the venue section; `temporades` and `clubs` become panels
+   *   of their own. They live in renderConfiguracio() because none of them is
+   *   part of the one form this file's collectors read.
    */
-  function showTeamSetup(opts) {
-    _tsCancellable = !!(opts && opts.cancellable);
-    var backBtn = document.getElementById('btn-back-team-setup');
-    if (backBtn) backBtn.hidden = !_tsCancellable;
+  function _tsSectionsHtml(v, extra) {
+    var page = v === 'page';
+    var quota = '<div id="ts-quota-banner" class="ts-quota-banner" hidden></div>' +
+      '<div id="ts-quota-counter" class="ts-quota-counter"></div>';
+    var cats = '<div id="team-setup-categories"></div>';
+    var fcf = '<div id="team-setup-fcf" hidden>' +
+      (page ? _tsSecHead(t('cfg.fcf_title'), t('cfg.fcf_note'))
+            : '<h3 class="ts-h3">' + t('auth.fcf_title') + ' <span class="ts-h3-sub">' + t('auth.fcf_optional') + '</span></h3>') +
+      '<div id="team-setup-fcf-inputs"></div></div>';
+    var sched = '<div id="team-setup-schedules" hidden>' +
+      (page ? _tsSecHead(t('auth.schedules_title'), t('cfg.sched_note'))
+            : '<h3 class="ts-h3">' + t('auth.schedules_title') + '</h3>') +
+      '<div id="team-setup-schedule-inputs"></div></div>';
+    var rem = (page ? _tsSecHead(t('rem.title'), t('cfg.rem_note'))
+                    : '<h3 class="ts-h3">' + t('rem.title') + '</h3><p class="ts-p">' + t('rem.desc') + '</p>') +
+      _tsSecReminders();
+    /* The LAST RESORT for the forecast, not the main path — a home session
+       normally takes its coordinates from the schedule links above. This box
+       exists only for a club whose every link is a short one (share.google),
+       which carries no coordinates to read. */
+    /* No note and no explainer paragraph. This is no longer the fallback it
+       was described as: the schedule links now default to it, so it is the
+       club's ground, said once. */
+    var venue = '<div id="team-setup-venue">' +
+      (page ? _tsSecHead(t('club.home_coords'), '')
+            : '<h3 class="ts-h3">' + t('club.home_coords') + '</h3>') +
+      '<input type="text" id="ts-home-coords" class="reg-input" placeholder="' +
+        t('club.home_coords_ph') + '">' +
+      /* Filled by _refreshTeamSetupVenue: what the box currently resolves to,
+         or why it resolves to nothing. Without it a pasted short link looks
+         accepted and only fails on save, with an error nobody can act on. */
+      '<span class="ts-coords-hint" id="ts-coords-hint"></span></div>';
+    var staff = '<div id="team-setup-staff" hidden>' +
+      (page ? _tsSecHead(t('auth.staff_title'), t('cfg.staff_note'))
+            : '<h3 class="ts-h3">' + t('auth.staff_title') + '</h3>') +
+      '<p class="ts-p">' + t('auth.staff_desc') + '</p>' +
+      '<p class="ts-p">' + t('staffrole.hint') + '</p>' +
+      '<div id="team-setup-staff-inputs"></div></div>';
+    var kits = '<div id="team-setup-kits">' +
+      (page ? _tsSecHead(t('kits.title'), t('cfg.kits_note'))
+            : '<h3 class="ts-h3">' + t('kits.title') + '</h3>') +
+      '<p class="ts-p">' + t('kits.desc') + '</p>' +
+      '<div id="team-setup-kits-inputs"></div>' +
+      '<button type="button" class="btn btn-outline btn-small" id="btn-add-kit">' + t('kits.add') + '</button></div>';
+    var err = '<div id="team-setup-error" class="error-msg" hidden></div>';
+
+    if (page) {
+      /* EVERY panel is rendered; the tab strip only changes which is
+         VISIBLE. _handleSaveTeamSetup collects from the DOM, and an absent
+         section reads as empty rather than as "leave alone" — so rendering
+         only the active tab would let a save from Equipacions wipe the
+         schedules. Hidden with a CLASS, not the `hidden` attribute alone:
+         jsdom does not apply [hidden], so a test asserting what the lead can
+         see would pass over a panel that is really on screen. */
+      var x = extra || {};
+      var panel = function (id, inner) {
+        return '<section class="cfg-panel" data-cfg-panel="' + id + '">' + inner + '</section>';
+      };
+      return panel('club', (x.club || '') + venue) +
+        panel('cats', _tsSecHead(t('cfg.tab_cats'), t('cfg.cats_note')) + quota + cats +
+                '<p class="cfg-foot">' + t('cfg.cats_foot') + '</p>') +
+        panel('horaris', sched + rem + fcf) +
+        panel('kits', kits) +
+        panel('llistes', staff) +
+        (x.temporades ? panel('temporades', x.temporades) : '') +
+        (x.clubs ? panel('clubs', x.clubs) : '') +
+        err;
+    }
+    return '<div class="auth-header">' +
+      '<div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img" id="ts-club-badge"></div>' +
+      '<h1>' + t('auth.setup_title') + '</h1>' +
+      '<p class="subtitle">' + t('auth.setup_subtitle') + '</p></div>' +
+      quota + cats + fcf + sched + rem + venue + staff + kits + err +
+      /* No back button. Since v254 this card has ONE entry — the forced one
+         from navigate() — because the voluntary "edit categories" route is
+         now the Configuració page. Both remaining entries must stay
+         inescapable: escaping the over-quota gate defeats it, and behind the
+         no-category gate there is no configured club to go back to. */
+      '<button class="btn btn-primary btn-full" id="btn-save-team-setup" style="margin-top:1.2rem;">' +
+        t('auth.save_continue') + '</button>';
+  }
+
+  /**
+   * The onboarding card. FORCED ENTRY ONLY, and it takes no options.
+   *
+   * Both callers are gates in navigate(): a lead with no enabled category,
+   * and a club over its team allowance. Neither may be escapable — escaping
+   * the first defeats the gate, and behind the second there is no configured
+   * club to go back to. Until v254 a third, voluntary entry passed
+   * `{cancellable:true}` and showed a back button; that route is now the
+   * Configuració page, which edits the same sections in place, so the option
+   * and the button are gone rather than left as a way to walk out of a gate.
+   */
+  function showTeamSetup() {
+    /* The Configuració page mounts the same ids. Clear it before mounting
+       here, so the document never holds two of each — otherwise the ids are
+       duplicated (invalid, and a trap for anything that ever reaches for
+       getElementById) even though _tsEl itself would cope. */
+    var dashContent = document.getElementById('dashboard-content');
+    if (dashContent) dashContent.innerHTML = '';
+    var card = document.getElementById('ts-card');
+    if (card) card.innerHTML = _tsSectionsHtml('onboarding');
+    _tsSetRoot(card);
     showView('#view-team-setup');
     /* The crest of the club being configured. Unlike the four other auth
        cards, this screen only ever runs after loadClubConfig(), so showing
        the app logo here was showing the wrong club's badge. The fallback is
        not decorative — a club created without a PNG has no badgeUrl. */
-    var tsBadge = document.getElementById('ts-club-badge');
+    var tsBadge = _tsEl('ts-club-badge');
     if (tsBadge) {
       tsBadge.src = (_clubConfig && _clubConfig.badgeUrl) ? _clubConfig.badgeUrl : 'img/logo.png';
       tsBadge.alt = (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Logo';
     }
+    _tsMount(card);
+  }
+
+  /**
+   * Fill and bind the setup sections inside `root`.
+   *
+   * Both screens end here: the onboarding card and the Configuració page.
+   * Everything below reads the DOM through _tsEl/_tsAll, so this is also
+   * what decides WHICH copy of the sections the collectors will later see —
+   * mount without setting the root and a save reads the other screen.
+   */
+  function _tsMount(root) {
+    _tsSetRoot(root);
     var cats = (_clubConfig && _clubConfig.categories) ? _clubConfig.categories : {};
-    var container = document.getElementById('team-setup-categories');
+    var container = _tsEl('team-setup-categories');
     if (!container) return;
     var html = '';
     CATEGORY_ORDER.forEach(function (key) {
@@ -4717,7 +4959,7 @@
     _refreshTeamSetupQuota();
     _bindTeamSetupEvents(container);
 
-    var addKit = document.getElementById('btn-add-kit');
+    var addKit = _tsEl('btn-add-kit');
     if (addKit && !addKit._bound) {
       addKit._bound = true;
       addKit.addEventListener('click', function () {
@@ -4755,7 +4997,7 @@
 
   function _collectKitsFromDom() {
     var out = [];
-    document.querySelectorAll('#team-setup-kits-inputs .ts-kit-block')
+    _tsAll('#team-setup-kits-inputs .ts-kit-block')
         .forEach(function (b) {
           var label = b.querySelector('[data-kit-label]');
           var shorts = b.querySelector('[data-kit-shorts]');
@@ -4891,9 +5133,27 @@
 
   /** Full re-render. Structural changes only — see the note above. */
   function _refreshTeamSetupKits(kits) {
-    var inputsEl = document.getElementById('team-setup-kits-inputs');
+    var inputsEl = _tsEl('team-setup-kits-inputs');
     if (!inputsEl) return;
-    var typed = _collectKitsFromDom();
+    /* ⚠ TYPED VALUES BELONG TO A CLUB, AND THIS IS WHERE TWO CLUBS' KITS GOT
+       MIXED. `typed` is read out of the DOM, and "typed wins" is right only
+       while the DOM is the SAME club's. Until v254 this container was a
+       static node in index.html that nothing ever emptied, so opening the
+       setup screen after a club switch — creating a club as the superadmin
+       re-points `_clubConfig` with no reload — found the previous club's kit
+       blocks still sitting there, preferred them over the stored ones, and
+       saved them onto the new club. Reported as Sant Andreu's kits appearing
+       on Esquerra.
+
+       Both screens rebuild the container now, so `typed` is empty at first
+       paint either way; this stamp is the guard that does not depend on that
+       staying true. The kits themselves were never the problem — they live
+       in `clubs/{clubId}.kits` and nowhere else, never in localStorage. */
+    var club = (_clubConfig && _clubConfig.id) || '';
+    var stale = inputsEl.dataset.kitClub !== undefined &&
+                inputsEl.dataset.kitClub !== club;
+    inputsEl.dataset.kitClub = club;
+    var typed = stale ? [] : _collectKitsFromDom();
     /* Typed wins WHOLESALE, not field by field: a kit is one atomic row, and
        a half-merged one — typed name, stored colours — is worse than either.
        Nothing is typed on the first render, so stored wins there. */
@@ -4905,15 +5165,15 @@
     /* style.display, NOT the `hidden` attribute: .btn sets an explicit
        `display`, which wins over [hidden]'s display:none, so the button
        stayed visible at three kits and did nothing when tapped. */
-    var add = document.getElementById('btn-add-kit');
+    var add = _tsEl('btn-add-kit');
     if (add) add.style.display = list.length >= 3 ? 'none' : '';
   }
 
   function _refreshTeamSetupStaff() {
-    var section = document.getElementById('team-setup-staff');
-    var inputsEl = document.getElementById('team-setup-staff-inputs');
+    var section = _tsEl('team-setup-staff');
+    var inputsEl = _tsEl('team-setup-staff-inputs');
     if (!section || !inputsEl) return;
-    var container = document.getElementById('team-setup-categories');
+    var container = _tsEl('team-setup-categories');
     if (!container) return;
     var rows = container.querySelectorAll('.ts-cat-row.active');
     if (!rows.length) { section.hidden = true; return; }
@@ -4984,7 +5244,7 @@
    */
   function _collectStaffEmailsFromDom() {
     var out = {};
-    document.querySelectorAll('#team-setup-staff-inputs .ts-staff-list').forEach(function (list) {
+    _tsAll('#team-setup-staff-inputs .ts-staff-list').forEach(function (list) {
       var emails = [];
       var roles = {};
       list.querySelectorAll('.ts-sched-row').forEach(function (row) {
@@ -5005,7 +5265,7 @@
   /** What is typed into the FCF inputs right now, keyed {cat}-{letter}. */
   function _collectFcfFromDom() {
     var out = {};
-    document.querySelectorAll('#team-setup-fcf-inputs input[data-fcf-key]')
+    _tsAll('#team-setup-fcf-inputs input[data-fcf-key]')
       .forEach(function (inp) { out[inp.dataset.fcfKey] = inp.value; });
     return out;
   }
@@ -5014,10 +5274,10 @@
      always done it. Without this a chip click or a category toggle re-rendered
      straight from _clubConfig and silently threw away a half-typed link. */
   function _refreshTeamSetupFcf() {
-    var fcfSection = document.getElementById('team-setup-fcf');
-    var fcfInputs = document.getElementById('team-setup-fcf-inputs');
+    var fcfSection = _tsEl('team-setup-fcf');
+    var fcfInputs = _tsEl('team-setup-fcf-inputs');
     if (!fcfSection || !fcfInputs) return;
-    var container = document.getElementById('team-setup-categories');
+    var container = _tsEl('team-setup-categories');
     if (!container) return;
     var rows = container.querySelectorAll('.ts-cat-row.active');
     if (!rows.length) { fcfSection.hidden = true; return; }
@@ -5060,7 +5320,7 @@
    */
   function _collectSchedulesFromDom() {
     var schedules = {};
-    document.querySelectorAll('#team-setup-schedule-inputs .ts-sched-block').forEach(function (block) {
+    _tsAll('#team-setup-schedule-inputs .ts-sched-block').forEach(function (block) {
       var schedKey = block.dataset.schedKey;
       var training = [];
       var list = block.querySelector('.ts-training-list');
@@ -5101,8 +5361,8 @@
      Unlike every other section here this one is club-wide, so it does not
      depend on which categories are ticked and is never hidden. */
   function _refreshTeamSetupReminders() {
-    var pushEl = document.getElementById('ts-rem-push');
-    var lockEl = document.getElementById('ts-rem-lock');
+    var pushEl = _tsEl('ts-rem-push');
+    var lockEl = _tsEl('ts-rem-lock');
     if (!pushEl || !lockEl) return;
     var r = clubReminders();
     pushEl.value = String(r.pushHours);
@@ -5186,11 +5446,54 @@
   }
 
   function _refreshTeamSetupVenue() {
-    var el = document.getElementById('ts-home-coords');
+    var el = _tsEl('ts-home-coords');
     if (!el) return;
+    /* The LINK the lead pasted, if the club has one — not the coordinates it
+       resolved to. Until v254 only the parsed pair was stored, so saving a
+       Google Maps URL and coming back showed `41.3874, 2.1686`: the box had
+       silently replaced what was typed with what was understood. The pair is
+       still the fallback, for every club configured before `homeLink`
+       existed and for anyone who types a bare pair on purpose. */
     var c = (_clubConfig && _clubConfig.homeCoords) || null;
-    el.value = (c && isFinite(Number(c.lat)) && isFinite(Number(c.lon)))
+    var pair = (c && isFinite(Number(c.lat)) && isFinite(Number(c.lon)))
       ? Number(c.lat) + ', ' + Number(c.lon) : '';
+    el.value = (_clubConfig && _clubConfig.homeLink) || pair;
+    _paintCoordsHint(el);
+    /* Bound per node, and the node is rebuilt on every mount — so this is
+       once per screen, not once per keystroke's worth of listeners. */
+    if (!el._coordsBound) {
+      el._coordsBound = true;
+      el.addEventListener('input', function () { _paintCoordsHint(el); });
+    }
+  }
+
+  /**
+   * Say what the box resolves to, under the box.
+   *
+   * ⚠ The case this exists for is the SHORT link. `share.google/…` — which is
+   * what Google's own share sheet hands you, and what the app's own default
+   * schedule link is — carries no coordinates at all: it resolves server-side
+   * when tapped. `parseCoordsInput` can only read a full URL, so a pasted
+   * short link is indistinguishable from a typo unless the screen says so.
+   * Empty is not an error: it clears the coordinates on purpose.
+   */
+  function _paintCoordsHint(el) {
+    var hint = _tsEl('ts-coords-hint');
+    if (!hint) return;
+    var raw = el.value.trim();
+    if (!raw) {
+      hint.textContent = t('club.home_coords_none');
+      hint.className = 'ts-coords-hint';
+      return;
+    }
+    var c = parseCoordsInput(raw);
+    if (c) {
+      hint.textContent = Number(c.lat).toFixed(4) + ', ' + Number(c.lon).toFixed(4);
+      hint.className = 'ts-coords-hint ts-coords-ok';
+    } else {
+      hint.textContent = t('club.home_coords_short');
+      hint.className = 'ts-coords-hint ts-coords-bad';
+    }
   }
 
   /**
@@ -5202,7 +5505,7 @@
    * control that could mean it.
    */
   function _collectVenueFromDom() {
-    var el = document.getElementById('ts-home-coords');
+    var el = _tsEl('ts-home-coords');
     if (!el) return undefined;                  // section not on the page
     var raw = el.value.trim();
     if (!raw) return {};
@@ -5210,10 +5513,23 @@
     return c || { error: t('club.home_coords_err') };
   }
 
+  /**
+   * The box's raw text, saved ALONGSIDE the parsed coordinates.
+   *
+   * Deliberately not folded into _collectVenueFromDom's return: the callable
+   * rejects any key inside `homeCoords` that is not `lat` or `lon`, so the
+   * link travels as its own field. '' clears it, the same way an empty box
+   * clears the coordinates.
+   */
+  function _venueRawFromDom() {
+    var el = _tsEl('ts-home-coords');
+    return el ? el.value.trim().slice(0, 500) : '';
+  }
+
   /** null when the pair is unusable — the caller shows the reason. */
   function _collectRemindersFromDom() {
-    var pushEl = document.getElementById('ts-rem-push');
-    var lockEl = document.getElementById('ts-rem-lock');
+    var pushEl = _tsEl('ts-rem-push');
+    var lockEl = _tsEl('ts-rem-lock');
     if (!pushEl || !lockEl) return undefined;   // section not on the page
     var push = Number(pushEl.value);
     var lock = Number(lockEl.value);
@@ -5226,10 +5542,10 @@
   }
 
   function _refreshTeamSetupSchedules() {
-    var section = document.getElementById('team-setup-schedules');
-    var inputsEl = document.getElementById('team-setup-schedule-inputs');
+    var section = _tsEl('team-setup-schedules');
+    var inputsEl = _tsEl('team-setup-schedule-inputs');
     if (!section || !inputsEl) return;
-    var container = document.getElementById('team-setup-categories');
+    var container = _tsEl('team-setup-categories');
     if (!container) return;
     var rows = container.querySelectorAll('.ts-cat-row.active');
     if (!rows.length) { section.hidden = true; return; }
@@ -5248,9 +5564,15 @@
       row.querySelectorAll('.ts-letter-chip').forEach(function (chip) {
         var letter = chip.dataset.letter;
         var schedKey = catKey + '-' + letter;
+        /* Whether this squad's row came from the DOM. It decides whether an
+           empty link gets the club's ground defaulted into it: only rows read
+           from STORED config are defaulted, so a link the lead has just
+           cleared is not put straight back by the next re-render. */
+        var fromTyped = !!typedSchedules[schedKey];
         var sched = typedSchedules[schedKey] || existingSchedules[schedKey] || {};
         var trainings = sched.training || [{ day: '', time: '', location: '' }];
         var homeGame = sched.homeGame || { day: 'sat', time: '', location: '' };
+        var homeLink = homeGame.link || (fromTyped ? '' : _venueLinkDefault());
 
         html += '<div class="ts-sched-block" data-sched-key="' + schedKey + '">';
         html += '<div class="ts-sched-title">' + CATEGORY_LABELS[catKey] + ' ' + letter + '</div>';
@@ -5258,8 +5580,8 @@
         // Training sessions
         html += '<div class="ts-sched-sub">Entrenaments</div>';
         html += '<div class="ts-training-list" data-sched-key="' + schedKey + '">';
-        trainings.forEach(function (t, idx) {
-          html += _buildTrainingRow(schedKey, idx, t, dayOptions);
+        trainings.forEach(function (sess, idx) {
+          html += _buildTrainingRow(schedKey, idx, sess, dayOptions, fromTyped);
         });
         html += '</div>';
         html += '<button class="btn btn-outline btn-small ts-add-training" data-sched-key="' + schedKey + '" style="margin:.4rem 0 .8rem;">+ Entrenament</button>';
@@ -5269,9 +5591,9 @@
         html += '<div class="ts-sched-row">';
         html += '<select data-home-day="' + schedKey + '">' + _selectedDayOptions(dayOptions, homeGame.day) + '</select>';
         html += '<select class="ts-time" data-home-time="' + schedKey + '">' + buildTimeOptions(homeGame.time || '') + '</select>';
-        html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="Ubicació">';
-        html += '<input type="text" data-home-link="' + schedKey + '"' + _linkCoordAttrs(homeGame.link) +
-          ' value="' + sanitize(homeGame.link || '') + '" placeholder="Link">';
+        html += '<input type="text" data-home-location="' + schedKey + '" value="' + sanitize(homeGame.location || '') + '" placeholder="' + t('sched.place_ph') + '">';
+        html += '<input type="text" data-home-link="' + schedKey + '"' + _linkCoordAttrs(homeLink) +
+          ' value="' + sanitize(homeLink) + '" placeholder="Link">';
         html += '</div>';
 
         html += '</div>';
@@ -5292,15 +5614,40 @@
      a --:-- empty option -- already used by the staff calendar, both New
      Training fields and the call-up time. A select makes a bad time
      unrepresentable rather than merely discouraged. */
-  function _buildTrainingRow(schedKey, idx, t, dayOptions) {
+  /**
+   * A Maps link for the club's own ground, or ''.
+   *
+   * The schedule rows default their link to this, so a club that has set its
+   * ground once does not retype it per squad per session. Built as a
+   * `?q=lat,lon` URL rather than a bare pair because the box is a LINK: it
+   * has to be tappable, and `parseCoordsInput` reads that form back.
+   */
+  function _venueLinkDefault() {
+    var c = (_clubConfig && _clubConfig.homeCoords) || null;
+    if (!c || !isFinite(Number(c.lat)) || !isFinite(Number(c.lon))) return '';
+    return 'https://www.google.com/maps?q=' + Number(c.lat) + ',' + Number(c.lon);
+  }
+
+  /**
+   * @param {boolean} typed Whether this row came from the DOM rather than
+   *   from the stored config. A link is only defaulted when it did NOT —
+   *   otherwise clearing the box and toggling a category would put the
+   *   default straight back, and the field could never be emptied.
+   */
+  /* ⚠ The session parameter is `sess`, not `t`. It was `t`, which SHADOWED
+     the i18n function for the whole body — which is why both placeholders
+     here were hardcoded Catalan while every other string in the file goes
+     through t(). Renaming it is what makes them translatable. */
+  function _buildTrainingRow(schedKey, idx, sess, dayOptions, typed) {
+    var link = sess.link || (typed ? '' : _venueLinkDefault());
     return '<div class="ts-sched-row" data-train-idx="' + idx + '">' +
-      '<select data-train-day="' + schedKey + '-' + idx + '">' + _selectedDayOptions(dayOptions, t.day) + '</select>' +
-      '<select class="ts-time" data-train-time="' + schedKey + '-' + idx + '">' + buildTimeOptions(t.time || '') + '</select>' +
+      '<select data-train-day="' + schedKey + '-' + idx + '">' + _selectedDayOptions(dayOptions, sess.day) + '</select>' +
+      '<select class="ts-time" data-train-time="' + schedKey + '-' + idx + '">' + buildTimeOptions(sess.time || '') + '</select>' +
       '<span class="ts-sched-dash">-</span>' +
-      '<select class="ts-time" data-train-end="' + schedKey + '-' + idx + '">' + buildTimeOptions(t.endTime || '') + '</select>' +
-      '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(t.location || '') + '" placeholder="Ubicació">' +
-      '<input type="text" data-train-link="' + schedKey + '-' + idx + '"' + _linkCoordAttrs(t.link) +
-        ' value="' + sanitize(t.link || '') + '" placeholder="Link">' +
+      '<select class="ts-time" data-train-end="' + schedKey + '-' + idx + '">' + buildTimeOptions(sess.endTime || '') + '</select>' +
+      '<input type="text" data-train-location="' + schedKey + '-' + idx + '" value="' + sanitize(sess.location || '') + '" placeholder="' + t('sched.place_ph') + '">' +
+      '<input type="text" data-train-link="' + schedKey + '-' + idx + '"' + _linkCoordAttrs(link) +
+        ' value="' + sanitize(link) + '" placeholder="Link">' +
       '<button class="btn btn-small ts-remove-training" data-sched-key="' + schedKey + '" data-train-idx="' + idx + '" title="Eliminar" style="padding:.2rem .5rem;min-width:0;color:#e53935;flex-shrink:0;">✕</button>' +
       '</div>';
   }
@@ -5337,11 +5684,11 @@
      Muted, deliberately NOT disabled: a disabled button fires no click, so
      the modal explaining WHY would never appear. */
   function _refreshTeamSetupQuota() {
-    var container = document.getElementById('team-setup-categories');
+    var container = _tsEl('team-setup-categories');
     if (!container) return;
     var used = _domTeamCount(container);
     var max = clubMaxTeams();
-    var banner = document.getElementById('ts-quota-banner');
+    var banner = _tsEl('ts-quota-banner');
     if (banner) {
       // Uses the SAVED count, not the DOM one: the lead is over quota
       // because of what the club currently has, and the message must not
@@ -5350,7 +5697,7 @@
       banner.hidden = !over;
       if (over) banner.textContent = t('quota.over_lead');
     }
-    var el = document.getElementById('ts-quota-counter');
+    var el = _tsEl('ts-quota-counter');
     if (el) {
       el.textContent = t('quota.counter').replace('{n}', used).replace('{max}', max);
       el.classList.toggle('ts-quota-full', used >= max);
@@ -5360,19 +5707,12 @@
     });
   }
 
+  /* `_tsCancellable` and `_leaveTeamSetup()` lived here until v254. Both
+     existed only for the voluntary "edit categories" entry, which is now the
+     Configuració page — see showTeamSetup(). Nothing may leave the onboarding
+     card except by satisfying the gate that sent you there. */
+
   /** The owner's message when the club is at its allowance. */
-  /* Set by showTeamSetup(); see there for why only one entry point may. */
-  var _tsCancellable = false;
-
-  /** Leave the setup screen for Settings, where the lead came from. */
-  function _leaveTeamSetup() {
-    currentPage = 'settings';
-    const session = getSession();
-    if (!session) return;
-    showView('#view-dashboard');
-    renderDashboard(session);
-  }
-
   function _showQuotaBlockedModal() {
     showModal(t('quota.title'), t('quota.add_blocked'), function () {},
       { hideCancel: true, danger: false, confirmLabel: t('common.ok') });
@@ -5530,7 +5870,7 @@
       }
     });
     // Staff section: add/remove email rows
-    var staffSection = document.getElementById('team-setup-staff-inputs');
+    var staffSection = _tsEl('team-setup-staff-inputs');
     if (staffSection) {
       staffSection.addEventListener('click', function (e) {
         var addBtn = e.target.closest('.ts-add-staff');
@@ -5559,7 +5899,7 @@
       });
     }
     // Schedule section: add/remove training rows
-    var schedSection = document.getElementById('team-setup-schedule-inputs');
+    var schedSection = _tsEl('team-setup-schedule-inputs');
     if (schedSection) {
       schedSection.addEventListener('click', function (e) {
         var addBtn = e.target.closest('.ts-add-training');
@@ -5614,13 +5954,11 @@
       });
     }
     // Save button (remove previous listener to avoid duplicates when re-entering wizard)
-    var saveBtn = document.getElementById('btn-save-team-setup');
+    var saveBtn = _tsEl('btn-save-team-setup');
     if (saveBtn) {
       saveBtn.removeEventListener('click', _handleSaveTeamSetup);
       saveBtn.addEventListener('click', _handleSaveTeamSetup);
     }
-    var backBtn2 = document.getElementById('btn-back-team-setup');
-    if (backBtn2) backBtn2.addEventListener('click', _leaveTeamSetup);
   }
 
   /**
@@ -5649,10 +5987,10 @@
   async function _handleSaveTeamSetup() {
     var session = getSession();
     if (!session || !session.teamId) return;
-    var container = document.getElementById('team-setup-categories');
+    var container = _tsEl('team-setup-categories');
     if (!container) return;
-    var errEl = document.getElementById('team-setup-error');
-    var saveBtn = document.getElementById('btn-save-team-setup');
+    var errEl = _tsEl('team-setup-error');
+    var saveBtn = _tsEl('btn-save-team-setup');
     // Collect category config
     var categories = {};
     var anyEnabled = false;
@@ -5675,7 +6013,7 @@
     // fetched, and saving it silently costs the club a season of standings.
     var fcfLinks = {};
     var badLink = null;
-    document.querySelectorAll('#team-setup-fcf-inputs input[data-fcf-key]').forEach(function (inp) {
+    _tsAll('#team-setup-fcf-inputs input[data-fcf-key]').forEach(function (inp) {
       var val = inp.value.trim();
       if (!val) return;
       if (!fcfGrupId(val) && !badLink) badLink = inp.dataset.fcfKey;
@@ -5691,7 +6029,7 @@
     // here means somebody cannot register at all.
     var staffEmails = _collectStaffEmailsFromDom();
     var badEmail = null;
-    document.querySelectorAll('#team-setup-staff-inputs input[data-staff-email]').forEach(function (inp) {
+    _tsAll('#team-setup-staff-inputs input[data-staff-email]').forEach(function (inp) {
       var v = normalizeEmail(inp.value);
       if (v && !isValidEmail(v) && !badEmail) badEmail = v;
     });
@@ -5752,7 +6090,13 @@
       if (reminders) catsPayload.reminders = reminders;
       // `{}` is meaningful — it clears the coordinates — so this is an
       // undefined check, not a truthiness one.
-      if (venue !== undefined) catsPayload.homeCoords = venue;
+      if (venue !== undefined) {
+        catsPayload.homeCoords = venue;
+        /* Sent with the coordinates, never instead of them: the weather sync
+           reads `homeCoords`, and this is only what the box shows the lead
+           next time. Same undefined-vs-'' rule — '' clears it. */
+        catsPayload.homeLink = _venueRawFromDom();
+      }
       await setCats(catsPayload);
       /* Its own callable, and deliberately AFTER setCats: kits share no
          invariant with categories, and setClubCategories does quota
@@ -5798,12 +6142,28 @@
       _clubConfig = await getClub(session.teamId);
       _clubConfig.rosters = await loadRosters(session.teamId, _clubConfig);
       errEl.hidden = true;
-      /* Entered from Settings, go back to Settings — the screen behaved
-         inconsistently otherwise, dumping the user on the dashboard home on
-         save but returning them to Settings on cancel. The forced entries
-         still go through navigate(), which re-evaluates their gates. */
-      if (_tsCancellable) _leaveTeamSetup();
-      else navigate();
+      /* Where to go afterwards depends on which screen mounted the sections.
+         On the Configuració page there is nowhere to go — the lead is
+         already there — so it re-renders in place, which also repaints the
+         rail and the quota figure from the config just written back.
+         The forced entries still go through navigate(), which re-evaluates
+         their gates; the old Settings entry went back to Settings. */
+      /* Discriminated by the MOUNTED ROOT, not by currentPage: a lead who
+         goes over quota while on Settings is pushed into the onboarding card
+         with currentPage still 'settings', and re-rendering the page there
+         would draw it underneath the card the gate just put them behind. */
+      if (_tsRootEl && document.getElementById('dashboard-content') &&
+          document.getElementById('dashboard-content').contains(_tsRootEl)) {
+        var s2 = getSession();
+        if (s2) renderPage(s2);
+        /* `cfg.saved`, not `quota.saved` — that string says "Límit d'equips
+           actualitzat", which is one specific superadmin action and not what
+           this button did. Reported as a save telling the lead the team
+           limit had changed when they had edited a link. */
+        _showPushToast(t('page.settings'), t('cfg.saved'));
+      } else {
+        navigate();
+      }
     } catch (err) {
       errEl.textContent = 'Error: ' + err.message;
       errEl.hidden = false;
@@ -6654,7 +7014,7 @@
       'medical': renderMedical,
       'medical-detail': renderMedicalDetail,
       'users': renderAdminUsers,
-      'settings': renderAdminSettings,
+      'settings': renderConfiguracio,
       'admin-boards': renderAdminBoards,
       'archived-seasons': renderArchivedSeasons,
       'archived-season-detail': renderArchivedSeasonDetail,
@@ -28211,7 +28571,12 @@
     return `<svg class="kit-svg" viewBox="0 0 64 64" width="${px}" height="${px}" style="display:block">${body}
       <path d="${SHIRT_OUTLINE}" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="${collar}" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="${collar}" stroke-width="1" opacity=".5"/>
+      ${/* The sleeve-to-sleeve seam line was removed in v254 (owner's call).
+           It ran the full width at y=20 and read as a band across the chest
+           rather than as a shoulder seam, which is misleading on a HOOPED
+           kit — where a real band is the thing being drawn. The shorts keep
+           theirs: on shorts that line is the waistband, and it is the only
+           thing distinguishing them from a plain rectangle. */''}
       ${badge ? `<image href="${sanitize(badge)}" x="33" y="18" width="10" height="10" opacity=".7"/>` : ''}
     </svg>`;
   }
@@ -31088,73 +31453,236 @@
 
   // #endregion Superadmin board catalogue
 
-  function renderAdminSettings() {
+  /* ── Configuració ────────────────────────────────────────────────────
+     One page, one form. Until v254 this was four cards whose first button
+     opened a SEPARATE full-screen wizard; the wizard is now folded in as
+     tabs, and `#view-team-setup` is only the forced-onboarding shell.
+
+     The sections themselves come from _tsSectionsHtml('page') — the same
+     builder the onboarding card uses — so every _refreshTeamSetup*() and
+     _collect*FromDom() above drives this page unchanged. */
+
+  /** Which tab is showing. Module-level, so a re-render keeps your place. */
+  var _cfgTab = 'club';
+
+  /** `2026-27` for the season that is current under the club's boundary. */
+  function _cfgSeasonLabel() {
+    var y = Number(seasonStartStr().slice(0, 4));
+    return y + '-' + String((y + 1) % 100).padStart(2, '0');
+  }
+
+  /** The tabs this session may see, `[id, label]`. */
+  function _cfgTabs(session) {
+    var tabs = [
+      ['club', t('cfg.tab_club')],
+      ['cats', t('cfg.tab_cats')],
+      ['horaris', t('cfg.tab_horaris')],
+      ['kits', t('cfg.tab_kits')],
+      ['llistes', t('cfg.tab_llistes')],
+      ['temporades', t('cfg.tab_temporades')]
+    ];
+    if (session && session.isAdmin) tabs.push(['clubs', t('cfg.tab_clubs')]);
+    return tabs;
+  }
+
+  /* Identity. Read-only for a lead, and that is not a styling choice:
+     firestore.rules lets a lead write only `fcfLinks` and `schedules` on the
+     club doc, so the name, the crest and the responsable are superadmin
+     fields. Drawing them as inputs for a lead would be a control that
+     silently fails. The join code is not shown at all below superadmin —
+     clubCodes is superuser-only by rule, and it is the credential that gets
+     a stranger into the club. */
+  function _cfgClubHtml(session) {
+    var c = _clubConfig || {};
+    var su = !!(session && session.isAdmin);
+    var badge = c.badgeUrl
+      ? '<img src="' + sanitize(c.badgeUrl) + '" alt="" class="cfg-crest-img">'
+      : '<span class="cfg-crest-empty">' + t('cfg.crest') + '</span>';
+    var field = function (label, value, hint) {
+      return '<div class="cfg-field">' +
+        '<span class="cfg-field-l">' + label + '</span>' +
+        '<span class="cfg-field-v">' + (value || '<span class="cfg-unset">' + t('cfg.unset') + '</span>') + '</span>' +
+        (hint ? '<span class="cfg-field-h">' + hint + '</span>' : '') +
+        '</div>';
+    };
+    return _tsSecHead(t('cfg.identity'), t('cfg.identity_note')) +
+      '<div class="cfg-identity">' +
+        '<div class="cfg-crest">' + badge +
+          /* `cfg.crest_edit`, not `club.change_badge`: that string is a
+             tooltip ("Canviar escut (clica-hi)") and at 112px — the crest
+             column's width — it wraps to four lines and runs into the
+             section header below. This is a link, so it gets link copy. */
+          (su ? '<span class="cfg-crest-edit club-badge-edit" data-club="' + sanitize(c.id || '') + '">' +
+                  t('cfg.crest_edit') + '</span>' : '') +
+        '</div>' +
+        '<div class="cfg-fields">' +
+          /* No hint under either. Both said only "the superadmin changes
+             this", which the read-only rendering already says. */
+          field(t('settings.club_name'), sanitize(c.name || ''), '') +
+          field(t('cfg.lead'), sanitize(c.leadEmail || ''), '') +
+        '</div>' +
+      '</div>';
+  }
+
+  /** Temporades: the archive link and the destructive new-season panel. */
+  function _cfgSeasonsHtml() {
+    return _tsSecHead(t('settings.archived_seasons'), t('cfg.seasons_note')) +
+      '<p class="ts-p">' + t('settings.archived_seasons_desc') + '</p>' +
+      '<button class="btn btn-outline btn-small" id="btn-archived-seasons">' + t('archive.view') + '</button>' +
+      '<div class="cfg-danger">' +
+        '<span class="cfg-danger-eyebrow">' + t('settings.new_season') + '</span>' +
+        '<span class="cfg-danger-title">' + t('cfg.new_season_title').replace('{season}', _cfgSeasonLabel()) + '</span>' +
+        '<span class="cfg-danger-body">' + t('settings.new_season_desc') + '</span>' +
+        '<button class="btn btn-danger btn-small" id="btn-new-season">' + t('settings.new_season_btn') + '</button>' +
+        '<div id="new-season-result" hidden></div>' +
+      '</div>';
+  }
+
+  /** Clubs · superadmin. The table itself is filled by _loadClubList(). */
+  function _cfgClubsHtml() {
+    return '<div class="cfg-sec cfg-sec-su">' +
+        '<span class="cfg-su-badge">' + t('cfg.superadmin') + '</span>' +
+        '<span class="cfg-sec-l">' + t('cfg.clubs_title') + '</span>' +
+      '</div>' +
+      '<div id="club-list"><p class="ts-p">' + t('settings.loading') + '</p></div>' +
+      '<div class="cfg-newclub">' +
+        '<span class="cfg-newclub-title">' + t('settings.create_club') + '</span>' +
+        '<span class="cfg-newclub-sub">' + t('cfg.new_club_sub') + '</span>' +
+        '<div class="cfg-newclub-grid">' +
+          '<div class="cfg-field"><span class="cfg-field-l">' + t('settings.club_name') + '</span>' +
+            '<input type="text" id="new-club-name" class="reg-input" placeholder="CF Exemple"></div>' +
+          '<div class="cfg-field"><span class="cfg-field-l">' + t('cfg.town') + '</span>' +
+            '<input type="text" id="new-club-town" class="reg-input" placeholder="Barcelona"></div>' +
+          '<div class="cfg-field"><span class="cfg-field-l">' + t('cfg.lead') + '</span>' +
+            '<input type="email" id="new-club-email" class="reg-input" placeholder="responsable@club.cat"></div>' +
+          '<div class="cfg-field"><span class="cfg-field-l">' + t('quota.max_teams') + '</span>' +
+            '<input type="number" min="1" id="new-club-maxteams" class="reg-input" value="4"></div>' +
+          '<div class="cfg-field"><span class="cfg-field-l">' + t('cfg.crest') + '</span>' +
+            '<input type="file" id="new-club-badge" accept="image/png" class="reg-input"></div>' +
+        '</div>' +
+        '<div class="cfg-newclub-foot">' +
+          '<button class="btn btn-outline btn-small" id="btn-create-club">' + t('cfg.create_club') + '</button>' +
+          '<span class="cfg-field-h">' + t('cfg.create_club_hint') + '</span>' +
+        '</div>' +
+        '<div id="create-club-result" hidden></div>' +
+      '</div>';
+  }
+
+  /* The right rail. Every figure is read out of `_clubConfig`, which is
+     already in memory — this page must not add a Firestore read per render. */
+  function _cfgRailHtml() {
+    var c = _clubConfig || {};
+    var keys = rosterKeys(c);
+    var max = clubMaxTeams();
+    var rosters = c.rosters || {};
+    var rem = clubReminders(c);
+    var nStaff = keys.reduce(function (n, k) {
+      return n + (((rosters[k] || {}).staffEmails) || []).length;
+    }, 0);
+    var nCats = CATEGORY_ORDER.filter(function (k) {
+      return c.categories && c.categories[k] && c.categories[k].enabled;
+    }).length;
+    var fig = function (label, value, bad) {
+      return '<div class="cfg-rail-row"><span class="cfg-rail-l">' + label + '</span>' +
+        '<span class="cfg-rail-v' + (bad ? ' cfg-bad' : '') + '">' + value + '</span></div>';
+    };
+    var rows = fig(t('cfg.rail_teams'), keys.length + '/' + max, keys.length > max) +
+      fig(t('cfg.rail_cats'), nCats, !nCats) +
+      fig(t('cfg.rail_staff'), nStaff, !nStaff) +
+      fig(t('cfg.rail_reminders'), rem.pushHours + ' h / ' + rem.lockHours + ' h', false) +
+      fig(t('cfg.rail_kits'), kitsOf(c).length + ' / 3', false);
+
+    /* Anything still unset. Red is not decoration here — each of these is a
+       squad that will produce sessions with no time, no place or no
+       standings until somebody fills it in. */
+    var todos = [];
+    var sched = c.schedules || {};
+    var noSess = keys.filter(function (k) {
+      return !((sched[k] && sched[k].training) || []).length;
+    });
+    if (noSess.length) {
+      todos.push(['bad', t('cfg.todo_nosess').replace('{teams}', noSess.join(', '))]);
+    }
+    var noFcf = keys.filter(function (k) { return !(c.fcfLinks || {})[k]; });
+    if (noFcf.length) {
+      todos.push(['warn', t('cfg.todo_nofcf').replace('{teams}', noFcf.join(', '))]);
+    }
+    if (!todos.length) todos.push(['ok', t('cfg.todo_none')]);
+
+    return '<aside class="cfg-rail">' +
+      '<div class="cfg-rail-head"><span class="cfg-sec-l">' + t('cfg.rail_title') + '</span>' +
+        '<span class="cfg-sec-n">' + _cfgSeasonLabel() + '</span></div>' +
+      rows +
+      '<div class="cfg-rail-head cfg-rail-head-2"><span class="cfg-sec-l">' + t('cfg.todo_title') + '</span></div>' +
+      todos.map(function (td) {
+        return '<div class="cfg-todo"><span class="cfg-dot cfg-dot-' + td[0] + '"></span>' +
+          '<span class="cfg-todo-l">' + td[1] + '</span></div>';
+      }).join('') +
+      '</aside>';
+  }
+
+  function renderConfiguracio() {
     const session = getSession();
-    let html = '<h2 class="page-title">' + t('page.settings') + '</h2>';
-
-    // ---------- Team Lead / Admin: Category Config ----------
-    if (session && (session.isTeamLead || session.isAdmin)) {
-      var hasCfg = !!_clubConfig;
-      html += `
-      <div class="card">
-        <div class="card-title">Configuració de Categories</div>
-        ${hasCfg
-          ? '<p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:.8rem;">Modifica les categories, equips i enllaços classificació FCF del club.</p><button class="btn btn-primary" id="btn-edit-categories">Editar categories</button>'
-          : '<p style="color:var(--text-secondary);font-size:.9rem;">No estàs vinculat a cap club. Contacta l\'administrador.</p>'
-        }
-      </div>`;
+    if (!session) return '';
+    if (!_clubConfig) {
+      return '<div class="cfg-page"><div class="cfg-hero"><div class="cfg-hero-l">' +
+        '<h1 class="cfg-h1">' + t('page.settings') + '</h1>' +
+        '<div class="cfg-hero-sub">' + t('settings.cat_no_club') + '</div></div></div></div>';
     }
+    var tabs = _cfgTabs(session);
+    if (!tabs.some(function (x) { return x[0] === _cfgTab; })) _cfgTab = 'club';
+    var c = _clubConfig;
+    var keys = rosterKeys(c);
+    var max = clubMaxTeams();
+    var over = isClubOverQuota();
 
-    // ---------- Team Lead / Admin: New Season ----------
-    if (session && (session.isTeamLead || session.isAdmin)) {
-      html += `
-      <div class="card">
-        <div class="card-title">${t('settings.new_season')}</div>
-        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.new_season_desc')}</p>
-        <button class="btn btn-danger" id="btn-new-season">${t('settings.new_season_btn')}</button>
-        <div id="new-season-result" style="margin-top:.6rem;" hidden></div>
-      </div>`;
-    }
+    /* No identity strip above the hero. It repeated the club name, the
+       responsable and the season — all three of which the page already says
+       below: the first two on the Club tab, the season in the rail's head. */
+    var hero = '<div class="cfg-hero">' +
+      '<div class="cfg-hero-l"><h1 class="cfg-h1">' + t('page.settings') + '</h1>' +
+        '<div class="cfg-hero-sub">' + t('cfg.hero_sub')
+          .replace('{teams}', keys.length).replace('{kits}', kitsOf(c).length) + '</div></div>' +
+      '<div class="cfg-figs">' +
+        '<div class="cfg-fig"><span class="cfg-fig-l">' + t('cfg.rail_teams') + '</span>' +
+          '<span class="cfg-fig-v' + (over ? ' cfg-bad' : '') + '">' + keys.length + '/' + max + '</span></div>' +
+        '<div class="cfg-fig"><span class="cfg-fig-l">' + t('cfg.rail_cats') + '</span>' +
+          '<span class="cfg-fig-v">' + CATEGORY_ORDER.filter(function (k) {
+            return c.categories && c.categories[k] && c.categories[k].enabled;
+          }).length + '</span></div>' +
+      '</div></div>';
 
-    // ---------- Team Lead / Admin: Archived Seasons ----------
-    if (session && (session.isTeamLead || session.isAdmin)) {
-      html += `
-      <div class="card">
-        <div class="card-title">${t('settings.archived_seasons')}</div>
-        <p style="margin-bottom:1rem;color:var(--text-secondary);font-size:.9rem;">${t('settings.archived_seasons_desc')}</p>
-        <button class="btn btn-primary" id="btn-archived-seasons">${t('archive.view')}</button>
-      </div>`;
-    }
+    var strip = '<div class="cfg-tabs">' + tabs.map(function (tb) {
+      return '<button class="cfg-tab' + (tb[0] === _cfgTab ? ' cfg-tab-on' : '') +
+        '" data-cfg-tab="' + tb[0] + '">' + tb[1] + '</button>';
+    }).join('') + '</div>';
 
-    // ---------- Admin: Club Management ----------
-    if (session && session.isAdmin) {
-      html += `
-      <div class="card">
-        <div class="card-title">Gestió de Clubs</div>
-        <div id="club-list" style="margin-bottom:1.2rem;">
-          <p style="color:var(--text-secondary);font-size:.9rem;">Carregant clubs…</p>
-        </div>
-        <div style="border-top:1px solid var(--border);padding-top:1rem;">
-          <div class="card-title" style="font-size:.95rem;">Crear nou club</div>
-          <div class="form-group" style="margin-bottom:.6rem;">
-            <label for="new-club-name">Nom del club</label>
-            <input type="text" id="new-club-name" placeholder="CF Exemple" required>
-          </div>
-          <div class="form-group" style="margin-bottom:.6rem;">
-            <label for="new-club-email">Email del Team Lead</label>
-            <input type="email" id="new-club-email" placeholder="lead@example.com" required>
-          </div>
-          <div class="form-group" style="margin-bottom:.8rem;">
-            <label for="new-club-badge">Escut del club (PNG)</label>
-            <input type="file" id="new-club-badge" accept="image/png">
-          </div>
-          <button class="btn btn-primary" id="btn-create-club">Crear Club</button>
-          <div id="create-club-result" style="margin-top:.6rem;" hidden></div>
-        </div>
-      </div>`;
-    }
+    /* The phone switcher. Same buttons, same data attribute, so one binder
+       drives both — the desktop strip is hidden below the breakpoint and
+       this takes its place. */
+    var phoneNav = '<div class="cfg-nav">' +
+      '<button class="cfg-nav-cur" id="cfg-nav-toggle">' +
+        (tabs.filter(function (x) { return x[0] === _cfgTab; })[0] || tabs[0])[1] +
+        '<span class="cfg-nav-caret">▼</span></button>' +
+      '<div class="cfg-nav-list" id="cfg-nav-list" hidden>' + tabs.map(function (tb) {
+        return '<button class="cfg-nav-item' + (tb[0] === _cfgTab ? ' cfg-nav-item-on' : '') +
+          '" data-cfg-tab="' + tb[0] + '">' + tb[1] + '</button>';
+      }).join('') + '</div></div>';
 
-    return html;
+    var panels = _tsSectionsHtml('page', {
+      club: _cfgClubHtml(session),
+      temporades: _cfgSeasonsHtml(),
+      clubs: session.isAdmin ? _cfgClubsHtml() : ''
+    });
+
+    var saveBar = '<div class="cfg-save">' +
+      '<button class="btn btn-outline btn-small" id="btn-save-team-setup">' + t('cfg.save') + '</button>' +
+      '<span class="cfg-save-note" id="cfg-save-note">' +
+        (over ? t('quota.over_lead') : t('cfg.save_note')) + '</span></div>';
+
+    return '<div class="cfg-page" data-cfg-active="' + _cfgTab + '">' + hero + strip + phoneNav +
+      '<div class="cfg-body"><div class="cfg-main">' + panels + '</div>' + _cfgRailHtml() + '</div>' +
+      saveBar + '</div>';
   }
 
   // Load and render club list in settings
@@ -31164,7 +31692,7 @@
     try {
       const snap = await db.collection('clubs').get();
       if (snap.empty) {
-        listEl.innerHTML = '<p style="color:var(--text-secondary);font-size:.9rem;">Cap club creat encara.</p>';
+        listEl.innerHTML = '<p class="ts-p">' + t('settings.no_clubs') + '</p>';
         return;
       }
       // Join codes live in clubCodes/{CODE} → {clubId} (superuser-readable only)
@@ -31173,50 +31701,71 @@
         const codesSnap = await db.collection('clubCodes').get();
         codesSnap.forEach(cd => { codeByClub[cd.data().clubId] = cd.id; });
       } catch (codeErr) { console.warn('Could not load club codes:', codeErr); }
+      /* Member counts. One COUNT aggregation per club, not a list query —
+         the rows themselves are never needed here, and listing every user of
+         every club to length the array would grow with the platform. Wrapped
+         individually so one club's failure leaves the rest of the table
+         intact, and the whole thing is best-effort: the column shows an
+         em dash rather than blocking the table it decorates. */
+      const clubIds = [];
+      snap.forEach(d => clubIds.push(d.id));
+      const membersByClub = {};
+      await Promise.all(clubIds.map(async (id) => {
+        try {
+          const agg = await db.collection('users').where('teamId', '==', id).count().get();
+          membersByClub[id] = agg.data().count;
+        } catch (e) { membersByClub[id] = null; }
+      }));
+
       let rows = '';
       snap.forEach(d => {
         const c = d.data();
         const code = codeByClub[d.id] || '—';
+        const teams = rosterKeys(c).length;
+        const max = Math.max(1, Number(c.maxTeams || 1));
+        const since = (c.createdAt && c.createdAt.toDate)
+          ? c.createdAt.toDate().getFullYear() : '';
+        const members = membersByClub[d.id];
         // The crest is click-to-replace: storage.rules already restricts
         // clubBadges writes to the superuser, and this table is superuser-only.
         const badgeImg = c.badgeUrl
-          ? `<img src="${c.badgeUrl}" class="club-badge-edit" data-club="${d.id}" title="${t('club.change_badge')}">`
+          ? `<img src="${sanitize(c.badgeUrl)}" class="club-badge-edit" data-club="${d.id}" title="${t('club.change_badge')}">`
           : `<span class="club-badge-edit club-badge-empty" data-club="${d.id}" title="${t('club.change_badge')}">+</span>`;
         rows += `<tr>
-          <td>${badgeImg}${sanitize(c.name)}</td>
-          <td style="font-family:monospace;letter-spacing:.1em;font-weight:600;">${code}</td>
+          <td class="cfg-cl-name">${badgeImg}<span class="cfg-cl-n">${sanitize(c.name)}</span>${
+            since ? `<span class="cfg-cl-since">${t('cfg.since')} ${since}</span>` : ''}</td>
+          <td class="cfg-cl-code">${sanitize(code)}</td>
+          <td class="cfg-cl-town">${sanitize(c.town || '—')}</td>
+          <td class="cfg-cl-teams${teams > max ? ' cfg-bad' : ''}">${teams}</td>
+          <td>
+            <input type="number" min="1" class="reg-input club-maxteams-input" data-club="${d.id}"
+                   data-teams="${teams}" value="${max}" title="${t('quota.max_teams')}">
+          </td>
+          <td class="cfg-cl-members">${members == null ? '—' : members}</td>
           <td>
             <input type="email" class="reg-input club-lead-input" data-club="${d.id}"
-                   data-orig="${sanitize(c.leadEmail || '')}" value="${sanitize(c.leadEmail || '')}"
-                   style="min-width:200px;font-size:.82rem;">
-            <div class="club-lead-msg" data-club="${d.id}" style="font-size:.78rem;margin-top:.2rem;"></div>
+                   data-orig="${sanitize(c.leadEmail || '')}" value="${sanitize(c.leadEmail || '')}">
+            <div class="club-lead-msg" data-club="${d.id}"></div>
           </td>
-          <td style="white-space:nowrap;">
+          <td>
             <input type="number" min="0" class="reg-input club-minver-input" data-club="${d.id}"
-                   value="${Number(c.minAppVersion || 0)}" title="${t('club.min_version')}"
-                   style="width:70px;font-size:.82rem;">
+                   value="${Number(c.minAppVersion || 0)}" title="${t('club.min_version')}">
           </td>
-          <td style="white-space:nowrap;">
-            <input type="number" min="1" class="reg-input club-maxteams-input" data-club="${d.id}"
-                   data-teams="${rosterKeys(c).length}"
-                   value="${Math.max(1, Number(c.maxTeams || 1))}" title="${t('quota.max_teams')}"
-                   style="width:70px;font-size:.82rem;">
-          </td>
-          <td style="white-space:nowrap;text-align:center;">
+          <td class="cfg-cl-3d">
             <input type="checkbox" class="club-feature-3d" data-club="${d.id}"
                    ${(c.features && c.features.board3d) ? 'checked' : ''}
                    title="${t('club.feature_board3d')}">
           </td>
-          <td style="white-space:nowrap;">
-            <button class="btn btn-small btn-outline btn-copy-code" data-code="${code}" title="Copiar codi">📋</button>
+          <td class="cfg-cl-act">
+            <button class="btn btn-small btn-outline btn-copy-code" data-code="${sanitize(code)}" title="${t('cfg.copy_code')}">📋</button>
             <button class="btn btn-small btn-primary btn-save-lead" data-club="${d.id}" title="${t('club.change_lead')}" disabled>💾</button>
           </td>
         </tr>`;
       });
-      listEl.innerHTML = `<table class="table" style="font-size:.85rem;">
-        <thead><tr><th>Club</th><th>Codi</th><th>Team Lead</th><th>${t('club.min_version')}</th><th>${t('quota.max_teams')}</th><th>3D</th><th></th></tr></thead>
+      listEl.innerHTML = `<div class="cfg-cl-wrap"><table class="cfg-cl">
+        <thead><tr><th>Club</th><th>${t('cfg.code')}</th><th>${t('cfg.town')}</th><th>${t('cfg.teams')}</th><th>${t('quota.max_teams')}</th><th>${t('cfg.members')}</th><th>${t('cfg.lead')}</th><th>${t('club.min_version')}</th><th>3D</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table></div>`;
       // Look the address up as it is typed. Bound here rather than in the
       // delegated handler because this table is rendered asynchronously.
       listEl.querySelectorAll('.club-lead-input').forEach(function (inp) {
@@ -31289,7 +31838,7 @@
         });
       });
     } catch (e) {
-      listEl.innerHTML = '<p style="color:var(--danger);">Error carregant clubs.</p>';
+      listEl.innerHTML = '<p class="ts-p cfg-bad">' + t('settings.error_loading') + '</p>';
       console.error(e);
     }
   }
@@ -37131,6 +37680,44 @@
       });
     });
 
+    /* Configuració. The page emits the setup containers empty; this fills
+       and binds them, and — just as importantly — makes this copy the one
+       _tsEl() resolves to, so the collectors read the screen the lead is
+       actually looking at rather than the hidden onboarding card. */
+    const cfgPage = document.querySelector('.cfg-page');
+    if (cfgPage && _clubConfig) {
+      _tsMount(cfgPage);
+      /* Switching tab does NOT re-render. Every panel is already in the DOM
+         (see _tsSectionsHtml) and half of them hold unsaved input — a
+         re-render here would throw away everything typed since the last
+         save, which is exactly the failure the collectors are written to
+         avoid. CSS shows one panel off `data-cfg-active`. */
+      const pickTab = (id) => {
+        _cfgTab = id;
+        cfgPage.dataset.cfgActive = id;
+        cfgPage.querySelectorAll('[data-cfg-tab]').forEach(function (b) {
+          var on = b.dataset.cfgTab === id;
+          b.classList.toggle('cfg-tab-on', on && b.classList.contains('cfg-tab'));
+          b.classList.toggle('cfg-nav-item-on', on && b.classList.contains('cfg-nav-item'));
+        });
+        const cur = cfgPage.querySelector('#cfg-nav-toggle');
+        const hit = _cfgTabs(getSession()).filter(function (x) { return x[0] === id; })[0];
+        if (cur && hit) cur.innerHTML = hit[1] + '<span class="cfg-nav-caret">▼</span>';
+        const list = cfgPage.querySelector('#cfg-nav-list');
+        if (list) list.hidden = true;
+      };
+      cfgPage.querySelectorAll('[data-cfg-tab]').forEach(function (b) {
+        b.addEventListener('click', function () { pickTab(b.dataset.cfgTab); });
+      });
+      const navToggle = cfgPage.querySelector('#cfg-nav-toggle');
+      if (navToggle) {
+        navToggle.addEventListener('click', function () {
+          const list = cfgPage.querySelector('#cfg-nav-list');
+          if (list) list.hidden = !list.hidden;
+        });
+      }
+    }
+
     // Admin: new season
     const newSeasonBtn = $('#btn-new-season');
     if (newSeasonBtn) {
@@ -37178,18 +37765,25 @@
         const nameEl = document.getElementById('new-club-name');
         const emailEl = document.getElementById('new-club-email');
         const badgeEl = document.getElementById('new-club-badge');
+        const townEl = document.getElementById('new-club-town');
+        const maxEl = document.getElementById('new-club-maxteams');
         const resultEl = document.getElementById('create-club-result');
         const name = nameEl.value.trim();
         const email = emailEl.value.trim().toLowerCase();
-        if (!name || !email) { resultEl.textContent = 'Nom i email obligatoris.'; resultEl.hidden = false; return; }
+        if (!name || !email) { resultEl.textContent = t('cfg.create_club_hint'); resultEl.hidden = false; return; }
         createClubBtn.disabled = true;
-        createClubBtn.textContent = 'Creant…';
+        createClubBtn.textContent = t('auth.saving');
         try {
           const badgeFile = badgeEl.files && badgeEl.files[0] ? badgeEl.files[0] : null;
-          const club = await createClub(name, email, badgeFile);
-          resultEl.innerHTML = `<span style="color:var(--success);font-weight:600;">Club creat! Codi: <span style="font-family:monospace;font-size:1.1em;letter-spacing:.15em;">${club.code}</span></span>`;
+          const club = await createClub(name, email, badgeFile, {
+            town: townEl ? townEl.value : '',
+            maxTeams: maxEl ? maxEl.value : 1
+          });
+          resultEl.innerHTML = '<span class="cfg-created">' + t('cfg.club_created') +
+            ' <span class="cfg-code">' + sanitize(club.code) + '</span></span>';
           resultEl.hidden = false;
           nameEl.value = ''; emailEl.value = ''; badgeEl.value = '';
+          if (townEl) townEl.value = '';
           // If the superuser is also the team lead, auto-join them to this club
           var sess = getSession();
           if (sess && club.leadEmail === (sess.email || '').toLowerCase()) {
@@ -37201,7 +37795,7 @@
             await DB.init(club.id, getVisibleCategories());
           }
           _loadClubList();
-          // Re-render settings so "Editar categories" appears
+          // Re-render so the new club appears in the hero and the rail.
           renderPage(getSession());
         } catch (err) {
           resultEl.textContent = 'Error: ' + err.message;
@@ -37209,7 +37803,7 @@
           console.error(err);
         }
         createClubBtn.disabled = false;
-        createClubBtn.textContent = 'Crear Club';
+        createClubBtn.textContent = t('cfg.create_club');
       });
     }
 
@@ -37218,12 +37812,10 @@
     if (content && !content._settingsBound) {
       content._settingsBound = true;
       content.addEventListener('click', e => {
-        // Team Lead: edit categories
-        if (e.target.closest('#btn-edit-categories')) {
-          // The only voluntary entry, so the only one that may be left.
-          showTeamSetup({ cancellable: true });
-          return;
-        }
+        /* `#btn-edit-categories` used to live here, opening the setup wizard
+           as a separate screen. v254 folded those sections into the
+           Configuració page itself, so there is no voluntary entry to the
+           wizard any more — it is the forced-onboarding shell only. */
         /* Notification soft-ask. THE tap that carries the user gesture into
            Notification.requestPermission() — the whole reason this banner
            exists rather than asking on login. */

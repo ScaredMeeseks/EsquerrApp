@@ -247,31 +247,36 @@ describe('team setup — the duplicate-listener bug', () => {
 });
 
 describe('team setup — leaving the screen', () => {
-  it('is cancellable ONLY from the Settings entry', () => {
-    // The over-quota redirect and the no-category wizard must stay
-    // inescapable: escaping the first defeats the gate, and behind the
-    // second there is no configured club to go back to.
+  /* Until v254 one call site opened this screen voluntarily and passed
+     `{cancellable:true}` to get a back button. That route is now the
+     Configuració page, which edits the same sections in place — so EVERY
+     remaining entry is a gate, and none of them may be escapable: escaping
+     the over-quota one defeats it, and behind the no-category one there is
+     no configured club to go back to. The invariant got stricter, not
+     weaker, which is why this asserts zero rather than one. */
+  it('has no escapable entry at all', () => {
     const calls = appSrc.match(/showTeamSetup\((\{[^)]*\})?\)/g) || [];
-    const cancellable = calls.filter((c) => c.includes('cancellable'));
-    assert.strictEqual(cancellable.length, 1,
-        'exactly one call site may pass cancellable, got: ' + calls.join(' | '));
-    // Belt and braces: every OTHER entry passes no options at all, so
-    // _tsCancellable is false and the back button stays hidden.
-    calls.filter((c) => !c.includes('cancellable')).forEach((c) => {
+    assert.ok(calls.length > 0, 'showTeamSetup is never called — did it move?');
+    calls.forEach((c) => {
       assert.strictEqual(c, 'showTeamSetup()',
         'a forced entry passes options and could become escapable: ' + c);
     });
   });
 
-  it('resets cancellability on every entry', () => {
-    // deleteTeam re-enters via navigate(); a stale flag would let an
-    // over-quota lead walk away.
-    assert.ok(appSrc.includes('_tsCancellable = !!(opts && opts.cancellable);'),
-        'the flag must be assigned unconditionally at the top of showTeamSetup');
+  it('has no back button and no way out of the card', () => {
+    /* Read the source with COMMENTS STRIPPED. The prose in app.js explains
+       why each of these was removed, and naming a symbol to say it is gone
+       otherwise reads as a use of it — the same reason registrations.test.js
+       carries grabBare(). */
+    const bare = appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    ['_tsCancellable', '_leaveTeamSetup', 'btn-back-team-setup'].forEach((dead) => {
+      assert.ok(!bare.includes(dead),
+          dead + ' is back — the onboarding gate is escapable again');
+    });
   });
 
-  it('has the back button translated in all three languages', () => {
-    ['ts.back', 'ts.add_team'].forEach((key) => {
+  it('has the add-team control translated in all three languages', () => {
+    ['ts.add_team'].forEach((key) => {
       const i = appSrc.indexOf("'" + key + "':");
       assert.ok(i !== -1, 'missing key ' + key);
       const line = appSrc.slice(i, appSrc.indexOf('},', i));
@@ -487,7 +492,7 @@ describe('team setup — letter chip markup', () => {
   it('a disabled row is one greyed A with no "+"', () => {
     const html = chipsHtml('juvenil', ['A'], false);
     assert.ok(html.includes('ts-letter-chip-off'));
-    assert.ok(!html.includes('ts-letter-add'), 'nothing to add a team to yet');
+    assert.ok(!html.includes('class="ts-letter-add"'), 'nothing to add a team to yet');
     assert.strictEqual((html.match(/ts-letter-chip/g) || []).length, 2,
         'one chip (the class appears twice on it)');
   });
@@ -500,9 +505,14 @@ describe('team setup — letter chip markup', () => {
         'the removable one is C, not A or B');
   });
 
+  /* ⚠ Counts the BUTTON, not the substring. `ts-letter-add` is a prefix of
+     `ts-letter-add-l` — the label span beside the "+" that the Configuració
+     page shows and the onboarding card hides — so a substring count read two
+     where there is one control. Match the class attribute exactly, or this
+     assertion breaks again the next time anything is named after it. */
   it('an enabled row offers exactly one "+"', () => {
     const html = chipsHtml('amateur', ['A', 'B'], true);
-    assert.strictEqual((html.match(/ts-letter-add/g) || []).length, 1);
+    assert.strictEqual((html.match(/class="ts-letter-add"/g) || []).length, 1);
   });
 
   it('carries the category on every chip, never an index', () => {

@@ -441,6 +441,7 @@ a:hover { text-decoration: underline; }
 .ms-page,
 .ac-page,
 .nf-page,
+.cfg-page,
 .cal-page {
   margin: -1rem -2rem -2rem;
 }
@@ -454,6 +455,7 @@ a:hover { text-decoration: underline; }
 .ms-page:first-child,
 .ac-page:first-child,
 .nf-page:first-child,
+.cfg-page:first-child,
 .cal-page:first-child {
   margin-top: -2rem;
 }
@@ -473,6 +475,7 @@ a:hover { text-decoration: underline; }
   .ms-page,
   .ac-page,
   .nf-page,
+  .cfg-page,
   .cal-page {
     margin: -1rem -1rem -.75rem;
   }
@@ -486,6 +489,7 @@ a:hover { text-decoration: underline; }
   .ms-page:first-child,
   .ac-page:first-child,
   .nf-page:first-child,
+  .cfg-page:first-child,
   .cal-page:first-child {
     margin-top: -.75rem;
   }
@@ -508,13 +512,13 @@ a:hover { text-decoration: underline; }
    ⚠ The TITLE came in three sizes: 36px on the five, 38px on the other four.
    One size now. `.ini-name` and `.ms-name` stay at 34px/lh 1 and are NOT in
    this list — those are a person's name under an eyebrow, not a page title. */
-.md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
+.md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id, .cfg-hero,
 .pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
   border-bottom: 1px solid var(--pp-rule);
 }
-.md2-h1, .nf-h1, .ac-h1, .ini-h1,
+.md2-h1, .nf-h1, .ac-h1, .ini-h1, .cfg-h1,
 .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 {
   margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1;
   letter-spacing: -.01em; color: var(--pp-ink);
@@ -543,10 +547,11 @@ a:hover { text-decoration: underline; }
    ⚠ The step-down is at 700 — the BAND's breakpoint — not at the 900 those
    three pages used. A body that narrows before the band above it does is the
    text stepping 24px left of its own title for 200px of width. */
-.ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+.ini-body, .md2-body, .ms-body, .ac-body, .nf-body, .cfg-body,
 .pl-body, .reg2-body, .cv-body { padding: 32px 40px 56px; }
 /* The left column of the band: title over one line of scope. */
-.ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l {
+.ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l,
+.cfg-hero-l {
   display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
 }
 /* ⚠ ONE LINE, AND IT IS THE BAND'S HEIGHT THAT DEPENDS ON IT. Registres'
@@ -558,7 +563,7 @@ a:hover { text-decoration: underline; }
    something the page below it should be telling them instead.
    ⚠ `min-width: 0` is required — without it a flex child refuses to shrink
    below its content and the ellipsis never engages. */
-.md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+.md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub, .cfg-hero-sub {
   font-size: 14px; color: var(--pp-ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
@@ -570,7 +575,7 @@ a:hover { text-decoration: underline; }
    they label: a figure, or a section.
    ⚠ `.reg2-eyebrow` is NOT one of them and keeps its own rule: it is a
    section HEADING in ink at weight 600, and its own comment says so. */
-.ac-lbl, .ms-lbl, .reg2-fig-l,
+.ac-lbl, .ms-lbl, .reg2-fig-l, .cfg-fig-l, .cfg-sec-l,
 .md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
   font-weight: 400; color: var(--pp-ink-3);
@@ -579,11 +584,12 @@ a:hover { text-decoration: underline; }
    ⚠ Calendari is NOT here: its band's right-hand side is the month
    navigator, not a figure row. It is in the hero and title lists above,
    and in neither of these two. */
-.ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r {
+.ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r,
+.cfg-figs {
   display: flex; align-items: flex-end; gap: 36px; flex: none;
 }
 .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat, .pl-fig,
-.cv-fig, .reg2-title-col {
+.cv-fig, .reg2-title-col, .cfg-fig {
   display: flex; flex-direction: column; gap: 4px;
 }
 /* `.reg2-title-col` is the title's own stack, not a figure — same three
@@ -591,26 +597,26 @@ a:hover { text-decoration: underline; }
 .reg2-title-col { gap: 8px; min-width: 0; margin-right: auto; }
 
 .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
-.pl-fig-v, .cv-fig-v, .cv-big {
+.pl-fig-v, .cv-fig-v, .cv-big, .cfg-fig-v {
   font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 700px) {
-  .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
+  .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id, .cfg-hero,
   .pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
     flex-wrap: wrap; gap: 16px; padding: 14px 20px 16px;
   }
   /* ⚠ `.pl-h1`, `.reg2-h1`, `.cv-h1` and `.std-title` had NO phone override
      at all — 38px of title on a 390px screen. */
-  .md2-h1, .nf-h1, .ac-h1, .ini-h1,
+  .md2-h1, .nf-h1, .ac-h1, .ini-h1, .cfg-h1,
   .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
-  .ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+  .ini-body, .md2-body, .ms-body, .ac-body, .nf-body, .cfg-body,
   .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
   /* ⚠ The scope line WRAPS again on a phone. One-line-with-ellipsis exists to
      keep ten bands the same height beside each other; on a 390px screen you
      see one band at a time and there is no height to match, so truncating a
      sentence there would cost information and buy nothing. */
-  .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+  .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub, .cfg-hero-sub {
     white-space: normal; overflow: visible;
   }
   .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
@@ -4545,6 +4551,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-letter-chip-off{cursor:pointer;opacity:.45;border-style:dashed;}
 .ts-letter-chip-off:hover{opacity:.8;border-color:var(--primary);color:var(--primary);}
 .ts-letter-add{width:30px;height:30px;border-radius:50%;border:2px dashed var(--border);background:none;font-size:1rem;cursor:pointer;color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;transition:.2s;}
+/* The word beside the "+" is for the Configuració page's square chip row.
+   On this circular control it would burst the 30px button, so it is hidden
+   here and shown there — one markup, two dressings. */
+.ts-letter-add .ts-letter-add-l{display:none;}
 .ts-letter-add:hover{border-color:var(--primary);color:var(--primary);}
 .ts-fcf-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;}
 .ts-fcf-label{font-weight:600;font-size:.85rem;min-width:80px;flex-shrink:0;}
@@ -10210,4 +10220,527 @@ a.ini-ev-name, .ini-ev-name-link {
      came to drag the whole page sideways. */
   .nf-detail { flex: 1 0 100%; padding-left: 35px; box-sizing: border-box; white-space: normal; }
   .nf-time { font-size: 11px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CONFIGURACIÓ, redesigned (v254)
+   ═══════════════════════════════════════════════════════════════════
+   The tenth paper page, and the first that is a FORM rather than a report.
+   It replaces four cards plus a separate full-screen wizard.
+
+   ⚠ THIS BLOCK IS LAST IN THE FILE, so `test/configuracio.test.js` slices
+   from the banner above to EOF. Anything appended after it will be read as
+   Configuració's and trip that suite's scans — give this block an end bound
+   naming the new banner FIRST, the way `.nf-` was given one here.
+
+   The band, the bleed, the 36px title, the body inset, the caption atom and
+   the figure row are NOT redeclared here: `.cfg-*` joins the shared selector
+   lists at the top of this file (v246/v247). Only what is this page's own
+   lives below.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.cfg-page { background: var(--pp-paper); color: var(--pp-ink); }
+
+/* The identity strip that used to sit above the hero is gone (v254): it
+   repeated the club name, the responsable and the season, all three of which
+   the page says below — the first two on the Club tab, the season in the
+   rail's head. */
+
+/* The tab strip. `inset 0 -2px` rather than a border-bottom so the active
+   rule sits ON the band's own 1px line instead of stacking a second one. */
+.cfg-tabs {
+  display: flex; align-items: center; gap: 26px; padding: 0 40px;
+  border-bottom: 1px solid var(--pp-rule); overflow-x: auto;
+}
+.cfg-tab {
+  display: inline-flex; align-items: center; height: 44px; padding: 0;
+  border: none; background: none; cursor: pointer; white-space: nowrap;
+  font-family: inherit; font-size: 12.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--pp-ink-3);
+}
+.cfg-tab:hover { color: var(--pp-ink); }
+.cfg-tab-on { color: var(--pp-ink); box-shadow: inset 0 -2px 0 0 var(--pp-red); }
+
+/* The phone switcher. It REPLACES the strip rather than sitting beside it —
+   both carry `[data-cfg-tab]`, so one binder drives whichever is on screen. */
+.cfg-nav { display: none; position: relative; border-bottom: 1px solid var(--pp-rule); }
+.cfg-nav-cur {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 44px;
+  padding: 0 20px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--pp-ink);
+}
+.cfg-nav-caret { font-size: 10px; color: var(--pp-ink-3); }
+.cfg-nav-list {
+  position: absolute; top: 44px; left: 0; right: 0; z-index: 10;
+  display: flex; flex-direction: column; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-ink);
+}
+/* ⚠ REQUIRED, and not obviously so. `[hidden]{display:none}` is a USER-AGENT
+   rule, and the author `display:flex` above beats it — so the section list
+   sat permanently open over the page and the toggle did nothing. jsdom does
+   not apply [hidden] at all, so a test reading the attribute would have
+   agreed the list was hidden. Found by looking at a 390px screenshot. */
+.cfg-nav-list[hidden] { display: none; }
+.cfg-nav-item {
+  padding: 13px 20px; text-align: left; border: none; background: none;
+  border-bottom: 1px solid var(--pp-rule-2); cursor: pointer;
+  font-family: inherit; font-size: 14px; color: var(--pp-ink);
+}
+.cfg-nav-item-on { color: var(--pp-red); }
+
+/* Body: content plus a rail that does NOT change with the tab. */
+.cfg-body { display: flex; align-items: flex-start; gap: 44px; }
+.cfg-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 30px; }
+
+/* ⚠ EVERY PANEL IS IN THE DOM; ONLY ONE IS SHOWN.
+   _handleSaveTeamSetup collects from the DOM, and an absent section reads as
+   empty rather than as "leave alone" — so rendering one tab at a time would
+   let a save from Equipacions wipe the schedules. Driven off the root's
+   `data-cfg-active`, so switching tabs is a class change and never a
+   re-render: a re-render would throw away everything typed since the save. */
+.cfg-panel { display: none; flex-direction: column; gap: 22px; }
+.cfg-page[data-cfg-active="club"]       .cfg-panel[data-cfg-panel="club"],
+.cfg-page[data-cfg-active="cats"]       .cfg-panel[data-cfg-panel="cats"],
+.cfg-page[data-cfg-active="horaris"]    .cfg-panel[data-cfg-panel="horaris"],
+.cfg-page[data-cfg-active="kits"]       .cfg-panel[data-cfg-panel="kits"],
+.cfg-page[data-cfg-active="llistes"]    .cfg-panel[data-cfg-panel="llistes"],
+.cfg-page[data-cfg-active="temporades"] .cfg-panel[data-cfg-panel="temporades"],
+.cfg-page[data-cfg-active="clubs"]      .cfg-panel[data-cfg-panel="clubs"] { display: flex; }
+
+/* Section header: caption over a rule, note on the right.
+   `.cfg-sec-l` is in the shared caption list at the top of this file. */
+.cfg-sec {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.cfg-sec-n { font-size: 12px; color: var(--pp-ink-3); text-align: right; }
+.cfg-foot { margin: 0; font-size: 12px; color: var(--pp-ink-3); text-wrap: pretty; }
+
+/* Identity. Read-only VALUES, because a lead may not write them — the club
+   doc rule lets a lead touch only fcfLinks and schedules. Drawn as text
+   rather than a disabled input, so it does not read as a control that
+   failed. */
+.cfg-identity { display: flex; align-items: flex-start; gap: 34px; }
+/* ⚠ `width` as well as `flex:none`. Without it the column is sized by its
+   widest child, so the crest link — which is text — decided how wide the
+   crest was, and a longer translation wrapped it over the section below. */
+.cfg-crest { display: flex; flex-direction: column; gap: 9px; flex: none; width: 112px; }
+/* No frame and no ground behind the crest: a club badge is usually a
+   transparent PNG with its own outline, and a box around it read as a second,
+   competing edge. The empty state keeps a dashed hint, because without one
+   there is nothing there to click. */
+.cfg-crest-img, .cfg-crest-empty {
+  width: 112px; height: 112px; object-fit: contain;
+  border: none; background: none;
+}
+.cfg-crest-empty {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--pp-rule-4); box-sizing: border-box;
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-input-line);
+}
+/* ⚠ RESETS THE BOX `.club-badge-edit` GIVES IT. This link carries that class
+   too, because that is what `changeClubBadge`'s click handler binds to — but
+   the class was written for the 28px `<img>` crest in the clubs table, so it
+   was handing a text link `width:28px`, `height:28px`, `object-fit:contain`,
+   a 4px radius and a hover outline. Overriding the colour alone left it a
+   clipped square, which is why it kept looking unformatted. */
+.cfg-crest-edit {
+  width: auto; height: auto; margin: 0; border-radius: 0;
+  outline: none; object-fit: initial; vertical-align: baseline;
+  font-size: 12.5px; color: var(--pp-red); cursor: pointer;
+}
+.cfg-crest-edit:hover { color: var(--pp-red-dark); outline: none; text-decoration: underline; }
+.cfg-fields { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.cfg-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cfg-field-l {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.cfg-field-v { font-size: 15px; color: var(--pp-ink); word-break: break-word; }
+.cfg-field-h { font-size: 12px; color: var(--pp-ink-2); text-wrap: pretty; }
+.cfg-unset { color: var(--pp-red); }
+.cfg-bad { color: var(--pp-red); }
+
+/* Headings inside the reused setup sections. These dress the onboarding card
+   too, which is app chrome and not paper — hence --text-secondary here, and
+   the paper override scoped under .cfg-page below. */
+.ts-h3 { margin: 1.2rem 0 .6rem; font-size: 1rem; color: var(--text-secondary); }
+.ts-h3-sub { font-weight: 400; font-size: .8rem; }
+.ts-p { margin: 0 0 .6rem; font-size: .8rem; color: var(--text-secondary); }
+.cfg-page .ts-h3 { display: none; }
+.cfg-page .ts-p { font-size: 12px; color: var(--pp-ink-3); }
+
+/* The destructive panel: a new season archives the one running. */
+.cfg-danger {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  padding: 20px 22px; border: 1px solid var(--pp-red); background: #FFFFFF;
+}
+.cfg-danger-eyebrow {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-red);
+}
+.cfg-danger-title { font-size: 19px; color: var(--pp-ink); }
+.cfg-danger-body { font-size: 13.5px; color: var(--pp-ink-2); max-width: 640px; text-wrap: pretty; }
+
+/* Clubs · superadmin. */
+.cfg-sec-su { align-items: center; gap: 12px; justify-content: flex-start; }
+.cfg-su-badge {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+  background: var(--pp-red); color: var(--pp-paper);
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+}
+/* ⚠ The table scrolls INSIDE this wrapper. Ten columns will not fit a phone,
+   and a page body that scrolls sideways drags every other band with it. */
+.cfg-cl-wrap { overflow-x: auto; }
+.cfg-cl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cfg-cl th {
+  padding: 0 10px 8px; text-align: left; white-space: nowrap;
+  border-bottom: 1px solid var(--pp-rule);
+  font-size: 11px; font-weight: 400; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--pp-ink-3);
+}
+.cfg-cl td { padding: 8px 10px; border-bottom: 1px solid var(--pp-rule-2); vertical-align: middle; }
+.cfg-cl tbody tr:nth-child(even) { background: var(--pp-paper); }
+.cfg-cl tbody tr:hover { background: #FFFFFF; }
+.cfg-cl-name { min-width: 190px; }
+.cfg-cl-n { font-size: 15px; color: var(--pp-ink); }
+.cfg-cl-since { font-size: 11px; color: var(--pp-ink-3); margin-left: 6px; }
+.cfg-cl-code { font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+.cfg-cl-town, .cfg-cl-teams, .cfg-cl-members { color: var(--pp-ink-2); }
+.cfg-cl-teams, .cfg-cl-members { font-variant-numeric: tabular-nums; }
+/* ⚠ Same specificity as the rule above and declared LATER, so without this
+   the over-quota club's team count stayed grey — the one cell on the table
+   whose colour carries information. Found by looking at it, not by a test:
+   both classes were on the element exactly as intended. */
+.cfg-cl-teams.cfg-bad { color: var(--pp-red); }
+.cfg-cl-3d { text-align: center; }
+.cfg-cl-act { white-space: nowrap; }
+.cfg-cl .reg-input { font-size: 12.5px; }
+.cfg-cl .club-maxteams-input, .cfg-cl .club-minver-input { width: 64px; text-align: center; }
+.cfg-cl .club-lead-input { min-width: 190px; }
+.club-lead-msg { font-size: 11.5px; margin-top: .2rem; }
+
+.cfg-newclub {
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 22px 24px; border: 1px solid var(--pp-ink); background: #FFFFFF;
+}
+.cfg-newclub-title { font-size: 19px; }
+.cfg-newclub-sub { font-size: 12.5px; color: var(--pp-ink-2); }
+.cfg-newclub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 26px; }
+/* ⚠ `.reg-input` carries a content-sized width, so in a grid cell the boxes
+   came out narrower than their own placeholders — "responsable@cl" with the
+   rest clipped. The cell decides the width here, not the input. */
+.cfg-newclub-grid .reg-input { width: 100%; box-sizing: border-box; }
+.cfg-newclub-foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cfg-created { color: var(--pp-ok); }
+.cfg-code { letter-spacing: .15em; font-variant-numeric: tabular-nums; }
+
+/* The rail. Does NOT change with the tab — it is the club's state, not the
+   section's, which is why it sits outside .cfg-main.
+   ⚠ Except on Clubs · superadmin, where it is beside a ten-column table of
+   OTHER clubs and answers a question nobody on that tab is asking. It took
+   340px the table needed, and the action column was clipped off the edge. */
+.cfg-rail { flex: 0 0 340px; display: flex; flex-direction: column; }
+.cfg-page[data-cfg-active="clubs"] .cfg-rail { display: none; }
+.cfg-rail-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.cfg-rail-head-2 { margin-top: 34px; }
+.cfg-rail-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-rail-l { flex: 1 1 0; font-size: 13.5px; color: var(--pp-ink-2); }
+.cfg-rail-v { font-size: 15px; font-variant-numeric: tabular-nums; }
+.cfg-todo {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-dot { display: block; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; }
+.cfg-dot-bad { background: var(--pp-red); }
+.cfg-dot-warn { background: var(--pp-warn); }
+.cfg-dot-ok { background: var(--pp-ok); }
+.cfg-todo-l { flex: 1 1 0; font-size: 13.5px; text-wrap: pretty; }
+
+/* The save bar. One form, one save — see _handleSaveTeamSetup. */
+.cfg-save {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 18px 40px 24px; border-top: 1px solid var(--pp-rule); background: #FFFFFF;
+}
+.cfg-save-note { font-size: 12.5px; color: var(--pp-ink-3); }
+
+@media (max-width: 900px) {
+  /* The rail goes UNDER the content rather than narrowing: 340px is already
+     the least width its two-column rows read at. */
+  .cfg-body { flex-direction: column; gap: 30px; }
+  .cfg-rail { flex: 1 1 auto; width: 100%; }
+}
+
+@media (max-width: 700px) {
+  .cfg-bar { padding: 10px 20px; font-size: 12px; }
+  .cfg-tabs { display: none; }
+  .cfg-nav { display: block; }
+  .cfg-newclub-grid { grid-template-columns: minmax(0, 1fr); }
+  .cfg-identity { flex-direction: column; gap: 18px; }
+  .cfg-save { padding: 14px 20px 18px; }
+  /* Hit targets: the section list and the save button are what a lead taps. */
+  .cfg-nav-item { padding: 15px 20px; }
+  .cfg-save .btn { min-height: 44px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RE-DRESSING THE REUSED SECTIONS
+   ═══════════════════════════════════════════════════════════════════
+   The sections come from the team-setup builders, which were written for
+   the app's CHROME: pill toggles, 50%-radius chips, grey rounded cards,
+   `--primary` red, `--border` grey. Dropping them into a paper page
+   unchanged left the frame paper and the contents chrome.
+
+   Everything below re-dresses them WITHOUT touching the markup, so every
+   collector, every data attribute and every handler is untouched — the
+   whole point of sharing the builders. Scoped under `.cfg-page` for the
+   reason the file states elsewhere: a rule that borrows another page's
+   class family must sit under its own root, or it repaints every other
+   surface that uses it. The onboarding card keeps the chrome look, which
+   is right — it is an auth card, beside four others that share it.
+
+   The design language is the handoff's: square everywhere, 1px rules,
+   `--pp-rule` borders on `--pp-paper` fills, ink instead of primary.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Inputs, selects and buttons ─────────────────────────────────── */
+.cfg-page .reg-input,
+.cfg-page .ts-rem-input,
+.cfg-page .ts-sched-row input,
+.cfg-page .ts-sched-row select,
+.cfg-page .ts-fcf-row input {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  height: 30px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid var(--pp-rule); border-radius: 0;
+  background: #FFFFFF; color: var(--pp-ink);
+  font-family: inherit; font-size: 13px; line-height: normal;
+  transition: none;
+}
+/* A select with its arrow suppressed needs one drawn back, or it reads as
+   a text box that will not accept typing. */
+.cfg-page .ts-sched-row select {
+  padding-right: 22px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--pp-ink-3) 50%),
+                    linear-gradient(135deg, var(--pp-ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 13px, calc(100% - 8px) 13px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.cfg-page .reg-input:focus,
+.cfg-page .ts-rem-input:focus,
+.cfg-page .ts-sched-row input:focus,
+.cfg-page .ts-sched-row select:focus,
+.cfg-page .ts-fcf-row input:focus {
+  outline: none; border-color: var(--pp-ink); box-shadow: none;
+}
+.cfg-page .ts-rem-input { width: 54px; text-align: center; font-variant-numeric: tabular-nums; }
+.cfg-page .ts-sched-row select.ts-time { width: 78px; text-align: center; }
+
+.cfg-page .btn {
+  border-radius: 0; box-shadow: none; text-transform: none;
+  font-family: inherit; font-weight: 400;
+}
+.cfg-page .btn-outline, .cfg-page .btn-small {
+  border: 1px solid var(--pp-ink); background: none; color: var(--pp-ink);
+}
+.cfg-page .btn-outline:hover, .cfg-page .btn-small:hover {
+  background: var(--pp-ink); color: var(--pp-paper);
+}
+.cfg-page .btn-primary { background: var(--pp-ink); border: 1px solid var(--pp-ink); color: var(--pp-paper); }
+.cfg-page .btn-danger { background: none; border: 1px solid var(--pp-red); color: var(--pp-red); }
+.cfg-page .btn-danger:hover { background: var(--pp-red); color: #FFFFFF; }
+
+/* ── Categories: a square tick and square letter chips ───────────── */
+.cfg-page .ts-cat-row {
+  gap: 18px; padding: 15px 0;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-page .ts-cat-row:last-child { border-bottom: 1px solid var(--pp-rule-2); }
+/* The pill slider becomes a 22px checkbox. Same markup, same input, same
+   handler — only the box it draws changes. */
+.cfg-page .ts-cat-toggle { width: 22px; height: 22px; }
+.cfg-page .ts-cat-toggle .slider {
+  border-radius: 0; background: none;
+  border: 1px solid var(--pp-input-line); transition: none;
+}
+.cfg-page .ts-cat-toggle .slider::before {
+  content: ''; position: absolute; inset: 0;
+  width: auto; height: auto; background: none; border-radius: 0;
+  transform: none; transition: none;
+}
+.cfg-page .ts-cat-toggle input:checked + .slider {
+  background: var(--pp-ink); border-color: var(--pp-ink);
+}
+/* The tick is DRAWN, not a glyph: a ✓ character sits differently in every
+   font the fallback stack might reach for.
+   ⚠ Centred by the 50%/50% origin and a translate, not by hand-tuned top and
+   left — the first cut used `left:7px; top:3px`, which is only centred at
+   this exact size and sat visibly high in the box. The -60% on Y is
+   deliberate: a tick's optical centre is below its bounding box's, because
+   the long arm runs past the corner where the two strokes meet. */
+.cfg-page .ts-cat-toggle input:checked + .slider::before {
+  content: ''; position: absolute; inset: auto auto auto 50%; top: 50%;
+  width: 5px; height: 9px; border: solid var(--pp-paper);
+  border-width: 0 2px 2px 0; border-radius: 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  background: none;
+}
+.cfg-page .ts-cat-name {
+  width: 150px; min-width: 0; flex: none;
+  font-size: 16px; font-weight: 400; color: var(--pp-ink);
+}
+.cfg-page .ts-cat-row:not(.active) .ts-cat-name { color: var(--pp-ink-3); }
+.cfg-page .ts-letters { gap: 6px; flex: 1 1 0; }
+.cfg-page .ts-letter-chip {
+  width: auto; min-width: 28px; height: 28px; padding: 0 9px;
+  border-radius: 0; border: 1px solid var(--pp-rule);
+  background: none; color: var(--pp-ink-2);
+  font-size: 12.5px; font-weight: 400; transition: none;
+}
+.cfg-page .ts-cat-row.active .ts-letter-chip {
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
+}
+.cfg-page .ts-cat-row.active .ts-letter-chip-last:hover {
+  background: var(--pp-red); border-color: var(--pp-red);
+}
+.cfg-page .ts-letter-chip-off {
+  opacity: 1; border-style: dashed; border-color: var(--pp-input-line); color: var(--pp-ink-3);
+}
+.cfg-page .ts-letter-add {
+  width: auto; height: 28px; padding: 0 8px; border-radius: 0; gap: 4px;
+  border: none; background: none; color: var(--pp-red); font-size: 12.5px;
+}
+.cfg-page .ts-letter-add .ts-letter-add-l { display: inline; }
+.cfg-page .ts-letter-add:hover { color: var(--pp-red-dark); }
+/* Muted, not invisible. At `--pp-ink-4` this read as decoration rather than
+   as a control that is unavailable BECAUSE THE QUOTA IS FULL — which is the
+   one thing it has to communicate. */
+.cfg-page .ts-letter-add-muted { color: var(--pp-ink-2); }
+
+/* ── Quota line ──────────────────────────────────────────────────── */
+/* ⚠ `margin-top:-14px` against the panel's own 22px gap. The counter is a
+   one-line caption belonging to the header above it, but it is a sibling of
+   it, so it collected a full section gap on both sides and pushed the first
+   category row a long way clear of the rule. */
+.cfg-page .ts-quota-counter {
+  font-size: 12px; color: var(--pp-ink-3); text-align: right;
+  padding: 0; margin: -14px 0 -12px;
+}
+.cfg-page .ts-quota-counter.ts-quota-full { color: var(--pp-red); }
+.cfg-page .ts-quota-banner {
+  padding: 12px 14px; border-radius: 0; border: none;
+  border-left: 3px solid var(--pp-red);
+  background: var(--pp-tint); color: var(--pp-ink); font-size: 13.5px;
+}
+
+/* ── Schedules and staff lists: flat rows, not grey cards ────────── */
+.cfg-page .ts-sched-block {
+  margin: 0; padding: 15px 0; border: none; border-radius: 0;
+  background: none; border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-page .ts-sched-title {
+  font-size: 15px; font-weight: 400; color: var(--pp-ink); margin-bottom: 9px;
+}
+.cfg-page .ts-sched-sub {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 400; color: var(--pp-ink-3); margin: 10px 0 6px;
+}
+.cfg-page .ts-sched-row { gap: 8px; margin-bottom: 6px; }
+.cfg-page .ts-sched-dash { color: var(--pp-ink-3); font-size: 12px; }
+.cfg-page .ts-staff-list { display: block; }
+.cfg-page .ts-add-staff, .cfg-page .ts-sched-block .btn-outline {
+  height: 28px; padding: 0 10px; margin: 6px 0 0;
+  font-size: 12.5px; border: 1px solid var(--pp-rule); color: var(--pp-ink-2);
+}
+.cfg-page .ts-add-staff:hover, .cfg-page .ts-sched-block .btn-outline:hover {
+  border-color: var(--pp-ink); background: none; color: var(--pp-ink);
+}
+/* The remove ✕ is a control, not a button-shaped thing. */
+.cfg-page .ts-remove-staff, .cfg-page .ts-sched-row .btn {
+  border: none; background: none; color: var(--pp-ink-3);
+  padding: 0 6px; min-width: 0; height: 28px; font-size: 13px;
+}
+.cfg-page .ts-remove-staff:hover, .cfg-page .ts-sched-row .btn:hover {
+  color: var(--pp-red); background: none;
+}
+
+/* ── FCF links ───────────────────────────────────────────────────── */
+.cfg-page .ts-fcf-row {
+  gap: 16px; margin: 0; padding: 11px 0;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-page .ts-fcf-label {
+  width: 98px; min-width: 0; flex: none;
+  font-size: 15px; font-weight: 400; color: var(--pp-ink);
+}
+.cfg-page .ts-fcf-row input { flex: 1 1 0; min-width: 0; font-size: 12.5px; color: var(--pp-ink-2); }
+.cfg-page .ts-fcf-row.ts-fcf-stale input { border-color: var(--pp-warn); }
+.cfg-page .ts-fcf-warn {
+  color: var(--pp-warn-ink); font-size: 12px; padding-left: calc(98px + 16px);
+}
+
+/* ── Kits ────────────────────────────────────────────────────────── */
+.cfg-page .ts-kit-block {
+  border: none; border-radius: 0; padding: 16px 0; margin: 0;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+/* The last kit's bottom rule and the "+ Equipació" button were 6px apart,
+   so the button read as part of the kit above it rather than as the way to
+   add another. */
+.cfg-page #btn-add-kit { margin-top: 18px; }
+.cfg-page .ts-kit-head { gap: 14px; }
+.cfg-page .ts-kit-head .reg-input { flex: 0 0 180px; max-width: 180px; }
+.cfg-page .ts-kit-garments { gap: 10px 26px; margin-top: 10px; }
+.cfg-page .ts-kit-garment-label {
+  font-size: 12.5px; font-weight: 400; color: var(--pp-ink-2);
+}
+/* The colour swatches are the BOARD's picker (`.tb-color-pick`), round
+   because it lives in a dark context menu among round tokens. Squared here
+   only — scoped, or every menu on the tactics page changes with it. The
+   ::-webkit- and ::-moz- pseudo-elements carry their own radius and have to
+   be squared separately, or the fill stays a circle inside a square box. */
+.cfg-page .tb-color-pick {
+  width: 26px; height: 26px; border-radius: 0; border: 1px solid var(--pp-rule);
+}
+.cfg-page .tb-color-pick::-webkit-color-swatch-wrapper { padding: 0; border-radius: 0; }
+.cfg-page .tb-color-pick::-webkit-color-swatch { border-radius: 0; }
+.cfg-page .tb-color-pick::-moz-color-swatch { border-radius: 0; }
+/* The kit's remove control, matching the ✕ on every other row. */
+.cfg-page .ts-kit-remove {
+  border: none; background: none; color: var(--pp-ink-3);
+  width: auto; height: 26px; padding: 0 6px; font-size: 15px; border-radius: 0;
+}
+.cfg-page .ts-kit-remove:hover { color: var(--pp-red); background: none; }
+
+/* ── The ground, pasted as a link ────────────────────────────────── */
+/* What the box resolves to, under the box. Grey when there is nothing yet,
+   because an empty box is a deliberate state (it clears the coordinates) and
+   not an error; red only when something was pasted that cannot be read. */
+.cfg-page .ts-coords-hint {
+  display: block; margin-top: 6px; font-size: 12px;
+  color: var(--pp-ink-3); text-wrap: pretty;
+}
+.cfg-page .ts-coords-ok { color: var(--pp-ok); font-variant-numeric: tabular-nums; }
+.cfg-page .ts-coords-bad { color: var(--pp-red); }
+/* Clear of the section rule above it: with the explainer paragraph removed
+   the box sat straight under the heading. */
+.cfg-page #ts-home-coords { width: 100%; max-width: 420px; margin-top: 14px; }
+
+/* ── Reminder rows ───────────────────────────────────────────────── */
+.cfg-page .ts-rem-row { gap: 12px; margin-bottom: 10px; }
+.cfg-page .ts-rem-label { flex: 0 0 auto; font-size: 15px; color: var(--pp-ink); }
+.cfg-page .ts-rem-unit { font-size: 13px; color: var(--pp-ink-2); }
+
+/* ── The save error ──────────────────────────────────────────────── */
+.cfg-page .error-msg {
+  border-radius: 0; border: none; border-left: 3px solid var(--pp-red);
+  background: var(--pp-tint); color: var(--pp-ink);
+  padding: 10px 14px; font-size: 13.5px; margin-top: 16px;
 }

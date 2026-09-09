@@ -38,14 +38,20 @@ function grab(from, to) {
   return src.slice(i, j);
 }
 
-/* The `.nf-` block. It is currently LAST in the stylesheet, so this slice
-   runs to the end — the shape that has now broken four suites in turn. If a
-   thirteenth paper page is appended after this one, give this an end bound
-   naming it. */
+/* The `.nf-` block. It is no longer last in the stylesheet — Configuració
+   (v254) was appended after it — so the slice is bounded at BOTH ends. An
+   unbounded slice here is the shape that has broken four suites in turn: it
+   reads the next page's rules as this one's, and every scan below then fails
+   on a selector Notificacions never had. If a page is appended after
+   Configuració, bound THAT block the same way before you add it. */
 const NFBANNER = '/* ===== Notificacions, redesigned (v245)';
+const NFEND = 'CONFIGURACIÓ, redesigned (v254)';
 const NFSTART = css.indexOf(NFBANNER);
 assert.ok(NFSTART !== -1, 'the nf- block banner is gone from css/style.css');
-const NFCSS = css.slice(NFSTART).replace(/\/\*[\s\S]*?\*\//g, '');
+const NFSTOP = css.indexOf(NFEND, NFSTART);
+assert.ok(NFSTOP !== -1,
+    'the cfg- block banner that bounds the nf- slice is gone from css/style.css');
+const NFCSS = css.slice(NFSTART, NFSTOP).replace(/\/\*[\s\S]*?\*\//g, '');
 
 const SANITIZE_SRC = utilsSrc.slice(
     utilsSrc.indexOf('function sanitize(str) {'),

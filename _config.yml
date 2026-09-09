@@ -133,6 +133,15 @@ exclude:
   #                  node scripts/build-notificacions-preview.js . notificacions-preview.html
   - accions-preview.html
   - notificacions-preview.html
+  # And for the v254 Configuració redesign. This one is off Pages for a
+  # reason the others are not: it is the CLUB ADMIN screen, and it renders a
+  # club's join-code column, its lead's address and its staff mailing lists.
+  # Invented, but that is the shape of a credential and a contact list.
+  # ⚠ It is also the only preview that needs a DOM — the page is a form, so
+  # the builder mounts it in jsdom rather than concatenating a string. See the
+  # header of the script.
+  # Regenerate with: node scripts/build-configuracio-preview.js . configuracio-preview.html
+  - configuracio-preview.html
 
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:
