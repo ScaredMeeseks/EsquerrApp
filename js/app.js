@@ -2602,7 +2602,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 252;
+  const APP_VERSION = 253;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3966,6 +3966,108 @@
       return map[legacyRecordKey(playerId, sess, kind)];
     }
     return undefined;
+  }
+
+  /* ── Attendance: ONE rule, and the only one ─────────────────────
+     ⚠ FIVE call sites counted this separately and produced four different
+     answers for one player: Inici's player hero, Inici's staff hero, Les
+     meves estadístiques, Plantilla's band and rail, and the load charts on
+     staff-player-stats. They disagreed on the population (two never applied
+     playerIsCalled at all, so a juvenil player carried the amateur squad's
+     sessions), on the season boundary (three had none, so last season was
+     still in the figure), on when a session counts, and on what a silence
+     means. This function is the answer to all four. Nothing else counts
+     attendance — the repo's standing lesson, the one plmMatrix, _syncFcfSquad
+     and scheduleSlots already learned: when views must agree, give them one
+     function, not two that happen to match.
+
+     Three decisions, all the owner's (2026-09-09):
+
+     1. THE POPULATION is the sessions this player was CALLED to — guests in,
+        excluded out — inside the CURRENT season. Never the club's calendar.
+
+     2. A SESSION COUNTS ONCE IT HAS STARTED. ⚠ The boundary is its START,
+        not its date: a training at 21:00 today has not been attended at
+        10:00 today, and next Tuesday's has not happened at all. `date <=
+        today` was the test on three of the five sites, and the two with no
+        date test at all were banking future sessions as attendance.
+
+     3. A SILENT PLAYER ON A STARTED SESSION IS AN ATTENDANCE. Silence folds
+        into `yes`, so a season ring has no grey arc. ⚠ That grey belongs to
+        the PER-SESSION rings (the 44px ones in an Inici week row), where
+        "who has not replied yet" is the actual question being asked; here
+        the session is over and there is nobody left to chase.
+
+     ⚠ NOT getEffectiveAnswer(). That helper answers "what does the
+     availability UI show for this row", and its `locked ? 'na' : 'yes'`
+     inverts precisely where this figure needs it — a STARTED session is
+     always past its lock, so every silence would arrive here as 'na' and
+     decision 3 would be unreachable. The raw records are read once, here. */
+
+  /** Has this session begun? The boundary every attendance figure uses.
+   *  Built on sessionWindow() so there is ONE opinion about when a session
+   *  runs — sessionEndsAt() is that same window's other edge, and adding a
+   *  fourth was the trap the handoff warned about.
+   *  A session with no readable time has no start to compare against, so it
+   *  counts only once its DATE is behind us: the coarse answer, never the
+   *  optimistic one. */
+  function sessionHasStarted(t, now) {
+    if (!t || !t.date) return false;
+    var ref = now || new Date();
+    var w = sessionWindow(t);
+    /* Local midnight plus the start MINUTES, rather than formatting the time
+       back to HH:MM — the same reason sessionEndsAt() builds its end that
+       way, and it cannot produce an Invalid Date that every comparison then
+       silently answers `false` for. */
+    var day = new Date(t.date + 'T00:00:00');
+    if (!w || isNaN(day.getTime())) return t.date < localDateStr(ref);
+    return ref.getTime() >= day.getTime() + w.start * 60000;
+  }
+
+  /** The blobs and bounds seasonAttendance() needs, parsed once.
+   *  Pass it when looping a roster — Plantilla asks this for every player,
+   *  and re-parsing a 49 KB availability blob per row is the cost
+   *  availContext() was introduced to remove. */
+  function attendanceCtx(now) {
+    var ref = now || new Date();
+    var c = availContext();
+    return {
+      availData: c.availData,
+      overrides: c.overrides,
+      trainings: trainingOnly(getTrainings()),
+      seasonStart: seasonStartStr(ref),
+      now: ref
+    };
+  }
+
+  /** One player's season attendance. The counts, the denominator they share,
+   *  and the percentage — all from the same pass, so a ring can never
+   *  disagree with the number printed in its middle.
+   *  @returns {{yes:number,late:number,no:number,injured:number,
+   *             total:number,attended:number,pct:number}}
+   */
+  function seasonAttendance(u, ctx) {
+    var c = ctx || attendanceCtx();
+    var out = { yes: 0, late: 0, no: 0, injured: 0, total: 0, attended: 0, pct: 0 };
+    if (!u) return out;
+    (c.trainings || []).forEach(function (tr) {
+      if (!tr.date || tr.date < c.seasonStart) return;
+      if (!sessionHasStarted(tr, c.now)) return;
+      if (!playerIsCalled(tr, u)) return;
+      var a = readRecord(c.overrides, u.id, tr, 'avail') ||
+        readRecord(c.availData, u.id, tr, 'avail') || '';
+      if (a === 'late') out.late++;
+      else if (a === 'no') out.no++;
+      else if (a === 'injured') out.injured++;
+      /* 'yes', a silence, and anything unrecognised in the blob. Decision 3
+         is stated as the FALLBACK on purpose: a value this app stopped
+         writing years ago must not quietly become an absence. */
+      else out.yes++;
+    });
+    out.total = out.yes + out.late + out.no + out.injured;
+    out.attended = out.yes + out.late;
+    out.pct = out.total ? Math.round((out.attended / out.total) * 100) : 0;
+    return out;
   }
 
   var TRAINING_DEFAULT_LOC = 'Escola Industrial';
@@ -8419,37 +8521,24 @@
     const posCircles = posCirclesHtmlGlobal(userRecord || { position: session.position || '' });
     const number = session.playerNumber || (userRecord && userRecord.playerNumber) || '';
 
-    // Build per-player attendance donut
-    /* Only the sessions this player is actually called to. This used to read
-       the WHOLE club's calendar with no filter at all -- a juvenil player's
-       page listed amateur sessions and let him answer availability for them
-       -- and it is the same helper that makes a guest see the session he was
-       borrowed for. Narrowing and the new feature are one change. */
-    /* trainingOnly: this is the season attendance PERCENTAGE. An activity
-       has its own donut on its own card; folding it in here would mean a
-       player who skipped the Christmas dinner reads as a poor trainer. */
-    const training = playerTrainings(session, trainingOnly(getTrainings()));
-    let pYes = 0, pLate = 0, pNo = 0, pInj = 0, pNa = 0;
-    const _ctxHome = availContext();
-    training.forEach(t => {
-      if (!t.date) return;
-      const locked = isTrainingLocked(t);
-      const v = getEffectiveAnswer(session.id, t, locked, _ctxHome);
-      if (v === 'yes') pYes++;
-      else if (v === 'late') pLate++;
-      else if (v === 'no') pNo++;
-      else if (v === 'injured') pInj++;
-      else pNa++;
-    });
-    const pTotal = pYes + pLate + pNo + pInj + pNa;
-    const attendPct = pTotal ? Math.round(((pYes + pLate) / pTotal) * 100) : 0;
-    const attended = pYes + pLate;
-    /* ⚠ `pTotal` — which counts the sessions this player never answered — is
-       the same denominator `attendPct` uses two lines up. Passing anything
-       else is how the ring and the number in its middle disagreed. */
+    /* The per-player attendance donut, from seasonAttendance() — the one
+       rule, shared with Les meves estadístiques, Plantilla and the coach's
+       Inici. ⚠ This block used to count for itself, with no season bound and
+       no started test, through getEffectiveAnswer(): next Tuesday's silent
+       session was already banked here as an attendance while the same
+       player's Plantilla row had not counted it at all.
+
+       The ROSTER row when we have it, not the session blob: playerIsCalled()
+       tests `category` and `team`, and the session is a cached copy that can
+       be a squad letter behind the roster the coach just edited. */
+    const att = seasonAttendance(userRecord || { id: session.id, category: cat, team: team });
+    /* ⚠ `att.total` is the same denominator `att.pct` was computed from, in
+       the same pass. Passing anything else is how the ring and the number in
+       its middle disagreed (v247.4). Silence is inside `yes` by decision, so
+       the grey arc is empty here — see the banner on seasonAttendance(). */
     const donutHtml = iniDonutHtml(
-        iniAvailSegs({ yes: pYes, late: pLate, no: pNo, injured: pInj }, pTotal),
-        { size: HERO_DONUT, stroke: 3.4, centre: attendPct + '%' });
+        iniAvailSegs({ yes: att.yes, late: att.late, no: att.no, injured: att.injured }, att.total),
+        { size: HERO_DONUT, stroke: 3.4, centre: att.pct + '%' });
 
     /* Season figures. computePlayerMatchStats() is the app's one answer to
        "how many, how long, how many goals" — my-stats and the Plantilla
@@ -8540,8 +8629,8 @@
             ${donutHtml}
             <div class="ini-att-leg">
               <span class="ini-eyebrow">${t('ini.attendance')}</span>
-              <span>${tv('ini.sessions_of', { a: attended, b: pTotal })}</span>
-              <span>${tv('ini.absences', { n: pNo })}</span>
+              <span>${tv('ini.sessions_of', { a: att.attended, b: att.total })}</span>
+              <span>${tv('ini.absences', { n: att.no })}</span>
             </div>
           </div>
         </div>
@@ -15038,36 +15127,28 @@
     const seasonTxt = t('sc.season') + ' ' + sy + '-' + String(sy + 1).slice(2);
     const jornades = msTeamMatchdays(myUser, ctx.matches);
 
-    /* Attendance. The denominator is the sessions this player ANSWERED (or
-       that staff answered for them); a session nobody answered is not an
-       absence, and counting it as one would make a quiet week look like a
-       missed one. `justified` is the injured answer — the one absence the
-       club has already accepted. */
-    const trainingList = trainingOnly(getTrainings());
-    const _ctxStats = availContext();
-    let pYes = 0, pLate = 0, pNo = 0, pInj = 0;
-    trainingList.forEach(tr => {
-      if (!tr.date) return;
-      const v = getEffectiveAnswer(uid, tr, isTrainingLocked(tr), _ctxStats);
-      if (v === 'yes') pYes++;
-      else if (v === 'late') pLate++;
-      else if (v === 'no') pNo++;
-      else if (v === 'injured') pInj++;
-    });
-    const answered = pYes + pLate + pNo + pInj;
-    const attendPct = answered ? Math.round(((pYes + pLate) / answered) * 100) : 0;
+    /* Attendance, from seasonAttendance() — the same rule and the same
+       numbers as this player's Inici hero and the coach's Plantilla row.
+       ⚠ This block used to count for itself over `trainingOnly(getTrainings())`
+       with NO called-to filter and NO date filter of any kind: a juvenil
+       player's percentage included the amateur squad's sessions, last
+       season's were still in it, and every future session on the calendar
+       was already counted as an attendance. It was the furthest of the three
+       from the other two, and it is why one player read three numbers. */
+    const att = seasonAttendance(myUser);
     /* ⚠ TWO segments, not one. A lone green arc is always the whole ring, so
        this drew a full circle at any attendance above zero while the centre
        said 43% — the same disagreement Inici's heroes had (v247.4). The second
        segment is the sessions this player did not attend, and it is what makes
        the green a share of something. Not `iniAvailSegs`: my-stats deliberately
        shows attendance against sessions, never the yes/late/no/injured
-       breakdown, so its two arcs are its own. */
+       breakdown, so its two arcs are its own — the SPLIT is this page's, the
+       numbers being split are not. */
     const donutHtml = iniDonutHtml(
-        [{ n: pYes + pLate, css: 'var(--pp-ok)', label: t('ms.attendance') },
-          { n: Math.max(0, answered - (pYes + pLate)), css: 'var(--pp-rule-4)',
+        [{ n: att.attended, css: 'var(--pp-ok)', label: t('ms.attendance') },
+          { n: Math.max(0, att.total - att.attended), css: 'var(--pp-rule-4)',
             label: t('ini.no_answer') }],
-        { size: HERO_DONUT, stroke: 3.4, centre: attendPct + '%' });
+        { size: HERO_DONUT, stroke: 3.4, centre: att.pct + '%' });
 
     /* Readiness: the SCORE, the ratio and the days — and nothing else off the
        object. rd.loadRatioScore and its three siblings stay where they are. */
@@ -15114,9 +15195,9 @@
             ${donutHtml}
             <div class="ms-attend-txt">
               <span class="ms-lbl">${sanitize(t('ms.attendance'))}</span>
-              ${answered
-                ? `<span class="ms-attend-l">${sanitize(tv('ms.sessions_of', { a: pYes + pLate, b: answered }))}</span>
-                   <span class="ms-attend-l">${sanitize(tv('ms.absences', { n: pInj }))}</span>`
+              ${att.total
+                ? `<span class="ms-attend-l">${sanitize(tv('ms.sessions_of', { a: att.attended, b: att.total }))}</span>
+                   <span class="ms-attend-l">${sanitize(tv('ms.absences', { n: att.injured }))}</span>`
                 : `<span class="ms-attend-l">${sanitize(t('ms.no_sessions'))}</span>`}
             </div>
           </div>
@@ -15194,7 +15275,14 @@
 
     const sessions = [];
     trainingList.forEach(t => {
-      if (!t.date || t.date < seasonStart || t.date > todayStr) return;
+      if (!t.date || t.date < seasonStart) return;
+      /* ⚠ `t.date > todayStr` was the bound, and there was no called-to test
+         at all: the coach's load chart for a juvenil player plotted the
+         amateur squad's sessions as his, and a session starting at 21:00
+         showed up in the morning as one he had skipped. Same two faults the
+         attendance donuts had — see seasonAttendance(). */
+      if (!sessionHasStarted(t, now)) return;
+      if (!playerIsCalled(t, u)) return;
       const avail = readRecord(staffOverrides, uid, t, 'avail') ||
         readRecord(availData, uid, t, 'avail') || '';
       const excluded = avail === 'no' || avail === 'injured';
@@ -24449,9 +24537,11 @@
         </div>`).join('')
       : `<div class="ini-tbl-none">${t('ini.risk_none')}</div>`;
 
-    // ── The four counters and the season donut ──
-    const availData = JSON.parse(localStorage.getItem('fa_training_availability') || '{}');
-    const overrides = JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}');
+    /* ── The four counters and the season donut ──
+       The two availability blobs used to be parsed here for the donut's own
+       loop. seasonAttendance() reads them through availContext(), which
+       memoises on the raw string — so a second hand-rolled parse per render
+       is gone with the second opinion it fed. */
     const matchAvail = JSON.parse(localStorage.getItem('fa_match_availability') || '{}');
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const allMatches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
@@ -24480,26 +24570,33 @@
           return !ids.length;
         }).length;
 
-    /* Season attendance for THIS squad, computed rather than stored — the
-       same pass renderStaffWeek makes per session, over the whole season.
-       Read raw, like every other staff figure: a silent player is not an
-       attendance. */
-    const seasonTrainings = trainingOnly(getTrainings())
+    /* Season attendance for THIS squad: seasonAttendance() per player, summed.
+       ⚠ It used to count every player against every session in scope with a
+       `tr.date <= todayISO` test and read the blobs raw — so this hero
+       counted tonight's 21:00 session at 10:00, carried last season, ignored
+       who was actually called, and treated a silence as nothing while the
+       player's own Inici was treating it as an attendance. Four ways for the
+       coach's number and the player's number to differ about one player.
+       Summing the per-player rule is what makes them agree by construction
+       rather than by two edits happening to match. */
+    const attCtx = attendanceCtx();
+    let sYes = 0, sLate = 0, sNo = 0, sInj = 0;
+    players.forEach(p => {
+      const a = seasonAttendance(p, attCtx);
+      sYes += a.yes; sLate += a.late; sNo += a.no; sInj += a.injured;
+    });
+    /* The denominator IS the sum of the buckets — every slot the rule counted.
+       It is no longer players × sessions: a player the session excluded, or
+       one whose squad letter it does not carry, was never his to attend. */
+    const sSlots = sYes + sLate + sNo + sInj;
+    /* Only for the "N sessions and M matches" legend line below. Same season
+       bound and same started test as the figure above it, so the ratio and
+       the count under it cannot describe different windows. */
+    const seasonTrainings = attCtx.trainings
         .filter(tr => !curCat || (tr.category || '') === curCat)
         .filter(tr => !catLetter || !tr.team || tr.team === catLetter)
-        .filter(tr => tr.date && tr.date <= todayISO);
-    let sYes = 0, sLate = 0, sNo = 0, sInj = 0, sSlots = 0;
-    seasonTrainings.forEach(tr => {
-      players.forEach(p => {
-        sSlots++;
-        const k = recordKey(p.id, tr, 'avail');
-        const v = overrides[k] || availData[k] || '';
-        if (v === 'yes') sYes++;
-        else if (v === 'late') sLate++;
-        else if (v === 'no') sNo++;
-        else if (v === 'injured') sInj++;
-      });
-    });
+        .filter(tr => tr.date && tr.date >= attCtx.seasonStart &&
+          sessionHasStarted(tr, attCtx.now));
     const seasonMatches = allMatches
         .filter(m => !curCat || (m.category || '') === curCat)
         .filter(m => !catLetter || !m.team || m.team === catLetter)
@@ -24745,22 +24842,16 @@
   }
 
   /* ── Attendance ────────────────────────────────────────────────
-     Counted from the sessions a player was actually CALLED to, the
-     same filter computeReadiness applies — otherwise a coach's roster
-     credits every player with every other category's absences. */
+     seasonAttendance() is the rule; this is only the shape the donut and its
+     legend read. ⚠ The counting loop that used to live here was the closest
+     of the five to right — it already applied playerIsCalled and a season
+     bound — and it still disagreed with the player's own page twice: it
+     ended the season at `tr.date > ctx.today`, which counts tonight's 21:00
+     session this morning, and it dropped a silence on the floor while Inici
+     was banking it as an attendance. */
   function plAttendance(u, ctx) {
-    var out = {yes: 0, late: 0, no: 0, injured: 0};
-    (ctx.trainings || []).forEach(function (tr) {
-      if (!tr.date || tr.date < ctx.seasonStart || tr.date > ctx.today) return;
-      if (!playerIsCalled(tr, u)) return;
-      var a = readRecord(ctx.staffOverrides, u.id, tr, 'avail') ||
-        readRecord(ctx.availData, u.id, tr, 'avail') || '';
-      if (a === 'injured') out.injured++;
-      else if (a === 'no') out.no++;
-      else if (a === 'late') out.late++;
-      else if (a === 'yes') out.yes++;
-    });
-    return out;
+    var a = seasonAttendance(u, ctx.att);
+    return { yes: a.yes, late: a.late, no: a.no, injured: a.injured };
   }
 
   /** The attendance donut. `size` is the rendered px; the viewBox is fixed. */
@@ -26484,9 +26575,12 @@
     var ctx = {
       fit: fitnessContext(),
       ms: matchStatsContext(),
-      trainings: trainingOnly(getTrainings()),
-      availData: JSON.parse(localStorage.getItem('fa_training_availability') || '{}'),
-      staffOverrides: JSON.parse(localStorage.getItem('fa_training_staff_override') || '{}'),
+      /* ⚠ `att` carries the sessions AND the two availability blobs AND the
+         season bound, parsed once for the whole roster — plBuildRows asks
+         seasonAttendance() per player. The three keys this replaced
+         (`trainings`, `availData`, `staffOverrides`) were this page's own
+         copy of that context and its own idea of the season's end. */
+      att: attendanceCtx(now),
       injuries: getInjuries(),
       today: localDateStr(now),
       seasonStart: seasonStartStr(now)
@@ -26630,12 +26724,18 @@
       });
     });
     /* Absences are counted from availability, not from a missing RPE: a
-       player who trained and simply never filed his RPE is present. */
+       player who trained and simply never filed his RPE is present.
+       ⚠ Raw, and deliberately NOT seasonAttendance(): this asks "how many of
+       the squad were OUT of this one session", which is a per-session
+       question about the sessions already in `agg`, not a season figure.
+       The bounds it would add are already applied — a session with no RPE
+       from anybody has no `agg` key to increment. The blobs come off
+       `ctx.att` because that is where the page parses them now. */
     rows.forEach(function (r) {
-      (ctx.trainings || []).forEach(function (tr) {
+      (ctx.att.trainings || []).forEach(function (tr) {
         if (!tr.date || !playerIsCalled(tr, r.u)) return;
-        var a = readRecord(ctx.staffOverrides, r.u.id, tr, 'avail') ||
-          readRecord(ctx.availData, r.u.id, tr, 'avail') || '';
+        var a = readRecord(ctx.att.overrides, r.u.id, tr, 'avail') ||
+          readRecord(ctx.att.availData, r.u.id, tr, 'avail') || '';
         if (a !== 'no' && a !== 'injured') return;
         var key = tr.date + '|training';
         if (agg[key]) agg[key].absent++;

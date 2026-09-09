@@ -600,6 +600,15 @@ describe('renderStaffRoster — it runs', () => {
     currentSquadOrNull: () => null,
     fitnessContext: () => ({}),
     matchStatsContext: () => ({}),
+    /* ⚠ A module-scope collaborator like the two above it, not one of the
+       function's own locals: the page parses the availability blobs and the
+       season bound ONCE here and hands the result to seasonAttendance() per
+       player. Its contents are asserted in attendance.test.js, which runs the
+       real rule; this stub only has to exist for the page to build. */
+    attendanceCtx: () => ({
+      trainings: [], availData: {}, overrides: {},
+      seasonStart: '2026-07-01', now: new Date('2026-09-07T10:00:00')
+    }),
     trainingOnly: (x) => x,
     getTrainings: () => [],
     getInjuries: () => [],

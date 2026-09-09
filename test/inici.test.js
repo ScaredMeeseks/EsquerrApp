@@ -980,3 +980,212 @@ describe('Inici — the standings borrow a crest from our own fixtures', () => {
     assert.deepStrictEqual(B.withFixtureBadges([]), []);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE TWO HEROES, CALLED
+   ═══════════════════════════════════════════════════════════════════════════
+   ⚠ THE HOLE THIS FILLS, and it is one this repo has already paid for twice.
+   Every assertion above reads renderPlayerHome and renderStaffHome as TEXT,
+   or exercises the pill builders that sit beside them — neither hero had ever
+   been CALLED. That is exactly how v238 shipped a Plantilla which painted
+   nothing past 3080 green assertions, and it is how the two attendance rings
+   went on disagreeing with each other for four versions with this file green.
+
+   It surfaced as three surviving mutants when the donuts were unified (v253):
+   summing the wrong bucket into the staff ring, and printing a denominator
+   the ring had not been drawn from. Both render perfectly. Nothing in this
+   suite could see either.
+
+   Every collaborator is a stub and nothing else is — an identifier a hero
+   expects to have declared for itself is NOT in the parameter list, so losing
+   one throws here instead of on a phone. The one exception is the attendance
+   rule, sliced in REAL: the whole point of the change is that the number on
+   the page is the number the app computes, so a stub would answer the only
+   question being asked. */
+describe('Inici — the heroes are rendered, not just read', () => {
+  const NOW = new Date();
+  const dayOff = (n) => utils.localDateStr(new Date(NOW.getTime() + n * 86400000));
+
+  /* ⚠ RELATIVE TO THE CLOCK. The rule under test is "has this session
+     STARTED", and fixed dates stop asking that the day after they are
+     written — every session drifts into the past and the half of the fixture
+     that is meant to be in the future silently stops being.
+
+     Ten finished sessions — 6 yes, 1 late, 1 no, 1 injured and 1 SILENT —
+     plus one next week. 6 yes + 1 silent = 7 in the yes bucket, and the late
+     one is an attendance too: 8 attended of 10, which is 80%. */
+  const TRAININGS = [];
+  const AVAIL = {};
+  const put = (id, off, ans) => {
+    TRAININGS.push({ id, date: dayOff(off), time: '19:00', endTime: '',
+      category: 'amateur', teams: ['A'] });
+    if (ans) AVAIL['p1_' + id] = ans;
+  };
+  for (let i = 0; i < 6; i++) put('y' + i, -20 + i, 'yes');
+  put('l0', -12, 'late');
+  put('n0', -11, 'no');
+  put('i0', -10, 'injured');
+  put('s0', -9, '');       // a silence on a finished session → an attendance
+  put('future', 6, '');    // ⚠ fault (a): must not count at all
+  const SEASON = dayOff(-30);
+
+  const PLAYERS = [{ id: 'p1', name: 'Marc', roles: ['player'],
+    category: 'amateur', team: 'A' }];
+
+  /* The rule, real. Same three slices as ms.test.js and attendance.test.js —
+     three suites, one way of loading it, so none of them can be looking at a
+     different version of the thing they all assert about. */
+  const RULE =
+    grab('  function trainingTeams(t) {', '  /** The sessions a player is called to') +
+    grab('  function hhmmToMins(v) {', '  /* ── Player-submitted records: keyed by SESSION') +
+    grab('  function recordKey(playerId, sess, kind) {', '  var TRAINING_DEFAULT_LOC');
+
+  /* The REAL segment table, so the arcs carry the real labels and the real
+     order — which is what decides which arc sits where. */
+  // eslint-disable-next-line no-new-func
+  const realSegs = new Function('t',
+      grab('  const INI_SEGS = [', '  /* ONE SIZE for the ring') +
+      '\nreturn iniAvailSegs;')((k) => k);
+
+  const COMMON = {
+    getUsers: () => PLAYERS,
+    getTrainings: () => TRAININGS,
+    trainingOnly: (l) => l,
+    getTeamLetters: () => ['A', 'B'],
+    seasonStartStr: () => SEASON,
+    localDateStr: utils.localDateStr,
+    availContext: () => ({ availData: AVAIL, overrides: {} }),
+    DEFAULT_SESSION_MINS: 90,
+    DEFAULT_MATCH_MINS: 120,
+    BADGE_FALLBACK_MINS: 120,
+    sanitize: String,
+    t: (k) => k,
+    tv: (k, v) => k + ':' + JSON.stringify(v),
+    /* ⚠ The donut is stubbed to print its ARCS, not to draw them. The real
+       one is asserted at length further up this file; what is unassertable
+       there is whether a hero hands it the numbers its own legend used. */
+    iniDonutHtml: (segs, opts) =>
+      '<donut centre="' + (opts && opts.centre) + '">' +
+      segs.map((s) => s.label + '=' + s.n).join(',') + '</donut>',
+    iniAvailSegs: realSegs,
+    HERO_DONUT: 56,
+    getActiveFcfLeagues: () => [],
+    buildLeagueSnippet: () => '',
+    _leagueCache: {},
+    getClubName: () => 'CE L\'Esquerra',
+    posCirclesHtmlGlobal: () => '<pos>',
+    CATEGORY_LABELS: { amateur: 'Amateur' },
+    localStorage: { getItem: () => null },
+    Math, JSON, Object, String, Number, Date, Array, isNaN,
+  };
+
+  // ── the player's own hero ────────────────────────────────────────────
+  const renderPlayer = (over) => {
+    const api = Object.assign({}, COMMON, {
+      getSession: () => ({ id: 'p1', name: 'Marc', team: 'A', category: 'amateur' }),
+      computePlayerMatchStats: () => ({
+        totals: { matches: 4, minutes: 300, goals: 2, assists: 1 }, matchRows: [] }),
+      renderPlayerWeeks: () => ({ html: '<weeks>', pendingHtml: '' }),
+    }, over || {});
+    // eslint-disable-next-line no-new-func
+    return new Function(...Object.keys(api), RULE +
+      grab('  function renderPlayerHome() {', '  // #endregion FCF League Scraper') +
+      '\nreturn renderPlayerHome();')(...Object.values(api));
+  };
+
+  it('builds a player page, not an exception', () => {
+    const h = renderPlayer();
+    assert.ok(h.includes('ini-player'), 'no player hero came back');
+    assert.ok(h.includes('<weeks>'), 'the two-week strip is missing');
+  });
+
+  /* ⚠ The centre of the ring, the ring's own arcs, and the legend beneath it
+     are THREE renderings of one figure — and every bug this donut has had was
+     two of them disagreeing. Asserted from ONE render, together. */
+  it('draws the ring, its centre and its legend from the same figure', () => {
+    const h = renderPlayer();
+    assert.ok(h.includes('centre="80%"'),
+        'the centre percentage is wrong: ' + (h.match(/centre="[^"]*"/) || [])[0]);
+    assert.ok(/ini\.sessions_of:\{"a":8,"b":10\}/.test(h),
+        'the legend ratio disagrees with the ring: ' +
+        (h.match(/ini\.sessions_of:\S{0,40}/) || [])[0]);
+    /* The yes ARC is 7 — six real yeses plus the silence decision 3 folds in.
+       The eighth attendance is the late one, which rides its own arc. */
+    assert.ok(/avail\.yes=7/.test(h),
+        'the arcs are not the buckets the percentage came from: ' +
+        (h.match(/<donut[^>]*>[^<]*/) || [])[0]);
+    assert.ok(/avail\.no=1/.test(h) && /avail\.injured=1/.test(h),
+        'the absence arcs moved');
+    assert.ok(/ini\.no_answer=0/.test(h),
+        'a SEASON ring drew a grey no-answer arc — a finished silence is an ' +
+        'attendance, so there is nothing left unanswered on one');
+  });
+
+  /* ⚠ FAULT (a), at the surface the owner was looking at. The fixture's
+     `future` session is silent, and a silence used to reach this hero
+     through getEffectiveAnswer(), which reads an unlocked one as a yes. */
+  it('leaves next week out of the player ring', () => {
+    const h = renderPlayer();
+    assert.ok(!/ini\.sessions_of:\{"a":\d+,"b":11\}/.test(h),
+        'a session that has not happened is in the denominator');
+    assert.ok(!h.includes('centre="82%"'),
+        'the future session was counted as an attendance');
+  });
+
+  // ── the coach's hero ─────────────────────────────────────────────────
+  const renderStaff = (over) => {
+    const api = Object.assign({}, COMMON, {
+      getCurrentCategory: () => 'amateur',
+      currentSquadOrNull: () => null,
+      computeReadiness: () => ({ hasData: false, score: 0, weeks: [] }),
+      renderStaffWeek: () => ({ html: '', count: 0 }),
+      iniWeekRange: () => 'range',
+      tDayDDMM: () => '09/09',
+      deriveFitnessStatus: () => ({ fitnessStatus: 'fit' }),
+      getInjuries: () => [],
+      canEditPage: () => false,
+      shomeLinkAttrs: () => '',
+    }, over || {});
+    // eslint-disable-next-line no-new-func
+    return new Function(...Object.keys(api), RULE +
+      grab('  function renderStaffHome(session) {', '  let medicalDetailPlayerId = null;') +
+      '\nreturn renderStaffHome({ id: \'s1\', name: \'Coach\' });')(...Object.values(api));
+  };
+
+  it('builds a coach page, not an exception', () => {
+    const h = renderStaff();
+    assert.ok(h.includes('ini-staff'), 'no staff hero came back');
+  });
+
+  /* ⚠ THE DISAGREEMENT THE OWNER REPORTED, as one assertion. One player in
+     the squad, so the coach's summed ring and the player's own ring are the
+     same arithmetic and must print the same number. They are compared to
+     EACH OTHER first and to 70 second — a shared drift is still a bug, and
+     comparing only against the constant would let both move together. */
+  it('gives the coach the same number the player reads about himself', () => {
+    const pct = (h) => (h.match(/centre="(\d+)%"/) || [])[1];
+    const staff = pct(renderStaff());
+    const player = pct(renderPlayer());
+    assert.strictEqual(staff, player,
+        'the coach and the player see different attendance for one player: ' +
+        'staff ' + staff + ' vs player ' + player);
+    assert.strictEqual(staff, '80', 'the shared figure itself moved');
+  });
+
+  it('draws the staff ring from the buckets, not from the total', () => {
+    const h = renderStaff();
+    assert.ok(/avail\.yes=7/.test(h),
+        'the staff ring sums something other than the yes bucket: ' +
+        (h.match(/<donut[^>]*>[^<]*/) || [])[0]);
+    assert.ok(/ini\.att_of:\{"a":8,"b":10\}/.test(h),
+        'the legend ratio disagrees with the ring: ' +
+        (h.match(/ini\.att_of:\S{0,40}/) || [])[0]);
+  });
+
+  it('counts sessions for the legend over the same window as the ring', () => {
+    const h = renderStaff();
+    assert.ok(/ini\.sess_matches:\{"s":10/.test(h),
+        'the session count under the ring uses a different window: ' +
+        (h.match(/ini\.sess_matches:\S{0,40}/) || [])[0]);
+  });
+});

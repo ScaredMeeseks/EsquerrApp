@@ -7,13 +7,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 252** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 253** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3344** — `cd test && npm run test:unit` (~13 s), all passing |
+| Unit tests | **3377** — `cd test && npm run test:unit` (~15 s), all passing |
 | Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
 | Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
 
@@ -27,6 +27,13 @@ neither file and need no rules deploy**; the frontend ships by pushing `main`.
 
 ⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
 real app. Worth trying first, in this order:
+
+- ⚠ **The attendance figure on all four surfaces (v253), side by side for ONE player.** The whole
+  point of the change is that they now agree, and agreement is the one thing a unit test can only
+  prove for a fixture. Open Inici as that player, Les meves estadístiques as the same player, then
+  Plantilla and Inici as his coach, and check the four percentages match. Then check the season
+  ring has **no grey arc** (a finished silence is an attendance now) while a week row's 44px ring
+  still does show grey for who has not replied — that contrast is the design, not a bug.
 
 - ⚠ **The v247 filter and band, which NO preview can show.** The previews have no `.cat-bar`, and
   Calendari has no preview builder at all. Four things to do on `localhost:8080`:
@@ -63,7 +70,24 @@ real app. Worth trying first, in this order:
 
 ---
 
-## The session in order — v234 to v252
+## The session in order — v234 to v253
+
+### v253. Attendance, counted once.
+
+Five call sites became one function. `seasonAttendance(u, ctx)` in `js/app.js`, with
+`sessionHasStarted()` and `attendanceCtx()` beside it, and a banner over all three that states the
+owner's three decisions as decisions rather than as code. Inici's two heroes, Les meves
+estadístiques and Plantilla's `plAttendance` all call it; `staff-player-stats`' load charts take the
+same two filters they were missing.
+
+Two dead denominators went with it: the staff hero's `players × sessions` slot count, and the second
+hand-rolled parse of both availability blobs it needed — `availContext()` memoises on the raw string
+and was already there. Plantilla's context now carries one `att:` sub-object instead of its own
+`trainings` / `availData` / `staffOverrides` / season bound.
+
+⚠ **The full detail, the measurements taken before anything changed, and what was deliberately left
+alone are in the parking-lot entry at the foot of this file** — it is the record of a product
+decision, not just a changelog line.
 
 ### v234. Mèdic, rebuilt to the eighth design handoff.
 
@@ -507,52 +531,67 @@ defanged and mutation caught both.** Unit 3334 → **3344**.
 
 ## Parking lot
 
-### ⚠ NEXT SESSION STARTS HERE — the attendance donuts *(owner, 2026-09-09)*
+### ✅ DONE at v253 — the attendance donuts *(owner asked 2026-09-09, fixed the same day)*
 
-**Do this first, before anything else.** Two faults, and they are probably one
-cause: whatever counts a session as "attended" is being asked the question in
-three places and answering differently.
+Both faults were one cause, and there were **five** call sites, not three:
+Inici's player hero, Inici's staff hero, Les meves estadístiques, Plantilla's
+band and rail, and the load charts on `staff-player-stats`. They disagreed on
+four independent axes — who is counted, which season, when a session counts,
+and what a silence means.
 
-**(a) A session should not count until it has STARTED.** Future sessions are
-being included in both the render and the percentage, so a squad that has
-answered nothing for next Tuesday is already carrying it as a miss (or a
-yes — establish which, that is the first thing to measure). Attendance is a
-record of what happened; a session in the future has not happened. ⚠ The
-boundary is the session's START, not its date — a training at 21:00 today has
-not been attended at 10:00 today. `sessionEndsAt`/`sessionWindow` already
-exist and may or may not be the right hook; check before adding a fourth
-opinion about when a session is live.
+**What (a) actually was, measured before anything was changed:** a future
+session counted as a **yes**, not as a miss. `getEffectiveAnswer` returns
+`'yes'` for an unlocked silence and `isTrainingLocked` only turns true
+`lockHours` (default 3) before kick-off, so next Tuesday's unanswered session
+was already banked as attendance on the two sites that used it. Two others
+escaped only via their date filters, which is precisely why the pages differed.
 
-**(b) Inici, Les meves estadístiques and the player detail disagree** about one
-player's attendance. Three surfaces, three numbers, same player.
+**Two faults the owner's note had not spotted:** Inici's two heroes and Les
+meves estadístiques had **no season bound at all**, so last season was still in
+the figure; and Les meves estadístiques and the staff load charts never applied
+`playerIsCalled`, so a juvenil player's percentage included the amateur squad's
+sessions.
 
-⚠ **Find the shared rule before fixing any of the three.** The repo's own
-standing lesson applies exactly here — *"when two views must agree, give them
-one function, not two that match"* (`plmMatrix`, `_syncFcfSquad`,
-`scheduleSlots`). Three call sites computing attendance separately is the
-disease; making them agree by patching each is treating the symptom, and they
-will drift again by the next release.
+**The owner's three decisions**, now the banner on `seasonAttendance()`:
 
-Known starting points, none of them verified as the cause:
-- Inici's staff hero counts `sSlots` as every player × every session in
-  `seasonTrainings`, filtered on `tr.date <= todayISO` — a DATE test, which is
-  suspect for (a).
-- Inici's player hero counts `pTotal` from `getEffectiveAnswer` over
-  `training`, with a `pNa` bucket.
-- Les meves estadístiques counts `answered` from `getEffectiveAnswer` over
-  `trainingOnly(getTrainings())` and has NO date filter at all — which alone
-  would explain (a) and part of (b).
-- ⚠ `getEffectiveAnswer` **counts a silent player as a yes** (see the banner in
-  `test/inici.test.js`). Whether that is right for a *future* session is the
-  crux of (a), and it is a product decision, not a bug to quietly flip.
-- v247.4 gave the rings a real denominator (`iniAvailSegs(n, slots)`), so the
-  ring and its centre number now agree *within* a page. That work is what made
-  the disagreement *between* pages visible; it did not cause it.
+1. **The population** is the sessions the player was CALLED to (guests in,
+   excluded out), inside the current season.
+2. **A session counts once it has STARTED** — the boundary is its start, never
+   its date. `sessionHasStarted()` is built on the existing `sessionWindow()`,
+   so there is no fourth opinion about when a session is live.
+3. **A silence on a started session is an attendance.** It folds into `yes`,
+   so a season ring has no grey arc. ⚠ The grey stays on the **per-session**
+   rings (the 44px ones in an Inici week row), where "who has not replied yet"
+   is the actual question.
 
-**Ask the owner which number is the RIGHT one before making the other two
-match it.** "Sessions so far this season, of those the player was called to"
-and "every session on the calendar" are different questions and the answer
-decides the fix.
+⚠ **`seasonAttendance()` deliberately does NOT use `getEffectiveAnswer()`.**
+That helper answers "what does the availability UI show for this row", and its
+`locked ? 'na' : 'yes'` inverts exactly where the figure needs it — a started
+session is always past its lock, so every silence would arrive as `'na'` and
+decision 3 would be unreachable. It reads the raw records once instead.
+
+**What was left alone, and on purpose:** the `M matches` half of the staff
+hero's `ini.sess_matches` legend still uses `m.date <= todayISO`, so a match
+kicking off tonight is counted this morning. It is the same class of bug one
+line away, but matches are a different figure with no `matchHasStarted` helper,
+and widening the brief risked a second change nobody asked for. **Worth doing
+next; it is small.**
+
+**Tests.** `test/attendance.test.js` is new — 23 assertions over the real rule
+with an injected clock, including the "21:00 session at 10:00" case that cannot
+be written against the wall clock anywhere else. It also carries a **drift
+guard**: a scan that fails if any site reads the availability blobs and divides
+to make its own percentage. That guard is the point — every other assertion
+would go on passing while a sixth site quietly counted for itself.
+
+⚠ **`inici.test.js` now CALLS both heroes.** It never had. Every assertion in
+that file read them as text or exercised the pill builders beside them, which
+is how the two rings disagreed for four versions with the suite green — the
+same shape as v238's Plantilla, which painted nothing past 3080 green tests.
+Three mutants survived the first pass because of it.
+
+**Mutation-tested, 14 mutants, 0 survivors.** The three that survived the first
+run were all at render sites and all fixed by the two additions above.
 
 35. **`fa_matches` is read raw in 31 places.** *(v252)* `getUsers`,
     `getTrainings`, `getInjuries` and `getMatchEvents` all exist; `getMatches`

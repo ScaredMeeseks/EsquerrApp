@@ -85,9 +85,52 @@ const ROWS = [
 }));
 const TOTALS = { goals: 3, assists: 2, matches: 6, minutes: 412, titulars: 4 };
 
+/* ── The attendance fixture ───────────────────────────────────────────────
+   ⚠ DATED RELATIVE TO THE CLOCK, never written down. The rule this page now
+   shares with Inici and Plantilla is "has the session STARTED", and a fixture
+   with fixed dates stops asking that question the day after it is written —
+   every session in it drifts into the past and the future half of the test
+   quietly becomes a second copy of the past half.
+
+   Three kinds of session, and only the first counts:
+     · 24 inside the season, already finished — 16 yes, 3 late, 3 injured
+       and 2 SILENT, and the silent pair is decision 3: a silence on a
+       session that has happened is an attendance.
+     ·  2 in the future, silent — fault (a). These used to be counted, and
+       counted as attendances, because getEffectiveAnswer() reads an unlocked
+       silence as a yes.
+     ·  1 before the season boundary, answered `no` — the bound this page
+       never had at all.
+
+   ⚠ The fourth case — a session LATER TODAY, which is what makes the
+   boundary a START rather than a date — is NOT here. It cannot be written
+   against the wall clock without flaking near midnight, so it is asserted in
+   attendance.test.js, where the rule is run with an injected `now`. */
+const NOW = new Date();
+const dayOff = (n) => utils.localDateStr(new Date(NOW.getTime() + n * 86400000));
+/* The season opened 40 days ago, so the session at −45 is last season's.
+   Relative for the same reason as the rest: a hardcoded boundary lands in
+   the future for the first fortnight of every August. */
+const SEASON_START = dayOff(-40);
+
 const TRAININGS = [];
-for (let i = 0; i < 22; i++) TRAININGS.push({ id: 'tr' + i, date: '2026-08-01' });
-const ANSWERS = TRAININGS.map((tr, i) => (i < 16 ? 'yes' : i < 19 ? 'late' : 'injured'));
+const AVAIL = {};
+/* ⚠ `p1_<sessionId>` is what recordKey() builds, and the REAL recordKey and
+   readRecord are sliced into the harness below rather than faked — so this
+   fixture has to write the key the app writes, not a key it agrees with. */
+const put = (id, dayOffset, answer) => {
+  TRAININGS.push({ id, date: dayOff(dayOffset), time: '19:00', endTime: '' });
+  if (answer) AVAIL['p1_' + id] = answer;
+};
+for (let i = 0; i < 16; i++) put('y' + i, -30 + i, 'yes');
+for (let i = 0; i < 3; i++) put('l' + i, -12 + i, 'late');
+for (let i = 0; i < 3; i++) put('i' + i, -8 + i, 'injured');
+for (let i = 0; i < 2; i++) put('s' + i, -5 + i, '');       // silent → an attendance
+for (let i = 0; i < 2; i++) put('f' + i, 3 + i, '');        // future → not counted
+put('lastseason', -45, 'no');                               // out of season → not counted
+
+/* What the rule must produce from that: 16 yes + 2 silent = 18, plus 3 late,
+   plus 3 injured. 24 counted, 21 of them attended, 21/24 = 87.5 → 88%. */
 
 /* ONE hamstring, on ONE side, plus a calf. The whole point of the fixture is
    that BODY_ZONES holds a second Hamstring polygon at HAM2 which must stay
@@ -128,11 +171,20 @@ function render(over) {
       totals: o.totals || TOTALS, matchRows: o.rows || ROWS,
     }),
     computeReadiness: () => (o.rd || READY),
-    availContext: () => ({}),
-    isTrainingLocked: () => true,
-    getEffectiveAnswer: (uid, tr) => ANSWERS[TRAININGS.indexOf(tr)] || 'na',
+    /* ⚠ The attendance stubs are the INPUTS to the rule, never the rule.
+       seasonAttendance(), sessionHasStarted() and the record readers are all
+       sliced in below as real code — the page's number has to be the one the
+       app computes, because "the three surfaces disagree" was a bug about
+       exactly that. What is stubbed is where the blobs and the season bound
+       come from, and nothing else.
+       ⚠ `getEffectiveAnswer` is deliberately NOT here any more: this page
+       stopped asking it, and a stub for a collaborator the code no longer
+       calls is a fixture that can silently stop mattering. */
+    availContext: () => ({ availData: (o.avail || AVAIL), overrides: {} }),
     isOurTeam: (n) => n === 'CE L\'Esquerra',
-    seasonStartStr: utils.seasonStartStr,
+    seasonStartStr: () => SEASON_START,
+    DEFAULT_SESSION_MINS: 90,
+    DEFAULT_MATCH_MINS: 120,
     localDateStr: utils.localDateStr,
     bodyMapHtml: utils.bodyMapHtml,
     avatarHtmlGlobal: (u, cls) => '<span class="' + cls + ' ' + cls + '-ph">M</span>',
@@ -165,6 +217,17 @@ function render(over) {
   // eslint-disable-next-line no-new-func
   return new Function(...Object.keys(api), `
     ${SANITIZE_SRC}
+    /* The session window and the record readers, REAL — sessionHasStarted()
+       is built on sessionWindow() so the app has one opinion about when a
+       session runs, and readRecord() is what decides whether the fixture's
+       key is the key the app looks under. */
+    ${grab('  function hhmmToMins(v) {',
+    '  /* ── Player-submitted records: keyed by SESSION')}
+    /* recordKey → readRecord, and then the attendance rule itself: the ONE
+       function Inici's two heroes, Plantilla and this page all count
+       through. Sliced, never stubbed — see the banner above it in app.js. */
+    ${grab('  function recordKey(playerId, sess, kind) {',
+    '  var TRAINING_DEFAULT_LOC')}
     ${grab('  const MD2_SHOW_HEATMAP = true;', '  function renderMedical() {')}
     ${grab('  /* ONE SIZE for the ring', '  /** The weekday-over-day-number stack')}
     ${grab('  function buildInjuryHistoryHtml(uid, opts) {', '  /**\n   * The Ready cell')}
@@ -297,16 +360,64 @@ describe('Les meves estadístiques — the season figures', () => {
         (h.match(/ms\.jornades:\S{0,30}/) || [])[0]);
   });
 
-  it('counts attendance over ANSWERED sessions, not every session', () => {
+  /* ⚠ THE NUMBERS CHANGED ON PURPOSE (v253) and this test changed with them.
+     It used to assert "19 of 22 ANSWERED sessions, 86%" — the denominator
+     being the sessions somebody had replied to, over the whole club's
+     calendar, with no season bound and no date bound at all. That was one of
+     the three answers one player was reading about himself. The rule is now
+     seasonAttendance(): called to, this season, already started, and a
+     silence on a finished session is an attendance. */
+  it('counts attendance over the sessions that have HAPPENED', () => {
     const h = render();
-    // 16 yes + 3 late = 19 of 22 answered; 3 injured are the excused ones.
-    assert.ok(h.includes('ms.sessions_of:{&quot;a&quot;:19,&quot;b&quot;:22}'), 'the ratio moved');
+    assert.ok(h.includes('ms.sessions_of:{&quot;a&quot;:21,&quot;b&quot;:24}'),
+        'the ratio moved: ' + (h.match(/ms\.sessions_of:\S{0,40}/) || [])[0]);
     assert.ok(h.includes('ms.absences:{&quot;n&quot;:3}'), 'the excused count moved');
-    assert.ok(h.includes('>86%<'), 'the donut percentage moved');
+    assert.ok(h.includes('>88%<'), 'the donut percentage moved');
+  });
+
+  /* ⚠ THE RING'S OWN ARCS, not just the number in its middle. This page
+     splits its donut two ways rather than four — attended, and the rest —
+     and the SPLIT is this page's own while the numbers being split are the
+     shared rule's. A ring drawn against the wrong total renders perfectly,
+     agrees with its own centre percentage, and is caught by nothing else in
+     this file: it survived the mutation pass until this assertion existed.
+     The real iniDonutHtml writes each arc's figure into a <title>. */
+  it('splits the ring against the same total the percentage used', () => {
+    const h = render();
+    assert.ok(h.includes('ms.attendance: 21'),
+        'the green arc is not the 21 attended: ' +
+        (h.match(/<title>[^<]*<\/title>/g) || []).join(' | '));
+    assert.ok(h.includes('ini.no_answer: 3'),
+        'the remainder arc is not total − attended, so the ring is drawn ' +
+        'against something other than its own denominator: ' +
+        (h.match(/<title>[^<]*<\/title>/g) || []).join(' | '));
+  });
+
+  /* ⚠ FAULT (a), the owner's first complaint. Two of the 27 sessions in the
+     fixture are in the FUTURE and silent. They used to arrive through
+     getEffectiveAnswer(), which reads an unlocked silence as a yes — so a
+     squad that had answered nothing for next week was already carrying it as
+     attendance. If the bound is ever loosened again this is 23 of 26. */
+  it('leaves a session that has not happened yet out of both halves', () => {
+    const h = render();
+    assert.ok(!h.includes('ms.sessions_of:{&quot;a&quot;:23,&quot;b&quot;:26}'),
+        'the two future sessions are being counted as attendances again');
+    assert.strictEqual(TRAININGS.length, 27,
+        'the fixture no longer holds the future and out-of-season sessions ' +
+        'this asserts against');
+  });
+
+  /* The other bound this page never had. `lastseason` is answered `no`, so if
+     it leaked in it would move the ratio AND the percentage, not just the
+     denominator — which is what makes it visible rather than arithmetic. */
+  it('leaves last season out', () => {
+    const h = render();
+    assert.ok(!/ms\.sessions_of:{&quot;a&quot;:21,&quot;b&quot;:25}/.test(h),
+        "last season's session is back in the denominator");
   });
 
   it('says so rather than drawing 0% when nothing has been answered', () => {
-    const h = render({ stubs: { getEffectiveAnswer: () => 'na' } });
+    const h = render({ stubs: { getTrainings: () => [] } });
     assert.ok(h.includes('ms.no_sessions'), 'a 0% donut stands in for no data');
     assert.ok(!h.includes('ms.sessions_of'), 'a ratio was drawn over nothing');
   });
