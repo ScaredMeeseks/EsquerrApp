@@ -11028,7 +11028,7 @@ bound it before appending an eleventh page.**
 functions ship — an unnamed field is dropped, not refused — but the club ground will keep
 showing the parsed pair until they do. No rules change.
 
-### 2026-09-10 — Gestió d'usuaris, and three functions that were not there (v255)
+### 2026-09-10 — Gestió d’usuaris, and three functions that were not there (v255, refined in v256)
 
 Round 2 of the admin-tab redesigns. Pissarres is round 3 and is untouched.
 
