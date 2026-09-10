@@ -11030,7 +11030,7 @@ showing the parsed pair until they do. No rules change.
 
 ### 2026-09-10 — Gestió d’usuaris, and three functions that were not there (v255, refined in v256)
 
-Round 2 of the admin-tab redesigns. Pissarres is round 3 and is untouched.
+Round 2 of the admin-tab redesigns. Pissarres is round 3 — see v257 below.
 
 ⚠ **THREE FUNCTIONS WERE DELETED BY ONE COMMIT AND NOBODY NOTICED FOR NINE DAYS.**
 `90812ff` — the v237 Registracions redesign — removed `detachMemberByEmail`,
@@ -11143,3 +11143,131 @@ unplaced member too, and that is the behaviour this page wants.
 
 No rules change. `functions/index.js` gets only a comment correction and the version constant,
 so this is **push-only** — but run `test:functions` anyway, as the repo rule says.
+
+### 2026-09-10 — Pissarres, and the read that grew with the platform (v257)
+
+Round 3, the last of the three admin-tab redesigns. The whole
+`// #region Superadmin: board catalogue & platform template library`
+(`js/app.js`) rebuilt in the paper system as three tabs — **Pissarres dels clubs** (a card
+grid), **Editor** (a launcher) and **Biblioteca de plataforma** (pack manager + multi-club
+send). Prefix stays `.ab-`; the old chrome-token block in `css/style.css` was **deleted**, not
+left beside the new one.
+
+⚠ **THE READ WAS `4 + N_clubs` QUERIES AND EVERY BOARD ON THE PLATFORM**, on every open and
+again after every promote and every send. At three clubs that is seven queries and nobody
+notices; at three hundred it is ~304 queries and 14,000+ document reads to draw a page showing
+twenty cards. `_abState.club` is now a **query** — `where('clubId','==',cid)` — not a filter
+over everything already in memory, `boardAuthors` is read only for the clubs on screen, and
+"Tots els clubs" is an explicit choice carrying `limit(AB_ALL_LIMIT + 1)` so "there are more"
+is a fact rather than a guess.
+⚠ Both shapes are rules-satisfiable either way: the `isSuperUser()` read arm does not depend on
+the document, so no query this page can issue is refused. **The narrowing is about cost, not
+permission** — which is exactly why nothing would ever have complained.
+⚠ Consequence to remember: the club `<select>` must **reload**, not re-render. Setting the state
+and calling `_abRender()` leaves the previous club's boards in memory and the grid filters them
+all away — a blank page. The preview builder hit this on its first run.
+
+⚠ **THE SILENT ONE: `tbRoBoardHtml` MUST BE FED `{boardId, name}`, NEVER THE METADATA DOC.**
+`tbResolveRef` is `if (ref.positions || ref.formation) return ref;` and a `tacticBoards`
+**metadata doc has a `formation` field** with no drawing behind it. Hand it the doc and it is
+mistaken for the payload: a permanently empty pitch, no `data-ro-thin` marker, so hydration
+never comes back for it and nothing anywhere says why. Indistinguishable from a board somebody
+drew badly. (Admin docs key on `.id`; session refs key on `.boardId` — the other half of the
+same trap.) The suite slices the **real** resolver so that mistake actually fails, and asserts
+on the rendered skeleton rather than on the call, so "fixing" it by handing the doc straight to
+`renderReadOnlyBoard` still fails.
+
+**Viewport-gated hydration — the first lazy loading in the app.** There was none: no
+`IntersectionObserver`, no `loading="lazy"`. A mini pitch is not cheap — a full pitch with
+twenty-two circles, a `ResizeObserver`, and the whole animation as a JSON `data-frames`
+attribute — and `hydrateRoBoards()` warmed every skeleton on the page in one pass. Right for a
+session with two linked boards, wrong for a catalogue of sixty. `_abLazyBoards()` observes the
+cards and hydrates the ones that intersect, **in batches** (a per-card hydrate would throw away
+`TB.warm`'s ten-per-query behaviour), unobserving each so a card scrolled out and back does not
+re-warm.
+⚠ `hydrateRoBoards` gained an optional `roots` argument and **nothing else changed**: called
+with no argument it still sweeps the document, which is what its six other callers want.
+⚠ No `IntersectionObserver` (an old WebView, jsdom) loads everything rather than showing sixty
+empty boxes for ever.
+⚠ **`TB.warm` swallows its own errors** (`js/boards.js`), so a denied or failed read is
+silence — the skeleton just reads "Carregant…" for the life of the page. A skeleton still
+present after the await is that failure and is marked. The `.ab-thumb-failed` rule had to be
+compounded as `.ab-thumb .ab-thumb-failed`: on its own it is (0,1,0) against the skeleton's own
+(0,2,0) and lost, so the failed card said the right words in the ordinary grey.
+
+**The pack manager** replaces a comma-separated text input with toggle chips over the same
+`tacticTemplates.packs` array. No schema change — and a name can no longer be misspelt into a
+pack that exists on no other template and on no send panel.
+⚠ A pack is a **name on the templates that carry it**; there is no packs collection, and adding
+one would be a rules change for a list that is already derivable. So a pack just created lives
+in `_abState.newPacks` and its chip says «sense plantilles · es desa en assignar-la».
+⚠ Removing a pack patches **every template carrying it**, or the chip disappears from the
+manager while the templates keep an orphaned name — which is exactly how the editor's own local
+tag list misbehaves and is not a thing to copy.
+⚠ Toggling a pack **off** its last template keeps the name alive in the manager. Without that
+the chip vanishes mid-click and there is no way to put it back on: the ✕ is the deliberate way
+to retire a pack.
+
+**The tag filter is derived from the boards on screen, not from `getTagList()`.** `fa_tactic_tags`
+is plain localStorage — **per browser profile**, not per club, not per account, and absent from
+`SYNCED_KEYS`. On a page showing other clubs' work it would offer whatever the superadmin last
+typed on this device and match none of their boards. Creating a tag stays in the editor, where
+the list it writes is the list that board will use.
+
+**`seedClubFromTemplates` widened to `clubIds[]` / `packs[]`** (`functions/index.js`), with
+**two pre-existing bugs fixed first**, because multi-club would have multiplied both:
+1. `templateIds` was mapped and filtered but **never deduped** — `['t1','t1']` created the board
+   twice. Unioning several packs makes that the normal case rather than a typo.
+2. `already` was a **pre-loop snapshot never updated inside the loop**, so the in-call duplicate
+   was not caught either.
+⚠ **Back-compat is permanent, not transitional.** `{clubId, pack}` is normalised into the array
+form and keeps working forever — an APK installed today outlives any migration window, and the
+service worker serves a cached `js/app.js` until the bump reaches it. Top-level
+`created`/`skipped` stay as **totals** because that is all the shipped client reads; `byClub` is
+added beside them.
+⚠ **All clubIds are validated up front.** Checking each inside the loop would seed the clubs
+before the bad one and then throw with half the job done, and the caller has no way to tell
+which half. The single-club call still throws `not-found` exactly as it did.
+⚠ `array-contains` takes one value, so several packs is several queries unioned — **not** a
+second `.where('published','==',true)`, which would need a composite index this repo
+deliberately has none of. The draft check after the read covers the explicit-ids path too.
+Template pairs are read **once**, not once per club; board ids come from
+`db.collection('tacticBoards').doc()` rather than `Date.now()+rand6`, which a tight multi-club
+loop can collide inside one millisecond with a `set()` that would overwrite rather than fail.
+`timeoutSeconds` 120 → 300; `SEED_MAX_CLUBS` 50, `SEED_MAX_TEMPLATES` 200.
+
+**Two bugs the tests found on the way.** The send result was written straight into
+`#ab-seed-result` and the success path ends with `_abLoad(true)`, which re-renders — so the
+count appeared and vanished in the same tick and the send looked like it had done nothing; it
+lives in `_abState.sendResult` now. And `.ab-head` / `.ab-row` had an **`auto`** last track:
+two separate grid containers sharing one template, and an `auto` track sizes to its own content
+(the head's action cell is empty, the row's holds three buttons), so every heading sat a column
+adrift of what it named. Every track is fixed or a fraction now.
+
+**Deviations from the handoff.** No Privada/Club/Plataforma three-way — two states exist, a
+template is published or not, and a club board is club-readable with no per-board switch. The
+"Lligams pendents" rail is dropped: it needs each club's `fa_*` localStorage, which the
+superadmin does not have for other clubs. The Editor tab is a **launcher**, not a second editor
+— `bindTactics` is ~4,200 lines and two of everything for one job.
+
+**The sidebar label** was a hardcoded `'Pissarres'` string; it is `t('sidebar.admin_boards')`.
+
+**Tests.** 3466 → **3537**. New `test/pissarres.test.js` (71), registered in `test:unit` and as
+`test:pss`; it MOUNTS the page in jsdom, awaits the real loader against a Firestore stand-in
+that **records the queries it was asked for** — asserted on the query, not the rows, because
+reading the whole collection and filtering it in JS returns exactly the same cards. Functions
+78 → **89** (`test/templates.test.js`). New `scripts/build-pissarres-preview.js` →
+`pissarres-preview.html`, listed in `_config.yml` — the second preview that needs a DOM, and off
+Pages because it names other clubs and the coaches who drew each board.
+⚠ `test/gestio-usuaris.test.js` gained an end bound in the same change — `.gu-` was last and
+sliced to EOF. **`.ab-` is now last; bound it before appending a twelfth page.**
+⚠ And the gu banner's own comment named the new banner in prose, so `indexOf` found *that*
+first and cut the `.gu-` slice down to one paragraph, failing six assertions for a reason none
+of them named. The next banner's exact text is not spelt out inside a block any more, and the
+suite asserts its slice is long enough to be a whole block.
+**Mutation-tested, 39 mutants, 0 survivors.** Two of them were real gaps: the pack chip was only
+ever tested being switched on, and the emptied-pack case had no assertion at all.
+
+⚠ **THIS ROUND CHANGES `functions/index.js`, so it is NOT push-only.** Run
+`.\deploy.ps1 functions` **before** pushing — a push alone ships a client sending `clubIds`/
+`packs` to a callable that has never heard of them. No `firestore.rules` change.

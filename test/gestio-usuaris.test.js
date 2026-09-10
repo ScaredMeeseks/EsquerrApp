@@ -377,14 +377,29 @@ describe('Gestió d\'usuaris — assignMemberToTeam', () => {
 
 describe('Gestió d\'usuaris — the stylesheet', () => {
   const BANNER = 'GESTIÓ D\'USUARIS, redesigned (v255)';
+  const NEXT = 'PISSARRES, redesigned (v257)';
   const start = css.indexOf(BANNER);
-  /* Last in the file, so this slice runs to the end. Bound it by ITS banner
-     before appending another page — an unbounded slice has broken five
-     suites in turn. */
-  const block = css.slice(start).replace(/\/\*[\s\S]*?\*\//g, '');
+  /* ⚠ BOUNDED, and it was not until v257 appended `.ab-` after it. An
+     unbounded slice reads the NEXT page's block as this one's, and has broken
+     five suites in turn — the `!/overflow-x/` assertion below fires on the
+     first page appended after this one that scrolls anything sideways. */
+  const end = css.indexOf(NEXT, start);
+  const block = css.slice(start, end === -1 ? undefined : end)
+      .replace(/\/\*[\s\S]*?\*\//g, '');
 
-  it('has its own block, at the end of the file', () => {
+  it('has its own block, bounded by the one that follows it', () => {
     assert.ok(start !== -1, 'the gu- banner is gone from css/style.css');
+    assert.ok(end > start,
+        'the .gu- slice must end at the ' + NEXT + ' banner, not at EOF');
+    assert.ok(!/\.ab-page/.test(block),
+        'the slice has swallowed the block that follows it');
+    /* ⚠ The end bound is found by indexOf, so the FIRST mention of the next
+       banner wins — and the gu banner's own comment mentioned it by name,
+       which cut this block down to one paragraph and failed six assertions
+       below for a reason none of them named. */
+    assert.ok(block.length > 3000,
+        'the .gu- slice is too short to be the whole block — something ' +
+        'before the real ' + NEXT + ' banner matched it');
   });
 
   /* ⚠ `.gu-chip:hover` is 0,2,0 and `.gu-chip-on` was 0,1,0, so hovering the

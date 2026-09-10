@@ -150,6 +150,15 @@ exclude:
   # Regenerate with: node scripts/build-gestio-usuaris-preview.js . gestio-usuaris-preview.html
   - gestio-usuaris-preview.html
 
+  # And for the v257 Pissarres redesign — the superadmin catalogue. Off Pages
+  # because it names other clubs and the coaches who drew each board, which is
+  # the one page in the app whose whole point is showing several clubs' work
+  # side by side. Invented, and still not a thing to leave at a public URL.
+  # ⚠ The second preview that needs a DOM: renderAdminBoards() returns a shell
+  # and _abRender() writes the page after an async read.
+  # Regenerate with: node scripts/build-pissarres-preview.js . pissarres-preview.html
+  - pissarres-preview.html
+
 # Nothing here uses Jekyll's templating — the app is plain static files, and
 # `index.html` has no front matter so it is copied verbatim. Keep it that way:
 # a stray `{{` in an HTML file would otherwise be parsed as Liquid.

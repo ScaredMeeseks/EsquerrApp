@@ -322,4 +322,115 @@ describe('seedClubFromTemplates', function () {
     assert.strictEqual(snap.size, 1, 'the origin club gained or lost a board');
     assert.strictEqual(snap.docs[0].data().ownerUid, 'uidCoach');
   });
+
+  /* ⚠ THE DEDUPE. Until v257 `templateIds` was mapped and filtered but never
+     made unique, and `already` was a snapshot taken BEFORE the loop — so a
+     template named twice was written twice and the idempotency guard could not
+     see it. Unioning several packs makes that the normal case rather than a
+     typo: a template in two packs would arrive twice for every club. */
+  it('creates ONE board when a template is named twice', async () => {
+    const r = await seed({clubId: NEW_CLUB, templateIds: [tplId, tplId]});
+    assert.strictEqual(r.created, 1);
+    const snap = await db.collection('tacticBoards')
+        .where('clubId', '==', NEW_CLUB).get();
+    assert.strictEqual(snap.size, 1, 'the same template was seeded twice');
+  });
+
+  it('creates ONE board when the same template is in two packs', async () => {
+    const both = await promotePublished({boardId: 'b1', packs: ['base', 'extra']});
+    const r = await seed({clubId: NEW_CLUB, packs: ['base', 'extra']});
+    // 'base' holds tplId and `both`; 'extra' holds `both` again.
+    assert.strictEqual(r.created, 2, 'the union double-counted a shared template');
+    const snap = await db.collection('tacticBoards')
+        .where('clubId', '==', NEW_CLUB).get();
+    const sources = snap.docs.map((d) => d.data().sourceTemplateId).sort();
+    assert.deepStrictEqual(sources, [tplId, both].sort());
+  });
+});
+
+/* ⚠ BACK-COMPAT IS PERMANENT, NOT TRANSITIONAL. An APK installed today
+   outlives any migration window, and the service worker serves a cached
+   js/app.js until the version bump reaches it — so `{clubId, pack}` has to keep
+   working, down to which error code an unknown club throws. */
+describe('seedClubFromTemplates — many clubs at once', function () {
+  this.timeout(60000);
+  let tplId;
+  const THIRD = 'club3';
+
+  beforeEach(async () => {
+    await wipe();
+    await db.doc('clubs/' + CLUB).set({name: 'Origin Club'});
+    await db.doc('clubs/' + NEW_CLUB).set({name: 'New Club'});
+    await db.doc('clubs/' + THIRD).set({name: 'Third Club'});
+    await seedBoard('b1');
+    tplId = await promotePublished({boardId: 'b1', packs: ['base']});
+  });
+
+  const boardsOf = async (clubId) => (await db.collection('tacticBoards')
+      .where('clubId', '==', clubId).get()).size;
+
+  it('seeds every club in the list', async () => {
+    const r = await seed({clubIds: [NEW_CLUB, THIRD], packs: ['base']});
+    assert.strictEqual(r.created, 2, 'the total is not both clubs');
+    assert.strictEqual(await boardsOf(NEW_CLUB), 1);
+    assert.strictEqual(await boardsOf(THIRD), 1);
+  });
+
+  it('keeps created/skipped as TOTALS and adds byClub beside them', async () => {
+    // The shipped client reads only the two scalars.
+    const r = await seed({clubIds: [NEW_CLUB, THIRD], templateIds: [tplId]});
+    assert.strictEqual(r.created, 2);
+    assert.strictEqual(r.skipped, 0);
+    assert.deepStrictEqual(r.byClub, {
+      [NEW_CLUB]: {created: 1, skipped: 0},
+      [THIRD]: {created: 1, skipped: 0}
+    });
+  });
+
+  it('is idempotent per club, not across them', async () => {
+    await seed({clubIds: [NEW_CLUB], templateIds: [tplId]});
+    const r = await seed({clubIds: [NEW_CLUB, THIRD], templateIds: [tplId]});
+    assert.strictEqual(r.created, 1, 'the club that already had it got it again');
+    assert.strictEqual(r.skipped, 1);
+    assert.strictEqual(await boardsOf(NEW_CLUB), 1);
+  });
+
+  /* ⚠ ALL OF THEM, BEFORE ANYTHING IS WRITTEN. Checking each club inside the
+     loop would seed the clubs before the bad one and then throw with half the
+     job done — and the caller has no way to tell which half. */
+  it('throws not-found for an unknown club and writes NOTHING for the good ones', async () => {
+    await rejectsCode(() => seed({clubIds: [NEW_CLUB, 'ghost'], templateIds: [tplId]}),
+        'not-found');
+    assert.strictEqual(await boardsOf(NEW_CLUB), 0,
+        'the valid club was seeded before the bad id was noticed');
+  });
+
+  it('dedupes the club list too', async () => {
+    const r = await seed({clubIds: [NEW_CLUB, NEW_CLUB], templateIds: [tplId]});
+    assert.strictEqual(r.created, 1);
+    assert.strictEqual(await boardsOf(NEW_CLUB), 1);
+  });
+
+  it('still accepts the old single-club shape, unchanged', async () => {
+    const r = await seed({clubId: NEW_CLUB, pack: 'base'});
+    assert.strictEqual(r.created, 1);
+    assert.strictEqual(r.skipped, 0);
+    assert.strictEqual(await boardsOf(NEW_CLUB), 1);
+  });
+
+  it('counts a draft as skipped once PER CLUB', async () => {
+    const draft = (await promote({boardId: 'b1', packs: ['base']})).templateId;
+    const r = await seed({clubIds: [NEW_CLUB, THIRD], templateIds: [tplId, draft]});
+    assert.strictEqual(r.created, 2);
+    assert.strictEqual(r.skipped, 2, 'the draft was counted once for the whole call');
+  });
+
+  it('refuses a coach, whichever shape they send', async () => {
+    await rejectsCode(() => seed({clubIds: [NEW_CLUB], templateIds: [tplId]}, asCoach),
+        'permission-denied');
+  });
+
+  it('refuses an empty club list', async () => {
+    await rejectsCode(() => seed({clubIds: [], templateIds: [tplId]}), 'invalid-argument');
+  });
 });

@@ -43,6 +43,7 @@
     'staffrole.view_only':     { ca:'Només lectura: aquesta secció no la pots modificar amb el teu rol.', es:'Solo lectura: no puedes modificar esta sección con tu rol.', en:'View only: your role cannot change anything in this section.' },
     'sidebar.section_admin':   { ca:'Admin', es:'Admin', en:'Admin' },
     'sidebar.users':           { ca:'Gestió d\'usuaris', es:'Gestión de usuarios', en:'Manage Users' },
+    'sidebar.admin_boards':    { ca:'Pissarres', es:'Pizarras', en:'Boards' },
     'sidebar.settings':        { ca:'Configuració', es:'Configuración', en:'Settings' },
     'sidebar.section_teamlead':{ ca:'Team Lead', es:'Team Lead', en:'Team Lead' },
     'sidebar.staff_player_stats':{ ca:'Estadístiques', es:'Estadísticas', en:'Player Stats' },
@@ -1723,6 +1724,86 @@
     'gu.foot':            { ca:'El dorsal, la posició i l\'agent es canvien a Registracions. El tipus de staff, a Configuració › Staff.', es:'El dorsal, la posición y el agente se cambian en Registros. El tipo de staff, en Configuración › Staff.', en:'Shirt number, position and agent are changed on Registrations. The staff type, on Settings › Staff.' },
     'gu.empty':           { ca:'Cap persona amb aquest filtre.', es:'Ninguna persona con este filtro.', en:'Nobody matches this filter.' },
 
+    // ── Pissarres · superadmin board catalogue & platform library (v257) ──
+    'ab.h1':              { ca:'Pissarres', es:'Pizarras', en:'Boards' },
+    'ab.sub':             { ca:'{scope} · {n} pissarres · {t} plantilles de plataforma', es:'{scope} · {n} pizarras · {t} plantillas de plataforma', en:'{scope} · {n} boards · {t} platform templates' },
+    'ab.scope_all':       { ca:'Tots els clubs', es:'Todos los clubes', en:'All clubs' },
+    'ab.f_boards':        { ca:'Pissarres', es:'Pizarras', en:'Boards' },
+    'ab.f_published':     { ca:'Publicades', es:'Publicadas', en:'Published' },
+    'ab.f_drafts':        { ca:'Esborranys', es:'Borradores', en:'Drafts' },
+    'ab.tab_clubs':       { ca:'Pissarres dels clubs', es:'Pizarras de los clubes', en:'Club boards' },
+    'ab.tab_editor':      { ca:'Editor', es:'Editor', en:'Editor' },
+    'ab.tab_library':     { ca:'Biblioteca de plataforma', es:'Biblioteca de plataforma', en:'Platform library' },
+    'ab.note_clubs':      { ca:'Les pissarres dels clubs, en només lectura. «Copiar» en fa una còpia anònima a la biblioteca, sense tocar la del club.', es:'Las pizarras de los clubes, en solo lectura. «Copiar» hace una copia anónima en la biblioteca, sin tocar la del club.', en:'Club boards, read-only. “Copy” makes an anonymous copy in the library without touching the club\'s.' },
+    'ab.search_ph':       { ca:'Cerca per nom, autor o etiqueta', es:'Busca por nombre, autor o etiqueta', en:'Search by name, author or tag' },
+    'ab.all_cats':        { ca:'Totes les categories', es:'Todas las categorías', en:'All categories' },
+    'ab.all_tags':        { ca:'Totes', es:'Todas', en:'All' },
+    'ab.reload':          { ca:'Actualitza', es:'Actualiza', en:'Refresh' },
+    'ab.count':           { ca:'{n} de {total} pissarres', es:'{n} de {total} pizarras', en:'{n} of {total} boards' },
+    'ab.count_hidden':    { ca:'{n} enviades des de la biblioteca, no es mostren', es:'{n} enviadas desde la biblioteca, no se muestran', en:'{n} sent from the library, not shown' },
+    /* Only reachable on "Tots els clubs": a club-scoped query is bounded by
+       the club, so it needs no cap and never says this. */
+    'ab.capped':          { ca:'Només es mostren les {n} primeres. Tria un club per veure-les totes.', es:'Solo se muestran las {n} primeras. Elige un club para verlas todas.', en:'Only the first {n} are shown. Pick a club to see them all.' },
+    'ab.empty':           { ca:'Cap pissarra coincideix amb el filtre.', es:'Ninguna pizarra coincide con el filtro.', en:'No board matches the filter.' },
+    'ab.no_author':       { ca:'sense autor', es:'sin autor', en:'no author' },
+    'ab.left':            { ca:'ja no hi és', es:'ya no está', en:'has left' },
+    'ab.view':            { ca:'Veure', es:'Ver', en:'View' },
+    'ab.copy':            { ca:'Copiar', es:'Copiar', en:'Copy' },
+    'ab.copied':          { ca:'Ja copiada', es:'Ya copiada', en:'Already copied' },
+    'ab.thumb_failed':    { ca:'No s\'ha pogut carregar', es:'No se ha podido cargar', en:'Could not load' },
+    'ab.editor_note':     { ca:'L\'editor és el mateix de sempre: s\'obre a pantalla completa amb totes les eines i els fotogrames. En sortir tornes aquí.', es:'El editor es el mismo de siempre: se abre a pantalla completa con todas las herramientas y los fotogramas. Al salir vuelves aquí.', en:'The editor is the usual one: it opens full-screen with every tool and the frames. Leaving it brings you back here.' },
+    'ab.editor_new':      { ca:'Nova pissarra', es:'Nueva pizarra', en:'New board' },
+    'ab.editor_drafts':   { ca:'Esborranys per acabar', es:'Borradores por terminar', en:'Drafts to finish' },
+    'ab.editor_none':     { ca:'Cap esborrany. Copia una pissarra des de l\'altra pestanya.', es:'Ningún borrador. Copia una pizarra desde la otra pestaña.', en:'No drafts. Copy a board from the other tab.' },
+    'ab.packs':           { ca:'Paquets', es:'Paquetes', en:'Packs' },
+    'ab.pack_new_ph':     { ca:'Nom del paquet', es:'Nombre del paquete', en:'Pack name' },
+    'ab.pack_create':     { ca:'Crea', es:'Crea', en:'Create' },
+    'ab.pack_count':      { ca:'{n} plantilles', es:'{n} plantillas', en:'{n} templates' },
+    /* Its own key, not a plural rule: three languages, and «1 plantilles» is
+       the kind of thing a lead reads as the page being broken. */
+    'ab.pack_count_1':    { ca:'1 plantilla', es:'1 plantilla', en:'1 template' },
+    'ab.pack_rm_title':   { ca:'Treure el paquet', es:'Quitar el paquete', en:'Remove pack' },
+    'ab.pack_rm_body':    { ca:'«{p}» es traurà de {n} plantilles. Les plantilles no s\'esborren.', es:'«{p}» se quitará de {n} plantillas. Las plantillas no se borran.', en:'“{p}” will be removed from {n} templates. The templates are not deleted.' },
+    /* A pack lives only as a name on the templates that carry it, so one with
+       no template yet exists in this tab and nowhere else. Saying so beats a
+       chip that silently disappears on the next reload. */
+    'ab.pack_unsaved':    { ca:'sense plantilles · es desa en assignar-la', es:'sin plantillas · se guarda al asignarla', en:'no templates yet · saved when you assign it' },
+    'ab.pack_dup':        { ca:'Aquest paquet ja existeix.', es:'Ese paquete ya existe.', en:'That pack already exists.' },
+    'ab.th_board':        { ca:'Plantilla', es:'Plantilla', en:'Template' },
+    'ab.th_tag':          { ca:'Etiqueta', es:'Etiqueta', en:'Tag' },
+    'ab.th_cat':          { ca:'Categoria', es:'Categoría', en:'Category' },
+    'ab.th_packs':        { ca:'Paquets', es:'Paquetes', en:'Packs' },
+    'ab.th_state':        { ca:'Estat', es:'Estado', en:'State' },
+    'ab.state_draft':     { ca:'Esborrany', es:'Borrador', en:'Draft' },
+    'ab.state_live':      { ca:'Publicada', es:'Publicada', en:'Published' },
+    'ab.publish':         { ca:'Publica', es:'Publica', en:'Publish' },
+    'ab.unpublish':       { ca:'Despublica', es:'Despublica', en:'Unpublish' },
+    'ab.need_pack':       { ca:'Posa-li almenys un paquet abans de publicar-la.', es:'Ponle al menos un paquete antes de publicarla.', en:'Give it at least one pack before publishing.' },
+    'ab.edit':            { ca:'Edita', es:'Edita', en:'Edit' },
+    'ab.del':             { ca:'Esborra', es:'Borra', en:'Delete' },
+    'ab.del_title':       { ca:'Esborrar plantilla', es:'Borrar plantilla', en:'Delete template' },
+    'ab.del_body':        { ca:'S\'esborrarà «{n}» de la biblioteca. Els clubs que ja la tenen la conserven.', es:'Se borrará «{n}» de la biblioteca. Los clubes que ya la tienen la conservan.', en:'“{n}” will be deleted from the library. Clubs that already have it keep it.' },
+    'ab.lib_empty':       { ca:'Cap plantilla encara. Copia una pissarra des de l\'altra pestanya.', es:'Ninguna plantilla todavía. Copia una pizarra desde la otra pestaña.', en:'No templates yet. Copy a board from the other tab.' },
+    'ab.send_title':      { ca:'Envia a clubs', es:'Envía a clubes', en:'Send to clubs' },
+    'ab.send_note':       { ca:'Es copien a la biblioteca de cada club triat, com a pissarres seves. Repetir l\'enviament no les duplica.', es:'Se copian a la biblioteca de cada club elegido, como pizarras suyas. Repetir el envío no las duplica.', en:'They are copied into each chosen club\'s library as their own boards. Sending again does not duplicate them.' },
+    'ab.send_clubs':      { ca:'Clubs', es:'Clubes', en:'Clubs' },
+    'ab.send_packs':      { ca:'Paquets que s\'envien', es:'Paquetes que se envían', en:'Packs to send' },
+    'ab.send_go':         { ca:'Envia', es:'Envía', en:'Send' },
+    'ab.send_pick':       { ca:'Tria almenys un club i un paquet.', es:'Elige al menos un club y un paquete.', en:'Pick at least one club and one pack.' },
+    'ab.send_done':       { ca:'Enviades: {c} · ja hi eren o són esborrany: {s}', es:'Enviadas: {c} · ya estaban o son borrador: {s}', en:'Sent: {c} · already there or draft: {s}' },
+    'ab.send_all':        { ca:'Tots', es:'Todos', en:'All' },
+    'ab.send_none':       { ca:'Cap', es:'Ninguno', en:'None' },
+    'ab.saved':           { ca:'Desat.', es:'Guardado.', en:'Saved.' },
+    'ab.save_err':        { ca:'Error desant.', es:'Error al guardar.', en:'Could not save.' },
+    'ab.del_err':         { ca:'Error esborrant.', es:'Error al borrar.', en:'Could not delete.' },
+    'ab.promote_title':   { ca:'Copiar a la biblioteca', es:'Copiar a la biblioteca', en:'Copy to the library' },
+    'ab.promote_body':    { ca:'Es crearà una còpia anònima de «{n}» com a esborrany. La pissarra del club no es toca.', es:'Se creará una copia anónima de «{n}» como borrador. La pizarra del club no se toca.', en:'An anonymous copy of “{n}” will be created as a draft. The club\'s board is not touched.' },
+    'ab.promote_done':    { ca:'Copiada com a esborrany.', es:'Copiada como borrador.', en:'Copied as a draft.' },
+    'ab.load_err':        { ca:'Error carregant les pissarres: {e}', es:'Error cargando las pizarras: {e}', en:'Could not load the boards: {e}' },
+    'ab.read_err':        { ca:'No s\'ha pogut llegir el dibuix.', es:'No se ha podido leer el dibujo.', en:'Could not read the drawing.' },
+    'ab.tpl_read_err':    { ca:'No s\'ha pogut llegir la plantilla.', es:'No se ha podido leer la plantilla.', en:'Could not read the template.' },
+    'ab.close':           { ca:'Tanca', es:'Cierra', en:'Close' },
+
     // ── Configuració, the one-page club settings (v254) ──
     'cfg.tab_club':       { ca:'Club', es:'Club', en:'Club' },
     'cfg.tab_cats':       { ca:'Categories', es:'Categorías', en:'Categories' },
@@ -2681,7 +2762,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 256;
+  const APP_VERSION = 257;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -6498,7 +6579,7 @@
     if (session.isAdmin) {
       items.push({ section: t('sidebar.section_admin') });
       items.push({ id: 'users', icon: '⚙️', label: t('sidebar.users') });
-      items.push({ id: 'admin-boards', icon: '📐', label: 'Pissarres' });
+      items.push({ id: 'admin-boards', icon: '📐', label: t('sidebar.admin_boards') });
       items.push({ id: 'settings', icon: '🔧', label: t('sidebar.settings') });
     } else if (session.isTeamLead) {
       // The lead manages their own club's members, including permanent
@@ -11244,8 +11325,15 @@
   /**
    * Fill in any placeholders left by tbRoBoardHtml, in ONE query per ten
    * boards rather than one per board.
+   *
+   * `roots` narrows the sweep to a list of elements. Omitted — which is what
+   * all but one caller wants — it is the whole document, unchanged. The
+   * superadmin board catalogue passes the cards that have scrolled into view,
+   * because a page of sixty boards eagerly hydrated is sixty full pitches,
+   * sixty ResizeObservers and sixty JSON animation payloads for the four the
+   * reader can actually see.
    */
-  async function hydrateRoBoards() {
+  async function hydrateRoBoards(roots) {
     /* TWO kinds of node, and the second is the one that was missing.
 
        A `.tb-ro-skeleton` has nothing drawn yet. A `[data-ro-thin]` is
@@ -11255,8 +11343,14 @@
        never collected here, so it stayed that way for the life of the
        page: that is why the play button was missing everywhere except on
        a board whose payload some other screen had already cached. */
-    const skeletons = Array.from(document.querySelectorAll('.tb-ro-skeleton'));
-    const thin = Array.from(document.querySelectorAll('[data-ro-thin]'));
+    const scopes = (roots && roots.length) ? Array.from(roots) : [document];
+    const skeletons = [];
+    const thin = [];
+    scopes.forEach(function (s) {
+      if (!s || !s.querySelectorAll) return;
+      s.querySelectorAll('.tb-ro-skeleton').forEach(function (n) { skeletons.push(n); });
+      s.querySelectorAll('[data-ro-thin]').forEach(function (n) { thin.push(n); });
+    });
     const nodes = skeletons.concat(thin);
     if (!nodes.length) return;
     const idOf = (n) => n.dataset.roId || n.dataset.roThin;
@@ -31327,11 +31421,21 @@
      anonymous by construction. */
   var _abState = null;
 
+  /* ⚠ ONLY REACHED ON "Tots els clubs". A club-scoped query is bounded by the
+     club and needs no cap; the cross-club one is a whole-collection read and
+     does. 200 is a page, not a limit on the product — the club selector is the
+     way to see everything one club has. */
+  const AB_ALL_LIMIT = 200;
+
+  /* How far ahead of the viewport a card starts loading. One card's height,
+     so a normal scroll never shows an empty box. */
+  const AB_LAZY_MARGIN = '400px 0px';
+
   function renderAdminBoards() {
-    return '<h2 class="page-title">Pissarres</h2>' +
-      '<div id="ab-root"><div class="card">' +
-      '<p style="color:var(--text-secondary);font-size:.9rem;">Carregant…</p>' +
-      '</div></div>';
+    /* The whole page is `#ab-root`: the band's own figures are counts that
+       only exist after the load, so there is nothing to paint above it. */
+    return '<div class="ab-page" id="ab-root">' +
+      '<div class="ab-boot">' + sanitize(t('tactics.loading')) + '</div></div>';
   }
 
   /* Mark the catalogue cache dirty.
@@ -31348,29 +31452,86 @@
     if (_abState) _abState.loaded = false;
   }
 
-  /** Read everything the page needs. Small collections, one pass. */
+  /** Clubs, alphabetically, as a list of ids. */
+  function _abClubIds() {
+    return Object.keys(_abState.clubs).sort(function (a, b) {
+      return String(_abState.clubs[a].name || a)
+        .localeCompare(String(_abState.clubs[b].name || b));
+    });
+  }
+
+  /**
+   * Read what the page needs, SCOPED TO ONE CLUB unless told otherwise.
+   *
+   * ⚠ THE SCOPE IS THE WHOLE POINT OF THIS FUNCTION. Until v257 it read every
+   * tacticBoards document on the platform and every club's boardAuthors
+   * subcollection, on every open and again after every promote and every send.
+   * At three clubs that is seven queries and nobody notices. At three hundred
+   * it is 304 queries and fourteen thousand document reads to draw a page
+   * showing twenty cards — per open.
+   *
+   * So `_abState.club` is a QUERY, not a filter: `where('clubId','==',cid)`,
+   * with boardAuthors read only for the clubs actually on screen. "Tots els
+   * clubs" stays available and is what it says, capped at AB_ALL_LIMIT.
+   *
+   * ⚠ Both shapes are rules-satisfiable either way — the isSuperUser() read arm
+   * does not depend on the document, so no query this page can issue is
+   * refused. The narrowing is about cost, not permission. (Any OTHER caller
+   * must narrow for permission — see the two-queries-never-one note in
+   * boards.js.)
+   */
   async function _abLoad(force) {
     const root = document.getElementById('ab-root');
     if (!root) return;
     if (_abState && _abState.loaded && !force) { _abRender(); return; }
     const keep = _abState || {};
     _abState = {
-      tab: keep.tab || 'clubs', q: keep.q || '', club: keep.club || '',
-      cat: keep.cat || '', seededHidden: 0,
+      tab: keep.tab || 'clubs', q: keep.q || '',
+      /* `undefined` and `''` are DIFFERENT: undefined is "no scope chosen
+         yet", which resolves to the first club below, and '' is the explicit
+         cross-club choice. `keep.club || ''` would have collapsed the two and
+         made every first open a whole-collection read again. */
+      club: keep.club,
+      cat: keep.cat || '', tag: keep.tag || '',
+      seededHidden: 0, capped: false,
       boards: [], clubs: {}, authors: {}, promoted: {}, templates: [],
+      newPacks: (keep.newPacks || []).slice(),
+      sendClubs: (keep.sendClubs || []).slice(),
+      sendPacks: (keep.sendPacks || []).slice(),
+      sendResult: keep.sendResult || '',
       loaded: false
     };
     try {
-      const [boardSnap, clubSnap, srcSnap, tpls] = await Promise.all([
-        // Unfiltered on purpose, and satisfiable: the superuser read arm
-        // does not depend on the document, so no document this query can
-        // return could be denied. Any OTHER caller must narrow — see the
-        // two-queries-never-one note in boards.js.
-        db.collection('tacticBoards').get(),
+      const [clubSnap, srcSnap, tpls] = await Promise.all([
         db.collection('clubs').get(),
         db.collection('tacticTemplateSources').get(),
         TB.templates()
       ]);
+      clubSnap.forEach(function (d) {
+        _abState.clubs[d.id] = Object.assign({id: d.id}, d.data());
+      });
+      srcSnap.forEach(function (d) { _abState.promoted[d.id] = d.data() || {}; });
+      _abState.templates = tpls;
+
+      // Resolve the scope now that the clubs are known — and re-resolve it if
+      // the club it pointed at has since been deleted.
+      const ids = _abClubIds();
+      if (_abState.club === undefined ||
+          (_abState.club && !_abState.clubs[_abState.club])) {
+        _abState.club = ids[0] || '';
+      }
+
+      let q = db.collection('tacticBoards');
+      if (_abState.club) q = q.where('clubId', '==', _abState.club);
+      // One over the cap, so "there are more" is a fact rather than a guess.
+      else q = q.limit(AB_ALL_LIMIT + 1);
+      const boardSnap = await q.get();
+      const raw = [];
+      boardSnap.forEach(function (d) { raw.push(Object.assign({id: d.id}, d.data())); });
+      if (!_abState.club && raw.length > AB_ALL_LIMIT) {
+        _abState.capped = true;
+        raw.length = AB_ALL_LIMIT;
+      }
       /* Boards seeded FROM the library are not club work, so they do not
          belong in a catalogue of club work — seeing your own pack listed
          back at you as something to copy is noise at best and a way to
@@ -31382,36 +31543,35 @@
          recognisable. (A club that uses Save As gets a NEW id with no stamp,
          and that board WILL appear — correctly: it is their own derivative
          work, not the pack you sent.) */
-      boardSnap.forEach(function (d) {
-        const b = Object.assign({id: d.id}, d.data());
+      raw.forEach(function (b) {
         if (b.sourceTemplateId) { _abState.seededHidden++; return; }
         _abState.boards.push(b);
       });
-      clubSnap.forEach(function (d) {
-        _abState.clubs[d.id] = Object.assign({id: d.id}, d.data());
-      });
-      srcSnap.forEach(function (d) { _abState.promoted[d.id] = d.data() || {}; });
-      _abState.templates = tpls;
 
       /* Author labels are per club, and a coach who left club A is
          unreadable through users/{uid} from anywhere else — the frozen
          label in clubs/{id}/boardAuthors is the only place their team
-         still exists. One read per club, and there are a handful. */
-      const clubIds = Object.keys(_abState.clubs);
-      const authorSnaps = await Promise.all(clubIds.map(function (cid) {
+         still exists.
+         ⚠ Only for the clubs ON SCREEN. Reading all of them was the other
+         half of the scale problem, and it grew with the platform rather than
+         with the page. */
+      const need = _abState.club ? [_abState.club] :
+        Array.from(new Set(_abState.boards
+          .map(function (b) { return b.clubId; }).filter(Boolean)));
+      const authorSnaps = await Promise.all(need.map(function (cid) {
         return db.collection('clubs').doc(cid).collection('boardAuthors').get()
           .catch(function () { return null; });
       }));
       authorSnaps.forEach(function (snap, i) {
         const m = {};
         if (snap) snap.forEach(function (d) { m[d.id] = d.data(); });
-        _abState.authors[clubIds[i]] = m;
+        _abState.authors[need[i]] = m;
       });
       _abState.loaded = true;
     } catch (e) {
       console.error('[admin-boards] load failed', e);
-      root.innerHTML = '<div class="card"><p style="color:var(--danger);">' +
-        'Error carregant les pissarres: ' + sanitize(e && e.message || '') + '</p></div>';
+      root.innerHTML = '<div class="ab-boot ab-boot-err">' +
+        sanitize(t('ab.load_err').replace('{e}', (e && e.message) || '')) + '</div>';
       return;
     }
     _abRender();
@@ -31446,8 +31606,12 @@
   function _abFilteredBoards() {
     const q = _abState.q.trim().toLowerCase();
     return _abState.boards.filter(function (b) {
+      // Kept although the query is already club-scoped: on "Tots els clubs"
+      // this is the only thing narrowing, and a belt on the scoped path costs
+      // one comparison.
       if (_abState.club && b.clubId !== _abState.club) return false;
       if (_abState.cat && (b.category || '') !== _abState.cat) return false;
+      if (_abState.tag && (b.tag || '') !== _abState.tag) return false;
       if (!q) return true;
       const a = _abAuthor(b);
       const club = (_abState.clubs[b.clubId] || {}).name || '';
@@ -31465,167 +31629,394 @@
     });
   }
 
+  /**
+   * The tag chips, DERIVED FROM THE BOARDS ON SCREEN.
+   *
+   * ⚠ NOT from getTagList(). `fa_tactic_tags` is plain localStorage — per
+   * browser profile, not per club, not per account, and absent from
+   * SYNCED_KEYS. On a page that shows other clubs' work it would offer
+   * whatever the superadmin last typed on this device and would not match
+   * their boards at all. Creating a tag still belongs in the editor, where the
+   * list it writes is the list that board will use.
+   */
+  function _abTagList() {
+    const seen = {};
+    _abState.boards.forEach(function (b) {
+      const tag = String(b.tag || '').trim();
+      if (tag) seen[tag] = true;
+    });
+    return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  /** Every pack name any template carries, plus the ones created this session. */
+  function _abPackList() {
+    const seen = {};
+    _abState.templates.forEach(function (x) {
+      (Array.isArray(x.packs) ? x.packs : []).forEach(function (p) {
+        if (p) seen[p] = true;
+      });
+    });
+    _abState.newPacks.forEach(function (p) { if (p) seen[p] = true; });
+    return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  function _abPackCount(pack) {
+    return _abState.templates.filter(function (x) {
+      return Array.isArray(x.packs) && x.packs.indexOf(pack) !== -1;
+    }).length;
+  }
+
+  function _abHeroHtml() {
+    const live = _abState.templates.filter(function (x) { return x.published === true; });
+    const scope = _abState.club ?
+      ((_abState.clubs[_abState.club] || {}).name || _abState.club) : t('ab.scope_all');
+    return '<div class="ab-hero"><div class="ab-hero-l">' +
+      '<h1 class="ab-h1">' + sanitize(t('ab.h1')) + '</h1>' +
+      '<div class="ab-sub">' + sanitize(t('ab.sub')
+        .replace('{scope}', scope)
+        .replace('{n}', String(_abState.boards.length))
+        .replace('{t}', String(_abState.templates.length))) + '</div></div>' +
+      '<div class="ab-figs">' +
+        '<div class="ab-fig"><span class="ab-fig-l">' + sanitize(t('ab.f_boards')) +
+          '</span><span class="ab-fig-v">' + _abState.boards.length + '</span></div>' +
+        '<div class="ab-fig"><span class="ab-fig-l">' + sanitize(t('ab.f_published')) +
+          '</span><span class="ab-fig-v">' + live.length + '</span></div>' +
+        '<div class="ab-fig"><span class="ab-fig-l">' + sanitize(t('ab.f_drafts')) +
+          '</span><span class="ab-fig-v">' +
+          (_abState.templates.length - live.length) + '</span></div>' +
+      '</div></div>';
+  }
+
   function _abTabsHtml() {
-    const t1 = _abState.tab === 'clubs' ? ' active' : '';
-    const t2 = _abState.tab === 'library' ? ' active' : '';
-    return '<div class="ab-tabs">' +
-      '<button class="ab-tab' + t1 + '" data-ab-tab="clubs">Pissarres dels clubs</button>' +
-      '<button class="ab-tab' + t2 + '" data-ab-tab="library">Biblioteca ' +
-        '<span class="ab-count">' + _abState.templates.length + '</span></button>' +
-      '</div>';
+    return '<div class="ab-tabs">' + [
+      ['clubs', t('ab.tab_clubs')],
+      ['editor', t('ab.tab_editor')],
+      ['library', t('ab.tab_library')]
+    ].map(function (p) {
+      return '<button class="ab-tab' + (_abState.tab === p[0] ? ' ab-tab-on' : '') +
+        '" data-ab-tab="' + p[0] + '">' + sanitize(p[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * One board as a card, with its pitch left as a skeleton on purpose.
+   *
+   * ⚠ THE REF IS `{boardId, name}` AND NOTHING ELSE. Passing the metadata doc
+   * straight through looks equivalent and is not: tbResolveRef returns any ref
+   * carrying `positions` OR `formation`, and a tacticBoards METADATA doc has a
+   * `formation` field with no drawing behind it. The doc would be mistaken for
+   * the payload, render a permanently empty pitch, emit no `data-ro-thin`, and
+   * hydration would never come back for it. Silent, and indistinguishable from
+   * a board somebody drew badly.
+   *
+   * ⚠ The admin docs key on `.id`; the session's refs key on `.boardId`.
+   */
+  function _abCardHtml(b) {
+    const a = _abAuthor(b);
+    const club = (_abState.clubs[b.clubId] || {}).name || b.clubId || '—';
+    const promoted = _abState.promoted[b.id];
+    const meta = [club, a.name || t('ab.no_author'), _abDate(b.updatedAt)]
+      .filter(Boolean).join(' · ');
+    return '<div class="ab-card" data-ab-card="' + sanitize(b.id) + '">' +
+      '<div class="ab-thumb">' +
+        tbRoBoardHtml({boardId: b.id, name: b.name || ''}, 'ab-') +
+        (b.hasFrames ? '<span class="ab-anim">' + b.frameCount + ' ▶</span>' : '') +
+      '</div>' +
+      '<div class="ab-card-b">' +
+        '<div class="ab-card-t">' + sanitize(b.name || '—') + '</div>' +
+        '<div class="ab-card-m">' + sanitize(meta) +
+          (a.left ? ' <span class="ab-left">(' + sanitize(t('ab.left')) + ')</span>' : '') +
+        '</div>' +
+        '<div class="ab-card-f">' +
+          (b.tag ? '<span class="ab-tagchip">' + sanitize(b.tag) + '</span>' : '') +
+          (b.category ? '<span class="ab-catchip">' +
+            sanitize(CATEGORY_LABELS[b.category] || b.category) + '</span>' : '') +
+          '<span class="ab-bytes">' + _abSize(b.bytes) + '</span>' +
+        '</div>' +
+        '<div class="ab-card-a">' +
+          '<button class="ab-link" data-ab-preview="' + sanitize(b.id) + '">' +
+            sanitize(t('ab.view')) + '</button>' +
+          (promoted ?
+            '<span class="ab-done">' + sanitize(t('ab.copied')) + '</span>' :
+            '<button class="ab-link" data-ab-promote="' + sanitize(b.id) + '">' +
+              sanitize(t('ab.copy')) + '</button>') +
+        '</div>' +
+      '</div></div>';
   }
 
   function _abClubsTabHtml() {
     const rows = _abFilteredBoards();
-    const clubOpts = Object.keys(_abState.clubs)
-      .sort(function (a, b) {
-        return String(_abState.clubs[a].name || '')
-          .localeCompare(String(_abState.clubs[b].name || ''));
-      })
-      .map(function (id) {
-        return '<option value="' + id + '"' + (_abState.club === id ? ' selected' : '') +
-          '>' + sanitize(_abState.clubs[id].name || id) + '</option>';
-      }).join('');
+    const clubOpts = _abClubIds().map(function (id) {
+      return '<option value="' + sanitize(id) + '"' +
+        (_abState.club === id ? ' selected' : '') + '>' +
+        sanitize(_abState.clubs[id].name || id) + '</option>';
+    }).join('');
     const catOpts = CATEGORY_ORDER.map(function (c) {
       return '<option value="' + c + '"' + (_abState.cat === c ? ' selected' : '') +
         '>' + sanitize(CATEGORY_LABELS[c] || c) + '</option>';
     }).join('');
+    const tags = _abTagList();
+    const chips = [['', t('ab.all_tags')]].concat(tags.map(function (x) { return [x, x]; }))
+      .map(function (p) {
+        return '<button class="ab-chip' + (_abState.tag === p[0] ? ' ab-chip-on' : '') +
+          '" data-ab-tag="' + sanitize(p[0]) + '">' + sanitize(p[1]) + '</button>';
+      }).join('');
 
-    let body;
-    if (!rows.length) {
-      body = '<p style="color:var(--text-secondary);font-size:.9rem;">' +
-        'Cap pissarra coincideix amb el filtre.</p>';
-    } else {
-      body = '<div class="ab-table-wrap"><table class="table ab-table">' +
-        '<thead><tr><th>Club</th><th>Pissarra</th><th>Autor</th><th>Equip</th>' +
-        '<th>Tag</th><th>Categoria</th><th>Data</th><th>Mida</th><th></th></tr></thead><tbody>' +
-        rows.map(function (b) {
-          const a = _abAuthor(b);
-          const club = (_abState.clubs[b.clubId] || {}).name || b.clubId || '—';
-          const promoted = _abState.promoted[b.id];
-          const anim = b.hasFrames ?
-            ' <span class="ab-anim" title="Té animació">▶</span>' : '';
-          return '<tr>' +
-            '<td>' + sanitize(club) + '</td>' +
-            '<td>' + sanitize(b.name || '—') + anim + '</td>' +
-            '<td>' + (a.name ? sanitize(a.name) +
-              (a.left ? ' <span class="ab-left">(ja no hi és)</span>' : '') :
-              '<span class="ab-muted">sense autor</span>') + '</td>' +
-            '<td>' + (a.team ? sanitize(a.team) : '<span class="ab-muted">—</span>') + '</td>' +
-            '<td>' + (b.tag ? sanitize(b.tag) : '—') + '</td>' +
-            '<td>' + sanitize(b.category ? (CATEGORY_LABELS[b.category] || b.category) : '—') + '</td>' +
-            '<td style="white-space:nowrap;">' + _abDate(b.updatedAt) + '</td>' +
-            '<td style="white-space:nowrap;">' + _abSize(b.bytes) + '</td>' +
-            '<td style="white-space:nowrap;">' +
-              '<button class="btn btn-small btn-outline" data-ab-preview="' + b.id + '">Veure</button> ' +
-              (promoted ?
-                '<span class="ab-promoted" title="Ja és a la biblioteca">✓ copiada</span>' :
-                '<button class="btn btn-small btn-primary" data-ab-promote="' + b.id + '">Copiar</button>') +
-            '</td></tr>';
-        }).join('') +
-        '</tbody></table></div>';
-    }
+    const body = rows.length ?
+      '<div class="ab-grid">' + rows.map(_abCardHtml).join('') + '</div>' :
+      '<p class="ab-empty">' + sanitize(t('ab.empty')) + '</p>';
 
-    return '<div class="card">' +
-      '<p style="color:var(--text-secondary);font-size:.88rem;margin-bottom:.8rem;">' +
-        'Totes les pissarres de tots els clubs, en <strong>només lectura</strong>. ' +
-        '«Copiar» en fa una còpia anònima a la teva biblioteca, sense tocar la del club.' +
-      '</p>' +
-      '<div class="ab-filters">' +
-        '<input type="search" id="ab-search" class="reg-input" placeholder="Cercar nom, autor, tag, club…" value="' + sanitize(_abState.q) + '">' +
-        '<select id="ab-club" class="reg-input"><option value="">Tots els clubs</option>' + clubOpts + '</select>' +
-        '<select id="ab-cat" class="reg-input"><option value="">Totes les categories</option>' + catOpts + '</select>' +
-        '<button class="btn btn-small btn-outline" id="ab-reload">↻</button>' +
+    return '<p class="ab-note">' + sanitize(t('ab.note_clubs')) + '</p>' +
+      '<div class="ab-tools">' +
+        '<input type="search" id="ab-search" class="ab-input ab-search" placeholder="' +
+          sanitize(t('ab.search_ph')) + '" value="' + sanitize(_abState.q) + '">' +
+        '<select id="ab-club" class="ab-input"><option value="">' +
+          sanitize(t('ab.scope_all')) + '</option>' + clubOpts + '</select>' +
+        '<select id="ab-cat" class="ab-input"><option value="">' +
+          sanitize(t('ab.all_cats')) + '</option>' + catOpts + '</select>' +
+        '<button class="ab-link" id="ab-reload">' + sanitize(t('ab.reload')) + '</button>' +
       '</div>' +
-      '<p class="ab-count-line">' + rows.length + ' de ' + _abState.boards.length + ' pissarres' +
-        (_abState.seededHidden ?
-          ' · ' + _abState.seededHidden + ' enviades des de la biblioteca, no es mostren' : '') +
+      (tags.length ? '<div class="ab-chips">' + chips + '</div>' : '') +
+      '<p class="ab-count-line">' +
+        sanitize(t('ab.count').replace('{n}', String(rows.length))
+          .replace('{total}', String(_abState.boards.length))) +
+        (_abState.seededHidden ? ' · ' + sanitize(t('ab.count_hidden')
+          .replace('{n}', String(_abState.seededHidden))) : '') +
       '</p>' +
-      body +
-      '</div>';
+      (_abState.capped ? '<p class="ab-warn">' +
+        sanitize(t('ab.capped').replace('{n}', String(AB_ALL_LIMIT))) + '</p>' : '') +
+      body;
+  }
+
+  /**
+   * The editor tab: a launcher, not a second editor.
+   *
+   * The drawing editor is ~4,200 lines bound to the `tactics` page. Embedding
+   * a second copy here to satisfy a tab strip would be two of everything —
+   * two sets of key handlers, two frame timelines — for one job. So this tab
+   * opens the real one, which is what _abOpenTemplate already did from a
+   * button in the library table.
+   */
+  function _abEditorTabHtml() {
+    const drafts = _abState.templates.filter(function (x) { return x.published !== true; });
+    return '<p class="ab-note">' + sanitize(t('ab.editor_note')) + '</p>' +
+      '<div class="ab-tools">' +
+        '<button class="ab-btn" id="ab-new-board">' +
+          sanitize(t('ab.editor_new')) + '</button>' +
+      '</div>' +
+      '<div class="ab-sec-l">' + sanitize(t('ab.editor_drafts')) + '</div>' +
+      (drafts.length ?
+        '<div class="ab-list">' + drafts.map(function (x) {
+          return '<div class="ab-list-row">' +
+            '<span class="ab-list-n">' + sanitize(x.name || '—') + '</span>' +
+            '<span class="ab-list-m">' +
+              (x.tag ? sanitize(x.tag) + ' · ' : '') + _abSize(x.bytes) + '</span>' +
+            '<button class="ab-link" data-ab-edit-tpl="' + sanitize(x.id) + '">' +
+              sanitize(t('ab.edit')) + '</button>' +
+          '</div>';
+        }).join('') + '</div>' :
+        '<p class="ab-empty">' + sanitize(t('ab.editor_none')) + '</p>');
   }
 
   function _abLibraryTabHtml() {
-    const drafts = _abState.templates.filter(function (x) { return x.published !== true; });
-    const live = _abState.templates.filter(function (x) { return x.published === true; });
+    const packs = _abPackList();
+    const sorted = _abState.templates.slice().sort(function (x, y) {
+      // Drafts first: they are the ones with work left on them.
+      const px = x.published === true ? 1 : 0;
+      const py = y.published === true ? 1 : 0;
+      if (px !== py) return px - py;
+      return String(x.name || '').localeCompare(String(y.name || ''));
+    });
+
+    /* The pack manager. A pack is a NAME ON THE TEMPLATES that carry it —
+       there is no packs collection — so one just created exists in this tab
+       and nowhere else until it is assigned, and the chip says so rather than
+       quietly vanishing on the next reload. */
+    const packBar = '<div class="ab-packs">' +
+      '<span class="ab-sec-l">' + sanitize(t('ab.packs')) + '</span>' +
+      '<div class="ab-pack-list">' +
+        (packs.map(function (p) {
+          const n = _abPackCount(p);
+          return '<span class="ab-pack' + (n ? '' : ' ab-pack-new') + '">' +
+            '<b>' + sanitize(p) + '</b>' +
+            '<i>' + (n ? sanitize(n === 1 ? t('ab.pack_count_1') :
+                t('ab.pack_count').replace('{n}', String(n))) :
+              sanitize(t('ab.pack_unsaved'))) + '</i>' +
+            '<button class="ab-x" data-ab-pack-rm="' + sanitize(p) + '" title="' +
+              sanitize(t('ab.pack_rm_title')) + '">✕</button></span>';
+        }).join('')) +
+      '</div>' +
+      '<div class="ab-pack-new">' +
+        '<input type="text" id="ab-pack-name" class="ab-input" placeholder="' +
+          sanitize(t('ab.pack_new_ph')) + '">' +
+        '<button class="ab-btn" id="ab-pack-add">' +
+          sanitize(t('ab.pack_create')) + '</button>' +
+      '</div></div>';
 
     function rowHtml(x) {
-      const catOpts = ['<option value="">— sense —</option>'].concat(
+      const catOpts = ['<option value="">—</option>'].concat(
         CATEGORY_ORDER.map(function (c) {
           return '<option value="' + c + '"' + (x.category === c ? ' selected' : '') +
             '>' + sanitize(CATEGORY_LABELS[c] || c) + '</option>';
         })).join('');
-      const packs = Array.isArray(x.packs) ? x.packs.join(', ') : '';
-      return '<tr>' +
-        '<td><input type="text" class="reg-input ab-tpl-name" data-tpl="' + x.id + '" value="' + sanitize(x.name || '') + '"></td>' +
-        '<td><input type="text" class="reg-input ab-tpl-tag" data-tpl="' + x.id + '" value="' + sanitize(x.tag || '') + '" placeholder="tag"></td>' +
-        '<td><select class="reg-input ab-tpl-cat" data-tpl="' + x.id + '">' + catOpts + '</select></td>' +
-        '<td><input type="text" class="reg-input ab-tpl-packs" data-tpl="' + x.id + '" value="' + sanitize(packs) + '" placeholder="pack1, pack2"></td>' +
-        '<td style="white-space:nowrap;">' + _abSize(x.bytes) + '</td>' +
-        '<td style="white-space:nowrap;">' +
-          '<button class="btn btn-small btn-outline" data-ab-edit-tpl="' + x.id + '">Editar</button> ' +
-          '<button class="btn btn-small ' + (x.published ? 'btn-outline' : 'btn-primary') + '" data-ab-pub="' + x.id + '">' +
-            (x.published ? 'Despublicar' : 'Publicar') + '</button> ' +
-          '<button class="btn btn-small btn-danger" data-ab-del-tpl="' + x.id + '">✕</button>' +
-        '</td></tr>';
+      const mine = Array.isArray(x.packs) ? x.packs : [];
+      /* Toggle chips over the same `packs` array the text input used to hold.
+         No schema change: what was "pack1, pack2" typed by hand is the same
+         array of names, only now it cannot be misspelt into a pack that does
+         not exist. */
+      const packChips = packs.length ?
+        packs.map(function (p) {
+          return '<button class="ab-pchip' + (mine.indexOf(p) !== -1 ? ' ab-pchip-on' : '') +
+            '" data-ab-tpl-pack="' + sanitize(x.id) + '" data-ab-pack="' + sanitize(p) +
+            '">' + sanitize(p) + '</button>';
+        }).join('') : '<span class="ab-muted">—</span>';
+      return '<div class="ab-row">' +
+        '<span class="ab-c-name"><input type="text" class="ab-input ab-tpl-name" data-tpl="' +
+          sanitize(x.id) + '" value="' + sanitize(x.name || '') + '"></span>' +
+        '<span class="ab-c-tag"><input type="text" class="ab-input ab-tpl-tag" data-tpl="' +
+          sanitize(x.id) + '" value="' + sanitize(x.tag || '') + '" placeholder="' +
+          sanitize(t('ab.th_tag')) + '"></span>' +
+        '<span class="ab-c-cat"><select class="ab-input ab-tpl-cat" data-tpl="' +
+          sanitize(x.id) + '">' + catOpts + '</select></span>' +
+        '<span class="ab-c-packs">' + packChips + '</span>' +
+        '<span class="ab-c-state"><span class="ab-state' +
+          (x.published ? ' ab-state-live' : '') + '">' +
+          sanitize(x.published ? t('ab.state_live') : t('ab.state_draft')) + '</span></span>' +
+        '<span class="ab-c-act">' +
+          '<button class="ab-link" data-ab-edit-tpl="' + sanitize(x.id) + '">' +
+            sanitize(t('ab.edit')) + '</button>' +
+          '<button class="ab-link" data-ab-pub="' + sanitize(x.id) + '">' +
+            sanitize(x.published ? t('ab.unpublish') : t('ab.publish')) + '</button>' +
+          '<button class="ab-link ab-danger" data-ab-del-tpl="' + sanitize(x.id) + '">' +
+            sanitize(t('ab.del')) + '</button>' +
+        '</span></div>';
     }
 
-    function tableHtml(list, empty) {
-      if (!list.length) {
-        return '<p style="color:var(--text-secondary);font-size:.9rem;">' + empty + '</p>';
-      }
-      return '<div class="ab-table-wrap"><table class="table ab-table">' +
-        '<thead><tr><th>Nom</th><th>Tag</th><th>Categoria</th><th>Packs</th><th>Mida</th><th></th></tr></thead>' +
-        '<tbody>' + list.map(rowHtml).join('') + '</tbody></table></div>';
-    }
+    const head = '<div class="ab-head">' +
+      '<span class="ab-c-name">' + sanitize(t('ab.th_board')) + '</span>' +
+      '<span class="ab-c-tag">' + sanitize(t('ab.th_tag')) + '</span>' +
+      '<span class="ab-c-cat">' + sanitize(t('ab.th_cat')) + '</span>' +
+      '<span class="ab-c-packs">' + sanitize(t('ab.th_packs')) + '</span>' +
+      '<span class="ab-c-state">' + sanitize(t('ab.th_state')) + '</span>' +
+      '<span class="ab-c-act"></span></div>';
 
-    const clubOpts = Object.keys(_abState.clubs)
-      .sort(function (a, b) {
-        return String(_abState.clubs[a].name || '')
-          .localeCompare(String(_abState.clubs[b].name || ''));
-      })
-      .map(function (id) {
-        return '<option value="' + id + '">' + sanitize(_abState.clubs[id].name || id) + '</option>';
-      }).join('');
-    const packNames = {};
-    live.forEach(function (x) {
-      (Array.isArray(x.packs) ? x.packs : []).forEach(function (p) { packNames[p] = true; });
-    });
-    const packOpts = Object.keys(packNames).sort().map(function (p) {
-      return '<option value="' + sanitize(p) + '">' + sanitize(p) + '</option>';
+    /* Multi-club send. Checkboxes rather than a <select multiple>, which on a
+       phone is a scroll trap and gives no count. */
+    const clubBoxes = _abClubIds().map(function (id) {
+      const on = _abState.sendClubs.indexOf(id) !== -1;
+      return '<label class="ab-box' + (on ? ' ab-box-on' : '') + '">' +
+        '<input type="checkbox" data-ab-send-club="' + sanitize(id) + '"' +
+          (on ? ' checked' : '') + '>' +
+        sanitize(_abState.clubs[id].name || id) + '</label>';
     }).join('');
+    const packBoxes = packs.length ? packs.map(function (p) {
+      const on = _abState.sendPacks.indexOf(p) !== -1;
+      return '<label class="ab-box' + (on ? ' ab-box-on' : '') + '">' +
+        '<input type="checkbox" data-ab-send-pack="' + sanitize(p) + '"' +
+          (on ? ' checked' : '') + '>' + sanitize(p) + '</label>';
+    }).join('') : '<span class="ab-muted">—</span>';
 
-    return '<div class="card">' +
-      '<div class="card-title">Esborranys <span class="ab-count">' + drafts.length + '</span></div>' +
-      '<p style="color:var(--text-secondary);font-size:.88rem;margin-bottom:.8rem;">' +
-        'Còpies teves, encara no a la venda. Edita-les i publica-les quan estiguin llestes — ' +
-        'un esborrany mai s\'envia a un club.</p>' +
-      tableHtml(drafts, 'Cap esborrany. Copia una pissarra des de l\'altra pestanya.') +
-      '</div>' +
-      '<div class="card">' +
-      '<div class="card-title">Publicades <span class="ab-count">' + live.length + '</span></div>' +
-      tableHtml(live, 'Cap plantilla publicada encara.') +
-      '</div>' +
-      '<div class="card">' +
-      '<div class="card-title">Enviar un pack a un club</div>' +
-      '<p style="color:var(--text-secondary);font-size:.88rem;margin-bottom:.8rem;">' +
-        'Es copien al club, que després les pot editar i esborrar com a seves. ' +
-        'Repetir l\'enviament no les duplica.</p>' +
-      '<div class="ab-filters">' +
-        '<select id="ab-seed-club" class="reg-input"><option value="">— Club —</option>' + clubOpts + '</select>' +
-        '<select id="ab-seed-pack" class="reg-input"><option value="">— Pack —</option>' + packOpts + '</select>' +
-        '<button class="btn btn-primary" id="ab-seed-go">Enviar</button>' +
-      '</div>' +
-      '<div id="ab-seed-result" style="margin-top:.6rem;" hidden></div>' +
+    return packBar +
+      head +
+      (sorted.length ? sorted.map(rowHtml).join('') :
+        '<p class="ab-empty">' + sanitize(t('ab.lib_empty')) + '</p>') +
+      '<div class="ab-send">' +
+        '<div class="ab-sec-l">' + sanitize(t('ab.send_title')) + '</div>' +
+        '<p class="ab-note">' + sanitize(t('ab.send_note')) + '</p>' +
+        '<div class="ab-send-g">' +
+          '<div><div class="ab-fig-l">' + sanitize(t('ab.send_clubs')) + ' ' +
+            '<button class="ab-link" id="ab-send-all">' + sanitize(t('ab.send_all')) +
+            '</button> <button class="ab-link" id="ab-send-none">' +
+            sanitize(t('ab.send_none')) + '</button></div>' +
+            '<div class="ab-boxes">' + clubBoxes + '</div></div>' +
+          '<div><div class="ab-fig-l">' + sanitize(t('ab.send_packs')) + '</div>' +
+            '<div class="ab-boxes">' + packBoxes + '</div></div>' +
+        '</div>' +
+        '<div class="ab-send-a">' +
+          '<button class="ab-btn" id="ab-seed-go">' + sanitize(t('ab.send_go')) + '</button>' +
+          '<span id="ab-seed-result" class="ab-send-r"' +
+            (_abState.sendResult ? '' : ' hidden') + '>' +
+            sanitize(_abState.sendResult || '') + '</span>' +
+        '</div>' +
       '</div>';
   }
 
   function _abRender() {
     const root = document.getElementById('ab-root');
     if (!root || !_abState) return;
-    root.innerHTML = _abTabsHtml() +
-      (_abState.tab === 'library' ? _abLibraryTabHtml() : _abClubsTabHtml());
+    const tab = _abState.tab === 'library' ? _abLibraryTabHtml() :
+      _abState.tab === 'editor' ? _abEditorTabHtml() : _abClubsTabHtml();
+    root.innerHTML = _abHeroHtml() + _abTabsHtml() +
+      '<div class="ab-body">' + tab + '</div>';
     _abBind();
+    if (_abState.tab === 'clubs') _abLazyBoards();
+  }
+
+  /* ── Viewport-gated hydration ──────────────────────────────────────
+     A mini pitch is not cheap: renderReadOnlyBoard builds a full pitch with
+     twenty-two circles, attaches a ResizeObserver, and carries the whole
+     animation as a JSON `data-frames` attribute. hydrateRoBoards() warms every
+     skeleton on the page in one pass, which is right for a session with two
+     linked boards and wrong for a catalogue of sixty.
+
+     So the catalogue observes its cards and hydrates the ones that come into
+     view, in batches — the batch is what keeps TB.warm's ten-per-query
+     behaviour, which per-card hydration would have thrown away.
+
+     ⚠ hydrateRoBoards itself is UNCHANGED in behaviour: called with no
+     argument it still sweeps the document, which is what its six other callers
+     want. */
+  var _abObs = null;
+
+  function _abLazyBoards() {
+    if (_abObs) { _abObs.disconnect(); _abObs = null; }
+    const root = document.getElementById('ab-root');
+    if (!root) return;
+    const cards = Array.prototype.slice.call(root.querySelectorAll('[data-ab-card]'));
+    if (!cards.length) return;
+    /* No IntersectionObserver — an old WebView, or jsdom — is a reason to
+       load everything, not to show sixty empty boxes forever. */
+    if (typeof IntersectionObserver !== 'function') { _abHydrate(cards); return; }
+    let pending = [];
+    let timer = null;
+    _abObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        // Once each: a card scrolled out and back must not re-warm.
+        _abObs.unobserve(e.target);
+        pending.push(e.target);
+      });
+      if (!pending.length) return;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        const batch = pending;
+        pending = [];
+        _abHydrate(batch);
+      }, 40);
+    }, {rootMargin: AB_LAZY_MARGIN});
+    cards.forEach(function (c) { _abObs.observe(c); });
+  }
+
+  /**
+   * Hydrate a batch of cards, and say so when one does not arrive.
+   *
+   * ⚠ TB.warm SWALLOWS ITS ERRORS (see boards.js), so a denied or failed read
+   * comes back as "nothing happened" — the skeleton simply stays, reading
+   * "Carregant…" for the life of the page with nothing anywhere saying why.
+   * A skeleton still present after the await is that failure, and is marked.
+   */
+  async function _abHydrate(cards) {
+    try {
+      await hydrateRoBoards(cards);
+    } catch (e) {
+      console.error('[admin-boards] hydrate failed', e);
+    }
+    cards.forEach(function (c) {
+      const sk = c.querySelector('.tb-ro-skeleton');
+      if (!sk) return;
+      sk.classList.add('ab-thumb-failed');
+      sk.textContent = t('ab.thumb_failed');
+    });
   }
 
   function _abBind() {
@@ -31652,13 +32043,24 @@
         }, 250);
       });
     }
+    /* ⚠ A RELOAD, NOT A RE-RENDER. The club scope is now a `where()` on the
+       query rather than a filter over everything already in memory, so the
+       boards for the club just chosen have not been read yet. */
     const clubSel = root.querySelector('#ab-club');
     if (clubSel) clubSel.addEventListener('change', function () {
-      _abState.club = clubSel.value; _abRender();
+      _abState.club = clubSel.value;
+      _abState.loaded = false;
+      _abLoad(true);
     });
     const catSel = root.querySelector('#ab-cat');
     if (catSel) catSel.addEventListener('change', function () {
       _abState.cat = catSel.value; _abRender();
+    });
+    root.querySelectorAll('[data-ab-tag]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _abState.tag = btn.dataset.abTag || '';
+        _abRender();
+      });
     });
     const reload = root.querySelector('#ab-reload');
     if (reload) reload.addEventListener('click', function () { _abLoad(true); });
@@ -31668,6 +32070,15 @@
     });
     root.querySelectorAll('[data-ab-promote]').forEach(function (btn) {
       btn.addEventListener('click', function () { _abPromote(btn.dataset.abPromote, btn); });
+    });
+
+    // ── Editor tab ──
+    const nb = root.querySelector('#ab-new-board');
+    if (nb) nb.addEventListener('click', function () {
+      // tbClearEditor drops fa_tactic_template_id, which is what tells the
+      // editor it is editing a library template rather than a club board.
+      tbClearEditor();
+      navigate('tactics');
     });
 
     // ── Library tab ──
@@ -31680,14 +32091,56 @@
     root.querySelectorAll('[data-ab-del-tpl]').forEach(function (btn) {
       btn.addEventListener('click', function () { _abDeleteTemplate(btn.dataset.abDelTpl); });
     });
+    root.querySelectorAll('[data-ab-tpl-pack]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _abTogglePack(btn.dataset.abTplPack, btn.dataset.abPack);
+      });
+    });
+    root.querySelectorAll('[data-ab-pack-rm]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _abRemovePack(btn.dataset.abPackRm); });
+    });
+    const packAdd = root.querySelector('#ab-pack-add');
+    if (packAdd) packAdd.addEventListener('click', function () { _abAddPack(); });
+    const packName = root.querySelector('#ab-pack-name');
+    if (packName) packName.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); _abAddPack(); }
+    });
     // Metadata edits save on blur — no button, and nothing to forget to press.
-    root.querySelectorAll('.ab-tpl-name, .ab-tpl-tag, .ab-tpl-cat, .ab-tpl-packs')
+    root.querySelectorAll('.ab-tpl-name, .ab-tpl-tag, .ab-tpl-cat')
       .forEach(function (inp) {
         inp.addEventListener('change', function () { _abSaveTemplateMeta(inp); });
       });
 
+    root.querySelectorAll('[data-ab-send-club]').forEach(function (box) {
+      box.addEventListener('change', function () {
+        _abToggleIn(_abState.sendClubs, box.dataset.abSendClub, box.checked);
+        _abRender();
+      });
+    });
+    root.querySelectorAll('[data-ab-send-pack]').forEach(function (box) {
+      box.addEventListener('change', function () {
+        _abToggleIn(_abState.sendPacks, box.dataset.abSendPack, box.checked);
+        _abRender();
+      });
+    });
+    const sendAll = root.querySelector('#ab-send-all');
+    if (sendAll) sendAll.addEventListener('click', function () {
+      _abState.sendClubs = _abClubIds(); _abRender();
+    });
+    const sendNone = root.querySelector('#ab-send-none');
+    if (sendNone) sendNone.addEventListener('click', function () {
+      _abState.sendClubs = []; _abRender();
+    });
+
     const seedGo = root.querySelector('#ab-seed-go');
     if (seedGo) seedGo.addEventListener('click', function () { _abSeed(seedGo); });
+  }
+
+  /** In-place add/remove, so the array identity in _abState survives. */
+  function _abToggleIn(list, value, on) {
+    const i = list.indexOf(value);
+    if (on && i === -1) list.push(value);
+    else if (!on && i !== -1) list.splice(i, 1);
   }
 
   /** Read-only preview, through the same renderer the session pages use. */
@@ -31697,8 +32150,9 @@
     const overlay = document.createElement('div');
     overlay.className = 'ab-modal';
     overlay.innerHTML = '<div class="ab-modal-card">' +
-      '<button class="ab-modal-close" title="Tancar">✕</button>' +
-      '<div class="ab-modal-body"><p style="color:var(--text-secondary);">Carregant…</p></div>' +
+      '<button class="ab-modal-close" title="' + sanitize(t('ab.close')) + '">✕</button>' +
+      '<div class="ab-modal-body"><p class="ab-modal-meta">' +
+        sanitize(t('tactics.loading')) + '</p></div>' +
       '</div>';
     document.body.appendChild(overlay);
     const close = function () { overlay.remove(); };
@@ -31710,7 +32164,7 @@
     const body = overlay.querySelector('.ab-modal-body');
     if (!body) return;
     if (!payload) {
-      body.innerHTML = '<p style="color:var(--danger);">No s\'ha pogut llegir el dibuix.</p>';
+      body.innerHTML = '<p class="ab-boot-err">' + sanitize(t('ab.read_err')) + '</p>';
       return;
     }
     const club = (_abState.clubs[meta.clubId] || {}).name || meta.clubId || '';
@@ -31723,12 +32177,96 @@
     bindRoBoardAnimations();
   }
 
+  /**
+   * Add or remove one pack name on one template.
+   *
+   * The same `packs` array the comma-separated text input used to write, so
+   * nothing about the document changes — only that a name can no longer be
+   * misspelt into a pack that exists on no other template.
+   */
+  async function _abTogglePack(templateId, pack) {
+    const tpl = _abState.templates.find(function (x) { return x.id === templateId; });
+    if (!tpl) return;
+    const cur = Array.isArray(tpl.packs) ? tpl.packs.slice() : [];
+    const i = cur.indexOf(pack);
+    if (i === -1) cur.push(pack); else cur.splice(i, 1);
+    try {
+      await TB.patchTemplate(templateId, {packs: cur});
+      tpl.packs = cur;
+      /* ⚠ A pack whose LAST template just let go of it would otherwise vanish
+         from the manager mid-click — the list is derived from the templates —
+         and there would be no way to put it back on. Keeping the name alive
+         here makes the chip a toggle rather than a one-way door; the ✕ in the
+         manager is the deliberate way to retire a pack. */
+      if (i !== -1 && !_abPackCount(pack) &&
+          _abState.newPacks.indexOf(pack) === -1) {
+        _abState.newPacks.push(pack);
+      }
+      _abRender();
+    } catch (e) {
+      console.error('[admin-boards] pack toggle failed', e);
+      _showPushToast(t('ab.tab_library'), t('ab.save_err'));
+    }
+  }
+
+  /* A pack with no template yet lives only in _abState.newPacks — there is no
+     packs collection, and adding one would be a rules change for a list that
+     is already derivable. The chip says "sense plantilles"; assigning it to
+     any template is what makes it real. */
+  function _abAddPack() {
+    const inp = document.getElementById('ab-pack-name');
+    if (!inp) return;
+    const name = String(inp.value || '').trim();
+    if (!name) return;
+    if (_abPackList().indexOf(name) !== -1) {
+      _showPushToast(t('ab.packs'), t('ab.pack_dup'));
+      return;
+    }
+    _abState.newPacks.push(name);
+    inp.value = '';
+    _abRender();
+  }
+
+  /**
+   * Remove a pack everywhere it appears.
+   *
+   * ⚠ EVERY TEMPLATE CARRYING IT, not just the manager's chip. Dropping the
+   * name from the bar alone would leave the templates holding a pack that the
+   * manager no longer lists and the send panel can no longer choose — which is
+   * exactly how the editor's own local tag list already misbehaves, and not a
+   * thing to copy.
+   */
+  async function _abRemovePack(pack) {
+    const hit = _abState.templates.filter(function (x) {
+      return Array.isArray(x.packs) && x.packs.indexOf(pack) !== -1;
+    });
+    const go = async function () {
+      try {
+        await Promise.all(hit.map(function (x) {
+          const next = x.packs.filter(function (p) { return p !== pack; });
+          return TB.patchTemplate(x.id, {packs: next}).then(function () {
+            x.packs = next;
+          });
+        }));
+      } catch (e) {
+        console.error('[admin-boards] pack removal failed', e);
+        _showPushToast(t('ab.packs'), t('ab.save_err'));
+      }
+      _abState.newPacks = _abState.newPacks.filter(function (p) { return p !== pack; });
+      _abToggleIn(_abState.sendPacks, pack, false);
+      _abRender();
+    };
+    // Nothing carries it: no confirmation for undoing a typo.
+    if (!hit.length) { go(); return; }
+    showTbConfirm(t('ab.pack_rm_title'),
+      t('ab.pack_rm_body').replace('{p}', pack).replace('{n}', String(hit.length)), go);
+  }
+
   async function _abPromote(boardId, btn) {
     const meta = _abState.boards.find(function (b) { return b.id === boardId; });
     if (!meta) return;
-    showTbConfirm('Copiar a la biblioteca',
-      'Es crearà una còpia anònima de «' + (meta.name || '') + '» com a esborrany. ' +
-      'La pissarra del club no es toca.', async function () {
+    showTbConfirm(t('ab.promote_title'),
+      t('ab.promote_body').replace('{n}', meta.name || ''), async function () {
         if (btn) btn.disabled = true;
         try {
           const fn = firebase.app().functions('us-central1')
@@ -31736,11 +32274,11 @@
           await fn({boardId: boardId});
         } catch (err) {
           console.error('[admin-boards] promote failed', err);
-          _showPushToast('Copiar', 'Error: ' + (err && err.message || ''));
+          _showPushToast(t('ab.copy'), (err && err.message) || '');
           if (btn) btn.disabled = false;
           return;
         }
-        _showPushToast('Copiar', 'Copiada com a esborrany.');
+        _showPushToast(t('ab.copy'), t('ab.promote_done'));
         await _abLoad(true);
       });
   }
@@ -31749,7 +32287,7 @@
     const tpl = _abState.templates.find(function (x) { return x.id === templateId; });
     let payload = null;
     try { payload = await TB.getTemplate(templateId); } catch (e) { payload = null; }
-    if (!payload) { alert('No s\'ha pogut llegir la plantilla.'); return; }
+    if (!payload) { alert(t('ab.tpl_read_err')); return; }
     // Metadata wins on the fields it owns — a rename in the table lands there
     // first, exactly as it does for a club board.
     tbHydrateEditor(Object.assign({}, payload, {
@@ -31762,21 +32300,21 @@
   async function _abSaveTemplateMeta(inp) {
     const id = inp.dataset.tpl;
     const patch = {};
+    /* Packs are no longer typed here — they are the toggle chips, which write
+       through _abTogglePack. A free-text list could name a pack that exists on
+       no other template and on no send panel, and did. */
     if (inp.classList.contains('ab-tpl-name')) patch.name = inp.value.trim();
     else if (inp.classList.contains('ab-tpl-tag')) patch.tag = inp.value.trim();
     else if (inp.classList.contains('ab-tpl-cat')) patch.category = inp.value;
-    else if (inp.classList.contains('ab-tpl-packs')) {
-      patch.packs = inp.value.split(',').map(function (s) { return s.trim(); })
-        .filter(Boolean);
-    }
+    else return;
     try {
       await TB.patchTemplate(id, patch);
       const tpl = _abState.templates.find(function (x) { return x.id === id; });
       if (tpl) Object.assign(tpl, patch);
-      _showPushToast('Biblioteca', 'Desat.');
+      _showPushToast(t('ab.tab_library'), t('ab.saved'));
     } catch (e) {
       console.error('[admin-boards] template patch failed', e);
-      _showPushToast('Biblioteca', 'Error desant.');
+      _showPushToast(t('ab.tab_library'), t('ab.save_err'));
     }
   }
 
@@ -31787,7 +32325,7 @@
     if (next && !(Array.isArray(tpl.packs) && tpl.packs.length)) {
       // A published template with no pack cannot be sent to anybody: seeding
       // takes a pack name or an explicit list, and the UI only offers packs.
-      alert('Posa-li almenys un pack abans de publicar-la.');
+      alert(t('ab.need_pack'));
       return;
     }
     try {
@@ -31796,20 +32334,19 @@
       _abRender();
     } catch (e) {
       console.error('[admin-boards] publish toggle failed', e);
-      _showPushToast('Biblioteca', 'Error desant.');
+      _showPushToast(t('ab.tab_library'), t('ab.save_err'));
     }
   }
 
   async function _abDeleteTemplate(id) {
     const tpl = _abState.templates.find(function (x) { return x.id === id; });
-    showTbConfirm('Esborrar plantilla',
-      'S\'esborrarà «' + ((tpl && tpl.name) || '') + '» de la biblioteca. ' +
-      'Els clubs que ja la tenen la conserven.', async function () {
+    showTbConfirm(t('ab.del_title'),
+      t('ab.del_body').replace('{n}', (tpl && tpl.name) || ''), async function () {
         try {
           await TB.removeTemplate(id);
         } catch (e) {
           console.error('[admin-boards] template delete failed', e);
-          _showPushToast('Biblioteca', 'Error esborrant.');
+          _showPushToast(t('ab.tab_library'), t('ab.del_err'));
           return;
         }
         _abState.templates = _abState.templates.filter(function (x) { return x.id !== id; });
@@ -31817,29 +32354,42 @@
       });
   }
 
+  /**
+   * Send the chosen packs to the chosen clubs, in ONE call.
+   *
+   * ⚠ The callable takes `clubIds`/`packs` since v257 and still accepts
+   * `clubId`/`pack` forever — this page sends the array shape, and reads back
+   * the same top-level `created`/`skipped` totals the single-club version
+   * returned, so nothing here depends on the widening having landed.
+   */
   async function _abSeed(btn) {
-    const clubId = (document.getElementById('ab-seed-club') || {}).value || '';
-    const pack = (document.getElementById('ab-seed-pack') || {}).value || '';
-    const out = document.getElementById('ab-seed-result');
-    if (!clubId || !pack) {
-      if (out) { out.textContent = 'Tria un club i un pack.'; out.hidden = false; }
-      return;
-    }
+    const clubIds = _abState.sendClubs.slice();
+    const packs = _abState.sendPacks.slice();
+    /* ⚠ THE RESULT LIVES IN STATE, not only in the node. The success path ends
+       with `_abLoad(true)`, which re-renders the whole page — writing the count
+       straight into the element made it appear and vanish in the same tick,
+       and the send looked like it had done nothing. */
+    const say = function (msg) {
+      _abState.sendResult = msg;
+      const out = document.getElementById('ab-seed-result');
+      if (!out) return;
+      out.textContent = msg;
+      out.hidden = false;
+    };
+    if (!clubIds.length || !packs.length) { say(t('ab.send_pick')); return; }
     btn.disabled = true;
     try {
       const fn = firebase.app().functions('us-central1')
         .httpsCallable('seedClubFromTemplates');
-      const r = await fn({clubId: clubId, pack: pack});
+      const r = await fn({clubIds: clubIds, packs: packs});
       const d = (r && r.data) || {};
-      if (out) {
-        out.textContent = 'Enviades: ' + (d.created || 0) +
-          ' · ja hi eren o són esborrany: ' + (d.skipped || 0);
-        out.hidden = false;
-      }
+      say(t('ab.send_done')
+        .replace('{c}', String(d.created || 0))
+        .replace('{s}', String(d.skipped || 0)));
       await _abLoad(true);
     } catch (err) {
       console.error('[admin-boards] seed failed', err);
-      if (out) { out.textContent = 'Error: ' + (err && err.message || ''); out.hidden = false; }
+      say((err && err.message) || '');
     }
     btn.disabled = false;
   }

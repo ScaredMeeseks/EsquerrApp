@@ -4535,8 +4535,40 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
       return {ok: true, templateId};
     });
 
+/** How wide one send may be. Both are about the call's own runtime. */
+const SEED_MAX_CLUBS = 50;
+const SEED_MAX_TEMPLATES = 200;
+
 /**
- * Seed a club with copies of chosen templates.
+ * Unique, trimmed, non-empty strings from an array plus an optional scalar.
+ *
+ * ⚠ THE DEDUPE IS THE POINT. Before v257 `templateIds` was
+ * `.map(String).filter(Boolean)` with no uniqueness, so `['t1','t1']` created
+ * the board twice — the in-loop guard could not catch it either, because
+ * `already` was a snapshot taken before the loop. Unioning several packs makes
+ * that the normal case rather than a typo: a template in two packs would have
+ * arrived twice for every club.
+ *
+ * The scalar is how `{clubId}` and `{pack}` keep working. Both shapes are
+ * accepted forever — an APK installed today outlives any migration window.
+ */
+function uniqStrings(arr, one) {
+  const seen = new Set();
+  const out = [];
+  const push = (v) => {
+    if (typeof v !== "string" && typeof v !== "number") return;
+    const s = String(v).trim();
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  };
+  if (Array.isArray(arr)) arr.forEach(push);
+  push(one);
+  return out;
+}
+
+/**
+ * Seed one or more clubs with copies of chosen templates.
  *
  * COPIES, deliberately, rather than granting the club read access to the
  * platform library: a seeded board has to be editable and deletable by the
@@ -4547,88 +4579,136 @@ exports.promoteBoardTemplate = onCall({region: "us-central1"},
  * coach starts working on one adopts it through the rules. Attributing them
  * to the club lead would be a lie, and worse, would follow that lead to their
  * next club through the owner read arm.
+ *
+ * ⚠ THE SHAPE IS BACKWARD-COMPATIBLE ON PURPOSE. `{clubId, pack}` — what
+ * every shipped client sends — is normalised into the array form and behaves
+ * exactly as it did, down to which error code an unknown club throws. Top-level
+ * `created`/`skipped` stay as TOTALS because that is all the old client reads;
+ * `byClub` is added beside them for the new one.
  */
 // Invoker binding: see the warning on promoteBoardTemplate above.
 exports.seedClubFromTemplates = onCall(
-    {region: "us-central1", timeoutSeconds: 120},
+    {region: "us-central1", timeoutSeconds: 300},
     async (request) => {
       assertSuperUser(request);
-      const clubId = request.data && request.data.clubId;
-      if (!clubId || typeof clubId !== "string") {
+      const data = request.data || {};
+
+      const clubIds = uniqStrings(data.clubIds, data.clubId);
+      if (!clubIds.length) {
         throw new HttpsError("invalid-argument", "Falta el club.");
       }
-      const clubSnap = await db.collection("clubs").doc(clubId).get();
-      if (!clubSnap.exists) {
+      if (clubIds.length > SEED_MAX_CLUBS) {
+        throw new HttpsError("invalid-argument", "Massa clubs en una tanda.");
+      }
+      /* ⚠ ALL of them, BEFORE anything is written. Checking each club inside
+         the loop would seed the clubs before the bad one and then throw with
+         half the job done, and the caller has no way to tell which half. */
+      const clubSnaps = await Promise.all(clubIds.map((id) =>
+        db.collection("clubs").doc(id).get()));
+      if (clubSnaps.some((s) => !s.exists)) {
         throw new HttpsError("not-found", "Club no trobat.");
       }
 
-      let ids = Array.isArray(request.data.templateIds) ?
-        request.data.templateIds.map(String).filter(Boolean) : [];
-      const pack = request.data.pack ? String(request.data.pack) : "";
-      if (!ids.length && pack) {
-        const packSnap = await db.collection("tacticTemplates")
-            .where("packs", "array-contains", pack).get();
-        ids = packSnap.docs.map((d) => d.id);
+      let ids = uniqStrings(data.templateIds);
+      const packs = uniqStrings(data.packs, data.pack);
+      if (!ids.length && packs.length) {
+        /* `array-contains` takes ONE value, so several packs is several
+           queries unioned here rather than one. Adding
+           .where("published","==",true) would turn each into a composite
+           query needing an index this repo deliberately does not carry — and
+           the draft check below covers the explicit-ids path as well. */
+        const snaps = await Promise.all(packs.map((p) =>
+          db.collection("tacticTemplates")
+              .where("packs", "array-contains", p).get()));
+        const union = new Set();
+        snaps.forEach((s) => s.docs.forEach((doc) => union.add(doc.id)));
+        ids = Array.from(union);
       }
       if (!ids.length) {
         throw new HttpsError("invalid-argument", "Cap plantilla seleccionada.");
       }
+      if (ids.length > SEED_MAX_TEMPLATES) {
+        throw new HttpsError("invalid-argument", "Massa plantilles.");
+      }
 
-      // Idempotent: re-seeding must not double the club's starter set, and a
-      // partial failure has to be safe to retry.
-      const already = new Set();
-      const seededSnap = await db.collection("tacticBoards")
-          .where("clubId", "==", clubId).get();
-      seededSnap.forEach((d) => {
-        const t = (d.data() || {}).sourceTemplateId;
-        if (t) already.add(t);
+      /* Read each template ONCE, not once per club. Fifty clubs used to mean
+         fifty reads of the same document pair. */
+      const pairs = await Promise.all(ids.map((id) => Promise.all([
+        db.collection("tacticTemplates").doc(id).get(),
+        db.collection("tacticTemplateData").doc(id).get(),
+      ])));
+      const usable = [];
+      let unusable = 0;
+      pairs.forEach(([tMeta, tData], i) => {
+        if (!tMeta.exists || !tData.exists) {
+          unusable++;
+          return;
+        }
+        const meta = tMeta.data() || {};
+        // Drafts are not products. Checked here rather than in the pack query
+        // so the explicit-ids path is gated too.
+        if (meta.published !== true) {
+          unusable++;
+          return;
+        }
+        usable.push({id: ids[i], meta, v: (tData.data() || {}).v || "{}"});
       });
 
       let created = 0;
       let skipped = 0;
-      for (const templateId of ids) {
-        if (already.has(templateId)) {
-          skipped++;
-          continue;
+      const byClub = {};
+      for (const clubId of clubIds) {
+        // Idempotent: re-seeding must not double a club's starter set, and a
+        // partial failure has to be safe to retry.
+        const already = new Set();
+        const seededSnap = await db.collection("tacticBoards")
+            .where("clubId", "==", clubId).get();
+        seededSnap.forEach((d) => {
+          const t = (d.data() || {}).sourceTemplateId;
+          if (t) already.add(t);
+        });
+
+        let mine = 0;
+        // A draft or a missing pair is skipped once per club, so the totals
+        // read as "what this call did", club by club.
+        let mineSkipped = unusable;
+        for (const tpl of usable) {
+          if (already.has(tpl.id)) {
+            mineSkipped++;
+            continue;
+          }
+          /* An id from the collection rather than Date.now()+rand6: a tight
+             multi-club loop can produce the same millisecond, and `set()`
+             without merge would overwrite the board it collided with instead
+             of failing. */
+          const ref = db.collection("tacticBoards").doc();
+          const batch = db.batch();
+          batch.set(ref, Object.assign(templateMetaFrom(tpl.meta), {
+            ownerUid: "",
+            clubId,
+            ownerName: "",
+            sourceTemplateId: tpl.id,
+            bytes: Buffer.byteLength(tpl.v, "utf8"),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+            schema: 1,
+          }));
+          batch.set(db.collection("tacticBoardData").doc(ref.id),
+              {ownerUid: "", clubId, v: tpl.v, schema: 1});
+          await batch.commit();
+          /* ⚠ INSIDE the loop. `already` used to be a pre-loop snapshot only,
+             so a template reached twice within one call was written twice. */
+          already.add(tpl.id);
+          mine++;
         }
-        const [tMeta, tData] = await Promise.all([
-          db.collection("tacticTemplates").doc(templateId).get(),
-          db.collection("tacticTemplateData").doc(templateId).get(),
-        ]);
-        if (!tMeta.exists || !tData.exists) {
-          skipped++;
-          continue;
-        }
-        // Drafts are not products. Checked here rather than in the pack
-        // query so the explicit-ids path is gated too — and so it needs no
-        // composite index.
-        if ((tMeta.data() || {}).published !== true) {
-          skipped++;
-          continue;
-        }
-        const boardId = "tb_" + Date.now() + "_" +
-          Math.random().toString(36).slice(2, 8);
-        const v = (tData.data() || {}).v || "{}";
-        const batch = db.batch();
-        batch.set(db.collection("tacticBoards").doc(boardId),
-            Object.assign(templateMetaFrom(tMeta.data() || {}), {
-              ownerUid: "",
-              clubId,
-              ownerName: "",
-              sourceTemplateId: templateId,
-              bytes: Buffer.byteLength(v, "utf8"),
-              createdAt: FieldValue.serverTimestamp(),
-              updatedAt: FieldValue.serverTimestamp(),
-              schema: 1,
-            }));
-        batch.set(db.collection("tacticBoardData").doc(boardId),
-            {ownerUid: "", clubId, v, schema: 1});
-        await batch.commit();
-        created++;
+        created += mine;
+        skipped += mineSkipped;
+        byClub[clubId] = {created: mine, skipped: mineSkipped};
       }
 
-      logger.info("seedClubFromTemplates", {clubId, created, skipped});
-      return {ok: true, created, skipped};
+      logger.info("seedClubFromTemplates",
+          {clubs: clubIds.length, created, skipped});
+      return {ok: true, created, skipped, byClub};
     });
 
 // ── 8b. onMemberCategoryChanged — move joined rows between shards ──
