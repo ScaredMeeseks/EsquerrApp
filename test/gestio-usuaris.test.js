@@ -100,13 +100,16 @@ function render(over) {
       return listed || (u.roles || []).indexOf('staff') !== -1;
     },
     sanitize: esc,
-    t: (k) => (k in CA ? CA[k] : k)
+    t: (k) => (k in CA ? CA[k] : k),
+    /* The shared category bar's two readers. The page is filtered by the bar
+       renderPage draws above it, so these are what the filter tests drive. */
+    getCurrentCategory: () => o.cat || '',
+    currentSquadOrNull: () => o.letter || null
   };
   const fn = new Function(...Object.keys(api), `
     ${PAGE}
     _guFilter = ${JSON.stringify(o.filter || 'all')};
     _guQuery = ${JSON.stringify(o.query || '')};
-    _guSquad = ${JSON.stringify(o.squad || '')};
     return renderAdminUsers();
   `);
   return fn(...Object.values(api));
@@ -152,36 +155,32 @@ describe('Gestió d\'usuaris — filtering never hides who you must manage', () 
      a lead needs this page for. The bar NARROWS; it never hides the
      uncategorised. */
   it('keeps the lead and uncategorised staff when narrowed to one squad', () => {
-    const h = render({ squad: 'amateur-A' });
+    const h = render({ cat: 'amateur', letter: 'A' });
     assert.ok(/The Lead/.test(h), 'the club lead vanished under a squad filter');
     assert.ok(/No Squad/.test(h), 'someone with no squad vanished under a squad filter');
     assert.ok(!/Player Three/.test(h), 'a juvenil player survived an amateur-A filter');
     assert.ok(!/Player Two/.test(h), 'an amateur-B player survived an amateur-A filter');
   });
 
-  /* ⚠ The shared category bar cannot serve this page — renderCategoryBar()
-     returns '' outright for a one-category club and catBarLettersHtml()
-     returns '' until a category is picked, so the team filter was missing
-     entirely. These chips are the page's own and do not depend on either. */
-  it('draws a squad chip for every squad in the club, plus Tots', () => {
-    const h = render();
-    ['amateur-A', 'amateur-B', 'juvenil-A'].forEach((k) => {
-      assert.ok(h.includes('data-gu-squad-filter="' + k + '"'), 'no chip for ' + k);
-    });
-    assert.ok(h.includes('data-gu-squad-filter=""'), 'no way back to every squad');
-    // Exactly one chip is lit, and with no squad chosen it is Tots.
-    const on = h.match(/gu-chip gu-chip-on" data-gu-squad-filter="([^"]*)"/g) || [];
-    assert.strictEqual(on.length, 1, 'expected one lit squad chip, got ' + on.length);
-    assert.ok(on[0].endsWith('data-gu-squad-filter=""'), 'a squad is preselected');
+  it('narrows by category alone, keeping both of that category\'s squads', () => {
+    const h = render({ cat: 'amateur' });
+    assert.ok(/Player One/.test(h) && /Player Two/.test(h), 'a squad of the chosen category was dropped');
+    assert.ok(!/Player Three/.test(h), 'a juvenil player survived an amateur filter');
   });
 
-  it('works for a club with a single category', () => {
-    // The case the shared bar could not serve at all.
-    const club = JSON.parse(JSON.stringify(CLUB));
-    club.categories = { amateur: { enabled: true, letters: ['A', 'B'] } };
-    const h = render({ club });
-    assert.ok(h.includes('data-gu-squad-filter="amateur-A"'), 'no squad filter on a one-category club');
-    assert.ok(h.includes('data-gu-squad-filter="amateur-B"'));
+  /* ⚠ The filter is the SHARED `.cat-bar`, which renderPage draws outside
+     this page's root — so the page must not build one of its own. It had one
+     briefly and it was the wrong call: two filters for one job. */
+  it('draws no filter of its own — the shared bar is the filter', () => {
+    const h = render();
+    assert.ok(!/data-gu-squad-filter/.test(h), 'the page grew a second squad filter');
+    assert.ok(!/cat-bar/.test(h), 'the page is drawing the shared bar itself');
+  });
+
+  it('is opted into the shared bar', () => {
+    const set = appSrc.slice(appSrc.indexOf('var CATEGORY_PAGES = new Set('));
+    assert.ok(set.slice(0, 400).includes("'users'"),
+        "'users' is not in CATEGORY_PAGES — the page would render with no filter at all");
   });
 
   it('opens on everyone', () => {
@@ -397,6 +396,18 @@ describe('Gestió d\'usuaris — the stylesheet', () => {
         'the hover rule still repaints the selected chip');
     assert.ok(/\.gu-chip\.gu-chip-on:hover/.test(block),
         'the selected chip has no hover of its own to win with');
+  });
+
+  /* ⚠ Longhand padding on `.gu-row`. The shared `.gu-head, .gu-row` rule sets
+     the side padding that keeps the circle and "Esborra" off the page edge,
+     and a `padding: 12px 0` shorthand after it silently resets both. */
+  it('keeps the row ends clear of the page edge', () => {
+    const shared = block.slice(block.indexOf('.gu-head, .gu-row'));
+    assert.ok(/padding-left:\s*12px/.test(shared.slice(0, 300)) &&
+        /padding-right:\s*12px/.test(shared.slice(0, 300)),
+        'the row has no side padding');
+    assert.ok(!/\.gu-row\s*\{[^}]*padding:\s*\d/.test(block),
+        'a padding shorthand on .gu-row resets the side padding to zero');
   });
 
   it('bounds the Configuració block that now precedes it', () => {

@@ -7084,14 +7084,16 @@
       // which squad it was drawn for, and hiding two thirds of it behind a
       // filter they did not set is how a library stops being one. Search
       // narrows it instead, across name, coach and category together.
-      /* ⚠ `users` is NOT here, and that was tried. The shared bar cannot be
-         this page's squad filter: renderCategoryBar() returns '' outright
-         when the club has one category, and catBarLettersHtml() returns ''
-         until a category is picked — so a single-category club got no team
-         filter at all, and a multi-category one got none until it narrowed.
-         Gestió d'usuaris draws its own flat squad chips instead, one per
-         {cat}-{letter}, which work the same whatever the club looks like. */
-      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions', 'staff-notifications']);
+      /* `users` uses the SHARED bar like every other page — category first,
+         letters once a category is picked (owner's call, for consistency).
+         ⚠ Two consequences worth knowing rather than rediscovering:
+         renderCategoryBar() returns '' outright for a club with a single
+         enabled category, and catBarLettersHtml() returns '' until a
+         category is chosen. So this page can legitimately show no filter at
+         all. It is the one page whose LIST is not scoped by the bar's
+         category — see renderAdminUsers: staff and the club lead carry no
+         category, and hiding them is the one thing it must never do. */
+      var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions', 'staff-notifications', 'users']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
       content.innerHTML = renderUpdateBanner() + renderPushBanner() +
         renderIosInstallBanner() + catBar + fn(session);
@@ -29384,8 +29386,6 @@
   var _guFilter = 'all';
   /** The search box's text, kept across re-renders. */
   var _guQuery = '';
-  /** The squad chip: a `{cat}-{letter}` key, or '' for every squad. */
-  var _guSquad = '';
 
   /** `{glyph, fill, size}` for a member's circle, or null for a player. */
   function guRoleGlyph(u, isStaff, isLead) {
@@ -29456,6 +29456,10 @@
        the current filter happens to show one category would be wrong. */
     const catSpan = catSpanOf(users);
 
+    /* From the shared category bar, which renderPage draws OUTSIDE this
+       page's root. `''` means Totes; `null` means do not narrow by letter. */
+    const cat = getCurrentCategory();
+    const letter = currentSquadOrNull();
     const q = _guQuery.trim().toLowerCase();
 
     const decorated = users.map(function (u) {
@@ -29468,12 +29472,12 @@
       const u = d.u;
       if (_guFilter === 'nosquad') { if (u.category && u.team) return false; }
       else {
-        /* ⚠ The squad chip NARROWS; it never hides someone who has no squad
-           at all. Staff and the club lead frequently have none, and this is
-           the page that has to reach them — a filter that dropped them would
-           hide exactly the people a lead opens it for. */
-        if (_guSquad && u.category && u.team &&
-            (u.category + '-' + u.team) !== _guSquad) return false;
+        /* ⚠ The bar NARROWS; it never hides someone who has no category or
+           no squad at all. Staff and the club lead frequently have neither,
+           and this is the page that has to reach them — a filter that
+           dropped them would hide exactly the people a lead opens it for. */
+        if (cat && u.category && u.category !== cat) return false;
+        if (letter && u.team && u.team !== letter) return false;
         if (_guFilter === 'player' && (d.isStaff || d.isLead)) return false;
         if (_guFilter === 'staff' && !d.isStaff && !d.isLead) return false;
       }
@@ -29544,16 +29548,8 @@
         '</div></div>' +
       '<div class="gu-note">' + t('gu.note') + '</div>' +
       '<div class="gu-body">' +
-        /* The squad filter, one flat chip per {cat}-{letter}. Its own control
-           rather than the shared category bar — see the note on
-           CATEGORY_PAGES for why that bar cannot serve this page. */
-        (squadOpts.length > 1 ? '<div class="gu-squads">' +
-          '<button class="gu-chip' + (_guSquad ? '' : ' gu-chip-on') +
-            '" data-gu-squad-filter="">' + t('gu.f_all') + '</button>' +
-          squadOpts.map(function (o) {
-            return '<button class="gu-chip' + (_guSquad === o[0] ? ' gu-chip-on' : '') +
-              '" data-gu-squad-filter="' + o[0] + '">' + o[1] + '</button>';
-          }).join('') + '</div>' : '') +
+        /* No squad chips here: the category and letter filter is the shared
+           `.cat-bar` above the page, the same control every other page uses. */
         '<div class="gu-tools">' +
           '<input type="text" id="gu-search" class="reg-input gu-search" placeholder="' +
             t('gu.search_ph') + '" value="' + sanitize(_guQuery) + '">' +
@@ -38085,15 +38081,6 @@
     $$('[data-gu-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
         _guFilter = btn.dataset.guFilter;
-        renderPage(getSession());
-      });
-    });
-    $$('[data-gu-squad-filter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        _guSquad = btn.dataset.guSquadFilter;
-        /* Picking a squad while "Sense equip" is showing would produce an
-           empty list every time: that chip means "no squad at all". */
-        if (_guSquad && _guFilter === 'nosquad') _guFilter = 'all';
         renderPage(getSession());
       });
     });

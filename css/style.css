@@ -10772,10 +10772,15 @@ a.ini-ev-name, .ini-ev-name-link {
 /* The rows are a grid, not a table: one column template shared by the head
    and every row, so the two can never drift apart. */
 .gu-body { padding: 0 40px 56px; }
+/* ⚠ The 12px of side padding is what keeps the row's two ends off the page's
+   own edge: the circle is a filled disc and "Esborra" is red, so both read as
+   if they were touching the frame without it. It sits on the shared template
+   rather than on the cells, or the head and the rows would drift apart. */
 .gu-head, .gu-row {
   display: grid;
   grid-template-columns: 22px 150px minmax(0, 1fr) 150px 150px 44px 168px;
   align-items: center; gap: 14px;
+  padding-left: 12px; padding-right: 12px;
 }
 .gu-head {
   padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
@@ -10783,7 +10788,10 @@ a.ini-ev-name, .ini-ev-name-link {
   color: var(--pp-ink-3);
 }
 .gu-h-dorsal, .gu-h-actions { text-align: right; }
-.gu-row { padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2); }
+/* ⚠ Longhand, not `padding: 12px 0`. The shorthand comes after the shared
+   rule above and would reset the side padding it sets back to zero — which
+   is how the circle ended up against the page edge in the first place. */
+.gu-row { padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--pp-rule-2); }
 .gu-row:hover { background: #FFFFFF; }
 /* Somebody with no squad is the thing this page exists to resolve. */
 .gu-row-nosquad { background: var(--pp-tint); }
@@ -10879,14 +10887,9 @@ a.ini-ev-name, .ini-ev-name-link {
   background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
 }
 
-/* The squad filter: one flat chip per {cat}-{letter}, above the role chips.
-   Its own row because a club with six squads wraps, and wrapping it into the
-   search row would push the search box to a second line on a laptop. */
-.gu-squads {
-  display: flex; gap: 6px; flex-wrap: wrap;
-  padding: 24px 0 0;
-}
-.gu-squads + .gu-tools { padding-top: 14px; }
+/* The category and letter filter is the shared `.cat-bar` above the page,
+   which renderPage draws outside the page root — the same control, in the
+   same place, as every other filtered page. */
 
 .gu-note {
   display: flex; justify-content: flex-end; align-items: center;
@@ -10902,9 +10905,11 @@ a.ini-ev-name, .ini-ev-name-link {
      page body that scrolls horizontally drags the hero and the filter bar
      with it. The circle keeps its own column so the rows still line up. */
   .gu-head { display: none; }
+  /* Longhand here too — see the note on `.gu-row` above. A `padding: 14px 0`
+     shorthand would drop the side padding back to zero on every phone. */
   .gu-row {
     grid-template-columns: 22px minmax(0, 1fr);
-    row-gap: 8px; padding: 14px 0;
+    row-gap: 8px; padding-top: 14px; padding-bottom: 14px;
   }
   .gu-email, .gu-role-cell, .gu-squad-cell, .gu-dorsal, .gu-actions {
     grid-column: 2;

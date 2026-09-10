@@ -127,20 +127,21 @@ function render(over) {
     },
     sanitize: esc,
     t: (k) => (k in CA ? CA[k] : k),
+    getCurrentCategory: () => o.cat || '',
+    currentSquadOrNull: () => o.letter || null
   };
   // eslint-disable-next-line no-new-func
   const fn = new Function(...Object.keys(api), `
     ${PAGE}
     _guFilter = ${JSON.stringify(o.filter || 'all')};
     _guQuery = ${JSON.stringify(o.query || '')};
-    _guSquad = ${JSON.stringify(o.squad || '')};
     return renderAdminUsers();
   `);
   return fn(...Object.values(api));
 }
 
 const all = render();
-const amateurA = render({ squad: 'amateur-A' });
+const amateurA = render({ cat: 'amateur', letter: 'A' });
 const staffOnly = render({ filter: 'staff' });
 const noSquad = render({ filter: 'nosquad' });
 const searched = render({ query: 'serra' });

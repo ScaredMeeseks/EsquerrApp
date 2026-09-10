@@ -11106,19 +11106,31 @@ near-black on its near-black fill. Both classes were on the element exactly as i
 same specificity family as v254's over-quota team count. Fixed with
 `:hover:not(.gu-chip-on)` plus a hover of the selected chip's own.
 
-⚠ **The team filter was missing entirely, and the shared category bar could not provide it.**
-`users` had been opted into `CATEGORY_PAGES`, but `renderCategoryBar()` returns `''` outright
-for a club with one category and `catBarLettersHtml()` returns `''` until a category is picked
-— so a single-category club got no team filter at all and a multi-category one got none until
-it narrowed. Reverted the opt-in; the page draws its own flat squad chips instead, one per
-`{cat}-{letter}` plus Tots, which behave the same whatever the club looks like. They keep the
-same rule as before: narrowing to a squad never hides someone who has no squad, because staff
-and the lead usually have none.
-⚠ Removing the opt-in orphaned the `getCurrentCategory`/`currentSquadOrNull` stubs in the test
-and preview harnesses, whose `cat`/`letter` options would then have driven nothing — every
-filtering assertion would have passed vacuously. Both now drive `_guSquad` directly.
+**The team filter: out to page-local chips and back to the shared bar, in one day.**
+It was missing, so the page grew its own flat squad chips — one per `{cat}-{letter}` — because
+`renderCategoryBar()` returns `''` outright for a club with a single enabled category and
+`catBarLettersHtml()` returns `''` until a category is picked. The owner then asked for the
+behaviour every other page has: **the shared `.cat-bar` above the page, category first and
+letters once a category is chosen.** Consistency won, and `'users'` is in `CATEGORY_PAGES`.
+⚠ **Know what that costs**, rather than rediscovering it: a club with one enabled category
+gets no bar at all, and no letter chips until a category is picked. That is the shared
+control's behaviour, not this page's.
+The narrowing rule survived both designs: it never hides someone with **no** category or **no**
+squad, because staff and the club lead usually have neither and this is the page that must
+reach them.
+⚠ Each swap orphaned the harness stubs — `getCurrentCategory`/`currentSquadOrNull` one way,
+`_guSquad` the other. Left alone, the `cat`/`letter` options would have driven nothing and
+**every filtering assertion would have passed vacuously.** Both harnesses were re-pointed each
+time; a test that drives a control the page no longer reads is worse than no test.
 
-**Tests.** 3427 → **3464**. New `test/gestio-usuaris.test.js` (37), registered in `test:unit`
+**Row ends.** 12px of side padding on the shared `.gu-head, .gu-row` template, so the filled
+position circle and the red "Esborra" are not flush against the page frame.
+⚠ Longhand, not `padding: 12px 0` — the shorthand comes after the shared rule and silently
+resets the sides to zero. The assertion written for that caught a second instance immediately:
+the ≤900px override had exactly the same bug and would have dropped the padding on every
+phone.
+
+**Tests.** 3427 → **3466**. New `test/gestio-usuaris.test.js` (39), registered in `test:unit`
 and as `test:gu`; it CALLS the builder and runs the real `assignMemberToTeam` over recording
 stubs. New `scripts/build-gestio-usuaris-preview.js` → `gestio-usuaris-preview.html`, listed in
 `_config.yml` — off Pages for the sharpest reason on that list: it is a **member directory**,
@@ -11127,7 +11139,7 @@ names against addresses against roles.
 sliced to EOF. **`.gu-` is now last; bound it before appending an eleventh page.**
 ⚠ One of my own expectations was wrong, not the code: the "Jugadors" filter returns the
 unplaced member too, and that is the behaviour this page wants.
-**Mutation-tested, 15 mutants, 14 killed + 1 deliberate no-op control.**
+**Mutation-tested, 15 mutants, 0 survivors.**
 
 No rules change. `functions/index.js` gets only a comment correction and the version constant,
 so this is **push-only** — but run `test:functions` anyway, as the repo rule says.
