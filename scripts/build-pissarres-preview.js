@@ -118,10 +118,10 @@ const SOURCES = { b2: { templateId: 't2', clubId: 'c-esq' } };
 
 /* Real-looking drawings, so the cards show pitches rather than six identical
    placeholders. `positions` is what tbResolveRef needs to call it a drawing. */
-function drawing(n) {
+function drawing(n, nFrames) {
   const rows = [[50, 88], [26, 70], [42, 72], [58, 72], [74, 70],
     [36, 50], [64, 50], [50, 38], [30, 28], [70, 28], [50, 18]];
-  return {
+  const b = {
     positions: rows.slice(0, 11),
     numbers: ['1', '2', '4', '5', '3', '8', '6', '10', '7', '9', '11'],
     boardType: 'full', showOpp: n % 2 === 0,
@@ -129,9 +129,15 @@ function drawing(n) {
     oppNumbers: ['R', 'R', 'R'],
     arrows: n % 2 ? [{ x1: 42, y1: 72, x2: 30, y2: 44 }] : []
   };
+  /* ⚠ The frame count on the CARD comes from the metadata doc's `frameCount`;
+     the ▶ puck on the PITCH comes from `frames.length > 1` on the payload.
+     Two sources, and they have to agree here or the mockup shows a card
+     claiming frames beside a board offering no way to play them. */
+  if (nFrames > 1) b.frames = new Array(nFrames).fill(null).map(() => b.positions);
+  return b;
 }
-const PAYLOADS = { b1: drawing(1), b2: drawing(2), b3: drawing(3),
-  b4: drawing(4), b5: drawing(5) };
+const PAYLOADS = { b1: drawing(1, 4), b2: drawing(2, 6), b3: drawing(3),
+  b4: drawing(4, 5), b5: drawing(5) };
 
 // ── Slices ──────────────────────────────────────────────────────────
 const PAGE = grab('  // #region Superadmin: board catalogue & platform template library',
@@ -152,11 +158,32 @@ const HYDRATE = grab('  async function hydrateRoBoards(roots) {',
    fires, hydration swaps the skeleton for whatever the renderer returns. That
    is exactly the sequence a metadata doc passed as the ref would SKIP, so the
    trap this page has stays covered by the assertions below. */
-function mockPitch(name) {
+/* ⚠ THE WRAPPER SHAPE IS THE REAL ONE, and it has to be. renderReadOnlyBoard
+   returns `<div style="margin-bottom:1rem"><div style="font-weight:600…">NAME
+   </div><div class="tb-field-readonly">…</div></div>`, and BOTH of those inline
+   styles are things `.ab-thumb` overrides — the duplicate title is hidden and
+   the bottom margin zeroed. A stub that emitted only the field would make those
+   two rules untestable here and the mockup would show a card the app cannot
+   produce. So the stand-in is only the ARTWORK inside the field. */
+const PUCK = Math.max(13, Math.round(30 * (250 / 814)));
+
+function mockPitch(name, frames) {
   const dots = [[50, 86], [26, 70], [42, 72], [58, 72], [74, 70],
     [36, 50], [64, 50], [50, 36], [32, 22], [68, 22], [50, 14]];
-  return '<div class="tb-field-readonly" style="position:relative;' +
-    'aspect-ratio:3/2;background:#5C8F5E;overflow:hidden;">' +
+  /* The ▶ / 3D strip at the size scaleRoField computes for a card this wide:
+     `Math.max(--ro-ctl-min, 30 * w / 814)`. The scale term is about 9px here,
+     so the FLOOR is what sizes them — 13px since v258, 16px before, which is
+     why they read as oversized on a card while being right on a session
+     panel. Drawn rather than computed live because the preview stubs the
+     pitch renderer, so nothing calls scaleRoField. */
+  const puck = 'width:' + PUCK + 'px;height:' + PUCK + 'px;border-radius:50%;' +
+    'background:rgba(0,0,0,.55);color:#fff;display:inline-flex;' +
+    'align-items:center;justify-content:center;';
+  return '<div style="margin-bottom:1rem;">' +
+    '<div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' +
+      esc(name) + '</div>' +
+    '<div class="tb-field-readonly" style="position:relative;' +
+      'aspect-ratio:3/2;background:#5C8F5E;overflow:hidden;">' +
     '<div style="position:absolute;inset:8px;border:1px solid rgba(255,255,255,.5);"></div>' +
     '<div style="position:absolute;left:50%;top:8px;bottom:8px;width:1px;' +
       'background:rgba(255,255,255,.5);"></div>' +
@@ -166,8 +193,13 @@ function mockPitch(name) {
     dots.map((d, i) => '<span style="position:absolute;left:' + d[0] + '%;top:' +
       d[1] + '%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;' +
       'background:' + (i > 7 ? '#e53935' : '#FFFFFF') + ';"></span>').join('') +
-    '<span style="position:absolute;left:8px;bottom:6px;font-size:10px;' +
-      'color:rgba(255,255,255,.85);">' + esc(name) + '</span></div>';
+    '<div class="tb-ro-ctl" style="position:absolute;right:1%;bottom:1%;' +
+      'display:flex;gap:4px;">' +
+      '<span style="' + puck + 'font-size:7px;">3D</span>' +
+      (frames > 1 ? '<span style="' + puck + 'font-size:' + PUCK + 'px;' +
+        'line-height:1;">▸</span>' : '') +
+    '</div>' +
+    '</div></div>';
 }
 
 async function render(over) {
@@ -213,7 +245,8 @@ async function render(over) {
     _showPushToast: () => {},
     scaleRoBoards: () => {},
     bindRoBoardAnimations: () => {},
-    renderReadOnlyBoard: (bd) => mockPitch((bd && bd.name) || ''),
+    renderReadOnlyBoard: (bd) => mockPitch((bd && bd.name) || '',
+        (bd && bd.frames && bd.frames.length) || 0),
     firebase: { app: () => ({ functions: () => ({ httpsCallable: () => async () => ({}) }) }) },
     db: {
       collection(name) {

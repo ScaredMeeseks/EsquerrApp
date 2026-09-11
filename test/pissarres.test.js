@@ -374,6 +374,122 @@ describe('Pissarres — the mini pitch is a REFERENCE, never the metadata doc', 
 });
 
 // ════════════════════════════════════════════════════════════════════
+describe('Pissarres — the card', () => {
+  /* ⚠ THE NAME WAS ON THE CARD TWICE. renderReadOnlyBoard emits its own title
+     line above the field — right on a session panel, where the board arrives
+     unannounced, and a duplicate on a card that is already about one board.
+     The card's header band is the one the reader sees. */
+  it('names the board once, in its own header band', async () => {
+    const m = await mount();
+    const card = m.cards().find((c) => c.dataset.abCard === 'b1');
+    const head = card.querySelector('.ab-card-h .ab-card-t');
+    assert.ok(head, 'the card has no header band');
+    assert.strictEqual(head.textContent, 'Sortida de pilota');
+    /* VISIBLE text, not the markup: the skeleton carries the name in a
+       `data-ro-name` attribute so hydration can put it back, and that is not
+       something the reader sees twice. */
+    assert.strictEqual((m.host.textContent.match(/Sortida de pilota/g) || []).length, 1,
+        'the board name appears twice on the card');
+  });
+
+  it('shows the formation beside the name, not inside it', async () => {
+    const m = await mount();
+    const card = m.cards().find((c) => c.dataset.abCard === 'b1');
+    assert.strictEqual(card.querySelector('.ab-card-form').textContent, '4-3-3');
+    assert.ok(!/4-3-3/.test(card.querySelector('.ab-card-t').textContent),
+        'the formation is inside the name and would be ellipsised with it');
+  });
+
+  it('hides the pitch renderer\'s own title, which it cannot not emit', () => {
+    /* Inline `style="..."` on an element this stylesheet does not build, so
+       the override needs !important and there is no other way. */
+    assert.ok(/\.ab-thumb > div > div:first-child \{ display: none !important; \}/
+        .test(css), 'the duplicate title is back');
+    assert.ok(/\.ab-thumb > div \{ margin-bottom: 0 !important; \}/.test(css),
+        'the board wrapper keeps a bottom margin that makes the thumb too tall');
+  });
+
+  /* ⚠ THE CARD'S BOTTOM-RIGHT, NOT THE PITCH'S. It used to be an overlay
+     pinned to the thumb — which is exactly where the ▶ and 3D pucks live, and
+     the board wrapper's own bottom margin clipped it against the card edge. */
+  it('puts the frame count in the footer, clear of the playback pucks', async () => {
+    const m = await mount();
+    const card = m.cards().find((c) => c.dataset.abCard === 'b1');
+    const f = card.querySelector('.ab-card-a .ab-frames');
+    assert.ok(f, 'the frame count is not in the footer row');
+    assert.ok(/4/.test(f.textContent), 'it does not say how many');
+    assert.ok(!card.querySelector('.ab-thumb .ab-frames'),
+        'the frame count is overlaid on the pitch again');
+  });
+
+  it('says nothing about frames on a board that has none', async () => {
+    const m = await mount();
+    const card = m.cards().find((c) => c.dataset.abCard === 'b3');
+    assert.ok(!card.querySelector('.ab-frames'),
+        'a still board claims a frame count');
+  });
+
+  /* ⚠ THE FLOOR, NOT THE SCALE, SIZED THESE. At a 250px card `30 * s` is about
+     9px, so scaleRoField's 16px clamp won every time and the pucks looked
+     oversized — while being correct on a session panel, which is why nothing
+     else may move. */
+  it('shrinks the playback pucks HERE and nowhere else', () => {
+    assert.ok(/\.ab-thumb \.tb-field-readonly \{ --ro-ctl-min: 13px; \}/.test(css),
+        'the catalogue does not lower the puck floor');
+    const scale = grab('  function scaleRoField(inner, w) {', '\n  function ');
+    assert.ok(/getPropertyValue\('--ro-ctl-min'\)\) \|\| 16/.test(scale),
+        'the floor is not read from the container, or lost its 16px default');
+    assert.ok(/Math\.max\(ctlMin, 30 \* s\)/.test(scale),
+        'the hardcoded floor is back');
+    // Every other caller must be untouched: the property appears once.
+    assert.strictEqual((css.match(/--ro-ctl-min/g) || []).length, 1,
+        'another page lowered the puck floor too');
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+describe('Pissarres — the banner on the editor', () => {
+  const BANNER = grab('    const tplId = tbEditingTemplateId();',
+      '      <div class="card tb-card-window">');
+
+  /* It renders on the OLD tactics page, which is the one screen this feature
+     touches that is not in the paper system — so it is also the one place its
+     copy and its tokens could drift without anything noticing. */
+  it('says it in the reader\'s language, not in hardcoded Catalan', () => {
+    ['ab.edit_banner', 'ab.edit_exit', 'ab.edit_unnamed'].forEach((k) => {
+      assert.ok(BANNER.includes("t('" + k + "')"), 'not rendered through t(): ' + k);
+    });
+    assert.ok(!/Editant plantilla|Tornar a la biblioteca|sense nom/.test(BANNER),
+        'a hardcoded Catalan string survived in the banner');
+  });
+
+  it('is dressed in the paper tokens, like the page it sends you back to', () => {
+    const i = css.indexOf('.tb-tpl-banner{');
+    assert.ok(i !== -1, 'the banner block is gone from css/style.css');
+    /* To the last of its four rules, not to the first blank line — the
+       opening rule is multi-line now and a blank-line bound would have read
+       only its first two declarations. */
+    const end = css.indexOf('.tb-tpl-banner button', i);
+    const block = css.slice(i, css.indexOf('}', end) + 1);
+    /* ⚠ THE RESOLVED COLOURS, NOT THE TOKEN NAMES. `readCss()` expands every
+       `var(--pp-*)` back to its literal precisely so an assertion tests the
+       colour — a token pointed at the wrong value would pass a name check. */
+    const pal = require('./read-css').palette(require('./read-css').readCssRaw());
+    assert.ok(block.includes(pal['pp-tint']) && block.includes(pal['pp-red']),
+        'the banner is still in the legacy chrome tokens');
+    assert.ok(!/var\(--accent\)/.test(block) && !/var\(--text-secondary\)/.test(block),
+        'a legacy token survived');
+    assert.ok(!/class="card tb-tpl-banner"/.test(BANNER),
+        'the banner is still a rounded .card');
+  });
+
+  it('keeps the exit button the handler binds to', () => {
+    assert.ok(/id="tb-tpl-exit"/.test(BANNER), 'the way back to the library is gone');
+    assert.ok(/getElementById\('tb-tpl-exit'\)/.test(appSrc), 'nothing binds it');
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
 describe('Pissarres — hydration is gated on the viewport', () => {
   it('hydrates nothing until a card comes into view', async () => {
     const m = await mount();

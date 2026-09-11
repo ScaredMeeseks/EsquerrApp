@@ -1803,6 +1803,14 @@
     'ab.read_err':        { ca:'No s\'ha pogut llegir el dibuix.', es:'No se ha podido leer el dibujo.', en:'Could not read the drawing.' },
     'ab.tpl_read_err':    { ca:'No s\'ha pogut llegir la plantilla.', es:'No se ha podido leer la plantilla.', en:'Could not read the template.' },
     'ab.close':           { ca:'Tanca', es:'Cierra', en:'Close' },
+    'ab.frames':          { ca:'{n} fotogrames', es:'{n} fotogramas', en:'{n} frames' },
+    /* The strip at the top of the EDITOR when a library template is open in
+       it. It was three hardcoded Catalan strings in old chrome tokens — the
+       one piece of this feature that a Spanish or English superadmin read in
+       a language they had not asked for. */
+    'ab.edit_banner':     { ca:'Editant una plantilla de la biblioteca', es:'Editando una plantilla de la biblioteca', en:'Editing a library template' },
+    'ab.edit_unnamed':    { ca:'sense nom', es:'sin nombre', en:'unnamed' },
+    'ab.edit_exit':       { ca:'Torna a la biblioteca', es:'Vuelve a la biblioteca', en:'Back to the library' },
 
     // ── Configuració, the one-page club settings (v254) ──
     'cfg.tab_club':       { ca:'Club', es:'Club', en:'Club' },
@@ -2762,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 257;
+  const APP_VERSION = 258;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -12236,7 +12244,16 @@
     const coneSide = Math.max(3, 7 * s);
     const coneBot = Math.max(6, 14 * s);
     const txtFs = Math.max(5, 14 * s);
-    const playS = Math.max(16, 30 * s);
+    /* ⚠ THE FLOOR, NOT THE SCALE, IS WHAT SIZES THESE ON A SMALL BOARD.
+       At a 250px catalogue card `s` is about 0.3, so `30 * s` is 9px and the
+       16px floor wins every time — which is why the ▶ and 3D pucks looked
+       oversized there while being correct on a session panel. The floor is a
+       TAP TARGET, and on a card whose real control is «Veure» it does not need
+       to be one, so the container gets to lower it. Unset — every other caller
+       — it is the 16px it always was. */
+    const ctlMin = parseFloat(
+        getComputedStyle(inner).getPropertyValue('--ro-ctl-min')) || 16;
+    const playS = Math.max(ctlMin, 30 * s);
     const playTriTB = Math.max(3, 6 * s);
     const playTriL = Math.max(5, 10 * s);
     const playTriML = Math.max(1, 2 * s);
@@ -16121,10 +16138,10 @@
        entering the tab instead — see tbFlashPageTitle(). The board-type
        picker, which is the other half of renderTactics, keeps its own. */
     return `
-      ${tplId ? `<div class="card tb-tpl-banner">
-        <strong>Editant plantilla de la biblioteca</strong>
-        <span>«${sanitize(savedName || 'sense nom')}»</span>
-        <button class="btn btn-small btn-outline" id="tb-tpl-exit">Tornar a la biblioteca</button>
+      ${tplId ? `<div class="tb-tpl-banner">
+        <span class="tb-tpl-eyebrow">${sanitize(t('ab.edit_banner'))}</span>
+        <span class="tb-tpl-name">${sanitize(savedName || t('ab.edit_unnamed'))}</span>
+        <button class="ab-link" id="tb-tpl-exit">${sanitize(t('ab.edit_exit'))}</button>
       </div>` : ''}
       <div class="card tb-card-window">
         <div class="tb-controls tb-controls-off">
@@ -31717,13 +31734,23 @@
     const promoted = _abState.promoted[b.id];
     const meta = [club, a.name || t('ab.no_author'), _abDate(b.updatedAt)]
       .filter(Boolean).join(' · ');
+    const frames = Number(b.frameCount || 0);
+    /* ⚠ THE NAME IS THE CARD'S HEADER, NOT THE PITCH'S. renderReadOnlyBoard
+       emits its own title line above the field — right for a session panel,
+       where the board arrives unannounced, and a duplicate here, where the
+       card is already about one board. It is hidden in CSS, and this band is
+       what the reader sees: padded, on its own ground, with the formation
+       beside it in lighter ink. */
     return '<div class="ab-card" data-ab-card="' + sanitize(b.id) + '">' +
+      '<div class="ab-card-h">' +
+        '<span class="ab-card-t">' + sanitize(b.name || '—') + '</span>' +
+        (b.formation ? '<span class="ab-card-form">' +
+          sanitize(b.formation) + '</span>' : '') +
+      '</div>' +
       '<div class="ab-thumb">' +
         tbRoBoardHtml({boardId: b.id, name: b.name || ''}, 'ab-') +
-        (b.hasFrames ? '<span class="ab-anim">' + b.frameCount + ' ▶</span>' : '') +
       '</div>' +
       '<div class="ab-card-b">' +
-        '<div class="ab-card-t">' + sanitize(b.name || '—') + '</div>' +
         '<div class="ab-card-m">' + sanitize(meta) +
           (a.left ? ' <span class="ab-left">(' + sanitize(t('ab.left')) + ')</span>' : '') +
         '</div>' +
@@ -31740,6 +31767,13 @@
             '<span class="ab-done">' + sanitize(t('ab.copied')) + '</span>' :
             '<button class="ab-link" data-ab-promote="' + sanitize(b.id) + '">' +
               sanitize(t('ab.copy')) + '</button>') +
+          /* ⚠ THE CARD'S BOTTOM-RIGHT, NOT THE PITCH'S. It was an overlay
+             pinned to the thumb, where it landed on top of the ▶ and 3D pucks
+             — which live in that exact corner — and was clipped by the board
+             wrapper's own bottom margin. Here it collides with nothing. */
+          (frames > 1 ? '<span class="ab-frames">' +
+            sanitize(t('ab.frames').replace('{n}', String(frames))) +
+            '</span>' : '') +
         '</div>' +
       '</div></div>';
   }

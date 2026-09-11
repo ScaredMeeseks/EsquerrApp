@@ -4934,10 +4934,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Editing a platform template in the ordinary board editor. Loud on
    purpose: the editor looks identical, and saving here writes to the
    library rather than to any club. */
-.tb-tpl-banner{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
-  border-left:4px solid var(--accent);}
-.tb-tpl-banner span{color:var(--text-secondary);font-size:.88rem;}
-.tb-tpl-banner button{margin-left:auto;}
+/* ⚠ PAPER TOKENS, NOT THE EDITOR'S. This strip is the one part of the v257
+   Pissarres feature that renders on the OLD tactics page, and it used `.card`,
+   --accent and --text-secondary while the page it sends you back to is all
+   `--pp-*`. Its three strings were hardcoded Catalan too, which a Spanish or
+   English superadmin read in a language they had not asked for. */
+.tb-tpl-banner{
+  display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;
+  background:var(--pp-tint);color:var(--pp-ink);
+  border:1px solid var(--pp-rule);border-left:3px solid var(--pp-red);
+  border-radius:0;padding:12px 16px;margin-bottom:1rem;
+}
+.tb-tpl-eyebrow{
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--pp-ink-3);
+}
+.tb-tpl-name{font-size:15px;color:var(--pp-ink);min-width:0;}
+.tb-tpl-banner button{margin-left:auto;flex:none;}
 
 /* Inline spinner for a button that is doing work (login). Sized in em so it
    tracks the button's font, and margin-right only — the label follows it. */
@@ -11006,18 +11018,55 @@ select.ab-input { padding-right: 26px; }
 .ab-chip-on { background: var(--pp-ink); border-color: var(--pp-ink); color: #FFFFFF; }
 .ab-chip.ab-chip-on:hover { background: var(--pp-red); border-color: var(--pp-red); color: #FFFFFF; }
 
-/* ── The card grid ───────────────────────────────────────────────────
+/* ── The card grid ─────────────────────────────────────────────
    `auto-fill` with a minimum, so the grid decides its own column count and
-   there is no breakpoint per width to keep in step with anything. */
+   there is no breakpoint per width to keep in step with anything.
+
+   The card is four bands with no gaps between them: a header carrying the
+   name, the pitch, the meta, and a footer rule. Nothing floats over the
+   pitch — the ▶ and 3D pucks already own its bottom-right corner. */
 .ab-grid {
   display: grid; gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
-.ab-card { background: #FFFFFF; border: 1px solid var(--pp-rule); display: flex; flex-direction: column; }
+.ab-card {
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+  display: flex; flex-direction: column; min-width: 0;
+}
 .ab-card:hover { border-color: var(--pp-rule-4); }
+
+/* The header band. Its own slightly darker ground, so the name reads as the
+   card's label rather than as the first line of the body. */
+.ab-card-h {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 12px 16px; background: var(--pp-tint);
+  border-bottom: 1px solid var(--pp-rule);
+}
+.ab-card-t {
+  font-size: 15px; line-height: 1.3; color: var(--pp-ink); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ab-card-form { font-size: 11px; color: var(--pp-ink-3); flex: none; margin-left: auto; }
+
 /* ⚠ The thumb keeps the pitch's own 3:2 whether it is a skeleton or a drawn
    board, so a card does not resize under the reader when it hydrates. */
 .ab-thumb { position: relative; border-bottom: 1px solid var(--pp-rule); }
+/* ⚠ TWO `!important`s AGAINST INLINE STYLES, AND THEY ARE THE ONLY WAY.
+   renderReadOnlyBoard writes both of these as `style="..."` on elements this
+   file does not build, and an inline declaration outranks every selector.
+
+   The title is a DUPLICATE here — the card already has a header band naming
+   the board — and the wrapper's 1rem bottom margin made `.ab-thumb` taller
+   than the pitch inside it, which is what left the old frame badge floating
+   in dead space below the board and clipped by the card edge. */
+.ab-thumb > div { margin-bottom: 0 !important; }
+.ab-thumb > div > div:first-child { display: none !important; }
+/* Smaller ▶ / 3D pucks. Read by scaleRoField as the FLOOR it clamps to:
+   `30 * scale` is about 9px on a card this size, so the floor is the only
+   thing sizing them, and 16px is a tap target this card does not need — its
+   real control is «Veure». Every other caller leaves the property unset and
+   keeps the 16px it always had. */
+.ab-thumb .tb-field-readonly { --ro-ctl-min: 13px; }
 .ab-thumb .tb-ro-skeleton {
   margin: 0; border: none; border-radius: 0; opacity: 1;
   background: var(--pp-tint); color: var(--pp-ink-3); font-size: 12px; font-style: normal;
@@ -11028,16 +11077,13 @@ select.ab-input { padding-right: 26px; }
    skeleton's own (0,2,0) above and lost — the failed card said the right words
    in the ordinary grey. */
 .ab-thumb .ab-thumb-failed { color: var(--pp-bad); }
-.ab-anim {
-  position: absolute; right: 8px; bottom: 8px; z-index: 1;
-  font-size: 11px; letter-spacing: .04em;
-  background: var(--pp-ink); color: #FFFFFF; padding: 2px 6px;
+
+.ab-card-b { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.ab-card-m {
+  font-size: 12px; line-height: 1.45; color: var(--pp-ink-3);
 }
-.ab-card-b { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-.ab-card-t { font-size: 16px; line-height: 1.25; color: var(--pp-ink); }
-.ab-card-m { font-size: 12px; color: var(--pp-ink-3); }
 .ab-left { color: var(--pp-red); }
-.ab-card-f { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.ab-card-f { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ab-tagchip, .ab-catchip {
   font-size: 11px; letter-spacing: .06em; padding: 2px 8px;
   border: 1px solid var(--pp-rule-3); color: var(--pp-ink-2);
@@ -11045,10 +11091,15 @@ select.ab-input { padding-right: 26px; }
 .ab-tagchip { background: var(--pp-tint); }
 .ab-bytes { font-size: 11px; color: var(--pp-ink-4); margin-left: auto; }
 .ab-card-a {
-  display: flex; gap: 16px; align-items: center;
-  margin-top: auto; padding-top: 12px; border-top: 1px solid var(--pp-rule-2);
+  display: flex; gap: 14px; align-items: baseline;
+  margin-top: auto; padding-top: 10px; border-top: 1px solid var(--pp-rule-2);
 }
 .ab-done { font-size: 12px; color: var(--pp-green); }
+/* The frame count, at the card's bottom-right where nothing else is. */
+.ab-frames {
+  margin-left: auto; flex: none;
+  font-size: 11px; color: var(--pp-ink-4); white-space: nowrap;
+}
 
 /* ── The editor tab's draft list ─────────────────────────────────── */
 .ab-list { border-top: 1px solid var(--pp-rule); }

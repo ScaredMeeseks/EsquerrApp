@@ -11271,3 +11271,101 @@ ever tested being switched on, and the emptied-pack case had no assertion at all
 ⚠ **THIS ROUND CHANGES `functions/index.js`, so it is NOT push-only.** Run
 `.\deploy.ps1 functions` **before** pushing — a push alone ships a client sending `clubIds`/
 `packs` to a callable that has never heard of them. No `firestore.rules` change.
+
+### 2026-09-11 — The Pissarres card, and the editor's banner (v258)
+
+Follow-up to v257, from the owner looking at real cards in the running app.
+
+**The board name was on the card twice.** `renderReadOnlyBoard` emits its own title
+line above the field — right on a session panel, where the board turns up unannounced,
+and a duplicate on a card that is already about one board. The card now carries a
+**header band**: tinted ground, 16px of side padding, the name left and the formation
+right in lighter ink. The renderer's own title is hidden.
+⚠ **Two `!important`s against inline styles, and there is no other way.** Both
+`style="margin-bottom:1rem"` on the wrapper and `style="font-weight:600…"` on the title
+are written by a function this stylesheet does not build, and an inline declaration
+outranks every selector. The margin is the second half of the bug: it made `.ab-thumb`
+taller than the pitch inside it, which is the dead space the old frame badge was
+floating in, clipped against the card edge.
+
+**The frame count moved to the card's bottom-right** — the footer row, opposite
+«Veure»/«Copiar». It was an overlay pinned to the thumb, which is exactly where the ▶
+and 3D pucks live. It also now reads «4 fotogrames» rather than «4 ▶», and a board with
+no animation says nothing at all instead of claiming one frame.
+
+⚠ **THE FLOOR, NOT THE SCALE, WAS SIZING THE PLAYBACK PUCKS.** `scaleRoField` computes
+`Math.max(16, 30 * s)`, and on a 250px card `s` is about 0.3 — so `30 * s` is 9px and
+the **16px clamp won every time**, which is why they looked oversized on a card while
+being correct on a session panel. The clamp is a TAP TARGET, and on a card whose real
+control is «Veure» it does not need to be one. It is now read from the container as
+`--ro-ctl-min`, **defaulting to 16**; the catalogue sets 13 and every other caller is
+untouched (the suite asserts the property appears exactly once in the stylesheet).
+
+**The editor's template banner.** The strip at the top of the *tactics* page when a
+library template is open in it — the one part of this feature that renders on a screen
+still in the old chrome. It was a `.card` in `--accent` / `--text-secondary` with
+**three hardcoded Catalan strings**, which a Spanish or English superadmin read in a
+language they had not asked for. Now `ab.edit_banner` / `ab.edit_unnamed` /
+`ab.edit_exit` in all three, dressed in `--pp-*` with a red left rule.
+
+**Tests.** 3537 → **3546**. Nine new in `test/pissarres.test.js`, two of them for the
+banner. **Mutation-tested, 11 mutants, 0 survivors.**
+⚠ One of my own assertions was wrong for a reason worth keeping: `readCss()` expands
+every `var(--pp-*)` back to its literal *precisely so* an assertion tests the colour
+rather than the token name, so a check for `var(--pp-tint)` can never match. It reads
+the palette and compares the resolved value.
+⚠ And the preview's pitch stand-in had to grow the **real wrapper shape** — the outer
+`margin-bottom` div and the title div — or the two rules above would have been
+untestable there and the mockup would have shown a card the app cannot produce.
+
+Push-only: no rules and no functions change.
+
+---
+
+### ⚠ NOT FIXED, DELIBERATELY — 3D-authored text renders badly in 2D (investigated 2026-09-11)
+
+Owner-reported and explicitly deferred. Measured rather than reasoned about:
+`scratchpad/probe-text.js` renders the REAL `renderReadOnlyBoard` + `scaleRoField`
+against the real CSS in headless Chrome, at a 250px card and a 600px panel, and reads
+the computed values back. **A text label is
+`[x%, y%, text, bg, opacity, wPx, hPx, fontPx]`** — the first two are pitch
+percentages, the last three are **absolute editor pixels**, and that is the whole
+problem.
+
+Measured, one label resized in the editor to 300 × 96 with a 20px font:
+
+| | card (inner 242px) | panel (inner 594px) |
+|---|---|---|
+| computed font | **5px** | **10.2px** |
+| box | **300 × 96** | **300 × 96** |
+
+So: **the box never scales** — 300px is 124% of the card, wider than the board it sits
+on, clipped at both edges — and **the font is always overwritten**, `scaleRoField` doing
+`fontSize = Math.max(5, 14 * s)` and discarding the authored `t[7]` entirely. Two
+defects pulling in opposite directions: the box too big, the text too small.
+
+Where 3D comes in: `board3d.js addText()` draws the label onto a canvas at a fixed
+`FS = 48` and scales the sprite to a fixed **world size 6**, ignoring `wPx`, `hPx` and
+`fontPx` completely. 3D is otherwise "an input device, not a second writer" — it
+dispatches a synthetic `contextmenu` at the 2D element and app.js does the writing — so
+nothing about a 3D-authored text is stored differently. What differs is that **3D shows
+a size that no stored field records**, so a coach sizes a label until it looks right in
+3D and the stored numbers are whatever the 2D editor last put there.
+
+Three ways out, cheapest first:
+
+1. **Scale the box like everything else.** `scaleRoField` already scales circles, balls,
+   cones and the pucks by `s`; add width/height/padding to that list and drop the fixed
+   14px reference so the authored `fontPx` is scaled rather than replaced. ~10 lines,
+   no migration, and read-only boards everywhere start matching the editor. Does not fix
+   3D, and existing labels keep their pixel numbers — which is fine, because they would
+   finally be scaled.
+2. **Store the size as a percentage of the pitch**, like every other coordinate in this
+   format. Correct, and it makes 3D able to honour it. Needs a migration for boards
+   already saved — the 2D and 3D readers would have to accept both shapes for a long
+   time, exactly as `seedClubFromTemplates` accepts both call shapes.
+3. **Let 3D write back a size** and keep pixels. Cheapest for 3D, worst overall: it puts
+   a second writer in the 3D view, which the codebase has one comment per feature saying
+   it will not do.
+
+Recommendation is **(1) now, (2) when boards are next migrated for another reason**.
