@@ -460,6 +460,63 @@ describe('the static render and the animation agree', () => {
         'no hardcoded tb-circle class should remain in the builder');
   });
 
+  /* ⚠ THE ONE THAT ACTUALLY BIT. The static render was rescaled by
+     scaleRoField while applyRoFrame rebuilt the labels straight from the
+     stored PIXELS, so a text label jumped size the moment you pressed play
+     and jumped back when it stopped. Both build their style through the
+     same function now, and neither may write a px size of its own. */
+  it('both build a text label through the one shared style', () => {
+    const frame = fn('applyRoFrame');
+    [['the static render', body], ['the animation frame', frame]].forEach(
+        ([what, src]) => {
+          assert.ok(/tbTextStyle\(/.test(src),
+              what + ' builds a label style of its own');
+          assert.ok(!/font-size:'\s*\+/.test(src),
+              what + ' writes a px font size, which --tb-ppm then cannot scale');
+          assert.ok(!/'width:'\s*\+\s*t\[5\]/.test(src),
+              what + ' writes a px width taken straight from storage');
+        });
+  });
+
+  it('the shared style is metric and writes no pixels', () => {
+    const style = fn('tbTextStyle');
+    assert.ok(/--tb-tfs:/.test(style) && /--tb-tw:/.test(style),
+        'a label must be sized through the metric custom properties');
+    assert.ok(/BG\.textMetres\(t, boardType\)/.test(style),
+        'sizes must come from the shared reader, legacy rows included');
+    assert.ok(!/font-size/.test(style),
+        'the builder writes a font-size again');
+  });
+
+  it('the read-only board carries the metres it is wide', () => {
+    /* A read-only board has no --tb-ppm at render time — its width is
+       whatever its container gives it — so scaleRoField measures the width
+       and needs this to turn it into pixels per metre. */
+    assert.ok(/data-ax="'\s*\+\s*BS\.round2\(BG\.extent\(/.test(body),
+        'renderReadOnlyBoard must stamp data-ax');
+    const scale = fn('scaleRoField');
+    assert.ok(/setProperty\('--tb-ppm', BS\.round2\(w \/ ax\) \+ 'px'\)/.test(scale),
+        'scaleRoField must write --tb-ppm, WITH the unit');
+    assert.ok(!/tb-text-label/.test(scale),
+        'the font loop is back: it overwrites the metric size');
+  });
+
+  /* ⚠ THE WRITER, NOT ONLY THE READERS. Everything above proves a label is
+     DRAWN from metres; this is what proves one is STORED that way, and that
+     the pixel shadow a cached old client reads is still written beside it. */
+  it('the editor stores metres, and the pixel shadow beside them', () => {
+    const save = fn('saveTexts');
+    assert.ok(/wM, fontM\]\)/.test(save),
+        'saveTexts must push the metric size as the last two fields');
+    assert.ok(/BG\.textPixels\(wM, fontM, bt\)/.test(save),
+        'the pixel shadow is gone: a cached old client would lose every size');
+    assert.ok(/px\.wPx, null, px\.fontPx/.test(save),
+        'the shadow must sit at 5 and 7, with the height left null');
+    assert.ok(!/el\.style\.fontSize/.test(save),
+        'the rendered px font is being stored again, which means something ' +
+        'different on every board it is read on');
+  });
+
   it('cones fall back to the board, like every other layer', () => {
     /* Seven layers fell back to `b.*` and cones fell back to `[]`, so a
        board whose cones were drawn on the base rather than captured

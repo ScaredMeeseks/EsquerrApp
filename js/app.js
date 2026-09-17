@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 258;
+  const APP_VERSION = 259;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -11106,6 +11106,31 @@
    *              name the instance pass one; the rest go without and simply
    *              do not survive a refresh, which is what they did before.
    */
+  /**
+   * The inline style for ONE text label.
+   *
+   * ⚠ THREE PLACES EMIT A LABEL — the static read-only render, the read-only
+   * animation frame, and the editor — and they drifted: the animation kept the
+   * stored pixel font while the static render had already been rescaled, so a
+   * label changed size the moment ▶ was pressed. One builder now.
+   *
+   * ⚠ NOTHING HERE WRITES A PIXEL SIZE. `--tb-tfs` and `--tb-tw` are METRES;
+   * css/style.css multiplies them by `--tb-ppm`, which is how every other
+   * object on the board has been sized since the metric conversion. A label
+   * with no stored width gets no `--tb-tw` at all and wraps to its own text —
+   * the empty bottom half of a dragged box is what made a note 124% of a
+   * catalogue card's width.
+   */
+  function tbTextStyle(t, boardType, extra) {
+    const c = t[3] || '#000000';
+    const o = t[4] != null ? t[4] : 0.8;
+    const m = BG.textMetres(t, boardType);
+    return 'left:' + t[0] + '%;top:' + t[1] + '%;' + (extra || '') +
+      'background:' + hexToRgba(c, o) + ';color:' + textColorFor(c) + ';' +
+      '--tb-tfs:' + BS.round2(m.fontM) + ';' +
+      (m.wM ? '--tb-tw:calc(var(--tb-ppm, 7.81px) * ' + BS.round2(m.wM) + ');' : '');
+  }
+
   function renderReadOnlyBoard(b, prefix, thin, key) {
     const bid = 'ro-board-' + (++_roBoardIdx);
     _roRemember(bid, b);
@@ -11179,7 +11204,10 @@
     const staticPenLines = ('penLines' in b) ? b.penLines : (src.penLines || []);
     const svgHtml = buildSvgContent(staticArrows, staticRects, staticPenLines, prefix + bid + '-');
     const staticTexts = ('texts' in b) ? b.texts : (src.texts || []);
-    const textsHtml = staticTexts.map(t => { const c=t[3]||'#000000'; const o=t[4]!=null?t[4]:0.8; const w=t[5]?'width:'+t[5]+'px;':''; const h=t[6]?'height:'+t[6]+'px;':''; const fs=t[7]?'font-size:'+t[7]+'px;':''; return '<div class="tb-text-label" style="left:'+t[0]+'%;top:'+t[1]+'%;pointer-events:none;background:rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+parseInt(c.slice(5,7),16)+','+o+');color:'+textColorFor(c)+';'+w+h+fs+'">'+sanitize(t[2])+'</div>'; }).join('');
+    const textsHtml = staticTexts.map(tx =>
+      '<div class="tb-text-label" style="' +
+        tbTextStyle(tx, b.boardType, 'pointer-events:none;') + '">' +
+        sanitize(tx[2]) + '</div>').join('');
     const playBtnH = hasFrames ? '<button class="tb-ro-play" data-ro-board="' + bid +
       '" title="' + sanitize(t('tactics.ro_play')) + '"></button>' : '';
     /* The stop, beside the pause rather than instead of it. Present in
@@ -11230,7 +11258,15 @@
     })) : [];
     const framesAttr = hasFrames ? " data-frames='" + sanitize(JSON.stringify(framesForAnim)).replace(/'/g, '&#39;') + "'" : '';
     return '<div style="margin-bottom:1rem;"' + thinAttr + '><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + (b.formation ? ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span>' : '') + '</div>' +
-      '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + keyAttr + ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner" style="' +
+      /* ⚠ `data-ax` is how big this board IS, in metres across. A read-only
+         board has no `--tb-ppm` at render time because its width is whatever
+         its container gives it — scaleRoField measures that and needs this
+         number to turn it into pixels per metre. Without it every metric size
+         falls back to 7.81, the full board's figure, and looks right only by
+         accident. */
+      '<div class="' + fCls + '" id="' + bid + '"' + framesAttr + keyAttr +
+      ' data-ax="' + BS.round2(BG.extent(b.pitch, b.boardType, false).ax) + '"' +
+      ' data-tc="' + tc + '" data-oc="' + oc + '" data-prefix="' + prefix + bid + '-"><div class="tb-field-inner" style="' +
       /* Always horizontal: a read-only board never gets the .tb-vertical
          class, so it must not inherit the editor's orientation. */
       tbFieldInnerStyle(b.pitch, b.boardType, false) + '">' +
@@ -11530,11 +11566,17 @@
           });
           // Text labels
           innerEl.querySelectorAll('.tb-text-label').forEach(t => t.remove());
+          /* ⚠ THE SAME BUILDER AS THE STATIC RENDER. This rebuilt the labels
+             from the stored PIXELS while the static render had already been
+             rescaled, so a label jumped size the moment ▶ was pressed and
+             went back when it stopped. The board type comes off the field,
+             which is the only thing in scope here that knows it. */
+          const roBt = fieldEl.classList.contains('tb-half') ? 'half' :
+            fieldEl.classList.contains('tb-area') ? 'area' : 'full';
           (f.texts || []).forEach(t => {
             const div = document.createElement('div');
             div.className = 'tb-text-label';
-            const tc=t[3]||'#000000'; const to2=t[4]!=null?t[4]:0.8;
-            div.style.cssText = 'left:'+t[0]+'%;top:'+t[1]+'%;pointer-events:none;background:'+hexToRgba(tc,to2)+';color:'+textColorFor(tc)+';'+(t[5]?'width:'+t[5]+'px;':'')+(t[6]?'height:'+t[6]+'px;':'')+(t[7]?'font-size:'+t[7]+'px;':'');
+            div.style.cssText = tbTextStyle(t, roBt, 'pointer-events:none;');
             div.textContent = t[2];
             innerEl.appendChild(div);
           });
@@ -12237,13 +12279,29 @@
     // Scale so RO boards are a proportional miniature of the editor.
     const REF = 814; // editor inner width (820 - 2*3px border)
     const s = w / REF; // scale factor
+
+    /* ⚠ A READ-ONLY BOARD HAS NO --tb-ppm UNTIL HERE, and that is the whole
+       reason this pixel scaler exists beside the metric CSS. The editor writes
+       the variable at render time from a width it chooses; a read-only board's
+       width is whatever its container gives it, so it can only be measured —
+       which is exactly what this function already does on every resize.
+
+       `data-ax` is how many metres the board is across, stamped by
+       renderReadOnlyBoard. Without it every metric size falls back to 7.81,
+       the full board's figure, and looks right only by accident.
+
+       ⚠ WITH THE UNIT. calc(var(--tb-ppm) * 1.54) is a length only if the
+       variable is one; a bare number made every declaration built from it
+       invalid — see the note on tbPpmVar, which learned this the hard way. */
+    const field = inner.closest ? inner.closest('.tb-field-readonly') : null;
+    const ax = field ? parseFloat(field.dataset.ax) : 0;
+    if (ax > 0) inner.style.setProperty('--tb-ppm', BS.round2(w / ax) + 'px');
     const circle = Math.max(10, 24 * s);
     const ballSz = Math.max(8, 16 * s);
     const bdr = Math.max(1, 2 * s);
     const fs = Math.max(6, 13 * s);
     const coneSide = Math.max(3, 7 * s);
     const coneBot = Math.max(6, 14 * s);
-    const txtFs = Math.max(5, 14 * s);
     /* ⚠ THE FLOOR, NOT THE SCALE, IS WHAT SIZES THESE ON A SMALL BOARD.
        At a 250px catalogue card `s` is about 0.3, so `30 * s` is 9px and the
        16px floor wins every time — which is why the ▶ and 3D pucks looked
@@ -12279,9 +12337,10 @@
       cone.style.borderRightWidth = coneSide + 'px';
       cone.style.borderBottomWidth = coneBot + 'px';
     });
-    inner.querySelectorAll('.tb-text-label').forEach(t => {
-      t.style.fontSize = txtFs + 'px';
-    });
+    /* ⚠ NO TEXT LOOP. It used to force every label to `max(5, 14 * s)` px,
+       discarding whatever size the coach had chosen — the font half of the
+       bug this round fixed. Labels are metric now and the --tb-ppm written
+       above is all they need; a loop here would overwrite it again. */
     const play = inner.querySelector('.tb-ro-play');
     if (play) {
       play.style.width = playS + 'px';
@@ -16207,7 +16266,7 @@
           <button class="tb-text-tool" id="tb-text-tool" data-tooltip="Add text label">T</button>
           <input type="color" class="tb-color-pick" id="tb-text-color" value="${localStorage.getItem('fa_tactic_text_color') || '#000000'}" data-tooltip="Text background color">
           <input type="range" class="tb-opacity-range" id="tb-text-opacity" min="0" max="100" value="${localStorage.getItem('fa_tactic_text_opacity') || '80'}" data-tooltip="Background opacity">
-          <span class="tb-size-label tb-size-label-sm">A</span><input type="range" class="tb-size-range" id="tb-text-size" min="8" max="28" value="${localStorage.getItem('fa_tactic_text_size') || '12'}" data-tooltip="Font size"><span class="tb-size-label tb-size-label-lg">A</span>
+          <span class="tb-size-label tb-size-label-sm">A</span><input type="range" class="tb-size-range" id="tb-text-size" min="1" max="3.6" step="0.1" value="${localStorage.getItem('fa_tactic_text_size_m') || String(BG.OBJ.text)}" data-tooltip="Font size"><span class="tb-size-label tb-size-label-lg">A</span>
           <span class="tb-sep"></span>
           <button class="tb-pen-tool" id="tb-pen-tool" data-tooltip="Freehand pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>
           <input type="color" class="tb-color-pick" id="tb-pen-color" value="${localStorage.getItem('fa_tactic_pen_color') || '#ffffff'}" data-tooltip="Pen color">
@@ -16282,15 +16341,15 @@
               }).join('')}
             </svg>
             ${savedTexts.map((t,i) => {
+              /* ⚠ THE SAME BUILDER THE READ-ONLY BOARD USES, so the editor
+                 and every panel that shows the board back cannot disagree
+                 about how big a label is — which they did, in both
+                 directions, until v259. The rotated coordinates are this
+                 view's own business and stay here. */
               let tx=t[0], ty=t[1];
               if (isVertical && boardType === 'full') { tx=t[1]; ty=100-t[0]; }
-              const tColor = t[3] || '#000000';
-              const tOp = t[4] != null ? t[4] : 0.8;
-              const fg = textColorFor(tColor);
-              const tW = t[5] ? 'width:'+t[5]+'px;' : '';
-              const tH = t[6] ? 'height:'+t[6]+'px;' : '';
-              const tFs = t[7] ? 'font-size:'+t[7]+'px;' : '';
-              return '<div class="tb-text-label" data-idx="'+i+'" data-color="'+tColor+'" data-opacity="'+tOp+'" style="left:'+tx+'%;top:'+ty+'%;background:rgba('+parseInt(tColor.slice(1,3),16)+','+parseInt(tColor.slice(3,5),16)+','+parseInt(tColor.slice(5,7),16)+','+tOp+');color:'+fg+';'+tW+tH+tFs+'">'+sanitize(t[2])+'</div>';
+              const rot = (tx !== t[0] || ty !== t[1]) ? [tx, ty].concat(t.slice(2)) : t;
+              return '<div class="tb-text-label" data-idx="'+i+'" data-color="'+(t[3]||'#000000')+'" data-opacity="'+(t[4]!=null?t[4]:0.8)+'" style="'+tbTextStyle(rot, boardType)+'">'+sanitize(t[2])+'</div>';
             }).join('')}
           </div>
         </div>
@@ -17088,12 +17147,15 @@
           w: parseFloat(el.getAttribute('width')), h: parseFloat(el.getAttribute('height')),
           color: el.dataset.color || '#ffffff', opacity: parseFloat(el.dataset.opacity) || 0.3 };
       } else if (el.classList.contains('tb-text-label')) {
+        /* ⚠ METRES ON THE CLIPBOARD TOO. Copying a pixel size and pasting it
+           onto a half board — different px-per-metre — resized the label for
+           no reason the coach could see. */
         return { type: 'text', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
           text: el.textContent, color: el.dataset.color || '#000000',
           opacity: parseFloat(el.dataset.opacity) || 0.8,
-          w: el.style.width ? parseFloat(el.style.width) : null,
-          h: el.style.height ? parseFloat(el.style.height) : null,
-          fontSize: el.style.fontSize ? parseFloat(el.style.fontSize) : null };
+          wM: parseFloat((/\* ([\d.]+)\)/.exec(
+              el.style.getPropertyValue('--tb-tw')) || [])[1]) || null,
+          fontM: parseFloat(el.style.getPropertyValue('--tb-tfs')) || BG.OBJ.text };
       }
       return null;
     }
@@ -17158,7 +17220,7 @@
         reindexRects(); saveRects();
       } else if (item.type === 'text') {
         createTextLabel(Math.min(98, item.left + offX), Math.min(98, item.top + offY),
-          item.text, item.color, item.opacity, item.w, item.h, item.fontSize);
+          item.text, item.color, item.opacity, item.wM, item.fontM);
         saveTexts();
       } else if (item.type === 'ball') {
         spawnBall(Math.min(98, item.left + offX), Math.min(98, item.top + offY));
@@ -17522,7 +17584,8 @@
         el.classList.add('tb-text-selected');
         if (textColorInput) textColorInput.value = el.dataset.color || '#000000';
         if (textOpacityInput) textOpacityInput.value = Math.round((parseFloat(el.dataset.opacity) || 0.8) * 100);
-        if (textSizeInput) textSizeInput.value = parseFloat(el.style.fontSize) || 12;
+        if (textSizeInput) textSizeInput.value =
+            parseFloat(el.style.getPropertyValue('--tb-tfs')) || BG.OBJ.text;
       }
     }
     function selectArrow(el) {
@@ -17718,9 +17781,13 @@
     }
     if (textSizeInput) {
       textSizeInput.addEventListener('input', () => {
-        localStorage.setItem('fa_tactic_text_size', textSizeInput.value);
+        /* ⚠ A NEW KEY, and the old one is ignored rather than migrated.
+           `fa_tactic_text_size` holds PIXELS — 12 read as metres is a
+           twelve-metre label, and the two ranges (8..28 and 1..3.6) do not
+           overlap, so there is nothing to be clever about. */
+        localStorage.setItem('fa_tactic_text_size_m', textSizeInput.value);
         if (selectedTextLabel) {
-          selectedTextLabel.style.fontSize = textSizeInput.value + 'px';
+          selectedTextLabel.style.setProperty('--tb-tfs', textSizeInput.value);
           saveTexts(); autoSaveFrame();
         }
       });
@@ -18173,21 +18240,41 @@
     });
 
     // --- Text labels ---
+    /**
+     * ⚠ SIZES ARE STORED IN METRES, and the pixels beside them are a shadow.
+     *
+     * The dragged width comes off the element in RENDERED pixels, which is
+     * only meaningful next to the board's own px-per-metre — that is exactly
+     * how a note ended up 38 m wide without anyone noticing. It is divided by
+     * `--tb-ppm` here and lands as metres at index 8; index 9 is the font.
+     *
+     * Indices 5 and 7 are then written back as the pixel equivalents at the
+     * board's AUTHORING scale, so a cached old client reads a board this one
+     * saved and renders it exactly as it does today. Index 6 is null: an old
+     * client auto-sizes, which is what a never-resized label already does.
+     */
     function saveTexts() {
       const labels = inner.querySelectorAll('.tb-text-label');
+      const bt = tbBoardType();
+      const perM = parseFloat(getComputedStyle(inner)
+          .getPropertyValue('--tb-ppm')) || BG.authorPpm(bt);
       const arr = [];
       labels.forEach(el => {
         const dL = parseFloat(el.style.left);
         const dT = parseFloat(el.style.top);
         const h = toHorizontal(dL, dT);
-        const elW = el.style.width ? parseFloat(el.style.width) : null;
-        const elH = el.style.height ? parseFloat(el.style.height) : null;
-        const elFs = el.style.fontSize ? parseFloat(el.style.fontSize) : null;
+        /* The rendered box, not the stored one — `resize` writes an inline
+           width in px and the metric width is what it has to become. */
+        const wPxNow = el.style.width ? parseFloat(el.style.width) : null;
+        const wM = wPxNow > 0 && perM > 0 ? Math.round((wPxNow / perM) * 100) / 100 : null;
+        const fontM = parseFloat(el.style.getPropertyValue('--tb-tfs')) || BG.OBJ.text;
+        const px = BG.textPixels(wM, fontM, bt);
         arr.push([h[0], h[1],
                    el.textContent,
                    el.dataset.color || '#000000',
                    parseFloat(el.dataset.opacity) || 0.8,
-                   elW, elH, elFs]);
+                   px.wPx, null, px.fontPx,
+                   wM, fontM]);
       });
       BS.setTexts(localStorage, arr);
     }
@@ -18202,7 +18289,8 @@
       saveTexts();
     }
 
-    function createTextLabel(pctLeft, pctTop, text, color, opacity, w, h, fontSize) {
+    /** `wM` and `fontM` are METRES; `w`/`h`/`fontSize` in px are gone. */
+    function createTextLabel(pctLeft, pctTop, text, color, opacity, wM, fontM) {
       const div = document.createElement('div');
       div.className = 'tb-text-label';
       div.style.left = pctLeft + '%';
@@ -18211,9 +18299,12 @@
       div.style.color = textColorFor(color);
       div.dataset.color = color;
       div.dataset.opacity = opacity;
-      if (w) div.style.width = w + 'px';
-      if (h) div.style.height = h + 'px';
-      if (fontSize) div.style.fontSize = fontSize + 'px';
+      /* ⚠ Through --tb-ppm, like every other object. A px width here would be
+         a number that means something different on every board it is shown
+         on, which is the whole bug. */
+      if (wM > 0) div.style.setProperty('--tb-tw',
+          'calc(var(--tb-ppm, 7.81px) * ' + BS.round2(wM) + ')');
+      div.style.setProperty('--tb-tfs', BS.round2(fontM > 0 ? fontM : BG.OBJ.text));
       div.textContent = text;
       makeTextDraggable(div);
       inner.appendChild(div);
@@ -18362,9 +18453,12 @@
         if (!text) return;
         const color = textColorInput ? textColorInput.value : '#000000';
         const opacity = textOpacityInput ? (Number(textOpacityInput.value) / 100) : 0.8;
-        const fontSize = textSizeInput ? Number(textSizeInput.value) : 12;
+        /* METRES. The slider moved to metres with the storage — a number
+           that meant "12 pixels on whichever board you happen to be looking
+           at" could not survive being read on another one. */
+        const fontM = textSizeInput ? Number(textSizeInput.value) : BG.OBJ.text;
         pushUndo();
-        createTextLabel(pctX, pctY, text, color, opacity, null, null, fontSize);
+        createTextLabel(pctX, pctY, text, color, opacity, null, fontM);
         saveTexts();
         autoSaveFrame();
       }
@@ -20054,7 +20148,11 @@
       inner.querySelectorAll('.tb-text-label').forEach(el => el.remove());
       (f.texts || []).forEach((t, idx) => {
         const d = toDisplay(t[0], t[1]);
-        createTextLabel(d[0], d[1], t[2], t[3] || '#000000', t[4] != null ? t[4] : 0.8, t[5] || null, t[6] || null, t[7] || null);
+        /* Through BG.textMetres, so a frame holding a pre-v259 label converts
+           on read exactly as every other reader does. */
+        const m = BG.textMetres(t, tbBoardType());
+        createTextLabel(d[0], d[1], t[2], t[3] || '#000000',
+            t[4] != null ? t[4] : 0.8, m.wM, m.fontM);
       });
       // Pen lines
       arrowsSvg.querySelectorAll('.tb-pen-line').forEach(p => p.remove());

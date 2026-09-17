@@ -11322,7 +11322,7 @@ Push-only: no rules and no functions change.
 
 ---
 
-### ⚠ NOT FIXED, DELIBERATELY — 3D-authored text renders badly in 2D (investigated 2026-09-11)
+### 3D-authored text renders badly in 2D — investigated 2026-09-11, FIXED in v259 below
 
 Owner-reported and explicitly deferred. Measured rather than reasoned about:
 `scratchpad/probe-text.js` renders the REAL `renderReadOnlyBoard` + `scaleRoField`
@@ -11369,3 +11369,132 @@ Three ways out, cheapest first:
    it will not do.
 
 Recommendation is **(1) now, (2) when boards are next migrated for another reason**.
+
+### 2026-09-12 — Text labels join the metric system (v259)
+
+The fix for the bug measured in v258. ⚠ **THE FINDING WAS NOT "TEXT SCALES WRONG", IT
+WAS THAT TEXT WAS THE LAST OBJECT TYPE STILL IN PIXELS.** Circles, balls, cones and every
+drawn stroke were converted to metres and sized through `--tb-ppm` a year ago; the
+comment above `.tb-circle` and the whole of `test/object-scale.test.js` exist for that
+conversion. Labels never joined it, and failed in exactly the two ways that file's header
+predicts — *"2D sized objects in fixed pixels, 3D in metres. They could not agree by
+construction, and 2D could not agree with itself either."*
+
+Measured, at a catalogue card and a session panel, one label resized to 300 × 96 with a
+20px font:
+
+| | card (inner 242px) | panel (inner 594px) | after |
+|---|---|---|---|
+| font | 5px | 10.2px | scales, floors at 7px |
+| box | **300 × 96** | **300 × 96** | **0.364 / 0.365 of the board** |
+
+The box never scaled — 300px is 124% of the card, wider than the board it sat on — while
+`scaleRoField` overwrote the font with `max(5, 14 * s)` against a fixed reference and
+threw the authored size away. That 300px label was really **38.4 m wide**; it only looked
+like a styling problem.
+
+**The shape.** `[x%, y%, text, bg, opacity, wPx, hPx, fontPx]` → ten slots, with `wM` and
+`fontM` at 8 and 9 as the truth.
+⚠ **The pixel fields keep being written, and that is not hedging.** The service worker
+serves a cached `js/app.js` until a bump reaches each device, so an **old client reads
+boards a new one saved** — 5 and 7 are the pixel equivalents at the authoring scale and
+it renders them exactly as it does today. 6 is `null`, so it auto-sizes, which is what a
+never-resized label already does.
+
+**Reading, in one place.** `BG.textMetres(t, boardType)` — both views, so neither can
+drift, the rule `PLAYER_R` and `BALL_R` already follow. A label with pixels and no metres
+divides by that board's authoring px-per-metre, so **no migration**: the same trick
+`DEFAULT_PITCH` uses, and its comment says so.
+⚠ **It takes the board type and NOTHING else.** `authorWidthPx` scales with the pitch and
+so does the extent it is divided by, so the pitch cancels exactly — which is what let the
+read-only board, which reconstructs no pitch, call it at all. There is a test whose only
+job is that they keep cancelling.
+⚠ Exact for a board authored horizontally; 1.58× out for a vertical full board, because
+`saveTexts` normalises a label's COORDINATES through `toHorizontal()` and never
+normalised its size. Bounded, legacy only, gone the first time that label is touched.
+
+**One builder, three emitters.** The static read-only render, `applyRoFrame` and the
+editor all go through `tbTextStyle()` now. They had drifted: the static render was
+rescaled while the animation rebuilt labels straight from the pixels, so **a label jumped
+size the moment ▶ was pressed and jumped back when it stopped.**
+
+**`scaleRoField` writes `--tb-ppm` and lost its text loop.** A read-only board never had
+the variable — its width is whatever its container gives it, which is the entire reason
+this JS pixel-scaler exists beside the metric CSS — so `renderReadOnlyBoard` stamps
+`data-ax` (metres across) and the scaler turns the measured width into px per metre.
+⚠ **With the unit.** `calc(var(--tb-ppm) * 1.54)` is a length only if the variable is
+one; `tbPpmVar` carries a comment about a bare number having invalidated every
+declaration built from it, and every disc rendering as a wide ellipse.
+
+**3D.** `addText` scaled every sprite to a fixed six metres **wide whatever the text
+said**, so a three-word note was enormous and a sentence unreadable. Sized from the
+label's own metres now, width from the canvas aspect.
+
+**The slider is metres** (1.0–3.6), under a **new** localStorage key. `fa_tactic_text_size`
+holds pixels and `12` read as metres is a twelve-metre label; the ranges do not overlap,
+so the old key is ignored rather than migrated.
+
+⚠ **THIS ROUND IS NOT PUSH-ONLY, and the plan said it was.** `js/board3d.js` has a
+deployable twin at `functions/private/board3d.js` — the premium board is gated by not
+shipping it, and `getBoard3d` serves that copy. `test/board3d-gate.test.js` caught the
+drift immediately, which is exactly what it is for. **`node scripts/sync-board3d.js` and
+then `.\deploy.ps1 functions`**, or the served 3D board keeps the old label sizing.
+
+**Tests.** 3546 → **3559**. Text joins `test/object-scale.test.js`, which is where it
+should always have been enforced; `ro-playback` gains the static/animation parity and the
+`--tb-ppm` plumbing; `board-state` pins ten fields and the shadow's round-trip.
+**Mutation-tested, 19 mutants, 0 survivors — and seven of them survived the first run.**
+Worth keeping: a legacy-conversion test written with a **12px** label passed a mutant
+that had stopped converting entirely, because 12px IS the default; it uses 20px now. The
+`setTexts` rounding test used two-decimal metres and so could not see a stray `round2`.
+⚠ And a comment in `board3d.js` quoting the old `const scale = 6` made the "it is gone"
+assertion fail — the same lesson as the CSS banner in v257: **do not spell out the thing
+a test greps for its absence.**
+
+**The acceptance test is the probe, not an assertion.** `scripts/probe-ro-text-scale.js`
++ `probe-ro-text-run.js` render the real code in a real browser and report each label's
+share of the board at both widths; they now also return a verdict per label. jsdom has no
+layout, so nothing in `test/` could have answered this question.
+
+**Follow-up, same version — 3D looked "smaller and less crisp" (owner, 2026-09-17).**
+
+⚠ **FIRST, WHAT THE OWNER WAS ACTUALLY LOOKING AT.** Locally, 3D does NOT come from the
+working tree: `tbLoad3D` always fetches the module through the `getBoard3d` callable, so
+`127.0.0.1` serves **production's** `functions/private/board3d.js`. The first local test
+of this round therefore showed the OLD fixed-width sprite, and my instructions had said
+otherwise. There is no local bypass and there must not be one —
+`test/board3d-gate.test.js` exists because "the whole gate is undone by one static
+import". **New 3D code is only visible after `.\deploy.ps1 functions`.**
+
+The fix was still needed. Measured in a real browser, same em:
+
+| | cap height / em | box height |
+|---|---|---|
+| 2D — Oswald 300 | 0.813 | 1.64 em |
+| 3D — bold system-ui | 0.708 | 1.42 em |
+
+Capitals 13% shorter in a box 14% shorter, no wrapping, and a fixed 48 px raster with no
+anisotropy — while the closest zoom (15 m, 45° FOV) puts a 1.54 m label at ~110 device
+px per em, so it was being magnified more than twice.
+
+`addText` is now `readTextLook` + `wrapLines` + `paintText`:
+- ⚠ **The look is MEASURED off a hidden `.tb-text-label`**, not restated — font, weight,
+  line height, padding, radius. Restating those numbers in board3d.js is how the typeface
+  drifted. Verified in Chrome to resolve to Oswald / 300 / 1.3 / .5 / .17.
+- Wraps as 2D does: inside the stored width, or — for an unsized label, which CSS
+  shrink-to-fits from `left: x%` — at the pitch's right-hand edge.
+- 128 px per em, clamped to the GPU's `maxTextureSize`; `anisotropy` as the pitch and
+  shirt numbers already had.
+- ⚠ **A canvas does not repaint when a webfont arrives.** A 3D-first view would bake the
+  fallback face in for good, so the label repaints on `document.fonts.load`, skipping a
+  sprite a rebuild has already disposed, and frees the texture it replaces.
+
+Side by side in real WebGL (SwiftShader, top camera): the long note is 28.6% of the pitch
+width in 2D and 29.1% in 3D, same two-line break at the same word.
+
+`test/board3d.test.js`'s "no menu of its own" guard banned every `createElement('div')` as
+a proxy. The probe is exempted **by name**, with the exemption asserting it stays a hidden,
+removed element — rather than renaming it a `<span>` to slip past the regex.
+**Tests 3546 → 3563. 11 mutants, 0 survivors** — two survived the first pass because the
+assertions checked that a call *existed*, not that it was on the live path; `wrapLines` is
+now run, not read.

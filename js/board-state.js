@@ -120,12 +120,28 @@
     }));
   }
 
-  /* Texts: [x, y, text, bg, opacity, wPx, hPx, fontPx]. Only the
-     first two are pitch coordinates — the pixel sizes are pixels and
-     must NOT be rounded to 2 dp as though they were percentages. */
+  /* Texts: [x, y, text, bg, opacity, wPx, hPx, fontPx, wM, fontM].
+     Only the first two are pitch coordinates.
+
+     ⚠ TEN FIELDS SINCE v259, AND THE COUNT IS LOAD-BEARING. This function
+     rebuilds each row field by field, so a slot left out here is a slot
+     DELETED from every board that passes through — it fails by dropping
+     data, not by throwing.
+
+     8 and 9 are the METRES, and they are the truth: a label is sized like
+     every other object on the board now, through --tb-ppm. 5 to 7 are the
+     pixels that used to be, kept as a compatibility shadow because the
+     service worker serves a cached js/app.js and an OLD client will read
+     boards a new one saved — it finds the pixels exactly where it expects
+     them. 6 (height) is written null on purpose: an old client then
+     auto-sizes, which is what a never-resized label already does.
+
+     None of 5 to 9 is a percentage, so none may be rounded to 2 dp as
+     though it were — the metres are rounded where they are computed. */
   function setTexts(store, arr) {
     writeJson(store, K.texts, (arr || []).map(function (t) {
-      return [round2(t[0]), round2(t[1]), t[2], t[3], t[4], t[5], t[6], t[7]];
+      return [round2(t[0]), round2(t[1]), t[2], t[3], t[4],
+        t[5], t[6], t[7], t[8], t[9]];
     }));
   }
 

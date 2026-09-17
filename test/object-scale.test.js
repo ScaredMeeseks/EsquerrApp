@@ -34,6 +34,28 @@ function cssMetres(selector, prop) {
   return parseFloat(m[1]);
 }
 
+/**
+ * The metre figure a rule asks for through a PER-ELEMENT multiplier.
+ *
+ * A text label's size is its own, so the stylesheet cannot hold a literal —
+ * it holds `calc(var(--tb-ppm) * var(--tb-tfs, 1.54))` and the emitters set
+ * the inner variable. The FALLBACK is the default size, and it is the thing
+ * that must still come from the one table: a rule whose fallback had drifted
+ * would render every untouched label at the wrong size and nothing else
+ * would notice.
+ */
+function cssVarMetres(selector, prop, varName) {
+  const i = css.indexOf(selector + ' {');
+  assert.ok(i !== -1, selector + ' not found');
+  const rule = css.slice(i, css.indexOf('}', i));
+  const m = new RegExp(
+      prop + ':[^;]*var\\(--tb-ppm[^)]*\\)\\s*\\*\\s*var\\(' +
+      varName + ',\\s*([\\d.]+)\\)').exec(rule);
+  assert.ok(m, selector + ' must size ' + prop + ' from --tb-ppm through ' +
+      varName + ', with the default as the fallback. Rule was:\n' + rule);
+  return parseFloat(m[1]);
+}
+
 /** The metre figure board3d uses for a constant. */
 function solidMetres(name) {
   const m = new RegExp('const ' + name + ' = ([\\d.]+)').exec(b3);
@@ -217,6 +239,179 @@ describe('the metric sizes resolve to real lengths', () => {
             'the floor "' + guard[1].trim() + '" is not a length in: ' + decl);
       }
     });
+  });
+
+  /* ── Text labels, the last object to join the table (v259) ────────
+     They were still in fixed pixels a year after everything else moved,
+     and failed in both directions at once: a note resized in the editor
+     kept its 300px box on a 250px card — 124% of the card's width — while
+     scaleRoField overwrote its font with `max(5, 14 * s)` and threw the
+     authored size away. 3D drew every label six metres wide whatever it
+     said. Measured, not argued: scripts/probe-ro-text-scale.js. */
+  it('a text label is metric too, and from the same table', () => {
+    assert.strictEqual(typeof BG.OBJ.text, 'number');
+    assert.ok(BG.OBJ.text > 0 && BG.OBJ.text < 20,
+        'OBJ.text = ' + BG.OBJ.text + ' is not a plausible size in metres');
+    assert.strictEqual(cssVarMetres('.tb-text-label', 'font-size', '--tb-tfs'),
+        BG.OBJ.text,
+        'the stylesheet default has drifted from BG.OBJ.text');
+  });
+
+  it('the default is the editor\'s historical 12px, so nothing moves', () => {
+    /* The whole point of 1.54: a board nobody has touched renders exactly
+       as it did before the conversion. */
+    const perM = BG.ppm(820, null, 'full', false);
+    assert.ok(Math.abs(BG.OBJ.text * perM - 12) < 0.1,
+        'OBJ.text should be 12px at the full board, got ' +
+        (BG.OBJ.text * perM).toFixed(2));
+  });
+
+  it('3D sizes a label from the table, not from a constant', () => {
+    assert.ok(/BG\.textMetres\(t, getBoardType\(\)\)/.test(b3),
+        'addText must read the shared size, or the two views drift');
+    assert.ok(!/const scale = 6/.test(b3),
+        'the fixed six-metre sprite is back: every label the same width ' +
+        'whatever it says');
+  });
+
+  /* ⚠ SAME METRES WAS NOT ENOUGH. Measured in a real browser after the size
+     fix: 2D draws the label in Oswald 300 (cap height 0.813 em, box 1.64 em),
+     3D painted bold system-ui (0.708 em, box 1.42 em) — so in 3D the capitals
+     came out 13% shorter in a box 14% shorter, never wrapped, and a 48px
+     raster with no anisotropy went soft up close. The owner reported exactly
+     "smaller and less crisp". These pin each cause, not the pixels. */
+  describe('3D paints a label the way 2D does', () => {
+    const fnBody = (name) => {
+      const i = b3.indexOf('function ' + name + '(');
+      assert.ok(i !== -1, name + ' is gone from board3d.js');
+      return b3.slice(i, b3.indexOf('\n  }\n', i));
+    };
+
+    it('reads the look from the 2D stylesheet instead of restating it', () => {
+      const look = fnBody('readTextLook');
+      assert.ok(/className = 'tb-text-label'/.test(look),
+          'the look must be measured off a real .tb-text-label');
+      ['fontFamily', 'fontWeight', 'lineHeight', 'paddingLeft', 'paddingTop']
+          .forEach((p) => assert.ok(new RegExp('cs\\.' + p).test(look),
+              'readTextLook must read ' + p + ' from the computed style'));
+      assert.ok(!/'bold ' \+/.test(fnBody('paintText')),
+          'a hardcoded bold face is back — 2D is Oswald 300');
+      assert.ok(!/system-ui/.test(fnBody('paintText')),
+          'a hardcoded system-ui face is back');
+    });
+
+    it('rasterises densely enough for the closest zoom, and filters it', () => {
+      /* Closest zoom is 15 m at a 45° FOV: a 1.54 m label spans ~110 device
+         px per em. A raster below that is magnified, which is the blur. */
+      const m = /const TEXT_PX_PER_EM = (\d+)/.exec(b3);
+      assert.ok(m && Number(m[1]) >= 110,
+          'the text raster must be at least ~110 px per em, got ' + (m && m[1]));
+      assert.ok(/tex\.anisotropy = maxAnisotropy\(\)/.test(fnBody('paintText')),
+          'without anisotropy the glyphs smear at the broadcast angle');
+      assert.ok(/maxTextureSize/.test(fnBody('paintText')),
+          'a long label must clamp to the GPU limit rather than fail to upload');
+    });
+
+    it('wraps like 2D, and sizes the sprite from the canvas em-for-em', () => {
+      const p = fnBody('paintText');
+      /* The FIRST layout is the one that is used unless the GPU clamp fires,
+         so it is that assignment that must wrap — a wrapLines call surviving
+         only inside the clamp branch passed a looser check. */
+      assert.ok(/let lines = wrapLines\(g, text, lineMaxEm, pxEm\);/.test(p),
+          'a 3D label must wrap as its 2D box does');
+      /* And the wrapper itself, RUN rather than read: 10px per character,
+         so a 100px line holds ten characters. */
+      const wrapLines = new Function('return ' + fnBody('wrapLines') + '\n  }')();
+      const g = {measureText: (s) => ({width: s.length * 10})};
+      assert.deepStrictEqual(wrapLines(g, 'aaaa bbbb cccc', 1, 100),
+          ['aaaa bbbb', 'cccc'], 'greedy word wrap at the line width');
+      assert.deepStrictEqual(wrapLines(g, 'aaaaaaaaaaaaaaa', 1, 100),
+          ['aaaaaaaaaaaaaaa'], 'a word longer than the line sits alone, as CSS does');
+      assert.deepStrictEqual(wrapLines(g, 'ab\ncd', 1, 100), ['ab', 'cd'],
+          'a typed line break is kept');
+      assert.ok(/100 - Number\(t\[0\]/.test(p),
+          'an unsized label must wrap at the pitch edge, as CSS shrink-to-fit does');
+      assert.ok(/m\.fontM \/ pxEm/.test(p),
+          'the sprite must be sized from metres per canvas pixel');
+    });
+
+    it('repaints when the webfont arrives, unless the sprite is gone', () => {
+      /* A canvas does not repaint on font load the way DOM text does, so a
+         3D-first view would bake the fallback face in for good. */
+      const a = fnBody('addText');
+      /* The load has to be REACHABLE: gated only on the face not being ready
+         yet. A call left inside a dead branch passed a check for the call. */
+      assert.ok(/if \(document\.fonts && document\.fonts\.check && !document\.fonts\.check\(spec\)\) \{\s*document\.fonts\.load\(spec\)/.test(a),
+          'addText must wait for the face whenever it is not loaded yet');
+      assert.ok(/if \(!spr\.parent\) return;/.test(a),
+          'a repaint after a rebuild would paint into a disposed sprite');
+      assert.ok(/old\.dispose\(\)/.test(fnBody('paintText')),
+          'a repaint must free the texture it replaces');
+    });
+  });
+
+  /* ⚠ PITCH-INDEPENDENT BY CONSTRUCTION. authorWidthPx scales with the
+     pitch and so does the extent it is divided by, so they cancel. If they
+     ever stop cancelling, the legacy conversion silently resizes every
+     label on every resized pitch. */
+  it('the legacy conversion keeps the size the label was drawn at', () => {
+    /* ⚠ NOT 12px. Twelve converts to the DEFAULT, so a reader that had
+       stopped converting and just returned OBJ.text would pass — which is
+       exactly the mutant that survived the first run of this suite. 20px is
+       a size nothing else would produce. */
+    const T20 = [0, 0, 'x', '#000', 0.8, 300, 96, 20];
+    const got = BG.textMetres(T20, 'full').fontM;
+    assert.ok(Math.abs(got - 20 / BG.authorPpm('full')) < 0.01,
+        'a 20px label must convert to 20px worth of metres, got ' + got);
+    assert.ok(Math.abs(got - BG.OBJ.text) > 0.5,
+        'the conversion has collapsed to the default');
+  });
+
+  /* ⚠ THE BOARD TYPE IS THE WHOLE INPUT. The same 12px means a different
+     real size on a full board and a half board — 7.81 against 12.06 px/m —
+     and that disagreement is the bug OBJ exists to have ended. */
+  it('and it depends on the board type', () => {
+    const T = [0, 0, 'x', '#000', 0.8, 300, 96, 12];
+    const full = BG.textMetres(T, 'full');
+    const half = BG.textMetres(T, 'half');
+    ['full', 'half', 'area'].forEach((bt) => {
+      const a = BG.textMetres(T, bt);
+      assert.ok(a.fontM > 0 && a.wM > 0, bt + ' converted to nothing');
+    });
+    assert.ok(full.fontM > half.fontM * 1.3,
+        'a half board packs more pixels into a metre, so the same pixel ' +
+        'size is a SMALLER label there: ' + full.fontM + ' vs ' + half.fontM);
+    assert.ok(Math.abs(BG.textMetres(T, 'full').fontM - BG.OBJ.text) < 0.01,
+        'a 12px label on a full board is the default size, by definition');
+  });
+
+  /* The two rules the stylesheet has to keep for a metric label to work at
+     all: no fixed box, and padding that follows the font rather than
+     swamping it once the font is 7px on a catalogue card. */
+  it('a label has no fixed box and its padding follows the font', () => {
+    const i = css.indexOf('.tb-text-label {');
+    const rule = css.slice(i, css.indexOf('}', i));
+    const w = /width:([^;]+);/.exec(rule);
+    assert.ok(w, '.tb-text-label must declare a width');
+    assert.ok(/var\(--tb-tw,\s*auto\)/.test(w[1]),
+        'the width must come from --tb-tw and default to auto, got ' + w[1]);
+    const pad = /padding:([^;]+);/.exec(rule);
+    assert.ok(pad, '.tb-text-label must declare padding');
+    assert.ok(/em/.test(pad[1]) && !/px/.test(pad[1]),
+        'padding must be in em so it scales with the font, got ' + pad[1]);
+  });
+
+  it('metres win over the pixels kept beside them', () => {
+    /* 5 and 7 are a compatibility shadow for cached old clients. A reader
+       that preferred them would be reading the stale half of the row. */
+    const T = [0, 0, 'x', '#000', 0.8, 300, null, 12, 2.5, 1.0];
+    assert.deepStrictEqual(BG.textMetres(T, 'full'), {wM: 2.5, fontM: 1.0});
+  });
+
+  it('an untouched label gets the default rather than nothing', () => {
+    const T = [0, 0, 'x', '#000', 0.8, null, null, null];
+    assert.deepStrictEqual(BG.textMetres(T, 'full'),
+        {wM: null, fontM: BG.OBJ.text});
   });
 
   it('a player is a circle, not whatever its contents make it', () => {

@@ -14,6 +14,9 @@
  */
 const assert = require('assert');
 const BS = require('../js/board-state.js');
+/* Text sizes are METRES since v259 and the conversion lives in board-geom —
+   the pixel shadow this file asserts is written from it. */
+const BG = require('../js/board-geom.js');
 
 const store = (obj) => ({
   getItem: (k) => (k in obj ? obj[k] : null),
@@ -97,15 +100,52 @@ describe('arrows, rects and texts keep their non-coordinate fields', () => {
   });
 
   it('a text does NOT round its pixel sizes', () => {
-    /* Only the first two fields are pitch percentages. The width,
-       height and font size are PIXELS — rounding them to 2 dp as
-       though they were percentages is harmless today and wrong the
-       moment anything reads them back as a measurement. */
+    /* Only the first two fields are pitch percentages. Nothing after them
+       is, so nothing after them may be rounded as though it were.
+
+       ⚠ TEN FIELDS SINCE v259, and the COUNT is what this asserts. 8 and 9
+       are METRES and are the size a label actually has; 5 to 7 are the
+       pixels that used to be, kept as a compatibility shadow because a
+       cached old client reads boards a new one saved and looks for them
+       exactly there. setTexts rebuilds each row field by field, so a slot
+       left out of it is a slot deleted from every board that passes
+       through — it fails by dropping data, not by throwing. */
     const bag = {};
-    BS.setTexts(store(bag), [[1.111, 2.222, 'Press', '#000', 0.8, 120, 40, 14]]);
+    BS.setTexts(store(bag),
+        [[1.111, 2.222, 'Press', '#000', 0.8, 120, null, 14, 15.3684, 1.7921]]);
     const t = JSON.parse(bag.fa_tactic_texts)[0];
+    assert.strictEqual(t.length, 10, 'setTexts dropped a field');
     assert.deepStrictEqual(t.slice(0, 2), [1.11, 2.22]);
-    assert.deepStrictEqual(t.slice(2), ['Press', '#000', 0.8, 120, 40, 14]);
+    /* ⚠ FOUR DECIMALS ON THE METRES, ON PURPOSE. Two-dp values here would
+       survive a round2() that should not be there, and the mutant that added
+       one to the metric fields walked straight through the first version of
+       this assertion. */
+    assert.deepStrictEqual(t.slice(2),
+        ['Press', '#000', 0.8, 120, null, 14, 15.3684, 1.7921]);
+  });
+
+  /* ⚠ THE SHADOW IS FOR A CLIENT THAT IS NOT THIS ONE. The service worker
+     serves a cached js/app.js until a version bump reaches each device, so an
+     app several versions old reads boards this one saved. It looks for the
+     size at indices 5 and 7 and knows nothing about 8 and 9 — drop the
+     shadow and every label it draws collapses to the CSS default. */
+  it('writes the pixel shadow an older client still reads', () => {
+    const px = BG.textPixels(2.0, 1.54, 'full');
+    assert.ok(px.fontPx > 0, 'the shadow font is missing');
+    assert.ok(Math.abs(px.fontPx - 12) < 1,
+        'the default must shadow as the 12px it always was, got ' + px.fontPx);
+    assert.ok(Math.abs(px.wPx - 2.0 * BG.authorPpm('full')) < 1,
+        'the shadow width is not the metric width at the authoring scale');
+    /* And it round-trips: what an old client reads converts back to what a
+       new one stored, so a board edited by both does not drift.
+       ⚠ The tolerance is HALF A PIXEL in metres — 0.5 / 7.81 — because the
+       shadow is whole pixels and cannot be finer than that. A tighter bound
+       would be asserting an accuracy the format does not have. */
+    const HALF_PX = 0.5 / BG.authorPpm('full');
+    const back = BG.textMetres([0, 0, 'x', '#000', 0.8, px.wPx, null, px.fontPx],
+        'full');
+    assert.ok(Math.abs(back.fontM - 1.54) < HALF_PX, 'font did not round-trip');
+    assert.ok(Math.abs(back.wM - 2.0) < HALF_PX, 'width did not round-trip');
   });
 });
 

@@ -26,6 +26,7 @@ const OUTDIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ro-text-probe-'));
 const app = fs.readFileSync(ROOT + '/js/app.js', 'utf8');
 const css = fs.readFileSync(ROOT + '/css/style.css', 'utf8');
 const geom = fs.readFileSync(ROOT + '/js/board-geom.js', 'utf8');
+const state = fs.readFileSync(ROOT + '/js/board-state.js', 'utf8');
 const utils = fs.readFileSync(ROOT + '/js/utils.js', 'utf8');
 
 function grab(from, to) {
@@ -40,7 +41,12 @@ const parts = [
   grab('  function tbMarkingsHtml(pitch, boardType, vertical) {', '\n  function tbCan3D'),
   grab('  function tbFieldInnerStyle(pitch, boardType, vertical) {', '\n  /**'),
   grab('  function tbFieldWidthPx(pitch, boardType, vertical) {', '\n  /**'),
-  grab('  function renderReadOnlyBoard(b, prefix, thin, key) {',
+  /* ⚠ FROM tbTextStyle, NOT FROM renderReadOnlyBoard. The label builder was
+     lifted out above the renderer in v259 so the static render and the
+     animation frame could share one, and a slice starting at the renderer
+     misses it — the probe then dies on a ReferenceError rather than
+     measuring anything. */
+  grab('  function tbTextStyle(t, boardType, extra) {',
       '\n  /**\n   * Turn a session'),
   grab('  function scaleRoBoards() {', "\n  /* ── One match's result")
 ].join('\n');
@@ -74,6 +80,7 @@ const page = `<!doctype html><meta charset="utf-8">
 <div id="card"><div class="ab-thumb" id="slotA"></div></div>
 <div id="wide"><div class="ab-thumb" id="slotB"></div></div>
 <script>${geom}</script>
+<script>${state}</script>
 <script>${utils}</script>
 <script>
 window.__probe = (function () {
@@ -116,6 +123,23 @@ window.__probe = (function () {
         });
       });
       out.push(row);
+    });
+    /* ⚠ THE ACCEPTANCE CHECK, IN THE PROBE RATHER THAN IN A SUITE. It is a
+       question about LAYOUT — does the box fit, and is it the same fraction
+       of the board at both widths — and jsdom has no layout to ask. */
+    const card = out[0], panel = out[1];
+    out.verdict = card.labels.map(function (l, i) {
+      const p = panel.labels[i];
+      return {
+        text: l.text,
+        fitsCard: l.boxW <= card.innerW,
+        cardShare: +(l.boxW / card.innerW).toFixed(3),
+        panelShare: +(p.boxW / panel.innerW).toFixed(3),
+        /* Only a label with a STORED width can hold its share: an
+           auto-width one is as wide as its text, and its text stops
+           shrinking at the 7px floor. */
+        sized: l.inlineW !== '(auto)' || String(l.fontPx) !== '7px'
+      };
     });
     return out;
   };

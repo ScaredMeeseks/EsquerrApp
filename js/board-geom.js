@@ -78,7 +78,17 @@
     player: 1.80,      // disc diameter
     ball: 0.50,
     cone: 0.70,        // base diameter
-    coneHeight: 0.70
+    coneHeight: 0.70,
+    /* A TEXT LABEL'S CAP HEIGHT. The last object type to join this
+       table — it was still in fixed pixels a year after everything
+       else moved, which is why a note drawn in the editor came out
+       124% of a catalogue card's width and 3D drew every label the
+       same six metres wide whatever it said.
+
+       1.54 is the editor's 12px default at the full board's 7.81 px/m,
+       so a board nobody has touched renders exactly as it always did.
+       The slider's old 8–28px range is 1.02–3.58 m. */
+    text: 1.54
   };
 
   /* MARK is the 2D board's pixel weights converted at the full
@@ -553,12 +563,91 @@
     return ax > 0 ? widthPx / ax : 0;
   }
 
+  /* The width a board is AUTHORED at, in CSS pixels — the editor's own
+     `tbFieldWidthPx`, restated here because the legacy conversion below
+     needs it and board3d.js cannot see app.js. Both must agree, and
+     test/object-scale.test.js asserts they do. */
+  var AUTHOR_W = 820;
+  var AUTHOR_W_VERT_FULL = 520;
+
+  function authorWidthPx(pitch, boardType, vertical) {
+    var base = (vertical && (boardType || 'full') === 'full')
+      ? AUTHOR_W_VERT_FULL : AUTHOR_W;
+    var ax = extent(pitch, boardType, vertical).ax;
+    var axDefault = extent(null, boardType, vertical).ax;
+    return Math.round(base * (ax / axDefault));
+  }
+
+  /**
+   * How big one text label is, in METRES — the only place that decides.
+   *
+   * A label is `[x%, y%, text, bg, opacity, wPx, hPx, fontPx, wM, fontM]`.
+   * The first two are pitch percentages; 5–7 are the pixels it was stored
+   * in before v259 and are kept as a compatibility shadow; 8 and 9 are the
+   * truth. Both the 2D board and the 3D scene read through here so the two
+   * cannot drift — the same rule PLAYER_R and BALL_R already follow.
+   *
+   * ⚠ THE LEGACY CONVERSION IS WHY THIS NEEDS NO MIGRATION. A label with
+   * pixels and no metres is divided by the px-per-metre of the board it was
+   * drawn on, which is knowable from the board itself. Same trick as
+   * DEFAULT_PITCH: an old document resolves to the right thing on read
+   * rather than being rewritten.
+   *
+   * ⚠ Exact for a board authored horizontally. `saveTexts` normalises a
+   * label's COORDINATES through toHorizontal() but never normalised its
+   * size, so one drawn on a vertical full board converts 820/520 = 1.58x
+   * too large. Bounded, legacy only, and it stops the first time that label
+   * is touched.
+   */
+  /**
+   * The px-per-metre a label was AUTHORED at.
+   *
+   * ⚠ IT DEPENDS ON THE BOARD TYPE AND NOTHING ELSE. authorWidthPx scales
+   * with the pitch and so does the extent it is divided by, so the pitch
+   * cancels out exactly: 820 / extent(null, bt).ax. That is why the readers
+   * below need no pitch, which is one fewer thing a caller can get wrong —
+   * and the read-only board, which knows its type but reconstructs nothing
+   * else, could not have supplied one.
+   */
+  function authorPpm(boardType) {
+    var base = extent(null, boardType, false).ax;
+    return base > 0 ? AUTHOR_W / base : 0;
+  }
+
+  function textMetres(t, boardType) {
+    var wM = (t && t[8] != null) ? Number(t[8]) : null;
+    var fontM = (t && t[9] != null) ? Number(t[9]) : null;
+    if (fontM > 0) return {wM: wM > 0 ? wM : null, fontM: fontM};
+    var perM = authorPpm(boardType) || authorPpm('full');
+    var fontPx = (t && t[7]) ? Number(t[7]) : null;
+    var wPx = (t && t[5]) ? Number(t[5]) : null;
+    return {
+      wM: wPx > 0 ? wPx / perM : null,
+      fontM: fontPx > 0 ? fontPx / perM : OBJ.text
+    };
+  }
+
+  /** The inverse, for writing the compatibility shadow at indices 5 and 7. */
+  function textPixels(wM, fontM, boardType) {
+    var perM = authorPpm(boardType) || authorPpm('full');
+    return {
+      wPx: wM > 0 ? Math.round(wM * perM) : null,
+      fontPx: Math.round((fontM > 0 ? fontM : OBJ.text) * perM)
+    };
+  }
+
   return {
     MARKS: MARKS,
     OBJ: OBJ,
     MARK: MARK,
     /** px per metre for a board of this size — the 2D bridge. */
     ppm: ppm,
+    /** The width a board is authored at — what the legacy text sizes are in. */
+    authorWidthPx: authorWidthPx,
+    authorPpm: authorPpm,
+    /** One text label's size in metres, and the inverse for the shadow. */
+    textMetres: textMetres,
+    textPixels: textPixels,
     DEFAULT_PITCH: DEFAULT_PITCH,
     BOUNDS: {MIN_L: MIN_L, MAX_L: MAX_L, MIN_W: MIN_W, MAX_W: MAX_W},
     pitchOf: pitchOf,
