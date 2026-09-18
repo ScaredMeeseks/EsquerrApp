@@ -1253,15 +1253,16 @@ tr:hover td { background: #f7f8fa; }
   display:flex; flex-direction:column; gap:4px;
   max-height:38%; overflow-y:auto; overscroll-behavior:contain;
   padding:8px 10px; border-radius:6px;
-  background:rgba(0,0,0,.62); backdrop-filter:blur(2px);
+  /* No backdrop-filter: it blurs the SCENE behind the bar, which is the
+     pitch — and that blur is half of what the owner reported. A plain
+     ground reads as a panel just as well. */
+  background:rgba(0,0,0,.72);
   color:#fff; font-size:.85rem; line-height:1.35;
   pointer-events:auto;
 }
-.tb-3d-note { display:flex; align-items:flex-start; gap:8px; }
-.tb-3d-note-n {
-  flex:none; width:18px; height:18px; border-radius:50%;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:.7rem; font-weight:700; margin-top:1px;
+.tb-3d-note {
+  display:block; padding-left:8px;
+  border-left:3px solid #fff;   /* overridden per note with its own colour */
 }
 @media (max-width: 600px) {
   .tb-3d-notes { font-size:.8rem; max-height:32%; }
@@ -1319,8 +1320,14 @@ tr:hover td { background: #f7f8fa; }
    the silhouette, and the resize grips — resizing the pitch is not a
    drawing action. */
 .tb-field.tb-draw-surface > .tb-field-inner > * { display:none !important; }
+/* ⚠ `.tb-text-label` IS NOT IN THIS LIST ANY MORE (v263). It was, and with
+   a draw tool on it painted the note a SECOND time over the 3D scene — at
+   the metric size that v259 gave it, which for a real note is a 39 m column
+   of text. The owner saw it as "the text is duplicated below the box,
+   blurry": duplicated because the list under the board already says it,
+   blurry because the panel's backdrop blurs whatever sits behind it.
+   The words belong to the list now; nothing draws them on the turf. */
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-arrows-svg,
-.tb-field.tb-draw-surface > .tb-field-inner > .tb-text-label,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-circle,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-ball,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-cone { display:block !important; }

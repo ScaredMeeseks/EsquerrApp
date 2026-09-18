@@ -308,31 +308,41 @@ describe('the metric sizes resolve to real lengths', () => {
       return src.slice(i, j === -1 ? src.length : j);
     };
 
-    it('3D draws a pin, not the words', () => {
-      const add = fnOf(b3, 'addText');
-      assert.ok(/String\(ti \+ 1\)/.test(add),
-          'the pin must carry the note number that ties it to its row');
-      assert.ok(!/t\[2\]/.test(add), 'the note text is back on the pitch');
-      assert.ok(/NOTE_PIN_M, NOTE_PIN_M/.test(add),
-          'the pin must be square and metric — it marks a place');
-      assert.ok(/objects\.push\(\{mesh: spr, kind: 'texts', index: ti\}\)/.test(add),
-          'a pin must still be right-clickable as its note');
+    /* A pin was tried in v262 and read as a player — which is what a small
+       numbered disc on a football pitch looks like. Nothing marks a note on
+       the turf now; the list under the board is the whole of it. */
+    it('3D puts nothing in the scene for a note', () => {
+      assert.ok(!/function addText\(/.test(b3),
+          'board3d is building something for a text again');
+      assert.ok(!/forEach\(addText\)/.test(b3),
+          'rebuild still walks the texts into the scene');
       assert.ok(!/BG\.textMetres/.test(b3),
           'board3d is sizing text in metres again');
     });
 
-    it('the pin is a mark, not a billboard', () => {
-      const m = /const NOTE_PIN_M = ([\d.]+)/.exec(b3);
-      assert.ok(m, 'NOTE_PIN_M is gone');
-      const size = Number(m[1]);
-      assert.ok(size > 0 && size <= BG.OBJ.player * 1.5,
-          'a pin larger than a player is a billboard again, got ' + size + ' m');
+    /* ⚠ AND THE FLAT OVERLAY MUST NOT DRAW THEM EITHER. The draw surface
+       lays the 2D board over the 3D turf and re-shows named layers; it named
+       the labels, so with a draw tool on the note was painted a SECOND time,
+       at v259's metric size. Reported as "duplicated below the box, blurry". */
+    it('the draw-surface overlay does not paint the note either', () => {
+      const i = css.indexOf('.tb-field.tb-draw-surface > .tb-field-inner > * {');
+      assert.ok(i !== -1, 'the draw-surface allow-list is gone');
+      /* Comment-stripped: the rule above it explains at length WHY the label
+         is not here, and a raw search finds the explanation. */
+      const list = css.slice(i, css.indexOf('}', css.indexOf('display:block', i)))
+          .replace(/\/\*[\s\S]*?\*\//g, '');
+      assert.ok(!/\.tb-text-label/.test(list),
+          'the overlay shows the label again — that is the duplicate');
+      assert.ok(/\.tb-circle/.test(list),
+          'the overlay must still show the objects, or strokes float over them');
     });
 
-    it('app.js lists the words, numbered to match the pins', () => {
+    it('app.js lists the words, unnumbered', () => {
       const body = fnOf(appSrc, 'tbRenderNotes3D');
-      assert.ok(/\(i \+ 1\)/.test(body),
-          'the rows must be numbered the way the pins are');
+      /* Numbering tied a row to a pin, and there is no pin. A number with
+         nothing to point at is furniture. */
+      assert.ok(!/\(i \+ 1\)/.test(body),
+          'the rows are numbered again, with nothing on the pitch to match');
       assert.ok(/sanitize\(t\[2\]/.test(body),
           'the row must carry the note text, escaped');
       assert.ok(/_tb3dNotesState\(\)/.test(body),

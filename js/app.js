@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 262;
+  const APP_VERSION = 263;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -10882,12 +10882,12 @@
     if (!texts.length) return;
     const box = document.createElement('div');
     box.className = 'tb-3d-notes';
-    box.innerHTML = texts.map(function (t, i) {
-      const c = t[3] || '#000000';
-      return '<span class="tb-3d-note">' +
-        '<b class="tb-3d-note-n" style="background:' + sanitize(c) +
-          ';color:' + textColorFor(c) + ';">' + (i + 1) + '</b>' +
-        sanitize(t[2] || '') + '</span>';
+    /* No numbering: nothing on the pitch to number against. A colour tab
+       carries the note's own colour, which is the only tie left to the label
+       as it looks in 2D. */
+    box.innerHTML = texts.map(function (t) {
+      return '<span class="tb-3d-note" style="border-left-color:' +
+        sanitize(t[3] || '#000000') + ';">' + sanitize(t[2] || '') + '</span>';
     }).join('');
     wrap.appendChild(box);
   }

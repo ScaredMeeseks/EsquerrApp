@@ -11611,3 +11611,38 @@ owner's screen disagreed, because each probe reproduced a board I had chosen rat
 theirs. What ended it was a fifteen-line read-only snippet pasted into their console: the
 stored tuple and the rendered numbers, from the machine with the problem. Ask for that
 first next time.
+
+### 2026-09-18 — No pin, and the note stopped being drawn twice (v263)
+
+Two reports on v262, both right.
+
+**1. The pin read as a player.** Which is what a small numbered disc on a football pitch
+looks like, whatever it is meant to be. Nothing marks a note on the turf now:
+`addText` is gone from `board3d.js` and `rebuild()` no longer walks `texts` into the
+scene. The rows under the board lost their numbering with it — a number with nothing to
+point at is furniture — and carry a left tab in the note's own colour instead.
+
+⚠ **THE COST, STATED ONCE SO IT IS NOT REDISCOVERED AS A BUG.** With nothing in the
+scene, `objects` holds no entry of kind `texts`, so **a note can no longer be
+right-clicked in 3D** — its menu is reachable only from the 2D board. That is the trade
+for taking the words off the pitch, and `test/board3d.test.js` now asserts the absence
+rather than the presence, with the reason written beside it. `texts` stays in
+`MARK_KINDS`: it is still a mark everywhere else in the state.
+
+**2. "The text is duplicated below the box, blurry."** ⚠ **THE DRAW SURFACE WAS PAINTING
+IT A SECOND TIME.** `tbDrawSurface(true)` un-hides the flat board over the 3D turf and
+re-shows a named allow-list of layers — and that list named `.tb-text-label`. So with any
+draw tool active the note appeared again, over the scene, at the metric size v259 gave it
+(a 39 m column). Blurry because the panel's `backdrop-filter` blurs whatever sits behind
+it. Both are gone: the label left the allow-list, and the panel dropped the filter for a
+plainer ground.
+
+⚠ The allow-list's own comment already warned that naming things is how this rule goes
+wrong — *"an allow-list of things to hide was the first attempt and it was wrong in a way
+that took a user report to find"*. It took a user report again, from the other direction:
+something named that should not have been.
+
+**Tests: 3569, and two that pinned the old behaviour were rewritten rather than deleted**
+— the allow-list assertion and the pick-list one, each now carrying why it changed.
+
+⚠ **NEEDS `.\deploy.ps1 functions`** — `js/board3d.js` changed again.

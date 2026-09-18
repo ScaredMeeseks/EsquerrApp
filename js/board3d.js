@@ -988,61 +988,20 @@ export function createBoard3D(opts) {
     objects.push({mesh, kind: 'penLines', index: pi});
   }
 
-  /* ── Text labels: a numbered PIN, not the words ──────────────────
-     ⚠ TEXT IS A UI AFFORDANCE, NOT A THING ON THE GRASS, and v259 got that
-     wrong by putting it on the metric table with the players and the balls.
-     The arithmetic was right and the result was absurd: a real note measured
-     on a real board stores 3.59 m per line in a 19.96 m box, so 3D stood a
-     39 m column of text on a 105 m pitch — twice a player's height, drawn
-     exactly as 2D drew it. In 2D the same numbers read as a caption, because
-     there they are measured against the SCREEN and 31 px is just comfortable
-     reading size. Matching the two in metres is what made it monstrous.
+  /* ── Text labels: NOTHING IN THE SCENE ────────────────────────────
+     The words are listed under the board by app.js, and nothing marks them
+     on the turf. A pin was tried first and read as a player — which is what
+     a small numbered disc on a football pitch looks like, whatever it is
+     meant to be.
 
-     This is the trap the OBJ table's own comment names — "a UI affordance
-     that had drifted into being a measurement". So the words leave the
-     scene: app.js lists them under the board, in ordinary UI type that is
-     readable at any camera angle, and what stays here is a pin marking where
-     each note was put. The pin IS metric, because a pin is a thing in a
-     place; the words are not.
+     ⚠ THE HISTORY, BECAUSE IT KEPT COMING BACK. v259 drew the text in-world
+     at true metric size: a real note stores 3.59 m per line in a 19.96 m box,
+     so 3D stood a 39 m column of text on a 105 m pitch. The arithmetic was
+     right; putting a CAPTION on the metric table was not. 2D sizes it against
+     the screen, and no conversion of a reading size into metres is sensible.
 
-     ⚠ Still pushed to `objects` under kind 'texts', so a right-click on a pin
-     reaches the 2D menu exactly as before — board3d stays an input device. */
-  const NOTE_PIN_M = 1.8;        // a player's disc: a mark, not a billboard
-  const NOTE_PIN_PX = 128;       // its texture, generous for the closest zoom
-
-  function addText(t, ti) {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = NOTE_PIN_PX;
-    const g = cv.getContext('2d');
-    const bg = t[3] || '#000000';
-    const r = NOTE_PIN_PX / 2;
-    g.beginPath();
-    g.arc(r, r, r - 4, 0, Math.PI * 2);
-    g.globalAlpha = t[4] != null ? t[4] : 0.8;
-    g.fillStyle = bg;
-    g.fill();
-    g.globalAlpha = 1;
-    g.lineWidth = 6;
-    g.strokeStyle = textColorFor(bg);
-    g.stroke();
-    /* The number ties the pin to its row in the list under the board. It is
-       the index app.js numbers from too, so the two cannot disagree. */
-    g.fillStyle = textColorFor(bg);
-    g.font = 'bold ' + Math.round(NOTE_PIN_PX * 0.55) + 'px system-ui, sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(String(ti + 1), r, r + NOTE_PIN_PX * 0.04);
-
-    const tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = maxAnisotropy();
-    const spr = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, depthTest: false}));
-    const w = BG.toWorld(t[0], t[1], getPitch(), getBoardType());
-    spr.scale.set(NOTE_PIN_M, NOTE_PIN_M, 1);
-    spr.position.set(w.x, 2.2, w.z);
-    drawRoot.add(spr);
-    objects.push({mesh: spr, kind: 'texts', index: ti});
-  }
+     So `texts` are not built here at all. They keep their slot in the state
+     and their place in the 2D board; 3D simply has nothing to say about them. */
 
   // Local copy so this module needs nothing from app.js at import time.
   function textColorFor(hex) {
@@ -1406,7 +1365,6 @@ export function createBoard3D(opts) {
     (s.rects || []).forEach(addRect);
     (s.arrows || []).forEach(addArrow);
     (s.penLines || []).forEach(addPenLine);
-    (s.texts || []).forEach(addText);
     /* After the objects, so a handle sits on top of whatever it
        belongs to when the two overlap. */
     addPathsFor(s, 'positions');

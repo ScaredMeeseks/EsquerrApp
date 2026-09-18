@@ -2218,9 +2218,14 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
        behind — the overlay is a DOM layer above the canvas, so it
        paints over the 3D players whatever the depth buffer says — and
        the line read as floating above the pitch. */
+    /* ⚠ `tb-text-label` LEFT THIS LIST IN v263, deliberately. The words of a
+       note live in the list under the board now, not on the turf — and while
+       the overlay re-showed the label it painted the note a SECOND time over
+       the 3D scene, at the metric size v259 gave it. Reported from the
+       running app as "the text is duplicated below the box, blurry". */
     assert.ok(shown.length, 'the re-show rule is missing entirely');
     assert.deepStrictEqual(shown.sort(),
-        ['tb-arrows-svg', 'tb-ball', 'tb-circle', 'tb-cone', 'tb-text-label'],
+        ['tb-arrows-svg', 'tb-ball', 'tb-circle', 'tb-cone'],
         'the drawing layers plus the objects the coach draws around');
   });
 
@@ -2432,10 +2437,19 @@ describe('drawn marks can be right-clicked in 3D', () => {
        test threw rather than measuring anything. Nothing here needs
        escaping. */
     const pushes = bare.split('objects.push({');
-    names.forEach((k) => assert.ok(
+    /* ⚠ 'texts' IS EXEMPT SINCE v263, AND THE COST IS REAL: nothing is drawn
+       on the turf for a note any more, so there is nothing to right-click and
+       a note's menu is reachable only from the 2D board. That is the trade
+       for taking the words off the pitch — the pin that made it clickable
+       read as a player. It stays in MARK_KINDS because a text is still a
+       mark everywhere else in the state. */
+    names.filter((k) => k !== 'texts').forEach((k) => assert.ok(
         pushes.some((p) => p.indexOf("kind: '" + k + "'") !== -1 &&
                            p.indexOf("kind: '" + k + "'") < 40),
         k + ' must push itself onto the pick list'));
+    assert.ok(!pushes.some((p) => p.indexOf("kind: 'texts'") !== -1 &&
+                                  p.indexOf("kind: 'texts'") < 40),
+        'a note is drawn in the scene again — decide which, pin or nothing');
   });
 
   it('the kinds are the state keys app.js reads', () => {
