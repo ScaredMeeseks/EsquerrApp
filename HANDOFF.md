@@ -1,531 +1,159 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-09._
+_Rolling document, overwritten each session. Last updated: 2026-09-18._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 253** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 264** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
 of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3377** — `cd test && npm run test:unit` (~15 s), all passing |
-| Rules tests | **178** — last run at v236, when the `playerMetrics` block was added |
-| Functions tests | 71 — **not re-run this session**; the only `functions/` edits were the record loops in `deleteMember`/`deleteTeam` and the version constant |
+| Unit tests | **3570** — `cd test && npm run test:unit` (~20 s), all passing |
+| Functions tests | **89** — `npm run test:functions`, all passing (was 78; `templates.test.js` gained 11 for the widened callable) |
+| Rules tests | 178 — **not re-run this session**; `firestore.rules` and `storage.rules` were not touched at any point in v254–v264 |
 
-Java 21 is installed and on PATH; the rules suite takes ~20 s and is **not** in `test:unit`.
+⚠ **The first `test:functions` run of a session is often a lie.** It took 2 minutes and reported 7
+failures in `onMemberCategoryChanged`; the immediate re-run took 27 s and passed all 89. Cold
+emulator. Re-run before believing a functions failure you did not cause.
 
-**Deploy state.** `firestore.rules` and `storage.rules` were changed and **deployed twice this
-session** — at **v234** (the medical documents bucket) and at **v236** (the `playerMetrics`
-collection). Both went out BEFORE the matching frontend push, because the other order leaves a
-window where the new UI is on screen and every write it makes is refused. ⚠ **v237–v252 changed
-neither file and need no rules deploy**; the frontend ships by pushing `main`.
+**Deploy state.** No rules deploy all session. `.\deploy.ps1 functions` was run at **v254**,
+**v257**, **v259**, **v262** and **v263**; v255/256, v258, v260, v261 and v264 were push-only.
 
-⚠ **Not yet driven by hand.** Everything from v234 on is tested and rendered but not clicked in the
-real app. Worth trying first, in this order:
+⚠ **`deploy.ps1 functions` fails on a cold `node_modules` and the script says so itself** — *"'Cannot
+determine backend specification. Timeout after 10000' means a COLD node_modules, not broken code.
+Just run it again."* It happened twice this session and the retry worked both times. Separately, one
+deploy **hung for two hours** with no output; killing it and re-running showed every function
+"Skipped (No changes detected)", i.e. the hung run had in fact uploaded before stalling. Run the
+deploy with its output going to a log you can tail — piping it through `grep` buffers everything
+until it exits, so a hang looks identical to silence.
 
-- ⚠ **The attendance figure on all four surfaces (v253), side by side for ONE player.** The whole
-  point of the change is that they now agree, and agreement is the one thing a unit test can only
-  prove for a fixture. Open Inici as that player, Les meves estadístiques as the same player, then
-  Plantilla and Inici as his coach, and check the four percentages match. Then check the season
-  ring has **no grey arc** (a finished silence is an attendance now) while a week row's 44px ring
-  still does show grey for who has not replied — that contrast is the design, not a bug.
+⚠ **`js/board3d.js` is not served from the working tree, not even on localhost.** `tbLoad3D` always
+fetches the module through the `getBoard3d` callable, so **127.0.0.1 runs whatever was last deployed**
+and a 3D change is invisible until `.\deploy.ps1 functions`. There is deliberately no local bypass —
+`test/board3d-gate.test.js` exists because "the whole gate is undone by one static import". I told the
+owner otherwise once and they tested old code for a round.
 
-- ⚠ **The v247 filter and band, which NO preview can show.** The previews have no `.cat-bar`, and
-  Calendari has no preview builder at all. Four things to do on `localhost:8080`:
-  pick squad **B** and confirm the chip is ink-filled on every page that draws one (Calendari,
-  Plantilla, Convocatòria, Inici, Mèdic, Registracions, Notificacions — Registracions offers chips
-  for the first time); confirm the selection **survives** walking Calendari → Plantilla →
-  Registracions → Notificacions; pick a category with **one** squad and confirm it clamps to Totes
-  rather than emptying the page; and compare the seven title bands for one height and one left edge.
-- **Calendari** (v247) — the band is new: title and scope line left, `‹ mes ›` and **Avui** right,
-  all in ink; legends on a thin strip below; the grid inset 40px.
-- **Accions** (v245) as a **player**: log an RPE from the strip, change it with `Canviar`, and
-  confirm the row hardens the day after next. Then the phone — the wheel must move the value and
-  **not** the page under it, and the bottom sheet must open and log an extra.
-- **Notificacions** (v245) as a **coach**: confirm visiting the page no longer clears the unread
-  badge, that a row opens where the action happened, and that `Marca-ho tot` clears only the squad
-  the filter is on.
-- ⚠ **`sancions`** — the one page under the repainted `.cat-bar` that is not a paper page, and the
-  only screen I have not looked at since v245 repainted it or since v246 changed how the bar sits.
-- ⚠ **The bar next to a banner** (v246). The overlap that clipped an update/push banner is fixed by
-  a `:first-child` rule, and the only way to see it is with a banner actually showing — which no
-  preview does. Worth forcing once.
-- **Les meves estadístiques** (v244) as a **player** account. Two things a test cannot check: that
-  the figures agree with the match history the same account can see, and that **no RPE number is
-  anywhere on the page** — that is the product decision, not a detail.
-- **Mètriques end to end** — add a measurement, create a custom metric, delete an entry, flip
-  chart↔table, tick players in and out, drag the table sideways, download it. Confirm a **fitness**
-  account can do all of it and a **delegate** sees no controls at all.
-- **The Excel download on a phone.** It deliberately does NOT download in the Android app — see
-  parking lot 31. Confirm it shows the toast rather than doing nothing.
-- **Mèdic documents** (v234–v235) — attach a file, exceed the size cap, and delete one; a delete
-  must remove the Storage object as well as the Firestore row.
-- **Body-map symmetry** (v235, and again on the season map in v244) — an injury on the right leg
-  must light the right leg only.
+⚠ **Not yet driven by hand.** Everything below is tested, probed and rendered, but the owner has
+only clicked the Pissarres 3D notes. Worth trying first, in this order:
+
+- ⚠ **Configuració (v254), Gestió d'usuaris (v255/256) and Pissarres (v257/258) end to end.** All
+  three were rebuilt into the paper system this session and only the third was exercised by the
+  owner. In Configuració: the folded-in wizard tabs, the club ground link, the kit editor. In
+  Gestió d'usuaris: change a role, move someone between squads, erase. In Pissarres: the club
+  scope selector (it is a **query** now, so it re-reads), the pack chips, and a multi-club send.
+- ⚠ **A text note on a HALF board, and on a resized pitch.** The metric conversion is exact for a
+  board authored horizontally and off by 820/520 for one authored on a vertical full board —
+  bounded, legacy-only, and it stops the first time that label is touched. Nobody has looked at a
+  half board since.
+- ⚠ **A note's box width after a reload** (v260). Any save used to wipe it. Drag a label wider,
+  reload, move it, reload again — the width must survive both.
+- **Right-clicking a note in 3D is gone (v263)** and that is deliberate — its menu is 2D-only now.
+  If the owner wants edit/colour/delete on the rows in the bottom bar, that is the follow-up.
+- **The 3D notes bar on a phone.** It is capped at 32% height under 600px and scrolls; the orbit
+  hint is hidden under 640px entirely, so the corner collision cannot recur there.
 
 ---
 
-## The session in order — v234 to v253
-
-### v253. Attendance, counted once.
-
-Five call sites became one function. `seasonAttendance(u, ctx)` in `js/app.js`, with
-`sessionHasStarted()` and `attendanceCtx()` beside it, and a banner over all three that states the
-owner's three decisions as decisions rather than as code. Inici's two heroes, Les meves
-estadístiques and Plantilla's `plAttendance` all call it; `staff-player-stats`' load charts take the
-same two filters they were missing.
-
-Two dead denominators went with it: the staff hero's `players × sessions` slot count, and the second
-hand-rolled parse of both availability blobs it needed — `availContext()` memoises on the raw string
-and was already there. Plantilla's context now carries one `att:` sub-object instead of its own
-`trainings` / `availData` / `staffOverrides` / season bound.
-
-⚠ **The full detail, the measurements taken before anything changed, and what was deliberately left
-alone are in the parking-lot entry at the foot of this file** — it is the record of a product
-decision, not just a changelog line.
-
-### v234. Mèdic, rebuilt to the eighth design handoff.
-
-Six screens in the `.md2-` prefix, plus a documents bucket on `storage.rules`
-(`medical/{teamId}/{category}/{injuryId}/{fileName}`). `test/medical.test.js` is new, 68 assertions.
-
-⚠ **`medical.test.js` slices `.md2-` to the END of the stylesheet**, so anything appended after that
-banner is read as Mèdic's and trips its scans. New CSS goes inside its own page's region, not at the
-foot of the file. This is the same trap that took Inici down when Mèdic was appended after it.
-
-⚠ Two comment hazards found here and worth remembering: a comment containing `*/` closed a block
-early (caught by `node --check`), and `image/*` **inside a string** opened a phantom comment in the
-naive strippers several suites use — it swallowed a whole block and took a passing Convocatòria
-assertion with it. It is `MD2_DOC_ACCEPT` spelled out by extension now.
-
-### v235. Both legs, a missing cap, and an orphaned file.
-
-Three owner-reported fixes. The one worth recording: **selecting a body region lit the symmetrical
-muscle too.** I matched zone fills by **label**, and `BODY_ZONES` holds each zone twice — once per
-side — under the same label, so one injury lit both legs. `md2ZoneIdx()` matches by index now, at
-five render sites. ⚠ **My own defect, introduced by following the prototype's markup rather than the
-data behind it.**
-
-Also: a maximum document size, and removing a file now deletes the Storage object and the Firestore
-row rather than only the row.
-
-### v236. Player metrics — parking lot 19 and 20, which are one feature.
-
-Weight, height and fitness tests. Plantilla → player detail to add and chart one player; an
-expandable **Mètriques** section for the whole squad.
-
-⚠ **Two stores that behave in opposite ways, and that is the design, not an accident:**
-
-- a **measurement** is a record in `teams/{id}/playerMetrics/{docId}` carrying **no category at
-  all** — which is what makes it follow a promoted player and what makes the season rollover a
-  no-op, since `archiveSeason` only destroys what is named in `SEASON_KEYS` or the archive record
-  loop, and this is in neither;
-- a **definition** is a row in `fa_metric_catalog`, category-sharded, so a metric belongs to the
-  squad that invented it.
-
-⚠ A design review caught the first version splitting a promoted player's history in two — cadet's
-"Pes" and juvenil's "Pes" being different rows with different ids. Three things fix it: weight and
-height are **reserved constants in code**, not catalogue rows; a custom metric carries an
-accent-stripped **slug** and the UI groups by slug; and `name`/`unit` are **denormalised onto every
-measurement**, so a record is self-describing even when its definition is in a shard the reader
-cannot open.
-
-⚠ A new **`player-metrics`** right in `STAFF_ROLE_ACCESS`. The fitness coach has
-`manage-roster: 'view'`, so gating on the page would have locked out the one role whose job this is.
-
-⚠ Read access is **staff-only**, stricter than the `sameTeam` precedent of the collections beside
-it, and there is **no `allow update`** — "delete, not edit" was a product decision and it is free to
-enforce in the rules. Known limit, stated rather than buried: any staff member of the club can read
-every squad's numbers, because the record carries no category for a rule to test.
-
-### v237. Four fixes from the owner's first use.
-
-Picker below the title; outside-click closes the dropdown; chart↔table stops re-rendering the player
-detail (`bindPlmControls` + `plmRefresh`); and a new metric can actually be created — `showAddMetric`
-was reading the squad off the **page filters**, so on "Totes" the `__none` guard correctly refused
-and the option vanished. It reads `p.category`/`p.team` off the **player** now.
-
-### v238. ⚠ Plantilla rendered nothing — and 3080 tests said it was fine.
-
-v237's extraction of `plScopedPlayers()` took `var curCat` out of `renderStaffRoster` along with the
-filter that used it, leaving two uses behind. `var` is function-scoped, so both threw a
-`ReferenceError` **before the function returned a single character**. The page painted nothing.
-
-⚠ **The real failure was the suite.** All 30 Plantilla assertions read `renderStaffRoster` as
-**text** — grab the source, regex it. Not one had ever *called* it, so a function throwing on its
-fifth line scored exactly as green as a working one, and `node --check` cannot see it because it is
-valid syntax. There is now a `renderStaffRoster — it runs` block that executes the real function
-over stubs, with **every collaborator stubbed and nothing else**, so an identifier the function
-should declare for itself throws in the test instead of on a phone.
-
-### v239. A colour per player, and the last control that rebuilt the page.
-
-`--pp-series-1..10` join the palette. ⚠ Not aliases of existing tokens: the palette guard reports a
-hex **with the key name it belongs to**, so two keys sharing one value produce two report lines for
-one hex and break the allowed list.
-
-⚠ **A player's colour comes from his position in the whole squad, in id order.** Indexing by the
-drawn set repaints everybody when one player is ticked off; indexing by the table repaints two when
-one gains a kilo, because that table sorts by latest value. Both look reasonable in a diff; both
-were mutations that round killed. Ten hues for up to twenty-two players, so the eleventh line
-repeats the first **dashed, with a hollow swatch**.
-
-Expanding the section stopped re-rendering too: `plmSectionHtml` always emits `#plm-secwrap`, open
-or shut, so there is a stable node for `plmRefresh` to swap.
-
-### v240. The squad table becomes a matrix.
-
-One row per player, one column per measurement date. ⚠ A cell holds an **array** — a player can be
-weighed twice in a day, which is what the random tail on the record id is for. Columns are the union
-of dates across the whole squad so the grid lines up; a missing reading is `·`, not a blank and not
-a zero.
-
-Scroll box with drag-to-pan. ⚠ The overflow is on the **div, never the table**: a sticky cell
-positions against its nearest scrolling ancestor, so a self-scrolling table would pin the frozen
-column to the table and it would never move. Name, swatch and tick all ride in that sticky column.
-
-### v241. Download the metric table.
-
-⚠ **CSV, not .xlsx, and that is a decision.** A real xlsx is a ZIP archive — deflate streams, a
-central directory, four XML parts, a CRC32 per entry — and this app has no build step and no
-libraries.
-
-Three things make it open cleanly, none of them visible on screen: a **UTF-8 BOM** (or Excel reads
-the system codepage and accented names arrive mojibaked), a leading **`sep=` line** overriding the
-locale's list separator, and ⚠ a separator and decimal mark that **match each other** and follow
-`_lang` — `;` with `,` for ca/es, `,` with `.` for en. A comma decimal under a comma separator
-splits every reading in half and the file still looks plausible.
-
-`plmMatrix()` is new and is the point: the grid the table renders and the grid the CSV writes are
-**one function**. The export rebuilds through it rather than scraping the DOM.
-
-### v242. The download button becomes an arrow.
-
-Same box as one GRÀFIC/TAULA segment — 26px tall, half the 150px control less its 7px gap — with
-`title`/`aria-label` carrying the name and the `<svg>` `aria-hidden`. ⚠ The narrow breakpoint moves
-**both**: `.plm-segs` already shrank there, and `.plm-xls` now shrinks with it.
-
-### v243. The player's training page, rebuilt on the coach's.
-
-Opening a training gave a player the old `.detail-*` cards — and, under them, **the coach's tactical
-boards**. It is `renderStaffTrainingDetail`'s `.std-` page now, carrying three things and no more:
-the title, the forecast, and who is coming. The planned RPE, the load in UA, the plan and material
-rail, the team generator and the readiness/A-C/medical columns are all his, not hers.
-
-Three geometry defects found by rendering `player-training-preview.html` in headless Chrome at 1440
-and 390 — one of them (`.std-main` sizing itself to the table's `min-width` and sliding the whole
-page sideways below 900px) had been **live on the coach's page since v188**. New
-`test/training-detail.test.js` (32), which CALLS the renderer.
-
-### v244. Les meves estadístiques, the tenth paper page.
-
-The player's own stats page, `.ms-`, from the tenth design handoff — and the last screen still
-wearing `.card`. It is the two product decisions the handoff bakes in, not a restyle:
-
-- ⚠ **No RPE anywhere** (roadmap 22) — not a session figure, not a weekly-load chart, and not the
-  four Readiness components, which are the coach's dosing weights. The player gets the derived trio:
-  the **Preparació** score, the **aguda/crònica** ratio and the **dies des del darrer partit**, plus
-  a sentence that explains the score *instead of* exposing the components. `buildChartsHtml()` and
-  `buildReadinessCard()` are untouched and still on `renderStaffPlayerStats`, where they belong.
-- ⚠ **No MVP** (roadmap 21) — the handoff's gold star is drawn against teammate voting, which does
-  not exist. Nothing is built for it rather than wiring the star to a stand-in signal, which would
-  look right and mean something else.
-
-`renderStaffPlayerStats` and the `.mystats-*` block are deliberately untouched. Most of the page was
-already in the repo: `computePlayerMatchStats`, `buildInjuryHistoryHtml(uid,{forPlayer:true})` (which
-IS the zone-only privacy rule), `utils.bodyMapHtml` and `iniDonutHtml`.
-
-⚠ **`.ms-` is now last in the stylesheet**, so `test/medical.test.js` finally got the end bound its
-own v234 comment asked for. `test/ms.test.js` slices to EOF and carries the same warning forward.
-⚠ **The body map counts zones by INDEX** — the handoff's sample script does `counts[z.label]`, which
-is the v235 both-legs defect verbatim.
-⚠ **The full-bleed negation sits in a 600px block, not the page's own 700px one**, because
-`.dashboard-content`'s padding changes at 600 and the page's columns change at 700.
-
-Unit 3160 → **3197**; new `test/ms.test.js` (37), five mutations killed. New
-`scripts/build-ms-preview.js`; `ms-preview.html` added to `_config.yml` (⚠ that list is BY NAME).
-Looked at at 1440, 650 and 390 — no horizontal overflow at any of them.
-
-### v245. Accions and Notificacions, the eleventh and twelfth paper pages.
-
-The last two screens on pre-redesign chrome, and the two a person touches every day. `.ac-` and
-`.nf-`; `.action-*` and `.notif-*` are deleted.
-
-⚠ **`Accions.dc.html` was missing from the handoff bundle** — only `Notificacions.dc.html`
-shipped. Notificacions is built to its exact values; Accions is reconstructed from the two
-screenshots and the README's prose. CONTEXT.md lists what was inferred.
-
-**Four defects fixed, none cosmetic:** a saved RPE could not be seen or changed (there was no
-lock, cutoff or edit path anywhere in the codebase); logged extras vanished on the next repaint
-because the list was only ever filled at runtime; opening Notificacions marked everything read as
-a side effect of rendering; and `typeBadge()` hardcoded English labels and hex colours, leaving
-five `notif.*` keys dead. `Clear All` — which **deleted** rows rather than marking them read — is
-gone.
-
-**The RPE edit window is new**: until 23:59:59 of the day after the activity. ⚠ **Client-side
-only, deliberately** — `firestore.rules` is unchanged and still accepts a late write. That is the
-opposite call from the MVP vote (parking lot 21), and CONTEXT.md says why. An edit files a second
-notification rather than amending the first.
-
-**`playerActionModel()`** replaces the two copies of the pending filters the page and the sidebar
-badge each kept. **Availability left Accions** — Inici owns it and has the changeable pill this
-page never had.
-
-**The notification record gained `team`, `answer`, `page`, `pageId` and two types** (`injury`,
-`registration` — joining the club used to notify nobody). ⚠ Every record already in the blob has
-none of them and must degrade the way a missing `category` already does: visible, unbadged,
-unlinked.
-
-⚠ **The shared `.cat-bar` was repainted for all nine of its pages.** `sancions` is the one page
-under it that is not redesigned and now wears a paper filter bar above old chrome — the
-deliberate choice, but **not yet looked at by hand**.
-
-Five geometry defects found by rendering: the scale captions colliding, `.nf-rail` winning the
-cascade over the override meant to fold it, `.nf-detail` at `100% + 35px`, an absolutely
-positioned phone bar escaping to the viewport, and an answered row sorting above a pending one.
-⚠ The preview harness had its own bug that looked exactly like an app bug — a frozen-clock shim
-that forwarded only the first argument turned `new Date(y, m, d)` into 2.026 seconds after the
-epoch, closing every edit window in 1970.
-
-Unit 3198 → **3274**; `test/accions.test.js` (37) and `test/notificacions.test.js` (39), five
-mutations killed. `test/ms.test.js` got its end bound; two grabs in `inici.test.js` and three in
-`training.test.js` were repointed. Two new previews, both in `_config.yml` (⚠ BY NAME).
-
-### v246. One page geometry for the paper system, and an RPE you can see.
-
-Three reports off the owner's first local look at v245; two were the same bug.
-
-**The chosen RPE came out grey.** `.ac-strip-set .ac-cell` is (0,2,0) and outranked both
-`.ac-cell-on` and the ramp class the JS adds, which are (0,1,0) each — so `currentColor` resolved
-to the dim and the ramp never rendered. It FILLS now, which is what the handoff said all along.
-⚠ The phone wheel deliberately does not fill; there the ramp is on the text.
-
-**The grey side bands and the short filter bar were one cause.** Ten paper roots had drifted into
-two camps — `-2rem` and full bleed, or `-1rem` and a 16px band each side. And ⚠ **the bar and the
-root are adjacent siblings**, so their margins collapse to `max(positive) + min(negative)`: the
-bar leaves 1rem, so a `-2rem` root climbed 16px OVER it and covered its bottom rule. Both share
-`--pp-paper`, so that read as the bar being shorter. Three bar heights across nine pages, one sum.
-
-**One rule now, beside `.dashboard-content`** — `margin: -1rem -2rem -2rem` plus a `:first-child`
-arm, the `.std-page` pattern from v188. `-1rem` on top cancels what the bar or a banner leaves;
-`-2rem` on the sides is the container. Content inset normalised to 40px.
-
-Two pre-existing defects fixed with it: ⚠ **the cat-bar rode 16px over an update/push banner** on
-all ten CATEGORY_PAGES, and ⚠ **it switched at 500px while the container switches at 600**.
-
-⚠ **`test/accions.test.js` had `assert.ok(at600 === '' || true)`** — unconditionally true, and the
-one assertion that would have caught this. Revived and confirmed red first. The geometry is now
-ONE test in `test/layout.test.js` across all ten roots; ten copies of a geometry assertion is how
-ten copies of the geometry got there.
-
-⚠ **Four preview harnesses wrapped the page in `padding:1rem`**, sized to the old `-1rem`, so they
-reported a 16px overflow the real app does not have. They are 2rem now — a shell that does not
-match the container makes every geometry check on it a lie. (And: those CSS blocks are inside JS
-template literals, so a backtick in a comment ends the string.)
-⚠ **The Accions preview never showed a chosen cell** — pending rows start null, answered ones
-collapse to a figure — which is how the grey-RPE bug survived a look at the mockup. It renders the
-mid-edit row now.
-
-Unit 3274 → **3281**; three mutations killed. Push only.
-
-### v247. One header, one filter, and a Calendari that has a title.
-
-Five reports off the owner's look at v246.
-
-**The selected squad chip was invisible on every page that draws one.** The JS marks it
-`roster-team-btn-active`; v245's repaint styled `.active`, which never matches — and
-`.cat-bar .cat-bar-letter` at (0,2,0) outranked the class anyway, so even the pre-v245 fill had
-lost. ⚠ **Do not fix this by renaming the class in the JS**: `calendar-render.test.js` counts lit
-chips by it and the roster's own chip row uses it. Same defect class as v246's grey RPE cell — a
-repaint that guessed a class name.
-
-**Six filter variables became one `_viewSquad`**, read through `getCurrentSquad()`, which
-**clamps on read** — the eight-line reset block is gone, and with it two holes the reset never
-covered (`catBarLettersHtml` never validated the letter, and `_clubConfig` loads async so an early
-render could strand a stale 'B'). ⚠ `trainingTeamFilter` was **written twice and read nowhere** and
-is deleted with its control. ⚠ `stdTeamFilter` is KEPT — a multi-select `Set` answering a different
-question. Registracions was reading a letter it never offered a chip for; it offers them now, and
-`regInvited`, which parsed the letter and never filtered on it, finally does.
-
-⚠ **This reverses a test** — `calendar-render.test.js` asserted the calendar and roster filters
-"must not share the state". Nothing in the source defended it; `renderCalendar`'s own comment says
-the opposite, and so did the owner.
-
-**One header band across nine pages, one title size.** Plantilla, Registracions and Convocatòria
-gained the white band; four 38px titles came down to 36 and gained the phone override they never
-had. ⚠ `.ini-name`/`.ms-name` stay 34px — a person's name, not a page title. Seven caption atoms
-and four value rules collapsed to one each; 45 per-page rules deleted.
-
-**Calendari gets a `.cal-page` root** — it never had one — so `ROOTS` in `layout.test.js` is
-**eleven**. It has a title again, reversing v221 with the reason recorded: that trade was sound
-while Calendari was alone in making it. Month nav in the band, in **ink**; legends on a strip below;
-grid inset 40px, stepping down at **700**, the band's breakpoint. ⚠ The two banners render OUTSIDE
-the root or the `:first-child` arm mis-fires.
-
-⚠ **I defanged an assertion again.** The ghost-exclusion test compared the count against a scan of
-the rendered blocks — both sides moved together, so it passed with ghosts counted, the one thing it
-exists to catch. It is an exact number against a fixture now. Second time in two versions.
-
-⚠ **Region-slice assertions had to MOVE, not be rewritten.** A rule naming nine pages does not live
-in any page's slice, so `.ini-counters`, `.ini-hero`'s white and `.md2-counters` now match the whole
-resolved stylesheet — what matters is that Mèdic's counters bottom-align, not where the declaration
-sits. ⚠ `readCss()` expands `--pp-*` to literals, so ink is `#2D2926`, not `var(--pp-ink)`.
-
-⚠ **Five preview builders broke on deleted identifiers**, including `training-plan`, whose `grab()`
-end marker was a variable that no longer exists. All nine rebuild; six re-shot at 1440/650/390 with
-no overflow. Unit 3281 → **3284**; seven mutations killed. Push only.
-
-**Follow-up, same version: the inset was on the ROOT.** The owner reported Registres, Plantilla and
-Convocatòria still not using the full page while Notificacions, Mèdic, Calendari and Inici did —
-an exact split that names the cause. ⚠ **A band painted edge to edge cannot reach an edge its
-ancestor holds it 40px away from.** Those three carried `padding: 28px 40px 48px` on `.pl-main`,
-`.reg2-page` and `.cv-page`; the four that looked right have never had root padding and put their
-inset on a `-body` wrapper. The root carries the bleed and nothing else now, and eight body
-wrappers share one inset rule (`.pl-body`, `.reg2-body`, `.cv-body` are the new ones), stepping
-down at **700** — the band's breakpoint, not the 900 those pages used.
-
-⚠ **The plan said to do this and I shipped the band without it — then saw the defect and explained
-it away.** Convocatòria's band visibly started 40px in, inside a frame, and I recorded it as "the
-preview's own mock shell". The two previews really do differ, which is what made the wrong reading
-available, but the difference worth checking was the one on the page. One measurement settled it.
-
-`layout.test.js`'s inset test **moved rather than being rewritten** — right question, wrong element
-— plus two new cases: **no page ROOT may declare padding**, and every body steps down with the
-band. Unit 3284 → **3287**; three more mutations killed.
-
-**Follow-up 2: Plantilla's attendance ring joins the band.** Asked for by the owner. It was the
-first thing under the band, alone on a row that held nothing else. ⚠ **Dropped in at its old 84px
-it made Plantilla's band 145px against every other page's 125** — measured, and exactly the
-one-height ask the shared band exists for. So the band's ring is **56** and the rail's stays **84**,
-and the band's legend flows **2×2** (four stacked rows are 78px on their own), scoped to
-`.pl-title-row` so the rail's column legend is not re-flowed from here.
-
-⚠ That **reverses `plantilla.test.js`'s "draws its donut at the same size as the team one"**. Its
-reasoning was adjacency — the team ring used to sit directly over the roster table, inches from the
-rail beside that same table. The team ring is in the header band now, ~500px up the page; the two
-are never on one line. Both sizes are pinned so neither drifts. Unit 3287 → **3289**; three more
-mutations killed.
-
-**Follow-up 3: four owner reports on the rings and the bands.**
-
-⚠ **The availability ring disagreed with the number in its own middle, and had since the page was
-built.** *"In Inici the number is 1% yet the donut is all green."* The arcs were drawn against the
-sum of the four ANSWERS; the centre percentage against the SLOTS — every player × every session. One
-answer in ninety gave "1%" inside a full green ring. ⚠ **The docstring described the fix it never
-had** ("the uncovered remainder of the track is the no-answer share"): nothing ever put the
-unanswered slots in a denominator. `iniAvailSegs(n, slots)` now turns the difference into a fifth,
-grey segment (`--pp-rule-4`, lighter than the `--pp-neutral` of a deliberate "No"). ⚠ **My-stats had
-the same bug** — a lone green arc is always the whole ring — and was fixed with it, unreported.
-
-**One ring size for every header band**: `HERO_DONUT = 56`. It was 88, 76, 88 and 56 across four
-bands. ⚠ Not the 44px per-session ring in an Inici row, nor Plantilla's rail at 84. `.ms-attend`'s
-62px phone override is deleted — it would now UPSCALE the ring on a phone.
-
-**The centre number is derived from the ring** (`size * 0.215`); a fixed 18px overflowed the 56px
-hole. **Registres' subtitle is one sentence**, and the shared scope-line rule is `nowrap` +
-`ellipsis` + `min-width: 0` so no future string can push a band taller — wrapping again below 700.
-
-⚠ **`inici.test.js` contained a test that documented the bug**: its assertion was about the builder,
-its comment told a squad-of-22 story the code never implemented. Green through exactly the defect it
-looked like it covered. ⚠ **The runnable Plantilla harness earned its keep again** — four cases went
-red on `ReferenceError: HERO_DONUT` the moment the constant landed. ⚠ **And one of my mutations
-silently failed to apply**, making a live assertion look dead; re-run with an assert on the
-replacement, it killed. Unit 3289 → **3297**; five mutations confirmed.
-
-### v249. A photo that never syncs, a misaligned eyebrow, a badge Inici threw away.
-
-⚠ **`fa_users` never learned anything new about a person.** Reported as "his photo only shows on
-his own profile" — his profile reads the personal document, every roster surface reads the blob, and
-the reconcile in js/db.js was **add-only, once at init, with no `onSnapshot` on `users/`**. A row
-already in the blob was frozen for good, so **every** change to a personal document was invisible to
-everyone else: a rename, a new dorsal, a corrected position. It updates through `_mergeProfile` now.
-⚠ **An allowlist, never `Object.assign`** — a row also carries `roles`, `category`, `team`,
-`staffCategories`, `staffRole`, `isTeamLead`, all server-owned and all *stripped* from the client's
-own write to `users/{uid}`; copying a document over a row silently demotes people. ⚠ It returns the
-same object on a no-op, so booting does not rewrite the blob (and route a write) every time.
-
-⚠ **A second cause no sync fix reaches**: a pre-v232 failed upload is a `data:` URI, kept on the
-personal document and dropped from the shared blob by `stripHeavyPics` — by design. That person's
-photo is visible to them alone and the only signal was a `console.warn`. `renderPage` now prompts
-them to re-upload, latched so it fires once and not on every sync callback.
-
-**Plantilla's "Assistència" eyebrow sat 5px high**: `.pl-att` centred its label against the ring
-while the figures beside it hung from the bottom. ⚠ **And a defect of mine** — `.pl-fig`/`.pl-fig-v`
-were in the v247 shared rules AND redeclared afterwards at 24px, so Plantilla's figures were 24px
-where the other nine bands were 30px, and the v247 note claims that copy was collapsed. Deleted;
-`layout.test.js` now guards the whole class of it. All five eyebrows measured level at a 125px band.
-
-**Inici drew a monogram where Calendari drew the real crest.** `iniSideBadgeHtml(name)` took only a
-name, under a comment saying "the club has no rival crest library". ⚠ **Calendari's own comment
-records making the identical mistake and fixing it** — Inici was the last page still believing the
-stale one, so it is deleted rather than softened. Both row builders now carry `oppBadge`.
-
-Unit 3297 → **3319**; fifteen mutations killed, each asserted to have actually applied.
-
-### v250. The crest the classificació omits.
-
-Asked, not reported: "how come some clubs have the crest in some places but not in the
-classificació?" ⚠ **The federation disagrees with itself.** Sampled live on group 58161881:
-`/competition/partidos` carries `ESCUDO_*` for all sixteen clubs; `/competition/classificacio`
-returns `team.logo: null` for four of them — Inspire Soccer, San Lorenzo, Barcelona City, Besos
-Baron de Viver. Nothing in the app was inconsistent: `fcfBadgeUrl` and `fcfBadgeOf` are
-byte-identical, same base and same `escutbase` filter. The two payloads differ.
-
-`withFixtureBadges(rows)` fills an empty standings badge from our own fixtures, which carry
-`opponentTeamId` beside `opponentBadge`. ⚠ **On the federation ID, never the name** — these payloads
-are free text ("OLYMPIA - VIARO ,C.E A") and `normTeamName` exists because they do not compare
-cleanly; a name match would put another club's badge on a row, which is worse than initials.
-⚠ Returns NEW rows: they come from the persisted league cache, and writing a derived badge back
-would store a crest the federation never sent for that endpoint. ⚠ Honest limit: our fixtures cover
-our own group, so other groups still fall back to the monogram.
-
-⚠ **`test/fixtures/fcf-preseason.json` no longer matches the live payload** — captured before those
-clubs lost their logo, so every row carries one and it cannot produce the case. Left alone (a dozen
-assertions are calibrated on it); the null is injected inside the new test where it is visible.
-
-⚠ **Two runnable harnesses caught the new dependency** — `fcf-app.test.js` and the Inici preview
-builder both went red on `getMatches`. ⚠ **And the preview then passed for the wrong reason**: the
-map is lazy and every row in its fixture has a badge, so the call never fired — the first logo-less
-club would have thrown inside `innerHTML`. Stubbed explicitly.
-
-Unit 3319 → **3331**; eight mutations killed.
-
-### v251. The loading-screen hang: `getMatches` never existed.
-
-⚠ v250 shipped `fcfBadgeById` calling `getMatches()` — a function that exists NOWHERE in this app.
-The ReferenceError landed inside a render, and `renderDashboard()` runs BEFORE `_hideSplash()`, so
-the app never started. ⚠ **Three green signals, all the same mistake**: two harnesses and a preview
-builder each named `getMatches` in a `new Function` parameter list, and `new Function` binds any
-identifier you name. **Code that runs over stubs is not code that runs in the app** — the inverse of
-v238 and nastier. New guard in `suite-registry.test.js`: every stub must name something the app
-declares. Its own first runs taught it two things — `root.BG = api` is the only place the module
-globals are named, and comments must be stripped, because the comment explaining this outage writes
-`getMatches()` in prose.
-
-### v252. Bare crests, one header type, a venue glyph — and the missing accessor.
-
-**The architecture answer.** The v251 fix was correct; the architecture around it was the defect.
-⚠ `getUsers`, `getTrainings`, `getInjuries` and `getMatchEvents` all exist and `getMatches` did
-not — which is exactly why reaching for it was a trap. Added. The other 31 raw reads are parking-lot
-35, not migrated: the trap is gone either way. ⚠ **The v251 guard then failed its own probe**,
-correctly refusing to become a test of nothing once the name existed.
-
-**Classificació**: a real crest is drawn bare — the disc belongs to the monogram
-(`.ini-tbl-badge-plain`, the same call `.cal-crest-plain` makes). **Les meves estadístiques**: the
-rival's crest left of the name; 🏠/✈️ instead of "Casa"/"Fora"; and ⚠ **one header type** —
-`.ms-c-date` set its own 13px so it hit the HEADER cell too, and three columns had been patched
-round it with a `.ms-head .ms-c-*` exception list. The list was the symptom; sizes now live on the
-row and the header owns its own.
-
-⚠ **A comment I had to correct before shipping**: I credited `line-height: 1` with centring the
-glyph. Measured, it moves it 0.0px — `align-items: center` does that. What it really does is shrink
-the glyph's box 20px → 13px so an emoji cannot set a row's floor. ⚠ **Two of my new assertions were
-defanged and mutation caught both.** Unit 3334 → **3344**.
+## The session in order — v254 to v264
+
+Two halves. **v254–v258** finished the three admin-tab redesigns from
+`Baixades\EsquerrApp Configuracio UI\design_handoff_admin_tabs`. **v259–v264** was one bug the owner
+reported from a Pissarres card — "3D text translates very badly to 2D" — which took six versions and
+was three different faults plus one wrong premise.
+
+### v254. Configuració becomes one page.
+
+The `#view-team-setup` wizard folded into the page as tabs; `#view-team-setup` is now the
+forced-onboarding shell only. `_tsEl`/`_tsAll` scope the shared setup sections to whichever screen
+mounted them. `clubs/{clubId}` gained `town` and `homeLink` (the ground link reverted to raw
+coordinates until `homeLink` existed to store it in), and `setClubCategories` validates both — the
+one rules-adjacent change of the session, and it needed a functions deploy.
+
+⚠ Kits were mixing between clubs, owner-reported and real: `_refreshTeamSetupKits` prefers
+DOM-typed kits and the container was static markup never emptied between club switches. A
+`data-kit-club` stamp fixed it.
+
+### v255/v256. Gestió d'usuaris, and three functions that were not there.
+
+⚠ **`90812ff` had deleted `detachMemberByEmail`, `loadArchivedSeasons` and `assignMemberToTeam`,
+and nobody noticed for nine days.** Found only because this round's plan said to *reuse* the first
+of them. `loadArchivedSeasons` was the worst: called straight from a renderer, so Temporades
+arxivades threw mid-render and never appeared.
+
+`test/suite-registry.test.js` gained **`the app only calls functions that exist`** — a strict scan
+that strips string literals as well as comments (the i18n table is full of Catalan with brackets;
+76 false positives without it). It runs at zero candidates.
+
+v256 followed the owner's review: the selected filter chip was unreadable (`:hover` at (0,2,0)
+beating `-on` at (0,1,0) — the same specificity trap as v254's over-quota count), and the team
+filter moved to the shared `.cat-bar` rather than a second one of its own.
+
+### v257/v258. Pissarres, and the read that grew with the platform.
+
+Three tabs: the clubs' boards as a card grid, an editor launcher, the platform library with a pack
+manager and multi-club send.
+
+⚠ **`_abLoad` was `4 + N_clubs` queries and every board metadata doc on the platform**, on every
+open and again after every promote and send. ~7 queries at three clubs; ~304 and 14,000+ document
+reads at three hundred. The club scope is a `where()` now, `boardAuthors` is read only for the club
+in view, and "Tots els clubs" carries a `limit()`. ⚠ Rules-satisfiable either way — the
+`isSuperUser()` arm does not depend on the document — so **nothing would ever have complained**.
+
+⚠ **First lazy loading in the app.** A mini pitch is a full pitch, a `ResizeObserver` and the whole
+animation as a JSON attribute; `hydrateRoBoards` warmed every skeleton on the page. It now takes an
+optional `roots` and the catalogue hydrates on intersection, **in batches** so `TB.warm` keeps its
+ten-per-query behaviour.
+
+⚠ **The silent trap:** `tbRoBoardHtml` must get `{boardId, name}`, never the metadata doc —
+`tbResolveRef` returns any ref with `positions` OR `formation`, and a metadata doc **has**
+`formation`, so the doc is mistaken for the drawing and hydration never returns.
+
+`seedClubFromTemplates` widened to `clubIds[]`/`packs[]`, with two latent bugs fixed first:
+`templateIds` was never deduped, and `already` was a pre-loop snapshot. `{clubId, pack}` stays
+accepted forever — an APK installed today outlives any migration window.
+
+v258 was the owner's card review: the board name was on the card twice, the frame badge sat in the
+corner the playback pucks own, and those pucks were sized by `scaleRoField`'s **16px floor** rather
+than its scale term (`30 * s` is ~9px on a card) — now `--ro-ctl-min`, default 16, lowered only by
+the catalogue.
+
+### v259–v264. One report, six versions: text in 3D.
+
+⚠ **READ THIS BEFORE TOUCHING BOARD TEXT.** The full write-up is in `CONTEXT.md`; the shape of it:
+
+1. **v259** — measured in a real browser that a resized label kept its editor pixel box at every
+   board width (300px on a 242px card) while its font was *overwritten* to a fixed reference. Fixed
+   by putting text on the metric table with the players: `BG.OBJ.text`, `--tb-tfs`/`--tb-tw`,
+   convert-legacy-on-read. **This was the wrong premise** — see 6.
+2. **v260** — a label's box width lives in `--tb-tw` when rendered from storage and in an inline
+   `style.width` only just after the resize handle is dragged. `saveTexts` read only the inline one,
+   so **the first save after any reload erased the width**. Invisible in 2D (the live element still
+   held the variable); 3D re-reads storage, so it showed there.
+3. **v261** — `--tb-ppm` was a **maximum, not a measurement**. `tbFieldScaleStyle` sets `max-width`,
+   so a narrower board still declared 7.81 px/m: on a 514px board a 2.56 m label was drawn 20px,
+   which is 6.7 m there. **Every metric object was equally wrong**, which is why it looked plausible
+   — the whole 2D board was wrong together. The editor re-measures with a `ResizeObserver` now.
+4. **v262** — with both views finally agreeing in metres, the result was absurd: the owner's real
+   note stores **3.59 m per line in a 19.96 m box**, so 3D stood a **39 m column of text on a 105 m
+   pitch**. ⚠ **A note is a CAPTION.** 2D sizes it against the screen; converting a reading size
+   into metres turns a UI affordance into a physical object — the exact trap `BG.OBJ`'s own comment
+   names. The words left the scene for a list under the board.
+5. **v263** — the pin that replaced them read as a player, so nothing marks a note on the turf now
+   (cost: **no right-click on a note in 3D**). And the draw-surface allow-list named
+   `.tb-text-label`, so with a draw tool on the note was painted a *second* time over the scene.
+6. **v264** — the remaining "blurry duplicate" was the **orbit hint**, sharing the bottom-left
+   corner with the new notes panel. Moved to top-centre; the other three corners are the menu, the
+   cameras and the frames rail.
+
+⚠ **What actually ended it**: a fifteen-line read-only snippet pasted into the owner's console,
+returning the stored tuple and the rendered numbers **from the machine with the problem**. Three
+rounds of my own probes had reported "matches" because each reproduced a board I had chosen. Ask
+for that first.
 
 ---
 
@@ -791,6 +419,50 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 ---
 
 ## Lessons that keep repeating
+
+### New this session (v254–v264)
+
+- ⚠ **When the owner's screen and your probe disagree, the probe is wrong — go and get their
+  numbers.** v259–v261 were three fixes shipped against a symptom that never changed, because every
+  probe reproduced a board I had chosen: full width, my board type, my label. A read-only console
+  snippet returning the stored tuple and the rendered values settled it in one message. Cheaper than
+  one wrong round, let alone three.
+- ⚠ **"Correct" is not the same as "right".** v259 made 2D and 3D agree on a note's size to the
+  centimetre and produced a 39 m billboard on the pitch. The arithmetic was never in question; the
+  premise was — a caption is measured against the screen, not against the world. When the fix is
+  exact and the result is absurd, re-read the premise instead of re-checking the sums.
+- ⚠ **A declared scale is not a measured one.** `--tb-ppm` was computed from `tbFieldWidthPx`, which
+  is a MAXIMUM, while the board renders at whatever its container gives it. Everything metric was
+  wrong together, so nothing looked wrong. Anything derived from "how big this is" must come from
+  measuring the thing, and be re-measured when it can change.
+- ⚠ **Ask where a value lives when nobody has touched it.** A label's width sits in a CSS variable
+  after a render and in an inline pixel width only just after a drag; reading one of the two erased
+  the other on every save. The bug is invisible while the live element still holds the old value —
+  it only surfaces in whatever re-reads storage.
+- ⚠ **A `var()` with no fallback kills the whole declaration.** `right: calc(var(--tb-axis) + 8px)`
+  resolved only inside the element that declares the variable; anywhere else the panel silently lost
+  its right edge. Same family as the `--tb-ppm` missing-unit bug: an invalid value is dropped
+  entirely, not clamped or approximated.
+- ⚠ **An overlay box has four corners and they are allocated.** Menu top-left, cameras top-right,
+  rail down the right edge — so a new panel at bottom-left landed on the orbit hint and the owner
+  read the overlap as a duplicated, blurry note. There is a test pinning the two apart now.
+- **A blunt guard needs a named exemption, not a workaround.** `board3d.test.js` bans every
+  `createElement('div')` as a proxy for "builds its own menu". A hidden measuring probe tripped it;
+  renaming it a `<span>` would have been the same exemption with the reason hidden, so it was cut
+  out by name with the reason written beside it — and deleted again when the probe went.
+- **Assert the call is on the live path, not merely present.** Two mutants survived a run because
+  the tests checked that `wrapLines` and `document.fonts.load` were *called somewhere*; both
+  survived inside a dead branch. Run the function, or pin the condition that reaches it.
+- ⚠ **A cold Firebase emulator reports failures that are not there**, and a cold `node_modules`
+  fails `deploy.ps1` with a message the script itself tells you to ignore. Re-run once before
+  investigating either.
+- ⚠ **Never pipe a long deploy through `grep`.** The pipeline buffers until exit, so a two-hour hang
+  and a silent success look identical. Redirect to a log and tail it.
+- **A CSS slice bound is found by `indexOf`, so prose counts.** The `.gu-` block named its successor
+  banner in a comment; the suite found that mention first and cut the block to one paragraph,
+  failing six assertions for a reason none of them named.
+
+### Carried forward
 
 - ⚠ **A test that reads the source is not a test that the code RUNS.** v238 is the whole lesson in
   one line: `renderStaffRoster` threw a `ReferenceError` on its fifth line and 3080 green assertions
