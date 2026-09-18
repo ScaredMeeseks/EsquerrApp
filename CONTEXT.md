@@ -11810,3 +11810,34 @@ real profile with nothing reporting it. Caught by a probe assertion that expecte
 deletions and got 3; the script was wrong, not the expectation. `--remove` also refuses
 outright if `fcfLinks` holds anything outside the `FAKE_GRUP_BASE` range, rather than
 guessing which links are real.
+
+### 2026-09-18 — `functions/diagnose-referees.js` (read-only)
+
+"There are referees assigned for the next game already, but I'm not seeing them" —
+on the REAL club, so the first requirement was a tool with no write path at all, safe to
+point at a PROTECTED club. There is no `--apply` in this file and no `set`/`update`/
+`delete`/`batch` call anywhere in it.
+
+The referee chain has five links and four of them fail the same way on screen — an empty
+referee block:
+
+1. `clubs/{id}.fcfLinks` — `mdLoadAllRefIndices()` loads an index only for grup ids found
+   here. A squad missing from this map can never show a referee.
+2. the fixture's `fcfActaId` — the join key. A hand-typed fixture has none.
+3. `fcfRefIndex/{season}_{grupId}` — `mdLoadRefIndex` queries by grupId and keeps the
+   HIGHEST `season`, so a stale season's doc can shadow the current one.
+4. `actas[actaId].r` — ⚠ **an acta fetched BEFORE the appointment was posted is stored with
+   no `r`, and renders identically to no entry at all.** This is the one that looks like a
+   bug and is not.
+5. `fcfReferees/{slug}` — only the RECORD panel. Its absence shows the name with "no record
+   yet", never a blank block, so it is never the cause of a missing referee.
+
+⚠ **Appointments reach step 4 only through `fcfWeeklyRefs`: `0 6,7,8 * * 5`, three firings
+on FRIDAY MORNING and at no other time.** Each works an 8-minute budget through the queue
+and resumes where the last stopped — but the 06:00 run rebuilds the queue from position 0
+(`freshFor: today`). **A group sitting past the three firings' combined reach is therefore
+never read for appointments at all, week after week, and nothing reports it.** The script
+prints each configured group's queue position against the stored `at` pointer so that is
+read rather than inferred.
+
+Everything else about the club is untouched; this is diagnosis only.
