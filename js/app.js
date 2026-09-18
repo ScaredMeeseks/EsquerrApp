@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 259;
+  const APP_VERSION = 260;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -11131,6 +11131,31 @@
       (m.wM ? '--tb-tw:calc(var(--tb-ppm, 7.81px) * ' + BS.round2(m.wM) + ');' : '');
   }
 
+  /**
+   * How wide one label's box is on screen, in METRES — or null for a label
+   * that has never been given a width and so wraps to its own text.
+   *
+   * ⚠ TWO PLACES CARRY THAT WIDTH AND ONLY ONE OF THEM IS USUALLY THERE.
+   * `--tb-tw` is what tbTextStyle emits when the board is rendered from
+   * storage; an inline `style.width` in PIXELS is what the browser's own
+   * `resize` handle writes, and being inline it beats the stylesheet rule
+   * that reads the variable. So the handle wins when it has been used, and
+   * the variable is the answer every other time.
+   *
+   * ⚠ READING ONLY `style.width` IS A BUG THAT ERASES DATA, and it shipped:
+   * after any reload a label has no inline width, so the first save — moving
+   * it, recolouring it, editing its text, anything — stored `wM: null` and
+   * the box width was gone. It stayed invisible in 2D because the live
+   * element still held the old `--tb-tw`; the 3D view, which re-reads
+   * storage, showed the loss. That is the "size never saves" report.
+   */
+  function tbTextBoxM(el, perM) {
+    const inline = el.style.width ? parseFloat(el.style.width) : null;
+    if (inline > 0 && perM > 0) return BS.round2(inline / perM);
+    const v = /\* ([\d.]+)\)/.exec(el.style.getPropertyValue('--tb-tw') || '');
+    return v ? parseFloat(v[1]) : null;
+  }
+
   function renderReadOnlyBoard(b, prefix, thin, key) {
     const bid = 'ro-board-' + (++_roBoardIdx);
     _roRemember(bid, b);
@@ -17153,8 +17178,11 @@
         return { type: 'text', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
           text: el.textContent, color: el.dataset.color || '#000000',
           opacity: parseFloat(el.dataset.opacity) || 0.8,
-          wM: parseFloat((/\* ([\d.]+)\)/.exec(
-              el.style.getPropertyValue('--tb-tw')) || [])[1]) || null,
+          /* ⚠ The same two places as saveTexts, through the same reader:
+             this used to read only `--tb-tw`, so copying a label that had
+             just been dragged wider pasted it at its OLD width. */
+          wM: tbTextBoxM(el, parseFloat(getComputedStyle(inner)
+              .getPropertyValue('--tb-ppm')) || BG.authorPpm(tbBoardType())),
           fontM: parseFloat(el.style.getPropertyValue('--tb-tfs')) || BG.OBJ.text };
       }
       return null;
@@ -18263,10 +18291,10 @@
         const dL = parseFloat(el.style.left);
         const dT = parseFloat(el.style.top);
         const h = toHorizontal(dL, dT);
-        /* The rendered box, not the stored one — `resize` writes an inline
-           width in px and the metric width is what it has to become. */
-        const wPxNow = el.style.width ? parseFloat(el.style.width) : null;
-        const wM = wPxNow > 0 && perM > 0 ? Math.round((wPxNow / perM) * 100) / 100 : null;
+        /* The rendered box, whichever of the two places is carrying it —
+           see tbTextBoxM. Reading the inline width alone wiped the stored
+           width on the first save after every reload. */
+        const wM = tbTextBoxM(el, perM);
         const fontM = parseFloat(el.style.getPropertyValue('--tb-tfs')) || BG.OBJ.text;
         const px = BG.textPixels(wM, fontM, bt);
         arr.push([h[0], h[1],

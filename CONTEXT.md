@@ -11498,3 +11498,38 @@ removed element — rather than renaming it a `<span>` to slip past the regex.
 **Tests 3546 → 3563. 11 mutants, 0 survivors** — two survived the first pass because the
 assertions checked that a call *existed*, not that it was on the live path; `wrapLines` is
 now run, not read.
+
+### 2026-09-17 — A label's box width was erased on every save (v260)
+
+Owner: *"the size never saves when I go back to 3D"*, having set it in 2D.
+
+⚠ **A LABEL'S WIDTH LIVES IN TWO PLACES AND ONLY ONE OF THEM IS USUALLY THERE.**
+`--tb-tw` is what `tbTextStyle` emits when the board is rendered from storage; an inline
+`style.width` in PIXELS is what the browser's own `resize` handle writes, and being
+inline it beats the stylesheet rule that reads the variable. `saveTexts` read **only the
+inline one** — so after any reload a label has no inline width, and the first save of any
+kind (moving it, recolouring it, editing its text, nudging the slider) stored
+`wM: null`. The width was gone.
+
+⚠ **WHY IT LOOKED LIKE A 3D BUG.** Nothing changed in 2D: the live element still held its
+old `--tb-tw`, so the board on screen was right until the next reload. The 3D view is
+destroyed and remounted on every toggle and re-reads localStorage, so it showed the loss
+immediately — and the 2D board it was compared against was still lying.
+
+Both writers now go through `tbTextBoxM(el, perM)`: inline width first (the handle has
+just been dragged and is the truth), else the variable. The clipboard serialiser had the
+**mirror-image** bug — it read only `--tb-tw`, so copying a just-widened label pasted it
+at its old width — and is fixed by the same reader.
+
+⚠ **WHAT THIS COST TO FIND, AND THE LESSON.** 3D was exonerated first by rendering stored
+sizes of 1.0, 2.0 and 3.0 m in real WebGL and seeing all three come out right — so the
+fault had to be on the write side. Reading the 2D code alone had made it look correct
+four times over, because every individual line is correct; the bug is only visible when
+you ask *where does this value live when nobody has touched the handle*.
+
+**Tests 3563 → 3567.** The reader takes an element-like object, so the loss is
+reproduced in the suite without a DOM rather than grepped for — plus one assertion that
+both writers actually go through it, which a mutation run caught surviving.
+**4 mutants, 0 survivors.**
+
+Push-only: no rules, no functions, `js/board3d.js` untouched.

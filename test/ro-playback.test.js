@@ -488,6 +488,62 @@ describe('the static render and the animation agree', () => {
         'the builder writes a font-size again');
   });
 
+  /* ⚠ THE ONE THAT ERASED DATA, AND SHIPPED. A label's box width lives in
+     `--tb-tw` when the board is rendered from storage, and in an inline
+     `style.width` only just after the browser's resize handle has been
+     dragged. saveTexts read the inline one alone — so after any reload the
+     first save of any kind stored `wM: null` and the width was gone. It was
+     invisible in 2D, because the live element still held the old variable;
+     3D re-reads storage, so the owner saw it there as "the size never saves".
+
+     RUN, not grepped: the function takes an element-like object, so the loss
+     is reproducible here without a DOM. */
+  describe('a label\'s box width survives a save', () => {
+    const BS = require(path.join(ROOT, 'js', 'board-state.js'));
+    /* fn() slices to the NEXT function at the same indent, so the slice
+       already closes its own brace — appending one is a syntax error. */
+    const boxM = new Function('BS', fn('tbTextBoxM') + '\nreturn tbTextBoxM;')(BS);
+    const el = (width, tw) => ({style: {
+      width: width,
+      getPropertyValue: (k) => (k === '--tb-tw' ? tw : '')
+    }});
+
+    it('reads the variable when there is no inline width', () => {
+      assert.strictEqual(
+          boxM(el('', 'calc(var(--tb-ppm, 7.81px) * 12.5)'), 7.81), 12.5,
+          'a label loaded from storage loses its width on the next save');
+    });
+
+    it('prefers the inline width, which the resize handle just wrote', () => {
+      /* Inline width beats the stylesheet rule that reads the variable, so
+         after a drag it is the truth and the variable is stale. */
+      assert.strictEqual(
+          boxM(el('100px', 'calc(var(--tb-ppm, 7.81px) * 12.5)'), 10), 10,
+          'a freshly dragged width must win over the stale variable');
+    });
+
+    it('stays null for a label that never had a width', () => {
+      assert.strictEqual(boxM(el('', ''), 7.81), null,
+          'an auto-width label must not gain a box it never had');
+    });
+
+    /* ⚠ AND BOTH WRITERS MUST GO THROUGH IT. The reader being correct is no
+       use if a writer reaches past it for `style.width` again — which is
+       exactly the shape of the original bug, and what a mutation run caught
+       surviving here. The clipboard had the mirror-image version: it read
+       only the variable, so copying a just-dragged label pasted the old
+       width. */
+    it('is the only way either writer reads a width', () => {
+      assert.ok(/const wM = tbTextBoxM\(el, perM\);/.test(fn('saveTexts')),
+          'saveTexts must read the width through tbTextBoxM');
+      const clip = fn('serializeElement');
+      assert.ok(/wM: tbTextBoxM\(/.test(clip),
+          'copy/paste must read the width through tbTextBoxM');
+      assert.ok(!/--tb-tw'\)\) \|\| \[\]\)\[1\]/.test(clip),
+          'the clipboard is reading the variable directly again');
+    });
+  });
+
   it('the read-only board carries the metres it is wide', () => {
     /* A read-only board has no --tb-ppm at render time — its width is
        whatever its container gives it — so scaleRoField measures the width
