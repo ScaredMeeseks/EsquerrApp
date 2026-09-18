@@ -11841,3 +11841,46 @@ prints each configured group's queue position against the stored `at` pointer so
 read rather than inferred.
 
 Everything else about the club is untouched; this is diagnosis only.
+
+### 2026-09-18 — The referees were never crawled: `fcfCrawl/config` is off
+
+`diagnose-referees.js` against Esquerra (real club) answered it in one run, and it was
+none of the five links in the chain:
+
+```
+enabled: false   seasons: 22, 21
+weekly (appointments, Fri 6/7/8)   queue 0/0   ranAt=(never)
+backfill (played, nightly)         queue 1/1   ranAt=2026-08-24
+grupId 58161881: NOT IN THE QUEUE — out of scope
+grupId 54888305: NOT IN THE QUEUE — out of scope
+```
+
+Two independent faults, either of which alone is sufficient:
+
+1. **`fcfCrawlConfig()` reads `enabled: c.enabled === true`.** It is `false`, so every
+   crawl returns `{skipped:"disabled"}` and writes nothing. The weekly appointments pass
+   has **never run** (`ranAt=(never)`).
+2. **`seasons` is `["22","21"]`** — old FCF temporada ids. `fcfBuildQueue` passes these to
+   `competicions?temporada=`, so even switched on, the queue could never contain grup ids
+   58161881/54888305. An empty queue is not an error, so this fails silently.
+
+⚠ **Nothing is stale here — nothing was ever collected.** `fcfRefIndex` has no document
+for either group, which is why every fixture shows an empty referee block while the
+federation has published the appointment. The five-link chain was a red herring: the
+failure is one level below it, in the crawler that fills the index.
+
+**`functions/set-fcf-crawl-config.js`** (dry run by default) derives `seasons` from the
+`temporadaId` in the club's own `fcfLinks` — the season the lead actually pasted, and
+therefore the one its grup ids belong to — and sets `onlyGroups` to that club's groups,
+because the alternative is every group of every senior tier, which fcf.js calls "days of
+crawling". `tiers`, `budgetMs` and `concurrency` are left alone.
+
+⚠ **Setting the config fetches nothing.** Appointments for an unplayed fixture are read by
+`fcfWeeklyRefs` (`0 6,7,8 * * 5`) and by nothing else — the nightly backfill filters to
+`d.closed` deliberately, since an unplayed acta has no result or cards to learn from. So a
+Saturday fixture appointed on Thursday waits until the following Friday unless the
+`runFcfCrawl` callable is kicked by hand (superuser only) with
+`{wantUnplayed:true, weekly:true, restart:true, aggregate:true}`.
+
+⚠ Changing `seasons`/`tiers`/`onlyGroups` changes `fcfScopeKey()`, so `fcfShouldRebuild()`
+discards the stored queue and both passes restart from position 0.

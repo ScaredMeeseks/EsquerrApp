@@ -95,13 +95,28 @@ async function main() {
     return;
   }
   const grupByKey = {};
+  const temporades = new Set();
   keys.forEach((k) => {
     const g = U.fcfGrupId(links[k]);
     grupByKey[k] = g;
-    if (g) ok(`${k} → grupId ${g}`);
+    /* The temporada the LEAD actually pasted. This is the value
+       fcfCrawl/config.seasons has to hold: fcfBuildQueue passes it straight
+       to `competicions?temporada=`, and a config pointing at another season
+       builds a queue that cannot contain this club's groups however long it
+       runs. It is also the season half of the fcfRefIndex doc id. */
+    const t = /[?&]temporadaId=(\d{1,4})\b/.exec(String(links[k] || ""));
+    if (t) temporades.add(t[1]);
+    if (g) ok(`${k} → grupId ${g}` + (t ? `   temporadaId ${t[1]}` : ""));
     else bad(`${k} → NO grupId could be parsed from "${links[k]}"`);
+    info(`link: ${links[k]}`);
   });
   const grupIds = [...new Set(Object.values(grupByKey).filter(Boolean))];
+  if (temporades.size) {
+    log(`\n  → fcfCrawl/config.seasons should be [${[...temporades]
+        .map((s) => `"${s}"`).join(", ")}]`);
+  } else {
+    bad("no temporadaId in any link — cannot tell which season to crawl.");
+  }
 
   // ── 3. the index documents ──
   step("3. fcfRefIndex — the documents those grup ids resolve to");
@@ -220,8 +235,17 @@ async function main() {
   // ── The crawl itself ──
   step("The crawl — has the weekly pass actually reached this group?");
   const cfg = (await db.doc("fcfCrawl/config").get()).data() || {};
-  log(`  enabled: ${cfg.enabled !== false}   seasons: ` +
-      `${(cfg.seasons || []).join(", ") || "(none)"}`);
+  /* `enabled: c.enabled === true` in fcfCrawlConfig — anything other than a
+     literal true makes every crawl return {skipped:"disabled"} and write
+     nothing, which is indistinguishable on screen from a season with no
+     appointments yet. */
+  (cfg.enabled === true ? ok : bad)(`enabled: ${cfg.enabled === true}` +
+    (cfg.enabled === true ? "" : "   ← every crawl is a no-op while this is not true"));
+  log(`  seasons   : ${(cfg.seasons || []).join(", ") || "(none)"}`);
+  log(`  tiers     : ${(cfg.tiers || []).join(", ") || "(default: all senior)"}`);
+  log(`  onlyGroups: ${(cfg.onlyGroups || []).join(", ") || "(none — every group in scope)"}`);
+  log(`  budgetMs  : ${cfg.budgetMs || "(default 480000)"}   ` +
+      `concurrency: ${cfg.concurrency || "(default 3)"}`);
   for (const [label, docPath] of [["weekly (appointments, Fri 6/7/8)", "fcfCrawl/weekly"],
     ["backfill (played, nightly)", "fcfCrawl/state"]]) {
     const s = (await db.doc(docPath).get()).data() || {};
