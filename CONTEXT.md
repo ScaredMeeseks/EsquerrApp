@@ -11753,3 +11753,60 @@ recording for what the probe did: four of its seven assertions PASSED while the 
 crashing on line one of the loop, because "md22 was not touched" is trivially true of a run
 that touched nothing. Only the two that assert something POSITIVE happened caught it. An
 all-green suite whose greens are all negatives is not evidence.
+
+### 2026-09-18 — `functions/topup-demo-referees.js`: mock referees, and what they cost
+
+Asked for after the notes shipped, together with mock weather and the opponent's last five.
+Three asks, three different answers, and only one of them was a seeding job.
+
+**Weather needs nothing.** It is stamped onto the `fa_training`/`fa_matches` rows by
+`scheduledWeatherSync`, and the demo club's own blocker — every schedule link being a
+`maps.app.goo.gl` short link — was fixed in v208, after which the run logged `noCoords: 0`
+for both clubs. Two design rules also make mocking it pointless: nothing beyond **3 days**
+is ever fetched (the UI says "available 3 days before" instead), and once an event has
+started its weather is frozen as the historical record. Mock values would be invisible or
+overwritten within the day.
+
+**The opponent's last five cannot be mocked at all.** It is `pt.form_caption` / the "El
+rival" block, fed by `parseFcfForm(r.form)` inside `parseFcfClassificacio()` — the LIVE
+standings row, cached only in the browser's `fa_league_cache_v2`. There is no Firestore
+document behind it, and the same is true of the rival's position and points. Seeding it
+would mean pointing the club at a real FCF group, which means renaming all 17 invented
+opponents to that group's actual teams.
+
+**Referees are the one FCF surface that is Firestore-backed**, so they can be written —
+but only by setting `clubs/{id}.fcfLinks`, because `mdLoadAllRefIndices()` loads an index
+only for grup ids found there. And `fcfLinks` is the master switch for Classificació,
+Sancions, El rival *and* enrolment in `fcfSync`. Pointed at a grup id the federation does
+not have, the first three fetch live and visibly fail where they previously showed clean
+"no link configured" cards. **The owner took that trade with the facts in front of him;
+`--remove` exists so it can be taken back in one command.**
+
+⚠ **What makes this safe rather than reckless is one line in fcf.js**: a fixture is marked
+`fcfRemoved` only `if ((incoming || []).length)` — *"an empty incoming is an outage, not a
+cancelled season"*. Every fixture this script stamps with an `fcfActaId` becomes a
+candidate for removal, and without that guard a fake grup id would have flagged all 102.
+
+Three things worth keeping:
+
+- **The index scorelines are derived from the club's own `fa_match_events`, never
+  invented.** `refereeHistoryWithUs()` renders "our matches he has refereed" from
+  `e.res`/`e.gh`/`e.ga` while the scoreboard directly above renders `calcMatchScore()` of
+  the events. Invent one and the same screen shows two different results for one match.
+- **The profiles are built by the real `aggregateFcfReferees` required out of fcf.js.**
+  `_rebuildFcfReferees` recomputes every profile from `fcfRefIndex` on a schedule, so a
+  hand-rolled shape would be silently replaced within the week. Using the real aggregator
+  makes that rebuild a no-op.
+- **Referees are drawn from disjoint per-division pools, sized ~1 per 10 fixtures.** The
+  first build used `pick(REFEREES)` across the whole list and left **7 of 8 under
+  `REF_MIN_SAMPLE`** — so `refereeDivisionStats` suppressed the H/D/A bar, which is the
+  centre of the panel, on almost every referee. A referee split across two divisions is
+  thin in both while looking busy in neither.
+
+⚠ **`--remove` was deleting `fcfReferees` docs for the ASSISTANTS too.** `aggregateFcfReferees`
+only ever profiles `(e.r || [])[0]`, so those documents never existed — harmless here, but
+an invented assistant whose slug collided with a real referee's would have deleted that
+real profile with nothing reporting it. Caught by a probe assertion that expected 2
+deletions and got 3; the script was wrong, not the expectation. `--remove` also refuses
+outright if `fcfLinks` holds anything outside the `FAKE_GRUP_BASE` range, rather than
+guessing which links are real.
