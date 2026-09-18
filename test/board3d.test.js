@@ -2353,21 +2353,11 @@ describe('right-click in 3D', () => {
 
   it('hands objects and turf to app.js rather than building a menu', () => {
     assert.ok(/onContext\(/.test(ctx), 'runContext must call the hook');
-    /* ⚠ ONE NAMED EXEMPTION, NOT A LOOSER RULE. `readTextLook` creates a
-       hidden `.tb-text-label` purely to MEASURE the 2D stylesheet, so the 3D
-       labels share the 2D font and padding instead of restating them (v259).
-       It is cut out by name before the check, so a div anywhere else in the
-       file — a menu included — still fails exactly as before. Swapping the
-       probe to a <span> to slip past the regex would have been the same
-       exemption with the reason hidden. */
-    const i = bare.indexOf('function readTextLook(');
-    const j = bare.indexOf('\n  }\n', i);
-    assert.ok(i !== -1 && j > i, 'readTextLook is gone — drop this exemption with it');
-    const probeBody = bare.slice(i, j);
-    assert.ok(/visibility:hidden/.test(probeBody) && /probe\.remove\(\)/.test(probeBody),
-        'the exempted element must stay a hidden, removed measurement probe');
-    const guarded = bare.slice(0, i) + bare.slice(j);
-    assert.ok(!/showCtxMenu|createElement\('div'\)/.test(guarded),
+    /* ⚠ The v259 exemption for `readTextLook` is gone with the function:
+       v262 took the words off the pitch, so board3d no longer measures a
+       2D label and no longer creates any element at all. Back to the
+       plain rule. */
+    assert.ok(!/showCtxMenu|createElement\('div'\)/.test(bare),
         'board3d must not build a context menu of its own');
     assert.ok(/SELECTABLE\.indexOf\(h\.kind\) !== -1/.test(ctx),
         'only real objects route to the menu; handles keep their own behaviour');

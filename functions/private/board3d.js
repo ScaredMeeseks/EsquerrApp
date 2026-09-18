@@ -988,191 +988,60 @@ export function createBoard3D(opts) {
     objects.push({mesh, kind: 'penLines', index: pi});
   }
 
-  /* ── Text labels ─────────────────────────────────────────────────
-     A billboarded sprite, drawn to LOOK LIKE ITS 2D COUNTERPART — which it
-     did not, measured in a real browser (v259):
+  /* ── Text labels: a numbered PIN, not the words ──────────────────
+     ⚠ TEXT IS A UI AFFORDANCE, NOT A THING ON THE GRASS, and v259 got that
+     wrong by putting it on the metric table with the players and the balls.
+     The arithmetic was right and the result was absurd: a real note measured
+     on a real board stores 3.59 m per line in a 19.96 m box, so 3D stood a
+     39 m column of text on a 105 m pitch — twice a player's height, drawn
+     exactly as 2D drew it. In 2D the same numbers read as a caption, because
+     there they are measured against the SCREEN and 31 px is just comfortable
+     reading size. Matching the two in metres is what made it monstrous.
 
-                              cap height / em    box height
-       2D  Oswald 300              0.813           1.64 em
-       3D  bold system-ui          0.708           1.42 em
+     This is the trap the OBJ table's own comment names — "a UI affordance
+     that had drifted into being a measurement". So the words leave the
+     scene: app.js lists them under the board, in ordinary UI type that is
+     readable at any camera angle, and what stays here is a pin marking where
+     each note was put. The pin IS metric, because a pin is a thing in a
+     place; the words are not.
 
-     Same em, but a different typeface: 3D capitals came out 13% shorter in
-     a box 14% shorter, never wrapped, and — rasterised once at 48 px with
-     no anisotropy — went soft the moment the camera came in. At the closest
-     zoom (15 m, 45° FOV) a 1.54 m label spans ~110 device pixels per em, so
-     a 48 px texture was being magnified more than twice over.
-
-     ⚠ THE LOOK IS READ FROM THE 2D STYLESHEET, NOT RESTATED HERE. A hidden
-     `.tb-text-label` is measured once for its font, weight, line height and
-     padding, so the two views share one definition — restating those four
-     numbers in this file is exactly how the typeface drifted in the first
-     place. The fallbacks only matter if the probe cannot be styled. */
-  const TEXT_PX_PER_EM = 128;      // crisp at the closest zoom, with headroom
-  const TEXT_MAX_CANVAS = 4096;    // longest side; clamped to the GPU too
-  let textLook = null;
-
-  function readTextLook() {
-    if (textLook) return textLook;
-    const look = {family: "Oswald, 'Arial Narrow', sans-serif", weight: '300',
-      line: 1.3, padX: 0.5, padY: 0.17, radius: 0.33};
-    try {
-      const probe = document.createElement('div');
-      probe.className = 'tb-text-label';
-      probe.style.cssText = 'position:absolute;visibility:hidden;' +
-          'pointer-events:none;font-size:100px;left:-9999px;top:-9999px;';
-      probe.textContent = 'H';
-      container.appendChild(probe);
-      const cs = getComputedStyle(probe);
-      const px = (v) => parseFloat(v) / 100;
-      if (cs.fontFamily) look.family = cs.fontFamily;
-      if (cs.fontWeight) look.weight = cs.fontWeight;
-      if (px(cs.lineHeight) > 0) look.line = px(cs.lineHeight);
-      if (px(cs.paddingLeft) >= 0) look.padX = px(cs.paddingLeft);
-      if (px(cs.paddingTop) >= 0) look.padY = px(cs.paddingTop);
-      if (px(cs.borderTopLeftRadius) >= 0) look.radius = px(cs.borderTopLeftRadius);
-      probe.remove();
-    } catch (e) { /* the fallbacks above are the stylesheet's values */ }
-    textLook = look;
-    return look;
-  }
-
-  /**
-   * Break a label into lines the way the 2D board does.
-   *
-   * With a stored width it wraps inside that box. Without one it is an
-   * absolutely positioned element with `left: x%`, so CSS shrink-to-fit
-   * lets it grow until it meets the pitch's right-hand edge — which is why
-   * a long note wraps in 2D even though nobody gave it a width. Both limits
-   * arrive here in em, measured against the same font.
-   */
-  function wrapLines(g, text, maxEm, fontPx) {
-    const maxPx = maxEm * fontPx;
-    const out = [];
-    String(text).split('\n').forEach((para) => {
-      let line = '';
-      para.split(/\s+/).filter(Boolean).forEach((word) => {
-        const tryLine = line ? line + ' ' + word : word;
-        if (!line || g.measureText(tryLine).width <= maxPx) { line = tryLine; return; }
-        out.push(line);
-        line = word;
-      });
-      out.push(line);
-    });
-    return out.length ? out : [''];
-  }
-
-  /** Paint one label into its sprite: canvas, texture and world size. */
-  function paintText(spr, t) {
-    const look = readTextLook();
-    const m = BG.textMetres(t, getBoardType());
-    const text = String(t[2] || '');
-    const e = BG.extent(getPitch(), getBoardType(), false);
-
-    let pxEm = TEXT_PX_PER_EM;
-    const font = (px) => look.weight + ' ' + px + 'px ' + look.family;
-    const cv = document.createElement('canvas');
-    let g = cv.getContext('2d');
-
-    /* The width a line may use, in em. A stored width is border-box — the
-       global reset — so the padding comes out of it; without one, the room
-       left between the label's anchor and the pitch edge. */
-    const boxEm = m.wM ? m.wM / m.fontM
-      : (e.ax * (100 - Number(t[0] || 0)) / 100) / m.fontM;
-    const lineMaxEm = Math.max(1, boxEm - 2 * look.padX);
-
-    g.font = font(pxEm);
-    let lines = wrapLines(g, text, lineMaxEm, pxEm);
-    const widest = () => Math.max.apply(null, lines.map((l) => g.measureText(l).width));
-    let contentW = m.wM ? lineMaxEm * pxEm : Math.min(widest(), lineMaxEm * pxEm);
-
-    /* One texture per label, so its longest side has a ceiling — the GPU's
-       own, or 4096. Past it, the raster density drops rather than the
-       texture failing to upload and the label vanishing. */
-    const gpuMax = (renderer && renderer.capabilities && renderer.capabilities.maxTextureSize) || 4096;
-    const limit = Math.min(TEXT_MAX_CANVAS, gpuMax);
-    const wantW = contentW + 2 * look.padX * pxEm;
-    const wantH = (lines.length * look.line + 2 * look.padY) * pxEm;
-    const fit = Math.min(1, limit / Math.max(wantW, wantH));
-    if (fit < 1) {
-      pxEm = Math.max(8, Math.floor(pxEm * fit));
-      g.font = font(pxEm);
-      lines = wrapLines(g, text, lineMaxEm, pxEm);
-      contentW = m.wM ? lineMaxEm * pxEm : Math.min(widest(), lineMaxEm * pxEm);
-    }
-
-    const padX = look.padX * pxEm, padY = look.padY * pxEm, lineH = look.line * pxEm;
-    cv.width = Math.max(2, Math.ceil(contentW + 2 * padX));
-    cv.height = Math.max(2, Math.ceil(lines.length * lineH + 2 * padY));
-    g = cv.getContext('2d');   // resizing a canvas resets its context state
-    g.font = font(pxEm);
-
-    const bg = t[3] || '#000000';
-    const r = Math.min(look.radius * pxEm, cv.height / 2, cv.width / 2);
-    g.globalAlpha = t[4] != null ? t[4] : 0.8;
-    g.fillStyle = bg;
-    g.beginPath();
-    if (g.roundRect) g.roundRect(0, 0, cv.width, cv.height, r);
-    else g.rect(0, 0, cv.width, cv.height);
-    g.fill();
-    g.globalAlpha = 1;
-    g.fillStyle = textColorFor(bg);
-    /* Laid out on the LINE BOX, as CSS does: each line's glyphs sit centred
-       in a box `line` em tall. 'middle' puts the em box's centre there, which
-       is the same rule the browser applies to a single-line inline box. */
-    g.textBaseline = 'middle';
-    g.save();
-    g.beginPath();
-    g.rect(0, 0, cv.width, cv.height);   // overflow:hidden, like the 2D box
-    g.clip();
-    lines.forEach((l, i) => g.fillText(l, padX, padY + lineH * (i + 0.5)));
-    g.restore();
-
-    const old = spr.material.map;
-    const tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    /* The pitch lines and the shirt numbers already do this, and for the
-       same reason: seen from the broadcast camera the sprite is at a glancing
-       angle, and without it the glyphs smear. */
-    tex.anisotropy = maxAnisotropy();
-    spr.material.map = tex;
-    spr.material.needsUpdate = true;
-    if (old) old.dispose();
-
-    // The canvas is em-for-em the label, so its size in metres follows.
-    const mPerPx = m.fontM / pxEm;
-    spr.scale.set(cv.width * mPerPx, cv.height * mPerPx, 1);
-  }
+     ⚠ Still pushed to `objects` under kind 'texts', so a right-click on a pin
+     reaches the 2D menu exactly as before — board3d stays an input device. */
+  const NOTE_PIN_M = 1.8;        // a player's disc: a mark, not a billboard
+  const NOTE_PIN_PX = 128;       // its texture, generous for the closest zoom
 
   function addText(t, ti) {
-    const spr = new THREE.Sprite(new THREE.SpriteMaterial({depthTest: false}));
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = NOTE_PIN_PX;
+    const g = cv.getContext('2d');
+    const bg = t[3] || '#000000';
+    const r = NOTE_PIN_PX / 2;
+    g.beginPath();
+    g.arc(r, r, r - 4, 0, Math.PI * 2);
+    g.globalAlpha = t[4] != null ? t[4] : 0.8;
+    g.fillStyle = bg;
+    g.fill();
+    g.globalAlpha = 1;
+    g.lineWidth = 6;
+    g.strokeStyle = textColorFor(bg);
+    g.stroke();
+    /* The number ties the pin to its row in the list under the board. It is
+       the index app.js numbers from too, so the two cannot disagree. */
+    g.fillStyle = textColorFor(bg);
+    g.font = 'bold ' + Math.round(NOTE_PIN_PX * 0.55) + 'px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(String(ti + 1), r, r + NOTE_PIN_PX * 0.04);
+
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAnisotropy();
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, depthTest: false}));
     const w = BG.toWorld(t[0], t[1], getPitch(), getBoardType());
-    /* ⚠ SIZED FROM THE LABEL, NOT FROM A CONSTANT. This used to be a fixed
-       six-metre width applied to every sprite whatever it said — so a
-       three-word note was enormous and a sentence was unreadable, and neither
-       matched what the same label looked like in 2D.
-       (The old literal is NOT spelt out here: object-scale.test.js greps for
-       it to prove it is gone, and a mention in prose would fail that.)
-       BG.textMetres is the same reader the 2D board uses — the rule
-       PLAYER_R and BALL_R already follow. */
-    paintText(spr, t);
+    spr.scale.set(NOTE_PIN_M, NOTE_PIN_M, 1);
     spr.position.set(w.x, 2.2, w.z);
     drawRoot.add(spr);
     objects.push({mesh: spr, kind: 'texts', index: ti});
-
-    /* ⚠ A WEBFONT THAT HAS NOT ARRIVED PAINTS AS ITS FALLBACK, AND STAYS
-       THAT WAY. A canvas does not repaint when the font loads, unlike the
-       2D board's DOM text — so a 3D-first view would bake Arial Narrow into
-       the texture for good. Repaint once the face is actually ready, unless
-       the sprite has been thrown away by a rebuild in the meantime. */
-    const look = readTextLook();
-    const spec = look.weight + ' ' + TEXT_PX_PER_EM + 'px ' + look.family;
-    if (document.fonts && document.fonts.check && !document.fonts.check(spec)) {
-      document.fonts.load(spec).then(() => {
-        if (!spr.parent) return;
-        paintText(spr, t);
-        invalidate();
-      }).catch(() => { /* the fallback face stays; still legible */ });
-    }
   }
 
   // Local copy so this module needs nothing from app.js at import time.

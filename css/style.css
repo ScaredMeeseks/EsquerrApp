@@ -1234,6 +1234,39 @@ tr:hover td { background: #f7f8fa; }
 /* The wrapper is focusable so the Delete key has somewhere to land,
    and every click focuses it — so suppress the ring for the mouse
    case only. :focus-visible still shows it when tabbing in. */
+/* ── The board's text notes, UNDER the 3D view ────────────────────
+   Not on the pitch: a note is a caption, sized against the screen, and
+   v259's attempt to size it against the PITCH stood a 39m column of text
+   on the grass. board3d leaves a numbered pin where each note was put and
+   these rows carry the same numbers.
+
+   ⚠ Inset from the right by --tb-axis, which is the camera/frames column's
+   own width — the one number both sides read, so the panel cannot creep
+   under the controls when that column changes. */
+.tb-3d-notes {
+  position:absolute; z-index:4;
+  /* ⚠ WITH A FALLBACK. --tb-axis is declared on .tb-3d-wrap, and a var()
+     with no fallback that fails to resolve makes the WHOLE declaration
+     invalid — the panel then loses its right edge entirely and sizes itself
+     to its text. 54px is the same figure the wrap declares. */
+  left:8px; right:calc(var(--tb-axis, 54px) + 8px); bottom:8px;
+  display:flex; flex-direction:column; gap:4px;
+  max-height:38%; overflow-y:auto; overscroll-behavior:contain;
+  padding:8px 10px; border-radius:6px;
+  background:rgba(0,0,0,.62); backdrop-filter:blur(2px);
+  color:#fff; font-size:.85rem; line-height:1.35;
+  pointer-events:auto;
+}
+.tb-3d-note { display:flex; align-items:flex-start; gap:8px; }
+.tb-3d-note-n {
+  flex:none; width:18px; height:18px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:.7rem; font-weight:700; margin-top:1px;
+}
+@media (max-width: 600px) {
+  .tb-3d-notes { font-size:.8rem; max-height:32%; }
+}
+
 .tb-3d-wrap:focus { outline:none; }
 .tb-3d-wrap:focus-visible { outline:2px solid var(--accent, #66d9ff); outline-offset:-3px; }
 /* ── The 2D board, laid over the 3D turf while a draw tool is on ──

@@ -291,87 +291,69 @@ describe('the metric sizes resolve to real lengths', () => {
         (BG.OBJ.text * perM).toFixed(2));
   });
 
-  it('3D sizes a label from the table, not from a constant', () => {
-    assert.ok(/BG\.textMetres\(t, getBoardType\(\)\)/.test(b3),
-        'addText must read the shared size, or the two views drift');
-    assert.ok(!/const scale = 6/.test(b3),
-        'the fixed six-metre sprite is back: every label the same width ' +
-        'whatever it says');
-  });
-
-  /* ⚠ SAME METRES WAS NOT ENOUGH. Measured in a real browser after the size
-     fix: 2D draws the label in Oswald 300 (cap height 0.813 em, box 1.64 em),
-     3D painted bold system-ui (0.708 em, box 1.42 em) — so in 3D the capitals
-     came out 13% shorter in a box 14% shorter, never wrapped, and a 48px
-     raster with no anisotropy went soft up close. The owner reported exactly
-     "smaller and less crisp". These pin each cause, not the pixels. */
-  describe('3D paints a label the way 2D does', () => {
-    const fnBody = (name) => {
-      const i = b3.indexOf('function ' + name + '(');
-      assert.ok(i !== -1, name + ' is gone from board3d.js');
-      return b3.slice(i, b3.indexOf('\n  }\n', i));
+  /* ⚠ TEXT IS OFF THE METRIC TABLE AGAIN, AND ON PURPOSE (v262). Sizing it
+     in metres was arithmetically right and absurd in practice: a real note
+     stores 3.59 m per line in a 19.96 m box, so 3D stood a 39 m column of
+     text on a 105 m pitch, drawn exactly as 2D drew it. A note is a caption,
+     measured against the SCREEN — the same "UI affordance that had drifted
+     into being a measurement" the OBJ comment warns about. So the words are
+     listed under the board by app.js and 3D marks the spot with a pin.
+     BG.OBJ.text stays: 2D still sizes the label from it. */
+  describe('a note is a pin in 3D and a row under the board', () => {
+    const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
+    const fnOf = (src, name) => {
+      const i = src.indexOf('function ' + name + '(');
+      assert.ok(i !== -1, name + ' is gone');
+      const j = src.indexOf('\n  }', i);
+      return src.slice(i, j === -1 ? src.length : j);
     };
 
-    it('reads the look from the 2D stylesheet instead of restating it', () => {
-      const look = fnBody('readTextLook');
-      assert.ok(/className = 'tb-text-label'/.test(look),
-          'the look must be measured off a real .tb-text-label');
-      ['fontFamily', 'fontWeight', 'lineHeight', 'paddingLeft', 'paddingTop']
-          .forEach((p) => assert.ok(new RegExp('cs\\.' + p).test(look),
-              'readTextLook must read ' + p + ' from the computed style'));
-      assert.ok(!/'bold ' \+/.test(fnBody('paintText')),
-          'a hardcoded bold face is back — 2D is Oswald 300');
-      assert.ok(!/system-ui/.test(fnBody('paintText')),
-          'a hardcoded system-ui face is back');
+    it('3D draws a pin, not the words', () => {
+      const add = fnOf(b3, 'addText');
+      assert.ok(/String\(ti \+ 1\)/.test(add),
+          'the pin must carry the note number that ties it to its row');
+      assert.ok(!/t\[2\]/.test(add), 'the note text is back on the pitch');
+      assert.ok(/NOTE_PIN_M, NOTE_PIN_M/.test(add),
+          'the pin must be square and metric — it marks a place');
+      assert.ok(/objects\.push\(\{mesh: spr, kind: 'texts', index: ti\}\)/.test(add),
+          'a pin must still be right-clickable as its note');
+      assert.ok(!/BG\.textMetres/.test(b3),
+          'board3d is sizing text in metres again');
     });
 
-    it('rasterises densely enough for the closest zoom, and filters it', () => {
-      /* Closest zoom is 15 m at a 45° FOV: a 1.54 m label spans ~110 device
-         px per em. A raster below that is magnified, which is the blur. */
-      const m = /const TEXT_PX_PER_EM = (\d+)/.exec(b3);
-      assert.ok(m && Number(m[1]) >= 110,
-          'the text raster must be at least ~110 px per em, got ' + (m && m[1]));
-      assert.ok(/tex\.anisotropy = maxAnisotropy\(\)/.test(fnBody('paintText')),
-          'without anisotropy the glyphs smear at the broadcast angle');
-      assert.ok(/maxTextureSize/.test(fnBody('paintText')),
-          'a long label must clamp to the GPU limit rather than fail to upload');
+    it('the pin is a mark, not a billboard', () => {
+      const m = /const NOTE_PIN_M = ([\d.]+)/.exec(b3);
+      assert.ok(m, 'NOTE_PIN_M is gone');
+      const size = Number(m[1]);
+      assert.ok(size > 0 && size <= BG.OBJ.player * 1.5,
+          'a pin larger than a player is a billboard again, got ' + size + ' m');
     });
 
-    it('wraps like 2D, and sizes the sprite from the canvas em-for-em', () => {
-      const p = fnBody('paintText');
-      /* The FIRST layout is the one that is used unless the GPU clamp fires,
-         so it is that assignment that must wrap — a wrapLines call surviving
-         only inside the clamp branch passed a looser check. */
-      assert.ok(/let lines = wrapLines\(g, text, lineMaxEm, pxEm\);/.test(p),
-          'a 3D label must wrap as its 2D box does');
-      /* And the wrapper itself, RUN rather than read: 10px per character,
-         so a 100px line holds ten characters. */
-      const wrapLines = new Function('return ' + fnBody('wrapLines') + '\n  }')();
-      const g = {measureText: (s) => ({width: s.length * 10})};
-      assert.deepStrictEqual(wrapLines(g, 'aaaa bbbb cccc', 1, 100),
-          ['aaaa bbbb', 'cccc'], 'greedy word wrap at the line width');
-      assert.deepStrictEqual(wrapLines(g, 'aaaaaaaaaaaaaaa', 1, 100),
-          ['aaaaaaaaaaaaaaa'], 'a word longer than the line sits alone, as CSS does');
-      assert.deepStrictEqual(wrapLines(g, 'ab\ncd', 1, 100), ['ab', 'cd'],
-          'a typed line break is kept');
-      assert.ok(/100 - Number\(t\[0\]/.test(p),
-          'an unsized label must wrap at the pitch edge, as CSS shrink-to-fit does');
-      assert.ok(/m\.fontM \/ pxEm/.test(p),
-          'the sprite must be sized from metres per canvas pixel');
+    it('app.js lists the words, numbered to match the pins', () => {
+      const body = fnOf(appSrc, 'tbRenderNotes3D');
+      assert.ok(/\(i \+ 1\)/.test(body),
+          'the rows must be numbered the way the pins are');
+      assert.ok(/sanitize\(t\[2\]/.test(body),
+          'the row must carry the note text, escaped');
+      assert.ok(/_tb3dNotesState\(\)/.test(body),
+          'the list must read the SAME state the scene was mounted with');
     });
 
-    it('repaints when the webfont arrives, unless the sprite is gone', () => {
-      /* A canvas does not repaint on font load the way DOM text does, so a
-         3D-first view would bake the fallback face in for good. */
-      const a = fnBody('addText');
-      /* The load has to be REACHABLE: gated only on the face not being ready
-         yet. A call left inside a dead branch passed a check for the call. */
-      assert.ok(/if \(document\.fonts && document\.fonts\.check && !document\.fonts\.check\(spec\)\) \{\s*document\.fonts\.load\(spec\)/.test(a),
-          'addText must wait for the face whenever it is not loaded yet');
-      assert.ok(/if \(!spr\.parent\) return;/.test(a),
-          'a repaint after a rebuild would paint into a disposed sprite');
-      assert.ok(/old\.dispose\(\)/.test(fnBody('paintText')),
-          'a repaint must free the texture it replaces');
+    it('the list is cleared with the scene it describes', () => {
+      assert.ok(/tb-3d-notes/.test(fnOf(appSrc, 'tbDestroy3D')),
+          'a list left behind would sit under a 2D board describing a dead view');
+    });
+
+    it('and redrawn when the board changes', () => {
+      assert.ok(/tbRenderNotes3D\(\)/.test(fnOf(appSrc, 'tb3dTouch')),
+          'editing a note would leave the old words under the board');
+    });
+
+    /* 2D is untouched: the label is still sized from the table there, which
+       is what keeps an untouched board looking exactly as it did. */
+    it('2D still sizes its label from the table', () => {
+      assert.strictEqual(
+          cssVarMetres('.tb-text-label', 'font-size', '--tb-tfs'), BG.OBJ.text);
     });
   });
 

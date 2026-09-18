@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 261;
+  const APP_VERSION = 262;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -9548,6 +9548,10 @@
                   (localStorage.getItem('fa_tactic_board_type') || 'full');
       if (shape !== _tb3dShape) { _tb3dShape = shape; _tb3d.refresh(); }
       else _tb3d.refreshObjects();
+      /* The notes ride the same funnel as the scene. Editing a label's text
+         in 3D redraws its pin and would otherwise leave the row under the
+         board still showing the old words. */
+      tbRenderNotes3D();
     });
   }
 
@@ -10630,6 +10634,11 @@
   function tbDestroy3D() {
     if (_tb3d) { try { _tb3d.destroy(); } catch (e) { /* already gone */ } }
     _tb3d = null;
+    /* The notes are a sibling of the canvas, not a child, so destroy() does
+       not take them with it — a list left behind would sit under a 2D board
+       describing a view that is gone. */
+    document.querySelectorAll('.tb-3d-notes').forEach(function (n) { n.remove(); });
+    _tb3dNotesState = null;
     if (_tb3dCamAbort) { _tb3dCamAbort.abort(); _tb3dCamAbort = null; }
     tbDrawSurface(false);
   }
@@ -10845,6 +10854,44 @@
    * drift, and the options object is the whole contract with board3d.js.
    * Editor callers pass nothing and are unchanged.
    */
+  /* Where the notes panel reads its text from — the same accessor the scene
+     was mounted with, so the list and the pins can never describe different
+     boards. Held here because tb3dTouch has to redraw the list too. */
+  var _tb3dNotesState = null;
+
+  /**
+   * The text notes of the board, listed UNDER the 3D view.
+   *
+   * ⚠ WHY THEY ARE NOT ON THE PITCH. A note is a caption, and 2D sizes it
+   * against the screen — 31px, comfortable to read, whatever the board is.
+   * v259 put it on the metric table instead, so 3D drew it against the PITCH:
+   * a real note came out 3.59m per line in a 19.96m box, a 39m column of text
+   * standing on a 105m pitch. Both views were then drawing the same numbers
+   * and only one of them could be sensible. So the words come off the grass;
+   * board3d leaves a numbered pin where each was placed, and these rows carry
+   * the same numbers in the same order.
+   */
+  function tbRenderNotes3D(wrapId) {
+    const wrap = document.getElementById(wrapId || 'tb-3d-wrap');
+    if (!wrap) return;
+    const old = wrap.querySelector('.tb-3d-notes');
+    if (old) old.remove();
+    if (!_tb3d || !_tb3dNotesState) return;
+    let texts = [];
+    try { texts = (_tb3dNotesState() || {}).texts || []; } catch (e) { texts = []; }
+    if (!texts.length) return;
+    const box = document.createElement('div');
+    box.className = 'tb-3d-notes';
+    box.innerHTML = texts.map(function (t, i) {
+      const c = t[3] || '#000000';
+      return '<span class="tb-3d-note">' +
+        '<b class="tb-3d-note-n" style="background:' + sanitize(c) +
+          ';color:' + textColorFor(c) + ';">' + (i + 1) + '</b>' +
+        sanitize(t[2] || '') + '</span>';
+    }).join('');
+    wrap.appendChild(box);
+  }
+
   async function tbMount3D(hooks, providers) {
     hooks = hooks || {};
     const P = providers || {};
@@ -10933,6 +10980,14 @@
          state, which is what the follow-ball button used to need and
          is why it read its lit class back from the view rather than
          toggling it blind. Follow is parked; see HANDOFF item 19. */
+      /* The notes, under the board. board3d draws a numbered pin where each
+         one was put; the words belong to the DOM, where they stay readable
+         at any camera angle and cost nothing to render. app.js owns them
+         for the same reason it owns the context menus — board3d is a view,
+         not a second UI. */
+      _tb3dNotesState = P.getState || tb3dState;
+      tbRenderNotes3D(wrapId);
+
       const cams = document.getElementById('tb-3d-cams');
       const camsBtn = document.getElementById('tb-cams-btn');
       if (cams && camsBtn) {

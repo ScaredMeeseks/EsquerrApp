@@ -11570,3 +11570,44 @@ and through real WebGL, reported in metres. An earlier probe compared the READ-O
 at its full width and found them matching — which is how this survived v259 and v260.
 
 Push-only: no rules, no functions, `js/board3d.js` untouched.
+
+### 2026-09-18 — The notes come off the pitch (v262)
+
+⚠ **v259 PUT TEXT ON THE METRIC TABLE AND THAT WAS THE MISTAKE**, not any of the
+arithmetic under it. The owner's own board, read off their screen, stores a note **3.59 m
+per line in a 19.96 m box** — so 3D stood a **39 m column of text on a 105 m pitch**,
+twice a player's height, drawn *exactly* as 2D drew it. Both views agreed perfectly and
+only one of them could be sensible.
+
+A note is a **caption**. 2D measures it against the SCREEN — 31 px, comfortable reading
+size, whatever the board is doing. Converting that into metres turned a UI affordance
+into a physical object, which is the very trap `BG.OBJ`'s own comment names: *"a UI
+affordance that had drifted into being a measurement"*. Three rounds (v259, v260, v261)
+were spent making the two views agree in metres; agreeing was never the goal.
+
+So the words leave the scene. `board3d.addText` draws a **numbered pin** — metric,
+because a pin marks a place — and `app.js` lists the text under the board in
+`.tb-3d-notes`, ordinary UI type, readable at any camera angle and free to render.
+⚠ app.js owns that DOM, not board3d: the module stays a view, which is why
+`test/board3d.test.js`'s "no menu of its own" guard went back to its plain form — the
+v259 exemption for `readTextLook` died with the function.
+⚠ The pin still `objects.push({kind:'texts'})`, so a right-click on it reaches the 2D
+menu exactly as before.
+
+2D is **untouched**. `BG.OBJ.text` stays, and the label is still sized from it there.
+
+⚠ **`var()` WITH NO FALLBACK KILLS THE WHOLE DECLARATION.** `right: calc(var(--tb-axis)
++ 8px)` resolved only inside `.tb-3d-wrap`; anywhere else the panel silently lost its
+right edge and sized itself to its text. Caught in the probe, which renders outside that
+wrapper. Same class as the `--tb-ppm` unit bug: an invalid value is dropped, not clamped.
+
+**Tests 3568 → 3569. 8 mutants, 7 killed and the eighth a deliberate no-op control.**
+
+⚠ **NEEDS `.\deploy.ps1 functions`** — `js/board3d.js` changed, and the private copy is
+what `getBoard3d` serves. A push alone ships pins with no list, or a list with no pins.
+
+⚠ **AND A NOTE ON METHOD.** Three rounds of my own probes reported "matches" while the
+owner's screen disagreed, because each probe reproduced a board I had chosen rather than
+theirs. What ended it was a fifteen-line read-only snippet pasted into their console: the
+stored tuple and the rendered numbers, from the machine with the problem. Ask for that
+first next time.
