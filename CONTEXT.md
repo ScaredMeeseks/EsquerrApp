@@ -11733,3 +11733,23 @@ currently generates a new fixture list; that is a seeding job.
 
 Scripts only — no `js/`, `css/` or `index.html` change, so no version bump and no deploy.
 Runs from Cloud Shell like every other Admin SDK script (this machine has no ADC).
+
+**`--link-existing`, added the same day, off the first real run.** The dry run against
+the club reported 75 notes to create but only **25** first-leg links against 51 second
+legs — and the 26 missing lined up with the 27 notes that already existed. Those notes sat
+on the most recently played fixtures, which are second legs, which are exactly the pages a
+briefing belongs on. Create-only was refusing the very fixtures a demo would open.
+
+The flag writes ONE field, `firstLegId`, and only where both it and `legDismissed` are
+absent — the state of a coach who was never asked. `legDismissed: true` is a deliberate
+"no" and is never overridden; an existing `firstLegId` may be a cup tie linked on purpose
+and is never re-derived. `update()` rather than `set(merge:true)`, so a note deleted
+between the read and the write is refused rather than resurrected as a stub holding
+nothing but a link — a document the UI would draw as an empty notes block.
+
+⚠ **The first run of the flag died on `haveNote.add is not a function`** — the Set became
+a Map to carry the notes' values and one `.add()` in the create path was missed. Worth
+recording for what the probe did: four of its seven assertions PASSED while the script was
+crashing on line one of the loop, because "md22 was not touched" is trivially true of a run
+that touched nothing. Only the two that assert something POSITIVE happened caught it. An
+all-green suite whose greens are all negatives is not evidence.

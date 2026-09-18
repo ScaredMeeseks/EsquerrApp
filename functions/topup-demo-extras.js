@@ -6,6 +6,10 @@
  *   node functions/topup-demo-extras.js --club <id>            # DRY RUN
  *   node functions/topup-demo-extras.js --club <id> --apply    # write
  *
+ *   --link-existing   also add `firstLegId` to notes that ALREADY exist and
+ *                     have never been asked the first-leg question. One
+ *                     field, nothing else touched. See its note below.
+ *
  * ─── Why a second script rather than more of topup-demo-season.js ────────
  *
  * That one is proven and is the thing you run first, under time pressure,
@@ -96,6 +100,31 @@ const val = (f, d) => {
 const APPLY = has("--apply");
 const CLUB = val("--club", "");
 const SEED = Number(val("--seed", "20260918"));
+
+/* ── --link-existing ──────────────────────────────────────────────────
+   The one deliberate exception to create-only, and it is narrow on purpose.
+
+   A demo club that has been clicked around already HAS matchNotes, and they
+   sit on the most recently played fixtures — which are the second legs, and
+   therefore exactly the pages a briefing belongs on. Create-only skips them
+   all, so the fixtures most likely to be opened are the ones with no
+   briefing. Measured on the real club: 51 second legs, 25 linked, and the 26
+   skipped were the 27 notes that already existed.
+
+   So this flag writes ONE FIELD, `firstLegId`, and only where the coach has
+   plainly never answered: no `firstLegId` and no `legDismissed`. Those two
+   absent together mean the suggestion banner was never resolved, and the
+   value written is precisely what its "yes" would have written.
+
+   `legDismissed: true` is a deliberate NO and is never overridden — that is
+   the only reason the field exists (js/app.js: "Accepting writes firstLegId;
+   declining writes legDismissed"). An existing firstLegId is never changed
+   either: a coach may have linked a cup tie on purpose, and re-deriving over
+   the top of that would undo a decision he made deliberately.
+
+   Nothing else on the document is touched — update(), not set(merge:true),
+   so no phase, video or board can be disturbed by this path. */
+const LINK_EXISTING = has("--link-existing");
 
 function die(msg) {
   console.error("\nERROR: " + msg + "\n");
@@ -233,7 +262,9 @@ async function main() {
   const notesCol = db.collection("teams").doc(CLUB).collection("matchNotes");
   const [dataSnap, notesSnap] = await Promise.all([dataCol.get(), notesCol.get()]);
   const docs = new Map(dataSnap.docs.map((d) => [d.id, d]));
-  const haveNote = new Set(notesSnap.docs.map((d) => d.id));
+  /* Their VALUES, not merely their ids: --link-existing has to see whether
+     the coach already answered the first-leg question on each one. */
+  const haveNote = new Map(notesSnap.docs.map((d) => [d.id, d.data() || {}]));
   const cats = [...new Set(dataSnap.docs
       .map((d) => d.id.split(Shard.SEP)[1])
       .filter((c) => c && c !== "none"))];
@@ -262,7 +293,9 @@ async function main() {
   }
 
   const writes = [];
-  const summary = {notes: 0, legs: 0, skipped: 0, pre: 0, live: 0, post: 0, videos: 0};
+  const updates = [];
+  const summary = {notes: 0, legs: 0, skipped: 0, pre: 0, live: 0, post: 0,
+    videos: 0, linked: 0, dismissed: 0, already: 0};
   let sample = null;
 
   for (const cat of cats) {
@@ -292,15 +325,33 @@ async function main() {
        whole category's fixtures are the right haystack: amateur-A and
        amateur-B share fa_matches__amateur and the function itself keeps them
        apart. Passing the club name is what decides which side is ours. */
-    let legs = 0; let notes = 0;
+    let legs = 0; let notes = 0; let linked = 0;
 
     for (const m of matches) {
       if (!m || !m.date || m.date < start) continue;
       const id = String(m.id);
-      if (haveNote.has(id)) { summary.skipped++; continue; }
       if (!m.category) continue; // unreadable by everyone — MN.save refuses too
 
       const first = U.findFirstLeg(m, matches, clubName, start);
+
+      /* An existing note is never rebuilt. Under --link-existing it may gain
+         the one field the coach was never asked for — see the flag's note. */
+      const existing = haveNote.get(id);
+      if (existing) {
+        summary.skipped++;
+        if (LINK_EXISTING && first) {
+          if (existing.firstLegId) summary.already++;
+          else if (existing.legDismissed) summary.dismissed++;
+          else {
+            updates.push({ref: notesCol.doc(id),
+              data: {firstLegId: String(first.id)}});
+            summary.linked++;
+            linked++;
+          }
+        }
+        continue;
+      }
+
       const played = m.date < todayStr;
 
       /* A fixture with neither a first leg nor a history is not worth a
@@ -386,12 +437,13 @@ async function main() {
       }
 
       writes.push({ref: notesCol.doc(id), data: note});
-      haveNote.add(id);
+      haveNote.set(id, note);
       notes++; summary.notes++;
       if (!sample) sample = {m, note, first};
     }
 
-    log(`  notes to create: ${notes}   first-leg links: ${legs}`);
+    log(`  notes to create: ${notes}   first-leg links: ${legs}` +
+      (LINK_EXISTING ? `   links added to existing notes: ${linked}` : ""));
   }
 
   if (sample) {
@@ -412,6 +464,17 @@ async function main() {
   log(`  pre / live / post     : ${summary.pre} / ${summary.live} / ${summary.post}`);
   log(`  video links           : ${summary.videos}`);
   log(`  left alone (existing) : ${summary.skipped}`);
+  if (LINK_EXISTING) {
+    log(`  --link-existing:`);
+    log(`    firstLegId added    : ${summary.linked}   ← one field, nothing else touched`);
+    log(`    already linked      : ${summary.already}`);
+    log(`    declined by coach   : ${summary.dismissed}   (legDismissed — never overridden)`);
+  } else if (summary.skipped) {
+    log(`\n  ${summary.skipped} existing notes were skipped entirely. If the fixtures you`);
+    log("  demo are missing their anada briefing, re-run with --link-existing:");
+    log("  it adds firstLegId to notes the coach was never asked about, and");
+    log("  changes nothing else on them.");
+  }
 
   if (!APPLY) {
     log("\nDRY RUN — nothing was written. Re-run with --apply to commit.");
@@ -439,6 +502,29 @@ async function main() {
     }
   }
   log(`  ${writes.length} matchNotes documents created`);
+
+  /* update(), never set(merge:true). Both would leave the other fields
+     alone, but update() also REFUSES a document that has gone away, and
+     that is the difference worth having: a note deleted between the read
+     and the write must not be resurrected as a stub holding nothing but a
+     firstLegId, which is a document the UI would render as an empty notes
+     block a coach cannot account for. */
+  for (let i = 0; i < updates.length; i += CHUNK) {
+    const batch = db.batch();
+    updates.slice(i, i + CHUNK).forEach((u) => batch.update(u.ref, u.data));
+    try {
+      await batch.commit();
+    } catch (e) {
+      if (String(e.message || "").includes("NOT_FOUND")) {
+        die("A matchNotes document was deleted between the read and the write.\n" +
+            "    Nothing in this chunk was written. Re-run — the second pass\n" +
+            "    will see the collection as it now stands.");
+      }
+      throw e;
+    }
+  }
+  if (updates.length) log(`  ${updates.length} existing notes gained a firstLegId`);
+
   log("\nDone. Open any fixture from matchday 18 on to see the anada briefing.");
 }
 
