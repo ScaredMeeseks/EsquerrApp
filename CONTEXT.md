@@ -11669,3 +11669,67 @@ WAS a real duplicate, fixed in v263) and only then as the hint. Both times the f
 plausible and the report survived it. The thing that would have settled it in one pass is
 the same thing that settled the sizing: a screenshot or a console reading from the
 owner's screen, before touching anything.
+
+### 2026-09-18 — `functions/topup-demo-extras.js`: coach notes and the anada briefing
+
+Asked for on the morning of a showing: the demo club with "RPEs, convocatòries,
+trainings, games with their referees, events, results, notes and first leg summaries".
+Six of those eight already had a tool — `topup-demo-season.js`, last applied 2026-08-20
+and by then a month stale (readiness `hasData` expires at `STALE_AFTER_DAYS = 10`, which
+is the recurring "the demo looks empty" complaint, not a new bug). The other two had
+nothing writing them at all, and the third, referees, turned out to be a trap.
+
+**`matchNotes` was written by nothing in the repo.** `teams/{id}/matchNotes/{matchId}` is
+staff-only and deliberately outside the db.js sync layer (see the header of
+`js/match-notes.js`), so neither the seeder nor the season top-up ever touched it. Every
+notes block on every demo fixture was blank.
+
+**The anada briefing was invisible for a reason that is not a bug.** The seeder plays 34
+matchdays against **17** opponents with `home = i % 2 === 0`, and 17 being ODD is what
+makes matchday *n* and *n+17* swap venue — so `findFirstLeg()` really does pair matchdays
+18-34. But it pairs them BY NAME, and a name match is only a suggestion: `mnLegSuggestion`
+raises a banner and waits for the coach's yes/no. The silent, certain link needs
+`fcfActaId` on both fixtures, which a seeded club has not got. Writing `firstLegId` is
+exactly the row that "yes" would have written.
+
+The pairing is computed by **the real `findFirstLeg` required out of `js/utils.js`**, not
+reimplemented — utils.js has `module.exports` and loads clean in Node. A second copy of
+"same rival, venue swapped, earlier date, same squad" would drift from the one the app
+renders from, and the demo would link fixtures the app itself would not pair.
+
+**Referees are deliberately NOT done, and the reason is the point.** They are not a field
+on a match: `mdRefereeFor()` joins `m.fcfActaId` against the global `fcfRefIndex`, and
+`mdLoadAllRefIndices()` only loads indices for grup ids found in `clubs/{id}.fcfLinks`.
+So mock referees mean setting `fcfLinks` — and `fcfLinks` is *also* what switches on
+Classificació and Sancions. Empty, those pages show a clean "no link configured" card;
+set to a grup id the federation does not have, both start fetching live and fail, which is
+what `_leagueErrors` exists to display. **One populated referee panel bought with two
+pages that visibly fail to load is a bad trade on a demo.** The shapes needed are recorded
+in the script header if it is ever wanted; note that `fcfReferees` is rebuilt wholesale
+from `fcfRefIndex` by the Friday job, so only the index is worth writing by hand.
+
+Two guards worth keeping:
+
+- **`ourSideOf()` is EXACT equality on the club name and falls back to `'away'`.** If
+  `clubs/{id}.name` ever drifts from what the seeder wrote into `m.home`, every fixture
+  reads as away, every plan is the away plan and every win is filed as a loss — silently,
+  with nothing on screen looking broken. The script refuses a category where not one
+  fixture has `home === clubName`.
+- **`batch.create()`, not `set()`.** The read and the write are not one transaction, and a
+  note a real coach typed from a demo login between them must win.
+
+⚠ **The first probe reported `0 notes to create` and exited 0.** The fixtures were dated
+before the season boundary the run computed, so every one was skipped — the script ran,
+said nothing was needed, and was wrong. It is the `--verify`-says-healthy failure again:
+a summary computed from the same wrong assumption as the work. What settled it was giving
+the probe the club's REAL shape (34 Saturdays ending 2026-10-24 implies a spring boundary,
+not the 08-15 default) and then mutation-testing the result branch — all-wins and
+all-losses runs produce disjoint debrief text, so it is reading the events and not the
+clock.
+
+⚠ **The demo season runs out on 2026-10-24.** `topup-demo-season.js` extends the training
+calendar only as far as the last fixture, so after that date the club has neither. Nothing
+currently generates a new fixture list; that is a seeding job.
+
+Scripts only — no `js/`, `css/` or `index.html` change, so no version bump and no deploy.
+Runs from Cloud Shell like every other Admin SDK script (this machine has no ADC).
