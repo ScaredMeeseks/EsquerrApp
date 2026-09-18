@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 260;
+  const APP_VERSION = 261;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -16473,6 +16473,34 @@
     if (!field) return;
     const inner = field.querySelector('.tb-field-inner');
     const nameInput = document.getElementById('tb-board-name');
+
+    /* ── Keep --tb-ppm true to the width the board REALLY has ──────────
+       ⚠ THE RENDER WRITES IT FROM tbFieldWidthPx, WHICH IS A MAXIMUM.
+       `tbFieldScaleStyle` sets `max-width`, so the board renders narrower
+       than that on any screen that cannot give it the full 820 — while
+       --tb-ppm went on claiming 7.81 px/m. Everything metric was then drawn
+       at the wrong scale: measured on a 514px board, a 2.56 m label came out
+       20px, which on that pitch is 6.7 m — 60% too big. It stayed hidden
+       because the whole 2D board was wrong together and looked plausible,
+       and only showed up against the 3D view, which is metric for real. That
+       is the "position translates but size does not" report.
+
+       tbFitBoard and the draw-surface follow loop already rewrite this for
+       their own modes, from the same BG.ppm of the same width, so they agree
+       rather than fight. */
+    const tbSyncPpm = () => {
+      const w = field.offsetWidth;   // layout width: ignores the zoom transform
+      if (!(w > 0)) return;
+      field.style.setProperty('--tb-ppm',
+          /* The module-level readers, not the consts declared below: this
+             runs before their initialisers on the no-observer path. */
+          BS.round2(BG.ppm(w, tbPitch(), tbBoardType(), tbVertical())) + 'px');
+    };
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(tbSyncPpm).observe(field);
+    } else {
+      tbSyncPpm();
+    }
 
     const formations = TACTIC_FORMATIONS;
 

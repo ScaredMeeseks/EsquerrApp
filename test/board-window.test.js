@@ -401,7 +401,21 @@ describe('nothing in the editor measures the board the wrong way', () => {
     const i = bare.indexOf('function bindTactics()');
     const editor = bare.slice(i, bare.indexOf('\n  function ', i + 20));
     assert.ok(editor.length > 20000, 'the bindTactics slice looks wrong');
-    const layout = editor.match(/\b(?:inner|field)\.(?:offset|client)(?:Width|Height|Left|Top)\b/g);
+    /* ⚠ ONE NAMED EXEMPTION, AND IT IS THE OPPOSITE CASE. `tbSyncPpm` sets
+       --tb-ppm, the board's SCALE, which must be the layout size precisely
+       because the objects are children of the transformed board and already
+       scale with it — reading a post-transform rect there would size them by
+       the zoom twice over. Cut out by name, so an offsetWidth anywhere else
+       in the editor still fails: every drag and hit test must stay on the
+       rect. (The follow loop is the third case again — the drawing overlay's
+       board is NOT transformed, so there the rect is the right reading.) */
+    const s = editor.indexOf('const tbSyncPpm = ');
+    assert.ok(s !== -1, 'tbSyncPpm is gone — drop this exemption with it');
+    const e = editor.indexOf('};', s) + 2;
+    const guarded = editor.slice(0, s) + editor.slice(e);
+    assert.ok(/field\.offsetWidth/.test(editor.slice(s, e)),
+        'the exempted block must be the one reading the layout width');
+    const layout = guarded.match(/\b(?:inner|field)\.(?:offset|client)(?:Width|Height|Left|Top)\b/g);
     assert.deepStrictEqual(layout || [], [],
         'these read a LAYOUT size and ignore the zoom: ' + (layout || []).join(', '));
     assert.ok((editor.match(/inner\.getBoundingClientRect\(\)/g) || []).length >= 10,

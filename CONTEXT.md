@@ -11533,3 +11533,40 @@ both writers actually go through it, which a mutation run caught surviving.
 **4 mutants, 0 survivors.**
 
 Push-only: no rules, no functions, `js/board3d.js` untouched.
+
+### 2026-09-18 — The editor declared a scale it did not have (v261)
+
+Owner, on v260: *"the positioning translates well, but the size does not"*.
+
+⚠ **`--tb-ppm` WAS A MAXIMUM, NOT A MEASUREMENT.** `tbFieldScaleStyle` sets a
+**max-width**, so the editor board renders narrower than `tbFieldWidthPx` on any screen
+that cannot give it the full 820 — while `tbPpmVar` went on declaring the scale for that
+full width. Measured on a 514 px board: `--tb-ppm` said **7.81** while the truth was
+**4.90**, so a 2.56 m label was drawn at 20 px, which on that pitch is **6.7 m** — 60%
+too big. 3D, which is metric for real, drew 4.2 m. Hence "position translates, size does
+not": positions are percentages and never cared.
+
+⚠ **THIS WAS NEVER A TEXT BUG.** Every metric object — discs, balls, cones, every stroke
+— was equally wrong, which is exactly why nobody saw it: the whole 2D board was wrong
+*together* and looked entirely plausible. The discs' `max(16px, …)` floor hid it further
+at small sizes. It took a second view that is metric for real to expose it, and text to
+be the first object with no floor big enough to mask it.
+
+`bindTactics` now keeps `--tb-ppm` on the width the board actually got, through a
+`ResizeObserver`. `tbFitBoard` and the draw-surface follow loop already rewrote it for
+their own modes, from the same `BG.ppm` of the same width, so they agree rather than fight.
+
+⚠ **`field.offsetWidth`, NOT a rect, and the existing guard in
+`test/board-window.test.js` had to be told why.** That guard bans layout reads inside
+`bindTactics` because every drag and hit test must be post-transform. This is the
+opposite case: the objects are children of the transformed board and already scale with
+it, so reading a post-transform rect would size them by the zoom **twice**. Exempted by
+name — an `offsetWidth` anywhere else in the editor still fails. (The follow loop is the
+third case: its board is not transformed, so there the rect is the right reading.)
+
+**Tests 3567 → 3568. 4 mutants, 0 survivors.** The measurement that found it is
+`scratchpad/build-editor-vs-3d.js`: the same stored label through the **editor's** board
+and through real WebGL, reported in metres. An earlier probe compared the READ-ONLY board
+at its full width and found them matching — which is how this survived v259 and v260.
+
+Push-only: no rules, no functions, `js/board3d.js` untouched.

@@ -191,6 +191,31 @@ describe('the metric sizes resolve to real lengths', () => {
     }));
   };
 
+  /* ⚠ THE RENDER'S VALUE IS A MAXIMUM, NOT A MEASUREMENT. tbFieldScaleStyle
+     sets `max-width`, so the editor board renders narrower than
+     tbFieldWidthPx on any screen that cannot give it the full width — while
+     tbPpmVar went on declaring the scale for that full width. Measured on a
+     514px board: --tb-ppm said 7.81 while the truth was 4.90, so a 2.56 m
+     label was drawn 20px, which is 6.7 m there. Every metric object was
+     equally wrong, which is why it looked plausible — the whole 2D board was
+     wrong together. It only showed against the 3D view, which is metric for
+     real, as "the position translates but the size does not". */
+  it('the editor re-measures the board it actually got', () => {
+    const i = app.indexOf('const tbSyncPpm = ');
+    assert.ok(i !== -1, 'the editor no longer re-measures its own width');
+    const body = app.slice(i, i + 700);
+    assert.ok(/field\.offsetWidth/.test(body),
+        'the scale must come from the RENDERED width, not from a maximum');
+    assert.ok(!/getBoundingClientRect/.test(body),
+        'getBoundingClientRect includes the zoom transform, which must not ' +
+        'rescale the objects — the whole board already scales together');
+    assert.ok(/BG\.ppm\(w, tbPitch\(\), tbBoardType\(\), tbVertical\(\)\)/.test(body),
+        'it must ask BG for the scale, with the board it is actually showing');
+    assert.ok(/ResizeObserver/.test(body),
+        'a one-shot measurement goes stale the moment the window is resized');
+    assert.ok(/\+ 'px'\)/.test(body), 'and it must carry the unit, like every other writer');
+  });
+
   it('every writer gives --tb-ppm a unit', () => {
     const writers = emitted();
     writers.forEach((w) => assert.ok(w.found,
