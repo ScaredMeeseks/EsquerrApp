@@ -1391,8 +1391,15 @@ tr:hover td { background: #f7f8fa; }
 .tb-cam-btn:hover { background:rgba(0,0,0,.75); border-color:rgba(255,255,255,.6); }
 /* Only Follow is a state, so only Follow can look latched. */
 .tb-cam-btn.active { background:var(--primary); border-color:var(--primary); }
+/* ⚠ TOP-CENTRE, NOT BOTTOM-LEFT. The notes panel took the bottom-left
+   corner in v262 and the two overlapped — the hint showed through it, which
+   the owner read as the note being "duplicated below the box, blurry". The
+   other three corners are taken: the menu is top-left, the cameras top-right
+   and the frames rail runs down the right edge, so the free space is the top
+   middle — beside the camera buttons this hint is about. */
 .tb-3d-hint {
-  position:absolute; left:.6rem; bottom:.6rem; z-index:2;
+  position:absolute; top:.6rem; left:50%; transform:translateX(-50%);
+  z-index:2; max-width:min(52%, 42ch); text-align:center;
   color:rgba(255,255,255,.6); font-size:.72rem; pointer-events:none;
 }
 @media (max-width: 640px) { .tb-3d-hint { display:none; } }

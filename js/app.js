@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 263;
+  const APP_VERSION = 264;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?

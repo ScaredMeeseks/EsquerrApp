@@ -11646,3 +11646,26 @@ something named that should not have been.
 — the allow-list assertion and the pick-list one, each now carrying why it changed.
 
 ⚠ **NEEDS `.\deploy.ps1 functions`** — `js/board3d.js` changed again.
+
+### 2026-09-18 — The orbit hint moves out from under the notes (v264)
+
+The last of the "duplicated below the box, blurry" report, and the part I had guessed
+wrong twice: it was **the orbit hint**, not the note. `.tb-3d-hint` sat at
+`left:.6rem; bottom:.6rem` — the exact corner the v262 notes panel took — so the hint
+showed through the panel, and the panel's backdrop filter blurred it.
+
+⚠ **THE BOX HAS FOUR CORNERS AND THREE WERE ALREADY SPOKEN FOR**: the menu is top-left
+(`.tb-m`), the cameras top-right (`.tb-3d-cams`), the frames rail runs down the right
+edge (`.tb-rail`). The free space is the top middle, which is also where a hint about
+orbiting belongs — beside the camera buttons it describes. There is now a test asserting
+the panel keeps `bottom:` and the hint does not, because the next thing added to this box
+will go looking for a free corner too.
+
+Push-only for this change on its own, but it ships with v263's board3d work.
+
+⚠ **AND THE METHOD NOTE, EARNED THREE TIMES OVER IN THIS FEATURE.** "Duplicated and
+blurry" was diagnosed twice from the code — first as the draw-surface allow-list (which
+WAS a real duplicate, fixed in v263) and only then as the hint. Both times the fix was
+plausible and the report survived it. The thing that would have settled it in one pass is
+the same thing that settled the sizing: a screenshot or a console reading from the
+owner's screen, before touching anything.

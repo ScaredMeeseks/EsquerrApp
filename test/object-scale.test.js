@@ -349,6 +349,27 @@ describe('the metric sizes resolve to real lengths', () => {
           'the list must read the SAME state the scene was mounted with');
     });
 
+    /* ⚠ THE PANEL AND THE HINT CANNOT SHARE A CORNER. They did: both sat
+       bottom-left, and the hint showing through the panel is what the owner
+       reported as the note being duplicated and blurry. The other corners
+       are spoken for — menu top-left, cameras top-right, frames rail down
+       the right edge — so the hint is top-centre and the panel owns the
+       bottom. A test, because the next thing added to this box will look
+       for a free corner too. */
+    it('the notes panel and the orbit hint do not share a corner', () => {
+      const rule = (sel) => {
+        const i = css.indexOf(sel + ' {');
+        assert.ok(i !== -1, sel + ' is gone');
+        return css.slice(i, css.indexOf('}', i)).replace(/\/\*[\s\S]*?\*\//g, '');
+      };
+      const notes = rule('.tb-3d-notes');
+      const hint = rule('.tb-3d-hint');
+      assert.ok(/bottom:/.test(notes), 'the notes panel must sit at the bottom');
+      assert.ok(!/bottom:/.test(hint),
+          'the hint is back at the bottom, under the notes panel');
+      assert.ok(/top:/.test(hint), 'the hint must be anchored to the top');
+    });
+
     it('the list is cleared with the scene it describes', () => {
       assert.ok(/tb-3d-notes/.test(fnOf(appSrc, 'tbDestroy3D')),
           'a list left behind would sit under a 2D board describing a dead view');
