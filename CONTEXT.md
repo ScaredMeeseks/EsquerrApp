@@ -11669,3 +11669,386 @@ WAS a real duplicate, fixed in v263) and only then as the hint. Both times the f
 plausible and the report survived it. The thing that would have settled it in one pass is
 the same thing that settled the sizing: a screenshot or a console reading from the
 owner's screen, before touching anything.
+
+### 2026-09-18 — `functions/topup-demo-extras.js`: coach notes and the anada briefing
+
+Asked for on the morning of a showing: the demo club with "RPEs, convocatòries,
+trainings, games with their referees, events, results, notes and first leg summaries".
+Six of those eight already had a tool — `topup-demo-season.js`, last applied 2026-08-20
+and by then a month stale (readiness `hasData` expires at `STALE_AFTER_DAYS = 10`, which
+is the recurring "the demo looks empty" complaint, not a new bug). The other two had
+nothing writing them at all, and the third, referees, turned out to be a trap.
+
+**`matchNotes` was written by nothing in the repo.** `teams/{id}/matchNotes/{matchId}` is
+staff-only and deliberately outside the db.js sync layer (see the header of
+`js/match-notes.js`), so neither the seeder nor the season top-up ever touched it. Every
+notes block on every demo fixture was blank.
+
+**The anada briefing was invisible for a reason that is not a bug.** The seeder plays 34
+matchdays against **17** opponents with `home = i % 2 === 0`, and 17 being ODD is what
+makes matchday *n* and *n+17* swap venue — so `findFirstLeg()` really does pair matchdays
+18-34. But it pairs them BY NAME, and a name match is only a suggestion: `mnLegSuggestion`
+raises a banner and waits for the coach's yes/no. The silent, certain link needs
+`fcfActaId` on both fixtures, which a seeded club has not got. Writing `firstLegId` is
+exactly the row that "yes" would have written.
+
+The pairing is computed by **the real `findFirstLeg` required out of `js/utils.js`**, not
+reimplemented — utils.js has `module.exports` and loads clean in Node. A second copy of
+"same rival, venue swapped, earlier date, same squad" would drift from the one the app
+renders from, and the demo would link fixtures the app itself would not pair.
+
+**Referees are deliberately NOT done, and the reason is the point.** They are not a field
+on a match: `mdRefereeFor()` joins `m.fcfActaId` against the global `fcfRefIndex`, and
+`mdLoadAllRefIndices()` only loads indices for grup ids found in `clubs/{id}.fcfLinks`.
+So mock referees mean setting `fcfLinks` — and `fcfLinks` is *also* what switches on
+Classificació and Sancions. Empty, those pages show a clean "no link configured" card;
+set to a grup id the federation does not have, both start fetching live and fail, which is
+what `_leagueErrors` exists to display. **One populated referee panel bought with two
+pages that visibly fail to load is a bad trade on a demo.** The shapes needed are recorded
+in the script header if it is ever wanted; note that `fcfReferees` is rebuilt wholesale
+from `fcfRefIndex` by the Friday job, so only the index is worth writing by hand.
+
+Two guards worth keeping:
+
+- **`ourSideOf()` is EXACT equality on the club name and falls back to `'away'`.** If
+  `clubs/{id}.name` ever drifts from what the seeder wrote into `m.home`, every fixture
+  reads as away, every plan is the away plan and every win is filed as a loss — silently,
+  with nothing on screen looking broken. The script refuses a category where not one
+  fixture has `home === clubName`.
+- **`batch.create()`, not `set()`.** The read and the write are not one transaction, and a
+  note a real coach typed from a demo login between them must win.
+
+⚠ **The first probe reported `0 notes to create` and exited 0.** The fixtures were dated
+before the season boundary the run computed, so every one was skipped — the script ran,
+said nothing was needed, and was wrong. It is the `--verify`-says-healthy failure again:
+a summary computed from the same wrong assumption as the work. What settled it was giving
+the probe the club's REAL shape (34 Saturdays ending 2026-10-24 implies a spring boundary,
+not the 08-15 default) and then mutation-testing the result branch — all-wins and
+all-losses runs produce disjoint debrief text, so it is reading the events and not the
+clock.
+
+⚠ **The demo season runs out on 2026-10-24.** `topup-demo-season.js` extends the training
+calendar only as far as the last fixture, so after that date the club has neither. Nothing
+currently generates a new fixture list; that is a seeding job.
+
+Scripts only — no `js/`, `css/` or `index.html` change, so no version bump and no deploy.
+Runs from Cloud Shell like every other Admin SDK script (this machine has no ADC).
+
+**`--link-existing`, added the same day, off the first real run.** The dry run against
+the club reported 75 notes to create but only **25** first-leg links against 51 second
+legs — and the 26 missing lined up with the 27 notes that already existed. Those notes sat
+on the most recently played fixtures, which are second legs, which are exactly the pages a
+briefing belongs on. Create-only was refusing the very fixtures a demo would open.
+
+The flag writes ONE field, `firstLegId`, and only where both it and `legDismissed` are
+absent — the state of a coach who was never asked. `legDismissed: true` is a deliberate
+"no" and is never overridden; an existing `firstLegId` may be a cup tie linked on purpose
+and is never re-derived. `update()` rather than `set(merge:true)`, so a note deleted
+between the read and the write is refused rather than resurrected as a stub holding
+nothing but a link — a document the UI would draw as an empty notes block.
+
+⚠ **The first run of the flag died on `haveNote.add is not a function`** — the Set became
+a Map to carry the notes' values and one `.add()` in the create path was missed. Worth
+recording for what the probe did: four of its seven assertions PASSED while the script was
+crashing on line one of the loop, because "md22 was not touched" is trivially true of a run
+that touched nothing. Only the two that assert something POSITIVE happened caught it. An
+all-green suite whose greens are all negatives is not evidence.
+
+### 2026-09-18 — `functions/topup-demo-referees.js`: mock referees, and what they cost
+
+Asked for after the notes shipped, together with mock weather and the opponent's last five.
+Three asks, three different answers, and only one of them was a seeding job.
+
+**Weather needs nothing.** It is stamped onto the `fa_training`/`fa_matches` rows by
+`scheduledWeatherSync`, and the demo club's own blocker — every schedule link being a
+`maps.app.goo.gl` short link — was fixed in v208, after which the run logged `noCoords: 0`
+for both clubs. Two design rules also make mocking it pointless: nothing beyond **3 days**
+is ever fetched (the UI says "available 3 days before" instead), and once an event has
+started its weather is frozen as the historical record. Mock values would be invisible or
+overwritten within the day.
+
+**The opponent's last five cannot be mocked at all.** It is `pt.form_caption` / the "El
+rival" block, fed by `parseFcfForm(r.form)` inside `parseFcfClassificacio()` — the LIVE
+standings row, cached only in the browser's `fa_league_cache_v2`. There is no Firestore
+document behind it, and the same is true of the rival's position and points. Seeding it
+would mean pointing the club at a real FCF group, which means renaming all 17 invented
+opponents to that group's actual teams.
+
+**Referees are the one FCF surface that is Firestore-backed**, so they can be written —
+but only by setting `clubs/{id}.fcfLinks`, because `mdLoadAllRefIndices()` loads an index
+only for grup ids found there. And `fcfLinks` is the master switch for Classificació,
+Sancions, El rival *and* enrolment in `fcfSync`. Pointed at a grup id the federation does
+not have, the first three fetch live and visibly fail where they previously showed clean
+"no link configured" cards. **The owner took that trade with the facts in front of him;
+`--remove` exists so it can be taken back in one command.**
+
+⚠ **What makes this safe rather than reckless is one line in fcf.js**: a fixture is marked
+`fcfRemoved` only `if ((incoming || []).length)` — *"an empty incoming is an outage, not a
+cancelled season"*. Every fixture this script stamps with an `fcfActaId` becomes a
+candidate for removal, and without that guard a fake grup id would have flagged all 102.
+
+Three things worth keeping:
+
+- **The index scorelines are derived from the club's own `fa_match_events`, never
+  invented.** `refereeHistoryWithUs()` renders "our matches he has refereed" from
+  `e.res`/`e.gh`/`e.ga` while the scoreboard directly above renders `calcMatchScore()` of
+  the events. Invent one and the same screen shows two different results for one match.
+- **The profiles are built by the real `aggregateFcfReferees` required out of fcf.js.**
+  `_rebuildFcfReferees` recomputes every profile from `fcfRefIndex` on a schedule, so a
+  hand-rolled shape would be silently replaced within the week. Using the real aggregator
+  makes that rebuild a no-op.
+- **Referees are drawn from disjoint per-division pools, sized ~1 per 10 fixtures.** The
+  first build used `pick(REFEREES)` across the whole list and left **7 of 8 under
+  `REF_MIN_SAMPLE`** — so `refereeDivisionStats` suppressed the H/D/A bar, which is the
+  centre of the panel, on almost every referee. A referee split across two divisions is
+  thin in both while looking busy in neither.
+
+⚠ **`--remove` was deleting `fcfReferees` docs for the ASSISTANTS too.** `aggregateFcfReferees`
+only ever profiles `(e.r || [])[0]`, so those documents never existed — harmless here, but
+an invented assistant whose slug collided with a real referee's would have deleted that
+real profile with nothing reporting it. Caught by a probe assertion that expected 2
+deletions and got 3; the script was wrong, not the expectation. `--remove` also refuses
+outright if `fcfLinks` holds anything outside the `FAKE_GRUP_BASE` range, rather than
+guessing which links are real.
+
+### 2026-09-18 — `functions/diagnose-referees.js` (read-only)
+
+"There are referees assigned for the next game already, but I'm not seeing them" —
+on the REAL club, so the first requirement was a tool with no write path at all, safe to
+point at a PROTECTED club. There is no `--apply` in this file and no `set`/`update`/
+`delete`/`batch` call anywhere in it.
+
+The referee chain has five links and four of them fail the same way on screen — an empty
+referee block:
+
+1. `clubs/{id}.fcfLinks` — `mdLoadAllRefIndices()` loads an index only for grup ids found
+   here. A squad missing from this map can never show a referee.
+2. the fixture's `fcfActaId` — the join key. A hand-typed fixture has none.
+3. `fcfRefIndex/{season}_{grupId}` — `mdLoadRefIndex` queries by grupId and keeps the
+   HIGHEST `season`, so a stale season's doc can shadow the current one.
+4. `actas[actaId].r` — ⚠ **an acta fetched BEFORE the appointment was posted is stored with
+   no `r`, and renders identically to no entry at all.** This is the one that looks like a
+   bug and is not.
+5. `fcfReferees/{slug}` — only the RECORD panel. Its absence shows the name with "no record
+   yet", never a blank block, so it is never the cause of a missing referee.
+
+⚠ **Appointments reach step 4 only through `fcfWeeklyRefs`: `0 6,7,8 * * 5`, three firings
+on FRIDAY MORNING and at no other time.** Each works an 8-minute budget through the queue
+and resumes where the last stopped — but the 06:00 run rebuilds the queue from position 0
+(`freshFor: today`). **A group sitting past the three firings' combined reach is therefore
+never read for appointments at all, week after week, and nothing reports it.** The script
+prints each configured group's queue position against the stored `at` pointer so that is
+read rather than inferred.
+
+Everything else about the club is untouched; this is diagnosis only.
+
+### 2026-09-18 — The referees were never crawled: `fcfCrawl/config` is off
+
+`diagnose-referees.js` against Esquerra (real club) answered it in one run, and it was
+none of the five links in the chain:
+
+```
+enabled: false   seasons: 22, 21
+weekly (appointments, Fri 6/7/8)   queue 0/0   ranAt=(never)
+backfill (played, nightly)         queue 1/1   ranAt=2026-08-24
+grupId 58161881: NOT IN THE QUEUE — out of scope
+grupId 54888305: NOT IN THE QUEUE — out of scope
+```
+
+Two independent faults, either of which alone is sufficient:
+
+1. **`fcfCrawlConfig()` reads `enabled: c.enabled === true`.** It is `false`, so every
+   crawl returns `{skipped:"disabled"}` and writes nothing. The weekly appointments pass
+   has **never run** (`ranAt=(never)`).
+2. ~~**`seasons` is `["22","21"]`** — old FCF temporada ids.~~ **WRONG, corrected
+   2026-09-19.** `22` is the CURRENT season: the A team's own link is
+   `temporadaId=22&…&grupId=58161881`, Tercera Catalana 2026/27. `21` is last season, which
+   is the B team's link and a separate thing the owner already knew about. The queue would
+   have built correctly all along. **`enabled: false` was the whole fault**, and
+   `set-fcf-crawl-config.js` derived the same `["22","21"]` it found — it changed only the
+   switch and `onlyGroups`. Recorded because the wrong half of this diagnosis was acted on
+   and cost nothing only by luck.
+
+⚠ **Nothing is stale here — nothing was ever collected.** `fcfRefIndex` has no document
+for either group, which is why every fixture shows an empty referee block while the
+federation has published the appointment. The five-link chain was a red herring: the
+failure is one level below it, in the crawler that fills the index.
+
+**`functions/set-fcf-crawl-config.js`** (dry run by default) derives `seasons` from the
+`temporadaId` in the club's own `fcfLinks` — the season the lead actually pasted, and
+therefore the one its grup ids belong to — and sets `onlyGroups` to that club's groups,
+because the alternative is every group of every senior tier, which fcf.js calls "days of
+crawling". `tiers`, `budgetMs` and `concurrency` are left alone.
+
+⚠ **Setting the config fetches nothing.** Appointments for an unplayed fixture are read by
+`fcfWeeklyRefs` (`0 6,7,8 * * 5`) and by nothing else — the nightly backfill filters to
+`d.closed` deliberately, since an unplayed acta has no result or cards to learn from. So a
+Saturday fixture appointed on Thursday waits until the following Friday unless the
+`runFcfCrawl` callable is kicked by hand (superuser only) with
+`{wantUnplayed:true, weekly:true, restart:true, aggregate:true}`.
+
+⚠ Changing `seasons`/`tiers`/`onlyGroups` changes `fcfScopeKey()`, so `fcfShouldRebuild()`
+discards the stored queue and both passes restart from position 0.
+
+### 2026-09-19 — `parseFcfActa` was reading nothing: the acta row gained children
+
+The crawl, once enabled, came back `{fetched: 238, closedFetched: 178, withRef: 0}` — the
+**v117 alarm exactly**, and the reason that alarm is worth its noise. 178 played actas with
+no referee on any of them is not a quiet season; `profiles: {referees: 53}` proved the
+parser had worked before.
+
+fcf.cat changed the referee row some time before 2026-09. It used to be a div whose whole
+content was the bare name:
+
+```html
+<div class="…border-b…">TORRIJO SIERRA, ANDREA</div>
+```
+
+and is now a div wrapping the name, a ROLE and a TERRITORY as child elements:
+
+```html
+<div class="…border-b…">
+  <div class="…"><span>ALBA PAJARES, HÉCTOR</span>
+    <span>(<!-- -->Principal<!-- -->)</span></div>
+  <span>Barcelona</span></div>
+```
+
+The old pattern was `<div class="[^"]*border-b[^"]*">([^<]+)</div>`. `[^<]+` demands text
+with **no child tags**, so it failed on the first character and returned `[]` — silently,
+because an acta with no referee assigned is an ordinary thing.
+
+**The fix stops matching a STRUCTURE.** It splits the block at each `border-b` row, strips
+comments then tags out of whatever the row contains, and reads the text. Both shapes reduce
+to the same string, so a third redesign that moves the name into yet another wrapper still
+works. Order matters: `<!-- -->` are React hydration boundaries and must go BEFORE the
+tags, or "(" and "Principal" arrive as separate fragments.
+
+Two consequences worth knowing:
+
+- **The `<h3` bound is now load-bearing.** The old pattern could not match a goals or cards
+  row because those already nest a div; this one can. The bound is the only thing keeping a
+  scorer out of the referee list — the "stops at the next section" test stopped being
+  synthetic the moment this changed, and its comment says so.
+- **`principal` is now read from the page** (`(Principal)`) rather than assumed to be the
+  first row, falling back to first for every old-shape acta, which says nothing.
+
+⚠ **Re-running `test/fixtures/capture-acta.js` would DESTROY the regression guard.** Its
+three fixtures are 2025-26 actas, but fcf.cat renders every acta with the current template
+regardless of season — so a regeneration would quietly rewrite all three into the new shape
+and leave nothing testing the old one. `acta-nested.html` was ADDED (captured from 4119501,
+Esquerra vs Inspire, the fixture that exposed this) rather than regenerating. The window
+holds exactly one name, the referee's, checked before committing because the repo is public.
+
+Unit 3570 → **3574**. Mutation-tested: the old row logic returns `[]` against the new
+fixture while the new one returns the referee, so the added tests genuinely catch it.
+
+⚠ **This is a `functions/` change and needs `.\deploy.ps1 functions`.** The crawl must then
+be re-run (`runFcfCrawl`, superuser, `{wantUnplayed:true, weekly:true, restart:true,
+aggregate:true}`) — the index holds entries with no `r` for every acta already fetched, and
+the re-fetch rule only re-reads an acta whose stored entry has a falsy `c`, so PLAYED actas
+already indexed without a referee will NOT be revisited by an ordinary run.
+
+### 2026-09-19 — …and the acta was never going to be re-read anyway
+
+With the parser fixed and deployed, the crawl came back `{fetched: 0, closedFetched: 0}`.
+Nothing was due. The parser was only half the fault.
+
+```js
+if (cur && (cur.c || !closed)) return;   // the old re-fetch rule
+```
+
+**An unplayed acta already in the index was skipped outright**, so a fixture was read
+EXACTLY ONCE — on whichever crawl first saw it. The federation posts officials on the
+Thursday before the match, so a group crawled when its fixture list was published stored
+every match refereeless and could never go back. The doc comment's promise that "knowing
+Sunday's referee on Friday is the whole point of the weekly pass" was reachable only for
+fixtures no crawl had ever touched.
+
+On 2026-09-19 that was exact: acta 4119501 was fetched the day before by the first enabled
+crawl, stored empty by the broken parser, and frozen until kick-off.
+
+**An unplayed acta is now skipped only once we HAVE its officials.** The clause the
+original rule existed to protect is untouched — one held as unplayed while the federation
+says closed is still due for its result and cards.
+
+⚠ **`horizonDays` (10, `FCF_APPOINTMENT_HORIZON_DAYS`) is not a nicety.** A group holds a
+whole season of fixtures and none is appointed until its own week, so "re-fetch anything
+without a referee" means ~240 pages per group per sweep — trivial at the two groups in
+scope today, **~15,000 the day `onlyGroups` widens to all 64**. Nobody is appointed to a
+March match in September. `fcfActasDue` stays pure: the caller passes Madrid's date.
+
+Unit 3574 → **3577**, including a mutation check that the old rule skipped the very acta
+that failed.
+
+⚠ **Still outstanding: the 178 played actas indexed with `c:1` and no `r`.** `cur.c` short-
+circuits before anything else, so no scheduled run will ever revisit them — a permanent
+hole in the historical record whose only symptom is referees whose match counts are too
+low. Needs the refereeless entries stripped from those two `fcfRefIndex` docs so they look
+never-fetched, then one re-crawl.
+
+### 2026-09-19 — `withRef: 0` was a blind metric, not a failure
+
+After the re-fetch fix the crawl returned `{fetched: 76, closedFetched: 0, withRef: 0}` and
+read as a total failure. It was not. The lane counts:
+
+```js
+if (d.closed) { stats.closedFetched++; if (referees.length) stats.withRef++; }
+```
+
+**`withRef` is only ever counted for CLOSED actas.** All 76 were unplayed, so it could not
+have been anything but zero even had every one named a referee — the appointments pass, the
+entire reason `wantUnplayed` exists, reported nothing about its own work.
+
+`withRef` deliberately STAYS closed-only: it is the v117 parser tripwire, and a played acta
+always names its officials, so folding in unplayed ones (legitimately refereeless until the
+Thursday before) would dilute exactly the signal the alarm depends on. Two new counters
+report the other half instead — `openFetched` and `appointed`.
+
+⚠ **This nearly sent a second round of parser-hunting after a parser that was working.**
+Same shape as the `--verify`-says-healthy trap and the dead-end calendar: a summary that
+cannot see the thing it is being read to judge. When a run's figures say nothing happened,
+check whether the figure is capable of saying otherwise before believing it.
+
+⚠ **`functions/index.js` was rewritten through Python and came back CRLF**, which broke
+`grab()` in `reminders.test.js` — its markers span newlines, so every slice of index.js
+failed to find its anchor and the whole suite aborted before running. The content was
+fine; the line endings were not. CLAUDE.md bans Python rewrites of `app.js` for the
+encoding hazard; the line-ending hazard applies to **every** file the tests slice. Fixed by
+rewriting the bytes with `\r\n` → `\n`.
+
+Unit **3577**, functions **89**, both passing after the fix.
+
+### 2026-09-19 — Working, and what the read-out actually said
+
+`diagnose-referees.js` against the real club after the two fixes and a manual crawl:
+
+```
+✔ 2026-09-19 (TODAY)  Esquerra vs INSPIRE SOCCER
+    referee: ALBA PAJARES, HÉCTOR
+  22_58161881  season=22  comp="TERCERA CATALANA"  actas=240  withReferee=8
+  21_54888305  season=21  comp="QUARTA CATALANA"   actas=238  withReferee=0
+```
+
+Three things in that output that look like faults and are not:
+
+- **The 27 Sept and 3 Oct fixtures carry no referee.** Correct: the federation appoints on
+  the Thursday before. 3 Oct is also outside `FCF_APPOINTMENT_HORIZON_DAYS`, so it is not
+  even re-read yet, by design.
+- **`withReferee=8` out of 240 in Tercera.** Season 22 is 2026/27 and jornada 1 is TODAY —
+  those 240 actas are the whole season's fixture list and 8 is this weekend's appointments,
+  i.e. all there are. No gap.
+- **`alba-pajares-hector` has no `fcfReferees` profile.** `aggregateFcfReferees` skips
+  `!e.c` — an appointment is not a record. The panel shows his name with "no record yet",
+  which is the designed behaviour, not a missing document.
+
+**The one real gap is `21_54888305`: 238 played actas, 0 referees.** Quarta Catalana
+2025/26, crawled while the parser was broken and now marked `c:1`, so `cur.c` short-circuits
+the due rule and no scheduled run will ever revisit it. Recovering it means stripping the
+refereeless entries from that document and re-crawling once. It is also the B team's group,
+which the owner is about to re-point at the current season — so decide whether the history
+is worth it before spending the fetches.
+
+`diagnose-referees.js` now distinguishes the two cases instead of printing one message for
+both: an unplayed acta without officials is PENDING, a played one is a GAP that will never
+self-heal. They had identical wording, which is precisely the confusion this file exists to
+prevent.

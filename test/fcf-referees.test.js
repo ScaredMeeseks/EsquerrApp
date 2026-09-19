@@ -123,8 +123,52 @@ describe('which actas are due', () => {
   });
 
   it('does not re-ask for an unplayed match it already holds', () => {
+    /* ...ONCE IT HAS THE OFFICIALS. That qualifier is the whole of the next
+       three tests, and its absence cost a real appointment. */
     const indexed = {111: {r: ['TORRIJO SIERRA, ANDREA'], j: 3}};
     assert.deepStrictEqual(F.fcfActasDue({3: [match('111', false)]}, indexed), []);
+  });
+
+  it('DOES re-ask for an unplayed match it holds with no referee', () => {
+    /* THE 2026-09-19 FAILURE. The rule was `cur && (cur.c || !closed)`, so an
+       unplayed acta already in the index was skipped outright — meaning a
+       fixture was read exactly ONCE, on whichever crawl first saw it. The
+       federation posts officials on the Thursday before the match, so a group
+       crawled when its fixture list was published stored every match
+       refereeless and could never go back for the appointment.
+
+       "Knowing Sunday's referee on Friday is the whole point of the weekly
+       pass" was therefore reachable only for fixtures no crawl had touched. */
+    const indexed = {111: {r: [], j: 3}};
+    const due = F.fcfActasDue({3: [match('111', false)]}, indexed,
+        {today: '2025-09-14', horizonDays: 10});
+    assert.strictEqual(due.length, 1);
+    assert.strictEqual(due[0].actaId, '111');
+    assert.strictEqual(due[0].closed, false);
+  });
+
+  it('leaves a far-off refereeless fixture alone (the horizon)', () => {
+    /* Without this, "re-fetch anything without a referee" re-reads a whole
+       season of fixtures every sweep — ~240 pages per group, which is fine
+       at the two groups in scope today and ~15,000 the day it widens to 64.
+       Nobody is appointed to a March match in September. */
+    const indexed = {111: {r: [], j: 3}};
+    const far = match('111', false, {COMIENZO1: '2026-03-20 18:00:00'});
+    assert.deepStrictEqual(F.fcfActasDue({3: [far]}, indexed,
+        {today: '2025-09-14', horizonDays: 10}), []);
+    // With no clock the bound is off — expensive, never wrong.
+    assert.strictEqual(F.fcfActasDue({3: [far]}, indexed).length, 1);
+  });
+
+  it('still goes back for the RESULT of one it held as unplayed', () => {
+    /* The clause the original rule existed to protect, and it must survive:
+       we hold it refereeless and unplayed, the federation now says closed, so
+       it is due for its result and cards regardless of the horizon. */
+    const indexed = {111: {r: [], j: 3}};
+    const due = F.fcfActasDue({3: [match('111', true)]}, indexed,
+        {today: '2030-01-01', horizonDays: 1});
+    assert.strictEqual(due.length, 1);
+    assert.strictEqual(due[0].closed, true);
   });
 
   it('returns unplayed matches too, flagged, for the appointments pass', () => {

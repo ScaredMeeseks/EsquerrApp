@@ -305,15 +305,66 @@ function parseFcfActa(html) {
   const end = h.indexOf("<h3", start);
   const block = h.slice(start, end === -1 ? start + 4000 : end);
 
-  const row = /<div class="[^"]*border-b[^"]*">([^<]+)<\/div>/g;
+  /* ── Rows, TWO shapes, because fcf.cat changed one under us ──────────
+     Until 2026-09 a referee row was a div whose whole content was the bare
+     name, and the old pattern `>([^<]+)</div>` read it directly:
+
+       <div class="…border-b…">TORRIJO SIERRA, ANDREA</div>
+
+     The live page now nests the name, a role and a territory inside it:
+
+       <div class="…border-b…">
+         <div class="…"><span>ALBA PAJARES, HÉCTOR</span>
+           <span>(<!-- -->Principal<!-- -->)</span></div>
+         <span>Barcelona</span></div>
+
+     `[^<]+` demands text with no child tags, so it failed on the first
+     character and returned NOTHING — silently, because an acta with no
+     referee is an ordinary thing. That is how 178 played actas came back
+     with zero referees while the crawler reported a clean run. The v117
+     alarm in _runFcfCrawl is what made it visible, and it is why that alarm
+     is worth its noise.
+
+     So this no longer matches a STRUCTURE. It splits the block at each
+     `border-b` row, strips comments and tags out of whatever that row
+     contains, and reads the text. Both shapes above reduce to the same
+     string, and a third redesign that moves the name into yet another
+     wrapper still reduces to it. The `<!-- -->` markers are React
+     hydration boundaries and must go before the tags, or "(" and
+     "Principal" arrive as separate fragments.
+
+     ⚠ The text is cut at the first "(" because the role is appended to the
+     name — "ALBA PAJARES, HÉCTOR (Principal) Barcelona". A name containing
+     a bracket would lose its tail; no federation name has one, and losing a
+     suffix beats keeping "(Principal) Barcelona" on every referee.
+
+     ⚠ And the `<h3` bound above now does MORE work than it used to. The old
+     pattern could not match a goals or cards row because those already nest
+     a div; this one can. The bound is the only thing keeping a scorer out
+     of the referee list, so it must stay — see the "stops at the next
+     section" test, which stopped being synthetic the moment this changed. */
   const out = [];
-  let r;
-  while ((r = row.exec(block))) {
-    const name = decodeHtmlEntities(r[1]).replace(/\s+/g, " ").trim();
-    if (!name || name.indexOf(",") === -1) continue;
+  let principal = "";
+  block.split(/<div class="[^"]*border-b/).slice(1).forEach((piece) => {
+    const gt = piece.indexOf(">");           // end of this row's own tag
+    if (gt === -1) return;
+    const text = decodeHtmlEntities(
+        piece.slice(gt + 1)
+            .replace(/<!--[\s\S]*?-->/g, "") // hydration markers, first
+            .replace(/<[^>]*>/g, " "))       // then every tag
+        .replace(/\s+/g, " ").trim();
+    if (!text) return;
+    const name = text.split("(")[0].replace(/\s+/g, " ").trim();
+    // "Sense àrbitres assignats" and every other prose row fail this.
+    if (!name || name.indexOf(",") === -1) return;
     if (out.indexOf(name) === -1) out.push(name);
-  }
-  return {referees: out, principal: out[0] || "", cardMarks};
+    /* The federation now SAYS which one is the principal. Believe it rather
+       than assuming the first row, and fall back to first when it does not
+       — every acta written in the old shape says nothing. */
+    const role = /\(\s*([^)]*?)\s*\)/.exec(text);
+    if (!principal && role && /principal/i.test(role[1])) principal = name;
+  });
+  return {referees: out, principal: principal || out[0] || "", cardMarks};
 }
 
 /**
@@ -452,9 +503,45 @@ function fcfRefIndexId(season, grupId) {
  * Matches that are still unplayed are returned too, flagged `closed:false`,
  * because knowing Sunday's referee on Friday is the whole point of the
  * weekly pass. Callers that only want history filter them out.
+ *
+ * ── An unplayed acta with NO referee yet is due AGAIN ────────────────────
+ * The rule above was `cur && (cur.c || !closed)` — an unplayed acta already
+ * in the index was skipped outright. So a fixture was read EXACTLY ONCE, on
+ * whichever crawl first saw it, and the federation posts appointments on the
+ * Thursday before the match. A group crawled when its fixture list was
+ * published therefore stored every match refereeless and could never go back,
+ * which made "knowing Sunday's referee on Friday" reachable only for fixtures
+ * no crawl had ever touched. It cost a real appointment on 2026-09-19: the
+ * acta was fetched the day before, stored empty, and frozen until kick-off.
+ *
+ * So an unplayed acta is skipped only once we actually HAVE its officials.
+ * Nothing else changes: a closed acta we have marked `c` is still never
+ * re-read, and one we hold as unplayed while the federation says otherwise is
+ * still due for its result and cards.
+ *
+ * ⚠ `horizonDays` bounds the cost, and is the reason this is not simply
+ * "re-fetch everything without a referee". A group holds a whole season of
+ * fixtures and none of them is appointed until its own week, so an unbounded
+ * rule re-reads ~240 pages per group per sweep for ever — trivial at the two
+ * groups the crawl is scoped to today, ~15,000 pages the day it widens to all
+ * 64. A match more than `horizonDays` away has no referee to learn.
+ * `today` must be a YYYY-MM-DD string; with neither, the bound is off and
+ * every refereeless unplayed acta is due, which is the old pre-horizon
+ * behaviour and safe, just expensive.
  */
-function fcfActasDue(partidos, indexed) {
+function fcfActasDue(partidos, indexed, opts) {
   const have = indexed || {};
+  const o = opts || {};
+  const today = String(o.today || "");
+  const horizon = Number(o.horizonDays) > 0 ? Number(o.horizonDays) : 0;
+  /* Calendar arithmetic on the string, not on a Date: this file is pure and
+     deliberately free of timezone reasoning (see _kickedOff). */
+  let limit = "";
+  if (today && horizon) {
+    const d = new Date(today + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() + horizon);
+    limit = d.toISOString().slice(0, 10);
+  }
   const out = [];
   const seen = {};
   Object.keys(partidos || {}).forEach((jornada) => {
@@ -465,7 +552,14 @@ function fcfActasDue(partidos, indexed) {
       seen[actaId] = true;
       const closed = String(m.CERRADA || "") === "1";
       const cur = have[actaId];
-      if (cur && (cur.c || !closed)) return;
+      if (cur && cur.c) return;                       // history is complete
+      if (cur && !closed) {
+        // Already have the officials — nothing more to learn until it is played.
+        if ((cur.r || []).length) return;
+        // Too far off to have been appointed yet.
+        const when = String(m.COMIENZO1 || "").slice(0, 10);
+        if (limit && when && when > limit) return;
+      }
       const gh = parseInt(m.GOLES_CASA, 10);
       const ga = parseInt(m.GOLES_FUERA, 10);
       out.push({

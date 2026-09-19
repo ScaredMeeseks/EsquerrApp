@@ -1949,6 +1949,13 @@ const FCF_CRAWL_UA = "EsquerrApp/1.0 (+https://scaredmeeseks.github.io/EsquerrAp
    is a few nights either way, and there is nothing to be gained by making it
    one. */
 const FCF_CRAWL_CONCURRENCY = 3;
+/* How far ahead an UNPLAYED acta is worth re-reading for its appointment.
+   The federation posts officials on the Thursday before the match, and the
+   weekly pass runs the Friday, so anything inside a week is in scope; ten
+   days leaves slack for a midweek fixture and for a sweep that slips. Beyond
+   it there is no referee to find, and re-reading a whole season of fixtures
+   every sweep is ~240 pages per group. See the re-fetch rule in fcf.js. */
+const FCF_APPOINTMENT_HORIZON_DAYS = 10;
 /* The function's own limit is 540s; stopping at 480 leaves room to write the
    cursor and the index, which is the part that must not be cut off. */
 const FCF_CRAWL_BUDGET_MS = 480 * 1000;
@@ -2061,11 +2068,20 @@ async function _crawlGroup(entry, opts) {
   const stored = (snap.exists && snap.data()) || {};
   const actas = stored.actas || {};
 
-  let due = fcfActasDue(partidos, actas);
+  /* The horizon only ever applies to UNPLAYED actas we already hold without
+     officials — see the re-fetch rule in fcf.js. Madrid's date, like every
+     other clock in this file, because that is the calendar the fixtures are
+     published against. */
+  let due = fcfActasDue(partidos, actas, {
+    today: new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
+        .format(new Date()),
+    horizonDays: FCF_APPOINTMENT_HORIZON_DAYS,
+  });
   if (!o.wantUnplayed) due = due.filter((d) => d.closed);
   if (o.maxActas) due = due.slice(0, o.maxActas);
 
-  const stats = {fetched: 0, withRef: 0, closedFetched: 0, remaining: 0,
+  const stats = {fetched: 0, withRef: 0, closedFetched: 0,
+    openFetched: 0, appointed: 0, remaining: 0,
     maxCardMarks: 0, cardActa: ""};
   const next = {};
   let i = 0;
@@ -2088,9 +2104,27 @@ async function _crawlGroup(entry, opts) {
           stats.maxCardMarks = cardMarks;
           stats.cardActa = d.actaId;
         }
+        /* Counted per KIND, because the two answer different questions and a
+           single figure answers neither.
+
+           `withRef` is the parser tripwire and must stay closed-only: a
+           played acta always names its officials, so a run that fetches
+           hundreds and finds none means the scrape has died (see the v117
+           alarm below). Unplayed actas are legitimately refereeless until
+           the Thursday before, so folding them in would dilute exactly the
+           signal that alarm depends on.
+
+           But reporting NOTHING about them made the appointments pass
+           unreadable: the 2026-09-19 run came back
+           `{fetched: 76, closedFetched: 0, withRef: 0}` and looked like a
+           total failure when it was a sweep of 76 unplayed actas whose
+           referee count was simply never counted. */
         if (d.closed) {
           stats.closedFetched++;
           if (referees.length) stats.withRef++;
+        } else {
+          stats.openFetched++;
+          if (referees.length) stats.appointed++;
         }
       } catch (err) {
         /* One unreachable acta is a gap in a database of thousands, not a
@@ -2172,7 +2206,7 @@ async function _runFcfCrawl(opts) {
 
   const deadline = Date.now() + cfg.budgetMs;
   const total = {groups: 0, fetched: 0, withRef: 0, closedFetched: 0,
-    maxCardMarks: 0, cardActa: ""};
+    openFetched: 0, appointed: 0, maxCardMarks: 0, cardActa: ""};
   while (at < queue.length && Date.now() < deadline) {
     const entry = queue[at];
     try {
@@ -2185,6 +2219,8 @@ async function _runFcfCrawl(opts) {
       total.fetched += s.fetched;
       total.withRef += s.withRef;
       total.closedFetched += s.closedFetched;
+      total.openFetched += s.openFetched;
+      total.appointed += s.appointed;
       if (s.maxCardMarks > total.maxCardMarks) {
         total.maxCardMarks = s.maxCardMarks;
         total.cardActa = s.cardActa;
