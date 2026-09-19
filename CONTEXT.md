@@ -12088,3 +12088,40 @@ documenting the bug it guards. Comments are stripped before counting now.
 
 Unit 3577 → **3581**. Version triple → **v265** (`js/app.js`, `sw.js`, `check-deploy.js`).
 Needs BOTH a push to main and `.\deploy.ps1 functions`, since check-deploy.js moved with it.
+
+### 2026-09-19 — v266: the loader sat behind the condition that needed its result
+
+v265 shipped, the service worker was cleared, and the page still said *"Encara no hi ha
+àrbitre designat"*. The parser was right, the re-fetch rule was right, the data was in
+Firestore, the rules allowed the read, and the redraw gate was fixed. **Nothing was ever
+fetching the index.**
+
+`mdLoadAllRefIndices()` had exactly ONE caller in the whole file: `mdRefDetailHtml`. And
+`renderMatchDetail` reaches that only here —
+
+```js
+const ref = mdRefereeFor(m);            // null: the index was never loaded
+if (!ref) { …'pt.no_referee'… }         // so it stops here, for ever
+else if (isStaff) { mdRefDetailHtml(m, matches) }   // the only loader, unreachable
+```
+
+— so the fetch lived inside the branch that required its own result. On a cold session the
+index was never requested, `mdRefereeFor` always returned null, and every surface drew the
+empty state whatever was in the database. **This feature could never have displayed a
+referee**, on any page, since it shipped.
+
+`mdLoadAllRefIndices()` now runs inside `mdRefereeFor` itself, at the point of use, so no
+consumer can forget it. It is idempotent — `mdLoadRefIndex` returns immediately for a group
+already loading — so a fixture list of twenty rows still costs one read, which is pinned by
+a test.
+
+⚠ **THE METHOD NOTE, and it is the same one the 3D notes earned three times.** Three
+consecutive fixes today were each correct, each verified, and each insufficient: the acta
+parser (real), the re-fetch rule (real), the redraw gate (real). Every one was diagnosed
+from reading the code and confirmed against data — and none of them could show anything,
+because the question *"is this code reached at all?"* was never asked. `grep -n
+"mdLoadAllRefIndices()"` returning **two** lines, one of them the definition, is what
+finally settled it, and it took ten seconds. **When a fix is correct and changes nothing,
+stop fixing and check reachability.**
+
+Unit 3581 → **3584**. Version triple → **v266**.

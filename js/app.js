@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 265;
+  const APP_VERSION = 266;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -27679,6 +27679,20 @@
   /** The officials of one fixture, from the cached group index, or null. */
   function mdRefereeFor(m) {
     if (!m || !m.fcfActaId) return null;
+    /* ⚠ THE LOAD LIVES HERE, at the point of use, and it has to.
+       Until v266 the only caller of mdLoadAllRefIndices() was
+       mdRefDetailHtml — which renderMatchDetail reaches only inside
+       `else if (isStaff)`, i.e. only once `mdRefereeFor` has ALREADY
+       returned a referee. The loader sat behind the condition that needed
+       its own result, so on a cold session nothing ever fetched the index
+       and every surface drew "no referee appointed" for ever. It was not
+       that the data was late; it was never asked for.
+
+       Idempotent and fire-and-forget: mdLoadRefIndex returns immediately
+       for a group already loading or loaded, so calling this on every
+       lookup costs one property test per fixture row. When it lands,
+       refPageNeedsRedraw() repaints the page that is showing it. */
+    mdLoadAllRefIndices();
     var keys = Object.keys(_refIndex);
     for (var i = 0; i < keys.length; i++) {
       var idx = _refIndex[keys[i]];

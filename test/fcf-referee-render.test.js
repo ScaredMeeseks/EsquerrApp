@@ -112,6 +112,51 @@ const PROFILE = {
   },
 };
 
+describe('asking for the index in the first place', () => {
+  /* ⚠ THE BUG THAT MADE EVERY OTHER FIX LOOK WRONG (v266).
+
+     mdLoadAllRefIndices() had exactly ONE caller: mdRefDetailHtml. And
+     renderMatchDetail reaches that only inside `else if (isStaff)`, which
+     runs only once `mdRefereeFor` has ALREADY returned a referee. So the
+     loader sat behind the condition that needed its own result: on a cold
+     session nothing ever fetched the index, and every surface drew "Encara
+     no hi ha àrbitre designat" whatever was in Firestore.
+
+     Two correct fixes shipped before this one — the acta parser and the
+     redraw gate — and neither could show anything, because the fetch was
+     never started. */
+  it('mdRefereeFor triggers the load it depends on', () => {
+    const R = makeRef({
+      clubConfig: {fcfLinks: {'amateur-A': 'https://www.fcf.cat/x?grupId=999'}},
+    });
+    R.mdRefereeFor({id: 5, fcfActaId: '77'});
+    assert.ok(R._reads.indexOf('fcfRefIndex') !== -1,
+        'mdRefereeFor returned without ever asking for the index; reads were ' +
+        JSON.stringify(R._reads));
+  });
+
+  it('asks once, not once per fixture row', () => {
+    /* A fixture list calls this for every row. mdLoadRefIndex returns
+       immediately for a group already loading, so the read must happen once
+       however many times it is asked. */
+    const R = makeRef({
+      clubConfig: {fcfLinks: {'amateur-A': 'https://www.fcf.cat/x?grupId=999'}},
+    });
+    for (let i = 0; i < 20; i++) R.mdRefereeFor({id: i, fcfActaId: String(i)});
+    const n = R._reads.filter((c) => c === 'fcfRefIndex').length;
+    assert.strictEqual(n, 1, 'asked for the index ' + n + ' times');
+  });
+
+  it('asks for nothing when the fixture has no acta id', () => {
+    const R = makeRef({
+      clubConfig: {fcfLinks: {'amateur-A': 'https://www.fcf.cat/x?grupId=999'}},
+    });
+    R.mdRefereeFor({id: 5});
+    assert.deepStrictEqual(R._reads, [],
+        'a hand-typed fixture can never have a referee — do not spend a read');
+  });
+});
+
 describe('redrawing when the referee data lands', () => {
   /* Both loaders are fire-and-forget ON THE RENDER PATH, so what they fetch
      always arrives after the page has been written. If the page showing it is
