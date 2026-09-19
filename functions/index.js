@@ -2080,7 +2080,8 @@ async function _crawlGroup(entry, opts) {
   if (!o.wantUnplayed) due = due.filter((d) => d.closed);
   if (o.maxActas) due = due.slice(0, o.maxActas);
 
-  const stats = {fetched: 0, withRef: 0, closedFetched: 0, remaining: 0,
+  const stats = {fetched: 0, withRef: 0, closedFetched: 0,
+    openFetched: 0, appointed: 0, remaining: 0,
     maxCardMarks: 0, cardActa: ""};
   const next = {};
   let i = 0;
@@ -2103,9 +2104,27 @@ async function _crawlGroup(entry, opts) {
           stats.maxCardMarks = cardMarks;
           stats.cardActa = d.actaId;
         }
+        /* Counted per KIND, because the two answer different questions and a
+           single figure answers neither.
+
+           `withRef` is the parser tripwire and must stay closed-only: a
+           played acta always names its officials, so a run that fetches
+           hundreds and finds none means the scrape has died (see the v117
+           alarm below). Unplayed actas are legitimately refereeless until
+           the Thursday before, so folding them in would dilute exactly the
+           signal that alarm depends on.
+
+           But reporting NOTHING about them made the appointments pass
+           unreadable: the 2026-09-19 run came back
+           `{fetched: 76, closedFetched: 0, withRef: 0}` and looked like a
+           total failure when it was a sweep of 76 unplayed actas whose
+           referee count was simply never counted. */
         if (d.closed) {
           stats.closedFetched++;
           if (referees.length) stats.withRef++;
+        } else {
+          stats.openFetched++;
+          if (referees.length) stats.appointed++;
         }
       } catch (err) {
         /* One unreachable acta is a gap in a database of thousands, not a
@@ -2187,7 +2206,7 @@ async function _runFcfCrawl(opts) {
 
   const deadline = Date.now() + cfg.budgetMs;
   const total = {groups: 0, fetched: 0, withRef: 0, closedFetched: 0,
-    maxCardMarks: 0, cardActa: ""};
+    openFetched: 0, appointed: 0, maxCardMarks: 0, cardActa: ""};
   while (at < queue.length && Date.now() < deadline) {
     const entry = queue[at];
     try {
@@ -2200,6 +2219,8 @@ async function _runFcfCrawl(opts) {
       total.fetched += s.fetched;
       total.withRef += s.withRef;
       total.closedFetched += s.closedFetched;
+      total.openFetched += s.openFetched;
+      total.appointed += s.appointed;
       if (s.maxCardMarks > total.maxCardMarks) {
         total.maxCardMarks = s.maxCardMarks;
         total.cardActa = s.cardActa;

@@ -11980,3 +11980,35 @@ circuits before anything else, so no scheduled run will ever revisit them — a 
 hole in the historical record whose only symptom is referees whose match counts are too
 low. Needs the refereeless entries stripped from those two `fcfRefIndex` docs so they look
 never-fetched, then one re-crawl.
+
+### 2026-09-19 — `withRef: 0` was a blind metric, not a failure
+
+After the re-fetch fix the crawl returned `{fetched: 76, closedFetched: 0, withRef: 0}` and
+read as a total failure. It was not. The lane counts:
+
+```js
+if (d.closed) { stats.closedFetched++; if (referees.length) stats.withRef++; }
+```
+
+**`withRef` is only ever counted for CLOSED actas.** All 76 were unplayed, so it could not
+have been anything but zero even had every one named a referee — the appointments pass, the
+entire reason `wantUnplayed` exists, reported nothing about its own work.
+
+`withRef` deliberately STAYS closed-only: it is the v117 parser tripwire, and a played acta
+always names its officials, so folding in unplayed ones (legitimately refereeless until the
+Thursday before) would dilute exactly the signal the alarm depends on. Two new counters
+report the other half instead — `openFetched` and `appointed`.
+
+⚠ **This nearly sent a second round of parser-hunting after a parser that was working.**
+Same shape as the `--verify`-says-healthy trap and the dead-end calendar: a summary that
+cannot see the thing it is being read to judge. When a run's figures say nothing happened,
+check whether the figure is capable of saying otherwise before believing it.
+
+⚠ **`functions/index.js` was rewritten through Python and came back CRLF**, which broke
+`grab()` in `reminders.test.js` — its markers span newlines, so every slice of index.js
+failed to find its anchor and the whole suite aborted before running. The content was
+fine; the line endings were not. CLAUDE.md bans Python rewrites of `app.js` for the
+encoding hazard; the line-ending hazard applies to **every** file the tests slice. Fixed by
+rewriting the bytes with `\r\n` → `\n`.
+
+Unit **3577**, functions **89**, both passing after the fix.
