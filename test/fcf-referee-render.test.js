@@ -75,7 +75,8 @@ function makeRef(opts) {
       'sanitize', 't', 'db', 'currentPage', 'renderPage', 'getSession',
       'fcfRefereeSlug', 'refereeDivisionStats', 'fcfGrupId', '_clubConfig',
       BLOCK + '\n return {mdRefereeFor, mdRefereeTagHtml, mdRefPanelHtml,' +
-      ' mdLoadRefIndex, mdLoadRefProfile, _state: function () {' +
+      ' mdLoadRefIndex, mdLoadRefProfile, refPageNeedsRedraw,' +
+      ' _state: function () {' +
       ' return {index: _refIndex, profiles: _refProfiles, open: _refOpen}; },' +
       ' _open: function (v) { _refOpen = v; },' +
       ' _seed: function (g, v) { _refIndex[g] = v; },' +
@@ -90,8 +91,8 @@ function makeRef(opts) {
           doc: () => ({get: () => new Promise(() => {})}),
         };
       }},
-      'matchday',
-      () => {},
+      opts.currentPage || 'matchday',
+      opts.renderPage || (() => {}),
       () => ({}),
       U.fcfRefereeSlug,
       U.refereeDivisionStats,
@@ -110,6 +111,58 @@ const PROFILE = {
     'QUARTA CATALANA': {matches: 3, H: 3, D: 0, A: 0, reds: 0, doubles: 0},
   },
 };
+
+describe('redrawing when the referee data lands', () => {
+  /* Both loaders are fire-and-forget ON THE RENDER PATH, so what they fetch
+     always arrives after the page has been written. If the page showing it is
+     not redrawn, the data sits in _refIndex and the screen says nobody has
+     been appointed.
+
+     That is not hypothetical. On 2026-09-19 the gate read
+     `currentPage === 'matchday'`, the match detail page is 'match-detail',
+     and the referee for that evening's fixture was in memory while the page
+     showed "Encara no hi ha àrbitre designat". Opening a fixture directly is
+     the normal way a coach reaches it. */
+  it('redraws the MATCH DETAIL page, not only the fixture list', () => {
+    assert.strictEqual(
+        makeRef({currentPage: 'match-detail'}).refPageNeedsRedraw(), true);
+  });
+
+  it('still redraws the fixture list', () => {
+    assert.strictEqual(
+        makeRef({currentPage: 'matchday'}).refPageNeedsRedraw(), true);
+  });
+
+  it('does not redraw an unrelated page', () => {
+    /* renderPage() elsewhere is wasted work and can interrupt a form, which
+       is why this is a list of pages and not an unconditional redraw. */
+    /* No '' here: makeRef defaults a falsy page to 'matchday', so an empty
+       string would test the stub rather than the predicate — and, because
+       assert treats '' as no message, it would report as a bare failure. */
+    ['plantilla', 'medical', 'inici', 'calendar'].forEach((p) => {
+      assert.strictEqual(makeRef({currentPage: p}).refPageNeedsRedraw(), false, p);
+    });
+  });
+
+  it('neither loader tests currentPage by hand any more', () => {
+    /* The predicate is worthless if a loader goes on comparing the page id
+       itself — which is exactly how these two drifted apart, one gate being
+       fixed and the other not. There must be ONE answer to this question.
+
+       Comments are stripped first: the note above refPageNeedsRedraw quotes
+       the old gate verbatim, and counting that would make this test fail for
+       documenting the bug it guards. */
+    const code = BLOCK.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const gates = code.match(/currentPage\s*===/g) || [];
+    assert.strictEqual(gates.length, 2,
+        'currentPage is compared ' + gates.length + ' times in the referee ' +
+        'block; only the two inside refPageNeedsRedraw() may do it');
+    assert.ok(BLOCK.indexOf('if (best && refPageNeedsRedraw())') !== -1,
+        'the index loader must ask refPageNeedsRedraw()');
+    assert.ok(BLOCK.indexOf('if (refPageNeedsRedraw()) renderPage') !== -1,
+        'the profile loader must ask refPageNeedsRedraw()');
+  });
+});
 
 describe('naming the referee on a fixture', () => {
   it('shows him when the index has him', () => {

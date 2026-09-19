@@ -12052,3 +12052,39 @@ is worth it before spending the fetches.
 both: an unplayed acta without officials is PENDING, a played one is a GAP that will never
 self-heal. They had identical wording, which is precisely the confusion this file exists to
 prevent.
+
+### 2026-09-19 — v265: the referee was in memory and not on the screen
+
+Everything above was correct and the page still said *"Encara no hi ha àrbitre designat"*.
+The data was in Firestore, the rules allow any signed-in user to read both collections, and
+`diagnose-referees.js` named the referee. The last link was the redraw.
+
+```js
+_refIndex[id] = best || 'none';
+if (best && currentPage === 'matchday') renderPage(getSession());   // v264
+```
+
+Both referee loaders are **fire-and-forget on the render path**, so what they fetch always
+arrives after the page has been written. The match detail page is `'match-detail'`, not
+`'matchday'` — so opening a fixture directly drew the empty state, cached the index a
+moment later, and never repainted. Navigating in from the Calendari worked, which is why
+this looked intermittent.
+
+The irony is that `mdRefDetailHtml` already carries a note explaining it calls
+`mdLoadAllRefIndices()` itself *"because a player can reach a fixture straight from the
+dashboard without the fixture list ever having rendered, and the referee would silently
+never appear"*. The load was fixed for that case; the redraw was not.
+
+`refPageNeedsRedraw()` is now the ONE place that answers it, and both loaders call it. A
+list of pages rather than an unconditional `renderPage()`: redrawing an unrelated screen is
+wasted work and can interrupt a form.
+
+⚠ **Two of the four new tests failed first, and both were the TEST's fault, not the code's.**
+`makeRef` defaults a falsy `currentPage` to `'matchday'`, so asserting `''` tested the stub
+rather than the predicate — and since `assert` treats `''` as "no message", it reported as a
+bare failure with nothing naming the case. The other counted `currentPage ===` across the
+whole block and caught the occurrence inside the new doc comment, i.e. failed for
+documenting the bug it guards. Comments are stripped before counting now.
+
+Unit 3577 → **3581**. Version triple → **v265** (`js/app.js`, `sw.js`, `check-deploy.js`).
+Needs BOTH a push to main and `.\deploy.ps1 functions`, since check-deploy.js moved with it.

@@ -2770,7 +2770,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 264;
+  const APP_VERSION = 265;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -27706,9 +27706,28 @@
           if (!best || String(d.season || '') > String(best.season || '')) best = d;
         });
         _refIndex[id] = best || 'none';
-        if (best && currentPage === 'matchday') renderPage(getSession());
+        if (best && refPageNeedsRedraw()) renderPage(getSession());
       })
       .catch(function () { _refIndex[id] = 'none'; });
+  }
+
+  /* ── Which pages have to be redrawn when referee data lands ──────────
+     Both loaders below are fire-and-forget on the RENDER path, so whatever
+     they fetch arrives after the page has already been written. If the page
+     showing it is not redrawn, the data is in memory and invisible.
+
+     This used to say `currentPage === 'matchday'` and the match detail page
+     is 'match-detail'. Opening a fixture directly — which is what a coach
+     does, and what the "loaded here, not only from the Calendari" note above
+     mdRefDetailHtml exists for — drew the empty state, then cached the index
+     a moment later and never repainted. On 2026-09-19 the referee for that
+     evening's match sat in _refIndex while the page said "Encara no hi ha
+     àrbitre designat".
+
+     Listing the pages rather than redrawing unconditionally: renderPage() on
+     an unrelated screen is wasted work and can interrupt a form. */
+  function refPageNeedsRedraw() {
+    return currentPage === 'matchday' || currentPage === 'match-detail';
   }
 
   function mdLoadRefProfile(name) {
@@ -27718,7 +27737,7 @@
     db.collection('fcfReferees').doc(slug).get()
       .then(function (doc) {
         _refProfiles[slug] = doc.exists ? (doc.data() || {}) : 'none';
-        if (currentPage === 'matchday') renderPage(getSession());
+        if (refPageNeedsRedraw()) renderPage(getSession());
       })
       .catch(function () { _refProfiles[slug] = 'none'; });
   }
