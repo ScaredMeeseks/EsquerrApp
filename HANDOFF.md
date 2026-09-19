@@ -1,159 +1,114 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-18._
+_Rolling document, overwritten each session. Last updated: 2026-09-19._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 264** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
-(functions/check-deploy.js). All three move together; `version-check.test.js` fails the suite if two
-of them disagree.
+**Version triple is at 267** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+(functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3570** — `cd test && npm run test:unit` (~20 s), all passing |
-| Functions tests | **89** — `npm run test:functions`, all passing (was 78; `templates.test.js` gained 11 for the widened callable) |
-| Rules tests | 178 — **not re-run this session**; `firestore.rules` and `storage.rules` were not touched at any point in v254–v264 |
+| Unit tests | **3585** — `cd test && npm run test:unit` (~21 s), all passing |
+| Functions tests | **89** — `npm run test:functions`, all passing |
+| Rules tests | 178 — **not re-run this session**; `firestore.rules` was not touched |
 
-⚠ **The first `test:functions` run of a session is often a lie.** It took 2 minutes and reported 7
-failures in `onMemberCategoryChanged`; the immediate re-run took 27 s and passed all 89. Cold
-emulator. Re-run before believing a functions failure you did not cause.
+**Deploy state.** `main` is current and deployed: merge `23524bf`, then v265 `a7198c2`, v266
+`be4edc9`, v267 `9e80496`. `.\deploy.ps1 functions` was run after each. Pages was verified live by
+curling the served `sw.js` (→ `esquerrapp-v267`) and `css/style.css`, not by trusting the push.
 
-**Deploy state.** No rules deploy all session. `.\deploy.ps1 functions` was run at **v254**,
-**v257**, **v259**, **v262** and **v263**; v255/256, v258, v260, v261 and v264 were push-only.
+⚠ **The service worker serves the old bundle until it is unregistered.** Bumping `CACHE_NAME` is
+not enough on its own, and this cost two rounds of "still not working" against code that was
+already live. The snippet that settles it:
 
-⚠ **`deploy.ps1 functions` fails on a cold `node_modules` and the script says so itself** — *"'Cannot
-determine backend specification. Timeout after 10000' means a COLD node_modules, not broken code.
-Just run it again."* It happened twice this session and the retry worked both times. Separately, one
-deploy **hung for two hours** with no output; killing it and re-running showed every function
-"Skipped (No changes detected)", i.e. the hung run had in fact uploaded before stalling. Run the
-deploy with its output going to a log you can tail — piping it through `grep` buffers everything
-until it exits, so a hang looks identical to silence.
+```js
+navigator.serviceWorker.getRegistrations()
+  .then(rs => Promise.all(rs.map(r => r.unregister())))
+  .then(() => caches.keys())
+  .then(ks => Promise.all(ks.map(k => caches.delete(k))))
+  .then(() => location.reload());
+```
 
-⚠ **`js/board3d.js` is not served from the working tree, not even on localhost.** `tbLoad3D` always
-fetches the module through the `getBoard3d` callable, so **127.0.0.1 runs whatever was last deployed**
-and a 3D change is invisible until `.\deploy.ps1 functions`. There is deliberately no local bypass —
-`test/board3d-gate.test.js` exists because "the whole gate is undone by one static import". I told the
-owner otherwise once and they tested old code for a round.
+**The FCF referee chain now works end to end on the real club** — the 2026-09-19 fixture named its
+referee. It had never worked before: the feature could not have displayed anything since it shipped.
 
-⚠ **Not yet driven by hand.** Everything below is tested, probed and rendered, but the owner has
-only clicked the Pissarres 3D notes. Worth trying first, in this order:
+⚠ **Not yet exercised unattended.** Next Friday's `fcfWeeklyRefs` (`0 6,7,8 * * 5`) is the first run
+of the whole chain with nobody watching. `appointed` in its log is the number to read.
 
-- ⚠ **Configuració (v254), Gestió d'usuaris (v255/256) and Pissarres (v257/258) end to end.** All
-  three were rebuilt into the paper system this session and only the third was exercised by the
-  owner. In Configuració: the folded-in wizard tabs, the club ground link, the kit editor. In
-  Gestió d'usuaris: change a role, move someone between squads, erase. In Pissarres: the club
-  scope selector (it is a **query** now, so it re-reads), the pack chips, and a multi-club send.
-- ⚠ **A text note on a HALF board, and on a resized pitch.** The metric conversion is exact for a
-  board authored horizontally and off by 820/520 for one authored on a vertical full board —
-  bounded, legacy-only, and it stops the first time that label is touched. Nobody has looked at a
-  half board since.
-- ⚠ **A note's box width after a reload** (v260). Any save used to wipe it. Drag a label wider,
-  reload, move it, reload again — the width must survive both.
-- **Right-clicking a note in 3D is gone (v263)** and that is deliberate — its menu is 2D-only now.
-  If the owner wants edit/colour/delete on the rows in the bottom bar, that is the follow-up.
-- **The 3D notes bar on a phone.** It is capped at 32% height under 600px and scrolls; the orbit
-  hint is hidden under 640px entirely, so the corner collision cannot recur there.
+## The session in order
 
----
+### Demo club (C.E. Sant Andreu del Palomar) — for a sales showing
 
-## The session in order — v254 to v264
+`topup-demo-season.js` was re-run: +1,784 records (944 availability, 668 training RPE, 172 match
+RPE) and 12 matches marked played with events and convocatòries. It had last run 2026-08-20, and
+readiness `hasData` expires at 10 days — **that staleness is the recurring "the demo looks empty"
+complaint, not a new bug each time. Re-run it the morning of any showing.**
 
-Two halves. **v254–v258** finished the three admin-tab redesigns from
-`Baixades\EsquerrApp Configuracio UI\design_handoff_admin_tabs`. **v259–v264** was one bug the owner
-reported from a Pissarres card — "3D text translates very badly to 2D" — which took six versions and
-was three different faults plus one wrong premise.
+**`functions/topup-demo-extras.js`** (new) — coach match notes and the anada briefing. Nothing in
+the repo wrote `teams/{id}/matchNotes`, so every notes block was blank, and the briefing never
+rendered because `findFirstLeg()` pairs by NAME, which is only a suggestion until the coach answers
+it. Writing `firstLegId` is exactly what that "yes" would have written. 75 notes created; then
+`--link-existing` filled the one missing field on notes that already existed, taking it to 51 of 51
+second legs carrying a briefing.
 
-### v254. Configuració becomes one page.
+**`functions/topup-demo-referees.js`** (new, **never run**) — mocks federation referees, and carries
+its own `--remove`. It is a deliberate trade: `fcfLinks` is also the master switch for Classificació,
+Sancions and El rival, which then fetch live and fail against a grup id the federation does not have.
 
-The `#view-team-setup` wizard folded into the page as tabs; `#view-team-setup` is now the
-forced-onboarding shell only. `_tsEl`/`_tsAll` scope the shared setup sections to whichever screen
-mounted them. `clubs/{clubId}` gained `town` and `homeLink` (the ground link reverted to raw
-coordinates until `homeLink` existed to store it in), and `setClubCategories` validates both — the
-one rules-adjacent change of the session, and it needed a functions deploy.
+⚠ **The demo season ends 2026-10-24** and nothing generates a new fixture list. `topup-demo-season`
+extends training only as far as the last fixture, so it will report `0` for ever once that date
+passes. That is a seeding job, not a top-up.
 
-⚠ Kits were mixing between clubs, owner-reported and real: `_refreshTeamSetupKits` prefers
-DOM-typed kits and the container was static markup never emptied between club switches. A
-`data-kit-club` stamp fixed it.
+### Real club — why the referee panel was empty (four faults, in order)
 
-### v255/v256. Gestió d'usuaris, and three functions that were not there.
+Each was real, each was verified, and the first three changed nothing on screen.
 
-⚠ **`90812ff` had deleted `detachMemberByEmail`, `loadArchivedSeasons` and `assignMemberToTeam`,
-and nobody noticed for nine days.** Found only because this round's plan said to *reuse* the first
-of them. `loadArchivedSeasons` was the worst: called straight from a renderer, so Temporades
-arxivades threw mid-render and never appeared.
+1. **`fcfCrawl/config.enabled` was `false`.** `fcfCrawlConfig()` reads `c.enabled === true`, so every
+   crawl returned `{skipped:"disabled"}`; the appointments pass had **never run**.
+   ⚠ **Correction to an earlier diagnosis, also corrected in CONTEXT.md**: `seasons: ["22","21"]`
+   were NOT stale ids. `22` is the current season. `enabled` was the whole config fault.
+2. **`parseFcfActa` could not read the page any more.** fcf.cat moved the referee row from bare text
+   to nested children carrying a role and a territory; `([^<]+)` failed on character one and
+   returned `[]` silently. Caught by the v117 alarm — 178 played actas, 0 referees.
+3. **`fcfActasDue` read an unplayed acta exactly once.** `cur && (cur.c || !closed)` skipped anything
+   already stored, so an appointment posted after the first sight was unreachable — which is every
+   appointment, since the federation posts them the Thursday before. Now re-read until it has
+   officials, bounded by `FCF_APPOINTMENT_HORIZON_DAYS = 10`.
+4. **v266 — the loader sat behind the condition that needed its own result.** `mdLoadAllRefIndices()`
+   had ONE caller, inside `mdRefDetailHtml`, which `renderMatchDetail` reaches only in
+   `else if (isStaff)` — i.e. only once `mdRefereeFor` has already returned a referee. Nothing ever
+   fetched the index. The load now lives inside `mdRefereeFor`, at the point of use.
 
-`test/suite-registry.test.js` gained **`the app only calls functions that exist`** — a strict scan
-that strips string literals as well as comments (the i18n table is full of Catalan with brackets;
-76 false positives without it). It runs at zero candidates.
+v265 (`refPageNeedsRedraw`) was also a real bug: both loaders are fire-and-forget on the render path
+and only ever redrew `matchday`, never `match-detail`.
 
-v256 followed the owner's review: the selected filter chip was unreadable (`:hover` at (0,2,0)
-beating `-on` at (0,1,0) — the same specificity trap as v254's over-quota count), and the team
-filter moved to the shared `.cat-bar` rather than a second one of its own.
+v267 — **the referee and notes headings had no underline.** `ptHead()` emits `.pt-sec-head`, which
+has one; both cards bring their own `.card-title`, which said `border: none`. Invisible for as long
+as the referee feature was broken, because the empty path falls back to `ptHead()`.
 
-### v257/v258. Pissarres, and the read that grew with the platform.
+### Tools left behind
 
-Three tabs: the clubs' boards as a card grid, an editor launcher, the platform library with a pack
-manager and multi-club send.
+- **`functions/diagnose-referees.js`** — READ-ONLY, no write path anywhere in it, safe to point at a
+  PROTECTED club. Walks all five links of the referee chain and names the broken one. This is what
+  settled the investigation, after three rounds of reasoning from the code did not.
+- **`functions/set-fcf-crawl-config.js`** — derives `seasons` from the `temporadaId` in the club's
+  own `fcfLinks` and narrows `onlyGroups` to its groups. Dry run by default.
 
-⚠ **`_abLoad` was `4 + N_clubs` queries and every board metadata doc on the platform**, on every
-open and again after every promote and send. ~7 queries at three clubs; ~304 and 14,000+ document
-reads at three hundred. The club scope is a `where()` now, `boardAuthors` is read only for the club
-in view, and "Tots els clubs" carries a `limit()`. ⚠ Rules-satisfiable either way — the
-`isSuperUser()` arm does not depend on the document — so **nothing would ever have complained**.
+## Pending
 
-⚠ **First lazy loading in the app.** A mini pitch is a full pitch, a `ResizeObserver` and the whole
-animation as a JSON attribute; `hydrateRoBoards` warmed every skeleton on the page. It now takes an
-optional `roots` and the catalogue hydrates on intersection, **in batches** so `TB.warm` keeps its
-ten-per-query behaviour.
-
-⚠ **The silent trap:** `tbRoBoardHtml` must get `{boardId, name}`, never the metadata doc —
-`tbResolveRef` returns any ref with `positions` OR `formation`, and a metadata doc **has**
-`formation`, so the doc is mistaken for the drawing and hydration never returns.
-
-`seedClubFromTemplates` widened to `clubIds[]`/`packs[]`, with two latent bugs fixed first:
-`templateIds` was never deduped, and `already` was a pre-loop snapshot. `{clubId, pack}` stays
-accepted forever — an APK installed today outlives any migration window.
-
-v258 was the owner's card review: the board name was on the card twice, the frame badge sat in the
-corner the playback pucks own, and those pucks were sized by `scaleRoField`'s **16px floor** rather
-than its scale term (`30 * s` is ~9px on a card) — now `--ro-ctl-min`, default 16, lowered only by
-the catalogue.
-
-### v259–v264. One report, six versions: text in 3D.
-
-⚠ **READ THIS BEFORE TOUCHING BOARD TEXT.** The full write-up is in `CONTEXT.md`; the shape of it:
-
-1. **v259** — measured in a real browser that a resized label kept its editor pixel box at every
-   board width (300px on a 242px card) while its font was *overwritten* to a fixed reference. Fixed
-   by putting text on the metric table with the players: `BG.OBJ.text`, `--tb-tfs`/`--tb-tw`,
-   convert-legacy-on-read. **This was the wrong premise** — see 6.
-2. **v260** — a label's box width lives in `--tb-tw` when rendered from storage and in an inline
-   `style.width` only just after the resize handle is dragged. `saveTexts` read only the inline one,
-   so **the first save after any reload erased the width**. Invisible in 2D (the live element still
-   held the variable); 3D re-reads storage, so it showed there.
-3. **v261** — `--tb-ppm` was a **maximum, not a measurement**. `tbFieldScaleStyle` sets `max-width`,
-   so a narrower board still declared 7.81 px/m: on a 514px board a 2.56 m label was drawn 20px,
-   which is 6.7 m there. **Every metric object was equally wrong**, which is why it looked plausible
-   — the whole 2D board was wrong together. The editor re-measures with a `ResizeObserver` now.
-4. **v262** — with both views finally agreeing in metres, the result was absurd: the owner's real
-   note stores **3.59 m per line in a 19.96 m box**, so 3D stood a **39 m column of text on a 105 m
-   pitch**. ⚠ **A note is a CAPTION.** 2D sizes it against the screen; converting a reading size
-   into metres turns a UI affordance into a physical object — the exact trap `BG.OBJ`'s own comment
-   names. The words left the scene for a list under the board.
-5. **v263** — the pin that replaced them read as a player, so nothing marks a note on the turf now
-   (cost: **no right-click on a note in 3D**). And the draw-surface allow-list named
-   `.tb-text-label`, so with a draw tool on the note was painted a *second* time over the scene.
-6. **v264** — the remaining "blurry duplicate" was the **orbit hint**, sharing the bottom-left
-   corner with the new notes panel. Moved to top-centre; the other three corners are the menu, the
-   cameras and the frames rail.
-
-⚠ **What actually ended it**: a fifteen-line read-only snippet pasted into the owner's console,
-returning the stored tuple and the rendered numbers **from the machine with the problem**. Three
-rounds of my own probes had reported "matches" because each reproduced a board I had chosen. Ask
-for that first.
+- **The B team's `fcfLinks` still points at last season** (`temporadaId=21`, Quarta Catalana). The
+  owner knows and will change it. Afterwards re-run
+  `set-fcf-crawl-config.js --club <id> --enable --apply`.
+- **`21_54888305` holds 238 played actas with no referees** — crawled while the parser was broken,
+  now marked `c:1`, and `cur.c` short-circuits the due rule, so no scheduled run will ever revisit
+  them. Recovering it means stripping the refereeless entries from that document and re-crawling
+  once. **The owner decided this is not needed yet.**
+- `onlyGroups` is scoped to Esquerra's two groups, so no other club gets referees. Widening it is a
+  Firestore edit rather than a deploy — but read the horizon note in `fcfActasDue` first.
+- `topup-demo-referees.js` has never been run; the demo club still shows clean empty FCF cards.
 
 ---
 
@@ -420,7 +375,44 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 ## Lessons that keep repeating
 
-### New this session (v254–v264)
+### New this session (2026-09-18/19)
+
+- ⚠ **When a fix is correct and changes nothing, stop fixing and check REACHABILITY.** Three
+  consecutive fixes — the acta parser, the re-fetch rule, the redraw gate — were each a genuine bug,
+  each verified against real data, and not one could show anything, because the code that loads the
+  index was never called at all. `grep -n "mdLoadAllRefIndices()"` returned two lines, one of them
+  the definition, and settled it in ten seconds. That grep belonged after the FIRST fix failed to
+  move the symptom, not after the third.
+- ⚠ **Read whether the metric can even see what you are asking it.** `withRef: 0` looked like a dead
+  parser; it counts only CLOSED actas and the run had fetched 76 unplayed ones. Same shape as
+  `--verify` reporting green on a month-stale demo club, and as the dead-end training calendar
+  reporting healthy figures about a calendar that could never grow. Three times in one session a
+  summary could not see the thing it was being read to judge.
+- ⚠ **A guard can be the only reason a change is safe — find it before relying on it.** Setting
+  `fcfLinks` enrols a club in `fcfSync`, and every fixture stamped with an `fcfActaId` becomes a
+  candidate for `fcfRemoved`. Only `if ((incoming || []).length)` — "an empty incoming is an outage,
+  not a cancelled season" — keeps 102 fixtures alive.
+- ⚠ **One bug can mask another, and fixing the first exposes the second.** The missing heading
+  underline had been there all along, invisible while the referee column was empty because the
+  empty path renders a different builder.
+- ⚠ **Python rewrites break more than encoding.** `functions/index.js` came back CRLF and every
+  `grab()` in `reminders.test.js` lost its anchor, aborting the whole suite before a single test
+  ran. CLAUDE.md bans Python rewrites of `app.js` for the encoding hazard; the line-ending hazard
+  applies to **every** file the tests slice.
+- ⚠ **`readCss()` resolves `--pp-*` to literals**, so a CSS assertion written against
+  `var(--pp-ink)` can never fire. Compare the two rules' resolved values to each other instead —
+  that the neighbours agree is the real requirement anyway.
+- **An assertion that passes while the code crashed is worth nothing.** Four of seven probe
+  assertions were green while the script died on line one of its loop, because "this document was
+  not touched" is trivially true of a run that touched nothing. Only the assertions demanding that
+  something POSITIVE happen caught it.
+- **`&&` is not a statement separator in PowerShell 5.1**, and `~/EsquerrApp` is Cloud Shell, not
+  the dev box. Three pastes went into the wrong terminal. Name the shell every time.
+- **A script FILE resolves modules from its own directory, not the cwd** — only `node -e` uses the
+  cwd. An Admin SDK helper written to `/tmp` cannot find `firebase-admin`.
+
+### From the previous session (v254–v264)
+
 
 - ⚠ **When the owner's screen and your probe disagree, the probe is wrong — go and get their
   numbers.** v259–v261 were three fixes shipped against a symptom that never changed, because every
