@@ -11942,3 +11942,41 @@ be re-run (`runFcfCrawl`, superuser, `{wantUnplayed:true, weekly:true, restart:t
 aggregate:true}`) — the index holds entries with no `r` for every acta already fetched, and
 the re-fetch rule only re-reads an acta whose stored entry has a falsy `c`, so PLAYED actas
 already indexed without a referee will NOT be revisited by an ordinary run.
+
+### 2026-09-19 — …and the acta was never going to be re-read anyway
+
+With the parser fixed and deployed, the crawl came back `{fetched: 0, closedFetched: 0}`.
+Nothing was due. The parser was only half the fault.
+
+```js
+if (cur && (cur.c || !closed)) return;   // the old re-fetch rule
+```
+
+**An unplayed acta already in the index was skipped outright**, so a fixture was read
+EXACTLY ONCE — on whichever crawl first saw it. The federation posts officials on the
+Thursday before the match, so a group crawled when its fixture list was published stored
+every match refereeless and could never go back. The doc comment's promise that "knowing
+Sunday's referee on Friday is the whole point of the weekly pass" was reachable only for
+fixtures no crawl had ever touched.
+
+On 2026-09-19 that was exact: acta 4119501 was fetched the day before by the first enabled
+crawl, stored empty by the broken parser, and frozen until kick-off.
+
+**An unplayed acta is now skipped only once we HAVE its officials.** The clause the
+original rule existed to protect is untouched — one held as unplayed while the federation
+says closed is still due for its result and cards.
+
+⚠ **`horizonDays` (10, `FCF_APPOINTMENT_HORIZON_DAYS`) is not a nicety.** A group holds a
+whole season of fixtures and none is appointed until its own week, so "re-fetch anything
+without a referee" means ~240 pages per group per sweep — trivial at the two groups in
+scope today, **~15,000 the day `onlyGroups` widens to all 64**. Nobody is appointed to a
+March match in September. `fcfActasDue` stays pure: the caller passes Madrid's date.
+
+Unit 3574 → **3577**, including a mutation check that the old rule skipped the very acta
+that failed.
+
+⚠ **Still outstanding: the 178 played actas indexed with `c:1` and no `r`.** `cur.c` short-
+circuits before anything else, so no scheduled run will ever revisit them — a permanent
+hole in the historical record whose only symptom is referees whose match counts are too
+low. Needs the refereeless entries stripped from those two `fcfRefIndex` docs so they look
+never-fetched, then one re-crawl.

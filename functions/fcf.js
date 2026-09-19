@@ -503,9 +503,45 @@ function fcfRefIndexId(season, grupId) {
  * Matches that are still unplayed are returned too, flagged `closed:false`,
  * because knowing Sunday's referee on Friday is the whole point of the
  * weekly pass. Callers that only want history filter them out.
+ *
+ * ── An unplayed acta with NO referee yet is due AGAIN ────────────────────
+ * The rule above was `cur && (cur.c || !closed)` — an unplayed acta already
+ * in the index was skipped outright. So a fixture was read EXACTLY ONCE, on
+ * whichever crawl first saw it, and the federation posts appointments on the
+ * Thursday before the match. A group crawled when its fixture list was
+ * published therefore stored every match refereeless and could never go back,
+ * which made "knowing Sunday's referee on Friday" reachable only for fixtures
+ * no crawl had ever touched. It cost a real appointment on 2026-09-19: the
+ * acta was fetched the day before, stored empty, and frozen until kick-off.
+ *
+ * So an unplayed acta is skipped only once we actually HAVE its officials.
+ * Nothing else changes: a closed acta we have marked `c` is still never
+ * re-read, and one we hold as unplayed while the federation says otherwise is
+ * still due for its result and cards.
+ *
+ * ⚠ `horizonDays` bounds the cost, and is the reason this is not simply
+ * "re-fetch everything without a referee". A group holds a whole season of
+ * fixtures and none of them is appointed until its own week, so an unbounded
+ * rule re-reads ~240 pages per group per sweep for ever — trivial at the two
+ * groups the crawl is scoped to today, ~15,000 pages the day it widens to all
+ * 64. A match more than `horizonDays` away has no referee to learn.
+ * `today` must be a YYYY-MM-DD string; with neither, the bound is off and
+ * every refereeless unplayed acta is due, which is the old pre-horizon
+ * behaviour and safe, just expensive.
  */
-function fcfActasDue(partidos, indexed) {
+function fcfActasDue(partidos, indexed, opts) {
   const have = indexed || {};
+  const o = opts || {};
+  const today = String(o.today || "");
+  const horizon = Number(o.horizonDays) > 0 ? Number(o.horizonDays) : 0;
+  /* Calendar arithmetic on the string, not on a Date: this file is pure and
+     deliberately free of timezone reasoning (see _kickedOff). */
+  let limit = "";
+  if (today && horizon) {
+    const d = new Date(today + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() + horizon);
+    limit = d.toISOString().slice(0, 10);
+  }
   const out = [];
   const seen = {};
   Object.keys(partidos || {}).forEach((jornada) => {
@@ -516,7 +552,14 @@ function fcfActasDue(partidos, indexed) {
       seen[actaId] = true;
       const closed = String(m.CERRADA || "") === "1";
       const cur = have[actaId];
-      if (cur && (cur.c || !closed)) return;
+      if (cur && cur.c) return;                       // history is complete
+      if (cur && !closed) {
+        // Already have the officials — nothing more to learn until it is played.
+        if ((cur.r || []).length) return;
+        // Too far off to have been appointed yet.
+        const when = String(m.COMIENZO1 || "").slice(0, 10);
+        if (limit && when && when > limit) return;
+      }
       const gh = parseInt(m.GOLES_CASA, 10);
       const ga = parseInt(m.GOLES_FUERA, 10);
       out.push({

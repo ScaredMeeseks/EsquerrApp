@@ -1949,6 +1949,13 @@ const FCF_CRAWL_UA = "EsquerrApp/1.0 (+https://scaredmeeseks.github.io/EsquerrAp
    is a few nights either way, and there is nothing to be gained by making it
    one. */
 const FCF_CRAWL_CONCURRENCY = 3;
+/* How far ahead an UNPLAYED acta is worth re-reading for its appointment.
+   The federation posts officials on the Thursday before the match, and the
+   weekly pass runs the Friday, so anything inside a week is in scope; ten
+   days leaves slack for a midweek fixture and for a sweep that slips. Beyond
+   it there is no referee to find, and re-reading a whole season of fixtures
+   every sweep is ~240 pages per group. See the re-fetch rule in fcf.js. */
+const FCF_APPOINTMENT_HORIZON_DAYS = 10;
 /* The function's own limit is 540s; stopping at 480 leaves room to write the
    cursor and the index, which is the part that must not be cut off. */
 const FCF_CRAWL_BUDGET_MS = 480 * 1000;
@@ -2061,7 +2068,15 @@ async function _crawlGroup(entry, opts) {
   const stored = (snap.exists && snap.data()) || {};
   const actas = stored.actas || {};
 
-  let due = fcfActasDue(partidos, actas);
+  /* The horizon only ever applies to UNPLAYED actas we already hold without
+     officials — see the re-fetch rule in fcf.js. Madrid's date, like every
+     other clock in this file, because that is the calendar the fixtures are
+     published against. */
+  let due = fcfActasDue(partidos, actas, {
+    today: new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
+        .format(new Date()),
+    horizonDays: FCF_APPOINTMENT_HORIZON_DAYS,
+  });
   if (!o.wantUnplayed) due = due.filter((d) => d.closed);
   if (o.maxActas) due = due.slice(0, o.maxActas);
 
