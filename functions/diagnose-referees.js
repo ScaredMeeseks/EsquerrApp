@@ -195,9 +195,23 @@ async function main() {
         }
         if (!(e.r || []).length) {
           bad(`${when}  ${vs}   acta ${m.fcfActaId}`);
-          info(`acta IS indexed (c=${!!e.c}, d=${e.d || "?"}) but carries NO`);
-          info("referee — it was fetched before the appointment was posted.");
-          info("Only the Friday fcfWeeklyRefs pass re-reads unplayed actas.");
+          info(`acta IS indexed (c=${!!e.c}, d=${e.d || "?"}) but carries NO referee.`);
+          if (e.c) {
+            /* A PLAYED acta always names its officials, so this is a hole in
+               the record, and `cur.c` short-circuits the due rule — no
+               scheduled run will ever revisit it. */
+            info("⚠ it is marked PLAYED, so this is a GAP, not a pending");
+            info("  appointment — and the due rule will never re-read it.");
+            info("  Strip refereeless entries from this group's index and re-crawl.");
+          } else {
+            /* Normal and temporary since the 2026-09-19 re-fetch fix: the
+               federation posts officials on the Thursday before, and an
+               unplayed acta is now re-read until it has them — but only
+               inside FCF_APPOINTMENT_HORIZON_DAYS of kick-off. */
+            info("not appointed yet. The federation posts officials on the");
+            info("  Thursday before, and an unplayed acta is now re-read until");
+            info("  it has them — within ~10 days of kick-off, not before.");
+          }
           return;
         }
         ok(`${when}  ${vs}`);

@@ -11860,9 +11860,14 @@ Two independent faults, either of which alone is sufficient:
 1. **`fcfCrawlConfig()` reads `enabled: c.enabled === true`.** It is `false`, so every
    crawl returns `{skipped:"disabled"}` and writes nothing. The weekly appointments pass
    has **never run** (`ranAt=(never)`).
-2. **`seasons` is `["22","21"]`** — old FCF temporada ids. `fcfBuildQueue` passes these to
-   `competicions?temporada=`, so even switched on, the queue could never contain grup ids
-   58161881/54888305. An empty queue is not an error, so this fails silently.
+2. ~~**`seasons` is `["22","21"]`** — old FCF temporada ids.~~ **WRONG, corrected
+   2026-09-19.** `22` is the CURRENT season: the A team's own link is
+   `temporadaId=22&…&grupId=58161881`, Tercera Catalana 2026/27. `21` is last season, which
+   is the B team's link and a separate thing the owner already knew about. The queue would
+   have built correctly all along. **`enabled: false` was the whole fault**, and
+   `set-fcf-crawl-config.js` derived the same `["22","21"]` it found — it changed only the
+   switch and `onlyGroups`. Recorded because the wrong half of this diagnosis was acted on
+   and cost nothing only by luck.
 
 ⚠ **Nothing is stale here — nothing was ever collected.** `fcfRefIndex` has no document
 for either group, which is why every fixture shows an empty referee block while the
@@ -12012,3 +12017,38 @@ encoding hazard; the line-ending hazard applies to **every** file the tests slic
 rewriting the bytes with `\r\n` → `\n`.
 
 Unit **3577**, functions **89**, both passing after the fix.
+
+### 2026-09-19 — Working, and what the read-out actually said
+
+`diagnose-referees.js` against the real club after the two fixes and a manual crawl:
+
+```
+✔ 2026-09-19 (TODAY)  Esquerra vs INSPIRE SOCCER
+    referee: ALBA PAJARES, HÉCTOR
+  22_58161881  season=22  comp="TERCERA CATALANA"  actas=240  withReferee=8
+  21_54888305  season=21  comp="QUARTA CATALANA"   actas=238  withReferee=0
+```
+
+Three things in that output that look like faults and are not:
+
+- **The 27 Sept and 3 Oct fixtures carry no referee.** Correct: the federation appoints on
+  the Thursday before. 3 Oct is also outside `FCF_APPOINTMENT_HORIZON_DAYS`, so it is not
+  even re-read yet, by design.
+- **`withReferee=8` out of 240 in Tercera.** Season 22 is 2026/27 and jornada 1 is TODAY —
+  those 240 actas are the whole season's fixture list and 8 is this weekend's appointments,
+  i.e. all there are. No gap.
+- **`alba-pajares-hector` has no `fcfReferees` profile.** `aggregateFcfReferees` skips
+  `!e.c` — an appointment is not a record. The panel shows his name with "no record yet",
+  which is the designed behaviour, not a missing document.
+
+**The one real gap is `21_54888305`: 238 played actas, 0 referees.** Quarta Catalana
+2025/26, crawled while the parser was broken and now marked `c:1`, so `cur.c` short-circuits
+the due rule and no scheduled run will ever revisit it. Recovering it means stripping the
+refereeless entries from that document and re-crawling once. It is also the B team's group,
+which the owner is about to re-point at the current season — so decide whether the history
+is worth it before spending the fetches.
+
+`diagnose-referees.js` now distinguishes the two cases instead of printing one message for
+both: an unplayed acta without officials is PENDING, a played one is a GAP that will never
+self-heal. They had identical wording, which is precisely the confusion this file exists to
+prevent.
