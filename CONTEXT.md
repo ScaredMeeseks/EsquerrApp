@@ -11884,3 +11884,61 @@ Saturday fixture appointed on Thursday waits until the following Friday unless t
 
 ⚠ Changing `seasons`/`tiers`/`onlyGroups` changes `fcfScopeKey()`, so `fcfShouldRebuild()`
 discards the stored queue and both passes restart from position 0.
+
+### 2026-09-19 — `parseFcfActa` was reading nothing: the acta row gained children
+
+The crawl, once enabled, came back `{fetched: 238, closedFetched: 178, withRef: 0}` — the
+**v117 alarm exactly**, and the reason that alarm is worth its noise. 178 played actas with
+no referee on any of them is not a quiet season; `profiles: {referees: 53}` proved the
+parser had worked before.
+
+fcf.cat changed the referee row some time before 2026-09. It used to be a div whose whole
+content was the bare name:
+
+```html
+<div class="…border-b…">TORRIJO SIERRA, ANDREA</div>
+```
+
+and is now a div wrapping the name, a ROLE and a TERRITORY as child elements:
+
+```html
+<div class="…border-b…">
+  <div class="…"><span>ALBA PAJARES, HÉCTOR</span>
+    <span>(<!-- -->Principal<!-- -->)</span></div>
+  <span>Barcelona</span></div>
+```
+
+The old pattern was `<div class="[^"]*border-b[^"]*">([^<]+)</div>`. `[^<]+` demands text
+with **no child tags**, so it failed on the first character and returned `[]` — silently,
+because an acta with no referee assigned is an ordinary thing.
+
+**The fix stops matching a STRUCTURE.** It splits the block at each `border-b` row, strips
+comments then tags out of whatever the row contains, and reads the text. Both shapes reduce
+to the same string, so a third redesign that moves the name into yet another wrapper still
+works. Order matters: `<!-- -->` are React hydration boundaries and must go BEFORE the
+tags, or "(" and "Principal" arrive as separate fragments.
+
+Two consequences worth knowing:
+
+- **The `<h3` bound is now load-bearing.** The old pattern could not match a goals or cards
+  row because those already nest a div; this one can. The bound is the only thing keeping a
+  scorer out of the referee list — the "stops at the next section" test stopped being
+  synthetic the moment this changed, and its comment says so.
+- **`principal` is now read from the page** (`(Principal)`) rather than assumed to be the
+  first row, falling back to first for every old-shape acta, which says nothing.
+
+⚠ **Re-running `test/fixtures/capture-acta.js` would DESTROY the regression guard.** Its
+three fixtures are 2025-26 actas, but fcf.cat renders every acta with the current template
+regardless of season — so a regeneration would quietly rewrite all three into the new shape
+and leave nothing testing the old one. `acta-nested.html` was ADDED (captured from 4119501,
+Esquerra vs Inspire, the fixture that exposed this) rather than regenerating. The window
+holds exactly one name, the referee's, checked before committing because the repo is public.
+
+Unit 3570 → **3574**. Mutation-tested: the old row logic returns `[]` against the new
+fixture while the new one returns the referee, so the added tests genuinely catch it.
+
+⚠ **This is a `functions/` change and needs `.\deploy.ps1 functions`.** The crawl must then
+be re-run (`runFcfCrawl`, superuser, `{wantUnplayed:true, weekly:true, restart:true,
+aggregate:true}`) — the index holds entries with no `r` for every acta already fetched, and
+the re-fetch rule only re-reads an acta whose stored entry has a falsy `c`, so PLAYED actas
+already indexed without a referee will NOT be revisited by an ordinary run.

@@ -305,15 +305,66 @@ function parseFcfActa(html) {
   const end = h.indexOf("<h3", start);
   const block = h.slice(start, end === -1 ? start + 4000 : end);
 
-  const row = /<div class="[^"]*border-b[^"]*">([^<]+)<\/div>/g;
+  /* ── Rows, TWO shapes, because fcf.cat changed one under us ──────────
+     Until 2026-09 a referee row was a div whose whole content was the bare
+     name, and the old pattern `>([^<]+)</div>` read it directly:
+
+       <div class="…border-b…">TORRIJO SIERRA, ANDREA</div>
+
+     The live page now nests the name, a role and a territory inside it:
+
+       <div class="…border-b…">
+         <div class="…"><span>ALBA PAJARES, HÉCTOR</span>
+           <span>(<!-- -->Principal<!-- -->)</span></div>
+         <span>Barcelona</span></div>
+
+     `[^<]+` demands text with no child tags, so it failed on the first
+     character and returned NOTHING — silently, because an acta with no
+     referee is an ordinary thing. That is how 178 played actas came back
+     with zero referees while the crawler reported a clean run. The v117
+     alarm in _runFcfCrawl is what made it visible, and it is why that alarm
+     is worth its noise.
+
+     So this no longer matches a STRUCTURE. It splits the block at each
+     `border-b` row, strips comments and tags out of whatever that row
+     contains, and reads the text. Both shapes above reduce to the same
+     string, and a third redesign that moves the name into yet another
+     wrapper still reduces to it. The `<!-- -->` markers are React
+     hydration boundaries and must go before the tags, or "(" and
+     "Principal" arrive as separate fragments.
+
+     ⚠ The text is cut at the first "(" because the role is appended to the
+     name — "ALBA PAJARES, HÉCTOR (Principal) Barcelona". A name containing
+     a bracket would lose its tail; no federation name has one, and losing a
+     suffix beats keeping "(Principal) Barcelona" on every referee.
+
+     ⚠ And the `<h3` bound above now does MORE work than it used to. The old
+     pattern could not match a goals or cards row because those already nest
+     a div; this one can. The bound is the only thing keeping a scorer out
+     of the referee list, so it must stay — see the "stops at the next
+     section" test, which stopped being synthetic the moment this changed. */
   const out = [];
-  let r;
-  while ((r = row.exec(block))) {
-    const name = decodeHtmlEntities(r[1]).replace(/\s+/g, " ").trim();
-    if (!name || name.indexOf(",") === -1) continue;
+  let principal = "";
+  block.split(/<div class="[^"]*border-b/).slice(1).forEach((piece) => {
+    const gt = piece.indexOf(">");           // end of this row's own tag
+    if (gt === -1) return;
+    const text = decodeHtmlEntities(
+        piece.slice(gt + 1)
+            .replace(/<!--[\s\S]*?-->/g, "") // hydration markers, first
+            .replace(/<[^>]*>/g, " "))       // then every tag
+        .replace(/\s+/g, " ").trim();
+    if (!text) return;
+    const name = text.split("(")[0].replace(/\s+/g, " ").trim();
+    // "Sense àrbitres assignats" and every other prose row fail this.
+    if (!name || name.indexOf(",") === -1) return;
     if (out.indexOf(name) === -1) out.push(name);
-  }
-  return {referees: out, principal: out[0] || "", cardMarks};
+    /* The federation now SAYS which one is the principal. Believe it rather
+       than assuming the first row, and fall back to first when it does not
+       — every acta written in the old shape says nothing. */
+    const role = /\(\s*([^)]*?)\s*\)/.exec(text);
+    if (!principal && role && /principal/i.test(role[1])) principal = name;
+  });
+  return {referees: out, principal: principal || out[0] || "", cardMarks};
 }
 
 /**

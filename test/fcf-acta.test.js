@@ -24,6 +24,10 @@ const acta = (n) => fs.readFileSync(path.join(__dirname, 'fixtures', n), 'utf8')
 const ELIT = acta('acta-elit.html');
 const TERCERA = acta('acta-tercera.html');
 const UNASSIGNED = acta('acta-unassigned.html');
+/* The shape fcf.cat started serving in September 2026 — name, role and
+   territory as CHILD elements of the row instead of its bare text. Captured
+   from acta 4119501, Esquerra's own fixture, the day it broke production. */
+const NESTED = acta('acta-nested.html');
 
 describe('reading the referees off an acta', () => {
   it('reads a trio, in role order', () => {
@@ -37,6 +41,58 @@ describe('reading the referees off an acta', () => {
       'DOMÍNGUEZ GUTIÉRREZ, FRAN',
     ]);
     assert.strictEqual(r.principal, 'BOADA BARCELONA, MARC');
+  });
+
+  it('reads the NESTED row fcf.cat started serving in Sept 2026', () => {
+    /* THE REGRESSION THIS FILE EXISTS FOR, and it happened for real.
+       The row stopped being `<div …>NAME</div>` and became a div wrapping
+       <span>name</span><span>(Principal)</span><span>territory</span>. The
+       old pattern asked for `[^<]+` — text with no child tags — so it
+       matched nothing and returned [] without erroring.
+
+       It cost 178 played actas crawled with ZERO referees found, on the real
+       club, while every scheduled run reported success. Nothing but the
+       v117 alarm in _runFcfCrawl said otherwise. */
+    const r = F.parseFcfActa(NESTED);
+    assert.deepStrictEqual(r.referees, ['ALBA PAJARES, HÉCTOR']);
+    assert.strictEqual(r.principal, 'ALBA PAJARES, HÉCTOR');
+  });
+
+  it('keeps the role and the territory OUT of the name', () => {
+    /* The slug is the referee's only key — the federation publishes no id —
+       so "ALBA PAJARES, HÉCTOR (Principal) Barcelona" would be a different
+       person from "ALBA PAJARES, HÉCTOR" for ever, and his record would
+       split in two rather than fail visibly. */
+    const name = F.parseFcfActa(NESTED).referees[0];
+    assert.ok(name.indexOf('Principal') === -1, name);
+    assert.ok(name.indexOf('Barcelona') === -1, name);
+    assert.ok(name.indexOf('(') === -1, name);
+  });
+
+  it('believes the federation about WHICH one is the principal', () => {
+    /* Role order carried this when the rows were bare names. Now that the
+       page says it outright, an appointment listed second must still be
+       read as the principal — and an old-shape acta, which says nothing,
+       must still fall back to the first row. */
+    const marked = '<h3>Àrbitres</h3>' +
+      '<div class="border-b"><span>ASSIST, ONE</span>' +
+        '<span>(<!-- -->Assistent 1<!-- -->)</span></div>' +
+      '<div class="border-b"><span>BOSS, TWO</span>' +
+        '<span>(<!-- -->Principal<!-- -->)</span></div><h3>Gols</h3>';
+    const r = F.parseFcfActa(marked);
+    assert.deepStrictEqual(r.referees, ['ASSIST, ONE', 'BOSS, TWO']);
+    assert.strictEqual(r.principal, 'BOSS, TWO');
+    // The old shape says nothing, so the first row is still the principal.
+    assert.strictEqual(F.parseFcfActa(ELIT).principal, 'BOADA BARCELONA, MARC');
+  });
+
+  it('strips the <!-- --> hydration markers before the tags', () => {
+    /* React splits "(Principal)" around comment nodes. Strip tags first and
+       the comment survives as literal text inside the name. */
+    const h = '<h3>Àrbitres</h3><div class="border-b">' +
+      '<span>ONE, NAME</span><span>(<!-- -->Principal<!-- -->)</span>' +
+      '</div><h3>Gols</h3>';
+    assert.deepStrictEqual(F.parseFcfActa(h).referees, ['ONE, NAME']);
   });
 
   it('reads a lone referee', () => {
