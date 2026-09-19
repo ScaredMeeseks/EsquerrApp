@@ -12125,3 +12125,35 @@ finally settled it, and it took ten seconds. **When a fix is correct and changes
 stop fixing and check reachability.**
 
 Unit 3581 → **3584**. Version triple → **v266**.
+
+### 2026-09-19 — v267: the referee column lost its underline the moment it had a referee
+
+Reported as soon as v266 worked: `EL PARTIT D'AVUI` had a rule under its heading,
+`L'ÀRBITRE` and `NOTES DEL COS TÈCNIC` did not.
+
+Two builders write the headings of that band and they sit in one row:
+
+| heading | built by | class |
+|---|---|---|
+| El partit d'avui | `ptHead()` | `.pt-sec-head` — `border-bottom: 1px solid var(--pp-ink)` |
+| L'àrbitre (with a referee) | `mdRefDetailHtml` | `.card-title` — **`border: none`** |
+| Notes del cos tècnic | `mnNotesCardHtml` | `.card-title` — **`border: none`** |
+
+⚠ **It was invisible for as long as the feature was broken.** With no referee the column
+falls back to `ptHead()` and drew the rule like its neighbours; the FIRST fixture that
+actually had one swapped in the card and the underline vanished from that column alone. The
+bug was older than today and was being masked by the bug above it.
+
+`.pt-page .card-title` now carries the same bottom rule, padding and margin as
+`.pt-sec-head`. Only two blocks inside `.pt-page` emit `card-title` — the referee card and
+the notes card — and both are column headings in that band, so there is nothing else to
+disturb.
+
+⚠ **The test for it failed first, and for the wrong reason.** It asserted
+`border-bottom: 1px solid var(--pp-ink)` — but `readCss()` resolves `--pp-*` back to
+LITERALS precisely so a colour assertion tests the colour and not the token name, which
+CLAUDE.md says in as many words. It now extracts both rules' resolved colours and asserts
+they are EQUAL, which is the real requirement: the neighbours must agree, and which token
+they were written with is not the point. Mutation-tested — removing the rule fails it.
+
+Unit 3584 → **3585**. Version triple → **v267**.

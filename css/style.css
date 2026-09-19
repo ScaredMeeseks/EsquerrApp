@@ -7374,9 +7374,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   background: transparent; border: none; border-radius: 0;
   box-shadow: none; padding: 0; margin: 0;
 }
+/* ⚠ The SAME rule as .pt-sec-head below, and it has to be.
+   Two builders write the headings of this band: ptHead() emits
+   `.pt-sec-head`, while the referee card and the coach's notes card bring
+   their own `.card-title`. They sit side by side in one row, so a difference
+   between them reads as a rendering fault rather than as two components.
+
+   This said `border: none`, and nobody saw it while the referee column was
+   empty — with no appointment it falls back to ptHead() and drew the rule
+   like its neighbours. The first fixture that actually HAD a referee swapped
+   in the card, and the underline vanished from that column only. */
 .pt-page .card-title {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 500; color: var(--pp-ink-3); padding: 0 0 8px; border: none;
+  font-weight: 500; color: var(--pp-ink-3);
+  padding: 0 0 10px; border: none;
+  border-bottom: 1px solid var(--pp-ink); margin-bottom: 10px;
 }
 
 .pt-eyebrow {

@@ -1303,6 +1303,39 @@ describe('the page holds together', () => {
         .forEach((d) => assert.ok(rule.indexOf(d) !== -1, 'bridge is missing: ' + d));
   });
 
+  it('underlines EVERY column heading in the context band, both kinds', () => {
+    /* Two builders write these headings and they sit side by side in one
+       row: ptHead() emits `.pt-sec-head`, while the referee card and the
+       coach's notes card bring their own `.card-title`. A difference between
+       them reads as a rendering fault, not as two components.
+
+       `.pt-page .card-title` said `border: none`, and it went unseen for as
+       long as the referee column was EMPTY — with no appointment it falls
+       back to ptHead() and drew the rule like its neighbours. The first
+       fixture that actually had a referee swapped in the card and the
+       underline vanished from that column alone. */
+    const rules = ['.pt-page .card-title {', '.pt-sec-head {'].map((sel) => {
+      const i = bareCss.indexOf(sel);
+      assert.notStrictEqual(i, -1, 'rule is missing: ' + sel);
+      return {sel, body: bareCss.slice(i, bareCss.indexOf('}', i))};
+    });
+    /* readCss() resolves --pp-* back to LITERALS, so matching on
+       `var(--pp-ink)` here would never fire. Comparing the two resolved
+       colours to each other is the better test in any case: what matters is
+       that the neighbours agree, not which token they were written with. */
+    const colours = rules.map(({sel, body}) => {
+      const m = /border-bottom:\s*1px solid ([^;]+)/.exec(body);
+      assert.ok(m, sel + ' has no bottom rule — its column will look ' +
+        'unfinished beside the others');
+      assert.ok(/padding:\s*0 0 10px/.test(body), sel + ': padding drifted');
+      assert.ok(/margin-bottom:\s*10px/.test(body), sel + ': margin drifted');
+      return m[1].trim();
+    });
+    assert.strictEqual(colours[0], colours[1],
+        'the two heading kinds draw different coloured rules: ' +
+        colours.join(' vs '));
+  });
+
   it('stacks both bands to one column on a narrow screen', () => {
     /* 2c in the handoff. Two 1fr columns of events and call-up at 390px is
        the layout that made the redesign necessary in the first place. */
