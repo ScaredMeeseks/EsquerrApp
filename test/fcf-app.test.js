@@ -296,6 +296,22 @@ describe('our own club, in capitals like every rival', () => {
         '.md-our-club does not uppercase anything');
   });
 
+  /* v271: the squad letter is INSIDE our name's span, so it takes the name's
+     format (red, uppercase, full size) instead of trailing it as a small
+     grey footnote. Run, not grepped. */
+  it('puts the squad letter inside our name, in the name\'s own format', () => {
+    const matchLabel = new Function('sanitize', 'isOurTeam',
+        saved + '\n  }\n return matchLabel;')(
+        sanitize, (n) => n === 'Esquerra de l\'Eixample F.C.');
+    const html = matchLabel({home: 'XALOC A', away: 'Esquerra de l\'Eixample F.C.', team: 'B'});
+    assert.strictEqual(html,
+        'XALOC A vs <span class="md-our-club">Esquerra de l\'Eixample F.C. B</span>');
+    assert.strictEqual(
+        matchLabel({home: 'Esquerra de l\'Eixample F.C.', away: 'GÒTIC', team: ''}),
+        '<span class="md-our-club">Esquerra de l\'Eixample F.C.</span> vs GÒTIC',
+        'a club with one squad grew a stray space or letter');
+  });
+
   it('leaves the RIVAL alone — FCF already sends caps', () => {
     // Marking both sides would be harmless today and wrong the day a club
     // outside the federation is typed in by hand.

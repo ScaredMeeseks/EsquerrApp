@@ -2771,7 +2771,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 270;
+  const APP_VERSION = 271;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -33561,7 +33561,11 @@
   // sanitize → utils.js
 
   function matchLabel(m) {
-    const tl = m.team ? ' <span class="conv-team-circle">' + sanitize(m.team) + '</span>' : '';
+    /* The squad letter is part of OUR NAME here, inside .md-our-club, so it
+       takes the name's own size, weight and colour — "ESQUERRA DE
+       L'EIXAMPLE F.C. B" (v271, owner's request). A separate small grey
+       letter after a large red name read as a footnote, not as the team. */
+    const tl = m.team ? ' ' + sanitize(m.team) : '';
     /* The federation writes every club in capitals and a club writes its own
        name however it likes, so "CAN BUXERES, F.C. vs Esquerra de l'Eixample
        F.C." made the odd one out always us. The stylesheet uppercases this
@@ -33575,7 +33579,7 @@
        prints both names, and the calendar's own cards print only the
        rival's, so there is nothing there to mark. */
     const ours = function (name) {
-      return '<span class="md-our-club">' + sanitize(name) + '</span>' + tl;
+      return '<span class="md-our-club">' + sanitize(name) + tl + '</span>';
     };
     const h = isOurTeam(m.home) ? ours(m.home) : sanitize(m.home);
     const a = isOurTeam(m.away) ? ours(m.away) : sanitize(m.away);

@@ -107,19 +107,16 @@ describe('cat badge — every mixed player row carries it', () => {
        Calendari table, the Jornada list and the training list with one
        page, taking three; the 2a week strips then moved the squad letter
        into the match block's meta line ("Camp Municipal · Squad A"),
-       taking a fourth. `matchLabel` is the one left.
-
-       The floor is only here to catch the regex matching NOTHING — a count
-       that quietly fell to zero would make every assertion below vacuous.
-       It is not a number worth defending in itself. */
-    const matchRows = (src.match(/.*conv-team-circle.*/g) || [])
-        .filter((l) => /isOurTeam\(|m\.team/.test(l));
-    assert.ok(matchRows.length >= 1,
-        'expected the match-row sites to still exist');
-    matchRows.forEach((l) => {
-      assert.ok(!/catBadge/.test(l),
-        'a match team letter must not carry a category badge: ' + l.trim());
-    });
+       taking a fourth. `matchLabel` was the last, and v271 folded its letter
+       into our name's own span, so no match site uses conv-team-circle at
+       all now. What is left to defend is the rule itself: matchLabel must
+       not grow a category badge. */
+    const i = src.indexOf('  function matchLabel(m) {');
+    assert.notStrictEqual(i, -1, 'matchLabel moved');
+    const body = src.slice(i, src.indexOf('\n  }', i));
+    assert.ok(/m\.team/.test(body), 'matchLabel no longer prints the squad letter');
+    assert.ok(!/catBadge/.test(body),
+        'a match team letter must not carry a category badge');
   });
 
   it('routes every badge through the helper', () => {
