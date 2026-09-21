@@ -98,10 +98,14 @@ function makeFcf(opts) {
   return api;
 }
 
-/* A cache exactly as the app writes it: the parsed rows, keyed by league id. */
-function cacheWith(key, json) {
+/* A cache exactly as the app writes it: the parsed rows, keyed by league id,
+   plus the grupId each table was fetched for. */
+function cacheWith(key, json, grupId) {
   const rows = U.parseFcfClassificacio(json, CLUB);
-  return {fa_league_cache_v2: JSON.stringify({['league-' + key]: rows})};
+  return {
+    fa_league_cache_v2: JSON.stringify({['league-' + key]: rows}),
+    fa_league_cache_v2_g: JSON.stringify({['league-' + key]: grupId || '58161881'}),
+  };
 }
 
 const CONFIG = {
@@ -168,6 +172,27 @@ describe('fcfTeamsFor — the opponent list', () => {
     }})});
     assert.deepStrictEqual(F.fcfTeamsFor('amateur', 'A'), []);
     assert.deepStrictEqual(F._fetched, []);
+  });
+
+  /* The reported bug: a lead re-pointed amateur-B at a different group and
+     the app kept serving the OLD group's table from cache, because the cache
+     is keyed by squad, not by group. */
+  it('a squad re-pointed at another group drops the old table and refetches', () => {
+    const F = makeFcf({clubConfig: CONFIG,
+      store: cacheWith('amateur-A', PRESEASON, '11111111')});
+    assert.deepStrictEqual(F.fcfTeamsFor('amateur', 'A'), []);
+    assert.strictEqual(F._fetched.length, 1);
+    assert.ok(F._fetched[0].endsWith('?grupId=58161881'), F._fetched[0]);
+    assert.ok(!JSON.parse(F._store.fa_league_cache_v2)['league-amateur-A'],
+        'the old group\'s rows are still in the persisted cache');
+  });
+
+  it('a table cached before the group was recorded is not trusted', () => {
+    const rows = U.parseFcfClassificacio(PRESEASON, CLUB);
+    const F = makeFcf({clubConfig: CONFIG,
+      store: {fa_league_cache_v2: JSON.stringify({'league-amateur-A': rows})}});
+    assert.deepStrictEqual(F.fcfTeamsFor('amateur', 'A'), []);
+    assert.strictEqual(F._fetched.length, 1);
   });
 
   it('returns [] rather than throwing with no category or letter', () => {

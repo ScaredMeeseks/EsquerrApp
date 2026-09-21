@@ -1480,10 +1480,17 @@ exports.syncFcfFixtures = onCall({region: "us-central1", timeoutSeconds: 300},
         (!only.letter || s.letter === only.letter));
       if (!squads.length) return {squads: 0, added: 0, adopted: 0, updated: 0, removed: 0};
 
-      const total = {squads: 0, added: 0, adopted: 0, updated: 0, removed: 0};
+      /* `skipped` is reported, not swallowed: a link to a group the club is
+         not in used to come back as "nothing changed", which is exactly what
+         a working sync with no news looks like. */
+      const total = {squads: 0, added: 0, adopted: 0, updated: 0, removed: 0,
+        skipped: []};
       for (const s of squads) {
         const r = await _syncFcfSquad(clubId, s.category, s.letter, club);
-        if (r.skipped) continue;
+        if (r.skipped) {
+          total.skipped.push({key: s.category + "-" + s.letter, reason: r.skipped});
+          continue;
+        }
         total.squads++;
         ["added", "adopted", "updated", "removed"].forEach((k) => {
           total[k] += r[k] || 0;
@@ -3156,10 +3163,38 @@ exports.setClubCategories = onCall({region: "us-central1"}, async (request) => {
     }
   }
 
+  /* A squad whose link now points at a DIFFERENT group is synced here, not
+     at 06:00 tomorrow. Without this, a lead who corrected amateur-B's link
+     saw the Calendari keep the old group's fixtures until the next morning
+     (or until a coach happened to press refresh) and reasonably concluded
+     the new link had not taken. Compared on grupId, not the raw URL: the
+     same group re-pasted with a different query string is not a change.
+     A failure here must not fail the save — the link IS stored, and the
+     nightly job will retry it. */
+  const fcfSync = [];
+  if (data.fcfLinks) {
+    const prevLinks = club.fcfLinks || {};
+    const after = Object.assign({}, club, payload,
+        {fcfLinks: Object.assign({}, prevLinks, data.fcfLinks)});
+    const live = new Set(fcfSquadsOf(after).map((s) => s.category + "-" + s.letter));
+    for (const key of Object.keys(data.fcfLinks)) {
+      const g = fcfGrupIdOf(data.fcfLinks[key]);
+      if (!g || g === fcfGrupIdOf(prevLinks[key]) || !live.has(key)) continue;
+      const i = key.indexOf("-");
+      try {
+        const r = await _syncFcfSquad(clubId, key.slice(0, i), key.slice(i + 1), after);
+        fcfSync.push(Object.assign({key}, r));
+      } catch (e) {
+        logger.error("setClubCategories: fcf sync failed", {clubId, key, err: String(e)});
+        fcfSync.push({key, skipped: "error"});
+      }
+    }
+  }
+
   logger.info("setClubCategories", {
-    clubId, by: caller.uid, teams: nextKeys.length, max, refreshed,
+    clubId, by: caller.uid, teams: nextKeys.length, max, refreshed, fcfSync,
   });
-  return {ok: true, teams: nextKeys.length, max, refreshed};
+  return {ok: true, teams: nextKeys.length, max, refreshed, fcfSync};
 });
 
 // ── 7a-ter. setClubFeatures — the premium entitlement ──

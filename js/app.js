@@ -183,6 +183,7 @@
     'cal.refresh_none':   { ca:'Cal configurar l\'enllaç de la classificació FCF d\'aquesta categoria.', es:'Hay que configurar el enlace de la clasificación FCF de esta categoría.', en:'This category needs its FCF standings link configured first.' },
     'cal.refresh_done':   { ca:'{added} partits nous, {updated} actualitzats, {removed} retirats.', es:'{added} partidos nuevos, {updated} actualizados, {removed} retirados.', en:'{added} new fixtures, {updated} updated, {removed} withdrawn.' },
     'cal.refresh_nochange': { ca:'Tot al dia. Cap canvi a la FCF.', es:'Todo al día. Ningún cambio en la FCF.', en:'Up to date — nothing changed at the FCF.' },
+    'fcf.not_in_group': { ca:'L\'enllaç FCF de {keys} és d\'un grup on el club no hi apareix. No s\'ha importat cap partit — revisa que sigui el grup correcte.', es:'El enlace FCF de {keys} es de un grupo donde el club no aparece. No se ha importado ningún partido — revisa que sea el grupo correcto.', en:'The FCF link for {keys} is for a group your club is not in. No fixtures were imported — check it is the right group.' },
     'cal.refresh_failed': { ca:'No s\'ha pogut actualitzar el calendari.', es:'No se ha podido actualizar el calendario.', en:'Could not refresh the calendar.' },
     'cal.from_fcf':       { ca:'Partit oficial, importat de la FCF', es:'Partido oficial, importado de la FCF', en:'Official fixture, imported from the FCF' },
     /* ── The month grid ── */
@@ -2770,7 +2771,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 267;
+  const APP_VERSION = 268;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3294,6 +3295,7 @@
       return null;
     }
     _clubConfig = await getClub(clubId);
+    pruneStaleLeagueCache();
     setSeasonBoundary(_clubConfig && _clubConfig.seasonBoundary);
     if (_clubConfig) _clubConfig.rosters = await loadRosters(clubId, _clubConfig);
     // Update splash badge and cache image as base64 for instant next load
@@ -6205,7 +6207,7 @@
            next time. Same undefined-vs-'' rule — '' clears it. */
         catsPayload.homeLink = _venueRawFromDom();
       }
-      await setCats(catsPayload);
+      var catsRes = await setCats(catsPayload);
       /* Its own callable, and deliberately AFTER setCats: kits share no
          invariant with categories, and setClubCategories does quota
          accounting and a claims refresh that saving a colour must not be
@@ -6248,8 +6250,16 @@
           { staffEmails: after, staffRoles: nextRoles });
       }));
       _clubConfig = await getClub(session.teamId);
+      pruneStaleLeagueCache();
       _clubConfig.rosters = await loadRosters(session.teamId, _clubConfig);
       errEl.hidden = true;
+      /* setClubCategories synced any squad whose link changed group. A link
+         to a group the club is not in is saved (it IS a valid link) but
+         imports nothing — say so now, not never. */
+      var notIn = ((catsRes && catsRes.data && catsRes.data.fcfSync) || [])
+        .filter(function (s) { return s.skipped === 'not-in-group'; })
+        .map(function (s) { return s.key; });
+      if (notIn.length) _showPushToast('FCF', t('fcf.not_in_group').replace('{keys}', notIn.join(', ')));
       /* Where to go afterwards depends on which screen mounted the sections.
          On the Configuració page there is nowhere to go — the lead is
          already there — so it re-renders in place, which also repaints the
@@ -7697,6 +7707,36 @@
      "in flight or recently failed" flag with no clock would leave the
      Calendari's opponent list empty until reload after one bad request. */
   var _leagueAsked = {};
+  /* The grupId each cached table was fetched FOR. The cache is keyed by
+     squad ('league-amateur-B'), not by group, so without this a lead who
+     re-pointed a squad at a different group kept seeing the old group's
+     table — applied instantly from cache on every render, and never
+     replaced at all if the new group came back empty or failed. */
+  var _leagueGrup = {};
+  try { _leagueGrup = JSON.parse(localStorage.getItem('fa_league_cache_v2_g') || '{}'); } catch (e) {}
+
+  /** The grupId a league id ('league-amateur-B') is configured for NOW. */
+  function _leagueGrupNow(id) {
+    var links = (_clubConfig && _clubConfig.fcfLinks) || {};
+    return fcfGrupId(links[id.replace(/^league-/, '')] || '');
+  }
+
+  /* Drop every cached table whose group is not the one its squad points at
+     today. Entries with no recorded group (cached before this existed) go
+     too — one refetch is cheaper than trusting them. */
+  function pruneStaleLeagueCache() {
+    if (!_clubConfig) return;
+    var dropped = false;
+    Object.keys(_leagueCache).forEach(function(id) {
+      if (_leagueGrup[id] && _leagueGrup[id] === _leagueGrupNow(id)) return;
+      delete _leagueCache[id];
+      delete _leagueGrup[id];
+      delete _leagueErrors[id];
+      delete _leagueAsked[id];
+      dropped = true;
+    });
+    if (dropped) _saveLeagueCache();
+  }
 
   function fetchFcfGroup(grupId) {
     return fetch(FCF_PROXY_BASE + encodeURIComponent(grupId))
@@ -7705,7 +7745,10 @@
   }
 
   function _saveLeagueCache() {
-    try { localStorage.setItem('fa_league_cache_v2', JSON.stringify(_leagueCache)); } catch (e) {}
+    try {
+      localStorage.setItem('fa_league_cache_v2', JSON.stringify(_leagueCache));
+      localStorage.setItem('fa_league_cache_v2_g', JSON.stringify(_leagueGrup));
+    } catch (e) {}
   }
 
   /* The FCF team list for one squad, as [{name, teamId, badge}], or [].
@@ -7721,6 +7764,7 @@
      fills in on the next one. */
   function fcfTeamsFor(category, letter) {
     if (!category || !letter) return [];
+    pruneStaleLeagueCache();
     var id = 'league-' + category + '-' + letter;
     var rows = _leagueCache[id];
     if (!rows) {
@@ -7733,6 +7777,7 @@
           delete _leagueErrors[id];
           if (!fresh.length) return;
           _leagueCache[id] = fresh;
+          _leagueGrup[id] = grupId;
           _saveLeagueCache();
           renderOpponentDatalists();
         }).catch(function() { _leagueErrors[id] = 'error'; });
@@ -7951,6 +7996,7 @@
   function refreshLeagueTables() {
     var now = Date.now();
     var needsFetch = now - _leagueCacheTime >= LEAGUE_CACHE_MS;
+    pruneStaleLeagueCache();
     getActiveFcfLeagues().forEach(function(league) {
       var container = document.getElementById(league.id);
       if (!container) return;
@@ -7966,7 +8012,11 @@
       if (_leagueCache[league.id]) {
         applyLeagueRows(container, _leagueCache[league.id]);
       }
-      if (!needsFetch) return;
+      /* A league with nothing cached — typically one whose link just changed
+         and was pruned — fetches now rather than waiting out the shared
+         five-minute window, throttled per league by _leagueAsked. */
+      if (!needsFetch && (_leagueCache[league.id] ||
+          now - (_leagueAsked[league.id] || 0) < LEAGUE_CACHE_MS)) return;
       // Shared with fcfTeamsFor, so the standings table and the Calendari's
       // opponent list never both fetch the same group in one window.
       _leagueAsked[league.id] = now;
@@ -7978,6 +8028,7 @@
           }
           delete _leagueErrors[league.id];
           _leagueCache[league.id] = rows;
+          _leagueGrup[league.id] = grupId;
           _saveLeagueCache();
           // Re-query DOM in case page was re-rendered while fetch was in flight
           var freshContainer = document.getElementById(league.id);
@@ -34349,6 +34400,14 @@
           var d = (res && res.data) || {};
           var changed = (d.added || 0) + (d.adopted || 0) + (d.updated || 0) +
             (d.removed || 0);
+          var notIn = (d.skipped || []).filter(function (s) {
+            return s.reason === 'not-in-group';
+          }).map(function (s) { return s.key; });
+          if (notIn.length) {
+            _showPushToast(t('cal.refresh'),
+                t('fcf.not_in_group').replace('{keys}', notIn.join(', ')));
+            return;
+          }
           /* Say what happened, in numbers. "Updated" with nothing to show is
              the message that makes a coach press it again and again. */
           _showPushToast(t('cal.refresh'), changed ?
