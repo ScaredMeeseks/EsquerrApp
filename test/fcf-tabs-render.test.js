@@ -66,6 +66,10 @@ function makeTabs(opts) {
      stdSelect, and a stub would test a dropdown that does not exist. */
   const stdSel = grab(appSrc, '  function stdSelect(o) {',
       '  /**\n   * A place, linked to its map');
+  /* The shared category bar, which on Sancions is the page's only squad
+     control — so it is lifted and run with the tabs, not trusted. */
+  const bar = grab(appSrc, '  function renderCategoryBar() {', '  // ---------- Club helpers') +
+    grab(appSrc, '  /* `only` (v274', '  /**\n   * Does this row belong');
 
   const factory = new Function(
       '_clubConfig', 'getCurrentCategory', 'getCurrentSquad', 'getTeamLetters',
@@ -74,8 +78,9 @@ function makeTabs(opts) {
       'parseFcfScorers', 'isOurTeam', 'getClubName', 'sameClubName',
       'clubMonogram', 'safeHttpUrl', 'CATEGORY_LABELS', 'tDay', 'tMonth',
       'tDateShort', '_leagueCache', 'fetch', 'document', 'window',
-      block + stdSel +
-      '\n return {renderSancions, renderScorers, sancionsBodyHtml,' +
+      'getVisibleCategories',
+      block + stdSel + bar +
+      '\n return {renderCategoryBar, renderSancions, renderScorers, sancionsBodyHtml,' +
       ' scorersTableHtml, scorersSortedRows, sancionsNextFixture,' +
       ' fcfOurTeamId, fcfSeasonId, scZone, scClubCardHtml, _fcfClubs,' +
       ' bindFcfTabs, sancRemaining, sancActive, _fcfApiCache,' +
@@ -117,6 +122,7 @@ function makeTabs(opts) {
       opts.document || {querySelectorAll: () => [], addEventListener: () => {},
         getElementById: () => null},
       opts.window || {addEventListener: () => {}},
+      () => Object.keys((clubConfig || {}).categories || {}),
   );
   api._fetched = fetched;
   return api;
@@ -313,6 +319,58 @@ describe('renderSancions', () => {
     const all = makeTabs({clubConfig: club, squad: 'all'});
     all.renderSancions();
     assert.ok(all._fetched.some((u) => u.includes('58161881')), 'did not fall back to A');
+  });
+
+  describe('the category bar is the page\'s squad control', () => {
+    /* v273 deleted the page's own A/B picker in favour of the shared bar —
+       which returns '' for a one-category club. Esquerra is one (Amateur A
+       and B), so the page could only ever show A. Reported by the owner the
+       day it shipped. */
+    const ONE_CAT = {name: CLUB, categories: {amateur: {enabled: true, letters: ['A', 'B', 'C']}},
+      fcfLinks: {'amateur-A': LINK, 'amateur-B': LINK_B}};
+    const chips = (html) => {
+      const doc = docOf(html);
+      return {
+        cats: texts(doc, '.cat-bar-btn'),
+        letters: [...doc.querySelectorAll('[data-squad-letter]')].map((b) => b.dataset.squadLetter),
+        lit: texts(doc, '.cat-bar-letter.roster-team-btn-active'),
+      };
+    };
+
+    it('shows for a ONE-category club, with a chip per LINKED squad', () => {
+      const c = chips(makeTabs({clubConfig: ONE_CAT}).renderCategoryBar());
+      assert.deepStrictEqual(c.cats, ['Amateur'], 'no category to see');
+      assert.deepStrictEqual(c.letters, ['A', 'B'],
+          'C has no FCF link, and "all" names no group');
+    });
+
+    it('lights the squad the page is actually reading', () => {
+      // "all" is not a squad Sancions can read; it reads A, so A is lit.
+      assert.deepStrictEqual(chips(makeTabs({clubConfig: ONE_CAT, squad: 'all'})
+          .renderCategoryBar()).lit, ['A']);
+      const b = makeTabs({clubConfig: ONE_CAT, squad: 'B'});
+      assert.deepStrictEqual(chips(b.renderCategoryBar()).lit, ['B']);
+      b.renderSancions();
+      assert.ok(b._fetched.some((u) => u.includes('58169999')), 'lit B but read another group');
+    });
+
+    it('offers no "Totes" category, which names no group', () => {
+      const two = Object.assign({}, ONE_CAT, {categories: {amateur: {enabled: true, letters: ['A', 'B']},
+        juvenil: {enabled: true, letters: ['A']}}});
+      const html = makeTabs({clubConfig: two}).renderCategoryBar();
+      assert.ok(!html.includes('data-cat=""'), '"Totes" is offered on Sancions');
+      assert.deepStrictEqual(chips(html).cats, ['Amateur', 'Juvenil']);
+    });
+
+    it('leaves every OTHER page exactly as it was', () => {
+      assert.strictEqual(makeTabs({clubConfig: ONE_CAT, currentPage: 'calendar'})
+          .renderCategoryBar(), '', 'a one-category club grew a bar on other pages');
+      const two = Object.assign({}, ONE_CAT, {categories: {amateur: {enabled: true, letters: ['A', 'B']},
+        juvenil: {enabled: true, letters: ['A']}}});
+      const html = makeTabs({clubConfig: two, currentPage: 'calendar'}).renderCategoryBar();
+      assert.ok(html.includes('data-cat=""') && html.includes('data-squad-letter="all"'),
+          'another page lost its "Totes" or its "all" chip');
+    });
   });
 
   it('renders the archive, and asks for nothing twice', () => {

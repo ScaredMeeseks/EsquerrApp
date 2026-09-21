@@ -1013,7 +1013,7 @@ describe('the top bar', () => {
         sanitize, t: (k) => k,
       };
       return new Function(...Object.keys(stubs),
-          grab('  function catBarLettersHtml(active, attr) {',
+          grab('  function catBarLettersHtml(active, attr, only) {',
                '  /**\n   * Does this row belong') +
           '\n return catBarLettersHtml(' + JSON.stringify(active) + ', ' +
           JSON.stringify(attr) + ');')(...Object.values(stubs));

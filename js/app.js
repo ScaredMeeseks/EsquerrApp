@@ -2809,7 +2809,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 273;
+  const APP_VERSION = 274;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3108,9 +3108,25 @@
 
   function renderCategoryBar() {
     var cats = getVisibleCategories();
-    if (cats.length <= 1) return '';
+    /* ⚠ SANCIONS READS EXACTLY ONE SQUAD'S GROUP, so on that page the bar
+       differs in three ways (v274). It shows even for a one-category club
+       — Esquerra is one: Amateur A and B — because v273 deleted the page's
+       own letter picker and, with the bar hidden, A was all it could show.
+       It has no "Totes" and no "all" chip, which name no group. And its
+       chips are the squads with an FCF link, lit on the squad actually read
+       (sancionsLetter), never on an "all" the page quietly replaced. */
+    var one = currentPage === 'sancions';
+    if (cats.length <= 1 && !one) return '';
     var cur = getCurrentCategory();
-    var btns = '<button class="cat-bar-btn' + (!cur ? ' active' : '') + '" data-cat="">' + t('cat.all') + '</button>';
+    var btns = one ? '' :
+      '<button class="cat-bar-btn' + (!cur ? ' active' : '') + '" data-cat="">' + t('cat.all') + '</button>';
+    if (one) {
+      cats.forEach(function (k) {
+        btns += '<button class="cat-bar-btn' + (cur === k ? ' active' : '') + '" data-cat="' + k + '">' + CATEGORY_LABELS[k] + '</button>';
+      });
+      return '<div class="cat-bar">' + btns +
+        catBarLettersHtml(sancionsLetter(cur), 'data-squad-letter', sancionsLetters(cur)) + '</div>';
+    }
     cats.forEach(function (k) {
       btns += '<button class="cat-bar-btn' + (cur === k ? ' active' : '') + '" data-cat="' + k + '">' + CATEGORY_LABELS[k] + '</button>';
     });
@@ -8293,20 +8309,35 @@
       '">' + inner + '</div>';
   }
 
+  /** The squads of `cat` that have an FCF link — the only ones Sancions can
+   *  read, and so the only chips the bar offers on this page. */
+  function sancionsLetters(cat) {
+    var links = (_clubConfig && _clubConfig.fcfLinks) || {};
+    return cat ? getTeamLetters(cat).filter(function (l) {
+      return fcfGrupId(links[cat + '-' + l] || '');
+    }) : [];
+  }
+
+  /** The squad Sancions reads: the bar's, when it has a link, else the first
+   *  that does. ONE answer, asked by both the page and the bar, so the lit
+   *  chip is always the squad on screen. '' when no squad has a link. */
+  function sancionsLetter(cat) {
+    var letters = sancionsLetters(cat);
+    var sq = getCurrentSquad();
+    return letters.indexOf(sq) !== -1 ? sq : (letters[0] || '');
+  }
+
   function renderSancions() {
     var cat = getCurrentCategory() || '';
     var links = (_clubConfig && _clubConfig.fcfLinks) || {};
-    var letters = cat ? getTeamLetters(cat).filter(function (l) {
-      return fcfGrupId(links[cat + '-' + l] || '');
-    }) : [];
+    var letters = sancionsLetters(cat);
     if (!letters.length) {
       /* Never a blank page. "Totes" has no single group to read, and a
          category without a link is the state every club starts in. */
       return sancionsPageHtml(fcfHeroHtml(t('page.sancions'), '', '') +
         fcfStateHtml(t(cat ? 'fcf.no_link_here' : 'sanc.pick_cat')));
     }
-    var sq = getCurrentSquad();
-    var letter = letters.indexOf(sq) !== -1 ? sq : letters[0];
+    var letter = sancionsLetter(cat);
     var grupId = fcfGrupId(links[cat + '-' + letter]);
     var params = {grupId: grupId, temporada: fcfSeasonId()};
     var key = grupId + '|' + params.temporada;
@@ -28267,17 +28298,19 @@
    * filter" rule, is the same and was going to drift the moment it was
    * written twice.
    */
-  function catBarLettersHtml(active, attr) {
+  /* `only` (v274, Sancions): exactly these letters and no "all" chip — a
+     page that reads one squad cannot offer "all of them". */
+  function catBarLettersHtml(active, attr, only) {
     var cat = getCurrentCategory();
     if (!cat) return '';
-    var letters = getTeamLetters(cat);
+    var letters = only || getTeamLetters(cat);
     if (letters.length <= 1) return '';
     var chip = function (val, label) {
       return '<button class="roster-team-btn cat-bar-letter' +
         (active === val ? ' roster-team-btn-active' : '') +
         '" ' + attr + '="' + sanitize(val) + '">' + sanitize(label) + '</button>';
     };
-    return '<span class="cat-bar-sep"></span>' + chip('all', t('common.all')) +
+    return '<span class="cat-bar-sep"></span>' + (only ? '' : chip('all', t('common.all'))) +
       letters.map(function (l) { return chip(l, l); }).join('');
   }
 

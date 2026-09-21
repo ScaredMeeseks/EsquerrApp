@@ -12288,3 +12288,14 @@ a 390px iframe (Edge will not size a window below ~480px, so a 390 window screen
 Run against the LIVE FCF proxy (real `fetch`, real renderers and stylesheet, localhost origin): Esquerra A/2026-27 (no rulings yet — empty states), a 2025-26 group with 284 rulings (42 club rulings dropped; cards, counts and chips agree), and Golejadors through Futbol 11 → Tercera → Grup 10 with zero scorer reads while picking. That run found FCF publishing a scorer with `nombre_jugador: null`; the row now reads "—".
 
 Unit 3599 → **3629**. Version triple → **v273**. Frontend-only.
+
+### 2026-09-21 — v274: Sancions could only show squad A
+
+Reported the day v273 shipped. v273 deleted the page's own A/B picker in favour of the shared category
+bar — but `renderCategoryBar()` returns '' for a one-category club, and Esquerra is one (Amateur A and
+B). No bar, no chips, and `sancionsLetter` fell back to A forever.
+
+On `sancions` only, the bar now shows even for one category, offers no "Totes" and no "all" chip
+(neither names a group), lists only the squads with an FCF link (`catBarLettersHtml`'s new `only`),
+and lights the squad actually read — `sancionsLetter(cat)`, one answer asked by both the page and the
+bar. Every other page is unchanged; a test pins that. 5 mutations, all red.
