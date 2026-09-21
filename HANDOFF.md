@@ -1,28 +1,27 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-19._
+_Rolling document, overwritten each session. Last updated: 2026-09-21._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 267** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 272** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3585** — `cd test && npm run test:unit` (~21 s), all passing |
-| Functions tests | **89** — `npm run test:functions`, all passing |
+| Unit tests | **3599** — `cd test && npm run test:unit` (~21 s), all passing |
+| Functions tests | **93** — `npm run test:functions`, all passing (+4: `sync-fcf.test.js`, new) |
 | Rules tests | 178 — **not re-run this session**; `firestore.rules` was not touched |
 
-**Deploy state.** `main` is current and deployed: merge `23524bf`, then v265 `a7198c2`, v266
-`be4edc9`, v267 `9e80496`. `.\deploy.ps1 functions` was run after each. Pages was verified live by
-curling the served `sw.js` (→ `esquerrapp-v267`) and `css/style.css`, not by trusting the push.
+**Deploy state.** `main` is current and deployed through v272 `b15e4ff`. `.\deploy.ps1 functions`
+was run after every commit. Pages was verified live each time by curling the served `sw.js`
+(→ `esquerrapp-v272`) and grepping the served asset for the change, not by trusting the push.
 
 ⚠ **The service worker serves the old bundle until it is unregistered.** Bumping `CACHE_NAME` is
-not enough on its own, and this cost two rounds of "still not working" against code that was
-already live. The snippet that settles it:
+not enough on its own. The snippet that settles it:
 
 ```js
 navigator.serviceWorker.getRegistrations()
@@ -32,83 +31,91 @@ navigator.serviceWorker.getRegistrations()
   .then(() => location.reload());
 ```
 
-**The FCF referee chain now works end to end on the real club** — the 2026-09-19 fixture named its
-referee. It had never worked before: the feature could not have displayed anything since it shipped.
+**The B team is on its 2026-27 group and its calendar is importing.** Confirmed by the owner from
+the Calendari (Xaloc, jornada 2). It took three separate faults to get there — see below.
 
-⚠ **Not yet exercised unattended.** Next Friday's `fcfWeeklyRefs` (`0 6,7,8 * * 5`) is the first run
-of the whole chain with nobody watching. `appointed` in its log is the number to read.
+## The session in order (2026-09-21)
 
-## The session in order
+### "I changed the amateur-B link and nothing updated" — three faults, in order
 
-### Demo club (C.E. Sant Andreu del Palomar) — for a sales showing
+The owner re-pointed `fcfLinks['amateur-B']` from last season's group to **58161914** (2026-27,
+`temporadaId=22`). Neither the Classificació nor the Calendari moved.
 
-`topup-demo-season.js` was re-run: +1,784 records (944 availability, 668 training RPE, 172 match
-RPE) and 12 matches marked played with events and convocatòries. It had last run 2026-08-20, and
-readiness `hasData` expires at 10 days — **that staleness is the recurring "the demo looks empty"
-complaint, not a new bug each time. Re-run it the morning of any showing.**
+1. **v268 — nothing reacted to a changed link.**
+   - *Classificació:* the standings cache (`fa_league_cache_v2`) is keyed by SQUAD
+     (`league-amateur-B`), not by group, so the old group's table was painted from cache on every
+     render — and kept for good if the new group ever came back empty or failed. Each table now
+     records the grupId it was fetched for (`fa_league_cache_v2_g`); `pruneStaleLeagueCache()` drops
+     any mismatch (and any legacy entry with no recorded group) and the league refetches at once
+     instead of waiting out the shared 5-minute window.
+   - *Calendari:* saving only stored the link; fixtures come from the 06:00 `scheduledFcfSync` or the
+     refresh button. `setClubCategories` now runs `_syncFcfSquad` for every squad whose **grupId**
+     changed, returns `fcfSync`, and never fails the save over it.
+   - A link to a group the club is not in used to report *"Tot al dia"* on refresh — identical to a
+     healthy sync. Save and refresh now both toast `fcf.not_in_group`.
+2. **v269 — the federation now appends the squad letter.** fcf.cat writes
+   `"L'ESQUERRA DE L'EIXAMPLE, F.C. A"` / `"… B"` from 2026-27, `sameClubName` matched neither, and
+   `_syncFcfSquad` returned `not-in-group` for both squads. `sameClubName` (both copies) retries with a
+   trailing single-letter suffix stripped — a fallback only, whitespace before the letter required so a
+   bare `F.C` keeps its C — and `ourTeamIdIn` prefers the row whose suffix is this squad's letter.
+   Dry-run against live data before shipping: B adds 30 fixtures, marks the old group's 27 `fcfRemoved`,
+   leaves the 3 hand-typed friendlies alone. **Amateur A was never affected** — it already had its 30.
+3. **`13159ec` — the refresh button had been dead since 26 Aug.** `f973aed` (the getBoard3d commit)
+   swapped `syncFcfFixtures`' `clubId` from `token.teamId` to `request.data.clubId`. The button has
+   never sent one, so every press failed with *"Cap club."* — and a body-supplied id would have let
+   any staff member rewrite another club's calendar. Back to the token; `test/sync-fcf.test.js` calls
+   the callable exactly as `bindFcfRefresh` does. **The callable had no test at all**, which is how
+   four weeks of failures went unnoticed.
 
-**`functions/topup-demo-extras.js`** (new) — coach match notes and the anada briefing. Nothing in
-the repo wrote `teams/{id}/matchNotes`, so every notes block was blank, and the briefing never
-rendered because `findFirstLeg()` pairs by NAME, which is only a suggestion until the coach answers
-it. Writing `firstLegId` is exactly what that "yes" would have written. 75 notes created; then
-`--link-existing` filled the one missing field on notes that already existed, taking it to 51 of 51
-second legs carrying a briefing.
+### Cosmetic, at the owner's request
 
-**`functions/topup-demo-referees.js`** (new, **never run**) — mocks federation referees, and carries
-its own `--remove`. It is a deliberate trade: `fcfLinks` is also the master switch for Classificació,
-Sancions and El rival, which then fetch live and fail against a grup id the federation does not have.
+- **v270 — the squad letter lost its grey disc.** `.conv-team-circle`, `.cv-team` and
+  `.pmt-team-letter` share one rule: a bare, **upright**, grey letter in `em`. Upright is now the only
+  thing separating it from `.cat-badge` (italic) — `cat-badge.test.js` pins both halves. Interactive
+  pickers (`.md-team-circle`, `.reg-team-circle`, `.ts-letter-chip`) are controls and unchanged.
+- **v271 — in a match title the letter is part of our name.** `matchLabel` puts it inside
+  `.md-our-club`, so Inici and the Calendari read "ESQUERRA DE L'EIXAMPLE F.C. B" in the name's own
+  red/uppercase/size. Tested by RUNNING `matchLabel`, not by grepping it.
+- **v272 — Inici.** Both answer groups are a fixed **256px** (measured with Oswald: the four training
+  pills span 248 ca / 255 es / 242 en, the match pair 241), and the two column heads (`LES PROPERES
+  DUES SETMANES`, `EL MEU ESTAT`) are a fixed 32px so their rules meet — they were 5px apart. Phone
+  layout untouched.
 
-⚠ **The demo season ends 2026-10-24** and nothing generates a new fixture list. `topup-demo-season`
-extends training only as far as the last fixture, so it will report `0` for ever once that date
-passes. That is a seeding job, not a top-up.
+### Tools and methods that worked
 
-### Real club — why the referee panel was empty (four faults, in order)
-
-Each was real, each was verified, and the first three changed nothing on screen.
-
-1. **`fcfCrawl/config.enabled` was `false`.** `fcfCrawlConfig()` reads `c.enabled === true`, so every
-   crawl returned `{skipped:"disabled"}`; the appointments pass had **never run**.
-   ⚠ **Correction to an earlier diagnosis, also corrected in CONTEXT.md**: `seasons: ["22","21"]`
-   were NOT stale ids. `22` is the current season. `enabled` was the whole config fault.
-2. **`parseFcfActa` could not read the page any more.** fcf.cat moved the referee row from bare text
-   to nested children carrying a role and a territory; `([^<]+)` failed on character one and
-   returned `[]` silently. Caught by the v117 alarm — 178 played actas, 0 referees.
-3. **`fcfActasDue` read an unplayed acta exactly once.** `cur && (cur.c || !closed)` skipped anything
-   already stored, so an appointment posted after the first sight was unreachable — which is every
-   appointment, since the federation posts them the Thursday before. Now re-read until it has
-   officials, bounded by `FCF_APPOINTMENT_HORIZON_DAYS = 10`.
-4. **v266 — the loader sat behind the condition that needed its own result.** `mdLoadAllRefIndices()`
-   had ONE caller, inside `mdRefDetailHtml`, which `renderMatchDetail` reaches only in
-   `else if (isStaff)` — i.e. only once `mdRefereeFor` has already returned a referee. Nothing ever
-   fetched the index. The load now lives inside `mdRefereeFor`, at the point of use.
-
-v265 (`refPageNeedsRedraw`) was also a real bug: both loaders are fire-and-forget on the render path
-and only ever redrew `matchday`, never `match-detail`.
-
-v267 — **the referee and notes headings had no underline.** `ptHead()` emits `.pt-sec-head`, which
-has one; both cards bring their own `.card-title`, which said `border: none`. Invisible for as long
-as the referee feature was broken, because the empty path falls back to `ptHead()`.
-
-### Tools left behind
-
-- **`functions/diagnose-referees.js`** — READ-ONLY, no write path anywhere in it, safe to point at a
-  PROTECTED club. Walks all five links of the referee chain and names the broken one. This is what
-  settled the investigation, after three rounds of reasoning from the code did not.
-- **`functions/set-fcf-crawl-config.js`** — derives `seasons` from the `temporadaId` in the club's
-  own `fcfLinks` and narrows `onlyGroups` to its groups. Dry run by default.
+- **Reading production without ADC.** There are no Application Default Credentials on this machine,
+  so Admin-SDK scripts fail. The Firebase CLI's own login works for **read-only** Firestore REST GETs:
+  the token is in `~/.config/configstore/firebase-tools.json` under `additionalAccounts[]` for
+  `marna96@gmail.com` — **not** the top-level `tokens`, which belong to another account and give 401.
+  Run any `firebase` command first to refresh it. The two scripts used (`diag.js`, `dryrun.js`) lived
+  in the session scratchpad, not the repo.
+- **`firebase functions:log --only <fn>`** is what showed the refresh button was being pressed and
+  `setClubCategories` logging `fcfSync: []` — i.e. that the save path ran and found nothing to sync.
+- **Headless Edge for CSS checks:** `msedge --headless=new --screenshot` / `--dump-dom` against a
+  scratch HTML that links the real `css/style.css` and Oswald. Launch it with `Start-Process …
+  -RedirectStandardOutput` and a fresh `--user-data-dir`; called inline from PowerShell it returns
+  nothing once an Edge instance exists.
 
 ## Pending
 
-- **The B team's `fcfLinks` still points at last season** (`temporadaId=21`, Quarta Catalana). The
-  owner knows and will change it. Afterwards re-run
-  `set-fcf-crawl-config.js --club <id> --enable --apply`.
-- **`21_54888305` holds 238 played actas with no referees** — crawled while the parser was broken,
-  now marked `c:1`, and `cur.c` short-circuits the due rule, so no scheduled run will ever revisit
-  them. Recovering it means stripping the refereeless entries from that document and re-crawling
-  once. **The owner decided this is not needed yet.**
-- `onlyGroups` is scoped to Esquerra's two groups, so no other club gets referees. Widening it is a
-  Firestore edit rather than a deploy — but read the horizon note in `fcfActasDue` first.
-- `topup-demo-referees.js` has never been run; the demo club still shows clean empty FCF cards.
+- **Rival names now carry the federation's squad letter** ("ASSOCIACIO ANTICS ALUMNES DE XALOC A").
+  Offered to strip it from `opponentName`; **the owner has not answered.** If done, strip only in
+  display or at import with care — `normTeamName` pairing and `findFirstLeg` read these names.
+- **The letter on the profile photo** (`.po-team-badge`, a grey disc overlaid on the photo) was left
+  as a disc on purpose — a bare letter on a photo is unreadable. Asked the owner; no answer yet.
+- **Player-row letters** (Convocatòria, New Training picker, match table) are the v270 small grey
+  upright letter. The owner's "same format as the rest of the letters" was applied to the match
+  TITLE only (v271); whether rows should change too was asked, not answered.
+- **The B team's link is now on 2026-27**, so the referee-crawl step this file used to defer is due:
+  `set-fcf-crawl-config.js --club nDLJCpJfDvFHs8MnwtzW --enable --apply` (dry run first).
+- **27 old-group B fixtures are `fcfRemoved`** (struck through, not deleted — call-ups and notes hang
+  off their ids). The coach can delete them by hand; nothing automatic will.
+- `ourTeamIdIn`'s letter preference (two of our squads in one group) is covered only by the pure
+  `sameClubName` / `squadLetterOf` tests, not end to end — `_syncFcfSquad` fetches live and has no
+  emulator test.
+- **From before:** `21_54888305` holds 238 played actas with no referees (owner: not needed yet);
+  `onlyGroups` is scoped to Esquerra's groups; `topup-demo-referees.js` has never been run; the demo
+  season ends 2026-10-24 and nothing generates a new fixture list.
 
 ---
 
@@ -375,7 +382,27 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 ## Lessons that keep repeating
 
-### New this session (2026-09-18/19)
+### New this session (2026-09-21)
+
+- ⚠ **A symptom can have several causes stacked in a row — each fix only uncovers the next.** "The
+  B calendar does not update" was a missing trigger (v268), then a federation name change (v269),
+  then a dead refresh button (`13159ec`). Each fix was correct and each was insufficient. What ended
+  it was reading LIVE data and running the real merge as a dry run against it — the first two fixes
+  were reasoned from code, and the second would have been found at once by a dry run.
+- ⚠ **A callable with no test is a callable nobody knows is broken.** `syncFcfFixtures` failed on
+  every press for four weeks after an unrelated commit touched the line beside it. The fix is a test
+  that calls it with the exact payload the client sends — not a test of the helper it wraps.
+- ⚠ **Upstream NAMES change without notice, and identity-by-name fails silently.** fcf.cat appended a
+  squad letter to every club; the sync's answer was the quiet `{skipped: "not-in-group"}`, which the
+  button then reported as "up to date". Any `skipped` reason has to reach the person who can act on it.
+- **Cache by what the data IS, not by where it is shown.** The standings cache keyed by squad could
+  not notice the squad's group had changed. Record the source identity (grupId) beside the cached value.
+- **Measure before picking a size.** 256px for the answer groups came from rendering the real font
+  in three languages, not from the screenshot — Spanish is 7px wider than Catalan.
+- **Git Bash `sed` with a broad pattern hit two `package.json` scripts** (`test:functions` and
+  `test:clubvenue` share the same tail). Check `git diff` after every scripted edit.
+
+### From the previous session (v265–v267)
 
 - ⚠ **When a fix is correct and changes nothing, stop fixing and check REACHABILITY.** Three
   consecutive fixes — the acta parser, the re-fetch rule, the redraw gate — were each a genuine bug,
@@ -411,7 +438,7 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 - **A script FILE resolves modules from its own directory, not the cwd** — only `node -e` uses the
   cwd. An Admin SDK helper written to `/tmp` cannot find `firebase-admin`.
 
-### From the previous session (v254–v264)
+### From earlier sessions (v254–v264)
 
 
 - ⚠ **When the owner's screen and your probe disagree, the probe is wrong — go and get their

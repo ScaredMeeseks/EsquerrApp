@@ -12157,3 +12157,99 @@ they are EQUAL, which is the real requirement: the neighbours must agree, and wh
 they were written with is not the point. Mutation-tested — removing the rule fails it.
 
 Unit 3584 → **3585**. Version triple → **v267**.
+
+### 2026-09-21 — v268: a changed FCF link did nothing until the next morning
+
+The owner re-pointed `fcfLinks['amateur-B']` at the 2026-27 group (58161914). Neither table moved.
+
+**Classificació.** `_leagueCache` (`fa_league_cache_v2`) is keyed by SQUAD —
+`league-amateur-B` — so nothing about it could notice the squad now meant a different group. The
+old table was applied from cache on every render, and `refreshLeagueTables` only replaced it on a
+successful non-empty fetch, so an empty or failing new group kept the old table for good. Each
+cached table now carries the grupId it came from (`fa_league_cache_v2_g`); `pruneStaleLeagueCache()`
+runs when the club config loads and at the top of `refreshLeagueTables` / `fcfTeamsFor`, drops any
+entry whose group differs (or was never recorded), and a league with nothing cached fetches at once
+rather than waiting for the shared 5-minute window (throttled per league by `_leagueAsked`).
+
+**Calendari.** Saving only stored the link. `setClubCategories` now runs `_syncFcfSquad` for each
+squad whose **grupId** changed (a re-pasted URL with the same group is not a change), returns
+`fcfSync`, and swallows a sync failure — the link is stored and the nightly job retries.
+
+`syncFcfFixtures` now returns `skipped: [{key, reason}]`; the refresh button and the save both toast
+`fcf.not_in_group`. Before, a squad skipped as not-in-group made the button say *"Tot al dia"*.
+
+Tests: two `fcfTeamsFor` cases (a re-pointed squad refetches and the old rows leave the persisted
+cache; a table with no recorded group is not trusted), mutation-tested by disabling the prune.
+
+### 2026-09-21 — v269: the federation started writing the squad letter
+
+v268 shipped and the B calendar still did not move. `firebase functions:log` showed the refresh
+being pressed and `setClubCategories` logging `fcfSync: []`. Reading production (read-only, see
+HANDOFF "Reading production without ADC") settled it:
+
+```
+amateur-A grup 58161881  row "L'ESQUERRA DE L'EIXAMPLE, F.C. A"  sameClubName? false
+amateur-B grup 58161914  row "L'ESQUERRA DE L'EIXAMPLE, F.C. B"  sameClubName? false
+```
+
+From 2026-27 fcf.cat suffixes every squad with its letter. `ourTeamIdIn` → `""` →
+`{skipped: "not-in-group"}` for **both** squads. (A already held its 30 fixtures from an earlier sync,
+so it looked healthy.)
+
+`sameClubName` / `sameClubNameOf` retry with `SQUAD_SUFFIX` stripped —
+`/\s+["'“”‘’]?([A-Za-z])["'“”‘’]?\s*$/` — **as a fallback only**, so no pair that matched before can
+stop matching; whitespace before the letter is required so a bare `F.C` keeps its C. `ourTeamIdIn`
+takes a `letter` and prefers the row whose suffix is ours (`squadLetterOf` / `squadLetterOfName`),
+so two of our squads in one group cannot cross-import.
+
+Dry run of the real merge against live data before deploy: B → `added 30, removed 27`; the 27 are
+the old group's fixtures, marked `fcfRemoved` (struck through, not deleted); the 3 hand-typed
+friendlies untouched. A → `updated 30`.
+
+Tests: the two verbatim names, a quoted `"B"`, the bare-`F.C` case, two DIFFERENT pairs that must
+not merge (`Sant Andreu` / `SANT ANDREU ATLETIC B`), server/client agreement on the letter.
+Mutation: fallback removed → 3 fail.
+
+### 2026-09-21 — The refresh button had failed on every press since 26 Aug
+
+With v269 live the owner pressed refresh and got *"Cap club."*. `f973aed` ("The premium board stops
+being a public file") changed `syncFcfFixtures`' first line from `token.teamId` to
+`(request.data || {}).clubId` — apparently by accident, beside the new `getBoard3d`, whose own
+comment says *never* take the club from the body. `bindFcfRefresh` sends `{category}` and nothing
+else, so the button has been dead for four weeks; had a client sent an id, any staff member could
+have synced another club's calendar.
+
+Back to `token.teamId`. **`test/sync-fcf.test.js` (new, emulator)** calls the callable with the
+button's exact payload, checks a body `clubId` is ignored, and the two refusals. Mutation: restoring
+the body read fails 3. The other `request.data.clubId` reads in index.js are all
+superuser-gated and correct.
+
+### 2026-09-21 — v270/v271: the squad letter without its disc
+
+Owner's request: no grey circles around A/B beside names.
+
+- **v270.** `.conv-team-circle`, `.cv-team`, `.pmt-team-letter` → one shared rule: bare,
+  `font-style: normal`, `.78em`, `--pp-ink-3`. The disc was what separated a squad "A" from an aleví
+  "A" (`.cat-badge`, italic); now italic alone does, and `cat-badge.test.js` pins both the plainness
+  and the upright. `convocatoria.test.js`'s allowed radii shrank to `['0']`. The nested
+  `var(--pp-ink-3, var(--text-secondary))` fallback broke `readCss()`'s token resolver — the token is
+  global, so the fallback went.
+- **v271.** In a match title the letter looked like a footnote after a large red name. `matchLabel`
+  now emits it INSIDE `.md-our-club` — *"Esquerra de l'Eixample F.C. B"* — so it takes the name's
+  format. Test runs `matchLabel` (two-squad and one-squad: no stray space); mutation fails it.
+
+Interactive pickers (`.md-team-circle`, `.reg-team-circle`, `.ts-letter-chip`) and the photo overlay
+`.po-team-badge` are unchanged.
+
+### 2026-09-21 — v272: Inici answer groups and column heads
+
+- The match pair (241px) and the training four (248px) ended at different edges. Both groups are
+  now **256px**, a number MEASURED in headless Edge with Oswald: the four pills span 248 (ca),
+  255 (es), 242 (en). Training pills `flex: 1 1 auto` (Lesionat stays widest); the match pair
+  `flex: 1 1 0`. The ≤700px block still overrides to full width.
+- `LES PROPERES DUES SETMANES` and `EL MEU ESTAT` ruled off 5px apart (10px vs 8px padding, and the
+  left head carries the pending count). Both are a fixed 32px, content centred.
+
+Verified by rendering both with the real stylesheet: rules at the same y, all three groups 256.0px.
+
+Unit 3585 → **3599**. Functions 89 → **93**. Version triple → **v272**.
