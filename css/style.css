@@ -8671,6 +8671,15 @@ a.ini-ev-name, .ini-ev-name-link {
 }
 .ini-page .avail-btn, .ini-page .avail-chosen, .ini-pill { min-width: 56px; }
 .ini-page .mavail-btn, .ini-page .mavail-chosen { min-width: 118px; }
+/* One width for both answer groups, so a training's four pills and a
+   match's two end at the same edge down the list (v272). 256px is measured,
+   not guessed: the four pills' natural span with Oswald is 248px (ca),
+   255px (es), 242px (en), and the match pair's is 241px. The training pills
+   grow from their text width (Lesionat stays widest), the match pair splits
+   evenly. The phone block below overrides all of this with full width. */
+.ini-page .avail-btns, .ini-page .mavail-btns, .ini-pills { width: 256px; }
+.ini-page .avail-btn, .ini-page .avail-chosen, .ini-pill { flex: 1 1 auto; }
+.ini-page .mavail-btn, .ini-page .mavail-chosen { flex: 1 1 0; min-width: 0; }
 .ini-page .avail-btn:hover,
 .ini-page .avail-chosen:hover,
 .ini-page .mavail-btn:hover,
@@ -8713,6 +8722,14 @@ a.ini-ev-name, .ini-ev-name-link {
 .ini-block-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
+}
+/* The two column heads side by side — LES PROPERES DUES SETMANES and EL MEU
+   ESTAT — must rule off on ONE line (v272). They sat 5px apart: the left
+   head carries the 13px pending count and 10px of padding, the right only
+   an eyebrow and 8px. Same height, same padding, content on the baseline
+   row, so both borders land at the same y whatever either head contains. */
+.ini-main > .ini-sec-head, .ini-rail > .ini-block:first-child > .ini-block-head {
+  box-sizing: border-box; height: 32px; padding-bottom: 0; align-items: center;
 }
 .ini-kv {
   display: flex; align-items: baseline; justify-content: space-between;

@@ -1189,3 +1189,24 @@ describe('Inici — the heroes are rendered, not just read', () => {
         (h.match(/ini\.sess_matches:\S{0,40}/) || [])[0]);
   });
 });
+
+/* v272. Verified by rendering (headless Edge, real stylesheet and Oswald):
+   both answer groups span 256px and the two column heads rule off at the
+   same y. These pin the two rules that produce that, so neither can be
+   dropped quietly. */
+describe('Inici — the two answer groups and the two heads line up', () => {
+  it('both answer groups share one width', () => {
+    assert.ok(/\.ini-page \.avail-btns,\s*\.ini-page \.mavail-btns,\s*\.ini-pills\s*\{\s*width:\s*256px;/.test(css),
+        'the training and match answer groups no longer share a width');
+  });
+
+  it('the match pair fills that width evenly', () => {
+    assert.ok(/\.ini-page \.mavail-btn,\s*\.ini-page \.mavail-chosen\s*\{\s*flex:\s*1 1 0;/.test(css));
+  });
+
+  it('both column heads have the same fixed height, so their rules meet', () => {
+    const m = css.match(/\.ini-main > \.ini-sec-head,\s*\.ini-rail > \.ini-block:first-child > \.ini-block-head\s*\{([^}]*)\}/);
+    assert.ok(m, 'the shared head rule is gone');
+    assert.ok(/height:\s*32px/.test(m[1]) && /padding-bottom:\s*0/.test(m[1]), m[1]);
+  });
+});
