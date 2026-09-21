@@ -183,7 +183,18 @@ describe('cat badge — the CSS keeps it distinct from a team letter', () => {
     assert.ok(!/border:/.test(r), 'a bordered badge reads as a team circle');
   });
 
-  it('still leaves the team circle a circle', () => {
-    assert.ok(/border-radius:\s*50%/.test(rule('.conv-team-circle')));
+  /* v270: the squad letter lost its disc at the owner's request, so the two
+     letters are now told apart by italic alone. Pin both halves of that. */
+  it('the squad letter is a bare letter, not a disc', () => {
+    const r = rule('.conv-team-circle, .cv-team, .pmt-team-letter');
+    assert.ok(/background:\s*none/.test(r), 'the squad letter has a fill again');
+    assert.ok(/border:\s*none/.test(r), 'the squad letter has a border again');
+    assert.ok(/border-radius:\s*0/.test(r), 'the squad letter is round again');
+  });
+
+  it('the squad letter is UPRIGHT — italic is what marks a category', () => {
+    const r = rule('.conv-team-circle, .cv-team, .pmt-team-letter');
+    assert.ok(/font-style:\s*normal/.test(r),
+        'an italic squad letter reads as a category initial');
   });
 });

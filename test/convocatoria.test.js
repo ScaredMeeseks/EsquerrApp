@@ -1105,11 +1105,13 @@ describe('Convocatòria — the paper idiom', () => {
         'the only shadow on this page is the drop-insertion line');
     const radii = [...new Set((rules.match(/border-radius:\s*([^;]+);/g) || [])
         .map((r) => r.split(':')[1].trim().replace(';', '')))].sort();
-    /* `50%` is the team circle and the position discs; `0` is the crest
-       monogram having its disc taken OFF, which is the opposite of a card
-       creeping in. Any other value is one. */
-    assert.deepStrictEqual(radii, ['0', '50%'],
-        'the only rounded things here are the team circle and the position discs');
+    /* `0` is the crest monogram having its disc taken OFF, which is the
+       opposite of a card creeping in. Any other value is one. `50%` went
+       with v270: the squad letter lost its disc (it lives in the shared
+       .conv-team-circle rule now), and it was the last round thing in this
+       page's own block. */
+    assert.deepStrictEqual(radii, ['0'],
+        'something on the Convocatòria page is rounded again');
   });
 
   it('stacks the two columns on a phone', () => {
