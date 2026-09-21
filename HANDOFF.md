@@ -7,18 +7,21 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 272** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 275** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3599** — `cd test && npm run test:unit` (~21 s), all passing |
-| Functions tests | **93** — `npm run test:functions`, all passing (+4: `sync-fcf.test.js`, new) |
-| Rules tests | 178 — **not re-run this session**; `firestore.rules` was not touched |
+| Unit tests | **3640** — `cd test && npm run test:unit` (~24 s), all passing |
+| Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant |
+| Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 
-**Deploy state.** `main` is current and deployed through v272 `b15e4ff`. `.\deploy.ps1 functions`
-was run after every commit. Pages was verified live each time by curling the served `sw.js`
-(→ `esquerrapp-v272`) and grepping the served asset for the change, not by trusting the push.
+**Deploy state.** `main` is current and deployed through **v275 `1c6312d`**. v273–v275 are
+frontend-only (no rules or functions deploy). Pages was verified live each time by curling the
+served `sw.js` (→ `esquerrapp-v275`) and grepping the served `app.js`/`style.css` for the change.
+Each release was committed on its own branch (`v273-fcf-tabs`, `v274-sancions-squads`,
+`v275-cv-match-picker`) and fast-forwarded into `main` on the owner's "deploy"; the branches are
+still there and can be deleted.
 
 ⚠ **The service worker serves the old bundle until it is unregistered.** Bumping `CACHE_NAME` is
 not enough on its own. The snippet that settles it:
@@ -34,7 +37,63 @@ navigator.serviceWorker.getRegistrations()
 **The B team is on its 2026-27 group and its calendar is importing.** Confirmed by the owner from
 the Calendari (Xaloc, jornada 2). It took three separate faults to get there — see below.
 
-## The session in order (2026-09-21)
+## Second session of 2026-09-21 — v273 to v275
+
+### v273 — Sancions and Golejadors, rebuilt to the `fcf_tabs` handoff
+
+The Claude Design bundle (`Downloads\EsquerrApp SancionsGolejadors\design_handoff_fcf_tabs`:
+README, two `.dc.html` prototypes, six PNGs) for the last two staff pages still in the app
+chrome. Markup and CSS are new; the parsers, the fetches and "nothing is read while a panel is open"
+are unchanged. Full detail in CONTEXT.md; the points a next session needs:
+
+- **`.fcf-` is the shared vocabulary** (root, crest, chips, pill, states), `.sanc-` / `.sc-` are
+  page-private. `.fcf-page`, `.fcf-hero` & co. are in the shared paper lists near
+  `.dashboard-content` — **placed before the `.ab-*` entries**, because `pissarres.test.js` pins
+  those list tails verbatim.
+- **Desktop and phone frames are both rendered**; `.fcf-desk` / `.fcf-phone` choose at 700px, by
+  class (never `[hidden]`).
+- **Owner decision: rulings against clubs are dropped** from Sancions entirely, before counting.
+- **Golejadors' club card is keyed per ROW** (`clubId#index`), and the season is now an
+  `scDropdown` in single mode. The phone's filter sheet holds the only copy of the pickers.
+- **Run against the LIVE FCF proxy** before shipping, through a localhost harness that loaded the
+  real tab block from `app.js` (the proxy allows `http://localhost:8123`). This found FCF
+  publishing scorers with `nombre_jugador: null` — rendered as "—" now.
+- Deviations from the handoff, reported to the owner and accepted: no "Club · …" label on
+  Sancions (the shared category bar has no slot); the sub-line says "Amateur A" (no group or
+  competition NAME exists in any payload we fetch); crest fallback is the app's 2-letter
+  `clubMonogram` ("ED"), not the handoff's 3-letter codes.
+
+### v274 — Sancions could only show squad A *(owner, the day v273 shipped)*
+
+v273 deleted Sancions' own A/B picker in favour of the shared category bar — and
+`renderCategoryBar()` returns '' for a one-category club, which Esquerra is. On `sancions` only,
+the bar now always shows, offers no "Totes" / "all" chip, lists only squads with an FCF link
+(`catBarLettersHtml(active, attr, only)`), and lights `sancionsLetter(cat)` — the one answer the
+page and the bar share. Every other page is unchanged and a test pins that.
+
+### v275 — Convocatòria's match picker
+
+- Both clubs in **capitals** (`.cv-teams { text-transform: uppercase }`): our name is configured
+  in mixed case and FCF writes rivals in capitals.
+- **`fitCvTeams(root)`** shrinks the fixture to one line (0.5px steps, floor 11px), after layout,
+  on resize, and when the menu opens. Same shape as `fitMnScoreNames`.
+- **"Tria el partit" ruled off 6px high** — the toggle's `margin-top:auto` needs a stretched
+  column parent; `.cv-ctl-match .cv-menu` is one now. Measured in headless Edge: all six rules at
+  the same y.
+
+### Tools that worked (second session)
+
+- **Headless Edge will not size a window below ~480px.** A "390px" screenshot is a crop of a
+  ~490px layout and looks exactly like horizontal overflow. Put the page in a 390px `<iframe>` and
+  shoot the wrapper instead.
+- **Measure, don't eyeball:** a `<pre id="out">` filled by an in-page script, read back with
+  `--dump-dom`. That is how the 6px rule offset and the 425-in-348px overflow were found and then
+  shown fixed.
+- **Mutation passes** as a scratchpad Node script: apply one breaking edit, run the one suite,
+  expect red, restore. 30 mutations across the three releases, all red after one test was
+  tightened (a renamed base rule survived because another selector still named the class).
+
+## First session of 2026-09-21 — v268 to v272
 
 ### "I changed the amateur-B link and nothing updated" — three faults, in order
 
@@ -98,6 +157,11 @@ The owner re-pointed `fcfLinks['amateur-B']` from last season's group to **58161
 
 ## Pending
 
+- **Sancions for this season is empty** — no rulings published yet for either Esquerra group
+  (checked live 2026-09-21). The populated states were verified against a 2025-26 group; the
+  first real 2026-27 ruling is worth a look.
+- **Golejadors' `renders` count** on a full filter walk was ~76 (tree loads and club loads each
+  re-render). Not a bug and pre-existing in shape, but a candidate if the page ever feels slow.
 - **Rival names now carry the federation's squad letter** ("ASSOCIACIO ANTICS ALUMNES DE XALOC A").
   Offered to strip it from `opponentName`; **the owner has not answered.** If done, strip only in
   display or at import with care — `normTeamName` pairing and `findFirstLeg` read these names.
@@ -387,7 +451,23 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 ## Lessons that keep repeating
 
-### New this session (2026-09-21)
+### New this session (2026-09-21, second half — v273–v275)
+
+- ⚠ **Deleting a control in favour of a shared one: check the shared one EXISTS for every
+  client.** v273 removed Sancions' squad picker because the category bar "already offers it" —
+  but the bar renders nothing for a one-category club, which is the only club that uses the page.
+  The owner found it within the hour (v274). Render the page for the real club config, not a
+  two-category fixture.
+- **Run a redesign against live data before calling it done.** Unit tests on the handoff's sample
+  rows passed; the live run found FCF publishing `null` player names on day one.
+- **A test that a class "has a rule" is satisfied by ANY selector naming it.** Renaming the base
+  `.sc-dd-box` rule survived because `input:checked + .sc-dd-box` still matched. Assert the rule
+  that actually draws the thing.
+- **A grab() marker on a function signature breaks when the signature grows a parameter** —
+  `calendar-render.test.js` pinned `catBarLettersHtml(active, attr) {`. Grep `test/` for the old
+  signature whenever one changes.
+
+### Earlier the same day (v268–v272)
 
 - ⚠ **A symptom can have several causes stacked in a row — each fix only uncovers the next.** "The
   B calendar does not update" was a missing trigger (v268), then a federation name change (v269),
