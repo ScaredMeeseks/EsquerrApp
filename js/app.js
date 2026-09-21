@@ -2809,7 +2809,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 274;
+  const APP_VERSION = 275;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7333,6 +7333,7 @@
     requestAnimationFrame(() => requestAnimationFrame(() => {
       scaleRoBoards();
       fitMnScoreNames();
+      fitCvTeams();
     }));
   }
 
@@ -7341,7 +7342,7 @@
   var _mnFitDebounce = null;
   window.addEventListener('resize', function () {
     clearTimeout(_mnFitDebounce);
-    _mnFitDebounce = setTimeout(fitMnScoreNames, 150);
+    _mnFitDebounce = setTimeout(function () { fitMnScoreNames(); fitCvTeams(); }, 150);
   });
 
   // #endregion Dashboard & Page Router
@@ -13181,6 +13182,30 @@
       // that fits exactly still gives up a step.
       while (_mnScoreNeed(el) > el.clientWidth + 1 && size > MIN) {
         size -= 1;
+        el.style.fontSize = size + 'px';
+      }
+    });
+  }
+
+  /**
+   * The fixture in Convocatòria's match picker, on ONE line (v275).
+   *
+   * Both names are capitals (`.cv-teams`, text-transform) — the club's own
+   * name is typed in mixed case and FCF writes every rival in capitals, and
+   * the two side by side read as two styles. Capitals are the longer form,
+   * so the type steps down half a pixel at a time until the line fits, to
+   * 11px; past that the stylesheet's ellipsis takes over. Measured, like
+   * fitMnScoreNames, so it runs after layout, on resize, and when the menu
+   * opens — its rows are display:none until then and measure 0.
+   */
+  function fitCvTeams(root) {
+    var MIN = 11;   // px
+    (root || document).querySelectorAll('.cv-teams').forEach(function (el) {
+      el.style.fontSize = '';           // start from the stylesheet's size
+      if (!el.clientWidth) return;      // not laid out — nothing to fit against
+      var size = parseFloat(getComputedStyle(el).fontSize) || 17;
+      while (el.scrollWidth > el.clientWidth + 1 && size > MIN) {
+        size -= 0.5;
         el.style.fontSize = size + 'px';
       }
     });
@@ -35452,6 +35477,8 @@
       closeMenus(null);
       menu.hidden = wasOpen;
       root.classList.toggle('cv-menu-open', !menu.hidden);
+      // The rows measure 0 until shown; fit their fixtures now they have width.
+      if (!menu.hidden) fitCvTeams(menu);
     });
     /* `_cvDocClose` guards against a second listener per render: this binder
        runs after every re-render and the page re-renders on every drop. */

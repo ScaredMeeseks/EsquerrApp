@@ -451,6 +451,10 @@ a:hover { text-decoration: underline; }
 .ms-page,
 .ac-page,
 .nf-page,
+.cfg-page,
+.gu-page,
+.fcf-page,
+.ab-page,
 .cal-page {
   margin: -1rem -2rem -2rem;
 }
@@ -464,6 +468,10 @@ a:hover { text-decoration: underline; }
 .ms-page:first-child,
 .ac-page:first-child,
 .nf-page:first-child,
+.cfg-page:first-child,
+.gu-page:first-child,
+.fcf-page:first-child,
+.ab-page:first-child,
 .cal-page:first-child {
   margin-top: -2rem;
 }
@@ -483,6 +491,10 @@ a:hover { text-decoration: underline; }
   .ms-page,
   .ac-page,
   .nf-page,
+  .cfg-page,
+  .gu-page,
+  .fcf-page,
+  .ab-page,
   .cal-page {
     margin: -1rem -1rem -.75rem;
   }
@@ -496,6 +508,10 @@ a:hover { text-decoration: underline; }
   .ms-page:first-child,
   .ac-page:first-child,
   .nf-page:first-child,
+  .cfg-page:first-child,
+  .gu-page:first-child,
+  .fcf-page:first-child,
+  .ab-page:first-child,
   .cal-page:first-child {
     margin-top: -.75rem;
   }
@@ -518,14 +534,14 @@ a:hover { text-decoration: underline; }
    ⚠ The TITLE came in three sizes: 36px on the five, 38px on the other four.
    One size now. `.ini-name` and `.ms-name` stay at 34px/lh 1 and are NOT in
    this list — those are a person's name under an eyebrow, not a page title. */
-.md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
-.pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+.md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id, .cfg-hero, .gu-hero, .ab-hero,
+.pl-title-row, .reg2-title-row, .cv-head, .cal-hero, .fcf-hero {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
   border-bottom: 1px solid var(--pp-rule);
 }
-.md2-h1, .nf-h1, .ac-h1, .ini-h1,
-.pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 {
+.md2-h1, .nf-h1, .ac-h1, .ini-h1, .cfg-h1, .gu-h1, .ab-h1,
+.pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1, .fcf-h1 {
   margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1;
   letter-spacing: -.01em; color: var(--pp-ink);
 }
@@ -553,10 +569,11 @@ a:hover { text-decoration: underline; }
    ⚠ The step-down is at 700 — the BAND's breakpoint — not at the 900 those
    three pages used. A body that narrows before the band above it does is the
    text stepping 24px left of its own title for 200px of width. */
-.ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+.ini-body, .md2-body, .ms-body, .ac-body, .nf-body, .cfg-body, .ab-body,
 .pl-body, .reg2-body, .cv-body { padding: 32px 40px 56px; }
 /* The left column of the band: title over one line of scope. */
-.ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l {
+.ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l,
+.cfg-hero-l, .gu-hero-l, .fcf-hero-l, .ab-hero-l {
   display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
 }
 /* ⚠ ONE LINE, AND IT IS THE BAND'S HEIGHT THAT DEPENDS ON IT. Registres'
@@ -568,7 +585,8 @@ a:hover { text-decoration: underline; }
    something the page below it should be telling them instead.
    ⚠ `min-width: 0` is required — without it a flex child refuses to shrink
    below its content and the ellipsis never engages. */
-.md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+.md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub, .cfg-hero-sub,
+.gu-sub, .fcf-sub, .ab-sub {
   font-size: 14px; color: var(--pp-ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
@@ -580,8 +598,8 @@ a:hover { text-decoration: underline; }
    they label: a figure, or a section.
    ⚠ `.reg2-eyebrow` is NOT one of them and keeps its own rule: it is a
    section HEADING in ink at weight 600, and its own comment says so. */
-.ac-lbl, .ms-lbl, .reg2-fig-l,
-.md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow {
+.ac-lbl, .ms-lbl, .reg2-fig-l, .cfg-fig-l, .cfg-sec-l, .gu-fig-l, .ab-fig-l, .ab-sec-l,
+.md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow, .fcf-lbl, .fcf-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
   font-weight: 400; color: var(--pp-ink-3);
 }
@@ -589,11 +607,12 @@ a:hover { text-decoration: underline; }
    ⚠ Calendari is NOT here: its band's right-hand side is the month
    navigator, not a figure row. It is in the hero and title lists above,
    and in neither of these two. */
-.ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r {
+.ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r,
+.cfg-figs, .gu-figs, .fcf-figs, .ab-figs {
   display: flex; align-items: flex-end; gap: 36px; flex: none;
 }
 .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat, .pl-fig,
-.cv-fig, .reg2-title-col {
+.cv-fig, .reg2-title-col, .cfg-fig, .gu-fig, .fcf-fig, .ab-fig {
   display: flex; flex-direction: column; gap: 4px;
 }
 /* `.reg2-title-col` is the title's own stack, not a figure — same three
@@ -601,34 +620,35 @@ a:hover { text-decoration: underline; }
 .reg2-title-col { gap: 8px; min-width: 0; margin-right: auto; }
 
 .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
-.pl-fig-v, .cv-fig-v, .cv-big {
+.pl-fig-v, .cv-fig-v, .cv-big, .cfg-fig-v, .gu-fig-v, .fcf-fig-v, .ab-fig-v {
   font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 700px) {
-  .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id,
-  .pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+  .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id, .cfg-hero, .gu-hero, .ab-hero,
+  .pl-title-row, .reg2-title-row, .cv-head, .cal-hero, .fcf-hero {
     flex-wrap: wrap; gap: 16px; padding: 14px 20px 16px;
   }
   /* ⚠ `.pl-h1`, `.reg2-h1`, `.cv-h1` and `.std-title` had NO phone override
      at all — 38px of title on a 390px screen. */
-  .md2-h1, .nf-h1, .ac-h1, .ini-h1,
-  .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
-  .ini-body, .md2-body, .ms-body, .ac-body, .nf-body,
+  .md2-h1, .nf-h1, .ac-h1, .ini-h1, .cfg-h1, .gu-h1, .ab-h1,
+  .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1, .fcf-h1 { font-size: 26px; }
+  .ini-body, .md2-body, .ms-body, .ac-body, .nf-body, .cfg-body, .ab-body,
   .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
   /* ⚠ The scope line WRAPS again on a phone. One-line-with-ellipsis exists to
      keep ten bands the same height beside each other; on a 390px screen you
      see one band at a time and there is no height to match, so truncating a
      sentence there would cost information and buy nothing. */
-  .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub {
+  .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub, .cfg-hero-sub,
+.gu-sub, .fcf-sub, .ab-sub {
     white-space: normal; overflow: visible;
   }
   .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
-  .cv-head-r { gap: 0; width: 100%; }
+  .cv-head-r, .ab-figs { gap: 0; width: 100%; }
   .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat,
-  .pl-fig { flex: 1 1 0; min-width: 0; }
+  .pl-fig, .ab-fig { flex: 1 1 0; min-width: 0; }
   .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
-  .pl-fig-v, .cv-fig-v, .cv-big { font-size: 24px; }
+  .pl-fig-v, .cv-fig-v, .cv-big, .fcf-fig-v, .ab-fig-v { font-size: 24px; }
 }
 
 /* ===== Dashboard Cards & Widgets ===== */
@@ -988,11 +1008,6 @@ tr:hover td { background: #f7f8fa; }
 }
 .pmt-icon-header { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; }
 .pmt-date { font-size: .72rem; color: var(--text-secondary); white-space: nowrap; }
-.pmt-team-letter {
-  display: inline-block; font-size: .6rem; font-weight: 700; color: #fff;
-  background: var(--text-secondary); border-radius: 3px; padding: 0 .25rem;
-  margin-left: .3rem; vertical-align: baseline; line-height: 1.4;
-}
 .pmt-match { text-align: left !important; }
 .pmt-stacked {
   display: flex; flex-direction: column; gap: 0; line-height: 1.25;
@@ -1228,6 +1243,40 @@ tr:hover td { background: #f7f8fa; }
 /* The wrapper is focusable so the Delete key has somewhere to land,
    and every click focuses it — so suppress the ring for the mouse
    case only. :focus-visible still shows it when tabbing in. */
+/* ── The board's text notes, UNDER the 3D view ────────────────────
+   Not on the pitch: a note is a caption, sized against the screen, and
+   v259's attempt to size it against the PITCH stood a 39m column of text
+   on the grass. board3d leaves a numbered pin where each note was put and
+   these rows carry the same numbers.
+
+   ⚠ Inset from the right by --tb-axis, which is the camera/frames column's
+   own width — the one number both sides read, so the panel cannot creep
+   under the controls when that column changes. */
+.tb-3d-notes {
+  position:absolute; z-index:4;
+  /* ⚠ WITH A FALLBACK. --tb-axis is declared on .tb-3d-wrap, and a var()
+     with no fallback that fails to resolve makes the WHOLE declaration
+     invalid — the panel then loses its right edge entirely and sizes itself
+     to its text. 54px is the same figure the wrap declares. */
+  left:8px; right:calc(var(--tb-axis, 54px) + 8px); bottom:8px;
+  display:flex; flex-direction:column; gap:4px;
+  max-height:38%; overflow-y:auto; overscroll-behavior:contain;
+  padding:8px 10px; border-radius:6px;
+  /* No backdrop-filter: it blurs the SCENE behind the bar, which is the
+     pitch — and that blur is half of what the owner reported. A plain
+     ground reads as a panel just as well. */
+  background:rgba(0,0,0,.72);
+  color:#fff; font-size:.85rem; line-height:1.35;
+  pointer-events:auto;
+}
+.tb-3d-note {
+  display:block; padding-left:8px;
+  border-left:3px solid #fff;   /* overridden per note with its own colour */
+}
+@media (max-width: 600px) {
+  .tb-3d-notes { font-size:.8rem; max-height:32%; }
+}
+
 .tb-3d-wrap:focus { outline:none; }
 .tb-3d-wrap:focus-visible { outline:2px solid var(--accent, #66d9ff); outline-offset:-3px; }
 /* ── The 2D board, laid over the 3D turf while a draw tool is on ──
@@ -1280,8 +1329,14 @@ tr:hover td { background: #f7f8fa; }
    the silhouette, and the resize grips — resizing the pitch is not a
    drawing action. */
 .tb-field.tb-draw-surface > .tb-field-inner > * { display:none !important; }
+/* ⚠ `.tb-text-label` IS NOT IN THIS LIST ANY MORE (v263). It was, and with
+   a draw tool on it painted the note a SECOND time over the 3D scene — at
+   the metric size that v259 gave it, which for a real note is a 39 m column
+   of text. The owner saw it as "the text is duplicated below the box,
+   blurry": duplicated because the list under the board already says it,
+   blurry because the panel's backdrop blurs whatever sits behind it.
+   The words belong to the list now; nothing draws them on the turf. */
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-arrows-svg,
-.tb-field.tb-draw-surface > .tb-field-inner > .tb-text-label,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-circle,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-ball,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-cone { display:block !important; }
@@ -1345,8 +1400,15 @@ tr:hover td { background: #f7f8fa; }
 .tb-cam-btn:hover { background:rgba(0,0,0,.75); border-color:rgba(255,255,255,.6); }
 /* Only Follow is a state, so only Follow can look latched. */
 .tb-cam-btn.active { background:var(--primary); border-color:var(--primary); }
+/* ⚠ TOP-CENTRE, NOT BOTTOM-LEFT. The notes panel took the bottom-left
+   corner in v262 and the two overlapped — the hint showed through it, which
+   the owner read as the note being "duplicated below the box, blurry". The
+   other three corners are taken: the menu is top-left, the cameras top-right
+   and the frames rail runs down the right edge, so the free space is the top
+   middle — beside the camera buttons this hint is about. */
 .tb-3d-hint {
-  position:absolute; left:.6rem; bottom:.6rem; z-index:2;
+  position:absolute; top:.6rem; left:50%; transform:translateX(-50%);
+  z-index:2; max-width:min(52%, 42ch); text-align:center;
   color:rgba(255,255,255,.6); font-size:.72rem; pointer-events:none;
 }
 @media (max-width: 640px) { .tb-3d-hint { display:none; } }
@@ -1674,11 +1736,36 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .tb-pen-line:hover { stroke-width:5; filter:drop-shadow(0 0 4px var(--primary)); }
 .tb-pen-line.tb-pen-selected { stroke-width:4; filter:drop-shadow(0 0 3px var(--primary)); }
 .tb-pen-drawing { opacity:.7; }
+/* ── A text label is sized in METRES, like every other object ──────
+   The last one to join --tb-ppm, a year after the discs, balls, cones
+   and strokes did. Until v259 it was the only thing on the board still
+   in fixed pixels, and it failed the two ways the comment above
+   .tb-circle predicts: a note drawn in the editor came out 124% of a
+   catalogue card's WIDTH, and 3D drew every label six metres wide
+   whatever it said.
+
+   --tb-tfs is the label's own cap height in metres, written per element
+   because it is per label; the fallback is BG.OBJ.text, which is the
+   editor's historical 12px at 7.81 px/m so an untouched board does not
+   move. --tb-tw is its width, and is absent unless the coach has
+   dragged the handle — a label with no width wraps to its text and has
+   no empty bottom half.
+
+   ⚠ Padding and radius are in `em`, so they follow the font without a
+   second ppm sum to keep in step with it. 2px and 6px at the old 12px
+   default are .17em and .5em.
+
+   ⚠ The 7px floor only bites on a catalogue card, where ppm is about
+   2.3 and true scale is 3.5px. That is right: the card is for
+   recognising a board, not reading it — the preview modal is where a
+   note is legible. Same reasoning as the 16px disc floor above. */
 .tb-text-label {
-  position:absolute; z-index:3; padding:2px 6px; border-radius:4px;
-  font-size:12px; font-weight:300; cursor:grab;
+  position:absolute; z-index:3; padding:.17em .5em; border-radius:.33em;
+  font-size:max(7px, calc(var(--tb-ppm, 7.81px) * var(--tb-tfs, 1.54)));
+  width:var(--tb-tw, auto);
+  font-weight:300; cursor:grab;
   user-select:none; line-height:1.3; transform:translate(-50%,-50%);
-  resize:both; overflow:hidden; min-width:18px; min-height:18px;
+  resize:horizontal; overflow:hidden; min-width:18px; min-height:18px;
 }
 .tb-text-label:hover { outline:1px dashed rgba(255,255,255,.6); }
 .tb-text-label.tb-dragging { cursor:grabbing; }
@@ -1964,8 +2051,9 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .tb-field-readonly .tb-ball::before {
   font-size:var(--ball-fs, 14px);
 }
+/* Tighter on a read-only board, in em so it still follows the font. */
 .tb-field-readonly .tb-text-label {
-  padding:2px 4px; border-radius:3px;
+  padding:.17em .33em; border-radius:.25em;
 }
 .tb-field-readonly .tb-arrow {
   vector-effect:non-scaling-stroke;
@@ -2351,6 +2439,8 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-sel-o:last-child { border-bottom:none; }
 .std-sel-o:hover { background:#F2F0EB; }
 .std-sel-o-on { font-weight:600; background:#F7F5F1; }
+/* stdSelect's opt-in `note` — a figure at the row's right. */
+.std-sel-note { float:right; margin-left:12px; font-size:11px; color:var(--pp-ink-3); font-variant-numeric:tabular-nums; }
 
 /* ── .std-sel-esc: a menu that escapes a clipping table ──
    `.std-sel-menu` is absolute, so inside a wrapper with `overflow-x:auto`
@@ -3207,19 +3297,30 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .conv-pos-circle:last-child { margin-right: 0; }
 .conv-name-wrap { flex: 1; display: flex; align-items: center; gap: .3rem; min-width: 0; }
-.conv-team-circle {
-  width: 22px; height: 22px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: #757575; color: #fff;
-  font-size: .6rem; font-weight: 700; flex-shrink: 0;
-  border: 1.5px solid #212121;
+/* The squad letter beside a name — just the letter (v270). It used to be a
+   grey filled disc; the owner asked for the letter alone, everywhere.
+   The three classes that drew a disc (`.conv-team-circle`, `.cv-team`,
+   `.pmt-team-letter`) share this one rule so they cannot drift apart again.
+
+   ⚠ UPRIGHT, and that is now the whole distinction from `.cat-badge` below,
+   which is ITALIC and bold. Both are a grey capital beside a name; a squad
+   "A" and an aleví "A" must still read as two different things.
+   `em`-sized so it follows its context — a 10px letter beside the
+   Calendari's large match title looked like a typo. */
+.conv-team-circle, .cv-team, .pmt-team-letter {
+  display: inline; width: auto; height: auto; padding: 0; margin: 0;
+  background: none; border: none; border-radius: 0;
+  font-size: .78em; font-weight: 600; font-style: normal;
+  letter-spacing: .08em; line-height: inherit;
+  color: var(--pp-ink-3); flex-shrink: 0;
 }
+/* Glued straight onto the date string, with no flex gap to separate it. */
+.pmt-team-letter { margin-left: .35em; }
 /* A category initial beside a name, shown only when the list mixes
    categories. Grey, bold, italic, and deliberately NOT in a circle, pill or
-   box: .conv-team-circle directly above IS a circle and means a TEAM, so a
-   bordered category letter would be a second thing that looks like the first.
-   Anything that gives this a background, a border or a border-radius has
-   misunderstood it — layout.test.js asserts their absence. */
+   box. The squad letter above is plain too since v270, so ITALIC is what
+   keeps the two apart — anything that gives this a background, a border or
+   a border-radius, or takes the italic away, has misunderstood it. */
 .cat-badge {
   font-style: italic; font-weight: 700;
   color: var(--text-secondary);
@@ -4090,8 +4191,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
     border-left-width: 4px; border-right-width: 4px;
     border-bottom-width: 8px;
   }
+  /* ⚠ NO font-size HERE ANY MORE. A fixed 8px overrode the metric size
+     on every phone, which is the bug this round removed — the label is
+     metric now and the floor in the base rule is what keeps it legible.
+     Only the minimums, which are hit targets rather than measurements. */
   .tb-field:not(.tb-field-readonly) .tb-text-label {
-    font-size: 8px; padding: 1px 3px; min-width: 12px; min-height: 12px;
+    min-width: 12px; min-height: 12px;
   }
   .tb-field:not(.tb-field-readonly) .tb-center-spot,
   .tb-field:not(.tb-field-readonly) .tb-penalty-spot-left,
@@ -4496,10 +4601,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    root by renderPage(), so it cannot be scoped under one — and it sits above
    nine pages, eight of which are now paper: it was the last strip of app
    chrome (red pills, 20px radius, 600 weight) left on top of them.
-   ⚠ `sancions` is the one page under it that is NOT redesigned. It is
-   deliberately left wearing this bar rather than given an exception: two
-   different filter bars on one app is the seam this closes, and a paper strip
-   above an old page reads better than the reverse.
+   `sancions` was the last page under it still in the chrome; v273 rebuilt it
+   to the fcf_tabs handoff, whose filter bar IS this bar — categories, a rule,
+   the squad boxes — so the page's own squad picker was deleted, not
+   restyled.
    The BEHAVIOUR is untouched — bindDynamicActions() binds `.cat-bar-btn`,
    `[data-*-letter]` and `.cat-bar-letter` by name. */
 .cat-bar-btn{
@@ -4555,6 +4660,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .ts-letter-chip-off{cursor:pointer;opacity:.45;border-style:dashed;}
 .ts-letter-chip-off:hover{opacity:.8;border-color:var(--primary);color:var(--primary);}
 .ts-letter-add{width:30px;height:30px;border-radius:50%;border:2px dashed var(--border);background:none;font-size:1rem;cursor:pointer;color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;transition:.2s;}
+/* The word beside the "+" is for the Configuració page's square chip row.
+   On this circular control it would burst the 30px button, so it is hidden
+   here and shown there — one markup, two dressings. */
+.ts-letter-add .ts-letter-add-l{display:none;}
 .ts-letter-add:hover{border-color:var(--primary);color:var(--primary);}
 .ts-fcf-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;}
 .ts-fcf-label{font-weight:600;font-size:.85rem;min-width:80px;flex-shrink:0;}
@@ -4859,44 +4968,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .std-drop-cell{width:1%;padding-right:0;text-align:center;}
 .std-drop{vertical-align:middle;}
 
-/* ── Superadmin board catalogue & platform library ────────────
-   Its own tab strip rather than the sidebar: the two halves are one job
-   (take a club board, publish it as a template), and splitting them into
-   two sidebar entries would put a page change in the middle of it. */
-.ab-tabs{display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;}
-.ab-tab{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-  padding:.5rem .9rem;font-size:.88rem;font-weight:600;color:var(--text-secondary);
-  cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;}
-.ab-tab:hover{border-color:var(--text-secondary);}
-.ab-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;}
-.ab-count{background:rgba(0,0,0,.12);border-radius:999px;padding:.05rem .45rem;
-  font-size:.75rem;font-weight:700;}
-.ab-tab.active .ab-count{background:rgba(255,255,255,.25);}
-.ab-count-line{color:var(--text-secondary);font-size:.8rem;margin:.2rem 0 .6rem;}
-
-.ab-filters{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem;}
-.ab-filters .reg-input{font-size:.85rem;min-width:150px;}
-.ab-filters #ab-search{flex:1 1 240px;}
-
-/* The catalogue is nine columns wide and will not fit a phone. It scrolls
-   inside its own box so the PAGE never scrolls sideways. */
-.ab-table-wrap{overflow-x:auto;}
-.ab-table{font-size:.83rem;width:100%;}
-.ab-table th{white-space:nowrap;}
-.ab-table td{vertical-align:middle;}
-.ab-table .reg-input{font-size:.8rem;min-width:90px;}
-.ab-muted{color:var(--text-secondary);}
-.ab-left{color:var(--text-secondary);font-size:.75rem;}
-.ab-anim{color:var(--text-secondary);font-size:.72rem;}
-.ab-promoted{color:var(--success);font-weight:600;font-size:.8rem;white-space:nowrap;}
-
-.ab-modal{position:fixed;inset:0;background:rgba(45,41,38,.6);z-index:1000;
-  display:flex;align-items:center;justify-content:center;padding:1rem;}
-.ab-modal-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
-  padding:1.2rem;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;position:relative;}
-.ab-modal-close{position:absolute;top:.5rem;right:.6rem;background:none;border:none;
-  font-size:1.1rem;cursor:pointer;color:var(--text-secondary);}
-.ab-modal-meta{color:var(--text-secondary);font-size:.82rem;margin-bottom:.6rem;}
+/* ⚠ The `.ab-` block that used to sit here — the superadmin board catalogue in
+   legacy chrome tokens (--card, --border, --primary) — was DELETED in v257 and
+   rebuilt in the paper system at the end of this file. Two blocks for one
+   prefix, in two design systems, is how a page ends up half-restyled. */
 
 /* ── A read-only board, in 3D ──────────────────────────────────────
    Full-screen and one at a time. The stage is where board3d.js mounts;
@@ -4958,10 +5033,22 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* Editing a platform template in the ordinary board editor. Loud on
    purpose: the editor looks identical, and saving here writes to the
    library rather than to any club. */
-.tb-tpl-banner{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
-  border-left:4px solid var(--accent);}
-.tb-tpl-banner span{color:var(--text-secondary);font-size:.88rem;}
-.tb-tpl-banner button{margin-left:auto;}
+/* ⚠ PAPER TOKENS, NOT THE EDITOR'S. This strip is the one part of the v257
+   Pissarres feature that renders on the OLD tactics page, and it used `.card`,
+   --accent and --text-secondary while the page it sends you back to is all
+   `--pp-*`. Its three strings were hardcoded Catalan too, which a Spanish or
+   English superadmin read in a language they had not asked for. */
+.tb-tpl-banner{
+  display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;
+  background:var(--pp-tint);color:var(--pp-ink);
+  border:1px solid var(--pp-rule);border-left:3px solid var(--pp-red);
+  border-radius:0;padding:12px 16px;margin-bottom:1rem;
+}
+.tb-tpl-eyebrow{
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--pp-ink-3);
+}
+.tb-tpl-name{font-size:15px;color:var(--pp-ink);min-width:0;}
+.tb-tpl-banner button{margin-left:auto;flex:none;}
 
 /* Inline spinner for a button that is doing work (login). Sized in em so it
    tracks the button's font, and margin-right only — the label follows it. */
@@ -5012,103 +5099,399 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .push-ask-btn:hover { background:var(--primary-dark); }
 
-/* ===== Sancions & Golejadors (FCF) ===== */
+/* ===== FCF empty state — the referee panel's (Partit) ===== */
 .fcf-empty{text-align:center;color:var(--text-secondary);font-size:.88rem;padding:1.25rem .5rem;line-height:1.45;}
-.fcf-squads{display:flex;gap:.4rem;margin-bottom:1rem;}
 
-.sanc-tbl{width:100%;border-collapse:collapse;font-size:.8rem;}
-.sanc-tbl th{text-align:left;color:var(--text-secondary);font-weight:600;font-size:.66rem;text-transform:uppercase;
-  letter-spacing:.03em;padding:.3rem .45rem;border-bottom:1px solid var(--border);white-space:nowrap;}
-.sanc-tbl td{padding:.4rem .45rem;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;}
-.sanc-j{white-space:nowrap;color:var(--text-secondary);font-weight:700;font-size:.72rem;}
-.sanc-n{text-align:center;font-weight:700;}
-.sanc-who{min-width:150px;}
-.sanc-who span{display:inline-block;vertical-align:middle;font-weight:600;}
-.sanc-who small{display:block;color:var(--text-secondary);font-size:.7rem;font-weight:400;}
-.sanc-badge{width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:.35rem;border-radius:2px;}
-/* The reason is a full sentence from the federation, so it wraps; every
-   other cell in these tables is a figure and must not. */
-.sanc-why{white-space:normal;line-height:1.4;color:var(--text-secondary);font-size:.75rem;}
-.sanc-art{opacity:.6;white-space:nowrap;}
-.sanc-split{display:flex;gap:1rem;flex-wrap:wrap;}
-.sanc-side{flex:1 1 260px;min-width:0;}
-.sanc-side-title{font-weight:700;font-size:.8rem;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.02em;}
+/* ═══════════════════════════════════════════════════════════════════
+   SANCIONS AND GOLEJADORS — the fcf_tabs handoff (v273)
+   ═══════════════════════════════════════════════════════════════════
+   The last two staff pages still in the app chrome. One handoff, so one
+   vocabulary: `.fcf-` is what both pages share (root, crest, chips, pill,
+   states, the phone/desktop switch), `.sanc-` and `.sc-` what each keeps.
+   The header band, the page geometry and the caption atom are NOT here —
+   `.fcf-page`, `.fcf-hero` & co. joined the shared lists near
+   `.dashboard-content`, which is where every paper page's band lives.
 
-.sc-filters{display:flex;gap:.75rem;flex-wrap:wrap;}
-.sc-f{display:flex;flex-direction:column;gap:.25rem;flex:1 1 160px;min-width:0;}
-.sc-f span{font-size:.7rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;font-weight:600;}
-.sc-f select{width:100%;}
-.sc-th{cursor:pointer;user-select:none;}
-.sc-th:hover{color:var(--text);}
-.sc-on{color:var(--text);}
-.sc-tbl td{white-space:nowrap;}
-.sc-rank{color:var(--text-secondary);font-weight:700;width:2rem;}
-.sc-player{font-weight:600;}
-.sc-club{color:var(--text-secondary);}
-.sc-note{margin:.6rem 0 0;font-size:.7rem;color:var(--text-secondary);text-align:right;}
-@media (max-width:640px){ .sanc-split{flex-direction:column;} .sc-f{flex-basis:100%;} }
-.sc-f select[multiple]{height:auto;padding:.3rem;font-size:.78rem;}
-.sc-hint{flex-basis:100%;margin:.25rem 0 0;font-size:.7rem;color:var(--text-secondary);}
-.sc-count{font-size:.75rem;color:var(--text-secondary);margin-bottom:.4rem;}
-.sc-grp{color:var(--text-secondary);font-size:.72rem;}
+   ⚠ TWO FRAMES, ONE MARKUP. The handoff draws a desktop and a phone that
+   differ in structure, not just width: the phone swaps the Sancions sections
+   behind a dropdown and the Golejadors filters behind a sheet. Both frames'
+   pieces are rendered, and `.fcf-desk` / `.fcf-phone` say which frame a piece
+   belongs to. Classes, never `[hidden]`: a UA `[hidden]` rule loses to any
+   author `display`, which is how a menu once stayed permanently open.
+   The breakpoint is 700 — the header band's, so the band and the body below
+   it change frame together. */
+.fcf-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+.fcf-page button { font-family: inherit; }
+@media (min-width: 701px) { .fcf-page .fcf-phone { display: none !important; } }
+@media (max-width: 700px) { .fcf-page .fcf-desk { display: none !important; } }
 
-/* ===== Golejadors: filter dropdowns, progress, club card =====
-   A button that opens a floating panel of checkboxes — the Power-BI style
-   slicer, not a <select multiple>. The panel is ABSOLUTE so it floats over
-   the table instead of pushing it down, and the row it lives in cannot clip
-   it: .sc-filters must not have overflow:hidden. */
-.sc-filters { position: relative; z-index: 20; align-items: flex-start; }
-.sc-dd { position: relative; display: flex; flex-direction: column; gap: .25rem;
-  flex: 1 1 190px; min-width: 0; }
-.sc-dd-label { font-size: .7rem; color: var(--text-secondary); font-weight: 600;
-  text-transform: uppercase; letter-spacing: .03em; }
-.sc-dd-btn { display: flex; align-items: center; justify-content: space-between;
-  gap: .5rem; width: 100%; text-align: left; cursor: pointer; font-size: .82rem;
-  padding: .5rem .7rem; border: 2px solid var(--border); border-radius: var(--radius);
-  background: var(--card); color: var(--text); font-family: inherit; }
-.sc-dd-btn:hover { border-color: var(--text-secondary); }
-.sc-dd-open .sc-dd-btn { border-color: var(--primary, #8b1a2b); }
-.sc-dd-btn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-dd-caret { opacity: .5; flex: 0 0 auto; font-size: .7rem; transition: transform .15s; }
-.sc-dd-open .sc-dd-caret { transform: rotate(180deg); }
+.fcf-fig-hot .fcf-fig-v { color: var(--pp-red); }
+.fcf-eyebrow { margin: 0; }
+/* The phone band keeps one figure, on the title's row and flush right. */
+@media (max-width: 700px) { .fcf-figs .fcf-fig { align-items: flex-end; } }
 
-.sc-dd-panel { position: absolute; z-index: 40; top: 100%; left: 0; right: 0;
-  margin-top: .25rem; max-height: 300px; overflow-y: auto; overscroll-behavior: contain;
-  background: var(--card); border: 2px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 10px 28px rgba(0,0,0,.22); padding: .25rem; }
-.sc-dd-tools { display: flex; justify-content: flex-end; padding: .1rem .3rem .25rem;
-  border-bottom: 1px solid var(--border); margin-bottom: .2rem; }
-.sc-dd-mini { background: none; border: none; color: var(--text-secondary);
-  font-size: .7rem; cursor: pointer; text-decoration: underline; font-family: inherit; }
-.sc-dd-mini:hover { color: var(--text); }
-/* One option per LINE — unstyled they run together as a paragraph of text,
-   which is exactly what this replaced. */
-.sc-dd-opt { display: flex; align-items: center; gap: .55rem; width: 100%;
-  padding: .35rem .45rem; border-radius: 4px; cursor: pointer; font-size: .78rem;
-  line-height: 1.3; }
-.sc-dd-opt:hover { background: var(--border); }
-.sc-dd-opt input { flex: 0 0 auto; margin: 0; width: 15px; height: 15px; cursor: pointer; }
-.sc-dd-opt span { flex: 1 1 auto; min-width: 0; }
+/* The strip above the band. Golejadors only: Sancions sits under the
+   category bar, which is this strip on every other page. */
+.fcf-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 12px 36px; border-bottom: 1px solid var(--pp-rule);
+}
+.fcf-top-l { font-size: 13px; color: var(--pp-ink-2); }
+.fcf-top-r { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); }
 
-.sc-bar { height: 6px; border-radius: 3px; background: var(--border);
-  overflow: hidden; margin: .6rem auto 0; max-width: 340px; }
-.sc-bar-fill { height: 100%; background: var(--primary, #8b1a2b); transition: width .25s ease; }
+/* A club's crest in a square. The monogram is underneath; the image covers
+   it and removes itself when files.fcf.cat 404s. */
+.fcf-crest {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; flex: none; box-sizing: border-box; overflow: hidden;
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+  color: var(--pp-ink-2); font-size: 9px; line-height: 1; letter-spacing: 0;
+}
+.fcf-crest-l { width: 24px; height: 24px; font-size: 10px; }
+.fcf-crest-ours { background: var(--pp-red); border-color: var(--pp-red); color: #FFFFFF; }
+.fcf-crest-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box;
+  padding: 1px; object-fit: contain; background: #FFFFFF;
+}
 
+.fcf-chips { display: flex; gap: 6px; margin-left: auto; }
+.fcf-chip {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+  font-size: 12px; white-space: nowrap; cursor: pointer;
+  background: none; color: var(--pp-ink-2); border: 1px solid var(--pp-rule); border-radius: 0;
+}
+.fcf-chip:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.fcf-chip-on, .fcf-chip-on:hover { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+
+.fcf-pill {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+  font-size: 11px; white-space: nowrap; color: var(--pp-ink-3); border: 1px solid var(--pp-rule);
+}
+.fcf-pill-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+
+/* Loading, empty, "still choosing". Straight under the band it carries the
+   band's 40px; inside a body that already has it, none. */
+.fcf-state { padding: 30px 40px 34px; font-size: 14px; color: var(--pp-ink-2); line-height: 1.5; }
+.sanc-body .fcf-state, .sc-body .fcf-state { padding-left: 0; padding-right: 0; }
+.fcf-state-c {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding-top: 44px; padding-bottom: 48px; text-align: center;
+}
+
+/* ── Sancions ── */
+.sanc-src {
+  display: flex; align-items: center; gap: 14px; height: 40px; padding: 0 40px;
+  border-bottom: 1px solid var(--pp-rule); font-size: 12px; color: var(--pp-ink-3);
+}
+.sanc-src-sep { width: 1px; height: 14px; background: var(--pp-rule); flex: none; }
+.sanc-src-a { margin-left: auto; color: var(--pp-red); text-decoration: none; }
+.sanc-src-a:hover { text-decoration: underline; }
+
+.sanc-body { display: flex; flex-direction: column; gap: 34px; padding: 32px 40px 56px; }
+.sanc-sec-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.sanc-all .sanc-sec-h { align-items: center; gap: 16px; }
+.sanc-sec-line { font-size: 13px; color: var(--pp-ink-2); }
+
+.sanc-cards { display: flex; gap: 20px; }
+.sanc-card {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+}
+.sanc-card-ours { border-top: 2px solid var(--pp-red); }
+.sanc-card-rival { border-top: 2px solid var(--pp-neutral); }
+.sanc-card-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 18px 10px;
+}
+.sanc-card-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sanc-card-name { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanc-card-tag {
+  flex: none; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+.sanc-ban {
+  display: flex; align-items: flex-start; gap: 12px; padding: 11px 18px;
+  border-top: 1px solid var(--pp-rule-2);
+}
+/* The matches STILL TO SERVE, not the ban's length: a four-match ban with
+   one gone reads 3. Ink for us, a pale square for them. */
+.sanc-left {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; flex: none; font-size: 12px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sanc-card-ours .sanc-left { background: var(--pp-ink); color: #FFFFFF; }
+.sanc-card-rival .sanc-left { background: var(--pp-rule-2); color: var(--pp-ink); }
+.sanc-ban-b { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; }
+.sanc-ban-p { font-size: 15px; }
+.sanc-ban-r { font-size: 11.5px; color: var(--pp-ink-2); line-height: 1.4; }
+.sanc-ban-w { flex: none; font-size: 11px; color: var(--pp-ink-3); white-space: nowrap; }
+.sanc-clear {
+  padding: 16px 18px; border-top: 1px solid var(--pp-rule-2);
+  font-size: 13px; color: var(--pp-ink-2);
+}
+.sanc-note { margin: 0; padding: 14px 20px; font-size: 11px; color: var(--pp-ink-3); line-height: 1.45; }
+
+/* The archive. Rows are flex, not a <table>: on a phone the same markup
+   re-flows into a grid, and a table cannot. */
+.sanc-th, .sanc-row { display: flex; align-items: flex-start; gap: 14px; padding: 12px 16px; }
+.sanc-th {
+  align-items: flex-end; padding: 0 16px 10px; border-bottom: 1px solid var(--pp-ink);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+.sanc-th > span { font-size: 11px; color: inherit; padding-top: 0; }
+.sanc-row { border-bottom: 1px solid var(--pp-rule-2); }
+.sanc-row:hover { background: #FFFFFF; }
+.sanc-row-ours { background: var(--pp-tint); }
+.sanc-c-j {
+  width: 34px; flex: none; padding-top: 2px;
+  font-size: 12px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums;
+}
+.sanc-c-n { width: 46px; flex: none; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
+.sanc-c-who { width: 236px; flex: none; min-width: 0; display: flex; align-items: flex-start; gap: 9px; }
+.sanc-row .fcf-crest { margin-top: 2px; }
+.sanc-who-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sanc-who-p { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanc-who-c { font-size: 11px; color: var(--pp-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanc-c-why { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--pp-ink-2); line-height: 1.45; }
+.sanc-c-art {
+  width: 52px; flex: none; padding-top: 2px; text-align: right;
+  font-size: 12px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums;
+}
+.sanc-c-st { width: 104px; flex: none; display: flex; justify-content: flex-end; }
+.sanc-foot { padding: 12px 16px 0; font-size: 11px; color: var(--pp-ink-3); line-height: 1.45; }
+
+/* The phone's section switch — the app's own stdSelect, full width. */
+.sanc-switch { padding: 10px 20px; border-bottom: 1px solid var(--pp-rule); }
+.sanc-sel { display: block; }
+.sanc-sel .std-sel-t {
+  display: flex; width: 100%; justify-content: space-between; box-sizing: border-box;
+  height: 38px; padding: 0 12px; border: 1px solid var(--pp-ink); border-radius: 0;
+  background: #FFFFFF; font-size: 13px; color: var(--pp-ink);
+}
+.sanc-sel .std-sel-c { font-size: 10px; color: var(--pp-ink-3); opacity: 1; }
+.sanc-sel .std-sel-menu { left: 0; right: 0; min-width: 0; }
+.sanc-sel .std-sel-o { height: 40px; font-size: 13px; color: var(--pp-ink-2); }
+.sanc-sel .std-sel-o-on { font-weight: 400; color: var(--pp-ink); background: var(--pp-tint); }
+
+@media (max-width: 700px) {
+  /* One section at a time, chosen by the switch. */
+  .sanc-on-next .sanc-all, .sanc-on-all .sanc-next { display: none; }
+  .sanc-body { gap: 0; padding: 0 0 40px; }
+  .sanc-body .fcf-state { padding: 24px 20px; }
+  .sanc-cards { flex-direction: column; gap: 0; }
+  .sanc-card { background: none; border: none; }
+  .sanc-card-h { justify-content: flex-start; gap: 8px; padding: 12px 20px 8px; }
+  .sanc-card-rival .sanc-card-h { padding-top: 18px; }
+  .sanc-card .fcf-crest-l { width: 20px; height: 20px; font-size: 9px; }
+  /* Ours says NOSALTRES; theirs says who they are, in the same caption. */
+  .sanc-card-ours .sanc-card-name, .sanc-card-rival .sanc-card-tag { display: none; }
+  .sanc-card-rival .sanc-card-name {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+  }
+  .sanc-ban { gap: 10px; padding: 11px 20px; }
+  .sanc-ban-w { display: none; }   /* the handoff's phone keeps the count, not the window */
+  .sanc-clear { padding: 12px 20px; }
+  .sanc-all .sanc-sec-h { margin: 0; padding: 12px 20px 10px; }
+  .sanc-all .fcf-chips { margin-left: 0; overflow-x: auto; }
+  .fcf-chip { flex: none; padding: 0 11px; }
+  .sanc-row {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas: "n who st" "n why st"; column-gap: 10px; row-gap: 2px;
+    padding: 11px 20px; background: none; border-bottom: none; border-top: 1px solid var(--pp-rule-2);
+  }
+  .sanc-c-j, .sanc-c-art, .sanc-row .fcf-crest { display: none; }
+  .sanc-c-n { grid-area: n; width: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .sanc-n-v { font-size: 16px; line-height: 1; }
+  .sanc-n-l { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--pp-ink-3); }
+  .sanc-c-who { grid-area: who; width: auto; }
+  .sanc-c-why { grid-area: why; font-size: 11.5px; line-height: 1.4; }
+  .sanc-c-st { grid-area: st; width: auto; align-self: start; }
+  .fcf-pill { padding: 0 8px; }
+  .sanc-foot { padding: 12px 20px 0; }
+}
+
+/* ── Golejadors ──
+   The filter band. The panels are ABSOLUTE so they float over the table
+   instead of pushing it down, and the band is a positioned layer above the
+   body — with no overflow set anywhere between, so nothing clips them. */
+.sc-filters {
+  position: relative; z-index: 20; display: flex; flex-direction: column; gap: 10px;
+  padding: 26px 40px 22px; border-bottom: 1px solid var(--pp-rule);
+}
+.sc-dd-row { display: flex; align-items: flex-start; gap: 16px; }
+.sc-dd { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.sc-dd-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); }
+.sc-dd-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; height: 38px; padding: 0 12px; box-sizing: border-box; cursor: pointer;
+  background: #FFFFFF; border: 1px solid var(--pp-rule); border-radius: 0;
+  font-size: 13.5px; color: var(--pp-ink); text-align: left;
+}
+.sc-dd-btn:hover, .sc-dd-open .sc-dd-btn { border-color: var(--pp-ink); }
+.sc-dd-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-dd-v-all { color: var(--pp-ink-3); }
+.sc-dd-caret { flex: none; font-size: 10px; color: var(--pp-ink-3); }
+.sc-dd-panel {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; right: 0;
+  display: flex; flex-direction: column; max-height: 262px;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: #FFFFFF; border: 1px solid var(--pp-ink);
+}
+.sc-dd-tools {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; border-bottom: 1px solid var(--pp-rule-2);
+}
+.sc-dd-count { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3); }
+.sc-dd-mini { background: none; border: none; padding: 0; font-size: 12px; color: var(--pp-red); cursor: pointer; }
+.sc-dd-mini:hover { text-decoration: underline; }
+/* One option per ROW — unstyled they run together as a paragraph of text,
+   which is exactly what v125 shipped. The native checkbox stays the input
+   (label click, keyboard, change event) and is visually hidden; the box
+   beside it is DRAWN, tick included — a ✓ glyph sits differently in every
+   font the fallback stack reaches for. */
+.sc-dd-opt {
+  position: relative; flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; font-size: 13px; cursor: pointer;
+  background: #FFFFFF; border-bottom: 1px solid var(--pp-rule-2);
+}
+.sc-dd-opt:hover { background: var(--pp-paper); }
+.sc-dd-opt-on, .sc-dd-opt-on:hover { background: var(--pp-tint); }
+.sc-dd-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.sc-dd-box {
+  position: relative; flex: none; width: 15px; height: 15px; box-sizing: border-box;
+  background: #FFFFFF; border: 1px solid var(--pp-rule-4);
+}
+.sc-dd-opt input:checked + .sc-dd-box { background: var(--pp-ink); border-color: var(--pp-ink); }
+.sc-dd-opt input:checked + .sc-dd-box::after {
+  content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+  border: solid #FFFFFF; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg);
+}
+.sc-dd-opt input:focus-visible + .sc-dd-box { outline: 2px solid var(--pp-ink); outline-offset: 2px; }
+.sc-dd-l { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-hint { margin: 0; font-size: 11.5px; color: var(--pp-ink-3); }
+
+.sc-bar { width: 340px; max-width: 100%; height: 6px; background: var(--pp-rule); }
+.sc-bar-fill { height: 6px; background: var(--pp-red); }
+
+.sc-body { padding: 26px 40px 56px; }
+.sc-th, .sc-row-m { display: flex; align-items: center; gap: 14px; padding: 11px 16px; }
+.sc-th {
+  align-items: flex-end; padding: 0 16px 10px; border-bottom: 1px solid var(--pp-ink);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+/* (0,1,1): a head cell carries its column's class, and `.sc-c-goals` sets the
+   body's 17px — at (0,1,0) and later in the file it would win. */
+.sc-th > span, .sc-th > button { font-size: 11px; color: var(--pp-ink-3); }
+.sc-sort {
+  background: none; border: none; padding: 0; cursor: pointer;
+  letter-spacing: inherit; text-transform: inherit; text-align: left;
+}
+.sc-th .sc-sort:hover, .sc-th .sc-sort-on { color: var(--pp-ink); }
+.sc-row { border-bottom: 1px solid var(--pp-rule-2); }
+.sc-row-ours { background: var(--pp-tint); }
+.sc-c-rank { width: 38px; flex: none; font-size: 13px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums; }
+.sc-c-player { width: 280px; flex: none; min-width: 0; font-size: 15px; }
+.sc-player-n { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-c-club { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 9px; }
 .sc-club-link { cursor: pointer; }
-.sc-club-link:hover { text-decoration: underline; }
-.sc-zone { color: var(--text-secondary); font-size: .74rem; white-space: nowrap; }
-.sc-card-row td { background: rgba(0,0,0,.03); }
-.sc-club-card { padding: .5rem .2rem; font-size: .8rem; }
-.sc-club-bits { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin: .35rem 0; }
-.sc-club-bits a { color: var(--primary, #8b1a2b); text-decoration: none; }
-.sc-club-bits a:hover { text-decoration: underline; }
-.sc-club-note { display: block; font-size: .68rem; color: var(--text-secondary); line-height: 1.35; }
+.sc-club-n {
+  font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-bottom: 1px solid transparent;
+}
+.sc-club-link:hover .sc-club-n, .sc-club-n-on { border-bottom-color: var(--pp-ink); }
+.sc-c-grp, .sc-c-zone {
+  flex: none; font-size: 12.5px; color: var(--pp-ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sc-c-grp { width: 120px; }
+.sc-c-zone { width: 180px; }
+.sc-c-goals { width: 74px; flex: none; text-align: right; font-size: 17px; font-variant-numeric: tabular-nums; }
+.sc-goals-v { font-weight: 400; }
+.sc-c-num {
+  width: 74px; flex: none; text-align: right;
+  font-size: 13.5px; color: var(--pp-ink-2); font-variant-numeric: tabular-nums;
+}
+.sc-th .sc-c-goals, .sc-th .sc-c-num { text-align: right; }
 
-@media (max-width: 640px) { .sc-dd { flex-basis: 100%; } }
-/* The panel floats OUT of its card, and the mobile block sets
-   `.card { overflow: hidden }` — which would clip it to a sliver. Two
-   classes beat one, so this wins wherever it is in the file. */
-.card.sc-filters { overflow: visible; }
+.sc-club-card {
+  display: flex; flex-direction: column; gap: 8px; margin: 0 16px 14px; padding: 14px 18px;
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+}
+.sc-club-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sc-club-name { font-size: 16px; font-weight: 400; }
+.sc-club-zone { font-size: 12px; color: var(--pp-ink-3); }
+.sc-club-bits { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 13px; }
+.sc-club-bits a { color: var(--pp-red); text-decoration: none; }
+.sc-club-bits a:hover { text-decoration: underline; }
+.sc-club-note { font-size: 11.5px; color: var(--pp-ink-3); line-height: 1.45; }
+.sc-foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+  padding: 12px 16px 0; font-size: 11px; color: var(--pp-ink-3);
+}
+
+/* The phone: one button for the four filters, and a sheet pinned to the
+   bottom of the screen that holds them. Reading waits for the sheet to
+   close exactly as it waits for a panel. */
+.sc-mbar { padding: 10px 20px 12px; border-bottom: 1px solid var(--pp-rule); }
+.sc-sheet-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; height: 38px; padding: 0 12px; box-sizing: border-box; cursor: pointer;
+  background: #FFFFFF; border: 1px solid var(--pp-ink); border-radius: 0;
+  font-size: 13px; color: var(--pp-ink); text-align: left;
+}
+.sc-sheet-btn > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; top: 25vh; z-index: 10000;
+  display: flex; flex-direction: column;
+  background: #FFFFFF; border-top: 2px solid var(--pp-ink); color: var(--pp-ink);
+}
+.sc-sheet-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 20px; border-bottom: 1px solid var(--pp-rule);
+}
+.sc-sheet-t { font-size: 16px; }
+.sc-sheet-x { background: none; border: none; padding: 0; font-size: 13px; color: var(--pp-ink-2); cursor: pointer; }
+.sc-sheet-b { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+/* In the sheet a picker is an accordion row: caption over value, and its
+   options open IN FLOW beneath it rather than floating. */
+.sc-sheet .sc-dd { gap: 0; border-bottom: 1px solid var(--pp-rule); }
+.sc-sheet .sc-dd-label { padding: 13px 20px 0; font-size: 10px; letter-spacing: .14em; }
+.sc-sheet .sc-dd-btn { height: auto; padding: 2px 20px 13px; border: none; font-size: 14px; }
+.sc-sheet .sc-dd-panel {
+  position: static; max-height: none; overflow: visible;
+  border: none; border-top: 1px solid var(--pp-rule-2); background: var(--pp-paper);
+}
+.sc-sheet .sc-dd-tools { padding: 8px 20px; }
+.sc-sheet .sc-dd-opt { min-height: 44px; box-sizing: border-box; padding: 12px 20px; font-size: 13.5px; background: transparent; }
+.sc-sheet .sc-dd-opt-on { background: var(--pp-tint); }
+.sc-sheet .sc-dd-box { width: 17px; height: 17px; }
+.sc-sheet .sc-dd-opt input:checked + .sc-dd-box::after { left: 5px; top: 2px; }
+.sc-sheet .sc-hint { padding: 14px 20px; line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .sc-body { padding: 0 0 40px; }
+  .sc-body .fcf-state { padding: 30px 20px; }
+  .sc-sorts { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--pp-rule-2); overflow-x: auto; }
+  .sc-row-m { gap: 10px; padding: 11px 20px; cursor: pointer; }
+  .sc-c-club, .sc-c-grp, .sc-c-zone, .sc-c-num { display: none; }
+  .sc-c-rank { width: 22px; font-size: 12px; }
+  .sc-c-player { flex: 1 1 0; width: auto; display: flex; flex-direction: column; gap: 2px; font-size: 14.5px; }
+  .sc-row-sub { font-size: 11px; color: var(--pp-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sc-c-goals {
+    width: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    font-size: 19px; line-height: 1;
+  }
+  .sc-row-pj { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--pp-ink-3); }
+  .sc-club-card { gap: 7px; margin: 0 20px 12px; padding: 12px 14px; }
+  .sc-club-h { flex-direction: column; gap: 2px; }
+  .sc-club-name { font-size: 14px; }
+  .sc-club-bits { flex-direction: column; gap: 4px; }
+  .sc-foot { flex-direction: column; gap: 4px; padding: 12px 20px 0; }
+}
 
 /* ===== "A new version is available" =====
    Fixed to the bottom, above everything, and NEVER covering the screen: it
@@ -7309,9 +7692,21 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   background: transparent; border: none; border-radius: 0;
   box-shadow: none; padding: 0; margin: 0;
 }
+/* ⚠ The SAME rule as .pt-sec-head below, and it has to be.
+   Two builders write the headings of this band: ptHead() emits
+   `.pt-sec-head`, while the referee card and the coach's notes card bring
+   their own `.card-title`. They sit side by side in one row, so a difference
+   between them reads as a rendering fault rather than as two components.
+
+   This said `border: none`, and nobody saw it while the referee column was
+   empty — with no appointment it falls back to ptHead() and drew the rule
+   like its neighbours. The first fixture that actually HAD a referee swapped
+   in the card, and the underline vanished from that column only. */
 .pt-page .card-title {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
-  font-weight: 500; color: var(--pp-ink-3); padding: 0 0 8px; border: none;
+  font-weight: 500; color: var(--pp-ink-3);
+  padding: 0 0 10px; border: none;
+  border-bottom: 1px solid var(--pp-ink); margin-bottom: 10px;
 }
 
 .pt-eyebrow {
@@ -8033,11 +8428,9 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   background: transparent; border-radius: 0; padding: 0; margin-left: 6px;
   font-size: 10px; font-weight: 500; letter-spacing: .08em; color: var(--pp-ink-3);
 }
-/* Same for the squad letter: a hairline circle rather than a filled one. */
-.nt-pick-modal .conv-team-circle {
-  background: transparent; color: var(--pp-ink-2); border: 1px solid var(--pp-rule);
-  font-size: 10px;
-}
+/* The squad letter is already a bare letter everywhere (see
+   .conv-team-circle); this only keeps it at the tag's size. */
+.nt-pick-modal .conv-team-circle { background: transparent; font-size: 10px; }
 /* The medical glyph keeps its colour — that is the information — but
    loses the tinted pill it sat in. */
 .nt-pick-modal .roster-status-icon {
@@ -8177,9 +8570,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* ---- Tria el partit ---- */
 .cv-mt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .cv-mt-row { display: flex; align-items: center; gap: 9px; min-width: 0; }
+/* Capitals for BOTH clubs (v275): FCF writes every rival in capitals and the
+   club's own name is configured in mixed case, so a fixture read as two
+   styles. The size is fitCvTeams()'s to reduce — see there — and the
+   ellipsis is only the last resort below its 11px floor. */
 .cv-teams {
   font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase;
 }
+/* ⚠ The toggle's `margin-top: auto` only pushes its rule down to the shared
+   baseline inside a stretched COLUMN. The kit menus had one; this one did
+   not, so its rule sat 6px above the other five (measured, v275). */
+.cv-ctl-match .cv-menu { display: flex; flex-direction: column; flex: 1; }
 .cv-mt-when { font-size: 12px; color: var(--pp-ink-2); }
 .cv-mt-none { font-size: 15px; color: var(--pp-ink-3); }
 .cv-page .cv-mt-row .pt-crest { width: 40px; height: 40px; }
@@ -8273,11 +8675,6 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
 .cv-who { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
-.cv-team {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--pp-ink);
-  background: var(--pp-rule-2); font-size: 10px; color: var(--pp-ink); flex-shrink: 0;
-}
 .cv-name { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-page .cat-badge { font-size: 12px; font-weight: 400; color: var(--pp-ink-3); margin-left: 0; }
 .cv-state { font-size: 11.5px; white-space: nowrap; }
@@ -8595,6 +8992,15 @@ a.ini-ev-name, .ini-ev-name-link {
 }
 .ini-page .avail-btn, .ini-page .avail-chosen, .ini-pill { min-width: 56px; }
 .ini-page .mavail-btn, .ini-page .mavail-chosen { min-width: 118px; }
+/* One width for both answer groups, so a training's four pills and a
+   match's two end at the same edge down the list (v272). 256px is measured,
+   not guessed: the four pills' natural span with Oswald is 248px (ca),
+   255px (es), 242px (en), and the match pair's is 241px. The training pills
+   grow from their text width (Lesionat stays widest), the match pair splits
+   evenly. The phone block below overrides all of this with full width. */
+.ini-page .avail-btns, .ini-page .mavail-btns, .ini-pills { width: 256px; }
+.ini-page .avail-btn, .ini-page .avail-chosen, .ini-pill { flex: 1 1 auto; }
+.ini-page .mavail-btn, .ini-page .mavail-chosen { flex: 1 1 0; min-width: 0; }
 .ini-page .avail-btn:hover,
 .ini-page .avail-chosen:hover,
 .ini-page .mavail-btn:hover,
@@ -8637,6 +9043,14 @@ a.ini-ev-name, .ini-ev-name-link {
 .ini-block-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--pp-ink);
+}
+/* The two column heads side by side — LES PROPERES DUES SETMANES and EL MEU
+   ESTAT — must rule off on ONE line (v272). They sat 5px apart: the left
+   head carries the 13px pending count and 10px of padding, the right only
+   an eyebrow and 8px. Same height, same padding, content on the baseline
+   row, so both borders land at the same y whatever either head contains. */
+.ini-main > .ini-sec-head, .ini-rail > .ini-block:first-child > .ini-block-head {
+  box-sizing: border-box; height: 32px; padding-bottom: 0; align-items: center;
 }
 .ini-kv {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -10222,6 +10636,1035 @@ a.ini-ev-name, .ini-ev-name-link {
   .nf-time { font-size: 11px; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   CONFIGURACIÓ, redesigned (v254)
+   ═══════════════════════════════════════════════════════════════════
+   The tenth paper page, and the first that is a FORM rather than a report.
+   It replaces four cards plus a separate full-screen wizard.
+
+   ⚠ THIS BLOCK IS LAST IN THE FILE, so `test/configuracio.test.js` slices
+   from the banner above to EOF. Anything appended after it will be read as
+   Configuració's and trip that suite's scans — give this block an end bound
+   naming the new banner FIRST, the way `.nf-` was given one here.
+
+   The band, the bleed, the 36px title, the body inset, the caption atom and
+   the figure row are NOT redeclared here: `.cfg-*` joins the shared selector
+   lists at the top of this file (v246/v247). Only what is this page's own
+   lives below.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.cfg-page { background: var(--pp-paper); color: var(--pp-ink); }
+
+/* The identity strip that used to sit above the hero is gone (v254): it
+   repeated the club name, the responsable and the season, all three of which
+   the page says below — the first two on the Club tab, the season in the
+   rail's head. */
+
+/* The tab strip. `inset 0 -2px` rather than a border-bottom so the active
+   rule sits ON the band's own 1px line instead of stacking a second one. */
+.cfg-tabs {
+  display: flex; align-items: center; gap: 26px; padding: 0 40px;
+  border-bottom: 1px solid var(--pp-rule); overflow-x: auto;
+}
+.cfg-tab {
+  display: inline-flex; align-items: center; height: 44px; padding: 0;
+  border: none; background: none; cursor: pointer; white-space: nowrap;
+  font-family: inherit; font-size: 12.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--pp-ink-3);
+}
+.cfg-tab:hover { color: var(--pp-ink); }
+.cfg-tab-on { color: var(--pp-ink); box-shadow: inset 0 -2px 0 0 var(--pp-red); }
+
+/* The phone switcher. It REPLACES the strip rather than sitting beside it —
+   both carry `[data-cfg-tab]`, so one binder drives whichever is on screen. */
+.cfg-nav { display: none; position: relative; border-bottom: 1px solid var(--pp-rule); }
+.cfg-nav-cur {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 44px;
+  padding: 0 20px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--pp-ink);
+}
+.cfg-nav-caret { font-size: 10px; color: var(--pp-ink-3); }
+.cfg-nav-list {
+  position: absolute; top: 44px; left: 0; right: 0; z-index: 10;
+  display: flex; flex-direction: column; background: #FFFFFF;
+  border-bottom: 1px solid var(--pp-ink);
+}
+/* ⚠ REQUIRED, and not obviously so. `[hidden]{display:none}` is a USER-AGENT
+   rule, and the author `display:flex` above beats it — so the section list
+   sat permanently open over the page and the toggle did nothing. jsdom does
+   not apply [hidden] at all, so a test reading the attribute would have
+   agreed the list was hidden. Found by looking at a 390px screenshot. */
+.cfg-nav-list[hidden] { display: none; }
+.cfg-nav-item {
+  padding: 13px 20px; text-align: left; border: none; background: none;
+  border-bottom: 1px solid var(--pp-rule-2); cursor: pointer;
+  font-family: inherit; font-size: 14px; color: var(--pp-ink);
+}
+.cfg-nav-item-on { color: var(--pp-red); }
+
+/* Body: content plus a rail that does NOT change with the tab. */
+.cfg-body { display: flex; align-items: flex-start; gap: 44px; }
+.cfg-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 30px; }
+
+/* ⚠ EVERY PANEL IS IN THE DOM; ONLY ONE IS SHOWN.
+   _handleSaveTeamSetup collects from the DOM, and an absent section reads as
+   empty rather than as "leave alone" — so rendering one tab at a time would
+   let a save from Equipacions wipe the schedules. Driven off the root's
+   `data-cfg-active`, so switching tabs is a class change and never a
+   re-render: a re-render would throw away everything typed since the save. */
+.cfg-panel { display: none; flex-direction: column; gap: 22px; }
+.cfg-page[data-cfg-active="club"]       .cfg-panel[data-cfg-panel="club"],
+.cfg-page[data-cfg-active="cats"]       .cfg-panel[data-cfg-panel="cats"],
+.cfg-page[data-cfg-active="horaris"]    .cfg-panel[data-cfg-panel="horaris"],
+.cfg-page[data-cfg-active="kits"]       .cfg-panel[data-cfg-panel="kits"],
+.cfg-page[data-cfg-active="llistes"]    .cfg-panel[data-cfg-panel="llistes"],
+.cfg-page[data-cfg-active="temporades"] .cfg-panel[data-cfg-panel="temporades"],
+.cfg-page[data-cfg-active="clubs"]      .cfg-panel[data-cfg-panel="clubs"] { display: flex; }
+
+/* Section header: caption over a rule, note on the right.
+   `.cfg-sec-l` is in the shared caption list at the top of this file. */
+.cfg-sec {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.cfg-sec-n { font-size: 12px; color: var(--pp-ink-3); text-align: right; }
+.cfg-foot { margin: 0; font-size: 12px; color: var(--pp-ink-3); text-wrap: pretty; }
+
+/* Identity. Read-only VALUES, because a lead may not write them — the club
+   doc rule lets a lead touch only fcfLinks and schedules. Drawn as text
+   rather than a disabled input, so it does not read as a control that
+   failed. */
+.cfg-identity { display: flex; align-items: flex-start; gap: 34px; }
+/* ⚠ `width` as well as `flex:none`. Without it the column is sized by its
+   widest child, so the crest link — which is text — decided how wide the
+   crest was, and a longer translation wrapped it over the section below. */
+.cfg-crest { display: flex; flex-direction: column; gap: 9px; flex: none; width: 112px; }
+/* No frame and no ground behind the crest: a club badge is usually a
+   transparent PNG with its own outline, and a box around it read as a second,
+   competing edge. The empty state keeps a dashed hint, because without one
+   there is nothing there to click. */
+.cfg-crest-img, .cfg-crest-empty {
+  width: 112px; height: 112px; object-fit: contain;
+  border: none; background: none;
+}
+.cfg-crest-empty {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--pp-rule-4); box-sizing: border-box;
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-input-line);
+}
+/* ⚠ RESETS THE BOX `.club-badge-edit` GIVES IT. This link carries that class
+   too, because that is what `changeClubBadge`'s click handler binds to — but
+   the class was written for the 28px `<img>` crest in the clubs table, so it
+   was handing a text link `width:28px`, `height:28px`, `object-fit:contain`,
+   a 4px radius and a hover outline. Overriding the colour alone left it a
+   clipped square, which is why it kept looking unformatted. */
+.cfg-crest-edit {
+  width: auto; height: auto; margin: 0; border-radius: 0;
+  outline: none; object-fit: initial; vertical-align: baseline;
+  font-size: 12.5px; color: var(--pp-red); cursor: pointer;
+}
+.cfg-crest-edit:hover { color: var(--pp-red-dark); outline: none; text-decoration: underline; }
+.cfg-fields { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.cfg-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cfg-field-l {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.cfg-field-v { font-size: 15px; color: var(--pp-ink); word-break: break-word; }
+.cfg-field-h { font-size: 12px; color: var(--pp-ink-2); text-wrap: pretty; }
+.cfg-unset { color: var(--pp-red); }
+.cfg-bad { color: var(--pp-red); }
+
+/* Headings inside the reused setup sections. These dress the onboarding card
+   too, which is app chrome and not paper — hence --text-secondary here, and
+   the paper override scoped under .cfg-page below. */
+.ts-h3 { margin: 1.2rem 0 .6rem; font-size: 1rem; color: var(--text-secondary); }
+.ts-h3-sub { font-weight: 400; font-size: .8rem; }
+.ts-p { margin: 0 0 .6rem; font-size: .8rem; color: var(--text-secondary); }
+.cfg-page .ts-h3 { display: none; }
+.cfg-page .ts-p { font-size: 12px; color: var(--pp-ink-3); }
+
+/* The destructive panel: a new season archives the one running. */
+.cfg-danger {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  padding: 20px 22px; border: 1px solid var(--pp-red); background: #FFFFFF;
+}
+.cfg-danger-eyebrow {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-red);
+}
+.cfg-danger-title { font-size: 19px; color: var(--pp-ink); }
+.cfg-danger-body { font-size: 13.5px; color: var(--pp-ink-2); max-width: 640px; text-wrap: pretty; }
+
+/* Clubs · superadmin. */
+.cfg-sec-su { align-items: center; gap: 12px; justify-content: flex-start; }
+.cfg-su-badge {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+  background: var(--pp-red); color: var(--pp-paper);
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+}
+/* ⚠ The table scrolls INSIDE this wrapper. Ten columns will not fit a phone,
+   and a page body that scrolls sideways drags every other band with it. */
+.cfg-cl-wrap { overflow-x: auto; }
+.cfg-cl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cfg-cl th {
+  padding: 0 10px 8px; text-align: left; white-space: nowrap;
+  border-bottom: 1px solid var(--pp-rule);
+  font-size: 11px; font-weight: 400; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--pp-ink-3);
+}
+.cfg-cl td { padding: 8px 10px; border-bottom: 1px solid var(--pp-rule-2); vertical-align: middle; }
+.cfg-cl tbody tr:nth-child(even) { background: var(--pp-paper); }
+.cfg-cl tbody tr:hover { background: #FFFFFF; }
+.cfg-cl-name { min-width: 190px; }
+.cfg-cl-n { font-size: 15px; color: var(--pp-ink); }
+.cfg-cl-since { font-size: 11px; color: var(--pp-ink-3); margin-left: 6px; }
+.cfg-cl-code { font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+.cfg-cl-town, .cfg-cl-teams, .cfg-cl-members { color: var(--pp-ink-2); }
+.cfg-cl-teams, .cfg-cl-members { font-variant-numeric: tabular-nums; }
+/* ⚠ Same specificity as the rule above and declared LATER, so without this
+   the over-quota club's team count stayed grey — the one cell on the table
+   whose colour carries information. Found by looking at it, not by a test:
+   both classes were on the element exactly as intended. */
+.cfg-cl-teams.cfg-bad { color: var(--pp-red); }
+.cfg-cl-3d { text-align: center; }
+.cfg-cl-act { white-space: nowrap; }
+.cfg-cl .reg-input { font-size: 12.5px; }
+.cfg-cl .club-maxteams-input, .cfg-cl .club-minver-input { width: 64px; text-align: center; }
+.cfg-cl .club-lead-input { min-width: 190px; }
+.club-lead-msg { font-size: 11.5px; margin-top: .2rem; }
+
+.cfg-newclub {
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 22px 24px; border: 1px solid var(--pp-ink); background: #FFFFFF;
+}
+.cfg-newclub-title { font-size: 19px; }
+.cfg-newclub-sub { font-size: 12.5px; color: var(--pp-ink-2); }
+.cfg-newclub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 26px; }
+/* ⚠ `.reg-input` carries a content-sized width, so in a grid cell the boxes
+   came out narrower than their own placeholders — "responsable@cl" with the
+   rest clipped. The cell decides the width here, not the input. */
+.cfg-newclub-grid .reg-input { width: 100%; box-sizing: border-box; }
+.cfg-newclub-foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cfg-created { color: var(--pp-ok); }
+.cfg-code { letter-spacing: .15em; font-variant-numeric: tabular-nums; }
+
+/* The rail. Does NOT change with the tab — it is the club's state, not the
+   section's, which is why it sits outside .cfg-main.
+   ⚠ Except on Clubs · superadmin, where it is beside a ten-column table of
+   OTHER clubs and answers a question nobody on that tab is asking. It took
+   340px the table needed, and the action column was clipped off the edge. */
+.cfg-rail { flex: 0 0 340px; display: flex; flex-direction: column; }
+.cfg-page[data-cfg-active="clubs"] .cfg-rail { display: none; }
+.cfg-rail-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+}
+.cfg-rail-head-2 { margin-top: 34px; }
+.cfg-rail-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-rail-l { flex: 1 1 0; font-size: 13.5px; color: var(--pp-ink-2); }
+.cfg-rail-v { font-size: 15px; font-variant-numeric: tabular-nums; }
+.cfg-todo {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-dot { display: block; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; }
+.cfg-dot-bad { background: var(--pp-red); }
+.cfg-dot-warn { background: var(--pp-warn); }
+.cfg-dot-ok { background: var(--pp-ok); }
+.cfg-todo-l { flex: 1 1 0; font-size: 13.5px; text-wrap: pretty; }
+
+/* The save bar. One form, one save — see _handleSaveTeamSetup. */
+.cfg-save {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 18px 40px 24px; border-top: 1px solid var(--pp-rule); background: #FFFFFF;
+}
+.cfg-save-note { font-size: 12.5px; color: var(--pp-ink-3); }
+
+@media (max-width: 900px) {
+  /* The rail goes UNDER the content rather than narrowing: 340px is already
+     the least width its two-column rows read at. */
+  .cfg-body { flex-direction: column; gap: 30px; }
+  .cfg-rail { flex: 1 1 auto; width: 100%; }
+}
+
+@media (max-width: 700px) {
+  .cfg-bar { padding: 10px 20px; font-size: 12px; }
+  .cfg-tabs { display: none; }
+  .cfg-nav { display: block; }
+  .cfg-newclub-grid { grid-template-columns: minmax(0, 1fr); }
+  .cfg-identity { flex-direction: column; gap: 18px; }
+  .cfg-save { padding: 14px 20px 18px; }
+  /* Hit targets: the section list and the save button are what a lead taps. */
+  .cfg-nav-item { padding: 15px 20px; }
+  .cfg-save .btn { min-height: 44px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RE-DRESSING THE REUSED SECTIONS
+   ═══════════════════════════════════════════════════════════════════
+   The sections come from the team-setup builders, which were written for
+   the app's CHROME: pill toggles, 50%-radius chips, grey rounded cards,
+   `--primary` red, `--border` grey. Dropping them into a paper page
+   unchanged left the frame paper and the contents chrome.
+
+   Everything below re-dresses them WITHOUT touching the markup, so every
+   collector, every data attribute and every handler is untouched — the
+   whole point of sharing the builders. Scoped under `.cfg-page` for the
+   reason the file states elsewhere: a rule that borrows another page's
+   class family must sit under its own root, or it repaints every other
+   surface that uses it. The onboarding card keeps the chrome look, which
+   is right — it is an auth card, beside four others that share it.
+
+   The design language is the handoff's: square everywhere, 1px rules,
+   `--pp-rule` borders on `--pp-paper` fills, ink instead of primary.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Inputs, selects and buttons ─────────────────────────────────── */
+.cfg-page .reg-input,
+.cfg-page .ts-rem-input,
+.cfg-page .ts-sched-row input,
+.cfg-page .ts-sched-row select,
+.cfg-page .ts-fcf-row input {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  height: 30px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid var(--pp-rule); border-radius: 0;
+  background: #FFFFFF; color: var(--pp-ink);
+  font-family: inherit; font-size: 13px; line-height: normal;
+  transition: none;
+}
+/* A select with its arrow suppressed needs one drawn back, or it reads as
+   a text box that will not accept typing. */
+.cfg-page .ts-sched-row select {
+  padding-right: 22px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--pp-ink-3) 50%),
+                    linear-gradient(135deg, var(--pp-ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 13px, calc(100% - 8px) 13px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.cfg-page .reg-input:focus,
+.cfg-page .ts-rem-input:focus,
+.cfg-page .ts-sched-row input:focus,
+.cfg-page .ts-sched-row select:focus,
+.cfg-page .ts-fcf-row input:focus {
+  outline: none; border-color: var(--pp-ink); box-shadow: none;
+}
+.cfg-page .ts-rem-input { width: 54px; text-align: center; font-variant-numeric: tabular-nums; }
+.cfg-page .ts-sched-row select.ts-time { width: 78px; text-align: center; }
+
+.cfg-page .btn {
+  border-radius: 0; box-shadow: none; text-transform: none;
+  font-family: inherit; font-weight: 400;
+}
+.cfg-page .btn-outline, .cfg-page .btn-small {
+  border: 1px solid var(--pp-ink); background: none; color: var(--pp-ink);
+}
+.cfg-page .btn-outline:hover, .cfg-page .btn-small:hover {
+  background: var(--pp-ink); color: var(--pp-paper);
+}
+.cfg-page .btn-primary { background: var(--pp-ink); border: 1px solid var(--pp-ink); color: var(--pp-paper); }
+.cfg-page .btn-danger { background: none; border: 1px solid var(--pp-red); color: var(--pp-red); }
+.cfg-page .btn-danger:hover { background: var(--pp-red); color: #FFFFFF; }
+
+/* ── Categories: a square tick and square letter chips ───────────── */
+.cfg-page .ts-cat-row {
+  gap: 18px; padding: 15px 0;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-page .ts-cat-row:last-child { border-bottom: 1px solid var(--pp-rule-2); }
+/* The pill slider becomes a 22px checkbox. Same markup, same input, same
+   handler — only the box it draws changes. */
+.cfg-page .ts-cat-toggle { width: 22px; height: 22px; }
+.cfg-page .ts-cat-toggle .slider {
+  border-radius: 0; background: none;
+  border: 1px solid var(--pp-input-line); transition: none;
+}
+.cfg-page .ts-cat-toggle .slider::before {
+  content: ''; position: absolute; inset: 0;
+  width: auto; height: auto; background: none; border-radius: 0;
+  transform: none; transition: none;
+}
+.cfg-page .ts-cat-toggle input:checked + .slider {
+  background: var(--pp-ink); border-color: var(--pp-ink);
+}
+/* The tick is DRAWN, not a glyph: a ✓ character sits differently in every
+   font the fallback stack might reach for.
+   ⚠ Centred by the 50%/50% origin and a translate, not by hand-tuned top and
+   left — the first cut used `left:7px; top:3px`, which is only centred at
+   this exact size and sat visibly high in the box. The -60% on Y is
+   deliberate: a tick's optical centre is below its bounding box's, because
+   the long arm runs past the corner where the two strokes meet. */
+.cfg-page .ts-cat-toggle input:checked + .slider::before {
+  content: ''; position: absolute; inset: auto auto auto 50%; top: 50%;
+  width: 5px; height: 9px; border: solid var(--pp-paper);
+  border-width: 0 2px 2px 0; border-radius: 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  background: none;
+}
+.cfg-page .ts-cat-name {
+  width: 150px; min-width: 0; flex: none;
+  font-size: 16px; font-weight: 400; color: var(--pp-ink);
+}
+.cfg-page .ts-cat-row:not(.active) .ts-cat-name { color: var(--pp-ink-3); }
+.cfg-page .ts-letters { gap: 6px; flex: 1 1 0; }
+.cfg-page .ts-letter-chip {
+  width: auto; min-width: 28px; height: 28px; padding: 0 9px;
+  border-radius: 0; border: 1px solid var(--pp-rule);
+  background: none; color: var(--pp-ink-2);
+  font-size: 12.5px; font-weight: 400; transition: none;
+}
+.cfg-page .ts-cat-row.active .ts-letter-chip {
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
+}
+.cfg-page .ts-cat-row.active .ts-letter-chip-last:hover {
+  background: var(--pp-red); border-color: var(--pp-red);
+}
+.cfg-page .ts-letter-chip-off {
+  opacity: 1; border-style: dashed; border-color: var(--pp-input-line); color: var(--pp-ink-3);
+}
+.cfg-page .ts-letter-add {
+  width: auto; height: 28px; padding: 0 8px; border-radius: 0; gap: 4px;
+  border: none; background: none; color: var(--pp-red); font-size: 12.5px;
+}
+.cfg-page .ts-letter-add .ts-letter-add-l { display: inline; }
+.cfg-page .ts-letter-add:hover { color: var(--pp-red-dark); }
+/* Muted, not invisible. At `--pp-ink-4` this read as decoration rather than
+   as a control that is unavailable BECAUSE THE QUOTA IS FULL — which is the
+   one thing it has to communicate. */
+.cfg-page .ts-letter-add-muted { color: var(--pp-ink-2); }
+
+/* ── Quota line ──────────────────────────────────────────────────── */
+/* ⚠ `margin-top:-14px` against the panel's own 22px gap. The counter is a
+   one-line caption belonging to the header above it, but it is a sibling of
+   it, so it collected a full section gap on both sides and pushed the first
+   category row a long way clear of the rule. */
+.cfg-page .ts-quota-counter {
+  font-size: 12px; color: var(--pp-ink-3); text-align: right;
+  padding: 0; margin: -14px 0 -12px;
+}
+.cfg-page .ts-quota-counter.ts-quota-full { color: var(--pp-red); }
+.cfg-page .ts-quota-banner {
+  padding: 12px 14px; border-radius: 0; border: none;
+  border-left: 3px solid var(--pp-red);
+  background: var(--pp-tint); color: var(--pp-ink); font-size: 13.5px;
+}
+
+/* ── Schedules and staff lists: flat rows, not grey cards ────────── */
+.cfg-page .ts-sched-block {
+  margin: 0; padding: 15px 0; border: none; border-radius: 0;
+  background: none; border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-page .ts-sched-title {
+  font-size: 15px; font-weight: 400; color: var(--pp-ink); margin-bottom: 9px;
+}
+.cfg-page .ts-sched-sub {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 400; color: var(--pp-ink-3); margin: 10px 0 6px;
+}
+.cfg-page .ts-sched-row { gap: 8px; margin-bottom: 6px; }
+.cfg-page .ts-sched-dash { color: var(--pp-ink-3); font-size: 12px; }
+.cfg-page .ts-staff-list { display: block; }
+.cfg-page .ts-add-staff, .cfg-page .ts-sched-block .btn-outline {
+  height: 28px; padding: 0 10px; margin: 6px 0 0;
+  font-size: 12.5px; border: 1px solid var(--pp-rule); color: var(--pp-ink-2);
+}
+.cfg-page .ts-add-staff:hover, .cfg-page .ts-sched-block .btn-outline:hover {
+  border-color: var(--pp-ink); background: none; color: var(--pp-ink);
+}
+/* The remove ✕ is a control, not a button-shaped thing. */
+.cfg-page .ts-remove-staff, .cfg-page .ts-sched-row .btn {
+  border: none; background: none; color: var(--pp-ink-3);
+  padding: 0 6px; min-width: 0; height: 28px; font-size: 13px;
+}
+.cfg-page .ts-remove-staff:hover, .cfg-page .ts-sched-row .btn:hover {
+  color: var(--pp-red); background: none;
+}
+
+/* ── FCF links ───────────────────────────────────────────────────── */
+.cfg-page .ts-fcf-row {
+  gap: 16px; margin: 0; padding: 11px 0;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+.cfg-page .ts-fcf-label {
+  width: 98px; min-width: 0; flex: none;
+  font-size: 15px; font-weight: 400; color: var(--pp-ink);
+}
+.cfg-page .ts-fcf-row input { flex: 1 1 0; min-width: 0; font-size: 12.5px; color: var(--pp-ink-2); }
+.cfg-page .ts-fcf-row.ts-fcf-stale input { border-color: var(--pp-warn); }
+.cfg-page .ts-fcf-warn {
+  color: var(--pp-warn-ink); font-size: 12px; padding-left: calc(98px + 16px);
+}
+
+/* ── Kits ────────────────────────────────────────────────────────── */
+.cfg-page .ts-kit-block {
+  border: none; border-radius: 0; padding: 16px 0; margin: 0;
+  border-bottom: 1px solid var(--pp-rule-2);
+}
+/* The last kit's bottom rule and the "+ Equipació" button were 6px apart,
+   so the button read as part of the kit above it rather than as the way to
+   add another. */
+.cfg-page #btn-add-kit { margin-top: 18px; }
+.cfg-page .ts-kit-head { gap: 14px; }
+.cfg-page .ts-kit-head .reg-input { flex: 0 0 180px; max-width: 180px; }
+.cfg-page .ts-kit-garments { gap: 10px 26px; margin-top: 10px; }
+.cfg-page .ts-kit-garment-label {
+  font-size: 12.5px; font-weight: 400; color: var(--pp-ink-2);
+}
+/* The colour swatches are the BOARD's picker (`.tb-color-pick`), round
+   because it lives in a dark context menu among round tokens. Squared here
+   only — scoped, or every menu on the tactics page changes with it. The
+   ::-webkit- and ::-moz- pseudo-elements carry their own radius and have to
+   be squared separately, or the fill stays a circle inside a square box. */
+.cfg-page .tb-color-pick {
+  width: 26px; height: 26px; border-radius: 0; border: 1px solid var(--pp-rule);
+}
+.cfg-page .tb-color-pick::-webkit-color-swatch-wrapper { padding: 0; border-radius: 0; }
+.cfg-page .tb-color-pick::-webkit-color-swatch { border-radius: 0; }
+.cfg-page .tb-color-pick::-moz-color-swatch { border-radius: 0; }
+/* The kit's remove control, matching the ✕ on every other row. */
+.cfg-page .ts-kit-remove {
+  border: none; background: none; color: var(--pp-ink-3);
+  width: auto; height: 26px; padding: 0 6px; font-size: 15px; border-radius: 0;
+}
+.cfg-page .ts-kit-remove:hover { color: var(--pp-red); background: none; }
+
+/* ── The ground, pasted as a link ────────────────────────────────── */
+/* What the box resolves to, under the box. Grey when there is nothing yet,
+   because an empty box is a deliberate state (it clears the coordinates) and
+   not an error; red only when something was pasted that cannot be read. */
+.cfg-page .ts-coords-hint {
+  display: block; margin-top: 6px; font-size: 12px;
+  color: var(--pp-ink-3); text-wrap: pretty;
+}
+.cfg-page .ts-coords-ok { color: var(--pp-ok); font-variant-numeric: tabular-nums; }
+.cfg-page .ts-coords-bad { color: var(--pp-red); }
+/* Clear of the section rule above it: with the explainer paragraph removed
+   the box sat straight under the heading. */
+.cfg-page #ts-home-coords { width: 100%; max-width: 420px; margin-top: 14px; }
+
+/* ── Reminder rows ───────────────────────────────────────────────── */
+.cfg-page .ts-rem-row { gap: 12px; margin-bottom: 10px; }
+.cfg-page .ts-rem-label { flex: 0 0 auto; font-size: 15px; color: var(--pp-ink); }
+.cfg-page .ts-rem-unit { font-size: 13px; color: var(--pp-ink-2); }
+
+/* ── The save error ──────────────────────────────────────────────── */
+.cfg-page .error-msg {
+  border-radius: 0; border: none; border-left: 3px solid var(--pp-red);
+  background: var(--pp-tint); color: var(--pp-ink);
+  padding: 10px 14px; font-size: 13.5px; margin-top: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GESTIÓ D'USUARIS, redesigned (v255)
+   ═══════════════════════════════════════════════════════════════════
+   Who is on the club's platform and what they may do. The squad sheet —
+   dorsal, position, agent — is Registracions; the dorsal here is text.
+
+   ⚠ THIS BLOCK ENDS AT THE PISSARRES BANNER BELOW, which is what
+   `test/gestio-usuaris.test.js` slices to. It used to run to EOF; v257
+   appended after it and gave it this bound in the same change — the trap that
+   has broken five suites in turn. `test/configuracio.test.js` uses the banner
+   above as ITS end bound.
+   ⚠ And the next banner's exact text is NOT spelt out here: the suite finds
+   its end bound with indexOf, so a mention of it inside this comment would be
+   the first hit and would slice this block down to a paragraph. It did.
+
+   The band, the bleed, the 36px title, the caption atom and the figure row
+   are NOT redeclared: `.gu-*` joins the shared selector lists at the top of
+   this file. Only what is this page's own lives below.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.gu-page { background: var(--pp-paper); color: var(--pp-ink); }
+
+/* The rows are a grid, not a table: one column template shared by the head
+   and every row, so the two can never drift apart. */
+.gu-body { padding: 0 40px 56px; }
+/* ⚠ The 12px of side padding is what keeps the row's two ends off the page's
+   own edge: the circle is a filled disc and "Esborra" is red, so both read as
+   if they were touching the frame without it. It sits on the shared template
+   rather than on the cells, or the head and the rows would drift apart. */
+.gu-head, .gu-row {
+  display: grid;
+  grid-template-columns: 22px 150px minmax(0, 1fr) 150px 150px 44px 168px;
+  align-items: center; gap: 14px;
+  padding-left: 12px; padding-right: 12px;
+}
+.gu-head {
+  padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.gu-h-dorsal, .gu-h-actions { text-align: right; }
+/* ⚠ Longhand, not `padding: 12px 0`. The shorthand comes after the shared
+   rule above and would reset the side padding it sets back to zero — which
+   is how the circle ended up against the page edge in the first place. */
+.gu-row { padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--pp-rule-2); }
+.gu-row:hover { background: #FFFFFF; }
+/* Somebody with no squad is the thing this page exists to resolve. */
+.gu-row-nosquad { background: var(--pp-tint); }
+
+.gu-circle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  color: #FFFFFF; line-height: 1; flex: none;
+}
+/* The fitness dumbbell: two bars and a crossbar, drawn because no glyph in
+   the fallback stack can be relied on for one. */
+.gu-db { display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
+.gu-db i { display: block; width: 2px; height: 10px; background: #FFFFFF; }
+.gu-db b { display: block; width: 7px; height: 2px; background: #FFFFFF; }
+/* Emoji ignore `color`; this forces one to solid white. ⚠ It must sit on the
+   GLYPH, not on `.gu-circle` — `filter` includes the background, so on the
+   circle it bleached the fill and left an empty white disc. */
+.gu-inv { display: inline-flex; filter: brightness(0) invert(1); }
+
+.gu-name {
+  font-size: 15px; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gu-email {
+  font-size: 13px; color: var(--pp-ink-2); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gu-dorsal {
+  text-align: right; font-size: 14px; color: var(--pp-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.gu-bad { color: var(--pp-red); }
+
+/* Role and squad pickers. Square, like every other control in the redesign. */
+.gu-role, .gu-squad {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  width: 100%; height: 28px; padding: 0 22px 0 8px; box-sizing: border-box;
+  border: 1px solid var(--pp-rule); border-radius: 0; background: #FFFFFF;
+  color: var(--pp-ink); font-family: inherit; font-size: 12px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--pp-ink-3) 50%),
+                    linear-gradient(135deg, var(--pp-ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 12px, calc(100% - 8px) 12px;
+  background-size: 4px 4px, 4px 4px; background-repeat: no-repeat;
+}
+.gu-role:focus, .gu-squad:focus { outline: none; border-color: var(--pp-ink); }
+.gu-role-cell, .gu-squad-cell { min-width: 0; }
+/* The sub-role is shown but not editable here — it is set on the roster, in
+   Configuració › Staff. Rendering it as text rather than a dead control. */
+.gu-subrole { display: block; margin-top: 3px; font-size: 11px; color: var(--pp-ink-3); }
+/* The club lead: a badge, because only the superadmin may write leadEmail. */
+.gu-lead-badge {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+  background: var(--pp-red); color: var(--pp-paper);
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+}
+
+.gu-actions {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 14px; flex-wrap: wrap;
+}
+.gu-link {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; color: var(--pp-ink-2);
+}
+.gu-link:hover { color: var(--pp-ink); text-decoration: underline; }
+.gu-danger { color: var(--pp-red); }
+.gu-danger:hover { color: var(--pp-red-dark); }
+
+/* Search and the four filter chips. */
+.gu-tools {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 24px 0 18px;
+}
+.gu-search {
+  flex: 1 1 260px; min-width: 0; height: 32px; padding: 0 11px;
+  box-sizing: border-box; border: 1px solid var(--pp-rule); border-radius: 0;
+  background: #FFFFFF; font-size: 14px;
+}
+.gu-search:focus { outline: none; border-color: var(--pp-ink); }
+.gu-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.gu-chip {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 12px;
+  border: 1px solid var(--pp-rule); border-radius: 0; background: none;
+  cursor: pointer; font-family: inherit; font-size: 12px; color: var(--pp-ink-2);
+}
+/* ⚠ `:not(.gu-chip-on)`, and the selected chip's own hover, both matter.
+   `.gu-chip:hover` is 0,2,0 and `.gu-chip-on` was 0,1,0, so hovering the
+   SELECTED chip repainted its text near-black on its near-black fill and the
+   label vanished. Reported as "the selected one keeps the font black". */
+.gu-chip:hover:not(.gu-chip-on) { border-color: var(--pp-ink); color: var(--pp-ink); }
+.gu-chip.gu-chip-on,
+.gu-chip.gu-chip-on:hover {
+  background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper);
+}
+
+/* The category and letter filter is the shared `.cat-bar` above the page,
+   which renderPage draws outside the page root — the same control, in the
+   same place, as every other filtered page. */
+
+.gu-note {
+  display: flex; justify-content: flex-end; align-items: center;
+  min-height: 40px; padding: 0 40px;
+  border-bottom: 1px solid var(--pp-rule);
+  font-size: 12px; color: var(--pp-ink-3); text-align: right;
+}
+.gu-foot { margin: 18px 0 0; font-size: 12px; color: var(--pp-ink-3); text-wrap: pretty; }
+.gu-empty { margin: 22px 0 0; font-size: 17px; color: var(--pp-ink-2); }
+
+@media (max-width: 900px) {
+  /* ⚠ The grid collapses to two columns rather than scrolling sideways: a
+     page body that scrolls horizontally drags the hero and the filter bar
+     with it. The circle keeps its own column so the rows still line up. */
+  .gu-head { display: none; }
+  /* Longhand here too — see the note on `.gu-row` above. A `padding: 14px 0`
+     shorthand would drop the side padding back to zero on every phone. */
+  .gu-row {
+    grid-template-columns: 22px minmax(0, 1fr);
+    row-gap: 8px; padding-top: 14px; padding-bottom: 14px;
+  }
+  .gu-email, .gu-role-cell, .gu-squad-cell, .gu-dorsal, .gu-actions {
+    grid-column: 2;
+  }
+  .gu-dorsal { text-align: left; }
+  .gu-actions { justify-content: flex-start; }
+  .gu-role, .gu-squad { max-width: 240px; }
+}
+
+@media (max-width: 700px) {
+  .gu-body { padding: 0 20px 40px; }
+  .gu-note { padding: 0 20px; text-align: right; }
+  .gu-tools { padding: 16px 0 14px; }
+  /* Hit targets. Every one of these is something a lead taps on a phone. */
+  .gu-chip { height: 44px; padding: 0 14px; }
+  .gu-role, .gu-squad { height: 44px; background-position: calc(100% - 12px) 20px, calc(100% - 8px) 20px; }
+  .gu-link { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PISSARRES, redesigned (v257)
+   ═══════════════════════════════════════════════════════════════════
+   The superadmin's board catalogue and the platform template library, in
+   three tabs: the clubs' boards as a card grid, the editor's launcher, and
+   the library with its pack manager and multi-club send.
+
+   ⚠ THIS BLOCK IS LAST IN THE FILE, so `test/pissarres.test.js` slices from
+   the banner above to EOF, and `test/gestio-usuaris.test.js` uses this banner
+   as ITS end bound. Anything appended after this must bound this block first,
+   in the same change — the trap that has broken five suites in turn.
+
+   The bleed, the header band, the 36px title, the body inset, the caption atom
+   and the figure row are NOT redeclared: `.ab-*` joins the shared selector
+   lists at the top of this file. Only what is this page's own lives below.
+
+   ⚠ The mini pitches are `.tb-*`, which is the tactics block's, not this one's.
+   Nothing here restyles them — the catalogue only sizes the box they sit in.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ab-page { background: var(--pp-paper); color: var(--pp-ink); }
+
+/* Before the first load resolves there is no band to draw: the figures in it
+   are counts that do not exist yet. */
+.ab-boot { padding: 40px; font-size: 14px; color: var(--pp-ink-2); }
+.ab-boot-err { color: var(--pp-red); }
+
+/* ── The tab strip ───────────────────────────────────────────────────
+   Underline, not a pill: it sits directly under the band, and a row of filled
+   buttons there reads as a second toolbar rather than as one page's sections. */
+.ab-tabs {
+  display: flex; gap: 28px; padding: 0 40px;
+  background: #FFFFFF; border-bottom: 1px solid var(--pp-rule);
+  overflow-x: auto; scrollbar-width: none;
+}
+.ab-tabs::-webkit-scrollbar { display: none; }
+.ab-tab {
+  appearance: none; background: none; border: none; border-radius: 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 14px 0 12px; cursor: pointer; white-space: nowrap;
+  font: inherit; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pp-ink-3);
+}
+.ab-tab:hover:not(.ab-tab-on) { color: var(--pp-ink-2); }
+.ab-tab-on { color: var(--pp-ink); border-bottom-color: var(--pp-red); }
+
+/* ── Shared page furniture ───────────────────────────────────────── */
+.ab-note { margin: 0 0 20px; font-size: 13.5px; color: var(--pp-ink-2); max-width: 70ch; }
+.ab-empty { margin: 24px 0; font-size: 14px; color: var(--pp-ink-3); }
+.ab-muted { color: var(--pp-ink-3); }
+.ab-count-line { margin: 16px 0 20px; font-size: 12px; color: var(--pp-ink-3); }
+.ab-warn {
+  margin: 0 0 20px; padding: 10px 14px; font-size: 13px;
+  background: var(--pp-tint); color: var(--pp-ink); border-left: 3px solid var(--pp-amber);
+}
+.ab-sec-l { display: block; margin: 32px 0 12px; }
+
+/* Square, ruled, no shadow — the same input the other paper pages use. */
+.ab-input {
+  appearance: none; font: inherit; font-size: 13.5px; color: var(--pp-ink);
+  background: #FFFFFF; border: 1px solid var(--pp-input-line); border-radius: 0;
+  height: 36px; padding: 0 10px; min-width: 0;
+}
+.ab-input:focus { outline: none; border-color: var(--pp-ink); }
+select.ab-input { padding-right: 26px; }
+
+.ab-btn {
+  appearance: none; font: inherit; font-size: 13px; cursor: pointer;
+  background: var(--pp-ink); color: #FFFFFF; border: 1px solid var(--pp-ink);
+  border-radius: 0; height: 36px; padding: 0 16px;
+}
+.ab-btn:hover { background: var(--pp-red); border-color: var(--pp-red); }
+.ab-btn:disabled { opacity: .5; cursor: default; }
+.ab-btn:disabled:hover { background: var(--pp-ink); border-color: var(--pp-ink); }
+
+/* The only other control on the page: a rule under a word. */
+.ab-link {
+  appearance: none; background: none; border: none; border-radius: 0; padding: 0;
+  font: inherit; font-size: 13px; color: var(--pp-ink-2); cursor: pointer;
+  border-bottom: 1px solid var(--pp-rule-4);
+}
+.ab-link:hover { color: var(--pp-ink); border-bottom-color: var(--pp-ink); }
+.ab-danger { color: var(--pp-red); border-bottom-color: var(--pp-red); }
+.ab-danger:hover { color: var(--pp-red-dark); border-bottom-color: var(--pp-red-dark); }
+
+.ab-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ab-search { flex: 1 1 260px; }
+
+/* ── The tag chips ───────────────────────────────────────────────────
+   ⚠ `:hover:not(.ab-chip-on)` and the explicit on+hover pair, not a bare
+   `:hover`. A bare hover rule is (0,2,0) against the selected chip's (0,1,0)
+   and wins, which turned the selected chip's own label black on its own dark
+   ground — reported on the identical control in Gestió d'usuaris. */
+.ab-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.ab-chip {
+  appearance: none; font: inherit; font-size: 12px; cursor: pointer;
+  background: #FFFFFF; color: var(--pp-ink-2); border-radius: 0;
+  border: 1px solid var(--pp-rule-3); height: 30px; padding: 0 12px;
+}
+.ab-chip:hover:not(.ab-chip-on) { border-color: var(--pp-ink-3); color: var(--pp-ink); }
+.ab-chip-on { background: var(--pp-ink); border-color: var(--pp-ink); color: #FFFFFF; }
+.ab-chip.ab-chip-on:hover { background: var(--pp-red); border-color: var(--pp-red); color: #FFFFFF; }
+
+/* ── The card grid ─────────────────────────────────────────────
+   `auto-fill` with a minimum, so the grid decides its own column count and
+   there is no breakpoint per width to keep in step with anything.
+
+   The card is four bands with no gaps between them: a header carrying the
+   name, the pitch, the meta, and a footer rule. Nothing floats over the
+   pitch — the ▶ and 3D pucks already own its bottom-right corner. */
+.ab-grid {
+  display: grid; gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.ab-card {
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+  display: flex; flex-direction: column; min-width: 0;
+}
+.ab-card:hover { border-color: var(--pp-rule-4); }
+
+/* The header band. Its own slightly darker ground, so the name reads as the
+   card's label rather than as the first line of the body. */
+.ab-card-h {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 12px 16px; background: var(--pp-tint);
+  border-bottom: 1px solid var(--pp-rule);
+}
+.ab-card-t {
+  font-size: 15px; line-height: 1.3; color: var(--pp-ink); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ab-card-form { font-size: 11px; color: var(--pp-ink-3); flex: none; margin-left: auto; }
+
+/* ⚠ The thumb keeps the pitch's own 3:2 whether it is a skeleton or a drawn
+   board, so a card does not resize under the reader when it hydrates. */
+.ab-thumb { position: relative; border-bottom: 1px solid var(--pp-rule); }
+/* ⚠ TWO `!important`s AGAINST INLINE STYLES, AND THEY ARE THE ONLY WAY.
+   renderReadOnlyBoard writes both of these as `style="..."` on elements this
+   file does not build, and an inline declaration outranks every selector.
+
+   The title is a DUPLICATE here — the card already has a header band naming
+   the board — and the wrapper's 1rem bottom margin made `.ab-thumb` taller
+   than the pitch inside it, which is what left the old frame badge floating
+   in dead space below the board and clipped by the card edge. */
+.ab-thumb > div { margin-bottom: 0 !important; }
+.ab-thumb > div > div:first-child { display: none !important; }
+/* Smaller ▶ / 3D pucks. Read by scaleRoField as the FLOOR it clamps to:
+   `30 * scale` is about 9px on a card this size, so the floor is the only
+   thing sizing them, and 16px is a tap target this card does not need — its
+   real control is «Veure». Every other caller leaves the property unset and
+   keeps the 16px it always had. */
+.ab-thumb .tb-field-readonly { --ro-ctl-min: 13px; }
+.ab-thumb .tb-ro-skeleton {
+  margin: 0; border: none; border-radius: 0; opacity: 1;
+  background: var(--pp-tint); color: var(--pp-ink-3); font-size: 12px; font-style: normal;
+}
+/* TB.warm swallows its own errors, so a read that never arrives is otherwise
+   indistinguishable from one still in flight.
+   ⚠ COMPOUNDED WITH `.ab-thumb`. On its own this rule is (0,1,0) against the
+   skeleton's own (0,2,0) above and lost — the failed card said the right words
+   in the ordinary grey. */
+.ab-thumb .ab-thumb-failed { color: var(--pp-bad); }
+
+.ab-card-b { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.ab-card-m {
+  font-size: 12px; line-height: 1.45; color: var(--pp-ink-3);
+}
+.ab-left { color: var(--pp-red); }
+.ab-card-f { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ab-tagchip, .ab-catchip {
+  font-size: 11px; letter-spacing: .06em; padding: 2px 8px;
+  border: 1px solid var(--pp-rule-3); color: var(--pp-ink-2);
+}
+.ab-tagchip { background: var(--pp-tint); }
+.ab-bytes { font-size: 11px; color: var(--pp-ink-4); margin-left: auto; }
+.ab-card-a {
+  display: flex; gap: 14px; align-items: baseline;
+  margin-top: auto; padding-top: 10px; border-top: 1px solid var(--pp-rule-2);
+}
+.ab-done { font-size: 12px; color: var(--pp-green); }
+/* The frame count, at the card's bottom-right where nothing else is. */
+.ab-frames {
+  margin-left: auto; flex: none;
+  font-size: 11px; color: var(--pp-ink-4); white-space: nowrap;
+}
+
+/* ── The editor tab's draft list ─────────────────────────────────── */
+.ab-list { border-top: 1px solid var(--pp-rule); }
+.ab-list-row {
+  display: flex; gap: 16px; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.ab-list-n { font-size: 15px; color: var(--pp-ink); }
+.ab-list-m { font-size: 12px; color: var(--pp-ink-3); margin-left: auto; }
+
+/* ── The pack manager ──────────────────────────────────────────────
+   A pack is a NAME ON THE TEMPLATES that carry it — there is no packs
+   collection — so one just created exists in this tab and nowhere else until
+   it is assigned, and its chip says so instead of quietly vanishing. */
+.ab-packs { background: #FFFFFF; border: 1px solid var(--pp-rule); padding: 16px 18px; }
+.ab-packs .ab-sec-l { margin: 0 0 10px; }
+.ab-pack-list { display: flex; gap: 10px; flex-wrap: wrap; }
+.ab-pack {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  border: 1px solid var(--pp-rule-3); padding: 5px 8px 5px 12px; background: var(--pp-paper);
+}
+.ab-pack b { font-weight: 400; font-size: 13.5px; color: var(--pp-ink); }
+.ab-pack i { font-style: normal; font-size: 11px; color: var(--pp-ink-3); }
+.ab-pack.ab-pack-new { border-style: dashed; }
+.ab-pack.ab-pack-new i { color: var(--pp-amber); }
+.ab-x {
+  appearance: none; background: none; border: none; border-radius: 0; padding: 0 2px;
+  font: inherit; font-size: 12px; line-height: 1; color: var(--pp-ink-3); cursor: pointer;
+}
+.ab-x:hover { color: var(--pp-red); }
+/* ⚠ `.ab-packs .ab-pack-new` is the ROW that creates one, and `.ab-pack.ab-pack-new`
+   above is a CHIP with no templates yet. Different elements, and the compound
+   selector is what keeps the two apart. */
+.ab-packs .ab-pack-new { display: flex; gap: 8px; margin-top: 14px; border: none; padding: 0; }
+.ab-packs .ab-pack-new .ab-input { flex: 0 1 240px; }
+
+/* ── The template table ──────────────────────────────────────────────
+   A grid, not a <table>: one column template shared by the head and every row,
+   so the two can never drift apart. */
+.ab-head, .ab-row {
+  display: grid; align-items: center; gap: 14px;
+  /* ⚠ EVERY TRACK IS FIXED OR A FRACTION — none is `auto`. The head and the
+     rows are two separate grid containers sharing one template, and an `auto`
+     track sizes to ITS OWN content: the head's action cell is empty and the
+     row's holds three buttons, so the free space differed and every heading
+     sat a column adrift of what it named. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 130px minmax(0, 1.4fr) 100px 200px;
+  padding-left: 4px; padding-right: 4px;
+}
+.ab-head {
+  margin-top: 32px; padding-top: 0; padding-bottom: 10px;
+  border-bottom: 1px solid var(--pp-rule);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+/* ⚠ Longhand. `padding: 12px 4px` here would look identical and silently reset
+   the side padding in any override that forgets to restate it — which is how
+   the identical row on Gestió d'usuaris lost its ends twice. */
+.ab-row { padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--pp-rule-2); }
+.ab-row:hover { background: #FFFFFF; }
+.ab-row .ab-input { width: 100%; }
+.ab-c-packs { display: flex; gap: 6px; flex-wrap: wrap; }
+.ab-pchip {
+  appearance: none; font: inherit; font-size: 11px; cursor: pointer; border-radius: 0;
+  background: #FFFFFF; border: 1px solid var(--pp-rule-3); color: var(--pp-ink-3);
+  padding: 3px 8px;
+}
+.ab-pchip:hover:not(.ab-pchip-on) { border-color: var(--pp-ink-3); color: var(--pp-ink); }
+.ab-pchip-on { background: var(--pp-ink); border-color: var(--pp-ink); color: #FFFFFF; }
+.ab-pchip.ab-pchip-on:hover { background: var(--pp-red); border-color: var(--pp-red); color: #FFFFFF; }
+.ab-state {
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--pp-amber);
+}
+.ab-state-live { color: var(--pp-green); }
+.ab-c-act { display: flex; gap: 14px; justify-content: flex-end; align-items: center; }
+
+/* ── The send panel ──────────────────────────────────────────────── */
+.ab-send { margin-top: 40px; background: #FFFFFF; border: 1px solid var(--pp-rule); padding: 20px 22px 22px; }
+.ab-send .ab-sec-l { margin: 0 0 8px; }
+.ab-send-g { display: grid; gap: 28px; grid-template-columns: 2fr 1fr; }
+.ab-boxes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+/* Checkboxes rather than a <select multiple>: on a phone that control is a
+   scroll trap, and it never says how many are chosen. */
+.ab-box {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  border: 1px solid var(--pp-rule-3); padding: 6px 12px 6px 10px;
+  font-size: 13px; color: var(--pp-ink-2); background: var(--pp-paper);
+}
+.ab-box input { margin: 0; accent-color: var(--pp-ink); }
+.ab-box-on { border-color: var(--pp-ink); color: var(--pp-ink); background: #FFFFFF; }
+.ab-send-a { display: flex; gap: 16px; align-items: center; margin-top: 20px; }
+.ab-send-r { font-size: 13px; color: var(--pp-ink-2); }
+
+/* ── The read-only preview overlay ───────────────────────────────── */
+.ab-modal {
+  position: fixed; inset: 0; z-index: 1000; padding: 20px;
+  background: rgba(45, 41, 38, .55);
+  display: flex; align-items: center; justify-content: center;
+}
+.ab-modal-card {
+  position: relative; background: var(--pp-paper); border: 1px solid var(--pp-rule-4);
+  border-radius: 0; padding: 22px; width: 100%; max-width: 900px;
+  max-height: 90vh; overflow-y: auto;
+}
+.ab-modal-close {
+  position: absolute; top: 10px; right: 12px;
+  appearance: none; background: none; border: none; border-radius: 0; padding: 4px;
+  font: inherit; font-size: 15px; line-height: 1; color: var(--pp-ink-3); cursor: pointer;
+}
+.ab-modal-close:hover { color: var(--pp-ink); }
+.ab-modal-meta { margin: 0 0 14px; font-size: 12px; color: var(--pp-ink-3); }
+
+@media (max-width: 900px) {
+  /* The library's six columns become three lines: the two text fields, then
+     the packs, then the state and the actions. */
+  .ab-head { display: none; }
+  .ab-row {
+    grid-template-columns: minmax(0, 1fr) 130px;
+    gap: 10px; padding-top: 16px; padding-bottom: 16px;
+  }
+  .ab-c-packs, .ab-c-state, .ab-c-act { grid-column: 1 / -1; }
+  .ab-c-act { justify-content: flex-start; }
+  .ab-send-g { grid-template-columns: 1fr; gap: 20px; }
+}
+
+@media (max-width: 700px) {
+  .ab-tabs { gap: 20px; padding: 0 20px; }
+  .ab-grid { grid-template-columns: 1fr; gap: 18px; }
+  .ab-tools { gap: 8px; }
+  .ab-search { flex: 1 1 100%; }
+  .ab-input { flex: 1 1 140px; }
+  /* Hit targets. Every one of these is something the superadmin taps. */
+  .ab-input, .ab-btn { height: 44px; }
+  .ab-chip { height: 40px; padding: 0 14px; }
+  .ab-link { min-height: 44px; display: inline-flex; align-items: center; }
+  .ab-x { min-width: 32px; min-height: 32px; }
+  .ab-row .ab-input { height: 44px; }
+}
+
 </style>
 <style>
 /* Mockup shell only — NOT part of the app. The real page renders inside
@@ -10276,7 +11719,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
   because nothing in the app produces one; <b>unsend is kept</b> and “Buida-ho tot”
   dropped; drop-on-row inserts in <b>Convocats only</b>; and the board thumbnail
   <b>expands</b> rather than drawing a live 34×24 pitch.
-  Generated 2026-09-09.
+  Generated 2026-09-21.
 </div>
 
 <div class="mock-label">1 · Staff — the default. Pau Riera is injured, Hugo Lara said no; both faded and undraggable.</div>
@@ -10284,22 +11727,22 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
 <div class="cv-page" id="cv-page"><div class="cv-head"><div class="cv-head-l"><h1 class="cv-h1">Convocatòria</h1><div class="cv-sub">Arrossega els jugadors de Disponibles a Convocats. Afegeix les pissarres i els vídeos que han de veure abans del partit.</div></div><div class="cv-head-r"><div class="cv-fig"><span class="cv-eyebrow">Convocats</span><span class="cv-big">8</span></div><div class="cv-fig"><span class="cv-eyebrow">Disponibles</span><span class="cv-fig-v">10</span></div><div class="cv-fig"><span class="cv-eyebrow">Sense resposta</span><span class="cv-fig-v">2</span></div></div></div><div class="cv-body"><div class="cv-controls"><div class="cv-ctl cv-ctl-match"><span class="cv-eyebrow">Tria el partit</span><div class="cv-menu" data-cv-menu="match"><button type="button" class="cv-menu-t"><span class="cv-mt"><span class="cv-mt-row"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-match="1"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span></div><div class="cv-menu-o" data-cv-match="2"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">CE</span><span class="cv-teams">C.E. Sant Andreu — U.E. Esquerra (A)</span><span class="pt-crest pt-crest-mono">UE</span></span><span class="cv-mt-when">Dilluns 12 oct · 18:30 · Fora · Jornada 4</span></span></div><div class="cv-menu-o" data-cv-match="3"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — A.E. Poblenou</span><span class="pt-crest pt-crest-mono">AE</span></span><span class="cv-mt-when">Dimarts 20 oct · 12:30 · Casa · Jornada 5</span></span></div></div></div></div><div class="cv-ctl cv-ctl-time"><span class="cv-eyebrow">Hora de citació</span><div class="cv-time-v"><input type="text" id="cv-time" class="cv-time-i" value="18:45" placeholder="hh:mm" maxlength="5" inputmode="numeric" autocomplete="off"><span class="cv-time-d" id="cv-time-delta">1 h 15 min abans</span></div><div class="cv-pills"><button type="button" class="cv-pill" data-cv-time="18:15">18:15</button><button type="button" class="cv-pill" data-cv-time="18:30">18:30</button><button type="button" class="cv-pill cv-pill-on" data-cv-time="18:45">18:45</button><button type="button" class="cv-pill" data-cv-time="19:00">19:00</button></div></div><div class="cv-ctl cv-ctl-kit"><span class="cv-eyebrow">Equipació</span><div class="cv-kits"><div class="cv-kit"><span class="cv-kit-l">Samarreta</span><div class="cv-menu" data-cv-menu="kit-shirtId"><button type="button" class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-kit="k1" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span></div><div class="cv-menu-o" data-cv-kit="k2" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="white" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaNNaN00" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaNNaN00" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">2a equipació</span></div><div class="cv-menu-o" data-cv-kit="k3" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><defs><clipPath id="ks3"><path d="M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z"/></clipPath></defs><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="#111" stroke="none"/><path d="M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z" fill="#111" stroke="none"/><g clip-path="url(#ks3)"><rect x="19.555556" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="26.666667" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="33.777778" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="40.888889" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/></g><path d="M22 6 L14 10 L6 18 L12 24 L16 20 Z" fill="#111" stroke="none"/><path d="M42 6 L50 10 L58 18 L52 24 L48 20 Z" fill="#111" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#0000NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#0000NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">3a equipació</span></div></div></div></div><div class="cv-kit"><span class="cv-kit-l">Pantalons</span><div class="cv-menu" data-cv-menu="kit-shortsId"><button type="button" class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block">
       <path d="M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z" fill="#1a1a1a" stroke="none"/>
@@ -10345,22 +11788,22 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
 <div class="cv-page" id="cv-page"><div class="cv-head"><div class="cv-head-l"><h1 class="cv-h1">Convocatòria</h1><div class="cv-sub">Arrossega els jugadors de Disponibles a Convocats. Afegeix les pissarres i els vídeos que han de veure abans del partit.</div></div><div class="cv-head-r"><div class="cv-fig"><span class="cv-eyebrow">Convocats</span><span class="cv-big">8</span></div><div class="cv-fig"><span class="cv-eyebrow">Disponibles</span><span class="cv-fig-v">10</span></div><div class="cv-fig"><span class="cv-eyebrow">Sense resposta</span><span class="cv-fig-v">2</span></div></div></div><div class="cv-body"><div class="cv-controls"><div class="cv-ctl cv-ctl-match"><span class="cv-eyebrow">Tria el partit</span><div class="cv-menu" data-cv-menu="match"><button type="button" class="cv-menu-t"><span class="cv-mt"><span class="cv-mt-row"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-match="1"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span></div><div class="cv-menu-o" data-cv-match="2"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">CE</span><span class="cv-teams">C.E. Sant Andreu — U.E. Esquerra (A)</span><span class="pt-crest pt-crest-mono">UE</span></span><span class="cv-mt-when">Dilluns 12 oct · 18:30 · Fora · Jornada 4</span></span></div><div class="cv-menu-o" data-cv-match="3"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — A.E. Poblenou</span><span class="pt-crest pt-crest-mono">AE</span></span><span class="cv-mt-when">Dimarts 20 oct · 12:30 · Casa · Jornada 5</span></span></div></div></div></div><div class="cv-ctl cv-ctl-time"><span class="cv-eyebrow">Hora de citació</span><div class="cv-time-v"><input type="text" id="cv-time" class="cv-time-i" value="18:45" placeholder="hh:mm" maxlength="5" inputmode="numeric" autocomplete="off"><span class="cv-time-d" id="cv-time-delta">1 h 15 min abans</span></div><div class="cv-pills"><button type="button" class="cv-pill" data-cv-time="18:15">18:15</button><button type="button" class="cv-pill" data-cv-time="18:30">18:30</button><button type="button" class="cv-pill cv-pill-on" data-cv-time="18:45">18:45</button><button type="button" class="cv-pill" data-cv-time="19:00">19:00</button></div></div><div class="cv-ctl cv-ctl-kit"><span class="cv-eyebrow">Equipació</span><div class="cv-kits"><div class="cv-kit"><span class="cv-kit-l">Samarreta</span><div class="cv-menu" data-cv-menu="kit-shirtId"><button type="button" class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-kit="k1" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span></div><div class="cv-menu-o" data-cv-kit="k2" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="white" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaNNaN00" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaNNaN00" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">2a equipació</span></div><div class="cv-menu-o" data-cv-kit="k3" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><defs><clipPath id="ks3"><path d="M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z"/></clipPath></defs><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="#111" stroke="none"/><path d="M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z" fill="#111" stroke="none"/><g clip-path="url(#ks3)"><rect x="19.555556" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="26.666667" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="33.777778" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="40.888889" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/></g><path d="M22 6 L14 10 L6 18 L12 24 L16 20 Z" fill="#111" stroke="none"/><path d="M42 6 L50 10 L58 18 L52 24 L48 20 Z" fill="#111" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#0000NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#0000NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">3a equipació</span></div></div></div></div><div class="cv-kit"><span class="cv-kit-l">Pantalons</span><div class="cv-menu" data-cv-menu="kit-shortsId"><button type="button" class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block">
       <path d="M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z" fill="#1a1a1a" stroke="none"/>
@@ -10406,22 +11849,22 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
 <div class="cv-page" id="cv-page"><div class="cv-head"><div class="cv-head-l"><h1 class="cv-h1">Convocatòria</h1><div class="cv-sub">Arrossega els jugadors de Disponibles a Convocats. Afegeix les pissarres i els vídeos que han de veure abans del partit.</div></div><div class="cv-head-r"><div class="cv-fig"><span class="cv-eyebrow">Convocats</span><span class="cv-big cv-over">19</span></div><div class="cv-fig"><span class="cv-eyebrow">Disponibles</span><span class="cv-fig-v">0</span></div><div class="cv-fig"><span class="cv-eyebrow">Sense resposta</span><span class="cv-fig-v">0</span></div></div></div><div class="cv-body"><div class="cv-controls"><div class="cv-ctl cv-ctl-match"><span class="cv-eyebrow">Tria el partit</span><div class="cv-menu" data-cv-menu="match"><button type="button" class="cv-menu-t"><span class="cv-mt"><span class="cv-mt-row"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-match="1"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span></div><div class="cv-menu-o" data-cv-match="2"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">CE</span><span class="cv-teams">C.E. Sant Andreu — U.E. Esquerra (A)</span><span class="pt-crest pt-crest-mono">UE</span></span><span class="cv-mt-when">Dilluns 12 oct · 18:30 · Fora · Jornada 4</span></span></div><div class="cv-menu-o" data-cv-match="3"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — A.E. Poblenou</span><span class="pt-crest pt-crest-mono">AE</span></span><span class="cv-mt-when">Dimarts 20 oct · 12:30 · Casa · Jornada 5</span></span></div></div></div></div><div class="cv-ctl cv-ctl-time"><span class="cv-eyebrow">Hora de citació</span><div class="cv-time-v"><input type="text" id="cv-time" class="cv-time-i" value="18:45" placeholder="hh:mm" maxlength="5" inputmode="numeric" autocomplete="off"><span class="cv-time-d" id="cv-time-delta">1 h 15 min abans</span></div><div class="cv-pills"><button type="button" class="cv-pill" data-cv-time="18:15">18:15</button><button type="button" class="cv-pill" data-cv-time="18:30">18:30</button><button type="button" class="cv-pill cv-pill-on" data-cv-time="18:45">18:45</button><button type="button" class="cv-pill" data-cv-time="19:00">19:00</button></div></div><div class="cv-ctl cv-ctl-kit"><span class="cv-eyebrow">Equipació</span><div class="cv-kits"><div class="cv-kit"><span class="cv-kit-l">Samarreta</span><div class="cv-menu" data-cv-menu="kit-shirtId"><button type="button" class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-kit="k1" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span></div><div class="cv-menu-o" data-cv-kit="k2" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="white" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaNNaN00" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaNNaN00" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">2a equipació</span></div><div class="cv-menu-o" data-cv-kit="k3" data-cv-field="shirtId"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><defs><clipPath id="ks15"><path d="M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z"/></clipPath></defs><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="#111" stroke="none"/><path d="M22 6 L42 6 L48 20 L48 56 L16 56 L16 20 Z" fill="#111" stroke="none"/><g clip-path="url(#ks15)"><rect x="19.555556" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="26.666667" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="33.777778" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/><rect x="40.888889" y="6" width="3.555555" height="50" fill="#f2c200" shape-rendering="crispEdges"/></g><path d="M22 6 L14 10 L6 18 L12 24 L16 20 Z" fill="#111" stroke="none"/><path d="M42 6 L50 10 L58 18 L52 24 L48 20 Z" fill="#111" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#0000NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#0000NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">3a equipació</span></div></div></div></div><div class="cv-kit"><span class="cv-kit-l">Pantalons</span><div class="cv-menu" data-cv-menu="kit-shortsId"><button type="button" class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block">
       <path d="M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z" fill="#1a1a1a" stroke="none"/>
@@ -10467,7 +11910,7 @@ body { margin:0; background:#E9E6E0; font-family:'Oswald','Arial Narrow',sans-se
 <div class="cv-page cv-page-ro" id="cv-page"><div class="cv-head"><div class="cv-head-l"><h1 class="cv-h1">Convocatòria</h1><div class="cv-sub">Arrossega els jugadors de Disponibles a Convocats. Afegeix les pissarres i els vídeos que han de veure abans del partit.</div></div><div class="cv-head-r"><div class="cv-fig"><span class="cv-eyebrow">Convocats</span><span class="cv-big">8</span></div><div class="cv-fig"><span class="cv-eyebrow">Disponibles</span><span class="cv-fig-v">10</span></div><div class="cv-fig"><span class="cv-eyebrow">Sense resposta</span><span class="cv-fig-v">2</span></div></div></div><div class="cv-body"><div class="view-only-banner">Només lectura</div><div class="cv-controls"><div class="cv-ctl cv-ctl-match"><span class="cv-eyebrow">Tria el partit</span><div class="cv-menu" data-cv-menu="match"><button type="button" class="cv-menu-t"><span class="cv-mt"><span class="cv-mt-row"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span><span class="cv-caret">▾</span></button><div class="cv-menu-m" hidden><div class="cv-menu-o cv-menu-o-on" data-cv-match="1"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — C.F. Vallcarca</span><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2044%22%3E%3Cpath%20d%3D%22M4%203h32v22c0%2010-16%2016-16%2016S4%2035%204%2025z%22%20fill%3D%22%231B4F91%22%20stroke%3D%22%230E2A4E%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M4%2014h32v7H4z%22%20fill%3D%22%23E4B93C%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2235%22%20font-family%3D%22Arial%22%20font-size%3D%229%22%20font-weight%3D%22bold%22%20fill%3D%22%23fff%22%20text-anchor%3D%22middle%22%3ECFV%3C%2Ftext%3E%3C%2Fsvg%3E" class="pt-crest" alt=""></span><span class="cv-mt-when">Dilluns 5 oct · 20:00 · Casa · Jornada 3</span></span></div><div class="cv-menu-o" data-cv-match="2"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">CE</span><span class="cv-teams">C.E. Sant Andreu — U.E. Esquerra (A)</span><span class="pt-crest pt-crest-mono">UE</span></span><span class="cv-mt-when">Dilluns 12 oct · 18:30 · Fora · Jornada 4</span></span></div><div class="cv-menu-o" data-cv-match="3"><span class="cv-mt"><span class="cv-mt-row cv-mt-row-s"><span class="pt-crest pt-crest-mono">UE</span><span class="cv-teams">U.E. Esquerra (A) — A.E. Poblenou</span><span class="pt-crest pt-crest-mono">AE</span></span><span class="cv-mt-when">Dimarts 20 oct · 12:30 · Casa · Jornada 5</span></span></div></div></div></div><div class="cv-ctl cv-ctl-time"><span class="cv-eyebrow">Hora de citació</span><div class="cv-time-v cv-time-ruled"><span class="cv-time-ro">18:45</span></div></div><div class="cv-ctl cv-ctl-kit"><span class="cv-eyebrow">Equipació</span><div class="cv-kits"><div class="cv-kit"><span class="cv-kit-l">Samarreta</span><div class="cv-menu cv-menu-ro"><div class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block"><path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="red" stroke="none"/>
       <path d="M22 6 L14 10 L6 18 L12 24 L16 20 L16 56 L48 56 L48 20 L52 24 L58 18 L50 10 L42 6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M22 6 Q28 12 32 12 Q36 12 42 6" fill="none" stroke="#NaN00NaN" stroke-width="2"/>
-      <line x1="16" y1="20" x2="48" y2="20" stroke="#NaN00NaN" stroke-width="1" opacity=".5"/>
+      
       <image href="img/logo-192.png" x="33" y="18" width="10" height="10" opacity=".7"/>
     </svg></span><span class="cv-kit-name">1a equipació</span></div></div></div><div class="cv-kit"><span class="cv-kit-l">Pantalons</span><div class="cv-menu cv-menu-ro"><div class="cv-menu-t"><span class="cv-kit-img"><svg class="kit-svg" viewBox="0 0 64 64" width="44" height="44" style="display:block">
       <path d="M14 14 L50 14 L52 44 L38 44 L32 26 L26 44 L12 44 Z" fill="#1a1a1a" stroke="none"/>

@@ -8560,9 +8560,18 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 /* ---- Tria el partit ---- */
 .cv-mt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .cv-mt-row { display: flex; align-items: center; gap: 9px; min-width: 0; }
+/* Capitals for BOTH clubs (v275): FCF writes every rival in capitals and the
+   club's own name is configured in mixed case, so a fixture read as two
+   styles. The size is fitCvTeams()'s to reduce — see there — and the
+   ellipsis is only the last resort below its 11px floor. */
 .cv-teams {
   font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase;
 }
+/* ⚠ The toggle's `margin-top: auto` only pushes its rule down to the shared
+   baseline inside a stretched COLUMN. The kit menus had one; this one did
+   not, so its rule sat 6px above the other five (measured, v275). */
+.cv-ctl-match .cv-menu { display: flex; flex-direction: column; flex: 1; }
 .cv-mt-when { font-size: 12px; color: var(--pp-ink-2); }
 .cv-mt-none { font-size: 15px; color: var(--pp-ink-3); }
 .cv-page .cv-mt-row .pt-crest { width: 40px; height: 40px; }

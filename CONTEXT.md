@@ -12299,3 +12299,20 @@ On `sancions` only, the bar now shows even for one category, offers no "Totes" a
 (neither names a group), lists only the squads with an FCF link (`catBarLettersHtml`'s new `only`),
 and lights the squad actually read — `sancionsLetter(cat)`, one answer asked by both the page and the
 bar. Every other page is unchanged; a test pins that. 5 mutations, all red.
+
+### 2026-09-21 — v275: Convocatòria's match picker — one style, one line, one baseline
+
+Owner's report, three parts:
+
+- **Two styles.** The club's own name is configured in mixed case ("Esquerra de l'Eixample F.C.")
+  and FCF writes every rival in capitals. `.cv-teams` is now `text-transform: uppercase` — capitals
+  are the only case both sides can share, since FCF's names cannot be reliably title-cased.
+- **One line.** New `fitCvTeams(root)`, the `fitMnScoreNames` pattern: measured, it steps the type
+  down 0.5px until the fixture fits, floor 11px, then the existing ellipsis. Runs after layout, on
+  resize, and when the fixture menu opens (its rows measure 0 while hidden). A 425px fixture in a
+  348px slot now sits at 13.5px.
+- **Baseline.** "Tria el partit" ruled off 6px above the other five (headless Edge: 428.3 vs 434.3).
+  The toggle's `margin-top: auto` needs a stretched column parent; the kit menus had one, the match
+  menu did not. `.cv-ctl-match .cv-menu` is one now — all six rules at 434.3.
+
+5 mutations, all red. `convocatoria-preview.html` regenerated.

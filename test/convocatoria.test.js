@@ -511,13 +511,14 @@ function wire(selectedId) {
   const {window} = dom;
   const bindSrc = BIND + '\n return bindConvocatoria;';
   let renders = 0;
+  const FITTED = [];            // every root fitCvTeams was asked to fit
   // eslint-disable-next-line no-new-func
   const bind = new Function(
       'document', 'window', 'navigator', 'setTimeout', 't', 'safeHttpUrl',
       'canEditPage', 'localStorage', 'convSelectedMatchId', 'renderPage',
       'getSession', 'getUsers', 'clubKits', 'cvMins', 'cvDelta',
       'tbFindLinked', 'tbSessionRef', 'tbRoBoardHtml', 'hydrateRoBoards',
-      'TB', 'Push', '_currentSession', 'console',
+      'TB', 'Push', '_currentSession', 'console', 'fitCvTeams',
       bindSrc)(
       window.document, window, window.navigator, () => {},
       (k) => k,
@@ -539,7 +540,8 @@ function wire(selectedId) {
         meta: (id) => LIBRARY.find((b) => b.id === id) || null},
       {sendToPlayers: () => {}},
       {teamId: 'T1'},
-      {warn: () => {}});
+      {warn: () => {}},
+      (root) => { FITTED.push(root); });
   /* ⚠ jsdom SWALLOWS an exception thrown inside a listener — it reports it
      on the window and carries on, so a handler that dies on a global the
      stubs forgot looks exactly like a handler that decided to do nothing.
@@ -550,7 +552,7 @@ function wire(selectedId) {
   window.addEventListener('error', (e) => errors.push(String(e.error || e.message)));
   WIRED.push(errors);
   bind();
-  return {window, doc: window.document, renders: () => renders, errors};
+  return {window, doc: window.document, renders: () => renders, errors, fitted: FITTED};
 }
 /* Collected per test and drained in afterEach, so a handler cannot die
    quietly in ANY of these cases without failing the one it died in. */
@@ -636,6 +638,15 @@ describe('Convocatòria — the binder, wired to a real DOM', () => {
     assert.strictEqual(menuOf('kit-shirtId').hidden, false);
     click(doc, '[data-cv-menu="kit-shirtId"] .cv-menu-t');
     assert.strictEqual(menuOf('kit-shirtId').hidden, true, 'the toggle does not close');
+  });
+
+  it('opening the fixture menu fits ITS rows, which measured 0 while shut (v275)', () => {
+    const {doc, fitted} = wire();
+    click(doc, '[data-cv-menu="match"] .cv-menu-t');
+    const menu = doc.querySelector('[data-cv-menu="match"] .cv-menu-m');
+    assert.deepStrictEqual(fitted, [menu], 'the opened rows were not fitted');
+    click(doc, '[data-cv-menu="match"] .cv-menu-t');       // closing fits nothing
+    assert.strictEqual(fitted.length, 1);
   });
 
   it('a malformed citation time is refused, and the good one survives', () => {
@@ -1154,5 +1165,69 @@ describe('Convocatòria — the classes are cv-, not conv-', () => {
     assert.ok(html.includes('[DISC:GK]'), 'the discs are no longer posCirclesHtmlGlobal');
     assert.ok(/\.cv-page \.conv-pos-circle \{[^}]*width: 24px/.test(CVCSS),
         'the 24px override is missing or unscoped');
+  });
+});
+
+describe('the match picker — one style, one line, one baseline (v275)', () => {
+  /* Owner's report: our name in mixed case beside FCF's capitals read as two
+     styles, a long fixture was cut with "…", and "Tria el partit" ruled off
+     6px above "Hora de citació" and "Equipació" (measured in headless Edge:
+     428.3 against 434.3). */
+  const raw = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('draws BOTH clubs in capitals', () => {
+    assert.ok(/\.cv-teams\s*\{[^}]*text-transform:\s*uppercase/.test(raw),
+        'the two names can still come out in two styles');
+  });
+
+  it('lets the match toggle take its rule down to the shared baseline', () => {
+    /* `.cv-menu-t { margin-top:auto }` only moves inside a stretched column;
+       the kit menus had one and this did not. */
+    assert.ok(/\.cv-ctl-match \.cv-menu\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column[^}]*flex:\s*1/
+        .test(raw), 'the match menu is not a stretched column');
+  });
+
+  /* A fake element whose content width scales with its font size — jsdom has
+     no layout, so the fit is driven against arithmetic instead. */
+  function fakeTeams(natural17, box) {
+    const el = {
+      style: {fontSize: ''},
+      clientWidth: box,
+      get scrollWidth() {
+        const px = parseFloat(this.style.fontSize) || 17;
+        return Math.min(Math.round(natural17 * px / 17), 10000);
+      },
+    };
+    return el;
+  }
+  const fit = (els) => new Function('document', 'getComputedStyle',
+      grab('  function fitCvTeams(root) {', '  function mnGroup(title, body) {') +
+      '\n return fitCvTeams;')(
+      {querySelectorAll: () => els},
+      (el) => ({fontSize: '17px'}))();
+
+  it('shrinks a fixture until it fits on one line', () => {
+    const el = fakeTeams(425, 348);          // the measured overflow
+    fit([el]);
+    assert.ok(el.scrollWidth <= el.clientWidth + 1, 'still overflows at ' + el.style.fontSize);
+    assert.strictEqual(el.style.fontSize, '13.5px');
+  });
+
+  it('leaves a fixture that already fits at the stylesheet\'s size', () => {
+    const el = fakeTeams(300, 348);
+    fit([el]);
+    assert.strictEqual(el.style.fontSize, '', 'shrank a line that fitted');
+  });
+
+  it('stops at 11px and leaves the rest to the ellipsis', () => {
+    const el = fakeTeams(2000, 348);
+    fit([el]);
+    assert.strictEqual(el.style.fontSize, '11px');
+  });
+
+  it('runs after layout, on resize, and when the menu opens', () => {
+    assert.ok(/fitMnScoreNames\(\);\s*fitCvTeams\(\);\s*\}\)\);/.test(src), 'not after layout');
+    assert.ok(/fitMnScoreNames\(\); fitCvTeams\(\); \}, 150\)/.test(src), 'not on resize');
+    assert.ok(/if \(!menu\.hidden\) fitCvTeams\(menu\);/.test(src), 'the opened rows are never fitted');
   });
 });
