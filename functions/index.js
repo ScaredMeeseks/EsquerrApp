@@ -1462,7 +1462,12 @@ exports.syncFcfFixtures = onCall({region: "us-central1", timeoutSeconds: 300},
         throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
       }
       const token = request.auth.token || {};
-      const clubId = (request.data || {}).clubId;
+      /* THE CALLER'S OWN TOKEN. f973aed swapped this for a clubId from the
+         request body, which the refresh button has never sent — so every
+         refresh failed with "Cap club." for four weeks — and which would
+         otherwise have let any staff member rewrite another club's
+         calendar by naming it. */
+      const clubId = token.teamId;
       if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
       /* Staff or lead. Refreshing rewrites the calendar every player reads.
          The staff sub-roles are invisible to the token — coach, fitness and
