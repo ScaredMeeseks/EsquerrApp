@@ -12253,3 +12253,38 @@ Interactive pickers (`.md-team-circle`, `.reg-team-circle`, `.ts-letter-chip`) a
 Verified by rendering both with the real stylesheet: rules at the same y, all three groups 256.0px.
 
 Unit 3585 → **3599**. Functions 89 → **93**. Version triple → **v272**.
+
+### 2026-09-21 — v273: Sancions and Golejadors, to the fcf_tabs handoff
+
+The last two staff pages in the app chrome, rebuilt in the paper idiom from the Claude Design
+handoff `design_handoff_fcf_tabs` (desktop 1440 + phone 390 for each). Parsers, fetches and the
+"nothing is read while a panel is open" rule are unchanged; the markup and CSS are new.
+
+- **Shared vocabulary `.fcf-`** (root, crest, chips, pill, states). `.fcf-page`, `.fcf-hero` & co.
+  joined the shared geometry / band / figure lists near `.dashboard-content` — placed BEFORE the
+  `.ab-*` entries, because `pissarres.test.js` pins those list tails.
+- **Two frames, one markup.** `.fcf-desk` / `.fcf-phone` pick the frame at 700px (the band's
+  breakpoint), by class, never `[hidden]`.
+- **Sancions.** Hero (Baixes nostres / del rival / Vigents al grup), source strip with the real
+  fetch age (`fcfApiReadAt`, not "now" on a cache hit), two fixture cards showing the matches STILL
+  TO SERVE and the window, and the archive with Vigents / Totes / Només nosaltres. The phone swaps
+  the two sections through a `stdSelect` (new opt-in `note` per option = the count).
+  - The private squad picker is **gone**: the category bar's squad (`getCurrentSquad`) drives it,
+    falling back to the first linked squad. "Totes" asks for a category instead of blaming the link.
+  - **Club rulings are dropped** (owner's decision) — filtered before anything is counted.
+  - Ours by team id, or **by name** (`sameClubName`) when the standings have not loaded. It used
+    to treat everyone as ours, so the NOSALTRES card listed the whole group.
+- **Golejadors.** Top strip, hero (Grups llegits / Jugadors / Gols), four `scDropdown`s — the season
+  is now one too, in single mode (a tick replaces, no "Cap"). Drawn checkboxes over the real input.
+  An open panel puts the table away ("Encara estàs triant…"). Club card keyed **per row**
+  (`clubId#i`); a sort closes it. Phone: a "Filtres · …" button opens a bottom sheet holding the
+  ONLY copy of the pickers, and nothing reads until it closes; sort chips; one row per scorer.
+
+Tests: `fcf-tabs-render.test.js` rewritten — the interactions are now driven in jsdom with the real
+stylesheet and real `stdSelect`, and the "is it styled" check derives its class list from what the
+pages emit in every state. 20 mutations, all red. Checked visually with headless Edge at 1440 and in
+a 390px iframe (Edge will not size a window below ~480px, so a 390 window screenshot is a crop).
+
+Run against the LIVE FCF proxy (real `fetch`, real renderers and stylesheet, localhost origin): Esquerra A/2026-27 (no rulings yet — empty states), a 2025-26 group with 284 rulings (42 club rulings dropped; cards, counts and chips agree), and Golejadors through Futbol 11 → Tercera → Grup 10 with zero scorer reads while picking. That run found FCF publishing a scorer with `nombre_jugador: null`; the row now reads "—".
+
+Unit 3599 → **3629**. Version triple → **v273**. Frontend-only.

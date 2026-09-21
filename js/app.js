@@ -317,53 +317,91 @@
     'cal.open_map':       { ca:'Obrir al mapa', es:'Abrir en el mapa', en:'Open in maps' },
     'cal.removed':        { ca:'Retirat del calendari de la FCF', es:'Retirado del calendario de la FCF', en:'Withdrawn from the FCF calendar' },
 
-    // ── Sancions ──
+    // ── Sancions (the fcf_tabs handoff, v273) ──
     'sidebar.sancions':   { ca:'Sancions', es:'Sanciones', en:'Sanctions' },
     'page.sancions':      { ca:'Sancions', es:'Sanciones', en:'Sanctions' },
-    'sanc.who':           { ca:'Qui', es:'Quién', en:'Who' },
-    'sanc.matches':       { ca:'Partits', es:'Partidos', en:'Matches' },
-    'sanc.reason':        { ca:'Motiu', es:'Motivo', en:'Reason' },
-    'sanc.next_title':    { ca:'Baixes per sanció — {j} contra {rival}', es:'Bajas por sanción — {j} contra {rival}', en:'Suspended for {j} v {rival}' },
+    'sanc.pick_cat':      { ca:'Tria una categoria a la barra de dalt per veure\'n les sancions.', es:'Elige una categoría en la barra de arriba para ver sus sanciones.', en:'Pick a category in the bar above to see its sanctions.' },
+    'sanc.sub':           { ca:'{squad} · les resolucions del Comitè de Competició, jornada a jornada.', es:'{squad} · las resoluciones del Comité de Competición, jornada a jornada.', en:'{squad} · the Competition Committee\'s rulings, round by round.' },
+    'sanc.fig_ours':      { ca:'Baixes nostres', es:'Bajas nuestras', en:'Our absentees' },
+    'sanc.fig_rival':     { ca:'Baixes del rival', es:'Bajas del rival', en:'Rival absentees' },
+    'sanc.fig_active':    { ca:'Vigents al grup', es:'Vigentes en el grupo', en:'In force in the group' },
+    'sanc.source':        { ca:'Font: Federació Catalana de Futbol · grup {id}', es:'Fuente: Federació Catalana de Futbol · grupo {id}', en:'Source: Catalan Football Federation · group {id}' },
+    'sanc.read_now':      { ca:'Llegit ara mateix', es:'Leído ahora mismo', en:'Read just now' },
+    'sanc.read_1':        { ca:'Llegit fa 1 minut', es:'Leído hace 1 minuto', en:'Read 1 minute ago' },
+    'sanc.read_n':        { ca:'Llegit fa {n} minuts', es:'Leído hace {n} minutos', en:'Read {n} minutes ago' },
+    'sanc.open_fcf':      { ca:'Obre la pàgina del grup a fcf.cat', es:'Abre la página del grupo en fcf.cat', en:'Open the group on fcf.cat' },
+    'sanc.next':          { ca:'Propera jornada', es:'Próxima jornada', en:'Next round' },
     'sanc.ours':          { ca:'Nosaltres', es:'Nosotros', en:'Us' },
-    'sanc.side_clear':    { ca:'Ningú sancionat.', es:'Nadie sancionado.', en:'Nobody suspended.' },
+    'sanc.rival':         { ca:'Rival', es:'Rival', en:'Rival' },
+    'sanc.ours_clear':    { ca:'Ningú sancionat. Tots disponibles per convocatòria.', es:'Nadie sancionado. Todos disponibles para la convocatoria.', en:'Nobody suspended. Everyone is available for selection.' },
+    'sanc.rival_clear':   { ca:'Cap baixa per sanció.', es:'Ninguna baja por sanción.', en:'No one out through suspension.' },
+    'sanc.next_note':     { ca:'Les baixes es calculen sobre la jornada del proper partit oficial, no sobre la data d\'avui.', es:'Las bajas se calculan sobre la jornada del próximo partido oficial, no sobre la fecha de hoy.', en:'Absences are worked out against the round of the next official fixture, not today\'s date.' },
     'sanc.no_fixture':    { ca:'Cap partit oficial pendent per a aquest equip. Actualitza el calendari a Calendari.', es:'Ningún partido oficial pendiente para este equipo. Actualiza el calendario en Calendario.', en:'No upcoming official fixture for this squad — refresh the calendar first.' },
-    'sanc.all_title':     { ca:'Totes les sancions del grup', es:'Todas las sanciones del grupo', en:'Every sanction in the group' },
-    'sanc.club_title':    { ca:'Resolucions contra clubs (no són baixes)', es:'Resoluciones contra clubes (no son bajas)', en:'Rulings against clubs (not player bans)' },
+    'sanc.all_title':     { ca:'Sancions del grup', es:'Sanciones del grupo', en:'Group sanctions' },
+    'sanc.f_active':      { ca:'Vigents', es:'Vigentes', en:'In force' },
+    'sanc.f_all':         { ca:'Totes', es:'Todas', en:'All' },
+    'sanc.f_ours':        { ca:'Només nosaltres', es:'Solo nosotros', en:'Only us' },
+    'sanc.th_j':          { ca:'J', es:'J', en:'Rd' },
+    'sanc.th_n':          { ca:'Part.', es:'Part.', en:'Games' },
+    'sanc.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'sanc.reason':        { ca:'Motiu', es:'Motivo', en:'Reason' },
+    'sanc.th_art':        { ca:'Art.', es:'Art.', en:'Art.' },
+    'sanc.th_state':      { ca:'Estat', es:'Estado', en:'Status' },
+    'sanc.state_on':      { ca:'Vigent', es:'Vigente', en:'In force' },
+    'sanc.state_done':    { ca:'Complida', es:'Cumplida', en:'Served' },
+    'sanc.part':          { ca:'part.', es:'part.', en:'games' },
+    'sanc.foot_1':        { ca:'1 resolució de {total} · Només hi consten les targetes que van acabar en suspensió.', es:'1 resolución de {total} · Solo constan las tarjetas que acabaron en suspensión.', en:'1 ruling of {total} · Only cards that ended in a suspension are listed.' },
+    'sanc.foot_n':        { ca:'{n} resolucions de {total} · Només hi consten les targetes que van acabar en suspensió.', es:'{n} resoluciones de {total} · Solo constan las tarjetas que acabaron en suspensión.', en:'{n} rulings of {total} · Only cards that ended in a suspension are listed.' },
+    'sanc.filter_empty':  { ca:'Cap sanció amb aquest filtre.', es:'Ninguna sanción con este filtro.', en:'No sanctions match this filter.' },
     'sanc.none':          { ca:'Cap sanció publicada en aquest grup.', es:'Ninguna sanción publicada en este grupo.', en:'No sanctions published for this group.' },
     'fcf.no_link_here':   { ca:'Cal configurar l\'enllaç de la classificació FCF d\'aquesta categoria per veure aquesta pàgina.', es:'Hay que configurar el enlace de la clasificación FCF de esta categoría para ver esta página.', en:'This category needs its FCF standings link configured to use this page.' },
 
-    // ── Top scorers ──
+    // ── Top scorers (the fcf_tabs handoff, v273) ──
     'sidebar.scorers':    { ca:'Golejadors', es:'Goleadores', en:'Top scorers' },
     'page.scorers':       { ca:'Golejadors', es:'Goleadores', en:'Top scorers' },
+    'sc.top':             { ca:'Cerca oberta a tota la Federació · no només al teu grup', es:'Búsqueda abierta a toda la Federación · no solo a tu grupo', en:'Search the whole Federation · not just your own group' },
+    'sc.club_label':      { ca:'Club · {name}', es:'Club · {name}', en:'Club · {name}' },
+    'sc.sub':             { ca:'Els màxims golejadors de qualsevol grup de la Federació, amb les xifres que ella mateixa publica.', es:'Los máximos goleadores de cualquier grupo de la Federación, con las cifras que ella misma publica.', en:'The top scorers of any group in the Federation, with the figures it publishes itself.' },
+    'sc.fig_groups':      { ca:'Grups llegits', es:'Grupos leídos', en:'Groups read' },
+    'sc.fig_players':     { ca:'Jugadors', es:'Jugadores', en:'Players' },
+    'sc.fig_goals':       { ca:'Gols', es:'Goles', en:'Goals' },
     'sc.season':          { ca:'Temporada', es:'Temporada', en:'Season' },
-    'sc.discipline':      { ca:'Modalitat', es:'Modalidad', en:'Discipline' },
-    'sc.division':        { ca:'Categoria', es:'Categoría', en:'Division' },
+    'sc.season_of':       { ca:'temporada {s}', es:'temporada {s}', en:'season {s}' },
+    'sc.discipline':      { ca:'Disciplina', es:'Disciplina', en:'Discipline' },
+    'sc.division':        { ca:'Competició', es:'Competición', en:'Competition' },
     'sc.group':           { ca:'Grup', es:'Grupo', en:'Group' },
-    'sc.any':             { ca:'— Tria —', es:'— Elige —', en:'— Pick —' },
-    'sc.all':             { ca:'totes', es:'todas', en:'all' },
-    'sc.hint':            { ca:'Pots triar-ne més d\'una a cada filtre. Si no en tries cap, s\'hi inclouen totes.', es:'Puedes elegir más de una en cada filtro. Si no eliges ninguna, se incluyen todas.', en:'Pick as many as you like in each filter. Choose none and they are all included.' },
+    'sc.all':             { ca:'Tot', es:'Todo', en:'All' },
+    'sc.all_lc':          { ca:'tot', es:'todo', en:'all' },
+    'sc.n_chosen':        { ca:'{n} triats', es:'{n} elegidos', en:'{n} chosen' },
+    'sc.dd_count':        { ca:'{n} de {total}', es:'{n} de {total}', en:'{n} of {total}' },
+    'sc.dd_none':         { ca:'Res triat · tot inclòs', es:'Nada elegido · todo incluido', en:'Nothing chosen · all included' },
+    'sc.clear':           { ca:'Cap', es:'Ninguno', en:'None' },
+    'sc.hint':            { ca:'Deixa un filtre buit i s\'hi inclou tot. La temporada és única: cada competició té un identificador propi per temporada.', es:'Deja un filtro vacío y se incluye todo. La temporada es única: cada competición tiene un identificador propio por temporada.', en:'Leave a filter empty and everything is included. The season is single: every competition has its own id per season.' },
+    'sc.sheet_hint':      { ca:'Deixa un filtre buit i s\'hi inclou tot. Res es llegeix mentre la fulla és oberta.', es:'Deja un filtro vacío y se incluye todo. No se lee nada mientras la hoja está abierta.', en:'Leave a filter empty and everything is included. Nothing is read while this sheet is open.' },
+    'sc.filters':         { ca:'Filtres', es:'Filtros', en:'Filters' },
+    'sc.filters_btn':     { ca:'Filtres · {scope}', es:'Filtros · {scope}', en:'Filters · {scope}' },
+    'sc.sheet_close':     { ca:'Tanca i llegeix', es:'Cierra y lee', en:'Close and read' },
+    'sc.sort_goals':      { ca:'Ordena per gols', es:'Ordena por goles', en:'Sort by goals' },
+    'sc.sort_played':     { ca:'Ordena per partits', es:'Ordena por partidos', en:'Sort by games' },
+    'sc.sort_name':       { ca:'Ordena per nom', es:'Ordena por nombre', en:'Sort by name' },
     'sc.confirm':         { ca:'Aquesta selecció són {n} grups. Llegir-los tots pot trigar una estona.', es:'Esta selección son {n} grupos. Leerlos todos puede tardar un rato.', en:'This selection is {n} groups. Reading them all may take a while.' },
     'sc.load_anyway':     { ca:'Carregar igualment', es:'Cargar igualmente', en:'Load anyway' },
-    'sc.too_wide':        { ca:'{n} categories seleccionades: massa per recórrer-les. Tria una modalitat o unes quantes categories.', es:'{n} categorías seleccionadas: demasiadas para recorrerlas. Elige una modalidad o unas cuantas categorías.', en:'{n} divisions selected — too many to scan. Narrow it to a discipline, or a few divisions.' },
-    'sc.reading':         { ca:'Llegint grups… {n} de {total}', es:'Leyendo grupos… {n} de {total}', en:'Reading groups… {n} of {total}' },
-    'sc.count':           { ca:'{n} jugadors', es:'{n} jugadores', en:'{n} players' },
-    'sc.picking':         { ca:'{n} grups seleccionats. Tanca el desplegable per llegir-los.', es:'{n} grupos seleccionados. Cierra el desplegable para leerlos.', en:'{n} groups selected. Close the dropdown to read them.' },
-    'sc.n_chosen':        { ca:'{n} triades', es:'{n} elegidas', en:'{n} chosen' },
-    'sc.clear':           { ca:'Esborrar', es:'Borrar', en:'Clear' },
+    'sc.too_wide':        { ca:'{n} competicions seleccionades: massa per recórrer-les. Tria una disciplina o unes quantes competicions.', es:'{n} competiciones seleccionadas: demasiadas para recorrerlas. Elige una disciplina o unas cuantas competiciones.', en:'{n} competitions selected — too many to scan. Narrow it to a discipline, or a few competitions.' },
+    'sc.reading':         { ca:'Llegint {n} de {total} grups', es:'Leyendo {n} de {total} grupos', en:'Reading {n} of {total} groups' },
+    'sc.picking':         { ca:'Encara estàs triant. Res es llegeix fins que tanquis el desplegable, perquè cada casella marcada seria una volta de peticions.', es:'Aún estás eligiendo. No se lee nada hasta que cierres el desplegable, porque cada casilla marcada sería una ronda de peticiones.', en:'Still choosing. Nothing is read until you close the dropdown — every tick would otherwise be a round of requests.' },
     'sc.zone':            { ca:'Zona', es:'Zona', en:'Area' },
-    'sc.tap_club':        { ca:'toca un club per veure\'n el contacte', es:'toca un club para ver su contacto', en:'tap a club for its contact details' },
     'sc.zone_loading':    { ca:'carregant clubs… {n}/{total}', es:'cargando clubes… {n}/{total}', en:'loading clubs… {n}/{total}' },
     'sc.zone_skipped':    { ca:'massa clubs per carregar-ne la zona; toca un club per veure\'l', es:'demasiados clubes para cargar la zona; toca un club para verlo', en:'too many clubs to load areas; tap one to see it' },
-    'sc.club_note':       { ca:'Dades del CLUB publicades per la FCF. La FCF no publica cap contacte dels jugadors.', es:'Datos del CLUB publicados por la FCF. La FCF no publica ningún contacto de los jugadores.', en:'CLUB details as published by the FCF. The FCF publishes no player contact details at all.' },
-    'sc.pick':            { ca:'Tria una modalitat, una categoria i un grup per veure\'n els golejadors.', es:'Elige una modalidad, una categoría y un grupo para ver sus goleadores.', en:'Pick a discipline, a division and a group to see its scorers.' },
+    'sc.delegacio':       { ca:'Delegació {d}', es:'Delegación {d}', en:'{d} delegation' },
+    'sc.club_note':       { ca:'Són les dades del club, no del jugador. La federació no publica cap contacte de jugadors, i l\'únic identificador personal que publica no es guarda enlloc.', es:'Son los datos del club, no del jugador. La federación no publica ningún contacto de jugadores, y el único identificador personal que publica no se guarda en ningún sitio.', en:'These are the club\'s details, not the player\'s. The federation publishes no player contacts, and the one personal identifier it does publish is stored nowhere.' },
     'sc.none':            { ca:'La FCF encara no ha publicat golejadors d\'aquest grup.', es:'La FCF aún no ha publicado goleadores de este grupo.', en:'The FCF has not published scorers for this group yet.' },
     'sc.player':          { ca:'Jugador', es:'Jugador', en:'Player' },
     'sc.club':            { ca:'Club', es:'Club', en:'Club' },
     'sc.goals':           { ca:'Gols', es:'Goles', en:'Goals' },
     'sc.pens':            { ca:'Penals', es:'Penaltis', en:'Pens' },
     'sc.played':          { ca:'PJ', es:'PJ', en:'MP' },
-    'sc.note':            { ca:'Xifres oficials de la FCF, tal com les publica.', es:'Cifras oficiales de la FCF, tal como las publica.', en:'Official FCF figures, exactly as published.' },
-
+    'sc.pj_n':            { ca:'{n} pj', es:'{n} pj', en:'{n} mp' },
+    'sc.note':            { ca:'Xifres publicades per la FCF, tal com arriben.', es:'Cifras publicadas por la FCF, tal como llegan.', en:'Figures as the FCF publishes them.' },
     // ── Player Home ──
     'home.attendance':    { ca:'Assistència', es:'Asistencia', en:'Attendance' },
     'home.this_week':     { ca:'Aquesta setmana', es:'Esta semana', en:'This Week' },
@@ -2771,7 +2809,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 272;
+  const APP_VERSION = 273;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -8105,17 +8143,29 @@
      query, so flipping between two divisions does not re-fetch either. */
   var _fcfApiCache = {};
 
-  function fcfApiGet(endpoint, params) {
-    var qs = Object.keys(params || {})
+  function fcfApiKey(endpoint, params) {
+    return endpoint + Object.keys(params || {})
         .filter(function (k) { return params[k]; })
         .map(function (k) { return '&' + k + '=' + encodeURIComponent(params[k]); })
         .join('');
-    var key = endpoint + qs;
+  }
+
+  function fcfApiGet(endpoint, params) {
+    var key = fcfApiKey(endpoint, params);
     var hit = _fcfApiCache[key];
     if (hit && Date.now() - hit.t < 10 * 60 * 1000) return Promise.resolve(hit.v);
-    return fetch(FCF_API_BASE + encodeURIComponent(endpoint) + qs)
+    return fetch(FCF_API_BASE + encodeURIComponent(endpoint) + key.slice(endpoint.length))
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
         .then(function (v) { _fcfApiCache[key] = {t: Date.now(), v: v}; return v; });
+  }
+
+  /* When the answer to this query was actually FETCHED — 0 if never. Not
+     when it was last served: a cache hit is up to ten minutes old, and
+     "Llegit fa 0 minuts" over a ten-minute-old answer is the page lying
+     about the one thing its source strip exists to say. */
+  function fcfApiReadAt(endpoint, params) {
+    var hit = _fcfApiCache[fcfApiKey(endpoint, params)];
+    return hit ? hit.t : 0;
   }
 
   /* The season id FCF uses. Derived from the club's own configured link
@@ -8131,8 +8181,55 @@
     return found;
   }
 
+  /* ── Shared by both tabs: the fcf_tabs handoff (v273) ────────
+     The last two staff pages in the app chrome, rebuilt in the paper idiom.
+     One handoff, one vocabulary: `.fcf-` is what the two pages share, `.sanc-`
+     and `.sc-` what each keeps to itself. */
+
+  /* A club's crest in a square box, with its monogram UNDER it. The image
+     sits over the monogram and removes itself on error, so a crest that
+     files.fcf.cat 404s — it does, on its own schedule — falls back without a
+     second render. `ours` is the handoff's mark for our own club: the box in
+     red. */
+  function fcfCrestHtml(badge, name, ours, large) {
+    return '<span class="fcf-crest' + (large ? ' fcf-crest-l' : '') +
+        (ours ? ' fcf-crest-ours' : '') + '">' +
+      '<span class="fcf-crest-m">' + sanitize(clubMonogram(name)) + '</span>' +
+      (badge ? '<img src="' + sanitize(badge) + '" class="fcf-crest-img" alt="" ' +
+        'onerror="this.remove()">' : '') +
+      '</span>';
+  }
+
+  /** One figure in the header band: an eyebrow over a tabular number. */
+  function fcfFigHtml(label, value, cls) {
+    return '<div class="fcf-fig' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="fcf-lbl">' + sanitize(label) + '</span>' +
+      '<span class="fcf-fig-v">' + sanitize(String(value)) + '</span></div>';
+  }
+
+  function fcfHeroHtml(title, sub, figs) {
+    return '<div class="fcf-hero"><div class="fcf-hero-l">' +
+      '<h1 class="fcf-h1">' + sanitize(title) + '</h1>' + sub + '</div>' +
+      (figs ? '<div class="fcf-figs">' + figs + '</div>' : '') + '</div>';
+  }
+
+  function fcfStateHtml(text) {
+    return '<div class="fcf-state">' + sanitize(text) + '</div>';
+  }
+
   // ── Sancions ────────────────────────────────────────────────
-  var _sancionsState = {loading: false, rows: null, err: '', key: '', letter: ''};
+  /* ⚠ NO SQUAD OF ITS OWN. Until v273 this page drew a private letter picker
+     under its title while the category bar above it drew the app's — two
+     controls for one choice, and they disagreed. The squad is now the bar's
+     (`getCurrentSquad`), falling back to the first squad with an FCF link
+     when the bar says "all" or names a squad that has none.
+
+     ⚠ AND NO CLUB RULINGS (the owner's decision, v273). Fines, closed grounds
+     and resumed matches are `isTeam` rows with zero matches; they were a
+     labelled section of their own. They are dropped here, before anything is
+     counted, so no figure on the page can include one either. */
+  var _sancionsState = {loading: false, rows: null, err: '', key: '', readAt: 0,
+    filter: 'active', section: 'next'};
 
   /* The next fixture of this squad. A ban is only meaningful against a
      JORNADA, and an imported fixture is the only place the app knows one. */
@@ -8148,38 +8245,82 @@
   }
 
   /* Our own FCF team id, read off the cached standings — the same place the
-     opponent picker gets its ids. '' when the table has not loaded, and then
-     bansForJornada returns EVERYONE, which is the safer way to be wrong than
-     showing nobody. */
+     opponent picker gets its ids. '' when the table has not loaded; the page
+     then matches our rows by NAME (sameClubName), which is what the standings
+     do to find us in the first place. */
   function fcfOurTeamId(category, letter) {
     var rows = _leagueCache['league-' + category + '-' + letter] || [];
     var ours = rows.filter(function (r) { return r.ours; })[0];
     return ours ? (ours.teamId || '') : '';
   }
 
+  /** Matches still to serve at jornada `j`: the window N+1…N+P, less the
+   *  rounds already gone. Only asked of a ban that covers `j`. */
+  function sancRemaining(r, j) {
+    return Math.max(1, r.jornada + r.matches - j + 1);
+  }
+
+  function sancWindow(r) {
+    return 'J' + (r.jornada + 1) + '–J' + (r.jornada + r.matches);
+  }
+
+  /** "Vigent": the ban still has a round to run at jornada `j`. */
+  function sancActive(r, j) {
+    return r.matches > 0 && r.jornada + r.matches >= j;
+  }
+
+  /* The federation writes line breaks into a ruling as `<br>`. Escaped, that
+     is five characters of markup in the middle of a sentence. */
+  function sancReason(s) {
+    return String(s || '').replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function sancNextLine(m, j, rival, short) {
+    if (short) {
+      return ['J' + j, m.date ? tDateShort(m.date) : '', rival].filter(Boolean).join(' · ');
+    }
+    var when = '';
+    if (m.date) {
+      var d = new Date(m.date + 'T12:00:00');
+      when = tDay(d.getDay()) + ' ' + d.getDate() + ' ' + tMonth(d.getMonth()) +
+        (m.time ? ', ' + m.time + ' h' : '');
+    }
+    return ['J' + j, when, m.location || '', rival].filter(Boolean).join(' · ');
+  }
+
+  function sancionsPageHtml(inner, section) {
+    return '<div class="fcf-page sanc-page sanc-on-' + (section === 'all' ? 'all' : 'next') +
+      '">' + inner + '</div>';
+  }
+
   function renderSancions() {
     var cat = getCurrentCategory() || '';
     var links = (_clubConfig && _clubConfig.fcfLinks) || {};
-    var letters = getTeamLetters(cat).filter(function (l) {
+    var letters = cat ? getTeamLetters(cat).filter(function (l) {
       return fcfGrupId(links[cat + '-' + l] || '');
-    });
+    }) : [];
     if (!letters.length) {
-      return '<h2 class="page-title">' + t('page.sancions') + '</h2>' +
-        '<div class="card fcf-empty">' + sanitize(t('fcf.no_link_here')) + '</div>';
+      /* Never a blank page. "Totes" has no single group to read, and a
+         category without a link is the state every club starts in. */
+      return sancionsPageHtml(fcfHeroHtml(t('page.sancions'), '', '') +
+        fcfStateHtml(t(cat ? 'fcf.no_link_here' : 'sanc.pick_cat')));
     }
-    var letter = letters.indexOf(_sancionsState.letter) !== -1 ?
-      _sancionsState.letter : letters[0];
-    _sancionsState.letter = letter;
+    var sq = getCurrentSquad();
+    var letter = letters.indexOf(sq) !== -1 ? sq : letters[0];
     var grupId = fcfGrupId(links[cat + '-' + letter]);
-    var key = grupId + '|' + fcfSeasonId();
+    var params = {grupId: grupId, temporada: fcfSeasonId()};
+    var key = grupId + '|' + params.temporada;
 
     if (_sancionsState.key !== key) {
       _sancionsState.key = key;
       _sancionsState.rows = null;
       _sancionsState.err = '';
       _sancionsState.loading = true;
-      fcfApiGet('sanciones', {grupId: grupId, temporada: fcfSeasonId()})
-          .then(function (j) { _sancionsState.rows = parseFcfSanctions(j); })
+      fcfApiGet('sanciones', params)
+          .then(function (j) {
+            _sancionsState.rows = parseFcfSanctions(j);
+            _sancionsState.readAt = fcfApiReadAt('sanciones', params) || Date.now();
+          })
           .catch(function () { _sancionsState.err = t('fcf.unavailable'); })
           .then(function () {
             _sancionsState.loading = false;
@@ -8187,91 +8328,156 @@
           });
     }
 
-    var squadPicker = letters.length > 1 ?
-      '<div class="fcf-squads">' + letters.map(function (l) {
-        return '<span class="md-team-circle' + (l === letter ? ' active' : '') +
-          '" data-sanc-letter="' + l + '">' + l + '</span>';
-      }).join('') + '</div>' : '';
-
-    var body;
-    if (_sancionsState.loading) {
-      body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
-    } else if (_sancionsState.err) {
-      body = '<div class="card fcf-empty">' + sanitize(_sancionsState.err) + '</div>';
-    } else {
-      body = sancionsBodyHtml(_sancionsState.rows || [], cat, letter);
+    if (_sancionsState.loading || _sancionsState.err) {
+      var squad = (CATEGORY_LABELS[cat] || cat) + ' ' + letter;
+      return sancionsPageHtml(fcfHeroHtml(t('page.sancions'),
+          '<div class="fcf-sub">' + sanitize(squad) + '</div>', '') +
+        fcfStateHtml(_sancionsState.loading ? t('fcf.loading') : _sancionsState.err));
     }
-    return '<h2 class="page-title">' + t('page.sancions') + '</h2>' + squadPicker + body;
+    return sancionsBodyHtml(_sancionsState.rows || [], cat, letter);
   }
 
-  function sancionsRowsHtml(rows) {
-    return rows.map(function (r) {
-      var badge = r.badge ? '<img src="' + sanitize(r.badge) +
-        '" class="sanc-badge" alt="" onerror="this.style.display=&quot;none&quot;">' : '';
-      return '<tr><td class="sanc-j">J' + r.jornada + '</td>' +
-        '<td class="sanc-who">' + badge +
-          '<span>' + sanitize(r.player || r.teamName) + '</span>' +
-          (r.player ? '<small>' + sanitize(r.teamName) + '</small>' : '') + '</td>' +
-        '<td class="sanc-n">' + (r.matches || '—') + '</td>' +
-        '<td class="sanc-why">' + sanitize(r.reason) +
-          (r.article ? ' <span class="sanc-art">art. ' + sanitize(r.article) + '</span>' : '') +
-        '</td></tr>';
-    }).join('');
+  function sancCardHtml(ours, name, badge, bans, j) {
+    return '<div class="sanc-card ' + (ours ? 'sanc-card-ours' : 'sanc-card-rival') + '">' +
+      '<div class="sanc-card-h"><span class="sanc-card-id">' +
+        fcfCrestHtml(badge, name, ours, true) +
+        '<span class="sanc-card-name">' + sanitize(name) + '</span></span>' +
+        '<span class="sanc-card-tag">' + sanitize(t(ours ? 'sanc.ours' : 'sanc.rival')) +
+        '</span></div>' +
+      (bans.length ? bans.map(function (r) {
+        return '<div class="sanc-ban"><span class="sanc-left">' + sancRemaining(r, j) + '</span>' +
+          '<span class="sanc-ban-b"><span class="sanc-ban-p">' + sanitize(r.player) + '</span>' +
+          '<span class="sanc-ban-r">' + sanitize(sancReason(r.reason)) + '</span></span>' +
+          '<span class="sanc-ban-w">' + sanitize(sancWindow(r)) + '</span></div>';
+      }).join('') :
+        '<div class="sanc-clear">' +
+          sanitize(t(ours ? 'sanc.ours_clear' : 'sanc.rival_clear')) + '</div>') +
+      '</div>';
   }
 
-  function sancionsHeadHtml() {
-    return '<thead><tr><th>J</th><th>' + t('sanc.who') + '</th><th>' +
-      t('sanc.matches') + '</th><th>' + t('sanc.reason') + '</th></tr></thead>';
-  }
-
-  function sancionsSideHtml(title, rows) {
-    return '<div class="sanc-side"><div class="sanc-side-title">' + title + '</div>' +
-      (rows.length ?
-        '<div class="table-wrap"><table class="sanc-tbl">' + sancionsHeadHtml() +
-          '<tbody>' + sancionsRowsHtml(rows) + '</tbody></table></div>' :
-        '<p class="fcf-empty">' + sanitize(t('sanc.side_clear')) + '</p>') +
+  function sancRowHtml(r, j, ours) {
+    var on = sancActive(r, j);
+    return '<div class="sanc-row' + (ours ? ' sanc-row-ours' : '') + '">' +
+      '<span class="sanc-c-j">J' + r.jornada + '</span>' +
+      '<span class="sanc-c-n"><span class="sanc-n-v">' + (r.matches || '—') + '</span>' +
+        '<span class="sanc-n-l fcf-phone">' + sanitize(t('sanc.part')) + '</span></span>' +
+      '<span class="sanc-c-who">' + fcfCrestHtml(r.badge, r.teamName, ours) +
+        '<span class="sanc-who-t"><span class="sanc-who-p">' + sanitize(r.player) + '</span>' +
+        '<span class="sanc-who-c">' + sanitize(r.teamName) +
+          '<span class="fcf-phone"> · J' + r.jornada + '</span></span></span></span>' +
+      '<span class="sanc-c-why">' + sanitize(sancReason(r.reason)) + '</span>' +
+      '<span class="sanc-c-art">' + sanitize(r.article) + '</span>' +
+      '<span class="sanc-c-st"><span class="fcf-pill' + (on ? ' fcf-pill-on' : '') + '">' +
+        sanitize(t(on ? 'sanc.state_on' : 'sanc.state_done')) + '</span></span>' +
       '</div>';
   }
 
   function sancionsBodyHtml(rows, cat, letter) {
-    var out = '';
+    var st = _sancionsState;
+    var link = ((_clubConfig && _clubConfig.fcfLinks) || {})[cat + '-' + letter] || '';
+    var players = (rows || []).filter(function (r) { return !r.isTeam; });
+    var club = getClubName();
+    var ourId = fcfOurTeamId(cat, letter);
+    function isOurs(r) {
+      return ourId ? String(r.teamId) === String(ourId) : sameClubName(r.teamName, club);
+    }
 
     /* The question a coach actually has: who is unavailable on Sunday, on
-       BOTH sides. Everything below this is the archive. */
+       BOTH sides. Everything below that is the archive. With no upcoming
+       fixture there is no Sunday, and "Vigent" is measured against the round
+       after the last ruling instead. */
     var next = sancionsNextFixture(cat, letter);
-    if (next) {
-      var mine = bansForJornada(rows, next.fcfJornada, fcfOurTeamId(cat, letter));
-      var theirs = bansForJornada(rows, next.fcfJornada, next.opponentTeamId || '');
-      var rival = isOurTeam(next.home) ? next.away : next.home;
-      out += '<div class="card"><div class="card-title">' +
-        sanitize(t('sanc.next_title').replace('{j}', 'J' + next.fcfJornada)
-            .replace('{rival}', rival)) + '</div>' +
-        '<div class="sanc-split">' +
-          sancionsSideHtml(sanitize(t('sanc.ours')), mine) +
-          sancionsSideHtml(sanitize(rival), theirs) +
-        '</div></div>';
-    } else {
-      out += '<div class="card fcf-empty">' + sanitize(t('sanc.no_fixture')) + '</div>';
+    var nextJ = next ? (Number(next.fcfJornada) || 0) : 0;
+    if (!nextJ) {
+      nextJ = players.reduce(function (m, r) { return Math.max(m, r.jornada); }, 0) + 1;
     }
+    var rival = next ? (isOurTeam(next.home) ? next.away : next.home) : '';
+    var covering = next ? bansForJornada(players, nextJ) : [];
+    var mine = covering.filter(isOurs);
+    var theirs = covering.filter(function (r) {
+      return next.opponentTeamId ? String(r.teamId) === String(next.opponentTeamId) :
+        sameClubName(r.teamName, rival);
+    });
+    var active = players.filter(function (r) { return sancActive(r, nextJ); });
 
-    var players = rows.filter(function (r) { return !r.isTeam; });
-    var clubs = rows.filter(function (r) { return r.isTeam; });
-    out += '<div class="card"><div class="card-title">' + t('sanc.all_title') + '</div>' +
-      (players.length ?
-        '<div class="table-wrap"><table class="sanc-tbl">' + sancionsHeadHtml() +
-          '<tbody>' + sancionsRowsHtml(players) + '</tbody></table></div>' :
-        '<p class="fcf-empty">' + sanitize(t('sanc.none')) + '</p>') +
+    var squad = (CATEGORY_LABELS[cat] || cat) + ' ' + letter;
+    var sub = '<div class="fcf-sub fcf-desk">' + sanitize(tv('sanc.sub', {squad: squad})) + '</div>' +
+      '<div class="fcf-sub fcf-phone">' +
+        sanitize(next ? sancNextLine(next, nextJ, rival, true) : squad) + '</div>';
+    var figs = fcfFigHtml(t('sanc.fig_ours'), next ? mine.length : '—',
+        mine.length ? 'fcf-fig-hot' : '') +
+      fcfFigHtml(t('sanc.fig_rival'), next ? theirs.length : '—', 'fcf-desk') +
+      fcfFigHtml(t('sanc.fig_active'), active.length, 'fcf-desk');
+
+    var mins = st.readAt ? Math.floor((Date.now() - st.readAt) / 60000) : -1;
+    var ago = mins < 0 ? '' : mins < 1 ? t('sanc.read_now') :
+      mins === 1 ? t('sanc.read_1') : tv('sanc.read_n', {n: mins});
+    var href = safeHttpUrl(link);
+    var src = '<div class="sanc-src fcf-desk">' +
+      '<span>' + sanitize(tv('sanc.source', {id: fcfGrupId(link)})) + '</span>' +
+      (ago ? '<span class="sanc-src-sep"></span><span>' + sanitize(ago) + '</span>' : '') +
+      (href ? '<a class="sanc-src-a" href="' + sanitize(href) +
+        '" target="_blank" rel="noopener noreferrer">' + sanitize(t('sanc.open_fcf')) + '</a>' : '') +
       '</div>';
-    if (clubs.length) {
-      /* Kept apart, and labelled. These are fines, closed grounds and
-         procedural rulings — 20 of the 48 in one sampled group — and every
-         one has zero matches. Mixed into the list above they would read as
-         players who are unavailable. */
-      out += '<div class="card"><div class="card-title">' + t('sanc.club_title') + '</div>' +
-        '<div class="table-wrap"><table class="sanc-tbl">' + sancionsHeadHtml() +
-        '<tbody>' + sancionsRowsHtml(clubs) + '</tbody></table></div></div>';
-    }
-    return out;
+
+    /* On a phone the two sections are one at a time, behind the app's own
+       dropdown. BOTH are always in the DOM and a class on the root picks
+       which is painted — never `[hidden]`, which loses to any author
+       `display` rule. */
+    var sw = '<div class="sanc-switch fcf-phone">' + stdSelect({
+      kind: 'sanc-section', cls: 'sanc-sel', value: st.section === 'all' ? 'all' : 'next',
+      options: [
+        {value: 'next', label: t('sanc.next') + (next ? ' · J' + nextJ : ''),
+          note: next ? String(mine.length + theirs.length) : ''},
+        {value: 'all', label: t('sanc.all_title'), note: String(players.length)}
+      ]}) + '</div>';
+
+    var ourBadge = safeHttpUrl((_clubConfig && _clubConfig.badgeUrl) || '');
+    var nextHtml = '<section class="sanc-next">' +
+      '<div class="sanc-sec-h fcf-desk"><h2 class="fcf-eyebrow">' + sanitize(t('sanc.next')) + '</h2>' +
+        (next ? '<span class="sanc-sec-line">' +
+          sanitize(sancNextLine(next, nextJ, rival, false)) + '</span>' : '') + '</div>' +
+      (next ?
+        '<div class="sanc-cards">' +
+          sancCardHtml(true, club, ourBadge, mine, nextJ) +
+          sancCardHtml(false, rival, next.opponentBadge || '', theirs, nextJ) + '</div>' +
+          '<p class="sanc-note fcf-phone">' + sanitize(t('sanc.next_note')) + '</p>' :
+        fcfStateHtml(t('sanc.no_fixture'))) +
+      '</section>';
+
+    var filter = st.filter;
+    var shown = players.filter(function (r) {
+      if (filter === 'ours') return isOurs(r);
+      if (filter === 'all') return true;
+      return sancActive(r, nextJ);
+    });
+    var chips = [['active', 'sanc.f_active'], ['all', 'sanc.f_all'], ['ours', 'sanc.f_ours']]
+        .map(function (f) {
+          return '<button type="button" class="fcf-chip' + (filter === f[0] ? ' fcf-chip-on' : '') +
+            '" data-sanc-filter="' + f[0] + '">' + sanitize(t(f[1])) + '</button>';
+        }).join('');
+    var head = '<div class="sanc-th fcf-desk">' +
+      '<span class="sanc-c-j">' + sanitize(t('sanc.th_j')) + '</span>' +
+      '<span class="sanc-c-n">' + sanitize(t('sanc.th_n')) + '</span>' +
+      '<span class="sanc-c-who">' + sanitize(t('sanc.th_player')) + '</span>' +
+      '<span class="sanc-c-why">' + sanitize(t('sanc.reason')) + '</span>' +
+      '<span class="sanc-c-art">' + sanitize(t('sanc.th_art')) + '</span>' +
+      '<span class="sanc-c-st">' + sanitize(t('sanc.th_state')) + '</span></div>';
+    var foot = shown.length === 1 ? tv('sanc.foot_1', {total: players.length}) :
+      tv('sanc.foot_n', {n: shown.length, total: players.length});
+    var allHtml = '<section class="sanc-all">' +
+      '<div class="sanc-sec-h"><h2 class="fcf-eyebrow fcf-desk">' + sanitize(t('sanc.all_title')) +
+        '</h2><div class="fcf-chips">' + chips + '</div></div>' +
+      (!players.length ? fcfStateHtml(t('sanc.none')) :
+        '<div class="sanc-tbl">' + head +
+          (shown.length ?
+            shown.map(function (r) { return sancRowHtml(r, nextJ, isOurs(r)); }).join('') :
+            fcfStateHtml(t('sanc.filter_empty'))) +
+        '</div><div class="sanc-foot">' + sanitize(foot) + '</div>') +
+      '</section>';
+
+    return sancionsPageHtml(fcfHeroHtml(t('page.sancions'), sub, figs) + src + sw +
+      '<div class="sanc-body">' + nextHtml + allHtml + '</div>', st.section);
   }
 
   // ── Top Scorers ─────────────────────────────────────────────
@@ -8295,11 +8501,17 @@
   var SC_MAX_DIVISIONS = 80;    // never walk more divisions than this
   var SC_CONCURRENCY = 5;
 
+  /* `openClub` is a ROW key, `clubId#index` into the sorted list — not a
+     club id. Three rows of one club open three independent cards (v273, the
+     handoff's rule); keyed by club, opening one opened all three.
+     `sheetOpen` is the phone's filter sheet, and it blocks reading exactly as
+     an open panel does. */
   var _scorersState = {
     temporada: '', disciplina: [], competicio: [], grup: [],
     sortBy: 'goals', sortDir: -1,
     opts: {}, rows: null, loading: false, err: '', key: '',
-    scope: null, confirmed: false, progress: 0
+    scope: null, confirmed: false, progress: 0,
+    open: '', sheetOpen: false, openClub: '', scopeLabel: ''
   };
 
   /* One level of the tree, cached by its own query. Returns null while in
@@ -8440,6 +8652,24 @@
     });
   }
 
+  /* A bar that fills, beside the count. The count alone gives no sense of
+     how far along forty groups are. */
+  function scBarHtml(done, total) {
+    var pct = Math.max(0, Math.min(100, Math.round((done / (total || 1)) * 100)));
+    return '<div class="sc-bar"><div class="sc-bar-fill" style="width:' + pct + '%"></div></div>';
+  }
+
+  /** "Tot" / the one name / "n triats" — the button, the foot and the phone
+   *  scope line all say the same thing about a filter, from here. */
+  function scSummary(opts, sel, empty) {
+    if (!sel || !sel.length) return empty;
+    if (sel.length === 1) {
+      return ((opts || []).filter(function (o) { return String(o.value) === sel[0]; })[0] || {})
+          .label || sel[0];
+    }
+    return tv('sc.n_chosen', {n: sel.length});
+  }
+
   /* A dropdown of checkboxes, not a <select multiple>.
 
      A native multi-select needs ctrl-click to pick a second value, shows
@@ -8448,35 +8678,39 @@
      what is chosen and a panel of ordinary checkboxes — which is what people
      mean by "a dropdown with checks".
 
+     `single` is the season (v273): the same control, so the four filters
+     read as one row, but a tick REPLACES rather than adds and there is no
+     "Cap" — a season is never empty, since every competition id is
+     season-specific.
+
+     The native checkbox is still the input — visually hidden, and the box
+     beside it is drawn — so the label click, the keyboard and the change
+     handler are the browser's, not ours.
+
      Open state lives in `_scorersState.open` so a re-render (and everything
      here re-renders on every change) puts it back where it was. */
-  /* A bar that fills, beside the count. The count alone gives no sense of
-     how far along forty groups are. */
-  function scBarHtml(done, total) {
-    var pct = Math.max(0, Math.min(100, Math.round((done / (total || 1)) * 100)));
-    return '<div class="sc-bar"><div class="sc-bar-fill" style="width:' + pct + '%"></div></div>';
-  }
-
-  function scDropdown(id, label, opts, chosen) {
+  function scDropdown(id, label, opts, chosen, single) {
     var sel = chosen || [];
     var open = _scorersState.open === id;
-    var summary = !sel.length ? t('sc.all') :
-      (sel.length === 1 ?
-        ((opts || []).filter(function (o) { return String(o.value) === sel[0]; })[0] || {}).label || sel[0] :
-        t('sc.n_chosen').replace('{n}', sel.length));
-    return '<div class="sc-f sc-dd' + (open ? ' sc-dd-open' : '') + '">' +
+    return '<div class="sc-dd' + (open ? ' sc-dd-open' : '') + '">' +
       '<span class="sc-dd-label">' + sanitize(label) + '</span>' +
-      '<button type="button" class="reg-input sc-dd-btn" data-sc-open="' + id + '">' +
-        '<span>' + sanitize(summary) + '</span><span class="sc-dd-caret">▾</span></button>' +
+      '<button type="button" class="sc-dd-btn" data-sc-open="' + id + '">' +
+        '<span class="sc-dd-v' + (sel.length ? '' : ' sc-dd-v-all') + '">' +
+          sanitize(scSummary(opts, sel, t('sc.all'))) + '</span>' +
+        '<span class="sc-dd-caret">▾</span></button>' +
       (open ? '<div class="sc-dd-panel">' +
-        '<div class="sc-dd-tools">' +
-          '<button type="button" class="sc-dd-mini" data-sc-none="' + id + '">' +
-            sanitize(t('sc.clear')) + '</button></div>' +
+        '<div class="sc-dd-tools"><span class="sc-dd-count">' +
+          sanitize(sel.length ? tv('sc.dd_count', {n: sel.length, total: (opts || []).length}) :
+            t('sc.dd_none')) + '</span>' +
+          (single ? '' : '<button type="button" class="sc-dd-mini" data-sc-none="' + id + '">' +
+            sanitize(t('sc.clear')) + '</button>') + '</div>' +
         (opts || []).map(function (o) {
           var on = sel.indexOf(String(o.value)) !== -1;
-          return '<label class="sc-dd-opt"><input type="checkbox" data-sc-pick="' + id +
+          return '<label class="sc-dd-opt' + (on ? ' sc-dd-opt-on' : '') + '">' +
+            '<input type="checkbox" data-sc-pick="' + id +
             '" value="' + sanitize(o.value) + '"' + (on ? ' checked' : '') + '>' +
-            '<span>' + sanitize(o.label) + '</span></label>';
+            '<span class="sc-dd-box"></span>' +
+            '<span class="sc-dd-l">' + sanitize(o.label) + '</span></label>';
         }).join('') +
       '</div>' : '') +
       '</div>';
@@ -8536,15 +8770,20 @@
     Promise.all(lanes);
   }
 
-  /** DELEGACIÓ BARCELONA → Barcelona. The prefix is on every one of them. */
-  function scZone(info) {
-    if (!info) return '';
-    /* "DELEGACIÓ GIRONA" → "Girona". FCF shouts it, and GIRONA beside a
-       town written "Roses" reads as an error rather than a region. */
-    var d = String(info.DELEGACION || '').replace(/^DELEGACI[ÓO]\s+/i, '')
+  /** DELEGACIÓ GIRONA → Girona. FCF shouts it, and GIRONA beside a town
+   *  written "Roses" reads as an error rather than a region. */
+  function scDelegacio(info) {
+    return String((info && info.DELEGACION) || '').replace(/^DELEGACI[ÓO]\s+/i, '')
         .toLowerCase().replace(/(^|[\s'-])([a-zà-ÿ])/g, function (m, sep, c) {
           return sep + c.toUpperCase();
         });
+  }
+
+  /** The zona column: "Roses · Girona", or just "Barcelona" when the town
+   *  IS the delegation. */
+  function scZone(info) {
+    if (!info) return '';
+    var d = scDelegacio(info);
     var town = String(info.LOCALIDAD || '');
     if (d && town && town.toLowerCase() !== d.toLowerCase()) return town + ' · ' + d;
     return town || d;
@@ -8552,30 +8791,34 @@
 
   function scClubCardHtml(info) {
     if (!info || !info.NOMBRE) return '';
-    var bits = [];
-    if (scZone(info)) bits.push('<span>📍 ' + sanitize(scZone(info)) + '</span>');
+    var links = [];
     [info.TELEFONO_1, info.TELEFONO_2].filter(Boolean).forEach(function (tel) {
-      bits.push('<a href="tel:' + sanitize(String(tel).replace(/\s/g, '')) + '">📞 ' +
+      links.push('<a href="tel:' + sanitize(String(tel).replace(/\s/g, '')) + '">' +
         sanitize(tel) + '</a>');
     });
     if (info.EMAIL) {
-      bits.push('<a href="mailto:' + sanitize(info.EMAIL) + '">✉️ ' +
-        sanitize(info.EMAIL) + '</a>');
+      links.push('<a href="mailto:' + sanitize(info.EMAIL) + '">' + sanitize(info.EMAIL) + '</a>');
     }
     if (info.WEB) {
       var web = /^https?:\/\//i.test(info.WEB) ? info.WEB : 'https://' + info.WEB;
-      bits.push('<a href="' + sanitize(web) + '" target="_blank" rel="noopener noreferrer">🌐 ' +
+      links.push('<a href="' + sanitize(web) + '" target="_blank" rel="noopener noreferrer">' +
         sanitize(info.WEB) + '</a>');
     }
-    if (!bits.length) return '';
-    return '<div class="sc-club-card"><strong>' + sanitize(info.NOMBRE) + '</strong>' +
-      '<div class="sc-club-bits">' + bits.join('') + '</div>' +
+    // A card with nothing to reach the club by is a name in a box.
+    if (!links.length) return '';
+    var d = scDelegacio(info);
+    var where = [d ? tv('sc.delegacio', {d: d}) : '', String(info.LOCALIDAD || '')]
+        .filter(Boolean).join(' · ');
+    return '<div class="sc-club-card"><div class="sc-club-h">' +
+        '<strong class="sc-club-name">' + sanitize(info.NOMBRE) + '</strong>' +
+        (where ? '<span class="sc-club-zone">' + sanitize(where) + '</span>' : '') + '</div>' +
+      '<div class="sc-club-bits">' + links.join('') + '</div>' +
       '<span class="sc-club-note">' + sanitize(t('sc.club_note')) + '</span></div>';
   }
 
   function renderScorers() {
     var st = _scorersState;
-    var seasons = scTree('temporadas', {}, 'temporada');
+    var seasons = scTree('temporadas', {}, 'temporada') || [];
     if (!st.temporada) st.temporada = fcfSeasonId() || '';
 
     var scope = scResolve();
@@ -8594,60 +8837,99 @@
       if (l) groups = groups.concat(l);
     });
 
-    var filters = '<div class="card sc-filters">' +
-      '<label class="sc-f"><span>' + sanitize(t('sc.season')) + '</span>' +
-      '<select class="reg-input sc-filter" data-sc="temporada">' +
-      (seasons || []).map(function (o) {
-        return '<option value="' + sanitize(o.value) + '"' +
-          (String(o.value) === String(st.temporada) ? ' selected' : '') + '>' +
-          sanitize(o.label) + '</option>';
-      }).join('') + '</select></label>' +
+    var season = st.temporada ? [String(st.temporada)] : [];
+    var pickers = scDropdown('temporada', t('sc.season'), seasons, season, true) +
       scDropdown('disciplina', t('sc.discipline'), disciplines, st.disciplina) +
       scDropdown('competicio', t('sc.division'), divisions, st.competicio) +
-      scDropdown('grup', t('sc.group'), groups, st.grup) +
-      '<p class="sc-hint">' + sanitize(t('sc.hint')) + '</p>' +
-      '</div>';
+      scDropdown('grup', t('sc.group'), groups, st.grup);
+
+    var lc = t('sc.all_lc');
+    var compLbl = scSummary(divisions, st.competicio, lc);
+    var grupLbl = scSummary(groups, st.grup, lc);
+    st.scopeLabel = [scSummary(disciplines, st.disciplina, lc), compLbl, grupLbl,
+      tv('sc.season_of', {s: scSummary(seasons, season, lc)})].join(' · ');
 
     var body;
-    /* Nothing is READ while a panel is open. Every tick of a checkbox
-       re-renders, and without this each one also resolved a new scope and
-       fired a fetch — so picking four divisions meant four rounds of
-       requests, three of them for a selection the user had not finished
-       making. That is what "unresponsive" was. The read happens when the
-       panel closes. */
-    var picking = !!st.open;
+    /* Nothing is READ while a panel — or the phone's sheet — is open. Every
+       tick of a checkbox re-renders, and without this each one also resolved
+       a new scope and fired a fetch — so picking four divisions meant four
+       rounds of requests, three of them for a selection the user had not
+       finished making. That is what "unresponsive" was. The read happens
+       when the panel closes. And the table gives way to the message while
+       it is open, as the handoff draws it: numbers for a scope that is being
+       changed under them are numbers for nothing. */
+    var picking = !!st.open || !!st.sheetOpen;
+    var showSorts = false;
     if (scope.tooWide) {
-      body = '<div class="card fcf-empty">' +
-        sanitize(t('sc.too_wide').replace('{n}', scope.divisions)) + '</div>';
+      body = fcfStateHtml(tv('sc.too_wide', {n: scope.divisions}));
     } else if (scope.waiting) {
-      body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
+      body = fcfStateHtml(t('fcf.loading'));
     } else if (st.loading) {
       var tot = (st.scope || []).length || 1;
-      body = '<div class="card fcf-empty">' +
-        sanitize(t('sc.reading').replace('{n}', st.progress).replace('{total}', tot)) +
+      body = '<div class="fcf-state fcf-state-c"><span>' +
+        sanitize(tv('sc.reading', {n: st.progress, total: tot})) + '</span>' +
         scBarHtml(st.progress, tot) + '</div>';
     } else if (st.err) {
-      body = '<div class="card fcf-empty">' + sanitize(st.err) + '</div>';
-    } else if (st.rows) {
-      body = scorersTableHtml(st.rows);
-    } else if (!scope.groups.length) {
-      body = '<div class="card fcf-empty">' + sanitize(t('sc.none')) + '</div>';
+      body = fcfStateHtml(st.err);
     } else if (picking) {
-      body = '<div class="card fcf-empty">' +
-        sanitize(t('sc.picking').replace('{n}', scope.groups.length)) + '</div>';
+      body = fcfStateHtml(t('sc.picking'));
+    } else if (st.rows) {
+      body = st.rows.length ? scorersTableHtml(st.rows) : fcfStateHtml(t('sc.none'));
+      showSorts = st.rows.length > 0;
+    } else if (!scope.groups.length) {
+      body = fcfStateHtml(t('sc.none'));
     } else if (scope.groups.length > SC_AUTO_GROUPS && !st.confirmed) {
       /* Big, but legitimate. Say the number and let the user decide, rather
          than either refusing or quietly making four hundred requests. */
-      body = '<div class="card fcf-empty">' +
-        sanitize(t('sc.confirm').replace('{n}', scope.groups.length)) +
-        '<br><button class="btn btn-primary btn-small" id="sc-go">' +
+      body = '<div class="fcf-state fcf-state-c"><span>' +
+        sanitize(tv('sc.confirm', {n: scope.groups.length})) + '</span>' +
+        '<button type="button" class="fcf-chip fcf-chip-on" id="sc-go">' +
         sanitize(t('sc.load_anyway')) + '</button></div>';
     } else {
       st.scope = scope.groups;
       scFetchGroups(scope.groups);
-      body = '<div class="card fcf-empty">' + sanitize(t('fcf.loading')) + '</div>';
+      body = fcfStateHtml(t('fcf.loading'));
     }
-    return '<h2 class="page-title">' + t('page.scorers') + '</h2>' + filters + body;
+
+    var rows = st.rows || [];
+    var read = !!st.rows && !st.loading;
+    var goals = rows.reduce(function (n, r) { return n + (r.goals || 0); }, 0);
+    var hero = fcfHeroHtml(t('page.scorers'),
+        '<div class="fcf-sub fcf-desk">' + sanitize(t('sc.sub')) + '</div>' +
+        '<div class="fcf-sub fcf-phone">' + sanitize(compLbl + ' · ' + grupLbl) + '</div>',
+        fcfFigHtml(t('sc.fig_groups'), read ? (st.scope || []).length : '—', 'fcf-desk') +
+        fcfFigHtml(t('sc.fig_players'), read ? rows.length : '—') +
+        fcfFigHtml(t('sc.fig_goals'), read ? goals : '—', 'fcf-desk'));
+
+    var top = '<div class="fcf-top fcf-desk"><span class="fcf-top-l">' + sanitize(t('sc.top')) +
+      '</span><span class="fcf-top-r">' +
+      sanitize(tv('sc.club_label', {name: getClubName()})) + '</span></div>';
+    /* ONE copy of the four pickers in the DOM: in the band on a desktop, in
+       the sheet while the phone's sheet is open. Two copies would be two
+       panels with one open-state between them. */
+    var band = st.sheetOpen ? '' : '<div class="sc-filters fcf-desk">' +
+      '<div class="sc-dd-row">' + pickers + '</div>' +
+      '<p class="sc-hint">' + sanitize(t('sc.hint')) + '</p></div>';
+    var mbar = '<div class="sc-mbar fcf-phone"><button type="button" class="sc-sheet-btn" ' +
+      'data-sc-sheet="open"><span>' +
+      sanitize(tv('sc.filters_btn', {scope: compLbl + ', ' + grupLbl})) + '</span>' +
+      '<span class="sc-dd-caret">▾</span></button></div>';
+    var sheet = !st.sheetOpen ? '' : '<div class="sc-sheet">' +
+      '<div class="sc-sheet-h"><span class="sc-sheet-t">' + sanitize(t('sc.filters')) + '</span>' +
+        '<button type="button" class="sc-sheet-x" data-sc-sheet="close">' +
+        sanitize(t('sc.sheet_close')) + '</button></div>' +
+      '<div class="sc-sheet-b">' + pickers +
+        '<p class="sc-hint">' + sanitize(t('sc.sheet_hint')) + '</p></div></div>';
+    var sorts = !showSorts ? '' : '<div class="fcf-chips sc-sorts fcf-phone">' +
+      [['goals', 'sc.sort_goals'], ['played', 'sc.sort_played'], ['player', 'sc.sort_name']]
+          .map(function (s) {
+            return '<button type="button" class="fcf-chip' +
+              (st.sortBy === s[0] ? ' fcf-chip-on' : '') + '" data-sc-sort="' + s[0] + '">' +
+              sanitize(t(s[1])) + '</button>';
+          }).join('') + '</div>';
+
+    return '<div class="fcf-page sc-page">' + top + hero + band + mbar +
+      '<div class="sc-body">' + sorts + body + '</div>' + sheet + '</div>';
   }
 
   function scorersSortedRows(rows) {
@@ -8664,63 +8946,69 @@
   }
 
   function scorersTableHtml(rows) {
+    var st = _scorersState;
     var many = new Set(rows.map(function (r) { return r.groupLabel; })).size > 1;
     var anyZone = rows.some(function (r) { return !!scClubInfo(r.clubId); });
-    var cols = [
-      ['rank', '#'], ['player', t('sc.player')], ['teamName', t('sc.club')]
-    ];
+    // [key, label, cell class, sortable]. The handoff sorts four of them.
+    var cols = [['rank', '#', 'sc-c-rank', false],
+      ['player', t('sc.player'), 'sc-c-player', true],
+      ['teamName', t('sc.club'), 'sc-c-club', false]];
     // Each of these earns its width only when there is something in it.
-    if (many) cols.push(['groupLabel', t('sc.group')]);
-    if (anyZone) cols.push(['zone', t('sc.zone')]);
-    cols = cols.concat([['goals', t('sc.goals')], ['penalties', t('sc.pens')],
-      ['played', t('sc.played')]]);
-    var head = '<thead><tr>' + cols.map(function (c) {
-      var on = _scorersState.sortBy === c[0];
-      return '<th class="sc-th' + (on ? ' sc-on' : '') + '" data-sc-sort="' + c[0] + '">' +
-        sanitize(c[1]) + (on ? (_scorersState.sortDir > 0 ? ' ▲' : ' ▼') : '') + '</th>';
-    }).join('') + '</tr></thead>';
+    if (many) cols.push(['groupLabel', t('sc.group'), 'sc-c-grp', false]);
+    if (anyZone) cols.push(['zone', t('sc.zone'), 'sc-c-zone', false]);
+    cols = cols.concat([['goals', t('sc.goals'), 'sc-c-goals', true],
+      ['penalties', t('sc.pens'), 'sc-c-num', true],
+      ['played', t('sc.played'), 'sc-c-num', true]]);
+    var head = '<div class="sc-th fcf-desk">' + cols.map(function (c) {
+      if (!c[3]) return '<span class="' + c[2] + '">' + sanitize(c[1]) + '</span>';
+      var on = st.sortBy === c[0];
+      return '<button type="button" class="' + c[2] + ' sc-sort' + (on ? ' sc-sort-on' : '') +
+        '" data-sc-sort="' + c[0] + '">' + sanitize(c[1]) +
+        (on ? (st.sortDir > 0 ? ' ▴' : ' ▾') : '') + '</button>';
+    }).join('') + '</div>';
 
+    var club = getClubName();
     var body = scorersSortedRows(rows).map(function (r, i) {
       var info = scClubInfo(r.clubId);
-      var badge = r.badge ? '<img src="' + sanitize(r.badge) +
-        '" class="sanc-badge" alt="" onerror="this.style.display=&quot;none&quot;">' : '';
-      var open = _scorersState.openClub === r.clubId;
-      var clubCell = '<td class="sc-club' + (r.clubId ? ' sc-club-link' : '') + '"' +
-        (r.clubId ? ' data-sc-club="' + sanitize(r.clubId) + '"' : '') + '>' +
-        badge + sanitize(r.teamName) + '</td>';
-      var row = '<tr><td class="sc-rank">' + r.rank + '</td>' +
-        '<td class="sc-player">' + sanitize(r.player) + '</td>' + clubCell +
-        (many ? '<td class="sc-grp">' + sanitize(r.groupLabel || '') + '</td>' : '') +
-        (anyZone ? '<td class="sc-zone">' + sanitize(scZone(info)) + '</td>' : '') +
-        '<td><strong>' + r.goals + '</strong></td>' +
-        '<td>' + r.penalties + '</td><td>' + r.played + '</td></tr>';
+      var key = r.clubId ? r.clubId + '#' + i : '';
+      var open = !!key && st.openClub === key;
+      var ours = sameClubName(r.teamName, club);
+      var zone = scZone(info);
       /* The contact card opens under the row it belongs to, so the club it
          describes is never ambiguous. */
-      if (open && info) {
-        row += '<tr class="sc-card-row"><td colspan="' + cols.length + '">' +
-          scClubCardHtml(info) + '</td></tr>';
-      }
-      return row;
+      return '<div class="sc-row' + (ours ? ' sc-row-ours' : '') + '">' +
+        '<div class="sc-row-m"' + (key ? ' data-sc-row="' + sanitize(key) + '"' : '') + '>' +
+          '<span class="sc-c-rank">' + r.rank + '</span>' +
+          /* FCF publishes some scorers with `nombre_jugador: null` — seen live
+             in 2026-27 Tercera Grup 10. A dash, not a blank row. */
+          '<span class="sc-c-player"><span class="sc-player-n">' + sanitize(r.player || '—') + '</span>' +
+            '<span class="sc-row-sub fcf-phone">' +
+              sanitize(r.teamName + (zone ? ' · ' + zone : '')) + '</span></span>' +
+          '<span class="sc-c-club' + (key ? ' sc-club-link' : '') + '"' +
+            (key ? ' data-sc-club="' + sanitize(key) + '"' : '') + '>' +
+            fcfCrestHtml(r.badge, r.teamName, ours) +
+            '<span class="sc-club-n' + (open ? ' sc-club-n-on' : '') + '">' +
+              sanitize(r.teamName) + '</span></span>' +
+          (many ? '<span class="sc-c-grp">' + sanitize(r.groupLabel || '') + '</span>' : '') +
+          (anyZone ? '<span class="sc-c-zone">' + sanitize(zone) + '</span>' : '') +
+          '<span class="sc-c-goals"><strong class="sc-goals-v">' + r.goals + '</strong>' +
+            '<span class="sc-row-pj fcf-phone">' + sanitize(tv('sc.pj_n', {n: r.played})) +
+            '</span></span>' +
+          '<span class="sc-c-num">' + r.penalties + '</span>' +
+          '<span class="sc-c-num">' + r.played + '</span>' +
+        '</div>' +
+        (open ? scClubCardHtml(info) : '') + '</div>';
     }).join('');
 
-    var note = '<p class="sc-note">' + sanitize(t('sc.note'));
-    if (_scorersState.clubsSkipped) {
-      note += ' · ' + sanitize(t('sc.zone_skipped'));
-    } else if (_scorersState.clubsTotal &&
-        _scorersState.clubsDone < _scorersState.clubsTotal) {
-      note += ' · ' + sanitize(t('sc.zone_loading')
-          .replace('{n}', _scorersState.clubsDone)
-          .replace('{total}', _scorersState.clubsTotal));
+    var left = [st.scopeLabel];
+    if (st.clubsSkipped) {
+      left.push(t('sc.zone_skipped'));
+    } else if (st.clubsTotal && st.clubsDone < st.clubsTotal) {
+      left.push(tv('sc.zone_loading', {n: st.clubsDone, total: st.clubsTotal}));
     }
-    note += '</p>';
-
-    return '<div class="card"><div class="sc-count">' +
-      sanitize(t('sc.count').replace('{n}', rows.length)) +
-      (anyZone || _scorersState.clubsSkipped ? '' :
-        ' · ' + sanitize(t('sc.tap_club'))) + '</div>' +
-      '<div class="table-wrap">' +
-      '<table class="sanc-tbl sc-tbl">' + head + '<tbody>' + body + '</tbody></table></div>' +
-      note + '</div>';
+    return '<div class="sc-tbl">' + head + body + '</div>' +
+      '<div class="sc-foot"><span>' + sanitize(left.filter(Boolean).join(' · ')) + '</span>' +
+      '<span>' + sanitize(t('sc.note')) + '</span></div>';
   }
 
   function scorersSortValue(r, by) {
@@ -8729,8 +9017,8 @@
   }
 
   /* One definition for "a filter changed": clear everything BELOW it, drop
-     the results, and forget any confirmation the old scope had. The dropdown
-     checkboxes and the season select both go through it. */
+     the results, and forget any confirmation the old scope had. Every
+     picker, the season's included, goes through it. */
   function scSetFilter(f, value) {
     _scorersState[f] = value;
     var order = ['temporada', 'disciplina', 'competicio', 'grup'];
@@ -8747,7 +9035,8 @@
     renderPage(getSession());
   }
 
-  /* Close the open filter panel on a click anywhere else, or on Escape.
+  /* Close the open filter panel — or the phone's sheet — on a click anywhere
+     else, or on Escape. Closing is what starts the read.
 
      Bound ONCE, at the document, rather than in bindFcfTabs — that runs
      after every render, and re-binding there would stack a fresh listener on
@@ -8758,27 +9047,44 @@
     if (_scDismissBound) return;
     _scDismissBound = true;
     document.addEventListener('click', function (e) {
-      if (!_scorersState.open) return;
-      // A click INSIDE a dropdown is picking, not dismissing.
-      if (e.target.closest && e.target.closest('.sc-dd')) return;
-      _scorersState.open = '';
+      var st = _scorersState;
+      if (!st.open && !st.sheetOpen) return;
+      // A click INSIDE a dropdown or the sheet is picking, not dismissing.
+      if (e.target.closest && (e.target.closest('.sc-dd') || e.target.closest('.sc-sheet'))) return;
+      st.open = '';
+      st.sheetOpen = false;
       if (currentPage === 'scorers') renderPage(getSession());
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Escape' || !_scorersState.open) return;
-      _scorersState.open = '';
+      var st = _scorersState;
+      if (e.key !== 'Escape') return;
+      // The innermost thing first: a panel inside the sheet, then the sheet.
+      if (st.open) st.open = '';
+      else if (st.sheetOpen) st.sheetOpen = false;
+      else return;
       if (currentPage === 'scorers') renderPage(getSession());
     });
   }
 
+  /* The phone opens a club card by tapping anywhere on the row — the club
+     name is a line of 11px text there. A desktop row opens it from the club
+     cell only, as the handoff draws it. Same breakpoint as the stylesheet. */
+  function scIsPhone() {
+    return typeof window !== 'undefined' && !!window.matchMedia &&
+      window.matchMedia('(max-width: 700px)').matches;
+  }
+
   function bindFcfTabs() {
     bindScDismiss();
-    document.querySelectorAll('[data-sanc-letter]').forEach(function (el) {
+    document.querySelectorAll('[data-sanc-filter]').forEach(function (el) {
       el.addEventListener('click', function () {
-        _sancionsState.letter = el.dataset.sancLetter;
-        _sancionsState.key = '';
+        _sancionsState.filter = el.dataset.sancFilter;
         renderPage(getSession());
       });
+    });
+    bindStdSelects('sanc-section', function (root, v) {
+      _sancionsState.section = v;
+      renderPage(getSession());
     });
     document.querySelectorAll('[data-sc-open]').forEach(function (b) {
       b.addEventListener('click', function (e) {
@@ -8792,6 +9098,12 @@
     document.querySelectorAll('[data-sc-pick]').forEach(function (cb) {
       cb.addEventListener('change', function () {
         var f = cb.dataset.scPick;
+        if (f === 'temporada') {
+          // Single: a tick replaces, and un-ticking the one season is a no-op.
+          if (cb.checked) scSetFilter('temporada', cb.value);
+          else renderPage(getSession());
+          return;
+        }
         var cur = (_scorersState[f] || []).slice();
         var v = cb.value;
         var at = cur.indexOf(v);
@@ -8803,18 +9115,22 @@
     document.querySelectorAll('[data-sc-none]').forEach(function (b) {
       b.addEventListener('click', function () { scSetFilter(b.dataset.scNone, []); });
     });
-    document.querySelectorAll('[data-sc-club]').forEach(function (td) {
-      td.addEventListener('click', function () {
-        var id = td.dataset.scClub;
-        _scorersState.openClub = _scorersState.openClub === id ? '' : id;
-        // One club, on demand — the cap on the bulk lookup never blocks this.
-        if (_scorersState.openClub) scLoadClubs([id]);
+    document.querySelectorAll('[data-sc-sheet]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        _scorersState.sheetOpen = b.dataset.scSheet === 'open';
+        _scorersState.open = '';
         renderPage(getSession());
       });
     });
-    document.querySelectorAll('.sc-filter').forEach(function (sel) {
-      sel.addEventListener('change', function () {
-        scSetFilter(sel.dataset.sc, sel.value);
+    document.querySelectorAll('[data-sc-row]').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        if (!scIsPhone() && !(e.target.closest && e.target.closest('[data-sc-club]'))) return;
+        var key = row.dataset.scRow;
+        _scorersState.openClub = _scorersState.openClub === key ? '' : key;
+        // One club, on demand — the cap on the bulk lookup never blocks this.
+        if (_scorersState.openClub) scLoadClubs([key.split('#')[0]]);
+        renderPage(getSession());
       });
     });
     var scGo = document.getElementById('sc-go');
@@ -8834,6 +9150,8 @@
           // Numbers read best biggest-first, names A-Z.
           _scorersState.sortDir = (by === 'player' || by === 'teamName') ? 1 : -1;
         }
+        // A card is keyed by its row's position, and the rows just moved.
+        _scorersState.openClub = '';
         renderPage(getSession());
       });
     });
@@ -22283,8 +22601,13 @@
     }) || o.options[0] || { label: '', cls: '' };
     const items = (o.options || []).map(function (x) {
       const on = String(x.value) === cur ? ' std-sel-o-on' : '';
+      /* `note` is opt-in: a figure right-aligned in the option row — a count
+         per section on the Sancions phone switch (v273). The trigger shows
+         the label alone. */
+      const note = (x.note != null && x.note !== '')
+        ? '<span class="std-sel-note">' + sanitize(String(x.note)) + '</span>' : '';
       return '<button type="button" class="std-sel-o' + on + '" data-v="' +
-        sanitize(String(x.value)) + '">' + sanitize(x.label) + '</button>';
+        sanitize(String(x.value)) + '">' + sanitize(x.label) + note + '</button>';
     }).join('');
     const attrs = Object.keys(o.data || {}).map(function (k) {
       return ' data-' + k + '="' + sanitize(String(o.data[k])) + '"';

@@ -443,6 +443,7 @@ a:hover { text-decoration: underline; }
 .nf-page,
 .cfg-page,
 .gu-page,
+.fcf-page,
 .ab-page,
 .cal-page {
   margin: -1rem -2rem -2rem;
@@ -459,6 +460,7 @@ a:hover { text-decoration: underline; }
 .nf-page:first-child,
 .cfg-page:first-child,
 .gu-page:first-child,
+.fcf-page:first-child,
 .ab-page:first-child,
 .cal-page:first-child {
   margin-top: -2rem;
@@ -481,6 +483,7 @@ a:hover { text-decoration: underline; }
   .nf-page,
   .cfg-page,
   .gu-page,
+  .fcf-page,
   .ab-page,
   .cal-page {
     margin: -1rem -1rem -.75rem;
@@ -497,6 +500,7 @@ a:hover { text-decoration: underline; }
   .nf-page:first-child,
   .cfg-page:first-child,
   .gu-page:first-child,
+  .fcf-page:first-child,
   .ab-page:first-child,
   .cal-page:first-child {
     margin-top: -.75rem;
@@ -521,13 +525,13 @@ a:hover { text-decoration: underline; }
    One size now. `.ini-name` and `.ms-name` stay at 34px/lh 1 and are NOT in
    this list — those are a person's name under an eyebrow, not a page title. */
 .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id, .cfg-hero, .gu-hero, .ab-hero,
-.pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+.pl-title-row, .reg2-title-row, .cv-head, .cal-hero, .fcf-hero {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 32px; padding: 34px 40px 26px; background: #FFFFFF;
   border-bottom: 1px solid var(--pp-rule);
 }
 .md2-h1, .nf-h1, .ac-h1, .ini-h1, .cfg-h1, .gu-h1, .ab-h1,
-.pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 {
+.pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1, .fcf-h1 {
   margin: 0; font-size: 36px; font-weight: 400; line-height: 1.1;
   letter-spacing: -.01em; color: var(--pp-ink);
 }
@@ -559,7 +563,7 @@ a:hover { text-decoration: underline; }
 .pl-body, .reg2-body, .cv-body { padding: 32px 40px 56px; }
 /* The left column of the band: title over one line of scope. */
 .ac-hero-l, .md2-hero-id, .pl-title-col, .cv-head-l, .reg2-title-col, .cal-hero-l,
-.cfg-hero-l, .gu-hero-l, .ab-hero-l {
+.cfg-hero-l, .gu-hero-l, .fcf-hero-l, .ab-hero-l {
   display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-right: auto;
 }
 /* ⚠ ONE LINE, AND IT IS THE BAND'S HEIGHT THAT DEPENDS ON IT. Registres'
@@ -572,7 +576,7 @@ a:hover { text-decoration: underline; }
    ⚠ `min-width: 0` is required — without it a flex child refuses to shrink
    below its content and the ellipsis never engages. */
 .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub, .cfg-hero-sub,
-.gu-sub, .ab-sub {
+.gu-sub, .fcf-sub, .ab-sub {
   font-size: 14px; color: var(--pp-ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
@@ -585,7 +589,7 @@ a:hover { text-decoration: underline; }
    ⚠ `.reg2-eyebrow` is NOT one of them and keeps its own rule: it is a
    section HEADING in ink at weight 600, and its own comment says so. */
 .ac-lbl, .ms-lbl, .reg2-fig-l, .cfg-fig-l, .cfg-sec-l, .gu-fig-l, .ab-fig-l, .ab-sec-l,
-.md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow {
+.md2-eyebrow, .ini-eyebrow, .cv-eyebrow, .pl-eyebrow, .fcf-lbl, .fcf-eyebrow {
   font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
   font-weight: 400; color: var(--pp-ink-3);
 }
@@ -594,11 +598,11 @@ a:hover { text-decoration: underline; }
    navigator, not a figure row. It is in the hero and title lists above,
    and in neither of these two. */
 .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures, .cv-head-r,
-.cfg-figs, .gu-figs, .ab-figs {
+.cfg-figs, .gu-figs, .fcf-figs, .ab-figs {
   display: flex; align-items: flex-end; gap: 36px; flex: none;
 }
 .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat, .pl-fig,
-.cv-fig, .reg2-title-col, .cfg-fig, .gu-fig, .ab-fig {
+.cv-fig, .reg2-title-col, .cfg-fig, .gu-fig, .fcf-fig, .ab-fig {
   display: flex; flex-direction: column; gap: 4px;
 }
 /* `.reg2-title-col` is the title's own stack, not a figure — same three
@@ -606,19 +610,19 @@ a:hover { text-decoration: underline; }
 .reg2-title-col { gap: 8px; min-width: 0; margin-right: auto; }
 
 .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
-.pl-fig-v, .cv-fig-v, .cv-big, .cfg-fig-v, .gu-fig-v, .ab-fig-v {
+.pl-fig-v, .cv-fig-v, .cv-big, .cfg-fig-v, .gu-fig-v, .fcf-fig-v, .ab-fig-v {
   font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 700px) {
   .md2-hero, .nf-hero, .ac-hero, .ini-hero, .ms-id, .cfg-hero, .gu-hero, .ab-hero,
-  .pl-title-row, .reg2-title-row, .cv-head, .cal-hero {
+  .pl-title-row, .reg2-title-row, .cv-head, .cal-hero, .fcf-hero {
     flex-wrap: wrap; gap: 16px; padding: 14px 20px 16px;
   }
   /* ⚠ `.pl-h1`, `.reg2-h1`, `.cv-h1` and `.std-title` had NO phone override
      at all — 38px of title on a 390px screen. */
   .md2-h1, .nf-h1, .ac-h1, .ini-h1, .cfg-h1, .gu-h1, .ab-h1,
-  .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1 { font-size: 26px; }
+  .pl-h1, .reg2-h1, .cv-h1, .std-title, .cal-h1, .fcf-h1 { font-size: 26px; }
   .ini-body, .md2-body, .ms-body, .ac-body, .nf-body, .cfg-body, .ab-body,
   .pl-body, .reg2-body, .cv-body { padding: 20px 20px 40px; }
   /* ⚠ The scope line WRAPS again on a phone. One-line-with-ellipsis exists to
@@ -626,7 +630,7 @@ a:hover { text-decoration: underline; }
      see one band at a time and there is no height to match, so truncating a
      sentence there would cost information and buy nothing. */
   .md2-sub, .ac-hero-sub, .pl-sub, .reg2-sub-line, .cv-sub, .cal-sub, .cfg-hero-sub,
-.gu-sub, .ab-sub {
+.gu-sub, .fcf-sub, .ab-sub {
     white-space: normal; overflow: visible;
   }
   .ac-figs, .md2-counters, .ini-counters, .pl-figures, .reg2-figures,
@@ -634,7 +638,7 @@ a:hover { text-decoration: underline; }
   .ac-fig, .nf-fig, .ms-fig, .reg2-fig, .md2-count, .ini-stat,
   .pl-fig, .ab-fig { flex: 1 1 0; min-width: 0; }
   .ac-fig-v, .nf-fig-v, .md2-count-v, .ini-stat-v, .ms-fig-v, .reg2-fig-v,
-  .pl-fig-v, .cv-fig-v, .cv-big, .ab-fig-v { font-size: 24px; }
+  .pl-fig-v, .cv-fig-v, .cv-big, .fcf-fig-v, .ab-fig-v { font-size: 24px; }
 }
 
 /* ===== Dashboard Cards & Widgets ===== */
@@ -2425,6 +2429,8 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .std-sel-o:last-child { border-bottom:none; }
 .std-sel-o:hover { background:#F2F0EB; }
 .std-sel-o-on { font-weight:600; background:#F7F5F1; }
+/* stdSelect's opt-in `note` — a figure at the row's right. */
+.std-sel-note { float:right; margin-left:12px; font-size:11px; color:var(--pp-ink-3); font-variant-numeric:tabular-nums; }
 
 /* ── .std-sel-esc: a menu that escapes a clipping table ──
    `.std-sel-menu` is absolute, so inside a wrapper with `overflow-x:auto`
@@ -4585,10 +4591,10 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    root by renderPage(), so it cannot be scoped under one — and it sits above
    nine pages, eight of which are now paper: it was the last strip of app
    chrome (red pills, 20px radius, 600 weight) left on top of them.
-   ⚠ `sancions` is the one page under it that is NOT redesigned. It is
-   deliberately left wearing this bar rather than given an exception: two
-   different filter bars on one app is the seam this closes, and a paper strip
-   above an old page reads better than the reverse.
+   `sancions` was the last page under it still in the chrome; v273 rebuilt it
+   to the fcf_tabs handoff, whose filter bar IS this bar — categories, a rule,
+   the squad boxes — so the page's own squad picker was deleted, not
+   restyled.
    The BEHAVIOUR is untouched — bindDynamicActions() binds `.cat-bar-btn`,
    `[data-*-letter]` and `.cat-bar-letter` by name. */
 .cat-bar-btn{
@@ -5083,103 +5089,399 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .push-ask-btn:hover { background:var(--primary-dark); }
 
-/* ===== Sancions & Golejadors (FCF) ===== */
+/* ===== FCF empty state — the referee panel's (Partit) ===== */
 .fcf-empty{text-align:center;color:var(--text-secondary);font-size:.88rem;padding:1.25rem .5rem;line-height:1.45;}
-.fcf-squads{display:flex;gap:.4rem;margin-bottom:1rem;}
 
-.sanc-tbl{width:100%;border-collapse:collapse;font-size:.8rem;}
-.sanc-tbl th{text-align:left;color:var(--text-secondary);font-weight:600;font-size:.66rem;text-transform:uppercase;
-  letter-spacing:.03em;padding:.3rem .45rem;border-bottom:1px solid var(--border);white-space:nowrap;}
-.sanc-tbl td{padding:.4rem .45rem;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;}
-.sanc-j{white-space:nowrap;color:var(--text-secondary);font-weight:700;font-size:.72rem;}
-.sanc-n{text-align:center;font-weight:700;}
-.sanc-who{min-width:150px;}
-.sanc-who span{display:inline-block;vertical-align:middle;font-weight:600;}
-.sanc-who small{display:block;color:var(--text-secondary);font-size:.7rem;font-weight:400;}
-.sanc-badge{width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:.35rem;border-radius:2px;}
-/* The reason is a full sentence from the federation, so it wraps; every
-   other cell in these tables is a figure and must not. */
-.sanc-why{white-space:normal;line-height:1.4;color:var(--text-secondary);font-size:.75rem;}
-.sanc-art{opacity:.6;white-space:nowrap;}
-.sanc-split{display:flex;gap:1rem;flex-wrap:wrap;}
-.sanc-side{flex:1 1 260px;min-width:0;}
-.sanc-side-title{font-weight:700;font-size:.8rem;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.02em;}
+/* ═══════════════════════════════════════════════════════════════════
+   SANCIONS AND GOLEJADORS — the fcf_tabs handoff (v273)
+   ═══════════════════════════════════════════════════════════════════
+   The last two staff pages still in the app chrome. One handoff, so one
+   vocabulary: `.fcf-` is what both pages share (root, crest, chips, pill,
+   states, the phone/desktop switch), `.sanc-` and `.sc-` what each keeps.
+   The header band, the page geometry and the caption atom are NOT here —
+   `.fcf-page`, `.fcf-hero` & co. joined the shared lists near
+   `.dashboard-content`, which is where every paper page's band lives.
 
-.sc-filters{display:flex;gap:.75rem;flex-wrap:wrap;}
-.sc-f{display:flex;flex-direction:column;gap:.25rem;flex:1 1 160px;min-width:0;}
-.sc-f span{font-size:.7rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;font-weight:600;}
-.sc-f select{width:100%;}
-.sc-th{cursor:pointer;user-select:none;}
-.sc-th:hover{color:var(--text);}
-.sc-on{color:var(--text);}
-.sc-tbl td{white-space:nowrap;}
-.sc-rank{color:var(--text-secondary);font-weight:700;width:2rem;}
-.sc-player{font-weight:600;}
-.sc-club{color:var(--text-secondary);}
-.sc-note{margin:.6rem 0 0;font-size:.7rem;color:var(--text-secondary);text-align:right;}
-@media (max-width:640px){ .sanc-split{flex-direction:column;} .sc-f{flex-basis:100%;} }
-.sc-f select[multiple]{height:auto;padding:.3rem;font-size:.78rem;}
-.sc-hint{flex-basis:100%;margin:.25rem 0 0;font-size:.7rem;color:var(--text-secondary);}
-.sc-count{font-size:.75rem;color:var(--text-secondary);margin-bottom:.4rem;}
-.sc-grp{color:var(--text-secondary);font-size:.72rem;}
+   ⚠ TWO FRAMES, ONE MARKUP. The handoff draws a desktop and a phone that
+   differ in structure, not just width: the phone swaps the Sancions sections
+   behind a dropdown and the Golejadors filters behind a sheet. Both frames'
+   pieces are rendered, and `.fcf-desk` / `.fcf-phone` say which frame a piece
+   belongs to. Classes, never `[hidden]`: a UA `[hidden]` rule loses to any
+   author `display`, which is how a menu once stayed permanently open.
+   The breakpoint is 700 — the header band's, so the band and the body below
+   it change frame together. */
+.fcf-page {
+  background: var(--pp-paper); color: var(--pp-ink);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 15px;
+  min-height: calc(100vh - 120px);   /* margin: the shared rule near .dashboard-content */
+}
+.fcf-page button { font-family: inherit; }
+@media (min-width: 701px) { .fcf-page .fcf-phone { display: none !important; } }
+@media (max-width: 700px) { .fcf-page .fcf-desk { display: none !important; } }
 
-/* ===== Golejadors: filter dropdowns, progress, club card =====
-   A button that opens a floating panel of checkboxes — the Power-BI style
-   slicer, not a <select multiple>. The panel is ABSOLUTE so it floats over
-   the table instead of pushing it down, and the row it lives in cannot clip
-   it: .sc-filters must not have overflow:hidden. */
-.sc-filters { position: relative; z-index: 20; align-items: flex-start; }
-.sc-dd { position: relative; display: flex; flex-direction: column; gap: .25rem;
-  flex: 1 1 190px; min-width: 0; }
-.sc-dd-label { font-size: .7rem; color: var(--text-secondary); font-weight: 600;
-  text-transform: uppercase; letter-spacing: .03em; }
-.sc-dd-btn { display: flex; align-items: center; justify-content: space-between;
-  gap: .5rem; width: 100%; text-align: left; cursor: pointer; font-size: .82rem;
-  padding: .5rem .7rem; border: 2px solid var(--border); border-radius: var(--radius);
-  background: var(--card); color: var(--text); font-family: inherit; }
-.sc-dd-btn:hover { border-color: var(--text-secondary); }
-.sc-dd-open .sc-dd-btn { border-color: var(--primary, #8b1a2b); }
-.sc-dd-btn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-dd-caret { opacity: .5; flex: 0 0 auto; font-size: .7rem; transition: transform .15s; }
-.sc-dd-open .sc-dd-caret { transform: rotate(180deg); }
+.fcf-fig-hot .fcf-fig-v { color: var(--pp-red); }
+.fcf-eyebrow { margin: 0; }
+/* The phone band keeps one figure, on the title's row and flush right. */
+@media (max-width: 700px) { .fcf-figs .fcf-fig { align-items: flex-end; } }
 
-.sc-dd-panel { position: absolute; z-index: 40; top: 100%; left: 0; right: 0;
-  margin-top: .25rem; max-height: 300px; overflow-y: auto; overscroll-behavior: contain;
-  background: var(--card); border: 2px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 10px 28px rgba(0,0,0,.22); padding: .25rem; }
-.sc-dd-tools { display: flex; justify-content: flex-end; padding: .1rem .3rem .25rem;
-  border-bottom: 1px solid var(--border); margin-bottom: .2rem; }
-.sc-dd-mini { background: none; border: none; color: var(--text-secondary);
-  font-size: .7rem; cursor: pointer; text-decoration: underline; font-family: inherit; }
-.sc-dd-mini:hover { color: var(--text); }
-/* One option per LINE — unstyled they run together as a paragraph of text,
-   which is exactly what this replaced. */
-.sc-dd-opt { display: flex; align-items: center; gap: .55rem; width: 100%;
-  padding: .35rem .45rem; border-radius: 4px; cursor: pointer; font-size: .78rem;
-  line-height: 1.3; }
-.sc-dd-opt:hover { background: var(--border); }
-.sc-dd-opt input { flex: 0 0 auto; margin: 0; width: 15px; height: 15px; cursor: pointer; }
-.sc-dd-opt span { flex: 1 1 auto; min-width: 0; }
+/* The strip above the band. Golejadors only: Sancions sits under the
+   category bar, which is this strip on every other page. */
+.fcf-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 12px 36px; border-bottom: 1px solid var(--pp-rule);
+}
+.fcf-top-l { font-size: 13px; color: var(--pp-ink-2); }
+.fcf-top-r { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); }
 
-.sc-bar { height: 6px; border-radius: 3px; background: var(--border);
-  overflow: hidden; margin: .6rem auto 0; max-width: 340px; }
-.sc-bar-fill { height: 100%; background: var(--primary, #8b1a2b); transition: width .25s ease; }
+/* A club's crest in a square. The monogram is underneath; the image covers
+   it and removes itself when files.fcf.cat 404s. */
+.fcf-crest {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; flex: none; box-sizing: border-box; overflow: hidden;
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+  color: var(--pp-ink-2); font-size: 9px; line-height: 1; letter-spacing: 0;
+}
+.fcf-crest-l { width: 24px; height: 24px; font-size: 10px; }
+.fcf-crest-ours { background: var(--pp-red); border-color: var(--pp-red); color: #FFFFFF; }
+.fcf-crest-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box;
+  padding: 1px; object-fit: contain; background: #FFFFFF;
+}
 
+.fcf-chips { display: flex; gap: 6px; margin-left: auto; }
+.fcf-chip {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+  font-size: 12px; white-space: nowrap; cursor: pointer;
+  background: none; color: var(--pp-ink-2); border: 1px solid var(--pp-rule); border-radius: 0;
+}
+.fcf-chip:hover { border-color: var(--pp-ink); color: var(--pp-ink); }
+.fcf-chip-on, .fcf-chip-on:hover { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+
+.fcf-pill {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+  font-size: 11px; white-space: nowrap; color: var(--pp-ink-3); border: 1px solid var(--pp-rule);
+}
+.fcf-pill-on { background: var(--pp-ink); border-color: var(--pp-ink); color: var(--pp-paper); }
+
+/* Loading, empty, "still choosing". Straight under the band it carries the
+   band's 40px; inside a body that already has it, none. */
+.fcf-state { padding: 30px 40px 34px; font-size: 14px; color: var(--pp-ink-2); line-height: 1.5; }
+.sanc-body .fcf-state, .sc-body .fcf-state { padding-left: 0; padding-right: 0; }
+.fcf-state-c {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding-top: 44px; padding-bottom: 48px; text-align: center;
+}
+
+/* ── Sancions ── */
+.sanc-src {
+  display: flex; align-items: center; gap: 14px; height: 40px; padding: 0 40px;
+  border-bottom: 1px solid var(--pp-rule); font-size: 12px; color: var(--pp-ink-3);
+}
+.sanc-src-sep { width: 1px; height: 14px; background: var(--pp-rule); flex: none; }
+.sanc-src-a { margin-left: auto; color: var(--pp-red); text-decoration: none; }
+.sanc-src-a:hover { text-decoration: underline; }
+
+.sanc-body { display: flex; flex-direction: column; gap: 34px; padding: 32px 40px 56px; }
+.sanc-sec-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.sanc-all .sanc-sec-h { align-items: center; gap: 16px; }
+.sanc-sec-line { font-size: 13px; color: var(--pp-ink-2); }
+
+.sanc-cards { display: flex; gap: 20px; }
+.sanc-card {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+}
+.sanc-card-ours { border-top: 2px solid var(--pp-red); }
+.sanc-card-rival { border-top: 2px solid var(--pp-neutral); }
+.sanc-card-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 18px 10px;
+}
+.sanc-card-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sanc-card-name { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanc-card-tag {
+  flex: none; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+.sanc-ban {
+  display: flex; align-items: flex-start; gap: 12px; padding: 11px 18px;
+  border-top: 1px solid var(--pp-rule-2);
+}
+/* The matches STILL TO SERVE, not the ban's length: a four-match ban with
+   one gone reads 3. Ink for us, a pale square for them. */
+.sanc-left {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; flex: none; font-size: 12px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sanc-card-ours .sanc-left { background: var(--pp-ink); color: #FFFFFF; }
+.sanc-card-rival .sanc-left { background: var(--pp-rule-2); color: var(--pp-ink); }
+.sanc-ban-b { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; }
+.sanc-ban-p { font-size: 15px; }
+.sanc-ban-r { font-size: 11.5px; color: var(--pp-ink-2); line-height: 1.4; }
+.sanc-ban-w { flex: none; font-size: 11px; color: var(--pp-ink-3); white-space: nowrap; }
+.sanc-clear {
+  padding: 16px 18px; border-top: 1px solid var(--pp-rule-2);
+  font-size: 13px; color: var(--pp-ink-2);
+}
+.sanc-note { margin: 0; padding: 14px 20px; font-size: 11px; color: var(--pp-ink-3); line-height: 1.45; }
+
+/* The archive. Rows are flex, not a <table>: on a phone the same markup
+   re-flows into a grid, and a table cannot. */
+.sanc-th, .sanc-row { display: flex; align-items: flex-start; gap: 14px; padding: 12px 16px; }
+.sanc-th {
+  align-items: flex-end; padding: 0 16px 10px; border-bottom: 1px solid var(--pp-ink);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+.sanc-th > span { font-size: 11px; color: inherit; padding-top: 0; }
+.sanc-row { border-bottom: 1px solid var(--pp-rule-2); }
+.sanc-row:hover { background: #FFFFFF; }
+.sanc-row-ours { background: var(--pp-tint); }
+.sanc-c-j {
+  width: 34px; flex: none; padding-top: 2px;
+  font-size: 12px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums;
+}
+.sanc-c-n { width: 46px; flex: none; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
+.sanc-c-who { width: 236px; flex: none; min-width: 0; display: flex; align-items: flex-start; gap: 9px; }
+.sanc-row .fcf-crest { margin-top: 2px; }
+.sanc-who-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sanc-who-p { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanc-who-c { font-size: 11px; color: var(--pp-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanc-c-why { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--pp-ink-2); line-height: 1.45; }
+.sanc-c-art {
+  width: 52px; flex: none; padding-top: 2px; text-align: right;
+  font-size: 12px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums;
+}
+.sanc-c-st { width: 104px; flex: none; display: flex; justify-content: flex-end; }
+.sanc-foot { padding: 12px 16px 0; font-size: 11px; color: var(--pp-ink-3); line-height: 1.45; }
+
+/* The phone's section switch — the app's own stdSelect, full width. */
+.sanc-switch { padding: 10px 20px; border-bottom: 1px solid var(--pp-rule); }
+.sanc-sel { display: block; }
+.sanc-sel .std-sel-t {
+  display: flex; width: 100%; justify-content: space-between; box-sizing: border-box;
+  height: 38px; padding: 0 12px; border: 1px solid var(--pp-ink); border-radius: 0;
+  background: #FFFFFF; font-size: 13px; color: var(--pp-ink);
+}
+.sanc-sel .std-sel-c { font-size: 10px; color: var(--pp-ink-3); opacity: 1; }
+.sanc-sel .std-sel-menu { left: 0; right: 0; min-width: 0; }
+.sanc-sel .std-sel-o { height: 40px; font-size: 13px; color: var(--pp-ink-2); }
+.sanc-sel .std-sel-o-on { font-weight: 400; color: var(--pp-ink); background: var(--pp-tint); }
+
+@media (max-width: 700px) {
+  /* One section at a time, chosen by the switch. */
+  .sanc-on-next .sanc-all, .sanc-on-all .sanc-next { display: none; }
+  .sanc-body { gap: 0; padding: 0 0 40px; }
+  .sanc-body .fcf-state { padding: 24px 20px; }
+  .sanc-cards { flex-direction: column; gap: 0; }
+  .sanc-card { background: none; border: none; }
+  .sanc-card-h { justify-content: flex-start; gap: 8px; padding: 12px 20px 8px; }
+  .sanc-card-rival .sanc-card-h { padding-top: 18px; }
+  .sanc-card .fcf-crest-l { width: 20px; height: 20px; font-size: 9px; }
+  /* Ours says NOSALTRES; theirs says who they are, in the same caption. */
+  .sanc-card-ours .sanc-card-name, .sanc-card-rival .sanc-card-tag { display: none; }
+  .sanc-card-rival .sanc-card-name {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+  }
+  .sanc-ban { gap: 10px; padding: 11px 20px; }
+  .sanc-ban-w { display: none; }   /* the handoff's phone keeps the count, not the window */
+  .sanc-clear { padding: 12px 20px; }
+  .sanc-all .sanc-sec-h { margin: 0; padding: 12px 20px 10px; }
+  .sanc-all .fcf-chips { margin-left: 0; overflow-x: auto; }
+  .fcf-chip { flex: none; padding: 0 11px; }
+  .sanc-row {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas: "n who st" "n why st"; column-gap: 10px; row-gap: 2px;
+    padding: 11px 20px; background: none; border-bottom: none; border-top: 1px solid var(--pp-rule-2);
+  }
+  .sanc-c-j, .sanc-c-art, .sanc-row .fcf-crest { display: none; }
+  .sanc-c-n { grid-area: n; width: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .sanc-n-v { font-size: 16px; line-height: 1; }
+  .sanc-n-l { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--pp-ink-3); }
+  .sanc-c-who { grid-area: who; width: auto; }
+  .sanc-c-why { grid-area: why; font-size: 11.5px; line-height: 1.4; }
+  .sanc-c-st { grid-area: st; width: auto; align-self: start; }
+  .fcf-pill { padding: 0 8px; }
+  .sanc-foot { padding: 12px 20px 0; }
+}
+
+/* ── Golejadors ──
+   The filter band. The panels are ABSOLUTE so they float over the table
+   instead of pushing it down, and the band is a positioned layer above the
+   body — with no overflow set anywhere between, so nothing clips them. */
+.sc-filters {
+  position: relative; z-index: 20; display: flex; flex-direction: column; gap: 10px;
+  padding: 26px 40px 22px; border-bottom: 1px solid var(--pp-rule);
+}
+.sc-dd-row { display: flex; align-items: flex-start; gap: 16px; }
+.sc-dd { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.sc-dd-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3); }
+.sc-dd-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; height: 38px; padding: 0 12px; box-sizing: border-box; cursor: pointer;
+  background: #FFFFFF; border: 1px solid var(--pp-rule); border-radius: 0;
+  font-size: 13.5px; color: var(--pp-ink); text-align: left;
+}
+.sc-dd-btn:hover, .sc-dd-open .sc-dd-btn { border-color: var(--pp-ink); }
+.sc-dd-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-dd-v-all { color: var(--pp-ink-3); }
+.sc-dd-caret { flex: none; font-size: 10px; color: var(--pp-ink-3); }
+.sc-dd-panel {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; right: 0;
+  display: flex; flex-direction: column; max-height: 262px;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: #FFFFFF; border: 1px solid var(--pp-ink);
+}
+.sc-dd-tools {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; border-bottom: 1px solid var(--pp-rule-2);
+}
+.sc-dd-count { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3); }
+.sc-dd-mini { background: none; border: none; padding: 0; font-size: 12px; color: var(--pp-red); cursor: pointer; }
+.sc-dd-mini:hover { text-decoration: underline; }
+/* One option per ROW — unstyled they run together as a paragraph of text,
+   which is exactly what v125 shipped. The native checkbox stays the input
+   (label click, keyboard, change event) and is visually hidden; the box
+   beside it is DRAWN, tick included — a ✓ glyph sits differently in every
+   font the fallback stack reaches for. */
+.sc-dd-opt {
+  position: relative; flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; font-size: 13px; cursor: pointer;
+  background: #FFFFFF; border-bottom: 1px solid var(--pp-rule-2);
+}
+.sc-dd-opt:hover { background: var(--pp-paper); }
+.sc-dd-opt-on, .sc-dd-opt-on:hover { background: var(--pp-tint); }
+.sc-dd-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.sc-dd-box {
+  position: relative; flex: none; width: 15px; height: 15px; box-sizing: border-box;
+  background: #FFFFFF; border: 1px solid var(--pp-rule-4);
+}
+.sc-dd-opt input:checked + .sc-dd-box { background: var(--pp-ink); border-color: var(--pp-ink); }
+.sc-dd-opt input:checked + .sc-dd-box::after {
+  content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+  border: solid #FFFFFF; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg);
+}
+.sc-dd-opt input:focus-visible + .sc-dd-box { outline: 2px solid var(--pp-ink); outline-offset: 2px; }
+.sc-dd-l { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-hint { margin: 0; font-size: 11.5px; color: var(--pp-ink-3); }
+
+.sc-bar { width: 340px; max-width: 100%; height: 6px; background: var(--pp-rule); }
+.sc-bar-fill { height: 6px; background: var(--pp-red); }
+
+.sc-body { padding: 26px 40px 56px; }
+.sc-th, .sc-row-m { display: flex; align-items: center; gap: 14px; padding: 11px 16px; }
+.sc-th {
+  align-items: flex-end; padding: 0 16px 10px; border-bottom: 1px solid var(--pp-ink);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pp-ink-3);
+}
+/* (0,1,1): a head cell carries its column's class, and `.sc-c-goals` sets the
+   body's 17px — at (0,1,0) and later in the file it would win. */
+.sc-th > span, .sc-th > button { font-size: 11px; color: var(--pp-ink-3); }
+.sc-sort {
+  background: none; border: none; padding: 0; cursor: pointer;
+  letter-spacing: inherit; text-transform: inherit; text-align: left;
+}
+.sc-th .sc-sort:hover, .sc-th .sc-sort-on { color: var(--pp-ink); }
+.sc-row { border-bottom: 1px solid var(--pp-rule-2); }
+.sc-row-ours { background: var(--pp-tint); }
+.sc-c-rank { width: 38px; flex: none; font-size: 13px; color: var(--pp-ink-3); font-variant-numeric: tabular-nums; }
+.sc-c-player { width: 280px; flex: none; min-width: 0; font-size: 15px; }
+.sc-player-n { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-c-club { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 9px; }
 .sc-club-link { cursor: pointer; }
-.sc-club-link:hover { text-decoration: underline; }
-.sc-zone { color: var(--text-secondary); font-size: .74rem; white-space: nowrap; }
-.sc-card-row td { background: rgba(0,0,0,.03); }
-.sc-club-card { padding: .5rem .2rem; font-size: .8rem; }
-.sc-club-bits { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin: .35rem 0; }
-.sc-club-bits a { color: var(--primary, #8b1a2b); text-decoration: none; }
-.sc-club-bits a:hover { text-decoration: underline; }
-.sc-club-note { display: block; font-size: .68rem; color: var(--text-secondary); line-height: 1.35; }
+.sc-club-n {
+  font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-bottom: 1px solid transparent;
+}
+.sc-club-link:hover .sc-club-n, .sc-club-n-on { border-bottom-color: var(--pp-ink); }
+.sc-c-grp, .sc-c-zone {
+  flex: none; font-size: 12.5px; color: var(--pp-ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sc-c-grp { width: 120px; }
+.sc-c-zone { width: 180px; }
+.sc-c-goals { width: 74px; flex: none; text-align: right; font-size: 17px; font-variant-numeric: tabular-nums; }
+.sc-goals-v { font-weight: 400; }
+.sc-c-num {
+  width: 74px; flex: none; text-align: right;
+  font-size: 13.5px; color: var(--pp-ink-2); font-variant-numeric: tabular-nums;
+}
+.sc-th .sc-c-goals, .sc-th .sc-c-num { text-align: right; }
 
-@media (max-width: 640px) { .sc-dd { flex-basis: 100%; } }
-/* The panel floats OUT of its card, and the mobile block sets
-   `.card { overflow: hidden }` — which would clip it to a sliver. Two
-   classes beat one, so this wins wherever it is in the file. */
-.card.sc-filters { overflow: visible; }
+.sc-club-card {
+  display: flex; flex-direction: column; gap: 8px; margin: 0 16px 14px; padding: 14px 18px;
+  background: #FFFFFF; border: 1px solid var(--pp-rule);
+}
+.sc-club-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sc-club-name { font-size: 16px; font-weight: 400; }
+.sc-club-zone { font-size: 12px; color: var(--pp-ink-3); }
+.sc-club-bits { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 13px; }
+.sc-club-bits a { color: var(--pp-red); text-decoration: none; }
+.sc-club-bits a:hover { text-decoration: underline; }
+.sc-club-note { font-size: 11.5px; color: var(--pp-ink-3); line-height: 1.45; }
+.sc-foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+  padding: 12px 16px 0; font-size: 11px; color: var(--pp-ink-3);
+}
+
+/* The phone: one button for the four filters, and a sheet pinned to the
+   bottom of the screen that holds them. Reading waits for the sheet to
+   close exactly as it waits for a panel. */
+.sc-mbar { padding: 10px 20px 12px; border-bottom: 1px solid var(--pp-rule); }
+.sc-sheet-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; height: 38px; padding: 0 12px; box-sizing: border-box; cursor: pointer;
+  background: #FFFFFF; border: 1px solid var(--pp-ink); border-radius: 0;
+  font-size: 13px; color: var(--pp-ink); text-align: left;
+}
+.sc-sheet-btn > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; top: 25vh; z-index: 10000;
+  display: flex; flex-direction: column;
+  background: #FFFFFF; border-top: 2px solid var(--pp-ink); color: var(--pp-ink);
+}
+.sc-sheet-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 20px; border-bottom: 1px solid var(--pp-rule);
+}
+.sc-sheet-t { font-size: 16px; }
+.sc-sheet-x { background: none; border: none; padding: 0; font-size: 13px; color: var(--pp-ink-2); cursor: pointer; }
+.sc-sheet-b { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+/* In the sheet a picker is an accordion row: caption over value, and its
+   options open IN FLOW beneath it rather than floating. */
+.sc-sheet .sc-dd { gap: 0; border-bottom: 1px solid var(--pp-rule); }
+.sc-sheet .sc-dd-label { padding: 13px 20px 0; font-size: 10px; letter-spacing: .14em; }
+.sc-sheet .sc-dd-btn { height: auto; padding: 2px 20px 13px; border: none; font-size: 14px; }
+.sc-sheet .sc-dd-panel {
+  position: static; max-height: none; overflow: visible;
+  border: none; border-top: 1px solid var(--pp-rule-2); background: var(--pp-paper);
+}
+.sc-sheet .sc-dd-tools { padding: 8px 20px; }
+.sc-sheet .sc-dd-opt { min-height: 44px; box-sizing: border-box; padding: 12px 20px; font-size: 13.5px; background: transparent; }
+.sc-sheet .sc-dd-opt-on { background: var(--pp-tint); }
+.sc-sheet .sc-dd-box { width: 17px; height: 17px; }
+.sc-sheet .sc-dd-opt input:checked + .sc-dd-box::after { left: 5px; top: 2px; }
+.sc-sheet .sc-hint { padding: 14px 20px; line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .sc-body { padding: 0 0 40px; }
+  .sc-body .fcf-state { padding: 30px 20px; }
+  .sc-sorts { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--pp-rule-2); overflow-x: auto; }
+  .sc-row-m { gap: 10px; padding: 11px 20px; cursor: pointer; }
+  .sc-c-club, .sc-c-grp, .sc-c-zone, .sc-c-num { display: none; }
+  .sc-c-rank { width: 22px; font-size: 12px; }
+  .sc-c-player { flex: 1 1 0; width: auto; display: flex; flex-direction: column; gap: 2px; font-size: 14.5px; }
+  .sc-row-sub { font-size: 11px; color: var(--pp-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sc-c-goals {
+    width: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    font-size: 19px; line-height: 1;
+  }
+  .sc-row-pj { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--pp-ink-3); }
+  .sc-club-card { gap: 7px; margin: 0 20px 12px; padding: 12px 14px; }
+  .sc-club-h { flex-direction: column; gap: 2px; }
+  .sc-club-name { font-size: 14px; }
+  .sc-club-bits { flex-direction: column; gap: 4px; }
+  .sc-foot { flex-direction: column; gap: 4px; padding: 12px 20px 0; }
+}
 
 /* ===== "A new version is available" =====
    Fixed to the bottom, above everything, and NEVER covering the screen: it
