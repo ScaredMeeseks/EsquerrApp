@@ -106,8 +106,13 @@ The owner re-pointed `fcfLinks['amateur-B']` from last season's group to **58161
 - **Player-row letters** (Convocatòria, New Training picker, match table) are the v270 small grey
   upright letter. The owner's "same format as the rest of the letters" was applied to the match
   TITLE only (v271); whether rows should change too was asked, not answered.
-- **The B team's link is now on 2026-27**, so the referee-crawl step this file used to defer is due:
-  `set-fcf-crawl-config.js --club nDLJCpJfDvFHs8MnwtzW --enable --apply` (dry run first).
+- ✅ **Referee crawl re-scoped (2026-09-21, applied and read back):** `fcfCrawl/config` is now
+  `enabled: true, seasons: ["22"], onlyGroups: ["58161881", "58161914"]` — B's old group 54888305
+  and season 21 dropped. `_rebuildFcfReferees` reads the WHOLE `fcfRefIndex` collection, not the
+  config, so last season's referee records survive. Scope change reset the queues; first unattended
+  run is Friday 2026-09-25 (`fcfWeeklyRefs`), before B plays at Xaloc on the 27th — check its
+  `appointed` log line. Ran via the Admin SDK with a temporary `authorized_user` credential built
+  from the CLI login (see "Reading production without ADC"), deleted afterwards.
 - **27 old-group B fixtures are `fcfRemoved`** (struck through, not deleted — call-ups and notes hang
   off their ids). The coach can delete them by hand; nothing automatic will.
 - `ourTeamIdIn`'s letter preference (two of our squads in one group) is covered only by the pure
