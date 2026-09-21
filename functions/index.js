@@ -27,7 +27,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 // reachable from this side — see functions/fcf.js on why that helper is a
 // second copy and how the two are kept honest.
 const {
-  fcfGrupIdOf, sameClubNameOf, parseFcfFixtures, parseFcfKits, parseFcfPositions,
+  fcfGrupIdOf, sameClubNameOf, squadLetterOfName, parseFcfFixtures, parseFcfKits, parseFcfPositions,
   mergeFcfFixtures,
   parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
   fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
@@ -1359,10 +1359,15 @@ async function fcfGet(path) {
  * normTeamName bridges that once, here, and every fixture afterwards is
  * matched on the id.
  */
-function ourTeamIdIn(classificacio, clubName) {
+function ourTeamIdIn(classificacio, clubName, letter) {
   const rows = (classificacio && classificacio.data) || [];
-  const hit = rows.find((r) =>
+  const hits = rows.filter((r) =>
     sameClubNameOf(((r || {}).team || {}).name, clubName));
+  /* Two of our squads in one group ("... F.C. A" and "... F.C. B") is legal
+     in the lower divisions. Take the row carrying THIS squad's letter, so
+     amateur-B never imports amateur-A's fixtures. */
+  const hit = hits.find((r) => squadLetterOfName(r.team.name) === letter) ||
+    hits[0];
   return hit ? String(hit.team.teamId || "") : "";
 }
 
@@ -1383,7 +1388,7 @@ async function _syncFcfSquad(clubId, category, letter, club) {
   ]);
 
   const clubName = String(club.name || "");
-  const ourId = ourTeamIdIn(classificacio, clubName);
+  const ourId = ourTeamIdIn(classificacio, clubName, letter);
   /* Not an error worth throwing: a lead who pastes the link of a group his
      club is not in gets an honest "we are not in that group" rather than an
      imported season of other people's fixtures. */

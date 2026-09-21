@@ -59,6 +59,31 @@ const LEADING_ARTICLE = /^\s*(l\s*['’]\s*|el\s+|la\s+|els\s+|les\s+)/;
 
 /** Same club, allowing for the article. Only for identifying OURSELVES. */
 function sameClubNameOf(a, b) {
+  if (_sameClubNameExactOf(a, b)) return true;
+  /* The squad letter: "L'ESQUERRA DE L'EIXAMPLE, F.C. B" from 2026-27.
+     Mirrors js/utils.js sameClubName — a fallback only, so nothing that
+     matched before can stop matching. */
+  const sa = stripSquadLetterOf(a);
+  const sb = stripSquadLetterOf(b);
+  return (sa !== String(a || "") && _sameClubNameExactOf(sa, b)) ||
+    (sb !== String(b || "") && _sameClubNameExactOf(a, sb));
+}
+
+// Mirrors SQUAD_SUFFIX in js/utils.js. Whitespace before the letter is
+// required, so the C of a bare "F.C" is not read as a squad.
+const SQUAD_SUFFIX = /\s+["'“”‘’]?([A-Za-z])["'“”‘’]?\s*$/;
+
+function stripSquadLetterOf(s) {
+  return String(s || "").replace(SQUAD_SUFFIX, "");
+}
+
+/** The squad letter a federation name ends in, upper-case, or "". */
+function squadLetterOfName(s) {
+  const m = SQUAD_SUFFIX.exec(String(s || ""));
+  return m ? m[1].toUpperCase() : "";
+}
+
+function _sameClubNameExactOf(a, b) {
   const x = normTeamNameOf(a);
   const y = normTeamNameOf(b);
   if (!x || !y) return false;
@@ -1077,6 +1102,7 @@ module.exports = {
   fcfGrupIdOf,
   normTeamNameOf,
   sameClubNameOf,
+  squadLetterOfName,
   fcfBadgeUrl,
   fcfMapsLink,
   parseFcfFixtures,

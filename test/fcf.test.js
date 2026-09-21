@@ -87,8 +87,19 @@ describe('sameClubName — us, as the federation spells us', () => {
     ['Jonquera', 'LA JONQUERA, U.E.'],
     ['L\'Escala FC', 'L\'ESCALA, F.C.'],
     ['Gràcia', 'GRACIA, C.F.'],
+    /* 2026-27: the federation appends the squad letter. Verbatim from groups
+       58161881 and 58161914 — with no suffix handling neither matched, and
+       both squads imported nothing. */
+    ['Esquerra de l\'Eixample F.C.', 'L\'ESQUERRA DE L\'EIXAMPLE, F.C. A'],
+    ['Esquerra de l\'Eixample F.C.', 'L\'ESQUERRA DE L\'EIXAMPLE, F.C. B'],
+    ['Esquerra de l\'Eixample F.C.', 'L\'ESQUERRA DE L\'EIXAMPLE, F.C. "B"'],
+    // A bare "F.C" with no dot must not lose its C and stop matching.
+    ['Esquerra de l\'Eixample F.C', 'L\'ESQUERRA DE L\'EIXAMPLE, F.C.'],
   ];
   const DIFFERENT = [
+    // The squad letter must not become a licence to drop a real word.
+    ['Sant Andreu', 'SANT ANDREU ATLETIC B'],
+    ['Gràcia', 'Gràcia Atlètic A'],
     /* The leniency must stay narrow. These are the pairs normTeamName was
        built to keep apart, and stripping an article must not merge them. */
     ['Gràcia', 'Gràcia Atlètic'],
@@ -109,6 +120,16 @@ describe('sameClubName — us, as the federation spells us', () => {
     it(`"${a}" is NOT "${b}"`, () => {
       assert.strictEqual(U.sameClubName(a, b), false);
       assert.strictEqual(U.sameClubName(b, a), false, 'not symmetric');
+    });
+  });
+
+  it('reads the squad letter off a federation name', () => {
+    assert.strictEqual(U.squadLetterOf('L\'ESQUERRA DE L\'EIXAMPLE, F.C. B'), 'B');
+    assert.strictEqual(U.squadLetterOf('L\'ESQUERRA DE L\'EIXAMPLE, F.C. "a"'), 'A');
+    assert.strictEqual(U.squadLetterOf('L\'ESQUERRA DE L\'EIXAMPLE, F.C.'), '');
+    assert.strictEqual(U.squadLetterOf('ESQUERRA F.C'), '');
+    ['X, F.C. B', 'X, F.C.', 'X "C"', ''].forEach((s) => {
+      assert.strictEqual(SERVER.squadLetterOfName(s), U.squadLetterOf(s), s);
     });
   });
 

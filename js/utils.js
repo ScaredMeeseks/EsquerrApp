@@ -981,6 +981,20 @@ var LEADING_ARTICLE = /^\s*(l\s*['’]\s*|el\s+|la\s+|els\s+|les\s+)/;
  * the extra leniency buys a wrong answer rather than a right one.
  */
 function sameClubName(a, b) {
+  if (_sameClubNameExact(a, b)) return true;
+  /* The squad letter. From the 2026-27 season the federation writes a
+     club's squads as "L'ESQUERRA DE L'EIXAMPLE, F.C. A" / "... B", so the
+     club's own name matched no row in either group and every squad was
+     reported as "not in this group" — nothing imported, the row never
+     highlighted. Only tried as a FALLBACK, so a name that already matched
+     can never stop matching. */
+  const sa = stripSquadLetter(a);
+  const sb = stripSquadLetter(b);
+  return (sa !== String(a || '') && _sameClubNameExact(sa, b)) ||
+    (sb !== String(b || '') && _sameClubNameExact(a, sb));
+}
+
+function _sameClubNameExact(a, b) {
   const x = normTeamName(a);
   const y = normTeamName(b);
   if (!x || !y) return false;
@@ -990,6 +1004,22 @@ function sameClubName(a, b) {
   const bx = bare(a);
   const by = bare(b);
   return !!bx && bx === by;
+}
+
+/* A trailing single-letter squad suffix, optionally quoted: ` A`, ` "B"`.
+   Whitespace BEFORE the letter is required, so the C of a bare "F.C" is not
+   mistaken for one. */
+var SQUAD_SUFFIX = /\s+["'“”‘’]?([A-Za-z])["'“”‘’]?\s*$/;
+
+/** A club name without its squad letter. */
+function stripSquadLetter(s) {
+  return String(s || '').replace(SQUAD_SUFFIX, '');
+}
+
+/** The squad letter a federation name ends in, upper-case, or ''. */
+function squadLetterOf(s) {
+  const m = SQUAD_SUFFIX.exec(String(s || ''));
+  return m ? m[1].toUpperCase() : '';
 }
 
 /* Mirrors isOurTeam() in app.js — EXACT equality on the club name, not the
@@ -1930,6 +1960,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // the UI only asks it a question and stores the coach's answer.
     normTeamName,
     sameClubName,
+    squadLetterOf,
     ourSideOf,
     opponentOf,
     findFirstLeg,
