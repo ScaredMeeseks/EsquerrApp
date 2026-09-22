@@ -12316,3 +12316,102 @@ Owner's report, three parts:
   menu did not. `.cv-ctl-match .cv-menu` is one now — all six rules at 434.3.
 
 5 mutations, all red. `convocatoria-preview.html` regenerated.
+
+### 2026-09-22 — v276: Pissarra material — new items, counted per training
+
+The owner's ask: more equipment on the tactical boards, in 2D and 3D, and — the part that mattered
+most — **counted** in the session's material list. Built over several owner review rounds on
+localhost before one commit.
+
+**Data.** A new board track **`props`**, key `fa_tactic_props`, rows `[x, y, type, rotDeg, colour]`
+in the board's own (horizontal-storage) axes, like cones. `BS.setProps` rebuilds every field
+(`propRow`: x/y round2, rotation whole degrees in [0,360), type/colour as strings) — ⚠ **never through
+`setPoints`**, which keeps two fields and would turn a prop into a bare point. `tweenFrame` tweens the
+position and takes type/rotation/colour from the target frame (`tweenProps`). `buildBoardEntry` writes
+`e.props` at the TAIL (shard diff). `tbDiffersFromSaved` drops an empty `props` when the saved payload
+predates the key, or every older board read as unsaved on open. `saveProps` KEEPS stored rows of a
+type this client cannot draw, so a newer client's item survives an older client's save.
+
+**One item table** in board-geom, read by 2D, 3D and the count: `BG.PROPS` (`w`/`d`/`h` in metres for
+3D; `g`/`gd` the DRAWN width/depth in 2D; `rot`, `colour`, `def`) and `BG.PROP_COLOURS`, a FIXED
+palette (groc, taronja, vermell, blau, verd, blanc) — a free picker would split "yellow discs" into as
+many lines as there are near-identical yellows. ⚠ **Both tables are `Object.create(null)`**: the type
+comes from stored boards and `PROPS['constructor']` on a plain object is a truthy function.
+
+Items: disc (platet), pole (pica), hoop (anella), hurdle (tanca baixa — one bent tube, from the owner's
+photo), hurdlehi (tanca alta d'atletisme, striped board on L-feet), ladder (4 m, fixed length), dummy
+(maniquí — an extruded human silhouette on a spike and base), minigoal, goal7, goal11, rebounder.
+At rotation 0 an item FACES DOWN the board (+y); a goal's mouth is its bottom edge.
+
+**Counting (`planMaterial`).** Per board, `_stpBoardProps` builds `"type|colour" → n` as the **max
+over the board and every frame** (an item added only in frame 3 is still carried; the same five discs
+moved between frames are five). Legacy cones count as `cone|taronja`; an unknown colour counts under
+the type's default; an unknown type is skipped. Then SUM inside a block and MAX across blocks,
+**key by key** (red and yellow cones are separate piles). Returns `items` sorted by table then palette
+order; `cones`/`balls` kept for older callers. Labels agree in gender per language
+(`mat.<type>_g`, `mat.col_<c>_<m|f>`: "Piques grogues", "Cons grocs", `en` "Discs (yellow)").
+
+**2D.** `tbPropHtml` is the one renderer for the editor, read-only boards and playback. Sized
+`max(3px, --pf, --tb-ppm × --pw)`: ⚠ the first version used real sizes with a 10–16px floor, and the
+floor won at every zoom the 3D overlay reaches, so props held their size while players grew — hence
+the separate drawn size `g`. Rotation: `--pr` is the DISPLAY rotation = stored + `propRotOff()`
+(−90 on the vertical full board, whose axes toDisplay swaps; 0 on half/area boards, rotated in CSS).
+A rotation handle (`.tb-prop-rot`) turns by the CHANGE in pointer angle about the item — right on every
+board type — 1° steps, Shift snaps to 15°. Drag/select/copy/undo/frames go through
+`makeItemDraggable`, the cone handler generalised rather than a second one. Group-drag now moves cones
+too (it never had). Escape puts down ANY board tool.
+
+**3D.** `PROP_BUILD` builders return groups registered `deep: true`; `pick()` raycasts those
+recursively and walks a hit up to its registered root (everything else stays non-recursive as
+before). Hoops and ladders carry an invisible `hitPad` so they grab inside their outline. Rotation
+`rotation.y = −stored` (board +y is world +z). Right-click menu has a 0–359° slider (the range item
+now honours `min: 0`; it read `|| 8`). ⚠ **No sphere** but the ball — `board3d.test.js` pins it; the
+mannequin's head is a flattened cylinder.
+
+**Cones** redrawn (2D SVG and 3D) with a square base plate, round foot narrower, tip cut; made
+smaller, `OBJ.cone` 0.70 → **0.50** (object-scale test updated).
+
+**Also in v276:**
+- **Player colours**: 12 kit swatches (`TB_KIT_COLOURS`) before the native picker, in the player
+  context menu (`kit: true`) and both squad-panel kit slots. A swatch sets the input and fires its
+  own `input`/`change`, so every existing listener reacts unchanged. Not `#f5c842` (STP_GK_FILL).
+- **3D Top view flipped on orbit.** Overhead, `upFor` makes screen-up `(cos θ, sin θ)`; one pixel into
+  a drag the clamp lifts φ past the switch and screen-up becomes world-up — the opposite direction
+  for the same θ. `orbitTheta` adds π when leaving overhead. Proven on the real `quaternionFor`.
+- **Dropdowns closed when their own list scrolled** — the capture `scroll` listener in
+  `bindStdSelects` caught the menu's own scroll, so the 11 training intensities were unreachable.
+  Scrolls inside `.std-sel-menu` are ignored now; the page scrolling still closes it.
+- **Localhost loads the 3D module from the working copy** (`tbLoad3D`): otherwise nothing in
+  `board3d.js` can be seen before `deploy.ps1 functions`. `js/board3d.js` is 404 on Pages, so this
+  exposes nothing.
+
+Checked by rendering, not only by tests: the real builders in headless Edge with SwiftShader
+(`--use-angle=swiftshader --enable-unsafe-swiftshader`; copy BOTH `three.module.min.js` and
+`three.core.min.js`), the real 2D glyphs at several `--tb-ppm`, and the real material card via
+`scripts/build-training-plan-preview.js` (which now passes `BG` and has props in its fixtures).
+New `test/kit-swatches.test.js`. Mutation passes on the count, rendering, catalogue completeness,
+the orbit fix and the scroll fix, all red.
+
+Unit 3640 → **3674**. Version triple → **v276**. Functions deployed (`getBoard3d`).
+
+### 2026-09-22 — v277: Material panel in five groups; cones take a colour
+
+From a mockup the owner reviewed twice (rendered from the real CSS and glyphs): **Pilota, Marcadors**
+(con, platet, pica, anella), **Agilitat** (tanca baixa, tanca alta, escala), **Porteries** (mini, F7,
+F11), **Altres** (maniquí, rebotador). Group membership lives in the toolbar markup as literal
+`id="tb-prop-g-<group>"` spans (the menu test needs literal ids); `tbPropToolsHtml` draws each button
+with its icon above a short name (`tactics.sn_<type>`, else `tactics.<type>`). The mannequin and both
+hurdles use FRONT-view button icons (`TB_PROP_ICON`); the board still draws them from above.
+
+- The colour row is no longer a row: `paintPropSwatches` moves it after the chosen tool's group and
+  shows it only if that item takes a colour; `deactivateDrawTools` hides it. ⚠ It is toggled with
+  `.hidden` over a `display` rule — `.tb-prop-colours[hidden]` carries the companion rule. Each item
+  starts from its own default colour (`propColourFor`).
+- **Cones are props** (`PROPS.cone`, default taronja), in 2D (a colourable side-view glyph) and 3D
+  (`coneMesh(col)`, shared with the legacy `addCone`). Cones placed before v277 stay on the `cones`
+  track, drawn and counted as orange. The separate cone tool button is gone; its code is null-safe.
+- **Silueta** moved to the squad panel — adopted AFTER `tbMenuSquad`, which rebuilds that panel with
+  `innerHTML`.
+
+Unit 3674 → **3676**. Version triple → **v277**. Functions deployed. Live check: served `sw.js` →
+`esquerrapp-v277`, served `app.js` has `tactics.g_markers`.

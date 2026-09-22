@@ -136,6 +136,12 @@ frontend pushed, and the server went on serving the previous module — the fix 
 not worked. `scripts/sync-board3d.js` keeps the copy current and the suite fails on drift, but nothing can
 detect *forgetting to deploy functions at all*.
 
+**Locally (since v276) the page reads `js/board3d.js` from disk** when served from `localhost` /
+`127.0.0.1` (`tbLoad3D`), so a 3D change can be tried before that deploy — serve the repo with
+`npx http-server -p 8080 -c-1` and sign in as usual (it talks to the LIVE Firebase project, so use a
+scratch board). Anywhere else it is the callable, and Pages returns 404 for the file. When a release
+touches both, **deploy functions before pushing**: a new 3D module must work with the old frontend.
+
 Rules/functions: via a guard script, never bare `firebase deploy` — the CLI's remembered project once wiped another project's rules, and there are now **two Firebase projects and two accounts on this machine**. Both scripts pass `--project esquerrapp` explicitly; read the `=== Deploying to 'esquerrapp'...` header before confirming.
 
 **Locally (preferred, since 2026-08-08)** — `firebase-tools` 15.x is installed on Windows and `marna96@gmail.com` is bound to this directory:

@@ -1,27 +1,28 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-21._
+_Rolling document, overwritten each session. Last updated: 2026-09-22._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 275** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 277** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
 
 | | |
 |---|---|
-| Unit tests | **3640** — `cd test && npm run test:unit` (~24 s), all passing |
-| Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant |
+| Unit tests | **3676** — `cd test && npm run test:unit` (~30 s), all passing |
+| Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant and the synced `private/board3d.js` |
 | Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 
-**Deploy state.** `main` is current and deployed through **v275 `1c6312d`**. v273–v275 are
-frontend-only (no rules or functions deploy). Pages was verified live each time by curling the
-served `sw.js` (→ `esquerrapp-v275`) and grepping the served `app.js`/`style.css` for the change.
-Each release was committed on its own branch (`v273-fcf-tabs`, `v274-sancions-squads`,
-`v275-cv-match-picker`) and fast-forwarded into `main` on the owner's "deploy"; the branches are
-still there and can be deleted.
+**Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277
+ran `.\deploy.ps1 functions` BEFORE the push (the new 3D module works with the old frontend, not the
+other way round), every function updated cleanly. Committed straight onto `main` this time, no
+release branch. Verified live after v277: served `sw.js` → `esquerrapp-v277`, served `app.js` has
+`APP_VERSION = 277` and `tactics.g_markers`, and `js/board3d.js` is still **404** on Pages. The
+branches `v273-fcf-tabs`, `v274-sancions-squads`, `v275-cv-match-picker` are still there and can be
+deleted. The untracked `mockup.html` and `x` in the repo root are the owner's, not this session's.
 
 ⚠ **The service worker serves the old bundle until it is unregistered.** Bumping `CACHE_NAME` is
 not enough on its own. The snippet that settles it:
@@ -36,6 +37,48 @@ navigator.serviceWorker.getRegistrations()
 
 **The B team is on its 2026-27 group and its calendar is importing.** Confirmed by the owner from
 the Calendari (Xaloc, jornada 2). It took three separate faults to get there — see below.
+
+## 2026-09-22 — v276 and v277: Pissarra material
+
+The owner asked for more equipment on the tactical boards, in 2D and 3D, and above all for it to
+be **counted** in each training's material list. Built in several review rounds on localhost, then
+shipped as two releases. Full detail in CONTEXT.md (v276, v277); what a next session needs:
+
+- **New board track `props`** (`fa_tactic_props`), rows `[x, y, type, rotDeg, colour]`, written by
+  `BS.setProps` — ⚠ never `setPoints`, which would strip type and colour. `buildBoardEntry` has it at
+  the tail. Legacy **`cones` still exist**: drawn, draggable, counted as orange cones, but nothing
+  places new ones — the Con tool places a `cone` prop now.
+- **One table, `BG.PROPS` / `BG.PROP_COLOURS`** (board-geom), drives the 2D glyphs, the 3D builders
+  (`PROP_BUILD` in board3d) and the count. Adding an item = a row there + a glyph in `TB_PROP_2D` + a
+  builder + i18n (`mat.<t>s`, `plan.n_<t>`, `plan.n_<t>s`, `tactics.<t>`, `mat.<t>_g` if coloured)
+  + its place in one `tb-prop-g-*` group. `material.test.js` "catalogue is complete" fails on any gap.
+- **Counting**: per type AND colour; max over a board's frames, sum inside a parallel block, max
+  across blocks — key by key.
+- **Rotation** to any degree: a handle in 2D (and on the 3D drawing overlay), a 0–359° slider in the
+  right-click menu for the free 3D camera.
+- **Material panel** (v277): Pilota · Marcadors · Agilitat · Porteries · Altres; captions under icons;
+  front-view icons for mannequin and hurdles; the colour row follows the chosen tool's group and
+  only shows for items that take a colour. Silueta is in the Jugadors panel now.
+- **Unrelated fixes shipped in v276:** kit-colour swatches before the colour picker (players and
+  both kits); the 3D Top view flipping half a turn on the first orbit drag (`orbitTheta`); dropdowns
+  closing when their own list scrolled (the training intensity was unusable); Escape puts down any
+  board tool.
+- **Localhost loads `js/board3d.js` from disk** (`tbLoad3D`), so 3D changes can be seen before a
+  functions deploy. Everywhere else it is still the `getBoard3d` callable.
+
+### Tools that worked (2026-09-22)
+
+- **3D in headless Edge**: `--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader`,
+  the page served over `npx http-server` (ES modules do not load from `file://`), and BOTH
+  `vendor/three.module.min.js` and `vendor/three.core.min.js` copied beside it — the first imports
+  the second, and a missing one gives a silent blank canvas. The real builders were sliced out of
+  `board3d.js` into the page; a Node script (`import` three, run the builders, `Box3` each) checked
+  every item's size against the table before any screenshot.
+- **Mockups for the owner from the REAL code**: slice `tbPropToolsHtml` / the glyph tables out of
+  `app.js`, link the real `style.css`, screenshot, send the PNG. The owner changed the grouping
+  twice from those before anything was built.
+- `scripts/build-training-plan-preview.js` now renders props, so it shows the per-colour material
+  list with the real renderers.
 
 ## Second session of 2026-09-21 — v273 to v275
 
@@ -157,6 +200,16 @@ The owner re-pointed `fcfLinks['amateur-B']` from last season's group to **58161
 
 ## Pending
 
+- **Pissarra material — not built, or not verified by clicking:**
+  - The v276/v277 editor behaviour was driven by the OWNER on localhost and by source/jsdom tests;
+    the full editor (place, drag, rotate, recolour, undo, frames, play, 3D drag) has no harness that
+    mounts it — `bindTactics` is one closure behind login.
+  - **A phone still on a pre-v276 app that re-saves a board drops its `props`** (it rebuilds the
+    entry from the keys it knows). Same exposure as every new board key; it closes as clients update.
+  - Not built: highlighting the last-used tool when the panel reopens (in the proposal, not asked
+    again); swatches for a striped kit's SECOND colour; a length for the agility ladder (fixed 4 m).
+  - The pitch goals (`m.goalLeft/goalRight` in board3d) and the prop goals do not share one builder;
+    the plan said they should. Harmless, but two goal frames exist.
 - **Sancions for this season is empty** — no rulings published yet for either Esquerra group
   (checked live 2026-09-21). The populated states were verified against a 2025-26 group; the
   first real 2026-27 ruling is worth a look.
@@ -451,7 +504,31 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 ## Lessons that keep repeating
 
-### New this session (2026-09-21, second half — v273–v275)
+### New this session (2026-09-22 — v276–v277)
+
+- ⚠ **Never pipe a mutation runner through `Select-Object -First N`.** PowerShell kills node once N
+  lines are out — between a mutating write and its restore. The next run then read the mutated
+  `app.js` as the original and "restored" it: `max` stayed a `sum` in `planMaterial` until a
+  full-suite run caught it. Filter with `Select-String`, and grep every mutation's replacement text
+  afterwards.
+- ⚠ **A deployed module means "test locally" shows the OLD version.** The 3D board comes from the
+  `getBoard3d` callable, so the owner saw new items vanish in 3D and it looked like a bug. That is
+  why `tbLoad3D` now reads the working copy on localhost.
+- **A pixel floor can freeze a metric size.** 10–16px floors beat `ppm × real size` at every zoom the
+  3D overlay reaches; the props never grew. Give small things a DRAWN size in metres and keep the
+  floor as a small backstop only.
+- **A capture `scroll` listener also hears the element it is protecting.** The dropdown's own list
+  scrolling closed the dropdown.
+- **At a singular camera angle the same parameters mean two pictures.** Straight down, θ gave
+  screen-up one way; one pixel off vertical, the other. Prove continuity on the real orientation
+  maths, not by reasoning about angles.
+- **The "calls only declared functions" scanner reads `word (` inside i18n strings as a call** —
+  "Tanca alta (d'atletisme)" failed the suite. Keep parentheses out of labels, or put a non-letter
+  before them.
+- `[hidden]` over an author `display` bit again (`.tb-prop-colours`) — caught before shipping only
+  because the memory said to add the companion rule.
+
+### From 2026-09-21, second half — v273–v275
 
 - ⚠ **Deleting a control in favour of a shared one: check the shared one EXISTS for every
   client.** v273 removed Sancions' squad picker because the category bar "already offers it" —
