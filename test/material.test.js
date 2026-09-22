@@ -40,7 +40,7 @@ function load(deps) {
   return new Function(
       'localStorage', 'tbResolveRef', 'TB', 'isActivity', 'availContext',
       'trainingOnly', 'getTrainings', 'getEffectiveAnswer', 'sessionWindow',
-      'minsToHHMM', 't', `
+      'minsToHHMM', 't', 'BG', `
     ${code}
     return { stdPlan, stdSessionBoards, stdBoardResolver, planMaterial,
              dutyCounts, dutyPool, blockTimes, resolvePetos, draftTeams,
@@ -55,7 +55,10 @@ function load(deps) {
       d.getEffectiveAnswer || (() => 'yes'),
       d.sessionWindow || realSessionWindow,
       d.minsToHHMM || realMinsToHHMM,
-      d.t || ((k) => k));
+      d.t || ((k) => k),
+      // The real item table: the count is keyed on it, and a stub table
+      // could agree with a wrong count.
+      require('../js/board-geom.js'));
 }
 
 /* The two time helpers the rail depends on, as app.js defines them. Real
@@ -153,6 +156,136 @@ describe('material — countable objects compose sum-within, max-across', () => 
     const m = H.planMaterial({ blocks: [] }, resolve);
     assert.deepStrictEqual(
         [m.cones, m.balls, m.petos, m.colors.length, m.unknown], [0, 0, 0, 0, 0]);
+    assert.deepStrictEqual(m.items, []);
+  });
+});
+
+/** n material props of one type and colour. */
+const props = (n, type, colour) =>
+  Array.from({ length: n }, (_, i) => [i, i, type, 0, colour]);
+/** The items list as "type|colour=qty" strings — order included. */
+const rows = (m) => m.items.map((it) => it.type + '|' + it.colour + '=' + it.qty);
+
+describe('material — items counted per type AND colour', () => {
+  it('splits one type by colour', () => {
+    const bb = { x: B({ props: props(6, 'disc', 'groc').concat(props(4, 'disc', 'vermell')) }) };
+    const m = H.planMaterial(plan([ex('x')]), (id) => bb[id] || null);
+    assert.deepStrictEqual(rows(m), ['disc|groc=6', 'disc|vermell=4']);
+  });
+
+  it('max across blocks is taken PER COLOUR, not on the type total', () => {
+    /* Block A: 6 red. Block B: 4 red + 4 yellow. The red pile is reused
+       (6), the yellow one is extra (4). A max on the type total would say
+       8 discs and send the coach out two red ones short. */
+    const bb = {
+      a: B({ props: props(6, 'disc', 'vermell') }),
+      b: B({ props: props(4, 'disc', 'vermell').concat(props(4, 'disc', 'groc')) })
+    };
+    const m = H.planMaterial(plan([ex('a')], [ex('b')]), (id) => bb[id] || null);
+    assert.deepStrictEqual(rows(m), ['disc|groc=4', 'disc|vermell=6']);
+  });
+
+  it('sums the same colour inside a parallel block', () => {
+    const bb = { a: B({ props: props(3, 'pole', 'blau') }), b: B({ props: props(5, 'pole', 'blau') }) };
+    const m = H.planMaterial(plan([ex('a'), ex('b')]), (id) => bb[id] || null);
+    assert.deepStrictEqual(rows(m), ['pole|blau=8']);
+  });
+
+  it('legacy cones are orange cones, on the same line as placed orange ones', () => {
+    const bb = { a: B({ cones: cones(3), props: props(2, 'cone', 'taronja') }) };
+    const m = H.planMaterial(plan([ex('a')]), (id) => bb[id] || null);
+    assert.deepStrictEqual(rows(m), ['cone|taronja=5']);
+    assert.strictEqual(m.cones, 5, 'the cones total still means every cone');
+  });
+
+  it('prints in catalogue order, then palette order', () => {
+    const bb = { a: B({ props: props(1, 'hoop', 'blanc').concat(props(1, 'disc', 'blau'),
+      props(1, 'hoop', 'groc')), cones: cones(1) }) };
+    const m = H.planMaterial(plan([ex('a')]), (id) => bb[id] || null);
+    assert.deepStrictEqual(rows(m),
+        ['cone|taronja=1', 'disc|blau=1', 'hoop|groc=1', 'hoop|blanc=1']);
+  });
+
+  it('never counts a deleted (null) prop slot', () => {
+    const bb = { a: B({ props: [null, [1, 1, 'disc', 0, 'verd'], null] }) };
+    assert.deepStrictEqual(rows(H.planMaterial(plan([ex('a')]), (id) => bb[id] || null)),
+        ['disc|verd=1']);
+  });
+
+  it('an unknown colour counts under the type default; an unknown type is skipped', () => {
+    /* A newer client may know colours or types this one does not. The
+       colour is cosmetic — the item still has to be carried. The type is
+       not: guessing what it is would print a line nobody can act on. */
+    const bb = { a: B({ props: [[1, 1, 'disc', 0, 'lila'], [2, 2, 'trampoline', 0, 'groc'],
+      // Prototype names: on a plain-object table these resolve to functions.
+      [3, 3, 'constructor', 0, 'groc'], [4, 4, 'pole', 0, 'toString']] }) };
+    assert.deepStrictEqual(rows(H.planMaterial(plan([ex('a')]), (id) => bb[id] || null)),
+        ['disc|groc=1', 'pole|groc=1']);
+  });
+});
+
+describe('material — every item in the catalogue is complete', () => {
+  /* A type in BG.PROPS with no glyph draws nothing in 2D; with no builder
+     it vanishes in 3D; with no label the material list prints a key. Each
+     of those fails silently, so the table is checked against all of them. */
+  const BGm = require('../js/board-geom.js');
+  const b3 = fs.readFileSync(path.join(__dirname, '..', 'js', 'board3d.js'), 'utf8');
+  const i18n = grab('  var _i18n = {', '\n  function t(key)');
+  const glyphs = grab('  const TB_PROP_2D = ', '  /** The hex a prop row');
+  const builders = b3.slice(b3.indexOf('  const PROP_BUILD = {'), b3.indexOf('  /* `i` counts only'));
+  const placed = Object.keys(BGm.PROPS).filter((ty) => BGm.PROPS[ty].tool !== false);
+  const has = (key) => i18n.indexOf("'" + key + "':") !== -1;
+
+  it('each placeable type has a 2D glyph and a 3D builder', () => {
+    assert.ok(placed.length >= 9, 'expected the whole catalogue; got ' + placed.join(', '));
+    placed.forEach((ty) => {
+      assert.ok(new RegExp('\\n    ' + ty + ': \\{ vb:').test(glyphs), ty + ' has no 2D glyph');
+      assert.ok(new RegExp('\\n    ' + ty + '\\(d').test(builders), ty + ' has no 3D builder');
+    });
+  });
+
+  it('each type has its list label, its plurals and, if coloured, its gender', () => {
+    Object.keys(BGm.PROPS).forEach((ty) => {
+      ['mat.' + ty + 's', 'plan.n_' + ty, 'plan.n_' + ty + 's'].forEach((k) =>
+        assert.ok(has(k), 'missing ' + k));
+      if (BGm.PROPS[ty].colour) assert.ok(has('mat.' + ty + '_g'), 'missing mat.' + ty + '_g');
+      if (BGm.PROPS[ty].tool !== false) assert.ok(has('tactics.' + ty), 'missing tactics.' + ty);
+    });
+  });
+
+  it('a type that faces a way has a drawn depth; the size fields are metres', () => {
+    Object.keys(BGm.PROPS).forEach((ty) => {
+      const d = BGm.PROPS[ty];
+      ['w', 'd', 'h'].forEach((k) => assert.ok(d[k] > 0 && d[k] < 10, ty + '.' + k));
+      if (d.tool !== false) assert.ok(d.g > 0 && d.g < 10, ty + '.g');
+      if (d.rot) assert.ok(d.gd > 0, ty + ' rotates but has no gd');
+    });
+  });
+});
+
+describe('material — an animated board counts its busiest frame', () => {
+  it('an item that appears only in a later frame is still carried', () => {
+    const bb = { a: B({ props: [], frames: [{ props: [] }, { props: props(3, 'disc', 'groc') }] }) };
+    assert.deepStrictEqual(rows(H.planMaterial(plan([ex('a')]), (id) => bb[id] || null)),
+        ['disc|groc=3']);
+  });
+
+  it('the same items moved across frames are counted once, not per frame', () => {
+    const five = props(5, 'pole', 'groc');
+    const bb = { a: B({ props: five, frames: [{ props: five }, { props: five }] }) };
+    assert.deepStrictEqual(rows(H.planMaterial(plan([ex('a')]), (id) => bb[id] || null)),
+        ['pole|groc=5']);
+  });
+
+  it('applies to legacy cones too', () => {
+    const bb = { a: B({ cones: cones(2), frames: [{ cones: cones(2) }, { cones: cones(7) }] }) };
+    assert.strictEqual(H.planMaterial(plan([ex('a')]), (id) => bb[id] || null).cones, 7);
+  });
+
+  it('a frame without the key borrows the board, so adds nothing of its own', () => {
+    const bb = { a: B({ props: props(4, 'hoop', 'vermell'), frames: [{ positions: [] }] }) };
+    assert.deepStrictEqual(rows(H.planMaterial(plan([ex('a')]), (id) => bb[id] || null)),
+        ['hoop|vermell=4']);
   });
 });
 
@@ -883,7 +1016,7 @@ function renderers(opts) {
     return { renderStdPlanPanel, renderStdMaterialCard, bindStdPlan,
              bindStdPlanView, renderStdPrintSheet };`)(
       esc,
-      (k) => k,
+      o.t || ((k) => k),
       U.fillCss,
       () => o.canEdit !== false,
       () => o.trainings || [],
@@ -1058,6 +1191,44 @@ describe('the material card renders', () => {
     assert.ok(html.includes('stm-row-petos'), 'the swatch strip is the way in');
   });
 
+  it('one row per type and colour, the colour agreeing with the item', () => {
+    /* A small Catalan table, not the key echo: the point is that a
+       feminine item takes the feminine colour ("piques grogues") and a
+       masculine one does not ("cons grocs"). */
+    const CA = {
+      'mat.cones': 'Cons', 'mat.poles': 'Piques', 'mat.cone_g': 'm', 'mat.pole_g': 'f',
+      'mat.item_col': '{item} {col}',
+      'mat.col_groc_m': 'grocs', 'mat.col_groc_f': 'grogues',
+      'mat.col_taronja_m': 'taronja', 'mat.col_taronja_f': 'taronja'
+    };
+    const R = renderers({
+      t: (k) => (k in CA ? CA[k] : k),
+      boards: { a: { name: 'x', cones: cones(2), props: props(3, 'pole', 'groc') } }
+    });
+    const html = R.renderStdMaterialCard(withPlan(
+        { blocks: [{ id: 'b0', mins: 15, items: [ex('a')] }] }), squad, false, false);
+    assert.ok(/stm-lbl">Cons taronja<\/span><span class="stm-qty">2</.test(html), html);
+    assert.ok(/background:#ffd600"><\/span><span class="stm-lbl">Piques grogues<\/span><span class="stm-qty">3</.test(html), html);
+  });
+
+  it('the exercise note totals each type, without the colours', () => {
+    const R = renderers({
+      boards: { a: { name: 'x', cones: cones(2),
+        props: props(3, 'disc', 'groc').concat(props(2, 'disc', 'blau')) } }
+    });
+    const html = R.renderStdPlanPanel(withPlan(
+        { blocks: [{ id: 'b0', mins: 15, items: [ex('a')] }] }), false, []);
+    // The key echo proves which plural key was picked, and in which order.
+    assert.ok(/plan\.n_cones, plan\.n_discs/.test(html), 'cones then discs, plural');
+  });
+
+  it('prints each type and colour with its dot', () => {
+    const R = renderers({ boards: { a: { name: 'x', props: props(4, 'hoop', 'verd') } } });
+    const html = R.renderStdPrintSheet(withPlan(
+        { blocks: [{ id: 'b0', mins: 15, items: [ex('a')] }] }), []);
+    assert.ok(/prn-dot" style="background:#43a047"><\/span> mat\.item_col/.test(html), 'the green dot, then the row name');
+  });
+
   it('shows the cone count and one swatch per bib colour', () => {
     const R = renderers({
       boards: { a: { name: 'x', cones: cones(9), positions: [[1, 1], [2, 2]],
@@ -1065,7 +1236,9 @@ describe('the material card renders', () => {
     });
     const html = R.renderStdMaterialCard(withPlan(
         { blocks: [{ id: 'b0', mins: 15, items: [ex('a')] }] }), squad, false, false);
-    assert.ok(/mat\.cones<\/span><span class="stm-qty">9</.test(html));
+    // Legacy cones have no colour and are the historical orange.
+    assert.ok(/stm-dot" style="background:#ff8c00"><\/span><span class="stm-lbl">[^<]*<\/span><span class="stm-qty">9</.test(html),
+        'one orange-cone row of 9');
     assert.strictEqual((html.match(/data-stm-peto="/g) || []).length, 2);
     assert.ok(/stm-qty">1</.test(html), 'two colours means one set of bibs');
   });

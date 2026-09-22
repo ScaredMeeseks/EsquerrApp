@@ -128,6 +128,10 @@
        wherever it goes and the tail is the only position that does
        not also move every key after it. */
     e.oppFormation = store.getItem('fa_tactic_opp_formation') || '';
+    /* Material other than cones: [x, y, type, rotDeg, colour] rows
+       (board-state setProps, types in board-geom PROPS). At the tail,
+       for the same reason as everything above it. */
+    e.props = JSON.parse(store.getItem('fa_tactic_props') || '[]');
     return e;
   }
 

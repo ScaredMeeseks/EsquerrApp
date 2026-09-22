@@ -66,13 +66,13 @@ describe('playback does not restyle the board on every tick', () => {
        of nine sites is a board whose new players are drawn at the
        editor's 24px against a 300px miniature.
 
-       Nine sites: home circle, opposition circle, ball, the svg itself,
-       arrows, rects, a text label, pen lines, cones. Every one of them
-       either appends an element or rebuilds a layer wholesale. */
+       Ten sites: home circle, opposition circle, ball, the svg itself,
+       arrows, rects, a text label, pen lines, cones, props. Every one of
+       them either appends an element or rebuilds a layer wholesale. */
     const body = fn('interpolateRo');
     const n = (body.match(/roMade\s*=\s*true/g) || []).length;
-    assert.strictEqual(n, 9,
-        'expected nine creation branches to raise roMade, found ' + n);
+    assert.strictEqual(n, 10,
+        'expected ten creation branches to raise roMade, found ' + n);
   });
 
   it('interpolateRo never measures the board itself', () => {

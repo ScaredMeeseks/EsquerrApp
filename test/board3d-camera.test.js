@@ -36,7 +36,7 @@ before(async () => {
       grab('  function upFor(phi, theta) {', '  /* Scratch, reused') +
       grab('  const orientMatrix', '  function tweenCameraTo');
   api = new Function('THREE',
-      block + '\n; return {upFor, positionFor, quaternionFor};')(THREE);
+      block + '\n; return {upFor, positionFor, quaternionFor, orbitTheta};')(THREE);
 });
 
 /** Where a camera with this orientation actually points. */
@@ -46,6 +46,54 @@ const ANGLES = [];
 [1.4, 1.0, 0.6, 0.3, 0.05, 0.001].forEach((phi) => {
   [0, 1.2, -Math.PI / 2, Math.PI, 2.9].forEach((theta) => {
     ANGLES.push({phi, theta});
+  });
+});
+
+describe('orbiting away from the Top view does not flip the pitch', () => {
+  /* Reported from the app: Top view, then drag to spin the field, and the
+     picture jumped half a turn to its mirror before following the mouse.
+     Measured on the real orientation: the screen's up direction, projected
+     onto the turf, just before the drag (overhead) and one step into it
+     (the orbit clamp's phi 0.12). They must point the same way. */
+  const screenUp = (theta, phi) => {
+    const q = api.quaternionFor(theta, phi, 100, new THREE.Vector3());
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    return new THREE.Vector2(up.x, up.z).normalize();
+  };
+  const TOP = -Math.PI / 2;   // the Top preset's theta
+
+  it('keeps screen-up where it was, for the Top preset and any other theta', () => {
+    [TOP, 0, 1.2, Math.PI, 2.9].forEach((theta) => {
+      const before = screenUp(theta, 0);
+      const after = screenUp(api.orbitTheta(theta, 0), 0.12);
+      assert.ok(before.dot(after) > 0.99,
+          'theta ' + theta.toFixed(2) + ': screen-up turned ' +
+          (Math.acos(Math.max(-1, Math.min(1, before.dot(after)))) * 180 / Math.PI).toFixed(0) + '°');
+    });
+  });
+
+  it('without the correction the same step is the half-turn that was reported', () => {
+    // Pins the diagnosis, so a later change to upFor cannot make the
+    // correction silently wrong in the other direction.
+    assert.ok(screenUp(TOP, 0).dot(screenUp(TOP, 0.12)) < -0.99);
+  });
+
+  it('the orbit drag applies it BEFORE moving theta', () => {
+    /* The drag handler lives inside the mount closure, where no test can
+       call it, so this one reads the source — the maths is proven above;
+       this proves the drag actually goes through it, and in the order
+       that matters: correcting after the step would add π to a theta
+       that has already left the overhead view. */
+    const i = src.indexOf("if (mode === 'orbit') {");
+    const body = src.slice(i, i + 600);
+    const fix = body.indexOf('cam.theta = orbitTheta(cam.theta, cam.phi)');
+    const step = body.indexOf('cam.theta -=');
+    assert.ok(fix !== -1, 'the orbit drag no longer corrects theta off the Top view');
+    assert.ok(fix < step, 'theta must be corrected before the drag moves it');
+  });
+
+  it('leaves an orbit that is already off the vertical alone', () => {
+    [0.12, 0.6, 1.4].forEach((phi) => assert.strictEqual(api.orbitTheta(1.1, phi), 1.1));
   });
 });
 

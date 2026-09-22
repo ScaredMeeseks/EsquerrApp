@@ -289,6 +289,24 @@ describe('stdSelect — closing', () => {
     assert.strictEqual(s.shown(), 'none', 'an inner pane must still close it');
   });
 
+  it('stays open while its OWN list is scrolled', () => {
+    /* Reported: the training-intensity picker could not be used, because
+       its eleven options scroll and the capture listener above caught the
+       menu's own scroll — wheel or scrollbar — and shut it on the first
+       move. The lower intensities were unreachable. */
+    const many = Array.from({length: 11}, (_, i) => ({value: String(i), label: 'RPE ' + i}));
+    const s = mount({kind: 'k', cls: 'std-sel-esc', value: '0', options: many});
+    const seen = [];
+    s.api.bindStdSelects('k', function (root, v) { seen.push(v); });
+    s.click(s.trigger);
+    s.menu.dispatchEvent(new s.win.Event('scroll'));
+    assert.strictEqual(s.shown(), 'block', 'scrolling the list must not close it');
+    // And a choice at the bottom of the list, reached by that scroll, lands.
+    s.click(s.menu.querySelector('[data-v="10"]'));
+    assert.deepStrictEqual(seen, ['10']);
+    assert.strictEqual(s.root.dataset.value, '10');
+  });
+
   it('closes on resize', () => {
     const s = mount({kind: 'k', cls: 'std-sel-esc', value: 'amateur', options: OPTS});
     s.api.bindStdSelects('k', function () {});

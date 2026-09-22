@@ -698,15 +698,254 @@ export function createBoard3D(opts) {
     objects.push({mesh, kind: 'balls', index: i});
   }
 
+  /* A training cone as they are made: a SQUARE base plate, OBJ.cone
+     across, with the cone standing on it — its round foot a little
+     narrower than the plate, its tip cut off. It was a bare ConeGeometry,
+     which read as a traffic cone with no base. The registered mesh is the
+     cone itself (origin at the turf) and the plate its child, so the
+     picker, which is non-recursive for cones, still hits the part a coach
+     aims at. */
+  const CONE_PLATE_H = 0.03;
   function addCone(i, pct) {
     const w = BG.toWorld(pct[0], pct[1], getPitch(), getBoardType());
-    const mesh = new THREE.Mesh(
-        new THREE.ConeGeometry(CONE_R, CONE_H, 12),
-        new THREE.MeshLambertMaterial({color: 0xff8c00}));
-    mesh.position.set(w.x, CONE_H / 2, w.z);
+    const body = new THREE.CylinderGeometry(0.035, CONE_R * 0.8, CONE_H - CONE_PLATE_H, 20);
+    body.translate(0, CONE_PLATE_H + (CONE_H - CONE_PLATE_H) / 2, 0);
+    const mesh = new THREE.Mesh(body, new THREE.MeshLambertMaterial({color: 0xff8c00}));
+    const plateGeo = new THREE.BoxGeometry(CONE_R * 2, CONE_PLATE_H, CONE_R * 2);
+    plateGeo.translate(0, CONE_PLATE_H / 2, 0);
+    const plate = new THREE.Mesh(plateGeo, new THREE.MeshLambertMaterial({color: 0xe07400}));
+    plate.castShadow = true;
+    mesh.add(plate);
+    mesh.position.set(w.x, 0, w.z);
     mesh.castShadow = true;
     objectRoot.add(mesh);
     objects.push({mesh, kind: 'cones', index: i});
+  }
+
+  /* ── Material props ───────────────────────────────────────────
+     One builder per type, sized from BG.PROPS — the table the 2D board
+     and the material count read. Each returns an Object3D whose origin
+     sits on the turf at the item's point, width along x and FACING +z
+     (down the board, as in 2D), so rotation.y turns it about its foot.
+     They may be groups: props are registered `deep` and pick() raycasts
+     into them. */
+  const lambert = (col, extra) => new THREE.MeshLambertMaterial(Object.assign({color: col}, extra || {}));
+  const shade = (col, k) => col.clone().multiplyScalar(k);
+  const WHITE = new THREE.Color(0xf2f2f2);
+  /** A box of size (sx, sy, sz) whose BASE centre is at (x, y, z). */
+  function part(sx, sy, sz, x, y, z, mat) {
+    const g = new THREE.BoxGeometry(sx, sy, sz);
+    g.translate(x, y + sy / 2, z);
+    return new THREE.Mesh(g, mat);
+  }
+  /** A round bar from a to b (Vector3s), radius r. */
+  function bar(a, b, r, mat) {
+    const len = a.distanceTo(b);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8), mat);
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3().subVectors(b, a).normalize());
+    return m;
+  }
+  /* An invisible slab over the item's footprint, so a hoop or a ladder —
+     mostly air from above — can be grabbed anywhere inside its outline. */
+  function hitPad(w, d) {
+    const m = part(w, 0.04, d, 0, 0, 0,
+        new THREE.MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false}));
+    m.userData.pad = true;
+    return m;
+  }
+  function netMat() {
+    return new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.22,
+      side: THREE.DoubleSide, depthWrite: false});
+  }
+  /** A goal frame: mouth at the front (+z), net sloping to a low back. */
+  function goalFrame(d, postR) {
+    const g = new THREE.Group();
+    const m = lambert(WHITE);
+    const hw = d.w / 2, f = d.d / 2, b = -d.d / 2, bh = d.h * 0.45;
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    [[V(-hw, 0, f), V(-hw, d.h, f)], [V(hw, 0, f), V(hw, d.h, f)],     // posts
+     [V(-hw, d.h, f), V(hw, d.h, f)],                                   // crossbar
+     [V(-hw, 0, b), V(hw, 0, b)], [V(-hw, 0, f), V(-hw, 0, b)],         // ground frame
+     [V(hw, 0, f), V(hw, 0, b)],
+     [V(-hw, 0, b), V(-hw, bh, b)], [V(hw, 0, b), V(hw, bh, b)],        // back uprights
+     [V(-hw, bh, b), V(hw, bh, b)],
+     [V(-hw, d.h, f), V(-hw, bh, b)], [V(hw, d.h, f), V(hw, bh, b)]     // roof bars
+    ].forEach(([a, c]) => g.add(bar(a, c, postR, m)));
+    // The net: roof, back and the two sides, as see-through panels.
+    const net = netMat();
+    const quad = (pts) => {
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      geo.setIndex([0, 1, 2, 0, 2, 3]);
+      geo.computeVertexNormals();
+      return new THREE.Mesh(geo, net);
+    };
+    g.add(quad([V(-hw, d.h, f), V(hw, d.h, f), V(hw, bh, b), V(-hw, bh, b)]));
+    g.add(quad([V(-hw, bh, b), V(hw, bh, b), V(hw, 0, b), V(-hw, 0, b)]));
+    [-hw, hw].forEach((x) => g.add(quad([V(x, 0, f), V(x, d.h, f), V(x, bh, b), V(x, 0, b)])));
+    return g;
+  }
+
+  const PROP_BUILD = {
+    disc(d, col) {
+      /* A saucer, turned from a profile: a wide foot rising to a low dome
+         with a SMALL hole on top — the real ones have a few centimetres.
+         A darker rim round the foot gives it an outline on any turf. */
+      const r = d.w / 2;
+      const prof = [[0.045, d.h * 0.8], [0.062, d.h], [r * 0.5, d.h * 0.92],
+        [r * 0.85, d.h * 0.4], [r, 0.004], [r, 0]].map(([x, y]) => new THREE.Vector2(x, y));
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new THREE.LatheGeometry(prof, 28), lambert(col, {side: THREE.DoubleSide})));
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 6, 36), lambert(shade(col, 0.45)));
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = 0.01;
+      g.add(rim);
+      return g;
+    },
+    pole(d, col) {
+      const g = new THREE.Group();
+      g.add(part(0.3, 0.035, 0.3, 0, 0, 0, lambert(0x333333)));   // the weighted foot
+      const shaft = new THREE.CylinderGeometry(d.w / 2, d.w / 2, d.h, 10);
+      shaft.translate(0, d.h / 2, 0);
+      g.add(new THREE.Mesh(shaft, lambert(col)));
+      return g;
+    },
+    hoop(d, col) {
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(d.w / 2, 0.02, 8, 40), lambert(col));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.02;
+      g.add(ring, hitPad(d.w, d.w));
+      return g;
+    },
+    hurdle(d, col) {
+      /* The low agility hurdle: ONE bent tube. Each foot lies along the
+         turf running back from the hurdle, bends up into a leg with a
+         slight S in it, and rounds over into the top bar — both feet
+         point the same way, so it stands on the ground like the real
+         thing. A Catmull-Rom curve through the bends, swept into a tube.
+         The ends are capped with a sliver of cylinder, not a sphere: the
+         only sphere in the scene is the ball. */
+      const t = 0.012, r = d.w / 2, zL = d.d / 2 - 0.02, back = -d.d / 2;
+      const V = (x, y, z) => new THREE.Vector3(x, y, z);
+      const side = (s) => [
+        V(s * r, t, back), V(s * r, t, zL - 0.05),        // the foot
+        V(s * r, t + 0.025, zL),                          // bending up
+        V(s * r * 0.93, d.h * 0.42, zL),                  // the S, in…
+        V(s * r, d.h * 0.78, zL),                         // …and out
+        V(s * r * 0.84, d.h, zL)                          // into the corner
+      ];
+      const pts = side(-1).concat(side(1).reverse());
+      const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+      const m = lambert(col);
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 160, t, 10, false), m));
+      [-1, 1].forEach((s) => g.add(bar(V(s * r, t, back), V(s * r, t, back - 0.002), t, m)));
+      return g;
+    },
+    hurdlehi(d, col) {
+      /* The athletics hurdle: a striped board across two uprights, each on
+         an L-shaped foot running back from the board. The board faces +z,
+         so the feet point away from the athlete's approach. */
+      const g = new THREE.Group();
+      const metal = lambert(0xb8b8b8);
+      const hw = d.w / 2, front = d.d / 2, back = -d.d / 2;
+      const V = (x, y, z) => new THREE.Vector3(x, y, z);
+      [-1, 1].forEach((s) => {
+        const x = s * (hw - 0.03);
+        g.add(bar(V(x, 0.02, front), V(x, d.h, front), 0.018, metal));    // upright
+        g.add(bar(V(x, 0.02, front), V(x, 0.02, back), 0.02, metal));      // foot
+      });
+      const boardH = 0.07;
+      g.add(part(d.w, boardH, 0.02, 0, d.h - boardH, front, lambert(col)));
+      // The black bands, on the front face of the board.
+      const band = lambert(0x1a1a1a);
+      [-0.36, -0.12, 0.12, 0.36].forEach((f) =>
+        g.add(part(d.w * 0.1, boardH + 0.002, 0.022, f * d.w, d.h - boardH - 0.001, front, band)));
+      return g;
+    },
+    ladder(d, col) {
+      const g = new THREE.Group();
+      const m = lambert(col);
+      [-1, 1].forEach((s) => g.add(part(d.w, 0.012, 0.035, 0, 0, s * d.d / 2, m)));
+      for (let k = 0; k <= 8; k++) g.add(part(0.03, 0.012, d.d, -d.w / 2 + k * d.w / 8, 0, 0, m));
+      g.add(hitPad(d.w, d.d));
+      return g;
+    },
+    dummy(d, col) {
+      /* A free-kick mannequin as they are made: a moulded human
+         SILHOUETTE — head, neck, shoulders, torso, two legs — a few
+         centimetres thick, on a spike and a weighted base. Extruded from
+         a front-view outline in metres, scaled to the table's width and
+         height, and facing +z like every prop. Not a sphere for the head:
+         the only sphere in the scene is the ball. */
+      const S = d.h / 1.8, sx = d.w / 0.5;
+      const P = (x, y) => [x * sx, 0.06 + y * S];
+      const right = [
+        [0.05, 0], [0.14, 0], [0.16, 0.42], [0.165, 0.80], [0.175, 0.92],
+        [0.155, 1.05], [0.17, 1.18], [0.215, 1.34], [0.245, 1.42],
+        [0.235, 1.47], [0.19, 1.50], [0.07, 1.53], [0.058, 1.585]];
+      const sh = new THREE.Shape();
+      sh.moveTo(...P(0.035, 0.72));                   // the crotch, between the legs
+      right.forEach(([x, y]) => sh.lineTo(...P(x, y)));
+      // The head: an arc from the right of the neck, over the top, to the left.
+      const hy = 0.06 + 1.69 * S, hr = 0.11 * S, a0 = Math.asin((1.585 - 1.69) / 0.11);
+      sh.absarc(0, hy, hr, a0, Math.PI - a0, false);
+      right.slice().reverse().forEach(([x, y]) => sh.lineTo(...P(-x, y)));
+      sh.lineTo(...P(-0.035, 0.72));
+      sh.closePath();
+      const t = 0.045;
+      const body = new THREE.ExtrudeGeometry(sh, {depth: t, bevelEnabled: true,
+        bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 2, curveSegments: 10});
+      body.translate(0, 0, -t / 2);
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(body, lambert(col)));
+      g.add(part(0.5 * sx, 0.04, d.d, 0, 0, 0, lambert(0x2b2b2b)));   // weighted base
+      g.add(part(0.03, 0.06, 0.03, 0, 0.04, 0, lambert(0x777777)));  // the spike
+      return g;
+    },
+    minigoal(d) { return goalFrame(d, 0.025); },
+    goal7(d) { return goalFrame(d, 0.05); },
+    goal11(d) { return goalFrame(d, 0.06); },
+    rebounder(d) {
+      /* A net on a frame, leaning back from its front edge, on two legs. */
+      const g = new THREE.Group();
+      const m = lambert(WHITE);
+      const V = (x, y, z) => new THREE.Vector3(x, y, z);
+      const hw = d.w / 2, f = d.d / 2, lean = -d.d / 2;
+      const tl = V(-hw, d.h, lean), tr = V(hw, d.h, lean), bl = V(-hw, 0.05, f), br = V(hw, 0.05, f);
+      [[bl, br], [tl, tr], [bl, tl], [br, tr],
+       [tl, V(-hw, 0, lean - 0.25)], [tr, V(hw, 0, lean - 0.25)]]
+        .forEach(([a, c]) => g.add(bar(a, c, 0.02, m)));
+      const geo = new THREE.BufferGeometry().setFromPoints([bl, br, tr, tl]);
+      geo.setIndex([0, 1, 2, 0, 2, 3]);
+      geo.computeVertexNormals();
+      g.add(new THREE.Mesh(geo, netMat()));
+      return g;
+    }
+  };
+
+  /* `i` counts only the props that are DRAWN — the 2D board skips
+     deleted slots and types it cannot draw, and app.js addresses a prop
+     by its position among the drawn ones. */
+  function addProp(i, p) {
+    const d = BG.PROPS[p[2]];
+    const build = d && PROP_BUILD[p[2]];
+    if (!build) return false;
+    const hex = d.colour ? (BG.PROP_COLOURS[p[4]] || BG.PROP_COLOURS[d.def]) : '#f2f2f2';
+    const mesh = build(d, new THREE.Color(hex));
+    const w = BG.toWorld(p[0], p[1], getPitch(), getBoardType());
+    mesh.position.set(w.x, 0, w.z);
+    /* Stored rotation is clockwise on the board, whose +y is world +z;
+       three.js turns +x towards -z for a positive y rotation, hence the
+       sign. No board type needs an offset here: stored coordinates are
+       already in the board's own axes, which are the world's. */
+    mesh.rotation.y = -((Number(p[3]) || 0) * Math.PI / 180);
+    mesh.traverse((o) => { if (o.isMesh && !o.userData.pad) o.castShadow = true; });
+    objectRoot.add(mesh);
+    objects.push({mesh, kind: 'props', index: i, size: Math.max(d.w, d.d), deep: true});
+    return true;
   }
 
   /** Arrows: a flat shaft on the turf plus a cone head. */
@@ -1362,6 +1601,8 @@ export function createBoard3D(opts) {
     }
     (s.balls || []).forEach((b, i) => { if (b) addBall(i, b); });
     (s.cones || []).forEach((c, i) => { if (c) addCone(i, c); });
+    let pi = 0;
+    (s.props || []).forEach((p) => { if (p && addProp(pi, p)) pi++; });
     (s.rects || []).forEach(addRect);
     (s.arrows || []).forEach(addArrow);
     (s.penLines || []).forEach(addPenLine);
@@ -1608,6 +1849,23 @@ export function createBoard3D(opts) {
     return phi < 0.02
       ? new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta))
       : new THREE.Vector3(0, 1, 0);
+  }
+
+  /**
+   * The theta an orbit must continue from when it starts OVERHEAD.
+   *
+   * Overhead, upFor() makes screen-up the direction (cos θ, sin θ) —
+   * the board's top edge for the Top preset. One pixel into the drag the
+   * orbit clamp lifts phi past the switch and screen-up becomes world-up,
+   * which from above reads as the direction from the camera to the
+   * target: (−cos θ, −sin θ). The same θ therefore means the OPPOSITE
+   * screen-up on the two sides of the switch, and the pitch flipped half
+   * a turn the instant a coach tried to spin it from the Top view.
+   * Adding π makes the two agree, so the orbit carries on from the
+   * picture that was on screen. Away from overhead, θ is left alone.
+   */
+  function orbitTheta(theta, phi) {
+    return phi < 0.02 ? theta + Math.PI : theta;
   }
 
   /** Where the camera sits for a given orbit angle. */
@@ -1975,9 +2233,23 @@ export function createBoard3D(opts) {
        `includeLines` still gates the trajectory pick-LINES, which
        take right-clicks and are not draggable. */
     const pool = objects.filter((o) => o.mesh.visible);
-    const hits = ray.intersectObjects(pool.map((o) => o.mesh), false);
-    if (!hits.length) return null;
-    return objects.find((o) => o.mesh === hits[0].object) || null;
+    /* Props are GROUPS — a goal is posts and a bar, a cone is a cone on a
+       plate — so they are raycast into (`deep`), and a hit on a part is
+       walked up to the root that was registered. Everything else stays
+       non-recursive exactly as before: nothing else was built expecting a
+       child to be pickable. */
+    const flat = pool.filter((o) => !o.deep).map((o) => o.mesh);
+    const deep = pool.filter((o) => o.deep).map((o) => o.mesh);
+    const hits = ray.intersectObjects(flat, false)
+        .concat(deep.length ? ray.intersectObjects(deep, true) : [])
+        .sort((a, b) => a.distance - b.distance);
+    for (const h of hits) {
+      for (let n = h.object; n; n = n.parent) {
+        const o = objects.find((x) => x.mesh === n);
+        if (o) return o;
+      }
+    }
+    return null;
   }
 
   /* Which of the ball's two handles is currently grabbable.
@@ -2013,7 +2285,7 @@ export function createBoard3D(opts) {
   selRing.visible = false;
   scene.add(selRing);
 
-  const SELECTABLE = ['positions', 'oppPositions', 'balls', 'cones'];
+  const SELECTABLE = ['positions', 'oppPositions', 'balls', 'cones', 'props'];
   /* Drawn marks. Right-clickable, not selectable and not draggable —
      see pick(). The names match the state keys app.js reads. */
   const MARK_KINDS = ['rects', 'arrows', 'penLines', 'texts'];
@@ -2029,7 +2301,11 @@ export function createBoard3D(opts) {
     if (!selected) { selRing.visible = false; invalidate(); return; }
     const o = objects.find((x) => x.kind === selected.kind && x.index === selected.index);
     if (!o) { selRing.visible = false; invalidate(); return; }
-    const r = selected.kind === 'balls' ? BALL_R * 2.2 : PLAYER_R * 1.35;
+    // A prop's ring hugs its footprint, with a floor so a 20 cm disc's
+    // ring is still visible from the default camera.
+    const r = selected.kind === 'balls' ? BALL_R * 2.2
+      : selected.kind === 'props' ? Math.max(0.45, (o.size || 0) * 0.75)
+      : PLAYER_R * 1.35;
     selRing.scale.set(r, r, 1);
     selRing.position.set(o.mesh.position.x, 0.07, o.mesh.position.z);
     selRing.visible = true;
@@ -2248,6 +2524,8 @@ export function createBoard3D(opts) {
       return;
     }
     if (mode === 'orbit') {
+      // Leaving the overhead view without flipping it — see orbitTheta.
+      cam.theta = orbitTheta(cam.theta, cam.phi);
       cam.theta -= (ev.clientX - last.x) * 0.006;
       cam.phi -= (ev.clientY - last.y) * 0.006;
       /* Never under the turf, never exactly overhead: at phi = 0 the

@@ -52,15 +52,19 @@ function esc(v) {
 
 function n(k) { return Array.from({ length: k }, (_, i) => [i * 3, i * 2]); }
 function pts(k) { return Array.from({ length: k }, (_, i) => [10 + i * 8, 20 + i * 6]); }
+/** k material props of one type and colour — [x, y, type, rotDeg, colour]. */
+function props(k, type, colour) { return Array.from({ length: k }, (_, i) => [i * 4, 60, type, 0, colour]); }
 
 const BOARDS = {
   tb_warm: {
     name: 'Escalfament + rondo 5v2', cones: n(12), balls: [[50, 50], [20, 20]],
+    props: props(6, 'hoop', 'vermell'),
     positions: pts(7), numbers: ['4', '6', '8', '10', '11', '9', '7'],
     colors: null, teamColor: '#ffffff', showOpp: false
   },
   tb_press: {
     name: 'Pressió alta 6v6', cones: n(8), balls: [[40, 40]],
+    props: props(8, 'disc', 'groc').concat(props(4, 'disc', 'vermell')),
     positions: pts(6), numbers: ['1', '4', '6', '8', '10', '9'],
     colors: ['#f5c842', '#e53935', '#e53935', '#e53935', '#e53935', '#e53935'],
     teamColor: '#e53935',
@@ -69,6 +73,7 @@ const BOARDS = {
   },
   tb_sortida: {
     name: 'Sortida de pilota 4+2', cones: n(12), balls: [[30, 50]],
+    props: props(6, 'pole', 'blau').concat(props(4, 'disc', 'groc')),
     positions: pts(6), numbers: ['1', '2', '4', '5', '6', '8'],
     colors: null, teamColor: '#43a047', showOpp: false
   },
@@ -212,7 +217,7 @@ const R = new Function(
     'document', '_ntPersistSession', 'detailTrainingId', 'tbRoBoardHtml',
     'hydrateRoBoards', 'scaleRoBoards', 'bindRoBoardAnimations',
     'requestAnimationFrame', 'sessionWindow', 'minsToHHMM', 'computeReadiness',
-    'posRankGlobal', 'posCirclesHtmlGlobal', 'trainingTeams', `
+    'posRankGlobal', 'posCirclesHtmlGlobal', 'trainingTeams', 'BG', `
   ${code}
   return { renderStdPlanPanel, renderStdMaterialCard, renderStdTeamsBlock,
            buildDetailBar, stdSelect, sessionWeatherHtml,
@@ -243,7 +248,9 @@ const R = new Function(
     () => ({ hasData: false }),
     () => 0,
     (p) => posCircles(p),
-    (row) => (row && row.teams) || ['A', 'B']);
+    (row) => (row && row.teams) || ['A', 'B'],
+    // The real item table: the material list is keyed on it.
+    require(path.join(ROOT, 'js', 'board-geom.js')));
 
 // ── Page chrome, from the real class names ──────────────────────
 
@@ -393,6 +400,7 @@ ${page}
 
 fs.writeFileSync(OUT, html, 'utf8');
 console.log('wrote ' + OUT + ' (' + Math.round(html.length / 1024) + ' KB)');
+console.log('items: ' + mat.items.map((it) => it.type + '|' + it.colour + '=' + it.qty).join(' '));
 console.log('material: cones=' + mat.cones + ' balls=' + mat.balls +
     ' petos=' + mat.petos + ' colours=' + mat.colors.length +
     ' priced=' + mat.priced + ' unknown=' + mat.unknown +

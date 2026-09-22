@@ -1329,7 +1329,8 @@ tr:hover td { background: #f7f8fa; }
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-arrows-svg,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-circle,
 .tb-field.tb-draw-surface > .tb-field-inner > .tb-ball,
-.tb-field.tb-draw-surface > .tb-field-inner > .tb-cone { display:block !important; }
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-cone,
+.tb-field.tb-draw-surface > .tb-field-inner > .tb-prop { display:block !important; }
 
 /* Mark strokes scale with the pitch on the overlay.
    vector-effect:non-scaling-stroke pins a stroke to DEVICE pixels,
@@ -1553,17 +1554,76 @@ tr:hover td { background: #f7f8fa; }
 .tb-ball.tb-dragging { cursor:grabbing; filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); z-index:10; }
 
 /* Cones */
+/* A training cone seen from the side: a SQUARE base plate, and the cone
+   standing on it with its round foot a little narrower than the plate and
+   its tip cut off, as the real ones are. It was a bare CSS-border triangle,
+   which read as a road sign. OBJ.cone (0.50 m) wide and tall, and
+   anchored at the BASE (translate -100%), so the stored point is where
+   the cone stands. */
 .tb-cone {
-  position:absolute; width:0; height:0;
-  border-left:max(5px, calc(var(--tb-ppm, 7.81px) * 0.35)) solid transparent;
-  border-right:max(5px, calc(var(--tb-ppm, 7.81px) * 0.35)) solid transparent;
-  border-bottom:max(10px, calc(var(--tb-ppm, 7.81px) * 0.70)) solid #ff8c00;
+  position:absolute;
+  width:max(7px, calc(var(--tb-ppm, 7.81px) * 0.50));
+  height:max(7px, calc(var(--tb-ppm, 7.81px) * 0.50));
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10.2 1.5h3.6l5.7 19H4.5z' fill='%23ff8c00' stroke='%23a85800' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M10.9 3.2h1.2l-3.3 16.1H7.2z' fill='%23fff' fill-opacity='.35'/%3E%3Crect x='0.6' y='20' width='22.8' height='3.4' rx='0.8' fill='%23f07f00' stroke='%23a85800' stroke-width='1.1'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
   transform:translate(-50%,-100%); cursor:grab; z-index:3;
   touch-action:none;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));
 }
 .tb-cone.tb-dragging { cursor:grabbing; filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); z-index:10; }
 .tb-cone:hover { filter:drop-shadow(0 0 4px var(--primary)); }
+/* Material props (discs, poles, hoops…), drawn from above and centred on
+   their point. --pw is the DRAWN width in metres (BG.PROPS `g`), so the
+   prop scales with --tb-ppm like a player does — including every frame
+   the 3D overlay zooms. --pf is only a small backstop; see TB_PROP_FLOOR
+   for why a large one froze the size. Colour is currentColor, set inline
+   from the fixed palette. */
+.tb-prop {
+  position:absolute; z-index:3; touch-action:none; cursor:grab;
+  width:max(3px, var(--pf, 3px), calc(var(--tb-ppm, 7.81px) * var(--pw, 0.5)));
+  height:max(3px, var(--pf, 3px), calc(var(--tb-ppm, 7.81px) * var(--ph, 0.5)));
+  /* --pr is the DISPLAY rotation (tbPropHtml); the item turns about its
+     own centre, which is its stored point. */
+  transform:translate(-50%,-50%) rotate(var(--pr, 0deg));
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));
+}
+.tb-prop > svg { display:block; width:100%; height:100%; overflow:visible; }
+/* The rotation handle: a knob on a short stem off the item's back edge.
+   Fixed pixels, not metres — it is a control, and must stay grabbable on
+   a 12 px hurdle. Shown on the hovered, selected, last-touched or turning
+   item only, so a board full of goals is not a board full of knobs. */
+.tb-prop-rot {
+  display:none; position:absolute; left:50%; top:-16px;
+  width:11px; height:11px; margin-left:-5.5px; box-sizing:border-box;
+  border-radius:50%; background:#fff; border:2px solid var(--primary, #1e88e5);
+  cursor:grab; touch-action:none; z-index:1;
+}
+.tb-prop-rot::after {
+  content:''; position:absolute; left:50%; top:100%;
+  width:2px; height:6px; margin-left:-1px; background:#fff;
+}
+.tb-prop:hover > .tb-prop-rot,
+.tb-prop.tb-selected > .tb-prop-rot,
+.tb-prop.tb-prop-active > .tb-prop-rot,
+.tb-prop.tb-rotating > .tb-prop-rot { display:block; }
+.tb-prop.tb-rotating > .tb-prop-rot { cursor:grabbing; }
+/* On a turf-coloured chip: the goals and the rebounder are drawn white,
+   which on the card-white button would be invisible. */
+.tb-prop-tool svg { background:#2e7d32; border-radius:3px; padding:1px; }
+.tb-cone-tool.tb-prop-tool { width:auto; min-width:32px; padding:0 4px; }
+.tb-prop.tb-dragging { cursor:grabbing; filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); z-index:10; }
+.tb-prop:hover { filter:drop-shadow(0 0 4px var(--primary)); }
+.tb-prop-tools { display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.tb-prop-colours { display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.tb-prop-sw {
+  width:18px; height:18px; flex:none; border-radius:50%; cursor:pointer;
+  border:none; padding:0; box-shadow:0 0 0 1px rgba(0,0,0,.3);
+}
+.tb-prop-sw-on { box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--primary); }
+/* Kit colours before a colour picker — the same swatch as the material
+   palette, six to a row so twelve make two tidy rows in a menu. */
+.tb-kit-sws { display:inline-grid; grid-template-columns:repeat(6, 18px); gap:6px; padding:3px; vertical-align:middle; }
+.tb-ctx-kit-row { cursor:default; }
+.tb-m-kit-opts .tb-kit-sws { margin-right:6px; }
 .tb-cone-tool {
   width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;
   border-radius:8px; border:1.5px solid var(--border); background:var(--card);
@@ -2786,6 +2846,12 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .stm-lbl { flex:1; min-width:0; font-size:14px; }
 .stm-lbl-tight { flex:none; }
+/* The colour of a material row ("Cons grocs"). Not a button, unlike
+   .stm-swatch: the colour comes from the boards, not from here. */
+.stm-dot {
+  width:10px; height:10px; flex:none; border-radius:50%;
+  box-shadow:0 0 0 1px rgba(45,41,38,.22);
+}
 .stm-spacer { flex:1; }
 .stm-qty { font-size:17px; font-variant-numeric:tabular-nums; }
 .stm-x {
@@ -4178,8 +4244,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
     font-size: 9px;
   }
   .tb-field:not(.tb-field-readonly) .tb-cone {
-    border-left-width: 4px; border-right-width: 4px;
-    border-bottom-width: 8px;
+    width: 7px; height: 7px;
   }
   /* ⚠ NO font-size HERE ANY MORE. A fixed 8px overrode the metric size
      on every phone, which is the bug this round removed — the label is

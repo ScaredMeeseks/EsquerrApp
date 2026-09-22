@@ -75,7 +75,8 @@ describe('an object is the same size in both views', () => {
   it('3D is the reference scale, as decided', () => {
     assert.strictEqual(BG.OBJ.player, 1.80);
     assert.strictEqual(BG.OBJ.ball, 0.50);
-    assert.strictEqual(BG.OBJ.cone, 0.70);
+    // Made smaller on request: a training cone, not a traffic cone.
+    assert.strictEqual(BG.OBJ.cone, 0.50);
   });
 
   it('the 2D board asks for the table\'s metres, not pixels', () => {

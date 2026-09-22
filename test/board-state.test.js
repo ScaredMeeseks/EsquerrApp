@@ -256,6 +256,39 @@ describe('app.js actually uses it', () => {
   });
 });
 
+describe('props — material rows keep what they are', () => {
+  it('setProps rounds the point and keeps type, rotation and colour', () => {
+    const s = {};
+    BS.setProps(store(s), [[10.123, 20.987, 'disc', 0, 'groc'], null,
+      [1, 2, 'pole', 45.4, 'blau']]);
+    assert.deepStrictEqual(JSON.parse(s[BS.KEYS.props]),
+        [[10.12, 20.99, 'disc', 0, 'groc'], null, [1, 2, 'pole', 45, 'blau']]);
+  });
+
+  it('normalises rotation into [0, 360)', () => {
+    assert.strictEqual(BS.propRow([0, 0, 'hoop', 405, ''])[3], 45);
+    assert.strictEqual(BS.propRow([0, 0, 'hoop', -90, ''])[3], 270);
+    assert.strictEqual(BS.propRow([0, 0, 'hoop', undefined, ''])[3], 0);
+  });
+
+  it('is its own key, not the cones one', () => {
+    assert.strictEqual(BS.KEYS.props, 'fa_tactic_props');
+  });
+
+  it('tweens the position and takes the item from the target frame', () => {
+    const out = BS.tweenFrame(
+        {props: [[0, 0, 'disc', 0, 'groc']]},
+        {props: [[10, 20, 'disc', 90, 'blau'], [5, 5, 'pole', 0, 'verd']]}, 0.5).props;
+    assert.deepStrictEqual(out, [[5, 10, 'disc', 90, 'blau'], [5, 5, 'pole', 0, 'verd']]);
+  });
+
+  it('a prop missing from the target is gone', () => {
+    // A null slot, like every point track: indices are never compacted.
+    const out = BS.tweenFrame({props: [[0, 0, 'disc', 0, 'groc']]}, {props: []}, 0.5).props;
+    assert.deepStrictEqual(out, [null]);
+  });
+});
+
 describe('tweenFrame — the v91 rule, stated once', () => {
   const from = {
     positions: [[0, 0]], colors: ['#aaa'], oppColors: ['#bbb'],

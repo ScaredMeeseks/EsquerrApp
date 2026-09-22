@@ -1120,6 +1120,28 @@
     'plan.ex_n':         { ca:'{n} exercicis', es:'{n} ejercicios', en:'{n} exercises' },
     'plan.n_cone':       { ca:'1 con', es:'1 cono', en:'1 cone' },
     'plan.n_cones':      { ca:'{n} cons', es:'{n} conos', en:'{n} cones' },
+    'plan.n_disc':       { ca:'1 platet', es:'1 platillo', en:'1 disc' },
+    'plan.n_discs':      { ca:'{n} platets', es:'{n} platillos', en:'{n} discs' },
+    'plan.n_pole':       { ca:'1 pica', es:'1 pica', en:'1 pole' },
+    'plan.n_poles':      { ca:'{n} piques', es:'{n} picas', en:'{n} poles' },
+    'plan.n_hoop':       { ca:'1 anella', es:'1 aro', en:'1 hoop' },
+    'plan.n_hoops':      { ca:'{n} anelles', es:'{n} aros', en:'{n} hoops' },
+    'plan.n_hurdle':     { ca:'1 tanca baixa', es:'1 valla baja', en:'1 low hurdle' },
+    'plan.n_hurdles':    { ca:'{n} tanques baixes', es:'{n} vallas bajas', en:'{n} low hurdles' },
+    'plan.n_hurdlehi':   { ca:'1 tanca alta', es:'1 valla alta', en:'1 tall hurdle' },
+    'plan.n_hurdlehis':  { ca:'{n} tanques altes', es:'{n} vallas altas', en:'{n} tall hurdles' },
+    'plan.n_goal11':     { ca:'1 porteria F11', es:'1 portería F11', en:'1 11-a-side goal' },
+    'plan.n_goal11s':    { ca:'{n} porteries F11', es:'{n} porterías F11', en:'{n} 11-a-side goals' },
+    'plan.n_ladder':     { ca:"1 escala d'agilitat", es:'1 escalera de agilidad', en:'1 agility ladder' },
+    'plan.n_ladders':    { ca:"{n} escales d'agilitat", es:'{n} escaleras de agilidad', en:'{n} agility ladders' },
+    'plan.n_dummy':      { ca:'1 maniquí', es:'1 maniquí', en:'1 mannequin' },
+    'plan.n_dummys':     { ca:'{n} maniquins', es:'{n} maniquíes', en:'{n} mannequins' },
+    'plan.n_minigoal':   { ca:'1 miniporteria', es:'1 miniportería', en:'1 mini goal' },
+    'plan.n_minigoals':  { ca:'{n} miniporteries', es:'{n} miniporterías', en:'{n} mini goals' },
+    'plan.n_goal7':      { ca:'1 porteria F7', es:'1 portería F7', en:'1 7-a-side goal' },
+    'plan.n_goal7s':     { ca:'{n} porteries F7', es:'{n} porterías F7', en:'{n} 7-a-side goals' },
+    'plan.n_rebounder':  { ca:'1 rebotador', es:'1 rebotador', en:'1 rebounder' },
+    'plan.n_rebounders': { ca:'{n} rebotadors', es:'{n} rebotadores', en:'{n} rebounders' },
     'plan.n_ball':       { ca:'1 pilota', es:'1 balón', en:'1 ball' },
     'plan.n_balls':      { ca:'{n} pilotes', es:'{n} balones', en:'{n} balls' },
     'plan.n_peto':       { ca:'1 peto', es:'1 peto', en:'1 bib' },
@@ -1158,6 +1180,43 @@
     'wx.rain_share_training': { ca:'Es preveu pluja durant el {n}% de l\'entrenament', es:'Se prevé lluvia durante el {n}% del entrenamiento', en:'Rain expected for {n}% of the training' },
     'wx.rain_share_match':    { ca:'Es preveu pluja durant el {n}% del partit', es:'Se prevé lluvia durante el {n}% del partido', en:'Rain expected for {n}% of the game' },
     'mat.cones':         { ca:'Cons', es:'Conos', en:'Cones' },
+    'mat.discs':         { ca:'Platets', es:'Platillos', en:'Discs' },
+    'mat.poles':         { ca:'Piques', es:'Picas', en:'Poles' },
+    'mat.hoops':         { ca:'Anelles', es:'Aros', en:'Hoops' },
+    // Keyed `<type>s` like the rest, hence "dummys" — a key, not English.
+    'mat.hurdles':       { ca:'Tanques baixes', es:'Vallas bajas', en:'Low hurdles' },
+    'mat.hurdlehis':     { ca:'Tanques altes', es:'Vallas altas', en:'Tall hurdles' },
+    'mat.goal11s':       { ca:'Porteries F11', es:'Porterías F11', en:'11-a-side goals' },
+    'mat.hurdlehi_g':    { ca:'f', es:'f', en:'m' },
+    'mat.ladders':       { ca:"Escales d'agilitat", es:'Escaleras de agilidad', en:'Agility ladders' },
+    'mat.dummys':        { ca:'Maniquins', es:'Maniquíes', en:'Mannequins' },
+    'mat.minigoals':     { ca:'Miniporteries', es:'Miniporterías', en:'Mini goals' },
+    'mat.goal7s':        { ca:'Porteries F7', es:'Porterías F7', en:'7-a-side goals' },
+    'mat.rebounders':    { ca:'Rebotadors', es:'Rebotadores', en:'Rebounders' },
+    'mat.hurdle_g':      { ca:'f', es:'f', en:'m' },
+    'mat.ladder_g':      { ca:'f', es:'f', en:'m' },
+    'mat.dummy_g':       { ca:'m', es:'m', en:'m' },
+    /* Grammatical gender of each item's plural, PER LANGUAGE — the colour
+       agrees with it ("piques grogues", "cons grocs"), and it does not
+       carry across: an anella is feminine, an aro masculine. English
+       ignores it. */
+    'mat.cone_g':        { ca:'m', es:'m', en:'m' },
+    'mat.disc_g':        { ca:'m', es:'m', en:'m' },
+    'mat.pole_g':        { ca:'f', es:'f', en:'m' },
+    'mat.hoop_g':        { ca:'f', es:'m', en:'m' },
+    'mat.item_col':      { ca:'{item} {col}', es:'{item} {col}', en:'{item} ({col})' },
+    'mat.col_groc_m':    { ca:'grocs', es:'amarillos', en:'yellow' },
+    'mat.col_groc_f':    { ca:'grogues', es:'amarillas', en:'yellow' },
+    'mat.col_taronja_m': { ca:'taronja', es:'naranjas', en:'orange' },
+    'mat.col_taronja_f': { ca:'taronja', es:'naranjas', en:'orange' },
+    'mat.col_vermell_m': { ca:'vermells', es:'rojos', en:'red' },
+    'mat.col_vermell_f': { ca:'vermelles', es:'rojas', en:'red' },
+    'mat.col_blau_m':    { ca:'blaus', es:'azules', en:'blue' },
+    'mat.col_blau_f':    { ca:'blaves', es:'azules', en:'blue' },
+    'mat.col_verd_m':    { ca:'verds', es:'verdes', en:'green' },
+    'mat.col_verd_f':    { ca:'verdes', es:'verdes', en:'green' },
+    'mat.col_blanc_m':   { ca:'blancs', es:'blancos', en:'white' },
+    'mat.col_blanc_f':   { ca:'blanques', es:'blancas', en:'white' },
     'mat.balls':         { ca:'Pilotes', es:'Balones', en:'Balls' },
     'mat.petos':         { ca:'Petos (colors)', es:'Petos (colores)', en:'Bibs (colours)' },
     'mat.petos_hint':    { ca:'Un equip sempre juga sense peto', es:'Un equipo siempre juega sin peto', en:'One team always plays without bibs' },
@@ -1379,6 +1438,34 @@
     'tactics.theme':         { ca:'Color', es:'Color', en:'Colour' },
     'tactics.ball':          { ca:'Pilota', es:'Balón', en:'Ball' },
     'tactics.cone':          { ca:'Con', es:'Cono', en:'Cone' },
+    // The kit swatches' names — tooltips and screen readers.
+    'kitc.blanc':            { ca:'Blanc', es:'Blanco', en:'White' },
+    'kitc.negre':            { ca:'Negre', es:'Negro', en:'Black' },
+    'kitc.vermell':          { ca:'Vermell', es:'Rojo', en:'Red' },
+    'kitc.granat':           { ca:'Granat', es:'Granate', en:'Maroon' },
+    'kitc.taronja':          { ca:'Taronja', es:'Naranja', en:'Orange' },
+    'kitc.groc':             { ca:'Groc', es:'Amarillo', en:'Yellow' },
+    'kitc.verd':             { ca:'Verd', es:'Verde', en:'Green' },
+    'kitc.blau':             { ca:'Blau', es:'Azul', en:'Blue' },
+    'kitc.cel':              { ca:'Blau cel', es:'Celeste', en:'Sky blue' },
+    'kitc.lila':             { ca:'Lila', es:'Morado', en:'Purple' },
+    'kitc.rosa':             { ca:'Rosa', es:'Rosa', en:'Pink' },
+    'kitc.gris':             { ca:'Gris', es:'Gris', en:'Grey' },
+    'tactics.disc':          { ca:'Platet', es:'Platillo', en:'Disc' },
+    'tactics.pole':          { ca:'Pica', es:'Pica', en:'Pole' },
+    'tactics.hoop':          { ca:'Anella', es:'Aro', en:'Hoop' },
+    'tactics.items':         { ca:'Més material', es:'Más material', en:'More equipment' },
+    'tactics.item_colour':   { ca:'Color del material', es:'Color del material', en:'Equipment colour' },
+    'ctx.delete_item':       { ca:'Eliminar', es:'Eliminar', en:'Delete' },
+    'tactics.hurdle':        { ca:'Tanca baixa', es:'Valla baja', en:'Low hurdle' },
+    'tactics.hurdlehi':      { ca:"Tanca alta d'atletisme", es:'Valla alta de atletismo', en:'Tall athletics hurdle' },
+    'tactics.goal11':        { ca:'Porteria F11', es:'Portería F11', en:'11-a-side goal' },
+    'ctx.rotation':          { ca:'Gir', es:'Giro', en:'Rotation' },
+    'tactics.ladder':        { ca:"Escala d'agilitat", es:'Escalera de agilidad', en:'Agility ladder' },
+    'tactics.dummy':         { ca:'Maniquí', es:'Maniquí', en:'Mannequin' },
+    'tactics.minigoal':      { ca:'Miniporteria', es:'Miniportería', en:'Mini goal' },
+    'tactics.goal7':         { ca:'Porteria F7', es:'Portería F7', en:'7-a-side goal' },
+    'tactics.rebounder':     { ca:'Rebotador', es:'Rebotador', en:'Rebounder' },
     'tactics.arrow':         { ca:'Fletxa', es:'Flecha', en:'Arrow' },
     'tactics.zone':          { ca:'Zona', es:'Zona', en:'Zone' },
     'tactics.pen':           { ca:'Traç lliure', es:'Trazo libre', en:'Freehand' },
@@ -2809,7 +2896,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 275;
+  const APP_VERSION = 276;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -10215,7 +10302,13 @@
         if (!slot) return;
         const col = document.querySelector(colSel);
         const st = document.querySelector(stripeSel);
-        if (col) slot.appendChild(col);
+        // The common kit colours first, the full picker after them.
+        if (col) {
+          const sws = col._kitRow || tbKitSwatchesFor(col);
+          sws.style.display = col.style.display;   // hidden with the opponent
+          slot.appendChild(sws);
+          slot.appendChild(col);
+        }
         if (st) slot.appendChild(st);
       });
     /* The opponent's kit is only meaningful when they are shown, so
@@ -10368,6 +10461,8 @@
 
     adopt('props', ['#tb-ball-tool'], t('tactics.ball'));
     adopt('props', ['#tb-cone-tool'], t('tactics.cone'));
+    adopt('props', ['#tb-prop-tools'], t('tactics.items'));
+    adopt('props', ['#tb-prop-colours'], t('tactics.item_colour'));
     adopt('props', ['#tb-sil-wrap'], t('tactics.silhouette'));
 
     /* One row per tool, so each carries its own options — which is
@@ -11143,6 +11238,7 @@
       oppColors: g(BS.KEYS.oppColors, null),
       balls: g(BS.KEYS.balls, []),
       cones: g(BS.KEYS.cones, []),
+      props: g(BS.KEYS.props, []),
       arrows: g(BS.KEYS.arrows, []),
       rects: g(BS.KEYS.rects, []),
       texts: g(BS.KEYS.texts, []),
@@ -11212,9 +11308,22 @@
   var _board3dMod = null;
   async function tbLoad3D() {
     if (_board3dMod) return _board3dMod;
-    const res = await firebase.app().functions('us-central1')
-        .httpsCallable('getBoard3d')({});
-    const src = (res && res.data && res.data.source) || '';
+    let src = '';
+    /* LOCAL DEVELOPMENT ONLY: on localhost, the working copy. Otherwise a
+       change to board3d.js cannot be seen until functions are deployed —
+       the local page would mount the DEPLOYED module against local data.
+       Not a hole in the gate: js/board3d.js is not published anywhere
+       (GitHub Pages and the APK both exclude it), so outside a dev box
+       this fetch has nothing to find — and it is never attempted there. */
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+      const r = await fetch('js/board3d.js', {cache: 'no-store'});
+      if (r.ok) src = await r.text();
+    }
+    if (!src) {
+      const res = await firebase.app().functions('us-central1')
+          .httpsCallable('getBoard3d')({});
+      src = (res && res.data && res.data.source) || '';
+    }
     if (!src) throw new Error('getBoard3d returned no source');
 
     /* THE SPECIFIER HAS TO BE REWRITTEN FIRST.
@@ -11612,6 +11721,96 @@
     return v ? parseFloat(v[1]) : null;
   }
 
+  /* ═══ Material props, drawn flat ═════════════════════════════
+     Seen from above, because that is how a coach reads a drill sheet —
+     the cone's side-on triangle is the one exception, and it predates
+     this. Drawn `g` metres wide (BG.PROPS) through --tb-ppm, so they
+     scale with the pitch — the 3D overlay changes --tb-ppm every frame
+     it zooms. The pixel floor is a small backstop only: a big one wins
+     at every zoom and freezes the size. Colour is `currentColor`, set
+     from the fixed palette. */
+  const TB_PROP_FLOOR = 6, TB_PROP_FLOOR_RO = 3;
+  /* `vb` is each glyph's viewBox, in the proportions of its drawn g × gd,
+     so a goal is drawn wide rather than squeezed into a square. The
+     rotatable ones face DOWN (+y) at rotation 0: a goal's mouth is its
+     open bottom edge, a mannequin's nose points down. */
+  const TB_PROP_2D = Object.assign(Object.create(null), {
+    /* A saucer: dark rim so it reads against any turf, a lighter ring for
+       the dome, and a SMALL hole on top — the real ones are a few cm. */
+    disc: { vb: '0 0 24 24', svg: '<circle cx="12" cy="12" r="10.3" fill="currentColor" stroke="rgba(0,0,0,.72)" stroke-width="2.2"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/><circle cx="12" cy="12" r="2.9" fill="rgba(0,0,0,.55)"/>' },
+    pole: { vb: '0 0 24 24', svg: '<circle cx="12" cy="12" r="8.5" fill="currentColor" stroke="#1a1a1a" stroke-width="5"/>' },
+    hoop: { vb: '0 0 24 24', svg: '<circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="2.5"/>' },
+    /* The low agility hurdle from above: one bent tube — the bar across
+       the front, rounding into the two feet that run back from it. Drawn
+       twice, dark then coloured, for an outline on any turf. */
+    hurdle: { vb: '0 0 32 10', svg: '<path d="M3.5 1.5 V6.4 Q3.5 8.4 5.6 8.4 H26.4 Q28.5 8.4 28.5 6.4 V1.5" fill="none" stroke="rgba(0,0,0,.6)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 1.5 V6.4 Q3.5 8.4 5.6 8.4 H26.4 Q28.5 8.4 28.5 6.4 V1.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' },
+    /* The athletics hurdle: the board across the front (+y, the side it
+       faces), the two L-shaped feet running back from its uprights. */
+    hurdlehi: { vb: '0 0 44 22', svg: '<path d="M4 19 V2.5 M40 19 V2.5" stroke="#9a9a9a" stroke-width="2.6" stroke-linecap="round"/><rect x="1.5" y="15.5" width="41" height="5" rx="1" fill="currentColor" stroke="rgba(0,0,0,.65)" stroke-width="1"/><path d="M9 15.5 v5 M17 15.5 v5 M27 15.5 v5 M35 15.5 v5" stroke="rgba(0,0,0,.45)" stroke-width="2.4"/>' },
+    ladder: { vb: '0 0 80 18', svg: '<g fill="currentColor" stroke="rgba(0,0,0,.6)" stroke-width="0.8"><rect x="0.5" y="0.5" width="79" height="2.6" rx="1"/><rect x="0.5" y="14.9" width="79" height="2.6" rx="1"/>' +
+      [1, 9.8, 18.6, 27.4, 36.2, 45, 53.8, 62.6, 71.4, 77.4].map(x => '<rect x="' + x + '" y="2.5" width="1.6" height="13"/>').join('') + '</g>' },
+    /* A mannequin from above: shoulders with the arms' bulge, the head on
+       top (hair-dark, as a player seen from a stand), and a nose tick on
+       the side it faces. */
+    dummy: { vb: '0 0 28 14', svg: '<path d="M3.2 6.6 C1.2 4.4 3 2.4 6 2.8 C9 3.3 11 4.2 14 4.2 C17 4.2 19 3.3 22 2.8 C25 2.4 26.8 4.4 24.8 6.6 C23.6 8.4 21 9.4 18 9.8 C16.6 10 15.3 10.1 14 10.1 C12.7 10.1 11.4 10 10 9.8 C7 9.4 4.4 8.4 3.2 6.6 Z" fill="currentColor" stroke="rgba(0,0,0,.65)" stroke-width="1.2" stroke-linejoin="round"/><circle cx="14" cy="6.6" r="3.3" fill="#3b2a1e" stroke="rgba(0,0,0,.6)" stroke-width="0.7"/><path d="M12.4 10.4 L14 12.9 L15.6 10.4 Z" fill="rgba(0,0,0,.65)"/>' },
+    minigoal: { vb: '0 0 40 20', svg: '<rect x="3" y="3" width="34" height="15" fill="rgba(255,255,255,.22)"/><path d="M3 18 L3 3 L37 3 L37 18" fill="none" stroke="#f2f2f2" stroke-width="2.6" stroke-linejoin="round"/><circle cx="3" cy="18" r="2.4" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.8"/><circle cx="37" cy="18" r="2.4" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.8"/>' },
+    goal7: { vb: '0 0 60 16', svg: '<rect x="2.5" y="2.5" width="55" height="11" fill="rgba(255,255,255,.22)"/><path d="M2.5 13.5 L2.5 2.5 L57.5 2.5 L57.5 13.5" fill="none" stroke="#f2f2f2" stroke-width="2.2" stroke-linejoin="round"/><circle cx="2.5" cy="13.5" r="2" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/><circle cx="57.5" cy="13.5" r="2" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/>' },
+    goal11: { vb: '0 0 73 20', svg: '<rect x="2.5" y="2.5" width="68" height="15" fill="rgba(255,255,255,.22)"/><path d="M2.5 17.5 L2.5 2.5 L70.5 2.5 L70.5 17.5" fill="none" stroke="#f2f2f2" stroke-width="2.4" stroke-linejoin="round"/><circle cx="2.5" cy="17.5" r="2.2" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/><circle cx="70.5" cy="17.5" r="2.2" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/>' },
+    rebounder: { vb: '0 0 30 20', svg: '<path d="M5 16 L9 4 L21 4 L25 16 Z" fill="rgba(255,255,255,.22)" stroke="#d8d8d8" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 16 L27 16" stroke="#f2f2f2" stroke-width="3.4" stroke-linecap="round"/>' }
+  });
+
+  /** The hex a prop row is drawn in: its colour, else its type's default. */
+  function tbPropHex(type, colour) {
+    const def = BG.PROPS[type];
+    if (!def || !def.colour) return '';
+    return BG.PROP_COLOURS[colour] || BG.PROP_COLOURS[def.def];
+  }
+
+  /**
+   * One prop as HTML, at display percentages. `p` is a stored row,
+   * [x, y, type, rotDeg, colour]; `left`/`top` are passed separately
+   * because the editor's vertical full board swaps the axes and the
+   * read-only board does not. A type this client does not know renders
+   * as nothing — but the editor keeps the row (see saveProps), so a
+   * newer client's item survives an older client's save.
+   *
+   * `rotOff` is what the DISPLAY adds to the stored rotation: -90 on the
+   * editor's vertical full board, which swaps the axes in JS (toDisplay),
+   * and 0 everywhere else — a half or area board rotates in CSS, and the
+   * item turns with its parent. `data-rot` always holds the STORED value.
+   */
+  function tbPropHtml(p, left, top, ro, rotOff) {
+    const def = BG.PROPS[p[2]], look = TB_PROP_2D[p[2]];
+    if (!def || !look) return '';
+    const hex = tbPropHex(p[2], p[4]);
+    const rot = Number(p[3]) || 0;
+    return '<div class="tb-prop" data-type="' + p[2] + '" data-colour="' + sanitize(p[4] || '') +
+      '" data-rot="' + rot + '" style="left:' + left + '%;top:' + top + '%;--pw:' + def.g +
+      ';--ph:' + (def.gd || def.g) + ';--pr:' + (rot + (rotOff || 0)) + 'deg;' +
+      // A read-only card is a miniature: its floor is legibility, not a tap target.
+      (ro ? 'pointer-events:none;--pf:' + TB_PROP_FLOOR_RO + 'px;' : '--pf:' + TB_PROP_FLOOR + 'px;') +
+      (hex ? 'color:' + hex + ';' : '') + '"><svg viewBox="' + look.vb + '" aria-hidden="true">' +
+      look.svg + '</svg>' +
+      /* The rotation handle, for the items that face a way. Inside the
+         item so it turns with it, and sits on the item's back edge. */
+      (def.rot && !ro ? '<span class="tb-prop-rot" title="' + sanitize(t('ctx.rotation')) + '"></span>' : '') +
+      '</div>';
+  }
+
+  /** Identity of a drawn set of props, for "has this frame changed them?". */
+  function tbRoPropKey(list) {
+    return list.map(p => p[0] + ',' + p[1] + ',' + p[2] + ',' + (p[3] || 0) + ',' + (p[4] || '')).join('|');
+  }
+
+  /** The fixed palette as a row of swatch buttons, `active` highlighted. */
+  function tbPropSwatchesHtml(active) {
+    return Object.keys(BG.PROP_COLOURS).map(function (c) {
+      return '<button type="button" class="tb-prop-sw' + (c === active ? ' tb-prop-sw-on' : '') +
+        '" data-pc="' + c + '" title="' + sanitize(t('mat.col_' + c + '_m')) +
+        '" style="background:' + BG.PROP_COLOURS[c] + '"></button>';
+    }).join('');
+  }
+
   function renderReadOnlyBoard(b, prefix, thin, key) {
     const bid = 'ro-board-' + (++_roBoardIdx);
     _roRemember(bid, b);
@@ -11735,8 +11934,10 @@
          each frame showed them until you pressed play and then lost
          them — the static render draws `src.cones`, the animation drew
          none. */
-      cones: ('cones' in f) ? f.cones : (b.cones || [])
+      cones: ('cones' in f) ? f.cones : (b.cones || []),
+      props: ('props' in f) ? f.props : (b.props || [])
     })) : [];
+    const srcProps = ('props' in src) ? src.props : (b.props || []);
     const framesAttr = hasFrames ? " data-frames='" + sanitize(JSON.stringify(framesForAnim)).replace(/'/g, '&#39;') + "'" : '';
     return '<div style="margin-bottom:1rem;"' + thinAttr + '><div style="font-weight:600;font-size:.92rem;margin-bottom:.4rem;">' + sanitize(b.name) + (b.formation ? ' <span style="color:var(--text-secondary);font-weight:400;">(' + sanitize(b.formation) + ')</span>' : '') + '</div>' +
       /* ⚠ `data-ax` is how big this board IS, in metres across. A read-only
@@ -11754,6 +11955,7 @@
       tbMarkingsHtml(b.pitch, b.boardType, false) +
       circles + oppCircles + ballHtml + svgHtml + textsHtml + ctlH +
       ((src.cones && src.cones.length) ? src.cones.map(c => '<div class="tb-cone" style="left:' + c[0] + '%;top:' + c[1] + '%;pointer-events:none;"></div>').join('') : '') +
+      (srcProps || []).map(p => p ? tbPropHtml(p, p[0], p[1], true) : '').join('') +
       (b.silhouette ? '<img class="tb-silhouette" src="img/sil-' + b.silhouette + '.png" alt="" style="display:block;pointer-events:none;">' : '') +
       '</div></div></div>';
   }
@@ -12115,6 +12317,12 @@
             div.style.cssText = 'left:' + c[0] + '%;top:' + c[1] + '%;pointer-events:none;';
             innerEl.appendChild(div);
           });
+          innerEl.querySelectorAll('.tb-prop').forEach(p => p.remove());
+          const fProps = (f.props || []).filter(Boolean);
+          innerEl.insertAdjacentHTML('beforeend',
+              fProps.map(p => tbPropHtml(p, p[0], p[1], true)).join(''));
+          // What interpolateRo compares against, so it does not redraw these.
+          innerEl.dataset.propKey = tbRoPropKey(fProps);
           /* Re-apply proportional sizing to new elements. This one is
              unconditional and stays so: applyRoFrame rebuilds the board
              wholesale, so everything on it is new. */
@@ -12365,6 +12573,18 @@
               innerEl.appendChild(div);
             });
           }
+          // Props — snap to the target frame, like cones. The key carries
+          // what the item IS as well as where, so a recolour redraws.
+          const tProps = (to.props || []).filter(Boolean);
+          const curProps = innerEl.querySelectorAll('.tb-prop');
+          const propKey = tbRoPropKey(tProps);
+          if (propKey !== innerEl.dataset.propKey) {
+            roMade = true;
+            innerEl.dataset.propKey = propKey;
+            curProps.forEach(p => p.remove());
+            innerEl.insertAdjacentHTML('beforeend',
+                tProps.map(p => tbPropHtml(p, p[0], p[1], true)).join(''));
+          }
           /* Re-scale ONLY if this pass created something. See roW above:
              this used to run unconditionally on every tick and was the
              single most expensive thing in the loop. */
@@ -12579,6 +12799,7 @@
         oppColors: f.oppColors || null,
         balls: f.balls || (f.ballPos ? [f.ballPos] : []),
         cones: f.cones || [],
+        props: f.props || [],
         arrows: f.arrows || [],
         rects: f.rects || [],
         texts: f.texts || [],
@@ -12813,10 +13034,13 @@
       b.style.height = ballSz + 'px';
       b.style.setProperty('--ball-fs', ballFs + 'px');
     });
+    // The cone is a drawn box now, not a border triangle: its height was the
+    // triangle's bottom border and its width the two side borders.
     inner.querySelectorAll('.tb-cone').forEach(cone => {
-      cone.style.borderLeftWidth = coneSide + 'px';
-      cone.style.borderRightWidth = coneSide + 'px';
-      cone.style.borderBottomWidth = coneBot + 'px';
+      // Scaled by OBJ.cone against the 0.70 m these were tuned at.
+      const k = BG.OBJ.cone / 0.70;
+      cone.style.width = Math.max(4, coneSide * 2 * k) + 'px';
+      cone.style.height = Math.max(4, coneBot * k) + 'px';
     });
     /* ⚠ NO TEXT LOOP. It used to force every label to `max(5, 14 * s)` px,
        discarding whatever size the coach had chosen — the font half of the
@@ -16545,6 +16769,59 @@
     return row;
   }
 
+  /* ═══ Kit colours, offered before the full picker ════════════════
+     The colours teams actually play in, as one tap each. The native
+     <input type="color"> stays beside them for anything else — it is a
+     whole colour wheel to reach a red, and on a phone a system dialog.
+     Not #f5c842: that exact yellow is the goalkeeper fill, which the bib
+     count reads as "no bib" (STP_GK_FILL). */
+  const TB_KIT_COLOURS = [
+    ['blanc', '#ffffff'], ['negre', '#212529'], ['vermell', '#e53935'],
+    ['granat', '#7b1f3a'], ['taronja', '#fb8c00'], ['groc', '#fdd835'],
+    ['verd', '#43a047'], ['blau', '#1e88e5'], ['cel', '#64b5f6'],
+    ['lila', '#8e24aa'], ['rosa', '#ec407a'], ['gris', '#9e9e9e']
+  ];
+
+  /** A row of kit swatches; `onPick(hex)` on a tap. `current` is ringed. */
+  function tbKitSwatchesEl(current, onPick) {
+    const cur = String(current || '').toLowerCase();
+    const row = document.createElement('span');
+    row.className = 'tb-kit-sws';
+    row.innerHTML = TB_KIT_COLOURS.map(([id, hex]) =>
+      '<button type="button" class="tb-prop-sw tb-kit-sw' + (hex === cur ? ' tb-prop-sw-on' : '') +
+      '" data-kc="' + hex + '" title="' + sanitize(t('kitc.' + id)) +
+      '" aria-label="' + sanitize(t('kitc.' + id)) + '" style="background:' + hex + '"></button>').join('');
+    row.addEventListener('click', (e) => {
+      const b = e.target.closest('.tb-kit-sw');
+      if (!b) return;
+      e.preventDefault();
+      row.querySelectorAll('.tb-kit-sw').forEach((x) => x.classList.toggle('tb-prop-sw-on', x === b));
+      onPick(b.dataset.kc);
+    });
+    return row;
+  }
+
+  /**
+   * Kit swatches for an existing colour input, returned for the caller to
+   * place. A tap SETS THE INPUT and fires its own events, so whatever
+   * already listens to it — updateCircleColors, the save — reacts exactly
+   * as if the coach had used the picker; nothing else has to know the
+   * swatches exist. Picking in the wheel un-rings the swatches.
+   */
+  function tbKitSwatchesFor(input) {
+    const row = tbKitSwatchesEl(input.value, (hex) => {
+      input.value = hex;
+      input.dispatchEvent(new Event('input', {bubbles: true}));
+      input.dispatchEvent(new Event('change', {bubbles: true}));
+    });
+    input.addEventListener('input', () => {
+      const v = input.value.toLowerCase();
+      row.querySelectorAll('.tb-kit-sw').forEach((x) => x.classList.toggle('tb-prop-sw-on', x.dataset.kc === v));
+    });
+    input._kitRow = row;
+    return row;
+  }
+
   /* Stripe controls for one side, inline beside its colour swatch. The
      count/direction/second colour are hidden until the toggle is on, so the
      toolbar stays as it was for anyone not using stripes. */
@@ -16600,6 +16877,7 @@
     const savedTexts = JSON.parse(localStorage.getItem('fa_tactic_texts') || '[]');
     const savedSilhouette = localStorage.getItem('fa_tactic_silhouette') || '';
     const savedCones = JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]');
+    const savedProps = BS.readJson(localStorage, BS.KEYS.props, []);
     /* null on an unresized board, which board-geom reads as the
        historical 105x68 — so the absence of the key IS the default and
        no board needs migrating. */
@@ -16790,7 +17068,9 @@
             </div>
           </div>
           <span class="tb-sep"></span>
-          <button class="tb-cone-tool" id="tb-cone-tool" data-tooltip="Place cone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polygon points="12,2 4,22 20,22" fill="#ff8c00" stroke="#cc7000" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+          <button class="tb-cone-tool" id="tb-cone-tool" data-tooltip="Place cone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10.2 1.5h3.6l5.7 19H4.5z" fill="#ff8c00" stroke="#a85800" stroke-width="1.3" stroke-linejoin="round"/><rect x="0.6" y="20" width="22.8" height="3.4" rx="0.8" fill="#f07f00" stroke="#a85800" stroke-width="1.3"/></svg></button>
+          <span class="tb-prop-tools" id="tb-prop-tools">${Object.keys(TB_PROP_2D).map(ty => `<button class="tb-cone-tool tb-prop-tool" data-prop="${ty}" data-tooltip="${sanitize(t('tactics.' + ty))}" style="color:${tbPropHex(ty, '')}"><svg width="20" height="16" viewBox="${TB_PROP_2D[ty].vb}">${TB_PROP_2D[ty].svg}</svg></button>`).join('')}</span>
+          <span class="tb-prop-colours" id="tb-prop-colours">${tbPropSwatchesHtml('')}</span>
           <button class="tb-ball-tool" id="tb-ball-tool" data-tooltip="Add ball"><span class="tb-ball-icon">⚽</span></button>
           <span class="tb-sep"></span>
           <button class="tb-select-tool" id="tb-select-tool" data-tooltip="Select mode (tap to select)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-7 2-4 7-3-18z"/></svg></button>
@@ -16826,6 +17106,13 @@
               let cx=c[0], cy=c[1];
               if (isVertical && boardType === 'full') { cx=c[1]; cy=100-c[0]; }
               return '<div class="tb-cone" data-idx="'+i+'" style="left:'+cx+'%;top:'+cy+'%;"></div>';
+            }).join('')}
+            ${(Array.isArray(savedProps) ? savedProps : []).map(p => {
+              if (!p) return '';
+              let px=p[0], py=p[1];
+              const vFull = isVertical && boardType === 'full';
+              if (vFull) { px=p[1]; py=100-p[0]; }
+              return tbPropHtml(p, px, py, false, vFull ? -90 : 0);
             }).join('')}
             <img class="tb-silhouette" id="tb-silhouette" src="${savedSilhouette ? 'img/sil-' + savedSilhouette + '.png' : ''}" alt="" style="display:${savedSilhouette ? 'block' : 'none'};">
             <svg class="tb-arrows-svg" id="tb-arrows-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -17308,6 +17595,7 @@
         penLines: localStorage.getItem('fa_tactic_pen_lines'),
         silhouette: localStorage.getItem('fa_tactic_silhouette'),
         cones: localStorage.getItem('fa_tactic_cones'),
+        props: localStorage.getItem('fa_tactic_props'),
         /* Travels WITH penLines or undo cannot restore them: the first stroke
            on a legacy board flips the space to 'h' and rewrites every stored
            stroke, so putting the old strokes back without putting the old flag
@@ -17349,6 +17637,7 @@
         ['penLines',     'fa_tactic_pen_lines'],
         ['silhouette',   'fa_tactic_silhouette'],
         ['cones',        'fa_tactic_cones'],
+        ['props',        'fa_tactic_props'],
         ['penSpace',     'fa_tactic_pen_space'],
         ['pitch',        'fa_tactic_pitch']
       ];
@@ -17383,7 +17672,8 @@
         texts: JSON.parse(s.texts || '[]'),
         penLines: JSON.parse(s.penLines || '[]'),
         silhouette: s.silhouette || '',
-        cones: JSON.parse(s.cones || '[]')
+        cones: JSON.parse(s.cones || '[]'),
+        props: JSON.parse(s.props || '[]')
       };
       applyFrameState(f);
       refreshArrowheads(arrowsSvg);
@@ -17411,8 +17701,11 @@
       /* Labels sit on left/top like a circle. They were missing here,
          so moveEl left them behind in a multi-select drag as well —
          adding the branch fixes that too. */
+      /* Cones and props too: without them a multi-select drag moved the
+         players around the material and left it standing. */
       if (el.classList.contains('tb-circle') || el.classList.contains('tb-ball') ||
-          el.classList.contains('tb-text-label')) {
+          el.classList.contains('tb-text-label') || el.classList.contains('tb-cone') ||
+          el.classList.contains('tb-prop')) {
         return { left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
       }
       if (el.classList.contains('tb-arrow')) {
@@ -17430,7 +17723,8 @@
     }
     function moveEl(el, start, dx, dy) {
       if (el.classList.contains('tb-circle') || el.classList.contains('tb-ball') ||
-          el.classList.contains('tb-text-label')) {
+          el.classList.contains('tb-text-label') || el.classList.contains('tb-cone') ||
+          el.classList.contains('tb-prop')) {
         el.style.left = Math.max(0, Math.min(100, start.left + dx)) + '%';
         el.style.top = Math.max(0, Math.min(100, start.top + dy)) + '%';
       } else if (el.classList.contains('tb-arrow')) {
@@ -17477,6 +17771,7 @@
       saveTexts();
       savePenLines();
       saveCones();
+      saveProps();
     }
 
     // --- Context menu ---
@@ -17513,9 +17808,30 @@
           picker.value = it.value || '#ffffff';
           picker.addEventListener('input', () => { it.action(picker.value); });
           row.appendChild(picker);
+          /* A kit colour: the common ones first, one tap each, with the
+             full picker kept below for anything else. */
+          if (it.kit) {
+            const sws = document.createElement('div');
+            sws.className = 'tb-ctx-item tb-ctx-kit-row';
+            sws.appendChild(tbKitSwatchesFor(picker));
+            ctxMenu.appendChild(sws);
+          }
           ctxMenu.appendChild(row);
         } else if (it.type === 'stripes') {
           ctxMenu.appendChild(stripeRowEl(it.value, it.action));
+        } else if (it.type === 'palette') {
+          /* The material palette — fixed colours, because the session's
+             material list counts per colour (see BG.PROP_COLOURS). */
+          const row = document.createElement('div');
+          row.className = 'tb-ctx-item tb-ctx-color-row tb-prop-colours';
+          row.innerHTML = tbPropSwatchesHtml(it.value);
+          row.addEventListener('click', (ev) => {
+            const sw = ev.target.closest('.tb-prop-sw');
+            if (!sw) return;
+            closeCtxMenu();
+            it.action(sw.dataset.pc);
+          });
+          ctxMenu.appendChild(row);
         } else if (it.type === 'number') {
           /* A shirt number, editable from the menu.
              In 2D you get at it by double-clicking the disc, which
@@ -17553,10 +17869,12 @@
           row.innerHTML = '<span>' + (it.label || 'Size') + '</span>';
           const slider = document.createElement('input');
           slider.type = 'range';
-          slider.min = it.min || 8;
-          slider.max = it.max || 28;
-          slider.value = it.value || 12;
-          slider.style.cssText = 'width:70px;cursor:pointer;';
+          // `!= null`, not `||`: a rotation slider starts at 0, which `||` read as unset.
+          slider.min = it.min != null ? it.min : 8;
+          slider.max = it.max != null ? it.max : 28;
+          if (it.step) slider.step = it.step;
+          slider.value = it.value != null ? it.value : 12;
+          slider.style.cssText = 'width:' + (it.width || 70) + 'px;cursor:pointer;';
           slider.addEventListener('input', () => { it.action(Number(slider.value)); });
           row.appendChild(slider);
           ctxMenu.appendChild(row);
@@ -17659,6 +17977,9 @@
         return { type: 'ball', left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
       } else if (el.classList.contains('tb-cone')) {
         return { type: 'cone', left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+      } else if (el.classList.contains('tb-prop')) {
+        return { type: 'prop', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
+          row: [0, 0, el.dataset.type, Number(el.dataset.rot) || 0, el.dataset.colour || ''] };
       } else if (el.classList.contains('tb-circle') && !el.classList.contains('tb-circle-opp')) {
         return { type: 'circle', left: parseFloat(el.style.left), top: parseFloat(el.style.top),
           num: el.querySelector('.tb-num')?.value || '', color: el.dataset.color || '' };
@@ -17764,6 +18085,9 @@
       } else if (item.type === 'cone') {
         spawnCone(Math.min(98, item.left + offX), Math.min(98, item.top + offY));
         saveCones();
+      } else if (item.type === 'prop') {
+        spawnProp(Math.min(98, item.left + offX), Math.min(98, item.top + offY), item.row);
+        saveProps();
       }
     }
 
@@ -17907,7 +18231,7 @@
           items.push({ label: 'Copy selected (' + selected.size + ')', action: () => copySelectionToClipboard() });
           items.push({ label: 'Duplicate selected (' + selected.size + ')', action: () => duplicateSelection() });
           items.push({
-            type: 'color', value: st.c1,
+            type: 'color', kit: true, value: st.c1,
             action: (col) => { st.c1 = col; applyFill(); }
           });
           items.push({ type: 'stripes', value: st, action: (next) => { Object.assign(st, next); applyFill(); } });
@@ -17919,7 +18243,7 @@
           items.push({ label: 'Copy', action: () => copyElementToClipboard(circle) });
           items.push({ label: 'Duplicate', action: () => duplicateElement(circle) });
           items.push({
-            type: 'color', value: st.c1,
+            type: 'color', kit: true, value: st.c1,
             action: (col) => { st.c1 = col; applyFill(); }
           });
           items.push({ type: 'stripes', value: st, action: (next) => { Object.assign(st, next); applyFill(); } });
@@ -17985,6 +18309,7 @@
             else if (el.classList.contains('tb-text-label')) { deleteTextLabel(el); autoSaveFrame(); }
             else if (el.classList.contains('tb-pen-line')) { el.remove(); savePenLines(); autoSaveFrame(); }
             else if (el.classList.contains('tb-cone')) { el.remove(); saveCones(); autoSaveFrame(); }
+            else if (el.classList.contains('tb-prop')) { el.remove(); saveProps(); autoSaveFrame(); }
           }); }
         });
       }
@@ -18031,7 +18356,7 @@
     // Click on field background clears selection (skip in select mode so long-press context menu keeps selection)
     inner.addEventListener('pointerdown', e => {
       if (selectMode) return;
-      if (!e.ctrlKey && !e.metaKey && !e.target.closest('.tb-circle') && !e.target.closest('.tb-ball') && !e.target.closest('.tb-arrow') && !e.target.closest('.tb-rect') && !e.target.closest('.tb-text-label') && !e.target.closest('.tb-cone')) {
+      if (!e.ctrlKey && !e.metaKey && !e.target.closest('.tb-circle') && !e.target.closest('.tb-ball') && !e.target.closest('.tb-arrow') && !e.target.closest('.tb-rect') && !e.target.closest('.tb-text-label') && !e.target.closest('.tb-cone') && !e.target.closest('.tb-prop')) {
         clearSelection();
         deselectAll();
       }
@@ -18164,7 +18489,9 @@
       textMode = false;
       penMode = false;
       coneMode = false;
+      propMode = null;
       selectMode = false;
+      document.querySelectorAll('.tb-prop-tool').forEach(b => b.classList.remove('tb-cone-tool-active'));
       if (arrowToolBtn) arrowToolBtn.classList.remove('tb-arrow-tool-active');
       if (rectToolBtn) rectToolBtn.classList.remove('tb-rect-tool-active');
       if (textToolBtn) textToolBtn.classList.remove('tb-text-tool-active');
@@ -19151,6 +19478,8 @@
 
     // --- Cones ---
     let coneMode = false;
+    let propMode = null;      // the prop type being placed, or null
+    let propColour = null;    // the chosen swatch; null = the type's default
     const coneToolBtn = document.getElementById('tb-cone-tool');
 
     function saveCones() {
@@ -19175,9 +19504,19 @@
     }
 
     function makeConeDraggable(cone) {
+      makeItemDraggable(cone, saveCones, () => [
+        { label: 'Delete cone', danger: true, action: () => { pushUndo(); cone.remove(); saveCones(); autoSaveFrame(); } }
+      ]);
+    }
+
+    /* The drag, select and context-menu behaviour of every piece of
+       material — cones and props alike. ONE handler, so a fix to how a
+       cone drags on a rotated half board is a fix for a disc too.
+       `menu(el)` returns the rows after Copy/Duplicate. */
+    function makeItemDraggable(cone, save, menu) {
       let dragging = false, startX, startY, startLeft, startTop;
       cone.addEventListener('pointerdown', e => {
-        if (coneMode) return;
+        if (coneMode || propMode) return;
         e.preventDefault(); e.stopPropagation();
         // Select mode: toggle selection instead of dragging
         if (selectMode) { toggleSelect(cone); return; }
@@ -19214,26 +19553,177 @@
         if (!dragging) return;
         dragging = false;
         cone.classList.remove('tb-dragging');
-        saveCones(); autoSaveFrame();
+        save(); autoSaveFrame();
       });
       cone.addEventListener('pointercancel', () => {
         if (!dragging) return;
         dragging = false;
         cone.classList.remove('tb-dragging');
-        saveCones(); autoSaveFrame();
+        save(); autoSaveFrame();
       });
       cone.addEventListener('contextmenu', e => {
         e.preventDefault(); e.stopPropagation();
         showCtxMenu(e.clientX, e.clientY, [
           { label: 'Copy', action: () => copyElementToClipboard(cone) },
-          { label: 'Duplicate', action: () => duplicateElement(cone) },
-          { label: 'Delete cone', danger: true, action: () => { pushUndo(); cone.remove(); saveCones(); autoSaveFrame(); } }
-        ]);
+          { label: 'Duplicate', action: () => duplicateElement(cone) }
+        ].concat(menu(cone)));
       });
     }
 
     // Init existing cones
     inner.querySelectorAll('.tb-cone').forEach(c => makeConeDraggable(c));
+
+    // --- Props: every other piece of material ---
+    const propColoursEl = document.getElementById('tb-prop-colours');
+
+    /* Rows in horizontal space, like saveCones. A stored row whose type
+       this client cannot draw is KEPT, appended after the drawn ones: a
+       newer client placed it, and an older one saving the board must not
+       delete it. */
+    function saveProps() {
+      const arr = [];
+      inner.querySelectorAll('.tb-prop').forEach(el => {
+        const h = toHorizontal(parseFloat(el.style.left), parseFloat(el.style.top));
+        arr.push([h[0], h[1], el.dataset.type, Number(el.dataset.rot) || 0, el.dataset.colour || '']);
+      });
+      const kept = (BS.readJson(localStorage, BS.KEYS.props, []) || [])
+        .filter(p => p && !TB_PROP_2D[p[2]]);
+      BS.setProps(localStorage, arr.concat(kept));
+    }
+
+    /** A prop at DISPLAY percentages. `row` supplies type, rotation, colour. */
+    function spawnProp(pctX, pctY, row) {
+      inner.insertAdjacentHTML('beforeend', tbPropHtml(row, pctX, pctY, false, propRotOff()));
+      const el = inner.lastElementChild;
+      if (!el || !el.classList.contains('tb-prop')) return null;
+      makePropDraggable(el);
+      return el;
+    }
+
+    function recolourProp(el, c) {
+      el.dataset.colour = c;
+      el.style.color = tbPropHex(el.dataset.type, c);
+    }
+
+    /* What the display adds to a stored rotation — see tbPropHtml. The
+       same condition toDisplay swaps the axes on, so an item and its
+       position cannot disagree about which way is up. */
+    function propRotOff() { return useJsSwap() ? -90 : 0; }
+
+    /** Set a prop's rotation, whole degrees in stored space. */
+    function setPropRot(el, deg) {
+      const r = ((Math.round(deg) % 360) + 360) % 360;
+      el.dataset.rot = r;
+      el.style.setProperty('--pr', (r + propRotOff()) + 'deg');
+    }
+
+    /* Drag the handle to turn the item, to the degree — Shift snaps to
+       15°. Measured as the CHANGE in the pointer's angle about the item's
+       centre since the grab, not as an absolute angle, so it is right on
+       every board type: a half or area board is rotated in CSS, which
+       offsets every absolute screen angle but leaves a difference alone. */
+    function bindPropRotHandle(el) {
+      const knob = el.querySelector('.tb-prop-rot');
+      if (!knob) return;
+      let st = null;
+      const angle = (e) => {
+        const r = el.getBoundingClientRect();   // centred on the item at any rotation
+        return Math.atan2(e.clientY - (r.top + r.height / 2),
+            e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+      };
+      knob.addEventListener('pointerdown', e => {
+        e.preventDefault(); e.stopPropagation();   // a turn, not a move
+        pushUndo();
+        st = { a: angle(e), r: Number(el.dataset.rot) || 0 };
+        knob.setPointerCapture(e.pointerId);
+        el.classList.add('tb-rotating');
+      });
+      knob.addEventListener('pointermove', e => {
+        if (!st) return;
+        const r = st.r + angle(e) - st.a;
+        setPropRot(el, e.shiftKey ? Math.round(r / 15) * 15 : r);
+      });
+      const end = () => {
+        if (!st) return;
+        st = null;
+        el.classList.remove('tb-rotating');
+        saveProps(); autoSaveFrame();
+      };
+      knob.addEventListener('pointerup', end);
+      knob.addEventListener('pointercancel', end);
+    }
+
+    function makePropDraggable(el) {
+      bindPropRotHandle(el);
+      /* A touch screen has no hover, so the handle shows on the item last
+         touched as well as on the hovered and selected ones. */
+      el.addEventListener('pointerdown', () => {
+        inner.querySelectorAll('.tb-prop-active').forEach(o => { if (o !== el) o.classList.remove('tb-prop-active'); });
+        el.classList.add('tb-prop-active');
+      });
+      makeItemDraggable(el, saveProps, () => {
+        const def = BG.PROPS[el.dataset.type];
+        /* A slider, so the 3D view — where the handle is not on screen,
+           and a right-click reaches this menu — can turn items too, and
+           watch them turn: autoSaveFrame refreshes the scene. One undo
+           step for the whole slide. */
+        let undone = false;
+        const slide = (v) => {
+          if (!undone) { pushUndo(); undone = true; }
+          setPropRot(el, v); saveProps(); autoSaveFrame();
+        };
+        return (def && def.rot ? [
+          { type: 'range', label: t('ctx.rotation') + ' °', min: 0, max: 359, step: 1, width: 150,
+            value: Number(el.dataset.rot) || 0, action: slide }
+        ] : []).concat(def && def.colour ? [{ type: 'palette', value: el.dataset.colour || def.def,
+          action: (c) => { pushUndo(); recolourProp(el, c); saveProps(); autoSaveFrame(); } }] : [])
+          .concat([{ label: t('ctx.delete_item'), danger: true,
+            action: () => { pushUndo(); el.remove(); saveProps(); autoSaveFrame(); } }]);
+      });
+    }
+
+    inner.querySelectorAll('.tb-prop').forEach(el => makePropDraggable(el));
+
+    /** Which swatch reads as current: the chosen one, else the tool's default. */
+    function paintPropSwatches() {
+      if (!propColoursEl) return;
+      const def = propMode && BG.PROPS[propMode];
+      const on = propColour || (def ? def.def : '');
+      propColoursEl.querySelectorAll('.tb-prop-sw').forEach(b =>
+        b.classList.toggle('tb-prop-sw-on', b.dataset.pc === on));
+    }
+
+    document.querySelectorAll('.tb-prop-tool').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const was = propMode === btn.dataset.prop;
+        deactivateDrawTools();
+        if (!was) {
+          tbSetDrawMode(true);
+          propMode = btn.dataset.prop;
+          btn.classList.add('tb-cone-tool-active');
+          inner.style.cursor = 'crosshair';
+        }
+        paintPropSwatches();
+      });
+    });
+
+    /* A swatch sets the colour of the NEXT items placed, and recolours
+       whatever props are selected — the two things a coach picking a
+       colour can mean. */
+    if (propColoursEl) {
+      propColoursEl.addEventListener('click', e => {
+        const sw = e.target.closest('.tb-prop-sw');
+        if (!sw) return;
+        propColour = sw.dataset.pc;
+        const picked = Array.from(selected).filter(el => el.classList.contains('tb-prop'));
+        if (picked.length) {
+          pushUndo();
+          picked.forEach(el => { if ((BG.PROPS[el.dataset.type] || {}).colour) recolourProp(el, propColour); });
+          saveProps(); autoSaveFrame();
+        }
+        paintPropSwatches();
+      });
+    }
 
     // Cone tool toggle
     if (coneToolBtn) {
@@ -19249,10 +19739,29 @@
       });
     }
 
-    // Place cone on click
+    /* Escape puts the tool down — any tool, placing or drawing. Without
+       it the only way out of placing items was to find the same button
+       again. One listener on the document, REPLACED on every render of
+       the editor (this function runs on each), or they would pile up and
+       act on boards that are no longer on the page. A key typed into a
+       field is that field's business: a label's own Escape cancels its
+       edit and must not also drop the tool. */
+    if (document._tbEscKey) document.removeEventListener('keydown', document._tbEscKey);
+    document._tbEscKey = (e) => {
+      if (e.key !== 'Escape' || !inner.isConnected) return;
+      const tg = e.target;
+      if (tg && (tg.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName || ''))) return;
+      if (!(coneMode || propMode || arrowMode || rectMode || textMode || penMode || selectMode)) return;
+      e.preventDefault();
+      deactivateDrawTools();
+      paintPropSwatches();
+    };
+    document.addEventListener('keydown', document._tbEscKey);
+
+    // Place cone (or the chosen prop) on click
     inner.addEventListener('click', e => {
-      if (!coneMode) return;
-      if (e.target.closest('.tb-cone') || e.target.closest('.tb-circle') || e.target.closest('.tb-ball')) return;
+      if (!coneMode && !propMode) return;
+      if (e.target.closest('.tb-cone') || e.target.closest('.tb-prop') || e.target.closest('.tb-circle') || e.target.closest('.tb-ball')) return;
       const rect = inner.getBoundingClientRect();
       const isCssRotated = field.classList.contains('tb-half') || field.classList.contains('tb-area');
       const vert = field.classList.contains('tb-vertical');
@@ -19265,8 +19774,15 @@
         pctY = ((e.clientY - rect.top) / rect.height) * 100;
       }
       pushUndo();
-      spawnCone(pctX, pctY);
-      saveCones(); autoSaveFrame();
+      if (propMode) {
+        const def = BG.PROPS[propMode];
+        spawnProp(pctX, pctY, [0, 0, propMode, 0, def && def.colour ? (propColour || def.def) : '']);
+        saveProps();
+      } else {
+        spawnCone(pctX, pctY);
+        saveCones();
+      }
+      autoSaveFrame();
     });
 
     // --- Select mode toggle ---
@@ -19335,6 +19851,8 @@
     showOppCheck?.addEventListener('change', () => {
       localStorage.setItem('fa_tactic_show_opp', showOppCheck.checked);
       if (oppColorPick) oppColorPick.style.display = showOppCheck.checked ? '' : 'none';
+      // Its kit swatches go with it.
+      if (oppColorPick && oppColorPick._kitRow) oppColorPick._kitRow.style.display = showOppCheck.checked ? '' : 'none';
       // The opponent's stripe controls follow its swatch — they are useless
       // with no opponent on the board.
       if (oppStripesWrap) oppStripesWrap.style.display = showOppCheck.checked ? '' : 'none';
@@ -19494,6 +20012,7 @@
         }
         if (sel.kind === 'balls') return inner.querySelectorAll('.tb-ball')[sel.index];
         if (sel.kind === 'cones') return inner.querySelectorAll('.tb-cone')[sel.index];
+        if (sel.kind === 'props') return inner.querySelectorAll('.tb-prop')[sel.index];
         return null;
       };
 
@@ -19514,11 +20033,14 @@
             positions: '.tb-circle:not(.tb-circle-opp)',
             oppPositions: '.tb-circle-opp',
             balls: '.tb-ball',
-            cones: '.tb-cone'
+            cones: '.tb-cone',
+            props: '.tb-prop'
           }[kind];
           if (!sel) return;
           let el;
-          if (kind === 'cones') el = inner.querySelectorAll(sel)[index];
+          // Props are positional too: board3d numbers only the ones it drew,
+          // which are exactly the ones the 2D board drew, in the same order.
+          if (kind === 'cones' || kind === 'props') el = inner.querySelectorAll(sel)[index];
           else el = inner.querySelector(sel + '[data-idx="' + index + '"]');
           if (!el) return;
 
@@ -19527,7 +20049,9 @@
           el.style.left = d[0] + '%';
           el.style.top = d[1] + '%';
           // saveState covers players and balls; cones have their own.
-          if (kind === 'cones') saveCones(); else saveState();
+          if (kind === 'cones') saveCones();
+          else if (kind === 'props') saveProps();
+          else saveState();
           autoSaveFrame();
         },
 
@@ -19677,6 +20201,7 @@
             oppPositions: '.tb-circle-opp',
             balls: '.tb-ball',
             cones: '.tb-cone',
+            props: '.tb-prop',
             /* The drawn marks. Their menus hang off the arrows SVG by
                delegation (`e.target.closest('.tb-arrow')`), so a
                synthetic event on the element itself resolves and
@@ -19692,7 +20217,7 @@
              position IS the index; `data-idx` exists on some of them
              but only as a cache that a reindex has to keep true, and
              pen lines have none at all. One rule beats four. */
-          const positional = kind === 'cones' ||
+          const positional = kind === 'cones' || kind === 'props' ||
               ['arrows', 'rects', 'penLines', 'texts'].indexOf(kind) !== -1;
           const el = positional
             ? inner.querySelectorAll(sel)[index]
@@ -19780,6 +20305,7 @@
         if (el) {
           pushUndo();
           if (sel.kind === 'cones') { el.remove(); saveCones(); autoSaveFrame(); }
+          else if (sel.kind === 'props') { el.remove(); saveProps(); autoSaveFrame(); }
           else if (sel.kind === 'balls') deleteBall(el);
           else deleteCircle(el);
         }
@@ -20527,7 +21053,7 @@
     }
 
     function captureFrameState() {
-      saveState(); saveArrows(); saveRects(); saveTexts(); savePenLines(); saveCones();
+      saveState(); saveArrows(); saveRects(); saveTexts(); savePenLines(); saveCones(); saveProps();
       return {
         positions: JSON.parse(localStorage.getItem('fa_tactic_positions') || 'null'),
         numbers: JSON.parse(localStorage.getItem('fa_tactic_numbers') || 'null'),
@@ -20542,6 +21068,7 @@
         penLines: JSON.parse(localStorage.getItem('fa_tactic_pen_lines') || '[]'),
         silhouette: localStorage.getItem('fa_tactic_silhouette') || '',
         cones: JSON.parse(localStorage.getItem('fa_tactic_cones') || '[]'),
+        props: BS.readJson(localStorage, BS.KEYS.props, []),
         duration: 1000
       };
     }
@@ -20711,6 +21238,11 @@
          saveCones normalises to horizontal, so the stored value is not what
          the style attribute wants. Balls had the conversion, cones did not. */
       (f.cones || []).forEach(c => { const d = toDisplay(c[0], c[1]); spawnCone(d[0], d[1]); });
+      // Props, the same way — through setProps so the rows are normalised.
+      BS.setProps(localStorage, f.props || []);
+      inner.querySelectorAll('.tb-prop').forEach(p => p.remove());
+      (f.props || []).forEach(p => { if (p) { const d = toDisplay(p[0], p[1]); spawnProp(d[0], d[1], p); } });
+      delete inner.dataset.propKey;
       clearSelection();
       /* The 3D view has to hear about this too.
 
@@ -21197,6 +21729,15 @@
            a vertical board. */
         tCones.forEach(c => { const d = toDisplay(c[0], c[1]); spawnCone(d[0], d[1]); });
       }
+      // Props — snap likewise; the key is on `inner` so an unchanged set is
+      // not rebuilt on every tick.
+      const tProps = (to.props || []).filter(Boolean);
+      const propKey = tbRoPropKey(tProps);
+      if (propKey !== inner.dataset.propKey) {
+        inner.dataset.propKey = propKey;
+        inner.querySelectorAll('.tb-prop').forEach(p => p.remove());
+        tProps.forEach(p => { const d = toDisplay(p[0], p[1]); spawnProp(d[0], d[1], p); });
+      }
     }
 
     // Patch makeDraggable's pointerup and SVG drag to auto-save frames
@@ -21648,6 +22189,8 @@
     else localStorage.removeItem('fa_tactic_silhouette');
     if (board.cones && board.cones.length) localStorage.setItem('fa_tactic_cones', JSON.stringify(board.cones));
     else localStorage.removeItem('fa_tactic_cones');
+    if (board.props && board.props.length) localStorage.setItem('fa_tactic_props', JSON.stringify(board.props));
+    else localStorage.removeItem('fa_tactic_props');
     localStorage.removeItem('fa_tactic_frame_idx');
     /* The comparison point for tbHasUnsavedWork() in template mode. Taken
        from localStorage AFTER hydration and through the SAME builder the
@@ -21675,7 +22218,7 @@
       'fa_tactic_pen_lines', 'fa_tactic_frames', 'fa_tactic_frame_idx',
       'fa_tactic_tag', 'fa_tactic_silhouette', 'fa_tactic_cones',
       'fa_tactic_pen_space', 'fa_tactic_pitch',
-      'fa_tactic_opp_formation'
+      'fa_tactic_opp_formation', 'fa_tactic_props'
     ].forEach(function (k) { localStorage.removeItem(k); });
     /* A blank board has no legacy strokes to preserve, so it starts
        normalised. Leaving it cleared would make the first stroke drawn on a
@@ -21998,7 +22541,7 @@
     }
     // Nothing loaded: anything drawn at all is unsaved.
     return ['fa_tactic_positions', 'fa_tactic_arrows', 'fa_tactic_rects',
-      'fa_tactic_texts', 'fa_tactic_pen_lines', 'fa_tactic_cones',
+      'fa_tactic_texts', 'fa_tactic_pen_lines', 'fa_tactic_cones', 'fa_tactic_props',
       'fa_tactic_balls', 'fa_tactic_opp_positions'].some(function (k) {
       let v;
       try { v = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return false; }
@@ -22011,6 +22554,10 @@
     if (!payload) return false; // not loaded: nothing to have changed
     const mine = Object.assign({}, entry);
     delete mine.id;
+    /* A board saved before `props` existed has no such key, and an empty
+       list is what the builder writes for it. Without this every such board
+       read as unsaved the moment it was opened. */
+    if (!('props' in payload) && Array.isArray(mine.props) && !mine.props.length) delete mine.props;
     return JSON.stringify(mine) !== JSON.stringify(payload);
   }
 
@@ -22471,6 +23018,67 @@
   }
 
   /**
+   * The material ONE board puts on the grass, as "type|colour" -> count.
+   *
+   * The MAX over the board's own state and each of its frames, per key. A
+   * cone that only appears in frame 3 still has to be carried out, and the
+   * same five discs moved between frames are five discs, not fifteen. A
+   * frame with no `cones`/`props` key shows the board's own (see the
+   * fallback in the read-only renderer), which the board's own state
+   * already counts.
+   *
+   * Legacy cones — the `cones` track, which has no colour — are the
+   * historical orange, so they share a line with orange cones placed later.
+   * A type this client does not know (a newer client placed it) is skipped
+   * rather than guessed at; a colour it does not know falls back to the
+   * type's default, so the item is still counted.
+   */
+  function _stpBoardProps(b) {
+    const out = {};
+    const states = [b].concat(Array.isArray(b.frames) ? b.frames : []);
+    states.forEach(function (s) {
+      if (!s) return;
+      const here = {};
+      const bump = function (k) { here[k] = (here[k] || 0) + 1; };
+      (Array.isArray(s.cones) ? s.cones : []).forEach(function (c) {
+        if (c) bump('cone|taronja');
+      });
+      (Array.isArray(s.props) ? s.props : []).forEach(function (p) {
+        const def = p && BG.PROPS[p[2]];
+        if (!def) return;
+        const col = !def.colour ? '' : (BG.PROP_COLOURS[p[4]] ? p[4] : def.def);
+        bump(p[2] + '|' + col);
+      });
+      Object.keys(here).forEach(function (k) { out[k] = Math.max(out[k] || 0, here[k]); });
+    });
+    return out;
+  }
+
+  /** "Piques grogues", "Cons grocs", "Discs (yellow)" — one material row's name. */
+  function _stpItemLabel(it) {
+    const name = t('mat.' + it.type + 's');
+    if (!it.colour) return name;
+    const g = t('mat.' + it.type + '_g') === 'f' ? 'f' : 'm';
+    return t('mat.item_col').replace('{item}', name)
+      .replace('{col}', t('mat.col_' + it.colour + '_' + g));
+  }
+
+  /** The "type|colour" map as rows, in catalogue order then palette order. */
+  function _stpItems(need) {
+    const types = Object.keys(BG.PROPS);
+    const cols = [''].concat(Object.keys(BG.PROP_COLOURS));
+    return Object.keys(need).filter(function (k) { return need[k] > 0; })
+      .map(function (k) {
+        const i = k.indexOf('|');
+        return { type: k.slice(0, i), colour: k.slice(i + 1), qty: need[k] };
+      })
+      .sort(function (a, b) {
+        return (types.indexOf(a.type) - types.indexOf(b.type)) ||
+          (cols.indexOf(a.colour) - cols.indexOf(b.colour));
+      });
+  }
+
+  /**
    * What the session needs on the pitch, from the boards its exercises use.
    *
    * Countable objects — cones, balls — are REUSED by exercises that run one
@@ -22494,14 +23102,17 @@
    */
   function planMaterial(plan, resolve) {
     const colors = new Set();
-    let cones = 0, balls = 0, unknown = 0, priced = 0;
+    let balls = 0, unknown = 0, priced = 0;
+    const need = {};   // "type|colour" -> qty, max across blocks
     ((plan && plan.blocks) || []).forEach(function (blk) {
-      let bCones = 0, bBalls = 0;
+      let bBalls = 0;
+      const bNeed = {};   // summed across the block's items
       (blk.items || []).forEach(function (ex) {
         const b = (ex && ex.boardId) ? resolve(ex.boardId) : null;
         if (!b) { unknown++; return; }
         priced++;
-        bCones += _stpCount(b.cones);
+        const own = _stpBoardProps(b);
+        Object.keys(own).forEach(function (k) { bNeed[k] = (bNeed[k] || 0) + own[k]; });
         bBalls += _stpCount(b.balls);
         _stpSideColors(b.positions, b.numbers, b.colors, b.teamColor, colors);
         // showOpp false means the coach hid the opposition; their kit is
@@ -22511,11 +23122,17 @@
           _stpSideColors(b.oppPositions, b.oppNumbers, b.oppColors, b.oppColor, colors);
         }
       });
-      cones = Math.max(cones, bCones);
+      // Key by key: the red cones of one block and the yellow cones of
+      // another are two different piles, each reused on its own.
+      Object.keys(bNeed).forEach(function (k) { need[k] = Math.max(need[k] || 0, bNeed[k]); });
       balls = Math.max(balls, bBalls);
     });
+    const items = _stpItems(need);
+    let cones = 0;
+    items.forEach(function (it) { if (it.type === 'cone') cones += it.qty; });
     const list = Array.from(colors);
     return {
+      items: items,
       cones: cones, balls: balls, colors: list,
       petos: Math.max(0, list.length - 1),
       unknown: unknown, priced: priced
@@ -22602,7 +23219,13 @@
     const m = planMaterial({ blocks: [{ items: [ex] }] }, resolve);
     if (m.unknown) return t('plan.board_missing');
     const bits = [];
-    if (m.cones) bits.push(_stpN(m.cones, 'plan.n_cone', 'plan.n_cones'));
+    // Type totals only: the colours are in the material list below, and a
+    // one-line note that named every colour would wrap on a phone.
+    const byType = {};
+    m.items.forEach(function (it) { byType[it.type] = (byType[it.type] || 0) + it.qty; });
+    Object.keys(byType).forEach(function (ty) {
+      bits.push(_stpN(byType[ty], 'plan.n_' + ty, 'plan.n_' + ty + 's'));
+    });
     if (m.balls) bits.push(_stpN(m.balls, 'plan.n_ball', 'plan.n_balls'));
     if (m.petos) bits.push(_stpN(m.petos, 'plan.n_peto', 'plan.n_petos'));
     const mat = bits.join(', ');
@@ -22772,7 +23395,15 @@
          follow its trigger when the pane underneath scrolls — the trap
          hideHoverTip already closes on. Capture, because scroll does not
          bubble out of an inner pane. */
-      window.addEventListener('scroll', stdSelCloseAll, true);
+      /* EXCEPT the menu's own scrolling. Capture catches that too — scroll
+         fires on the menu itself — so a list long enough to scroll (the
+         eleven training intensities) closed on the first turn of the wheel
+         or drag of its bar, and its lower options could never be reached. */
+      window.addEventListener('scroll', function (e) {
+        const tg = e.target;
+        if (tg && tg.closest && tg.closest('.std-sel-menu')) return;
+        stdSelCloseAll();
+      }, true);
       window.addEventListener('resize', stdSelCloseAll);
     }
   }
@@ -23224,7 +23855,11 @@
     }).join('');
 
     const matRows = [];
-    if (mat.cones) matRows.push([sanitize(t('mat.cones')), mat.cones]);
+    mat.items.forEach(function (it) {
+      const hex = it.colour && BG.PROP_COLOURS[it.colour];
+      matRows.push([(hex ? '<span class="prn-dot" style="background:' + hex + '"></span> ' : '') +
+        sanitize(_stpItemLabel(it)), it.qty]);
+    });
     if (mat.balls) matRows.push([sanitize(t('mat.balls')), mat.balls]);
     if (petos.length) {
       // Which colours, not just how many: "3 petos" sends a coach to the
@@ -23648,8 +24283,9 @@
       '</div></div>';
   }
 
-  function _stmRow(label, qty, extraIdx, ro) {
+  function _stmRow(label, qty, extraIdx, ro, dot) {
     return '<div class="stm-row">' +
+      (dot ? '<span class="stm-dot" style="background:' + sanitize(dot) + '"></span>' : '') +
       '<span class="stm-lbl">' + sanitize(label) + '</span>' +
       '<span class="stm-qty">' + qty + '</span>' +
       (extraIdx === null || ro ? '' :
@@ -23663,7 +24299,10 @@
     const mat = planMaterial(plan, stdBoardResolver(tr));
     const petos = resolvePetos(plan, mat);
     const rows = [];
-    if (mat.cones) rows.push(_stmRow(t('mat.cones'), mat.cones, null, ro));
+    mat.items.forEach(function (it) {
+      rows.push(_stmRow(_stpItemLabel(it), it.qty, null, ro,
+        it.colour ? BG.PROP_COLOURS[it.colour] : null));
+    });
     if (mat.balls) rows.push(_stmRow(t('mat.balls'), mat.balls, null, ro));
 
     // The petos row carries the swatch strip, so it cannot use _stmRow.

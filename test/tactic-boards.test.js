@@ -62,7 +62,9 @@ const KEY_ORDER = [
   // The opponent's own shape, appended after those for the same
   // reason. '' means a board from before opponents had one, which
   // spawnOppCircles reads as 'mirror ours'.
-  'oppFormation'
+  'oppFormation',
+  // Material other than cones, [x, y, type, rotDeg, colour].
+  'props'
 ];
 
 describe('buildBoardEntry — defaults', () => {
@@ -94,7 +96,8 @@ describe('buildBoardEntry — defaults', () => {
       oppStripes: '',
       penSpace: '',
       pitch: null,
-      oppFormation: ''
+      oppFormation: '',
+      props: []
     });
   });
 
@@ -464,14 +467,31 @@ describe('buildBoardEntry — the opponent formation', () => {
     assert.notStrictEqual(e.formation, e.oppFormation);
   });
 
-  it('sits at the TAIL, so the shard diff rewrites boards once', () => {
+  it('sits after every older key, so the shard diff rewrites boards once', () => {
     /* db.js compares shards as serialised strings, so a key inserted
        anywhere but the end reorders everything after it and marks
-       every board in every club as changed. */
+       every board in every club as changed. Only `props`, which came
+       later, may follow it. */
     const e = TB.buildBoardEntry(store({}), {name: 'Board'});
     const keys = Object.keys(e);
-    assert.strictEqual(keys[keys.length - 1], 'oppFormation',
+    assert.deepStrictEqual(keys.slice(-2), ['oppFormation', 'props'],
         'a new key belongs at the end: ' + keys.join(', '));
+  });
+});
+
+describe('buildBoardEntry — material props', () => {
+  it('is an empty list for a store that has never placed one', () => {
+    const e = TB.buildBoardEntry(store({}), {name: 'Board'});
+    assert.deepStrictEqual(e.props, []);
+  });
+
+  it('carries every field of every row', () => {
+    /* Type and colour are what the material count reads. A reader that
+       kept only the point would render the items and count nothing. */
+    const rows = [[10, 20, 'disc', 0, 'groc'], null, [30, 40, 'pole', 0, 'blau']];
+    const e = TB.buildBoardEntry(
+        store({fa_tactic_props: JSON.stringify(rows)}), {name: 'Board'});
+    assert.deepStrictEqual(e.props, rows);
   });
 
   it('a board saved before this version still round-trips', () => {

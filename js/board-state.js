@@ -72,6 +72,7 @@
     texts:        'fa_tactic_texts',
     penLines:     'fa_tactic_pen_lines',
     cones:        'fa_tactic_cones',
+    props:        'fa_tactic_props',
     silhouette:   'fa_tactic_silhouette',
     pitch:        'fa_tactic_pitch',
     penSpace:     'fa_tactic_pen_space'
@@ -118,6 +119,34 @@
     writeJson(store, K.rects, (arr || []).map(function (r) {
       return [round2(r[0]), round2(r[1]), round2(r[2]), round2(r[3]), r[4], r[5]];
     }));
+  }
+
+  /* Props: [x, y, type, rotDeg, colour]. Material items other than
+     the cone — see PROPS in board-geom.
+
+     NEVER through setPoints: roundPt keeps two fields, so a prop
+     passed through it would lose its type and colour and come back
+     as a bare point. Rotation is whole degrees in [0, 360). A null
+     row is a deleted slot and stays null, like every point track. */
+  function propRow(p) {
+    if (!p) return null;
+    var r = Math.round(Number(p[3]) || 0) % 360;
+    return [round2(p[0]), round2(p[1]), String(p[2] || ''),
+      r < 0 ? r + 360 : r, p[4] ? String(p[4]) : ''];
+  }
+
+  function setProps(store, arr) {
+    writeJson(store, K.props, (arr || []).map(propRow));
+  }
+
+  /* Positions tween like any point track; what the item IS — type,
+     rotation, colour — is taken from the target frame, the same v91
+     rule tweenFrame applies to colours. */
+  function tweenProps(from, to, t) {
+    var b = to || [];
+    return tweenTrack(from, b, t).map(function (p, i) {
+      return p ? [p[0], p[1], b[i][2], b[i][3], b[i][4]] : null;
+    });
   }
 
   /* Texts: [x, y, text, bg, opacity, wPx, hPx, fontPx, wM, fontM].
@@ -207,6 +236,7 @@
       oppPositions: tweenTrack(f.oppPositions, g.oppPositions, t),
       balls:        tweenTrack(f.balls, g.balls, t),
       cones:        tweenTrack(f.cones, g.cones, t),
+      props:        tweenProps(f.props, g.props, t),
       colors:       g.colors || [],
       oppColors:    g.oppColors || [],
       arrows:       g.arrows || [],
@@ -452,6 +482,9 @@
     setArrows: setArrows,
     setRects: setRects,
     setTexts: setTexts,
+    setProps: setProps,
+    propRow: propRow,
+    tweenProps: tweenProps,
     tweenTrack: tweenTrack,
     tweenFrame: tweenFrame
   };

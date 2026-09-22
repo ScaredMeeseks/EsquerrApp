@@ -1526,7 +1526,7 @@ describe('selection and delete in 3D', () => {
     assert.ok(m, 'SELECTABLE list not found');
     const kinds = m[1].match(/'[^']+'/g).map((s) => s.slice(1, -1)).sort();
     assert.deepStrictEqual(kinds,
-        ['balls', 'cones', 'oppPositions', 'positions'],
+        ['balls', 'cones', 'oppPositions', 'positions', 'props'],
         'a trajectory handle is part of another object, not a selection');
   });
 
@@ -2225,7 +2225,7 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
        running app as "the text is duplicated below the box, blurry". */
     assert.ok(shown.length, 'the re-show rule is missing entirely');
     assert.deepStrictEqual(shown.sort(),
-        ['tb-arrows-svg', 'tb-ball', 'tb-circle', 'tb-cone'],
+        ['tb-arrows-svg', 'tb-ball', 'tb-circle', 'tb-cone', 'tb-prop'],
         'the drawing layers plus the objects the coach draws around');
   });
 
@@ -2268,10 +2268,17 @@ describe('the drawing overlay hides the 3D scene\'s own marks', () => {
        there, which is a test failing on correct markup. */
     const interpolated = (block.match(/\$\{([a-zA-Z_]\w*)\}/g) || [])
         .map((m) => m.slice(2, -1));
+    /* And into the tb* builder FUNCTIONS it calls — props are drawn by
+       tbPropHtml, the one renderer the editor and the read-only board
+       share, so their markup is in its body rather than in the block. */
+    const called = [...new Set((block.match(/\btb[A-Z]\w*(?=\()/g) || []))];
     const builders = interpolated.map((name) => {
       const at = appSrc2.indexOf(name + ' = ');
       return at === -1 ? '' : appSrc2.slice(at, at + 3000);
-    }).join('\n');
+    }).concat(called.map((name) => {
+      const at = appSrc2.indexOf('function ' + name + '(');
+      return at === -1 ? '' : appSrc2.slice(at, at + 3000);
+    })).join('\n');
 
     shown.forEach((c) => {
       const re = new RegExp('class="' + c + '[" ]');

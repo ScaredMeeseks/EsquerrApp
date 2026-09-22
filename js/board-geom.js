@@ -77,8 +77,10 @@
   var OBJ = {
     player: 1.80,      // disc diameter
     ball: 0.50,
-    cone: 0.70,        // base diameter
-    coneHeight: 0.70,
+    /* Base plate width and height. It was 0.70, which read as a traffic
+       cone beside a 1.8 m player; training cones are smaller. */
+    cone: 0.50,
+    coneHeight: 0.50,
     /* A TEXT LABEL'S CAP HEIGHT. The last object type to join this
        table — it was still in fixed pixels a year after everything
        else moved, which is why a note drawn in the editor came out
@@ -90,6 +92,69 @@
        The slider's old 8–28px range is 1.02–3.58 m. */
     text: 1.54
   };
+
+  /* ═══ MATERIAL: THE ITEMS A COACH PUTS ON THE GRASS ═══════════
+     One row per item type, read by the 2D board, the 3D view AND the
+     session's material count — which is why it lives here rather
+     than in either view. `w` is the footprint across, `d` the depth
+     along the item's facing, `h` the height, all in metres.
+
+     `g` is how wide the 2D board DRAWS it, also in metres — the same
+     idea as the player's 1.8 m disc, which is a player's space rather
+     than a player. A real disc is 20 cm: drawn true it is 1.6 px on a
+     full board, so it needed a pixel floor, and a floor that big wins
+     at every zoom the 3D overlay reaches — the props held their size
+     while the players grew around them. A metric glyph scales with
+     the pitch like everything else and the floor is only a backstop.
+     The 3D view keeps `w`, a little over life size like the ball.
+
+     `tool: false` is a type that is counted but not placed from the
+     picker: the cone still has its own tool and its own track
+     (`cones`), and is listed here so a legacy cone and a future
+     coloured one land in the same line of the material list.
+
+     Order is the order the material list prints in.
+
+     Both tables have NO PROTOTYPE: the type and colour come from stored
+     boards, and `PROPS['constructor']` on a plain object is a function —
+     truthy, so every "is this a known type?" test would pass it. */
+  var PROPS = Object.assign(Object.create(null), {
+    cone: {w: 0.50, d: 0.50, h: 0.50,  rot: false, colour: true,  def: 'taronja', tool: false},
+    disc: {w: 0.40, d: 0.40, h: 0.09,  g: 1.20, rot: false, colour: true,  def: 'groc'},
+    pole: {w: 0.08, d: 0.08, h: 1.60,  g: 1.10, rot: false, colour: true,  def: 'groc'},
+    hoop: {w: 0.90, d: 0.90, h: 0.04,  g: 1.80, rot: false, colour: true,  def: 'vermell'},
+    /* The items that FACE a way. `w` runs across the item and `d` along
+       its facing; at rotation 0 an item faces DOWN the board (+y), so a
+       goal's mouth opens downwards and its net is behind, towards the
+       top. `gd` is the drawn depth, as `g` is the drawn width. */
+    /* Two hurdles, because clubs own both: the low rounded ones sold for
+       agility work (`hurdle`), and the tall athletics hurdle on L-shaped
+       feet (`hurdlehi`). They are counted apart — nobody swaps one for
+       the other. */
+    hurdle:    {w: 0.50, d: 0.24, h: 0.22, g: 1.50, gd: 0.45, rot: true, colour: true,  def: 'taronja'},
+    hurdlehi:  {w: 1.20, d: 0.70, h: 0.84, g: 2.20, gd: 1.10, rot: true, colour: true,  def: 'blanc'},
+    ladder:    {w: 4.00, d: 0.45, h: 0.02, g: 4.00, gd: 0.90, rot: true, colour: true,  def: 'groc'},
+    dummy:     {w: 0.50, d: 0.35, h: 1.80, g: 1.40, gd: 0.70, rot: true, colour: true,  def: 'blau'},
+    minigoal:  {w: 1.20, d: 0.60, h: 0.80, g: 2.40, gd: 1.20, rot: true, colour: false},
+    goal7:     {w: 6.00, d: 1.20, h: 2.00, g: 6.00, gd: 1.60, rot: true, colour: false},
+    // A full-size goal on wheels or pegs: 7.32 × 2.44, the regulation mouth.
+    goal11:    {w: 7.32, d: 1.60, h: 2.44, g: 7.32, gd: 2.00, rot: true, colour: false},
+    rebounder: {w: 1.00, d: 0.60, h: 1.00, g: 1.80, gd: 1.20, rot: true, colour: false}
+  });
+
+  /* A FIXED palette, not a colour picker. The material list counts
+     per colour, and a free choice would split "yellow discs" into as
+     many lines as there are near-identical yellows. These are the
+     colours clubs actually buy material in. `taronja` is the cone's
+     historical #ff8c00, so a legacy cone is exactly this colour. */
+  var PROP_COLOURS = Object.assign(Object.create(null), {
+    groc:    '#ffd600',
+    taronja: '#ff8c00',
+    vermell: '#e53935',
+    blau:    '#1e88e5',
+    verd:    '#43a047',
+    blanc:   '#f5f5f5'
+  });
 
   /* MARK is the 2D board's pixel weights converted at the full
      board's 7.81 px/m, so the marks a coach already draws keep the
@@ -639,6 +704,8 @@
   return {
     MARKS: MARKS,
     OBJ: OBJ,
+    PROPS: PROPS,
+    PROP_COLOURS: PROP_COLOURS,
     MARK: MARK,
     /** px per metre for a board of this size — the 2D bridge. */
     ppm: ppm,
